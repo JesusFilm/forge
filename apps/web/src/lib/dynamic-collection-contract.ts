@@ -24,7 +24,7 @@ export type DynamicCollectionFeedCacheSignatures = Record<
 
 export type DynamicCollectionFeedItem = {
   id: string
-  coreId: string | null
+  coreId: string
   title: string
   videoSlug: string
   languageSlug: string | null
@@ -262,7 +262,7 @@ function isDynamicCollectionFeedItem(
 
   return (
     isNonEmptyString(value.id) &&
-    (value.coreId === null || isNonEmptyString(value.coreId)) &&
+    isNonEmptyString(value.coreId) &&
     isNonEmptyString(value.title) &&
     isNonEmptyString(value.videoSlug) &&
     (value.languageSlug === null ||

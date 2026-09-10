@@ -91,7 +91,7 @@ export async function publishStudioProject(
       if (scheduled) assertDeliveryWindow(new Date())
       assertStudioPublicationEnabled()
       assertEditable(project, input.expectedRevision)
-      const revision = await tx.studioProjectRevision.findUniqueOrThrow({
+      const revision = await tx.shortRevision.findUniqueOrThrow({
         where: {
           projectId_number: {
             projectId: project.id,
@@ -106,7 +106,7 @@ export async function publishStudioProject(
         document,
         input.renderAttemptId,
       )
-      const approval = await tx.studioApproval.findUnique({
+      const approval = await tx.shortApproval.findUnique({
         where: { id: input.approvalId },
       })
       if (
@@ -143,7 +143,7 @@ export async function publishStudioProject(
         restrictions,
       })
       assertDeliveryWindow(new Date())
-      await tx.studioProject.update({
+      await tx.short.update({
         where: { id: project.id },
         data: { lifecycle: "PUBLISHED", firstPublishedAt: publishedAt },
       })

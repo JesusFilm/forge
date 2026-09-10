@@ -39,7 +39,7 @@ const defaults: CalendarSettings = {
   defaultPackRevisionIds: [],
   language: "english",
 }
-export function StudioCalendar() {
+export function ShortCalendar() {
   const [view, setView] = useState<CalendarView | null>(null),
     [settings, setSettings] = useState(defaults),
     [packs, setPacks] = useState<Pack[]>([]),

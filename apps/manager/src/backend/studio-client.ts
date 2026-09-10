@@ -63,7 +63,7 @@ const unpublish = adminGraphql(
   [resultFragment],
 )
 const read = adminGraphql(
-  `query ShortsRead($projectId: ID!) { shortsProject(projectId: $projectId) { projectId revision lifecycle firstPublishedAt document actor { kind id } } }`,
+  `query ShortsRead($projectId: ID!) { shortsProject(projectId: $projectId) { projectId sourceVideoDubId revision lifecycle firstPublishedAt document actor { kind id } } }`,
 )
 const list = adminGraphql(
   `query ShortsList($cursor: ID, $limit: Int) { shortsProjects(cursor: $cursor, limit: $limit) { projectId revision lifecycle } }`,

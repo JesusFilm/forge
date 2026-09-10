@@ -46,10 +46,6 @@ export async function stepStudioCalendarPublicationTick(
   const { StudioCalendarDispatcher } =
     await import("@/services/studio-authoring/calendar-dispatch")
   const result = await new StudioCalendarDispatcher(prisma).tick(cursor)
-  // Reuse canonical durable visibility delivery, also recovering later unpublish.
-  const { reconcileStudioWatch } =
-    await import("@/services/studio-authoring/watch-delivery")
-  await reconcileStudioWatch(prisma)
   return result
 }
 stepStudioCalendarPublicationTick.maxRetries = 0

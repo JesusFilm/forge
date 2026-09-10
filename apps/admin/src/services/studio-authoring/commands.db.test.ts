@@ -429,7 +429,7 @@ suite("Studio command seam against disposable Postgres", () => {
       ),
     ).rejects.toMatchObject({ code: "CONFLICT" })
     await expect(
-      db.studioProject.update({
+      db.short.update({
         where: { id: projectId },
         data: {
           lifecycle: "DRAFT",
@@ -439,7 +439,7 @@ suite("Studio command seam against disposable Postgres", () => {
       }),
     ).rejects.toBeDefined()
     await expect(
-      db.studioProjectRevision.create({
+      db.shortRevision.create({
         data: {
           projectId,
           number: 2,
@@ -449,7 +449,7 @@ suite("Studio command seam against disposable Postgres", () => {
       }),
     ).rejects.toBeDefined()
     await expect(
-      db.studioAttempt.update({
+      db.shortAttempt.update({
         where: { id: render.attemptId },
         data: { result: { assets: [] } },
       }),
@@ -465,7 +465,7 @@ suite("Studio command seam against disposable Postgres", () => {
       document,
     })
     await expect(
-      db.studioProjectRevision.update({
+      db.shortRevision.update({
         where: { projectId_number: { projectId, number: 1 } },
         data: { document: { ...document, title: "Overwrite" } },
       }),
@@ -832,9 +832,9 @@ suite("Studio command seam against disposable Postgres", () => {
     ).toMatchObject({ status: "STALE", result: completion.result })
     expect(await service.read(user, projectId)).toEqual(published)
     expect(
-      await db.studioAssetUsage.findMany({
+      await db.shortAssetUsage.findMany({
         where: {
-          ownerType: "STUDIO_ATTEMPT",
+          ownerType: "SHORT_ATTEMPT",
           ownerId: late.attemptId,
           versionId: refs.late!.versionId,
         },
@@ -846,9 +846,9 @@ suite("Studio command seam against disposable Postgres", () => {
       idempotencyKey: randomUUID(),
     })
     expect(
-      await db.studioAssetUsage.findMany({
+      await db.shortAssetUsage.findMany({
         where: {
-          ownerType: "STUDIO_PUBLICATION",
+          ownerType: "SHORT_PUBLICATION",
           ownerId: projectId,
           versionId: refs.manifest!.versionId,
         },

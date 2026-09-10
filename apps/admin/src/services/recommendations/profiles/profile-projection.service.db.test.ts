@@ -101,17 +101,6 @@ async function installCatalogFixture(client: Client): Promise<void> {
       id text PRIMARY KEY, core_id text, slug text NOT NULL,
       deleted_at timestamp, restrict_view_platforms text[] NOT NULL DEFAULT '{}'
     );
-      -- Read-model fixture for the canonical Studio visibility predicate.
-      -- Core rows have no release; Studio rows require live publication authority.
-      CREATE TABLE studio_project (id text PRIMARY KEY, lifecycle text NOT NULL);
-      CREATE TABLE studio_catalog_release (
-        id text PRIMARY KEY, project_id text NOT NULL REFERENCES studio_project(id),
-        video_id text NOT NULL UNIQUE REFERENCES video(id)
-      );
-      CREATE TABLE studio_publication (
-        release_id text PRIMARY KEY REFERENCES studio_catalog_release(id),
-        revoked_at timestamptz
-      );
     CREATE TABLE video_relation (parent_id text, child_id text);
     CREATE TABLE video_transcript (
       id text PRIMARY KEY, video_id text NOT NULL, video_edition_id text NOT NULL,

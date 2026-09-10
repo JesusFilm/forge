@@ -1,7 +1,7 @@
 "use client"
 
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react"
-import Image from "@/components/ui/MediaImage"
+import Image from "next/image"
 
 import type { ResolvedSeriesBySlug } from "@/lib/content"
 import {

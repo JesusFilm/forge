@@ -1,7 +1,7 @@
 import { assertStudioProductionEnabled } from "./release-controls"
 import { randomUUID } from "node:crypto"
 import { z } from "zod"
-import { Prisma, type PrismaClient, type StudioMuxJob } from "@prisma/client"
+import { Prisma, type PrismaClient, type ShortMuxJob } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import {
   studioAttemptResultSchema,
@@ -31,13 +31,13 @@ const muxSnapshotSchema = z.object({
   leaseId: z.uuid(),
 })
 async function lockMux(tx: Prisma.TransactionClient, id: string) {
-  const identity = await tx.studioMuxJob.findUniqueOrThrow({
+  const identity = await tx.shortMuxJob.findUniqueOrThrow({
     where: { id },
     include: { attempt: { select: { projectId: true } } },
   })
   const project = await lockProject(tx, identity.attempt.projectId)
-  await tx.$queryRaw`SELECT id FROM studio_mux_job WHERE id=${id} FOR UPDATE`
-  const job = await tx.studioMuxJob.findUniqueOrThrow({ where: { id } })
+  await tx.$queryRaw`SELECT id FROM short_mux_job WHERE id=${id} FOR UPDATE`
+  const job = await tx.shortMuxJob.findUniqueOrThrow({ where: { id } })
   return { project, job }
 }
 
@@ -59,10 +59,10 @@ export class StudioMuxJobs {
           .parse(cursor)
       : null
     return this.db.$queryRaw<Array<{ id: string; createdAt: Date }>>`
-    SELECT attempt.id,attempt.created_at AS "createdAt" FROM studio_attempt attempt
-    JOIN studio_project project ON project.id=attempt.project_id
-    LEFT JOIN studio_mux_job job ON job.attempt_id=attempt.id
-    LEFT JOIN studio_catalog_release release ON release.render_attempt_id=attempt.id
+    SELECT attempt.id,attempt.created_at AS "createdAt" FROM short_attempt attempt
+    JOIN short project ON project.id=attempt.project_id
+    LEFT JOIN short_mux_job job ON job.attempt_id=attempt.id
+    LEFT JOIN short_release release ON release.render_attempt_id=attempt.id
     WHERE attempt.kind='RENDER' AND attempt.status='SUCCEEDED'
       AND (job.state='PROCESSING' OR (
         project.current_revision=attempt.base_revision AND project.first_published_at IS NULL
@@ -73,15 +73,15 @@ export class StudioMuxJobs {
   }
   async read(user: Principal | null, attemptId: string) {
     worker(user)
-    return this.db.studioMuxJob.findUnique({ where: { attemptId } })
+    return this.db.shortMuxJob.findUnique({ where: { attemptId } })
   }
   async enqueue(user: Principal | null, attemptId: string) {
     worker(user)
-    const prior = await this.db.studioMuxJob.findUnique({
+    const prior = await this.db.shortMuxJob.findUnique({
       where: { attemptId },
     })
     if (prior) return prior
-    const attempt = await this.db.studioAttempt.findUniqueOrThrow({
+    const attempt = await this.db.shortAttempt.findUniqueOrThrow({
       where: { id: attemptId },
     })
     if (attempt.kind !== "RENDER" || attempt.status !== "SUCCEEDED")
@@ -133,24 +133,24 @@ export class StudioMuxJobs {
     const retainedCodec = codecProof
     return this.db.$transaction(async (tx) => {
       const project = await lockProject(tx, attempt.projectId)
-      const retry = await tx.studioMuxJob.findUnique({ where: { attemptId } })
+      const retry = await tx.shortMuxJob.findUnique({ where: { attemptId } })
       if (retry) return retry
       assertEditable(project, attempt.baseRevision)
       if (
-        await tx.studioCatalogRelease.findUnique({
+        await tx.shortRelease.findUnique({
           where: { renderAttemptId: attemptId },
         })
       )
         throw new StudioCommandError("CONFLICT")
-      const current = await tx.studioAttempt.findUniqueOrThrow({
+      const current = await tx.shortAttempt.findUniqueOrThrow({
         where: { id: attemptId },
       })
-      const execution = await tx.studioRenderExecution.findFirst({
+      const execution = await tx.shortRenderExecution.findFirst({
         where: { attemptId, admitted: true, status: "SUCCEEDED" },
       })
       if (current.status !== "SUCCEEDED" || !execution)
         throw new StudioCommandError("UNREADY")
-      const revision = await tx.studioProjectRevision.findUniqueOrThrow({
+      const revision = await tx.shortRevision.findUniqueOrThrow({
         where: {
           projectId_number: {
             projectId: project.id,
@@ -161,7 +161,7 @@ export class StudioMuxJobs {
       const document = studioDocumentSchema.parse(revision.document)
       await resolveStudioPackSources(tx, document.packRevisionIds)
       await resolveStudioDocumentSources(tx, document)
-      return tx.studioMuxJob.create({
+      return tx.shortMuxJob.create({
         data: {
           attemptId,
           snapshot: {
@@ -181,7 +181,7 @@ export class StudioMuxJobs {
       assertStudioProductionEnabled()
       const { manifest } = muxSnapshotSchema.parse(job.snapshot)
       assertEditable(project, manifest.revision)
-      const revision = await tx.studioProjectRevision.findUniqueOrThrow({
+      const revision = await tx.shortRevision.findUniqueOrThrow({
         where: {
           projectId_number: {
             projectId: project.id,
@@ -193,7 +193,7 @@ export class StudioMuxJobs {
       await resolveStudioPackSources(tx, document.packRevisionIds)
       await resolveStudioDocumentSources(tx, document)
       const dispatchId = randomUUID()
-      await tx.studioMuxJob.update({
+      await tx.shortMuxJob.update({
         where: { id },
         data: { state: "DISPATCHING", dispatchId },
       })
@@ -207,7 +207,7 @@ export class StudioMuxJobs {
       if (job.dispatchId !== dispatchId)
         throw new StudioCommandError("CONFLICT")
       if (job.state !== "DISPATCHING") return job
-      return tx.studioMuxJob.update({
+      return tx.shortMuxJob.update({
         where: { id },
         data: { state: "AMBIGUOUS" },
       })
@@ -231,7 +231,7 @@ export class StudioMuxJobs {
       if (job.assetId === assetId) return job
       if (!["DISPATCHING", "AMBIGUOUS"].includes(job.state))
         throw new StudioCommandError("CONFLICT")
-      return tx.studioMuxJob.update({
+      return tx.shortMuxJob.update({
         where: { id },
         data: { state: "PROCESSING", assetId },
       })
@@ -275,13 +275,13 @@ export class StudioMuxJobs {
         ) > 100
       )
         throw new StudioCommandError("UNREADY")
-      return tx.studioMuxJob.update({
+      return tx.shortMuxJob.update({
         where: { id },
         data: { state: "READY", readiness: evidence },
       })
     })
   }
 }
-export function studioMuxJobSnapshot(job: StudioMuxJob) {
+export function studioMuxJobSnapshot(job: ShortMuxJob) {
   return muxSnapshotSchema.parse(job.snapshot)
 }

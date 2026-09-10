@@ -1,4 +1,3 @@
-import { studioPlaybackUrl } from "./playback-config"
 import { randomUUID } from "node:crypto"
 import type { PrismaClient } from "@prisma/client"
 import {
@@ -23,18 +22,14 @@ export class StudioCatalogService {
   constructor(private readonly db: PrismaClient) {}
   async read(user: Principal | null, rawId: string) {
     studioActor(user)
-    const row = await this.db.studioCatalogRelease.findUnique({
+    const row = await this.db.shortRelease.findUnique({
       where: { id: studioIdSchema.parse(rawId) },
       include: {
-        video: { include: { locales: true } },
-        dub: true,
-        edition: true,
-        mux: true,
         derivations: { include: { sourceSnapshot: true } },
         packs: true,
       },
     })
-    if (!row) throw new NotFoundError("StudioCatalogRelease")
+    if (!row) throw new NotFoundError("ShortRelease")
     return row
   }
   async stage(user: Principal | null, raw: unknown) {
@@ -43,7 +38,7 @@ export class StudioCatalogService {
       throw new ForbiddenError("Trusted render registration required")
     const input = studioStageCatalogSchema.parse(raw)
     const requestHash = studioHash({ actor, input })
-    const retry = await this.db.studioCatalogRelease.findUnique({
+    const retry = await this.db.shortRelease.findUnique({
       where: {
         projectId_idempotencyKey: {
           projectId: input.projectId,
@@ -56,7 +51,7 @@ export class StudioCatalogService {
         throw new StudioCommandError("CONFLICT")
       return retry
     }
-    const attempt = await this.db.studioAttempt.findUnique({
+    const attempt = await this.db.shortAttempt.findUnique({
       where: { id: input.renderAttemptId },
     })
     if (
@@ -101,7 +96,7 @@ export class StudioCatalogService {
     return this.db.$transaction(
       async (tx) => {
         const project = await lockProject(tx, input.projectId)
-        const prior = await tx.studioCatalogRelease.findUnique({
+        const prior = await tx.shortRelease.findUnique({
           where: {
             projectId_idempotencyKey: {
               projectId: input.projectId,
@@ -116,12 +111,12 @@ export class StudioCatalogService {
         }
         assertEditable(project, input.expectedRevision)
         if (
-          await tx.studioCatalogRelease.findUnique({
+          await tx.shortRelease.findUnique({
             where: { renderAttemptId: attempt.id },
           })
         )
           throw new StudioCommandError("CONFLICT")
-        const revision = await tx.studioProjectRevision.findUniqueOrThrow({
+        const revision = await tx.shortRevision.findUniqueOrThrow({
           where: {
             projectId_number: {
               projectId: project.id,
@@ -166,80 +161,20 @@ export class StudioCatalogService {
         ].sort())
           await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`studio-catalog-mux:${key}`}, 0))::text`
         if (
-          await tx.muxVideo.findFirst({
+          await tx.shortRelease.findFirst({
             where: {
               OR: [
-                { assetId: input.mux.assetId },
-                { playbackId: input.mux.playbackId },
+                { muxAssetId: input.mux.assetId },
+                { muxPlaybackId: input.mux.playbackId },
               ],
             },
           })
         )
           throw new StudioCommandError("CONFLICT")
         const id = randomUUID()
-        const video = await tx.video.create({
-          data: {
-            source: "MANAGER",
-            slug: `studio-${id}`,
-            primaryLanguageId: language.id,
-            noIndex: true,
-            aiMetadata: true,
-            restrictViewPlatforms: restrictions,
-            locales: {
-              create: {
-                source: "MANAGER",
-                languageId: language.id,
-                languageSlug: language.slug,
-                languageCoreId: language.coreId,
-                locale: language.bcp47,
-                title: document.title,
-                status: "DRAFT",
-              },
-            },
-          },
-        })
-        const edition = await tx.videoEdition.create({
-          data: { source: "MANAGER", name: `Studio render ${attempt.id}` },
-        })
-        const mux = await tx.muxVideo.create({
-          data: {
-            source: "MANAGER",
-            assetId: input.mux.assetId,
-            playbackId: input.mux.playbackId,
-          },
-        })
         const durationMs = Math.round(
           (document.durationInFrames * 1000) / document.fps,
         )
-        const dub = await tx.videoDub.create({
-          data: {
-            source: "MANAGER",
-            videoId: video.id,
-            videoEditionId: edition.id,
-            muxVideoId: mux.id,
-            languageId: language.id,
-            duration: Math.ceil(durationMs / 1000),
-            lengthInMilliseconds: BigInt(durationMs),
-            aiGenerated: true,
-            published: false,
-            downloadable: false,
-            hls: studioPlaybackUrl(id, "index.m3u8"),
-          },
-        })
-        const poster = studioPlaybackUrl(id, "poster.webp")
-        if (poster)
-          await tx.videoImage.create({
-            data: {
-              source: "MANAGER",
-              videoId: video.id,
-              url: poster,
-              thumbnail: poster,
-              videoStill: poster,
-              width: document.width,
-              height: document.height,
-              kind: "poster",
-            },
-          })
         const generation = {
           renderAttemptId: attempt.id,
           inputHash: attempt.inputHash,
@@ -248,7 +183,7 @@ export class StudioCatalogService {
           result,
           revisionActor: revision.actor,
         }
-        return tx.studioCatalogRelease.create({
+        return tx.shortRelease.create({
           data: {
             id,
             projectId: project.id,
@@ -256,10 +191,14 @@ export class StudioCatalogService {
             renderAttemptId: attempt.id,
             idempotencyKey: input.idempotencyKey,
             requestHash,
-            videoId: video.id,
-            dubId: dub.id,
-            editionId: edition.id,
-            muxId: mux.id,
+            title: document.title,
+            languageSlug: document.language,
+            durationMs,
+            width: document.width,
+            height: document.height,
+            fps: document.fps,
+            muxAssetId: input.mux.assetId,
+            muxPlaybackId: input.mux.playbackId,
             snapshot: {
               version: 1,
               document,

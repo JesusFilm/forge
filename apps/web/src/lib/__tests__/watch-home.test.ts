@@ -61,7 +61,6 @@ function makeVariant(overrides: Record<string, unknown> = {}) {
       name: { en: "English" },
     },
     muxVideo: { playbackId: "mux-playback-1" },
-    videoEdition: null,
     ...overrides,
   }
 }
@@ -71,7 +70,7 @@ function makeChild(overrides: Record<string, unknown> = {}) {
     documentId: "child-1",
     coreId: "child-core-1",
     slug: "episode-one",
-    label: "EPISODE" as const,
+    label: "EPISODE",
     durationSeconds: 87,
     primaryLanguage: {
       coreId: "529",
@@ -104,7 +103,7 @@ function makeVideo(overrides: Record<string, unknown> = {}) {
     documentId: "video-1",
     coreId: "1_jf-0-0",
     slug: "jesus",
-    label: "FEATURE_FILM" as const,
+    label: "FEATURE_FILM",
     durationSeconds: 123,
     primaryLanguage: {
       coreId: "529",
@@ -589,27 +588,4 @@ describe("resolveWatchHome", () => {
     )
     expect(queryMock.mock.calls[0][0].variables.locale).toBe("es")
   })
-})
-
-it("keeps a generated child card's Forge identity without inventing a Core ID", async () => {
-  const { buildWatchHomeModelFromVideos } = await import("../watch-home")
-  const model = buildWatchHomeModelFromVideos({
-    locale: "en",
-    videos: [
-      makeVideo({
-        coreId: "11_Advent",
-        children: [
-          {
-            child: makeChild({
-              coreId: null,
-              documentId: "generated-child",
-              slug: "generated-child",
-            }),
-          },
-        ],
-      }),
-    ],
-  })
-  const cards = model.sections.flatMap((section) => section.cards)
-  expect(cards.find((card) => card.id === "generated-child")?.coreId).toBeNull()
 })

@@ -188,25 +188,6 @@ describe("videoParentsFilter", () => {
           deletedAt: null,
           locales: { some: { status: "PUBLISHED", deletedAt: null } },
           NOT: { restrictViewPlatforms: { has: "watch" } },
-          AND: [
-            {
-              OR: [
-                { studioRelease: null },
-                {
-                  studioRelease: {
-                    is: {
-                      publication: {
-                        is: {
-                          revokedAt: null,
-                          project: { is: { lifecycle: "PUBLISHED" } },
-                        },
-                      },
-                    },
-                  },
-                },
-              ],
-            },
-          ],
         },
       },
       orderBy: VIDEO_RELATION_ORDER_BY,
@@ -220,25 +201,6 @@ describe("videoParentsFilter", () => {
           deletedAt: null,
           locales: { some: { status: "PUBLISHED", deletedAt: null } },
           NOT: { restrictViewPlatforms: { has: "watch" } },
-          AND: [
-            {
-              OR: [
-                { studioRelease: null },
-                {
-                  studioRelease: {
-                    is: {
-                      publication: {
-                        is: {
-                          revokedAt: null,
-                          project: { is: { lifecycle: "PUBLISHED" } },
-                        },
-                      },
-                    },
-                  },
-                },
-              ],
-            },
-          ],
         },
       },
       orderBy: VIDEO_RELATION_ORDER_BY,
@@ -252,25 +214,6 @@ describe("videoParentsFilter", () => {
           deletedAt: null,
           locales: { some: { status: "PUBLISHED", deletedAt: null } },
           NOT: { restrictViewPlatforms: { has: "watch" } },
-          AND: [
-            {
-              OR: [
-                { studioRelease: null },
-                {
-                  studioRelease: {
-                    is: {
-                      publication: {
-                        is: {
-                          revokedAt: null,
-                          project: { is: { lifecycle: "PUBLISHED" } },
-                        },
-                      },
-                    },
-                  },
-                },
-              ],
-            },
-          ],
         },
       },
       orderBy: VIDEO_RELATION_ORDER_BY,
@@ -298,25 +241,6 @@ describe("videoChildrenFilter", () => {
           deletedAt: null,
           locales: { some: { status: "PUBLISHED", deletedAt: null } },
           NOT: { restrictViewPlatforms: { has: "watch" } },
-          AND: [
-            {
-              OR: [
-                { studioRelease: null },
-                {
-                  studioRelease: {
-                    is: {
-                      publication: {
-                        is: {
-                          revokedAt: null,
-                          project: { is: { lifecycle: "PUBLISHED" } },
-                        },
-                      },
-                    },
-                  },
-                },
-              ],
-            },
-          ],
         },
       },
       orderBy: VIDEO_RELATION_ORDER_BY,
@@ -330,25 +254,6 @@ describe("videoChildrenFilter", () => {
           deletedAt: null,
           locales: { some: { status: "PUBLISHED", deletedAt: null } },
           NOT: { restrictViewPlatforms: { has: "watch" } },
-          AND: [
-            {
-              OR: [
-                { studioRelease: null },
-                {
-                  studioRelease: {
-                    is: {
-                      publication: {
-                        is: {
-                          revokedAt: null,
-                          project: { is: { lifecycle: "PUBLISHED" } },
-                        },
-                      },
-                    },
-                  },
-                },
-              ],
-            },
-          ],
         },
       },
       orderBy: VIDEO_RELATION_ORDER_BY,
@@ -362,25 +267,6 @@ describe("videoChildrenFilter", () => {
           deletedAt: null,
           locales: { some: { status: "PUBLISHED", deletedAt: null } },
           NOT: { restrictViewPlatforms: { has: "watch" } },
-          AND: [
-            {
-              OR: [
-                { studioRelease: null },
-                {
-                  studioRelease: {
-                    is: {
-                      publication: {
-                        is: {
-                          revokedAt: null,
-                          project: { is: { lifecycle: "PUBLISHED" } },
-                        },
-                      },
-                    },
-                  },
-                },
-              ],
-            },
-          ],
         },
       },
       orderBy: VIDEO_RELATION_ORDER_BY,

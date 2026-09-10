@@ -74,7 +74,7 @@ test.skipIf(!url)(
       await pool.query(
         await readFile(
           new URL(
-            "../../../migrations/004-studio-agent-execution.sql",
+            "../../../migrations/004-shorts-agent-execution.sql",
             import.meta.url,
           ),
           "utf8",
@@ -145,13 +145,13 @@ test.skipIf(!url)(
         claim: async (id: string, digest: string) =>
           (
             await pool.query(
-              "INSERT INTO studio_agent_execution(id,instruction_digest) VALUES($1,$2) ON CONFLICT DO NOTHING RETURNING id",
+              "INSERT INTO short_agent_execution(id,instruction_digest) VALUES($1,$2) ON CONFLICT DO NOTHING RETURNING id",
               [id, digest],
             )
           ).rowCount === 1,
         finish: async (id: string, status: "completed" | "failed") => {
           await pool.query(
-            "UPDATE studio_agent_execution SET status=$2 WHERE id=$1",
+            "UPDATE short_agent_execution SET status=$2 WHERE id=$1",
             [id, status],
           )
         },
@@ -277,7 +277,7 @@ test.skipIf(!url)(
         const rebound = await call(first, { ...consumed, action: "bind" })
         consumed.admission = (await rebound.json()).result.admission
         await pool.query(
-          "INSERT INTO studio_agent_execution(id,instruction_digest,status) VALUES($1,$2,$3)",
+          "INSERT INTO short_agent_execution(id,instruction_digest,status) VALUES($1,$2,$3)",
           [consumed.attemptId, frozen.provenance.digest, status],
         )
         expect((await call(restarted, consumed)).status).toBe(409)
@@ -381,7 +381,7 @@ test.skipIf(!url)(
       expect(
         (
           await pool.query(
-            "SELECT status FROM studio_agent_execution WHERE id=$1",
+            "SELECT status FROM short_agent_execution WHERE id=$1",
             [stalledRun.attemptId],
           )
         ).rows[0].status,

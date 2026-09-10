@@ -57,14 +57,31 @@ export class StudioAuthoringService {
         hash,
       )
       if (retry) return retry
-      if (await tx.studioProject.findUnique({ where: { id: input.projectId } }))
+      if (await tx.short.findUnique({ where: { id: input.projectId } }))
         throw new StudioCommandError("CONFLICT")
-      await tx.studioProject.create({
-        data: { id: input.projectId, currentRevision: 1, ownerId: actor.id },
+      if (
+        input.sourceVideoDubId &&
+        !(await tx.videoDub.findFirst({
+          where: {
+            id: input.sourceVideoDubId,
+            deletedAt: null,
+            video: { deletedAt: null },
+          },
+          select: { id: true },
+        }))
+      )
+        throw new NotFoundError("Source VideoDub", input.sourceVideoDubId)
+      await tx.short.create({
+        data: {
+          id: input.projectId,
+          currentRevision: 1,
+          ownerId: actor.id,
+          sourceVideoDubId: input.sourceVideoDubId ?? null,
+        },
       })
       await resolveStudioPackSources(tx, input.document.packRevisionIds)
       await resolveStudioDocumentSources(tx, input.document)
-      await tx.studioProjectRevision.create({
+      await tx.shortRevision.create({
         data: {
           projectId: input.projectId,
           number: 1,
@@ -102,7 +119,7 @@ export class StudioAuthoringService {
       )
       if (retry) return retry
       assertEditable(project, input.expectedRevision)
-      const previous = await tx.studioProjectRevision.findUniqueOrThrow({
+      const previous = await tx.shortRevision.findUniqueOrThrow({
         where: {
           projectId_number: {
             projectId: input.projectId,
@@ -117,10 +134,10 @@ export class StudioAuthoringService {
       await resolveStudioPackSources(tx, document.packRevisionIds)
       await resolveStudioDocumentSources(tx, document)
       const revision = project.currentRevision + 1
-      await tx.studioProjectRevision.create({
+      await tx.shortRevision.create({
         data: { projectId: project.id, number: revision, document, actor },
       })
-      await tx.studioProject.update({
+      await tx.short.update({
         where: { id: project.id },
         data: { currentRevision: revision },
       })
@@ -150,7 +167,7 @@ export class StudioAuthoringService {
       if (retry) return retry
       assertStudioProductionEnabled()
       assertEditable(project, input.expectedRevision)
-      const revision = await tx.studioProjectRevision.findUniqueOrThrow({
+      const revision = await tx.shortRevision.findUniqueOrThrow({
         where: {
           projectId_number: {
             projectId: project.id,
@@ -167,12 +184,12 @@ export class StudioAuthoringService {
         const dependencyHash = scriptHash(
           studioDocumentSchema.parse(revision.document),
         )
-        const approved = await tx.studioApproval.findFirst({
+        const approved = await tx.shortApproval.findFirst({
           where: { projectId: project.id, kind: "SCRIPT", dependencyHash },
         })
         if (!approved) throw new StudioCommandError("APPROVAL_REQUIRED")
       }
-      const attempt = await tx.studioAttempt.create({
+      const attempt = await tx.shortAttempt.create({
         data: {
           projectId: project.id,
           baseRevision: project.currentRevision,
@@ -215,13 +232,13 @@ export class StudioAuthoringService {
     attemptId: string,
   ) {
     studioActor(user)
-    const row = await this.db.studioAttempt.findFirst({
+    const row = await this.db.shortAttempt.findFirst({
       where: {
         id: studioIdSchema.parse(attemptId),
         projectId: studioIdSchema.parse(projectId),
       },
     })
-    if (!row) throw new NotFoundError("StudioAttempt")
+    if (!row) throw new NotFoundError("ShortAttempt")
     return studioAttemptSchema.strip().parse(row)
   }
   async approve(user: Principal | null, raw: unknown) {
@@ -235,7 +252,7 @@ export class StudioAuthoringService {
       const retry = await receipt(tx, project.id, input.idempotencyKey, hash)
       if (retry) return retry
       assertEditable(project, input.expectedRevision)
-      const row = await tx.studioProjectRevision.findUniqueOrThrow({
+      const row = await tx.shortRevision.findUniqueOrThrow({
         where: {
           projectId_number: {
             projectId: project.id,
@@ -257,7 +274,7 @@ export class StudioAuthoringService {
           input.renderAttemptId,
         )
       }
-      const approval = await tx.studioApproval.create({
+      const approval = await tx.shortApproval.create({
         data: {
           projectId: project.id,
           revision: project.currentRevision,
@@ -298,7 +315,7 @@ export class StudioAuthoringService {
         throw new StudioCommandError("CONFLICT")
       if (project.lifecycle !== "PUBLISHED" || !project.firstPublishedAt)
         throw new StudioCommandError("IMMUTABLE")
-      await tx.studioProject.update({
+      await tx.short.update({
         where: { id: project.id },
         data: { lifecycle: "UNPUBLISHED", unpublishedAt: new Date() },
       })
@@ -329,17 +346,17 @@ export class StudioAuthoringService {
       const retry = await receipt(tx, project.id, input.idempotencyKey, hash)
       if (retry) return retry
       assertEditable(project, input.expectedRevision)
-      const attempt = await tx.studioAttempt.findUnique({
+      const attempt = await tx.shortAttempt.findUnique({
         where: { id: input.attemptId },
       })
       if (!attempt || attempt.projectId !== project.id)
-        throw new NotFoundError("StudioAttempt")
+        throw new NotFoundError("ShortAttempt")
       if (
         attempt.baseRevision !== input.expectedRevision ||
         attempt.status !== "QUEUED"
       )
         throw new StudioCommandError("CONFLICT")
-      await tx.studioAttempt.update({
+      await tx.shortAttempt.update({
         where: { id: attempt.id },
         data: { status: "RUNNING", jobReference: input.jobReference },
       })
@@ -363,7 +380,7 @@ export class StudioAuthoringService {
   async list(user: Principal | null, raw: unknown = {}) {
     studioActor(user)
     const input = studioListSchema.parse(raw)
-    const rows = await this.db.studioProject.findMany({
+    const rows = await this.db.short.findMany({
       where: input.cursor ? { id: { gt: input.cursor } } : undefined,
       orderBy: { id: "asc" },
       take: input.limit,
@@ -380,7 +397,7 @@ export class StudioAuthoringService {
   async listSummaries(user: Principal | null, raw: unknown = {}) {
     const rows = await this.list(user, raw)
     if (!rows.length) return []
-    const revisions = await this.db.studioProjectRevision.findMany({
+    const revisions = await this.db.shortRevision.findMany({
       where: {
         OR: rows.map((row) => ({
           projectId: row.projectId,
@@ -408,7 +425,7 @@ export class StudioAuthoringService {
     studioActor(user)
     studioIdSchema.parse(projectId)
     const input = studioHistorySchema.parse(raw)
-    const rows = await this.db.studioProjectRevision.findMany({
+    const rows = await this.db.shortRevision.findMany({
       where: {
         projectId,
         number: input.beforeRevision ? { lt: input.beforeRevision } : undefined,
@@ -428,7 +445,7 @@ export class StudioAuthoringService {
     studioActor(user)
     studioIdSchema.parse(projectId)
     const input = studioListSchema.parse(raw)
-    const rows = await this.db.studioAttempt.findMany({
+    const rows = await this.db.shortAttempt.findMany({
       where: { projectId, id: input.cursor ? { gt: input.cursor } : undefined },
       orderBy: { id: "asc" },
       take: input.limit,
@@ -443,7 +460,7 @@ export class StudioAuthoringService {
     studioActor(user)
     studioIdSchema.parse(projectId)
     const input = studioListSchema.parse(raw)
-    const rows = await this.db.studioApproval.findMany({
+    const rows = await this.db.shortApproval.findMany({
       where: { projectId, id: input.cursor ? { gt: input.cursor } : undefined },
       orderBy: { id: "asc" },
       take: input.limit,
@@ -457,10 +474,10 @@ export class StudioAuthoringService {
   ) {
     studioActor(user)
     studioIdSchema.parse(projectId)
-    const row = await this.db.studioProjectRevision.findUnique({
+    const row = await this.db.shortRevision.findUnique({
       where: { projectId_number: { projectId, number } },
     })
-    if (!row) throw new NotFoundError("StudioProjectRevision")
+    if (!row) throw new NotFoundError("ShortRevision")
     return {
       revision: row.number,
       document: studioDocumentSchema.parse(row.document),
@@ -470,15 +487,16 @@ export class StudioAuthoringService {
   async read(user: Principal | null, rawId: string) {
     studioActor(user)
     const id = studioIdSchema.parse(rawId)
-    const project = await this.db.studioProject.findUnique({ where: { id } })
-    if (!project) throw new NotFoundError("StudioProject", id)
-    const revision = await this.db.studioProjectRevision.findUniqueOrThrow({
+    const project = await this.db.short.findUnique({ where: { id } })
+    if (!project) throw new NotFoundError("Short", id)
+    const revision = await this.db.shortRevision.findUniqueOrThrow({
       where: {
         projectId_number: { projectId: id, number: project.currentRevision },
       },
     })
     return studioProjectSchema.parse({
       projectId: id,
+      sourceVideoDubId: project.sourceVideoDubId,
       revision: revision.number,
       lifecycle: project.lifecycle,
       firstPublishedAt: project.firstPublishedAt?.toISOString() ?? null,

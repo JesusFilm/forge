@@ -54,7 +54,7 @@ class FixtureError extends Error {}
       // Fixture insertion fixes the admission timestamp without bypassing immutable UPDATE guards.
       ids.push(
         (
-          await db.studioProductionRun.create({
+          await db.shortProductionRun.create({
             data: {
               experimentId: experiment.id,
               actor: { kind: "human", id: human.id, authority: "interactive" },

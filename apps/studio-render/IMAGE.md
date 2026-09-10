@@ -4,7 +4,7 @@ The Dockerfile is a reviewable recipe, not a deployed or certified image. Build 
 
 ```sh
 node apps/studio-render/scripts/stage-codec.mjs /retained/ffmpeg-n9.0-latest-linux64-gpl-9.0.tar.xz /tmp/studio-codec-context
-docker build --platform linux/amd64 --build-context studio_codec=/tmp/studio-codec-context -f apps/studio-render/Dockerfile -t studio-render:review .
+docker build --platform linux/amd64 --build-context short_codec=/tmp/studio-codec-context -f apps/studio-render/Dockerfile -t studio-render:review .
 ```
 
 The context script and Dockerfile accept only original archive SHA256 `da49baa2fd544ac090fa8adac19d2d6d1f781e75556c4f95dcc0a4f2dd22b1a6` or the byte-identical-binary versioned archive SHA256 `e414c137c7d6ed089c75d0887165f9a5fc1feb38bb6883f31d27fef0c00a03e4` below. The Dockerfile selects the exact corresponding member paths and independently verifies both extracted binary hashes before copying them into the final image. No automatic codec/hash update is allowed.
@@ -22,12 +22,12 @@ This is a proposed release dependency; no asset has been uploaded or published.
 
 Retain the **original** verified archive in repository `JesusFilm/forge`, proposed release tag `studio-render-codec-2026-09-07`, asset `ffmpeg-n9.0-latest-linux64-gpl-9.0.tar.xz`. Bind the release/tag to the reviewed commit during the normal release flow, disallow replacement/deletion in operational ownership, and record its asset ID, size and digest in final deployment evidence. The previously owned original archive disappeared during the host-tooling pause and is no longer available at its recorded `/tmp` path. The pinned versioned archive was downloaded again and verified for resumed local image work; independently preserved binaries also match the hashes above. Durable supply remains an external release dependency: the proposed original asset cannot be uploaded unless its exact bytes are recovered. Alternatively, explicitly authorize retention of the verified versioned asset with its own recorded identity and digest; do not relabel or fabricate an original archive. Neither local preservation nor upstream availability completes durable release supply.
 
-Normal CI supply then downloads that exact retained asset **before** Docker build (for a private repository, use CI's scoped read credential outside Docker), runs `stage-codec.mjs`, and supplies the validated directory as the `studio_codec` named context. For example, after the proposed release actually exists:
+Normal CI supply then downloads that exact retained asset **before** Docker build (for a private repository, use CI's scoped read credential outside Docker), runs `stage-codec.mjs`, and supplies the validated directory as the `short_codec` named context. For example, after the proposed release actually exists:
 
 ```sh
 gh release download studio-render-codec-2026-09-07 --repo JesusFilm/forge --pattern ffmpeg-n9.0-latest-linux64-gpl-9.0.tar.xz --dir "$RUNNER_TEMP/studio-codec-download"
 node apps/studio-render/scripts/stage-codec.mjs "$RUNNER_TEMP/studio-codec-download/ffmpeg-n9.0-latest-linux64-gpl-9.0.tar.xz" "$RUNNER_TEMP/studio-codec-context"
-docker build --platform linux/amd64 --build-context "studio_codec=$RUNNER_TEMP/studio-codec-context" -f apps/studio-render/Dockerfile -t studio-render:review .
+docker build --platform linux/amd64 --build-context "short_codec=$RUNNER_TEMP/studio-codec-context" -f apps/studio-render/Dockerfile -t studio-render:review .
 ```
 
 CI must fail if the retained asset is absent or has a different digest. Do not pass GitHub/provider credentials as Docker build args or executor environment. Configure the normal image-build/release workflow only after review and explicit authorization; no push, release creation, upload or deployment is performed by these preparation commands.

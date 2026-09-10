@@ -16,7 +16,7 @@ tags:
 
 ## Problem
 
-The replacement feature is named **Shorts** and keeps `/dashboard/shorts`. The unshipped public API, GraphQL names, MCP tools and OAuth scopes also use Shorts, without Studio compatibility aliases. Internal package and database names remain implementation details.
+The replacement feature is named **Shorts** and keeps `/dashboard/shorts`. The unshipped public API, GraphQL names, MCP tools and OAuth scopes also use Shorts, without Studio compatibility aliases. The database uses a dedicated `Short` model and `short_*` support tables; `VideoDub.shorts` is the source-side one-to-many relationship. Shorts do not create Video catalog entries or publish into Watch.
 
 The replacement is complete only when Lyuba can use it end to end and obsolete Shorts behavior no longer competes with it.
 

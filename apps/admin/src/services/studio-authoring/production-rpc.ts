@@ -40,7 +40,7 @@ export async function executeStudioProduction(
     throw new StudioBoundaryError("Trusted production execution required")
   await interactiveStudioPrincipal(db, caller.sub)
   const request = studioProductionRpcSchema.parse(raw)
-  const run = await db.studioProductionRun.findUniqueOrThrow({
+  const run = await db.shortProductionRun.findUniqueOrThrow({
     where: { id: request.runId },
   })
   const actor = studioActorSchema.parse(run.actor)
@@ -83,7 +83,7 @@ export async function executeStudioProduction(
     case "fail": {
       if (!run.attemptId)
         throw new StudioBoundaryError("Narration attempt required")
-      const attempt = await db.studioAttempt.findUniqueOrThrow({
+      const attempt = await db.shortAttempt.findUniqueOrThrow({
         where: { id: run.attemptId },
       })
       return new StudioAuthoringService(db).complete(worker, {
@@ -102,7 +102,7 @@ export async function executeStudioProduction(
     }
     case "context": {
       const attempt = run.attemptId
-        ? await db.studioAttempt.findUniqueOrThrow({
+        ? await db.shortAttempt.findUniqueOrThrow({
             where: { id: run.attemptId },
           })
         : null
@@ -130,7 +130,7 @@ export async function executeStudioProduction(
     case "narration-complete": {
       if (!run.attemptId)
         throw new StudioBoundaryError("Narration admission required")
-      const attempt = await db.studioAttempt.findUniqueOrThrow({
+      const attempt = await db.shortAttempt.findUniqueOrThrow({
         where: { id: run.attemptId },
       })
       return new StudioNarrationService(db).complete(worker, {

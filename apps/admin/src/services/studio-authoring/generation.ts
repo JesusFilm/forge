@@ -30,7 +30,7 @@ export class StudioGenerationService {
     if (studioActor(user).kind !== "service") throw new ForbiddenError()
     const input = studioCompleteSchema.parse(raw),
       output = studioGenerationOutputSchema.parse(rawOutput)
-    const attempt = await this.db.studioAttempt.findUniqueOrThrow({
+    const attempt = await this.db.shortAttempt.findUniqueOrThrow({
       where: { id: input.attemptId },
     })
     if (
@@ -73,7 +73,7 @@ export class StudioGenerationService {
       })
       .strict()
       .parse(raw)
-    const attempt = await this.db.studioAttempt.findUniqueOrThrow({
+    const attempt = await this.db.shortAttempt.findUniqueOrThrow({
       where: { id: input.attemptId },
     })
     if (attempt.kind !== "GENERATION") throw new StudioCommandError("INVALID")

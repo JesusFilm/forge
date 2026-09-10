@@ -17,7 +17,6 @@ import { calendarPublicationFixture } from "./calendar-publication.test-support"
 import { studioScheduledPublicationPreparationSchema } from "@forge/studio-contracts/publication"
 import { StudioCalendarDispatcher } from "./calendar-dispatch"
 import { publishPreparedStudioProject } from "./scheduled-publication-adapter"
-import { reconcileStudioWatch } from "./watch-delivery"
 import { stagedStudioReleaseSchema } from "./catalog-readiness"
 import { StudioRenderJobs } from "./render-jobs"
 import { StudioMuxJobs } from "./mux-jobs"
@@ -98,7 +97,7 @@ const url = process.env.STUDIO_TEST_DATABASE_URL
     expect(
       await dispatcher.dispatch(f.authorized.authorizationId),
     ).toMatchObject({ status: "RETRY", error: "PUBLICATION_DISABLED" })
-    const row = await db.studioScheduleAuthorization.findUniqueOrThrow({
+    const row = await db.shortScheduleAuthorization.findUniqueOrThrow({
       where: { id: f.authorized.authorizationId },
     })
     expect(row.submission).not.toBeNull()
@@ -157,21 +156,6 @@ const url = process.env.STUDIO_TEST_DATABASE_URL
     expect(await f.commands.read(f.user, f.projectId)).toMatchObject({
       lifecycle: "UNPUBLISHED",
     })
-    const emit = vi.fn(async () => ({
-      status: "sent" as const,
-      httpStatus: 200,
-    }))
-    await reconcileStudioWatch(db, emit)
-    expect(
-      await db.studioWatchDelivery.findUnique({
-        where: {
-          releaseId_phase: {
-            releaseId: f.authorization.releaseId,
-            phase: "revoked",
-          },
-        },
-      }),
-    ).not.toBeNull()
   })
 
   it("blocks new paid dispatch without consuming budget and settles already consumed outcomes", async () => {
@@ -320,11 +304,11 @@ const url = process.env.STUDIO_TEST_DATABASE_URL
     const attempt = await f.commands.request(f.user, request)
     await jobs.enqueue(f.worker, attempt.attemptId!)
     // A persisted queued intent, using the same synthetic retained manifest as the transaction fixture.
-    const release = await db.studioCatalogRelease.findUniqueOrThrow({
+    const release = await db.shortRelease.findUniqueOrThrow({
       where: { id: f.authorization.releaseId },
     })
     const snapshot = stagedStudioReleaseSchema.parse(release.snapshot)
-    const pending = await db.studioMuxJob.create({
+    const pending = await db.shortMuxJob.create({
       data: {
         attemptId: f.authorization.renderAttemptId,
         snapshot: {
@@ -440,10 +424,10 @@ const url = process.env.STUDIO_TEST_DATABASE_URL
       })
     const holder = db.$transaction(
       async (tx) => {
-        await tx.$queryRaw`SELECT id FROM studio_project WHERE id=${f.projectId} FOR UPDATE`
+        await tx.$queryRaw`SELECT id FROM short WHERE id=${f.projectId} FOR UPDATE`
         enter()
         await hold
-        await tx.studioAttempt.update({
+        await tx.shortAttempt.update({
           where: { id: attempt.attemptId },
           data: { status: "FAILED" },
         })
@@ -464,7 +448,7 @@ const url = process.env.STUDIO_TEST_DATABASE_URL
       for (let tries = 0; tries < 200; tries++) {
         const rows = await db.$queryRaw<
           { count: bigint }[]
-        >`SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE '%studio_project%'`
+        >`SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE '%short%'`
         if (rows[0].count > 0n) {
           waiting = true
           break

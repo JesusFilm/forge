@@ -37,7 +37,7 @@ export class StudioCalendarPublication {
       input,
       async (tx) => {
         const operatorId = await calendarOperator(tx, user)
-        await tx.$queryRaw`SELECT id FROM studio_calendar WHERE id=${input.calendarId} FOR UPDATE`
+        await tx.$queryRaw`SELECT id FROM short_calendar WHERE id=${input.calendarId} FOR UPDATE`
         const config = await calendarSettings(tx, input.calendarId)
         if (config.version !== input.expectedCalendarVersion)
           throw new StudioCommandError("STALE_BINDING")
@@ -64,13 +64,13 @@ export class StudioCalendarPublication {
         ).toISOString()
         if (Date.parse(latestAllowedAt) < Date.now())
           throw new StudioCommandError("DELIVERY_EXPIRED")
-        await tx.studioScheduleAuthorization.updateMany({
+        await tx.shortScheduleAuthorization.updateMany({
           where: { slotId: slot.id, consumedAt: null, revokedAt: null },
           data: { revokedAt: new Date() },
         })
         const version = slot.version + 1,
           id = randomUUID()
-        await tx.studioScheduleAuthorization.create({
+        await tx.shortScheduleAuthorization.create({
           data: {
             id,
             slotId: slot.id,
@@ -85,7 +85,7 @@ export class StudioCalendarPublication {
             latestAllowedAt: new Date(latestAllowedAt),
           },
         })
-        await tx.studioPlanSlot.update({
+        await tx.shortPlanSlot.update({
           where: { id: slot.id },
           data: { version },
         })
@@ -106,7 +106,7 @@ export class StudioCalendarPublication {
       "cancel-schedule",
       input,
       async (tx) => {
-        const initial = await tx.studioScheduleAuthorization.findUniqueOrThrow({
+        const initial = await tx.shortScheduleAuthorization.findUniqueOrThrow({
           where: { id: input.authorizationId },
           include: { slot: true },
         })
@@ -120,15 +120,15 @@ export class StudioCalendarPublication {
         )
         if (slot.version !== input.expectedVersion)
           throw new StudioCommandError("CONFLICT")
-        const row = await tx.studioScheduleAuthorization.findUniqueOrThrow({
+        const row = await tx.shortScheduleAuthorization.findUniqueOrThrow({
           where: { id: input.authorizationId },
         })
         if (row.consumedAt) throw new StudioCommandError("ALREADY_CONSUMED")
-        await tx.studioScheduleAuthorization.update({
+        await tx.shortScheduleAuthorization.update({
           where: { id: row.id },
           data: { revokedAt: row.revokedAt ?? new Date() },
         })
-        await tx.studioPlanSlot.update({
+        await tx.shortPlanSlot.update({
           where: { id: slot.id },
           data: { version: { increment: 1 } },
         })
@@ -144,7 +144,7 @@ export class StudioCalendarPublication {
     tx: import("@prisma/client").Prisma.TransactionClient,
     input: StudioScheduledPublicationPreparation,
   ) {
-    const initial = await tx.studioScheduleAuthorization.findUnique({
+    const initial = await tx.shortScheduleAuthorization.findUnique({
       where: { id: input.schedule.scheduleId },
       include: { slot: true },
     })
@@ -155,7 +155,7 @@ export class StudioCalendarPublication {
       initial.slot.calendarId,
       initial.slot.date,
     )
-    const row = await tx.studioScheduleAuthorization.findUniqueOrThrow({
+    const row = await tx.shortScheduleAuthorization.findUniqueOrThrow({
       where: { id: initial.id },
     })
     if (row.revokedAt) throw new StudioCommandError("CANCELLED")
@@ -194,7 +194,7 @@ export class StudioCalendarPublication {
   }
   readonly consume: StudioSchedulePublicationHook = async (tx, input) => {
     const row = await this.validateAuthorization(tx, input)
-    await tx.studioScheduleAuthorization.update({
+    await tx.shortScheduleAuthorization.update({
       where: { id: row.id },
       data: { consumedAt: new Date(), outcome: "ACCEPTED" },
     })
@@ -206,17 +206,17 @@ export class StudioCalendarPublication {
     if (!input.schedule) throw new StudioCommandError("INVALID")
     return this.db.$transaction(async (tx) => {
       await lockProject(tx, input.projectId)
-      const initial = await tx.studioScheduleAuthorization.findUniqueOrThrow({
+      const initial = await tx.shortScheduleAuthorization.findUniqueOrThrow({
         where: { id: input.schedule!.scheduleId },
         include: { slot: true },
       })
       await lockCalendarSlot(tx, initial.slot.calendarId, initial.slot.date)
-      const row = await tx.studioScheduleAuthorization.findUniqueOrThrow({
+      const row = await tx.shortScheduleAuthorization.findUniqueOrThrow({
         where: { id: initial.id },
       })
       if (leaseId) {
-        await tx.$queryRaw`SELECT authorization_id FROM studio_schedule_dispatch WHERE authorization_id=${row.id} FOR UPDATE`
-        const dispatch = await tx.studioScheduleDispatch.findUnique({
+        await tx.$queryRaw`SELECT authorization_id FROM short_schedule_dispatch WHERE authorization_id=${row.id} FOR UPDATE`
+        const dispatch = await tx.shortScheduleDispatch.findUnique({
           where: { authorizationId: row.id },
         })
         if (
@@ -246,7 +246,7 @@ export class StudioCalendarPublication {
         row.latestAllowedAt.toISOString() !== input.schedule!.latestAllowedAt
       )
         throw new StudioCommandError("STALE_BINDING")
-      await tx.studioScheduleAuthorization.update({
+      await tx.shortScheduleAuthorization.update({
         where: { id: row.id },
         data: { submission: input },
       })
@@ -262,6 +262,6 @@ async function requireSelectedSource(
 ) {
   const rows = await tx.$queryRaw<
     Array<{ selected: boolean }>
-  >`SELECT (${calendarSelectedSourceSql}) AS selected FROM studio_project_revision revision WHERE revision.project_id=${projectId} AND revision.number=${revision}`
+  >`SELECT (${calendarSelectedSourceSql}) AS selected FROM short_revision revision WHERE revision.project_id=${projectId} AND revision.number=${revision}`
   if (!rows[0]?.selected) throw new StudioCommandError("UNREADY")
 }

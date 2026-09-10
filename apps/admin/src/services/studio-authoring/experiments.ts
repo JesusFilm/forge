@@ -43,7 +43,7 @@ export class StudioExperimentService {
       requestHash = studioHash(input)
     return this.db.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${requestKey}, 455))::text`
-      const prior = await tx.studioExperiment.findUnique({
+      const prior = await tx.shortExperiment.findUnique({
         where: { requestKey },
       })
       if (prior) {
@@ -57,7 +57,7 @@ export class StudioExperimentService {
         input.maxCostMicros < input.estimate.amountMicros
       )
         throw new StudioCommandError("INVALID")
-      return tx.studioExperiment.create({
+      return tx.shortExperiment.create({
         data: { request: input, actor, requestKey, requestHash },
       })
     })
@@ -70,12 +70,12 @@ export class StudioExperimentService {
       )
     const input = studioExperimentCandidateSchema.parse(raw)
     return this.db.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT id FROM studio_experiment WHERE id=${input.experimentId} FOR UPDATE`
-      const experiment = await tx.studioExperiment.findUnique({
+      await tx.$queryRaw`SELECT id FROM short_experiment WHERE id=${input.experimentId} FOR UPDATE`
+      const experiment = await tx.shortExperiment.findUnique({
         where: { id: input.experimentId },
         include: { candidates: true },
       })
-      if (!experiment) throw new NotFoundError("StudioExperiment")
+      if (!experiment) throw new NotFoundError("ShortExperiment")
       const prior = experiment.candidates.find(
         (c) => c.candidateKey === input.candidateKey,
       )
@@ -106,7 +106,7 @@ export class StudioExperimentService {
         studioHash(recorded.settings) !== studioHash(request.settings)
       )
         throw new StudioCommandError("INVALID")
-      return tx.studioExperimentCandidate.create({
+      return tx.shortExperimentCandidate.create({
         data: {
           ...input,
           actualCostMicros:
@@ -126,8 +126,8 @@ export class StudioExperimentService {
     const requestKey = studioHash({ actor, key: input.idempotencyKey }),
       inputHash = studioHash(input)
     return this.db.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT id FROM studio_experiment WHERE id=${input.experimentId} FOR UPDATE`
-      const prior = await tx.studioExperimentSelection.findUnique({
+      await tx.$queryRaw`SELECT id FROM short_experiment WHERE id=${input.experimentId} FOR UPDATE`
+      const prior = await tx.shortExperimentSelection.findUnique({
         where: { requestKey },
       })
       if (prior) {
@@ -135,7 +135,7 @@ export class StudioExperimentService {
           throw new StudioCommandError("CONFLICT")
         return prior
       }
-      const candidate = await tx.studioExperimentCandidate.findUniqueOrThrow({
+      const candidate = await tx.shortExperimentCandidate.findUniqueOrThrow({
         where: { candidateKey: input.candidateKey },
       })
       if (candidate.experimentId !== input.experimentId)
@@ -155,7 +155,7 @@ export class StudioExperimentService {
         )
           throw new StudioCommandError("INVALID")
       }
-      return tx.studioExperimentSelection.create({
+      return tx.shortExperimentSelection.create({
         data: {
           experimentId: input.experimentId,
           candidateKey: input.candidateKey,
@@ -169,11 +169,11 @@ export class StudioExperimentService {
   }
   async read(user: Principal | null, id: string) {
     studioActor(user)
-    const row = await this.db.studioExperiment.findUnique({
+    const row = await this.db.shortExperiment.findUnique({
       where: { id },
       include: { candidates: true },
     })
-    if (!row) throw new NotFoundError("StudioExperiment")
+    if (!row) throw new NotFoundError("ShortExperiment")
     const request = studioExperimentRequestSchema.parse(row.request)
     const actualCost = row.candidates.reduce(
       (sum, c) => sum + (c.actualCostMicros ?? 0n),
@@ -184,7 +184,7 @@ export class StudioExperimentService {
     const countExceeded = row.candidates.length > request.candidateCount
     return {
       ...row,
-      selection: await this.db.studioExperimentSelection.findFirst({
+      selection: await this.db.shortExperimentSelection.findFirst({
         where: { experimentId: id },
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       }),

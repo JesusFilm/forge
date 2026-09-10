@@ -322,6 +322,7 @@ export const studioDocumentSchema = z
 export type StudioDocument = z.infer<typeof studioDocumentSchema>
 export const studioCreateSchema = z
   .object({
+    sourceVideoDubId: studioIdSchema.nullable().optional(),
     projectId: studioIdSchema,
     expectedRevision: z.literal(0),
     idempotencyKey: studioIdSchema,
@@ -514,7 +515,7 @@ export const studioAttemptSchema = z
     jobReference: studioIdSchema.nullable(),
   })
   .strict()
-export type StudioAttempt = z.infer<typeof studioAttemptSchema>
+export type ShortAttempt = z.infer<typeof studioAttemptSchema>
 
 export const studioApprovalKindSchema = z.enum(["SCRIPT", "PUBLICATION"])
 export const studioApproveSchema = studioCommandBaseSchema.extend({
@@ -533,7 +534,7 @@ export const studioApprovalSchema = z
     renderAttemptId: studioIdSchema.nullable(),
   })
   .strict()
-export type StudioApproval = z.infer<typeof studioApprovalSchema>
+export type ShortApproval = z.infer<typeof studioApprovalSchema>
 
 export const studioStartSchema = studioCommandBaseSchema.extend({
   attemptId: studioIdSchema,
@@ -542,6 +543,7 @@ export const studioStartSchema = studioCommandBaseSchema.extend({
 export type StudioStart = z.infer<typeof studioStartSchema>
 export const studioProjectSchema = z
   .object({
+    sourceVideoDubId: studioIdSchema.nullable().optional(),
     projectId: studioIdSchema,
     revision: z.number().int().positive(),
     lifecycle: studioLifecycleSchema,
@@ -550,7 +552,7 @@ export const studioProjectSchema = z
     actor: studioActorSchema,
   })
   .strict()
-export type StudioProject = z.infer<typeof studioProjectSchema>
+export type Short = z.infer<typeof studioProjectSchema>
 export const studioListSchema = z
   .object({
     cursor: studioIdSchema.optional(),

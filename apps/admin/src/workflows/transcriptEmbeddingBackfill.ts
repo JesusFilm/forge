@@ -560,7 +560,6 @@ async function stepEnumerateTargets(
       JOIN video_edition e ON e.id = d.video_edition_id AND e.deleted_at IS NULL
       JOIN language l ON l.id = v.primary_language_id
       WHERE v.deleted_at IS NULL
-        AND v.core_id IS NOT NULL
         AND l.bcp47 IS NOT NULL
 
       UNION ALL
@@ -581,7 +580,6 @@ async function stepEnumerateTargets(
       JOIN video_subtitle s ON s.video_edition_id = e.id AND s.deleted_at IS NULL
       JOIN language l ON l.id = s.language_id
       WHERE v.deleted_at IS NULL
-        AND v.core_id IS NOT NULL
         AND l.bcp47 IS NOT NULL
 
       UNION ALL
@@ -601,7 +599,6 @@ async function stepEnumerateTargets(
       JOIN video_edition e ON e.id = d.video_edition_id AND e.deleted_at IS NULL
       JOIN language l ON l.id = d.language_id
       WHERE v.deleted_at IS NULL
-        AND v.core_id IS NOT NULL
         AND l.bcp47 IS NOT NULL
     )
     SELECT

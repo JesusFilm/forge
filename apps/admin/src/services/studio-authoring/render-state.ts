@@ -14,7 +14,7 @@ export async function readStudioRenderState(
   const projectId = studioIdSchema.parse(rawId)
   const project = await new StudioAuthoringService(db).read(user, projectId)
   const [attempts, approvals, publication] = await Promise.all([
-    db.studioAttempt.findMany({
+    db.shortAttempt.findMany({
       where: { projectId, kind: "RENDER" },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: 20,
@@ -29,10 +29,8 @@ export async function readStudioRenderState(
           select: {
             id: true,
             snapshot: true,
-            video: { select: { slug: true } },
-            dub: {
-              select: { hls: true, language: { select: { slug: true } } },
-            },
+            title: true,
+            languageSlug: true,
             readiness: {
               orderBy: { sequence: "desc" },
               take: 1,
@@ -42,13 +40,13 @@ export async function readStudioRenderState(
         },
       },
     }),
-    db.studioApproval.findMany({
+    db.shortApproval.findMany({
       where: { projectId, revision: project.revision, kind: "PUBLICATION" },
       orderBy: { createdAt: "desc" },
       take: 20,
       select: { id: true, renderAttemptId: true },
     }),
-    db.studioPublication.findUnique({
+    db.shortPublication.findUnique({
       where: { projectId },
       select: { releaseId: true, publishedAt: true, revokedAt: true },
     }),

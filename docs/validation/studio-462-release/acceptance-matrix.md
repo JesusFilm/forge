@@ -2,6 +2,8 @@
 
 # Studio release acceptance matrix
 
+> Superseded scope (2026-09-10): Shorts now own their database and release records. Generated Video/Dub catalog identity and Watch integration described below are historical, removed behavior—not current acceptance requirements. See `docs/plans/2026-09-10-shorts-owned-data-model.md`.
+
 Authority: `docs/brainstorms/2026-09-07-studio-video-authoring-brief.md`,
 `docs/plans/2026-09-07-001-feat-studio-video-authoring-plan.md`, and
 `docs/roadmap/media-generation/feat-462-studio-shorts-replacement-release.md`.

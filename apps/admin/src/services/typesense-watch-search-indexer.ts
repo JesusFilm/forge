@@ -1,4 +1,3 @@
-import { studioPublicReleaseSql } from "@/services/search-watchability"
 import { createHash } from "node:crypto"
 import { Prisma, type PrismaClient } from "@prisma/client"
 import {
@@ -391,7 +390,6 @@ async function loadContainerLanguageRows(
         AND container.label::text = ANY(${[...SERIES_SHAPED_LABELS]}::text[])
         AND container.slug ~ ${PUBLIC_CONTENT_SLUG_SQL_PATTERN}
         AND NOT ('watch' = ANY(container.restrict_view_platforms))
-        AND ${studioPublicReleaseSql(Prisma.sql`container.id`)}
         AND EXISTS (
           SELECT 1
           FROM video_locale root_locale

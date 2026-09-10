@@ -10,45 +10,7 @@ import { isEditorOrAdmin } from "@/auth/principal"
 // all three." EDITOR/ADMIN callers always bypass this — the dashboard needs
 // to keep showing restricted videos so editors can review/manage them.
 export function notRestrictedFromWatchWhere(): Prisma.VideoWhereInput {
-  // Core has no Studio release. Generated identities require the permanent
-  // publication receipt and its current, unrevoked project visibility latch.
-  // Callers combine this AND fragment instead of overwriting it.
-  return {
-    NOT: { restrictViewPlatforms: { has: "watch" } },
-    AND: [
-      {
-        OR: [
-          { studioRelease: null },
-          {
-            studioRelease: {
-              is: {
-                publication: {
-                  is: {
-                    revokedAt: null,
-                    project: { is: { lifecycle: "PUBLISHED" } },
-                  },
-                },
-              },
-            },
-          },
-        ],
-      },
-    ],
-  }
-}
-
-/** SQL callers pass a code-owned column expression, never an identifier from
- * request data. Matches the relation predicate for all public catalog reads. */
-export function studioPublicReleaseSql(videoId: Prisma.Sql): Prisma.Sql {
-  return Prisma.sql`NOT EXISTS (
-    SELECT 1 FROM studio_catalog_release studio_release
-    LEFT JOIN studio_publication studio_publication
-      ON studio_publication.release_id = studio_release.id
-    JOIN studio_project studio_project ON studio_project.id = studio_release.project_id
-    WHERE studio_release.video_id = ${videoId}
-      AND (studio_publication.release_id IS NULL OR studio_publication.revoked_at IS NOT NULL
-           OR studio_project.lifecycle <> 'PUBLISHED')
-  )`
+  return { NOT: { restrictViewPlatforms: { has: "watch" } } }
 }
 
 export function watchVisibilityWhere(
@@ -174,7 +136,6 @@ export const VISIBLE_DESCENDANT_SQL = Prisma.sql`
            descendant_video.deleted_at IS NULL
        AND descendant_video.no_index = FALSE
        AND NOT ('watch' = ANY(descendant_video.restrict_view_platforms))
-       AND ${studioPublicReleaseSql(Prisma.sql`descendant_video.id`)}
        AND EXISTS (
          SELECT 1
          FROM video_locale descendant_locale
@@ -518,7 +479,6 @@ export class SearchWatchabilityService {
           AND container.label::text = ANY(${[...SERIES_SHAPED_LABELS]}::text[])
           AND container.slug ~ ${PUBLIC_CONTENT_SLUG_SQL_PATTERN}
           AND NOT ('watch' = ANY(container.restrict_view_platforms))
-        AND ${studioPublicReleaseSql(Prisma.sql`container.id`)}
           AND EXISTS (
             SELECT 1
             FROM video_locale root_locale

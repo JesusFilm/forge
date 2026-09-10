@@ -48,7 +48,7 @@ export class StudioTransferService {
       studioAuthority: user!.studioAuthority,
       studioClientId: user!.studioClientId,
     })
-    await this.db.studioAssetTransfer.create({
+    await this.db.shortAssetTransfer.create({
       data: {
         tokenHash: byteDigest(Buffer.from(token)),
         kind,
@@ -65,7 +65,7 @@ export class StudioTransferService {
   }
   private async authorize(token: string, kind: string) {
     if (!/^[a-f0-9]{64}$/.test(token)) throw new ForbiddenError()
-    const row = await this.db.studioAssetTransfer.findUnique({
+    const row = await this.db.shortAssetTransfer.findUnique({
       where: { tokenHash: byteDigest(Buffer.from(token)) },
     })
     if (!row || row.kind !== kind || row.expiresAt.getTime() <= Date.now())

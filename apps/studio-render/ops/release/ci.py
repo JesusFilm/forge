@@ -147,7 +147,7 @@ def build():
         path = directory / (role + '.oci.tar')
         run(['docker', 'buildx', 'build', '--platform', 'linux/amd64', '--provenance=false', '--sbom=false',
              '--file', 'apps/studio-render/Dockerfile', '--target', role + '-job',
-             '--build-context', 'studio_codec=' + str(codec_dir),
+             '--build-context', 'short_codec=' + str(codec_dir),
              '--output', 'type=oci,dest=' + str(path), '.'], cwd=ROOT, timeout=1800)
         images[role] = 'ghcr.io/jesusfilm/forge-studio-' + role + '@' + verify_oci_archive(path, None, image=True)
     bundle_dir = workspace() / 'host-export'

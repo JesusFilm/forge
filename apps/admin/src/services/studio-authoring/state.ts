@@ -1,7 +1,7 @@
 import { orderedStudioSpeech } from "@forge/studio-contracts/production"
 import { studioHash } from "@forge/studio-server"
 export { studioHash } from "@forge/studio-server"
-import type { Prisma, StudioProject } from "@prisma/client"
+import type { Prisma, Short } from "@prisma/client"
 import {
   studioActorSchema,
   studioAttemptResultSchema,
@@ -37,17 +37,14 @@ export async function lockProject(
   tx: Prisma.TransactionClient,
   projectId: string,
 ) {
-  await tx.$queryRaw`SELECT id FROM studio_project WHERE id = ${projectId} FOR UPDATE`
-  const project = await tx.studioProject.findUnique({
+  await tx.$queryRaw`SELECT id FROM short WHERE id = ${projectId} FOR UPDATE`
+  const project = await tx.short.findUnique({
     where: { id: projectId },
   })
-  if (!project) throw new NotFoundError("StudioProject", projectId)
+  if (!project) throw new NotFoundError("Short", projectId)
   return project
 }
-export function assertEditable(
-  project: StudioProject,
-  expectedRevision: number,
-) {
+export function assertEditable(project: Short, expectedRevision: number) {
   if (project.firstPublishedAt || project.lifecycle !== "DRAFT")
     throw new StudioCommandError("IMMUTABLE")
   if (project.currentRevision !== expectedRevision)
@@ -59,7 +56,7 @@ export async function receipt(
   idempotencyKey: string,
   hash: string,
 ) {
-  const prior = await tx.studioCommand.findUnique({
+  const prior = await tx.shortCommand.findUnique({
     where: { projectId_idempotencyKey: { projectId, idempotencyKey } },
   })
   if (!prior) return null
@@ -74,7 +71,7 @@ export async function saveReceipt(
   actor: StudioActor,
   result: StudioCommandResult,
 ) {
-  await tx.studioCommand.create({
+  await tx.shortCommand.create({
     data: { projectId, idempotencyKey, inputHash: hash, actor, result },
   })
 }
@@ -101,11 +98,11 @@ export function publicationHash(
 // Approval and publication must bind to the same successful, current render.
 export async function publicationDependencyHash(
   tx: Prisma.TransactionClient,
-  project: StudioProject,
+  project: Short,
   document: StudioDocument,
   renderAttemptId: string,
 ) {
-  const attempt = await tx.studioAttempt.findUnique({
+  const attempt = await tx.shortAttempt.findUnique({
     where: { id: renderAttemptId },
   })
   if (

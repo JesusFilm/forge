@@ -464,8 +464,7 @@ async function resolveTarget(
       where: { id: payload.target.admin.videoId, deletedAt: null },
       select: { id: true, coreId: true },
     })
-    if (!row?.coreId) {
-      // This legacy Mastra response contract requires real Core identity.
+    if (!row) {
       throw new TranscriptEmbeddingIngestError(
         "target_not_found",
         "admin target video was not found",
@@ -525,7 +524,6 @@ async function resolveTarget(
       ON lang.id = dub.language_id
       AND lang.deleted_at IS NULL
     WHERE mux.asset_id = ${external.muxAssetId}
-      AND v.core_id IS NOT NULL
       AND (
         ${external.adminVideoId ?? null}::text IS NULL
         OR v.id = ${external.adminVideoId ?? null}

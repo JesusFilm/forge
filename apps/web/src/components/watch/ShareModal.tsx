@@ -8,7 +8,7 @@ import {
   useState,
   type KeyboardEvent,
 } from "react"
-import Image from "@/components/ui/MediaImage"
+import Image from "next/image"
 import { Copy, Facebook } from "lucide-react"
 import { useTranslations } from "next-intl"
 

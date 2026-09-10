@@ -48,7 +48,7 @@ export async function finishStudioExecution(
       "SELECT set_config('statement_timeout',$1,true), set_config('lock_timeout',$1,true)",
       [`${remaining()}ms`],
     )
-    await query("UPDATE studio_agent_execution SET status=$2 WHERE id=$1", [
+    await query("UPDATE short_agent_execution SET status=$2 WHERE id=$1", [
       id,
       status,
     ])

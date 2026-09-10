@@ -1,10 +1,10 @@
 import { expect, it } from "vitest"
-import type { StudioProject } from "@forge/studio-contracts"
+import type { Short } from "@forge/studio-contracts"
 import { EditorSession } from "./editor-session"
 
 class StudioEditorFixtureError extends Error {}
 
-const project: StudioProject = {
+const project: Short = {
   projectId: "project",
   revision: 1,
   lifecycle: "DRAFT",

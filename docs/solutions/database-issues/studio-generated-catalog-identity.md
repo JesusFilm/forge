@@ -4,11 +4,13 @@ problem_type: database_issue
 tags: [studio, catalog, core-sync, identity, provenance]
 ---
 
+> Superseded on 2026-09-10: generated Shorts no longer create Video, VideoDub, VideoEdition, VideoLocale, VideoImage or MuxVideo rows. A `Short` optionally references an existing source VideoDub; its `ShortRelease` owns output metadata. The account below is historical.
+
 # Generated catalog identities and immutable staged releases
 
 A generated render has Forge Video, locale, Dub, Edition and Mux identities with
 MANAGER ownership. Its missing Core identity is null, never a fabricated Core ID.
-Migration `0094_studio` preserves the existing unique indexes and
+Migration `0094_shorts` preserves the existing unique indexes and
 requires nonblank real Core IDs for CORE Video/Dub/Edition rows. Historical
 MANAGER rows may retain real Core IDs; ownership, not nullability, controls sync.
 

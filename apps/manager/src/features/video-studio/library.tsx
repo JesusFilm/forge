@@ -10,12 +10,12 @@ import {
   Film,
   Folder,
 } from "lucide-react"
-import type { StudioAssetVersion } from "@forge/studio-contracts/assets"
+import type { ShortAssetVersion } from "@forge/studio-contracts/assets"
 import {
   studioComponentSchema,
   type StudioTimelineItem,
 } from "@forge/studio-contracts"
-import type { StudioSourceSnapshot } from "@forge/studio-contracts/sources"
+import type { ShortSourceSnapshot } from "@forge/studio-contracts/sources"
 import { STUDIO_RUNTIME_VERSION } from "@forge/studio-contracts/preview"
 import type { ContentPackDocument } from "@forge/studio-contracts/content-packs"
 import { studioCall } from "./client"
@@ -46,7 +46,7 @@ export function Library({
   const [tab, setTab] = useState("footage"),
     [query, setQuery] = useState(""),
     [rows, setRows] = useState<Candidate[]>([]),
-    [assets, setAssets] = useState<StudioAssetVersion[]>([]),
+    [assets, setAssets] = useState<ShortAssetVersion[]>([]),
     [packs, setPacks] = useState<Pack[]>([]),
     [choice, setChoice] = useState<Candidate | null>(null),
     [track, setTrack] = useState(""),
@@ -76,7 +76,7 @@ export function Library({
                 if (active) setPacks(v)
               })
             : tab === "assets"
-              ? studioCall<StudioAssetVersion[]>("assets", input).then((v) => {
+              ? studioCall<ShortAssetVersion[]>("assets", input).then((v) => {
                   if (active) setAssets(v)
                 })
               : Promise.resolve()
@@ -119,7 +119,7 @@ export function Library({
     if (!choice) return
     setBusy(true)
     try {
-      const snapshot = await studioCall<StudioSourceSnapshot>("capture", {
+      const snapshot = await studioCall<ShortSourceSnapshot>("capture", {
         videoId: choice.videoId,
         dubId: choice.dubId,
         editionId: choice.editionId,
@@ -155,7 +155,7 @@ export function Library({
         body: form,
       })
       if (!response.ok) throw new StudioLibraryError("Asset upload failed")
-      const asset: StudioAssetVersion = await response.json()
+      const asset: ShortAssetVersion = await response.json()
       setAssets((rows) => [asset, ...rows])
       insert(
         file.type.startsWith("audio/")
@@ -188,7 +188,7 @@ export function Library({
         body: form,
       })
       if (!res.ok) throw new StudioLibraryError("Component upload failed")
-      const asset: StudioAssetVersion = await res.json()
+      const asset: ShortAssetVersion = await res.json()
       const component = studioComponentSchema.parse({
         versionId: crypto.randomUUID(),
         code: asset.reference,

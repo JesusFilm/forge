@@ -22,7 +22,7 @@ import {
 import {
   studioProjectSchema,
   studioDocumentSchema,
-  type StudioProject,
+  type Short,
   type StudioApply,
   type StudioCommandResult,
   type StudioRevision,
@@ -45,18 +45,12 @@ const Preview = dynamic(() => import("./preview"), {
   ssr: false,
   loading: () => <div className="nle-preview-message">Loading preview…</div>,
 })
-export function StudioEditor({
-  projectId,
-  watchOrigin,
-}: {
-  projectId: string
-  watchOrigin?: string
-}) {
+export function StudioEditor({ projectId }: { projectId: string }) {
   const [session, setSession] = useState<EditorSession | null>(null),
     [error, setError] = useState("")
   useEffect(() => {
     let active = true
-    studioCall<StudioProject>("read", projectId)
+    studioCall<Short>("read", projectId)
       .then((raw) => {
         if (!active) return
         const project = studioProjectSchema.parse(raw),
@@ -96,7 +90,7 @@ export function StudioEditor({
       </section>
     )
   return session ? (
-    <Editor projectId={projectId} session={session} watchOrigin={watchOrigin} />
+    <Editor projectId={projectId} session={session} />
   ) : (
     <p className="nle-empty">Opening project…</p>
   )
@@ -104,11 +98,9 @@ export function StudioEditor({
 function Editor({
   session,
   projectId,
-  watchOrigin,
 }: {
   session: EditorSession
   projectId: string
-  watchOrigin?: string
 }) {
   const state = useSyncExternalStore(
       session.subscribe,
@@ -415,7 +407,6 @@ function Editor({
         <RenderPanel
           session={session}
           projectId={projectId}
-          watchOrigin={watchOrigin}
           onClose={() => setRenderOpen(false)}
         />
       )}

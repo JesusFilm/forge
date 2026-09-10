@@ -29,43 +29,6 @@ afterEach(() => {
 })
 
 describe("emitRevalidateWebhook", () => {
-  it("does not acknowledge a legacy 200 for strict Studio delivery", async () => {
-    fetchSpy.mockResolvedValueOnce(
-      Response.json({ revalidated: true, tagErrors: ["watch:video"] }),
-    )
-    expect(
-      (await emitRevalidateWebhook({ model: "video", requireComplete: true }))
-        .status,
-    ).toBe("failed")
-  })
-  it.each(["skipped", "purged", "not-applicable"])(
-    "accepts an explicit complete receiver receipt with edge %s",
-    async (edge) => {
-      fetchSpy.mockResolvedValueOnce(
-        Response.json(
-          { delivery: { version: 1, complete: true, edge } },
-          {
-            headers: {
-              "x-forge-invalidation-version": "1",
-              "x-forge-invalidation-complete": "true",
-              "x-forge-invalidation-edge": edge,
-            },
-          },
-        ),
-      )
-      expect(
-        (
-          await emitRevalidateWebhook({
-            model: edge === "not-applicable" ? "watch-route-manifest" : "video",
-            requireComplete: true,
-          })
-        ).status,
-      ).toBe("sent")
-      expect(JSON.parse(String(fetchSpy.mock.calls[0][1]?.body))).toMatchObject(
-        { requireComplete: true },
-      )
-    },
-  )
   it("POSTs the correct shape with bearer header on the happy path", async () => {
     fetchSpy.mockResolvedValueOnce(new Response(null, { status: 200 }))
 

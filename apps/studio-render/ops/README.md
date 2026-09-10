@@ -20,7 +20,7 @@ Run `sudo python3 install-supervisor.py <bundle> <approved-sha256>`. It verifies
 
 Create `/etc/forge-studio/worker.json`, root-owned mode0600, with exactly these fields: `version:1`, `enabled:false`, `endpoint`, `token`, `poolId`, `workerId`, `fixtureHttp:false`, `renderImage`, `verifyImage`. The endpoint is the approved HTTPS Manager origin plus `/api/shorts/render-pool`; redirects are refused. The sole HTTP exception is explicit fixture configuration on literal127.0.0.1. Never put configuration secrets in shell arguments, evidence or images.
 
-Manager requires `STUDIO_RENDER_POOL_ID`, `STUDIO_RENDER_WORKER_ID`, a dedicated `STUDIO_RENDER_WORKER_KEY`, and a separate `STUDIO_RENDER_CAPABILITY_KEY`. `STUDIO_RENDER_POOL_ENABLED` defaults false; Admin production controls remain canonical. Generic Manager keys, user OAuth and browser cookies do not grant pool authority. Migration `0094_studio` extends existing issued leases; it does not create a second job registry. Apply it through the reviewed normal release process before enabling new assignments.
+Manager requires `STUDIO_RENDER_POOL_ID`, `STUDIO_RENDER_WORKER_ID`, a dedicated `STUDIO_RENDER_WORKER_KEY`, and a separate `STUDIO_RENDER_CAPABILITY_KEY`. `STUDIO_RENDER_POOL_ENABLED` defaults false; Admin production controls remain canonical. Generic Manager keys, user OAuth and browser cookies do not grant pool authority. Migration `0094_shorts` extends existing issued leases; it does not create a second job registry. Apply it through the reviewed normal release process before enabling new assignments.
 
 ## Drain, update and rollback
 

@@ -158,7 +158,7 @@ export class MediaAssetService {
 
     return this.prisma.$transaction(
       async (tx) => {
-        const studioVersion = await tx.studioAssetVersion.findFirst({
+        const studioVersion = await tx.shortAssetVersion.findFirst({
           where: { mediaAssetId: id },
           include: { usages: true },
         })

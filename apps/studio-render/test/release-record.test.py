@@ -5,7 +5,7 @@ from pathlib import Path
 import unittest
 
 source = Path(__file__).resolve().parents[1] / 'ops/release/release.py'
-spec = importlib.util.spec_from_file_location('studio_release', source)
+spec = importlib.util.spec_from_file_location('short_release', source)
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 

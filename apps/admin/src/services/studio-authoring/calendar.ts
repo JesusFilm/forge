@@ -44,8 +44,8 @@ export async function calendarOperator(tx: Tx, user: Principal | null) {
 export const slotId = (calendarId: string, date: string) =>
   studioHash({ calendarId, date })
 export async function calendarSettings(tx: Tx, id: string) {
-  const row = await tx.studioCalendar.findUnique({ where: { id } })
-  if (!row) throw new NotFoundError("StudioCalendar")
+  const row = await tx.shortCalendar.findUnique({ where: { id } })
+  if (!row) throw new NotFoundError("ShortCalendar")
   return { ...row, settings: calendarSettingsSchema.parse(row.settings) }
 }
 export async function lockCalendarSlot(
@@ -54,13 +54,13 @@ export async function lockCalendarSlot(
   date: string,
 ) {
   const id = slotId(calendarId, date)
-  await tx.studioPlanSlot.upsert({
+  await tx.shortPlanSlot.upsert({
     where: { id },
     create: { id, calendarId, date },
     update: {},
   })
-  await tx.$queryRaw`SELECT id FROM studio_plan_slot WHERE id=${id} FOR UPDATE`
-  return tx.studioPlanSlot.findUniqueOrThrow({ where: { id } })
+  await tx.$queryRaw`SELECT id FROM short_plan_slot WHERE id=${id} FOR UPDATE`
+  return tx.shortPlanSlot.findUniqueOrThrow({ where: { id } })
 }
 export async function calendarCommand<T>(
   db: PrismaClient,
@@ -73,7 +73,7 @@ export async function calendarCommand<T>(
   return db.$transaction(async (tx) => {
     await calendarOperator(tx, user)
     await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${input.calendarId + ":" + input.idempotencyKey},461))::text`
-    const prior = await tx.studioCalendarCommand.findUnique({
+    const prior = await tx.shortCalendarCommand.findUnique({
       where: {
         calendarId_key: {
           calendarId: input.calendarId,
@@ -86,7 +86,7 @@ export async function calendarCommand<T>(
       return prior.result as T
     }
     const result = await work(tx)
-    await tx.studioCalendarCommand.create({
+    await tx.shortCalendarCommand.create({
       data: {
         calendarId: input.calendarId,
         key: input.idempotencyKey,
@@ -105,8 +105,8 @@ export class StudioCalendarService {
       await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${input.calendarId},462))::text`
       // Creation needs the advisory lock; existing calendars share the row lock
       // used by weekly edits, planning admission and completion.
-      await tx.$queryRaw`SELECT id FROM studio_calendar WHERE id=${input.calendarId} FOR UPDATE`
-      const old = await tx.studioCalendar.findUnique({
+      await tx.$queryRaw`SELECT id FROM short_calendar WHERE id=${input.calendarId} FOR UPDATE`
+      const old = await tx.shortCalendar.findUnique({
         where: { id: input.calendarId },
       })
       if ((old?.version ?? 0) !== input.expectedVersion)
@@ -115,7 +115,7 @@ export class StudioCalendarService {
         if (!(await tx.contentPackRevision.findUnique({ where: { id } })))
           throw new NotFoundError("ContentPackRevision")
       const version = input.expectedVersion + 1
-      await tx.studioCalendar.upsert({
+      await tx.shortCalendar.upsert({
         where: { id: input.calendarId },
         create: { id: input.calendarId, version, settings: input.settings },
         update: { version, settings: input.settings },
@@ -128,7 +128,7 @@ export class StudioCalendarService {
     const calendarId = studioIdSchema.parse(rawId)
     const config = await calendarSettings(this.db, calendarId),
       days = calendarDays(config.settings.timeZone)
-    const rows = await this.db.studioPlanSlot.findMany({
+    const rows = await this.db.shortPlanSlot.findMany({
       where: { calendarId, date: { in: days } },
       include: {
         project: {
@@ -176,7 +176,7 @@ export class StudioCalendarService {
             ${calendarSelectedSourceSql}
           ) AS selected
           FROM (VALUES ${Prisma.join(linked)}) AS requested(id, project_id, revision_number)
-          JOIN studio_project_revision revision
+          JOIN short_revision revision
             ON revision.project_id = requested.project_id AND revision.number = requested.revision_number
         `)
       : []
@@ -198,7 +198,7 @@ export class StudioCalendarService {
         },
       ]),
     )
-    const weeks = await this.db.studioPlanWeek.findMany({
+    const weeks = await this.db.shortPlanWeek.findMany({
       where: {
         calendarId,
         startDate: {
@@ -211,7 +211,7 @@ export class StudioCalendarService {
       orderBy: { startDate: "asc" },
       take: 8,
     })
-    const planningRun = await this.db.studioPlanningRun.findFirst({
+    const planningRun = await this.db.shortPlanningRun.findFirst({
       where: { calendarId },
       orderBy: { createdAt: "desc" },
       select: { id: true, status: true, createdAt: true, finishedAt: true },
@@ -251,7 +251,7 @@ export class StudioCalendarService {
       if (!calendarDays(config.settings.timeZone).includes(input.date))
         throw new StudioCommandError("INVALID")
       const id = slotId(input.calendarId, input.date),
-        before = await tx.studioPlanSlot.findUnique({ where: { id } })
+        before = await tx.shortPlanSlot.findUnique({ where: { id } })
       const projects = [
         ...new Set(
           [before?.projectId, input.projectId].filter(
@@ -273,11 +273,11 @@ export class StudioCalendarService {
         }))
       )
         throw new NotFoundError("ContentPackRevision")
-      await tx.studioScheduleAuthorization.updateMany({
+      await tx.shortScheduleAuthorization.updateMany({
         where: { slotId: id, revokedAt: null, consumedAt: null },
         data: { revokedAt: new Date() },
       })
-      const result = await tx.studioPlanSlot.update({
+      const result = await tx.shortPlanSlot.update({
         where: { id },
         data: {
           title: input.title,
@@ -302,7 +302,7 @@ export class StudioCalendarService {
     if (new Date(input.startDate + "T12:00:00Z").getUTCDay() !== 1)
       throw new StudioCommandError("INVALID")
     return calendarCommand(this.db, user, "assign-week", input, async (tx) => {
-      await tx.$queryRaw`SELECT id FROM studio_calendar WHERE id=${input.calendarId} FOR UPDATE`
+      await tx.$queryRaw`SELECT id FROM short_calendar WHERE id=${input.calendarId} FOR UPDATE`
       const fresh = await calendarSettings(tx, input.calendarId)
       if (fresh.version !== input.expectedVersion)
         throw new StudioCommandError("CONFLICT")
@@ -320,7 +320,7 @@ export class StudioCalendarService {
         }))
       )
         throw new NotFoundError("ContentPackRevision")
-      await tx.studioPlanWeek.upsert({
+      await tx.shortPlanWeek.upsert({
         where: {
           calendarId_startDate: {
             calendarId: input.calendarId,
@@ -339,7 +339,7 @@ export class StudioCalendarService {
           provenance: Prisma.DbNull,
         },
       })
-      await tx.studioCalendar.update({
+      await tx.shortCalendar.update({
         where: { id: input.calendarId },
         data: { version: { increment: 1 } },
       })
@@ -353,7 +353,7 @@ export class StudioCalendarService {
       .parse(raw)
     return this.db.$transaction(async (tx) => {
       await calendarOperator(tx, user)
-      await tx.$queryRaw`SELECT id FROM studio_calendar WHERE id=${input.calendarId} FOR UPDATE`
+      await tx.$queryRaw`SELECT id FROM short_calendar WHERE id=${input.calendarId} FOR UPDATE`
       return this.admitPlan(
         tx,
         input.calendarId,
@@ -370,7 +370,7 @@ export class StudioCalendarService {
       throw new ForbiddenError("Trusted planner admission required")
     const calendarId = studioIdSchema.parse(rawId)
     return this.db.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT id FROM studio_calendar WHERE id=${calendarId} FOR UPDATE`
+      await tx.$queryRaw`SELECT id FROM short_calendar WHERE id=${calendarId} FOR UPDATE`
       const config = await calendarSettings(tx, calendarId),
         now = new Date()
       if (!config.settings.automationEnabled) return null
@@ -401,12 +401,12 @@ export class StudioCalendarService {
         .sort((a, b) => b.instant - a.instant)[0]
       if (!due) return null
       const occurrence = "automatic:" + today + ":" + due.time
-      const prior = await tx.studioPlanningRun.findUnique({
+      const prior = await tx.shortPlanningRun.findUnique({
         where: { calendarId_occurrence: { calendarId, occurrence } },
       })
       if (
         !prior &&
-        (await tx.studioPlanningRun.count({
+        (await tx.shortPlanningRun.count({
           where: {
             calendarId,
             occurrence: { startsWith: "automatic:" + today + ":" },
@@ -430,7 +430,7 @@ export class StudioCalendarService {
     mode: "manual" | "automatic",
     actor: ReturnType<typeof studioActor>,
   ) {
-    const prior = await tx.studioPlanningRun.findUnique({
+    const prior = await tx.shortPlanningRun.findUnique({
       where: { calendarId_occurrence: { calendarId, occurrence } },
     })
     if (prior)
@@ -438,7 +438,7 @@ export class StudioCalendarService {
     const config = await calendarSettings(tx, calendarId),
       days = calendarDays(config.settings.timeZone)
     const slots: z.infer<typeof calendarPlannerInputSchema>["slots"] = []
-    const weeks = await tx.studioPlanWeek.findMany({
+    const weeks = await tx.shortPlanWeek.findMany({
       where: { calendarId },
       orderBy: { startDate: "desc" },
       take: 100,
@@ -518,7 +518,7 @@ export class StudioCalendarService {
       weeks: planningWeeks,
       packs,
     })
-    const run = await tx.studioPlanningRun.create({
+    const run = await tx.shortPlanningRun.create({
       data: {
         id: randomUUID(),
         calendarId,
@@ -535,13 +535,13 @@ export class StudioCalendarService {
       throw new ForbiddenError("Trusted planner dispatch required")
     const id = studioIdSchema.parse(rawId)
     return this.db.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT id FROM studio_planning_run WHERE id=${id} FOR UPDATE`
-      const run = await tx.studioPlanningRun.findUniqueOrThrow({
+      await tx.$queryRaw`SELECT id FROM short_planning_run WHERE id=${id} FOR UPDATE`
+      const run = await tx.shortPlanningRun.findUniqueOrThrow({
         where: { id },
       })
       if (run.status !== "RUNNING") return null
       if (Date.now() - run.createdAt.getTime() > 300000) {
-        await tx.studioPlanningRun.update({
+        await tx.shortPlanningRun.update({
           where: { id },
           data: {
             status: "INTERRUPTED",
@@ -551,7 +551,7 @@ export class StudioCalendarService {
         })
         return null
       }
-      await tx.studioPlanningRun.update({
+      await tx.shortPlanningRun.update({
         where: { id },
         data: { status: "DISPATCHED" },
       })
@@ -569,12 +569,12 @@ export class StudioCalendarService {
       .strict()
       .parse(raw)
     return this.db.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT id FROM studio_planning_run WHERE id=${input.runId} FOR UPDATE`
-      const run = await tx.studioPlanningRun.findUniqueOrThrow({
+      await tx.$queryRaw`SELECT id FROM short_planning_run WHERE id=${input.runId} FOR UPDATE`
+      const run = await tx.shortPlanningRun.findUniqueOrThrow({
         where: { id: input.runId },
       })
       if (["RUNNING", "DISPATCHED"].includes(run.status))
-        await tx.studioPlanningRun.update({
+        await tx.shortPlanningRun.update({
           where: { id: run.id },
           data: {
             status: input.reason,
@@ -595,12 +595,12 @@ export class StudioCalendarService {
       throw new ForbiddenError("Trusted planner completion required")
     const result = calendarPlanResultSchema.parse(raw)
     return this.db.$transaction(async (tx) => {
-      const initial = await tx.studioPlanningRun.findUniqueOrThrow({
+      const initial = await tx.shortPlanningRun.findUniqueOrThrow({
         where: { id: studioIdSchema.parse(id) },
       })
-      await tx.$queryRaw`SELECT id FROM studio_calendar WHERE id=${initial.calendarId} FOR UPDATE`
-      await tx.$queryRaw`SELECT id FROM studio_planning_run WHERE id=${id} FOR UPDATE`
-      const run = await tx.studioPlanningRun.findUniqueOrThrow({
+      await tx.$queryRaw`SELECT id FROM short_calendar WHERE id=${initial.calendarId} FOR UPDATE`
+      await tx.$queryRaw`SELECT id FROM short_planning_run WHERE id=${id} FOR UPDATE`
+      const run = await tx.shortPlanningRun.findUniqueOrThrow({
         where: { id },
       })
       if (run.status !== "DISPATCHED") {
@@ -638,7 +638,7 @@ export class StudioCalendarService {
       for (const week of result.weeks ?? []) {
         if (
           config.version !== run.version ||
-          (await tx.studioPlanWeek.findUnique({
+          (await tx.shortPlanWeek.findUnique({
             where: {
               calendarId_startDate: {
                 calendarId: run.calendarId,
@@ -670,7 +670,7 @@ export class StudioCalendarService {
             protectedWork = true
         }
         if (protectedWork) continue
-        await tx.studioPlanWeek.create({
+        await tx.shortPlanWeek.create({
           data: {
             calendarId: run.calendarId,
             startDate: week.startDate,
@@ -701,7 +701,7 @@ export class StudioCalendarService {
           slot.theme
         )
           continue
-        await tx.studioPlanSlot.update({
+        await tx.shortPlanSlot.update({
           where: { id: slot.id },
           data: {
             title: item.title,
@@ -720,11 +720,11 @@ export class StudioCalendarService {
         applied++
       }
       if (appliedWeeks)
-        await tx.studioCalendar.update({
+        await tx.shortCalendar.update({
           where: { id: run.calendarId },
           data: { version: { increment: 1 } },
         })
-      await tx.studioPlanningRun.update({
+      await tx.shortPlanningRun.update({
         where: { id },
         data: {
           result,

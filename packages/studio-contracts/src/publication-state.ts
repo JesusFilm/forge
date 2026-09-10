@@ -52,11 +52,8 @@ export const studioRenderStateSchema = z.object({
           .object({
             id: studioIdSchema,
             output: studioAssetReferenceSchema,
-            video: z.object({ slug: z.string().nullable() }),
-            dub: z.object({
-              hls: z.string().nullable(),
-              language: z.object({ slug: z.string().nullable() }).nullable(),
-            }),
+            title: z.string(),
+            languageSlug: studioIdSchema,
             readiness: z.array(
               z.object({
                 id: studioIdSchema,

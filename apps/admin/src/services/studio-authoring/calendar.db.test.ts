@@ -108,14 +108,14 @@ class CalendarFixtureError extends Error {}
       release = resolve
     })
     const blocker = db.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT id FROM studio_calendar WHERE id=${calendarId} FOR UPDATE`
+      await tx.$queryRaw`SELECT id FROM short_calendar WHERE id=${calendarId} FOR UPDATE`
       held()
       await gate
     })
     const waiters = async () => {
       const rows = await db.$queryRaw<
         { count: bigint }[]
-      >`SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE '%studio_calendar%'`
+      >`SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE '%short_calendar%'`
       return Number(rows[0].count)
     }
     await locked
@@ -461,7 +461,7 @@ class CalendarFixtureError extends Error {}
     expect(one?.input.slots.find((slot) => slot.date === day)).toMatchObject({
       packRevisionIds: [pack.id],
     })
-    expect(await db.studioPlanningRun.count({ where: { calendarId } })).toBe(1)
+    expect(await db.shortPlanningRun.count({ where: { calendarId } })).toBe(1)
     await expect(
       service.beginAutomaticPlanning(user, calendarId),
     ).rejects.toThrow()
@@ -601,7 +601,7 @@ class CalendarFixtureError extends Error {}
     expect((await commands.read(user, projectId)).document.title).toBe(
       "Human edited title",
     )
-    expect(await db.studioAttempt.count({ where: { projectId } })).toBe(0)
+    expect(await db.shortAttempt.count({ where: { projectId } })).toBe(0)
     await expect(
       admitCalendarProduction(db, { id: null, role: "SYSTEM" }, input),
     ).rejects.toThrow()
@@ -917,7 +917,7 @@ class CalendarFixtureError extends Error {}
       releaseSlot = resolve
     })
     const blocker = db.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT id FROM studio_plan_slot WHERE calendar_id=${calendarId} AND date=${date} FOR UPDATE`
+      await tx.$queryRaw`SELECT id FROM short_plan_slot WHERE calendar_id=${calendarId} AND date=${date} FOR UPDATE`
       slotLocked()
       await unlock
     })
@@ -939,7 +939,7 @@ class CalendarFixtureError extends Error {}
         .poll(async () => {
           const waiting = await db.$queryRaw<
             { count: bigint }[]
-          >`SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE '%studio_plan_slot%'`
+          >`SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE '%short_plan_slot%'`
           return Number(waiting[0].count)
         })
         .toBeGreaterThan(0)
@@ -954,7 +954,7 @@ class CalendarFixtureError extends Error {}
     }
     expect(
       (
-        await db.studioScheduleAuthorization.findUniqueOrThrow({
+        await db.shortScheduleAuthorization.findUniqueOrThrow({
           where: { id: authorized.authorizationId },
         })
       ).consumedAt,

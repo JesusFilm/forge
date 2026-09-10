@@ -4,7 +4,7 @@
 // fetch Bible text from public fallback APIs; Admin owns provider access,
 // caching, and version selection.
 
-import Image from "@/components/ui/MediaImage"
+import Image from "next/image"
 import { ExternalLink } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { useCallback, useMemo, type MouseEvent } from "react"

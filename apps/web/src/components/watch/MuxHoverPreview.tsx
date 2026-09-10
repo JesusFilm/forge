@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import Image from "@/components/ui/MediaImage"
+import Image from "next/image"
 
 import { cn } from "@/lib/utils"
 

@@ -36,7 +36,7 @@ export async function admitCalendarProduction(
       )
         throw new StudioCommandError("STALE_BINDING")
       assertEditable(project, target.revision)
-      const revision = await tx.studioProjectRevision.findUniqueOrThrow({
+      const revision = await tx.shortRevision.findUniqueOrThrow({
         where: {
           projectId_number: { projectId: project.id, number: target.revision },
         },

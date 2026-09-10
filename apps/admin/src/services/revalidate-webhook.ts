@@ -34,8 +34,6 @@ export type RevalidateModel =
   | "watch-setting"
 
 export type RevalidateWebhookInput = {
-  /** Require the receiver to attest every requested invalidation succeeded. */
-  requireComplete?: boolean
   model: RevalidateModel
   slug?: string | null
   locale?: string | null
@@ -71,7 +69,6 @@ export async function emitRevalidateWebhook(
 
   const body = JSON.stringify({
     model: input.model,
-    ...(input.requireComplete ? { requireComplete: true } : {}),
     entry: {
       slug: input.slug ?? undefined,
       locale: input.locale ?? undefined,
@@ -101,25 +98,6 @@ export async function emitRevalidateWebhook(
       return outcome
     }
 
-    if (
-      input.requireComplete &&
-      (response.headers.get("x-forge-invalidation-version") !== "1" ||
-        response.headers.get("x-forge-invalidation-complete") !== "true" ||
-        !(
-          input.model === "watch-route-manifest" ||
-          input.model === "watch-seo-manifest"
-            ? ["not-applicable"]
-            : ["purged", "skipped"]
-        ).includes(response.headers.get("x-forge-invalidation-edge") ?? ""))
-    ) {
-      const outcome: RevalidateOutcome = {
-        status: "failed",
-        reason: "remote_non_2xx",
-        detail: "Receiver did not attest complete invalidation",
-      }
-      logOutcome(input, outcome, Date.now() - startedAt)
-      return outcome
-    }
     const outcome: RevalidateOutcome = {
       status: "sent",
       httpStatus: response.status,

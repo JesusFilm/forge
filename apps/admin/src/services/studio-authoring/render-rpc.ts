@@ -1,5 +1,4 @@
 import { StudioPublicationReadinessResolver } from "./publication-readiness-resolver"
-import { reconcileStudioWatch } from "./watch-delivery"
 import type { PrismaClient } from "@prisma/client"
 import { z } from "zod"
 import { StudioBoundaryError, type StudioCaller } from "@forge/studio-server"
@@ -22,7 +21,6 @@ export const studioRenderRpcSchema = z
     action: z.literal("render-worker"),
     command: z.enum([
       "publication-candidate",
-      "watch-reconcile",
       "mux-pending",
       "mux-enqueue",
       "mux-read",
@@ -74,8 +72,6 @@ export async function executeStudioRender(
         worker,
         request.input,
       )
-    case "watch-reconcile":
-      return reconcileStudioWatch(db)
     case "mux-pending":
       return muxJobs.pending(
         worker,

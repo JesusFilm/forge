@@ -330,9 +330,9 @@ suite("Studio immutable asset service with real Postgres and bytes", () => {
     })
     expect(usages.map((u) => u.resourceType)).toEqual(
       expect.arrayContaining([
-        "STUDIO_COMPONENT",
-        "STUDIO_ATTEMPT",
-        "STUDIO_REVISION",
+        "SHORT_COMPONENT",
+        "SHORT_ATTEMPT",
+        "SHORT_REVISION",
       ]),
     )
     await expect(
@@ -500,7 +500,7 @@ suite("Studio immutable asset service with real Postgres and bytes", () => {
           user,
           id: candidate.mediaAssetId,
         })
-      ).some((u) => u.resourceType === "STUDIO_EXPERIMENT_CANDIDATE"),
+      ).some((u) => u.resourceType === "SHORT_EXPERIMENT_CANDIDATE"),
     ).toBe(true)
     for (let i = 0; i < 2; i++)
       await experiments.addCandidate(
@@ -630,7 +630,7 @@ suite("Studio immutable asset service with real Postgres and bytes", () => {
     expect(
       usage.some(
         (u) =>
-          u.resourceType === "STUDIO_REVISION" &&
+          u.resourceType === "SHORT_REVISION" &&
           u.resourceId.includes(projectId),
       ),
     ).toBe(true)
@@ -680,7 +680,7 @@ suite("Studio immutable asset service with real Postgres and bytes", () => {
       }),
     ).rejects.toThrow()
     await expect(
-      db.studioAssetVersion.delete({
+      db.shortAssetVersion.delete({
         where: { id: asset.reference.versionId },
       }),
     ).rejects.toThrow()

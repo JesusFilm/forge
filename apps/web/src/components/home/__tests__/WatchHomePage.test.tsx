@@ -2031,36 +2031,6 @@ describe("WatchHomePage", () => {
     }
   })
 
-  it("keeps the Studio intro poster on its revocable gateway", async () => {
-    const posterUrl =
-      "https://admin.test/api/studio/playback/release/poster.webp"
-    await act(async () => {
-      root.render(
-        <WatchHomePage
-          model={makeModel({
-            heroSlides: [
-              {
-                ...makeCard(),
-                coreId: null,
-                eyebrow: "Featured",
-                hls: "https://admin.test/api/studio/playback/release/index.m3u8",
-                playbackId: "signed-studio-playback",
-                imageUrl: posterUrl,
-              },
-            ],
-          })}
-        />,
-      )
-    })
-    const poster = container.querySelector<HTMLElement>(
-      '[data-testid="watch-home-tv-visual-layer"] [role="img"]',
-    )
-    expect(poster?.dataset.src).toBe(posterUrl)
-    expect(container.querySelector("video")?.getAttribute("poster")).toBe(
-      posterUrl,
-    )
-  })
-
   it("posters the intro from the Mux frame, not the mobile-sized authored image", async () => {
     // makeModel() has no carousel pools, so the component builds its slides
     // through `watchHomeHeroSlidesToTvCarouselSlides` — the path under test.

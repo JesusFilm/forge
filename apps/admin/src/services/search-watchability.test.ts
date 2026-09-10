@@ -21,25 +21,6 @@ describe("notRestrictedFromWatchWhere", () => {
   it("returns a NOT-has-watch where fragment", () => {
     expect(notRestrictedFromWatchWhere()).toEqual({
       NOT: { restrictViewPlatforms: { has: "watch" } },
-      AND: [
-        {
-          OR: [
-            { studioRelease: null },
-            {
-              studioRelease: {
-                is: {
-                  publication: {
-                    is: {
-                      revokedAt: null,
-                      project: { is: { lifecycle: "PUBLISHED" } },
-                    },
-                  },
-                },
-              },
-            },
-          ],
-        },
-      ],
     })
   })
 })
@@ -48,75 +29,18 @@ describe("watchVisibilityWhere", () => {
   it("anonymous → excludes watch-restricted videos", () => {
     expect(watchVisibilityWhere(null)).toEqual({
       NOT: { restrictViewPlatforms: { has: "watch" } },
-      AND: [
-        {
-          OR: [
-            { studioRelease: null },
-            {
-              studioRelease: {
-                is: {
-                  publication: {
-                    is: {
-                      revokedAt: null,
-                      project: { is: { lifecycle: "PUBLISHED" } },
-                    },
-                  },
-                },
-              },
-            },
-          ],
-        },
-      ],
     })
   })
 
   it("VIEWER → excludes watch-restricted videos", () => {
     expect(watchVisibilityWhere(VIEWER)).toEqual({
       NOT: { restrictViewPlatforms: { has: "watch" } },
-      AND: [
-        {
-          OR: [
-            { studioRelease: null },
-            {
-              studioRelease: {
-                is: {
-                  publication: {
-                    is: {
-                      revokedAt: null,
-                      project: { is: { lifecycle: "PUBLISHED" } },
-                    },
-                  },
-                },
-              },
-            },
-          ],
-        },
-      ],
     })
   })
 
   it("CONSUMER_BEARER (web SSR) → excludes watch-restricted videos", () => {
     expect(watchVisibilityWhere(CONSUMER_BEARER)).toEqual({
       NOT: { restrictViewPlatforms: { has: "watch" } },
-      AND: [
-        {
-          OR: [
-            { studioRelease: null },
-            {
-              studioRelease: {
-                is: {
-                  publication: {
-                    is: {
-                      revokedAt: null,
-                      project: { is: { lifecycle: "PUBLISHED" } },
-                    },
-                  },
-                },
-              },
-            },
-          ],
-        },
-      ],
     })
   })
 

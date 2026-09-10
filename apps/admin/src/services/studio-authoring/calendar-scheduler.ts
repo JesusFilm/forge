@@ -36,7 +36,7 @@ export async function runStudioCalendarTick(
   )
     throw new Error("Calendar worker requires HTTPS")
   const service = new StudioCalendarService(prisma)
-  const expired = await prisma.studioPlanningRun.findMany({
+  const expired = await prisma.shortPlanningRun.findMany({
     where: {
       status: { in: ["RUNNING", "DISPATCHED"] },
       createdAt: { lt: new Date(Date.now() - 300000) },
@@ -49,7 +49,7 @@ export async function runStudioCalendarTick(
       runId: run.id,
       reason: "INTERRUPTED",
     })
-  const calendars = await prisma.studioCalendar.findMany({
+  const calendars = await prisma.shortCalendar.findMany({
     where: {
       ...(cursor ? { id: { gt: cursor } } : {}),
       settings: { path: ["automationEnabled"], equals: true },

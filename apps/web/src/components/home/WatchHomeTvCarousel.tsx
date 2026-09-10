@@ -1,8 +1,6 @@
 "use client"
 
-import { studioPosterFromHls } from "@/lib/studio-playback"
-
-import Image from "@/components/ui/MediaImage"
+import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
 import {
@@ -134,14 +132,13 @@ export function watchHomeHeroSlidesToTvCarouselSlides(
     // `||`, not `??`: a present-but-blank `imageUrl` is a real admin shape,
     // and `??` would both keep it and suppress the Mux tier below it.
     const posterUrl =
-      studioPosterFromHls(slide.hls) ||
       resolveMuxHeroPosterUrlAtMaxWidth(slide.playbackId) ||
       slide.imageUrl ||
       muxThumbnail
 
     return {
       kind: "video",
-      id: slide.coreId ?? slide.id,
+      id: slide.coreId,
       title: slide.title,
       label: slide.eyebrow || slide.label,
       href: slide.href,

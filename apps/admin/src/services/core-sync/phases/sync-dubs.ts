@@ -252,7 +252,7 @@ async function bulkUpsertDubs(
       "synced_at"               = EXCLUDED."synced_at",
       "updated_at"              = EXCLUDED."updated_at",
       "deleted_at"              = NULL
-    WHERE "video_dub"."source" = 'core' AND (
+    WHERE
       ${refreshUnchangedRows}::boolean
       OR "video_dub"."deleted_at" IS NOT NULL
       OR "video_dub"."video_id" IS DISTINCT FROM EXCLUDED."video_id"
@@ -268,7 +268,7 @@ async function bulkUpsertDubs(
       OR "video_dub"."language_id" IS DISTINCT FROM EXCLUDED."language_id"
       OR "video_dub"."video_edition_id" IS DISTINCT FROM EXCLUDED."video_edition_id"
       OR "video_dub"."mux_video_id" IS DISTINCT FROM EXCLUDED."mux_video_id"
-      OR "video_dub"."updated_at" IS DISTINCT FROM EXCLUDED."updated_at")
+      OR "video_dub"."updated_at" IS DISTINCT FROM EXCLUDED."updated_at"
   `
 }
 
@@ -316,7 +316,6 @@ async function bulkUpsertMuxVideos(
       "synced_at"   = EXCLUDED."synced_at",
       "updated_at"  = EXCLUDED."updated_at",
       "deleted_at"  = NULL
-    WHERE "mux_video"."source" = 'core'
     RETURNING "core_id" AS "coreId", "id"
   `
 
@@ -338,11 +337,7 @@ export async function syncDubs({
   const videos = await prisma.video.findMany({
     select: { id: true, coreId: true },
   })
-  const videoMap = new Map(
-    videos.flatMap((v) =>
-      v.coreId == null ? [] : [[v.coreId, v.id] as const],
-    ),
-  )
+  const videoMap = new Map(videos.map((v) => [v.coreId, v.id]))
 
   const languages = await prisma.language.findMany({
     select: { id: true, coreId: true },
@@ -352,11 +347,7 @@ export async function syncDubs({
   const videoEditions = await prisma.videoEdition.findMany({
     select: { id: true, coreId: true },
   })
-  const editionMap = new Map(
-    videoEditions.flatMap((e) =>
-      e.coreId == null ? [] : [[e.coreId, e.id] as const],
-    ),
-  )
+  const editionMap = new Map(videoEditions.map((e) => [e.coreId, e.id]))
 
   let offset = 0
   let firstPageWasEmpty = false

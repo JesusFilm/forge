@@ -204,11 +204,7 @@ export async function syncDubDownloads({
   const dubs = await prisma.videoDub.findMany({
     select: { id: true, coreId: true },
   })
-  const dubMap = new Map(
-    dubs.flatMap((dub) =>
-      dub.coreId == null ? [] : [[dub.coreId, dub.id] as const],
-    ),
-  )
+  const dubMap = new Map(dubs.map((dub) => [dub.coreId, dub.id]))
 
   let offset = 0
   let firstPageWasEmpty = false

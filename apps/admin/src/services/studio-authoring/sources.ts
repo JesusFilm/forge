@@ -9,7 +9,7 @@ import {
   studioSourceManifestSchema,
   parseStudioVtt,
   pageStudioSourceCues,
-  type StudioSourceSnapshot,
+  type ShortSourceSnapshot,
 } from "@forge/studio-contracts/sources"
 import type { Principal } from "@/auth/principal"
 import { defaultBackend, type MediaStorageBackend } from "@/storage/media"
@@ -152,7 +152,7 @@ async function exactCatalog(db: Prisma.TransactionClient, selected: Selection) {
 /** Recheck current access and identities inside the catalog publication transaction. */
 export async function assertStudioSourceEligible(
   tx: Prisma.TransactionClient,
-  snapshot: StudioSourceSnapshot,
+  snapshot: ShortSourceSnapshot,
 ) {
   const s = snapshot.source
   // Locks prevent a concurrent catalog edit from slipping between eligibility and publication.
@@ -173,7 +173,7 @@ export async function resolveStudioDocumentSources(
   document: StudioDocument,
 ) {
   const resolved: {
-    snapshot: StudioSourceSnapshot
+    snapshot: ShortSourceSnapshot
     itemId: string
     startMs: number
     endMs: number
@@ -184,7 +184,7 @@ export async function resolveStudioDocumentSources(
   for (const item of document.items) {
     if (item.kind !== "video") continue
     const s = item.source
-    const row = await tx.studioSourceSnapshot.findFirst({
+    const row = await tx.shortSourceSnapshot.findFirst({
       where: {
         videoId: s.videoId,
         dubId: s.dubId,
@@ -239,7 +239,7 @@ export class StudioSourceService {
         idempotencyKey: input.idempotencyKey,
       }),
       requestHash = studioHash(input)
-    const prior = await this.db.studioSourceSnapshot.findUnique({
+    const prior = await this.db.shortSourceSnapshot.findUnique({
       where: { requestKey },
     })
     if (prior) {
@@ -326,7 +326,7 @@ export class StudioSourceService {
     })
     return this.db.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${requestKey}, 455))::text`
-      const retry = await tx.studioSourceSnapshot.findUnique({
+      const retry = await tx.shortSourceSnapshot.findUnique({
         where: { requestKey },
       })
       if (retry) {
@@ -335,7 +335,7 @@ export class StudioSourceService {
         return studioSourceSnapshotSchema.parse(retry.snapshot)
       }
       await assertStudioSourceEligible(tx, snapshot)
-      await tx.studioSourceSnapshot.create({
+      await tx.shortSourceSnapshot.create({
         data: {
           id: snapshot.id,
           videoId: input.videoId,
@@ -394,7 +394,7 @@ export class StudioSourceService {
       requestHash = studioHash(input)
     return this.db.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${requestKey}, 455))::text`
-      const prior = await tx.studioSourceSnapshot.findUnique({
+      const prior = await tx.shortSourceSnapshot.findUnique({
         where: { requestKey },
       })
       if (prior) {
@@ -415,7 +415,7 @@ export class StudioSourceService {
           export: input.export,
         },
       })
-      await tx.studioSourceSnapshot.create({
+      await tx.shortSourceSnapshot.create({
         data: {
           id: snapshot.id,
           videoId: snapshot.source.videoId,
@@ -431,15 +431,15 @@ export class StudioSourceService {
       for (const manifest of manifests) {
         for (const ref of manifest.media) {
           await resolveAssetVersion(tx, ref)
-          await tx.studioAssetUsage.createMany({
+          await tx.shortAssetUsage.createMany({
             data: [
               {
-                ownerType: "STUDIO_SOURCE",
+                ownerType: "SHORT_SOURCE",
                 ownerId: snapshot.id,
                 versionId: ref.versionId,
               },
               {
-                ownerType: "STUDIO_ASSET_VERSION",
+                ownerType: "SHORT_ASSET_VERSION",
                 ownerId: input[manifest.purpose].versionId,
                 versionId: ref.versionId,
               },
@@ -503,8 +503,8 @@ export class StudioSourceService {
   }
   async read(user: Principal | null, id: string) {
     studioActor(user)
-    const row = await this.db.studioSourceSnapshot.findUnique({ where: { id } })
-    if (!row) throw new NotFoundError("StudioSourceSnapshot")
+    const row = await this.db.shortSourceSnapshot.findUnique({ where: { id } })
+    if (!row) throw new NotFoundError("ShortSourceSnapshot")
     return studioSourceSnapshotSchema.parse(row.snapshot)
   }
 }

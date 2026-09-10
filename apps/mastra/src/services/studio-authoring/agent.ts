@@ -3,10 +3,7 @@ import { studioAssetTools } from "./tools"
 import { Agent, type AgentConfig } from "@mastra/core/agent"
 import { createTool } from "@mastra/core/tools"
 import { z } from "zod"
-import {
-  studioOperationSchema,
-  type StudioProject,
-} from "@forge/studio-contracts"
+import { studioOperationSchema, type Short } from "@forge/studio-contracts"
 import type { StudioAgentEvent } from "@forge/studio-contracts/agent"
 import type { FrozenStudioInstructions } from "./instructions"
 import { studioQualityReportSchema } from "@forge/studio-contracts/production"
@@ -24,7 +21,7 @@ export class StudioToolProgressError extends StudioBoundaryError {
 /** Per-run unregistered agent: no framework route, Workspace, memory, or editable tool registry. */
 export async function streamStudioAgent(input: {
   frozen: FrozenStudioInstructions
-  project: StudioProject
+  project: Short
   message: string
   model: AgentConfig["model"]
   emit: (event: StudioAgentEvent) => void

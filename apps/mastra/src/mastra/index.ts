@@ -1060,7 +1060,7 @@ function getStudioRuntime() {
     const studioStorage = new PostgresStore({
       id: "studio-authoring-native-storage",
       connectionString: getMastraDatabaseUrl(),
-      schemaName: "mastra_studio_authoring",
+      schemaName: "mastra_shorts_authoring",
     })
     const calendarPool = new Pool({
       connectionString: getMastraDatabaseUrl(),
@@ -1077,7 +1077,7 @@ function getStudioRuntime() {
       serialize: (work) => serializeStudioInstructions(pool, work),
       claim: async (id, digest) => {
         const result = await calendarPool.query({
-          text: "INSERT INTO studio_agent_execution(id,instruction_digest) VALUES($1,$2) ON CONFLICT DO NOTHING RETURNING id",
+          text: "INSERT INTO short_agent_execution(id,instruction_digest) VALUES($1,$2) ON CONFLICT DO NOTHING RETURNING id",
           values: [id, digest],
         })
         return result.rowCount === 1
@@ -1093,7 +1093,7 @@ function getStudioRuntime() {
       admissionSecret: env.STUDIO_ADMISSION_SECRET!,
       claim: async (id, digest) => {
         const result = await pool.query(
-          "INSERT INTO studio_agent_execution (id, instruction_digest) VALUES ($1,$2) ON CONFLICT DO NOTHING RETURNING id",
+          "INSERT INTO short_agent_execution (id, instruction_digest) VALUES ($1,$2) ON CONFLICT DO NOTHING RETURNING id",
           [id, digest],
         )
         return result.rowCount === 1

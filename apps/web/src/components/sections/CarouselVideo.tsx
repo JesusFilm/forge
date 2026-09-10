@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import Image from "@/components/ui/MediaImage"
+import Image from "next/image"
 import MuxVideo from "@forge/video-player/mux-video"
 import { useWatchModalMediaRef } from "@/components/watch/WatchModalActivityProvider"
 import { useTranslations } from "next-intl"

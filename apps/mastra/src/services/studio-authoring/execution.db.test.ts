@@ -8,8 +8,12 @@ test.skipIf(!env.STUDIO_TEST_DATABASE_URL)(
   "terminal persistence cannot hang on a locked claim or write after its deadline",
   async () => {
     const url = env.STUDIO_TEST_DATABASE_URL
-    if (url !== "postgresql://tataihono@127.0.0.1:55458/forge_studio_458_test")
-      throw new Error("Dedicated458 database only")
+    if (
+      url !== "postgresql://tataihono@127.0.0.1:55458/forge_studio_458_test" &&
+      url !==
+        "postgresql://tataihono@localhost:54963/shorts_native_test?host=/tmp/forge-shorts-model-db"
+    )
+      throw new Error("Dedicated native test database only")
     const pool = new Pool({
       connectionString: url,
       max: 3,
@@ -19,12 +23,12 @@ test.skipIf(!env.STUDIO_TEST_DATABASE_URL)(
     const blocker = await pool.connect()
     try {
       await pool.query(
-        "INSERT INTO studio_agent_execution(id,instruction_digest) VALUES($1,$2)",
+        "INSERT INTO short_agent_execution(id,instruction_digest) VALUES($1,$2)",
         [id, "a".repeat(64)],
       )
       await blocker.query("BEGIN")
       await blocker.query(
-        "SELECT id FROM studio_agent_execution WHERE id=$1 FOR UPDATE",
+        "SELECT id FROM short_agent_execution WHERE id=$1 FOR UPDATE",
         [id],
       )
       const started = performance.now()
@@ -39,7 +43,7 @@ test.skipIf(!env.STUDIO_TEST_DATABASE_URL)(
       expect(
         (
           await pool.query(
-            "SELECT status FROM studio_agent_execution WHERE id=$1",
+            "SELECT status FROM short_agent_execution WHERE id=$1",
             [id],
           )
         ).rows[0].status,
@@ -51,7 +55,7 @@ test.skipIf(!env.STUDIO_TEST_DATABASE_URL)(
       expect(
         (
           await pool.query(
-            "SELECT status FROM studio_agent_execution WHERE id=$1",
+            "SELECT status FROM short_agent_execution WHERE id=$1",
             [id],
           )
         ).rows[0].status,
@@ -59,7 +63,7 @@ test.skipIf(!env.STUDIO_TEST_DATABASE_URL)(
     } finally {
       await blocker.query("ROLLBACK")
       blocker.release()
-      await pool.query("DELETE FROM studio_agent_execution WHERE id=$1", [id])
+      await pool.query("DELETE FROM short_agent_execution WHERE id=$1", [id])
       await pool.end()
     }
   },

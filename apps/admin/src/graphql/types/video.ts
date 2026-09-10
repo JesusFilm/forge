@@ -239,7 +239,7 @@ builder.prismaObject("VideoEdition", {
     "A specific cut of a Video. Subtitles + dubs attach here because timecodes and audio are per-cut.",
   fields: (t) => ({
     id: t.exposeID("id"),
-    coreId: t.exposeString("coreId", { nullable: true }),
+    coreId: t.exposeString("coreId"),
     name: t.exposeString("name"),
     dubs: t.relation("dubs", {
       query: { where: { deletedAt: null } },
@@ -320,7 +320,7 @@ builder.prismaObject("VideoDub", {
   fields: (t) => ({
     id: t.exposeID("id"),
     videoId: t.exposeString("videoId"),
-    coreId: t.exposeString("coreId", { nullable: true }),
+    coreId: t.exposeString("coreId"),
     slug: t.exposeString("slug", { nullable: true }),
     duration: t.exposeInt("duration", { nullable: true }),
     // BigInt → String to avoid precision loss above 2^53.
@@ -573,7 +573,7 @@ builder.prismaObject("Video", {
     "A video sourced from JesusFilm Core. Read-only at the GraphQL layer in v1.",
   fields: (t) => ({
     id: t.exposeID("id"),
-    coreId: t.exposeString("coreId", { nullable: true }),
+    coreId: t.exposeString("coreId"),
     slug: t.exposeString("slug"),
     label: t.expose("label", { type: VideoLabelEnum, nullable: true }),
     videoSource: t.expose("videoSource", {
@@ -810,7 +810,7 @@ WatchCollectionFeedItemRef.implement({
     "A localized, playback-resolved Watch card in a bounded collection feed page.",
   fields: (t) => ({
     id: t.exposeID("id", { nullable: false }),
-    coreId: t.exposeString("coreId", { nullable: true }),
+    coreId: t.exposeString("coreId", { nullable: false }),
     title: t.exposeString("title", { nullable: false }),
     videoSlug: t.exposeString("videoSlug", { nullable: false }),
     languageSlug: t.exposeString("languageSlug", { nullable: true }),
@@ -1094,7 +1094,7 @@ WatchLanguageInventoryItemRef.implement({
     "Card-ready Watch inventory row for a single video or parent collection in one requested language.",
   fields: (t) => ({
     id: t.exposeID("id", { nullable: false }),
-    coreId: t.exposeString("coreId", { nullable: true }),
+    coreId: t.exposeString("coreId", { nullable: false }),
     slug: t.exposeString("slug", { nullable: false }),
     title: t.exposeString("title", { nullable: false }),
     description: t.exposeString("description", { nullable: true }),

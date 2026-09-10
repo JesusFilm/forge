@@ -15,13 +15,13 @@ import {
 } from "@forge/studio-contracts"
 import {
   studioAssetVersionSchema,
-  type StudioAssetVersion,
+  type ShortAssetVersion,
   studioAssetUploadSchema,
 } from "@forge/studio-contracts/assets"
 import {
   studioSourceManifestSchema,
   studioSourceSnapshotSchema,
-  type StudioSourceSnapshot,
+  type ShortSourceSnapshot,
 } from "@forge/studio-contracts/sources"
 import {
   studioPreviewSchema,
@@ -140,7 +140,7 @@ export function createStudioAssetBroker(
     async register(
       filename: string,
       type: string,
-      role: StudioAssetVersion["role"],
+      role: ShortAssetVersion["role"],
       bytes: Buffer,
       dependencies: StudioAssetReference[] = [],
       recorded: Record<
@@ -269,7 +269,7 @@ function playlist(durations: number[], names: string[]) {
   )
 }
 async function materialize(
-  snapshot: StudioSourceSnapshot,
+  snapshot: ShortSourceSnapshot,
   preview: StudioAssetReference,
   exportRef: StudioAssetReference,
 ) {
@@ -352,7 +352,7 @@ async function updateStudioPreviewSession(
 export async function readRetainedStudioSource(
   call: StudioBrokerClient,
   assets: ReturnType<typeof createStudioAssetBroker>,
-  snapshot: StudioSourceSnapshot,
+  snapshot: ShortSourceSnapshot,
   entry: { startMs: number; endMs: number },
   proofKey: string,
 ) {
@@ -378,7 +378,7 @@ export async function readRetainedStudioSource(
     const admitted = studioSourceSnapshotSchema.parse(
       await call("source", manifest.sourceSnapshotId),
     )
-    const identity = (s: StudioSourceSnapshot) =>
+    const identity = (s: ShortSourceSnapshot) =>
       canonical({
         catalogDigest: s.catalogDigest,
         downloadId: s.downloadId,

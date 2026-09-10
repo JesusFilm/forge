@@ -25,10 +25,10 @@ export async function resolveStudioPackSources(
     const sources = []
     for (const evidence of document.sources) {
       if (!evidence.sourceSnapshotId) continue
-      const source = await tx.studioSourceSnapshot.findUnique({
+      const source = await tx.shortSourceSnapshot.findUnique({
         where: { id: evidence.sourceSnapshotId },
       })
-      if (!source) throw new NotFoundError("StudioSourceSnapshot")
+      if (!source) throw new NotFoundError("ShortSourceSnapshot")
       const snapshot = studioSourceSnapshotSchema.parse(source.snapshot)
       sources.push({
         snapshot,

@@ -6,7 +6,7 @@ import unittest
 
 suite = unittest.TestSuite()
 for index, path in enumerate(sorted(Path(__file__).parent.glob('release-*.test.py'))):
-    spec = importlib.util.spec_from_file_location('studio_release_test_' + str(index), path)
+    spec = importlib.util.spec_from_file_location('short_release_test_' + str(index), path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     suite.addTests(unittest.defaultTestLoader.loadTestsFromModule(module))

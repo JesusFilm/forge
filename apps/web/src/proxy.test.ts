@@ -1462,22 +1462,6 @@ describe("proxy — resilience on malformed inputs", () => {
     expectNotFoundRewrite(response)
   })
 })
-it("refuses persistent optimization of a previously issued Studio resource URL", async () => {
-  const url = new URL("https://watch.test/_next/image")
-  url.searchParams.set(
-    "url",
-    "https://admin.test/api/studio/playback/release/poster.webp",
-  )
-  url.searchParams.set("w", "640")
-  url.searchParams.set("q", "75")
-  const response = await proxy({
-    nextUrl: { pathname: url.pathname, clone: () => new URL(url) },
-    headers: new Headers(),
-  })
-  expect(response.status).toBe(404)
-  expect(response.headers.get("cache-control")).toContain("no-store")
-  expect(config.matcher).toContain("/_next/image")
-})
 
 describe("two-segment language disambiguation consults the live route manifest (FGE-81)", () => {
   // SYNTHETIC fixture: a slug that is deliberately absent from the compiled

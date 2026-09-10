@@ -1,6 +1,3 @@
-import { generateKeyPairSync, randomUUID } from "node:crypto"
-import { calendarPublicationFixture } from "./studio-authoring/calendar-publication.test-support"
-import { StudioCatalogPublicationService } from "./studio-authoring/catalog-publication"
 import { execFileSync } from "node:child_process"
 import {
   createServer,
@@ -63,25 +60,6 @@ import {
   type TypesenseWatchAvailabilityDocument,
   type TypesenseWatchCatalogDocument,
 } from "./typesense-watch-search-schema"
-
-vi.mock("@/config/env", async (original) => {
-  const actual = await original<typeof import("@/config/env")>()
-  const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 })
-  return {
-    ...actual,
-    env: {
-      ...actual.env,
-      STUDIO_PRODUCTION_ENABLED: "true",
-      STUDIO_PUBLICATION_ENABLED: "true",
-      STUDIO_ENVIRONMENT: "local",
-      STUDIO_PUBLIC_PLAYBACK_ORIGIN: "http://127.0.0.1:55469",
-      STUDIO_MUX_SIGNING_KEY: "owned-merge-fixture",
-      STUDIO_MUX_PRIVATE_KEY: privateKey
-        .export({ format: "pem", type: "pkcs8" })
-        .toString(),
-    },
-  }
-})
 
 const RUN_REAL_DB_TEST = process.env.WATCH_SEARCH_DB_TEST === "1"
 const baseDatabaseUrl = process.env.DATABASE_URL
@@ -1666,58 +1644,6 @@ suite("current transcript publication into Watch Search", () => {
       sourceGeneration: 1n,
       projectionRevision: 1n,
     })
-  }, 180_000)
-
-  it("refuses Core-only transcript ingestion for staged, published and revoked Studio identities", async () => {
-    const fixture = await calendarPublicationFixture(prisma)
-    const release = await prisma.studioCatalogRelease.findUniqueOrThrow({
-      where: { id: fixture.authorization.releaseId },
-    })
-    const catalog = new StudioCatalogPublicationService(prisma)
-    const input = {
-      projectId: fixture.projectId,
-      expectedRevision: 1,
-      idempotencyKey: randomUUID(),
-      approvalId: fixture.authorization.approvalId,
-      renderAttemptId: fixture.authorization.renderAttemptId,
-      releaseId: release.id,
-      readinessId: fixture.readiness.id,
-    }
-    const refuse = async (label: string) => {
-      const value = payload({ mode: "force", mastraRunId: label })
-      await expect(
-        ingestTranscriptEmbeddings(prisma, {
-          ...value,
-          target: {
-            admin: {
-              videoId: release.videoId,
-              videoEditionId: release.editionId,
-            },
-          },
-        }),
-      ).rejects.toMatchObject({ code: "target_not_found" })
-      expect(
-        await prisma.videoTranscript.count({
-          where: { videoId: release.videoId },
-        }),
-      ).toBe(0)
-      expect(
-        await prisma.watchSearchCurrentTranscriptPublicationEvent.count(),
-      ).toBe(0)
-    }
-    await refuse("studio-staged")
-    await catalog.publish(fixture.user, input)
-    await refuse("studio-published")
-    await fixture.commands.unpublish(fixture.user, {
-      projectId: fixture.projectId,
-      expectedRevision: 1,
-      idempotencyKey: randomUUID(),
-    })
-    await refuse("studio-revoked")
-    await refuse("studio-revoked-retry")
-    expect(
-      (await fixture.commands.read(fixture.user, fixture.projectId)).lifecycle,
-    ).toBe("UNPUBLISHED")
   }, 180_000)
 
   it("keeps a newly published transcript hidden when Watch restriction changes ahead of the catalog projection", async () => {

@@ -115,7 +115,7 @@ export type WatchLanguageInventoryAvailability =
 
 export type WatchLanguageInventoryCard = {
   id: string
-  coreId: string | null
+  coreId: string
   slug: string
   title: string
   description: string | null

@@ -31,7 +31,7 @@ test.skipIf(!url)(
       await pool.query(
         await readFile(
           new URL(
-            "../../../migrations/004-studio-agent-execution.sql",
+            "../../../migrations/004-shorts-agent-execution.sql",
             import.meta.url,
           ),
           "utf8",
@@ -91,7 +91,7 @@ test.skipIf(!url)(
       const config = {
         finish: async (id: string, status: "completed" | "failed") => {
           await pool.query(
-            "UPDATE studio_agent_execution SET status=$2 WHERE id=$1 AND status='running'",
+            "UPDATE short_agent_execution SET status=$2 WHERE id=$1 AND status='running'",
             [id, status],
           )
         },
@@ -102,7 +102,7 @@ test.skipIf(!url)(
         serialize: async <T>(work: () => Promise<T>) => work(),
         claim: async (id: string, digest: string) => {
           const row = await pool.query(
-            "INSERT INTO studio_agent_execution(id,instruction_digest) VALUES($1,$2) ON CONFLICT DO NOTHING RETURNING id",
+            "INSERT INTO short_agent_execution(id,instruction_digest) VALUES($1,$2) ON CONFLICT DO NOTHING RETURNING id",
             [id, digest],
           )
           return row.rowCount === 1
@@ -268,7 +268,7 @@ test.skipIf(!url)(
       expect(
         (
           await pool.query(
-            "SELECT status FROM studio_agent_execution WHERE id=$1",
+            "SELECT status FROM short_agent_execution WHERE id=$1",
             ["calendar:" + ambiguous.runId],
           )
         ).rows[0].status,
@@ -285,7 +285,7 @@ test.skipIf(!url)(
             expect(context.timeoutMs).toBeLessThanOrEqual(5000)
             await lock.query("BEGIN")
             await lock.query(
-              "SELECT id FROM studio_agent_execution WHERE id=$1 FOR UPDATE",
+              "SELECT id FROM short_agent_execution WHERE id=$1 FOR UPDATE",
               [id],
             )
             return finishStudioExecution(pool, id, status, context)
@@ -314,10 +314,9 @@ test.skipIf(!url)(
       ).toBe(403)
       expect(
         (
-          await pool.query(
-            "SELECT id FROM studio_agent_execution WHERE id=$1",
-            ["calendar:" + cancelled.runId],
-          )
+          await pool.query("SELECT id FROM short_agent_execution WHERE id=$1", [
+            "calendar:" + cancelled.runId,
+          ])
         ).rowCount,
       ).toBe(0)
       await instructions.restore(initial.latest.id, draft.latest.id, "operator")

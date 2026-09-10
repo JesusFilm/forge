@@ -109,7 +109,7 @@ export async function calendarPublicationFixture(
     attemptId = render.attemptId!
   await jobs.enqueue(worker, attemptId)
   const lease = await jobs.claim(worker, attemptId),
-    attempt = await db.studioAttempt.findUniqueOrThrow({
+    attempt = await db.shortAttempt.findUniqueOrThrow({
       where: { id: attemptId },
     })
   const register = (

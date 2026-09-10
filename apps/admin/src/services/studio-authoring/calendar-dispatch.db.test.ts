@@ -63,7 +63,7 @@ const url = process.env.STUDIO_CALENDAR_TEST_DATABASE_URL
           ...args: Parameters<typeof publishPreparedStudioProject>
         ) => {
           submissions++
-          const row = await db.studioScheduleAuthorization.findUniqueOrThrow({
+          const row = await db.shortScheduleAuthorization.findUniqueOrThrow({
             where: { id: f.authorized.authorizationId },
           })
           expect(row.submission).toEqual(args[2])
@@ -85,14 +85,14 @@ const url = process.env.STUDIO_CALENDAR_TEST_DATABASE_URL
       })
       expect(preparations).toBe(1)
       expect(
-        await db.studioProject.findUnique({ where: { id: f.projectId } }),
+        await db.short.findUnique({ where: { id: f.projectId } }),
       ).toMatchObject({ lifecycle: "PUBLISHED" })
       await f.commands.unpublish(f.user, {
         projectId: f.projectId,
         expectedRevision: 1,
         idempotencyKey: randomUUID(),
       })
-      await db.studioScheduleDispatch.update({
+      await db.shortScheduleDispatch.update({
         where: { authorizationId: f.authorized.authorizationId },
         data: { nextAttemptAt: new Date(0) },
       })
@@ -104,7 +104,7 @@ const url = process.env.STUDIO_CALENDAR_TEST_DATABASE_URL
       expect(preparations).toBe(1)
       expect(submissions).toBe(2)
       expect(
-        await db.studioProject.findUnique({ where: { id: f.projectId } }),
+        await db.short.findUnique({ where: { id: f.projectId } }),
       ).toMatchObject({ lifecycle: "UNPUBLISHED" })
     })
     it("leaves cancelled, revoked, edited and expired authorizations unpublished without preparing", async () => {
@@ -156,7 +156,7 @@ const url = process.env.STUDIO_CALENDAR_TEST_DATABASE_URL
           expect(publish).not.toHaveBeenCalled()
           expect(
             (
-              await db.studioScheduleAuthorization.findUniqueOrThrow({
+              await db.shortScheduleAuthorization.findUniqueOrThrow({
                 where: { id: f.authorized.authorizationId },
               })
             ).consumedAt,
@@ -185,12 +185,12 @@ const url = process.env.STUDIO_CALENDAR_TEST_DATABASE_URL
       }).dispatch(f.authorized.authorizationId)
       expect(result).toMatchObject({ status: "BLOCKED", error: "CANCELLED" })
       expect(
-        await db.studioScheduleAuthorization.findUniqueOrThrow({
+        await db.shortScheduleAuthorization.findUniqueOrThrow({
           where: { id: f.authorized.authorizationId },
         }),
       ).toMatchObject({ consumedAt: null })
       expect(
-        await db.studioProject.findUniqueOrThrow({
+        await db.short.findUniqueOrThrow({
           where: { id: f.projectId },
         }),
       ).toMatchObject({ lifecycle: "DRAFT", firstPublishedAt: null })
@@ -221,7 +221,7 @@ const url = process.env.STUDIO_CALENDAR_TEST_DATABASE_URL
         f.authorized.authorizationId,
       )
       await waiting
-      await db.studioScheduleDispatch.update({
+      await db.shortScheduleDispatch.update({
         where: { authorizationId: f.authorized.authorizationId },
         data: { leaseExpiresAt: new Date(0) },
       })
@@ -237,7 +237,7 @@ const url = process.env.STUDIO_CALENDAR_TEST_DATABASE_URL
       })
       expect(publish).toHaveBeenCalledTimes(1)
       expect(
-        await db.studioScheduleDispatch.findUniqueOrThrow({
+        await db.shortScheduleDispatch.findUniqueOrThrow({
           where: { authorizationId: f.authorized.authorizationId },
         }),
       ).toMatchObject({ state: "ACCEPTED", attempts: 2, lastError: null })

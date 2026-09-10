@@ -1,7 +1,6 @@
 import type { PrismaClient } from "@prisma/client"
 import { SignJWT } from "jose"
 import { studioDocumentSchema } from "@forge/studio-contracts"
-import { notRestrictedFromWatchWhere } from "../search-watchability"
 import { stagedStudioReleaseSchema } from "./catalog-readiness"
 import { assertStudioRenderSources } from "./sources"
 import { resolveStudioPackSources } from "./packs"
@@ -21,11 +20,9 @@ export async function authorizeStudioPublicPlayback(
       signal?.throwIfAborted()
       await tx.$executeRaw`SET LOCAL statement_timeout = '1000ms'`
       await tx.$executeRaw`SET LOCAL lock_timeout = '1000ms'`
-      const release = await tx.studioCatalogRelease.findFirst({
+      const release = await tx.shortRelease.findFirst({
         where: {
           id: releaseId,
-          video: { is: { deletedAt: null, ...notRestrictedFromWatchWhere() } },
-          dub: { is: { published: true, deletedAt: null } },
           publication: {
             is: {
               revokedAt: null,
@@ -33,14 +30,14 @@ export async function authorizeStudioPublicPlayback(
             },
           },
         },
-        include: { mux: true, projectRevision: true },
+        include: { projectRevision: true },
       })
       signal?.throwIfAborted()
       if (!release) return null
       const snapshot = stagedStudioReleaseSchema.parse(release.snapshot)
       if (
-        release.mux.assetId !== snapshot.mux.assetId ||
-        release.mux.playbackId !== snapshot.mux.playbackId
+        release.muxAssetId !== snapshot.mux.assetId ||
+        release.muxPlaybackId !== snapshot.mux.playbackId
       )
         return null
       const document = studioDocumentSchema.parse(

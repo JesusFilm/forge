@@ -502,9 +502,6 @@ async function prepareExplicitDeliveryFixture(
           "mux_video",
           "video_dub",
           "video_image",
-          "studio_project",
-          "studio_catalog_release",
-          "studio_publication",
         ]) {
           await client.query(
             `CREATE VIEW "${fixtureSchema}"."${table}" AS SELECT * FROM public."${table}"`,
@@ -531,17 +528,6 @@ async function prepareExplicitDeliveryFixture(
       CREATE TABLE video (
         id text PRIMARY KEY, slug text NOT NULL UNIQUE, core_id text,
         deleted_at timestamptz, restrict_view_platforms text[] NOT NULL DEFAULT '{}'
-      );
-      -- Read-model fixture for the canonical Studio visibility predicate.
-      -- Core rows have no release; Studio rows require live publication authority.
-      CREATE TABLE studio_project (id text PRIMARY KEY, lifecycle text NOT NULL);
-      CREATE TABLE studio_catalog_release (
-        id text PRIMARY KEY, project_id text NOT NULL REFERENCES studio_project(id),
-        video_id text NOT NULL UNIQUE REFERENCES video(id)
-      );
-      CREATE TABLE studio_publication (
-        release_id text PRIMARY KEY REFERENCES studio_catalog_release(id),
-        revoked_at timestamptz
       );
       CREATE TABLE video_relation (parent_id text NOT NULL, child_id text NOT NULL);
       CREATE TABLE video_transcript (
@@ -1118,49 +1104,6 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       }
       expect(elapsed).toBeLessThan(DELIVERY_RETRIEVAL_BUDGET_MS)
     })
-    it.skipIf(DELIVERY_FIXTURE_MODE !== "deterministic")(
-      "excludes staged and revoked Studio candidates while retaining published and Core candidates",
-      async () => {
-        const retrieveIds = async () =>
-          (
-            await getSemanticDeliveryRecommendations(prisma, {
-              seedMediaId: "seed-video",
-              locale: "en",
-              audioLanguageSlug: "english",
-              limit: 12,
-            })
-          ).map((item) => item.videoId)
-        try {
-          await prisma.$executeRaw`
-            INSERT INTO studio_project (id, lifecycle) VALUES ('fixture-studio', 'DRAFT')
-          `
-          await prisma.$executeRaw`
-            INSERT INTO studio_catalog_release (id, project_id, video_id)
-            VALUES ('fixture-release', 'fixture-studio', 'target-video-1')
-          `
-          expect(await retrieveIds()).not.toContain("target-video-1")
-          await prisma.$executeRaw`
-            INSERT INTO studio_publication (release_id) VALUES ('fixture-release')
-          `
-          // A receipt alone must not bypass canonical project lifecycle.
-          expect(await retrieveIds()).not.toContain("target-video-1")
-          await prisma.$executeRaw`
-            UPDATE studio_project SET lifecycle = 'PUBLISHED' WHERE id = 'fixture-studio'
-          `
-          expect(await retrieveIds()).toContain("target-video-1")
-          await prisma.$executeRaw`
-            UPDATE studio_publication SET revoked_at = now() WHERE release_id = 'fixture-release'
-          `
-          const revokedIds = await retrieveIds()
-          expect(revokedIds).not.toContain("target-video-1")
-          expect(revokedIds).toContain("target-video-0")
-        } finally {
-          await prisma.$executeRaw`DELETE FROM studio_publication WHERE release_id = 'fixture-release'`
-          await prisma.$executeRaw`DELETE FROM studio_catalog_release WHERE id = 'fixture-release'`
-          await prisma.$executeRaw`DELETE FROM studio_project WHERE id = 'fixture-studio'`
-        }
-      },
-    )
 
     const deterministicInput = {
       seedMediaId: "seed-video",

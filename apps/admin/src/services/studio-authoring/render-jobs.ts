@@ -37,14 +37,14 @@ async function lockRenderAttempt(
   tx: Prisma.TransactionClient,
   attemptId: string,
 ) {
-  const identity = await tx.studioAttempt.findUniqueOrThrow({
+  const identity = await tx.shortAttempt.findUniqueOrThrow({
     where: { id: attemptId },
     select: { projectId: true },
   })
   const project = await lockProject(tx, identity.projectId)
   // Under READ COMMITTED another writer may terminalize this attempt while
   // we wait. Only the immutable identity may be used from before the lock.
-  const attempt = await tx.studioAttempt.findUniqueOrThrow({
+  const attempt = await tx.shortAttempt.findUniqueOrThrow({
     where: { id: attemptId },
   })
   return { project, attempt }
@@ -57,7 +57,7 @@ export class StudioRenderJobs {
    * candidate must still pass claim under its project lock before dispatch. */
   async pending(user: Principal | null, now = new Date()) {
     requireWorker(user)
-    const rows = await this.db.studioAttempt.findMany({
+    const rows = await this.db.shortAttempt.findMany({
       where: {
         kind: "RENDER",
         status: { in: ["QUEUED", "RUNNING"] },
@@ -85,7 +85,7 @@ export class StudioRenderJobs {
       const retry = await receipt(tx, project.id, input.idempotencyKey, hash)
       if (retry) return retry
       assertEditable(project, input.expectedRevision)
-      const attempt = await tx.studioAttempt.findUnique({
+      const attempt = await tx.shortAttempt.findUnique({
         where: { id: input.attemptId },
       })
       if (
@@ -93,14 +93,14 @@ export class StudioRenderJobs {
         attempt.projectId !== project.id ||
         attempt.kind !== "RENDER"
       )
-        throw new NotFoundError("StudioAttempt")
+        throw new NotFoundError("ShortAttempt")
       if (!["QUEUED", "RUNNING"].includes(attempt.status))
         throw new StudioCommandError("CONFLICT")
-      await tx.$queryRaw`SELECT attempt_id FROM studio_render_job WHERE attempt_id=${attempt.id} FOR UPDATE`
-      const job = await tx.studioRenderJob.findUnique({
+      await tx.$queryRaw`SELECT attempt_id FROM short_render_job WHERE attempt_id=${attempt.id} FOR UPDATE`
+      const job = await tx.shortRenderJob.findUnique({
         where: { attemptId: attempt.id },
       })
-      await tx.studioAttempt.update({
+      await tx.shortAttempt.update({
         where: { id: attempt.id },
         data: {
           status: "CANCELLED",
@@ -113,7 +113,7 @@ export class StudioRenderJobs {
         },
       })
       if (job && ["QUEUED", "RUNNING"].includes(job.state))
-        await tx.studioRenderJob.update({
+        await tx.shortRenderJob.update({
           where: { attemptId: attempt.id },
           data: { state: "CANCELLED" },
         })
@@ -139,7 +139,7 @@ export class StudioRenderJobs {
     const attemptId = studioIdSchema.parse(rawId)
     return this.db.$transaction(async (tx) => {
       const { attempt } = await lockRenderAttempt(tx, attemptId)
-      const existing = await tx.studioRenderJob.findUnique({
+      const existing = await tx.shortRenderJob.findUnique({
         where: { attemptId },
       })
       if (existing) return existing
@@ -148,7 +148,7 @@ export class StudioRenderJobs {
         !["QUEUED", "RUNNING"].includes(attempt.status)
       )
         throw new StudioCommandError("INVALID")
-      const revision = await tx.studioProjectRevision.findUniqueOrThrow({
+      const revision = await tx.shortRevision.findUniqueOrThrow({
         where: {
           projectId_number: {
             projectId: attempt.projectId,
@@ -157,7 +157,7 @@ export class StudioRenderJobs {
         },
       })
       const document = studioDocumentSchema.parse(revision.document)
-      return tx.studioRenderJob.create({
+      return tx.shortRenderJob.create({
         data: {
           attemptId,
           snapshot: {
@@ -173,7 +173,7 @@ export class StudioRenderJobs {
   }
   async read(user: Principal | null, rawId: string) {
     requireWorker(user)
-    const job = await this.db.studioRenderJob.findUnique({
+    const job = await this.db.shortRenderJob.findUnique({
       where: { attemptId: studioIdSchema.parse(rawId) },
       include: {
         executions: { orderBy: { createdAt: "asc" } },
@@ -183,7 +183,7 @@ export class StudioRenderJobs {
         },
       },
     })
-    if (!job) throw new NotFoundError("StudioRenderJob")
+    if (!job) throw new NotFoundError("ShortRenderJob")
     return job
   }
   async claim(
@@ -216,7 +216,7 @@ export class StudioRenderJobs {
   async assigned(user: Principal | null, rawAssignment: unknown) {
     requireWorker(user)
     const assignment = assignmentSchema.parse(rawAssignment)
-    const issued = await this.db.studioRenderLease.findUnique({
+    const issued = await this.db.shortRenderLease.findUnique({
       where: { dispatchId: assignment.dispatchId },
       select: {
         attemptId: true,
@@ -254,7 +254,7 @@ export class StudioRenderJobs {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`studio-render-worker:${JSON.stringify([assignment.poolId, assignment.workerId])}`},0))`
       }
       const issued = assignment
-        ? await tx.studioRenderLease.findUnique({
+        ? await tx.shortRenderLease.findUnique({
             where: { dispatchId: assignment.dispatchId },
           })
         : null
@@ -266,8 +266,8 @@ export class StudioRenderJobs {
       )
         throw new StudioCommandError("CONFLICT")
       const { project, attempt } = await lockRenderAttempt(tx, attemptId)
-      await tx.$queryRaw`SELECT attempt_id FROM studio_render_job WHERE attempt_id=${attemptId} FOR UPDATE`
-      const job = await tx.studioRenderJob.findUniqueOrThrow({
+      await tx.$queryRaw`SELECT attempt_id FROM short_render_job WHERE attempt_id=${attemptId} FOR UPDATE`
+      const job = await tx.shortRenderJob.findUniqueOrThrow({
         where: { attemptId },
       })
       const now = clock ?? new Date()
@@ -299,9 +299,9 @@ export class StudioRenderJobs {
       assertStudioProductionEnabled()
       if (assignment) {
         const active = await tx.$queryRaw<{ attempt_id: string }[]>`
-          SELECT l.attempt_id FROM studio_render_lease l
-          JOIN studio_render_job j ON j.attempt_id=l.attempt_id AND j.lease_id=l.lease_id
-          JOIN studio_attempt a ON a.id=l.attempt_id
+          SELECT l.attempt_id FROM short_render_lease l
+          JOIN short_render_job j ON j.attempt_id=l.attempt_id AND j.lease_id=l.lease_id
+          JOIN short_attempt a ON a.id=l.attempt_id
           WHERE l.pool_id=${assignment.poolId} AND l.worker_id=${assignment.workerId}
             AND l.expires_at>(${now}::timestamptz AT TIME ZONE 'UTC')
             AND j.state='RUNNING' AND a.status='RUNNING'
@@ -334,14 +334,14 @@ export class StudioRenderJobs {
           },
           { abandon: true },
         )
-        await tx.studioRenderJob.update({
+        await tx.shortRenderJob.update({
           where: { attemptId },
           data: { state: "FAILED" },
         })
         return { execute: false, leaseId: null }
       }
       const leaseId = randomUUID()
-      await tx.studioRenderLease.create({
+      await tx.shortRenderLease.create({
         data: {
           attemptId,
           leaseId,
@@ -350,7 +350,7 @@ export class StudioRenderJobs {
           ...assignment,
         },
       })
-      await tx.studioRenderJob.update({
+      await tx.shortRenderJob.update({
         where: { attemptId },
         data: {
           state: "RUNNING",
@@ -359,7 +359,7 @@ export class StudioRenderJobs {
           leaseExpiresAt: new Date(now.getTime() + leaseMs),
         },
       })
-      await tx.studioAttempt.update({
+      await tx.shortAttempt.update({
         where: { id: attempt.id },
         data: {
           status: "RUNNING",
@@ -383,8 +383,8 @@ export class StudioRenderJobs {
     const requestHash = studioHash(input)
     return this.db.$transaction(async (tx) => {
       const { attempt } = await lockRenderAttempt(tx, input.attemptId)
-      await tx.$queryRaw`SELECT attempt_id FROM studio_render_job WHERE attempt_id=${attempt.id} FOR UPDATE`
-      const prior = await tx.studioRenderExecution.findUnique({
+      await tx.$queryRaw`SELECT attempt_id FROM short_render_job WHERE attempt_id=${attempt.id} FOR UPDATE`
+      const prior = await tx.shortRenderExecution.findUnique({
         where: {
           attemptId_leaseId: { attemptId: attempt.id, leaseId: input.leaseId },
         },
@@ -394,13 +394,13 @@ export class StudioRenderJobs {
           throw new StudioCommandError("CONFLICT")
         return { admitted: prior.admitted }
       }
-      const issued = await tx.studioRenderLease.findUnique({
+      const issued = await tx.shortRenderLease.findUnique({
         where: {
           attemptId_leaseId: { attemptId: attempt.id, leaseId: input.leaseId },
         },
       })
       if (!issued) throw new StudioCommandError("INVALID")
-      const job = await tx.studioRenderJob.findUniqueOrThrow({
+      const job = await tx.shortRenderJob.findUniqueOrThrow({
         where: { attemptId: attempt.id },
       })
       const admitted =
@@ -411,7 +411,7 @@ export class StudioRenderJobs {
         ["QUEUED", "RUNNING"].includes(attempt.status)
       // Losing/late output is retained independently. It cannot overwrite the
       // winning attempt, attach to a newer revision, or resurrect a terminal job.
-      await tx.studioRenderExecution.create({
+      await tx.shortRenderExecution.create({
         data: { ...input, requestHash, admitted },
       })
       if (admitted) {
@@ -429,7 +429,7 @@ export class StudioRenderJobs {
           },
           { leaseId: input.leaseId },
         )
-        await tx.studioRenderJob.update({
+        await tx.shortRenderJob.update({
           where: { attemptId: attempt.id },
           data: { state: "COMPLETED" },
         })

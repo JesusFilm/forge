@@ -5,7 +5,7 @@ const url = process.env.STUDIO_CALENDAR_TEST_DATABASE_URL
 const store = new PostgresStore({
   id: "calendar461-native",
   connectionString: url ?? "postgresql://unused@127.0.0.1:1/unused",
-  schemaName: "mastra_studio_authoring",
+  schemaName: "mastra_shorts_authoring",
 })
 beforeAll(async () => {
   if (url) {
@@ -43,7 +43,7 @@ test.skipIf(!url)(
     const restarted = new PostgresStore({
       id: "calendar461-restarted",
       connectionString: url!,
-      schemaName: "mastra_studio_authoring",
+      schemaName: "mastra_shorts_authoring",
     })
     try {
       await restarted.init()

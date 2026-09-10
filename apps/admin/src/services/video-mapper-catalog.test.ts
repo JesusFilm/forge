@@ -157,7 +157,7 @@ describe("VideoService.listMapperCatalogVariants", () => {
       sql: string
       values: readonly unknown[]
     }
-    expect(cursorFilter.sql).toContain("AND d.id >")
+    expect(cursorFilter.sql).toContain("WHERE d.id >")
     expect(cursorFilter.sql).not.toContain("::text IS NULL OR")
     expect(cursorFilter.values).toEqual(["dub-1"])
   })

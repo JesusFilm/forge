@@ -36,7 +36,7 @@ export async function resolveAssetVersion(
   db: Prisma.TransactionClient,
   reference: StudioAssetReference,
 ) {
-  const row = await db.studioAssetVersion.findFirst({
+  const row = await db.shortAssetVersion.findFirst({
     where: {
       id: reference.versionId,
       assetId: reference.assetId,
@@ -109,7 +109,7 @@ export class StudioAssetService {
     const requestHash = studioHash({ input, digest })
     // Byte writes use fresh IDs, never a caller-controlled historical object key.
     // A losing concurrent retry can leave retained unregistered bytes; it cannot replace bytes.
-    const prior = await this.db.studioAssetVersion.findUnique({
+    const prior = await this.db.shortAssetVersion.findUnique({
       where: { requestKey },
       include: { mediaAsset: true },
     })
@@ -144,7 +144,7 @@ export class StudioAssetService {
       throw new StudioCommandError("INVALID")
     return this.db.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${requestKey}, 455))::text`
-      const retry = await tx.studioAssetVersion.findUnique({
+      const retry = await tx.shortAssetVersion.findUnique({
         where: { requestKey },
         include: { mediaAsset: true },
       })
@@ -173,7 +173,7 @@ export class StudioAssetService {
           checksumSha256: digest,
         },
       })
-      const row = await tx.studioAssetVersion.create({
+      const row = await tx.shortAssetVersion.create({
         data: {
           assetId: input.replaces?.assetId ?? randomUUID(),
           mediaAssetId: media.id,
@@ -212,7 +212,7 @@ export class StudioAssetService {
       })
       .parse(raw)
     return (
-      await this.db.studioAssetVersion.findMany({
+      await this.db.shortAssetVersion.findMany({
         where: {
           id: input.cursor ? { gt: input.cursor } : undefined,
           role: input.role,
@@ -267,7 +267,7 @@ export class StudioAssetService {
   async findNarration(user: Principal | null, raw: unknown) {
     studioActor(user)
     const identity = studioNarrationIdentitySchema.parse(raw)
-    const rows = await this.db.studioAssetVersion.findMany({
+    const rows = await this.db.shortAssetVersion.findMany({
       where: {
         role: "narration",
         metadata: { path: ["narration"], equals: identity },

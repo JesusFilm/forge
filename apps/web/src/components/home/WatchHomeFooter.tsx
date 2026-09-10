@@ -1,4 +1,4 @@
-import Image from "@/components/ui/MediaImage"
+import Image from "next/image"
 import { useTranslations } from "next-intl"
 import { RecommendationCookieSettingsTrigger } from "@/components/recommendations/RecommendationCookieSettingsTrigger"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"

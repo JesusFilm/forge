@@ -39,17 +39,17 @@ export class StudioCalendarDispatcher {
     private readonly publication = services,
   ) {}
   async dispatch(authorizationId: string) {
-    const initial = await this.db.studioScheduleAuthorization.findUniqueOrThrow(
-      { where: { id: authorizationId } },
-    )
-    await this.db.studioScheduleDispatch.upsert({
+    const initial = await this.db.shortScheduleAuthorization.findUniqueOrThrow({
+      where: { id: authorizationId },
+    })
+    await this.db.shortScheduleDispatch.upsert({
       where: { authorizationId },
       create: { authorizationId, nextAttemptAt: initial.dueAt },
       update: {},
     })
     const now = new Date(),
       leaseId = randomUUID()
-    const claimed = await this.db.studioScheduleDispatch.updateMany({
+    const claimed = await this.db.shortScheduleDispatch.updateMany({
       where: {
         authorizationId,
         state: { in: ["PENDING", "RUNNING", "RETRY"] },
@@ -68,7 +68,7 @@ export class StudioCalendarDispatcher {
     let state = "ACCEPTED",
       lastError: string | null = null
     try {
-      const row = await this.db.studioScheduleAuthorization.findUniqueOrThrow({
+      const row = await this.db.shortScheduleAuthorization.findUniqueOrThrow({
         where: { id: authorizationId },
       })
       let envelope
@@ -110,7 +110,7 @@ export class StudioCalendarDispatcher {
       // A definite expiry is terminal; no readiness refresh or alternate release.
       state = failure.retry ? "RETRY" : "BLOCKED"
     }
-    await this.db.studioScheduleDispatch.updateMany({
+    await this.db.shortScheduleDispatch.updateMany({
       where: { authorizationId, leaseId },
       data: {
         state,
@@ -124,7 +124,7 @@ export class StudioCalendarDispatcher {
   }
   async tick(cursor?: string) {
     const now = new Date()
-    const rows = await this.db.studioScheduleAuthorization.findMany({
+    const rows = await this.db.shortScheduleAuthorization.findMany({
       where: {
         ...(cursor ? { id: { gt: cursor } } : {}),
         dueAt: { lte: now },

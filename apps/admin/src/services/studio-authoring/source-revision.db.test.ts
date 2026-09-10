@@ -220,7 +220,7 @@ suite("retained source and pack revision INSERT", () => {
               },
             ],
           }
-          await tx.studioProjectRevision.create({
+          await tx.shortRevision.create({
             data: {
               projectId,
               number: 2,

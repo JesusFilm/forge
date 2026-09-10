@@ -5,8 +5,8 @@ import { StudioSourceService } from "@/services/studio-authoring/sources"
 import { StudioTransferService } from "@/services/studio-authoring/transfers"
 import { StudioExperimentService } from "@/services/studio-authoring/experiments"
 import type { StudioAssetReference } from "@forge/studio-contracts"
-import type { StudioAssetVersion } from "@forge/studio-contracts/assets"
-import type { StudioSourceSnapshot } from "@forge/studio-contracts/sources"
+import type { ShortAssetVersion } from "@forge/studio-contracts/assets"
+import type { ShortSourceSnapshot } from "@forge/studio-contracts/sources"
 import type { ContentPackRevision } from "@prisma/client"
 
 /** @classification abac-gated */
@@ -21,7 +21,7 @@ const reference = builder
   })
 /** @classification abac-gated */
 const asset = builder
-  .objectRef<StudioAssetVersion>("ShortsAssetVersion")
+  .objectRef<ShortAssetVersion>("ShortsAssetVersion")
   .implement({
     authScopes: { loggedIn: true },
     fields: (t) => ({
@@ -54,7 +54,7 @@ const pack = builder
   })
 /** @classification abac-gated */
 const source = builder
-  .objectRef<StudioSourceSnapshot>("ShortsSourceSnapshot")
+  .objectRef<ShortSourceSnapshot>("ShortsSourceSnapshot")
   .implement({
     authScopes: { loggedIn: true },
     fields: (t) => ({

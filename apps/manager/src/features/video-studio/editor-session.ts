@@ -2,13 +2,13 @@ import {
   studioDocumentSchema,
   studioApplySchema,
   type StudioDocument,
-  type StudioProject,
+  type Short,
   type StudioApply,
   type StudioCommandResult,
 } from "@forge/studio-contracts"
 
 type Transport = {
-  read: () => Promise<StudioProject>
+  read: () => Promise<Short>
   apply: (input: StudioApply) => Promise<StudioCommandResult>
 }
 class StudioEditorError extends Error {}
@@ -20,7 +20,7 @@ export type EditorSnapshot = {
   playhead: number
   status: "saved" | "unsaved" | "saving" | "failed" | "conflict"
   error: string | null
-  remote: StudioProject | null
+  remote: Short | null
   canUndo: boolean
   canRedo: boolean
   editable: boolean
@@ -37,7 +37,7 @@ export class EditorSession {
   private flight: StudioApply | null = null
   private listeners = new Set<() => void>()
   constructor(
-    private project: StudioProject,
+    private project: Short,
     private transport: Transport,
   ) {
     this.saved = project.document

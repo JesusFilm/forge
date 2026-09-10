@@ -1,16 +1,13 @@
-import { STUDIO_RENDER_TEST_DATABASE_URL } from "./database.test-support"
+import {
+  STUDIO_RENDER_TEST_DATABASE_URL,
+  SHORTS_MODEL_TEST_DATABASE_URL,
+} from "./database.test-support"
 import { publishPreparedStudioProject } from "./scheduled-publication-adapter"
 import { StudioPublicationReadinessResolver } from "./publication-readiness-resolver"
-import { reconcileStudioWatch } from "./watch-delivery"
-import { WatchRouteManifestStore } from "../watch-route-manifest-store"
 import { StudioPublicationRejected } from "./errors"
 import { executeStudioInteractive } from "./interactive"
-import {
-  notRestrictedFromWatchWhere,
-  studioPublicReleaseSql,
-} from "../search-watchability"
 import { randomUUID } from "node:crypto"
-import { Prisma, PrismaClient } from "@prisma/client"
+import { PrismaClient } from "@prisma/client"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
 import { STUDIO_RUNTIME_VERSION } from "@forge/studio-contracts/preview"
@@ -48,6 +45,7 @@ class PublicationFixtureError extends Error {}
     let db: PrismaClient
     beforeAll(() => {
       if (
+        url !== SHORTS_MODEL_TEST_DATABASE_URL &&
         url !== STUDIO_RENDER_TEST_DATABASE_URL &&
         url !== "postgresql://tataihono@127.0.0.1:55460/forge_studio_460_test"
       )
@@ -68,7 +66,7 @@ class PublicationFixtureError extends Error {}
       })
       const blocker = db.$transaction(
         async (tx) => {
-          await tx.$executeRaw`LOCK TABLE "studio_catalog_release" IN ACCESS EXCLUSIVE MODE`
+          await tx.$executeRaw`LOCK TABLE "short_release" IN ACCESS EXCLUSIVE MODE`
           locked()
           await release
         },
@@ -146,7 +144,7 @@ class PublicationFixtureError extends Error {}
         attemptId = requested.attemptId!
       await jobs.enqueue(worker, attemptId)
       const lease = await jobs.claim(worker, attemptId),
-        attempt = await db.studioAttempt.findUniqueOrThrow({
+        attempt = await db.shortAttempt.findUniqueOrThrow({
           where: { id: attemptId },
         })
       // Database transaction fixture only. Actual codec and Mux acceptance have
@@ -320,10 +318,10 @@ class PublicationFixtureError extends Error {}
           observedAt: new Date(Date.now() - 58000).toISOString(),
         },
       })
+      const waitingUrl = new URL(url!)
+      waitingUrl.searchParams.set("application_name", "shorts_readiness_wait")
       const waiting = new PrismaClient({
-        datasources: {
-          db: { url: url + "?application_name=studio460_readiness_wait" },
-        },
+        datasources: { db: { url: waitingUrl.toString() } },
       })
       let entered: () => void = () => {},
         release: () => void = () => {}
@@ -352,7 +350,7 @@ class PublicationFixtureError extends Error {}
         while (Date.now() < deadline) {
           const rows = await db.$queryRaw<
             { blocked: boolean }[]
-          >`SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE application_name='studio460_readiness_wait' AND wait_event_type='Lock') AS blocked`
+          >`SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE application_name='shorts_readiness_wait' AND wait_event_type='Lock') AS blocked`
           if (rows[0].blocked) {
             blocked = true
             break
@@ -365,7 +363,7 @@ class PublicationFixtureError extends Error {}
         await blocker
         expect(await observed).toMatchObject({ error: { code: "UNREADY" } })
         expect(
-          await db.studioPublication.findUnique({
+          await db.shortPublication.findUnique({
             where: { releaseId: f.release.id },
           }),
         ).toBeNull()
@@ -392,7 +390,7 @@ class PublicationFixtureError extends Error {}
         `CREATE OR REPLACE FUNCTION studio460_delay_receipt() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.idempotency_key='${key}' THEN PERFORM pg_sleep(1.2); END IF; RETURN NEW; END $$`,
       )
       await db.$executeRawUnsafe(
-        "CREATE TRIGGER studio460_delay_receipt BEFORE INSERT ON studio_command FOR EACH ROW EXECUTE FUNCTION studio460_delay_receipt()",
+        "CREATE TRIGGER studio460_delay_receipt BEFORE INSERT ON short_command FOR EACH ROW EXECUTE FUNCTION studio460_delay_receipt()",
       )
       try {
         await expect(
@@ -411,7 +409,7 @@ class PublicationFixtureError extends Error {}
               },
             },
             async (tx) => {
-              await tx.studioCommand.create({
+              await tx.shortCommand.create({
                 data: {
                   projectId: f.input.projectId,
                   idempotencyKey: consumed,
@@ -428,7 +426,7 @@ class PublicationFixtureError extends Error {}
           ),
         ).rejects.toMatchObject({ code: "UNREADY" })
         expect(
-          await db.studioCommand.count({
+          await db.shortCommand.count({
             where: {
               projectId: f.input.projectId,
               idempotencyKey: { in: [key, consumed] },
@@ -436,13 +434,13 @@ class PublicationFixtureError extends Error {}
           }),
         ).toBe(0)
         expect(
-          await db.studioPublication.findUnique({
+          await db.shortPublication.findUnique({
             where: { releaseId: f.release.id },
           }),
         ).toBeNull()
       } finally {
         await db.$executeRawUnsafe(
-          "DROP TRIGGER studio460_delay_receipt ON studio_command",
+          "DROP TRIGGER studio460_delay_receipt ON short_command",
         )
         await db.$executeRawUnsafe("DROP FUNCTION studio460_delay_receipt()")
       }
@@ -479,112 +477,13 @@ class PublicationFixtureError extends Error {}
         code: "AUTHORIZATION_REVOKED",
       })
     })
-    it("reconciles Watch admission after restart and does not lose revocation during delivery", async () => {
-      const f = await fixture()
-      const languageId = (
-        await db.videoDub.findUniqueOrThrow({ where: { id: f.release.dubId } })
-      ).languageId!
-      const coreSlug = `core-retained-${randomUUID()}`
-      await db.video.create({
-        data: {
-          coreId: randomUUID(),
-          slug: coreSlug,
-          source: "CORE",
-          locales: {
-            create: {
-              locale: "en",
-              title: "Existing Core route",
-              status: "PUBLISHED",
-            },
-          },
-          dubs: {
-            create: {
-              coreId: randomUUID(),
-              languageId,
-              published: true,
-              hls: "https://example.invalid/core.m3u8",
-            },
-          },
-        },
-      })
-      const { refreshWatchRouteManifest } =
-        await import("../watch-route-manifest-refresh.service")
-      const coreRefresh = await refreshWatchRouteManifest({
-        prisma: db,
-        reason: "core-sync",
-        emitWebhook: async () => ({ status: "sent", httpStatus: 200 }),
-      })
-      expect(coreRefresh.status).toBe("refreshed")
-      expect(
-        (await new WatchRouteManifestStore(db).getLatest())?.payload
-          .contentSlugs,
-      ).toContain(coreSlug)
-      await new StudioCatalogPublicationService(db).publish(f.user, f.input)
-      const failed = await reconcileStudioWatch(db, async () => ({
-        status: "failed",
-        reason: "network",
-        detail: "local test",
-      }))
-      expect(failed.status).toBe("pending")
-      const before = await new WatchRouteManifestStore(db).getLatest()
-      const slug = (
-        await db.video.findUniqueOrThrow({ where: { id: f.release.videoId } })
-      ).slug!
-      expect(before?.payload.contentSlugs).toContain(slug)
-      expect(before?.payload.contentSlugs).toContain(coreSlug)
-      const partial = vi.fn(async (input: { model: string }) =>
-        input.model === "watch-route-manifest"
-          ? { status: "sent" as const, httpStatus: 200 }
-          : {
-              status: "failed" as const,
-              reason: "network" as const,
-              detail: "video invalidation unavailable",
-            },
-      )
-      expect((await reconcileStudioWatch(db, partial)).status).toBe("pending")
-      expect(partial.mock.calls.map(([input]) => input.model)).toEqual([
-        "watch-route-manifest",
-        "video",
-      ])
-      let revoked = false
-      await reconcileStudioWatch(db, async () => {
-        if (!revoked) {
-          revoked = true
-          await f.commands.unpublish(f.user, {
-            projectId: f.input.projectId,
-            expectedRevision: 1,
-            idempotencyKey: randomUUID(),
-          })
-        }
-        return { status: "sent", httpStatus: 200 }
-      })
-      expect(await authorizeStudioPublicPlayback(db, f.release.id)).toBeNull()
-      const concurrent = vi.fn(async () => ({
-        status: "sent" as const,
-        httpStatus: 200,
-      }))
-      await Promise.all([
-        reconcileStudioWatch(db, concurrent),
-        reconcileStudioWatch(db, concurrent),
-      ])
-      expect(concurrent.mock.calls.length).toBeGreaterThanOrEqual(2)
-      const after = await new WatchRouteManifestStore(db).getLatest()
-      expect(after?.payload.contentSlugs).not.toContain(slug)
-      expect(after?.payload.contentSlugs).toContain(coreSlug)
-      const sent = vi.fn(async () => ({
-        status: "sent" as const,
-        httpStatus: 200,
-      }))
-      await reconcileStudioWatch(db, sent)
-      expect(sent).not.toHaveBeenCalled()
-    })
     it("consumes one durable Mux dispatch and reconciles an ambiguous response without another create", async () => {
       const jobs = new StudioMuxJobs(db)
       let intentId = ""
       const f = await fixture(async (context) => {
         // A page of completed obsolete revisions must not hide a valid later
         // render. These are retained historical attempts, never paid admissions.
-        const base = await db.studioProjectRevision.findUniqueOrThrow({
+        const base = await db.shortRevision.findUniqueOrThrow({
           where: {
             projectId_number: { projectId: context.projectId, number: 1 },
           },
@@ -594,7 +493,7 @@ class PublicationFixtureError extends Error {}
           const projectId = randomUUID(),
             attemptId = randomUUID()
           obsolete.push(attemptId)
-          await db.studioProject.create({
+          await db.short.create({
             data: {
               id: projectId,
               ownerId: context.ownerId,
@@ -705,62 +604,19 @@ class PublicationFixtureError extends Error {}
       })
       expect(
         (
-          await db.studioProject.findUniqueOrThrow({
+          await db.short.findUniqueOrThrow({
             where: { id: f.input.projectId },
           })
         ).lifecycle,
       ).toBe("UNPUBLISHED")
-      expect(
-        await db.video.count({
-          where: { id: f.release.videoId, ...notRestrictedFromWatchWhere() },
-        }),
-      ).toBe(0)
+      expect(await authorizeStudioPublicPlayback(db, f.release.id)).toBeNull()
     })
-    it("publishes exact hidden content atomically, revokes it permanently, and returns the original receipt on retry", async () => {
+    it("publishes the exact Short release, revokes permanently and retains the original receipt", async () => {
       const f = await fixture(),
         publication = new StudioCatalogPublicationService(db)
-      expect(
-        (
-          await db.videoLocale.findFirstOrThrow({
-            where: { videoId: f.release.videoId },
-          })
-        ).status,
-      ).toBe("DRAFT")
-      const core = await db.video.create({
-        data: { coreId: randomUUID(), slug: `core-${randomUUID()}` },
+      const before = await db.shortRelease.findUniqueOrThrow({
+        where: { id: f.release.id },
       })
-      expect(
-        await db.video.count({
-          where: { id: core.id, ...notRestrictedFromWatchWhere() },
-        }),
-      ).toBe(1)
-      await db.video.update({
-        where: { id: core.id },
-        data: { restrictViewPlatforms: ["watch"] },
-      })
-      expect(
-        await db.video.count({
-          where: { id: core.id, ...notRestrictedFromWatchWhere() },
-        }),
-      ).toBe(0)
-      const visible = async () => {
-        const count = await db.video.count({
-          where: { id: f.release.videoId, ...notRestrictedFromWatchWhere() },
-        })
-        const sql = await db.$queryRaw<
-          Array<{ count: bigint }>
-        >`SELECT count(*) AS count FROM video v WHERE v.id=${f.release.videoId} AND NOT ('watch'=ANY(v.restrict_view_platforms)) AND ${studioPublicReleaseSql(Prisma.sql`v.id`)}`
-        expect(Number(sql[0].count)).toBe(count)
-        return count
-      }
-      const { buildCatalogDocuments } =
-        await import("../typesense-watch-search-indexer")
-      const indexed = async () =>
-        (await buildCatalogDocuments(db)).some(
-          (video) => video.id === f.release.videoId,
-        )
-      expect(await indexed()).toBe(false)
-      expect(await visible()).toBe(0)
       const renderState = await executeStudioInteractive(db, f.user, {
         action: "render-state",
         input: f.input.projectId,
@@ -770,7 +626,10 @@ class PublicationFixtureError extends Error {}
         attempts: expect.arrayContaining([
           expect.objectContaining({
             id: f.input.renderAttemptId,
-            catalogRelease: expect.objectContaining({ id: f.release.id }),
+            catalogRelease: expect.objectContaining({
+              id: f.release.id,
+              title: before.title,
+            }),
           }),
         ]),
       })
@@ -791,36 +650,12 @@ class PublicationFixtureError extends Error {}
           input: { ...f.input, readinessId: "other-readiness" },
         }),
       ).rejects.not.toBeInstanceOf(StudioPublicationRejected)
-      expect(await indexed()).toBe(true)
-      expect(
-        (await db.video.findUniqueOrThrow({ where: { id: f.release.videoId } }))
-          .noIndex,
-      ).toBe(false)
-      expect(await visible()).toBe(1)
       expect(await authorizeStudioPublicPlayback(db, f.release.id)).toEqual({
         playbackId: f.readiness.proof.mux.playbackId,
       })
-      expect(
-        (await db.video.findUniqueOrThrow({ where: { id: f.release.videoId } }))
-          .restrictViewPlatforms,
-      ).not.toContain("watch")
-      expect(
-        (
-          await db.videoDub.findUniqueOrThrow({
-            where: { id: f.release.dubId },
-          })
-        ).published,
-      ).toBe(true)
-      expect(
-        (
-          await db.videoLocale.findFirstOrThrow({
-            where: { videoId: f.release.videoId },
-          })
-        ).status,
-      ).toBe("PUBLISHED")
       await expect(
-        db.videoLocale.updateMany({
-          where: { videoId: f.release.videoId },
+        db.shortRelease.update({
+          where: { id: f.release.id },
           data: { title: "Correction bypass" },
         }),
       ).rejects.toThrow()
@@ -829,35 +664,17 @@ class PublicationFixtureError extends Error {}
         expectedRevision: 1,
         idempotencyKey: randomUUID(),
       })
-      const revoked = await db.studioPublication.findUniqueOrThrow({
+      const revoked = await db.shortPublication.findUniqueOrThrow({
         where: { releaseId: f.release.id },
       })
       expect(revoked.revokedAt).not.toBeNull()
-      expect(
-        (await db.video.findUniqueOrThrow({ where: { id: f.release.videoId } }))
-          .noIndex,
-      ).toBe(true)
       expect(await authorizeStudioPublicPlayback(db, f.release.id)).toBeNull()
-      expect(await visible()).toBe(0)
-      expect(
-        (
-          await db.videoDub.findUniqueOrThrow({
-            where: { id: f.release.dubId },
-          })
-        ).published,
-      ).toBe(false)
-      expect(
-        (await db.video.findUniqueOrThrow({ where: { id: f.release.videoId } }))
-          .restrictViewPlatforms,
-      ).toContain("watch")
       expect(await publication.publish(f.user, f.input)).toEqual(accepted)
-      expect(await indexed()).toBe(false)
-      await expect(
-        db.video.update({
-          where: { id: f.release.videoId },
-          data: { noIndex: false },
+      expect(
+        await db.shortRelease.findUniqueOrThrow({
+          where: { id: f.release.id },
         }),
-      ).rejects.toThrow()
+      ).toEqual(before)
       await expect(
         publication.publish(f.user, {
           ...f.input,
@@ -865,7 +682,7 @@ class PublicationFixtureError extends Error {}
         }),
       ).rejects.toMatchObject({ code: "IMMUTABLE" })
       await expect(
-        db.studioPublication.update({
+        db.shortPublication.update({
           where: { releaseId: f.release.id },
           data: { revokedAt: null },
         }),
@@ -888,13 +705,13 @@ class PublicationFixtureError extends Error {}
         code: "AUTHORIZATION_REVOKED",
       })
       expect(
-        await db.studioPublication.findUnique({
+        await db.shortPublication.findUnique({
           where: { releaseId: f.release.id },
         }),
       ).toBeNull()
       expect(
         (
-          await db.studioProject.findUniqueOrThrow({
+          await db.short.findUniqueOrThrow({
             where: { id: f.input.projectId },
           })
         ).firstPublishedAt,
@@ -920,7 +737,7 @@ class PublicationFixtureError extends Error {}
           expect(Date.parse(binding.schedule.dueAt)).toBeLessThanOrEqual(
             now.getTime(),
           )
-          await tx.studioCommand.create({
+          await tx.shortCommand.create({
             data: {
               projectId: binding.projectId,
               idempotencyKey: key,
@@ -944,13 +761,13 @@ class PublicationFixtureError extends Error {}
       })
       expect(await publication.publish(worker, input)).toEqual(accepted)
       expect(
-        await db.studioCommand.count({
+        await db.shortCommand.count({
           where: { projectId: f.input.projectId, idempotencyKey: key },
         }),
       ).toBe(1)
       expect(
         (
-          await db.studioPublication.findUniqueOrThrow({
+          await db.shortPublication.findUniqueOrThrow({
             where: { releaseId: f.release.id },
           })
         ).revokedAt,
@@ -962,7 +779,7 @@ class PublicationFixtureError extends Error {}
       const publication = new StudioCatalogPublicationService(
         db,
         async (tx) => {
-          await tx.studioCommand.create({
+          await tx.shortCommand.create({
             data: {
               projectId: f.input.projectId,
               idempotencyKey: key,
@@ -990,12 +807,12 @@ class PublicationFixtureError extends Error {}
         }),
       ).rejects.toMatchObject({ code: "UNREADY" })
       expect(
-        await db.studioCommand.count({
+        await db.shortCommand.count({
           where: { projectId: f.input.projectId, idempotencyKey: key },
         }),
       ).toBe(0)
       expect(
-        await db.studioPublication.findUnique({
+        await db.shortPublication.findUnique({
           where: { releaseId: f.release.id },
         }),
       ).toBeNull()

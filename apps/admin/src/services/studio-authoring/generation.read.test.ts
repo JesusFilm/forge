@@ -84,9 +84,9 @@ function fixture(commands = [command]) {
   }
   // Only storage/read methods exist: unexpected persistence fails this boundary fixture.
   const db = {
-    studioAttempt: { findUniqueOrThrow: vi.fn(async () => attempt) },
-    studioProjectRevision: { findUnique: vi.fn(async () => row) },
-    studioAssetVersion: {
+    shortAttempt: { findUniqueOrThrow: vi.fn(async () => attempt) },
+    shortRevision: { findUnique: vi.fn(async () => row) },
+    shortAssetVersion: {
       findFirst: vi.fn(async () => ({
         mediaAsset: {
           status: "READY",
@@ -208,7 +208,7 @@ it("retains authority, manifest digest, project/revision and source rejection", 
   await expect(
     f.service.read(null, { attemptId: f.attempt.id }),
   ).rejects.toBeInstanceOf(ForbiddenError)
-  expect(f.db.studioAttempt.findUniqueOrThrow).not.toHaveBeenCalled()
+  expect(f.db.shortAttempt.findUniqueOrThrow).not.toHaveBeenCalled()
   const bytes = Buffer.from(storage.bytes)
   storage.bytes = Buffer.from("corrupted retained bytes")
   await expect(f.read()).rejects.toMatchObject({ code: "INVALID" })

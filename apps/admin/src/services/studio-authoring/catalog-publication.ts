@@ -49,9 +49,8 @@ export class StudioCatalogPublicationService {
         if (studioHash(restrictions) !== studioHash(snapshot.restrictions))
           throw new StudioCommandError("STALE_BINDING")
         const playbackUrl = studioPlaybackUrl(release.id, "index.m3u8")
-        if (!playbackUrl || release.dub.hls !== playbackUrl)
-          throw new StudioCommandError("UNREADY")
-        const readiness = await tx.studioCatalogReadiness.findFirst({
+        if (!playbackUrl) throw new StudioCommandError("UNREADY")
+        const readiness = await tx.shortReadiness.findFirst({
           where: { releaseId: release.id },
           orderBy: { sequence: "desc" },
         })
@@ -68,13 +67,13 @@ export class StudioCatalogPublicationService {
         )
           throw new StudioCommandError("STALE_BINDING")
         if (
-          proof.mux.assetId !== release.mux.assetId ||
-          proof.mux.playbackId !== release.mux.playbackId ||
+          proof.mux.assetId !== release.muxAssetId ||
+          proof.mux.playbackId !== release.muxPlaybackId ||
           studioHash(proof.output) !== studioHash(staged.manifest.output) ||
           proof.codec.outputDigest !== staged.manifest.output.digest
         )
           throw new StudioCommandError("UNREADY")
-        await tx.studioPublication.create({
+        await tx.shortPublication.create({
           data: {
             releaseId: release.id,
             projectId: release.projectId,

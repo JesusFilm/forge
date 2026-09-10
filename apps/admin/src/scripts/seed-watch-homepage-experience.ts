@@ -32,7 +32,7 @@ type WatchHomeSeedSection = {
 
 type SeedVideo = {
   id: string
-  coreId: string | null
+  coreId: string
   slug: string
   label: VideoLabel | null
   locales: {

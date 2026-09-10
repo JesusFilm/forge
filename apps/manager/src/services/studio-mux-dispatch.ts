@@ -74,7 +74,6 @@ export async function dispatchStudioMux(
   cursor: StudioMuxCursor,
 ): Promise<StudioMuxCursor> {
   if (env.STUDIO_MUX_INGEST_ENABLED !== "true") return cursor
-  await studioRenderClient(signal).call("watch-reconcile", null)
   const candidates = candidateSchema.parse(
     await studioRenderClient(signal).call("mux-pending", cursor),
   )

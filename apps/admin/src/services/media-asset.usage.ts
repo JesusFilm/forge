@@ -83,7 +83,7 @@ export async function scanMediaAssetUsage(
       },
       orderBy: { updatedAt: "desc" },
     }),
-    prisma.studioAssetVersion.findMany({
+    prisma.shortAssetVersion.findMany({
       where: { mediaAssetId: target.assetId },
       include: { usages: true },
     }),
@@ -92,7 +92,7 @@ export async function scanMediaAssetUsage(
   return [
     ...versions.flatMap((version) =>
       [
-        { ownerType: "STUDIO_ASSET_VERSION", ownerId: version.id },
+        { ownerType: "SHORT_ASSET_VERSION", ownerId: version.id },
         ...version.usages,
       ].map((edge) => ({
         experienceId: null,

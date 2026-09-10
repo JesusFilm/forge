@@ -85,14 +85,14 @@ class RenderFixtureError extends Error {}
     )
     const rows = await db.$queryRaw<
       Array<{ asset_version_id: string }>
-    >`SELECT asset_version_id FROM studio_render_retained_asset WHERE attempt_id=${attemptId} AND lease_id=${lease.leaseId}`
+    >`SELECT asset_version_id FROM short_render_retained_asset WHERE attempt_id=${attemptId} AND lease_id=${lease.leaseId}`
     expect(rows.map((row) => row.asset_version_id)).toEqual([
       asset.reference.versionId,
     ])
     // Simulate a lost finish request: the canonical attempt is still running,
     // but asset identity is already durable and recoverable by the exact lease.
     expect(
-      (await db.studioAttempt.findUniqueOrThrow({ where: { id: attemptId } }))
+      (await db.shortAttempt.findUniqueOrThrow({ where: { id: attemptId } }))
         .status,
     ).toBe("RUNNING")
     const provenance = {
@@ -209,7 +209,7 @@ class RenderFixtureError extends Error {}
       }),
     ).toEqual({ admitted: false })
     expect(
-      (await db.studioAttempt.findUniqueOrThrow({ where: { id: attemptId } }))
+      (await db.shortAttempt.findUniqueOrThrow({ where: { id: attemptId } }))
         .status,
     ).toBe("RUNNING")
   })
@@ -446,7 +446,7 @@ class RenderFixtureError extends Error {}
     let pending: Promise<unknown> | undefined
     try {
       await db.$transaction(async (tx) => {
-        await tx.$queryRaw`SELECT id FROM studio_project WHERE id=${projectId} FOR UPDATE`
+        await tx.$queryRaw`SELECT id FROM short WHERE id=${projectId} FOR UPDATE`
         pending = new StudioRenderJobs(contender).finish(worker, {
           attemptId,
           leaseId: lease.leaseId!,
@@ -463,7 +463,7 @@ class RenderFixtureError extends Error {}
           await tx.$executeRaw`SELECT pg_stat_clear_snapshot()`
           const rows = await tx.$queryRaw<
             { blocked: boolean }[]
-          >`SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE application_name=${applicationName} AND wait_event_type='Lock' AND query LIKE '%FROM studio_project%') AS blocked`
+          >`SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE application_name=${applicationName} AND wait_event_type='Lock' AND query LIKE '%FROM short%') AS blocked`
           if (rows[0]?.blocked) {
             blocked = true
             break
@@ -530,7 +530,7 @@ class RenderFixtureError extends Error {}
       let pending: Promise<unknown> | undefined
       try {
         await db.$transaction(async (tx) => {
-          await tx.$queryRaw`SELECT id FROM studio_project WHERE id=${projectId} FOR UPDATE`
+          await tx.$queryRaw`SELECT id FROM short WHERE id=${projectId} FOR UPDATE`
           pending = (
             operation === "claim"
               ? waiting.claim(worker, attemptId, 1000, new Date(12000))
@@ -560,7 +560,7 @@ class RenderFixtureError extends Error {}
             await tx.$executeRaw`SELECT pg_stat_clear_snapshot()`
             const rows = await tx.$queryRaw<
               { blocked: boolean }[]
-            >`SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE application_name=${applicationName} AND wait_event_type='Lock' AND query LIKE '%FROM studio_project%') AS blocked`
+            >`SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE application_name=${applicationName} AND wait_event_type='Lock' AND query LIKE '%FROM short%') AS blocked`
             if (rows[0]?.blocked) {
               blocked = true
               break
@@ -570,7 +570,7 @@ class RenderFixtureError extends Error {}
           expect(blocked).toBe(true)
           // Model an already-authorized terminal writer while it owns the same lock.
           // Leaving the ledger untouched isolates the mutable-attempt read ordering.
-          await tx.studioAttempt.update({
+          await tx.shortAttempt.update({
             where: { id: attemptId },
             data: {
               status: "CANCELLED",

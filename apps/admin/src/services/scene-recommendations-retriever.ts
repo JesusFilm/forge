@@ -1,5 +1,3 @@
-import { Prisma } from "@prisma/client"
-import { studioPublicReleaseSql } from "@/services/search-watchability"
 /**
  * SQL layer for the legacy `sceneRecommendations` API.
  *
@@ -114,7 +112,6 @@ export async function getEligibleRecommendationVideoIds(
     WHERE v.id = ANY(${videoIds}::text[])
       AND v.deleted_at IS NULL
       AND NOT ('watch' = ANY(v.restrict_view_platforms))
-        AND ${studioPublicReleaseSql(Prisma.sql`v.id`)}
   `
   return new Set(rows.map((row) => row.id))
 }
@@ -263,7 +260,6 @@ export async function queryScenesSimilar(
       JOIN video v ON v.id = vt.video_id
         AND v.deleted_at IS NULL
         AND NOT ('watch' = ANY(v.restrict_view_platforms))
-        AND ${studioPublicReleaseSql(Prisma.sql`v.id`)}
       JOIN video_locale vl
         ON vl.video_id = v.id
         AND vl.locale  = ${locale}

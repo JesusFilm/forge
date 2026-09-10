@@ -822,7 +822,7 @@ function videoAvailabilitySelect(
 
 function serializeVideoAvailability(video: {
   id: string
-  coreId: string | null
+  coreId: string
   slug: string
   label: unknown
   publishedAt: Date | null

@@ -1,9 +1,9 @@
 import { builder } from "@/graphql/builder"
 import { StudioCatalogService } from "@/services/studio-authoring/catalog"
-import type { StudioCatalogRelease } from "@prisma/client"
+import type { ShortRelease } from "@prisma/client"
 /** @classification abac-gated */
 const release = builder
-  .objectRef<StudioCatalogRelease>("ShortsCatalogRelease")
+  .objectRef<ShortRelease>("ShortsCatalogRelease")
   .implement({
     authScopes: { loggedIn: true },
     fields: (t) => ({
@@ -11,10 +11,14 @@ const release = builder
       projectId: t.exposeID("projectId"),
       revision: t.exposeInt("revision"),
       renderAttemptId: t.exposeID("renderAttemptId"),
-      videoId: t.exposeID("videoId"),
-      dubId: t.exposeID("dubId"),
-      editionId: t.exposeID("editionId"),
-      muxId: t.exposeID("muxId"),
+      title: t.exposeString("title"),
+      languageSlug: t.exposeString("languageSlug"),
+      durationMs: t.exposeInt("durationMs"),
+      width: t.exposeInt("width"),
+      height: t.exposeInt("height"),
+      fps: t.exposeInt("fps"),
+      muxAssetId: t.exposeID("muxAssetId"),
+      muxPlaybackId: t.exposeID("muxPlaybackId"),
       snapshot: t.field({ type: "JSON", resolve: (r) => r.snapshot }),
     }),
   })

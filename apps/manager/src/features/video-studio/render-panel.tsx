@@ -11,7 +11,6 @@ import {
   studioRenderStateSchema,
   type StudioRenderState,
 } from "@forge/studio-contracts/publication-state"
-import { buildCanonicalWatchVideoPath } from "@forge/watch-url-policy/routes"
 import type { EditorSession } from "./editor-session"
 import { studioCall, StudioClientError } from "./client"
 import { PublicationSubmission } from "./publication-submission"
@@ -19,12 +18,10 @@ import { PublicationSubmission } from "./publication-submission"
 export default function RenderPanel({
   session,
   projectId,
-  watchOrigin,
   onClose,
 }: {
   session: EditorSession
   projectId: string
-  watchOrigin?: string
   onClose: () => void
 }) {
   const editor = useSyncExternalStore(
@@ -192,10 +189,6 @@ export default function RenderPanel({
     )
     await session.reload()
   }
-  const watchHref =
-    release?.video.slug && release.dub.language?.slug
-      ? `${(watchOrigin ?? "https://www.jesusfilm.org").replace(/\/$/, "")}/watch${buildCanonicalWatchVideoPath(encodeURIComponent(release.video.slug), encodeURIComponent(release.dub.language.slug))}`
-      : null
   return (
     <div className="nle-dialog-backdrop">
       <section
@@ -338,11 +331,6 @@ export default function RenderPanel({
             <p>
               Published content cannot be edited, replaced or published again.
             </p>
-            {watchHref && (
-              <a href={watchHref} target="_blank" rel="noreferrer">
-                Open on Watch
-              </a>
-            )}
             <button
               disabled={busy}
               onClick={() =>

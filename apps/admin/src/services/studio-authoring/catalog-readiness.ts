@@ -36,7 +36,7 @@ export class StudioCatalogReadinessService {
       throw new ForbiddenError("Trusted render readiness required")
     const input = studioRecordCatalogReadinessSchema.parse(raw),
       requestHash = studioHash(input)
-    const prior = await this.db.studioCatalogReadiness.findUnique({
+    const prior = await this.db.shortReadiness.findUnique({
       where: { id: input.id },
     })
     if (prior) {
@@ -62,11 +62,11 @@ export class StudioCatalogReadinessService {
       ),
     )
     return this.db.$transaction(async (tx) => {
-      const release = await tx.studioCatalogRelease.findUniqueOrThrow({
+      const release = await tx.shortRelease.findUniqueOrThrow({
         where: { id: input.releaseId },
       })
       const project = await lockProject(tx, release.projectId)
-      const prior = await tx.studioCatalogReadiness.findUnique({
+      const prior = await tx.shortReadiness.findUnique({
         where: { id: input.id },
       })
       if (prior) {
@@ -75,7 +75,7 @@ export class StudioCatalogReadinessService {
         return { id: prior.id }
       }
       assertEditable(project, release.revision)
-      const execution = await tx.studioRenderExecution.findUniqueOrThrow({
+      const execution = await tx.shortRenderExecution.findUniqueOrThrow({
         where: {
           attemptId_leaseId: {
             attemptId: input.attemptId,
@@ -100,6 +100,8 @@ export class StudioCatalogReadinessService {
         codec.video.height !== manifest.height ||
         codec.video.fps !== manifest.fps ||
         codec.video.frames !== manifest.durationInFrames ||
+        release.muxAssetId !== mux.assetId ||
+        release.muxPlaybackId !== mux.playbackId ||
         input.proof.mux.assetId !== mux.assetId ||
         input.proof.mux.playbackId !== mux.playbackId ||
         input.proof.mux.width !== manifest.width ||
@@ -111,7 +113,7 @@ export class StudioCatalogReadinessService {
         ) > 100
       )
         throw new StudioCommandError("INVALID")
-      await tx.studioCatalogReadiness.create({
+      await tx.shortReadiness.create({
         data: {
           id: input.id,
           releaseId: release.id,

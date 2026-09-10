@@ -331,18 +331,12 @@ export async function syncVideoSubtitles({
     prisma.language.findMany({ select: { id: true, coreId: true } }),
     prisma.videoEdition.findMany({ select: { id: true, coreId: true } }),
   ])
-  const videoMap = new Map(
-    videos.flatMap((video) =>
-      video.coreId == null ? [] : [[video.coreId, video.id] as const],
-    ),
-  )
+  const videoMap = new Map(videos.map((video) => [video.coreId, video.id]))
   const langMap = new Map(
     languages.map((language) => [language.coreId, language.id]),
   )
   const editionMap = new Map(
-    editions.flatMap((edition) =>
-      edition.coreId == null ? [] : [[edition.coreId, edition.id] as const],
-    ),
+    editions.map((edition) => [edition.coreId, edition.id]),
   )
 
   async function processSubtitlePage(

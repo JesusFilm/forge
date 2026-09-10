@@ -51,7 +51,7 @@ export const studioSourceSnapshotSchema = z
     subtitleAiGenerated: z.boolean(),
   })
   .strict()
-export type StudioSourceSnapshot = z.infer<typeof studioSourceSnapshotSchema>
+export type ShortSourceSnapshot = z.infer<typeof studioSourceSnapshotSchema>
 export const studioSourceManifestSchema = z
   .object({
     sourceSnapshotId: studioIdSchema,

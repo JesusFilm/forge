@@ -8,7 +8,7 @@ import { studioIdSchema } from "@forge/studio-contracts"
 import { z } from "zod"
 import type { StudioAdminTransport } from "./studio-client"
 const fields = adminGraphql(
-  `fragment ShortsCatalogFields on ShortsCatalogRelease { id projectId revision renderAttemptId videoId dubId editionId muxId snapshot }`,
+  `fragment ShortsCatalogFields on ShortsCatalogRelease { id projectId revision renderAttemptId title languageSlug durationMs width height fps muxAssetId muxPlaybackId snapshot }`,
 )
 const stage = adminGraphql(
   `mutation StageShortsCatalog($input: JSON!) { stageShortsCatalog(input: $input) { ...ShortsCatalogFields } }`,

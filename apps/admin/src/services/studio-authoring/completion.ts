@@ -34,19 +34,19 @@ export async function completeStudioAttempt(
   const hash = studioHash({ command: "complete", actor, input })
   const retry = await receipt(tx, project.id, input.idempotencyKey, hash)
   if (retry) return retry
-  const attempt = await tx.studioAttempt.findUnique({
+  const attempt = await tx.shortAttempt.findUnique({
     where: { id: input.attemptId },
   })
   if (!attempt || attempt.projectId !== project.id)
-    throw new NotFoundError("StudioAttempt")
+    throw new NotFoundError("ShortAttempt")
   if (
     attempt.baseRevision !== input.expectedRevision ||
     !["QUEUED", "RUNNING"].includes(attempt.status)
   )
     throw new StudioCommandError("CONFLICT")
   if (attempt.kind === "RENDER") {
-    await tx.$queryRaw`SELECT attempt_id FROM studio_render_job WHERE attempt_id=${attempt.id} FOR UPDATE`
-    const job = await tx.studioRenderJob.findUnique({
+    await tx.$queryRaw`SELECT attempt_id FROM short_render_job WHERE attempt_id=${attempt.id} FOR UPDATE`
+    const job = await tx.shortRenderJob.findUnique({
       where: { attemptId: attempt.id },
     })
     const abandoning =
@@ -79,15 +79,15 @@ export async function completeStudioAttempt(
     throw new StudioCommandError("INVALID")
   const productionRun =
     attempt.kind === "NARRATION"
-      ? await tx.studioProductionRun.findUnique({
+      ? await tx.shortProductionRun.findUnique({
           where: { attemptId: attempt.id },
         })
       : null
   if (productionRun)
-    await tx.$queryRaw`SELECT id FROM studio_production_run WHERE id=${productionRun.id} FOR UPDATE`
+    await tx.$queryRaw`SELECT id FROM short_production_run WHERE id=${productionRun.id} FOR UPDATE`
   const cancelled = productionRun
     ? (
-        await tx.studioProductionRun.findUniqueOrThrow({
+        await tx.shortProductionRun.findUniqueOrThrow({
           where: { id: productionRun.id },
         })
       ).state === "CANCELLED"
@@ -103,7 +103,7 @@ export async function completeStudioAttempt(
     input.status === "SUCCEEDED" &&
     (input.operations.length || attachingNarration)
   ) {
-    const previous = await tx.studioProjectRevision.findUniqueOrThrow({
+    const previous = await tx.shortRevision.findUniqueOrThrow({
       where: {
         projectId_number: { projectId: project.id, number: revision },
       },
@@ -131,16 +131,16 @@ export async function completeStudioAttempt(
       await resolveStudioPackSources(tx, document.packRevisionIds)
       await resolveStudioDocumentSources(tx, document)
       revision += 1
-      await tx.studioProjectRevision.create({
+      await tx.shortRevision.create({
         data: { projectId: project.id, number: revision, document, actor },
       })
-      await tx.studioProject.update({
+      await tx.short.update({
         where: { id: project.id },
         data: { currentRevision: revision },
       })
     }
   }
-  await tx.studioAttempt.update({
+  await tx.shortAttempt.update({
     where: { id: attempt.id },
     data: {
       status: cancelled ? "CANCELLED" : stale ? "STALE" : input.status,
@@ -155,7 +155,7 @@ export async function completeStudioAttempt(
     },
   })
   if (productionRun && !cancelled)
-    await tx.studioProductionRun.update({
+    await tx.shortProductionRun.update({
       where: { id: productionRun.id },
       data: { state: "COMPLETED" },
     })

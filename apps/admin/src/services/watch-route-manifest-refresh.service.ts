@@ -114,18 +114,10 @@ export async function refreshWatchRouteManifest({
 }): Promise<WatchRouteManifestRefreshOutcome> {
   const startedAt = Date.now()
   try {
-    // Share the serialization boundary with Studio delivery: an older Core or
-    // experience rebuild must not overwrite a newer revocation snapshot.
-    const snapshot = await prisma.$transaction(
-      async (tx) => {
-        await tx.$executeRaw`SET LOCAL statement_timeout = '15000ms'`
-        await tx.$executeRaw`SET LOCAL lock_timeout = '1000ms'`
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(460,85)`
-        const manifest = await new WatchRouteManifestService(tx).generate()
-        return new WatchRouteManifestStore(tx).upsertLatest(manifest)
-      },
-      { maxWait: 1000, timeout: 20000 },
-    )
+    const service = new WatchRouteManifestService(prisma)
+    const store = new WatchRouteManifestStore(prisma)
+    const manifest = await service.generate()
+    const snapshot = await store.upsertLatest(manifest)
     const counts = summarizeWatchRouteManifest(snapshot.payload)
 
     await emitWebhook({

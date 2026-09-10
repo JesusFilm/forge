@@ -1,10 +1,12 @@
-import { STUDIO_RENDER_TEST_DATABASE_URL } from "./database.test-support"
+import {
+  STUDIO_RENDER_TEST_DATABASE_URL,
+  SHORTS_MODEL_TEST_DATABASE_URL,
+} from "./database.test-support"
 import { createRequire } from "node:module"
 const { graphql } = createRequire(import.meta.url)(
   "graphql",
 ) as typeof import("graphql")
 import { schema } from "@/graphql/schema"
-import { VideoService } from "../video.service"
 import { randomUUID } from "node:crypto"
 import { PrismaClient } from "@prisma/client"
 import { beforeAll, afterAll, describe, it, expect } from "vitest"
@@ -24,6 +26,7 @@ suite("generated catalog schema and service", () => {
   beforeAll(() => {
     const p = new URL(url!)
     if (
+      url !== SHORTS_MODEL_TEST_DATABASE_URL &&
       url !== STUDIO_RENDER_TEST_DATABASE_URL &&
       (p.hostname !== "127.0.0.1" ||
         !(
@@ -38,37 +41,7 @@ suite("generated catalog schema and service", () => {
   afterAll(async () => {
     await db?.$disconnect()
   })
-  it("accepts absent Manager Core identity while preserving required and globally unique real Core IDs", async () => {
-    const id = randomUUID()
-    await db.$executeRaw`INSERT INTO video(id,slug,source,updated_at) VALUES (${id},${id},'manager',NOW())`
-    await expect(
-      db.$executeRaw`INSERT INTO video(id,slug,source,updated_at) VALUES (${randomUUID()},${randomUUID()},'core',NOW())`,
-    ).rejects.toThrow()
-    await db.$executeRaw`INSERT INTO video_edition(id,name,source,updated_at) VALUES (${id},'Generated','manager',NOW())`
-    await db.$executeRaw`INSERT INTO video_dub(id,video_id,video_edition_id,source,updated_at) VALUES (${id},${id},${id},'manager',NOW())`
-    for (const table of ["video", "video_dub", "video_edition"]) {
-      await expect(
-        db.$executeRawUnsafe(
-          `UPDATE "${table}" SET source='core' WHERE id=$1`,
-          id,
-        ),
-      ).rejects.toThrow()
-      await expect(
-        db.$executeRawUnsafe(
-          `UPDATE "${table}" SET core_id='' WHERE id=$1`,
-          id,
-        ),
-      ).rejects.toThrow()
-    }
-    const real = randomUUID()
-    await db.video.create({ data: { coreId: real, slug: real } })
-    await expect(
-      db.video.create({
-        data: { coreId: real, source: "MANAGER", slug: randomUUID() },
-      }),
-    ).rejects.toThrow()
-  })
-  it("stages a hidden real catalog identity from a retained matching render and replays concurrently", async () => {
+  it("stages an owned Short release without creating catalog rows from a retained matching render and replays concurrently", async () => {
     const projectId = randomUUID(),
       language = randomUUID()
     await db.language.create({
@@ -213,7 +186,7 @@ suite("generated catalog schema and service", () => {
       kind: "RENDER",
       instructions: [],
     })
-    const attempt = await db.studioAttempt.findUniqueOrThrow({
+    const attempt = await db.shortAttempt.findUniqueOrThrow({
       where: { id: requested.attemptId! },
     })
     const assets = new StudioAssetService(db)
@@ -297,24 +270,21 @@ suite("generated catalog schema and service", () => {
     await expect(
       new StudioCatalogService(db).stage(worker, input),
     ).rejects.toThrow()
-    expect(await db.studioCatalogRelease.count({ where: { projectId } })).toBe(
-      0,
-    )
+    expect(await db.shortRelease.count({ where: { projectId } })).toBe(0)
     await db.video.update({
       where: { id: sourceId },
       data: { restrictViewPlatforms: ["arclight"] },
     })
-    const existingMux = await db.muxVideo.create({
-      data: {
-        source: "CORE",
-        assetId: input.mux.assetId,
-        playbackId: input.mux.playbackId,
-      },
-    })
-    await expect(
-      new StudioCatalogService(db).stage(worker, input),
-    ).rejects.toThrow()
-    await db.muxVideo.delete({ where: { id: existingMux.id } })
+    const catalogCounts = async () =>
+      Promise.all([
+        db.video.count(),
+        db.videoDub.count(),
+        db.videoEdition.count(),
+        db.videoLocale.count(),
+        db.videoImage.count(),
+        db.muxVideo.count(),
+      ])
+    const beforeCatalog = await catalogCounts()
     const other = new PrismaClient({ datasources: { db: { url } } })
     try {
       const [first, second] = await Promise.all([
@@ -322,7 +292,7 @@ suite("generated catalog schema and service", () => {
         new StudioCatalogService(other).stage(worker, input),
       ])
       expect(first.id).toBe(second.id)
-      const sourceQuery = `query($id: ID!) { shortsCatalogRelease(id:$id) { id videoId snapshot } }`
+      const sourceQuery = `query($id: ID!) { shortsCatalogRelease(id:$id) { id title snapshot } }`
       const denied = await graphql({
         schema,
         source: sourceQuery,
@@ -339,53 +309,34 @@ suite("generated catalog schema and service", () => {
       expect(allowed.errors).toBeUndefined()
       const staged = await graphql({
         schema,
-        source: `mutation($input: JSON!) { stageShortsCatalog(input:$input) { id videoId } }`,
+        source: `mutation($input: JSON!) { stageShortsCatalog(input:$input) { id title } }`,
         variableValues: { input },
         contextValue: { user: worker, prisma: db },
       })
       expect(staged.errors).toBeUndefined()
       expect(staged.data?.stageShortsCatalog).toEqual({
         id: first.id,
-        videoId: first.videoId,
+        title: document.title,
       })
-      const publicVideo = await new VideoService(db).getById({
-        id: first.videoId,
-        query: {},
-      })
-      expect(publicVideo).toBeNull()
-
-      await expect(
-        db.videoDub.update({
-          where: { id: dubId },
-          data: { videoId: first.videoId },
-        }),
-      ).rejects.toThrow()
       const saved = await new StudioCatalogService(db).read(user, first.id)
-      expect(saved.video.coreId).toBeNull()
-      expect(saved.video.source).toBe("MANAGER")
-      expect(saved.video.publishedAt).toBeNull()
-      expect(saved.video.locales[0]?.status).toBe("DRAFT")
-      expect(saved.dub).toMatchObject({
-        coreId: null,
-        source: "MANAGER",
-        published: false,
-        hls: null,
-        downloadable: false,
+      expect(await catalogCounts()).toEqual(beforeCatalog)
+      expect(saved).toMatchObject({
+        title: document.title,
+        languageSlug: document.language,
+        width: document.width,
+        height: document.height,
+        fps: document.fps,
+        durationMs: Math.round(
+          (document.durationInFrames * 1000) / document.fps,
+        ),
+        muxAssetId: input.mux.assetId,
+        muxPlaybackId: input.mux.playbackId,
       })
-      expect(saved.edition.coreId).toBeNull()
-      expect(saved.mux.coreId).toBeNull()
-      await expect(
-        db.videoLocale.create({
-          data: { videoId: saved.video.id, locale: "fr", status: "PUBLISHED" },
-        }),
-      ).rejects.toThrow()
-
       expect(saved.snapshot).toMatchObject({
         document,
         manifest: { projectId, revision: 1 },
         restrictions: ["arclight"],
       })
-      expect(saved.video.restrictViewPlatforms).toEqual(["arclight"])
       expect(saved.derivations[0]).toMatchObject({
         sourceSnapshotId: source.id,
         startMs: 1000,
@@ -402,15 +353,9 @@ suite("generated catalog schema and service", () => {
         }),
       ).rejects.toThrow()
       await expect(
-        db.video.update({
-          where: { id: saved.video.id },
-          data: { publishedAt: new Date() },
-        }),
-      ).rejects.toThrow()
-      await expect(
-        db.videoLocale.updateMany({
-          where: { videoId: saved.video.id },
-          data: { status: "PUBLISHED" },
+        db.shortRelease.update({
+          where: { id: saved.id },
+          data: { title: "Replacement" },
         }),
       ).rejects.toThrow()
       await author.apply(user, {
@@ -428,40 +373,5 @@ suite("generated catalog schema and service", () => {
     } finally {
       await other.$disconnect()
     }
-  })
-  it("keeps null Core identities out of mapper pages while retaining Core tombstones", async () => {
-    const id = randomUUID()
-    const video = await db.video.create({
-      data: { source: "MANAGER", slug: id },
-    })
-    const generated = await db.videoDub.create({
-      data: { source: "MANAGER", videoId: video.id },
-    })
-    const core = await db.video.create({
-      data: { coreId: randomUUID(), slug: randomUUID() },
-    })
-    const tombstone = await db.videoDub.create({
-      data: { coreId: randomUUID(), videoId: core.id, deletedAt: new Date() },
-    })
-    const service = new VideoService(db)
-    const seen = []
-    let after: string | null = null
-    for (let page = 0; page < 100; page++) {
-      const result = await service.listMapperCatalogVariants({
-        first: 2,
-        after,
-      })
-      for (const node of result.nodes) {
-        expect(typeof node.coreId).toBe("string")
-        expect(typeof node.videoVariantId).toBe("string")
-        expect(node.adminDubId).not.toBe(generated.id)
-        seen.push(node)
-      }
-      if (!result.pageInfo.hasNextPage) break
-      after = result.pageInfo.endCursor
-    }
-    expect(seen.find((n) => n.adminDubId === tombstone.id)?.dubDeleted).toBe(
-      true,
-    )
   })
 })

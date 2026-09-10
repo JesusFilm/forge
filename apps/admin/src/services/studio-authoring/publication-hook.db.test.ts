@@ -131,13 +131,13 @@ class PublicationHookHarnessError extends Error {}
           // The outer transaction pins one connection; this independent pool query
           // must fail NOWAIT, proving project lock precedes the calendar callback.
           await expect(
-            db.$queryRaw`SELECT id FROM studio_project WHERE id=${binding.projectId} FOR UPDATE NOWAIT`,
+            db.$queryRaw`SELECT id FROM short WHERE id=${binding.projectId} FOR UPDATE NOWAIT`,
           ).rejects.toMatchObject({ meta: { code: "55P03" } })
           expect(binding).toEqual(f.input)
           expect(now.getTime()).toBeGreaterThanOrEqual(
             Date.parse(f.input.schedule.dueAt),
           )
-          await tx.studioCommand.create({
+          await tx.shortCommand.create({
             data: {
               projectId: binding.projectId,
               idempotencyKey: key,
@@ -189,7 +189,7 @@ class PublicationHookHarnessError extends Error {}
       expect(consumed).toBe(1)
       expect(verified).toBe(1)
       expect(
-        await db.studioCommand.count({
+        await db.shortCommand.count({
           where: { projectId: f.input.projectId, idempotencyKey: key },
         }),
       ).toBe(1)
@@ -205,7 +205,7 @@ class PublicationHookHarnessError extends Error {}
       const delivery: StudioScheduledPublication = {
         input: f.input,
         consume: async (tx) => {
-          await tx.studioCommand.create({
+          await tx.shortCommand.create({
             data: {
               projectId: f.input.projectId,
               idempotencyKey: key,
@@ -228,7 +228,7 @@ class PublicationHookHarnessError extends Error {}
         ),
       ).rejects.toMatchObject({ code: "UNREADY" })
       expect(
-        await db.studioCommand.count({
+        await db.shortCommand.count({
           where: {
             projectId: f.input.projectId,
             idempotencyKey: { in: [key, f.input.idempotencyKey] },
@@ -351,7 +351,7 @@ class PublicationHookHarnessError extends Error {}
         let consumed = false
         const consume: StudioScheduledPublication["consume"] = async (tx) => {
           consumed = true
-          await tx.studioCommand.create({
+          await tx.shortCommand.create({
             data: {
               projectId: input.projectId,
               idempotencyKey: consumedKey,
@@ -368,7 +368,7 @@ class PublicationHookHarnessError extends Error {}
             scheduler,
             input,
             async (tx) => {
-              await tx.studioCommand.create({
+              await tx.shortCommand.create({
                 data: {
                   projectId: input.projectId,
                   idempotencyKey: verifiedKey,
@@ -384,7 +384,7 @@ class PublicationHookHarnessError extends Error {}
         ).rejects.toMatchObject({ code: "DELIVERY_EXPIRED" })
         expect(consumed).toBe(true)
         expect(
-          await db.studioCommand.count({
+          await db.shortCommand.count({
             where: {
               projectId: input.projectId,
               idempotencyKey: {

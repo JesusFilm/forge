@@ -217,7 +217,7 @@ class AssignmentFixtureError extends Error {}
       let pending: Promise<unknown> | undefined
       try {
         await db.$transaction(async (tx) => {
-          await tx.$queryRaw`SELECT id FROM studio_project WHERE id=${projectId} FOR UPDATE`
+          await tx.$queryRaw`SELECT id FROM short WHERE id=${projectId} FOR UPDATE`
           pending = new StudioRenderJobs(contender).claimAssigned(
             worker,
             attemptId,
@@ -229,7 +229,7 @@ class AssignmentFixtureError extends Error {}
             await tx.$executeRaw`SELECT pg_stat_clear_snapshot()`
             const rows = await tx.$queryRaw<
               { blocked: boolean }[]
-            >`SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE application_name=${applicationName} AND wait_event_type='Lock' AND query LIKE '%FROM studio_project%') AS blocked`
+            >`SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE application_name=${applicationName} AND wait_event_type='Lock' AND query LIKE '%FROM short%') AS blocked`
             if (rows[0]?.blocked) {
               blocked = true
               break
@@ -237,7 +237,7 @@ class AssignmentFixtureError extends Error {}
             await new Promise((done) => setTimeout(done, 10))
           }
           expect(blocked).toBe(true)
-          await tx.studioAttempt.update({
+          await tx.shortAttempt.update({
             where: { id: attemptId },
             data: {
               status: "CANCELLED",

@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react"
-import Image from "@/components/ui/MediaImage"
+import Image from "next/image"
 import Link from "next/link"
 import {
   Compass,

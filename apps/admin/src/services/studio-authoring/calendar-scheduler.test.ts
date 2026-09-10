@@ -17,8 +17,8 @@ vi.mock("@/db/client", () => ({
     $transaction: async (work: (tx: typeof fixture.tx) => Promise<unknown>) =>
       work(fixture.tx),
     workflowRun: fixture.tx.workflowRun,
-    studioPlanningRun: fixture.runs,
-    studioCalendar: fixture.calendars,
+    shortPlanningRun: fixture.runs,
+    shortCalendar: fixture.calendars,
   },
 }))
 vi.mock("@/config/env", () => ({

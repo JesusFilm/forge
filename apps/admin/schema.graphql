@@ -1942,15 +1942,19 @@ enum ShortsAttemptStatus {
 }
 
 type ShortsCatalogRelease {
-  dubId: ID
-  editionId: ID
+  durationMs: Int
+  fps: Int
+  height: Int
   id: ID
-  muxId: ID
+  languageSlug: String
+  muxAssetId: ID
+  muxPlaybackId: ID
   projectId: ID
   renderAttemptId: ID
   revision: Int
   snapshot: JSON
-  videoId: ID
+  title: String
+  width: Int
 }
 
 type ShortsCommandResult {
@@ -1976,6 +1980,7 @@ input ShortsCreateInput {
   expectedRevision: Int!
   idempotencyKey: String!
   projectId: ID!
+  sourceVideoDubId: ID
 }
 
 enum ShortsLifecycle {
@@ -1991,6 +1996,7 @@ type ShortsProject {
   lifecycle: ShortsLifecycle
   projectId: ID
   revision: Int
+  sourceVideoDubId: ID
 }
 
 type ShortsProjectSummary {
@@ -2629,7 +2635,7 @@ A localized, playback-resolved Watch card in a bounded collection feed page.
 """
 type WatchCollectionFeedItem {
   blurDataUrl: String
-  coreId: String
+  coreId: String!
   dominantColor: String
   id: ID!
   imageUrl: String
@@ -2752,7 +2758,7 @@ Card-ready Watch inventory row for a single video or parent collection in one re
 type WatchLanguageInventoryItem {
   availability: WatchLanguageInventoryAvailability!
   childCount: Int!
-  coreId: String
+  coreId: String!
   createdAt: String
   description: String
   durationSeconds: Int

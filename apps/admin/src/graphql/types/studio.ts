@@ -2,12 +2,12 @@ import { builder } from "@/graphql/builder"
 import { StudioAuthoringService } from "@/services/studio-authoring"
 import type {
   StudioActor,
-  StudioAttempt,
+  ShortAttempt,
   StudioCommandResult,
-  StudioProject,
+  Short,
   StudioProjectSummary,
   StudioRevision,
-  StudioApproval,
+  ShortApproval,
 } from "@forge/studio-contracts"
 
 const lifecycle = builder.enumType("ShortsLifecycle", {
@@ -34,9 +34,10 @@ const actor = builder.objectRef<StudioActor>("ShortsActor").implement({
   fields: (t) => ({ kind: t.exposeString("kind"), id: t.exposeID("id") }),
 })
 /** @classification abac-gated */
-const project = builder.objectRef<StudioProject>("ShortsProject").implement({
+const project = builder.objectRef<Short>("ShortsProject").implement({
   authScopes: { loggedIn: true },
   fields: (t) => ({
+    sourceVideoDubId: t.exposeID("sourceVideoDubId", { nullable: true }),
     projectId: t.exposeID("projectId"),
     revision: t.exposeInt("revision"),
     lifecycle: t.field({ type: lifecycle, resolve: (row) => row.lifecycle }),
@@ -57,7 +58,7 @@ const summary = builder
     }),
   })
 /** @classification abac-gated */
-const attempt = builder.objectRef<StudioAttempt>("ShortsAttempt").implement({
+const attempt = builder.objectRef<ShortAttempt>("ShortsAttempt").implement({
   authScopes: { loggedIn: true },
   fields: (t) => ({
     id: t.exposeID("id"),
@@ -98,7 +99,7 @@ const revision = builder.objectRef<StudioRevision>("ShortsRevision").implement({
   }),
 })
 /** @classification abac-gated */
-const approval = builder.objectRef<StudioApproval>("ShortsApproval").implement({
+const approval = builder.objectRef<ShortApproval>("ShortsApproval").implement({
   authScopes: { loggedIn: true },
   fields: (t) => ({
     id: t.exposeID("id"),
@@ -119,6 +120,7 @@ const base = builder.inputType("ShortsRevisionCommandInput", {
 })
 const create = builder.inputType("ShortsCreateInput", {
   fields: (t) => ({
+    sourceVideoDubId: t.id(),
     projectId: t.id({ required: true }),
     expectedRevision: t.int({ required: true }),
     idempotencyKey: t.string({ required: true }),

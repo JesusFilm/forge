@@ -213,7 +213,7 @@ run(
           ),
         ).rejects.toThrow("INVALID")
         const token = capability.path.split("/").at(-1)!
-        await db.studioAssetTransfer.update({
+        await db.shortAssetTransfer.update({
           where: {
             tokenHash: createHash("sha256").update(token).digest("hex"),
           },

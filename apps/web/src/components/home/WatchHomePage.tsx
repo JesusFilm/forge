@@ -1,4 +1,4 @@
-import Image from "@/components/ui/MediaImage"
+import Image from "next/image"
 import { useTranslations } from "next-intl"
 import { WatchHomeBodyZone } from "@/components/home/WatchHomeBodyZone"
 import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"

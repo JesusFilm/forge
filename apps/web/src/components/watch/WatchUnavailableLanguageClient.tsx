@@ -1,6 +1,6 @@
 "use client"
 
-import Image from "@/components/ui/MediaImage"
+import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"

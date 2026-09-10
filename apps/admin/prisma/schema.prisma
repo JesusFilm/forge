@@ -405,16 +405,16 @@ enum WatchSearchCurationAliasSource {
 // -----------------------------------------------------------------------------
 
 model User {
-  calendarAuthorizations StudioScheduleAuthorization[]
-  chatThreadsCreated ExperienceChatThread[] // experience-AI chat (additive)
-  id                 String                 @id
-  name               String
-  email              String
-  emailVerified      Boolean                @default(false) @map("email_verified")
-  image              String?
-  role               UserRole               @default(VIEWER)
-  createdAt          DateTime               @default(now()) @map("created_at")
-  updatedAt          DateTime               @updatedAt @map("updated_at")
+  calendarAuthorizations ShortScheduleAuthorization[]
+  chatThreadsCreated     ExperienceChatThread[] // experience-AI chat (additive)
+  id                     String                       @id
+  name                   String
+  email                  String
+  emailVerified          Boolean                      @default(false) @map("email_verified")
+  image                  String?
+  role                   UserRole                     @default(VIEWER)
+  createdAt              DateTime                     @default(now()) @map("created_at")
+  updatedAt              DateTime                     @updatedAt @map("updated_at")
 
   mediaAssets           MediaAsset[]
   mediaFolders          MediaFolder[]
@@ -1497,7 +1497,7 @@ model MediaAsset {
   createdById                 String?                    @map("created_by_id")
   createdBy                   User?                      @relation(fields: [createdById], references: [id], onDelete: SetNull)
   locales                     MediaAssetLocale[]
-  studioVersions              StudioAssetVersion[]
+  shortVersions               ShortAssetVersion[]
   socialImageVideoLocales     VideoLocale[]              @relation("VideoLocaleSocialImage")
   createdAt                   DateTime                   @default(now()) @map("created_at")
   updatedAt                   DateTime                   @updatedAt @map("updated_at")
@@ -1916,20 +1916,18 @@ model VideoOrigin {
 
 /// Video edition (e.g. "Director's cut"). Synced from Core.
 model VideoEdition {
-  studioRelease StudioCatalogRelease?
-
-  studioSources StudioSourceSnapshot[]
-  id            String                 @id @default(cuid())
-  coreId        String?                @unique @map("core_id")
-  source        SourceTier             @default(CORE)
+  shortSources ShortSourceSnapshot[]
+  id           String                @id @default(cuid())
+  coreId       String                @unique @map("core_id")
+  source       SourceTier            @default(CORE)
   /// Plain `String` (not JSONB locale-map like other reference entities).
   /// Audit Core's actual response shape during Unit 10 sync; if Core
   /// returns a localized name, normalize to JSON.
-  name          String
-  syncedAt      DateTime?              @map("synced_at")
-  deletedAt     DateTime?              @map("deleted_at")
-  createdAt     DateTime               @default(now()) @map("created_at")
-  updatedAt     DateTime               @updatedAt @map("updated_at")
+  name         String
+  syncedAt     DateTime?             @map("synced_at")
+  deletedAt    DateTime?             @map("deleted_at")
+  createdAt    DateTime              @default(now()) @map("created_at")
+  updatedAt    DateTime              @updatedAt @map("updated_at")
 
   dubs        VideoDub[]
   subtitles   VideoSubtitle[]
@@ -1943,8 +1941,6 @@ model VideoEdition {
 /// Mux asset metadata. The `mux_videos.duration` field in the legacy CMS is
 /// always 0 — duration lives on `video_dub.length_in_milliseconds`.
 model MuxVideo {
-  studioRelease StudioCatalogRelease?
-
   id         String     @id @default(cuid())
   coreId     String?    @unique @map("core_id")
   source     SourceTier @default(CORE)
@@ -2022,13 +2018,11 @@ model BibleBook {
 /// description / snippet / imageAlt live in `VideoLocale`. Sync source is
 /// authoritative: `source = 'manager'` rows are never overwritten by Core.
 model Video {
-  studioRelease StudioCatalogRelease?
-
-  studioSources         StudioSourceSnapshot[]
-  id                    String                 @id @default(cuid())
-  coreId                String?                @unique @map("core_id")
-  source                SourceTier             @default(CORE)
-  slug                  String                 @unique
+  shortSources          ShortSourceSnapshot[]
+  id                    String                @id @default(cuid())
+  coreId                String                @unique @map("core_id")
+  source                SourceTier            @default(CORE)
+  slug                  String                @unique
   label                 VideoLabel?
   /// `@map("video_source")` is required: the column was created snake-
   /// case in `0001_init` while the field is camelCase. Without the
@@ -2036,25 +2030,25 @@ model Video {
   /// sync-videos.ts` fails with `column "videoSource" does not exist`
   /// and the entire videos phase aborts. Do not strip this in a
   /// schema-style sweep.
-  videoSource           VideoSource?           @map("video_source")
-  publishedAt           DateTime?              @map("published_at")
-  locked                Boolean                @default(false)
-  noIndex               Boolean                @default(false) @map("no_index")
+  videoSource           VideoSource?          @map("video_source")
+  publishedAt           DateTime?             @map("published_at")
+  locked                Boolean               @default(false)
+  noIndex               Boolean               @default(false) @map("no_index")
   /// Core Platform slugs (e.g. "watch", "arclight", "journeys") this video
   /// is restricted from viewing on. Synced read-only from Core; Forge's
   /// public watch surfaces (search, browse, detail, home, recommendations)
   /// must exclude videos restricted for "watch" — see search-watchability.ts.
-  restrictViewPlatforms String[]               @default([]) @map("restrict_view_platforms")
+  restrictViewPlatforms String[]              @default([]) @map("restrict_view_platforms")
   /// True when AI-generated metadata has been applied to this video.
-  aiMetadata            Boolean                @default(false) @map("ai_metadata")
-  primaryLanguageId     String?                @map("primary_language_id")
-  primaryLanguage       Language?              @relation("VideoPrimaryLanguage", fields: [primaryLanguageId], references: [id], onDelete: SetNull)
-  originId              String?                @map("origin_id")
-  origin                VideoOrigin?           @relation(fields: [originId], references: [id], onDelete: SetNull)
-  syncedAt              DateTime?              @map("synced_at")
-  deletedAt             DateTime?              @map("deleted_at")
-  createdAt             DateTime               @default(now()) @map("created_at")
-  updatedAt             DateTime               @updatedAt @map("updated_at")
+  aiMetadata            Boolean               @default(false) @map("ai_metadata")
+  primaryLanguageId     String?               @map("primary_language_id")
+  primaryLanguage       Language?             @relation("VideoPrimaryLanguage", fields: [primaryLanguageId], references: [id], onDelete: SetNull)
+  originId              String?               @map("origin_id")
+  origin                VideoOrigin?          @relation(fields: [originId], references: [id], onDelete: SetNull)
+  syncedAt              DateTime?             @map("synced_at")
+  deletedAt             DateTime?             @map("deleted_at")
+  createdAt             DateTime              @default(now()) @map("created_at")
+  updatedAt             DateTime              @updatedAt @map("updated_at")
 
   locales        VideoLocale[]
   dubs           VideoDub[]
@@ -2196,38 +2190,38 @@ model VideoKeyword {
 /// Legacy CMS schema duplicated the `aiGenerated` key — kept as a single
 /// field here.
 model VideoDub {
-  studioRelease StudioCatalogRelease?
+  shorts Short[]
 
-  studioSources        StudioSourceSnapshot[]
-  id                   String                 @id @default(cuid())
-  coreId               String?                @unique @map("core_id")
-  source               SourceTier             @default(CORE)
+  shortSources         ShortSourceSnapshot[]
+  id                   String                @id @default(cuid())
+  coreId               String                @unique @map("core_id")
+  source               SourceTier            @default(CORE)
   slug                 String?
   /// Duration in seconds.
   duration             Int?
   /// Duration in milliseconds — BigInt because legacy data overflows int4.
-  lengthInMilliseconds BigInt?                @map("length_in_milliseconds")
+  lengthInMilliseconds BigInt?               @map("length_in_milliseconds")
   hls                  String?
   dash                 String?
   share                String?
-  downloadable         Boolean                @default(false)
-  published            Boolean                @default(false)
+  downloadable         Boolean               @default(false)
+  published            Boolean               @default(false)
   version              Int?
-  brightcoveId         String?                @map("brightcove_id")
+  brightcoveId         String?               @map("brightcove_id")
   /// True when AI generated this dub (e.g. AI voice-cloned translation).
-  aiGenerated          Boolean                @default(false) @map("ai_generated")
-  videoId              String                 @map("video_id")
-  video                Video                  @relation(fields: [videoId], references: [id], onDelete: Cascade)
-  languageId           String?                @map("language_id")
-  language             Language?              @relation(fields: [languageId], references: [id], onDelete: SetNull)
-  videoEditionId       String?                @map("video_edition_id")
-  videoEdition         VideoEdition?          @relation(fields: [videoEditionId], references: [id], onDelete: SetNull)
-  muxVideoId           String?                @map("mux_video_id")
-  muxVideo             MuxVideo?              @relation(fields: [muxVideoId], references: [id], onDelete: SetNull)
-  syncedAt             DateTime?              @map("synced_at")
-  deletedAt            DateTime?              @map("deleted_at")
-  createdAt            DateTime               @default(now()) @map("created_at")
-  updatedAt            DateTime               @updatedAt @map("updated_at")
+  aiGenerated          Boolean               @default(false) @map("ai_generated")
+  videoId              String                @map("video_id")
+  video                Video                 @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  languageId           String?               @map("language_id")
+  language             Language?             @relation(fields: [languageId], references: [id], onDelete: SetNull)
+  videoEditionId       String?               @map("video_edition_id")
+  videoEdition         VideoEdition?         @relation(fields: [videoEditionId], references: [id], onDelete: SetNull)
+  muxVideoId           String?               @map("mux_video_id")
+  muxVideo             MuxVideo?             @relation(fields: [muxVideoId], references: [id], onDelete: SetNull)
+  syncedAt             DateTime?             @map("synced_at")
+  deletedAt            DateTime?             @map("deleted_at")
+  createdAt            DateTime              @default(now()) @map("created_at")
+  updatedAt            DateTime              @updatedAt @map("updated_at")
 
   downloads   VideoDubDownload[]
   watchEvents WatchEvent[]
@@ -2288,22 +2282,22 @@ model WatchSearchEvent {
 
 /// A downloadable quality tier (e.g. mp4 480p, 720p, 1080p) of a VideoDub.
 model VideoDubDownload {
-  studioSources StudioSourceSnapshot[]
-  id            String                 @id @default(cuid())
-  coreId        String?                @unique @map("core_id")
-  source        SourceTier             @default(CORE)
-  videoDubId    String                 @map("video_dub_id")
-  videoDub      VideoDub               @relation(fields: [videoDubId], references: [id], onDelete: Cascade)
-  quality       String?
-  url           String?
-  size          BigInt?
-  width         Int?
-  height        Int?
-  bitrate       Int?
-  syncedAt      DateTime?              @map("synced_at")
-  deletedAt     DateTime?              @map("deleted_at")
-  createdAt     DateTime               @default(now()) @map("created_at")
-  updatedAt     DateTime               @updatedAt @map("updated_at")
+  shortSources ShortSourceSnapshot[]
+  id           String                @id @default(cuid())
+  coreId       String?               @unique @map("core_id")
+  source       SourceTier            @default(CORE)
+  videoDubId   String                @map("video_dub_id")
+  videoDub     VideoDub              @relation(fields: [videoDubId], references: [id], onDelete: Cascade)
+  quality      String?
+  url          String?
+  size         BigInt?
+  width        Int?
+  height       Int?
+  bitrate      Int?
+  syncedAt     DateTime?             @map("synced_at")
+  deletedAt    DateTime?             @map("deleted_at")
+  createdAt    DateTime              @default(now()) @map("created_at")
+  updatedAt    DateTime              @updatedAt @map("updated_at")
 
   @@index([videoDubId])
   @@index([deletedAt])
@@ -2319,26 +2313,26 @@ model VideoDubDownload {
 /// The distinction is derivable from `languageId` vs the dub's audio
 /// language at query time, so no separate Transcript / ClosedCaption tables.
 model VideoSubtitle {
-  studioSources  StudioSourceSnapshot[]
-  id             String                 @id @default(cuid())
-  coreId         String?                @unique @map("core_id")
-  source         SourceTier             @default(CORE)
-  videoId        String?                @map("video_id")
-  video          Video?                 @relation(fields: [videoId], references: [id], onDelete: Cascade)
-  videoEditionId String                 @map("video_edition_id")
-  videoEdition   VideoEdition           @relation(fields: [videoEditionId], references: [id], onDelete: Cascade)
-  languageId     String?                @map("language_id")
-  language       Language?              @relation(fields: [languageId], references: [id], onDelete: SetNull)
+  shortSources   ShortSourceSnapshot[]
+  id             String                @id @default(cuid())
+  coreId         String?               @unique @map("core_id")
+  source         SourceTier            @default(CORE)
+  videoId        String?               @map("video_id")
+  video          Video?                @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  videoEditionId String                @map("video_edition_id")
+  videoEdition   VideoEdition          @relation(fields: [videoEditionId], references: [id], onDelete: Cascade)
+  languageId     String?               @map("language_id")
+  language       Language?             @relation(fields: [languageId], references: [id], onDelete: SetNull)
   value          String?
-  primary        Boolean                @default(false)
-  vttSrc         String?                @map("vtt_src")
-  srtSrc         String?                @map("srt_src")
+  primary        Boolean               @default(false)
+  vttSrc         String?               @map("vtt_src")
+  srtSrc         String?               @map("srt_src")
   /// Whether this subtitle was AI-generated (transcription/translation).
-  aiGenerated    Boolean                @default(false) @map("ai_generated")
-  syncedAt       DateTime?              @map("synced_at")
-  deletedAt      DateTime?              @map("deleted_at")
-  createdAt      DateTime               @default(now()) @map("created_at")
-  updatedAt      DateTime               @updatedAt @map("updated_at")
+  aiGenerated    Boolean               @default(false) @map("ai_generated")
+  syncedAt       DateTime?             @map("synced_at")
+  deletedAt      DateTime?             @map("deleted_at")
+  createdAt      DateTime              @default(now()) @map("created_at")
+  updatedAt      DateTime              @updatedAt @map("updated_at")
 
   @@index([videoEditionId])
   @@index([videoId])
@@ -4588,119 +4582,122 @@ model WhatsNewFeatureVote {
   @@map("whats_new_feature_vote")
 }
 
-// Studio authoring is independent of Manager render jobs and catalog lifecycle.
-model StudioProject {
-  publication           StudioPublication?
-  calendarSlots StudioPlanSlot[]
-  id                    String                  @id @db.VarChar(128)
-  currentRevision       Int                     @map("current_revision")
-  ownerId               String                  @map("owner_id") @db.VarChar(128)
-  lifecycle             String                  @default("DRAFT") @db.VarChar(16)
-  firstPublishedAt      DateTime?               @map("first_published_at")
-  unpublishedAt         DateTime?               @map("unpublished_at")
-  createdAt             DateTime                @default(now()) @map("created_at")
-  currentRevisionRecord StudioProjectRevision   @relation("CurrentStudioRevision", fields: [id, currentRevision], references: [projectId, number], onDelete: NoAction, onUpdate: NoAction, map: "studio_current_revision_fk")
-  revisions             StudioProjectRevision[] @relation("StudioProjectHistory")
-  commands              StudioCommand[]
+// Shorts authoring is independent of Manager render jobs and catalog lifecycle.
+model Short {
+  sourceVideoDubId      String?           @map("source_video_dub_id")
+  sourceVideoDub        VideoDub?         @relation(fields: [sourceVideoDubId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  publication           ShortPublication?
+  calendarSlots         ShortPlanSlot[]
+  id                    String            @id @db.VarChar(128)
+  currentRevision       Int               @map("current_revision")
+  ownerId               String            @map("owner_id") @db.VarChar(128)
+  lifecycle             String            @default("DRAFT") @db.VarChar(16)
+  firstPublishedAt      DateTime?         @map("first_published_at")
+  unpublishedAt         DateTime?         @map("unpublished_at")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  currentRevisionRecord ShortRevision     @relation("CurrentShortRevision", fields: [id, currentRevision], references: [projectId, number], onDelete: NoAction, onUpdate: NoAction, map: "short_current_revision_fk")
+  revisions             ShortRevision[]   @relation("ShortHistory")
+  commands              ShortCommand[]
 
-  @@map("studio_project")
+  @@index([sourceVideoDubId])
+  @@map("short")
 }
 
-model StudioProjectRevision {
-  calendarAuthorizations StudioScheduleAuthorization[]
-  catalogReleases StudioCatalogRelease[]
+model ShortRevision {
+  calendarAuthorizations ShortScheduleAuthorization[]
+  catalogReleases        ShortRelease[]
 
-  currentFor StudioProject[]  @relation("CurrentStudioRevision")
-  approvals  StudioApproval[]
-  attempts   StudioAttempt[]
-  projectId  String           @map("project_id") @db.VarChar(128)
+  currentFor Short[]         @relation("CurrentShortRevision")
+  approvals  ShortApproval[]
+  attempts   ShortAttempt[]
+  projectId  String          @map("project_id") @db.VarChar(128)
   number     Int
   document   Json
   actor      Json
-  createdAt  DateTime         @default(now()) @map("created_at")
-  project    StudioProject    @relation("StudioProjectHistory", fields: [projectId], references: [id], onDelete: Restrict)
+  createdAt  DateTime        @default(now()) @map("created_at")
+  project    Short           @relation("ShortHistory", fields: [projectId], references: [id], onDelete: Restrict)
 
   @@id([projectId, number])
-  @@map("studio_project_revision")
+  @@map("short_revision")
 }
 
-model StudioCommand {
-  projectId      String        @map("project_id") @db.VarChar(128)
-  idempotencyKey String        @map("idempotency_key") @db.VarChar(128)
-  inputHash      String        @map("input_hash") @db.VarChar(64)
+model ShortCommand {
+  projectId      String   @map("project_id") @db.VarChar(128)
+  idempotencyKey String   @map("idempotency_key") @db.VarChar(128)
+  inputHash      String   @map("input_hash") @db.VarChar(64)
   actor          Json
   result         Json
-  createdAt      DateTime      @default(now()) @map("created_at")
-  project        StudioProject @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  createdAt      DateTime @default(now()) @map("created_at")
+  project        Short    @relation(fields: [projectId], references: [id], onDelete: Restrict)
 
   @@id([projectId, idempotencyKey])
-  @@map("studio_command")
+  @@map("short_command")
 }
 
-model StudioAttempt {
-  muxJob         StudioMuxJob?
-  renderJob      StudioRenderJob?
-  productionRun  StudioProductionRun?
-  calendarAuthorizations StudioScheduleAuthorization[]
-  catalogRelease StudioCatalogRelease?
+model ShortAttempt {
+  muxJob                 ShortMuxJob?
+  renderJob              ShortRenderJob?
+  productionRun          ShortProductionRun?
+  calendarAuthorizations ShortScheduleAuthorization[]
+  catalogRelease         ShortRelease?
 
-  publicationApprovals StudioApproval[]
-  id                   String                @id @default(cuid()) @db.VarChar(128)
-  projectId            String                @map("project_id") @db.VarChar(128)
-  baseRevision         Int                   @map("base_revision")
-  kind                 String                @db.VarChar(16)
-  status               String                @default("QUEUED") @db.VarChar(16)
-  inputHash            String                @map("input_hash") @db.VarChar(64)
+  publicationApprovals ShortApproval[]
+  id                   String          @id @default(cuid()) @db.VarChar(128)
+  projectId            String          @map("project_id") @db.VarChar(128)
+  baseRevision         Int             @map("base_revision")
+  kind                 String          @db.VarChar(16)
+  status               String          @default("QUEUED") @db.VarChar(16)
+  inputHash            String          @map("input_hash") @db.VarChar(64)
   actor                Json
   instructions         Json
   result               Json?
-  jobReference         String?               @map("job_reference") @db.VarChar(128)
-  completedBy          Json?                 @map("completed_by")
-  createdAt            DateTime              @default(now()) @map("created_at")
-  updatedAt            DateTime              @updatedAt @map("updated_at")
-  revision             StudioProjectRevision @relation(fields: [projectId, baseRevision], references: [projectId, number], onDelete: Restrict)
+  jobReference         String?         @map("job_reference") @db.VarChar(128)
+  completedBy          Json?           @map("completed_by")
+  createdAt            DateTime        @default(now()) @map("created_at")
+  updatedAt            DateTime        @updatedAt @map("updated_at")
+  revision             ShortRevision   @relation(fields: [projectId, baseRevision], references: [projectId, number], onDelete: Restrict)
 
   @@index([projectId, createdAt])
-  @@map("studio_attempt")
+  @@map("short_attempt")
 }
 
-model StudioApproval {
-  publications    StudioPublication[]
-  calendarAuthorizations StudioScheduleAuthorization[]
-  id              String                @id @default(cuid()) @db.VarChar(128)
-  projectId       String                @map("project_id") @db.VarChar(128)
-  revision        Int
-  kind            String                @db.VarChar(16)
-  dependencyHash  String                @map("dependency_hash") @db.VarChar(64)
-  actor           Json
-  renderAttemptId String?               @map("render_attempt_id") @db.VarChar(128)
-  renderAttempt   StudioAttempt?        @relation(fields: [renderAttemptId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  createdAt       DateTime              @default(now()) @map("created_at")
-  snapshot        StudioProjectRevision @relation(fields: [projectId, revision], references: [projectId, number], onDelete: Restrict)
+model ShortApproval {
+  publications           ShortPublication[]
+  calendarAuthorizations ShortScheduleAuthorization[]
+  id                     String                       @id @default(cuid()) @db.VarChar(128)
+  projectId              String                       @map("project_id") @db.VarChar(128)
+  revision               Int
+  kind                   String                       @db.VarChar(16)
+  dependencyHash         String                       @map("dependency_hash") @db.VarChar(64)
+  actor                  Json
+  renderAttemptId        String?                      @map("render_attempt_id") @db.VarChar(128)
+  renderAttempt          ShortAttempt?                @relation(fields: [renderAttemptId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  createdAt              DateTime                     @default(now()) @map("created_at")
+  snapshot               ShortRevision                @relation(fields: [projectId, revision], references: [projectId, number], onDelete: Restrict)
 
   @@index([projectId, kind, dependencyHash])
-  @@map("studio_approval")
+  @@map("short_approval")
 }
 
-/// Studio families group versions; each version pins a separate registry blob.
-model StudioAssetVersion {
-  renderRetentions StudioRenderRetainedAsset[]
-  usages           StudioAssetUsage[]
-  id               String                      @id @default(cuid())
-  assetId          String                      @map("asset_id")
-  mediaAssetId     String                      @unique @map("media_asset_id")
-  mediaAsset       MediaAsset                  @relation(fields: [mediaAssetId], references: [id], onDelete: Restrict)
+/// Shorts families group versions; each version pins a separate registry blob.
+model ShortAssetVersion {
+  renderRetentions ShortRenderRetainedAsset[]
+  usages           ShortAssetUsage[]
+  id               String                     @id @default(cuid())
+  assetId          String                     @map("asset_id")
+  mediaAssetId     String                     @unique @map("media_asset_id")
+  mediaAsset       MediaAsset                 @relation(fields: [mediaAssetId], references: [id], onDelete: Restrict)
   digest           String
   role             String
   metadata         Json
   actor            Json
-  requestKey       String                      @unique @map("request_key")
-  requestHash      String                      @map("request_hash")
-  createdAt        DateTime                    @default(now()) @map("created_at")
+  requestKey       String                     @unique @map("request_key")
+  requestHash      String                     @map("request_hash")
+  createdAt        DateTime                   @default(now()) @map("created_at")
 
   @@index([assetId])
   @@index([role, createdAt])
-  @@map("studio_asset_version")
+  @@map("short_asset_version")
 }
 
 model ContentPack {
@@ -4712,9 +4709,9 @@ model ContentPack {
 }
 
 model ContentPackRevision {
-  calendarSlots StudioPlanSlot[]
-  calendarWeeks StudioPlanWeek[]
-  catalogReferences StudioCatalogPack[]
+  calendarSlots     ShortPlanSlot[]
+  calendarWeeks     ShortPlanWeek[]
+  catalogReferences ShortPack[]
 
   id             String      @id @default(cuid())
   packId         String      @map("pack_id")
@@ -4731,26 +4728,26 @@ model ContentPackRevision {
   @@map("content_pack_revision")
 }
 
-model StudioAssetUsage {
-  ownerType String             @map("owner_type")
-  ownerId   String             @map("owner_id")
-  versionId String             @map("version_id")
-  version   StudioAssetVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+model ShortAssetUsage {
+  ownerType String            @map("owner_type")
+  ownerId   String            @map("owner_id")
+  versionId String            @map("version_id")
+  version   ShortAssetVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
 
   @@id([ownerType, ownerId, versionId])
   @@index([versionId])
-  @@map("studio_asset_usage")
+  @@map("short_asset_usage")
 }
 
-model StudioComponentVersion {
+model ShortComponentVersion {
   id          String @id
   declaration Json
 
-  @@map("studio_component_version")
+  @@map("short_component_version")
 }
 
-model StudioSourceSnapshot {
-  catalogDerivations StudioCatalogDerivation[]
+model ShortSourceSnapshot {
+  catalogDerivations ShortDerivation[]
 
   id          String           @id
   videoId     String           @map("video_id")
@@ -4767,367 +4764,368 @@ model StudioSourceSnapshot {
   requestKey  String           @unique @map("request_key")
   requestHash String           @map("request_hash")
 
-  @@map("studio_source_snapshot")
+  @@map("short_source_snapshot")
 }
 
-model StudioAssetTransfer {
+model ShortAssetTransfer {
   tokenHash String   @id @map("token_hash")
   kind      String
   principal Json
   payload   Json
   expiresAt DateTime @map("expires_at")
 
-  @@map("studio_asset_transfer")
+  @@map("short_asset_transfer")
 }
 
-model StudioExperiment {
-  selections    StudioExperimentSelection[]
-  productionRun StudioProductionRun?
-  id            String                      @id @default(cuid())
+model ShortExperiment {
+  selections    ShortExperimentSelection[]
+  productionRun ShortProductionRun?
+  id            String                     @id @default(cuid())
   request       Json
   actor         Json
-  requestKey    String                      @unique @map("request_key")
-  requestHash   String                      @map("request_hash")
-  candidates    StudioExperimentCandidate[]
+  requestKey    String                     @unique @map("request_key")
+  requestHash   String                     @map("request_hash")
+  candidates    ShortExperimentCandidate[]
 
-  @@map("studio_experiment")
+  @@map("short_experiment")
 }
 
-model StudioExperimentCandidate {
-  selections        StudioExperimentSelection[]
-  id                String                      @id @default(cuid())
-  experimentId      String                      @map("experiment_id")
-  experiment        StudioExperiment            @relation(fields: [experimentId], references: [id], onDelete: Restrict)
+model ShortExperimentCandidate {
+  selections        ShortExperimentSelection[]
+  id                String                     @id @default(cuid())
+  experimentId      String                     @map("experiment_id")
+  experiment        ShortExperiment            @relation(fields: [experimentId], references: [id], onDelete: Restrict)
   asset             Json
-  providerRequestId String?                     @map("provider_request_id")
-  actualCostMicros  BigInt?                     @map("actual_cost_micros")
-  candidateKey      String                      @unique @map("candidate_key")
+  providerRequestId String?                    @map("provider_request_id")
+  actualCostMicros  BigInt?                    @map("actual_cost_micros")
+  candidateKey      String                     @unique @map("candidate_key")
   actor             Json
 
-  @@map("studio_experiment_candidate")
+  @@map("short_experiment_candidate")
 }
 
 /// Immutable staged render identity. Publication/visibility is a separate feat-460 operation.
-model StudioCatalogRelease {
-  publication     StudioPublication?
-  readiness       StudioCatalogReadiness[]
-  calendarAuthorizations StudioScheduleAuthorization[]
-  id              String                    @id @default(cuid())
-  projectId       String                    @map("project_id") @db.VarChar(128)
-  revision        Int
-  renderAttemptId String                    @unique @map("render_attempt_id") @db.VarChar(128)
-  idempotencyKey  String                    @map("idempotency_key")
-  requestHash     String                    @map("request_hash")
-  videoId         String                    @unique @map("video_id")
-  dubId           String                    @unique @map("dub_id")
-  editionId       String                    @unique @map("edition_id")
-  muxId           String                    @unique @map("mux_id")
-  snapshot        Json
-  createdAt       DateTime                  @default(now()) @map("created_at")
-  projectRevision StudioProjectRevision     @relation(fields: [projectId, revision], references: [projectId, number], onDelete: Restrict, onUpdate: NoAction)
-  attempt         StudioAttempt             @relation(fields: [renderAttemptId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  video           Video                     @relation(fields: [videoId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  dub             VideoDub                  @relation(fields: [dubId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  edition         VideoEdition              @relation(fields: [editionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  mux             MuxVideo                  @relation(fields: [muxId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  derivations     StudioCatalogDerivation[]
-  packs           StudioCatalogPack[]
+model ShortRelease {
+  publication            ShortPublication?
+  readiness              ShortReadiness[]
+  calendarAuthorizations ShortScheduleAuthorization[]
+  id                     String                       @id @default(cuid())
+  projectId              String                       @map("project_id") @db.VarChar(128)
+  revision               Int
+  renderAttemptId        String                       @unique @map("render_attempt_id") @db.VarChar(128)
+  idempotencyKey         String                       @map("idempotency_key")
+  requestHash            String                       @map("request_hash")
+  title                  String
+  languageSlug           String                       @map("language_slug")
+  durationMs             Int                          @map("duration_ms")
+  width                  Int
+  height                 Int
+  fps                    Int
+  muxAssetId             String                       @unique @map("mux_asset_id")
+  muxPlaybackId          String                       @unique @map("mux_playback_id")
+  snapshot               Json
+  createdAt              DateTime                     @default(now()) @map("created_at")
+  projectRevision        ShortRevision                @relation(fields: [projectId, revision], references: [projectId, number], onDelete: Restrict, onUpdate: NoAction)
+  attempt                ShortAttempt                 @relation(fields: [renderAttemptId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  derivations            ShortDerivation[]
+  packs                  ShortPack[]
 
   @@unique([projectId, idempotencyKey])
-  @@map("studio_catalog_release")
+  @@map("short_release")
 }
 
-model StudioCatalogDerivation {
-  releaseId        String               @map("release_id")
-  itemId           String               @map("item_id")
-  sourceSnapshotId String               @map("source_snapshot_id")
-  startMs          Int                  @map("start_ms")
-  endMs            Int                  @map("end_ms")
-  startFrame       Int                  @map("start_frame")
-  durationInFrames Int                  @map("duration_in_frames")
-  release          StudioCatalogRelease @relation(fields: [releaseId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  sourceSnapshot   StudioSourceSnapshot @relation(fields: [sourceSnapshotId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+model ShortDerivation {
+  releaseId        String              @map("release_id")
+  itemId           String              @map("item_id")
+  sourceSnapshotId String              @map("source_snapshot_id")
+  startMs          Int                 @map("start_ms")
+  endMs            Int                 @map("end_ms")
+  startFrame       Int                 @map("start_frame")
+  durationInFrames Int                 @map("duration_in_frames")
+  release          ShortRelease        @relation(fields: [releaseId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  sourceSnapshot   ShortSourceSnapshot @relation(fields: [sourceSnapshotId], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   @@id([releaseId, itemId])
-  @@map("studio_catalog_derivation")
+  @@map("short_derivation")
 }
 
-model StudioCatalogPack {
-  releaseId      String               @map("release_id")
-  packRevisionId String               @map("pack_revision_id")
-  release        StudioCatalogRelease @relation(fields: [releaseId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  packRevision   ContentPackRevision  @relation(fields: [packRevisionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+model ShortPack {
+  releaseId      String              @map("release_id")
+  packRevisionId String              @map("pack_revision_id")
+  release        ShortRelease        @relation(fields: [releaseId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  packRevision   ContentPackRevision @relation(fields: [packRevisionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   @@id([releaseId, packRevisionId])
-  @@map("studio_catalog_pack")
+  @@map("short_pack")
 }
 
-model StudioProductionRun {
-  id            String                 @id @default(cuid())
-  attemptId     String?                @unique @map("attempt_id") @db.VarChar(128)
-  attempt       StudioAttempt?         @relation(fields: [attemptId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  experimentId  String?                @unique @map("experiment_id")
-  experiment    StudioExperiment?      @relation(fields: [experimentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+model ShortProductionRun {
+  id            String                @id @default(cuid())
+  attemptId     String?               @unique @map("attempt_id") @db.VarChar(128)
+  attempt       ShortAttempt?         @relation(fields: [attemptId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  experimentId  String?               @unique @map("experiment_id")
+  experiment    ShortExperiment?      @relation(fields: [experimentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   actor         Json
-  maxCostMicros BigInt                 @map("max_cost_micros")
-  state         String                 @default("READY")
-  createdAt     DateTime               @default(now()) @map("created_at")
-  calls         StudioProductionCall[]
+  maxCostMicros BigInt                @map("max_cost_micros")
+  state         String                @default("READY")
+  createdAt     DateTime              @default(now()) @map("created_at")
+  calls         ShortProductionCall[]
 
-  @@map("studio_production_run")
+  @@map("short_production_run")
 }
 
-model StudioProductionCall {
-  runId         String              @map("run_id")
-  run           StudioProductionRun @relation(fields: [runId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+model ShortProductionCall {
+  runId         String             @map("run_id")
+  run           ShortProductionRun @relation(fields: [runId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   key           String
-  inputDigest   String              @map("input_digest") @db.VarChar(64)
-  reserveMicros BigInt              @map("reserve_micros")
-  state         String              @default("RUNNING")
+  inputDigest   String             @map("input_digest") @db.VarChar(64)
+  reserveMicros BigInt             @map("reserve_micros")
+  state         String             @default("RUNNING")
   result        Json?
 
   @@id([runId, key])
-  @@map("studio_production_call")
+  @@map("short_production_call")
 }
 
-model StudioExperimentSelection {
-  id           String                    @id @default(cuid())
-  experimentId String                    @map("experiment_id")
-  experiment   StudioExperiment          @relation(fields: [experimentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  candidateKey String                    @map("candidate_key")
-  candidate    StudioExperimentCandidate @relation(fields: [candidateKey], references: [candidateKey], onDelete: Restrict, onUpdate: NoAction)
-  requestKey   String                    @unique @map("request_key")
-  inputHash    String                    @map("input_hash")
+model ShortExperimentSelection {
+  id           String                   @id @default(cuid())
+  experimentId String                   @map("experiment_id")
+  experiment   ShortExperiment          @relation(fields: [experimentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  candidateKey String                   @map("candidate_key")
+  candidate    ShortExperimentCandidate @relation(fields: [candidateKey], references: [candidateKey], onDelete: Restrict, onUpdate: NoAction)
+  requestKey   String                   @unique @map("request_key")
+  inputHash    String                   @map("input_hash")
   asset        Json
   actor        Json
-  createdAt    DateTime                  @default(now()) @map("created_at")
+  createdAt    DateTime                 @default(now()) @map("created_at")
 
   @@index([experimentId, createdAt])
-  @@map("studio_experiment_selection")
+  @@map("short_experiment_selection")
 }
 
-model StudioRenderJob {
-  leases         StudioRenderLease[]
-  executions     StudioRenderExecution[]
-  attemptId      String                  @id @map("attempt_id") @db.VarChar(128)
-  attempt        StudioAttempt           @relation(fields: [attemptId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+model ShortRenderJob {
+  leases         ShortRenderLease[]
+  executions     ShortRenderExecution[]
+  attemptId      String                 @id @map("attempt_id") @db.VarChar(128)
+  attempt        ShortAttempt           @relation(fields: [attemptId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   snapshot       Json
-  state          String                  @default("QUEUED")
-  generation     Int                     @default(0)
-  leaseId        String?                 @map("lease_id")
-  leaseExpiresAt DateTime?               @map("lease_expires_at")
-  createdAt      DateTime                @default(now()) @map("created_at")
-  updatedAt      DateTime                @default(now()) @updatedAt @map("updated_at")
+  state          String                 @default("QUEUED")
+  generation     Int                    @default(0)
+  leaseId        String?                @map("lease_id")
+  leaseExpiresAt DateTime?              @map("lease_expires_at")
+  createdAt      DateTime               @default(now()) @map("created_at")
+  updatedAt      DateTime               @default(now()) @updatedAt @map("updated_at")
 
-  @@map("studio_render_job")
+  @@map("short_render_job")
 }
 
-model StudioRenderExecution {
-  readiness   StudioCatalogReadiness[]
-  lease       StudioRenderLease        @relation(fields: [attemptId, leaseId], references: [attemptId, leaseId], onDelete: Restrict, onUpdate: NoAction)
-  attemptId   String                   @map("attempt_id") @db.VarChar(128)
-  leaseId     String                   @map("lease_id")
-  job         StudioRenderJob          @relation(fields: [attemptId], references: [attemptId], onDelete: Restrict, onUpdate: NoAction)
-  requestHash String                   @map("request_hash") @db.VarChar(64)
+model ShortRenderExecution {
+  readiness   ShortReadiness[]
+  lease       ShortRenderLease @relation(fields: [attemptId, leaseId], references: [attemptId, leaseId], onDelete: Restrict, onUpdate: NoAction)
+  attemptId   String           @map("attempt_id") @db.VarChar(128)
+  leaseId     String           @map("lease_id")
+  job         ShortRenderJob   @relation(fields: [attemptId], references: [attemptId], onDelete: Restrict, onUpdate: NoAction)
+  requestHash String           @map("request_hash") @db.VarChar(64)
   status      String
   result      Json
   admitted    Boolean
-  createdAt   DateTime                 @default(now()) @map("created_at")
+  createdAt   DateTime         @default(now()) @map("created_at")
 
   @@id([attemptId, leaseId])
-  @@map("studio_render_execution")
+  @@map("short_render_execution")
 }
 
-model StudioRenderLease {
-  retainedAssets StudioRenderRetainedAsset[]
-  attemptId      String                      @map("attempt_id") @db.VarChar(128)
-  leaseId        String                      @map("lease_id")
-  job            StudioRenderJob             @relation(fields: [attemptId], references: [attemptId], onDelete: Restrict, onUpdate: NoAction)
+model ShortRenderLease {
+  retainedAssets ShortRenderRetainedAsset[]
+  attemptId      String                     @map("attempt_id") @db.VarChar(128)
+  leaseId        String                     @map("lease_id")
+  job            ShortRenderJob             @relation(fields: [attemptId], references: [attemptId], onDelete: Restrict, onUpdate: NoAction)
   generation     Int
-  expiresAt      DateTime                    @map("expires_at")
-  createdAt      DateTime                    @default(now()) @map("created_at")
-  execution      StudioRenderExecution?
-  poolId         String?                     @map("pool_id") @db.VarChar(128)
-  workerId       String?                     @map("worker_id") @db.VarChar(128)
-  dispatchId     String?                     @unique @map("dispatch_id") @db.Uuid
+  expiresAt      DateTime                   @map("expires_at")
+  createdAt      DateTime                   @default(now()) @map("created_at")
+  execution      ShortRenderExecution?
+  poolId         String?                    @map("pool_id") @db.VarChar(128)
+  workerId       String?                    @map("worker_id") @db.VarChar(128)
+  dispatchId     String?                    @unique @map("dispatch_id") @db.Uuid
 
   @@id([attemptId, leaseId])
   @@unique([attemptId, generation])
   @@index([poolId, workerId, expiresAt])
-  @@map("studio_render_lease")
+  @@map("short_render_lease")
 }
 
-model StudioCatalogReadiness {
-  id           String                @id @default(cuid())
-  sequence     BigInt                @unique @default(autoincrement())
-  releaseId    String                @map("release_id")
-  release      StudioCatalogRelease  @relation(fields: [releaseId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  attemptId    String                @map("attempt_id") @db.VarChar(128)
-  leaseId      String                @map("lease_id")
-  execution    StudioRenderExecution @relation(fields: [attemptId, leaseId], references: [attemptId, leaseId], onDelete: Restrict, onUpdate: NoAction)
+model ShortReadiness {
+  id           String               @id @default(cuid())
+  sequence     BigInt               @unique @default(autoincrement())
+  releaseId    String               @map("release_id")
+  release      ShortRelease         @relation(fields: [releaseId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  attemptId    String               @map("attempt_id") @db.VarChar(128)
+  leaseId      String               @map("lease_id")
+  execution    ShortRenderExecution @relation(fields: [attemptId, leaseId], references: [attemptId, leaseId], onDelete: Restrict, onUpdate: NoAction)
   proof        Json
-  requestHash  String                @map("request_hash")
-  checkedAt    DateTime              @map("checked_at")
-  expiresAt    DateTime              @map("expires_at")
-  publications StudioPublication[]
+  requestHash  String               @map("request_hash")
+  checkedAt    DateTime             @map("checked_at")
+  expiresAt    DateTime             @map("expires_at")
+  publications ShortPublication[]
 
-  @@index([releaseId, sequence(sort: Desc)], map: "studio_catalog_readiness_latest")
-  @@map("studio_catalog_readiness")
+  @@index([releaseId, sequence(sort: Desc)], map: "short_catalog_readiness_latest")
+  @@map("short_readiness")
 }
 
-model StudioPublication {
-  releaseId       String                 @id @map("release_id")
-  release         StudioCatalogRelease   @relation(fields: [releaseId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  projectId       String                 @unique @map("project_id") @db.VarChar(128)
-  project         StudioProject          @relation(fields: [projectId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  approvalId      String                 @map("approval_id") @db.VarChar(128)
-  approval        StudioApproval         @relation(fields: [approvalId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  readinessId     String                 @map("readiness_id")
-  readiness       StudioCatalogReadiness @relation(fields: [readinessId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  publishedAt     DateTime               @map("published_at")
-  revokedAt       DateTime?              @map("revoked_at")
-  watchDeliveries StudioWatchDelivery[]
+model ShortPublication {
+  releaseId   String         @id @map("release_id")
+  release     ShortRelease   @relation(fields: [releaseId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  projectId   String         @unique @map("project_id") @db.VarChar(128)
+  project     Short          @relation(fields: [projectId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  approvalId  String         @map("approval_id") @db.VarChar(128)
+  approval    ShortApproval  @relation(fields: [approvalId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  readinessId String         @map("readiness_id")
+  readiness   ShortReadiness @relation(fields: [readinessId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  publishedAt DateTime       @map("published_at")
+  revokedAt   DateTime?      @map("revoked_at")
 
-  @@map("studio_publication")
+  @@map("short_publication")
 }
 
-model StudioRenderRetainedAsset {
-  attemptId      String             @map("attempt_id") @db.VarChar(128)
-  leaseId        String             @map("lease_id")
-  assetVersionId String             @map("asset_version_id")
-  lease          StudioRenderLease  @relation(fields: [attemptId, leaseId], references: [attemptId, leaseId], onDelete: Restrict, onUpdate: NoAction)
-  assetVersion   StudioAssetVersion @relation(fields: [assetVersionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  createdAt      DateTime           @default(now()) @map("created_at")
+model ShortRenderRetainedAsset {
+  attemptId      String            @map("attempt_id") @db.VarChar(128)
+  leaseId        String            @map("lease_id")
+  assetVersionId String            @map("asset_version_id")
+  lease          ShortRenderLease  @relation(fields: [attemptId, leaseId], references: [attemptId, leaseId], onDelete: Restrict, onUpdate: NoAction)
+  assetVersion   ShortAssetVersion @relation(fields: [assetVersionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  createdAt      DateTime          @default(now()) @map("created_at")
 
   @@id([attemptId, leaseId, assetVersionId])
-  @@map("studio_render_retained_asset")
+  @@map("short_render_retained_asset")
 }
 
-model StudioMuxJob {
-  id         String        @id @default(cuid())
-  attemptId  String        @unique @map("attempt_id") @db.VarChar(128)
-  attempt    StudioAttempt @relation(fields: [attemptId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+model ShortMuxJob {
+  id         String       @id @default(cuid())
+  attemptId  String       @unique @map("attempt_id") @db.VarChar(128)
+  attempt    ShortAttempt @relation(fields: [attemptId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   snapshot   Json
-  state      String        @default("PENDING")
-  dispatchId String?       @unique @map("dispatch_id")
-  assetId    String?       @unique @map("asset_id")
+  state      String       @default("PENDING")
+  dispatchId String?      @unique @map("dispatch_id")
+  assetId    String?      @unique @map("asset_id")
   readiness  Json?
-  createdAt  DateTime      @default(now()) @map("created_at")
-  updatedAt  DateTime      @default(now()) @updatedAt @map("updated_at")
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @default(now()) @updatedAt @map("updated_at")
 
-  @@map("studio_mux_job")
+  @@map("short_mux_job")
 }
 
-model StudioWatchDelivery {
-  releaseId   String            @map("release_id")
-  publication StudioPublication @relation(fields: [releaseId], references: [releaseId], onDelete: Restrict, onUpdate: NoAction)
-  phase       String
-  deliveredAt DateTime          @default(dbgenerated("clock_timestamp()")) @map("delivered_at") @db.Timestamptz(6)
-
-  @@id([releaseId, phase])
-  @@map("studio_watch_delivery")
-}
-
-model StudioCalendar {
-  id String @id @db.VarChar(128)
-  version Int
+model ShortCalendar {
+  id       String                 @id @db.VarChar(128)
+  version  Int
   settings Json
-  slots StudioPlanSlot[]
-  weeks StudioPlanWeek[]
-  commands StudioCalendarCommand[]
-  runs StudioPlanningRun[]
-  @@map("studio_calendar")
+  slots    ShortPlanSlot[]
+  weeks    ShortPlanWeek[]
+  commands ShortCalendarCommand[]
+  runs     ShortPlanningRun[]
+
+  @@map("short_calendar")
 }
-model StudioPlanSlot {
-  id String @id @db.VarChar(128)
-  calendarId String @map("calendar_id") @db.VarChar(128)
-  calendar StudioCalendar @relation(fields: [calendarId], references: [id], onDelete: Restrict)
-  date String @db.VarChar(10)
-  version Int @default(0)
-  title String @default("") @db.VarChar(300)
-  theme String @default("")
-  manual Boolean @default(false)
-  packRevisionId String? @map("pack_revision_id")
-  packRevision ContentPackRevision? @relation(fields: [packRevisionId], references: [id], onDelete: Restrict)
-  projectId String? @map("project_id") @db.VarChar(128)
-  project StudioProject? @relation(fields: [projectId], references: [id], onDelete: Restrict)
-  provenance Json?
-  authorizations StudioScheduleAuthorization[]
+
+model ShortPlanSlot {
+  id             String                       @id @db.VarChar(128)
+  calendarId     String                       @map("calendar_id") @db.VarChar(128)
+  calendar       ShortCalendar                @relation(fields: [calendarId], references: [id], onDelete: Restrict)
+  date           String                       @db.VarChar(10)
+  version        Int                          @default(0)
+  title          String                       @default("") @db.VarChar(300)
+  theme          String                       @default("")
+  manual         Boolean                      @default(false)
+  packRevisionId String?                      @map("pack_revision_id")
+  packRevision   ContentPackRevision?         @relation(fields: [packRevisionId], references: [id], onDelete: Restrict)
+  projectId      String?                      @map("project_id") @db.VarChar(128)
+  project        Short?                       @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  provenance     Json?
+  authorizations ShortScheduleAuthorization[]
+
   @@unique([calendarId, date])
   @@index([projectId])
-  @@map("studio_plan_slot")
-}
-model StudioPlanWeek {
-  calendarId String @map("calendar_id") @db.VarChar(128)
-  calendar StudioCalendar @relation(fields: [calendarId], references: [id], onDelete: Restrict)
-  startDate String @map("start_date") @db.VarChar(10)
-  packRevisionId String? @map("pack_revision_id")
-  packRevision ContentPackRevision? @relation(fields: [packRevisionId], references: [id], onDelete: Restrict)
-  theme String
-  provenance Json?
-  @@id([calendarId, startDate])
-  @@map("studio_plan_week")
-}
-model StudioCalendarCommand {
-  calendarId String @map("calendar_id") @db.VarChar(128)
-  calendar StudioCalendar @relation(fields: [calendarId], references: [id], onDelete: Restrict)
-  key String @db.VarChar(128)
-  inputHash String @map("input_hash") @db.VarChar(64)
-  result Json
-  @@id([calendarId,key])
-  @@map("studio_calendar_command")
-}
-model StudioPlanningRun {
-  actor Json?
-  id String @id @db.VarChar(128)
-  calendarId String @map("calendar_id") @db.VarChar(128)
-  calendar StudioCalendar @relation(fields: [calendarId], references: [id], onDelete: Restrict)
-  occurrence String @db.VarChar(128)
-  version Int
-  input Json
-  result Json?
-  status String @default("RUNNING") @db.VarChar(32)
-  createdAt DateTime @default(now()) @map("created_at")
-  finishedAt DateTime? @map("finished_at")
-  @@unique([calendarId, occurrence])
-  @@map("studio_planning_run")
-}
-model StudioScheduleAuthorization {
-  dispatch StudioScheduleDispatch?
-  id String @id @db.VarChar(128)
-  slotId String @map("slot_id") @db.VarChar(128)
-  slot StudioPlanSlot @relation(fields: [slotId], references: [id], onDelete: Restrict)
-  version Int
-  projectId String @map("project_id") @db.VarChar(128)
-  revision Int
-  projectRevision StudioProjectRevision @relation(fields: [projectId,revision], references: [projectId,number], onDelete: Restrict)
-  approvalId String @map("approval_id") @db.VarChar(128)
-  approval StudioApproval @relation(fields: [approvalId], references: [id], onDelete: Restrict)
-  renderAttemptId String @map("render_attempt_id") @db.VarChar(128)
-  renderAttempt StudioAttempt @relation(fields: [renderAttemptId], references: [id], onDelete: Restrict)
-  releaseId String @map("release_id") @db.VarChar(128)
-  release StudioCatalogRelease @relation(fields: [releaseId], references: [id], onDelete: Restrict)
-  operatorId String @map("operator_id")
-  operator User @relation(fields: [operatorId], references: [id], onDelete: Restrict)
-  dueAt DateTime @map("due_at")
-  latestAllowedAt DateTime @map("latest_allowed_at")
-  revokedAt DateTime? @map("revoked_at")
-  consumedAt DateTime? @map("consumed_at")
-  submission Json?
-  outcome String? @db.VarChar(40)
-  @@unique([slotId,version])
-  @@index([dueAt])
-  @@map("studio_schedule_authorization")
+  @@map("short_plan_slot")
 }
 
-model StudioScheduleDispatch {
-  authorizationId String @id @map("authorization_id") @db.VarChar(128)
-  authorization StudioScheduleAuthorization @relation(fields: [authorizationId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  state String @default("PENDING") @db.VarChar(16)
-  attempts Int @default(0)
-  leaseId String? @map("lease_id") @db.Uuid
-  leaseExpiresAt DateTime? @map("lease_expires_at") @db.Timestamptz(6)
-  nextAttemptAt DateTime @default(now()) @map("next_attempt_at") @db.Timestamptz(6)
-  lastError String? @map("last_error") @db.VarChar(80)
-  @@map("studio_schedule_dispatch")
+model ShortPlanWeek {
+  calendarId     String               @map("calendar_id") @db.VarChar(128)
+  calendar       ShortCalendar        @relation(fields: [calendarId], references: [id], onDelete: Restrict)
+  startDate      String               @map("start_date") @db.VarChar(10)
+  packRevisionId String?              @map("pack_revision_id")
+  packRevision   ContentPackRevision? @relation(fields: [packRevisionId], references: [id], onDelete: Restrict)
+  theme          String
+  provenance     Json?
+
+  @@id([calendarId, startDate])
+  @@map("short_plan_week")
+}
+
+model ShortCalendarCommand {
+  calendarId String        @map("calendar_id") @db.VarChar(128)
+  calendar   ShortCalendar @relation(fields: [calendarId], references: [id], onDelete: Restrict)
+  key        String        @db.VarChar(128)
+  inputHash  String        @map("input_hash") @db.VarChar(64)
+  result     Json
+
+  @@id([calendarId, key])
+  @@map("short_calendar_command")
+}
+
+model ShortPlanningRun {
+  actor      Json?
+  id         String        @id @db.VarChar(128)
+  calendarId String        @map("calendar_id") @db.VarChar(128)
+  calendar   ShortCalendar @relation(fields: [calendarId], references: [id], onDelete: Restrict)
+  occurrence String        @db.VarChar(128)
+  version    Int
+  input      Json
+  result     Json?
+  status     String        @default("RUNNING") @db.VarChar(32)
+  createdAt  DateTime      @default(now()) @map("created_at")
+  finishedAt DateTime?     @map("finished_at")
+
+  @@unique([calendarId, occurrence])
+  @@map("short_planning_run")
+}
+
+model ShortScheduleAuthorization {
+  dispatch        ShortScheduleDispatch?
+  id              String                 @id @db.VarChar(128)
+  slotId          String                 @map("slot_id") @db.VarChar(128)
+  slot            ShortPlanSlot          @relation(fields: [slotId], references: [id], onDelete: Restrict)
+  version         Int
+  projectId       String                 @map("project_id") @db.VarChar(128)
+  revision        Int
+  projectRevision ShortRevision          @relation(fields: [projectId, revision], references: [projectId, number], onDelete: Restrict)
+  approvalId      String                 @map("approval_id") @db.VarChar(128)
+  approval        ShortApproval          @relation(fields: [approvalId], references: [id], onDelete: Restrict)
+  renderAttemptId String                 @map("render_attempt_id") @db.VarChar(128)
+  renderAttempt   ShortAttempt           @relation(fields: [renderAttemptId], references: [id], onDelete: Restrict)
+  releaseId       String                 @map("release_id") @db.VarChar(128)
+  release         ShortRelease           @relation(fields: [releaseId], references: [id], onDelete: Restrict)
+  operatorId      String                 @map("operator_id")
+  operator        User                   @relation(fields: [operatorId], references: [id], onDelete: Restrict)
+  dueAt           DateTime               @map("due_at")
+  latestAllowedAt DateTime               @map("latest_allowed_at")
+  revokedAt       DateTime?              @map("revoked_at")
+  consumedAt      DateTime?              @map("consumed_at")
+  submission      Json?
+  outcome         String?                @db.VarChar(40)
+
+  @@unique([slotId, version])
+  @@index([dueAt])
+  @@map("short_schedule_authorization")
+}
+
+model ShortScheduleDispatch {
+  authorizationId String                     @id @map("authorization_id") @db.VarChar(128)
+  authorization   ShortScheduleAuthorization @relation(fields: [authorizationId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  state           String                     @default("PENDING") @db.VarChar(16)
+  attempts        Int                        @default(0)
+  leaseId         String?                    @map("lease_id") @db.Uuid
+  leaseExpiresAt  DateTime?                  @map("lease_expires_at") @db.Timestamptz(6)
+  nextAttemptAt   DateTime                   @default(now()) @map("next_attempt_at") @db.Timestamptz(6)
+  lastError       String?                    @map("last_error") @db.VarChar(80)
+
+  @@map("short_schedule_dispatch")
 }

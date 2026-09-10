@@ -1,5 +1,3 @@
-import { Prisma } from "@prisma/client"
-import { studioPublicReleaseSql } from "@/services/search-watchability"
 import type { PrismaClient } from "@prisma/client"
 import type { SceneRecommendation } from "@/services/scene-recommendations.service"
 import { VideoNotFoundError } from "@/services/scene-recommendations.service"
@@ -181,7 +179,6 @@ export async function getSemanticDeliveryCandidatePool(
         ON v.id = vt.video_id
         AND v.deleted_at IS NULL
         AND NOT ('watch' = ANY(v.restrict_view_platforms))
-        AND ${studioPublicReleaseSql(Prisma.sql`v.id`)}
       JOIN LATERAL (
         SELECT vl_display.title
         FROM video_locale vl_display

@@ -131,7 +131,7 @@ export async function selectAdminVideos(
   prisma: PrismaClient,
   args: BackfillVideoLocalizedMetadataArgs,
 ): Promise<AdminVideoTarget[]> {
-  const rows = await prisma.video.findMany({
+  return prisma.video.findMany({
     where: {
       source: "CORE",
       deletedAt: null,
@@ -154,9 +154,6 @@ export async function selectAdminVideos(
     orderBy: { updatedAt: "desc" },
     take: args.fullCatalog ? undefined : (args.limit ?? 1),
   })
-  return rows.flatMap((row) =>
-    row.coreId == null ? [] : [{ ...row, coreId: row.coreId }],
-  )
 }
 
 async function fetchCoreLocalizedMetadata(

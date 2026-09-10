@@ -74,7 +74,7 @@ export class StudioExecutionService {
     return this.db.$transaction(async (tx) => {
       const key = input.attemptId ?? input.experimentId!
       await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key},458))::text`
-      const prior = await tx.studioProductionRun.findFirst({
+      const prior = await tx.shortProductionRun.findFirst({
         where: input.attemptId
           ? { attemptId: input.attemptId }
           : { experimentId: input.experimentId },
@@ -89,7 +89,7 @@ export class StudioExecutionService {
       }
       assertStudioProductionEnabled()
       if (input.attemptId) {
-        const attempt = await tx.studioAttempt.findUniqueOrThrow({
+        const attempt = await tx.shortAttempt.findUniqueOrThrow({
           where: { id: input.attemptId },
         })
         if (
@@ -99,7 +99,7 @@ export class StudioExecutionService {
           throw new StudioCommandError("INVALID")
         const project = await lockProject(tx, attempt.projectId)
         assertEditable(project, attempt.baseRevision)
-        const revision = await tx.studioProjectRevision.findUniqueOrThrow({
+        const revision = await tx.shortRevision.findUniqueOrThrow({
           where: {
             projectId_number: {
               projectId: project.id,
@@ -108,7 +108,7 @@ export class StudioExecutionService {
           },
         })
         if (
-          !(await tx.studioApproval.findFirst({
+          !(await tx.shortApproval.findFirst({
             where: {
               projectId: project.id,
               kind: "SCRIPT",
@@ -120,7 +120,7 @@ export class StudioExecutionService {
         )
           throw new StudioCommandError("APPROVAL_REQUIRED")
       } else {
-        const experiment = await tx.studioExperiment.findUniqueOrThrow({
+        const experiment = await tx.shortExperiment.findUniqueOrThrow({
           where: { id: input.experimentId },
         })
         const request = z
@@ -132,7 +132,7 @@ export class StudioExecutionService {
         )
           throw new ForbiddenError()
       }
-      const row = await tx.studioProductionRun.create({
+      const row = await tx.shortProductionRun.create({
         data: { ...input, actor, maxCostMicros: BigInt(input.maxCostMicros) },
       })
       return { ...row, maxCostMicros: Number(row.maxCostMicros) }
@@ -143,18 +143,18 @@ export class StudioExecutionService {
       throw new ForbiddenError("Trusted execution required")
     const input = claimSchema.parse(raw)
     return this.db.$transaction(async (tx) => {
-      const context = await tx.studioProductionRun.findUniqueOrThrow({
+      const context = await tx.shortProductionRun.findUniqueOrThrow({
         where: { id: input.runId },
       })
       const attempt = context.attemptId
-        ? await tx.studioAttempt.findUniqueOrThrow({
+        ? await tx.shortAttempt.findUniqueOrThrow({
             where: { id: context.attemptId },
             select: { id: true, projectId: true, baseRevision: true },
           })
         : null
       const project = attempt ? await lockProject(tx, attempt.projectId) : null
-      await tx.$queryRaw`SELECT id FROM studio_production_run WHERE id=${input.runId} FOR UPDATE`
-      const run = await tx.studioProductionRun.findUniqueOrThrow({
+      await tx.$queryRaw`SELECT id FROM short_production_run WHERE id=${input.runId} FOR UPDATE`
+      const run = await tx.shortProductionRun.findUniqueOrThrow({
         where: { id: input.runId },
         include: { calls: true },
       })
@@ -173,7 +173,7 @@ export class StudioExecutionService {
       assertStudioProductionEnabled()
       if (attempt && project) {
         assertEditable(project, attempt.baseRevision)
-        const currentAttempt = await tx.studioAttempt.findUniqueOrThrow({
+        const currentAttempt = await tx.shortAttempt.findUniqueOrThrow({
           where: { id: attempt.id },
         })
         if (!["QUEUED", "RUNNING"].includes(currentAttempt.status))
@@ -186,7 +186,7 @@ export class StudioExecutionService {
         run.calls.length >= 1000
       )
         throw new StudioExecutionError("BUDGET_EXCEEDED")
-      const call = await tx.studioProductionCall.create({
+      const call = await tx.shortProductionCall.create({
         data: { ...input, reserveMicros: BigInt(input.reserveMicros) },
       })
       return {
@@ -207,8 +207,8 @@ export class StudioExecutionService {
       .strict()
       .parse(raw)
     return this.db.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT id FROM studio_production_run WHERE id=${input.runId} FOR UPDATE`
-      const call = await tx.studioProductionCall.findUniqueOrThrow({
+      await tx.$queryRaw`SELECT id FROM short_production_run WHERE id=${input.runId} FOR UPDATE`
+      const call = await tx.shortProductionCall.findUniqueOrThrow({
         where: { runId_key: { runId: input.runId, key: input.key } },
       })
       if (call.state !== "RUNNING") {
@@ -218,7 +218,7 @@ export class StudioExecutionService {
         )
           throw new StudioExecutionError("CONFLICT")
       } else
-        await tx.studioProductionCall.update({
+        await tx.shortProductionCall.update({
           where: { runId_key: { runId: input.runId, key: input.key } },
           data: { state: input.state, result: input.result },
         })
@@ -228,7 +228,7 @@ export class StudioExecutionService {
   async list(user: Principal | null, raw: unknown) {
     studioActor(user)
     const input = studioProductionListSchema.parse(raw)
-    const runs = await this.db.studioProductionRun.findMany({
+    const runs = await this.db.shortProductionRun.findMany({
       where: {
         ...(input.projectId ? { attempt: { projectId: input.projectId } } : {}),
         ...(input.kind === "experiment"
@@ -275,7 +275,7 @@ export class StudioExecutionService {
   }
   async read(user: Principal | null, id: string, after?: string) {
     studioActor(user)
-    const run = await this.db.studioProductionRun.findUnique({
+    const run = await this.db.shortProductionRun.findUnique({
       where: { id: studioIdSchema.parse(id) },
       include: {
         attempt: {
@@ -302,7 +302,7 @@ export class StudioExecutionService {
         run.attempt.result,
       ).timingConflictIndices
       if (indices?.length) {
-        const revision = await this.db.studioProjectRevision.findUniqueOrThrow({
+        const revision = await this.db.shortRevision.findUniqueOrThrow({
           where: {
             projectId_number: {
               projectId: run.attempt.projectId,
@@ -326,7 +326,7 @@ export class StudioExecutionService {
   }
   async cancel(user: Principal | null, id: string) {
     if (!canReviewStudio(user)) throw new ForbiddenError()
-    await this.db.studioProductionRun.updateMany({
+    await this.db.shortProductionRun.updateMany({
       where: { id: studioIdSchema.parse(id), state: "READY" },
       data: { state: "CANCELLED" },
     })

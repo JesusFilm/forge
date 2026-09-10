@@ -35,9 +35,8 @@ export async function assertStudioPublicationEligibility(
     project.currentRevision !== input.expectedRevision
   )
     throw new StudioCommandError("STALE_BINDING")
-  const release = await tx.studioCatalogRelease.findUnique({
+  const release = await tx.shortRelease.findUnique({
     where: { id: input.releaseId },
-    include: { mux: true, dub: true },
   })
   if (
     !release ||
@@ -46,7 +45,7 @@ export async function assertStudioPublicationEligibility(
     release.renderAttemptId !== input.renderAttemptId
   )
     throw new StudioCommandError("STALE_BINDING")
-  const revision = await tx.studioProjectRevision.findUniqueOrThrow({
+  const revision = await tx.shortRevision.findUniqueOrThrow({
     where: {
       projectId_number: {
         projectId: project.id,
@@ -55,7 +54,7 @@ export async function assertStudioPublicationEligibility(
     },
   })
   const document = studioDocumentSchema.parse(revision.document)
-  const approval = await tx.studioApproval.findUnique({
+  const approval = await tx.shortApproval.findUnique({
     where: { id: input.approvalId },
   })
   if (
@@ -120,7 +119,7 @@ export class StudioPublicationReadinessResolver {
           input,
           actor.kind === "human" ? actor.id : undefined,
         )
-        const row = await tx.studioCatalogReadiness.findFirst({
+        const row = await tx.shortReadiness.findFirst({
           where: { releaseId: input.releaseId },
           orderBy: { sequence: "desc" },
         })

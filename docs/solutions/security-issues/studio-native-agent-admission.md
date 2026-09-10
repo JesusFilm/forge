@@ -76,7 +76,7 @@ attempt, the trusted Manager adapter binds its ID into a signed admission. Run
 rejects unbound or altered identities, reconstructs only pinned native versions,
 and verifies their exact effective digest before any provider call.
 
-Migration `apps/mastra/migrations/004-studio-agent-execution.sql` contains only
+Migration `apps/mastra/migrations/004-shorts-agent-execution.sql` contains only
 execution metadata. Its primary key matches Admin's varchar(128) attempt IDs;
 Admin uses cuid values, not UUIDs. Atomic insert claims an execution once across
 replicas. A completed or failed claim cannot run again. A process crash can leave

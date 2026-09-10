@@ -29,19 +29,6 @@ function makeCard(overrides: Partial<WatchHomeCard> = {}): WatchHomeCard {
 }
 
 describe("cardToCarouselSlide posters", () => {
-  it("keeps signed Studio hero posters behind the revocable gateway", () => {
-    const slide = cardToCarouselSlide(
-      makeCard({
-        coreId: null,
-        hls: "https://admin.test/api/studio/playback/release/index.m3u8",
-        playbackId: "signed-studio-playback",
-        imageUrl: "https://admin.test/api/studio/playback/release/poster.webp",
-      }),
-    )
-    expect(slide?.posterUrl).toBe(
-      "https://admin.test/api/studio/playback/release/poster.webp",
-    )
-  })
   it("posters the full-bleed intro from the Mux frame, and the card from the authored image", () => {
     // The admin library stores mobile derivatives for these videos — the
     // `mobileCinematicHigh` above measured 640x300, which the full-bleed intro

@@ -494,7 +494,7 @@ class FixtureError extends Error {}
       revision: 2,
     })
     const beforeRead = await commands.read(human, projectId)
-    const attemptBefore = await db.studioAttempt.findUniqueOrThrow({
+    const attemptBefore = await db.shortAttempt.findUniqueOrThrow({
       where: { id: attempt.attemptId },
     })
     const manifest = studioAttemptResultSchema.parse(
@@ -519,7 +519,7 @@ class FixtureError extends Error {}
     )
     expect(await commands.read(human, projectId)).toEqual(beforeRead)
     expect(
-      await db.studioAttempt.findUniqueOrThrow({
+      await db.shortAttempt.findUniqueOrThrow({
         where: { id: attempt.attemptId },
       }),
     ).toEqual(attemptBefore)
@@ -1019,7 +1019,7 @@ class FixtureError extends Error {}
       ),
     ).toHaveLength(0)
     expect(
-      await db.studioAssetVersion.findUnique({
+      await db.shortAssetVersion.findUnique({
         where: { id: audio.reference.versionId },
       }),
     ).not.toBeNull()

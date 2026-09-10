@@ -100,7 +100,7 @@ export const studioAssetVersionSchema = z.object({
   voice: studioVoicePresetSchema.nullable(),
   actor: studioActorSchema,
 })
-export type StudioAssetVersion = z.infer<typeof studioAssetVersionSchema>
+export type ShortAssetVersion = z.infer<typeof studioAssetVersionSchema>
 
 export const STUDIO_MAX_ASSET_BYTES = 256 * 1024 * 1024
 export const studioAssetUploadSchema = z
