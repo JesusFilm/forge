@@ -34,6 +34,13 @@ class HostedWorkflow(unittest.TestCase):
         self.assertIn('ci.py publish', body)
         self.assertIn('github.sha', body)
 
+    def test_dockerfile_uses_the_supplied_codec_context(self):
+        dockerfile = (ROOT / 'apps/studio-render/Dockerfile').read_text()
+        build = (ROOT / 'apps/studio-render/ops/release/ci.py').read_text()
+        self.assertIn("'--build-context', 'short_codec='", build)
+        self.assertIn('COPY --from=short_codec /codec.tar.xz', dockerfile)
+        self.assertNotIn('--from=studio_codec', dockerfile)
+
     def test_actions_are_pinned_and_checkout_does_not_persist_credentials(self):
         for job in self.workflow['jobs'].values():
             for step in job['steps']:
