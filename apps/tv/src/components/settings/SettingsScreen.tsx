@@ -30,6 +30,8 @@ export function SettingsScreen() {
   const router = useRouter()
   const { prefs, hydrated, setAutoStart } = useShowcasePrefs()
   const {
+    androidPlayerVariant,
+    setAndroidPlayerVariant,
     nativePlayerVariant,
     setNativePlayerVariant,
     hydrated: watchPreferencesHydrated,
@@ -105,6 +107,28 @@ export function SettingsScreen() {
         />
       </View>
 
+      {Platform.OS === "android" ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionHeading}>Video player</Text>
+          <Text style={styles.sectionNote}>
+            The Android native player is the default. Turn on this option to use
+            the React Native player instead.
+          </Text>
+          <SettingsRow
+            testID="settings-native-android-player-row"
+            icon="tv-outline"
+            label="Use React Native player"
+            checked={androidPlayerVariant === "existing"}
+            disabled={!watchPreferencesHydrated}
+            onPress={() =>
+              setAndroidPlayerVariant(
+                androidPlayerVariant === "native" ? "existing" : "native",
+              )
+            }
+            onFocusNode={captureFocusedNode}
+          />
+        </View>
+      ) : null}
       {Platform.OS === "ios" ? (
         <View style={styles.section}>
           <Text style={styles.sectionHeading}>Player Experiment</Text>

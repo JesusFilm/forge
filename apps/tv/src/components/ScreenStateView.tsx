@@ -10,7 +10,7 @@ import { WATCH_THEME } from "./watch/watchDetailTheme"
 
 type ScreenStateViewProps = {
   kind: "loading" | "error" | "empty"
-  /** Headline for error/empty (e.g. "Something went wrong"). */
+  /** Optional headline for the current screen state. */
   message?: string
   /** Secondary error line (e.g. the retryable error message). */
   detail?: string | null
@@ -38,7 +38,19 @@ export function ScreenStateView({
   return (
     <View style={styles.centered}>
       {kind === "loading" ? (
-        <ActivityIndicator size="large" color={accent} />
+        <>
+          <ActivityIndicator
+            size="large"
+            color={accent}
+            accessibilityLabel={message ?? "Loading"}
+          />
+          {message != null ? (
+            <Text style={styles.message} accessibilityLiveRegion="polite">
+              {message}
+            </Text>
+          ) : null}
+          {hint != null ? <Text style={styles.hint}>{hint}</Text> : null}
+        </>
       ) : (
         <>
           {message != null ? (

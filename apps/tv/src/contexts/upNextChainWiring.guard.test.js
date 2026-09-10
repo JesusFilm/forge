@@ -36,7 +36,7 @@ describe("up next chain wiring", () => {
     expect(markAt).toBeGreaterThan(-1)
     expect(dismissAt).toBeGreaterThan(markAt)
     expect(replaceAt).toBeGreaterThan(dismissAt)
-    expect(src.match(/onPlayNext=\{handlePlayNext\}/g)).toHaveLength(2)
+    expect(src.match(/onPlayNext=\{handlePlayNext\}/g)).toHaveLength(3)
   })
 
   it("pass-through pop-back consumes the chain mark before router.back()", () => {

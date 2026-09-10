@@ -24,6 +24,9 @@ import {
  */
 type WatchPreferencesContextValue = WatchPreferences & {
   setAudioLanguageSlug: (slug: string | null) => void
+  setAndroidPlayerVariant: (
+    variant: WatchPreferences["androidPlayerVariant"],
+  ) => void
   setNativePlayerVariant: (
     variant: WatchPreferences["nativePlayerVariant"],
   ) => void
@@ -51,6 +54,12 @@ export function WatchPreferencesProvider({
     (slug: string | null) => setPref("audioLanguageSlug", slug),
     [setPref],
   )
+  const setAndroidPlayerVariant = useCallback(
+    (variant: WatchPreferences["androidPlayerVariant"]) =>
+      setPref("androidPlayerVariant", variant),
+    [setPref],
+  )
+
   const setNativePlayerVariant = useCallback(
     (variant: WatchPreferences["nativePlayerVariant"]) =>
       setPref("nativePlayerVariant", variant),
@@ -61,10 +70,17 @@ export function WatchPreferencesProvider({
     () => ({
       ...prefs,
       setAudioLanguageSlug,
+      setAndroidPlayerVariant,
       setNativePlayerVariant,
       hydrated,
     }),
-    [prefs, setAudioLanguageSlug, setNativePlayerVariant, hydrated],
+    [
+      prefs,
+      setAudioLanguageSlug,
+      setAndroidPlayerVariant,
+      setNativePlayerVariant,
+      hydrated,
+    ],
   )
 
   return (

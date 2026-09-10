@@ -9,6 +9,8 @@ import { getStorage } from "./safeStorage"
 export type WatchPreferences = {
   /** Preferred dub language slug, or null to use the resolution fallback. */
   audioLanguageSlug: string | null
+  /** Native Android playback by default, with an explicit React Native fallback. */
+  androidPlayerVariant: "existing" | "native"
   /** The existing player remains default; Native A and B are explicit experiments. */
   nativePlayerVariant: "existing" | "native-a" | "native-b"
 }
@@ -19,6 +21,7 @@ export const WATCH_PREFERENCES_STORAGE_KEY = "tv.watchPreferences.v1"
 
 export const DEFAULT_WATCH_PREFERENCES: WatchPreferences = {
   audioLanguageSlug: null,
+  androidPlayerVariant: "native",
   nativePlayerVariant: "existing",
 } as const
 
@@ -62,6 +65,8 @@ export function parseStoredPreferences(raw: string | null): WatchPreferences {
         : "existing"
   return {
     audioLanguageSlug: normalizeNonEmptyString(parsed.audioLanguageSlug),
+    androidPlayerVariant:
+      parsed.androidPlayerVariant === "existing" ? "existing" : "native",
     nativePlayerVariant,
   }
 }

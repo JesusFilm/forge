@@ -1,4 +1,5 @@
-import { Component, useCallback, useRef } from "react"
+import { Component, useCallback, useEffect, useRef } from "react"
+import { requireNativeModule } from "expo"
 import { Platform, ScrollView, Text, View } from "react-native"
 import type { ErrorInfo, ReactNode } from "react"
 
@@ -14,8 +15,10 @@ import {
 } from "../src/contexts/WatchSessionProvider"
 import { VideoPlayer } from "../src/components/VideoPlayer"
 import { NativeSwiftPlayer } from "../src/components/NativeSwiftPlayer"
-import { useWatchPreferences } from "../src/contexts/WatchPreferencesProvider"
 import { shouldUseNativeSwiftPlayer } from "../src/components/watch/nativePlayerSelection"
+import { NativeAndroidPlayer } from "../src/components/NativeAndroidPlayer"
+import { useWatchPreferences } from "../src/contexts/WatchPreferencesProvider"
+import { shouldUseNativeAndroidPlayer } from "../src/components/watch/nativeAndroidPlayerSelection"
 import {
   queueMeaningfulWatchEvent,
   type PlaybackSnapshot,
@@ -62,8 +65,11 @@ try {
 /** Renders the full-screen video player overlay when a video is active. */
 function VideoPlayerOverlay() {
   const { state, dismissVideo, markUpNextChain } = useVideoPlayerContext()
-  const { nativePlayerVariant, hydrated: watchPreferencesHydrated } =
-    useWatchPreferences()
+  const {
+    androidPlayerVariant,
+    nativePlayerVariant,
+    hydrated: watchPreferencesHydrated,
+  } = useWatchPreferences()
   // Live dub attribution: the in-player language menu swaps dubs via
   // replaceAsync WITHOUT a new playVideo, so currentIdentity's videoDubId is
   // frozen at Play-press. When the watch session still owns this playback
@@ -176,6 +182,30 @@ function VideoPlayerOverlay() {
     )
   }
 
+  if (
+    shouldUseNativeAndroidPlayer({
+      variant: androidPlayerVariant,
+      hydrated: watchPreferencesHydrated,
+      platform: Platform.OS,
+    })
+  ) {
+    return (
+      <NativeAndroidPlayer
+        streamingUrl={state.currentUrl}
+        videoId={state.currentIdentity?.videoId}
+        title={state.currentTitle ?? undefined}
+        subtitle={state.currentSubtitle ?? undefined}
+        onDismiss={dismissVideo}
+        onMeaningfulPlayback={handleMeaningfulPlayback}
+        meaningfulResetKey={liveDubId}
+        startAtSeconds={state.currentStartAtSeconds}
+        onPlaybackPosition={handlePlaybackPosition}
+        upNextTarget={state.currentUpNext}
+        onPlayNext={handlePlayNext}
+      />
+    )
+  }
+
   return (
     <VideoPlayer
       streamingUrl={state.currentUrl}
@@ -272,6 +302,13 @@ class ErrorBoundary extends Component<
 
 export default function RootLayout() {
   const clientRef = useRef(moduleError == null ? getApolloClient() : null)
+  useEffect(() => {
+    if (Platform.OS !== "android") return
+    const native = requireNativeModule<{
+      hideStartupLoading: () => Promise<void>
+    }>("NativeAndroidPlayer")
+    void native.hideStartupLoading().catch(() => {})
+  }, [])
 
   if (moduleError) {
     return (
