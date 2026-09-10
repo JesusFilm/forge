@@ -41,7 +41,7 @@ WORKDIR /app/apps/studio-render
 RUN node --input-type=module -e "import('@remotion/renderer').then(({ensureBrowser})=>ensureBrowser())"
 # Named context is staged from the retained reviewed archive outside the repo.
 # No provider/build credential enters an image layer. See IMAGE.md for CI supply.
-COPY --from=studio_codec /codec.tar.xz /tmp/codec.tar.xz
+COPY --from=short_codec /codec.tar.xz /tmp/codec.tar.xz
 # Both reviewed archives contain byte-identical codec binaries. Accept no other
 # packaging; verify the extracted executables independently before final copy.
 RUN codec_sha="$(sha256sum /tmp/codec.tar.xz | cut -d ' ' -f 1)" \
