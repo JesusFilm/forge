@@ -117,3 +117,39 @@ test("expired persisted window cannot renew or issue a provider request", async 
     )
     assert.equal(await f.journal.read("mux-outcome.json"), null)
   }))
+test("uploads to the Mux-owned direct upload host", async () =>
+  fixture(async (f) => {
+    f.target.url =
+      "https://direct-uploads-oci-us-phoenix-1-vop1.mux.com/upload?signature=fixture"
+    let calls = 0
+    await uploadVmOutput({
+      ...f,
+      fetcher: async (url, options) => {
+        assert.equal(
+          url.hostname,
+          "direct-uploads-oci-us-phoenix-1-vop1.mux.com",
+        )
+        assert.equal(options.headers.authorization, undefined)
+        return new Response(null, { status: ++calls === 1 ? 308 : 200 })
+      },
+    })
+    assert.equal(calls, 2)
+  }))
+for (const host of [
+  "mux.com.evil.example",
+  "notmux.com",
+  "storage.googleapis.com.evil.example",
+])
+  test(`rejects upload host lookalike ${host}`, async () =>
+    fixture(async (f) => {
+      f.target.url = `https://${host}/upload`
+      await assert.rejects(
+        uploadVmOutput({
+          ...f,
+          fetcher: async () => {
+            throw Error("must not fetch")
+          },
+        }),
+        /Invalid Mux upload destination/,
+      )
+    }))

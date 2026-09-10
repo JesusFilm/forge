@@ -72,7 +72,11 @@ export async function prepareStudioMuxUpload(
     url.password ||
     url.hash ||
     url.port ||
-    url.hostname !== "storage.googleapis.com"
+    !(
+      url.hostname === "storage.googleapis.com" ||
+      url.hostname === "mux.com" ||
+      url.hostname.endsWith(".mux.com")
+    )
   )
     throw new StudioRenderPoolBindingError("Mux upload destination refused")
   // Recheck current revision/control after provider waits, before disclosing URL.

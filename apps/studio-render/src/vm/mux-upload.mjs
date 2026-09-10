@@ -70,7 +70,11 @@ export async function uploadVmOutput({
   const url = new URL(target.url)
   if (
     url.protocol !== "https:" ||
-    url.hostname !== "storage.googleapis.com" ||
+    !(
+      url.hostname === "storage.googleapis.com" ||
+      url.hostname === "mux.com" ||
+      url.hostname.endsWith(".mux.com")
+    ) ||
     url.port ||
     url.username ||
     url.password ||
