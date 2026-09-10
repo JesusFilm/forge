@@ -527,8 +527,7 @@
     "previousVideoPreview": "Preview jong ka video ba shwa",
     "nextVideoPreview": "Preview jong ka video ba bud",
     "mediaCollection": "Ka collection media",
-    "scrollToVideo": "Sklai sha ka video {title}",
-    "forYou": "Recommended for You"
+    "scrollToVideo": "Sklai sha ka video {title}"
   },
   "WatchFooter": {
     "home": "Ka home jong Jesus Film Project",

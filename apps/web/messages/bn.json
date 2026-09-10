@@ -343,8 +343,7 @@
     "nextVideoPreview": "পরের ভিডিওর প্রিভিউ",
     "featured": "বৈশিষ্ট্যপূর্ণ",
     "mediaCollection": "মিডিয়া সংগ্রহ",
-    "scrollToVideo": "{title} ভিডিওতে স্ক্রল করুন",
-    "forYou": "আপনার জন্য"
+    "scrollToVideo": "{title} ভিডিওতে স্ক্রল করুন"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "ভাষাসমূহ",

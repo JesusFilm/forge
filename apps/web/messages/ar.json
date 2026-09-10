@@ -343,8 +343,7 @@
     "nextVideoPreview": "معاينة الفيديو التالي",
     "featured": "مميّز",
     "mediaCollection": "مجموعة وسائط",
-    "scrollToVideo": "انتقل إلى فيديو {title}",
-    "forYou": "موصى به لك"
+    "scrollToVideo": "انتقل إلى فيديو {title}"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "اللغات",

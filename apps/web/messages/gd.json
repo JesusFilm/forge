@@ -527,8 +527,7 @@
     "previousVideoPreview": "Ro-shealladh bhidio roimhe",
     "nextVideoPreview": "Ro-shealladh an ath bhidio",
     "mediaCollection": "Cruinneachadh mheadhanan",
-    "scrollToVideo": "Sgrolaich gu bhidio {title}",
-    "forYou": "Recommended for You"
+    "scrollToVideo": "Sgrolaich gu bhidio {title}"
   },
   "WatchFooter": {
     "home": "Duilleag-dhachaigh Jesus Film Project",

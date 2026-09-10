@@ -536,8 +536,7 @@
     "mediaCollection": "Media collection",
     "scrollToVideo": "Scroll to {title} video",
     "previousVideoPreview": "Previous video preview",
-    "nextVideoPreview": "Next video preview",
-    "forYou": "Recommended for You"
+    "nextVideoPreview": "Next video preview"
   },
   "WatchFooter": {
     "home": "Jesus Film Project home",

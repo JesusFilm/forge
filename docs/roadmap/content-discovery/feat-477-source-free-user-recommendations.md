@@ -33,6 +33,16 @@ cold-process delivery latency: one production-mode local startup request exceede
 the deadline, followed by successful six-card deliveries. The detailed merge
 validation is in `docs/operations/user-recommendations-validation-2026-09-10.md`.
 
+PR #2249 merged and its primary services deployed on 10 September UTC. Production
+monitoring then found sustained Web Redis admission timeouts and image-fetch
+connection failures above the pre-release baseline. A Web-only rollback restores
+`apps/web` and the shared Watch experience selection to `ab801776`, preserving the
+new Admin API, migrations, schema, viewer contracts and curation artifacts.
+The full frontend implementation remains in #2249 and the original preview
+worktree. Reintroduction requires a healthy production observation window and
+investigation of the release-associated runtime delay; its root cause is not yet
+established. See `docs/operations/user-recommendations-rollout-2026-09-10.md`.
+
 ## Entry Points — Read These First
 
 1. `docs/plans/2026-09-10-001-feat-source-free-user-recommendations-plan.md`

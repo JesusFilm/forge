@@ -343,8 +343,7 @@
     "nextVideoPreview": "次の動画のプレビュー",
     "featured": "注目",
     "mediaCollection": "メディアコレクション",
-    "scrollToVideo": "{title}の動画へスクロール",
-    "forYou": "あなたへのおすすめ"
+    "scrollToVideo": "{title}の動画へスクロール"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "言語",

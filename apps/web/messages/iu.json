@@ -527,8 +527,7 @@
     "previousVideoPreview": "Video siulleq takussutissaq",
     "nextVideoPreview": "Video tullinnguuttoq takussutissaq",
     "mediaCollection": "Media katersaq",
-    "scrollToVideo": "{title} video-mut ingerlaaruk",
-    "forYou": "Recommended for You"
+    "scrollToVideo": "{title} video-mut ingerlaaruk"
   },
   "WatchFooter": {
     "home": "Jesus Film Project aallartiffia",

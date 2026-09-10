@@ -527,8 +527,7 @@
     "previousVideoPreview": "Föregående förhandsvisning av video",
     "nextVideoPreview": "Nästa förhandsvisning av video",
     "mediaCollection": "Mediesamling",
-    "scrollToVideo": "Bläddra till videon {title}",
-    "forYou": "För dig"
+    "scrollToVideo": "Bläddra till videon {title}"
   },
   "WatchFooter": {
     "home": "Jesus Film Project startsida",

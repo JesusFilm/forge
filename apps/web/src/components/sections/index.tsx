@@ -29,7 +29,6 @@ import type { CarouselVideo as CarouselVideoType } from "./CarouselVideo"
 import type { NavigationCarousel as NavigationCarouselType } from "./NavigationCarousel"
 import type { LanguageGlobeExperience as LanguageGlobeExperienceType } from "./LanguageGlobeExperience"
 import type { WatchHomeCategoryRailExperience as WatchHomeCategoryRailExperienceType } from "./WatchHomeCategoryRailExperience"
-import type { HomepageRecommendations as HomepageRecommendationsType } from "./HomepageRecommendations"
 const MediaCollection = dynamic(() =>
   import("./MediaCollection").then((m) => ({ default: m.MediaCollection })),
 ) as typeof MediaCollectionType
@@ -95,11 +94,6 @@ const WatchHomeCategoryRailExperience = dynamic(() =>
   })),
 ) as typeof WatchHomeCategoryRailExperienceType
 export type { Section } from "@/lib/content"
-const HomepageRecommendations = dynamic(() =>
-  import("./HomepageRecommendations").then((m) => ({
-    default: m.HomepageRecommendations,
-  })),
-) as typeof HomepageRecommendationsType
 
 /**
  * Set of admin block typenames the renderer dispatch handles, derived
@@ -144,7 +138,6 @@ const ADMIN_BLOCK_TYPENAMES_LIST = [
   "NavigationCarouselBlock",
   "CardBlock",
   "VideoRecommendationsBlock",
-  "HomepageRecommendationsBlock",
   "WatchHomeHeroBlock",
   "WatchHomeCategoryRailBlock",
 ] as const
@@ -333,15 +326,6 @@ function renderAdminBlock(
       // The Watch homepage route renders this placeholder with the static
       // hero model it already resolved. Other routes deliberately ignore it.
       return null
-    case "HomepageRecommendationsBlock":
-      if (!languageSlug) return null
-      return (
-        <HomepageRecommendations
-          data={block as Parameters<typeof HomepageRecommendations>[0]["data"]}
-          locale={locale}
-          languageSlug={languageSlug}
-        />
-      )
     case "WatchHomeCategoryRailBlock":
       if (!languageSlug) return null
       return (

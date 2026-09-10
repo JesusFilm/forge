@@ -527,8 +527,7 @@
     "previousVideoPreview": "Eelmise video eelvaade",
     "nextVideoPreview": "Järgmise video eelvaade",
     "mediaCollection": "Meediakogu",
-    "scrollToVideo": "Keri video {title} juurde",
-    "forYou": "Sulle"
+    "scrollToVideo": "Keri video {title} juurde"
   },
   "WatchFooter": {
     "home": "Jesus Film Projecti avaleht",

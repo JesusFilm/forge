@@ -343,8 +343,7 @@
     "nextVideoPreview": "ตัวอย่างวิดีโอถัดไป",
     "featured": "แนะนำ",
     "mediaCollection": "คอลเลกชันสื่อ",
-    "scrollToVideo": "เลื่อนไปที่วิดีโอ {title}",
-    "forYou": "แนะนำสำหรับคุณ"
+    "scrollToVideo": "เลื่อนไปที่วิดีโอ {title}"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "ภาษา",

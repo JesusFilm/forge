@@ -527,8 +527,7 @@
     "previousVideoPreview": "Onyesho la kukagua video iliyotangulia",
     "nextVideoPreview": "Onyesho la kukagua video inayofuata",
     "mediaCollection": "Mkusanyiko wa media",
-    "scrollToVideo": "Sogeza hadi video ya {title}",
-    "forYou": "Kwa ajili yako"
+    "scrollToVideo": "Sogeza hadi video ya {title}"
   },
   "WatchFooter": {
     "home": "Nyumbani kwa Jesus Film Project",

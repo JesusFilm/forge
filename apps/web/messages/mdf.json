@@ -527,8 +527,7 @@
     "previousVideoPreview": "Предпросмотр предыдущего видео",
     "nextVideoPreview": "Предпросмотр следующего видео",
     "mediaCollection": "Коллекция медиа",
-    "scrollToVideo": "Прокрутить к видео {title}",
-    "forYou": "Recommended for You"
+    "scrollToVideo": "Прокрутить к видео {title}"
   },
   "WatchFooter": {
     "home": "Главная Jesus Film Project",
