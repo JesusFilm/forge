@@ -35,8 +35,9 @@ tags:
 ## Context
 
 On 2026-09-11 an agent verified a visual change to the `apps/mobile` cold-start
-splash on branch `fix/mobile-splash-beam` (PR #2228, OPEN and unmerged at the
-time of writing; the splash itself landed in PR #2216, merged 2026-09-09).
+splash — the **Splash Cover**, in this project's vocabulary — on branch
+`fix/mobile-splash-beam` (PR #2228, OPEN and unmerged at the time of writing;
+the splash itself landed in PR #2216, merged 2026-09-09).
 Three separate layers of the iOS development loop each showed something that
 looked like the product and was not. Two of the three reached a wrong diagnosis
 before the correct check ran, and the user reported the set as "so many
@@ -473,6 +474,10 @@ colour, `(28,25,23)`, which matches `backgroundColor` at
   — the Metro-side half: prove your edit is in the served bundle.
 - `docs/solutions/best-practices/verify-infra-writes-via-independent-read-path-20260420.md`
   — the same law for infrastructure writes.
+- `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md`
+  — the META home. This learning is a row in its worked-instance table: a check
+  that reads the declaration layer passes while the built artifact lacks the
+  thing declared.
 - `docs/solutions/best-practices/icon-composer-schema-recovery-and-actool-silent-validation-20260810.md`
   — an Apple CLI validator that returns 0 without validating.
 - `docs/solutions/developer-experience/verifying-mobile-expo-worktree-changes-in-simulator-20260608.md`
