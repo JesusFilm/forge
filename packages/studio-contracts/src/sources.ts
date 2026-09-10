@@ -82,6 +82,48 @@ export const studioMaterializeSourceSchema = z
   .strict()
 export type StudioSubtitleCue = { startMs: number; endMs: number; text: string }
 export class StudioSourceError extends Error {}
+/** Project supported WebVTT formatting to plain dialogue; retained bytes stay original. */
+function subtitleText(raw: string): string {
+  const stack: string[] = []
+  const parts: string[] = []
+  let cursor = 0
+  while (cursor < raw.length) {
+    const opening = raw.indexOf("<", cursor)
+    const end = opening < 0 ? raw.length : opening
+    const content = raw.slice(cursor, end)
+    if (content.includes(">"))
+      throw new StudioSourceError("Unsupported subtitle cue")
+    parts.push(content)
+    if (opening < 0) break
+    const closing = raw.indexOf(">", opening + 1)
+    if (closing < 0) throw new StudioSourceError("Unsupported subtitle cue")
+    const tag = raw.slice(opening + 1, closing)
+    if (tag === "b" || tag === "i" || tag === "u") stack.push(tag)
+    else if (tag === "/b" || tag === "/i" || tag === "/u") {
+      if (stack.pop() !== tag.slice(1))
+        throw new StudioSourceError("Unsupported subtitle cue")
+    } else throw new StudioSourceError("Unsupported subtitle cue")
+    cursor = closing + 1
+  }
+  if (stack.length) throw new StudioSourceError("Unsupported subtitle cue")
+  const plain = parts.join("")
+  const entities: Record<string, string> = {
+    amp: "&",
+    lt: "<",
+    gt: ">",
+    nbsp: "\u00a0",
+    lrm: "\u200e",
+    rlm: "\u200f",
+  }
+  const result = plain
+    .replace(
+      /&(amp|lt|gt|nbsp|lrm|rlm);/g,
+      (_, name: string) => entities[name]!,
+    )
+    .trim()
+  if (!result) throw new StudioSourceError("Unsupported subtitle cue")
+  return result
+}
 export function parseStudioVtt(
   bytes: Uint8Array,
   range?: { startMs: number; endMs: number },
@@ -128,9 +170,7 @@ export function parseStudioVtt(
       if (endMs <= startMs)
         throw new StudioSourceError("Invalid subtitle timing")
       if (range && (endMs <= range.startMs || startMs >= range.endMs)) return []
-      if (!cueText || /[<>]/.test(cueText))
-        throw new StudioSourceError("Unsupported subtitle cue")
-      return [{ startMs, endMs, text: cueText }]
+      return [{ startMs, endMs, text: subtitleText(cueText) }]
     })
 }
 export function mapStudioSourceCues(

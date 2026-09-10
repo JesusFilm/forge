@@ -121,7 +121,7 @@ describe("portable Studio composition", () => {
 it("validates canonical subtitle markup for the selected range without altering retained bytes", async () => {
   const { parseStudioVtt } = await import("./sources")
   const bytes = new TextEncoder().encode(
-    "WEBVTT\n\n00:28.000 --> 00:31.000\nSelected words\n\n08:01.670 --> 08:07.060\n<b>Later words</b>\n\n1:00:00.130 --> 1:00:03.000\nOne hour later\n",
+    "WEBVTT\n\n00:28.000 --> 00:31.000\nSelected words\n\n08:01.670 --> 08:07.060\n<script>Later words</script>\n\n1:00:00.130 --> 1:00:03.000\nOne hour later\n",
   )
   expect(parseStudioVtt(bytes, { startMs: 28600, endMs: 30600 })).toEqual([
     { startMs: 28000, endMs: 31000, text: "Selected words" },
@@ -130,4 +130,41 @@ it("validates canonical subtitle markup for the selected range without altering 
     parseStudioVtt(bytes, { startMs: 481670, endMs: 487060 }),
   ).toThrow("Unsupported subtitle cue")
   expect(() => parseStudioVtt(bytes)).toThrow("Unsupported subtitle cue")
+})
+
+it("reads formatted canonical dialogue without changing subtitle bytes", async () => {
+  const { parseStudioVtt } = await import("./sources")
+  const raw =
+    "WEBVTT\n\n00:02.150 --> 00:10.440\n<b>Let us go <i>across</i> &amp; rest.</b>\n"
+  const bytes = new TextEncoder().encode(raw)
+  expect(parseStudioVtt(bytes)).toEqual([
+    { startMs: 2150, endMs: 10440, text: "Let us go across & rest." },
+  ])
+  expect(new TextDecoder().decode(bytes)).toBe(raw)
+})
+
+it.each([
+  "<script>words</script>",
+  "<b onclick='x'>words</b>",
+  "<b>words</i>",
+  "<b></b>",
+  "<b>words",
+])("rejects unsupported or malformed cue %s", async (cue) => {
+  const { parseStudioVtt } = await import("./sources")
+  expect(() =>
+    parseStudioVtt(
+      new TextEncoder().encode(`WEBVTT\n\n00:00.000 --> 00:01.000\n${cue}\n`),
+    ),
+  ).toThrow("Unsupported subtitle cue")
+})
+
+it("rejects long malformed formatting without repeatedly scanning its prefix", async () => {
+  const { parseStudioVtt } = await import("./sources")
+  expect(() =>
+    parseStudioVtt(
+      new TextEncoder().encode(
+        "WEBVTT\n\n00:00.000 --> 00:01.000\n" + "<".repeat(100000),
+      ),
+    ),
+  ).toThrow("Unsupported subtitle cue")
 })

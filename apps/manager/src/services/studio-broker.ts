@@ -278,7 +278,7 @@ function playlist(durations: number[], names: string[]) {
     ].join("\n"),
   )
 }
-async function materialize(
+export async function materialize(
   snapshot: ShortSourceSnapshot,
   preview: StudioAssetReference,
   exportRef: StudioAssetReference,
@@ -296,7 +296,7 @@ async function materialize(
     body: JSON.stringify({
       query: print(
         adminGraphql(
-          `mutation MaterializeStudioPreviewSource($input: JSON!) { materializeStudioSource(input:$input) { id source durationMs downloadId hlsUrl downloadUrl subtitleUrl catalogDigest restrictions materialization originalByteDigest coveredRanges exportHeight subtitlePrimary subtitleAiGenerated } }`,
+          `mutation MaterializeStudioPreviewSource($input: JSON!) { materializeShortsSource(input:$input) { id source durationMs downloadId hlsUrl downloadUrl subtitleUrl catalogDigest restrictions materialization originalByteDigest coveredRanges exportHeight subtitlePrimary subtitleAiGenerated } }`,
         ),
       ),
       variables: {
@@ -312,12 +312,12 @@ async function materialize(
     signal: AbortSignal.timeout(30000),
   })
   const payload = (await response.json()) as {
-    data?: { materializeStudioSource: unknown }
+    data?: { materializeShortsSource: unknown }
     errors?: unknown
   }
   if (!response.ok || payload.errors)
     throw new StudioBrokerError("Source materialization was rejected")
-  return studioSourceSnapshotSchema.parse(payload.data?.materializeStudioSource)
+  return studioSourceSnapshotSchema.parse(payload.data?.materializeShortsSource)
 }
 
 export async function releaseStudioPreview(rawUrl: string) {

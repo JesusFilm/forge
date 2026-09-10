@@ -97,7 +97,7 @@ suite("retained source and pack revision INSERT", () => {
         async (url) =>
           Buffer.from(
             url.endsWith(".vtt")
-              ? "WEBVTT\n\n00:01.000 --> 00:05.000\nSource words\n\n00:08.000 --> 00:09.000\n<b>Distant words</b>\n"
+              ? "WEBVTT\n\n00:01.000 --> 00:05.000\nSource words\n\n00:08.000 --> 00:09.000\n<script>Distant words</script>\n"
               : "source byte fixture",
           ),
         "LOCAL",
@@ -182,7 +182,7 @@ suite("retained source and pack revision INSERT", () => {
         source.source.subtitle.asset.digest,
       )
       expect(new TextDecoder().decode(canonicalBytes)).toContain(
-        "<b>Distant words</b>",
+        "<script>Distant words</script>",
       )
       const expanded = studioDocumentSchema.parse({
         ...saved.document,
