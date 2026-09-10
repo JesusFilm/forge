@@ -177,6 +177,10 @@ See `docs/plans/2026-06-10-001-fix-watch-cache-invalidation-plan.md`.
 
 ## Datadog observability
 
+Preserve the configured Watch GA and Datadog integrations restored by PR #2229.
+`docs/analytics-and-recommendation-policy.md` defines the required event coverage,
+enablement without consent prerequisites, and post-deploy receipt verification.
+
 `src/instrumentation.ts` configures `dd-trace` for the Node runtime and enables
 Datadog's built-in `graphql` plugin with source and variables disabled. Keep
 query source, variables, bearer keys, cookies, IPs, slugs, and user identifiers

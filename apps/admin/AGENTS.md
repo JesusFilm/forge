@@ -124,3 +124,20 @@ CI's `admin-schema-drift` job catches step 1 if forgotten. The committed SDL is 
   `apps/mobile`, `apps/mobile-v2`, or `apps/manager`.
 - Do not hand-edit `.next/`, generated Prisma Client, or Pothos-generated types.
 - Do not introduce new direct `process.env` reads — extend `src/config/env.ts`.
+
+## Studio authoring foundation
+
+For Studio project commands, history, approval or publication changes, read
+`docs/solutions/database-issues/studio-command-revisions-and-publication-latch.md`
+from the repository root. Admin owns the durable module; Manager uses
+`apps/manager/src/backend/studio-client.ts` through Admin GraphQL. The neutral contract is
+`@forge/studio-contracts`. The internal publication seam has no public publish
+mutation until feat-460 supplies its catalog/render/approval checks.
+
+For shared Studio assets, Content Packs, source capture/materialization or asset
+lifecycle guards, read
+`docs/solutions/database-issues/studio-shared-assets-and-source-retention.md`.
+
+For Studio hosted instructions, OAuth MCP authority, or execution admission, read
+`docs/solutions/security-issues/studio-native-agent-admission.md` from the repository
+root before changing those boundaries.

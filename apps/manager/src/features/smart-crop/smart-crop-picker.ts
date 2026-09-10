@@ -19,7 +19,10 @@ export type SmartCropVideosApiResponse = {
 const NON_SOURCE_VIDEO_LABELS = new Set(["collection", "series"])
 
 function isSelectableSourceVideo(item: SmartCropVideosApiItem): boolean {
-  return !NON_SOURCE_VIDEO_LABELS.has(item.label.trim().toLowerCase())
+  return (
+    !!item.coreId &&
+    !NON_SOURCE_VIDEO_LABELS.has(item.label.trim().toLowerCase())
+  )
 }
 
 export function flattenSmartCropPickerVideos(

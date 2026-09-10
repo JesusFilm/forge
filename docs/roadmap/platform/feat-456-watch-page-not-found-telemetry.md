@@ -1,6 +1,6 @@
 ---
 id: "feat-456"
-title: "Emit consent-approved Watch page-not-found telemetry"
+title: "Emit Watch page-not-found telemetry"
 owner: "codex"
 priority: "P1"
 status: "not-started"
@@ -20,8 +20,8 @@ tags:
 ## Problem
 
 The Watch route alert monitor can launch with its locale-independent heuristic,
-but it cannot switch to its preferred GA4 source until Web emits a dedicated,
-consent-approved `page_not_found` event with a stable query-free route contract.
+but it cannot switch to its preferred GA4 source until Web emits a dedicated
+`page_not_found` event with a stable query-free route contract.
 The existing Watch GA4 measurement ticket does not explicitly own that event.
 
 ## Entry Points — Read These First
@@ -34,7 +34,7 @@ The existing Watch GA4 measurement ticket does not explicitly own that event.
 
 ## What To Build
 
-1. After the consent decision in `feat-444`, emit one deduplicated
+1. Using the collector contract from `feat-444`, emit one deduplicated
    `page_not_found` event for committed Watch not-found renders.
 2. Include only the normalized query-free Watch pathname and the bounded route
    classification needed by the monitor; do not include title, query, referrer,
@@ -45,7 +45,10 @@ The existing Watch GA4 measurement ticket does not explicitly own that event.
 
 ## Constraints
 
-- Do not bypass consent or enable analytics before `feat-444` is approved.
+- Follow `docs/analytics-and-recommendation-policy.md`: no consent prerequisite.
+  Preserve configured GA page views, navigation, Watch events, and Datadog RUM
+  while adding this event. The `feat-444` dependency is the collector contract,
+  not a consent decision.
 - Do not use localized page titles as the event discriminator.
 - Do not change route behavior, canonicals, sitemap output, or 404 rendering.
 

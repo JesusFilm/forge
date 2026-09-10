@@ -62,7 +62,7 @@ The ticket is not complete until this result is visible and reconcilable in the 
 
 ## Verification
 
-- Test reformulation, expiry, no results, machine exclusion, consent withdrawal, session-only use, and semantic fallback.
+- Test reformulation, expiry, no results, machine exclusion, disabling personalization, session-only use, and semantic fallback.
 - Test privacy separation, generator latency, and candidate provenance.
 - Reconcile intent evidence and terminal decision in Admin.
 - Run affected application checks: `pnpm --filter @forge/admin test`, `pnpm --filter @forge/admin lint`, and `pnpm --filter @forge/admin typecheck`.

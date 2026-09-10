@@ -63,7 +63,8 @@ the source is complete.
 ## Constraints
 
 - The master is a deterministic workflow, not a model agent.
-- Do not enable GA collection or decide the unresolved Web consent policy.
+- Preserve configured Web analytics under `docs/analytics-and-recommendation-policy.md`;
+  this monitoring ticket does not change the collector.
 - Do not change Watch routes, sitemap, canonicals, or content availability.
 - Do not share Mastra storage with Manager or add broad service credentials.
 - Only fixed-host, bounded GET validation is allowed; persist no bodies,

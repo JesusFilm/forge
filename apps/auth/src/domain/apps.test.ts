@@ -31,6 +31,7 @@ import { assertKnownScopes } from "./scopes"
 describe("first-party app seeds", () => {
   it("keeps Admin and Manager registered as distinct first-party OAuth apps", () => {
     expect(FIRST_PARTY_APP_SEEDS.map((app) => app.key)).toEqual([
+      "shorts-mcp",
       ADMIN_APP_SEED.key,
       MANAGER_APP_KEY,
       WEB_APP_KEY,

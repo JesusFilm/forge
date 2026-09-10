@@ -6,6 +6,31 @@ import type { DubMediaState } from "../../contexts/watchSessionState"
 import type { WatchSubtitle, WatchVariant } from "../../lib/normalizeVideo"
 import { validateStreamingUrl } from "../../lib/validateUrl"
 
+export type DetailsDataState = "loading" | "error" | "ready"
+export type DetailsPlayState = "loading" | "unavailable" | "ready"
+
+export function deriveDetailsPlayState(
+  metadataReady: boolean,
+  hls: string | null | undefined,
+): DetailsPlayState {
+  if (!metadataReady) return "loading"
+  return validateStreamingUrl(hls) ? "ready" : "unavailable"
+}
+
+export function deriveDetailsDataState({
+  loading,
+  error,
+  currentVideoReady,
+}: {
+  loading: boolean
+  error: boolean
+  currentVideoReady: boolean
+}): DetailsDataState {
+  if (loading) return "loading"
+  if (error) return "error"
+  return currentVideoReady ? "ready" : "loading"
+}
+
 // ── Subtitle panel: media-state → discriminated UI state ───────────────────
 
 /**
@@ -25,7 +50,11 @@ export type SubtitlePanelState =
  */
 export function deriveSubtitlePanelState(
   state: DubMediaState,
+  detailsDataState?: DetailsDataState,
 ): SubtitlePanelState {
+  if (detailsDataState === "loading" || detailsDataState === "error") {
+    return { kind: detailsDataState }
+  }
   if (state.loading) return { kind: "loading" }
   if (state.error) return { kind: "error" }
   if (state.media == null) return { kind: "loading" }
@@ -90,7 +119,9 @@ export function isVariantPlayable(variant: Pick<WatchVariant, "hls">): boolean {
 export function annotateVariantRows(
   variants: readonly WatchVariant[],
   activeVariantIndex: number,
+  enabled = true,
 ): AnnotatedVariantRow[] {
+  if (!enabled) return []
   // Sort A→Z by display name AFTER annotating, so each row keeps its original
   // `index` for write-back (`setActiveVariantIndex`) even though display order
   // changes. A stable sort keeps same-named dubs in their source order.

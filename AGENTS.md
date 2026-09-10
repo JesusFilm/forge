@@ -37,6 +37,7 @@ Use this file as the quick execution map. `CLAUDE.md` holds the detailed repo co
 
 ## Boundaries
 
+- Recommendations and product analytics require no consent prerequisite. Preserve the configured Watch GA and Datadog integrations; follow `docs/analytics-and-recommendation-policy.md` when planning or changing either area.
 - One PR should stay within one scope unless explicitly broadened.
 - No cross-imports between app contexts.
 - Never hand-edit generated GraphQL env/types outputs.

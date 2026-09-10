@@ -33,6 +33,8 @@ related_components:
 
 # Harden a production recommendation slice at every irreversible boundary
 
+> **Current enablement policy:** follow `docs/analytics-and-recommendation-policy.md`. Consent-named fields and transitions here are implementation history, not requirements to obtain consent. Recommendation/profile defaults and the restored GA/Datadog baseline remain active when configured.
+
 ## Context
 
 A production recommendation feature is not one retrieval query. It crosses a
@@ -185,7 +187,7 @@ reports any drift for operational enforcement
 (`apps/admin/src/services/recommendations/outcome.service.ts:463-524`).
 
 Publish through a stable source-neutral outcome envelope, then let downstream
-consumers own integrity, consent, profile, and purpose-specific eligibility.
+consumers own integrity, explicit personalization settings, profile, and purpose-specific eligibility.
 Measurement publication itself never authorizes learning
 (`apps/admin/src/services/recommendations/playback-outcome-consumer.ts:12-104`).
 If consumer dispatch fails after the outcome commits, rearm the durable due
@@ -209,7 +211,7 @@ semantic and profile generators, canonical union, eligibility, ranker,
 composer, delivery and surface contracts, slate bound, projection versions,
 semantic fallback, service deadline, and learning source. The separate
 experiment identity fixes bounded-live authority and exposure. Both generators
-may nominate, but only consent-authorized profile input participates; an empty
+may nominate, but only eligible profile input participates; an empty
 or failed profile source is absence of signal, not a second semantic vote.
 Semantic-only remains the control, fallback, kill-switch target, and
 last-known-good strategy
@@ -232,7 +234,7 @@ Rollback and emergency stop remain available.
 
 ### Preserve exact-six as a composition invariant
 
-Do not let a consented profile source replace semantic availability. Preserve
+Keep semantic availability when adding a profile source. Preserve
 the complete bounded semantic reserve before adding profile nominations; use
 only the remaining 64-nomination capacity for profile candidates
 (`apps/admin/src/services/recommendations/delivery-candidate-mapping.ts:37-61`).
@@ -301,10 +303,10 @@ The implementation protects the pattern with separate executable boundaries:
   monotonic supersession, consumer retry, and rebuild parity. A real PostgreSQL
   case races finalizers and proves the incremental outcome matches a fresh
   rebuild (`apps/admin/src/services/recommendations/playback-episode.db.test.ts`).
-- Browser QA proves that essential-only and newly consented flows each receive
+- The historical browser QA exercised essential-only and newly consented flows; each received
   six recommendations with loaded thumbnails.
-  After consent, selection, and a qualified finalized playback publish profile
-  generation 3, the traced follow-up request receives an exact-six
+  In that historical run, consent, selection, and a qualified finalized playback published profile
+  generation 3; the traced follow-up request received an exact-six
   `hybrid_personalized` slate with two interests in 800 ms. Its Admin evidence
   contains semantic and profile contributions without exposing a profile
   identifier, cookie, history, or vector.

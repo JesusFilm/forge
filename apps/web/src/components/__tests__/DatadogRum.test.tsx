@@ -91,26 +91,14 @@ describe("DatadogRum", () => {
     expect(reactPluginMock).not.toHaveBeenCalled()
   })
 
-  it("does not initialize RUM without a separate analytics consent signal", async () => {
-    mockEnv.NEXT_PUBLIC_DATADOG_APPLICATION_ID = "rum-app-id"
-    mockEnv.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN = "rum-client-token"
-
-    act(() => {
-      root.render(<DatadogRum />)
-    })
-    await flushEffects()
-
-    expect(datadogRumMock.init).not.toHaveBeenCalled()
-  })
-
-  it("initializes RUM with Watch config after a separate analytics consent signal", async () => {
+  it("initializes configured RUM with the no-prop Watch layout contract", async () => {
     mockEnv.NEXT_PUBLIC_DATADOG_APPLICATION_ID = "rum-app-id"
     mockEnv.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN = "rum-client-token"
     mockEnv.NEXT_PUBLIC_DATADOG_ENV = "prod"
     mockEnv.NEXT_PUBLIC_DATADOG_VERSION = "abc123"
 
     act(() => {
-      root.render(<DatadogRum analyticsConsent />)
+      root.render(<DatadogRum />)
     })
     await flushEffects()
 
@@ -151,11 +139,11 @@ describe("DatadogRum", () => {
     mockEnv.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN = "rum-client-token"
 
     act(() => {
-      root.render(<DatadogRum analyticsConsent />)
+      root.render(<DatadogRum />)
     })
     await flushEffects()
     act(() => {
-      root.render(<DatadogRum analyticsConsent />)
+      root.render(<DatadogRum />)
     })
     await flushEffects()
 

@@ -41,7 +41,7 @@ Forge should adopt specialized recommendation infrastructure only when lifecycle
 
 ## What To Build
 
-- Run end-to-end access, consent-withdrawal, erasure, projection rebuild, workflow recovery, cache rollback, full-corpus retrieval, ingestion/load, storage-growth, and complete-service latency exercises.
+- Run end-to-end access, personalization-disable, erasure, projection rebuild, workflow recovery, cache rollback, full-corpus retrieval, ingestion/load, storage-growth, and complete-service latency exercises.
 - Review formal lifecycle and capacity checkpoints from after playback episodes, profiles, and promotion.
 - Attribute every breach to a measured bottleneck and record retain, optimize, or split decisions for queues, warehouse, feature store, or vector service.
 - Publish an operations runbook and ADR or follow-up ticket; no infrastructure change is a valid outcome.

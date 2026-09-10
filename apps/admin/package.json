@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "next dev --port 3003",
-    "build": "prisma generate && next build && node scripts/verify-recommendation-workflow-build.mjs",
+    "build": "prisma generate && next build && node scripts/verify-recommendation-workflow-build.mjs && node scripts/verify-studio-calendar-workflow-build.mjs",
     "start": "next start",
     "datadog:sourcemaps": "node ../../scripts/upload-datadog-sourcemaps.mjs --service forge-admin --minified-path-prefix /_next/static/",
     "postinstall": "prisma generate",
@@ -122,7 +122,9 @@
     "tailwindcss": "4.2.2",
     "tsx": "^4.21.0",
     "workflow": "^4.2.2",
-    "zod": "^4.3.6"
+    "zod": "^4.3.6",
+    "@forge/studio-contracts": "workspace:*",
+    "@forge/studio-server": "workspace:*"
   },
   "devDependencies": {
     "@smithy/node-http-handler": "4.4.14",

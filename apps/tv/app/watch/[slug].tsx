@@ -38,6 +38,8 @@ import {
 } from "../../src/components/watch/actionRowScrollGlide"
 import { VideoBackdrop } from "../../src/components/watch/VideoBackdrop"
 import { ScreenStateView } from "../../src/components/ScreenStateView"
+import { AndroidLoadingDialog } from "../../src/components/AndroidLoadingDialog"
+import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider"
 import { DetailsActionRow } from "../../src/components/watch/DetailsActionRow"
 import { UpNextRail } from "../../src/components/watch/UpNextRail"
 import { AboutSection } from "../../src/components/watch/AboutSection"
@@ -66,6 +68,7 @@ import { useBibleVerses } from "../../src/hooks/useBibleVerses"
 import type { WatchBibleCitation } from "../../src/lib/normalizeVideo"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { scale } from "../../src/lib/scale"
+import { deriveDetailsDataState } from "../../src/components/watch/panelState"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 
@@ -95,6 +98,7 @@ export default function WatchVideoScreen() {
   const router = useRouter()
 
   const { video, setVideo, activeVariant } = useWatchSession()
+  const { hydrated: preferencesReady } = useWatchPreferences()
   const {
     state: playerState,
     decoderClaimed,
@@ -247,7 +251,11 @@ export default function WatchVideoScreen() {
     playerWasVisibleRef.current = false
     if (autoplayPhase !== "playing") return
     if (consumeUpNextChain()) return
-    if (router.canGoBack()) router.back()
+    if (router.canGoBack()) {
+      router.back()
+    } else {
+      router.replace("/")
+    }
   }, [playerState.isVisible, autoplayPhase, router, consumeUpNextChain])
 
   const [activePanel, setActivePanel] = useState<ActivePanel>("none")
@@ -324,10 +332,26 @@ export default function WatchVideoScreen() {
   )
 
   const hasVideo = video != null
+  const detailsDataState =
+    Platform.OS === "android"
+      ? deriveDetailsDataState({
+          loading: loading || !preferencesReady,
+          error: error != null || (!loading && normalized == null),
+          currentVideoReady: video?.slug === decodedSlug,
+        })
+      : undefined
+  const retryDetails = () => {
+    void refetch().catch(() => {})
+  }
 
   // Error state: only when the query errored AND there's nothing usable to keep
   // showing — no normalized/cached video and no seed to paint a skeleton from.
-  const showErrorState = error != null && !hasVideo && seed == null
+  const showErrorState =
+    detailsDataState === "error" || (error != null && !hasVideo && seed == null)
+  const leaveLoading = () => {
+    if (router.canGoBack()) router.back()
+    else router.replace("/")
+  }
 
   // First paint prefers resolved data, falling back to the seed.
   const displayTitle = video?.title ?? seed?.title ?? null
@@ -347,7 +371,9 @@ export default function WatchVideoScreen() {
   const heroMeta = buildMetadataLine(
     null,
     activeVariant?.duration ?? video?.duration,
-    video?.variants.length ?? null,
+    detailsDataState != null && detailsDataState !== "ready"
+      ? null
+      : (video?.variants.length ?? null),
   )
   const descriptionText = video?.description ?? null
 
@@ -369,11 +395,38 @@ export default function WatchVideoScreen() {
     return <View style={styles.screen} />
   }
 
+  if (detailsDataState === "loading" && !playerState.isVisible) {
+    return (
+      <View style={styles.screen}>
+        <ScreenStateView kind="loading" message="Loading movie details…" />
+        <AndroidLoadingDialog
+          message="Loading movie details…"
+          onBack={leaveLoading}
+        />
+      </View>
+    )
+  }
+
   // Autoplay pass-through (Continue Watching): background only — while the
   // session resolves, while the player is up, and through the pop back to
   // Home. Same rationale as the redirect frame above: no VideoBackdrop, so
   // this never grabs the decode slot the fullscreen player needs.
   if (autoplayPhase !== "off" && !showErrorState) {
+    if (
+      Platform.OS === "android" &&
+      !playerState.isVisible &&
+      autoplayPhase === "pending"
+    ) {
+      return (
+        <View style={styles.screen}>
+          <ScreenStateView kind="loading" message="Preparing playback…" />
+          <AndroidLoadingDialog
+            message="Preparing playback…"
+            onBack={leaveLoading}
+          />
+        </View>
+      )
+    }
     return <View style={styles.screen} />
   }
 
@@ -446,6 +499,9 @@ export default function WatchVideoScreen() {
 
             <DetailsActionRow
               title={displayTitle}
+              metadataReady={
+                detailsDataState == null || detailsDataState === "ready"
+              }
               onOpenLanguage={() => setActivePanel("language")}
               onOpenSubtitles={() => setActivePanel("subtitle")}
               onRowFocus={GLIDE_ENABLED ? handleActionRowFocus : undefined}
@@ -500,10 +556,14 @@ export default function WatchVideoScreen() {
       <LanguagePanel
         visible={activePanel === "language"}
         onClose={closePanel}
+        dataState={detailsDataState}
+        onRetry={retryDetails}
       />
       <SubtitlePanel
         visible={activePanel === "subtitle"}
         onClose={closePanel}
+        dataState={detailsDataState}
+        onRetry={retryDetails}
       />
     </View>
   )

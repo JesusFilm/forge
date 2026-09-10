@@ -161,7 +161,6 @@ export function WatchHomeCategoryRail({
           </p>
           <Link
             href={languageInventoryPath(locale)}
-            prefetch={false}
             data-testid="watch-home-category-see-all"
             className="col-start-1 row-start-4 mt-4 inline-flex w-fit max-w-full shrink-0 items-center gap-2 self-start rounded-full bg-white px-5 py-3 text-center text-base sm:text-sm font-bold tracking-wider text-black uppercase transition-colors hover:bg-red-500 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none md:col-start-2 md:row-start-1 md:row-end-3 md:mt-0 md:self-center md:px-6 md:py-3.5"
           >
@@ -230,7 +229,7 @@ export function WatchHomeCategoryRail({
                   {/* An external destination leaves the app entirely, so it
                       gets a plain anchor with `noopener noreferrer` rather
                       than a client-routed `next/link`. */}
-                  {card.external ? (
+                  {card.kind === "external" ? (
                     <a
                       href={card.href}
                       target="_blank"
@@ -245,11 +244,12 @@ export function WatchHomeCategoryRail({
                     <Link
                       // Authored destinations are typed by admins at runtime,
                       // so they cannot satisfy typedRoutes statically. The
-                      // shape guarantee comes from `isSafeWatchHomeTileHref`
+                      // shape guarantee comes from `classifyWatchHomeTileHref`
                       // instead — same trade `WatchHomeHero` makes for its
-                      // authored slide hrefs.
+                      // authored slide hrefs. That classifier also strips a
+                      // stored `/watch` prefix, so Link's own base-path
+                      // prepend cannot produce `/watch/watch/...`.
                       href={card.href as Route}
-                      prefetch={false}
                       data-testid={`watch-home-category-card-${card.key}`}
                       className={cardClassName}
                       style={{ backgroundImage: card.gradient }}
