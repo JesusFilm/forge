@@ -263,6 +263,14 @@ export const auth = betterAuth({
   secret: betterAuthSecret,
   baseURL: getAuthBaseUrl(),
   trustedOrigins: getAuthTrustedOrigins(),
+  advanced: {
+    ipAddress: {
+      // Cloudflare supplies one client address before Railway forwards the
+      // request. Better Auth 1.7 rejects an untrusted X-Forwarded-For chain
+      // and otherwise pools every visitor into one rate-limit bucket.
+      ipAddressHeaders: ["cf-connecting-ip"],
+    },
+  },
   account: {
     accountLinking: {
       enabled: true,
