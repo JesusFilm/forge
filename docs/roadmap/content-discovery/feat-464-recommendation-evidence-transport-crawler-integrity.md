@@ -3,7 +3,7 @@ id: "feat-464"
 title: "Recommendation evidence transport and crawler integrity"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "in-progress"
 start_date: ""
 duration: 3
 depends_on:
@@ -23,6 +23,14 @@ tags:
 ---
 
 ## Problem
+
+Latest verification: the [authorized production integrity audit](../../operations/recommendation-evidence-production-integrity-2026-09-10.md)
+now proves current-pointer convergence, stored receipt consistency and zero
+substantive failures across 23 reconciliation batches. The previous lack of
+database access is resolved. The [Railway HTTP audit](../../operations/recommendation-evidence-primary-request-accounting-2026-09-10.md)
+also verifies the complete primary-only request gate at 2 / 6,543 playback 5xx
+(0.03057%). Required alerts are absent from the visible inventory; production
+acceptance remains open pending installation and verification.
 
 The recommendation evidence closeout hotfix shipped the replay-receipt collision fix and reconciliation scheduler recovery, but a fixed production audit window after deployment still showed an unhealthy Web-to-Admin evidence boundary. Between 2026-09-07 23:20 and 2026-09-08 01:05 UTC, `POST /api/recommendations/playback` returned 791 `503` responses, 101 `200` responses, and one `403`. Excluding Applebot still left 502 `503` responses, 84 `200` responses, and one `403`.
 
@@ -91,15 +99,15 @@ The APM snapshot cannot prove the `feat-459` zero-current-pointer invariant. Tha
 - Audit evidence written during the affected production window. Supersede eligibility only where stored provenance proves contamination; do not heuristically relabel or delete ambiguous human evidence. Publish the bounded uncertainty and use clean post-fix evidence for activation decisions.
 - Add privacy-safe telemetry for action, HTTP outcome, normalized domain reason, timeout stage, retry attempt/disposition, transaction exhaustion, and crawler admission. Add a dashboard and actionable monitors for sustained playback `5xx`, invalid-binding retry amplification, exhausted database retries, successful crawler evidence, and reconciliation health.
 
-## Admin Evidence Gate
+## Operational and Admin Evidence Gate
 
-- Show claim, fact, and initial-evidence attempts by outcome and normalized reason without exposing profile, session, episode, capability, or event identifiers.
-- Show crawler admission outcomes and prove recognized crawler requests cannot create human-eligible episodes or facts.
-- Show ambiguous-timeout, retry, idempotent replay, payload-conflict, and exhausted-transaction counts so committed evidence can be reconciled with client-visible outcomes.
+- In Datadog, show claim, fact, and initial-evidence attempts by outcome and normalized reason without exposing profile, session, episode, capability, or event identifiers.
+- In Datadog, show crawler admission outcomes and prove recognized crawler requests cannot create human-eligible episodes or facts.
+- In Datadog, show ambiguous-timeout, retry, idempotent replay, payload-conflict, and exhausted-transaction counts so committed evidence can be reconciled with client-visible outcomes.
 - Preserve the five-minute reconciliation cadence and show no substantive scheduler error after excluding the workflow runtime's expected step/wait suspension spans.
 - Run the `feat-459` authorized current-pointer audit after reconciliation converges and prove zero current generations contain currently ineligible lineage.
 
-The ticket is not complete until these results are visible and reconcilable in the authorized Admin Recommendations area and verified against a fresh production snapshot.
+The ticket is not complete until operational results in Datadog reconcile with durable evidence in the authorized Admin Recommendations area and a fresh production snapshot. The owner's 2026-09-09 decision removes the duplicate Redis counter store and transport panel; it does not relax the current-pointer audit or production acceptance gates.
 
 ## Production Acceptance Gate
 
@@ -116,7 +124,7 @@ If traffic is too low to exercise a criterion, use an authorized production-safe
 
 ## Constraints
 
-- Preserve immutable evidence, superseding eligibility, source attribution, retention, consent, erasure, and privacy-generation contracts.
+- Preserve immutable evidence, superseding eligibility, source attribution, retention, personalization settings, erasure, and privacy-generation contracts.
 - Preserve the shipped exact replay-receipt idempotency and payload-conflict behavior; do not turn a collision fix into last-write-wins behavior.
 - Do not broaden a crawler heuristic into a claim that arbitrary malicious automation can be detected. The invariant is that recognized or intentionally supported machine traffic is never silently classified as human evidence.
 - Do not log raw capabilities, session digests, profile identifiers, event identifiers, histories, vectors, or small-cohort data.
@@ -138,3 +146,56 @@ If traffic is too low to exercise a criterion, use an authorized production-safe
 ```text
 Use compound-engineering:lfg to implement Forge roadmap ticket feat-464, "Recommendation evidence transport and crawler integrity," from docs/roadmap/content-discovery/feat-464-recommendation-evidence-transport-crawler-integrity.md. Work hands-off through implementation, tests, review, commit, push, and an open PR. Preserve the ticket's production evidence snapshot and acceptance gates; do not mark feat-459 or feat-464 complete without a fresh authorized Admin audit and the required production canary.
 ```
+
+## Implementation progress (2026-09-09)
+
+The implementation branch `codex/feat-464-evidence-transport` normalizes Apollo
+binding failures, makes definitive browser failures terminal, bounds PostgreSQL
+contention, rejects recognized crawler evidence before mutation, and exposes
+privacy-bounded transport logs. The original Redis counter panel was subsequently
+removed at the owner's request because it added no recommendation or durable
+analytics input; operational visibility uses Datadog, and durable evidence stays
+in authorized Admin. See the
+[transport runbook](../../operations/recommendation-evidence-transport.md) for
+configuration, monitor installation, and post-deployment acceptance.
+
+Local validation covers the full Web and Admin unit suites, typechecks, real
+PostgreSQL concurrency and a browser Watch-to-Admin
+lifecycle with decoded video and telemetry failure injection. Local fixtures and
+an empty local current-pointer audit do not satisfy production acceptance.
+A two-hour production observation is recorded below. Historical-window
+reconciliation, monitor installation, and the fresh authorized production
+current-pointer audit remain outstanding. This ticket remains in progress and feat-459 remains blocked; live profile ranking
+remains fail-closed.
+
+## Production-gate continuation (2026-09-09)
+
+PRs #2217 and #2218 deployed admission diagnostics and terminal playback input
+handling. PR #2219 deployed the measured playback-context command budget repair
+and terminal render/impression input handling. Real Redis tests reproduce delayed
+TIME rejection and prove a queued EVAL cannot write after caller timeout. Full
+Web checks, the real browser lifecycle, and authorized local Admin finalization
+proof passed; detailed results and environment scoping are in
+[the production-gate record](../../operations/recommendation-evidence-production-gates-2026-09-09.md).
+
+Production acceptance remains open. The owner restricted Datadog work to read
+access, so missing installed monitors remain an unmet gate. Historical/clean
+durable reconciliation and the fresh authorized production current-pointer audit
+are unavailable with the current access. The observation found selection
+`BAD_USER_INPUT` still becoming 503; PR #2220 deployed the same terminal mapping
+to selection at 06:59:28 after local browser/component proof and green CI.
+
+The fresh 07:01–09:01 UTC observation is complete and was re-queried after
+ingestion settled: revision-wide playback 5xx is **1 / 4,319 (0.02315%)** with
+zero injected production traffic or exclusions. Primary Web/Admin logs match
+at 3,029 accepted fact batches and 56 all-replay batches. One facts binding
+rejection is terminal HTTP 409, with no retryable-binding signal; 1,208 recognized
+crawler requests were rejected across evidence actions, with no logged crawler
+success, receipt collision or exhausted transaction signal. There are 23 committed
+heartbeats across primary Admin and worker, 302.045–309.747 seconds apart.
+
+This does not close the acceptance gate: the metric combines environments and
+does not fully reconcile with handler logs; durable receipt/eligibility and
+browser retry-amplification reconciliation, internal batch failure counts, installed
+monitors and zero ineligible current pointers remain unverified. Keep dependent
+feat-459/447 in progress and live profile ranking fail-closed.

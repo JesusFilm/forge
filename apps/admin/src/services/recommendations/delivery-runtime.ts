@@ -111,6 +111,13 @@ export async function runRecommendationRetrievalQuery<T>(
       await tx.$queryRaw`
         SELECT
           set_config('statement_timeout', ${String(queryRemaining)}, true),
+          -- Locale-specific vector indexes require parameter-aware planning,
+          -- including after Prisma has reused this prepared query many times.
+          set_config('plan_cache_mode', 'force_custom_plan', true),
+          -- Keep looking when nearer vectors fail provenance or exclusions,
+          -- bounded by both the scan cap and the remaining delivery deadline.
+          set_config('hnsw.iterative_scan', 'strict_order', true),
+          set_config('hnsw.max_scan_tuples', '20000', true),
           set_config(
             'search_path',
             quote_ident(current_schema()) || ',public',

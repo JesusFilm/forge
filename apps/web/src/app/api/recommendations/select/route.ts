@@ -1,3 +1,5 @@
+import { observeEvidenceResponse } from "@/lib/recommendation-evidence-response"
+import { assertRecommendationHumanAdmission } from "@/lib/recommendation-human-admission"
 import { z } from "zod"
 import {
   isCanonicalWatchRecommendationHref,
@@ -37,6 +39,7 @@ const SelectionInput = z
 
 export async function POST(request: Request) {
   try {
+    assertRecommendationHumanAdmission(request)
     const raw = await readStrictRecommendationJson(request, {
       expectedOrigin: WATCH_CANONICAL_ORIGIN,
       maxBytes: RECOMMENDATION_EVIDENCE_BODY_BYTES,
@@ -76,12 +79,15 @@ export async function POST(request: Request) {
     ) {
       throw new RecommendationRouteError(502, "invalid_admin_response")
     }
+    observeEvidenceResponse(request, "select", 200, undefined, [selection])
     return recommendationJson({
       claimNonce: selection.claimNonce,
       canonicalHref: selection.canonicalHref,
       targetMediaId: selection.targetMediaId,
     })
   } catch (error) {
-    return recommendationError(error)
+    const response = recommendationError(error)
+    observeEvidenceResponse(request, "select", response.status, error)
+    return response
   }
 }

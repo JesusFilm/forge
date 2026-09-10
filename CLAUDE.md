@@ -99,6 +99,14 @@ Consumers use `@forge/admin-graphql` (admin's GraphQL surface). The package owns
 
 ## Patterns and Preferences
 
+### Recommendation and analytics enablement
+
+Recommendations and product analytics require no consent prerequisite. Preserve
+the configured Watch GA page views, navigation and interaction events, and
+Datadog RUM. Follow `docs/analytics-and-recommendation-policy.md` when planning,
+implementing, or reviewing recommendation or analytics work; it supersedes
+older consent requirements while retaining explicit personalization controls.
+
 ### Error Handling
 
 - Use typed error classes, not raw `throw new Error()`.

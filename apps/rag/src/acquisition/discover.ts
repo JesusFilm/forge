@@ -71,14 +71,21 @@ export async function discoverUrls(
   const allow = compile(policy.allow)
   const block = compile(policy.block)
   const hints = compile(policy.articleHints)
-  const destinationPolicy = {
-    expectedHost: new URL(policy.baseUrl).hostname,
-    allowPatterns: policy.allow ?? [],
-  }
-
   const queue = (policy.sitemaps ?? []).map(
     (s) => new URL(s, policy.baseUrl).href,
   )
+  // Sitemaps are transport inputs, not content candidates. Authorize their
+  // registered origin and directory (including recursive children), without
+  // applying article-only path filters or opening another language directory.
+  const sitemapPatterns = [
+    ...new Set(queue.map((url) => new URL(".", url).href)),
+  ].map((prefix) => `^${prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`)
+  const sitemapAllow = compile(sitemapPatterns)
+  const destinationPolicy = {
+    expectedHost: new URL(policy.baseUrl).hostname,
+    allowPatterns: sitemapPatterns,
+  }
+
   const seenSitemaps = new Set<string>(queue)
   const pageUrls = new Set<string>()
   let sitemapsFetched = 0
@@ -109,13 +116,13 @@ export async function discoverUrls(
       let child: string
       try {
         const parsed = new URL(rawChild, sm)
-        if (parsed.protocol !== "http:" && parsed.protocol !== "https:")
-          continue
         if (
-          (allow.length > 0 && !matchesAny(parsed.href, allow)) ||
-          (allow.length === 0 &&
-            parsed.hostname !== destinationPolicy.expectedHost)
-        ) {
+          (parsed.protocol !== "http:" && parsed.protocol !== "https:") ||
+          parsed.username ||
+          parsed.password
+        )
+          continue
+        if (!matchesAny(parsed.href, sitemapAllow)) {
           opts.onProgress?.(
             `  ⤫ sitemap child from ${sm} — outside source policy`,
           )

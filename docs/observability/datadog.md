@@ -1,5 +1,7 @@
 # Datadog Observability
 
+> **Required analytics baseline:** `docs/analytics-and-recommendation-policy.md` governs enablement without consent prerequisites. Preserve the Watch GA page views, navigation and interaction events, and Datadog RUM restored in PR #2229; verify provider receipt after instrumentation changes.
+
 Forge uses Datadog for browser RUM, backend APM, runtime metrics, sourcemaps,
 and eventually logs across production services.
 
@@ -266,10 +268,11 @@ bundles at `eas update` time.
    path in `apps/tv/DISTRIBUTION.md` (NOT `eas submit`), confirm a session with
    mobile vitals from real hardware.
 
-5. **Production (privacy-gated)**: obtain product/legal sign-off on
-   `TrackingConsent.GRANTED` at 100% session sampling BEFORE provisioning the
-   production environment, then repeat step 1 for `production` with
+5. **Production**: repeat step 1 for `production` with
    `EXPO_PUBLIC_DATADOG_ENV` unset (release defaults to prod).
+   `TrackingConsent.GRANTED` and the configured sampling rate are SDK settings,
+   not a consent-approval prerequisite. Follow
+   `docs/analytics-and-recommendation-policy.md` and record the telemetry inventory.
 
 Steps 3-4's "confirm a session" checks are human-in-the-Datadog-UI today; the
 agent-driven query recipe (Datadog MCP) that replaces the eyeball check is
@@ -339,3 +342,13 @@ Browser apps should each get their own Datadog RUM application so sessions,
 replays, and frontend performance can be scoped independently while still
 correlating with backend traces through matching `service`, `env`, and
 `version` tags.
+
+Recommendation evidence transport monitors and the bounded dashboard live in
+`infra/datadog-monitors/recommendation-evidence/`. See
+[the evidence transport runbook](../operations/recommendation-evidence-transport.md)
+for installation, privacy limits, and the production canary. These payloads are
+not installed by the fleet-ceiling `create.sh` script.
+
+Recommendation transport observations use the existing log pipeline. The retired
+`RECOMMENDATION_EVIDENCE_REDIS_URL` counter collector and Admin transport panel
+are no longer required; PostgreSQL-backed evidence remains in authorized Admin.

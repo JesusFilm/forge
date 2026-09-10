@@ -49,7 +49,7 @@ function harness(options: { current?: EpisodeFixture } = {}) {
   const facts: Array<Record<string, unknown>> = []
   const tx = {
     $executeRaw: vi.fn(async () => 1),
-    $queryRaw: vi.fn(async () => []),
+    $queryRaw: vi.fn(async () => [{ locked: true }]),
     recommendationPlaybackEpisode: {
       findUnique: vi.fn(async () => ({ ...current })),
       updateMany: vi.fn(async () => ({ count: 1 })),
@@ -251,7 +251,7 @@ describe("RecommendationPlaybackService", () => {
     ])
     expect(facts.map((fact) => fact.sequence)).toEqual([1, 2, 3])
     expect(prisma.$queryRaw).toHaveBeenCalledOnce()
-    expect(tx.$executeRaw).toHaveBeenCalledOnce()
+    expect(tx.$queryRaw).toHaveBeenCalledOnce()
     expect(tx.recommendationPlaybackEpisode.updateMany).toHaveBeenCalledWith({
       where: {
         id: "episode-1",
@@ -669,8 +669,8 @@ describe("RecommendationPlaybackService", () => {
     ).resolves.toEqual([
       { eventId: "start-1", status: "conflict", sequence: 8 },
     ])
-    expect(tx.$executeRaw).toHaveBeenCalledTimes(2)
-    expect(tx.$queryRaw).toHaveBeenCalledOnce()
+    expect(tx.$executeRaw).not.toHaveBeenCalled()
+    expect(tx.$queryRaw).toHaveBeenCalledTimes(3)
     expect(
       tx.recommendationPlaybackEpisode.updateMany,
     ).toHaveBeenLastCalledWith({

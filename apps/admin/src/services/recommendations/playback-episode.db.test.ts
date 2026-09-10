@@ -441,7 +441,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         BEGIN
           IF NEW.id = 'replay-race-episode'
              AND NEW.transport_replay_count > OLD.transport_replay_count THEN
-            PERFORM pg_sleep(0.2);
+            PERFORM pg_sleep(0.1);
           END IF;
           RETURN NEW;
         END;
@@ -452,27 +452,322 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           FOR EACH ROW EXECUTE FUNCTION slow_replay_counter_update();
       `)
 
-      const [first, second] = await Promise.all([
-        playbackService.record(input),
-        playbackService.record(input),
-      ])
-      expect(first).toEqual([
-        { eventId: replayEvent.eventId, status: "replay", sequence: 1 },
-      ])
-      expect(second).toEqual(first)
+      const results = await Promise.allSettled(
+        Array.from({ length: 8 }, () => playbackService.record(input)),
+      )
+      await client.query(`
+        DROP TRIGGER slow_replay_counter_update ON recommendation_playback_episode;
+        DROP FUNCTION slow_replay_counter_update();
+      `)
+      for (const result of results) {
+        expect(result).toEqual({
+          status: "fulfilled",
+          value: [
+            { eventId: replayEvent.eventId, status: "replay", sequence: 1 },
+          ],
+        })
+      }
       const receipts =
         await prisma.recommendationPlaybackTransportReplayReceipt.findMany({
           where: { episodeId: claim.episodeId },
           orderBy: { replayOrdinal: "asc" },
           select: { replayOrdinal: true },
         })
-      expect(receipts).toEqual([{ replayOrdinal: 1 }, { replayOrdinal: 2 }])
+      expect(receipts).toEqual(
+        Array.from({ length: 8 }, (_, index) => ({ replayOrdinal: index + 1 })),
+      )
       await expect(
         prisma.recommendationPlaybackEpisode.findUnique({
           where: { id: claim.episodeId },
           select: { transportReplayCount: true },
         }),
-      ).resolves.toEqual({ transportReplayCount: 2 })
+      ).resolves.toEqual({ transportReplayCount: 8 })
+
+      // A held external lock exhausts only admission retries: no partial
+      // receipt is committed, and the exact payload can be replayed later.
+      await client.query("BEGIN")
+      await client.query(
+        "SELECT pg_advisory_xact_lock(hashtextextended($1, 368))",
+        [claim.episodeId],
+      )
+      try {
+        await expect(playbackService.record(input)).rejects.toMatchObject({
+          code: "recommendation_episode_lock_exhausted",
+        })
+      } finally {
+        await client.query("ROLLBACK")
+      }
+      await expect(
+        prisma.recommendationPlaybackTransportReplayReceipt.count({
+          where: { episodeId: claim.episodeId },
+        }),
+      ).resolves.toBe(8)
+      await expect(playbackService.record(input)).resolves.toEqual([
+        { eventId: replayEvent.eventId, status: "replay", sequence: 1 },
+      ])
+      await expect(
+        prisma.recommendationPlaybackTransportReplayReceipt.count({
+          where: { episodeId: claim.episodeId },
+        }),
+      ).resolves.toBe(9)
+    })
+
+    it("reconciles eight simultaneous standalone claims to the persisted capability", async () => {
+      const now = new Date()
+      const keyring = parseRecommendationKeyring(
+        JSON.stringify({
+          keys: [
+            {
+              kid: "claim-race",
+              status: "active",
+              key: Buffer.alloc(32, 4).toString("base64url"),
+            },
+          ],
+        }),
+      )
+      const tokenService = {
+        activeKid: keyring.active.kid,
+        ...createRecommendationTokenService({
+          keyring,
+          readRevokedKids: async () => [],
+          now: () => now,
+        }),
+      }
+      const episodeService = new RecommendationEpisodeService({
+        prisma,
+        tokenService,
+        now: () => now,
+      })
+      const sessionDigest = "8".repeat(64)
+      const context = await episodeService.issueContext({
+        caller,
+        sessionDigest,
+        mediaId: "claim-race-media",
+        discoverySource: "direct",
+      })
+      const claims = await Promise.allSettled(
+        Array.from({ length: 8 }, () =>
+          episodeService.claim({
+            caller,
+            sessionDigest,
+            mediaId: "claim-race-media",
+            claimNonce: context.claimNonce,
+          }),
+        ),
+      )
+      const canonical = await episodeService.claim({
+        caller,
+        sessionDigest,
+        mediaId: "claim-race-media",
+        claimNonce: context.claimNonce,
+      })
+      for (const claim of claims)
+        expect(claim).toEqual({ status: "fulfilled", value: canonical })
+      const playbackService = new RecommendationPlaybackService({
+        prisma,
+        tokenService,
+        now: () => now,
+      })
+      const event = {
+        eventId: "claim-race-start",
+        kind: "playback_start",
+        occurredAt: now.toISOString(),
+        payload: { positionSeconds: 0 },
+      }
+      const receipts = await Promise.all(
+        Array.from({ length: 8 }, () =>
+          playbackService.record({
+            caller,
+            sessionDigest,
+            mediaId: "claim-race-media",
+            episodeId: canonical.episodeId,
+            capability: canonical.capability,
+            contractVersion: "recommendation-evidence-v1",
+            events: [event],
+          }),
+        ),
+      )
+      expect(
+        receipts.flat().filter((receipt) => receipt.status === "accepted"),
+      ).toHaveLength(1)
+      expect(
+        receipts.flat().filter((receipt) => receipt.status === "replay"),
+      ).toHaveLength(7)
+    })
+
+    it("preserves mixed late facts, exact replay and conflicts while finalizers race", async () => {
+      const started = new Date()
+      let now = started
+      const sessionDigest = "9".repeat(64)
+      const keyring = parseRecommendationKeyring(
+        JSON.stringify({
+          keys: [
+            {
+              kid: "mixed-race",
+              status: "active",
+              key: Buffer.alloc(32, 5).toString("base64url"),
+            },
+          ],
+        }),
+      )
+      const tokenService = {
+        activeKid: keyring.active.kid,
+        ...createRecommendationTokenService({
+          keyring,
+          readRevokedKids: async () => [],
+          now: () => now,
+        }),
+      }
+      const episodeService = new RecommendationEpisodeService({
+        prisma,
+        tokenService,
+        now: () => now,
+      })
+      const context = await episodeService.issueContext({
+        caller,
+        sessionDigest,
+        mediaId: "mixed-race-media",
+        discoverySource: "direct",
+      })
+      const claim = await episodeService.claim({
+        caller,
+        sessionDigest,
+        mediaId: "mixed-race-media",
+        claimNonce: context.claimNonce,
+      })
+      const playbackService = new RecommendationPlaybackService({
+        prisma,
+        tokenService,
+        now: () => now,
+      })
+      const outcomeService = new RecommendationOutcomeService({
+        prisma,
+        now: () => now,
+      })
+      const input = {
+        caller,
+        sessionDigest,
+        mediaId: "mixed-race-media",
+        episodeId: claim.episodeId,
+        capability: claim.capability,
+        contractVersion: "recommendation-evidence-v1",
+      }
+      const end = {
+        eventId: "mixed-end",
+        kind: "playback_end",
+        occurredAt: started.toISOString(),
+        payload: {
+          reason: "ended",
+          positionSeconds: 10,
+          durationSeconds: 100,
+          progress: 0.1,
+          completed: false,
+        },
+      }
+      await playbackService.record({ ...input, events: [end] })
+      const finalization = {
+        episodeId: claim.episodeId,
+        generation: 1,
+        reason: "fact-advanced" as const,
+      }
+      await outcomeService.finalize(finalization)
+      const original = await prisma.recommendationPlaybackFact.findFirstOrThrow(
+        { where: { episodeId: claim.episodeId } },
+      )
+      now = new Date(started.getTime() + 4.5 * 60 * 60 * 1000)
+      const writes = Array.from({ length: 8 }, (_, index) =>
+        playbackService.record({
+          ...input,
+          events: [
+            {
+              ...end,
+              payload: {
+                ...end.payload,
+                positionSeconds: index % 2 === 0 ? 10 : 20,
+              },
+            },
+            {
+              eventId: `mixed-active-${index}`,
+              kind: "playback_active_visible_playing",
+              occurredAt: started.toISOString(),
+              payload: { activeMilliseconds: 1000, coverage: "complete" },
+            },
+          ],
+        }),
+      )
+      const results = await Promise.allSettled([
+        ...writes,
+        ...Array.from({ length: 8 }, () =>
+          outcomeService.finalize(finalization),
+        ),
+      ])
+      for (const result of results) expect(result.status).toBe("fulfilled")
+      const receipts = await Promise.all(writes)
+      expect(
+        receipts.flat().filter((receipt) => receipt.status === "accepted"),
+      ).toHaveLength(8)
+      expect(
+        receipts.flat().filter((receipt) => receipt.status === "replay"),
+      ).toHaveLength(4)
+      expect(
+        receipts.flat().filter((receipt) => receipt.status === "conflict"),
+      ).toHaveLength(4)
+      await expect(
+        prisma.recommendationPlaybackFact.findUnique({
+          where: { id: original.id },
+        }),
+      ).resolves.toEqual(original)
+      const facts = await prisma.recommendationPlaybackFact.findMany({
+        where: { episodeId: claim.episodeId },
+        orderBy: { sequence: "asc" },
+      })
+      expect(facts.map((fact) => fact.sequence)).toEqual([
+        1, 2, 3, 4, 5, 6, 7, 8, 9,
+      ])
+      expect(facts.filter((fact) => fact.late)).toHaveLength(8)
+      const replays =
+        await prisma.recommendationPlaybackTransportReplayReceipt.findMany({
+          where: { episodeId: claim.episodeId },
+          orderBy: { replayOrdinal: "asc" },
+        })
+      expect(replays.map((receipt) => receipt.replayOrdinal)).toEqual([
+        1, 2, 3, 4,
+      ])
+      await expect(
+        prisma.recommendationPlaybackEpisode.findUnique({
+          where: { id: claim.episodeId },
+          select: {
+            nextFactSequence: true,
+            transportReplayCount: true,
+            conflictCount: true,
+          },
+        }),
+      ).resolves.toEqual({
+        nextFactSequence: 10,
+        transportReplayCount: 4,
+        conflictCount: 4,
+      })
+      await outcomeService.finalize(finalization)
+      await expect(
+        outcomeService.rebuildProjection({
+          episodeId: claim.episodeId,
+          generation: 1,
+        }),
+      ).resolves.toMatchObject({ status: "matched", factWatermark: 9 })
+      const outcomes = await prisma.recommendationOutcomeRevision.findMany({
+        where: {
+          episodeId: claim.episodeId,
+          classifierVersion: "active-watch-proxy-v1",
+        },
+        orderBy: { revision: "asc" },
+      })
+      expect(outcomes.length).toBeGreaterThanOrEqual(2)
+      for (const [index, outcome] of outcomes.entries()) {
+        expect(outcome.revision).toBe(index + 1)
+        expect(outcome.supersedesId).toBe(
+          index === 0 ? null : outcomes[index - 1].id,
+        )
+      }
     })
 
     it("serializes concurrent selection and impression while preserving exact replay semantics", async () => {
@@ -612,6 +907,18 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       })
       expect(committed?.attributionEligibleAt).toEqual(raceNow)
       expect(dispatchProfileFeedback).not.toHaveBeenCalled()
+      const claimInput = {
+        caller,
+        sessionDigest,
+        mediaId: "race-target",
+        claimNonce: selectionInput.claimNonce,
+      }
+      const claims = await Promise.allSettled(
+        Array.from({ length: 8 }, () => episodeService.claim(claimInput)),
+      )
+      const canonical = await episodeService.claim(claimInput)
+      for (const claim of claims)
+        expect(claim).toEqual({ status: "fulfilled", value: canonical })
     })
 
     it("keeps navigation-only selections out of attribution and separates transport replays", async () => {

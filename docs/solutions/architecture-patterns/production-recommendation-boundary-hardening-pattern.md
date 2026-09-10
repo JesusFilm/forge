@@ -1,7 +1,7 @@
 ---
 title: "Harden a production recommendation slice at every irreversible boundary"
 date: "2026-08-26"
-last_updated: "2026-09-03"
+last_updated: "2026-09-09"
 category: "architecture-patterns"
 module: "apps/admin and apps/web recommendations"
 problem_type: "architecture_pattern"
@@ -21,6 +21,9 @@ tags:
   - "anonymous-profile"
   - "bounded-pilot"
   - "production-boundary"
+  - "apollo-errors"
+  - "serializable-contention"
+  - "evidence-observability"
 related_components:
   - "database"
   - "frontend_stimulus"
@@ -29,6 +32,8 @@ related_components:
 ---
 
 # Harden a production recommendation slice at every irreversible boundary
+
+> **Current enablement policy:** follow `docs/analytics-and-recommendation-policy.md`. Consent-named fields and transitions here are implementation history, not requirements to obtain consent. Recommendation/profile defaults and the restored GA/Datadog baseline remain active when configured.
 
 ## Context
 
@@ -182,7 +187,7 @@ reports any drift for operational enforcement
 (`apps/admin/src/services/recommendations/outcome.service.ts:463-524`).
 
 Publish through a stable source-neutral outcome envelope, then let downstream
-consumers own integrity, consent, profile, and purpose-specific eligibility.
+consumers own integrity, explicit personalization settings, profile, and purpose-specific eligibility.
 Measurement publication itself never authorizes learning
 (`apps/admin/src/services/recommendations/playback-outcome-consumer.ts:12-104`).
 If consumer dispatch fails after the outcome commits, rearm the durable due
@@ -206,7 +211,7 @@ semantic and profile generators, canonical union, eligibility, ranker,
 composer, delivery and surface contracts, slate bound, projection versions,
 semantic fallback, service deadline, and learning source. The separate
 experiment identity fixes bounded-live authority and exposure. Both generators
-may nominate, but only consent-authorized profile input participates; an empty
+may nominate, but only eligible profile input participates; an empty
 or failed profile source is absence of signal, not a second semantic vote.
 Semantic-only remains the control, fallback, kill-switch target, and
 last-known-good strategy
@@ -229,7 +234,7 @@ Rollback and emergency stop remain available.
 
 ### Preserve exact-six as a composition invariant
 
-Do not let a consented profile source replace semantic availability. Preserve
+Keep semantic availability when adding a profile source. Preserve
 the complete bounded semantic reserve before adding profile nominations; use
 only the remaining 64-nomination capacity for profile candidates
 (`apps/admin/src/services/recommendations/delivery-candidate-mapping.ts:37-61`).
@@ -298,10 +303,10 @@ The implementation protects the pattern with separate executable boundaries:
   monotonic supersession, consumer retry, and rebuild parity. A real PostgreSQL
   case races finalizers and proves the incremental outcome matches a fresh
   rebuild (`apps/admin/src/services/recommendations/playback-episode.db.test.ts`).
-- Browser QA proves that essential-only and newly consented flows each receive
+- The historical browser QA exercised essential-only and newly consented flows; each received
   six recommendations with loaded thumbnails.
-  After consent, selection, and a qualified finalized playback publish profile
-  generation 3, the traced follow-up request receives an exact-six
+  In that historical run, consent, selection, and a qualified finalized playback published profile
+  generation 3; the traced follow-up request received an exact-six
   `hybrid_personalized` slate with two interests in 800 ms. Its Admin evidence
   contains semantic and profile contributions without exposing a profile
   identifier, cookie, history, or vector.
@@ -333,3 +338,107 @@ percentage in place.
 - [Manifest identity bound to execution and evidence](bind-eval-manifest-identity-to-execution-and-evidence.md)
 - [Immutable experiment ledger boundary](mastra-seo-experiment-ledger-boundary.md)
 - [Admin trace retention pattern](../platform/admin-search-trace-retention-pattern.md)
+
+## Evidence transport closeout (feat-464, 2026-09-09)
+
+Apollo's default mutation error policy rejects GraphQL failures before returned
+result inspection. Normalize both rejected `CombinedGraphQLErrors.errors` and
+compatible returned/legacy envelopes using `extensions.recommendationCode`,
+never message matching. Claims and facts map proven `invalid_binding` to terminal
+HTTP 409. Generic structured `extensions.code = BAD_USER_INPUT` on playback
+operations maps to HTTP 400 `playback_request_invalid`; this includes capability
+validation that does not carry a binding subtype. Render/impression input
+rejection maps to HTTP 400 `evidence_request_invalid`, which its existing JSON
+retry helper treats as terminal. The playback browser retires that
+episode only for the matching status/code pair. Unrecognized error bodies remain
+ambiguous. Real local signature rejection must leave decoded media running.
+Authentication and recognized-machine rejection must not trigger a
+standalone context fallback. Ambiguous acknowledgements retain the original nonce,
+event identifiers, timestamps and payload.
+
+The recommendation complete-service deadline remains 1.5 seconds. Evidence transport
+is a distinct acknowledgement contract: provisionally 3 seconds upstream and
+5 seconds in the browser, including acknowledgement-body consumption, based on the
+ticket's measured successful 1.91-second p95. A timed-out mutation may still commit;
+the retry must be idempotent rather than assuming cancellation. The stalled-body
+test must withhold JSON, not merely response headers.
+
+Blocking `pg_advisory_xact_lock` inside a Serializable transaction can establish
+the snapshot before lock acquisition. Queued callers then read stale counters and
+exhaust P2034 recovery. Two callers hid the problem; eight delayed concurrent
+replays reproduced it against PostgreSQL. Ingestion and finalization now use the
+same nonblocking advisory key, roll back busy transactions, and retry acquisition
+outside the transaction under a separate bounded contention budget. Serializable
+isolation, P2034 recovery, sequence CAS, privacy fences and reservation-before-receipt
+insertion remain intact. A losing claim revalidates once and reconstructs the
+committed capability with its original signing key.
+
+Operational observers must not become a new playback dependency. Runtime-allowlist
+fixed enums before logging, isolate logger failures, and use plain
+`event=… key=value` logging per the existing
+[Railway logsV2 learning](../runtime-errors/railway-logsv2-silences-nextjs-stdout-runtime-20260518.md).
+Missing observations are unknown, never healthy zero. Logs are not authoritative
+HTTP denominators, committed-fact counts, or a recovery queue.
+
+The optional Redis counter collector introduced in PR #2211 only fed an extra
+Admin panel. It had no recommendation, analytics-ledger or ranking consumer.
+After production monitoring showed collector unavailability while transport logs
+remained usable, the owner chose to remove the duplicate store. Keep operational
+aggregation in Datadog and durable playback/profile audits in authorized Admin.
+A new cache or collector needs a demonstrated consumer and measured benefit;
+an additional dashboard alone did not justify another connection lifecycle.
+
+Discriminating regression references:
+
+- `apps/web/src/app/api/recommendations/playback/route.test.ts`: rejected Apollo
+  failures and crawler exclusion before mutation.
+- `apps/web/src/components/recommendations/RecommendationPlaybackRecorder.test.tsx`:
+  stalled acknowledgements, exact replay, definitive rejection and playback independence.
+- `apps/admin/src/services/recommendations/playback-episode.db.test.ts`: eight-way
+  replay and claims, mixed late/conflicting facts with concurrent finalization,
+  exact receipt ordinals, immutable original facts and authoritative rebuild equality.
+- `apps/admin/src/services/recommendations/evidence-observability.test.ts` and
+  `apps/web/src/lib/recommendation-evidence-observability.test.ts`: shared safe
+  log vocabulary, identity stripping and isolation of logger failures.
+
+These tests verify local mechanisms. They do not establish historical crawler
+ownership: stored browser discovery provenance is not trusted user-agent evidence.
+Do not relabel episodes by timestamps or aggregate APM counts. Preserve bounded
+uncertainty and require the separate production canary and authorized
+zero-ineligible-current-pointer audit before closing feat-464/feat-459 or advancing
+profile ranking. `active-watch-proxy-v1` remains fail-closed.
+
+### Diagnose admission before tuning its budget
+
+An `admission_unavailable` label does not distinguish configuration, connection,
+TIME, EVAL, Redis-clock rejection or subsequent client backoff. Log fixed stage
+and reason values plus clamped durations; exclude raw errors, Redis URLs, keys,
+headers and capabilities. Isolate logging failures from admission behavior.
+Do not count both a backoff and its load-unavailable observation as two requests.
+
+A Redis TIME sample has round-trip uncertainty. Computing the Lua deadline as
+`redisTime + (commandBudget - elapsedTime)` deliberately uses a conservative
+clock bound, which can reject work before the apparent client timer expires.
+Do not remove that subtraction: a late queued EVAL must never write after the
+caller's deadline. The real Redis regression delays the TIME reply by 160 ms,
+then separately holds EVAL until after caller timeout and checks both buckets
+remain absent. Production context traces justified 500 ms for its TIME/EVAL
+work, retaining 250 ms for connection and other namespaces. Audit every caller
+before widening a shared budget: content-action transport has a tighter browser
+deadline. Context admission reserves 750 ms within its five-second browser and
+three-second upstream ceilings. A local pass does not replace the production canary.
+
+APM request-count metrics and retained span/log populations differ. Verify actual
+metric dimensions before claiming a complete environment-specific denominator;
+a shared agent hostname and a revision deployed to two environments cannot
+separate those populations. Checked-in monitor definitions are not installed
+monitors, and a local signed Admin fixture cannot establish production pointer
+integrity. Query reconciliation heartbeats across both verified primary Admin and
+worker hosts: execution can move between them, and a worker-only filter creates
+apparent cadence gaps. Record unresolved access and actual cadence gaps explicitly.
+
+Audit adjacent evidence mutations for the same error classification. Playback
+and render fixes left selection returning 503 for structured `BAD_USER_INPUT`;
+the canary found two such requests about 400 ms apart. Share the domain-error
+wrapper across those operations, retain specific binding errors, and verify a
+terminal selection still navigates once to its trusted token-free fallback href.

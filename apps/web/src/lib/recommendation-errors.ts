@@ -1,6 +1,7 @@
 export type RecommendationRuntimeErrorCode =
   | "delivery_unavailable"
   | "evidence_unavailable"
+  | "evidence_request_invalid"
   | "selection_unavailable"
   | "episode_unavailable"
   | "playback_unavailable"
@@ -8,12 +9,15 @@ export type RecommendationRuntimeErrorCode =
   | "profile_unavailable"
   | "claim_invalid"
   | "playback_binding_invalid"
+  | "playback_request_invalid"
   | "evidence_failed"
   | "deadline"
   | "request_failed"
 
 const MESSAGE_BY_CODE: Record<RecommendationRuntimeErrorCode, string> = {
   delivery_unavailable: "Semantic recommendation delivery unavailable",
+  evidence_request_invalid:
+    "Semantic recommendation evidence request is invalid",
   evidence_unavailable: "Semantic recommendation evidence unavailable",
   selection_unavailable: "Semantic recommendation selection unavailable",
   episode_unavailable: "Semantic recommendation episode unavailable",
@@ -23,6 +27,8 @@ const MESSAGE_BY_CODE: Record<RecommendationRuntimeErrorCode, string> = {
   claim_invalid: "Semantic recommendation claim is invalid",
   playback_binding_invalid:
     "Semantic recommendation playback binding is invalid",
+  playback_request_invalid:
+    "Semantic recommendation playback request is invalid",
   evidence_failed: "Semantic recommendation evidence failed",
   deadline: "Semantic recommendation request deadline exceeded",
   request_failed: "Semantic recommendation request failed",

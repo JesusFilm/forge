@@ -1,5 +1,7 @@
 # Semantic Recommendation Tracer Operations
 
+> **Enablement and analytics:** apply `docs/analytics-and-recommendation-policy.md`. Configured recommendations and profile learning require no consent prerequisite. Existing consent receipt and generation names describe runtime state. Preserve the GA page views, navigation, Watch events, and Datadog RUM restored by PR #2229 when changing recommendation delivery or telemetry.
+
 This runbook covers the production semantic recommendation path from the
 automatic Watch block through the authorized Admin request trace, plus current
 direct anonymous-profile delivery. Ordinary profile delivery does not consult

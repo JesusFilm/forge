@@ -129,7 +129,7 @@ Each vector can nominate candidates independently through ANN, with provenance s
 
 #### 3. Anonymous users still have profiles
 
-An anonymous Forge viewer can have a short-lived browser/session representation based on the current video, recent eligible watches, search terms, acquisition context, and locale. After sign-up, identity resolution can attach consenting first-party history to an account without rewriting the underlying evidence. Popular, editorial, semantic item-to-item, and session candidates cover the true cold-start period.
+An anonymous Forge viewer can have a short-lived browser/session representation based on the current video, recent eligible watches, search terms, acquisition context, and locale. After sign-up, identity resolution can attach eligible first-party history to an account without rewriting the underlying evidence. Popular, editorial, semantic item-to-item, and session candidates cover the true cold-start period.
 
 #### 4. Candidate sources should remain separately measurable
 
@@ -291,7 +291,7 @@ Adopt two-tower retrieval, sequence encoders, or MMoE-style ranking only when of
 2. **Directional co-watch in shadow.** Build quality-weighted, time-decayed, popularity-corrected edges from finalized playback episodes; compare its recall and overlap with semantic candidates.
 3. **Semantic + co-watch union in a controlled Watch cohort.** Keep both sources observable, use simple quotas/source-aware scoring, and add MMR.
 4. **Anonymous session profile.** Build a short-lived multi-interest/session representation from recent eligible watches and searches; retrieve semantic ANN candidates.
-5. **Signed-in long-term profile.** Add consent, erasure, multiple interest vectors, explicit preferences, and profile/session separation.
+5. **Signed-in long-term profile.** Add explicit personalization controls, erasure, multiple interest vectors, explicit preferences, and profile/session separation.
 6. **Qualified popularity, trending, continuation, and editorial sources.** Use these as explicit generators rather than invisible ranking boosts.
 7. **Common learned re-ranker.** Train only after impression, position, selection, playback outcome, integrity, and experiment evidence are trustworthy.
 8. **Bounded exploration and advanced sequence/graph models.** Require propensity logging, holdouts, and clear long-term metrics.

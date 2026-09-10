@@ -31,6 +31,7 @@ import {
   recommendationEvidenceDigest,
   recordRecommendationConflict,
 } from "./evidence.service"
+import { observeRecommendationEvidence } from "./evidence-observability"
 import { createRuntimeRecommendationTokenService } from "./runtime-token"
 import { consumeDeliveryCapabilitySubmissions } from "./submission-budget"
 import {
@@ -65,6 +66,13 @@ type EpisodeTokenService = {
     binding: EpisodeCapabilityBinding,
     replay?: { issuedAt: Date; signingKid: string },
   ): Promise<string>
+}
+
+type EpisodeClaimInput = {
+  caller: Principal | null
+  sessionDigest: string
+  claimNonce: string
+  mediaId: string
 }
 
 type EpisodeDependencies = {
@@ -457,12 +465,35 @@ export class RecommendationEpisodeService {
     }
   }
 
-  async claim(input: {
-    caller: Principal | null
-    sessionDigest: string
-    claimNonce: string
-    mediaId: string
-  }) {
+  async claim(input: EpisodeClaimInput) {
+    try {
+      try {
+        return await this.claimOnce(input, false)
+      } catch (error) {
+        if (!(error instanceof RecommendationConflictError)) throw error
+        // Another claimant may have committed the identical nonce. Revalidate
+        // once and reconstruct only that persisted capability, never a new claim.
+        return await this.claimOnce(input, true)
+      }
+    } catch (error) {
+      observeRecommendationEvidence({
+        action: "claim",
+        outcome:
+          error instanceof RecommendationBindingError ? "rejected" : "failed",
+        reason:
+          error instanceof RecommendationBindingError
+            ? "invalid_binding"
+            : "unknown",
+        retryDisposition:
+          error instanceof RecommendationBindingError
+            ? "terminal"
+            : "retryable",
+      })
+      throw error
+    }
+  }
+
+  private async claimOnce(input: EpisodeClaimInput, replayOnly: boolean) {
     assertWebRecommendationCaller(input.caller)
     if (
       !/^[a-f0-9]{64}$/.test(input.sessionDigest) ||
@@ -503,6 +534,7 @@ export class RecommendationEpisodeService {
         sessionDigest: input.sessionDigest,
         mediaId: input.mediaId,
         now,
+        replayOnly,
       })
     }
     if (
@@ -552,6 +584,11 @@ export class RecommendationEpisodeService {
         },
         { issuedAt: episode.claimedAt!, signingKid: episode.signingKid },
       )
+      observeRecommendationEvidence({
+        action: "claim",
+        outcome: "replay",
+        retryDisposition: "idempotent_replay",
+      })
       return {
         episodeId: episode.id,
         capability,
@@ -560,6 +597,11 @@ export class RecommendationEpisodeService {
       }
     }
 
+    if (replayOnly) {
+      throw new RecommendationConflictError(
+        "Recommendation claim did not commit",
+      )
+    }
     if (
       selection.handoffExpiresAt <= now ||
       selection.episode.state !== RecommendationEpisodeState.PENDING
@@ -640,6 +682,7 @@ export class RecommendationEpisodeService {
       notBefore: activeUntil,
     })
 
+    observeRecommendationEvidence({ action: "claim", outcome: "accepted" })
     return {
       episodeId: selection.episode.id,
       capability,
@@ -669,6 +712,7 @@ export class RecommendationEpisodeService {
     sessionDigest: string
     mediaId: string
     now: Date
+    replayOnly: boolean
   }) {
     const { context, now } = input
     if (
@@ -712,6 +756,11 @@ export class RecommendationEpisodeService {
         },
         { issuedAt: context.claimedAt, signingKid: context.signingKid },
       )
+      observeRecommendationEvidence({
+        action: "claim",
+        outcome: "replay",
+        retryDisposition: "idempotent_replay",
+      })
       return {
         episodeId: context.id,
         capability,
@@ -720,6 +769,11 @@ export class RecommendationEpisodeService {
       }
     }
 
+    if (input.replayOnly) {
+      throw new RecommendationConflictError(
+        "Recommendation claim did not commit",
+      )
+    }
     if (
       context.handoffExpiresAt == null ||
       context.handoffExpiresAt <= now ||
@@ -775,6 +829,7 @@ export class RecommendationEpisodeService {
       reason: "episode-opened",
       notBefore: activeUntil,
     })
+    observeRecommendationEvidence({ action: "claim", outcome: "accepted" })
     return {
       episodeId: context.id,
       capability,

@@ -4,12 +4,12 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (September 8, 2026)
+## Status (September 9, 2026)
 
-- **Total tickets:** 635
+- **Total tickets:** 636
 - **Complete:** 477
-- **In progress:** 45
-- **Not started:** 41
+- **In progress:** 47
+- **Not started:** 40
 - **Blocked:** 72
 - **Overdue and not complete:** 115
 
@@ -24,7 +24,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-372](content-discovery/feat-372-recommendation-mission-value-actions.md)                                 | Recommendation mission-value actions                                                            | nisal      | P0       | —          | 4    | —          | blocked     |
 | [feat-373](content-discovery/feat-373-watch-surface-impressions-ctr.md)                                        | Watch surface impressions and CTR                                                               | nisal      | P0       | —          | 5    | —          | not-started |
 | [feat-376](content-discovery/feat-376-recommendation-integrity-eligibility.md)                                 | Recommendation integrity and evidence eligibility                                               | nisal      | P0       | —          | 6    | —          | complete    |
-| [feat-378](content-discovery/feat-378-consent-aware-recommendation-profile.md)                                 | Consent-aware recommendation profile                                                            | nisal      | P0       | —          | 7    | —          | complete    |
+| [feat-378](content-discovery/feat-378-consent-aware-recommendation-profile.md)                                 | Anonymous recommendation profile                                                                | nisal      | P0       | —          | 7    | —          | complete    |
 | [feat-381](content-discovery/feat-381-semantic-control-readiness.md)                                           | Semantic recommendation control readiness                                                       | nisal      | P0       | —          | 4    | —          | blocked     |
 | [feat-382](content-discovery/feat-382-recommendation-candidate-ranking-platform.md)                            | Recommendation candidate and deterministic ranking platform                                     | nisal      | P0       | —          | 7    | —          | complete    |
 | [feat-383](content-discovery/feat-383-shadow-candidate-evaluation.md)                                          | Shadow candidate evaluation                                                                     | nisal      | P0       | —          | 5    | —          | complete    |
@@ -32,7 +32,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-385](content-discovery/feat-385-hybrid-recommendation-promotion-rollback.md)                             | Hybrid recommendation promotion and rollback                                                    | nisal      | P0       | —          | 6    | —          | complete    |
 | [feat-447](content-discovery/feat-447-live-anonymous-profile-personalization-pilot.md)                         | Live anonymous-profile hybrid personalization rollout                                           | nisal      | P0       | —          | 8    | —          | blocked     |
 | [feat-459](content-discovery/feat-459-recommendation-profile-eligibility-reconciliation.md)                    | Recommendation profile eligibility reconciliation                                               | nisal      | P0       | —          | 6    | —          | blocked     |
-| [feat-464](content-discovery/feat-464-recommendation-evidence-transport-crawler-integrity.md)                  | Recommendation evidence transport and crawler integrity                                         | nisal      | P0       | —          | 3    | —          | not-started |
+| [feat-464](content-discovery/feat-464-recommendation-evidence-transport-crawler-integrity.md)                  | Recommendation evidence transport and crawler integrity                                         | nisal      | P0       | —          | 3    | —          | in-progress |
 | [feat-009](content-discovery/feat-009-pgvector-embedding-indexing.md)                                          | pgvector Setup and Embedding Indexing                                                           | nisal      | P0       | 2026-04-07 | 14   | 2026-04-20 | complete    |
 | [feat-010](content-discovery/feat-010-semantic-search-api.md)                                                  | Semantic Search API                                                                             | nisal      | P0       | 2026-04-14 | 21   | 2026-05-04 | complete    |
 | [feat-011](content-discovery/feat-011-search-ui-web.md)                                                        | Search UI — Web                                                                                 | urim       | P0       | 2026-04-14 | 21   | 2026-05-04 | complete    |
@@ -66,6 +66,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-276](content-discovery/feat-276-admin-video-library-search-client-traces.md)                             | Admin video library search client traces                                                        | codex      | P0       | 2026-07-21 | 1    | 2026-07-21 | complete    |
 | [feat-334](content-discovery/feat-334-watch-search-typesense-parallel-backend.md)                              | Watch Search Typesense parallel backend                                                         | codex      | P0       | 2026-08-03 | 2    | 2026-08-04 | complete    |
 | [feat-338](content-discovery/feat-338-watch-search-chinese-lexical-identity.md)                                | Watch Search Chinese lexical identity                                                           | codex      | P0       | 2026-08-06 | 1    | 2026-08-06 | complete    |
+| [feat-470](content-discovery/feat-470-recommendation-delivery-and-funnel-investigation.md)                     | Investigate and repair recommendation retrieval timeouts                                        | nisal      | P0       | 2026-09-09 | 3    | 2026-09-11 | in-progress |
 | [feat-265](content-discovery/feat-265-hassaniyya-latin-watch-ui-localization.md)                               | Hassaniyya-Latin Watch UI localization                                                          | urim       | P1       | —          | 1    | —          | not-started |
 | [feat-370](content-discovery/feat-370-recommendation-playback-navigation-qoe.md)                               | Recommendation playback navigation and QoE signals                                              | nisal      | P1       | —          | 4    | —          | not-started |
 | [feat-371](content-discovery/feat-371-recommendation-subtitle-audio-signals.md)                                | Recommendation subtitle and audio signals                                                       | nisal      | P1       | —          | 3    | —          | not-started |
@@ -301,7 +302,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-455](platform/feat-455-watch-route-alerts.md)                                    | Surface Watch route 404 alerts                                                   | codex      | P0       | 2026-09-04 | 1    | 2026-09-04 | complete    |
 | [feat-458](platform/feat-458-changelog-production-grant-operations.md)                 | Operate Changelog production admin grants                                        | edmondshen | P0       | 2026-09-05 | 1    | 2026-09-05 | complete    |
 | [feat-278](platform/feat-278-watch-russian-authored-content-localization.md)           | Watch Russian authored content localization                                      | unassigned | P1       | —          | 2    | —          | not-started |
-| [feat-456](platform/feat-456-watch-page-not-found-telemetry.md)                        | Emit consent-approved Watch page-not-found telemetry                             | codex      | P1       | —          | 2    | —          | blocked     |
+| [feat-456](platform/feat-456-watch-page-not-found-telemetry.md)                        | Emit Watch page-not-found telemetry                                              | codex      | P1       | —          | 2    | —          | blocked     |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md)       | CMS local PostgreSQL I/O concurrency compatibility                               | tataihono  | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |
 | [feat-019](platform/feat-019-scaffolding-support-urim.md)                              | Scaffolding Support for Urim                                                     | tataihono  | P1       | 2026-04-07 | 21   | 2026-04-27 | blocked     |
 | [feat-077](platform/feat-077-roadmap-operations-and-owner-hygiene.md)                  | Roadmap Operations and Owner Hygiene                                             | josh       | P1       | 2026-04-10 | 14   | 2026-04-23 | in-progress |
