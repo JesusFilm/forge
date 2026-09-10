@@ -3,7 +3,12 @@
 import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
-import type { ComponentProps, CSSProperties, ReactNode } from "react"
+import type {
+  ComponentProps,
+  CSSProperties,
+  PointerEvent as ReactPointerEvent,
+  ReactNode,
+} from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import type { FragmentOf } from "@/lib/legacy-fragment-types"
@@ -747,7 +752,7 @@ function CardFrame({
   prefetch: boolean | undefined
   className: string
   ariaLabel: string | undefined
-  onPointerMove: (() => void) | undefined
+  onPointerMove: ((event: ReactPointerEvent<HTMLElement>) => void) | undefined
   onFocus: (() => void) | undefined
   style?: CSSProperties
   children: ReactNode
@@ -819,9 +824,13 @@ function VideoCard({
     setPrefetchArmed(true)
   }, [])
   // `pointerenter` also fires when the feed scrolls under a still pointer,
-  // which is not intent; require actual movement over the card.
+  // which is not intent; require actual movement over the card. Movement is
+  // only an intent signal for a hovering pointer, though — a touch scroll
+  // emits `pointermove` across every card it drags past, which would arm the
+  // whole rail. Touch users still get the focus path and the click itself.
   const handlePointerMove = isInteractive
-    ? () => {
+    ? (event: ReactPointerEvent<HTMLElement>) => {
+        if (event.pointerType !== "mouse") return
         armPrefetch()
         onHover?.()
       }

@@ -243,6 +243,11 @@ export type WatchHomeTileDestination =
 // it reads as a path. Neither is ever legitimate in an authored destination.
 const PATH_TRAVERSAL = /(^|\/)\.\.(\/|$)/
 
+// Same-origin stand-in used only to normalize an authored PATH through the
+// URL parser. Never rendered — a `.invalid` TLD is guaranteed unresolvable,
+// so a bug that leaked it into an href fails loudly instead of navigating.
+const DESTINATION_PROBE_ORIGIN = "https://watch.invalid"
+
 /**
  * Classifies a destination an admin may type into a tile, or returns null to
  * drop it.
@@ -280,20 +285,43 @@ export function classifyWatchHomeTileHref(
   if (href.startsWith("/")) {
     if (PATH_TRAVERSAL.test(href)) return null
 
+    // Resolve through the URL parser BEFORE any check, so dot segments
+    // collapse the way the browser will. Validating the raw string is not
+    // enough: `/./api/x` and `/%2e%2e/watch/api/x` both survive a literal
+    // `..` test and a literal `/api` prefix test, and then resolve onto the
+    // API route anyway once the browser normalizes them.
+    let resolved: URL
+    try {
+      resolved = new URL(href, DESTINATION_PROBE_ORIGIN)
+    } catch {
+      return null
+    }
+    if (resolved.origin !== DESTINATION_PROBE_ORIGIN) return null
+
+    const pathname = resolved.pathname
+    // An empty segment survives URL parsing, and stripping the base path off
+    // `/watch//api/x` would manufacture `//api/x` — the protocol-relative
+    // shape rejected above, and one the server collapses back onto the very
+    // path the API check exists to forbid.
+    if (pathname.includes("//")) return null
+
     // Only a whole leading segment counts: `/watchlist` keeps its name, and
     // the bare base path means the Watch root.
-    let relative = href
-    if (href === basePath) {
+    let relative = pathname
+    if (pathname === basePath) {
       relative = "/"
-    } else if (href.startsWith(`${basePath}/`)) {
-      relative = href.slice(basePath.length)
+    } else if (pathname.startsWith(`${basePath}/`)) {
+      relative = pathname.slice(basePath.length)
     }
 
     if (relative === "/api" || relative.startsWith("/api/")) return null
     // A strip that consumed the whole string would leave `next/link` with an
     // empty href resolving against the current page.
-    if (!relative.startsWith("/")) return null
-    return { kind: "watch", href: relative }
+    if (!relative.startsWith("/") || relative.startsWith("//")) return null
+    return {
+      kind: "watch",
+      href: `${relative}${resolved.search}${resolved.hash}`,
+    }
   }
 
   let parsed: URL

@@ -72,7 +72,13 @@ describe("MediaCollection card href under a configured basePath", () => {
   // A default-language href is syntactically valid, so a card that silently
   // drops the dub language would pass every English-only assertion. This is
   // the recurring Watch defect class, so it gets its own pin.
-  it("preserves a non-default dub language in the public URL", async () => {
+  //
+  // The two language axes are held APART on purpose. Passing a Spanish dub
+  // alongside a Spanish page language makes the assertion vacuous: deleting
+  // the item-language branch would fall through to the page language and
+  // produce the same URL. Here the page language is English, so only the
+  // item's own dub can produce this result.
+  it("preserves the item's dub language over the page language", async () => {
     const { dataHref, href } = await renderCard(
       {
         id: "item-1",
@@ -81,11 +87,24 @@ describe("MediaCollection card href under a configured basePath", () => {
         title: "JESUS",
         videoDub: { language: { slug: "spanish-castilian" } },
       },
-      "spanish-castilian",
+      "english",
     )
 
     expect(dataHref).toBe("/jesus.html/spanish-castilian.html")
     expect(href).toBe("/watch/jesus.html/spanish-castilian.html")
     expect(href).not.toContain("/watch/watch/")
+  })
+
+  // The companion: with no item language, the page language is what must
+  // reach the URL. Without this, the fixture above could be satisfied by
+  // ignoring the page language entirely.
+  it("falls back to the page language when the item has no dub", async () => {
+    const { dataHref, href } = await renderCard(
+      { id: "item-1", videoId: "v-1", videoSlug: "jesus", title: "JESUS" },
+      "spanish-castilian",
+    )
+
+    expect(dataHref).toBe("/jesus.html/spanish-castilian.html")
+    expect(href).toBe("/watch/jesus.html/spanish-castilian.html")
   })
 })
