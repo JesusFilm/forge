@@ -731,13 +731,20 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   modeGroup: {
+    // Side by side. The default `stretch` keeps both cards the height of the
+    // taller one, so the longer label wrapping does not leave a short sibling.
+    flexDirection: "row",
     gap: 8,
   },
   modeOption: {
+    // Equal halves, so neither card's width depends on its label length.
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 16,
+    // Tighter than the stacked layout was: the card is now half as wide and
+    // the longer label needs the room more than the padding does.
+    gap: 10,
+    paddingHorizontal: 12,
     paddingVertical: 12,
     borderRadius: 8,
     minHeight: 48,
