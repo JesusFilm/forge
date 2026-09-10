@@ -31,6 +31,7 @@ import {
   RAY_APEX_X_RATIO,
   RAY_BAND_COUNT,
   RAY_BAND_PROFILE,
+  RAY_DISSOLVE_DEPTH_RATIO,
   RAY_APEX_Y_RATIO,
   SPLASH_BLOOM_RISE_MS,
   SPLASH_BLOOM_SETTLE_MS,
@@ -274,6 +275,26 @@ describe("the beam's geometry (R9)", () => {
     )
     expect(perpendicular).toBeCloseTo(0, 6)
 
+    // The dissolve is measured square to the corner line, so the share of the
+    // DEPTH it covers is the same on every frame. Scale it off a band's length
+    // instead and this reads 0.56 on a phone against 0.66 on a tablet.
+    const apexToLine = {
+      x: corners.bottomLeft.x - geometry.apex.x,
+      y: corners.bottomLeft.y - geometry.apex.y,
+    }
+    const span = {
+      x: corners.topRight.x - corners.bottomLeft.x,
+      y: corners.topRight.y - corners.bottomLeft.y,
+    }
+    const spanLength = Math.hypot(span.x, span.y)
+    const lineDepth = Math.abs(
+      (apexToLine.x * -span.y + apexToLine.y * span.x) / spanLength,
+    )
+    expect((dissolve.stop * dissolve.height) / lineDepth).toBeCloseTo(
+      RAY_DISSOLVE_DEPTH_RATIO,
+      6,
+    )
+
     expect(dissolve.height).toBeGreaterThan(0)
     // It has to be wider than the beam is at that depth, or it clips the sides.
     expect(dissolve.width).toBeGreaterThan(
@@ -310,10 +331,9 @@ describe("the beam's geometry (R9)", () => {
 
   it("opens the cone by about 29.4 degrees on a 390x844 frame", () => {
     const geometry = splashGeometry(PHONE)
-    // Narrower than the 37.7 degrees the on-edge apex gave: the further out
-    // the apex sits, the flatter the cone. Pinned on both sides, because the
-    // cone stops reading as a cone at about 17 degrees and stops hiding its
-    // origin below about 1.09 of the frame's width.
+    // Narrower than the 37.7 degrees the on-edge apex gave. Pinned on BOTH
+    // sides: the cone stops reading as a cone at about 17 degrees, and stops
+    // hiding its origin below about 1.09 of the frame's width.
     expect(geometry.topRightAngleDeg - geometry.bottomLeftAngleDeg).toBeCloseTo(
       29.4,
       1,
@@ -364,10 +384,7 @@ describe("the beam's geometry (R9)", () => {
     // The bands are NOT all one length: the upper edge is the shorter reach,
     // and drawing it to the longer one is what ran it past its corner.
     expect(bands[bands.length - 1].length).toBeLessThan(bands[0].length)
-    expect(geometry.rayLength).toBeCloseTo(
-      Math.max(...bands.map((band) => band.length)),
-      6,
-    )
+    expect(geometry.rayLength).toBeCloseTo(bands[0].length, 6)
   })
 
   it("sets the word off the mark's alpha centroid, not its box centre", () => {
@@ -465,10 +482,9 @@ describe("the beam's geometry (R9)", () => {
       const band = geometry.bands[index]
       const style = flatten(node.props.style)
 
-      // THE assertion this whole change rests on. `start` and `end` sharing an
-      // x runs the gradient down the band's THICKNESS. Run it along the band's
-      // length instead and every band is uniform across, which is what let a
-      // viewer count them inside the beam.
+      // `start` and `end` sharing an x runs the gradient down the band's
+      // THICKNESS. Along its length instead, every band is uniform across —
+      // which is what let a viewer count them inside the beam.
       expect(node.props.start).toEqual({ x: 0.5, y: 0 })
       expect(node.props.end).toEqual({ x: 0.5, y: 1 })
 
@@ -480,9 +496,11 @@ describe("the beam's geometry (R9)", () => {
       expect(colors[0]).toBe(hexToRgba(TEXT_ON_OVERLAY, 0))
       expect(colors[colors.length - 1]).toBe(hexToRgba(TEXT_ON_OVERLAY, 0))
       expect(colors[(colors.length - 1) / 2]).not.toBe(colors[0])
-      // Evenly spaced from 0 to 1, so the profile is not skewed to one edge.
+      // Ascending across the whole band, so the profile is not skewed or clipped.
+      expect(locations[0]).toBe(0)
+      expect(locations[locations.length - 1]).toBe(1)
       locations.forEach((value, at) => {
-        expect(value).toBeCloseTo(at / (locations.length - 1), 6)
+        if (at > 0) expect(value).toBeGreaterThan(locations[at - 1])
       })
 
       expect(style.width).toBeCloseTo(band.length, 6)

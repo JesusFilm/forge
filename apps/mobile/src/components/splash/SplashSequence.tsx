@@ -39,9 +39,7 @@ export const WORD_RISE_FROM_CENTROID = 0.108
  */
 export const WORD_SHIFT_LEFT_OF_CENTROID = 0.03
 /** The beam's apex, in fractions of the frame. The x ratio is past 1 on
- *  purpose: with the apex ON the edge the bands converge to a point of light
- *  the viewer can see, and the beam starts inside the frame instead of
- *  entering it. */
+ *  purpose: on the edge, the bands converge to a point the viewer can see. */
 export const RAY_APEX_X_RATIO = 1.3
 export const RAY_APEX_Y_RATIO = 0.8
 
@@ -81,27 +79,24 @@ export const SPLASH_SEQUENCE_MS = Math.max(
 /** Rotated gradient bands stand in for a wedge this app has no renderer for.
  *  Their low alphas sum into a soft cone; the outermost two ARE R9's edges. */
 export const RAY_BAND_COUNT = 28
-/** Band thickness as a multiple of the gap between neighbours at the FAR end,
- *  where the bands are furthest apart. */
+/** Band thickness as a multiple of the gap between neighbours at the FAR end.
+ *  Raised from 2.6 when the bands gained soft edges: a bump needs wider
+ *  neighbours to sum flat, and 4 measured smoothest at this band count. */
 const RAY_BAND_OVERLAP = 4
 /** Each band's alpha at its own centre line. The stack's brightness at a point
  *  is set by how many bands cover it, which falls with distance from the apex.
  *  Set so the beam measures the same on a device as it did with flat bands. */
 const RAY_BAND_ALPHA = 0.076
-/**
- * The band's cross-section, sampled at eighths: a smooth bump that reaches zero
- * at both edges. A FLAT cross-section makes every band edge a step in the sum,
- * and those steps are what let a viewer count the bands inside the beam —
- * measured at 9 to 17 grey levels of wobble, against under 1.5 for this bump.
- * Its slope reaches zero at the edges too, so the sum has no visible kink.
- */
+/** The band's cross-section, sampled at eighths. A FLAT one steps at each band
+ *  edge, and those steps let a viewer count the bands: measured at 1.0 cycles
+ *  per band. Zero slope at the edges as well, so the sum has no kink. */
 export const RAY_BAND_PROFILE = [
   0, 0.156, 0.5, 0.844, 1, 0.844, 0.5, 0.156, 0,
 ] as const
-/** How far back from the corner line the beam starts to dissolve, as a fraction
- *  of the longest band. The bands all END on that line, so without this their
- *  ends read as one hard cut across the beam. */
-const RAY_DISSOLVE = 0.45
+/** How much of the beam's DEPTH the dissolve covers, square to the corner line
+ *  every band ends on. NOT a fraction of a band's length: that is the other
+ *  axis, and it made the dissolve deeper on a tablet than on a phone. */
+export const RAY_DISSOLVE_DEPTH_RATIO = 0.45
 
 /** Precomputed: the profile never changes, and this is the cover's hot path.
  *  Both are spelled as non-empty tuples because that is how
@@ -136,11 +131,9 @@ export type SplashBand = {
   length: number
 }
 
-/**
- * The single overlay that dissolves the beam's far end into the ground. Its
- * gradient runs SQUARE at the line joining the two lit corners, so every band's
- * end fades on the same schedule and none of them shows an edge.
- */
+/** The one overlay that dissolves the beam's far end into the ground. Its
+ *  gradient runs SQUARE at the line joining the two lit corners, so every
+ *  band's end fades on one schedule and none of them shows an edge. */
 export type SplashDissolve = {
   /** Its box, in the ray group's own coordinates. */
   left: number
@@ -226,13 +219,13 @@ export function splashGeometry(frame: SplashFrame): SplashGeometry {
       const direction = { x: Math.cos(angle), y: Math.sin(angle) }
       // Zero only on a frame with no size, which a cold start can measure
       // before layout: 0/0 is NaN, and NaN would reach 28 native gradient views.
-      const meets = cross(direction, cornerLine)
+      const closingRate = cross(direction, cornerLine)
       return {
         angleDeg: degrees(angle),
         length:
-          meets === 0
+          closingRate === 0
             ? 0
-            : Math.max(0, cross(apexToCorner, cornerLine) / meets),
+            : Math.max(0, cross(apexToCorner, cornerLine) / closingRate),
       }
     },
   )
@@ -256,7 +249,7 @@ export function splashGeometry(frame: SplashFrame): SplashGeometry {
   const away = { x: normal.x * facing, y: normal.y * facing }
   const lineDepth = apexToCorner.x * away.x + apexToCorner.y * away.y
 
-  const dissolveStart = Math.max(0, lineDepth - RAY_DISSOLVE * rayLength)
+  const dissolveStart = Math.max(0, lineDepth * (1 - RAY_DISSOLVE_DEPTH_RATIO))
   const dissolveHeight = Math.max(rayLength - dissolveStart, 0)
   // Centred on the corner line's own MIDPOINT, not on the foot of the apex's
   // perpendicular — those are far apart, and the foot leaves the beam's lower
@@ -443,7 +436,7 @@ export function SplashSequence({
             start={{ x: 0.5, y: 0 }}
             end={{ x: 0.5, y: 1 }}
             style={[
-              styles.rayBand,
+              styles.rayPart,
               {
                 // `right` keeps every band's right edge on the apex, whatever
                 // its own length is.
@@ -477,7 +470,7 @@ export function SplashSequence({
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0.5, y: 1 }}
           style={[
-            styles.rayBand,
+            styles.rayPart,
             {
               left: dissolve.left,
               top: dissolve.top,
@@ -553,7 +546,7 @@ const styles = StyleSheet.create({
   rayGroup: {
     position: "absolute",
   },
-  rayBand: {
+  rayPart: {
     position: "absolute",
   },
   mark: {

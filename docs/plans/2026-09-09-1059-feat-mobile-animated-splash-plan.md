@@ -88,9 +88,40 @@ flowchart TB
 
 - R8. A white projector screen blooms in, overshoots its size, and settles back into place.
 - R9. One ray of light grows out of the right edge of the frame, four fifths of the way down, and its two edges land on the projector screen's bottom-left and top-right corners, so the light reads as projected onto the screen. The composition is expressed in proportions of the frame, not fixed offsets, so it holds on a tablet's wider frame as well as a phone's.
-  - **Amended 2026-09-10 (user-directed, after the shipped build).** The apex now sits PAST the right edge, at `RAY_APEX_X_RATIO = 1.3` of the frame's width, so the point where the bands converge is outside the visible frame. On the edge it was inside it, and a viewer could see the beam's origin as a pinch of light rather than a beam entering the frame. Everything else in R9 holds: the two edges still land on the screen's bottom-left and top-right corners, and the composition is still expressed in proportions. Two consequences. The cone opens by about 29.4 degrees on a 390x844 frame instead of 37.7. And the beam's gradient holds its apex alpha until it crosses into the frame (`rayEntryStop`), which keeps its brightness where it meets the mark at about 99 per cent of the previous value; without that hold it falls to about 56 per cent. The hold is a deliberate trade. It also leaves the beam brightest at the frame's right edge, because that is where the most bands still overlap. Measured on the iPhone 17 Pro Max simulator on 2026-09-10, the brightest pixel on that edge falls from 176 to 92 levels above the ground, and the band above half that peak widens from 36 px (3.8 per cent of the frame height) to 140 px (14.6 per cent). A pinch became an entry.
-  - **Amended again 2026-09-10 (user-directed).** The beam now STOPS on the two corners it lights. Its far end is the line joining the mark's bottom-left and top-right corners, so each band carries its own length and no light falls past either corner. Before this, every band was drawn to one length — the longer of the two reaches, plus a 15 per cent overshoot — so the shorter upper edge ran about 41 per cent past its own corner and washed the area above the mark. `RAY_OVERSHOOT` is gone. The beam still dissolves rather than stopping hard, because each band's gradient reaches zero alpha at its own far end. Measured on the iPhone 17 Pro Max simulator on 2026-09-10: light 20 px past the top-right corner fell from 6.2 levels over the ground to 0, and it reads 0 at 40, 60 and 80 px as well.
-  - **Amended a third time 2026-09-10 (user-directed).** Each band now fades out at BOTH of its own edges, instead of being uniform across its thickness. A uniform band puts a step in the sum at each of its edges, and those steps let a viewer count the individual bands inside the beam. The band's gradient therefore runs ACROSS its thickness, on a smooth bump (`RAY_BAND_PROFILE`) whose value and slope both reach zero at the edges; the beam's fall-off along its length is no longer per-band but comes from how many bands overlap at a given distance. One consequence needs its own part: with no per-band fade, every band would end on the corner line at full strength, so a single overlay of the ground colour (`SplashDissolve`) now lies square across that line and dissolves them together. Measured losslessly at native resolution on the iPhone 17 Pro Max simulator: the wobble across the beam sat at 1.0 to 1.2 cycles PER BAND — the band stack itself — and now sits at 2.0 to 4.1 cycles per band, which is dither, at roughly half the amplitude. `RAY_BAND_ALPHA` was set so the beam measures about as bright as it did with flat bands.
+  - **Amended 2026-09-10, user-directed, after the shipped build.** Three
+    corrections to the beam. Each one is visual. The beats, the timings and the
+    native seam do not change.
+
+    First, the apex moves outside the frame, to `RAY_APEX_X_RATIO = 1.3` of its
+    width. On the edge, the bands converged to a point the viewer could see. The
+    beam then read as a pinch of light, not as a beam entering the frame. The
+    cone narrows from about 37.7 degrees to about 29.4 on a 390x844 frame. The
+    rest of R9 holds: the two edges still land on the two corners, and the
+    composition is still a set of proportions.
+
+    Second, the beam stops ON those two corners. Its far end is the line that
+    joins them, so each band now carries its own length. Before this, every band
+    was drawn to one length, which was the longer reach plus a 15 per cent
+    overshoot. The shorter upper edge therefore ran about 41 per cent past its
+    own corner and washed the area above the mark. `RAY_OVERSHOOT` is gone.
+
+    Third, each band fades out at both of its own edges. A band with a flat
+    cross-section steps at each edge, and those steps let a viewer count the
+    bands inside the beam. The band's gradient now runs ACROSS its thickness, on
+    a smooth bump whose value and slope both reach zero at the edges. This
+    removes the fall-off along each band, so one overlay of the ground colour
+    now lies square across the corner line. That overlay dissolves every band's
+    end together. `rayEntryStop` and the per-band gradient stops it belonged to
+    are gone with it.
+
+    Measured on the iPhone 17 Pro Max simulator on 2026-09-10. Light 20 px past
+    the top-right corner fell from 6.2 levels over the ground to 0. It reads 0
+    at 40, 60 and 80 px as well. The wobble across the beam sat at 1.0 to 1.2
+    cycles PER BAND, which is the band stack itself. It now sits at 2.0 to 4.1
+    cycles per band, which is dither, at about half the amplitude. Read that
+    figure in cycles per band, not in amplitude alone. `RAY_BAND_ALPHA` is set
+    so the beam measures about as bright as it did with flat bands.
+
 - R10. The screen crossfades from white to the crimson brand gradient as the ray arrives, not after it.
 - R11. After a pause on the settled crimson screen, the word `Jesus` crossfades on in white, with no movement and no scaling of its own, finishing with the word set over the settled mark, which together read as the Jesus Film Project logo. No separate logotype asset exists in this app, and the horizontal lockups in the sibling apps are not it.
 - R12. The word is set in Noto Serif Semibold, embedded in the build, so it can never render in a fallback face and then swap.
