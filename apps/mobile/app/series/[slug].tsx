@@ -307,21 +307,28 @@ export default function SeriesScreen() {
     downloadState.exportingSlugs.forEach((slug) => store.requestPause(slug))
   }, [downloadState.exportingSlugs])
 
-  // Paused → resume, or stop. Stop ends the WHOLE remaining run, not just this
-  // episode, so the wording says so. R22 keeps every episode already saved.
+  // Paused → resume, or stop.
+  //
+  // The MESSAGE carries the consequence, not the button. A series exports one
+  // episode at a time, so `exportingSlugs` always holds exactly one — a count
+  // in the label would read "Stop Download" however many episodes remain,
+  // while stopping actually ends the whole run (runSeriesRawExport breaks on a
+  // cancelled episode). Verified on the simulator 2026-09-10: stopping the
+  // second episode returned the row to its offline state with three unexported.
+  // R22 keeps every episode already written to the library.
   const handleResumeExport = useCallback(() => {
     const store = getExportSessionStore()
     const slugs = downloadState.exportingSlugs
     const resumeAll = () => slugs.forEach((slug) => store.requestResume(slug))
     const stopAll = () => slugs.forEach((slug) => store.requestCancel(slug))
-    const STOP =
-      slugs.length > 1 ? "Stop Download (all episodes)" : "Stop Download"
+    const MESSAGE =
+      "This export is paused. Stopping ends the whole series export. Episodes already saved stay in your library."
     if (Platform.OS === "ios") {
       ActionSheetIOS.showActionSheetWithOptions(
         {
           title: "Saving to Photos",
-          message: "This export is paused.",
-          options: [STOP, "Resume", "Cancel"],
+          message: MESSAGE,
+          options: ["Stop Download", "Resume", "Cancel"],
           destructiveButtonIndex: 0,
           cancelButtonIndex: 2,
           userInterfaceStyle: "dark",
@@ -332,8 +339,8 @@ export default function SeriesScreen() {
         },
       )
     } else {
-      Alert.alert("Saving to Photos", "This export is paused.", [
-        { text: STOP, style: "destructive", onPress: stopAll },
+      Alert.alert("Saving to Photos", MESSAGE, [
+        { text: "Stop Download", style: "destructive", onPress: stopAll },
         { text: "Resume", onPress: resumeAll },
         { text: "Cancel", style: "cancel" },
       ])
