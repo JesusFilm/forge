@@ -80,3 +80,8 @@ No production changes were made by this implementation.
 - Standards and Spec review completed against the #129 merge foundations.
   Corrected unnecessary environment invalidation on Contributor-scope removal;
   the original read-only inspection/concurrent revocation regression passes.
+- PR #2254 CI repair: replaced the backtracking email regex with linear string
+  checks while preserving validation behavior. Added 16 request validation tests;
+  585 local Auth tests passed, with 34 database integration tests skipped locally.
+  Typecheck, lint and touched-file formatting passed. Wrapped the original commit
+  message to satisfy commitlint's footer line limit.

@@ -41,8 +41,7 @@ export async function POST(request: Request) {
       body.action === "create" &&
       "email" in body &&
       typeof body.email === "string" &&
-      body.email.trim().length <= 254 &&
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email.trim())
+      isIndividualEmail(body.email)
     ) {
       return reply(
         await manageChangelogPreapprovals(
@@ -71,6 +70,14 @@ export async function POST(request: Request) {
   } catch (error) {
     return failure(error)
   }
+}
+function isIndividualEmail(value: string) {
+  const email = value.trim()
+  if (email.length > 254 || /\s/.test(email)) return false
+  const parts = email.split("@")
+  if (parts.length !== 2 || !parts[0]) return false
+  // Require a dot with a character on each side, without regex backtracking.
+  return parts[1].slice(1, -1).includes(".")
 }
 function reply(body: unknown, status = 200) {
   return Response.json(body, {
