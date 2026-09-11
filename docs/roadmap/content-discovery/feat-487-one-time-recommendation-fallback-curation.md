@@ -1,5 +1,5 @@
 ---
-id: "feat-476"
+id: "feat-487"
 title: "Curate one-time recommendation fallback pools"
 owner: "nisal"
 priority: "P1"
@@ -8,7 +8,7 @@ start_date: "2026-09-10"
 duration: 1
 depends_on: []
 blocks:
-  - "feat-477"
+  - "feat-488"
 tags:
   - "recommendations"
   - "content"
@@ -16,6 +16,9 @@ tags:
 ---
 
 ## Problem
+
+Renumbered from the recommendation ticket's original `feat-476` on 11 September
+2026 to resolve a collision with the independently merged Watch analytics ticket.
 
 The homepage For you row needs six unique recommendations in the selected audio language. Eligible profile recommendations take precedence; curated starter and interest pools fill only missing positions. Pool size must withstand overlap and viewing-history exclusions, but curation cannot manufacture missing inventory.
 
@@ -36,7 +39,7 @@ A one-time curation by the delegated Codex Astra agent: a versioned machine-read
 
 ## Constraints
 
-The later implementation authorization includes feat-477 U2: curated-pool tables/migration, service, import CLI, tests and isolated local preview activation. No production import, deployment, paid model API, recurring AI worker, or automated incremental AI review. Use canonical videos rather than dub counts as editorial units. Do not infer popularity from metadata or exposure-biased analytics. Interest labels describe content and do not diagnose viewers. Public Core availability is not Admin recommendation eligibility. Preserve history rules; surface any inventory exhaustion decision for product resolution.
+The later implementation authorization includes feat-488 U2: curated-pool tables/migration, service, import CLI, tests and isolated local preview activation. No production import, deployment, paid model API, recurring AI worker, or automated incremental AI review. Use canonical videos rather than dub counts as editorial units. Do not infer popularity from metadata or exposure-biased analytics. Interest labels describe content and do not diagnose viewers. Public Core availability is not Admin recommendation eligibility. Preserve history rules; surface any inventory exhaustion decision for product resolution.
 
 ## Verification
 

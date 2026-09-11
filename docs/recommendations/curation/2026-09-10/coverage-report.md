@@ -1,6 +1,6 @@
 # Measured fallback coverage — September 10, 2026
 
-**The Core-only curation pass is finished; production readiness is not established.** There are 208 reviewed editorial choices and 203 starter choices, with alternate editions and repeated presentations grouped. Current Admin-validated choices: **0**. `feat-476` remains in progress.
+**The Core-only curation pass is finished; production readiness is not established.** There are 208 reviewed editorial choices and 203 starter choices, with alternate editions and repeated presentations grouped. Current Admin-validated choices: **0**. `feat-487` remains in progress.
 
 The public snapshot contains 1,129 visible Core videos, 2,318 language identities, and 211,904 variant records. Of those variants, 207,144 belong to visible videos and 4,760 reference videos outside the visible catalog snapshot; those outside records do not become candidates. Languages were fetched September 9, 22:19:38–22:19:42 UTC, and variants 22:19:42–22:30:42 UTC. The public video snapshot was fetched at 22:14:43 UTC. The language/variant queries reached terminal pages in 3/43 bounded requests. Source hashes and exact queries are in `provenance.json` and `fetch_core.py`.
 
