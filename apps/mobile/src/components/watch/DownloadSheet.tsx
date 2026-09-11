@@ -215,9 +215,7 @@ export function Dropdown({
                     accessibilityRole="radio"
                     accessibilityState={{ selected: isSelected, disabled }}
                     accessibilityLabel={
-                      disabled && opt.note != null
-                        ? `${opt.label}, ${opt.note}`
-                        : opt.label
+                      opt.note != null ? `${opt.label}, ${opt.note}` : opt.label
                     }
                   >
                     <Text
@@ -253,6 +251,19 @@ export function Dropdown({
                               ]}
                             >
                               {opt.trailing}
+                            </Text>
+                          )}
+                          {/* A SELECTABLE row can carry a note too — a quality
+                              you don't hold offline is still choosable, it just
+                              costs a transfer. */}
+                          {opt.note != null && (
+                            <Text
+                              style={[
+                                styles.dropdownOptionNote,
+                                typography.bodySmall,
+                              ]}
+                            >
+                              {opt.note}
                             </Text>
                           )}
                           {isSelected && (
@@ -313,11 +324,6 @@ const DOWNLOAD_MODE_HINTS: Record<DownloadMode, string> = {
 const DOWNLOAD_MODE_ANNOUNCEMENTS: Record<DownloadMode, string> = {
   offline: "Offline copy selected. The subtitle choice is available.",
   raw: "Device file selected. The subtitle choice is hidden. A saved file carries no subtitles.",
-}
-
-/** R37, per-video sheet: the offline copy names the quality it already holds. */
-export function formatOfflineReuseNote(qualityLabel: string): string {
-  return `You already have an offline copy in ${qualityLabel}. ${qualityLabel} reuses that file. Any other quality downloads the video again.`
 }
 
 /** R37, series sheet: a count at the selected quality, not one named quality. */
@@ -508,10 +514,14 @@ export type DownloadSheetProps = {
    */
   subtitleLanguageSlug: string | null
   /**
-   * R37: the quality label of a completed offline copy, or null when the video
-   * has none. It names the copy the export can reuse, not the current choice.
+   * The completed offline copy's rendition, or null when the video has none.
+   *
+   * BOTH identifiers, because neither is reliable alone: `normalizeVideo`
+   * defaults `documentId` to "" (so an empty id would match the first row by
+   * accident), and `quality` is the raw rendition string, unique within a dub
+   * but not guaranteed present. The id wins when it is real.
    */
-  offlineCopyQuality?: string | null
+  offlineCopy?: { renditionId: string; quality: string } | null
   /** The subtitle language of a completed offline copy, for the reuse note. */
   offlineCopySubtitleSlug?: string | null
   /**
@@ -539,7 +549,7 @@ export function DownloadSheetContent({
   subtitles,
   subtitleLanguageSlug,
   downloads,
-  offlineCopyQuality = null,
+  offlineCopy = null,
   offlineCopySubtitleSlug = undefined,
   initialMode = "offline",
   onStartDownload,
@@ -575,14 +585,37 @@ export function DownloadSheetContent({
   // Key by tier-array index, not documentId: ids aren't unique (normalizeVideo
   // defaults documentId to "" and doesn't dedupe), so they'd collide React keys
   // and break selection (findIndex always resolving to the first match).
+  // Which tier the offline copy is, or -1. By documentId: the record's
+  // qualityLabel is the raw rendition string, not one of the three tier names.
+  const heldIndex = useMemo(() => {
+    if (offlineCopy == null) return -1
+    const byId = offlineCopy.renditionId
+      ? tiered.findIndex(
+          (t) =>
+            t.documentId !== "" && t.documentId === offlineCopy.renditionId,
+        )
+      : -1
+    if (byId >= 0) return byId
+    return offlineCopy.quality
+      ? tiered.findIndex((t) => t.quality === offlineCopy.quality)
+      : -1
+  }, [tiered, offlineCopy])
+
   const qualityOptions = useMemo<DropdownOption[]>(
     () =>
       tiered.map((t, index) => ({
         key: String(index),
         label: t.tier,
         trailing: formatFileSize(t.size),
+        // Only in raw mode: the held copy exports instantly, every other
+        // quality has to come down the wire first. In offline mode the same
+        // row means a swap, which the sheet already frames as a swap.
+        note:
+          rawMode && heldIndex >= 0 && index !== heldIndex
+            ? "Downloads again"
+            : undefined,
       })),
-    [tiered],
+    [tiered, rawMode, heldIndex],
   )
   const selectedQualityKey = String(selectedIndex)
 
@@ -592,6 +625,17 @@ export function DownloadSheetContent({
   useEffect(() => {
     if (selectedIndex >= tiered.length) setSelectedIndex(0)
   }, [tiered.length, selectedIndex])
+
+  // Open on the quality already held, so "Save to Photos" on a downloaded
+  // video is a reuse rather than a silent re-download. Once, when the tiers
+  // land — they arrive with the lazily-fetched dub, and a later re-run would
+  // fight the viewer's own pick.
+  const qualitySeededRef = useRef(false)
+  useEffect(() => {
+    if (qualitySeededRef.current || tiered.length === 0) return
+    qualitySeededRef.current = true
+    if (heldIndex >= 0) setSelectedIndex(heldIndex)
+  }, [tiered.length, heldIndex])
 
   const handleDownload = useCallback(() => {
     if (!touAccepted || tiered.length === 0) return
@@ -691,10 +735,6 @@ export function DownloadSheetContent({
         </View>
 
         <DownloadModeControl mode={mode} onChange={setMode} />
-
-        {rawMode && offlineCopyQuality != null && (
-          <SheetNote text={formatOfflineReuseNote(offlineCopyQuality)} />
-        )}
 
         <Dropdown
           sectionLabel="Select a file size"

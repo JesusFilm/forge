@@ -98,7 +98,6 @@ import SeriesDownloadRoute from "../../../../app/series/download"
 import {
   DOWNLOAD_MODE_LABELS,
   DownloadSheetContent,
-  formatOfflineReuseNote,
   formatSeriesReuseNote,
   rawModeLabel,
   suspendedInRawMode,
@@ -251,7 +250,7 @@ type SheetProps = {
   initialMode?: DownloadMode
   subtitles?: WatchSubtitle[]
   subtitleLanguageSlug?: string | null
-  offlineCopyQuality?: string | null
+  offlineCopy?: { renditionId: string; quality: string } | null
   offlineCopySubtitleSlug?: string | null
   onStartDownload?: (
     rendition: WatchDownload,
@@ -274,7 +273,7 @@ function element(props: SheetProps = {}) {
           ? "spanish"
           : props.subtitleLanguageSlug
       }
-      offlineCopyQuality={props.offlineCopyQuality ?? null}
+      offlineCopy={props.offlineCopy ?? null}
       offlineCopySubtitleSlug={props.offlineCopySubtitleSlug}
       onStartDownload={props.onStartDownload ?? (() => {})}
     />
@@ -638,35 +637,77 @@ describe("personal-use note", () => {
   })
 })
 
-describe("offline-copy reuse note", () => {
-  it("names the quality already held and the cost of another quality", async () => {
-    const renderer = await renderSheet({ offlineCopyQuality: "High" })
-    await chooseMode(renderer, "raw")
+// Owner decision 2026-09-11: the standalone reuse note is gone. The dropdown
+// states the cost per row instead, and the sheet opens on the held quality.
+describe("offline copy drives the quality choice", () => {
+  it("opens on the quality already held, so an export reuses it", async () => {
+    const renderer = await renderSheet({
+      initialMode: "raw",
+      offlineCopy: { renditionId: "d-mid", quality: "720p" },
+    })
+    expect(nodeByLabel(renderer, "Select a file size, High")).not.toBeNull()
+    await unmount(renderer)
+  })
 
-    expect(hasText(renderer, formatOfflineReuseNote("High"))).toBe(true)
+  it("matches on the quality string when the rendition id is empty", async () => {
+    // normalizeVideo defaults documentId to "", and an empty id would match the
+    // FIRST row by accident. The quality string is the fallback identity.
+    const renderer = await renderSheet({
+      initialMode: "raw",
+      offlineCopy: { renditionId: "", quality: "360p" },
+    })
+    expect(nodeByLabel(renderer, "Select a file size, Low")).not.toBeNull()
+    await unmount(renderer)
+  })
+
+  it("still opens on the largest when nothing is held", async () => {
+    const renderer = await renderSheet({ initialMode: "raw" })
+    expect(nodeByLabel(renderer, "Select a file size, Highest")).not.toBeNull()
+    await unmount(renderer)
+  })
+
+  it("marks every OTHER quality as a fresh transfer, and not the held one", async () => {
+    const renderer = await renderSheet({
+      initialMode: "raw",
+      offlineCopy: { renditionId: "d-mid", quality: "720p" },
+    })
+    await press(pressableByLabel(renderer, "Select a file size, High"))
+
+    // The held row is selectable and unmarked; the others say what they cost.
+    expect(nodeByLabel(renderer, "High")).not.toBeNull()
+    expect(nodeByLabel(renderer, "Highest, Downloads again")).not.toBeNull()
+    expect(nodeByLabel(renderer, "Low, Downloads again")).not.toBeNull()
+    expect(nodeByLabel(renderer, "High, Downloads again")).toBeNull()
 
     await unmount(renderer)
   })
 
-  it("is absent without an offline copy, and absent in offline mode", async () => {
-    const withoutCopy = await renderSheet({ offlineCopyQuality: null })
-    await chooseMode(withoutCopy, "raw")
-    expect(hasText(withoutCopy, "reuses that file")).toBe(false)
-    await unmount(withoutCopy)
-
-    const offlineMode = await renderSheet({ offlineCopyQuality: "High" })
-    expect(hasText(offlineMode, "reuses that file")).toBe(false)
-    await unmount(offlineMode)
+  it("marks nothing when no copy is held", async () => {
+    const renderer = await renderSheet({ initialMode: "raw" })
+    await press(pressableByLabel(renderer, "Select a file size, Highest"))
+    expect(nodeByLabel(renderer, "Low, Downloads again")).toBeNull()
+    await unmount(renderer)
   })
 
-  it("names the offline copy's quality, not the current selection", async () => {
-    const renderer = await renderSheet({ offlineCopyQuality: "High" })
-    await chooseMode(renderer, "raw")
-    await chooseQuality(renderer, "Select a file size", "Highest", "Low")
+  it("leaves OFFLINE mode's quality rows unmarked — that path is a swap", async () => {
+    const renderer = await renderSheet({
+      offlineCopy: { renditionId: "d-mid", quality: "720p" },
+    })
+    await press(pressableByLabel(renderer, "Select a file size, High"))
+    expect(nodeByLabel(renderer, "Low, Downloads again")).toBeNull()
+    await unmount(renderer)
+  })
 
-    expect(hasText(renderer, formatOfflineReuseNote("High"))).toBe(true)
-    expect(hasText(renderer, formatOfflineReuseNote("Low"))).toBe(false)
-
+  it("states no standalone reuse note anywhere", async () => {
+    const renderer = await renderSheet({
+      initialMode: "raw",
+      offlineCopy: { renditionId: "d-mid", quality: "720p" },
+    })
+    expect(hasText(renderer, "reuses that file")).toBe(false)
+    expect(hasText(renderer, "You already have an offline copy")).toBe(false)
+    // Anti-vacuous: the sheet IS in raw mode with a held copy, the exact state
+    // that used to render the note.
+    expect(nodeByLabel(renderer, "Save video to the device")).not.toBeNull()
     await unmount(renderer)
   })
 })

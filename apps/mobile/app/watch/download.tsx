@@ -69,9 +69,12 @@ export default function DownloadSheetRoute() {
   // R37: only a verified copy is reusable, so an in-flight or failed record
   // names no quality.
   const offlineRecord = getRecord(video.slug)
-  const offlineCopyQuality =
-    offlineRecord?.state === "downloaded" && offlineRecord.qualityLabel
-      ? offlineRecord.qualityLabel
+  const offlineCopy =
+    offlineRecord?.state === "downloaded"
+      ? {
+          renditionId: offlineRecord.renditionDocumentId,
+          quality: offlineRecord.qualityLabel,
+        }
       : null
 
   /**
@@ -165,7 +168,7 @@ export default function DownloadSheetRoute() {
       initialMode={initialMode}
       subtitles={subtitles}
       subtitleLanguageSlug={activeSubtitle?.languageSlug ?? null}
-      offlineCopyQuality={offlineCopyQuality}
+      offlineCopy={offlineCopy}
       offlineCopySubtitleSlug={
         offlineRecord?.state === "downloaded"
           ? offlineRecord.subtitleLanguageSlug
