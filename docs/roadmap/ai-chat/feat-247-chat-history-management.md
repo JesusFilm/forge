@@ -50,6 +50,24 @@ Record intended pre-window flags, pause/drain writers and maintenance, require
 ready/covered storage, and restore the recorded configuration before resuming.
 A merged PR or automated deployment does not execute or verify that migration.
 
+**Production verification — 2026-09-11.** After deploying PR1 (#2256, merge
+commit `c976e4001`), the operator ran the explicit migration in the Railway
+Mastra release container and reported the following production observations:
+
+- Migration: `chat_migrations applied=1 skipped=0 readiness=ready`.
+- Readiness: `chat_readiness state=ready storage_covered=true`.
+- Resumed retention: `event=purge_complete scanned=0 deleted=0 records_deleted=0 sweeps=1`.
+- A test conversation persisted after reload. An exact-ID SQL join confirmed
+  `lifecycle_present=true`, `owner_matches=true`, and `deleted=false`.
+- Exact-resource operator-erasure preview: `postgres=counted threads=30 records=30`,
+  `langfuse=counted listed=1049 traces=67 mismatched_skipped=0`, exit code `0`.
+  This was a read-only preview; no PostgreSQL data or Langfuse traces were deleted.
+
+These operator-reported checks establish PR1 production activation separately
+from its local test evidence. They do not establish PR2/PR3 integration or
+whole-feature completion. Subject identifiers, infrastructure hostnames and
+confirmation tokens are intentionally omitted.
+
 **Residual risk / follow-ups.** PR2's authenticated deletion endpoint, SDK diagnostics and
 captured-owner title repair; PR3's proxy/client/UI and cumulative browser/full-stack
 verification. Feature 247 remains `in-progress`; the approved option B design,
@@ -78,7 +96,7 @@ especially deleting a sensitive conversation — becomes expected hygiene.
 
 ## Engineering plan
 
-[Chat conversation deletion - Plan](../../plans/2026-09-09-0438-feat-chat-conversation-delete-plan.md) is the implementation contract. The plan specifies three implementation PRs. PR1 storage implementation and local verification are recorded above; PR2 and PR3 remain outstanding. The estimate now includes storage enforcement, migration isolation, erasure compatibility, and real-database/browser verification.
+[Chat conversation deletion - Plan](../../plans/2026-09-09-0438-feat-chat-conversation-delete-plan.md) is the implementation contract. The plan specifies three implementation PRs. PR1 storage implementation, local verification and operator-reported production activation are recorded above; PR2 and PR3 remain outstanding. The estimate now includes storage enforcement, migration isolation, erasure compatibility, and real-database/browser verification.
 
 ## Entry Points — Read These First
 
