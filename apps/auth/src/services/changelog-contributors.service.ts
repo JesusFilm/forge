@@ -1,3 +1,4 @@
+import type { Prisma } from "@/generated/prisma"
 import { createLocalJWKSet, jwtVerify } from "jose"
 
 import { getAuthBaseUrl, isChangelogProductionEnabled } from "@/config/env"
@@ -24,6 +25,87 @@ export async function manageChangelogContributors(
   clientId: string,
   recipientId?: string,
 ) {
+  return withChangelogAdmin(
+    bearer,
+    clientId,
+    async ({ tx, environment, actorId, kind, grants }) => {
+      const contributors = new Map<
+        string,
+        { id: string; name: string; email: string; canRevoke: boolean }
+      >()
+      for (const grant of grants) {
+        if (!grant.user) continue
+        const admin = grant.scopes.some(
+          ({ scope }) => scope.key === "changelog:admin",
+        )
+        if (
+          !admin &&
+          !grant.scopes.some(({ scope }) => scope.key === "changelog:submit")
+        )
+          continue
+        const previous = contributors.get(grant.user.id)
+        contributors.set(grant.user.id, {
+          id: grant.user.id,
+          name: grant.user.name,
+          email: grant.user.email,
+          canRevoke: !admin && previous?.canRevoke !== false,
+        })
+      }
+      if (recipientId !== undefined) {
+        const recipient = contributors.get(recipientId)
+        if (recipient && !recipient.canRevoke)
+          throw new ContributorManagementError(409, "admin-recipient")
+        const changed = await tx.appGrantScope.deleteMany({
+          where: {
+            scope: { key: "changelog:submit" },
+            grant: {
+              appId: environment.appId,
+              environmentId: environment.id,
+              subjectType: "USER",
+              userId: recipientId,
+              status: "APPROVED",
+              revokedAt: null,
+            },
+          },
+        })
+        if (changed.count)
+          await tx.authAuditEvent.create({
+            data: buildAuditEvent({
+              eventType: "changelog_contributor_revoked",
+              appId: environment.appId,
+              subject: recipientId,
+              metadata: {
+                actorId,
+                environmentId: environment.id,
+                scope: "changelog:submit",
+              },
+            }),
+          })
+        return { changed: changed.count > 0 }
+      }
+      return {
+        environment: kind.toLowerCase(),
+        contributors: [...contributors.values()].sort((a, b) =>
+          a.email.localeCompare(b.email),
+        ),
+      }
+    },
+  )
+}
+
+export async function withChangelogAdmin<T>(
+  bearer: string | null,
+  clientId: string,
+  operation: (context: {
+    tx: Prisma.TransactionClient
+    environment: { id: string; appId: string }
+    actorId: string
+    kind: string
+    grants: Prisma.AppGrantGetPayload<{
+      include: { scopes: { include: { scope: true } }; user: true }
+    }>[]
+  }) => Promise<T>,
+): Promise<T> {
   if (
     ![CHANGELOG_LOCAL_CLIENT_ID, CHANGELOG_PRODUCTION_CLIENT_ID].includes(
       clientId,
@@ -133,66 +215,7 @@ export async function manageChangelogContributors(
       ) {
         throw new ContributorManagementError(403, "access-denied")
       }
-      const contributors = new Map<
-        string,
-        { id: string; name: string; email: string; canRevoke: boolean }
-      >()
-      for (const grant of grants) {
-        if (!grant.user) continue
-        const admin = grant.scopes.some(
-          ({ scope }) => scope.key === "changelog:admin",
-        )
-        if (
-          !admin &&
-          !grant.scopes.some(({ scope }) => scope.key === "changelog:submit")
-        )
-          continue
-        const previous = contributors.get(grant.user.id)
-        contributors.set(grant.user.id, {
-          id: grant.user.id,
-          name: grant.user.name,
-          email: grant.user.email,
-          canRevoke: !admin && previous?.canRevoke !== false,
-        })
-      }
-      if (recipientId !== undefined) {
-        const recipient = contributors.get(recipientId)
-        if (recipient && !recipient.canRevoke)
-          throw new ContributorManagementError(409, "admin-recipient")
-        const changed = await tx.appGrantScope.deleteMany({
-          where: {
-            scope: { key: "changelog:submit" },
-            grant: {
-              appId: environment.appId,
-              environmentId: environment.id,
-              subjectType: "USER",
-              userId: recipientId,
-              status: "APPROVED",
-              revokedAt: null,
-            },
-          },
-        })
-        if (changed.count)
-          await tx.authAuditEvent.create({
-            data: buildAuditEvent({
-              eventType: "changelog_contributor_revoked",
-              appId: environment.appId,
-              subject: recipientId,
-              metadata: {
-                actorId,
-                environmentId: environment.id,
-                scope: "changelog:submit",
-              },
-            }),
-          })
-        return { changed: changed.count > 0 }
-      }
-      return {
-        environment: kind.toLowerCase(),
-        contributors: [...contributors.values()].sort((a, b) =>
-          a.email.localeCompare(b.email),
-        ),
-      }
+      return operation({ tx, environment, actorId, kind, grants })
     },
     { isolationLevel: "Serializable", maxWait: 1000, timeout: 6000 },
   )
