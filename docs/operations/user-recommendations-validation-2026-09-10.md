@@ -113,7 +113,7 @@ have fewer than six eligible Admin IDs even across the entire local catalog.
 Overlapping interest lists cannot create missing inventory. The later exhaustive
 pass below completes the local UI/audio matrix and individual flagged-choice
 metadata reviews. Translation/inventory gaps and current production eligibility
-remain activation requirements in feat-476/feat-477. No monthly worker or model
+remain activation requirements in feat-487/feat-488. No monthly worker or model
 API call was used.
 
 See [consumer and operations guidance](user-recommendations.md), the

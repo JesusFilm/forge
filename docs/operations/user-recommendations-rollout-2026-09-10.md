@@ -57,8 +57,8 @@ multiple spans or duplicate retention records per request.
 
 ## Recovery scope
 
-Restore the previous Web source tree and shared Watch experience selection via
-a normal PR-to-main deployment. Retain the additive Admin schema/migrations,
+PR #2250 restored the previous Web source tree and shared Watch experience
+selection through the normal PR-to-main deployment. It retained the additive Admin schema/migrations,
 consumer APIs, curation artifacts, and original feature work. This is a release
 mitigation and comparison point, not a claim that a specific frontend defect has
 been identified or fixed. Do not increase Redis deadlines speculatively or publish
@@ -70,15 +70,66 @@ new Admin block fragment and source-free operations remain exported for other
 consumers. The unapplied Web homepage block and route can be restored from #2249
 after the runtime issue is understood and production checks pass.
 
+## Recovery outcome
+
+PR #2250 merged as `fede11da3a8d9534139984b9bd35a264fd346484` at
+23:28:32 after 35 passing PR checks. Main CI and CodeQL passed. The primary Web
+deployment completed at 23:45:53 on container `df92a1d0f515`. Admin and its worker
+did not require redeployment and continued running `b89957a5`.
+
+| Web APM window              | Requests | HTTP 503 | HTTP 500 | Combined 5xx rate |
+| --------------------------- | -------: | -------: | -------: | ----------------: |
+| Recovery, 23:45:53–00:00:53 |   19,489 |       48 |        5 |            0.272% |
+
+The recovery window ends on 11 September UTC and was retrieved at 00:01:48,
+allowing for metric ingestion. Error frequency fell substantially but remained
+above the 0.106% pre-release comparison. Among the four existing recommendation
+POST routes, recovery had 42 HTTP 503s and 987 HTTP 200s; the baseline had 21 and
+963 respectively. Those ratios exclude rejected requests and are descriptive,
+not matched viewer cohorts. Overall page traffic alone must not establish API
+recovery. Runtime event-loop p95 samples averaged 5.70 ms over the recovery window;
+this is the mean of reported p95 samples, not a pooled request percentile.
+
+An additional control interval, 22:47–22:59, covered the old Web with the new Admin
+already deployed: 14,072 requests, eight HTTP 503s, no HTTP 500s, and mean event-loop
+p95 of 2.10 ms. This supports retaining the backend during the Web mitigation; it
+does not identify a frontend code defect or exclude deployment/runtime effects.
+
+Fresh production browser checks at 23:52 and 00:00 passed the homepage, category
+section, Chosen Witness playback, profile updates, six existing seeded
+recommendations and accepted evidence requests, with no page errors or API 5xxs.
+The final check observed 9.37 seconds of actual playback, GA `page_view` receipt
+HTTP 204 and Datadog RUM receipt HTTP 202. The initial recovery check at 23:46 used
+a seeded-delivery timeout fallback, so the later successful checks do not erase
+that cold-start observation. These checks exercise the existing recommendation
+flow, not the disabled source-free homepage feature.
+
+Primary reconciliation completion heartbeats continued at 23:49:06, 23:54:09 and
+23:59:14. Residual Web admission failures and five fetch errors mean this is a
+mitigated rollout, not a clean production sign-off. The release-associated runtime
+delay remains unexplained and is tracked in `feat-486`; `feat-488` stays in progress.
+The homepage block and Web source-free route remain backed out. The new Admin API,
+additive migrations, generated contracts and curated artifacts remain merged;
+production pool promotion, homepage authoring and flag activation have not occurred.
+
+Recovery validation included 137 focused Web tests, a production Web build,
+Web/shared-client type checks, Web lint, repository formatting and a local browser
+check. The original feature worktree and forwarded preview remain intact. The
+recovery did not increase admission deadlines or bypass normal deployment controls.
+
 ## Evidence
 
 - [Feature PR #2249](https://github.com/JesusFilm/forge/pull/2249).
+- [Web recovery PR #2250](https://github.com/JesusFilm/forge/pull/2250).
 - [Profile failure trace](https://app.datadoghq.com/apm/trace/6aa3372f00000000657a51c8d248c4fd).
 - [Image connection timeout trace](https://app.datadoghq.com/apm/trace/6aa33786000000003a0397c82e6db9f5).
 - Redacted local browser reports and telemetry snapshots are in
   `/home/nisal/.cache/forge-477-preview/`: `release-production-post.json`,
   `release-production-post-repeat.json`, `release-prod-baseline-telemetry.json`,
   and `release-incident-evidence.json`.
+- Recovery browser results: `release-production-recovery.json`,
+  `release-production-recovery-repeat.json` and
+  `release-production-recovery-final.json` in the same local evidence directory.
 
 Web APM metrics use `service:forge-web,env:prod,version:<sha>`. Both Railway
 environments emit that environment label, so the metric denominator is not a

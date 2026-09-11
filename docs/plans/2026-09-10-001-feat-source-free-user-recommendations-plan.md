@@ -5,8 +5,8 @@ date: "2026-09-10"
 status: in-progress
 artifact_contract: ce-unified-plan/v1
 artifact_readiness: implementation-validated-local-activation-gated
-roadmap: feat-477
-curation_dependency: feat-476
+roadmap: feat-488
+curation_dependency: feat-487
 ---
 
 # Source-free user recommendations
@@ -25,7 +25,7 @@ this implementation. Account linking and history shared across devices are not
 part of the feature.
 
 This plan records the user's grilling decisions from this task. The independent
-curation agent owns feat-476 and `docs/recommendations/curation/2026-09-10/`.
+curation agent owns feat-487 and `docs/recommendations/curation/2026-09-10/`.
 Application code consumes its versioned output, not its research transcript.
 The delegated editorial pass is complete; current Admin eligibility and
 production activation remain unverified.
@@ -115,7 +115,7 @@ plan is declared ready for production activation.
   retrieval within the existing deadline. Reconcile with current main before
   implementation: this research checkout predates some merged fixes.
 - The historical July catalog audit and September recommendation analytics are
-  inputs to feat-476, not proof of current all-language eligibility or monthly
+  inputs to feat-487, not proof of current all-language eligibility or monthly
   popularity. UI message catalogs and playback languages are different inventories.
 
 ### Patterns to preserve
@@ -254,7 +254,7 @@ links; reset/revocation must invalidate access. Qualification and completion are
 separate facts: meaningful viewing does not imply finishing a video, and seeking
 to its end must not count as qualified consumption by itself.
 
-**Open coverage gate:** feat-476 must establish actual distinct coverage by
+**Open coverage gate:** feat-487 must establish actual distinct coverage by
 language. If a supported language cannot meet the supply/exclusion/count
 condition, surface that concrete gap. Do not silently allow completed repeats,
 switch language, duplicate a title, or shrink/hide the row as the normal policy.
@@ -299,8 +299,8 @@ types or raw profile vectors cross the API.
 
 ### U2. Versioned curated pools and publication validation
 
-**Goal:** Make feat-476 output a reusable, inspectable server-owned candidate
-source. **Requirements:** R7–R9, R16; AE7. **Dependencies:** feat-476 contract;
+**Goal:** Make feat-487 output a reusable, inspectable server-owned candidate
+source. **Requirements:** R7–R9, R16; AE7. **Dependencies:** feat-487 contract;
 final publication also requires its validated coverage report.
 
 **Files:** `apps/admin/prisma/schema.prisma` and an additive migration;
@@ -434,12 +434,12 @@ Recommendations do not make the RSC page private or block hero/player startup.
 ### U6. Measurement, consumer documentation, and activation
 
 **Goal:** Make delivery quality and native consumption verifiable.
-**Requirements:** R2, R9, R15, R16. **Dependencies:** U1–U5 and feat-476 coverage.
+**Requirements:** R2, R9, R15, R16. **Dependencies:** U1–U5 and feat-487 coverage.
 
 **Files:** `docs/operations/semantic-recommendation-tracer.md`; proposed
 `docs/operations/user-recommendations.md`;
 `apps/admin/src/services/recommendations/admin-ops/` request/detail/report owners
-and their colocated tests; this plan and the feat-477 ticket.
+and their colocated tests; this plan and the feat-488 ticket.
 
 **Approach:** Record request cohort at delivery time (no useful profile versus
 profile-backed), actual profile/curated counts, pool version, selections, visible

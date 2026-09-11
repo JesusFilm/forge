@@ -1,5 +1,5 @@
 ---
-id: "feat-477"
+id: "feat-488"
 title: "Source-free user recommendations and Web For you row"
 owner: "nisal"
 priority: "P1"
@@ -7,7 +7,8 @@ status: "in-progress"
 start_date: "2026-09-10"
 duration: 10
 depends_on:
-  - "feat-476"
+  - "feat-487"
+  - "feat-486"
 blocks: []
 tags:
   - "admin"
@@ -19,13 +20,16 @@ tags:
 
 ## Problem
 
+Renumbered from the recommendation ticket's original `feat-477` on 11 September
+2026 to resolve a collision with the independently merged Android loading ticket.
+
 Recommendation delivery currently requires a source video. The Watch homepage
 needs one six-card For you row using the returning viewer's server-side profile,
 with curated videos filling only the places that profile recommendations cannot
 fill. The same API must support independent anonymous mobile and TV installs.
 
 The API and Web implementation are complete in the isolated local preview.
-Production activation remains gated on feat-476 coverage and current production
+Production activation remains gated on feat-487 coverage and current production
 validation; this ticket stays in progress until that rollout is resolved.
 The code release is PR #2249, with both new serving flags defaulting off and no
 production pool promotion or homepage publication. Before activation, also verify
@@ -41,7 +45,11 @@ new Admin API, migrations, schema, viewer contracts and curation artifacts.
 The full frontend implementation remains in #2249 and the original preview
 worktree. Reintroduction requires a healthy production observation window and
 investigation of the release-associated runtime delay; its root cause is not yet
-established. See `docs/operations/user-recommendations-rollout-2026-09-10.md`.
+established. PR #2250 is merged and deployed. The recovery's first fifteen minutes
+had a 0.272% Web 5xx rate versus 2.200% after #2249 and 0.106% before it. Actual
+playback and seeded-recommendation browser checks passed, but this is not a full
+production sign-off. `feat-486` owns runtime investigation before restoring the Web
+feature. See `docs/operations/user-recommendations-rollout-2026-09-10.md`.
 
 ## Entry Points — Read These First
 
@@ -67,7 +75,7 @@ established. See `docs/operations/user-recommendations-rollout-2026-09-10.md`.
   contract while retaining the existing Web cookie adapter and server profile.
 - Fill from profile results first, then relevant curated interest pools and the
   selected playback language's start pool, after eligibility/history/dedup checks.
-- Consume the one-time, versioned curation artifacts from feat-476. Validate
+- Consume the one-time, versioned curation artifacts from feat-487. Validate
   sufficient unique coverage per language before activation.
 - Register a top-level `HomepageRecommendationsBlock` through Admin validation, editor,
   GraphQL/shared fragments and Web dispatch, with a localized “Recommended for You”
@@ -113,4 +121,6 @@ established. See `docs/operations/user-recommendations-rollout-2026-09-10.md`.
 - Coverage: `docs/recommendations/curation/2026-09-10/all-context-coverage-report.md` audits all 521,325 website locale/audio combinations in the local snapshot. `admin-coverage-report.md` records the three active preview contexts. Missing translations and sparse inventory still prevent broad activation.
 - Shared native/Web operations: `packages/admin-graphql/src/operations/user-recommendations.ts` and `recommendations.ts`.
 - New delivery/history/identity services: `apps/admin/src/services/recommendations/user-delivery.service.ts`, `user-history.service.ts`, and `viewer-identity.service.ts`.
-- No production deployment, native UI, account linking or monthly worker was added.
+- Backend code deployed through #2249; Web changes were backed out through #2250.
+  No production pool promotion, homepage publication or serving-flag activation
+  occurred. Native UI, account linking and a monthly worker remain out of scope.
