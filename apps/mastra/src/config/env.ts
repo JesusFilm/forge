@@ -607,6 +607,7 @@ const envSchema = z.object({
   // (`=== "true"`, see AI_GATEWAY_CHAT_ENABLED), NOT JS truthiness, so
   // `SEEKER_ROUTE_ENABLED="false"` stays disabled. No new required-at-boot var.
   SEEKER_ROUTE_ENABLED: z.string().optional(),
+  AI_CHAT_MAINTENANCE_PAUSED: z.string().optional(),
   // Default-off gate for the seeker's video capability (feat-327, plan D6):
   // the `searchVideos` + `featureVideo` tools and — through them — the
   // declared-video projection on the `/forge-seeker` terminal result frame.
@@ -1165,6 +1166,9 @@ export const env = envSchema.parse({
     process.env.SEARCH_EVAL_JUDGE_MODEL,
   ),
   SEEKER_ROUTE_ENABLED: emptyToUndefined(process.env.SEEKER_ROUTE_ENABLED),
+  AI_CHAT_MAINTENANCE_PAUSED: emptyToUndefined(
+    process.env.AI_CHAT_MAINTENANCE_PAUSED,
+  ),
   SEEKER_VIDEO_ENABLED: emptyToUndefined(process.env.SEEKER_VIDEO_ENABLED),
   SEEKER_FOLLOWUPS_ENABLED: emptyToUndefined(
     process.env.SEEKER_FOLLOWUPS_ENABLED,

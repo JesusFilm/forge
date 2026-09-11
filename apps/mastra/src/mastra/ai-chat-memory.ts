@@ -78,6 +78,8 @@ export function buildAiChatStorage(): PostgresStore {
     schemaName: AI_CHAT_SCHEMA_NAME,
     // ConnectionStringConfig takes the pool cap as a top-level `max`.
     max: AI_CHAT_STORAGE_POOL_MAX,
+    connectionTimeoutMillis: 2_000,
+    statement_timeout: 5_000,
   })
 }
 
@@ -234,4 +236,23 @@ export function __resetAiChatMemoryForTesting(): void {
 
 export function __resetAiChatStorageForTesting(): void {
   cachedAiChatStorage = null
+}
+
+/** Explicit native DDL entrypoint; never applies Forge migrations at boot. */
+export async function initializeAiChatStorage(
+  store = getAiChatStorage(),
+): Promise<void> {
+  await store.init()
+}
+
+/** Actual lane config is the coverage source; additional content stores fail closed. */
+export function isAiChatDeletionStorageCovered(): boolean {
+  const memory = getAiChatMemory()
+  const config = memory.getMergedThreadConfig()
+  return (
+    !memory.vector &&
+    !config.semanticRecall &&
+    !config.workingMemory?.enabled &&
+    !config.observationalMemory
+  )
 }

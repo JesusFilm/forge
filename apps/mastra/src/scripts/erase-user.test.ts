@@ -238,7 +238,7 @@ describe("erase-user — preview path (AE2)", () => {
     expect(execute).not.toHaveBeenCalled()
     const output = lines.join("\n")
     expect(output).toContain(
-      "event=preview_report postgres=counted threads=2 langfuse=skipped_unconfigured",
+      "event=preview_report postgres=counted threads=2 records=0 langfuse=skipped_unconfigured",
     )
     expect(output).toContain(`confirm_database=${identity().hash}`)
     expect(output).toContain(

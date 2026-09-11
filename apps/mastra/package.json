@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "NODE_OPTIONS=\"--import tsx\" mastra dev",
-    "build": "mastra build --studio",
+    "build": "mastra build --studio && node src/scripts/package-ai-chat-migrations.mjs",
     "start": "MASTRA_STUDIO_PATH=.mastra/output/studio node .mastra/output/index.mjs",
     "check:devotional-database-readiness": "pnpm --dir ../.. exec tsx apps/mastra/src/scripts/check-devotional-database-readiness.ts",
     "lint": "eslint .",
@@ -32,7 +32,10 @@
     "seed:search-eval:prod": "MASTRA_NATIVE_EVAL_ENVIRONMENT=local pnpm --dir ../.. exec tsx apps/mastra/src/scripts/seed-search-eval-from-artifact.ts --artifact docs/search-eval-baselines/temporary/prod-seed-baseline-2026-06-02-export.json --environment-label local",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "migrate:ai-chat-database": "pnpm --dir ../.. exec tsx apps/mastra/src/scripts/migrate-ai-chat-database.ts",
+    "check:ai-chat-database-readiness": "pnpm --dir ../.. exec tsx apps/mastra/src/scripts/check-ai-chat-database-readiness.ts",
+    "restore:ai-chat-markers": "pnpm --dir ../.. exec tsx apps/mastra/src/scripts/restore-ai-chat-markers.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "3.0.79",
@@ -56,8 +59,8 @@
     "@smithy/util-retry": "4.3.1",
     "ai": "6.0.182",
     "google-auth-library": "10.6.2",
-    "jsonrepair": "3.14.0",
     "jose": "^6.1.3",
+    "jsonrepair": "3.14.0",
     "mastra": "1.27.3",
     "ollama-ai-provider-v2": "3.5.1",
     "parse5": "7.3.0",
@@ -69,6 +72,7 @@
   "devDependencies": {
     "@types/node": "^22",
     "@types/pg": "8.20.0",
+    "esbuild": "0.27.3",
     "eslint": "^9.0.0",
     "tsx": "^4.21.0",
     "typescript": "^5",

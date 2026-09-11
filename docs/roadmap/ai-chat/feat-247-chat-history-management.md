@@ -17,6 +17,41 @@ tags:
   - "ai-pipeline"
 ---
 
+## Resolution — PR1 PostgreSQL foundation
+
+PR1 implements U1/U2, U5 storage-cleanup compatibility, and the database/operations
+portion of U7. It adds isolated explicit chat migrations and readiness checks;
+atomic exact-owner deletion records; native PostgreSQL INSERT/upsert and identity
+guards; parent integrity; compatible retention and record-only operator erasure.
+The independent Langfuse erasure half and its existing retention remain unchanged.
+
+Local verification covers real pinned SDK writers against disposable PostgreSQL:
+creation/deletion orderings, delayed message/title persistence, ownership and
+identity collisions, rollback/retries, bounded waits, retention refresh and batch
+progress, readiness transitions, independent migration streams, and exact-current
+planned restore. Package tests, typecheck, lint, build and runnable migration
+artifacts are part of PR1 validation. This evidence establishes local behavior,
+not production activation or the complete deletion user experience.
+
+**Compound docs.** [Mastra chat deletion must cover background writers](../../solutions/architecture-patterns/mastra-chat-deletion-must-cover-background-writers.md)
+records why SDK deletion alone cannot prevent late writes, the native
+message-orphan race, and the approved option B design alongside the viable
+broader-protocol option C alternative.
+
+**Release-time operation remains separate:** deploy compatible PR1 application,
+workers and operator tooling first, then explicitly run the chat migration from
+that verified release container following the
+[chat lifecycle runbook](../../runbooks/ai-chat-conversation-lifecycle.md).
+Record intended pre-window flags, pause/drain writers and maintenance, require
+ready/covered storage, and restore the recorded configuration before resuming.
+A merged PR or automated deployment does not execute or verify that migration.
+
+**Residual risk / follow-ups.** PR2's authenticated deletion endpoint, SDK diagnostics and
+captured-owner title repair; PR3's proxy/client/UI and cumulative browser/full-stack
+verification. Feature 247 remains `in-progress`; the approved option B design,
+operator-erasure exception, public-release decisions and account integration
+boundaries are unchanged.
+
 > **Re-pointed (2026-07-21, Mastra/Seeker architecture-review adjudication):**
 > when picked up, this ticket's Mastra route(s) consume the ai-chat lane
 > admission module (feat-283) and the thread-ownership read resolver
@@ -39,7 +74,7 @@ especially deleting a sensitive conversation — becomes expected hygiene.
 
 ## Engineering plan
 
-[Chat conversation deletion - Plan](../../plans/2026-09-09-0438-feat-chat-conversation-delete-plan.md) is the implementation contract. The plan specifies three implementation PRs; implementation has not started. The estimate now includes storage enforcement, migration isolation, erasure compatibility, and real-database/browser verification.
+[Chat conversation deletion - Plan](../../plans/2026-09-09-0438-feat-chat-conversation-delete-plan.md) is the implementation contract. The plan specifies three implementation PRs. PR1 storage implementation and local verification are recorded above; PR2 and PR3 remain outstanding. The estimate now includes storage enforcement, migration isolation, erasure compatibility, and real-database/browser verification.
 
 ## Entry Points — Read These First
 
@@ -74,7 +109,7 @@ Merge three implementation PRs in order, preserving U1–U7 as traceable units:
 
 **Planned restore:** PR1's runbook must capture authoritative current deletion records while writes/maintenance are paused, reconcile the restored marker set exactly (including operator-erasure removals), purge matching-owner restored content, and validate before resuming. Missing authoritative recovery state or owner conflicts prevent resumption. Use protected temporary recovery input, not a new permanent journal; remove it after successful reconciliation.
 
-**Completion:** PR1 and PR2 leave feature 247 `in-progress`. Only PR3, after cumulative verification passes, may record the implementation Resolution linking all three actual PRs and update the lane index. Public-release decisions remain separate.
+**Completion:** PR1 and PR2 leave feature 247 `in-progress`. Only PR3, after cumulative verification passes, may record whole-feature completion linking all three actual PRs and update the lane index. The PR1-scoped resolution above does not complete this ticket. Public-release decisions remain separate.
 
 **Owner decisions, recorded 2026-09-09:** B is selected; the backend proceeds with deletion without waiting for generation/background work. Records retain conversation ID and owner/resource ID, with no title/messages, survive ordinary retention, and are removed by operator erasure. Once removed, outstanding requests or valid sessions may recreate previously deleted IDs. This exception does not permit cross-owner disclosure. The plan retains a short A/C/D comparison, including possible future migration to C.
 

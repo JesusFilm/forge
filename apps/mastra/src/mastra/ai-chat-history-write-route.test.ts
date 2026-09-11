@@ -818,7 +818,12 @@ describe("rename route — persisted-store source pin (KTD5)", () => {
   it("builds its Memory over getAiChatStorage and never references getAiChatMemory in code", () => {
     expect(source).toMatch(/\bgetAiChatStorage\b/)
     expect(source).toMatch(/new Memory\(\{ storage: getAiChatStorage\(\) \}\)/)
-    expect(source).toMatch(/connectionString: getMastraDatabaseUrl\(\)/)
+    expect(source).toMatch(/getAiChatWritePool\(\)/)
+    const poolSource = readFileSync(
+      new URL("./ai-chat-database.ts", import.meta.url),
+      "utf8",
+    )
+    expect(poolSource).toMatch(/connectionString: getMastraDatabaseUrl\(\)/)
     expect(source).not.toMatch(/\bgetAiChatMemory\b/)
     // The title-repair rationale it deliberately does NOT copy: this route
     // uses the same resolver the persisted store uses, never env.DATABASE_URL.
