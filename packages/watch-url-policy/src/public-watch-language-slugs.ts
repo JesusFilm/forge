@@ -311,6 +311,7 @@ bisu
 blaan-koronadal
 blaan-sarangani
 blackfoot
+blang
 blin
 blowo
 bobe
@@ -480,6 +481,7 @@ dano
 darchuleli
 dargin
 dari
+dari-4
 datooga
 daur
 davik-kui
@@ -683,6 +685,7 @@ ghotuo
 giangan
 gibaio
 gichuka
+gidar
 gikyode
 gilaki
 gilaki-rashti
@@ -718,6 +721,7 @@ guarani-paraguayan
 guarani-western-bolivian
 guaymi
 guere-central
+guhu-samane
 guina-ang-kalinga
 gujarati
 guji
@@ -1005,6 +1009,7 @@ khmer-standard
 khmu
 khoekhoegowab
 khowar
+khwarazm
 kiche-cunen
 kifuliiru
 kikamba
@@ -1150,6 +1155,7 @@ ladakhi
 lahu
 lak
 lala
+lalo-central
 lama
 lamaholot
 lamalera
@@ -1744,11 +1750,13 @@ pougouli
 poumai-naga
 powari
 provencal
+psikye
 puinave
 pulangiyen
 punan-tubu
 punjabi
 purepecha
+purepecha-western-highland
 pyam
 qanjobal
 qashqai
@@ -1873,6 +1881,7 @@ sardinian-logudorese
 sarlahi-tharu
 sasak
 satere-mawe
+saura-2
 saurashtra
 sauria-paharia
 saya
@@ -2086,6 +2095,7 @@ tiyaa
 tlapaneco-de-tlacoapa
 tlicho
 toabaita
+toba
 toba-maskoy
 tobelo
 tojolabal
@@ -2141,6 +2151,7 @@ turkish
 turkmen
 tuvin
 tuyuca
+twi
 tyap
 tzeltal-bachajon
 tzeltal-oxchuc
@@ -2162,6 +2173,7 @@ uneme-north
 uneme-south
 urat
 urdu
+urdu-hoda
 urdu-indian
 urhobo
 urim
