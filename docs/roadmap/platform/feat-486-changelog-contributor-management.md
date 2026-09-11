@@ -63,3 +63,47 @@ current authority, credential/environment attacks, mixed-scope revocation,
 Admin promotion, stale exchange/refresh rejection and real lock contention.
 Standards and Spec reviews passed after bounding database work below the
 Changelog transport deadline. No production deployment was performed.
+
+## PR #2252 review follow-up
+
+Resolved finding #1: `SELECT ... FOR UPDATE` does not refresh a Serializable
+snapshot. Management reads JWKS before locking the environment, so a production
+operator could commit an Admin promotion while management waited and leave its
+recipient check reading the old grants.
+
+`apps/auth/src/services/changelog-production-access.service.ts` now updates
+`app_environment.updated_at` when taking the lock for `grant-admin` or `revoke`.
+That row write makes a waiting management transaction with an older snapshot
+abort with PostgreSQL `40001`; the existing boundary returns `503`. A fresh
+request then rejects the promoted Admin with `409`. Inspection retains its
+read-only lock. Future production authority writers must preserve this row-write
+protocol; merely moving the lock before JWKS cannot refresh a snapshot taken
+while waiting for the lock.
+
+The native OAuth integration regression queues the real operator before the
+management request, observes both PostgreSQL lock waits, then releases them.
+It failed before the fix (`200` instead of `503`) and passed afterward, including
+the fresh `409` response and unchanged Admin/Contributor scopes. Only the
+production configuration gate is switchable in the test; OAuth, HTTP handlers,
+operator logic, and persistence are real. All 597 Auth tests pass against
+disposable PostgreSQL; Auth typechecking, lint, and touched-file formatting pass.
+
+### Additional local scenario verification
+
+Expanded the native concurrency test to three cases:
+
+- Recipient promotion: stale management returns `503`, fresh retry returns
+  `409`, both scopes remain, and no Contributor-revocation audit is written.
+- Actor revocation: stale management returns `503`, fresh retry returns `403`,
+  the recipient retains Contributor scope, and no revocation audit is written.
+- Read-only inspection: management returns `200`, the repeated request reports
+  `changed: false`, exactly one revocation audit exists, and the environment
+  timestamp stays unchanged.
+
+All 599 Auth tests passed on a fresh disposable PostgreSQL 18 database with all
+migrations applied. Each concurrency case passed five additional runs (15 case
+executions). Existing native coverage also passed for mixed grants, protected
+Admins, stale sessions/credentials, environment substitution, lock timeout,
+and stale authorization-code/refresh rejection. Auth typecheck, lint, and
+changed-file formatting passed. This is backend handler and persistence
+verification; the paired Changelog browser UI was not exercised here.

@@ -80,6 +80,9 @@ export async function manageChangelogContributors(
       } catch {
         throw new ContributorManagementError(403, "access-denied")
       }
+      // Production grant writers also update this row. A writer that committed
+      // after our snapshot forces a serialization failure here (503), so a
+      // retry rechecks current authority and Admin-recipient protection.
       await tx.$queryRaw`SELECT id FROM app_environment WHERE client_id = ${clientId} FOR UPDATE`
       const session = await tx.session.findUnique({
         where: { id: sessionId },

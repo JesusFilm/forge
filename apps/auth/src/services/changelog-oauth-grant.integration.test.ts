@@ -16,6 +16,14 @@ import {
  *   BETTER_AUTH_SECRET=changelog-integration-secret-not-for-production \
  *     pnpm --filter @forge/auth test -- changelog-oauth-grant.integration
  */
+// The production gate is parsed once in deployment. Keep it switchable here
+// so the same native-provider suite can exercise both deployment postures.
+vi.mock("@/config/env", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/config/env")>()),
+  isChangelogProductionEnabled: () =>
+    process.env.AUTH_CHANGELOG_PRODUCTION_ENABLED === "true",
+}))
+
 const databaseUrl = process.env.AUTH_TEST_DATABASE_URL
 const describeIntegration = databaseUrl ? describe : describe.skip
 
@@ -521,6 +529,194 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
       })
     }
   }, 20_000)
+
+  it.each([
+    {
+      scenario: "recipient promotion",
+      operation: "grant-admin",
+      actorTarget: false,
+      status: 503,
+      retryStatus: 409,
+      scopes: ["changelog:admin", "changelog:submit"],
+    },
+    {
+      scenario: "actor revocation",
+      operation: "revoke",
+      actorTarget: true,
+      status: 503,
+      retryStatus: 403,
+      scopes: ["changelog:submit"],
+    },
+    {
+      scenario: "read-only inspection",
+      operation: "inspect",
+      actorTarget: false,
+      status: 200,
+      retryStatus: 200,
+      scopes: [],
+    },
+  ] as const)(
+    "handles concurrent $scenario before management obtains its lock",
+    async ({ operation, actorTarget, status, retryStatus, scopes }) => {
+      const { POST } = await import("@/app/api/changelog/contributors/route")
+      const { operateChangelogProductionAccess } =
+        await import("./changelog-production-access.service")
+      const actor = await prisma.user.update({
+        where: { id: userId },
+        data: { emailVerified: true },
+      })
+      const recipient = await prisma.user.create({
+        data: {
+          id: randomUUID(),
+          name: "Concurrent promotion recipient",
+          email: `promotion-${randomUUID()}@example.test`,
+          emailVerified: true,
+          membershipStatus: "ACTIVE",
+        },
+      })
+      const production = await prisma.appEnvironment.findUniqueOrThrow({
+        where: { clientId: "jfp_changelog_production" },
+      })
+      let unlock: (() => void) | undefined
+      let lock: Promise<unknown> | undefined
+      let operator: Promise<unknown> | undefined
+      let revocation: Promise<Response> | undefined
+      try {
+        process.env.AUTH_CHANGELOG_PRODUCTION_ENABLED = "true"
+        await operateChangelogProductionAccess("grant-admin", actor.email)
+        await prisma.appGrant.create({
+          data: {
+            appId: production.appId,
+            environmentId: production.id,
+            userId: recipient.id,
+            subjectType: "USER",
+            status: "APPROVED",
+            scopes: {
+              create: { scope: { connect: { key: "changelog:submit" } } },
+            },
+          },
+        })
+        const authorized = await authorize({
+          requestedClientId: "jfp_changelog_production",
+          redirectUri: "https://changelog.jesusfilm.org/api/auth/callback",
+          resource: null,
+          scope: "openid changelog:admin",
+        })
+        const code = await authorizationCode(authorized.response)
+        const exchanged = await postToken(
+          new URLSearchParams({
+            grant_type: "authorization_code",
+            client_id: "jfp_changelog_production",
+            code,
+            code_verifier: authorized.verifier,
+            redirect_uri: "https://changelog.jesusfilm.org/api/auth/callback",
+          }),
+        )
+        expect(exchanged.response.status).toBe(200)
+        const request = () =>
+          new Request("http://localhost:3004/api/changelog/contributors", {
+            method: "POST",
+            headers: {
+              authorization: `Bearer ${exchanged.body.access_token}`,
+              "content-type": "application/json",
+            },
+            body: JSON.stringify({
+              clientId: "jfp_changelog_production",
+              recipientId: recipient.id,
+            }),
+          })
+        const environmentBefore = await prisma.appEnvironment.findUniqueOrThrow(
+          {
+            where: { id: production.id },
+          },
+        )
+        const held = new Promise<void>((resolve) => {
+          unlock = resolve
+        })
+        let ready!: () => void
+        const locked = new Promise<void>((resolve) => {
+          ready = resolve
+        })
+        lock = prisma.$transaction(
+          async (tx) => {
+            await tx.$queryRaw`SELECT id FROM app_environment WHERE id = ${production.id} FOR UPDATE`
+            ready()
+            await held
+          },
+          { timeout: 10_000 },
+        )
+        await locked
+        // Queue the real operator first, then management. Both must have reached
+        // PostgreSQL's lock wait before release; no timing sleeps or mocked DB.
+        const waitForBlocked = (count: number) =>
+          vi.waitFor(
+            async () => {
+              const rows = await prisma.$queryRaw<{ count: bigint }[]>`
+              SELECT count(*) FROM pg_stat_activity
+              WHERE datname = current_database() AND wait_event_type = 'Lock'
+                AND query LIKE '%app_environment%'
+            `
+              expect(Number(rows[0].count)).toBe(count)
+            },
+            { timeout: 2000, interval: 10 },
+          )
+        operator = operateChangelogProductionAccess(
+          operation,
+          actorTarget ? actor.email : recipient.email,
+        )
+        await waitForBlocked(1)
+        revocation = POST(request())
+        await waitForBlocked(2)
+        unlock?.()
+        await lock
+        await operator
+        expect((await revocation).status).toBe(status)
+        const retried = await POST(request())
+        expect(retried.status).toBe(retryStatus)
+        if (operation === "inspect") {
+          expect(await retried.json()).toEqual({ changed: false })
+          const environmentAfter =
+            await prisma.appEnvironment.findUniqueOrThrow({
+              where: { id: production.id },
+            })
+          expect(environmentAfter.updatedAt).toEqual(
+            environmentBefore.updatedAt,
+          )
+        }
+        const { hashAuditSubject } = await import("./audit.service")
+        expect(
+          await prisma.authAuditEvent.count({
+            where: {
+              subjectHash: hashAuditSubject(recipient.id),
+              eventType: "changelog_contributor_revoked",
+            },
+          }),
+        ).toBe(operation === "inspect" ? 1 : 0)
+        const grants = await prisma.appGrant.findMany({
+          where: { userId: recipient.id },
+          include: { scopes: { include: { scope: true } } },
+        })
+        expect(
+          grants
+            .flatMap((grant) => grant.scopes.map(({ scope }) => scope.key))
+            .sort(),
+        ).toEqual(scopes)
+      } finally {
+        unlock?.()
+        await Promise.allSettled([lock, operator, revocation])
+        process.env.AUTH_CHANGELOG_PRODUCTION_ENABLED = "false"
+        await prisma.user.delete({ where: { id: recipient.id } })
+        await prisma.appGrant.deleteMany({
+          where: { userId, environmentId: production.id },
+        })
+        await prisma.user.update({
+          where: { id: userId },
+          data: { emailVerified: false },
+        })
+      }
+    },
+    20_000,
+  )
 
   async function authorize({
     requestedClientId = clientId,
