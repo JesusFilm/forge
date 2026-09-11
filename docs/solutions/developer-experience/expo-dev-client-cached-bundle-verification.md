@@ -45,7 +45,7 @@ Never treat a force-stop + relaunch as proof that the device runs current code. 
 
    The reload endpoint makes every connected dev client fetch the current bundle and rebuild the React tree — unlike a cold app relaunch, which may serve from the client's cache.
 
-A related trap with the same shape: `expo run:android` / `run:ios` deep-link the dev client at their own default Metro port. After a build, re-deep-link the client at the Metro you intend (`exp+<scheme>://expo-development-client/?url=http%3A%2F%2F<host>%3A<port>`), or the device runs a different checkout's code entirely.
+A related trap with the same shape: `expo run:android` / `run:ios` deep-link the dev client at their own default Metro port. After a build, re-deep-link the client at the Metro you intend, or the device runs a different checkout's code entirely. Either registered form works for this app: `forgemobile://expo-development-client/?url=http%3A%2F%2F<host>%3A<port>`, or the same path under `exp+jesus-film-forge-v2://`. The `exp+` prefix takes the **slug**, never the `scheme` — `apps/mobile/app.json` sets slug `jesus-film-forge-v2` and scheme `forgemobile`, and the built `Info.plist` registers `forgemobile` and `exp+jesus-film-forge-v2`. So `exp+forgemobile://` is unregistered and opens nothing, which reads as "the deep link does not work".
 
 ## Why This Matters
 
@@ -64,3 +64,5 @@ From the incident: an import repair was pushed via file save; the app was force-
 
 - `docs/solutions/developer-experience/deleted-worktree-under-live-metro-unresolve-error.md` — sibling class: the dev client faithfully running a Metro whose backing files vanished.
 - `docs/solutions/runtime-errors/metro-env-inlining-eas-update-white-screen-20260410.md` — the publish-time sibling: stale Metro cache at export time.
+- `docs/solutions/developer-experience/mobile-dev-build-verification-false-signals.md` — the native half. This doc proves the JS Metro serves; that one proves the installed binary came from your tree, which a bundle grep cannot see.
+- `docs/solutions/developer-experience/verifying-mobile-expo-worktree-changes-in-simulator-20260608.md` — the worktree-and-Metro context the port in these commands assumes.
