@@ -1,248 +1,90 @@
-/**
- * Retention purge for the ai-chat lane's persisted memory (feat-208).
- *
- * Seeker conversations can carry deeply personal spiritual content, so
- * persistence ships WITH a retention position: a FLAT 25-day window for every
- * resource — `anon:*`, `user:*`, the dogfood fallback, and anything else —
- * (owner decision 2026-08-10, feat-336; supersedes the original 30/180-day
- * anon/signed-in split). The Langfuse trace sweep imports the same constant,
- * so one number governs both stores. Thread `updatedAt` is a true rolling
- * last-activity key — @mastra/pg's saveMessages bumps it transactionally with
- * every message insert.
- *
- * A run DRAINS the expired backlog: bounded sweeps (500 deletes each) repeat
- * until a sweep comes back non-full, capped at 20 sweeps per run so one run
- * cannot monopolize the small ai-chat pool (the remainder carries over to the
- * next tick). Each sweep scans oldest-first (`orderBy updatedAt ASC`) with an
- * early stop once rows are inside the 25-day window — nothing younger can be
- * expired under the flat policy — and re-checks recency
- * immediately before every delete so a thread resumed mid-sweep is never
- * deleted. Deletes go through Memory.deleteThread (which also removes
- * messages + orphaned vectors).
- *
- * The purge bounds total junk to roughly one retention window of inflow; it
- * does NOT bound in-window growth (see plan §F — inbound auth + rate caps
- * remain the real inflow bound). It runs at boot and on a daily timer only
- * when the shared backend is Postgres (`canAiChatDataPersist`). The purge
- * operates on a Memory built DIRECTLY over the persisted `ai_chat` store —
- * never the backend-selected `getAiChatMemory()` — because retention is a
- * durable-row obligation. `MASTRA_STORAGE_BACKEND=memory` local runs skip
- * before constructing that store (the "boots clean with no Postgres"
- * invariant). Logging is enum/count-only plain strings — never thread ids or
- * resource ids.
- */
+/** Flat retention, shared with Langfuse. Explicit deletion records never expire. */
+import type { Pool } from "pg"
+import { canAiChatDataPersist, env } from "../config/env"
+import { isAiChatDeletionStorageCovered } from "./ai-chat-memory"
+import { getAiChatWritePool } from "./ai-chat-database"
+import { getAiChatGuardReadiness } from "./ai-chat-guard-readiness"
+import { expireAiChatConversation } from "./ai-chat-conversation-lifecycle"
 
-import { Memory } from "@mastra/memory"
-
-import { canAiChatDataPersist } from "../config/env"
-
-import { getAiChatStorage } from "./ai-chat-memory"
-
-/**
- * THE retention policy, in days — flat across every resource shape and BOTH
- * stores: this module's Postgres purge and the feat-336 Langfuse trace sweep
- * (`langfuse-trace-retention.ts`) import this one constant, so a policy change
- * is a one-line edit that moves both. 25 (not 30): Langfuse's Hobby tier hides
- * data older than 30 days from the API, so the sweep can only delete what it
- * can still list — 25 keeps every target visible with a 5-day outage margin.
- */
 export const AI_CHAT_RETENTION_DAYS = 25
 export const AI_CHAT_PURGE_INTERVAL_MS = 24 * 60 * 60 * 1000
-const PURGE_PAGE_SIZE = 100
-/** Per-sweep delete bound so one sweep cannot monopolize the pool. */
-const PURGE_MAX_DELETES_PER_SWEEP = 500
-/**
- * Safety valve on the drain loop: ≤20 full sweeps (≤10k deletes) per run. A
- * pathological backlog carries over to the next daily tick instead of
- * grinding the 5-connection ai-chat pool indefinitely.
- */
-const PURGE_MAX_SWEEPS_PER_RUN = 20
-const DAY_MS = 24 * 60 * 60 * 1000
-
-/**
- * Sentinel thread id for the per-run connectivity probe. `listThreads` swallows
- * store errors (returns empty), so without a probe a DB outage would drain to a
- * false `purge_complete scanned=0`. `getThreadById` THROWS on a store error, so
- * the run probes with it first (a missing id returns null cheaply). Reserved
- * string that cannot collide with a real conversation thread id.
- */
-const RETENTION_PROBE_THREAD_ID = "__ai_chat_retention_connectivity_probe__"
-
-/** The narrow Memory surface the purge needs — structural so tests fake it. */
-export type AiChatRetentionMemory = {
-  listThreads: (args: {
-    page?: number
-    perPage?: number
-    orderBy?: { field?: "createdAt" | "updatedAt"; direction?: "ASC" | "DESC" }
-  }) => Promise<{
-    threads: Array<{
-      id: string
-      resourceId?: string | null
-      updatedAt?: Date | string | null
-    }>
-    hasMore: boolean
-  }>
-  getThreadById: (args: { threadId: string }) => Promise<{
-    resourceId?: string | null
-    updatedAt?: Date | string | null
-  } | null>
-  deleteThread: (threadId: string) => Promise<void>
-}
-
-/**
- * Retention window for a resource key. Deliberately resource-INDEPENDENT
- * since feat-336's flat policy (the old `user:` prefix branch is gone); the
- * parameter is kept so the anti-vacuous tests can pin every resource shape
- * (`user:*`, `anon:*`, `seeker-dogfood`) to the same window — a reintroduced
- * split fails those pins loudly instead of shipping silently.
- */
+const BATCH_SIZE = 500
+const MAX_SWEEPS = 20
 export function retentionWindowMsFor(
   _resourceId: string | null | undefined,
 ): number {
-  return AI_CHAT_RETENTION_DAYS * DAY_MS
+  return AI_CHAT_RETENTION_DAYS * 24 * 60 * 60 * 1000
 }
-
-function toEpochMs(value: Date | string | null | undefined): number {
-  if (value == null) return Number.NaN
-  return new Date(value).getTime()
-}
-
-/**
- * One bounded sweep: page oldest-first with an early stop once rows are
- * inside the flat window (ASC ⇒ everything after is younger), collect up
- * to the per-sweep bound, then delete — re-checking recency per thread first
- * so a conversation resumed between scan and delete survives. Collect-then-
- * delete so deletions cannot shift pagination mid-scan. Throws only if the
- * store does. Reports `collected` (the pre-recheck expired batch size) so the
- * drain loop can distinguish a full batch (backlog remains) from a genuinely
- * drained one even when the recency re-check spares some rows.
- */
-async function sweepOnce(
-  memory: AiChatRetentionMemory,
-  nowMs: number,
-): Promise<{ scanned: number; deleted: number; collected: number }> {
-  const windowMs = AI_CHAT_RETENTION_DAYS * DAY_MS
-  const expired: string[] = []
-  let scanned = 0
-  let page = 0
-  let hasMore = true
-  while (hasMore && expired.length < PURGE_MAX_DELETES_PER_SWEEP) {
-    const result = await memory.listThreads({
-      page,
-      perPage: PURGE_PAGE_SIZE,
-      orderBy: { field: "updatedAt", direction: "ASC" },
-    })
-    for (const thread of result.threads) {
-      scanned += 1
-      const updatedAtMs = toEpochMs(thread.updatedAt)
-      // Null/unparseable updatedAt: skip, never delete. (PG sorts NULLs last
-      // under ASC, so these only trail the early-stop point anyway.)
-      if (Number.isNaN(updatedAtMs)) continue
-      const ageMs = nowMs - updatedAtMs
-      if (ageMs <= windowMs) {
-        // Early stop: this row — and by ASC order every row after it — is too
-        // young to be expired under the flat window.
-        hasMore = false
-        break
-      }
-      expired.push(thread.id)
-      if (expired.length >= PURGE_MAX_DELETES_PER_SWEEP) break
+export type AiChatRetentionResult =
+  | { kind: "not_ready"; reason: "not_applied" | "paused" }
+  | {
+      kind: "failed"
+      reason: "incompatible" | "readiness_error" | "uncovered_storage"
     }
-    hasMore = hasMore && result.hasMore
-    page += 1
-  }
-
-  let deleted = 0
-  for (const threadId of expired) {
-    // Recency re-check: the collect-phase snapshot may be stale — a thread
-    // that got a message since the scan must survive the sweep.
-    const fresh = await memory.getThreadById({ threadId })
-    if (fresh === null) continue
-    const freshUpdatedAtMs = toEpochMs(fresh.updatedAt)
-    if (Number.isNaN(freshUpdatedAtMs)) continue
-    if (nowMs - freshUpdatedAtMs <= retentionWindowMsFor(fresh.resourceId)) {
-      continue
+  | {
+      kind: "complete"
+      scanned: number
+      deleted: number
+      recordsDeleted: number
+      sweeps: number
     }
-    await memory.deleteThread(threadId)
-    deleted += 1
-  }
-  return { scanned, deleted, collected: expired.length }
-}
 
-/**
- * One purge run: drain expired threads in bounded sweeps until a sweep comes
- * back non-full (backlog drained) or the per-run sweep cap is hit (remainder
- * carries over to the next tick). Returns totals for the log line. Begins with
- * a connectivity probe so a store outage fails loudly (→ the caller's
- * `purge_failed` log) instead of a false `purge_complete scanned=0`:
- * `listThreads` swallows store errors, but `getThreadById` throws.
- */
+/** Each bounded page is collected first; each ID is rechecked under content locks. */
 export async function runAiChatRetentionPurge({
-  memory,
-  now = () => Date.now(),
-}: {
-  memory: AiChatRetentionMemory
-  now?: () => number
-}): Promise<{ scanned: number; deleted: number; sweeps: number }> {
-  // Connectivity probe (see RETENTION_PROBE_THREAD_ID): a missing id returns
-  // null cheaply when the store is healthy, but throws on an outage — turning a
-  // silent false success into an honest `purge_failed`.
-  await memory.getThreadById({ threadId: RETENTION_PROBE_THREAD_ID })
-
-  let totalScanned = 0
-  let totalDeleted = 0
-  let sweeps = 0
-  while (sweeps < PURGE_MAX_SWEEPS_PER_RUN) {
-    const { scanned, deleted, collected } = await sweepOnce(memory, now())
-    sweeps += 1
-    totalScanned += scanned
-    totalDeleted += deleted
-    // Drained when the sweep did NOT fill its collect batch. Keying on
-    // `deleted` would stop early when the recency re-check spared part of a
-    // full batch, stranding still-expired rows until the next daily tick.
-    if (collected < PURGE_MAX_DELETES_PER_SWEEP) break
+  pool = getAiChatWritePool(),
+  now = Date.now,
+}: { pool?: Pool; now?: () => number } = {}): Promise<AiChatRetentionResult> {
+  if (env.AI_CHAT_MAINTENANCE_PAUSED === "true")
+    return { kind: "not_ready", reason: "paused" }
+  if (!isAiChatDeletionStorageCovered())
+    return { kind: "failed", reason: "uncovered_storage" }
+  const readiness = await getAiChatGuardReadiness(pool)
+  if (readiness === "error")
+    return { kind: "failed", reason: "readiness_error" }
+  if (readiness === "incompatible")
+    return { kind: "failed", reason: "incompatible" }
+  if (readiness === "not_applied")
+    return { kind: "not_ready", reason: "not_applied" }
+  const cutoff = new Date(now() - retentionWindowMsFor(undefined))
+  let scanned = 0,
+    deleted = 0,
+    recordsDeleted = 0,
+    sweeps = 0
+  // Cursor prevents refreshed candidates from stranding later expired rows.
+  let after: string | null = null
+  while (sweeps < MAX_SWEEPS) {
+    const rows: Array<{ id: string }> = (
+      await pool.query<{ id: string }>(
+        `
+      SELECT l.id FROM ai_chat.forge_conversation_lifecycle l
+      LEFT JOIN ai_chat.mastra_threads t ON t.id=l.id
+      WHERE NOT l.deleted AND ($1::text IS NULL OR l.id > $1)
+        AND (t.id IS NULL OR COALESCE(t."updatedAtZ", t."updatedAt" AT TIME ZONE 'UTC') < $2)
+      ORDER BY l.id LIMIT $3`,
+        [after, cutoff, BATCH_SIZE],
+      )
+    ).rows
+    sweeps++
+    scanned += rows.length
+    for (const row of rows) {
+      const result = await expireAiChatConversation(row.id, cutoff, { pool })
+      deleted += result.threadsDeleted
+      recordsDeleted += result.recordsDeleted
+    }
+    if (rows.length < BATCH_SIZE) break
+    after = rows.at(-1)!.id
   }
-  return { scanned: totalScanned, deleted: totalDeleted, sweeps }
+  return { kind: "complete", scanned, deleted, recordsDeleted, sweeps }
 }
 
-let cachedRetentionMemory: AiChatRetentionMemory | null = null
-
-/**
- * The Memory the purge operates on: built DIRECTLY over the persisted
- * `ai_chat` store, never `getAiChatMemory()`. The shared-backend gate keeps
- * memory-mode processes construction-free; once enabled, the direct seam
- * makes the durable target explicit. Lazy singleton; wraps the PostgresStore
- * singleton, so no extra pool.
- */
-function getPersistedAiChatRetentionMemory(): AiChatRetentionMemory {
-  if (cachedRetentionMemory === null) {
-    cachedRetentionMemory = new Memory({ storage: getAiChatStorage() })
-  }
-  return cachedRetentionMemory
-}
-
-export function __resetAiChatRetentionMemoryForTesting(): void {
-  cachedRetentionMemory = null
-}
-
-/**
- * Boot-time entry point: run one purge now and re-run daily. No-ops (returns
- * null) unless the shared backend is Postgres (`canAiChatDataPersist`), so
- * `MASTRA_STORAGE_BACKEND=memory` local runs never open a pool. This lifecycle
- * gate is independent of `SEEKER_ROUTE_ENABLED`: route admission does not
- * suspend retention for durable rows. A failed run logs and waits for the next
- * tick; it never crashes the service. The timer is unref'd so it cannot hold
- * the process open. Single-instance assumption: a multi-replica deploy would
- * run redundant (harmless, wasteful) sweeps — add a leader guard before
- * scaling out.
- */
+/** No startup await. A failed/deferred tick is retried, including after migration. */
 export function startAiChatRetentionPurge({
   isEnabled = canAiChatDataPersist,
-  getMemory = getPersistedAiChatRetentionMemory,
+  run = runAiChatRetentionPurge,
   intervalMs = AI_CHAT_PURGE_INTERVAL_MS,
 }: {
   isEnabled?: () => boolean
-  getMemory?: () => AiChatRetentionMemory
+  run?: () => Promise<AiChatRetentionResult>
   intervalMs?: number
 } = {}): { stop: () => void } | null {
   if (!isEnabled()) {
@@ -251,24 +93,34 @@ export function startAiChatRetentionPurge({
     )
     return null
   }
-
-  const sweep = () => {
-    void runAiChatRetentionPurge({ memory: getMemory() })
-      .then(({ scanned, deleted, sweeps }) => {
+  let running = false
+  const sweep = async () => {
+    if (running) return
+    running = true
+    try {
+      const result = await run()
+      if (result.kind === "not_ready")
         console.info(
-          `[ai-chat-retention] event=purge_complete scanned=${scanned} deleted=${deleted} sweeps=${sweeps}`,
+          `[ai-chat-retention] event=purge_deferred reason=${result.reason}`,
         )
-      })
-      .catch(() => {
-        // Count/enum-only logging — never the caught error (could embed ids).
+      else if (result.kind === "failed")
         console.warn(
-          "[ai-chat-retention] event=purge_failed reason=sweep_error",
+          `[ai-chat-retention] event=purge_failed reason=${result.reason}`,
         )
-      })
+      else
+        console.info(
+          `[ai-chat-retention] event=purge_complete scanned=${result.scanned} deleted=${result.deleted} records_deleted=${result.recordsDeleted} sweeps=${result.sweeps}`,
+        )
+    } catch {
+      console.warn("[ai-chat-retention] event=purge_failed reason=sweep_error")
+    } finally {
+      running = false
+    }
   }
-
-  sweep()
-  const timer = setInterval(sweep, intervalMs)
+  void sweep()
+  const timer = setInterval(() => {
+    void sweep()
+  }, intervalMs)
   timer.unref?.()
   return { stop: () => clearInterval(timer) }
 }
