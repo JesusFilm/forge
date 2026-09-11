@@ -19,6 +19,10 @@ tags:
 
 ## Resolution — PR1 PostgreSQL foundation
 
+**PR1 code PR:** [PR #2256](https://github.com/JesusFilm/forge/pull/2256)
+(`feat(mastra): guard chat deletion against late writes`). Production migration
+and whole-feature completion remain separate, as described below.
+
 PR1 implements U1/U2, U5 storage-cleanup compatibility, and the database/operations
 portion of U7. It adds isolated explicit chat migrations and readiness checks;
 atomic exact-owner deletion records; native PostgreSQL INSERT/upsert and identity
