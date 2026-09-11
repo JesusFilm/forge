@@ -649,6 +649,42 @@ describe("offline copy drives the quality choice", () => {
     await unmount(renderer)
   })
 
+  it("seeds when the offline record arrives AFTER the renditions", async () => {
+    // The device ordering: Apollo serves the renditions from cache on the
+    // first render, and DownloadsProvider hydrates the record a tick later. A
+    // one-shot gated on the renditions burns itself before there is anything
+    // to seed from, which is exactly what shipped and had to be fixed.
+    const renderer = await renderSheet({ initialMode: "raw" })
+    expect(nodeByLabel(renderer, "Select a file size, Highest")).not.toBeNull()
+
+    await act(async () => {
+      renderer.update(
+        element({
+          initialMode: "raw",
+          offlineCopy: { renditionId: "d-mid", quality: "720p" },
+        }),
+      )
+    })
+    expect(nodeByLabel(renderer, "Select a file size, High")).not.toBeNull()
+    await unmount(renderer)
+  })
+
+  it("a late record never overrides a quality the viewer already picked", async () => {
+    const renderer = await renderSheet({ initialMode: "raw" })
+    await chooseQuality(renderer, "Select a file size", "Highest", "Low")
+
+    await act(async () => {
+      renderer.update(
+        element({
+          initialMode: "raw",
+          offlineCopy: { renditionId: "d-mid", quality: "720p" },
+        }),
+      )
+    })
+    expect(nodeByLabel(renderer, "Select a file size, Low")).not.toBeNull()
+    await unmount(renderer)
+  })
+
   it("matches on the quality string when the rendition id is empty", async () => {
     // normalizeVideo defaults documentId to "", and an empty id would match the
     // FIRST row by accident. The quality string is the fallback identity.

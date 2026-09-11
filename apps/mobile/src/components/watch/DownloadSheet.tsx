@@ -574,12 +574,16 @@ export function DownloadSheetContent({
   // an empty union and stick at null. Seed when they land, and only ONCE — a
   // re-render must never overwrite a manual pick. Only a slug the dub actually
   // carries is selectable; anything else names a row the picker never renders.
-  const subtitleSeededRef = useRef(false)
+  const subtitleTouchedRef = useRef(false)
   useEffect(() => {
-    if (subtitleSeededRef.current || subtitleUnion.size === 0) return
-    subtitleSeededRef.current = true
-    if (subtitleLanguageSlug != null && subtitleUnion.has(subtitleLanguageSlug))
-      setSubtitleSlug(subtitleLanguageSlug)
+    if (subtitleTouchedRef.current) return
+    if (
+      subtitleLanguageSlug == null ||
+      !subtitleUnion.has(subtitleLanguageSlug)
+    )
+      return
+    subtitleTouchedRef.current = true
+    setSubtitleSlug(subtitleLanguageSlug)
   }, [subtitleUnion, subtitleLanguageSlug])
 
   // Key by tier-array index, not documentId: ids aren't unique (normalizeVideo
@@ -630,12 +634,18 @@ export function DownloadSheetContent({
   // video is a reuse rather than a silent re-download. Once, when the tiers
   // land — they arrive with the lazily-fetched dub, and a later re-run would
   // fight the viewer's own pick.
-  const qualitySeededRef = useRef(false)
+  // Gated on `heldIndex` — the value it seeds FROM — not on the tiers being
+  // present. The renditions come back from Apollo's cache on the first render
+  // while the offline record arrives a tick later from DownloadsProvider, so a
+  // tiers-gated one-shot burns itself before there is anything to seed with.
+  // A manual pick sets the same latch, so a late-arriving record never
+  // overrides the viewer.
+  const qualityTouchedRef = useRef(false)
   useEffect(() => {
-    if (qualitySeededRef.current || tiered.length === 0) return
-    qualitySeededRef.current = true
-    if (heldIndex >= 0) setSelectedIndex(heldIndex)
-  }, [tiered.length, heldIndex])
+    if (qualityTouchedRef.current || heldIndex < 0) return
+    qualityTouchedRef.current = true
+    setSelectedIndex(heldIndex)
+  }, [heldIndex])
 
   const handleDownload = useCallback(() => {
     if (!touAccepted || tiered.length === 0) return
@@ -743,6 +753,7 @@ export function DownloadSheetContent({
           open={qualityOpen}
           onToggle={() => setQualityOpen((o) => !o)}
           onSelect={(key) => {
+            qualityTouchedRef.current = true
             setSelectedIndex(Number(key))
             setQualityOpen(false)
           }}
@@ -759,6 +770,7 @@ export function DownloadSheetContent({
             open={subtitleOpen}
             onToggle={() => setSubtitleOpen((o) => !o)}
             onSelect={(slug) => {
+              subtitleTouchedRef.current = true
               setSubtitleSlug(slug)
               setSubtitleOpen(false)
             }}
