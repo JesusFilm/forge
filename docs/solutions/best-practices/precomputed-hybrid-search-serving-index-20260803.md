@@ -317,6 +317,13 @@ compensation can remain `CLAIMED` forever. The next live claimant must move an
 already exhausted row to dead letter before making another external call while
 leaving its immutable cleanup ids intact.
 
+Do not stop the dead-letter test at evidence retention. Create a newer source
+generation whose own replacement event does not repeat the stranded stale id,
+publish it through the real claim path, and prove that the retained dead-letter
+evidence is still coalesced, deleted from the serving index, and completed as
+repaired. Otherwise the test can pass while the durable evidence is never
+consumed and the stale document remains searchable forever.
+
 Fingerprint numeric fields at the storage width of the serving schema.
 Typesense `float` and `float[]` values are 32-bit, while PostgreSQL and JSON
 values enter JavaScript as 64-bit numbers. Normalize both the canonical input
