@@ -284,9 +284,10 @@ is redundant and loses the plugin's column-pruning.
 - Env vars managed by Doppler (project: `forge-admin`). Use `pnpm fetch-secrets` for local dev.
 - Tests colocated as `*.test.ts` / `*.test.tsx` beside source files.
 - Next production builds skip their duplicate TypeScript pass because the
-  package `typecheck` command already validates production and test source in
-  CI. Keep `pnpm typecheck` on `tsconfig.json` so the complete corpus remains
-  covered by the required CI gate.
+  package `typecheck` command first generates Next's route/page contracts and
+  then validates them with production and test source in CI. That command must
+  keep using `tsconfig.json` so the complete corpus remains covered by the
+  required CI gate.
 - **Adding a new Pothos type** requires three steps:
   1. Create `src/graphql/types/<name>.ts` and call `builder.prismaObject(...)`
   2. Add a side-effect import in `src/graphql/schema.ts` so the type registers on the builder before `builder.toSchema()` runs

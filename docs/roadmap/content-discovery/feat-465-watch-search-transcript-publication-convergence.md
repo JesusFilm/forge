@@ -96,6 +96,7 @@ The dedicated Admin worker build began exhausting its smaller builder after the
 real-Postgres convergence suite expanded. Excluding 465 test files still left
 Next constructing a second TypeScript program over 644 production files after
 the package's complete typecheck. Production builds now skip that redundant
-Next pass. The package `typecheck` command deliberately continues to use
-`apps/admin/tsconfig.json`, so CI still checks the complete unit and integration
-test corpus in its required typecheck gate.
+Next pass. The package `typecheck` command deliberately runs `next typegen`
+before `tsc` on `apps/admin/tsconfig.json`, so CI still checks generated route
+and page contracts plus the complete unit and integration test corpus in its
+required typecheck gate.

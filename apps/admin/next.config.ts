@@ -4,9 +4,9 @@ import { withWorkflow } from "workflow/next"
 const nextConfig: NextConfig = {
   typedRoutes: true,
   // Railway's dedicated worker uses a smaller build container than the Admin
-  // web service. CI runs the package typecheck over production and test source
-  // before the production build, so do not make Next construct a second large
-  // TypeScript program during `next build`.
+  // web service. CI runs `next typegen` plus the package typecheck over Next's
+  // generated contracts, production source, and test source before the build,
+  // so do not make `next build` construct a second large TypeScript program.
   typescript: {
     ignoreBuildErrors: true,
   },
