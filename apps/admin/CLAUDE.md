@@ -283,6 +283,9 @@ is redundant and loses the plugin's column-pruning.
 - Env vars validated at startup via `src/config/env.ts`. Never read `process.env` directly.
 - Env vars managed by Doppler (project: `forge-admin`). Use `pnpm fetch-secrets` for local dev.
 - Tests colocated as `*.test.ts` / `*.test.tsx` beside source files.
+- Next production builds use `tsconfig.build.json` to exclude colocated tests
+  from their duplicate TypeScript pass. Keep `pnpm typecheck` on
+  `tsconfig.json` so the complete test corpus remains typechecked in CI.
 - **Adding a new Pothos type** requires three steps:
   1. Create `src/graphql/types/<name>.ts` and call `builder.prismaObject(...)`
   2. Add a side-effect import in `src/graphql/schema.ts` so the type registers on the builder before `builder.toSchema()` runs
