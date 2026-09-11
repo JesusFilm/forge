@@ -182,10 +182,323 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
     }
     if (grantId) await prisma.appGrant.deleteMany({ where: { id: grantId } })
     if (userId) {
+      await prisma.changelogPreapproval.deleteMany({
+        where: { approverId: userId },
+      })
       await prisma.session.deleteMany({ where: { userId } })
       await prisma.user.deleteMany({ where: { id: userId } })
     }
     await prisma.$disconnect()
+  })
+
+  it("persists preapprovals before signup without creating access", async () => {
+    const { POST, GET } = await import("@/app/api/changelog/preapprovals/route")
+    const scope = await prisma.scope.findUniqueOrThrow({
+      where: { key: "changelog:admin" },
+    })
+    await prisma.appGrantScope.create({ data: { grantId, scopeId: scope.id } })
+    try {
+      const authorized = await authorize({
+        requestedClientId: "jfp_changelog_local",
+        redirectUri: SEEDED_REDIRECT_URI,
+        resource: null,
+        scope: "openid changelog:read changelog:submit changelog:admin",
+      })
+      const code = await authorizationCode(authorized.response)
+      const exchanged = await postToken(
+        new URLSearchParams({
+          grant_type: "authorization_code",
+          client_id: "jfp_changelog_local",
+          code,
+          code_verifier: authorized.verifier,
+          redirect_uri: SEEDED_REDIRECT_URI,
+        }),
+      )
+      const headers = {
+        authorization: `Bearer ${exchanged.body.access_token}`,
+        "content-type": "application/json",
+      }
+      const email = `preapproval-${randomUUID()}@example.test`
+      const id = randomUUID()
+      const request = () =>
+        new Request("http://localhost:3004/api/changelog/preapprovals", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            clientId: "jfp_changelog_local",
+            action: "create",
+            id,
+            email: ` ${email.toUpperCase()} `,
+          }),
+        })
+      const created = await POST(request())
+      expect(created.status).toBe(200)
+      const approval = await created.json()
+      expect(approval).toMatchObject({
+        id,
+        email,
+        state: "pending",
+        approverId: userId,
+        version: 0,
+        redeemedById: null,
+      })
+      expect(
+        Date.parse(approval.expiresAt) - Date.parse(approval.createdAt),
+      ).toBe(30 * 24 * 60 * 60 * 1000)
+      expect(await (await POST(request())).json()).toEqual(approval)
+      const listed = await GET(
+        new Request(
+          "http://localhost:3004/api/changelog/preapprovals?clientId=jfp_changelog_local",
+          { headers },
+        ),
+      )
+      expect((await listed.json()).preapprovals).toContainEqual(approval)
+      expect(await prisma.user.findUnique({ where: { email } })).toBeNull()
+      const mutate = (action: string, version: number, extra = {}) =>
+        POST(
+          new Request("http://localhost:3004/api/changelog/preapprovals", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              clientId: "jfp_changelog_local",
+              action,
+              id,
+              version,
+              ...extra,
+            }),
+          }),
+        )
+      const list = () =>
+        GET(
+          new Request(
+            "http://localhost:3004/api/changelog/preapprovals?clientId=jfp_changelog_local",
+            { headers },
+          ),
+        )
+      expect(
+        (await mutate("cancel", 0, { scope: "changelog:admin" })).status,
+      ).toBe(400)
+      expect((await mutate("cancel", 0)).status).toBe(200)
+      expect((await (await list()).json()).preapprovals).toContainEqual(
+        expect.objectContaining({ id, state: "canceled", version: 1 }),
+      )
+      expect((await mutate("renew", 0)).status).toBe(409)
+      expect((await mutate("renew", 1)).status).toBe(200)
+      expect((await mutate("cancel", 0)).status).toBe(409)
+      const boundary = new Date()
+      await prisma.changelogPreapproval.update({
+        where: { id },
+        data: { expiresAt: boundary },
+      })
+      vi.useFakeTimers({ toFake: ["Date"] })
+      vi.setSystemTime(new Date(boundary.getTime() - 1))
+      expect((await (await list()).json()).preapprovals).toContainEqual(
+        expect.objectContaining({ id, state: "pending" }),
+      )
+      vi.setSystemTime(boundary)
+      expect((await (await list()).json()).preapprovals).toContainEqual(
+        expect.objectContaining({ id, state: "expired" }),
+      )
+      vi.useRealTimers()
+      expect((await mutate("renew", 2)).status).toBe(200)
+      // Membership loss must persist cancellation, even if authority is restored
+      // before anybody lists or attempts to redeem the approval.
+      await prisma.user.update({
+        where: { id: userId },
+        data: { membershipStatus: "SUSPENDED" },
+      })
+      expect((await list()).status).toBe(403)
+      expect((await mutate("renew", 3)).status).toBe(403)
+      await prisma.user.update({
+        where: { id: userId },
+        data: { membershipStatus: "ACTIVE" },
+      })
+      expect((await (await list()).json()).preapprovals).toContainEqual(
+        expect.objectContaining({ id, state: "canceled", version: 4 }),
+      )
+      const signup = await auth.api.signUpEmail({
+        asResponse: true,
+        body: {
+          email: `renewing-admin-${randomUUID()}@example.test`,
+          name: "Renewing admin",
+          password: `Test-${randomUUID()}!`,
+        },
+      })
+      const second = (await signup.json()).user
+      const originalCookie = cookie
+      const originalCredential = headers.authorization
+      const environment = await prisma.appEnvironment.findUniqueOrThrow({
+        where: { clientId: "jfp_changelog_local" },
+      })
+      await prisma.user.update({
+        where: { id: second.id },
+        data: { membershipStatus: "ACTIVE" },
+      })
+      const secondGrant = await prisma.appGrant.create({
+        data: {
+          appId: environment.appId,
+          environmentId: environment.id,
+          subjectType: "USER",
+          userId: second.id,
+          status: "APPROVED",
+          scopes: { create: { scopeId: scope.id } },
+        },
+      })
+      try {
+        cookie = signup.headers.get("set-cookie")!.split(";")[0]
+        const authorization = await authorize({
+          requestedClientId: "jfp_changelog_local",
+          redirectUri: SEEDED_REDIRECT_URI,
+          resource: null,
+          scope: "openid changelog:read changelog:submit changelog:admin",
+        })
+        const secondCode = await authorizationCode(authorization.response)
+        const secondExchange = await postToken(
+          new URLSearchParams({
+            grant_type: "authorization_code",
+            client_id: "jfp_changelog_local",
+            code: secondCode,
+            code_verifier: authorization.verifier,
+            redirect_uri: SEEDED_REDIRECT_URI,
+          }),
+        )
+        cookie = originalCookie
+        headers.authorization = `Bearer ${secondExchange.body.access_token}`
+        const renewed = await mutate("renew", 4)
+        expect(renewed.status).toBe(200)
+        expect(await renewed.json()).toMatchObject({
+          approverId: second.id,
+          state: "pending",
+          version: 5,
+        })
+        await prisma.appGrantScope.deleteMany({
+          where: { grantId, scopeId: scope.id },
+        })
+        expect((await (await list()).json()).preapprovals).toContainEqual(
+          expect.objectContaining({
+            id,
+            state: "pending",
+            approverId: second.id,
+          }),
+        )
+        await prisma.appGrantScope.create({
+          data: { grantId, scopeId: scope.id },
+        })
+        headers.authorization = originalCredential
+        await prisma.appGrant.update({
+          where: { id: secondGrant.id },
+          data: { status: "REVOKED", revokedAt: new Date() },
+        })
+        expect((await (await list()).json()).preapprovals).toContainEqual(
+          expect.objectContaining({ id, state: "canceled", version: 6 }),
+        )
+        expect((await mutate("renew", 6)).status).toBe(200)
+        // A scope association can disappear independently of its parent grant.
+        await prisma.appGrantScope.deleteMany({
+          where: { grantId, scopeId: scope.id },
+        })
+        await prisma.appGrantScope.create({
+          data: { grantId, scopeId: scope.id },
+        })
+        expect((await (await list()).json()).preapprovals).toContainEqual(
+          expect.objectContaining({ id, state: "canceled", version: 8 }),
+        )
+        const competing = await Promise.all([
+          mutate("cancel", 8),
+          mutate("renew", 8),
+        ])
+        expect(
+          competing.filter((response) => response.status === 200),
+        ).toHaveLength(1)
+        expect(
+          competing.every((response) =>
+            [200, 409, 503].includes(response.status),
+          ),
+        ).toBe(true)
+        expect((await mutate("renew", 8)).status).toBe(409)
+        // Fixture represents the transition owned by #131; management must keep it terminal.
+        await prisma.changelogPreapproval.update({
+          where: { id },
+          data: {
+            state: "redeemed",
+            redeemedAt: new Date(),
+            redeemedById: second.id,
+          },
+        })
+        expect((await mutate("renew", 9)).status).toBe(409)
+        expect((await mutate("cancel", 9)).status).toBe(409)
+        expect((await (await list()).json()).preapprovals).toContainEqual(
+          expect.objectContaining({
+            id,
+            state: "redeemed",
+            redeemedById: second.id,
+          }),
+        )
+        expect(
+          await prisma.appGrant.count({
+            where: { userId: second.id, status: "APPROVED" },
+          }),
+        ).toBe(0)
+        const deniedBodies = [
+          {
+            clientId: "jfp_changelog_production",
+            action: "renew",
+            id,
+            version: 9,
+          },
+          { clientId: "arbitrary", action: "create", id: randomUUID(), email },
+        ]
+        for (const body of deniedBodies)
+          expect(
+            (
+              await POST(
+                new Request(
+                  "http://localhost:3004/api/changelog/preapprovals",
+                  { method: "POST", headers, body: JSON.stringify(body) },
+                ),
+              )
+            ).status,
+          ).toBe(403)
+        expect(
+          (
+            await GET(
+              new Request(
+                "http://localhost:3004/api/changelog/preapprovals?clientId=jfp_changelog_local",
+              ),
+            )
+          ).status,
+        ).toBe(401)
+        expect(
+          (
+            await POST(
+              new Request("http://localhost:3004/api/changelog/preapprovals", {
+                method: "POST",
+                body: JSON.stringify({
+                  clientId: "jfp_changelog_local",
+                  action: "create",
+                  id: randomUUID(),
+                  email,
+                }),
+              }),
+            )
+          ).status,
+        ).toBe(401)
+      } finally {
+        cookie = originalCookie
+        headers.authorization = originalCredential
+        await prisma.changelogPreapproval.deleteMany({ where: { id } })
+        await prisma.user.delete({ where: { id: second.id } })
+      }
+    } finally {
+      vi.useRealTimers()
+      await prisma.user.update({
+        where: { id: userId },
+        data: { membershipStatus: "ACTIVE" },
+      })
+      await prisma.appGrantScope.deleteMany({
+        where: { grantId, scopeId: scope.id },
+      })
+    }
   })
 
   it("manages existing Contributors with current authority and exact grant scope", async () => {
