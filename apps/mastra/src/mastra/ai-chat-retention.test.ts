@@ -1,442 +1,245 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
-
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { Pool, type QueryResult } from "pg"
+import { getAiChatGuardReadiness } from "./ai-chat-guard-readiness"
+import { expireAiChatConversation } from "./ai-chat-conversation-lifecycle"
+import { isAiChatDeletionStorageCovered } from "./ai-chat-memory"
+import { env } from "../config/env"
 import {
   AI_CHAT_RETENTION_DAYS,
   retentionWindowMsFor,
   runAiChatRetentionPurge,
   startAiChatRetentionPurge,
-  type AiChatRetentionMemory,
 } from "./ai-chat-retention"
 
-const DAY_MS = 24 * 60 * 60 * 1000
-const NOW = Date.UTC(2026, 6, 5)
-
-type FakeThread = {
-  id: string
-  resourceId?: string | null
-  updatedAt?: Date | string | null
-}
-
-function toMs(value: Date | string | null | undefined): number {
-  return value == null ? Number.NaN : new Date(value).getTime()
-}
-
-/**
- * Store fake mirroring the production contract the purge relies on:
- * updatedAt-ASC ordering with NULLs last (PG ASC default), pagination over
- * the live (non-deleted) set, and per-id lookup that reflects deletions.
- */
-function fakeMemory(initial: FakeThread[]): {
-  memory: AiChatRetentionMemory
-  deleted: string[]
-  orderByCalls: unknown[]
-} {
-  const deleted: string[] = []
-  const gone = new Set<string>()
-  const byId = new Map(initial.map((t) => [t.id, t]))
-  const orderByCalls: unknown[] = []
-  const memory: AiChatRetentionMemory = {
-    listThreads: async ({ page = 0, perPage = 100, orderBy }) => {
-      orderByCalls.push(orderBy)
-      const live = initial.filter((t) => !gone.has(t.id))
-      const sorted = [...live].sort((a, b) => {
-        const ta = toMs(a.updatedAt)
-        const tb = toMs(b.updatedAt)
-        if (Number.isNaN(ta) && Number.isNaN(tb)) return 0
-        if (Number.isNaN(ta)) return 1
-        if (Number.isNaN(tb)) return -1
-        return ta - tb
-      })
-      const start = page * perPage
-      return {
-        threads: sorted.slice(start, start + perPage),
-        hasMore: start + perPage < sorted.length,
-      }
-    },
-    getThreadById: async ({ threadId }) => {
-      if (gone.has(threadId)) return null
-      const thread = byId.get(threadId)
-      return thread
-        ? { resourceId: thread.resourceId, updatedAt: thread.updatedAt }
-        : null
-    },
-    deleteThread: async (threadId) => {
-      gone.add(threadId)
-      deleted.push(threadId)
-    },
-  }
-  return { memory, deleted, orderByCalls }
-}
-
-function daysAgo(days: number): Date {
-  return new Date(NOW - days * DAY_MS)
-}
+vi.mock("./ai-chat-guard-readiness", () => ({
+  getAiChatGuardReadiness: vi.fn(),
+}))
+vi.mock("./ai-chat-conversation-lifecycle", () => ({
+  expireAiChatConversation: vi.fn(),
+}))
+vi.mock("./ai-chat-memory", () => ({ isAiChatDeletionStorageCovered: vi.fn() }))
+vi.mock("../config/env", () => ({
+  env: { AI_CHAT_MAINTENANCE_PAUSED: undefined },
+  canAiChatDataPersist: () => true,
+}))
+beforeEach(() => {
+  vi.mocked(getAiChatGuardReadiness).mockReset().mockResolvedValue("ready")
+  vi.mocked(isAiChatDeletionStorageCovered).mockReset().mockReturnValue(true)
+  vi.mocked(expireAiChatConversation)
+    .mockReset()
+    .mockResolvedValue({ threadsDeleted: 1, recordsDeleted: 1 })
+  env.AI_CHAT_MAINTENANCE_PAUSED = undefined
+})
 
 afterEach(() => {
+  vi.useRealTimers()
   vi.restoreAllMocks()
 })
-
-describe("retentionWindowMsFor", () => {
-  it("pins the flat policy to exactly 25 days (feat-336 owner decision)", () => {
-    // Literal, not derived from the constant — a drifted constant fails here.
+describe("retention scheduler", () => {
+  it("keeps the shared flat 25-day policy for every resource", () => {
     expect(AI_CHAT_RETENTION_DAYS).toBe(25)
-  })
-
-  it("gives EVERY resource shape the same flat window (anti-vacuous: a reintroduced user:/anon: split fails here)", () => {
-    for (const resource of [
-      // The three production shapes — user:* was the long-window (180d) shape
-      // under the pre-feat-336 split, so it is the discriminating fixture.
-      "user:abc",
-      "anon:0f6d3f1e-0000-4000-8000-000000000000",
+    for (const owner of [
+      "user:a",
+      "anon:a",
       "seeker-dogfood",
+      "",
+      " ",
+      "other:resource",
       undefined,
       null,
-      "anon:user:trick",
-    ]) {
-      expect(retentionWindowMsFor(resource)).toBe(
-        AI_CHAT_RETENTION_DAYS * DAY_MS,
-      )
-    }
-  })
-})
-
-describe("runAiChatRetentionPurge", () => {
-  it("deletes threads past the flat 25-day window and keeps the rest (boundary-exact)", async () => {
-    const { memory, deleted } = fakeMemory([
-      { id: "anon-old", resourceId: "anon:a", updatedAt: daysAgo(26) },
-      { id: "anon-live", resourceId: "anon:a", updatedAt: daysAgo(24) },
-      // Exactly AT the boundary is NOT past it (strict >).
-      { id: "anon-edge", resourceId: "anon:a", updatedAt: daysAgo(25) },
-      // Signed-in threads share the SAME window — user-mid (40d) is the
-      // anti-vacuous discriminator: the pre-feat-336 180-day user window
-      // would have KEPT it, so a reintroduced split fails this fixture.
-      { id: "user-mid", resourceId: "user:u1", updatedAt: daysAgo(40) },
-      { id: "user-old", resourceId: "user:u1", updatedAt: daysAgo(181) },
-      { id: "user-live", resourceId: "user:u1", updatedAt: daysAgo(24) },
-      // The dogfood fallback resource shares the flat window too.
-      {
-        id: "dogfood-old",
-        resourceId: "seeker-dogfood",
-        updatedAt: daysAgo(26),
-      },
     ])
-    const result = await runAiChatRetentionPurge({ memory, now: () => NOW })
-    expect(deleted.sort()).toEqual([
-      "anon-old",
-      "dogfood-old",
-      "user-mid",
-      "user-old",
-    ])
-    // ASC scan early-stops at anon-edge (exactly 25d — inside the window), so
-    // the two 24d rows are never even scanned.
-    expect(result).toEqual({ scanned: 5, deleted: 4, sweeps: 1 })
+      expect(retentionWindowMsFor(owner)).toBe(25 * 86400000)
   })
-
-  it("scans oldest-first and stops early at the shortest window", async () => {
-    const threads: FakeThread[] = [
-      { id: "old-1", resourceId: "anon:a", updatedAt: daysAgo(40) },
-      { id: "old-2", resourceId: "anon:a", updatedAt: daysAgo(35) },
-      { id: "old-3", resourceId: "anon:a", updatedAt: daysAgo(31) },
-      // 300 live threads that an unordered full-table scan would walk.
-      ...Array.from({ length: 300 }, (_, i) => ({
-        id: `live-${i}`,
-        resourceId: "anon:a",
-        updatedAt: daysAgo(5),
-      })),
-    ]
-    const { memory, deleted, orderByCalls } = fakeMemory(threads)
-    const result = await runAiChatRetentionPurge({ memory, now: () => NOW })
-    expect(deleted.sort()).toEqual(["old-1", "old-2", "old-3"])
-    // 3 expired + the first in-window row = 4 scanned, not 303.
-    expect(result.scanned).toBe(4)
-    expect(orderByCalls[0]).toEqual({ field: "updatedAt", direction: "ASC" })
+  it("opens no storage when persistence is disabled", () => {
+    const run = vi.fn()
+    expect(
+      startAiChatRetentionPurge({ isEnabled: () => false, run }),
+    ).toBeNull()
+    expect(run).not.toHaveBeenCalled()
   })
-
-  it("skips threads with missing or unparseable updatedAt rather than deleting them", async () => {
-    const { memory, deleted } = fakeMemory([
-      { id: "no-date", resourceId: "anon:a", updatedAt: null },
-      { id: "bad-date", resourceId: "anon:a", updatedAt: "not-a-date" },
-    ])
-    const result = await runAiChatRetentionPurge({ memory, now: () => NOW })
-    expect(deleted).toEqual([])
-    expect(result.deleted).toBe(0)
-  })
-
-  it("pages through the expired backlog and parses string dates", async () => {
-    // 150 threads (2 pages at perPage=100), all expired, ISO-string dates —
-    // the wire shape a JSON-hydrated store returns.
-    const threads: FakeThread[] = Array.from({ length: 150 }, (_, i) => ({
-      id: `t${i}`,
-      resourceId: "anon:bulk",
-      updatedAt: daysAgo(40).toISOString(),
-    }))
-    const { memory, deleted } = fakeMemory(threads)
-    const result = await runAiChatRetentionPurge({ memory, now: () => NOW })
-    expect(deleted).toHaveLength(150)
-    expect(result.scanned).toBe(150)
-    expect(result.sweeps).toBe(1)
-  })
-
-  it("drains a backlog larger than one sweep in bounded sweeps", async () => {
-    // 600 expired: sweep 1 deletes the 500-per-sweep bound, sweep 2 drains
-    // the remaining 100 — the daily cap no longer strands the backlog.
-    const threads: FakeThread[] = Array.from({ length: 600 }, (_, i) => ({
-      id: `t${i}`,
-      resourceId: "anon:bulk",
-      updatedAt: daysAgo(40),
-    }))
-    const { memory, deleted } = fakeMemory(threads)
-    const result = await runAiChatRetentionPurge({ memory, now: () => NOW })
-    expect(deleted).toHaveLength(600)
-    expect(result.deleted).toBe(600)
-    expect(result.sweeps).toBe(2)
-  })
-
-  it("caps a pathological backlog at the per-run sweep valve and carries over", async () => {
-    // 10,500 expired > the 20-sweep × 500 valve: the run stops at 10,000 so
-    // it cannot monopolize the pool; the remainder waits for the next tick.
-    const threads: FakeThread[] = Array.from({ length: 10_500 }, (_, i) => ({
-      id: `t${i}`,
-      resourceId: "anon:bulk",
-      updatedAt: daysAgo(40),
-    }))
-    const { memory, deleted } = fakeMemory(threads)
-    const result = await runAiChatRetentionPurge({ memory, now: () => NOW })
-    expect(deleted).toHaveLength(10_000)
-    expect(result.sweeps).toBe(20)
-  })
-
-  it("re-checks recency before each delete so a resumed thread survives the sweep", async () => {
-    const { memory, deleted } = fakeMemory([
-      { id: "stale", resourceId: "anon:a", updatedAt: daysAgo(40) },
-      { id: "resumed", resourceId: "anon:a", updatedAt: daysAgo(40) },
-      { id: "vanished", resourceId: "anon:a", updatedAt: daysAgo(40) },
-    ])
-    const baseGetThreadById = memory.getThreadById
-    memory.getThreadById = async ({ threadId }) => {
-      // "resumed" got a message between the scan and its delete; "vanished"
-      // was deleted concurrently (e.g. a second instance's sweep).
-      if (threadId === "resumed") {
-        return { resourceId: "anon:a", updatedAt: daysAgo(1) }
-      }
-      if (threadId === "vanished") return null
-      return baseGetThreadById({ threadId })
-    }
-    const result = await runAiChatRetentionPurge({ memory, now: () => NOW })
-    expect(deleted).toEqual(["stale"])
-    expect(result.deleted).toBe(1)
-  })
-
-  it("keeps draining when a full batch is only partly deleted (recency spared some)", async () => {
-    // 501 expired: sweep 1 collects the full 500-per-sweep batch but the
-    // recency re-check spares t0 (resumed), so it deletes 499. The drain must
-    // still run a 2nd sweep to reach t500 — keying the drain on the DELETED
-    // count instead of the COLLECTED count would strand it here.
-    const threads: FakeThread[] = Array.from({ length: 501 }, (_, i) => ({
-      id: `t${i}`,
-      resourceId: "anon:bulk",
-      updatedAt: daysAgo(40),
-    }))
-    const { memory, deleted } = fakeMemory(threads)
-    const baseGetThreadById = memory.getThreadById
-    memory.getThreadById = async ({ threadId }) =>
-      threadId === "t0"
-        ? { resourceId: "anon:bulk", updatedAt: daysAgo(1) } // resumed mid-sweep
-        : baseGetThreadById({ threadId })
-    const result = await runAiChatRetentionPurge({ memory, now: () => NOW })
-    expect(deleted).toContain("t500")
-    expect(deleted).not.toContain("t0")
-    expect(deleted).toHaveLength(500)
-    expect(result.sweeps).toBe(2)
-  })
-
-  it("surfaces a store outage as a failure, not a false purge_complete", async () => {
-    // Mirrors the real @mastra/pg contract: listThreads SWALLOWS store errors
-    // (returns empty), getThreadById THROWS. Without the connectivity probe an
-    // outage would drain to `purge_complete scanned=0` (false success); the
-    // probe makes the run reject so the caller logs purge_failed instead.
-    const memory: AiChatRetentionMemory = {
-      listThreads: async () => ({ threads: [], hasMore: false }),
-      getThreadById: async () => {
-        throw new Error("db down")
-      },
-      deleteThread: async () => {},
-    }
-    await expect(
-      runAiChatRetentionPurge({ memory, now: () => NOW }),
-    ).rejects.toThrow()
-  })
-})
-
-describe("startAiChatRetentionPurge", () => {
-  it("no-ops (and never touches memory) when no postgres backend is configured", () => {
-    const getMemory = vi.fn()
-    const handle = startAiChatRetentionPurge({
-      isEnabled: () => false,
-      getMemory,
-    })
-    expect(handle).toBeNull()
-    expect(getMemory).not.toHaveBeenCalled()
-  })
-
-  it("runs a boot sweep and schedules the daily timer when enabled", async () => {
+  it("rechecks after deferred activation, logs no false completion, and stops", async () => {
     vi.useFakeTimers()
-    try {
-      // Non-mutating fake: the same expired thread is visible to every run,
-      // so each timer tick records another delete.
-      const deleted: string[] = []
-      const old = { id: "old", resourceId: "anon:a", updatedAt: daysAgo(31) }
-      const memory: AiChatRetentionMemory = {
-        listThreads: async () => ({ threads: [old], hasMore: false }),
-        getThreadById: async () => ({
-          resourceId: old.resourceId,
-          updatedAt: old.updatedAt,
+    const log = vi.spyOn(console, "info").mockImplementation(() => {})
+    const run = vi
+      .fn()
+      .mockResolvedValueOnce({ kind: "not_ready", reason: "not_applied" })
+      .mockResolvedValue({
+        kind: "complete",
+        scanned: 1,
+        deleted: 1,
+        recordsDeleted: 1,
+        sweeps: 1,
+      })
+    const timer = startAiChatRetentionPurge({
+      isEnabled: () => true,
+      run,
+      intervalMs: 100,
+    })!
+    await vi.advanceTimersByTimeAsync(0)
+    expect(log).toHaveBeenCalledWith(
+      "[ai-chat-retention] event=purge_deferred reason=not_applied",
+    )
+    await vi.advanceTimersByTimeAsync(100)
+    expect(run).toHaveBeenCalledTimes(2)
+    timer.stop()
+    await vi.advanceTimersByTimeAsync(100)
+    expect(run).toHaveBeenCalledTimes(2)
+  })
+  it("does not overlap runs and classifies failed runs without exception content", async () => {
+    vi.useFakeTimers()
+    let reject!: (reason: Error) => void
+    const run = vi.fn(
+      () =>
+        new Promise<never>((_, fail) => {
+          reject = fail
         }),
-        deleteThread: async (threadId) => {
-          deleted.push(threadId)
-        },
-      }
-      const handle = startAiChatRetentionPurge({
-        isEnabled: () => true,
-        getMemory: () => memory,
-        intervalMs: 1000,
-      })
-      expect(handle).not.toBeNull()
-      // Boot sweep is fire-and-forget — flush its microtasks.
-      await vi.advanceTimersByTimeAsync(0)
-      expect(deleted).toEqual(["old"])
-      // The interval re-runs the purge.
-      await vi.advanceTimersByTimeAsync(1000)
-      expect(deleted).toEqual(["old", "old"])
-      handle?.stop()
-    } finally {
-      vi.useRealTimers()
-    }
-  })
-
-  it("logs and survives a failing run (never throws out of the timer)", async () => {
-    vi.useFakeTimers()
+    )
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
-    try {
-      const memory: AiChatRetentionMemory = {
-        listThreads: async () => {
-          throw new Error("db down")
-        },
-        getThreadById: async () => null,
-        deleteThread: async () => {},
-      }
-      const handle = startAiChatRetentionPurge({
+    const timer = startAiChatRetentionPurge({
+      isEnabled: () => true,
+      run,
+      intervalMs: 100,
+    })!
+    await vi.advanceTimersByTimeAsync(300)
+    expect(run).toHaveBeenCalledTimes(1)
+    reject(new Error("synthetic private text"))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(warn).toHaveBeenCalledWith(
+      "[ai-chat-retention] event=purge_failed reason=sweep_error",
+    )
+    timer.stop()
+  })
+  it.each(["incompatible", "readiness_error", "uncovered_storage"] as const)(
+    "logs %s as failure, not normal pre-migration deferral",
+    async (reason) => {
+      vi.useFakeTimers()
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+      const info = vi.spyOn(console, "info").mockImplementation(() => {})
+      const timer = startAiChatRetentionPurge({
         isEnabled: () => true,
-        getMemory: () => memory,
-        intervalMs: 1000,
-      })
+        run: async () => ({ kind: "failed", reason }),
+      })!
       await vi.advanceTimersByTimeAsync(0)
       expect(warn).toHaveBeenCalledWith(
-        "[ai-chat-retention] event=purge_failed reason=sweep_error",
+        `[ai-chat-retention] event=purge_failed reason=${reason}`,
       )
-      handle?.stop()
-    } finally {
-      vi.useRealTimers()
+      expect(info).not.toHaveBeenCalled()
+      timer.stop()
+    },
+  )
+})
+
+describe("bounded retention draining", () => {
+  function mockPool() {
+    const pool = new Pool({ host: "127.0.0.1", port: 1 })
+    const query =
+      vi.fn<(sql: string, values?: unknown[]) => Promise<QueryResult>>()
+    // This consumer uses only pg's promise overload, never its callback overload.
+    vi.spyOn(pool, "query").mockImplementation((...args: unknown[]) =>
+      Reflect.apply(query, pool, args),
+    )
+    return { pool, query }
+  }
+  function result(rows: Array<{ id: string }>) {
+    return {
+      rows,
+      rowCount: rows.length,
+      command: "SELECT",
+      oid: 0,
+      fields: [],
     }
+  }
+  it("keeps pause and uncovered storage distinct and never queries candidates", async () => {
+    const { pool, query } = mockPool()
+    env.AI_CHAT_MAINTENANCE_PAUSED = "true"
+    expect(await runAiChatRetentionPurge({ pool })).toEqual({
+      kind: "not_ready",
+      reason: "paused",
+    })
+    env.AI_CHAT_MAINTENANCE_PAUSED = undefined
+    vi.mocked(isAiChatDeletionStorageCovered).mockReturnValue(false)
+    expect(await runAiChatRetentionPurge({ pool })).toEqual({
+      kind: "failed",
+      reason: "uncovered_storage",
+    })
+    expect(query).not.toHaveBeenCalled()
+    expect(getAiChatGuardReadiness).not.toHaveBeenCalled()
   })
-
-  it("shared-memory mode skips before constructing the durable store", async () => {
-    vi.resetModules()
-    const env = {
-      MASTRA_STORAGE_BACKEND: "memory" as "postgres" | "memory",
-    }
-    const getAiChatStorage = vi.fn()
-    const memoryConstructor = vi.fn()
-
-    vi.doMock("../config/env", () => ({
-      env,
-      canAiChatDataPersist: () => env.MASTRA_STORAGE_BACKEND === "postgres",
+  it.each([
+    ["not_applied", { kind: "not_ready", reason: "not_applied" }],
+    ["incompatible", { kind: "failed", reason: "incompatible" }],
+    ["error", { kind: "failed", reason: "readiness_error" }],
+  ] as const)(
+    "preserves the %s outcome without querying candidates",
+    async (state, outcome) => {
+      const { pool, query } = mockPool()
+      vi.mocked(getAiChatGuardReadiness).mockResolvedValue(state)
+      expect(await runAiChatRetentionPurge({ pool })).toEqual(outcome)
+      expect(query).not.toHaveBeenCalled()
+    },
+  )
+  it("drains multiple pages, advances past spared candidates, and uses one fixed cutoff", async () => {
+    const { pool, query } = mockPool()
+    const first = Array.from({ length: 500 }, (_, i) => ({
+      id: `candidate-${i}`,
     }))
-    vi.doMock("./ai-chat-memory", () => ({ getAiChatStorage }))
-    vi.doMock("@mastra/memory", () => ({
-      Memory: class {
-        constructor(args: unknown) {
-          memoryConstructor(args)
-        }
-      },
-    }))
-
-    try {
-      const module = await import("./ai-chat-retention")
-      module.__resetAiChatRetentionMemoryForTesting()
-
-      expect(module.startAiChatRetentionPurge()).toBeNull()
-      expect(getAiChatStorage).not.toHaveBeenCalled()
-      expect(memoryConstructor).not.toHaveBeenCalled()
-    } finally {
-      vi.doUnmock("../config/env")
-      vi.doUnmock("./ai-chat-memory")
-      vi.doUnmock("@mastra/memory")
-      vi.resetModules()
-    }
+    query
+      .mockResolvedValueOnce(result(first))
+      .mockResolvedValueOnce(result([{ id: "tail" }]))
+    vi.mocked(expireAiChatConversation).mockResolvedValueOnce({
+      threadsDeleted: 0,
+      recordsDeleted: 0,
+    })
+    const now = vi.fn(() => Date.parse("2026-09-01T00:00:00Z"))
+    expect(await runAiChatRetentionPurge({ pool, now })).toEqual({
+      kind: "complete",
+      scanned: 501,
+      deleted: 500,
+      recordsDeleted: 500,
+      sweeps: 2,
+    })
+    const cutoff = new Date(now() - 25 * 86400000)
+    expect(query.mock.calls.map((call) => call[1])).toEqual([
+      [null, cutoff, 500],
+      ["candidate-499", cutoff, 500],
+    ])
+    expect(expireAiChatConversation).toHaveBeenLastCalledWith("tail", cutoff, {
+      pool,
+    })
   })
-
-  it("shared-Postgres mode purges durable rows even when the seeker route is disabled", async () => {
-    vi.useFakeTimers()
-    vi.resetModules()
-    const env = {
-      MASTRA_STORAGE_BACKEND: "postgres" as "postgres" | "memory",
-      SEEKER_ROUTE_ENABLED: "false",
-    }
-    const storage = { id: "ai-chat-storage" }
-    const getAiChatStorage = vi.fn(() => storage)
-    const memoryConstructorArgs: unknown[] = []
-    const deleted: string[] = []
-    const old = {
-      id: "expired",
-      resourceId: "user:abc",
-      updatedAt: new Date(Date.now() - 26 * DAY_MS),
-    }
-
-    vi.doMock("../config/env", () => ({
-      env,
-      canAiChatDataPersist: () => env.MASTRA_STORAGE_BACKEND === "postgres",
-    }))
-    vi.doMock("./ai-chat-memory", () => ({ getAiChatStorage }))
-    vi.doMock("@mastra/memory", () => ({
-      Memory: class {
-        constructor(args: unknown) {
-          memoryConstructorArgs.push(args)
-        }
-
-        async listThreads() {
-          return { threads: [old], hasMore: false }
-        }
-
-        async getThreadById({ threadId }: { threadId: string }) {
-          return threadId === old.id
-            ? { resourceId: old.resourceId, updatedAt: old.updatedAt }
-            : null
-        }
-
-        async deleteThread(threadId: string) {
-          deleted.push(threadId)
-        }
-      },
-    }))
-
-    try {
-      const module = await import("./ai-chat-retention")
-      module.__resetAiChatRetentionMemoryForTesting()
-      const handle = module.startAiChatRetentionPurge({ intervalMs: 1000 })
-      await vi.advanceTimersByTimeAsync(0)
-
-      expect(handle).not.toBeNull()
-      expect(getAiChatStorage).toHaveBeenCalledTimes(1)
-      expect(memoryConstructorArgs).toEqual([{ storage }])
-      expect(deleted).toEqual([old.id])
-      handle?.stop()
-    } finally {
-      vi.useRealTimers()
-      vi.doUnmock("../config/env")
-      vi.doUnmock("./ai-chat-memory")
-      vi.doUnmock("@mastra/memory")
-      vi.resetModules()
-    }
+  it("caps a continuously full backlog at 20 pages and leaves later work for the next run", async () => {
+    const { pool, query } = mockPool()
+    query.mockResolvedValue(
+      result(Array.from({ length: 500 }, (_, i) => ({ id: `candidate-${i}` }))),
+    )
+    expect(await runAiChatRetentionPurge({ pool })).toEqual({
+      kind: "complete",
+      scanned: 10000,
+      deleted: 10000,
+      recordsDeleted: 10000,
+      sweeps: 20,
+    })
+    expect(query).toHaveBeenCalledTimes(20)
+    query.mockReset().mockResolvedValueOnce(result([{ id: "remaining" }]))
+    expect(await runAiChatRetentionPurge({ pool })).toMatchObject({
+      scanned: 1,
+      deleted: 1,
+      sweeps: 1,
+    })
+    expect(query.mock.calls[0]?.[1]).toEqual([null, expect.any(Date), 500])
+  })
+  it("surfaces candidate read and per-row cleanup faults without successful counts", async () => {
+    const { pool, query } = mockPool()
+    query.mockRejectedValueOnce(new Error("synthetic outage"))
+    await expect(runAiChatRetentionPurge({ pool })).rejects.toThrow(
+      "synthetic outage",
+    )
+    query.mockResolvedValueOnce(result([{ id: "one" }]))
+    vi.mocked(expireAiChatConversation).mockRejectedValueOnce(
+      new Error("synthetic cleanup fault"),
+    )
+    await expect(runAiChatRetentionPurge({ pool })).rejects.toThrow(
+      "synthetic cleanup fault",
+    )
   })
 })

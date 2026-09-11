@@ -1439,9 +1439,15 @@ The pane is not the shell. A shell showing a SERVER-DECIDED denial screen is nev
 
 The stable owner identity every Seeker conversation is stored under — a namespaced string distinguishing a signed-in account from an anonymous browser session, with a shared fallback key stamped on internal callers that supply none. The key is treated as opaque past its namespace prefix (matching never splits or parses the remainder), the same value keys the subject's conversations in the persistence store and their traces in observability, and the shared fallback key aggregates many people's turns so nothing keyed to it can be attributed — or erased — per person.
 
+### Chat Deletion Record
+
+The content-free record that keeps a deleted conversation's identity bound to its exact Resource Key and prevents delayed writers from recreating that conversation.
+
+It survives ordinary retention and can exist before any conversation content was saved. Subject Erasure removes it, intentionally ending recreation protection without authorizing access to another owner's conversation.
+
 ### Subject Erasure
 
-The operator-run deletion of one Resource Key's Seeker data from every store that holds it — conversations and their messages, plus the observability traces keyed to the same value. Erasure matches the full key by exact equality only (never prefix or pattern), previews its blast radius read-only before any destructive run, and refuses outright when what it read cannot prove exactly what it would delete — an unprovable owner or an unaddressable row is an escalation, never a skipped record. Completion is claimed per key erased, never per person: a person's data may span several keys, anonymous keys cannot be discovered from an identity, and data under the shared fallback key is only ever removed by retention aging it out.
+The operator-run deletion of one Resource Key's Seeker data from every store that holds it — conversations and their messages, Chat Deletion Records, plus the observability traces keyed to the same value. Erasure matches the full key by exact equality only (never prefix or pattern), previews its blast radius read-only before any destructive run, and refuses outright when what it read cannot prove exactly what it would delete — an unprovable owner or an unaddressable row is an escalation, never a skipped record. Completion is claimed per key erased, never per person: a person's data may span several keys, anonymous keys cannot be discovered from an identity, and data under the shared fallback key is only ever removed by retention aging it out.
 
 ### Featured Video
 

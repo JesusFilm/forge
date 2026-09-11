@@ -887,6 +887,16 @@ event=turn_resolved mode=post … persist= gen_tokens_in= gen_tokens_out=`
   forwarded port can front production) and the opt-in
   `SEEKER_FOLLOWUPS_TRACE_SMOKE_TEST=1` live trace smoke (see the env table).
 
+### Chat lifecycle operations (feat-247 PR1)
+
+For migration, retention/erasure maintenance, rollback, or database restore,
+read `docs/runbooks/ai-chat-conversation-lifecycle.md` before operating. PR1 deploys
+before explicit migration; cleanup defers until readiness validates guards.
+`AI_CHAT_MAINTENANCE_PAUSED=true` pauses PostgreSQL maintenance, including operator
+erasure, while leaving its independent Langfuse half intact. Restore requires the
+exact authoritative current marker set; an older backup alone cannot authorize
+resuming chat. Feature 247 remains incomplete until PR3.
+
 ### ai-chat memory, thread ownership + retention (feat-208)
 
 - **Schema isolation:** all ai-chat conversation data lives in the `ai_chat`
@@ -913,7 +923,10 @@ event=turn_resolved mode=post … persist= gen_tokens_in= gen_tokens_out=`
   of `getThreadById` to swallow/return-null is an ownership fail-OPEN, and the
   guarantee also needs `@mastra/memory` to keep delegating these methods
   without its own try/catch.
-- **Retention:** `src/mastra/ai-chat-retention.ts` purges threads by rolling
+- **Retention (2026-09-10 lifecycle update):** cleanup now uses locked lifecycle
+  transactions, preserves deleted records and collects live bookkeeping. The
+  runbook above supersedes Memory.deleteThread cleanup instructions below.
+  `src/mastra/ai-chat-retention.ts` purges threads by rolling
   last-activity (`updatedAt` — bumped transactionally by saveMessages): a
   flat **25 days for every resource** (`AI_CHAT_RETENTION_DAYS` — owner
   decision 2026-08-10, feat-336; supersedes the original 30/180 anon/user
@@ -1268,6 +1281,8 @@ days left).
 orphaned vectors this misses:
 
 ```sql
+-- Historical pre-lifecycle fallback; do not run after feat-247 activation.
+-- Use the lifecycle-aware erase-user tool/runbook instead.
 DELETE FROM ai_chat.mastra_messages WHERE thread_id IN (
   SELECT id FROM ai_chat.mastra_threads WHERE "resourceId" = $1);
 DELETE FROM ai_chat.mastra_threads WHERE "resourceId" = $1;
