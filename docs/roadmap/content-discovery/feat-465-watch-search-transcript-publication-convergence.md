@@ -89,3 +89,13 @@ needed to remove an already published transcript.
   dead-lettering, superseding repair, and canonical cascade lifecycle cleanup.
 - Run `pnpm --filter roadmap generate:readme` and
   `pnpm --filter roadmap lint` after roadmap metadata changes.
+
+## Post-merge recovery
+
+The dedicated Admin worker build began exhausting its smaller builder after the
+real-Postgres convergence suite expanded. A clean package typecheck included
+465 test files, consumed about 3.9 GB, and spent 114 seconds in Next's duplicate
+TypeScript phase. `next build` now uses `apps/admin/tsconfig.build.json`, which
+excludes test files from that production-only pass. The package `typecheck`
+command deliberately continues to use `apps/admin/tsconfig.json`, so CI still
+checks the complete unit and integration test corpus.
