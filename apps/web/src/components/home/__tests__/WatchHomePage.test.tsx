@@ -28,6 +28,7 @@ import { resolveMuxHeroPosterUrlAtMaxWidth } from "@/lib/url"
 import { WATCH_HERO_BODY_OVERLAP_CSS } from "@/lib/watch-hero-preview-overlap"
 import {
   fitWatchHomeHeroHeight,
+  WATCH_HOME_HERO_MOBILE_MIN_HEIGHT_RATIO,
   WATCH_HOME_HERO_RESERVE_BELOW_MOBILE_PX,
   WATCH_HOME_HERO_RESERVE_BELOW_PX,
 } from "@/lib/watch-home-hero-fit"
@@ -411,7 +412,7 @@ describe("WatchHomePage", () => {
         .querySelector('[data-testid="watch-home-tv-carousel"] > div')
         ?.getAttribute("class"),
     ).toContain(
-      `h-[max(34svh,calc(100svh_-_${WATCH_HOME_HERO_RESERVE_BELOW_MOBILE_PX}px))]`,
+      `h-[max(50dvh,calc(100svh_-_${WATCH_HOME_HERO_RESERVE_BELOW_MOBILE_PX}px))]`,
     )
     // Desktop starts muted, so the height is the one that reserves room for
     // the categories rail; the bare `min(100svh,56.25vw)` is the unmuted value
@@ -1929,7 +1930,7 @@ describe("WatchHomePage", () => {
     // Tailwind cannot interpolate, so the literals in the class are pinned
     // against the constants here.
     expect(heroFrame.className).toContain(
-      `h-[max(34svh,calc(100svh_-_${WATCH_HOME_HERO_RESERVE_BELOW_MOBILE_PX}px))]`,
+      `h-[max(50dvh,calc(100svh_-_${WATCH_HOME_HERO_RESERVE_BELOW_MOBILE_PX}px))]`,
     )
     expect(heroFrame.className).toContain(
       `md:h-[max(34svh,min(56.25vw,calc(100svh_-_${WATCH_HOME_HERO_RESERVE_BELOW_PX}px)))]`,
@@ -2028,6 +2029,60 @@ describe("WatchHomePage", () => {
         value: originalInnerWidth,
       })
       rail.remove()
+    }
+  })
+
+  it("keeps the measured mobile hero at half of the visible viewport", async () => {
+    const originalMatchMedia = window.matchMedia
+    const originalInnerHeight = window.innerHeight
+    const originalInnerWidth = window.innerWidth
+    window.matchMedia = ((query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      onchange: null,
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      value: 844,
+    })
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 390,
+    })
+
+    try {
+      await act(async () => {
+        root.render(<WatchHomePage model={makeSequencedModel()} />)
+      })
+      await act(async () => {
+        await new Promise((resolve) =>
+          requestAnimationFrame(() => resolve(null)),
+        )
+      })
+
+      const heroFrame = (
+        container.querySelector(
+          '[data-testid="watch-home-tv-media-frame"]',
+        ) as HTMLElement
+      ).parentElement as HTMLElement
+      expect(heroFrame.style.height).toBe(
+        `${844 * WATCH_HOME_HERO_MOBILE_MIN_HEIGHT_RATIO}px`,
+      )
+    } finally {
+      window.matchMedia = originalMatchMedia
+      Object.defineProperty(window, "innerHeight", {
+        configurable: true,
+        value: originalInnerHeight,
+      })
+      Object.defineProperty(window, "innerWidth", {
+        configurable: true,
+        value: originalInnerWidth,
+      })
     }
   })
 
