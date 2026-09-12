@@ -69,7 +69,9 @@ export async function readVerifiedStudioAsset(
   })
   if (bytes.byteLength > maxBytes || byteDigest(bytes) !== ref.digest)
     throw new StudioCommandError("INVALID")
-  return bytes
+  // S3 yields Uint8Array while local storage yields Buffer. Manifest readers
+  // require Buffer's UTF-8 decoding, not Uint8Array's comma-separated numbers.
+  return Buffer.from(bytes)
 }
 
 function present(row: Awaited<ReturnType<typeof resolveAssetVersion>>) {
