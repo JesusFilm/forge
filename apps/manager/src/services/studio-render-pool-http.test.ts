@@ -69,3 +69,76 @@ it("bounds disconnected responses while retaining capacity for noncancellable wo
     expect((await handler(request(), "claim")).status).toBe(200),
   )
 })
+
+function ownershipFixture(
+  owns: (token: string | null, signal: AbortSignal) => Promise<boolean>,
+  signal?: AbortSignal,
+) {
+  const auth = new StudioRenderPoolAuth(config)
+  const token = auth.issue(
+    {
+      poolId: config.poolId,
+      workerId: config.workerId,
+      dispatchId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      attemptId: "attempt",
+      leaseId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      expiresAt: Date.now() + 60000,
+    },
+    "a".repeat(64),
+  )
+  const handler = createStudioPoolHandler(auth, {
+    claim: vi.fn(),
+    mux: vi.fn(),
+    input: vi.fn(),
+    owns,
+    retain: vi.fn(),
+    finish: vi.fn(),
+    receipt: vi.fn(),
+  })
+  return handler(
+    new Request("https://fixture.invalid/owns", {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}` },
+      body: "{}",
+      signal,
+    }),
+    "owns",
+  )
+}
+it("allows a valid six-second ownership read within the worker's ten-second allowance", async () => {
+  const owns = vi.fn(async (_token: string | null, signal: AbortSignal) => {
+    await new Promise((resolve) => setTimeout(resolve, 6000))
+    signal.throwIfAborted()
+    return true
+  })
+  const response = await ownershipFixture(owns)
+  expect(response.status).toBe(200)
+  expect(await response.json()).toBe(true)
+  expect(owns).toHaveBeenCalledTimes(1)
+}, 12000)
+it("still expires an unconfirmed ownership read without retrying it", async () => {
+  const owns = vi.fn(
+    (_token: string | null, signal: AbortSignal) =>
+      new Promise<boolean>((resolve) => {
+        signal.addEventListener("abort", () => resolve(false), { once: true })
+      }),
+  )
+  const response = await ownershipFixture(owns)
+  expect(response.status).toBe(409)
+  expect(owns).toHaveBeenCalledTimes(1)
+  expect(owns.mock.calls[0][1].aborted).toBe(true)
+}, 12000)
+it("cancels an ownership read immediately when its caller disconnects", async () => {
+  const controller = new AbortController()
+  const owns = vi.fn(
+    (_token: string | null, signal: AbortSignal) =>
+      new Promise<boolean>((resolve) => {
+        signal.addEventListener("abort", () => resolve(false), { once: true })
+      }),
+  )
+  const pending = ownershipFixture(owns, controller.signal)
+  await vi.waitFor(() => expect(owns).toHaveBeenCalledTimes(1))
+  controller.abort()
+  expect((await pending).status).toBe(409)
+  expect(owns.mock.calls[0][1].aborted).toBe(true)
+})
