@@ -30,11 +30,23 @@ export const MAX_VIDEO_MOMENTS = 300
 export const DEFAULT_VIDEO_MOMENTS = 150
 
 /**
- * Chunks for the video's transcript in the requested language, falling back
- * to English, `[]` when neither exists. Language fallback mirrors the
- * card-content convention (locale text falls back rather than erroring), and
- * an empty list — never a throw — is the "no transcript" signal, so the
- * public video query cannot be failed by a missing enrichment artifact.
+ * Moments for the video in the requested language, falling back to English,
+ * `[]` when neither exists. Language fallback mirrors the card-content
+ * convention (locale text falls back rather than erroring), and an empty
+ * list — never a throw — is the "no transcript" signal, so the public video
+ * query cannot be failed by a missing enrichment artifact.
+ *
+ * Source preference, per resolved language: when HUMAN-REVIEWED editorial
+ * beats exist (`video_moment_editorial`), they are served EXCLUSIVELY — the
+ * machine chunk projection is not consulted, so a reviewed film can never
+ * show a mixed raw/reviewed panel. The full ladder is:
+ *
+ *   requested-language editorial → requested-language chunks
+ *     → en editorial → en chunks → []
+ *
+ * (Each language resolves its own best source before falling back — a film
+ * reviewed only in English still serves Spanish chunks to a Spanish request
+ * when they exist, matching how transcripts already fall back.)
  */
 export async function listVideoMoments({
   videoId,
@@ -51,8 +63,14 @@ export async function listVideoMoments({
   )
 
   const primary = languageSlug?.trim() || "en"
+
+  const primaryEditorial = await findEditorialMoments(videoId, primary, take)
+  if (primaryEditorial.length > 0) return primaryEditorial
+
   let transcript = await findTranscript(videoId, primary)
   if (transcript == null && primary !== "en") {
+    const englishEditorial = await findEditorialMoments(videoId, "en", take)
+    if (englishEditorial.length > 0) return englishEditorial
     transcript = await findTranscript(videoId, "en")
   }
   if (transcript == null) return []
@@ -86,4 +104,33 @@ function findTranscript(videoId: string, language: string) {
     orderBy: { generatedAt: "desc" },
     select: { id: true },
   })
+}
+
+/** The human-reviewed beat set for (video, language), projected onto the same
+ *  view as the chunk path. The loader's row constraints (non-empty summary,
+ *  start >= 0) make per-row trimming unnecessary, but summary normalization
+ *  stays identical to the chunk path so the wire contract has ONE shape. */
+async function findEditorialMoments(
+  videoId: string,
+  languageSlug: string,
+  take: number,
+): Promise<VideoMomentView[]> {
+  const beats = await prisma.videoMomentEditorial.findMany({
+    where: { videoId, languageSlug },
+    orderBy: { beatIndex: "asc" },
+    take,
+    select: {
+      startSeconds: true,
+      endSeconds: true,
+      summary: true,
+      bibleVerses: true,
+    },
+  })
+
+  return beats.map((beat) => ({
+    startSeconds: beat.startSeconds,
+    endSeconds: beat.endSeconds,
+    summary: beat.summary.trim() || null,
+    bibleVerses: beat.bibleVerses ?? [],
+  }))
 }
