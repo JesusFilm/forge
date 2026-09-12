@@ -3,7 +3,7 @@ id: "feat-491"
 title: "Recover retained narration after attachment rejection"
 owner: "tataihono"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-12"
 duration: 2
 depends_on: []
@@ -66,5 +66,21 @@ stale revision, identity mismatch and timing conflict. Verify clear UI status
 after completion and retained results after failure.
 
 Local regression: six cached recordings attach, completion replays exactly,
-and the run completes with no provider calls. Production recovery remains
-pending the normal PR-to-main deployment. The original failed run is preserved.
+and the run completes with no provider calls. Production recovery is verified
+below. The original failed run is preserved.
+
+## Production acceptance — 2026-09-13
+
+PR #2261 shipped through main (`52272bcc5949bd01f5f2967ac4bf885ebc80aa1e`)
+and Railway Admin deployment `6cdc55e7-07f5-467e-b06c-6a22f6b6e30f` succeeded.
+The normal Studio UI admitted current revision 14, reused all six original
+recordings, and completed run `cmtyf5sr1002rs40syyc7czm6`. Its attempt
+`cmtyf5so0002ps40sqe7w9hyc` is SUCCEEDED, with `calls: []`, `costMicros: 0`,
+and no timing conflicts. The resulting manifest is `cmtyf5w6g0032s40snf9wptti`.
+
+The canonical attachment created revision 15. Revision 16 restores the intended
+six ten-second cards and their six linked audio slots at frames
+0/300/600/900/1200/1500. A read-only production check confirmed the exact six
+retained asset versions, narration volume 1, source volume 0.08, music volume
+0.18 and total 1800 frames. The temporary consolidated narration was removed.
+Hosted render acceptance remains tracked separately in feat-492.

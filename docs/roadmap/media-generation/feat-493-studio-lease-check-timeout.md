@@ -3,7 +3,7 @@ id: "feat-493"
 title: "Align Studio lease-check gateway and worker deadlines"
 owner: "tataihono"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-13"
 duration: 1
 depends_on: []
@@ -36,3 +36,16 @@ Run the real HTTP-handler regression and surrounding render-pool tests. Release
 through PR-to-main, then complete the normal six-recording Peace in the Storm
 revision-16 Studio-to-Mux run. Preserve the failed attempt
 `cmtyfqjxt01q4s40sm2ggwmqt` as evidence.
+
+## Production release evidence
+
+PR #2263 merged to `784a6f5eeb030254a77408b7f83ad0ef30f80c45`; automatic
+Manager deployment `631647ee-e68b-42de-9b50-36f4b2488514` succeeded. On the
+normal revision-16 retry `cmtygwngq0522s40s9lv22qdt`, an ownership check
+returned HTTP 200 after 5661 ms at 2026-09-12T14:16:12.761Z, demonstrating
+the valid response that the old five-second gateway would have rejected.
+Subsequent checks remained 200 and frames started normally. Final hosted
+acceptance is recorded in the Peace in the Storm validation document.
+
+The retry completed normally: render SUCCEEDED/COMPLETED, Mux READY, and the
+60-second Studio review player loaded and played without errors.

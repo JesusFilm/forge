@@ -3,7 +3,7 @@ id: "feat-492"
 title: "Diagnose Studio render worker stalls"
 owner: "tataihono"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-12"
 duration: 2
 depends_on: []
@@ -48,7 +48,8 @@ allocation and renderer progress without weakening containment limits.
 Build a deterministic owned-worker regression using multiple short MP3 clips
 inside longer sequential slots plus background music and video. Compare with an
 equivalent continuous WAV. Identify why rendering can remain idle beyond the
-per-frame timeout and expose useful retained diagnostics on deadline failure.
+per-frame timeout. Durable, bounded failure classifications are tracked separately
+in feat-494.
 
 ## Constraints
 
@@ -59,7 +60,7 @@ Retain cancelled/failed assignments as evidence. Deploy through PR-to-main.
 ## Verification
 
 The exact segmented fixture must render all frames and all six audio passages.
-Verify cancellation/deadline retirement, bounded diagnostics, frame transitions
+Verify cancellation/deadline retirement, frame transitions
 and actual exported audio. A continuous-file workaround alone does not complete
 this ticket.
 
@@ -85,8 +86,25 @@ Relevant code: `apps/studio-render/native/chrome-launcher.c`,
 `apps/studio-render/Dockerfile`. The launcher exec-boundary test verifies fixed
 browser selection, retained arguments and rejection of ambiguous feature flags.
 
-Full-length VM qualification and normal Studio-to-Mux acceptance remain required.
+Full-length VM qualification and normal Studio-to-Mux acceptance passed below.
 The existing one-second namespace smoke test cannot establish this regression:
 image parking must run for long enough, with full-resolution changing frames,
 in the actual VM worker profile. Retain the full fixture, signal trace, bounds
 and decoded-output proof with the qualification record.
+
+## Acceptance — 2026-09-13
+
+The released immutable images rendered the six-original-MP3 fixture in owned job
+`49149200000000000000000000000012` without runtime overrides. Render and
+verification took about 789 seconds, under the unchanged 900-second deadline;
+all 1,800 frames decoded and all six recordings matched the intended slots.
+Both containers exited zero and were removed; final cgroup membership was empty.
+
+After feat-493's separate gateway fix, normal Studio revision-16 attempt
+`cmtygwngq0522s40s9lv22qdt` completed and Mux reached READY. Its MP4 exactly
+matches the qualified six-clip output (SHA-256
+`273c7ab6f5493187a4c811030ff76a749e8aded22d71ebdeb911924e35a17911`).
+The normal review player loaded the 60-second video and played without errors.
+Detailed frame/audio acceptance and release provenance are in
+`docs/validation/studio-458/peace-in-the-storm/README.md`. Bounded retained
+failure classifications remain a separate improvement in feat-494.
