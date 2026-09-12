@@ -96,7 +96,7 @@ try {
       mode: "render",
       mediaBaseUrl: `http://127.0.0.1:${server.address().port}/`,
     },
-    browserExecutable: "/browser/chrome-headless-shell",
+    browserExecutable: "/runtime/chrome-launcher",
     timeoutInMilliseconds: 7000,
     logLevel: "error",
   }

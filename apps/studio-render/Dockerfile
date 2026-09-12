@@ -64,6 +64,7 @@ COPY --from=build /app/apps/studio-render/dist/verify.mjs /opt/studio-render/ver
 COPY --from=build /app/apps/studio-render/dist/guard /opt/studio-render/native/guard
 COPY --from=build /app/apps/studio-render/dist/sandbox-init /opt/studio-render/native/sandbox-init
 COPY --from=build /app/apps/studio-render/dist/entrypoint /opt/studio-render/native/entrypoint
+COPY --from=build /app/apps/studio-render/dist/chrome-launcher /opt/studio-render/native/chrome-launcher
 COPY --from=build /app/apps/studio-render/dist/bundle /opt/studio-render/bundle
 COPY --from=build /runtime-deps/node_modules /opt/studio-render/deps
 COPY --from=build /app/apps/studio-render/node_modules/.remotion/chrome-headless-shell/linux64/chrome-headless-shell-linux64 /opt/studio-render/browser
@@ -89,6 +90,7 @@ WORKDIR /input
 ENTRYPOINT ["/runtime/guard"]
 
 FROM job-base AS render-job
+COPY --from=build /app/apps/studio-render/dist/chrome-launcher /runtime/chrome-launcher
 COPY --from=build /app/apps/studio-render/dist/child.mjs /runtime/child.mjs
 COPY --from=build /app/apps/studio-render/dist/bundle /bundle
 COPY --from=build /runtime-deps/node_modules /deps
