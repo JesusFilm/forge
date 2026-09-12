@@ -46,7 +46,7 @@ const PROMOTIONAL_MARKDOWN_COMPONENTS = {
     </h6>
   ),
   p: ({ children }) => (
-    <p className="mt-5 text-base leading-8 text-white/76 first:mt-0 sm:text-lg sm:leading-9">
+    <p className="mt-5 text-base leading-relaxed text-white/76 first:mt-0 sm:text-lg">
       {children}
     </p>
   ),
