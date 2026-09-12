@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node scripts/check-native-test-prerequisites.mjs && pnpm build:native && vitest run src/startup.test.ts && cd ../.. && node --import tsx --test apps/studio-render/test/*.test.mjs",
-    "build:native": "mkdir -p dist && cc -O2 -Wall -Wextra -Werror native/guard.c -o dist/guard && cc -O2 -Wall -Wextra -Werror native/sandbox-init.c -o dist/sandbox-init && cc -O2 -Wall -Wextra -Werror native/entrypoint.c -o dist/entrypoint",
+    "build:native": "mkdir -p dist && cc -O2 -Wall -Wextra -Werror native/guard.c -o dist/guard && cc -O2 -Wall -Wextra -Werror native/sandbox-init.c -o dist/sandbox-init && cc -O2 -Wall -Wextra -Werror native/entrypoint.c -o dist/entrypoint && cc -O2 -Wall -Wextra -Werror native/chrome-launcher.c -o dist/chrome-launcher",
     "build": "pnpm build:native && node build.mjs"
   },
   "dependencies": {

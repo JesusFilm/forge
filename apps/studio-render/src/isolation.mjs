@@ -85,6 +85,12 @@ export async function executeStudioChild(config, signal) {
     "/input",
   ]
   // Only these fixed image resources can be added; no arbitrary job bind list.
+  if (config.browser)
+    args.push(
+      "--ro-bind",
+      await realpath(join(config.nativeDir, "chrome-launcher")),
+      "/runtime/chrome-launcher",
+    )
   for (const [key, dest] of [
     ["dependencies", "/deps"],
     ["browser", "/browser"],
