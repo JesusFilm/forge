@@ -71,7 +71,7 @@ export function WatchHomeFooter() {
 
         <div
           data-testid="watch-footer-contact-grid"
-          className="grid w-full grid-cols-3 break-words text-xs leading-tight text-[#131111]"
+          className="grid w-full grid-cols-1 gap-y-4 break-words text-xs leading-relaxed text-[#131111] sm:grid-cols-3 sm:gap-x-6 sm:gap-y-0 md:gap-x-8"
         >
           <p className="min-w-0">
             100 Lake Hart Drive

@@ -12,7 +12,7 @@ export function RecommendationCookieSettingsTrigger({
   return (
     <button
       type="button"
-      className="mt-1 block text-left hover:text-[#cb333b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cb333b]"
+      className="block text-left hover:text-[#cb333b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cb333b]"
       onClick={(event) =>
         window.dispatchEvent(
           new CustomEvent(RECOMMENDATION_COOKIE_SETTINGS_OPEN_EVENT, {
