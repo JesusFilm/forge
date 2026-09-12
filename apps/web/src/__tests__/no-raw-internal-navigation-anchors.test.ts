@@ -8,9 +8,19 @@
  * `next/link` with its destination prefetched. Only 15 KB crossed the wire in
  * the slow case — the cost was re-parsing ~3 MB of already-cached JavaScript.
  *
- * No type or lint rule catches this. A raw anchor with a correct href
- * type-checks, renders the right URL, passes an href assertion, and works when
- * clicked. It is only slow. So the seam needs a whole-source backstop.
+ * A raw anchor with a correct href type-checks, renders the right URL, passes
+ * an href assertion, and works when clicked. It is only slow.
+ *
+ * There IS a lint rule for this — `@next/next/no-html-link-for-pages`, live at
+ * `error` through `eslint-config-next/core-web-vitals` in this app's config.
+ * It does not fire, because it returns early on any href that is not a string
+ * literal (`no-html-link-for-pages.js:220`: `if (!href || href.value &&
+ * href.value.type !== 'Literal')`). Every Watch card href is computed, so the
+ * rule skips exactly the shape real code uses.
+ *
+ * That is the reason this file inverts the default: an href it cannot prove
+ * safe is a finding, not a skip. A rule enabled at `error` and a rule that
+ * does not exist look identical from outside.
  *
  * WHAT THIS ALLOWS, and why each is not in-app navigation:
  *   - `target="_blank"`      leaves the app by definition

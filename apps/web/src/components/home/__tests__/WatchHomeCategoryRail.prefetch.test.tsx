@@ -84,4 +84,46 @@ describe("WatchHomeCategoryRail prefetch posture", () => {
     expect(seeAll?.getAttribute("data-prefetch")).toBe("undefined")
     expect(tile?.getAttribute("data-prefetch")).toBe("undefined")
   })
+
+  /**
+   * The negative half of the marker assertion, and the only test in the suite
+   * that can tell a Link from a raw anchor.
+   *
+   * The mock stamps `data-prefetch` on everything it renders, so its presence
+   * means "this went through next/link" and its absence means "this is a real
+   * `<a>`". Without this case, reverting the internal branch at
+   * `WatchHomeCategoryRail.tsx` from `<Link>` to `<a>` keeps every href, target
+   * and rel assertion in the sibling suite green — the exact one-line revert
+   * that reintroduces a full document reload.
+   */
+  it("routes an external destination to a real anchor and an internal one to Link", () => {
+    act(() => {
+      root.render(
+        <NextIntlClientProvider locale="en" messages={enMessages}>
+          <WatchHomeCategoryRail
+            languageSlug="english"
+            tiles={[
+              { id: "ext", title: "Give", href: "https://example.org/give" },
+              { id: "int", title: "Partners", href: "/partners" },
+            ]}
+          />
+        </NextIntlClientProvider>,
+      )
+    })
+
+    const external = container.querySelector(
+      '[data-testid="watch-home-category-card-ext"]',
+    )
+    const internal = container.querySelector(
+      '[data-testid="watch-home-category-card-int"]',
+    )
+
+    expect(external?.getAttribute("target")).toBe("_blank")
+    // A real anchor: the Link mock never touched it.
+    expect(external?.hasAttribute("data-prefetch")).toBe(false)
+
+    // Went through next/link, so it is a client-side navigation.
+    expect(internal?.hasAttribute("data-prefetch")).toBe(true)
+    expect(internal?.getAttribute("target")).toBeNull()
+  })
 })
