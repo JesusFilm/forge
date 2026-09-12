@@ -28,7 +28,10 @@ import {
   WATCH_SECTION_EYEBROW_CLASS,
 } from "@/components/watch/watch-section-styles"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
-import { resolveMuxFrameThumbnailUrl } from "@/lib/url"
+import {
+  resolveBlurredBackdropUrl,
+  resolveMuxFrameThumbnailUrl,
+} from "@/lib/url"
 import { cn } from "@/lib/utils"
 import { videoLabelMessageKey } from "@/lib/video-labels"
 import {
@@ -50,6 +53,28 @@ type IconComponent = ComponentType<{ className?: string }>
 
 // Anchor target for the end-of-page "Back to top" link.
 const LANGUAGE_INVENTORY_TOP_ID = "language-inventory-top"
+
+// Skip layout, style and paint for the ~1,000 episode rows that are nowhere
+// near the viewport.
+//
+// `contain-intrinsic-size` sizes the CONTENT box, and the row adds `py-4`
+// (32px) on top, so 56px stands in as an 88px placeholder. Measured
+// 2026-09-12 on /watch/english.html/videos: real rows are 80-95px tall at
+// 390px and a flat 89px from 768px up, and this value reproduces the whole
+// document's height to within 0.24% at 390px and exactly at 768px and 1280px
+// (144,365px -> 144,707px / 161,091px / 106,697px unchanged). Retune it if the
+// row's vertical padding or `min-h` changes — an over-estimate inflates the
+// scrollbar and moves every in-page anchor below it.
+//
+// The `auto` keyword makes the browser remember each row's real size once it
+// has been rendered, so the estimate only ever governs rows that have never
+// been on screen. Verified unchanged under this rule at 390px: find-in-page
+// (`window.find` into row 900 still scrolls to it), `#audio-collections` hash
+// navigation (identical landing offset), the "Back to top" link, and the
+// client filter — which hides rows with the `hidden` property, whose
+// `display: none` outranks content-visibility.
+const COMPACT_ROW_CONTAIN_CLASS =
+  "[content-visibility:auto] [contain-intrinsic-size:auto_56px]"
 
 type LanguageInventoryPageProps = {
   inventory: WatchLanguageInventoryModel
@@ -260,7 +285,7 @@ function inventoryFacetAttributes(item: WatchLanguageInventoryCard) {
     // which then match no window.
     //
     // Only attributes a filter actually READS are emitted: this page ships
-    // ~9.5MB of HTML, and an unread attribute across ~990 items is pure weight.
+    // ~7MB of HTML, and an unread attribute across ~990 items is pure weight.
     "data-inv-age-days":
       facets.ageDays == null ? "unknown" : String(facets.ageDays),
   } as const
@@ -504,17 +529,30 @@ function CompactVideoRow({
         )}
       >
         {thumbnailUrl ? (
+          // Explicit `width`/`height` rather than `fill` + a `sizes` string,
+          // because Next only narrows the candidate list when `sizes` carries
+          // a `vw` unit: a pixel-only `sizes` falls through to a `w`-descriptor
+          // srcset over EVERY configured device and image size. Measured
+          // 2026-09-12 on the live English page, that was 15 candidates per
+          // row and 2.81 MB of srcset attributes across 1,000 rows — 30% of a
+          // 9.44 MB document. `width`/`height` emits the 2-candidate `1x`/`2x`
+          // form instead.
+          //
+          // The image the browser actually downloads does not change: the
+          // candidates chosen here (96w/256w landscape, 48w/96w portrait) are
+          // the same widths the 15-candidate list resolved to at every DPR
+          // this page is served at, because the slot is 80px/96px (32px/37px
+          // portrait) and 1x/2x brackets that at 1, 2 and 3 dpr alike.
+          //
+          // The classes reproduce what `fill` set inline, so the rendered box
+          // is unchanged.
           <Image
             src={thumbnailUrl}
             alt=""
-            fill
-            sizes={
-              isPortrait
-                ? "(max-width: 640px) 32px, 37px"
-                : "(max-width: 640px) 80px, 96px"
-            }
+            width={isPortrait ? 37 : 96}
+            height={isPortrait ? 56 : 54}
             className={cn(
-              "object-cover transition duration-300 group-hover:scale-105",
+              "absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105",
               isPortrait ? "object-center" : "object-left-top",
             )}
           />
@@ -562,6 +600,7 @@ function CompactVideoRow({
   )
   const className = cn(
     "flex min-h-20 items-center gap-3 px-3 py-4 transition sm:px-4",
+    COMPACT_ROW_CONTAIN_CLASS,
     item.href && "group hover:bg-white/[0.055]",
     item.href && VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
   )
@@ -843,7 +882,16 @@ function GroupedVideoListSection({
                   {/* Same immersive backdrop as authored Experience collection
                     sections: `MediaCollection` reads these exact shared
                     constants, so blur, brightness, and base colour cannot
-                    drift between the two surfaces. */}
+                    drift between the two surfaces.
+
+                    The SOURCE is deliberately not the same one the panel
+                    thumbnail beside it uses. A CSS background is not lazy —
+                    and `content-visibility` does not defer it either — so all
+                    111 of these download on every page load. At the authored
+                    `w=1280,h=600,q=95` that was 27.1 MB of a 29.0 MB page.
+                    `resolveBlurredBackdropUrl` asks for the 128px-wide
+                    derivative, which is strictly more detail than survives
+                    `blur-2xl`. */}
                   {groupImageUrl ? (
                     <div
                       aria-hidden
@@ -853,7 +901,9 @@ function GroupedVideoListSection({
                         WATCH_IMMERSIVE_BACKGROUND_BRIGHTNESS_CLASS,
                         WATCH_IMMERSIVE_BACKGROUND_SATURATION_CLASS,
                       )}
-                      style={{ backgroundImage: `url("${groupImageUrl}")` }}
+                      style={{
+                        backgroundImage: `url("${resolveBlurredBackdropUrl(groupImageUrl)}")`,
+                      }}
                     />
                   ) : null}
                   <div

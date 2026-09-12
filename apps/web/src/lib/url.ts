@@ -182,3 +182,91 @@ export function resolveMuxHeroPosterUrlAtMaxWidth(
   url.searchParams.set("width", String(MUX_HERO_POSTER_MAX_WIDTH))
   return url.toString()
 }
+
+/**
+ * Longest edge a heavily blurred backdrop source needs, and the quality it is
+ * requested at.
+ */
+export const BLURRED_BACKDROP_MAX_WIDTH = 128
+const BLURRED_BACKDROP_QUALITY = 50
+
+/**
+ * Shrink the source behind a heavily blurred CSS backdrop.
+ *
+ * `/watch/<lang>.html/videos` paints one `WATCH_IMMERSIVE_BACKDROP_CLASS`
+ * backdrop per collection group — 111 of them on the English page — as a CSS
+ * `background-image`. CSS backgrounds are not lazy-loaded, and
+ * `content-visibility: auto` does NOT defer them either (measured 2026-09-12:
+ * all 111 are fetched on load with or without it), so every backdrop on the
+ * page downloads during the initial load no matter how far below the fold it
+ * sits.
+ *
+ * Authored artwork arrives from Cloudflare Images at `w=1280,h=600,q=95`,
+ * which for this library is a 1.3-1.5 MB PNG apiece. Measured on the live
+ * English page at a 390x844x3 viewport with the cache disabled, those 110
+ * requests were 27.1 MB of a 29.0 MB page, and they starved the LCP hero: on
+ * DevTools "Fast 4G" with 4x CPU throttle, LCP was 8592 ms before this rewrite
+ * and 2648 ms after, with 31.4 MB of transfer falling to 4.7 MB.
+ *
+ * The element is at most ~440 CSS px wide and renders under `blur-2xl`
+ * (`blur(40px)`) plus `brightness-50` and `saturate-75`, so a 128px-wide
+ * source carries strictly more detail than survives the blur.
+ *
+ * Only Cloudflare Images URLs carrying an explicit `w=`/`h=` transformation
+ * are rewritten, and the aspect ratio is preserved so the crop cannot shift.
+ * Mux frame URLs are deliberately returned untouched: they are already the
+ * pre-generated 448x252 derivative (~13 KB), and a bespoke width there is a
+ * cold on-demand render (see `resolveMuxFrameThumbnailUrl`). Any other host is
+ * returned unchanged rather than guessed at — a wrong guess is a broken
+ * backdrop, and the no-op is merely the status quo.
+ */
+export function resolveBlurredBackdropUrl(
+  url: string | null | undefined,
+): string | null {
+  if (!url) return null
+
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  } catch {
+    return url
+  }
+  if (parsed.hostname !== "imagedelivery.net") return url
+
+  const segments = parsed.pathname.split("/")
+  const transformations = segments.at(-1)?.split(",")
+  if (transformations == null) return url
+
+  const width = transformations.find((value) => /^w=\d+$/.test(value))
+  const height = transformations.find((value) => /^h=\d+$/.test(value))
+  if (width == null || height == null) return url
+
+  const sourceWidth = Number.parseInt(width.slice(2), 10)
+  const sourceHeight = Number.parseInt(height.slice(2), 10)
+  if (
+    !Number.isFinite(sourceWidth) ||
+    !Number.isFinite(sourceHeight) ||
+    sourceHeight <= 0 ||
+    sourceWidth <= BLURRED_BACKDROP_MAX_WIDTH
+  ) {
+    return url
+  }
+
+  const scaledHeight = Math.max(
+    1,
+    Math.round((sourceHeight * BLURRED_BACKDROP_MAX_WIDTH) / sourceWidth),
+  )
+  const rewritten = transformations.map((value) => {
+    if (/^w=\d+$/.test(value)) return `w=${BLURRED_BACKDROP_MAX_WIDTH}`
+    if (/^h=\d+$/.test(value)) return `h=${scaledHeight}`
+    if (/^q=\d+$/.test(value)) return `q=${BLURRED_BACKDROP_QUALITY}`
+    return value
+  })
+  if (!rewritten.some((value) => value.startsWith("q="))) {
+    rewritten.push(`q=${BLURRED_BACKDROP_QUALITY}`)
+  }
+
+  segments[segments.length - 1] = rewritten.join(",")
+  parsed.pathname = segments.join("/")
+  return parsed.toString()
+}
