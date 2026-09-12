@@ -12,6 +12,7 @@ depends_on:
   - "feat-456"
   - "feat-457"
 blocks:
+  - "feat-490"
   - "feat-460"
 tags:
   - "ai-pipeline"
