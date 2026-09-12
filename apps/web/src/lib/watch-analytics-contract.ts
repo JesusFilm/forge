@@ -36,7 +36,9 @@
 import { env } from "@/env"
 
 import {
+  WATCH_ANALYTICS_LEAK_PATTERNS,
   WATCH_ANALYTICS_MAX_VALUE_LENGTH,
+  WATCH_ANALYTICS_UNKNOWN_PATH,
   type WatchAnalyticsEntryIntent,
   type WatchAnalyticsLanguageClass,
   type WatchAnalyticsRouteContext,
@@ -45,6 +47,17 @@ import {
   resolveWatchAnalyticsRoute,
   sanitizeWatchAnalyticsReferrer,
 } from "./watch-analytics-route"
+
+/**
+ * Written to a standard GA4 page field whose sanitized value was rejected.
+ *
+ * This is load-bearing, not cosmetic. GA4 AUTO-COLLECTS `page_location` and
+ * `page_referrer` for any event that does not override them, so omitting a
+ * field hands Google the raw `window.location.href` / `document.referrer` —
+ * the exact values the contract exists to keep off the wire. Every rejection
+ * must therefore write something, and it must not parse as a URL.
+ */
+export const WATCH_ANALYTICS_SUPPRESSED_VALUE = "(suppressed)"
 
 /** Sent as `event_contract_version` on every event so readouts can segment migrations. */
 export const WATCH_ANALYTICS_CONTRACT_VERSION = 2
@@ -292,11 +305,9 @@ function hasControlCharacter(value: string): boolean {
  * slug can legitimately contain a word like "secret" and a canonical URL
  * carrying it must still report traffic.
  */
-const PRIVACY_SENTINELS = [
-  /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/,
-  /eyJ[A-Za-z0-9_-]{8,}/,
-  /(?:^|[^A-Fa-f0-9])[A-Fa-f0-9]{24,}(?:[^A-Fa-f0-9]|$)/,
-] as const
+// Imported, never re-declared: a second copy of a privacy screen drifts
+// silently the first time one side is tightened.
+const PRIVACY_SENTINELS = WATCH_ANALYTICS_LEAK_PATTERNS
 
 function isAllowedParamName(name: string): boolean {
   if (!GA_PARAM_NAME.test(name)) return false
@@ -359,6 +370,25 @@ function assign(
   params[name] = sanitized
 }
 
+/**
+ * Write a standard GA4 page field that must NEVER be absent.
+ *
+ * `assign` is correct for optional custom parameters: dropping one loses a
+ * dimension. It is wrong for `page_path`, `page_location`, and
+ * `page_referrer`, where absence is not "no value" but "collect the raw
+ * browser value instead" — a fail-open. These always write, falling back to a
+ * safe constant when sanitization rejects the real value.
+ */
+function assignRequired(
+  params: GoogleAnalyticsParams,
+  name: string,
+  value: unknown,
+  fallback: string,
+): void {
+  const sanitized = value == null ? undefined : sanitizeContextValue(value)
+  params[name] = sanitized ?? fallback
+}
+
 /** Non-negative whole seconds, capped at a day. Anything else is dropped. */
 function boundedSeconds(value: unknown): number | undefined {
   if (typeof value !== "number" || !Number.isFinite(value)) return undefined
@@ -407,6 +437,22 @@ export function watchAnalyticsPositionBucket(
  * `pageViewKey` is deliberately absent — it is an in-memory deduplication key
  * and must never reach a provider.
  */
+/**
+ * The last canonical location this collector emitted a page view for.
+ *
+ * Module-scoped so an SPA navigation reports the PREVIOUS Watch page as its
+ * referrer, matching GA4's own single-page-app convention. Without it every
+ * in-session page view would repeat the original external referrer.
+ */
+let lastEmittedCanonicalLocation: string | undefined
+
+function resolveReferrerForEmit(explicit?: string | null): string | undefined {
+  if (explicit != null) return sanitizeWatchAnalyticsReferrer(explicit)
+  if (lastEmittedCanonicalLocation != null) return lastEmittedCanonicalLocation
+  if (typeof document === "undefined") return undefined
+  return sanitizeWatchAnalyticsReferrer(document.referrer)
+}
+
 function commonParams(
   context: WatchAnalyticsRouteContext,
 ): GoogleAnalyticsParams {
@@ -417,8 +463,29 @@ function commonParams(
   assign(params, "watch_route_variant", context.routeVariant)
   assign(params, "watch_language_class", context.languageClass)
   assign(params, "watch_entry_intent", context.entryIntent)
-  assign(params, "page_path", context.canonicalPath, "context")
-  assign(params, "page_location", context.canonicalLocation, "context")
+  // Required, not optional — see `assignRequired`. A dropped value here is a
+  // fail-open to the raw browser URL, not a missing dimension.
+  assignRequired(
+    params,
+    "page_path",
+    context.canonicalPath,
+    WATCH_ANALYTICS_UNKNOWN_PATH,
+  )
+  assignRequired(
+    params,
+    "page_location",
+    context.canonicalLocation,
+    WATCH_ANALYTICS_SUPPRESSED_VALUE,
+  )
+  // Every event, not just page views: gtag re-attaches `document.referrer` to
+  // any event that omits it, so a custom event would leak the full external
+  // referrer the page view had carefully sanitized away.
+  assignRequired(
+    params,
+    "page_referrer",
+    resolveReferrerForEmit(),
+    WATCH_ANALYTICS_SUPPRESSED_VALUE,
+  )
   assign(params, "watch_raw_path", context.rawPath, "context")
   assign(params, "watch_content_slug", context.contentSlug, "context")
   assign(params, "watch_series_slug", context.seriesSlug, "context")
@@ -625,7 +692,13 @@ function emitToGoogleTag(
   if (typeof window === "undefined") return
   const gtag = window.gtag
   if (typeof gtag !== "function") return
-  gtag("event", wireName, params)
+  try {
+    gtag("event", wireName, params)
+  } catch {
+    // Containment belongs at the shared sink, not only in the deferred flush
+    // loop: the page-view path and every immediate-mode dispatch call straight
+    // through here, and analytics must never break the surface that fired it.
+  }
 }
 
 // --- Scheduling seam (KTD9) -------------------------------------------------
@@ -673,7 +746,28 @@ export function setWatchAnalyticsFrameScheduler(
  * before anything runs, so a `visibilitychange` flush followed by `pagehide`
  * (or by the frame that was already scheduled) emits nothing twice.
  */
+/**
+ * Clear the module-scoped emit state (the SPA referrer chain and the pending
+ * dispatch queue).
+ *
+ * Exported for tests only. This state deliberately outlives every component,
+ * which also means it outlives a test case — without an explicit reset a suite
+ * silently becomes order-dependent, and an assertion can pass because an
+ * earlier test left a value behind rather than because the code is right.
+ */
+export function resetWatchAnalyticsEmitState(): void {
+  lastEmittedCanonicalLocation = undefined
+  pendingDispatches.length = 0
+  frameScheduled = false
+}
+
 export function flushWatchAnalyticsDispatches(): void {
+  // Clear the scheduler guard FIRST, and unconditionally. The
+  // `visibilitychange`/`pagehide` listeners call this directly rather than
+  // through `scheduleFlush`, so leaving `frameScheduled` set would make every
+  // later `scheduleFlush` a no-op and pile dispatches up behind a frame that
+  // may never arrive — which is precisely what those listeners exist to stop.
+  frameScheduled = false
   if (pendingDispatches.length === 0) return
   const queued = pendingDispatches.splice(0, pendingDispatches.length)
   for (const run of queued) {
@@ -774,7 +868,9 @@ export type WatchAnalyticsPageViewOptions = {
  *
  * `page_referrer` is supplied explicitly rather than left to the browser
  * default, because gtag would otherwise send `document.referrer` verbatim,
- * which R19's full-referrer ban forbids. It is omitted when validation fails.
+ * which R19's full-referrer ban forbids. When validation rejects it the field
+ * is written as `WATCH_ANALYTICS_SUPPRESSED_VALUE` — never omitted, because
+ * omission is what hands gtag the raw value.
  */
 export function emitWatchAnalyticsPageView(
   context: WatchAnalyticsRouteContext,
@@ -783,13 +879,20 @@ export function emitWatchAnalyticsPageView(
   if (!isWatchAnalyticsContractV2Enabled()) return
 
   const params = commonParams(context)
-  assign(
-    params,
-    "page_referrer",
-    sanitizeWatchAnalyticsReferrer(options.referrer),
-    "context",
-  )
+  if (options.referrer !== undefined) {
+    assignRequired(
+      params,
+      "page_referrer",
+      resolveReferrerForEmit(options.referrer),
+      WATCH_ANALYTICS_SUPPRESSED_VALUE,
+    )
+  }
   emitToGoogleTag(WATCH_ANALYTICS_WIRE_NAMES.page_view, params)
+  // Only after emitting: this page view's referrer is the PREVIOUS page.
+  lastEmittedCanonicalLocation =
+    params.page_location === context.canonicalLocation
+      ? context.canonicalLocation
+      : undefined
 }
 
 export type {

@@ -74,7 +74,7 @@ export function reportDatadogRumError(
  * is the deliberate act of putting that value in front of Google. Keys are the
  * pre-normalization RUM context keys.
  */
-const GOOGLE_ANALYTICS_ACTION_PARAM_ALLOWLIST: Readonly<
+export const GOOGLE_ANALYTICS_ACTION_PARAM_ALLOWLIST: Readonly<
   Record<string, readonly string[]>
 > = {
   [WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION]: [
@@ -94,7 +94,7 @@ const GOOGLE_ANALYTICS_ACTION_PARAM_ALLOWLIST: Readonly<
  * generic normalizer, no route context, and no KTD9 seam all running inside a
  * v2 build — exactly the hybrid the flag exists to prevent.
  */
-const GOOGLE_ANALYTICS_ACTION_V2_PROJECTORS: Readonly<
+export const GOOGLE_ANALYTICS_ACTION_V2_PROJECTORS: Readonly<
   Record<
     string,
     (params: Record<string, unknown>) => WatchAnalyticsEventInput | null
@@ -154,7 +154,13 @@ export function reportDatadogRumAction(
   name: string,
   context: Record<string, unknown>,
 ) {
-  reportGoogleAnalyticsActionProjection(name, context)
+  // Guarded: a throw from the GA projection must never stop the Datadog
+  // action that follows it, and must never surface into the caller.
+  try {
+    reportGoogleAnalyticsActionProjection(name, context)
+  } catch {
+    // Analytics is best-effort on both sides.
+  }
   safeReportDatadogRum("action", () => datadogRum.addAction(name, context))
 }
 

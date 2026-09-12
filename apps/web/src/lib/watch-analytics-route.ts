@@ -177,7 +177,6 @@ export const WATCH_ANALYTICS_MAX_VALUE_LENGTH = 100
 const MAX_CANONICAL_PATH_LENGTH = 200
 
 /** Upper bound for the in-memory dedupe key. Never sent anywhere. */
-const MAX_PAGE_VIEW_KEY_LENGTH = 2048
 
 /** Upper bound for a referrer before any parsing is attempted. */
 const MAX_REFERRER_LENGTH = 512
@@ -234,6 +233,21 @@ const JWT_LIKE = /eyJ[A-Za-z0-9_-]{8,}/
 const LONG_HEX = /(?:^|[^A-Fa-f0-9])[A-Fa-f0-9]{24,}(?:[^A-Fa-f0-9]|$)/
 
 /**
+ * The shape-based leak detectors, shared so every value lane screens for the
+ * same things. These are lane-agnostic: no authored title, campaign value, or
+ * route slug can legitimately look like an email address, a JWT, or a long
+ * opaque hex run, so any lane that admits one is leaking.
+ *
+ * `CREDENTIAL_LIKE` is deliberately NOT here — it is a word heuristic that the
+ * authored-slug lane must not apply (see `isWatchAnalyticsSafeSlug`).
+ */
+export const WATCH_ANALYTICS_LEAK_PATTERNS = [
+  EMAIL_LIKE,
+  JWT_LIKE,
+  LONG_HEX,
+] as const
+
+/**
  * Whether a single bounded value may reach GA. One policy, applied to both
  * campaign values and individual path segments (R19): a pathname is
  * attacker- and user-influenceable, so length-bounding alone is not enough.
@@ -277,6 +291,22 @@ function isWatchAnalyticsSafeSlug(value: string): boolean {
     !JWT_LIKE.test(value) &&
     !LONG_HEX.test(value)
   )
+}
+
+/**
+ * Whether an arbitrary same-origin pathname may reach GA as part of a
+ * referrer. Every segment runs the FULL value policy, credential-word
+ * heuristic included, because nothing upstream constrained this path to
+ * authored route slugs.
+ */
+export function isWatchAnalyticsSafeReferrerPath(path: string): boolean {
+  if (path.length === 0 || path.length > WATCH_ANALYTICS_MAX_VALUE_LENGTH) {
+    return false
+  }
+  if (!path.startsWith("/") || path.includes("//")) return false
+  const segments = path.split("/").filter(Boolean)
+  if (segments.length === 0) return path === "/"
+  return segments.every(isWatchAnalyticsSafeValue)
 }
 
 /**
@@ -636,9 +666,11 @@ function buildPageViewKey(
   campaign: WatchAnalyticsCampaign,
 ): string {
   const key = `${relativePath}|${campaignQueryString(campaign)}`
-  return key.length > MAX_PAGE_VIEW_KEY_LENGTH
-    ? key.slice(0, MAX_PAGE_VIEW_KEY_LENGTH)
-    : key
+  // Deliberately NOT truncated. This key never leaves memory and is never
+  // emitted, so there is nothing to bound — while truncating it would let two
+  // distinct long routes share a key and silently suppress the second page
+  // view, which is the exact failure R6 forbids.
+  return key
 }
 
 /**
@@ -737,7 +769,12 @@ export function sanitizeWatchAnalyticsReferrer(
 
   if (url.origin !== canonicalOrigin) return url.origin
   if (url.pathname === "/") return `${url.origin}/`
-  return isWatchAnalyticsSafePath(url.pathname)
+  // The STRICT lane, not the slug lane. A referrer pathname is arbitrary
+  // same-origin input — it can be `/account/reset-password/<token>` — unlike
+  // `watch_raw_path`, which is only ever assembled from a route the resolver
+  // already recognized. Judging it by the authored-slug policy would skip the
+  // credential screen on the one field most likely to carry a secret.
+  return isWatchAnalyticsSafeReferrerPath(url.pathname)
     ? `${url.origin}${url.pathname}`
     : undefined
 }

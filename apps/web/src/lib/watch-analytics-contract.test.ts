@@ -19,6 +19,8 @@ vi.mock("@/env", () => ({ env: mockEnv }))
 
 import {
   WATCH_ANALYTICS_CONTRACT_VERSION,
+  WATCH_ANALYTICS_SUPPRESSED_VALUE,
+  resetWatchAnalyticsEmitState,
   WATCH_ANALYTICS_WIRE_NAMES,
   type WatchAnalyticsEventInput,
   dispatchWatchAnalyticsEvent,
@@ -56,6 +58,10 @@ function lastParams(): Record<string, unknown> {
 }
 
 beforeEach(() => {
+  // The emit state is module-scoped by design, so it outlives a test case too.
+  // Reset it explicitly or the suite becomes order-dependent and assertions
+  // can pass on a value an earlier test left behind.
+  resetWatchAnalyticsEmitState()
   mockEnv.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2 = true
   gtag = vi.fn()
   window.gtag = gtag
@@ -182,6 +188,9 @@ describe("route context on every event (R10)", () => {
       watch_entry_intent: "direct",
       page_path: "/watch/jesus.html",
       page_location: "https://www.jesusfilm.org/watch/jesus.html",
+      // Present on every event, never omitted — see the fail-open note on
+      // WATCH_ANALYTICS_SUPPRESSED_VALUE.
+      page_referrer: WATCH_ANALYTICS_SUPPRESSED_VALUE,
       watch_raw_path: "/watch/jesus.html/english.html",
       watch_content_slug: "jesus",
       watch_language_slug: "english",
@@ -370,14 +379,45 @@ describe("page views bypass the seam (R6, KTD9)", () => {
     expect(JSON.stringify(params)).not.toContain("viewer@example.test")
   })
 
-  it("omits page_referrer entirely for an unparseable referrer", () => {
+  it("suppresses a rejected page_referrer instead of omitting it", () => {
+    // Omission is a FAIL-OPEN: GA4 auto-collects page_referrer for any event
+    // that does not override it, so leaving the key out hands Google the raw
+    // document.referrer — the value this contract exists to withhold.
     const context = resolveWatchAnalyticsRoute({
       pathname: "/watch/jesus.html",
     })
 
     emitWatchAnalyticsPageView(context, { referrer: "not a url" })
 
-    expect(lastParams()).not.toHaveProperty("page_referrer")
+    const params = lastParams()
+    expect(params).toHaveProperty("page_referrer")
+    expect(params.page_referrer).toBe(WATCH_ANALYTICS_SUPPRESSED_VALUE)
+    expect(String(params.page_referrer)).not.toMatch(/^https?:/)
+  })
+
+  it("never lets a rejected page field fall back to the raw browser value", () => {
+    // Discriminating fixture: window.gtag is defined, the flag is on, and the
+    // route resolves — so the ONLY reason a standard page field could be
+    // absent is the sanitizer rejecting it. Every one must still be present.
+    const context = resolveWatchAnalyticsRoute({
+      pathname: "/watch/jesus.html",
+    })
+
+    emitWatchAnalyticsPageView(context, { referrer: "javascript:alert(1)" })
+
+    const params = lastParams()
+    for (const field of ["page_path", "page_location", "page_referrer"]) {
+      expect([field, Object.hasOwn(params, field)]).toEqual([field, true])
+    }
+    expect(params.page_referrer).toBe(WATCH_ANALYTICS_SUPPRESSED_VALUE)
+  })
+
+  it("gives a custom event a sanitized page_referrer too", () => {
+    // gtag re-attaches document.referrer to ANY event that omits it, so a
+    // custom event would leak the external referrer the page view sanitized.
+    dispatchWatchAnalyticsEvent({ type: "share_opened" }, { mode: "immediate" })
+
+    expect(lastParams().page_referrer).toBe(WATCH_ANALYTICS_SUPPRESSED_VALUE)
   })
 
   it("keeps allowlisted campaign parameters in page_location and never the raw query", () => {
@@ -532,5 +572,32 @@ describe("bucket helpers keep reporting cardinality bounded (R20)", () => {
     expect(watchAnalyticsPositionBucket(25)).toBe("11-25")
     expect(watchAnalyticsPositionBucket(99)).toBe("26+")
     expect(watchAnalyticsPositionBucket(0)).toBeUndefined()
+  })
+})
+
+describe("scheduler guard after an out-of-band flush", () => {
+  it("still schedules a later deferred dispatch", () => {
+    // The visibilitychange/pagehide listeners call flushWatchAnalyticsDispatches
+    // directly, NOT through scheduleFlush. If the flush does not clear the
+    // frameScheduled guard, every subsequent scheduleFlush is a silent no-op
+    // and dispatches pile up behind a frame that may never arrive — the exact
+    // loss those listeners exist to prevent.
+    dispatchWatchAnalyticsEvent({ type: "share_opened" }, { mode: "deferred" })
+    expect(frames).toHaveLength(1)
+
+    // Out-of-band flush (what the hidden-tab listener does) while the
+    // originally scheduled frame has not fired yet.
+    flushWatchAnalyticsDispatches()
+    expect(gaEvents().map(([name]) => name)).toEqual(["share_opened"])
+
+    // A second deferred dispatch must still get a frame scheduled.
+    dispatchWatchAnalyticsEvent({ type: "share_opened" }, { mode: "deferred" })
+    expect(frames).toHaveLength(2)
+
+    frames[1]?.()
+    expect(gaEvents().map(([name]) => name)).toEqual([
+      "share_opened",
+      "share_opened",
+    ])
   })
 })

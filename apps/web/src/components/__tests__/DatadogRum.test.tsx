@@ -43,6 +43,8 @@ vi.mock("@/env", () => ({
 }))
 
 import DatadogRum, {
+  GOOGLE_ANALYTICS_ACTION_PARAM_ALLOWLIST,
+  GOOGLE_ANALYTICS_ACTION_V2_PROJECTORS,
   getDatadogRumInitConfig,
   clearDatadogRumUser,
   identifyDatadogRumUser,
@@ -490,5 +492,18 @@ describe("DatadogRum — GA projection under the v2 collector", () => {
     const params = gtag.mock.calls[0]?.[2] as Record<string, unknown>
     expect(params).toMatchObject({ event_contract_version: 2 })
     expect(params).not.toHaveProperty("watch_result_position_bucket")
+  })
+})
+
+describe("GA action map parity", () => {
+  it("gives every allowlisted action a v2 projector", () => {
+    // The two maps are separate objects keyed by the same action names, and
+    // nothing in the type system ties them together. An action added to the
+    // allowlist without a projector silently stops reaching GA the moment the
+    // v2 flag turns on — no type error, no runtime error, no log. This is the
+    // only thing that would catch it.
+    expect(Object.keys(GOOGLE_ANALYTICS_ACTION_V2_PROJECTORS).sort()).toEqual(
+      Object.keys(GOOGLE_ANALYTICS_ACTION_PARAM_ALLOWLIST).sort(),
+    )
   })
 })
