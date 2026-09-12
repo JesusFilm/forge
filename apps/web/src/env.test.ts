@@ -26,6 +26,7 @@ function useBaseEnv() {
   delete process.env.GIT_COMMIT_SHA
   delete process.env.WATCH_SEARCH_PRIMARY_MODE
   delete process.env.WATCH_SEARCH_DEFAULT_SHADOW_ENABLED
+  delete process.env.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2
 }
 
 describe("web env — canonical origin", () => {
@@ -209,5 +210,48 @@ describe("web env — Watch search rollout", () => {
 
     expect(env.WATCH_SEARCH_PRIMARY_MODE).toBe("DEFAULT")
     expect(env.WATCH_SEARCH_DEFAULT_SHADOW_ENABLED).toBe(false)
+  })
+})
+
+describe("web env — Watch GA4 contract v2 flag", () => {
+  beforeEach(() => {
+    vi.resetModules()
+    process.env = { ...ORIGINAL_ENV }
+    useBaseEnv()
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    process.env = { ...ORIGINAL_ENV }
+  })
+
+  // A required env var with no default bricks Railway deploys for every
+  // environment that has not been provisioned yet, so the v2 collector flag is
+  // optional and its absence means "off" at the read site.
+  it("stays undefined when the flag is not provisioned", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+
+    const { env } = await import("./env")
+
+    expect(env.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2).toBeUndefined()
+  })
+
+  it("treats an empty value as unprovisioned rather than a parse failure", async () => {
+    process.env.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2 = ""
+
+    const { env } = await import("./env")
+
+    expect(env.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2).toBeUndefined()
+  })
+
+  it("parses the opt-in and the explicit rollback values", async () => {
+    process.env.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2 = "true"
+    const enabled = await import("./env")
+    expect(enabled.env.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2).toBe(true)
+
+    vi.resetModules()
+    process.env.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2 = "false"
+    const disabled = await import("./env")
+    expect(disabled.env.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2).toBe(false)
   })
 })

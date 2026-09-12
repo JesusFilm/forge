@@ -6,6 +6,12 @@ import { useEffect, useRef } from "react"
 
 import { env } from "@/env"
 import { reportGoogleAnalyticsEvent } from "@/components/GoogleAnalytics"
+import {
+  type WatchAnalyticsEventInput,
+  dispatchWatchAnalyticsEvent,
+  isWatchAnalyticsContractV2Enabled,
+} from "@/lib/watch-analytics-contract"
+import { WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION } from "@/lib/watch-search-analytics-contract"
 
 const DATADOG_SERVICE = "forge-web"
 
@@ -55,11 +61,106 @@ export function reportDatadogRumError(
   safeReportDatadogRum("error", () => datadogRum.addError(error, context))
 }
 
+/**
+ * Per-action Google Analytics projection for RUM actions (R13, R18, KTD4).
+ *
+ * Datadog receives the full, approved diagnostic context for every action. GA
+ * receives ONLY the keys listed here, because the GA normalizer strips app
+ * prefixes and would otherwise forward content titles, result/request IDs and
+ * typed language names to Google.
+ *
+ * An action absent from this map sends NOTHING to GA. Adding an entry is the
+ * deliberate act of putting an event on the GA wire; adding a key to an entry
+ * is the deliberate act of putting that value in front of Google. Keys are the
+ * pre-normalization RUM context keys.
+ */
+export const GOOGLE_ANALYTICS_ACTION_PARAM_ALLOWLIST: Readonly<
+  Record<string, readonly string[]>
+> = {
+  [WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION]: [
+    "watch_search.result_position",
+    "watch_search.result_source",
+    "watch_search.result_type",
+  ],
+}
+
+/**
+ * v2 half of the same projection (KTD4, KTD6). The allowlist above is still the
+ * ONLY gate on what leaves for Google; this map only says how the already
+ * filtered values become a DECLARED contract event.
+ *
+ * An allowlisted action with no entry here sends nothing to GA under v2 rather
+ * than falling back to the v1 helper, because a v1 fallback would mean the
+ * generic normalizer, no route context, and no KTD9 seam all running inside a
+ * v2 build — exactly the hybrid the flag exists to prevent.
+ */
+export const GOOGLE_ANALYTICS_ACTION_V2_PROJECTORS: Readonly<
+  Record<
+    string,
+    (params: Record<string, unknown>) => WatchAnalyticsEventInput | null
+  >
+> = {
+  [WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION]: (params) => ({
+    type: "search_result_clicked",
+    resultPosition: asFiniteNumber(params["watch_search.result_position"]),
+    resultSource: asString(params["watch_search.result_source"]),
+    resultType: asString(params["watch_search.result_type"]),
+  }),
+}
+
+function asFiniteNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined
+}
+
+function asString(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined
+}
+
+function lookup<T>(
+  map: Readonly<Record<string, T>>,
+  key: string,
+): T | undefined {
+  return Object.prototype.hasOwnProperty.call(map, key) ? map[key] : undefined
+}
+
+function reportGoogleAnalyticsActionProjection(
+  name: string,
+  context: Record<string, unknown>,
+) {
+  const allowedKeys = lookup(GOOGLE_ANALYTICS_ACTION_PARAM_ALLOWLIST, name)
+  if (allowedKeys == null) return
+
+  const params: Record<string, unknown> = {}
+  for (const key of allowedKeys) {
+    if (!Object.prototype.hasOwnProperty.call(context, key)) continue
+    params[key] = context[key]
+  }
+
+  if (isWatchAnalyticsContractV2Enabled()) {
+    const input = lookup(GOOGLE_ANALYTICS_ACTION_V2_PROJECTORS, name)?.(params)
+    if (input == null) return
+    // Deferred: a search result click navigates client-side, so the document
+    // is not replaced before the paint yield runs (R28).
+    dispatchWatchAnalyticsEvent(input, { mode: "deferred" })
+    return
+  }
+
+  // The event still fires with zero parameters when none are present: R25
+  // requires the legacy `search_result_clicked` count to stay unchanged.
+  reportGoogleAnalyticsEvent(name, params)
+}
+
 export function reportDatadogRumAction(
   name: string,
   context: Record<string, unknown>,
 ) {
-  reportGoogleAnalyticsEvent(name, context)
+  // Guarded: a throw from the GA projection must never stop the Datadog
+  // action that follows it, and must never surface into the caller.
+  try {
+    reportGoogleAnalyticsActionProjection(name, context)
+  } catch {
+    // Analytics is best-effort on both sides.
+  }
   safeReportDatadogRum("action", () => datadogRum.addAction(name, context))
 }
 
