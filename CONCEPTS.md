@@ -1104,6 +1104,14 @@ An ordered, schema-validated content unit within an Experience. Blocks carry a d
 
 An Experience Block that groups ordered watch content beneath independently authored category, title, supporting-title, description, call-to-action, and footer semantics; its presentation variant may change the media layout but not the authored content hierarchy.
 
+### Authored Destination
+
+A link target an editor types into an Experience Block, as distinct from one the application derives from a content slug.
+
+Because the block payload holding it is machine-writable as well as editor-writable, a governed Authored Destination is re-checked wherever it renders rather than trusted from its write-time check. Two shapes are admitted: a same-origin path inside the watch tree, or an absolute secure-scheme URL. Anything else drops the element carrying it, rather than substituting a default target — a silently redirected destination is worse than a missing one. Admission is decided on the destination as a browser would resolve it, not as it was typed; the two differ, and the typed form is not the one that takes effect. An admitted external destination opens in a new browsing context and is never handed to the client-side router.
+
+Governance is per-field and currently partial: it covers the category tile destination. The older call-to-action link fields predate the policy, remain unvalidated, and reach an anchor directly — treat them as ungoverned until converted, and do not read this entry as describing them.
+
 ### Dynamic Collection Feed
 
 A Media Collection Block whose `itemsSource` is `dynamicCollections`, causing
