@@ -13,7 +13,9 @@ const limits = {
   mux: { ms: 45000, bytes: 1049600 },
   claim: { ms: 10000, bytes: 4096 },
   input: { ms: STUDIO_RENDER_PROFILE.preparationMs, bytes: 4096 },
-  owns: { ms: 5000, bytes: 4096 },
+  // Stay inside the VM's 10s transport allowance without cancelling a healthy
+  // render when the canonical ownership read takes more than five seconds.
+  owns: { ms: 9000, bytes: 4096 },
   retain: {
     ms: STUDIO_RENDER_PROFILE.retentionTransferMs,
     bytes: STUDIO_RENDER_WIRE_BYTES,
