@@ -21,6 +21,10 @@ const { datadogRumMock, mockEnv, reactPluginMock } = vi.hoisted(() => {
     NEXT_PUBLIC_DATADOG_SITE: "datadoghq.com",
     NEXT_PUBLIC_DATADOG_ENV: "development",
     NEXT_PUBLIC_DATADOG_VERSION: undefined as string | undefined,
+    // `src/lib/routes.ts` reads this at module evaluation time, and the v2
+    // GA projection resolves canonical route context through it.
+    NEXT_PUBLIC_CANONICAL_ORIGIN: "https://www.jesusfilm.org",
+    NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2: undefined as boolean | undefined,
   }
 
   return { datadogRumMock, mockEnv, reactPluginMock }
@@ -46,6 +50,10 @@ import DatadogRum, {
   reportDatadogRumError,
 } from "@/components/DatadogRum"
 import { WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION } from "@/lib/watch-search-analytics-contract"
+import {
+  flushWatchAnalyticsDispatches,
+  setWatchAnalyticsFrameScheduler,
+} from "@/lib/watch-analytics-contract"
 
 let container: HTMLDivElement
 let root: Root
@@ -56,6 +64,9 @@ function resetMockEnv() {
   mockEnv.NEXT_PUBLIC_DATADOG_SITE = "datadoghq.com"
   mockEnv.NEXT_PUBLIC_DATADOG_ENV = "development"
   mockEnv.NEXT_PUBLIC_DATADOG_VERSION = undefined
+  // Default OFF: every U1 allowlist fixture below therefore pins the v1
+  // rollback path rather than whichever branch happened to be selected.
+  mockEnv.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2 = undefined
 }
 
 async function flushEffects() {
@@ -337,5 +348,147 @@ describe("DatadogRum", () => {
       expect.any(Error),
     )
     consoleError.mockRestore()
+  })
+})
+
+// -----------------------------------------------------------------------------
+// v2 collector boundary (R18, R24, KTD4, KTD6).
+//
+// U1's allowlist stays the only gate on what leaves for Google. Under v2 the
+// already-filtered projection is handed to the TYPED dispatcher instead of the
+// v1 helper, so the v2 build never leaves a second, seamless, contextless
+// dispatcher running beside the typed one.
+// -----------------------------------------------------------------------------
+describe("DatadogRum — GA projection under the v2 collector", () => {
+  let frames: Array<() => void>
+
+  /** Run every frame callback the seam has queued, the way a real paint would. */
+  function runFrame() {
+    for (const callback of frames.splice(0, frames.length)) callback()
+  }
+
+  beforeEach(() => {
+    mockEnv.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2 = true
+    frames = []
+    setWatchAnalyticsFrameScheduler((callback) => {
+      frames.push(callback)
+    })
+    window.history.replaceState({}, "", "/watch/jesus.html/english.html")
+  })
+
+  afterEach(() => {
+    setWatchAnalyticsFrameScheduler(null)
+  })
+
+  // R28/KTD9: the mode is a per-dispatch input. A search result click stays on
+  // the client, so this call site chooses `deferred` and the dispatch must NOT
+  // have reached `window.gtag` before the frame yields. Flipping the call site
+  // to `immediate` fails this assertion, which is what makes the mode choice
+  // load-bearing rather than decorative.
+  it("defers the search-click dispatch to a paint yield", () => {
+    const gtag = vi.fn()
+    window.gtag = gtag
+
+    reportDatadogRumAction(WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION, {
+      "watch_search.result_position": 3,
+    })
+
+    expect(datadogRumMock.addAction).toHaveBeenCalledTimes(1)
+    expect(gtag).not.toHaveBeenCalled()
+
+    runFrame()
+
+    expect(gtag).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps Datadog's rich context while GA receives only the typed bounded projection (AE4)", () => {
+    const gtag = vi.fn()
+    window.gtag = gtag
+    const rumContext = {
+      "watch_search.result_position": 3,
+      "watch_search.result_source": "watch-search",
+      "watch_search.result_type": "video",
+      "watch_search.result_id": "5fc705b9-1b3b-4a58-abef-755b98457de6",
+      "watch_search.result_slug": "jesus-is-brought-to-pilate",
+      "watch_search.result_title": "Jesus Is Brought to Pilate",
+      "watch_search.search_request_id": "search_12345678",
+      "watch_search.route_language_slug": "english",
+      "watch_search.search_language_slug": "urdu",
+      "watch_search.search_language_english_name": "Urdu",
+    }
+
+    reportDatadogRumAction(WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION, rumContext)
+    flushWatchAnalyticsDispatches()
+
+    // R18: Datadog is untouched by the collector flag.
+    expect(datadogRumMock.addAction).toHaveBeenCalledTimes(1)
+    expect(datadogRumMock.addAction).toHaveBeenCalledWith(
+      "watch_search.result_clicked",
+      rumContext,
+    )
+
+    // R25: unchanged legacy wire name, unchanged event count.
+    expect(gtag).toHaveBeenCalledTimes(1)
+    const [command, wireName, params] = gtag.mock.calls[0] as [
+      string,
+      string,
+      Record<string, unknown>,
+    ]
+    expect(command).toBe("event")
+    expect(wireName).toBe("search_result_clicked")
+
+    // R13/R20: a bounded position BUCKET, plus the canonical route context
+    // every v2 event carries.
+    expect(params).toMatchObject({
+      event_contract_version: 2,
+      watch_result_position_bucket: "2-3",
+      watch_result_source: "watch-search",
+      watch_result_type: "video",
+      page_path: "/watch/jesus.html",
+      watch_route_variant: "explicit_language_compatibility",
+    })
+
+    // R13/R19: nothing outside the allowlist survives the boundary.
+    const serialized = JSON.stringify(params)
+    for (const forbidden of [
+      "5fc705b9-1b3b-4a58-abef-755b98457de6",
+      "jesus-is-brought-to-pilate",
+      "Jesus Is Brought to Pilate",
+      "search_12345678",
+      "Urdu",
+    ]) {
+      expect(serialized).not.toContain(forbidden)
+    }
+  })
+
+  it("sends nothing to GA for an action with no registered projection", () => {
+    const gtag = vi.fn()
+    window.gtag = gtag
+
+    reportDatadogRumAction("watch_recommendation.card_clicked", {
+      "watch_recommendation.item_id": "item-1",
+    })
+    flushWatchAnalyticsDispatches()
+
+    expect(datadogRumMock.addAction).toHaveBeenCalledTimes(1)
+    expect(gtag).not.toHaveBeenCalled()
+  })
+
+  it("does not fall through to the v1 helper when v2 is on", () => {
+    const gtag = vi.fn()
+    window.gtag = gtag
+
+    reportDatadogRumAction(WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION, {
+      "watch_search.search_request_id": "search_12345678",
+    })
+    flushWatchAnalyticsDispatches()
+
+    // v1 emits `("event", "search_result_clicked", {})` here. v2 emits the same
+    // wire name WITH route context, so a single call carrying an empty params
+    // object would mean the v1 helper had run under the v2 flag.
+    expect(gtag).toHaveBeenCalledTimes(1)
+    const params = gtag.mock.calls[0]?.[2] as Record<string, unknown>
+    expect(params).toMatchObject({ event_contract_version: 2 })
+    expect(params).not.toHaveProperty("watch_result_position_bucket")
   })
 })

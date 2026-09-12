@@ -6,6 +6,11 @@ import { useEffect, useRef } from "react"
 
 import { env } from "@/env"
 import { reportGoogleAnalyticsEvent } from "@/components/GoogleAnalytics"
+import {
+  type WatchAnalyticsEventInput,
+  dispatchWatchAnalyticsEvent,
+  isWatchAnalyticsContractV2Enabled,
+} from "@/lib/watch-analytics-contract"
 import { WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION } from "@/lib/watch-search-analytics-contract"
 
 const DATADOG_SERVICE = "forge-web"
@@ -79,22 +84,65 @@ const GOOGLE_ANALYTICS_ACTION_PARAM_ALLOWLIST: Readonly<
   ],
 }
 
+/**
+ * v2 half of the same projection (KTD4, KTD6). The allowlist above is still the
+ * ONLY gate on what leaves for Google; this map only says how the already
+ * filtered values become a DECLARED contract event.
+ *
+ * An allowlisted action with no entry here sends nothing to GA under v2 rather
+ * than falling back to the v1 helper, because a v1 fallback would mean the
+ * generic normalizer, no route context, and no KTD9 seam all running inside a
+ * v2 build — exactly the hybrid the flag exists to prevent.
+ */
+const GOOGLE_ANALYTICS_ACTION_V2_PROJECTORS: Readonly<
+  Record<
+    string,
+    (params: Record<string, unknown>) => WatchAnalyticsEventInput | null
+  >
+> = {
+  [WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION]: (params) => ({
+    type: "search_result_clicked",
+    resultPosition: asFiniteNumber(params["watch_search.result_position"]),
+    resultSource: asString(params["watch_search.result_source"]),
+    resultType: asString(params["watch_search.result_type"]),
+  }),
+}
+
+function asFiniteNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined
+}
+
+function asString(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined
+}
+
+function lookup<T>(
+  map: Readonly<Record<string, T>>,
+  key: string,
+): T | undefined {
+  return Object.prototype.hasOwnProperty.call(map, key) ? map[key] : undefined
+}
+
 function reportGoogleAnalyticsActionProjection(
   name: string,
   context: Record<string, unknown>,
 ) {
-  const allowedKeys = Object.prototype.hasOwnProperty.call(
-    GOOGLE_ANALYTICS_ACTION_PARAM_ALLOWLIST,
-    name,
-  )
-    ? GOOGLE_ANALYTICS_ACTION_PARAM_ALLOWLIST[name]
-    : undefined
+  const allowedKeys = lookup(GOOGLE_ANALYTICS_ACTION_PARAM_ALLOWLIST, name)
   if (allowedKeys == null) return
 
   const params: Record<string, unknown> = {}
   for (const key of allowedKeys) {
     if (!Object.prototype.hasOwnProperty.call(context, key)) continue
     params[key] = context[key]
+  }
+
+  if (isWatchAnalyticsContractV2Enabled()) {
+    const input = lookup(GOOGLE_ANALYTICS_ACTION_V2_PROJECTORS, name)?.(params)
+    if (input == null) return
+    // Deferred: a search result click navigates client-side, so the document
+    // is not replaced before the paint yield runs (R28).
+    dispatchWatchAnalyticsEvent(input, { mode: "deferred" })
+    return
   }
 
   // The event still fires with zero parameters when none are present: R25

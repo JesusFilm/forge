@@ -36,6 +36,26 @@ function softHostAllowlistRefine(
   }
 }
 
+/**
+ * Optional boolean env var with NO schema-level default. An unset or empty
+ * value parses to `undefined` so an environment that has not been provisioned
+ * still boots; the read site supplies the runtime default. Use this for opt-in
+ * scaffolding (canary flags, migration toggles) rather than a required var,
+ * which bricks a Railway deploy the moment it is missing.
+ */
+function optionalBooleanEnv() {
+  return z.preprocess((value) => {
+    if (value == null) return undefined
+
+    const normalized = String(value).trim().toLowerCase()
+    if (!normalized) return undefined
+    if (["1", "true", "yes", "y", "on"].includes(normalized)) return true
+    if (["0", "false", "no", "n", "off"].includes(normalized)) return false
+
+    return value
+  }, z.boolean().optional())
+}
+
 function booleanEnv(defaultValue: boolean) {
   return z
     .preprocess((value) => {
@@ -266,6 +286,22 @@ export const env = createEnv({
     // R19 trigger: drop `video.js` from apps/web after this has been `true`
     // in production for one stable release.
     NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION: booleanEnv(false),
+    // U3 — Watch GA4 measurement contract v2 collector flag (R24, KTD6).
+    // Unset/`false` keeps the v1 Google tag initialization and emission path
+    // untouched. `true` selects the explicit SPA page-view owner and the typed
+    // event dispatcher TOGETHER, so hybrid v1/v2 behavior cannot create
+    // duplicate or contextless events.
+    //
+    // `.optional()` on purpose: this is opt-in scaffolding, and a required var
+    // with no default would brick every Railway environment that has not been
+    // provisioned. The read site
+    // (`isWatchAnalyticsContractV2Enabled` in `src/lib/watch-analytics-contract.ts`)
+    // defaults an absent value to `false`.
+    //
+    // Rollback is `NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2=false` through the
+    // normal deploy path; `NEXT_PUBLIC_*` values are inlined by `next build`,
+    // so it costs a rebuild rather than a restart.
+    NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2: optionalBooleanEnv(),
     // Optional Datadog RUM configuration. Application id + client token gate
     // initialization; when absent, the client component no-ops so local and
     // preview environments can boot before Datadog is provisioned.
@@ -378,6 +414,9 @@ export const env = createEnv({
       process.env.WATCH_SEARCH_DEFAULT_SHADOW_ENABLED,
     NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION:
       process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,
+    NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2: emptyToUndefined(
+      process.env.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2,
+    ),
     NEXT_PUBLIC_DATADOG_APPLICATION_ID:
       process.env.NEXT_PUBLIC_DATADOG_APPLICATION_ID,
     NEXT_PUBLIC_DATADOG_CLIENT_TOKEN:

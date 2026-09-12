@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { act } from "react"
+import { StrictMode, act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -10,6 +10,10 @@ const { mockEnv, navigationState } = vi.hoisted(() => {
     NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID: undefined as
       | string
       | undefined,
+    // `src/lib/routes.ts` reads this at module evaluation time, and the v2
+    // page-view path resolves canonical locations through it.
+    NEXT_PUBLIC_CANONICAL_ORIGIN: "https://www.jesusfilm.org",
+    NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2: undefined as boolean | undefined,
   }
   const navigationState = {
     pathname: "/watch/jesus.html/english.html",
@@ -67,6 +71,10 @@ async function flushEffects() {
 
 function resetMocks() {
   mockEnv.NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID = undefined
+  // Default OFF. Every v1 characterization fixture below therefore runs on the
+  // rollback path, which is what makes them a rollback proof rather than a
+  // description of whichever branch happened to be selected.
+  mockEnv.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2 = undefined
   navigationState.pathname = "/watch/jesus.html/english.html"
   navigationState.queryString = ""
   window.dataLayer = undefined
@@ -252,5 +260,246 @@ describe("GoogleAnalytics", () => {
       result_position: 1,
       language_slug: "english",
     })
+  })
+})
+
+// -----------------------------------------------------------------------------
+// v2 collector (R6-R8, R24, KTD2, KTD6). Flag ON.
+// -----------------------------------------------------------------------------
+
+const MEASUREMENT_ID = "G-TEST12345"
+
+function pageViews(gtag: ReturnType<typeof vi.fn>) {
+  return gtag.mock.calls
+    .filter(([command, name]) => command === "event" && name === "page_view")
+    .map(([, , params]) => (params ?? {}) as Record<string, unknown>)
+}
+
+describe("GoogleAnalytics — v2 explicit SPA page views", () => {
+  beforeEach(() => {
+    mockEnv.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2 = true
+    mockEnv.NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID = MEASUREMENT_ID
+  })
+
+  it("renders no script and no event path when GA is unconfigured", async () => {
+    mockEnv.NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID = undefined
+    const gtag = vi.fn()
+    window.gtag = gtag
+
+    act(() => {
+      root.render(<GoogleAnalytics />)
+    })
+    await flushEffects()
+
+    expect(container.querySelectorAll("[data-next-script]")).toHaveLength(0)
+    expect(gtag).not.toHaveBeenCalled()
+  })
+
+  it("disables the Google tag's automatic page view (R8)", async () => {
+    act(() => {
+      root.render(<GoogleAnalytics />)
+    })
+    await flushEffects()
+
+    const bootstrap = Array.from(
+      container.querySelectorAll("[data-next-script]"),
+    )[1]
+    expect(bootstrap?.textContent).toContain('"send_page_view":false')
+  })
+
+  it("emits one initial page view with canonical standard fields (AE1)", async () => {
+    const gtag = vi.fn()
+    window.gtag = gtag
+    navigationState.pathname = "/watch/jesus.html/english.html"
+
+    act(() => {
+      root.render(<GoogleAnalytics />)
+    })
+    await flushEffects()
+
+    expect(pageViews(gtag)).toHaveLength(1)
+    expect(pageViews(gtag)[0]).toMatchObject({
+      page_path: "/watch/jesus.html",
+      page_location: "https://www.jesusfilm.org/watch/jesus.html",
+      watch_raw_path: "/watch/jesus.html/english.html",
+      watch_route_variant: "explicit_language_compatibility",
+      watch_route_type: "video",
+      watch_entry_intent: "direct",
+    })
+    // v2 owns page views explicitly; it must not also fire v1's `config` call.
+    expect(
+      gtag.mock.calls.filter(([command]) => command === "config"),
+    ).toHaveLength(0)
+  })
+
+  it("emits one more page view for a real client navigation and none for a rerender (AE2)", async () => {
+    const gtag = vi.fn()
+    window.gtag = gtag
+
+    act(() => {
+      root.render(<GoogleAnalytics />)
+    })
+    await flushEffects()
+    expect(pageViews(gtag)).toHaveLength(1)
+
+    navigationState.pathname = "/watch/jesus.html/urdu.html"
+    act(() => {
+      root.render(<GoogleAnalytics />)
+    })
+    await flushEffects()
+
+    expect(pageViews(gtag)).toHaveLength(2)
+    expect(pageViews(gtag)[1]).toMatchObject({
+      page_path: "/watch/jesus.html/urdu.html",
+      watch_raw_path: "/watch/jesus.html/urdu.html",
+      watch_route_variant: "canonical",
+      watch_language_class: "non_english",
+    })
+
+    // Same committed route, rendered again.
+    act(() => {
+      root.render(<GoogleAnalytics />)
+    })
+    await flushEffects()
+    expect(pageViews(gtag)).toHaveLength(2)
+
+    // And a repeated navigation back to the identical path is still one commit.
+    act(() => {
+      root.render(<GoogleAnalytics />)
+    })
+    await flushEffects()
+    expect(pageViews(gtag)).toHaveLength(2)
+  })
+
+  it("emits no duplicate under React Strict Mode effect replay", async () => {
+    const gtag = vi.fn()
+    window.gtag = gtag
+
+    act(() => {
+      root.render(
+        <StrictMode>
+          <GoogleAnalytics />
+        </StrictMode>,
+      )
+    })
+    await flushEffects()
+
+    expect(pageViews(gtag)).toHaveLength(1)
+  })
+
+  it("emits no duplicate when query cleanup rewrites a non-campaign query", async () => {
+    const gtag = vi.fn()
+    window.gtag = gtag
+    navigationState.pathname = "/watch/jesus.html"
+    navigationState.queryString = "_lr=1&t=42"
+
+    act(() => {
+      root.render(<GoogleAnalytics />)
+    })
+    await flushEffects()
+    expect(pageViews(gtag)).toHaveLength(1)
+
+    // `history.replaceState` strips the one-shot params; the committed route
+    // key is unchanged because Watch one-shot params never create an identity.
+    navigationState.queryString = ""
+    act(() => {
+      root.render(<GoogleAnalytics />)
+    })
+    await flushEffects()
+
+    expect(pageViews(gtag)).toHaveLength(1)
+  })
+
+  it("emits one page view for the latest key when two routes commit in one frame", async () => {
+    const gtag = vi.fn()
+    window.gtag = gtag
+
+    act(() => {
+      root.render(<GoogleAnalytics />)
+    })
+    await flushEffects()
+    gtag.mockClear()
+
+    // Two commits batched into a single React turn. The page-view path does
+    // NOT inherit the dispatcher's frame deferral: the deduper and the emit
+    // happen together, so the assertion holds without yielding a frame.
+    act(() => {
+      navigationState.pathname = "/watch/jesus.html/urdu.html"
+      root.render(<GoogleAnalytics />)
+      navigationState.pathname = "/watch/jesus.html/russian.html"
+      root.render(<GoogleAnalytics />)
+    })
+    await flushEffects()
+
+    expect(pageViews(gtag)).toHaveLength(1)
+    expect(pageViews(gtag)[0]).toMatchObject({
+      page_path: "/watch/jesus.html/russian.html",
+    })
+  })
+
+  it("retains only the latest committed route across two changes before readiness", async () => {
+    vi.useFakeTimers()
+    try {
+      // No Google tag yet: the script has not executed.
+      window.gtag = undefined
+      navigationState.pathname = "/watch/jesus.html"
+
+      act(() => {
+        root.render(<GoogleAnalytics />)
+      })
+
+      navigationState.pathname = "/watch/jesus.html/urdu.html"
+      act(() => {
+        root.render(<GoogleAnalytics />)
+      })
+
+      navigationState.pathname = "/watch/jesus.html/russian.html"
+      act(() => {
+        root.render(<GoogleAnalytics />)
+      })
+
+      const gtag = vi.fn()
+      window.gtag = gtag
+
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
+
+      expect(pageViews(gtag)).toHaveLength(1)
+      expect(pageViews(gtag)[0]).toMatchObject({
+        page_path: "/watch/jesus.html/russian.html",
+      })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})
+
+describe("GoogleAnalytics — flag-off rollback (R24)", () => {
+  it("keeps the v1 config-call route path and emits no page_view event", async () => {
+    mockEnv.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2 = false
+    mockEnv.NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID = MEASUREMENT_ID
+    const gtag = vi.fn()
+    window.gtag = gtag
+
+    act(() => {
+      root.render(<GoogleAnalytics />)
+    })
+    await flushEffects()
+
+    navigationState.pathname = "/watch/jesus.html/urdu.html"
+    act(() => {
+      root.render(<GoogleAnalytics />)
+    })
+    await flushEffects()
+
+    expect(pageViews(gtag)).toHaveLength(0)
+    expect(gtag).toHaveBeenCalledWith("config", MEASUREMENT_ID, {
+      page_path: "/watch/jesus.html/urdu.html",
+    })
+    const bootstrap = Array.from(
+      container.querySelectorAll("[data-next-script]"),
+    )[1]
+    expect(bootstrap?.textContent).not.toContain("send_page_view")
   })
 })
