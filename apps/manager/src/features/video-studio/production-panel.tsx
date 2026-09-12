@@ -19,6 +19,7 @@ import {
   type ProductionRun,
 } from "./production-client"
 import dynamic from "next/dynamic"
+const ExistingVoicePanel = dynamic(() => import("./existing-voice-panel"))
 const ExperimentPanel = dynamic(() => import("./experiment-panel"))
 export default function ProductionPanel({
   session,
@@ -35,6 +36,7 @@ export default function ProductionPanel({
     session.getSnapshot,
   )
   const [experimentsOpen, setExperimentsOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [voiceSearch, setVoiceSearch] = useState(""),
     [voiceQuery, setVoiceQuery] = useState("")
   const [runs, setRuns] = useState<ProductionRun[]>([]),
@@ -173,6 +175,27 @@ export default function ProductionPanel({
         <button onClick={() => setVoiceQuery(voiceSearch)}>
           Search voice library
         </button>
+        <button
+          disabled={busy || !state.editable}
+          onClick={() => setImportOpen(!importOpen)}
+        >
+          {importOpen ? "Close voice import" : "Import existing voice"}
+        </button>
+        {importOpen && (
+          <ExistingVoicePanel
+            key={state.document.language}
+            language={state.document.language}
+            onImported={(voice) => {
+              setVoices((current) => [
+                ...current.filter(
+                  (v) => v.reference.versionId !== voice.reference.versionId,
+                ),
+                voice,
+              ])
+              setImportOpen(false)
+            }}
+          />
+        )}
         {state.document.items
           .filter((i) => i.kind !== "audio")
           .map((item) => (
