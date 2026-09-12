@@ -2627,7 +2627,7 @@ describe("FloatingSearchProvider — language videos link", () => {
         `See all videos in ${ISOLATE_START}${expectedLanguage}${ISOLATE_END}`,
       )
       // Glyph still present alongside the label, and it is the shared video-
-      // library glyph — the watch-home "See all video collections" CTA renders
+      // library glyph — the watch-home "See all videos" CTA renders
       // the same one via `WatchLibraryIcon`.
       expect(link?.querySelector("svg")?.getAttribute("class")).toContain(
         "lucide-list-video",
