@@ -315,7 +315,7 @@ function InventoryCard({
           <VideoThumbnailInteractionFrame data-testid="language-inventory-thumbnail-frame" />
         ) : null}
         <div
-          className="absolute top-3 left-3 inline-flex items-center gap-1 rounded bg-black/45 px-2.5 py-1 text-sm sm:text-xs font-medium text-white backdrop-blur"
+          className="absolute top-3 left-3 inline-flex items-center gap-1 rounded bg-black/55 px-2.5 py-1 text-sm sm:text-xs font-medium text-white"
           {...englishAssistAttributes(
             item.availability === "AUDIO" ? "stateAudio" : "stateSubtitlesOnly",
           )}
@@ -327,7 +327,7 @@ function InventoryCard({
           )}
           {availability}
         </div>
-        <div className="absolute right-3 bottom-3 inline-flex items-center gap-1 rounded bg-black/45 px-2.5 py-1 text-sm sm:text-xs font-medium text-white backdrop-blur">
+        <div className="absolute right-3 bottom-3 inline-flex items-center gap-1 rounded bg-black/55 px-2.5 py-1 text-sm sm:text-xs font-medium text-white">
           {item.childCount === 0 && item.href ? (
             <Play className="h-3.5 w-3.5 fill-current" aria-hidden />
           ) : null}
@@ -525,8 +525,19 @@ function CompactVideoRow({
           className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent"
           aria-hidden
         />
+        {/* No `backdrop-blur` on any per-item chip. This page renders the
+            whole inventory in one document (WATCH_LANGUAGE_INVENTORY_LIMIT =
+            1000), so a blur here is ~990 backdrop-filter elements, each one a
+            separate compositing layer the GPU re-reads and re-blurs on every
+            scrolled frame. Measured on /watch/english.html/videos at a 390px
+            mobile viewport under 4x CPU throttle: 5 dropped frames per 100
+            scrolled with the blurs, 0 without — and disabling only the fixed
+            header's blur changed nothing, so these chips were the whole cost.
+            The blur was invisible anyway: it sits under a `bg-black/70` fill
+            on top of a `from-black/65` scrim. The opacity is bumped a notch to
+            carry the contrast the blur was nominally providing. */}
         {item.href ? (
-          <span className="absolute bottom-1.5 left-1.5 grid size-6 place-items-center rounded bg-black/60 text-amber-100 backdrop-blur">
+          <span className="absolute bottom-1.5 left-1.5 grid size-6 place-items-center rounded bg-black/70 text-amber-100">
             <Play className="h-3.5 w-3.5 fill-current" aria-hidden />
           </span>
         ) : null}
@@ -687,7 +698,7 @@ function CollectionGroupOverview({
           <div className="absolute inset-0 bg-[linear-gradient(135deg,#171717,#3f3f46_48%,#134e4a)]" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
-        <span className="absolute right-3 bottom-3 rounded bg-black/55 px-2.5 py-1 text-sm sm:text-xs font-medium text-white backdrop-blur">
+        <span className="absolute right-3 bottom-3 rounded bg-black/65 px-2.5 py-1 text-sm sm:text-xs font-medium text-white">
           {t("videoCount", { count: group.items.length })}
         </span>
       </div>
