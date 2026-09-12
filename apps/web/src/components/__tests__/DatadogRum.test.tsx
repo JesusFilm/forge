@@ -45,6 +45,7 @@ import DatadogRum, {
   reportDatadogRumAction,
   reportDatadogRumError,
 } from "@/components/DatadogRum"
+import { WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION } from "@/lib/watch-search-analytics-contract"
 
 let container: HTMLDivElement
 let root: Root
@@ -66,6 +67,7 @@ async function flushEffects() {
 beforeEach(() => {
   vi.clearAllMocks()
   resetMockEnv()
+  window.gtag = undefined
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -77,6 +79,7 @@ afterEach(() => {
   })
   container.remove()
   document.body.innerHTML = ""
+  window.gtag = undefined
   vi.clearAllMocks()
 })
 
@@ -203,6 +206,97 @@ describe("DatadogRum", () => {
         "watch_search.search_request_id": "search_12345678",
       },
     )
+  })
+
+  it("projects only the allowlisted search-click parameters onto the GA wire", () => {
+    const gtag = vi.fn()
+    window.gtag = gtag
+    // The real RUM context built by buildWatchSearchResultClickRumContext for a
+    // watch_search.result_clicked action. Datadog is approved for all of it
+    // (R18); GA is not (R13).
+    const rumContext = {
+      "watch_search.result_position": 3,
+      "watch_search.result_source": "watch-search",
+      "watch_search.result_type": "video",
+      "watch_search.result_id": "5fc705b9-1b3b-4a58-abef-755b98457de6",
+      "watch_search.result_slug": "jesus-is-brought-to-pilate",
+      "watch_search.result_title": "Jesus Is Brought to Pilate",
+      "watch_search.search_request_id": "search_12345678",
+      "watch_search.route_language_slug": "english",
+      "watch_search.search_language_slug": "urdu",
+      "watch_search.search_language_english_name": "Urdu",
+    }
+
+    reportDatadogRumAction(WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION, rumContext)
+
+    // R18: Datadog keeps the unchanged name and the full diagnostic context.
+    expect(datadogRumMock.addAction).toHaveBeenCalledTimes(1)
+    expect(datadogRumMock.addAction).toHaveBeenCalledWith(
+      "watch_search.result_clicked",
+      rumContext,
+    )
+
+    // R25: unchanged legacy wire name, unchanged event count.
+    expect(gtag).toHaveBeenCalledTimes(1)
+    // R13/R18: exact object equality, so any unallowlisted parameter fails.
+    expect(gtag).toHaveBeenCalledWith("event", "search_result_clicked", {
+      result_position: 3,
+      result_source: "watch-search",
+      result_type: "video",
+    })
+
+    const gaParams = gtag.mock.calls[0]?.[2] as Record<string, unknown>
+    for (const forbidden of [
+      "result_id",
+      "result_slug",
+      "result_title",
+      "request_id",
+      "search_request_id",
+      "route_language_slug",
+      "language_slug",
+      "language_english_name",
+      "search_language_english_name",
+    ]) {
+      expect(gaParams).not.toHaveProperty(forbidden)
+    }
+  })
+
+  it("sends nothing to GA for an action with no registered GA projection", () => {
+    const gtag = vi.fn()
+    window.gtag = gtag
+
+    reportDatadogRumAction("watch_recommendation.card_clicked", {
+      "watch_recommendation.item_id": "item-1",
+      "watch_recommendation.position": 2,
+    })
+
+    expect(datadogRumMock.addAction).toHaveBeenCalledWith(
+      "watch_recommendation.card_clicked",
+      {
+        "watch_recommendation.item_id": "item-1",
+        "watch_recommendation.position": 2,
+      },
+    )
+    // An action name that collides with Object.prototype must not resolve to a
+    // projection either.
+    reportDatadogRumAction("toString", { "watch_search.result_position": 1 })
+    reportDatadogRumAction("constructor", {
+      "watch_search.result_position": 1,
+    })
+
+    expect(gtag).not.toHaveBeenCalled()
+  })
+
+  it("still emits the GA search-click event when no allowlisted parameter is present", () => {
+    const gtag = vi.fn()
+    window.gtag = gtag
+
+    reportDatadogRumAction(WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION, {
+      "watch_search.search_request_id": "search_12345678",
+    })
+
+    expect(gtag).toHaveBeenCalledTimes(1)
+    expect(gtag).toHaveBeenCalledWith("event", "search_result_clicked", {})
   })
 
   it("identifies signed-in users in RUM without image data", () => {

@@ -129,6 +129,34 @@ describe("GoogleAnalytics", () => {
     )
   })
 
+  // v1 CHARACTERIZATION. The assertions below freeze the collector behavior the
+  // v2 page-view path (R6-R8) must preserve or deliberately supersede. They
+  // describe what the code does today, not what the contract wants.
+  it("leaves the initial page view to the Google tag and emits no manual page event (v1)", async () => {
+    const gtag = vi.fn()
+    window.gtag = gtag
+    mockEnv.NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID = "G-TEST12345"
+
+    act(() => {
+      root.render(<GoogleAnalytics />)
+    })
+    await flushEffects()
+
+    const bootstrap = Array.from(
+      container.querySelectorAll("[data-next-script]"),
+    )[1]
+    // v1 bootstraps with a bare `config` and no options object, so GA4's
+    // automatic `send_page_view` fires for the raw browser URL. R8 requires v2
+    // to set `send_page_view: false` here; pinning its absence makes that a
+    // visible change rather than a silent one.
+    expect(bootstrap?.textContent).toContain(
+      "window.gtag('config', \"G-TEST12345\")",
+    )
+    expect(bootstrap?.textContent).not.toContain("send_page_view")
+    // No manual page view is emitted from React on the initial commit.
+    expect(gtag).not.toHaveBeenCalled()
+  })
+
   it("reports client-side route changes to GA4", async () => {
     const gtag = vi.fn()
     window.gtag = gtag
@@ -151,6 +179,60 @@ describe("GoogleAnalytics", () => {
     expect(gtag).toHaveBeenCalledWith("config", "G-TEST12345", {
       page_path: "/watch/languages.html?source=header",
     })
+    // v1 route changes are `config` calls, not `event`/`page_view` calls, and
+    // the query string is part of the reported page identity (superseded by
+    // R7).
+    expect(gtag).toHaveBeenCalledTimes(1)
+    expect(
+      gtag.mock.calls.filter(([command]) => command === "event"),
+    ).toHaveLength(0)
+  })
+
+  it("emits no additional config call for a same-path rerender (v1)", async () => {
+    const gtag = vi.fn()
+    window.gtag = gtag
+    mockEnv.NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID = "G-TEST12345"
+
+    act(() => {
+      root.render(<GoogleAnalytics />)
+    })
+    await flushEffects()
+
+    navigationState.pathname = "/watch/languages.html"
+    act(() => {
+      root.render(<GoogleAnalytics />)
+    })
+    await flushEffects()
+    expect(gtag).toHaveBeenCalledTimes(1)
+
+    // Same committed path, rendered again.
+    act(() => {
+      root.render(<GoogleAnalytics />)
+    })
+    await flushEffects()
+
+    expect(gtag).toHaveBeenCalledTimes(1)
+  })
+
+  it("pins the legacy wire names every v1 Watch event reaches GA4 under", () => {
+    const gtag = vi.fn()
+    window.gtag = gtag
+
+    // R25: these four strings are external contracts (GA4 key-event settings
+    // and existing reports). v2 must not rename them.
+    reportGoogleAnalyticsEvent("watch_download_intent", {})
+    reportGoogleAnalyticsEvent("watch_language_picker_opened", {})
+    reportGoogleAnalyticsEvent("watch_share_opened", {})
+    reportGoogleAnalyticsEvent("watch_search.result_clicked", {})
+
+    expect(
+      gtag.mock.calls.map(([command, eventName]) => [command, eventName]),
+    ).toEqual([
+      ["event", "download_intent"],
+      ["event", "language_picker_opened"],
+      ["event", "share_opened"],
+      ["event", "search_result_clicked"],
+    ])
   })
 
   it("reports custom events with GA4-safe names and primitive params", () => {

@@ -6,6 +6,7 @@ import { useEffect, useRef } from "react"
 
 import { env } from "@/env"
 import { reportGoogleAnalyticsEvent } from "@/components/GoogleAnalytics"
+import { WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION } from "@/lib/watch-search-analytics-contract"
 
 const DATADOG_SERVICE = "forge-web"
 
@@ -55,11 +56,57 @@ export function reportDatadogRumError(
   safeReportDatadogRum("error", () => datadogRum.addError(error, context))
 }
 
+/**
+ * Per-action Google Analytics projection for RUM actions (R13, R18, KTD4).
+ *
+ * Datadog receives the full, approved diagnostic context for every action. GA
+ * receives ONLY the keys listed here, because the GA normalizer strips app
+ * prefixes and would otherwise forward content titles, result/request IDs and
+ * typed language names to Google.
+ *
+ * An action absent from this map sends NOTHING to GA. Adding an entry is the
+ * deliberate act of putting an event on the GA wire; adding a key to an entry
+ * is the deliberate act of putting that value in front of Google. Keys are the
+ * pre-normalization RUM context keys.
+ */
+const GOOGLE_ANALYTICS_ACTION_PARAM_ALLOWLIST: Readonly<
+  Record<string, readonly string[]>
+> = {
+  [WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION]: [
+    "watch_search.result_position",
+    "watch_search.result_source",
+    "watch_search.result_type",
+  ],
+}
+
+function reportGoogleAnalyticsActionProjection(
+  name: string,
+  context: Record<string, unknown>,
+) {
+  const allowedKeys = Object.prototype.hasOwnProperty.call(
+    GOOGLE_ANALYTICS_ACTION_PARAM_ALLOWLIST,
+    name,
+  )
+    ? GOOGLE_ANALYTICS_ACTION_PARAM_ALLOWLIST[name]
+    : undefined
+  if (allowedKeys == null) return
+
+  const params: Record<string, unknown> = {}
+  for (const key of allowedKeys) {
+    if (!Object.prototype.hasOwnProperty.call(context, key)) continue
+    params[key] = context[key]
+  }
+
+  // The event still fires with zero parameters when none are present: R25
+  // requires the legacy `search_result_clicked` count to stay unchanged.
+  reportGoogleAnalyticsEvent(name, params)
+}
+
 export function reportDatadogRumAction(
   name: string,
   context: Record<string, unknown>,
 ) {
-  reportGoogleAnalyticsEvent(name, context)
+  reportGoogleAnalyticsActionProjection(name, context)
   safeReportDatadogRum("action", () => datadogRum.addAction(name, context))
 }
 
