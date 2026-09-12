@@ -713,9 +713,9 @@
   "WatchUnavailableLanguage": {
     "metadataTitle": "Тілдік нұсқа қолжетімсіз",
     "eyebrow": "Тілдік нұсқа қолжетімсіз",
-    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> тілінде қолжетімсіз",
+    "title": "<contentTitle>{title}</contentTitle>: <languageName>«{language}»</languageName> нұсқасы жоқ",
     "actionsLabel": "Қолжетімді көру нұсқалары",
-    "browseInLanguage": "{language} тіліндегі бейнелерді шолу",
+    "browseInLanguage": "Барлық бейнелер: «{language}»",
     "backToSearch": "Іздеуге оралу",
     "audioVersionsTitle": "Басқа аудио нұсқалар",
     "audioVersionsDescription": "Бұл бейнені көруді жалғастыру үшін аудио тілін таңдаңыз.",

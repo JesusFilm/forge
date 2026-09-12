@@ -713,9 +713,9 @@
   "WatchUnavailableLanguage": {
     "metadataTitle": "Tungumálaútgáfa ekki í boði",
     "eyebrow": "Tungumálaútgáfa ekki í boði",
-    "title": "<contentTitle>{title}</contentTitle> er ekki í boði á <languageName>{language}</languageName>",
+    "title": "<contentTitle>{title}</contentTitle>: engin útgáfa á tungumálinu <languageName>„{language}“</languageName>",
     "actionsLabel": "Tiltækir áhorfsvalkostir",
-    "browseInLanguage": "Skoða myndskeið á {language}",
+    "browseInLanguage": "Öll myndbönd á tungumálinu „{language}“",
     "backToSearch": "Til baka í leit",
     "audioVersionsTitle": "Aðrar hljóðútgáfur",
     "audioVersionsDescription": "Veldu hljóðtungumál til að halda áfram að horfa á þetta myndskeið.",

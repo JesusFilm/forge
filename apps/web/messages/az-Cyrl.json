@@ -715,7 +715,7 @@
     "eyebrow": "Дил версијасы мөвҹуд дејил",
     "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> дилиндә мөвҹуд дејил",
     "actionsLabel": "Мөвҹуд бахыш сечимләри",
-    "browseInLanguage": "{language} дилиндә видеолара бахын",
+    "browseInLanguage": "Бүтүн видеолар {language} дилиндә",
     "backToSearch": "Ахтарыша гајыт",
     "audioVersionsTitle": "Башга аудио версијалары",
     "audioVersionsDescription": "Бу видеону изләмәјә давам етмәк үчүн аудио дили сечин.",

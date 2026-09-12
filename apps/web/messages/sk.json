@@ -713,9 +713,9 @@
   "WatchUnavailableLanguage": {
     "metadataTitle": "Jazyková verzia nie je dostupná",
     "eyebrow": "Jazyková verzia nie je dostupná",
-    "title": "<contentTitle>{title}</contentTitle> nie je dostupné v jazyku <languageName>{language}</languageName>",
+    "title": "<contentTitle>{title}</contentTitle>: verzia v jazyku <languageName>„{language}“</languageName> nie je dostupná",
     "actionsLabel": "Dostupné možnosti sledovania",
-    "browseInLanguage": "Prehliadať videá v jazyku {language}",
+    "browseInLanguage": "Všetky videá v jazyku „{language}“",
     "backToSearch": "Späť na vyhľadávanie",
     "audioVersionsTitle": "Ďalšie zvukové verzie",
     "audioVersionsDescription": "Vyberte jazyk zvuku a pokračujte v sledovaní videa.",

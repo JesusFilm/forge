@@ -713,9 +713,9 @@
   "WatchUnavailableLanguage": {
     "metadataTitle": "Jezikovna različica ni na voljo",
     "eyebrow": "Jezikovna različica ni na voljo",
-    "title": "<contentTitle>{title}</contentTitle> ni na voljo v jeziku <languageName>{language}</languageName>",
+    "title": "<contentTitle>{title}</contentTitle>: različica v jeziku <languageName>»{language}«</languageName> ni na voljo",
     "actionsLabel": "Razpoložljive možnosti ogleda",
-    "browseInLanguage": "Brskaj po videoposnetkih v jeziku {language}",
+    "browseInLanguage": "Vsi videoposnetki v jeziku »{language}«",
     "backToSearch": "Nazaj na iskanje",
     "audioVersionsTitle": "Druge zvočne različice",
     "audioVersionsDescription": "Izberite jezik zvoka in nadaljujte ogled videoposnetka.",
