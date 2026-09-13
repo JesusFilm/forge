@@ -51,6 +51,14 @@ playback and seeded-recommendation browser checks passed, but this is not a full
 production sign-off. `feat-495` owns runtime investigation before restoring the Web
 feature. See `docs/operations/user-recommendations-rollout-2026-09-10.md`.
 
+The 14 September restoration reapplies the focused Web patch to current main,
+preserving later homepage and analytics work. The full Web suite and production
+build pass; desktop/mobile journeys verify six distinct cards, placement,
+full-video playback navigation and refresh on return. See
+`docs/operations/user-recommendations-restoration-2026-09-14.md` for current
+validation and deployment boundaries. Serving flags remain default-off, and
+production coverage/promotion remains open.
+
 ## Entry Points — Read These First
 
 1. `docs/plans/2026-09-10-001-feat-source-free-user-recommendations-plan.md`

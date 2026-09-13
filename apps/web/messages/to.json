@@ -527,7 +527,8 @@
     "previousVideoPreview": "Preview ʻo e vitio ki muʻa",
     "nextVideoPreview": "Preview ʻo e vitio hoko",
     "mediaCollection": "Kolekisoni ʻo e media",
-    "scrollToVideo": "Loloa ki he vitio {title}"
+    "scrollToVideo": "Loloa ki he vitio {title}",
+    "forYou": "Maʻau"
   },
   "WatchFooter": {
     "home": "Peesi kamata ʻo e Jesus Film Project",

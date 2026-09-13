@@ -527,7 +527,8 @@
     "previousVideoPreview": "Preview bu wideo bu jiitu",
     "nextVideoPreview": "Preview bu wideo bu topp",
     "mediaCollection": "Collection de médias",
-    "scrollToVideo": "Faire défiler jusqu’à la vidéo {title}"
+    "scrollToVideo": "Faire défiler jusqu’à la vidéo {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Kër Jesus Film Project",

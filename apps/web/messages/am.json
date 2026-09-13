@@ -527,7 +527,8 @@
     "previousVideoPreview": "የቀደመ ቪዲዮ ቅድመ እይታ",
     "nextVideoPreview": "የሚቀጥለው ቪዲዮ ቅድመ እይታ",
     "mediaCollection": "የሚዲያ ስብስብ",
-    "scrollToVideo": "ወደ {title} ቪዲዮ ይሸብልሉ"
+    "scrollToVideo": "ወደ {title} ቪዲዮ ይሸብልሉ",
+    "forYou": "ለእርስዎ"
   },
   "WatchFooter": {
     "home": "Jesus Film Project መነሻ",

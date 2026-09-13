@@ -527,7 +527,8 @@
     "previousVideoPreview": "មើលវីដេអូមុនជាមុន",
     "nextVideoPreview": "មើលវីដេអូបន្ទាប់ជាមុន",
     "mediaCollection": "កម្រងមេឌៀ",
-    "scrollToVideo": "រំកិលទៅកាន់វីដេអូ {title}"
+    "scrollToVideo": "រំកិលទៅកាន់វីដេអូ {title}",
+    "forYou": "សម្រាប់អ្នក"
   },
   "WatchFooter": {
     "home": "ទំព័រដើម Jesus Film Project",

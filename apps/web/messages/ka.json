@@ -527,7 +527,8 @@
     "previousVideoPreview": "წინა ვიდეოს წინასწარი ჩვენება",
     "nextVideoPreview": "შემდეგი ვიდეოს წინასწარი ჩვენება",
     "mediaCollection": "მედია კოლექცია",
-    "scrollToVideo": "გადადი {title} ვიდეოზე"
+    "scrollToVideo": "გადადი {title} ვიდეოზე",
+    "forYou": "თქვენთვის"
   },
   "WatchFooter": {
     "home": "Jesus Film Project-ის მთავარი გვერდი",

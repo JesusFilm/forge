@@ -527,7 +527,8 @@
     "previousVideoPreview": "Vista previa do vídeo anterior",
     "nextVideoPreview": "Vista previa do seguinte vídeo",
     "mediaCollection": "Colección de medios",
-    "scrollToVideo": "Desprázate ata o vídeo de {title}"
+    "scrollToVideo": "Desprázate ata o vídeo de {title}",
+    "forYou": "Para ti"
   },
   "WatchFooter": {
     "home": "Inicio de Jesus Film Project",

@@ -527,7 +527,8 @@
     "previousVideoPreview": "Вӧлі видео предпросмотр",
     "nextVideoPreview": "Выль видео предпросмотр",
     "mediaCollection": "Медиа коллекция",
-    "scrollToVideo": "{title} видеоӧ кужны"
+    "scrollToVideo": "{title} видеоӧ кужны",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project главная",

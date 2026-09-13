@@ -527,7 +527,8 @@
     "previousVideoPreview": "Fyrra videobrotsforskot",
     "nextVideoPreview": "Næsta videobrotsforskot",
     "mediaCollection": "Miðlasavn",
-    "scrollToVideo": "Rulla til videobrotið {title}"
+    "scrollToVideo": "Rulla til videobrotið {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project forsíða",

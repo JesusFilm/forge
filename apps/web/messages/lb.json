@@ -527,7 +527,8 @@
     "previousVideoPreview": "Virschau vum viregte Video",
     "nextVideoPreview": "Virschau vum nächste Video",
     "mediaCollection": "Mediekollektioun",
-    "scrollToVideo": "Zum Video {title} rullen"
+    "scrollToVideo": "Zum Video {title} rullen",
+    "forYou": "Fir dech"
   },
   "WatchFooter": {
     "home": "Jesus Film Project Startsäit",

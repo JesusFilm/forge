@@ -343,7 +343,8 @@
     "nextVideoPreview": "預覽下一部影片",
     "featured": "精選",
     "mediaCollection": "媒體合集",
-    "scrollToVideo": "捲動至影片「{title}」"
+    "scrollToVideo": "捲動至影片「{title}」",
+    "forYou": "為你推薦"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "語言",

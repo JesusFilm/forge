@@ -527,7 +527,8 @@
     "previousVideoPreview": "Preview video q'axinaq",
     "nextVideoPreview": "Preview video jun chik",
     "mediaCollection": "Colección de medios",
-    "scrollToVideo": "Desplázate al video {title}"
+    "scrollToVideo": "Desplázate al video {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project takya'j",

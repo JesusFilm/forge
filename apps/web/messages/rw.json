@@ -527,7 +527,8 @@
     "previousVideoPreview": "Udufoto tw'ibanze twa video ibanza",
     "nextVideoPreview": "Udufoto tw'ibanze twa video ikurikira",
     "mediaCollection": "Icyegeranyo cy'ibitangazamakuru",
-    "scrollToVideo": "Kanda hasi werekeza kuri video ya {title}"
+    "scrollToVideo": "Kanda hasi werekeza kuri video ya {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Urupapuro rwa mbere rwa Jesus Film Project",

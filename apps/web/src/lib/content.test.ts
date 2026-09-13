@@ -214,53 +214,51 @@ describe("resolveWatchPage", () => {
     })
   })
 
-  it("retries once with the legacy fragment only for the category typename validation error", async () => {
-    const validationError = Object.assign(
-      new Error('Unknown type "WatchHomeCategoryRailBlock".'),
-      {
-        errors: [
-          {
-            message:
-              'Unknown type "WatchHomeCategoryRailBlock". Did you mean "WatchHomeHeroBlock"?',
-            extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
-          },
-        ],
-      },
-    )
-    queryMock.mockRejectedValueOnce(validationError).mockResolvedValueOnce({
-      data: {
-        watchSetting: {
-          documentId: "watch-settings-1",
-          homepageExperience: {
-            __typename: "ExperienceLocale",
-            id: "exp-home-1",
-            slug: "home",
-            title: "Home",
-            blocks: [],
-          },
-          defaultTemplateExperience: null,
+  it.each(["WatchHomeCategoryRailBlock", "HomepageRecommendationsBlock"])(
+    "retries once with the legacy fragment only for the block typename validation error (%s)",
+    async (blockType) => {
+      const validationError = Object.assign(
+        new Error(`Unknown type "${blockType}".`),
+        {
+          errors: [
+            {
+              message: `Unknown type "${blockType}". Did you mean "WatchHomeHeroBlock"?`,
+              extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+            },
+          ],
         },
-      },
-    })
+      )
+      queryMock.mockRejectedValueOnce(validationError).mockResolvedValueOnce({
+        data: {
+          watchSetting: {
+            documentId: "watch-settings-1",
+            homepageExperience: {
+              __typename: "ExperienceLocale",
+              id: "exp-home-1",
+              slug: "home",
+              title: "Home",
+              blocks: [],
+            },
+            defaultTemplateExperience: null,
+          },
+        },
+      })
 
-    const { resolveWatchPage } = await import("./content")
-    const result = await resolveWatchPage("en")
+      const { resolveWatchPage } = await import("./content")
+      const result = await resolveWatchPage("en")
 
-    expect(queryMock).toHaveBeenCalledTimes(2)
-    expect(print(queryMock.mock.calls[0][0].query)).toContain(
-      "WatchHomeCategoryRailBlock",
-    )
-    expect(print(queryMock.mock.calls[1][0].query)).not.toContain(
-      "WatchHomeCategoryRailBlock",
-    )
-    expect(result).toMatchObject({
-      error: null,
-      data: {
-        kind: "experience",
-        watchHomeCategoryRailCompatibility: "legacy-schema",
-      },
-    })
-  })
+      expect(queryMock).toHaveBeenCalledTimes(2)
+      expect(print(queryMock.mock.calls[0][0].query)).toContain(blockType)
+      expect(print(queryMock.mock.calls[1][0].query)).not.toContain(blockType)
+      expect(result).toMatchObject({
+        error: null,
+        data: {
+          kind: "experience",
+          watchHomeCategoryRailCompatibility: "legacy-schema",
+        },
+      })
+    },
+  )
 
   it("also falls back for an Admin that has the block type but predates the tiles field", async () => {
     // Web and Admin deploy from the same merge but not atomically. The
@@ -330,31 +328,34 @@ describe("resolveWatchPage", () => {
     expect(result.error).not.toBeNull()
   })
 
-  it("never retries the legacy query more than once", async () => {
-    const unknownTypeError = {
-      errors: [
-        {
-          message: 'Unknown type "WatchHomeCategoryRailBlock".',
-          extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
-        },
-      ],
-    }
-    queryMock.mockResolvedValueOnce(unknownTypeError).mockResolvedValueOnce({
-      errors: [
-        {
-          message: "Legacy query also failed",
-          extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
-        },
-      ],
-    })
+  it.each(["WatchHomeCategoryRailBlock", "HomepageRecommendationsBlock"])(
+    "never retries the legacy query more than once (%s)",
+    async (blockType) => {
+      const unknownTypeError = {
+        errors: [
+          {
+            message: `Unknown type "${blockType}".`,
+            extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+          },
+        ],
+      }
+      queryMock.mockResolvedValueOnce(unknownTypeError).mockResolvedValueOnce({
+        errors: [
+          {
+            message: "Legacy query also failed",
+            extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+          },
+        ],
+      })
 
-    const { resolveWatchPage } = await import("./content")
-    const result = await resolveWatchPage("en")
+      const { resolveWatchPage } = await import("./content")
+      const result = await resolveWatchPage("en")
 
-    expect(queryMock).toHaveBeenCalledTimes(2)
-    expect(result.data).toBeNull()
-    expect(result.error?.message).toBe("Legacy query also failed")
-  })
+      expect(queryMock).toHaveBeenCalledTimes(2)
+      expect(result.data).toBeNull()
+      expect(result.error?.message).toBe("Legacy query also failed")
+    },
+  )
 
   it.each([
     ["network", "reject", new Error("fetch failed")],
@@ -473,56 +474,57 @@ describe("resolveWatchPage", () => {
     })
   })
 
-  it("reuses a proven legacy schema for the explicit experience lookup", async () => {
-    const validationError = Object.assign(
-      new Error('Unknown type "WatchHomeCategoryRailBlock".'),
-      {
-        errors: [
-          {
-            message: 'Unknown type "WatchHomeCategoryRailBlock".',
-            extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+  it.each(["WatchHomeCategoryRailBlock", "HomepageRecommendationsBlock"])(
+    "reuses a proven legacy schema for the explicit experience lookup (%s)",
+    async (blockType) => {
+      const validationError = Object.assign(
+        new Error(`Unknown type "${blockType}".`),
+        {
+          errors: [
+            {
+              message: `Unknown type "${blockType}".`,
+              extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+            },
+          ],
+        },
+      )
+      queryMock
+        .mockRejectedValueOnce(validationError)
+        .mockResolvedValueOnce({
+          data: {
+            watchSetting: {
+              documentId: "watch-settings-1",
+              homepageExperience: null,
+              defaultTemplateExperience: null,
+            },
           },
-        ],
-      },
-    )
-    queryMock
-      .mockRejectedValueOnce(validationError)
-      .mockResolvedValueOnce({
+        })
+        .mockResolvedValueOnce({ data: { videoBySlug: null } })
+        .mockResolvedValueOnce({
+          data: {
+            experienceBySlug: {
+              __typename: "ExperienceLocale",
+              id: "exp-1",
+              slug: "christmas",
+              title: "Christmas",
+            },
+          },
+        })
+
+      const { resolveWatchPage } = await import("./content")
+      const result = await resolveWatchPage("en", "christmas")
+
+      expect(queryMock).toHaveBeenCalledTimes(4)
+      expect(print(queryMock.mock.calls[3][0].query)).not.toContain(blockType)
+      expect(result).toMatchObject({
+        error: null,
         data: {
-          watchSetting: {
-            documentId: "watch-settings-1",
-            homepageExperience: null,
-            defaultTemplateExperience: null,
-          },
+          kind: "experience",
+          experience: { slug: "christmas" },
         },
       })
-      .mockResolvedValueOnce({ data: { videoBySlug: null } })
-      .mockResolvedValueOnce({
-        data: {
-          experienceBySlug: {
-            __typename: "ExperienceLocale",
-            id: "exp-1",
-            slug: "christmas",
-            title: "Christmas",
-          },
-        },
-      })
-
-    const { resolveWatchPage } = await import("./content")
-    const result = await resolveWatchPage("en", "christmas")
-
-    expect(queryMock).toHaveBeenCalledTimes(4)
-    expect(print(queryMock.mock.calls[3][0].query)).not.toContain(
-      "WatchHomeCategoryRailBlock",
-    )
-    expect(result).toMatchObject({
-      error: null,
-      data: {
-        kind: "experience",
-        experience: { slug: "christmas" },
-      },
-    })
-  })
+    },
+  )
 
   it("uses the default template for video slugs before same-slug experience lookup", async () => {
     queryMock

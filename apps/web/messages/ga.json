@@ -527,7 +527,8 @@
     "previousVideoPreview": "Réamhamharc an fhíseáin roimhe seo",
     "nextVideoPreview": "Réamhamharc an chéad fhíseáin eile",
     "mediaCollection": "Bailiúchán meán",
-    "scrollToVideo": "Scrollaigh go físeán {title}"
+    "scrollToVideo": "Scrollaigh go físeán {title}",
+    "forYou": "Duitse"
   },
   "WatchFooter": {
     "home": "Baile Jesus Film Project",

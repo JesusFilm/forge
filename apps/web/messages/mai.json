@@ -527,7 +527,8 @@
     "previousVideoPreview": "पछिला वीडियो पूर्वावलोकन",
     "nextVideoPreview": "अगिला वीडियो पूर्वावलोकन",
     "mediaCollection": "मीडिया संग्रह",
-    "scrollToVideo": "{title} वीडियो दिस स्क्रोल करू"
+    "scrollToVideo": "{title} वीडियो दिस स्क्रोल करू",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project होम",

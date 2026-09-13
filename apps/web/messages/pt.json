@@ -343,7 +343,8 @@
     "nextVideoPreview": "Pré-visualização do próximo vídeo",
     "featured": "Em destaque",
     "mediaCollection": "Coleção de media",
-    "scrollToVideo": "Deslocar até ao vídeo {title}"
+    "scrollToVideo": "Deslocar até ao vídeo {title}",
+    "forYou": "Recomendados para você"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Idiomas",
