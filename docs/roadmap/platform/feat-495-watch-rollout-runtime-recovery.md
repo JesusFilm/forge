@@ -96,7 +96,13 @@ deployment. Broader evidence-transport reliability remains owned by `feat-464`.
   socket, retaining existing deadlines, fail-closed behavior and retry backoff.
 - Current primary-host traces also show Admin accepting playback after Web's
   3-second timeout. A simultaneous homepage request has hundreds of per-video
-  preferred-dub lookups. Batching is a separate repair candidate requiring
-  PostgreSQL parity and concurrent-load evidence; it is not yet a proven cause.
+  preferred-dub lookups. The bounded loader reduces actual homepage SQL from
+  1,337 to 40; four concurrent requests reduce peak connection queueing from
+  1,003 to 19 on the same local pool. PostgreSQL selection tests and exact
+  multilingual GraphQL parity pass, alongside the full Admin suite and build.
+  This reproduces avoidable contention, not the complete historical incident.
+- Redis cancellation fix #2276 is merged. Production observation and the
+  separate Admin batching release remain open; homepage activation remains
+  owned by the curation and feature tickets.
 - Fixed-window evidence and remaining deployment checks:
   `docs/operations/watch-runtime-diagnosis-2026-09-14.md`.

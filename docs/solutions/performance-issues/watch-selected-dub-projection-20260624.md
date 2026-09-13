@@ -1,3 +1,16 @@
+---
+title: "Keep Watch preferred-dub projections bounded across lists"
+date: "2026-06-24"
+last_updated: "2026-09-14"
+module: "apps/admin Watch GraphQL"
+problem_type: "performance_issue"
+tags:
+  - "watch"
+  - "dataloader"
+  - "postgresql"
+  - "connection-pool"
+---
+
 # Watch Selected Dub Projection
 
 ## Summary
@@ -52,3 +65,26 @@ App-wide `@forge/web` and `@forge/admin` typechecks were not clean in this
 workspace because of pre-existing missing dependency / generated-state issues
 (`next-intl`, `@mastra/*`, stale `.next` validators). Focused tests, schema
 print, generated GraphQL typecheck, and targeted lints passed.
+
+## List queries still need batching — September 2026
+
+A one-row field can still cause severe fanout when a homepage asks for hundreds
+of videos and children. The actual homepage query performed 1,337 SQL statements
+through independent `getPreferredPlayableDub` calls. Four concurrent reads
+queued up to 1,003 operations behind the same ten-connection pool.
+
+`graphql/loaders.ts` now groups preferred-dub keys by language and Pothos
+selection, with a request-local cache and a maximum batch of 100. The service
+`services/preferred-playable-dub.service.ts` selects winning IDs in SQL before
+hydrating their requested relations. Preserve exact slug/BCP-47, primary and
+longest fallback order, including duration-null ordering and ID ties. Recheck
+publication, deletion and nonempty HLS during hydration because a selected dub
+can be withdrawn between the two reads.
+
+Measure actual emitted SQL, not only Prisma method invocations: Pothos fallback
+checks may call ORM methods that issue no SQL. Verify the complete GraphQL
+response as well as selected IDs, preserving ordered arrays in comparisons.
+The final loader emits 40 SQL statements per homepage on the measured fixture.
+Bounded concurrent reads substantially reduce queueing but retain multi-second
+tails; they do not prove all playback timeouts are fixed. See
+`docs/operations/watch-runtime-diagnosis-2026-09-14.md` for measured limits.

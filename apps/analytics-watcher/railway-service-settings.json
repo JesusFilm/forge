@@ -1,0 +1,13 @@
+{
+  "dockerfilePath": "apps/analytics-watcher/Dockerfile",
+  "cronSchedule": "*/5 * * * *",
+  "restartPolicyType": "NEVER",
+  "numReplicas": 1,
+  "startCommand": "sh apps/analytics-watcher/start.sh",
+  "watchPatterns": [
+    "/apps/analytics-watcher/**",
+    "/pnpm-lock.yaml",
+    "/pnpm-workspace.yaml",
+    "/package.json"
+  ]
+}
