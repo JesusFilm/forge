@@ -759,6 +759,12 @@ the app's own `#1c1917` instead of the platform contrast scrim.
 mini player and six scroll surfaces all read it from there, so no two files can
 disagree about the bar's size.
 
+> **Under review 2026-09-14.** The pill's reason for existing below iOS 26 was
+> withdrawn by the owner, and `expo-router/unstable-native-tabs` is back on the
+> table for iOS. `docs/roadmap/platform/feat-497-mobile-native-tabs-spike.md`
+> holds the spike and its go/no-go measurements. Until it lands, everything
+> below still describes the shipped bar.
+
 - **`tabBarStyle` is applied AFTER the bar's own `backgroundColor`**
   (`BottomTabBar.js:220` sets it, `:258` appends yours). So an opaque fill in
   `tabBarStyle` hides the glass, silently. iOS must set no `backgroundColor`;
