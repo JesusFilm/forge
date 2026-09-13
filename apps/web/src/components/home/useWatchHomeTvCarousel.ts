@@ -83,6 +83,18 @@ export function nextWatchHomeTvCarouselIndex(
   return (currentIndex + 1) % slideCount
 }
 
+/**
+ * `play()` returns a promise in every browser that matters and a bare
+ * `undefined` in some test doubles, so both shapes have to be handled. An
+ * unhandled rejection here is a console error on every refused autoplay.
+ */
+function startPlayback(video: HTMLVideoElement, onRefused?: () => void) {
+  const played = video.play()
+  if (played && typeof played.then === "function") {
+    played.catch(() => onRefused?.())
+  }
+}
+
 function usableSeconds(value: number | null | undefined): number | null {
   if (typeof value !== "number") return null
   if (!Number.isFinite(value) || value <= 0) return null
@@ -242,9 +254,6 @@ export function useWatchHomeTvCarousel(
   const [leavingSlide, setLeavingSlide] =
     useState<WatchHomeTvCarouselSlide | null>(null)
   const [mediaReady, setMediaReady] = useState(false)
-  // Bumped when the backstop declines to advance because the media clock still
-  // shows time remaining; re-running the effect is how it re-arms.
-  const [backstopReArmCount, setBackstopReArmCount] = useState(0)
   // Folded into the ring's animation key so a same-slide restart replays the
   // CSS animation instead of leaving it parked at 100%. State, not a ref: the
   // key has to change during a render for the animation to restart.
@@ -527,10 +536,7 @@ export function useWatchHomeTvCarousel(
             // A detached or not-yet-seekable element throws here; the replay
             // below is still worth attempting.
           }
-          const played = video.play()
-          if (played && typeof played.then === "function") {
-            played.catch(() => undefined)
-          }
+          startPlayback(video)
         }
         setIsBufferingMedia(false)
         mediaReadyRef.current = true
@@ -598,15 +604,9 @@ export function useWatchHomeTvCarousel(
     // Before the portrait branch below, which can advance away from this
     // slide: the measurement belongs to the slide it was read from either way.
     const metadataSlideId = activeSlide?.id ?? null
-    const metadataSeconds = videoRef.current?.duration
     setMeasuredDuration({
       slideId: metadataSlideId,
-      seconds:
-        typeof metadataSeconds === "number" &&
-        Number.isFinite(metadataSeconds) &&
-        metadataSeconds > 0
-          ? metadataSeconds
-          : null,
+      seconds: usableSeconds(videoRef.current?.duration),
     })
 
     // The decoded size is the first and only trustworthy orientation signal in
@@ -643,12 +643,9 @@ export function useWatchHomeTvCarousel(
       mediaReadyRef.current = true
       setMediaReady(true)
       if (!autoAdvancePausedRef.current) {
-        const played = video.play()
-        if (played && typeof played.then === "function") {
-          played.catch(() => {
-            setIsBufferingMedia(true)
-          })
-        }
+        startPlayback(video, () => {
+          setIsBufferingMedia(true)
+        })
       }
       videoPosterHoldTimeoutRef.current = null
     }, VIDEO_POSTER_HOLD_MS)
@@ -759,8 +756,8 @@ export function useWatchHomeTvCarousel(
     const startedAt = Date.now()
     const armedForTurn = turnTokenRef.current
 
-    slideAdvanceTimeoutRef.current = window.setTimeout(
-      () => {
+    const armBackstop = (delayMs: number) => {
+      slideAdvanceTimeoutRef.current = window.setTimeout(() => {
         slideAdvanceTimeoutRef.current = null
         // A timer armed for a turn that has already ended must not advance the
         // one that replaced it.
@@ -782,19 +779,17 @@ export function useWatchHomeTvCarousel(
         const mediaAdvanced = mediaSeconds > backstopSeenTimeRef.current
         if (remaining > 1 && mediaAdvanced) {
           backstopSeenTimeRef.current = mediaSeconds
-          clock.elapsedMs = Math.max(
-            0,
-            advanceAfterMs -
-              (remaining + WATCH_HOME_TV_ENDED_BACKSTOP_GRACE_SECONDS) * 1000,
+          armBackstop(
+            (remaining + WATCH_HOME_TV_ENDED_BACKSTOP_GRACE_SECONDS) * 1000,
           )
-          setBackstopReArmCount((count) => count + 1)
           return
         }
 
         advance()
-      },
-      Math.max(0, advanceAfterMs - clock.elapsedMs),
-    )
+      }, delayMs)
+    }
+
+    armBackstop(Math.max(0, advanceAfterMs - clock.elapsedMs))
 
     return () => {
       clearSlideAdvanceTimeout()
@@ -809,7 +804,6 @@ export function useWatchHomeTvCarousel(
     advanceBackstopSeconds,
     advanceDurationSeconds,
     autoAdvancePaused,
-    backstopReArmCount,
     clearSlideAdvanceTimeout,
     isTurnHeld,
   ])

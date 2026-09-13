@@ -77,8 +77,13 @@ vi.mock("next/image", () => ({
 // `_hlsConfig` is an object and has to come out of the spread the way
 // `disableTracking` already does, or React would stringify it onto the
 // element as an unknown attribute.
-const { muxVideoHlsConfigs } = vi.hoisted(() => ({
+const { muxVideoHlsConfigs, muxVideoRenders } = vi.hoisted(() => ({
   muxVideoHlsConfigs: [] as Array<Record<string, unknown> | undefined>,
+  // One entry per render of the carousel subtree, recording the src it
+  // mounted. Kept separate from the config recorder so a change to how
+  // `_hlsConfig` is captured cannot silently invalidate a render-count
+  // assertion that has nothing to do with it.
+  muxVideoRenders: [] as Array<string | undefined>,
 }))
 
 function lastMuxVideoHlsConfig(): Record<string, unknown> | undefined {
@@ -99,6 +104,7 @@ vi.mock("@forge/video-player/mux-video", async () => {
       ref,
     ) {
       muxVideoHlsConfigs.push(_hlsConfig)
+      muxVideoRenders.push(props.src)
       return <video ref={ref} data-testid="watch-home-tv-video" {...props} />
     }),
   }
@@ -325,6 +331,7 @@ beforeEach(() => {
   window.sessionStorage.clear()
   carouselApi.scrollTo.mockClear()
   muxVideoHlsConfigs.length = 0
+  muxVideoRenders.length = 0
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -660,10 +667,10 @@ describe("WatchHomePage", () => {
     // for minutes, so the state write is gated on the whole second the only
     // reader (the resume link) actually uses.
     it("writes resume state once per playback second, not once per event", async () => {
-      // The MuxVideo mock records one entry per render of the carousel
-      // subtree, which is the only render count observable from out here --
-      // a wrapper around WatchHomePage would never re-render at all.
-      const carouselRenders = () => muxVideoHlsConfigs.length
+      // The MuxVideo mock counts its own renders, which is the only render
+      // count observable from out here -- a wrapper around WatchHomePage would
+      // never re-render at all.
+      const carouselRenders = () => muxVideoRenders.length
 
       vi.spyOn(Math, "random").mockReturnValue(0)
       await act(async () => {
