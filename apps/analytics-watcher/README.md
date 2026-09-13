@@ -4,10 +4,11 @@ Checks production Watch GA delivery and real GA/Datadog intake every five minute
 Posts confirmed problems and recoveries to `#forge-development` as **Forge
 Analytics Watcher**, from an independent Railway cron service.
 
-**Activation pending:** the Railway service and dedicated volume are created.
-Slack installation, production credentials, external heartbeat and actual Slack
-delivery still need verification.
-A merged PR does not activate this service by itself. Track completion in feat-495.
+**Production cron deployed:** the service is connected to `JesusFilm/forge` on
+`main`. Production GA/Datadog reads and a labelled Slack installation message
+have passed. Final acceptance, including external missed-heartbeat delivery,
+is tracked in feat-495 and the
+[activation record](../../docs/observability/analytics-watcher-activation-2026-09-14.md).
 
 ## Confirmation rules
 
@@ -58,7 +59,7 @@ all configured Watch analytics under `docs/analytics-and-recommendation-policy.m
 
 The only bot scope is `chat:write`; it cannot read channel history. Installation
 requires workspace app-install permission. The manifest defines the app; it
-does not prove installation. No Slack installation credential is present here.
+does not prove installation. Store the installed bot credential in Railway.
 
 ## Configure and deploy
 
@@ -75,6 +76,25 @@ Do not share an app's volume or run multiple replicas.
 
 Production service ID: `db748998-280b-4f3f-97a7-44ec2b94c3b9`.
 Volume ID: `2448e16a-90c7-4fbc-8104-5ddcea63d8a8`.
+
+Enable **Wait for CI** on the GitHub deployment trigger. The Forge CI workflow
+runs on pushes to `main`; Railway should deploy only after it passes. This is
+separate from the service settings snapshot: the trigger uses `checkSuites: true`.
+Project tokens can configure the service but may be denied access to repository
+connections and trigger settings; use the authenticated dashboard for those.
+
+The service has one replica capped at **2 vCPU and 1 GB RAM**, configured with
+`serviceInstanceLimitsUpdate`. These are consumption ceilings, not reserved
+resources. Keep the process lock, four-minute deadline and `NEVER` restart policy;
+the next cron execution handles retries. No HTTP healthcheck or public domain is
+needed for this short-lived process. Keep the repository root as the build root.
+Watch all Docker build inputs, including `patches/` and `.dockerignore`.
+
+At five-minute intervals there are 8,640 runs per 30 days. The initial resource
+measurement projects about **US$1/month** in incremental Railway usage; budget
+**US$2–5/month** for startup and runtime variation, assuming storage remains small.
+Initial storage readings need reconciliation. This is an estimate, not an
+invoice or a spending cap. See the activation record for assumptions and rates.
 
 Set variables from `.env.example` in Railway:
 

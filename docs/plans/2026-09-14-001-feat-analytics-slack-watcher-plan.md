@@ -36,9 +36,9 @@ two-hour Datadog silence threshold, and requires confirmation before an incident
   delivery/ack crash window. Never claim exactly-once Slack delivery.
 - Repeated unknown results create a separately worded monitoring problem.
   An external heartbeat detects skipped, stuck, or absent runs independently.
-- Credentials and Slack app installation are operational prerequisites; no
-  current Slack or Railway administration session is available. Keep the roadmap
-  in progress until activation is verified.
+- Credentials and Slack app installation are operational prerequisites. They
+  are now configured, and the production cron is deployed. Keep the roadmap in
+  progress until the activation record verifies all acceptance checks.
 
 ## Implementation units
 
