@@ -103,6 +103,9 @@ export default function SeriesDownloadRoute() {
   // R2: every opening starts on the offline mode, and nothing writes it back.
   const [mode, setMode] = useState<DownloadMode>("offline")
   const rawMode = mode === "raw"
+  // Owner decision 2026-09-14: only an EXPORT needs the Terms. An offline
+  // copy stays inside the app; a saved file leaves it.
+  const termsSatisfied = !rawMode || touAccepted
 
   const [phase, setPhase] = useState<SheetPhase>({ kind: "resolving" })
   const [storageError, setStorageError] = useState<string | null>(null)
@@ -410,7 +413,7 @@ export default function SeriesDownloadRoute() {
   }, [resolution, series, wifiOnly, router])
 
   const onConfirm = useCallback(() => {
-    if (!resolution || resolution.resolvedCount === 0 || !touAccepted) return
+    if (!resolution || resolution.resolvedCount === 0 || !termsSatisfied) return
     // R32's fourth gate: an export replaces nothing, so the warning is skipped
     // rather than reworded.
     if (rawMode) {
@@ -440,7 +443,7 @@ export default function SeriesDownloadRoute() {
     )
   }, [
     resolution,
-    touAccepted,
+    termsSatisfied,
     subtitleSlug,
     getRecord,
     proceed,
@@ -561,42 +564,47 @@ export default function SeriesDownloadRoute() {
         </Pressable>
       ) : (
         <>
-          <View style={styles.touRow}>
-            <Pressable
-              onPress={() => setTouAccepted((v) => !v)}
-              hitSlop={8}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: touAccepted }}
-              accessibilityLabel="I agree to the Terms of Use"
-              style={({ pressed }) => pressed && feedback.pressed}
-            >
-              <View
-                style={[styles.checkbox, touAccepted && styles.checkboxChecked]}
+          {rawMode && (
+            <View style={styles.touRow}>
+              <Pressable
+                onPress={() => setTouAccepted((v) => !v)}
+                hitSlop={8}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: touAccepted }}
+                accessibilityLabel="I agree to the Terms of Use"
+                style={({ pressed }) => pressed && feedback.pressed}
               >
-                {touAccepted && (
-                  <Ionicons name="checkmark" size={16} color="#ffffff" />
-                )}
-              </View>
-            </Pressable>
-            <Text style={[styles.touText, typography.bodySmall]}>
-              I agree to the{" "}
-            </Text>
-            <Pressable
-              onPress={() => setTermsVisible(true)}
-              hitSlop={4}
-              accessibilityRole="link"
-              accessibilityLabel="Read Terms of Use"
-            >
-              <Text style={[styles.touLink, typography.bodySmall]}>
-                Terms of Use
+                <View
+                  style={[
+                    styles.checkbox,
+                    touAccepted && styles.checkboxChecked,
+                  ]}
+                >
+                  {touAccepted && (
+                    <Ionicons name="checkmark" size={16} color="#ffffff" />
+                  )}
+                </View>
+              </Pressable>
+              <Text style={[styles.touText, typography.bodySmall]}>
+                I agree to the{" "}
               </Text>
-            </Pressable>
-          </View>
+              <Pressable
+                onPress={() => setTermsVisible(true)}
+                hitSlop={4}
+                accessibilityRole="link"
+                accessibilityLabel="Read Terms of Use"
+              >
+                <Text style={[styles.touLink, typography.bodySmall]}>
+                  Terms of Use
+                </Text>
+              </Pressable>
+            </View>
+          )}
 
           <ConfirmButton
             phase={phase}
             resolution={resolution}
-            touAccepted={touAccepted}
+            termsSatisfied={termsSatisfied}
             nothingToDo={confirmBlocked}
             mode={mode}
             onConfirm={onConfirm}
@@ -693,7 +701,7 @@ function StatusPanel({
 function ConfirmButton({
   phase,
   resolution,
-  touAccepted,
+  termsSatisfied,
   nothingToDo,
   mode,
   onConfirm,
@@ -701,7 +709,7 @@ function ConfirmButton({
 }: {
   phase: SheetPhase
   resolution: SeriesDownloadResolution | null
-  touAccepted: boolean
+  termsSatisfied: boolean
   nothingToDo: boolean
   mode: DownloadMode
   onConfirm: () => void
@@ -716,7 +724,7 @@ function ConfirmButton({
     phase.kind !== "ready" ||
     !resolution ||
     resolution.resolvedCount === 0 ||
-    !touAccepted ||
+    !termsSatisfied ||
     nothingToDo
   const rawMode = mode === "raw"
   const label = enqueuing

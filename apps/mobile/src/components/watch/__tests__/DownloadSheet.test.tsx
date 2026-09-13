@@ -340,7 +340,13 @@ async function chooseMode(renderer: TestInstance, mode: DownloadMode) {
   await press(pressableByLabel(renderer, DOWNLOAD_MODE_LABELS[mode]))
 }
 
+/**
+ * Tick the Terms box. Offline mode HAS no box — owner decision 2026-09-14, only
+ * an export needs the Terms — so this is a no-op there. The dedicated tests
+ * below assert presence and absence directly, so nothing rests on this silence.
+ */
 async function acceptTerms(renderer: TestInstance) {
+  if (nodeByLabel(renderer, "I agree to the Terms of Use") == null) return
   await press(pressableByLabel(renderer, "I agree to the Terms of Use"))
 }
 
@@ -448,7 +454,10 @@ describe("DownloadSheetContent mode control", () => {
       "spanish",
     )
 
+    // Raw mode brings its own Terms gate, so it is accepted HERE — offline
+    // needed none, and the acceptance did not exist to carry over.
     await chooseMode(renderer, "raw")
+    await acceptTerms(renderer)
     await press(pressableByLabel(renderer, "Save video to the device"))
     expect(onStartDownload).toHaveBeenLastCalledWith(
       expect.objectContaining({ documentId: "d-high" }),
@@ -533,6 +542,7 @@ describe("DownloadSheetContent mode control", () => {
 
     // The slug survives the hide, but raw mode must never send one.
     await chooseMode(renderer, "raw")
+    await acceptTerms(renderer)
     await press(pressableByLabel(renderer, "Save video to the device"))
     expect(onStartDownload).toHaveBeenLastCalledWith(
       expect.anything(),
@@ -564,6 +574,38 @@ describe("DownloadSheetContent mode control", () => {
     ].filter((label) => !modeLabels.includes(label))
     // The fixture is Spanish-then-English, so unsorted input would fail this.
     expect(rows).toEqual(["No subtitles", "English", "Spanish"])
+    await unmount(renderer)
+  })
+
+  // Owner decision 2026-09-14: an offline copy stays inside the app and needs
+  // no acceptance; only a file that LEAVES the app does.
+  it("needs no Terms acceptance to download for offline watching", async () => {
+    const onStartDownload = jest.fn()
+    const renderer = await renderSheet({ onStartDownload })
+
+    expect(nodeByLabel(renderer, "I agree to the Terms of Use")).toBeNull()
+    const button = nodeByLabel(renderer, "Download video")
+    expect(button?.props.disabled).toBe(false)
+
+    await press(pressableByLabel(renderer, "Download video"))
+    expect(onStartDownload).toHaveBeenCalledTimes(1)
+    await unmount(renderer)
+  })
+
+  it("brings the Terms gate back the moment raw mode is chosen", async () => {
+    // Anti-vacuous companion to the test above: the SAME sheet gates the raw
+    // CTA, so the offline one being open is a mode decision, not a missing gate.
+    const renderer = await renderSheet()
+    expect(nodeByLabel(renderer, "I agree to the Terms of Use")).toBeNull()
+
+    await chooseMode(renderer, "raw")
+    expect(nodeByLabel(renderer, "I agree to the Terms of Use")).not.toBeNull()
+    expect(
+      nodeByLabel(renderer, "Save video to the device")?.props.disabled,
+    ).toBe(true)
+
+    await chooseMode(renderer, "offline")
+    expect(nodeByLabel(renderer, "I agree to the Terms of Use")).toBeNull()
     await unmount(renderer)
   })
 
@@ -807,6 +849,23 @@ describe("series sheet mode control", () => {
 
     await chooseMode(renderer, "offline")
     expect(hasDropdownSection(renderer, "Subtitles")).toBe(true)
+
+    await unmount(renderer)
+  })
+
+  it("needs no Terms acceptance to download a whole series offline", async () => {
+    const renderer = await renderSeries()
+    expect(nodeByLabel(renderer, "I agree to the Terms of Use")).toBeNull()
+    expect(nodeByLabel(renderer, "Download all episodes")?.props.disabled).toBe(
+      false,
+    )
+
+    // Anti-vacuous: the SAME sheet still gates the export CTA.
+    await chooseMode(renderer, "raw")
+    expect(nodeByLabel(renderer, "I agree to the Terms of Use")).not.toBeNull()
+    expect(
+      nodeByLabel(renderer, "Save all episodes to the device")?.props.disabled,
+    ).toBe(true)
 
     await unmount(renderer)
   })

@@ -567,6 +567,10 @@ export function DownloadSheetContent({
   // which the caller sets per entry point and defaults to offline.
   const [mode, setMode] = useState<DownloadMode>(initialMode)
   const rawMode = mode === "raw"
+  // Owner decision 2026-09-14: only an EXPORT needs the Terms. An offline
+  // copy stays inside the app; a saved file leaves it, which is what the
+  // clause is about. The acceptance itself survives a mode switch.
+  const termsSatisfied = !rawMode || touAccepted
 
   const subtitleUnion = useMemo(() => subtitleUnionOf(subtitles), [subtitles])
   const [subtitleSlug, setSubtitleSlug] = useState<string | null>(null)
@@ -648,14 +652,14 @@ export function DownloadSheetContent({
   }, [heldIndex])
 
   const handleDownload = useCallback(() => {
-    if (!touAccepted || tiered.length === 0) return
+    if (!termsSatisfied || tiered.length === 0) return
     const selected = tiered[selectedIndex]
     if (!selected) return
     // Enqueue and hand off to the background engine; the parent dismisses the
     // sheet. One copy per video is enforced by DownloadsProvider.
     onStartDownload(selected, mode, rawMode ? null : subtitleSlug)
   }, [
-    touAccepted,
+    termsSatisfied,
     tiered,
     selectedIndex,
     mode,
@@ -777,51 +781,53 @@ export function DownloadSheetContent({
           />
         )}
 
-        <View style={styles.touRow}>
-          <Pressable
-            onPress={() => setTouAccepted((v) => !v)}
-            hitSlop={8}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: touAccepted }}
-            accessibilityLabel="I agree to the Terms of Use"
-            style={({ pressed }) => pressed && feedback.pressed}
-          >
-            <View
-              style={[styles.checkbox, touAccepted && styles.checkboxChecked]}
+        {rawMode && (
+          <View style={styles.touRow}>
+            <Pressable
+              onPress={() => setTouAccepted((v) => !v)}
+              hitSlop={8}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: touAccepted }}
+              accessibilityLabel="I agree to the Terms of Use"
+              style={({ pressed }) => pressed && feedback.pressed}
             >
-              {touAccepted && (
-                <Ionicons name="checkmark" size={16} color="#ffffff" />
-              )}
-            </View>
-          </Pressable>
-          <Text style={[styles.touText, typography.bodySmall]}>
-            I agree to the{" "}
-          </Text>
-          <Pressable
-            onPress={() => setTermsVisible(true)}
-            hitSlop={4}
-            accessibilityRole="link"
-            accessibilityLabel="Read Terms of Use"
-          >
-            <Text style={[styles.touLink, typography.bodySmall]}>
-              Terms of Use
+              <View
+                style={[styles.checkbox, touAccepted && styles.checkboxChecked]}
+              >
+                {touAccepted && (
+                  <Ionicons name="checkmark" size={16} color="#ffffff" />
+                )}
+              </View>
+            </Pressable>
+            <Text style={[styles.touText, typography.bodySmall]}>
+              I agree to the{" "}
             </Text>
-          </Pressable>
-        </View>
+            <Pressable
+              onPress={() => setTermsVisible(true)}
+              hitSlop={4}
+              accessibilityRole="link"
+              accessibilityLabel="Read Terms of Use"
+            >
+              <Text style={[styles.touLink, typography.bodySmall]}>
+                Terms of Use
+              </Text>
+            </Pressable>
+          </View>
+        )}
 
         <Pressable
           style={({ pressed }) => [
             styles.downloadButton,
-            !touAccepted && styles.downloadButtonDisabled,
-            pressed && touAccepted && feedback.pressed,
+            !termsSatisfied && styles.downloadButtonDisabled,
+            pressed && termsSatisfied && feedback.pressed,
           ]}
           onPress={handleDownload}
-          disabled={!touAccepted}
+          disabled={!termsSatisfied}
           accessibilityRole="button"
           accessibilityLabel={
             rawMode ? "Save video to the device" : "Download video"
           }
-          accessibilityState={{ disabled: !touAccepted }}
+          accessibilityState={{ disabled: !termsSatisfied }}
         >
           <Ionicons name="download-outline" size={20} color="#ffffff" />
           <Text style={[styles.downloadButtonText, typography.body]}>
