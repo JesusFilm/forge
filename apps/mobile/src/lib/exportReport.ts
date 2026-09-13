@@ -101,7 +101,11 @@ export function foldSignal(
 
   const next: ExportReportRecord = {
     runId: signal.runId,
-    title: existing?.title ?? signal.title ?? null,
+    // The NEWEST title wins. A series run publishes one signal per episode
+    // carrying that episode's own title, so keeping the first pinned the whole
+    // run to episode one while the count underneath it climbed. A signal that
+    // omits the title still keeps the one already shown.
+    title: signal.title ?? existing?.title ?? null,
     runSize: Math.max(existing?.runSize ?? 1, signal.runSize ?? 1),
     outcomes: { ...existing?.outcomes, [signal.target]: signal.outcome },
     albumIntent: signal.albumIntent ?? existing?.albumIntent ?? null,

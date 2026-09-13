@@ -4,6 +4,7 @@ import type { RawExportInput, RawExportResult } from "../rawExportAdapter"
 import type { SeriesEpisodeResolution } from "../seriesDownloadResolver"
 import type { SeriesExportRunProgress } from "../seriesExportProgress"
 import {
+  RUN_SETTLE_MS,
   buildSeriesExportRun,
   runSeriesRawExport,
   type SeriesExportRun,
@@ -316,6 +317,56 @@ describe("runSeriesRawExport publishes the ring's count", () => {
     await expect(runSeriesRawExport(run, deps)).rejects.toThrow(
       "cancel check exploded",
     )
+    expect(h.runProgress[h.runProgress.length - 1]).toBeNull()
+  })
+
+  it("holds the full ring before clearing it, so the arc can reach full", async () => {
+    // The last step and the clear land in the same tick otherwise, and React
+    // coalesces them: the viewer never sees the completed ring.
+    const run = buildRun(episodes(2))
+    const h = harness({})
+    const holds: number[] = []
+    const deps: SeriesExportRunDeps = {
+      ...h.deps,
+      settle: async (ms) => {
+        // Ordering, not duration: the full count must already be published.
+        holds.push(ms)
+        expect(h.runProgress[h.runProgress.length - 1]).toEqual({
+          saved: 2,
+          total: 2,
+        })
+      },
+    }
+
+    await runSeriesRawExport(run, deps)
+
+    expect(holds).toEqual([RUN_SETTLE_MS])
+    expect(h.runProgress[h.runProgress.length - 1]).toBeNull()
+  })
+
+  it("does not hold a run that failed an episode", async () => {
+    const run = buildRun(episodes(2))
+    const h = harness({
+      plans: { "ep-1": { kind: "outcome", outcome: "failed" } },
+    })
+    const settle = jest.fn(async () => undefined)
+
+    await runSeriesRawExport(run, { ...h.deps, settle })
+
+    expect(settle).not.toHaveBeenCalled()
+  })
+
+  it("clears the ring even when the hold itself rejects", async () => {
+    const run = buildRun(episodes(2))
+    const h = harness({})
+
+    await runSeriesRawExport(run, {
+      ...h.deps,
+      settle: async () => {
+        throw new Error("timer gone")
+      },
+    })
+
     expect(h.runProgress[h.runProgress.length - 1]).toBeNull()
   })
 

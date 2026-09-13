@@ -54,8 +54,16 @@ const IN_PROGRESS_STATES: ReadonlySet<OfflineDownloadState> =
 const NO_PENDING_SWAPS: ReadonlySet<string> = new Set()
 
 /**
- * Episodes saved over episodes covered, whenever a run says so. The byte mean
- * is only the no-run fallback: it measures the episode in flight, not the run.
+ * Episodes in the library PLUS how far the one in flight has got, over the
+ * episodes the run covers — the offline ring's shape on the export's own unit.
+ *
+ * Both halves are load-bearing. The count alone steps a fifth at a time and
+ * stands still in between; the in-flight fraction alone measures one episode
+ * and resets at every boundary. Together the arc creeps and reads full exactly
+ * when the run has saved them all.
+ *
+ * The byte mean is only the no-run fallback: one episode exported from its own
+ * watch screen has no run, and its bytes are the only progress there is.
  */
 export function exportRingProgress(
   runProgress: SeriesExportRunProgress | null | undefined,
@@ -63,7 +71,7 @@ export function exportRingProgress(
   exportingCount: number,
 ): number {
   if (runProgress != null && runProgress.total > 0) {
-    return clampFraction(runProgress.saved / runProgress.total)
+    return clampFraction((runProgress.saved + exportUnits) / runProgress.total)
   }
   return exportingCount === 0 ? 0 : exportUnits / exportingCount
 }

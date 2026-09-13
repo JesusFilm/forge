@@ -430,6 +430,10 @@ export default function SeriesDownloadRoute() {
       report: publishExportReport,
       publishRunProgress: (progress) =>
         publishSeriesExportProgress(seriesSlug, progress),
+      settle: (ms) =>
+        new Promise<void>((resolve) => {
+          setTimeout(resolve, ms)
+        }),
     })
   }, [resolution, series, wifiOnly, router])
 

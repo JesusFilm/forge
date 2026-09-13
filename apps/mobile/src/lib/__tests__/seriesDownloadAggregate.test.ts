@@ -361,9 +361,10 @@ describe("deriveSeriesDownloadState with a raw export (R16, R24, R30)", () => {
    * The session cannot supply that count — it deletes each entry when its
    * episode finishes — so the run publishes it, and it overrides the byte mean.
    */
-  it("steps the ring once per episode saved, not per byte transferred", () => {
-    // Episode 3 is 90% transferred and two are already in the library. The
-    // ring reads 2 of 5, never 0.9.
+  it("creeps with the episode in flight on top of the ones already saved", () => {
+    // Two in the library and the third 90% transferred: 2.9 of 5. Neither half
+    // alone gives this — the count alone reads 0.4 and stands still, the bytes
+    // alone read 0.9 and reset at every boundary.
     const state = deriveSeriesDownloadState(
       EPISODES,
       [],
@@ -372,7 +373,34 @@ describe("deriveSeriesDownloadState with a raw export (R16, R24, R30)", () => {
       session(["c", 0.9]),
       { saved: 2, total: 5 },
     )
-    expect(state.exportProgress).toBeCloseTo(0.4)
+    expect(state.exportProgress).toBeCloseTo(0.58)
+  })
+
+  it("does not stand still while an episode transfers", () => {
+    const at = (fraction: number) =>
+      deriveSeriesDownloadState(
+        EPISODES,
+        [],
+        [],
+        undefined,
+        session(["c", fraction]),
+        { saved: 2, total: 5 },
+      ).exportProgress
+
+    expect(at(0.25)).toBeLessThan(at(0.5))
+    expect(at(0.5)).toBeLessThan(at(0.75))
+  })
+
+  it("never runs past full, whatever the run and the session disagree about", () => {
+    const state = deriveSeriesDownloadState(
+      EPISODES,
+      [],
+      [],
+      undefined,
+      session(["c", 1]),
+      { saved: 5, total: 5 },
+    )
+    expect(state.exportProgress).toBe(1)
   })
 
   it("reads full only once the run has saved every episode", () => {

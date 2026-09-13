@@ -54,7 +54,16 @@ export type SeriesExportRunDeps = {
    * count. `null` ends the run and takes the ring down.
    */
   publishRunProgress?: (progress: SeriesExportRunProgress | null) => void
+  /**
+   * Hold the finished ring on screen before clearing it. The last step and the
+   * clear land in the same tick otherwise, so React coalesces them and the arc
+   * never reaches full. Absent means no hold — no test needs a timer.
+   */
+  settle?: (ms: number) => Promise<void>
 }
+
+/** Long enough for the ring's own tween to land on full, and no longer. */
+export const RUN_SETTLE_MS = 900
 
 /**
  * R21: `saved` plus `failed` equals `total` for a run that reaches its end, and
@@ -222,6 +231,15 @@ export async function runSeriesRawExport(
       failed += 1
     }
   } finally {
+    // A run that saved everything holds its full ring for a beat first; one
+    // that was cancelled or failed has nothing to show and goes at once.
+    if (total > 0 && saved === total) {
+      try {
+        await deps.settle?.(RUN_SETTLE_MS)
+      } catch {
+        // A failed hold must not keep the ring up forever.
+      }
+    }
     // Every exit takes the ring down, a throw included — it is the only thing
     // holding the row in its exporting state once the last entry is released.
     deps.publishRunProgress?.(null)

@@ -287,6 +287,41 @@ describe("the series detail names every outcome the run reached", () => {
   })
 })
 
+describe("the title names the episode the run is on", () => {
+  it("moves to each episode's own title as the run reports it", () => {
+    // One signal per episode, each carrying its own title. Keeping the first
+    // pinned the toast to episode one for the whole run while the count
+    // underneath it climbed.
+    const record = only([
+      {
+        ...episode("episode-0", "saved", { runSize: 3 }),
+        title: "Can God be Known?",
+      },
+      {
+        ...episode("episode-1", "saved", { runSize: 3 }),
+        title: "What are Humans?",
+      },
+    ])
+
+    expect(record.title).toBe("What are Humans?")
+    expect(viewFor(record).title).toBe("What are Humans?")
+  })
+
+  it("keeps the title a later signal omits", () => {
+    // R28's restored signals may carry no title at all, and an empty toast
+    // heading is worse than a stale one.
+    const record = only([
+      {
+        ...episode("episode-0", "saved", { runSize: 2 }),
+        title: "Can God be Known?",
+      },
+      { ...episode("episode-1", "saved", { runSize: 2 }), title: undefined },
+    ])
+
+    expect(record.title).toBe("Can God be Known?")
+  })
+})
+
 /**
  * The report re-renders on every episode of a run, so its icon is on screen
  * for the whole export, not only at the end. It has to read as "nothing has
