@@ -226,6 +226,8 @@ function WatchHomeTvMedia({
   onCanPlay,
   onEnded,
   onLoadedMetadata,
+  onPause,
+  onPlay,
   onPlayerReady,
   onPlaying,
   onSubtitleCueTextChange,
@@ -241,6 +243,8 @@ function WatchHomeTvMedia({
   onCanPlay: () => void
   onEnded?: () => void
   onLoadedMetadata: () => void
+  onPause: () => void
+  onPlay: () => void
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   onPlaying: () => void
   onSubtitleCueTextChange: (cueText: string | null) => void
@@ -336,6 +340,8 @@ function WatchHomeTvMedia({
           onCanPlay={onCanPlay}
           onEnded={onEnded}
           onLoadedMetadata={onLoadedMetadata}
+          onPause={onPause}
+          onPlay={onPlay}
           onPlaying={onPlaying}
           onStalled={onWaiting}
           onTimeUpdate={onTimeUpdate}
@@ -519,6 +525,7 @@ function WatchHomeTvOverlay({
   activeSlide,
   advanceDurationSeconds,
   isBuffering,
+  isTurnHeld,
   isMuted,
   leavingSlide,
   onSelectSlide,
@@ -531,6 +538,7 @@ function WatchHomeTvOverlay({
   activeSlide: WatchHomeTvCarouselSlide
   advanceDurationSeconds: number
   isBuffering: boolean
+  isTurnHeld: boolean
   isMuted: boolean
   leavingSlide: WatchHomeTvCarouselSlide | null
   onSelectSlide: (slideId: string) => void
@@ -597,8 +605,9 @@ function WatchHomeTvOverlay({
               activeIndex={activeIndex}
               advanceDurationSeconds={advanceDurationSeconds}
               animationKey={ringAnimationKey}
+              buffering={isBuffering}
               onSelectSlide={onSelectSlide}
-              paused={isBuffering}
+              paused={isTurnHeld}
               size="compact"
               slides={slides}
             />
@@ -609,9 +618,10 @@ function WatchHomeTvOverlay({
         <WatchHomeVideoTimeline
           activeIndex={activeIndex}
           advanceDurationSeconds={advanceDurationSeconds}
-          animationKey={activeSlide.id}
+          animationKey={ringAnimationKey}
+          buffering={isBuffering}
           onSelectSlide={onSelectSlide}
-          paused={isBuffering}
+          paused={isTurnHeld}
           size="large"
           slides={slides}
         />
@@ -717,13 +727,21 @@ function watchHomeVideoTimelineItems(
 function WatchHomePlaybackProgressRing({
   advanceDurationSeconds,
   animationKey,
+  buffering,
   paused,
   showResetRing,
   size,
 }: {
   advanceDurationSeconds: number
   animationKey: string
-  /** Buffering: the ring holds where it is rather than timing a still frame. */
+  /**
+   * Waiting on bytes. Only this draws the spinner and dims the arc — a viewer
+   * who scrolled past or opened a modal is not stalled and must not be shown
+   * a loading state.
+   */
+  buffering: boolean
+  /** Held for any reason — buffering OR deliberately paused. The ring stops
+   * where it is rather than timing a still frame. */
   paused: boolean
   showResetRing: boolean
   size: "large" | "compact"
@@ -768,8 +786,9 @@ function WatchHomePlaybackProgressRing({
             animationPlayState: paused ? "paused" : "running",
             // Held progress stays readable — a stall at 60% still shows where
             // it stopped — but steps back so the spinner reads as the live
-            // element of the two arcs.
-            opacity: paused ? 0.4 : 1,
+            // element of the two arcs. Only a STALL dims it; a deliberate
+            // pause leaves the arc at full strength.
+            opacity: buffering ? 0.4 : 1,
           } as CSSProperties
         }
       />
@@ -777,7 +796,7 @@ function WatchHomePlaybackProgressRing({
           promised the viewer that something was playing, so it is where the
           correction has to appear. The group carries a CSS-delayed fade so a
           stream that arrives promptly never flashes it. */}
-      {paused ? (
+      {buffering ? (
         <g
           className="watch-home-progress-loading"
           data-testid="watch-home-progress-loading"
@@ -824,6 +843,7 @@ const WatchHomeVideoTimeline = memo(function WatchHomeVideoTimeline({
   activeIndex,
   advanceDurationSeconds,
   animationKey,
+  buffering,
   onSelectSlide,
   paused,
   size,
@@ -832,6 +852,7 @@ const WatchHomeVideoTimeline = memo(function WatchHomeVideoTimeline({
   activeIndex: number
   advanceDurationSeconds: number
   animationKey: string
+  buffering: boolean
   onSelectSlide: (slideId: string) => void
   paused: boolean
   size: "large" | "compact"
@@ -940,6 +961,7 @@ const WatchHomeVideoTimeline = memo(function WatchHomeVideoTimeline({
               <WatchHomePlaybackProgressRing
                 advanceDurationSeconds={advanceDurationSeconds}
                 animationKey={animationKey}
+                buffering={buffering}
                 paused={paused}
                 showResetRing={showResetRing}
                 size={size}
@@ -1020,10 +1042,13 @@ export function WatchHomeTvCarousel({
     handleCanPlay,
     handleEnded,
     handleLoadedMetadata,
+    handlePause,
+    handlePlay,
     handlePlaying,
     handleTimeUpdate,
     handleWaiting,
     isBuffering,
+    isTurnHeld,
     isMuted,
     leavingSlide,
     mediaReady,
@@ -1109,6 +1134,8 @@ export function WatchHomeTvCarousel({
           onCanPlay={handleCanPlay}
           onEnded={handleEnded}
           onLoadedMetadata={handleLoadedMetadata}
+          onPause={handlePause}
+          onPlay={handlePlay}
           onPlayerReady={handlePlayerReady}
           onPlaying={handlePlaying}
           onSubtitleCueTextChange={setSubtitleCueText}
@@ -1122,6 +1149,7 @@ export function WatchHomeTvCarousel({
           activeSlide={activeSlide}
           advanceDurationSeconds={advanceDurationSeconds}
           isBuffering={isBuffering}
+          isTurnHeld={isTurnHeld}
           isMuted={isMuted}
           leavingSlide={leavingSlide}
           onSelectSlide={selectSlide}
