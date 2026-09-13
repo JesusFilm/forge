@@ -70,6 +70,7 @@ import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
 import { ActionButtonRow } from "../../src/components/watch/ActionButtonRow"
 import { rawModeLabel } from "../../src/components/watch/DownloadSheet"
 import { RAW_EXPORT_ENABLED } from "../../src/lib/rawExportConstants"
+import { presentActionMenu } from "../../src/lib/actionMenu"
 import { SignInPrompt } from "../../src/components/watch/SignInPrompt"
 import { useWatchProgressEntry } from "../../src/hooks/useWatchProgressEntry"
 import {
@@ -790,10 +791,13 @@ export default function WatchVideoPage() {
                 if (state === "downloaded") {
                   // Saved: offer a non-destructive quality/language swap or a
                   // delete (the current copy stays playable during a swap).
-                  Alert.alert(
-                    "Offline download",
-                    "This video is saved for offline viewing.",
-                    [
+                  // Four options outrun Android's three-button dialog, so the
+                  // menu goes through presentActionMenu rather than Alert.
+                  presentActionMenu({
+                    title: "Offline download",
+                    message: "This video is saved for offline viewing.",
+                    ios: "alert",
+                    actions: [
                       {
                         text: "Change quality / language",
                         onPress: () => router.push("/watch/download?swap=1"),
@@ -814,14 +818,14 @@ export default function WatchVideoPage() {
                         : []),
                       {
                         text: "Remove download",
-                        style: "destructive",
+                        style: "destructive" as const,
                         onPress: () => {
                           void deleteDownload(video.slug)
                         },
                       },
-                      { text: "Cancel", style: "cancel" },
+                      { text: "Cancel", style: "cancel" as const },
                     ],
-                  )
+                  })
                 } else if (state === "paused") {
                   // Paused (mirrors the series ring): resume, or remove entirely.
                   Alert.alert("Offline download", "This download is paused.", [

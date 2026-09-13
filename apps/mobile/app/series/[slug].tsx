@@ -48,6 +48,9 @@ import { resolveSeriesSubtitleLabel } from "../../src/lib/subtitleSelection"
 import { useSeriesSubtitleUnion } from "../../src/hooks/useSeriesSubtitleUnion"
 import { useExportSession } from "../../src/hooks/useExportSession"
 import { getExportSessionStore } from "../../src/lib/exportSession"
+import { presentActionMenu } from "../../src/lib/actionMenu"
+import { rawModeLabel } from "../../src/components/watch/DownloadSheet"
+import { RAW_EXPORT_ENABLED } from "../../src/lib/rawExportConstants"
 
 const EMPTY_EPISODES: WatchEpisode[] = []
 
@@ -220,10 +223,17 @@ export default function SeriesScreen() {
     () => router.push("/series/download"),
     [router],
   )
+  // R33's switch removes the whole export feature, so the entry point goes with
+  // it. It opens the sheet rather than exporting straight away, because the
+  // Terms gate is the consent surface and lives there.
+  const openRawExportSheet = useCallback(
+    () => router.push("/series/download?mode=raw"),
+    [router],
+  )
 
   // Manage control once the whole series is saved — mirrors the single-video
   // manage flow (app/watch/[slug]) as a native iOS action sheet (HIG: a menu, not
-  // an alert), offering change-quality/subtitles + remove-all.
+  // an alert), offering change-quality/subtitles, save-to-Photos and remove-all.
   const handleManageDownloads = useCallback(() => {
     const savedSlugs = (series?.episodes ?? [])
       .map((episode) => episode.slug)
@@ -255,35 +265,31 @@ export default function SeriesScreen() {
     // The download sheet changes quality + subtitles for the current audio
     // language (audio language is set via the language pill, not here). Same-
     // language quality/subtitle re-download is a known no-op (decideEpisodeAction).
-    const CHANGE = "Change quality or subtitles"
-    const REMOVE = "Remove all downloads"
     const savedCount = downloadState.total
     const savedLabel = `${savedCount} ${
       savedCount === 1 ? "episode" : "episodes"
     } saved for offline viewing`
-    if (Platform.OS === "ios") {
-      ActionSheetIOS.showActionSheetWithOptions(
+    presentActionMenu({
+      title: seriesTitle,
+      message: savedLabel,
+      actions: [
+        { text: "Change quality or subtitles", onPress: openDownloadSheet },
+        ...(RAW_EXPORT_ENABLED
+          ? [
+              {
+                text: rawModeLabel(Platform.OS),
+                onPress: openRawExportSheet,
+              },
+            ]
+          : []),
         {
-          title: seriesTitle,
-          message: savedLabel,
-          options: [CHANGE, REMOVE, "Cancel"],
-          destructiveButtonIndex: 1,
-          cancelButtonIndex: 2,
-          // App is dark-only; keep the sheet in step rather than following the OS.
-          userInterfaceStyle: "dark",
+          text: "Remove all downloads",
+          style: "destructive" as const,
+          onPress: confirmRemoveAll,
         },
-        (index) => {
-          if (index === 0) openDownloadSheet()
-          else if (index === 1) confirmRemoveAll()
-        },
-      )
-    } else {
-      Alert.alert(seriesTitle, savedLabel, [
-        { text: CHANGE, onPress: openDownloadSheet },
-        { text: REMOVE, style: "destructive", onPress: confirmRemoveAll },
-        { text: "Cancel", style: "cancel" },
-      ])
-    }
+        { text: "Cancel", style: "cancel" as const },
+      ],
+    })
   }, [
     series?.episodes,
     series?.title,
@@ -291,6 +297,7 @@ export default function SeriesScreen() {
     getRecord,
     deleteDownload,
     openDownloadSheet,
+    openRawExportSheet,
   ])
 
   // Downloading → the ring's pause glyph pauses the active transfer (the pump

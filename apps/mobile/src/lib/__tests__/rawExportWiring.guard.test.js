@@ -34,6 +34,19 @@ const PROVIDER = "src/contexts/DownloadsProvider.tsx"
 const WATCH_ROUTE = "app/watch/download.tsx"
 const SERIES_ROUTE = "app/series/download.tsx"
 
+// Each sheet is reached from its detail screen's manage menu. That menu is the
+// ONLY way to export a title already saved offline, and neither screen has a
+// render test, so the row is a one-line silent deletion without this.
+const WATCH_SCREEN = "app/watch/[slug].tsx"
+const SERIES_SCREEN = "app/series/[slug].tsx"
+const ENTRY_POINTS = [
+  { screen: WATCH_SCREEN, route: '"/watch/download?mode=raw"' },
+  { screen: SERIES_SCREEN, route: '"/series/download?mode=raw"' },
+]
+// The other half of the entry point: a route that drops the param lands on the
+// offline sheet, where a fully-downloaded series shows a disabled button.
+const SERIES_MODE_SEED = ["useLocalSearchParams", 'modeParam === "raw"']
+
 const WATCH_WIRING = ["getRawExportAdapter()", "exportVideo("]
 const SERIES_WIRING = [
   "getRawExportAdapter()",
@@ -123,6 +136,46 @@ describe("the raw-export composition root wires its native bindings", () => {
     // The same failure mode on the other sheet. It went uncovered because the
     // guard named one route file and nobody counted the sheets.
     expect(missingWiring(read(SERIES_ROUTE), SERIES_WIRING)).toEqual([])
+  })
+
+  it("is reachable from the app: both manage menus offer the export", () => {
+    for (const { screen, route } of ENTRY_POINTS) {
+      const source = stripComments(read(screen))
+      expect(source).toContain(route)
+      // The label comes from the shared helper, so iOS says Photos and
+      // Android says Gallery from one place.
+      expect(source).toContain("rawModeLabel(")
+      // The switch gates the row itself; without it a flipped switch leaves a
+      // live row that opens a sheet with no export mode.
+      expect(source).toContain("RAW_EXPORT_ENABLED")
+    }
+    expect(ENTRY_POINTS).toHaveLength(2)
+  })
+
+  it("is reachable from the app: the series route reads the mode it is sent", () => {
+    expect(missingWiring(read(SERIES_ROUTE), SERIES_MODE_SEED)).toEqual([])
+  })
+
+  it("positive control: a dropped entry row and a dropped seed are caught", () => {
+    for (const { screen, route } of ENTRY_POINTS) {
+      const withoutRow = stripComments(read(screen)).split(route).join('""')
+      // Through the SAME detector the real assertion uses, and naming the two
+      // sibling tokens: asserting only that the deleted string is gone is a
+      // tautology that cannot fail on any input.
+      expect(
+        missingWiring(withoutRow, [
+          route,
+          "rawModeLabel(",
+          "RAW_EXPORT_ENABLED",
+        ]),
+      ).toEqual([route])
+    }
+    const withoutSeed = read(SERIES_ROUTE)
+      .split('modeParam === "raw"')
+      .join("false")
+    expect(missingWiring(withoutSeed, SERIES_MODE_SEED)).toEqual([
+      'modeParam === "raw"',
+    ])
   })
 
   it("positive control: a gutted series raw branch is caught", () => {

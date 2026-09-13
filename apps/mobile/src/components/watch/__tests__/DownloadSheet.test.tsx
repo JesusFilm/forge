@@ -52,8 +52,12 @@ const mockBack = jest.fn()
 const mockGetRecord = jest.fn()
 const mockResolveSeries = jest.fn()
 
+// The series route reads `?mode=raw`, so the mock has to answer both hooks —
+// a `useRouter`-only mock throws the moment the route reads its params.
+let mockSearchParams: Record<string, string> = {}
 jest.mock("expo-router", () => ({
   useRouter: () => ({ back: mockBack }),
+  useLocalSearchParams: () => mockSearchParams,
 }))
 jest.mock("../../../contexts/SeriesSessionProvider", () => ({
   useSeriesSession: () => ({
@@ -205,12 +209,21 @@ function buildResolution(tier: QualityTier) {
 
 /** A verified offline copy of every episode at the Highest tier. */
 function savedRecord(slug: string): OfflineDownloadRecord {
+  return savedRecordAt(slug, "Highest")
+}
+
+/**
+ * The same copy at a named tier. "Highest" is ALSO the sheet's own opening
+ * default, so a fixture saved there cannot tell an assignment apart from the
+ * value the state already held.
+ */
+function savedRecordAt(slug: string, tier: QualityTier): OfflineDownloadRecord {
   return {
     version: 1,
     videoSlug: slug,
     dubDocumentId: `dub-${slug}`,
-    renditionDocumentId: renditionId(slug, "Highest"),
-    qualityLabel: "Highest",
+    renditionDocumentId: renditionId(slug, tier),
+    qualityLabel: tier,
     title: slug,
     subtitleLanguageSlug: null,
     state: "downloaded",
@@ -288,7 +301,10 @@ async function renderSheet(props: SheetProps = {}): Promise<TestInstance> {
   return renderer
 }
 
-async function renderSeries(): Promise<TestInstance> {
+async function renderSeries(
+  params: Record<string, string> = {},
+): Promise<TestInstance> {
+  mockSearchParams = params
   let renderer!: TestInstance
   await act(async () => {
     renderer = TestRenderer.create(<SeriesDownloadRoute />)
@@ -363,6 +379,7 @@ async function chooseQuality(
 
 beforeEach(() => {
   rawExportConstants.RAW_EXPORT_ENABLED = true
+  mockSearchParams = {}
   mockBack.mockReset()
   mockGetRecord.mockReset()
   mockGetRecord.mockReturnValue(null)
@@ -934,6 +951,114 @@ describe("series sheet mode control", () => {
     const renderer = await renderSeries()
     await chooseMode(renderer, "raw")
     expect(hasText(renderer, "reuse an offline copy")).toBe(false)
+    await unmount(renderer)
+  })
+})
+
+/**
+ * The "Save to Photos" row on the series manage sheet routes here with
+ * `?mode=raw`. Its only entry condition is that every episode is already
+ * saved, so the opening quality decides whether the run copies the files on
+ * the device or downloads the whole series again.
+ */
+describe("series sheet opened for an export", () => {
+  it("opens on the export mode, with its Terms gate", async () => {
+    const renderer = await renderSeries({ mode: "raw" })
+
+    expect(checkedState(radioByLabel(renderer, DOWNLOAD_MODE_LABELS.raw))).toBe(
+      true,
+    )
+    expect(nodeByLabel(renderer, "I agree to the Terms of Use")).not.toBeNull()
+    expect(
+      nodeByLabel(renderer, "Save all episodes to the device")?.props.disabled,
+    ).toBe(true)
+
+    await unmount(renderer)
+  })
+
+  it("opens on the offline mode without the param — the seed is not a default", async () => {
+    const renderer = await renderSeries()
+    expect(
+      checkedState(radioByLabel(renderer, DOWNLOAD_MODE_LABELS.offline)),
+    ).toBe(true)
+    await unmount(renderer)
+  })
+
+  it("ignores the param while the switch is off", async () => {
+    // Raw mode without the mode control is a sheet with no way back to offline
+    // and a confirm that refuses.
+    rawExportConstants.RAW_EXPORT_ENABLED = false
+    const renderer = await renderSeries({ mode: "raw" })
+
+    expect(nodeByLabel(renderer, "I agree to the Terms of Use")).toBeNull()
+    expect(nodeByLabel(renderer, "Download all episodes")).not.toBeNull()
+
+    await unmount(renderer)
+  })
+
+  it("keeps the saved quality, so every episode reuses its offline copy", async () => {
+    // Saved at a tier that is NOT the sheet's opening default, so only the
+    // assignment can produce this result. With the fixture at "Highest" the
+    // assignment writes the value the state already holds, and deleting it
+    // leaves the test green.
+    mockGetRecord.mockImplementation((slug: string) =>
+      savedRecordAt(slug, "Low"),
+    )
+    const renderer = await renderSeries({ mode: "raw" })
+
+    expect(nodeByLabel(renderer, "Quality, Low")).not.toBeNull()
+    expect(hasText(renderer, formatSeriesReuseNote(3, 3))).toBe(true)
+
+    await unmount(renderer)
+  })
+
+  it("never reverts a quality the viewer picked while it was still resolving", async () => {
+    // The seed fires ONCE, when the saved tier first becomes known — and the
+    // saved tier is only known from a finished resolution. A pick taken while
+    // the first one is still in flight therefore lands BEFORE the seed's one
+    // run, and the seed must leave it alone. The resolution is held open here
+    // because it settles instantly otherwise, which skips this window.
+    mockGetRecord.mockImplementation((slug: string) =>
+      savedRecordAt(slug, "Low"),
+    )
+    let releaseFirst!: () => void
+    const held = new Promise<void>((resolve) => {
+      releaseFirst = resolve
+    })
+    let call = 0
+    mockResolveSeries.mockImplementation(
+      async (_episodes: unknown, choice: { qualityTier: QualityTier }) => {
+        if (++call === 1) await held
+        return buildResolution(choice.qualityTier)
+      },
+    )
+
+    const renderer = await renderSeries({ mode: "raw" })
+    // Still resolving: the saved tier is unknown, so the sheet sits on its own
+    // opening default with the picker live.
+    expect(nodeByLabel(renderer, "Quality, Highest")).not.toBeNull()
+
+    await chooseQuality(renderer, "Quality", "Highest", "High")
+    await act(async () => {
+      releaseFirst()
+      await held
+    })
+
+    expect(nodeByLabel(renderer, "Quality, High")).not.toBeNull()
+    expect(nodeByLabel(renderer, "Quality, Low")).toBeNull()
+
+    await unmount(renderer)
+  })
+
+  it("still moves off the saved quality when it opens to download", async () => {
+    // The anti-vacuous companion: the same records, the same saved tier, and
+    // the opposite default — a re-download may not land on the disabled tier.
+    mockGetRecord.mockImplementation((slug: string) => savedRecord(slug))
+    const renderer = await renderSeries()
+
+    await chooseMode(renderer, "raw")
+    expect(hasText(renderer, formatSeriesReuseNote(0, 3))).toBe(true)
+
     await unmount(renderer)
   })
 })

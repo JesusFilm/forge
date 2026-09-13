@@ -287,6 +287,75 @@ describe("the series detail names every outcome the run reached", () => {
   })
 })
 
+/**
+ * The report re-renders on every episode of a run, so its icon is on screen
+ * for the whole export, not only at the end. It has to read as "nothing has
+ * gone wrong", which is not the same question as "is the run finished".
+ */
+describe("the series icon reports problems, not completeness", () => {
+  const GREEN = "#34d399"
+  const AMBER = "#fbbf24"
+
+  it("stays green while a clean run is still saving episodes", () => {
+    const view = viewFor(
+      only([
+        episode("episode-0", "saved", { runSize: 5 }),
+        episode("episode-1", "saved", { runSize: 5 }),
+      ]),
+    )
+
+    expect(view.headline).toBe("Saved 2 of 5 episodes.")
+    expect(view.icon).toBe("checkmark-circle")
+    expect(view.iconColor).toBe(GREEN)
+  })
+
+  it("turns amber the moment one episode reports a problem", () => {
+    // The discriminating companion: the SAME two saved episodes and the same
+    // unfinished run, with one real failure added.
+    const view = viewFor(
+      only([
+        episode("episode-0", "saved", { runSize: 5 }),
+        episode("episode-1", "saved", { runSize: 5 }),
+        episode("episode-2", "failed", { runSize: 5 }),
+      ]),
+    )
+
+    expect(view.headline).toBe("Saved 2 of 5 episodes.")
+    expect(view.icon).toBe("alert-circle")
+    expect(view.iconColor).toBe(AMBER)
+  })
+
+  it.each(["failed", "blocked", "refused", "cancelled", "abandoned"] as const)(
+    "treats a %s episode as a problem",
+    (outcome) => {
+      const view = viewFor(
+        only([
+          episode("episode-0", "saved", { runSize: 3 }),
+          episode("episode-1", outcome, { runSize: 3 }),
+        ]),
+      )
+
+      expect(view.icon).toBe("alert-circle")
+    },
+  )
+
+  it("is still green when every episode of a finished run saved", () => {
+    const view = viewFor(
+      only([
+        episode("episode-0", "saved", { runSize: 2 }),
+        episode("episode-1", "saved", { runSize: 2 }),
+      ]),
+    )
+
+    expect(view.icon).toBe("checkmark-circle")
+    expect(view.iconColor).toBe(GREEN)
+  })
+
+  it("pins the two colours, so a palette edit cannot swap them silently", () => {
+    expect(GREEN).not.toBe(AMBER)
+  })
+})
+
 describe("a detail the host cannot derive rides the report", () => {
   it("prefers the published detail over the derived one", () => {
     const view = viewFor(

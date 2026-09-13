@@ -9,7 +9,7 @@ import {
   View,
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { useRouter } from "expo-router"
+import { useLocalSearchParams, useRouter } from "expo-router"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import {
@@ -82,6 +82,8 @@ type SheetPhase =
 
 export default function SeriesDownloadRoute() {
   const router = useRouter()
+  // "Save to Photos" on the series manage sheet opens straight on the export.
+  const { mode: modeParam } = useLocalSearchParams<{ mode?: string }>()
   const { series, selectedLanguageSlug, languages } = useSeriesSession()
   const {
     getRecord,
@@ -100,8 +102,13 @@ export default function SeriesDownloadRoute() {
   const [subtitleOpen, setSubtitleOpen] = useState(false)
   const [touAccepted, setTouAccepted] = useState(false)
   const [termsVisible, setTermsVisible] = useState(false)
-  // R2: every opening starts on the offline mode, and nothing writes it back.
-  const [mode, setMode] = useState<DownloadMode>("offline")
+  // R2: nothing writes the choice back; a fresh sheet takes the mode its entry
+  // point asked for, and defaults to offline. The switch gates the seed too —
+  // with the export gone, raw mode would be a sheet with no way back to offline
+  // and a confirm that refuses.
+  const initialMode: DownloadMode =
+    RAW_EXPORT_ENABLED && modeParam === "raw" ? "raw" : "offline"
+  const [mode, setMode] = useState<DownloadMode>(initialMode)
   const rawMode = mode === "raw"
   // Owner decision 2026-09-14: only an EXPORT needs the Terms. An offline
   // copy stays inside the app; a saved file leaves it.
@@ -270,14 +277,25 @@ export default function SeriesDownloadRoute() {
   // Once the saved tier is known, move the default off it to the next tier. Runs
   // once so it never fights a later manual pick.
   const didPickDefaultRef = useRef(false)
+  // A pick made while the first resolution is still running arrives BEFORE the
+  // saved tier is known, so the latch below has not claimed its one run yet and
+  // would revert the viewer a second later.
+  const pickedQualityRef = useRef(false)
   useEffect(() => {
     if (didPickDefaultRef.current || downloaded.tier == null) return
     didPickDefaultRef.current = true
+    // A sheet OPENED for an export wants the opposite default: only the saved
+    // tier reuses the files already on the device (KTD14 matches the rendition
+    // exactly), so any other quality downloads the whole series again.
+    if (initialMode === "raw") {
+      if (!pickedQualityRef.current) setQualityTier(downloaded.tier)
+      return
+    }
     if (qualityTier === downloaded.tier) {
       const next = QUALITY_TIERS.find((t) => t !== downloaded.tier)
       if (next) setQualityTier(next)
     }
-  }, [downloaded.tier, qualityTier])
+  }, [downloaded.tier, qualityTier, initialMode])
 
   // Quality options carry each tier's whole-series total as trailing text (the
   // per-video sheet's pattern); the already-saved tier is disabled instead.
@@ -514,6 +532,7 @@ export default function SeriesDownloadRoute() {
         open={qualityOpen}
         onToggle={() => setQualityOpen((o) => !o)}
         onSelect={(key) => {
+          pickedQualityRef.current = true
           setQualityTier(key as QualityTier)
           setQualityOpen(false)
         }}

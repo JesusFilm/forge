@@ -230,7 +230,19 @@ function seriesView(
   }
   if (record.detail) notes.push(record.detail)
 
-  const clean = counts.saved === record.runSize
+  // The icon answers "did anything go wrong", never "has the run finished".
+  // A run mid-flight has saved fewer than `runSize` while every episode in it
+  // saved cleanly, and the report re-renders on each one — so counting the
+  // unfinished episodes as a problem painted a warning over five successes in
+  // a row. Every outcome that is NOT `saved` has a note above; those, and only
+  // those, are what the warning colour is for.
+  const clean =
+    counts.failed +
+      counts.blocked +
+      counts.refused +
+      counts.cancelled +
+      counts.abandoned ===
+    0
   return {
     title: record.title,
     // R21: saved against the resolved set, always — a cancelled or refused run
