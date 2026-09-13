@@ -12,6 +12,13 @@
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 
+// OFFLINE_ROOT derives from documentDirectory at module load, and jest-expo
+// leaves that null — which makes every file:// path fail validateLocalMediaUrl
+// and so hides the offline-swap resume entirely. Give it a real root.
+jest.mock("expo-file-system/legacy", () => ({
+  ...jest.requireActual("expo-file-system/legacy"),
+  documentDirectory: "file:///docs/",
+}))
 jest.mock("react", () => {
   const r = require as unknown as NodeRequireLike
   const path = r("path") as NodePath
@@ -205,6 +212,9 @@ const sessionStore = getMiniPlayerStore()
 
 const URL_A = "https://stream.mux.com/assetAAA111.m3u8"
 const URL_B = "https://stream.mux.com/assetBBB222.m3u8"
+// A completed download of the SAME video as URL_A, under the offline root
+// the host validates against.
+const OFFLINE_A = "file:///docs/offline-downloads/video-a-slug/a.mp4"
 const RECT = { x: 0, y: 47, width: 390, height: 219 }
 
 const SESSION_A: PlaybackSessionDescriptor = {
@@ -2602,6 +2612,84 @@ describe("quality tier swaps (U2)", () => {
       video.__player.__emit("sourceLoad")
     })
     expect(video.__player.currentTime).toBe(42)
+  })
+
+  /**
+   * A completed download replaces the stream mid-play. Same video, new
+   * container — the viewer keeps their place. It used to restart at 0:00,
+   * because a file:// URL can never satisfy isSameMuxAsset and so took the
+   * cross-asset branch that CLEARS the latch.
+   */
+  it("a completed download resumes where the stream was, and keeps playing", async () => {
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 305
+    video.__player.duration = 1800
+
+    await act(async () => {
+      requestStore.updateSlot(
+        id,
+        makeRequest({ autostart: false, streamingUrl: OFFLINE_A }),
+      )
+    })
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(OFFLINE_A)
+
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+    expect(video.__player.currentTime).toBe(305)
+    expect(video.__player.play).toHaveBeenCalled()
+  })
+
+  it("the same swap in reverse resumes too — a download deleted mid-play", async () => {
+    const id = attachSlot({ autostart: false, streamingUrl: OFFLINE_A })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 120
+    video.__player.duration = 1800
+
+    await act(async () => {
+      requestStore.updateSlot(
+        id,
+        makeRequest({ autostart: false, streamingUrl: URL_A }),
+      )
+    })
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+    expect(video.__player.currentTime).toBe(120)
+  })
+
+  it("a paused viewer resumes paused — the swap restores position, not playback", async () => {
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 77
+    video.__player.duration = 1800
+    video.__player.playing = false
+    video.__player.play.mockClear()
+
+    await act(async () => {
+      requestStore.updateSlot(
+        id,
+        makeRequest({ autostart: false, streamingUrl: OFFLINE_A }),
+      )
+    })
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+    expect(video.__player.currentTime).toBe(77)
+    expect(video.__player.play).not.toHaveBeenCalled()
   })
 
   it("a cross-asset swap mid-pick invalidates the latch: no seek to the stale capture", async () => {
