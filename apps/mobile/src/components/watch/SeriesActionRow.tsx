@@ -156,6 +156,11 @@ export function SeriesActionRow({
               size={26}
               strokeWidth={2.5}
               progress={downloadState.exportProgress}
+              // This ring steps once per EPISODE saved, not once per second of
+              // bytes. Episodes that reuse an offline copy land about twice a
+              // second, so the default tween — sized for the byte cadence —
+              // never catches up and the arc reads far behind the count.
+              animationDurationMs={250}
               color={EXPORT_IN_PROGRESS_COLOR}
               trackColor="rgba(255, 255, 255, 0.18)"
               cutoutColor={SURFACE_COLOR}

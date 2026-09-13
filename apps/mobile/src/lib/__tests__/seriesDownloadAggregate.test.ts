@@ -356,6 +356,72 @@ describe("deriveSeriesDownloadState with a raw export (R16, R24, R30)", () => {
     expect(state.exportProgress).toBeCloseTo(0.5)
   })
 
+  /**
+   * The ring the viewer watches during a series export counts EPISODES SAVED.
+   * The session cannot supply that count — it deletes each entry when its
+   * episode finishes — so the run publishes it, and it overrides the byte mean.
+   */
+  it("steps the ring once per episode saved, not per byte transferred", () => {
+    // Episode 3 is 90% transferred and two are already in the library. The
+    // ring reads 2 of 5, never 0.9.
+    const state = deriveSeriesDownloadState(
+      EPISODES,
+      [],
+      [],
+      undefined,
+      session(["c", 0.9]),
+      { saved: 2, total: 5 },
+    )
+    expect(state.exportProgress).toBeCloseTo(0.4)
+  })
+
+  it("reads full only once the run has saved every episode", () => {
+    const state = deriveSeriesDownloadState(EPISODES, [], [], undefined, null, {
+      saved: 5,
+      total: 5,
+    })
+    expect(state.exportProgress).toBe(1)
+  })
+
+  it("holds the row exporting between two episodes, when no entry is live", () => {
+    // The gap the session leaves: the finished episode's entry is deleted
+    // before the next one is created, so the row would drop to its idle glyph
+    // and the ring would remount from zero.
+    const state = deriveSeriesDownloadState(EPISODES, [], [], undefined, null, {
+      saved: 1,
+      total: 5,
+    })
+    expect(state.exporting).toBe(true)
+    expect(state.exportingSlugs).toEqual([])
+    expect(state.exportProgress).toBeCloseTo(0.2)
+  })
+
+  it("falls back to the byte mean for an export with no run", () => {
+    // One episode exported from its own watch screen: there is no run, and its
+    // bytes are the only progress there is.
+    const state = deriveSeriesDownloadState(
+      EPISODES,
+      [],
+      [],
+      undefined,
+      session(["b", 0.5]),
+      null,
+    )
+    expect(state.exportProgress).toBeCloseTo(0.5)
+  })
+
+  it("ignores a run that covers nothing", () => {
+    const state = deriveSeriesDownloadState(
+      EPISODES,
+      [],
+      [],
+      undefined,
+      session(["b", 0.5]),
+      { saved: 0, total: 0 },
+    )
+    expect(state.exportProgress).toBeCloseTo(0.5)
+  })
+
   it("ignores an export of a video outside this series", () => {
     const state = deriveSeriesDownloadState(
       EPISODES,

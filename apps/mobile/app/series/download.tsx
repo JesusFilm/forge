@@ -36,6 +36,7 @@ import {
   buildSeriesExportRun,
   runSeriesRawExport,
 } from "../../src/lib/rawExportRun"
+import { publishSeriesExportProgress } from "../../src/lib/seriesExportProgress"
 import { useTypography } from "../../src/hooks/useTypography"
 import {
   ACCENT,
@@ -427,6 +428,8 @@ export default function SeriesDownloadRoute() {
           (entry) => entry.seriesSlug === seriesSlug && entry.cancelRequested,
         ),
       report: publishExportReport,
+      publishRunProgress: (progress) =>
+        publishSeriesExportProgress(seriesSlug, progress),
     })
   }, [resolution, series, wifiOnly, router])
 

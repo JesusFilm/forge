@@ -2,6 +2,7 @@ import type { ExportReportSignal } from "../../components/ExportReportHost"
 import type { ExportOutcome } from "../exportSession"
 import type { RawExportInput, RawExportResult } from "../rawExportAdapter"
 import type { SeriesEpisodeResolution } from "../seriesDownloadResolver"
+import type { SeriesExportRunProgress } from "../seriesExportProgress"
 import {
   buildSeriesExportRun,
   runSeriesRawExport,
@@ -138,10 +139,12 @@ function harness(options: HarnessOptions = {}) {
     }
   }
 
+  const runProgress: (SeriesExportRunProgress | null)[] = []
   const deps: SeriesExportRunDeps = {
     exportVideo,
     isCancelRequested: () => cancelRequested,
     report,
+    publishRunProgress: (progress) => runProgress.push(progress),
   }
 
   return {
@@ -150,6 +153,7 @@ function harness(options: HarnessOptions = {}) {
     libraryWrites,
     signals,
     overlapped,
+    runProgress,
     cancel: () => {
       cancelRequested = true
     },
@@ -229,6 +233,100 @@ describe("buildSeriesExportRun", () => {
       { sizeBytes: 2_000 },
       { sizeBytes: 3_000 },
     ])
+  })
+})
+
+/**
+ * The series ring counts EPISODES SAVED. The run is the only thing that knows
+ * the count: the export session deletes each episode's entry the moment it
+ * finishes, so nothing downstream survives to be counted.
+ */
+describe("runSeriesRawExport publishes the ring's count", () => {
+  it("steps once per saved episode and ends by clearing the run", async () => {
+    const run = buildRun(episodes(3))
+    const h = harness({})
+
+    await runSeriesRawExport(run, h.deps)
+
+    expect(h.runProgress).toEqual([
+      // Up before the first episode, so the ring is already on screen when an
+      // episode that reuses an offline copy finishes in milliseconds.
+      { saved: 0, total: 3 },
+      { saved: 1, total: 3 },
+      { saved: 2, total: 3 },
+      { saved: 3, total: 3 },
+      null,
+    ])
+  })
+
+  it("does not step for an episode that failed", async () => {
+    const run = buildRun(episodes(3))
+    const h = harness({
+      plans: { "ep-1": { kind: "outcome", outcome: "failed" } },
+    })
+
+    await runSeriesRawExport(run, h.deps)
+
+    expect(h.runProgress).toEqual([
+      { saved: 0, total: 3 },
+      { saved: 1, total: 3 },
+      { saved: 2, total: 3 },
+      null,
+    ])
+  })
+
+  it("counts a deferred library write, which still saves", async () => {
+    const run = buildRun(episodes(2))
+    const h = harness({ plans: { "ep-0": { kind: "deferred" } } })
+
+    await runSeriesRawExport(run, h.deps)
+
+    expect(h.runProgress).toEqual([
+      { saved: 0, total: 2 },
+      { saved: 1, total: 2 },
+      { saved: 2, total: 2 },
+      null,
+    ])
+  })
+
+  it("clears the run on a cancel, so the ring never outlives it", async () => {
+    const run = buildRun(episodes(4))
+    const h = harness({})
+    const started = runSeriesRawExport(run, h.deps)
+    h.cancel()
+
+    await started
+
+    expect(h.runProgress[h.runProgress.length - 1]).toBeNull()
+  })
+
+  it("clears the run when the loop itself throws", async () => {
+    // The only thing holding the row in its exporting state once the last
+    // session entry is released, so a throw that skipped it would strand a
+    // ring on the screen until the route unmounted.
+    const run = buildRun(episodes(2))
+    const h = harness({})
+    const deps: SeriesExportRunDeps = {
+      ...h.deps,
+      isCancelRequested: () => {
+        throw new Error("cancel check exploded")
+      },
+    }
+
+    await expect(runSeriesRawExport(run, deps)).rejects.toThrow(
+      "cancel check exploded",
+    )
+    expect(h.runProgress[h.runProgress.length - 1]).toBeNull()
+  })
+
+  it("publishes nothing for a run with no episodes", async () => {
+    const run = buildRun([])
+    const h = harness({})
+
+    await runSeriesRawExport(run, h.deps)
+
+    // Only the clear: a 0-of-0 ring would read as a live export of nothing.
+    expect(h.runProgress).toEqual([null])
   })
 })
 

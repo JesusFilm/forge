@@ -5,6 +5,11 @@ import {
   type ExportSessionEntry,
   type ExportSessionSnapshot,
 } from "../lib/exportSession"
+import {
+  getSeriesExportProgressSnapshot,
+  subscribeToSeriesExportProgress,
+  type SeriesExportRunProgress,
+} from "../lib/seriesExportProgress"
 
 /**
  * Subscribe a surface to the raw-export session (KTD5). The store is module
@@ -29,6 +34,19 @@ export function useExportEntry(
   // bails on every tick that belongs to another video.
   return useSyncExternalStore(store.subscribe, () =>
     videoSlug ? (store.getSnapshot().byTarget[videoSlug] ?? null) : null,
+  )
+}
+
+/**
+ * How far a series' export run has got, in episodes saved. Per series, NOT the
+ * whole snapshot: a run over another series would otherwise re-render this one
+ * on every episode.
+ */
+export function useSeriesExportProgress(
+  seriesSlug: string | null | undefined,
+): SeriesExportRunProgress | null {
+  return useSyncExternalStore(subscribeToSeriesExportProgress, () =>
+    seriesSlug ? (getSeriesExportProgressSnapshot()[seriesSlug] ?? null) : null,
   )
 }
 

@@ -9,6 +9,7 @@ import type { ExportReportSignal } from "../components/ExportReportHost"
 import type { ExportSizing, RawExportRendition } from "./rawExport"
 import type { RawExportInput, RawExportResult } from "./rawExportAdapter"
 import type { SeriesEpisodeResolution } from "./seriesDownloadResolver"
+import type { SeriesExportRunProgress } from "./seriesExportProgress"
 
 /** One episode of the run, already reduced to what an export needs. */
 export type SeriesExportEpisode = {
@@ -47,6 +48,12 @@ export type SeriesExportRunDeps = {
   isCancelRequested: () => boolean
   /** R29: the ONE report channel, for the results the adapter cannot publish. */
   report: (signal: ExportReportSignal) => void
+  /**
+   * The series ring, which counts EPISODES SAVED. The session cannot supply it:
+   * it deletes each episode's entry on completion, so nothing survives to
+   * count. `null` ends the run and takes the ring down.
+   */
+  publishRunProgress?: (progress: SeriesExportRunProgress | null) => void
 }
 
 /**
@@ -149,58 +156,75 @@ export async function runSeriesRawExport(
     })
   }
 
-  for (const [index, episode] of run.episodes.entries()) {
-    if (deps.isCancelRequested()) {
-      cancelled = true
-      break
-    }
+  // The ring counts EPISODES SAVED, so it steps once per episode rather than
+  // sweeping per transfer. It goes up before the first episode, so it is
+  // already on screen when an episode that reuses an offline copy finishes in
+  // a few milliseconds.
+  const publishProgress = (): void => {
+    if (total > 0) deps.publishRunProgress?.({ saved, total })
+  }
 
-    let result: RawExportResult
-    try {
-      result = await deps.exportVideo({
-        videoSlug: episode.videoSlug,
-        runId: run.runId,
-        title: episode.title,
-        rendition: episode.rendition,
-        wifiOnly: run.wifiOnly,
-        seriesSlug: run.seriesSlug,
-        runSize: total,
-        // The SUFFIX, not the whole run: the adapter re-reads free space per
-        // episode, and that space has already dropped by the copies earlier
-        // episodes wrote. Re-charging the full total would refuse a run midway.
-        runExports: run.runExports.slice(index),
-      })
-    } catch {
-      // R31: one episode's fault never stops the run, and a throw reports
-      // nothing of its own, so the run reports for it.
-      failed += 1
-      reportFor(episode, "failed")
-      continue
-    }
+  publishProgress()
+  try {
+    for (const [index, episode] of run.episodes.entries()) {
+      if (deps.isCancelRequested()) {
+        cancelled = true
+        break
+      }
 
-    if (result.kind === "deferred") {
-      // The write is handed to the next foreground, which publishes the real
-      // outcome under this same run id. A guess here would only be overwritten.
-      deferred += 1
-      saved += 1
-      continue
-    }
-    if (result.kind === "already-exporting") {
-      // R27: another surface owns this episode's export, so it saves under a
-      // different run. This one did not save it.
+      let result: RawExportResult
+      try {
+        result = await deps.exportVideo({
+          videoSlug: episode.videoSlug,
+          runId: run.runId,
+          title: episode.title,
+          rendition: episode.rendition,
+          wifiOnly: run.wifiOnly,
+          seriesSlug: run.seriesSlug,
+          runSize: total,
+          // The SUFFIX, not the whole run: the adapter re-reads free space per
+          // episode, and that space has already dropped by the copies earlier
+          // episodes wrote. Re-charging the full total would refuse a run midway.
+          runExports: run.runExports.slice(index),
+        })
+      } catch {
+        // R31: one episode's fault never stops the run, and a throw reports
+        // nothing of its own, so the run reports for it.
+        failed += 1
+        reportFor(episode, "failed")
+        continue
+      }
+
+      if (result.kind === "deferred") {
+        // The write is handed to the next foreground, which publishes the real
+        // outcome under this same run id. A guess here would only be overwritten.
+        deferred += 1
+        saved += 1
+        publishProgress()
+        continue
+      }
+      if (result.kind === "already-exporting") {
+        // R27: another surface owns this episode's export, so it saves under a
+        // different run. This one did not save it.
+        failed += 1
+        reportFor(episode, "failed")
+        continue
+      }
+      if (result.outcome === "saved") {
+        saved += 1
+        publishProgress()
+        continue
+      }
+      if (result.outcome === "cancelled") {
+        cancelled = true
+        break
+      }
       failed += 1
-      reportFor(episode, "failed")
-      continue
     }
-    if (result.outcome === "saved") {
-      saved += 1
-      continue
-    }
-    if (result.outcome === "cancelled") {
-      cancelled = true
-      break
-    }
-    failed += 1
+  } finally {
+    // Every exit takes the ring down, a throw included — it is the only thing
+    // holding the row in its exporting state once the last entry is released.
+    deps.publishRunProgress?.(null)
   }
 
   return { runId: run.runId, total, saved, failed, deferred, cancelled }

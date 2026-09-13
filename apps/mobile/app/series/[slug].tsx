@@ -46,7 +46,10 @@ import {
 } from "../../src/lib/seriesDownloadAggregate"
 import { resolveSeriesSubtitleLabel } from "../../src/lib/subtitleSelection"
 import { useSeriesSubtitleUnion } from "../../src/hooks/useSeriesSubtitleUnion"
-import { useExportSession } from "../../src/hooks/useExportSession"
+import {
+  useExportSession,
+  useSeriesExportProgress,
+} from "../../src/hooks/useExportSession"
 import { getExportSessionStore } from "../../src/lib/exportSession"
 import { presentActionMenu } from "../../src/lib/actionMenu"
 import { rawModeLabel } from "../../src/components/watch/DownloadSheet"
@@ -110,6 +113,7 @@ export default function SeriesScreen() {
     (subtitleUnion == null || subtitleUnion.length > 0)
 
   const exportSession = useExportSession()
+  const exportRunProgress = useSeriesExportProgress(series?.slug)
   const downloadState = useMemo(
     () =>
       deriveSeriesDownloadState(
@@ -118,6 +122,7 @@ export default function SeriesScreen() {
         offlineRecords,
         pendingSwapSlugs,
         exportSession,
+        exportRunProgress,
       ),
     [
       series?.episodes,
@@ -125,6 +130,7 @@ export default function SeriesScreen() {
       offlineRecords,
       pendingSwapSlugs,
       exportSession,
+      exportRunProgress,
     ],
   )
   const seriesFullyDownloaded = seriesAllDownloaded(downloadState)
