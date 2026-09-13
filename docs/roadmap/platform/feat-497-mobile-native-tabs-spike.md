@@ -212,3 +212,74 @@ Done when this ticket records, for each of iOS 17 / 18 / 26 / iPad: the probe's
 `bottom` value, a screenshot of the bar, the hide-reflow result, and the
 go/no-go line. On go, the follow-up ticket ID is written here and this ticket
 is set to `complete`.
+
+## Results — spike run 2026-09-14
+
+Ran on the `spike/native-tabs-spike-497` worktree against local admin, with the
+probe from "What To Build". Screenshots and the raw probe log are in the session
+scratchpad; the numbers below are read from pixels, not by eye.
+
+### M1 — the safe-area inset INCLUDES the native bar. GO.
+
+| Runtime  | Device            | Tab visible | `insets.bottom` |
+| -------- | ----------------- | ----------- | --------------- |
+| iOS 26.5 | iPhone 17 Pro Max | Profile     | **83**          |
+| iOS 26.5 | iPhone 17 Pro Max | bar hidden  | **34**          |
+| iOS 18.6 | iPhone 16 Pro     | Profile     | **83**          |
+| iOS 26.5 | iPad Pro 11 (M5)  | Home        | 20              |
+
+83 = the 34pt home-indicator inset plus the 49pt UIKit bar, on both tiers. So
+`useTabBarClearance()` collapses to `insets.bottom + TAB_BAR_CLEARANCE_GAP` and
+needs no per-tier height table. `TAB_BAR_OCCUPIED_HEIGHT` for the mini player
+still needs a number, but 49 is right on both tiers rather than per-tier.
+
+### M2 — the iPad bar moves to the TOP, and `sidebarAdaptable={false}` does not move it back
+
+On iPadOS 26.5 the four tabs render as a segmented pill in the top bar. Setting
+`sidebarAdaptable={false}` (which maps to `tabBarControllerMode: 'tabBar'`)
+changed nothing — the bar stayed at the top across a cold relaunch. This is the
+one bad result of the spike. The app declares `supportsTablet: true`, so it is
+reachable today.
+
+### M3 — `<NativeTabs hidden>` works and reflows, on iOS 26
+
+Toggling `hidden` moved `insets.bottom` 83 -> 34 and the content reflowed into
+the vacated space in the same frame. **Not tested on iOS 18 or 16.4-17.** The
+16.4-17 tier takes the `tabBar.hidden` branch rather than
+`setTabBarHidden:animated:`, and that runtime is not installed on this machine
+(another ~9GB download). It stays an open question for the migration ticket.
+
+### Unplanned finding 1 — the material is fine below iOS 26 and uncontrollable on 26
+
+With `backgroundColor="#1c1917"`, `blurEffect="systemChromeMaterialDark"` and
+`disableTransparentOnScrollEdge`:
+
+| Runtime  | Bar ground      | Idle label/icon      | Selected label/icon |
+| -------- | --------------- | -------------------- | ------------------- |
+| iOS 18.6 | `#1c1917` exact | `#a8a29e` exact      | `#cb333b` exact     |
+| iOS 26.5 | Liquid Glass    | `rgb(247, 243, 241)` | `rgb(239, 85, 92)`  |
+
+iOS 18 renders the app's own three colours byte-exact, so the below-26 bar is
+not a compromise — it is the current palette in UIKit's standard shape. On
+iOS 26 `backgroundColor` is ignored (expected — UIKit draws the glass), the
+selected tint arrives lifted by vibrancy (`#cb333b` -> `rgb(239,85,92)`, which
+incidentally reads BETTER than the pill's failing 3.39:1), and **the idle tint
+is ignored entirely** — near-white instead of `#a8a29e`, with `iconColor` and
+`labelStyle` both set. Losing the idle tint on iOS 26 is a real, if small,
+design regression to weigh.
+
+### Unplanned finding 2 — all four tabs mount at cold launch, confirmed
+
+The probe lives in the Profile tab and logged on the first frame after the
+bundle landed, while Home was the visible tab. This confirms the eager-mount
+cost predicted from the source; the migration must gate `useCategoryThumbnails`
+on first focus.
+
+### Verdict — GO, with the iPad as the open question
+
+M1 is the decisive result and it came out the cheap way. M3's 16.4-17 branch and
+M2's iPad placement are the two loose ends. Neither blocks an iPhone-only
+migration; the iPad needs a product decision (accept the top bar, or keep the JS
+bar on iPad via a size-class branch) before it ships to tablets.
+
+Follow-up migration ticket: NOT YET ALLOCATED.
