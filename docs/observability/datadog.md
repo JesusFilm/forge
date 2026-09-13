@@ -325,6 +325,16 @@ API JSON payloads plus `create.sh` to apply them (operator supplies `DD_API_KEY`
 there over hand-creating them in the UI. Spec:
 `docs/observability/fleet-ceiling-datadog-monitors.md`.
 
+## Watch analytics Slack watcher (feat-495)
+
+`apps/analytics-watcher/README.md` defines the independent Railway checker for
+Watch GA delivery, GA Realtime intake and production RUM silence. Datadog access
+is read-only (`rum_apps_read`). The RUM threshold is **two hours**, followed by
+three confirming observations spanning at least ten minutes. Alerts and recovery
+messages target `#forge-development`; failed queries are separate monitoring
+problems. The service, Slack bot and external heartbeat require activation as
+documented in that runbook; merging code alone does not activate monitoring.
+
 ## Future app pattern
 
 Reuse the `Forge-production` API key and `@forge/datadog-agent` Railway
