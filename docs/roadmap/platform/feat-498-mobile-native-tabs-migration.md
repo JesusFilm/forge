@@ -3,7 +3,7 @@ id: "feat-498"
 title: "Mobile native tabs migration (iOS)"
 owner: "urim"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-14"
 duration: 3
 depends_on:
@@ -164,3 +164,33 @@ the `RNSTabBarController` classes, so no rebuild is needed):
 
 Done when the three checks above pass, both tiers are screenshotted, and the
 Android comparison is byte-identical.
+
+## Results — 2026-09-14
+
+Built and verified on the `feat/mobile-native-tabs` worktree.
+
+- **Checks** — `tsc --noEmit` clean, `eslint` clean, **201 suites / 3116 tests**
+  green.
+- **iOS 26.5 (iPhone 17 Pro Max)** — the Liquid Glass bar renders, all four tabs
+  switch, the Search tab draws its own header, Library selection hides the bar
+  and the content reflows, cancelling restores it, and the mini player rests
+  clear of the bar.
+- **iOS 18.6 (iPhone 16 Pro)** — the bar measures the app's own three colours
+  byte-exact: ground `#1c1917` = rgb(28,25,23), idle `#a8a29e` =
+  rgb(168,162,158), selected `#cb333b` = rgb(203,51,59).
+- **Android** — proven, not argued. `SelectionActionBar` plus the shared style
+  constants were rendered under `Platform.OS = "android"` on this branch and on
+  the parent commit, serialised, and diffed: **identical**.
+- **Launch work** — the six `WATCH_SEARCH` thumbnail queries no longer fire at
+  cold launch; they wait for the Search tab to take focus.
+
+### Carried forward
+
+- **iPad ships with the bar at the top** (feat-497 M2), as this ticket's
+  constraints accepted. A size-class branch that keeps a JS bar on iPad is the
+  follow-up if the owner wants one.
+- **The idle tint is UIKit's on iOS 26** — `iconColor` and `labelStyle` are
+  honoured on 18 and ignored on 26.
+- **`<NativeTabs hidden>` is verified on iOS 26 only.** The 16.4–17 branch takes
+  `tabBar.hidden` rather than `setTabBarHidden:animated:`; that runtime is not
+  installed on this machine.
