@@ -29,6 +29,12 @@ jest.mock("@expo/vector-icons/Ionicons", () => ({
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }))
+// expo-router ships untranspiled for this suite, and the host reads the route
+// to decide whether a floating tab bar is in the way.
+let mockSegments: string[] = ["watch", "[slug]"]
+jest.mock("expo-router", () => ({
+  useSegments: () => mockSegments,
+}))
 
 import { act } from "react"
 import { Linking, Text, View } from "react-native"
@@ -496,3 +502,58 @@ describe("the root layout mounts the host", () => {
 })
 
 declare const __dirname: string
+
+/**
+ * The toast sits where every other toast in this app sits — bottom, on
+ * `ui/Snackbar`'s geometry. It used to be anchored at the top.
+ */
+const SAVED = {
+  runId: "run-place",
+  target: "birth-of-jesus",
+  outcome: "saved",
+  title: "Birth of Jesus",
+  albumIntent: "album",
+} as const
+
+describe("placement", () => {
+  /** The host's own absolutely-positioned wrapper. */
+  function hostStyle(renderer: TestInstance): Record<string, unknown> {
+    const node = renderer.root.findAll(
+      (n) => n.props.pointerEvents === "box-none" && n.props.style != null,
+    )[0]
+    return Object.assign({}, ...[node.props.style].flat(2).filter(Boolean))
+  }
+
+  afterEach(() => {
+    mockSegments = ["watch", "[slug]"]
+  })
+
+  it("anchors to the bottom, never the top", async () => {
+    const renderer = await renderHost()
+    await publish(SAVED)
+    const style = hostStyle(renderer)
+
+    expect(style.top).toBeUndefined()
+    // Safe area is mocked to 0, so this is Snackbar's own 16pt margin.
+    expect(style.bottom).toBe(16)
+    await unmount(renderer)
+  })
+
+  it("lifts clear of the floating tab bar on a tab route only", async () => {
+    const offTab = await renderHost()
+    await publish(SAVED)
+    const offTabBottom = hostStyle(offTab).bottom as number
+    await unmount(offTab)
+
+    mockSegments = ["(tabs)", "index"]
+    const onTab = await renderHost()
+    await publish(SAVED)
+    const onTabBottom = hostStyle(onTab).bottom as number
+    await unmount(onTab)
+
+    // Anti-vacuous: the off-tab value is the bare margin, so a clearance that
+    // silently returned 0 would collapse these two and fail here.
+    expect(offTabBottom).toBe(16)
+    expect(onTabBottom).toBeGreaterThan(offTabBottom)
+  })
+})

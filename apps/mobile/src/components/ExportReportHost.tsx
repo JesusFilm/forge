@@ -15,9 +15,11 @@
 import { useCallback, useEffect, useState } from "react"
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { useSegments } from "expo-router"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useTypography } from "../hooks/useTypography"
+import { tabIndexForSegments, useTabBarClearance } from "../lib/tabBar"
 import {
   ACCENT_ON_DARK,
   SURFACE_COLOR,
@@ -93,6 +95,12 @@ function deliver(
 
 export function ExportReportHost() {
   const insets = useSafeAreaInsets()
+  // The host outlives every route, so it derives the tab bar rather than
+  // being told about it — Snackbar takes a `clearsTabBar` prop because each
+  // of its callers knows its own route, and this one has no caller.
+  const tabBarClearance = useTabBarClearance()
+  const onTabRoute = tabIndexForSegments(useSegments()) !== null
+  const clearance = onTabRoute ? tabBarClearance : 0
   const typography = useTypography()
   const [reports, setReports] = useState<readonly ExportReportRecord[]>([])
 
@@ -139,11 +147,13 @@ export function ExportReportHost() {
   if (reports.length === 0) return null
 
   return (
-    // Anchored at the top: the mini player parks in a bottom corner, and the
-    // tab bar floats over the bottom edge on the tab routes.
+    // Bottom, on the same geometry as every other toast in the app
+    // (`ui/Snackbar`): 16 in from each side, 16 above the safe area, lifted
+    // clear of the floating tab bar on the tab routes. Cards stack upward, so
+    // the newest sits nearest the edge.
     <View
       pointerEvents="box-none"
-      style={[styles.host, { top: insets.top + 12 }]}
+      style={[styles.host, { bottom: insets.bottom + 16 + clearance }]}
     >
       {reports.map((record) => {
         const view = viewFor(record)
