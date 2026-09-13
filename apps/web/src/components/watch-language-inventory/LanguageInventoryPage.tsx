@@ -492,15 +492,22 @@ function CompactVideoRow({
     .join(" / ")
   const content = (
     <>
-      <span className="mr-1 w-10 shrink-0 text-right text-base font-medium text-stone-500 tabular-nums sm:mr-2 sm:text-lg">
+      {/* Phones centre the ordinal in a `min-w-5` box whose width matches the
+          row's `px-2`/`gap-2`, so the space either side of the digits is equal
+          whatever their count; `sm` and up keep the wider right-aligned column
+          so the numbers stay in one vertical line beside a roomier row. */}
+      <span className="min-w-5 shrink-0 text-center text-base font-medium text-stone-500 tabular-nums sm:mr-2 sm:w-10 sm:text-right sm:text-lg">
         {index + 1}
       </span>
       <span
         className={cn(
           "relative shrink-0 overflow-hidden rounded bg-stone-800 ring-1 ring-white/10",
+          // Phones get a taller thumbnail than `sm`+ on purpose: the compact
+          // row is the whole browsing surface there, and a 48px frame read as
+          // an icon next to a two-line title.
           isPortrait
-            ? "h-12 aspect-[2/3] sm:h-14"
-            : "h-12 w-20 sm:h-14 sm:w-24",
+            ? "h-16 aspect-[2/3] sm:h-14"
+            : "h-16 w-28 sm:h-14 sm:w-24",
         )}
       >
         {thumbnailUrl ? (
@@ -508,10 +515,14 @@ function CompactVideoRow({
             src={thumbnailUrl}
             alt=""
             fill
+            // Declared widths round DOWN to the frame's real CSS width
+            // (portrait phone: 64px tall / (2:3) = 42.67px). 42 keeps a DPR-3
+            // phone on next/image's 128 candidate — 43 would ask for 129 and
+            // jump it to the 256 one for a third of a pixel.
             sizes={
               isPortrait
-                ? "(max-width: 640px) 32px, 37px"
-                : "(max-width: 640px) 80px, 96px"
+                ? "(max-width: 640px) 42px, 37px"
+                : "(max-width: 640px) 112px, 96px"
             }
             className={cn(
               "object-cover transition duration-300 group-hover:scale-105",
@@ -561,7 +572,7 @@ function CompactVideoRow({
     </>
   )
   const className = cn(
-    "flex min-h-20 items-center gap-3 px-3 py-4 transition sm:px-4",
+    "flex min-h-20 items-center gap-2 px-2 py-3 transition sm:gap-3 sm:px-4 sm:py-4",
     item.href && "group hover:bg-white/[0.055]",
     item.href && VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
   )
