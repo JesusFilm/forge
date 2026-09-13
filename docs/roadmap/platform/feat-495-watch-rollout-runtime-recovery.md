@@ -1,5 +1,5 @@
 ---
-id: "feat-486"
+id: "feat-495"
 title: "Investigate Watch runtime regression before restoring homepage recommendations"
 owner: "nisal"
 priority: "P1"
@@ -16,6 +16,10 @@ tags:
 ---
 
 ## Problem
+
+Renumbered from `feat-486` on 14 September 2026 because independently merged
+roadmap tickets reused that ID. This ticket retains ownership of the Watch
+runtime investigation and blocks `feat-488`.
 
 The disabled-feature Web deployment from #2249 coincided with sustained Redis
 admission failures, image connection timeouts and increased event-loop delay.
@@ -83,3 +87,16 @@ deployment. Broader evidence-transport reliability remains owned by `feat-464`.
 - Restore the source-free homepage block only with six-card local validation and
   a healthy production observation; activation still requires the separate
   curation/eligibility requirements in `feat-488`.
+
+## Current investigation
+
+- A regression test reproduces cross-request cancellation: a 250 ms admission
+  timeout destroys the shared Redis socket while a concurrent playback admission
+  still has its 500 ms budget. Drain active admissions before closing the retired
+  socket, retaining existing deadlines, fail-closed behavior and retry backoff.
+- Current primary-host traces also show Admin accepting playback after Web's
+  3-second timeout. A simultaneous homepage request has hundreds of per-video
+  preferred-dub lookups. Batching is a separate repair candidate requiring
+  PostgreSQL parity and concurrent-load evidence; it is not yet a proven cause.
+- Fixed-window evidence and remaining deployment checks:
+  `docs/operations/watch-runtime-diagnosis-2026-09-14.md`.
