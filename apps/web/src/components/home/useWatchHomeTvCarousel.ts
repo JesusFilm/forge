@@ -235,7 +235,6 @@ export function useWatchHomeTvCarousel(
     [],
   )
   const [isMuted, setIsMuted] = useState(true)
-  const [progress, setProgress] = useState(0)
   const [playbackTime, setPlaybackTime] = useState<{
     seconds: number
     slideId: string | null
@@ -267,9 +266,11 @@ export function useWatchHomeTvCarousel(
   // hold behaving exactly as it does today.
   const [isMediaPaused, setIsMediaPaused] = useState(false)
   const isMutedRef = useRef(isMuted)
+  // Read inside `handleCanPlay`, which must stay a stable callback, so the
+  // poster-hold arm/skip decision cannot depend on render state.
+  const mediaReadyRef = useRef(false)
   const leavingSlideTimeoutRef = useRef<number | null>(null)
   const slideAdvanceTimeoutRef = useRef<number | null>(null)
-  const videoPosterHoldIntervalRef = useRef<number | null>(null)
   const videoPosterHoldTimeoutRef = useRef<number | null>(null)
   const mediaWaitTimeoutRef = useRef<number | null>(null)
   // The advance clock is parked while buffering, so the elapsed time has to
@@ -280,7 +281,6 @@ export function useWatchHomeTvCarousel(
       elapsedMs: 0,
     },
   )
-  const previousProgressRef = useRef(0)
   // Monotonic per-turn token. A slide id is not enough: a single-playable-slide
   // queue restarts the SAME id, so two consecutive turns would be
   // indistinguishable and a stale timer from the first could advance the
@@ -290,7 +290,6 @@ export function useWatchHomeTvCarousel(
   // clock to have MOVED since then, so a wedged stream that never emits
   // `waiting` still loses its turn instead of re-arming forever.
   const backstopSeenTimeRef = useRef(0)
-  const imageSlideStartedAtRef = useRef<number | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const isSequenced = sequence != null
   const sequenceKey = useMemo(
@@ -458,10 +457,6 @@ export function useWatchHomeTvCarousel(
       window.clearTimeout(videoPosterHoldTimeoutRef.current)
       videoPosterHoldTimeoutRef.current = null
     }
-    if (videoPosterHoldIntervalRef.current != null) {
-      window.clearInterval(videoPosterHoldIntervalRef.current)
-      videoPosterHoldIntervalRef.current = null
-    }
   }, [])
 
   const clearMediaWaitTimeout = useCallback(() => {
@@ -497,8 +492,6 @@ export function useWatchHomeTvCarousel(
         }, 900)
       }
       const isSameSlide = nextSlide != null && nextSlide.id === activeSlide?.id
-      imageSlideStartedAtRef.current = null
-      previousProgressRef.current = 0
       clearSlideAdvanceTimeout()
       clearVideoPosterHold()
       // Every selection opens a new turn, so timers armed for the previous one
@@ -509,7 +502,7 @@ export function useWatchHomeTvCarousel(
         slideId: nextSlide?.id ?? null,
         elapsedMs: 0,
       }
-      setProgress(0)
+      mediaReadyRef.current = false
       setMediaReady(false)
       setIsBufferingMedia(Boolean(nextSlide?.src))
       setIsMediaPaused(false)
@@ -540,6 +533,7 @@ export function useWatchHomeTvCarousel(
           }
         }
         setIsBufferingMedia(false)
+        mediaReadyRef.current = true
         setMediaReady(true)
       }
     },
@@ -585,18 +579,21 @@ export function useWatchHomeTvCarousel(
   const handleTimeUpdate = useCallback(() => {
     const video = videoRef.current
     if (!video) return
-    setPlaybackTime({
-      seconds: video.currentTime,
-      slideId: activeSlide?.id ?? null,
-    })
+    const slideId = activeSlide?.id ?? null
+    const seconds = video.currentTime
+    setPlaybackTime((current) =>
+      current.slideId === slideId &&
+      Math.floor(current.seconds) === Math.floor(seconds)
+        ? current
+        : { seconds, slideId },
+    )
   }, [activeSlide?.id])
 
   const handleLoadedMetadata = useCallback(() => {
-    previousProgressRef.current = 0
     clearVideoPosterHold()
+    mediaReadyRef.current = false
     setMediaReady(false)
     setPlaybackTime({ seconds: 0, slideId: activeSlide?.id ?? null })
-    setProgress(0)
 
     // Before the portrait branch below, which can advance away from this
     // slide: the measurement belongs to the slide it was read from either way.
@@ -639,9 +636,11 @@ export function useWatchHomeTvCarousel(
     if (!video) return
     setIsBufferingMedia(false)
     video.muted = isMutedRef.current
+    if (mediaReadyRef.current) return
     clearVideoPosterHold()
 
     videoPosterHoldTimeoutRef.current = window.setTimeout(() => {
+      mediaReadyRef.current = true
       setMediaReady(true)
       if (!autoAdvancePausedRef.current) {
         const played = video.play()
@@ -696,9 +695,6 @@ export function useWatchHomeTvCarousel(
       if (videoPosterHoldTimeoutRef.current != null) {
         window.clearTimeout(videoPosterHoldTimeoutRef.current)
       }
-      if (videoPosterHoldIntervalRef.current != null) {
-        window.clearInterval(videoPosterHoldIntervalRef.current)
-      }
       if (mediaWaitTimeoutRef.current != null) {
         window.clearTimeout(mediaWaitTimeoutRef.current)
       }
@@ -706,8 +702,6 @@ export function useWatchHomeTvCarousel(
   }, [])
 
   useEffect(() => {
-    imageSlideStartedAtRef.current = null
-    previousProgressRef.current = 0
     clearVideoPosterHold()
     // Between mount and the per-visit draw committing, the active slide is the
     // deterministic bootstrap slide nobody actually watched. Recording it would
@@ -893,31 +887,6 @@ export function useWatchHomeTvCarousel(
     videoQueue,
   ])
 
-  useEffect(() => {
-    if (!activeSlide || activeSlide.src || autoAdvancePaused) return
-
-    let animationFrame = 0
-
-    function tick(now: number) {
-      if (imageSlideStartedAtRef.current == null) {
-        imageSlideStartedAtRef.current = now
-      }
-      const elapsed = now - imageSlideStartedAtRef.current
-      const nextProgress = Math.min(
-        100,
-        (elapsed / IMAGE_SLIDE_ADVANCE_MS) * 100,
-      )
-      setProgress(nextProgress)
-      animationFrame = requestAnimationFrame(tick)
-    }
-
-    animationFrame = requestAnimationFrame(tick)
-
-    return () => {
-      cancelAnimationFrame(animationFrame)
-    }
-  }, [activeSlide, autoAdvancePaused])
-
   return useMemo(
     () => ({
       activeIndex: safeActiveIndex,
@@ -941,7 +910,6 @@ export function useWatchHomeTvCarousel(
       isMuted,
       leavingSlide,
       mediaReady,
-      progress,
       playbackTimeSeconds:
         playbackTime.slideId === activeSlide?.id ? playbackTime.seconds : 0,
       selectSlide,
@@ -969,7 +937,6 @@ export function useWatchHomeTvCarousel(
       leavingSlide,
       mediaReady,
       playbackTime,
-      progress,
       selectSlide,
       toggleMuted,
     ],

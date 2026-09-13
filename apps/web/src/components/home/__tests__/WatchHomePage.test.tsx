@@ -656,6 +656,102 @@ describe("WatchHomePage", () => {
       }
     })
 
+    // `timeupdate` fires roughly four times a second and a slide can now run
+    // for minutes, so the state write is gated on the whole second the only
+    // reader (the resume link) actually uses.
+    it("writes resume state once per playback second, not once per event", async () => {
+      // The MuxVideo mock records one entry per render of the carousel
+      // subtree, which is the only render count observable from out here --
+      // a wrapper around WatchHomePage would never re-render at all.
+      const carouselRenders = () => muxVideoHlsConfigs.length
+
+      vi.spyOn(Math, "random").mockReturnValue(0)
+      await act(async () => {
+        root.render(<WatchHomePage model={makeTimedSequencedModel(123)} />)
+      })
+
+      const video = container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      ) as HTMLVideoElement
+      Object.defineProperty(video, "duration", {
+        configurable: true,
+        value: 123,
+      })
+
+      const setTime = (seconds: number) =>
+        Object.defineProperty(video, "currentTime", {
+          configurable: true,
+          value: seconds,
+        })
+
+      setTime(12.1)
+      await act(async () => {
+        video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
+      })
+      const hrefAfterFirst = container
+        .querySelector("a[href*='autoplay=1']")
+        ?.getAttribute("href")
+      const rendersAfterFirst = carouselRenders()
+
+      setTime(12.8)
+      await act(async () => {
+        video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
+      })
+
+      expect(
+        container.querySelector("a[href*='autoplay=1']")?.getAttribute("href"),
+      ).toBe(hrefAfterFirst)
+      expect(carouselRenders()).toBe(rendersAfterFirst)
+      expect(hrefAfterFirst).toContain("t=12")
+
+      setTime(13.2)
+      await act(async () => {
+        video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
+      })
+
+      expect(
+        container.querySelector("a[href*='autoplay=1']")?.getAttribute("href"),
+      ).toContain("t=13")
+    })
+
+    it("re-arms the poster hold only once per slide, not on every canplay", async () => {
+      vi.useFakeTimers()
+      try {
+        vi.spyOn(Math, "random").mockReturnValue(0)
+        await act(async () => {
+          root.render(<WatchHomePage model={makeTimedSequencedModel(123)} />)
+        })
+        const video = container.querySelector(
+          '[data-testid="watch-home-tv-video"]',
+        ) as HTMLVideoElement
+        const play = vi.fn(() => Promise.resolve())
+        video.play = play as unknown as HTMLVideoElement["play"]
+
+        await act(async () => {
+          video.dispatchEvent(new Event("canplay", { bubbles: true }))
+        })
+        await act(async () => {
+          vi.advanceTimersByTime(1_500)
+        })
+        expect(play).toHaveBeenCalledTimes(1)
+
+        // A stall and its recovery: `canplay` fires again.
+        await act(async () => {
+          video.dispatchEvent(new Event("waiting", { bubbles: true }))
+        })
+        await act(async () => {
+          video.dispatchEvent(new Event("canplay", { bubbles: true }))
+        })
+        await act(async () => {
+          vi.advanceTimersByTime(1_500)
+        })
+
+        expect(play).toHaveBeenCalledTimes(1)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
     it("holds a paused slide's turn instead of spending it", async () => {
       vi.useFakeTimers()
       try {
