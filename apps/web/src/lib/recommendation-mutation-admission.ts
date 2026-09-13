@@ -88,7 +88,12 @@ const localAggregateBuckets = new Map<
   number[]
 >()
 let redisPromise: Promise<MutationRedis | null> | undefined
-let redisClient: MutationRedis | null = null
+type RedisConnection = {
+  client: MutationRedis
+  activeAdmissions: number
+  retiring: boolean
+}
+let redisConnection: RedisConnection | null = null
 let redisRetryAt = 0
 
 function hmacKey(secret: string, namespace: string, value: string): string {
@@ -159,7 +164,7 @@ async function defaultRedis(): Promise<MutationRedis | null> {
     const startedAt = performance.now()
     try {
       await withTimeout(client.connect())
-      redisClient = client
+      redisConnection = { client, activeAdmissions: 0, retiring: false }
       return client
     } catch (error) {
       observeAdmissionFailure(
@@ -185,16 +190,24 @@ async function defaultRedis(): Promise<MutationRedis | null> {
   return client
 }
 
-function retireDefaultRedis(client: MutationRedis): void {
-  if (redisClient !== client) return
-  redisClient = null
-  redisPromise = undefined
-  redisRetryAt = Date.now() + REDIS_RETRY_BACKOFF_MS
+function destroyRedis(client: MutationRedis): void {
   try {
     client.destroy?.()
   } catch {
     // A timed-out node-redis command may already have closed the socket.
   }
+}
+
+function retireDefaultRedis(client: MutationRedis): void {
+  const connection = redisConnection
+  if (!connection || connection.client !== client) return
+  connection.retiring = true
+  redisConnection = null
+  redisPromise = undefined
+  redisRetryAt = Date.now() + REDIS_RETRY_BACKOFF_MS
+  // Other callers share this socket but have their own bounded deadlines.
+  // Stop lending it immediately; close it once those callers have finished.
+  if (connection.activeAdmissions === 0) destroyRedis(client)
 }
 
 function pruneLocal(now: number): void {
@@ -257,6 +270,13 @@ export function createRecommendationMutationAdmission(dependencies?: {
     const redis = await loadRedis().catch(() => null)
 
     if (redis) {
+      const connection = dependencies?.redis ? null : redisConnection
+      if (!dependencies?.redis && connection?.client !== redis) {
+        // A different admission can retire the client while loadRedis yields.
+        observeAdmissionFailure("load", "unavailable")
+        return { allowed: false, reason: "admission_unavailable" }
+      }
+      if (connection) connection.activeAdmissions += 1
       const commandTimeoutMs =
         namespace === "playback-context"
           ? PLAYBACK_CONTEXT_COMMAND_TIMEOUT_MS
@@ -332,6 +352,13 @@ export function createRecommendationMutationAdmission(dependencies?: {
         )
         retireDefaultRedis(redis)
         return { allowed: false, reason: "admission_unavailable" }
+      } finally {
+        if (connection) {
+          connection.activeAdmissions -= 1
+          if (connection.retiring && connection.activeAdmissions === 0) {
+            destroyRedis(connection.client)
+          }
+        }
       }
     }
     if (production) {
@@ -380,12 +407,8 @@ export async function assertRecommendationMutationAdmission(
 export function resetRecommendationMutationAdmissionForTests(): void {
   localClientBuckets.clear()
   localAggregateBuckets.clear()
-  try {
-    redisClient?.destroy?.()
-  } catch {
-    // Tests may reset after simulating a client-side disconnect.
-  }
-  redisClient = null
+  if (redisConnection) destroyRedis(redisConnection.client)
+  redisConnection = null
   redisPromise = undefined
   redisRetryAt = 0
 }

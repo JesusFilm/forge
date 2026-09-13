@@ -269,6 +269,100 @@ describe("recommendation mutation admission", () => {
     })
   })
 
+  it("lets an in-flight playback admission finish before retiring another request's timed-out client", async () => {
+    vi.useFakeTimers()
+    vi.stubEnv("REDIS_URL", "redis://local.test:6379")
+    let rejectPlayback: ((reason: Error) => void) | undefined
+    const client = {
+      on: vi.fn(),
+      connect: vi.fn().mockResolvedValue(undefined),
+      time: vi
+        .fn()
+        .mockImplementationOnce(() => new Promise<string[]>(() => undefined))
+        .mockResolvedValue(["100", "0"]),
+      eval: vi.fn(
+        () =>
+          new Promise<string[]>((resolve, reject) => {
+            rejectPlayback = reject
+            setTimeout(() => resolve(["allowed"]), 300)
+          }),
+      ),
+      destroy: vi.fn(() => rejectPlayback?.(new Error("client destroyed"))),
+    }
+    redisMocks.createClient.mockReturnValue(client)
+    const admit = createRecommendationMutationAdmission({
+      production: true,
+      secret: "test-recommendation-admission-secret-123456",
+    })
+
+    const stalledProfile = admit(headers("203.0.113.12"), "profile-status")
+    await vi.advanceTimersByTimeAsync(0)
+    const playback = admit(headers("203.0.113.13"), "playback-context")
+    await vi.advanceTimersByTimeAsync(251)
+
+    await expect(stalledProfile).resolves.toEqual({
+      allowed: false,
+      reason: "admission_unavailable",
+    })
+    expect(client.destroy).not.toHaveBeenCalled()
+    await expect(
+      admit(headers("203.0.113.14"), "profile-status"),
+    ).resolves.toEqual({ allowed: false, reason: "admission_unavailable" })
+    expect(client.time).toHaveBeenCalledTimes(2)
+    expect(redisMocks.createClient).toHaveBeenCalledOnce()
+
+    await vi.advanceTimersByTimeAsync(50)
+    await expect(playback).resolves.toEqual({ allowed: true })
+    expect(client.destroy).toHaveBeenCalledOnce()
+  })
+
+  it("bounds draining by each admission deadline and reconnects after backoff", async () => {
+    vi.useFakeTimers()
+    vi.stubEnv("REDIS_URL", "redis://local.test:6379")
+    const stalledClient = {
+      on: vi.fn(),
+      connect: vi.fn().mockResolvedValue(undefined),
+      time: vi.fn(() => new Promise<string[]>(() => undefined)),
+      eval: vi.fn(),
+      destroy: vi.fn(),
+    }
+    const recoveredClient = {
+      on: vi.fn(),
+      connect: vi.fn().mockResolvedValue(undefined),
+      time: vi.fn().mockResolvedValue(["100", "0"]),
+      eval: vi.fn().mockResolvedValue(["allowed"]),
+      destroy: vi.fn(),
+    }
+    redisMocks.createClient
+      .mockReturnValueOnce(stalledClient)
+      .mockReturnValueOnce(recoveredClient)
+    const admit = createRecommendationMutationAdmission({
+      production: true,
+      secret: "test-recommendation-admission-secret-123456",
+    })
+    const profile = admit(headers("203.0.113.12"), "profile-status")
+    const playback = admit(headers("203.0.113.13"), "playback-context")
+
+    await vi.advanceTimersByTimeAsync(251)
+    await expect(profile).resolves.toEqual({
+      allowed: false,
+      reason: "admission_unavailable",
+    })
+    expect(stalledClient.destroy).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(250)
+    await expect(playback).resolves.toEqual({
+      allowed: false,
+      reason: "admission_unavailable",
+    })
+    expect(stalledClient.destroy).toHaveBeenCalledOnce()
+    await vi.advanceTimersByTimeAsync(750)
+    await expect(
+      admit(headers("203.0.113.12"), "profile-status"),
+    ).resolves.toEqual({ allowed: true })
+    expect(redisMocks.createClient).toHaveBeenCalledTimes(2)
+    expect(recoveredClient.destroy).not.toHaveBeenCalled()
+  })
+
   it("retires a connected Redis client when a command times out", async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2026-08-26T00:00:00.000Z"))
