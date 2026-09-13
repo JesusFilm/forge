@@ -2,12 +2,14 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import {
   Animated,
   FlatList,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { useIsFocused, useRouter } from "expo-router"
 import Ionicons from "@expo/vector-icons/Ionicons"
@@ -66,6 +68,7 @@ const MAX_PREFETCH_INFLIGHT = 3
 
 export default function DiscoverScreen() {
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const tabBarClearance = useTabBarClearance()
   const { selectExperience } = useExperienceSelection()
 
@@ -674,6 +677,15 @@ export default function DiscoverScreen() {
 
   return (
     <View style={styles.container}>
+      {/* feat-498: NativeTabs has no header options, so the iOS screen draws
+          its own. Android still takes the navigator's header. */}
+      {Platform.OS === "ios" && (
+        <View style={[styles.header, { paddingTop: insets.top }]}>
+          <Text accessibilityRole="header" style={styles.headerTitle}>
+            Search
+          </Text>
+        </View>
+      )}
       <View style={styles.inputContainer}>
         <View style={styles.inputWrapper}>
           <TextInput
@@ -803,6 +815,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: BG_COLOR,
+  },
+  header: {
+    backgroundColor: BG_COLOR,
+  },
+  headerTitle: {
+    color: "#f5f5f4",
+    fontFamily: "System",
+    fontSize: 17,
+    fontWeight: "600",
+    textAlign: "center",
+    paddingBottom: 10,
+    paddingTop: 10,
   },
   contentArea: {
     flex: 1,

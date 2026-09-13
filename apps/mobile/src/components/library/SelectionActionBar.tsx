@@ -5,7 +5,7 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import { ACCENT, TEXT_ON_OVERLAY, TEXT_PRIMARY } from "../../lib/color"
 import { formatLibraryBytes } from "../../lib/libraryDownloads"
 import { feedback } from "../../styles/shared"
-import { tabBarPillShape } from "../../lib/tabBar"
+import { TAB_BAR_HEIGHT_IOS } from "../../lib/tabBar"
 import { TabBarBackground } from "../ui/TabBarBackground"
 
 const BAR_BG = "rgba(12, 12, 13, 0.94)"
@@ -30,14 +30,17 @@ export function SelectionActionBar({
 }: SelectionActionBarProps) {
   const insets = useSafeAreaInsets()
 
-  // The bar stands in for the tab bar, so on iOS it takes the same box as the
-  // pill. Android keeps its flush, full-width bar exactly as it was.
+  // The bar stands in for the tab bar, so on iOS it takes the box the hidden
+  // UIKit bar left behind: flush, full width, its own height above the home
+  // indicator. Android keeps its flush bar exactly as it was.
   const isPill = Platform.OS === "ios"
   const shape = isPill
     ? {
-        ...tabBarPillShape(insets),
+        height: TAB_BAR_HEIGHT_IOS + insets.bottom,
         paddingTop: 0,
-        paddingBottom: 0,
+        paddingBottom: insets.bottom,
+        paddingLeft: insets.left,
+        paddingRight: insets.right,
         backgroundColor: undefined,
         borderTopWidth: 0,
       }
@@ -45,7 +48,7 @@ export function SelectionActionBar({
 
   return (
     <View style={[styles.bar, shape]}>
-      {isPill && <TabBarBackground lens={false} />}
+      {isPill && <TabBarBackground />}
       {hasFailed && (
         <Pressable
           onPress={onRetryFailed}

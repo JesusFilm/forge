@@ -5,48 +5,39 @@ import {
   isLiquidGlassAvailable,
 } from "expo-glass-effect"
 
-import { TAB_BAR_MATERIAL_TINT, TAB_BAR_PILL_RADIUS } from "../../lib/tabBar"
+import { TAB_BAR_MATERIAL_TINT } from "../../lib/tabBar"
 import { PlatformBlur } from "./PlatformBlur"
-import { TabBarLens } from "./TabBarLens"
 
 /**
- * The tab bar's material. Returning null on Android is load-bearing: a non-null
- * element flips the bar's own backgroundColor to transparent, and off iOS
- * GlassView is a bare transparent View, so the bar would vanish.
+ * The frosted material a bar sits on. Since feat-498 the navigator no longer
+ * uses it — iOS runs the real UIKit tab bar, which draws its own — so the one
+ * consumer is `SelectionActionBar`, which stands in the tab bar's place while
+ * the native bar is hidden.
+ *
+ * Returning null off iOS is load-bearing: `GlassView` is a bare transparent
+ * View there, so the caller would lose its ground entirely.
  */
-type TabBarBackgroundProps = {
-  /** The sliding selector. Off for surfaces that borrow the capsule but have
-   *  no tabs — the Library selection bar draws Retry/Delete, not a tab row. */
-  lens?: boolean
-}
-
-export function TabBarBackground({ lens = true }: TabBarBackgroundProps = {}) {
+export function TabBarBackground() {
   if (Platform.OS !== "ios") return null
 
   // isGlassEffectAPIAvailable guards iOS 26 betas that crash without it.
   if (isLiquidGlassAvailable() && isGlassEffectAPIAvailable()) {
     return (
-      <>
-        <GlassView
-          style={styles.material}
-          glassEffectStyle="regular"
-          colorScheme="dark"
-          tintColor={TAB_BAR_MATERIAL_TINT}
-        />
-        {lens && <TabBarLens />}
-      </>
+      <GlassView
+        style={styles.material}
+        glassEffectStyle="regular"
+        colorScheme="dark"
+        tintColor={TAB_BAR_MATERIAL_TINT}
+      />
     )
   }
 
   return (
-    <>
-      <PlatformBlur
-        style={[styles.material, { backgroundColor: TAB_BAR_MATERIAL_TINT }]}
-        intensity={60}
-        tint="dark"
-      />
-      {lens && <TabBarLens />}
-    </>
+    <PlatformBlur
+      style={[styles.material, { backgroundColor: TAB_BAR_MATERIAL_TINT }]}
+      intensity={60}
+      tint="dark"
+    />
   )
 }
 
@@ -57,6 +48,5 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: TAB_BAR_PILL_RADIUS,
   },
 })

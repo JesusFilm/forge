@@ -1,6 +1,6 @@
 /**
- * The selection bar replaces the tab bar, so on iOS it must occupy the same box
- * as the pill. On Android it must not change at all.
+ * The selection bar replaces the tab bar, so on iOS it must occupy the box the
+ * hidden UIKit bar left behind. On Android it must not change at all.
  */
 import { act } from "react"
 import { Platform } from "react-native"
@@ -9,13 +9,7 @@ import {
   TestRenderer,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
-import {
-  TAB_BAR_PILL_HEIGHT,
-  TAB_BAR_PILL_LIFT,
-  TAB_BAR_PILL_RADIUS,
-  TAB_BAR_PILL_SIDE_MARGIN,
-} from "../../../lib/tabBar"
-import { TabBarLens } from "../../ui/TabBarLens"
+import { TAB_BAR_HEIGHT_IOS } from "../../../lib/tabBar"
 import { SelectionActionBar } from "../SelectionActionBar"
 
 jest.mock("@expo/vector-icons/Ionicons", () => ({
@@ -25,8 +19,6 @@ jest.mock("@expo/vector-icons/Ionicons", () => ({
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 59, right: 0, bottom: 34, left: 0 }),
 }))
-jest.mock("expo-router", () => ({ useSegments: () => ["(tabs)"] }))
-jest.mock("../../ui/TabBarLens", () => ({ TabBarLens: () => null }))
 jest.mock("expo-glass-effect", () => ({
   GlassView: () => null,
   isLiquidGlassAvailable: () => true,
@@ -87,13 +79,25 @@ async function buttonStyles(): Promise<Record<string, unknown>[]> {
 }
 
 describe("iOS", () => {
-  it("occupies the same box as the tab pill", async () => {
+  it("occupies the box the hidden UIKit bar left behind", async () => {
+    // Flush and full width, its own height above the home indicator — the bar
+    // is hidden while selection is on, so insets.bottom is the indicator only.
     setPlatform("ios")
     const style = await renderBar()
-    expect(style.height).toBe(TAB_BAR_PILL_HEIGHT)
-    expect(style.borderRadius).toBe(TAB_BAR_PILL_RADIUS)
-    expect(style.marginBottom).toBe(34 + TAB_BAR_PILL_LIFT)
-    expect(style.marginHorizontal).toBe(TAB_BAR_PILL_SIDE_MARGIN)
+    expect(style.height).toBe(TAB_BAR_HEIGHT_IOS + 34)
+    expect(style.paddingBottom).toBe(34)
+    expect(style.left).toBe(0)
+    expect(style.right).toBe(0)
+    expect(style.bottom).toBe(0)
+  })
+
+  it("is no longer a floating capsule", async () => {
+    // Discriminating: the retired pill set a radius and side margins. A revert
+    // to `tabBarPillShape` reintroduces both under a hidden native bar.
+    setPlatform("ios")
+    const style = await renderBar()
+    expect(style.borderRadius).toBeUndefined()
+    expect(style.marginHorizontal).toBeUndefined()
   })
 
   it("drops the opaque fill and the hairline the flush bar carried", async () => {
@@ -132,15 +136,5 @@ describe("both action buttons fit the capsule on iOS", () => {
     const styles = await buttonStyles()
     expect(new Set(styles.map((s) => s.backgroundColor)).size).toBe(2)
     styles.forEach((s) => expect(s.height).toBe(48))
-  })
-})
-
-describe("the tab selector", () => {
-  it("is NOT drawn on the selection bar, which has no tabs", async () => {
-    // The bar borrows the tab capsule's material; it must not borrow the
-    // sliding cell indicator with it -- it draws Retry/Delete, not four tabs.
-    setPlatform("ios")
-    const renderer = await render(true)
-    expect(renderer.root.findAll((n) => n.type === TabBarLens)).toHaveLength(0)
   })
 })

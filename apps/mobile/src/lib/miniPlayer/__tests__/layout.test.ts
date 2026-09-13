@@ -14,11 +14,7 @@ import {
   type MiniPlayerCorner,
   type MiniPlayerLayoutConfig,
 } from "../layout"
-import {
-  TAB_BAR_OCCUPIED_HEIGHT,
-  TAB_BAR_PILL_HEIGHT,
-  TAB_BAR_PILL_LIFT,
-} from "../../tabBar"
+import { TAB_BAR_OCCUPIED_HEIGHT, TAB_BAR_HEIGHT_IOS } from "../../tabBar"
 
 /** An iPhone-shaped screen with a notch, home indicator, and the tab bar.
  *  The chrome height is READ from production — a literal here would drift. */
@@ -247,35 +243,30 @@ describe("excluded corners", () => {
   })
 })
 
-describe("the resting window clears the floating tab bar", () => {
+describe("the resting window clears the native tab bar", () => {
   // The gap is WINDOW_EDGE_MARGIN by construction whenever chrome.bottom and
   // the bar top come from the same constant, so asserting it against PHONE
   // alone proves nothing. Pin the constant, then show the assertion can fail.
-  it("reserves the pill's full occupied height on iOS", () => {
-    expect(TAB_BAR_OCCUPIED_HEIGHT).toBe(
-      TAB_BAR_PILL_HEIGHT + TAB_BAR_PILL_LIFT,
-    )
+  it("reserves the UIKit bar's own height on iOS", () => {
+    expect(TAB_BAR_OCCUPIED_HEIGHT).toBe(TAB_BAR_HEIGHT_IOS)
   })
 
-  it("overlaps the pill when the reservation is left at the old 49", () => {
-    const stale = { ...PHONE, chrome: { top: 0, bottom: 49 } }
+  it("overlaps the bar when the reservation is left at the retired pill's 68", () => {
+    const stale = { ...PHONE, chrome: { top: 0, bottom: 68 } }
     const frame = defaultCornerFrame(stale)
     const windowBottom = frame.y + frame.height
-    // The bar top is derived from the PILL, not from the stale reservation.
+    // The bar top is derived from the REAL bar, not the stale reservation, so
+    // over-reserving lifts the window and under-reserving drops it onto the bar.
     const barTop =
-      stale.screen.height -
-      stale.insets.bottom -
-      (TAB_BAR_PILL_HEIGHT + TAB_BAR_PILL_LIFT)
-    expect(barTop - windowBottom).toBeLessThan(0)
+      stale.screen.height - stale.insets.bottom - TAB_BAR_HEIGHT_IOS
+    expect(barTop - windowBottom).not.toBe(WINDOW_EDGE_MARGIN)
   })
 
-  it("leaves WINDOW_EDGE_MARGIN once the reservation matches the pill", () => {
+  it("leaves WINDOW_EDGE_MARGIN once the reservation matches the bar", () => {
     const frame = defaultCornerFrame(PHONE)
     const windowBottom = frame.y + frame.height
     const barTop =
-      PHONE.screen.height -
-      PHONE.insets.bottom -
-      (TAB_BAR_PILL_HEIGHT + TAB_BAR_PILL_LIFT)
+      PHONE.screen.height - PHONE.insets.bottom - TAB_BAR_HEIGHT_IOS
     expect(barTop - windowBottom).toBe(WINDOW_EDGE_MARGIN)
   })
 })

@@ -12,6 +12,10 @@ import { useNavigation, useRouter } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { useTabBarClearance, useTabBarStyle } from "../../src/lib/tabBar"
+import {
+  resetTabBarHidden,
+  setTabBarHidden,
+} from "../../src/lib/tabBarVisibility"
 
 import { DeleteConfirmSheet } from "../../src/components/library/DeleteConfirmSheet"
 import { DownloadRow } from "../../src/components/library/DownloadRow"
@@ -119,7 +123,14 @@ export default function LibraryScreen() {
 
   // KTD8: the action bar replaces the tab bar during selection; restored
   // whenever selection turns off, on blur (switching tabs), and on unmount.
+  //
+  // Two mechanisms, because the two navigators take different levers. Android's
+  // JS bar hides per screen through `setOptions`; iOS runs a UITabBarController
+  // whose only hide lever is the navigator-level `hidden` prop, so the flag has
+  // to travel UP to `_layout.ios.tsx` through the module store.
   useEffect(() => {
+    setTabBarHidden(selecting)
+    if (Platform.OS === "ios") return
     navigation.setOptions({
       tabBarStyle: selecting ? { display: "none" } : tabBarStyle,
     })
@@ -131,6 +142,8 @@ export default function LibraryScreen() {
     })
     return () => {
       unsubscribeBlur()
+      resetTabBarHidden()
+      if (Platform.OS === "ios") return
       navigation.setOptions({ tabBarStyle })
     }
   }, [navigation, tabBarStyle])

@@ -1,6 +1,7 @@
 /**
- * The tab bar's material. Three branches, and no other test in the app can see
- * any of them — every render suite mocks the material away.
+ * The frosted material. Three branches, and no other test in the app can see
+ * any of them — every render suite mocks the material away. Since feat-498 the
+ * navigator no longer renders it; `SelectionActionBar` does.
  */
 import { act } from "react"
 import { Platform } from "react-native"
@@ -12,13 +13,11 @@ import {
 } from "../../../test-utils/rnTestRenderer"
 import { PlatformBlur } from "../PlatformBlur"
 import { TAB_BAR_MATERIAL_TINT } from "../../../lib/tabBar"
-import { TabBarLens } from "../TabBarLens"
 import { TabBarBackground } from "../TabBarBackground"
 
 // The `mock` prefix is required: babel-plugin-jest-hoist lifts jest.mock above
 // this declaration and rejects any other out-of-scope name in the factory.
-// The factory owns its state: TabBarLens pulls expo-router at import time, so
-// the factory now runs before a module-scope `const` would be initialised.
+// The factory owns its state so it can flip branches per test.
 jest.mock("expo-glass-effect", () => {
   const state = { liquid: true, api: true }
   return {
@@ -33,8 +32,6 @@ const mockGlass = (
     __state: { liquid: boolean; api: boolean }
   }
 ).__state
-jest.mock("expo-router", () => ({ useSegments: () => ["(tabs)"] }))
-jest.mock("./../TabBarLens", () => ({ TabBarLens: () => null }))
 jest.mock("../PlatformBlur", () => ({
   PlatformBlur: () => null,
 }))
@@ -95,24 +92,5 @@ describe("TabBarBackground", () => {
     expect(
       (await renderMaterial()).root.findAll((n) => n.type === PlatformBlur),
     ).toHaveLength(1)
-  })
-})
-
-describe("the sliding lens", () => {
-  it("is drawn by DEFAULT, so flipping the prop's default fails here", async () => {
-    // The navigator passes no `lens` prop. Without this, `lens = true` could
-    // be changed to `lens = false` and delete the feature with a green suite.
-    setPlatform("ios")
-    const renderer = await renderMaterial()
-    expect(renderer.root.findAll((n) => n.type === TabBarLens)).toHaveLength(1)
-  })
-
-  it("is omitted when a caller opts out", async () => {
-    setPlatform("ios")
-    let r!: TestInstance
-    await act(async () => {
-      r = TestRenderer.create(<TabBarBackground lens={false} />)
-    })
-    expect(r.root.findAll((n) => n.type === TabBarLens)).toHaveLength(0)
   })
 })
