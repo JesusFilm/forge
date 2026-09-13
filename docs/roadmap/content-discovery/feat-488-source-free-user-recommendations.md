@@ -28,9 +28,10 @@ needs one six-card For you row using the returning viewer's server-side profile,
 with curated videos filling only the places that profile recommendations cannot
 fill. The same API must support independent anonymous mobile and TV installs.
 
-The API and Web implementation are complete in the isolated local preview.
-Production activation remains gated on feat-487 coverage and current production
-validation; this ticket stays in progress until that rollout is resolved.
+The API and Web implementation are merged and deployed. Production activation
+was authorized on 14 September without complete language coverage; see the
+activation decision below. This ticket stays in progress until enabled delivery
+and the published homepage row are verified.
 The code release is PR #2249, with both new serving flags defaulting off and no
 production pool promotion or homepage publication. Before activation, also verify
 cold-process delivery latency: one production-mode local startup request exceeded
@@ -58,6 +59,16 @@ full-video playback navigation and refresh on return. See
 `docs/operations/user-recommendations-restoration-2026-09-14.md` for current
 validation and deployment boundaries. Serving flags remain default-off, and
 production coverage/promotion remains open.
+
+## Activation decision — 14 September 2026
+
+The feature owner authorized enabling production now and explicitly removed
+complete language coverage as a launch gate. Enable the existing serving flags,
+promote the available curated generation and publish the authored Homepage
+Recommendations Block. Keep unavailable languages and additional pool coverage
+as follow-up work. Do not weaken per-request playback eligibility, language,
+history or canonical-distinctness rules. This ticket remains in progress until
+live source-free delivery and the homepage row are verified.
 
 ## Entry Points — Read These First
 

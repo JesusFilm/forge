@@ -431,11 +431,12 @@ export const env = createEnv({
     RECOMMENDATION_PROFILE_DB_FIXTURE: z.enum(["deterministic"]).optional(),
     // Opt-in real-Redis proof for feat-368 atomic delivery admission.
     RECOMMENDATION_REDIS_TEST: z.enum(["1"]).optional(),
-    // Fail-closed startup ceiling. The shared Postgres serving-control row is
-    // the replica-wide runtime switch; this flag can only narrow it.
+    // Source-free serving is enabled by default; false remains a kill switch.
     RECOMMENDATION_USER_SERVING_ENABLED: z
       .enum(["true", "false"])
-      .default("false"),
+      .default("true"),
+    // Fail-closed startup ceiling. The shared Postgres serving-control row is
+    // the replica-wide runtime switch; this flag can only narrow it.
     RECOMMENDATION_SEMANTIC_SERVING_ENABLED: z
       .enum(["true", "false"])
       .optional()
