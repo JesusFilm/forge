@@ -1,6 +1,6 @@
 # Watch runtime investigation — 14 September 2026
 
-Owner: `feat-495`. Feature restoration: `feat-488`.
+Owner: `feat-496`. Feature restoration: `feat-488`.
 
 ## Current production evidence
 
@@ -116,6 +116,32 @@ its existing direct callers.
 Redis drain fix **#2276** merged at **13 September 2026, 21:28:31 UTC** as
 `a984a52ec9e9918481a0d7163c8e5760c481aa1c`. All PR CI checks passed. Primary Web
 Railway deployment `42d69ab4-53ee-4fdc-bb34-07da408f5b73` entered pending at
-21:42 UTC. A merged commit or pending deploy does not establish serving revision.
-Post-deployment request/error windows and the separate batching deployment must
-be observed before closing the runtime ticket.
+21:42 UTC and succeeded at **21:48:07 UTC**. Live APM subsequently observed
+the new Web revision serving requests.
+
+The settled version-filtered window **21:50–22:05 UTC** contains 13,177 requests,
+53 HTTP 503s and four HTTP 500s (0.433% 5xx). The preceding **21:00–21:20 UTC**
+control contains 17,298 requests, 66 HTTP 503s and zero HTTP 500s (0.382%). These
+are descriptive traffic populations across the shared environment tags, not
+matched cohorts or proof that recovery is complete. The four 500s are three
+image-optimizer requests at 21:58 and one video-page fetch failure at 22:02:27:
+trace `6aa71d7300000000028086650dc48b78`. They remain part of the investigation.
+
+The 21:50–22:00 runtime gauges show a 1.874 ms mean of event-loop p95 samples,
+a 757.9 ms maximum delay and 0.945 maximum utilization. The metric host identifies
+the Datadog agent, not one Web container. Request-specific attribution still
+requires correlated traces; short average delay does not rule out bursts longer
+than an admission budget.
+
+Browser smoke at **21:50:35–21:51:06 UTC** passes homepage/category rendering,
+actual Chosen Witness playback, profile/evidence requests and six existing seeded
+recommendations, with no page errors. GA page-view receipts return 204. This
+exercises existing production behavior, not the disabled source-free row.
+
+Admin batching **#2278** merged at **22:06:59 UTC** as
+`38db245322d3309f575aec3238307e1e681a66cd`. All CI checks passed, including the
+PostgreSQL regression integrated into the existing Watch database suite. Primary
+Admin deployment `e6894604-189a-4d6e-aea0-8ad5c7ebd10d` succeeded at **22:13:56 UTC**;
+subsequent Admin logs identify container `41d21fa4a4b1`. The production browser
+journey passed again at **22:15 UTC**. Longer request/error comparison remains
+open; a healthy browser session does not close the residual runtime investigation.

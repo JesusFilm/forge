@@ -1,5 +1,5 @@
 ---
-id: "feat-495"
+id: "feat-496"
 title: "Investigate Watch runtime regression before restoring homepage recommendations"
 owner: "nisal"
 priority: "P1"
@@ -17,8 +17,8 @@ tags:
 
 ## Problem
 
-Renumbered from `feat-486` on 14 September 2026 because independently merged
-roadmap tickets reused that ID. This ticket retains ownership of the Watch
+Renumbered from `feat-486`, then `feat-495`, on 14 September 2026 because
+independently merged roadmap tickets reused those IDs. This ticket retains ownership of the Watch
 runtime investigation and blocks `feat-488`.
 
 The disabled-feature Web deployment from #2249 coincided with sustained Redis

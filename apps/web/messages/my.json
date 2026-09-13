@@ -527,7 +527,8 @@
     "previousVideoPreview": "ယခင် ဗီဒီယို ကြိုကြည့်မှု",
     "nextVideoPreview": "နောက် ဗီဒီယို ကြိုကြည့်မှု",
     "mediaCollection": "မီဒီယာ စုစည်းမှု",
-    "scrollToVideo": "{title} ဗီဒီယိုသို့ ဆင်းကြည့်ပါ"
+    "scrollToVideo": "{title} ဗီဒီယိုသို့ ဆင်းကြည့်ပါ",
+    "forYou": "သင့်အတွက်"
   },
   "WatchFooter": {
     "home": "Jesus Film Project မူလစာမျက်နှာ",

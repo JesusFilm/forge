@@ -343,7 +343,8 @@
     "nextVideoPreview": "Podgląd następnego filmu",
     "featured": "Polecane",
     "mediaCollection": "Kolekcja multimediów",
-    "scrollToVideo": "Przewiń do filmu {title}"
+    "scrollToVideo": "Przewiń do filmu {title}",
+    "forYou": "Dla Ciebie"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Języki",

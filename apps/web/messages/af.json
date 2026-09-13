@@ -527,7 +527,8 @@
     "previousVideoPreview": "Vorige video-voorskou",
     "nextVideoPreview": "Volgende video-voorskou",
     "mediaCollection": "Mediaversameling",
-    "scrollToVideo": "Scroll na die {title}-video"
+    "scrollToVideo": "Scroll na die {title}-video",
+    "forYou": "Vir jou"
   },
   "WatchFooter": {
     "home": "Jesus Film Project-tuis",

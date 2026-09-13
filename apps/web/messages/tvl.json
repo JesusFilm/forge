@@ -527,7 +527,8 @@
     "previousVideoPreview": "Vitio preview muamua",
     "nextVideoPreview": "Vitio preview e sosoa",
     "mediaCollection": "Fakaputuga o te media",
-    "scrollToVideo": "Sukesuke ki lalo ki te vitio {title}"
+    "scrollToVideo": "Sukesuke ki lalo ki te vitio {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Te kāiga o Jesus Film Project",

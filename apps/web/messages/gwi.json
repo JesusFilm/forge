@@ -527,7 +527,8 @@
     "previousVideoPreview": "Video dinjii preview",
     "nextVideoPreview": "Video łyaa preview",
     "mediaCollection": "Gwandaii collection",
-    "scrollToVideo": "{title} video nah’in"
+    "scrollToVideo": "{title} video nah’in",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project ch’àn gwik’it",

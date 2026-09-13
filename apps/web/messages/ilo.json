@@ -527,7 +527,8 @@
     "previousVideoPreview": "Nauna a video preview",
     "nextVideoPreview": "Masurot a video preview",
     "mediaCollection": "Koleksion ti media",
-    "scrollToVideo": "Igid a {title} a video"
+    "scrollToVideo": "Igid a {title} a video",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Balay ti Jesus Film Project",

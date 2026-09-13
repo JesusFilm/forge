@@ -527,7 +527,8 @@
     "previousVideoPreview": "Ponelopele ea video e fetileng",
     "nextVideoPreview": "Ponelopele ea video e latelang",
     "mediaCollection": "Pokello ea mecha ea litaba",
-    "scrollToVideo": "Tsamaisetsa ho video ea {title}"
+    "scrollToVideo": "Tsamaisetsa ho video ea {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Lehae la Jesus Film Project",

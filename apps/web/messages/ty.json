@@ -527,7 +527,8 @@
     "previousVideoPreview": "Hi'oraa i mua o te video na mua",
     "nextVideoPreview": "Hi'oraa i mua o te video i muri mai",
     "mediaCollection": "Ha'aputuhia media",
-    "scrollToVideo": "A panuku i te video {title}"
+    "scrollToVideo": "A panuku i te video {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Te fare Jesus Film Project",

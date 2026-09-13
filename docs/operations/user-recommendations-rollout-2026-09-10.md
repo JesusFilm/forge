@@ -107,7 +107,7 @@ flow, not the disabled source-free homepage feature.
 Primary reconciliation completion heartbeats continued at 23:49:06, 23:54:09 and
 23:59:14. Residual Web admission failures and five fetch errors mean this is a
 mitigated rollout, not a clean production sign-off. The release-associated runtime
-delay remains unexplained and is tracked in `feat-495` (formerly `feat-486`);
+delay remains unexplained and is tracked in `feat-496` (formerly `feat-486`);
 `feat-488` stays in progress.
 The homepage block and Web source-free route remain backed out. The new Admin API,
 additive migrations, generated contracts and curated artifacts remain merged;

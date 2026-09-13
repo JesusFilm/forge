@@ -527,7 +527,8 @@
     "previousVideoPreview": "སྔོན་མའི་བརྙན་འཕྲིན་སྔོན་ལྟ",
     "nextVideoPreview": "རྗེས་མའི་བརྙན་འཕྲིན་སྔོན་ལྟ",
     "mediaCollection": "བརྙན་དང་སྒྲ་ཐོན་ཁུངས་ཚོགས་སྒྲིག",
-    "scrollToVideo": "{title} བརྙན་འཕྲིན་ལ་མར་འཁྱུགས"
+    "scrollToVideo": "{title} བརྙན་འཕྲིན་ལ་མར་འཁྱུགས",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project གཙོ་ངོས",

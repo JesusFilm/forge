@@ -39,6 +39,7 @@ vi.mock("@forge/admin-graphql/fragments", () => ({
   adminVideoCarouselFragment: {},
   adminVideoHeroFragment: {},
   adminVideoRecommendationsFragment: {},
+  adminHomepageRecommendationsFragment: { kind: "Document", definitions: [] },
   adminWatchHomeCategoryRailFragment: {
     kind: "Document",
     definitions: [],
@@ -157,40 +158,43 @@ describe("getExperiencePreview", () => {
     expect(legacy).not.toContain("previewResolvedTitle")
   })
 
-  it("retries once with an old-schema-safe operation for the exact unknown type error", async () => {
-    const validationError = Object.assign(
-      new Error('Unknown type "WatchHomeCategoryRailBlock".'),
-      {
-        errors: [
-          {
-            message: 'Unknown type "WatchHomeCategoryRailBlock".',
-            extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
-          },
-        ],
-      },
-    )
-    const preview = {
-      experienceId: "experience-1",
-      localeId: "locale-1",
-      locale: "en",
-      slug: "home",
-      isHomepage: true,
-      title: "Home",
-      blocks: [],
-    }
-    queryMock
-      .mockRejectedValueOnce(validationError)
-      .mockResolvedValueOnce({ data: { experiencePreview: preview } })
+  it.each(["WatchHomeCategoryRailBlock", "HomepageRecommendationsBlock"])(
+    "retries once with an old-schema-safe operation for the exact unknown type error (%s)",
+    async (blockType) => {
+      const validationError = Object.assign(
+        new Error(`Unknown type "${blockType}".`),
+        {
+          errors: [
+            {
+              message: `Unknown type "${blockType}".`,
+              extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+            },
+          ],
+        },
+      )
+      const preview = {
+        experienceId: "experience-1",
+        localeId: "locale-1",
+        locale: "en",
+        slug: "home",
+        isHomepage: true,
+        title: "Home",
+        blocks: [],
+      }
+      queryMock
+        .mockRejectedValueOnce(validationError)
+        .mockResolvedValueOnce({ data: { experiencePreview: preview } })
 
-    await expect(getExperiencePreview("capability-token")).resolves.toBe(
-      preview,
-    )
-    expect(queryMock).toHaveBeenCalledTimes(2)
-    const legacy = adminGraphqlMock.mock.calls
-      .map(([source]) => source)
-      .find((source) => source.includes("query LegacyExperiencePreview"))
-    expect(legacy).not.toContain("WatchHomeCategoryRailBlock")
-  })
+      await expect(getExperiencePreview("capability-token")).resolves.toBe(
+        preview,
+      )
+      expect(queryMock).toHaveBeenCalledTimes(2)
+      const legacy = adminGraphqlMock.mock.calls
+        .map(([source]) => source)
+        .find((source) => source.includes("query LegacyExperiencePreview"))
+      expect(legacy).not.toContain(blockType)
+    },
+  )
 
   it("does not retry for unrelated preview failures", async () => {
     queryMock.mockRejectedValue(new Error("request timed out"))
@@ -201,26 +205,29 @@ describe("getExperiencePreview", () => {
     expect(queryMock).toHaveBeenCalledTimes(1)
   })
 
-  it("never retries the legacy preview operation more than once", async () => {
-    const unknownType = Object.assign(
-      new Error('Unknown type "WatchHomeCategoryRailBlock".'),
-      {
-        errors: [
-          {
-            message: 'Unknown type "WatchHomeCategoryRailBlock".',
-            extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
-          },
-        ],
-      },
-    )
-    queryMock.mockResolvedValueOnce({ errors: unknownType.errors })
-    queryMock.mockRejectedValueOnce(unknownType)
+  it.each(["WatchHomeCategoryRailBlock", "HomepageRecommendationsBlock"])(
+    "never retries the legacy preview operation more than once (%s)",
+    async (blockType) => {
+      const unknownType = Object.assign(
+        new Error(`Unknown type "${blockType}".`),
+        {
+          errors: [
+            {
+              message: `Unknown type "${blockType}".`,
+              extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+            },
+          ],
+        },
+      )
+      queryMock.mockResolvedValueOnce({ errors: unknownType.errors })
+      queryMock.mockRejectedValueOnce(unknownType)
 
-    await expect(getExperiencePreview("capability-token")).rejects.toThrow(
-      "Experience preview query failed",
-    )
-    expect(queryMock).toHaveBeenCalledTimes(2)
-  })
+      await expect(getExperiencePreview("capability-token")).rejects.toThrow(
+        "Experience preview query failed",
+      )
+      expect(queryMock).toHaveBeenCalledTimes(2)
+    },
+  )
 
   it("returns null without falling back when the capability is invalid", async () => {
     queryMock.mockResolvedValue({ data: { experiencePreview: null } })
