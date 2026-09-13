@@ -20,7 +20,7 @@ import {
 
 // Filtering is applied to the SERVER-rendered markup by toggling `hidden`,
 // rather than by re-rendering the cards on the client. The English page carries
-// ~1,170 items and ~9.5 MB of HTML; re-rendering that subtree in the browser to
+// ~1,170 items and ~7 MB of HTML; re-rendering that subtree in the browser to
 // hide rows would cost far more than reading a few data attributes. So this
 // component renders the controls and passes `children` straight through — those
 // nodes are never reconciled against client state.

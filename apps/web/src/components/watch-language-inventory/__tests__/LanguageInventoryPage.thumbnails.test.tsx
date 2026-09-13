@@ -16,14 +16,25 @@ vi.mock("next/image", () => ({
     alt,
     className,
     sizes,
+    width,
+    height,
   }: {
     src: string
     alt: string
     className?: string
     sizes?: string
+    width?: number
+    height?: number
   }) => (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} alt={alt} className={className} sizes={sizes} />
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      sizes={sizes}
+      width={width}
+      height={height}
+    />
   ),
 }))
 vi.mock("@/components/ui/carousel", () => {
@@ -364,7 +375,12 @@ describe("LanguageInventoryPage thumbnail sources", () => {
       expect(frame?.classList.contains("w-20")).toBe(false)
       expect(frame?.classList.contains("sm:w-24")).toBe(false)
       expect(image?.classList.contains("object-center")).toBe(true)
-      expect(image?.getAttribute("sizes")).toBe("(max-width: 640px) 32px, 37px")
+      // The portrait branch's requested source size. This used to ride on
+      // `sizes`; it moved to `width`/`height` when the pixel-only `sizes`
+      // turned out to expand the srcset to every configured width (see
+      // LanguageInventoryPage.weight.test.tsx).
+      expect(image?.getAttribute("width")).toBe("37")
+      expect(image?.getAttribute("height")).toBe("56")
       expect(
         row?.querySelector(
           '[data-testid="language-inventory-compact-thumbnail-frame"]',
@@ -405,7 +421,8 @@ describe("LanguageInventoryPage thumbnail sources", () => {
     expect(frame?.classList.contains("sm:w-24")).toBe(true)
     expect(frame?.classList.contains("aspect-[2/3]")).toBe(false)
     expect(image?.classList.contains("object-left-top")).toBe(true)
-    expect(image?.getAttribute("sizes")).toBe("(max-width: 640px) 80px, 96px")
+    expect(image?.getAttribute("width")).toBe("96")
+    expect(image?.getAttribute("height")).toBe("54")
     expect(
       row?.querySelector(
         '[data-testid="language-inventory-compact-thumbnail-frame"]',
