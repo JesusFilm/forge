@@ -88,6 +88,8 @@ export function nextWatchHomeTvCarouselIndex(
  * `undefined` in some test doubles, so both shapes have to be handled. An
  * unhandled rejection here is a console error on every refused autoplay.
  */
+const MAX_TIMER_DELAY_MS = 2_147_483_647
+
 function startPlayback(video: HTMLVideoElement, onRefused?: () => void) {
   const played = video.play()
   if (played && typeof played.then === "function") {
@@ -529,6 +531,9 @@ export function useWatchHomeTvCarousel(
       if (isSameSlide) {
         setRestartCount((count) => count + 1)
         const video = videoRef.current
+        setIsBufferingMedia(false)
+        mediaReadyRef.current = true
+        setMediaReady(true)
         if (video) {
           try {
             video.currentTime = 0
@@ -536,11 +541,13 @@ export function useWatchHomeTvCarousel(
             // A detached or not-yet-seekable element throws here; the replay
             // below is still worth attempting.
           }
-          startPlayback(video)
+          const refusedForTurn = turnTokenRef.current
+          startPlayback(video, () => {
+            if (turnTokenRef.current !== refusedForTurn) return
+            if (videoRef.current !== video) return
+            setIsBufferingMedia(true)
+          })
         }
-        setIsBufferingMedia(false)
-        mediaReadyRef.current = true
-        setMediaReady(true)
       }
     },
     [
@@ -643,7 +650,14 @@ export function useWatchHomeTvCarousel(
       mediaReadyRef.current = true
       setMediaReady(true)
       if (!autoAdvancePausedRef.current) {
+        // A rejection can land long after this turn ended -- the viewer picks
+        // another slide, the element is replaced -- and the buffering flag is
+        // hook-wide, so an ungated callback would park the slide that
+        // REPLACED this one.
+        const refusedForTurn = turnTokenRef.current
         startPlayback(video, () => {
+          if (turnTokenRef.current !== refusedForTurn) return
+          if (videoRef.current !== video) return
           setIsBufferingMedia(true)
         })
       }
@@ -664,6 +678,24 @@ export function useWatchHomeTvCarousel(
   }, [])
 
   const handlePause = useCallback(() => {
+    // Browsers fire `pause` immediately before `ended` at natural end of
+    // playback. Treating that as a deliberate hold would park the advance
+    // clock AND the dead-stream ceiling, so a turn whose `ended` never
+    // arrives -- a real HLS failure mode -- would freeze the hero forever.
+    // A pause at the end leaves the clock running instead, so the backstop
+    // resolves the turn within the grace window.
+    const video = videoRef.current
+    const duration = video?.duration
+    const currentTime = video?.currentTime
+    const atEnd =
+      video?.ended === true ||
+      (typeof duration === "number" &&
+        Number.isFinite(duration) &&
+        duration > 0 &&
+        typeof currentTime === "number" &&
+        Number.isFinite(currentTime) &&
+        duration - currentTime <= 1)
+    if (atEnd) return
     setIsMediaPaused(true)
   }, [])
 
@@ -757,6 +789,18 @@ export function useWatchHomeTvCarousel(
     const armedForTurn = turnTokenRef.current
 
     const armBackstop = (delayMs: number) => {
+      // `setTimeout` coerces its delay to a 32-bit signed int, so anything
+      // past ~24.9 days wraps and fires IMMEDIATELY -- turning a malformed
+      // catalog duration into an instant advance plus a dead-stream
+      // misclassification. Serve long waits in chunks instead.
+      if (delayMs > MAX_TIMER_DELAY_MS) {
+        slideAdvanceTimeoutRef.current = window.setTimeout(() => {
+          slideAdvanceTimeoutRef.current = null
+          if (turnTokenRef.current !== armedForTurn) return
+          armBackstop(delayMs - MAX_TIMER_DELAY_MS)
+        }, MAX_TIMER_DELAY_MS)
+        return
+      }
       slideAdvanceTimeoutRef.current = window.setTimeout(() => {
         slideAdvanceTimeoutRef.current = null
         // A timer armed for a turn that has already ended must not advance the
@@ -806,6 +850,10 @@ export function useWatchHomeTvCarousel(
     autoAdvancePaused,
     clearSlideAdvanceTimeout,
     isTurnHeld,
+    // A same-slide replay keeps every other dependency identical, so without
+    // this the effect never re-runs and that turn gets NO backstop at all --
+    // exactly the recovery the replay might need.
+    restartCount,
   ])
 
   // The ceiling on a parked clock: a stream that never arrives still loses its

@@ -104,7 +104,9 @@ vi.mock("@forge/video-player/mux-video", async () => {
       ref,
     ) {
       muxVideoHlsConfigs.push(_hlsConfig)
-      muxVideoRenders.push(props.src)
+      muxVideoRenders.push(
+        typeof props.src === "string" ? props.src : undefined,
+      )
       return <video ref={ref} data-testid="watch-home-tv-video" {...props} />
     }),
   }
@@ -351,6 +353,21 @@ describe("WatchHomePage", () => {
   // assertion is a pin, not an effect proof — a broken buffer cap would
   // satisfy it too. The discriminating probe is measured segment count and
   // transferred bytes in a real browser (plan U6).
+  it("pins the bandwidth guard's values, not just their threading", () => {
+    // The mount-seam assertions below build their expectation from these same
+    // constants, so they prove the value REACHES the player, not that it is
+    // right. Escalating the cap to "720p" would land on the floor Mux's own
+    // level controller already enforces -- removing the guard rather than
+    // halving it -- and every other test here would stay green.
+    expect(WATCH_HOME_INTRO_MAX_RESOLUTION).toBe("480p")
+    expect(WATCH_HOME_INTRO_HLS_CONFIG).toEqual({
+      maxBufferLength: 10,
+      maxBufferSize: 5_000_000,
+      backBufferLength: 5,
+      enableWebVTT: false,
+    })
+  })
+
   it("mounts the hero with the bounded intro HLS config", async () => {
     await act(async () => {
       root.render(<WatchHomePage model={makeModel()} />)
@@ -947,13 +964,11 @@ describe("WatchHomePage", () => {
         writable: true,
       })
 
-      const readRingKey = () =>
-        (
-          container.querySelector(
-            '[data-testid="watch-home-current-progress"] .watch-home-progress-ring',
-          ) as SVGCircleElement
-        ).getAttribute("stroke-dasharray")
-      const ringBefore = readRingKey()
+      const readRingCircle = () =>
+        container.querySelector(
+          '[data-testid="watch-home-current-progress"] .watch-home-progress-ring',
+        ) as SVGCircleElement
+      const ringBefore = readRingCircle()
 
       await act(async () => {
         video.dispatchEvent(new Event("ended", { bubbles: true }))
@@ -967,11 +982,175 @@ describe("WatchHomePage", () => {
       expect(replayed).toBe(video)
       expect(video.currentTime).toBe(0)
       expect(play).toHaveBeenCalled()
-      expect(readRingKey()).toBe(ringBefore)
+      // The ring is keyed on the restart counter, so React must have
+      // remounted the circle. `stroke-dasharray` would NOT discriminate here:
+      // it is derived from the radius alone and is identical across every
+      // animation-key change.
+      expect(readRingCircle()).not.toBe(ringBefore)
       // ...and not left behind a loading indicator nobody can clear.
       expect(
         container.querySelector('[data-testid="watch-home-progress-loading"]'),
       ).toBeNull()
+    })
+
+    // A play() promise can reject long after its turn ended. The buffering
+    // flag is hook-wide, so an ungated rejection parks the slide that
+    // REPLACED the one that issued it.
+    it("ignores a play rejection that lands after its turn ended", async () => {
+      let rejectFirstPlay: (reason?: unknown) => void = () => undefined
+      vi.useFakeTimers()
+      try {
+        vi.spyOn(Math, "random").mockReturnValue(0)
+        await act(async () => {
+          root.render(<WatchHomePage model={makeTimedSequencedModel(10)} />)
+        })
+
+        const first = container.querySelector(
+          '[data-testid="watch-home-tv-video"]',
+        ) as HTMLVideoElement
+        first.play = vi.fn(
+          () =>
+            new Promise<void>((_resolve, reject) => {
+              rejectFirstPlay = reject
+            }),
+        ) as unknown as HTMLVideoElement["play"]
+
+        await act(async () => {
+          first.dispatchEvent(new Event("canplay", { bubbles: true }))
+        })
+        await act(async () => {
+          vi.advanceTimersByTime(1_500)
+        })
+
+        // The viewer moves on while that promise is still pending.
+        await act(async () => {
+          container
+            .querySelector('button[aria-label="Show Queued Two"]')
+            ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+        })
+        const second = container.querySelector(
+          '[data-testid="watch-home-tv-video"]',
+        ) as HTMLVideoElement
+        second.play = vi.fn(() =>
+          Promise.resolve(),
+        ) as unknown as HTMLVideoElement["play"]
+        await act(async () => {
+          second.dispatchEvent(new Event("canplay", { bubbles: true }))
+        })
+        await act(async () => {
+          vi.advanceTimersByTime(1_500)
+        })
+        const secondTitle = carouselLabel()
+        expect(
+          container.querySelector(
+            '[data-testid="watch-home-progress-loading"]',
+          ),
+        ).toBeNull()
+
+        // Now the abandoned turn's promise finally rejects.
+        await act(async () => {
+          rejectFirstPlay(new DOMException("NotAllowedError"))
+          await Promise.resolve()
+        })
+
+        // The healthy slide must not be marked as waiting on bytes...
+        expect(
+          container.querySelector(
+            '[data-testid="watch-home-progress-loading"]',
+          ),
+        ).toBeNull()
+        // ...nor retired early by the dead-stream ceiling.
+        await act(async () => {
+          vi.advanceTimersByTime(WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS + 1)
+        })
+        expect(carouselLabel()).toBe(secondTitle)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    // Browsers fire `pause` immediately before `ended` at natural end. If that
+    // pause were treated as a deliberate hold it would park BOTH the advance
+    // clock and the dead-stream ceiling, so a turn whose `ended` never arrives
+    // would freeze the hero for good.
+    it("still resolves a turn whose ended never arrives after the end-of-play pause", async () => {
+      vi.useFakeTimers()
+      try {
+        const video = await startFirstSlide(makeTimedSequencedModel(10))
+        const openingTitle = carouselLabel()
+
+        Object.defineProperty(video, "duration", {
+          configurable: true,
+          value: 10,
+        })
+        setMediaTime(video, 10)
+        await act(async () => {
+          video.dispatchEvent(new Event("pause", { bubbles: true }))
+        })
+
+        // No `ended` follows. The backstop must still finish the turn.
+        await act(async () => {
+          vi.advanceTimersByTime(15_001)
+        })
+
+        expect(carouselLabel()).not.toBe(openingTitle)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    // A replay keeps the slide id, so every other dependency of the backstop
+    // effect is unchanged. Without an explicit turn signal the effect never
+    // re-runs and the replayed turn carries no recovery timer at all.
+    it("arms a fresh backstop for the replayed turn of a single-slide queue", async () => {
+      vi.useFakeTimers()
+      try {
+        vi.spyOn(Math, "random").mockReturnValue(0)
+        await act(async () => {
+          root.render(
+            <WatchHomePage
+              model={makeModel({
+                carousel: {
+                  pools: [
+                    {
+                      id: "pool-a",
+                      collectionIds: ["pool-a"],
+                      videos: [makeCarouselSlide()],
+                    },
+                  ],
+                },
+              })}
+            />,
+          )
+        })
+
+        const video = container.querySelector(
+          '[data-testid="watch-home-tv-video"]',
+        ) as HTMLVideoElement
+        const play = vi.fn(() => Promise.resolve())
+        video.play = play as unknown as HTMLVideoElement["play"]
+        await act(async () => {
+          video.dispatchEvent(new Event("canplay", { bubbles: true }))
+        })
+        await act(async () => {
+          vi.advanceTimersByTime(1_500)
+        })
+
+        await act(async () => {
+          video.dispatchEvent(new Event("ended", { bubbles: true }))
+        })
+        expect(play).toHaveBeenCalledTimes(2)
+
+        // The replayed turn must own a backstop: if `ended` is missed the
+        // second time round, this is the only thing that can recover.
+        await act(async () => {
+          vi.advanceTimersByTime(15_001)
+        })
+
+        expect(play).toHaveBeenCalledTimes(3)
+      } finally {
+        vi.useRealTimers()
+      }
     })
 
     // R7: the viewer is never trapped on a slide that now runs for minutes.
