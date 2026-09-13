@@ -9,7 +9,6 @@ import {
   useSyncExternalStore,
 } from "react"
 import {
-  WATCH_HOME_TV_ADVANCE_THRESHOLD,
   WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY,
   addWatchHomeTvPlayedId,
   addWatchHomeVerticalVideoId,
@@ -28,7 +27,6 @@ import {
 } from "@/lib/watch-home-carousel-sequence"
 
 export {
-  WATCH_HOME_TV_ADVANCE_THRESHOLD,
   WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY,
   addWatchHomeTvPlayedId,
   readWatchHomeTvPlayedIds,
@@ -39,9 +37,23 @@ export type { WatchHomeCarouselSequenceData, WatchHomeTvCarouselSlide }
 export const WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS = 7
 const IMAGE_SLIDE_ADVANCE_MS = WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS * 1000
 const VIDEO_POSTER_HOLD_MS = 1500
-const VIDEO_POSTER_HOLD_SECONDS = VIDEO_POSTER_HOLD_MS / 1000
-const VIDEO_POSTER_HOLD_PROGRESS_TICK_MS = 250
-export const WATCH_HOME_TV_VIDEO_PREVIEW_MAX_SECONDS = 30
+
+/**
+ * How far past a video's own length the backstop timer sits. Made of the
+ * 1500 ms poster hold the advance clock already includes, plus roughly 3.5 s
+ * of allowance for rebuffering that never fired `waiting`. The real `ended`
+ * event is the advance trigger; this only has to lose the race to it.
+ */
+export const WATCH_HOME_TV_ENDED_BACKSTOP_GRACE_SECONDS = 5
+
+/**
+ * The turn length for a slide whose duration cannot be read from either the
+ * media element or the catalog record. Far enough above the retired 30-second
+ * preview cap that an unmeasurable slide is not silently re-capped, and far
+ * enough below a feature film that a stream nobody can measure cannot hold
+ * the hero for a film's length.
+ */
+export const WATCH_HOME_TV_UNKNOWN_DURATION_SECONDS = 120
 /**
  * How long the hero waits on a stream before giving the turn to the next
  * slide. The advance clock runs only while there is something to watch (see
@@ -71,30 +83,50 @@ export function nextWatchHomeTvCarouselIndex(
   return (currentIndex + 1) % slideCount
 }
 
-export function watchHomeTvProgressPercent(
-  currentTime: number,
-  duration: number,
-) {
-  const targetSeconds = watchHomeTvAdvanceTargetSeconds(duration)
-  if (targetSeconds <= 0) return 0
-  return Math.min(100, Math.max(0, (currentTime / targetSeconds) * 100))
+function usableSeconds(value: number | null | undefined): number | null {
+  if (typeof value !== "number") return null
+  if (!Number.isFinite(value) || value <= 0) return null
+  return value
 }
 
-export function watchHomeTvAdvanceTargetSeconds(
-  duration: number,
-  threshold = WATCH_HOME_TV_ADVANCE_THRESHOLD,
-  maxSeconds = WATCH_HOME_TV_VIDEO_PREVIEW_MAX_SECONDS,
-) {
-  if (!Number.isFinite(duration) || duration <= 0) return maxSeconds
-  return Math.min(maxSeconds, duration * (threshold / 100))
+/**
+ * How long this slide's turn lasts, and what the progress ring animates over.
+ *
+ * The media element's own `duration` wins when it is readable, because it is
+ * the only value that matches what is actually playing; the catalog record is
+ * the pre-metadata estimate behind it. Every candidate is screened for a
+ * finite positive value: a `NaN` before metadata, the `Infinity` of an
+ * unbounded manifest, or a `null` record would otherwise reach a `setTimeout`
+ * delay (where both coerce to 0) and the ring's CSS custom property (where
+ * `NaNs` silently invalidates the animation).
+ */
+export function watchHomeTvSlideDurationSeconds(
+  slide: Pick<WatchHomeTvCarouselSlide, "src" | "durationSeconds">,
+  measuredSeconds: number | null | undefined,
+): number {
+  if (!slide.src) return WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS
+  return (
+    usableSeconds(measuredSeconds) ??
+    usableSeconds(slide.durationSeconds) ??
+    WATCH_HOME_TV_UNKNOWN_DURATION_SECONDS
+  )
 }
 
-export function shouldAdvanceWatchHomeTvCarousel(
-  currentProgress: number,
-  previousProgress: number,
-  threshold = 100,
-) {
-  return previousProgress < threshold && currentProgress >= threshold
+/**
+ * When the backstop timer fires. A video slide gets the grace on top so the
+ * media's own `ended` event wins in normal playback; an image slide takes no
+ * grace, because for it the timer IS the mechanism rather than a backstop.
+ */
+export function watchHomeTvAdvanceBackstopSeconds(
+  slide: Pick<WatchHomeTvCarouselSlide, "src" | "durationSeconds">,
+  measuredSeconds: number | null | undefined,
+): number {
+  const durationSeconds = watchHomeTvSlideDurationSeconds(
+    slide,
+    measuredSeconds,
+  )
+  if (!slide.src) return durationSeconds
+  return durationSeconds + WATCH_HOME_TV_ENDED_BACKSTOP_GRACE_SECONDS
 }
 
 /**
@@ -211,6 +243,19 @@ export function useWatchHomeTvCarousel(
   const [leavingSlide, setLeavingSlide] =
     useState<WatchHomeTvCarouselSlide | null>(null)
   const [mediaReady, setMediaReady] = useState(false)
+  // Bumped when the backstop declines to advance because the media clock still
+  // shows time remaining; re-running the effect is how it re-arms.
+  const [backstopReArmCount, setBackstopReArmCount] = useState(0)
+  // Folded into the ring's animation key so a same-slide restart replays the
+  // CSS animation instead of leaving it parked at 100%. State, not a ref: the
+  // key has to change during a render for the animation to restart.
+  const [restartCount, setRestartCount] = useState(0)
+  // The media element's own duration, keyed to the slide it was read from so a
+  // stale measurement can never leak into the next slide's turn.
+  const [measuredDuration, setMeasuredDuration] = useState<{
+    slideId: string | null
+    seconds: number | null
+  }>({ slideId: null, seconds: null })
   // Waiting on bytes: true from the moment a video slide is chosen until it can
   // play, and again whenever playback stalls. Starts true because the opening
   // slide has not loaded anything yet either.
@@ -230,6 +275,15 @@ export function useWatchHomeTvCarousel(
     },
   )
   const previousProgressRef = useRef(0)
+  // Monotonic per-turn token. A slide id is not enough: a single-playable-slide
+  // queue restarts the SAME id, so two consecutive turns would be
+  // indistinguishable and a stale timer from the first could advance the
+  // second.
+  const turnTokenRef = useRef(0)
+  // The media position the backstop last saw. Re-arming requires the media
+  // clock to have MOVED since then, so a wedged stream that never emits
+  // `waiting` still loses its turn instead of re-arming forever.
+  const backstopSeenTimeRef = useRef(0)
   const imageSlideStartedAtRef = useRef<number | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const isSequenced = sequence != null
@@ -301,6 +355,20 @@ export function useWatchHomeTvCarousel(
   // Only a video slide can be waiting on bytes; an image slide is fully on
   // screen the moment it is chosen.
   const isBuffering = Boolean(activeSlide?.src) && isBufferingMedia
+  // One resolved duration feeds both the ring and the backstop, so the two
+  // cannot drift apart. The measurement only counts for the slide it was read
+  // from.
+  const activeMeasuredSeconds =
+    measuredDuration.slideId != null &&
+    measuredDuration.slideId === activeSlide?.id
+      ? measuredDuration.seconds
+      : null
+  const advanceDurationSeconds = activeSlide
+    ? watchHomeTvSlideDurationSeconds(activeSlide, activeMeasuredSeconds)
+    : WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS
+  const advanceBackstopSeconds = activeSlide
+    ? watchHomeTvAdvanceBackstopSeconds(activeSlide, activeMeasuredSeconds)
+    : WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS
   const safeActiveIndex = activeSlide
     ? Math.max(
         0,
@@ -417,15 +485,51 @@ export function useWatchHomeTvCarousel(
           leavingSlideTimeoutRef.current = null
         }, 900)
       }
+      const isSameSlide = nextSlide != null && nextSlide.id === activeSlide?.id
       imageSlideStartedAtRef.current = null
       previousProgressRef.current = 0
       clearSlideAdvanceTimeout()
       clearVideoPosterHold()
+      // Every selection opens a new turn, so timers armed for the previous one
+      // stop being able to advance -- including when the id is unchanged.
+      turnTokenRef.current += 1
+      backstopSeenTimeRef.current = 0
+      advanceClockRef.current = {
+        slideId: nextSlide?.id ?? null,
+        elapsedMs: 0,
+      }
       setProgress(0)
       setMediaReady(false)
       setIsBufferingMedia(Boolean(nextSlide?.src))
       setPlaybackTime({ seconds: 0, slideId: nextSlide?.id ?? null })
+      setMeasuredDuration((current) =>
+        current.slideId === nextSlide?.id
+          ? current
+          : { slideId: nextSlide?.id ?? null, seconds: null },
+      )
       setActiveSlideId(nextSlide?.id ?? null)
+
+      // Re-selecting the only playable slide cannot remount `<MuxVideo>`, so
+      // no fresh `canplay` or `ended` would ever arrive. Replay it by hand and
+      // restart the ring, rather than leaving the hero on a frozen last frame.
+      if (isSameSlide) {
+        setRestartCount((count) => count + 1)
+        const video = videoRef.current
+        if (video) {
+          try {
+            video.currentTime = 0
+          } catch {
+            // A detached or not-yet-seekable element throws here; the replay
+            // below is still worth attempting.
+          }
+          const played = video.play()
+          if (played && typeof played.then === "function") {
+            played.catch(() => undefined)
+          }
+        }
+        setIsBufferingMedia(false)
+        setMediaReady(true)
+      }
     },
     [
       activeSlide,
@@ -469,16 +573,10 @@ export function useWatchHomeTvCarousel(
   const handleTimeUpdate = useCallback(() => {
     const video = videoRef.current
     if (!video) return
-    const nextProgress = watchHomeTvProgressPercent(
-      video.currentTime + VIDEO_POSTER_HOLD_SECONDS,
-      video.duration,
-    )
     setPlaybackTime({
       seconds: video.currentTime,
       slideId: activeSlide?.id ?? null,
     })
-    setProgress(nextProgress)
-    previousProgressRef.current = nextProgress
   }, [activeSlide?.id])
 
   const handleLoadedMetadata = useCallback(() => {
@@ -487,6 +585,20 @@ export function useWatchHomeTvCarousel(
     setMediaReady(false)
     setPlaybackTime({ seconds: 0, slideId: activeSlide?.id ?? null })
     setProgress(0)
+
+    // Before the portrait branch below, which can advance away from this
+    // slide: the measurement belongs to the slide it was read from either way.
+    const metadataSlideId = activeSlide?.id ?? null
+    const metadataSeconds = videoRef.current?.duration
+    setMeasuredDuration({
+      slideId: metadataSlideId,
+      seconds:
+        typeof metadataSeconds === "number" &&
+        Number.isFinite(metadataSeconds) &&
+        metadataSeconds > 0
+          ? metadataSeconds
+          : null,
+    })
 
     // The decoded size is the first and only trustworthy orientation signal in
     // the pipeline, so the skip happens here rather than at draw time. Bounded
@@ -517,39 +629,7 @@ export function useWatchHomeTvCarousel(
     video.muted = isMutedRef.current
     clearVideoPosterHold()
 
-    let startedAt: number | null = null
-
-    function tick() {
-      const currentVideo = videoRef.current
-      if (!currentVideo) return
-      const now = performance.now()
-      if (startedAt == null) startedAt = now
-
-      const elapsedSeconds = (now - startedAt) / 1000
-      const nextProgress = watchHomeTvProgressPercent(
-        elapsedSeconds,
-        currentVideo.duration,
-      )
-      setProgress(nextProgress)
-      previousProgressRef.current = nextProgress
-    }
-
-    tick()
-    videoPosterHoldIntervalRef.current = window.setInterval(
-      tick,
-      VIDEO_POSTER_HOLD_PROGRESS_TICK_MS,
-    )
     videoPosterHoldTimeoutRef.current = window.setTimeout(() => {
-      if (videoPosterHoldIntervalRef.current != null) {
-        window.clearInterval(videoPosterHoldIntervalRef.current)
-        videoPosterHoldIntervalRef.current = null
-      }
-      const nextProgress = watchHomeTvProgressPercent(
-        VIDEO_POSTER_HOLD_SECONDS,
-        video.duration,
-      )
-      setProgress(nextProgress)
-      previousProgressRef.current = nextProgress
       setMediaReady(true)
       if (!autoAdvancePausedRef.current) {
         void video.play().catch(() => undefined)
@@ -654,15 +734,43 @@ export function useWatchHomeTvCarousel(
     if (autoAdvancePaused || isBuffering) return undefined
 
     const advanceAfterMs = activeSlide.src
-      ? watchHomeTvAdvanceTargetSeconds(
-          activeSlide.durationSeconds ?? Number.NaN,
-        ) * 1000
+      ? advanceBackstopSeconds * 1000
       : IMAGE_SLIDE_ADVANCE_MS
     const startedAt = Date.now()
+    const armedForTurn = turnTokenRef.current
 
     slideAdvanceTimeoutRef.current = window.setTimeout(
       () => {
         slideAdvanceTimeoutRef.current = null
+        // A timer armed for a turn that has already ended must not advance the
+        // one that replaced it.
+        if (turnTokenRef.current !== armedForTurn) return
+
+        // This clock measures WALL time against a MEDIA duration. Any decode
+        // slippage that never fired `waiting` accumulates, and on a
+        // feature-length film a fraction of a percent eats the whole grace.
+        // So the media clock, not this one, decides that the video is over.
+        const video = videoRef.current
+        const currentTime = video?.currentTime
+        const mediaSeconds =
+          video &&
+          typeof currentTime === "number" &&
+          Number.isFinite(currentTime)
+            ? currentTime
+            : 0
+        const remaining = advanceDurationSeconds - mediaSeconds
+        const mediaAdvanced = mediaSeconds > backstopSeenTimeRef.current
+        if (remaining > 1 && mediaAdvanced) {
+          backstopSeenTimeRef.current = mediaSeconds
+          clock.elapsedMs = Math.max(
+            0,
+            advanceAfterMs -
+              (remaining + WATCH_HOME_TV_ENDED_BACKSTOP_GRACE_SECONDS) * 1000,
+          )
+          setBackstopReArmCount((count) => count + 1)
+          return
+        }
+
         advance()
       },
       Math.max(0, advanceAfterMs - clock.elapsedMs),
@@ -678,7 +786,10 @@ export function useWatchHomeTvCarousel(
     activeSlide?.id,
     activeSlide?.src,
     advance,
+    advanceBackstopSeconds,
+    advanceDurationSeconds,
     autoAdvancePaused,
+    backstopReArmCount,
     clearSlideAdvanceTimeout,
     isBuffering,
   ])
@@ -689,8 +800,12 @@ export function useWatchHomeTvCarousel(
     clearMediaWaitTimeout()
     if (!isBuffering || autoAdvancePaused) return undefined
 
+    const armedForTurn = turnTokenRef.current
     mediaWaitTimeoutRef.current = window.setTimeout(() => {
       mediaWaitTimeoutRef.current = null
+      // The portrait-aspect skip can advance from `loadedmetadata` without
+      // this effect having re-run yet, so the same turn guard applies here.
+      if (turnTokenRef.current !== armedForTurn) return
       advance()
     }, WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS)
 
@@ -772,6 +887,11 @@ export function useWatchHomeTvCarousel(
       activeIndex: safeActiveIndex,
       activeSlide,
       advance,
+      advanceDurationSeconds,
+      // Changes when the resolved duration lands late or the same slide is
+      // replayed, so the ring's CSS animation restarts instead of
+      // reinterpreting a running one.
+      ringAnimationKey: `${activeSlide?.id ?? "none"}:${advanceDurationSeconds}:${restartCount}`,
       handleCanPlay,
       handleEnded: advance,
       handleLoadedMetadata,
@@ -794,6 +914,8 @@ export function useWatchHomeTvCarousel(
       safeActiveIndex,
       activeSlide,
       advance,
+      advanceDurationSeconds,
+      restartCount,
       handleCanPlay,
       handleLoadedMetadata,
       handlePlaying,

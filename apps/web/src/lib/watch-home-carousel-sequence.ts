@@ -1,4 +1,3 @@
-export const WATCH_HOME_TV_ADVANCE_THRESHOLD = 95
 export const WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY = "carousel-played-ids"
 export const WATCH_HOME_TV_CURRENT_VIDEO_STORAGE_KEY = "carousel-current-video"
 export const WATCH_HOME_TV_VERTICAL_IDS_STORAGE_KEY = "carousel-vertical-ids"

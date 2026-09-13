@@ -31,10 +31,8 @@ import type { WatchHomeHeroSlide } from "@/lib/watch-home"
 import type { WatchHomeCarouselSequenceData } from "@/lib/watch-home-carousel-sequence"
 import { cn } from "@/lib/utils"
 import {
-  WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS,
   WATCH_HOME_TV_TIMELINE_FUTURE_COUNT,
   useWatchHomeTvCarousel,
-  watchHomeTvAdvanceTargetSeconds,
   type WatchHomeTvCarouselSlide,
 } from "@/components/home/useWatchHomeTvCarousel"
 import { videoLabelMessageKey } from "@/lib/video-labels"
@@ -519,6 +517,7 @@ function WatchHomeTvVisualLayer({
 function WatchHomeTvOverlay({
   activeIndex,
   activeSlide,
+  advanceDurationSeconds,
   isBuffering,
   isMuted,
   leavingSlide,
@@ -526,20 +525,21 @@ function WatchHomeTvOverlay({
   onToggleMuted,
   playbackTimeSeconds,
   slides,
+  ringAnimationKey,
 }: {
   activeIndex: number
   activeSlide: WatchHomeTvCarouselSlide
+  advanceDurationSeconds: number
   isBuffering: boolean
   isMuted: boolean
   leavingSlide: WatchHomeTvCarouselSlide | null
   onSelectSlide: (slideId: string) => void
   onToggleMuted: () => void
   playbackTimeSeconds: number
+  ringAnimationKey: string
   slides: readonly WatchHomeTvCarouselSlide[]
 }) {
   const t = useTranslations("WatchHome")
-  const advanceDurationSeconds =
-    watchHomeTvSlideAdvanceDurationSeconds(activeSlide)
 
   return (
     <div
@@ -596,7 +596,7 @@ function WatchHomeTvOverlay({
             <WatchHomeVideoTimeline
               activeIndex={activeIndex}
               advanceDurationSeconds={advanceDurationSeconds}
-              animationKey={activeSlide.id}
+              animationKey={ringAnimationKey}
               onSelectSlide={onSelectSlide}
               paused={isBuffering}
               size="compact"
@@ -618,13 +618,6 @@ function WatchHomeTvOverlay({
       </div>
     </div>
   )
-}
-
-function watchHomeTvSlideAdvanceDurationSeconds(
-  slide: WatchHomeTvCarouselSlide,
-) {
-  if (!slide.src) return WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS
-  return watchHomeTvAdvanceTargetSeconds(slide.durationSeconds ?? Number.NaN)
 }
 
 function WatchHomeTvSlideLabel({ slide }: { slide: WatchHomeTvCarouselSlide }) {
@@ -1023,6 +1016,7 @@ export function WatchHomeTvCarousel({
   const {
     activeIndex,
     activeSlide,
+    advanceDurationSeconds,
     handleCanPlay,
     handleEnded,
     handleLoadedMetadata,
@@ -1034,6 +1028,7 @@ export function WatchHomeTvCarousel({
     leavingSlide,
     mediaReady,
     playbackTimeSeconds,
+    ringAnimationKey,
     selectSlide,
     slides: timelineSlides,
     toggleMuted,
@@ -1125,12 +1120,14 @@ export function WatchHomeTvCarousel({
         <WatchHomeTvOverlay
           activeIndex={activeIndex}
           activeSlide={activeSlide}
+          advanceDurationSeconds={advanceDurationSeconds}
           isBuffering={isBuffering}
           isMuted={isMuted}
           leavingSlide={leavingSlide}
           onSelectSlide={selectSlide}
           onToggleMuted={toggleMuted}
           playbackTimeSeconds={playbackTimeSeconds}
+          ringAnimationKey={ringAnimationKey}
           slides={timelineSlides}
         />
         {subtitleCueText ? (
