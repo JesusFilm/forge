@@ -5,7 +5,7 @@ status: active
 date: 2026-09-14
 ---
 
-Runtime ticket: `feat-495`. Production traces and local read-only measurements
+Runtime ticket: `feat-496`. Production traces and local read-only measurements
 identify hundreds of independent preferred-dub lookups during a homepage request.
 Four concurrent homepage queries issue 5,348 SQL statements and queue up to 1,003
 operations on the unchanged ten-connection pool. The final bounded loader reduces

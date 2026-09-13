@@ -1,6 +1,6 @@
 # Homepage recommendations restoration — 14 September 2026
 
-Owner: `feat-488`. Runtime recovery: `feat-495`. Curation: `feat-487`.
+Owner: `feat-488`. Runtime recovery: `feat-496`. Curation: `feat-487`.
 
 ## Scope
 
@@ -75,3 +75,13 @@ session does not close the runtime incident.
 Production curation eligibility and activation remain separate from this code
 restoration. Do not relax language, viewing-history or distinct-video rules to
 turn incomplete pool coverage into a six-card success claim.
+
+## Shared-client CI prerequisite
+
+The restored shared experience fragment exercises native consumers in CI.
+All application build/test/lint checks passed, but `expo-doctor` found 17
+pre-existing mobile SDK patch pins below the versions expected by Expo 57.0.22.
+Existing **#2267** contains that exact dependency alignment; its diff and green
+CI were reviewed before merging it at **22:13:33 UTC**. The homepage branch was
+updated from main so its final CI uses those aligned dependencies. No native
+homepage surface or cross-device identity work was added.
