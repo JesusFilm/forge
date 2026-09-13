@@ -701,7 +701,7 @@ builder.prismaObject("Video", {
         languageSlug: t.arg.string({ required: false }),
       },
       resolve: (query, video, args, ctx) =>
-        ctx.services.video.getPreferredPlayableDub({
+        ctx.loaders.preferredPlayableDub.load({
           videoId: video.id,
           languageSlug: args.languageSlug ?? null,
           query,
