@@ -34,6 +34,10 @@ import {
   WATCH_HOME_HERO_RESERVE_BELOW_PX,
 } from "@/lib/watch-home-hero-fit"
 import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
+import {
+  WATCH_HOME_INTRO_HLS_CONFIG,
+  WATCH_HOME_INTRO_MAX_RESOLUTION,
+} from "@/components/home/WatchHomeTvCarousel"
 import { WatchHomePage } from "@/components/home/WatchHomePage"
 
 vi.mock("next/image", () => ({
@@ -64,6 +68,19 @@ vi.mock("next/image", () => ({
   ),
 }))
 
+// Records the props the carousel hands to MuxVideo while still rendering a
+// real <video>, which the rest of this suite drives with DOM media events.
+// `_hlsConfig` is an object and has to come out of the spread the way
+// `disableTracking` already does, or React would stringify it onto the
+// element as an unknown attribute.
+const { muxVideoHlsConfigs } = vi.hoisted(() => ({
+  muxVideoHlsConfigs: [] as Array<Record<string, unknown> | undefined>,
+}))
+
+function lastMuxVideoHlsConfig(): Record<string, unknown> | undefined {
+  return muxVideoHlsConfigs[muxVideoHlsConfigs.length - 1]
+}
+
 vi.mock("@forge/video-player/mux-video", async () => {
   const React = await vi.importActual<typeof import("react")>("react")
   return {
@@ -71,11 +88,13 @@ vi.mock("@forge/video-player/mux-video", async () => {
       HTMLVideoElement,
       React.VideoHTMLAttributes<HTMLVideoElement> & {
         disableTracking?: boolean
+        _hlsConfig?: Record<string, unknown>
       }
     >(function MockMuxVideo(
-      { disableTracking: _disableTracking, ...props },
+      { disableTracking: _disableTracking, _hlsConfig, ...props },
       ref,
     ) {
+      muxVideoHlsConfigs.push(_hlsConfig)
       return <video ref={ref} data-testid="watch-home-tv-video" {...props} />
     }),
   }
@@ -270,6 +289,7 @@ beforeEach(() => {
   window.localStorage.clear()
   window.sessionStorage.clear()
   carouselApi.scrollTo.mockClear()
+  muxVideoHlsConfigs.length = 0
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -284,6 +304,92 @@ afterEach(async () => {
 })
 
 describe("WatchHomePage", () => {
+  // The bandwidth guard's two levers at the mount seam. NOTE ON WHAT THIS
+  // PROVES: jsdom does not implement HTMLMediaElement playback, so a prop
+  // assertion is a pin, not an effect proof — a broken buffer cap would
+  // satisfy it too. The discriminating probe is measured segment count and
+  // transferred bytes in a real browser (plan U6).
+  it("mounts the hero with the bounded intro HLS config", async () => {
+    await act(async () => {
+      root.render(<WatchHomePage model={makeModel()} />)
+    })
+
+    expect(lastMuxVideoHlsConfig()).toEqual(WATCH_HOME_INTRO_HLS_CONFIG)
+  })
+
+  it("caps the requested rendition on a Mux hero stream", async () => {
+    await act(async () => {
+      root.render(
+        <WatchHomePage
+          model={makeModel({
+            heroSlides: [
+              {
+                ...makeCard({ hls: "https://stream.mux.com/mux-hero.m3u8" }),
+                eyebrow: "Featured",
+              } as WatchHomeModel["heroSlides"][number],
+            ],
+          })}
+        />,
+      )
+    })
+
+    const video = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+
+    expect(video.getAttribute("src")).toBe(
+      `https://stream.mux.com/mux-hero.m3u8?max_resolution=${WATCH_HOME_INTRO_MAX_RESOLUTION}`,
+    )
+  })
+
+  // The rewrite is host-scoped, which is why every existing exact-src
+  // assertion in this file keeps passing untouched.
+  it("leaves a non-Mux hero stream byte-identical", async () => {
+    await act(async () => {
+      root.render(<WatchHomePage model={makeModel()} />)
+    })
+
+    const video = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+
+    expect(video.getAttribute("src")).toBe("https://stream.example/jesus.m3u8")
+  })
+
+  // R12's guard: re-rendering must not hand the mounted element a new `src`,
+  // which would reload HLS from zero while the advance clock keeps counting.
+  it("keeps the hero src stable across a re-render of the same slide", async () => {
+    const model = makeModel({
+      heroSlides: [
+        {
+          ...makeCard({ hls: "https://stream.mux.com/mux-hero.m3u8" }),
+          eyebrow: "Featured",
+        } as WatchHomeModel["heroSlides"][number],
+      ],
+    })
+
+    await act(async () => {
+      root.render(<WatchHomePage model={model} />)
+    })
+
+    const firstSrc = (
+      container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      ) as HTMLVideoElement
+    ).getAttribute("src")
+
+    await act(async () => {
+      root.render(<WatchHomePage model={model} />)
+    })
+
+    const video = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+
+    expect(video.getAttribute("src")).toBe(firstSrc)
+    expect(firstSrc).toContain("max_resolution=")
+  })
+
   it("server-renders one page heading outside the heading-free carousel", () => {
     const serverContainer = document.createElement("div")
     serverContainer.innerHTML = renderToStaticMarkup(

@@ -48,6 +48,10 @@ import {
   WatchHeroOverlay,
 } from "@/components/watch/WatchHeroOverlay"
 import { resolveMuxHeroPosterUrlAtMaxWidth } from "@/lib/url"
+import {
+  applyMuxMaxResolution,
+  type MuxMaxResolution,
+} from "@/lib/mux-stream-quality"
 import { WATCH_HERO_BODY_OVERLAP_CSS } from "@/lib/watch-hero-preview-overlap"
 import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
 import { getWebVttCueText } from "@/lib/webvtt"
@@ -87,6 +91,43 @@ function WatchHomeTvCarouselRegion({
       {children}
     </section>
   )
+}
+
+/**
+ * The intro plays whole films now, so the rendition it requests is a real
+ * cost decision rather than a detail. Measured against the live catalog on
+ * 2026-09-13, an uncapped ladder tops out at 1920x1080 / 6,807,900 bps,
+ * `720p` at 1280x720 / 3,458,400 bps, and `480p` at 854x480 / 1,657,700 bps.
+ *
+ * `480p`, not `720p`, because Mux installs its own `MinCapLevelController`
+ * with a 720 floor, so player-size capping never selects below the 720p rung
+ * on its own. A `720p` URL cap therefore lands exactly on the floor the
+ * controller already enforces — it would REMOVE this guard rather than halve
+ * it. The cost is a 2.25x upscale on a full-bleed desktop hero; the default
+ * state is muted, where the frame is height-clamped and sits under a
+ * full-opacity scrim.
+ */
+export const WATCH_HOME_INTRO_MAX_RESOLUTION: MuxMaxResolution = "480p"
+
+/**
+ * Deliberately a sibling of `HERO_HLS_CONFIG` in `watch/HeroPlayer.tsx`
+ * rather than a shared import: the two surfaces have different dwell
+ * profiles and should be able to move independently. The values match today
+ * because the reasoning does.
+ *
+ * `maxBufferSize` is the binding lever — hls.js computes read-ahead as
+ * `min(max(8 * maxBufferSize / levelBitrate, maxBufferLength), maxMaxBufferLength)`,
+ * so lowering `maxBufferLength` alone changes nothing. `backBufferLength`
+ * matters much more now that a slide can run for a whole film; Mux's own
+ * base config sets it to 30s, not hls.js's `Infinity`. `enableWebVTT: false`
+ * because this carousel injects its own subtitle track below, exactly as the
+ * watch-page hero does.
+ */
+export const WATCH_HOME_INTRO_HLS_CONFIG = {
+  maxBufferLength: 10,
+  maxBufferSize: 5_000_000,
+  backBufferLength: 5,
+  enableWebVTT: false,
 }
 
 function muxStreamUrl(playbackId: string | null) {
@@ -230,6 +271,19 @@ function WatchHomeTvMedia({
     },
     [onPlayerReady, videoRef],
   )
+  // One seam covers both slide builders. Memoized so the mounted element is
+  // never handed a fresh string: a `src` swap reloads HLS from zero while the
+  // advance clock keeps counting.
+  const previewSrc = useMemo(
+    () =>
+      activeSlide.src
+        ? applyMuxMaxResolution(
+            activeSlide.src,
+            WATCH_HOME_INTRO_MAX_RESOLUTION,
+          )
+        : null,
+    [activeSlide.src],
+  )
   return (
     <div
       ref={wrapperRef}
@@ -269,11 +323,12 @@ function WatchHomeTvMedia({
         className="watch-home-media-enter z-10"
         priority
       />
-      {activeSlide.src ? (
+      {previewSrc ? (
         <MuxVideo
           key={activeSlide.id}
           ref={handleVideoRef}
-          src={activeSlide.src}
+          src={previewSrc}
+          _hlsConfig={WATCH_HOME_INTRO_HLS_CONFIG}
           poster={activeSlide.posterUrl ?? undefined}
           muted={isMuted}
           playsInline
