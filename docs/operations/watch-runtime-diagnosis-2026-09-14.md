@@ -73,3 +73,49 @@ enabled source-free path. No timeout increase is justified by this evidence.
 - Restore the homepage separately after runtime validation. Production pool
   promotion and serving activation remain separate requirements; API contract
   availability does not imply a live personalized homepage.
+
+## Preferred-dub batching: reproduced contention and bounded repair
+
+The actual `GetWatchHomeVideos` query expands 26 roots into 242 videos. On a
+local PostgreSQL clone with the existing ten-connection pool, the scalar resolver
+issues **1,337 SQL statements per request**. The final request-local loader
+issues **40**. It groups the language and Pothos selection, caps each batch at
+100 keys, selects one winning dub per video using parameterized LATERAL queries,
+and hydrates only those IDs. Hydration rechecks publication, HLS and deletion.
+
+Independent read-only measurements against the final implementation, with no
+concurrent local builds or test suites:
+
+| Workload                                         | Scalar resolver | Bounded loader |
+| ------------------------------------------------ | --------------- | -------------- |
+| Two home requests, SQL including 20 probe reads  | 2,694           | 100            |
+| Two home requests, maximum waiting connections   | 495             | 4              |
+| Two home requests, completion range              | 2,238–2,460 ms  | 1,772–1,944 ms |
+| Four home requests, SQL including 20 probe reads | 5,368           | 180            |
+| Four home requests, maximum waiting connections  | 1,003           | 19             |
+| Four home requests, p95 connection acquisition   | 2,358 ms        | 77.8 ms        |
+| Four home requests, completion range             | 4,996–5,620 ms  | 2,986–3,734 ms |
+| Four home requests, slowest independent probe    | 2,348 ms        | 950 ms         |
+
+The probes are `SELECT 1` reads, **not playback mutations**. They isolate shared
+database/runtime contention without modifying production or user history. These
+local samples demonstrate less fanout and queueing; they are not production
+latency forecasts. Residual multi-second homepage tails remain.
+
+All 242 selected IDs and nested scalar payloads match for English, Russian, the
+`en` alias and null-language fallback. Fresh full GraphQL comparisons also match
+with array ordering preserved. A PostgreSQL fixture covers exact/primary/longest
+selection, tied and null durations, empty HLS, publication/deletion, and nested
+hydration. The full Admin suite passes **6,498 tests**; lint, typecheck, production
+build and workflow build verifiers pass. Regenerating SDL and shared client
+introspection produces no contract change. The old scalar service remains for
+its existing direct callers.
+
+## Release observation
+
+Redis drain fix **#2276** merged at **13 September 2026, 21:28:31 UTC** as
+`a984a52ec9e9918481a0d7163c8e5760c481aa1c`. All PR CI checks passed. Primary Web
+Railway deployment `42d69ab4-53ee-4fdc-bb34-07da408f5b73` entered pending at
+21:42 UTC. A merged commit or pending deploy does not establish serving revision.
+Post-deployment request/error windows and the separate batching deployment must
+be observed before closing the runtime ticket.
