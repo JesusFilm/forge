@@ -127,8 +127,8 @@ Publish the block through the editor or MCP only after all Admin instances
 accept the new discriminator. Do not backfill Experience JSON in a
 pre-deploy database migration. Existing seeded requests default to `purpose='seeded'`.
 
-Flags default off: Admin `RECOMMENDATION_USER_SERVING_ENABLED`, Web
-`WATCH_FOR_YOU_ENABLED`. Admin also needs the existing semantic serving control,
+Serving defaults on: Admin `RECOMMENDATION_USER_SERVING_ENABLED`, Web
+`WATCH_FOR_YOU_ENABLED`. Explicit `false` values remain kill switches. Admin also needs the existing semantic serving control,
 active manifest, signer and healthy retention. This reuses operational controls;
 user delivery has its own strategy/surface and no experiment assignment. Disabling
 the Web flag removes the row; disabling Admin user serving stops new user slates
@@ -157,11 +157,15 @@ reserve. Additional overlapping pools cannot repair absent translations or dubs.
 All eleven flagged choices received metadata reviews and remain excluded. Live
 link checks passed for all 233 referenced English manifests and selected images;
 these do not establish all-dub playback or current production publication.
-Current production eligibility, the full production build and CI, production pool
-import/activation, and rollout verification remain outstanding. A release limited
-to passing contexts would require an explicit scope decision and context gating;
-the current Web flag is global and an unavailable delivery shows a retry state.
-The original all-language six-card requirement is not yet met. Count 20 requires
+Production builds, CI and the disabled-feature release checks passed on
+14 September. Pool import, publication and enabled-delivery verification are the
+remaining activation steps. The Web flag is global; an unavailable delivery shows
+the existing retry state while available contexts continue serving.
+The original all-language six-card requirement is not yet met. On 14 September,
+the feature owner explicitly authorized production activation without complete
+language coverage. Missing coverage is follow-up work, not a global launch gate.
+Keep current per-request language, eligibility, history and distinctness rules;
+an unavailable context must not cause other contexts to be disabled. Count 20 requires
 a larger reserve and is not guaranteed in every language. Missing translations
 for the row label remain tracked in the existing UI translation policy.
 
