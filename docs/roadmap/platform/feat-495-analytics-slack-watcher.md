@@ -50,3 +50,13 @@ incident lifecycle and retry paths against a local Slack HTTP fixture. Before
 marking complete, install the Slack app, configure production service secrets and
 volume, verify delivery in `#forge-development`, and verify an external heartbeat
 alerts when scheduled runs stop. Code delivery alone is not activation.
+
+## Activation evidence
+
+Code merged in PR #2277. The production Railway cron is deployed with its own
+volume, provider credentials, Slack bot and Healthchecks ping URL. Production
+GA browser/Realtime and Datadog RUM checks passed; Slack acknowledged a labelled
+installation test in the configured channel. See
+`docs/observability/analytics-watcher-activation-2026-09-14.md` for the configuration
+audit, cost estimate and outstanding acceptance checks. Do not mark complete
+until those checks are verified.
