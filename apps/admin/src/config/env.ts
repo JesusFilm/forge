@@ -924,9 +924,10 @@ export const env = createEnv({
     RECOMMENDATION_REDIS_TEST: emptyToUndefined(
       process.env.RECOMMENDATION_REDIS_TEST,
     ),
-    RECOMMENDATION_USER_SERVING_ENABLED: emptyToUndefined(
-      process.env.RECOMMENDATION_USER_SERVING_ENABLED,
-    ),
+    // CI skips Zod defaults; keep the enabled default in the runtime input too.
+    RECOMMENDATION_USER_SERVING_ENABLED:
+      emptyToUndefined(process.env.RECOMMENDATION_USER_SERVING_ENABLED) ??
+      "true",
     RECOMMENDATION_SEMANTIC_SERVING_ENABLED: emptyToUndefined(
       process.env.RECOMMENDATION_SEMANTIC_SERVING_ENABLED,
     ),

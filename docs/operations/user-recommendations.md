@@ -135,6 +135,12 @@ the Web flag removes the row; disabling Admin user serving stops new user slates
 without changing seeded serving. Do not remove lifecycle support while issued
 capabilities are still live.
 
+Admin's CI build mode skips Zod defaults. The source-free flag therefore also
+normalizes an unset or empty runtime input to `true` before environment validation;
+changing only the schema default would leave that mode disabled. An explicit
+`false` remains false in both modes. Regression tests exercise the actual
+CI-skipped environment module, not only the schema parser.
+
 Use `apps/admin/scripts/import-recommendation-pools.ts` with an explicitly selected
 database. `audit` is read-only; `import --execute` seals a passing generation;
 `promote --execute --version=... --expected-active=...` moves the pointer; `rollback
