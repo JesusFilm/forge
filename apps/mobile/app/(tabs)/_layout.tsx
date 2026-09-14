@@ -2,13 +2,17 @@ import { Tabs } from "expo-router"
 import { Platform } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
-import { TabBarBackground } from "../../src/components/ui/TabBarBackground"
 import { useTabBarStyle } from "../../src/lib/tabBar"
 
 const ACCENT = "#CB333B"
 const MUTED = "#a8a29e"
 const BG_COLOR = "#1c1917"
 
+/**
+ * Android's tab bar. iOS is shadowed by `_layout.ios.tsx` and its UIKit bar
+ * (feat-500) — but this file MUST stay: expo-router resolves the platform
+ * sibling by specificity and throws without an extension-less fallback.
+ */
 export default function TabLayout() {
   const tabBarStyle = useTabBarStyle()
 
@@ -19,15 +23,6 @@ export default function TabLayout() {
         tabBarActiveTintColor: ACCENT,
         tabBarInactiveTintColor: MUTED,
         tabBarStyle,
-        // Returned as an ELEMENT, not passed as the component: the bar calls
-        // tabBarBackground(), so hooks would otherwise land in ITS render.
-        // Omitted entirely off iOS: an element is non-null whatever it renders,
-        // and that alone forces the bar's own fill transparent.
-        tabBarBackground:
-          Platform.OS === "ios" ? () => <TabBarBackground /> : undefined,
-        // A floating pill glued to the keyboard's top edge reads as a bug.
-        // Unset on Android, exactly as today.
-        tabBarHideOnKeyboard: Platform.OS === "ios" ? true : undefined,
         tabBarLabelStyle: {
           fontSize: Platform.select({ ios: 10, android: 12 }),
           fontFamily: "System",

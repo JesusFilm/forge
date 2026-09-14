@@ -527,7 +527,8 @@
     "previousVideoPreview": "Aperçu de la vidéo précédente",
     "nextVideoPreview": "Aperçu de la vidéo suivante",
     "mediaCollection": "Collection de médias",
-    "scrollToVideo": "Faire défiler jusqu’à la vidéo {title}"
+    "scrollToVideo": "Faire défiler jusqu’à la vidéo {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Accueil de Jesus Film Project",

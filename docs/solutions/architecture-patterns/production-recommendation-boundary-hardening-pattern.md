@@ -1,7 +1,7 @@
 ---
 title: "Harden a production recommendation slice at every irreversible boundary"
 date: "2026-08-26"
-last_updated: "2026-09-09"
+last_updated: "2026-09-14"
 category: "architecture-patterns"
 module: "apps/admin and apps/web recommendations"
 problem_type: "architecture_pattern"
@@ -442,3 +442,28 @@ and render fixes left selection returning 503 for structured `BAD_USER_INPUT`;
 the canary found two such requests about 400 ms apart. Share the domain-error
 wrapper across those operations, retain specific binding errors, and verify a
 terminal selection still navigates once to its trusted token-free fallback href.
+
+### Retiring a shared connection must respect other callers' deadlines
+
+A command timeout belongs to its request. Destroying a shared Redis connection
+immediately can turn one slow request into failures for otherwise viable callers.
+Watch admission shares one client across namespaces with different budgets:
+profile work has 250 ms and playback context has 500 ms. A deterministic regression
+stalls profile TIME while playback EVAL would finish at 300 ms. Immediate socket
+destruction cancels playback at 250 ms despite its remaining budget.
+
+Stop lending a retired connection immediately, retain the retry backoff, and
+count active admissions on that connection. Release each admission in `finally`;
+destroy the retired socket when the last active admission finishes. Every active
+caller must retain its own bounded command deadline, and a stale asynchronous
+loader result must not reacquire a retired client. A draining connection must
+never destroy a newer replacement connection.
+
+`recommendation-mutation-admission.test.ts` verifies the independent successful
+playback, refusal of new work during retirement, bounded cleanup when every
+caller stalls, and reconnection after backoff. The real Redis suite continues to
+verify atomic limits and the prohibition on late Lua counter writes. This
+reproduction proves cancellation amplification; it does not identify why the
+original command was slow. See
+`docs/operations/watch-runtime-diagnosis-2026-09-14.md` for the separate Admin
+timeout evidence and production observation requirements.

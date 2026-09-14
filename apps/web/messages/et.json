@@ -527,7 +527,8 @@
     "previousVideoPreview": "Eelmise video eelvaade",
     "nextVideoPreview": "Järgmise video eelvaade",
     "mediaCollection": "Meediakogu",
-    "scrollToVideo": "Keri video {title} juurde"
+    "scrollToVideo": "Keri video {title} juurde",
+    "forYou": "Sulle"
   },
   "WatchFooter": {
     "home": "Jesus Film Projecti avaleht",
@@ -713,9 +714,9 @@
   "WatchUnavailableLanguage": {
     "metadataTitle": "Keeleversioon pole saadaval",
     "eyebrow": "Keeleversioon pole saadaval",
-    "title": "<contentTitle>{title}</contentTitle> pole keeles <languageName>{language}</languageName> saadaval",
+    "title": "<contentTitle>{title}</contentTitle>: <languageName>{language}</languageName> keeles versiooni ei ole",
     "actionsLabel": "Saadaolevad vaatamisvalikud",
-    "browseInLanguage": "Sirvi videoid keeles {language}",
+    "browseInLanguage": "Kõik videod {language} keeles",
     "backToSearch": "Tagasi otsingusse",
     "audioVersionsTitle": "Muud heliversioonid",
     "audioVersionsDescription": "Video vaatamise jätkamiseks valige heli keel.",

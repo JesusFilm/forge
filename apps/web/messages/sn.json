@@ -527,7 +527,8 @@
     "previousVideoPreview": "Preview yevhidhiyo yapfuura",
     "nextVideoPreview": "Preview yevhidhiyo inotevera",
     "mediaCollection": "Muunganidzwa wezvinyorwa zvevhidhiyo",
-    "scrollToVideo": "Skrola kuvhidhiyo ye {title}"
+    "scrollToVideo": "Skrola kuvhidhiyo ye {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Peji guru reJesus Film Project",

@@ -33,8 +33,11 @@ function mockPrisma(options: {
       ),
     },
     videoDub: {
-      findMany: vi.fn(async () =>
-        (options.availableTargetVideoIds ?? []).map((videoId) => ({ videoId })),
+      findMany: vi.fn(
+        async ({ where }: { where: { videoId: { in: string[] } } }) =>
+          (options.availableTargetVideoIds ?? [])
+            .filter((videoId) => where.videoId.in.includes(videoId))
+            .map((videoId) => ({ videoId })),
       ),
     },
   } as unknown as VideoLanguageBackfillDb
@@ -82,20 +85,28 @@ describe("backfillExperienceVideoLanguageIds", () => {
     })
 
     expect(result.changed).toBe(true)
-    expect(result.updatedRecords).toBe(5)
+    expect(result.updatedRecords).toBe(2)
     expect(result.blocks).toEqual([
-      { t: "videoHero", videoId: "video-es", languageId: "language-es" },
+      {
+        t: "videoHero",
+        videoId: "video-es",
+        streamingUrl: "https://example.com/es.m3u8",
+      },
       {
         t: "video",
         videoId: "video-missing-es",
-        languageId: "language-en",
+        streamingUrl: "https://example.com/en.m3u8",
         clipStartSeconds: 12,
       },
       {
         t: "videoCarousel",
         items: [
           { videoId: "video-es", languageId: "language-es" },
-          { videoId: "video-preserved", languageId: "language-custom" },
+          {
+            videoId: "video-preserved",
+            languageId: "language-custom",
+            streamingUrl: "https://example.com/custom.m3u8",
+          },
         ],
       },
       {
@@ -124,7 +135,7 @@ describe("backfillExperienceVideoLanguageIds", () => {
     expect(prisma.videoDub.findMany).not.toHaveBeenCalled()
   })
 
-  it("removes streaming URLs even when no language backfill is needed", async () => {
+  it("preserves legacy streaming URLs on routine saves", async () => {
     const prisma = mockPrisma({
       targetLanguageId: "language-es",
       fallbackLanguageId: "language-en",
@@ -144,10 +155,66 @@ describe("backfillExperienceVideoLanguageIds", () => {
       ],
     })
 
+    expect(result.changed).toBe(false)
+    expect(result.blocks).toEqual([
+      {
+        t: "video",
+        videoId: "video-1",
+        languageId: "language-es",
+        streamingUrl: "https://example.com/es.m3u8",
+      },
+    ])
+    expect(prisma.videoDub.findMany).not.toHaveBeenCalled()
+  })
+
+  it("canonicalizes a legacy URL only for an intentional Apply carrying a language id", async () => {
+    const prisma = mockPrisma({
+      targetLanguageId: "language-es",
+      fallbackLanguageId: "language-en",
+      availableTargetVideoIds: [],
+    })
+
+    const result = await backfillExperienceVideoLanguageIds({
+      prisma,
+      locale: "es",
+      canonicalizeLegacySelectors: true,
+      blocks: [
+        {
+          t: "video",
+          videoId: "video-1",
+          languageId: "language-es",
+          streamingUrl: "https://example.com/es.m3u8",
+        },
+      ],
+    })
+
     expect(result.changed).toBe(true)
     expect(result.blocks).toEqual([
       { t: "video", videoId: "video-1", languageId: "language-es" },
     ])
-    expect(prisma.videoDub.findMany).not.toHaveBeenCalled()
+  })
+
+  it("checks target-language availability in batches of at most 100 videos", async () => {
+    const prisma = mockPrisma({
+      targetLanguageId: "language-es",
+      fallbackLanguageId: "language-en",
+      availableTargetVideoIds: ["video-100"],
+    })
+    const items = Array.from({ length: 101 }, (_, index) => ({
+      videoId: `video-${index}`,
+    }))
+
+    await backfillExperienceVideoLanguageIds({
+      prisma,
+      locale: "es",
+      blocks: [{ t: "videoCarousel", items }],
+    })
+
+    const findMany = vi.mocked(prisma.videoDub.findMany)
+    expect(findMany).toHaveBeenCalledTimes(2)
+    for (const call of findMany.mock.calls) {
+      const input = call[0] as { where: { videoId: { in: string[] } } }
+      expect(input.where.videoId.in.length).toBeLessThanOrEqual(100)
+    }
   })
 })

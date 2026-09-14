@@ -542,6 +542,10 @@ export const WatchHomeCategoryRailBlockSchema = z
   .object({
     t: z.literal("watchHomeCategoryRail"),
     sectionKey,
+    eyebrow: z.string().max(80).optional(),
+    title: z.string().max(160).optional(),
+    description: z.string().max(500).optional(),
+    ctaLabel: z.string().max(80).optional(),
     categoryIds: z
       .array(WatchHomeCategoryIdSchema)
       .min(1, "Select at least one Watch category")

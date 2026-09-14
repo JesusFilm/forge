@@ -25,11 +25,46 @@ import {
 } from "@/services/mux-image-derivative.service"
 import { notRestrictedFromWatchWhere } from "@/services/search-watchability"
 import { sortVideoImagesByDisplayPreference } from "@/services/video-image-selection"
+import {
+  getPreferredPlayableDubs,
+  PREFERRED_PLAYABLE_DUB_BATCH_SIZE,
+} from "@/services/preferred-playable-dub.service"
 
 export type Loaders = ReturnType<typeof createLoaders>
 
 export function createLoaders(prisma: PrismaClient) {
   return {
+    /** Preserve nested Pothos selections while batching sibling dub lookups. */
+    preferredPlayableDub: new DataLoader<
+      PreferredPlayableDubKey,
+      VideoDubRow | null,
+      string
+    >(
+      async (keys) => {
+        const groups = new Map<string, PreferredPlayableDubKey[]>()
+        for (const key of keys) {
+          const groupKey = JSON.stringify([key.languageSlug || null, key.query])
+          groups.set(groupKey, [...(groups.get(groupKey) ?? []), key])
+        }
+        const results = new Map<PreferredPlayableDubKey, VideoDubRow | null>()
+        await Promise.all(
+          Array.from(groups.values()).map(async (group) => {
+            const rows = await getPreferredPlayableDubs(prisma, {
+              videoIds: group.map((key) => key.videoId),
+              languageSlug: group[0]!.languageSlug,
+              query: group[0]!.query,
+            })
+            group.forEach((key, index) => results.set(key, rows[index] ?? null))
+          }),
+        )
+        return keys.map((key) => results.get(key) ?? null)
+      },
+      {
+        cacheKeyFn: (key) =>
+          JSON.stringify([key.videoId, key.languageSlug || null, key.query]),
+        maxBatchSize: PREFERRED_PLAYABLE_DUB_BATCH_SIZE,
+      },
+    ),
     /** Hydrate Experience rows by id. Used by search / parity test paths. */
     experienceById: new DataLoader<string, ExperienceRow | null>(
       async (ids) => {
@@ -707,6 +742,12 @@ export type VideoByIdWithQueryKey = {
   query: object
 }
 
+export type PreferredPlayableDubKey = {
+  videoId: string
+  languageSlug: string | null
+  query: object
+}
+
 export type VideoRelationVisibilityKey = {
   videoId: string
   visibleOnly: boolean
@@ -974,6 +1015,9 @@ type ExperienceLocaleRow = Awaited<
   ReturnType<PrismaClient["experienceLocale"]["findMany"]>
 >[number]
 type VideoRow = Awaited<ReturnType<PrismaClient["video"]["findMany"]>>[number]
+type VideoDubRow = Awaited<
+  ReturnType<PrismaClient["videoDub"]["findMany"]>
+>[number]
 type VideoRelationRow = Awaited<
   ReturnType<PrismaClient["videoRelation"]["findMany"]>
 >[number]

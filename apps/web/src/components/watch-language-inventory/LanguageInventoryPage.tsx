@@ -517,15 +517,22 @@ function CompactVideoRow({
     .join(" / ")
   const content = (
     <>
-      <span className="mr-1 w-10 shrink-0 text-right text-base font-medium text-stone-500 tabular-nums sm:mr-2 sm:text-lg">
+      {/* Phones centre the ordinal in a `min-w-5` box whose width matches the
+          row's `px-2`/`gap-2`, so the space either side of the digits is equal
+          whatever their count; `sm` and up keep the wider right-aligned column
+          so the numbers stay in one vertical line beside a roomier row. */}
+      <span className="min-w-5 shrink-0 text-center text-base font-medium text-stone-500 tabular-nums sm:mr-2 sm:w-10 sm:text-right sm:text-lg">
         {index + 1}
       </span>
       <span
         className={cn(
           "relative shrink-0 overflow-hidden rounded bg-stone-800 ring-1 ring-white/10",
+          // Phones get a taller thumbnail than `sm`+ on purpose: the compact
+          // row is the whole browsing surface there, and a 48px frame read as
+          // an icon next to a two-line title.
           isPortrait
-            ? "h-12 aspect-[2/3] sm:h-14"
-            : "h-12 w-20 sm:h-14 sm:w-24",
+            ? "h-16 aspect-[2/3] sm:h-14"
+            : "h-16 w-28 sm:h-14 sm:w-24",
         )}
       >
         {thumbnailUrl ? (
@@ -538,19 +545,18 @@ function CompactVideoRow({
           // 9.44 MB document. `width`/`height` emits the 2-candidate `1x`/`2x`
           // form instead.
           //
-          // The image the browser actually downloads does not change: the
-          // candidates chosen here (96w/256w landscape, 48w/96w portrait) are
-          // the same widths the 15-candidate list resolved to at every DPR
-          // this page is served at, because the slot is 80px/96px (32px/37px
-          // portrait) and 1x/2x brackets that at 1, 2 and 3 dpr alike.
+          // The intrinsic dimensions follow the largest phone frames added in
+          // #2275. They produce 128w/256w landscape and 64w/128w portrait
+          // candidates: enough for the enlarged slots without restoring the
+          // 15-candidate pixel-only `sizes` list on every row.
           //
           // The classes reproduce what `fill` set inline, so the rendered box
           // is unchanged.
           <Image
             src={thumbnailUrl}
             alt=""
-            width={isPortrait ? 37 : 96}
-            height={isPortrait ? 56 : 54}
+            width={isPortrait ? 64 : 112}
+            height={isPortrait ? 96 : 64}
             className={cn(
               "absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105",
               isPortrait ? "object-center" : "object-left-top",
@@ -599,7 +605,7 @@ function CompactVideoRow({
     </>
   )
   const className = cn(
-    "flex min-h-20 items-center gap-3 px-3 py-4 transition sm:px-4",
+    "flex min-h-20 items-center gap-2 px-2 py-3 transition sm:gap-3 sm:px-4 sm:py-4",
     COMPACT_ROW_CONTAIN_CLASS,
     item.href && "group hover:bg-white/[0.055]",
     item.href && VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,

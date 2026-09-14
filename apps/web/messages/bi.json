@@ -527,7 +527,8 @@
     "previousVideoPreview": "Preview blong video bifo",
     "nextVideoPreview": "Preview blong nex video",
     "mediaCollection": "Kolosen blong media",
-    "scrollToVideo": "Scroll go long video {title}"
+    "scrollToVideo": "Scroll go long video {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project hom",

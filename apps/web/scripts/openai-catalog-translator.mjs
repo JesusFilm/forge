@@ -201,6 +201,16 @@ const MESSAGE_CONTEXT_OVERRIDES = {
     role: "screen-reader prefix before the 404 heading",
     visibility: "assistive technology only",
   },
+  "WatchUnavailableLanguage.title": {
+    role: "page heading",
+    composition:
+      "Rendered as `{title} is not available in {language}`; judge and write the complete rendered message. `{title}` is a runtime video or collection title in any language, so a predicate that agrees with it in gender or number will be wrong for most titles; prefer a frame whose subject is a noun you supply yourself, such as `there is no <version> in ...`. `{language}` is a citation-form language name supplied by Intl.DisplayNames (`русский`, `ruština`, `orosz`) and is never inflected; for languages outside the ICU dataset it can arrive as an English name instead.",
+  },
+  "WatchUnavailableLanguage.browseInLanguage": {
+    role: "action label",
+    composition:
+      "Labels the link to the complete catalogue of every video that does exist in {language}. The video the visitor asked for does NOT exist in that language — that is the entire reason this page is shown — so the label must never read as `watch this video in {language}`. Name the whole catalogue with an unambiguously plural or collective noun, and where the target language would otherwise read as a single video, say `all videos`. The citation-form `{language}` constraint described for WatchUnavailableLanguage.title applies here too.",
+  },
   "WatchUnavailableLanguage.actionsLabel": {
     role: "recovery-page actions accessibility label",
     visibility: "assistive technology only",
@@ -305,6 +315,7 @@ const UNIVERSAL_TARGET_LANGUAGE_WRITING_INSTRUCTIONS = [
   "When English uses a biblical metaphor or idiom, identify its intended meaning and UI purpose before translating. Use established scripture wording only when the allusion remains clear in that surface; otherwise express the meaning naturally instead of translating the imagery word for word. Preserve the theological meaning without inventing an interpretation.",
   "When the provided context contains equivalent target-catalog copy for the same user action or state, reuse that equivalent target-catalog copy unless the UI behavior differs materially.",
   "Do not add product claims, promises, instructions, or theological meaning that are absent from the English source and UI context.",
+  "Interpolated runtime values such as {language} and {title} arrive in citation form: they are never inflected at runtime, and their grammatical gender, number, and declension class are unknown when you write the message. Choose a frame that stays grammatical for every possible value — an attributive slot the citation form already fits, quotation marks, or a label and colon — instead of a preposition, postposition, or predicate that silently requires agreement the runtime value cannot supply.",
 ]
 
 function targetLanguageWritingInstructions(locale) {

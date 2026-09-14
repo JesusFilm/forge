@@ -60,6 +60,10 @@ import {
 
 type WatchHomeCategoryRailProps = {
   languageSlug: string
+  eyebrow?: string | null
+  title?: string | null
+  description?: string | null
+  ctaLabel?: string | null
   categoryIds?: readonly string[] | null
   /**
    * Authored tiles. Authoritative when non-empty; `categoryIds` is the
@@ -115,6 +119,10 @@ const DEFAULT_CATEGORY_IDS = WATCH_HOME_CATEGORIES.map(({ id }) => id)
 
 export function WatchHomeCategoryRail({
   languageSlug,
+  eyebrow,
+  title,
+  description,
+  ctaLabel,
   categoryIds = DEFAULT_CATEGORY_IDS,
   tiles,
 }: WatchHomeCategoryRailProps) {
@@ -130,6 +138,11 @@ export function WatchHomeCategoryRail({
   const cards = resolveWatchHomeTiles({ tiles, categoryIds, locale })
 
   if (cards.length === 0) return null
+
+  const resolvedEyebrow = eyebrow?.trim() || t("eyebrow")
+  const resolvedTitle = title?.trim() || t("title")
+  const resolvedDescription = description?.trim() || t("description")
+  const resolvedCtaLabel = ctaLabel?.trim() || t("seeAll")
 
   return (
     <section
@@ -148,16 +161,16 @@ export function WatchHomeCategoryRail({
               WATCH_SECTION_EYEBROW_CLASS,
             )}
           >
-            {t("eyebrow")}
+            {resolvedEyebrow}
           </p>
           <h2
             id="watch-home-category-rail-title"
             className="col-start-1 row-start-2 max-w-4xl text-2xl leading-tight font-bold tracking-normal text-white xl:text-3xl 2xl:text-4xl"
           >
-            {t("title")}
+            {resolvedTitle}
           </h2>
           <p className="col-start-1 row-start-3 max-w-3xl pt-1 text-base leading-snug font-normal text-stone-100/80 xl:text-lg">
-            {t("description")}
+            {resolvedDescription}
           </p>
           <Link
             href={languageInventoryPath(locale)}
@@ -165,7 +178,7 @@ export function WatchHomeCategoryRail({
             className="col-start-1 row-start-4 mt-4 inline-flex w-fit max-w-full shrink-0 items-center gap-2 self-start rounded-full bg-white px-5 py-3 text-center text-base sm:text-sm font-bold tracking-wider text-black uppercase transition-colors hover:bg-red-500 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none md:col-start-2 md:row-start-1 md:row-end-3 md:mt-0 md:self-center md:px-6 md:py-3.5"
           >
             <WatchLibraryIcon aria-hidden className="size-5 shrink-0" />
-            <span>{t("seeAll")}</span>
+            <span>{resolvedCtaLabel}</span>
             <ChevronRight aria-hidden className="size-5 shrink-0" />
           </Link>
         </div>
@@ -177,7 +190,7 @@ export function WatchHomeCategoryRail({
           scroll to the viewport edge. */}
       <div className={cn("relative z-[3]", CONTENT_WIDTH_ALIGN_CLASSES)}>
         <Carousel
-          aria-label={t("title")}
+          aria-label={resolvedTitle}
           opts={{
             dragFree: true,
             containScroll: "trimSnaps",

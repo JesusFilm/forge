@@ -29,12 +29,11 @@ import {
 } from "@/lib/watch-player-chrome-events"
 import type { WatchHomeHeroSlide } from "@/lib/watch-home"
 import type { WatchHomeCarouselSequenceData } from "@/lib/watch-home-carousel-sequence"
+import { isWatchHomeIntroEligibleVideoLabel } from "@/lib/watch-home-carousel-sequence"
 import { cn } from "@/lib/utils"
 import {
-  WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS,
   WATCH_HOME_TV_TIMELINE_FUTURE_COUNT,
   useWatchHomeTvCarousel,
-  watchHomeTvAdvanceTargetSeconds,
   type WatchHomeTvCarouselSlide,
 } from "@/components/home/useWatchHomeTvCarousel"
 import { videoLabelMessageKey } from "@/lib/video-labels"
@@ -48,6 +47,10 @@ import {
   WatchHeroOverlay,
 } from "@/components/watch/WatchHeroOverlay"
 import { resolveMuxHeroPosterUrlAtMaxWidth } from "@/lib/url"
+import {
+  applyMuxMaxResolution,
+  type MuxMaxResolution,
+} from "@/lib/mux-stream-quality"
 import { WATCH_HERO_BODY_OVERLAP_CSS } from "@/lib/watch-hero-preview-overlap"
 import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
 import { getWebVttCueText } from "@/lib/webvtt"
@@ -89,6 +92,43 @@ function WatchHomeTvCarouselRegion({
   )
 }
 
+/**
+ * The intro plays whole films now, so the rendition it requests is a real
+ * cost decision rather than a detail. Measured against the live catalog on
+ * 2026-09-13, an uncapped ladder tops out at 1920x1080 / 6,807,900 bps,
+ * `720p` at 1280x720 / 3,458,400 bps, and `480p` at 854x480 / 1,657,700 bps.
+ *
+ * `480p`, not `720p`, because Mux installs its own `MinCapLevelController`
+ * with a 720 floor, so player-size capping never selects below the 720p rung
+ * on its own. A `720p` URL cap therefore lands exactly on the floor the
+ * controller already enforces — it would REMOVE this guard rather than halve
+ * it. The cost is a 2.25x upscale on a full-bleed desktop hero; the default
+ * state is muted, where the frame is height-clamped and sits under a
+ * full-opacity scrim.
+ */
+export const WATCH_HOME_INTRO_MAX_RESOLUTION: MuxMaxResolution = "480p"
+
+/**
+ * Deliberately a sibling of `HERO_HLS_CONFIG` in `watch/HeroPlayer.tsx`
+ * rather than a shared import: the two surfaces have different dwell
+ * profiles and should be able to move independently. The values match today
+ * because the reasoning does.
+ *
+ * `maxBufferSize` is the binding lever — hls.js computes read-ahead as
+ * `min(max(8 * maxBufferSize / levelBitrate, maxBufferLength), maxMaxBufferLength)`,
+ * so lowering `maxBufferLength` alone changes nothing. `backBufferLength`
+ * matters much more now that a slide can run for a whole film; Mux's own
+ * base config sets it to 30s, not hls.js's `Infinity`. `enableWebVTT: false`
+ * because this carousel injects its own subtitle track below, exactly as the
+ * watch-page hero does.
+ */
+export const WATCH_HOME_INTRO_HLS_CONFIG = {
+  maxBufferLength: 10,
+  maxBufferSize: 5_000_000,
+  backBufferLength: 5,
+  enableWebVTT: false,
+}
+
 function muxStreamUrl(playbackId: string | null) {
   return playbackId ? `https://stream.mux.com/${playbackId}.m3u8` : null
 }
@@ -121,38 +161,43 @@ function appendAutoplaySignal(href: string, playbackTimeSeconds = 0): string {
 export function watchHomeHeroSlidesToTvCarouselSlides(
   slides: readonly WatchHomeHeroSlide[],
 ): WatchHomeTvCarouselSlide[] {
-  return slides.map((slide) => {
-    const muxThumbnail = muxThumbnailUrl(slide.playbackId)
-    // Frame-first for the hero, authored-first for the card below. The admin
-    // library holds only mobile derivatives for these videos (measured 640x300
-    // for `mobileCinematicHigh`), which a full-bleed intro upscales about
-    // fourfold; the Mux frame is 1280x720 from the same warm derivative the
-    // watch-page hero requests. At card size the authored image has pixels to
-    // spare, so it stays preferred there.
-    // `||`, not `??`: a present-but-blank `imageUrl` is a real admin shape,
-    // and `??` would both keep it and suppress the Mux tier below it.
-    const posterUrl =
-      resolveMuxHeroPosterUrlAtMaxWidth(slide.playbackId) ||
-      slide.imageUrl ||
-      muxThumbnail
+  // `heroSlides` is built from each configured source's PARENT video, so unlike
+  // the pooled path (which prefers a source's children) it can hand the intro a
+  // whole feature film. Same guard, applied to the other entry point.
+  return slides
+    .filter((slide) => isWatchHomeIntroEligibleVideoLabel(slide.videoLabel))
+    .map((slide) => {
+      const muxThumbnail = muxThumbnailUrl(slide.playbackId)
+      // Frame-first for the hero, authored-first for the card below. The admin
+      // library holds only mobile derivatives for these videos (measured 640x300
+      // for `mobileCinematicHigh`), which a full-bleed intro upscales about
+      // fourfold; the Mux frame is 1280x720 from the same warm derivative the
+      // watch-page hero requests. At card size the authored image has pixels to
+      // spare, so it stays preferred there.
+      // `||`, not `??`: a present-but-blank `imageUrl` is a real admin shape,
+      // and `??` would both keep it and suppress the Mux tier below it.
+      const posterUrl =
+        resolveMuxHeroPosterUrlAtMaxWidth(slide.playbackId) ||
+        slide.imageUrl ||
+        muxThumbnail
 
-    return {
-      kind: "video",
-      id: slide.coreId,
-      title: slide.title,
-      label: slide.eyebrow || slide.label,
-      href: slide.href,
-      posterUrl,
-      thumbnailUrl:
-        slide.imageUrl ?? muxThumbnailUrl(slide.playbackId, 640) ?? posterUrl,
-      imageAlt: slide.imageAlt,
-      src: slide.hls ?? muxStreamUrl(slide.playbackId),
-      playbackId: slide.playbackId,
-      subtitleVttSrc: slide.subtitleVttSrc,
-      subtitleLanguageBcp47: slide.subtitleLanguageBcp47,
-      durationSeconds: slide.durationSeconds,
-    }
-  })
+      return {
+        kind: "video",
+        id: slide.coreId,
+        title: slide.title,
+        label: slide.eyebrow || slide.label,
+        href: slide.href,
+        posterUrl,
+        thumbnailUrl:
+          slide.imageUrl ?? muxThumbnailUrl(slide.playbackId, 640) ?? posterUrl,
+        imageAlt: slide.imageAlt,
+        src: slide.hls ?? muxStreamUrl(slide.playbackId),
+        playbackId: slide.playbackId,
+        subtitleVttSrc: slide.subtitleVttSrc,
+        subtitleLanguageBcp47: slide.subtitleLanguageBcp47,
+        durationSeconds: slide.durationSeconds,
+      }
+    })
 }
 
 function PrimaryAction({
@@ -187,6 +232,8 @@ function WatchHomeTvMedia({
   onCanPlay,
   onEnded,
   onLoadedMetadata,
+  onPause,
+  onPlay,
   onPlayerReady,
   onPlaying,
   onSubtitleCueTextChange,
@@ -202,6 +249,8 @@ function WatchHomeTvMedia({
   onCanPlay: () => void
   onEnded?: () => void
   onLoadedMetadata: () => void
+  onPause: () => void
+  onPlay: () => void
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   onPlaying: () => void
   onSubtitleCueTextChange: (cueText: string | null) => void
@@ -229,6 +278,19 @@ function WatchHomeTvMedia({
       onPlayerReady?.((next ?? null) as MuxPlayerRef | null)
     },
     [onPlayerReady, videoRef],
+  )
+  // One seam covers both slide builders. Memoized so the mounted element is
+  // never handed a fresh string: a `src` swap reloads HLS from zero while the
+  // advance clock keeps counting.
+  const previewSrc = useMemo(
+    () =>
+      activeSlide.src
+        ? applyMuxMaxResolution(
+            activeSlide.src,
+            WATCH_HOME_INTRO_MAX_RESOLUTION,
+          )
+        : null,
+    [activeSlide.src],
   )
   return (
     <div
@@ -269,11 +331,12 @@ function WatchHomeTvMedia({
         className="watch-home-media-enter z-10"
         priority
       />
-      {activeSlide.src ? (
+      {previewSrc ? (
         <MuxVideo
           key={activeSlide.id}
           ref={handleVideoRef}
-          src={activeSlide.src}
+          src={previewSrc}
+          _hlsConfig={WATCH_HOME_INTRO_HLS_CONFIG}
           poster={activeSlide.posterUrl ?? undefined}
           muted={isMuted}
           playsInline
@@ -283,6 +346,8 @@ function WatchHomeTvMedia({
           onCanPlay={onCanPlay}
           onEnded={onEnded}
           onLoadedMetadata={onLoadedMetadata}
+          onPause={onPause}
+          onPlay={onPlay}
           onPlaying={onPlaying}
           onStalled={onWaiting}
           onTimeUpdate={onTimeUpdate}
@@ -464,27 +529,31 @@ function WatchHomeTvVisualLayer({
 function WatchHomeTvOverlay({
   activeIndex,
   activeSlide,
+  advanceDurationSeconds,
   isBuffering,
+  isTurnHeld,
   isMuted,
   leavingSlide,
   onSelectSlide,
   onToggleMuted,
   playbackTimeSeconds,
   slides,
+  ringAnimationKey,
 }: {
   activeIndex: number
   activeSlide: WatchHomeTvCarouselSlide
+  advanceDurationSeconds: number
   isBuffering: boolean
+  isTurnHeld: boolean
   isMuted: boolean
   leavingSlide: WatchHomeTvCarouselSlide | null
   onSelectSlide: (slideId: string) => void
   onToggleMuted: () => void
   playbackTimeSeconds: number
+  ringAnimationKey: string
   slides: readonly WatchHomeTvCarouselSlide[]
 }) {
   const t = useTranslations("WatchHome")
-  const advanceDurationSeconds =
-    watchHomeTvSlideAdvanceDurationSeconds(activeSlide)
 
   return (
     <div
@@ -541,9 +610,10 @@ function WatchHomeTvOverlay({
             <WatchHomeVideoTimeline
               activeIndex={activeIndex}
               advanceDurationSeconds={advanceDurationSeconds}
-              animationKey={activeSlide.id}
+              animationKey={ringAnimationKey}
+              buffering={isBuffering}
               onSelectSlide={onSelectSlide}
-              paused={isBuffering}
+              paused={isTurnHeld}
               size="compact"
               slides={slides}
             />
@@ -554,22 +624,16 @@ function WatchHomeTvOverlay({
         <WatchHomeVideoTimeline
           activeIndex={activeIndex}
           advanceDurationSeconds={advanceDurationSeconds}
-          animationKey={activeSlide.id}
+          animationKey={ringAnimationKey}
+          buffering={isBuffering}
           onSelectSlide={onSelectSlide}
-          paused={isBuffering}
+          paused={isTurnHeld}
           size="large"
           slides={slides}
         />
       </div>
     </div>
   )
-}
-
-function watchHomeTvSlideAdvanceDurationSeconds(
-  slide: WatchHomeTvCarouselSlide,
-) {
-  if (!slide.src) return WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS
-  return watchHomeTvAdvanceTargetSeconds(slide.durationSeconds ?? Number.NaN)
 }
 
 function WatchHomeTvSlideLabel({ slide }: { slide: WatchHomeTvCarouselSlide }) {
@@ -669,13 +733,21 @@ function watchHomeVideoTimelineItems(
 function WatchHomePlaybackProgressRing({
   advanceDurationSeconds,
   animationKey,
+  buffering,
   paused,
   showResetRing,
   size,
 }: {
   advanceDurationSeconds: number
   animationKey: string
-  /** Buffering: the ring holds where it is rather than timing a still frame. */
+  /**
+   * Waiting on bytes. Only this draws the spinner and dims the arc — a viewer
+   * who scrolled past or opened a modal is not stalled and must not be shown
+   * a loading state.
+   */
+  buffering: boolean
+  /** Held for any reason — buffering OR deliberately paused. The ring stops
+   * where it is rather than timing a still frame. */
   paused: boolean
   showResetRing: boolean
   size: "large" | "compact"
@@ -720,8 +792,9 @@ function WatchHomePlaybackProgressRing({
             animationPlayState: paused ? "paused" : "running",
             // Held progress stays readable — a stall at 60% still shows where
             // it stopped — but steps back so the spinner reads as the live
-            // element of the two arcs.
-            opacity: paused ? 0.4 : 1,
+            // element of the two arcs. Only a STALL dims it; a deliberate
+            // pause leaves the arc at full strength.
+            opacity: buffering ? 0.4 : 1,
           } as CSSProperties
         }
       />
@@ -729,7 +802,7 @@ function WatchHomePlaybackProgressRing({
           promised the viewer that something was playing, so it is where the
           correction has to appear. The group carries a CSS-delayed fade so a
           stream that arrives promptly never flashes it. */}
-      {paused ? (
+      {buffering ? (
         <g
           className="watch-home-progress-loading"
           data-testid="watch-home-progress-loading"
@@ -776,6 +849,7 @@ const WatchHomeVideoTimeline = memo(function WatchHomeVideoTimeline({
   activeIndex,
   advanceDurationSeconds,
   animationKey,
+  buffering,
   onSelectSlide,
   paused,
   size,
@@ -784,6 +858,7 @@ const WatchHomeVideoTimeline = memo(function WatchHomeVideoTimeline({
   activeIndex: number
   advanceDurationSeconds: number
   animationKey: string
+  buffering: boolean
   onSelectSlide: (slideId: string) => void
   paused: boolean
   size: "large" | "compact"
@@ -892,6 +967,7 @@ const WatchHomeVideoTimeline = memo(function WatchHomeVideoTimeline({
               <WatchHomePlaybackProgressRing
                 advanceDurationSeconds={advanceDurationSeconds}
                 animationKey={animationKey}
+                buffering={buffering}
                 paused={paused}
                 showResetRing={showResetRing}
                 size={size}
@@ -968,17 +1044,22 @@ export function WatchHomeTvCarousel({
   const {
     activeIndex,
     activeSlide,
+    advanceDurationSeconds,
     handleCanPlay,
     handleEnded,
     handleLoadedMetadata,
+    handlePause,
+    handlePlay,
     handlePlaying,
     handleTimeUpdate,
     handleWaiting,
     isBuffering,
+    isTurnHeld,
     isMuted,
     leavingSlide,
     mediaReady,
     playbackTimeSeconds,
+    ringAnimationKey,
     selectSlide,
     slides: timelineSlides,
     toggleMuted,
@@ -1059,6 +1140,8 @@ export function WatchHomeTvCarousel({
           onCanPlay={handleCanPlay}
           onEnded={handleEnded}
           onLoadedMetadata={handleLoadedMetadata}
+          onPause={handlePause}
+          onPlay={handlePlay}
           onPlayerReady={handlePlayerReady}
           onPlaying={handlePlaying}
           onSubtitleCueTextChange={setSubtitleCueText}
@@ -1070,12 +1153,15 @@ export function WatchHomeTvCarousel({
         <WatchHomeTvOverlay
           activeIndex={activeIndex}
           activeSlide={activeSlide}
+          advanceDurationSeconds={advanceDurationSeconds}
           isBuffering={isBuffering}
+          isTurnHeld={isTurnHeld}
           isMuted={isMuted}
           leavingSlide={leavingSlide}
           onSelectSlide={selectSlide}
           onToggleMuted={toggleMuted}
           playbackTimeSeconds={playbackTimeSeconds}
+          ringAnimationKey={ringAnimationKey}
           slides={timelineSlides}
         />
         {subtitleCueText ? (

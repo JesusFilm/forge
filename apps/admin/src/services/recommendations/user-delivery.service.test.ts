@@ -1,75 +1,47 @@
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import { composeUserRecommendations } from "./user-delivery.service"
 import {
-  UserRecommendationDeliveryService,
-  composeUserRecommendations,
-} from "./user-delivery.service"
-import {
-  makeHarness,
   personalizedInput,
   profileCandidateResult,
 } from "./delivery.service.test-helpers"
-import type { PrismaClient } from "@prisma/client"
+import {
+  userDeliveryHarness as harness,
+  video,
+} from "./user-delivery.service.test-helpers"
 
-function video(index: number) {
-  return {
-    videoId: `video-${index}`,
-    videoCoreId: `core-${String(index).padStart(3, "0")}`,
-    videoTitle: `Video ${index}`,
-    videoSlug: `video-${index}`,
-    imageUrl: "https://image.test/poster.jpg",
-    description: "A video",
-    playbackId: "mux",
-    generator: "curated" as const,
-    poolVersion: "v1",
-    poolKey: "start",
-  }
-}
-function harness(primaryCount: number) {
-  const h = makeHarness()
-  const nominations = Array.from({ length: primaryCount }, (_, index) => {
-    const v = video(index),
-      base = profileCandidateResult.nominations[0]
-    return {
-      ...base,
-      targetMediaId: v.videoId,
-      canonicalIdentity: {
-        ...base.canonicalIdentity,
-        videoId: v.videoId,
-        videoCoreId: v.videoCoreId,
-        videoTitle: v.videoTitle,
-      },
-      presentation: { ...base.presentation, ...v },
-    }
-  })
-  h.retrieveProfile.mockResolvedValue(
-    primaryCount ? { ...profileCandidateResult, nominations } : null,
-  )
-  const curated = vi.fn(async () => ({
-    version: "v1",
-    items: Array.from({ length: 30 }, (_, index) => video(index + 10)),
-  }))
-  const history = vi.fn(
-    async () => [] as { mediaId: string; completed: boolean }[],
-  )
-  const service = new UserRecommendationDeliveryService({
-    prisma: h.prisma as unknown as PrismaClient,
-    enabled: true,
-    admission: { acquire: h.acquire, release: h.release },
-    getServingState: h.getServingState,
-    tokenService: {
-      activeKid: "kid",
-      signDeliveryCapability: h.signDeliveryCapability,
-    },
-    retrieve: h.retrieve,
-    recheckCached: h.recheckCached,
-    authorizeProfile: h.authorizeProfile,
-    retrieveProfile: h.retrieveProfile,
-    curated,
-    history,
-  })
-  return { ...h, curated, history, service }
-}
 describe("source-free recommendations", () => {
+  afterEach(() => vi.useRealTimers())
+  it("returns a served slate within budget even if lease release stalls", async () => {
+    vi.useFakeTimers()
+    const h = harness(6)
+    h.release.mockImplementation(() => new Promise(() => {}))
+    let result: unknown
+    const delivery = h.service.deliver(personalizedInput()).then((value) => {
+      result = value
+    })
+    await vi.advanceTimersByTimeAsync(1500)
+    expect(result).toMatchObject({ result: "served", profileCount: 6 })
+    await delivery
+  })
+
+  it("bounds a serving-state transaction that cannot start before the deadline", async () => {
+    vi.useFakeTimers()
+    const h = harness(0)
+    h.getServingState.mockImplementation(() => new Promise(() => {}))
+    let result: unknown
+    const delivery = h.service.deliver(personalizedInput()).then((value) => {
+      result = value
+    })
+    await vi.advanceTimersByTimeAsync(1500)
+    expect(result).toMatchObject({
+      result: "unavailable",
+      reason: "delivery_timeout",
+    })
+    expect(h.curated).not.toHaveBeenCalled()
+    expect(h.tx.recommendationRequest.create).not.toHaveBeenCalled()
+    expect(h.release).toHaveBeenCalledOnce()
+    await delivery
+  })
   it("returns six profile videos without retrieving fallback or seeded candidates", async () => {
     const h = harness(6),
       response = await h.service.deliver(personalizedInput())
@@ -96,6 +68,36 @@ describe("source-free recommendations", () => {
     expect(response.items[0]).not.toHaveProperty("sceneIndex")
     expect(response.items[0]).not.toHaveProperty("embeddingText")
     expect(response.items[0]).not.toHaveProperty("videoCoreId")
+  })
+
+  it("does not discard viewing-history exclusions when the history read stalls", async () => {
+    vi.useFakeTimers()
+    const h = harness(6)
+    h.history.mockImplementation(() => new Promise(() => {}))
+    const pending = h.service.deliver(personalizedInput())
+    await vi.advanceTimersByTimeAsync(1500)
+    expect(await pending).toMatchObject({
+      result: "unavailable",
+      reason: "delivery_timeout",
+      items: [],
+    })
+    expect(h.curated).not.toHaveBeenCalled()
+    expect(h.tx.recommendationRequest.create).not.toHaveBeenCalled()
+  })
+
+  it("returns no capabilities when issuance remains pending past the response deadline", async () => {
+    vi.useFakeTimers()
+    const h = harness(6)
+    h.tx.recommendationRequest.create.mockImplementation(
+      () => new Promise(() => {}),
+    )
+    const pending = h.service.deliver(personalizedInput())
+    await vi.advanceTimersByTimeAsync(1500)
+    expect(await pending).toMatchObject({
+      result: "unavailable",
+      reason: "delivery_timeout",
+      items: [],
+    })
   })
   it.each([0, 1, 4])(
     "fills exactly the missing positions after %i profile candidates",

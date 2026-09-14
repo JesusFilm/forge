@@ -343,7 +343,8 @@
     "nextVideoPreview": "ตัวอย่างวิดีโอถัดไป",
     "featured": "แนะนำ",
     "mediaCollection": "คอลเลกชันสื่อ",
-    "scrollToVideo": "เลื่อนไปที่วิดีโอ {title}"
+    "scrollToVideo": "เลื่อนไปที่วิดีโอ {title}",
+    "forYou": "แนะนำสำหรับคุณ"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "ภาษา",
@@ -713,9 +714,9 @@
   "WatchUnavailableLanguage": {
     "metadataTitle": "ไม่มีเวอร์ชันภาษานี้",
     "eyebrow": "ไม่มีเวอร์ชันภาษานี้",
-    "title": "<contentTitle>{title}</contentTitle> ไม่มีในภาษา <languageName>{language}</languageName>",
+    "title": "<contentTitle>{title}</contentTitle> ไม่มีในภาษา<languageName>{language}</languageName>",
     "actionsLabel": "ตัวเลือกการรับชมที่มี",
-    "browseInLanguage": "เรียกดูวิดีโอในภาษา {language}",
+    "browseInLanguage": "เรียกดูวิดีโอในภาษา{language}",
     "backToSearch": "กลับไปที่การค้นหา",
     "audioVersionsTitle": "เวอร์ชันเสียงอื่น",
     "audioVersionsDescription": "เลือกภาษาเสียงเพื่อรับชมวิดีโอนี้ต่อ",

@@ -1,14 +1,13 @@
 ---
-id: "feat-486"
-title: "Investigate Watch runtime regression before restoring homepage recommendations"
+id: "feat-496"
+title: "Resolve remaining Watch admission and database transaction timeouts"
 owner: "nisal"
 priority: "P1"
 status: "in-progress"
 start_date: "2026-09-11"
 duration: 3
 depends_on: []
-blocks:
-  - "feat-488"
+blocks: []
 tags:
   - "web"
   - "recommendations"
@@ -17,13 +16,29 @@ tags:
 
 ## Problem
 
+Renumbered from `feat-486`, then `feat-495`, on 14 September 2026 because
+independently merged roadmap tickets reused those IDs. This ticket retains ownership of the Watch
+runtime investigation. The owner subsequently authorized restoring and activating
+`feat-488`; this investigation remains open independently of that launch.
+
+The 14 September activation passed English/Spanish row checks and a complete
+selection/playback/feedback/homepage-return journey. A seven-minute window had
+5,408 Web requests and zero 5xx, but subsequent language probes again returned
+`delivery_timeout`. Trace `6aa7403d00000000262e20db7880e1dd` shows issuance
+exceeding its remaining 238 ms transaction budget (298 ms elapsed), after
+successful retrieval. Selection deadlines can also expire before browser
+acknowledgment. Investigate without speculative timeout increases. A separate
+Admin `pg-pool` double-release error at 00:31:26 UTC is an observation, not an
+established cause. See
+`docs/operations/user-recommendations-activation-2026-09-14.md`.
+
 The disabled-feature Web deployment from #2249 coincided with sustained Redis
 admission failures, image connection timeouts and increased event-loop delay.
 The Web-only rollback in #2250 reduced errors substantially without restoring the
 pre-release baseline in its first fifteen minutes. Existing playback and seeded
-recommendations pass fresh browser checks. The cause of the runtime regression
-remains unproven, so restoring the homepage feature would repeat an unvalidated
-deployment. Broader evidence-transport reliability remains owned by `feat-464`.
+recommendations pass fresh browser checks. The full cause of the runtime
+regression remains unproven. Broader evidence-transport reliability remains
+owned by `feat-464`.
 
 ## Entry Points — Read These First
 
@@ -57,9 +72,8 @@ deployment. Broader evidence-transport reliability remains owned by `feat-464`.
    fixed windows and separate recommendation-route rates from all page traffic.
 3. Implement a reproduced, bounded fix if a code defect is established. Do not
    attribute the incident to a frontend defect solely because rollback helped.
-4. Restore the Web implementation through a focused PR only after the runtime
-   explanation and validation support it. Preserve the canonical block name,
-   profile-first fill rules, default-off rollout and new Admin API compatibility.
+4. Preserve the restored Web implementation, canonical block name, profile-first
+   fill rules, explicit serving kill switches and new Admin API compatibility.
 
 ## Constraints
 
@@ -83,3 +97,36 @@ deployment. Broader evidence-transport reliability remains owned by `feat-464`.
 - Restore the source-free homepage block only with six-card local validation and
   a healthy production observation; activation still requires the separate
   curation/eligibility requirements in `feat-488`.
+
+## Current investigation
+
+- A regression test reproduces cross-request cancellation: a 250 ms admission
+  timeout destroys the shared Redis socket while a concurrent playback admission
+  still has its 500 ms budget. Drain active admissions before closing the retired
+  socket, retaining existing deadlines, fail-closed behavior and retry backoff.
+- Current primary-host traces also show Admin accepting playback after Web's
+  3-second timeout. A simultaneous homepage request has hundreds of per-video
+  preferred-dub lookups. The bounded loader reduces actual homepage SQL from
+  1,337 to 40; four concurrent requests reduce peak connection queueing from
+  1,003 to 19 on the same local pool. PostgreSQL selection tests and exact
+  multilingual GraphQL parity pass, alongside the full Admin suite and build.
+  This reproduces avoidable contention, not the complete historical incident.
+- Redis cancellation fix #2276 and Admin batching #2278 are merged and deployed.
+  Web restoration #2279 and serving defaults #2280/#2281 are also deployed.
+  Continue investigating residual runtime failures using fixed windows.
+- Fixed-window evidence and remaining deployment checks:
+  `docs/operations/watch-runtime-diagnosis-2026-09-14.md`.
+- The 15 September recovery pass reproduces a browser budget mismatch and
+  terminal handling of transient HTTP-200 delivery failures. The Web row now
+  permits three 3-second attempts separated by the 5-second admission cooldown;
+  Admin retrieval/issuance/release waits stay inside their existing deadline.
+  Stage diagnostics distinguish state/history/retrieval/issuance failures.
+- `forge.watch.homepageRecommendations` gates both Web availability and delivery,
+  default off, using verified Watch account subject/email. Keep the English
+  homepage's authored block removed per owner instruction. Production needs an
+  LD server SDK key before account targeting can take effect. Do not enable a
+  blanket production fallback to simulate targeting.
+- Late Admin work and Web event-loop stalls remain confirmed observations, with
+  the underlying shared-runtime source unresolved. Keep this ticket open. See
+  `docs/plans/2026-09-15-fix-homepage-recommendation-recovery.md` for trace IDs and
+  the bounded recovery scope.

@@ -3,12 +3,11 @@ id: "feat-488"
 title: "Source-free user recommendations and Web For you row"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-10"
 duration: 10
 depends_on:
   - "feat-487"
-  - "feat-486"
 blocks: []
 tags:
   - "admin"
@@ -28,9 +27,16 @@ needs one six-card For you row using the returning viewer's server-side profile,
 with curated videos filling only the places that profile recommendations cannot
 fill. The same API must support independent anonymous mobile and TV installs.
 
-The API and Web implementation are complete in the isolated local preview.
-Production activation remains gated on feat-487 coverage and current production
-validation; this ticket stays in progress until that rollout is resolved.
+The API and Web implementation are merged, deployed and enabled. Production
+checks confirm six distinct cards on English and Spanish homepages, accepted
+selection and playback feedback, and refresh on homepage return. The active
+generation has 51 exact locale/audio contexts. See
+`docs/operations/user-recommendations-activation-2026-09-14.md` for evidence and
+rollback. Additional coverage is `feat-497`; intermittent runtime failures remain
+`feat-496`, independently of the owner's authorized partial-coverage launch.
+
+### Earlier release history
+
 The code release is PR #2249, with both new serving flags defaulting off and no
 production pool promotion or homepage publication. Before activation, also verify
 cold-process delivery latency: one production-mode local startup request exceeded
@@ -48,8 +54,26 @@ investigation of the release-associated runtime delay; its root cause is not yet
 established. PR #2250 is merged and deployed. The recovery's first fifteen minutes
 had a 0.272% Web 5xx rate versus 2.200% after #2249 and 0.106% before it. Actual
 playback and seeded-recommendation browser checks passed, but this is not a full
-production sign-off. `feat-486` owns runtime investigation before restoring the Web
+production sign-off. `feat-496` owns runtime investigation before restoring the Web
 feature. See `docs/operations/user-recommendations-rollout-2026-09-10.md`.
+
+The 14 September restoration reapplies the focused Web patch to current main,
+preserving later homepage and analytics work. The full Web suite and production
+build pass; desktop/mobile journeys verify six distinct cards, placement,
+full-video playback navigation and refresh on return. See
+`docs/operations/user-recommendations-restoration-2026-09-14.md` for current
+validation and deployment boundaries. These checks preceded the default-on
+releases #2280/#2281 and the production activation recorded above.
+
+## Activation decision — 14 September 2026
+
+The feature owner authorized enabling production now and explicitly removed
+complete language coverage as a launch gate. Enable the existing serving flags,
+promote the available curated generation and publish the authored Homepage
+Recommendations Block. Keep unavailable languages and additional pool coverage
+as follow-up work. Do not weaken per-request playback eligibility, language,
+history or canonical-distinctness rules. Live source-free delivery and the
+published homepage row are now verified.
 
 ## Entry Points — Read These First
 
@@ -121,6 +145,7 @@ feature. See `docs/operations/user-recommendations-rollout-2026-09-10.md`.
 - Coverage: `docs/recommendations/curation/2026-09-10/all-context-coverage-report.md` audits all 521,325 website locale/audio combinations in the local snapshot. `admin-coverage-report.md` records the three active preview contexts. Missing translations and sparse inventory still prevent broad activation.
 - Shared native/Web operations: `packages/admin-graphql/src/operations/user-recommendations.ts` and `recommendations.ts`.
 - New delivery/history/identity services: `apps/admin/src/services/recommendations/user-delivery.service.ts`, `user-history.service.ts`, and `viewer-identity.service.ts`.
-- Backend code deployed through #2249; Web changes were backed out through #2250.
-  No production pool promotion, homepage publication or serving-flag activation
-  occurred. Native UI, account linking and a monthly worker remain out of scope.
+- Backend code deployed through #2249; the temporary #2250 Web rollback was
+  superseded by #2279. Releases #2280/#2281 enabled serving, followed by
+  production pool promotion and English/Spanish homepage publication.
+  Native UI, account linking and a monthly worker remain out of scope.

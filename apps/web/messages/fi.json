@@ -527,7 +527,8 @@
     "previousVideoPreview": "Edellisen videon esikatselu",
     "nextVideoPreview": "Seuraavan videon esikatselu",
     "mediaCollection": "Mediakokoelma",
-    "scrollToVideo": "Vieritä videoon {title}"
+    "scrollToVideo": "Vieritä videoon {title}",
+    "forYou": "Sinulle"
   },
   "WatchFooter": {
     "home": "Jesus Film Project -etusivu",
@@ -713,9 +714,9 @@
   "WatchUnavailableLanguage": {
     "metadataTitle": "Kieliversio ei ole saatavilla",
     "eyebrow": "Kieliversio ei ole saatavilla",
-    "title": "<contentTitle>{title}</contentTitle> ei ole saatavilla kielellä <languageName>{language}</languageName>",
+    "title": "<contentTitle>{title}</contentTitle>: ei versiota kielellä <languageName>”{language}”</languageName>",
     "actionsLabel": "Saatavilla olevat katseluvaihtoehdot",
-    "browseInLanguage": "Selaa videoita kielellä {language}",
+    "browseInLanguage": "Kaikki videot kielellä ”{language}”",
     "backToSearch": "Takaisin hakuun",
     "audioVersionsTitle": "Muut ääniversiot",
     "audioVersionsDescription": "Valitse äänen kieli jatkaaksesi videon katselua.",

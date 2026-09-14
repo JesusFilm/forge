@@ -527,7 +527,8 @@
     "previousVideoPreview": "Chithunzithunzi cha vidiyo yapitayo",
     "nextVideoPreview": "Chithunzithunzi cha vidiyo yotsatira",
     "mediaCollection": "Kalozera wa media",
-    "scrollToVideo": "Pitani ku vidiyo ya {title}"
+    "scrollToVideo": "Pitani ku vidiyo ya {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Tsamba loyambira la Jesus Film Project",

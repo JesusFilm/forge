@@ -26,19 +26,19 @@ describe("watch home hero fit", () => {
     expect(fitted + 425).toBeLessThanOrEqual(1202)
   })
 
-  it("never grows the intro past its own aspect height", () => {
-    // A tall narrow window leaves plenty of room below; the 16:9 height wins
-    // and nothing is reserved away.
+  it("keeps the intro at its aspect height when it is above the floor", () => {
+    // A tall window leaves plenty of room below; the 16:9 height wins and
+    // nothing is reserved away.
     expect(
       fitWatchHomeHeroHeight({
         viewportHeight: 1400,
-        aspectHeight: 600,
+        aspectHeight: 800,
         reservedBelow: 400,
       }),
-    ).toBe(600)
+    ).toBe(800)
   })
 
-  it("floors the intro rather than collapsing it when nothing fits", () => {
+  it("keeps the desktop intro at least half of the visible viewport", () => {
     // Rail taller than the space available: the rail cannot fit, and shrinking
     // the intro to 0 would not help.
     const viewportHeight = 700
@@ -63,15 +63,26 @@ describe("watch home hero fit", () => {
     ).toBe(422)
   })
 
-  it("keeps the floor under the aspect height so a tiny hero is not inflated", () => {
-    // Aspect height below the floor: the floor must not push it back up.
+  it("keeps the half-viewport floor when the aspect height is smaller", () => {
+    // This tall, narrow desktop shape used to bypass the viewport guarantee
+    // because its 16:9 height was treated as a hard ceiling.
     expect(
       fitWatchHomeHeroHeight({
         viewportHeight: 1000,
         aspectHeight: 200,
         reservedBelow: 900,
       }),
-    ).toBe(200)
+    ).toBe(500)
+  })
+
+  it("rounds the minimum up for an odd-height viewport", () => {
+    expect(
+      fitWatchHomeHeroHeight({
+        viewportHeight: 701,
+        aspectHeight: 200,
+        reservedBelow: 900,
+      }),
+    ).toBe(351)
   })
 
   it("floors rather than rounds, so a fractional rail height cannot overflow", () => {
@@ -119,11 +130,11 @@ describe("watch home hero ratios", () => {
     expect(carousel).toContain("h-[66svh]")
     // The responsive floors share the same hazard. Mobile uses `dvh` so the
     // pre-hydration floor follows the currently visible browser viewport;
-    // desktop retains the existing small-viewport floor.
-    expect(`${WATCH_HOME_HERO_MIN_HEIGHT_RATIO * 100}svh`).toBe("34svh")
+    // desktop uses the small viewport so both floors track visible space.
+    expect(`${WATCH_HOME_HERO_MIN_HEIGHT_RATIO * 100}svh`).toBe("50svh")
     expect(`${WATCH_HOME_HERO_MOBILE_MIN_HEIGHT_RATIO * 100}dvh`).toBe("50dvh")
     expect(WATCH_MUTED_INTRO_HEIGHT_CLASS).toContain("50dvh")
-    expect(WATCH_MUTED_INTRO_HEIGHT_CLASS).toContain("34svh")
+    expect(WATCH_MUTED_INTRO_HEIGHT_CLASS).toContain("50svh")
     expect(WATCH_MUTED_INTRO_HEIGHT_CLASS).toContain("56.25vw")
     expect(WATCH_MUTED_INTRO_HEIGHT_CLASS).toContain(
       `${WATCH_HOME_HERO_RESERVE_BELOW_MOBILE_PX}px`,

@@ -140,13 +140,7 @@ describe("content-width.ts — watch page rail lockstep", () => {
     )
     expect(FLOATING_HEADER_LAYOUT_CLASS).toContain("h-[52px]")
     expect(FLOATING_HEADER_LAYOUT_CLASS).toContain(
-      "grid-cols-[minmax(80px,1fr)_minmax(0,800px)_minmax(80px,1fr)]",
-    )
-    expect(FLOATING_HEADER_LAYOUT_CLASS).toContain(
-      "sm:grid-cols-[minmax(112px,1fr)_minmax(0,800px)_minmax(112px,1fr)]",
-    )
-    expect(FLOATING_HEADER_LAYOUT_CLASS).toContain(
-      "md:grid-cols-[minmax(139px,1fr)_minmax(0,800px)_minmax(139px,1fr)]",
+      "grid-cols-[minmax(max-content,1fr)_minmax(0,800px)_minmax(max-content,1fr)]",
     )
     expect(FLOATING_HEADER_FIELD_WIDTH_CLASS).toContain("max-w-[800px]")
     expect(FLOATING_HEADER_MOBILE_BOUNDARY_HEIGHT_CLASS).toBe(

@@ -527,7 +527,8 @@
     "previousVideoPreview": "Алдағы видеоны алдан ҡарау",
     "nextVideoPreview": "Киләһе видеоны алдан ҡарау",
     "mediaCollection": "Медиа-йыйынтыҡ",
-    "scrollToVideo": "{title} видеоһына тиклем һөрөтөп барығыҙ"
+    "scrollToVideo": "{title} видеоһына тиклем һөрөтөп барығыҙ",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project баш бите",

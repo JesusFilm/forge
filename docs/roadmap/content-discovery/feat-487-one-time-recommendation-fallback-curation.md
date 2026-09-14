@@ -3,12 +3,13 @@ id: "feat-487"
 title: "Curate one-time recommendation fallback pools"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-10"
 duration: 1
 depends_on: []
 blocks:
   - "feat-488"
+  - "feat-497"
 tags:
   - "recommendations"
   - "content"
@@ -16,6 +17,16 @@ tags:
 ---
 
 ## Problem
+
+The one-time editorial pass and initial production activation are complete.
+On 14 September the owner accepted partial coverage. Production generation
+`2026-09-14.astra-homepage-ui-languages.v1` is sealed and active at revision 2:
+51 exact locale/audio combinations across 21 UI locales, with 14–191 unique
+starters each. All 233 source references resolve. The broader production audit
+lost its public PostgreSQL connection after more than 600 context queries; that
+run has no completed report and activated no additional contexts. `feat-497`
+owns additional coverage. See
+`docs/operations/user-recommendations-activation-2026-09-14.md`.
 
 Renumbered from the recommendation ticket's original `feat-476` on 11 September
 2026 to resolve a collision with the independently merged Watch analytics ticket.
@@ -39,13 +50,13 @@ A one-time curation by the delegated Codex Astra agent: a versioned machine-read
 
 ## Constraints
 
-The later implementation authorization includes feat-488 U2: curated-pool tables/migration, service, import CLI, tests and isolated local preview activation. No production import, deployment, paid model API, recurring AI worker, or automated incremental AI review. Use canonical videos rather than dub counts as editorial units. Do not infer popularity from metadata or exposure-biased analytics. Interest labels describe content and do not diagnose viewers. Public Core availability is not Admin recommendation eligibility. Preserve history rules; surface any inventory exhaustion decision for product resolution.
+Authorization includes feat-488 U2 and the 14 September production activation. No paid model API, recurring AI worker, or automated incremental AI review. Use canonical videos rather than dub counts as editorial units. Do not infer popularity from metadata or exposure-biased analytics. Interest labels describe content and do not diagnose viewers. Public Core availability is not Admin recommendation eligibility. Preserve history rules; unavailable contexts do not block other languages from serving.
 
 ## Verification
 
-Validate unique IDs, pool references, exact-language joins, duplicate-work groups, provenance hashes, and reproducible per-language counts. Report languages with fewer than six distinct candidates, reserve depth, and pool overlap. Production completion requires current Admin ID resolution and publication, restrictions, playback, and artwork validation for the requested locale/audio combinations. Keep this ticket in progress until that coverage and validation are achieved.
+Validate unique IDs, pool references, exact-language joins, duplicate-work groups, provenance hashes, and reproducible per-language counts. Report languages with fewer than six distinct candidates, reserve depth, and pool overlap. Current Admin ID resolution, publication, restrictions, playback and artwork checks passed for the 51 activated combinations. This establishes baseline six-card capacity, not six cards after every possible history exclusion.
 
-## Current Result
+## Earlier curation and local evidence
 
 The Core-only editorial pass is recorded in `docs/recommendations/curation/2026-09-10/coverage-report.md`: 208 editorial choices, 203 starter choices, five content-theme pools, and a reproducible exact-audio materializer. The later `admin-coverage-report.md` resolves all 233 Core references in the authorized local snapshot. Across 2,317 Admin audio slugs with UI locale `en`, 2,273 have at least thirty eligible curated starters, eight have six to twenty-nine, twenty-nine have one to five, and seven have zero. The entire catalog has fewer than six potentially eligible Admin IDs in thirty-five languages even before canonical dedup. Theme labels add no unique reserve beyond the starter union.
 
@@ -61,7 +72,7 @@ zeroes; these counts do not imply additional activated contexts.
 
 `media-validation.md` records successful live checks of 233 English HLS manifests and 233 image links, covering every referenced Core cut. `editorial-review.md` completes individual metadata reviews for all eleven flagged choices; their exclusions remain and add no active inventory.
 
-This ticket remains in progress because the measured translation/inventory gaps are unresolved and current production publication/restrictions have not been revalidated. Current production credentials were unavailable during this exhaustive pass; the former temporary Railway/database credential files are absent. The report is explicitly local snapshot evidence. A manifest check is not full playback of every dub. Default six plus twenty-four exclusions requires thirty eligible choices; count twenty needs forty-four. The API must not infer broad readiness from the three passing preview scopes.
+At that stage, translation/inventory gaps and production validation remained open. Production credentials were unavailable during the exhaustive local pass. Those reports remain local snapshot evidence; the subsequent production activation is recorded above. A manifest check is not full playback of every dub. Default six plus twenty-four exclusions requires thirty eligible choices; count twenty needs forty-four. The API must not infer broad readiness from the three passing preview scopes.
 
 The user-requested fresh `videoVariants` check is recorded in
 `docs/recommendations/curation/2026-09-10/video-variants-cross-check.md`. All 200

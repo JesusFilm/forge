@@ -311,6 +311,48 @@ describe("BlockSchema — all top-level types validate", () => {
     })
   })
 
+  describe("watchHomeCategoryRail copy", () => {
+    const base = {
+      t: "watchHomeCategoryRail" as const,
+      categoryIds: ["family" as const],
+    }
+
+    it("accepts optional locale-owned copy and keeps old blocks valid", () => {
+      expect(WatchHomeCategoryRailBlockSchema.safeParse(base).success).toBe(
+        true,
+      )
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse({
+          ...base,
+          eyebrow: "Explore",
+          title: "Find something to watch",
+          description: "Stories for every season of life.",
+          ctaLabel: "See everything",
+        }).success,
+      ).toBe(true)
+    })
+
+    it.each([
+      ["eyebrow", 80],
+      ["title", 160],
+      ["description", 500],
+      ["ctaLabel", 80],
+    ] as const)("bounds %s at %i characters", (field, maxLength) => {
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse({
+          ...base,
+          [field]: "x".repeat(maxLength),
+        }).success,
+      ).toBe(true)
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse({
+          ...base,
+          [field]: "x".repeat(maxLength + 1),
+        }).success,
+      ).toBe(false)
+    })
+  })
+
   it("accepts authored language globe copy and keeps it top-level only", () => {
     const block = {
       t: "languageGlobe" as const,

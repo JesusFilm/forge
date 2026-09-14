@@ -1110,6 +1110,14 @@ The blurred, dimmed, desaturated wash of a collection's own artwork that a Watch
 
 The same treatment appears on more than one Watch web surface — authored Media Collection Blocks and the collection panels of the Watch Language Inventory — and is meant to read identically on each, so an editor's preview matches what a viewer sees. It is purely decorative: it takes no interaction, is derived from still artwork rather than from playback, and conveys nothing a reader would lose if it failed to load.
 
+### Authored Destination
+
+A link target an editor types into an Experience Block, as distinct from one the application derives from a content slug.
+
+Because the block payload holding it is machine-writable as well as editor-writable, a governed Authored Destination is re-checked wherever it renders rather than trusted from its write-time check. Two shapes are admitted: a same-origin path inside the watch tree, or an absolute secure-scheme URL. Anything else drops the element carrying it, rather than substituting a default target — a silently redirected destination is worse than a missing one. Admission is decided on the destination as a browser would resolve it, not as it was typed; the two differ, and the typed form is not the one that takes effect. An admitted external destination opens in a new browsing context and is never handed to the client-side router.
+
+Governance is per-field and currently partial: it covers the category tile destination. The older call-to-action link fields predate the policy, remain unvalidated, and reach an anchor directly — treat them as ungoverned until converted, and do not read this entry as describing them.
+
 ### Dynamic Collection Feed
 
 A Media Collection Block whose `itemsSource` is `dynamicCollections`, causing
@@ -1388,6 +1396,12 @@ A flat colour laid on a translucent material — glass or blur — so that text 
 The distinction decides the shape of the contrast curve, so a scrim's rule cannot be reused here. A material has already moved the ground away from the text before the tint is applied, so darkening it further moves the ground further away and contrast rises for every increase in the tint's opacity. A minimum is therefore computable and any value above it is safe. Over a bare backdrop on the far side of the text, the same sweep instead drags the ground through the text's own luminance, so contrast collapses to nothing at the crossing and only recovers well beyond it — which reads as a forbidden middle and a much higher floor. Both effects are artefacts of the backdrop, not properties of the tint, so the floor must be derived over the stack the pixels actually pass through, against the brightest content the app can put behind it.
 
 A tint fixes only the text it darkens the ground beneath. Text at a middling luminance fails against dark and light grounds alike, so no tint rescues it and only a colour change does.
+
+### Tab Bar Clearance
+
+The space a scrolling surface holds free at its bottom edge so the tab bar cannot cover its last row.
+
+What the clearance has to contain depends on who draws the bar, and the wrong answer is silent rather than loud. Where the platform owns the bar, the platform already counts the bar's height inside the safe area it reports, so the clearance adds only a breathing gap above it; adding the bar's height a second time double-counts it and strands content well above the bar. Where the app draws the bar itself and the bar displaces content instead of floating over it, no clearance is needed at all. Ownership is therefore part of the term's meaning, not an implementation detail of it: when a bar changes hands between the app and the platform, every surface that reserves space against it changes meaning too, including the surfaces that read the safe area directly and never ask for the clearance.
 
 ## Offline downloads
 

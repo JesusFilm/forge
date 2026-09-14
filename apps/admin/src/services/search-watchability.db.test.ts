@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto"
 import type { PrismaClient } from "@prisma/client"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 
@@ -5,6 +6,7 @@ import { env } from "@/config/env"
 import { prisma } from "@/db/client"
 import { SearchWatchabilityService } from "./search-watchability"
 import { VideoService } from "./video.service"
+import { getPreferredPlayableDubs } from "./preferred-playable-dub.service"
 import {
   buildAvailabilityDocuments,
   buildCatalogDocuments,
@@ -20,6 +22,138 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
   () => {
     beforeAll(async () => prisma.$connect())
     afterAll(async () => prisma.$disconnect())
+
+    it("preserves language, tie, null-duration, deletion and nested hydration behavior", async () => {
+      const rollback = new Error("rollback preferred-dub fixture")
+      try {
+        await prisma.$transaction(
+          async (tx) => {
+            const prefix = `preferred-dub-${randomUUID()}`
+            const english = await tx.language.create({
+              data: {
+                coreId: `${prefix}-en`,
+                slug: `${prefix}-english`,
+                bcp47: `${prefix}-en`,
+              },
+            })
+            const french = await tx.language.create({
+              data: {
+                coreId: `${prefix}-fr`,
+                slug: `${prefix}-french`,
+                bcp47: `${prefix}-fr`,
+              },
+            })
+            const video = await tx.video.create({
+              data: {
+                coreId: prefix,
+                slug: prefix,
+                primaryLanguageId: english.id,
+              },
+            })
+            const edition = await tx.videoEdition.create({
+              data: { coreId: prefix, name: "Fixture edition" },
+            })
+            const mux = await tx.muxVideo.create({
+              data: { playbackId: "fixture-playback" },
+            })
+            const base = {
+              videoId: video.id,
+              published: true,
+              hls: "https://fixture.test/master.m3u8",
+            }
+            const primary = await tx.videoDub.create({
+              data: {
+                ...base,
+                coreId: `${prefix}-primary`,
+                languageId: english.id,
+                duration: 100,
+              },
+            })
+            const exact = await tx.videoDub.create({
+              data: {
+                ...base,
+                coreId: `${prefix}-exact`,
+                languageId: french.id,
+                duration: 50,
+                videoEditionId: edition.id,
+                muxVideoId: mux.id,
+              },
+            })
+            const longest = await tx.videoDub.create({
+              data: { ...base, coreId: `${prefix}-longest`, duration: 500 },
+            })
+            const query = {
+              include: { language: true, muxVideo: true, videoEdition: true },
+            }
+            const read = (languageSlug: string | null) =>
+              getPreferredPlayableDubs(tx, {
+                videoIds: [video.id, "missing", video.id],
+                languageSlug,
+                query,
+              })
+            for (const language of [french.slug, french.bcp47]) {
+              const rows = await read(language)
+              expect(rows).toMatchObject([
+                {
+                  id: exact.id,
+                  language: { id: french.id },
+                  muxVideo: { playbackId: "fixture-playback" },
+                  videoEdition: { name: "Fixture edition" },
+                },
+                null,
+                { id: exact.id },
+              ])
+            }
+            for (const language of [null, "", "missing-language"])
+              expect((await read(language))[0]?.id).toBe(primary.id)
+            await tx.videoDub.update({
+              where: { id: primary.id },
+              data: { published: false },
+            })
+            expect((await read(null))[0]?.id).toBe(longest.id)
+            const tied = await tx.videoDub.create({
+              data: { ...base, coreId: `${prefix}-tie`, duration: 500 },
+            })
+            expect((await read(null))[0]?.id).toBe(
+              [longest.id, tied.id].sort()[0],
+            )
+            const unknownDuration = await tx.videoDub.create({
+              data: { ...base, coreId: `${prefix}-null`, duration: null },
+            })
+            expect((await read(null))[0]?.id).toBe(unknownDuration.id)
+            await tx.videoDub.update({
+              where: { id: unknownDuration.id },
+              data: { hls: "" },
+            })
+            await tx.videoDub.update({
+              where: { id: tied.id },
+              data: { deletedAt: new Date() },
+            })
+            expect((await read(null))[0]?.id).toBe(longest.id)
+            await tx.language.update({
+              where: { id: french.id },
+              data: { deletedAt: new Date() },
+            })
+            expect((await read(french.slug))[0]?.id).toBe(longest.id)
+            // Existing primary/fallback matching does not require a live language row.
+            await tx.video.update({
+              where: { id: video.id },
+              data: { primaryLanguageId: french.id },
+            })
+            expect((await read(null))[0]?.id).toBe(exact.id)
+            await tx.video.update({
+              where: { id: video.id },
+              data: { deletedAt: new Date() },
+            })
+            expect(await read(french.slug)).toEqual([null, null, null])
+            throw rollback
+          },
+          { timeout: 15_000 },
+        )
+      } catch (error) {
+        if (error !== rollback) throw error
+      }
+    })
 
     it("keeps DEFAULT and MODERN on the same eligible edition and owner", async () => {
       const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`

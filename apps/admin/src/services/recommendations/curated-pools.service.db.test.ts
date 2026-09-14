@@ -1,6 +1,9 @@
 import { readFileSync } from "node:fs"
 import { randomUUID } from "node:crypto"
 import { PrismaClient } from "@prisma/client"
+import { PrismaPg } from "@prisma/adapter-pg"
+import { personalizedInput } from "./delivery.service.test-helpers"
+import { userDeliveryHarness } from "./user-delivery.service.test-helpers"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
@@ -262,5 +265,100 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         await admin.query(restore!)
       }
     }, 30_000)
+  },
+)
+
+describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
+  "curated fallback issuance with the production Postgres adapter",
+  () => {
+    const schema = `user_delivery_${randomUUID().replaceAll("-", "")}`
+    let admin: Client
+    let prisma: PrismaClient
+    const queries: string[] = []
+    beforeAll(async () => {
+      admin = new Client({ connectionString: env.DATABASE_URL })
+      await admin.connect()
+      await admin.query(`CREATE SCHEMA "${schema}"`)
+      for (const name of [
+        "RecommendationRequestState",
+        "RecommendationDeliveryResult",
+        "RecommendationAuditKind",
+      ]) {
+        await admin.query(
+          `CREATE DOMAIN "${schema}"."${name}" AS public."${name}"`,
+        )
+      }
+      for (const table of [
+        "recommendation_request",
+        "recommendation_served_item",
+        "recommendation_evidence_audit",
+      ]) {
+        await admin.query(
+          `CREATE TABLE "${schema}"."${table}" (LIKE public."${table}" INCLUDING ALL)`,
+        )
+      }
+      for (const table of [
+        "recommendation_served_item",
+        "recommendation_evidence_audit",
+      ]) {
+        await admin.query(
+          `ALTER TABLE "${schema}"."${table}" ADD FOREIGN KEY (request_id) REFERENCES "${schema}".recommendation_request(id) ON DELETE CASCADE`,
+        )
+      }
+      const client = new PrismaClient({
+        adapter: new PrismaPg(
+          { connectionString: env.DATABASE_URL },
+          { schema },
+        ),
+        log: [{ level: "query", emit: "event" }],
+      })
+      client.$on("query", ({ query }) => queries.push(query))
+      prisma = client
+    })
+    afterAll(async () => {
+      await prisma?.$disconnect()
+      await admin?.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`)
+      await admin?.end()
+    })
+
+    it("persists six issued items and their audit atomically with one item insert", async () => {
+      queries.length = 0
+      const h = userDeliveryHarness(0, prisma)
+      const response = await h.service.deliver(personalizedInput())
+      expect(response).toMatchObject({ result: "served", curatedCount: 6 })
+      const itemInserts = queries.filter(
+        (query) =>
+          query.startsWith("INSERT INTO") &&
+          query.includes('"recommendation_served_item"'),
+      )
+      expect(itemInserts).toHaveLength(1)
+      const saved = await prisma.recommendationRequest.findUniqueOrThrow({
+        where: { id: response.requestId! },
+        include: { items: { orderBy: { position: "asc" } }, audits: true },
+      })
+      expect(saved.state).toBe("ISSUED")
+      expect(saved.items.map((item) => item.id)).toEqual(
+        response.items.map((item) => item.id),
+      )
+      expect(saved.items.map((item) => item.canonicalHref)).toEqual(
+        response.items.map((item) => item.canonicalHref),
+      )
+      expect(saved.audits).toHaveLength(1)
+      expect(saved.audits[0].kind).toBe("DELIVERY_SUCCESS")
+    })
+
+    it("rolls back the request and every item when the success audit cannot persist", async () => {
+      await admin.query(
+        `ALTER TABLE "${schema}".recommendation_evidence_audit ADD CONSTRAINT reject_new_audits CHECK (false) NOT VALID`,
+      )
+      const before = await prisma.recommendationRequest.count()
+      const itemsBefore = await prisma.recommendationServedItem.count()
+      const h = userDeliveryHarness(0, prisma)
+      const response = await h.service.deliver(personalizedInput())
+      expect(response).toMatchObject({ result: "unavailable", items: [] })
+      expect(await prisma.recommendationRequest.count()).toBe(before)
+      expect(await prisma.recommendationServedItem.count()).toBe(itemsBefore)
+      expect(h.release).toHaveBeenCalledOnce()
+    })
   },
 )

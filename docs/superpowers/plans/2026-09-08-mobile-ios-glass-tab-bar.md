@@ -1,5 +1,31 @@
 # iOS Floating Liquid-Glass Tab Bar Implementation Plan
 
+**Status:** shipped 2026-09-08 (#2200); superseded on iOS by feat-500 — read the
+note below
+
+> **Superseded on iOS 2026-09-14 — feat-500.** Do not execute the iOS tasks
+> below. feat-500 shipped the NativeTabs migration. iOS now runs
+> `expo-router/unstable-native-tabs` from
+> `apps/mobile/app/(tabs)/_layout.ios.tsx`, and UIKit owns the bar's geometry
+> and its material. Tasks 1 to 7 record what #2200 built on 2026-09-08. The
+> unchecked boxes mark completed work, not work to do.
+>
+> Two tasks now do harm:
+>
+> - **Task 3** rewrites `app/(tabs)/_layout.tsx` with iOS `tabBarStyle` and
+>   `tabBarBackground` options. That file serves Android only. The edit breaks
+>   Android, and it never reaches iOS.
+> - **Task 5** restores `insets.bottom + TAB_BAR_PILL_HEIGHT +
+TAB_BAR_PILL_LIFT + TAB_BAR_CLEARANCE_GAP`. A tab screen already reports the
+>   49pt bar inside `insets.bottom`, so that formula counts the bar twice.
+>   `apps/mobile/src/lib/__tests__/tabBar.test.ts` falsifies it.
+>
+> The Android statements still hold. feat-500 left the Android bar
+> byte-identical. Read the Results section of
+> `docs/roadmap/platform/feat-500-mobile-native-tabs-migration.md` for the
+> shipped numbers, and the "Tab bar" section of `apps/mobile/CLAUDE.md` for the
+> current rules.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** On iOS, turn the bottom tab bar into a floating frosted capsule that content scrolls behind. On Android, change nothing.

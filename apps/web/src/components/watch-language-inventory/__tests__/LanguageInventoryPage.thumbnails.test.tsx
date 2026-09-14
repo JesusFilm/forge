@@ -369,18 +369,16 @@ describe("LanguageInventoryPage thumbnail sources", () => {
       const frame = image?.parentElement
 
       expect(row).not.toBeNull()
-      expect(frame?.classList.contains("h-12")).toBe(true)
+      expect(frame?.classList.contains("h-16")).toBe(true)
       expect(frame?.classList.contains("sm:h-14")).toBe(true)
       expect(frame?.classList.contains("aspect-[2/3]")).toBe(true)
-      expect(frame?.classList.contains("w-20")).toBe(false)
+      expect(frame?.classList.contains("w-28")).toBe(false)
       expect(frame?.classList.contains("sm:w-24")).toBe(false)
       expect(image?.classList.contains("object-center")).toBe(true)
-      // The portrait branch's requested source size. This used to ride on
-      // `sizes`; it moved to `width`/`height` when the pixel-only `sizes`
-      // turned out to expand the srcset to every configured width (see
-      // LanguageInventoryPage.weight.test.tsx).
-      expect(image?.getAttribute("width")).toBe("37")
-      expect(image?.getAttribute("height")).toBe("56")
+      // Explicit intrinsic dimensions keep next/image on a two-candidate
+      // srcset while still supplying the enlarged phone frame at up to 3 DPR.
+      expect(image?.getAttribute("width")).toBe("64")
+      expect(image?.getAttribute("height")).toBe("96")
       expect(
         row?.querySelector(
           '[data-testid="language-inventory-compact-thumbnail-frame"]',
@@ -415,14 +413,14 @@ describe("LanguageInventoryPage thumbnail sources", () => {
     const frame = image?.parentElement
 
     expect(row?.getAttribute("href")).toBe("/ordinary-episode.html")
-    expect(frame?.classList.contains("h-12")).toBe(true)
-    expect(frame?.classList.contains("w-20")).toBe(true)
+    expect(frame?.classList.contains("h-16")).toBe(true)
+    expect(frame?.classList.contains("w-28")).toBe(true)
     expect(frame?.classList.contains("sm:h-14")).toBe(true)
     expect(frame?.classList.contains("sm:w-24")).toBe(true)
     expect(frame?.classList.contains("aspect-[2/3]")).toBe(false)
     expect(image?.classList.contains("object-left-top")).toBe(true)
-    expect(image?.getAttribute("width")).toBe("96")
-    expect(image?.getAttribute("height")).toBe("54")
+    expect(image?.getAttribute("width")).toBe("112")
+    expect(image?.getAttribute("height")).toBe("64")
     expect(
       row?.querySelector(
         '[data-testid="language-inventory-compact-thumbnail-frame"]',

@@ -11,9 +11,13 @@ import enMessages from "../../../../messages/en.json"
 import { WATCH_HOME_CATEGORIES } from "@/lib/watch-home-categories"
 
 vi.mock("@/components/ui/carousel", () => ({
-  Carousel: ({ children }: { children: ReactNode }) => (
-    <div data-testid="carousel">{children}</div>
-  ),
+  Carousel: ({
+    children,
+    ...props
+  }: {
+    children: ReactNode
+    [key: string]: unknown
+  }) => <div {...props}>{children}</div>,
   CarouselContent: ({ children }: { children: ReactNode }) => (
     <div>{children}</div>
   ),
@@ -41,12 +45,19 @@ function render(
   languageSlug: string,
   categoryIds?: readonly string[] | null,
   tiles?: readonly RailTileInput[] | null,
+  copy?: Partial<
+    Pick<
+      Parameters<typeof WatchHomeCategoryRail>[0],
+      "eyebrow" | "title" | "description" | "ctaLabel"
+    >
+  >,
 ) {
   const markup = renderToStaticMarkup(
     <WatchHomeCategoryRail
       languageSlug={languageSlug}
       categoryIds={categoryIds}
       tiles={tiles}
+      {...copy}
     />,
   )
   const container = document.createElement("div")
@@ -61,6 +72,48 @@ function card(container: HTMLElement, key: string) {
 }
 
 describe("WatchHomeCategoryRail", () => {
+  it("renders trimmed authored copy and reuses the resolved title as the carousel name", () => {
+    const container = render("spanish-latin-american", ["family"], null, {
+      eyebrow: "  Explora  ",
+      title: "  Historias para ti  ",
+      description: "  Encuentra algo para hoy.  ",
+      ctaLabel: "  Ver todos  ",
+    })
+
+    expect(container.textContent).toContain("Explora")
+    expect(container.textContent).toContain("Historias para ti")
+    expect(container.textContent).toContain("Encuentra algo para hoy.")
+    expect(container.textContent).toContain("Ver todos")
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-category-carousel"]')
+        ?.getAttribute("aria-label"),
+    ).toBe("Historias para ti")
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-category-see-all"]')
+        ?.getAttribute("href"),
+    ).toBe("/spanish-latin-american.html/videos")
+  })
+
+  it.each([null, "", "   "])(
+    "falls back only the blank field while preserving authored siblings (%j)",
+    (title) => {
+      const container = render("english", ["family"], null, {
+        eyebrow: "Custom eyebrow",
+        title,
+        description: "Custom description",
+        ctaLabel: "Custom CTA",
+      })
+      expect(container.textContent).toContain("Custom eyebrow")
+      expect(container.textContent).toContain(
+        enMessages.WatchHomeCategories.title,
+      )
+      expect(container.textContent).toContain("Custom description")
+      expect(container.textContent).toContain("Custom CTA")
+    },
+  )
+
   it("renders one card per configured category", () => {
     const container = render("english")
     const cards = container.querySelectorAll(

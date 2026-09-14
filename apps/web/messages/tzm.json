@@ -527,7 +527,8 @@
     "previousVideoPreview": "Asekkir n tvidyo yezrin",
     "nextVideoPreview": "Asekkir n tvidyo d-iteddun",
     "mediaCollection": "Amas n tmedya",
-    "scrollToVideo": "Ḍur ɣer tvidyo n {title}"
+    "scrollToVideo": "Ḍur ɣer tvidyo n {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Tazwara n Jesus Film Project",

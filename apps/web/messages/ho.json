@@ -527,7 +527,8 @@
     "previousVideoPreview": "Past video preview",
     "nextVideoPreview": "Neks video preview",
     "mediaCollection": "Media koleksen",
-    "scrollToVideo": "Skrol go long {title} video"
+    "scrollToVideo": "Skrol go long {title} video",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project hom",

@@ -39,6 +39,26 @@ describe("env", () => {
     expect(env.WEB_CANONICAL_ORIGIN).toBe(DEFAULT_WEB_CANONICAL_ORIGIN)
   })
 
+  it.each([
+    { value: undefined, expected: "true" },
+    { value: "", expected: "true" },
+    { value: "false", expected: "false" },
+  ])(
+    "resolves source-free serving to $expected for $value when CI skips validation",
+    async ({ value, expected }) => {
+      vi.resetModules()
+      vi.stubEnv("CI", "true")
+      vi.stubEnv("RECOMMENDATION_USER_SERVING_ENABLED", value)
+      try {
+        const { env: runtimeEnv } = await import("@/config/env")
+        expect(runtimeEnv.RECOMMENDATION_USER_SERVING_ENABLED).toBe(expected)
+      } finally {
+        vi.unstubAllEnvs()
+        vi.resetModules()
+      }
+    },
+  )
+
   describe("Watch search Web routing", () => {
     it("normalizes and caches the production resolver path under CI", async () => {
       vi.resetModules()

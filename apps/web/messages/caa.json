@@ -527,7 +527,8 @@
     "previousVideoPreview": "Preview ta video chikej",
     "nextVideoPreview": "Preview ta video chik",
     "mediaCollection": "Colección ta medios",
-    "scrollToVideo": "Tz'otz' ta video {title}"
+    "scrollToVideo": "Tz'otz' ta video {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Ruwotot Jesus Film Project",
