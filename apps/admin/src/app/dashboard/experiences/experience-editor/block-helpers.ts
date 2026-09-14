@@ -269,6 +269,41 @@ export function asString(value: unknown) {
   return typeof value === "string" ? value : ""
 }
 
+const MEDIA_ASSET_ID_FIELDS = new Set([
+  "backgroundImageAssetId",
+  "imageAssetId",
+  "mediaAssetId",
+])
+
+/** Collect the managed image ids needed to render an Experience canvas. */
+export function mediaAssetIdsFromExperienceBlocks(
+  blocks: readonly unknown[],
+): string[] {
+  const assetIds = new Set<string>()
+
+  function visit(value: unknown) {
+    if (Array.isArray(value)) {
+      value.forEach(visit)
+      return
+    }
+
+    const record = asRecord(value)
+    if (!record) return
+
+    for (const [field, child] of Object.entries(record)) {
+      if (MEDIA_ASSET_ID_FIELDS.has(field)) {
+        const assetId = asString(child).trim()
+        if (assetId) assetIds.add(assetId)
+      } else {
+        visit(child)
+      }
+    }
+  }
+
+  visit(blocks)
+  return Array.from(assetIds)
+}
+
 export function asBoolean(value: unknown) {
   return value === true
 }
