@@ -1,4 +1,5 @@
 import { type Blocks } from "@/domain/blocks"
+import type { ExperienceEditorAuthoredDubSelector } from "@/services/experience-editor-video.service"
 import { WATCH_HOME_CATEGORY_CATALOG } from "@forge/watch-url-policy/watch-home-categories"
 
 export type BlockTone = "hero" | "quote" | "grid" | "standard"
@@ -279,6 +280,60 @@ export function asNumber(value: unknown) {
 
 export function asArray(value: unknown) {
   return Array.isArray(value) ? value : []
+}
+
+function selectorText(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null
+}
+
+/**
+ * Finds the exact video/language references that an existing draft must keep
+ * resolvable. The tuple, rather than just videoId, is the identity: one video
+ * may intentionally appear in several authored languages.
+ *
+ * This reader is deliberately tolerant of partial editor state. Draft state
+ * can briefly be less strict than BlocksSchema while the user is editing, and
+ * ignoring one malformed item must not discard otherwise valid selectors.
+ */
+export function extractAuthoredVideoDubSelectors(
+  blocks: unknown,
+): ExperienceEditorAuthoredDubSelector[] {
+  const selectors: ExperienceEditorAuthoredDubSelector[] = []
+  const seen = new Set<string>()
+
+  const add = (value: BlockRecord) => {
+    const videoId = selectorText(value.videoId)
+    if (!videoId) return
+
+    const languageId = selectorText(value.languageId)
+    const legacyStreamingUrl = selectorText(value.streamingUrl)
+    const identity = JSON.stringify([videoId, languageId, legacyStreamingUrl])
+    if (seen.has(identity)) return
+    seen.add(identity)
+    selectors.push({ videoId, languageId, legacyStreamingUrl })
+  }
+
+  const visitBlock = (value: unknown) => {
+    const block = asRecord(value)
+    if (!block) return
+
+    const type = selectorText(block.t)
+    if (type === "video" || type === "videoHero") add(block)
+
+    if (type === "videoCarousel" || type === "mediaCollection") {
+      for (const item of asArray(block.items)) {
+        const record = asRecord(item)
+        if (record) add(record)
+      }
+    }
+
+    if (type === "section" || type === "container") {
+      for (const item of asArray(block.content)) visitBlock(item)
+    }
+  }
+
+  for (const block of asArray(blocks)) visitBlock(block)
+  return selectors
 }
 
 export function stringFromOptionalNumber(value: unknown) {

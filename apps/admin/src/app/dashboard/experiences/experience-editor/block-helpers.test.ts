@@ -7,6 +7,7 @@ import {
   createContainerSlotLayout,
   createTemplateBlock,
   editorTextFromContentParagraphs,
+  extractAuthoredVideoDubSelectors,
   defaultContainerSlotSpans,
   normalizeEditorBlocks,
   normalizeEditorBlockPayload,
@@ -38,6 +39,90 @@ const videoLibrary: VideoLibraryItem[] = [
 ]
 
 describe("experience editor block helpers", () => {
+  it("extracts every distinct authored dub selector in stable draft order", () => {
+    const selectors = extractAuthoredVideoDubSelectors([
+      {
+        t: "videoHero",
+        videoId: "video-1",
+        languageId: "language-en",
+        streamingUrl: "https://media.example/en.m3u8",
+      },
+      {
+        t: "section",
+        content: [
+          {
+            t: "videoCarousel",
+            items: [
+              { videoId: "video-1", languageId: "language-fr" },
+              { videoId: "video-1", languageId: "language-en" },
+            ],
+          },
+          {
+            t: "container",
+            content: [
+              {
+                t: "video",
+                videoId: "video-2",
+                streamingUrl: "https://media.example/legacy.mpd",
+              },
+            ],
+          },
+        ],
+      },
+    ])
+
+    expect(selectors).toEqual([
+      {
+        videoId: "video-1",
+        languageId: "language-en",
+        legacyStreamingUrl: "https://media.example/en.m3u8",
+      },
+      {
+        videoId: "video-1",
+        languageId: "language-fr",
+        legacyStreamingUrl: null,
+      },
+      {
+        videoId: "video-1",
+        languageId: "language-en",
+        legacyStreamingUrl: null,
+      },
+      {
+        videoId: "video-2",
+        languageId: null,
+        legacyStreamingUrl: "https://media.example/legacy.mpd",
+      },
+    ])
+  })
+
+  it("ignores malformed blocks and selector duplicates without collapsing languages", () => {
+    expect(
+      extractAuthoredVideoDubSelectors([
+        {
+          t: "videoCarousel",
+          items: [
+            { videoId: "video-1", languageId: "language-en" },
+            { videoId: "video-1", languageId: "language-en" },
+            { videoId: "video-1", languageId: "language-es" },
+            { languageId: "language-fr" },
+          ],
+        },
+      ]),
+    ).toEqual([
+      {
+        videoId: "video-1",
+        languageId: "language-en",
+        legacyStreamingUrl: null,
+      },
+      {
+        videoId: "video-1",
+        languageId: "language-es",
+        legacyStreamingUrl: null,
+      },
+    ])
+    expect(extractAuthoredVideoDubSelectors({ not: "blocks" })).toEqual([])
+  })
+
   it("creates a movable recommendation block with a localized default heading", () => {
     const block = createTemplateBlock("homepageRecommendations", 2)
     expect(block).toEqual({
