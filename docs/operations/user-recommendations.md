@@ -11,6 +11,11 @@ row approaches the viewport. It refreshes on a new homepage visit, reload,
 bfcache restoration, language change or profile change; ordinary focus and
 visibility changes leave the cards stable.
 
+Production activation is complete for 51 exact locale/audio contexts, with the
+block published on English and Spanish homepages. See the
+[14 September activation record](user-recommendations-activation-2026-09-14.md)
+for the active version, exact coverage, live validation and remaining timeouts.
+
 ## Client contract
 
 Use authenticated **POST** requests to Admin `/api/graphql`. The existing Web
@@ -163,9 +168,9 @@ reserve. Additional overlapping pools cannot repair absent translations or dubs.
 All eleven flagged choices received metadata reviews and remain excluded. Live
 link checks passed for all 233 referenced English manifests and selected images;
 these do not establish all-dub playback or current production publication.
-Production builds, CI and the disabled-feature release checks passed on
-14 September. Pool import, publication and enabled-delivery verification are the
-remaining activation steps. The Web flag is global; an unavailable delivery shows
+Production builds, CI, pool promotion, homepage publication and enabled-delivery
+checks passed on 14 September for the initial activated contexts. The Web flag
+is global; an unavailable delivery shows
 the existing retry state while available contexts continue serving.
 The original all-language six-card requirement is not yet met. On 14 September,
 the feature owner explicitly authorized production activation without complete
@@ -180,7 +185,7 @@ for the row label remain tracked in the existing UI translation policy.
 Release owner: feature owner and recommendation operator. After a normal staged
 activation, inspect the first hour and the following 24 hours, then assess
 qualified viewing over a seven-day observation window. These are proposed rollout
-checks; this task has made no production deployment or analytics claims.
+checks; the activation record above contains the completed fixed-window evidence.
 
 - Search Admin logs for `recommendation.user_delivery`; group result/reason,
   cohort, profile/curated counts and duration. No viewer, session, capability or
