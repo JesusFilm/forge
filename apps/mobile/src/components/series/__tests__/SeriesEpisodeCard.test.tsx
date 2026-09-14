@@ -30,7 +30,7 @@ jest.mock("expo-linear-gradient", () => ({ LinearGradient: () => null }))
 import { act } from "react"
 
 import { SeriesEpisodeCard } from "../SeriesEpisodeCard"
-import { EXPORT_GLYPH_COLOR } from "../../../lib/downloadGlyph"
+import { EXPORT_BADGE_COLOR } from "../../../lib/downloadGlyph"
 import type { EpisodeBadgeState } from "../../../lib/seriesDownloadAggregate"
 import type { WatchEpisode } from "../../../lib/normalizeVideo"
 import {
@@ -83,7 +83,7 @@ describe("SeriesEpisodeCard download badge", () => {
     // Same arrow as a download badge, and now the same white too (owner
     // decision 2026-09-14), so only the spoken label separates them.
     expect(mockIcons.map((icon) => icon.name)).toEqual(["arrow-down-circle"])
-    expect(mockIcons[0].color).toBe(EXPORT_GLYPH_COLOR)
+    expect(mockIcons[0].color).toBe(EXPORT_BADGE_COLOR)
   })
 
   /**
@@ -91,6 +91,9 @@ describe("SeriesEpisodeCard download badge", () => {
    * white now (owner decision 2026-09-14), so the two are indistinguishable by
    * sight and the SPOKEN label is the only thing that tells them apart. Pinned
    * here so a future reader does not mistake the sameness for a bug.
+   *
+   * A PAUSED export is the exception and has its own test below: it turns
+   * amber, exactly as a paused download does.
    */
   it("is told apart from a plain download by its LABEL, not by sight", async () => {
     const exporting = await render("exporting")
@@ -102,6 +105,27 @@ describe("SeriesEpisodeCard download badge", () => {
     expect(cardLabel(downloading)).toBe("Episode One, downloading")
     expect(mockIcons[0].name).toBe(exportBadge.name)
     expect(cardLabel(downloading)).not.toBe(cardLabel(exporting))
+  })
+
+  it("turns amber and says so once the export is paused", async () => {
+    // The row speaks for the whole run, so this badge is the only place one
+    // held episode is named — and it matches the held offline badge exactly.
+    const renderer = await render("exporting-paused")
+    expect(cardLabel(renderer)).toBe("Episode One, saving to Photos, paused")
+    expect(mockIcons.map((icon) => icon.name)).toEqual(["pause-circle"])
+    const pausedExport = mockIcons[0].color
+
+    mockIcons.length = 0
+    await render("paused")
+    expect(mockIcons[0].name).toBe("pause-circle")
+    expect(mockIcons[0].color).toBe(pausedExport)
+
+    // Anti-vacuous: it is NOT the running export's badge, which is the state
+    // this one has to be told apart from.
+    mockIcons.length = 0
+    await render("exporting")
+    expect(mockIcons[0].name).not.toBe("pause-circle")
+    expect(mockIcons[0].color).not.toBe(pausedExport)
   })
 
   // Anti-vacuous control: the offline badges still render their own glyphs.

@@ -176,15 +176,19 @@ export type EpisodeBadgeState =
   | "queued"
   | "paused"
   | "exporting"
+  | "exporting-paused"
   | "none"
 
 /** Badge state for one episode from its record; `none` for failed/absent. */
 export function episodeBadgeState(
   record: OfflineDownloadRecord | undefined,
   exporting = false,
+  exportPaused = false,
 ): EpisodeBadgeState {
-  // R16: a running export outranks the offline state beneath it.
-  if (exporting) return "exporting"
+  // R16: a running export outranks the offline state beneath it. A HELD one
+  // says so, the way a held offline download does — the badge is the only
+  // place a paused episode is named, since the row speaks for the whole run.
+  if (exporting) return exportPaused ? "exporting-paused" : "exporting"
   switch (record?.state) {
     case "downloaded":
       return "saved"
@@ -206,6 +210,7 @@ export function deriveEpisodeBadges(
   // Membership, NOT the whole snapshot: a badge only asks WHETHER a target is
   // exporting, and the snapshot changes identity on every progress tick.
   exportingTargets?: ReadonlySet<string> | null,
+  pausedExportTargets?: ReadonlySet<string> | null,
 ): Map<string, EpisodeBadgeState> {
   const recordBySlug = new Map(
     offlineRecords.map((record) => [record.videoSlug, record] as const),
@@ -217,6 +222,7 @@ export function deriveEpisodeBadges(
       episodeBadgeState(
         recordBySlug.get(slug),
         exportingTargets?.has(slug) === true,
+        pausedExportTargets?.has(slug) === true,
       ),
     )
   }

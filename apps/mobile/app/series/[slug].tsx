@@ -160,14 +160,16 @@ export default function SeriesScreen() {
   // identity once a second while any export runs, and this map is FlatList's
   // `extraData` — so every visible episode row would repaint for no reason.
   const exportingTargets = exportSession.targets
+  const pausedExportTargets = exportSession.pausedTargets
   const badgeBySlug = useMemo(
     () =>
       deriveEpisodeBadges(
         series?.episodes.map((episode) => episode.slug) ?? [],
         offlineRecords,
         exportingTargets,
+        pausedExportTargets,
       ),
-    [series?.episodes, offlineRecords, exportingTargets],
+    [series?.episodes, offlineRecords, exportingTargets, pausedExportTargets],
   )
 
   const { data, loading, error, refetch } = useQuery(GET_SERIES_BY_SLUG, {

@@ -38,10 +38,7 @@ import { act } from "react"
 
 import { ActionButtonRow } from "../ActionButtonRow"
 import { ACCENT_ON_DARK } from "../../../lib/color"
-import {
-  EXPORT_GLYPH_COLOR,
-  EXPORT_IN_PROGRESS_COLOR,
-} from "../../../lib/downloadGlyph"
+import { EXPORT_IN_PROGRESS_COLOR } from "../../../lib/downloadGlyph"
 import type { ExportSessionEntry } from "../../../lib/exportSession"
 import type { OfflineDownloadState } from "../../../lib/offlineManifest"
 import {
@@ -142,19 +139,15 @@ describe("ActionButtonRow download control", () => {
       expect(onDownload).toHaveBeenCalledTimes(1)
     })
 
-    it("draws a WHITE pause inside the ring, which stays the offline red", async () => {
-      // Owner decision 2026-09-14: the glyph turned white, the arc did not.
+    it("draws the RED pause inside the ring, like an offline download", async () => {
       await render({ exportEntry: exportEntry() })
       const names = mockIcons.map((icon) => icon.name)
       expect(names).toContain("pause")
       expect(names).not.toContain("arrow-up")
       expect(mockIcons.find((icon) => icon.name === "pause")?.color).toBe(
-        EXPORT_GLYPH_COLOR,
+        EXPORT_IN_PROGRESS_COLOR,
       )
-      // Anti-vacuous: the ring's own colour is untouched, so this is a glyph
-      // change rather than a repaint of the whole indicator.
       expect(EXPORT_IN_PROGRESS_COLOR).toBe(ACCENT_ON_DARK)
-      expect(EXPORT_GLYPH_COLOR).not.toBe(ACCENT_ON_DARK)
     })
 
     it("draws the resume triangle once the export is paused", async () => {
@@ -167,7 +160,7 @@ describe("ActionButtonRow download control", () => {
       const names = mockIcons.map((icon) => icon.name)
       expect(names).toContain("play")
       expect(mockIcons.find((icon) => icon.name === "play")?.color).toBe(
-        EXPORT_GLYPH_COLOR,
+        ACCENT_ON_DARK,
       )
     })
 

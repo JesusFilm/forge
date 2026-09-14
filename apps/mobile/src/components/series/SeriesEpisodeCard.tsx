@@ -17,8 +17,11 @@ import {
   hexToRgba,
 } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
-import { EXPORT_GLYPH_COLOR } from "../../lib/downloadGlyph"
+import { EXPORT_BADGE_COLOR } from "../../lib/downloadGlyph"
 import type { EpisodeBadgeState } from "../../lib/seriesDownloadAggregate"
+
+/** Amber for a HELD transfer, offline or export — one value, so they match. */
+const BADGE_PAUSED_COLOR = "#f5c451"
 
 // Grid corner badge per download state (U9). Also spoken via accessibilityLabel.
 const BADGE: Record<
@@ -40,14 +43,22 @@ const BADGE: Record<
     color: "rgba(255,255,255,0.75)",
     a11y: "queued",
   },
-  paused: { icon: "pause-circle", color: "#f5c451", a11y: "paused" },
-  // R16: the export outranks the offline state. Same arrow as a download now
-  // (owner decision 2026-09-10) — the export red is what tells them apart.
-  // Decorative: this badge has no tap, so it draws no pause/resume split.
+  paused: { icon: "pause-circle", color: BADGE_PAUSED_COLOR, a11y: "paused" },
+  // R16: the export outranks the offline state. Same arrow and the same white
+  // as a download (owner decision 2026-09-14), so only the spoken label
+  // separates them. The badge has no tap — the row owns the run's controls.
   exporting: {
     icon: "arrow-down-circle",
-    color: EXPORT_GLYPH_COLOR,
+    color: EXPORT_BADGE_COLOR,
     a11y: "saving to Photos",
+  },
+  // A HELD export reads exactly like a held download, by the same decision.
+  // This badge is the only place one paused episode is named: the row above
+  // speaks for the whole run, not for the episode it is on.
+  "exporting-paused": {
+    icon: "pause-circle",
+    color: BADGE_PAUSED_COLOR,
+    a11y: "saving to Photos, paused",
   },
 }
 

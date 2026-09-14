@@ -19,12 +19,12 @@ export const DOWNLOAD_FAILED_COLOR = STATUS_FAILED_COLOR
 export const EXPORT_IN_PROGRESS_COLOR = ACCENT_ON_DARK
 
 /**
- * The GLYPH an export draws — the arrow on an episode thumbnail, and the icon
- * inside the ring. White, by owner decision (2026-09-14), so the arrow reads
- * against the red arc rather than disappearing into it. The ring keeps the red
- * above; only the glyph changed.
+ * The export's badge on an episode THUMBNAIL while it transfers: white, by
+ * owner decision (2026-09-14), matching the offline download badge beside it.
+ * The ring and everything inside it keep the red above — this is the corner
+ * badge only, which is why it is not the ring colour.
  */
-export const EXPORT_GLYPH_COLOR = TEXT_PRIMARY
+export const EXPORT_BADGE_COLOR = TEXT_PRIMARY
 
 const IN_PROGRESS_STATES: ReadonlySet<OfflineDownloadState> =
   new Set<OfflineDownloadState>(["downloading", "queued", "paused"])
@@ -110,7 +110,7 @@ export function downloadGlyphInfo(
       return {
         inProgress: true,
         icon: "pause",
-        color: EXPORT_GLYPH_COLOR,
+        color: EXPORT_IN_PROGRESS_COLOR,
         a11yLabel:
           pct != null
             ? `Saving to Photos, paused at ${pct}%. Tap to resume or stop`
@@ -123,7 +123,7 @@ export function downloadGlyphInfo(
     return {
       inProgress: true,
       icon: "arrow-down",
-      color: EXPORT_GLYPH_COLOR,
+      color: EXPORT_IN_PROGRESS_COLOR,
       a11yLabel:
         pct != null
           ? `Saving to Photos, ${pct}%. Tap to pause`

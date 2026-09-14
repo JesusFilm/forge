@@ -33,10 +33,7 @@ jest.mock("@expo/vector-icons/MaterialCommunityIcons", () => ({
 import { act } from "react"
 
 import { SeriesActionRow } from "../SeriesActionRow"
-import {
-  EXPORT_GLYPH_COLOR,
-  EXPORT_IN_PROGRESS_COLOR,
-} from "../../../lib/downloadGlyph"
+import { EXPORT_IN_PROGRESS_COLOR } from "../../../lib/downloadGlyph"
 import type { SeriesDownloadState } from "../../../lib/seriesDownloadAggregate"
 import {
   TestRenderer,
@@ -142,17 +139,14 @@ describe("SeriesActionRow download-all control", () => {
       expect(downloadLabel(renderer)).toBe("Saving to Photos. Tap to pause")
     })
 
-    it("draws a WHITE pause inside the red ring", async () => {
-      // Owner decision 2026-09-14: the arc keeps the offline red, the glyph
-      // inside it is white so it reads against the arc.
+    it("draws the RED pause in the ring, like an offline download", async () => {
       await render(exporting)
       const names = mockIcons.map((icon) => icon.name)
       expect(names).toContain("pause")
       expect(names).not.toContain("arrow-up")
       expect(mockIcons.find((icon) => icon.name === "pause")?.color).toBe(
-        EXPORT_GLYPH_COLOR,
+        EXPORT_IN_PROGRESS_COLOR,
       )
-      expect(EXPORT_GLYPH_COLOR).not.toBe(EXPORT_IN_PROGRESS_COLOR)
     })
 
     it("reaches the export's pause, never the pause-all handler (R30)", async () => {

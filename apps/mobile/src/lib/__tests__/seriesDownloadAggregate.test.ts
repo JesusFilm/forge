@@ -35,6 +35,11 @@ const session = (
     byTarget,
     activeCount: targets.length,
     targets: new Set(Object.keys(byTarget)),
+    pausedTargets: new Set(
+      Object.values(byTarget)
+        .filter((entry) => entry.paused)
+        .map((entry) => entry.target),
+    ),
   }
 }
 
@@ -315,6 +320,41 @@ describe("deriveEpisodeBadges (U9)", () => {
   it("badges an exporting episode that has no offline record at all", () => {
     const badges = deriveEpisodeBadges(EPISODES, [], session(["c", 0]).targets)
     expect(badges.get("c")).toBe("exporting")
+  })
+
+  it("badges a HELD export apart from a running one", () => {
+    // The action row speaks for the whole run, so the badge is the only place
+    // a single paused episode is named.
+    const running = session(["a", 0.3])
+    const badges = deriveEpisodeBadges(
+      EPISODES,
+      [],
+      running.targets,
+      new Set(["a"]),
+    )
+    expect(badges.get("a")).toBe("exporting-paused")
+
+    // Anti-vacuous: the SAME episode with nothing held reads as running.
+    expect(
+      deriveEpisodeBadges(EPISODES, [], running.targets, new Set()).get("a"),
+    ).toBe("exporting")
+  })
+
+  it("holds only the episode that is paused, not its siblings", () => {
+    const badges = deriveEpisodeBadges(
+      EPISODES,
+      [],
+      session(["a", 0.3], ["b", 0.1]).targets,
+      new Set(["a"]),
+    )
+    expect(badges.get("a")).toBe("exporting-paused")
+    expect(badges.get("b")).toBe("exporting")
+  })
+
+  it("ignores a paused mark for an episode that is not exporting", () => {
+    // A stale membership set must not invent a badge out of nothing.
+    const badges = deriveEpisodeBadges(EPISODES, [], new Set(), new Set(["a"]))
+    expect(badges.get("a")).toBe("none")
   })
 
   it("ignores an export of a video outside this series", () => {

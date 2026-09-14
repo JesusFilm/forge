@@ -807,6 +807,30 @@ describe("snapshot identity under progress", () => {
     expect([...store.getSnapshot().targets]).toEqual([])
   })
 
+  it("names the paused targets, and keeps that set stable across a tick", async () => {
+    // The episode badge asks only WHETHER its export is held, so this set is
+    // held to the same rule as `targets`: a tick must not change its identity,
+    // or every visible row repaints once a second for the whole transfer.
+    const store = createExportSessionStore()
+    const run = openRun(store)
+    await Promise.resolve()
+
+    expect([...store.getSnapshot().pausedTargets]).toEqual([])
+    store.requestPause("a")
+    const paused = store.getSnapshot().pausedTargets
+    expect([...paused]).toEqual(["a"])
+
+    run.handle.publishProgress(0.6)
+    expect(store.getSnapshot().pausedTargets).toBe(paused)
+
+    store.requestResume("a")
+    expect(store.getSnapshot().pausedTargets).not.toBe(paused)
+    expect([...store.getSnapshot().pausedTargets]).toEqual([])
+
+    run.release("saved")
+    await run.done
+  })
+
   it("does not notify when a progress value repeats", async () => {
     const store = createExportSessionStore()
     const run = openRun(store)

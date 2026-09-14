@@ -101,6 +101,12 @@ export type ExportSessionSnapshot = {
    * recompute — and re-render — on every tick.
    */
   targets: ReadonlySet<string>
+  /**
+   * Which of those the viewer has paused, kept on the same terms and for the
+   * same reason: an episode badge asks only whether its export is held, and a
+   * set rebuilt per tick would repaint every visible row.
+   */
+  pausedTargets: ReadonlySet<string>
 }
 
 /** The capabilities one run gets over its own slot and its own note. */
@@ -153,6 +159,7 @@ const EMPTY_SNAPSHOT: ExportSessionSnapshot = {
   byTarget: {},
   activeCount: 0,
   targets: EMPTY_TARGETS,
+  pausedTargets: EMPTY_TARGETS,
 }
 
 const NOOP_STORAGE: ExportStoragePort = {
@@ -198,6 +205,7 @@ export function createExportSessionStore(deps?: {
   const listeners = new Set<() => void>()
 
   let targets: ReadonlySet<string> = EMPTY_TARGETS
+  let pausedTargets: ReadonlySet<string> = EMPTY_TARGETS
 
   /** Rebuild the target set ONLY when membership changed, so a progress tick
    *  leaves its identity alone. */
@@ -207,6 +215,17 @@ export function createExportSessionStore(deps?: {
     return true
   }
 
+  /** The same rule for the paused subset: a pause is rare, a tick is not. */
+  function samePausedTargets(): boolean {
+    let paused = 0
+    for (const [target, entry] of entries) {
+      if (!entry.paused) continue
+      paused += 1
+      if (!pausedTargets.has(target)) return false
+    }
+    return paused === pausedTargets.size
+  }
+
   /** A listener's throw is contained: the terminal notification runs inside the
    *  run's `finally`, where an escaping error would replace the outcome the
    *  export actually reached. */
@@ -214,7 +233,14 @@ export function createExportSessionStore(deps?: {
     const byTarget: Record<string, ExportSessionEntry> = {}
     for (const [target, entry] of entries) byTarget[target] = entry
     if (!sameTargets()) targets = new Set(entries.keys())
-    snapshot = { byTarget, activeCount: entries.size, targets }
+    if (!samePausedTargets()) {
+      pausedTargets = new Set(
+        [...entries]
+          .filter(([, entry]) => entry.paused)
+          .map(([target]) => target),
+      )
+    }
+    snapshot = { byTarget, activeCount: entries.size, targets, pausedTargets }
     for (const listener of listeners) {
       try {
         listener()
