@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest"
 
+import { existsSync } from "node:fs"
+
 import {
   anchorsForShots,
+  defaultScriptPath,
   bgFocusForCards,
   dominantFaceX,
   stabiliseAnchors,
@@ -274,5 +277,33 @@ describe("dominantFaceX", () => {
   it("has no opinion when nobody faces the camera", () => {
     expect(dominantFaceX([{ atSec: 0, faces: [] }])).toBeNull()
     expect(dominantFaceX([])).toBeNull()
+  })
+})
+
+// The detector never ran. The script path was repo-root-relative
+// (`apps/mastra/scripts/face-anchors.py`) while every documented way of
+// running the renderer puts the cwd at `apps/mastra`, so it resolved to
+// `apps/mastra/apps/mastra/...`, the spawn failed, and the feature fell back
+// to the blind centre crop it exists to replace -- reported as "detector
+// unavailable", which reads as "opencv is not installed". Two shipped
+// devotionals were framed by the fallback before anyone looked.
+describe("defaultScriptPath", () => {
+  // Falsify by restoring the cwd-relative join: the file is not there.
+  it("points at a file that is actually on disk", () => {
+    expect(existsSync(defaultScriptPath())).toBe(true)
+  })
+
+  // The point of the fix: the answer cannot depend on where the process was
+  // started, because the renderer is started from two different places.
+  it("does not depend on the process cwd", () => {
+    const fromHere = defaultScriptPath()
+    const cwd = process.cwd()
+    try {
+      process.chdir("/")
+      expect(defaultScriptPath()).toBe(fromHere)
+      expect(existsSync(defaultScriptPath())).toBe(true)
+    } finally {
+      process.chdir(cwd)
+    }
   })
 })

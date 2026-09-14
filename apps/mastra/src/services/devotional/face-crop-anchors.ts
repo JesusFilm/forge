@@ -26,6 +26,7 @@
  */
 import { spawn } from "node:child_process"
 import path from "node:path"
+import { fileURLToPath } from "node:url"
 
 const FPS = 30
 const TAIL_FRAMES = 24
@@ -70,6 +71,29 @@ const HOLD_AFTER_MOVE_SEC = 4
 const MIN_SHOT_SEC = 1.0
 /** Detection is minutes of CPU at worst; well past that means something hung. */
 const DETECT_TIMEOUT_MS = 5 * 60_000
+
+/**
+ * The detector script, resolved from THIS module rather than the process cwd.
+ *
+ * It was `path.join("apps", "mastra", "scripts", "face-anchors.py")` — a
+ * repo-root-relative path — while every documented way of running the renderer
+ * puts the cwd at `apps/mastra`. So it resolved to
+ * `apps/mastra/apps/mastra/scripts/face-anchors.py`, the spawn failed, and the
+ * feature reported "detector unavailable" and fell back to the blind centre
+ * crop it exists to replace. Silently: a missing detector is a legitimate
+ * state (no opencv on the machine), so nothing distinguished "not installed"
+ * from "we cannot find our own script".
+ */
+export function defaultScriptPath(): string {
+  return path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "..",
+    "..",
+    "..",
+    "scripts",
+    "face-anchors.py",
+  )
+}
 
 export type FaceSample = {
   atSec: number
@@ -370,16 +394,21 @@ export async function planFaceCropAnchors(opts: {
   const log = opts.log ?? (() => {})
   const none = opts.cards.map(() => null)
   const python = opts.python ?? process.env.DEVO_FACE_PYTHON ?? "python3"
-  const script =
-    opts.scriptPath ?? path.join("apps", "mastra", "scripts", "face-anchors.py")
+  const script = opts.scriptPath ?? defaultScriptPath()
 
-  const { out, ok } = await capture(
+  const { out, err, ok } = await capture(
     python,
     [script, `--video=${opts.bgFile}`, `--interval=${SAMPLE_INTERVAL_SEC}`],
     DETECT_TIMEOUT_MS,
   )
   if (!ok) {
-    log("face crop: detector unavailable — backgrounds stay centre-cropped")
+    // Say WHY. "Unavailable" read as "opencv is not installed" for as long as
+    // the script path was wrong, so a broken feature looked like an absent
+    // dependency and nobody looked further.
+    const why = (err || out).trim().split("\n").pop() ?? "no output"
+    log(
+      `face crop: detector unavailable (${python} ${script}: ${why}) — backgrounds stay centre-cropped`,
+    )
     return none
   }
   let parsed: { samples?: FaceSample[]; error?: string }
