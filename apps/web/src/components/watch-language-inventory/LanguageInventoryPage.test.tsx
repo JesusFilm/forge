@@ -1296,15 +1296,31 @@ describe("LanguageInventoryPage episode row index", () => {
     expect(index?.className).toContain("sm:text-lg")
     expect(index?.className).not.toContain("text-xs")
 
-    // Its own trailing margin, so the number/thumbnail gap grows without also
-    // spreading thumbnail-to-title (the row's `gap-3` is shared by all three).
-    expect(index?.className).toContain("mr-1")
+    // From `sm` up the ordinal keeps its own trailing margin, so the
+    // number/thumbnail gap grows without also spreading thumbnail-to-title
+    // (the row's `gap-3` is shared by all three). Phones drop it: there the
+    // ordinal is pulled against the row edge and every pixel of the shared
+    // gap is wanted by the title.
+    expect(index?.className).not.toContain("mr-1")
     expect(index?.className).toContain("sm:mr-2")
 
-    // `w-10` keeps three digits on one line at the larger size — measured
-    // 38px of glyph in a 40px box for "999".
-    expect(index?.className).toContain("w-10")
+    // `sm:w-10` keeps three digits on one line at the larger size — measured
+    // 38px of glyph in a 40px box for "999". On phones the box is a `min-w-5`
+    // floor instead of a fixed width: one- and two-digit ordinals (16px
+    // tabular glyphs, ~19px for two) still right-align to the same edge so the
+    // thumbnail column holds, and a three-digit ordinal grows the box rather
+    // than clipping.
+    expect(index?.className).toContain("min-w-5")
+    expect(index?.className).toContain("sm:w-10")
+    expect(index?.className).not.toContain(" w-10")
     expect(index?.className).toContain("tabular-nums")
+
+    // Phones centre the digits in that box so the space before and after the
+    // ordinal is equal (the box width matches the row's `px-2`/`gap-2`);
+    // right-alignment is a `sm`+ concern, where the column is fixed-width.
+    expect(index?.className).toContain("text-center")
+    expect(index?.className).toContain("sm:text-right")
+    expect(index?.className).not.toContain(" text-right")
   })
 })
 

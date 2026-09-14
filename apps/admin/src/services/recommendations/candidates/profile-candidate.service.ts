@@ -51,6 +51,7 @@ export type PublishedProfileProjection = Readonly<{
 export type LiveProfileCandidateResult = Readonly<{
   projection: Omit<PublishedProfileProjection, "interests"> & {
     interestCount: number
+    qualifiedInterestCount?: number
   }
   nominations: CandidateNomination[]
 }>
@@ -387,6 +388,9 @@ export async function getLiveProfileCandidates(
     projection: {
       ...publicProjection,
       interestCount: privateInterests.length,
+      qualifiedInterestCount: privateInterests.filter(
+        (interest) => interest.kind === "durable",
+      ).length,
     },
     nominations: generated.nominations,
   }
@@ -412,7 +416,7 @@ export async function queryProfileCandidates(
       VALUES ${values}
     ),
     excluded_video_ids AS MATERIALIZED (
-      SELECT ${input.context.seedMediaId}::text AS id
+      SELECT ${input.context.seedMediaId}::text AS id WHERE ${input.context.seedMediaId}::text IS NOT NULL
       UNION
       SELECT parent_id FROM video_relation WHERE child_id = ${input.context.seedMediaId}
       UNION

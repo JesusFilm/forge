@@ -101,7 +101,7 @@ export type DeliveryDependencies = {
   retrieveProfile?: (input: {
     sessionDigest: string
     profileTokenDigest: string | null
-    seedMediaId: string
+    seedMediaId: string | null
     locale: string
     audioLanguageSlug: string
     manifestId: string

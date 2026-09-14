@@ -369,7 +369,7 @@ export function buildJobArtifactHref(
 // (`options.smartCrop.assetId`) and shorts artifacts under the job's shorts
 // assetId (`options.shorts.assetId`), which may differ from `job.muxAssetId`
 // — the storage prefix used by enrichment artifacts. Keep both halves of
-// this contract in sync: POST /api/smart-crop/jobs and POST /api/shorts/jobs
+// this contract in sync with Smart Crop creation and retained historical Shorts
 // store the assetId on their options discriminator, and the artifact routes
 // resolve the storage prefix through this helper. A job carries at most one
 // of the two discriminators.

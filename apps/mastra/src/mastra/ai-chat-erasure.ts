@@ -50,8 +50,9 @@
  *    shifts pages and can silently skip threads — for retention that is a
  *    missed row the next daily sweep catches, for erasure it is a completeness
  *    failure with no sweep behind it.
- *  - **`deleteThread`, not hand-rolled SQL.** It also removes the thread's
- *    messages and orphaned vectors, which the old runbook SQL missed.
+ *  - **Lifecycle-aware cleanup.** Reads use the native Memory, but deletion
+ *    uses an exact-owner transaction over threads, messages and independently
+ *    discovered lifecycle rows. Unsupported enabled content stores refuse.
  *  - **Memory built DIRECTLY over `getAiChatStorage()`** — never
  *    `getAiChatMemory()`, which follows the shared runtime backend and can be
  *    an InMemoryStore in local mode. Erasure is an explicit durable-data
@@ -108,7 +109,17 @@ import {
   type LangfuseConfig,
 } from "../config/env"
 
-import { getAiChatStorage } from "./ai-chat-memory"
+import type { Pool } from "pg"
+import { getAiChatWritePool, closeAiChatWritePool } from "./ai-chat-database"
+import {
+  getAiChatGuardReadiness,
+  type AiChatGuardReadiness,
+} from "./ai-chat-guard-readiness"
+import { eraseAiChatConversation } from "./ai-chat-conversation-lifecycle"
+import {
+  getAiChatStorage,
+  isAiChatDeletionStorageCovered,
+} from "./ai-chat-memory"
 import { SEEKER_DEFAULT_RESOURCE_ID } from "./ai-chat-thread-ownership"
 import {
   LANGFUSE_ERASURE_LIST_PAGE_SIZE,
@@ -161,7 +172,14 @@ export type AiChatErasureMemory = {
     threads: Array<{ id: string; resourceId?: string | null }>
     hasMore: boolean
   }>
-  deleteThread: (threadId: string) => Promise<void>
+  readiness: () => Promise<AiChatGuardReadiness>
+  listLifecycleRecords: (
+    resourceId: string,
+  ) => Promise<Array<{ id: string; resourceId: string }>>
+  deleteThread: (
+    threadId: string,
+    resourceId: string,
+  ) => Promise<{ threadsDeleted: number; recordsDeleted: number }>
 }
 
 /**
@@ -198,14 +216,16 @@ export type PostgresErasureFailureReason =
  */
 export type PostgresErasureOutcome =
   | { kind: "no_data" }
-  | { kind: "counted"; threadCount: number }
-  | { kind: "erased"; threadsDeleted: number }
+  | { kind: "not_ready" }
+  | { kind: "counted"; threadCount: number; recordCount?: number }
+  | { kind: "erased"; threadsDeleted: number; recordsDeleted?: number }
   | { kind: "unreachable" }
   | {
       kind: "failed"
       stage: "list" | "delete"
       reason: PostgresErasureFailureReason
       threadsDeleted: number
+      recordsDeleted?: number
     }
 
 /**
@@ -435,9 +455,35 @@ export function acquirePersistedErasureMemory(): AiChatErasureMemoryAcquisition 
     // bridge it through `unknown`.
     const storage = getAiChatStorage()
     cachedErasureStore = storage
-    cachedErasureMemory = new Memory({ storage })
+    cachedErasureMemory = buildPersistedErasureMemory(new Memory({ storage }))
   }
   return { ok: true, memory: cachedErasureMemory }
+}
+
+/** Reads use the pinned SDK; destructive writes use exact-owner lifecycle transactions. */
+export function buildPersistedErasureMemory(
+  memory: Pick<Memory, "listThreads" | "getThreadById">,
+  pool?: Pool,
+): AiChatErasureMemory {
+  const getPool = () => pool ?? getAiChatWritePool()
+  return {
+    getThreadById: (args) => memory.getThreadById(args),
+    listThreads: (args) => memory.listThreads(args),
+    readiness: async () =>
+      env.AI_CHAT_MAINTENANCE_PAUSED !== "true" &&
+      isAiChatDeletionStorageCovered()
+        ? getAiChatGuardReadiness(getPool())
+        : "incompatible",
+    listLifecycleRecords: async (resourceId) =>
+      (
+        await getPool().query<{ id: string; resourceId: string }>(
+          'SELECT id, "resourceId" FROM ai_chat.forge_conversation_lifecycle WHERE "resourceId"=$1 ORDER BY id LIMIT 20001',
+          [resourceId],
+        )
+      ).rows,
+    deleteThread: (id, owner) =>
+      eraseAiChatConversation(id, owner, { pool: getPool() }),
+  }
 }
 
 /**
@@ -456,6 +502,7 @@ export async function closeAiChatErasureStore(): Promise<void> {
   if (store === null) return
   try {
     await store.close?.()
+    await closeAiChatWritePool()
   } catch {
     // Cleanup is best-effort; enum-only, and never escalated.
   }
@@ -1006,11 +1053,11 @@ export function formatPostgresOutcome(
 ): string {
   switch (postgres.kind) {
     case "counted":
-      return `postgres=counted threads=${postgres.threadCount}`
+      return `postgres=counted threads=${postgres.threadCount} records=${postgres.recordCount ?? 0}`
     case "erased":
-      return `postgres=erased threads_deleted=${postgres.threadsDeleted}`
+      return `postgres=erased threads_deleted=${postgres.threadsDeleted} records_deleted=${postgres.recordsDeleted ?? 0}`
     case "failed":
-      return `postgres=failed stage=${postgres.stage} reason=${postgres.reason} threads_deleted=${postgres.threadsDeleted}`
+      return `postgres=failed stage=${postgres.stage} reason=${postgres.reason} threads_deleted=${postgres.threadsDeleted} records_deleted=${postgres.recordsDeleted ?? 0}`
     default:
       return `postgres=${postgres.kind}`
   }
@@ -1129,6 +1176,7 @@ function logCompleted(
   if (
     postgres.kind === "failed" ||
     postgres.kind === "unreachable" ||
+    postgres.kind === "not_ready" ||
     LANGFUSE_WARN_KINDS.has(langfuse.kind)
   ) {
     log.warn(line)
@@ -1147,6 +1195,14 @@ async function runPostgresHalf(
   resourceId: string,
   sink: AiChatErasureLog,
 ): Promise<PostgresErasureOutcome> {
+  let readiness: AiChatGuardReadiness
+  try {
+    readiness = await memory.readiness()
+  } catch {
+    return { kind: "unreachable" }
+  }
+  if (readiness === "error") return { kind: "unreachable" }
+  if (readiness !== "ready") return { kind: "not_ready" }
   // Probe BEFORE the counts (KTD7) — a swallowed store fault would otherwise
   // surface as a zero count and read as "no data found for this exact key".
   if (!(await probeStore(memory))) {
@@ -1164,9 +1220,38 @@ async function runPostgresHalf(
     }
   }
 
+  let records: Array<{ id: string; resourceId: string }>
+  try {
+    records = await memory.listLifecycleRecords(resourceId)
+  } catch {
+    return {
+      kind: "failed",
+      stage: "list",
+      reason: "store_error",
+      threadsDeleted: 0,
+    }
+  }
+  if (
+    records.length > 20000 ||
+    records.some((row) => row.resourceId !== resourceId || !row.id)
+  ) {
+    return {
+      kind: "failed",
+      stage: "list",
+      reason: records.length > 20000 ? "page_cap_exceeded" : "filter_mismatch",
+      threadsDeleted: 0,
+    }
+  }
+  const recordIds = new Set(records.map((row) => row.id))
+  const ids = [...new Set([...collected.threadIds, ...recordIds])].sort()
+  const recordCounts = records.length ? { recordCount: records.length } : {}
   if (mode === "preview") {
-    if (collected.threadIds.length > 0) {
-      return { kind: "counted", threadCount: collected.threadIds.length }
+    if (ids.length > 0) {
+      return {
+        kind: "counted",
+        threadCount: collected.threadIds.length,
+        ...recordCounts,
+      }
     }
     // Re-probe before reporting a ZERO count (KTD7 again, on the read path).
     // The pre-count probe only proves the store was alive when the run
@@ -1190,12 +1275,13 @@ async function runPostgresHalf(
     return { kind: "unreachable" }
   }
 
-  if (collected.threadIds.length === 0) {
+  if (ids.length === 0) {
     return { kind: "no_data" }
   }
 
   let threadsDeleted = 0
-  for (const threadId of collected.threadIds) {
+  let recordsDeleted = 0
+  for (const threadId of ids) {
     // Prove ownership immediately before deleting, from the thread's OWN row —
     // the same shape the retention purge uses for its recency re-check, and
     // the layer that survives a listing whose rows stop carrying `resourceId`
@@ -1210,25 +1296,29 @@ async function runPostgresHalf(
         stage: "delete",
         reason: "store_error",
         threadsDeleted,
+        ...(recordsDeleted ? { recordsDeleted } : {}),
       }
     }
     // Vanished between collect and delete (deleted concurrently, or by an
     // earlier interrupted run): benign — the row is already gone, which is
     // what this run wanted.
-    if (owner === null) continue
+    if (owner === null && !recordIds.has(threadId)) continue
     // Fails CLOSED on an absent or null `resourceId`: ownership is proven per
     // thread, never assumed. Reaching here means the store contradicted its
     // own filter, so stop rather than delete one more row.
-    if (owner.resourceId !== resourceId) {
+    if (owner !== null && owner.resourceId !== resourceId) {
       return {
         kind: "failed",
         stage: "delete",
         reason: "filter_mismatch",
         threadsDeleted,
+        ...(recordsDeleted ? { recordsDeleted } : {}),
       }
     }
     try {
-      await memory.deleteThread(threadId)
+      const removed = await memory.deleteThread(threadId, resourceId)
+      threadsDeleted += removed.threadsDeleted
+      recordsDeleted += removed.recordsDeleted
     } catch {
       // Enum/count-only: the deleted-so-far count is what makes the rerun
       // guidance honest; the thrown message never appears anywhere.
@@ -1237,13 +1327,16 @@ async function runPostgresHalf(
         stage: "delete",
         reason: "store_error",
         threadsDeleted,
+        ...(recordsDeleted ? { recordsDeleted } : {}),
       }
     }
-    threadsDeleted += 1
   }
-  // Messages and orphaned vectors ride `deleteThread`'s cascade — no separate
-  // count is claimed for them, because none is observable here.
-  return { kind: "erased", threadsDeleted }
+  // Content and coordination counts include only committed transactions.
+  return {
+    kind: "erased",
+    threadsDeleted,
+    ...(recordsDeleted ? { recordsDeleted } : {}),
+  }
 }
 
 async function runErasure(
@@ -1299,7 +1392,7 @@ export function previewAiChatErasure(
 
 /**
  * Destructive run: collect-then-delete this resource's threads (and, through
- * `deleteThread`'s cascade, their messages and orphaned vectors), then the
+ * the lifecycle transaction, their messages and coordination records), then the
  * Langfuse half — list/re-check/dedupe, budgeted batch deletes, one
  * read-only requery (KTD6). The caller owns the confirm gate — this function
  * assumes it already passed.

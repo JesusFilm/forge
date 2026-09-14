@@ -9,7 +9,7 @@ export function assertWebRecommendationCaller(
 } {
   if (
     caller?.role !== "CONSUMER_BEARER" ||
-    caller.fleet === true ||
+    (caller.fleet === true && caller.recommendationViewerVerified !== true) ||
     typeof caller.rateLimitBucketKey !== "string" ||
     caller.rateLimitBucketKey.length === 0
   ) {

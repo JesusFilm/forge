@@ -262,6 +262,7 @@ describe("RecommendationEpisodeService", () => {
       canonicalHref: "/watch/target.html",
       capabilityJti: "delivery-jti",
       request: {
+        surfaceVersion: "watch-below-player-v1",
         state: "ISSUED",
         manifestId: "semantic-profile-hybrid-v1",
         sessionDigest: "a".repeat(64),
@@ -319,6 +320,7 @@ describe("RecommendationEpisodeService", () => {
       capabilityJti: "delivery-jti",
       expiresAt: new Date("2026-09-17T03:00:00.000Z"),
       request: {
+        surfaceVersion: "watch-below-player-v1",
         id: "request-1",
         state: "ISSUED",
         manifestId: "semantic-transcript-pgvector-v1",
@@ -461,6 +463,7 @@ describe("RecommendationEpisodeService", () => {
       canonicalHref: "/watch/target.html/en.html",
       capabilityJti: "delivery-jti-direct",
       request: {
+        surfaceVersion: "watch-below-player-v1",
         id: "request-direct",
         state: "ISSUED",
         manifestId: "semantic-transcript-pgvector-v1",
@@ -555,6 +558,7 @@ describe("RecommendationEpisodeService", () => {
         .update("claim-once-1234567890")
         .digest("hex"),
       request: {
+        surfaceVersion: "watch-below-player-v1",
         id: "request-1",
         sessionDigest: "a".repeat(64),
         expiresAt: new Date("2026-09-17T03:00:00.000Z"),
@@ -644,6 +648,7 @@ describe("RecommendationEpisodeService", () => {
       // stored episode horizons, not a fresh handoff window, govern replay.
       handoffExpiresAt: new Date("2026-04-20T03:10:00.000Z"),
       request: {
+        surfaceVersion: "watch-below-player-v1",
         id: "request-1",
         sessionDigest: "a".repeat(64),
         expiresAt: new Date("2026-09-17T03:00:00.000Z"),
@@ -726,6 +731,7 @@ describe("RecommendationEpisodeService", () => {
       canonicalHref: "/watch/target.html",
       capabilityJti: "delivery-jti",
       request: {
+        surfaceVersion: "watch-below-player-v1",
         state: "ISSUED",
         manifestId: "semantic-transcript-pgvector-v1",
         sessionDigest: selectionInput.sessionDigest,

@@ -536,7 +536,8 @@
     "mediaCollection": "Media collection",
     "scrollToVideo": "Scroll to {title} video",
     "previousVideoPreview": "Previous video preview",
-    "nextVideoPreview": "Next video preview"
+    "nextVideoPreview": "Next video preview",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project home",
@@ -606,7 +607,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",

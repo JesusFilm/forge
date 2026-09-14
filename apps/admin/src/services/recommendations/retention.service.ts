@@ -313,6 +313,21 @@ export async function purgeExpiredRecommendationRequests(
           where: { expiresAt: { lte: now } },
         })
       ).count
+      const expiredViewers = await tx.recommendationViewer.findMany({
+        where: { expiresAt: { lte: now } },
+        take: batchSize,
+        orderBy: { expiresAt: "asc" },
+        select: { tokenDigest: true },
+      })
+      rowCounts.expiredViewers = (
+        await tx.recommendationViewer.deleteMany({
+          where: {
+            tokenDigest: {
+              in: expiredViewers.map((viewer) => viewer.tokenDigest),
+            },
+          },
+        })
+      ).count
       rowCounts.expiredConsentReceipts = (
         await tx.recommendationConsentReceipt.updateMany({
           where: {
@@ -759,6 +774,7 @@ export async function readRecommendationRetentionHealth(
         WHERE status = 'succeeded'
       ) AS "latestSuccessAt",
       LEAST(
+        (SELECT min(expires_at) FROM recommendation_viewer WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_request WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_content_action WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_eligibility_decision WHERE expires_at <= ${propagationCutoff}),

@@ -191,6 +191,29 @@ afterEach(async () => {
 })
 
 describe("WatchHomeExperiencePage", () => {
+  it.each([
+    ["WatchHomeCategoryRailBlock", "HomepageRecommendationsBlock", "TextBlock"],
+    ["HomepageRecommendationsBlock", "WatchHomeCategoryRailBlock", "TextBlock"],
+    ["WatchHomeCategoryRailBlock", "TextBlock"],
+  ])(
+    "preserves authored recommendation placement and removal: %s",
+    (...types) => {
+      const html = renderToStaticMarkup(
+        <WatchHomeExperiencePage
+          heroModel={heroModel}
+          languageSlug="english"
+          blocks={types.map((type, index) => makeBlock(type, `block-${index}`))}
+        />,
+      )
+      const page = document.createElement("div")
+      page.innerHTML = html
+      expect(
+        Array.from(page.querySelectorAll("[data-block-marker]"), (node) =>
+          node.getAttribute("data-block-marker"),
+        ),
+      ).toEqual(["WatchHomeHeroBlock", ...types])
+    },
+  )
   it("server-renders one fallback h1 without an authored page heading", () => {
     const html = renderToStaticMarkup(
       <WatchHomeExperiencePage

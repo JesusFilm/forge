@@ -358,13 +358,13 @@ describe("LanguageInventoryPage thumbnail sources", () => {
       const frame = image?.parentElement
 
       expect(row).not.toBeNull()
-      expect(frame?.classList.contains("h-12")).toBe(true)
+      expect(frame?.classList.contains("h-16")).toBe(true)
       expect(frame?.classList.contains("sm:h-14")).toBe(true)
       expect(frame?.classList.contains("aspect-[2/3]")).toBe(true)
-      expect(frame?.classList.contains("w-20")).toBe(false)
+      expect(frame?.classList.contains("w-28")).toBe(false)
       expect(frame?.classList.contains("sm:w-24")).toBe(false)
       expect(image?.classList.contains("object-center")).toBe(true)
-      expect(image?.getAttribute("sizes")).toBe("(max-width: 640px) 32px, 37px")
+      expect(image?.getAttribute("sizes")).toBe("(max-width: 640px) 42px, 37px")
       expect(
         row?.querySelector(
           '[data-testid="language-inventory-compact-thumbnail-frame"]',
@@ -399,13 +399,13 @@ describe("LanguageInventoryPage thumbnail sources", () => {
     const frame = image?.parentElement
 
     expect(row?.getAttribute("href")).toBe("/ordinary-episode.html")
-    expect(frame?.classList.contains("h-12")).toBe(true)
-    expect(frame?.classList.contains("w-20")).toBe(true)
+    expect(frame?.classList.contains("h-16")).toBe(true)
+    expect(frame?.classList.contains("w-28")).toBe(true)
     expect(frame?.classList.contains("sm:h-14")).toBe(true)
     expect(frame?.classList.contains("sm:w-24")).toBe(true)
     expect(frame?.classList.contains("aspect-[2/3]")).toBe(false)
     expect(image?.classList.contains("object-left-top")).toBe(true)
-    expect(image?.getAttribute("sizes")).toBe("(max-width: 640px) 80px, 96px")
+    expect(image?.getAttribute("sizes")).toBe("(max-width: 640px) 112px, 96px")
     expect(
       row?.querySelector(
         '[data-testid="language-inventory-compact-thumbnail-frame"]',

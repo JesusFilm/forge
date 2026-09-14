@@ -5,6 +5,26 @@ const MOCK_SESSION_SECRET_SENTINEL = "__manager_mock_session_secret_required__"
 
 export const env = createEnv({
   server: {
+    STUDIO_ENVIRONMENT: z
+      .enum(["local", "preview", "production"])
+      .default("local"),
+    STUDIO_MCP_AUDIENCE: z.string().url().optional(),
+    STUDIO_MCP_CLIENT_IDS: z.string().optional(),
+    STUDIO_INTERACTIVE_KEY_ID: z.string().optional(),
+    STUDIO_INTERACTIVE_PRIVATE_KEY: z.string().optional(),
+    STUDIO_MUX_INGEST_ENABLED: z.enum(["true", "false"]).optional(),
+    STUDIO_RENDER_SERVICE_URL: z.string().url().optional(),
+    STUDIO_RENDER_PRIVATE_KEY: z.string().optional(),
+    STUDIO_RENDER_POOL_ENABLED: z.enum(["true", "false"]).default("false"),
+    STUDIO_RENDER_POOL_ID: z.string().optional(),
+    STUDIO_RENDER_WORKER_ID: z.string().optional(),
+    STUDIO_RENDER_WORKER_KEY: z.string().min(32).optional(),
+    STUDIO_RENDER_CAPABILITY_KEY: z.string().min(32).optional(),
+    STUDIO_PREVIEW_API_KEY: z.string().optional(),
+    STUDIO_PRODUCTION_RATE_CARD: z.string().optional(),
+    STUDIO_FFMPEG_PATH: z.string().optional(),
+    STUDIO_FFPROBE_PATH: z.string().optional(),
+
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -98,15 +118,6 @@ export const env = createEnv({
     CROP_WORKER_API_KEY: z.string().min(1).optional(),
     MASTRA_SMART_CROP_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
 
-    // Shorts Studio (plan 2026-06-11-002). Same opt-in scaffolding pattern
-    // as CROP_WORKER_*: optional at schema load so default deploys don't
-    // require them; the shorts job creation route returns 503 config_missing
-    // when invoked without them. SHORTS_WORKER_API_KEY must be a DISTINCT
-    // secret from CROP_WORKER_API_KEY (one worker's bearer must not
-    // authorize the other).
-    SHORTS_WORKER_BASE_URL: z.string().url().optional(),
-    SHORTS_WORKER_API_KEY: z.string().min(1).optional(),
-
     // feat-119 PR2 — admin → manager outbound enrichment trigger.
     // Manager exposes /api/admin-trigger/{scene-analysis,transcript}
     // which admin's `triggerManagerEnrichment` GraphQL mutation calls
@@ -136,6 +147,24 @@ export const env = createEnv({
   },
   skipValidation: !!process.env.CI,
   runtimeEnv: {
+    STUDIO_ENVIRONMENT: process.env.STUDIO_ENVIRONMENT,
+    STUDIO_MCP_AUDIENCE: process.env.STUDIO_MCP_AUDIENCE,
+    STUDIO_MCP_CLIENT_IDS: process.env.STUDIO_MCP_CLIENT_IDS,
+    STUDIO_INTERACTIVE_KEY_ID: process.env.STUDIO_INTERACTIVE_KEY_ID,
+    STUDIO_INTERACTIVE_PRIVATE_KEY: process.env.STUDIO_INTERACTIVE_PRIVATE_KEY,
+    STUDIO_MUX_INGEST_ENABLED: process.env.STUDIO_MUX_INGEST_ENABLED,
+    STUDIO_RENDER_SERVICE_URL: process.env.STUDIO_RENDER_SERVICE_URL,
+    STUDIO_RENDER_PRIVATE_KEY: process.env.STUDIO_RENDER_PRIVATE_KEY,
+    STUDIO_RENDER_POOL_ENABLED: process.env.STUDIO_RENDER_POOL_ENABLED,
+    STUDIO_RENDER_POOL_ID: process.env.STUDIO_RENDER_POOL_ID,
+    STUDIO_RENDER_WORKER_ID: process.env.STUDIO_RENDER_WORKER_ID,
+    STUDIO_RENDER_WORKER_KEY: process.env.STUDIO_RENDER_WORKER_KEY,
+    STUDIO_RENDER_CAPABILITY_KEY: process.env.STUDIO_RENDER_CAPABILITY_KEY,
+    STUDIO_PREVIEW_API_KEY: process.env.STUDIO_PREVIEW_API_KEY,
+    STUDIO_PRODUCTION_RATE_CARD: process.env.STUDIO_PRODUCTION_RATE_CARD,
+    STUDIO_FFMPEG_PATH: process.env.STUDIO_FFMPEG_PATH,
+    STUDIO_FFPROBE_PATH: process.env.STUDIO_FFPROBE_PATH,
+
     NODE_ENV: process.env.NODE_ENV,
     MANAGER_DATA_MODE: process.env.MANAGER_DATA_MODE ?? "admin",
     MANAGER_BACKEND_MODE: process.env.MANAGER_BACKEND_MODE,
@@ -184,8 +213,6 @@ export const env = createEnv({
     CROP_WORKER_BASE_URL: process.env.CROP_WORKER_BASE_URL,
     CROP_WORKER_API_KEY: process.env.CROP_WORKER_API_KEY,
     MASTRA_SMART_CROP_TIMEOUT_MS: process.env.MASTRA_SMART_CROP_TIMEOUT_MS,
-    SHORTS_WORKER_BASE_URL: process.env.SHORTS_WORKER_BASE_URL,
-    SHORTS_WORKER_API_KEY: process.env.SHORTS_WORKER_API_KEY,
     ADMIN_TRIGGER_API_KEYS: process.env.ADMIN_TRIGGER_API_KEYS,
     ELEVENLABS_REQUEST_TIMEOUT_MS: process.env.ELEVENLABS_REQUEST_TIMEOUT_MS,
     ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS:

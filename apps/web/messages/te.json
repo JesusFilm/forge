@@ -527,7 +527,8 @@
     "previousVideoPreview": "మునుపటి వీడియో ప్రీవ్యూ",
     "nextVideoPreview": "తదుపరి వీడియో ప్రీవ్యూ",
     "mediaCollection": "మీడియా సేకరణ",
-    "scrollToVideo": "{title} వీడియోకు స్క్రోల్ చేయండి"
+    "scrollToVideo": "{title} వీడియోకు స్క్రోల్ చేయండి",
+    "forYou": "మీ కోసం"
   },
   "WatchFooter": {
     "home": "Jesus Film Project హోమ్",
@@ -597,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",

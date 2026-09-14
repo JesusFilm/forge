@@ -47,6 +47,7 @@ import type {
   VideoCarouselItemSchema,
   VideoHeroBlockSchema,
   VideoRecommendationsBlockSchema,
+  HomepageRecommendationsBlockSchema,
   WatchHomeCategoryRailBlockSchema,
   WatchHomeCategoryRailTileSchema,
   WatchHomeHeroBlockSchema,
@@ -101,6 +102,9 @@ type VideoCarouselBlock = z.infer<typeof VideoCarouselBlockSchema>
 type VideoCarouselItem = z.infer<typeof VideoCarouselItemSchema>
 type VideoHeroBlock = z.infer<typeof VideoHeroBlockSchema>
 type VideoRecommendationsBlock = z.infer<typeof VideoRecommendationsBlockSchema>
+type HomepageRecommendationsBlock = z.infer<
+  typeof HomepageRecommendationsBlockSchema
+>
 type WatchHomeCategoryRailBlock = z.infer<
   typeof WatchHomeCategoryRailBlockSchema
 >
@@ -1134,6 +1138,20 @@ VideoCarouselBlockRef.implement({
   }),
 })
 
+const HomepageRecommendationsBlockRef =
+  builder.objectRef<HomepageRecommendationsBlock>(
+    "HomepageRecommendationsBlock",
+  )
+HomepageRecommendationsBlockRef.implement({
+  description:
+    "A page-level personalized video row. The consumer resolves recommendations privately at viewing time.",
+  fields: (t) => ({
+    t: t.exposeString("t"),
+    sectionKey: t.exposeString("sectionKey", { nullable: true }),
+    title: t.exposeString("title", { nullable: true }),
+  }),
+})
+
 const VideoRecommendationsBlockRef =
   builder.objectRef<VideoRecommendationsBlock>("VideoRecommendationsBlock")
 VideoRecommendationsBlockRef.implement({
@@ -1381,6 +1399,7 @@ export const T_TO_TYPENAME = {
   videoCarousel: "VideoCarouselBlock",
   videoHero: "VideoHeroBlock",
   videoRecommendations: "VideoRecommendationsBlock",
+  homepageRecommendations: "HomepageRecommendationsBlock",
   watchHomeCategoryRail: "WatchHomeCategoryRailBlock",
   watchHomeHero: "WatchHomeHeroBlock",
 } as const satisfies Record<
@@ -1433,6 +1452,7 @@ export const ExperienceBlock = builder.unionType("ExperienceBlock", {
     VideoCarouselBlockRef,
     VideoHeroBlockRef,
     VideoRecommendationsBlockRef,
+    HomepageRecommendationsBlockRef,
     WatchHomeCategoryRailBlockRef,
     WatchHomeHeroBlockRef,
   ],

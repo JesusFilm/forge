@@ -1,0 +1,95 @@
+{
+  "scope": "Comparison against earlier saved public Core response, not a live reconciliation and not a proposal to infer missing identities.",
+  "savedCoreVariantsFinishedAt": "2026-09-09T22:30:42.965412+00:00",
+  "localNullLanguageDubRows": 478,
+  "foundInSavedCoreVariants": 416,
+  "savedPublicLanguageRecords": [
+    {
+      "coreLanguageId": "12104",
+      "record": null
+    },
+    {
+      "coreLanguageId": "139769",
+      "record": null
+    },
+    {
+      "coreLanguageId": "143084",
+      "record": null
+    },
+    {
+      "coreLanguageId": "169877",
+      "record": null
+    },
+    {
+      "coreLanguageId": "185204",
+      "record": null
+    },
+    {
+      "coreLanguageId": "185348",
+      "record": null
+    },
+    {
+      "coreLanguageId": "19861",
+      "record": null
+    },
+    {
+      "coreLanguageId": "24415",
+      "record": null
+    },
+    {
+      "coreLanguageId": "2757",
+      "record": null
+    },
+    {
+      "coreLanguageId": "629",
+      "record": null
+    }
+  ],
+  "sourceLanguageCounts": [
+    {
+      "coreLanguageId": "12104",
+      "dubRows": 75
+    },
+    {
+      "coreLanguageId": "139769",
+      "dubRows": 62
+    },
+    {
+      "coreLanguageId": "143084",
+      "dubRows": 13
+    },
+    {
+      "coreLanguageId": "169877",
+      "dubRows": 62
+    },
+    {
+      "coreLanguageId": "185204",
+      "dubRows": 13
+    },
+    {
+      "coreLanguageId": "185348",
+      "dubRows": 13
+    },
+    {
+      "coreLanguageId": "19861",
+      "dubRows": 62
+    },
+    {
+      "coreLanguageId": "24415",
+      "dubRows": 41
+    },
+    {
+      "coreLanguageId": "2757",
+      "dubRows": 62
+    },
+    {
+      "coreLanguageId": "629",
+      "dubRows": 13
+    },
+    {
+      "coreLanguageId": "not-in-saved-response",
+      "dubRows": 62
+    }
+  ],
+  "rawComparisonPath": "/home/nisal/.cache/forge-477-preview/catalog-null-language-core-comparison.json"
+}

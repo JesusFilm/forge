@@ -2125,6 +2125,22 @@
     linear forwards;
 }
 
+/* Delayed on purpose: a stream that arrives promptly should never flash a
+   spinner on the thumbnail, so the indicator is mounted immediately (the ring
+   is already holding) but only fades in once the wait is long enough to be
+   worth explaining. `backwards` keeps it invisible during the delay. */
+.watch-home-progress-loading {
+  animation: watch-home-progress-loading-in 200ms ease-out 600ms both;
+}
+
+/* `fill-box` is what makes `center` mean the circle's own centre rather than
+   the SVG user-space origin, which would swing the arc around the viewport. */
+.watch-home-progress-ring-loading {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: watch-home-progress-ring-loading 900ms linear infinite;
+}
+
 .watch-home-progress-ring-reset {
   animation: watch-home-progress-ring-reset 900ms
     cubic-bezier(0.2, 1.35, 0.35, 1) forwards;
@@ -2263,6 +2279,10 @@
 
   .watch-home-progress-ring {
     animation: none;
+  }
+
+  .watch-home-progress-ring-loading {
+    animation-duration: 2400ms;
   }
 
   .watch-home-section-backdrop-enter {
@@ -2498,6 +2518,21 @@
 @keyframes watch-home-progress-ring {
   to {
     stroke-dashoffset: 0;
+  }
+}
+
+@keyframes watch-home-progress-loading-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes watch-home-progress-ring-loading {
+  to {
+    transform: rotate(360deg);
   }
 }
 

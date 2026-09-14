@@ -28,6 +28,15 @@ const mockEnv = vi.hoisted(() => ({
   ),
 }))
 
+const ensureStudioCalendarSchedulerStarted = vi.hoisted(() => vi.fn())
+const ensureStudioCalendarPublicationSchedulerStarted = vi.hoisted(() =>
+  vi.fn(),
+)
+vi.mock("@/services/studio-authoring/calendar-scheduler", () => ({
+  ensureStudioCalendarSchedulerStarted,
+  ensureStudioCalendarPublicationSchedulerStarted,
+}))
+
 const worldStart = vi.hoisted(() => vi.fn())
 const getWorld = vi.hoisted(() => vi.fn(() => ({ start: worldStart })))
 const startWorkflowWorkerHeartbeat = vi.hoisted(() => vi.fn())
@@ -118,6 +127,8 @@ describe("workflow instrumentation", () => {
   beforeEach(() => {
     vi.useRealTimers()
     vi.resetModules()
+    ensureStudioCalendarSchedulerStarted.mockReset()
+    ensureStudioCalendarPublicationSchedulerStarted.mockReset()
     worldStart.mockReset()
     getWorld.mockReset()
     getWorld.mockImplementation(() => ({ start: worldStart }))
@@ -336,6 +347,10 @@ describe("workflow instrumentation", () => {
 
     expect(shouldStartWorkflowWorld()).toBe(true)
     await register()
+    expect(ensureStudioCalendarSchedulerStarted).toHaveBeenCalledTimes(1)
+    expect(
+      ensureStudioCalendarPublicationSchedulerStarted,
+    ).toHaveBeenCalledTimes(1)
 
     expect(getWorld).toHaveBeenCalledTimes(1)
     expect(worldStart).toHaveBeenCalledTimes(1)

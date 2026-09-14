@@ -219,11 +219,17 @@ async function startWorkflowWorld(): Promise<void> {
     await import("@/services/recommendations/profiles/reconciliation.job")
   const { ensureRecommendationEpisodeFinalizationRecovery } =
     await import("@/services/recommendations/finalization/job")
+  const {
+    ensureStudioCalendarSchedulerStarted,
+    ensureStudioCalendarPublicationSchedulerStarted,
+  } = await import("@/services/studio-authoring/calendar-scheduler")
   const { ensureWatchSearchTranscriptPublicationWorkerStarted } =
     await import("@/services/typesense-watch-search-transcript-publication")
   const world = getWorld()
   await world.start?.()
   await startWorkflowWorkerHeartbeat()
+  await ensureStudioCalendarSchedulerStarted()
+  await ensureStudioCalendarPublicationSchedulerStarted()
   await ensureCoreSyncSchedulerStarted()
   await ensureVideoDbBackupSchedulerStarted()
   await ensureSearchTraceRetentionSchedulerStarted()

@@ -527,7 +527,8 @@
     "previousVideoPreview": "Fa'aaliga muamua o le vitio muamua",
     "nextVideoPreview": "Fa'aaliga muamua o le vitio e soso'o ai",
     "mediaCollection": "Aoina o fa'asalalauga",
-    "scrollToVideo": "Fa'asolo i le vitio {title}"
+    "scrollToVideo": "Fa'asolo i le vitio {title}",
+    "forYou": "Mo oe"
   },
   "WatchFooter": {
     "home": "Itulau autū o Jesus Film Project",
@@ -597,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",

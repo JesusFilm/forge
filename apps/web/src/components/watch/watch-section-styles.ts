@@ -18,7 +18,7 @@ export const WATCH_LANGUAGE_TAG_CLASS =
   "inline-flex items-center gap-1 px-1 text-xs font-normal text-white/85 md:text-sm"
 
 // The glyph for "the full video library" — the floating header's control and
-// the watch-home "See all video collections" CTA both point at the language
+// the watch-home "See all videos" CTA both point at the language
 // video index, so they share one icon reference rather than each naming a
 // lucide import that can drift apart.
 export const WatchLibraryIcon = ListVideo

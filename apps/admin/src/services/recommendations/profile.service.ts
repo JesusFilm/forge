@@ -45,6 +45,7 @@ const TransitionInput = z
   .strict()
 
 type ProfileDependencies = {
+  transaction?: Prisma.TransactionClient
   prisma: PrismaClient
   now?: () => Date
   newId?: () => string
@@ -165,6 +166,14 @@ function activeReceipt(
 export class RecommendationProfileService {
   constructor(private readonly deps: ProfileDependencies) {}
 
+  private transaction<T>(
+    operation: (tx: Prisma.TransactionClient) => Promise<T>,
+  ): Promise<T> {
+    return this.deps.transaction
+      ? operation(this.deps.transaction)
+      : this.deps.prisma.$transaction(operation)
+  }
+
   async status(input: {
     caller: Principal | null
     contractVersion: string
@@ -266,7 +275,7 @@ export class RecommendationProfileService {
         cookieDisposition: "clear",
       })
     }
-    return this.deps.prisma.$transaction(async (tx) => {
+    return this.transaction(async (tx) => {
       await this.lockProfileAuthority(tx, profile.id)
       const [lockedProfile, lockedConsent] = await Promise.all([
         tx.recommendationProfile.findUnique({ where: { id: profile.id } }),
@@ -387,7 +396,7 @@ export class RecommendationProfileService {
       )
     }
     const now = this.deps.now?.() ?? new Date()
-    return this.deps.prisma.$transaction(async (tx) => {
+    return this.transaction(async (tx) => {
       await tx.$executeRaw`
         SELECT pg_advisory_xact_lock(
           hashtextextended(${`recommendation-profile:${parsed.sessionDigest}`}, 378)
@@ -627,7 +636,7 @@ export class RecommendationProfileService {
     privacyGeneration: number
   }): Promise<boolean> {
     const now = this.deps.now?.() ?? new Date()
-    return this.deps.prisma.$transaction(async (tx) => {
+    return this.transaction(async (tx) => {
       const profile = await tx.recommendationProfile.findUnique({
         where: { id: input.profileId },
       })

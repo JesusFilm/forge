@@ -291,12 +291,24 @@ export const fleetSearchCeilingEnforceEnvSchema = z
 // vars it owns here and in runtimeEnv. Never read process.env directly.
 export const env = createEnv({
   server: {
+    STUDIO_ENVIRONMENT: z
+      .enum(["local", "preview", "production"])
+      .default("local"),
+    STUDIO_PRODUCTION_ENABLED: z.enum(["true", "false"]).default("false"),
+    STUDIO_PUBLICATION_ENABLED: z.enum(["true", "false"]).default("false"),
+    STUDIO_INTERACTIVE_PUBLIC_KEYS: z.string().optional(),
+    STUDIO_PUBLIC_PLAYBACK_ORIGIN: z.string().url().optional(),
+    STUDIO_MUX_SIGNING_KEY: z.string().optional(),
+    STUDIO_MUX_PRIVATE_KEY: z.string().optional(),
+
     // Unit 2 — Prisma / Postgres
     //
     // DATABASE_URL: plain Postgres connection URL. Prisma pool configuration
     // lives in src/db/client.ts via @prisma/adapter-pg so the same URL remains
     // compatible with libpq tools such as pg_dump, psql, and pg_restore.
     DATABASE_URL: z.string().url(),
+    // Opt-in disposable Studio integration database; never falls back to DATABASE_URL.
+    STUDIO_TEST_DATABASE_URL: z.string().url().optional(),
     ADMIN_SESSION_SECRET: z.string().min(32),
     // Optional admin OAuth cookie prefix. Use a unique value for local
     // worktree previews sharing localhost so branches do not overwrite each
@@ -419,6 +431,10 @@ export const env = createEnv({
     RECOMMENDATION_PROFILE_DB_FIXTURE: z.enum(["deterministic"]).optional(),
     // Opt-in real-Redis proof for feat-368 atomic delivery admission.
     RECOMMENDATION_REDIS_TEST: z.enum(["1"]).optional(),
+    // Source-free serving is enabled by default; false remains a kill switch.
+    RECOMMENDATION_USER_SERVING_ENABLED: z
+      .enum(["true", "false"])
+      .default("true"),
     // Fail-closed startup ceiling. The shared Postgres serving-control row is
     // the replica-wide runtime switch; this flag can only narrow it.
     RECOMMENDATION_SEMANTIC_SERVING_ENABLED: z
@@ -744,7 +760,16 @@ export const env = createEnv({
   },
   skipValidation: !!process.env.CI,
   runtimeEnv: {
+    STUDIO_ENVIRONMENT: process.env.STUDIO_ENVIRONMENT,
+    STUDIO_PRODUCTION_ENABLED: process.env.STUDIO_PRODUCTION_ENABLED,
+    STUDIO_PUBLICATION_ENABLED: process.env.STUDIO_PUBLICATION_ENABLED,
+    STUDIO_INTERACTIVE_PUBLIC_KEYS: process.env.STUDIO_INTERACTIVE_PUBLIC_KEYS,
+    STUDIO_PUBLIC_PLAYBACK_ORIGIN: process.env.STUDIO_PUBLIC_PLAYBACK_ORIGIN,
+    STUDIO_MUX_SIGNING_KEY: process.env.STUDIO_MUX_SIGNING_KEY,
+    STUDIO_MUX_PRIVATE_KEY: process.env.STUDIO_MUX_PRIVATE_KEY,
+
     DATABASE_URL: process.env.DATABASE_URL,
+    STUDIO_TEST_DATABASE_URL: process.env.STUDIO_TEST_DATABASE_URL,
     NEXT_PUBLIC_DATADOG_APPLICATION_ID: emptyToUndefined(
       process.env.NEXT_PUBLIC_DATADOG_APPLICATION_ID,
     ),
@@ -899,6 +924,10 @@ export const env = createEnv({
     RECOMMENDATION_REDIS_TEST: emptyToUndefined(
       process.env.RECOMMENDATION_REDIS_TEST,
     ),
+    // CI skips Zod defaults; keep the enabled default in the runtime input too.
+    RECOMMENDATION_USER_SERVING_ENABLED:
+      emptyToUndefined(process.env.RECOMMENDATION_USER_SERVING_ENABLED) ??
+      "true",
     RECOMMENDATION_SEMANTIC_SERVING_ENABLED: emptyToUndefined(
       process.env.RECOMMENDATION_SEMANTIC_SERVING_ENABLED,
     ),

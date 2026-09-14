@@ -3398,6 +3398,143 @@ suite("current transcript publication into Watch Search", () => {
     ).resolves.toEqual({ status: "idle" })
   }, 180_000)
 
+  it("repairs retained dead-letter stale evidence when a newer generation supersedes it", async () => {
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "dead-letter-repair-v1" }),
+    )
+    const initial = await publishOneCurrentTranscriptToWatchSearch({
+      prisma,
+      typesense,
+      generations,
+      withIndexLock: (run) =>
+        withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+    })
+    expect(initial).toMatchObject({
+      status: "published",
+      sourceGeneration: 1n,
+      projectionRevision: 1n,
+      documentCount: 2,
+    })
+
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({
+        mode: "force",
+        mastraRunId: "dead-letter-repair-v2",
+        generatedAt: "2026-09-03T00:10:00.000Z",
+        chunks: [
+          { text: "Replacement before poison", embedding, tokenCount: 3 },
+        ],
+      }),
+    )
+    const poisonedEvent =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow(
+        { where: { sourceGeneration: 2n } },
+      )
+    const staleDocumentId = poisonedEvent.staleDocumentIds[0]
+    expect(staleDocumentId).toBeTruthy()
+    await prisma.watchSearchCurrentTranscriptPublicationEvent.update({
+      where: { id: poisonedEvent.id },
+      data: { attemptCount: MAX_PUBLICATION_ATTEMPTS - 1 },
+    })
+
+    const failingTypesense = {
+      getAlias: (...args: Parameters<TypesenseClient["getAlias"]>) =>
+        typesense.getAlias(...args),
+      getCollectionSchema: (
+        ...args: Parameters<TypesenseClient["getCollectionSchema"]>
+      ) => typesense.getCollectionSchema(...args),
+      importDocuments: async () => {
+        throw new Error("simulated terminal publication failure")
+      },
+      deleteDocumentsByFilter: (
+        ...args: Parameters<TypesenseClient["deleteDocumentsByFilter"]>
+      ) => typesense.deleteDocumentsByFilter(...args),
+      getDocument: (...args: Parameters<TypesenseClient["getDocument"]>) =>
+        typesense.getDocument(...args),
+    } satisfies Pick<
+      TypesenseClient,
+      | "deleteDocumentsByFilter"
+      | "getAlias"
+      | "getCollectionSchema"
+      | "getDocument"
+      | "importDocuments"
+    >
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense: failingTypesense,
+        generations,
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).rejects.toThrow("simulated terminal publication failure")
+    await expect(
+      prisma.watchSearchCurrentTranscriptPublicationEvent.findUniqueOrThrow({
+        where: { id: poisonedEvent.id },
+        select: {
+          status: true,
+          staleDocumentIds: true,
+          deadLetteredAt: true,
+        },
+      }),
+    ).resolves.toEqual({
+      status: "DEAD_LETTER",
+      staleDocumentIds: [staleDocumentId],
+      deadLetteredAt: expect.any(Date),
+    })
+    await expect(
+      typesense.getDocument(TYPESENSE_WATCH_TRANSCRIPT_ALIAS, staleDocumentId!),
+    ).resolves.toBeDefined()
+
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({
+        mode: "force",
+        mastraRunId: "dead-letter-repair-v3",
+        generatedAt: "2026-09-03T00:20:00.000Z",
+        chunks: [
+          { text: "Newest canonical transcript", embedding, tokenCount: 3 },
+        ],
+      }),
+    )
+    const repairEvent =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow(
+        { where: { sourceGeneration: 3n } },
+      )
+    expect(repairEvent.staleDocumentIds).not.toContain(staleDocumentId)
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense,
+        generations,
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).resolves.toMatchObject({
+      status: "published",
+      sourceGeneration: 3n,
+      projectionRevision: 2n,
+      documentCount: 1,
+    })
+    await expect(
+      typesense.getDocument(TYPESENSE_WATCH_TRANSCRIPT_ALIAS, staleDocumentId!),
+    ).resolves.toBeUndefined()
+    await expect(
+      prisma.watchSearchCurrentTranscriptPublicationEvent.findMany({
+        orderBy: { sourceGeneration: "asc" },
+        select: { sourceGeneration: true, status: true },
+      }),
+    ).resolves.toEqual([
+      { sourceGeneration: 1n, status: "COMPLETED" },
+      { sourceGeneration: 2n, status: "COMPLETED" },
+      { sourceGeneration: 3n, status: "COMPLETED" },
+    ])
+  }, 180_000)
+
   it("dead-letters the final attempt when compensating cleanup also fails", async () => {
     await ingestTranscriptEmbeddings(
       prisma,

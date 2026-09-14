@@ -381,6 +381,10 @@ export function buildWatchHomeSeedBlocks(
       sectionKey: "watch-home-category-rail",
       categoryIds: WATCH_HOME_CATEGORY_CATALOG.map(({ id }) => id),
     },
+    {
+      t: "homepageRecommendations",
+      sectionKey: "watch-user-recommendations",
+    },
     ...mediaCollectionBlocks,
     WATCH_HOME_PROMO_SECTION,
     {

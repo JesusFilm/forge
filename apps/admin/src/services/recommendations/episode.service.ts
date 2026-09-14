@@ -1,3 +1,4 @@
+import { RecommendationSurfaceSchema } from "./token.service"
 import { createHash, randomBytes, randomUUID } from "node:crypto"
 import {
   RecommendationAuditKind,
@@ -222,7 +223,7 @@ export class RecommendationEpisodeService {
         requestId: item.requestId,
         itemId: item.id,
         sessionDigest: item.request.sessionDigest,
-        surface: RECOMMENDATION_CONTRACTS.surface,
+        surface: RecommendationSurfaceSchema.parse(item.request.surfaceVersion),
         manifestId: item.request.manifestId,
         ...(assignment
           ? {

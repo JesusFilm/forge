@@ -20,7 +20,7 @@ export const WATCH_HOME_HERO_RESERVE_BELOW_MOBILE_PX = 500
  * expression here prevents those two muted surfaces from drifting apart.
  */
 export const WATCH_MUTED_INTRO_HEIGHT_CLASS =
-  "h-[max(34svh,calc(100svh_-_500px))] md:h-[max(34svh,min(56.25vw,calc(100svh_-_440px)))]"
+  "h-[max(50dvh,calc(100svh_-_500px))] md:h-[max(34svh,min(56.25vw,calc(100svh_-_440px)))]"
 
 /**
  * Floor, as a share of the viewport. Without it a short window (or a rail that
@@ -28,6 +28,7 @@ export const WATCH_MUTED_INTRO_HEIGHT_CLASS =
  * this the rail simply does not fit, which is the better failure.
  */
 export const WATCH_HOME_HERO_MIN_HEIGHT_RATIO = 0.34
+export const WATCH_HOME_HERO_MOBILE_MIN_HEIGHT_RATIO = 0.5
 
 /**
  * The intro's unconstrained height, as ratios. These MUST match the `56.25vw`
@@ -44,20 +45,20 @@ export type WatchHomeHeroFitInput = {
   aspectHeight: number
   /** Measured height of the content that must fit under it. */
   reservedBelow: number
+  /** Responsive floor as a share of the currently visible viewport. */
+  minHeightRatio?: number
 }
 
 export function fitWatchHomeHeroHeight({
   viewportHeight,
   aspectHeight,
   reservedBelow,
+  minHeightRatio = WATCH_HOME_HERO_MIN_HEIGHT_RATIO,
 }: WatchHomeHeroFitInput): number {
   const spaceLeft = viewportHeight - reservedBelow
   // The floor can never push the intro past its own aspect height — fitting is
   // only ever allowed to shrink it.
-  const floor = Math.min(
-    aspectHeight,
-    viewportHeight * WATCH_HOME_HERO_MIN_HEIGHT_RATIO,
-  )
+  const floor = Math.min(aspectHeight, viewportHeight * minHeightRatio)
   // Floor, never round: the measured rail height is fractional, and rounding
   // up hands the rail's last pixel back to the intro — enough to push the rail
   // one pixel past the fold.

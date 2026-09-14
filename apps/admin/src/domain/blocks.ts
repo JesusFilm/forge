@@ -420,6 +420,15 @@ export const VideoRecommendationsBlockSchema = z
   })
   .strict()
 
+/** Page-level personalized row. Content is resolved privately by the consumer. */
+export const HomepageRecommendationsBlockSchema = z
+  .object({
+    t: z.literal("homepageRecommendations"),
+    sectionKey,
+    title: z.string().max(160).optional(),
+  })
+  .strict()
+
 export const VideoHeroBlockSchema = z
   .object({
     t: z.literal("videoHero"),
@@ -723,6 +732,7 @@ export const BlockSchema = z.discriminatedUnion("t", [
   VideoBlockSchema,
   VideoCarouselBlockSchema,
   VideoRecommendationsBlockSchema,
+  HomepageRecommendationsBlockSchema,
   NavigationCarouselBlockSchema,
   WatchHomeCategoryRailBlockSchema,
   WatchHomeHeroBlockSchema,
@@ -744,6 +754,16 @@ export type Block = z.infer<typeof BlockSchema>
  * hand-authored 1-block content.
  */
 export const BlocksSchema = z.array(BlockSchema).superRefine((blocks, ctx) => {
+  const recommendations = blocks.flatMap((block, index) =>
+    block.t === "homepageRecommendations" ? [index] : [],
+  )
+  for (const index of recommendations.slice(1)) {
+    ctx.addIssue({
+      code: "custom",
+      path: [index],
+      message: "Only one user recommendations block is allowed",
+    })
+  }
   let categoryRailSeen = false
   for (const [index, block] of blocks.entries()) {
     if (block.t !== "watchHomeCategoryRail") continue

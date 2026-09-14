@@ -138,6 +138,7 @@ describe("RecommendationIntegrityService", () => {
       expiresAt: EXPIRES,
       supersededBy: null,
       request: {
+        surfaceVersion: "watch-below-player-v1",
         promotionSlateFence: {
           reasonCode: "promotion_rollback",
           fencedAt: NOW,
@@ -371,6 +372,7 @@ describe("RecommendationIntegrityService", () => {
       receivedAt: NOW,
       expiresAt: EXPIRES,
       request: {
+        surfaceVersion: "watch-below-player-v1",
         sessionDigest: "a".repeat(64),
         promotionSlateFence: null,
       },
@@ -397,49 +399,53 @@ describe("RecommendationIntegrityService", () => {
     })
   })
 
-  it("admits a selection only after the matching Watch impression commits", async () => {
-    const { prisma, tx } = fixture()
-    tx.recommendationSelection.findUnique.mockResolvedValue({
-      id: "selection-eligible",
-      requestId: "request-1",
-      itemId: "item-1",
-      capabilityJti: "selection-jti",
-      eventId: "selection-event",
-      payloadDigest: "8".repeat(64),
-      attributionEligibleAt: NOW,
-      occurredAt: NOW,
-      receivedAt: NOW,
-      expiresAt: EXPIRES,
-      request: {
-        sessionDigest: "a".repeat(64),
-        promotionSlateFence: null,
-      },
-      item: { targetMediaId: "media-1" },
-    })
-    tx.recommendationImpression.findUnique.mockResolvedValue({
-      id: "impression-1",
-      capabilityJti: "impression-jti",
-      eventId: "impression-event",
-      payloadDigest: "9".repeat(64),
-      visibilityPolicy: "watch-below-player-v1",
-      receivedAt: NOW,
-      expiresAt: EXPIRES,
-    })
+  it.each(["watch-below-player-v1", "watch-for-you-v1"])(
+    "admits a selection only after the matching %s impression commits",
+    async (surfaceVersion) => {
+      const { prisma, tx } = fixture()
+      tx.recommendationSelection.findUnique.mockResolvedValue({
+        id: "selection-eligible",
+        requestId: "request-1",
+        itemId: "item-1",
+        capabilityJti: "selection-jti",
+        eventId: "selection-event",
+        payloadDigest: "8".repeat(64),
+        attributionEligibleAt: NOW,
+        occurredAt: NOW,
+        receivedAt: NOW,
+        expiresAt: EXPIRES,
+        request: {
+          surfaceVersion,
+          sessionDigest: "a".repeat(64),
+          promotionSlateFence: null,
+        },
+        item: { targetMediaId: "media-1" },
+      })
+      tx.recommendationImpression.findUnique.mockResolvedValue({
+        id: "impression-1",
+        capabilityJti: "impression-jti",
+        eventId: "impression-event",
+        payloadDigest: "9".repeat(64),
+        visibilityPolicy: surfaceVersion,
+        receivedAt: NOW,
+        expiresAt: EXPIRES,
+      })
 
-    await expect(
-      new RecommendationIntegrityService({
-        prisma: prisma as never,
-        now: () => NOW,
-        newId: () => "selection-decision",
-      }).classifySelection("selection-eligible"),
-    ).resolves.toMatchObject({
-      state: "eligible",
-      eligibleScopes: ["profile"],
-    })
-    expect(tx.recommendationEligibilityDecision.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ selectionId: "selection-eligible" }),
-    })
-  })
+      await expect(
+        new RecommendationIntegrityService({
+          prisma: prisma as never,
+          now: () => NOW,
+          newId: () => "selection-decision",
+        }).classifySelection("selection-eligible"),
+      ).resolves.toMatchObject({
+        state: "eligible",
+        eligibleScopes: ["profile"],
+      })
+      expect(tx.recommendationEligibilityDecision.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ selectionId: "selection-eligible" }),
+      })
+    },
+  )
 
   it("fails closed when a selection impression uses another visibility policy", async () => {
     const { prisma, tx } = fixture()
@@ -455,6 +461,7 @@ describe("RecommendationIntegrityService", () => {
       receivedAt: NOW,
       expiresAt: EXPIRES,
       request: {
+        surfaceVersion: "watch-below-player-v1",
         sessionDigest: "a".repeat(64),
         promotionSlateFence: null,
       },
@@ -497,6 +504,7 @@ describe("RecommendationIntegrityService", () => {
       receivedAt: NOW,
       expiresAt: EXPIRES,
       request: {
+        surfaceVersion: "watch-below-player-v1",
         sessionDigest: "a".repeat(64),
         promotionSlateFence: null,
       },

@@ -1,0 +1,15 @@
+diff --git a/apps/mastra/src/services/devotional/henry-sections.test.ts b/apps/mastra/src/services/devotional/henry-sections.test.ts
+index 44f2b01c..25d275a7 100644
+--- a/apps/mastra/src/services/devotional/henry-sections.test.ts
++++ b/apps/mastra/src/services/devotional/henry-sections.test.ts
+@@ -13,8 +13,8 @@ import { henrySectionForVerses, henrySections } from "./henry-sections"
+ function luke19(): string {
+   const raw = readFileSync(
+     path.join(
+-      process.env.HOME ?? "",
+-      "Desktop/devo-data/devo/corpus/matthew-henry-gospels.json",
++      process.env.LYUBA_BASELINE_DATA_DIR ?? "",
++      "devo/corpus/matthew-henry-gospels.json",
+     ),
+     "utf8",
+   )

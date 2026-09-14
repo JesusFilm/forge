@@ -42,6 +42,13 @@ const VIDEO_POSTER_HOLD_MS = 1500
 const VIDEO_POSTER_HOLD_SECONDS = VIDEO_POSTER_HOLD_MS / 1000
 const VIDEO_POSTER_HOLD_PROGRESS_TICK_MS = 250
 export const WATCH_HOME_TV_VIDEO_PREVIEW_MAX_SECONDS = 30
+/**
+ * How long the hero waits on a stream before giving the turn to the next
+ * slide. The advance clock runs only while there is something to watch (see
+ * `isBuffering`), so without this ceiling a video whose bytes never arrive
+ * would hold the hero behind a loading indicator forever.
+ */
+export const WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS = 12_000
 export const WATCH_HOME_TV_TIMELINE_FUTURE_COUNT = 3
 
 function subscribeToHydrationStore() {
@@ -204,11 +211,24 @@ export function useWatchHomeTvCarousel(
   const [leavingSlide, setLeavingSlide] =
     useState<WatchHomeTvCarouselSlide | null>(null)
   const [mediaReady, setMediaReady] = useState(false)
+  // Waiting on bytes: true from the moment a video slide is chosen until it can
+  // play, and again whenever playback stalls. Starts true because the opening
+  // slide has not loaded anything yet either.
+  const [isBufferingMedia, setIsBufferingMedia] = useState(true)
   const isMutedRef = useRef(isMuted)
   const leavingSlideTimeoutRef = useRef<number | null>(null)
   const slideAdvanceTimeoutRef = useRef<number | null>(null)
   const videoPosterHoldIntervalRef = useRef<number | null>(null)
   const videoPosterHoldTimeoutRef = useRef<number | null>(null)
+  const mediaWaitTimeoutRef = useRef<number | null>(null)
+  // The advance clock is parked while buffering, so the elapsed time has to
+  // survive the re-runs that park and restart it.
+  const advanceClockRef = useRef<{ slideId: string | null; elapsedMs: number }>(
+    {
+      slideId: null,
+      elapsedMs: 0,
+    },
+  )
   const previousProgressRef = useRef(0)
   const imageSlideStartedAtRef = useRef<number | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
@@ -278,6 +298,9 @@ export function useWatchHomeTvCarousel(
   const autoAdvancePaused =
     activeSlide != null &&
     activeSlide.id === options.autoAdvancePausedForSlideId
+  // Only a video slide can be waiting on bytes; an image slide is fully on
+  // screen the moment it is chosen.
+  const isBuffering = Boolean(activeSlide?.src) && isBufferingMedia
   const safeActiveIndex = activeSlide
     ? Math.max(
         0,
@@ -362,6 +385,13 @@ export function useWatchHomeTvCarousel(
     }
   }, [])
 
+  const clearMediaWaitTimeout = useCallback(() => {
+    if (mediaWaitTimeoutRef.current != null) {
+      window.clearTimeout(mediaWaitTimeoutRef.current)
+      mediaWaitTimeoutRef.current = null
+    }
+  }, [])
+
   const clearSlideAdvanceTimeout = useCallback(() => {
     if (slideAdvanceTimeoutRef.current != null) {
       window.clearTimeout(slideAdvanceTimeoutRef.current)
@@ -393,6 +423,7 @@ export function useWatchHomeTvCarousel(
       clearVideoPosterHold()
       setProgress(0)
       setMediaReady(false)
+      setIsBufferingMedia(Boolean(nextSlide?.src))
       setPlaybackTime({ seconds: 0, slideId: nextSlide?.id ?? null })
       setActiveSlideId(nextSlide?.id ?? null)
     },
@@ -482,6 +513,7 @@ export function useWatchHomeTvCarousel(
   const handleCanPlay = useCallback(() => {
     const video = videoRef.current
     if (!video) return
+    setIsBufferingMedia(false)
     video.muted = isMutedRef.current
     clearVideoPosterHold()
 
@@ -526,6 +558,17 @@ export function useWatchHomeTvCarousel(
     }, VIDEO_POSTER_HOLD_MS)
   }, [clearVideoPosterHold])
 
+  // A stall after playback has begun is the same situation as one before it:
+  // the viewer is watching a still frame, so the ring and the advance clock
+  // both hold until the bytes come back.
+  const handleWaiting = useCallback(() => {
+    setIsBufferingMedia(true)
+  }, [])
+
+  const handlePlaying = useCallback(() => {
+    setIsBufferingMedia(false)
+  }, [])
+
   useEffect(() => {
     autoAdvancePausedRef.current = autoAdvancePaused
   }, [autoAdvancePaused])
@@ -549,6 +592,9 @@ export function useWatchHomeTvCarousel(
       }
       if (videoPosterHoldIntervalRef.current != null) {
         window.clearInterval(videoPosterHoldIntervalRef.current)
+      }
+      if (mediaWaitTimeoutRef.current != null) {
+        window.clearTimeout(mediaWaitTimeoutRef.current)
       }
     }
   }, [])
@@ -593,22 +639,38 @@ export function useWatchHomeTvCarousel(
   useEffect(() => {
     if (!activeSlide) return
 
+    const clock = advanceClockRef.current
+    if (clock.slideId !== activeSlide.id) {
+      clock.slideId = activeSlide.id
+      clock.elapsedMs = 0
+    }
+
     clearSlideAdvanceTimeout()
-    if (autoAdvancePaused) return undefined
+    // A slide's turn is time the viewer spends WATCHING it. Running this clock
+    // from the moment the slide is chosen spent that turn on a loading spinner
+    // over a slow connection — the ring filled and the hero moved on over a
+    // video nobody ever saw. Parking it while buffering keeps the ring (which
+    // animates over the same duration) honest by construction.
+    if (autoAdvancePaused || isBuffering) return undefined
 
     const advanceAfterMs = activeSlide.src
       ? watchHomeTvAdvanceTargetSeconds(
           activeSlide.durationSeconds ?? Number.NaN,
         ) * 1000
       : IMAGE_SLIDE_ADVANCE_MS
+    const startedAt = Date.now()
 
-    slideAdvanceTimeoutRef.current = window.setTimeout(() => {
-      slideAdvanceTimeoutRef.current = null
-      advance()
-    }, advanceAfterMs)
+    slideAdvanceTimeoutRef.current = window.setTimeout(
+      () => {
+        slideAdvanceTimeoutRef.current = null
+        advance()
+      },
+      Math.max(0, advanceAfterMs - clock.elapsedMs),
+    )
 
     return () => {
       clearSlideAdvanceTimeout()
+      clock.elapsedMs += Date.now() - startedAt
     }
   }, [
     activeSlide,
@@ -618,7 +680,24 @@ export function useWatchHomeTvCarousel(
     advance,
     autoAdvancePaused,
     clearSlideAdvanceTimeout,
+    isBuffering,
   ])
+
+  // The ceiling on a parked clock: a stream that never arrives still loses its
+  // turn, so one dead video cannot strand the hero.
+  useEffect(() => {
+    clearMediaWaitTimeout()
+    if (!isBuffering || autoAdvancePaused) return undefined
+
+    mediaWaitTimeoutRef.current = window.setTimeout(() => {
+      mediaWaitTimeoutRef.current = null
+      advance()
+    }, WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS)
+
+    return () => {
+      clearMediaWaitTimeout()
+    }
+  }, [advance, autoAdvancePaused, clearMediaWaitTimeout, isBuffering])
 
   useEffect(() => {
     if (!isSequenced || !sequence || videoQueue.length === 0) return
@@ -696,7 +775,10 @@ export function useWatchHomeTvCarousel(
       handleCanPlay,
       handleEnded: advance,
       handleLoadedMetadata,
+      handlePlaying,
       handleTimeUpdate,
+      handleWaiting,
+      isBuffering,
       isMuted,
       leavingSlide,
       mediaReady,
@@ -714,8 +796,11 @@ export function useWatchHomeTvCarousel(
       advance,
       handleCanPlay,
       handleLoadedMetadata,
+      handlePlaying,
       handleTimeUpdate,
+      handleWaiting,
       displaySlides,
+      isBuffering,
       isMuted,
       leavingSlide,
       mediaReady,

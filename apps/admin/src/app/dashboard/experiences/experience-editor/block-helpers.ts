@@ -34,6 +34,7 @@ export type BlockTemplateKey =
   | "videoHero"
   | "watchHomeHero"
   | "watchHomeCategoryRail"
+  | "homepageRecommendations"
   | "routeVideo"
   | "routeVideoCarousel"
   | "routeVideoHero"
@@ -44,6 +45,7 @@ export const BLOCK_TEMPLATE_KEYS: BlockTemplateKey[] = [
   "videoCarousel",
   "watchHomeHero",
   "watchHomeCategoryRail",
+  "homepageRecommendations",
   "languageGlobe",
   "routeVideoHero",
   "routeVideo",
@@ -403,6 +405,17 @@ export function summarizeBlock(
     }
   }
 
+  if (type === "homepageRecommendations") {
+    return {
+      key: summaryKey,
+      typeLabel: "Homepage Recommendations Block",
+      title: asString(value.title).trim() || "Recommended for You",
+      body: "Six videos personalized for each viewer, with curated starters for new viewers.",
+      tone: "grid",
+      badges: ["PERSONALIZED"],
+    }
+  }
+
   if (type === "watchHomeCategoryRail") {
     // `tiles` is authoritative when present; `categoryIds` is what blocks
     // stored before tile authoring carry (and the mirror kept for old readers).
@@ -732,6 +745,13 @@ export function createTemplateBlock(
     return {
       t: "watchHomeHero",
       sectionKey: `watch-home-hero-${index}`,
+    }
+  }
+
+  if (template === "homepageRecommendations") {
+    return {
+      t: "homepageRecommendations",
+      sectionKey: `user-recommendations-${index}`,
     }
   }
 

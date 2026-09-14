@@ -6,6 +6,7 @@ import {
   fitWatchHomeHeroHeight,
   WATCH_HOME_HERO_ASPECT_RATIO,
   WATCH_HOME_HERO_MIN_HEIGHT_RATIO,
+  WATCH_HOME_HERO_MOBILE_MIN_HEIGHT_RATIO,
   WATCH_HOME_HERO_MOBILE_VIEWPORT_RATIO,
   WATCH_HOME_HERO_RESERVE_BELOW_MOBILE_PX,
   WATCH_HOME_HERO_RESERVE_BELOW_PX,
@@ -48,6 +49,18 @@ describe("watch home hero fit", () => {
         reservedBelow: 900,
       }),
     ).toBe(Math.round(viewportHeight * WATCH_HOME_HERO_MIN_HEIGHT_RATIO))
+  })
+
+  it("keeps the mobile intro at least half of the visible viewport", () => {
+    const viewportHeight = 844
+    expect(
+      fitWatchHomeHeroHeight({
+        viewportHeight,
+        aspectHeight: viewportHeight * WATCH_HOME_HERO_MOBILE_VIEWPORT_RATIO,
+        reservedBelow: 500,
+        minHeightRatio: WATCH_HOME_HERO_MOBILE_MIN_HEIGHT_RATIO,
+      }),
+    ).toBe(422)
   })
 
   it("keeps the floor under the aspect height so a tiny hero is not inflated", () => {
@@ -104,8 +117,12 @@ describe("watch home hero ratios", () => {
     expect(carousel).toContain("56.25vw")
     expect(`${WATCH_HOME_HERO_MOBILE_VIEWPORT_RATIO * 100}svh`).toBe("66svh")
     expect(carousel).toContain("h-[66svh]")
-    // The floor shares the same hazard.
+    // The responsive floors share the same hazard. Mobile uses `dvh` so the
+    // pre-hydration floor follows the currently visible browser viewport;
+    // desktop retains the existing small-viewport floor.
     expect(`${WATCH_HOME_HERO_MIN_HEIGHT_RATIO * 100}svh`).toBe("34svh")
+    expect(`${WATCH_HOME_HERO_MOBILE_MIN_HEIGHT_RATIO * 100}dvh`).toBe("50dvh")
+    expect(WATCH_MUTED_INTRO_HEIGHT_CLASS).toContain("50dvh")
     expect(WATCH_MUTED_INTRO_HEIGHT_CLASS).toContain("34svh")
     expect(WATCH_MUTED_INTRO_HEIGHT_CLASS).toContain("56.25vw")
     expect(WATCH_MUTED_INTRO_HEIGHT_CLASS).toContain(

@@ -36,3 +36,7 @@ Full context lives in `apps/auth/CLAUDE.md`. Keep both files aligned.
 - The mint helper prints the generated handle once for immediate browser use;
   never commit it, pipe it into durable logs, or paste it into issue/PR text.
 - Never log raw `AGENT_LOGIN_MINTING_KEY` values.
+
+For Studio hosted instructions, OAuth MCP authority, or execution admission, read
+`docs/solutions/security-issues/studio-native-agent-admission.md` from the repository
+root before changing those boundaries.

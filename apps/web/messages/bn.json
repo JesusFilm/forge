@@ -343,7 +343,8 @@
     "nextVideoPreview": "পরের ভিডিওর প্রিভিউ",
     "featured": "বৈশিষ্ট্যপূর্ণ",
     "mediaCollection": "মিডিয়া সংগ্রহ",
-    "scrollToVideo": "{title} ভিডিওতে স্ক্রল করুন"
+    "scrollToVideo": "{title} ভিডিওতে স্ক্রল করুন",
+    "forYou": "আপনার জন্য"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "ভাষাসমূহ",
@@ -462,7 +463,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",

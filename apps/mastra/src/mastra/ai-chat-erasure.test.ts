@@ -203,6 +203,8 @@ function fakeStore(
   }
 
   const memory: AiChatErasureMemory = {
+    readiness: async () => "ready",
+    listLifecycleRecords: async () => [],
     listThreads: async (args) => {
       listCalls.push(args)
       operations.push("list")
@@ -237,6 +239,7 @@ function fakeStore(
       operations.push("delete")
       deleted.push(threadId)
       gone.add(threadId)
+      return { threadsDeleted: 1, recordsDeleted: 0 }
     },
     ...overrides,
   }
@@ -759,6 +762,7 @@ describe("ai-chat erasure — collect-then-delete (KTD1)", () => {
             throw new Error("deadlock detected on thread abc-secret-id")
           }
           deleted.push(threadId)
+          return { threadsDeleted: 1, recordsDeleted: 0 }
         },
       },
     )
@@ -1999,5 +2003,69 @@ describe("ai-chat erasure — persisted-store seam (KTD1)", () => {
     vi.doUnmock("./ai-chat-memory")
     vi.doUnmock("../config/env")
     vi.resetModules()
+  })
+})
+
+describe("lifecycle compatibility", () => {
+  it("defers PostgreSQL before migration without suppressing the Langfuse half", async () => {
+    const store = fakeStore({}, { readiness: async () => "not_applied" })
+    const { fetchImpl, requests } = fakeLangfuseFetch([
+      () => observationsPage([]),
+    ])
+    const result = await runExecute({
+      resourceId: "user:synthetic",
+      acquireMemory: acquiring(store.memory),
+      langfuse: langfuseSeam(fetchImpl),
+    })
+    expect(result).toMatchObject({
+      postgres: { kind: "not_ready" },
+      langfuse: { kind: "no_data" },
+    })
+    expect(store.listCalls).toHaveLength(0)
+    expect(store.deleted).toHaveLength(0)
+    expect(requests).toHaveLength(1)
+  })
+  it("rechecks lifecycle discovery against exact resource and reports committed partial counts", async () => {
+    const foreign = fakeStore(
+      {},
+      {
+        listLifecycleRecords: async () => [
+          { id: "marker", resourceId: "user:other" },
+        ],
+      },
+    )
+    expect(
+      await runPreview({
+        resourceId: "user:synthetic",
+        acquireMemory: acquiring(foreign.memory),
+      }),
+    ).toMatchObject({ postgres: { kind: "failed", reason: "filter_mismatch" } })
+    const store = fakeStore(
+      {},
+      {
+        listLifecycleRecords: async () => [
+          { id: "a", resourceId: "user:synthetic" },
+          { id: "b", resourceId: "user:synthetic" },
+        ],
+        deleteThread: async (id) => {
+          if (id === "b") throw new Error("synthetic")
+          return { threadsDeleted: 0, recordsDeleted: 1 }
+        },
+      },
+    )
+    expect(
+      await runExecute({
+        resourceId: "user:synthetic",
+        acquireMemory: acquiring(store.memory),
+      }),
+    ).toMatchObject({
+      postgres: {
+        kind: "failed",
+        stage: "delete",
+        threadsDeleted: 0,
+        recordsDeleted: 1,
+      },
+      langfuse: { kind: "skipped_unconfigured" },
+    })
   })
 })

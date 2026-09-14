@@ -1,0 +1,4911 @@
+{
+  "startedAt": "2026-09-10T02:39:28.364Z",
+  "finishedAt": "2026-09-10T02:39:52.400Z",
+  "source": "isolated restored local Admin catalog; live public CDN requests",
+  "sourceSha256": "8f3dac3ab7f4f3a77b89b92e733cd774a091506aa8c45a6a7b6736f73381d15b",
+  "scope": "All editorial Core references including alternate cuts and excluded choices. One available dub per reference, English preferred. HLS manifest GET and image HEAD only; no segment decoding or all-dub playback claim.",
+  "requestedReferences": 233,
+  "resolvedReferences": 233,
+  "uniqueResourcesProbed": 466,
+  "hlsPassed": 233,
+  "hlsFailed": 0,
+  "hlsMissing": 0,
+  "imagesPassed": 233,
+  "imagesFailed": 0,
+  "imagesMissing": 0,
+  "videos": [
+    {
+      "coreVideoId": "11_Advent0104",
+      "slug": "yakhal-hope",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 324
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 71
+      }
+    },
+    {
+      "coreVideoId": "11_Advent0204",
+      "slug": "shalom-peace",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 280
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 129
+      }
+    },
+    {
+      "coreVideoId": "11_Advent0304",
+      "slug": "chara-joy",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 259
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 42
+      }
+    },
+    {
+      "coreVideoId": "11_Advent0404",
+      "slug": "agape-love",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 278
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 40
+      }
+    },
+    {
+      "coreVideoId": "11_ReadBible1901",
+      "slug": "bp-what-is-bible-episode-1",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 263
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/png",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 46
+      }
+    },
+    {
+      "coreVideoId": "11_Shema0106",
+      "slug": "shema-listen-2",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 234
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 55
+      }
+    },
+    {
+      "coreVideoId": "11_Shema0306",
+      "slug": "ahavah-love",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 235
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 109
+      }
+    },
+    {
+      "coreVideoId": "11_Shema0406",
+      "slug": "lev-heart",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 232
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 46
+      }
+    },
+    {
+      "coreVideoId": "11_Shema0506",
+      "slug": "nephesh-soul",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 257
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 54
+      }
+    },
+    {
+      "coreVideoId": "11_Shema0606",
+      "slug": "meod-strength",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 235
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 114
+      }
+    },
+    {
+      "coreVideoId": "13_0-RPGospel0402",
+      "slug": "gospel-part-2-jesus",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 239
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 108
+      }
+    },
+    {
+      "coreVideoId": "13_0-RPGospel0403",
+      "slug": "gospel-part-3-salvation",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 255
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 41
+      }
+    },
+    {
+      "coreVideoId": "13_0-RPGospel0404",
+      "slug": "gospel-part-4-call-to-repentance",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 237
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 43
+      }
+    },
+    {
+      "coreVideoId": "14_TPP",
+      "slug": "pilgrims-progress",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 258
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/png",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 123
+      }
+    },
+    {
+      "coreVideoId": "16_Happy0301",
+      "slug": "what-makes-you-happy",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 255
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/png",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 48
+      }
+    },
+    {
+      "coreVideoId": "16_Hope0301",
+      "slug": "what-is-hope",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 257
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/png",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 81
+      }
+    },
+    {
+      "coreVideoId": "16_Known0301",
+      "slug": "desire-to-be-known",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 238
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/png",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 115
+      }
+    },
+    {
+      "coreVideoId": "17_SayIAm",
+      "slug": "who-do-you-say-i-am",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 256
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/png",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 70
+      }
+    },
+    {
+      "coreVideoId": "1_cl-0-0",
+      "slug": "the-story-of-jesus-for-children",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 260
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 105
+      }
+    },
+    {
+      "coreVideoId": "1_cl1301-0-0",
+      "slug": "storyclubs-birth-of-jesus",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 253
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 37
+      }
+    },
+    {
+      "coreVideoId": "1_cl1302-0-0",
+      "slug": "storyclubs-childhood-of-jesus",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 238
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 108
+      }
+    },
+    {
+      "coreVideoId": "1_cl1303-0-0",
+      "slug": "storyclubs-miraculous-catch-of-fish",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 263
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 289
+      }
+    },
+    {
+      "coreVideoId": "1_cl1304-0-0",
+      "slug": "storyclubs-jairus-daughter",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 239
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 31
+      }
+    },
+    {
+      "coreVideoId": "1_cl1305-0-0",
+      "slug": "storyclubs-sinful-woman-forgiven",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 260
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 272
+      }
+    },
+    {
+      "coreVideoId": "1_cl1306-0-0",
+      "slug": "storyclubs-jesus-calms-the-storm",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 240
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 128
+      }
+    },
+    {
+      "coreVideoId": "1_cl1307-0-0",
+      "slug": "storyclubs-jesus-feeds-5000",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 254
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 116
+      }
+    },
+    {
+      "coreVideoId": "1_cl1308-0-0",
+      "slug": "storyclubs-healing-bartimaeus",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 242
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 129
+      }
+    },
+    {
+      "coreVideoId": "1_cl1309-0-0",
+      "slug": "storyclubs-jesus-and-zacchaeus",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 263
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 32
+      }
+    },
+    {
+      "coreVideoId": "1_cl1310-0-0",
+      "slug": "storyclubs-a-widow-offering",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 238
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 69
+      }
+    },
+    {
+      "coreVideoId": "1_cl1311-0-0",
+      "slug": "storyclubs-the-last-supper",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 256
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 67
+      }
+    },
+    {
+      "coreVideoId": "1_cl1313-0-0",
+      "slug": "storyclubs-the-tomb-is-empty",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 256
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 50
+      }
+    },
+    {
+      "coreVideoId": "1_jf-0-0",
+      "slug": "jesus",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 266
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 68
+      }
+    },
+    {
+      "coreVideoId": "1_jf6101-0-0",
+      "slug": "the-beginning",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 241
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 75
+      }
+    },
+    {
+      "coreVideoId": "1_jf6102-0-0",
+      "slug": "birth-of-jesus",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 271
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 47
+      }
+    },
+    {
+      "coreVideoId": "1_jf6103-0-0",
+      "slug": "childhood-of-jesus",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 231
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 301
+      }
+    },
+    {
+      "coreVideoId": "1_jf6104-0-0",
+      "slug": "baptism-of-jesus-by-john",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 235
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 304
+      }
+    },
+    {
+      "coreVideoId": "1_jf6105-0-0",
+      "slug": "the-devil-tempts-jesus",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 241
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 60
+      }
+    },
+    {
+      "coreVideoId": "1_jf6106-0-0",
+      "slug": "jesus-proclaims-fulfillment-of-the-scriptures",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 262
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 108
+      }
+    },
+    {
+      "coreVideoId": "1_jf6107-0-0",
+      "slug": "parable-of-the-pharisee-and-tax-collector",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 245
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 109
+      }
+    },
+    {
+      "coreVideoId": "1_jf6108-0-0",
+      "slug": "miraculous-catch-of-fish",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 244
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 114
+      }
+    },
+    {
+      "coreVideoId": "1_jf6109-0-0",
+      "slug": "jairus-daughter-brought-back-to-life",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 254
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 44
+      }
+    },
+    {
+      "coreVideoId": "1_jf6110-0-0",
+      "slug": "disciples-chosen",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 241
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 50
+      }
+    },
+    {
+      "coreVideoId": "1_jf6111-0-0",
+      "slug": "beatitudes",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 239
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 146
+      }
+    },
+    {
+      "coreVideoId": "1_jf6112-0-0",
+      "slug": "sermon-on-the-mount-2",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 252
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 42
+      }
+    },
+    {
+      "coreVideoId": "1_jf6114-0-0",
+      "slug": "sinful-woman-forgiven",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 262
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 41
+      }
+    },
+    {
+      "coreVideoId": "1_jf6117-0-0",
+      "slug": "parable-of-the-sower-and-the-seed",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 235
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 105
+      }
+    },
+    {
+      "coreVideoId": "1_jf6118-0-0",
+      "slug": "parable-of-the-lamp",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 232
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 125
+      }
+    },
+    {
+      "coreVideoId": "1_jf6119-0-0",
+      "slug": "jesus-calms-the-storm",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 260
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 64
+      }
+    },
+    {
+      "coreVideoId": "1_jf6121-0-0",
+      "slug": "jesus-feeds-5000",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 252
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 101
+      }
+    },
+    {
+      "coreVideoId": "1_jf6122-0-0",
+      "slug": "peter-declares-jesus-to-be-the-christ",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 246
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 39
+      }
+    },
+    {
+      "coreVideoId": "1_jf6125-0-0",
+      "slug": "the-lord-prayer",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 238
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 117
+      }
+    },
+    {
+      "coreVideoId": "1_jf6126-0-0",
+      "slug": "teaching-about-prayer-and-faith",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 260
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 104
+      }
+    },
+    {
+      "coreVideoId": "1_jf6128-0-0",
+      "slug": "the-kingdom-of-god-as-a-mustard-seed",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 233
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 51
+      }
+    },
+    {
+      "coreVideoId": "1_jf6129-0-0",
+      "slug": "jesus-spends-time-with-sinners",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 247
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 32
+      }
+    },
+    {
+      "coreVideoId": "1_jf6130-0-0",
+      "slug": "healing-on-the-sabbath",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 240
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 39
+      }
+    },
+    {
+      "coreVideoId": "1_jf6131-0-0",
+      "slug": "parable-of-the-good-samaritan",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 252
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 58
+      }
+    },
+    {
+      "coreVideoId": "1_jf6132-0-0",
+      "slug": "healing-of-bartimaeus",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 240
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 107
+      }
+    },
+    {
+      "coreVideoId": "1_jf6133-0-0",
+      "slug": "jesus-and-zaccheus",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 242
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 42
+      }
+    },
+    {
+      "coreVideoId": "1_jf6135-0-0",
+      "slug": "jesus-triumphal-entry",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 257
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 102
+      }
+    },
+    {
+      "coreVideoId": "1_jf6138-0-0",
+      "slug": "widow-offering",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 236
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 110
+      }
+    },
+    {
+      "coreVideoId": "1_jf6141-0-0",
+      "slug": "paying-taxes-to-caesar",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 239
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 44
+      }
+    },
+    {
+      "coreVideoId": "1_jf6142-0-0",
+      "slug": "the-last-supper",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 254
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 45
+      }
+    },
+    {
+      "coreVideoId": "1_jf6143-0-0",
+      "slug": "upper-room-teaching",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 234
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 44
+      }
+    },
+    {
+      "coreVideoId": "1_jf6158-0-0",
+      "slug": "the-tomb-is-empty",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 232
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 38
+      }
+    },
+    {
+      "coreVideoId": "1_jf6159-0-0",
+      "slug": "resurrected-jesus-appears",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 255
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 100
+      }
+    },
+    {
+      "coreVideoId": "1_jf6160-0-0",
+      "slug": "great-commission-and-ascension",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 262
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 105
+      }
+    },
+    {
+      "coreVideoId": "1_wjv_02-0-0",
+      "slug": "fellowship-of-believers",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 248
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 67
+      }
+    },
+    {
+      "coreVideoId": "1_wjv_03-0-0",
+      "slug": "the-holy-spirit",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 252
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 64
+      }
+    },
+    {
+      "coreVideoId": "1_wjv_04-0-0",
+      "slug": "walking-in-the-spirit",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 242
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 45
+      }
+    },
+    {
+      "coreVideoId": "1_wjv_05-0-0",
+      "slug": "growing-in-christ",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 244
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 34
+      }
+    },
+    {
+      "coreVideoId": "1_wl-0-0",
+      "slug": "magdalena-director-cut",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 236
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 126
+      }
+    },
+    {
+      "coreVideoId": "1_wl60-0-0",
+      "slug": "magdalena-2",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 242
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 100
+      }
+    },
+    {
+      "coreVideoId": "1_wl604403-0-0",
+      "slug": "creation",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 241
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 47
+      }
+    },
+    {
+      "coreVideoId": "1_wl604404-0-0",
+      "slug": "temptation-and-fall-of-mankind",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 259
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 112
+      }
+    },
+    {
+      "coreVideoId": "1_wl604406-0-0",
+      "slug": "isaiah",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 243
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 41
+      }
+    },
+    {
+      "coreVideoId": "1_wl604407-0-0",
+      "slug": "announcement-to-mary",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 262
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 57
+      }
+    },
+    {
+      "coreVideoId": "1_wl604408-0-0",
+      "slug": "mary-visit-to-elizabeth",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 236
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 39
+      }
+    },
+    {
+      "coreVideoId": "1_wl604409-0-0",
+      "slug": "joseph-response",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 240
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 35
+      }
+    },
+    {
+      "coreVideoId": "1_wl604411-0-0",
+      "slug": "simeon-prophecy",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 258
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 45
+      }
+    },
+    {
+      "coreVideoId": "1_wl604412-0-0",
+      "slug": "explanation-of-miraculous-birth",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 266
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 27
+      }
+    },
+    {
+      "coreVideoId": "1_wl604413-0-0",
+      "slug": "baptism-of-jesus-by-john-2",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 238
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 61
+      }
+    },
+    {
+      "coreVideoId": "1_wl604414-0-0",
+      "slug": "jesus-proclaims-fulfillment-of-the-scriptures-2",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 238
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 45
+      }
+    },
+    {
+      "coreVideoId": "1_wl604416-0-0",
+      "slug": "rivka-home-disciples-chosen-and-women-followers",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 261
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 109
+      }
+    },
+    {
+      "coreVideoId": "1_wl604417-0-0",
+      "slug": "rome-took-everything-but-jesus-offered-hope",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 236
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 47
+      }
+    },
+    {
+      "coreVideoId": "1_wl604418-0-0",
+      "slug": "jesus-raises-the-widow-son",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 257
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 48
+      }
+    },
+    {
+      "coreVideoId": "1_wl604419-0-0",
+      "slug": "sermon-on-the-mount",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 240
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 98
+      }
+    },
+    {
+      "coreVideoId": "1_wl604420-0-0",
+      "slug": "the-woman-at-the-well",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 239
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 107
+      }
+    },
+    {
+      "coreVideoId": "1_wl604421-0-0",
+      "slug": "teaching-about-prayer-and-faith-2",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 239
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 45
+      }
+    },
+    {
+      "coreVideoId": "1_wl604422-0-0",
+      "slug": "jesus-spends-time-with-sinners-2",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 236
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 52
+      }
+    },
+    {
+      "coreVideoId": "1_wl604423-0-0",
+      "slug": "the-woman-with-the-issue-of-blood",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 258
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 60
+      }
+    },
+    {
+      "coreVideoId": "1_wl604424-0-0",
+      "slug": "jairus-daughter-brought-back-to-life-2",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 236
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 76
+      }
+    },
+    {
+      "coreVideoId": "1_wl604425-0-0",
+      "slug": "jesus-feeds-5000-2",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 262
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 44
+      }
+    },
+    {
+      "coreVideoId": "1_wl604426-0-0",
+      "slug": "teaching-about-following-him",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 234
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 41
+      }
+    },
+    {
+      "coreVideoId": "1_wl604427-0-0",
+      "slug": "healing-on-the-sabbath-2",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 259
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 114
+      }
+    },
+    {
+      "coreVideoId": "1_wl604429-0-0",
+      "slug": "widow-offering-2",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 253
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 51
+      }
+    },
+    {
+      "coreVideoId": "1_wl604430-0-0",
+      "slug": "the-adulterous-woman-forgiven",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 256
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 49
+      }
+    },
+    {
+      "coreVideoId": "1_wl604439-0-0",
+      "slug": "women-at-the-tomb-body-gone",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 256
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 42
+      }
+    },
+    {
+      "coreVideoId": "1_wl604440-0-0",
+      "slug": "magdalena-sees-the-resurrected-jesus",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 238
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 73
+      }
+    },
+    {
+      "coreVideoId": "1_wl604441-0-0",
+      "slug": "magdalena-explains-jesus-death-and-resurrection",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 258
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 65
+      }
+    },
+    {
+      "coreVideoId": "1_wl604442-0-0",
+      "slug": "knowing-god-personally",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 267
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 108
+      }
+    },
+    {
+      "coreVideoId": "1_wl604443-0-0",
+      "slug": "rivka-believes",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 255
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 47
+      }
+    },
+    {
+      "coreVideoId": "1_wl604444-0-0",
+      "slug": "living-the-christian-life",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 236
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 113
+      }
+    },
+    {
+      "coreVideoId": "2_0-2TorchHavePurpose",
+      "slug": "do-i-have-purpose",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 237
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 76
+      }
+    },
+    {
+      "coreVideoId": "2_0-3TorchLightPurpose",
+      "slug": "light-and-purpose",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 236
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 36
+      }
+    },
+    {
+      "coreVideoId": "2_0-ADream",
+      "slug": "a-dream",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 257
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 53
+      }
+    },
+    {
+      "coreVideoId": "2_0-AltroMare",
+      "slug": "altro-mare",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 240
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 100
+      }
+    },
+    {
+      "coreVideoId": "2_0-AndreasStory",
+      "slug": "andreas-story",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 243
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 115
+      }
+    },
+    {
+      "coreVideoId": "2_0-BibleTrusted",
+      "slug": "can-the-bible-be-trusted",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 254
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 104
+      }
+    },
+    {
+      "coreVideoId": "2_0-Blue",
+      "slug": "blue",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 246
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 65
+      }
+    },
+    {
+      "coreVideoId": "2_0-BornToPlay",
+      "slug": "born-to-play",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 255
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 36
+      }
+    },
+    {
+      "coreVideoId": "2_0-Brothers",
+      "slug": "brothers",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 233
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/png",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 115
+      }
+    },
+    {
+      "coreVideoId": "2_0-Cabernet",
+      "slug": "cabernet",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 262
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/png",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 107
+      }
+    },
+    {
+      "coreVideoId": "2_0-CanKnowGod",
+      "slug": "can-we-know-god",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 241
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 449
+      }
+    },
+    {
+      "coreVideoId": "2_0-Coffee-Shop",
+      "slug": "coffee-shop",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 241
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/png",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 97
+      }
+    },
+    {
+      "coreVideoId": "2_0-ComingHome",
+      "slug": "coming-home",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 257
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 58
+      }
+    },
+    {
+      "coreVideoId": "2_0-Conversation",
+      "slug": "conversation",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 258
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 104
+      }
+    },
+    {
+      "coreVideoId": "2_0-Crushing",
+      "slug": "crushing",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 236
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 60
+      }
+    },
+    {
+      "coreVideoId": "2_0-Ctrl-Z",
+      "slug": "ctrl-z",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 235
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/png",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 90
+      }
+    },
+    {
+      "coreVideoId": "2_0-Delight",
+      "slug": "delight",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 262
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 110
+      }
+    },
+    {
+      "coreVideoId": "2_0-DidJesusHaveToDie",
+      "slug": "why-did-jesus-have-to-die",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 236
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 109
+      }
+    },
+    {
+      "coreVideoId": "2_0-FallingPlates",
+      "slug": "fallingplates",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 244
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 53
+      }
+    },
+    {
+      "coreVideoId": "2_0-GodsRescuePlan",
+      "slug": "god-rescue-plan",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 264
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 130
+      }
+    },
+    {
+      "coreVideoId": "2_0-Happiness",
+      "slug": "happiness-is-125",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 238
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 50
+      }
+    },
+    {
+      "coreVideoId": "2_0-HappinessPuzzle",
+      "slug": "happiness-puzzle",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 258
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 119
+      }
+    },
+    {
+      "coreVideoId": "2_0-InfiniteAbyss",
+      "slug": "infinite-abyss",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 256
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 37
+      }
+    },
+    {
+      "coreVideoId": "2_0-In-Time",
+      "slug": "in-time",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 238
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 30
+      }
+    },
+    {
+      "coreVideoId": "2_0-Invisible",
+      "slug": "invisible",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 236
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 69
+      }
+    },
+    {
+      "coreVideoId": "2_0-Jangled",
+      "slug": "jangled",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 237
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 116
+      }
+    },
+    {
+      "coreVideoId": "2_0-Jatku-Leiba",
+      "slug": "j\u00e4tku-leiba",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 235
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/png",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 61
+      }
+    },
+    {
+      "coreVideoId": "2_0-JesusBackFromDead",
+      "slug": "did-jesus-come-back-from-the-dead",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 243
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 70
+      }
+    },
+    {
+      "coreVideoId": "2_0-JesusReally",
+      "slug": "who-is-jesusreally",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 234
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 38
+      }
+    },
+    {
+      "coreVideoId": "2_0-La_Busqueda_The_Search",
+      "slug": "la-b\u00fasqueda-the-search",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 255
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/png",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 34
+      }
+    },
+    {
+      "coreVideoId": "2_0-Leland-Sturgis",
+      "slug": "the-undeniably-untimely-death-of-leland-sturgis",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 259
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 65
+      }
+    },
+    {
+      "coreVideoId": "2_0-Marea",
+      "slug": "marea",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 243
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 73
+      }
+    },
+    {
+      "coreVideoId": "2_0-Medley",
+      "slug": "medley",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 235
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 112
+      }
+    },
+    {
+      "coreVideoId": "2_0-OneGod",
+      "slug": "is-there-one-god-or-three",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 258
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 109
+      }
+    },
+    {
+      "coreVideoId": "2_0-Pennyhouse",
+      "slug": "a-man-by-the-name-of-frederick-pennyhouse",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 244
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/png",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 88
+      }
+    },
+    {
+      "coreVideoId": "2_0-Portions",
+      "slug": "portions",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 238
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/png",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 90
+      }
+    },
+    {
+      "coreVideoId": "2_0-Puzzler",
+      "slug": "puzzler",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 273
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 76
+      }
+    },
+    {
+      "coreVideoId": "2_0-Rain",
+      "slug": "rain",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 253
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/png",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 111
+      }
+    },
+    {
+      "coreVideoId": "2_0-Restored",
+      "slug": "restored",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 236
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 118
+      }
+    },
+    {
+      "coreVideoId": "2_0-Solitude",
+      "slug": "solitude",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 235
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 113
+      }
+    },
+    {
+      "coreVideoId": "2_0-SongOfReeds",
+      "slug": "song-of-the-reeds",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 234
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 103
+      }
+    },
+    {
+      "coreVideoId": "2_0-Tarek",
+      "slug": "tarek",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 255
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 113
+      }
+    },
+    {
+      "coreVideoId": "2_0-The_Story",
+      "slug": "the-story-short-film",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 259
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 104
+      }
+    },
+    {
+      "coreVideoId": "2_0-TimeForChange",
+      "slug": "a-time-for-change",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 242
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 36
+      }
+    },
+    {
+      "coreVideoId": "2_0-To-Be-Like-You",
+      "slug": "to-be-like-you",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 234
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/png",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 128
+      }
+    },
+    {
+      "coreVideoId": "2_0-Uninvited",
+      "slug": "uninvited-guests",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 232
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/png",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 102
+      }
+    },
+    {
+      "coreVideoId": "2_0-Venia",
+      "slug": "venia",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 234
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/png",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 39
+      }
+    },
+    {
+      "coreVideoId": "2_0-Vinyl",
+      "slug": "vinyl",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 239
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/png",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 103
+      }
+    },
+    {
+      "coreVideoId": "2_0-WhatisChristianity",
+      "slug": "what-is-christianity",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 238
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 52
+      }
+    },
+    {
+      "coreVideoId": "2_0-WhereYouBelong",
+      "slug": "where-you-belong",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 467
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 140
+      }
+    },
+    {
+      "coreVideoId": "2_0-YoureNotHopeless",
+      "slug": "youre-not-hopeless",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 241
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 111
+      }
+    },
+    {
+      "coreVideoId": "2_Broken1Vessel",
+      "slug": "vessel",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 256
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 116
+      }
+    },
+    {
+      "coreVideoId": "2_Broken2Promise",
+      "slug": "promise-of-restoration",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 238
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 32
+      }
+    },
+    {
+      "coreVideoId": "2_Broken3PickUp",
+      "slug": "picking-up-the-pieces",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 244
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 46
+      }
+    },
+    {
+      "coreVideoId": "2_ChosenWitness",
+      "slug": "chosen-witness",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 243
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 112
+      }
+    },
+    {
+      "coreVideoId": "2_FourPerfectLove",
+      "slug": "the-four-perfect-love",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 236
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/png",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 129
+      }
+    },
+    {
+      "coreVideoId": "2_GOJ-0-0",
+      "slug": "life-of-jesus-gospel-of-john",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 255
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 110
+      }
+    },
+    {
+      "coreVideoId": "2_GOJ4904-0-0",
+      "slug": "wedding-in-cana",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 256
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 59
+      }
+    },
+    {
+      "coreVideoId": "2_GOJ4906-0-0",
+      "slug": "talk-with-nicodemus",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 268
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 113
+      }
+    },
+    {
+      "coreVideoId": "2_GOJ4925-0-0",
+      "slug": "the-good-shepherd",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 244
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 67
+      }
+    },
+    {
+      "coreVideoId": "2_GOJ4934-0-0",
+      "slug": "jesus-comforts-his-disciples",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 257
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 51
+      }
+    },
+    {
+      "coreVideoId": "2_GOJ4936-0-0",
+      "slug": "the-vine-and-the-branches",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 240
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 143
+      }
+    },
+    {
+      "coreVideoId": "2_GOJ4946-0-0",
+      "slug": "doubting-thomas",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 262
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 80
+      }
+    },
+    {
+      "coreVideoId": "2_GOJ4948-0-0",
+      "slug": "do-you-love-me",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 273
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 72
+      }
+    },
+    {
+      "coreVideoId": "2_JessicaStory",
+      "slug": "jessica-story",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 255
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 38
+      }
+    },
+    {
+      "coreVideoId": "2_JoyGoneCTA",
+      "slug": "wc-when-joy-is-gone-cta",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 243
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/png",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 73
+      }
+    },
+    {
+      "coreVideoId": "2_TalkJesus",
+      "slug": "wc-you-can-talk-jesus",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 262
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/png",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 121
+      }
+    },
+    {
+      "coreVideoId": "2_TheLife",
+      "slug": "life-four",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 971
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/png",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 354
+      }
+    },
+    {
+      "coreVideoId": "2_ThereIsHopeAsia",
+      "slug": "there-is-hope-asia",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 240
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 87
+      }
+    },
+    {
+      "coreVideoId": "2_ThereIsHopeMena",
+      "slug": "there-is-hope-mena",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 243
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 48
+      }
+    },
+    {
+      "coreVideoId": "2_ThereisHopeSports",
+      "slug": "there-is-hope-sports",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 258
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 236
+      }
+    },
+    {
+      "coreVideoId": "2_UltimateCoach",
+      "slug": "wc-ultimate-coach",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 278
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/png",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 114
+      }
+    },
+    {
+      "coreVideoId": "4_Injury1Injury",
+      "slug": "1-injury",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 256
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 123
+      }
+    },
+    {
+      "coreVideoId": "4_Injury2AskingWhy",
+      "slug": "2-asking-why",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 260
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 120
+      }
+    },
+    {
+      "coreVideoId": "4_Injury3AudienceOfOne",
+      "slug": "3-audience-of-one",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 261
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 54
+      }
+    },
+    {
+      "coreVideoId": "4_Loss1Loss",
+      "slug": "1-loss",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 258
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 69
+      }
+    },
+    {
+      "coreVideoId": "4_Loss2Forgiveness",
+      "slug": "2-walking-in-forgiveness",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 234
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 290
+      }
+    },
+    {
+      "coreVideoId": "4_Loss3NotAlone",
+      "slug": "3-youre-not-alone",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 254
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 108
+      }
+    },
+    {
+      "coreVideoId": "4_Win1Winning",
+      "slug": "1-winning",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 236
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 96
+      }
+    },
+    {
+      "coreVideoId": "4_Win3GodPath",
+      "slug": "3-god-path",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 249
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 34
+      }
+    },
+    {
+      "coreVideoId": "6_GOJohn2214",
+      "slug": "lumo-john-13-1-38",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 231
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 61
+      }
+    },
+    {
+      "coreVideoId": "6_GOJohn2215",
+      "slug": "lumo-john-14-1-31",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 234
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 34
+      }
+    },
+    {
+      "coreVideoId": "6_GOJohn2216",
+      "slug": "lumo-john-15-1-16-15",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 238
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 67
+      }
+    },
+    {
+      "coreVideoId": "6_GOJohn2217",
+      "slug": "lumo-john-16-16-17-26",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 235
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 38
+      }
+    },
+    {
+      "coreVideoId": "6_GOJohn2220",
+      "slug": "lumo-john-19-38-20-31",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 252
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 75
+      }
+    },
+    {
+      "coreVideoId": "6_GOJohn2221",
+      "slug": "lumo-john-21-1-25",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 234
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 103
+      }
+    },
+    {
+      "coreVideoId": "6_GOLuke2605",
+      "slug": "lumo-luke-5-1-39",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 239
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 32
+      }
+    },
+    {
+      "coreVideoId": "6_GOLuke2606",
+      "slug": "lumo-luke-6-1-49",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 238
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 116
+      }
+    },
+    {
+      "coreVideoId": "6_GOLuke2607",
+      "slug": "lumo-luke-7-1-50",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 254
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 52
+      }
+    },
+    {
+      "coreVideoId": "6_GOLuke2608",
+      "slug": "lumo-luke-8-1-39",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 257
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 117
+      }
+    },
+    {
+      "coreVideoId": "6_GOLuke2609",
+      "slug": "lumo-luke-8-40-9-17",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 238
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 51
+      }
+    },
+    {
+      "coreVideoId": "6_GOLuke2611",
+      "slug": "lumo-luke-10-1-42",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 236
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 45
+      }
+    },
+    {
+      "coreVideoId": "6_GOLuke2613",
+      "slug": "lumo-luke-12-1-59",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 256
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 113
+      }
+    },
+    {
+      "coreVideoId": "6_GOLuke2615",
+      "slug": "lumo-luke-14-1-15-10",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 234
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 109
+      }
+    },
+    {
+      "coreVideoId": "6_GOLuke2616",
+      "slug": "lumo-luke-15-11-16-31",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 280
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 112
+      }
+    },
+    {
+      "coreVideoId": "6_GOLuke2617",
+      "slug": "lumo-luke-17-1-18-8",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 237
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 50
+      }
+    },
+    {
+      "coreVideoId": "6_GOLuke2618",
+      "slug": "lumo-luke-18-9-43",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 233
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 48
+      }
+    },
+    {
+      "coreVideoId": "6_GOLuke2619",
+      "slug": "lumo-luke-19-1-44",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 255
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 47
+      }
+    },
+    {
+      "coreVideoId": "6_GOLuke2625",
+      "slug": "lumo-luke-24-1-53",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 262
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 40
+      }
+    },
+    {
+      "coreVideoId": "6_GOMark1502",
+      "slug": "lumo-mark-2-1-3-19",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 244
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 112
+      }
+    },
+    {
+      "coreVideoId": "6_GOMark1503",
+      "slug": "lumo-mark-3-20-4-41",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 255
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 111
+      }
+    },
+    {
+      "coreVideoId": "6_GOMark1506",
+      "slug": "lumo-mark-7-1-8-21",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 242
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 118
+      }
+    },
+    {
+      "coreVideoId": "6_GOMark1509",
+      "slug": "lumo-mark-10-32-11-26",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 250
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 130
+      }
+    },
+    {
+      "coreVideoId": "6_GOMatt2502",
+      "slug": "lumo-matthew-3-1-4-25",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 287
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 60
+      }
+    },
+    {
+      "coreVideoId": "6_GOMatt2503",
+      "slug": "lumo-matthew-5-1-48",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 239
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 49
+      }
+    },
+    {
+      "coreVideoId": "6_GOMatt2504",
+      "slug": "lumo-matthew-6-1-7-23",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 254
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 358
+      }
+    },
+    {
+      "coreVideoId": "6_GOMatt2505",
+      "slug": "lumo-matthew-7-24-8-34",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 266
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 95
+      }
+    },
+    {
+      "coreVideoId": "6_GOMatt2506",
+      "slug": "lumo-matthew-9-1-38",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 243
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 204
+      }
+    },
+    {
+      "coreVideoId": "6_GOMatt2510",
+      "slug": "lumo-matthew-13-24-14-12",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 235
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 39
+      }
+    },
+    {
+      "coreVideoId": "6_GOMatt2514",
+      "slug": "lumo-matthew-18-10-19-30",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 266
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 50
+      }
+    },
+    {
+      "coreVideoId": "6_GOMatt2515",
+      "slug": "lumo-matthew-20-1-21-11",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 257
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 105
+      }
+    },
+    {
+      "coreVideoId": "6_GOMatt2520",
+      "slug": "lumo-matthew-25-1-46",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 244
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 101
+      }
+    },
+    {
+      "coreVideoId": "7_0-nfs0103",
+      "slug": "13-what-does-this-life-mean",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 233
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 116
+      }
+    },
+    {
+      "coreVideoId": "7_0-nfs0402",
+      "slug": "42-does-god-notice-me",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 239
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 122
+      }
+    },
+    {
+      "coreVideoId": "7_0-nfs0403",
+      "slug": "43-is-it-ok-to-doubt",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 256
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 106
+      }
+    },
+    {
+      "coreVideoId": "7_0-nfs0802",
+      "slug": "82-how-much-am-i-worth",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 264
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 108
+      }
+    },
+    {
+      "coreVideoId": "8_NBC01",
+      "slug": "1-the-simple-gospel",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 292
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 34
+      }
+    },
+    {
+      "coreVideoId": "8_NBC03",
+      "slug": "3-life-after-death",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 234
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 33
+      }
+    },
+    {
+      "coreVideoId": "8_NBC04",
+      "slug": "4-god-forgiveness",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 238
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 117
+      }
+    },
+    {
+      "coreVideoId": "8_NBC05",
+      "slug": "5-savior-lord-and-friend",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 236
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 110
+      }
+    },
+    {
+      "coreVideoId": "8_NBC06",
+      "slug": "6-being-made-new",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 233
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 112
+      }
+    },
+    {
+      "coreVideoId": "8_NBC07",
+      "slug": "7-living-for-god",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 252
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 102
+      }
+    },
+    {
+      "coreVideoId": "8_NBC08",
+      "slug": "8-the-bible",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 266
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 106
+      }
+    },
+    {
+      "coreVideoId": "8_NBC09",
+      "slug": "9-prayer",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 233
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 260
+      }
+    },
+    {
+      "coreVideoId": "8_NBC10",
+      "slug": "10-church",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 239
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 36
+      }
+    },
+    {
+      "coreVideoId": "9_0-TheSavior",
+      "slug": "the-savior",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 501
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 286
+      }
+    },
+    {
+      "coreVideoId": "9_CreationtoChrist0701",
+      "slug": "1-the-most-high-god-and-his-creation",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 243
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 442
+      }
+    },
+    {
+      "coreVideoId": "9_CreationtoChrist0704",
+      "slug": "4-god-gives-jesus",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 257
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 776
+      }
+    },
+    {
+      "coreVideoId": "9_CreationtoChrist0705",
+      "slug": "5-jesus-death-resurrection",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 296
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 1199
+      }
+    },
+    {
+      "coreVideoId": "9_CreationtoChrist0706",
+      "slug": "6-the-wandering-son",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 519
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 369
+      }
+    },
+    {
+      "coreVideoId": "9_CreationtoChrist0707",
+      "slug": "7-coming-home-to-god",
+      "audioLanguageSlug": "english",
+      "hls": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/x-mpegURL",
+        "validBody": true,
+        "attempts": 1,
+        "elapsedMs": 487
+      },
+      "image": {
+        "ok": true,
+        "status": 200,
+        "contentType": "image/jpeg",
+        "validBody": true,
+        "attempts": 2,
+        "elapsedMs": 802
+      }
+    }
+  ]
+}

@@ -13,6 +13,7 @@ import {
   runRecommendationDeliveryTransaction,
   runRecommendationRetrievalQuery,
 } from "./delivery-runtime"
+import type { DeliveryDependencies } from "./delivery.types"
 import { RecommendationDeliveryService } from "./delivery.service"
 import { getRecommendationServingState } from "./manifest.service"
 import { getRecommendationRecentContext } from "./recent-context.service"
@@ -22,8 +23,16 @@ import { createRuntimeRecommendationTokenService } from "./runtime-token"
 export function createRecommendationDeliveryService(
   prisma: PrismaClient = defaultPrisma,
 ): RecommendationDeliveryService {
+  return new RecommendationDeliveryService(
+    createRecommendationDeliveryDependencies(prisma),
+  )
+}
+
+export function createRecommendationDeliveryDependencies(
+  prisma: PrismaClient,
+): DeliveryDependencies {
   const token = createRuntimeRecommendationTokenService(prisma)
-  return new RecommendationDeliveryService({
+  return {
     prisma,
     admission: createRecommendationDeliveryAdmission(),
     tokenService: token,
@@ -145,5 +154,5 @@ export function createRecommendationDeliveryService(
             now: input.now,
           }),
       ),
-  })
+  }
 }

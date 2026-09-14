@@ -306,6 +306,17 @@ describe("WatchPageClient download boundary", () => {
       video_id: "video-1",
       video_slug: "jesus-is-brought-to-pilate",
     })
+
+    // v1 CHARACTERIZATION (R25). The wire names above are external GA4
+    // contracts, and each modal intent emits exactly one event. v2 must
+    // reproduce both the names and the counts.
+    expect(
+      gtag.mock.calls.map(([command, eventName]) => [command, eventName]),
+    ).toEqual([
+      ["event", "download_intent"],
+      ["event", "language_picker_opened"],
+      ["event", "share_opened"],
+    ])
   })
 
   it("does not mount modal chunks before the user asks for them", () => {

@@ -1,0 +1,100 @@
+{
+  "purpose": "Independent SQL control totals for raw catalog mapping; metadata presence does not prove stream health or delivery eligibility.",
+  "snapshot": {
+    "database": "forge_feat477_20260910",
+    "observed_at": "2026-09-10 03:51:50.526596+00"
+  },
+  "videoTypes": [
+    {
+      "label": "collection",
+      "video_rows": 47,
+      "nondeleted_video_rows": 47
+    },
+    {
+      "label": "episode",
+      "video_rows": 486,
+      "nondeleted_video_rows": 486
+    },
+    {
+      "label": "featureFilm",
+      "video_rows": 12,
+      "nondeleted_video_rows": 12
+    },
+    {
+      "label": "segment",
+      "video_rows": 398,
+      "nondeleted_video_rows": 398
+    },
+    {
+      "label": "series",
+      "video_rows": 61,
+      "nondeleted_video_rows": 61
+    },
+    {
+      "label": "shortFilm",
+      "video_rows": 171,
+      "nondeleted_video_rows": 171
+    }
+  ],
+  "dubSources": [
+    {
+      "label": "collection",
+      "dub_rows": 34668,
+      "distinct_video_ids": 47,
+      "published_nondeleted_dub_rows": 34639,
+      "published_hls_rows": 2,
+      "published_hls_without_active_mux_rows": 0
+    },
+    {
+      "label": "episode",
+      "dub_rows": 9893,
+      "distinct_video_ids": 486,
+      "published_nondeleted_dub_rows": 9879,
+      "published_hls_rows": 9879,
+      "published_hls_without_active_mux_rows": 0
+    },
+    {
+      "label": "featureFilm",
+      "dub_rows": 3538,
+      "distinct_video_ids": 12,
+      "published_nondeleted_dub_rows": 3516,
+      "published_hls_rows": 3515,
+      "published_hls_without_active_mux_rows": 0
+    },
+    {
+      "label": "segment",
+      "dub_rows": 157810,
+      "distinct_video_ids": 398,
+      "published_nondeleted_dub_rows": 157627,
+      "published_hls_rows": 157627,
+      "published_hls_without_active_mux_rows": 61
+    },
+    {
+      "label": "series",
+      "dub_rows": 1205,
+      "distinct_video_ids": 61,
+      "published_nondeleted_dub_rows": 1188,
+      "published_hls_rows": 1,
+      "published_hls_without_active_mux_rows": 0
+    },
+    {
+      "label": "shortFilm",
+      "dub_rows": 5057,
+      "distinct_video_ids": 171,
+      "published_nondeleted_dub_rows": 5054,
+      "published_hls_rows": 5054,
+      "published_hls_without_active_mux_rows": 0
+    }
+  ],
+  "orphanCounts": {
+    "missing_video_fk": 0,
+    "null_language_fk": 478,
+    "missing_language_fk": 0,
+    "missing_edition_fk": 0,
+    "missing_mux_fk": 0
+  },
+  "languages": {
+    "raw_languages": 2321,
+    "nondeleted_named_audio_languages": 2317
+  }
+}

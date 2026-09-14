@@ -527,7 +527,8 @@
     "previousVideoPreview": "སྔོན་མའི་བརྙན་འཕྲིན་སྔོན་ལྟ",
     "nextVideoPreview": "རྗེས་མའི་བརྙན་འཕྲིན་སྔོན་ལྟ",
     "mediaCollection": "བརྙན་དང་སྒྲ་ཐོན་ཁུངས་ཚོགས་སྒྲིག",
-    "scrollToVideo": "{title} བརྙན་འཕྲིན་ལ་མར་འཁྱུགས"
+    "scrollToVideo": "{title} བརྙན་འཕྲིན་ལ་མར་འཁྱུགས",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project གཙོ་ངོས",
@@ -597,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",

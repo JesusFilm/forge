@@ -88,6 +88,40 @@ flowchart TB
 
 - R8. A white projector screen blooms in, overshoots its size, and settles back into place.
 - R9. One ray of light grows out of the right edge of the frame, four fifths of the way down, and its two edges land on the projector screen's bottom-left and top-right corners, so the light reads as projected onto the screen. The composition is expressed in proportions of the frame, not fixed offsets, so it holds on a tablet's wider frame as well as a phone's.
+  - **Amended 2026-09-10, user-directed, after the shipped build.** Three
+    corrections to the beam. Each one is visual. The beats, the timings and the
+    native seam do not change.
+
+    First, the apex moves outside the frame, to `RAY_APEX_X_RATIO = 1.3` of its
+    width. On the edge, the bands converged to a point the viewer could see. The
+    beam then read as a pinch of light, not as a beam entering the frame. The
+    cone narrows from about 37.7 degrees to about 29.4 on a 390x844 frame. The
+    rest of R9 holds: the two edges still land on the two corners, and the
+    composition is still a set of proportions.
+
+    Second, the beam stops ON those two corners. Its far end is the line that
+    joins them, so each band now carries its own length. Before this, every band
+    was drawn to one length, which was the longer reach plus a 15 per cent
+    overshoot. The shorter upper edge therefore ran about 41 per cent past its
+    own corner and washed the area above the mark. `RAY_OVERSHOOT` is gone.
+
+    Third, each band fades out at both of its own edges. A band with a flat
+    cross-section steps at each edge, and those steps let a viewer count the
+    bands inside the beam. The band's gradient now runs ACROSS its thickness, on
+    a smooth bump whose value and slope both reach zero at the edges. This
+    removes the fall-off along each band, so one overlay of the ground colour
+    now lies square across the corner line. That overlay dissolves every band's
+    end together. `RAY_APEX_ALPHA`, `RAY_MID_ALPHA` and `RAY_MID_STOP`, the
+    per-band gradient stops that ran ALONG each band, are gone with it.
+
+    Measured on the iPhone 17 Pro Max simulator on 2026-09-10. Light 20 px past
+    the top-right corner fell from 6.2 levels over the ground to 0. It reads 0
+    at 40, 60 and 80 px as well. The wobble across the beam sat at 1.0 to 1.2
+    cycles PER BAND, which is the band stack itself. It now sits at 2.0 to 4.1
+    cycles per band, which is dither, at about half the amplitude. Read that
+    figure in cycles per band, not in amplitude alone. `RAY_BAND_ALPHA` is set
+    so the beam measures about as bright as it did with flat bands.
+
 - R10. The screen crossfades from white to the crimson brand gradient as the ray arrives, not after it.
 - R11. After a pause on the settled crimson screen, the word `Jesus` crossfades on in white, with no movement and no scaling of its own, finishing with the word set over the settled mark, which together read as the Jesus Film Project logo. No separate logotype asset exists in this app, and the horizontal lockups in the sibling apps are not it.
 - R12. The word is set in Noto Serif Semibold, embedded in the build, so it can never render in a fallback face and then swap.
@@ -335,18 +369,21 @@ U1 then U2. U3 then U4. U5 wires both chains into the root layout and depends on
 - **Approach:**
   1. Drive every beat from core `Animated` values on the native driver (KTD9).
   2. Bloom the white screen in, overshoot, and settle on a slower curve than the rise, so the settle does not snap.
-  3. Grow one ray from the right edge at four fifths of the frame height, with its edges meeting the screen's bottom-left and top-right corners.
+  3. Grow one ray from the right edge at four fifths of the frame height, with its edges meeting the screen's bottom-left and top-right corners. (Amended 2026-09-10 — the apex is PAST that edge, not on it. The ray also ENDS on those two corners rather than running past them, so each band carries its own length. See R9.)
   4. Cross-fade white to the crimson gradient while the ray grows, completing before the word begins.
   5. Cross-fade the word in with no translation and no scaling.
   6. Render the finished frame statically when Reduce Motion is on.
-- **Patterns to follow:** the ray grows by `scaleX` from a right-edge transform origin, because the native driver cannot animate width; `hexToRgba(color, 0)` for gradient stops, never `"transparent"`; `Math.round()` on any scaled font size for Android; `expo-image` for any raster.
+- **Patterns to follow:** the ray's bands are built in `splashGeometry`, not in the component, because each one carries its own length. A band's gradient runs across its THICKNESS, never along its length — along it, every band edge is a step and the bands become countable inside the beam. The ray grows by a UNIFORM `scale` on a box centred on its own apex. A wedge is self-similar about that point, so one scale grows the whole cone. The native driver cannot animate width, which is why the growth is a transform at all. (Until 2026-09-10 this line read "`scaleX` from a right-edge transform origin". That never described the shipped code.) Also: `hexToRgba(color, 0)` for gradient stops, never `"transparent"`; `Math.round()` on any scaled font size for Android; `expo-image` for any raster.
 - **Test scenarios:**
   1. Covers R11. The word carries no transform at any point in its animation.
   2. Covers R10. The crimson layer reaches full opacity before the word's fade begins.
   3. Covers R13. With Reduce Motion on, the finished frame renders and no animation is started.
   4. Covers R13. With Reduce Motion off, the sequence starts.
   5. The ray's geometry places its two edges on the screen's bottom-left and top-right corners.
-  6. No `Animated.loop` wraps a sequence, so the Fabric single-run defect cannot appear.
+  6. Covers R9 as amended 2026-09-10. The apex lies outside the frame, and the beam crosses into it as a band rather than converging to a point a viewer can see.
+  7. Covers R9 as amended 2026-09-10. Every band ends on the line joining the two corners, the outermost two end ON those corners, and the bands are not all one length.
+  8. Covers R9 as amended 2026-09-10. Each band's gradient runs ACROSS its thickness on a profile that reaches zero at both edges, and one dissolve lies square across the corner line.
+  9. No `Animated.loop` wraps a sequence, so the Fabric single-run defect cannot appear.
 - **Verification:** the sequence reads as one continuous motion on a device, and the word never appears over a screen that is still changing colour.
 
 ### U5. Own the native splash lifecycle and mount the host

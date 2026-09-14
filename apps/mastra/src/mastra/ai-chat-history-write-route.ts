@@ -74,9 +74,14 @@
  */
 
 import { Memory } from "@mastra/memory"
-import { Pool } from "pg"
 
-import { env, getMastraDatabaseUrl } from "../config/env"
+import { env } from "../config/env"
+
+import {
+  AI_CHAT_WRITE_POOL_OPTIONS,
+  getAiChatWritePool,
+  resetAiChatWritePoolForTesting,
+} from "./ai-chat-database"
 
 import { refuseUnlessLaneAdmitted } from "./ai-chat-lane-admission"
 import { AI_CHAT_SCHEMA_NAME, getAiChatStorage } from "./ai-chat-memory"
@@ -108,13 +113,7 @@ const MAX_THREAD_ID_CHARS = 200
  * actually release the connection. Counted as its own module-scoped category
  * in the pool census in `ai-chat-memory.ts`'s header.
  */
-export const AI_CHAT_RENAME_POOL_OPTIONS = {
-  max: 2,
-  allowExitOnIdle: true,
-  connectionTimeoutMillis: 2_000,
-  query_timeout: 5_000,
-  statement_timeout: 5_000,
-} as const
+export const AI_CHAT_RENAME_POOL_OPTIONS = AI_CHAT_WRITE_POOL_OPTIONS
 
 const THREADS_TABLE = `${AI_CHAT_SCHEMA_NAME}.mastra_threads`
 
@@ -235,13 +234,7 @@ let cachedRenamePool: AiChatRenamePool | null = null
  */
 function getAiChatRenamePool(): AiChatRenamePool {
   if (cachedRenamePool === null) {
-    const pool = new Pool({
-      connectionString: getMastraDatabaseUrl(),
-      ...AI_CHAT_RENAME_POOL_OPTIONS,
-    })
-    pool.on("error", () => {
-      console.warn("[ai-chat-history] event=rename_pool_idle_error")
-    })
+    const pool = getAiChatWritePool()
     cachedRenamePool = pool
   }
   return cachedRenamePool
@@ -251,6 +244,7 @@ function getAiChatRenamePool(): AiChatRenamePool {
 export function __resetAiChatRenameStoreForTesting(): void {
   cachedRenameMemory = null
   cachedRenamePool = null
+  resetAiChatWritePoolForTesting()
 }
 
 /**

@@ -14,6 +14,8 @@ import { isWatchHeroObscured } from "@/lib/watch-hero-scroll-cover"
 import {
   fitWatchHomeHeroHeight,
   WATCH_HOME_HERO_ASPECT_RATIO,
+  WATCH_HOME_HERO_MIN_HEIGHT_RATIO,
+  WATCH_HOME_HERO_MOBILE_MIN_HEIGHT_RATIO,
   WATCH_HOME_HERO_MOBILE_VIEWPORT_RATIO,
   WATCH_HOME_HERO_RESERVE_BELOW_MOBILE_PX,
   WATCH_HOME_HERO_RESERVE_BELOW_PX,
@@ -79,7 +81,14 @@ export function useWatchHomeHeroFittedHeight(enabled: boolean): number | null {
             ? WATCH_HOME_HERO_RESERVE_BELOW_PX
             : WATCH_HOME_HERO_RESERVE_BELOW_MOBILE_PX
       setFittedHeight(
-        fitWatchHomeHeroHeight({ viewportHeight, aspectHeight, reservedBelow }),
+        fitWatchHomeHeroHeight({
+          viewportHeight,
+          aspectHeight,
+          reservedBelow,
+          minHeightRatio: isDesktop
+            ? WATCH_HOME_HERO_MIN_HEIGHT_RATIO
+            : WATCH_HOME_HERO_MOBILE_MIN_HEIGHT_RATIO,
+        }),
       )
       // The rail can mount after this first pass, and its height changes with
       // width; observe whichever element is there now. Until it appears, keep

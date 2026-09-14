@@ -1,3 +1,4 @@
+import { RecommendationSurfaceSchema } from "./token.service"
 import { createHash, randomUUID } from "node:crypto"
 import {
   RecommendationAuditKind,
@@ -188,7 +189,7 @@ export class RecommendationEvidenceService {
         requestId: item.requestId,
         itemId: item.id,
         sessionDigest: item.request.sessionDigest,
-        surface: RECOMMENDATION_CONTRACTS.surface,
+        surface: RecommendationSurfaceSchema.parse(item.request.surfaceVersion),
         manifestId: item.request.manifestId,
         ...(assignment
           ? {
@@ -233,7 +234,7 @@ export class RecommendationEvidenceService {
       }
       if (
         event.kind === "impression" &&
-        event.payload.visibilityPolicy !== RECOMMENDATION_CONTRACTS.surface
+        event.payload.visibilityPolicy !== item.request.surfaceVersion
       ) {
         await this.recordCommittedRejection(
           item.requestId,
@@ -323,7 +324,7 @@ export class RecommendationEvidenceService {
           await tx.recommendationImpression.create({
             data: {
               ...common,
-              visibilityPolicy: RECOMMENDATION_CONTRACTS.surface,
+              visibilityPolicy: item.request.surfaceVersion,
             },
           })
           const reconciliation = await tx.recommendationSelection.updateMany({

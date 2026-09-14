@@ -171,7 +171,12 @@ describe("WatchHomeFooter", () => {
     )
 
     expect(contactGrid?.classList.contains("grid")).toBe(true)
-    expect(contactGrid?.classList.contains("grid-cols-3")).toBe(true)
+    // Stacks on phones (three 12px columns wrap mid-address below ~640px),
+    // then returns to three equal columns with a real gutter from `sm` up.
+    expect(contactGrid?.classList.contains("grid-cols-1")).toBe(true)
+    expect(contactGrid?.classList.contains("sm:grid-cols-3")).toBe(true)
+    expect(contactGrid?.classList.contains("gap-y-4")).toBe(true)
+    expect(contactGrid?.classList.contains("sm:gap-x-6")).toBe(true)
     expect(contactGrid?.classList.contains("w-full")).toBe(true)
     expect(contactGrid?.classList.contains("break-words")).toBe(true)
     expect(contactGrid?.children).toHaveLength(3)

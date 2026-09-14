@@ -19,6 +19,7 @@ import {
   WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
   type WatchPlayerChromeVisibilityDetail,
 } from "@/lib/watch-player-chrome-events"
+import { WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS } from "@/components/home/useWatchHomeTvCarousel"
 import {
   WATCH_HERO_PRIMARY_ACTION_CLASS,
   WATCH_HERO_TITLE_CLASS,
@@ -28,6 +29,7 @@ import { resolveMuxHeroPosterUrlAtMaxWidth } from "@/lib/url"
 import { WATCH_HERO_BODY_OVERLAP_CSS } from "@/lib/watch-hero-preview-overlap"
 import {
   fitWatchHomeHeroHeight,
+  WATCH_HOME_HERO_MOBILE_MIN_HEIGHT_RATIO,
   WATCH_HOME_HERO_RESERVE_BELOW_MOBILE_PX,
   WATCH_HOME_HERO_RESERVE_BELOW_PX,
 } from "@/lib/watch-home-hero-fit"
@@ -411,7 +413,7 @@ describe("WatchHomePage", () => {
         .querySelector('[data-testid="watch-home-tv-carousel"] > div')
         ?.getAttribute("class"),
     ).toContain(
-      `h-[max(34svh,calc(100svh_-_${WATCH_HOME_HERO_RESERVE_BELOW_MOBILE_PX}px))]`,
+      `h-[max(50dvh,calc(100svh_-_${WATCH_HOME_HERO_RESERVE_BELOW_MOBILE_PX}px))]`,
     )
     // Desktop starts muted, so the height is the one that reserves room for
     // the categories rail; the bare `min(100svh,56.25vw)` is the unmuted value
@@ -1313,6 +1315,170 @@ describe("WatchHomePage", () => {
     expect(document.activeElement).toBe(repeatedlyRecoveredCurrentButton)
   })
 
+  it("holds the playback ring and shows a loader until the hero video loads", async () => {
+    await act(async () => {
+      root.render(<WatchHomePage model={makeModel()} />)
+    })
+
+    const ring = container.querySelector(
+      '[data-testid="watch-home-current-progress"] .watch-home-progress-ring',
+    ) as SVGCircleElement
+    expect(ring.style.animationPlayState).toBe("paused")
+    // On the current thumbnail's own ring, in both timelines — that circle is
+    // what claimed something was playing.
+    for (const size of ["compact", "large"]) {
+      const currentCircle = container.querySelector(
+        `[data-testid="watch-home-video-timeline"][data-size="${size}"] [data-offset="0"]`,
+      )
+      expect(
+        currentCircle?.querySelectorAll(
+          '[data-testid="watch-home-current-progress"] [data-testid="watch-home-progress-loading"]',
+        ),
+      ).toHaveLength(1)
+    }
+    expect(
+      container.querySelectorAll('[data-testid="watch-home-progress-loading"]'),
+    ).toHaveLength(2)
+
+    const video = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+
+    await act(async () => {
+      video.dispatchEvent(new Event("canplay", { bubbles: true }))
+    })
+
+    expect(
+      (
+        container.querySelector(
+          '[data-testid="watch-home-current-progress"] .watch-home-progress-ring',
+        ) as SVGCircleElement
+      ).style.animationPlayState,
+    ).toBe("running")
+    expect(
+      container.querySelector('[data-testid="watch-home-progress-loading"]'),
+    ).toBeNull()
+  })
+
+  it("re-holds the playback ring when playback stalls mid preview", async () => {
+    await act(async () => {
+      root.render(<WatchHomePage model={makeModel()} />)
+    })
+
+    const video = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+
+    await act(async () => {
+      video.dispatchEvent(new Event("canplay", { bubbles: true }))
+    })
+
+    const readRing = () =>
+      (
+        container.querySelector(
+          '[data-testid="watch-home-current-progress"] .watch-home-progress-ring',
+        ) as SVGCircleElement
+      ).style.animationPlayState
+
+    expect(readRing()).toBe("running")
+
+    await act(async () => {
+      video.dispatchEvent(new Event("waiting", { bubbles: true }))
+    })
+
+    expect(readRing()).toBe("paused")
+    expect(
+      container.querySelector('[data-testid="watch-home-progress-loading"]'),
+    ).not.toBeNull()
+
+    await act(async () => {
+      video.dispatchEvent(new Event("playing", { bubbles: true }))
+    })
+
+    expect(readRing()).toBe("running")
+    expect(
+      container.querySelector('[data-testid="watch-home-progress-loading"]'),
+    ).toBeNull()
+  })
+
+  it("spends a slide's turn on playback rather than on loading", async () => {
+    vi.useFakeTimers()
+
+    try {
+      vi.spyOn(Math, "random").mockReturnValue(0)
+      await act(async () => {
+        root.render(<WatchHomePage model={makeSequencedModel()} />)
+      })
+
+      const carousel = container.querySelector(
+        '[data-testid="watch-home-tv-carousel"]',
+      )
+      const openingTitle = carousel?.getAttribute("aria-label")
+
+      // The whole advance window passes with the stream still unloaded: the
+      // slide must still be here, because its turn has not started yet.
+      await act(async () => {
+        vi.advanceTimersByTime(9_500)
+      })
+
+      expect(carousel?.getAttribute("aria-label")).toBe(openingTitle)
+
+      const video = container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      ) as HTMLVideoElement
+      video.play = vi.fn(() =>
+        Promise.resolve(),
+      ) as unknown as HTMLVideoElement["play"]
+      await act(async () => {
+        video.dispatchEvent(new Event("canplay", { bubbles: true }))
+      })
+
+      await act(async () => {
+        vi.advanceTimersByTime(9_499)
+      })
+
+      expect(carousel?.getAttribute("aria-label")).toBe(openingTitle)
+
+      await act(async () => {
+        vi.advanceTimersByTime(2)
+      })
+
+      expect(carousel?.getAttribute("aria-label")).not.toBe(openingTitle)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("moves on when a hero video never loads at all", async () => {
+    vi.useFakeTimers()
+
+    try {
+      vi.spyOn(Math, "random").mockReturnValue(0)
+      await act(async () => {
+        root.render(<WatchHomePage model={makeSequencedModel()} />)
+      })
+
+      const carousel = container.querySelector(
+        '[data-testid="watch-home-tv-carousel"]',
+      )
+      const openingTitle = carousel?.getAttribute("aria-label")
+
+      await act(async () => {
+        vi.advanceTimersByTime(WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS - 1)
+      })
+
+      expect(carousel?.getAttribute("aria-label")).toBe(openingTitle)
+
+      await act(async () => {
+        vi.advanceTimersByTime(2)
+      })
+
+      expect(carousel?.getAttribute("aria-label")).not.toBe(openingTitle)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("resets a completed playback ring when a timeline video is selected", async () => {
     vi.useFakeTimers()
 
@@ -1348,6 +1514,19 @@ describe("WatchHomePage", () => {
             })}
           />,
         )
+      })
+
+      const openingVideo = container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      ) as HTMLVideoElement
+      openingVideo.play = vi.fn(() =>
+        Promise.resolve(),
+      ) as unknown as HTMLVideoElement["play"]
+
+      // The ring is held until the slide can play, so its completion clock
+      // starts here rather than at render.
+      await act(async () => {
+        openingVideo.dispatchEvent(new Event("canplay", { bubbles: true }))
       })
 
       await act(async () => {
@@ -1929,7 +2108,7 @@ describe("WatchHomePage", () => {
     // Tailwind cannot interpolate, so the literals in the class are pinned
     // against the constants here.
     expect(heroFrame.className).toContain(
-      `h-[max(34svh,calc(100svh_-_${WATCH_HOME_HERO_RESERVE_BELOW_MOBILE_PX}px))]`,
+      `h-[max(50dvh,calc(100svh_-_${WATCH_HOME_HERO_RESERVE_BELOW_MOBILE_PX}px))]`,
     )
     expect(heroFrame.className).toContain(
       `md:h-[max(34svh,min(56.25vw,calc(100svh_-_${WATCH_HOME_HERO_RESERVE_BELOW_PX}px)))]`,
@@ -2028,6 +2207,60 @@ describe("WatchHomePage", () => {
         value: originalInnerWidth,
       })
       rail.remove()
+    }
+  })
+
+  it("keeps the measured mobile hero at half of the visible viewport", async () => {
+    const originalMatchMedia = window.matchMedia
+    const originalInnerHeight = window.innerHeight
+    const originalInnerWidth = window.innerWidth
+    window.matchMedia = ((query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      onchange: null,
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      value: 844,
+    })
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 390,
+    })
+
+    try {
+      await act(async () => {
+        root.render(<WatchHomePage model={makeSequencedModel()} />)
+      })
+      await act(async () => {
+        await new Promise((resolve) =>
+          requestAnimationFrame(() => resolve(null)),
+        )
+      })
+
+      const heroFrame = (
+        container.querySelector(
+          '[data-testid="watch-home-tv-media-frame"]',
+        ) as HTMLElement
+      ).parentElement as HTMLElement
+      expect(heroFrame.style.height).toBe(
+        `${844 * WATCH_HOME_HERO_MOBILE_MIN_HEIGHT_RATIO}px`,
+      )
+    } finally {
+      window.matchMedia = originalMatchMedia
+      Object.defineProperty(window, "innerHeight", {
+        configurable: true,
+        value: originalInnerHeight,
+      })
+      Object.defineProperty(window, "innerWidth", {
+        configurable: true,
+        value: originalInnerWidth,
+      })
     }
   })
 

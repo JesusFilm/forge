@@ -402,6 +402,13 @@ const BLOCK_LIBRARY: BlockTemplateDefinition[] = [
     icon: ListOrdered,
   },
   {
+    key: "homepageRecommendations",
+    label: "Homepage Recommendations Block",
+    description: "Six recommendations based on each viewer's viewing history.",
+    category: "Experience",
+    icon: MonitorPlay,
+  },
+  {
     key: "languageGlobe",
     label: "Language Globe",
     description:
@@ -580,6 +587,7 @@ type SectionContentTemplateKey =
       | "routeVideoCarousel"
       | "dynamicMediaCollection"
       | "watchHomeCategoryRail"
+      | "homepageRecommendations"
     >
   | "quizButton"
 
@@ -1802,6 +1810,11 @@ export function ExperienceEditor({
     if (block.key === "watchHomeHero") return isHomepage
     if (block.key === "watchHomeCategoryRail") {
       return isHomepage && !parsedBlocks.some(isWatchHomeCategoryRailBlock)
+    }
+    if (block.key === "homepageRecommendations") {
+      return !parsedBlocks.some(
+        (item) => asString(asRecord(item)?.t) === "homepageRecommendations",
+      )
     }
     if (block.key === "dynamicMediaCollection") {
       return isHomepage && !parsedBlocks.some(isDynamicCollectionBlock)
@@ -8369,7 +8382,40 @@ export function ExperienceEditor({
           </span>
         </div>
 
-        {type === "watchHomeCategoryRail" ? (
+        {type === "homepageRecommendations" ? (
+          <div className="rounded-sm bg-[#09090b] p-6 text-left text-white">
+            <input
+              aria-label="Recommendation heading"
+              value={asString(blockRecord?.title)}
+              placeholder="Recommended for You"
+              maxLength={160}
+              onClick={(event) => {
+                event.stopPropagation()
+                activateBlock(index)
+              }}
+              onFocus={() => activateBlock(index)}
+              onChange={(event) =>
+                updateBlockStringField(index, "title", event.target.value)
+              }
+              className="w-full border-0 bg-transparent text-2xl font-bold outline-none placeholder:text-white"
+            />
+            <p className="mt-2 text-sm text-white/60">
+              Leave the heading blank to use the viewer’s translated heading.
+              Videos are personalized when the viewer opens the page.
+            </p>
+            <div
+              aria-hidden="true"
+              className="mt-6 grid grid-cols-3 gap-3 md:grid-cols-6"
+            >
+              {Array.from({ length: 6 }, (_, cardIndex) => (
+                <div
+                  key={cardIndex}
+                  className="aspect-video rounded-md bg-white/10"
+                />
+              ))}
+            </div>
+          </div>
+        ) : type === "watchHomeCategoryRail" ? (
           <WatchHomeCategoryRailEditor
             tiles={readRailTiles(blockRecord)}
             onChange={(tiles) =>

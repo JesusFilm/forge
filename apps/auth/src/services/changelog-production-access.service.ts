@@ -33,11 +33,20 @@ export async function operateChangelogProductionAccess(
   }
 
   return prisma.$transaction(async (tx) => {
-    // The same environment lock serializes every production grant mutation.
-    await tx.$queryRaw`
-      SELECT id FROM app_environment
-      WHERE client_id = ${CHANGELOG_PRODUCTION_CLIENT_ID} FOR UPDATE
-    `
+    if (operation === "inspect") {
+      await tx.$queryRaw`
+        SELECT id FROM app_environment
+        WHERE client_id = ${CHANGELOG_PRODUCTION_CLIENT_ID} FOR UPDATE
+      `
+    } else {
+      // A row lock alone leaves a waiting Serializable management transaction
+      // on its old grant snapshot. Write the locked row so PostgreSQL aborts
+      // that stale transaction instead of allowing it to revoke a new Admin.
+      await tx.$executeRaw`
+        UPDATE app_environment SET updated_at = clock_timestamp()
+        WHERE client_id = ${CHANGELOG_PRODUCTION_CLIENT_ID}
+      `
+    }
     const environment = await tx.appEnvironment.findUnique({
       where: { clientId: CHANGELOG_PRODUCTION_CLIENT_ID },
       include: { app: true },

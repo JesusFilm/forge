@@ -68,9 +68,11 @@ Together, Apollo's module graph — and everything it transitively pulls in, inc
 
 ## Prevention
 
-This is a structural hazard of a pnpm + Turborepo monorepo run with a heavy multi-worktree workflow — at any given time roughly 8-10 `expo start` Metro servers can be running concurrently, each rooted in a different `.claude/worktrees/<name>/apps/<tv|mobile>` on its own port, and worktrees get pruned right after their PR merges. Any dev client still pointed at a just-pruned worktree's Metro will reproduce this exact error the next time it lazily requires a module not yet bundled.
+This is a structural hazard of a pnpm + Turborepo monorepo run with a heavy multi-worktree workflow — the workflow runs many concurrent `expo start` Metro servers, each rooted in a different `.claude/worktrees/<name>/apps/<tv|mobile>` on its own port — this repo carried 48 worktrees when this note was refreshed on 2026-09-11, against the 8-10 estimated when it was written — and worktrees get pruned right after their PR merges. Any dev client still pointed at a just-pruned worktree's Metro will reproduce this exact error the next time it lazily requires a module not yet bundled.
 
 Reflex: when an `UnableToResolveError` names a path under `.claude/worktrees/<name>/`, `ls` that exact path first — before touching dependencies, lockfiles, or pnpm hoisting. If it doesn't exist, this is the bug, not a package problem.
+
+**Copy the path out of the error; never derive it from the branch name.** Two naming forms are live in `.claude/worktrees/` today: some directories encode the branch slash as `+` (`chore+mobile-expo-sdk-57-upgrade`), and others use only hyphens (`feat-mobile-download-sheet`). A guessed path misses silently and reads as "the worktree is gone", which is the very conclusion this doc exists to make you check.
 
 Diagnosis recipe (minutes, not a dependency hunt):
 
@@ -107,3 +109,5 @@ Habit to adopt going forward: **before pruning a worktree**, check whether any `
 - `docs/solutions/developer-experience/metro-watchfolders-monorepo-refresh-storm-20260415.md` — same category and tool (Metro/watchFolders in a pnpm monorepo), different failure mode (over-broad watch scope).
 - `docs/solutions/runtime-errors/metro-node-crawler-rangerror-missing-watchman-20260622.md` — shares the "a Metro/tooling problem surfaces as a misleading device-side error" shape; unrelated root cause and fix.
 - `docs/solutions/mobile/metro-pnpm-symlink-react-duplicate-resolution.md` — same family (Metro resolving into pnpm's `.pnpm` store), different mechanism (duplicate React via symlink traversal).
+- `docs/solutions/best-practices/expo-router-require-guard-containment-is-order-dependent.md` — qualifies the `lazy=true` sentence above. Expo Router's whole-tree sweep is dev-gated, and a NON-INITIAL screen's graph is fetched on navigation. Both halves hold; read that doc before restating this one's routing claim unqualified.
+- `docs/solutions/developer-experience/mobile-dev-build-verification-false-signals.md` — the general form: prove which artifact the device is actually running before you diagnose from it.

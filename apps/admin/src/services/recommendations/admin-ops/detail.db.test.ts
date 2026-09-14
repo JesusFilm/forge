@@ -29,6 +29,7 @@ const migrationSql = [
   "0070_recommendation_consent_receipts",
   "0071_recommendation_assignment_generation_key",
   "0072_recommendation_source_neutral_playback_episodes",
+  "0082_user_recommendation_identity",
 ].map((migration) =>
   readFileSync(
     new URL(

@@ -43,6 +43,7 @@ describe("createLoaders", () => {
       "experienceById",
       "experienceLocaleById",
       "languageById",
+      "preferredPlayableDub",
       "videoBibleCitationsByVideoId",
       "videoById",
       "videoByIdWithQuery",

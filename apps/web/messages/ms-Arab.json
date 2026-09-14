@@ -527,7 +527,8 @@
     "previousVideoPreview": "Pratonton video sebelumnya",
     "nextVideoPreview": "Pratonton video seterusnya",
     "mediaCollection": "Koleksi media",
-    "scrollToVideo": "Tatal ke video {title}"
+    "scrollToVideo": "Tatal ke video {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Laman utama Jesus Film Project",
@@ -597,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",

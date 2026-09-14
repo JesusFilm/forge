@@ -3,6 +3,13 @@ import { withWorkflow } from "workflow/next"
 
 const nextConfig: NextConfig = {
   typedRoutes: true,
+  // Railway's dedicated worker uses a smaller build container than the Admin
+  // web service. Keep production builds focused on shippable source; the
+  // package typecheck still uses tsconfig.json and validates the full Vitest
+  // and real-Postgres test corpus in CI.
+  typescript: {
+    tsconfigPath: "tsconfig.build.json",
+  },
   // Required for Datadog RUM stack traces to resolve to original sources after
   // `pnpm --filter @forge/admin datadog:sourcemaps` uploads release artifacts.
   productionBrowserSourceMaps: true,
