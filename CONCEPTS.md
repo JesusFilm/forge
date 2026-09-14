@@ -1383,6 +1383,12 @@ The distinction decides the shape of the contrast curve, so a scrim's rule canno
 
 A tint fixes only the text it darkens the ground beneath. Text at a middling luminance fails against dark and light grounds alike, so no tint rescues it and only a colour change does.
 
+### Tab Bar Clearance
+
+The space a scrolling surface holds free at its bottom edge so the tab bar cannot cover its last row.
+
+What the clearance has to contain depends on who draws the bar, and the wrong answer is silent rather than loud. Where the platform owns the bar, the platform already counts the bar's height inside the safe area it reports, so the clearance adds only a breathing gap above it; adding the bar's height a second time double-counts it and strands content well above the bar. Where the app draws the bar itself and the bar displaces content instead of floating over it, no clearance is needed at all. Ownership is therefore part of the term's meaning, not an implementation detail of it: when a bar changes hands between the app and the platform, every surface that reserves space against it changes meaning too, including the surfaces that read the safe area directly and never ask for the clearance.
+
 ## Offline downloads
 
 ### Download Record
