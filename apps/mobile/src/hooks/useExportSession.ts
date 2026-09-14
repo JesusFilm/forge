@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react"
+import { useRef, useSyncExternalStore } from "react"
 
 import {
   getExportSessionStore,
@@ -35,6 +35,49 @@ export function useExportEntry(
   return useSyncExternalStore(store.subscribe, () =>
     videoSlug ? (store.getSnapshot().byTarget[videoSlug] ?? null) : null,
   )
+}
+
+/**
+ * The export session narrowed to one series' episodes.
+ *
+ * The store allocates a fresh snapshot on every progress tick of every export
+ * anywhere in the app, so a screen that reads the raw snapshot re-derives its
+ * whole aggregate once a second for exports it does not show. This returns the
+ * PREVIOUS object whenever none of the named targets changed, so the caller's
+ * memo only invalidates on its own episodes.
+ */
+export function useScopedExportSession(
+  slugs: readonly string[],
+): ExportSessionSnapshot {
+  const store = getExportSessionStore()
+  const held = useRef<{ scoped: ExportSessionSnapshot; key: string } | null>(
+    null,
+  )
+  return useSyncExternalStore(store.subscribe, () => {
+    const snapshot = store.getSnapshot()
+    const mine = slugs.filter((slug) => snapshot.byTarget[slug] != null)
+    // Progress is the only field that moves per tick, so it belongs in the key;
+    // an unchanged key means nothing this screen draws has changed.
+    const key = mine
+      .map((slug) => {
+        const entry = snapshot.byTarget[slug]
+        return `${slug}:${entry.progress}:${entry.paused}:${entry.cancelRequested}`
+      })
+      .join("|")
+    if (held.current?.key === key) return held.current.scoped
+    const byTarget: Record<string, ExportSessionEntry> = {}
+    for (const slug of mine) byTarget[slug] = snapshot.byTarget[slug]
+    const scoped: ExportSessionSnapshot = {
+      byTarget,
+      activeCount: mine.length,
+      targets: new Set(mine),
+      pausedTargets: new Set(
+        mine.filter((slug) => snapshot.byTarget[slug].paused),
+      ),
+    }
+    held.current = { scoped, key }
+    return scoped
+  })
 }
 
 /**

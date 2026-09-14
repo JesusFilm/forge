@@ -17,6 +17,7 @@ import {
   Dropdown,
   SubtitlePicker,
   SheetNote,
+  TermsAcceptanceRow,
   TermsModal,
   formatSeriesReuseNote,
   suspendedInRawMode,
@@ -36,7 +37,10 @@ import {
   buildSeriesExportRun,
   runSeriesRawExport,
 } from "../../src/lib/rawExportRun"
-import { publishSeriesExportProgress } from "../../src/lib/seriesExportProgress"
+import {
+  isSeriesExportCancelled,
+  publishSeriesExportProgress,
+} from "../../src/lib/seriesExportProgress"
 import { useTypography } from "../../src/hooks/useTypography"
 import {
   ACCENT,
@@ -274,29 +278,30 @@ export default function SeriesDownloadRoute() {
     }
   }, [resolution, getRecord])
 
-  // Re-download shouldn't default to the already-saved quality (it's disabled).
-  // Once the saved tier is known, move the default off it to the next tier. Runs
-  // once so it never fights a later manual pick.
-  const didPickDefaultRef = useRef(false)
+  // The two modes want OPPOSITE defaults, so the latch is per mode rather than
+  // once for the sheet: a re-download must not land on the saved tier (it is
+  // disabled), while an export wants exactly that tier, because only it reuses
+  // the files already on the device (KTD14 matches the rendition exactly).
+  // Keyed on the LIVE mode -- keying on the opening mode left a viewer who
+  // switched to Save to Photos in-sheet on a quality that reuses nothing.
+  const defaultedForModeRef = useRef<DownloadMode | null>(null)
   // A pick made while the first resolution is still running arrives BEFORE the
-  // saved tier is known, so the latch below has not claimed its one run yet and
+  // saved tier is known, so the latch below has not claimed its run yet and
   // would revert the viewer a second later.
   const pickedQualityRef = useRef(false)
   useEffect(() => {
-    if (didPickDefaultRef.current || downloaded.tier == null) return
-    didPickDefaultRef.current = true
-    // A sheet OPENED for an export wants the opposite default: only the saved
-    // tier reuses the files already on the device (KTD14 matches the rendition
-    // exactly), so any other quality downloads the whole series again.
-    if (initialMode === "raw") {
-      if (!pickedQualityRef.current) setQualityTier(downloaded.tier)
+    if (defaultedForModeRef.current === mode || downloaded.tier == null) return
+    defaultedForModeRef.current = mode
+    if (pickedQualityRef.current) return
+    if (mode === "raw") {
+      setQualityTier(downloaded.tier)
       return
     }
     if (qualityTier === downloaded.tier) {
       const next = QUALITY_TIERS.find((t) => t !== downloaded.tier)
       if (next) setQualityTier(next)
     }
-  }, [downloaded.tier, qualityTier, initialMode])
+  }, [downloaded.tier, qualityTier, mode])
 
   // Quality options carry each tier's whole-series total as trailing text (the
   // per-video sheet's pattern); the already-saved tier is disabled instead.
@@ -421,9 +426,12 @@ export default function SeriesDownloadRoute() {
     router.back()
     void runSeriesRawExport(run, {
       exportVideo: (input) => getRawExportAdapter().exportVideo(input),
-      // R22: the in-flight episode reports its own cancel, so this stops the
-      // run when the cancel lands on an episode another surface registered.
+      // R22: either the viewer stopped this RUN, or the cancel landed on the
+      // in-flight episode through a surface that registered it there. The
+      // run-level latch is what survives the library write and the gap between
+      // two episodes; the session entry does not live that long.
       isCancelRequested: () =>
+        isSeriesExportCancelled(run.runId) ||
         Object.values(getExportSessionStore().getSnapshot().byTarget).some(
           (entry) => entry.seriesSlug === seriesSlug && entry.cancelRequested,
         ),
@@ -591,40 +599,11 @@ export default function SeriesDownloadRoute() {
       ) : (
         <>
           {rawMode && (
-            <View style={styles.touRow}>
-              <Pressable
-                onPress={() => setTouAccepted((v) => !v)}
-                hitSlop={8}
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: touAccepted }}
-                accessibilityLabel="I agree to the Terms of Use"
-                style={({ pressed }) => pressed && feedback.pressed}
-              >
-                <View
-                  style={[
-                    styles.checkbox,
-                    touAccepted && styles.checkboxChecked,
-                  ]}
-                >
-                  {touAccepted && (
-                    <Ionicons name="checkmark" size={16} color="#ffffff" />
-                  )}
-                </View>
-              </Pressable>
-              <Text style={[styles.touText, typography.bodySmall]}>
-                I agree to the{" "}
-              </Text>
-              <Pressable
-                onPress={() => setTermsVisible(true)}
-                hitSlop={4}
-                accessibilityRole="link"
-                accessibilityLabel="Read Terms of Use"
-              >
-                <Text style={[styles.touLink, typography.bodySmall]}>
-                  Terms of Use
-                </Text>
-              </Pressable>
-            </View>
+            <TermsAcceptanceRow
+              accepted={touAccepted}
+              onToggle={() => setTouAccepted((v) => !v)}
+              onOpenTerms={() => setTermsVisible(true)}
+            />
           )}
 
           <ConfirmButton
@@ -868,35 +847,6 @@ const styles = StyleSheet.create({
     color: ACCENT,
     fontFamily: "System",
     marginBottom: 16,
-  },
-  touRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: "rgba(255, 255, 255, 0.15)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 10,
-  },
-  checkboxChecked: {
-    backgroundColor: ACCENT,
-    borderColor: ACCENT,
-  },
-  touText: {
-    color: TEXT_BODY,
-    fontFamily: "System",
-  },
-  touLink: {
-    color: ACCENT,
-    fontWeight: "600",
-    fontFamily: "System",
-    textDecorationLine: "underline",
   },
   confirmButton: {
     flexDirection: "row",

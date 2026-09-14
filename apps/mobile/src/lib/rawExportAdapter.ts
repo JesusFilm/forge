@@ -68,8 +68,10 @@ export type ExportTransferPort = {
     hooks: RawExportTransferHooks,
   ) => Promise<RawExportTransferReport>
   stopExportTransfer: (taskId: string) => Promise<void>
-  pauseExportTransfer: (taskId: string) => Promise<void>
-  resumeExportTransfer: (taskId: string) => Promise<void>
+  /** Resolves false when there was no live transfer to hold, or the engine
+   *  refused — the session then rolls its optimistic flag back. */
+  pauseExportTransfer: (taskId: string) => Promise<boolean>
+  resumeExportTransfer: (taskId: string) => Promise<boolean>
   signalBackgroundCompletion: (taskId: string) => void
 }
 
@@ -129,6 +131,8 @@ function blockDetail(block: ExportBlock): string {
       return "The app could not read the free space on this device."
     case "wifi-only-on-cellular":
       return "Wi-Fi only is on and this device is on mobile data."
+    case "invalid-url":
+      return "This video's download address could not be used."
   }
 }
 
@@ -225,12 +229,10 @@ export function createRawExportAdapter(deps: RawExportAdapterDeps) {
         onCancel: () => {
           void deps.port.stopExportTransfer(taskId)
         },
-        onPause: () => {
-          void deps.port.pauseExportTransfer(taskId)
-        },
-        onResume: () => {
-          void deps.port.resumeExportTransfer(taskId)
-        },
+        // Returned, not discarded: the port answers whether it actually
+        // suspended, and the session rolls its flag back when it did not.
+        onPause: () => deps.port.pauseExportTransfer(taskId),
+        onResume: () => deps.port.resumeExportTransfer(taskId),
       },
       async (handle): Promise<ExportOutcome> => {
         const request: RawExportRequest = {
@@ -345,6 +347,11 @@ export function createRawExportAdapter(deps: RawExportAdapterDeps) {
             export_album_intent: achievedIntent,
             export_reused: reused,
           })
+          // A stop that landed while the library write was in flight would
+          // otherwise be swallowed by the "saved" outcome, and a series run
+          // reads that outcome to decide whether to start the next episode.
+          // R22 keeps this asset: it is already in the library.
+          if (handle.isCancelRequested()) return "cancelled"
           return "saved"
         } catch (error) {
           warn("raw_export.failed", {

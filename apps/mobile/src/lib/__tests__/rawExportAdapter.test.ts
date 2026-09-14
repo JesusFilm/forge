@@ -155,8 +155,8 @@ function makeHarness(options: HarnessOptions = {}) {
       },
     ),
     stopExportTransfer: jest.fn(async () => undefined),
-    pauseExportTransfer: jest.fn(async () => undefined),
-    resumeExportTransfer: jest.fn(async () => undefined),
+    pauseExportTransfer: jest.fn(async () => true),
+    resumeExportTransfer: jest.fn(async () => true),
     signalBackgroundCompletion: jest.fn((taskId: string) => {
       order.push(`signal:${taskId}`)
     }),

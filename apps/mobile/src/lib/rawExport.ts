@@ -5,6 +5,7 @@ import type { ExportOutcome } from "./exportSession"
 import { STORAGE_RESERVE_BYTES } from "./offlineConstants"
 import { RAW_EXPORT_ID_PREFIX } from "./rawExportConstants"
 import type { StorageGate } from "./seriesDownloadEnqueue"
+import { validateActionUrl } from "./validateUrl"
 
 /**
  * Every raw-export decision: the storage gate, the library-permission
@@ -267,6 +268,9 @@ export type ExportBlock =
   | { reason: "insufficient-storage"; requiredBytes: number; freeBytes: number }
   | { reason: "unreadable-free" }
   | { reason: "wifi-only-on-cellular" }
+  /** The rendition URL failed the CMS-URL check every consumer of admin data
+   *  runs before handing a URL to the native downloader. */
+  | { reason: "invalid-url" }
 
 export type ExportFailure = {
   cause: TransferInterruption["kind"] | "transferError" | "permissionError"
@@ -332,6 +336,17 @@ export function createRawExportDecider(deps: RawExportDeps) {
   const admit = async (
     request: RawExportRequest,
   ): Promise<RawExportAdmission> => {
+    // The rendition URL is admin-sourced, and CLAUDE.md requires every such URL
+    // to pass validateUrl before it reaches the native downloader. The offline
+    // path guards the same field in downloadLifecycle; this is its twin.
+    if (!validateActionUrl(request.rendition.url)) {
+      info("raw_export.blocked", {
+        export_state: "blocked",
+        export_block_reason: "invalid-url",
+      })
+      return { kind: "blocked", block: { reason: "invalid-url" } }
+    }
+
     const freeBytes = await readFreeBytes()
     const gate = evaluateExportStorageGate({
       exports: request.runExports ?? [

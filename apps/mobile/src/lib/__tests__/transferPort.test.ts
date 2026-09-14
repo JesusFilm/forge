@@ -39,7 +39,6 @@ import {
   isUnderExportRoot,
   normalizeUri,
   translateInterruptionForExport,
-  translateInterruptionForOffline,
 } from "../transferPort"
 
 const ROOT = buildExportRoot("file:///docs/")
@@ -174,13 +173,6 @@ describe("export id namespace", () => {
 })
 
 describe("interruption translation per consumer (KTD1)", () => {
-  it("gives the offline consumer its paused state", () => {
-    expect(translateInterruptionForOffline({ kind: "connectivity" })).toEqual({
-      state: "paused",
-      keepBytes: true,
-    })
-  })
-
   it("gives the export consumer one resume and then a failure", () => {
     expect(
       translateInterruptionForExport(

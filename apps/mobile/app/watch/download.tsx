@@ -37,7 +37,11 @@ export default function DownloadSheetRoute() {
     mode?: string
   }>()
   const isSwap = swap === "1"
-  const initialMode: DownloadMode = modeParam === "raw" ? "raw" : "offline"
+  // The switch gates the seed as well as the control: raw mode without the
+  // mode control is a sheet with no way back to offline and a confirm that
+  // refuses. Mirrors app/series/download.tsx.
+  const initialMode: DownloadMode =
+    RAW_EXPORT_ENABLED && modeParam === "raw" ? "raw" : "offline"
 
   // Downloads are fetched lazily per dub — kick off the active variant's fetch
   // when the sheet opens (no-op if already loaded / in flight).

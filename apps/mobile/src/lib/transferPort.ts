@@ -1,5 +1,5 @@
 /**
- * KTD1: the one seam both transfer consumers cross. The background engine is
+ * KTD1: the seam a transfer consumer crosses to reach the engine. The engine is
  * record-agnostic in name only — its task ids are bare slugs, its interruption
  * vocabulary returns offline states, and its background-completion signal is
  * keyed by that same id. This port owns those three crossings.
@@ -43,7 +43,9 @@ export {
 
 // ── Interruption translation, one per consumer (KTD1) ───────────────
 
-export { classifyInterruption as translateInterruptionForOffline } from "./downloadOutcome"
+// Only the export's translation lives here. The offline lifecycle still calls
+// `classifyInterruption` directly, so re-exporting it under a port name would
+// advertise a crossing that does not happen.
 export { decideExportInterruption as translateInterruptionForExport } from "./rawExport"
 
 // ── Staging-path namespace (KTD2) ───────────────────────────────────
@@ -275,20 +277,43 @@ export function createTransferPort(deps: TransferPortDeps) {
     await deps.stop(entry.task)
   }
 
-  /** Suspend in place, keeping the handle and the bytes already on disk. */
-  const pauseExportTransfer = async (taskId: string): Promise<void> => {
+  /**
+   * Suspend in place, keeping the handle and the bytes already on disk.
+   *
+   * Answers whether it actually suspended. There is no live transfer to hold
+   * while an episode reuses a local copy, and the engine can reject the call —
+   * in both cases the caller must not leave the viewer looking at a held ring
+   * over a transfer that is still running.
+   */
+  const pauseExportTransfer = async (taskId: string): Promise<boolean> => {
     const entry = live.get(taskId)
-    if (!entry || entry.paused) return
+    if (!entry) return false
+    if (entry.paused) return true
     entry.paused = true
-    await deps.pause(entry.task)
+    try {
+      await deps.pause(entry.task)
+      return true
+    } catch {
+      entry.paused = false
+      return false
+    }
   }
 
   /** Continue the suspended transfer — never a restart from zero. */
-  const resumeExportTransfer = async (taskId: string): Promise<void> => {
+  const resumeExportTransfer = async (taskId: string): Promise<boolean> => {
     const entry = live.get(taskId)
-    if (!entry || !entry.paused) return
+    if (!entry) return false
+    if (!entry.paused) return true
     entry.paused = false
-    await deps.resume(entry.task)
+    try {
+      await deps.resume(entry.task)
+      return true
+    } catch {
+      // Restore the swallow guard: the transfer is still suspended, so a
+      // pause-as-cancel callback must keep being read as a pause.
+      entry.paused = true
+      return false
+    }
   }
 
   return {

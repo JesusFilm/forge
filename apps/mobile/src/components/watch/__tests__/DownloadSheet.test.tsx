@@ -354,6 +354,12 @@ function hasDropdownSection(renderer: TestInstance, section: string): boolean {
 
 async function chooseMode(renderer: TestInstance, mode: DownloadMode) {
   await press(pressableByLabel(renderer, DOWNLOAD_MODE_LABELS[mode]))
+  // Switching mode can re-default the quality, and a quality change re-runs the
+  // per-episode resolution. Flush it here so the suite never ends with that
+  // fan-out still in flight.
+  await act(async () => {
+    await Promise.resolve()
+  })
 }
 
 /**
@@ -915,9 +921,10 @@ describe("series sheet mode control", () => {
     await chooseMode(renderer, "raw")
     await acceptTerms(renderer)
 
-    // The saved tier is selectable again, and selecting it is what would
-    // otherwise trip the nothing-to-do block.
-    await press(pressableByLabel(renderer, "Quality, High"))
+    // Raw mode defaults straight to the saved tier -- the very tier the offline
+    // path disables -- and selecting it is what would otherwise trip the
+    // nothing-to-do block.
+    await press(pressableByLabel(renderer, "Quality, Highest"))
     expect(nodeByLabel(renderer, "Highest, Already downloaded")).toBeNull()
     await press(pressableByLabel(renderer, "Highest"))
 
@@ -937,12 +944,14 @@ describe("series sheet mode control", () => {
     mockGetRecord.mockImplementation((slug: string) => savedRecord(slug))
     const renderer = await renderSeries()
 
+    // Switching to raw re-defaults the quality to the saved tier, so every
+    // episode reuses its copy without the viewer touching the picker.
     await chooseMode(renderer, "raw")
-    // The sheet opened on High, and every saved copy is Highest.
-    expect(hasText(renderer, formatSeriesReuseNote(0, 3))).toBe(true)
-
-    await chooseQuality(renderer, "Quality", "High", "Highest")
     expect(hasText(renderer, formatSeriesReuseNote(3, 3))).toBe(true)
+
+    // Picking a tier nothing is saved at is what drops the reuse to zero.
+    await chooseQuality(renderer, "Quality", "Highest", "Low")
+    expect(hasText(renderer, formatSeriesReuseNote(0, 3))).toBe(true)
 
     await unmount(renderer)
   })
@@ -1050,14 +1059,19 @@ describe("series sheet opened for an export", () => {
     await unmount(renderer)
   })
 
-  it("still moves off the saved quality when it opens to download", async () => {
-    // The anti-vacuous companion: the same records, the same saved tier, and
-    // the opposite default — a re-download may not land on the disabled tier.
+  it("gives each mode its own default, switching either way", async () => {
+    // The two modes want opposite tiers from the same records: a re-download
+    // may not land on the disabled saved tier, and an export wants exactly it.
     mockGetRecord.mockImplementation((slug: string) => savedRecord(slug))
     const renderer = await renderSeries()
 
+    // Offline opened: moved OFF the saved Highest.
+    expect(nodeByLabel(renderer, "Quality, Highest")).toBeNull()
+
+    // Switching to raw moves back ONTO it, so the reuse is complete.
     await chooseMode(renderer, "raw")
-    expect(hasText(renderer, formatSeriesReuseNote(0, 3))).toBe(true)
+    expect(nodeByLabel(renderer, "Quality, Highest")).not.toBeNull()
+    expect(hasText(renderer, formatSeriesReuseNote(3, 3))).toBe(true)
 
     await unmount(renderer)
   })

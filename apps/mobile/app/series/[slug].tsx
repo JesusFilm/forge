@@ -47,10 +47,11 @@ import {
 import { resolveSeriesSubtitleLabel } from "../../src/lib/subtitleSelection"
 import { useSeriesSubtitleUnion } from "../../src/hooks/useSeriesSubtitleUnion"
 import {
-  useExportSession,
+  useScopedExportSession,
   useSeriesExportProgress,
 } from "../../src/hooks/useExportSession"
 import { getExportSessionStore } from "../../src/lib/exportSession"
+import { requestSeriesExportCancel } from "../../src/lib/seriesExportProgress"
 import { presentActionMenu } from "../../src/lib/actionMenu"
 import { rawModeLabel } from "../../src/components/watch/DownloadSheet"
 import { RAW_EXPORT_ENABLED } from "../../src/lib/rawExportConstants"
@@ -112,12 +113,19 @@ export default function SeriesScreen() {
     !subtitleUnionError &&
     (subtitleUnion == null || subtitleUnion.length > 0)
 
-  const exportSession = useExportSession()
+  // Scoped to THIS series' episodes: the raw snapshot changes identity on every
+  // progress tick of every export in the app, which would re-run the aggregate
+  // and repaint the row once a second for a download the screen never shows.
+  const episodeSlugs = useMemo(
+    () => series?.episodes.map((episode) => episode.slug) ?? [],
+    [series?.episodes],
+  )
+  const exportSession = useScopedExportSession(episodeSlugs)
   const exportRunProgress = useSeriesExportProgress(series?.slug)
   const downloadState = useMemo(
     () =>
       deriveSeriesDownloadState(
-        series?.episodes.map((episode) => episode.slug) ?? [],
+        episodeSlugs,
         downloadedSlugs,
         offlineRecords,
         pendingSwapSlugs,
@@ -125,7 +133,7 @@ export default function SeriesScreen() {
         exportRunProgress,
       ),
     [
-      series?.episodes,
+      episodeSlugs,
       downloadedSlugs,
       offlineRecords,
       pendingSwapSlugs,
@@ -335,7 +343,12 @@ export default function SeriesScreen() {
     const store = getExportSessionStore()
     const slugs = downloadState.exportingSlugs
     const resumeAll = () => slugs.forEach((slug) => store.requestResume(slug))
-    const stopAll = () => slugs.forEach((slug) => store.requestCancel(slug))
+    const stopAll = () => {
+      // The run-level latch first: the per-episode flags below are deleted as
+      // each episode finishes, so alone they cannot stop the whole run.
+      requestSeriesExportCancel(series?.slug ?? "")
+      slugs.forEach((slug) => store.requestCancel(slug))
+    }
     const MESSAGE =
       "This export is paused. Stopping ends the whole series export. Episodes already saved stay in your library."
     if (Platform.OS === "ios") {

@@ -140,10 +140,14 @@ export type ExportRunInput = {
   seriesSlug?: string | null
   /** Stops the underlying transfer when the viewer cancels (R22, R30). */
   onCancel?: () => void
-  /** Suspends the underlying transfer, keeping its task handle and its bytes. */
-  onPause?: () => void
+  /**
+   * Suspends the underlying transfer, keeping its task handle and its bytes.
+   * Answers whether it suspended: an episode reusing a local copy has no live
+   * transfer to hold, and the engine can refuse. `false` rolls the flag back.
+   */
+  onPause?: () => void | boolean | Promise<boolean>
   /** Continues the suspended transfer in place — never a restart from zero. */
-  onResume?: () => void
+  onResume?: () => void | boolean | Promise<boolean>
 }
 
 export type ExportRunResult =
@@ -200,8 +204,8 @@ export function createExportSessionStore(deps?: {
   let snapshot: ExportSessionSnapshot = EMPTY_SNAPSHOT
   const entries = new Map<string, ExportSessionEntry>()
   const cancellers = new Map<string, () => void>()
-  const pausers = new Map<string, () => void>()
-  const resumers = new Map<string, () => void>()
+  const pausers = new Map<string, NonNullable<ExportRunInput["onPause"]>>()
+  const resumers = new Map<string, NonNullable<ExportRunInput["onResume"]>>()
   const listeners = new Set<() => void>()
 
   let targets: ReadonlySet<string> = EMPTY_TARGETS
@@ -248,6 +252,31 @@ export function createExportSessionStore(deps?: {
         // Deliberately ignored; see the note above.
       }
     }
+  }
+
+  /**
+   * Undo an optimistic hold the transport refused. The flag has to be written
+   * BEFORE the transport is asked — the engine reports a pause AS a
+   * cancellation, and this flag is what tells the two apart — so a refusal can
+   * only be corrected afterwards, never prevented. Without it the ring reads
+   * held while the bytes keep moving: an episode reusing a local copy
+   * registers no live transfer at all, so its pause was accepted and lost.
+   */
+  function settleHold(
+    target: string,
+    asked: void | boolean | Promise<boolean>,
+    wanted: boolean,
+  ): void {
+    if (asked === undefined) return
+    const revert = (): void => {
+      const current = entries.get(target)
+      if (!current || current.paused !== wanted) return
+      entries.set(target, { ...current, paused: !wanted })
+      commit()
+    }
+    void Promise.resolve(asked).then((ok) => {
+      if (ok === false) revert()
+    }, revert)
   }
 
   /** All notes live under ONE key, so two targets cannot each hold a shard the
@@ -452,7 +481,7 @@ export function createExportSessionStore(deps?: {
       if (!entry || entry.cancelRequested || entry.paused) return false
       entries.set(target, { ...entry, paused: true })
       commit()
-      pausers.get(target)?.()
+      settleHold(target, pausers.get(target)?.(), true)
       return true
     },
 
@@ -462,7 +491,7 @@ export function createExportSessionStore(deps?: {
       if (!entry || entry.cancelRequested || !entry.paused) return false
       entries.set(target, { ...entry, paused: false })
       commit()
-      resumers.get(target)?.()
+      settleHold(target, resumers.get(target)?.(), false)
       return true
     },
 

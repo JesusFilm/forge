@@ -53,6 +53,8 @@ export function publishSeriesExportProgress(
   const current = bySeries[seriesSlug]
   if (progress == null) {
     if (current == null) return
+    // The run is over; its cancel latch must not outlive it and stop the next.
+    cancelledRuns.delete(current.runId)
     const next = { ...bySeries }
     delete next[seriesSlug]
     bySeries = next
@@ -75,6 +77,28 @@ export function getSeriesExportProgressSnapshot(): Snapshot {
   return snapshot
 }
 
+/**
+ * Runs the viewer has stopped, by run id.
+ *
+ * The session's own cancel flag lives on a per-episode entry that is deleted
+ * the moment that episode finishes, so it cannot answer "did the viewer stop
+ * this RUN" during the library write or in the gap between two episodes — the
+ * two windows where a stop used to be lost while the run carried on.
+ */
+const cancelledRuns = new Set<string>()
+
+/** Stop the run covering this series, if one is live. Answers whether it was. */
+export function requestSeriesExportCancel(seriesSlug: string): boolean {
+  const run = bySeries[seriesSlug]
+  if (!run) return false
+  cancelledRuns.add(run.runId)
+  return true
+}
+
+export function isSeriesExportCancelled(runId: string): boolean {
+  return cancelledRuns.has(runId)
+}
+
 export function subscribeToSeriesExportProgress(
   listener: () => void,
 ): () => void {
@@ -86,6 +110,7 @@ export function subscribeToSeriesExportProgress(
 
 /** Test-only: drop every run and every subscriber. */
 export function resetSeriesExportProgressForTests(): void {
+  cancelledRuns.clear()
   bySeries = {}
   snapshot = EMPTY
   listeners.clear()

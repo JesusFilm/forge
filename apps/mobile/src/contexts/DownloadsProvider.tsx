@@ -72,6 +72,7 @@ import {
   attachRawExportRuntime,
   getRawExportAdapter,
 } from "../lib/rawExportRuntime"
+import { RAW_EXPORT_ENABLED } from "../lib/rawExportConstants"
 import { buildExportRoot, exportStagingDir } from "../lib/transferPort"
 import { getApolloClient } from "../lib/apolloClient"
 import { datadogLog } from "../lib/datadog"
@@ -625,7 +626,10 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
    * session, because returning from the background is not a relaunch.
    */
   useEffect(() => {
-    if (!isReady) return
+    // R33: the switch refuses every new export, and the library write is the
+    // export. Without this read a disabled build still saves on the next
+    // foreground; the note then waits for the launch sweep, which discards it.
+    if (!isReady || !RAW_EXPORT_ENABLED) return
     let running = false
     const finishDeferred = async (): Promise<void> => {
       if (running) return

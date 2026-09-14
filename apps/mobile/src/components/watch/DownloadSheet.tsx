@@ -499,6 +499,51 @@ export function SheetNote({ text }: { text: string }) {
   return <Text style={[styles.sheetNote, typography.bodySmall]}>{text}</Text>
 }
 
+/**
+ * The consent gate both sheets show in raw mode. Shared, like every other
+ * control on these two sheets: a hand-copied second version is this repo's
+ * recorded way for a fix — a wording change, a legal correction — to reach
+ * only one screen.
+ */
+export function TermsAcceptanceRow({
+  accepted,
+  onToggle,
+  onOpenTerms,
+}: {
+  accepted: boolean
+  onToggle: () => void
+  onOpenTerms: () => void
+}) {
+  const typography = useTypography()
+  return (
+    <View style={styles.touRow}>
+      <Pressable
+        onPress={onToggle}
+        hitSlop={8}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: accepted }}
+        accessibilityLabel="I agree to the Terms of Use"
+        style={({ pressed }) => pressed && feedback.pressed}
+      >
+        <View style={[styles.checkbox, accepted && styles.checkboxChecked]}>
+          {accepted && <Ionicons name="checkmark" size={16} color="#ffffff" />}
+        </View>
+      </Pressable>
+      <Text style={[styles.touText, typography.bodySmall]}>
+        I agree to the{" "}
+      </Text>
+      <Pressable
+        onPress={onOpenTerms}
+        hitSlop={4}
+        accessibilityRole="link"
+        accessibilityLabel="Read Terms of Use"
+      >
+        <Text style={[styles.touLink, typography.bodySmall]}>Terms of Use</Text>
+      </Pressable>
+    </View>
+  )
+}
+
 export type DownloadSheetProps = {
   videoTitle: string | null
   duration: number | null
@@ -782,37 +827,11 @@ export function DownloadSheetContent({
         )}
 
         {rawMode && (
-          <View style={styles.touRow}>
-            <Pressable
-              onPress={() => setTouAccepted((v) => !v)}
-              hitSlop={8}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: touAccepted }}
-              accessibilityLabel="I agree to the Terms of Use"
-              style={({ pressed }) => pressed && feedback.pressed}
-            >
-              <View
-                style={[styles.checkbox, touAccepted && styles.checkboxChecked]}
-              >
-                {touAccepted && (
-                  <Ionicons name="checkmark" size={16} color="#ffffff" />
-                )}
-              </View>
-            </Pressable>
-            <Text style={[styles.touText, typography.bodySmall]}>
-              I agree to the{" "}
-            </Text>
-            <Pressable
-              onPress={() => setTermsVisible(true)}
-              hitSlop={4}
-              accessibilityRole="link"
-              accessibilityLabel="Read Terms of Use"
-            >
-              <Text style={[styles.touLink, typography.bodySmall]}>
-                Terms of Use
-              </Text>
-            </Pressable>
-          </View>
+          <TermsAcceptanceRow
+            accepted={touAccepted}
+            onToggle={() => setTouAccepted((v) => !v)}
+            onOpenTerms={() => setTermsVisible(true)}
+          />
         )}
 
         <Pressable
