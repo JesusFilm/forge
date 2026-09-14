@@ -10,6 +10,7 @@ import {
 } from "../../lib/color"
 import {
   DOWNLOAD_DONE_COLOR,
+  EXPORT_GLYPH_COLOR,
   EXPORT_IN_PROGRESS_COLOR,
 } from "../../lib/downloadGlyph"
 import { feedback } from "../../styles/shared"
@@ -163,7 +164,7 @@ export function SeriesActionRow({
               <Ionicons
                 name={downloadState.pausedExport ? "play" : "pause"}
                 size={12}
-                color={EXPORT_IN_PROGRESS_COLOR}
+                color={EXPORT_GLYPH_COLOR}
               />
             </DownloadProgressRing>
           ) : downloadState.inProgress ? (

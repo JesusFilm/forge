@@ -12,6 +12,9 @@
 
 /** Where a series export has got to, in episodes. */
 export type SeriesExportRunProgress = {
+  /** The run this belongs to, so the export report can tell whether the run
+   *  behind one of its cards is still going. */
+  runId: string
   /** Episodes of this run already written to the photo library. */
   saved: number
   /** Episodes the run covers. Never 0 while a run is live. */
@@ -58,6 +61,7 @@ export function publishSeriesExportProgress(
   }
   if (
     current != null &&
+    current.runId === progress.runId &&
     current.saved === progress.saved &&
     current.total === progress.total
   ) {

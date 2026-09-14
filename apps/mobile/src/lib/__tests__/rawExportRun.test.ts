@@ -252,10 +252,10 @@ describe("runSeriesRawExport publishes the ring's count", () => {
     expect(h.runProgress).toEqual([
       // Up before the first episode, so the ring is already on screen when an
       // episode that reuses an offline copy finishes in milliseconds.
-      { saved: 0, total: 3 },
-      { saved: 1, total: 3 },
-      { saved: 2, total: 3 },
-      { saved: 3, total: 3 },
+      { runId: RUN_ID, saved: 0, total: 3 },
+      { runId: RUN_ID, saved: 1, total: 3 },
+      { runId: RUN_ID, saved: 2, total: 3 },
+      { runId: RUN_ID, saved: 3, total: 3 },
       null,
     ])
   })
@@ -269,9 +269,9 @@ describe("runSeriesRawExport publishes the ring's count", () => {
     await runSeriesRawExport(run, h.deps)
 
     expect(h.runProgress).toEqual([
-      { saved: 0, total: 3 },
-      { saved: 1, total: 3 },
-      { saved: 2, total: 3 },
+      { runId: RUN_ID, saved: 0, total: 3 },
+      { runId: RUN_ID, saved: 1, total: 3 },
+      { runId: RUN_ID, saved: 2, total: 3 },
       null,
     ])
   })
@@ -283,9 +283,9 @@ describe("runSeriesRawExport publishes the ring's count", () => {
     await runSeriesRawExport(run, h.deps)
 
     expect(h.runProgress).toEqual([
-      { saved: 0, total: 2 },
-      { saved: 1, total: 2 },
-      { saved: 2, total: 2 },
+      { runId: RUN_ID, saved: 0, total: 2 },
+      { runId: RUN_ID, saved: 1, total: 2 },
+      { runId: RUN_ID, saved: 2, total: 2 },
       null,
     ])
   })
@@ -332,6 +332,7 @@ describe("runSeriesRawExport publishes the ring's count", () => {
         // Ordering, not duration: the full count must already be published.
         holds.push(ms)
         expect(h.runProgress[h.runProgress.length - 1]).toEqual({
+          runId: RUN_ID,
           saved: 2,
           total: 2,
         })
@@ -368,6 +369,27 @@ describe("runSeriesRawExport publishes the ring's count", () => {
     })
 
     expect(h.runProgress[h.runProgress.length - 1]).toBeNull()
+  })
+
+  it("publishes the SAME run id its report signals carry", async () => {
+    // The two are matched by the report host: a run's card stays on screen
+    // while that run is live. Different ids and the card expires between two
+    // episodes, folds the next into a fresh record, and reports "1 of 5" for
+    // the whole run — the defect this pairing exists to prevent. Nothing else
+    // compares them, because each is built from its own end.
+    const run = buildRun(episodes(3))
+    const h = harness({})
+
+    await runSeriesRawExport(run, h.deps)
+
+    const published = new Set(
+      h.runProgress
+        .filter((progress) => progress != null)
+        .map((progress) => progress.runId),
+    )
+    const reported = new Set(h.signals.map((signal) => signal.runId))
+    expect(published).toEqual(reported)
+    expect(published.size).toBe(1)
   })
 
   it("publishes nothing for a run with no episodes", async () => {

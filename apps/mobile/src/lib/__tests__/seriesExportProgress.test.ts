@@ -5,14 +5,21 @@ import {
   subscribeToSeriesExportProgress,
 } from "../seriesExportProgress"
 
+const RUN = "washi-gospel:1700000000000"
+
 beforeEach(() => {
   resetSeriesExportProgressForTests()
 })
 
 describe("the live series export run", () => {
   it("holds one run per series and clears it on null", () => {
-    publishSeriesExportProgress("washi-gospel", { saved: 2, total: 5 })
+    publishSeriesExportProgress("washi-gospel", {
+      runId: RUN,
+      saved: 2,
+      total: 5,
+    })
     expect(getSeriesExportProgressSnapshot()["washi-gospel"]).toEqual({
+      runId: RUN,
       saved: 2,
       total: 5,
     })
@@ -22,13 +29,21 @@ describe("the live series export run", () => {
   })
 
   it("keeps two series apart", () => {
-    publishSeriesExportProgress("washi-gospel", { saved: 1, total: 5 })
-    publishSeriesExportProgress("light-series", { saved: 3, total: 4 })
+    publishSeriesExportProgress("washi-gospel", {
+      runId: RUN,
+      saved: 1,
+      total: 5,
+    })
+    publishSeriesExportProgress("light-series", {
+      runId: RUN,
+      saved: 3,
+      total: 4,
+    })
 
     publishSeriesExportProgress("washi-gospel", null)
 
     expect(getSeriesExportProgressSnapshot()).toEqual({
-      "light-series": { saved: 3, total: 4 },
+      "light-series": { runId: RUN, saved: 3, total: 4 },
     })
   })
 
@@ -36,15 +51,27 @@ describe("the live series export run", () => {
     const listener = jest.fn()
     subscribeToSeriesExportProgress(listener)
 
-    publishSeriesExportProgress("washi-gospel", { saved: 1, total: 5 })
+    publishSeriesExportProgress("washi-gospel", {
+      runId: RUN,
+      saved: 1,
+      total: 5,
+    })
     expect(listener).toHaveBeenCalledTimes(1)
 
     // The run republishes after every episode, saved or not. An unchanged
     // count must not re-render the screen.
-    publishSeriesExportProgress("washi-gospel", { saved: 1, total: 5 })
+    publishSeriesExportProgress("washi-gospel", {
+      runId: RUN,
+      saved: 1,
+      total: 5,
+    })
     expect(listener).toHaveBeenCalledTimes(1)
 
-    publishSeriesExportProgress("washi-gospel", { saved: 2, total: 5 })
+    publishSeriesExportProgress("washi-gospel", {
+      runId: RUN,
+      saved: 2,
+      total: 5,
+    })
     expect(listener).toHaveBeenCalledTimes(2)
   })
 
@@ -60,24 +87,40 @@ describe("the live series export run", () => {
     // useSyncExternalStore compares by identity, so a mutated object would
     // leave the ring frozen at whatever it drew first.
     const first = getSeriesExportProgressSnapshot()
-    publishSeriesExportProgress("washi-gospel", { saved: 1, total: 5 })
+    publishSeriesExportProgress("washi-gospel", {
+      runId: RUN,
+      saved: 1,
+      total: 5,
+    })
     const second = getSeriesExportProgressSnapshot()
-    publishSeriesExportProgress("washi-gospel", { saved: 2, total: 5 })
+    publishSeriesExportProgress("washi-gospel", {
+      runId: RUN,
+      saved: 2,
+      total: 5,
+    })
 
     expect(second).not.toBe(first)
     expect(getSeriesExportProgressSnapshot()).not.toBe(second)
   })
 
   it("keeps the snapshot stable when nothing changed", () => {
-    publishSeriesExportProgress("washi-gospel", { saved: 1, total: 5 })
+    publishSeriesExportProgress("washi-gospel", {
+      runId: RUN,
+      saved: 1,
+      total: 5,
+    })
     const stable = getSeriesExportProgressSnapshot()
-    publishSeriesExportProgress("washi-gospel", { saved: 1, total: 5 })
+    publishSeriesExportProgress("washi-gospel", {
+      runId: RUN,
+      saved: 1,
+      total: 5,
+    })
 
     expect(getSeriesExportProgressSnapshot()).toBe(stable)
   })
 
   it("ignores an empty slug, which names no series", () => {
-    publishSeriesExportProgress("", { saved: 1, total: 5 })
+    publishSeriesExportProgress("", { runId: RUN, saved: 1, total: 5 })
     expect(getSeriesExportProgressSnapshot()).toEqual({})
   })
 
@@ -89,7 +132,11 @@ describe("the live series export run", () => {
     subscribeToSeriesExportProgress(good)
 
     expect(() =>
-      publishSeriesExportProgress("washi-gospel", { saved: 1, total: 5 }),
+      publishSeriesExportProgress("washi-gospel", {
+        runId: RUN,
+        saved: 1,
+        total: 5,
+      }),
     ).not.toThrow()
     expect(good).toHaveBeenCalledTimes(1)
   })
@@ -99,7 +146,11 @@ describe("the live series export run", () => {
     const unsubscribe = subscribeToSeriesExportProgress(listener)
     unsubscribe()
 
-    publishSeriesExportProgress("washi-gospel", { saved: 1, total: 5 })
+    publishSeriesExportProgress("washi-gospel", {
+      runId: RUN,
+      saved: 1,
+      total: 5,
+    })
     expect(listener).not.toHaveBeenCalled()
   })
 })

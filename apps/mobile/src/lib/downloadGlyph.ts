@@ -2,6 +2,7 @@ import {
   ACCENT_ON_DARK,
   STATUS_DONE_COLOR,
   STATUS_FAILED_COLOR,
+  TEXT_PRIMARY,
   TEXT_SECONDARY,
 } from "./color"
 import { clampFraction, type ExportSessionEntry } from "./exportSession"
@@ -12,12 +13,18 @@ export const DOWNLOAD_DONE_COLOR = STATUS_DONE_COLOR
 /** Rose for a failed transfer (retry). */
 export const DOWNLOAD_FAILED_COLOR = STATUS_FAILED_COLOR
 /**
- * One colour for a raw export on every indicator. It is the SAME red the
- * offline ring uses, by owner decision (2026-09-10): an export is a download
- * and reads as one. This supersedes R16's tell-them-apart styling, which had
- * this at TEXT_PRIMARY (white).
+ * The RING an export draws: the same red the offline ring uses, by owner
+ * decision (2026-09-10), because an export is a download and reads as one.
  */
 export const EXPORT_IN_PROGRESS_COLOR = ACCENT_ON_DARK
+
+/**
+ * The GLYPH an export draws — the arrow on an episode thumbnail, and the icon
+ * inside the ring. White, by owner decision (2026-09-14), so the arrow reads
+ * against the red arc rather than disappearing into it. The ring keeps the red
+ * above; only the glyph changed.
+ */
+export const EXPORT_GLYPH_COLOR = TEXT_PRIMARY
 
 const IN_PROGRESS_STATES: ReadonlySet<OfflineDownloadState> =
   new Set<OfflineDownloadState>(["downloading", "queued", "paused"])
@@ -103,7 +110,7 @@ export function downloadGlyphInfo(
       return {
         inProgress: true,
         icon: "pause",
-        color: EXPORT_IN_PROGRESS_COLOR,
+        color: EXPORT_GLYPH_COLOR,
         a11yLabel:
           pct != null
             ? `Saving to Photos, paused at ${pct}%. Tap to resume or stop`
@@ -116,7 +123,7 @@ export function downloadGlyphInfo(
     return {
       inProgress: true,
       icon: "arrow-down",
-      color: EXPORT_IN_PROGRESS_COLOR,
+      color: EXPORT_GLYPH_COLOR,
       a11yLabel:
         pct != null
           ? `Saving to Photos, ${pct}%. Tap to pause`

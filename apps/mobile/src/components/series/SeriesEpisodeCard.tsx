@@ -17,7 +17,7 @@ import {
   hexToRgba,
 } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
-import { EXPORT_IN_PROGRESS_COLOR } from "../../lib/downloadGlyph"
+import { EXPORT_GLYPH_COLOR } from "../../lib/downloadGlyph"
 import type { EpisodeBadgeState } from "../../lib/seriesDownloadAggregate"
 
 // Grid corner badge per download state (U9). Also spoken via accessibilityLabel.
@@ -46,7 +46,7 @@ const BADGE: Record<
   // Decorative: this badge has no tap, so it draws no pause/resume split.
   exporting: {
     icon: "arrow-down-circle",
-    color: EXPORT_IN_PROGRESS_COLOR,
+    color: EXPORT_GLYPH_COLOR,
     a11y: "saving to Photos",
   },
 }

@@ -6,6 +6,7 @@
 
 import {
   EXPORT_REPORT_AUTO_DISMISS_MS,
+  EXPORT_REPORT_RUN_STALL_MS,
   MAX_VISIBLE_REPORTS,
   foldSignal,
   viewFor,
@@ -284,6 +285,79 @@ describe("the series detail names every outcome the run reached", () => {
 
     expect(view.detail).toBeNull()
     expect(view.icon).toBe("checkmark-circle")
+  })
+})
+
+/**
+ * A run's card is a progress card, not a receipt. The host drops a record the
+ * moment `expiresAt` passes, so an episode slower than the dismissal came back
+ * to a FRESH record holding only its own outcome — "Saved 1 of 5" for the whole
+ * run, with the title moving underneath it.
+ */
+describe("a run's report waits for its next episode", () => {
+  it("outlives the ordinary dismissal while episodes are still to come", () => {
+    const record = only([episode("episode-0", "saved", { runSize: 5 })])
+
+    expect(record.expiresAt).toBe(NOW + EXPORT_REPORT_RUN_STALL_MS)
+    expect(record.expiresAt).toBeGreaterThan(
+      NOW + EXPORT_REPORT_AUTO_DISMISS_MS,
+    )
+  })
+
+  it("keeps counting when the next episode lands after the dismissal", () => {
+    // The reproduction: the second signal arrives 30s later, long past the 6s
+    // dismissal, and must still fold into the SAME record.
+    const first = foldSignal(
+      [],
+      episode("episode-0", "saved", { runSize: 5 }),
+      NOW,
+    )
+    const later = NOW + 30_000
+    const survived = first.filter(
+      (record) => record.expiresAt === null || record.expiresAt > later,
+    )
+    expect(survived).toHaveLength(1)
+
+    const next = foldSignal(
+      survived,
+      episode("episode-1", "saved", { runSize: 5 }),
+      later,
+    )
+    expect(next).toHaveLength(1)
+    expect(viewFor(next[0]).headline).toBe("Saved 2 of 5 episodes.")
+  })
+
+  it("takes the ordinary dismissal once every episode has reported", () => {
+    const record = only([
+      episode("episode-0", "saved", { runSize: 2 }),
+      episode("episode-1", "saved", { runSize: 2 }),
+    ])
+
+    expect(record.expiresAt).toBe(NOW + EXPORT_REPORT_AUTO_DISMISS_MS)
+  })
+
+  it("takes the ordinary dismissal on a cancel, which ends the run early", () => {
+    // The run breaks out of its loop on a cancel, so the episodes after it
+    // never report and waiting for them would strand the card.
+    const record = only([
+      episode("episode-0", "saved", { runSize: 5 }),
+      episode("episode-1", "cancelled", { runSize: 5 }),
+    ])
+
+    expect(record.expiresAt).toBe(NOW + EXPORT_REPORT_AUTO_DISMISS_MS)
+  })
+
+  it("leaves a single export on the ordinary dismissal", () => {
+    expect(only([single("saved")]).expiresAt).toBe(
+      NOW + EXPORT_REPORT_AUTO_DISMISS_MS,
+    )
+  })
+
+  it("still never expires a permanent refusal", () => {
+    const record = only([
+      episode("episode-0", "refused", { runSize: 5, canAskAgain: false }),
+    ])
+    expect(record.expiresAt).toBeNull()
   })
 })
 

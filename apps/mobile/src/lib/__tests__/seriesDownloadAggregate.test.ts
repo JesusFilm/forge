@@ -61,6 +61,9 @@ const rec = (
 
 const EPISODES = ["a", "b", "c"]
 
+/** The live run the ring reads its count from. */
+const RUN = "washi-gospel:1700000000000"
+
 describe("deriveSeriesDownloadState", () => {
   it("counts only this series' downloaded episodes (intersection)", () => {
     const state = deriveSeriesDownloadState(EPISODES, ["a", "b", "other"], [])
@@ -371,7 +374,7 @@ describe("deriveSeriesDownloadState with a raw export (R16, R24, R30)", () => {
       [],
       undefined,
       session(["c", 0.9]),
-      { saved: 2, total: 5 },
+      { runId: RUN, saved: 2, total: 5 },
     )
     expect(state.exportProgress).toBeCloseTo(0.58)
   })
@@ -384,7 +387,7 @@ describe("deriveSeriesDownloadState with a raw export (R16, R24, R30)", () => {
         [],
         undefined,
         session(["c", fraction]),
-        { saved: 2, total: 5 },
+        { runId: RUN, saved: 2, total: 5 },
       ).exportProgress
 
     expect(at(0.25)).toBeLessThan(at(0.5))
@@ -398,13 +401,14 @@ describe("deriveSeriesDownloadState with a raw export (R16, R24, R30)", () => {
       [],
       undefined,
       session(["c", 1]),
-      { saved: 5, total: 5 },
+      { runId: RUN, saved: 5, total: 5 },
     )
     expect(state.exportProgress).toBe(1)
   })
 
   it("reads full only once the run has saved every episode", () => {
     const state = deriveSeriesDownloadState(EPISODES, [], [], undefined, null, {
+      runId: RUN,
       saved: 5,
       total: 5,
     })
@@ -416,6 +420,7 @@ describe("deriveSeriesDownloadState with a raw export (R16, R24, R30)", () => {
     // before the next one is created, so the row would drop to its idle glyph
     // and the ring would remount from zero.
     const state = deriveSeriesDownloadState(EPISODES, [], [], undefined, null, {
+      runId: RUN,
       saved: 1,
       total: 5,
     })
@@ -445,7 +450,7 @@ describe("deriveSeriesDownloadState with a raw export (R16, R24, R30)", () => {
       [],
       undefined,
       session(["b", 0.5]),
-      { saved: 0, total: 0 },
+      { runId: RUN, saved: 0, total: 0 },
     )
     expect(state.exportProgress).toBeCloseTo(0.5)
   })

@@ -12,7 +12,13 @@
  * live in `../lib/exportReport`.
  */
 
-import { useCallback, useEffect, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react"
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useSegments } from "expo-router"
@@ -26,6 +32,10 @@ import {
   TEXT_PRIMARY,
   TEXT_SECONDARY,
 } from "../lib/color"
+import {
+  getSeriesExportProgressSnapshot,
+  subscribeToSeriesExportProgress,
+} from "../lib/seriesExportProgress"
 import {
   foldSignal,
   viewFor,
@@ -110,10 +120,28 @@ export function ExportReportHost() {
     })
   }, [])
 
+  // A run's card is a PROGRESS card and must outlive the gap between two
+  // episodes, which a transfer can stretch to minutes. No fixed window works:
+  // one long enough for a slow link strands a dead run's card for as long. The
+  // run itself says when it is over, so the card lives exactly that long.
+  const liveRuns = useSyncExternalStore(
+    subscribeToSeriesExportProgress,
+    getSeriesExportProgressSnapshot,
+  )
+  const liveRunIds = useMemo(
+    () => new Set(Object.values(liveRuns).map((run) => run.runId)),
+    [liveRuns],
+  )
+  const keepsRunning = useCallback(
+    (record: ExportReportRecord) => liveRunIds.has(record.runId),
+    [liveRunIds],
+  )
+
   // The deadline is re-derived from state on every run, so a StrictMode
   // remount rebuilds the timer rather than stranding a report on screen.
   useEffect(() => {
     const deadlines = reports
+      .filter((record) => !keepsRunning(record))
       .map((record) => record.expiresAt)
       .filter((value): value is number => value !== null)
     if (deadlines.length === 0) return
@@ -122,7 +150,10 @@ export function ExportReportHost() {
         const now = Date.now()
         setReports((current) => {
           const next = current.filter(
-            (record) => record.expiresAt === null || record.expiresAt > now,
+            (record) =>
+              record.expiresAt === null ||
+              record.expiresAt > now ||
+              keepsRunning(record),
           )
           return next.length === current.length ? current : next
         })
@@ -130,7 +161,7 @@ export function ExportReportHost() {
       Math.max(0, Math.min(...deadlines) - Date.now()),
     )
     return () => clearTimeout(timer)
-  }, [reports])
+  }, [reports, keepsRunning])
 
   const dismiss = useCallback((runId: string) => {
     setReports((current) => current.filter((record) => record.runId !== runId))

@@ -30,7 +30,7 @@ jest.mock("expo-linear-gradient", () => ({ LinearGradient: () => null }))
 import { act } from "react"
 
 import { SeriesEpisodeCard } from "../SeriesEpisodeCard"
-import { EXPORT_IN_PROGRESS_COLOR } from "../../../lib/downloadGlyph"
+import { EXPORT_GLYPH_COLOR } from "../../../lib/downloadGlyph"
 import type { EpisodeBadgeState } from "../../../lib/seriesDownloadAggregate"
 import type { WatchEpisode } from "../../../lib/normalizeVideo"
 import {
@@ -80,21 +80,28 @@ describe("SeriesEpisodeCard download badge", () => {
   it("draws the export badge and speaks the export (R16)", async () => {
     const renderer = await render("exporting")
     expect(cardLabel(renderer)).toBe("Episode One, saving to Photos")
-    // Same arrow as a download badge now; the export red is what separates
-    // them (owner decision 2026-09-10).
+    // Same arrow as a download badge, and now the same white too (owner
+    // decision 2026-09-14), so only the spoken label separates them.
     expect(mockIcons.map((icon) => icon.name)).toEqual(["arrow-down-circle"])
-    expect(mockIcons[0].color).toBe(EXPORT_IN_PROGRESS_COLOR)
+    expect(mockIcons[0].color).toBe(EXPORT_GLYPH_COLOR)
   })
 
-  it("is told apart from a plain download by COLOUR, not by glyph", async () => {
+  /**
+   * The export badge used to be red and the download badge white. Both are
+   * white now (owner decision 2026-09-14), so the two are indistinguishable by
+   * sight and the SPOKEN label is the only thing that tells them apart. Pinned
+   * here so a future reader does not mistake the sameness for a bug.
+   */
+  it("is told apart from a plain download by its LABEL, not by sight", async () => {
     const exporting = await render("exporting")
-    const exportColor = mockIcons[0].color
     expect(cardLabel(exporting)).toBe("Episode One, saving to Photos")
+    const exportBadge = { ...mockIcons[0] }
 
     mockIcons.length = 0
-    await render("downloading")
-    expect(mockIcons.map((icon) => icon.name)).toEqual(["arrow-down-circle"])
-    expect(mockIcons[0].color).not.toBe(exportColor)
+    const downloading = await render("downloading")
+    expect(cardLabel(downloading)).toBe("Episode One, downloading")
+    expect(mockIcons[0].name).toBe(exportBadge.name)
+    expect(cardLabel(downloading)).not.toBe(cardLabel(exporting))
   })
 
   // Anti-vacuous control: the offline badges still render their own glyphs.

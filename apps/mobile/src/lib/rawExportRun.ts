@@ -170,7 +170,7 @@ export async function runSeriesRawExport(
   // already on screen when an episode that reuses an offline copy finishes in
   // a few milliseconds.
   const publishProgress = (): void => {
-    if (total > 0) deps.publishRunProgress?.({ saved, total })
+    if (total > 0) deps.publishRunProgress?.({ runId: run.runId, saved, total })
   }
 
   publishProgress()

@@ -1,6 +1,7 @@
 import {
   DOWNLOAD_DONE_COLOR,
   DOWNLOAD_FAILED_COLOR,
+  EXPORT_GLYPH_COLOR,
   EXPORT_IN_PROGRESS_COLOR,
   downloadGlyphInfo,
 } from "../downloadGlyph"
@@ -136,12 +137,17 @@ describe("downloadGlyphInfo", () => {
   // red ring, and the ring IS a pause/resume control. This supersedes R16's
   // tell-them-apart styling and R24's cancel-only rule.
   describe("raw export mirrors the offline affordance (R16, R24 revised)", () => {
-    it("uses the offline download arrow and the offline red, not a white export state", () => {
+    it("uses the offline download arrow, drawn WHITE against the red ring", () => {
+      // Owner decision 2026-09-14: the arc keeps the offline red, the glyph
+      // does not — a red arrow on a red arc reads as one smear.
       const g = downloadGlyphInfo(null, null, exportEntry())
       expect(g.inProgress).toBe(true)
       expect(g.icon).toBe("arrow-down")
-      expect(g.color).toBe(ACCENT_ON_DARK)
-      expect(g.color).toBe(EXPORT_IN_PROGRESS_COLOR)
+      expect(g.color).toBe(EXPORT_GLYPH_COLOR)
+      expect(g.color).not.toBe(ACCENT_ON_DARK)
+      // Anti-vacuous: the RING is still the offline red, so this is a glyph
+      // change and not a wholesale repaint of the export indicator.
+      expect(EXPORT_IN_PROGRESS_COLOR).toBe(ACCENT_ON_DARK)
       expect(g.ringProgress).toBe(0.42)
     })
 
@@ -156,7 +162,7 @@ describe("downloadGlyphInfo", () => {
       const g = downloadGlyphInfo(null, null, exportEntry({ paused: true }))
       expect(g.ringIcon).toBe("play")
       expect(g.icon).toBe("pause")
-      expect(g.color).toBe(ACCENT_ON_DARK)
+      expect(g.color).toBe(EXPORT_GLYPH_COLOR)
       expect(g.a11yLabel).toBe(
         "Saving to Photos, paused at 42%. Tap to resume or stop",
       )

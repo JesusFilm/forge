@@ -47,6 +47,10 @@ import {
 } from "../ExportReportHost"
 import { RAW_EXPORT_ALBUM_NAME } from "../../lib/rawExportConstants"
 import {
+  publishSeriesExportProgress,
+  resetSeriesExportProgressForTests,
+} from "../../lib/seriesExportProgress"
+import {
   TestRenderer,
   hasText,
   press,
@@ -112,6 +116,7 @@ let openSettings: jest.SpyInstance
 
 beforeEach(() => {
   resetExportReportsForTests()
+  resetSeriesExportProgressForTests()
   openSettings = jest
     .spyOn(Linking, "openSettings")
     .mockImplementation(async () => undefined)
@@ -421,6 +426,80 @@ describe("the report clears itself", () => {
       })
 
       expect(hasText(renderer, "Birth of Jesus")).toBe(false)
+      await unmount(renderer)
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
+  /**
+   * A run's card is a PROGRESS card. Measured on the iPhone 17 simulator over a
+   * real transfer, two episodes were 4.5 MINUTES apart — so any fixed window
+   * short enough to clear a dead run's card is far too short to survive one
+   * live gap. The card lived 6s, the run's next episode folded into a FRESH
+   * record, and the toast read "Saved 1 of 5" for the whole run.
+   */
+  it("keeps a live run's card through a gap far longer than the dismissal", async () => {
+    jest.useFakeTimers()
+    try {
+      const renderer = await renderHost()
+      publishSeriesExportProgress("washi-gospel", {
+        runId: "run-1",
+        saved: 1,
+        total: 5,
+      })
+      await publish({
+        runId: "run-1",
+        target: "can-god-be-known",
+        outcome: "saved",
+        title: "Can God be Known?",
+        runSize: 5,
+      })
+      expect(hasText(renderer, "Saved 1 of 5 episodes.")).toBe(true)
+
+      await act(async () => {
+        jest.advanceTimersByTime(5 * 60_000)
+      })
+      expect(hasText(renderer, "Saved 1 of 5 episodes.")).toBe(true)
+
+      // The next episode therefore folds into the SAME record and the count
+      // climbs, which is the whole point.
+      await publish({
+        runId: "run-1",
+        target: "what-are-humans",
+        outcome: "saved",
+        title: "What are Humans?",
+        runSize: 5,
+      })
+      expect(hasText(renderer, "Saved 2 of 5 episodes.")).toBe(true)
+
+      await unmount(renderer)
+    } finally {
+      publishSeriesExportProgress("washi-gospel", null)
+      jest.useRealTimers()
+    }
+  })
+
+  it("clears the card once the run that held it open ends", async () => {
+    // The discriminating companion: same gap, same card, no live run. Without
+    // it the test above would pass on a card that simply never expires.
+    jest.useFakeTimers()
+    try {
+      const renderer = await renderHost()
+      await publish({
+        runId: "run-1",
+        target: "can-god-be-known",
+        outcome: "saved",
+        title: "Can God be Known?",
+        runSize: 5,
+      })
+      expect(hasText(renderer, "Saved 1 of 5 episodes.")).toBe(true)
+
+      await act(async () => {
+        jest.advanceTimersByTime(5 * 60_000)
+      })
+
+      expect(hasText(renderer, "Saved 1 of 5 episodes.")).toBe(false)
       await unmount(renderer)
     } finally {
       jest.useRealTimers()

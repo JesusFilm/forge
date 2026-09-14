@@ -23,6 +23,21 @@ import { RAW_EXPORT_ALBUM_NAME } from "./rawExportConstants"
 /** How long a report that needs no viewer action stays on screen. */
 export const EXPORT_REPORT_AUTO_DISMISS_MS = 6000
 
+/**
+ * How long a run's report waits for its NEXT episode before giving up.
+ *
+ * A run's report is a progress card, not a receipt: it is on screen for the
+ * whole export and re-renders on every episode. Expiring it on the ordinary
+ * dismissal meant an episode that took longer than that to save came back to
+ * find its record gone, folded into a FRESH one, and reported "Saved 1 of 5"
+ * for the whole run — the count stuck while the title moved.
+ *
+ * Finite, because a run can die without reporting its remaining episodes: a
+ * crash mid-transfer leaves the last card on screen, and this is how long it
+ * takes to go.
+ */
+export const EXPORT_REPORT_RUN_STALL_MS = 120_000
+
 /** How many reports the host stacks before it drops the oldest. */
 export const MAX_VISIBLE_REPORTS = 3
 
@@ -89,6 +104,21 @@ function countOutcomes(
   return counts
 }
 
+/**
+ * Has the run stopped producing outcomes? Every episode has reported, or a
+ * cancel ended the run early — `runSeriesRawExport` breaks out of its loop on
+ * one, so the episodes after it never report and the card would otherwise wait
+ * out the whole stall window for signals that are not coming.
+ */
+function runIsOver(
+  outcomes: Readonly<Record<string, ExportOutcome>>,
+  runSize: number,
+): boolean {
+  const reported = Object.keys(outcomes).length
+  if (reported >= runSize) return true
+  return Object.values(outcomes).some((outcome) => outcome === "cancelled")
+}
+
 export function foldSignal(
   records: readonly ExportReportRecord[],
   signal: ExportReportSignal,
@@ -99,6 +129,9 @@ export function foldSignal(
     (existing?.permanentRefusal ?? false) ||
     (signal.outcome === "refused" && signal.canAskAgain === false)
 
+  const outcomes = { ...existing?.outcomes, [signal.target]: signal.outcome }
+  const runSize = Math.max(existing?.runSize ?? 1, signal.runSize ?? 1)
+
   const next: ExportReportRecord = {
     runId: signal.runId,
     // The NEWEST title wins. A series run publishes one signal per episode
@@ -106,12 +139,17 @@ export function foldSignal(
     // run to episode one while the count underneath it climbed. A signal that
     // omits the title still keeps the one already shown.
     title: signal.title ?? existing?.title ?? null,
-    runSize: Math.max(existing?.runSize ?? 1, signal.runSize ?? 1),
-    outcomes: { ...existing?.outcomes, [signal.target]: signal.outcome },
+    runSize,
+    outcomes,
     albumIntent: signal.albumIntent ?? existing?.albumIntent ?? null,
     permanentRefusal,
     detail: signal.detail ?? existing?.detail ?? null,
-    expiresAt: permanentRefusal ? null : now + EXPORT_REPORT_AUTO_DISMISS_MS,
+    expiresAt: permanentRefusal
+      ? null
+      : now +
+        (runIsOver(outcomes, runSize)
+          ? EXPORT_REPORT_AUTO_DISMISS_MS
+          : EXPORT_REPORT_RUN_STALL_MS),
   }
 
   const others = records.filter((record) => record.runId !== signal.runId)
