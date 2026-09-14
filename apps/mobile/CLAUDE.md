@@ -764,7 +764,20 @@ disagree about the bar's size.
 > `docs/roadmap/platform/feat-500-mobile-native-tabs-migration.md` for the
 > device measurements and the carried-forward items. The iOS floating pill,
 > `TabBarLens.tsx` and `tabIndexForSegments` are deleted. Their rules are
-> history, not current guidance.
+> history, not current guidance — with ONE exception that is live again. The
+> group-marker rule survives as `isTabGroupRoute` in `src/lib/tabBar.ts`:
+> `app/watch/[slug].tsx` is a root-stack sibling and emits the bare segment
+> `watch`, which is also the Discover tab's name, so "am I on a tab route" must
+> key off `(tabs)` and never a tab name.
+
+- **A ROOT-mounted surface does not get the bar in its inset.** A tab SCREEN's
+  `insets.bottom` contains it (measured 83 = 34 + 49); the root
+  `SafeAreaProvider` reports 34 on the same route, because the bar belongs to
+  the tab controller the root sits outside of. So `ExportReportHost` and the
+  mini player must add `TAB_BAR_HEIGHT_IOS` themselves, and must count the
+  inset ONCE. Adding `useTabBarClearance()` to `insets.bottom` at the root
+  double-counts the inset and still omits the bar — which put the export toast
+  21pt INSIDE the bar on a 0-inset device until 2026-09-14.
 
 - **A tab screen's `insets.bottom` ALREADY contains the iOS bar.** Know this
   before you touch a scroll surface. `useTabBarClearance()` returns

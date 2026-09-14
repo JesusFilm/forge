@@ -26,8 +26,13 @@ jest.mock("@expo/vector-icons/Ionicons", () => ({
   __esModule: true,
   default: () => null,
 }))
+// A REAL inset, not 0. At bottom 0 the pre-fix formula and the correct one
+// agree, so a zeroed mock cannot see a geometry defect at all. The `mock`
+// prefix is required: babel-plugin-jest-hoist lifts jest.mock above this
+// declaration and rejects any other out-of-scope name in the factory.
+const mockInsets = { top: 59, bottom: 34, left: 0, right: 0 }
 jest.mock("react-native-safe-area-context", () => ({
-  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+  useSafeAreaInsets: () => mockInsets,
 }))
 // expo-router ships untranspiled for this suite, and the host reads the route
 // to decide whether a floating tab bar is in the way.
@@ -37,7 +42,9 @@ jest.mock("expo-router", () => ({
 }))
 
 import { act } from "react"
-import { Linking, Text, View } from "react-native"
+import { Linking, Platform, Text, View } from "react-native"
+
+import { TAB_BAR_CLEARANCE_GAP, TAB_BAR_HEIGHT_IOS } from "../../lib/tabBar"
 
 import {
   EXPORT_REPORT_AUTO_DISMISS_MS,
@@ -603,8 +610,15 @@ describe("placement", () => {
     return Object.assign({}, ...[node.props.style].flat(2).filter(Boolean))
   }
 
+  const platformOsDescriptor = Object.getOwnPropertyDescriptor(Platform, "OS")!
+  function setPlatform(os: "ios" | "android") {
+    Object.defineProperty(Platform, "OS", { value: os, configurable: true })
+  }
+
   afterEach(() => {
     mockSegments = ["watch", "[slug]"]
+    Object.defineProperty(Platform, "OS", platformOsDescriptor)
+    mockInsets.bottom = 34
   })
 
   it("anchors to the bottom, never the top", async () => {
@@ -613,8 +627,8 @@ describe("placement", () => {
     const style = hostStyle(renderer)
 
     expect(style.top).toBeUndefined()
-    // Safe area is mocked to 0, so this is Snackbar's own 16pt margin.
-    expect(style.bottom).toBe(16)
+    // Off a tab route: the safe area plus Snackbar's own 16pt margin.
+    expect(style.bottom).toBe(34 + 16)
     await unmount(renderer)
   })
 
@@ -632,7 +646,47 @@ describe("placement", () => {
 
     // Anti-vacuous: the off-tab value is the bare margin, so a clearance that
     // silently returned 0 would collapse these two and fail here.
-    expect(offTabBottom).toBe(16)
+    expect(offTabBottom).toBe(34 + 16)
     expect(onTabBottom).toBeGreaterThan(offTabBottom)
+  })
+
+  it("adds the bar itself, because the ROOT inset does not carry it", async () => {
+    // Measured on the iPhone 17 simulator: this host reads insets.bottom 34 on
+    // a tab route, where a tab SCREEN reads 83 (34 indicator + 49 bar). The bar
+    // is therefore ours to add, and the inset must be counted once.
+    mockSegments = ["(tabs)", "index"]
+    const renderer = await renderHost()
+    await publish(SAVED)
+    const bottom = hostStyle(renderer).bottom as number
+
+    expect(bottom).toBe(34 + TAB_BAR_CLEARANCE_GAP + TAB_BAR_HEIGHT_IOS + 16)
+    // Discriminating: the pre-fix formula counted the inset TWICE and omitted
+    // the bar. Both values clear 16, so `toBeGreaterThan` above cannot see it.
+    expect(bottom).not.toBe(34 + 16 + (34 + TAB_BAR_CLEARANCE_GAP))
+    await unmount(renderer)
+  })
+
+  it("clears the bar on a device with no home indicator", async () => {
+    // The failing class this fix closes: at inset 0 the card sat 21pt INSIDE
+    // the bar and swallowed taps on Home and Discover for the toast's life.
+    mockInsets.bottom = 0
+    mockSegments = ["(tabs)", "index"]
+    const renderer = await renderHost()
+    await publish(SAVED)
+
+    expect(hostStyle(renderer).bottom as number).toBeGreaterThan(
+      TAB_BAR_HEIGHT_IOS,
+    )
+    await unmount(renderer)
+  })
+
+  it("keeps the plain inset on Android, where the bar displaces content", async () => {
+    setPlatform("android")
+    mockSegments = ["(tabs)", "index"]
+    const renderer = await renderHost()
+    await publish(SAVED)
+
+    expect(hostStyle(renderer).bottom).toBe(34 + 16)
+    await unmount(renderer)
   })
 })
