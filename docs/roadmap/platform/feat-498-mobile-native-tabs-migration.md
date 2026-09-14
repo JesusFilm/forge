@@ -193,7 +193,12 @@ Built and verified on the `feat/mobile-native-tabs` worktree.
 
 - **iPad ships with the bar at the top** (feat-497 M2), as this ticket's
   constraints accepted. A size-class branch that keeps a JS bar on iPad is the
-  follow-up if the owner wants one.
+  follow-up if the owner wants one. Measured on an iPad Pro 11 (M5, iPadOS 26.5)
+  on 2026-09-14: because no bar sits at the bottom there, the mini player's
+  bottom reservation becomes vestigial and it rests 81pt above the screen edge
+  against a 12pt side gap. Nothing is covered or clipped, so this is cosmetic,
+  but it is the concrete cost of `TAB_BAR_OCCUPIED_HEIGHT` being an iPhone
+  constant. Fold it into the iPad follow-up rather than patching it here.
 - **The idle tint is UIKit's on iOS 26** — `iconColor` and `labelStyle` are
   honoured on 18 and ignored on 26.
 - **`<NativeTabs hidden>` is verified on iOS 26 only.** The 16.4–17 branch takes
