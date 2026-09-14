@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { leadLabelKnots } from "./DevotionalVideo"
+import { cardFadeOpacity, leadLabelKnots } from "./DevotionalVideo"
 import {
   CARD_TAIL_FRAMES,
   INTRO_HOLD_FRAMES,
@@ -46,5 +46,25 @@ describe("timing constants duplicated in the worker", () => {
     expect(CARD_TAIL_FRAMES).toBe(24)
     expect(INTRO_HOLD_FRAMES).toBe(30)
     expect(OUTRO_HOLD_FRAMES).toBe(240)
+  })
+})
+
+/**
+ * Hard cuts between cards. Asked for after watching the background crop move
+ * under a dissolve: during a dissolve two cards are on screen at once, each
+ * with its own cropping of the same footage, so the change reads as a lurch
+ * instead of a cut.
+ */
+describe("cardFadeOpacity", () => {
+  it("is fully opaque from the first frame when the fade is zero", () => {
+    expect(cardFadeOpacity(0, 0)).toBe(1)
+    expect(cardFadeOpacity(5, 0)).toBe(1)
+  })
+
+  it("still ramps across a real fade", () => {
+    expect(cardFadeOpacity(0, 10)).toBe(0)
+    expect(cardFadeOpacity(5, 10)).toBeCloseTo(0.5)
+    expect(cardFadeOpacity(10, 10)).toBe(1)
+    expect(cardFadeOpacity(99, 10)).toBe(1)
   })
 })

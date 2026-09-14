@@ -3234,13 +3234,28 @@ const TEXT_FADE_OUT_SEC = 0.55
 
 /** Fades a card in over its first `xfade` frames — with overlapping sequences
  * this dissolves the previous card into the next (a slow crossfade). */
-function CardFade({ xfade, children }: { xfade: number; children: ReactNode }) {
-  const f = useCurrentFrame()
-  const opacity = interpolate(f, [0, xfade], [0, 1], {
+/**
+ * A card's opacity `f` frames in, over an `xfade`-frame dissolve.
+ *
+ * A zero-length fade is a HARD CUT, and it has to short-circuit: interpolate
+ * over [0, 0] is not a strictly increasing range and Remotion throws on it,
+ * on every frame of the card.
+ */
+export function cardFadeOpacity(f: number, xfade: number): number {
+  if (xfade <= 0) return 1
+  return interpolate(f, [0, xfade], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   })
-  return <AbsoluteFill style={{ opacity }}>{children}</AbsoluteFill>
+}
+
+function CardFade({ xfade, children }: { xfade: number; children: ReactNode }) {
+  const f = useCurrentFrame()
+  return (
+    <AbsoluteFill style={{ opacity: cardFadeOpacity(f, xfade) }}>
+      {children}
+    </AbsoluteFill>
+  )
 }
 
 export function DevotionalVideo(props: DevotionalInputProps) {
@@ -3322,12 +3337,21 @@ export function DevotionalVideo(props: DevotionalInputProps) {
     verseHoldFrames > 0 &&
     props.cards[i]?.kind !== "video" &&
     props.cards[i + 1]?.kind === "video"
+  // `xfadeSec: 0` means hard cuts EVERYWHERE, the video card's own dissolves
+  // included — asked for so the picture switches in one frame rather than two
+  // cards sharing the screen for the better part of a second. The verse hold
+  // into the clip is a deliberate overlap of TEXT, not a dissolve, so it is the
+  // one thing a hard cut keeps.
+  const hardCuts = XFADE <= 0
   const boundaryXfade = (i: number) =>
     holdsIntoVideo(i)
       ? verseHoldFrames
-      : props.cards[i]?.kind === "video" || props.cards[i + 1]?.kind === "video"
-        ? VIDEO_XFADE
-        : XFADE
+      : hardCuts
+        ? 0
+        : props.cards[i]?.kind === "video" ||
+            props.cards[i + 1]?.kind === "video"
+          ? VIDEO_XFADE
+          : XFADE
   const lastIndex = props.cards.length - 1
 
   // Duck the music to silence across the video card (it plays the film's own

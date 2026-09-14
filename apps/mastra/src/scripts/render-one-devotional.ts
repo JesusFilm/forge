@@ -60,6 +60,7 @@ async function main() {
       stopBeforeRender: process.argv.includes("--stop-before-render"),
       wordTimings: process.argv.includes("--word-timings"),
       faceCrop: process.argv.includes("--face-crop"),
+      ...(arg("card-xfade") ? { cardXfadeSec: Number(arg("card-xfade")) } : {}),
       ...(arg("video-speed") ? { videoSpeed: Number(arg("video-speed")) } : {}),
       ...(arg("muted-lead") ? { mutedLeadSec: Number(arg("muted-lead")) } : {}),
       showSettleLine: process.argv.includes("--show-settle-line"),

@@ -873,6 +873,16 @@ export type RenderOptions = {
   musicVolume?: number
   /** Crossfade between cards (s). Slow by default for smooth transitions. */
   xfadeSec?: number
+  /**
+   * Crossfade between CARDS only (s), overriding `xfadeSec` for the
+   * composition while leaving the background's own seam dissolves alone.
+   *
+   * `0` makes every card boundary a hard cut. The owner asked for it after
+   * watching the crop move under a dissolve: two cards overlap during a
+   * dissolve, so for that beat the screen carries two croppings of the same
+   * footage at once, and the change reads as a lurch rather than a cut.
+   */
+  cardXfadeSec?: number
   /** Video-card clip audio level (0–1), balanced against the narration. */
   videoAudioLevel?: number
   /** Language/localization (film audio, labels, date, connectors). Default en. */
@@ -1634,7 +1644,7 @@ async function renderInStage(
     style,
     layout,
     options.musicVolume ?? MUSIC_VOLUME_DEFAULT,
-    options.xfadeSec ?? 1.2,
+    options.cardXfadeSec ?? options.xfadeSec ?? 1.2,
     options.videoAudioLevel ?? 0.55,
     {
       // Owner rules for the devotional cover: never a date, and nothing in
