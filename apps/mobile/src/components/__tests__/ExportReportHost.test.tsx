@@ -44,7 +44,10 @@ jest.mock("expo-router", () => ({
 import { act } from "react"
 import { Linking, Platform, Text, View } from "react-native"
 
-import { TAB_BAR_CLEARANCE_GAP, TAB_BAR_HEIGHT_IOS } from "../../lib/tabBar"
+import {
+  TAB_BAR_CLEARANCE_GAP,
+  TAB_BAR_SCREEN_EXTENT_IOS,
+} from "../../lib/tabBar"
 
 import {
   EXPORT_REPORT_AUTO_DISMISS_MS,
@@ -650,33 +653,35 @@ describe("placement", () => {
     expect(onTabBottom).toBeGreaterThan(offTabBottom)
   })
 
-  it("adds the bar itself, because the ROOT inset does not carry it", async () => {
-    // Measured on the iPhone 17 simulator: this host reads insets.bottom 34 on
-    // a tab route, where a tab SCREEN reads 83 (34 indicator + 49 bar). The bar
-    // is therefore ours to add, and the inset must be counted once.
+  it("clears the bar from the SCREEN bottom, not from the inset", async () => {
     mockSegments = ["(tabs)", "index"]
     const renderer = await renderHost()
     await publish(SAVED)
     const bottom = hostStyle(renderer).bottom as number
 
-    expect(bottom).toBe(34 + TAB_BAR_CLEARANCE_GAP + TAB_BAR_HEIGHT_IOS + 16)
-    // Discriminating: the pre-fix formula counted the inset TWICE and omitted
-    // the bar. Both values clear 16, so `toBeGreaterThan` above cannot see it.
+    expect(bottom).toBe(TAB_BAR_SCREEN_EXTENT_IOS + TAB_BAR_CLEARANCE_GAP + 16)
+    // Discriminates the post-merge formula, which counted the inset twice and
+    // omitted the bar. It canNOT discriminate the inset-derived first fix:
+    // at THIS inset the two agree exactly, because 83 is 34 + 49. Only the
+    // 0-inset case below separates them, which is why it exists.
     expect(bottom).not.toBe(34 + 16 + (34 + TAB_BAR_CLEARANCE_GAP))
     await unmount(renderer)
   })
 
-  it("clears the bar on a device with no home indicator", async () => {
-    // The failing class this fix closes: at inset 0 the card sat 21pt INSIDE
-    // the bar and swallowed taps on Home and Discover for the toast's life.
+  it("clears the SAME bar on a device with no home indicator", async () => {
+    // Measured on the iPhone SE 3rd generation: root inset 0, and the bar's top
+    // edge still 83pt above the screen bottom, because the pill is anchored to
+    // the screen rather than stacked on the safe area. Anything derived from
+    // the inset under-lifts here — the post-merge formula gave 28 (21pt INSIDE
+    // the bar) and its first fix gave 77 (6pt inside).
     mockInsets.bottom = 0
     mockSegments = ["(tabs)", "index"]
     const renderer = await renderHost()
     await publish(SAVED)
+    const bottom = hostStyle(renderer).bottom as number
 
-    expect(hostStyle(renderer).bottom as number).toBeGreaterThan(
-      TAB_BAR_HEIGHT_IOS,
-    )
+    expect(bottom).toBeGreaterThan(TAB_BAR_SCREEN_EXTENT_IOS)
+    expect(bottom).toBe(TAB_BAR_SCREEN_EXTENT_IOS + TAB_BAR_CLEARANCE_GAP + 16)
     await unmount(renderer)
   })
 

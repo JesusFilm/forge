@@ -27,7 +27,8 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import { useTypography } from "../hooks/useTypography"
 import {
   isTabGroupRoute,
-  TAB_BAR_HEIGHT_IOS,
+  TAB_BAR_CLEARANCE_GAP,
+  TAB_BAR_SCREEN_EXTENT_IOS,
   useTabBarClearance,
 } from "../lib/tabBar"
 import {
@@ -114,10 +115,13 @@ export function ExportReportHost() {
   // of its callers knows its own route, and this one has no caller.
   const tabBarClearance = useTabBarClearance()
   // This host mounts at the ROOT, outside the tab controller, so its inset does
-  // NOT carry the bar — measured 34 on a tab route, where a tab screen reads 83.
-  // The bar height is therefore ours to add. `> 0` keeps Android on its inset.
+  // NOT carry the bar. The bar is a floating pill anchored to the SCREEN bottom
+  // — 83pt on a 0-inset SE and on a 34pt iPhone 17 alike — so the inset does not
+  // enter this at all. `> 0` keeps Android on its plain inset.
   const liftsOverBar = isTabGroupRoute(useSegments()) && tabBarClearance > 0
-  const clearance = liftsOverBar ? tabBarClearance + TAB_BAR_HEIGHT_IOS : 0
+  const clearance = liftsOverBar
+    ? TAB_BAR_SCREEN_EXTENT_IOS + TAB_BAR_CLEARANCE_GAP
+    : 0
   const typography = useTypography()
   const [reports, setReports] = useState<readonly ExportReportRecord[]>([])
 

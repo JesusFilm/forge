@@ -770,14 +770,23 @@ disagree about the bar's size.
 > `watch`, which is also the Discover tab's name, so "am I on a tab route" must
 > key off `(tabs)` and never a tab name.
 
-- **A ROOT-mounted surface does not get the bar in its inset.** A tab SCREEN's
-  `insets.bottom` contains it (measured 83 = 34 + 49); the root
-  `SafeAreaProvider` reports 34 on the same route, because the bar belongs to
-  the tab controller the root sits outside of. So `ExportReportHost` and the
-  mini player must add `TAB_BAR_HEIGHT_IOS` themselves, and must count the
-  inset ONCE. Adding `useTabBarClearance()` to `insets.bottom` at the root
-  double-counts the inset and still omits the bar — which put the export toast
-  21pt INSIDE the bar on a 0-inset device until 2026-09-14.
+- **A ROOT-mounted surface does not get the bar in its inset, and must clear it
+  from the SCREEN bottom.** A tab SCREEN's `insets.bottom` contains the bar; the
+  root `SafeAreaProvider` does not, because the bar belongs to the tab
+  controller the root sits outside of. Do NOT derive the lift from the inset:
+  the iOS 26 bar is a floating pill anchored to the bottom EDGE, so its top sits
+  a constant 83pt above the screen bottom whatever the inset is. Measured
+  2026-09-14 — iPhone 17 and 17 Pro Max (inset 34) and iPhone SE 3rd gen
+  (inset 0) all report a bar frame 83pt tall. Use
+  `TAB_BAR_SCREEN_EXTENT_IOS`, not `insets.bottom + TAB_BAR_HEIGHT_IOS`; the two
+  agree only at inset 34, which is why a 34pt device cannot catch the mistake.
+  The export toast sat 21pt inside the bar on a 0-inset device, and its first
+  fix still sat 6pt inside, until this was measured.
+
+- **`PlaybackHost`'s `TAB_BAR_CONTENT_HEIGHT` has the same unfixed shape.** It
+  is `TAB_BAR_OCCUPIED_HEIGHT` (49), reserved by the root-mounted mini player,
+  so on a 0-inset device the window reserves 49 against an 83pt bar. Not
+  investigated on device; do not copy the pattern.
 
 - **A tab screen's `insets.bottom` ALREADY contains the iOS bar.** Know this
   before you touch a scroll surface. `useTabBarClearance()` returns
