@@ -967,3 +967,528 @@ import { Prisma, type PrismaClient } from "@prisma/client"
 
 export const EXPERIENCE_EDITOR_VIDEO_BATCH_SIZE = 100
 export const EXPERIENCE_EDITOR_LANGUAGE_CHIP_LIMIT = 5
+export const EXPERIENCE_EDITOR_DUB_PAGE_DEFAULT_SIZE = 50
+export const EXPERIENCE_EDITOR_DUB_PAGE_MAX_SIZE = 100
+
+export class ExperienceEditorVideoInputError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "ExperienceEditorVideoInputError"
+  }
+}
+
+export class ExperienceEditorVideoNotFoundError extends Error {
+  constructor(videoId: string) {
+    super(`Experience editor video ${videoId} was not found.`)
+    this.name = "ExperienceEditorVideoNotFoundError"
+  }
+}
+
+type ExperienceEditorLookupDb = Pick<
+  PrismaClient,
+  "$queryRaw" | "video" | "videoDub"
+>
+
+export type ExperienceEditorDubPageRequest = {
+  videoId: string
+  locale: string
+  query?: string
+  cursor?: string | null
+  pageSize?: number
+  selectedLanguageId?: string | null
+  selectedLegacyStreamingUrl?: string | null
+}
+
+export type ExperienceEditorDubPageActionInput = Omit<
+  ExperienceEditorDubPageRequest,
+  "locale"
+>
+
+export type ExperienceEditorDubPage = {
+  choices: ExperienceEditorDubChoice[]
+  selectedChoice: ExperienceEditorDubChoice | null
+  nextCursor: string | null
+}
+
+type DubPageCursor = {
+  v: 1
+  videoId: string
+  locale: string
+  query: string
+  sortLabel: string
+  languageIdentity: string
+  dubId: string
+}
+
+type DubPageRow = {
+  id: string
+  videoId: string
+  languageId: string | null
+  languageSlug: string | null
+  bcp47: string | null
+  iso3: string | null
+  languageName: string | null
+  hls: string | null
+  dash: string | null
+  share: string | null
+  duration: number | null
+  lengthInMilliseconds: bigint | null
+  updatedAt: Date
+  languageIdentity: string
+  sortLabel: string
+}
+
+function normalizedLookupLocale(locale: string) {
+  return locale.trim().toLowerCase().replaceAll("_", "-")
+}
+
+function normalizedLookupQuery(query: string | null | undefined) {
+  return query?.trim().toLocaleLowerCase() ?? ""
+}
+
+function normalizedPageSize(value: number | undefined) {
+  if (value === undefined) return EXPERIENCE_EDITOR_DUB_PAGE_DEFAULT_SIZE
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new ExperienceEditorVideoInputError(
+      "Page size must be a positive integer.",
+    )
+  }
+  return Math.min(value, EXPERIENCE_EDITOR_DUB_PAGE_MAX_SIZE)
+}
+
+function encodeOpaqueCursor(value: object) {
+  return Buffer.from(JSON.stringify(value), "utf8").toString("base64url")
+}
+
+function parseDubPageCursor(
+  value: string | null | undefined,
+  identity: Pick<DubPageCursor, "videoId" | "locale" | "query">,
+): DubPageCursor | null {
+  if (!value) return null
+  try {
+    const decoded = JSON.parse(
+      Buffer.from(value, "base64url").toString("utf8"),
+    ) as Partial<DubPageCursor>
+    if (
+      decoded.v !== 1 ||
+      decoded.videoId !== identity.videoId ||
+      decoded.locale !== identity.locale ||
+      decoded.query !== identity.query ||
+      typeof decoded.sortLabel !== "string" ||
+      typeof decoded.languageIdentity !== "string" ||
+      typeof decoded.dubId !== "string"
+    ) {
+      throw new Error("cursor identity mismatch")
+    }
+    return decoded as DubPageCursor
+  } catch {
+    throw new ExperienceEditorVideoInputError(
+      "Invalid or mismatched experience editor cursor.",
+    )
+  }
+}
+
+async function assertEditorVideoExists(
+  db: Pick<ExperienceEditorLookupDb, "video">,
+  videoId: string,
+) {
+  const video = await db.video.findFirst({
+    where: { id: videoId, deletedAt: null },
+    select: { id: true },
+  })
+  if (!video) throw new ExperienceEditorVideoNotFoundError(videoId)
+}
+
+function dubChoiceFromPageRow(row: DubPageRow, locale: string) {
+  return createExperienceEditorDubChoice(
+    {
+      id: row.id,
+      videoId: row.videoId,
+      languageId: row.languageId,
+      language: row.languageId
+        ? {
+            id: row.languageId,
+            slug: row.languageSlug,
+            bcp47: row.bcp47,
+            iso3: row.iso3,
+            name: row.languageName ? { [locale]: row.languageName } : {},
+          }
+        : null,
+      hls: row.hls,
+      dash: row.dash,
+      share: row.share,
+      duration: row.duration,
+      lengthInMilliseconds: row.lengthInMilliseconds,
+      deletedAt: null,
+      updatedAt: row.updatedAt,
+    },
+    locale,
+  )
+}
+
+function dubPageProjection(
+  videoId: string,
+  locale: string,
+  query: string,
+  cursor: DubPageCursor | null,
+  take: number,
+) {
+  const baseLocale = locale.split("-")[0] ?? locale
+  const searchPattern = `%${query.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_")}%`
+  return Prisma.sql`
+    WITH eligible AS MATERIALIZED (
+      SELECT d.id, d.video_id AS "videoId", d.language_id AS "languageId",
+             l.slug AS "languageSlug", l.bcp47, l.iso3,
+             COALESCE(
+               localized.value,
+               NULLIF(l.name ->> ${locale}, ''), NULLIF(l.name ->> ${baseLocale}, ''),
+               NULLIF(l.name ->> 'en', ''), NULLIF(l.slug, ''), NULLIF(l.bcp47, ''),
+               NULLIF(l.iso3, ''), d.id) AS "languageName",
+             d.hls, d.dash, d.share, d.duration,
+             d.length_in_milliseconds AS "lengthInMilliseconds",
+             d.updated_at AS "updatedAt",
+             COALESCE(NULLIF(lower(btrim(l.slug)), ''), NULLIF(lower(btrim(l.bcp47)), ''),
+               NULLIF(lower(btrim(l.iso3)), ''), NULLIF(lower(btrim(COALESCE(l.id, d.language_id))), ''), d.id)
+               AS "languageIdentity",
+             lower(COALESCE(localized.value, NULLIF(l.name ->> ${locale}, ''), NULLIF(l.name ->> ${baseLocale}, ''),
+               NULLIF(l.name ->> 'en', ''), NULLIF(l.slug, ''), NULLIF(l.bcp47, ''),
+               NULLIF(l.iso3, ''), d.id)) AS "sortLabel",
+             concat_ws(' ', localized.value, l.name ->> ${locale}, l.name ->> ${baseLocale}, l.name ->> 'en',
+               l.slug, l.bcp47, l.iso3,
+               concat(COALESCE(d.duration::bigint, d.length_in_milliseconds / 1000, 0) / 60, ':',
+                 lpad((COALESCE(d.duration::bigint, d.length_in_milliseconds / 1000, 0) % 60)::text, 2, '0')))
+               AS duration_text,
+             row_number() OVER (
+               PARTITION BY COALESCE(NULLIF(lower(btrim(l.slug)), ''), NULLIF(lower(btrim(l.bcp47)), ''),
+                 NULLIF(lower(btrim(l.iso3)), ''), NULLIF(lower(btrim(COALESCE(l.id, d.language_id))), ''), d.id)
+               ORDER BY d.updated_at DESC NULLS LAST, d.id ASC) AS language_rank
+      FROM video_dub d
+      LEFT JOIN language l ON l.id = d.language_id AND l.deleted_at IS NULL
+      LEFT JOIN LATERAL (
+        SELECT ll.value
+        FROM language_locale ll
+        WHERE ll.language_id = l.id AND ll.deleted_at IS NULL
+        ORDER BY CASE
+          WHEN lower(replace(ll.locale, '_', '-')) = ${locale} THEN 0
+          WHEN lower(replace(ll.locale, '_', '-')) = ${baseLocale} THEN 1
+          ELSE 2 END,
+          ll.primary DESC, ll.order ASC NULLS LAST, ll.id ASC
+        LIMIT 1
+      ) localized ON TRUE
+      WHERE d.video_id = ${videoId} AND d.deleted_at IS NULL
+        AND COALESCE(NULLIF(btrim(d.hls), ''), NULLIF(btrim(d.dash), ''), NULLIF(btrim(d.share), '')) IS NOT NULL
+    ), winners AS MATERIALIZED (
+      SELECT * FROM eligible WHERE language_rank = 1
+    )
+    SELECT id, "videoId", "languageId", "languageSlug", bcp47, iso3,
+           "languageName", hls, dash, share, duration, "lengthInMilliseconds",
+           "updatedAt", "languageIdentity", "sortLabel"
+    FROM winners
+    WHERE (${query} = '' OR duration_text ILIKE ${searchPattern} ESCAPE '\\')
+      AND (${cursor == null} OR ("sortLabel", "languageIdentity", id) >
+        (${cursor?.sortLabel ?? ""}, ${cursor?.languageIdentity ?? ""}, ${cursor?.dubId ?? ""}))
+    ORDER BY "sortLabel" ASC, "languageIdentity" ASC, id ASC
+    LIMIT ${take}
+  `
+}
+
+async function selectExactDubChoice(
+  db: Pick<ExperienceEditorLookupDb, "$queryRaw">,
+  request: ExperienceEditorDubPageRequest,
+  locale: string,
+) {
+  const languageId = compactText(request.selectedLanguageId)
+  const legacyUrl = compactText(request.selectedLegacyStreamingUrl)
+  if (!languageId && !legacyUrl) return null
+  const rows = await db.$queryRaw<DubPageRow[]>(Prisma.sql`
+    SELECT d.id, d.video_id AS "videoId", d.language_id AS "languageId",
+           l.slug AS "languageSlug", l.bcp47, l.iso3,
+           COALESCE(l.name ->> ${locale}, l.name ->> 'en', l.slug, l.bcp47, l.iso3, d.id) AS "languageName",
+           d.hls, d.dash, d.share, d.duration, d.length_in_milliseconds AS "lengthInMilliseconds",
+           d.updated_at AS "updatedAt",
+           COALESCE(NULLIF(lower(btrim(l.slug)), ''), NULLIF(lower(btrim(l.bcp47)), ''),
+             NULLIF(lower(btrim(l.iso3)), ''), NULLIF(lower(btrim(COALESCE(l.id, d.language_id))), ''), d.id)
+             AS "languageIdentity",
+           lower(COALESCE(l.name ->> ${locale}, l.name ->> 'en', l.slug, l.bcp47, l.iso3, d.id)) AS "sortLabel"
+    FROM video_dub d
+    LEFT JOIN language l ON l.id = d.language_id AND l.deleted_at IS NULL
+    JOIN video v ON v.id = d.video_id AND v.deleted_at IS NULL
+    WHERE d.video_id = ${request.videoId} AND d.deleted_at IS NULL
+      AND COALESCE(NULLIF(btrim(d.hls), ''), NULLIF(btrim(d.dash), ''), NULLIF(btrim(d.share), '')) IS NOT NULL
+      AND ((${languageId} IS NOT NULL AND d.language_id = ${languageId})
+        OR (${languageId} IS NULL AND ${legacyUrl} IS NOT NULL AND ${legacyUrl} IN (btrim(d.hls), btrim(d.dash), btrim(d.share))))
+    ORDER BY d.updated_at DESC NULLS LAST, d.id ASC LIMIT 1
+  `)
+  const row = rows[0]
+  return row ? dubChoiceFromPageRow(row, request.locale) : null
+}
+
+export async function loadExperienceEditorDubPage(
+  db: ExperienceEditorLookupDb,
+  request: ExperienceEditorDubPageRequest,
+): Promise<ExperienceEditorDubPage> {
+  const videoId = compactText(request.videoId)
+  if (!videoId)
+    throw new ExperienceEditorVideoInputError("Video id is required.")
+  const locale = normalizedLookupLocale(request.locale)
+  if (!locale) throw new ExperienceEditorVideoInputError("Locale is required.")
+  const query = normalizedLookupQuery(request.query)
+  const pageSize = normalizedPageSize(request.pageSize)
+  const cursor = parseDubPageCursor(request.cursor, { videoId, locale, query })
+  await assertEditorVideoExists(db, videoId)
+  const rows = await db.$queryRaw<DubPageRow[]>(
+    dubPageProjection(videoId, locale, query, cursor, pageSize + 1),
+  )
+  const pageRows = rows.slice(0, pageSize)
+  const lastRow = pageRows.at(-1)
+  const nextCursor =
+    rows.length > pageSize && lastRow
+      ? encodeOpaqueCursor({
+          v: 1,
+          videoId,
+          locale,
+          query,
+          sortLabel: lastRow.sortLabel,
+          languageIdentity: lastRow.languageIdentity,
+          dubId: lastRow.id,
+        } satisfies DubPageCursor)
+      : null
+  const selectedChoice = await selectExactDubChoice(db, request, locale)
+  return {
+    choices: pageRows.flatMap((row) => {
+      const choice = dubChoiceFromPageRow(row, request.locale)
+      return choice ? [choice] : []
+    }),
+    selectedChoice,
+    nextCursor,
+  }
+}
+
+export type ExperienceEditorCollectionChildPageRequest = {
+  parentVideoId: string
+  locale: string
+  cursor?: string | null
+  pageSize?: number
+  authoredSelectors?: readonly ExperienceEditorAuthoredDubSelector[]
+}
+export type ExperienceEditorCollectionChildPageActionInput = Omit<
+  ExperienceEditorCollectionChildPageRequest,
+  "locale" | "authoredSelectors"
+>
+export type ExperienceEditorCollectionChildPage = {
+  items: ExperienceEditorVideoSummary[]
+  nextCursor: string | null
+  total: number
+}
+type CollectionCursor = {
+  v: 1
+  parentVideoId: string
+  order: number | null
+  createdAt: string
+  relationId: string
+}
+type CollectionRelationRow = {
+  relationId: string
+  childId: string
+  order: number | null
+  createdAt: string
+}
+
+function parseCollectionCursor(
+  value: string | null | undefined,
+  parentVideoId: string,
+): CollectionCursor | null {
+  if (!value) return null
+  try {
+    const decoded = JSON.parse(
+      Buffer.from(value, "base64url").toString("utf8"),
+    ) as Partial<CollectionCursor>
+    if (
+      decoded.v !== 1 ||
+      decoded.parentVideoId !== parentVideoId ||
+      (decoded.order !== null && !Number.isInteger(decoded.order)) ||
+      typeof decoded.createdAt !== "string" ||
+      !Number.isFinite(Date.parse(decoded.createdAt)) ||
+      typeof decoded.relationId !== "string"
+    )
+      throw new Error("cursor identity mismatch")
+    return decoded as CollectionCursor
+  } catch {
+    throw new ExperienceEditorVideoInputError(
+      "Invalid or mismatched collection cursor.",
+    )
+  }
+}
+
+export async function loadExperienceEditorCollectionChildPage(
+  db: ExperienceEditorLookupDb,
+  request: ExperienceEditorCollectionChildPageRequest,
+): Promise<ExperienceEditorCollectionChildPage> {
+  const parentVideoId = compactText(request.parentVideoId)
+  if (!parentVideoId)
+    throw new ExperienceEditorVideoInputError("Parent video id is required.")
+  const pageSize = normalizedPageSize(request.pageSize)
+  const cursor = parseCollectionCursor(request.cursor, parentVideoId)
+  await assertEditorVideoExists(db, parentVideoId)
+  const envelopes = await db.$queryRaw<
+    Array<{ relationRows: unknown; total: bigint | number }>
+  >(Prisma.sql`
+    WITH page AS (
+      SELECT relation.id AS "relationId", relation.child_id AS "childId",
+             relation.order, relation.created_at AS "createdAt"
+      FROM video_relation relation
+      JOIN video child ON child.id = relation.child_id AND child.deleted_at IS NULL
+      WHERE relation.parent_id = ${parentVideoId}
+        AND (${cursor == null}
+          OR (${cursor?.order ?? null} IS NOT NULL AND (
+            relation.order > ${cursor?.order ?? null}
+            OR (relation.order = ${cursor?.order ?? null} AND relation.created_at > ${cursor?.createdAt ?? "1970-01-01T00:00:00.000Z"}::timestamptz)
+            OR (relation.order = ${cursor?.order ?? null} AND relation.created_at = ${cursor?.createdAt ?? "1970-01-01T00:00:00.000Z"}::timestamptz AND relation.id > ${cursor?.relationId ?? ""})
+            OR relation.order IS NULL))
+          OR (${cursor?.order ?? null} IS NULL AND relation.order IS NULL AND (
+            relation.created_at > ${cursor?.createdAt ?? "1970-01-01T00:00:00.000Z"}::timestamptz
+            OR (relation.created_at = ${cursor?.createdAt ?? "1970-01-01T00:00:00.000Z"}::timestamptz AND relation.id > ${cursor?.relationId ?? ""}))))
+      ORDER BY relation.order ASC NULLS LAST, relation.created_at ASC, relation.id ASC
+      LIMIT ${pageSize + 1}
+    )
+    SELECT COALESCE(jsonb_agg(page ORDER BY page.order ASC NULLS LAST, page."createdAt" ASC, page."relationId" ASC), '[]'::jsonb) AS "relationRows",
+      (SELECT count(*)::bigint FROM video_relation relation
+       JOIN video child ON child.id = relation.child_id AND child.deleted_at IS NULL
+       WHERE relation.parent_id = ${parentVideoId}) AS total
+    FROM page
+  `)
+  const envelope = envelopes[0]
+  const relationRows = Array.isArray(envelope?.relationRows)
+    ? (envelope.relationRows as CollectionRelationRow[])
+    : []
+  const pageRows = relationRows.slice(0, pageSize)
+  const lastRow = pageRows.at(-1)
+  const nextCursor =
+    relationRows.length > pageSize && lastRow
+      ? encodeOpaqueCursor({
+          v: 1,
+          parentVideoId,
+          order: lastRow.order,
+          createdAt: new Date(lastRow.createdAt).toISOString(),
+          relationId: lastRow.relationId,
+        } satisfies CollectionCursor)
+      : null
+  const items = await loadExperienceEditorVideoSummariesByIds(db, {
+    videoIds: pageRows.map((row) => row.childId),
+    locale: request.locale,
+    authoredSelectors: request.authoredSelectors,
+  })
+  return {
+    items,
+    nextCursor,
+    total: envelope ? toSafeCount(envelope.total) : 0,
+  }
+}
+
+export type ExperienceEditorDubSelectionValidationRequest = {
+  selectors: readonly ExperienceEditorAuthoredDubSelector[]
+  previousSelectors?: readonly ExperienceEditorAuthoredDubSelector[]
+  locale: string
+}
+export type ExperienceEditorDubSelectionValidationActionInput = Omit<
+  ExperienceEditorDubSelectionValidationRequest,
+  "locale" | "previousSelectors"
+>
+export type ExperienceEditorDubSelectionValidation = {
+  available: Array<{
+    selector: ExperienceEditorAuthoredDubSelector
+    choice: ExperienceEditorDubChoice
+  }>
+  unavailable: Array<{
+    selector: ExperienceEditorAuthoredDubSelector
+    preExisting: boolean
+    reason: "video-or-dub-unavailable"
+  }>
+}
+type ValidationRow = DubPageRow & { selectorIndex: number }
+
+function selectorIdentity(selector: ExperienceEditorAuthoredDubSelector) {
+  const languageId = compactText(selector.languageId)
+  const legacyUrl = compactText(selector.legacyStreamingUrl)
+  return languageId
+    ? `${selector.videoId}\u0000language\u0000${languageId}`
+    : `${selector.videoId}\u0000stream\u0000${legacyUrl ?? ""}`
+}
+
+export async function validateExperienceEditorDubSelections(
+  db: Pick<ExperienceEditorLookupDb, "$queryRaw">,
+  request: ExperienceEditorDubSelectionValidationRequest,
+): Promise<ExperienceEditorDubSelectionValidation> {
+  const selectors = request.selectors.filter(
+    (selector) =>
+      compactText(selector.videoId) != null &&
+      (compactText(selector.languageId) != null ||
+        compactText(selector.legacyStreamingUrl) != null),
+  )
+  const previous = new Set(
+    (request.previousSelectors ?? []).map(selectorIdentity),
+  )
+  const available: ExperienceEditorDubSelectionValidation["available"] = []
+  const unavailable: ExperienceEditorDubSelectionValidation["unavailable"] = []
+  for (
+    let offset = 0;
+    offset < selectors.length;
+    offset += EXPERIENCE_EDITOR_VIDEO_BATCH_SIZE
+  ) {
+    const batch = selectors.slice(
+      offset,
+      offset + EXPERIENCE_EDITOR_VIDEO_BATCH_SIZE,
+    )
+    const inputJson = JSON.stringify(
+      batch.map((selector, selectorIndex) => ({
+        selector_index: selectorIndex,
+        video_id: selector.videoId,
+        language_id: compactText(selector.languageId),
+        legacy_streaming_url: compactText(selector.legacyStreamingUrl),
+      })),
+    )
+    const rows = await db.$queryRaw<ValidationRow[]>(Prisma.sql`
+      WITH requested AS MATERIALIZED (
+        SELECT input.selector_index, input.video_id, input.language_id, input.legacy_streaming_url
+        FROM jsonb_to_recordset(${inputJson}::jsonb)
+          AS input(selector_index integer, video_id text, language_id text, legacy_streaming_url text)
+      )
+      SELECT requested.selector_index AS "selectorIndex", selected.id,
+             selected.video_id AS "videoId", selected.language_id AS "languageId",
+             selected.language_slug AS "languageSlug", selected.bcp47, selected.iso3,
+             selected.language_name AS "languageName", selected.hls, selected.dash, selected.share,
+             selected.duration, selected.length_in_milliseconds AS "lengthInMilliseconds",
+             selected.updated_at AS "updatedAt", selected.language_identity AS "languageIdentity",
+             selected.sort_label AS "sortLabel"
+      FROM requested
+      JOIN LATERAL (
+        SELECT d.*, l.slug AS language_slug, l.bcp47, l.iso3,
+          COALESCE(l.name ->> ${request.locale}, l.name ->> 'en', l.slug, l.bcp47, l.iso3, d.id) AS language_name,
+          COALESCE(NULLIF(lower(btrim(l.slug)), ''), NULLIF(lower(btrim(l.bcp47)), ''),
+            NULLIF(lower(btrim(l.iso3)), ''), NULLIF(lower(btrim(COALESCE(l.id, d.language_id))), ''), d.id) AS language_identity,
+          lower(COALESCE(l.name ->> ${request.locale}, l.name ->> 'en', l.slug, l.bcp47, l.iso3, d.id)) AS sort_label
+        FROM video_dub d JOIN video v ON v.id = d.video_id AND v.deleted_at IS NULL
+        LEFT JOIN language l ON l.id = d.language_id AND l.deleted_at IS NULL
+        WHERE d.video_id = requested.video_id AND d.deleted_at IS NULL
+          AND COALESCE(NULLIF(btrim(d.hls), ''), NULLIF(btrim(d.dash), ''), NULLIF(btrim(d.share), '')) IS NOT NULL
+          AND ((requested.language_id IS NOT NULL AND d.language_id = requested.language_id)
+            OR (requested.language_id IS NULL AND requested.legacy_streaming_url IS NOT NULL
+              AND requested.legacy_streaming_url IN (btrim(d.hls), btrim(d.dash), btrim(d.share))))
+        ORDER BY d.updated_at DESC NULLS LAST, d.id ASC LIMIT 1
+      ) selected ON TRUE ORDER BY requested.selector_index ASC
+    `)
+    const byIndex = new Map(rows.map((row) => [row.selectorIndex, row]))
+    for (const [selectorIndex, selector] of batch.entries()) {
+      const row = byIndex.get(selectorIndex)
+      const choice = row ? dubChoiceFromPageRow(row, request.locale) : null
+      if (choice) available.push({ selector, choice })
+      else
+        unavailable.push({
+          selector,
+          preExisting: previous.has(selectorIdentity(selector)),
+          reason: "video-or-dub-unavailable",
+        })
+    }
+  }
+  return { available, unavailable }
+}

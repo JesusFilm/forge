@@ -33,6 +33,14 @@ import { getAdminLocale } from "@/i18n/server"
 import { createServices } from "@/services"
 import { ForbiddenError } from "@/services/errors"
 import {
+  loadExperienceEditorCollectionChildPage,
+  loadExperienceEditorDubPage,
+  validateExperienceEditorDubSelections,
+  type ExperienceEditorCollectionChildPageActionInput,
+  type ExperienceEditorDubPageActionInput,
+  type ExperienceEditorDubSelectionValidationActionInput,
+} from "@/services/experience-editor-video.service"
+import {
   recordAdminVideoLibrarySearchTraceSafely,
   type AdminVideoLibrarySearchTraceClient,
 } from "@/services/search-trace.service"
@@ -720,6 +728,41 @@ export default async function ExperienceEditorPage({
     })
   }
 
+  async function loadVideoDubPageAction(
+    input: ExperienceEditorDubPageActionInput,
+  ) {
+    "use server"
+    await requireSession()
+    return loadExperienceEditorDubPage(prisma, {
+      ...input,
+      locale: selectedLocale.locale,
+    })
+  }
+
+  async function loadVideoCollectionChildrenPageAction(
+    input: ExperienceEditorCollectionChildPageActionInput,
+  ) {
+    "use server"
+    await requireSession()
+    return loadExperienceEditorCollectionChildPage(prisma, {
+      ...input,
+      locale: selectedLocale.locale,
+      authoredSelectors: authoredDubSelectors,
+    })
+  }
+
+  async function validateVideoDubSelectionsAction(
+    input: ExperienceEditorDubSelectionValidationActionInput,
+  ) {
+    "use server"
+    await requireSession()
+    return validateExperienceEditorDubSelections(prisma, {
+      ...input,
+      locale: selectedLocale.locale,
+      previousSelectors: authoredDubSelectors,
+    })
+  }
+
   async function searchVideoLibraryAction(
     query: string,
     context?: {
@@ -904,6 +947,11 @@ export default async function ExperienceEditorPage({
       videoLibrary={videoLibrary}
       loadVideosByIdsAction={loadVideosByIdsAction}
       loadVideoCollectionChildrenAction={loadVideoCollectionChildrenAction}
+      loadVideoDubPageAction={loadVideoDubPageAction}
+      loadVideoCollectionChildrenPageAction={
+        loadVideoCollectionChildrenPageAction
+      }
+      validateVideoDubSelectionsAction={validateVideoDubSelectionsAction}
       searchVideoLibraryAction={searchVideoLibraryAction}
       mediaLibrary={mediaLibrary}
       canUploadImages={canUploadImages}

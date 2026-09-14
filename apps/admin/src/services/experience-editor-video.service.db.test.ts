@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest"
 import { prisma } from "@/db/client"
 import {
   EXPERIENCE_EDITOR_LANGUAGE_CHIP_LIMIT,
+  loadExperienceEditorCollectionChildPage,
+  loadExperienceEditorDubPage,
   loadExperienceEditorVideoSummariesByIds,
 } from "./experience-editor-video.service"
 
@@ -67,6 +69,61 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       expect(materializedDubRows).toBeLessThanOrEqual(
         EXPERIENCE_EDITOR_LANGUAGE_CHIP_LIMIT + 1,
       )
+    })
+
+    it("returns non-overlapping deterministic language and collection page boundaries", async () => {
+      const [video] = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+        SELECT v.id
+        FROM video v
+        WHERE v.deleted_at IS NULL
+          AND (SELECT count(*) FROM video_dub d
+               WHERE d.video_id = v.id AND d.deleted_at IS NULL
+                 AND COALESCE(NULLIF(btrim(d.hls), ''), NULLIF(btrim(d.dash), ''), NULLIF(btrim(d.share), '')) IS NOT NULL) >= 2
+        ORDER BY v.id ASC
+        LIMIT 1
+      `)
+      if (video) {
+        const first = await loadExperienceEditorDubPage(prisma, {
+          videoId: video.id,
+          locale: "en",
+          pageSize: 1,
+        })
+        if (first.nextCursor) {
+          const second = await loadExperienceEditorDubPage(prisma, {
+            videoId: video.id,
+            locale: "en",
+            pageSize: 1,
+            cursor: first.nextCursor,
+          })
+          expect(second.choices[0]?.key).not.toBe(first.choices[0]?.key)
+        }
+      }
+
+      const [parent] = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+        SELECT r.parent_id AS id
+        FROM video_relation r
+        JOIN video parent ON parent.id = r.parent_id AND parent.deleted_at IS NULL
+        JOIN video child ON child.id = r.child_id AND child.deleted_at IS NULL
+        GROUP BY r.parent_id
+        HAVING count(*) >= 2
+        ORDER BY r.parent_id ASC
+        LIMIT 1
+      `)
+      if (!parent) return
+      const first = await loadExperienceEditorCollectionChildPage(prisma, {
+        parentVideoId: parent.id,
+        locale: "en",
+        pageSize: 1,
+      })
+      expect(first.items).toHaveLength(1)
+      expect(first.total).toBeGreaterThanOrEqual(2)
+      const second = await loadExperienceEditorCollectionChildPage(prisma, {
+        parentVideoId: parent.id,
+        locale: "en",
+        pageSize: 1,
+        cursor: first.nextCursor,
+      })
+      expect(second.items[0]?.key).not.toBe(first.items[0]?.key)
     })
   },
 )

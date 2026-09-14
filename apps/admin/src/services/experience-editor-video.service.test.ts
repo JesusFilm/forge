@@ -8,6 +8,11 @@ import {
   EMPTY_EXPERIENCE_EDITOR_DUB_INVENTORY,
   experienceEditorLanguageIdentity,
   EXPERIENCE_EDITOR_VIDEO_BATCH_SIZE,
+  ExperienceEditorVideoInputError,
+  ExperienceEditorVideoNotFoundError,
+  loadExperienceEditorCollectionChildPage,
+  loadExperienceEditorDubPage,
+  validateExperienceEditorDubSelections,
   loadExperienceEditorVideoSummariesByIds,
   loadExperienceEditorVideoSummaryList,
   NOT_LOADED_EXPERIENCE_EDITOR_DUB_INVENTORY,
@@ -573,5 +578,168 @@ describe("bounded experience editor video summaries", () => {
       authoredDubs: [],
       dubInventory: { status: "not-loaded" },
     })
+  })
+})
+
+describe("bounded experience editor language and collection pages", () => {
+  function pageDb(rawPages: unknown[]) {
+    const raw = vi.fn()
+    for (const page of rawPages) raw.mockResolvedValueOnce(page)
+    return {
+      db: {
+        $queryRaw: raw,
+        video: { findFirst: vi.fn().mockResolvedValue({ id: "video-1" }) },
+        videoDub: { findMany: vi.fn() },
+      } as unknown as PrismaClient,
+      raw,
+    }
+  }
+
+  const dubRow = (id: string, languageId: string, label: string) => ({
+    id,
+    videoId: "video-1",
+    languageId,
+    languageSlug: label.toLowerCase(),
+    bcp47: label.slice(0, 2).toLowerCase(),
+    iso3: label.slice(0, 3).toLowerCase(),
+    languageName: label,
+    hls: `${id}.m3u8`,
+    dash: null,
+    share: null,
+    duration: 120,
+    lengthInMilliseconds: null,
+    updatedAt: new Date("2026-09-14T12:00:00.000Z"),
+    languageIdentity: languageId,
+    sortLabel: label.toLowerCase(),
+  })
+
+  it("defaults to 50, clamps above 100, and rejects invalid page sizes", async () => {
+    const { db, raw } = pageDb([[]])
+    await loadExperienceEditorDubPage(db, { videoId: "video-1", locale: "en" })
+    expect((raw.mock.calls[0]?.[0] as { values?: unknown[] }).values).toContain(
+      51,
+    )
+
+    const clamped = pageDb([[]])
+    await loadExperienceEditorDubPage(clamped.db, {
+      videoId: "video-1",
+      locale: "en",
+      pageSize: 500,
+    })
+    expect(
+      (clamped.raw.mock.calls[0]?.[0] as { values?: unknown[] }).values,
+    ).toContain(101)
+
+    for (const pageSize of [0, -1, 1.5]) {
+      await expect(
+        loadExperienceEditorDubPage(db, {
+          videoId: "video-1",
+          locale: "en",
+          pageSize,
+        }),
+      ).rejects.toBeInstanceOf(ExperienceEditorVideoInputError)
+    }
+  })
+
+  it("returns an off-page selected choice separately and binds cursors to video and normalized search", async () => {
+    const rows = Array.from({ length: 3 }, (_, index) =>
+      dubRow(`dub-${index}`, `language-${index}`, `Language ${index}`),
+    )
+    const { db } = pageDb([rows, [dubRow("selected", "selected-lang", "Zulu")]])
+    const first = await loadExperienceEditorDubPage(db, {
+      videoId: "video-1",
+      locale: "en",
+      query: "  LANGUAGE ",
+      pageSize: 2,
+      selectedLanguageId: "selected-lang",
+    })
+    expect(first.choices.map((choice) => choice.key)).toEqual([
+      "dub-0",
+      "dub-1",
+    ])
+    expect(first.selectedChoice?.key).toBe("selected")
+    expect(first.nextCursor).toEqual(expect.any(String))
+
+    await expect(
+      loadExperienceEditorDubPage(pageDb([[]]).db, {
+        videoId: "video-2",
+        locale: "en",
+        query: "different",
+        cursor: first.nextCursor,
+      }),
+    ).rejects.toBeInstanceOf(ExperienceEditorVideoInputError)
+  })
+
+  it("searches before take by localized label, codes, and duration text", async () => {
+    const { db, raw } = pageDb([[]])
+    await loadExperienceEditorDubPage(db, {
+      videoId: "video-1",
+      locale: "es",
+      query: "12:34",
+    })
+    const sql = sqlText(raw)
+    expect(sql).toMatch(/language_locale/)
+    expect(sql).toMatch(/bcp47/)
+    expect(sql).toMatch(/iso3/)
+    expect(sql).toMatch(/duration_text/)
+    expect(sql.indexOf("search_text")).toBeLessThan(sql.indexOf("LIMIT"))
+  })
+
+  it("returns stable bounded collection pages using nullable order, creation time, and relation id", async () => {
+    const relations = Array.from({ length: 3 }, (_, index) => ({
+      relationId: `relation-${index}`,
+      childId: `child-${index}`,
+      order: index === 2 ? null : 1,
+      createdAt: new Date("2026-09-14T12:00:00.000Z").toISOString(),
+    }))
+    const { db, raw } = pageDb([[{ relationRows: relations, total: 3n }]])
+    raw.mockResolvedValueOnce([
+      summarySelection("child-0"),
+      summarySelection("child-1"),
+    ])
+    const page = await loadExperienceEditorCollectionChildPage(db, {
+      parentVideoId: "video-1",
+      locale: "en",
+      pageSize: 2,
+    })
+    expect(page.items.map((item) => item.key)).toEqual(["child-0", "child-1"])
+    expect(page.total).toBe(3)
+    expect(page.nextCursor).toEqual(expect.any(String))
+    expect(sqlText(raw)).toMatch(/order ASC NULLS LAST/)
+    expect(sqlText(raw)).toMatch(/created_at ASC/)
+    expect(sqlText(raw)).toMatch(/relation\.id ASC/)
+  })
+
+  it("fails missing videos before exposing options", async () => {
+    const { db, raw } = pageDb([])
+    vi.mocked(db.video.findFirst).mockResolvedValueOnce(null)
+    await expect(
+      loadExperienceEditorDubPage(db, { videoId: "missing", locale: "en" }),
+    ).rejects.toBeInstanceOf(ExperienceEditorVideoNotFoundError)
+    expect(raw).not.toHaveBeenCalled()
+  })
+})
+
+describe("experience editor selection validation", () => {
+  it("validates in batches of at most 100 and distinguishes retained unavailable selections", async () => {
+    const raw = vi.fn().mockResolvedValue([])
+    const db = { $queryRaw: raw } as unknown as PrismaClient
+    const selectors = Array.from({ length: 101 }, (_, index) => ({
+      videoId: `video-${index}`,
+      languageId: `language-${index}`,
+      legacyStreamingUrl: null,
+    }))
+    const result = await validateExperienceEditorDubSelections(db, {
+      selectors,
+      previousSelectors: [selectors[0]!],
+      locale: "en",
+    })
+    expect(raw).toHaveBeenCalledTimes(2)
+    for (const [query] of raw.mock.calls) {
+      const input = JSON.parse(String(query.values?.[0])) as unknown[]
+      expect(input.length).toBeLessThanOrEqual(100)
+    }
+    expect(result.unavailable[0]).toMatchObject({ preExisting: true })
+    expect(result.unavailable[100]).toMatchObject({ preExisting: false })
   })
 })

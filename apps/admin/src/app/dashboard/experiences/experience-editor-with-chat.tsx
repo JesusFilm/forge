@@ -12,6 +12,14 @@ import { useCallback, useMemo, useRef, useState } from "react"
 
 import { ExperienceEditor } from "@/app/dashboard/experiences/experience-editor"
 import type { VideoLibraryItem } from "@/app/dashboard/experiences/experience-editor/block-helpers"
+import type {
+  ExperienceEditorCollectionChildPageActionInput,
+  ExperienceEditorDubPageActionInput,
+  ExperienceEditorDubSelectionValidationActionInput,
+  loadExperienceEditorCollectionChildPage,
+  loadExperienceEditorDubPage,
+  validateExperienceEditorDubSelections,
+} from "@/services/experience-editor-video.service"
 import {
   ExperienceChatPanel,
   type ExperienceCanvasController,
@@ -45,6 +53,15 @@ export type ExperienceEditorWithChatProps = Omit<
   loadVideoCollectionChildrenAction: (
     parentVideoId: string,
   ) => Promise<VideoLibraryItem[]>
+  loadVideoDubPageAction: (
+    input: ExperienceEditorDubPageActionInput,
+  ) => ReturnType<typeof loadExperienceEditorDubPage>
+  loadVideoCollectionChildrenPageAction: (
+    input: ExperienceEditorCollectionChildPageActionInput,
+  ) => ReturnType<typeof loadExperienceEditorCollectionChildPage>
+  validateVideoDubSelectionsAction: (
+    input: ExperienceEditorDubSelectionValidationActionInput,
+  ) => ReturnType<typeof validateExperienceEditorDubSelections>
   /**
    * Multi-step draft workflow trigger surfaced as the chat panel's
    * "Generate full page" button. Optional so the editor still renders
@@ -92,6 +109,9 @@ export function ExperienceEditorWithChat({
   videoLibrary: initialVideoLibrary,
   loadVideosByIdsAction,
   loadVideoCollectionChildrenAction,
+  loadVideoDubPageAction,
+  loadVideoCollectionChildrenPageAction,
+  validateVideoDubSelectionsAction,
   searchVideoLibraryAction,
   generateDraftAction,
   generateSectionAction,
@@ -263,6 +283,11 @@ export function ExperienceEditorWithChat({
           duplicatePending={chatMutationPending}
           videoLibrary={videoLibrary}
           loadVideoCollectionChildrenAction={handleLoadVideoCollectionChildren}
+          {...{
+            loadVideoDubPageAction,
+            loadVideoCollectionChildrenPageAction,
+            validateVideoDubSelectionsAction,
+          }}
           searchVideoLibraryAction={handleSearchVideoLibrary}
           onCanvasController={handleCanvasController}
         />
