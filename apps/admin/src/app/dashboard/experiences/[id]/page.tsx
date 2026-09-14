@@ -12,6 +12,7 @@ import {
 import { runGenerateDraftAction } from "@/app/dashboard/experiences/generate-draft-action"
 import { runGenerateSectionAction } from "@/app/dashboard/experiences/generate-section-action"
 import { runGenerateVariantAction } from "@/app/dashboard/experiences/generate-variant-action"
+import { mediaAssetIdsFromExperienceBlocks } from "@/app/dashboard/experiences/experience-editor/block-helpers"
 import { buildMediaLibraryBrowserData } from "@/app/dashboard/media/media-library-browser-data"
 import { uploadMediaAssetFromFormData } from "@/app/dashboard/media/upload-media-asset-action"
 import { loadExperienceEditorVideoRows } from "@/app/dashboard/live-data"
@@ -161,33 +162,46 @@ async function languageIdForLocale(locale: string): Promise<string | null> {
   return language?.id ?? null
 }
 
-async function loadMediaLibrary() {
+async function loadMediaLibrary({
+  assetIds,
+}: {
+  assetIds?: readonly string[]
+} = {}) {
+  const fullCatalog = assetIds === undefined
   const [folders, assets] = await Promise.all([
-    prisma.mediaFolder.findMany({
-      select: { id: true, name: true, parentId: true },
-      orderBy: [{ parentId: "asc" }, { name: "asc" }],
-    }),
-    prisma.mediaAsset.findMany({
-      where: { kind: "IMAGE", status: "READY" },
-      select: {
-        id: true,
-        backend: true,
-        originalFilename: true,
-        mimeType: true,
-        byteSize: true,
-        objectKey: true,
-        previewObjectKey: true,
-        muxPlaybackId: true,
-        folderId: true,
-        updatedAt: true,
-        locales: {
-          where: { locale: "en" },
-          select: { displayName: true, altText: true },
-          take: 1,
-        },
-      },
-      orderBy: { updatedAt: "desc" },
-    }),
+    fullCatalog
+      ? prisma.mediaFolder.findMany({
+          select: { id: true, name: true, parentId: true },
+          orderBy: [{ parentId: "asc" }, { name: "asc" }],
+        })
+      : [],
+    assetIds?.length === 0
+      ? []
+      : prisma.mediaAsset.findMany({
+          where: {
+            kind: "IMAGE",
+            status: "READY",
+            ...(assetIds ? { id: { in: [...assetIds] } } : {}),
+          },
+          select: {
+            id: true,
+            backend: true,
+            originalFilename: true,
+            mimeType: true,
+            byteSize: true,
+            objectKey: true,
+            previewObjectKey: true,
+            muxPlaybackId: true,
+            folderId: true,
+            updatedAt: true,
+            locales: {
+              where: { locale: "en" },
+              select: { displayName: true, altText: true },
+              take: 1,
+            },
+          },
+          orderBy: { updatedAt: "desc" },
+        }),
   ])
 
   return buildMediaLibraryBrowserData({ folders, images: assets })
@@ -249,8 +263,6 @@ export default async function ExperienceEditorPage({
       requireSession(),
       getAdminLocale(),
     ])
-  const mediaLibraryPromise = loadMediaLibrary()
-
   const services = createServices(prisma)
   const experienceSummary = await services.experience.getById({
     id,
@@ -292,7 +304,11 @@ export default async function ExperienceEditorPage({
   const editableLocale = draftState.effective
   const [mediaLibrary, selectedLocaleLanguageId, activeLocaleDrafts] =
     await Promise.all([
-      mediaLibraryPromise,
+      loadMediaLibrary({
+        assetIds: mediaAssetIdsFromExperienceBlocks(
+          Array.isArray(editableLocale.blocks) ? editableLocale.blocks : [],
+        ),
+      }),
       languageIdForLocale(selectedLocale.locale),
       prisma.contentRevision.findMany({
         where: {
@@ -758,6 +774,12 @@ export default async function ExperienceEditorPage({
     })
   }
 
+  async function loadMediaLibraryAction() {
+    "use server"
+    await requireSession()
+    return loadMediaLibrary()
+  }
+
   async function searchVideoLibraryAction(
     query: string,
     context?: {
@@ -945,6 +967,7 @@ export default async function ExperienceEditorPage({
       validateVideoDubSelectionsAction={validateVideoDubSelectionsAction}
       searchVideoLibraryAction={searchVideoLibraryAction}
       mediaLibrary={mediaLibrary}
+      loadMediaLibraryAction={loadMediaLibraryAction}
       canUploadImages={canUploadImages}
       saveAction={saveLocaleAction}
       duplicateAction={

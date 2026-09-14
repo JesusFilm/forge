@@ -19,6 +19,7 @@ type MediaAssetDropTargetProps = {
   selectedFolderLabel: string
   acceptedMimePrefix?: string
   contentClassName?: string
+  onUploadSuccess?: () => void | Promise<void>
   children: ReactNode
 }
 
@@ -37,6 +38,7 @@ export function MediaAssetDropTarget({
   selectedFolderLabel,
   acceptedMimePrefix,
   contentClassName,
+  onUploadSuccess,
   children,
 }: MediaAssetDropTargetProps) {
   const router = useRouter()
@@ -109,6 +111,7 @@ export function MediaAssetDropTarget({
     setUploadingCount(0)
 
     if (successCount > 0) {
+      await onUploadSuccess?.()
       router.refresh()
       pushToast(
         successCount === 1
@@ -132,6 +135,7 @@ export function MediaAssetDropTarget({
 
   return (
     <div
+      data-media-asset-drop-target
       onDragEnter={(event) => {
         if (!hasFiles(event.dataTransfer)) {
           return

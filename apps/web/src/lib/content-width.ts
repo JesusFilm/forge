@@ -17,11 +17,11 @@ export const CONTENT_WIDTH_CLASSES = `${CONTENT_WIDTH_ALIGN_CLASSES} px-4 sm:px-
 export const WATCH_PAGE_RAIL_PADDING_CLASSES = "px-5 md:px-16 xl:px-24"
 export const WATCH_PAGE_LEFT_RAIL_CLASSES = "left-5 md:left-16 xl:left-24"
 export const WATCH_PAGE_LEFT_EDGE_CLASSES =
-  "left-5 md:left-16 xl:left-[max(6rem,calc((100vw-1920px)/2+6rem))] compact-landscape:left-[max(1.25rem,env(safe-area-inset-left,0px))]"
+  "left-5 md:left-16 xl:left-[max(6rem,calc((100vw-1920px)/2+6rem))]"
 export const WATCH_PAGE_RIGHT_EDGE_CLASSES =
-  "right-5 md:right-16 xl:right-[max(6rem,calc((100vw-1920px)/2+6rem))] compact-landscape:right-[max(1.25rem,env(safe-area-inset-right,0px))]"
+  "right-5 md:right-16 xl:right-[max(6rem,calc((100vw-1920px)/2+6rem))]"
 export const FLOATING_HEADER_LAYOUT_CLASS =
-  "grid h-[52px] grid-cols-[minmax(80px,1fr)_minmax(0,800px)_minmax(80px,1fr)] items-center gap-3 sm:grid-cols-[minmax(112px,1fr)_minmax(0,800px)_minmax(112px,1fr)] md:grid-cols-[minmax(139px,1fr)_minmax(0,800px)_minmax(139px,1fr)] md:gap-5"
+  "grid h-[52px] grid-cols-[minmax(max-content,1fr)_minmax(0,800px)_minmax(max-content,1fr)] items-center gap-3 md:gap-5"
 export const FLOATING_HEADER_FIELD_WIDTH_CLASS = "min-w-0 w-full max-w-[800px]"
 export const FLOATING_HEADER_MOBILE_BOUNDARY_HEIGHT_CLASS =
   "h-[calc(env(safe-area-inset-top,0px)+0.75rem+52px+0.75rem)]"

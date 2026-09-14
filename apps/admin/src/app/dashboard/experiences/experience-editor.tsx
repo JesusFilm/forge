@@ -1554,7 +1554,8 @@ export function ExperienceEditor({
   revisionEntries,
   localeEntries,
   videoLibrary,
-  mediaLibrary,
+  mediaLibrary: initialMediaLibrary,
+  loadMediaLibraryAction,
   canUploadImages,
   calendarDate,
   watchOrigin,
@@ -1585,6 +1586,7 @@ export function ExperienceEditor({
   localeEntries: LocaleEntry[]
   videoLibrary: VideoLibraryItem[]
   mediaLibrary: MediaLibraryBrowserData
+  loadMediaLibraryAction?: () => Promise<MediaLibraryBrowserData>
   canUploadImages: boolean
   calendarDate: string
   /** Forge watch-app origin (env.WATCH_CANONICAL_ORIGIN) for preview links. */
@@ -1701,6 +1703,14 @@ export function ExperienceEditor({
   const [ogImageUrl, setOgImageUrl] = useState(initialValues.ogImageUrl)
   const [isHomepage, setIsHomepage] = useState(initialValues.isHomepage)
   const isTemplate = initialValues.isTemplate
+  const [mediaLibrary, setMediaLibrary] = useState(initialMediaLibrary)
+  const [mediaLibraryLoaded, setMediaLibraryLoaded] = useState(
+    loadMediaLibraryAction == null,
+  )
+  const [mediaLibraryLoadStatus, setMediaLibraryLoadStatus] = useState<
+    "idle" | "loading" | "error"
+  >("idle")
+  const mediaLibraryLoadPromiseRef = useRef<Promise<void> | null>(null)
 
   const [parsedBlocks, setParsedBlocks] = useState<unknown[]>(() => {
     try {
@@ -2013,6 +2023,11 @@ export function ExperienceEditor({
         distance: 6,
       },
     }),
+  )
+
+  const mediaAssetById = useMemo(
+    () => new Map(mediaLibrary.images.map((asset) => [asset.id, asset])),
+    [mediaLibrary.images],
   )
 
   const blockSummaries = parsedBlocks.map((block, index) =>
@@ -4230,9 +4245,39 @@ export function ExperienceEditor({
   function mediaAssetPreviewUrl(assetId: unknown) {
     const id = asString(assetId)
     if (!id) return ""
-    return (
-      mediaLibrary.images.find((asset) => asset.id === id)?.previewUrl ?? ""
-    )
+    return mediaAssetById.get(id)?.previewUrl ?? ""
+  }
+
+  function requestMediaLibrary(): Promise<void> {
+    if (!loadMediaLibraryAction || mediaLibraryLoadPromiseRef.current) {
+      return mediaLibraryLoadPromiseRef.current ?? Promise.resolve()
+    }
+
+    setMediaLibraryLoadStatus("loading")
+    const request = loadMediaLibraryAction()
+      .then((library) => {
+        setMediaLibrary(library)
+        setMediaLibraryLoaded(true)
+        setMediaLibraryLoadStatus("idle")
+      })
+      .catch(() => {
+        setMediaLibraryLoaded(false)
+        setMediaLibraryLoadStatus("error")
+      })
+      .finally(() => {
+        mediaLibraryLoadPromiseRef.current = null
+      })
+    mediaLibraryLoadPromiseRef.current = request
+    return request
+  }
+
+  function ensureMediaLibraryLoaded() {
+    return mediaLibraryLoaded ? Promise.resolve() : requestMediaLibrary()
+  }
+
+  async function refreshMediaLibrary() {
+    await mediaLibraryLoadPromiseRef.current
+    return requestMediaLibrary()
   }
 
   function chooseBackgroundImage(
@@ -4450,7 +4495,7 @@ export function ExperienceEditor({
 
   function openImagePickerTarget(target: ImagePickerTarget) {
     const selectedAsset = target.selectedAssetId
-      ? mediaLibrary.images.find((asset) => asset.id === target.selectedAssetId)
+      ? mediaAssetById.get(target.selectedAssetId)
       : null
     const rememberedFolderId =
       lastImagePickerFolderId === null ||
@@ -4470,6 +4515,7 @@ export function ExperienceEditor({
     setImagePickerSelectedFolderId(
       selectedAsset ? selectedAsset.folderId : rememberedFolderId,
     )
+    void ensureMediaLibraryLoaded()
   }
 
   function closeImagePicker() {
@@ -9111,6 +9157,18 @@ export function ExperienceEditor({
         ) : type === "watchHomeCategoryRail" ? (
           <WatchHomeCategoryRailEditor
             tiles={readRailTiles(blockRecord)}
+            copy={{
+              eyebrow: asString(blockRecord?.eyebrow),
+              title: asString(blockRecord?.title),
+              description: asString(blockRecord?.description),
+              ctaLabel: asString(blockRecord?.ctaLabel),
+            }}
+            onCopyChange={(field, value) =>
+              updateBlockAt(index, (currentBlock) => ({
+                ...currentBlock,
+                [field]: value,
+              }))
+            }
             onChange={(tiles) =>
               updateBlockAt(index, (currentBlock) =>
                 railBlockPatch(currentBlock, tiles),
@@ -11426,16 +11484,20 @@ export function ExperienceEditor({
         }
         open={imagePickerTarget !== null}
         mediaLibrary={mediaLibrary}
+        loading={mediaLibraryLoadStatus === "loading"}
+        loadError={mediaLibraryLoadStatus === "error"}
         query={imageLibraryQuery}
         selectedFolderId={imagePickerSelectedFolderId}
         selectedAssetId={imagePickerTarget?.selectedAssetId ?? null}
         canClearImage={imagePickerTarget?.canClear ?? false}
         canUpload={canUploadImages}
         uploadAction={uploadImageAction}
+        onUploadSuccess={refreshMediaLibrary}
         onQueryChange={setImageLibraryQuery}
         onSelectFolder={selectImagePickerFolder}
         onSelectImage={applyImagePickerSelection}
         onClearImage={clearImagePickerSelection}
+        onRetryLoad={() => void ensureMediaLibraryLoaded()}
         onClose={closeImagePicker}
       />
       <div

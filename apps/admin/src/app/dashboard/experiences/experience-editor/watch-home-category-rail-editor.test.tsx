@@ -17,7 +17,13 @@ function categoryTiles(categoryIds: string[]): RailTile[] {
 
 function StatefulEditor({ initialTiles }: { initialTiles: RailTile[] }) {
   const [tiles, setTiles] = useState(initialTiles)
-  return <WatchHomeCategoryRailEditor tiles={tiles} onChange={setTiles} />
+  return (
+    <WatchHomeCategoryRailEditor
+      tiles={tiles}
+      onChange={setTiles}
+      onCopyChange={() => undefined}
+    />
+  )
 }
 
 function renderEditorDom(initialTiles: RailTile[]) {
@@ -47,11 +53,31 @@ function field(container: HTMLElement, label: string) {
   const element = container.querySelector(`[aria-label="${label}"]`)
   if (
     !(element instanceof HTMLInputElement) &&
-    !(element instanceof HTMLSelectElement)
+    !(element instanceof HTMLSelectElement) &&
+    !(element instanceof HTMLTextAreaElement)
   ) {
     throw new Error(`Field not found: ${label}`)
   }
   return element
+}
+
+function copyEditor(
+  copy: {
+    eyebrow?: string
+    title?: string
+    description?: string
+    ctaLabel?: string
+  } = {},
+  onCopyChange = () => undefined,
+) {
+  return (
+    <WatchHomeCategoryRailEditor
+      tiles={categoryTiles(["jesus"])}
+      copy={copy}
+      onCopyChange={onCopyChange}
+      onChange={() => undefined}
+    />
+  )
 }
 
 /** Emulates a user edit — React needs the native setter to see the change. */
@@ -100,11 +126,72 @@ describe("WatchHomeCategoryRailEditor", () => {
       )) as typeof window.requestAnimationFrame
   })
 
+  it("exposes four bounded, persistently labelled copy fields without pretending English is the locale fallback", () => {
+    const html = renderToStaticMarkup(copyEditor())
+
+    expect(html).toContain(">Eyebrow<")
+    expect(html).toContain(">Heading<")
+    expect(html).toContain(">Description<")
+    expect(html).toContain(">CTA label<")
+    expect(html).toContain('aria-label="Category rail eyebrow"')
+    expect(html).toContain('maxLength="80"')
+    expect(html).toContain('maxLength="160"')
+    expect(html).toContain('maxLength="500"')
+    expect(html).toContain("Uses the viewer’s translated default")
+    expect(html).not.toContain('placeholder="Browse by category"')
+  })
+
+  it("keeps authored values visible and reports externally over-limit copy accessibly", () => {
+    const html = renderToStaticMarkup(
+      copyEditor({
+        eyebrow: "Explore",
+        title: "Stories for everyone",
+        description: "x".repeat(501),
+        ctaLabel: "See everything",
+      }),
+    )
+
+    expect(html).toContain('value="Explore"')
+    expect(html).toContain('value="Stories for everyone"')
+    expect(html).toContain('value="See everything"')
+    expect(html).toContain('aria-invalid="true"')
+    expect(html).toContain("Description must be 500 characters or fewer.")
+  })
+
+  it("keeps ordinary text editing isolated from block-level keyboard interactions", () => {
+    let bubbledKey = false
+    const container = document.createElement("div")
+    document.body.appendChild(container)
+    const root = createRoot(container)
+    act(() =>
+      root.render(
+        <div onKeyDown={() => (bubbledKey = true)}>{copyEditor()}</div>,
+      ),
+    )
+
+    try {
+      const heading = field(
+        container,
+        "Category rail heading",
+      ) as HTMLInputElement
+      act(() => {
+        heading.dispatchEvent(
+          new KeyboardEvent("keydown", { key: " ", bubbles: true }),
+        )
+      })
+      expect(bubbledKey).toBe(false)
+    } finally {
+      act(() => root.unmount())
+      container.remove()
+    }
+  })
+
   it("shows staff labels and destination slugs for selected and available categories", () => {
     const html = renderToStaticMarkup(
       <WatchHomeCategoryRailEditor
         tiles={categoryTiles(["jesus", "family"])}
         onChange={() => undefined}
+        onCopyChange={() => undefined}
       />,
     )
 
@@ -173,6 +260,7 @@ describe("WatchHomeCategoryRailEditor", () => {
       <WatchHomeCategoryRailEditor
         tiles={categoryTiles([WATCH_HOME_CATEGORY_CATALOG[0].id])}
         onChange={() => undefined}
+        onCopyChange={() => undefined}
       />,
     )
 
