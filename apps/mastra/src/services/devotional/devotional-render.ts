@@ -14,6 +14,7 @@ import {
 } from "./devotional-audio"
 import { joinAudioVarGaps, slowAndPad } from "./audio-concat"
 import { createSilentVoiceover } from "./devotional-silent-voiceover"
+import { planFaceCropAnchors } from "./face-crop-anchors"
 import {
   cacheDirFor,
   loadCachedAudio,
@@ -901,6 +902,9 @@ export type RenderOptions = {
    *  build a fast still-frame preview or just play the trimmed clip directly,
    *  instead of waiting on a full render to see the same thing. */
   stopBeforeRender?: boolean
+  /** Crop the background toward the faces in it instead of blind-centring it.
+   *  Best-effort: without a face detector the render is unchanged. */
+  faceCrop?: boolean
   /** Review preview: render N evenly spaced PNG stills INSTEAD of the MP4.
    *  Costs one frame of rasterization each — seconds, not minutes — which is
    *  what makes "show me screenshots before you render the whole thing" a
@@ -1571,6 +1575,19 @@ async function renderInStage(
     log(
       `⚠️  background is ${(bgTimelineSec - bgCoverageSec).toFixed(0)}s short — it will hold its last frame at the end`,
     )
+  }
+
+  if (options.faceCrop) {
+    const focus = await planFaceCropAnchors({
+      bgFile: path.join(stage, "bg.mp4"),
+      cards: manifest.cards,
+      introHoldSec: manifest.introHoldSec ?? 1,
+      outroHoldSec: manifest.outroHoldSec ?? 8,
+      log,
+    })
+    focus.forEach((steps, i) => {
+      if (steps) manifest.cards[i].bgFocus = steps
+    })
   }
 
   await writeFile(

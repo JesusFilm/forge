@@ -108,6 +108,27 @@ export const devotionalCardSchema = z.object({
   settleLine: z.string().optional(),
   /** Video card only: seconds at the start where the clip plays SILENT while
    *  `leadLabel` is on screen, before its own audio eases in. */
+  /**
+   * Where to crop the background's 16:9 frame to fill a 9:16 card: the
+   * normalized x of the face the shot is about (0 = left edge), as steps in
+   * seconds from THIS card's start. Absent means the old behaviour, a blind
+   * centre crop — which is right only when the subject happens to sit
+   * mid-frame, and on a two-person shot lands in the GAP between them and
+   * shows a shoulder and a wall.
+   *
+   * A list rather than one value because a card outlives the shot it opens on:
+   * one eleven-second card here spans three cuts. Each entry begins at a cut in
+   * the footage, so the crop jumps where the picture already jumps and the move
+   * is invisible.
+   */
+  bgFocus: z
+    .array(
+      z.object({
+        atSec: z.number().nonnegative(),
+        x: z.number().min(0).max(1),
+      }),
+    )
+    .optional(),
   mutedLeadSec: z.number().nonnegative().optional(),
   /** Video card only: the line shown over that silent opening ("Let's watch"). */
   leadLabel: z.string().optional(),

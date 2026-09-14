@@ -2754,6 +2754,21 @@ function Background({
         ? 0
         : 0.95
 
+  // The crop anchor in force at this instant: the last step whose time has
+  // arrived. `undefined` when the manifest carries no anchors, which keeps the
+  // pre-feature centre crop exactly as it was.
+  const bgFocusX = (() => {
+    const steps = card.bgFocus
+    if (!steps || steps.length === 0) return undefined
+    const t = frame / fps
+    let current = steps[0].x
+    for (const step of steps) {
+      if (step.atSec > t) break
+      current = step.x
+    }
+    return current
+  })()
+
   // Text-card / cover background video. All non-video cards share ONE continuous
   // clip (props.bgFile); trimBefore={bgStartFrame} makes each card a WINDOW into
   // it at the position where the previous card left off, so adjacent cards show
@@ -2790,6 +2805,20 @@ function Background({
         width: "100%",
         height: "100%",
         objectFit: "cover",
+        // Crop toward the face the current shot is about, when the manifest
+        // carries anchors. Stepped, not eased: each step lands on a cut in the
+        // footage, so the crop moves only where the picture already moves.
+        ...(bgFocusX != null
+          ? {
+              objectPosition: `${(
+                coverObjectPositionX(
+                  bgFocusX,
+                  { width, height },
+                  { width: 16, height: 9 },
+                ) * 100
+              ).toFixed(2)}% 50%`,
+            }
+          : {}),
         // Cover: sharp graded footage at a constant slight zoom (full-bleed,
         // no blur); other text cards dim + Ken-Burns behind the blur band.
         filter: introCover
@@ -3136,6 +3165,30 @@ function Background({
  * 0.35]`, which is only increasing while lead > 0.65. A shorter lead threw on
  * the card's first frame, and nothing upstream ruled one out.
  */
+/**
+ * `object-position` X for a cover-fitted frame, so that the point at `focusX`
+ * of the SOURCE lands in the middle of the card.
+ *
+ * Not the identity: `object-position: 60%` does not put source-x 0.6 in the
+ * centre, it distributes the OVERFLOW. Fitting 16:9 into a 9:16 card overflows
+ * by more than twice the visible width, so treating the focus point as the
+ * percentage directly under-corrects badly — a face at 0.8 would still be cut.
+ *
+ * Returns 0.5 when the source does not overflow (the 16:9 cut), where
+ * object-position has nothing to distribute and the value is inert anyway.
+ */
+export function coverObjectPositionX(
+  focusX: number,
+  box: { width: number; height: number },
+  source: { width: number; height: number },
+): number {
+  const scaled = (source.width / source.height) * box.height
+  const overflow = scaled - box.width
+  if (overflow <= 0) return 0.5
+  const p = (focusX * scaled - box.width / 2) / overflow
+  return Math.min(1, Math.max(0, p))
+}
+
 export function leadLabelKnots(
   leadSec: number,
 ): [number, number, number, number] {
