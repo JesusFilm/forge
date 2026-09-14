@@ -134,12 +134,16 @@ homepageRecommendations (top-level only, at most one per Experience):
   Optional title overrides the localized "Recommended for You" heading. Items are personalized at viewing time, never authored video IDs.
 
 watchHomeCategoryRail (homepage-only and top-level only):
-  {"t":"watchHomeCategoryRail","categoryIds":["jesus","family","hope"]}
+  {"t":"watchHomeCategoryRail","eyebrow":"Browse the library","title":"Browse by category","description":"Find stories for every season.","ctaLabel":"See all videos","categoryIds":["jesus","family","hope"]}
   - This block is allowed only when the current editable state's effective "isHomepage" is true. Do not propose this block when effective isHomepage is false.
   - It is a top-level singleton: it may appear at most once and must never be placed inside section.content or container children.
+  - eyebrow, title, description, and ctaLabel are optional strings. eyebrow and ctaLabel are limited to 80 characters, title to 160, and description to 500.
+  - Nonblank copy values are literal overrides owned by the active locale; do not translate or propagate them to another locale unless the editor explicitly requests and confirms that wider change.
+  - Omit a copy field or make it blank/whitespace-only to restore that field's translated default independently of the other copy fields.
+  - The CTA destination is not authorable. Never add a URL, href, link, or destination field for the rail CTA.
   - "categoryIds" must be a non-empty, duplicate-free subset of these exact IDs: ${WATCH_HOME_CATEGORY_CATALOG.map(({ id }) => `"${id}"`).join(", ")}.
   - categoryIds order is the rendered tile order. When the editor requests a tile change, keep all unmentioned selections and apply the requested order exactly.
-  - If this block already exists, preserve that block and its categoryIds order during unrelated edits. Preserve every unrelated top-level block and its order whenever returning mutations.blocks.
+  - If this block already exists, preserve that block and its categoryIds order during unrelated edits. Specifically preserve its copy fields, tiles, categoryIds compatibility mirror, and their order. Preserve every unrelated top-level block and its order whenever returning mutations.blocks.
 
 quizButton (only inside section.content):
   {"t":"quizButton","buttonText":"Take the quiz","iframeSrc":"https://demo.nextstep.is/quiz"}

@@ -453,7 +453,9 @@ describe("ExperienceEditor", () => {
         },
       ])
       expect(view.container.textContent).not.toContain("Watch Category Rail")
-      expect(view.container.textContent).toContain("Browse by category")
+      expect(
+        view.container.querySelector('[aria-label="Category rail heading"]'),
+      ).not.toBeNull()
       expect(
         view.container.querySelectorAll('[aria-label="Drag block"]'),
       ).toHaveLength(1)
@@ -505,6 +507,83 @@ describe("ExperienceEditor", () => {
             { id: "category:family", categoryId: "family" },
             { id: "category:jesus", categoryId: "jesus" },
           ],
+        },
+      ])
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("saves bounded rail copy, drops blank overrides, and preserves every tile field", async () => {
+    const view = renderEditorDom(
+      [
+        {
+          t: "watchHomeCategoryRail",
+          sectionKey: "categories",
+          categoryIds: ["jesus"],
+          tiles: [
+            {
+              id: "category:jesus",
+              categoryId: "jesus",
+              title: "Meet Jesus",
+              style: "forest",
+            },
+          ],
+          eyebrow: "Library",
+          title: "Old heading",
+          description: "Old description",
+          ctaLabel: "See all",
+        },
+      ],
+      { isHomepage: true },
+    )
+
+    try {
+      const setValue = (label: string, value: string) => {
+        const input = view.container.querySelector(`[aria-label="${label}"]`)
+        if (
+          !(input instanceof HTMLInputElement) &&
+          !(input instanceof HTMLTextAreaElement)
+        ) {
+          throw new Error(`Copy field not found: ${label}`)
+        }
+        const prototype =
+          input instanceof HTMLTextAreaElement
+            ? HTMLTextAreaElement.prototype
+            : HTMLInputElement.prototype
+        Object.getOwnPropertyDescriptor(prototype, "value")?.set?.call(
+          input,
+          value,
+        )
+        input.dispatchEvent(new Event("input", { bubbles: true }))
+      }
+
+      act(() => {
+        setValue("Category rail eyebrow", "  Explore  ")
+        setValue("Category rail heading", "Stories for everyone")
+        setValue("Category rail description", "   ")
+        setValue("Category rail CTA label", "Watch all")
+      })
+
+      const blocksInput = view.container.querySelector<HTMLInputElement>(
+        'input[name="blocks"]',
+      )
+      expect(JSON.parse(blocksInput?.value ?? "[]")).toEqual([
+        {
+          t: "watchHomeCategoryRail",
+          sectionKey: "categories",
+          categoryIds: ["jesus"],
+          tiles: [
+            {
+              id: "category:jesus",
+              categoryId: "jesus",
+              title: "Meet Jesus",
+              style: "forest",
+            },
+          ],
+          eyebrow: "Explore",
+          title: "Stories for everyone",
+          ctaLabel: "Watch all",
         },
       ])
     } finally {

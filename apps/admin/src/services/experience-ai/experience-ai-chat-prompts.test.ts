@@ -152,6 +152,15 @@ describe("buildChatPrompt", () => {
           {
             t: "watchHomeCategoryRail",
             categoryIds: ["family", "gospels", "jesus"],
+            tiles: [
+              { id: "family", categoryId: "family" },
+              { id: "gospels", categoryId: "gospels" },
+              { id: "custom", title: "Stories", href: "/watch/stories" },
+            ],
+            eyebrow: "Browse",
+            title: "Find your next story",
+            description: "Explore films for every season.",
+            ctaLabel: "See every video",
           },
         ],
       },
@@ -173,6 +182,22 @@ describe("buildChatPrompt", () => {
     expect(prompt).toContain(
       "preserve that block and its categoryIds order during unrelated edits",
     )
+    expect(prompt).toContain(
+      '"eyebrow":"Browse the library","title":"Browse by category","description":"Find stories for every season.","ctaLabel":"See all videos"',
+    )
+    expect(prompt).toContain(
+      "eyebrow and ctaLabel are limited to 80 characters, title to 160, and description to 500",
+    )
+    expect(prompt).toContain("literal overrides owned by the active locale")
+    expect(prompt).toContain(
+      "Omit a copy field or make it blank/whitespace-only to restore that field's translated default",
+    )
+    expect(prompt).toContain("The CTA destination is not authorable")
+    expect(prompt).toContain(
+      "preserve its copy fields, tiles, categoryIds compatibility mirror, and their order",
+    )
+    expect(prompt).toContain('"title": "Find your next story"')
+    expect(prompt).toContain('"id": "custom"')
   })
 
   it("forbids proposing the category rail when effective homepage state is false", () => {

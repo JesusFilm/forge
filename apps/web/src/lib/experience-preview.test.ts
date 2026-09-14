@@ -11,7 +11,7 @@ const { adminGraphqlMock, queryMock } = vi.hoisted(() => ({
   adminGraphqlMock: vi.fn(
     (source: string, _dependencies?: readonly unknown[]) => {
       parse(source)
-      return {}
+      return { kind: "Document", definitions: [], source }
     },
   ),
   queryMock: vi.fn(),
@@ -40,6 +40,10 @@ vi.mock("@forge/admin-graphql/fragments", () => ({
   adminVideoHeroFragment: {},
   adminVideoRecommendationsFragment: {},
   adminHomepageRecommendationsFragment: { kind: "Document", definitions: [] },
+  adminPreCopyWatchHomeCategoryRailFragment: {
+    kind: "Document",
+    definitions: [],
+  },
   adminWatchHomeCategoryRailFragment: {
     kind: "Document",
     definitions: [],
@@ -257,6 +261,23 @@ describe("getExperiencePreview", () => {
     extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
   }
 
+  const tileError = {
+    message: 'Cannot query field "tiles" on type "WatchHomeCategoryRailBlock".',
+    extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+  }
+
+  const recommendationsError = {
+    message: 'Unknown type "HomepageRecommendationsBlock".',
+    extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+  }
+
+  const copyLagErrors = ["eyebrow", "title", "description", "ctaLabel"].map(
+    (field) => ({
+      message: `Cannot query field "${field}" on type "WatchHomeCategoryRailBlock".`,
+      extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+    }),
+  )
+
   const preview = {
     experienceId: "experience-1",
     localeId: "locale-1",
@@ -266,6 +287,73 @@ describe("getExperiencePreview", () => {
     title: "Home",
     blocks: [],
   }
+
+  function queriedSources(): string[] {
+    return queryMock.mock.calls.map(([options]) => options.query.source)
+  }
+
+  it("keeps preview titles and authored tiles when only rail copy fields lag", async () => {
+    queryMock
+      .mockResolvedValueOnce({ errors: copyLagErrors })
+      .mockResolvedValueOnce({ data: { experiencePreview: preview } })
+
+    await expect(getExperiencePreview("capability-token")).resolves.toBe(
+      preview,
+    )
+    expect(queriedSources()).toEqual([
+      expect.stringContaining("query ExperiencePreviewWithTitles"),
+      expect.stringContaining("query PreCopyExperiencePreviewWithTitles"),
+    ])
+  })
+
+  it("uses the pre-copy titleless projection when copy and title lag together", async () => {
+    queryMock
+      .mockResolvedValueOnce({
+        errors: [...copyLagErrors, ...titleLagError(4).errors],
+      })
+      .mockResolvedValueOnce({ data: { experiencePreview: preview } })
+
+    await expect(getExperiencePreview("capability-token")).resolves.toBe(
+      preview,
+    )
+    expect(queriedSources()).toEqual([
+      expect.stringContaining("query ExperiencePreviewWithTitles"),
+      expect.stringContaining("query PreCopyExperiencePreview("),
+    ])
+  })
+
+  it("handles copy lag followed by title lag without dropping the rail", async () => {
+    queryMock
+      .mockResolvedValueOnce({ errors: copyLagErrors })
+      .mockResolvedValueOnce(titleLagError(4))
+      .mockResolvedValueOnce({ data: { experiencePreview: preview } })
+
+    await expect(getExperiencePreview("capability-token")).resolves.toBe(
+      preview,
+    )
+    expect(queriedSources()).toEqual([
+      expect.stringContaining("query ExperiencePreviewWithTitles"),
+      expect.stringContaining("query PreCopyExperiencePreviewWithTitles"),
+      expect.stringContaining("query PreCopyExperiencePreview("),
+    ])
+  })
+
+  it("keeps partial or mixed copy errors fatal", async () => {
+    queryMock.mockResolvedValueOnce({ errors: copyLagErrors.slice(0, 3) })
+    await expect(getExperiencePreview("capability-token")).rejects.toThrow(
+      "Experience preview query failed",
+    )
+    expect(queryMock).toHaveBeenCalledTimes(1)
+
+    queryMock.mockReset()
+    queryMock.mockResolvedValueOnce({
+      errors: [...copyLagErrors, { message: "Unrelated failure" }],
+    })
+    await expect(getExperiencePreview("capability-token")).rejects.toThrow(
+      "Experience preview query failed",
+    )
+    expect(queryMock).toHaveBeenCalledTimes(1)
+  })
 
   it("degrades to the titleless operation for one unknown-field error per nesting path", async () => {
     queryMock
@@ -368,6 +456,44 @@ describe("getExperiencePreview", () => {
       preview,
     )
     expect(queryMock).toHaveBeenCalledTimes(2)
+  })
+
+  it.each([
+    ["tiles field", tileError],
+    ["homepage recommendations type", recommendationsError],
+  ])(
+    "prefers the legacy tier when %s and copy lag report together",
+    async (_label, legacyError) => {
+      queryMock
+        .mockResolvedValueOnce({
+          errors: [legacyError, ...copyLagErrors],
+        })
+        .mockResolvedValueOnce({ data: { experiencePreview: preview } })
+
+      await expect(getExperiencePreview("capability-token")).resolves.toBe(
+        preview,
+      )
+      expect(queriedSources()).toEqual([
+        expect.stringContaining("query ExperiencePreviewWithTitles"),
+        expect.stringContaining("query LegacyExperiencePreview"),
+      ])
+    },
+  )
+
+  it("prefers the legacy tier when rail, copy, and title lag report together", async () => {
+    queryMock
+      .mockResolvedValueOnce({
+        errors: [tileError, ...copyLagErrors, ...titleLagError(4).errors],
+      })
+      .mockResolvedValueOnce({ data: { experiencePreview: preview } })
+
+    await expect(getExperiencePreview("capability-token")).resolves.toBe(
+      preview,
+    )
+    expect(queriedSources()).toEqual([
+      expect.stringContaining("query ExperiencePreviewWithTitles"),
+      expect.stringContaining("query LegacyExperiencePreview"),
+    ])
   })
 
   it("falls through to the legacy tier when the titleless retry also lags", async () => {

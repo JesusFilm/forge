@@ -8464,6 +8464,18 @@ export function ExperienceEditor({
         ) : type === "watchHomeCategoryRail" ? (
           <WatchHomeCategoryRailEditor
             tiles={readRailTiles(blockRecord)}
+            copy={{
+              eyebrow: asString(blockRecord?.eyebrow),
+              title: asString(blockRecord?.title),
+              description: asString(blockRecord?.description),
+              ctaLabel: asString(blockRecord?.ctaLabel),
+            }}
+            onCopyChange={(field, value) =>
+              updateBlockAt(index, (currentBlock) => ({
+                ...currentBlock,
+                [field]: value,
+              }))
+            }
             onChange={(tiles) =>
               updateBlockAt(index, (currentBlock) =>
                 railBlockPatch(currentBlock, tiles),

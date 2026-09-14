@@ -1254,6 +1254,19 @@ WatchHomeCategoryRailBlockRef.implement({
   fields: (t) => ({
     t: t.exposeString("t"),
     sectionKey: t.exposeString("sectionKey", { nullable: true }),
+    eyebrow: t.string({
+      nullable: true,
+      resolve: (row) => row.eyebrow ?? null,
+    }),
+    title: t.string({ nullable: true, resolve: (row) => row.title ?? null }),
+    description: t.string({
+      nullable: true,
+      resolve: (row) => row.description ?? null,
+    }),
+    ctaLabel: t.string({
+      nullable: true,
+      resolve: (row) => row.ctaLabel ?? null,
+    }),
     categoryIds: t.field({
       type: ["String"],
       nullable: false,

@@ -565,6 +565,35 @@ describe("experience editor block helpers", () => {
     })
   })
 
+  it("normalizes category rail copy without changing tiles and uses its title in the summary", () => {
+    const block = {
+      t: "watchHomeCategoryRail",
+      sectionKey: "categories",
+      categoryIds: ["jesus"],
+      tiles: [{ id: "category:jesus", categoryId: "jesus" }],
+      eyebrow: "  Explore  ",
+      title: "  Stories for everyone  ",
+      description: "   ",
+      ctaLabel: "  See all  ",
+    }
+
+    expect(normalizeEditorBlocks([block])).toEqual([
+      {
+        t: "watchHomeCategoryRail",
+        sectionKey: "categories",
+        categoryIds: ["jesus"],
+        tiles: [{ id: "category:jesus", categoryId: "jesus" }],
+        eyebrow: "Explore",
+        title: "Stories for everyone",
+        ctaLabel: "See all",
+      },
+    ])
+    expect(summarizeBlock(block, 0, [])).toMatchObject({
+      title: "Stories for everyone",
+      body: "1 tile",
+    })
+  })
+
   it("summarizes a single-tile rail without pluralizing", () => {
     expect(
       summarizeBlock(

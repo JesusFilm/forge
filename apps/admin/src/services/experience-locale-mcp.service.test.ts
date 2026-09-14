@@ -571,6 +571,96 @@ describe("ExperienceLocaleMcpService", () => {
     expect(prisma.contentRevision.create).toHaveBeenCalledTimes(1)
   })
 
+  it("preserves a complete rail with bounded locale copy during an unrelated MCP edit", async () => {
+    const canonical = {
+      ...LOCALE_ROW,
+      isHomepage: true,
+      experience: {
+        ownerId: "admin-1",
+        archivedAt: null,
+        isTemplate: false,
+      },
+      createdAt: new Date("2026-07-21T11:00:00.000Z"),
+    }
+    prisma.experienceLocale.findUniqueOrThrow.mockResolvedValue(canonical)
+    const rail = {
+      t: "watchHomeCategoryRail",
+      eyebrow: "e".repeat(80),
+      title: "t".repeat(160),
+      description: "d".repeat(500),
+      ctaLabel: "c".repeat(80),
+      categoryIds: ["family", "gospels"],
+      tiles: [
+        { id: "family", categoryId: "family" },
+        {
+          id: "custom-stories",
+          title: "Stories",
+          href: "/watch/stories",
+        },
+        { id: "gospels", categoryId: "gospels" },
+      ],
+    }
+    const blocks = [
+      { t: "text", heading: "Updated introduction" },
+      rail,
+      { t: "cta", buttonLabel: "Keep going" },
+    ]
+
+    await expect(
+      service.updateLocale({
+        input: {
+          localeId: "loc-es",
+          expectedDraftRevision: null,
+          draft: { blocks },
+        },
+        user: ADMIN,
+      }),
+    ).resolves.toMatchObject({ locale: { blocks } })
+    expect(prisma.contentRevision.create).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    ["eyebrow", 80],
+    ["title", 160],
+    ["description", 500],
+    ["ctaLabel", 80],
+  ] as const)(
+    "rejects an over-limit rail %s atomically through MCP update",
+    async (field, maxLength) => {
+      const canonical = {
+        ...LOCALE_ROW,
+        isHomepage: true,
+        experience: {
+          ownerId: "admin-1",
+          archivedAt: null,
+          isTemplate: false,
+        },
+        createdAt: new Date("2026-07-21T11:00:00.000Z"),
+      }
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValue(canonical)
+
+      await expect(
+        service.updateLocale({
+          input: {
+            localeId: "loc-es",
+            expectedDraftRevision: null,
+            draft: {
+              blocks: [
+                {
+                  t: "watchHomeCategoryRail",
+                  categoryIds: ["family"],
+                  [field]: "x".repeat(maxLength + 1),
+                },
+              ],
+            },
+          },
+          user: ADMIN,
+        }),
+      ).rejects.toThrow()
+      expect(prisma.contentRevision.create).not.toHaveBeenCalled()
+    },
+  )
+
   it.each([
     [
       "a duplicate category id",
