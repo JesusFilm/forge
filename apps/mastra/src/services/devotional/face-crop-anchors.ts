@@ -33,8 +33,38 @@ const TAIL_FRAMES = 24
 const SCENE_THRESHOLD = 0.3
 /** Seconds between sampled frames. */
 const SAMPLE_INTERVAL_SEC = 0.5
-/** Below this drift from centre an anchor is not worth applying. */
-const MIN_DRIFT = 0.04
+/**
+ * Half the width of the frame the crop actually keeps, as a fraction of the
+ * source: fitting 16:9 into 9:16 by height leaves (9/16)/(16/9) of the width,
+ * so the visible band is a little under a third and its half is this.
+ */
+const VISIBLE_BAND = 81 / 256
+/**
+ * ...and the background is ZOOMED on top of that: the Ken-Burns drift runs to
+ * 1.16, which narrows the band by the same factor. Leaving the zoom out of this
+ * was a real bug — it made "just inside the frame" a lie by about a seventh,
+ * and faces placed at the edge of what this thought was reach came back cut.
+ */
+const MAX_KEN_BURNS = 1.16
+const VISIBLE_HALF = VISIBLE_BAND / MAX_KEN_BURNS / 2
+/** How far inside that band a face must sit to count as comfortably framed. */
+const EDGE_MARGIN = 0.03
+/** A face this far from the current anchor is no longer usefully in frame. */
+const REACH = VISIBLE_HALF - EDGE_MARGIN
+/**
+ * After the crop moves, it holds the new framing for at least this long.
+ *
+ * The problem was never a move, it was the ROUND TRIP. This footage cuts
+ * between two angles every three or four seconds, so re-aiming on each one sent
+ * the crop out and back, out and back — and that is what reads as the picture
+ * jumping. Holding through the return means the exchange settles on one framing
+ * instead of swinging across it.
+ *
+ * Requiring shots to be LONG before moving at all was tried first and is wrong:
+ * shots here run three to four seconds, so it refused nearly every move and
+ * handed back the blind centre crop this feature exists to replace.
+ */
+const HOLD_AFTER_MOVE_SEC = 4
 /** A shot shorter than this keeps the previous framing: re-aiming for a moment
  *  is a twitch, not a decision. */
 const MIN_SHOT_SEC = 1.0
@@ -138,6 +168,45 @@ export function anchorsForShots(
 }
 
 /**
+ * Decide, shot by shot, where the crop should actually sit — and leave it where
+ * it is unless the face would otherwise be out of frame.
+ *
+ * The first version re-aimed on every shot that had a face anywhere off centre.
+ * On a dialogue, where the cutting alternates between two angles, that swung
+ * the crop back and forth every few seconds: twenty moves in a three-minute
+ * devotional, and the owner read the result as the picture jumping about. Each
+ * move sat on a real cut, which is necessary but not sufficient — a cut hides a
+ * move, it does not justify one.
+ *
+ * So the rule is the one a camera operator uses: hold the frame, and move only
+ * when the subject would leave it. Centre is preferred whenever centre works,
+ * so the picture returns to rest rather than drifting wherever the last face
+ * happened to be.
+ */
+export function stabiliseAnchors(
+  shots: ReadonlyArray<ShotAnchor>,
+): ShotAnchor[] {
+  let current: number | null = null
+  let lastMoveSec = Number.NEGATIVE_INFINITY
+  return shots.map((shot) => {
+    if (shot.x == null) return { ...shot, x: current }
+    const framedBy = (anchor: number | null) =>
+      Math.abs(shot.x! - (anchor ?? 0.5)) <= REACH
+    if (framedBy(current)) return { ...shot, x: current }
+    if (shot.startSec - lastMoveSec < HOLD_AFTER_MOVE_SEC) {
+      return { ...shot, x: current }
+    }
+    // Must move. Land ON the face rather than just barely including it: the
+    // background is zoomed and drifting, so a face parked at the edge of the
+    // frame does not stay there. Centre still wins when centre works, which is
+    // where the picture should rest.
+    current = framedBy(null) ? null : shot.x
+    lastMoveSec = shot.startSec
+    return { ...shot, x: current }
+  })
+}
+
+/**
  * Walk the cards the way the composition does and hand each one the anchors
  * that fall inside its window, in seconds from ITS own start.
  *
@@ -168,17 +237,27 @@ export function bgFocusForCards(
     acc += frames
 
     const steps: BgFocusStep[] = []
+    let last: number | null = null
+    let movedOffCentre = false
     for (const shot of shots) {
       if (shot.endSec <= startSec || shot.startSec >= endSec) continue
-      if (shot.x == null) continue
-      if (Math.abs(shot.x - 0.5) < MIN_DRIFT) continue
       if (shot.endSec - shot.startSec < MIN_SHOT_SEC) continue
+      // `null` from the stabiliser means "centre is fine here", which still has
+      // to be SAID when the card was anchored a moment ago — otherwise the card
+      // holds the old framing into a shot that was judged not to need it.
+      const x = shot.x ?? 0.5
+      if (last != null && Math.abs(x - last) < 0.001) continue
       steps.push({
         atSec: Math.max(0, Number((shot.startSec - startSec).toFixed(3))),
-        x: Number(shot.x.toFixed(4)),
+        x: Number(x.toFixed(4)),
       })
+      last = x
+      if (Math.abs(x - 0.5) >= 0.001) movedOffCentre = true
     }
-    out[i] = steps.length > 0 ? steps : null
+    // A card that never leaves centre is left alone: writing 0.5 everywhere is
+    // the same picture with more moving parts, and it would hide the fact that
+    // nothing here needed correcting.
+    out[i] = movedOffCentre ? steps : null
   })
   return out
 }
@@ -236,12 +315,12 @@ export async function planFaceCropAnchors(opts: {
   const cuts = await detectShotCuts(opts.bgFile)
   const samples = parsed.samples
   const endSec = samples[samples.length - 1].atSec + SAMPLE_INTERVAL_SEC
-  const shots = anchorsForShots(samples, cuts, endSec)
+  const shots = stabiliseAnchors(anchorsForShots(samples, cuts, endSec))
   const withFace = samples.filter((s) => s.faces.length > 0).length
   const anchored = shots.filter((s) => s.x != null).length
   log(
     `face crop: ${withFace}/${samples.length} samples with a face, ` +
-      `${anchored}/${shots.length} shot(s) anchored`,
+      `${anchored}/${shots.length} shot(s) moved off centre`,
   )
   return bgFocusForCards(opts.cards, shots, {
     introHoldSec: opts.introHoldSec,
