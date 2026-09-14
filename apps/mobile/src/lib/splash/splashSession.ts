@@ -13,6 +13,7 @@ import { AccessibilityInfo } from "react-native"
 
 import { isExternalLaunch, whenDeepLinkOriginsReady } from "../deepLinkOrigin"
 import { withTimeout } from "../withTimeout"
+import { ANIMATED_SPLASH_ENABLED } from "./animatedSplashEnabled"
 
 export type SplashPresentation = "motion" | "still"
 export type SplashExit = "fade" | "cut"
@@ -29,6 +30,8 @@ export type SplashSnapshot = {
 }
 
 export type SplashSessionDeps = {
+  /** The kill-switch. Required, so no call site can inherit a default. */
+  animatedSplashEnabled: boolean
   /** The non-destructive launch-level read. */
   isExternalLaunch: () => boolean
   /** The deep-link gate. Await before the first isExternalLaunch read. */
@@ -212,6 +215,13 @@ export function createSplashSession(deps: SplashSessionDeps): SplashSession {
     start(): void {
       if (started || ended) return
       started = true
+      if (!deps.animatedSplashEnabled) {
+        // Synchronous, unlike the deep-link skip: the host reads a settled
+        // never-plays snapshot on its first render and lowers the native splash.
+        ended = true
+        commit({ ...INITIAL_SNAPSHOT, resolved: true })
+        return
+      }
       void resolve()
     },
 
@@ -259,6 +269,7 @@ let session: SplashSession | null = null
 export function getSplashSession(): SplashSession {
   if (!session) {
     session = createSplashSession({
+      animatedSplashEnabled: ANIMATED_SPLASH_ENABLED,
       isExternalLaunch,
       whenDeepLinkOriginsReady,
       isReduceMotionEnabled: () => AccessibilityInfo.isReduceMotionEnabled(),

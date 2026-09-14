@@ -176,6 +176,71 @@ PNGs or `assets/AppIcon.icon/` — regenerate.** The script borrows `apps/admin`
   combinations `brandpad.io/jfp` permits. It matches the existing tvOS tile, which
   has the same issue. Pending a waiver from the brand owner.
 
+## Cold-start splash
+
+**The animated splash is OFF** (`ANIMATED_SPLASH_ENABLED = false` in
+`src/lib/splash/animatedSplashEnabled.ts`, since 2026-09-15 — the product lead
+did not approve the animation). The code stays in the tree, disabled, not
+removed: `SplashHost`, `SplashCoveredTree`, `SplashSequence`, the splash
+session, the embedded Noto Serif face, and the projector rasters. Do not delete
+any of it. The `expo-font` plugin entry and its TTF are fingerprint inputs, so
+removing them moves the runtime version. `SplashSequence` imports the two
+projector rasters statically and `app/_layout.tsx` requires it at module scope,
+so deleting a raster lands every launch on the Startup Error panel.
+
+What a cold launch does with the flag off: the native splash shows
+`assets/splash-icon.png` — the JFP symbol on the `#1c1917` ground — until the
+React tree's first commit, then Home. `app/_layout.tsx` still takes the native
+hold at module scope (KTD2) and `SplashHost` still lowers it, on the same
+never-plays path a deep-link launch takes. `getSplashSession().start()` settles
+that snapshot synchronously, so nothing waits on the deep-link gate. The flag is
+a required `createSplashSession` dep. `splashSession.test.ts` pins the
+singleton's behaviour against the constant, and
+`src/lib/splash/__tests__/splashKillSwitch.guard.test.js` pins the four halves
+no behavioural suite ties together: the call site passes the constant and not a
+literal, the flag file declares it exactly once as a bare literal, the
+generator reads that file with the same pattern, and the committed PNG matches
+the flag by md5.
+
+**The native asset follows the flag, and the generator enforces it.**
+`pnpm icons:generate` reads the flag file by regex (one line, bare literal;
+the generator refuses a second declaration, even a commented one) and emits
+the symbol when off, the flat field when on. A flip without a regeneration, or
+a hand-edited PNG, fails the guard.
+
+**The symbol reaches a binary only through prebuild.** Every binary built from
+the flat asset — dev clients from 2026-09-10 to 2026-09-15 and TestFlight
+1.0.0 (7) — runs this JS as a flat field, then Home, with no logo anywhere.
+Android is the same restore as before #2216: `enableFullScreenImage_legacy` is
+iOS-only, and Android draws the symbol as the small icon in its system-splash
+slot.
+
+To see the new native splash on a local simulator:
+
+1. `npx expo prebuild --platform ios --no-install`. `expo run:ios` skips
+   prebuild when `ios/` exists, so without this step the build ships the old
+   imageset. Prebuild rewrites `ios/Podfile`; before `pod install`, re-add the
+   `post_install` hook that puts `__STDC_WANT_LIB_EXT1__=1` on the `MMKVCore`
+   and `MMKV` targets, or the build fails on `memset_s` under Xcode 26 (see
+   `docs/solutions/integration-issues/expo-dev-launcher-root-vc-blocks-fullscreen-rotate.md`).
+2. Confirm `ios/forgewatch/Images.xcassets/SplashScreenLegacy.imageset/image.png`
+   changed (it is RGBA and about 12 KB with the symbol; the flat field was
+   5,861 B).
+3. `npx expo run:ios --device <udid>`.
+
+To re-enable, all three steps, in one PR:
+
+1. Set `ANIMATED_SPLASH_ENABLED = true`.
+2. Run `pnpm icons:generate` — the native splash must be flat again, or the
+   handover shows a symbol-to-blank flip.
+3. Ship a NATIVE build before the next `eas update`. The asset moves the
+   fingerprint runtime version. A whole-branch OTA targets a runtime no
+   installed build carries and reaches nobody; a flag-only OTA on the old
+   runtime cuts from the flat field straight to Home.
+
+The reverse (this change) needs the same native build for the same reason. The
+design record is `docs/plans/2026-09-09-1059-feat-mobile-animated-splash-plan.md`.
+
 ## Running on a simulator (env setup)
 
 **Before launching apps/mobile on a simulator, ALWAYS run

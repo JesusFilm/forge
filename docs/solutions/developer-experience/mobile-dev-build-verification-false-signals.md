@@ -117,6 +117,23 @@ Read configuration files only after the check disagrees with them.
 
 ### Instance 1 — a native pre-JavaScript surface can look like your JavaScript
 
+> **Note added 2026-09-15:** `splash-icon.png` is the JFP symbol on the
+> `#1c1917` ground again. The animated splash is disabled behind
+> `ANIMATED_SPLASH_ENABLED` (`apps/mobile/src/lib/splash/animatedSplashEnabled.ts`).
+> On a binary prebuilt from this tree, a Metro-off cold launch shows a crimson
+> mark by design, so do not read the one-colour result below as the current
+> expectation. Artifact identity still applies: a dev client or a TestFlight
+> build made between 2026-09-10 and 2026-09-15 carries the flat field, and it
+> keeps showing that field under this JS until it is rebuilt. The check still
+> discriminates. The dev launcher draws the app ICON, a rounded tile on the
+> icon field; the native splash draws the bare symbol at 55% of a contained
+> 1024 square. The width signal below separated the launcher's tile from the
+> animation's mark; the restored native splash also draws the mark at 55%, so
+> width alone does not separate the native splash from the animation. Use the
+> beam and the white-to-crimson cross-fade for that. The generator line
+> numbers in the body below predate this change; search for the symbol names
+> instead. The splash branch now starts at `if (animatedSplash) {`.
+
 **Discriminating check: stop Metro, then cold-launch the app. No JavaScript can
 run, so every pixel you then see is native.**
 
@@ -288,6 +305,17 @@ webp; this one reaches it through an iOS splash. Read it for the general form.
 Two of the axes below are new members of that family rather than platform
 translations of it: capture RESOLUTION, the frame rate against the beat, and
 capture FIDELITY, the codec's loss against the detail.
+
+> **Note added 2026-09-15:** the animated splash is OFF by default behind
+> `ANIMATED_SPLASH_ENABLED`. On a default build the absence of the sequence is
+> the expected result, not a defect. To capture the animation itself, set the
+> flag to `true` and reload the JS; that is enough for the beat, geometry and
+> Reduce Motion captures. It is NOT enough for a handover capture: the native
+> splash is the symbol, so the frames show symbol, blank, then mark, which is
+> an artefact of the shortcut. For a handover capture also run
+> `pnpm icons:generate` and prebuild, as the re-enable recipe in
+> `apps/mobile/CLAUDE.md` says. Restore the flag and the asset afterwards;
+> `splashKillSwitch.guard.test.js` fails while they disagree.
 
 **A single screenshot cannot verify a timed animation.** The splash runs 2100ms
 of motion inside a 2500ms hold. `SPLASH_SEQUENCE_MS` at
@@ -467,6 +495,14 @@ count distinct colours. `apps/mobile/assets/splash-icon.png` returns one
 colour, `(28,25,23)`, which matches `backgroundColor` at
 `apps/mobile/app.json:111` and `SPLASH_GROUND` at
 `apps/mobile/scripts/generate-app-icon.mjs:88`.
+
+> **Note added 2026-09-15:** no longer flat. The committed asset is the symbol
+> on transparency again (RGBA, 696 distinct colours), because the animated
+> splash is disabled — see the Instance 1 note. The law stands: decode and
+> count, never assume. The expected count is now not 1, and
+> `apps/mobile/src/lib/splash/__tests__/splashKillSwitch.guard.test.js` pins
+> the asset to the flag by md5. The `generate-app-icon.mjs:88` reference above
+> predates this change; search for `SPLASH_GROUND` instead.
 
 ### Related
 

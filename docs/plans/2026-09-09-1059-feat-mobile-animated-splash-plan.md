@@ -11,6 +11,16 @@ execution: "code"
 
 # Mobile Animated Splash - Plan
 
+> **Status note added 2026-09-15:** this design shipped in PR #2216
+> (`d9e215d8c`) and PR #2228 (`b5169b9ff`) and reached TestFlight build
+> 1.0.0 (7). It is now DISABLED: `ANIMATED_SPLASH_ENABLED` in
+> `apps/mobile/src/lib/splash/animatedSplashEnabled.ts` is `false`, because
+> the product lead did not approve the animation. The code stays in the tree.
+> U6's flat native asset is the JFP symbol again (see the U6 note). This plan
+> records the shipped design, not the app's current default behaviour. To
+> re-enable it: flip the flag, run `pnpm icons:generate`, and ship a native
+> build. `apps/mobile/CLAUDE.md` "Cold-start splash" carries the recipe.
+
 ## Goal Capsule
 
 - **Objective.** A person who opens the mobile app from cold meets a branded Jesus Film moment, and reaches a painted Home when it ends, instead of meeting a static app icon followed by a loading spinner on the first launch after install.
@@ -182,6 +192,7 @@ flowchart TB
 - **The 2.5 seconds on every cold start has no measured basis.** It is judged worth paying for a consistent brand moment. Record it as a judgement, not a finding, so a later maintainer weighing a "the app feels slow to open" complaint knows what was traded and why.
 - **The splash's ground is not a permitted symbol background.** `brandpad.io/jfp` permits four symbol-on-background combinations: red on white, white or warm white on red, red on warm white, and white on grey. The splash ends on the crimson mark over the app's near-black `#1c1917`, which is none of them. `apps/mobile/CLAUDE.md` already records this pairing as pending a waiver for the app icon and the tvOS tile, so the splash inherits that item rather than opening a new one — but on a much larger surface. Whoever pursues the waiver should know the request now covers a full-screen moment every cold launch ends on, not only a 1024-pixel icon and a tvOS tile.
 - **The duration is reversible without a store round.** The 2.5-second floor and the 6-second ceiling live in `apps/mobile/src/lib/splash/splashSession.ts`, and JS-only changes under `src/` and `app/` do not move the fingerprint runtime version. They can be shortened, or set to zero, by an over-the-air update on the existing runtime. Only the embedded font and the native splash asset are frozen until a build.
+  > **Note added 2026-09-15:** the first lever is now the kill-switch, `ANIMATED_SPLASH_ENABLED` — JS-only, so OTA-reachable on its own. The `splash-icon.png` revert that ships beside it is native: it moves the fingerprint runtime version, so a native build must land before the next `eas update`, or the publish reaches no installed build. An OTA of the flag alone on the old runtime would cut from the FLAT native field straight to Home, with no logo anywhere.
 - **Revisit the hold once there is data.** After the first TestFlight round, read the existing `home_feed_ready` `feed_source` split to record what share of cold launches the splash actually covers a wait on, and revisit the 2.5-second floor if that share is small. No new instrumentation is needed; the app already emits it.
 - **The brand facts here were not read by eye.** Every brand decision in this plan rests on a summarising model's reading of `brandpad.io/jfp`. Confirm the four permitted combinations, the palette values, and Noto Serif's status against the page before the font ships.
 - **The typeface is on-brand and free to embed.** `brandpad.io/jfp` sanctions three faces: Aperçu Pro (Bold and Medium, for headlines and subheads), Noto Serif (Semibold, Medium and Regular, for headlines, subheads and body copy), and Apercu Custom Display (titling, by creative-director access only). The word on the screen is a title, so R12's Noto Serif Semibold is an approved use, and its licence permits embedding. The page states no fallback-font rule, no rule about typefaces used inside or alongside the logo, and no prohibitions.
@@ -429,6 +440,8 @@ U1 then U2. U3 then U4. U5 wires both chains into the root layout and depends on
 - **Execution note:** this is native configuration. No unit test can prove it. The proof is a recorded cold launch compared frame by frame against the current build.
 - **Test scenarios:** `Test expectation: none -- generated native output with no JavaScript surface. See the Verification Contract's device gate.`
 - **Verification:** a cold launch shows no visible change at the moment the native splash hands over.
+
+> **Note added 2026-09-15 — reversed while the flag is off.** The generator's splash branch now follows `ANIMATED_SPLASH_ENABLED`: the symbol on transparency (`markSvg(SIZE, WIDTH_SPLASH)`, the pre-#2216 emission, byte-identical) when off, the flat field of step 1 when on. KTD3 holds only while the flag is on, and re-enabling must re-run `pnpm icons:generate` to re-apply step 1. `src/lib/splash/__tests__/splashNativeImage.guard.test.js` pins the committed asset to the flag.
 
 ---
 

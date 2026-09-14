@@ -182,6 +182,15 @@ describe("SplashHost", () => {
     expect(coverNodes(renderer).length).toBe(0)
   })
 
+  // The kill-switch order: the session settles at module scope in _layout.tsx,
+  // before React exists, so the host's FIRST render already sees never-plays.
+  it("releases the native splash on its first commit when the session settled before mount", () => {
+    sessionMock.__setSnapshot({ resolved: true, visible: false })
+    const renderer = renderHost()
+    expect(nativeSplash.hideNativeSplashOnce).toHaveBeenCalledTimes(1)
+    expect(coverNodes(renderer).length).toBe(0)
+  })
+
   it("fades the cover out and unmounts it only once the fade finishes", () => {
     const renderer = renderHost()
     play(renderer)
@@ -326,6 +335,22 @@ describe("SplashCoveredTree", () => {
     expect(isolation(renderer)).toBe("no-hide-descendants")
 
     // The SAME predicate that clears the cover clears the isolation (R16).
+    setSnapshot({ visible: false, exit: "fade" })
+    expect(isolation(renderer)).toBe("auto")
+  })
+
+  // Discriminating pre-mount case: the initial mock snapshot is already not
+  // visible, so only a visible pre-mount snapshot proves the first render
+  // reads the store's settled state rather than a default.
+  it("reads the snapshot the session settled before mount on its first render", () => {
+    sessionMock.__setSnapshot({
+      resolved: true,
+      visible: true,
+      presentation: "motion",
+    })
+    const renderer = renderTree()
+    expect(isolation(renderer)).toBe("no-hide-descendants")
+
     setSnapshot({ visible: false, exit: "fade" })
     expect(isolation(renderer)).toBe("auto")
   })
