@@ -37,6 +37,18 @@ export const TAB_ROUTE_NAMES = ["index", "watch", "library", "profile"] as const
 
 export type TabRouteName = (typeof TAB_ROUTE_NAMES)[number]
 
+/** The expo-router group the tab screens live in. */
+export const TAB_GROUP_SEGMENT = "(tabs)"
+
+/**
+ * Is the viewer on a tab screen? Key off the GROUP marker, never a tab name —
+ * `app/watch/[slug].tsx` is a root-stack sibling and emits the bare segment
+ * `watch`, which is also the Discover tab's name.
+ */
+export function isTabGroupRoute(segments: readonly string[]): boolean {
+  return segments.includes(TAB_GROUP_SEGMENT)
+}
+
 /**
  * Space the bar occupies ABOVE the safe-area inset. The mini player reserves
  * this. Android keeps its present (already 7pt optimistic) value — correcting

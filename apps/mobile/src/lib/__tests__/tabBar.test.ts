@@ -5,6 +5,7 @@
 import { Platform } from "react-native"
 
 import {
+  isTabGroupRoute,
   TAB_BAR_CLEARANCE_GAP,
   TAB_BAR_HEIGHT_IOS,
   TAB_BAR_MATERIAL_TINT,
@@ -154,5 +155,20 @@ describe("label contrast floors", () => {
     const tint = parseRgba(TAB_BAR_MATERIAL_TINT)
     const ground = over(tint.rgb, tint.alpha, WORST_MEASURED_GROUND)
     expect(ratio(IDLE_LABEL, ground)).toBeGreaterThanOrEqual(4.5)
+  })
+})
+
+describe("isTabGroupRoute", () => {
+  it("keys off the group marker, not the tab's own name", () => {
+    // `app/watch/[slug].tsx` is a root-stack SIBLING of the group and emits the
+    // bare segment `watch`, which the Discover tab also uses. A predicate that
+    // scanned for tab NAMES would call a pushed video route a tab route.
+    expect(isTabGroupRoute(["watch", "[slug]"])).toBe(false)
+    expect(isTabGroupRoute(["series", "[slug]"])).toBe(false)
+    expect(isTabGroupRoute([])).toBe(false)
+
+    expect(isTabGroupRoute(["(tabs)"])).toBe(true)
+    expect(isTabGroupRoute(["(tabs)", "watch"])).toBe(true)
+    expect(isTabGroupRoute(["(tabs)", "index"])).toBe(true)
   })
 })

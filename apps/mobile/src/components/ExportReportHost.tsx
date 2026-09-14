@@ -25,7 +25,7 @@ import { useSegments } from "expo-router"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useTypography } from "../hooks/useTypography"
-import { tabIndexForSegments, useTabBarClearance } from "../lib/tabBar"
+import { isTabGroupRoute, useTabBarClearance } from "../lib/tabBar"
 import {
   ACCENT_ON_DARK,
   SURFACE_COLOR,
@@ -109,7 +109,7 @@ export function ExportReportHost() {
   // being told about it — Snackbar takes a `clearsTabBar` prop because each
   // of its callers knows its own route, and this one has no caller.
   const tabBarClearance = useTabBarClearance()
-  const onTabRoute = tabIndexForSegments(useSegments()) !== null
+  const onTabRoute = isTabGroupRoute(useSegments())
   const clearance = onTabRoute ? tabBarClearance : 0
   const typography = useTypography()
   const [reports, setReports] = useState<readonly ExportReportRecord[]>([])
