@@ -87,6 +87,14 @@ const INTENDED_PUBLIC_RESOLVERS = [
   "whatsNewFeatureVoteTallies",
   "castWhatsNewFeatureVote",
   "retractWhatsNewFeatureVote",
+  // Mobile in-app feedback — docs/plans/2026-09-14-1033-feat-mobile-feedback-linear-plan.md.
+  // Deliberately public: a person reports a broken video without signing in,
+  // and requiring a session would lose most of the reports. The abuse story is
+  // the resolver's own three counters — 5 per install per 10 minutes and 20
+  // per trusted address per hour for availability, a fleet-wide daily cap as
+  // the bound on what reaches Linear — plus zod bounds on every field. All of
+  // them answer as data rather than throwing.
+  "submitFeedback",
 ] as const
 
 function readAllTypeSources(): string {
@@ -95,16 +103,35 @@ function readAllTypeSources(): string {
   )
 }
 
+/**
+ * An input-type field is written exactly like a resolver
+ * (`<name>: t.field({...})`) but is never one, so an input field named after a
+ * root resolver shadows the real block under "last write wins" below and fails
+ * its assertion. `FeedbackSubmissionInput.video` did that to `Query.video`.
+ * The nearest `builder.` call before a field is the one that declares it.
+ */
+function isInputTypeField(source: string, index: number): boolean {
+  const start = source.lastIndexOf("builder.", index)
+  return start !== -1 && source.startsWith("builder.inputType", start)
+}
+
 // Brace-balanced parse of `<name>: t.prismaField({...}) | t.field({...})`
-// declarations. Tracks string literals to avoid counting braces inside
-// strings. Last write wins on duplicate names (each name appears at most
+// declarations. Tracks string literals AND comments to avoid counting braces
+// inside either. Last write wins on duplicate names (each name appears at most
 // once across the corpus in practice).
+//
+// Comments are load-bearing, not tidiness: one apostrophe in a resolver's own
+// comment ("U1's contract") used to open a string that ran to the next quote
+// in the corpus. The block then swallowed a later file, inherited ITS
+// `authScopes: { public: true }`, and the resolver's assertion passed green
+// with no scope of its own.
 function parseResolverBlocks(source: string): Map<string, string> {
   const result = new Map<string, string>()
   const re = /(\w+):\s*t\.(?:prismaField|field)\s*\(/g
   let m: RegExpExecArray | null
   while ((m = re.exec(source)) !== null) {
     const name = m[1]
+    if (isInputTypeField(source, m.index)) continue
     let i = re.lastIndex
     while (i < source.length && source[i] !== "{") i++
     if (i >= source.length) continue
@@ -112,11 +139,27 @@ function parseResolverBlocks(source: string): Map<string, string> {
     const blockStart = i + 1
     i++
     let inString: '"' | "'" | "`" | null = null
+    let inLineComment = false
+    let inBlockComment = false
     let prev = ""
     while (i < source.length && depth > 0) {
       const c = source[i]
-      if (inString) {
+      const next = source[i + 1]
+      if (inLineComment) {
+        if (c === "\n") inLineComment = false
+      } else if (inBlockComment) {
+        if (c === "*" && next === "/") {
+          inBlockComment = false
+          i++
+        }
+      } else if (inString) {
         if (c === inString && prev !== "\\") inString = null
+      } else if (c === "/" && next === "/") {
+        inLineComment = true
+        i++
+      } else if (c === "/" && next === "*") {
+        inBlockComment = true
+        i++
       } else {
         if (c === '"' || c === "'" || c === "`") inString = c
         else if (c === "{") depth++

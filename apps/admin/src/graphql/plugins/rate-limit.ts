@@ -44,7 +44,9 @@ function getClientIp(request: Request): string {
 // Fleet buckets use ONLY the Cloudflare-authoritative `cf-connecting-ip`, never
 // the client-supplied `x-forwarded-for`: a spoofable IP would let a holder of
 // the bundle-extractable fleet key mint buckets or pin a victim's. (R8)
-function getTrustedClientIp(request: Request): string {
+// Exported for the feedback resolver's per-address limit (KTD3): a second copy
+// of a trust-boundary parser would drift away from this one.
+export function getTrustedClientIp(request: Request): string {
   return request.headers.get("cf-connecting-ip") ?? "unknown"
 }
 
