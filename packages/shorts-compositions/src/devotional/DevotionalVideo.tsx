@@ -2794,13 +2794,7 @@ function Background({
   const bgFocusX = (() => {
     const steps = card.bgFocus
     if (!steps || steps.length === 0) return undefined
-    const t = frame / fps
-    let current = steps[0].x
-    for (const step of steps) {
-      if (step.atSec > t) break
-      current = step.x
-    }
-    return current
+    return focusAt(steps, frame / fps)
   })()
 
   // Text-card / cover background video. All non-video cards share ONE continuous
@@ -3211,6 +3205,40 @@ function Background({
  * Returns 0.5 when the source does not overflow (the 16:9 cut), where
  * object-position has nothing to distribute and the value is inert anyway.
  */
+/** How long an eased crop move takes. Long enough to read as a move rather
+ *  than a jump, short enough not to become a pan the viewer watches. */
+export const FOCUS_EASE_SEC = 0.5
+
+/**
+ * The crop anchor in force at `tSec`, given the card's steps.
+ *
+ * A step that landed on a cut in the footage takes effect instantly — the
+ * picture is changing anyway, so the crop changing with it cannot be seen. A
+ * step marked `ease` could NOT be put on a cut, and cutting the crop inside a
+ * held shot is exactly the lurch the owner objected to; those glide instead.
+ */
+export function focusAt(
+  steps: ReadonlyArray<{ atSec: number; x: number; ease?: boolean }>,
+  tSec: number,
+): number {
+  let prev = steps[0].x
+  let current = steps[0].x
+  let currentAt = steps[0].atSec
+  let currentEase = false
+  for (const step of steps) {
+    if (step.atSec > tSec) break
+    prev = current
+    current = step.x
+    currentAt = step.atSec
+    currentEase = step.ease === true
+  }
+  if (!currentEase || tSec >= currentAt + FOCUS_EASE_SEC) return current
+  const p = Math.max(0, Math.min(1, (tSec - currentAt) / FOCUS_EASE_SEC))
+  // easeInOutCubic: no sudden start, no sudden stop.
+  const e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2
+  return prev + (current - prev) * e
+}
+
 export function coverObjectPositionX(
   focusX: number,
   box: { width: number; height: number },

@@ -60,14 +60,23 @@ def main() -> int:
         return 2
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
     total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
-    step = max(1, int(round(args.interval * fps)))
+    # Seek by TIME, not by frame index, and report the time the decoder lands
+    # on. The staged background is variable-frame-rate (ffprobe reports a 23.976
+    # nominal rate against a ~20.4 average), so a frame index does not convert
+    # to seconds by any fixed factor — while the shot cuts this is paired with
+    # come from ffmpeg in real seconds. Two time bases would put a shot's faces
+    # on the wrong shot's anchor.
+    duration_sec = (total / fps) if fps > 0 else 0.0
 
     samples = []
-    for frame_no in range(0, total, step):
-        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_no)
+    at = 0.0
+    while duration_sec <= 0 or at < duration_sec:
+        cap.set(cv2.CAP_PROP_POS_MSEC, at * 1000.0)
         ok, img = cap.read()
         if not ok:
-            continue
+            break
+        pos_sec = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
+        at += args.interval
         h, w = img.shape[:2]
         grey = cv2.equalizeHist(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY))
         flipped = cv2.flip(grey, 1)
@@ -88,7 +97,7 @@ def main() -> int:
         faces.sort(key=lambda f: -f[2])
         samples.append(
             {
-                "atSec": round(frame_no / fps, 3),
+                "atSec": round(pos_sec if pos_sec > 0 else at, 3),
                 "faces": [
                     {"cx": round(cx, 4), "cy": round(cy, 4), "area": round(a, 5)}
                     for cx, cy, a in faces[:6]

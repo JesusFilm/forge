@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest"
 
-import { cardFadeOpacity, leadLabelKnots } from "./DevotionalVideo"
+import {
+  cardFadeOpacity,
+  focusAt,
+  FOCUS_EASE_SEC,
+  leadLabelKnots,
+} from "./DevotionalVideo"
 import {
   CARD_TAIL_FRAMES,
   INTRO_HOLD_FRAMES,
@@ -66,5 +71,33 @@ describe("cardFadeOpacity", () => {
     expect(cardFadeOpacity(5, 10)).toBeCloseTo(0.5)
     expect(cardFadeOpacity(10, 10)).toBe(1)
     expect(cardFadeOpacity(99, 10)).toBe(1)
+  })
+})
+
+describe("focusAt", () => {
+  const steps = [
+    { atSec: 0, x: 0.5 },
+    { atSec: 2, x: 0.8 },
+    { atSec: 6, x: 0.2, ease: true },
+  ]
+
+  it("cuts instantly to a step that landed on a cut in the footage", () => {
+    expect(focusAt(steps, 1.99)).toBe(0.5)
+    expect(focusAt(steps, 2)).toBe(0.8)
+    expect(focusAt(steps, 2.01)).toBe(0.8)
+  })
+
+  it("glides into a step that could not be placed on a cut", () => {
+    // Cutting the crop inside a held shot is the lurch the owner objected to.
+    expect(focusAt(steps, 6)).toBeCloseTo(0.8)
+    const mid = focusAt(steps, 6 + FOCUS_EASE_SEC / 2)
+    expect(mid).toBeLessThan(0.8)
+    expect(mid).toBeGreaterThan(0.2)
+    expect(focusAt(steps, 6 + FOCUS_EASE_SEC)).toBeCloseTo(0.2)
+    expect(focusAt(steps, 20)).toBe(0.2)
+  })
+
+  it("holds the first framing before any step is due", () => {
+    expect(focusAt([{ atSec: 3, x: 0.7 }], 0)).toBe(0.7)
   })
 })

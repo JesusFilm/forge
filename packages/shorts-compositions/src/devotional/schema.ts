@@ -126,6 +126,11 @@ export const devotionalCardSchema = z.object({
       z.object({
         atSec: z.number().nonnegative(),
         x: z.number().min(0).max(1),
+        /** Ease into this framing rather than cutting to it. Set when the move
+         *  could not be placed on a cut in the footage: a cut hides a jump, a
+         *  held shot does not, and a slow reframe reads as the camera adjusting
+         *  rather than as the picture lurching. */
+        ease: z.boolean().optional(),
       }),
     )
     .optional(),

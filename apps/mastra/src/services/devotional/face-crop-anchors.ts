@@ -31,7 +31,11 @@ import { fileURLToPath } from "node:url"
 const FPS = 30
 const TAIL_FRAMES = 24
 /** Sensitivity of ffmpeg's `scene` metric for finding cuts. */
-const SCENE_THRESHOLD = 0.3
+// Low on purpose: every cut is somewhere a crop move can hide, and this
+// footage's soft interior cuts do not clear a high threshold — at 0.3 ffmpeg
+// reported ONE shot spanning 44s to 73s of the Parable of the Lamp's
+// background, across four obviously different setups.
+const SCENE_THRESHOLD = 0.08
 /** Seconds between sampled frames. */
 const SAMPLE_INTERVAL_SEC = 0.5
 /**
@@ -100,9 +104,22 @@ export type FaceSample = {
   faces: { cx: number; cy: number; area: number }[]
 }
 
-export type ShotAnchor = { startSec: number; endSec: number; x: number | null }
+export type ShotAnchor = {
+  startSec: number
+  endSec: number
+  x: number | null
+  /** True when this framing begins ON a cut in the footage, where a change of
+   *  crop is invisible. False means it begins mid-shot and has to be eased. */
+  snapped?: boolean
+}
 
-export type BgFocusStep = { atSec: number; x: number }
+export type BgFocusStep = {
+  atSec: number
+  x: number
+  /** Ease into this framing instead of cutting to it — set when the move could
+   *  not be placed on a cut in the footage. */
+  ease?: boolean
+}
 
 function capture(
   cmd: string,
@@ -293,17 +310,27 @@ export function anchorsForShots(
  * so the picture returns to rest rather than drifting wherever the last face
  * happened to be.
  */
+export type StabiliserTuning = {
+  /** How far a face may sit from the anchor and still count as in frame. */
+  reach?: number
+  /** Seconds a new framing is held before another move is allowed. */
+  holdSec?: number
+}
+
 export function stabiliseAnchors(
   shots: ReadonlyArray<ShotAnchor>,
+  tuning: StabiliserTuning = {},
 ): ShotAnchor[] {
+  const reach = tuning.reach ?? REACH
+  const holdSec = tuning.holdSec ?? HOLD_AFTER_MOVE_SEC
   let current: number | null = null
   let lastMoveSec = Number.NEGATIVE_INFINITY
   return shots.map((shot) => {
     if (shot.x == null) return { ...shot, x: current }
     const framedBy = (anchor: number | null) =>
-      Math.abs(shot.x! - (anchor ?? 0.5)) <= REACH
+      Math.abs(shot.x! - (anchor ?? 0.5)) <= reach
     if (framedBy(current)) return { ...shot, x: current }
-    if (shot.startSec - lastMoveSec < HOLD_AFTER_MOVE_SEC) {
+    if (shot.startSec - lastMoveSec < holdSec) {
       return { ...shot, x: current }
     }
     // Must move. Land ON the face rather than just barely including it: the
@@ -323,6 +350,153 @@ export function stabiliseAnchors(
  * A video card plays its own clip, so it neither starts nor advances the shared
  * background take — mirroring `bgStartFrames` in DevotionalVideo.
  */
+export type TrackTuning = {
+  /** How far a face may sit from the anchor and still count as in frame. */
+  reach?: number
+  /** Consecutive sampled seconds with nobody in frame before the crop moves. */
+  patienceSec?: number
+  /** Minimum time a framing is kept once taken. */
+  dwellSec?: number
+  /** Ignore detections smaller than this share of the frame. */
+  minArea?: number
+  /** A move lands on a cut this close, so the change hides inside it. */
+  snapSec?: number
+  /** Window used to decide WHERE to aim, so one flickering detection cannot. */
+  decideOverSec?: number
+  /** How long a needed move will wait for a cut to hide in. */
+  waitForCutSec?: number
+}
+
+/**
+ * Follow the faces through the footage and move the crop only when whoever it
+ * is holding leaves the frame.
+ *
+ * This replaces "segment by shot, one anchor per shot". Shot segmentation was
+ * the weak link: ffmpeg's scene metric reported ONE shot from 44s to 73s of the
+ * Parable of the Lamp's background, where the faces plainly move between four
+ * different setups, and lowering the threshold to 0.04 did not split it. Every
+ * anchor inside that stretch was therefore chosen for a different moment than
+ * the one it served, and the crop sat on a wall for seconds at a time.
+ *
+ * Cuts are still used, but only to HIDE a move: when the crop has to change,
+ * the change is snapped onto a nearby cut so it happens where the picture is
+ * already changing.
+ */
+export function trackFaceAnchors(
+  samples: ReadonlyArray<FaceSample>,
+  cuts: ReadonlyArray<number>,
+  endSec: number,
+  tuning: TrackTuning = {},
+): ShotAnchor[] {
+  const reach = tuning.reach ?? REACH
+  // Move as soon as the frame is empty: waiting a second only means a second
+  // of wall. Measured across the reflection of the Parable of the Lamp,
+  // patience of 1s cost five points of face-in-frame and bought nothing, since
+  // the moves it saved were moves that needed making.
+  const patience = tuning.patienceSec ?? 0
+  // No enforced dwell. It existed to stop the crop swinging on a dialogue,
+  // and the cut-snapping below does that job better: a move that cannot hide
+  // in a cut is eased instead of cut, so frequency stopped being the thing
+  // that hurts.
+  const dwell = tuning.dwellSec ?? 0
+  // A detection smaller than this is not a face anyone would notice, and
+  // treating one as a subject is how the crop ended up on a wall: Haar's
+  // phantoms run 0.2-1% of the frame while the real faces here run 2-13%.
+  const minArea = tuning.minArea ?? 0.02
+  const snap = tuning.snapSec ?? 0.7
+  const decideOverSec = tuning.decideOverSec ?? 1.5
+  const waitForCut = tuning.waitForCutSec ?? 2.5
+
+  const framed = (x: number | null, cx: number) =>
+    Math.abs(cx - (x ?? 0.5)) <= reach
+  /** The biggest face in one sample that is large enough to be real. */
+  const biggest = (s: FaceSample) =>
+    s.faces.filter((f) => f.area >= minArea).sort((a, b) => b.area - a.area)[0]
+  /**
+   * Where to aim, decided over the next second and a half rather than off one
+   * frame. Haar's phantoms flicker — a fold of cloth is there for a frame and
+   * gone — and aiming at a single sample let one of them throw the crop to 0.82
+   * while a real face sat at 0.43. A median over a window cannot be moved by
+   * something that only appears once.
+   */
+  const aimFrom = (from: number): number | undefined => {
+    const xs = samples
+      .filter((s) => s.atSec >= from && s.atSec <= from + decideOverSec)
+      .map(biggest)
+      .filter((f): f is NonNullable<typeof f> => f != null)
+      .map((f) => f.cx)
+      .sort((a, b) => a - b)
+    if (xs.length === 0) return undefined
+    return xs[Math.floor(xs.length / 2)]
+  }
+
+  const segments: ShotAnchor[] = []
+  let current: number | null = null
+  let since = 0
+  let missingSince: number | null = null
+  let lastMove = Number.NEGATIVE_INFINITY
+
+  let snapped = true
+  const close = (at: number, next: number | null, onCut: boolean) => {
+    if (at > since)
+      segments.push({ startSec: since, endSec: at, x: current, snapped })
+    current = next
+    since = at
+    lastMove = at
+    snapped = onCut
+  }
+
+  for (const s of samples) {
+    const hasSomeone = s.faces.some(
+      (f) => f.area >= minArea && framed(current, f.cx),
+    )
+    if (hasSomeone) {
+      missingSince = null
+      continue
+    }
+    // Nobody to aim at — a landscape, or a crowd from behind. Hold what we
+    // have; inventing a position would be worse than keeping a steady frame.
+    if (!biggest(s)) {
+      missingSince = null
+      continue
+    }
+    if (missingSince == null) missingSince = s.atSec
+    if (s.atSec - missingSince < patience) continue
+    if (s.atSec - lastMove < dwell) continue
+
+    const aim = aimFrom(missingSince)
+    if (aim == null) {
+      missingSince = null
+      continue
+    }
+    // Move. Prefer centre when centre frames this face: the picture should
+    // spend its time at rest rather than parked wherever a face last was.
+    const next = framed(null, aim) ? null : aim
+    // Put the change ON a cut wherever possible: the picture is already
+    // changing there, so the crop moving with it cannot be seen. A move in the
+    // middle of a held shot is the one the eye catches, and nineteen of
+    // twenty-seven moves were landing mid-shot before this.
+    const at = missingSince as number
+    const behind = cuts
+      .filter((c) => c <= at && at - c <= snap)
+      .sort((a, b) => b - a)[0]
+    const ahead = cuts
+      .filter((c) => c > at && c - at <= waitForCut)
+      .sort((a, b) => a - b)[0]
+    // Prefer the cut just BEHIND: that is where this shot began, so the new
+    // framing belongs from its first frame and the half-second of wall before
+    // the miss was noticed never reaches the screen. Nine of the ten remaining
+    // bad samples were exactly that lag. Only when no cut started this shot
+    // does it wait for the next one.
+    const when = behind ?? ahead ?? at
+    close(when, next, when !== at)
+    missingSince = null
+  }
+  if (endSec > since)
+    segments.push({ startSec: since, endSec, x: current, snapped })
+  return segments
+}
+
 export function bgFocusForCards(
   cards: ReadonlyArray<{
     kind?: string
@@ -360,6 +534,9 @@ export function bgFocusForCards(
       steps.push({
         atSec: Math.max(0, Number((shot.startSec - startSec).toFixed(3))),
         x: Number(x.toFixed(4)),
+        // A move that could not be put on a cut is eased instead. Snapping it
+        // would be a jump in a held shot, which is the one the eye catches.
+        ...(shot.snapped === false ? { ease: true } : {}),
       })
       last = x
       if (Math.abs(x - 0.5) >= 0.001) movedOffCentre = true
@@ -430,7 +607,7 @@ export async function planFaceCropAnchors(opts: {
   const cuts = await detectShotCuts(opts.bgFile)
   const samples = parsed.samples
   const endSec = samples[samples.length - 1].atSec + SAMPLE_INTERVAL_SEC
-  const shots = stabiliseAnchors(anchorsForShots(samples, cuts, endSec))
+  const shots = trackFaceAnchors(samples, cuts, endSec)
   const withFace = samples.filter((s) => s.faces.length > 0).length
   const anchored = shots.filter((s) => s.x != null).length
   log(
