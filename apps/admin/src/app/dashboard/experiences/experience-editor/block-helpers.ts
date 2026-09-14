@@ -126,6 +126,23 @@ export type VideoLibraryItem = {
   durationSeconds: number | null
   previewImageUrl: string | null
   previewStreamUrl: string | null
+  playableLanguageCount?: number
+  playableLanguageChips?: Array<{
+    code: string
+    flagUrl: string | null
+  }>
+  defaultDub?: VideoLibraryPlayableDub | null
+  authoredDubs?: VideoLibraryPlayableDub[]
+  dubInventory?:
+    | { status: "not-loaded" }
+    | { status: "loading" }
+    | {
+        status: "loaded"
+        choices: VideoLibraryPlayableDub[]
+        nextCursor: string | null
+      }
+    | { status: "error"; message: string }
+  /** Compatibility-only field for legacy callers; editor summaries stay bounded. */
   playableDubs?: VideoLibraryPlayableDub[]
   hasGrounding: boolean
   collectionPreviewItems?: Array<{
@@ -141,6 +158,8 @@ export type VideoLibraryPlayableDub = {
   languageId: string | null
   languageSlug: string | null
   bcp47: string | null
+  iso3?: string | null
+  languageIdentity?: string
   streamUrl: string
   duration: string
   durationSeconds: number | null

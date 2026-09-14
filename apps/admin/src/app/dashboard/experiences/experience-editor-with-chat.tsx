@@ -202,6 +202,15 @@ export function ExperienceEditorWithChat({
     [loadVideoCollectionChildrenAction, mergeVideoLibraryItems],
   )
 
+  const handleLoadVideoCollectionChildrenPage = useCallback(
+    async (input: ExperienceEditorCollectionChildPageActionInput) => {
+      const page = await loadVideoCollectionChildrenPageAction(input)
+      mergeVideoLibraryItems(page.items)
+      return page
+    },
+    [loadVideoCollectionChildrenPageAction, mergeVideoLibraryItems],
+  )
+
   // Stable proxy controller — the panel sees a single object whose
   // methods always delegate to whatever the editor most recently
   // published. Re-mounting the editor (via the parent `key`) replaces
@@ -285,7 +294,8 @@ export function ExperienceEditorWithChat({
           loadVideoCollectionChildrenAction={handleLoadVideoCollectionChildren}
           {...{
             loadVideoDubPageAction,
-            loadVideoCollectionChildrenPageAction,
+            loadVideoCollectionChildrenPageAction:
+              handleLoadVideoCollectionChildrenPage,
             validateVideoDubSelectionsAction,
           }}
           searchVideoLibraryAction={handleSearchVideoLibrary}

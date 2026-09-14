@@ -7,6 +7,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { WATCH_HOME_CATEGORY_CATALOG } from "@forge/watch-url-policy/watch-home-categories"
 import type { MediaLibraryBrowserData } from "@/app/dashboard/media/media-library-browser-data"
 import type { VideoLibraryCategory } from "@/app/dashboard/video-library-utils"
+import type {
+  ExperienceEditorCollectionChildPageActionInput,
+  ExperienceEditorDubPage,
+  ExperienceEditorDubPageActionInput,
+  ExperienceEditorDubSelectionValidationActionInput,
+  ExperienceEditorDubSelectionValidation,
+} from "@/services/experience-editor-video.service"
 import {
   ExperienceEditor,
   buildPublishedWatchUrl,
@@ -86,6 +93,26 @@ const defaultVideoLibrary: VideoLibraryItem[] = [
   },
 ]
 
+function dubChoice(
+  key: string,
+  label: string,
+  languageId: string,
+  streamUrl: string,
+): ExperienceEditorDubPage["choices"][number] {
+  return {
+    key,
+    label,
+    languageId,
+    languageSlug: label.toLowerCase(),
+    bcp47: languageId.replace("language-", ""),
+    iso3: null,
+    languageIdentity: languageId,
+    streamUrl,
+    duration: "01:00",
+    durationSeconds: 60,
+  }
+}
+
 function renderEditorElement(
   blocks: unknown[],
   options: {
@@ -119,6 +146,19 @@ function renderEditorElement(
     loadVideoCollectionChildrenAction?: (
       parentVideoId: string,
     ) => Promise<VideoLibraryItem[]>
+    loadVideoCollectionChildrenPageAction?: (
+      input: ExperienceEditorCollectionChildPageActionInput,
+    ) => Promise<{
+      items: VideoLibraryItem[]
+      nextCursor: string | null
+      total: number
+    }>
+    loadVideoDubPageAction?: (
+      input: ExperienceEditorDubPageActionInput,
+    ) => Promise<ExperienceEditorDubPage>
+    validateVideoDubSelectionsAction?: (
+      input: ExperienceEditorDubSelectionValidationActionInput,
+    ) => Promise<ExperienceEditorDubSelectionValidation>
   } = {},
 ) {
   return (
@@ -150,6 +190,13 @@ function renderEditorElement(
       searchVideoLibraryAction={options.searchVideoLibraryAction}
       loadVideoCollectionChildrenAction={
         options.loadVideoCollectionChildrenAction
+      }
+      loadVideoCollectionChildrenPageAction={
+        options.loadVideoCollectionChildrenPageAction
+      }
+      loadVideoDubPageAction={options.loadVideoDubPageAction}
+      validateVideoDubSelectionsAction={
+        options.validateVideoDubSelectionsAction
       }
       canUploadImages
       initialValues={{
@@ -2431,6 +2478,281 @@ describe("ExperienceEditor", () => {
       expect(blocks[0]?.languageId).toBe("language-es")
       expect(blocks[0]?.streamingUrl).toBeUndefined()
       expect(blocks[0]?.clipEndSeconds).toBeUndefined()
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("loads audio languages only when opened and reuses an identical cached page", async () => {
+    const english = dubChoice(
+      "dub-en",
+      "English",
+      "language-en",
+      "https://example.com/en.m3u8",
+    )
+    const spanish = dubChoice(
+      "dub-es",
+      "Spanish",
+      "language-es",
+      "https://example.com/es.m3u8",
+    )
+    const loadVideoDubPageAction = vi.fn(async () => ({
+      choices: [english, spanish],
+      selectedChoice: english,
+      nextCursor: null,
+    }))
+    const view = renderEditorDom(
+      [
+        {
+          t: "video",
+          sectionKey: "lazy-video",
+          useRouteVideo: false,
+          videoId: "video-1",
+          languageId: "language-en",
+          clipStartSeconds: 8,
+          clipEndSeconds: 42,
+        },
+      ],
+      {
+        videoLibrary: [
+          {
+            ...defaultVideoLibrary[0]!,
+            playableDubs: undefined,
+            playableLanguageCount: 2,
+            defaultDub: english,
+            authoredDubs: [english],
+          },
+        ],
+        loadVideoDubPageAction,
+      },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Video settings").click())
+      expect(loadVideoDubPageAction).not.toHaveBeenCalled()
+
+      const trigger = view.container.querySelector(
+        'button[role="combobox"][aria-label="Audio language"]',
+      )
+      if (!(trigger instanceof HTMLButtonElement)) {
+        throw new Error("Audio language trigger not found")
+      }
+      act(() => trigger.click())
+      await act(async () => {
+        await new Promise((resolve) => window.setTimeout(resolve, 0))
+      })
+
+      expect(loadVideoDubPageAction).toHaveBeenCalledOnce()
+      expect(view.container.textContent).toContain("Spanish")
+
+      act(() => trigger.click())
+      act(() => trigger.click())
+      await act(async () => {
+        await new Promise((resolve) => window.setTimeout(resolve, 0))
+      })
+      expect(loadVideoDubPageAction).toHaveBeenCalledOnce()
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("evicts a rejected audio-language request and provides a working retry", async () => {
+    const english = dubChoice(
+      "dub-en",
+      "English",
+      "language-en",
+      "https://example.com/en.m3u8",
+    )
+    const loadVideoDubPageAction = vi
+      .fn<() => Promise<ExperienceEditorDubPage>>()
+      .mockRejectedValueOnce(new Error("temporary failure"))
+      .mockResolvedValueOnce({
+        choices: [english],
+        selectedChoice: english,
+        nextCursor: null,
+      })
+    const view = renderEditorDom(
+      [
+        {
+          t: "video",
+          sectionKey: "retry-video",
+          useRouteVideo: false,
+          videoId: "video-1",
+          languageId: "language-en",
+        },
+      ],
+      {
+        videoLibrary: [
+          {
+            ...defaultVideoLibrary[0]!,
+            playableDubs: undefined,
+            playableLanguageCount: 2,
+            defaultDub: english,
+            authoredDubs: [english],
+          },
+        ],
+        loadVideoDubPageAction,
+      },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Video settings").click())
+      act(() => {
+        const trigger = view.container.querySelector(
+          'button[role="combobox"][aria-label="Audio language"]',
+        )
+        if (!(trigger instanceof HTMLButtonElement))
+          throw new Error("No trigger")
+        trigger.click()
+      })
+      await act(async () => {
+        await new Promise((resolve) => window.setTimeout(resolve, 0))
+      })
+      expect(view.container.textContent).toContain(
+        "Languages could not be loaded.",
+      )
+
+      await act(async () => {
+        findButtonByExactText(view.container, "Retry").click()
+      })
+      expect(loadVideoDubPageAction).toHaveBeenCalledTimes(2)
+      expect(view.container.textContent).toContain("English")
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("keeps an unavailable authored language and clip visibly unchanged", () => {
+    const english = dubChoice(
+      "dub-en",
+      "English",
+      "language-en",
+      "https://example.com/en.m3u8",
+    )
+    const view = renderEditorDom(
+      [
+        {
+          t: "video",
+          sectionKey: "unavailable-video",
+          useRouteVideo: false,
+          videoId: "video-1",
+          languageId: "language-fr",
+          clipStartSeconds: 12,
+          clipEndSeconds: 24,
+        },
+      ],
+      {
+        videoLibrary: [
+          {
+            ...defaultVideoLibrary[0]!,
+            playableDubs: undefined,
+            playableLanguageCount: 2,
+            defaultDub: english,
+            authoredDubs: [],
+          },
+        ],
+      },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Video settings").click())
+      expect(view.container.textContent).toContain("Unavailable language")
+      expect(view.container.textContent).toContain(
+        "This draft’s audio language is no longer available.",
+      )
+      expect(view.container.textContent).toContain("Preview image only")
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement))
+        throw new Error("No blocks")
+      const block = JSON.parse(blocksInput.value)[0] as Record<string, unknown>
+      expect(block.languageId).toBe("language-fr")
+      expect(block.clipStartSeconds).toBe(12)
+      expect(block.clipEndSeconds).toBe(24)
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("stages paged collection children and commits once every page succeeds", async () => {
+    const collection = {
+      ...defaultVideoLibrary[0]!,
+      key: "collection-paged",
+      id: "core-collection-paged",
+      title: "Paged Collection",
+      label: "COLLECTION",
+      labelLabel: "Collection",
+      isCollectionTarget: true,
+      childCount: 2,
+    }
+    const childOne = {
+      ...defaultVideoLibrary[0]!,
+      key: "paged-child-1",
+      id: "core-paged-child-1",
+    }
+    const childTwo = {
+      ...defaultVideoLibrary[0]!,
+      key: "paged-child-2",
+      id: "core-paged-child-2",
+    }
+    let resolveLastPage: (value: {
+      items: VideoLibraryItem[]
+      nextCursor: string | null
+      total: number
+    }) => void = () => {}
+    const loadVideoCollectionChildrenPageAction = vi
+      .fn()
+      .mockResolvedValueOnce({
+        items: [childOne],
+        nextCursor: "next-page",
+        total: 2,
+      })
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveLastPage = resolve
+          }),
+      )
+    const view = renderEditorDom(
+      [
+        {
+          t: "mediaCollection",
+          sectionKey: "paged-media",
+          variant: "grid",
+          itemsSource: "manual",
+          title: "Media",
+          items: [],
+        },
+      ],
+      {
+        videoLibrary: [collection],
+        loadVideoCollectionChildrenPageAction,
+      },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Add video").click())
+      act(() => findButtonByText(view.container, "Paged Collection").click())
+      act(() => findButtonByExactText(view.container, "Add video").click())
+      await act(async () => {})
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement))
+        throw new Error("No blocks")
+      expect(JSON.parse(blocksInput.value)[0].items).toEqual([])
+      expect(view.container.textContent).toContain("1 of 2")
+      expect(
+        findButtonByExactText(view.container, "Adding videos…").disabled,
+      ).toBe(true)
+
+      await act(async () => {
+        resolveLastPage({ items: [childTwo], nextCursor: null, total: 2 })
+      })
+      expect(
+        JSON.parse(blocksInput.value)[0].items.map(
+          (item: Record<string, unknown>) => item.videoId,
+        ),
+      ).toEqual(["paged-child-1", "paged-child-2"])
+      expect(loadVideoCollectionChildrenPageAction).toHaveBeenCalledTimes(2)
     } finally {
       view.cleanup()
     }
