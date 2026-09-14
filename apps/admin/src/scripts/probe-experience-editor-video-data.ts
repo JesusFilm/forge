@@ -351,20 +351,25 @@ async function requestSpec({
   }
 }
 
-function countMarker(body: string, marker: string) {
-  if (!marker) return 0
-  const escaped = marker.replaceAll('"', '\\"')
+function countOccurrences(body: string, marker: string) {
   let count = 0
   let offset = 0
   while (offset < body.length) {
-    const directIndex = body.indexOf(marker, offset)
-    const escapedIndex = escaped === marker ? -1 : body.indexOf(escaped, offset)
-    const candidates = [directIndex, escapedIndex].filter((index) => index >= 0)
-    if (candidates.length === 0) break
-    offset = Math.min(...candidates) + marker.length
+    const index = body.indexOf(marker, offset)
+    if (index < 0) break
+    offset = index + marker.length
     count += 1
   }
   return count
+}
+
+export function countMarker(body: string, marker: string) {
+  if (!marker) return 0
+  const escaped = marker.replaceAll('"', '\\"')
+  return (
+    countOccurrences(body, marker) +
+    (escaped === marker ? 0 : countOccurrences(body, escaped))
+  )
 }
 
 async function runRequest(spec: RequestSpec, dubMarker: string) {
