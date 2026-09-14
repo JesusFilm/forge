@@ -3,7 +3,7 @@ id: "feat-501"
 title: "Bound experience editor video data and load languages on demand"
 owner: "vlad"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-14"
 duration: 3
 depends_on: []
@@ -20,7 +20,7 @@ tags:
 The homepage editor eagerly loads all referenced videos' dubs and nested language
 relations. The September 14 update increased referenced-video dubs from 4,344 to
 143,030; Admin memory and latency rose sharply during the editing workflow.
-Query expansion is verified; isolated performance reproduction remains required.
+The bounded replacement and isolated performance proof are complete.
 
 ## Entry Points — Read These First
 
@@ -51,14 +51,13 @@ No production load tests or deployment shortcuts. Cache narrowing is `feat-502`.
 
 ## Verification
 
-Follow the plan's real-Postgres, component, production-build browser, and concurrent
-performance matrix; store results in `docs/validation/feat-501/`. Run focused Admin
-tests, lint, typecheck, and build. Planning is complete; implementation is pending.
+The plan's real-Postgres, component, production-build browser, and concurrent
+performance matrix is recorded in `docs/validation/feat-501/`. Focused and full
+Admin tests, lint, typecheck, and the production build pass.
 
 ## Validation status
 
-The reusable HTTP/RSS/SQL probe and frozen measurement contract are documented
-in `docs/validation/feat-501/README.md`. Baseline execution is currently blocked:
-this worktree has no configured database URL and `db:5432` is unreachable.
-Keep this ticket `in-progress` until like-for-like baseline and fixed reports
-satisfy the plan's evidence gate.
+The reusable HTTP/RSS/SQL probe, frozen measurement contract, and completed
+baseline/fixed evidence are documented in `docs/validation/feat-501/README.md`.
+The incident fixture passed the payload, memory, repeated-use, collection,
+public-latency, failure, and pool-timeout gates on the recorded fixed revision.
