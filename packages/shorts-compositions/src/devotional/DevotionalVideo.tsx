@@ -3205,9 +3205,16 @@ function Background({
  * Returns 0.5 when the source does not overflow (the 16:9 cut), where
  * object-position has nothing to distribute and the value is inert anyway.
  */
-/** How long an eased crop move takes. Long enough to read as a move rather
- *  than a jump, short enough not to become a pan the viewer watches. */
-export const FOCUS_EASE_SEC = 0.5
+/**
+ * How long an eased crop move takes.
+ *
+ * Half a second was the first try and the owner read it as abrupt: at that
+ * length the move is over before the eye has finished registering it as a
+ * move, which is exactly the "sharp" feeling. Just over a second is slow
+ * enough to read as the camera reframing and still short enough not to become
+ * a pan the viewer sits and watches.
+ */
+export const FOCUS_EASE_SEC = 1.1
 
 /**
  * The crop anchor in force at `tSec`, given the card's steps.
@@ -3234,8 +3241,10 @@ export function focusAt(
   }
   if (!currentEase || tSec >= currentAt + FOCUS_EASE_SEC) return current
   const p = Math.max(0, Math.min(1, (tSec - currentAt) / FOCUS_EASE_SEC))
-  // easeInOutCubic: no sudden start, no sudden stop.
-  const e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2
+  // easeInOutSine: the gentlest of the standard curves at both ends. Cubic
+  // spends most of its time at speed and brakes late, which is what made a
+  // short move feel like a snap.
+  const e = -(Math.cos(Math.PI * p) - 1) / 2
   return prev + (current - prev) * e
 }
 
