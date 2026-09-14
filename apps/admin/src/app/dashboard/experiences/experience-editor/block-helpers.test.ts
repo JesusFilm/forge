@@ -8,6 +8,7 @@ import {
   createTemplateBlock,
   editorTextFromContentParagraphs,
   defaultContainerSlotSpans,
+  mediaAssetIdsFromExperienceBlocks,
   normalizeEditorBlocks,
   normalizeEditorBlockPayload,
   contentParagraphsFromEditorText,
@@ -38,6 +39,25 @@ const videoLibrary: VideoLibraryItem[] = [
 ]
 
 describe("experience editor block helpers", () => {
+  it("collects unique managed image ids from nested block content", () => {
+    expect(
+      mediaAssetIdsFromExperienceBlocks([
+        {
+          t: "section",
+          backgroundImageAssetId: "asset-section",
+          content: [
+            { t: "card", imageAssetId: "asset-card" },
+            {
+              t: "mediaCollection",
+              mediaAssetId: "asset-collection",
+              items: [{ imageAssetId: "asset-card" }, { imageAssetId: "  " }],
+            },
+          ],
+        },
+      ]),
+    ).toEqual(["asset-section", "asset-card", "asset-collection"])
+  })
+
   it("creates a movable recommendation block with a localized default heading", () => {
     const block = createTemplateBlock("homepageRecommendations", 2)
     expect(block).toEqual({
