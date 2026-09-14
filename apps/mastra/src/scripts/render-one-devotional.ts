@@ -35,56 +35,101 @@ async function main() {
   const translateLlm = createDevotionalLlm({
     model: getDevotionalTranslateModel(),
   })
-  const { devotional, videoPath } = await prepareAndRenderDevotional({
-    chapterIndex,
-    sequence,
-    date,
-    llm,
-    translateLlm,
-    lang,
-    ...(voiceOverride ? { voiceOverride } : {}),
-    outDir,
-    style,
-    layout,
-    aspect,
-    regenerate: process.argv.includes("--regenerate"),
-    regenerateAudio: process.argv.includes("--regenerate-audio"),
-    ignoreQualityGate: process.argv.includes("--ignore-quality"),
-    reviewOnly: process.argv.includes("--review"),
-    approveText: process.argv.includes("--approve"),
-    // Try a scene with a different commentator without editing the passage
-    // table — the two read the same scene differently often enough to be worth
-    // comparing before committing a choice to the data.
-    bgExtendPastEpisode: process.argv.includes("--bg-extend"),
-    coverOnly: process.argv.includes("--cover-only"),
-    ...(arg("music-file") ? { musicFile: arg("music-file") } : {}),
-    ...(arg("settle-line") ? { settleLine: arg("settle-line") } : {}),
-    coverTitleFirst: process.argv.includes("--cover-title-first"),
-    suppressOccasion: process.argv.includes("--no-occasion"),
-    ...(arg("caption-offset")
-      ? { captionOffsetSec: Number(arg("caption-offset")) }
-      : {}),
-    ...(arg("music-volume")
-      ? { musicVolume: Number(arg("music-volume")) }
-      : {}),
-    ...(arg("voice-level")
-      ? { videoAudioLevel: Number(arg("voice-level")) }
-      : {}),
-    ...(arg("words") ? { approxWords: Number(arg("words")) } : {}),
-    ...(arg("commentary")
-      ? { commentaryOverride: arg("commentary") as "ryle" | "henry" }
-      : {}),
-    ...(arg("episode") ? { episode: Number(arg("episode")) } : {}),
-    log: (m) => console.log(m),
-  })
+  const { devotional, videoPath, previewStageDir } =
+    await prepareAndRenderDevotional({
+      chapterIndex,
+      sequence,
+      date,
+      llm,
+      translateLlm,
+      lang,
+      ...(voiceOverride ? { voiceOverride } : {}),
+      outDir,
+      style,
+      layout,
+      aspect,
+      regenerate: process.argv.includes("--regenerate"),
+      regenerateAudio: process.argv.includes("--regenerate-audio"),
+      ignoreQualityGate: process.argv.includes("--ignore-quality"),
+      reviewOnly: process.argv.includes("--review"),
+      silentPreview: process.argv.includes("--silent-preview"),
+      // Stops after the manifest + staged clip/background are written, before the
+      // Remotion encode. The manifest carries the real per-card timings, which is
+      // the only honest way to answer "how long does the music play alone at the
+      // end" — the constants in timing.ts are only part of the sum.
+      stopBeforeRender: process.argv.includes("--stop-before-render"),
+      wordTimings: process.argv.includes("--word-timings"),
+      ...(arg("video-speed") ? { videoSpeed: Number(arg("video-speed")) } : {}),
+      ...(arg("muted-lead") ? { mutedLeadSec: Number(arg("muted-lead")) } : {}),
+      showSettleLine: process.argv.includes("--show-settle-line"),
+      ...(arg("text-font")
+        ? { textFont: arg("text-font") as "sans" | "serif" }
+        : {}),
+      ...(arg("video-filter") ? { videoFilter: arg("video-filter") } : {}),
+      // Screenshots instead of an encode, for reviewing layout/type/colour
+      // before paying for the full render.
+      ...(arg("stills") ? { stills: Number(arg("stills")) } : {}),
+      ...(arg("stills-frames") ? { stillsFrames: arg("stills-frames") } : {}),
+      ...(arg("frame-range") ? { frameRange: arg("frame-range") } : {}),
+      ...(arg("grain-size") ? { grainSizePx: Number(arg("grain-size")) } : {}),
+      ...(arg("grain-filter") ? { grainFilter: arg("grain-filter") } : {}),
+      ...(arg("grain-blend") ? { grainBlend: arg("grain-blend") } : {}),
+      ...(arg("blur-scale") ? { blurScale: Number(arg("blur-scale")) } : {}),
+      steps: process.argv.includes("--steps"),
+      ...(arg("silent-wps")
+        ? { silentPreviewWordsPerSec: Number(arg("silent-wps")) }
+        : {}),
+      approveText: process.argv.includes("--approve"),
+      // Try a scene with a different commentator without editing the passage
+      // table — the two read the same scene differently often enough to be worth
+      // comparing before committing a choice to the data.
+      bgExtendPastEpisode: process.argv.includes("--bg-extend"),
+      coverOnly: process.argv.includes("--cover-only"),
+      ...(arg("music-file") ? { musicFile: arg("music-file") } : {}),
+      ...(arg("settle-line") ? { settleLine: arg("settle-line") } : {}),
+      coverTitleFirst: process.argv.includes("--cover-title-first"),
+      suppressOccasion: process.argv.includes("--no-occasion"),
+      ...(arg("caption-offset")
+        ? { captionOffsetSec: Number(arg("caption-offset")) }
+        : {}),
+      ...(arg("music-volume")
+        ? { musicVolume: Number(arg("music-volume")) }
+        : {}),
+      ...(arg("voice-level")
+        ? { videoAudioLevel: Number(arg("voice-level")) }
+        : {}),
+      ...(arg("words") ? { approxWords: Number(arg("words")) } : {}),
+      ...(arg("commentary")
+        ? { commentaryOverride: arg("commentary") as "ryle" | "henry" }
+        : {}),
+      ...(arg("episode") ? { episode: Number(arg("episode")) } : {}),
+      log: (m) => console.log(m),
+    })
   if (videoPath === null) {
+    // Two different stops land here, and saying the wrong one is not harmless:
+    // --review really does stop before any TTS, while --stop-before-render
+    // stops AFTER it. Printing "no audio was synthesized" for the second is
+    // exactly the sort of confident-but-wrong log line that hid a cache full of
+    // silence for a whole session.
     console.log(
-      `\n⏸  STOPPED FOR REVIEW: "${devotional.title}" [${devotional.reflection.flavor}, voice ${devotional.voice}, ${devotional.mood}]\n   No audio was synthesized, so nothing was billed beyond the LLM calls.`,
+      previewStageDir
+        ? `\n⏸  STOPPED BEFORE RENDER: "${devotional.title}" [voice ${devotional.voice}]\n   Narration WAS produced (and cached). Staged files: ${previewStageDir}`
+        : `\n⏸  STOPPED FOR REVIEW: "${devotional.title}" [${devotional.reflection.flavor}, voice ${devotional.voice}, ${devotional.mood}]\n   No audio was synthesized, so nothing was billed beyond the LLM calls.`,
     )
     return
   }
+  // Stills mode never writes the MP4, so naming it here would repeat the exact
+  // failure this pipeline already shipped once: a "DONE" line pointing at a
+  // video file that was never encoded.
+  const stills = process.argv.some(
+    (a) => a.startsWith("--stills=") || a.startsWith("--stills-frames="),
+  )
   console.log(
-    `\n✅ DONE (${aspect}): "${devotional.title}" [${devotional.reflection.flavor}, voice ${devotional.voice}, ${devotional.mood}]\n   ${videoPath}`,
+    `\n✅ DONE (${aspect}${stills ? ", stills only" : ""}): "${devotional.title}" ` +
+      `[${devotional.reflection.flavor}, voice ${devotional.voice}, ${devotional.mood}]\n   ` +
+      (stills
+        ? `${videoPath.replace(/\.mp4$/, "")}-still-NN.png (no video rendered)`
+        : videoPath),
   )
 }
 

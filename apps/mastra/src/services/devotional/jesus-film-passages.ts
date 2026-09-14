@@ -46,6 +46,36 @@ export type ChapterPassage = {
    *  (kept via a high `minGapSec`) plays too long, but cutting all the way
    *  down to the default tiny bridge would recreate an abrupt jump-cut. */
   maxGapSec?: number
+  /** Override for `removeInternalGaps`' default 3s lead-in kept before the
+   *  next line resumes — see `GapRemovalOptions.leadingBufferSec`
+   *  (subtitle-align.ts). The 3s default exists so a resumed segment doesn't
+   *  start mid-word, but on ch5 (The Devil Tempts Jesus) it pulled in 3s of a
+   *  SILENT, unrelated shot (Jesus walking, no dialogue) right after the
+   *  gap-cut splice — owner: "на 17-й секунде появляется Иисус, а на 18-й уже
+   *  змея", read as a broken edit, not a scene. Trim this per chapter when the
+   *  footage right before a resumed line is dead filler rather than a lead-in
+   *  worth keeping. */
+  leadingBufferSec?: number
+  /** Ceiling (s) for the CLEAR video card, overriding the 60s default. The
+   *  default keeps a scene from dragging, but a longer scene hit it as a raw
+   *  cut: ch14's dialogue runs ~74s, so its closing lines fell outside the
+   *  card and the film sounded cut off (owner-reported twice). Raise this only
+   *  where the scene's own dialogue genuinely needs the room. */
+  maxVideoCardSec?: number
+  /**
+   * Per-chapter override for the grain overlay's tint (a CSS filter).
+   *
+   * The grain blends in `overlay`, which behaves in OPPOSITE directions
+   * depending on the footage: on a bright frame it screens, so a brighter noise
+   * modulates MORE; on a dark frame it multiplies, so a brighter noise
+   * modulates LESS. Verified on both — raising the noise's brightness made
+   * grain finally read on the Good Samaritan's sunlit desert and made it
+   * DISAPPEAR on the Sinful Woman's dark interior.
+   *
+   * So there is no single right tint, and the default stays as the owner
+   * approved it (dark interiors). Sunlit chapters opt in here.
+   */
+  grainFilter?: string
   /** EXPERIMENTAL (owner is reviewing this on ch33 before any rollout).
    *  Split the clip into TWO acts at its longest internal silence and
    *  interleave them with the two halves of the reflection:
@@ -98,7 +128,32 @@ export const JESUS_FILM_PASSAGES: ChapterPassage[] = [
     // auto-trims any dead air this seed picks up per language.
     clipStartSec: 40,
     clipLengthSec: 58,
+    // The dead-air gap after "man shall not live by bread alone" (58.0s) to
+    // the next line (71.3s) qualifies for the default 10s cut, and the
+    // default 3s leadingBufferSec pulled in a silent shot of Jesus walking
+    // with no dialogue — owner-reported as a flash of Jesus immediately
+    // followed by the film's own cutaway to a snake, reading as a broken
+    // splice. 0.5s starts the resumed segment right on "Then the devil took
+    // Him up," skipping the silent filler instead of splicing it in first.
+    leadingBufferSec: 0.5,
   }, // The Devil Tempts Jesus. Opens on the devil's offer (40.6s), through Jesus "It is written, man shall not live by bread alone," the kingdoms offer, ends on "him only shall you serve" (~98s). (whisper-verified)
+  {
+    index: 7,
+    // The film puts this parable SEVENTH, between Luke 4 and Luke 5, so its
+    // chapter number says nothing about where the text sits. `osisRef` follows
+    // the TEXT, which is what commentary routing keys on — the same trap that
+    // sent ch21 and ch31 to the wrong Ryle section.
+    osisRef: "Luke.18.9-Luke.18.14",
+    reference: "Luke 18:9-14",
+    mood: "hope",
+    themes: ["humility", "prayer", "mercy", "repentance", "self-righteousness"],
+    // Subtitle-verified: the chapter is one unbroken parable, 3.3s to 54.2s,
+    // with no dead air to cut. The window opens on "Once there were two men who
+    // went up to the temple to pray" and closes after the reversal ("he who
+    // humbles himself will be exalted"), which is the whole point of the scene.
+    clipStartSec: 3,
+    clipLengthSec: 52,
+  }, // Parable of the Pharisee and the Tax Collector. Both prayers, then the verdict (~54s). (subtitle-verified)
   {
     index: 14,
     osisRef: "Luke.7.36-Luke.7.50",
@@ -113,7 +168,40 @@ export const JESUS_FILM_PASSAGES: ChapterPassage[] = [
     // `removeInternalGaps` trims the ~12s dead gap around 129-142s.
     clipStartSec: 56,
     clipLengthSec: 94,
+    // The dinner scene's dialogue runs ~74s on screen at 1.2x; the 60s default
+    // left its last ~12s (Jesus' closing words to Simon) out of the card.
+    maxVideoCardSec: 78,
   }, // Sinful Woman Forgiven. Opens on Simon's doubt (56.1s) → the parable of the two debtors → "You see this woman" → ends on "Your faith has saved you. Go in peace." (~150s). (whisper-verified)
+  {
+    index: 17,
+    osisRef: "Luke.8.4-Luke.8.15",
+    reference: "Luke 8:4-15",
+    mood: "hope",
+    themes: ["word", "listening", "perseverance", "fruit", "heart"],
+    // Subtitle-verified. This chapter is TWO scenes: the parable told (2.4-54.4s)
+    // and Jesus explaining it (62.8-129.4s). Both together run 106s on screen at
+    // 1.2x — far past what a video card should hold — and the gaps between them
+    // are all under the 10s floor `removeInternalGaps` needs, so nothing would
+    // be trimmed automatically. So the window takes the PARABLE, ending on "so
+    // that they may look but not see, and listen but not understand": the
+    // reflection is where the meaning belongs anyway.
+    clipStartSec: 2,
+    clipLengthSec: 53,
+  }, // Parable of the Sower. The four soils, then the disciples' question (~55s). Explanation (74-129s) deliberately left out. (subtitle-verified)
+  {
+    index: 18,
+    osisRef: "Luke.8.16-Luke.8.18",
+    reference: "Luke 8:16-18",
+    mood: "hope",
+    themes: ["light", "hearing", "obedience", "truth", "witness"],
+    // Subtitle-verified: the lamp teaching runs 5.4s to 33.3s, 28s end to end,
+    // and the chapter then moves to a DIFFERENT passage (his mother and
+    // brothers, Luke 8:19-21, from 33.4s) — so the window stops at 33.4s even
+    // though the chapter keeps going, or the commentary would route there.
+    // Owner rule: a scene this short is shown at natural speed, no `videoSpeed`.
+    clipStartSec: 5,
+    clipLengthSec: 28.5,
+  }, // Parable of the Lamp. Nothing hidden stays hidden, then "be careful how you listen" (~33s). Stops before the mother-and-brothers scene. (subtitle-verified)
   {
     index: 19,
     osisRef: "Luke.8.22-Luke.8.25",
@@ -181,6 +269,12 @@ export const JESUS_FILM_PASSAGES: ChapterPassage[] = [
     // has no stakes.
     clipStartSec: 25,
     clipLengthSec: 52,
+    // Sunlit desert: the default dark-brown noise vanishes on it. Owner picked
+    // this brighter tint from four candidates rendered on this very frame.
+    // Owner: the whole frame had gone too orange. The brighter noise that made
+    // grain read on this sunlit scene also pushed its warmth, so the tint's
+    // saturation comes back down while keeping the lift that made it visible.
+    grainFilter: "sepia(1) saturate(2.2) brightness(0.55) hue-rotate(-4deg)",
   }, // Good Samaritan. Opens on the man robbed and left half dead (25.0s) → priest and Levite walk by → the Samaritan stops → ends after "whatever else you spend on him" (~77s, was cut mid-sentence). (whisper-verified)
   {
     index: 33,
@@ -264,6 +358,22 @@ export const JESUS_FILM_PASSAGES: ChapterPassage[] = [
       },
     ],
   }, // Jesus and Zaccheus. Seed for subtitle alignment: snaps to the story's opening line "In Jericho there was a tax collector named Zaccheus" (en 37.9s / ru 37.1s "И вот некто именем Закхей"), through the pledge, ends on "The Son of Man came to seek and to save the lost" (~131s). Earlier 44s seed snapped to the 2nd sentence "He wanted to see Jesus…" — mid-story, not the intro.
+  {
+    index: 40,
+    osisRef: "Luke.20.9-Luke.20.19",
+    reference: "Luke 20:9-19",
+    mood: "lament",
+    themes: ["rejection", "judgment", "stewardship", "warning", "son"],
+    // Subtitle-verified: 7.9s to 102.4s, no dead air. The parable proper ends at
+    // 81.1s ("give the vineyard over to other tenants"); the stone saying that
+    // follows (82.8-102.4s) is a separate thought and is left out. 74s of window
+    // is 62s on screen at 1.2x, a whisker over the 60s default, so the cap is
+    // lifted just enough to let the parable finish rather than trimming the
+    // owner's verdict off the end.
+    clipStartSec: 7.5,
+    clipLengthSec: 74,
+    maxVideoCardSec: 64,
+  }, // Parable of the Vineyard and the Tenants. Three beaten slaves, the son sent and killed, the owner's verdict (~81s). (subtitle-verified)
   {
     index: 55,
     osisRef: "Luke.23.44-Luke.23.49",

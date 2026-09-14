@@ -1205,6 +1205,21 @@ async function renderInStage(
           act2Segments.reduce((s, x) => s + x.lengthSec, 0) / VIDEO_SPEED
         videoCardSec = clampVideoCardSec(act1Sec)
         if (sourceCues.length > 0) {
+          // act 1 is already bounded by the act break, so it carries no
+          // margin. act 2 ends at the window's end + the margin, so its
+          // captions are mapped over the MARGIN-FREE segments for the same
+          // reason as the single-card path above: the margin is silent
+          // footage for the dissolve, and subtitling it captions dialogue
+          // the viewer cannot hear.
+          const act2CaptionSegments = clamped
+            .map((seg) => {
+              const startSec = Math.max(seg.startSec, actBreak.act2StartSec)
+              return {
+                startSec,
+                lengthSec: seg.startSec + seg.lengthSec - startSec,
+              }
+            })
+            .filter((seg) => seg.lengthSec > 0.1)
           videoCaptions = mapCuesToEditedTimeline(
             sourceCues,
             act1Segments,
@@ -1212,7 +1227,7 @@ async function renderInStage(
           )
           act2Captions = mapCuesToEditedTimeline(
             sourceCues,
-            act2Segments,
+            act2CaptionSegments,
             VIDEO_SPEED,
           )
         }
@@ -1250,12 +1265,26 @@ async function renderInStage(
       // Mapped BEFORE the card length is chosen, because the last line that
       // finishes inside the cap is what decides where the card may end.
       if (sourceCues.length > 0) {
+        // Map against `clamped`, NOT `trimSegments`: the margin appended to
+        // the last segment is footage for the tail pad and the dissolve to
+        // play over, and its audio is already faded to silence there. Mapping
+        // captions over it subtitled dialogue the viewer cannot hear — on the
+        // Lamp chapter the window ends on "...the little he thinks he has."
+        // (33.3s) and the margin then rolled into the NEXT passage, so
+        // "Teacher, your mother and brothers are standing outside." appeared
+        // as a caption with no sound behind it (owner-reported).
+        //
+        // Every earlier cue keeps its exact position: `clamped` and
+        // `trimSegments` differ only in the LAST segment's length, and
+        // `mapCuesToEditedTimeline` accumulates elapsed time per segment — so
+        // this drops the margin's cues and moves nothing else.
         videoCaptions = shiftCaptions(
-          mapCuesToEditedTimeline(sourceCues, trimSegments, VIDEO_SPEED),
+          mapCuesToEditedTimeline(sourceCues, clamped, VIDEO_SPEED),
           options.captionOffsetSec ?? 0,
         )
         log(
-          `captions: ${videoCaptions.length} cue(s) mapped onto the edited clip`,
+          `captions: ${videoCaptions.length} cue(s) mapped onto the edited clip ` +
+            `(margin excluded — it plays silent under the dissolve)`,
         )
       }
       // END AFTER A FINISHED LINE, WITH ROOM FOR THE FADE. The cap (60s + any
