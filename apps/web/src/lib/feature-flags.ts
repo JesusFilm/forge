@@ -15,6 +15,8 @@ export type WebFeatureFlagContextInput = Partial<FeatureFlagContext> & {
 const webFeatureFlagClient = createFeatureFlagClient({
   sdkKey: env.LAUNCHDARKLY_SDK_KEY,
   localEnv: {
+    FORGE_WATCH_HOMEPAGE_RECOMMENDATIONS_DEFAULT:
+      env.FORGE_WATCH_HOMEPAGE_RECOMMENDATIONS_DEFAULT,
     FORGE_WATCH_PLAYER_MIGRATION_DEFAULT:
       env.FORGE_WATCH_PLAYER_MIGRATION_DEFAULT ??
       String(env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION),
@@ -38,6 +40,15 @@ const webFeatureFlagClient = createFeatureFlagClient({
   timeoutSeconds: 0.25,
   logger: console,
 })
+
+export async function isWatchHomepageRecommendationsEnabled(
+  context: WebFeatureFlagContextInput,
+): Promise<boolean> {
+  return webFeatureFlagClient.booleanVariation(
+    featureFlags.watchHomepageRecommendations,
+    createWebFeatureFlagContext(context),
+  )
+}
 
 export const watchDownloadAccountGateFlagContext = {
   custom: {

@@ -15,6 +15,7 @@ import type { DeliveryDependencies, DeliveryInput } from "./delivery.types"
 import {
   runRecommendationDeliveryTransaction,
   runRecommendationRetrievalQuery,
+  RecommendationRetrievalTimeoutError,
   withinDeadline,
 } from "./delivery-runtime"
 import { CuratedPoolsService } from "./curated-pools.service"
@@ -182,10 +183,12 @@ export class UserRecommendationDeliveryService {
     assertWebRecommendationCaller(input.caller)
     const count = input.count ?? 6
     const startedAt = Date.now()
+    let stage = "validation"
     const observe = (response: UserRecommendationDelivery) => {
       console.info(
         JSON.stringify({
           event: "recommendation.user_delivery",
+          stage,
           result: response.result,
           reason: response.reason,
           cohort: response.cohort,
@@ -229,6 +232,7 @@ export class UserRecommendationDeliveryService {
     const now = new Date()
     let leaseId: string | null = null
     try {
+      stage = "admission"
       const admission = await withinDeadline(
         () =>
           this.deps.admission.acquire({
@@ -242,9 +246,12 @@ export class UserRecommendationDeliveryService {
       )
       if (!admission.allowed) return unavailable(admission.reason)
       leaseId = admission.leaseId
-      const state = await this.deps.getServingState({
-        deadlineAt: candidateDeadline,
-      })
+      stage = "serving_state"
+      const state = await withinDeadline(
+        () => this.deps.getServingState({ deadlineAt: candidateDeadline }),
+        candidateDeadline,
+        Date.now,
+      )
       const token = this.deps.tokenService
       if (!state.canIssue || !state.manifest || !token)
         return unavailable(state.reason)
@@ -255,6 +262,7 @@ export class UserRecommendationDeliveryService {
         input.consentReceiptDigest &&
         this.deps.authorizeProfile
       ) {
+        stage = "profile_authorization"
         try {
           if (
             await withinDeadline(
@@ -276,18 +284,25 @@ export class UserRecommendationDeliveryService {
           /* Unavailable authority only permits cold-start recommendations. */
         }
       }
+      stage = "history"
       const history = profileTokenDigest
-        ? await this.deps.history({
-            sessionDigest: input.sessionDigest,
-            profileTokenDigest,
-            now,
-            deadlineAt: candidateDeadline,
-          })
+        ? await withinDeadline(
+            () =>
+              this.deps.history({
+                sessionDigest: input.sessionDigest,
+                profileTokenDigest,
+                now,
+                deadlineAt: candidateDeadline,
+              }),
+            candidateDeadline,
+            Date.now,
+          )
         : []
       let profile: Awaited<
         ReturnType<NonNullable<DeliveryDependencies["retrieveProfile"]>>
       > = null
       if (profileTokenDigest && this.deps.retrieveProfile) {
+        stage = "profile_candidates"
         try {
           profile = await withinDeadline(
             () =>
@@ -319,6 +334,7 @@ export class UserRecommendationDeliveryService {
       let selected = composeUserRecommendations(primary, [], history, count)
       let poolVersion: string | null = null
       if (selected.length < count) {
+        stage = "curated_candidates"
         const fallback = await withinDeadline(
           () =>
             this.deps.curated({
@@ -356,6 +372,7 @@ export class UserRecommendationDeliveryService {
         capabilityJti: randomUUID(),
         canonicalHref: `/watch${buildCanonicalWatchVideoPath(candidate.videoSlug, input.audioLanguageSlug)}`,
       }))
+      stage = "signing"
       const items = await withinDeadline(
         () =>
           Promise.all(
@@ -400,84 +417,96 @@ export class UserRecommendationDeliveryService {
       const responseBytes = Buffer.byteLength(JSON.stringify(response))
       if (responseBytes > MAX_DELIVERY_RESPONSE_BYTES)
         return unavailable("response_oversized")
-      await runRecommendationDeliveryTransaction(
-        this.deps.prisma,
-        deadline - 25,
-        async (tx) => {
-          await tx.recommendationRequest.create({
-            data: {
-              id: requestId,
-              purpose: "user",
-              seedMediaId: null,
-              sessionDigest: input.sessionDigest,
-              locale: input.locale,
-              contractVersion: USER_RECOMMENDATION_CONTRACT,
-              surfaceVersion: USER_RECOMMENDATION_SURFACE,
-              manifestId: manifest.id,
-              strategyVersion: "profile-first-curated-fill-v1",
-              classifierVersion: RECOMMENDATION_CONTRACTS.outcome,
-              expectedItemCount: count,
-              state: "ISSUED",
-              result: "SERVED",
-              deliveryJti: randomUUID(),
-              signingKid: token.activeKid,
-              retrievalLatencyMs: Date.now() - start,
-              responseBytes,
-              issuedAt: now,
-              expiresAt,
-              items: {
-                create: prepared.map((item) => ({
-                  id: item.id,
-                  position: item.position,
-                  targetMediaId: item.candidate.videoId,
-                  canonicalHref: item.canonicalHref,
-                  candidateGenerator: item.candidate.generator,
-                  candidateProvenance: {
-                    poolVersion: item.candidate.poolVersion,
-                    poolKey: item.candidate.poolKey,
-                    cohort: response.cohort,
-                    profileCount,
-                    curatedCount: count - profileCount,
-                    projectionId: profile?.projection.id ?? null,
-                  },
-                  presentation: {
-                    videoSlug: item.candidate.videoSlug,
-                    videoTitle: item.candidate.videoTitle,
-                    imageUrl: item.candidate.imageUrl,
-                    description: item.candidate.description,
-                    durationSeconds: item.candidate.durationSeconds ?? null,
-                    playbackId: item.candidate.playbackId,
-                    audioLanguageSlug: input.audioLanguageSlug,
-                    startSeconds: 0,
-                  },
-                  capabilityJti: item.capabilityJti,
+      stage = "issuance"
+      await withinDeadline(
+        () =>
+          runRecommendationDeliveryTransaction(
+            this.deps.prisma,
+            deadline - 25,
+            async (tx) => {
+              await tx.recommendationRequest.create({
+                data: {
+                  id: requestId,
+                  purpose: "user",
+                  seedMediaId: null,
+                  sessionDigest: input.sessionDigest,
+                  locale: input.locale,
+                  contractVersion: USER_RECOMMENDATION_CONTRACT,
+                  surfaceVersion: USER_RECOMMENDATION_SURFACE,
+                  manifestId: manifest.id,
+                  strategyVersion: "profile-first-curated-fill-v1",
+                  classifierVersion: RECOMMENDATION_CONTRACTS.outcome,
+                  expectedItemCount: count,
+                  state: "ISSUED",
+                  result: "SERVED",
+                  deliveryJti: randomUUID(),
                   signingKid: token.activeKid,
+                  retrievalLatencyMs: Date.now() - start,
+                  responseBytes,
+                  issuedAt: now,
                   expiresAt,
-                })),
-              },
+                  items: {
+                    create: prepared.map((item) => ({
+                      id: item.id,
+                      position: item.position,
+                      targetMediaId: item.candidate.videoId,
+                      canonicalHref: item.canonicalHref,
+                      candidateGenerator: item.candidate.generator,
+                      candidateProvenance: {
+                        poolVersion: item.candidate.poolVersion,
+                        poolKey: item.candidate.poolKey,
+                        cohort: response.cohort,
+                        profileCount,
+                        curatedCount: count - profileCount,
+                        projectionId: profile?.projection.id ?? null,
+                      },
+                      presentation: {
+                        videoSlug: item.candidate.videoSlug,
+                        videoTitle: item.candidate.videoTitle,
+                        imageUrl: item.candidate.imageUrl,
+                        description: item.candidate.description,
+                        durationSeconds: item.candidate.durationSeconds ?? null,
+                        playbackId: item.candidate.playbackId,
+                        audioLanguageSlug: input.audioLanguageSlug,
+                        startSeconds: 0,
+                      },
+                      capabilityJti: item.capabilityJti,
+                      signingKid: token.activeKid,
+                      expiresAt,
+                    })),
+                  },
+                },
+              })
+              await tx.recommendationEvidenceAudit.create({
+                data: {
+                  requestId,
+                  kind: "DELIVERY_SUCCESS",
+                  reasonCode: "served",
+                  expiresAt,
+                },
+              })
             },
-          })
-          await tx.recommendationEvidenceAudit.create({
-            data: {
-              requestId,
-              kind: "DELIVERY_SUCCESS",
-              reasonCode: "served",
-              expiresAt,
-            },
-          })
-        },
+            Date.now,
+          ),
+        deadline - 25,
         Date.now,
       )
+      stage = "complete"
       return observe(response)
-    } catch {
+    } catch (error) {
       return unavailable(
-        Date.now() >= candidateDeadline
+        error instanceof RecommendationRetrievalTimeoutError ||
+          Date.now() >= candidateDeadline
           ? "delivery_timeout"
           : "service_unavailable",
       )
     } finally {
       if (leaseId)
-        await this.deps.admission.release(leaseId).catch(() => undefined)
+        await withinDeadline(
+          () => this.deps.admission.release(leaseId!),
+          deadline,
+          Date.now,
+        ).catch(() => undefined)
     }
   }
 }
