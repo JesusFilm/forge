@@ -16,8 +16,13 @@ jest.mock("@expo/vector-icons/Ionicons", () => ({
   __esModule: true,
   default: () => null,
 }))
+// Mutable so a test can move the insets. The `mock` prefix is required:
+// babel-plugin-jest-hoist lifts jest.mock above this declaration and rejects
+// any other out-of-scope name in the factory.
+const mockInsets = { top: 59, right: 0, bottom: 34, left: 0 }
+const BASE_INSETS = { ...mockInsets }
 jest.mock("react-native-safe-area-context", () => ({
-  useSafeAreaInsets: () => ({ top: 59, right: 0, bottom: 34, left: 0 }),
+  useSafeAreaInsets: () => mockInsets,
 }))
 jest.mock("expo-glass-effect", () => ({
   GlassView: () => null,
@@ -31,6 +36,9 @@ function setPlatform(os: "ios" | "android") {
 }
 afterEach(() => {
   Object.defineProperty(Platform, "OS", platformOsDescriptor)
+  // Restore EVERY field, not only the ones the last test moved — a partial
+  // reset leaks an inset into the next suite and reads as a source defect.
+  Object.assign(mockInsets, BASE_INSETS)
 })
 
 async function render(hasFailed = false): Promise<TestInstance> {
@@ -89,6 +97,42 @@ describe("iOS", () => {
     expect(style.left).toBe(0)
     expect(style.right).toBe(0)
     expect(style.bottom).toBe(0)
+  })
+
+  it("sizes off the home indicator, not the inset that still holds the bar", async () => {
+    // Discriminating: hiding the tab bar is what drops insets.bottom, and that
+    // lands a frame after this mounts, so the first paint reports 83 (49pt bar
+    // + 34pt indicator). Reading it raw floats the buttons 83pt off the edge.
+    setPlatform("ios")
+    mockInsets.bottom = 34
+    const settled = await renderBar()
+    mockInsets.bottom = 83
+    const firstFrame = await renderBar()
+
+    expect(firstFrame.height).toBe(settled.height)
+    expect(firstFrame.paddingBottom).toBe(settled.paddingBottom)
+    expect(firstFrame.height).toBe(TAB_BAR_HEIGHT_IOS + 34)
+    expect(firstFrame.paddingBottom).toBe(34)
+  })
+
+  it("keeps its side padding when there is no notch to clear", async () => {
+    // Discriminating: React Native resolves an edge padding ahead of
+    // `paddingHorizontal`, so a bare `insets.left` erases the 16pt gutter and
+    // the buttons run edge to edge in portrait.
+    setPlatform("ios")
+    const style = await renderBar()
+    expect(style.paddingLeft).toBe(16)
+    expect(style.paddingRight).toBe(16)
+  })
+
+  it("adds a landscape notch to that padding rather than replacing it", async () => {
+    // Distinct values on each side, so a left/right swap fails too.
+    setPlatform("ios")
+    mockInsets.left = 44
+    mockInsets.right = 21
+    const style = await renderBar()
+    expect(style.paddingLeft).toBe(16 + 44)
+    expect(style.paddingRight).toBe(16 + 21)
   })
 
   it("is no longer a floating capsule", async () => {

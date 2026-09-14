@@ -44,8 +44,10 @@ byte-identically.
 4. `apps/mobile/app/(tabs)/library.tsx:121-136` — hides the bar in selection
    mode via `navigation.setOptions({ tabBarStyle: { display: "none" } })`, and
    restores it on blur and unmount. NativeTabs drops `tabBarStyle` SILENTLY.
-5. `apps/mobile/app/(tabs)/watch.tsx:67` — the Search tab. Its `headerShown`
-   header comes from the navigator; NativeTabs has no header options.
+5. `apps/mobile/app/(tabs)/_layout.tsx:43-56` — the Search tab's `Tabs.Screen`.
+   It sets `headerShown: true` at line 47, plus the header title, the colours
+   and `headerShadowVisible`. NativeTabs has no header options, so the screen
+   (`apps/mobile/app/(tabs)/watch.tsx`) must draw that header itself.
 6. `apps/mobile/src/components/library/SelectionActionBar.tsx:33-48` — borrows
    `tabBarPillShape` + `TabBarBackground`.
 7. `apps/mobile/src/hooks/useCategoryThumbnails.ts:49-73` — fires six
@@ -108,10 +110,13 @@ costs a few lines and avoids moving an 899-line file into `watch/index.tsx`.
 
 ### 5. Retire the JS-only pieces on iOS
 
-`TabBarLens`, `TAB_ROUTE_NAMES` and `tabIndexForSegments` lose their only mount
-point (`tabBarBackground` does not exist on NativeTabs). `TabBarBackground`
-stays — `SelectionActionBar` still renders it. Give that bar the flush geometry
-the native bar has rather than the pill's floating box.
+`TabBarLens` and `tabIndexForSegments` lose their only mount point
+(`tabBarBackground` does not exist on NativeTabs). `TAB_ROUTE_NAMES` stays and
+takes a new job: `_layout.ios.tsx` builds every `NativeTabs.Trigger` from it, and
+`src/lib/tabBar.ts` names that file as its consumer. Add a `TabRouteName` export
+beside it, so the icon and label map is an exhaustive `Record`.
+`TabBarBackground` stays — `SelectionActionBar` still renders it. Give that bar
+the flush geometry the native bar has rather than the pill's floating box.
 
 ### 6. Tests
 

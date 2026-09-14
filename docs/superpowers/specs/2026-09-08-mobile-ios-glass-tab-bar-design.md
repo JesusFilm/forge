@@ -2,8 +2,26 @@
 
 **Date:** 2026-09-08
 **App:** `apps/mobile`
-**Status:** design approved, pending spec review
+**Status:** shipped 2026-09-08 (#2200); superseded on iOS by feat-498 — read the note below
 **Worktree:** `.claude/worktrees/feat-ios-glass-tab-bar`
+
+> **Superseded on iOS 2026-09-14 — feat-498.** feat-498 shipped the NativeTabs
+> migration: iOS now runs `expo-router/unstable-native-tabs`, and UIKit owns the
+> bar's geometry and material. Every iOS section below is a historical record,
+> not the shipping design.
+>
+> - The "New module" code block. `TAB_BAR_PILL_HEIGHT = 56` and the 68pt
+>   `TAB_BAR_OCCUPIED_HEIGHT` are both gone.
+> - "Geometry (iOS only)", "Clearance — seven surfaces", "Mini player" and
+>   "Selection bar and keyboard".
+> - The iOS steps of "Testing" and "Verification".
+> - "Material". `TabBarBackground` itself survives, but the Library selection
+>   bar is its only consumer now, and it draws no pill radius.
+>
+> Read the Results section of
+> `docs/roadmap/platform/feat-498-mobile-native-tabs-migration.md` for the
+> shipped numbers. "What must not change on Android" still holds: feat-498 left
+> the Android bar byte-identical.
 
 ## Problem
 

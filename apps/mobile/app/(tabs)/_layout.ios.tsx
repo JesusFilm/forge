@@ -1,11 +1,8 @@
 import { NativeTabs } from "expo-router/unstable-native-tabs"
 
-import { BG_COLOR } from "../../src/lib/color"
+import { ACCENT, BG_COLOR, TEXT_SECONDARY as MUTED } from "../../src/lib/color"
 import { TAB_ROUTE_NAMES, type TabRouteName } from "../../src/lib/tabBar"
 import { useTabBarHidden } from "../../src/lib/tabBarVisibility"
-
-const ACCENT = "#CB333B"
-const MUTED = "#a8a29e"
 
 /**
  * One entry per tab, keyed by route name so the Record is exhaustive: adding a

@@ -251,15 +251,26 @@ describe("the resting window clears the native tab bar", () => {
     expect(TAB_BAR_OCCUPIED_HEIGHT).toBe(TAB_BAR_HEIGHT_IOS)
   })
 
-  it("overlaps the bar when the reservation is left at the retired pill's 68", () => {
+  it("leaves an oversized gap when the reservation still holds the retired pill's 68", () => {
     const stale = { ...PHONE, chrome: { top: 0, bottom: 68 } }
     const frame = defaultCornerFrame(stale)
     const windowBottom = frame.y + frame.height
-    // The bar top is derived from the REAL bar, not the stale reservation, so
-    // over-reserving lifts the window and under-reserving drops it onto the bar.
+    // The bar top comes from the REAL bar, never from the reservation, so an
+    // over-reservation lifts the window: a 730pt bottom under a 761pt bar top.
     const barTop =
       stale.screen.height - stale.insets.bottom - TAB_BAR_HEIGHT_IOS
-    expect(barTop - windowBottom).not.toBe(WINDOW_EDGE_MARGIN)
+    expect(barTop - windowBottom).toBeGreaterThan(WINDOW_EDGE_MARGIN)
+  })
+
+  it("overlaps the bar when the reservation is smaller than the real bar", () => {
+    const short = { ...PHONE, chrome: { top: 0, bottom: 30 } }
+    const frame = defaultCornerFrame(short)
+    const windowBottom = frame.y + frame.height
+    // The other direction: an under-reservation drops the window onto the bar,
+    // to a 768pt bottom below the same 761pt bar top.
+    const barTop =
+      short.screen.height - short.insets.bottom - TAB_BAR_HEIGHT_IOS
+    expect(barTop - windowBottom).toBeLessThan(0)
   })
 
   it("leaves WINDOW_EDGE_MARGIN once the reservation matches the bar", () => {

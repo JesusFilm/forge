@@ -25,8 +25,10 @@ export function Snackbar({
 }: SnackbarProps) {
   const insets = useSafeAreaInsets()
   const tabBarClearance = useTabBarClearance()
-  // Opt-in: the watch and series routes mount this too, and they have no bar.
-  const clearance = clearsTabBar ? tabBarClearance : 0
+  // The clearance already carries insets.bottom, so the two terms are exclusive.
+  // It is 0 on Android, where the bar displaces content instead of floating over
+  // it, and that path must keep the plain inset it has always used.
+  const liftsOverBar = clearsTabBar && tabBarClearance > 0
   const typography = useTypography()
   const translateY = useRef(new Animated.Value(100)).current
   const opacity = useRef(new Animated.Value(0)).current
@@ -85,7 +87,7 @@ export function Snackbar({
       style={[
         styles.container,
         {
-          bottom: insets.bottom + 16 + clearance,
+          bottom: (liftsOverBar ? tabBarClearance : insets.bottom) + 16,
           transform: [{ translateY }],
           opacity,
         },

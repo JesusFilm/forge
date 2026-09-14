@@ -8,10 +8,14 @@ import {
   Text,
   View,
 } from "react-native"
-import { useNavigation, useRouter } from "expo-router"
+import { useIsFocused, useNavigation, useRouter } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
-import { useTabBarClearance, useTabBarStyle } from "../../src/lib/tabBar"
+import {
+  TAB_BAR_HEIGHT_IOS,
+  useTabBarClearance,
+  useTabBarStyle,
+} from "../../src/lib/tabBar"
 import {
   resetTabBarHidden,
   setTabBarHidden,
@@ -68,6 +72,7 @@ export default function LibraryScreen() {
   const typography = useTypography()
   const router = useRouter()
   const navigation = useNavigation()
+  const isFocused = useIsFocused()
   const {
     offlineRecords,
     isReady,
@@ -82,7 +87,10 @@ export default function LibraryScreen() {
   } = useWatchPreferences()
 
   const [capacityBytes, setCapacityBytes] = useState(0)
+  // Every tab mounts at cold launch, so the disk read waits for focus instead
+  // of running while another tab is on screen.
   useEffect(() => {
+    if (!isFocused) return
     let cancelled = false
     void totalDiskBytes().then((bytes) => {
       if (!cancelled) setCapacityBytes(bytes)
@@ -90,23 +98,29 @@ export default function LibraryScreen() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [isFocused])
 
   const [selectionState, setSelectionState] = useState<LibrarySelectionState>(
     INITIAL_SELECTION_STATE,
   )
   const { selecting, selected } = selectionState
-  // On iOS the selection pill occupies the same box as the tab pill, so one
-  // clearance covers both states. On Android the hidden bar leaves the old gap.
-  const selectionPad = selecting && Platform.OS === "android" ? 120 : 24
+  // The iOS action bar stands where the native tab bar did, but hiding that bar
+  // drops the bar height out of insets.bottom — so add it back here.
+  const selectionPad = selecting
+    ? Platform.OS === "android"
+      ? 120
+      : TAB_BAR_HEIGHT_IOS + 24
+    : 24
   const [hintVisible, setHintVisible] = useState(false)
   const [confirmVisible, setConfirmVisible] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
-  // Also gated on prefsReady: before the persisted blob hydrates,
-  // longPressHintSeen reads false and the hint would flash for returning users.
+  // Gated on prefsReady because longPressHintSeen reads false before the
+  // persisted blob hydrates. Gated on focus because every tab mounts at cold
+  // launch, and the timer would expire while another tab is on screen.
   useEffect(() => {
     if (
+      !isFocused ||
       !isReady ||
       !prefsReady ||
       offlineRecords.length === 0 ||
@@ -119,7 +133,14 @@ export default function LibraryScreen() {
     setHintVisible(true)
     const timer = setTimeout(() => setHintVisible(false), HINT_VISIBLE_MS)
     return () => clearTimeout(timer)
-  }, [isReady, prefsReady, offlineRecords.length, selecting, longPressHintSeen])
+  }, [
+    isFocused,
+    isReady,
+    prefsReady,
+    offlineRecords.length,
+    selecting,
+    longPressHintSeen,
+  ])
 
   // KTD8: the action bar replaces the tab bar during selection; restored
   // whenever selection turns off, on blur (switching tabs), and on unmount.

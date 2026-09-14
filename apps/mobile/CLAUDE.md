@@ -753,73 +753,113 @@ the app's own `#1c1917` instead of the platform contrast scrim.
   pixels behind the bar (a bright fullscreen video frame) can hide the buttons.
   No replacement scrim ships yet.
 
-## Tab bar — a floating pill on iOS, a flush bar on Android
+## Tab bar — UIKit's own bar on iOS, a flush JS bar on Android
 
-`src/lib/tabBar.ts` owns every number. The navigator, the Library screen, the
-mini player and six scroll surfaces all read it from there, so no two files can
+`src/lib/tabBar.ts` owns every number. Both navigators, the Library screen, the
+mini player and six scroll surfaces read it from there, so no two files can
 disagree about the bar's size.
 
-> **Under review 2026-09-14.** The pill's reason for existing below iOS 26 was
-> withdrawn by the owner, and `expo-router/unstable-native-tabs` is back on the
-> table for iOS. `docs/roadmap/platform/feat-497-mobile-native-tabs-spike.md`
-> holds the spike and its go/no-go measurements. Until it lands, everything
-> below still describes the shipped bar.
+> **The native tabs migration shipped on 2026-09-14** (feat-498). iOS now runs
+> UIKit's own tab bar. Read the Results section of
+> `docs/roadmap/platform/feat-498-mobile-native-tabs-migration.md` for the
+> device measurements and the carried-forward items. The iOS floating pill,
+> `TabBarLens.tsx` and `tabIndexForSegments` are deleted. Their rules are
+> history, not current guidance.
 
-- **`tabBarStyle` is applied AFTER the bar's own `backgroundColor`**
-  (`BottomTabBar.js:220` sets it, `:258` appends yours). So an opaque fill in
-  `tabBarStyle` hides the glass, silently. iOS must set no `backgroundColor`;
-  Android must keep `#1c1917`.
+- **A tab screen's `insets.bottom` ALREADY contains the iOS bar.** Know this
+  before you touch a scroll surface. `useTabBarClearance()` returns
+  `insets.bottom + TAB_BAR_CLEARANCE_GAP` on iOS, and `0` on Android, where the
+  bar displaces content instead of drawing over it. It must NOT add
+  `TAB_BAR_HEIGHT_IOS` again: UIKit reports the bar as part of the safe area,
+  and a tab screen measures `insets.bottom` 83 = a 34pt home indicator + the
+  49pt bar, on iOS 18.6 and 26.5 alike. `tabBar.test.ts` holds that exact
+  falsification, because the doubled formula is what a careless revert restores.
+- **`TAB_BAR_HEIGHT_IOS` is 49 — the real UIKit bar, not a design number.** The
+  mini player reserves `TAB_BAR_OCCUPIED_HEIGHT` (49 on iOS, 56 on Android)
+  rather than the inset, because it lives in the ROOT provider, outside the tab
+  controller, and cannot read the per-tab safe area. `TAB_BAR_OCCUPIED_HEIGHT`
+  resolves the platform once at import, which no test can reach; pin the
+  branches through `tabBarOccupiedHeightFor(platform)` beside it.
+- **iOS renders `app/(tabs)/_layout.ios.tsx`.** It uses `NativeTabs` from
+  `expo-router/unstable-native-tabs`, which is a real `UITabBarController`. It
+  builds one trigger per name in `TAB_ROUTE_NAMES`, and it sets
+  `disableAutomaticContentInsets` on each one. UIKit's automatic inset only
+  reaches a scroll view that is first in the subview chain, and no tab screen
+  has one there — on Home that position holds the horizontal hero pager — so
+  the screens pad themselves through `useTabBarClearance()` instead.
+- **`app/(tabs)/_layout.tsx` MUST stay on disk.** It now serves Android only.
+  Do not delete it: expo-router resolves the platform sibling by specificity,
+  and it throws without an extension-less fallback file.
+- **The Library screen hides the iOS bar through a module store.** `NativeTabs`
+  has no per-screen `tabBarStyle`, and its only hide lever is the
+  navigator-level `hidden` prop. A context cannot carry the flag, because the
+  layout renders the screen and is therefore an ANCESTOR, not a descendant. So
+  the flag lives in `src/lib/tabBarVisibility.ts`. Call `setTabBarHidden(true)`
+  to hide it, and `resetTabBarHidden()` on blur and on unmount, or a tab switch
+  strands the bar hidden. Android keeps its own lever,
+  `navigation.setOptions({ tabBarStyle })`.
+- **The hide removes the 49pt bar from `insets.bottom`, one frame later.** Two
+  places add it back by hand, and neither may trust the raw inset during that
+  frame. `SelectionActionBar` clamps it — `insets.bottom >= TAB_BAR_HEIGHT_IOS`
+  gives `insets.bottom - TAB_BAR_HEIGHT_IOS`, anything smaller passes through —
+  so the home indicator reads 34 from both 83 and 34, and 0 from 49 on a
+  home-button device. `library.tsx` pads its list by `TAB_BAR_HEIGHT_IOS + 24`
+  while selection runs.
+- **`TabBarBackground` survives, but `SelectionActionBar` is its only
+  consumer.** The navigator dropped it: UIKit draws its own material. The action
+  bar stands in the same place over the same content, so the measured tint floor
+  still applies there. `TAB_BAR_MATERIAL_TINT` is `rgba(0,0,0,0.3)`. Untinted, a
+  bright Home backdrop drops the idle labels to 3.35:1, under the 4.5:1 AA
+  floor. **A tint on the material is not the same problem as a tint over bare
+  content:** the material has already darkened the ground, so contrast rises
+  monotonically with alpha and there is no bad middle value to avoid. 0.26 is
+  the computed minimum; 0.30 ships. The plan's original floor of 0.78 came from
+  a sweep over a bare white backdrop, which crosses the label's own luminance
+  and invents both the bad middle and a 3x-too-high minimum — see
+  `docs/solutions/best-practices/contrast-floor-must-be-derived-over-the-real-compositing-stack.md`.
+- **iOS 18 honours the appearance props; iOS 26 ignores them.**
+  `backgroundColor`, `blurEffect`, `iconColor` and `labelStyle` land exactly on
+  iOS 18.6 — the bar measured the app's own three colours byte-exact — while
+  iOS 26 draws Liquid Glass and keeps UIKit's near-white idle tint. Do not fight
+  it. `disableTransparentOnScrollEdge` is load-bearing on 18: without it the bar
+  turns transparent wherever content reaches its bottom edge.
+- **iPadOS 26 puts the bar at the TOP, and `sidebarAdaptable={false}` does not
+  move it.** That option maps to `tabBarControllerMode: 'tabBar'` and changed
+  nothing across a cold relaunch. feat-498 accepted the top bar. A size-class
+  branch that keeps the JS bar on iPad is the follow-up if the owner wants one.
+- **`<NativeTabs hidden>` is verified on iOS 26 only.** The iOS 16.4-17 branch
+  takes `tabBar.hidden` rather than `setTabBarHidden:animated:`, and that
+  runtime is not installed on this machine.
+- **Android's `tabBarStyle` is applied AFTER the bar's own `backgroundColor`**
+  (`BottomTabBar.js:220` sets it, `:258` appends yours). Keep `#1c1917` in
+  `TAB_BAR_FLAT_STYLE`, and change the fill there rather than anywhere else.
 - **Android must not be given a `tabBarBackground` option at all.** The bar
   checks the returned ELEMENT, not what it renders, so a wrapper returning
   `<TabBarBackground />` is non-null on every platform and forces the bar's own
-  fill transparent. `app/(tabs)/_layout.tsx` therefore passes the option only on
-  iOS, which keeps Android's opacity on two independent mechanisms rather than
-  on `TAB_BAR_FLAT_STYLE.backgroundColor` alone. Pinned by
-  `tabBarLayout.test.tsx`.
-- **The pill's lift is measured from the safe area, never from the screen
-  edge.** The vendored bar's own `getTabBarHeight` (`BottomTabBar.js:100`, a
-  library internal — you will not find it in this app) returns a numeric
-  `height` verbatim and never adds
-  the inset, so a screen-edge margin would make the mini player's reservation
-  differ on every device. Verified on the iPhone 17 Pro Max simulator: the
-  predicted capsule top `956 - 34 - 68 = 854pt` matched the measured edge.
-- **`paddingBottom: 0` is required.** The bar puts `insets.bottom` INSIDE a
-  numeric height, so the home indicator would otherwise eat the pill's content.
-- **The material carries a measured tint floor** (`TAB_BAR_MATERIAL_TINT`,
-  `rgba(0,0,0,0.3)`). Untinted, a bright Home backdrop drops the idle labels to
-  3.35:1, under the 4.5:1 AA floor. **A tint on the material is not the same
-  problem as a tint over bare content:** the material has already darkened the
-  ground, so contrast rises monotonically with alpha and there is no bad middle
-  value to avoid. 0.26 is the computed minimum; 0.30 ships. The plan's original
-  floor of 0.78 came from a sweep over a bare white backdrop, which crosses the
-  label's own luminance and invents both the bad middle and a 3x-too-high
-  minimum — see
-  `docs/solutions/best-practices/contrast-floor-must-be-derived-over-the-real-compositing-stack.md`.
-- **The selected tab carries a sliding lens** (`TabBarLens.tsx`). It derives its
-  cell from `useSegments()` — neither `@react-navigation/native` nor a
-  navigation-state hook resolves from this app — and animates `translateX` on
-  the native driver. `tabBarBackground` therefore returns an ELEMENT
-  (`() => <TabBarBackground />`), not the component: the bar CALLS that option,
-  so a component passed directly would run its hooks inside `BottomTabBar`.
-  `TAB_ROUTE_NAMES` must stay in the order `<Tabs.Screen>` declares, and
-  `tabBarLensOrder.guard.test.js` pins both against the group's route FILES —
-  expo-router appends an undeclared `app/(tabs)/*` file as a fifth tab, which a
-  `<Tabs.Screen>`-only scan cannot see.
-- **`tabIndexForSegments` returns `null` off the tab group, and the lens holds
-  its cell.** `app/watch/[slug].tsx` is a SIBLING of `(tabs)` on the root stack
-  and emits the bare segment `watch` — the Discover tab's own name — so scanning
-  the whole segment array slid the capsule to Discover on every video open.
-- **The lens is rim-weighted on purpose.** Its fill lifts the ground under the
-  active label from rgb(20,18,17) to rgb(35,33,32), costing that label
-  3.49:1 -> 3.11:1 (measured on a flat background, lens on vs off in the same
-  cell). Idle labels are untouched at 7.41:1.
+  fill transparent. `app/(tabs)/_layout.tsx` passes the option on no platform,
+  which keeps Android's opacity on two independent mechanisms rather than on
+  `TAB_BAR_FLAT_STYLE.backgroundColor` alone. `tabBarLayout.test.tsx` pins the
+  absence.
+- **`@react-navigation/bottom-tabs` does not resolve from this app.** Android
+  runs expo-router's vendored fork. Import `useBottomTabBarHeight` from
+  `expo-router/js-tabs`; the obvious import passes `tsc` and fails in Metro. No
+  file needs it today.
 - **The ACTIVE label still fails AA and no tint can fix it.** `#CB333B` on the
   app ground is 3.39:1, and it sits at a middling luminance, so it fails against
-  dark and light grounds alike. Only a colour change fixes it, and
-  `tabBarActiveTintColor` is shared with Android. Untouched deliberately.
-- **`@react-navigation/bottom-tabs` does not resolve from this app.** It runs
-  expo-router's vendored fork. Import `useBottomTabBarHeight` from
-  `expo-router/js-tabs`; the obvious import passes `tsc` and fails in Metro.
+  dark and light grounds alike. Only a colour change fixes it, and both
+  navigators share the value. Untouched deliberately.
+- **`tabBarLayout.test.tsx` pins BOTH navigators.** It mocks
+  `expo-router/unstable-native-tabs` as well as `expo-router`, because
+  `NativeTabs` does not come from the root module. jest-expo runs the `ios`
+  platform, so it loads the Android layout through a `require` with the explicit
+  `.tsx` extension — an extension-less import resolves to the `.ios` sibling,
+  and every Android assertion then tests the wrong navigator.
+- **`tabBarLensOrder.guard.test.js` keeps its old name and still does a job.**
+  It pins `TAB_ROUTE_NAMES` against the group's route FILES, because expo-router
+  appends an undeclared `app/(tabs)/*` file as a fifth tab, which a scan of
+  either layout cannot see. It reads the `<Tabs.Screen>` order from
+  `_layout.tsx`; the iOS trigger order comes from `TAB_ROUTE_NAMES` itself and
+  `tabBarLayout.test.tsx` pins that.
 - **No test can see the RENDERED material.** Every render suite mocks
   `GlassView` and `PlatformBlur` to `() => null`, so only a simulator proves the
   frosting. The branch selection and props ARE covered — see
@@ -838,9 +878,10 @@ disagree about the bar's size.
   and it compares the assigned token rather than using a lookahead, whose
   `\s*` can match zero characters and slip past the value it was told to
   reject.
-- **A fade is not available.** `GlassView` renders nothing inside a layer whose
-  opacity an ancestor animates, so hide-on-scroll would force `PlatformBlur` on
-  every iOS version and change the look on both platforms.
+- **A fade is not available on the material.** `GlassView` renders nothing
+  inside a layer whose opacity an ancestor animates, so any fade of
+  `TabBarBackground` forces `PlatformBlur` on every iOS version and changes the
+  look.
 - **Fast Refresh does not reliably apply changes to the material.** A branch
   swap looked applied and measured identically to the previous run; a magenta
   probe proved the old code was still live. Terminate and relaunch the dev

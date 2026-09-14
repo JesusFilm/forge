@@ -122,4 +122,6 @@ as a product decision about the brand red.
 
 - [expo-glass-effect GlassView renders no material under an animated-opacity ancestor](expo-glass-effect-glassview-invisible-under-animated-opacity-ancestor.md)
 - [expo-glass-effect GlassView: isInteractive flash bug and cross-platform integration](expo-glass-effect-interactive-flash-2026-04-08.md)
-- `apps/mobile/CLAUDE.md`, section "Tab bar — a floating pill on iOS, a flush bar on Android"
+- `apps/mobile/CLAUDE.md`, section "Tab bar — UIKit's own bar on iOS, a flush JS bar on Android"
+  (renamed 2026-09-14 by feat-498; the tint now applies to `SelectionActionBar`, the
+  navigator having moved to UIKit's own material)

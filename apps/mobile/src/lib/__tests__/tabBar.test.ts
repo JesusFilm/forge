@@ -30,6 +30,9 @@ function setPlatform(os: "ios" | "android") {
 }
 afterEach(() => {
   Object.defineProperty(Platform, "OS", platformOsDescriptor)
+  // A reset in a test body never runs when an assertion above it fails, and the
+  // mutated inset then leaks into every later test in the file.
+  mockInsets.bottom = 34
   mockInsets.left = 0
   mockInsets.right = 0
 })
@@ -57,7 +60,6 @@ describe("useTabBarClearance", () => {
     setPlatform("ios")
     mockInsets.bottom = 83
     expect(useTabBarClearance()).toBe(83 + TAB_BAR_CLEARANCE_GAP)
-    mockInsets.bottom = 34
   })
 
   it("does NOT add the bar height a second time", () => {
@@ -68,7 +70,6 @@ describe("useTabBarClearance", () => {
     expect(useTabBarClearance()).not.toBe(
       83 + TAB_BAR_HEIGHT_IOS + TAB_BAR_CLEARANCE_GAP,
     )
-    mockInsets.bottom = 34
   })
 
   it("is zero on Android, where the bar displaces content", () => {
