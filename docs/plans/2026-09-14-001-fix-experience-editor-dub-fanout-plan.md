@@ -1,308 +1,278 @@
-# Bound experience editor data and homepage revalidation
+---
+title: "Bound Experience Editor Data and Lazy Dub Loading - Plan"
+type: "perf"
+date: "2026-09-14"
+deepened: "2026-09-14"
+artifact_contract: "ce-unified-plan/v1"
+product_contract_source: "ce-plan-bootstrap"
+execution: "code"
+---
 
-Date: 2026-09-14. Implementation tickets: `feat-501` (editor), `feat-502`
-(cache invalidation). This is an implementation plan; neither fix has shipped.
+# Bound Experience Editor Data and Lazy Dub Loading - Plan
 
-## Outcome and scope
+## Goal Capsule
 
-Opening, editing, saving, and publishing `/watch-home` must not materialize the
-language inventory for every referenced video or stall public Admin GraphQL.
-Editors retain complete language choice, existing selected languages, playback
-previews, clip ranges, coverage indicators, and collection editing. A publish
-request first validates the exact candidate while the current published version
-continues serving. Only a validated candidate may replace it and invalidate its
-affected caches. Failed validation leaves the published version and caches intact.
-Successful homepage content changes do not expire unrelated video/series caches.
+- **Objective:** Experience editors can open, edit, save, and publish an incident-scale `/watch-home` without exhausting Admin memory, starving public GraphQL, or losing any authored video, language, preview, or clip choice.
+- **Means:** Replace eager Dub inventories with bounded editor summaries and fetch paginated language choices only when an editor opens the audio-language control. (KTD1, KTD2, KTD3)
+- **Authority:** This plan, the `feat-501` roadmap ticket, current Admin editor semantics, and the repository's package guidance govern implementation in that order when they do not conflict.
+- **Execution profile:** Ship `feat-501` as the first PR. Keep publication gating and cache invalidation in the separate `feat-502` PR.
+- **Stop conditions:** Stop rather than guess if real PostgreSQL evidence disproves bounded query behavior, if exact authored selections cannot be retained without changing stored content, or if implementation requires a public GraphQL contract change outside this PR. If bounded queries pass but the RSS target fails, capture a heap profile and attribute the residual before deciding whether this PR or a follow-up owns it.
 
-Deliver two separate PRs, editor first. No content rollback, production restart,
-pool-size increase, timeout increase, or infrastructure scaling is part of this
-plan. Preserve the main/sync database pools at 10/5 connections, auth, public URL
-rules, recommendations, GA, and Datadog. No public GraphQL schema change is
-expected; regenerate SDL and the typed client together if one becomes necessary.
+---
 
-## Evidence and limits
+## Product Contract
 
-Read-only checks during the September 14 incident established:
+### Summary
 
-- Previous published English homepage: 64 referenced videos with 4,344 active
-  dubs. Updated homepage: 125 referenced videos with 143,030 active dubs. Adding
-  the first 30 library videos gave 155 videos and 143,060 dubs. Country-language
-  joins for that set yielded 419,869 rows.
-- `loadVideoRowSlice` loads all active dubs, their language/country relations,
-  and all localized video descriptions, then builds `playableDubs` for every
-  video. The editor also loads references outside the first library page.
-- Admin memory rose from 2.70 GB at 12:02:00 UTC to 4.78 GB at 12:02:30 and
-  11.67 GB at 12:09. Editor requests took 49–140 seconds. The draft save was
-  recorded at 12:03:17.960 and publication at 12:03:19.944.
-- A later process sample showed the main Node thread using approximately 93%
-  of one core; PostgreSQL had mostly idle connections. Admin logged Prisma
-  connection timeouts while public requests returned 502 or timed out.
-- Homepage publication emits both `experience` and broad `watch-setting`
-  revalidation, and starts a route-manifest refresh. Web uses immediate tag
-  expiration and root-layout invalidation.
+The experience editor will load a compact, editor-specific video summary instead of every active Dub and nested language relation. The summary keeps enough information for the library, coverage display, collection preview, default playback, and every authored language already present in the draft. The complete playable-language inventory becomes a paginated, authenticated, intent-triggered fetch.
 
-The data expansion is verified and the leading source of overload. It is not a
-heap profile or an isolated causal reproduction. In particular, memory growth
-preceded the recorded publish; do not attribute the initial spike solely to
-publication or claim the exact draft loaded at 12:02 is preserved. Cache
-invalidation is a plausible amplifier. Reconstruct the exact editor input in
-the baseline and record deviations from these SQL-derived counts.
+### Problem Frame
 
-Related work: `docs/solutions/performance-issues/watch-selected-dub-projection-20260624.md`
-and `docs/operations/watch-runtime-diagnosis-2026-09-14.md` describe the existing
-public preferred-dub batching fix. Reuse its batching lessons, but preserve the
-editor's own playback eligibility and fallback semantics; they include DASH/share
-and must not silently become the public HLS-only policy. `feat-172` established
-the existing cache correctness contract; narrowing it needs replacement coverage.
+The September 14 homepage edit expanded the referenced set from 64 videos with 4,344 active Dubs to 125 videos with 143,030 active Dubs. The editor's `loadVideoRowSlice` path materializes those Dubs, their language and country-language relations, and all localized video descriptions before building `playableDubs`. Admin memory rose from 2.70 GB to 4.78 GB in 30 seconds and later reached 11.67 GB; editor requests took 49–140 seconds while public Admin GraphQL timed out or returned 502s.
 
-## PR 1: compact editor data and lazy language selection
+The data expansion is verified, but no heap profile isolates every contributor. Cache invalidation may amplify the incident, yet it is outside this PR and tracked by `feat-502`. This work must prove the editor path is bounded without overstating that it resolves every public latency tail.
 
-### 1. Capture a repeatable baseline
+### Requirements
 
-Use an isolated local/staging PostgreSQL fixture following
-`apps/admin/docs/worktree-preview-setup.md`. Include the incident-scale homepage,
-high-dub videos, two locales, existing non-default language selections, collections,
-and unavailable dubs. Do not stress-test production.
+**Bounded cold data**
 
-Measure production-build editor open, save/rerender, publish/rerender, initial
-RSC bytes, query result rows, emitted SQL, pool acquisition wait, process RSS/heap,
-event-loop delay, and public GraphQL latency under a fixed background workload.
-Record deployed/local revisions, fixture counts, hardware, and cold/warm state.
-Do not count Prisma method calls as emitted SQL or treat RSS as V8 heap usage.
+- R1. Initial editor load, exact-ID top-ups, server-backed video search, collection previews, and save/publish rerenders must not materialize a video's complete Dub inventory.
+- R2. A compact video summary must contain identity, preferred localized title and description, thumbnail, playable-language count and bounded chips, collection count and bounded preview items, one locale-aware default preview Dub, and every distinct authored Dub selector needed by the current draft.
+- R3. The summary path must select winners and aggregates in SQL before hydration, process at most 100 video IDs per sequential or explicitly bounded batch, preserve requested video order, and avoid per-video query fanout.
+- R4. An omitted language inventory must be distinguishable from a loaded empty inventory; the audio-language control is available from the aggregate playable-language count rather than an in-memory array length.
 
-### 2. Introduce an editor-specific summary contract
+**Editor playback parity**
 
-Entry points:
+- R5. Editor playback eligibility remains a non-deleted Dub with a non-empty HLS, DASH, or share URL; this PR must not adopt the public Watch HLS-only and published-only policy.
+- R6. Default selection remains locale language match followed by the first HLS-capable Dub and then the first DASH/share-capable Dub, with a stable ID tie-break added wherever current database ordering is ambiguous.
+- R7. Reopening a block resolves persisted `languageId` first and legacy `streamingUrl` second before applying the locale default, and preview URL, duration, trim bounds, and the saved selection must refer to the same Dub.
+- R8. Background loading, a failed request, or fallback selection must not reset clips or alter persisted selectors; only an intentional language change resets clip values.
 
-- `apps/admin/src/app/dashboard/live-data.ts`: `loadVideoRows`,
-  `loadVideoRowSlice`, `playableDubsForPicker`, `preferredPickerDub`.
-- `apps/admin/src/app/dashboard/experiences/[id]/page.tsx`: initial loader,
-  `loadVideosByIdsAction`, collection/search loaders, save and publish actions.
-- `apps/admin/src/app/dashboard/experiences/experience-editor.tsx`:
-  `VideoLibraryItem`, `preferredPlayableDubForVideo`, `selectedPlayableDubForVideo`.
-- `apps/admin/src/services/preferred-playable-dub.service.ts`: batching reference.
+**Lazy language inventory**
 
-Add a service-owned summary projection with explicit fields: video identity,
-preferred localized title/description, thumbnail, counts/coverage, bounded
-collection previews, and one default preview dub. Include the already-authored
-dub when different, using block `languageId` and legacy stream selection as
-inputs. Distinguish summary data from a loaded language inventory in the types;
-an omitted inventory must never mean a video has no playable languages.
+- R9. Opening the audio-language control fetches one video's slim language choices with server-side search, a default page size of 50, values above 100 clamped to 100, non-positive or non-integer values rejected, a deterministic cursor, and the selected authored choice returned separately when it is off-page or outside the filter.
+- R10. Every supported playable language remains discoverable through server paging and search, with loading, loaded-empty, error, retry, and load-more states. The asynchronous combobox retains keyboard navigation, restores focus on close, marks pending results busy, and announces result and error changes to assistive technology.
+- R11. Identical in-flight page requests are coalesced, rejected requests are evicted for retry, late results cannot update a closed or changed picker, and the component-local cache is capped at 20 pages with a five-minute TTL.
+- R12. Language lookup and exact-selector resolution require an authenticated Admin session and preserve the existing editor visibility rule for already-authored or explicitly referenced non-deleted videos.
 
-Select winner IDs and aggregates in SQL before hydrating rows. Batch by video ID
-and locale, at most 100 IDs per batch, with sequential batches or explicitly
-bounded concurrency. Do not replace one broad query with a query per video.
-Return counts rather than inventories for coverage, and bounded language chips
-where the existing UI requires them. Fetch only needed localized text and flag
-metadata. Preserve exact existing default/selected-dub and ordering semantics
-with parity fixtures before changing the query.
+**Authored content and collections**
 
-Use the compact path for initial rows, referenced-video top-ups, picker search,
-collection children, and post-save/post-publish rerenders. Page large collection
-children instead of expanding their entire dub inventories. Keep every authored
-reference resolvable by bounded batches; never silently truncate saved content.
-Audit other `loadVideoRows` consumers before changing shared types; unrelated
-video detail screens can retain their explicit detail loaders.
+- R13. Multiple blocks may reference the same video with different languages; summary input and exact-selector lookup must retain the full deduplicated selector set rather than collapsing it to one language per video.
+- R14. Applying a collection must continue to add every ordered direct child without silent truncation, using pages of at most 100 lightweight child summaries or references rather than one unbounded relation and Dub expansion.
+- R15. Apply and save revalidate referenced `{videoId, languageId}` choices in batches of at most 100; an unavailable newly chosen Dub blocks apply, while an unavailable pre-existing choice remains visibly selected with an adjacent warning and does not prevent unrelated text edits from saving. Playback alone is disabled for that unavailable choice, clip fields stay intact, and the language inventory remains available for an intentional replacement.
 
-### 3. Fetch language options on user intent
+### Success Criteria
 
-Add an authenticated server action backed by the service. Input is one video ID,
-editor locale, optional search/cursor, and a server-enforced page size (50 default,
-100 maximum). Return slim dub choices and a next cursor. Resolve the authored
-selection separately so it remains visible even outside the first page or filter.
-Validate inputs and preserve the editor's existing principal/visibility rules.
+- Initial serialized Dub data falls by at least 90% on the incident fixture.
+- Editor-induced peak RSS delta falls by at least 75%. Across 20 open/save cycles sampled after the same 60-second idle interval, the final five-sample mean must be no more than 5% above the first five-sample mean and the linear trend's 95% confidence interval must include zero.
+- With one and four concurrent editor sessions, the fixed background workload records no pool timeout or 5xx, and public-query p95 is no more than 20% above its no-editor control.
+- At least 30 timing samples record absolute values, fixture cardinalities, cold/warm state, revisions, and hardware. An unhealthy no-editor control is reported as a blocker instead of a pass.
 
-The editor loads options only when audio-language selection opens. Adapt
-`SearchableVideoDubControl` to server search/paging with loading, empty, error,
-retry, and load-more states. All supported languages must remain discoverable.
-Default previews work from summary data before inventory loading. Inventory
-fetch failure cannot clear a saved language or prevent unrelated text edits.
+### Acceptance Examples
 
-Deduplicate concurrent requests for the same video/locale/search/cursor. Ignore
-late responses after selection changes or the picker closes; abort transport
-where supported, without assuming cancellation stops a server action. Bound
-the in-editor cache (proposed: 20 pages with a five-minute TTL), clear it on locale
-or session change, and avoid polling or caching rejected promises indefinitely.
-Preserve clip-reset behavior on an intentional language change, but not on a
-background response or default fallback. Revalidate availability on apply/save
-using bounded lookups; surface removed dubs without silently replacing them.
+- AE1. Given a draft that references a video with thousands of Dubs, opening the editor returns the default preview and authored selections without loading the remaining inventory.
+- AE2. Given two blocks that use different languages for the same video, reopening either block selects its own language and preserves its own clip range.
+- AE3. Given an authored language outside the first page or current search, opening the control shows that selected choice and paging or search still exposes every other playable language.
+- AE4. Given a rejected inventory request, retry starts a new request; given a late response after close or video switch, editor state does not change.
+- AE5. Given a collection with more than 100 children, Apply adds every direct child once in relation order without loading each child's full Dub inventory.
+- AE6. Given a pre-existing Dub that was removed, unrelated text edits save with a visible warning and without replacement; choosing an unavailable Dub cannot be applied.
 
-### 4. Verify behavior and resource bounds
+### Scope Boundaries
 
-- Real PostgreSQL tests: exact/fallback/legacy selection, duplicate languages,
-  missing playback, deleted rows, zero-dub collections, pagination stability,
-  and preservation of requested ID order. Measure emitted SQL and materialized
-  rows on incident-scale fixtures. Increasing total dub count must not increase
-  initial inventory rows or produce per-video query fanout.
-- Component tests: initial render fetches no inventories; opening fetches one
-  video's page; search/paging exposes later languages; rapid switching ignores
-  stale results; retry succeeds; saved off-page selection and clip values survive.
-- Browser test with a production build: open heavy homepage, change a block,
-  choose a non-default language, preview, save, reopen, publish, and verify the
-  persisted choice. Exercise collection and AI-referenced-video top-up paths.
-- Compare baseline/fix with 1 and 4 concurrent editor sessions alongside the
-  same public GraphQL workload. Proposed acceptance budgets: at least 90% less
-  serialized initial dub data; editor-induced peak RSS delta reduced at least
-  75%; no pool timeout or 5xx; public-query p95 no more than 20% above its
-  no-editor control; no upward post-idle RSS trend across 20 open/save cycles.
-  Use at least 30 timing samples and report absolute values. If the no-editor
-  control is unhealthy, isolate that blocker rather than claiming this fix passes.
+**In scope**
 
-Run focused service/DB/component tests, Admin lint and typecheck, and the Admin
-production build including workflow verifiers. Record commands and results under
-`docs/validation/feat-501/`. Add compact duration/count telemetry for summary and
-language-page loads; do not log inventories, user content, or credentials.
+- Admin experience-editor summary queries, server actions, editor state, collection expansion, tests, compact telemetry, and local/staging validation evidence.
+- Index changes proven necessary by real PostgreSQL plans for the editor's active-any-stream policy.
 
-## PR 2: validate publication before promotion and cache invalidation
+**Deferred to Follow-Up Work**
 
-### Required publication order
+- `feat-502`: immutable publication attempts, isolated candidate validation, atomic promotion, outbox delivery, rollback, and targeted homepage cache invalidation.
+- Production traffic observation after the normal reviewed PR-to-main Railway deployment.
 
-User requirement: a new experience must be verified before its publication can
-invalidate the working production version. Schema validation alone is not enough.
+**Out of scope**
 
-`draft -> validating -> ready -> atomic promotion -> scoped invalidation -> observed`
+- Production stress tests, direct production deploys, content rollback, restarts, pool-size or timeout increases, and infrastructure scaling.
+- Changes to recommendations, GA, Datadog, public URL rules, or the public GraphQL schema. If a schema change becomes unavoidable, stop and replan the required Admin SDL and `packages/admin-graphql` regeneration together.
 
-Validation failure returns to an editable failed state with actionable diagnostics;
-there is no public promotion or invalidation. Existing published content remains
-the serving source throughout validation. This applies to all experience publishes;
-the heavy homepage is the incident acceptance fixture.
+---
 
-1. **Freeze the candidate.** At publish request, authenticate/authorize and capture
-   an immutable snapshot, revision digest, expected published revision, locale,
-   route identity, and requested publisher. Add a persisted publication attempt
-   recording these values, validation/build versions, timestamps, results, and
-   state. Candidate checks run in an isolated worker/preview execution path with
-   bounded concurrency and time/resource budgets, not in Admin's serving process.
-   Inspect existing workflow infrastructure before adding a new runner.
-2. **Validate the candidate end to end.** Check schema, block and referenced-video
-   integrity, authored language/playback selections, route collisions/admission,
-   required media, and the complete public rendering path using this candidate.
-   Exercise homepage sections, initial data, navigation and representative playback
-   with the current deployed Web runtime; include all affected locale fallbacks.
-   Verify resource/latency budgets against the incumbent and a concurrent incumbent
-   control. Fail when a required check cannot complete; report the missing evidence.
-   Use documented optional-media fallbacks rather than rejecting valid content for
-   cosmetic differences. Define these mandatory/optional checks in tests.
-3. **Keep preview isolated.** Candidate URLs require short-lived signed access and
-   are no-store/noindex; candidate reads use an explicit snapshot identity and
-   cannot overwrite production cache entries. Use equivalent live rendering/data
-   resolution so a permissive draft renderer cannot provide a false pass. Never
-   publish temporarily to test the candidate. Any pre-rendered cache artifacts
-   must live under the candidate revision, never the live cache key.
-4. **Bind readiness to what was tested.** The readiness record covers snapshot
-   digest, expected incumbent revision, Web/Admin build versions, and dependency
-   fingerprints. Use a short validity window (initial target: five minutes);
-   edits, changed incumbent, relevant dependency withdrawal, changed renderer, or
-   expiry require validation again. Recheck publication permission and critical
-   visibility/playability invariants immediately before promotion. Existing draft
-   revision compare-and-set machinery is a starting point, not a substitute for
-   publication-attempt identity.
-5. **Promote atomically.** Within one short transaction, compare the expected
-   incumbent and validated candidate, preserve the old canonical snapshot for
-   rollback, apply the exact candidate, and mark the attempt promoted. For a
-   route-affecting change, prepare and validate the candidate manifest in advance
-   and publish its compatible persisted snapshot in the same transaction; do not
-   expose a new route before its admission data is ready. A stale/conflicting
-   attempt fails without changing the current publication. Duplicate publish
-   requests are idempotent; concurrent publishes cannot overwrite one another.
-6. **Invalidate only after commit.** Insert a durable revalidation/outbox record
-   in that transaction. Its worker sends the scoped event after commit with an
-   idempotency key and revision identity, retrying boundedly and surfacing delivery
-   failure. No candidate validation, failed transaction, or rejected attempt can
-   emit public invalidation. Skip stale superseded events or merge their affected
-   scopes safely. Revalidation failure is a visible pending-delivery state, not a
-   claim that the new version is serving everywhere. Preserve old cached pages
-   until the validated replacement is committed and ready to resolve.
-7. **Observe and recover.** Retain the prior validated publication. After promotion,
-   run bounded checks for the new revision and monitor errors/latency. Provide an
-   explicit rollback action that restores the prior snapshot and compatible route
-   admission state atomically, then issues the required scoped invalidation. A
-   rollback is itself auditable and must not overwrite a newer publication.
+## Planning Contract
 
-No preflight can guarantee that a later dependency outage will never break a
-page, and DB promotion cannot atomically replace every browser/CDN cache. The
-contract is: no unvalidated candidate becomes canonical, no invalidation before
-successful promotion, safe overlap of old/new validated versions, and a tested
-recovery path. Do not promise globally simultaneous cache replacement.
+### Key Technical Decisions
 
-### Targeted invalidation after successful promotion
+- KTD1. **Use an editor-owned summary service.** Keep `loadVideoRowSlice` available to unrelated dashboard video-detail consumers and route experience-editor initial rows, exact-ID hydration, search results, and rerenders through a separate compact projection. This avoids widening a shared inferred type change and makes row/query budgets testable.
+- KTD2. **Select before hydration.** Use PostgreSQL winner-per-video and winner-per-language queries with a unique final ID tie-break, then hydrate only chosen Dubs and required language metadata. This follows `docs/solutions/performance-issues/watch-selected-dub-projection-20260624.md` without copying its public HLS-only eligibility policy.
+- KTD3. **Carry bounded authored selectors separately from inventory.** Extract all distinct `{videoId, languageId?, legacyStreamingUrl?}` selectors from the draft and resolve them in batches. The cold summary may contain the locale default plus those authored selections, but never the whole inventory.
+- KTD4. **Bind cursor and cache identity to the complete query.** A versioned cursor includes every ordering key and is valid only for the same video and normalized search. Client cache and stale-response identities include session scope, locale, video, normalized search, cursor, page size, and the selected authored language when the response resolves that choice.
+- KTD5. **Keep add-all collection semantics with bounded transport.** Page ordered child summaries in groups of at most 100 using relation position with nulls last, creation time, and unique relation ID as the cursor tuple. Assemble the complete ordered block set for the explicit Apply action; do not reuse a one-page preview as saved content.
+- KTD6. **Treat unavailable existing selections as recoverable draft warnings.** Validate on Apply and Save, block a new unavailable choice, and retain a pre-existing unavailable selector until the editor intentionally replaces it. Publication behavior remains unchanged in this PR.
 
-Entry points: Admin `services/experience.service.ts`, `revalidate-webhook.ts`,
-`watch-route-manifest-refresh.service.ts`; Web `app/api/revalidate/route.ts`,
-`lib/watch-cache-tags.ts`, `lib/watch-home.ts`, `lib/content.ts`,
-`lib/watch-route-manifest.ts`, `cache-handler.mjs`, and the dynamic-collection
-handler/purge helper. Read their existing tests and both package guides first.
+### High-Level Technical Design
 
-1. Map actual cache dependencies before reducing scope: homepage content and
-   configuration, localized fallback homes, experience cards embedded elsewhere,
-   dynamic feeds/exclusions, route admission, and sitemap membership. Include
-   cache declarations, shared Redis behavior, and Cloudflare feed purges.
-2. Add an additive, validated webhook change scope distinguishing homepage
-   content edits from route identity/visibility and genuinely global settings
-   changes. Deploy receiver support first; old payloads retain existing behavior.
-   Ordinary draft saves emit no public invalidation.
-3. Compare the validated canonical before/after publish fields. Content-only homepage updates
-   invalidate home/experience dependencies and affected public/internal home
-   routes, including fallback languages. They must not expire video/series/dub
-   tags or call root-layout invalidation. Define scoped cache tags at their
-   actual producers before emitting them. A shared homepage tag is acceptable
-   if all language homes depend on that content and video caches remain intact.
-4. Handle the entire trigger chain: avoid the redundant broad `watch-setting`
-   event for homepage content edits, and skip route-manifest generation when
-   route admission has not changed. Otherwise the manifest webhook would still
-   invalidate all Watch layouts. Preserve refreshes for slug, locale, path,
-   homepage assignment, visibility, archive, and route-relevant Core changes.
-5. Preserve immediate freshness for affected published content. Do not globally
-   switch to stale-while-revalidate or remove revocation/deletion invalidation.
-   Retain dynamic-feed purge wherever composition/exclusions changed. If cards
-   embedded elsewhere cannot yet be targeted correctly, document that remaining
-   scope and implement the dependency/tag mapping before removing its invalidation.
-6. Add a before/after invalidation matrix to tests: homepage title/block edit,
-   no-op publish, first publish, slug/locale/path change, homepage reassignment,
-   archive/unpublish, global settings, video/Core sync, and duplicate webhooks.
-   Verify freshness and preserved unrelated cache hits through real Next/Redis
-   behavior, not only mocked `revalidateTag` calls. Test all affected language
-   fallback homes and canonical/internal URLs.
+```mermaid
+flowchart TB
+  Draft[Draft blocks and authored selectors] --> SummaryAction[Authenticated editor summary action]
+  Search[Library search or exact IDs] --> SummaryAction
+  SummaryAction --> Batches[Video batches of at most 100]
+  Batches --> Winners[SQL aggregates and winner IDs]
+  Winners --> Hydrate[Hydrate bounded locale, image, preview, chip, and authored rows]
+  Hydrate --> Editor[Editor summary state]
+  Editor -->|audio control opens| PageAction[Authenticated Dub page action]
+  PageAction --> PageSQL[Winner-per-language keyset page]
+  PageSQL --> Inventory[Loaded inventory state]
+```
 
-### Publish-gate acceptance tests
+```mermaid
+stateDiagram-v2
+  [*] --> NotLoaded
+  NotLoaded --> Loading: picker opens
+  Loading --> Loaded: page succeeds
+  Loading --> Error: page fails
+  Error --> Loading: retry
+  Loaded --> Loading: search or load more
+  Loading --> Closed: picker closes
+  Error --> Closed: picker closes
+  Loaded --> Closed: picker closes
+  Closed --> Loaded: reopen with a valid cache hit
+  Closed --> Loading: reopen after a miss or expiry
+  Loading --> NotLoaded: video, locale, or session changes
+  Error --> NotLoaded: video, locale, or session changes
+  Loaded --> NotLoaded: video, locale, or session changes
+```
 
-- Malformed blocks, unresolved required videos/languages, render failure, route
-  collision, validation timeout, and exceeded resource budget leave the incumbent
-  DB snapshot, admission manifest, and production cache unchanged. Assert zero
-  invalidation calls/outbox events and verify the incumbent still renders.
-- Draft edited during validation, changed incumbent, expired readiness, dependency
-  withdrawn, revoked permission, and renderer revision mismatch reject promotion.
-- A valid candidate is the exact snapshot promoted, survives retries, creates one
-  logical outbox event, and refreshes only after commit. Simulated commit failure
-  leaves no deliverable event. Worker failure/restart retries without losing it.
-- Candidate preview requests neither mutate live caches nor require promoting the
-  draft. Validation under load preserves incumbent/public API performance.
-- Rollback restores the previous content and route behavior, including locale
-  fallback, and cannot clobber a subsequent publication.
+### Assumptions
 
-Run focused webhook/tag/manifest tests in both apps, lint, typecheck, and production
-builds. Under representative traffic in staging, publish the heavy fixture once
-and repeatedly: edited content must refresh while unrelated video data stays
-cached, with no wave of GraphQL timeouts. Record request counts, cache hits,
-latency, and memory under `docs/validation/feat-502/`.
+- `languageId` is the canonical persisted selector. Legacy `streamingUrl` is compatibility input for exact resolution and is canonicalized only by an intentional Apply.
+- Existing authored/top-up videos remain resolvable when non-deleted even if they are outside normal list search visibility; new browse/search choices keep current list/search visibility.
+- Collection Apply may load every lightweight child reference into editor state because the user's explicit action authors every child, but each server request and each child summary remains bounded.
+- External research is unnecessary: the repository contains direct current patterns for SQL winner selection, lazy inventories, deterministic pagination, bounded promise caches, and Admin server actions.
 
-## Release and completion
+### Sequencing
 
-Ship PR 1 through normal reviewed PR-to-main Railway deployment. Observe editor
-open/save and public GraphQL latency/error/memory metrics before shipping PR 2.
-Ship PR 2 in reviewable increments if needed: additive attempt/outbox storage and
-worker, isolated validation and promotion gate, then receiver/producer cache scope.
-Keep each increment within the publication-safety scope; the gate must be complete
-before claiming protected publication. Ship receiver support through the normal
-flow, verify the production receiver revision, then enable its producer payload.
-Keep legacy payload handling so an
-Admin rollback remains compatible. A later receiver rollback must follow producer
-rollback or retain support for the additive payload.
+U5 freezes the fixture, measurement definitions, and pre-change baseline before production code changes. U1 establishes parity and query contracts. U2 builds the summary projection on those contracts. U3 adds the language-page, collection-page, and validation boundaries. U4 changes the client and collection flow. U6 runs the same harness against the fixed revision and records the final evidence.
 
-Do not call the incident resolved from one healthy browser visit. Retain a
-representative post-deploy traffic window and compare editor-heavy periods with
-the control. If measured editor bounds improve but public timeouts persist, report
-the residual separately rather than broadening this fix into unrelated runtime work.
-Update package cache/loader guidance, capture verified learning in
-`docs/solutions/performance-issues/`, and mark each ticket complete only after its
-own implementation and verification. Planning alone leaves both tickets pending.
+---
+
+## Implementation Units
+
+### U1. Lock editor Dub and authored-selector semantics
+
+- **Goal:** Create reusable editor-specific contracts for summaries, slim Dub choices, inventory state, and every authored selector in a draft.
+- **Requirements:** R4–R8, R13, AE2.
+- **Dependencies:** None.
+- **Files:** `apps/admin/src/app/dashboard/experiences/experience-editor/block-helpers.ts`, `apps/admin/src/app/dashboard/experiences/experience-editor/block-helpers.test.ts`, `apps/admin/src/services/experience-editor-video.service.ts`, `apps/admin/src/services/experience-editor-video.service.test.ts`.
+- **Approach:** Extract all selector occurrences without collapsing different languages on the same video. Encode editor eligibility, stream preference, language identity deduplication, locale matching, authored-language precedence, and deterministic ties as service-owned functions and result types.
+- **Execution note:** Add characterization coverage before replacing the existing inline picker helpers.
+- **Patterns to follow:** `apps/admin/src/app/dashboard/live-data.ts` picker helpers and `docs/solutions/logic-errors/admin-editor-video-picker-locale-first-dub-trimming-20260721.md`.
+- **Test scenarios:**
+  - A video referenced twice with two `languageId` values produces two selectors in stable draft order.
+  - Persisted `languageId` wins over a mismatched legacy stream; a legacy-only block resolves its exact stream before locale fallback.
+  - HLS wins within one Dub, while a DASH/share-only Dub remains editor-playable.
+  - Duplicate language identities and equal timestamps resolve deterministically without changing locale/default ordering.
+  - A background fallback does not alter selector or clip fields; an intentional language change resets clips.
+- **Verification:** Tests express current editor behavior and the new not-loaded versus loaded-empty distinction before data access changes.
+
+### U2. Build bounded editor video summaries
+
+- **Goal:** Return compact summaries for initial library rows, exact referenced IDs, ranked search hydration, collection previews, and rerenders without loading complete Dub inventories.
+- **Requirements:** R1–R4, R13, AE1, AE2.
+- **Dependencies:** U1.
+- **Files:** `apps/admin/src/services/experience-editor-video.service.ts`, `apps/admin/src/services/experience-editor-video.service.test.ts`, `apps/admin/src/services/experience-editor-video.service.db.test.ts`, `apps/admin/src/app/dashboard/live-data.ts`, `apps/admin/src/app/dashboard/live-data.test.ts`, `apps/admin/src/app/dashboard/experiences/[id]/page.tsx`.
+- **Approach:** Add explicit list and exact-ID service methods. Batch IDs at 100, compute counts, chips, locale default IDs, and authored selector IDs in SQL, then hydrate only those rows and the required locale/image/collection-preview metadata. Preserve caller-provided ID order and keep the default first page out of exact search hydration.
+- **Patterns to follow:** `apps/admin/src/services/preferred-playable-dub.service.ts`, `apps/admin/src/services/video.service.ts` keyset helpers, and `docs/solutions/database-issues/stable-admin-search-dub-hydration-ordering.md`.
+- **Test scenarios:**
+  - An incident-scale video with increasing total Dub count returns a constant number of hydrated Dub rows when authored selectors are unchanged.
+  - Exact-ID hydration returns only requested IDs in requested order and does not add the default library page.
+  - Missing, deleted, duplicate, and zero-playable-Dub videos produce distinct bounded summaries without per-video SQL.
+  - Locale exact/base, fallback HLS, fallback DASH/share, null timestamps, and ID ties match U1 parity fixtures.
+  - More than 100 requested IDs are split into bounded batches and preserve overall order.
+- **Verification:** Real PostgreSQL evidence records emitted SQL and materialized row counts; mocked Prisma call counts are supporting evidence only.
+
+### U3. Add paginated language lookup and batched validation
+
+- **Goal:** Expose authenticated, deterministic language pages and validate selected references without loading inventories.
+- **Requirements:** R9, R10, R12, R14, R15, AE3, AE5, AE6.
+- **Dependencies:** U1, U2.
+- **Files:** `apps/admin/src/services/experience-editor-video.service.ts`, `apps/admin/src/services/experience-editor-video.service.test.ts`, `apps/admin/src/services/experience-editor-video.service.db.test.ts`, `apps/admin/src/services/experience-video-language-backfill.ts`, `apps/admin/src/services/experience-video-language-backfill.test.ts`, `apps/admin/src/services/experience.service.ts`, `apps/admin/src/services/experience.service.test.ts`, `apps/admin/src/app/dashboard/experiences/[id]/page.tsx`, `apps/admin/src/app/dashboard/experiences/experience-editor.test.tsx`.
+- **Approach:** Normalize and cap action inputs, select one deterministic playable Dub per language before applying keyset pagination, and bind the cursor to query identity. Return an exact selected choice separately. Add the ordered collection-child page on the same service boundary. Validate referenced selections in batches, preserve a legacy selector on routine Save, and canonicalize it only on intentional Apply.
+- **Patterns to follow:** Inline authenticated server actions in `apps/admin/src/app/dashboard/experiences/[id]/page.tsx` and current deterministic cursor helpers in Admin services.
+- **Test scenarios:**
+  - Page sizes default to 50, clamp values above 100, reject non-positive or non-integer values, and return stable non-overlapping pages across tied rows.
+  - Server search finds later languages by localized label, slug, BCP-47, and duration text without filtering after `take`.
+  - An off-page or filtered-out selected language is returned separately without duplication.
+  - Invalid cursor, mismatched query identity, missing video, and unauthenticated calls fail without leaking options.
+  - Deleted or newly unplayable selections fail Apply; pre-existing unavailable selections return warnings and remain unchanged on unrelated Save.
+  - Collection-child pages contain at most 100 rows and remain stable across equal nullable positions and equal creation times by using the unique relation ID tie-break.
+- **Verification:** Service, action, and real database tests prove pagination stability, permission behavior, and bounded validation query counts.
+
+### U4. Make the audio picker lazy and collection expansion bounded
+
+- **Goal:** Load language options on user intent with resilient client state while preserving preview, selection, clip, and add-all collection behavior.
+- **Requirements:** R4, R7–R11, R14, R15, AE3–AE6.
+- **Dependencies:** U2, U3.
+- **Files:** `apps/admin/src/app/dashboard/experiences/experience-editor.tsx`, `apps/admin/src/app/dashboard/experiences/experience-editor-with-chat.tsx`, `apps/admin/src/app/dashboard/experiences/experience-editor.test.tsx`, `apps/admin/src/app/dashboard/experiences/[id]/page.tsx`.
+- **Approach:** Replace in-memory filtering with action-backed open/search/load-more states and reuse the existing bounded promise-cache helper unchanged. Guard state commits with request identity and abort transport where supported. Keep an unavailable authored choice visible while disabling only playback. For collection Apply, disable duplicate actions, show completed and total child progress, stage pages outside block state, commit only after every page succeeds, and retain the previous state with a retry path after failure.
+- **Patterns to follow:** `apps/admin/src/services/bounded-ttl-promise-cache.ts`, the video-library search effect in `experience-editor.tsx`, and existing jsdom/manual `act` component tests.
+- **Test scenarios:**
+  - Initial render performs no language-page request; first open requests one video and a repeated identical open reuses the cached result.
+  - Rejected requests leave a retry path; retry succeeds and is cached, while rejected promises are not retained.
+  - Rapid video, locale, search, and close transitions ignore stale completions and retain the selected preview and clips.
+  - Keyboard users can search and move through the listbox, Escape returns focus to the trigger, pending states expose `aria-busy`, and result/error changes are announced without moving focus.
+  - An unavailable authored choice remains visibly selected with its warning and clips until the editor intentionally selects a replacement.
+  - Load more appends unique languages in cursor order; changing search resets the cursor without hiding the authored selection.
+  - Collection Apply reports progress, rejects duplicate Apply attempts, commits only after all pages succeed, and retries from an unchanged prior block state after failure.
+- **Verification:** Component tests prove behavior without relying on timing races, and editor props no longer contain a full initial inventory.
+
+### U5. Freeze the representative fixture and baseline
+
+- **Goal:** Preserve a reproducible pre-change baseline and the exact harness the fixed revision must use.
+- **Requirements:** R1–R3 and the Success Criteria.
+- **Dependencies:** None.
+- **Files:** `apps/admin/src/scripts/probe-experience-editor-video-data.ts`, `apps/admin/package.json`, `docs/validation/feat-501/README.md`, `docs/solutions/performance-issues/experience-editor-bounded-video-data-20260914.md`, `docs/roadmap/platform/feat-501-experience-editor-bounded-video-data.md`.
+- **Approach:** Build an isolated fixture matching the incident counts where practical, record deviations, freeze metric definitions and the baseline revision, and capture pre-change measurements before U2. Measure the largest real collection and record its cumulative lightweight expansion cost; if it exceeds the editor budgets, stop and replan the authored representation.
+- **Patterns to follow:** `apps/admin/docs/worktree-preview-setup.md`, `docs/operations/watch-runtime-diagnosis-2026-09-14.md`, and the probe contract in `docs/solutions/performance-issues/watch-selected-dub-projection-20260624.md`.
+- **Test scenarios:**
+  - The same fixture and probe run against the baseline and fixed revisions without changing query, workload, timing, or metric definitions.
+  - The largest representative collection can complete add-all expansion within the fixture's memory and latency budgets; otherwise the stop condition is recorded before implementation proceeds.
+- **Verification:** The baseline record contains the fixture recipe, revisions, counts, hardware, cold/warm state, sample count, emitted SQL definition, and raw absolute measurements needed for a like-for-like comparison.
+
+### U6. Prove fixed bounds and document operational evidence
+
+- **Goal:** Demonstrate behavior parity and resource improvement on the frozen PostgreSQL fixture and production Admin build.
+- **Requirements:** R1–R15 and AE1–AE6.
+- **Dependencies:** U1–U5.
+- **Files:** `apps/admin/src/scripts/probe-experience-editor-video-data.ts`, `apps/admin/package.json`, `docs/validation/feat-501/README.md`, `docs/solutions/performance-issues/experience-editor-bounded-video-data-20260914.md`, `docs/roadmap/platform/feat-501-experience-editor-bounded-video-data.md`.
+- **Approach:** Run the fixed revision through the frozen harness with one and four editor sessions under the same public GraphQL workload. Add compact duration/count telemetry for summary and page loads without logging inventories, user content, or credentials.
+- **Patterns to follow:** U5's frozen harness and measurement contract.
+- **Test scenarios:**
+  - Production-build browser flow opens the heavy homepage, changes a block, selects a non-default language, previews, saves, reopens, and publishes the same selection.
+  - Collection and AI-referenced exact-ID top-up paths remain complete and ordered.
+  - One and four concurrent editors run beside the same public workload with recorded SQL, rows, bytes, pool wait, RSS, heap, event-loop delay, and public latency.
+  - Twenty open/save cycles satisfy the fixed post-idle sampling and trend rule.
+- **Verification:** The validation record includes commands, revisions, fixture counts, sample counts, absolute baseline/fix values, and an explicit pass or blocker for every success criterion. A blocker preserves the evidence but leaves U6 and `feat-501` incomplete.
+
+---
+
+## Verification Contract
+
+| Gate | Command or evidence | Done signal |
+|---|---|---|
+| Focused service and component tests | `pnpm --filter @forge/admin test -- src/services/experience-editor-video.service.test.ts src/app/dashboard/live-data.test.ts src/app/dashboard/experiences/experience-editor/block-helpers.test.ts src/app/dashboard/experiences/experience-editor.test.tsx` | Parity, lazy-loading, stale-response, retry, collection, and warning scenarios pass. |
+| Real PostgreSQL tests | `pnpm --filter @forge/admin test -- src/services/experience-editor-video.service.db.test.ts` with the documented isolated database | Winner, pagination, emitted-SQL, row-bound, and index-plan assertions pass. |
+| Static checks | `pnpm --filter @forge/admin lint` and `pnpm --filter @forge/admin typecheck` | No new lint or type errors. |
+| Production build | `pnpm --filter @forge/admin build` | Next production build and workflow verifiers pass. |
+| Browser behavior | Production-build editor flow against the isolated fixture | Authored language, preview, clips, search, paging, retry, save, reopen, publish, collection, and top-up paths pass. |
+| Performance | `docs/validation/feat-501/README.md` | Every success budget has comparable baseline/fix evidence and passes; a named blocker preserves evidence but does not satisfy this gate. |
+| Frontend load impact | Initial RSC bytes plus query-row/SQL counts before and after | The cold path meets the 90% serialized Dub-data reduction and shows no replacement fanout. |
+
+---
+
+## Definition of Done
+
+- U1–U6 satisfy their requirements and test scenarios with no full Dub inventory in initial editor props or rerender actions.
+- The selected/default Dub, preview URL, duration, clips, and persisted selector remain coherent across reopen, lazy load, failure, search, and intentional change.
+- Exact-ID, collection, language, and validation paths use bounded batches and deterministic order without per-video queries or silent truncation.
+- Focused tests, real PostgreSQL tests, Admin lint, typecheck, production build, browser verification, and the performance evidence record pass. A genuine external blocker is reported with evidence and leaves the plan incomplete.
+- Compact telemetry contains counts and durations only; inventories, authored content, and credentials are absent.
+- `feat-501` is marked complete only after its verification passes. `feat-502` remains pending for its separate PR.
+- Experimental or abandoned implementation paths are removed from the final diff, and durable findings are captured in `docs/solutions/performance-issues/`.

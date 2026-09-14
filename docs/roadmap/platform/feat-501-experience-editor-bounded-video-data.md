@@ -3,7 +3,7 @@ id: "feat-501"
 title: "Bound experience editor video data and load languages on demand"
 owner: "vlad"
 priority: "P0"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-14"
 duration: 3
 depends_on: []
