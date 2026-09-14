@@ -530,6 +530,7 @@ export async function composeDevotionalContent(
     reference: scripture.reference,
     scriptureText: scripture.text,
     reflection: reflectionText,
+    ...(input.clipTranscript ? { clipTranscript: input.clipTranscript } : {}),
     // Rotate the cover-hook form by sequence so openings vary (not always a
     // question / "What if...").
     hookStyle: hookStyleForSequence(input.sequence),
@@ -543,6 +544,7 @@ export async function composeDevotionalContent(
     reference: scripture.reference,
     scriptureText: scripture.text,
     reflection: reflectionText,
+    ...(input.clipTranscript ? { clipTranscript: input.clipTranscript } : {}),
     title: copy.title,
     question: copy.question,
     prayer: copy.prayer,

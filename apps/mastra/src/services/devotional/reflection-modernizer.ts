@@ -2,8 +2,8 @@ import { z } from "zod"
 
 import { DevotionalLlmError, type DevotionalLlm } from "./llm"
 import { MAX_DEVOTIONAL_TEXT_LENGTH } from "./types"
+import { clipStoryBlock, REFLECTION_ROLE } from "./clip-story"
 import { checkReflectionVoice } from "./reflection-voice-check"
-import { quoteTranscript } from "./subtitle-align"
 
 /**
  * Reflection modernizer — a dedicated, tightly-bounded agent.
@@ -200,6 +200,20 @@ export const SYSTEM_PROMPT = [
   "sentence reads as doctrine right up until you look at what it asks of the",
   "listener. If a sentence names a condition the listener must meet, cut the",
   "condition, whatever the sentence sounds like.",
+  "",
+  "THE CLIP IS THE FIRST ACT, NOT A SEPARATE THING TO WORK AROUND.",
+  "- When the clip's own words are given to you above, they are the OPENING",
+  "  of the very piece you are writing. You are not commenting on a video from",
+  "  the outside; you are continuing one story that starts on screen, runs",
+  "  through your reflection, and ends in the viewer's own prayer.",
+  "- So the test for a sentence is not 'does this mention the scene' — it is",
+  "  'does this MOVE THE STORY FORWARD'. A sentence that reports what the clip",
+  "  already showed or said moves nothing, because the viewer was there for it.",
+  "  A sentence that says what those events mean, or what they make true now,",
+  "  moves it.",
+  "- This is why touching a detail is allowed while retelling is not. Reaching",
+  "  back for the one concrete thing the author's argument hangs on continues",
+  "  the story. Walking back through the events restarts it.",
   "",
   "THE FIRST SENTENCE ASSERTS SOMETHING, IT DOES NOT SET A SCENE.",
   "- A mechanical check reads your opening before anything else runs, and it",
@@ -587,6 +601,11 @@ export async function modernizeReflection(
   const sourceBlock = ["Source text:", options.sourceText].join("\n")
 
   const user = [
+    // FIRST, before anything else: the clip's own words, framed as the story's
+    // opening act rather than as forbidden material. Position is part of the
+    // fix — the same transcript sitting below the length target was measurably
+    // ignored on four of five chapters (see clip-story.ts).
+    ...clipStoryBlock(options.clipTranscript, REFLECTION_ROLE),
     `Passage to focus on: ${options.focusReference}`,
     `Author/source: ${options.sourceName}`,
     ...(options.scriptureReference && options.scriptureText
@@ -602,16 +621,6 @@ export async function modernizeReflection(
           "by CONNECTING to it (see the ONE BRIDGE SENTENCE rule), then develop",
           "your own point. Do not restate it and do not contradict it.",
           `FIRST HALF ALREADY HEARD:\n${options.precedingHalf}`,
-        ]
-      : []),
-    ...(options.clipTranscript
-      ? [
-          "",
-          "What the clip's own audio says, word for word:",
-          `"${quoteTranscript(options.clipTranscript)}"`,
-          "Do not repeat these lines or this sequence of events in your",
-          "reflection — say something ABOUT them instead. This is the exact",
-          "clip the viewer just watched, not an assumption about it.",
         ]
       : []),
     `Target length: about ${approxWords} words across 2–3 short paragraphs (a ~60–75 second spoken reflection).`,

@@ -50,7 +50,7 @@ describe("modernizeReflection", () => {
     )
   })
 
-  it("passes the clip's real transcript to the model when given, telling it not to repeat those lines", async () => {
+  it("passes the clip's real transcript to the model, framed as the story's first act", async () => {
     const complete = vi.fn().mockResolvedValue({ adapted: "Modernized." })
     await modernizeReflection({
       sourceText: "x",
@@ -64,7 +64,37 @@ describe("modernizeReflection", () => {
     expect(user).toContain(
       "Once there were two men who went up to the temple to pray.",
     )
-    expect(user).toMatch(/do not repeat these lines/i)
+    // The framing is a positive brief ("act one, you write act two"), not a
+    // prohibition. The prohibition version measurably did not work: the depth
+    // critic raised `retells-scene` on four of the five chapters it was tried
+    // on, because "don't do X" leaves the model to guess what to do instead.
+    expect(user).toMatch(/ACT ONE/)
+    expect(user).toMatch(/YOUR PART IS WHAT COMES NEXT/)
+    expect(user).toMatch(/ONE continuous piece/)
+  })
+
+  it("puts the clip's words FIRST, ahead of the passage and the source text", () => {
+    // Position is the fix, not a detail. This exact transcript used to sit
+    // below the length target, after the whole selection brief, and the model
+    // wrote narration anyway. A regression here would silently restore the
+    // behaviour the tests above can still pass with.
+    const complete = vi.fn().mockResolvedValue({ adapted: "Modernized." })
+    return modernizeReflection({
+      sourceText: "SOURCE_MARKER",
+      focusReference: "Luke 18:9-14",
+      sourceName: "Ryle",
+      clipTranscript: "TRANSCRIPT_MARKER",
+      llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+    }).then(() => {
+      const user = complete.mock.calls[0][0].user as string
+      expect(user.indexOf("ACT ONE")).toBe(0)
+      expect(user.indexOf("TRANSCRIPT_MARKER")).toBeLessThan(
+        user.indexOf("Passage to focus on"),
+      )
+      expect(user.indexOf("TRANSCRIPT_MARKER")).toBeLessThan(
+        user.indexOf("SOURCE_MARKER"),
+      )
+    })
   })
 
   it("omits the transcript block entirely when clipTranscript isn't given, leaving every other line unchanged", async () => {
@@ -82,7 +112,7 @@ describe("modernizeReflection", () => {
     expect(user).toContain("Thou art with me")
     expect(user).toContain("Luke 8:22-25")
     expect(user).toContain("about 80 words")
-    expect(user).not.toMatch(/clip's own audio says/i)
+    expect(user).not.toMatch(/ACT ONE/)
   })
 
   it("treats an empty-string transcript the same as no transcript", async () => {
@@ -94,7 +124,7 @@ describe("modernizeReflection", () => {
       clipTranscript: "",
       llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
     })
-    expect(complete.mock.calls[0][0].user).not.toMatch(/clip's own audio says/i)
+    expect(complete.mock.calls[0][0].user).not.toMatch(/ACT ONE/)
   })
 
   it("omits the quoted-verse line entirely when scriptureReference/Text aren't given", async () => {

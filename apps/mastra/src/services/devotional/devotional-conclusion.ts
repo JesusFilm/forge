@@ -3,6 +3,8 @@ import { z } from "zod"
 import { DevotionalLlmError, type DevotionalLlm } from "./llm"
 import { MAX_DEVOTIONAL_SHORT_TEXT } from "./types"
 
+import { clipStoryBlock, CONCLUSION_ROLE } from "./clip-story"
+
 /**
  * Conclusion writer — a dedicated, narrow agent, split out of the general
  * copywriter (devotional-copy.ts) because "conclusion" turned out to carry a
@@ -121,6 +123,9 @@ export type WriteDevotionalConclusionInput = {
   scriptureText: string
   /** The already-modernized reflection text this conclusion must echo. */
   reflection: string
+  /** The clip's own subtitle text, when the fetch succeeded — the takeaway is
+   *  the last line of the arc the clip opened. */
+  clipTranscript?: string
   /** Already-chosen fields from the copywriter, so the conclusion stays
    *  complementary rather than redundant. */
   title: string
@@ -142,6 +147,7 @@ export class DevotionalConclusionError extends Error {
 
 function buildUser(input: WriteDevotionalConclusionInput): string {
   return [
+    ...clipStoryBlock(input.clipTranscript, CONCLUSION_ROLE),
     `Scene: ${input.sceneTitle}`,
     `Verse (${input.reference}): ${input.scriptureText}`,
     "",

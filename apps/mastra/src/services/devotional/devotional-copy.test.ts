@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { HOOK_STYLES, hookStyleForSequence, writeDevotionalCopy } from "./devotional-copy"
+import {
+  HOOK_STYLES,
+  hookStyleForSequence,
+  writeDevotionalCopy,
+} from "./devotional-copy"
 import { DevotionalLlmError, type DevotionalLlm } from "./llm"
 
 const fakeLlm = (complete: DevotionalLlm["complete"]): DevotionalLlm => ({
@@ -31,6 +35,48 @@ describe("writeDevotionalCopy", () => {
     expect(user).toContain("Jesus Calms the Storm")
     expect(user).toContain("Luke 8:25")
     expect(user).toContain("Christ stilled the storm")
+  })
+
+  it("writes the cover/question/prayer against the clip's own words as act one", async () => {
+    const complete = vi.fn().mockResolvedValue({
+      title: "t",
+      question: "q",
+      prayer: "p",
+    })
+    await writeDevotionalCopy({
+      sceneTitle: "Jesus Calms the Storm",
+      reference: "Luke 8:25",
+      scriptureText: "Where is your faith?",
+      reflection: "Christ stilled the storm with a word.",
+      clipTranscript: "Master! We are about to die!",
+      llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+    })
+    const user = complete.mock.calls[0][0].user as string
+    expect(user).toContain("Master! We are about to die!")
+    // The cover is the way IN to the story the clip opens, so the transcript
+    // has to reach this writer too — the arc runs cover → clip → reflection →
+    // takeaway → question → prayer, and only the reflection used to see it.
+    expect(user).toMatch(/The title is the way IN to this story/)
+    expect(user.indexOf("ACT ONE")).toBe(0)
+  })
+
+  it("leaves the prompt unchanged when there is no transcript, or an empty one", async () => {
+    const complete = vi
+      .fn()
+      .mockResolvedValue({ title: "t", question: "q", prayer: "p" })
+    const base = {
+      sceneTitle: "Jesus Calms the Storm",
+      reference: "Luke 8:25",
+      scriptureText: "Where is your faith?",
+      reflection: "Christ stilled the storm with a word.",
+      llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+    }
+    await writeDevotionalCopy(base)
+    await writeDevotionalCopy({ ...base, clipTranscript: "" })
+    // `fetchClipTranscript` is best-effort by contract, so this is a normal
+    // path, not an error path — both runs must be the pre-feature prompt.
+    expect(complete.mock.calls[0][0].user).not.toMatch(/ACT ONE/)
+    expect(complete.mock.calls[1][0].user).toBe(complete.mock.calls[0][0].user)
   })
 
   it("passes the rotated hook style to the model when provided", async () => {

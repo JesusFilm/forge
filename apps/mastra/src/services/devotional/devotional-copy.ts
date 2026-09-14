@@ -3,6 +3,8 @@ import { z } from "zod"
 import { DevotionalLlmError, type DevotionalLlm } from "./llm"
 import { MAX_DEVOTIONAL_SHORT_TEXT } from "./types"
 
+import { clipStoryBlock, COPY_ROLE } from "./clip-story"
+
 /**
  * Short-form devotional copy: given the scene, its scripture, and the (already
  * modernized) reflection, produce the small pieces of on-screen/spoken copy —
@@ -149,6 +151,10 @@ export type DevotionalCopyInput = {
   reference: string
   scriptureText: string
   reflection: string
+  /** The clip's own subtitle text, when the fetch succeeded. The cover is the
+   *  way IN to the story the clip opens, and the question/prayer are where it
+   *  lands, so all three are written against it rather than around it. */
+  clipTranscript?: string
   /** Rotated cover-hook form for THIS devotional (see hookStyleForSequence). */
   hookStyle?: string
   llm: DevotionalLlm
@@ -175,6 +181,7 @@ export async function writeDevotionalCopy(
   input: DevotionalCopyInput,
 ): Promise<DevotionalCopy> {
   const user = [
+    ...clipStoryBlock(input.clipTranscript, COPY_ROLE),
     `Scene: ${input.sceneTitle}`,
     `Verse (${input.reference}): ${input.scriptureText}`,
     ...(input.hookStyle

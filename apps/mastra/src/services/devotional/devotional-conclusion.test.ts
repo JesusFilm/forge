@@ -24,6 +24,32 @@ const BASE_INPUT = {
 }
 
 describe("writeDevotionalConclusion", () => {
+  it("writes the takeaway as the last line of the arc the clip opened", async () => {
+    const complete = vi
+      .fn()
+      .mockResolvedValue({ conclusion: "He still speaks." })
+    await writeDevotionalConclusion({
+      ...BASE_INPUT,
+      clipTranscript: "Master! We are about to die!",
+      llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+    })
+    const user = complete.mock.calls[0][0].user as string
+    expect(user).toContain("Master! We are about to die!")
+    expect(user).toMatch(/LAST line of this arc/)
+    expect(user.indexOf("ACT ONE")).toBe(0)
+  })
+
+  it("leaves the prompt unchanged when there is no transcript, or an empty one", async () => {
+    const complete = vi
+      .fn()
+      .mockResolvedValue({ conclusion: "He still speaks." })
+    const llm = fakeLlm(complete as unknown as DevotionalLlm["complete"])
+    await writeDevotionalConclusion({ ...BASE_INPUT, llm })
+    await writeDevotionalConclusion({ ...BASE_INPUT, clipTranscript: "", llm })
+    expect(complete.mock.calls[0][0].user).not.toMatch(/ACT ONE/)
+    expect(complete.mock.calls[1][0].user).toBe(complete.mock.calls[0][0].user)
+  })
+
   it("returns a trimmed conclusion and feeds the model the scene + reflection + already-chosen fields", async () => {
     const complete = vi
       .fn()
