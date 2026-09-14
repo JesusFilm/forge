@@ -3,6 +3,15 @@ import { Composition } from "remotion"
 import { calculateDevotionalMetadata } from "./calculate-metadata"
 import { DevotionalVideo } from "./DevotionalVideo"
 import {
+  Teaser,
+  TEASER_COMPOSITION_ID,
+  TEASER_FPS,
+  TEASER_HEIGHT,
+  TEASER_WIDTH,
+  teaserDurationSec,
+  teaserInputPropsSchema,
+} from "./Teaser"
+import {
   DEVOTIONAL_COMPOSITION_ID,
   DEVOTIONAL_FPS,
   DEVOTIONAL_HEIGHT,
@@ -68,6 +77,24 @@ export const DevotionalRoot = () => (
       fps={DEVOTIONAL_FPS}
       durationInFrames={900}
       defaultProps={defaultProps}
+    />
+    {/* Vertical teaser: blurred footage + word burst → reveal → question → CTA.
+        Rendered by apps/shorts-worker/scripts/render-teaser.mjs. */}
+    <Composition
+      id={TEASER_COMPOSITION_ID}
+      component={Teaser}
+      schema={teaserInputPropsSchema}
+      width={TEASER_WIDTH}
+      height={TEASER_HEIGHT}
+      fps={TEASER_FPS}
+      // Length follows the narration: a re-voiced line changes the runtime.
+      calculateMetadata={({ props }) => ({
+        durationInFrames: Math.round(
+          teaserDurationSec(props.lines, props.revealSourceSec) * TEASER_FPS,
+        ),
+      })}
+      durationInFrames={Math.round(teaserDurationSec() * TEASER_FPS)}
+      defaultProps={{ clipFile: "teaser-clip.mp4", revealSourceSec: 17 }}
     />
   </>
 )

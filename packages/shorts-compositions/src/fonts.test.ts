@@ -73,7 +73,7 @@ describe("loadShortFonts failure caching", () => {
     vi.stubGlobal("FontFace", FakeFontFace)
     vi.stubGlobal("document", { fonts: { add: fontsAdd } })
 
-    const { loadShortFonts: load } = await import("./fonts")
+    const { loadShortFonts: load, FONT_SOURCES } = await import("./fonts")
 
     const first = load()
     await expect(first).rejects.toThrow("font load failed")
@@ -88,7 +88,11 @@ describe("loadShortFonts failure caching", () => {
     await expect(second).resolves.toBeUndefined()
     expect(delayRender).toHaveBeenCalledTimes(2)
     expect(continueRender).toHaveBeenCalledWith(7)
-    expect(fontsAdd).toHaveBeenCalledTimes(6) // Montserrat latin+cyrillic+cyrillic-ext, Inter latin+cyrillic+cyrillic-ext
+    // One registered face per declared source. Derived, not a literal: the
+    // hard-coded 6 stayed behind when EB Garamond and Source Serif 4 were
+    // added, and a count that has to be edited by hand will go stale again.
+    expect(FONT_SOURCES.length).toBeGreaterThan(0)
+    expect(fontsAdd).toHaveBeenCalledTimes(FONT_SOURCES.length)
 
     // Success IS memoized: a third call returns the cached promise.
     expect(load()).toBe(second)

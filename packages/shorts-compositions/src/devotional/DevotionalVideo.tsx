@@ -6,12 +6,14 @@ import {
   OffthreadVideo,
   Sequence,
   interpolate,
+  interpolateColors,
   staticFile,
   useCurrentFrame,
   useVideoConfig,
 } from "remotion"
 
 import { loadShortFonts, SHORT_FONT_FAMILIES } from "../fonts"
+import { StepperStack } from "./Stepper"
 import type { DevotionalCard, DevotionalInputProps } from "./schema"
 import { resolveDevotionalStyle, type DevotionalStyle } from "./styles"
 import {
@@ -35,7 +37,11 @@ const TEXT_SHADOW = "0 2px 28px rgba(0,0,0,0.32)"
 const COVER_ANIM_SEC = 7
 // Owner rule: Inter, after comparing mockups against Montserrat.
 const SANS = `'${SHORT_FONT_FAMILIES.inter}', -apple-system, system-ui, sans-serif`
-const SERIF = "Georgia, 'Times New Roman', serif"
+// Owner rule: Source Serif 4 carries the serif text (title, scripture,
+// questions, prayer, conclusion) — it held up better than EB Garamond once
+// both were rendered and viewed on a phone. The reflection body stays on
+// SANS: it is the longest block of reading in the piece.
+const SERIF = `'${SHORT_FONT_FAMILIES.sourceSerif}', Georgia, 'Times New Roman', serif`
 const BRAND_PATH =
   "M53,0H2.7A2.7,2.7,0,0,0,0,2.7V23.38A2.71,2.71,0,0,0,2,26L54.36,40.66a1,1,0,0,0,1.29-1V2.7A2.7,2.7,0,0,0,53,0Z"
 const GRAIN_URL =
@@ -111,6 +117,10 @@ function blurRegionFor(
   // The conclusion is the emotional ending: it always lands centered on a fully
   // blurred, calm background (never the sharp/moving footage), so the closing
   // phrase isn't fighting the video. Independent of layout/panel-frost.
+  // The stepper is a calm interstitial: it sits on a fully blurred ground so
+  // the four words are the only thing to read, the same treatment as the
+  // conclusion.
+  if (kind === "step") return "whole"
   if (kind === "conclusion") return "whole"
   if (kind === "cta") return "whole" // teaser end-card sits on a calm blurred bg
   if (usesPanelFrost(kind, style)) return "none"
@@ -217,17 +227,22 @@ function LetterReveal({
  * remaps the film's own subtitle cues through the pause cuts + speed-up — see
  * `mapCuesToEditedTimeline`).
  *
- * Placement: in PORTRAIT the clip plays in a centered 1:1 window spanning
- * 21.9%–78.15% of the frame height (see the video-card branch of Background),
- * so captions sit just INSIDE that window's bottom edge — over the picture,
- * where subtitles belong — and are anchored from the bottom so extra lines
- * grow UP. Owner rules: same typeface as the cards (SANS), and never low
- * enough for a social app's caption/nav chrome to cover them; anchoring above
- * the picture's bottom edge keeps them ~100px clear of the `igSafeBottom`
- * line, and the right inset clears the action rail.
+ * Placement: in PORTRAIT the clip plays in a 1:1 window anchored near the TOP
+ * of the frame (see the video-card branch of Background) — owner: the old
+ * centered window left dead blurred margins above AND below the picture, and
+ * captions anchored inside the window's bottom edge sat ON TOP of the film
+ * instead of in that space. Now the window sits high, and captions live in
+ * the band BELOW it — clear of the picture, using the space that used to be
+ * wasted — growing DOWN toward the frame's safe-bottom line instead of up
+ * into the video. Owner rules: same typeface as the cards (SANS), and never
+ * low enough for a social app's caption/nav chrome to cover them; the right
+ * inset clears the action rail.
  */
-/** Portrait: bottom of the centered 1:1 video window, as a % of frame height. */
-const VIDEO_WINDOW_BOTTOM_PCT = 78.15
+/** Portrait: top of the 1:1 video window, as a % of frame height — a small
+ *  clearance from the very top rather than the old vertical centering. */
+const VIDEO_WINDOW_TOP_PCT = 3
+/** Bottom of that window (top + the fixed 56.25% square crop height). */
+const VIDEO_WINDOW_BOTTOM_PCT = VIDEO_WINDOW_TOP_PCT + 56.25
 function VideoSubtitles({
   cues,
   px,
@@ -235,6 +250,7 @@ function VideoSubtitles({
   fps,
   isLandscape,
   safeRight,
+  safeBottom,
 }: {
   cues: NonNullable<DevotionalCard["subtitles"]>
   style: DevotionalStyle
@@ -244,6 +260,8 @@ function VideoSubtitles({
   isLandscape: boolean
   /** Right inset that keeps captions clear of the action rail. */
   safeRight: number
+  /** Portrait only: bottom inset clearing the social app's own UI chrome. */
+  safeBottom: number
 }) {
   const t = frame / fps
   const fade = 0.18
@@ -254,17 +272,17 @@ function VideoSubtitles({
         left: px(40),
         // Portrait: stop short of the right-hand action rail.
         right: isLandscape ? px(40) : safeRight,
-        top: "45%",
-        // Portrait: sit just inside the 1:1 video window's bottom edge — over
-        // the picture, and ~100px clear of the social UI's safe line (which is
-        // `safeBottom`, further down). Landscape: a normal bottom inset.
-        bottom: isLandscape
-          ? px(28)
-          : `calc(${100 - VIDEO_WINDOW_BOTTOM_PCT}% + ${px(16)}px)`,
+        // Portrait: start just below the video window's bottom edge — in the
+        // space that used to sit empty, not over the picture. Landscape:
+        // unchanged, the band sits over the blur in the lower-middle.
+        top: isLandscape
+          ? "45%"
+          : `calc(${VIDEO_WINDOW_BOTTOM_PCT}% + ${px(16)}px)`,
+        bottom: isLandscape ? px(28) : safeBottom,
         display: "flex",
-        // Anchored to the bottom: a 3-line cue grows UP toward the picture,
-        // never down toward the chrome.
-        alignItems: "flex-end",
+        // Landscape keeps growing UP toward the picture above it. Portrait
+        // now has real space below the video, so cues grow DOWN into it.
+        alignItems: isLandscape ? "flex-end" : "flex-start",
         justifyContent: "center",
         pointerEvents: "none",
       }}
@@ -278,8 +296,9 @@ function VideoSubtitles({
           { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
         )
         if (opacity <= 0) return null
-        // Every cue is absolutely positioned in the SAME centered box, so
-        // adjacent lines cross-fade in place instead of shifting.
+        // Every cue is absolutely positioned in the SAME box, so adjacent
+        // lines cross-fade in place instead of shifting. Anchored from
+        // whichever edge the cues grow from.
         return (
           <div
             key={i}
@@ -287,7 +306,7 @@ function VideoSubtitles({
               position: "absolute",
               left: 0,
               right: 0,
-              bottom: 0,
+              ...(isLandscape ? { bottom: 0 } : { top: 0 }),
               display: "flex",
               justifyContent: "center",
               opacity,
@@ -318,13 +337,189 @@ function VideoSubtitles({
   )
 }
 
-function Grain({ opacity }: { opacity: number }) {
+type SpokenWord = { word: string; startSec: number; endSec: number }
+
+/** Strip punctuation/case so a spoken word can be matched to an on-screen one. */
+const wordKey = (w: string) => w.toLowerCase().replace(/[^\p{L}\p{N}']/gu, "")
+
+/**
+ * Line up the card's VISIBLE text against the narration's spoken words.
+ *
+ * The two are not the same list: the spoken segment carries connectors the
+ * screen never shows ("Reflect on this.", "Here's where we're reading
+ * today."), so using the raw alignment would start the reveal several words
+ * early and drift for the whole card. This finds where the visible text sits
+ * inside the spoken sequence and returns one timing per visible token, or null
+ * when it cannot line them up — in which case the caller keeps its old
+ * pace-based reveal rather than showing words against wrong times.
+ */
+function alignWordsToText(
+  text: string,
+  spoken: SpokenWord[],
+): { token: string; startSec: number; endSec: number }[] | null {
+  const tokens = text.split(/\s+/).filter(Boolean)
+  if (tokens.length === 0 || spoken.length === 0) return null
+  const tKeys = tokens.map(wordKey)
+  const sKeys = spoken.map((s) => wordKey(s.word))
+  const firstReal = tKeys.findIndex((k) => k.length > 0)
+  if (firstReal === -1) return null
+  for (let offset = 0; offset + tokens.length <= spoken.length; offset++) {
+    let ok = true
+    for (let i = 0; i < tKeys.length; i++) {
+      if (!tKeys[i]) continue // punctuation-only token matches anything
+      if (sKeys[offset + i] !== tKeys[i]) {
+        ok = false
+        break
+      }
+    }
+    if (ok) {
+      return tokens.map((token, i) => ({
+        token,
+        startSec: spoken[offset + i].startSec,
+        endSec: spoken[offset + i].endSec,
+      }))
+    }
+  }
+  return null
+}
+
+/**
+ * Reveal a sentence word by word, each word appearing exactly when the voice
+ * says it (real ElevenLabs alignment), and staying up so the sentence builds.
+ *
+ * Each word also lands in the accent colour and cools to `restColor` over
+ * ACCENT_SETTLE_SEC, so the word being spoken is the one the eye goes to. The
+ * highlight phrase is exempt — it keeps the accent for good, which is the whole
+ * point of a highlight.
+ */
+const ACCENT_SETTLE_SEC = 0.42
+
+function WordReveal({
+  timings,
+  frame,
+  fps,
+  audioDelaySec,
+  highlight,
+  style,
+  restColor,
+  preOpacity = 0,
+}: {
+  timings: { token: string; startSec: number; endSec?: number }[]
+  frame: number
+  fps: number
+  audioDelaySec: number
+  highlight?: string
+  style: DevotionalStyle
+  /** Colour a word settles to. Omit to leave the inherited colour alone (no
+   *  accent flash) — needed for callers whose text colour is not a plain hex
+   *  that `interpolateColors` can read. */
+  restColor?: string
+  /**
+   * Opacity of a word BEFORE the voice reaches it. 0 (default) is the reveal:
+   * the sentence builds word by word. Above 0 the whole line is on screen from
+   * the start, faint, and the voice fills it in — the treatment the owner
+   * asked for on the stepper's opening line, where the line has to be readable
+   * before it is read.
+   */
+  preOpacity?: number
+}) {
+  const t = frame / fps - audioDelaySec
+  const hlKeys = new Set(
+    (highlight ?? "").split(/\s+/).map(wordKey).filter(Boolean),
+  )
+  return (
+    <>
+      {timings.map((w, i) => {
+        const opacity = interpolate(
+          t,
+          [w.startSec - 0.06, w.startSec + 0.12],
+          [preOpacity, 1],
+          { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+        )
+        const inHl = hlKeys.size > 0 && hlKeys.has(wordKey(w.token))
+        // How ACCENT-coloured the word is right now: warms as the voice
+        // reaches it, cools back to `restColor` over ACCENT_SETTLE_SEC.
+        //
+        // Expressed as warm-from-rest rather than cool-from-accent because a
+        // word that is on screen BEFORE it is spoken (preOpacity > 0) must
+        // start in the rest colour — under the old form every unspoken word sat
+        // there in dim gold.
+        const clampBoth = {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        } as const
+        const warm = restColor
+          ? Math.min(
+              interpolate(
+                t,
+                [w.startSec - 0.06, w.startSec + 0.06],
+                [0, 1],
+                clampBoth,
+              ),
+              interpolate(
+                t,
+                [w.startSec + 0.06, w.startSec + 0.06 + ACCENT_SETTLE_SEC],
+                [1, 0],
+                clampBoth,
+              ),
+            )
+          : 0
+        return (
+          <span
+            key={i}
+            style={{
+              opacity,
+              ...(inHl
+                ? {
+                    color: style.highlight,
+                    fontStyle: style.highlightItalic ? "italic" : undefined,
+                  }
+                : restColor
+                  ? {
+                      color: interpolateColors(
+                        warm,
+                        [0, 1],
+                        [restColor, style.eyebrow],
+                      ),
+                    }
+                  : {}),
+            }}
+          >
+            {w.token}
+            {i < timings.length - 1 ? " " : ""}
+          </span>
+        )
+      })}
+    </>
+  )
+}
+
+function Grain({
+  opacity,
+  sizePx,
+  tint,
+  blend,
+}: {
+  opacity: number
+  /** Tile size. Smaller = finer, crisper grain. See `grainSizePx` in schema. */
+  sizePx?: number
+  /** Overrides the built-in dark-brown tint; see `grainFilter` in the schema. */
+  tint?: string
+  blend?: string
+}) {
+  const size = sizePx ?? 260
   return (
     <AbsoluteFill
       style={{
         backgroundImage: GRAIN_URL,
-        backgroundSize: "260px 260px",
-        mixBlendMode: "overlay",
+        backgroundSize: `${size}px ${size}px`,
+        // The turbulence noise is colorless on its own — `overlay` blending it
+        // straight just darkens/lightens whatever's underneath. Owner rule: no
+        // color GRADE on the footage itself, but the grain texture should read
+        // as dark brown film grain, not neutral gray. Tint it before blending.
+        filter:
+          tint ?? "sepia(1) saturate(3.2) brightness(0.32) hue-rotate(-6deg)",
+        mixBlendMode: (blend ?? "overlay") as "overlay",
         opacity,
         pointerEvents: "none",
       }}
@@ -483,6 +678,7 @@ function AttributionCredit({
   fps,
   delaySec,
   animate,
+  inline = false,
 }: {
   px: (n: number) => number
   text: string
@@ -492,6 +688,10 @@ function AttributionCredit({
   fps: number
   delaySec: number
   animate: boolean
+  /** Flow with the cover's stack (under the title) instead of hanging off the
+   *  bottom edge. Owner: pinned to the foot it was so faint and so far from
+   *  everything else that she read it as missing. */
+  inline?: boolean
 }) {
   const chars = Array.from(text)
   const fade = 0.42 * fps
@@ -499,10 +699,14 @@ function AttributionCredit({
   return (
     <div
       style={{
-        position: "absolute",
-        left: px(24),
-        right: px(24),
-        bottom: bottomPx,
+        ...(inline
+          ? { position: "relative", marginTop: px(22), maxWidth: px(430) }
+          : {
+              position: "absolute",
+              left: px(24),
+              right: px(24),
+              bottom: bottomPx,
+            }),
         textAlign: "center",
         fontFamily: SANS,
         // Regular weight (owner: "just text") — a quiet, uniform credit; the
@@ -685,12 +889,26 @@ function CoverIntro({
   titleFirst,
   textStatic,
   secondaryLine,
+  titleWords,
+  settleLine,
+  settleWords,
+  style,
+  textFont,
 }: {
   px: (n: number) => number
   frame: number
   fps: number
   durationInFrames: number
   title: ReactNode
+  /** Per-word times for the TITLE, so the hook types in with the voice. */
+  titleWords?: { token: string; startSec: number }[] | null
+  /** The settle line the voice speaks after the hook, shown under it. */
+  settleLine?: string
+  /** Per-word times for that settle line. */
+  settleWords?: { token: string; startSec: number }[] | null
+  style?: DevotionalStyle
+  /** Typeface for the headline; the date/settle line keep the sans. */
+  textFont?: "sans" | "serif"
   date: string
   /** Fixed-date occasion tag (e.g. "World Humanitarian Day"); most days none. */
   occasion?: string
@@ -736,6 +954,9 @@ function CoverIntro({
   // `hideLogo` rather than asking callers to remember `coverTitleFirst` keeps
   // the two flags from being set inconsistently.
   const titleLeads = titleFirst || Boolean(hideLogo)
+  // Owner: the mark comes in two seconds after the title starts — a fixed
+  // beat, not a wait for the spoken hook to finish. Waiting for the voice put
+  // the logo in the last second of a short cover, with the credit behind it.
   const logoDelay = titleLeads ? Math.round(LOGO_DELAY_SEC * fps) : 0
   const pLogo = staticCover
     ? 1
@@ -935,22 +1156,78 @@ function CoverIntro({
         </div>
       ) : null}
 
-      {/* headline */}
+      {/* headline — a step lighter and a touch smaller than the launch size
+          (owner: 700/60px read as heavier and larger than intended). */}
       <div
         style={{
-          fontFamily: SANS,
-          fontWeight: 700,
-          fontSize: cpx(32.5), // 60px
-          lineHeight: 1.04,
-          letterSpacing: cpx(-0.758), // −1.4px
+          fontFamily: textFont === "serif" ? SERIF : SANS,
+          // The serif carries the hook at its regular weight — 600 read as
+          // bold in EB Garamond (owner: "don't make it bold").
+          fontWeight: textFont === "serif" ? 400 : 600,
+          fontSize: cpx(29.3), // 54px
+          lineHeight: 1.08,
+          letterSpacing: cpx(-0.65), // −1.2px
           color: "#fff",
           maxWidth: cpx(487), // 900px
-          opacity: headOpacity,
-          transform: `translateY(${headY}px)`,
+          // With word timings the hook types itself in, so the block-level
+          // rise/fade would double up on it.
+          opacity: titleWords ? 1 : headOpacity,
+          transform: titleWords ? undefined : `translateY(${headY}px)`,
         }}
       >
-        {title}
+        {titleWords && style ? (
+          <WordReveal
+            timings={titleWords}
+            frame={frame}
+            fps={fps}
+            audioDelaySec={0}
+            style={style}
+            restColor="#fff"
+          />
+        ) : (
+          title
+        )}
       </div>
+      {/* The settle line the voice speaks after the hook ("Let's slow down and
+          give Scripture our attention."), eased in with a slight zoom so it
+          arrives as its own beat rather than appearing with the headline. */}
+      {settleLine && settleWords && settleWords.length > 0
+        ? (() => {
+            const startSec = settleWords[0].startSec
+            const t = frame / fps
+            const inSpan = 0.7
+            const appear = interpolate(
+              t,
+              [startSec - 0.1, startSec + inSpan],
+              [0, 1],
+              clamp,
+            )
+            const zoom = interpolate(
+              t,
+              [startSec - 0.1, startSec + inSpan + 0.6],
+              [0.965, 1],
+              { ...clamp, ...inOutCubic },
+            )
+            return (
+              <div
+                style={{
+                  fontFamily: SANS,
+                  fontWeight: 400,
+                  fontSize: cpx(13),
+                  lineHeight: 1.35,
+                  letterSpacing: cpx(-0.2),
+                  color: "rgba(255,255,255,0.9)",
+                  maxWidth: cpx(430),
+                  marginTop: cpx(14),
+                  opacity: appear,
+                  transform: `scale(${zoom})`,
+                }}
+              >
+                {settleLine}
+              </div>
+            )
+          })()
+        : null}
       {secondaryLine ? (
         <div
           style={{
@@ -982,19 +1259,26 @@ function CoverIntro({
           ))}
         </div>
       ) : null}
+      {/* The reflection's credit, in the slot the settle line used to hold —
+          directly under the title, in its own quiet uppercase (owner). Pinned
+          to the bottom edge it was too faint and too far from everything else
+          to register at all. */}
       {attribution ? (
         <AttributionCredit
           px={px}
+          inline
           text={attribution}
           bottomPx={isLandscape ? px(17.35) : px(28)}
-          // Desktop (16:9) is 2px smaller than portrait: px(5.9)≈16px vs
-          // px(6.6)≈18px at 1080.
-          fontUnits={isLandscape ? 5.9 : 6.6}
+          // A touch larger than the old bottom-edge credit now that it sits in
+          // the middle of the frame with the title: px(7.4)≈20px at 1080.
+          fontUnits={isLandscape ? 6.4 : 7.4}
           frame={frame}
           fps={fps}
-          // Start once the headline has landed (headline finishes at p≈0.96).
+          // In the flow it belongs to the LOCKUP, so it follows the logo in
+          // rather than waiting for the end of the whole cover animation —
+          // at p≈0.96 of a short card it had no time left to finish typing.
           // Static covers (staticCover or textStatic) skip the reveal entirely.
-          delaySec={(animSpan * 0.96) / fps}
+          delaySec={(logoDelay + 0.6 * fps) / fps}
           animate={!staticCover && !textStatic}
         />
       ) : null}
@@ -1171,20 +1455,26 @@ function Eyebrow({
   color,
   size = 11,
   mb = 24,
+  weight = 700,
+  tracking = 3,
 }: {
   children: ReactNode
   px: (n: number) => number
   color: string
   size?: number
   mb?: number
+  /** Defaults match what portrait already ships; 16:9 passes the owner's
+   *  lighter, tighter label spec. */
+  weight?: number
+  tracking?: number
 }) {
   return (
     <div
       style={{
         fontFamily: SANS,
-        fontWeight: 700,
+        fontWeight: weight,
         fontSize: px(size),
-        letterSpacing: px(3),
+        letterSpacing: px(tracking),
         textTransform: "uppercase",
         color,
         marginBottom: px(mb),
@@ -1213,6 +1503,7 @@ function CardBody({
   coverTitleFirst,
   coverTextStatic,
   coverSecondaryLine,
+  textFont,
 }: {
   card: DevotionalCard
   style: DevotionalStyle
@@ -1231,6 +1522,8 @@ function CardBody({
   coverTitleFirst?: boolean
   coverTextStatic?: boolean
   coverSecondaryLine?: string
+  /** Typeface for the spoken-text cards; "serif" is the owner's trial look. */
+  textFont?: "sans" | "serif"
 }) {
   const { width: vw, height: vh } = useVideoConfig()
   const isLandscape = vw > vh
@@ -1248,6 +1541,98 @@ function CardBody({
   const igSafeBottom = px(130)
   const letters = anim === "letters"
 
+  if (card.kind === "step") {
+    /**
+     * The stepper screen between stages.
+     *
+     * The light travels from the PREVIOUS step to this one during the card's
+     * lead — the silent head of its own narration — so it has landed by the
+     * time the voice names the step. The owner's note was that starting the
+     * move and the voice together made the steps "blink".
+     */
+    const at = card.stepIndex ?? 0
+    const leadSec = card.stepLeadSec ?? 0.9
+    const MOVE_SEC = 1.1
+    const t = frame / fps
+
+    // THE OPENING SCREEN carries a line as well as the stack, and its
+    // narration is two sentences: the line, then "here's where we're reading
+    // today". Both beats play on this one card (owner: "это всё происходит на
+    // одном экране"), so the light waits for the line to be finished rather
+    // than for a fixed lead. Word times are reported from the synthesis, which
+    // happened BEFORE the silent lead was baked onto the front of the file —
+    // hence `+ leadSec` everywhere they are used.
+    const headlineTimings =
+      card.headline && card.words
+        ? alignWordsToText(card.headline, card.words)
+        : null
+    const lineEndsSec = headlineTimings
+      ? headlineTimings[headlineTimings.length - 1].endSec + leadSec
+      : null
+    const lightStart = lineEndsSec != null ? lineEndsSec + 0.15 : 0
+    const moveSpan =
+      lineEndsSec != null ? MOVE_SEC * 0.65 : Math.max(0.1, leadSec)
+    const travel = interpolate(t, [lightStart, lightStart + moveSpan], [0, 1], {
+      easing: Easing.bezier(0.45, 0, 0.55, 1),
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    })
+    // The first step has nothing to travel from, so its light simply arrives.
+    const from = Math.max(0, at - 1)
+    const glowPos = from + (at - from) * travel
+    const goldness = (i: number) => {
+      if (i < at) return 1
+      if (i > at) return 0
+      // Trails the light, so the colour reads as the arrival's consequence.
+      return interpolate(travel, [0.45, 1], [0, 1], {
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
+      })
+    }
+    // On the opening screen the light does not exist until the line is read:
+    // every stage is still ahead, so lighting one would say something untrue
+    // about where the viewer is.
+    const lightOpacity =
+      lineEndsSec != null
+        ? interpolate(t, [lightStart, lightStart + 0.35], [0, 1], {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          })
+        : 1
+    return (
+      <StepperStack
+        variant="glow"
+        glowPos={glowPos}
+        goldness={goldness}
+        style={style}
+        px={px}
+        width={vw}
+        height={vh}
+        lightOpacity={lightOpacity}
+        {...(card.headline
+          ? {
+              headline: headlineTimings ? (
+                // The whole line is on screen from the start, faint; each word
+                // warms to the accent as the voice reaches it and settles to
+                // white behind it (owner).
+                <WordReveal
+                  timings={headlineTimings}
+                  frame={frame}
+                  fps={fps}
+                  audioDelaySec={leadSec}
+                  style={style}
+                  restColor="#ffffff"
+                  preOpacity={0.32}
+                />
+              ) : (
+                card.headline
+              ),
+            }
+          : {})}
+      />
+    )
+  }
+
   if (card.kind === "cover") {
     // Unified cover for BOTH orientations, reproduced from the Claude Design
     // spec: the red Jesus Film symbol, headline, and date stacked and centered
@@ -1255,6 +1640,16 @@ function CardBody({
     // rotation styles still GRADE the footage; only the cover LAYOUT is unified.
     // NOTE: this reintroduces the logo — but ONLY on the cover card.
     const title = withHighlight(card.title ?? "", card.highlight, style)
+    // The cover's narration speaks the hook and THEN the settle line, so both
+    // sets of word times come out of the one segment's alignment — each is
+    // matched against its own text so they type in at the right moments.
+    const titleWords = card.words
+      ? alignWordsToText(card.title ?? "", card.words)
+      : null
+    const settleWords =
+      card.words && card.settleLine
+        ? alignWordsToText(card.settleLine, card.words)
+        : null
     return (
       <CoverIntro
         px={px}
@@ -1262,6 +1657,11 @@ function CardBody({
         fps={fps}
         durationInFrames={durationInFrames}
         title={title}
+        {...(titleWords ? { titleWords } : {})}
+        {...(card.settleLine ? { settleLine: card.settleLine } : {})}
+        {...(settleWords ? { settleWords } : {})}
+        style={style}
+        {...(textFont ? { textFont } : {})}
         date={headerDate}
         occasion={card.occasion}
         eyebrowColor={style.eyebrow}
@@ -1279,18 +1679,131 @@ function CardBody({
   }
 
   if (card.kind === "scripture") {
+    // TRANSITION INTO THE FILM (owner): the verse holds, then clears, and
+    // "LET'S WATCH" zooms in centered on the same card at the exact moment the
+    // narration says it — then the video card takes over. The moment comes
+    // from the segment's own word times; without them the card just holds the
+    // verse as before.
+    const watchTokens = ["let's", "lets", "watch", "давайте", "посмотрим"]
+    const watchStart = (() => {
+      if (!card.words || card.words.length === 0) return null
+      // The phrase is the TAIL of the spoken scripture segment, so scan back.
+      for (let i = card.words.length - 1; i >= 0; i--) {
+        if (watchTokens.includes(wordKey(card.words[i].word))) {
+          // Walk back over any other tokens of the same phrase.
+          let j = i
+          while (j > 0 && watchTokens.includes(wordKey(card.words[j - 1].word)))
+            j--
+          return card.words[j].startSec
+        }
+      }
+      return null
+    })()
+    // THE VERSE LEADS, THE CITATION CLOSES.
+    //
+    // The voice opens this card with the reference ("Luke ten, thirty-six")
+    // and only then reads the verse, but the owner asked the TEXT not to wait
+    // for that — the verse starts unfolding straight away and the citation
+    // appears underneath it at the end, once there is something to attribute.
+    // Voice and text therefore drift apart by a couple of seconds, which she
+    // accepted explicitly ("ничего страшного").
+    //
+    // Its pace is derived rather than fixed: the reveal should finish around
+    // three quarters of the way through whatever card this passage produced,
+    // so a two-line verse and a six-line one both read as unhurried instead of
+    // one racing and the other stalling.
+    const verseChars = (card.verse ?? "").length
+    const VERSE_START_SEC = 0.3
+    const versePerChar = Math.min(
+      0.06,
+      Math.max(
+        0.022,
+        ((durationInFrames / fps) * 0.74 - VERSE_START_SEC) /
+          Math.max(1, verseChars),
+      ),
+    )
+    const verseEndsSec = VERSE_START_SEC + verseChars * versePerChar
+    const watchLabel = card.leadLabel ?? "Let's watch"
+    const tNow = frame / fps
+    /** Wraps a verse layout: fades it out just before the phrase, and swaps in
+     *  the zooming label. */
+    const withWatchSwap = (body: ReactNode): ReactNode => {
+      if (watchStart == null) return body
+      const clearAt = watchStart - 0.15
+      const verseOpacity = interpolate(
+        tNow,
+        [clearAt - 0.45, clearAt],
+        [1, 0],
+        { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+      )
+      const labelOpacity = interpolate(
+        tNow,
+        [clearAt, clearAt + 0.35],
+        [0, 1],
+        { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+      )
+      const labelZoom = interpolate(tNow, [clearAt, clearAt + 1.1], [0.86, 1], {
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
+        easing: Easing.out(Easing.cubic),
+      })
+      return (
+        <>
+          {verseOpacity > 0 ? (
+            <AbsoluteFill style={{ opacity: verseOpacity }}>
+              {body}
+            </AbsoluteFill>
+          ) : null}
+          {labelOpacity > 0 ? (
+            <AbsoluteFill
+              style={{
+                justifyContent: "center",
+                alignItems: "center",
+                textAlign: "center",
+                padding: pad,
+                opacity: labelOpacity,
+                transform: `scale(${labelZoom})`,
+              }}
+            >
+              {/* Same treatment as the other connector labels ("Ask yourself",
+                  "Pray"): sans, uppercase, tracked, in the accent colour. */}
+              <div
+                style={{
+                  fontFamily: SANS,
+                  fontWeight: 700,
+                  fontSize: px(12),
+                  letterSpacing: px(3),
+                  textTransform: "uppercase",
+                  color: style.eyebrow,
+                }}
+              >
+                {watchLabel}
+              </div>
+            </AbsoluteFill>
+          ) : null}
+        </>
+      )
+    }
     // Reverted to the per-style-rotation layout (quoteCenter / grain-left-rule
     // / frostedBottom-bar) — the owner preferred it back after trying the
-    // unified left-rule redesign. Font size trimmed a touch (32→27). The
-    // `igSafe` protection stays on every branch: the citation must clear the
-    // social app's own bottom UI regardless of which layout is showing.
+    // unified left-rule redesign. Font size trimmed twice now: 32→27 in the
+    // desktop preview, then 27→23 after the owner saw it actually playing on
+    // a phone in Instagram/Reels — 27 read as too large once the verse ran
+    // 5-6 lines on a real screen instead of the preview window. The `igSafe`
+    // protection stays on every branch: the citation must clear the social
+    // app's own bottom UI regardless of which layout is showing.
     const verse = (
       <div
         style={{
-          fontFamily: SANS,
+          // Owner: the serif carries the main text (title/scripture/question/
+          // prayer); the verse keeps its italic either way.
+          fontFamily: textFont === "serif" ? SERIF : SANS,
           fontStyle: "italic",
-          fontWeight: 400,
-          fontSize: px(27),
+          // Owner: the verse reads as a quotation, a step lighter than the
+          // headings around it. A real weight — Source Serif 4 is registered as
+          // a variable face (200-900).
+          fontWeight: 300,
+          fontSize: px(23),
           lineHeight: 1.36,
           color: style.heading,
         }}
@@ -1302,7 +1815,8 @@ function CardBody({
             style={style}
             frame={frame}
             fps={fps}
-            delaySec={0.4}
+            delaySec={VERSE_START_SEC}
+            perChar={versePerChar}
           />
         ) : (
           withHighlight(card.verse ?? "", card.highlight, style)
@@ -1318,7 +1832,8 @@ function CardBody({
           fontSize: px(12),
           letterSpacing: px(2.4),
           color: style.eyebrow,
-          ...reveal(frame, fps, 0.8, 1, "fade"),
+          // Last, under the finished verse (owner).
+          ...reveal(frame, fps, verseEndsSec + 0.45, 1, "fade"),
         }}
       >
         {card.citation.toUpperCase()}
@@ -1326,7 +1841,7 @@ function CardBody({
     ) : null
 
     if (style.scripture === "quoteCenter") {
-      return (
+      return withWatchSwap(
         <AbsoluteFill
           style={{
             justifyContent: "center",
@@ -1351,12 +1866,12 @@ function CardBody({
           </div>
           <div style={{ ...reveal(frame, fps, 0.6, 1, "up") }}>{verse}</div>
           {citation}
-        </AbsoluteFill>
+        </AbsoluteFill>,
       )
     }
     // grain: left rule; sepia: bottom accent bar
     const bottom = style.scripture === "frostedBottom"
-    return (
+    return withWatchSwap(
       <AbsoluteFill
         style={{
           justifyContent: bottom ? "flex-end" : "center",
@@ -1364,6 +1879,10 @@ function CardBody({
             ? `${px(48)}px ${px(28)}px ${padBottom}px`
             : `0 ${px(30)}px`,
           paddingBottom: igSafe ? igSafeBottom : bottom ? padBottom : undefined,
+          // Owner rule: the side paddings must MATCH. The IG safe-area
+          // inset used to apply to the right only (to clear the action
+          // rail), which read as the text sitting off-centre.
+          paddingLeft: igSafe ? igSafeRight : undefined,
           paddingRight: igSafe ? igSafeRight : undefined,
         }}
       >
@@ -1392,7 +1911,7 @@ function CardBody({
           <div style={{ ...reveal(frame, fps, 0.35, 1, "up") }}>{verse}</div>
         </div>
         {citation}
-      </AbsoluteFill>
+      </AbsoluteFill>,
     )
   }
 
@@ -1492,6 +2011,10 @@ function CardBody({
                     : style.textBottom
                       ? padBottom
                       : undefined,
+                  // Owner rule: the side paddings must MATCH. The IG safe-area
+                  // inset used to apply to the right only (to clear the action
+                  // rail), which read as the text sitting off-centre.
+                  paddingLeft: igSafe ? igSafeRight : undefined,
                   paddingRight: igSafe ? igSafeRight : undefined,
                   opacity,
                   transform: `translateY(${lift}px)`,
@@ -1507,7 +2030,7 @@ function CardBody({
               key={i}
               style={{
                 position: "absolute",
-                left: px(34),
+                left: igSafe ? igSafeRight : px(34),
                 right: igSafe ? igSafeRight : px(34),
                 ...(anchor === "bottom"
                   ? { bottom: igSafe ? igSafeBottom : padBottom }
@@ -1526,6 +2049,13 @@ function CardBody({
 
   if (card.kind === "reflection-focus") {
     const frosted = usesPanelFrost(card.kind, style)
+    // Real per-word times, lined up against the VISIBLE text (the spoken
+    // segment also carries the "Reflect on this." connector). null when the
+    // manifest has no timings or they cannot be aligned — the card then keeps
+    // its original block reveal.
+    const wordTimings = card.words
+      ? alignWordsToText(card.text ?? "", card.words)
+      : null
     // When the card has its own title (e.g. "Keep Walking"), show it as a
     // heading above the text; otherwise fall back to the "Reflect" eyebrow.
     const heading = card.title ? (
@@ -1563,26 +2093,45 @@ function CardBody({
         <p
           style={{
             margin: 0,
+            // The reflection body stays on Inter even in the serif cut: it is
+            // the longest block of reading in the piece and the owner found the
+            // sans easier to read at speed. Every other main text element
+            // follows `textFont`.
             fontFamily: SANS,
             fontWeight: 400,
             // Owner-picked sizes: right panel 55px, bottom band 60px (desktop
-            // 16:9); portrait keeps the original 69px (px scales by short side).
+            // 16:9). Portrait was 69px (px(25)) — read fine in the desktop
+            // preview but too large once actually viewed on a phone inside
+            // Instagram/Reels (owner: screenshots showing 4-6 lines eating
+            // most of the screen), so trimmed to 58px (px(21)), then to 52px
+            // (px(19)) after the owner asked again on the word-reveal cut.
             fontSize:
               wideText === "right"
                 ? px(20)
                 : wideText === "bottom"
                   ? px(22)
-                  : px(25),
+                  : px(21),
             lineHeight: 1.46,
             color: style.body,
-            // Owner rule: reflection text settles in as ONE gentle block (soft
-            // scale + fade + tiny rise) rather than a per-letter cascade —
-            // tried independent of the global `letters`/`anim` setting, which
-            // still drives every OTHER card kind (scripture, conclusion, cover).
-            ...reveal(frame, fps, 0.35, 1, "popUp"),
+            // With real word timings the card reveals word by word in step
+            // with the voice, so the block-level reveal would fight it; the
+            // whole-block settle stays for every card without timings.
+            ...(wordTimings ? {} : reveal(frame, fps, 0.35, 1, "popUp")),
           }}
         >
-          {withHighlight(card.text ?? "", card.highlight, style)}
+          {wordTimings ? (
+            <WordReveal
+              timings={wordTimings}
+              frame={frame}
+              fps={fps}
+              audioDelaySec={0}
+              {...(card.highlight ? { highlight: card.highlight } : {})}
+              style={style}
+              restColor={style.body}
+            />
+          ) : (
+            withHighlight(card.text ?? "", card.highlight, style)
+          )}
         </p>
       </>
     )
@@ -1636,6 +2185,10 @@ function CardBody({
                 : style.textBottom
                   ? padBottom
                   : undefined,
+          // Owner rule: the side paddings must MATCH. The IG safe-area
+          // inset used to apply to the right only (to clear the action
+          // rail), which read as the text sitting off-centre.
+          paddingLeft: igSafe ? igSafeRight : undefined,
           paddingRight: igSafe ? igSafeRight : undefined,
           textAlign: wideText === "bottom" ? "left" : undefined,
         }}
@@ -1678,7 +2231,7 @@ function CardBody({
         <p
           style={{
             margin: 0,
-            fontFamily: SANS,
+            fontFamily: textFont === "serif" ? SERIF : SANS,
             fontStyle: "italic",
             fontWeight: 400,
             fontSize: px(41),
@@ -1723,6 +2276,23 @@ function CardBody({
             }}
           />
         ) : null}
+        {/* 16:9 closes the quote with a rule matching the one above it
+            (owner's design): in a wide frame a single top rule left the line
+            hanging, and the pair balances it. Portrait keeps the styles'
+            own treatment, which the owner has already signed off. */}
+        {isLandscape &&
+        style.pullquote !== "glyph" &&
+        style.pullquote !== "bars" ? (
+          <div
+            style={{
+              marginTop: px(30),
+              width: px(48),
+              height: px(4),
+              background: style.rule,
+              ...reveal(frame, fps, 0.9, 1, "fade"),
+            }}
+          />
+        ) : null}
       </>
     )
     return (
@@ -1734,8 +2304,14 @@ function CardBody({
           padding: pad,
           // IG Reels safe-area (portrait): shrink the centered box off the
           // right action rail and lift it above the caption/nav block.
+          // Owner rule: the side paddings must MATCH. The IG safe-area
+          // inset used to apply to the right only (to clear the action
+          // rail), which read as the text sitting off-centre.
+          paddingLeft: igSafe ? igSafeRight : undefined,
           paddingRight: igSafe ? igSafeRight : undefined,
           paddingBottom: igSafe ? igSafeBottom : undefined,
+          // Owner: lift the question + prayer block by 8px.
+          transform: "translateY(-8px)",
         }}
       >
         {body}
@@ -1744,9 +2320,44 @@ function CardBody({
   }
 
   if (card.kind === "video") {
-    // Dedicated Birth-of-Jesus clip plays clear (rendered by Background); no
-    // text overlay so the film reads as itself.
-    return null
+    // The film plays clear (rendered by Background) with no text overlay — the
+    // one exception is the silent opening: while the clip's own sound is still
+    // easing in, the spoken "Let's watch" is also shown, then dissolves out as
+    // the film takes over.
+    const lead = card.mutedLeadSec ?? 0
+    if (!card.leadLabel || lead <= 0) return null
+    const t = frame / fps
+    const opacity = interpolate(
+      t,
+      [0.15, 0.75, Math.max(1, lead - 0.35), lead + 0.35],
+      [0, 1, 1, 0],
+      { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+    )
+    if (opacity <= 0) return null
+    return (
+      <AbsoluteFill
+        style={{
+          justifyContent: "center",
+          alignItems: "center",
+          textAlign: "center",
+          padding: pad,
+        }}
+      >
+        <div
+          style={{
+            fontFamily: SANS,
+            fontWeight: 600,
+            fontSize: px(24),
+            letterSpacing: px(0.4),
+            color: "#fff",
+            textShadow: "0 2px 18px rgba(0,0,0,0.8)",
+            opacity,
+          }}
+        >
+          {card.leadLabel}
+        </div>
+      </AbsoluteFill>
+    )
   }
 
   if (card.kind === "cta") {
@@ -1822,21 +2433,84 @@ function CardBody({
   const q = (n: number) => (isLandscape ? px(n * 0.8) : px(n))
   // Prayer appears well after the questions — a 5s beat to sit with them first.
   const prayerDelay = 5
+  /**
+   * 16:9 numbers taken straight off the owner's Figma frame, converted to
+   * px() units (px(n) = n * height / 390, so these hold at any 16:9 size):
+   *   column left edge 420/1920, top 205/1080, width 1080
+   *   one uniform 34px gap between every block
+   *   labels 20px Semi Bold, 5px tracking
+   *
+   * The left inset is 57.4, not 151.7, because in landscape every card is
+   * ALREADY inside a centred column of width px(505) — that wrapper supplies
+   * 261px of the 420, and adding the full figure on top is what pushed the
+   * block ~260px right of the design.
+   */
+  const L_LEFT = px(57.4)
+  const L_TOP = px(74)
+  const L_COL = px(390)
+  const L_GAP = px(12.28)
+  const L_LABEL = 7.22
+  const L_TRACK = 1.81
+  // SAME TREATMENT AS THE VERSE (owner): the question and the prayer unfold
+  // character by character rather than sliding in as finished blocks, so the
+  // closing card reads like the scripture card it answers.
+  //
+  // Both paces are DERIVED, the way the verse's is: a long question and a
+  // short one should both feel unhurried instead of one racing. The questions
+  // have until the prayer arrives; the prayer has the rest of the card.
+  const Q_START_SEC = 0.3
+  const questionChars = questions.reduce((n, t) => n + t.length, 0)
+  const questionPerChar = Math.min(
+    0.06,
+    Math.max(
+      0.022,
+      (prayerDelay - 0.8 - Q_START_SEC) / Math.max(1, questionChars),
+    ),
+  )
+  // The prayer BLOCK (rule + "Pray" label) fades in at `prayerDelay`; its text
+  // starts unfolding just after, so the two entrances don't stack into one
+  // compounded fade — the same 0.45s beat the verse leaves before its citation.
+  const prayerTextStart = prayerDelay + 0.45
+  const prayerChars = (card.prayer ?? "").length
+  const prayerPerChar = Math.min(
+    0.06,
+    Math.max(
+      0.022,
+      ((durationInFrames / fps) * 0.88 - prayerTextStart) /
+        Math.max(1, prayerChars),
+    ),
+  )
   // Questions + prayer are text-heavy: always centered on the blurred background
   // (no panel), independent of layout — same treatment as the conclusion.
   return (
     <AbsoluteFill
       style={{
-        justifyContent: "center",
-        // Landscape: top padding clears the header logo/date row.
-        padding: isLandscape ? `${px(64)}px ${px(34)}px ${px(28)}px` : pad,
+        // 16:9 (owner's design): one LEFT-aligned column set in from the edge,
+        // rather than a centred block. The ring, the labels and both texts
+        // share that one left edge — in the earlier cut the ring was centred
+        // on the FRAME while the text was left-aligned, which in a wide frame
+        // put them ~700px apart. Portrait keeps its own padding.
+        alignItems: isLandscape ? "flex-start" : undefined,
+        // Owner's frame sits the column high rather than centred, so landscape
+        // anchors from the top instead of centring.
+        justifyContent: isLandscape ? "flex-start" : "center",
+        padding: isLandscape
+          ? `${L_TOP}px ${px(34)}px ${px(28)}px ${L_LEFT}px`
+          : pad,
       }}
     >
       {/* Star-orbit progress ring: small, left-aligned in the text column,
           sitting ABOVE the "Ask yourself" label (same left inset as the label +
           questions). Same fill/orbit animation + timing as before — it just
           flows inline here instead of the old bottom-corner overlay. */}
-      <div style={{ marginBottom: q(14) }}>
+      <div
+        style={{
+          // Owner widened the gap under the ring in 16:9 and left-aligned it
+          // with the column.
+          marginBottom: isLandscape ? px(23.8) : q(34),
+          alignSelf: isLandscape ? "flex-start" : "center",
+        }}
+      >
         <ProgressRing
           px={px}
           fps={fps}
@@ -1845,61 +2519,113 @@ function CardBody({
           durationInFrames={durationInFrames}
           isLandscape={isLandscape}
           inline
-          // Owner: was almost invisible at 22 — a little bigger, still small
-          // enough to read as an inline accent, not a focal element.
-          size={q(30)}
+          // Grown twice on the owner's word: 22 was almost invisible, 30
+          // still read as a footnote. At 48, centered above the question, the
+          // ring is the card's clock — the thing that says how long there is
+          // to sit with what it asks.
+          size={isLandscape ? px(30) : q(48)}
         />
       </div>
-      <Eyebrow px={px} color={style.eyebrow} size={12}>
+      <Eyebrow
+        px={px}
+        color={style.eyebrow}
+        size={isLandscape ? L_LABEL : 12}
+        mb={isLandscape ? 12.28 : 24}
+        weight={isLandscape ? 600 : 700}
+        tracking={isLandscape ? L_TRACK : 3}
+      >
         <span style={reveal(frame, fps, 0.15, 1, "down")}>
           {card.askLabel ?? "Ask yourself"}
         </span>
       </Eyebrow>
-      <div style={{ display: "flex", flexDirection: "column", gap: q(22) }}>
-        {questions.map((text, i) => (
-          <div
-            key={i}
-            style={{
-              display: "flex",
-              gap: q(14),
-              alignItems: "baseline",
-              ...reveal(frame, fps, 0.3 + i * 0.35, 1, "up"),
-            }}
-          >
-            {questions.length > 1 ? (
-              // Number only when there are multiple questions; a single question
-              // shows no "1." prefix.
-              <span
-                style={{
-                  flex: "0 0 auto",
-                  fontFamily: SANS,
-                  fontWeight: 700,
-                  fontSize: q(19),
-                  color: style.eyebrow,
-                }}
-              >
-                {i + 1}
-              </span>
-            ) : null}
-            <p
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: isLandscape ? L_GAP : q(22),
+          // The owner's 16:9 column is 1080 of 1920; without a cap the lines
+          // run most of the frame's width and stop being readable.
+          maxWidth: isLandscape ? L_COL : undefined,
+        }}
+      >
+        {questions.map((text, i) => {
+          // Where THIS question's letters start: after every earlier question
+          // has finished unfolding, so a two-question card still reads in
+          // order instead of both running at once.
+          const startSec =
+            Q_START_SEC +
+            questions
+              .slice(0, i)
+              .reduce((n, t) => n + t.length * questionPerChar + 0.4, 0)
+          return (
+            <div
+              key={i}
               style={{
-                margin: 0,
-                fontFamily: SANS,
-                fontWeight: 400,
-                fontSize: q(26),
-                lineHeight: 1.36,
-                color: style.body,
+                display: "flex",
+                gap: q(14),
+                alignItems: "baseline",
+                // The block itself no longer slides: the letters carry the
+                // entrance (owner — same as the verse). The number still fades
+                // in with its question.
+                ...(letters
+                  ? reveal(frame, fps, startSec, 1, "fade")
+                  : reveal(frame, fps, 0.3 + i * 0.35, 1, "up")),
               }}
             >
-              {text}
-            </p>
-          </div>
-        ))}
+              {questions.length > 1 ? (
+                // Number only when there are multiple questions; a single question
+                // shows no "1." prefix.
+                <span
+                  style={{
+                    flex: "0 0 auto",
+                    fontFamily: SANS,
+                    fontWeight: 700,
+                    fontSize: q(19),
+                    color: style.eyebrow,
+                  }}
+                >
+                  {i + 1}
+                </span>
+              ) : null}
+              <p
+                style={{
+                  margin: 0,
+                  fontFamily: textFont === "serif" ? SERIF : SANS,
+                  fontWeight: 400,
+                  // Trimmed 26 → 22 (owner: the closing card took too much
+                  // room). Now a step BELOW the verse's 23 rather than above it,
+                  // which also lets a long question breathe on a phone.
+                  // 16:9 size taken from the owner's frame (46 of 1920);
+                  // portrait keeps the size she already approved.
+                  fontSize: isLandscape ? px(16.6) : q(22),
+                  lineHeight: 1.36,
+                  color: style.body,
+                }}
+              >
+                {letters ? (
+                  <LetterReveal
+                    text={text}
+                    style={style}
+                    frame={frame}
+                    fps={fps}
+                    delaySec={startSec}
+                    perChar={questionPerChar}
+                  />
+                ) : (
+                  text
+                )}
+              </p>
+            </div>
+          )
+        })}
       </div>
       {card.prayer ? (
         <div
           style={{
-            marginTop: q(32),
+            maxWidth: isLandscape ? L_COL : undefined,
+            // 16:9 keeps ONE rhythm — the owner's frame has the same 34px gap
+            // between every block on this card.
+            marginTop: isLandscape ? L_GAP : q(32),
             ...reveal(frame, fps, prayerDelay, 1, "fade"),
           }}
         >
@@ -1908,24 +2634,48 @@ function CardBody({
               width: q(48),
               height: style.pullquote === "bars" ? px(4) : px(1),
               background: style.rule,
-              marginBottom: q(22),
+              marginBottom: isLandscape ? L_GAP : q(22),
             }}
           />
-          <Eyebrow px={px} color={style.eyebrow} size={12} mb={14}>
+          <Eyebrow
+            px={px}
+            color={style.eyebrow}
+            size={isLandscape ? L_LABEL : 12}
+            mb={isLandscape ? 12.28 : 14}
+            weight={isLandscape ? 600 : 700}
+            tracking={isLandscape ? L_TRACK : 3}
+          >
             {card.prayLabel ?? "Pray"}
           </Eyebrow>
           <p
             style={{
               margin: 0,
-              fontFamily: SANS,
+              fontFamily: textFont === "serif" ? SERIF : SANS,
               fontStyle: "italic",
-              fontWeight: 400,
-              fontSize: q(22),
+              // Owner: the prayer sits a weight below the question above it, so
+              // the card reads as ask-then-pray rather than two equal blocks.
+              // Real weight — Source Serif 4 is registered as a variable face.
+              fontWeight: 300,
+              // Trimmed 22 → 19 alongside the question above it, keeping the
+              // one-step drop between them that makes the card read
+              // ask-then-pray.
+              fontSize: isLandscape ? px(13) : q(19),
               lineHeight: 1.56,
               color: style.body,
             }}
           >
-            {card.prayer}
+            {letters ? (
+              <LetterReveal
+                text={card.prayer}
+                style={style}
+                frame={frame}
+                fps={fps}
+                delaySec={prayerTextStart}
+                perChar={prayerPerChar}
+              />
+            ) : (
+              card.prayer
+            )}
           </p>
         </div>
       ) : null}
@@ -2082,6 +2832,10 @@ function Background({
         muted={clipAudioLevel <= 0}
         volume={(f) => {
           const clipEnd = Math.round((card.durationSec ?? 1) * fps)
+          // Owner rule: open the clip SILENT while "Let's watch" is on screen,
+          // then ease its sound in — so the cut into the film lands as a beat
+          // rather than a jump in volume.
+          const lead = Math.round((card.mutedLeadSec ?? 0) * fps)
           // Full devo: near-full, quick fades (clip plays alone, music ducked).
           // Teaser (videoAudioLevel set): quiet + slow fade in/out so it eases
           // gently under the music bed.
@@ -2097,8 +2851,14 @@ function Background({
           // avoid a click. The tail is the opposite case: nothing is lost by
           // letting it recede slowly, so it keeps the squared curve.
           const fin = Math.round((slow ? 1.2 : 0.45) * fps)
-          const fout = Math.round((slow ? 2 : 1.3) * fps)
-          const rise = interpolate(f, [0, fin], [0, 1], {
+          // The tail used to start 1.3s before the card ended AND square the
+          // curve, so it was already well down while the film was still
+          // speaking — the owner could not hear Jesus' last words. The card's
+          // own duration ends about where the dialogue does (the extra margin
+          // footage sits past it), so the fade is now short and linear, and
+          // rides the crossfade into the next card instead of pre-empting it.
+          const fout = Math.round((slow ? 2 : 0.5) * fps)
+          const rise = interpolate(f, [lead, lead + fin], [0, 1], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
           })
@@ -2106,7 +2866,7 @@ function Background({
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
           })
-          return clipAudioLevel * Math.sqrt(rise) * fall * fall
+          return clipAudioLevel * Math.sqrt(rise) * (slow ? fall * fall : fall)
         }}
         style={
           isLandscape
@@ -2121,12 +2881,13 @@ function Background({
                 transform: `scale(${kbFit})`,
               }
             : {
-                // Portrait: squarish crop (owner) — fill a centered 1:1 window
-                // (cover); bigger, more immersive, blurred wings above/below.
+                // Portrait: squarish crop (owner), anchored near the TOP of
+                // the frame — the space below is for captions, not a mirror
+                // margin of blurred wings.
                 position: "absolute",
                 left: 0,
                 right: 0,
-                top: "21.9%", // (1920-1080)/2 / 1920 — centers the 1:1 crop
+                top: `${VIDEO_WINDOW_TOP_PCT}%`,
                 width: "100%",
                 height: "56.25%", // 1080/1920 → square in the 9:16 frame
                 objectFit: "cover",
@@ -2153,18 +2914,31 @@ function Background({
   const medium = card.kind === "questions"
   const blurScale = props.blurScale ?? 1
   // Owner-picked levels: reflection + conclusion keep the footage nearly sharp.
-  // Desktop (16:9) = "blur 10%" (px2.8); mobile (9:16) = "blur 15%" (px4.2) —
-  // the taller frame shows more background, so it wants a touch more blur.
-  // Legibility comes from the scrim + a soft, wide text shadow. Scripture (soft)
-  // and questions (medium) keep heavier blur.
-  const heavyBlurPx = isLandscape ? px(2.8) : px(4.2)
+  // Desktop (16:9) was "blur 10%" (px2.8) and mobile (9:16) "blur 15%" (px4.2).
+  // Owner asked for roughly 7% instead of 10% now that a reflection card shows
+  // ONE sentence: less text on screen means the footage behind it can be more
+  // legible. 0.7x of the old values, which is exactly that. Legibility comes
+  // from the scrim + a soft, wide text shadow, not from the blur.
+  //
+  // Scripture (soft) and questions (medium) are NOT reduced: both were tuned
+  // separately, and the questions card had its own "too strong" correction
+  // already. Only the two cards the owner named move.
+  const heavyBlurPx = isLandscape ? px(2) : px(2.9)
+  /** The cover carries one line of title over the footage; same 0.7x. */
+  const coverBlurPx = px(5.6)
   // A cover asked to stay sharp keeps the footage unblurred and takes only a
   // light scrim — enough for one line of white text, not enough to hide what
   // the shot is. Cover only; every other card still needs its blur to be read.
   const sharpCover = Boolean(props.coverBgSharp) && card.kind === "cover"
   const BLUR = sharpCover
     ? 0
-    : (soft ? px(8) : medium ? px(15) : heavyBlurPx) * blurScale
+    : (card.kind === "cover"
+        ? coverBlurPx
+        : soft
+          ? px(8)
+          : medium
+            ? px(15)
+            : heavyBlurPx) * blurScale
   const wholeScrim = sharpCover
     ? "rgba(6,4,3,0.22)"
     : soft
@@ -2315,6 +3089,9 @@ function Background({
         opacity={
           (heavy ? style.grainText : style.grainMedia) + (film ? 0.16 : 0)
         }
+        sizePx={props.grainSizePx}
+        tint={props.grainFilter}
+        blend={props.grainBlend}
       />
       {/* The cover paints its own vignette (above); skip the style vignette. */}
       <AbsoluteFill
@@ -2470,11 +3247,17 @@ export function DevotionalVideo(props: DevotionalInputProps) {
                   start: frames[i].from,
                   // Keep the music muted through the trailing crossfade too —
                   // the clip's own audio plays until the video card fully
-                  // dissolves into the next.
+                  // dissolves into the next. Must match the ACTUAL transition
+                  // length at this boundary (boundaryXfade), not the generic
+                  // XFADE — the video→reflection dissolve runs at VIDEO_XFADE
+                  // (1.3s), longer than the 0.85s default. Using the shorter
+                  // generic value here let the music swell back in ~0.45s
+                  // before the clip's own dialogue actually finished dissolving
+                  // out, drowning the last words (owner-reported).
                   end:
                     frames[i].from +
                     frames[i].durationInFrames +
-                    (i < lastIndex ? XFADE : 0),
+                    (i < lastIndex ? boundaryXfade(i) : 0),
                 },
               ]
             : [],
@@ -2590,6 +3373,7 @@ export function DevotionalVideo(props: DevotionalInputProps) {
                   coverTitleFirst={props.coverTitleFirst === true}
                   coverTextStatic={props.coverTextStatic === true}
                   coverSecondaryLine={props.coverSecondaryLine}
+                  {...(props.textFont ? { textFont: props.textFont } : {})}
                 />
               </div>
             </CardFade>
@@ -2671,6 +3455,7 @@ function CardLayer({
   coverTitleFirst,
   coverTextStatic,
   coverSecondaryLine,
+  textFont,
 }: {
   card: DevotionalCard
   style: DevotionalStyle
@@ -2689,6 +3474,8 @@ function CardLayer({
   coverTitleFirst?: boolean
   coverTextStatic?: boolean
   coverSecondaryLine?: string
+  /** Typeface for the spoken-text cards; "serif" is the owner's trial look. */
+  textFont?: "sans" | "serif"
 }) {
   const frame = useCurrentFrame()
   const { width: layerW, height: layerH } = useVideoConfig()
@@ -2715,6 +3502,7 @@ function CardLayer({
         coverTitleFirst={coverTitleFirst}
         coverTextStatic={coverTextStatic}
         coverSecondaryLine={coverSecondaryLine}
+        {...(textFont ? { textFont } : {})}
       />
       {card.kind === "video" && card.subtitles?.length ? (
         <VideoSubtitles
@@ -2724,10 +3512,10 @@ function CardLayer({
           frame={frame}
           fps={fps}
           isLandscape={layerIsLandscape}
-          // Same Instagram Reels right inset the text cards use, so captions
-          // clear the action rail. (The bottom is handled by anchoring inside
-          // the video window, which already sits well above the chrome.)
+          // Same Instagram Reels insets the text cards use, so captions
+          // clear the action rail and the app's own bottom UI chrome.
           safeRight={px(50.5)}
+          safeBottom={px(130)}
         />
       ) : null}
       {showMuteButton ? <MuteButton px={px} style={style} /> : null}

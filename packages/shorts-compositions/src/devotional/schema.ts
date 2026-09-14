@@ -24,7 +24,13 @@ export const DEVOTIONAL_CARD_KINDS = [
   "conclusion",
   "questions",
   "cta", // teaser end-card: "watch the full devotional" + handle + link
+  // The stepper screen that names each stage before it starts. Appears up to
+  // four times, once per stage, each time with the light landing on its step.
+  "step",
 ] as const
+
+/** The stepper's stages, in order. `stepIndex` on a `step` card points here. */
+export const DEVOTIONAL_STEPS = ["READ", "WATCH", "REFLECT", "PRAY"] as const
 
 export const devotionalCardSchema = z.object({
   kind: z.enum(DEVOTIONAL_CARD_KINDS),
@@ -35,6 +41,22 @@ export const devotionalCardSchema = z.object({
   holdSec: z.number().nonnegative().optional(),
   /** Small section label shown above the title (e.g. "Reflect" on the first reflection card). */
   sectionLabel: z.string().optional(),
+  /**
+   * `step` cards only: which stage the light lands on (0 = READ). Everything
+   * before it is already done (gold); everything after is still ahead (dim).
+   * `-1` is the OPENING screen: every stage on, none lit, no light at all.
+   */
+  stepIndex: z.number().int().min(-1).optional(),
+  /** `step` cards only: a line shown above the stack (the opening screen's
+   *  spoken line). Revealed letter by letter, like the scripture verse. */
+  headline: z.string().optional(),
+  /**
+   * `step` cards only: seconds of the card that pass BEFORE its narration
+   * starts. The transition animation runs in this window, so the light has
+   * landed by the time the voice names the step — the owner's note was that
+   * starting both together made the steps "blink".
+   */
+  stepLeadSec: z.number().nonnegative().optional(),
   /** staticFile name of the clip for a `video` card (plays with its own sound). */
   videoFile: z.string().optional(),
   /**
@@ -80,6 +102,28 @@ export const devotionalCardSchema = z.object({
   ctaHeadline: z.string().optional(), // cta card, e.g. "Watch the full devotional"
   ctaHandle: z.string().optional(), // cta card, e.g. "@gospelmedialab"
   ctaUrl: z.string().optional(), // cta card, e.g. "jesusfilm.org/watch"
+  /** Cover only: the settle line the voice speaks right after the hook (e.g.
+   *  "Let's slow down and give Scripture our attention."). Shown under the
+   *  title, easing in with a slight zoom, so the spoken line is also read. */
+  settleLine: z.string().optional(),
+  /** Video card only: seconds at the start where the clip plays SILENT while
+   *  `leadLabel` is on screen, before its own audio eases in. */
+  mutedLeadSec: z.number().optional(),
+  /** Video card only: the line shown over that silent opening ("Let's watch"). */
+  leadLabel: z.string().optional(),
+  /** Real per-word times from the narration's own ElevenLabs alignment, in
+   *  seconds from this card's audio start. When present the card reveals its
+   *  text word by word in step with the voice; when absent it falls back to
+   *  the pace-based reveal, so older manifests render exactly as before. */
+  words: z
+    .array(
+      z.object({
+        word: z.string(),
+        startSec: z.number(),
+        endSec: z.number(),
+      }),
+    )
+    .optional(),
 })
 
 export type DevotionalCard = z.infer<typeof devotionalCardSchema>
@@ -111,6 +155,32 @@ export const devotionalInputPropsSchema = z.object({
    *  wings). The video card is natural color by default; set this to cool/tint
    *  warm source footage so it matches the graded text cards. */
   videoCardFilter: z.string().optional(),
+  /**
+   * Film-grain tile size in px (default 260).
+   *
+   * The grain SVG is a 120x120 noise tile, so the 260px default upscales it
+   * 2.2x and the result is soft and large rather than film-like. On the Good
+   * Samaritan's sunlit desert that read as no grain at all.
+   *
+   * Opacity is NOT the lever, which is worth recording because it was tried
+   * first: `grainMedia` is already 0.72, so any multiplier above ~1.39 clamps
+   * at full opacity. Measured on that render, going from 1x to saturated moved
+   * high-frequency luminance from 3.89 to 4.57, an 18% change that is invisible.
+   * Shrinking the tile is what makes grain read.
+   */
+  grainSizePx: z.number().optional(),
+  /**
+   * CSS filter applied to the grain noise before it is blended, and the blend
+   * mode used. Overrides the built-in dark-brown tint.
+   *
+   * These exist because the built-in tint turned out to be why grain was
+   * invisible on bright footage: `brightness(0.32)` crushes the noise almost to
+   * black, and a near-black layer in `overlay` just darkens the frame evenly
+   * instead of modulating it. Neither opacity (saturated at 0.72 base) nor tile
+   * size (260px vs 40px rendered pixel-identical frames) could compensate.
+   */
+  grainFilter: z.string().optional(),
+  grainBlend: z.string().optional(),
   /** Text entrance animation: "block" (fade/slide whole lines) or "letters"
    *  (smooth letter-by-letter reveal). */
   textAnim: z.enum(["block", "letters"]).default("block"),
@@ -210,6 +280,10 @@ export const devotionalInputPropsSchema = z.object({
    *  conclusion/questions text). Default 1. Used to preview softer blur levels
    *  (e.g. 0.9 = 10% less). */
   blurScale: z.number().positive().optional(),
+  /** Typeface for the spoken-text cards (reflection/conclusion). "sans" is the
+   *  established Inter; "serif" switches them to the editorial serif stack the
+   *  owner asked to try. Cover/eyebrows/labels are unaffected. */
+  textFont: z.enum(["sans", "serif"]).optional(),
   /** FILTER — color/grade/palette. Independent of `layout`.
    *  Active set: grain · tealorange · splittone. (teal/sepia kept for back-compat.) */
   style: z

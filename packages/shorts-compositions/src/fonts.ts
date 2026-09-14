@@ -12,27 +12,47 @@ import {
   MONTSERRAT_CYRILLIC_WOFF2_BASE64,
   MONTSERRAT_LATIN_WOFF2_BASE64,
 } from "./fonts-data"
+import {
+  EB_GARAMOND_LATIN_WOFF2_BASE64,
+  EB_GARAMOND_LATIN_ITALIC_WOFF2_BASE64,
+} from "./fonts-ebgaramond-data"
+import {
+  SOURCE_SERIF_4_LATIN_ITALIC_WOFF2_BASE64,
+  SOURCE_SERIF_4_LATIN_WOFF2_BASE64,
+} from "./fonts-sourceserif-data"
 
 export const SHORT_FONT_FAMILIES = {
   montserrat: "Montserrat",
   inter: "Inter",
+  // Still registered: EB Garamond was the owner's first pick from the five
+  // serifs mocked up in Figma, before seeing both cuts render on a phone.
+  ebGaramond: "EB Garamond",
+  // Owner's pick for the devotional's serif text (title, scripture, questions,
+  // prayer, conclusion). Variable wght 200-900, so `fontWeight: 300` on the
+  // prayer and `400` elsewhere are real weights, not synthesized ones.
+  sourceSerif: "Source Serif 4",
 } as const
 
 // Google Fonts unicode-ranges: Cyrillic copy (the devotional is Russian) needs
 // the Cyrillic subsets — the latin-only subset has NO Cyrillic glyphs, so
 // Cyrillic text would silently fall back to a system font.
-const CYRILLIC_RANGE =
-  "U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116"
+const CYRILLIC_RANGE = "U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116"
 const CYRILLIC_EXT_RANGE =
   "U+0460-052F,U+1C80-1C88,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F"
 
 // Variable-font subsets covering the full wght axis (Montserrat 700/900, Inter
 // 400/600). Multiple faces per family (latin + cyrillic) with unicode-range so
 // the browser picks the right subset per glyph.
-const FONT_SOURCES: ReadonlyArray<{
+/** Exported for the test only: it asserts one registered face per source, so
+ *  adding a font can't silently skip registration (and can't leave a hard-coded
+ *  count behind — a stale one is how the last two faces went unnoticed). */
+export const FONT_SOURCES: ReadonlyArray<{
   family: string
   base64: string
   unicodeRange?: string
+  /** Registered face style. The serifs ship a separate italic file; the
+   *  variable Inter/Montserrat subsets cover their own slant. */
+  style?: "normal" | "italic"
 }> = [
   {
     family: SHORT_FONT_FAMILIES.montserrat,
@@ -59,19 +79,41 @@ const FONT_SOURCES: ReadonlyArray<{
     base64: INTER_CYRILLIC_EXT_WOFF2_BASE64,
     unicodeRange: CYRILLIC_EXT_RANGE,
   },
+  // Latin only: EB Garamond carries the English devotional's main text. A
+  // Russian cut keeps the sans, which does have Cyrillic subsets.
+  {
+    family: SHORT_FONT_FAMILIES.ebGaramond,
+    base64: EB_GARAMOND_LATIN_WOFF2_BASE64,
+  },
+  {
+    family: SHORT_FONT_FAMILIES.ebGaramond,
+    base64: EB_GARAMOND_LATIN_ITALIC_WOFF2_BASE64,
+    style: "italic",
+  },
+  // Latin only, same reasoning as EB Garamond above.
+  {
+    family: SHORT_FONT_FAMILIES.sourceSerif,
+    base64: SOURCE_SERIF_4_LATIN_WOFF2_BASE64,
+  },
+  {
+    family: SHORT_FONT_FAMILIES.sourceSerif,
+    base64: SOURCE_SERIF_4_LATIN_ITALIC_WOFF2_BASE64,
+    style: "italic",
+  },
 ]
 
 const registerFont = async (
   family: string,
   base64: string,
   unicodeRange?: string,
+  style: "normal" | "italic" = "normal",
 ): Promise<void> => {
   const face = new FontFace(
     family,
     `url(data:font/woff2;base64,${base64}) format("woff2")`,
     {
       weight: "100 900",
-      style: "normal",
+      style,
       ...(unicodeRange ? { unicodeRange } : {}),
     },
   )
@@ -85,8 +127,8 @@ export const loadShortFonts = (): Promise<void> => {
   if (fontsPromise) return fontsPromise
   const handle = delayRender("Loading @forge/shorts-compositions fonts")
   fontsPromise = Promise.all(
-    FONT_SOURCES.map(({ family, base64, unicodeRange }) =>
-      registerFont(family, base64, unicodeRange),
+    FONT_SOURCES.map(({ family, base64, unicodeRange, style }) =>
+      registerFont(family, base64, unicodeRange, style),
     ),
   )
     .then(() => {
