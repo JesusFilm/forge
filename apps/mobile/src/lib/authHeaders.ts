@@ -1,3 +1,5 @@
+import { SUBMIT_FEEDBACK_OPERATION_NAME } from "./feedbackQueries"
+
 /**
  * Consumer-bearer header builder. Absent token returns the anonymous shape so
  * the app still boots and public queries work where no key is provisioned.
@@ -13,18 +15,30 @@ export function buildAuthHeaders(
 export const SEARCH_OPERATION_NAME = "WatchSearch"
 
 /**
- * Bearer scoped to the search operation only. `watchSearch` is a PUBLIC
- * resolver, so this is not an auth requirement — it buys the per-device
- * rate-limit bucket (`consumer:<key>:v:<viewer_id>`) instead of the coarse,
- * CGNAT-collapsed `public:<ip>` one. On other public ops it would pool the
- * whole fleet into a single bucket.
+ * The ONLY operations the fleet bearer may ride. Both resolvers are PUBLIC, so
+ * the bearer is not an auth requirement — it buys the per-install rate-limit
+ * bucket (`consumer:<key>:v:<viewer_id>`) instead of the coarse,
+ * CGNAT-collapsed `public:<ip>` one. On any other public op the one baked-in
+ * key would pool the whole fleet into a single bucket. Enforced by the guard
+ * test in `__tests__/authHeaders.test.ts`.
  */
+export const FLEET_BEARER_OPERATION_NAMES = [
+  SEARCH_OPERATION_NAME,
+  SUBMIT_FEEDBACK_OPERATION_NAME,
+] as const
+
+const FLEET_BEARER_OPERATIONS: ReadonlySet<string> = new Set(
+  FLEET_BEARER_OPERATION_NAMES,
+)
+
 export function authHeadersForOperation(
   operationName: string | undefined,
   token: string | undefined,
   viewerId?: string,
 ): Record<string, string> {
-  if (operationName !== SEARCH_OPERATION_NAME) return {}
+  if (operationName == null || !FLEET_BEARER_OPERATIONS.has(operationName)) {
+    return {}
+  }
   const headers = buildAuthHeaders(token)
   // x-viewer-id lets admin bucket per-install (CGNAT-immune) instead of per-IP;
   // spoofable, so admin treats it as an availability label only.
