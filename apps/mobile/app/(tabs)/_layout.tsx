@@ -10,7 +10,7 @@ const BG_COLOR = "#1c1917"
 
 /**
  * Android's tab bar. iOS is shadowed by `_layout.ios.tsx` and its UIKit bar
- * (feat-498) — but this file MUST stay: expo-router resolves the platform
+ * (feat-500) — but this file MUST stay: expo-router resolves the platform
  * sibling by specificity and throws without an extension-less fallback.
  */
 export default function TabLayout() {

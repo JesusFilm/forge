@@ -1,6 +1,6 @@
 /**
  * The frosted material. Three branches, and no other test in the app can see
- * any of them — every render suite mocks the material away. Since feat-498 the
+ * any of them — every render suite mocks the material away. Since feat-500 the
  * navigator no longer renders it; `SelectionActionBar` does.
  */
 import { act } from "react"

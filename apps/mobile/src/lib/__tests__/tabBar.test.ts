@@ -63,7 +63,7 @@ describe("useTabBarClearance", () => {
   })
 
   it("does NOT add the bar height a second time", () => {
-    // Falsification: the pre-feat-498 formula. Kept as a discriminating
+    // Falsification: the pre-feat-500 formula. Kept as a discriminating
     // assertion — it is the exact regression a careless revert reintroduces.
     setPlatform("ios")
     mockInsets.bottom = 83

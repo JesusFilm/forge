@@ -2,10 +2,10 @@
 
 **Date:** 2026-09-08
 **App:** `apps/mobile`
-**Status:** shipped 2026-09-08 (#2200); superseded on iOS by feat-498 — read the note below
+**Status:** shipped 2026-09-08 (#2200); superseded on iOS by feat-500 — read the note below
 **Worktree:** `.claude/worktrees/feat-ios-glass-tab-bar`
 
-> **Superseded on iOS 2026-09-14 — feat-498.** feat-498 shipped the NativeTabs
+> **Superseded on iOS 2026-09-14 — feat-500.** feat-500 shipped the NativeTabs
 > migration: iOS now runs `expo-router/unstable-native-tabs`, and UIKit owns the
 > bar's geometry and material. Every iOS section below is a historical record,
 > not the shipping design.
@@ -19,8 +19,8 @@
 >   bar is its only consumer now, and it draws no pill radius.
 >
 > Read the Results section of
-> `docs/roadmap/platform/feat-498-mobile-native-tabs-migration.md` for the
-> shipped numbers. "What must not change on Android" still holds: feat-498 left
+> `docs/roadmap/platform/feat-500-mobile-native-tabs-migration.md` for the
+> shipped numbers. "What must not change on Android" still holds: feat-500 left
 > the Android bar byte-identical.
 
 ## Problem
@@ -46,7 +46,7 @@ scrolls behind it. On Android the bar must stay exactly as it is today.
 > not attribute it. The owner is content for iOS below 26 to show the standard
 > full-width UIKit bar. That removes the recorded ground for rejecting
 > `expo-router/unstable-native-tabs` below. The spike that re-opens that choice
-> is `docs/roadmap/platform/feat-497-mobile-native-tabs-spike.md`.
+> is `docs/roadmap/platform/feat-499-mobile-native-tabs-spike.md`.
 
 ## Current state
 
@@ -120,7 +120,7 @@ Revisit it when the deployment target reaches iOS 26.
 >   "Decisions taken before design").
 >
 > The revisit trigger is no longer the deployment target. It is the spike in
-> `docs/roadmap/platform/feat-497-mobile-native-tabs-spike.md`, which measures
+> `docs/roadmap/platform/feat-499-mobile-native-tabs-spike.md`, which measures
 > the three facts that are not knowable from disk.
 
 ### The one ordering trap

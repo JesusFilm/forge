@@ -677,7 +677,7 @@ export default function DiscoverScreen() {
 
   return (
     <View style={styles.container}>
-      {/* feat-498: NativeTabs has no header options, so the iOS screen draws
+      {/* feat-500: NativeTabs has no header options, so the iOS screen draws
           its own. Android still takes the navigator's header. */}
       {Platform.OS === "ios" && (
         <View style={[styles.header, { paddingTop: insets.top }]}>

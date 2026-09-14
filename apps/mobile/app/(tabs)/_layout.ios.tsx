@@ -18,7 +18,7 @@ const TABS = {
 } as const satisfies Record<TabRouteName, { label: string; sf: string }>
 
 /**
- * iOS runs the real UITabBarController (feat-498). Android keeps the JS bar in
+ * iOS runs the real UITabBarController (feat-500). Android keeps the JS bar in
  * `_layout.tsx`, which MUST stay on disk: expo-router resolves this file by
  * platform specificity and throws without an extension-less fallback sibling.
  *

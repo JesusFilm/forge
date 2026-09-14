@@ -42,7 +42,7 @@ const subscribers = new Set<Publish>()
  * operation — no new admin surface.
  */
 /**
- * `enabled` is REQUIRED, not defaulted. Since feat-498 iOS runs a real
+ * `enabled` is REQUIRED, not defaulted. Since feat-500 iOS runs a real
  * UITabBarController, which mounts every tab at cold launch — so an unguarded
  * mount fires six WATCH_SEARCH queries before the viewer has opened Search.
  * A default of `true` would let a new call site reintroduce that silently.

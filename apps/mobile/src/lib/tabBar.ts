@@ -42,7 +42,7 @@ export type TabRouteName = (typeof TAB_ROUTE_NAMES)[number]
  * this. Android keeps its present (already 7pt optimistic) value — correcting
  * it here would move the Android window and read as a regression.
  *
- * iOS is the real UIKit tab bar (feat-498). The mini player cannot read the
+ * iOS is the real UIKit tab bar (feat-500). The mini player cannot read the
  * per-tab safe-area inset that carries it — the player lives in the ROOT
  * provider, outside the tab controller — so the number is spelled here.
  *

@@ -25,7 +25,7 @@ export interface BrowseTopicsProps {
 // grid of gradient cards. Tapping a card routes through onSelect (wired to the
 // screen's stale-guarded search).
 export function BrowseTopics({ onSelect }: BrowseTopicsProps) {
-  // Every tab mounts at cold launch under the native tab bar (feat-498), so
+  // Every tab mounts at cold launch under the native tab bar (feat-500), so
   // the six thumbnail searches wait until the viewer actually opens Search.
   const thumbnails = useCategoryThumbnails(useIsFocused())
   const tabBarClearance = useTabBarClearance()

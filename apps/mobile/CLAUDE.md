@@ -759,9 +759,9 @@ the app's own `#1c1917` instead of the platform contrast scrim.
 mini player and six scroll surfaces read it from there, so no two files can
 disagree about the bar's size.
 
-> **The native tabs migration shipped on 2026-09-14** (feat-498). iOS now runs
+> **The native tabs migration shipped on 2026-09-14** (feat-500). iOS now runs
 > UIKit's own tab bar. Read the Results section of
-> `docs/roadmap/platform/feat-498-mobile-native-tabs-migration.md` for the
+> `docs/roadmap/platform/feat-500-mobile-native-tabs-migration.md` for the
 > device measurements and the carried-forward items. The iOS floating pill,
 > `TabBarLens.tsx` and `tabIndexForSegments` are deleted. Their rules are
 > history, not current guidance.
@@ -825,7 +825,7 @@ disagree about the bar's size.
   turns transparent wherever content reaches its bottom edge.
 - **iPadOS 26 puts the bar at the TOP, and `sidebarAdaptable={false}` does not
   move it.** That option maps to `tabBarControllerMode: 'tabBar'` and changed
-  nothing across a cold relaunch. feat-498 accepted the top bar. A size-class
+  nothing across a cold relaunch. feat-500 accepted the top bar. A size-class
   branch that keeps the JS bar on iPad is the follow-up if the owner wants one.
 - **`<NativeTabs hidden>` is verified on iOS 26 only.** The iOS 16.4-17 branch
   takes `tabBar.hidden` rather than `setTabBarHidden:animated:`, and that

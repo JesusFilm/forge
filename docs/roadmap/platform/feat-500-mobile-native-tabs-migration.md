@@ -1,5 +1,5 @@
 ---
-id: "feat-498"
+id: "feat-500"
 title: "Mobile native tabs migration (iOS)"
 owner: "urim"
 priority: "P1"
@@ -7,7 +7,7 @@ status: "complete"
 start_date: "2026-09-14"
 duration: 3
 depends_on:
-  - "feat-497"
+  - "feat-499"
 blocks: []
 tags:
   - "mobile"
@@ -23,7 +23,7 @@ JS `Animated.View` lens as the selection highlight. It carries the glass
 material but none of the system bar's behaviour, and every iOS release moves
 Apple's bar further from the imitation.
 
-feat-497 measured the switch and returned GO. The decisive number: inside a
+feat-499 measured the switch and returned GO. The decisive number: inside a
 `NativeTabs` tab, `insets.bottom` reads **83** on both iOS 18.6 and iOS 26.5 —
 the 34pt home-indicator inset plus the 49pt UIKit bar — so the clearance
 collapses to `insets.bottom + gap` and needs no per-tier height table.
@@ -33,7 +33,7 @@ byte-identically.
 
 ## Entry Points — Read These First
 
-1. `docs/roadmap/platform/feat-497-mobile-native-tabs-spike.md` — the
+1. `docs/roadmap/platform/feat-499-mobile-native-tabs-spike.md` — the
    measurements this plan rests on. Read the Results section first.
 2. `apps/mobile/app/(tabs)/_layout.tsx` — the JS navigator. Stays, for Android.
    The iOS sibling shadows it; expo-router resolves `_layout.ios.tsx` by
@@ -133,7 +133,7 @@ the REAL `unstable-native-tabs` module under jest — mock that path too.
   Android padding value stay byte-identical. Prove it, do not argue it.
 - **iPad ships with the bar at the TOP.** iPadOS 26 places a
   UITabBarController's bar at the top and `sidebarAdaptable={false}` does not
-  move it (measured, feat-497 M2). Accepted for this ticket — it is the current
+  move it (measured, feat-499 M2). Accepted for this ticket — it is the current
   iPadOS convention and the app is iPhone-first. A size-class branch that keeps
   the JS pill on iPad is a follow-up if the owner wants one.
 - **Do not claim minimize-on-scroll.** react-native-screens feeds UIKit a
@@ -157,7 +157,7 @@ pnpm test
 npx eslint app src --ext .ts,.tsx
 ```
 
-Simulator, both tiers (feat-497's recipe — the dev client's debug dylib carries
+Simulator, both tiers (feat-499's recipe — the dev client's debug dylib carries
 the `RNSTabBarController` classes, so no rebuild is needed):
 
 - iOS 26.5 — glass bar renders; four tabs switch; Library selection hides the
@@ -191,7 +191,7 @@ Built and verified on the `feat/mobile-native-tabs` worktree.
 
 ### Carried forward
 
-- **iPad ships with the bar at the top** (feat-497 M2), as this ticket's
+- **iPad ships with the bar at the top** (feat-499 M2), as this ticket's
   constraints accepted. A size-class branch that keeps a JS bar on iPad is the
   follow-up if the owner wants one. Measured on an iPad Pro 11 (M5, iPadOS 26.5)
   on 2026-09-14: because no bar sits at the bottom there, the mini player's

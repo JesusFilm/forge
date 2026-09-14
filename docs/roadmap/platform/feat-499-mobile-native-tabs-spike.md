@@ -1,5 +1,5 @@
 ---
-id: "feat-497"
+id: "feat-499"
 title: "Mobile native tabs spike (iOS)"
 owner: "urim"
 priority: "P1"
@@ -8,7 +8,7 @@ start_date: "2026-09-14"
 duration: 1
 depends_on: []
 blocks:
-  - "feat-498"
+  - "feat-500"
 tags:
   - "mobile"
   - "platform"
@@ -283,5 +283,5 @@ M2's iPad placement are the two loose ends. Neither blocks an iPhone-only
 migration; the iPad needs a product decision (accept the top bar, or keep the JS
 bar on iPad via a size-class branch) before it ships to tablets.
 
-Follow-up migration ticket: **feat-498**
-(`docs/roadmap/platform/feat-498-mobile-native-tabs-migration.md`).
+Follow-up migration ticket: **feat-500**
+(`docs/roadmap/platform/feat-500-mobile-native-tabs-migration.md`).

@@ -9,7 +9,7 @@ import { TAB_BAR_MATERIAL_TINT } from "../../lib/tabBar"
 import { PlatformBlur } from "./PlatformBlur"
 
 /**
- * The frosted material a bar sits on. Since feat-498 the navigator no longer
+ * The frosted material a bar sits on. Since feat-500 the navigator no longer
  * uses it — iOS runs the real UIKit tab bar, which draws its own — so the one
  * consumer is `SelectionActionBar`, which stands in the tab bar's place while
  * the native bar is hidden.

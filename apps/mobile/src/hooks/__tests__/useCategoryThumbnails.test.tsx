@@ -1,5 +1,5 @@
 /**
- * The thumbnail fetch is gated on focus (feat-498). Under the native tab bar
+ * The thumbnail fetch is gated on focus (feat-500). Under the native tab bar
  * every tab mounts at cold launch, so an ungated mount fires six WATCH_SEARCH
  * queries before the viewer has opened Search.
  *

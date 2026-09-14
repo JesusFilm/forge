@@ -1,7 +1,7 @@
 /**
  * Pins BOTH navigators. iOS renders `_layout.ios.tsx` (NativeTabs, a real
  * UITabBarController); every other platform renders `_layout.tsx`, and Android
- * must be byte-identical to what it shipped before feat-498.
+ * must be byte-identical to what it shipped before feat-500.
  *
  * `NativeTabs` comes from `expo-router/unstable-native-tabs`, NOT the
  * `expo-router` root, so mocking `expo-router` alone would load the real
