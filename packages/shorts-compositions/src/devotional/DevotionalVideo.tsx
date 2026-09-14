@@ -65,8 +65,39 @@ const HEAVY = new Set([
 
 type TextAnchor = "top" | "center" | "bottom"
 
+/**
+ * The portrait "stable subtitle" anchor: one-sentence reflection-focus cards
+ * are pinned at a FIXED upper-middle offset (`stableTopPad`, ~46% of the
+ * frame) and grow DOWNWARD, so every card starts at the same Y instead of
+ * jumping with line count.
+ *
+ * Exported and shared because the anchor is read in TWO places — the text
+ * layout and the blur region — and when the anchor was introduced only the
+ * layout learned about it. The blur kept answering from `style.textBottom`,
+ * which no longer describes where the text is, so every portrait reflection
+ * card blurred the TOP of the frame while its text sat in the lower half:
+ * the ground was above the words instead of behind them.
+ */
+export function usesStableTopAnchor(
+  kind: string,
+  style: DevotionalStyle,
+  isLandscape: boolean,
+): boolean {
+  return (
+    kind === "reflection-focus" && !isLandscape && !usesPanelFrost(kind, style)
+  )
+}
+
 /** Where a card's text sits vertically (drives both layout and blur region). */
-function textAnchorFor(kind: string, style: DevotionalStyle): TextAnchor {
+function textAnchorFor(
+  kind: string,
+  style: DevotionalStyle,
+  isLandscape = false,
+): TextAnchor {
+  // The stable anchor starts mid-frame and grows DOWN, so the text's ground is
+  // the bottom of the frame no matter what the layout's `textBottom` says.
+  if (usesStableTopAnchor(kind, style, isLandscape)) return "bottom"
+
   switch (kind) {
     case "cover":
       return style.cover === "centered" ? "center" : "bottom"
@@ -109,9 +140,10 @@ function usesPanelFrost(kind: string, style: DevotionalStyle): boolean {
  * rectangle (so Background stays clear). Questions carry dense text spanning the
  * card, so they always blur the whole frame. The video card never blurs.
  */
-function blurRegionFor(
+export function blurRegionFor(
   kind: string,
   style: DevotionalStyle,
+  isLandscape = false,
 ): "none" | "whole" | "top" | "bottom" {
   if (kind === "video") return "none"
   // The conclusion is the emotional ending: it always lands centered on a fully
@@ -125,7 +157,7 @@ function blurRegionFor(
   if (kind === "cta") return "whole" // teaser end-card sits on a calm blurred bg
   if (usesPanelFrost(kind, style)) return "none"
   if (kind === "questions") return "whole"
-  const anchor = textAnchorFor(kind, style)
+  const anchor = textAnchorFor(kind, style, isLandscape)
   return anchor === "center" ? "whole" : anchor
 }
 
@@ -2141,7 +2173,7 @@ function CardBody({
     // DOWNWARD, instead of the old bottom anchor (where a 1-line vs 3-line
     // sentence jumped up/down). Only portrait, non-frosted; landscape keeps its
     // bottom-band / right-panel behaviour and frosted styles keep their panel.
-    const stableTop = igSafe && !frosted
+    const stableTop = usesStableTopAnchor(card.kind, style, isLandscape)
     // Fixed offset from the top of the frame for the stable-subtitle anchor.
     // px scales by the 1080 short side, so px(320) ≈ 886px ≈ 46% of the 1920
     // portrait height — upper-middle: clears the top, and a multi-line sentence
@@ -2738,7 +2770,9 @@ function Background({
   const introCover = card.kind === "cover"
   // Blur behind the text only: a band for top/bottom-aligned cards, the whole
   // frame for centered text; the video card stays clear.
-  const region = introCover ? "none" : blurRegionFor(card.kind, style)
+  const region = introCover
+    ? "none"
+    : blurRegionFor(card.kind, style, isLandscape)
 
   // Grade for the video card's clip: an explicit override wins; otherwise the
   // graded filters (gradeVideoCard) apply their base grade, and plain filters
