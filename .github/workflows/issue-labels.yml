@@ -16,7 +16,7 @@ jobs:
     if: github.event_name == 'issues' && (github.event.action == 'opened' || (github.event.action == 'edited' && (github.event.changes.title || github.event.changes.body)))
     steps:
       - name: Apply labels and assignee from title
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const title = context.payload.issue?.title || '';
@@ -45,7 +45,7 @@ jobs:
     if: github.event_name == 'pull_request' && (github.event.action == 'opened' || (github.event.action == 'edited' && github.event.changes.title))
     steps:
       - name: Apply labels and assignee from PR title
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const title = context.payload.pull_request?.title || '';
