@@ -22,8 +22,15 @@ describe("isInAppSheetRoute", () => {
     expect(isInAppSheetRoute(pattern.split("/"))).toBe(true)
   })
 
-  it("covers exactly the six group sheets", () => {
-    expect(IN_APP_SHEET_ROUTE_PATTERNS).toHaveLength(6)
+  it("covers exactly the six group sheets plus the root feedback sheet", () => {
+    expect(IN_APP_SHEET_ROUTE_PATTERNS).toHaveLength(7)
+  })
+
+  // A ROOT route, so its pattern is one bare segment — the list is not
+  // "everything under watch/ and series/".
+  it("treats the root feedback sheet as a sheet", () => {
+    expect(isInAppSheetRoute(["feedback"])).toBe(true)
+    expect(isSuppressedBySheet(["feedback"], 0)).toBe(true)
   })
 
   it.each([
@@ -31,6 +38,7 @@ describe("isInAppSheetRoute", () => {
     [["series", "[slug]"]],
     [["(tabs)", "watch"]],
     [["(tabs)", "library"]],
+    [["(tabs)", "profile"]],
     [["experience", "[slug]"]],
   ])("does not treat %s as a sheet", (segments) => {
     expect(isInAppSheetRoute(segments)).toBe(false)
