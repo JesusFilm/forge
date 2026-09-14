@@ -1535,6 +1535,14 @@ External text a triage or research pipeline reads and then reproduces — an err
 
 It is hostile input at two distinct boundaries, and neither boundary's control substitutes for the other's. At the model turn, delimiters keep it from reading as instructions. At the human-facing artifact, a sanitizer neutralizes links and markers before the text is written into a ticket a reader will click.
 
+## Product feedback
+
+### Feedback Submission
+
+A message a person sends from inside an app — the Watch feedback form on web, the feedback sheet on mobile — that the receiving server files as one Linear issue under a Feedback label, quoting the message verbatim.
+
+It is not a Triage Signal: nothing detects it, nothing baselines or deduplicates it, and no Ticket Outbox stands between the person and Linear. The server files at once and reports any failure to the person, who keeps their draft. The message is Untrusted Evidence at the ticket boundary, so it is escaped before it is written into the issue.
+
 ## Flagged ambiguities
 
 - "Contextual Watch Route" and "canonical Watch URL" are not synonyms: the contextual route preserves collection navigation, while the Standalone Watch Route owns discovery, social, and sharing identity.
