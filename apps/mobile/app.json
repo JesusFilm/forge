@@ -33,7 +33,15 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "org.jesusfilm.forgewatch",
-      "allowBackup": false
+      "allowBackup": false,
+      "blockedPermissions": [
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_AUDIO",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.ACCESS_MEDIA_LOCATION"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -56,6 +64,7 @@
         }
       ],
       "@kesha-antonov/react-native-background-downloader",
+      "./plugins/withMmkvSecureWipeFix",
       "./plugins/withBackgroundDownloaderAppDelegate",
       "./plugins/withCastOptionsVolume",
       "./plugins/withCastUIStyle",
@@ -103,6 +112,16 @@
           }
         }
       ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": false,
+          "savePhotosPermission": "This lets the app save videos you export to your photo library, so you can keep them outside the app.",
+          "isAccessMediaLocationEnabled": false,
+          "granularPermissions": []
+        }
+      ],
+
       [
         "expo-splash-screen",
         {

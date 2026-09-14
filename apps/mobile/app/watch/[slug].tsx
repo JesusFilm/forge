@@ -5,6 +5,7 @@ import {
   Animated,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  Platform,
   Pressable,
   ScrollView,
   Share,
@@ -67,8 +68,15 @@ import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkele
 import { WatchAmbient } from "../../src/components/watch/WatchAmbient"
 import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
 import { ActionButtonRow } from "../../src/components/watch/ActionButtonRow"
+import { rawModeLabel } from "../../src/components/watch/DownloadSheet"
+import { RAW_EXPORT_ENABLED } from "../../src/lib/rawExportConstants"
+import { presentActionMenu } from "../../src/lib/actionMenu"
 import { SignInPrompt } from "../../src/components/watch/SignInPrompt"
 import { useWatchProgressEntry } from "../../src/hooks/useWatchProgressEntry"
+import {
+  exportControls,
+  useExportEntry,
+} from "../../src/hooks/useExportSession"
 import {
   progressBarState,
   resumePositionSeconds,
@@ -302,6 +310,8 @@ export default function WatchVideoPage() {
   // auto-seek and autostart.
   const progressEntry = useWatchProgressEntry(video?.documentId)
   const progressState = progressBarState(progressEntry)
+  // R16: a raw export outranks the offline state on this video's control.
+  const exportEntry = useExportEntry(video?.slug)
   const resumeAtSeconds =
     progressEntry && progressState.resumeEligible
       ? resumePositionSeconds(
@@ -740,6 +750,7 @@ export default function WatchVideoPage() {
         {hasVideo ? (
           <>
             <ActionButtonRow
+              exportEntry={exportEntry}
               downloadState={getRecord(video.slug)?.state ?? null}
               downloadProgress={(() => {
                 const record = getRecord(video.slug)
@@ -748,28 +759,73 @@ export default function WatchVideoPage() {
                   : null
               })()}
               onDownload={() => {
+                // An export outranks every offline state (R16), so it is tested
+                // FIRST. Falling through would pause the offline download of a
+                // video that is being exported over an existing transfer.
+                if (exportEntry) {
+                  if (exportEntry.paused) {
+                    Alert.alert("Saving to Photos", "This export is paused.", [
+                      {
+                        text: "Stop Download",
+                        style: "destructive",
+                        onPress: () => {
+                          exportControls.stop(video.slug)
+                        },
+                      },
+                      {
+                        text: "Resume",
+                        onPress: () => {
+                          exportControls.resume(video.slug)
+                        },
+                      },
+                      { text: "Cancel", style: "cancel" },
+                    ])
+                  } else {
+                    // Running → the ring's pause glyph pauses it immediately,
+                    // mirroring the offline control.
+                    exportControls.pause(video.slug)
+                  }
+                  return
+                }
                 const state = getRecord(video.slug)?.state
                 if (state === "downloaded") {
                   // Saved: offer a non-destructive quality/language swap or a
                   // delete (the current copy stays playable during a swap).
-                  Alert.alert(
-                    "Offline download",
-                    "This video is saved for offline viewing.",
-                    [
+                  // Four options outrun Android's three-button dialog, so the
+                  // menu goes through presentActionMenu rather than Alert.
+                  presentActionMenu({
+                    title: "Offline download",
+                    message: "This video is saved for offline viewing.",
+                    ios: "alert",
+                    actions: [
                       {
                         text: "Change quality / language",
                         onPress: () => router.push("/watch/download?swap=1"),
                       },
+                      // R33's switch removes the whole export feature, so the
+                      // option goes with it rather than opening a sheet that
+                      // cannot offer the mode. It routes to the sheet instead
+                      // of exporting straight away, because the Terms gate is
+                      // the consent surface and lives there.
+                      ...(RAW_EXPORT_ENABLED
+                        ? [
+                            {
+                              text: rawModeLabel(Platform.OS),
+                              onPress: () =>
+                                router.push("/watch/download?mode=raw"),
+                            },
+                          ]
+                        : []),
                       {
                         text: "Remove download",
-                        style: "destructive",
+                        style: "destructive" as const,
                         onPress: () => {
                           void deleteDownload(video.slug)
                         },
                       },
-                      { text: "Cancel", style: "cancel" },
+                      { text: "Cancel", style: "cancel" as const },
                     ],
-                  )
+                  })
                 } else if (state === "paused") {
                   // Paused (mirrors the series ring): resume, or remove entirely.
                   Alert.alert("Offline download", "This download is paused.", [

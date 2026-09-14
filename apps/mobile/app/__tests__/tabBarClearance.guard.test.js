@@ -37,6 +37,7 @@ const SURFACES = [
   "app/(tabs)/library.tsx",
   "app/(tabs)/profile.tsx",
   "src/components/ui/Snackbar.tsx",
+  "src/components/ExportReportHost.tsx",
 ]
 
 describe("every scroll surface clears the floating tab bar", () => {
@@ -66,6 +67,6 @@ describe("every scroll surface clears the floating tab bar", () => {
 
   it("names every surface the enumeration is meant to cover", () => {
     // A shrinking list is the failure mode this guard cannot otherwise see.
-    expect(SURFACES).toHaveLength(6)
+    expect(SURFACES).toHaveLength(7)
   })
 })

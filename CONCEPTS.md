@@ -1421,6 +1421,21 @@ Because a revert lands the episode back in the downloaded state, a canceled or f
 
 Stopping an in-flight download's native task and neutralizing its callbacks — without touching its record — so a replacement download can safely reuse the same Video's task identity. Needed because the native downloader routes terminal events by task id to whichever task currently holds it, so an un-superseded old task's dying event could strike its replacement.
 
+## Raw export
+
+### Raw Export
+
+Saving a plain video file into the device's own photo library, where the viewer owns it like any other photo or video, as distinct from an offline copy the app manages in its own storage and can revoke.
+_Avoid:_ Save to Photos — that is the viewer-facing label for the same thing.
+
+A Raw Export creates no Download Record, so nothing derived from offline copies reflects one: a series control shows the same idle label for the whole run, and the library lists nothing new. Anything that must observe an export therefore reads the export's own state, never an offline aggregate. An exported file survives deleting the app, so there is nothing to resume and nothing to reclaim.
+
+### Export Run
+
+One pass of a Raw Export across a series, carrying its own identity and covering the episodes in order, one at a time.
+
+A run outlives every episode inside it, so any state that must survive between two episodes belongs to the run rather than to the episode currently transferring — a stop is the case that matters. Stopping a run ends the whole run, and episodes already written to the photo library stay in it. The run's own end releases its cancellation state, so a later run for the same series never inherits it.
+
 ## AI chat
 
 ### Seeker Agent
