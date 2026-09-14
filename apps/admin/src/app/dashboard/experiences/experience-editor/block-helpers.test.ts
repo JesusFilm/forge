@@ -8,6 +8,7 @@ import {
   createTemplateBlock,
   editorTextFromContentParagraphs,
   defaultContainerSlotSpans,
+  mediaAssetIdsFromExperienceBlocks,
   normalizeEditorBlocks,
   normalizeEditorBlockPayload,
   contentParagraphsFromEditorText,
@@ -38,6 +39,25 @@ const videoLibrary: VideoLibraryItem[] = [
 ]
 
 describe("experience editor block helpers", () => {
+  it("collects unique managed image ids from nested block content", () => {
+    expect(
+      mediaAssetIdsFromExperienceBlocks([
+        {
+          t: "section",
+          backgroundImageAssetId: "asset-section",
+          content: [
+            { t: "card", imageAssetId: "asset-card" },
+            {
+              t: "mediaCollection",
+              mediaAssetId: "asset-collection",
+              items: [{ imageAssetId: "asset-card" }, { imageAssetId: "  " }],
+            },
+          ],
+        },
+      ]),
+    ).toEqual(["asset-section", "asset-card", "asset-collection"])
+  })
+
   it("creates a movable recommendation block with a localized default heading", () => {
     const block = createTemplateBlock("homepageRecommendations", 2)
     expect(block).toEqual({
@@ -542,6 +562,35 @@ describe("experience editor block helpers", () => {
     expect(BlocksSchema.safeParse([block]).success).toBe(true)
     expect(summarizeBlock(block, 3, [])).toMatchObject({
       body: "3 tiles · 2 custom",
+    })
+  })
+
+  it("normalizes category rail copy without changing tiles and uses its title in the summary", () => {
+    const block = {
+      t: "watchHomeCategoryRail",
+      sectionKey: "categories",
+      categoryIds: ["jesus"],
+      tiles: [{ id: "category:jesus", categoryId: "jesus" }],
+      eyebrow: "  Explore  ",
+      title: "  Stories for everyone  ",
+      description: "   ",
+      ctaLabel: "  See all  ",
+    }
+
+    expect(normalizeEditorBlocks([block])).toEqual([
+      {
+        t: "watchHomeCategoryRail",
+        sectionKey: "categories",
+        categoryIds: ["jesus"],
+        tiles: [{ id: "category:jesus", categoryId: "jesus" }],
+        eyebrow: "Explore",
+        title: "Stories for everyone",
+        ctaLabel: "See all",
+      },
+    ])
+    expect(summarizeBlock(block, 0, [])).toMatchObject({
+      title: "Stories for everyone",
+      body: "1 tile",
     })
   })
 

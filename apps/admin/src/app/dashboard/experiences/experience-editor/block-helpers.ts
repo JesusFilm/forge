@@ -259,6 +259,13 @@ const optionalEmptyStringKeys = new Set([
   "videoId",
 ])
 
+const watchHomeCategoryRailCopyKeys = new Set([
+  "eyebrow",
+  "title",
+  "description",
+  "ctaLabel",
+])
+
 export function asRecord(value: unknown): BlockRecord | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as BlockRecord)
@@ -267,6 +274,41 @@ export function asRecord(value: unknown): BlockRecord | null {
 
 export function asString(value: unknown) {
   return typeof value === "string" ? value : ""
+}
+
+const MEDIA_ASSET_ID_FIELDS = new Set([
+  "backgroundImageAssetId",
+  "imageAssetId",
+  "mediaAssetId",
+])
+
+/** Collect the managed image ids needed to render an Experience canvas. */
+export function mediaAssetIdsFromExperienceBlocks(
+  blocks: readonly unknown[],
+): string[] {
+  const assetIds = new Set<string>()
+
+  function visit(value: unknown) {
+    if (Array.isArray(value)) {
+      value.forEach(visit)
+      return
+    }
+
+    const record = asRecord(value)
+    if (!record) return
+
+    for (const [field, child] of Object.entries(record)) {
+      if (MEDIA_ASSET_ID_FIELDS.has(field)) {
+        const assetId = asString(child).trim()
+        if (assetId) assetIds.add(assetId)
+      } else {
+        visit(child)
+      }
+    }
+  }
+
+  visit(blocks)
+  return Array.from(assetIds)
 }
 
 export function asBoolean(value: unknown) {
@@ -320,13 +362,29 @@ export function normalizeEditorBlockPayload(value: unknown): unknown {
 
   const record = value as BlockRecord
   const normalizedEntries = Object.entries(record)
-    .map(([key, item]) => [key, normalizeEditorBlockPayload(item)] as const)
+    .map(([key, item]) => {
+      const normalizedItem = normalizeEditorBlockPayload(item)
+      return [
+        key,
+        record.t === "watchHomeCategoryRail" &&
+        watchHomeCategoryRailCopyKeys.has(key) &&
+        typeof normalizedItem === "string"
+          ? normalizedItem.trim()
+          : normalizedItem,
+      ] as const
+    })
     .filter(([key, item]) => {
       if (legacyEditorOnlyKeys.has(key)) return false
       if (record.t === "container" && key === "slots") return false
       if (item === null || item === undefined) return false
       if (typeof item !== "string") return true
       if (item.trim().length > 0) return true
+      if (
+        record.t === "watchHomeCategoryRail" &&
+        watchHomeCategoryRailCopyKeys.has(key)
+      ) {
+        return false
+      }
       return !optionalEmptyStringKeys.has(key) && !key.endsWith("Url")
     })
 
@@ -428,7 +486,7 @@ export function summarizeBlock(
     return {
       key: summaryKey,
       typeLabel: "Watch Category Rail",
-      title: "Browse by category",
+      title: asString(value.title).trim() || "Browse by category",
       body:
         customCount > 0
           ? `${tileCount} ${tileCount === 1 ? "tile" : "tiles"} · ${customCount} custom`

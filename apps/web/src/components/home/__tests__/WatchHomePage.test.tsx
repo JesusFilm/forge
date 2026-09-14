@@ -423,7 +423,7 @@ describe("WatchHomePage", () => {
         .querySelector('[data-testid="watch-home-tv-carousel"] > div')
         ?.getAttribute("class"),
     ).toContain(
-      `md:h-[max(34svh,min(56.25vw,calc(100svh_-_${WATCH_HOME_HERO_RESERVE_BELOW_PX}px)))]`,
+      `md:h-[max(50svh,min(56.25vw,calc(100svh_-_${WATCH_HOME_HERO_RESERVE_BELOW_PX}px)))]`,
     )
     expect(
       container.querySelector('[data-testid="watch-home-tv-rail"]'),
@@ -2111,7 +2111,7 @@ describe("WatchHomePage", () => {
       `h-[max(50dvh,calc(100svh_-_${WATCH_HOME_HERO_RESERVE_BELOW_MOBILE_PX}px))]`,
     )
     expect(heroFrame.className).toContain(
-      `md:h-[max(34svh,min(56.25vw,calc(100svh_-_${WATCH_HOME_HERO_RESERVE_BELOW_PX}px)))]`,
+      `md:h-[max(50svh,min(56.25vw,calc(100svh_-_${WATCH_HOME_HERO_RESERVE_BELOW_PX}px)))]`,
     )
     expect(heroFrame.className).not.toContain("md:h-[min(100svh,56.25vw)]")
 

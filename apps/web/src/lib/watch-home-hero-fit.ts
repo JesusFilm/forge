@@ -20,14 +20,14 @@ export const WATCH_HOME_HERO_RESERVE_BELOW_MOBILE_PX = 500
  * expression here prevents those two muted surfaces from drifting apart.
  */
 export const WATCH_MUTED_INTRO_HEIGHT_CLASS =
-  "h-[max(50dvh,calc(100svh_-_500px))] md:h-[max(34svh,min(56.25vw,calc(100svh_-_440px)))]"
+  "h-[max(50dvh,calc(100svh_-_500px))] md:h-[max(50svh,min(56.25vw,calc(100svh_-_440px)))]"
 
 /**
  * Floor, as a share of the viewport. Without it a short window (or a rail that
  * grows past the space available) would shrink the intro to nothing; below
  * this the rail simply does not fit, which is the better failure.
  */
-export const WATCH_HOME_HERO_MIN_HEIGHT_RATIO = 0.34
+export const WATCH_HOME_HERO_MIN_HEIGHT_RATIO = 0.5
 export const WATCH_HOME_HERO_MOBILE_MIN_HEIGHT_RATIO = 0.5
 
 /**
@@ -56,11 +56,15 @@ export function fitWatchHomeHeroHeight({
   minHeightRatio = WATCH_HOME_HERO_MIN_HEIGHT_RATIO,
 }: WatchHomeHeroFitInput): number {
   const spaceLeft = viewportHeight - reservedBelow
-  // The floor can never push the intro past its own aspect height — fitting is
-  // only ever allowed to shrink it.
-  const floor = Math.min(aspectHeight, viewportHeight * minHeightRatio)
-  // Floor, never round: the measured rail height is fractional, and rounding
-  // up hands the rail's last pixel back to the intro — enough to push the rail
-  // one pixel past the fold.
-  return Math.floor(Math.max(floor, Math.min(aspectHeight, spaceLeft)))
+  // The viewport floor is absolute: in tall or narrow windows it may exceed
+  // the 16:9 aspect height, with the existing object-cover media filling the
+  // frame. Otherwise the category-rail fit could still collapse below 50vh.
+  const floor = viewportHeight * minHeightRatio
+  // Ceil only the minimum so an odd-height viewport cannot land half a pixel
+  // below the guarantee. Floor the rail fit independently: rounding that up
+  // can put the rail's bottom edge one pixel past the fold.
+  return Math.max(
+    Math.ceil(floor),
+    Math.floor(Math.min(aspectHeight, spaceLeft)),
+  )
 }

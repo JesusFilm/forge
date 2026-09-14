@@ -1,6 +1,7 @@
 import { adminGraphql } from "@forge/admin-graphql"
 import {
   adminLegacyWatchExperienceFragment,
+  adminPreCopyWatchExperienceFragment,
   adminWatchExperienceFragment,
 } from "@forge/admin-graphql/fragments"
 
@@ -17,6 +18,16 @@ export const watchExperienceFragment = adminGraphql(
     }
   `,
   [adminWatchExperienceFragment, watchMediaCollectionTitlesFragment],
+)
+
+export const preCopyWatchExperienceFragment = adminGraphql(
+  `
+    fragment PreCopyWatchExperience on ExperienceLocale @_unmask {
+      ...AdminPreCopyWatchExperience
+      ...WatchMediaCollectionTitles
+    }
+  `,
+  [adminPreCopyWatchExperienceFragment, watchMediaCollectionTitlesFragment],
 )
 
 // Rollout-only equivalent that composes the old-schema-safe canonical

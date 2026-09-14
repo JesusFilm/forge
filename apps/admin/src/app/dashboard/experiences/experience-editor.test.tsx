@@ -105,6 +105,8 @@ function renderEditorElement(
     hasDraft?: boolean
     previewUrl?: string | null
     mediaLibrary?: MediaLibraryBrowserData
+    loadMediaLibraryAction?: () => Promise<MediaLibraryBrowserData>
+    uploadImageAction?: typeof action
     videoLibrary?: VideoLibraryItem[]
     searchVideoLibraryAction?: (
       query: string,
@@ -147,6 +149,7 @@ function renderEditorElement(
       ]}
       videoLibrary={options.videoLibrary ?? defaultVideoLibrary}
       mediaLibrary={options.mediaLibrary ?? defaultMediaLibrary}
+      loadMediaLibraryAction={options.loadMediaLibraryAction}
       searchVideoLibraryAction={options.searchVideoLibraryAction}
       loadVideoCollectionChildrenAction={
         options.loadVideoCollectionChildrenAction
@@ -173,7 +176,7 @@ function renderEditorElement(
       discardAction={options.discardAction ?? action}
       createLocaleAction={action}
       restoreAction={action}
-      uploadImageAction={action}
+      uploadImageAction={options.uploadImageAction ?? action}
     />
   )
 }
@@ -450,7 +453,9 @@ describe("ExperienceEditor", () => {
         },
       ])
       expect(view.container.textContent).not.toContain("Watch Category Rail")
-      expect(view.container.textContent).toContain("Browse by category")
+      expect(
+        view.container.querySelector('[aria-label="Category rail heading"]'),
+      ).not.toBeNull()
       expect(
         view.container.querySelectorAll('[aria-label="Drag block"]'),
       ).toHaveLength(1)
@@ -502,6 +507,83 @@ describe("ExperienceEditor", () => {
             { id: "category:family", categoryId: "family" },
             { id: "category:jesus", categoryId: "jesus" },
           ],
+        },
+      ])
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("saves bounded rail copy, drops blank overrides, and preserves every tile field", async () => {
+    const view = renderEditorDom(
+      [
+        {
+          t: "watchHomeCategoryRail",
+          sectionKey: "categories",
+          categoryIds: ["jesus"],
+          tiles: [
+            {
+              id: "category:jesus",
+              categoryId: "jesus",
+              title: "Meet Jesus",
+              style: "forest",
+            },
+          ],
+          eyebrow: "Library",
+          title: "Old heading",
+          description: "Old description",
+          ctaLabel: "See all",
+        },
+      ],
+      { isHomepage: true },
+    )
+
+    try {
+      const setValue = (label: string, value: string) => {
+        const input = view.container.querySelector(`[aria-label="${label}"]`)
+        if (
+          !(input instanceof HTMLInputElement) &&
+          !(input instanceof HTMLTextAreaElement)
+        ) {
+          throw new Error(`Copy field not found: ${label}`)
+        }
+        const prototype =
+          input instanceof HTMLTextAreaElement
+            ? HTMLTextAreaElement.prototype
+            : HTMLInputElement.prototype
+        Object.getOwnPropertyDescriptor(prototype, "value")?.set?.call(
+          input,
+          value,
+        )
+        input.dispatchEvent(new Event("input", { bubbles: true }))
+      }
+
+      act(() => {
+        setValue("Category rail eyebrow", "  Explore  ")
+        setValue("Category rail heading", "Stories for everyone")
+        setValue("Category rail description", "   ")
+        setValue("Category rail CTA label", "Watch all")
+      })
+
+      const blocksInput = view.container.querySelector<HTMLInputElement>(
+        'input[name="blocks"]',
+      )
+      expect(JSON.parse(blocksInput?.value ?? "[]")).toEqual([
+        {
+          t: "watchHomeCategoryRail",
+          sectionKey: "categories",
+          categoryIds: ["jesus"],
+          tiles: [
+            {
+              id: "category:jesus",
+              categoryId: "jesus",
+              title: "Meet Jesus",
+              style: "forest",
+            },
+          ],
+          eyebrow: "Explore",
+          title: "Stories for everyone",
+          ctaLabel: "Watch all",
         },
       ])
     } finally {
@@ -1193,6 +1275,249 @@ describe("ExperienceEditor", () => {
       expect(view.container.textContent).toContain("Easter sunrise")
       expect(view.container.textContent).toContain("Selected: Easter sunrise")
       expect(view.container.textContent).not.toContain("Root hero")
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("loads the complete media library only after the image picker opens", async () => {
+    const loadMediaLibraryAction = vi.fn(async () => ({
+      rootLabel: "Library",
+      folders: [],
+      images: [
+        ...defaultMediaLibrary.images,
+        {
+          id: "asset-lazy",
+          displayName: "Loaded on demand",
+          altText: null,
+          mimeType: "image/webp",
+          byteSize: "8.0 KB",
+          previewUrl: "/api/media-assets/asset-lazy/preview",
+          updated: "2026-09-14T00:00:00.000Z",
+          folderId: null,
+          pathLabel: "Library",
+        },
+      ],
+    }))
+    const view = renderEditorDom(
+      [{ t: "section", sectionKey: "hero", content: [] }],
+      { loadMediaLibraryAction },
+    )
+
+    try {
+      expect(loadMediaLibraryAction).not.toHaveBeenCalled()
+      act(() =>
+        findButtonByAriaLabel(
+          view.container,
+          "Choose Section image from asset library",
+        ).click(),
+      )
+      await act(async () => await Promise.resolve())
+
+      expect(loadMediaLibraryAction).toHaveBeenCalledOnce()
+      expect(view.container.textContent).toContain("Loaded on demand")
+
+      act(() =>
+        findButtonByAriaLabel(view.container, "Close image library").click(),
+      )
+      act(() =>
+        findButtonByAriaLabel(
+          view.container,
+          "Choose Section image from asset library",
+        ).click(),
+      )
+      await act(async () => await Promise.resolve())
+      expect(loadMediaLibraryAction).toHaveBeenCalledOnce()
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("retries a failed media catalog load", async () => {
+    const loadedCatalog = {
+      rootLabel: "Library",
+      folders: [],
+      images: [
+        ...defaultMediaLibrary.images,
+        {
+          id: "asset-after-retry",
+          displayName: "Loaded after retry",
+          altText: null,
+          mimeType: "image/webp",
+          byteSize: "8.0 KB",
+          previewUrl: "/api/media-assets/asset-after-retry/preview",
+          updated: "2026-09-14T00:00:00.000Z",
+          folderId: null,
+          pathLabel: "Library",
+        },
+      ],
+    }
+    const loadMediaLibraryAction = vi
+      .fn<() => Promise<MediaLibraryBrowserData>>()
+      .mockRejectedValueOnce(new Error("temporary failure"))
+      .mockResolvedValueOnce(loadedCatalog)
+    const view = renderEditorDom(
+      [{ t: "section", sectionKey: "hero", content: [] }],
+      { loadMediaLibraryAction },
+    )
+
+    try {
+      act(() =>
+        findButtonByAriaLabel(
+          view.container,
+          "Choose Section image from asset library",
+        ).click(),
+      )
+      await act(async () => await Promise.resolve())
+      expect(view.container.textContent).toContain(
+        "Unable to load the image library",
+      )
+
+      act(() => findButtonByExactText(view.container, "Retry").click())
+      await act(async () => await Promise.resolve())
+
+      expect(loadMediaLibraryAction).toHaveBeenCalledTimes(2)
+      expect(view.container.textContent).toContain("Loaded after retry")
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("refreshes the retained media catalog after a successful picker upload", async () => {
+    const initialCatalog = {
+      rootLabel: "Library",
+      folders: [],
+      images: [...defaultMediaLibrary.images],
+    }
+    const refreshedCatalog = {
+      ...initialCatalog,
+      images: [
+        ...initialCatalog.images,
+        {
+          id: "asset-uploaded",
+          displayName: "Fresh upload",
+          altText: null,
+          mimeType: "image/webp",
+          byteSize: "8.0 KB",
+          previewUrl: "/api/media-assets/asset-uploaded/preview",
+          updated: "2026-09-14T00:00:00.000Z",
+          folderId: null,
+          pathLabel: "Library",
+        },
+      ],
+    }
+    const loadMediaLibraryAction = vi
+      .fn<() => Promise<MediaLibraryBrowserData>>()
+      .mockResolvedValueOnce(initialCatalog)
+      .mockResolvedValueOnce(refreshedCatalog)
+    const uploadImageAction = vi.fn(async () => ({ ok: true as const }))
+    const view = renderEditorDom(
+      [{ t: "section", sectionKey: "hero", content: [] }],
+      { loadMediaLibraryAction, uploadImageAction },
+    )
+
+    try {
+      act(() =>
+        findButtonByAriaLabel(
+          view.container,
+          "Choose Section image from asset library",
+        ).click(),
+      )
+      await act(async () => await Promise.resolve())
+
+      const dropTarget = view.container.querySelector(
+        "[data-media-asset-drop-target]",
+      )
+      expect(dropTarget).not.toBeNull()
+      const dropEvent = new Event("drop", { bubbles: true, cancelable: true })
+      Object.defineProperty(dropEvent, "dataTransfer", {
+        value: {
+          types: ["Files"],
+          files: [new File(["image"], "fresh.webp", { type: "image/webp" })],
+        },
+      })
+      await act(async () => dropTarget?.dispatchEvent(dropEvent))
+
+      expect(uploadImageAction).toHaveBeenCalledOnce()
+      expect(loadMediaLibraryAction).toHaveBeenCalledTimes(2)
+      expect(view.container.textContent).toContain("Fresh upload")
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("queues an upload refresh behind an in-flight catalog load", async () => {
+    let resolveInitialCatalog: (
+      library: MediaLibraryBrowserData,
+    ) => void = () => {}
+    const initialCatalogPromise = new Promise<MediaLibraryBrowserData>(
+      (resolve) => {
+        resolveInitialCatalog = resolve
+      },
+    )
+    const refreshedCatalog = {
+      rootLabel: "Library",
+      folders: [],
+      images: [
+        ...defaultMediaLibrary.images,
+        {
+          id: "asset-overlap-upload",
+          displayName: "Upload after overlap",
+          altText: null,
+          mimeType: "image/webp",
+          byteSize: "8.0 KB",
+          previewUrl: "/api/media-assets/asset-overlap-upload/preview",
+          updated: "2026-09-14T00:00:00.000Z",
+          folderId: null,
+          pathLabel: "Library",
+        },
+      ],
+    }
+    const loadMediaLibraryAction = vi
+      .fn<() => Promise<MediaLibraryBrowserData>>()
+      .mockReturnValueOnce(initialCatalogPromise)
+      .mockResolvedValueOnce(refreshedCatalog)
+    const uploadImageAction = vi.fn(async () => ({ ok: true as const }))
+    const view = renderEditorDom(
+      [{ t: "section", sectionKey: "hero", content: [] }],
+      { loadMediaLibraryAction, uploadImageAction },
+    )
+
+    try {
+      act(() =>
+        findButtonByAriaLabel(
+          view.container,
+          "Choose Section image from asset library",
+        ).click(),
+      )
+      const dropTarget = view.container.querySelector(
+        "[data-media-asset-drop-target]",
+      )
+      const dropEvent = new Event("drop", { bubbles: true, cancelable: true })
+      Object.defineProperty(dropEvent, "dataTransfer", {
+        value: {
+          types: ["Files"],
+          files: [new File(["image"], "overlap.webp", { type: "image/webp" })],
+        },
+      })
+      act(() => dropTarget?.dispatchEvent(dropEvent))
+      await act(async () => await Promise.resolve())
+      expect(uploadImageAction).toHaveBeenCalledOnce()
+      expect(loadMediaLibraryAction).toHaveBeenCalledOnce()
+
+      await act(async () => {
+        resolveInitialCatalog({
+          rootLabel: "Library",
+          folders: [],
+          images: [...defaultMediaLibrary.images],
+        })
+        await initialCatalogPromise
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(loadMediaLibraryAction).toHaveBeenCalledTimes(2)
+      expect(view.container.textContent).toContain("Upload after overlap")
     } finally {
       view.cleanup()
     }

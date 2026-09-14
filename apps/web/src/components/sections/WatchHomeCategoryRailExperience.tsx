@@ -2,6 +2,10 @@ import { WatchHomeCategoryRail } from "@/components/home/WatchHomeCategoryRail"
 import type { WatchHomeRailTileInput } from "@/lib/watch-home-tiles"
 
 export type WatchHomeCategoryRailExperienceData = {
+  readonly eyebrow?: string | null
+  readonly title?: string | null
+  readonly description?: string | null
+  readonly ctaLabel?: string | null
   readonly categoryIds?: readonly string[] | null
   /**
    * Null on blocks stored before tile authoring shipped, and on any response
@@ -24,6 +28,10 @@ export function WatchHomeCategoryRailExperience({
     <WatchHomeCategoryRail
       categoryIds={data.categoryIds ?? []}
       tiles={data.tiles ?? null}
+      eyebrow={data.eyebrow}
+      title={data.title}
+      description={data.description}
+      ctaLabel={data.ctaLabel}
       languageSlug={languageSlug}
     />
   )
