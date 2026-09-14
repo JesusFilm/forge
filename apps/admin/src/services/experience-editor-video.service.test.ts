@@ -686,11 +686,12 @@ describe("bounded experience editor language and collection pages", () => {
   })
 
   it("returns stable bounded collection pages using nullable order, creation time, and relation id", async () => {
+    const preciseCreatedAt = "2026-09-14T12:00:00.123456Z"
     const relations = Array.from({ length: 3 }, (_, index) => ({
       relationId: `relation-${index}`,
       childId: `child-${index}`,
       order: index === 2 ? null : 1,
-      createdAt: new Date("2026-09-14T12:00:00.000Z").toISOString(),
+      createdAt: preciseCreatedAt,
     }))
     const { db, raw } = pageDb([[{ relationRows: relations, total: 3n }]])
     raw.mockResolvedValueOnce([
@@ -705,6 +706,9 @@ describe("bounded experience editor language and collection pages", () => {
     expect(page.items.map((item) => item.key)).toEqual(["child-0", "child-1"])
     expect(page.total).toBe(3)
     expect(page.nextCursor).toEqual(expect.any(String))
+    expect(
+      JSON.parse(Buffer.from(page.nextCursor!, "base64url").toString("utf8")),
+    ).toMatchObject({ createdAt: preciseCreatedAt })
     expect(sqlText(raw)).toMatch(/order ASC NULLS LAST/)
     expect(sqlText(raw)).toMatch(/created_at ASC/)
     expect(sqlText(raw)).toMatch(/relation\.id ASC/)

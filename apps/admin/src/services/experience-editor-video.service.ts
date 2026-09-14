@@ -1330,6 +1330,24 @@ export async function loadExperienceEditorCollectionChildPage(
   const pageSize = normalizedPageSize(request.pageSize)
   const cursor = parseCollectionCursor(request.cursor, parentVideoId)
   await assertEditorVideoExists(db, parentVideoId)
+  const cursorPredicate = !cursor
+    ? Prisma.empty
+    : cursor.order === null
+      ? Prisma.sql`
+        AND relation.order IS NULL
+        AND (
+          relation.created_at > ${cursor.createdAt}::timestamptz
+          OR (relation.created_at = ${cursor.createdAt}::timestamptz AND relation.id > ${cursor.relationId})
+        )
+      `
+      : Prisma.sql`
+        AND (
+          relation.order > ${cursor.order}
+          OR (relation.order = ${cursor.order} AND relation.created_at > ${cursor.createdAt}::timestamptz)
+          OR (relation.order = ${cursor.order} AND relation.created_at = ${cursor.createdAt}::timestamptz AND relation.id > ${cursor.relationId})
+          OR relation.order IS NULL
+        )
+      `
   const envelopes = await db.$queryRaw<
     Array<{ relationRows: unknown; total: bigint | number }>
   >(Prisma.sql`
@@ -1339,15 +1357,7 @@ export async function loadExperienceEditorCollectionChildPage(
       FROM video_relation relation
       JOIN video child ON child.id = relation.child_id AND child.deleted_at IS NULL
       WHERE relation.parent_id = ${parentVideoId}
-        AND (${cursor == null}
-          OR (${cursor?.order ?? null} IS NOT NULL AND (
-            relation.order > ${cursor?.order ?? null}
-            OR (relation.order = ${cursor?.order ?? null} AND relation.created_at > ${cursor?.createdAt ?? "1970-01-01T00:00:00.000Z"}::timestamptz)
-            OR (relation.order = ${cursor?.order ?? null} AND relation.created_at = ${cursor?.createdAt ?? "1970-01-01T00:00:00.000Z"}::timestamptz AND relation.id > ${cursor?.relationId ?? ""})
-            OR relation.order IS NULL))
-          OR (${cursor?.order ?? null} IS NULL AND relation.order IS NULL AND (
-            relation.created_at > ${cursor?.createdAt ?? "1970-01-01T00:00:00.000Z"}::timestamptz
-            OR (relation.created_at = ${cursor?.createdAt ?? "1970-01-01T00:00:00.000Z"}::timestamptz AND relation.id > ${cursor?.relationId ?? ""}))))
+        ${cursorPredicate}
       ORDER BY relation.order ASC NULLS LAST, relation.created_at ASC, relation.id ASC
       LIMIT ${pageSize + 1}
     )
@@ -1369,7 +1379,10 @@ export async function loadExperienceEditorCollectionChildPage(
           v: 1,
           parentVideoId,
           order: lastRow.order,
-          createdAt: new Date(lastRow.createdAt).toISOString(),
+          // Preserve PostgreSQL's full timestamp precision. Converting through
+          // Date truncates microseconds and can make the last row reappear on
+          // the next keyset page.
+          createdAt: lastRow.createdAt,
           relationId: lastRow.relationId,
         } satisfies CollectionCursor)
       : null
