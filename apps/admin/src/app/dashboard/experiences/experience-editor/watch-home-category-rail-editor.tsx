@@ -1,6 +1,14 @@
 "use client"
 
-import { useId, useRef, useState } from "react"
+import {
+  useId,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type KeyboardEvent,
+  type MouseEvent,
+  type PointerEvent,
+} from "react"
 import {
   Anchor,
   ArrowDown,
@@ -53,7 +61,33 @@ import {
 type WatchHomeCategoryRailEditorProps = {
   tiles: readonly RailTile[]
   onChange: (tiles: RailTile[]) => void
+  copy?: WatchHomeCategoryRailCopy
+  onCopyChange?: (field: keyof WatchHomeCategoryRailCopy, value: string) => void
 }
+
+export type WatchHomeCategoryRailCopy = {
+  eyebrow?: string
+  title?: string
+  description?: string
+  ctaLabel?: string
+}
+
+const COPY_FIELDS = [
+  { key: "eyebrow", label: "Eyebrow", maxLength: 80, multiline: false },
+  { key: "title", label: "Heading", maxLength: 160, multiline: false },
+  {
+    key: "description",
+    label: "Description",
+    maxLength: 500,
+    multiline: true,
+  },
+  { key: "ctaLabel", label: "CTA label", maxLength: 80, multiline: false },
+] as const satisfies ReadonlyArray<{
+  key: keyof WatchHomeCategoryRailCopy
+  label: string
+  maxLength: number
+  multiline: boolean
+}>
 
 // Exhaustive over the shared icon vocabulary — adding a key to the catalog
 // without a glyph here is a compile error, same contract apps/web's renderer
@@ -137,6 +171,8 @@ function tilePreview(tile: RailTile) {
 export function WatchHomeCategoryRailEditor({
   tiles,
   onChange,
+  copy = {},
+  onCopyChange = () => undefined,
 }: WatchHomeCategoryRailEditorProps) {
   const helpId = useId()
   const fieldId = useId()
@@ -253,13 +289,67 @@ export function WatchHomeCategoryRailEditor({
   return (
     <div className="rounded-sm bg-[linear-gradient(160deg,#151218_0%,#21192d_52%,#121018_100%)] p-5 text-left">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-brand)]">
-            Browse the library
+        <div className="min-w-0 flex-1">
+          <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+            {COPY_FIELDS.map(({ key, label, maxLength, multiline }) => {
+              const value = copy[key] ?? ""
+              const invalid = value.length > maxLength
+              const errorId = `${fieldId}-copy-${key}-error`
+              const ariaLabel = `Category rail ${
+                key === "title"
+                  ? "heading"
+                  : key === "ctaLabel"
+                    ? "CTA label"
+                    : key
+              }`
+              const inputProps = {
+                id: `${fieldId}-copy-${key}`,
+                value,
+                maxLength,
+                placeholder: "Uses the viewer’s translated default",
+                onClick: (event: MouseEvent) => event.stopPropagation(),
+                onPointerDown: (event: PointerEvent) => event.stopPropagation(),
+                onKeyDown: (event: KeyboardEvent) => event.stopPropagation(),
+                onChange: (
+                  event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+                ) => onCopyChange(key, event.target.value),
+                "aria-label": ariaLabel,
+                "aria-invalid": invalid || undefined,
+                "aria-describedby": invalid ? errorId : undefined,
+                className: `${FIELD_CLASSES} ${invalid ? INVALID_FIELD_CLASSES : ""}`,
+              }
+
+              return (
+                <label key={key} className="block min-w-0">
+                  <span className="mb-1 block font-mono text-[9px] uppercase tracking-[0.1em] text-white/54">
+                    {label}
+                  </span>
+                  {multiline ? (
+                    <textarea
+                      {...inputProps}
+                      rows={3}
+                      className={`${inputProps.className} resize-y`}
+                    />
+                  ) : (
+                    <input {...inputProps} />
+                  )}
+                  {invalid ? (
+                    <span
+                      id={errorId}
+                      role="alert"
+                      className="mt-1 block text-[11px] leading-4 text-[var(--color-danger)]"
+                    >
+                      {label} must be {maxLength} characters or fewer.
+                    </span>
+                  ) : null}
+                </label>
+              )
+            })}
           </div>
-          <h3 className="mt-2 text-[22px] font-semibold tracking-[-0.03em] text-white">
-            Browse by category
-          </h3>
+          <p className="mt-2 text-[11px] leading-5 text-white/52">
+            Leave a field blank to use the viewer’s translated default. Open
+            draft preview to see the exact copy for this locale.
+          </p>
           <p className="mt-1 text-[12px] leading-5 text-white/62">
             Add, edit, reorder, and remove the tiles in this carousel.
           </p>

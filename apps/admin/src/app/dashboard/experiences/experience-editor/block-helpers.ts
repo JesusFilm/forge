@@ -259,6 +259,13 @@ const optionalEmptyStringKeys = new Set([
   "videoId",
 ])
 
+const watchHomeCategoryRailCopyKeys = new Set([
+  "eyebrow",
+  "title",
+  "description",
+  "ctaLabel",
+])
+
 export function asRecord(value: unknown): BlockRecord | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as BlockRecord)
@@ -320,13 +327,29 @@ export function normalizeEditorBlockPayload(value: unknown): unknown {
 
   const record = value as BlockRecord
   const normalizedEntries = Object.entries(record)
-    .map(([key, item]) => [key, normalizeEditorBlockPayload(item)] as const)
+    .map(([key, item]) => {
+      const normalizedItem = normalizeEditorBlockPayload(item)
+      return [
+        key,
+        record.t === "watchHomeCategoryRail" &&
+        watchHomeCategoryRailCopyKeys.has(key) &&
+        typeof normalizedItem === "string"
+          ? normalizedItem.trim()
+          : normalizedItem,
+      ] as const
+    })
     .filter(([key, item]) => {
       if (legacyEditorOnlyKeys.has(key)) return false
       if (record.t === "container" && key === "slots") return false
       if (item === null || item === undefined) return false
       if (typeof item !== "string") return true
       if (item.trim().length > 0) return true
+      if (
+        record.t === "watchHomeCategoryRail" &&
+        watchHomeCategoryRailCopyKeys.has(key)
+      ) {
+        return false
+      }
       return !optionalEmptyStringKeys.has(key) && !key.endsWith("Url")
     })
 
@@ -428,7 +451,7 @@ export function summarizeBlock(
     return {
       key: summaryKey,
       typeLabel: "Watch Category Rail",
-      title: "Browse by category",
+      title: asString(value.title).trim() || "Browse by category",
       body:
         customCount > 0
           ? `${tileCount} ${tileCount === 1 ? "tile" : "tiles"} · ${customCount} custom`
