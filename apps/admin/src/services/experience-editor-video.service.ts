@@ -1135,6 +1135,12 @@ function dubPageProjection(
 ) {
   const baseLocale = locale.split("-")[0] ?? locale
   const searchPattern = `%${query.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_")}%`
+  const cursorPredicate = !cursor
+    ? Prisma.empty
+    : Prisma.sql`
+        AND ("sortLabel", "languageIdentity", id) >
+          (${cursor.sortLabel}, ${cursor.languageIdentity}, ${cursor.dubId})
+      `
   return Prisma.sql`
     WITH eligible AS MATERIALIZED (
       SELECT d.id, d.video_id AS "videoId", d.language_id AS "languageId",
@@ -1185,8 +1191,7 @@ function dubPageProjection(
            "updatedAt", "languageIdentity", "sortLabel"
     FROM winners
     WHERE (${query} = '' OR duration_text ILIKE ${searchPattern} ESCAPE '\\')
-      AND (${cursor == null} OR ("sortLabel", "languageIdentity", id) >
-        (${cursor?.sortLabel ?? ""}, ${cursor?.languageIdentity ?? ""}, ${cursor?.dubId ?? ""}))
+      ${cursorPredicate}
     ORDER BY "sortLabel" ASC, "languageIdentity" ASC, id ASC
     LIMIT ${take}
   `
@@ -1200,6 +1205,9 @@ async function selectExactDubChoice(
   const languageId = compactText(request.selectedLanguageId)
   const legacyUrl = compactText(request.selectedLegacyStreamingUrl)
   if (!languageId && !legacyUrl) return null
+  const selectorPredicate = languageId
+    ? Prisma.sql`d.language_id = ${languageId}`
+    : Prisma.sql`${legacyUrl} IN (btrim(d.hls), btrim(d.dash), btrim(d.share))`
   const rows = await db.$queryRaw<DubPageRow[]>(Prisma.sql`
     SELECT d.id, d.video_id AS "videoId", d.language_id AS "languageId",
            l.slug AS "languageSlug", l.bcp47, l.iso3,
@@ -1215,8 +1223,7 @@ async function selectExactDubChoice(
     JOIN video v ON v.id = d.video_id AND v.deleted_at IS NULL
     WHERE d.video_id = ${request.videoId} AND d.deleted_at IS NULL
       AND COALESCE(NULLIF(btrim(d.hls), ''), NULLIF(btrim(d.dash), ''), NULLIF(btrim(d.share), '')) IS NOT NULL
-      AND ((${languageId} IS NOT NULL AND d.language_id = ${languageId})
-        OR (${languageId} IS NULL AND ${legacyUrl} IS NOT NULL AND ${legacyUrl} IN (btrim(d.hls), btrim(d.dash), btrim(d.share))))
+      AND ${selectorPredicate}
     ORDER BY d.updated_at DESC NULLS LAST, d.id ASC LIMIT 1
   `)
   const row = rows[0]

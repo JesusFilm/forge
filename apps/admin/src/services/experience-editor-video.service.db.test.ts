@@ -97,6 +97,41 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           })
           expect(second.choices[0]?.key).not.toBe(first.choices[0]?.key)
         }
+
+        const [selectedDub] = await prisma.$queryRaw<
+          Array<{ id: string; languageId: string; streamUrl: string }>
+        >(Prisma.sql`
+          SELECT d.id,
+                 d.language_id AS "languageId",
+                 COALESCE(NULLIF(btrim(d.hls), ''), NULLIF(btrim(d.dash), ''), NULLIF(btrim(d.share), '')) AS "streamUrl"
+          FROM video_dub d
+          WHERE d.video_id = ${video.id}
+            AND d.language_id IS NOT NULL
+            AND d.deleted_at IS NULL
+            AND COALESCE(NULLIF(btrim(d.hls), ''), NULLIF(btrim(d.dash), ''), NULLIF(btrim(d.share), '')) IS NOT NULL
+          ORDER BY d.updated_at DESC NULLS LAST, d.id ASC
+          LIMIT 1
+        `)
+        if (selectedDub) {
+          const selectedByLanguage = await loadExperienceEditorDubPage(prisma, {
+            videoId: video.id,
+            locale: "en",
+            pageSize: 1,
+            selectedLanguageId: selectedDub.languageId,
+          })
+          expect(selectedByLanguage.selectedChoice?.key).toBe(selectedDub.id)
+
+          const selectedByLegacyUrl = await loadExperienceEditorDubPage(
+            prisma,
+            {
+              videoId: video.id,
+              locale: "en",
+              pageSize: 1,
+              selectedLegacyStreamingUrl: selectedDub.streamUrl,
+            },
+          )
+          expect(selectedByLegacyUrl.selectedChoice?.key).toBe(selectedDub.id)
+        }
       }
 
       const [parent] = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
