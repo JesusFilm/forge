@@ -597,12 +597,9 @@ export const env = createEnv({
     WEB_REVALIDATE_URL: z.string().url().optional(),
     WEB_REVALIDATE_TOKEN: z.string().min(1).optional(),
 
-    // Mobile in-app feedback -> Linear (U1, KTD12). All five are optional at
-    // boot: admin runs in environments with no Linear configuration, and a
-    // required-without-default var bricks those Railway deploys -- see
-    // docs/solutions/runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md.
-    // A missing key or team id refuses every submission (R15) and changes
-    // nothing else about admin.
+    // Mobile feedback -> Linear (KTD12). All five optional: a required var with
+    // no default bricks unprovisioned Railway deploys (see docs/solutions/
+    // runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md).
     ADMIN_FEEDBACK_LINEAR_API_KEY: z.string().min(1).optional(),
     ADMIN_FEEDBACK_LINEAR_TEAM_ID: z.string().min(1).optional(),
     ADMIN_FEEDBACK_LINEAR_PROJECT_ID: z.string().min(1).optional(),

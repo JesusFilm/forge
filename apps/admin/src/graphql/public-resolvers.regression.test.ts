@@ -99,61 +99,107 @@ function readAllTypeSources(): string {
   )
 }
 
-/** An input field reads like a resolver and can shadow one under "last write
- * wins" (`FeedbackSubmissionInput.video` did this to `Query.video`) — the
- * nearest `builder.` call before it is what actually declares it. */
-function isInputTypeField(source: string, index: number): boolean {
-  const start = source.lastIndexOf("builder.", index)
-  return start !== -1 && source.startsWith("builder.inputType", start)
+// A `/` after one of these, or at the start of a line, opens a regex literal, not a division.
+const REGEX_PRECEDERS = "(,=:![&|?{;"
+function startsRegex(source: string, slash: number): boolean {
+  let j = slash - 1
+  while (j >= 0 && (source[j] === " " || source[j] === "\t")) j--
+  return j < 0 || source[j] === "\n" || REGEX_PRECEDERS.includes(source[j])
 }
 
-// Brace-balanced parse; last write wins on duplicate names. Tracks strings AND
-// comments: an apostrophe in a resolver's comment ("U1's contract") once opened
-// a string that ran into the next file, so a block inherited its authScopes.
+// Index of the `/` that closes the regex literal opened at `open`. A class `[...]`
+// may hold a bare `/`; a newline means the literal was misread, so stop there.
+function regexEnd(source: string, open: number): number {
+  let inClass = false
+  for (let i = open + 1; i < source.length; i++) {
+    const c = source[i]
+    if (c === "\\") i++
+    else if (c === "\n") return i
+    else if (inClass) {
+      if (c === "]") inClass = false
+    } else if (c === "[") inClass = true
+    else if (c === "/") return i
+  }
+  return source.length
+}
+
+// Index just past the bracket that closes the one at `open`. Skips strings, comments,
+// and regex literals: an apostrophe in a comment ("U1's contract") once opened a string
+// that ran into the next file, and the `\/\//` in a URL regex once opened a comment.
+function skipBalanced(source: string, open: number): number {
+  let depth = 1
+  let i = open + 1
+  let inString: '"' | "'" | "`" | null = null
+  let inLineComment = false
+  let inBlockComment = false
+  let prev = ""
+  while (i < source.length && depth > 0) {
+    const c = source[i]
+    const next = source[i + 1]
+    if (inLineComment) {
+      if (c === "\n") inLineComment = false
+    } else if (inBlockComment) {
+      if (c === "*" && next === "/") {
+        inBlockComment = false
+        i++
+      }
+    } else if (inString) {
+      if (c === inString && prev !== "\\") inString = null
+    } else if (c === "/" && next === "/" && prev !== "\\") {
+      inLineComment = true
+      i++
+    } else if (c === "/" && next === "*" && prev !== "\\") {
+      inBlockComment = true
+      i++
+    } else if (c === "/" && startsRegex(source, i)) {
+      i = regexEnd(source, i)
+    } else {
+      if (c === '"' || c === "'" || c === "`") inString = c
+      else if ("{([".includes(c)) depth++
+      else if ("})]".includes(c)) depth--
+    }
+    prev = c
+    i++
+  }
+  return i
+}
+
+/** Fields under `builder.inputType(...)` read like resolvers and shadow them under
+ * "last write wins" (`FeedbackSubmissionInput.video` hid `Query.video`). Each span is
+ * one call's balanced `(`…`)` range, computed once; a match inside one is an input field. */
+function inputTypeSpans(source: string): Array<[number, number]> {
+  const spans: Array<[number, number]> = []
+  const re = /\bbuilder\s*\.\s*inputType\s*\(/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(source)) !== null) {
+    spans.push([m.index, skipBalanced(source, re.lastIndex - 1)])
+  }
+  return spans
+}
+
+function isInputTypeField(
+  spans: ReadonlyArray<[number, number]>,
+  index: number,
+): boolean {
+  return spans.some(([start, end]) => index >= start && index < end)
+}
+
+// Brace-balanced parse; last write wins on duplicate names. A match inside an
+// input-type span is skipped; every other `name: t.field(` / `t.prismaField(`
+// becomes a block keyed by name.
 function parseResolverBlocks(source: string): Map<string, string> {
   const result = new Map<string, string>()
+  const spans = inputTypeSpans(source)
   const re = /(\w+):\s*t\.(?:prismaField|field)\s*\(/g
   let m: RegExpExecArray | null
   while ((m = re.exec(source)) !== null) {
     const name = m[1]
-    if (isInputTypeField(source, m.index)) continue
+    if (isInputTypeField(spans, m.index)) continue
     let i = re.lastIndex
     while (i < source.length && source[i] !== "{") i++
     if (i >= source.length) continue
-    let depth = 1
-    const blockStart = i + 1
-    i++
-    let inString: '"' | "'" | "`" | null = null
-    let inLineComment = false
-    let inBlockComment = false
-    let prev = ""
-    while (i < source.length && depth > 0) {
-      const c = source[i]
-      const next = source[i + 1]
-      if (inLineComment) {
-        if (c === "\n") inLineComment = false
-      } else if (inBlockComment) {
-        if (c === "*" && next === "/") {
-          inBlockComment = false
-          i++
-        }
-      } else if (inString) {
-        if (c === inString && prev !== "\\") inString = null
-      } else if (c === "/" && next === "/") {
-        inLineComment = true
-        i++
-      } else if (c === "/" && next === "*") {
-        inBlockComment = true
-        i++
-      } else {
-        if (c === '"' || c === "'" || c === "`") inString = c
-        else if (c === "{") depth++
-        else if (c === "}") depth--
-      }
-      prev = c
-      i++
-    }
-    result.set(name, source.slice(blockStart, i - 1))
+    const end = skipBalanced(source, i)
+    result.set(name, source.slice(i + 1, end - 1))
   }
   return result
 }
@@ -209,4 +255,131 @@ describe("PUBLIC resolver manifest is exhaustive", () => {
         `mistake, remove the authScopes: { public: true } and re-gate.`,
     ).toEqual([])
   })
+})
+
+// Constructed sources that pin the parser itself. Each case names the shape that once
+// hid a resolver (or must keep working) and asserts which names are parsed and public.
+describe("parseResolverBlocks (parser self-test)", () => {
+  const PUBLIC = "authScopes: { public: true }"
+  const PUBLIC_RE = /authScopes:\s*\{\s*public:\s*true\s*\}/
+  const cases: Array<{
+    label: string
+    source: string
+    names: string[]
+    publicNames: string[]
+  }> = [
+    {
+      label:
+        "an input field of the same name does not shadow the root resolver",
+      source: [
+        `builder.inputType("XInput", { fields: (t) => ({ video: t.field({ type: "String" }) }) })`,
+        `builder.queryFields((t) => ({ video: t.field({ type: "Boolean", ${PUBLIC}, resolve: () => true }) }))`,
+      ].join("\n"),
+      names: ["video"],
+      publicNames: ["video"],
+    },
+    {
+      label:
+        "a prettier-chained builder .objectRef after an inputType is not an input type",
+      source: [
+        `builder.inputType("XInput", { fields: (t) => ({ a: t.string() }) })`,
+        `builder`,
+        `  .objectRef<Y>("Y")`,
+        `  .implement({ fields: (t) => ({ b: t.field({ type: "Boolean", ${PUBLIC}, resolve: () => true }) }) })`,
+      ].join("\n"),
+      names: ["b"],
+      publicNames: ["b"],
+    },
+    {
+      label:
+        "a comment naming builder.inputType inside a callback hides nothing after it",
+      source: [
+        `builder.inputType("XInput", { fields: (t) => ({ a: t.string() }) })`,
+        `builder.mutationFields((t) => ({`,
+        `  // the arg shape is the builder.inputType("XInput") above`,
+        `  newDangerous: t.field({ type: "Boolean", ${PUBLIC}, args: { input: t.arg({ type: XInput }) }, resolve: () => true }),`,
+        `}))`,
+      ].join("\n"),
+      names: ["newDangerous"],
+      publicNames: ["newDangerous"],
+    },
+    {
+      label:
+        "an inline builder.inputType in a sibling's t.arg hides nothing after it",
+      source: [
+        `builder.queryFields((t) => ({`,
+        `  first: t.field({ type: "Boolean", args: { input: t.arg({ type: builder.inputType("Inline", { fields: (t) => ({ a: t.string() }) }) }) }, resolve: () => true }),`,
+        `  second: t.field({ type: "Boolean", ${PUBLIC}, resolve: () => true }),`,
+        `}))`,
+      ].join("\n"),
+      names: ["first", "second"],
+      publicNames: ["second"],
+    },
+    {
+      label: "escaped slashes in a regex literal do not open a line comment",
+      source: [
+        `builder.queryFields((t) => ({`,
+        `  guarded: t.field({`,
+        `    type: "Boolean",`,
+        `    args: { url: t.arg.string() },`,
+        `    resolve: (_root, args) => {`,
+        `      if (/^https?:\\/\\//u.test(args.url ?? "")) {`,
+        `        return true`,
+        `      }`,
+        `      return false`,
+        `    },`,
+        `    ${PUBLIC},`,
+        `  }),`,
+        `}))`,
+      ].join("\n"),
+      names: ["guarded"],
+      publicNames: ["guarded"],
+    },
+    {
+      label:
+        "an apostrophe in a regex class and /* inside a string are not delimiters",
+      source: [
+        `builder.queryFields((t) => ({`,
+        `  quoted: t.field({`,
+        `    type: "Boolean",`,
+        `    resolve: () => {`,
+        `      const hasQuote = /[']/u.test("x")`,
+        `      const label = "/* not a comment */"`,
+        `      return hasQuote || label.length > 0`,
+        `    },`,
+        `    ${PUBLIC},`,
+        `  }),`,
+        `}))`,
+      ].join("\n"),
+      names: ["quoted"],
+      publicNames: ["quoted"],
+    },
+    {
+      label:
+        "control: a line comment with an apostrophe does not open a string",
+      source: [
+        `builder.queryFields((t) => ({`,
+        `  plain: t.field({`,
+        `    type: "Boolean",`,
+        `    // U1's contract`,
+        `    resolve: () => true,`,
+        `    ${PUBLIC},`,
+        `  }),`,
+        `}))`,
+      ].join("\n"),
+      names: ["plain"],
+      publicNames: ["plain"],
+    },
+  ]
+
+  for (const c of cases) {
+    it(c.label, () => {
+      const blocks = parseResolverBlocks(c.source)
+      expect([...blocks.keys()].sort()).toEqual([...c.names].sort())
+      const publicNames = [...blocks.entries()]
+        .filter(([, block]) => PUBLIC_RE.test(block))
+        .map(([name]) => name)
+      expect(publicNames.sort()).toEqual([...c.publicNames].sort())
+    })
+  }
 })
