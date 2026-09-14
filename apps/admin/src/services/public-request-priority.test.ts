@@ -14,7 +14,8 @@ function deferred() {
 }
 
 describe("public request priority", () => {
-  it("defers editor admission by one event-loop turn", async () => {
+  it("defers editor admission through the public registration window", async () => {
+    const startedAt = Date.now()
     let admitted = false
     const request = admitExperienceEditorRequest().then(() => {
       admitted = true
@@ -23,6 +24,7 @@ describe("public request priority", () => {
     expect(admitted).toBe(false)
     await request
     expect(admitted).toBe(true)
+    expect(Date.now() - startedAt).toBeGreaterThanOrEqual(20)
   })
 
   it("waits for public work registered at the proxy boundary", async () => {
@@ -87,7 +89,7 @@ describe("public request priority", () => {
     expect(editorAdmitted).toBe(true)
   })
 
-  it("admits the editor on the next turn when no public request is active", async () => {
+  it("admits the editor after the grace window when no public request is active", async () => {
     await expect(admitExperienceEditorRequest()).resolves.toBeUndefined()
   })
 

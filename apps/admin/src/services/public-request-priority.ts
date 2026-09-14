@@ -9,6 +9,7 @@ const PUBLIC_REQUEST_PRIORITY_STATE = Symbol.for(
   "forge.admin.public-request-priority",
 )
 const EXPERIENCE_EDITOR_PRIORITY_WAIT_MAX_MS = 250
+const EXPERIENCE_EDITOR_PUBLIC_REGISTRATION_GRACE_MS = 25
 
 function priorityState() {
   const shared = globalThis as typeof globalThis & {
@@ -95,10 +96,14 @@ async function waitForPublicGraphql() {
 }
 
 /**
- * Gives same-instant public requests one event-loop turn to register at the
- * proxy boundary, then waits only while public work is pending or active.
+ * Gives same-instant public requests a short bounded window to register at the
+ * proxy boundary, then waits only while public work is pending or active. A
+ * timer turn alone is not sufficient under concurrent route preparation: the
+ * editor middleware can resume before the public GraphQL handler has entered.
  */
 export async function admitExperienceEditorRequest() {
-  await new Promise<void>((resolve) => setTimeout(resolve, 0))
+  await new Promise<void>((resolve) =>
+    setTimeout(resolve, EXPERIENCE_EDITOR_PUBLIC_REGISTRATION_GRACE_MS),
+  )
   await waitForPublicGraphql()
 }
