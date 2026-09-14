@@ -137,6 +137,13 @@ export function createSplashSession(deps: SplashSessionDeps): SplashSession {
     })
   }
 
+  /** The two paths on which the cover never plays at all: a deep-link launch
+   *  and the kill-switch. One shape, so a later snapshot change reaches both. */
+  function endWithoutPlaying() {
+    ended = true
+    commit({ ...INITIAL_SNAPSHOT, resolved: true })
+  }
+
   function maybeRelease() {
     if (!snapshot.visible || !floorElapsed) return
     if (!homeReported && !homeFailed) return
@@ -191,8 +198,7 @@ export function createSplashSession(deps: SplashSessionDeps): SplashSession {
     ])
     if (ended) return
     if (external) {
-      ended = true
-      commit({ ...INITIAL_SNAPSHOT, resolved: true })
+      endWithoutPlaying()
       return
     }
     becomeVisible(reduceMotion ? "still" : "motion")
@@ -218,8 +224,7 @@ export function createSplashSession(deps: SplashSessionDeps): SplashSession {
       if (!deps.animatedSplashEnabled) {
         // Synchronous, unlike the deep-link skip: the host reads a settled
         // never-plays snapshot on its first render and lowers the native splash.
-        ended = true
-        commit({ ...INITIAL_SNAPSHOT, resolved: true })
+        endWithoutPlaying()
         return
       }
       void resolve()

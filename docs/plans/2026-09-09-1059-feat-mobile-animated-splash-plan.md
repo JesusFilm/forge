@@ -441,7 +441,7 @@ U1 then U2. U3 then U4. U5 wires both chains into the root layout and depends on
 - **Test scenarios:** `Test expectation: none -- generated native output with no JavaScript surface. See the Verification Contract's device gate.`
 - **Verification:** a cold launch shows no visible change at the moment the native splash hands over.
 
-> **Note added 2026-09-15 — reversed while the flag is off.** The generator's splash branch now follows `ANIMATED_SPLASH_ENABLED`: the symbol on transparency (`markSvg(SIZE, WIDTH_SPLASH)`, the pre-#2216 emission, byte-identical) when off, the flat field of step 1 when on. KTD3 holds only while the flag is on, and re-enabling must re-run `pnpm icons:generate` to re-apply step 1. `src/lib/splash/__tests__/splashNativeImage.guard.test.js` pins the committed asset to the flag.
+> **Note added 2026-09-15 — reversed while the flag is off.** The generator's splash branch now follows `ANIMATED_SPLASH_ENABLED`: the symbol on transparency (`markSvg(SIZE, WIDTH_SPLASH)`, the pre-#2216 emission, byte-identical) when off, the flat field of step 1 when on. KTD3 holds only while the flag is on, and re-enabling must re-run `pnpm icons:generate` to re-apply step 1. `src/lib/splash/__tests__/splashKillSwitch.guard.test.js` pins the committed asset to the flag by md5.
 
 ---
 

@@ -1367,7 +1367,7 @@ Closing the window ends playback, while expanding it returns the same playback t
 
 ### Splash Cover
 
-> **Note added 2026-09-15:** the Splash Cover is off. `ANIMATED_SPLASH_ENABLED` in `apps/mobile/src/lib/splash/animatedSplashEnabled.ts` disables it. With the flag off, the app draws no cover on any launch. The session settles to its never-plays state before React mounts. The platform's own launch screen shows the JFP symbol on the app ground again, and it stays up until the app tree's first commit. The term still names the mechanism the code carries. To re-enable it, regenerate the flat native asset and ship a native build; see `apps/mobile/CLAUDE.md` "Cold-start splash".
+> **Note added 2026-09-15:** the Splash Cover is off. `ANIMATED_SPLASH_ENABLED` in `apps/mobile/src/lib/splash/animatedSplashEnabled.ts` disables it. With the flag off, the app draws no cover on any launch. The session settles to its never-plays state before React mounts. The platform's own launch screen shows the JFP symbol on the app ground again, and it stays up until the app tree's first commit. The term still names the mechanism the code carries. To re-enable it, regenerate the flat native asset. Then ship a native build. See `apps/mobile/CLAUDE.md` "Cold-start splash" for the recipe.
 
 The branded layer drawn over the app's own tree on a cold start, holding a brand moment while the first screen loads underneath it rather than behind a gate in front of it.
 

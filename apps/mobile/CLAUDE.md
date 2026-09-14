@@ -185,8 +185,9 @@ removed: `SplashHost`, `SplashCoveredTree`, `SplashSequence`, the splash
 session, the embedded Noto Serif face, and the projector rasters. Do not delete
 any of it. The `expo-font` plugin entry and its TTF are fingerprint inputs, so
 removing them moves the runtime version. `SplashSequence` imports the two
-projector rasters statically and `app/_layout.tsx` requires it at module scope,
-so deleting a raster lands every launch on the Startup Error panel.
+projector rasters statically, so deleting a raster fails the Metro bundle with
+`Unable to resolve module`. Every dev reload, `eas build` and `eas update`
+export then goes red, and nothing ships.
 
 What a cold launch does with the flag off: the native splash shows
 `assets/splash-icon.png` — the JFP symbol on the `#1c1917` ground — until the
