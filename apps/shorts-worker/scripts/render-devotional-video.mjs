@@ -23,6 +23,7 @@ import { bundle } from "@remotion/bundler"
 import {
   ensureBrowser,
   renderMedia,
+  renderStill,
   selectComposition,
 } from "@remotion/renderer"
 
@@ -98,6 +99,11 @@ function runFfmpeg(args, label) {
   })
 }
 
+/** How long each seam between two repeats of the bed takes to cross over.
+ *  Long enough that the join reads as the music continuing rather than a new
+ *  take starting; short enough that it doesn't wash out a whole phrase. */
+const MUSIC_SEAM_XFADE_SEC = 2.5
+
 /**
  * The music bed must cover the whole devotional. Two steps:
  *
@@ -106,8 +112,13 @@ function runFfmpeg(args, label) {
  *    silence lands at every seam — and near the end it falls in the narration-
  *    free closing dwell as an audible DEAD GAP (the music seems to stop before
  *    the video ends). Trimming both ends makes the loop seamless.
- * 2. LOOP the trimmed bed (ffmpeg -stream_loop) up to `needSec` so it never
- *    falls silent. A trimmed track already >= needSec is used as-is.
+ * 2. LOOP the trimmed bed up to `needSec` so it never falls silent, joining
+ *    every repeat with an `acrossfade` rather than butting them end-to-start.
+ *    `-stream_loop` did the latter, and even after the silence trim the seam
+ *    was audible as a pause in the music — the owner heard it most clearly in
+ *    the closing stretch, where the narration has stopped and the bed is
+ *    carrying the card alone. A trimmed track already >= needSec is used
+ *    as-is.
  */
 async function stageMusicLooped(srcName, manifestDir, publicDir, needSec) {
   if (!srcName) return
@@ -156,24 +167,62 @@ async function stageMusicLooped(srcName, manifestDir, publicDir, needSec) {
       )
     return
   }
-  const loops = Math.ceil(needSec / dur)
-  await runFfmpeg(
-    [
-      "-y",
-      "-stream_loop",
-      String(loops), // loop the trimmed input enough times
-      "-i",
-      trimmed,
-      "-t",
-      needSec.toFixed(3), // then trim to exactly what's needed
-      ...codecArgs,
-      dest,
-    ],
-    "music loop",
+  // Each crossfade overlaps its two sides, so N copies joined by a d-second
+  // fade run N*dur - (N-1)*d, not N*dur. Solve for the N that still covers
+  // needSec, and never let the fade exceed half a copy.
+  const xfade = Math.max(0.3, Math.min(MUSIC_SEAM_XFADE_SEC, dur / 2))
+  const copies = Math.max(
+    2,
+    Math.ceil((needSec - xfade) / Math.max(0.01, dur - xfade)),
   )
+  const args = ["-y"]
+  for (let i = 0; i < copies; i++) args.push("-i", trimmed)
+  const filters = []
+  let label = "0:a"
+  for (let i = 1; i < copies; i++) {
+    const next = `ax${i}`
+    filters.push(`[${label}][${i}:a]acrossfade=d=${xfade.toFixed(3)}[${next}]`)
+    label = next
+  }
+  args.push(
+    "-filter_complex",
+    filters.join(";"),
+    "-map",
+    `[${label}]`,
+    "-t",
+    needSec.toFixed(3), // then trim to exactly what's needed
+    ...codecArgs,
+    dest,
+  )
+  try {
+    await runFfmpeg(args, "music loop")
+  } catch {
+    // Crossfaded join failed — fall back to the plain butt-joined loop rather
+    // than shipping a devotional with no music at all.
+    await runFfmpeg(
+      [
+        "-y",
+        "-stream_loop",
+        String(Math.ceil(needSec / dur)),
+        "-i",
+        trimmed,
+        "-t",
+        needSec.toFixed(3),
+        ...codecArgs,
+        dest,
+      ],
+      "music loop (fallback)",
+    )
+    await rm(trimmed, { force: true }).catch(() => {})
+    console.log(
+      `🎵 music ${dur.toFixed(1)}s looped WITHOUT crossfade (join failed) → ${needSec.toFixed(1)}s`,
+    )
+    return
+  }
   await rm(trimmed, { force: true }).catch(() => {})
   console.log(
-    `🎵 music ${dur.toFixed(1)}s (silence-trimmed) looped ×${loops + 1} → ${needSec.toFixed(1)}s`,
+    `🎵 music ${dur.toFixed(1)}s (silence-trimmed) ×${copies} joined with ` +
+      `${xfade.toFixed(1)}s crossfades → ${needSec.toFixed(1)}s`,
   )
 }
 
@@ -250,6 +299,44 @@ async function main() {
   // crashes on a loaded machine (default lets Remotion decide).
   const concurrency = Number(arg("concurrency", "")) || null
   const outPath = abs(arg("out", "devo/artifacts/video/design-grain.mp4"))
+  // Preview mode: render N evenly-spaced STILL frames instead of encoding the
+  // whole video. Each still costs one frame of Chrome rasterization rather
+  // than durationSec*fps of it, so this is the cheap way to see layout, cover,
+  // and card design before paying for the real encode. Frame positions are
+  // evenly spaced across the timeline, NOT snapped to card boundaries — an
+  // approximation, not the exact per-card frame math the composition itself
+  // does internally. Writes numbered PNGs next to `--out` (out-01.png, …).
+  const stillsCount = Number(arg("stills", "")) || 0
+  // Explicit frame numbers, for a caller that already knows per-card
+  // boundaries (e.g. computed from the manifest) and wants to land INSIDE
+  // each card's settled window rather than at an even fraction of the whole
+  // timeline, which can catch a card mid-reveal or mid-crossfade.
+  // "".split(",") is [""], and Number("") is 0 — a valid, non-negative finite
+  // number — so parsing an UNSET flag the same way as a set one silently
+  // produced a phantom single-frame list [0] on every normal render (no flag
+  // passed at all). That replaced the real MP4 output with a single frame-0
+  // PNG next to it, while the script still logged "DONE" and exited 0 — a
+  // real full-narration render for ch5 silently produced no video because of
+  // this. Guard on the flag actually being present before parsing it.
+  // A SLICE of the timeline as a real MP4 ("first-N-seconds" review): stills
+  // show layout but not motion, and the opening — logo stamp, the stepper's
+  // light, a verse unfolding — is all motion. Rendering frames 0-520 costs a
+  // twelfth of the full encode and answers the same question.
+  const frameRangeArg = arg("frame-range", "")
+  const frameRange = frameRangeArg
+    ? frameRangeArg
+        .split("-")
+        .map((s) => Number(s.trim()))
+        .filter((n) => Number.isFinite(n) && n >= 0)
+    : []
+
+  const stillsFramesArg = arg("stills-frames", "")
+  const stillsFrames = stillsFramesArg
+    ? stillsFramesArg
+        .split(",")
+        .map((s) => Number(s.trim()))
+        .filter((n) => Number.isFinite(n) && n >= 0)
+    : []
 
   // Public dir: Remotion's staticFile() resolves assets from here. The manifest
   // is self-contained — every referenced file sits beside it.
@@ -275,6 +362,9 @@ async function main() {
 
     await stage(manifest.bgFile)
     await stageMusicLooped(manifest.musicFile, manifestDir, publicDir, needSec)
+    // DESIGN TEST: an audio file that belongs to no card (the "Let's watch."
+    // phrase cut out of the scripture segment).
+    if (arg("demo-watch-audio", "")) await stage(arg("demo-watch-audio", ""))
     for (const c of manifest.cards) {
       await stage(c.audioFile)
       await stage(c.videoFile)
@@ -295,6 +385,16 @@ async function main() {
       showMuteButton,
       textAnim,
       ...(videoCardFilter ? { videoCardFilter } : {}),
+      ...(arg("grain-size", "")
+        ? { grainSizePx: Number(arg("grain-size", "")) }
+        : {}),
+      ...(arg("grain-filter", "")
+        ? { grainFilter: arg("grain-filter", "") }
+        : {}),
+      ...(arg("grain-blend", "") ? { grainBlend: arg("grain-blend", "") } : {}),
+      ...(arg("blur-scale", "")
+        ? { blurScale: Number(arg("blur-scale", "")) }
+        : {}),
       ...(outroHoldSec !== "" ? { outroHoldSec: Number(outroHoldSec) } : {}),
       ...(introHoldSec !== "" ? { introHoldSec: Number(introHoldSec) } : {}),
       ...(noEndFade ? { noEndFade: true } : {}),
@@ -303,6 +403,7 @@ async function main() {
         ? { videoAudioLevel: Number(videoAudioLevel) }
         : {}),
       ...(staticCover ? { staticCover: true } : {}),
+      ...(arg("text-font", "") ? { textFont: arg("text-font", "") } : {}),
       ...(hideCoverDate ? { hideCoverDate: true } : {}),
       ...(hideCoverLogo ? { hideCoverLogo: true } : {}),
       ...(coverBgSharp ? { coverBgSharp: true } : {}),
@@ -327,6 +428,29 @@ async function main() {
         ? { bgPlaybackRate: manifest.bgPlaybackRate }
         : {}),
       ...(manifest.musicFile ? { musicFile: manifest.musicFile } : {}),
+      // DESIGN TEST only (--comp=stepper-test); ignored by the real compositions.
+      ...(arg("stepper-variant", "")
+        ? { stepperVariant: arg("stepper-variant", "") }
+        : {}),
+      ...(arg("stepper-mode", "")
+        ? { stepperMode: arg("stepper-mode", "") }
+        : {}),
+      ...(arg("demo-watch-audio", "")
+        ? {
+            demoWatchAudio: arg("demo-watch-audio", ""),
+            ...(arg("demo-watch-sec", "")
+              ? { demoWatchAudioSec: Number(arg("demo-watch-sec", "")) }
+              : {}),
+          }
+        : {}),
+      ...(arg("demo-cues", "")
+        ? {
+            demoCues: arg("demo-cues", "")
+              .split(",")
+              .map((n) => Number(n.trim()))
+              .filter((n) => Number.isFinite(n)),
+          }
+        : {}),
     }
 
     // A manifest may carry its own `render` block — the look this KIND of video
@@ -387,8 +511,58 @@ async function main() {
       inputProps,
     })
     await mkdir(path.dirname(outPath), { recursive: true })
+
+    if (stillsCount > 0 || stillsFrames.length > 0) {
+      const start = performance.now()
+      const last = composition.durationInFrames - 1
+      const frames =
+        stillsFrames.length > 0
+          ? stillsFrames.map((f) => Math.min(f, last))
+          : Array.from({ length: stillsCount }, (_, i) =>
+              stillsCount === 1
+                ? 0
+                : Math.round((i / (stillsCount - 1)) * last),
+            )
+      console.log(
+        `Rendering ${frames.length} still(s) at frames [${frames.join(", ")}] of ${composition.durationInFrames}…`,
+      )
+      const outDir = path.dirname(outPath)
+      const outBase = path.basename(outPath).replace(/\.mp4$/, "")
+      for (let i = 0; i < frames.length; i++) {
+        const stillPath = path.join(
+          outDir,
+          `${outBase}-still-${String(i + 1).padStart(2, "0")}.png`,
+        )
+        await renderStill({
+          composition,
+          serveUrl,
+          output: stillPath,
+          frame: frames[i],
+          inputProps,
+        })
+        console.log(
+          `  [${i + 1}/${frames.length}] frame ${frames[i]} → ${stillPath}`,
+        )
+      }
+      console.log(`
+🖼  ${frames.length} still(s) in ${((performance.now() - start) / 1000).toFixed(1)}s`)
+      return
+    }
+
+    // Clamp to the composition, and keep it a real pair — a half-parsed range
+    // silently rendering "frame 0 to 0" would look like a broken render rather
+    // than a bad flag.
+    const range =
+      frameRange.length === 2
+        ? [
+            Math.min(frameRange[0], composition.durationInFrames - 1),
+            Math.min(frameRange[1], composition.durationInFrames - 1),
+          ]
+        : null
     console.log(
-      `Rendering ${composition.durationInFrames} frames (${(composition.durationInFrames / composition.fps).toFixed(1)}s)…`,
+      range
+        ? `Rendering frames ${range[0]}-${range[1]} (${((range[1] - range[0] + 1) / composition.fps).toFixed(1)}s of ${(composition.durationInFrames / composition.fps).toFixed(1)}s)…`
+        : `Rendering ${composition.durationInFrames} frames (${(composition.durationInFrames / composition.fps).toFixed(1)}s)…`,
     )
     await renderMedia({
       composition,
@@ -396,6 +570,20 @@ async function main() {
       codec: "h264",
       outputLocation: outPath,
       inputProps,
+      // QUALITY. Two separate knobs, both left at Remotion's defaults before:
+      //
+      // `jpegQuality` is how OffthreadVideo hands each source frame to the
+      // browser. The default 80 re-compresses the film BEFORE it is composited
+      // and then h264 compresses the result again, which shows up as mush in
+      // the dark, grainy interiors this series is full of. 95 is near-lossless
+      // for that hand-off at a modest disk cost per frame.
+      //
+      // `crf` is the final h264 encode. 18 is Remotion's default; 16 gives the
+      // text cards and the film grain more bitrate to sit in, which matters
+      // because YouTube re-encodes whatever we upload.
+      jpegQuality: 95,
+      crf: 16,
+      ...(range ? { frameRange: range } : {}),
       ...(concurrency ? { concurrency } : {}),
       onProgress: ({ progress }) => {
         if (Math.round(progress * 100) % 10 === 0)
