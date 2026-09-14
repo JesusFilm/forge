@@ -3,7 +3,7 @@ id: "feat-501"
 title: "Editable copy in the Watch category rail block"
 owner: "vlad"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-14"
 duration: 1
 depends_on:
@@ -75,3 +75,16 @@ for a locale from the block editing experience.
 - Admin and Web browser checks at 1440px and 390px in English and one
   non-English locale.
 - Touched-package test, lint, typecheck, formatting, and Web build gates.
+
+## Completion Notes
+
+- Added optional, independently defaulted eyebrow, title, description, and CTA
+  label fields throughout Admin authoring, GraphQL, Web rendering, preview, AI,
+  and MCP contracts.
+- Preserved authored tiles across both copy-field-only and older combined schema
+  lag, with unrelated GraphQL failures remaining fatal.
+- Passed focused and package-level validation, generated-contract stability,
+  Admin/Web production builds, and local shell performance checks. Exact
+  browser authoring/rendering flows were environment-blocked by unavailable
+  local auth and content-database services; the public shell still hydrated
+  with zero CLS in the local browser run.
