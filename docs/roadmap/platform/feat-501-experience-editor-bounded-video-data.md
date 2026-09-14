@@ -54,3 +54,11 @@ No production load tests or deployment shortcuts. Cache narrowing is `feat-502`.
 Follow the plan's real-Postgres, component, production-build browser, and concurrent
 performance matrix; store results in `docs/validation/feat-501/`. Run focused Admin
 tests, lint, typecheck, and build. Planning is complete; implementation is pending.
+
+## Validation status
+
+The reusable HTTP/RSS/SQL probe and frozen measurement contract are documented
+in `docs/validation/feat-501/README.md`. Baseline execution is currently blocked:
+this worktree has no configured database URL and `db:5432` is unreachable.
+Keep this ticket `in-progress` until like-for-like baseline and fixed reports
+satisfy the plan's evidence gate.
