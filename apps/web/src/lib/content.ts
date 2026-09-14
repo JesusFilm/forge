@@ -567,9 +567,16 @@ function classifyCategoryRailSchemaLag(result: {
   const messages = errors.map((entry) =>
     typeof entry.message === "string" ? entry.message : "",
   )
+  const isLegacyMessage = (message: string) =>
+    BLOCK_SCHEMA_LAG_MESSAGES.some((pattern) => pattern.test(message))
+  const isCopyMessage = (message: string) =>
+    CATEGORY_RAIL_COPY_SCHEMA_LAG_MESSAGES.some((pattern) =>
+      pattern.test(message),
+    )
   if (
-    messages.every((message) =>
-      BLOCK_SCHEMA_LAG_MESSAGES.some((p) => p.test(message)),
+    messages.some(isLegacyMessage) &&
+    messages.every(
+      (message) => isLegacyMessage(message) || isCopyMessage(message),
     )
   ) {
     return "legacy"
@@ -582,7 +589,8 @@ function classifyCategoryRailSchemaLag(result: {
       ),
     ),
   )
-  return errors.length === CATEGORY_RAIL_COPY_FIELDS.length &&
+  return messages.every(isCopyMessage) &&
+    errors.length === CATEGORY_RAIL_COPY_FIELDS.length &&
     matchedCopyFields.size === CATEGORY_RAIL_COPY_FIELDS.length
     ? "copy"
     : "none"

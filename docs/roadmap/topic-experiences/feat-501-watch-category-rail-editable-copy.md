@@ -24,6 +24,23 @@ but the eyebrow, heading, description, and CTA label are still supplied only
 by Web's translated UI catalog. Editors cannot change the visible header copy
 for a locale from the block editing experience.
 
+## Entry Points — Read These First
+
+1. `docs/plans/2026-08-26-1827-feat-watch-category-rail-block-plan.md`
+2. `apps/admin/src/domain/blocks.ts`
+3. `apps/admin/src/app/dashboard/experiences/experience-editor/watch-home-category-rail-editor.tsx`
+4. `packages/admin-graphql/src/fragments/blocks/watch-home-category-rail.ts`
+5. `apps/web/src/components/home/WatchHomeCategoryRail.tsx`
+
+## Grep These
+
+- `WatchHomeCategoryRailBlockSchema`
+- `WatchHomeCategoryRailEditor`
+- `AdminPreCopyWatchHomeCategoryRail`
+- `classifyCategoryRailSchemaLag`
+- `classifyPreviewSchemaLag`
+- `WATCH_HOME_CATEGORY_RAIL_MCP_GUIDANCE`
+
 ## What To Build
 
 - Add optional, locale-owned `eyebrow`, `title`, `description`, and `ctaLabel`
@@ -37,13 +54,18 @@ for a locale from the block editing experience.
 - Propagate the fields through GraphQL, Web rendering, preview, AI, and MCP
   editing without weakening schema-lag fallbacks.
 
-## Entry Points
+## Constraints
 
-1. `docs/plans/2026-08-26-1827-feat-watch-category-rail-block-plan.md`
-2. `apps/admin/src/domain/blocks.ts`
-3. `apps/admin/src/app/dashboard/experiences/experience-editor/watch-home-category-rail-editor.tsx`
-4. `packages/admin-graphql/src/fragments/blocks/watch-home-category-rail.ts`
-5. `apps/web/src/components/home/WatchHomeCategoryRail.tsx`
+- Keep copy overrides optional and owned by the individual Experience locale.
+- Treat empty and whitespace-only values as absent independently per field.
+- Do not expose or change the CTA destination; it remains the locale-aware
+  Watch language inventory route.
+- Preserve authored tiles, `categoryIds`, tile order, and surrounding block
+  order through manual, AI, and MCP edits.
+- Keep mixed-schema retries limited to complete recognized validation-error
+  sets; unrelated GraphQL failures must remain fatal.
+- Regenerate Admin SDL and gql.tada introspection from their owning schemas;
+  never hand-edit generated outputs.
 
 ## Verification
 

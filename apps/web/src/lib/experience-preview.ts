@@ -391,12 +391,13 @@ function matchesSchemaLagMessage(
  *
  * First-match classification is wrong here for two reasons. The tier-1
  * operation selects the title at four nesting paths, so a title lag produces
- * four errors rather than one; and an Admin lagging on both axes returns rail
- * and title errors together, where only the legacy tier can serve the request.
+ * four errors rather than one; and an Admin lagging on multiple axes can
+ * return rail, copy, and title errors together, where only the legacy tier can
+ * serve the request.
  *
- * A set that mixes title-lag errors with anything else returns "none" — that
- * routes to the ordinary throw, so an unrelated Admin failure is never
- * swallowed by a silent degrade to the titleless render.
+ * Any set containing an error outside the known lag axes returns "none".
+ * That routes to the ordinary throw, so an unrelated Admin failure is never
+ * swallowed by a compatibility render.
  */
 function classifyPreviewSchemaLag(value: unknown): PreviewSchemaLag {
   const errors = graphqlErrorsFrom(value)
@@ -408,6 +409,8 @@ function classifyPreviewSchemaLag(value: unknown): PreviewSchemaLag {
     matchesSchemaLagMessage(entry, PREVIEW_TITLE_SCHEMA_LAG_MESSAGES)
   const isLegacy = (entry: GraphqlErrorCandidate) =>
     matchesSchemaLagMessage(entry, BLOCK_SCHEMA_LAG_MESSAGES)
+  const isCopy = (entry: GraphqlErrorCandidate) =>
+    matchesSchemaLagMessage(entry, COPY_SCHEMA_LAG_MESSAGES)
   const copyFieldIndexes = errors.flatMap((entry) =>
     COPY_SCHEMA_LAG_MESSAGES.flatMap((pattern, index) =>
       matchesSchemaLagMessage(entry, [pattern]) ? [index] : [],
@@ -419,20 +422,14 @@ function classifyPreviewSchemaLag(value: unknown): PreviewSchemaLag {
 
   if (
     errors.some(isLegacy) &&
-    errors.every((entry) => isLegacy(entry) || isTitle(entry))
+    errors.every((entry) => isLegacy(entry) || isCopy(entry) || isTitle(entry))
   ) {
     return "category-rail"
   }
 
   if (
     hasCompleteCopySet &&
-    errors.every(
-      (entry) =>
-        isTitle(entry) ||
-        COPY_SCHEMA_LAG_MESSAGES.some((pattern) =>
-          matchesSchemaLagMessage(entry, [pattern]),
-        ),
-    )
+    errors.every((entry) => isTitle(entry) || isCopy(entry))
   ) {
     return errors.some(isTitle) ? "copy-and-titles" : "copy"
   }

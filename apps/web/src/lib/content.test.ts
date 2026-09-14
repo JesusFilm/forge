@@ -277,43 +277,56 @@ describe("resolveWatchPage", () => {
     })
   })
 
-  it("uses the legacy no-rail tier only when the pre-copy projection also proves rail lag", async () => {
-    queryMock
-      .mockResolvedValueOnce({ errors: copyLagErrors })
-      .mockResolvedValueOnce({
-        errors: [
-          {
-            message:
-              'Cannot query field "tiles" on type "WatchHomeCategoryRailBlock".',
-            extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+  it.each([
+    [
+      "tiles field",
+      'Cannot query field "tiles" on type "WatchHomeCategoryRailBlock".',
+    ],
+    [
+      "homepage recommendations type",
+      'Unknown type "HomepageRecommendationsBlock".',
+    ],
+  ])(
+    "uses the legacy no-rail tier for combined %s and copy lag",
+    async (_label, message) => {
+      queryMock
+        .mockResolvedValueOnce({
+          errors: [
+            {
+              message,
+              extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+            },
+            ...copyLagErrors,
+          ],
+        })
+        .mockResolvedValueOnce({
+          data: {
+            watchSetting: {
+              documentId: "watch-settings-1",
+              homepageExperience: {
+                id: "exp-home-1",
+                slug: "home",
+                blocks: [],
+              },
+              defaultTemplateExperience: null,
+            },
           },
-        ],
-      })
-      .mockResolvedValueOnce({
-        data: {
-          watchSetting: {
-            documentId: "watch-settings-1",
-            homepageExperience: { id: "exp-home-1", slug: "home", blocks: [] },
-            defaultTemplateExperience: null,
-          },
-        },
-      })
+        })
 
-    const { resolveWatchPage } = await import("./content")
-    const result = await resolveWatchPage("en")
+      const { resolveWatchPage } = await import("./content")
+      const result = await resolveWatchPage("en")
 
-    expect(queryMock).toHaveBeenCalledTimes(3)
-    expect(print(queryMock.mock.calls[1][0].query)).toContain(
-      "AdminPreCopyWatchHomeCategoryRail",
-    )
-    expect(print(queryMock.mock.calls[2][0].query)).not.toContain(
-      "WatchHomeCategoryRailBlock",
-    )
-    expect(result).toMatchObject({
-      error: null,
-      data: { watchHomeCategoryRailCompatibility: "legacy-schema" },
-    })
-  })
+      expect(queryMock).toHaveBeenCalledTimes(2)
+      expect(print(queryMock.mock.calls[0][0].query)).toContain("ctaLabel")
+      expect(print(queryMock.mock.calls[1][0].query)).not.toContain(
+        "WatchHomeCategoryRailBlock",
+      )
+      expect(result).toMatchObject({
+        error: null,
+        data: { watchHomeCategoryRailCompatibility: "legacy-schema" },
+      })
+    },
+  )
 
   it.each([
     ["partial", copyLagErrors.slice(0, 3)],

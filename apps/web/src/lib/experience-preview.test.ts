@@ -261,6 +261,16 @@ describe("getExperiencePreview", () => {
     extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
   }
 
+  const tileError = {
+    message: 'Cannot query field "tiles" on type "WatchHomeCategoryRailBlock".',
+    extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+  }
+
+  const recommendationsError = {
+    message: 'Unknown type "HomepageRecommendationsBlock".',
+    extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+  }
+
   const copyLagErrors = ["eyebrow", "title", "description", "ctaLabel"].map(
     (field) => ({
       message: `Cannot query field "${field}" on type "WatchHomeCategoryRailBlock".`,
@@ -446,6 +456,44 @@ describe("getExperiencePreview", () => {
       preview,
     )
     expect(queryMock).toHaveBeenCalledTimes(2)
+  })
+
+  it.each([
+    ["tiles field", tileError],
+    ["homepage recommendations type", recommendationsError],
+  ])(
+    "prefers the legacy tier when %s and copy lag report together",
+    async (_label, legacyError) => {
+      queryMock
+        .mockResolvedValueOnce({
+          errors: [legacyError, ...copyLagErrors],
+        })
+        .mockResolvedValueOnce({ data: { experiencePreview: preview } })
+
+      await expect(getExperiencePreview("capability-token")).resolves.toBe(
+        preview,
+      )
+      expect(queriedSources()).toEqual([
+        expect.stringContaining("query ExperiencePreviewWithTitles"),
+        expect.stringContaining("query LegacyExperiencePreview"),
+      ])
+    },
+  )
+
+  it("prefers the legacy tier when rail, copy, and title lag report together", async () => {
+    queryMock
+      .mockResolvedValueOnce({
+        errors: [tileError, ...copyLagErrors, ...titleLagError(4).errors],
+      })
+      .mockResolvedValueOnce({ data: { experiencePreview: preview } })
+
+    await expect(getExperiencePreview("capability-token")).resolves.toBe(
+      preview,
+    )
+    expect(queriedSources()).toEqual([
+      expect.stringContaining("query ExperiencePreviewWithTitles"),
+      expect.stringContaining("query LegacyExperiencePreview"),
+    ])
   })
 
   it("falls through to the legacy tier when the titleless retry also lags", async () => {
