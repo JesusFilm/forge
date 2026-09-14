@@ -15,6 +15,10 @@ const MUST_IMPORT_THE_SHARED_HEIGHT = [
   ["src/components/watch/PlaybackHost.tsx", /TAB_BAR_OCCUPIED_HEIGHT/],
   ["app/(tabs)/library.tsx", /useTabBarStyle/],
   ["app/(tabs)/_layout.tsx", /useTabBarStyle/],
+  // The iOS navigator takes no style object, but it still must not spell the
+  // tab list itself — the guard beside this one pins that order to the FILES.
+  ["app/(tabs)/_layout.ios.tsx", /TAB_ROUTE_NAMES/],
+  ["src/components/library/SelectionActionBar.tsx", /TAB_BAR_HEIGHT_IOS/],
 ]
 
 /** Comments do not run: a commented-out import must not satisfy a positive

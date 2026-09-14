@@ -5,9 +5,10 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import { ACCENT, TEXT_ON_OVERLAY, TEXT_PRIMARY } from "../../lib/color"
 import { formatLibraryBytes } from "../../lib/libraryDownloads"
 import { feedback } from "../../styles/shared"
-import { tabBarPillShape } from "../../lib/tabBar"
+import { TAB_BAR_HEIGHT_IOS } from "../../lib/tabBar"
 import { TabBarBackground } from "../ui/TabBarBackground"
 
+const BAR_SIDE_PADDING = 16
 const BAR_BG = "rgba(12, 12, 13, 0.94)"
 const BAR_BORDER = "rgba(255, 255, 255, 0.09)"
 const GHOST_BG = "rgba(255, 255, 255, 0.09)"
@@ -30,14 +31,27 @@ export function SelectionActionBar({
 }: SelectionActionBarProps) {
   const insets = useSafeAreaInsets()
 
-  // The bar stands in for the tab bar, so on iOS it takes the same box as the
-  // pill. Android keeps its flush, full-width bar exactly as it was.
+  // The bar stands in for the tab bar, so on iOS it takes the box the hidden
+  // UIKit bar left behind: flush, full width, its own height above the home
+  // indicator. Android keeps its flush bar exactly as it was.
   const isPill = Platform.OS === "ios"
+
+  // The bar's own hide is what drops insets.bottom, and it lands a frame after
+  // this mounts, so the raw inset can still carry the 49pt bar. Clamp it off.
+  const indicator =
+    insets.bottom >= TAB_BAR_HEIGHT_IOS
+      ? insets.bottom - TAB_BAR_HEIGHT_IOS
+      : insets.bottom
+
   const shape = isPill
     ? {
-        ...tabBarPillShape(insets),
+        height: TAB_BAR_HEIGHT_IOS + indicator,
         paddingTop: 0,
-        paddingBottom: 0,
+        paddingBottom: indicator,
+        // An edge padding replaces styles.bar's paddingHorizontal outright, so
+        // the base value has to be added back in or the buttons touch the edge.
+        paddingLeft: BAR_SIDE_PADDING + insets.left,
+        paddingRight: BAR_SIDE_PADDING + insets.right,
         backgroundColor: undefined,
         borderTopWidth: 0,
       }
@@ -45,7 +59,7 @@ export function SelectionActionBar({
 
   return (
     <View style={[styles.bar, shape]}>
-      {isPill && <TabBarBackground lens={false} />}
+      {isPill && <TabBarBackground />}
       {hasFailed && (
         <Pressable
           onPress={onRetryFailed}
@@ -97,7 +111,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    paddingHorizontal: 16,
+    paddingHorizontal: BAR_SIDE_PADDING,
     paddingTop: 14,
     backgroundColor: BAR_BG,
     borderTopWidth: 1,

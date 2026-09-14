@@ -2,8 +2,26 @@
 
 **Date:** 2026-09-08
 **App:** `apps/mobile`
-**Status:** design approved, pending spec review
+**Status:** shipped 2026-09-08 (#2200); superseded on iOS by feat-500 — read the note below
 **Worktree:** `.claude/worktrees/feat-ios-glass-tab-bar`
+
+> **Superseded on iOS 2026-09-14 — feat-500.** feat-500 shipped the NativeTabs
+> migration: iOS now runs `expo-router/unstable-native-tabs`, and UIKit owns the
+> bar's geometry and material. Every iOS section below is a historical record,
+> not the shipping design.
+>
+> - The "New module" code block. `TAB_BAR_PILL_HEIGHT = 56` and the 68pt
+>   `TAB_BAR_OCCUPIED_HEIGHT` are both gone.
+> - "Geometry (iOS only)", "Clearance — seven surfaces", "Mini player" and
+>   "Selection bar and keyboard".
+> - The iOS steps of "Testing" and "Verification".
+> - "Material". `TabBarBackground` itself survives, but the Library selection
+>   bar is its only consumer now, and it draws no pill radius.
+>
+> Read the Results section of
+> `docs/roadmap/platform/feat-500-mobile-native-tabs-migration.md` for the
+> shipped numbers. "What must not change on Android" still holds: feat-500 left
+> the Android bar byte-identical.
 
 ## Problem
 
@@ -22,6 +40,13 @@ scrolls behind it. On Android the bar must stay exactly as it is today.
 | How wide is the pill?                      | Near-full width, with a 16pt margin on each side. |
 | Does content scroll behind the pill?       | Yes.                                              |
 | What happens to the Library selection bar? | It becomes a pill with the same shape.            |
+
+> **Withdrawn 2026-09-14 (owner):** the first row was never an owner decision.
+> This table carries no decider, and the plan, the PR body and the commit do
+> not attribute it. The owner is content for iOS below 26 to show the standard
+> full-width UIKit bar. That removes the recorded ground for rejecting
+> `expo-router/unstable-native-tabs` below. The spike that re-opens that choice
+> is `docs/roadmap/platform/feat-499-mobile-native-tabs-spike.md`.
 
 ## Current state
 
@@ -78,6 +103,25 @@ It is rejected because it cannot meet the decisions above. Below iOS 26 it draws
 a plain opaque UIKit bar, not a frosted pill. Android would need a second
 navigator with a different options API and a different way to hide the bar.
 Revisit it when the deployment target reaches iOS 26.
+
+> **Corrected 2026-09-14:** two claims above are wrong as platform facts, and
+> the rejection no longer stands.
+>
+> - "Plain opaque" is wrong. `react-native-screens@4.26.2` builds each tab
+>   appearance from `[UITabBarAppearance new]`, UIKit's default translucent
+>   material, and `blurEffect` defaults to `systemDefault`. Below iOS 26 the bar
+>   is frosted and full-width. What it cannot be is a pill: `NativeTabs` exposes
+>   no geometry (no `tabBarStyle`, height, margin, radius or `tabBarBackground`).
+> - "A second navigator" is not a cost. expo-router resolves
+>   `app/(tabs)/_layout.ios.tsx` beside `_layout.tsx` by default
+>   (`getRoutesCore.js`, `platformRoutes`), so iOS can use `NativeTabs` while
+>   Android keeps this JS bar untouched.
+> - The below-26 pill decision it rests on is withdrawn (see the note under
+>   "Decisions taken before design").
+>
+> The revisit trigger is no longer the deployment target. It is the spike in
+> `docs/roadmap/platform/feat-499-mobile-native-tabs-spike.md`, which measures
+> the three facts that are not knowable from disk.
 
 ### The one ordering trap
 
