@@ -88,12 +88,8 @@ const INTENDED_PUBLIC_RESOLVERS = [
   "castWhatsNewFeatureVote",
   "retractWhatsNewFeatureVote",
   // Mobile in-app feedback — docs/plans/2026-09-14-1033-feat-mobile-feedback-linear-plan.md.
-  // Deliberately public: a person reports a broken video without signing in,
-  // and requiring a session would lose most of the reports. The abuse story is
-  // the resolver's own three counters — 5 per install per 10 minutes and 20
-  // per trusted address per hour for availability, a fleet-wide daily cap as
-  // the bound on what reaches Linear — plus zod bounds on every field. All of
-  // them answer as data rather than throwing.
+  // Public on purpose (reports without sign-in); abuse bound is the resolver's own
+  // counters (5/10min/install, 20/h/address, fleet daily cap) + zod bounds — all answer as data.
   "submitFeedback",
 ] as const
 
@@ -103,28 +99,17 @@ function readAllTypeSources(): string {
   )
 }
 
-/**
- * An input-type field is written exactly like a resolver
- * (`<name>: t.field({...})`) but is never one, so an input field named after a
- * root resolver shadows the real block under "last write wins" below and fails
- * its assertion. `FeedbackSubmissionInput.video` did that to `Query.video`.
- * The nearest `builder.` call before a field is the one that declares it.
- */
+/** An input field reads like a resolver and can shadow one under "last write
+ * wins" (`FeedbackSubmissionInput.video` did this to `Query.video`) — the
+ * nearest `builder.` call before it is what actually declares it. */
 function isInputTypeField(source: string, index: number): boolean {
   const start = source.lastIndexOf("builder.", index)
   return start !== -1 && source.startsWith("builder.inputType", start)
 }
 
-// Brace-balanced parse of `<name>: t.prismaField({...}) | t.field({...})`
-// declarations. Tracks string literals AND comments to avoid counting braces
-// inside either. Last write wins on duplicate names (each name appears at most
-// once across the corpus in practice).
-//
-// Comments are load-bearing, not tidiness: one apostrophe in a resolver's own
-// comment ("U1's contract") used to open a string that ran to the next quote
-// in the corpus. The block then swallowed a later file, inherited ITS
-// `authScopes: { public: true }`, and the resolver's assertion passed green
-// with no scope of its own.
+// Brace-balanced parse; last write wins on duplicate names. Tracks strings AND
+// comments: an apostrophe in a resolver's comment ("U1's contract") once opened
+// a string that ran into the next file, so a block inherited its authScopes.
 function parseResolverBlocks(source: string): Map<string, string> {
   const result = new Map<string, string>()
   const re = /(\w+):\s*t\.(?:prismaField|field)\s*\(/g

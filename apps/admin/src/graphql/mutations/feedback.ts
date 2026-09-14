@@ -27,31 +27,21 @@ const FeedbackKindEnum = builder.enumType("FeedbackKind", {
   } as const,
 })
 
-/**
- * An enum, not a string: the phone's value indexes admin's platform label on
+/** An enum, not a string: the phone's value indexes admin's platform label on
  * the way into the ticket, and a wrong spelling would reach that index
- * silently. The wire spelling is uppercase on BOTH sides.
- */
+ * silently. The wire spelling is uppercase on BOTH sides. */
 const FeedbackPlatformEnum = builder.enumType("FeedbackPlatform", {
   values: { IOS: { value: "IOS" }, ANDROID: { value: "ANDROID" } } as const,
 })
 
-/**
- * Why a refusal is DATA and not a thrown error.
- *
- * A rate-limited install and a missing Linear key are expected answers, not
- * faults. Thrown, they would reach the phone as Yoga's masked "Unexpected
- * error." and file a RUM error for every refusal (KTD9).
- *
- * `DAILY_CAP` stays SEPARATE from `RATE_LIMITED` even though the phone renders
- * one message for both (KD10): the wire value and admin's refusal log are how
- * an operator tells a busy install apart from the fleet kill switch. Do not
- * collapse them.
- */
+/** A refusal is DATA, not thrown: a throw would reach the phone as Yoga's
+ * masked "Unexpected error." and file a RUM error per refusal (KTD9). */
 const FeedbackRefusalEnum = builder.enumType("FeedbackRefusal", {
   values: {
     INVALID_INPUT: { value: "INVALID_INPUT" },
     RATE_LIMITED: { value: "RATE_LIMITED" },
+    /** Kept separate from RATE_LIMITED (KD10): the wire value + admin's log
+     * are how an operator tells a busy install from the fleet kill switch. */
     DAILY_CAP: { value: "DAILY_CAP" },
     UNAVAILABLE: { value: "UNAVAILABLE" },
     NOT_CONFIGURED: { value: "NOT_CONFIGURED" },
@@ -137,11 +127,9 @@ const FeedbackSubmissionResultRef = builder
 
 const bounded = (max: number) => z.string().trim().min(1).max(max)
 
-/**
- * A slug reaches the ticket as a bare word, so bound the charset rather than
- * the exact slug shape: over-tight matching would refuse a real person's
- * feedback over a field they never typed.
- */
+/** A slug reaches the ticket as a bare word, so bound the charset rather
+ * than the exact shape — over-tight matching would refuse a real person's
+ * feedback over a field they never typed. */
 const SLUG = z
   .string()
   .trim()
@@ -180,12 +168,8 @@ const submissionSchema = z
   })
   .strict()
 
-/**
- * Plain-string `key=value` logging. Railway logsV2 silently drops
- * JSON-stringified payloads from a Next.js runtime handler, and this line is
- * the only place a `RATE_LIMITED` refusal is told apart from a `DAILY_CAP`
- * one. It never carries the message, the name, or the email.
- */
+/** Plain-string key=value: Railway logsV2 drops JSON-stringified payloads
+ * from a Next.js handler. Never carries the message, the name, or the email. */
 function refuse(
   refusal: FeedbackRefusal,
   detail: string,

@@ -73,10 +73,8 @@ const LINEAR_TIMEOUT_MS = 6_000
 const LINEAR_RESPONSE_MAX_BYTES = 64 * 1024
 const TITLE_MAX_CHARS = 120
 
-/**
- * KTD10. The short name goes in the title, the label goes in the description.
- * The label is the sentence the person read on the phone.
- */
+/** KTD10: the short name goes in the title, the label — the sentence the
+ * person read on the phone — goes in the description. */
 const FEEDBACK_KIND_COPY: Record<
   FeedbackKind,
   { short: string; label: string }
@@ -129,11 +127,9 @@ function formatPosition(seconds: number | undefined): string | undefined {
     : `${minutes}:${paddedSeconds}`
 }
 
-/**
- * R17's order: the message, the context list, then the source line. A content
- * field appears only when the submission carries it, so removing the video tag
- * or leaving device details off removes the lines with it.
- */
+/** R17's order: message, context list, then source line. A content field
+ * appears only when the submission carries it, so omitting the video tag or
+ * device details removes those lines. */
 export function buildFeedbackIssueDescription(
   submission: MobileFeedbackSubmission,
 ): string {
@@ -188,11 +184,9 @@ export function buildFeedbackIssueDescription(
   return lines.join("\n")
 }
 
-/**
- * Read the body through a byte counter and abort the socket past the cap.
- * `Content-Length` is not trusted. Over-cap returns `undefined`, which the
- * caller maps onto its existing `invalid_response` path.
- */
+/** Reads via a byte counter and aborts the socket past the cap — never trusts
+ * `Content-Length`. Over-cap returns `undefined`, which the caller maps onto
+ * its existing `invalid_response` path. */
 async function readJsonCapped(response: Response): Promise<unknown> {
   if (!response.body) return undefined
   let reader: ReadableStreamDefaultReader<Uint8Array> | undefined
@@ -342,12 +336,8 @@ function logSafeId(value: string): string {
   return safe || "unknown"
 }
 
-/**
- * Plain-string `key=value` logging. Railway logsV2 silently drops
- * JSON-stringified payloads from a Next.js runtime route handler, and this
- * line is how an operator tells a refusal apart from a real fault. It carries
- * no free text: never the message, the name, or the email.
- */
+/** Plain-string key=value: Railway logsV2 drops JSON-stringified payloads
+ * from a Next.js route handler. Never carries the message, the name, or the email. */
 function settle(
   submission: MobileFeedbackSubmission,
   outcome: FeedbackLinearOutcome,

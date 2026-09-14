@@ -14,18 +14,14 @@
  * does collapse, because a Linear title is one line.
  */
 
-/**
- * Characters that render as nothing. `Cf | Cc` is NOT that set on its own:
- * ~4000 default-ignorable code points sit outside it, and one of those inside
- * a scheme (`https:<U+FE0F>//host`) leaves a link that still LOOKS ordinary.
- */
+/** Characters that render as nothing. `Cf | Cc` alone misses it: ~4000
+ * default-ignorable code points sit outside it, and one inside a scheme
+ * (`https:<U+FE0F>//host`) leaves a link that still LOOKS ordinary. */
 const INVISIBLE_RUN = /[\p{Cf}\p{Cc}\p{Default_Ignorable_Code_Point}]+/gu
 
-/**
- * The only invisibles that carry meaning: real separators. Deliberately NOT
- * regex `\s`, which also matches U+FEFF — keeping a BOM would let it split a
- * URL scheme and reach the ticket as a space.
- */
+/** The only invisibles that carry meaning: real separators. Deliberately not
+ * regex `\s`, which also matches U+FEFF — a kept BOM could split a URL
+ * scheme and reach the ticket as a space. */
 const SEPARATORS = new Set(["\t", "\n", "\v", "\f", "\r"])
 
 /** Drops every invisible character in a run except those separators. */
@@ -35,19 +31,13 @@ function deleteInvisible(value: string): string {
   )
 }
 
-/**
- * Web's set plus `<`, which web omits. Linear renders the description as
- * markdown, so a bare `<` is the one remaining way to open a tag-shaped run.
- * Every character here is ASCII punctuation, which CommonMark renders as
- * itself once escaped — the quote stays verbatim on screen.
- */
+/** Web's set plus `<`, which web omits and could open a tag-shaped run in
+ * Linear's markdown rendering; escaped, it renders as itself, verbatim. */
 const MARKDOWN_METACHARACTERS = /[\\`*_{}()#+\-.!|<>@[\]]/gu
 
-/**
- * Neutralize one client-supplied string for the ticket DESCRIPTION. Strip
- * invisible characters FIRST: escaping first would leave a zero-width
- * character free to re-form a live URL once the strip removes it.
- */
+/** Neutralizes one client-supplied string for the ticket DESCRIPTION. Strips
+ * invisible characters FIRST — escaping first would leave a zero-width
+ * character free to re-form a live URL once the strip removes it. */
 export function safeFeedbackText(value: string): string {
   return deleteInvisible(value).replace(MARKDOWN_METACHARACTERS, "\\$&")
 }
@@ -55,20 +45,12 @@ export function safeFeedbackText(value: string): string {
 /** Line terminators `\p{Cc}` misses: U+2028/U+2029 are Zl/Zp, not controls. */
 const TITLE_LINE_BREAK = /[\n\r\u2028\u2029]/u
 
-/**
- * Characters that can carry a destination, an identity, or an element. The
- * title replaces them with a space rather than escaping: a Linear title is a
- * plain-text field, so nothing there can render, and no `\` is left to dangle
- * across the 120-character cut.
- */
+/** Replaced with a space, not escaped: a Linear title is plain text, so
+ * nothing renders, and no `\` is left dangling across the 120-char cut. */
 const TITLE_STRUCTURAL_CHARS = /[\\`<>|@[\]]/gu
 
-/**
- * Neutralize one client-supplied string for the ticket TITLE. Keeps the first
- * line that has visible content, judged AFTER the strip so a leading
- * zero-width line cannot swallow the real message below it. Returns `""` when
- * nothing visible survives; the caller supplies the fallback subject.
- */
+/** Ticket TITLE: keeps the first visible line, judged AFTER the strip so a
+ * leading zero-width line can't swallow the real message below it. */
 export function safeFeedbackTitleText(value: string): string {
   const source = deleteInvisible(value)
   const firstLine =
@@ -83,10 +65,8 @@ function isHighSurrogate(code: number): boolean {
   return code >= 0xd800 && code <= 0xdbff
 }
 
-/**
- * Cut to `max` UTF-16 units. A cut that lands between a surrogate pair would
- * encode as U+FFFD on the wire, so drop the orphaned high surrogate.
- */
+/** Cuts to `max` UTF-16 units. A cut landing inside a surrogate pair would
+ * encode as U+FFFD on the wire, so the orphaned high surrogate is dropped. */
 export function truncateWithoutSurrogateSplit(
   value: string,
   max: number,

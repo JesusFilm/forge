@@ -16,10 +16,8 @@ import { env } from "@/config/env"
 export const FEEDBACK_INSTALL_LIMIT = 5
 export const FEEDBACK_INSTALL_WINDOW_MS = 10 * 60_000
 
-/**
- * Per trusted address: bounds a client that relaunches or rotates its
- * `x-viewer-id`, which is spoofable and mints a fresh install bucket.
- */
+/** Per trusted address: bounds a client that relaunches or rotates its
+ * spoofable `x-viewer-id`, which mints a fresh install bucket each time. */
 export const FEEDBACK_ADDRESS_LIMIT = 20
 export const FEEDBACK_ADDRESS_WINDOW_MS = 60 * 60_000
 
@@ -29,11 +27,9 @@ export const FEEDBACK_DAILY_WINDOW_MS = 24 * 60 * 60_000
 /** Mirrors the zod default on `ADMIN_FEEDBACK_DAILY_CAP`. */
 export const FEEDBACK_DAILY_CAP_DEFAULT = 200
 
-/**
- * `env` skips zod validation — and therefore zod DEFAULTS — whenever `CI` is
- * set, so the declared 200 is absent in exactly the environments the type says
- * it is a number. Read the cap through here, never straight off `env`.
- */
+/** `env` skips zod validation, and so zod DEFAULTS, whenever `CI` is set: the
+ * declared 200 is absent exactly where the type says it is a number. Read the
+ * cap through here, never straight off `env`. */
 export function feedbackDailyCap(): number {
   const raw = Number(env.ADMIN_FEEDBACK_DAILY_CAP)
   return Number.isInteger(raw) && raw >= 0 ? raw : FEEDBACK_DAILY_CAP_DEFAULT
@@ -54,11 +50,9 @@ export function feedbackDayKey(now: number): string {
   return new Date(now).toISOString().slice(0, 10)
 }
 
-/**
- * Debits the three counters in order and stops at the first refusal. Stopping
- * matters: debiting the fleet's day for a call the install limit already
- * refused would let one install spend the whole cap.
- */
+/** Debits the three counters in order and stops at the first refusal:
+ * debiting the fleet's day for a call the install limit already refused would
+ * let one install spend the whole cap. */
 export async function checkFeedbackLimits({
   installIdentity,
   clientIp,
