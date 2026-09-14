@@ -114,6 +114,34 @@ describe("non-route sheet counter", () => {
     )
   })
 
+  it("suppresses while the player-door feedback sheet is open", () => {
+    // The Profile door is the ROUTE above; this id covers the modal the player
+    // door mounts, which cannot be a route (KTD4).
+    const counter = createNonRouteSheetCounter()
+    counter.open("feedbackModal")
+    expect(counter.count()).toBe(1)
+    expect(isSuppressedBySheet(["watch", "[slug]"], counter.count())).toBe(true)
+
+    counter.close("feedbackModal")
+    expect(counter.count()).toBe(0)
+    expect(isSuppressedBySheet(["watch", "[slug]"], counter.count())).toBe(
+      false,
+    )
+  })
+
+  it("counts the settings sheet and the feedback sheet apart", () => {
+    // The player door opens the second from inside the first, so one id
+    // releasing must not uncover the window while the other is still up.
+    const counter = createNonRouteSheetCounter()
+    counter.open("playerSettings")
+    counter.open("feedbackModal")
+    expect(counter.count()).toBe(2)
+    counter.close("playerSettings")
+    expect(counter.isPresented()).toBe(true)
+    counter.close("feedbackModal")
+    expect(counter.isPresented()).toBe(false)
+  })
+
   it("cannot underflow on a double close of the settings sheet", () => {
     const counter = createNonRouteSheetCounter()
     counter.open("playerSettings")

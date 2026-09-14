@@ -96,7 +96,7 @@ import {
 } from "../../lib/playbackInterruption"
 import { FloatingBackButton } from "../ui/FloatingBackButton"
 import { MiniPlayerWindow } from "./MiniPlayerWindow"
-import { VideoPlayer } from "./VideoPlayer"
+import { VideoPlayer, type PlayerFeedbackVideo } from "./VideoPlayer"
 
 /** KTD17's shrink: fixed duration, started when the pop commits. Distinct from
  *  every other duration here (and from ENDED_FADE_DURATION_MS, 320) so a timing
@@ -355,6 +355,23 @@ function ActivePlaybackHost({
   const videoKey = request.session
     ? request.session.videoSlug
     : (request.streamingUrl ?? "")
+
+  // KD8: what a player-door report names. From the surface's DESCRIPTOR, not
+  // the window session, which exists only once a video has earned a window.
+  const sessionTitle = request.session?.title ?? null
+  const sessionSlug = request.session?.videoSlug ?? null
+  const sessionLanguageSlug = request.session?.languageSlug ?? null
+  const feedbackContext = useMemo<PlayerFeedbackVideo | null>(
+    () =>
+      sessionTitle == null || sessionSlug == null
+        ? null
+        : {
+            title: sessionTitle,
+            slug: sessionSlug,
+            languageSlug: sessionLanguageSlug,
+          },
+    [sessionTitle, sessionSlug, sessionLanguageSlug],
+  )
 
   const settingsStore = getPlayerSettingsStore()
   const settingsSnapshot = useSyncExternalStore(
@@ -1478,6 +1495,7 @@ function ActivePlaybackHost({
                 autostart={request.autostart}
                 adopted={adoptable}
                 cast={slotOwned ? (request.cast ?? null) : null}
+                feedbackContext={feedbackContext}
               />
             )}
 

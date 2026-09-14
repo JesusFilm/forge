@@ -43,14 +43,18 @@ export function isInAppSheetRoute(segments: readonly string[]): boolean {
 /**
  * The sheets that are component state rather than routes: the Library delete
  * confirmation (`src/components/library/DeleteConfirmSheet.tsx`, hosted by
- * `app/(tabs)/library.tsx`), the SDUI quiz modal, and the player settings
- * sheet (`src/components/watch/PlayerSettingsSheet.tsx`, hosted by
- * `VideoPlayer.tsx` — a routed form sheet cannot cover the fullscreen player).
+ * `app/(tabs)/library.tsx`), the SDUI quiz modal, the player settings sheet
+ * (`src/components/watch/PlayerSettingsSheet.tsx`, hosted by `VideoPlayer.tsx`
+ * — a routed form sheet cannot cover the fullscreen player), and the feedback
+ * sheet the player door opens from that settings sheet
+ * (`src/components/feedback/FeedbackModal.tsx`, same host, same reason; the
+ * Profile door is the ROOT `feedback` route above instead).
  */
 export type NonRouteSheetId =
   | "libraryDeleteConfirm"
   | "sduiQuiz"
   | "playerSettings"
+  | "feedbackModal"
 
 export type NonRouteSheetCounter = {
   /** Presented count — zero means nothing is suppressing the window. */

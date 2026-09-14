@@ -56,6 +56,8 @@ type SheetBody = "root" | "speed" | "quality"
 const ENTER_MS = 240
 const EXIT_MS = 180
 
+const REPORT_PROBLEM_LABEL = "Report a problem with this video"
+
 const BODY_TITLES: Record<SheetBody, string> = {
   root: "Settings",
   speed: "Playback speed",
@@ -64,6 +66,9 @@ const BODY_TITLES: Record<SheetBody, string> = {
 
 export type PlayerSettingsSheetProps = {
   onClose: () => void
+  /** The feedback door (KTD5). Fires at the tap, BEFORE this sheet's own
+   *  close, so the host captures the playback position the viewer saw. */
+  onReportProblem: () => void
   /** R10: while a cast session is active the sheet offers speed only. */
   castActive: boolean
   /** R9/R11 at the point of use: the quality row exists only for a
@@ -76,6 +81,7 @@ export type PlayerSettingsSheetProps = {
  *  fullscreen player. A pick writes the store; the sheet stays open (R3). */
 export function PlayerSettingsSheet({
   onClose,
+  onReportProblem,
   castActive,
   streamingUrl,
 }: PlayerSettingsSheetProps) {
@@ -213,6 +219,25 @@ export function PlayerSettingsSheet({
           rootRow("Quality", QUALITY_LABELS[snapshot.qualityTier], () =>
             setBody("quality"),
           )}
+        {/* R2: offered while casting too — the quality row above is the one
+            a session hides. The host opens the feedback sheet from onClose,
+            which is why this row closes itself after the callback. */}
+        <Pressable
+          style={({ pressed }) => [
+            styles.row,
+            styles.reportRow,
+            pressed && feedback.pressed,
+          ]}
+          onPress={() => {
+            onReportProblem()
+            close()
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={REPORT_PROBLEM_LABEL}
+        >
+          <Text style={styles.rowTitle}>{REPORT_PROBLEM_LABEL}</Text>
+          <Ionicons name="chevron-forward" size={16} color={TEXT_SECONDARY} />
+        </Pressable>
       </>
     )
   }
@@ -343,6 +368,12 @@ const styles = StyleSheet.create({
     color: TEXT_PRIMARY,
     fontFamily: "System",
     fontSize: 15,
+  },
+  // A rule above it: this row leaves the sheet, the settings rows do not.
+  reportRow: {
+    marginTop: 4,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: hexToRgba(TEXT_SECONDARY, 0.3),
   },
   rowValue: {
     flexDirection: "row",
