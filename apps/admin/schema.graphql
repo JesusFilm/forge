@@ -396,6 +396,67 @@ type ExperiencePreview {
 }
 
 """
+Sent only when the person left the device-details switch on. All four fields travel together.
+"""
+input FeedbackDeviceDetailsInput {
+  appBuild: String!
+  appVersion: String!
+  deviceModel: String!
+  osVersion: String!
+}
+
+"""What the person said the feedback was about."""
+enum FeedbackKind {
+  BROKEN
+  IDEA
+  OTHER
+}
+
+enum FeedbackPlatform {
+  ANDROID
+  IOS
+}
+
+enum FeedbackRefusal {
+  DAILY_CAP
+  INVALID_INPUT
+  NOT_CONFIGURED
+  RATE_LIMITED
+  UNAVAILABLE
+}
+
+input FeedbackSubmissionInput {
+  deviceDetails: FeedbackDeviceDetailsInput
+  email: String
+  kind: FeedbackKind!
+  message: String!
+  name: String
+  platform: FeedbackPlatform!
+  """Client-generated UUID. Carried into the ticket for support."""
+  submissionId: String!
+  video: FeedbackVideoContextInput
+}
+
+"""
+Outcome of one submission. `accepted: false` with a refusal is an expected answer, not an error.
+"""
+type FeedbackSubmissionResult {
+  accepted: Boolean!
+  """
+  Null when accepted. Every value renders the same message on the phone; it exists so operators can tell them apart.
+  """
+  refusal: FeedbackRefusal
+}
+
+"""The video the person tagged. Absent when they tagged nothing."""
+input FeedbackVideoContextInput {
+  languageSlug: String
+  positionSeconds: Float
+  slug: String
+  title: String!
+}
+
+"""
 A page-level personalized video row. The consumer resolves recommendations privately at viewing time.
 """
 type HomepageRecommendationsBlock {
@@ -1372,6 +1433,10 @@ type Mutation {
   selectSemanticRecommendation(capability: String!, claimNonce: String!, contractVersion: String!, eventId: String!, itemId: ID!, occurredAt: String!, requestId: ID!, sessionDigest: String, sessionToken: String, tabDigest: String, viewerToken: String): SemanticRecommendationSelectionReceipt!
   stageShortsCatalog(input: JSON!): ShortsCatalogRelease
   startShortsAttempt(input: ShortsStartInput!): ShortsCommandResult
+  """
+  File one piece of mobile feedback. Signed in or not. The Linear issue exists before this answers.
+  """
+  submitFeedback(input: FeedbackSubmissionInput!): FeedbackSubmissionResult!
   transitionRecommendationProfile(action: String!, consentChoice: String, consentContractVersion: String, contractVersion: String!, existingConsentReceiptDigest: String, existingProfileDigest: String, proposedConsentReceiptDigest: String, proposedProfileDigest: String, sessionDigest: String!): RecommendationProfileReceipt!
   """
   Generate and persist a semantic embedding for an ExperienceLocale. Owner or ADMIN.

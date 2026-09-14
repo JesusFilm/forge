@@ -596,6 +596,22 @@ export const env = createEnv({
     // docs/solutions/runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md.
     WEB_REVALIDATE_URL: z.string().url().optional(),
     WEB_REVALIDATE_TOKEN: z.string().min(1).optional(),
+
+    // Mobile feedback -> Linear (KTD12). All five optional: a required var with
+    // no default bricks unprovisioned Railway deploys (see docs/solutions/
+    // runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md).
+    ADMIN_FEEDBACK_LINEAR_API_KEY: z.string().min(1).optional(),
+    ADMIN_FEEDBACK_LINEAR_TEAM_ID: z.string().min(1).optional(),
+    ADMIN_FEEDBACK_LINEAR_PROJECT_ID: z.string().min(1).optional(),
+    ADMIN_FEEDBACK_LINEAR_LABEL_ID: z.string().min(1).optional(),
+    // Fleet-wide submissions per UTC day. `0` refuses every submission and is
+    // the operator's kill switch; it never means unlimited.
+    ADMIN_FEEDBACK_DAILY_CAP: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .default(200),
     NEXT_RUNTIME: z.enum(["nodejs", "edge"]).optional(),
     NODE_ENV: z.enum(["development", "test", "production"]).optional(),
     // Optional OpenRouter model override used by the production search trace
@@ -1055,6 +1071,21 @@ export const env = createEnv({
     ),
     WEB_REVALIDATE_URL: emptyToUndefined(process.env.WEB_REVALIDATE_URL),
     WEB_REVALIDATE_TOKEN: emptyToUndefined(process.env.WEB_REVALIDATE_TOKEN),
+    ADMIN_FEEDBACK_LINEAR_API_KEY: emptyToUndefined(
+      process.env.ADMIN_FEEDBACK_LINEAR_API_KEY,
+    ),
+    ADMIN_FEEDBACK_LINEAR_TEAM_ID: emptyToUndefined(
+      process.env.ADMIN_FEEDBACK_LINEAR_TEAM_ID,
+    ),
+    ADMIN_FEEDBACK_LINEAR_PROJECT_ID: emptyToUndefined(
+      process.env.ADMIN_FEEDBACK_LINEAR_PROJECT_ID,
+    ),
+    ADMIN_FEEDBACK_LINEAR_LABEL_ID: emptyToUndefined(
+      process.env.ADMIN_FEEDBACK_LINEAR_LABEL_ID,
+    ),
+    ADMIN_FEEDBACK_DAILY_CAP: emptyToUndefined(
+      process.env.ADMIN_FEEDBACK_DAILY_CAP,
+    ),
     NEXT_RUNTIME: emptyToUndefined(process.env.NEXT_RUNTIME),
     OPENROUTER_QUERY_CLASSIFIER_MODEL: emptyToUndefined(
       process.env.OPENROUTER_QUERY_CLASSIFIER_MODEL,

@@ -2706,6 +2706,51 @@ fields — `whatsNewFeatureVoteTallies`, `castWhatsNewFeatureVote`,
 - Real-Postgres coverage lives in `whats-new-feature-votes.db.test.ts`, skipped
   unless `WHATS_NEW_VOTE_TEST_DATABASE_URL` is set.
 
+## Mobile in-app feedback
+
+`submitFeedback` is a public GraphQL mutation for the mobile app
+(`src/graphql/mutations/feedback.ts`). A person reports a problem, sends an
+idea, or writes something else from the app. Admin files the Linear issue
+through `src/services/feedback-linear.ts` and then answers. The plan is
+`docs/plans/2026-09-14-1033-feat-mobile-feedback-linear-plan.md`.
+
+- **The outcome is DATA.** The mutation returns `accepted` and a nullable
+  `refusal` (`INVALID_INPUT`, `RATE_LIMITED`, `DAILY_CAP`, `UNAVAILABLE`,
+  `NOT_CONFIGURED`). Any other error still throws, so a real fault does not
+  reach the phone as a refusal.
+- **`RATE_LIMITED` and `DAILY_CAP` are separate values on the wire.** The phone
+  shows ONE message for every refusal, the fleet-wide daily cap included. Do
+  not collapse the two values into one. The wire value and the
+  `[feedback] event=refused` log line are how an operator tells a busy install
+  apart from the kill switch.
+- **Three counters run before admin calls Linear**
+  (`src/services/feedback-limits.ts`): 5 per install per 10 minutes, 20 per
+  trusted address per hour, and the fleet-wide daily cap. The first two answer
+  `RATE_LIMITED`; the cap answers `DAILY_CAP`. A refused call does not spend
+  the day. The address comes from `cf-connecting-ip` only, never from the
+  spoofable `x-forwarded-for`.
+- **A log line never carries the message, the name, or the email.** Use the
+  plain-string `[feedback] event=<name> key=value` format; Railway logsV2 drops
+  JSON from a Next.js runtime handler.
+
+### Env vars (`forge-admin` Doppler)
+
+Every one is optional, so admin boots in an environment with no Linear
+configuration and nothing else about admin changes.
+
+- `ADMIN_FEEDBACK_LINEAR_API_KEY` and `ADMIN_FEEDBACK_LINEAR_TEAM_ID` — a
+  missing value answers `NOT_CONFIGURED` for every submission.
+- `ADMIN_FEEDBACK_LINEAR_PROJECT_ID` and `ADMIN_FEEDBACK_LINEAR_LABEL_ID` —
+  optional placement of the ticket.
+- `ADMIN_FEEDBACK_DAILY_CAP` — submissions per UTC day, default 200. **A `0`
+  refuses every submission with `DAILY_CAP` and is the operator's kill switch.
+  It never means unlimited** — the opposite of the fleet search ceiling. A
+  change to it needs a redeploy.
+
+`env` skips zod validation whenever `CI` is set, and a skipped validation also
+skips zod DEFAULTS. Read the cap through `feedbackDailyCap()`, never straight
+off `env`.
+
 ## Scripture Passages
 
 Admin owns YouVersion provider access for Watch Bible passage rendering. Keep
