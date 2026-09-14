@@ -1,6 +1,8 @@
 import { type Blocks } from "@/domain/blocks"
 import { WATCH_HOME_CATEGORY_CATALOG } from "@forge/watch-url-policy/watch-home-categories"
 
+export { extractAuthoredVideoDubSelectors } from "@/domain/experience-editor-dub-selectors"
+
 export type BlockTone = "hero" | "quote" | "grid" | "standard"
 
 export type BlockSummary = {
@@ -104,7 +106,6 @@ export function editorTextFromContentParagraphs(
 const legacyEditorOnlyKeys = new Set([
   "backgroundImageUrl",
   "imageUrl",
-  "streamingUrl",
   "videoSlug",
 ])
 
@@ -125,6 +126,23 @@ export type VideoLibraryItem = {
   durationSeconds: number | null
   previewImageUrl: string | null
   previewStreamUrl: string | null
+  playableLanguageCount?: number
+  playableLanguageChips?: Array<{
+    code: string
+    flagUrl: string | null
+  }>
+  defaultDub?: VideoLibraryPlayableDub | null
+  authoredDubs?: VideoLibraryPlayableDub[]
+  dubInventory?:
+    | { status: "not-loaded" }
+    | { status: "loading" }
+    | {
+        status: "loaded"
+        choices: VideoLibraryPlayableDub[]
+        nextCursor: string | null
+      }
+    | { status: "error"; message: string }
+  /** Compatibility-only field for legacy callers; editor summaries stay bounded. */
   playableDubs?: VideoLibraryPlayableDub[]
   hasGrounding: boolean
   collectionPreviewItems?: Array<{
@@ -140,9 +158,58 @@ export type VideoLibraryPlayableDub = {
   languageId: string | null
   languageSlug: string | null
   bcp47: string | null
+  iso3?: string | null
+  languageIdentity?: string
   streamUrl: string
   duration: string
   durationSeconds: number | null
+}
+
+function mergeVideoLibraryDubs(
+  current: readonly VideoLibraryPlayableDub[] | undefined,
+  incoming: readonly VideoLibraryPlayableDub[] | undefined,
+) {
+  if (!incoming) return current ? [...current] : undefined
+  const byKey = new Map((current ?? []).map((item) => [item.key, item]))
+  incoming.forEach((item) => byKey.set(item.key, item))
+  return Array.from(byKey.values())
+}
+
+/** Merge exact-selector top-ups without dropping Dubs already hydrated for a video. */
+export function mergeVideoLibrarySummaries(
+  current: VideoLibraryItem[],
+  incoming: readonly VideoLibraryItem[],
+) {
+  if (incoming.length === 0) return current
+  const next = [...current]
+  const indexes = new Map<string, number>()
+  next.forEach((item, index) => {
+    indexes.set(item.key, index)
+    indexes.set(item.id, index)
+  })
+  for (const item of incoming) {
+    const index = indexes.get(item.key) ?? indexes.get(item.id)
+    if (index === undefined) {
+      indexes.set(item.key, next.length)
+      indexes.set(item.id, next.length)
+      next.push(item)
+      continue
+    }
+    const existing = next[index]!
+    next[index] = {
+      ...existing,
+      ...item,
+      authoredDubs: mergeVideoLibraryDubs(
+        existing.authoredDubs,
+        item.authoredDubs,
+      ),
+      playableDubs: mergeVideoLibraryDubs(
+        existing.playableDubs,
+        item.playableDubs,
+      ),
+    }
+  }
+  return next
 }
 
 export type VideoHeroHeadingSource = "manual" | "videoTitle"

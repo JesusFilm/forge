@@ -285,3 +285,12 @@ for the watch-page floating question panel. `false` hides the panel;
 intentionally testing the panel.
 
 See root `CLAUDE.md` for cross-app patterns and the broader data-layer-flip plan reference.
+
+`forge.watch.homepageRecommendations` gates the Homepage Recommendations Block
+and its Web delivery adapter. Default/fallback is false. Evaluate at runtime via
+`/watch/api/recommendations/for-you/availability`, never in the cached homepage.
+The signed-in Web session supplies context kind `user`, key = account subject,
+and email for targeting. Anonymous requests use `watch-anonymous`; recommendation
+profile cookies, capabilities, access tokens and viewing history never enter LD.
+The Admin device-agnostic API remains independent of this Web rollout flag.
+`WATCH_FOR_YOU_ENABLED=false` remains the environment kill switch.

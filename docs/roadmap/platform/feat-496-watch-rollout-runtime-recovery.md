@@ -116,3 +116,17 @@ owned by `feat-464`.
   Continue investigating residual runtime failures using fixed windows.
 - Fixed-window evidence and remaining deployment checks:
   `docs/operations/watch-runtime-diagnosis-2026-09-14.md`.
+- The 15 September recovery pass reproduces a browser budget mismatch and
+  terminal handling of transient HTTP-200 delivery failures. The Web row now
+  permits three 3-second attempts separated by the 5-second admission cooldown;
+  Admin retrieval/issuance/release waits stay inside their existing deadline.
+  Stage diagnostics distinguish state/history/retrieval/issuance failures.
+- `forge.watch.homepageRecommendations` gates both Web availability and delivery,
+  default off, using verified Watch account subject/email. Keep the English
+  homepage's authored block removed per owner instruction. Production needs an
+  LD server SDK key before account targeting can take effect. Do not enable a
+  blanket production fallback to simulate targeting.
+- Late Admin work and Web event-loop stalls remain confirmed observations, with
+  the underlying shared-runtime source unresolved. Keep this ticket open. See
+  `docs/plans/2026-09-15-fix-homepage-recommendation-recovery.md` for trace IDs and
+  the bounded recovery scope.
