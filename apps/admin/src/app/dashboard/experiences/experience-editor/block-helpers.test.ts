@@ -8,6 +8,7 @@ import {
   createTemplateBlock,
   editorTextFromContentParagraphs,
   extractAuthoredVideoDubSelectors,
+  mergeVideoLibrarySummaries,
   defaultContainerSlotSpans,
   normalizeEditorBlocks,
   normalizeEditorBlockPayload,
@@ -17,6 +18,10 @@ import {
   type VideoLibraryItem,
   writeContainerSlotSpan,
 } from "./block-helpers"
+import {
+  boundedAuthoredVideoDubSelectors,
+  EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS,
+} from "@/domain/experience-editor-dub-selectors"
 
 const videoLibrary: VideoLibraryItem[] = [
   {
@@ -121,6 +126,38 @@ describe("experience editor block helpers", () => {
       },
     ])
     expect(extractAuthoredVideoDubSelectors({ not: "blocks" })).toEqual([])
+  })
+
+  it("merges a later authored Dub into an already hydrated video summary", () => {
+    const english = {
+      key: "dub-en",
+      label: "English",
+      languageId: "language-en",
+      languageSlug: "english",
+      bcp47: "en",
+      streamUrl: "https://example.com/en.m3u8",
+      duration: "01:00",
+      durationSeconds: 60,
+    }
+    const french = {
+      ...english,
+      key: "dub-fr",
+      label: "French",
+      languageId: "language-fr",
+      languageSlug: "french",
+      bcp47: "fr",
+      streamUrl: "https://example.com/fr.m3u8",
+    }
+    const merged = mergeVideoLibrarySummaries(
+      [{ ...videoLibrary[0]!, authoredDubs: [english] }],
+      [{ ...videoLibrary[0]!, authoredDubs: [french] }],
+    )
+
+    expect(merged).toHaveLength(1)
+    expect(merged[0]?.authoredDubs?.map((dub) => dub.key)).toEqual([
+      "dub-en",
+      "dub-fr",
+    ])
   })
 
   it("creates a movable recommendation block with a localized default heading", () => {
@@ -270,6 +307,19 @@ describe("experience editor block helpers", () => {
       t: "videoCarousel",
       title: "Videos",
       items: [{}],
+    })
+  })
+
+  it("retains a non-empty legacy stream selector on routine save", () => {
+    expect(
+      normalizeEditorBlockPayload({
+        t: "video",
+        videoId: "video-1",
+        streamingUrl: "https://example.com/legacy.m3u8",
+      }),
+    ).toMatchObject({
+      videoId: "video-1",
+      streamingUrl: "https://example.com/legacy.m3u8",
     })
   })
 
@@ -672,5 +722,23 @@ describe("experience editor block helpers", () => {
       typeLabel: "Unknown",
       title: "Unsupported block",
     })
+  })
+
+  it("rejects selector work above the save-time ceiling without truncating", () => {
+    const items = Array.from(
+      { length: EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS + 1 },
+      (_, index) => ({
+        videoId: `video-${index}`,
+        languageId: "language-en",
+      }),
+    )
+
+    expect(() =>
+      boundedAuthoredVideoDubSelectors([
+        { t: "videoCarousel", itemsSource: "manual", items },
+      ]),
+    ).toThrow(
+      `at most ${EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS} distinct video audio selections`,
+    )
   })
 })

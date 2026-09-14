@@ -9,10 +9,16 @@
  */
 
 import { useCallback, useMemo, useRef, useState } from "react"
+import dynamic from "next/dynamic"
 
-import { ExperienceEditor } from "@/app/dashboard/experiences/experience-editor"
-import type { VideoLibraryItem } from "@/app/dashboard/experiences/experience-editor/block-helpers"
+import type { ExperienceEditor as ExperienceEditorComponent } from "@/app/dashboard/experiences/experience-editor"
+import {
+  extractAuthoredVideoDubSelectors,
+  mergeVideoLibrarySummaries,
+  type VideoLibraryItem,
+} from "@/app/dashboard/experiences/experience-editor/block-helpers"
 import type {
+  ExperienceEditorAuthoredDubSelector,
   ExperienceEditorCollectionChildPageActionInput,
   ExperienceEditorDubPageActionInput,
   ExperienceEditorDubSelectionValidationActionInput,
@@ -29,7 +35,24 @@ import { getSuggestedPrompts } from "@/app/dashboard/experiences/experience-edit
 import { PersonaVariantButton } from "@/app/dashboard/experiences/persona-variant-button"
 import type { GenerateVariantActionResult } from "@/app/dashboard/experiences/generate-variant-action"
 
-type ExperienceEditorProps = Parameters<typeof ExperienceEditor>[0]
+const ExperienceEditor = dynamic(
+  () =>
+    import("@/app/dashboard/experiences/experience-editor").then(
+      (module) => module.ExperienceEditor,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex min-h-[calc(100vh-3rem)] flex-1 items-center justify-center border-l border-[var(--color-hairline)] bg-[var(--color-surface)]">
+        <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+          Loading editor…
+        </div>
+      </div>
+    ),
+  },
+)
+
+type ExperienceEditorProps = Parameters<typeof ExperienceEditorComponent>[0]
 
 type ChatGenerateDraftAction = NonNullable<
   Parameters<typeof ExperienceChatPanel>[0]["generateDraftAction"]
@@ -41,18 +64,18 @@ type ChatGenerateSectionAction = NonNullable<
 
 export type ExperienceEditorWithChatProps = Omit<
   ExperienceEditorProps,
-  "loadVideoCollectionChildrenAction" | "onCanvasController" | "videoLibrary"
+  | "loadVideoCollectionChildrenAction"
+  | "onBlocksChange"
+  | "onCanvasController"
+  | "videoLibrary"
 > & {
   experienceLocaleId: string
   locale: string
   chatActions: ExperienceChatPanelActions
-  videoLibrary: VideoLibraryItem[]
-  loadVideosByIdsAction: (
-    videoIds: readonly string[],
-  ) => Promise<VideoLibraryItem[]>
-  loadVideoCollectionChildrenAction: (
-    parentVideoId: string,
-  ) => Promise<VideoLibraryItem[]>
+  loadVideosByIdsAction: (input: {
+    videoIds: readonly string[]
+    authoredSelectors: readonly ExperienceEditorAuthoredDubSelector[]
+  }) => Promise<VideoLibraryItem[]>
   loadVideoDubPageAction: (
     input: ExperienceEditorDubPageActionInput,
   ) => ReturnType<typeof loadExperienceEditorDubPage>
@@ -102,13 +125,21 @@ function collectVideoIdsFromBlocks(blocks: readonly unknown[]): string[] {
   return Array.from(ids)
 }
 
+function authoredSelectorIdentity(
+  selector: ExperienceEditorAuthoredDubSelector,
+) {
+  return JSON.stringify([
+    selector.videoId,
+    selector.languageId,
+    selector.legacyStreamingUrl,
+  ])
+}
+
 export function ExperienceEditorWithChat({
   experienceLocaleId,
   locale,
   chatActions,
-  videoLibrary: initialVideoLibrary,
   loadVideosByIdsAction,
-  loadVideoCollectionChildrenAction,
   loadVideoDubPageAction,
   loadVideoCollectionChildrenPageAction,
   validateVideoDubSelectionsAction,
@@ -122,63 +153,106 @@ export function ExperienceEditorWithChat({
   const [canvasHasBlocks, setCanvasHasBlocks] = useState(false)
   const [chatMutationPending, setChatMutationPending] = useState(false)
   const [, forceTick] = useState(0)
-  const [videoLibrary, setVideoLibrary] =
-    useState<VideoLibraryItem[]>(initialVideoLibrary)
+  const [videoLibrary, setVideoLibrary] = useState<VideoLibraryItem[]>([])
+  const knownVideoIds = useRef<Set<string>>(new Set())
   const inflightVideoIds = useRef<Set<string>>(new Set())
+  const knownAuthoredSelectors = useRef<Set<string>>(new Set())
+  const inflightAuthoredSelectors = useRef<Set<string>>(new Set())
+
+  const mergeVideoLibraryItems = useCallback((items: VideoLibraryItem[]) => {
+    items.forEach((item) => {
+      knownVideoIds.current.add(item.key)
+      knownVideoIds.current.add(item.id)
+    })
+    setVideoLibrary((current) => mergeVideoLibrarySummaries(current, items))
+  }, [])
 
   const hydrateMissingVideos = useCallback(
     (blocks: readonly unknown[]) => {
       const referenced = collectVideoIdsFromBlocks(blocks)
+      const authoredSelectors = extractAuthoredVideoDubSelectors(blocks)
       if (referenced.length === 0) return
-      const known = new Set<string>()
-      for (const item of videoLibrary) {
-        known.add(item.key)
-        known.add(item.id)
-      }
-      const missing = referenced.filter(
-        (id) => !known.has(id) && !inflightVideoIds.current.has(id),
+      const missingVideoIds = referenced.filter(
+        (id) =>
+          !knownVideoIds.current.has(id) && !inflightVideoIds.current.has(id),
       )
-      if (missing.length === 0) return
-      missing.forEach((id) => inflightVideoIds.current.add(id))
-      loadVideosByIdsAction(missing)
-        .then((extras) => {
-          if (extras.length === 0) return
-          setVideoLibrary((current) => {
-            const seen = new Set(current.map((item) => item.key))
-            const merged = [...current]
-            for (const extra of extras) {
-              if (!seen.has(extra.key)) {
-                merged.push(extra)
-                seen.add(extra.key)
-              }
-            }
-            return merged
-          })
-        })
-        .catch(() => {
-          // Silent failure — block will fall back to manual title.
-        })
-        .finally(() => {
-          missing.forEach((id) => inflightVideoIds.current.delete(id))
-        })
-    },
-    [loadVideosByIdsAction, videoLibrary],
-  )
-
-  const mergeVideoLibraryItems = useCallback((items: VideoLibraryItem[]) => {
-    if (items.length === 0) return
-    setVideoLibrary((current) => {
-      const seen = new Set(current.map((item) => item.key))
-      const merged = [...current]
-      for (const item of items) {
-        if (!seen.has(item.key)) {
-          merged.push(item)
-          seen.add(item.key)
-        }
+      const missingSelectors = authoredSelectors.filter((selector) => {
+        const identity = authoredSelectorIdentity(selector)
+        return (
+          !knownAuthoredSelectors.current.has(identity) &&
+          !inflightAuthoredSelectors.current.has(identity)
+        )
+      })
+      const requestedVideoIds = Array.from(
+        new Set([
+          ...missingVideoIds,
+          ...missingSelectors.map((selector) => selector.videoId),
+        ]),
+      )
+      if (requestedVideoIds.length === 0) return
+      requestedVideoIds.forEach((id) => inflightVideoIds.current.add(id))
+      missingSelectors.forEach((selector) =>
+        inflightAuthoredSelectors.current.add(
+          authoredSelectorIdentity(selector),
+        ),
+      )
+      const selectorBatches: ExperienceEditorAuthoredDubSelector[][] = []
+      for (let index = 0; index < missingSelectors.length; index += 500) {
+        selectorBatches.push(missingSelectors.slice(index, index + 500))
       }
-      return merged
-    })
-  }, [])
+      const selectorVideoIds = new Set(
+        missingSelectors.map((selector) => selector.videoId),
+      )
+      const bareVideoIds = missingVideoIds.filter(
+        (videoId) => !selectorVideoIds.has(videoId),
+      )
+      const bareVideoBatches: string[][] = []
+      for (let index = 0; index < bareVideoIds.length; index += 500) {
+        bareVideoBatches.push(bareVideoIds.slice(index, index + 500))
+      }
+
+      void (async () => {
+        for (const selectors of selectorBatches) {
+          try {
+            const extras = await loadVideosByIdsAction({
+              videoIds: Array.from(
+                new Set(selectors.map((selector) => selector.videoId)),
+              ),
+              authoredSelectors: selectors,
+            })
+            mergeVideoLibraryItems(extras)
+            selectors.forEach((selector) =>
+              knownAuthoredSelectors.current.add(
+                authoredSelectorIdentity(selector),
+              ),
+            )
+          } catch {
+            // Silent failure — block will fall back to manual title.
+          }
+        }
+        for (const videoIds of bareVideoBatches) {
+          try {
+            mergeVideoLibraryItems(
+              await loadVideosByIdsAction({
+                videoIds,
+                authoredSelectors: [],
+              }),
+            )
+          } catch {
+            // Silent failure — block will fall back to manual title.
+          }
+        }
+      })().finally(() => {
+        requestedVideoIds.forEach((id) => inflightVideoIds.current.delete(id))
+        missingSelectors.forEach((selector) =>
+          inflightAuthoredSelectors.current.delete(
+            authoredSelectorIdentity(selector),
+          ),
+        )
+      })
+    },
+    [loadVideosByIdsAction, mergeVideoLibraryItems],
+  )
 
   const handleSearchVideoLibrary = useCallback(
     async (
@@ -191,15 +265,6 @@ export function ExperienceEditorWithChat({
       return results
     },
     [mergeVideoLibraryItems, searchVideoLibraryAction],
-  )
-
-  const handleLoadVideoCollectionChildren = useCallback(
-    async (parentVideoId: string) => {
-      const children = await loadVideoCollectionChildrenAction(parentVideoId)
-      mergeVideoLibraryItems(children)
-      return children
-    },
-    [loadVideoCollectionChildrenAction, mergeVideoLibraryItems],
   )
 
   const handleLoadVideoCollectionChildrenPage = useCallback(
@@ -268,6 +333,14 @@ export function ExperienceEditorWithChat({
     [hydrateMissingVideos],
   )
 
+  const handleBlocksChange = useCallback(
+    (blocks: readonly unknown[]) => {
+      setCanvasHasBlocks(blocks.length > 0)
+      hydrateMissingVideos(blocks)
+    },
+    [hydrateMissingVideos],
+  )
+
   return (
     <div className="flex min-h-[calc(100vh-3rem)] items-start">
       <ExperienceChatPanel
@@ -291,7 +364,7 @@ export function ExperienceEditorWithChat({
           {...editorProps}
           duplicatePending={chatMutationPending}
           videoLibrary={videoLibrary}
-          loadVideoCollectionChildrenAction={handleLoadVideoCollectionChildren}
+          onBlocksChange={handleBlocksChange}
           {...{
             loadVideoDubPageAction,
             loadVideoCollectionChildrenPageAction:

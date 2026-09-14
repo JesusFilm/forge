@@ -1,3 +1,19 @@
+import { Prisma, type PrismaClient } from "@prisma/client"
+
+import {
+  cachedBoundedTtlValue,
+  type BoundedTtlCache,
+} from "./bounded-ttl-promise-cache"
+import { mapVideoLabel, mapVideoSource } from "./core-sync/transforms"
+
+export const EXPERIENCE_EDITOR_VIDEO_BATCH_SIZE = 100
+export const EXPERIENCE_EDITOR_LANGUAGE_CHIP_LIMIT = 5
+export const EXPERIENCE_EDITOR_DUB_PAGE_DEFAULT_SIZE = 50
+export const EXPERIENCE_EDITOR_DUB_PAGE_MAX_SIZE = 100
+
+const EXPERIENCE_EDITOR_SUMMARY_CACHE_TTL_MS = 5_000
+const EXPERIENCE_EDITOR_SUMMARY_CACHE_MAX_ENTRIES = 64
+
 export type ExperienceEditorAuthoredDubSelector = {
   videoId: string
   languageId: string | null
@@ -64,15 +80,6 @@ export const NOT_LOADED_EXPERIENCE_EDITOR_DUB_INVENTORY: Extract<
   status: "not-loaded",
 }
 
-export const EMPTY_EXPERIENCE_EDITOR_DUB_INVENTORY: Extract<
-  ExperienceEditorDubInventoryState,
-  { status: "loaded" }
-> = {
-  status: "loaded",
-  choices: [],
-  nextCursor: null,
-}
-
 /** Compact cold-path contract. It never carries a complete Dub inventory. */
 export type ExperienceEditorVideoSummary = {
   key: string
@@ -104,6 +111,11 @@ export type ExperienceEditorVideoSummary = {
     previewImageUrl: string | null
   }>
 }
+
+const experienceEditorSummaryBatchCaches = new WeakMap<
+  object,
+  BoundedTtlCache<ExperienceEditorVideoSummary[]>
+>()
 
 function compactText(value: string | null | undefined) {
   const normalized = value?.trim()
@@ -402,6 +414,34 @@ function toSafeCount(value: bigint | number) {
   return Number.isSafeInteger(count) && count > 0 ? count : 0
 }
 
+function normalizeSummaryVideoLabel(label: string | null) {
+  return (
+    mapVideoLabel(label) ??
+    (label === "COLLECTION" ||
+    label === "EPISODE" ||
+    label === "FEATURE_FILM" ||
+    label === "SEGMENT" ||
+    label === "SERIES" ||
+    label === "SHORT_FILM" ||
+    label === "TRAILER" ||
+    label === "BEHIND_THE_SCENES"
+      ? label
+      : null)
+  )
+}
+
+function normalizeSummaryVideoSource(videoSource: string | null) {
+  return (
+    mapVideoSource(videoSource) ??
+    (videoSource === "MUX" ||
+    videoSource === "CLOUDFLARE" ||
+    videoSource === "YOUTUBE" ||
+    videoSource === "INTERNAL"
+      ? videoSource
+      : null)
+  )
+}
+
 function summarySource(videoSource: string | null) {
   if (videoSource === "MUX") return { label: "Mux", tone: "info" as const }
   if (videoSource === "CLOUDFLARE") {
@@ -538,8 +578,7 @@ function normalizeSummaryImageUrl(value: string | null) {
  * The CTE only admits the requested videos, and callers enforce the 100-id
  * ceiling so its row and parameter budgets are explicit.
  */
-async function selectExperienceEditorSummaryRows(
-  db: Pick<ExperienceEditorSummaryDb, "$queryRaw">,
+export function experienceEditorSummarySql(
   videoIds: readonly string[],
   locale: string,
   authoredSelectors: readonly ExperienceEditorAuthoredDubSelector[],
@@ -547,7 +586,9 @@ async function selectExperienceEditorSummaryRows(
   if (videoIds.length > EXPERIENCE_EDITOR_VIDEO_BATCH_SIZE) {
     throw new RangeError("Experience editor video batch exceeds its limit")
   }
-  if (videoIds.length === 0) return []
+  if (videoIds.length === 0) {
+    throw new RangeError("Experience editor video summary requires an id")
+  }
 
   const requestedJson = JSON.stringify(
     videoIds.map((videoId, index) => ({
@@ -561,8 +602,8 @@ async function selectExperienceEditorSummaryRows(
   const normalizedLocale = locale.trim().toLowerCase().replaceAll("_", "-")
   const baseLocale = normalizedLocale.split("-")[0] ?? normalizedLocale
 
-  return db.$queryRaw<ExperienceEditorSummarySelectionRow[]>(Prisma.sql`
-    WITH requested AS MATERIALIZED (
+  return Prisma.sql`
+    WITH RECURSIVE requested AS MATERIALIZED (
       SELECT input.video_id, input.requested_order
       FROM jsonb_to_recordset(${requestedJson}::jsonb)
         AS input(video_id text, requested_order integer)
@@ -579,6 +620,241 @@ async function selectExperienceEditorSummaryRows(
           legacy_streaming_url text,
           selector_order integer
         )
+    ),
+    language_identities AS MATERIALIZED (
+      SELECT l.id,
+             COALESCE(
+               NULLIF(lower(btrim(l.slug)), ''),
+               NULLIF(lower(btrim(l.bcp47)), ''),
+               NULLIF(lower(btrim(l.iso3)), ''),
+               NULLIF(lower(btrim(l.id)), '')
+             ) AS language_identity
+      FROM language l
+    ),
+    duplicate_language_identities AS MATERIALIZED (
+      SELECT li.language_identity
+      FROM language_identities li
+      GROUP BY li.language_identity
+      HAVING count(*) > 1
+    ),
+    dub_counts AS MATERIALIZED (
+      SELECT r.video_id, counts.language_count
+      FROM requested r
+      JOIN LATERAL (
+        SELECT (
+          count(DISTINCT d.language_id)
+          + count(*) FILTER (WHERE d.language_id IS NULL)
+        )::bigint AS language_count
+        FROM video_dub d
+        WHERE d.video_id = r.video_id
+          AND d.deleted_at IS NULL
+          AND COALESCE(
+            NULLIF(btrim(d.hls), ''),
+            NULLIF(btrim(d.dash), ''),
+            NULLIF(btrim(d.share), '')
+          ) IS NOT NULL
+      ) counts ON TRUE
+    ),
+    duplicate_identity_counts AS MATERIALIZED (
+      SELECT duplicate_counts.video_id,
+             sum(duplicate_counts.language_id_count - 1)::bigint
+               AS duplicate_adjustment
+      FROM (
+        SELECT d.video_id,
+               li.language_identity,
+               count(DISTINCT d.language_id)::bigint AS language_id_count
+        FROM duplicate_language_identities duplicate_identity
+        JOIN language_identities li
+          ON li.language_identity = duplicate_identity.language_identity
+        JOIN video_dub d ON d.language_id = li.id
+        JOIN requested r ON r.video_id = d.video_id
+        WHERE d.deleted_at IS NULL
+          AND COALESCE(
+            NULLIF(btrim(d.hls), ''),
+            NULLIF(btrim(d.dash), ''),
+            NULLIF(btrim(d.share), '')
+          ) IS NOT NULL
+        GROUP BY d.video_id, li.language_identity
+      ) duplicate_counts
+      GROUP BY duplicate_counts.video_id
+    ),
+    dub_chip_walk(video_id, chip_order, dub_id, seen_identities) AS (
+      SELECT r.video_id,
+             1,
+             candidate.id,
+             ARRAY[candidate.language_identity]::text[]
+      FROM requested r
+      JOIN LATERAL (
+        SELECT d.id,
+               COALESCE(
+                 NULLIF(lower(btrim(l.slug)), ''),
+                 NULLIF(lower(btrim(l.bcp47)), ''),
+                 NULLIF(lower(btrim(l.iso3)), ''),
+                 NULLIF(lower(btrim(COALESCE(l.id, d.language_id))), ''),
+                 d.id
+               ) AS language_identity
+        FROM video_dub d
+        LEFT JOIN language l ON l.id = d.language_id
+        WHERE d.video_id = r.video_id
+          AND d.deleted_at IS NULL
+          AND COALESCE(
+            NULLIF(btrim(d.hls), ''),
+            NULLIF(btrim(d.dash), ''),
+            NULLIF(btrim(d.share), '')
+          ) IS NOT NULL
+        ORDER BY d.updated_at DESC NULLS LAST, d.id ASC
+        LIMIT 1
+      ) candidate ON TRUE
+
+      UNION ALL
+
+      SELECT walk.video_id,
+             walk.chip_order + 1,
+             candidate.id,
+             walk.seen_identities || candidate.language_identity
+      FROM dub_chip_walk walk
+      JOIN LATERAL (
+        SELECT d.id,
+               COALESCE(
+                 NULLIF(lower(btrim(l.slug)), ''),
+                 NULLIF(lower(btrim(l.bcp47)), ''),
+                 NULLIF(lower(btrim(l.iso3)), ''),
+                 NULLIF(lower(btrim(COALESCE(l.id, d.language_id))), ''),
+                 d.id
+               ) AS language_identity
+        FROM video_dub d
+        LEFT JOIN language l ON l.id = d.language_id
+        WHERE d.video_id = walk.video_id
+          AND d.deleted_at IS NULL
+          AND COALESCE(
+            NULLIF(btrim(d.hls), ''),
+            NULLIF(btrim(d.dash), ''),
+            NULLIF(btrim(d.share), '')
+          ) IS NOT NULL
+          AND NOT (
+            COALESCE(
+              NULLIF(lower(btrim(l.slug)), ''),
+              NULLIF(lower(btrim(l.bcp47)), ''),
+              NULLIF(lower(btrim(l.iso3)), ''),
+              NULLIF(lower(btrim(COALESCE(l.id, d.language_id))), ''),
+              d.id
+            )
+            = ANY(walk.seen_identities)
+          )
+        ORDER BY d.updated_at DESC NULLS LAST, d.id ASC
+        LIMIT 1
+      ) candidate ON TRUE
+      WHERE walk.chip_order < ${EXPERIENCE_EDITOR_LANGUAGE_CHIP_LIMIT}
+    ),
+    dub_chips AS MATERIALIZED (
+      SELECT walk.video_id,
+             array_agg(walk.dub_id ORDER BY walk.chip_order) AS chip_ids
+      FROM dub_chip_walk walk
+      GROUP BY walk.video_id
+    ),
+    locale_language_ids AS MATERIALIZED (
+      SELECT l.id
+      FROM language l
+      WHERE lower(replace(COALESCE(l.bcp47, ''), '_', '-')) IN (${normalizedLocale}, ${baseLocale})
+        OR lower(replace(COALESCE(l.slug, ''), '_', '-')) IN (${normalizedLocale}, ${baseLocale})
+        OR lower(replace(COALESCE(l.iso3, ''), '_', '-')) IN (${normalizedLocale}, ${baseLocale})
+        OR lower(replace(COALESCE(l.bcp47, ''), '_', '-')) LIKE ${`${baseLocale}-%`}
+        OR lower(replace(COALESCE(l.slug, ''), '_', '-')) LIKE ${`${baseLocale}-%`}
+    ),
+    dub_defaults AS MATERIALIZED (
+      SELECT r.video_id,
+             COALESCE(locale_dub.id, hls_dub.id, any_dub.id)
+               AS default_dub_id
+      FROM requested r
+      LEFT JOIN LATERAL (
+        SELECT d.id
+        FROM video_dub d
+        JOIN locale_language_ids locale_language
+          ON locale_language.id = d.language_id
+        WHERE d.video_id = r.video_id
+          AND d.deleted_at IS NULL
+          AND COALESCE(
+            NULLIF(btrim(d.hls), ''),
+            NULLIF(btrim(d.dash), ''),
+            NULLIF(btrim(d.share), '')
+          ) IS NOT NULL
+        ORDER BY CASE
+          WHEN NULLIF(btrim(d.hls), '') IS NOT NULL THEN 0
+          ELSE 1
+        END,
+        d.updated_at DESC NULLS LAST,
+        d.id ASC
+        LIMIT 1
+      ) locale_dub ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT d.id
+        FROM video_dub d
+        WHERE locale_dub.id IS NULL
+          AND d.video_id = r.video_id
+          AND d.deleted_at IS NULL
+          AND NULLIF(btrim(d.hls), '') IS NOT NULL
+        ORDER BY d.updated_at DESC NULLS LAST, d.id ASC
+        LIMIT 1
+      ) hls_dub ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT d.id
+        FROM video_dub d
+        WHERE locale_dub.id IS NULL
+          AND hls_dub.id IS NULL
+          AND d.video_id = r.video_id
+          AND d.deleted_at IS NULL
+          AND COALESCE(
+            NULLIF(btrim(d.hls), ''),
+            NULLIF(btrim(d.dash), ''),
+            NULLIF(btrim(d.share), '')
+          ) IS NOT NULL
+        ORDER BY d.updated_at DESC NULLS LAST, d.id ASC
+        LIMIT 1
+      ) any_dub ON TRUE
+    ),
+    authored_dubs AS MATERIALIZED (
+      SELECT a.video_id,
+             array_agg(
+               COALESCE(language_dub.id, legacy_dub.id)
+               ORDER BY a.selector_order
+             ) FILTER (
+               WHERE COALESCE(language_dub.id, legacy_dub.id) IS NOT NULL
+             ) AS authored_ids
+      FROM authored a
+      LEFT JOIN LATERAL (
+        SELECT d.id
+        FROM video_dub d
+        WHERE a.language_id IS NOT NULL
+          AND d.video_id = a.video_id
+          AND d.language_id = a.language_id
+          AND d.deleted_at IS NULL
+          AND COALESCE(
+            NULLIF(btrim(d.hls), ''),
+            NULLIF(btrim(d.dash), ''),
+            NULLIF(btrim(d.share), '')
+          ) IS NOT NULL
+        ORDER BY d.updated_at DESC NULLS LAST, d.id ASC
+        LIMIT 1
+      ) language_dub ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT d.id
+        FROM video_dub d
+        WHERE language_dub.id IS NULL
+          AND a.legacy_streaming_url IS NOT NULL
+          AND d.video_id = a.video_id
+          AND a.legacy_streaming_url IN (
+            btrim(d.hls), btrim(d.dash), btrim(d.share)
+          )
+          AND d.deleted_at IS NULL
+          AND COALESCE(
+            NULLIF(btrim(d.hls), ''),
+            NULLIF(btrim(d.dash), ''),
+            NULLIF(btrim(d.share), '')
+          ) IS NOT NULL
+        ORDER BY d.updated_at DESC NULLS LAST, d.id ASC
+        LIMIT 1
+      ) legacy_dub ON TRUE
+      GROUP BY a.video_id
     )
     SELECT v.id AS "videoId",
            v.core_id AS "coreId",
@@ -589,11 +865,15 @@ async function selectExperienceEditorSummaryRows(
            locale_pick.title,
            locale_pick.description,
            image_pick.url AS "previewImageUrl",
-           COALESCE(dub_summary.language_count, 0)::bigint
+           GREATEST(
+             COALESCE(dub_counts.language_count, 0)
+               - COALESCE(duplicate_identity_counts.duplicate_adjustment, 0),
+             0
+           )::bigint
              AS "playableLanguageCount",
-           dub_summary.default_dub_id AS "defaultDubId",
-           COALESCE(dub_summary.chip_ids, ARRAY[]::text[]) AS "chipDubIds",
-           COALESCE(dub_summary.authored_ids, ARRAY[]::text[]) AS "authoredDubIds",
+           dub_defaults.default_dub_id AS "defaultDubId",
+           COALESCE(dub_chips.chip_ids, ARRAY[]::text[]) AS "chipDubIds",
+           COALESCE(authored_dubs.authored_ids, ARRAY[]::text[]) AS "authoredDubIds",
            COALESCE(collection_summary.child_count, 0)::bigint AS "childCount",
            COALESCE(collection_summary.preview_items, '[]'::jsonb)
              AS "collectionPreviewItems",
@@ -641,126 +921,35 @@ async function selectExperienceEditorSummaryRows(
       vi.id ASC
       LIMIT 1
     ) image_pick ON TRUE
+    LEFT JOIN dub_counts ON dub_counts.video_id = v.id
+    LEFT JOIN duplicate_identity_counts
+      ON duplicate_identity_counts.video_id = v.id
+    LEFT JOIN dub_chips ON dub_chips.video_id = v.id
+    LEFT JOIN dub_defaults ON dub_defaults.video_id = v.id
+    LEFT JOIN authored_dubs ON authored_dubs.video_id = v.id
     LEFT JOIN LATERAL (
-      WITH eligible_dubs AS MATERIALIZED (
-        SELECT d.id,
-               d.language_id,
-               d.hls,
-               d.dash,
-               d.share,
-               d.updated_at,
-               l.slug AS language_slug,
-               l.bcp47,
-               l.iso3,
-               COALESCE(
-                 NULLIF(lower(btrim(l.slug)), ''),
-                 NULLIF(lower(btrim(l.bcp47)), ''),
-                 NULLIF(lower(btrim(l.iso3)), ''),
-                 NULLIF(lower(btrim(COALESCE(l.id, d.language_id))), ''),
-                 d.id
-               ) AS language_identity
-        FROM video_dub d
-        LEFT JOIN language l ON l.id = d.language_id
-        WHERE d.video_id = v.id
-          AND d.deleted_at IS NULL
-          AND COALESCE(
-            NULLIF(btrim(d.hls), ''),
-            NULLIF(btrim(d.dash), ''),
-            NULLIF(btrim(d.share), '')
-          ) IS NOT NULL
-      ),
-      language_winners AS MATERIALIZED (
-        SELECT ranked.*
-        FROM (
-          SELECT e.*,
-                 row_number() OVER (
-                   PARTITION BY e.language_identity
-                   ORDER BY e.updated_at DESC NULLS LAST, e.id ASC
-                 ) AS language_rank
-          FROM eligible_dubs e
-        ) ranked
-        WHERE ranked.language_rank = 1
-      ),
-      authored_candidates AS MATERIALIZED (
-        SELECT a.selector_order,
-               e.id,
-               row_number() OVER (
-                 PARTITION BY a.selector_order
-                 ORDER BY CASE
-                   WHEN a.language_id IS NOT NULL
-                     AND e.language_id = a.language_id THEN 0
-                   ELSE 1
-                 END,
-                 e.updated_at DESC NULLS LAST,
-                 e.id ASC
-               ) AS selector_rank
-        FROM authored a
-        JOIN eligible_dubs e ON (
-          (a.language_id IS NOT NULL AND e.language_id = a.language_id)
-          OR (
-            a.legacy_streaming_url IS NOT NULL
-            AND a.legacy_streaming_url IN (
-              btrim(e.hls), btrim(e.dash), btrim(e.share)
-            )
-          )
-        )
-        WHERE a.video_id = v.id
-      )
       SELECT (
                SELECT count(*)::bigint
-               FROM language_winners
-             ) AS language_count,
-             (
-               SELECT array_agg(
-                 chip.id ORDER BY chip.updated_at DESC NULLS LAST, chip.id ASC
-               )
-               FROM (
-                 SELECT lw.id, lw.updated_at
-                 FROM language_winners lw
-                 ORDER BY lw.updated_at DESC NULLS LAST, lw.id ASC
-                 LIMIT ${EXPERIENCE_EDITOR_LANGUAGE_CHIP_LIMIT}
-               ) chip
-             ) AS chip_ids,
-             (
-               SELECT e.id
-               FROM eligible_dubs e
-               ORDER BY CASE WHEN (
-                 lower(replace(COALESCE(e.bcp47, ''), '_', '-')) IN (${normalizedLocale}, ${baseLocale})
-                 OR lower(replace(COALESCE(e.language_slug, ''), '_', '-')) IN (${normalizedLocale}, ${baseLocale})
-                 OR lower(replace(COALESCE(e.iso3, ''), '_', '-')) IN (${normalizedLocale}, ${baseLocale})
-                 OR lower(replace(COALESCE(e.bcp47, ''), '_', '-')) LIKE ${`${baseLocale}-%`}
-                 OR lower(replace(COALESCE(e.language_slug, ''), '_', '-')) LIKE ${`${baseLocale}-%`}
-               ) THEN 0 ELSE 1 END,
-               CASE WHEN NULLIF(btrim(e.hls), '') IS NOT NULL THEN 0 ELSE 1 END,
-               e.updated_at DESC NULLS LAST,
-               e.id ASC
-               LIMIT 1
-             ) AS default_dub_id,
-             (
-               SELECT array_agg(candidate.id ORDER BY candidate.selector_order)
-               FROM authored_candidates candidate
-               WHERE candidate.selector_rank = 1
-             ) AS authored_ids
-    ) dub_summary ON TRUE
-    LEFT JOIN LATERAL (
-      SELECT count(*)::bigint AS child_count,
-             COALESCE(
-               jsonb_agg(
+               FROM video_relation relation
+               JOIN video child ON child.id = relation.child_id
+                 AND child.deleted_at IS NULL
+               WHERE relation.parent_id = v.id
+             ) AS child_count,
+             COALESCE((
+               SELECT jsonb_agg(
                  jsonb_build_object(
                    'key', preview.child_id,
                    'title', COALESCE(preview.title, 'Untitled video'),
                    'previewImageUrl', preview.image_url
-                 ) ORDER BY preview.preview_order
-               ) FILTER (WHERE preview.preview_order <= 3),
-               '[]'::jsonb
-             ) AS preview_items
-      FROM (
+                 ) ORDER BY preview.relation_order ASC NULLS LAST,
+                            preview.relation_created_at ASC,
+                            preview.relation_id ASC
+               )
+               FROM (
         SELECT relation.child_id,
-               row_number() OVER (
-                 ORDER BY relation.order ASC NULLS LAST,
-                          relation.created_at ASC,
-                          relation.id ASC
-               ) AS preview_order,
+               relation.order AS relation_order,
+               relation.created_at AS relation_created_at,
+               relation.id AS relation_id,
                (
                  SELECT child_locale.title
                  FROM video_locale child_locale
@@ -797,10 +986,27 @@ async function selectExperienceEditorSummaryRows(
         JOIN video child ON child.id = relation.child_id
           AND child.deleted_at IS NULL
         WHERE relation.parent_id = v.id
-      ) preview
+        ORDER BY relation.order ASC NULLS LAST,
+                 relation.created_at ASC,
+                 relation.id ASC
+        LIMIT 3
+               ) preview
+             ), '[]'::jsonb) AS preview_items
     ) collection_summary ON TRUE
     ORDER BY r.requested_order ASC
-  `)
+  `
+}
+
+async function selectExperienceEditorSummaryRows(
+  db: Pick<ExperienceEditorSummaryDb, "$queryRaw">,
+  videoIds: readonly string[],
+  locale: string,
+  authoredSelectors: readonly ExperienceEditorAuthoredDubSelector[],
+) {
+  if (videoIds.length === 0) return []
+  return db.$queryRaw<ExperienceEditorSummarySelectionRow[]>(
+    experienceEditorSummarySql(videoIds, locale, authoredSelectors),
+  )
 }
 
 async function hydrateSelectedEditorDubs(
@@ -878,7 +1084,9 @@ function mapSummaryRows(
       return chip ? [chip] : []
     })
     const playableLanguageCount = toSafeCount(row.playableLanguageCount)
-    const source = summarySource(row.videoSource)
+    const normalizedLabel = normalizeSummaryVideoLabel(row.label)
+    const normalizedSource = normalizeSummaryVideoSource(row.videoSource)
+    const source = summarySource(normalizedSource)
     const durationChoice = defaultChoice ?? authoredDubs[0] ?? null
     const childCount = toSafeCount(row.childCount)
 
@@ -888,12 +1096,12 @@ function mapSummaryRows(
       slug: row.slug,
       title: compactText(row.title) ?? row.slug,
       description: compactText(row.description),
-      label: row.label,
-      labelLabel: summaryVideoLabel(row.label, locale),
+      label: normalizedLabel,
+      labelLabel: summaryVideoLabel(normalizedLabel, locale),
       childCount,
       isCollectionTarget:
-        row.label === "COLLECTION" ||
-        (row.label === "SERIES" && childCount > 0),
+        normalizedLabel === "COLLECTION" ||
+        (normalizedLabel === "SERIES" && childCount > 0),
       sourceLabel: source.label,
       sourceTone: summarySourceTone(source.tone),
       dubs: coverageLabel(playableLanguageCount, playableLanguageChips),
@@ -926,14 +1134,34 @@ async function loadExperienceEditorVideoSummaryBatch(
   if (videoIds.length > EXPERIENCE_EDITOR_VIDEO_BATCH_SIZE) {
     throw new RangeError("Experience editor video batch exceeds its limit")
   }
-  const rows = await selectExperienceEditorSummaryRows(
-    db,
+  const authoredSelectors = request.authoredSelectors ?? []
+  const relevantAuthoredSelectors = selectorsForVideoIds(
+    authoredSelectors,
     videoIds,
-    request.locale,
-    request.authoredSelectors ?? [],
   )
-  const dubs = await hydrateSelectedEditorDubs(db, selectedDubIds(rows))
-  return mapSummaryRows(rows, dubs, request.locale)
+  const key = JSON.stringify([
+    request.locale,
+    videoIds,
+    relevantAuthoredSelectors,
+  ])
+
+  return cachedBoundedTtlValue({
+    cacheByOwner: experienceEditorSummaryBatchCaches,
+    owner: db,
+    key,
+    ttlMs: EXPERIENCE_EDITOR_SUMMARY_CACHE_TTL_MS,
+    maxEntries: EXPERIENCE_EDITOR_SUMMARY_CACHE_MAX_ENTRIES,
+    loader: async () => {
+      const rows = await selectExperienceEditorSummaryRows(
+        db,
+        videoIds,
+        request.locale,
+        authoredSelectors,
+      )
+      const dubs = await hydrateSelectedEditorDubs(db, selectedDubIds(rows))
+      return mapSummaryRows(rows, dubs, request.locale)
+    },
+  })
 }
 
 /**
@@ -972,13 +1200,6 @@ export async function loadExperienceEditorVideoSummaryList(
 ) {
   return loadExperienceEditorVideoSummariesByIds(db, request)
 }
-import { Prisma, type PrismaClient } from "@prisma/client"
-
-export const EXPERIENCE_EDITOR_VIDEO_BATCH_SIZE = 100
-export const EXPERIENCE_EDITOR_LANGUAGE_CHIP_LIMIT = 5
-export const EXPERIENCE_EDITOR_DUB_PAGE_DEFAULT_SIZE = 50
-export const EXPERIENCE_EDITOR_DUB_PAGE_MAX_SIZE = 100
-
 export class ExperienceEditorVideoInputError extends Error {
   constructor(message: string) {
     super(message)
@@ -991,6 +1212,70 @@ export class ExperienceEditorVideoNotFoundError extends Error {
     super(`Experience editor video ${videoId} was not found.`)
     this.name = "ExperienceEditorVideoNotFoundError"
   }
+}
+
+export const EXPERIENCE_EDITOR_ACTION_ITEM_LIMIT = 500
+
+export function boundedExperienceEditorActionVideoIds(value: unknown) {
+  if (
+    !Array.isArray(value) ||
+    value.length > EXPERIENCE_EDITOR_ACTION_ITEM_LIMIT
+  ) {
+    throw new ExperienceEditorVideoInputError(
+      `At most ${EXPERIENCE_EDITOR_ACTION_ITEM_LIMIT} video ids may be requested.`,
+    )
+  }
+  const ids = value.map((item) =>
+    typeof item === "string" ? (compactText(item) ?? "") : "",
+  )
+  if (ids.some((id) => !id || id.length > 256)) {
+    throw new ExperienceEditorVideoInputError(
+      "Video ids must be non-empty strings.",
+    )
+  }
+  return ids
+}
+
+export function boundedExperienceEditorActionSelectors(value: unknown) {
+  if (
+    !Array.isArray(value) ||
+    value.length > EXPERIENCE_EDITOR_ACTION_ITEM_LIMIT
+  ) {
+    throw new ExperienceEditorVideoInputError(
+      `At most ${EXPERIENCE_EDITOR_ACTION_ITEM_LIMIT} Dub selectors may be requested.`,
+    )
+  }
+  return value.map((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      throw new ExperienceEditorVideoInputError(
+        "Dub selectors must be objects.",
+      )
+    }
+    const record = item as Record<string, unknown>
+    const videoId =
+      typeof record.videoId === "string"
+        ? (compactText(record.videoId) ?? "")
+        : ""
+    const languageId =
+      typeof record.languageId === "string"
+        ? compactText(record.languageId)
+        : null
+    const legacyStreamingUrl =
+      typeof record.legacyStreamingUrl === "string"
+        ? compactText(record.legacyStreamingUrl)
+        : null
+    if (
+      !videoId ||
+      videoId.length > 256 ||
+      (languageId?.length ?? 0) > 256 ||
+      (legacyStreamingUrl?.length ?? 0) > 2048
+    ) {
+      throw new ExperienceEditorVideoInputError(
+        "Dub selector values are invalid.",
+      )
+    }
+    return { videoId, languageId, legacyStreamingUrl }
+  }) satisfies ExperienceEditorAuthoredDubSelector[]
 }
 
 type ExperienceEditorLookupDb = Pick<
@@ -1211,6 +1496,7 @@ async function selectExactDubChoice(
   request: ExperienceEditorDubPageRequest,
   locale: string,
 ) {
+  const baseLocale = locale.split("-")[0] ?? locale
   const languageId = compactText(request.selectedLanguageId)
   const legacyUrl = compactText(request.selectedLegacyStreamingUrl)
   if (!languageId && !legacyUrl) return null
@@ -1220,15 +1506,28 @@ async function selectExactDubChoice(
   const rows = await db.$queryRaw<DubPageRow[]>(Prisma.sql`
     SELECT d.id, d.video_id AS "videoId", d.language_id AS "languageId",
            l.slug AS "languageSlug", l.bcp47, l.iso3,
-           COALESCE(l.name ->> ${locale}, l.name ->> 'en', l.slug, l.bcp47, l.iso3, d.id) AS "languageName",
+           COALESCE(localized.value, NULLIF(l.name ->> ${locale}, ''), NULLIF(l.name ->> ${baseLocale}, ''),
+             NULLIF(l.name ->> 'en', ''), NULLIF(l.slug, ''), NULLIF(l.bcp47, ''), NULLIF(l.iso3, ''), d.id) AS "languageName",
            d.hls, d.dash, d.share, d.duration, d.length_in_milliseconds AS "lengthInMilliseconds",
            d.updated_at AS "updatedAt",
            COALESCE(NULLIF(lower(btrim(l.slug)), ''), NULLIF(lower(btrim(l.bcp47)), ''),
              NULLIF(lower(btrim(l.iso3)), ''), NULLIF(lower(btrim(COALESCE(l.id, d.language_id))), ''), d.id)
              AS "languageIdentity",
-           lower(COALESCE(l.name ->> ${locale}, l.name ->> 'en', l.slug, l.bcp47, l.iso3, d.id)) AS "sortLabel"
+           lower(COALESCE(localized.value, NULLIF(l.name ->> ${locale}, ''), NULLIF(l.name ->> ${baseLocale}, ''),
+             NULLIF(l.name ->> 'en', ''), NULLIF(l.slug, ''), NULLIF(l.bcp47, ''), NULLIF(l.iso3, ''), d.id)) AS "sortLabel"
     FROM video_dub d
     LEFT JOIN language l ON l.id = d.language_id AND l.deleted_at IS NULL
+    LEFT JOIN LATERAL (
+      SELECT ll.value
+      FROM language_locale ll
+      WHERE ll.language_id = l.id AND ll.deleted_at IS NULL
+      ORDER BY CASE
+        WHEN lower(replace(ll.locale, '_', '-')) = ${locale} THEN 0
+        WHEN lower(replace(ll.locale, '_', '-')) = ${baseLocale} THEN 1
+        ELSE 2 END,
+        ll.primary DESC, ll.order ASC NULLS LAST, ll.id ASC
+      LIMIT 1
+    ) localized ON TRUE
     JOIN video v ON v.id = d.video_id AND v.deleted_at IS NULL
     WHERE d.video_id = ${request.videoId} AND d.deleted_at IS NULL
       AND COALESCE(NULLIF(btrim(d.hls), ''), NULLIF(btrim(d.dash), ''), NULLIF(btrim(d.share), '')) IS NOT NULL
@@ -1448,11 +1747,11 @@ export async function validateExperienceEditorDubSelections(
   db: Pick<ExperienceEditorLookupDb, "$queryRaw">,
   request: ExperienceEditorDubSelectionValidationRequest,
 ): Promise<ExperienceEditorDubSelectionValidation> {
+  const locale = normalizedLookupLocale(request.locale)
+  if (!locale) throw new ExperienceEditorVideoInputError("Locale is required.")
+  const baseLocale = locale.split("-")[0] ?? locale
   const selectors = request.selectors.filter(
-    (selector) =>
-      compactText(selector.videoId) != null &&
-      (compactText(selector.languageId) != null ||
-        compactText(selector.legacyStreamingUrl) != null),
+    (selector) => compactText(selector.videoId) != null,
   )
   const previous = new Set(
     (request.previousSelectors ?? []).map(selectorIdentity),
@@ -1492,24 +1791,38 @@ export async function validateExperienceEditorDubSelections(
       FROM requested
       JOIN LATERAL (
         SELECT d.*, l.slug AS language_slug, l.bcp47, l.iso3,
-          COALESCE(l.name ->> ${request.locale}, l.name ->> 'en', l.slug, l.bcp47, l.iso3, d.id) AS language_name,
+          COALESCE(localized.value, NULLIF(l.name ->> ${locale}, ''), NULLIF(l.name ->> ${baseLocale}, ''),
+            NULLIF(l.name ->> 'en', ''), NULLIF(l.slug, ''), NULLIF(l.bcp47, ''), NULLIF(l.iso3, ''), d.id) AS language_name,
           COALESCE(NULLIF(lower(btrim(l.slug)), ''), NULLIF(lower(btrim(l.bcp47)), ''),
             NULLIF(lower(btrim(l.iso3)), ''), NULLIF(lower(btrim(COALESCE(l.id, d.language_id))), ''), d.id) AS language_identity,
-          lower(COALESCE(l.name ->> ${request.locale}, l.name ->> 'en', l.slug, l.bcp47, l.iso3, d.id)) AS sort_label
+          lower(COALESCE(localized.value, NULLIF(l.name ->> ${locale}, ''), NULLIF(l.name ->> ${baseLocale}, ''),
+            NULLIF(l.name ->> 'en', ''), NULLIF(l.slug, ''), NULLIF(l.bcp47, ''), NULLIF(l.iso3, ''), d.id)) AS sort_label
         FROM video_dub d JOIN video v ON v.id = d.video_id AND v.deleted_at IS NULL
         LEFT JOIN language l ON l.id = d.language_id AND l.deleted_at IS NULL
+        LEFT JOIN LATERAL (
+          SELECT ll.value
+          FROM language_locale ll
+          WHERE ll.language_id = l.id AND ll.deleted_at IS NULL
+          ORDER BY CASE
+            WHEN lower(replace(ll.locale, '_', '-')) = ${locale} THEN 0
+            WHEN lower(replace(ll.locale, '_', '-')) = ${baseLocale} THEN 1
+            ELSE 2 END,
+            ll.primary DESC, ll.order ASC NULLS LAST, ll.id ASC
+          LIMIT 1
+        ) localized ON TRUE
         WHERE d.video_id = requested.video_id AND d.deleted_at IS NULL
           AND COALESCE(NULLIF(btrim(d.hls), ''), NULLIF(btrim(d.dash), ''), NULLIF(btrim(d.share), '')) IS NOT NULL
           AND ((requested.language_id IS NOT NULL AND d.language_id = requested.language_id)
             OR (requested.language_id IS NULL AND requested.legacy_streaming_url IS NOT NULL
               AND requested.legacy_streaming_url IN (btrim(d.hls), btrim(d.dash), btrim(d.share))))
         ORDER BY d.updated_at DESC NULLS LAST, d.id ASC LIMIT 1
+        FOR NO KEY UPDATE OF d, v
       ) selected ON TRUE ORDER BY requested.selector_index ASC
     `)
     const byIndex = new Map(rows.map((row) => [row.selectorIndex, row]))
     for (const [selectorIndex, selector] of batch.entries()) {
       const row = byIndex.get(selectorIndex)
-      const choice = row ? dubChoiceFromPageRow(row, request.locale) : null
+      const choice = row ? dubChoiceFromPageRow(row, locale) : null
       if (choice) available.push({ selector, choice })
       else
         unavailable.push({

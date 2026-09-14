@@ -2,12 +2,14 @@ import type { PrismaClient } from "@prisma/client"
 import { describe, expect, it, vi } from "vitest"
 import {
   applyIntentionalExperienceEditorDubChoice,
+  boundedExperienceEditorActionSelectors,
+  boundedExperienceEditorActionVideoIds,
   createExperienceEditorDubChoice,
   deduplicateExperienceEditorDubs,
   editorDubStreamUrl,
-  EMPTY_EXPERIENCE_EDITOR_DUB_INVENTORY,
   experienceEditorLanguageIdentity,
   EXPERIENCE_EDITOR_VIDEO_BATCH_SIZE,
+  EXPERIENCE_EDITOR_ACTION_ITEM_LIMIT,
   ExperienceEditorVideoInputError,
   ExperienceEditorVideoNotFoundError,
   loadExperienceEditorCollectionChildPage,
@@ -208,14 +210,9 @@ describe("experience editor dub semantics", () => {
     ).toBe("spa")
   })
 
-  it("distinguishes an omitted inventory from a loaded empty page", () => {
+  it("represents an omitted inventory explicitly", () => {
     expect(NOT_LOADED_EXPERIENCE_EDITOR_DUB_INVENTORY).toEqual({
       status: "not-loaded",
-    })
-    expect(EMPTY_EXPERIENCE_EDITOR_DUB_INVENTORY).toEqual({
-      status: "loaded",
-      choices: [],
-      nextCursor: null,
     })
   })
 
@@ -278,7 +275,7 @@ type SummarySelection = {
   videoId: string
   coreId: string
   slug: string
-  label: null
+  label: string | null
   videoSource: null
   updatedAt: Date
   title: string
@@ -419,11 +416,12 @@ describe("bounded experience editor video summaries", () => {
       authoredDubs: [{ key: "dub-authored" }],
       dubInventory: { status: "not-loaded" },
     })
-    expect(sqlText(raw)).toMatch(/language_winners AS MATERIALIZED/)
-    expect(sqlText(raw)).toMatch(/count\(\*\)::bigint[\s\S]*AS language_count/)
-    expect(sqlText(raw)).toMatch(/WHERE d\.video_id = v\.id/)
+    expect(sqlText(raw)).toMatch(/dub_counts AS MATERIALIZED/)
+    expect(sqlText(raw)).toMatch(/count\(DISTINCT d\.language_id\)/)
+    expect(sqlText(raw)).toMatch(/duplicate_identity_counts AS MATERIALIZED/)
+    expect(sqlText(raw)).toMatch(/WHERE d\.video_id = r\.video_id/)
     expect(sqlText(raw)).toMatch(
-      /row_number\(\) OVER \([\s\S]*PARTITION BY e\.language_identity[\s\S]*e\.updated_at DESC NULLS LAST, e\.id ASC/,
+      /dub_chip_walk\(video_id, chip_order, dub_id, seen_identities\)[\s\S]*d\.updated_at DESC NULLS LAST, d\.id ASC/,
     )
     expect(sqlText(raw)).not.toMatch(/d\.published/)
   })
@@ -447,6 +445,25 @@ describe("bounded experience editor video summaries", () => {
       })
       expect(hydrate.mock.calls[0]?.[0].where.id.in).toHaveLength(1)
     }
+  })
+
+  it("recognizes lowercase collection labels from the database", async () => {
+    const { db } = summaryDb([
+      summarySelection("video-collection", {
+        label: "collection",
+        childCount: 124n,
+      }),
+    ])
+
+    const [result] = await loadExperienceEditorVideoSummariesByIds(db, {
+      videoIds: ["video-collection"],
+      locale: "en",
+    })
+
+    expect(result).toMatchObject({
+      childCount: 124,
+      isCollectionTarget: true,
+    })
   })
 
   it("returns only existing exact ids in requested order and deduplicates first occurrence", async () => {
@@ -646,7 +663,10 @@ describe("bounded experience editor language and collection pages", () => {
     const rows = Array.from({ length: 3 }, (_, index) =>
       dubRow(`dub-${index}`, `language-${index}`, `Language ${index}`),
     )
-    const { db } = pageDb([rows, [dubRow("selected", "selected-lang", "Zulu")]])
+    const { db, raw } = pageDb([
+      rows,
+      [dubRow("selected", "selected-lang", "Zulu")],
+    ])
     const first = await loadExperienceEditorDubPage(db, {
       videoId: "video-1",
       locale: "en",
@@ -660,6 +680,8 @@ describe("bounded experience editor language and collection pages", () => {
     ])
     expect(first.selectedChoice?.key).toBe("selected")
     expect(first.nextCursor).toEqual(expect.any(String))
+    expect(sqlText(raw, 0)).toMatch(/language_locale/)
+    expect(sqlText(raw, 1)).toMatch(/language_locale/)
 
     await expect(
       loadExperienceEditorDubPage(pageDb([[]]).db, {
@@ -726,6 +748,20 @@ describe("bounded experience editor language and collection pages", () => {
 })
 
 describe("experience editor selection validation", () => {
+  it("rejects oversized or malformed Server Action inputs before querying", () => {
+    expect(() =>
+      boundedExperienceEditorActionVideoIds(
+        Array.from(
+          { length: EXPERIENCE_EDITOR_ACTION_ITEM_LIMIT + 1 },
+          (_, index) => `video-${index}`,
+        ),
+      ),
+    ).toThrow(ExperienceEditorVideoInputError)
+    expect(() => boundedExperienceEditorActionSelectors(["invalid"])).toThrow(
+      ExperienceEditorVideoInputError,
+    )
+  })
+
   it("validates in batches of at most 100 and distinguishes retained unavailable selections", async () => {
     const raw = vi.fn().mockResolvedValue([])
     const db = { $queryRaw: raw } as unknown as PrismaClient
@@ -746,5 +782,34 @@ describe("experience editor selection validation", () => {
     }
     expect(result.unavailable[0]).toMatchObject({ preExisting: true })
     expect(result.unavailable[100]).toMatchObject({ preExisting: false })
+    expect(sqlText(raw)).toMatch(/language_locale/)
+    expect(sqlText(raw)).toMatch(/FOR NO KEY UPDATE OF d, v/)
+  })
+
+  it("reports a video without an authored selector as unavailable", async () => {
+    const raw = vi.fn().mockResolvedValue([])
+    const db = { $queryRaw: raw } as unknown as PrismaClient
+    const selector = {
+      videoId: "video-without-playable-dub",
+      languageId: null,
+      legacyStreamingUrl: null,
+    }
+
+    await expect(
+      validateExperienceEditorDubSelections(db, {
+        selectors: [selector],
+        locale: "en",
+      }),
+    ).resolves.toEqual({
+      available: [],
+      unavailable: [
+        {
+          selector,
+          preExisting: false,
+          reason: "video-or-dub-unavailable",
+        },
+      ],
+    })
+    expect(raw).toHaveBeenCalledOnce()
   })
 })

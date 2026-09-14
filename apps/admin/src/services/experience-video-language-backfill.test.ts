@@ -33,8 +33,11 @@ function mockPrisma(options: {
       ),
     },
     videoDub: {
-      findMany: vi.fn(async () =>
-        (options.availableTargetVideoIds ?? []).map((videoId) => ({ videoId })),
+      findMany: vi.fn(
+        async ({ where }: { where: { videoId: { in: string[] } } }) =>
+          (options.availableTargetVideoIds ?? [])
+            .filter((videoId) => where.videoId.in.includes(videoId))
+            .map((videoId) => ({ videoId })),
       ),
     },
   } as unknown as VideoLanguageBackfillDb
@@ -189,5 +192,29 @@ describe("backfillExperienceVideoLanguageIds", () => {
     expect(result.blocks).toEqual([
       { t: "video", videoId: "video-1", languageId: "language-es" },
     ])
+  })
+
+  it("checks target-language availability in batches of at most 100 videos", async () => {
+    const prisma = mockPrisma({
+      targetLanguageId: "language-es",
+      fallbackLanguageId: "language-en",
+      availableTargetVideoIds: ["video-100"],
+    })
+    const items = Array.from({ length: 101 }, (_, index) => ({
+      videoId: `video-${index}`,
+    }))
+
+    await backfillExperienceVideoLanguageIds({
+      prisma,
+      locale: "es",
+      blocks: [{ t: "videoCarousel", items }],
+    })
+
+    const findMany = vi.mocked(prisma.videoDub.findMany)
+    expect(findMany).toHaveBeenCalledTimes(2)
+    for (const call of findMany.mock.calls) {
+      const input = call[0] as { where: { videoId: { in: string[] } } }
+      expect(input.where.videoId.in.length).toBeLessThanOrEqual(100)
+    }
   })
 })

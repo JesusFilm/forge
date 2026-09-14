@@ -23,6 +23,7 @@ import { introspectionPlugins } from "@/graphql/plugins/introspection"
 import { openTelemetryPlugin } from "@/graphql/plugins/opentelemetry"
 import { rateLimitPlugin } from "@/graphql/plugins/rate-limit"
 import { env } from "@/config/env"
+import { withPublicGraphqlPriority } from "@/services/public-request-priority"
 
 type NextAppRouteContext = { params: Promise<Record<string, string>> }
 
@@ -67,4 +68,15 @@ async function handler(
   return yoga.handle(request, context)
 }
 
-export { handler as GET, handler as POST, handler as OPTIONS }
+async function prioritizedHandler(
+  request: NextRequest,
+  context: NextAppRouteContext,
+): Promise<Response> {
+  return withPublicGraphqlPriority(() => handler(request, context))
+}
+
+export {
+  prioritizedHandler as GET,
+  prioritizedHandler as POST,
+  handler as OPTIONS,
+}

@@ -13,6 +13,7 @@ import {
 } from "react"
 import { createPortal } from "react-dom"
 import { buildCanonicalWatchVideoPath } from "@forge/watch-url-policy/routes"
+import { EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS } from "@/domain/experience-editor-dub-selectors"
 import {
   PointerSensor,
   useSensor,
@@ -1022,6 +1023,8 @@ function videoDubOptionMatchesSearch(
 const EXPERIENCE_EDITOR_DUB_CACHE_TTL_MS = 5 * 60 * 1_000
 const EXPERIENCE_EDITOR_DUB_CACHE_MAX_ENTRIES = 20
 const EXPERIENCE_EDITOR_DUB_PAGE_SIZE = 50
+const EXPERIENCE_EDITOR_ACTION_ITEM_LIMIT = 500
+const EXPERIENCE_EDITOR_SERVER_EXPANDED_CAROUSEL_LIMIT = 100
 const experienceEditorDubPageCache = new WeakMap<
   object,
   BoundedTtlCache<ExperienceEditorDubPage>
@@ -1109,6 +1112,7 @@ function SearchableVideoDubControl({
     requestIdentityRef.current += 1
     setOpen(false)
     setActiveIndex(-1)
+    setLoadingMore(false)
     if (restoreFocus) {
       window.setTimeout(() => triggerRef.current?.focus(), 0)
     }
@@ -1141,6 +1145,7 @@ function SearchableVideoDubControl({
     setSelectedChoice(null)
     setNextCursor(null)
     setStatus("not-loaded")
+    setLoadingMore(false)
     setLoadMoreError(false)
     setActiveIndex(-1)
   }, [loadPageAction, locale, selectedLanguageId, videoId])
@@ -1327,7 +1332,13 @@ function SearchableVideoDubControl({
               ref={searchInputRef}
               type="search"
               value={searchValue}
-              onChange={(event) => setSearchValue(event.currentTarget.value)}
+              onChange={(event) => {
+                setActiveIndex(-1)
+                setChoices([])
+                setNextCursor(null)
+                setLoadMoreError(false)
+                setSearchValue(event.currentTarget.value)
+              }}
               aria-activedescendant={
                 activeIndex >= 0
                   ? `${controlId}-option-${activeIndex}`
@@ -1561,6 +1572,7 @@ export function ExperienceEditor({
   loadVideoDubPageAction,
   validateVideoDubSelectionsAction,
   searchVideoLibraryAction,
+  onBlocksChange,
   onCanvasController,
 }: {
   canPublish: boolean
@@ -1622,6 +1634,7 @@ export function ExperienceEditor({
       client?: VideoLibrarySearchClient
     },
   ) => Promise<VideoLibraryItem[]>
+  onBlocksChange?: (blocks: readonly unknown[]) => void
   /**
    * Optional imperative bridge published once on mount so the chat panel
    * (sibling component at the page level) can read current canvas state
@@ -1698,8 +1711,16 @@ export function ExperienceEditor({
       return []
     }
   })
+  const firstBlock = asRecord(parsedBlocks[0])
+  const initiallyCollapseLargeCarousel =
+    firstBlock?.t === "videoCarousel" &&
+    asArray(firstBlock.items).length >
+      EXPERIENCE_EDITOR_SERVER_EXPANDED_CAROUSEL_LIMIT
+  // Selecting the first block in the mount effect preserves the interaction,
+  // while a long leading carousel stays collapsed for the first client commit
+  // and defers its complete expanded-card tree by one frame.
   const [selectedBlockIndex, setSelectedBlockIndex] = useState<number | null>(
-    parsedBlocks.length > 0 ? 0 : null,
+    parsedBlocks.length > 0 && !initiallyCollapseLargeCarousel ? 0 : null,
   )
   // ---- Chat panel canvas bridge (U4) ----------------------------------
   // Refs always read the latest state without triggering reruns of the
@@ -1717,6 +1738,10 @@ export function ExperienceEditor({
     ogImageUrl,
     blocks: parsedBlocks,
   }
+  useEffect(() => {
+    onBlocksChange?.(parsedBlocks)
+  }, [onBlocksChange, parsedBlocks])
+
   useEffect(() => {
     if (!onCanvasController) return
     const controller = {
@@ -1881,6 +1906,12 @@ export function ExperienceEditor({
   const [videoLibrarySearchError, setVideoLibrarySearchError] = useState(false)
   const [videoPickerApplyPending, setVideoPickerApplyPending] = useState(false)
   const videoPickerApplyPendingRef = useRef(false)
+  const videoPickerApplyIdentityRef = useRef(0)
+  const invalidateVideoPickerApply = useCallback(() => {
+    videoPickerApplyIdentityRef.current += 1
+    videoPickerApplyPendingRef.current = false
+    setVideoPickerApplyPending(false)
+  }, [])
   const [videoPickerApplyProgress, setVideoPickerApplyProgress] = useState<{
     completed: number
     total: number
@@ -1890,6 +1921,7 @@ export function ExperienceEditor({
   >(null)
   const [videoLibrarySearchResultKeys, setVideoLibrarySearchResultKeys] =
     useState<readonly string[]>([])
+  const videoLibraryBrowseLoadedRef = useRef(false)
   const [imagePickerTarget, setImagePickerTarget] =
     useState<ImagePickerTarget | null>(null)
   const [imageLibraryQuery, setImageLibraryQuery] = useState("")
@@ -2245,7 +2277,11 @@ export function ExperienceEditor({
     if (!searchVideoLibraryAction) return
 
     const query = videoLibraryQuery.trim()
-    if (!query && videoLibraryCategory === "all") {
+    const initialBrowse =
+      !query &&
+      videoLibraryCategory === "all" &&
+      !videoLibraryBrowseLoadedRef.current
+    if (!query && videoLibraryCategory === "all" && !initialBrowse) {
       setVideoLibrarySearchPending(false)
       setVideoLibrarySearchError(false)
       setVideoLibrarySearchResultKeys([])
@@ -2256,26 +2292,30 @@ export function ExperienceEditor({
     setVideoLibrarySearchPending(true)
     setVideoLibrarySearchError(false)
     const client = videoLibrarySearchClientForMode(videoPickerMode)
-    const timeout = window.setTimeout(() => {
-      searchVideoLibraryAction(query, {
-        category: videoLibraryCategory,
-        client,
-      })
-        .then((results) => {
-          if (ignore) return
-          setVideoLibrarySearchResultKeys(results.map((result) => result.key))
-          setVideoLibrarySearchError(false)
+    const timeout = window.setTimeout(
+      () => {
+        searchVideoLibraryAction(query, {
+          category: videoLibraryCategory,
+          client,
         })
-        .catch(() => {
-          if (ignore) return
-          setVideoLibrarySearchResultKeys([])
-          setVideoLibrarySearchError(true)
-        })
-        .finally(() => {
-          if (ignore) return
-          setVideoLibrarySearchPending(false)
-        })
-    }, 220)
+          .then((results) => {
+            if (ignore) return
+            if (initialBrowse) videoLibraryBrowseLoadedRef.current = true
+            setVideoLibrarySearchResultKeys(results.map((result) => result.key))
+            setVideoLibrarySearchError(false)
+          })
+          .catch(() => {
+            if (ignore) return
+            setVideoLibrarySearchResultKeys([])
+            setVideoLibrarySearchError(true)
+          })
+          .finally(() => {
+            if (ignore) return
+            setVideoLibrarySearchPending(false)
+          })
+      },
+      initialBrowse ? 0 : 220,
+    )
 
     return () => {
       ignore = true
@@ -2783,6 +2823,49 @@ export function ExperienceEditor({
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [ctaLinkModalVisible])
 
+  const closeVideoPicker = useCallback(() => {
+    invalidateVideoPickerApply()
+    const preview = videoPickerPreviewRef.current
+    if (preview) {
+      preview.pause()
+      preview.currentTime = 0
+    }
+
+    if (document.fullscreenElement === videoPickerPreviewContainerRef.current) {
+      void document.exitFullscreen().catch(() => {})
+    }
+
+    setActiveClipHandle(null)
+    setPreviewCurrentTime(0)
+    setPreviewIsPlaying(false)
+    setPreviewControlsVisible(true)
+    setPreviewFlashIcon(null)
+    setPreviewMuted(true)
+    setPreviewIsLoading(false)
+    setPreviewIsFullscreen(false)
+    setVideoPickerBlockIndex(null)
+    setVideoPickerSelectedDubOverride(null)
+    setVideoPickerApplyProgress(null)
+    setVideoPickerApplyError(null)
+    if (videoPickerModeResetTimeout.current !== null) {
+      window.clearTimeout(videoPickerModeResetTimeout.current)
+    }
+    videoPickerModeResetTimeout.current = window.setTimeout(() => {
+      setVideoPickerMode("block")
+      videoPickerModeResetTimeout.current = null
+    }, 180)
+    setVideoPickerDraft({
+      videoKey: null,
+      dubKey: null,
+      clipStartSeconds: "",
+      clipEndSeconds: "",
+      autoplay: true,
+      muted: true,
+      loop: false,
+      showControls: true,
+    })
+  }, [invalidateVideoPickerApply])
+
   useEffect(() => {
     if (videoPickerBlockIndex === null) return
 
@@ -2794,7 +2877,7 @@ export function ExperienceEditor({
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [videoPickerBlockIndex])
+  }, [closeVideoPicker, videoPickerBlockIndex])
 
   useEffect(() => {
     if (videoPickerBlockIndex === null) return
@@ -2808,6 +2891,7 @@ export function ExperienceEditor({
       return
     }
 
+    if (videoPickerApplyPendingRef.current) invalidateVideoPickerApply()
     setVideoPickerDraft((current) => {
       const nextVideoKey =
         videoPickerLibraryRows[0]?.key ?? videoPickerCurrentVideo?.key ?? null
@@ -2832,6 +2916,7 @@ export function ExperienceEditor({
     videoPickerCurrentVideo,
     videoPickerDraft.videoKey,
     videoPickerDraft.dubKey,
+    invalidateVideoPickerApply,
     preferredPlayableDubForVideo,
   ])
 
@@ -4602,6 +4687,17 @@ export function ExperienceEditor({
     })
   }
 
+  function authoredSelectorForVideo(
+    video: VideoLibraryItem,
+    selectedStreamUrl: string | null = null,
+  ) {
+    const dub = preferredPlayableDubForVideo(video, selectedStreamUrl)
+    return {
+      languageId: dub?.languageId ?? undefined,
+      streamingUrl: dub && !dub.languageId ? dub.streamUrl : undefined,
+    }
+  }
+
   function appendVideoCarouselItems(
     index: number,
     videos: VideoLibraryItem[],
@@ -4621,11 +4717,7 @@ export function ExperienceEditor({
           ...currentItems,
           ...additions.map((video) => ({
             videoId: video.key,
-            languageId:
-              preferredPlayableDubForVideo(video, selectedStreamUrl)
-                ?.languageId ??
-              initialValues.videoLanguageId ??
-              undefined,
+            ...authoredSelectorForVideo(video, selectedStreamUrl),
             titleOverride: "",
             subtitleOverride: "",
           })),
@@ -5019,6 +5111,7 @@ export function ExperienceEditor({
   function appendMediaCollectionVideoItems(
     index: number,
     videos: VideoLibraryItem[],
+    selectedStreamUrl: string | null = null,
   ) {
     const block = readBlockAt(index)
     if (block?.t !== "mediaCollection") return 0
@@ -5034,10 +5127,7 @@ export function ExperienceEditor({
           ...currentItems,
           ...additions.map((video) => ({
             videoId: video.key,
-            languageId:
-              preferredPlayableDubForVideo(video, null)?.languageId ??
-              initialValues.videoLanguageId ??
-              undefined,
+            ...authoredSelectorForVideo(video, selectedStreamUrl),
             titleOverride: "",
             subtitleOverride: "",
           })),
@@ -5045,6 +5135,57 @@ export function ExperienceEditor({
       }
     })
     return additions.length
+  }
+
+  function exceedsSelectorLimitAfterAppend(
+    index: number,
+    videos: VideoLibraryItem[],
+    selectedStreamUrl: string | null = null,
+  ) {
+    const block = readBlockAt(index)
+    if (block?.t !== "videoCarousel" && block?.t !== "mediaCollection") {
+      return false
+    }
+    const additions = videosNotAlreadyIncluded(asArray(block.items), videos)
+    const nextBlock = {
+      ...block,
+      items: [
+        ...asArray(block.items),
+        ...additions.map((video) => ({
+          videoId: video.key,
+          ...authoredSelectorForVideo(video, selectedStreamUrl),
+        })),
+      ],
+    }
+    const nextBlocks = parsedBlocks.map((candidate, blockIndex) =>
+      blockIndex === index ? nextBlock : candidate,
+    )
+    return (
+      extractAuthoredVideoDubSelectors(nextBlocks).length >
+      EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS
+    )
+  }
+
+  function exceedsSelectorLimitAfterBlockSelection(
+    index: number,
+    video: VideoLibraryItem,
+    dub: VideoLibraryPlayableDub,
+  ) {
+    const block = readBlockAt(index)
+    if (block?.t !== "video" && block?.t !== "videoHero") return false
+    const nextBlock = {
+      ...block,
+      videoId: video.key,
+      languageId: dub.languageId ?? undefined,
+      streamingUrl: dub.languageId ? undefined : dub.streamUrl,
+    }
+    const nextBlocks = parsedBlocks.map((candidate, blockIndex) =>
+      blockIndex === index ? nextBlock : candidate,
+    )
+    return (
+      extractAuthoredVideoDubSelectors(nextBlocks).length >
+      EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS
+    )
   }
 
   function removeMediaCollectionItem(index: number, itemIndex: number) {
@@ -5814,6 +5955,7 @@ export function ExperienceEditor({
   }
 
   function openVideoPicker(index: number, mode: VideoPickerMode = "block") {
+    invalidateVideoPickerApply()
     const block = readBlockAt(index)
     const currentVideo = findVideoLibraryItem(block?.videoId)
     const currentLanguageId = asString(block?.languageId) || null
@@ -5859,48 +6001,6 @@ export function ExperienceEditor({
     })
   }
 
-  function closeVideoPicker() {
-    const preview = videoPickerPreviewRef.current
-    if (preview) {
-      preview.pause()
-      preview.currentTime = 0
-    }
-
-    if (document.fullscreenElement === videoPickerPreviewContainerRef.current) {
-      void document.exitFullscreen().catch(() => {})
-    }
-
-    setActiveClipHandle(null)
-    setPreviewCurrentTime(0)
-    setPreviewIsPlaying(false)
-    setPreviewControlsVisible(true)
-    setPreviewFlashIcon(null)
-    setPreviewMuted(true)
-    setPreviewIsLoading(false)
-    setPreviewIsFullscreen(false)
-    setVideoPickerBlockIndex(null)
-    setVideoPickerSelectedDubOverride(null)
-    setVideoPickerApplyProgress(null)
-    setVideoPickerApplyError(null)
-    if (videoPickerModeResetTimeout.current !== null) {
-      window.clearTimeout(videoPickerModeResetTimeout.current)
-    }
-    videoPickerModeResetTimeout.current = window.setTimeout(() => {
-      setVideoPickerMode("block")
-      videoPickerModeResetTimeout.current = null
-    }, 180)
-    setVideoPickerDraft({
-      videoKey: null,
-      dubKey: null,
-      clipStartSeconds: "",
-      clipEndSeconds: "",
-      autoplay: true,
-      muted: true,
-      loop: false,
-      showControls: true,
-    })
-  }
-
   async function applyVideoPickerSelection() {
     if (videoPickerApplyPendingRef.current) return
     if (videoPickerBlockIndex === null) return
@@ -5939,6 +6039,7 @@ export function ExperienceEditor({
       }
       videoPickerApplyPendingRef.current = true
       setVideoPickerApplyPending(true)
+      const applyIdentity = ++videoPickerApplyIdentityRef.current
       setVideoPickerApplyError(null)
       setVideoPickerApplyProgress({
         completed: 0,
@@ -5948,12 +6049,41 @@ export function ExperienceEditor({
         const children: VideoLibraryItem[] = []
         if (loadVideoCollectionChildrenPageAction) {
           let cursor: string | null = null
+          let pageCount = 0
+          let declaredTotal: number | null = null
+          const seenCursors = new Set<string>()
+          const seenChildKeys = new Set<string>()
           do {
+            if (applyIdentity !== videoPickerApplyIdentityRef.current) return
+            if (cursor && seenCursors.has(cursor)) {
+              throw new Error("Collection page cursor did not advance.")
+            }
+            if (cursor) seenCursors.add(cursor)
             const page = await loadVideoCollectionChildrenPageAction({
               parentVideoId: selectedVideo.key,
               cursor,
               pageSize: 100,
             })
+            if (applyIdentity !== videoPickerApplyIdentityRef.current) return
+            pageCount += 1
+            declaredTotal ??= page.total
+            if (page.total !== declaredTotal) {
+              throw new Error("Collection page total changed during expansion.")
+            }
+            const duplicateChild = page.items.some((item) =>
+              seenChildKeys.has(item.key),
+            )
+            if (
+              pageCount > Math.max(1, declaredTotal) ||
+              children.length + page.items.length > page.total ||
+              (page.items.length === 0 && page.nextCursor) ||
+              duplicateChild
+            ) {
+              throw new Error(
+                "Collection page count exceeded its declared total.",
+              )
+            }
+            page.items.forEach((item) => seenChildKeys.add(item.key))
             children.push(...page.items)
             setVideoPickerApplyProgress({
               completed: children.length,
@@ -5961,10 +6091,16 @@ export function ExperienceEditor({
             })
             cursor = page.nextCursor
           } while (cursor)
+          if (children.length !== declaredTotal) {
+            throw new Error(
+              "Collection expansion ended before every child loaded.",
+            )
+          }
         } else if (loadVideoCollectionChildrenAction) {
           children.push(
             ...(await loadVideoCollectionChildrenAction(selectedVideo.key)),
           )
+          if (applyIdentity !== videoPickerApplyIdentityRef.current) return
           setVideoPickerApplyProgress({
             completed: children.length,
             total: children.length,
@@ -5973,6 +6109,46 @@ export function ExperienceEditor({
         if (children.length === 0) {
           pushToast("This collection has no videos to add.", "error")
           return
+        }
+        if (applyIdentity !== videoPickerApplyIdentityRef.current) return
+        if (exceedsSelectorLimitAfterAppend(videoPickerBlockIndex, children)) {
+          const message = `This collection would exceed the ${EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS.toLocaleString()} video audio selection limit. Nothing was added.`
+          setVideoPickerApplyError(message)
+          pushToast(message, "error")
+          return
+        }
+        if (validateVideoDubSelectionsAction) {
+          const selectors = children.map((video) => {
+            const selector = authoredSelectorForVideo(video)
+            return {
+              videoId: video.key,
+              languageId: selector.languageId ?? null,
+              legacyStreamingUrl: selector.streamingUrl ?? null,
+            }
+          })
+          const newlyUnavailable: ExperienceEditorDubSelectionValidation["unavailable"] =
+            []
+          for (
+            let index = 0;
+            index < selectors.length;
+            index += EXPERIENCE_EDITOR_ACTION_ITEM_LIMIT
+          ) {
+            const validation = await validateVideoDubSelectionsAction({
+              selectors: selectors.slice(
+                index,
+                index + EXPERIENCE_EDITOR_ACTION_ITEM_LIMIT,
+              ),
+            })
+            if (applyIdentity !== videoPickerApplyIdentityRef.current) return
+            newlyUnavailable.push(
+              ...validation.unavailable.filter((item) => !item.preExisting),
+            )
+          }
+          if (newlyUnavailable.length > 0) {
+            throw new Error(
+              `${newlyUnavailable.length} collection videos have no available audio.`,
+            )
+          }
         }
         const addedCount =
           videoPickerMode === "carouselAppend"
@@ -5986,30 +6162,17 @@ export function ExperienceEditor({
           "success",
         )
       } catch {
+        if (applyIdentity !== videoPickerApplyIdentityRef.current) return
         setVideoPickerApplyError(
           "Collection videos could not be loaded. Nothing was added.",
         )
         pushToast("Unable to load collection videos.", "error")
       } finally {
-        videoPickerApplyPendingRef.current = false
-        setVideoPickerApplyPending(false)
+        if (applyIdentity === videoPickerApplyIdentityRef.current) {
+          videoPickerApplyPendingRef.current = false
+          setVideoPickerApplyPending(false)
+        }
       }
-      return
-    }
-    if (videoPickerMode === "carouselAppend") {
-      appendVideoCarouselItems(
-        videoPickerBlockIndex,
-        [selectedVideo],
-        videoPickerPreviewStreamUrl,
-      )
-      closeVideoPicker()
-      pushToast("Video added to carousel.", "success")
-      return
-    }
-    if (videoPickerMode === "mediaCollectionAppend") {
-      appendMediaCollectionVideoItems(videoPickerBlockIndex, [selectedVideo])
-      closeVideoPicker()
-      pushToast("Video added to media collection.", "success")
       return
     }
     if (videoPickerSelectedDubUnavailable || !videoPickerSelectedDub) {
@@ -6019,7 +6182,11 @@ export function ExperienceEditor({
       )
       return
     }
+    let validatedSelectedDub = videoPickerSelectedDub
     if (validateVideoDubSelectionsAction) {
+      videoPickerApplyPendingRef.current = true
+      setVideoPickerApplyPending(true)
+      const applyIdentity = ++videoPickerApplyIdentityRef.current
       try {
         const validation = await validateVideoDubSelectionsAction({
           selectors: [
@@ -6039,10 +6206,88 @@ export function ExperienceEditor({
           )
           return
         }
+        const currentChoice = validation.available[0]?.choice
+        if (
+          !currentChoice ||
+          currentChoice.key !== videoPickerSelectedDub.key ||
+          currentChoice.languageId !== videoPickerSelectedDub.languageId ||
+          currentChoice.streamUrl !== videoPickerSelectedDub.streamUrl ||
+          currentChoice.durationSeconds !==
+            videoPickerSelectedDub.durationSeconds
+        ) {
+          if (currentChoice) {
+            setVideoPickerSelectedDubOverride(currentChoice)
+            setVideoPickerDraft((current) => ({
+              ...current,
+              dubKey: currentChoice.key,
+            }))
+          }
+          pushToast(
+            "That audio language changed. Review it and apply again.",
+            "error",
+          )
+          return
+        }
+        validatedSelectedDub = currentChoice
       } catch {
+        if (applyIdentity !== videoPickerApplyIdentityRef.current) return
         pushToast("Unable to verify that audio language. Try again.", "error")
         return
+      } finally {
+        if (applyIdentity === videoPickerApplyIdentityRef.current) {
+          videoPickerApplyPendingRef.current = false
+          setVideoPickerApplyPending(false)
+        }
       }
+      if (applyIdentity !== videoPickerApplyIdentityRef.current) return
+    }
+    if (
+      (videoPickerMode === "carouselAppend" ||
+        videoPickerMode === "mediaCollectionAppend") &&
+      exceedsSelectorLimitAfterAppend(
+        videoPickerBlockIndex,
+        [selectedVideo],
+        validatedSelectedDub.streamUrl,
+      )
+    ) {
+      pushToast(
+        `This block would exceed the ${EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS.toLocaleString()} video audio selection limit.`,
+        "error",
+      )
+      return
+    }
+    if (videoPickerMode === "carouselAppend") {
+      appendVideoCarouselItems(
+        videoPickerBlockIndex,
+        [selectedVideo],
+        validatedSelectedDub.streamUrl,
+      )
+      closeVideoPicker()
+      pushToast("Video added to carousel.", "success")
+      return
+    }
+    if (videoPickerMode === "mediaCollectionAppend") {
+      appendMediaCollectionVideoItems(
+        videoPickerBlockIndex,
+        [selectedVideo],
+        validatedSelectedDub.streamUrl,
+      )
+      closeVideoPicker()
+      pushToast("Video added to media collection.", "success")
+      return
+    }
+    if (
+      exceedsSelectorLimitAfterBlockSelection(
+        videoPickerBlockIndex,
+        selectedVideo,
+        validatedSelectedDub,
+      )
+    ) {
+      pushToast(
+        `This draft would exceed the ${EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS.toLocaleString()} video audio selection limit.`,
+        "error",
+      )
+      return
     }
     const clipStart = parseClipInput(videoPickerDraft.clipStartSeconds)
     const clipEnd = parseClipInput(videoPickerDraft.clipEndSeconds)
@@ -6054,13 +6299,12 @@ export function ExperienceEditor({
     updateBlockAt(videoPickerBlockIndex, (block) => ({
       ...block,
       videoId: selectedVideo.key,
-      languageId:
-        videoPickerSelectedDub?.languageId ??
-        initialValues.videoLanguageId ??
-        undefined,
-      // Applying a verified choice is the intentional migration point from
-      // the legacy URL selector to the canonical language selector.
-      streamingUrl: undefined,
+      languageId: validatedSelectedDub.languageId ?? undefined,
+      // Canonicalize when the Dub has a language; language-less Dubs retain
+      // their exact legacy stream selector so reopening resolves the same Dub.
+      streamingUrl: validatedSelectedDub.languageId
+        ? undefined
+        : validatedSelectedDub.streamUrl,
       useRouteVideo: false,
       headingSource:
         block.t === "videoHero" && shouldUseVideoHeroHeadingMetadata(block)
@@ -9316,14 +9560,17 @@ export function ExperienceEditor({
                     >
                       <div className="min-h-0">
                         <div className="space-y-3">
-                          {asArray(blockRecord?.items).map((item, itemIndex) =>
-                            renderVideoCarouselItemCard(
-                              index,
-                              item,
-                              itemIndex,
-                              true,
-                            ),
-                          )}
+                          {selectedBlockIndex === index
+                            ? asArray(blockRecord?.items).map(
+                                (item, itemIndex) =>
+                                  renderVideoCarouselItemCard(
+                                    index,
+                                    item,
+                                    itemIndex,
+                                    true,
+                                  ),
+                              )
+                            : null}
                         </div>
                       </div>
                     </div>
@@ -11330,6 +11577,7 @@ export function ExperienceEditor({
                             key={video.key}
                             type="button"
                             onClick={() => {
+                              invalidateVideoPickerApply()
                               setVideoPickerSelectedDubOverride(null)
                               setVideoPickerApplyError(null)
                               setVideoPickerApplyProgress(null)
@@ -11675,6 +11923,7 @@ export function ExperienceEditor({
                               }
                               videoId={videoPickerSelectedVideo.key}
                               onSelect={(nextDub) => {
+                                invalidateVideoPickerApply()
                                 setVideoPickerSelectedDubOverride(nextDub)
                                 setVideoPickerDraft((current) => ({
                                   ...current,
@@ -12106,12 +12355,25 @@ export function ExperienceEditor({
             let previewWindowNavigated = false
             try {
               if (validateVideoDubSelectionsAction) {
-                const validation = await validateVideoDubSelectionsAction({
-                  selectors: extractAuthoredVideoDubSelectors(
-                    normalizedParsedBlocks,
-                  ),
-                })
-                const newlyUnavailable = validation.unavailable.filter(
+                const selectors = extractAuthoredVideoDubSelectors(
+                  normalizedParsedBlocks,
+                )
+                const unavailable: ExperienceEditorDubSelectionValidation["unavailable"] =
+                  []
+                for (
+                  let index = 0;
+                  index < selectors.length;
+                  index += EXPERIENCE_EDITOR_ACTION_ITEM_LIMIT
+                ) {
+                  const validation = await validateVideoDubSelectionsAction({
+                    selectors: selectors.slice(
+                      index,
+                      index + EXPERIENCE_EDITOR_ACTION_ITEM_LIMIT,
+                    ),
+                  })
+                  unavailable.push(...validation.unavailable)
+                }
+                const newlyUnavailable = unavailable.filter(
                   (item) => !item.preExisting,
                 )
                 if (newlyUnavailable.length > 0) {
@@ -12122,7 +12384,7 @@ export function ExperienceEditor({
                   )
                   return
                 }
-                const retainedWarnings = validation.unavailable.length
+                const retainedWarnings = unavailable.length
                 if (retainedWarnings > 0) {
                   pushToast(
                     `Draft keeps ${retainedWarnings} pre-existing unavailable audio ${retainedWarnings === 1 ? "selection" : "selections"}.`,

@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { WATCH_HOME_CATEGORY_CATALOG } from "@forge/watch-url-policy/watch-home-categories"
 import type { MediaLibraryBrowserData } from "@/app/dashboard/media/media-library-browser-data"
 import type { VideoLibraryCategory } from "@/app/dashboard/video-library-utils"
+import { EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS } from "@/domain/experience-editor-dub-selectors"
 import type {
   ExperienceEditorCollectionChildPageActionInput,
   ExperienceEditorDubPage,
@@ -159,6 +160,7 @@ function renderEditorElement(
     validateVideoDubSelectionsAction?: (
       input: ExperienceEditorDubSelectionValidationActionInput,
     ) => Promise<ExperienceEditorDubSelectionValidation>
+    onBlocksChange?: (blocks: readonly unknown[]) => void
   } = {},
 ) {
   return (
@@ -198,6 +200,7 @@ function renderEditorElement(
       validateVideoDubSelectionsAction={
         options.validateVideoDubSelectionsAction
       }
+      onBlocksChange={options.onBlocksChange}
       canUploadImages
       initialValues={{
         localeId: "locale-1",
@@ -1602,6 +1605,34 @@ describe("ExperienceEditor", () => {
     }
   })
 
+  it("requests a bounded default catalog page when the picker first opens", async () => {
+    const searchVideoLibraryAction = vi.fn(async () => [])
+    const view = renderEditorDom(
+      [
+        {
+          t: "video",
+          sectionKey: "empty-video",
+          useRouteVideo: false,
+          videoId: "",
+        },
+      ],
+      { searchVideoLibraryAction, videoLibrary: [] },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Browse library").click())
+      await act(async () => {
+        await new Promise((resolve) => window.setTimeout(resolve, 0))
+      })
+      expect(searchVideoLibraryAction).toHaveBeenCalledWith("", {
+        category: "all",
+        client: "experience-editor-video-picker",
+      })
+    } finally {
+      view.cleanup()
+    }
+  })
+
   it("excludes collection targets from video picker search results", async () => {
     const collectionResult = {
       ...defaultVideoLibrary[0]!,
@@ -2302,6 +2333,61 @@ describe("ExperienceEditor", () => {
     }
   })
 
+  it("cancels an in-flight collection Apply when the picker closes", async () => {
+    let resolveChildren: (children: VideoLibraryItem[]) => void = () => {}
+    const collection = {
+      ...defaultVideoLibrary[0]!,
+      key: "collection-cancel",
+      title: "Slow Collection",
+      id: "core-collection-cancel",
+      label: "COLLECTION",
+      labelLabel: "Collection",
+      isCollectionTarget: true,
+    }
+    const child = {
+      ...defaultVideoLibrary[0]!,
+      key: "late-child",
+      id: "core-late-child",
+    }
+    const view = renderEditorDom(
+      [
+        {
+          t: "mediaCollection",
+          sectionKey: "media",
+          variant: "grid",
+          itemsSource: "manual",
+          title: "Media",
+          items: [],
+        },
+      ],
+      {
+        videoLibrary: [collection],
+        loadVideoCollectionChildrenAction: vi.fn(
+          () =>
+            new Promise<VideoLibraryItem[]>((resolve) => {
+              resolveChildren = resolve
+            }),
+        ),
+      },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Add video").click())
+      act(() => findButtonByExactText(view.container, "Add video").click())
+      act(() =>
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })),
+      )
+      await act(async () => resolveChildren([child]))
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement))
+        throw new Error("No blocks")
+      expect(JSON.parse(blocksInput.value)[0]?.items).toEqual([])
+    } finally {
+      view.cleanup()
+    }
+  })
+
   it("shows a distinct pending state while video picker search is running", async () => {
     let resolveSearch: (results: VideoLibraryItem[]) => void = () => {}
     const searchVideoLibraryAction = vi.fn(
@@ -2369,6 +2455,7 @@ describe("ExperienceEditor", () => {
   })
 
   it("uses the selected playable dub for picker preview, trimming, and saved stream", () => {
+    const onBlocksChange = vi.fn()
     const view = renderEditorDom(
       [
         {
@@ -2379,6 +2466,7 @@ describe("ExperienceEditor", () => {
         },
       ],
       {
+        onBlocksChange,
         videoLibrary: [
           {
             ...defaultVideoLibrary[0]!,
@@ -2478,6 +2566,316 @@ describe("ExperienceEditor", () => {
       expect(blocks[0]?.languageId).toBe("language-es")
       expect(blocks[0]?.streamingUrl).toBeUndefined()
       expect(blocks[0]?.clipEndSeconds).toBeUndefined()
+      expect(onBlocksChange).toHaveBeenLastCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ languageId: "language-es" }),
+        ]),
+      )
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("persists the selected non-default Dub when appending one media item", () => {
+    const spanish = dubChoice(
+      "dub-es",
+      "Spanish",
+      "language-es",
+      "https://example.com/es.m3u8",
+    )
+    const view = renderEditorDom(
+      [
+        {
+          t: "mediaCollection",
+          sectionKey: "single-media-dub",
+          variant: "grid",
+          itemsSource: "manual",
+          title: "Media",
+          items: [],
+        },
+      ],
+      {
+        videoLibrary: [
+          {
+            ...defaultVideoLibrary[0]!,
+            playableDubs: [defaultVideoLibrary[0]!.playableDubs![0]!, spanish],
+            playableLanguageCount: 2,
+          },
+        ],
+      },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Add video").click())
+      const combobox = view.container.querySelector(
+        'button[role="combobox"][aria-label="Audio language"]',
+      )
+      if (!(combobox instanceof HTMLButtonElement)) {
+        throw new Error("Video language combobox not found")
+      }
+      act(() => combobox.click())
+      act(() => findButtonByText(view.container, "Spanish").click())
+      act(() => findButtonByExactText(view.container, "Add video").click())
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement))
+        throw new Error("No blocks")
+      const item = JSON.parse(blocksInput.value)[0].items[0]
+      expect(item.languageId).toBe("language-es")
+      expect(item.streamingUrl).toBeUndefined()
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("blocks a standalone selection that exceeds the draft selector limit", () => {
+    const newVideo = {
+      ...defaultVideoLibrary[0]!,
+      key: "new-video",
+      id: "core-new-video",
+      title: "New Video",
+    }
+    const existingItems = Array.from(
+      { length: EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS },
+      (_, index) => ({
+        videoId: `existing-video-${index}`,
+        languageId: "language-en",
+      }),
+    )
+    const view = renderEditorDom(
+      [
+        {
+          t: "videoCarousel",
+          sectionKey: "full-carousel",
+          itemsSource: "manual",
+          items: existingItems,
+        },
+        {
+          t: "video",
+          sectionKey: "empty-standalone",
+          useRouteVideo: false,
+          videoId: "",
+        },
+      ],
+      {
+        videoLibrary: [newVideo],
+      },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Browse library").click())
+      act(() => findButtonByExactText(view.container, "Apply video").click())
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement))
+        throw new Error("No blocks")
+      expect(JSON.parse(blocksInput.value)[1]?.videoId).toBeUndefined()
+      expect(view.container.textContent).toContain(
+        `exceed the ${EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS.toLocaleString()} video audio selection limit`,
+      )
+    } finally {
+      view.cleanup()
+    }
+  }, 20_000)
+
+  it("uses the selected Dub identity for the append selector limit", () => {
+    const spanish = dubChoice(
+      "dub-es",
+      "Spanish",
+      "language-es",
+      "https://example.com/es.m3u8",
+    )
+    const existingItems = Array.from(
+      { length: EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS - 1 },
+      (_, index) => ({
+        videoId: `existing-video-${index}`,
+        languageId: "language-en",
+      }),
+    )
+    const view = renderEditorDom(
+      [
+        {
+          t: "mediaCollection",
+          sectionKey: "full-media",
+          variant: "grid",
+          itemsSource: "manual",
+          items: existingItems,
+        },
+        {
+          t: "video",
+          sectionKey: "existing-default",
+          useRouteVideo: false,
+          videoId: "video-1",
+          languageId: "language-en",
+        },
+      ],
+      {
+        videoLibrary: [
+          {
+            ...defaultVideoLibrary[0]!,
+            playableDubs: [defaultVideoLibrary[0]!.playableDubs![0]!, spanish],
+            playableLanguageCount: 2,
+          },
+        ],
+      },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Add video").click())
+      const combobox = view.container.querySelector(
+        'button[role="combobox"][aria-label="Audio language"]',
+      )
+      if (!(combobox instanceof HTMLButtonElement)) {
+        throw new Error("Video language combobox not found")
+      }
+      act(() => combobox.click())
+      act(() => findButtonByText(view.container, "Spanish").click())
+      act(() => findButtonByExactText(view.container, "Add video").click())
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement))
+        throw new Error("No blocks")
+      expect(JSON.parse(blocksInput.value)[0].items).toHaveLength(
+        EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS - 1,
+      )
+      expect(view.container.textContent).toContain(
+        `exceed the ${EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS.toLocaleString()} video audio selection limit`,
+      )
+    } finally {
+      view.cleanup()
+    }
+  }, 20_000)
+
+  it("persists the stream selector for a language-less Dub", () => {
+    const languageLessDub = {
+      key: "dub-language-less",
+      label: "Original audio",
+      languageId: null,
+      languageSlug: null,
+      bcp47: null,
+      streamUrl: "https://example.com/original.m3u8",
+      duration: "01:00",
+      durationSeconds: 60,
+    }
+    const view = renderEditorDom(
+      [
+        {
+          t: "video",
+          sectionKey: "language-less",
+          useRouteVideo: false,
+          videoId: "",
+        },
+      ],
+      {
+        videoLibrary: [
+          {
+            ...defaultVideoLibrary[0]!,
+            defaultDub: languageLessDub,
+            playableDubs: [languageLessDub],
+            previewStreamUrl: languageLessDub.streamUrl,
+          },
+        ],
+      },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Browse library").click())
+      act(() => findButtonByExactText(view.container, "Apply video").click())
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement))
+        throw new Error("No blocks")
+      const block = JSON.parse(blocksInput.value)[0] as Record<string, unknown>
+      expect(block.languageId).toBeUndefined()
+      expect(block.streamingUrl).toBe(languageLessDub.streamUrl)
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("requires review when save-time validation returns a changed Dub winner", async () => {
+    const changedChoice: ExperienceEditorDubPage["choices"][number] = {
+      ...defaultVideoLibrary[0]!.playableDubs![0]!,
+      key: "dub-en-replaced",
+      iso3: null,
+      languageIdentity: "language-en",
+      streamUrl: "https://example.com/replaced.m3u8",
+      duration: "10:00",
+      durationSeconds: 600,
+    }
+    const validateVideoDubSelectionsAction = vi.fn(
+      async (input: ExperienceEditorDubSelectionValidationActionInput) => ({
+        available: [{ selector: input.selectors[0]!, choice: changedChoice }],
+        unavailable: [],
+      }),
+    )
+    const view = renderEditorDom(
+      [
+        {
+          t: "video",
+          sectionKey: "changed-dub-winner",
+          useRouteVideo: false,
+          videoId: "",
+        },
+      ],
+      { validateVideoDubSelectionsAction },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Browse library").click())
+      await act(async () =>
+        findButtonByExactText(view.container, "Apply video").click(),
+      )
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement)) {
+        throw new Error("Blocks input not found")
+      }
+      expect(JSON.parse(blocksInput.value)[0]?.videoId).toBeUndefined()
+      expect(view.container.textContent).toContain(
+        "That audio language changed. Review it and apply again.",
+      )
+      expect(view.container.textContent).toContain("10m")
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("ignores a validated picker choice after the dialog closes", async () => {
+    let resolveValidation: (
+      result: ExperienceEditorDubSelectionValidation,
+    ) => void = () => {}
+    const validateVideoDubSelectionsAction = vi.fn(
+      () =>
+        new Promise<ExperienceEditorDubSelectionValidation>((resolve) => {
+          resolveValidation = resolve
+        }),
+    )
+    const view = renderEditorDom(
+      [
+        {
+          t: "video",
+          sectionKey: "stale-validation",
+          useRouteVideo: false,
+          videoId: "",
+        },
+      ],
+      { validateVideoDubSelectionsAction },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Browse library").click())
+      act(() => findButtonByExactText(view.container, "Apply video").click())
+      act(() =>
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })),
+      )
+      await act(async () =>
+        resolveValidation({ available: [], unavailable: [] }),
+      )
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement))
+        throw new Error("No blocks")
+      expect(JSON.parse(blocksInput.value)[0]?.videoId).toBeUndefined()
     } finally {
       view.cleanup()
     }
@@ -2551,6 +2949,162 @@ describe("ExperienceEditor", () => {
         await new Promise((resolve) => window.setTimeout(resolve, 0))
       })
       expect(loadVideoDubPageAction).toHaveBeenCalledOnce()
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("clears an interrupted Load more state when the language picker reopens", async () => {
+    const english = dubChoice(
+      "dub-en-load-more",
+      "English",
+      "language-en",
+      "https://example.com/en.m3u8",
+    )
+    let resolveMore: (page: ExperienceEditorDubPage) => void = () => {}
+    const loadVideoDubPageAction = vi
+      .fn<
+        (
+          input: ExperienceEditorDubPageActionInput,
+        ) => Promise<ExperienceEditorDubPage>
+      >()
+      .mockResolvedValueOnce({
+        choices: [english],
+        selectedChoice: english,
+        nextCursor: "next-page",
+      })
+      .mockImplementationOnce(
+        () =>
+          new Promise<ExperienceEditorDubPage>((resolve) => {
+            resolveMore = resolve
+          }),
+      )
+    const view = renderEditorDom(
+      [
+        {
+          t: "video",
+          sectionKey: "load-more-close",
+          useRouteVideo: false,
+          videoId: "video-1",
+          languageId: "language-en",
+        },
+      ],
+      {
+        videoLibrary: [
+          {
+            ...defaultVideoLibrary[0]!,
+            playableDubs: undefined,
+            playableLanguageCount: 60,
+            defaultDub: english,
+            authoredDubs: [english],
+          },
+        ],
+        loadVideoDubPageAction,
+      },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Video settings").click())
+      const trigger = view.container.querySelector(
+        'button[role="combobox"][aria-label="Audio language"]',
+      ) as HTMLButtonElement
+      act(() => trigger.click())
+      await act(
+        async () => new Promise((resolve) => window.setTimeout(resolve, 0)),
+      )
+      act(() => findButtonByExactText(view.container, "Load more").click())
+      act(() => trigger.click())
+      await act(async () =>
+        resolveMore({ choices: [], selectedChoice: english, nextCursor: null }),
+      )
+      act(() => trigger.click())
+      await act(
+        async () => new Promise((resolve) => window.setTimeout(resolve, 0)),
+      )
+
+      expect(findButtonByExactText(view.container, "Load more").disabled).toBe(
+        false,
+      )
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("does not select a stale active language after the search changes", async () => {
+    const english = dubChoice(
+      "dub-en-stale",
+      "English",
+      "language-en",
+      "https://example.com/en.m3u8",
+    )
+    const spanish = dubChoice(
+      "dub-es-stale",
+      "Spanish",
+      "language-es",
+      "https://example.com/es.m3u8",
+    )
+    const loadVideoDubPageAction = vi.fn(async () => ({
+      choices: [english, spanish],
+      selectedChoice: english,
+      nextCursor: null,
+    }))
+    const view = renderEditorDom(
+      [
+        {
+          t: "video",
+          sectionKey: "stale-enter",
+          useRouteVideo: false,
+          videoId: "video-1",
+          languageId: "language-en",
+        },
+      ],
+      {
+        videoLibrary: [
+          {
+            ...defaultVideoLibrary[0]!,
+            playableDubs: undefined,
+            playableLanguageCount: 2,
+            defaultDub: english,
+            authoredDubs: [english],
+          },
+        ],
+        loadVideoDubPageAction,
+      },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Video settings").click())
+      const trigger = view.container.querySelector(
+        'button[role="combobox"][aria-label="Audio language"]',
+      ) as HTMLButtonElement
+      act(() => trigger.click())
+      await act(
+        async () => new Promise((resolve) => window.setTimeout(resolve, 0)),
+      )
+      act(() =>
+        findButtonByText(view.container, "Spanish").dispatchEvent(
+          new MouseEvent("mouseover", { bubbles: true }),
+        ),
+      )
+      const input = view.container.querySelector(
+        'input[placeholder="Search languages"]',
+      ) as HTMLInputElement
+      const valueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      )?.set
+      act(() => {
+        valueSetter?.call(input, "french")
+        input.dispatchEvent(new InputEvent("input", { bubbles: true }))
+      })
+      act(() =>
+        input.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+        ),
+      )
+
+      expect(trigger.getAttribute("aria-expanded")).toBe("true")
+      expect(trigger.textContent).toContain("English")
     } finally {
       view.cleanup()
     }
@@ -2753,6 +3307,197 @@ describe("ExperienceEditor", () => {
         ),
       ).toEqual(["paged-child-1", "paged-child-2"])
       expect(loadVideoCollectionChildrenPageAction).toHaveBeenCalledTimes(2)
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("rejects an oversized collection before mutating the draft", async () => {
+    const collection = {
+      ...defaultVideoLibrary[0]!,
+      key: "collection-over-limit",
+      title: "Oversized Collection",
+      label: "COLLECTION",
+      labelLabel: "Collection",
+      isCollectionTarget: true,
+      childCount: EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS + 1,
+    }
+    const children = Array.from(
+      { length: EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS + 1 },
+      (_, index) => ({
+        ...defaultVideoLibrary[0]!,
+        key: `oversized-child-${index}`,
+        id: `core-oversized-child-${index}`,
+      }),
+    )
+    const view = renderEditorDom(
+      [
+        {
+          t: "mediaCollection",
+          sectionKey: "oversized-media",
+          variant: "grid",
+          itemsSource: "manual",
+          title: "Media",
+          items: [],
+        },
+      ],
+      {
+        videoLibrary: [collection],
+        loadVideoCollectionChildrenAction: vi.fn().mockResolvedValue(children),
+      },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Add video").click())
+      act(() =>
+        findButtonByText(view.container, "Oversized Collection").click(),
+      )
+      await act(async () =>
+        findButtonByExactText(view.container, "Add video").click(),
+      )
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement))
+        throw new Error("No blocks")
+      expect(JSON.parse(blocksInput.value)[0].items).toEqual([])
+      expect(view.container.textContent).toContain(
+        `exceed the ${EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS.toLocaleString()} video audio selection limit`,
+      )
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("keeps collection state unchanged when paging ends before the declared total", async () => {
+    const collection = {
+      ...defaultVideoLibrary[0]!,
+      key: "collection-truncated",
+      id: "core-collection-truncated",
+      title: "Truncated Collection",
+      label: "COLLECTION",
+      labelLabel: "Collection",
+      isCollectionTarget: true,
+      childCount: 2,
+    }
+    const child = {
+      ...defaultVideoLibrary[0]!,
+      key: "truncated-child-1",
+      id: "core-truncated-child-1",
+    }
+    const view = renderEditorDom(
+      [
+        {
+          t: "mediaCollection",
+          sectionKey: "truncated-media",
+          variant: "grid",
+          itemsSource: "manual",
+          title: "Media",
+          items: [],
+        },
+      ],
+      {
+        videoLibrary: [collection],
+        loadVideoCollectionChildrenPageAction: vi.fn().mockResolvedValue({
+          items: [child],
+          nextCursor: null,
+          total: 2,
+        }),
+      },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Add video").click())
+      act(() =>
+        findButtonByText(view.container, "Truncated Collection").click(),
+      )
+      await act(async () =>
+        findButtonByExactText(view.container, "Add video").click(),
+      )
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement))
+        throw new Error("No blocks")
+      expect(JSON.parse(blocksInput.value)[0].items).toEqual([])
+      expect(view.container.textContent).toContain(
+        "Collection videos could not be loaded. Nothing was added.",
+      )
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("blocks collection Apply when a child has no playable Dub", async () => {
+    const collection = {
+      ...defaultVideoLibrary[0]!,
+      key: "collection-unplayable",
+      title: "Unplayable Collection",
+      label: "COLLECTION",
+      labelLabel: "Collection",
+      isCollectionTarget: true,
+      childCount: 1,
+    }
+    const child = {
+      ...defaultVideoLibrary[0]!,
+      key: "unplayable-child",
+      defaultDub: null,
+      playableDubs: undefined,
+      playableLanguageCount: 0,
+      previewStreamUrl: null,
+    }
+    const validateVideoDubSelectionsAction = vi.fn(
+      async (input: ExperienceEditorDubSelectionValidationActionInput) => ({
+        available: [],
+        unavailable: input.selectors.map((selector) => ({
+          selector,
+          preExisting: false,
+          reason: "video-or-dub-unavailable" as const,
+        })),
+      }),
+    )
+    const view = renderEditorDom(
+      [
+        {
+          t: "mediaCollection",
+          sectionKey: "unplayable-media",
+          variant: "grid",
+          itemsSource: "manual",
+          title: "Media",
+          items: [],
+        },
+      ],
+      {
+        videoLibrary: [collection],
+        loadVideoCollectionChildrenPageAction: vi.fn().mockResolvedValue({
+          items: [child],
+          nextCursor: null,
+          total: 1,
+        }),
+        validateVideoDubSelectionsAction,
+      },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Add video").click())
+      act(() =>
+        findButtonByText(view.container, "Unplayable Collection").click(),
+      )
+      await act(async () =>
+        findButtonByExactText(view.container, "Add video").click(),
+      )
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement))
+        throw new Error("No blocks")
+      expect(JSON.parse(blocksInput.value)[0].items).toEqual([])
+      expect(validateVideoDubSelectionsAction).toHaveBeenCalledWith({
+        selectors: [
+          {
+            videoId: "unplayable-child",
+            languageId: null,
+            legacyStreamingUrl: null,
+          },
+        ],
+      })
     } finally {
       view.cleanup()
     }

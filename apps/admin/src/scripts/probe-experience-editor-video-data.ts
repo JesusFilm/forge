@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto"
-import { readFile, stat, writeFile } from "node:fs/promises"
+import { open, readFile, stat, writeFile } from "node:fs/promises"
 import { cpus, hostname, platform, release, totalmem } from "node:os"
 import { pathToFileURL } from "node:url"
 
@@ -13,6 +13,7 @@ const RSS_POLL_MS = 25
 type CliOptions = {
   activeDubs: number | null
   allowShortRun: boolean
+  approvedOrigin: URL | null
   baselinePath: string | null
   bodyPath: string | null
   collectionBodyPath: string | null
@@ -89,6 +90,7 @@ Measurement options:
   --warmups <n>                  Unrecorded requests (default: 1)
   --concurrency <csv>            Editor profiles (default: 1,4)
   --cookie-file <path>           Mode-0600 cookie value; never emitted
+  --approved-origin <origin>     Required for authenticated staging targets
   --headers-file <path>          JSON object of request headers; values never emitted
   --body-file <path>             Optional editor POST body (switches editor to POST)
   --public-url <url>             No-editor control URL
@@ -186,6 +188,10 @@ export function parseOptions(args: string[]): CliOptions {
       ? positiveInteger(values.get("--active-dubs")!, "--active-dubs")
       : null,
     allowShortRun: switches.has("--allow-short-run"),
+    approvedOrigin: optionalUrl(
+      values.get("--approved-origin"),
+      "--approved-origin",
+    ),
     baselinePath: values.get("--baseline") ?? null,
     bodyPath: values.get("--body-file") ?? null,
     collectionBodyPath: values.get("--collection-body-file") ?? null,
@@ -248,7 +254,16 @@ function isLoopback(url: URL) {
   return ["localhost", "127.0.0.1", "::1", "[::1]"].includes(url.hostname)
 }
 
-function validateOptions(options: CliOptions) {
+function isKnownProductionAdminHost(hostnameValue: string) {
+  const hostname = hostnameValue.toLowerCase()
+  return (
+    hostname === "admin.jesusfilm.org" ||
+    hostname === "forgeadmin-production-f4d1.up.railway.app" ||
+    /(^|[.-])production([.-]|$)/.test(hostname)
+  )
+}
+
+export function validateOptions(options: CliOptions) {
   const errors: string[] = []
   if (!options.dryRun && !options.editorUrl)
     errors.push("--editor-url is required")
@@ -275,6 +290,14 @@ function validateOptions(options: CliOptions) {
   if (options.environment === "staging" && !options.confirmNonProduction) {
     errors.push("staging requires --confirm-non-production")
   }
+  if (
+    options.approvedOrigin &&
+    (options.approvedOrigin.pathname !== "/" ||
+      options.approvedOrigin.search ||
+      options.approvedOrigin.hash)
+  ) {
+    errors.push("--approved-origin must contain only scheme, host, and port")
+  }
   for (const url of [
     options.editorUrl,
     options.publicUrl,
@@ -284,6 +307,30 @@ function validateOptions(options: CliOptions) {
     if (url && options.environment === "local" && !isLoopback(url)) {
       errors.push(`local target is not loopback: ${url.hostname}`)
     }
+  }
+  if (options.environment === "staging" && options.cookiePath) {
+    if (!options.approvedOrigin) {
+      errors.push("authenticated staging requires --approved-origin")
+    } else if (
+      options.approvedOrigin.protocol !== "https:" ||
+      isKnownProductionAdminHost(options.approvedOrigin.hostname)
+    ) {
+      errors.push(
+        "authenticated staging origin must be HTTPS and non-production",
+      )
+    } else if (
+      options.editorUrl &&
+      options.editorUrl.origin !== options.approvedOrigin.origin
+    ) {
+      errors.push("editor target does not match --approved-origin")
+    }
+  }
+  if (
+    options.saveUrl &&
+    options.editorUrl &&
+    options.saveUrl.origin !== options.editorUrl.origin
+  ) {
+    errors.push("authenticated save target must match the editor origin")
   }
   if (options.saveUrl && !options.saveBodyPath) {
     errors.push("--save-body-file is required with --save-url")
@@ -372,7 +419,11 @@ export function countMarker(body: string, marker: string) {
   )
 }
 
-async function runRequest(spec: RequestSpec, dubMarker: string) {
+export function isSuccessfulStatus(status: number) {
+  return status >= 200 && status < 300
+}
+
+async function runRequestWithBody(spec: RequestSpec, dubMarker: string) {
   const startedAt = performance.now()
   const response = await fetch(spec.url, {
     body: spec.body,
@@ -388,12 +439,20 @@ async function runRequest(spec: RequestSpec, dubMarker: string) {
     signal: AbortSignal.timeout(180_000),
   })
   const body = await response.text()
-  return {
+  const sample = {
     elapsedMs: performance.now() - startedAt,
     responseBytes: Buffer.byteLength(body),
     serializedDubRecords: countMarker(body, dubMarker),
     status: response.status,
   } satisfies HttpSample
+  if (!isSuccessfulStatus(sample.status)) {
+    throw new Error(`request failed with HTTP ${sample.status}`)
+  }
+  return { body, sample }
+}
+
+async function runRequest(spec: RequestSpec, dubMarker: string) {
+  return (await runRequestWithBody(spec, dubMarker)).sample
 }
 
 async function readRssBytes(pid: number | null) {
@@ -411,10 +470,16 @@ async function fileOffset(path: string | null) {
 
 async function appendedText(path: string | null, offset: number | null) {
   if (!path || offset == null) return null
-  const content = await readFile(path)
-  if (content.length < offset)
-    throw new Error(`${path} rotated during the probe`)
-  return content.subarray(offset).toString("utf8")
+  const file = await open(path, "r")
+  try {
+    const size = (await file.stat()).size
+    if (size < offset) throw new Error(`${path} rotated during the probe`)
+    const suffix = Buffer.allocUnsafe(size - offset)
+    const { bytesRead } = await file.read(suffix, 0, suffix.length, offset)
+    return suffix.subarray(0, bytesRead).toString("utf8")
+  } finally {
+    await file.close()
+  }
 }
 
 function nonemptyLines(value: string | null) {
@@ -491,11 +556,13 @@ async function runProfile({
   const serverText = await appendedText(serverLogPath, serverOffset)
   return {
     concurrency,
-    failures: measured.result.samples.filter((sample) => sample.status >= 500)
-      .length,
+    failures: measured.result.samples.filter(
+      (sample) => !isSuccessfulStatus(sample.status),
+    ).length,
     publicFailures: publicSpec
-      ? measured.result.publicSamples.filter((sample) => sample.status >= 500)
-          .length
+      ? measured.result.publicSamples.filter(
+          (sample) => !isSuccessfulStatus(sample.status),
+        ).length
       : null,
     publicSamples: publicSpec ? measured.result.publicSamples : null,
     poolTimeouts: poolTimeoutCount(serverText),
@@ -623,7 +690,10 @@ async function runCycles({
   for (let index = 0; index < total; index += 1) {
     const openSample = await runRequest(open, dubMarker)
     const saveSample = await runRequest(save, dubMarker)
-    if (openSample.status >= 400 || saveSample.status >= 400) {
+    if (
+      !isSuccessfulStatus(openSample.status) ||
+      !isSuccessfulStatus(saveSample.status)
+    ) {
       throw new Error(
         `open/save cycle ${index + 1} failed (${openSample.status}/${saveSample.status})`,
       )
@@ -674,6 +744,41 @@ function numericField(value: unknown, ...path: string[]) {
   return typeof candidate === "number" ? candidate : null
 }
 
+type CollectionExpansionEvidence = {
+  returnedChildren: number
+  uniqueChildren: number
+  orderedDigest: string
+}
+
+export function parseCollectionExpansionEvidence(
+  body: string,
+  expectedChildren: number,
+) {
+  const parsed = record(JSON.parse(body) as unknown)
+  const returnedChildren = parsed?.returnedChildren
+  const uniqueChildren = parsed?.uniqueChildren
+  const orderedDigest = parsed?.orderedDigest
+  if (
+    !Number.isInteger(returnedChildren) ||
+    !Number.isInteger(uniqueChildren) ||
+    typeof orderedDigest !== "string" ||
+    !/^[a-f0-9]{64}$/u.test(orderedDigest)
+  ) {
+    throw new Error("collection endpoint returned an invalid evidence contract")
+  }
+  const evidence = {
+    returnedChildren: returnedChildren as number,
+    uniqueChildren: uniqueChildren as number,
+    orderedDigest,
+  } satisfies CollectionExpansionEvidence
+  return {
+    ...evidence,
+    complete:
+      evidence.returnedChildren === expectedChildren &&
+      evidence.uniqueChildren === expectedChildren,
+  }
+}
+
 function medianFromReport(report: unknown, name: string) {
   const profiles = field(report, "profiles")
   if (!Array.isArray(profiles)) return null
@@ -689,7 +794,7 @@ function peakDeltaFromReport(report: unknown) {
   return values.length ? Math.max(...values) : null
 }
 
-function compareReports(baseline: unknown, fixed: unknown) {
+export function compareReports(baseline: unknown, fixed: unknown) {
   const baselineDubs = medianFromReport(baseline, "serializedDubRecords")
   const fixedDubs = medianFromReport(fixed, "serializedDubRecords")
   const baselineRss = peakDeltaFromReport(baseline)
@@ -708,27 +813,62 @@ function compareReports(baseline: unknown, fixed: unknown) {
     "elapsedMs",
     "p95",
   )
+  const sameFixture =
+    field(baseline, "fixture", "label") === field(fixed, "fixture", "label") &&
+    field(baseline, "fixture", "referencedVideos") ===
+      field(fixed, "fixture", "referencedVideos") &&
+    field(baseline, "fixture", "activeDubs") ===
+      field(fixed, "fixture", "activeDubs") &&
+    field(baseline, "fixture", "largestCollectionChildren") ===
+      field(fixed, "fixture", "largestCollectionChildren")
+  const comparisonDimensions: Array<[string, string[]]> = [
+    ["measurement.concurrency", ["measurement", "concurrency"]],
+    ["measurement.cycles", ["measurement", "cycles"]],
+    ["measurement.dubMarker", ["measurement", "dubMarker"]],
+    ["measurement.idleMs", ["measurement", "idleMs"]],
+    ["measurement.roundsPerProfile", ["measurement", "roundsPerProfile"]],
+    ["measurement.warmups", ["measurement", "warmups"]],
+    ["target.collectionFingerprint", ["target", "collectionFingerprint"]],
+    ["target.environment", ["target", "environment"]],
+    ["target.editorFingerprint", ["target", "editorFingerprint"]],
+    ["target.hasCookie", ["target", "hasCookie"]],
+    ["target.publicFingerprint", ["target", "publicFingerprint"]],
+    ["target.saveFingerprint", ["target", "saveFingerprint"]],
+    ["hardware.cpuCount", ["hardware", "cpuCount"]],
+    ["hardware.cpuModel", ["hardware", "cpuModel"]],
+    ["hardware.hostname", ["hardware", "hostname"]],
+    ["hardware.platform", ["hardware", "platform"]],
+    ["hardware.release", ["hardware", "release"]],
+    ["hardware.totalMemoryBytes", ["hardware", "totalMemoryBytes"]],
+  ]
+  const mismatchFields = comparisonDimensions
+    .filter(
+      ([, path]) =>
+        JSON.stringify(field(baseline, ...path)) !==
+        JSON.stringify(field(fixed, ...path)),
+    )
+    .map(([name]) => name)
+  if (!sameFixture) mismatchFields.unshift("fixture")
+  const comparable = mismatchFields.length === 0
   return {
     initialSerializedDubReductionPercent: reductionPercent(
-      baselineDubs,
-      fixedDubs,
+      comparable ? baselineDubs : null,
+      comparable ? fixedDubs : null,
     ),
-    peakRssDeltaReductionPercent: reductionPercent(baselineRss, fixedRss),
+    peakRssDeltaReductionPercent: reductionPercent(
+      comparable ? baselineRss : null,
+      comparable ? fixedRss : null,
+    ),
     publicP95IncreasePercent:
+      !comparable ||
       baselinePublicP95 == null ||
       fixedPublicP95 == null ||
       baselinePublicP95 === 0
         ? null
         : ((fixedPublicP95 - baselinePublicP95) / baselinePublicP95) * 100,
-    sameFixture:
-      field(baseline, "fixture", "label") ===
-        field(fixed, "fixture", "label") &&
-      field(baseline, "fixture", "referencedVideos") ===
-        field(fixed, "fixture", "referencedVideos") &&
-      field(baseline, "fixture", "activeDubs") ===
-        field(fixed, "fixture", "activeDubs") &&
-      field(baseline, "fixture", "largestCollectionChildren") ===
-        field(fixed, "fixture", "largestCollectionChildren"),
+    comparable,
+    mismatchFields,
+    sameFixture,
   }
 }
 
@@ -824,7 +964,10 @@ async function main() {
   const cold = await runRequest(editor, options.dubMarker)
 
   for (let index = 0; index < options.warmups; index += 1) {
-    await runRequest(editor, options.dubMarker)
+    await Promise.all([
+      runRequest(editor, options.dubMarker),
+      ...(publicControl ? [runRequest(publicControl, options.dubMarker)] : []),
+    ])
   }
 
   const profiles = []
@@ -854,16 +997,29 @@ async function main() {
         sqlLogPath: options.sqlLogPath,
       })
     : null
-  const collectionSample = options.collectionUrl
-    ? await runRequest(
-        await requestSpec({
-          bodyPath: options.collectionBodyPath,
-          cookie,
-          headersPath: options.headersPath,
-          url: options.collectionUrl,
-        }),
-        options.dubMarker,
-      )
+  const collectionUrl = options.collectionUrl
+  const collectionSample = collectionUrl
+    ? await (async () => {
+        const result = await runRequestWithBody(
+          await requestSpec({
+            bodyPath: options.collectionBodyPath,
+            cookie: collectionUrl.origin === editor.url.origin ? cookie : null,
+            headersPath: options.headersPath,
+            url: collectionUrl,
+          }),
+          options.dubMarker,
+        )
+        const expansion = parseCollectionExpansionEvidence(
+          result.body,
+          options.largestCollectionChildren!,
+        )
+        if (!expansion.complete) {
+          gaps.push(
+            `collection expansion returned ${expansion.returnedChildren} children (${expansion.uniqueChildren} unique), expected ${options.largestCollectionChildren}`,
+          )
+        }
+        return { ...result.sample, expansion }
+      })()
     : null
   const cycles =
     save && options.cycles > 0

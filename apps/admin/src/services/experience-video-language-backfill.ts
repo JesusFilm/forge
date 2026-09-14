@@ -212,23 +212,26 @@ export async function backfillExperienceVideoLanguageIds({
 
   const targetAvailableVideoIds = new Set<string>()
   if (targetLanguageId) {
-    const rows = await prisma.videoDub.findMany({
-      where: {
-        videoId: { in: [...videoIds] },
-        languageId: targetLanguageId,
-        deletedAt: null,
-        published: true,
-        OR: [
-          { hls: { not: null } },
-          { dash: { not: null } },
-          { share: { not: null } },
-        ],
-        video: { deletedAt: null },
-      },
-      select: { videoId: true },
-      distinct: ["videoId"],
-    })
-    rows.forEach((row) => targetAvailableVideoIds.add(row.videoId))
+    const orderedVideoIds = [...videoIds]
+    for (let offset = 0; offset < orderedVideoIds.length; offset += 100) {
+      const rows = await prisma.videoDub.findMany({
+        where: {
+          videoId: { in: orderedVideoIds.slice(offset, offset + 100) },
+          languageId: targetLanguageId,
+          deletedAt: null,
+          published: true,
+          OR: [
+            { hls: { not: null } },
+            { dash: { not: null } },
+            { share: { not: null } },
+          ],
+          video: { deletedAt: null },
+        },
+        select: { videoId: true },
+        distinct: ["videoId"],
+      })
+      rows.forEach((row) => targetAvailableVideoIds.add(row.videoId))
+    }
   }
 
   const languageIdForVideoId = new Map<string, string>()

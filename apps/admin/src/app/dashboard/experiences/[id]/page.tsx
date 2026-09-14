@@ -14,12 +14,8 @@ import { runGenerateSectionAction } from "@/app/dashboard/experiences/generate-s
 import { runGenerateVariantAction } from "@/app/dashboard/experiences/generate-variant-action"
 import { buildMediaLibraryBrowserData } from "@/app/dashboard/media/media-library-browser-data"
 import { uploadMediaAssetFromFormData } from "@/app/dashboard/media/upload-media-asset-action"
-import {
-  loadExperienceEditorVideoRows,
-  loadVideoCollectionChildren,
-  videoIdsFromExperienceBlocks,
-} from "@/app/dashboard/live-data"
-import { extractAuthoredVideoDubSelectors } from "@/app/dashboard/experiences/experience-editor/block-helpers"
+import { loadExperienceEditorVideoRows } from "@/app/dashboard/live-data"
+import { extractAuthoredVideoDubSelectors } from "@/domain/experience-editor-dub-selectors"
 import {
   matchesVideoLibraryCategory,
   parseVideoLibraryCategory,
@@ -36,6 +32,9 @@ import {
   loadExperienceEditorCollectionChildPage,
   loadExperienceEditorDubPage,
   validateExperienceEditorDubSelections,
+  boundedExperienceEditorActionSelectors,
+  boundedExperienceEditorActionVideoIds,
+  type ExperienceEditorAuthoredDubSelector,
   type ExperienceEditorCollectionChildPageActionInput,
   type ExperienceEditorDubPageActionInput,
   type ExperienceEditorDubSelectionValidationActionInput,
@@ -291,32 +290,19 @@ export default async function ExperienceEditorPage({
     user: principal,
   })
   const editableLocale = draftState.effective
-  const authoredDubSelectors = extractAuthoredVideoDubSelectors(
-    editableLocale.blocks,
-  )
-
-  const [
-    videoLibrary,
-    mediaLibrary,
-    selectedLocaleLanguageId,
-    activeLocaleDrafts,
-  ] = await Promise.all([
-    loadExperienceEditorVideoRows(principal, {
-      authoredSelectors: authoredDubSelectors,
-      includeVideoIds: videoIdsFromExperienceBlocks(editableLocale.blocks),
-      preferredLocale: selectedLocale.locale,
-    }),
-    mediaLibraryPromise,
-    languageIdForLocale(selectedLocale.locale),
-    prisma.contentRevision.findMany({
-      where: {
-        entityType: "ExperienceLocale",
-        entityId: { in: experience.locales.map((locale) => locale.id) },
-        status: "DRAFT",
-      },
-      select: { entityId: true, revisedAt: true },
-    }),
-  ])
+  const [mediaLibrary, selectedLocaleLanguageId, activeLocaleDrafts] =
+    await Promise.all([
+      mediaLibraryPromise,
+      languageIdForLocale(selectedLocale.locale),
+      prisma.contentRevision.findMany({
+        where: {
+          entityType: "ExperienceLocale",
+          entityId: { in: experience.locales.map((locale) => locale.id) },
+          status: "DRAFT",
+        },
+        select: { entityId: true, revisedAt: true },
+      }),
+    ])
   const activeDraftByLocaleId = new Map(
     activeLocaleDrafts.map((draft) => [draft.entityId, draft]),
   )
@@ -461,6 +447,9 @@ export default async function ExperienceEditorPage({
     const user = await requireSession()
     const services = createServices(prisma)
     const localeId = String(formData.get("id") ?? "")
+    if (localeId !== selectedLocale.id) {
+      return { ok: false, error: "Locale does not match this editor." }
+    }
     const blocksValue = String(formData.get("blocks") ?? "[]").trim() || "[]"
 
     let blocks: unknown
@@ -709,21 +698,19 @@ export default async function ExperienceEditorPage({
     return getChatMessagesCore({ prisma, user }, { threadId })
   }
 
-  async function loadVideosByIdsAction(videoIds: readonly string[]) {
+  async function loadVideosByIdsAction(input: {
+    videoIds: readonly string[]
+    authoredSelectors: readonly ExperienceEditorAuthoredDubSelector[]
+  }) {
     "use server"
     const user = await requireSession()
+    const videoIds = boundedExperienceEditorActionVideoIds(input?.videoIds)
     if (videoIds.length === 0) return []
     return loadExperienceEditorVideoRows(user, {
-      authoredSelectors: authoredDubSelectors,
+      authoredSelectors: boundedExperienceEditorActionSelectors(
+        input?.authoredSelectors,
+      ),
       exactVideoIds: videoIds,
-      preferredLocale: selectedLocale.locale,
-    })
-  }
-
-  async function loadVideoCollectionChildrenAction(parentVideoId: string) {
-    "use server"
-    const user = await requireSession()
-    return loadVideoCollectionChildren(user, parentVideoId, {
       preferredLocale: selectedLocale.locale,
     })
   }
@@ -747,7 +734,6 @@ export default async function ExperienceEditorPage({
     return loadExperienceEditorCollectionChildPage(prisma, {
       ...input,
       locale: selectedLocale.locale,
-      authoredSelectors: authoredDubSelectors,
     })
   }
 
@@ -755,11 +741,20 @@ export default async function ExperienceEditorPage({
     input: ExperienceEditorDubSelectionValidationActionInput,
   ) {
     "use server"
-    await requireSession()
+    const user = await requireSession()
+    const selectors = boundedExperienceEditorActionSelectors(input?.selectors)
+    const services = createServices(prisma)
+    const previousDraftState = await services.experience.getLocaleDraftState({
+      id: selectedLocale.id,
+      user,
+    })
     return validateExperienceEditorDubSelections(prisma, {
       ...input,
+      selectors,
       locale: selectedLocale.locale,
-      previousSelectors: authoredDubSelectors,
+      previousSelectors: extractAuthoredVideoDubSelectors(
+        previousDraftState.effective.blocks,
+      ),
     })
   }
 
@@ -776,7 +771,6 @@ export default async function ExperienceEditorPage({
     const category = parseVideoLibraryCategory(context?.category)
     if (!normalizedQuery) {
       return loadExperienceEditorVideoRows(user, {
-        authoredSelectors: authoredDubSelectors,
         category,
         preferredLocale: selectedLocale.locale,
       })
@@ -803,7 +797,6 @@ export default async function ExperienceEditorPage({
         .filter((result) => result.type === "video")
         .map((result) => result.id)
       const rows = await loadExperienceEditorVideoRows(user, {
-        authoredSelectors: authoredDubSelectors,
         exactVideoIds: videoIds,
         preferredLocale: selectedLocale.locale,
       })
@@ -944,9 +937,7 @@ export default async function ExperienceEditorPage({
         active: locale.id === selectedLocale.id,
       }))}
       revisionEntries={revisionEntries}
-      videoLibrary={videoLibrary}
       loadVideosByIdsAction={loadVideosByIdsAction}
-      loadVideoCollectionChildrenAction={loadVideoCollectionChildrenAction}
       loadVideoDubPageAction={loadVideoDubPageAction}
       loadVideoCollectionChildrenPageAction={
         loadVideoCollectionChildrenPageAction

@@ -1,6 +1,7 @@
 import { type Blocks } from "@/domain/blocks"
-import type { ExperienceEditorAuthoredDubSelector } from "@/services/experience-editor-video.service"
 import { WATCH_HOME_CATEGORY_CATALOG } from "@forge/watch-url-policy/watch-home-categories"
+
+export { extractAuthoredVideoDubSelectors } from "@/domain/experience-editor-dub-selectors"
 
 export type BlockTone = "hero" | "quote" | "grid" | "standard"
 
@@ -105,7 +106,6 @@ export function editorTextFromContentParagraphs(
 const legacyEditorOnlyKeys = new Set([
   "backgroundImageUrl",
   "imageUrl",
-  "streamingUrl",
   "videoSlug",
 ])
 
@@ -163,6 +163,53 @@ export type VideoLibraryPlayableDub = {
   streamUrl: string
   duration: string
   durationSeconds: number | null
+}
+
+function mergeVideoLibraryDubs(
+  current: readonly VideoLibraryPlayableDub[] | undefined,
+  incoming: readonly VideoLibraryPlayableDub[] | undefined,
+) {
+  if (!incoming) return current ? [...current] : undefined
+  const byKey = new Map((current ?? []).map((item) => [item.key, item]))
+  incoming.forEach((item) => byKey.set(item.key, item))
+  return Array.from(byKey.values())
+}
+
+/** Merge exact-selector top-ups without dropping Dubs already hydrated for a video. */
+export function mergeVideoLibrarySummaries(
+  current: VideoLibraryItem[],
+  incoming: readonly VideoLibraryItem[],
+) {
+  if (incoming.length === 0) return current
+  const next = [...current]
+  const indexes = new Map<string, number>()
+  next.forEach((item, index) => {
+    indexes.set(item.key, index)
+    indexes.set(item.id, index)
+  })
+  for (const item of incoming) {
+    const index = indexes.get(item.key) ?? indexes.get(item.id)
+    if (index === undefined) {
+      indexes.set(item.key, next.length)
+      indexes.set(item.id, next.length)
+      next.push(item)
+      continue
+    }
+    const existing = next[index]!
+    next[index] = {
+      ...existing,
+      ...item,
+      authoredDubs: mergeVideoLibraryDubs(
+        existing.authoredDubs,
+        item.authoredDubs,
+      ),
+      playableDubs: mergeVideoLibraryDubs(
+        existing.playableDubs,
+        item.playableDubs,
+      ),
+    }
+  }
+  return next
 }
 
 export type VideoHeroHeadingSource = "manual" | "videoTitle"
@@ -299,60 +346,6 @@ export function asNumber(value: unknown) {
 
 export function asArray(value: unknown) {
   return Array.isArray(value) ? value : []
-}
-
-function selectorText(value: unknown) {
-  return typeof value === "string" && value.trim() ? value.trim() : null
-}
-
-/**
- * Finds the exact video/language references that an existing draft must keep
- * resolvable. The tuple, rather than just videoId, is the identity: one video
- * may intentionally appear in several authored languages.
- *
- * This reader is deliberately tolerant of partial editor state. Draft state
- * can briefly be less strict than BlocksSchema while the user is editing, and
- * ignoring one malformed item must not discard otherwise valid selectors.
- */
-export function extractAuthoredVideoDubSelectors(
-  blocks: unknown,
-): ExperienceEditorAuthoredDubSelector[] {
-  const selectors: ExperienceEditorAuthoredDubSelector[] = []
-  const seen = new Set<string>()
-
-  const add = (value: BlockRecord) => {
-    const videoId = selectorText(value.videoId)
-    if (!videoId) return
-
-    const languageId = selectorText(value.languageId)
-    const legacyStreamingUrl = selectorText(value.streamingUrl)
-    const identity = JSON.stringify([videoId, languageId, legacyStreamingUrl])
-    if (seen.has(identity)) return
-    seen.add(identity)
-    selectors.push({ videoId, languageId, legacyStreamingUrl })
-  }
-
-  const visitBlock = (value: unknown) => {
-    const block = asRecord(value)
-    if (!block) return
-
-    const type = selectorText(block.t)
-    if (type === "video" || type === "videoHero") add(block)
-
-    if (type === "videoCarousel" || type === "mediaCollection") {
-      for (const item of asArray(block.items)) {
-        const record = asRecord(item)
-        if (record) add(record)
-      }
-    }
-
-    if (type === "section" || type === "container") {
-      for (const item of asArray(block.content)) visitBlock(item)
-    }
-  }
-
-  for (const block of asArray(blocks)) visitBlock(block)
-  return selectors
 }
 
 export function stringFromOptionalNumber(value: unknown) {

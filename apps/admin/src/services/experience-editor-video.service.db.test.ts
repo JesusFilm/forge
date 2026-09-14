@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest"
 import { prisma } from "@/db/client"
 import {
   EXPERIENCE_EDITOR_LANGUAGE_CHIP_LIMIT,
+  experienceEditorSummarySql,
   loadExperienceEditorCollectionChildPage,
   loadExperienceEditorDubPage,
   loadExperienceEditorVideoSummariesByIds,
+  validateExperienceEditorDubSelections,
 } from "./experience-editor-video.service"
 
 const RUN_REAL_DB_TEST =
@@ -68,6 +70,77 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       expect(summary?.dubInventory).toEqual({ status: "not-loaded" })
       expect(materializedDubRows).toBeLessThanOrEqual(
         EXPERIENCE_EDITOR_LANGUAGE_CHIP_LIMIT + 1,
+      )
+    })
+
+    it("uses the editor Dub indexes for aggregate and newest-choice plans", async () => {
+      const [candidate] = await prisma.$queryRaw<Array<{ videoId: string }>>(
+        Prisma.sql`
+          SELECT d.video_id AS "videoId"
+          FROM video_dub d
+          WHERE d.deleted_at IS NULL
+            AND COALESCE(NULLIF(btrim(d.hls), ''), NULLIF(btrim(d.dash), ''), NULLIF(btrim(d.share), '')) IS NOT NULL
+          GROUP BY d.video_id
+          ORDER BY count(*) DESC, d.video_id ASC
+          LIMIT 1
+        `,
+      )
+      if (!candidate) return
+
+      const indexes = await prisma.$queryRaw<Array<{ indexname: string }>>(
+        Prisma.sql`
+          SELECT indexname::text AS indexname
+          FROM pg_indexes
+          WHERE schemaname = current_schema()
+            AND indexname IN (
+              'video_dub_editor_active_video_language_updated_id_idx',
+              'video_dub_editor_active_video_updated_id_idx'
+            )
+          ORDER BY indexname
+        `,
+      )
+      expect(indexes.map((index) => index.indexname)).toEqual([
+        "video_dub_editor_active_video_language_updated_id_idx",
+        "video_dub_editor_active_video_updated_id_idx",
+      ])
+
+      const aggregatePlan = await prisma.$queryRaw<unknown[]>(Prisma.sql`
+        EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)
+        SELECT d.language_id, max(d.updated_at)
+        FROM video_dub d
+        WHERE d.video_id = ${candidate.videoId}
+          AND d.deleted_at IS NULL
+          AND COALESCE(NULLIF(btrim(d.hls), ''), NULLIF(btrim(d.dash), ''), NULLIF(btrim(d.share), '')) IS NOT NULL
+        GROUP BY d.language_id
+      `)
+      expect(JSON.stringify(aggregatePlan)).toContain(
+        "video_dub_editor_active_video_language_updated_id_idx",
+      )
+
+      const newestPlan = await prisma.$queryRaw<unknown[]>(Prisma.sql`
+        EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)
+        SELECT d.id
+        FROM video_dub d
+        WHERE d.video_id = ${candidate.videoId}
+          AND d.deleted_at IS NULL
+          AND COALESCE(NULLIF(btrim(d.hls), ''), NULLIF(btrim(d.dash), ''), NULLIF(btrim(d.share), '')) IS NOT NULL
+        ORDER BY d.updated_at DESC NULLS LAST, d.id ASC
+        LIMIT 1
+      `)
+      expect(JSON.stringify(newestPlan)).toContain(
+        "video_dub_editor_active_video_updated_id_idx",
+      )
+
+      const actualSummaryPlan = await prisma.$queryRaw<unknown[]>(Prisma.sql`
+        EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)
+        ${experienceEditorSummarySql([candidate.videoId], "en", [])}
+      `)
+      const serializedPlan = JSON.stringify(actualSummaryPlan)
+      expect(serializedPlan).toContain(
+        "video_dub_editor_active_video_language_updated_id_idx",
+      )
+      expect(serializedPlan).toContain(
+        "video_dub_editor_active_video_updated_id_idx",
       )
     })
 
@@ -159,6 +232,75 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         cursor: first.nextCursor,
       })
       expect(second.items[0]?.key).not.toBe(first.items[0]?.key)
+    })
+
+    it("holds selected Dub availability stable until validation transaction commit", async () => {
+      const [selectedDub] = await prisma.$queryRaw<
+        Array<{ id: string; languageId: string; videoId: string }>
+      >(Prisma.sql`
+        SELECT d.id, d.video_id AS "videoId", d.language_id AS "languageId"
+        FROM video_dub d
+        WHERE d.deleted_at IS NULL
+          AND d.language_id IS NOT NULL
+          AND COALESCE(NULLIF(btrim(d.hls), ''), NULLIF(btrim(d.dash), ''), NULLIF(btrim(d.share), '')) IS NOT NULL
+        ORDER BY d.id ASC
+        LIMIT 1
+      `)
+      if (!selectedDub) return
+
+      let releaseValidation!: () => void
+      const release = new Promise<void>((resolve) => {
+        releaseValidation = resolve
+      })
+      let validationLocked!: () => void
+      const locked = new Promise<void>((resolve) => {
+        validationLocked = resolve
+      })
+      const validation = prisma.$transaction(async (transaction) => {
+        await validateExperienceEditorDubSelections(transaction, {
+          locale: "en",
+          selectors: [
+            {
+              videoId: selectedDub.videoId,
+              languageId: selectedDub.languageId,
+              legacyStreamingUrl: null,
+            },
+          ],
+        })
+        validationLocked()
+        await release
+      })
+      await locked
+
+      try {
+        await expect(
+          prisma.$transaction(async (transaction) => {
+            await transaction.$executeRawUnsafe(
+              "SET LOCAL lock_timeout = '100ms'",
+            )
+            await transaction.$executeRaw(Prisma.sql`
+              UPDATE video_dub
+              SET updated_at = updated_at
+              WHERE id = ${selectedDub.id}
+            `)
+          }),
+        ).rejects.toThrow()
+        await expect(
+          prisma.$transaction(async (transaction) => {
+            await transaction.$executeRawUnsafe(
+              "SET LOCAL lock_timeout = '100ms'",
+            )
+            await transaction.$executeRaw(Prisma.sql`
+              UPDATE video
+              SET updated_at = updated_at
+              WHERE id = ${selectedDub.videoId}
+            `)
+          }),
+        ).rejects.toThrow()
+      } finally {
+        releaseValidation()
+        await validation
+      }
     })
   },
 )
