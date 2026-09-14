@@ -7,6 +7,7 @@ import { PUBLIC_WATCH_LANGUAGE_SLUG_OVERRIDES } from "./language-bcp47-map-codeg
 import {
   isLocale,
   isLocaleSlug,
+  isDeclarableHtmlLangTag,
   isPublicWatchHomeLanguageSlug,
   isPublicWatchLanguageSlug,
   parseAcceptLanguage,
@@ -346,10 +347,146 @@ describe("resolveWatchLocaleIdentity", () => {
   })
 
   it("keeps unsupported audio families in the URL while falling chrome back to English", () => {
+    // FGE-170/W-082: chrome still falls back to English because `aari` has no
+    // message catalog, but the document must declare the CONTENT language, so
+    // htmlLang carries admin's BCP-47 tag (`aiw`) rather than collapsing to
+    // `en`. Before this fix both fields read `en`.
     expect(resolveWatchLocaleIdentity("aari")).toEqual({
+      locale: "en",
+      htmlLang: "aiw",
+    })
+  })
+
+  // FGE-170 / W-082. Only 224 of 2,329 public language slugs ship a
+  // `messages/*.json` catalog. The old guard required
+  // `resolveUiLocale(tag) === locale`, which is only ever satisfiable when a
+  // catalog exists — so for the other ~2,100 slugs the known tag was thrown
+  // away and every page declared itself English and left-to-right.
+  it("declares the content BCP-47 tag for languages that have no UI catalog", () => {
+    expect(resolveUiLocale("ars")).toBeNull()
+    expect(resolveWatchLocaleIdentity("arabic-najdi")).toEqual({
+      locale: "en",
+      htmlLang: "ars",
+    })
+
+    expect(resolveUiLocale("pbt")).toBeNull()
+    expect(resolveWatchLocaleIdentity("pashto-southern")).toEqual({
+      locale: "en",
+      htmlLang: "pbt",
+    })
+
+    expect(resolveUiLocale("prs")).toBeNull()
+    expect(resolveWatchLocaleIdentity("dari")).toEqual({
+      locale: "en",
+      htmlLang: "prs",
+    })
+  })
+
+  // The direction bug W-082 reports is downstream of htmlLang, so it is only
+  // fixed if the tag actually reaches `textDirectionForLocale`. Measured
+  // against this repo's ICU rather than assumed: see the plan's probe table.
+  it("restores right-to-left direction for catalog-less RTL content", () => {
+    for (const slug of ["arabic-najdi", "pashto-southern", "dari"]) {
+      const { htmlLang } = resolveWatchLocaleIdentity(slug)
+      expect(textDirectionForLocale(htmlLang)).toBe("rtl")
+    }
+  })
+
+  // Anti-vacuous companion: a slug with NO resolvable tag must still collapse
+  // to the UI locale. Without this, "always use the tag" would look correct
+  // even if `slugToBcp47Tag` started inventing tags.
+  it("falls back to the UI locale when the slug has no BCP-47 tag at all", () => {
+    expect(slugToBcp47Tag("german")).toBeNull()
+    expect(resolveWatchLocaleIdentity("german")).toEqual({
       locale: "en",
       htmlLang: "en",
     })
+  })
+
+  // A tag `slugToBcp47Tag` returns is not automatically one we may DECLARE.
+  // These four are real values in the generated map today and every one of
+  // them makes `new Intl.Locale(...)` throw, so `<html lang>` must not carry
+  // them. Falsify by removing the `isDeclarableHtmlLangTag` guard: each of
+  // these then renders its raw unparseable string as the document language.
+  it("never declares a generated tag that is not valid BCP-47", () => {
+    // Values are what `slugToBcp47Tag` actually returns, i.e. after
+    // `normalizeBcp47Tag` recases the subtags.
+    const invalidTagSlugs = {
+      hainanese: "nan-CN-46",
+      "javanese-banten": "jv-ID-BT",
+      "huasteco-san-luis-potosi": "hus-MX-slp",
+      "romani-kalderash-western": "rmy-kal",
+    }
+    for (const [slug, rawTag] of Object.entries(invalidTagSlugs)) {
+      // The tag really is what admin emits, and it really is unparseable.
+      expect(slugToBcp47Tag(slug)).toBe(rawTag)
+      expect(() => new Intl.Locale(rawTag)).toThrow(RangeError)
+      // ...so the document falls back to the honest English declaration.
+      expect(resolveWatchLocaleIdentity(slug)).toEqual({
+        locale: "en",
+        htmlLang: "en",
+      })
+    }
+  })
+
+  // `slugToBcp47Tag`'s third branch accepts any tag-SHAPED string so the
+  // internal [htmlLang] segment can be read back off a URL. That must not let
+  // an unknown slug assert a language. `bel` is the sharp case: it is a public
+  // slug whose generated tag is `gdd`, but read as a tag it canonicalizes to
+  // Belarusian — so a stale corpus would confidently declare the wrong one.
+  it("does not declare a tag-shaped string that is not a tag it knows", () => {
+    expect(isDeclarableHtmlLangTag("xyz")).toBe(false)
+    expect(resolveWatchLocaleIdentity("xyz")).toEqual({
+      locale: "en",
+      htmlLang: "en",
+    })
+    expect(new Intl.Locale("bel").toString()).toBe("be")
+    expect(isDeclarableHtmlLangTag("bel")).toBe(false)
+  })
+
+  // The internal [htmlLang] segment is a TAG, not a slug, and the layout
+  // re-resolves it on every render. It has to survive that round trip.
+  it("accepts a known tag read back off the internal route segment", () => {
+    for (const tag of ["ars", "pbt", "prs", "aiw", "pdc"]) {
+      expect(isDeclarableHtmlLangTag(tag)).toBe(true)
+      expect(resolveWatchLocaleIdentity(tag)).toEqual({
+        locale: "en",
+        htmlLang: tag,
+      })
+    }
+  })
+
+  // A bare bracket read would resolve inherited Object members and return the
+  // Object constructor as an "override", giving callers undefined fields.
+  it("does not resolve prototype members as locale identity overrides", () => {
+    for (const key of ["constructor", "__proto__", "toString", "valueOf"]) {
+      expect(resolveWatchLocaleIdentity(key)).toEqual({
+        locale: "en",
+        htmlLang: "en",
+      })
+    }
+  })
+
+  // Regression guard for every identity that already worked. These are the
+  // cases that made the old family check look load-bearing: `en-GB`/`es-419`
+  // pass because the tag's family matches the catalog, and `mey-Latn` returns
+  // early from WATCH_LOCALE_IDENTITY_OVERRIDES before the guard runs.
+  it("leaves already-correct identities byte-identical", () => {
+    const unchanged: Record<string, { locale: string; htmlLang: string }> = {
+      english: { locale: "en", htmlLang: "en" },
+      "english-british": { locale: "en", htmlLang: "en-GB" },
+      "spanish-latin-american": { locale: "es", htmlLang: "es-419" },
+      "arabic-hassaniya": { locale: "mey-Latn", htmlLang: "mey-Latn" },
+      "ar-mey": { locale: "mey-Latn", htmlLang: "mey-Latn" },
+      "bangla-2": { locale: "bn", htmlLang: "bn" },
+      russian: { locale: "ru", htmlLang: "ru" },
+      "mandarin-china": { locale: "zh", htmlLang: "zh" },
+      sindhi: { locale: "sd", htmlLang: "sd" },
+      uyghur: { locale: "ug", htmlLang: "ug" },
+    }
+    for (const [slug, expected] of Object.entries(unchanged)) {
+      expect(resolveWatchLocaleIdentity(slug)).toEqual(expected)
+    }
   })
 
   it("uses imported chrome catalogs for old watch app locales", () => {
@@ -405,9 +542,11 @@ describe("public watch language corpus freshness (FGE-81)", () => {
       expect(isPublicWatchLanguageSlug(slug)).toBe(true)
     }
     expect(slugToBcp47Tag("german-pennsylvania")).toBe("pdc")
+    // FGE-170/W-082: `pdc` has no message catalog, so chrome stays English
+    // while the document declares the content language it actually is.
     expect(resolveWatchLocaleIdentity("german-pennsylvania")).toEqual({
       locale: "en",
-      htmlLang: "en",
+      htmlLang: "pdc",
     })
   })
 })

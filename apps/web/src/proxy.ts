@@ -70,10 +70,25 @@ const DEMO_PREFIXES = new Set([
 ])
 const EXPERIENCE_PREVIEW_PREFIX = "/preview/experience/"
 const WATCH_UNAVAILABLE_SENTINEL_PATH = "/unavailable/404"
+/**
+ * The error sentinels render copy from the `locale` message catalog, so their
+ * document language must be the CHROME language — not the requested content
+ * language. A regional refinement of the same language is still honest
+ * (`es-419` Spanish copy really is Spanish), so keep it; a different language
+ * is not (`aiw` on English recovery copy is the FGE-170 mis-declaration
+ * pointed the other way).
+ */
+function chromeDocumentLang(locale: string, htmlLang: string): string {
+  return resolveUiLocale(htmlLang) === locale ? htmlLang : locale
+}
+
+// Mirrors buildNotFound exactly. Keep the two in lockstep — an entry shape that
+// does not match what buildNotFound emits would make every ordinary 404 fail
+// the admitted-internal-rewrite check.
 const WATCH_ORDINARY_NOT_FOUND_INTERNAL_PATHS = new Set(
   [DEFAULT_LOCALE, ...PUBLIC_WATCH_LANGUAGE_SLUGS].map((languageSlug) => {
     const { locale, htmlLang } = resolveWatchLocaleIdentity(languageSlug)
-    return `/${locale}/${htmlLang}/404`
+    return `/${locale}/${chromeDocumentLang(locale, htmlLang)}/404`
   }),
 )
 
@@ -533,10 +548,15 @@ function buildNotFound(
     "locale" | "htmlLang"
   >,
 ): NextResponse {
+  const locale = identity?.locale ?? DEFAULT_LOCALE
   return rewriteToInternal(request, {
     kind: "rewrite",
-    locale: identity?.locale ?? DEFAULT_LOCALE,
-    htmlLang: identity?.htmlLang ?? DEFAULT_LOCALE,
+    locale,
+    // The 404 sentinel renders `WatchNotFound` copy from the `locale` catalog,
+    // so its document is in the CHROME language. Carrying the raw content tag
+    // would declare English recovery copy as Aari — the FGE-170
+    // mis-declaration pointed the other way.
+    htmlLang: chromeDocumentLang(locale, identity?.htmlLang ?? locale),
     pathname: "/404",
   })
 }
@@ -547,6 +567,9 @@ function buildUnavailableLanguageNotFound(
 ): NextResponse {
   return rewriteToInternal(request, {
     ...decision,
+    // Same reason as buildNotFound: the unavailable-language sentinel renders
+    // chrome-language copy, so it must not declare the content language.
+    htmlLang: chromeDocumentLang(decision.locale, decision.htmlLang),
     internalPathname: WATCH_UNAVAILABLE_SENTINEL_PATH,
   })
 }
