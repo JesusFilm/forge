@@ -15,10 +15,11 @@ import { runGenerateVariantAction } from "@/app/dashboard/experiences/generate-v
 import { buildMediaLibraryBrowserData } from "@/app/dashboard/media/media-library-browser-data"
 import { uploadMediaAssetFromFormData } from "@/app/dashboard/media/upload-media-asset-action"
 import {
+  loadExperienceEditorVideoRows,
   loadVideoCollectionChildren,
-  loadVideoRows,
   videoIdsFromExperienceBlocks,
 } from "@/app/dashboard/live-data"
+import { extractAuthoredVideoDubSelectors } from "@/app/dashboard/experiences/experience-editor/block-helpers"
 import {
   matchesVideoLibraryCategory,
   parseVideoLibraryCategory,
@@ -282,6 +283,9 @@ export default async function ExperienceEditorPage({
     user: principal,
   })
   const editableLocale = draftState.effective
+  const authoredDubSelectors = extractAuthoredVideoDubSelectors(
+    editableLocale.blocks,
+  )
 
   const [
     videoLibrary,
@@ -289,7 +293,8 @@ export default async function ExperienceEditorPage({
     selectedLocaleLanguageId,
     activeLocaleDrafts,
   ] = await Promise.all([
-    loadVideoRows(principal, {
+    loadExperienceEditorVideoRows(principal, {
+      authoredSelectors: authoredDubSelectors,
       includeVideoIds: videoIdsFromExperienceBlocks(editableLocale.blocks),
       preferredLocale: selectedLocale.locale,
     }),
@@ -700,8 +705,9 @@ export default async function ExperienceEditorPage({
     "use server"
     const user = await requireSession()
     if (videoIds.length === 0) return []
-    return loadVideoRows(user, {
-      includeVideoIds: videoIds,
+    return loadExperienceEditorVideoRows(user, {
+      authoredSelectors: authoredDubSelectors,
+      exactVideoIds: videoIds,
       preferredLocale: selectedLocale.locale,
     })
   }
@@ -726,7 +732,8 @@ export default async function ExperienceEditorPage({
     const normalizedQuery = query.trim()
     const category = parseVideoLibraryCategory(context?.category)
     if (!normalizedQuery) {
-      return loadVideoRows(user, {
+      return loadExperienceEditorVideoRows(user, {
+        authoredSelectors: authoredDubSelectors,
         category,
         preferredLocale: selectedLocale.locale,
       })
@@ -752,8 +759,9 @@ export default async function ExperienceEditorPage({
       const videoIds = response.results
         .filter((result) => result.type === "video")
         .map((result) => result.id)
-      const rows = await loadVideoRows(user, {
-        includeVideoIds: videoIds,
+      const rows = await loadExperienceEditorVideoRows(user, {
+        authoredSelectors: authoredDubSelectors,
+        exactVideoIds: videoIds,
         preferredLocale: selectedLocale.locale,
       })
       const filteredRows = rows.filter((row) =>
