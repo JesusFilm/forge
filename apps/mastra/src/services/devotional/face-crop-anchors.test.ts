@@ -3,15 +3,21 @@ import { describe, expect, it } from "vitest"
 import {
   anchorsForShots,
   bgFocusForCards,
+  dominantFaceX,
   stabiliseAnchors,
   type FaceSample,
 } from "./face-crop-anchors"
 
 const sample = (atSec: number, ...cxs: number[]): FaceSample => ({
   atSec,
-  // Largest first: the detector sorts by area and the anchor reads [0].
+  // The detector emits largest-first. The anchor no longer reads [0] -- it
+  // ranks by how long a face is present -- but the order is kept faithful to
+  // what the detector really produces.
   faces: cxs.map((cx, i) => ({ cx, cy: 0.4, area: 0.05 - i * 0.01 })),
 })
+
+/** A face at an explicit size, for the cases where size is what is under test. */
+const face = (cx: number, area: number) => ({ cx, cy: 0.4, area })
 
 describe("anchorsForShots", () => {
   it("anchors each shot on its own faces, not on the whole take", () => {
@@ -180,5 +186,93 @@ describe("stabiliseAnchors", () => {
       shot(6, 9, 0.85),
     ])
     expect(out.map((s) => s.x)).toEqual([0.85, 0.85, 0.85])
+  })
+})
+
+// The reported bug: on two frames of the lamp devotional the crop sat on the
+// listener while Jesus spoke. The rule was "largest face", and in a dialogue
+// the near figure is whoever is listening -- the speaker is further from
+// camera, so smaller -- while the profile cascade locks happily onto a big
+// profile at the edge of frame.
+//
+// The owner's rule replaces it: follow the face that holds the shot longest.
+// Preferring a FRONTAL face was the other candidate and she rejected it for a
+// good reason -- with several people the anchor would hop to whoever last
+// turned toward the lens.
+describe("dominantFaceX", () => {
+  // The listener is near camera for MOST of the shot -- so under the old rule
+  // he is `faces[0]` in the majority of samples and the median lands on him.
+  // The speaker is in every sample. A single-sample intruder would not
+  // discriminate here: the old median already ignored those, which is why the
+  // first version of this test passed against the very bug it was meant to
+  // catch. Falsify by restoring `median(faces[0].cx)` -- it returns 0.85.
+  it("follows the face that holds the shot, not the biggest one", () => {
+    const x = dominantFaceX([
+      { atSec: 0, faces: [face(0.3, 0.02)] },
+      { atSec: 0.5, faces: [face(0.85, 0.09), face(0.3, 0.02)] },
+      { atSec: 1, faces: [face(0.85, 0.09), face(0.3, 0.02)] },
+      { atSec: 1.5, faces: [face(0.85, 0.09), face(0.3, 0.02)] },
+      { atSec: 2, faces: [face(0.3, 0.02)] },
+    ])
+
+    expect(x).toBeCloseTo(0.3, 5)
+  })
+
+  // Her objection to frontal-preference, as a test: two people, the second
+  // turning toward the lens for a stretch in the middle. He is bigger while he
+  // faces us, so the old rule re-aims onto him; the subject who holds the whole
+  // shot must win. Falsify by restoring `median(faces[0].cx)` -- it returns
+  // 0.75, which is the hop she predicted.
+  it("does not hop to whoever just turned toward the lens", () => {
+    const x = dominantFaceX([
+      { atSec: 0, faces: [face(0.25, 0.05)] },
+      { atSec: 0.5, faces: [face(0.25, 0.05), face(0.75, 0.06)] },
+      { atSec: 1, faces: [face(0.25, 0.05), face(0.75, 0.06)] },
+      { atSec: 1.5, faces: [face(0.25, 0.05), face(0.75, 0.06)] },
+      { atSec: 2, faces: [face(0.25, 0.05)] },
+    ])
+
+    expect(x).toBeCloseTo(0.25, 5)
+  })
+
+  // Two detections of ONE person must not read as two people, or a person who
+  // drifts slightly loses to a phantom that never moves.
+  it("keeps one person's small drift as a single face", () => {
+    const x = dominantFaceX([
+      { atSec: 0, faces: [face(0.4, 0.05)] },
+      { atSec: 0.5, faces: [face(0.44, 0.05)] },
+      { atSec: 1, faces: [face(0.47, 0.05)] },
+    ])
+
+    expect(x).toBeCloseTo(0.44, 5)
+  })
+
+  // Two people close together must stay two, or the anchor lands between them
+  // and frames neither.
+  it("keeps two nearby people apart", () => {
+    const x = dominantFaceX([
+      { atSec: 0, faces: [face(0.35, 0.05), face(0.62, 0.05)] },
+      { atSec: 0.5, faces: [face(0.35, 0.05), face(0.62, 0.05)] },
+      { atSec: 1, faces: [face(0.35, 0.05)] },
+    ])
+
+    // The left figure is in all three samples, the right in two.
+    expect(x).toBeCloseTo(0.35, 5)
+  })
+
+  // Equal presence is a real tie in a two-hander. Size breaks it so the choice
+  // is deterministic rather than input-order dependent.
+  it("breaks an equal-presence tie on size", () => {
+    const x = dominantFaceX([
+      { atSec: 0, faces: [face(0.2, 0.03), face(0.8, 0.07)] },
+      { atSec: 0.5, faces: [face(0.2, 0.03), face(0.8, 0.07)] },
+    ])
+
+    expect(x).toBeCloseTo(0.8, 5)
+  })
+
+  it("has no opinion when nobody faces the camera", () => {
+    expect(dominantFaceX([{ atSec: 0, faces: [] }])).toBeNull()
+    expect(dominantFaceX([])).toBeNull()
   })
 })

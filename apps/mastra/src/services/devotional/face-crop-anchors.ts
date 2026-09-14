@@ -136,10 +136,98 @@ const median = (xs: readonly number[]): number => {
 }
 
 /**
- * One anchor per shot: the median horizontal position of the LARGEST face in
- * each sample. Median rather than mean because a false positive on a fold of
- * cloth drags a mean and cannot move a median.
+ * How far a face may travel between two samples and still be read as the same
+ * person. Samples are half a second apart, so a seated speaker moves very
+ * little; two people in a widescreen frame sit well over 0.2 apart. 0.12 is
+ * comfortably inside that gap and comfortably outside one person's own drift.
  */
+const SAME_FACE_TOLERANCE = 0.12
+
+type FaceTrack = {
+  xs: number[]
+  areas: number[]
+  lastCx: number
+  lastCy: number
+}
+
+/**
+ * Group a shot's detections into one track per person.
+ *
+ * A detection joins the nearest open track within `SAME_FACE_TOLERANCE`,
+ * otherwise it opens its own. Nearest-first matters: with two people close
+ * together, "first track within tolerance" would merge them.
+ */
+function trackFaces(samples: ReadonlyArray<FaceSample>): FaceTrack[] {
+  const tracks: FaceTrack[] = []
+  for (const s of samples) {
+    for (const f of s.faces) {
+      let best: FaceTrack | null = null
+      let bestDist = Infinity
+      for (const t of tracks) {
+        const d = Math.hypot(f.cx - t.lastCx, f.cy - t.lastCy)
+        if (d <= SAME_FACE_TOLERANCE && d < bestDist) {
+          best = t
+          bestDist = d
+        }
+      }
+      if (best) {
+        best.xs.push(f.cx)
+        best.areas.push(f.area)
+        best.lastCx = f.cx
+        best.lastCy = f.cy
+      } else {
+        tracks.push({
+          xs: [f.cx],
+          areas: [f.area],
+          lastCx: f.cx,
+          lastCy: f.cy,
+        })
+      }
+    }
+  }
+  return tracks
+}
+
+/**
+ * Where the crop should sit for one shot: the median horizontal position of
+ * the face that is PRESENT LONGEST, not the biggest one.
+ *
+ * Biggest was the first rule and it framed the wrong person. In a dialogue the
+ * near figure is whoever is listening -- the speaker is further from camera and
+ * so smaller -- and the profile cascade is happy to lock onto a large profile
+ * at the edge of frame. Both of the owner's reported frames are that: Jesus
+ * speaking while the crop sat on the listener.
+ *
+ * Longest-present is the owner's rule and it is the steadier one. Preferring a
+ * FRONTAL face was the other candidate and it is worse here: with several
+ * people the anchor would hop to whoever last turned toward the lens.
+ *
+ * It also inherits the old median's resistance to false positives and improves
+ * on it -- Haar's phantoms (a fold of cloth, a patch of wall) flicker in and
+ * out, so they lose on presence as well as being median-proof. A phantom that
+ * sat still for a whole shot could still win; that is the residual risk, and
+ * `MIN_AREA_FRACTION` in the detector is what keeps it small.
+ *
+ * Every candidate here is a real detection, so the anchor can never land on the
+ * back of a head: the cascades only fire on frontal faces and profiles. A shot
+ * with nobody facing camera yields no track at all and falls through to null.
+ */
+export function dominantFaceX(
+  samples: ReadonlyArray<FaceSample>,
+): number | null {
+  const tracks = trackFaces(samples)
+  if (tracks.length === 0) return null
+
+  // Presence first, then size: two tracks seen equally often are separated by
+  // which reads as the subject, and that keeps the choice deterministic.
+  const best = tracks.reduce((a, b) => {
+    if (b.xs.length !== a.xs.length) return b.xs.length > a.xs.length ? b : a
+    return median(b.areas) > median(a.areas) ? b : a
+  })
+  return median(best.xs)
+}
+
+/** One anchor per shot -- see `dominantFaceX` for how the face is chosen. */
 export function anchorsForShots(
   samples: ReadonlyArray<FaceSample>,
   cuts: ReadonlyArray<number>,
@@ -150,18 +238,16 @@ export function anchorsForShots(
   for (let i = 0; i < bounds.length - 1; i++) {
     const startSec = bounds[i]
     const shotEnd = bounds[i + 1]
-    const xs = samples
-      .filter(
-        (s) => s.atSec >= startSec && s.atSec < shotEnd && s.faces.length > 0,
-      )
-      .map((s) => s.faces[0].cx)
+    const inShot = samples.filter(
+      (s) => s.atSec >= startSec && s.atSec < shotEnd && s.faces.length > 0,
+    )
     // No face anywhere in the shot means no anchor: a landscape, or a crowd
     // seen from behind, has none to find, and inventing one is worse than
     // centring.
     shots.push({
       startSec,
       endSec: shotEnd,
-      x: xs.length > 0 ? median(xs) : null,
+      x: dominantFaceX(inShot),
     })
   }
   return shots
