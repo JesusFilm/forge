@@ -935,7 +935,7 @@ export function FloatingSearchProvider({
                   aria-hidden
                   className="h-6 w-6 shrink-0 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]"
                 />
-                <span className="text-base sm:text-sm font-bold tracking-wider whitespace-nowrap uppercase drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]">
+                <span className="text-xs font-bold tracking-[0.14em] whitespace-nowrap uppercase drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)] sm:text-[10px]">
                   {t("library")}
                 </span>
               </Link>
@@ -956,7 +956,7 @@ export function FloatingSearchProvider({
                     : ""
                 } cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[color,transform] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none ${
                   headerLanguageCode
-                    ? "w-auto min-w-[4.25rem] gap-1.5 px-2 md:w-auto md:min-w-[4.75rem]"
+                    ? `${modalChromeHidden ? "" : "-mr-[18.25px]"} w-auto min-w-[4.25rem] gap-1.5 px-2 md:w-auto md:min-w-[4.75rem]`
                     : ""
                 }`}
               >
