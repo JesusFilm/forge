@@ -394,11 +394,12 @@ export function trackFaceAnchors(
   // patience of 1s cost five points of face-in-frame and bought nothing, since
   // the moves it saved were moves that needed making.
   const patience = tuning.patienceSec ?? 0
-  // No enforced dwell. It existed to stop the crop swinging on a dialogue,
-  // and the cut-snapping below does that job better: a move that cannot hide
-  // in a cut is eased instead of cut, so frequency stopped being the thing
-  // that hurts.
-  const dwell = tuning.dwellSec ?? 0
+  // Moves must not land on top of each other. An eased move takes about a
+  // second on screen, and with no spacing the planner put ten of forty-three
+  // steps less than 1.2s apart — one pair 0.06s apart — so glides were being
+  // cut off mid-way and the crop snapped out of them. That, not the speed of
+  // any single move, is what read as jerky.
+  const dwell = tuning.dwellSec ?? 1.6
   // A detection smaller than this is not a face anyone would notice, and
   // treating one as a subject is how the crop ended up on a wall: Haar's
   // phantoms run 0.2-1% of the frame while the real faces here run 2-13%.
@@ -489,6 +490,15 @@ export function trackFaceAnchors(
     // bad samples were exactly that lag. Only when no cut started this shot
     // does it wait for the next one.
     const when = behind ?? ahead ?? at
+    // Spacing is checked against the time the move ACTUALLY lands on, not the
+    // moment the miss was noticed. Snapping can pull a move up to a second
+    // backwards or push it two forwards, and checking the wrong one let moves
+    // land on top of each other anyway — which is how glides kept getting cut
+    // off after the spacing rule was added.
+    if (when - lastMove < dwell) {
+      missingSince = null
+      continue
+    }
     close(when, next, when !== at)
     missingSince = null
   }
@@ -531,12 +541,21 @@ export function bgFocusForCards(
       // holds the old framing into a shot that was judged not to need it.
       const x = shot.x ?? 0.5
       if (last != null && Math.abs(x - last) < 0.001) continue
+      // Does this framing BEGIN inside this card, or was it already in force
+      // when the card opened? Only a beginning is a move.
+      const begins = shot.startSec >= startSec
       steps.push({
         atSec: Math.max(0, Number((shot.startSec - startSec).toFixed(3))),
         x: Number(x.toFixed(4)),
         // A move that could not be put on a cut is eased instead. Snapping it
         // would be a jump in a held shot, which is the one the eye catches.
-        ...(shot.snapped === false ? { ease: true } : {}),
+        //
+        // A framing carried over from before this card is NOT eased: its move
+        // already happened, on the previous card. Marking it would replay the
+        // glide from the card's first frame — the same movement over and over
+        // at every card boundary, which is what the owner was seeing get worse
+        // the longer the glide was made.
+        ...(begins && shot.snapped === false ? { ease: true } : {}),
       })
       last = x
       if (Math.abs(x - 0.5) >= 0.001) movedOffCentre = true

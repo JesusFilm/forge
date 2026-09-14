@@ -3228,24 +3228,32 @@ export function focusAt(
   steps: ReadonlyArray<{ atSec: number; x: number; ease?: boolean }>,
   tSec: number,
 ): number {
+  const eased = (from: number, to: number, at: number, t: number) => {
+    const p = Math.max(0, Math.min(1, (t - at) / FOCUS_EASE_SEC))
+    // easeInOutSine: the gentlest of the standard curves at both ends.
+    return from + (to - from) * (-(Math.cos(Math.PI * p) - 1) / 2)
+  }
+  // Glide from where the crop ACTUALLY is, not from the last step's target. If
+  // a move begins while an earlier glide is still running, starting from that
+  // glide's destination teleports the crop to a place it never reached — a
+  // snap in the middle of what should be smooth. The planner also spaces moves
+  // so this should not arise; this makes it harmless when it does.
   let prev = steps[0].x
   let current = steps[0].x
   let currentAt = steps[0].atSec
   let currentEase = false
   for (const step of steps) {
     if (step.atSec > tSec) break
-    prev = current
+    prev =
+      currentEase && step.atSec < currentAt + FOCUS_EASE_SEC
+        ? eased(prev, current, currentAt, step.atSec)
+        : current
     current = step.x
     currentAt = step.atSec
     currentEase = step.ease === true
   }
   if (!currentEase || tSec >= currentAt + FOCUS_EASE_SEC) return current
-  const p = Math.max(0, Math.min(1, (tSec - currentAt) / FOCUS_EASE_SEC))
-  // easeInOutSine: the gentlest of the standard curves at both ends. Cubic
-  // spends most of its time at speed and brakes late, which is what made a
-  // short move feel like a snap.
-  const e = -(Math.cos(Math.PI * p) - 1) / 2
-  return prev + (current - prev) * e
+  return eased(prev, current, currentAt, tSec)
 }
 
 export function coverObjectPositionX(
