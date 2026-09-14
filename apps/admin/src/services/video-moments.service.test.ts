@@ -7,6 +7,9 @@ const prismaMock = vi.hoisted(() => ({
   videoTranscriptChunk: {
     findMany: vi.fn(),
   },
+  videoMomentEditorial: {
+    findMany: vi.fn(),
+  },
 }))
 
 vi.mock("@/db/client", () => ({
@@ -29,10 +32,21 @@ function chunk(overrides: Record<string, unknown> = {}) {
   }
 }
 
+function beat(overrides: Record<string, unknown> = {}) {
+  return {
+    startSeconds: 12,
+    endSeconds: 201,
+    summary: "An angel tells Mary she will bear the Son of God.",
+    bibleVerses: ["Luke 1:26-38"],
+    ...overrides,
+  }
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   prismaMock.videoTranscript.findFirst.mockResolvedValue(null)
   prismaMock.videoTranscriptChunk.findMany.mockResolvedValue([])
+  prismaMock.videoMomentEditorial.findMany.mockResolvedValue([])
 })
 
 describe("listVideoMoments", () => {
@@ -137,6 +151,134 @@ describe("listVideoMoments", () => {
     prismaMock.videoTranscript.findFirst.mockResolvedValueOnce({ id: "t-1" })
     prismaMock.videoTranscriptChunk.findMany.mockResolvedValueOnce([
       chunk({ contentSummary: "   " }),
+    ])
+
+    const [moment] = await listVideoMoments({ videoId: "v-1" })
+    expect(moment!.summary).toBeNull()
+  })
+})
+
+describe("listVideoMoments — editorial preference (story beats)", () => {
+  it("serves reviewed beats EXCLUSIVELY: the chunk path is never consulted", async () => {
+    // Exclusivity, not mere presence: a reviewed film must never show a
+    // mixed raw/reviewed panel, so the transcript lookup itself must not run.
+    prismaMock.videoMomentEditorial.findMany.mockResolvedValueOnce([
+      beat(),
+      beat({ startSeconds: 201, endSeconds: 350, bibleVerses: [] }),
+    ])
+
+    const moments = await listVideoMoments({ videoId: "v-1" })
+
+    expect(moments).toEqual([
+      {
+        startSeconds: 12,
+        endSeconds: 201,
+        summary: "An angel tells Mary she will bear the Son of God.",
+        bibleVerses: ["Luke 1:26-38"],
+      },
+      {
+        startSeconds: 201,
+        endSeconds: 350,
+        summary: "An angel tells Mary she will bear the Son of God.",
+        bibleVerses: [],
+      },
+    ])
+    expect(prismaMock.videoTranscript.findFirst).not.toHaveBeenCalled()
+    expect(prismaMock.videoTranscriptChunk.findMany).not.toHaveBeenCalled()
+  })
+
+  it("orders beats by beatIndex and projects the same lean field set", async () => {
+    prismaMock.videoMomentEditorial.findMany.mockResolvedValueOnce([beat()])
+
+    await listVideoMoments({ videoId: "v-1" })
+
+    const call = prismaMock.videoMomentEditorial.findMany.mock.calls[0]![0] as {
+      where: unknown
+      orderBy: unknown
+      select: Record<string, boolean>
+    }
+    expect(call.where).toEqual({ videoId: "v-1", languageSlug: "en" })
+    expect(call.orderBy).toEqual({ beatIndex: "asc" })
+    // `question` deliberately absent until phase 2 exposes it on the wire.
+    expect(Object.keys(call.select).sort()).toEqual([
+      "bibleVerses",
+      "endSeconds",
+      "startSeconds",
+      "summary",
+    ])
+  })
+
+  it("keeps the chunk path byte-identical when no editorial rows exist", async () => {
+    // Regression pin for every un-enriched film in the catalog.
+    prismaMock.videoTranscript.findFirst.mockResolvedValueOnce({ id: "t-1" })
+    prismaMock.videoTranscriptChunk.findMany.mockResolvedValueOnce([chunk()])
+
+    const moments = await listVideoMoments({ videoId: "v-1" })
+
+    expect(moments).toEqual([
+      {
+        startSeconds: 30,
+        endSeconds: 60,
+        summary: "Jesus teaches on the hillside",
+        bibleVerses: ["Matthew 5:3-12"],
+      },
+    ])
+  })
+
+  it("walks the full ladder: requested editorial -> requested chunks -> en editorial -> en chunks", async () => {
+    // Spanish request; nothing exists in Spanish, English has editorial beats.
+    prismaMock.videoMomentEditorial.findMany
+      .mockResolvedValueOnce([]) // spanish editorial
+      .mockResolvedValueOnce([beat()]) // en editorial
+    prismaMock.videoTranscript.findFirst.mockResolvedValueOnce(null) // spanish chunks
+
+    const moments = await listVideoMoments({
+      videoId: "v-1",
+      languageSlug: "es",
+    })
+
+    expect(moments).toHaveLength(1)
+    const editorialLangs =
+      prismaMock.videoMomentEditorial.findMany.mock.calls.map(
+        (call) =>
+          (call[0] as { where: { languageSlug: string } }).where.languageSlug,
+      )
+    expect(editorialLangs).toEqual(["es", "en"])
+    // en editorial won, so the en transcript lookup never ran.
+    expect(prismaMock.videoTranscript.findFirst).toHaveBeenCalledTimes(1)
+    expect(prismaMock.videoTranscriptChunk.findMany).not.toHaveBeenCalled()
+  })
+
+  it("prefers requested-language CHUNKS over English editorial (language beats source)", async () => {
+    // A film reviewed only in English still serves Spanish chunks to a
+    // Spanish request — language fidelity outranks editorial polish.
+    prismaMock.videoMomentEditorial.findMany.mockResolvedValueOnce([]) // spanish editorial
+    prismaMock.videoTranscript.findFirst.mockResolvedValueOnce({ id: "t-es" })
+    prismaMock.videoTranscriptChunk.findMany.mockResolvedValueOnce([chunk()])
+
+    const moments = await listVideoMoments({
+      videoId: "v-1",
+      languageSlug: "es",
+    })
+
+    expect(moments).toHaveLength(1)
+    expect(prismaMock.videoMomentEditorial.findMany).toHaveBeenCalledTimes(1)
+    expect(prismaMock.videoTranscriptChunk.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { transcriptId: "t-es" } }),
+    )
+  })
+
+  it("clamps the editorial take with the same [1, MAX] rule", async () => {
+    prismaMock.videoMomentEditorial.findMany.mockResolvedValue([beat()])
+
+    await listVideoMoments({ videoId: "v-1", limit: 100_000 })
+    const call = prismaMock.videoMomentEditorial.findMany.mock.calls.at(-1)!
+    expect((call[0] as { take: number }).take).toBe(MAX_VIDEO_MOMENTS)
+  })
+
+  it("blanks a whitespace-only beat summary to null (one wire shape)", async () => {
+    prismaMock.videoMomentEditorial.findMany.mockResolvedValueOnce([
+      beat({ summary: "   " }),
     ])
 
     const [moment] = await listVideoMoments({ videoId: "v-1" })
