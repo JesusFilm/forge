@@ -3206,15 +3206,33 @@ function Background({
  * object-position has nothing to distribute and the value is inert anyway.
  */
 /**
- * How long an eased crop move takes.
+ * Crop-move speed, in fractions of the SOURCE width per second.
  *
- * Half a second was the first try and the owner read it as abrupt: at that
- * length the move is over before the eye has finished registering it as a
- * move, which is exactly the "sharp" feeling. Just over a second is slow
- * enough to read as the camera reframing and still short enough not to become
- * a pan the viewer sits and watches.
+ * The smart-crop planner in this repo caps its pans at 240 px/s on a 1920-wide
+ * source — 0.125 of the width per second. A fixed DURATION, which is what this
+ * used to be, ignores distance: a short hop crawled and a long one flew, and
+ * the long ones are the moves that read as sharp. Tying time to distance is
+ * the rule that planner already encodes.
+ *
+ * Their number, adopted: the owner has seen footage cropped by that planner
+ * and said it looked right. A typical move here is around 0.4 of the width, so
+ * it now takes about three seconds — slow enough that the eye follows it
+ * rather than catching it.
  */
-export const FOCUS_EASE_SEC = 1.1
+export const FOCUS_SPEED_PER_SEC = 0.125
+/** No move is snappier than this, however short. */
+export const FOCUS_EASE_MIN_SEC = 0.8
+/** ...or slower than this, however far. */
+export const FOCUS_EASE_MAX_SEC = 3.5
+
+/** How long the move from `from` to `to` takes. */
+export function focusEaseSec(from: number, to: number): number {
+  const d = Math.abs(to - from)
+  return Math.min(
+    FOCUS_EASE_MAX_SEC,
+    Math.max(FOCUS_EASE_MIN_SEC, d / FOCUS_SPEED_PER_SEC),
+  )
+}
 
 /**
  * The crop anchor in force at `tSec`, given the card's steps.
@@ -3229,7 +3247,7 @@ export function focusAt(
   tSec: number,
 ): number {
   const eased = (from: number, to: number, at: number, t: number) => {
-    const p = Math.max(0, Math.min(1, (t - at) / FOCUS_EASE_SEC))
+    const p = Math.max(0, Math.min(1, (t - at) / focusEaseSec(from, to)))
     // easeInOutSine: the gentlest of the standard curves at both ends.
     return from + (to - from) * (-(Math.cos(Math.PI * p) - 1) / 2)
   }
@@ -3245,14 +3263,15 @@ export function focusAt(
   for (const step of steps) {
     if (step.atSec > tSec) break
     prev =
-      currentEase && step.atSec < currentAt + FOCUS_EASE_SEC
+      currentEase && step.atSec < currentAt + focusEaseSec(prev, current)
         ? eased(prev, current, currentAt, step.atSec)
         : current
     current = step.x
     currentAt = step.atSec
     currentEase = step.ease === true
   }
-  if (!currentEase || tSec >= currentAt + FOCUS_EASE_SEC) return current
+  if (!currentEase || tSec >= currentAt + focusEaseSec(prev, current))
+    return current
   return eased(prev, current, currentAt, tSec)
 }
 

@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest"
 import {
   cardFadeOpacity,
   focusAt,
-  FOCUS_EASE_SEC,
+  focusEaseSec,
+  FOCUS_EASE_MAX_SEC,
+  FOCUS_EASE_MIN_SEC,
+  FOCUS_SPEED_PER_SEC,
   leadLabelKnots,
 } from "./DevotionalVideo"
 import {
@@ -89,15 +92,34 @@ describe("focusAt", () => {
 
   it("glides into a step that could not be placed on a cut", () => {
     // Cutting the crop inside a held shot is the lurch the owner objected to.
+    const dur = focusEaseSec(0.8, 0.2)
     expect(focusAt(steps, 6)).toBeCloseTo(0.8)
-    const mid = focusAt(steps, 6 + FOCUS_EASE_SEC / 2)
+    const mid = focusAt(steps, 6 + dur / 2)
     expect(mid).toBeLessThan(0.8)
     expect(mid).toBeGreaterThan(0.2)
-    expect(focusAt(steps, 6 + FOCUS_EASE_SEC)).toBeCloseTo(0.2)
+    expect(focusAt(steps, 6 + dur)).toBeCloseTo(0.2)
     expect(focusAt(steps, 20)).toBe(0.2)
   })
 
   it("holds the first framing before any step is due", () => {
     expect(focusAt([{ atSec: 3, x: 0.7 }], 0)).toBe(0.7)
+  })
+})
+
+describe("focusEaseSec", () => {
+  it("gives a longer move more time, so speed stays even", () => {
+    // A fixed duration made short hops crawl and long moves fly, and the long
+    // ones are what read as sharp. Distance sets the clock now, which is the
+    // rule the repo's own smart-crop planner encodes as a pan-speed cap.
+    const near = focusEaseSec(0.5, 0.6)
+    const far = focusEaseSec(0.2, 0.8)
+    expect(far).toBeGreaterThan(near)
+    const speed = (a: number, b: number) => Math.abs(b - a) / focusEaseSec(a, b)
+    expect(speed(0.3, 0.75)).toBeCloseTo(FOCUS_SPEED_PER_SEC, 2)
+  })
+
+  it("never snaps and never turns into a pan", () => {
+    expect(focusEaseSec(0.5, 0.5001)).toBe(FOCUS_EASE_MIN_SEC)
+    expect(focusEaseSec(0, 1)).toBe(FOCUS_EASE_MAX_SEC)
   })
 })

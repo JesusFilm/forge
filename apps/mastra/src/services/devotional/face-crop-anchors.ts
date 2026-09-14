@@ -399,7 +399,15 @@ export function trackFaceAnchors(
   // steps less than 1.2s apart — one pair 0.06s apart — so glides were being
   // cut off mid-way and the crop snapped out of them. That, not the speed of
   // any single move, is what read as jerky.
-  const dwell = tuning.dwellSec ?? 1.6
+  // Must exceed the LONGEST glide the composition can run (3.5s at the adopted
+  // pan speed), or a move lands on one still in flight and the crop snaps out
+  // of it. It doubles as the frequency limit the owner asked for: "the camera
+  // moves too often". At six seconds the background reframes about once every
+  // nine seconds of reflection — thirteen times across the whole piece, down
+  // from twenty-seven. It costs nine points of face-in-frame, and that is the
+  // right way round: a face missed for a few seconds is a worse frame, a
+  // camera that keeps moving is a worse video.
+  const dwell = tuning.dwellSec ?? 6.0
   // A detection smaller than this is not a face anyone would notice, and
   // treating one as a subject is how the crop ended up on a wall: Haar's
   // phantoms run 0.2-1% of the frame while the real faces here run 2-13%.
