@@ -7,6 +7,8 @@ import {
   createContainerSlotLayout,
   createTemplateBlock,
   editorTextFromContentParagraphs,
+  extractAuthoredVideoDubSelectors,
+  mergeVideoLibrarySummaries,
   defaultContainerSlotSpans,
   mediaAssetIdsFromExperienceBlocks,
   normalizeEditorBlocks,
@@ -17,6 +19,10 @@ import {
   type VideoLibraryItem,
   writeContainerSlotSpan,
 } from "./block-helpers"
+import {
+  boundedAuthoredVideoDubSelectors,
+  EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS,
+} from "@/domain/experience-editor-dub-selectors"
 
 const videoLibrary: VideoLibraryItem[] = [
   {
@@ -39,6 +45,122 @@ const videoLibrary: VideoLibraryItem[] = [
 ]
 
 describe("experience editor block helpers", () => {
+  it("extracts every distinct authored dub selector in stable draft order", () => {
+    const selectors = extractAuthoredVideoDubSelectors([
+      {
+        t: "videoHero",
+        videoId: "video-1",
+        languageId: "language-en",
+        streamingUrl: "https://media.example/en.m3u8",
+      },
+      {
+        t: "section",
+        content: [
+          {
+            t: "videoCarousel",
+            items: [
+              { videoId: "video-1", languageId: "language-fr" },
+              { videoId: "video-1", languageId: "language-en" },
+            ],
+          },
+          {
+            t: "container",
+            content: [
+              {
+                t: "video",
+                videoId: "video-2",
+                streamingUrl: "https://media.example/legacy.mpd",
+              },
+            ],
+          },
+        ],
+      },
+    ])
+
+    expect(selectors).toEqual([
+      {
+        videoId: "video-1",
+        languageId: "language-en",
+        legacyStreamingUrl: "https://media.example/en.m3u8",
+      },
+      {
+        videoId: "video-1",
+        languageId: "language-fr",
+        legacyStreamingUrl: null,
+      },
+      {
+        videoId: "video-1",
+        languageId: "language-en",
+        legacyStreamingUrl: null,
+      },
+      {
+        videoId: "video-2",
+        languageId: null,
+        legacyStreamingUrl: "https://media.example/legacy.mpd",
+      },
+    ])
+  })
+
+  it("ignores malformed blocks and selector duplicates without collapsing languages", () => {
+    expect(
+      extractAuthoredVideoDubSelectors([
+        {
+          t: "videoCarousel",
+          items: [
+            { videoId: "video-1", languageId: "language-en" },
+            { videoId: "video-1", languageId: "language-en" },
+            { videoId: "video-1", languageId: "language-es" },
+            { languageId: "language-fr" },
+          ],
+        },
+      ]),
+    ).toEqual([
+      {
+        videoId: "video-1",
+        languageId: "language-en",
+        legacyStreamingUrl: null,
+      },
+      {
+        videoId: "video-1",
+        languageId: "language-es",
+        legacyStreamingUrl: null,
+      },
+    ])
+    expect(extractAuthoredVideoDubSelectors({ not: "blocks" })).toEqual([])
+  })
+
+  it("merges a later authored Dub into an already hydrated video summary", () => {
+    const english = {
+      key: "dub-en",
+      label: "English",
+      languageId: "language-en",
+      languageSlug: "english",
+      bcp47: "en",
+      streamUrl: "https://example.com/en.m3u8",
+      duration: "01:00",
+      durationSeconds: 60,
+    }
+    const french = {
+      ...english,
+      key: "dub-fr",
+      label: "French",
+      languageId: "language-fr",
+      languageSlug: "french",
+      bcp47: "fr",
+      streamUrl: "https://example.com/fr.m3u8",
+    }
+    const merged = mergeVideoLibrarySummaries(
+      [{ ...videoLibrary[0]!, authoredDubs: [english] }],
+      [{ ...videoLibrary[0]!, authoredDubs: [french] }],
+    )
+
+    expect(merged).toHaveLength(1)
+    expect(merged[0]?.authoredDubs?.map((dub) => dub.key)).toEqual([
+      "dub-en",
+      "dub-fr",
+    ])
+  })
+
   it("collects unique managed image ids from nested block content", () => {
     expect(
       mediaAssetIdsFromExperienceBlocks([
@@ -205,6 +327,19 @@ describe("experience editor block helpers", () => {
       t: "videoCarousel",
       title: "Videos",
       items: [{}],
+    })
+  })
+
+  it("retains a non-empty legacy stream selector on routine save", () => {
+    expect(
+      normalizeEditorBlockPayload({
+        t: "video",
+        videoId: "video-1",
+        streamingUrl: "https://example.com/legacy.m3u8",
+      }),
+    ).toMatchObject({
+      videoId: "video-1",
+      streamingUrl: "https://example.com/legacy.m3u8",
     })
   })
 
@@ -636,5 +771,23 @@ describe("experience editor block helpers", () => {
       typeLabel: "Unknown",
       title: "Unsupported block",
     })
+  })
+
+  it("rejects selector work above the save-time ceiling without truncating", () => {
+    const items = Array.from(
+      { length: EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS + 1 },
+      (_, index) => ({
+        videoId: `video-${index}`,
+        languageId: "language-en",
+      }),
+    )
+
+    expect(() =>
+      boundedAuthoredVideoDubSelectors([
+        { t: "videoCarousel", itemsSource: "manual", items },
+      ]),
+    ).toThrow(
+      `at most ${EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS} distinct video audio selections`,
+    )
   })
 })
