@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useRef } from "react"
 import {
   Animated,
-  Easing,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -13,14 +12,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { useNonRouteSheetSuppression } from "../../hooks/useNonRouteSheetSuppression"
 import { useReduceMotion } from "../../hooks/useReduceMotion"
+import { useSlideUpSheet } from "../../hooks/useSlideUpSheet"
 import { BG_COLOR, BLACK, hexToRgba } from "../../lib/color"
 import { FeedbackSheetContent } from "./FeedbackSheetContent"
 import type { FeedbackSheetContext } from "./feedbackFlow"
-
-// The scrim FADES while the panel SLIDES, as in PlayerSettingsSheet: RN's
-// Modal `animationType="slide"` would translate the scrim with the panel.
-const ENTER_MS = 240
-const EXIT_MS = 180
 
 export type FeedbackModalProps = {
   /** KD2/KD8: the player door always has a kind, and usually a video. */
@@ -29,70 +24,32 @@ export type FeedbackModalProps = {
   onClose: () => void
 }
 
-/**
- * The player door's host for the feedback form (KTD4): a component-state RN
- * Modal, because a routed form sheet cannot present over the fullscreen
- * player. The form body is shared with the Profile route; this component owns
- * only the presentation, the R19 dismissal lock, and the R11 suppression.
- */
+/** Player door host for the feedback form (KTD4): a component-state Modal,
+ * since a routed sheet can't cover the fullscreen player. Shares the form body
+ * with the Profile route; owns only presentation, the R19 lock, R11 suppression. */
 export function FeedbackModal({ context, onClose }: FeedbackModalProps) {
   const insets = useSafeAreaInsets()
   const reduceMotion = useReduceMotion()
   // This component exists only while presented, so the flag is constant.
   useNonRouteSheetSuppression(true, "feedbackModal")
 
-  // R19: set while a submission is in flight. A ref, not state: nothing here
-  // renders off it, and a stable `close` keeps the form's own effects from
-  // re-arming on every lock change.
+  // R19: a ref, not state, so `close` stays stable and the form's own effects
+  // do not re-arm on every lock change.
   const dismissLockedRef = useRef(false)
   const handleDismissLockedChange = useCallback((locked: boolean) => {
     dismissLockedRef.current = locked
   }, [])
 
-  // 0 = dismissed, 1 = presented. Drives BOTH the scrim's opacity and the
-  // panel's offset, so they share one clock while animating differently.
-  const progress = useRef(new Animated.Value(0)).current
-  const [panelHeight, setPanelHeight] = useState(0)
-  const closingRef = useRef(false)
-
-  // Presenting waits for the panel's measured height: its offset is expressed
-  // in points, so animating before the layout lands would slide it the wrong
-  // distance. The panel stays parked offscreen until then, one frame at most.
-  useEffect(() => {
-    if (panelHeight === 0 || closingRef.current) return
-    Animated.timing(progress, {
-      toValue: 1,
-      duration: reduceMotion ? 0 : ENTER_MS,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start()
-  }, [panelHeight, progress, reduceMotion])
-
-  // The host unmounts on `onClose`, so the exit must finish first. A timer
-  // fires it, not the animation callback: a native-driver completion never
-  // arrives under jest, and an interrupted animation would strand the sheet.
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const {
+    progress,
+    panelHeight,
+    onPanelLayout,
+    close: runExit,
+  } = useSlideUpSheet(onClose, { reduceMotion })
   const close = useCallback(() => {
-    if (dismissLockedRef.current || closingRef.current) return
-    closingRef.current = true
-    const exitMs = reduceMotion ? 0 : EXIT_MS
-    Animated.timing(progress, {
-      toValue: 0,
-      duration: exitMs,
-      easing: Easing.in(Easing.cubic),
-      useNativeDriver: true,
-    }).start()
-    closeTimerRef.current = setTimeout(onClose, exitMs)
-  }, [onClose, progress, reduceMotion])
-
-  // An unmount from any OTHER path (route pop, player handover) would leave the
-  // timer above pending and fire onClose into a torn-down tree.
-  useEffect(
-    () => () => {
-      if (closeTimerRef.current != null) clearTimeout(closeTimerRef.current)
-    },
-    [],
-  )
+    if (dismissLockedRef.current) return
+    runExit()
+  }, [runExit])
 
   return (
     <Modal
@@ -128,7 +85,7 @@ export function FeedbackModal({ context, onClose }: FeedbackModalProps) {
           pointerEvents="box-none"
         >
           <Animated.View
-            onLayout={(e) => setPanelHeight(e.nativeEvent.layout.height)}
+            onLayout={onPanelLayout}
             style={[
               styles.panel,
               {

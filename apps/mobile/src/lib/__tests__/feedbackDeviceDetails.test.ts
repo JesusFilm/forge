@@ -14,9 +14,8 @@ const mockNative: {
 }
 
 // Getters, not plain values: Babel's namespace interop COPIES the module at
-// import time, so a mutable plain object freezes at its defaults and every
-// case below silently re-tests the null one. A getter descriptor survives the
-// copy, so each read reaches this object.
+// import time. A plain object would freeze at its defaults and each case
+// below would silently re-test null; a getter descriptor survives the copy.
 jest.mock("expo-application", () => ({
   __esModule: true,
   get nativeApplicationVersion() {

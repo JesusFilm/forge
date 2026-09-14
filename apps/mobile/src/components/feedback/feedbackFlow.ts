@@ -42,12 +42,8 @@ export const FEEDBACK_SUCCESS_MESSAGE = "Thank you. We got your feedback."
 export const FEEDBACK_SUCCESS_CLOSE_MS = 1500
 export const FEEDBACK_STEP_FADE_MS = 180
 
-// ── Position and tag text (R6) ─────────────────────────────────────────────
-
-/**
- * `h:mm:ss` once the position passes an hour, `m:ss` below it. The player's own
- * time label omits hours and renders 4324 as "72:04", so it is NOT reused here.
- */
+/** `h:mm:ss` past an hour, `m:ss` below. The player's own time label omits
+ * hours and renders 4324 as "72:04", so it is NOT reused here. */
 export function formatFeedbackPosition(totalSeconds: number): string {
   const whole = Math.floor(totalSeconds)
   const hours = Math.floor(whole / 3600)
@@ -57,10 +53,8 @@ export function formatFeedbackPosition(totalSeconds: number): string {
   return `${hours}:${String(minutes).padStart(2, "0")}:${seconds}`
 }
 
-/**
- * Null on any position U3 would drop from the wire, so the tag never promises a
- * timestamp the submission leaves out.
- */
+/** Null on any position U3 would drop from the wire, so the tag never
+ * promises a timestamp the submission leaves out. */
 export function feedbackPositionLabel(
   positionSeconds: number | null | undefined,
 ): string | null {
@@ -83,8 +77,6 @@ export function feedbackTagText(video: FeedbackVideoContext): string {
     : `About: ${video.title}`
 }
 
-// ── Inline problem copy (R18) ──────────────────────────────────────────────
-
 export type FeedbackProblemField = "message" | "name" | "email"
 
 /** Each sentence carries the bound it enforces, read from U3's constants. */
@@ -105,15 +97,11 @@ export function feedbackProblemText(
     : "Please check this email address."
 }
 
-// ── Device-details disclosure (R9) ─────────────────────────────────────────
-
 export type FeedbackDisclosureRow = { label: string; value: string }
 
-/**
- * The list the disclosure renders AND the fields the submission carries, from
- * one read (AE4). The platform leads because it rides along whatever the switch
- * says; every other row depends on the switch.
- */
+/** The list the disclosure renders AND the fields the submission carries, from
+ * one read (AE4). The platform leads: it rides along whatever the switch says;
+ * every other row depends on the switch. */
 export function feedbackDisclosureRows(
   platform: FeedbackPlatform,
   details: FeedbackDeviceDetails,
@@ -133,8 +121,6 @@ export function feedbackDisclosureHint(
   return `This sends ${rows.map((row) => row.label).join(", ")}.`
 }
 
-// ── The machine ────────────────────────────────────────────────────────────
-
 export type FeedbackPhase =
   | "pickKind"
   | "compose"
@@ -152,10 +138,8 @@ type FeedbackFormFields = {
   problems: FeedbackDraftProblems
 }
 
-/**
- * Step one is the only phase without a kind, so "sending without a kind" is
- * unrepresentable rather than guarded.
- */
+/** Step one is the only phase without a kind, so "sending without a kind" is
+ * unrepresentable rather than guarded. */
 export type FeedbackFlowState = FeedbackFormFields &
   (
     | { phase: "pickKind"; kind: FeedbackKind | null }
@@ -200,11 +184,9 @@ export type FeedbackFlowAction =
   | { type: "sendFailed" }
   | { type: "edit" }
 
-/**
- * Every case checks the phase it may run in and returns the state untouched
- * otherwise. That is what makes Back and the field edits inert while a
- * submission is in flight (R19) without a second guard at each control.
- */
+/** Every case checks its phase and returns the state untouched otherwise.
+ * That is what makes Back and the field edits inert while a submission is in
+ * flight (R19) without a second guard at each control. */
 export function feedbackFlowReducer(
   state: FeedbackFlowState,
   action: FeedbackFlowAction,
@@ -235,6 +217,8 @@ export function feedbackFlowReducer(
       const draft = feedbackDraftOf(state)
       if (!draft) return state
       const found = validateFeedbackDraft(draft)[action.field]
+      // Same reference on a no-op, so a blur that changes nothing bails out.
+      if (found === state.problems[action.field]) return state
       const problems = { ...state.problems }
       if (found) problems[action.field] = found
       else delete problems[action.field]
@@ -287,10 +271,8 @@ export type FeedbackSendDecision =
   | { status: "blocked"; problems: FeedbackDraftProblems }
   | { status: "ready"; draft: FeedbackDraft }
 
-/**
- * KTD7/R18: the phone runs admin's own bounds before the request, so admin
- * never refuses a submission for a problem the person could have fixed.
- */
+/** KTD7/R18: the phone runs admin's own bounds before the request, so admin
+ * never refuses a submission for a problem the person could have fixed. */
 export function decideFeedbackSend(
   state: FeedbackFlowState,
 ): FeedbackSendDecision {

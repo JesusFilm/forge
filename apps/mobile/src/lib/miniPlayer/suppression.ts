@@ -17,11 +17,9 @@ export function routePattern(segments: readonly string[]): string {
   return segments.filter(Boolean).join("/")
 }
 
-/**
- * Every route the app declares with `presentation: "formSheet"`: six group
- * sheets in `app/watch/_layout.tsx` and `app/series/_layout.tsx`, plus the
- * ROOT feedback sheet in `app/_layout.tsx`, which the Profile tab pushes.
- */
+/** Every `presentation: "formSheet"` route: six group sheets in
+ * `watch/_layout.tsx` + `series/_layout.tsx`, plus the ROOT `feedback` sheet
+ * in `app/_layout.tsx` the Profile tab pushes. */
 export const IN_APP_SHEET_ROUTE_PATTERNS = [
   "watch/language",
   "watch/subtitle",
@@ -40,16 +38,9 @@ export function isInAppSheetRoute(segments: readonly string[]): boolean {
   return SHEET_ROUTE_SET.has(routePattern(segments))
 }
 
-/**
- * The sheets that are component state rather than routes: the Library delete
- * confirmation (`src/components/library/DeleteConfirmSheet.tsx`, hosted by
- * `app/(tabs)/library.tsx`), the SDUI quiz modal, the player settings sheet
- * (`src/components/watch/PlayerSettingsSheet.tsx`, hosted by `VideoPlayer.tsx`
- * — a routed form sheet cannot cover the fullscreen player), and the feedback
- * sheet the player door opens from that settings sheet
- * (`src/components/feedback/FeedbackModal.tsx`, same host, same reason; the
- * Profile door is the ROOT `feedback` route above instead).
- */
+/** Component-state sheets, not routes: libraryDeleteConfirm
+ * (`library/DeleteConfirmSheet.tsx`, hosted by `(tabs)/library.tsx`), sduiQuiz,
+ * playerSettings and feedbackModal (both hosted by `VideoPlayer.tsx`). */
 export type NonRouteSheetId =
   | "libraryDeleteConfirm"
   | "sduiQuiz"

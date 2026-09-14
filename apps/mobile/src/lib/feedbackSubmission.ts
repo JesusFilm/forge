@@ -79,19 +79,13 @@ export function validateFeedbackDraft(
   return problems
 }
 
-export function isFeedbackDraftValid(draft: FeedbackDraft): boolean {
-  return Object.keys(validateFeedbackDraft(draft)).length === 0
-}
-
 function clamped(value: string, max: number): string {
   return value.trim().slice(0, max)
 }
 
-/**
- * Truncate what is READ, drop what is FOLLOWED. A clipped title still reads;
- * a clipped slug points at nothing, and admin would refuse the whole
- * submission over a field the person never typed.
- */
+/** Truncate what is READ, drop what is FOLLOWED: a clipped title still reads,
+ * but a clipped slug points at nothing and admin would refuse the whole
+ * submission over a field the person never typed. */
 function safeSlug(value: string | null | undefined): string | undefined {
   const slug = value?.trim()
   if (!slug || !SLUG_PATTERN.test(slug)) return undefined
@@ -145,11 +139,8 @@ export type FeedbackSubmissionArgs = {
   video?: FeedbackVideoContext | null
 }
 
-/**
- * R8: the wire shape carries only what the person typed, tagged, or switched
- * on. Nothing is read from the account, so an empty optional is OMITTED rather
- * than sent blank.
- */
+/** R8: carries only what the person typed, tagged, or switched on. Nothing
+ * is read from the account, so an empty optional is OMITTED, not sent blank. */
 export function buildFeedbackSubmissionInput(
   args: FeedbackSubmissionArgs & { submissionId: string },
 ): FeedbackSubmissionInput {
@@ -171,10 +162,8 @@ export function buildFeedbackSubmissionInput(
   }
 }
 
-/**
- * One outcome, two states. `refusal` rides along for a future reader and NEVER
- * selects different text (KD10) — admin's refusal log is its sink (KTD9).
- */
+/** One outcome, two states. `refusal` rides along for a future reader and
+ * NEVER selects different text (KD10); admin's refusal log is its sink (KTD9). */
 export type FeedbackOutcome =
   | { status: "accepted" }
   | {
@@ -194,13 +183,9 @@ export function classifyFeedbackResult(
   return failed(answer?.refusal ?? null)
 }
 
-/**
- * Sends one submission and resolves an outcome on EVERY path — U4 has a single
- * failure branch, so a rejection here would escape it (R13: no background
- * retry, no queue). A refusal arrives as data on an HTTP 200 and never reaches
- * apolloClient's ErrorLink; a real fault throws and still files its RUM error
- * there before this catch sees it (KTD9).
- */
+/** Resolves on EVERY path: U4 has one failure branch, so a rejection would
+ * escape it (R13). A refusal is data on HTTP 200 and never reaches the
+ * ErrorLink; a real fault throws and files its RUM error before this catch (KTD9). */
 export async function sendFeedback(
   input: FeedbackSubmissionInput,
 ): Promise<FeedbackOutcome> {
@@ -217,11 +202,9 @@ export async function sendFeedback(
   }
 }
 
-/**
- * One draft, one id (KTD8). The sheet creates this when it opens and every
- * Retry reuses it, so a duplicate ticket is VISIBLE rather than silent — there
- * is no server-side dedupe behind it (KD9).
- */
+/** One draft, one id (KTD8). The sheet creates this on open and every Retry
+ * reuses it, so a duplicate ticket is VISIBLE rather than silent; there is no
+ * server-side dedupe behind it (KD9). */
 export type FeedbackSubmissionModel = {
   readonly submissionId: string
   buildInput(args: FeedbackSubmissionArgs): FeedbackSubmissionInput

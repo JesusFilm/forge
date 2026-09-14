@@ -71,13 +71,9 @@ export type FeedbackSheetContentProps = {
   onDismissLockedChange?: (locked: boolean) => void
 }
 
-/**
- * The two-step feedback form (KTD4): pick a kind, then write. One body serves
- * both doors, so it renders no Modal, owns no route, and imports no navigation
- * — the host supplies the presentation and reads `onDismissLockedChange`.
- *
- * R10: English only. The app is not localized today.
- */
+/** Two-step feedback form (KTD4): one body serves both doors — no Modal, no
+ * route, no navigation import; the host supplies presentation. R10: English
+ * only, not localized today. */
 export function FeedbackSheetContent({
   context,
   onClose,

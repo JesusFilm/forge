@@ -1,13 +1,6 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react"
+import { useState, useSyncExternalStore } from "react"
 import {
   Animated,
-  Easing,
   Modal,
   Pressable,
   StyleSheet,
@@ -17,6 +10,7 @@ import {
 import Ionicons from "@expo/vector-icons/Ionicons"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
+import { useSlideUpSheet } from "../../hooks/useSlideUpSheet"
 import {
   BG_COLOR,
   BLACK,
@@ -49,12 +43,6 @@ const QUALITY_LABELS: Record<QualityTier, string> = {
 }
 
 type SheetBody = "root" | "speed" | "quality"
-
-// The scrim FADES while the panel SLIDES. RN's Modal `animationType="slide"`
-// translates its whole subtree, scrim included, which reads as a dark sheet
-// dragged up the screen with a hard moving edge instead of the room dimming.
-const ENTER_MS = 240
-const EXIT_MS = 180
 
 const REPORT_PROBLEM_LABEL = "Report a problem with this video"
 
@@ -89,51 +77,8 @@ export function PlayerSettingsSheet({
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot)
   const insets = useSafeAreaInsets()
   const [body, setBody] = useState<SheetBody>("root")
-
-  // 0 = dismissed, 1 = presented. Drives BOTH the scrim's opacity and the
-  // panel's offset, so they share one clock while animating differently.
-  const progress = useRef(new Animated.Value(0)).current
-  const [panelHeight, setPanelHeight] = useState(0)
-  const closingRef = useRef(false)
-
-  // Presenting waits for the panel's measured height: its offset is expressed
-  // in points, so animating before the layout lands would slide it the wrong
-  // distance. The panel stays parked offscreen until then, one frame at most.
-  useEffect(() => {
-    if (panelHeight === 0 || closingRef.current) return
-    Animated.timing(progress, {
-      toValue: 1,
-      duration: ENTER_MS,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start()
-  }, [panelHeight, progress])
-
-  // The host unmounts this component on `onClose`, so the exit has to finish
-  // BEFORE that call. The timer — not the animation callback — is what fires
-  // it: a native-driver completion never arrives under jest, and an animation
-  // interrupted on-device would otherwise strand the sheet open forever.
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const close = useCallback(() => {
-    if (closingRef.current) return
-    closingRef.current = true
-    Animated.timing(progress, {
-      toValue: 0,
-      duration: EXIT_MS,
-      easing: Easing.in(Easing.cubic),
-      useNativeDriver: true,
-    }).start()
-    closeTimerRef.current = setTimeout(onClose, EXIT_MS)
-  }, [onClose, progress])
-
-  // An unmount from any OTHER path (route pop, player handover) would leave the
-  // timer above pending and fire onClose into a torn-down tree.
-  useEffect(
-    () => () => {
-      if (closeTimerRef.current != null) clearTimeout(closeTimerRef.current)
-    },
-    [],
-  )
+  const { progress, panelHeight, onPanelLayout, close } =
+    useSlideUpSheet(onClose)
 
   const qualityAvailable =
     !castActive && supportsQualityConstraint(streamingUrl)
@@ -266,7 +211,7 @@ export function PlayerSettingsSheet({
           accessibilityLabel="Dismiss settings"
         />
         <Animated.View
-          onLayout={(e) => setPanelHeight(e.nativeEvent.layout.height)}
+          onLayout={onPanelLayout}
           style={[
             styles.panel,
             { paddingBottom: Math.max(insets.bottom, 12) },

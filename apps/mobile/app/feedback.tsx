@@ -3,12 +3,8 @@ import { useNavigation, useRouter } from "expo-router"
 
 import { FeedbackSheetContent } from "../src/components/feedback/FeedbackSheetContent"
 
-/**
- * The Profile door (KTD4/R1). It is a ROOT form-sheet route, so the Profile tab
- * can push it, and it passes no context, so the sheet opens on step one.
- *
- * R3: the form needs no session, so the route is the same signed in or out.
- */
+/** The Profile door (KTD4/R1): a ROOT form-sheet route with no context, so it
+ * opens on step one. R3: needs no session, so it's the same signed in or out. */
 export default function FeedbackSheetRoute() {
   const router = useRouter()
   const navigation = useNavigation()

@@ -510,10 +510,9 @@ describe("sendFeedback", () => {
 // KTD9. A refusal is DATA on an HTTP 200, so it never reaches apolloClient's
 // ErrorLink and cannot feed the Datadog triage sweep.
 describe("refusals never reach RUM", () => {
-  // The load-bearing half. Asserting "no report" over the classifier alone
-  // could not fail — nothing in that path can call the reporter. This proves
-  // the reporter IS live for this operation name, so the silence above is the
-  // refusal's doing and not a blanket exemption like RecordWatchSearchEvent's.
+  // Load-bearing: nothing in the classifier path could call the reporter, so
+  // this proves it IS live for this op — the silence above is the refusal's
+  // doing, not a blanket exemption like RecordWatchSearchEvent's.
   it("still reports a thrown GraphQL error for the same operation", () => {
     reportGraphqlOperationError(
       new CombinedGraphQLErrors({ errors: [{ message: "boom" }] }),

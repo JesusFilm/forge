@@ -22,10 +22,8 @@ export const SUBMIT_FEEDBACK = adminGraphql(`
   }
 `)
 
-/**
- * The fleet-bearer allowlist in `authHeaders.ts` matches on this exact string.
- * `__tests__/authHeaders.test.ts` pins it to the document above.
- */
+/** The fleet-bearer allowlist in `authHeaders.ts` matches on this exact
+ * string; `__tests__/authHeaders.test.ts` pins it to the document above. */
 export const SUBMIT_FEEDBACK_OPERATION_NAME = "SubmitFeedback"
 
 type SubmitFeedbackVariables = AdminVariablesOf<typeof SUBMIT_FEEDBACK>
@@ -41,10 +39,8 @@ export type FeedbackDeviceDetails = NonNullable<
 export type FeedbackSubmissionAnswer = SubmitFeedbackResult["submitFeedback"]
 export type FeedbackRefusal = NonNullable<FeedbackSubmissionAnswer["refusal"]>
 
-/**
- * Tile order for the kind step. Typed against the derived union, so a lowercase
- * or misspelled value cannot compile.
- */
+/** Tile order for the kind step. Typed against the derived union, so a
+ * lowercase or misspelled value cannot compile. */
 export const FEEDBACK_KINDS = [
   "BROKEN",
   "IDEA",

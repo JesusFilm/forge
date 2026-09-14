@@ -39,6 +39,8 @@ import { AccessibilityInfo, Animated } from "react-native"
 
 import { FeedbackSheetContent } from "../FeedbackSheetContent"
 import {
+  FEEDBACK_COMPOSE_HEADING,
+  FEEDBACK_PICK_KIND_HEADING,
   FEEDBACK_STEP_FADE_MS,
   FEEDBACK_SUCCESS_CLOSE_MS,
   FEEDBACK_SUCCESS_MESSAGE,
@@ -235,7 +237,7 @@ async function composeAndSend(renderer: TestInstance, message = VALID_MESSAGE) {
 describe("step one (R4, R5)", () => {
   it("opens on the kind tiles with nothing selected, then moves to step two", async () => {
     const { renderer } = await render()
-    expect(hasText(renderer, "What would you like to tell us?")).toBe(true)
+    expect(hasText(renderer, FEEDBACK_PICK_KIND_HEADING)).toBe(true)
     for (const label of [
       "Something's broken",
       "I have an idea",
@@ -247,7 +249,7 @@ describe("step one (R4, R5)", () => {
     }
 
     await press(pressableByLabel(renderer, "I have an idea"))
-    expect(hasText(renderer, "Tell us more")).toBe(true)
+    expect(hasText(renderer, FEEDBACK_COMPOSE_HEADING)).toBe(true)
     expect(hasText(renderer, "I have an idea")).toBe(true)
   })
 
@@ -257,7 +259,7 @@ describe("step one (R4, R5)", () => {
     await type(renderer, "Your message", VALID_MESSAGE)
 
     await press(pressableByLabel(renderer, "Back"))
-    expect(hasText(renderer, "What would you like to tell us?")).toBe(true)
+    expect(hasText(renderer, FEEDBACK_PICK_KIND_HEADING)).toBe(true)
     expect(
       pressableByLabel(renderer, "Something else").props.accessibilityState,
     ).toEqual({ selected: true })
@@ -274,11 +276,11 @@ describe("step one (R4, R5)", () => {
     expect(announce).not.toHaveBeenCalled()
 
     await press(pressableByLabel(renderer, "Something's broken"))
-    expect(announce).toHaveBeenCalledWith("Tell us more")
+    expect(announce).toHaveBeenCalledWith(FEEDBACK_COMPOSE_HEADING)
 
     announce.mockClear()
     await press(pressableByLabel(renderer, "Back"))
-    expect(announce).toHaveBeenCalledWith("What would you like to tell us?")
+    expect(announce).toHaveBeenCalledWith(FEEDBACK_PICK_KIND_HEADING)
   })
 })
 
@@ -304,7 +306,7 @@ describe("reduce motion", () => {
 describe("the video tag (R6, AE1, AE2)", () => {
   it("opens on step two with the kind preset and the position formatted", async () => {
     const { renderer } = await render({ context: PLAYER_CONTEXT })
-    expect(hasText(renderer, "Tell us more")).toBe(true)
+    expect(hasText(renderer, FEEDBACK_COMPOSE_HEADING)).toBe(true)
     expect(hasText(renderer, "Something's broken")).toBe(true)
     expect(hasText(renderer, "About: JESUS at 1:12:04")).toBe(true)
     expect(
@@ -531,7 +533,7 @@ describe("sending (R19, AE10)", () => {
 
     // Back and Close are inert while the submission is in flight.
     await press(pressableByLabel(renderer, "Back"))
-    expect(hasText(renderer, "What would you like to tell us?")).toBe(false)
+    expect(hasText(renderer, FEEDBACK_PICK_KIND_HEADING)).toBe(false)
     await press(pressableByLabel(renderer, "Close"))
     expect(onClose).not.toHaveBeenCalled()
 
