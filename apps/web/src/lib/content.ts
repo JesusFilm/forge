@@ -22,7 +22,15 @@ import {
   watchVideoLocalizedCopyFragment,
   watchVideoShellFragment,
 } from "@/lib/fragments"
-import { slugToBcp47Tag } from "@/lib/locale"
+import {
+  hasPublicWatchLanguageSlugShape,
+  isPublicWatchLanguageSlug,
+  slugToBcp47Tag,
+} from "@/lib/locale"
+import {
+  getWatchRouteManifest,
+  isWatchAudioLanguageSlug,
+} from "@/lib/watch-route-manifest"
 import { WATCH_CACHE_TAGS } from "@/lib/watch-cache-tags"
 import { isWatchBlock } from "@/lib/watch-blocks"
 import { isSeriesRecord } from "@/lib/watch-content-kind"
@@ -1546,17 +1554,72 @@ type ResolveWatchVideoArgs = {
   languageSlug: string
 }
 
-function contentIdentityForWatchLanguage(languageSlugOrLocale: string): {
+type WatchContentIdentity = {
   locale: string
   languageSlug: string | null
-} {
+}
+
+/**
+ * Split the URL's audio-language segment into the two identities admin's
+ * watch queries take: `locale` (BCP-47, drives localized copy) and
+ * `languageSlug` (admin `Language.slug`, drives DUB SELECTION).
+ *
+ * `languageSlug` is the one that matters for playback: admin's
+ * `watchVideoRouteSnapshotBySlug` picks `preferredVariant` by slug and,
+ * when it receives `null`, falls back to the primary-language (English)
+ * dub — after which the page redirects to `/english.html`. So a real
+ * language slug must ALWAYS reach admin as `languageSlug`, even when the
+ * compiled corpus in `language-bcp47-map.ts` has not been regenerated since
+ * admin published it (Purepecha W.H., Toba, Twi and 8 others played English
+ * for that reason on 2026-09-11), and even when the slug happens to equal
+ * its own BCP-47 tag (`luo`, `yao`, `tiv`, ...).
+ *
+ * Decision, mirroring the route classifier in `src/proxy.ts` / the
+ * catch-all page:
+ *   1. compiled corpus knows the slug → pass it through (no manifest hit);
+ *   2. corpus miss → consult the live route manifest (lazy: only on a miss,
+ *      so content resolution never serializes behind the manifest request;
+ *      the proxy has normally just fetched it so this is the 60 s cache).
+ *      Manifest-admitted → pass it through;
+ *   3. otherwise pass it through only when it cannot be read as a BCP-47
+ *      tag. Internal locale keys (`en`, `fr`, `zh-Hans`) keep the legacy
+ *      `languageSlug: null` contract, while a kebab slug like `toba` still
+ *      reaches admin when the manifest is unavailable — admin ignores a
+ *      slug it doesn't know exactly as it ignores `null`, so nothing is
+ *      lost by sending it.
+ */
+async function contentIdentityForWatchLanguage(
+  languageSlugOrLocale: string,
+): Promise<WatchContentIdentity> {
   const mappedLocale = slugToBcp47Tag(languageSlugOrLocale)
-  const hasExactSlug =
-    mappedLocale != null && mappedLocale !== languageSlugOrLocale
-  return {
-    locale: mappedLocale ?? languageSlugOrLocale,
-    languageSlug: hasExactSlug ? languageSlugOrLocale : null,
+  const locale = mappedLocale ?? languageSlugOrLocale
+
+  if (isPublicWatchLanguageSlug(languageSlugOrLocale)) {
+    return { locale, languageSlug: languageSlugOrLocale }
   }
+  if (!hasPublicWatchLanguageSlugShape(languageSlugOrLocale)) {
+    return { locale, languageSlug: null }
+  }
+
+  const manifest = await getWatchRouteManifest().catch(() => null)
+  const manifestAdmitted = isWatchAudioLanguageSlug(
+    languageSlugOrLocale,
+    manifest,
+  )
+  // At this point the corpus missed, so a non-null `mappedLocale` can only
+  // mean the raw value parsed as a BCP-47 tag.
+  const readsAsBcp47Tag = mappedLocale != null
+  const languageSlug =
+    manifestAdmitted || !readsAsBcp47Tag ? languageSlugOrLocale : null
+
+  logWatchServerEvent("watch_content.language_identity.corpus_miss", {
+    languageSlug: languageSlugOrLocale,
+    manifestAdmitted,
+    manifestAvailable: manifest != null,
+    passedThrough: languageSlug != null,
+  })
+
+  return { locale, languageSlug }
 }
 
 function hasItems<T>(items: readonly T[] | null | undefined): boolean {
@@ -1962,7 +2025,9 @@ export const resolveWatchUnavailableRecoveryTarget = cache(
     videoSlug: string,
     requestedLanguageSlug: string,
   ): Promise<WatchUnavailableRecoveryTarget | null> => {
-    const identity = contentIdentityForWatchLanguage(requestedLanguageSlug)
+    const identity = await contentIdentityForWatchLanguage(
+      requestedLanguageSlug,
+    )
     const snapshot = await fetchWatchVideoRouteSnapshot(videoSlug, identity)
     if (!snapshot) return null
 
@@ -2195,7 +2260,7 @@ async function tryResolveWatchVideo(
   videoSlug: string,
   languageSlug: string,
 ): Promise<ResolvedWatchVideo> {
-  const contentIdentity = contentIdentityForWatchLanguage(languageSlug)
+  const contentIdentity = await contentIdentityForWatchLanguage(languageSlug)
   const record = await fetchWatchVideoRecord(
     collectionSlug,
     videoSlug,
@@ -2313,7 +2378,7 @@ const fetchWatchVideoBySlug = cache(
     languageSlug: string,
     subtitleLanguageSlug: string | null = null,
   ): Promise<WatchVideoRecord | null> => {
-    const contentIdentity = contentIdentityForWatchLanguage(languageSlug)
+    const contentIdentity = await contentIdentityForWatchLanguage(languageSlug)
     return fetchWatchVideoRecord(
       "",
       videoSlug,
