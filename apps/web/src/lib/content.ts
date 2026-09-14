@@ -615,11 +615,11 @@ async function getLegacyExperienceBySlug(
   locale: string,
   slug: string,
 ): Promise<NonNullable<WatchExperience> | null> {
-  const result = await client.query({
-    query: GET_LEGACY_WATCH_EXPERIENCE,
-    variables: { locale, slug },
-    fetchPolicy: "no-cache",
-  })
+  const result = await queryExperienceBySlug(
+    GET_LEGACY_WATCH_EXPERIENCE,
+    locale,
+    slug,
+  )
   const error = graphqlError(
     result as { error?: ErrorLike; errors?: unknown[] },
   )

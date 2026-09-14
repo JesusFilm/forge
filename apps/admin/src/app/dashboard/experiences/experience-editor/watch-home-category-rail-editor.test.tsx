@@ -17,7 +17,13 @@ function categoryTiles(categoryIds: string[]): RailTile[] {
 
 function StatefulEditor({ initialTiles }: { initialTiles: RailTile[] }) {
   const [tiles, setTiles] = useState(initialTiles)
-  return <WatchHomeCategoryRailEditor tiles={tiles} onChange={setTiles} />
+  return (
+    <WatchHomeCategoryRailEditor
+      tiles={tiles}
+      onChange={setTiles}
+      onCopyChange={() => undefined}
+    />
+  )
 }
 
 function renderEditorDom(initialTiles: RailTile[]) {
@@ -185,6 +191,7 @@ describe("WatchHomeCategoryRailEditor", () => {
       <WatchHomeCategoryRailEditor
         tiles={categoryTiles(["jesus", "family"])}
         onChange={() => undefined}
+        onCopyChange={() => undefined}
       />,
     )
 
@@ -253,6 +260,7 @@ describe("WatchHomeCategoryRailEditor", () => {
       <WatchHomeCategoryRailEditor
         tiles={categoryTiles([WATCH_HOME_CATEGORY_CATALOG[0].id])}
         onChange={() => undefined}
+        onCopyChange={() => undefined}
       />,
     )
 

@@ -62,7 +62,7 @@ type WatchHomeCategoryRailEditorProps = {
   tiles: readonly RailTile[]
   onChange: (tiles: RailTile[]) => void
   copy?: WatchHomeCategoryRailCopy
-  onCopyChange?: (field: keyof WatchHomeCategoryRailCopy, value: string) => void
+  onCopyChange: (field: keyof WatchHomeCategoryRailCopy, value: string) => void
 }
 
 export type WatchHomeCategoryRailCopy = {
@@ -172,7 +172,7 @@ export function WatchHomeCategoryRailEditor({
   tiles,
   onChange,
   copy = {},
-  onCopyChange = () => undefined,
+  onCopyChange,
 }: WatchHomeCategoryRailEditorProps) {
   const helpId = useId()
   const fieldId = useId()

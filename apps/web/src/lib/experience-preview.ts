@@ -503,13 +503,13 @@ async function runPreviewTier(
  * Capability-only preview fetch. The token stays server-side, the response is
  * never written to Apollo's cache, and failures do not include the token.
  *
- * Three tiers, one retry per independent schema-lag axis:
+ * Two independent schema-lag axes are retried before the legacy tier:
  *
- *   1. shape + preview titles  — every current deploy
- *   2. shape only              — Admin predates `previewResolvedTitle`
- *   3. legacy selection        — Admin predates WatchHomeCategoryRailBlock
+ *   - category-rail copy       — Admin predates the four copy fields
+ *   - preview titles           — Admin predates `previewResolvedTitle`
+ *   - legacy selection         — Admin predates WatchHomeCategoryRailBlock
  *
- * Both tier-2 and tier-3 render exactly what Web rendered before their
+ * Every fallback renders exactly what Web rendered before its
  * respective features shipped, so a deploy window degrades rather than
  * serving an error page.
  */
