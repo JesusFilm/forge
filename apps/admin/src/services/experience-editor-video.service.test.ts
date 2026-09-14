@@ -420,9 +420,10 @@ describe("bounded experience editor video summaries", () => {
       dubInventory: { status: "not-loaded" },
     })
     expect(sqlText(raw)).toMatch(/language_winners AS MATERIALIZED/)
-    expect(sqlText(raw)).toMatch(/count\(\*\)::bigint AS language_count/)
+    expect(sqlText(raw)).toMatch(/count\(\*\)::bigint[\s\S]*AS language_count/)
+    expect(sqlText(raw)).toMatch(/WHERE d\.video_id = v\.id/)
     expect(sqlText(raw)).toMatch(
-      /row_number\(\) OVER \([\s\S]*PARTITION BY e\.video_id, e\.language_identity[\s\S]*e\.updated_at DESC NULLS LAST, e\.id ASC/,
+      /row_number\(\) OVER \([\s\S]*PARTITION BY e\.language_identity[\s\S]*e\.updated_at DESC NULLS LAST, e\.id ASC/,
     )
     expect(sqlText(raw)).not.toMatch(/d\.published/)
   })

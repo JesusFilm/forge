@@ -579,46 +579,6 @@ async function selectExperienceEditorSummaryRows(
           legacy_streaming_url text,
           selector_order integer
         )
-    ),
-    eligible_dubs AS MATERIALIZED (
-      SELECT d.id,
-             d.video_id,
-             d.language_id,
-             d.hls,
-             d.dash,
-             d.share,
-             d.updated_at,
-             l.slug AS language_slug,
-             l.bcp47,
-             l.iso3,
-             COALESCE(
-               NULLIF(lower(btrim(l.slug)), ''),
-               NULLIF(lower(btrim(l.bcp47)), ''),
-               NULLIF(lower(btrim(l.iso3)), ''),
-               NULLIF(lower(btrim(COALESCE(l.id, d.language_id))), ''),
-               d.id
-             ) AS language_identity
-      FROM video_dub d
-      JOIN requested r ON r.video_id = d.video_id
-      LEFT JOIN language l ON l.id = d.language_id
-      WHERE d.deleted_at IS NULL
-        AND COALESCE(
-          NULLIF(btrim(d.hls), ''),
-          NULLIF(btrim(d.dash), ''),
-          NULLIF(btrim(d.share), '')
-        ) IS NOT NULL
-    ),
-    language_winners AS MATERIALIZED (
-      SELECT ranked.*
-      FROM (
-        SELECT e.*,
-               row_number() OVER (
-                 PARTITION BY e.video_id, e.language_identity
-                 ORDER BY e.updated_at DESC NULLS LAST, e.id ASC
-               ) AS language_rank
-        FROM eligible_dubs e
-      ) ranked
-      WHERE ranked.language_rank = 1
     )
     SELECT v.id AS "videoId",
            v.core_id AS "coreId",
@@ -631,9 +591,9 @@ async function selectExperienceEditorSummaryRows(
            image_pick.url AS "previewImageUrl",
            COALESCE(dub_summary.language_count, 0)::bigint
              AS "playableLanguageCount",
-           default_pick.id AS "defaultDubId",
+           dub_summary.default_dub_id AS "defaultDubId",
            COALESCE(dub_summary.chip_ids, ARRAY[]::text[]) AS "chipDubIds",
-           COALESCE(authored_pick.ids, ARRAY[]::text[]) AS "authoredDubIds",
+           COALESCE(dub_summary.authored_ids, ARRAY[]::text[]) AS "authoredDubIds",
            COALESCE(collection_summary.child_count, 0)::bigint AS "childCount",
            COALESCE(collection_summary.preview_items, '[]'::jsonb)
              AS "collectionPreviewItems",
@@ -682,57 +642,106 @@ async function selectExperienceEditorSummaryRows(
       LIMIT 1
     ) image_pick ON TRUE
     LEFT JOIN LATERAL (
-      SELECT count(*)::bigint AS language_count,
-             (array_agg(lw.id ORDER BY lw.updated_at DESC NULLS LAST, lw.id ASC))[1:${EXPERIENCE_EDITOR_LANGUAGE_CHIP_LIMIT}]
-               AS chip_ids
-      FROM language_winners lw
-      WHERE lw.video_id = v.id
-    ) dub_summary ON TRUE
-    LEFT JOIN LATERAL (
-      SELECT e.id
-      FROM eligible_dubs e
-      WHERE e.video_id = v.id
-      ORDER BY CASE WHEN (
-        lower(replace(COALESCE(e.bcp47, ''), '_', '-')) IN (${normalizedLocale}, ${baseLocale})
-        OR lower(replace(COALESCE(e.language_slug, ''), '_', '-')) IN (${normalizedLocale}, ${baseLocale})
-        OR lower(replace(COALESCE(e.iso3, ''), '_', '-')) IN (${normalizedLocale}, ${baseLocale})
-        OR lower(replace(COALESCE(e.bcp47, ''), '_', '-')) LIKE ${`${baseLocale}-%`}
-        OR lower(replace(COALESCE(e.language_slug, ''), '_', '-')) LIKE ${`${baseLocale}-%`}
-      ) THEN 0 ELSE 1 END,
-      CASE WHEN NULLIF(btrim(e.hls), '') IS NOT NULL THEN 0 ELSE 1 END,
-      e.updated_at DESC NULLS LAST,
-      e.id ASC
-      LIMIT 1
-    ) default_pick ON TRUE
-    LEFT JOIN LATERAL (
-      SELECT array_agg(resolved.id ORDER BY resolved.selector_order)
-        FILTER (WHERE resolved.id IS NOT NULL) AS ids
-      FROM (
-        SELECT a.selector_order,
+      WITH eligible_dubs AS MATERIALIZED (
+        SELECT d.id,
+               d.language_id,
+               d.hls,
+               d.dash,
+               d.share,
+               d.updated_at,
+               l.slug AS language_slug,
+               l.bcp47,
+               l.iso3,
                COALESCE(
-                 (
-                   SELECT e.id FROM eligible_dubs e
-                   WHERE e.video_id = a.video_id
-                     AND a.language_id IS NOT NULL
-                     AND e.language_id = a.language_id
+                 NULLIF(lower(btrim(l.slug)), ''),
+                 NULLIF(lower(btrim(l.bcp47)), ''),
+                 NULLIF(lower(btrim(l.iso3)), ''),
+                 NULLIF(lower(btrim(COALESCE(l.id, d.language_id))), ''),
+                 d.id
+               ) AS language_identity
+        FROM video_dub d
+        LEFT JOIN language l ON l.id = d.language_id
+        WHERE d.video_id = v.id
+          AND d.deleted_at IS NULL
+          AND COALESCE(
+            NULLIF(btrim(d.hls), ''),
+            NULLIF(btrim(d.dash), ''),
+            NULLIF(btrim(d.share), '')
+          ) IS NOT NULL
+      ),
+      language_winners AS MATERIALIZED (
+        SELECT ranked.*
+        FROM (
+          SELECT e.*,
+                 row_number() OVER (
+                   PARTITION BY e.language_identity
                    ORDER BY e.updated_at DESC NULLS LAST, e.id ASC
-                   LIMIT 1
-                 ),
-                 (
-                   SELECT e.id FROM eligible_dubs e
-                   WHERE e.video_id = a.video_id
-                     AND a.legacy_streaming_url IS NOT NULL
-                     AND a.legacy_streaming_url IN (
-                       btrim(e.hls), btrim(e.dash), btrim(e.share)
-                     )
-                   ORDER BY e.updated_at DESC NULLS LAST, e.id ASC
-                   LIMIT 1
-                 )
-               ) AS id
+                 ) AS language_rank
+          FROM eligible_dubs e
+        ) ranked
+        WHERE ranked.language_rank = 1
+      ),
+      authored_candidates AS MATERIALIZED (
+        SELECT a.selector_order,
+               e.id,
+               row_number() OVER (
+                 PARTITION BY a.selector_order
+                 ORDER BY CASE
+                   WHEN a.language_id IS NOT NULL
+                     AND e.language_id = a.language_id THEN 0
+                   ELSE 1
+                 END,
+                 e.updated_at DESC NULLS LAST,
+                 e.id ASC
+               ) AS selector_rank
         FROM authored a
+        JOIN eligible_dubs e ON (
+          (a.language_id IS NOT NULL AND e.language_id = a.language_id)
+          OR (
+            a.legacy_streaming_url IS NOT NULL
+            AND a.legacy_streaming_url IN (
+              btrim(e.hls), btrim(e.dash), btrim(e.share)
+            )
+          )
+        )
         WHERE a.video_id = v.id
-      ) resolved
-    ) authored_pick ON TRUE
+      )
+      SELECT (
+               SELECT count(*)::bigint
+               FROM language_winners
+             ) AS language_count,
+             (
+               SELECT array_agg(
+                 chip.id ORDER BY chip.updated_at DESC NULLS LAST, chip.id ASC
+               )
+               FROM (
+                 SELECT lw.id, lw.updated_at
+                 FROM language_winners lw
+                 ORDER BY lw.updated_at DESC NULLS LAST, lw.id ASC
+                 LIMIT ${EXPERIENCE_EDITOR_LANGUAGE_CHIP_LIMIT}
+               ) chip
+             ) AS chip_ids,
+             (
+               SELECT e.id
+               FROM eligible_dubs e
+               ORDER BY CASE WHEN (
+                 lower(replace(COALESCE(e.bcp47, ''), '_', '-')) IN (${normalizedLocale}, ${baseLocale})
+                 OR lower(replace(COALESCE(e.language_slug, ''), '_', '-')) IN (${normalizedLocale}, ${baseLocale})
+                 OR lower(replace(COALESCE(e.iso3, ''), '_', '-')) IN (${normalizedLocale}, ${baseLocale})
+                 OR lower(replace(COALESCE(e.bcp47, ''), '_', '-')) LIKE ${`${baseLocale}-%`}
+                 OR lower(replace(COALESCE(e.language_slug, ''), '_', '-')) LIKE ${`${baseLocale}-%`}
+               ) THEN 0 ELSE 1 END,
+               CASE WHEN NULLIF(btrim(e.hls), '') IS NOT NULL THEN 0 ELSE 1 END,
+               e.updated_at DESC NULLS LAST,
+               e.id ASC
+               LIMIT 1
+             ) AS default_dub_id,
+             (
+               SELECT array_agg(candidate.id ORDER BY candidate.selector_order)
+               FROM authored_candidates candidate
+               WHERE candidate.selector_rank = 1
+             ) AS authored_ids
+    ) dub_summary ON TRUE
     LEFT JOIN LATERAL (
       SELECT count(*)::bigint AS child_count,
              COALESCE(
