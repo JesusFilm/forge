@@ -66,6 +66,51 @@ describe("buildDevotionalManifest", () => {
     headerDate: "Jul 10",
   }
 
+  it("opens the stepper on ONE card carrying the spoken line", () => {
+    const m = buildDevotionalManifest({
+      ...base,
+      settleLine: "Let's slow down and give Scripture our attention.",
+      segments: [
+        ALL[0],
+        {
+          id: "step-read",
+          file: "01c-step-read.mp3",
+          durationSec: 5,
+          text: "Let’s pause and let Scripture speak",
+        },
+        { id: "step-watch", file: "02b-step-watch.mp3", durationSec: 2 },
+        ...ALL.slice(1),
+      ],
+    })
+    const opening = m.cards[1] as Record<string, unknown>
+    expect(opening.kind).toBe("step")
+    expect(opening.stepIndex).toBe(0)
+    // The line is on screen; the light waits for it to be read.
+    expect(opening.headline).toBe("Let’s pause and let Scripture speak")
+    // No second stepper card between it and the scripture.
+    expect((m.cards[2] as Record<string, unknown>).kind).toBe("scripture")
+    // The settle line moved to that card, so the cover must not still show it,
+    // and the cover leaves as soon as the hook is spoken (no held beat).
+    expect(m.cards[0]).not.toHaveProperty("settleLine")
+    expect(m.cards[0]).not.toHaveProperty("holdSec")
+    const laterSteps = m.cards.filter(
+      (c) => c.kind === "step" && Number(c.stepIndex) > 0,
+    )
+    expect(laterSteps.length).toBeGreaterThan(0)
+    for (const c of laterSteps) expect(c).not.toHaveProperty("headline")
+  })
+
+  it("keeps the settle line on the cover when the stepper is off", () => {
+    const m = buildDevotionalManifest({
+      ...base,
+      settleLine: "Let's slow down and give Scripture our attention.",
+    })
+    expect(m.cards[0]).toHaveProperty(
+      "settleLine",
+      "Let's slow down and give Scripture our attention.",
+    )
+  })
+
   it("produces cover→scripture→video→reflection×N→conclusion→questions (no CTA)", () => {
     const m = buildDevotionalManifest(base)
     expect(m.cards.map((c) => c.kind)).toEqual([
@@ -143,7 +188,11 @@ describe("buildDevotionalManifest", () => {
   it("applies localized labels to the reflection + questions cards", () => {
     const m = buildDevotionalManifest({
       ...base,
-      labels: { reflect: "Подумай", askYourself: "Спроси себя", pray: "Помолись" },
+      labels: {
+        reflect: "Подумай",
+        askYourself: "Спроси себя",
+        pray: "Помолись",
+      },
     })
     const refl = m.cards.filter((c) => c.kind === "reflection-focus")
     expect(refl[0].sectionLabel).toBe("Подумай")
@@ -185,14 +234,22 @@ describe("buildDevotionalManifest", () => {
       ...base,
       segments: [
         ...ALL,
-        { id: "reflection-3", file: "07-reflection-3.mp3", durationSec: 9, text: "And he stills it." },
+        {
+          id: "reflection-3",
+          file: "07-reflection-3.mp3",
+          durationSec: 9,
+          text: "And he stills it.",
+        },
       ],
       devotional: {
         ...DEVO,
         reflection: {
           ...DEVO.reflection,
           // half 1 = 2 sentences, half 2 = 1 → act 2 lands at index 2
-          parts: ["He is with you in the boat. Trust him.", "And he stills it."],
+          parts: [
+            "He is with you in the boat. Trust him.",
+            "And he stills it.",
+          ],
         },
       },
       act2: { clipFile: "clip2.mp4", durationSec: 12 },

@@ -90,6 +90,45 @@ const PARAGRAPH_GAP_SEC = 0.6
  * break, and none after the last unit. Each unit is TTS'd separately so the
  * pause is real silence (no `<break>` vowel-stretching).
  */
+/**
+ * Stitch each unit's word times into ONE timeline for the joined segment.
+ *
+ * A segment is TTS'd one sentence at a time and rejoined with real silence
+ * (`joinVarGaps`), so unit 2's words are reported from ITS own zero — using
+ * them as-is would replay the card's reveal from the start halfway through.
+ * Each unit is therefore shifted by everything before it: the spoken length of
+ * the previous units (their last word's end) plus the silence inserted after
+ * each. Returns undefined when any unit is missing alignment, so a card either
+ * gets a whole trustworthy timeline or none.
+ */
+export function mergeUnitWords(
+  audios: ReadonlyArray<VoiceoverAudio>,
+  gaps: ReadonlyArray<number>,
+  /** Playback factor applied to each unit AFTER synthesis (atempo). 0.92 means
+   *  the unit was slowed, so its reported times stretch by 1/0.92. Slowing the
+   *  closing phrase is how the pipeline lands an intonation, and dropping the
+   *  timing over it cost the scripture card its word timing entirely. */
+  tempos: ReadonlyArray<number> = [],
+): VoiceoverAudio["words"] | undefined {
+  if (audios.length === 0) return undefined
+  if (audios.some((a) => !a.words || a.words.length === 0)) return undefined
+  const out: NonNullable<VoiceoverAudio["words"]> = []
+  let offset = 0
+  audios.forEach((a, i) => {
+    const words = a.words!
+    const stretch = 1 / (tempos[i] ?? 1)
+    for (const w of words) {
+      out.push({
+        word: w.word,
+        startSec: w.startSec * stretch + offset,
+        endSec: w.endSec * stretch + offset,
+      })
+    }
+    offset += words[words.length - 1].endSec * stretch + (gaps[i] ?? 0)
+  })
+  return out
+}
+
 export function splitSpokenUnits(
   text: string,
   finalRamp = false,
@@ -136,6 +175,15 @@ export function splitSpokenUnits(
   return { units, gaps }
 }
 
+/**
+ * Seconds of a step card that pass before its narration begins.
+ *
+ * Owner's note from the animated tests: when the light's move and the voice
+ * naming the step started together, the steps read as "blinking" — neither had
+ * a moment of its own. Running the animation ~0.9s ahead fixed it.
+ */
+export const STEP_LEAD_SEC = 0.9
+
 export function buildNarrationSegments(
   d: GeneratedDevotional,
   locale: DevotionalLocale = EN_LOCALE,
@@ -143,9 +191,20 @@ export function buildNarrationSegments(
    *  the daily site edition. A social cut is watched whenever someone finds
    *  it, so naming today's holiday dates the video exactly the way a date
    *  does. */
-  opts: { suppressOccasion?: boolean; settleLine?: string } = {},
+  opts: {
+    suppressOccasion?: boolean
+    settleLine?: string
+    /**
+     * Emit STEP segments (`step-read`/`step-watch`/`step-reflect`/`step-pray`)
+     * carrying the spoken lead-ins, instead of leaving them inline on the host
+     * cards. The stepper screen needs its own audio so its animation can land
+     * before the voice names the step.
+     */
+    steps?: boolean
+  } = {},
 ): NarrationSegment[] {
   const c = locale.connectors
+  const withSteps = opts.steps === true
   const segments: NarrationSegment[] = []
   if (d.title.trim()) {
     segments.push({
@@ -157,6 +216,9 @@ export function buildNarrationSegments(
         locale.spokenDate(d.date),
         opts.suppressOccasion ? null : occasionFor(d.date, locale.lang),
         opts.settleLine ?? null,
+        // With the stepper on, the hook stands alone: the settle line's work
+        // is done by the stepper's opening line one card later.
+        withSteps,
       ),
     })
   }
@@ -165,15 +227,56 @@ export function buildNarrationSegments(
   if (verse) {
     // Spoken reference has numbers spelled out ("глава девятнадцать, стих
     // десять"); the on-screen citation keeps the digits ("От Луки 19:10").
+    const spokenRef = locale.spokenReference(ref)
+    if (withSteps) {
+      // ONE screen, two beats, one segment.
+      //
+      // The opening line and "here's where we're reading today" used to be two
+      // cards, which meant a crossfade between two nearly identical stepper
+      // screens. The owner wants them to be the same screen: the line fills in
+      // with the voice, and the moment it finishes READ lights up under it. A
+      // card plays exactly one audio file, so the two lines are narrated as
+      // one segment and the composition reads the hand-over point off the word
+      // alignment. `display` is the LINE — the part that is also on screen.
+      // No citation on either line (owner): the reference belongs to the
+      // scripture card, so the stepper hands over the moment the voice starts
+      // saying "Luke ten, thirty-six".
+      const intro = c.steps.intro()
+      segments.push({
+        id: "step-read",
+        text: `${ensureTerminal(intro)} ${c.steps.read()}`,
+        display: intro,
+      })
+    }
     segments.push({
       id: "scripture",
-      text: c.scripture(locale.spokenReference(ref), verse),
+      // With steps OFF the lead-ins go back inline, exactly where they used to
+      // live — so the flag changes WHERE a phrase is spoken, never whether it
+      // is. Composed from the same `steps` strings, so the two paths cannot
+      // drift into saying different things.
+      text: withSteps
+        ? c.scripture(spokenRef, verse)
+        : // Steps off: the READ connector still carries the citation, so the
+          // scripture connector is called WITHOUT it (saying it twice was the
+          // whole reason for the empty-ref branch).
+          `${c.steps.read(spokenRef)} ${c.scripture("", verse)} ${c.steps.watch()}`,
     })
+    if (withSteps) {
+      segments.push({ id: "step-watch", text: c.steps.watch(), display: "" })
+    }
   }
-  splitReflection(d.reflection.text.trim()).forEach((chunk, i) => {
+  const chunks = splitReflection(d.reflection.text.trim())
+  if (withSteps && chunks.length > 0) {
+    segments.push({ id: "step-reflect", text: c.steps.reflect(), display: "" })
+  }
+  chunks.forEach((chunk, i) => {
     // The reflection-open connector opens the first reflection card only. It is
-    // SPOKEN, never shown — the on-screen `display` is the clean chunk.
-    const text = i === 0 ? c.reflectionOpen(chunk) : chunk
+    // SPOKEN, never shown — the on-screen `display` is the clean chunk. With
+    // steps on, that connector has moved to `step-reflect` and this is just the
+    // chunk.
+    const opened = c.reflectionOpen(chunk)
+    const text =
+      i === 0 && !withSteps ? `${c.steps.reflect()} ${opened}` : opened
     segments.push({ id: `reflection-${i + 1}`, text, display: chunk })
   })
   if (d.conclusion.trim()) {
@@ -186,7 +289,17 @@ export function buildNarrationSegments(
   // Question + invitation-to-pray share ONE card, narrated together.
   const q = d.question.trim()
   const pr = d.prayer.trim()
-  if (q || pr) segments.push({ id: "questions", text: c.questions(q, pr) })
+  if (q || pr) {
+    if (withSteps) {
+      segments.push({ id: "step-pray", text: c.steps.pray(), display: "" })
+    }
+    segments.push({
+      id: "questions",
+      text: withSteps
+        ? c.questions(q, pr)
+        : [c.steps.pray(), c.questions(q, pr)].filter(Boolean).join("\n\n"),
+    })
+  }
   return segments
 }
 
@@ -256,6 +369,8 @@ export type ProducedSegment = {
   id: string
   /** Clean ON-SCREEN text (no spoken connector). */
   text: string
+  /** What the voice actually says — the reuse key (see `audioReuseKey`). */
+  spoken?: string
   audio: VoiceoverAudio
 }
 
@@ -292,11 +407,17 @@ export type ProduceDevotionalAudioDeps = {
    * one-sentence edit re-voiced every card and drained the TTS quota.
    */
   reusable?: Map<string, ProducedSegment>
+  /** Ask ElevenLabs for character-level alignment per segment so each card can
+   *  reveal its caption word by word in step with the voice. Opt-in: it costs
+   *  an extra JSON parse per unit and nothing else in the pipeline needs it. */
+  withTimestamps?: boolean
   music?: typeof generateMusic
   /** Injectable for tests; defaults to reading devo/assets/music. */
   libraryBed?: typeof libraryBed
   /** Leave today's fixed-date occasion out of the spoken cover. */
   suppressOccasion?: boolean
+  /** Emit the step segments (the stepper screen's own narration). */
+  steps?: boolean
   /** Replace the rotated settle line on the cover for this run. */
   settleLine?: string
   /** Use THIS mp3 as the bed, instead of the library or the paid generator.
@@ -334,6 +455,8 @@ export type ProduceDevotionalAudioDeps = {
     bytes: Uint8Array,
     tempo: number,
     tailSec: number,
+    /** Silence prepended before the audio (step cards). */
+    leadSec?: number,
   ) => Promise<Uint8Array>
 }
 
@@ -365,6 +488,11 @@ export async function produceDevotionalAudio(
   const segs = buildNarrationSegments(devotional, locale, {
     suppressOccasion: deps.suppressOccasion ?? false,
     ...(deps.settleLine ? { settleLine: deps.settleLine } : {}),
+    // Must match every OTHER call to this function in a run — the staleness
+    // check and the approval fingerprint both build the same list, and a flag
+    // that reaches them but not here produces a manifest with step cards and
+    // no step audio (or the reverse), silently.
+    ...(deps.steps ? { steps: true } : {}),
   })
   const lastReflectionId = [...segs]
     .reverse()
@@ -397,13 +525,24 @@ export async function produceDevotionalAudio(
             ? "reflection-last"
             : "reflection-mid"
         : seg.id
+      // Keyed on the SPOKEN text, not the displayed one: the two diverge
+      // exactly where a connector moves, and matching on the display replays
+      // audio that says something the current script doesn't.
       const hit = deps.reusable.get(
-        audioReuseKey(role, seg.display ?? seg.text, devotional.voice),
+        audioReuseKey(role, seg.text, devotional.voice),
       )
-      if (hit) {
+      // Reuse is a cost optimization, and it must not quietly cost the caller
+      // the thing they asked for: a cached segment from before word timing
+      // existed has no alignment, and reusing it left its card falling back to
+      // the pace-based reveal with no sign why (the cover did exactly that).
+      // When timestamps were requested, such a segment is re-synthesised.
+      const usable =
+        hit && (!deps.withTimestamps || (hit.audio.words?.length ?? 0) > 0)
+      if (hit && usable) {
         segments.push({
           id: seg.id,
           text: seg.display ?? seg.text,
+          spoken: seg.text,
           audio: hit.audio,
         })
         reused.push(seg.id)
@@ -414,12 +553,19 @@ export async function produceDevotionalAudio(
     const audios: VoiceoverAudio[] = []
     let failed = false
     let failure: SegmentFailure | null = null
+    // Word times describe the audio AS SYNTHESIZED, so every later re-timing
+    // has to be applied to them too: per-unit slowdowns are recorded here and
+    // the whole-segment one below, and both are folded into the merged
+    // timeline. A caption revealed against stale timings is worse than one
+    // revealed at a steady pace, so anything unaccounted for drops the words.
+    const unitTempos: number[] = []
     for (let ui = 0; ui < units.length; ui++) {
       const speak = () =>
         voiceover({
           text: units[ui],
           voice: devotional.voice,
           ...(voiceSettings ? { voiceSettings } : {}),
+          ...(deps.withTimestamps ? { withTimestamps: true } : {}),
         })
       // ACTUALLY retry retryable failures. `voiceover` already classifies
       // 429 / 5xx as `retryable: true`, but that flag was computed and then
@@ -460,6 +606,7 @@ export async function produceDevotionalAudio(
       if (finalityTempo != null && deps.pace) {
         b = await deps.pace(b, finalityTempo, 0)
       }
+      unitTempos.push(finalityTempo != null && deps.pace ? finalityTempo : 1)
       audios.push({ ...r.audio, bytes: b })
     }
     if (failed || audios.length === 0) {
@@ -490,14 +637,36 @@ export async function produceDevotionalAudio(
     // as a whole — slowing the long verse made it sound syllabic; it reads at
     // natural speed, with only "Давайте посмотрим" landing above.)
     let bytes = audio.bytes
+    let segmentStretch = 1
+    // A step card's animation has to land BEFORE the voice names the step.
+    // Baking the lead into the AUDIO (rather than delaying playback in the
+    // composition) keeps the card's length and the delay the same number.
+    if (deps.pace && seg.id.startsWith("step-")) {
+      bytes = await deps.pace(bytes, 1, 0, STEP_LEAD_SEC)
+    }
     if (deps.pace && seg.id === lastReflectionId) {
       bytes = await deps.pace(bytes, LAST_REFLECTION_TEMPO, 0)
+      segmentStretch = 1 / LAST_REFLECTION_TEMPO
     }
+    const merged = mergeUnitWords(audios, gaps, unitTempos)
+    const words =
+      merged && segmentStretch !== 1
+        ? merged.map((w) => ({
+            word: w.word,
+            startSec: w.startSec * segmentStretch,
+            endSec: w.endSec * segmentStretch,
+          }))
+        : merged
     // Store the CLEAN on-screen text (spoken connector stays audio-only).
     segments.push({
       id: seg.id,
       text: seg.display ?? seg.text,
-      audio: { ...audio, bytes },
+      spoken: seg.text,
+      audio: {
+        ...audio,
+        bytes,
+        ...(words && words.length > 0 ? { words } : {}),
+      },
     })
   }
 
@@ -526,7 +695,15 @@ export async function produceDevotionalAudio(
     ? null
     : await (deps.libraryBed ?? libraryBed)(
         devotional.mood,
-        devotional.sequence,
+        // ROTATE PER DEVOTIONAL, not per sequence counter. `pickTrack` rotates
+        // by whatever number it is handed, and this used to hand it
+        // `sequence` alone — which is 0 for every devotional we cut, so every
+        // "hope" episode came out on the SAME bed (the owner heard Good
+        // Samaritan's music again under Parable of the Lamp). The chapter is
+        // what actually differs between two devotionals, so it belongs in the
+        // key; `sequence` stays in it so re-cuts of the SAME chapter still
+        // move to a different bed.
+        devotional.sequence + devotional.clip.index,
       )
   if (fromFile) {
     musicOut = {

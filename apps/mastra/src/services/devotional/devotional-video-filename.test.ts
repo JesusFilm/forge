@@ -1,6 +1,10 @@
+import { mkdtemp, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import path from "node:path"
+
 import { describe, expect, it } from "vitest"
 
-import { devotionalVideoFilename } from "./devotional-render"
+import { devotionalVideoFilename, nextFreePath } from "./devotional-render"
 
 const BASE = {
   clipTitle: "Jesus and Zaccheus",
@@ -52,6 +56,35 @@ describe("devotionalVideoFilename", () => {
   it("does not tag episode 0 or undefined — only a real episode number", () => {
     expect(devotionalVideoFilename({ ...BASE, episode: 0 })).toBe(
       "jesus-and-zaccheus-seq0.mp4",
+    )
+  })
+})
+
+describe("nextFreePath", () => {
+  const dir = () => mkdtemp(path.join(tmpdir(), "devo-nextfree-"))
+
+  it("uses the plain name when nothing is there", async () => {
+    const d = await dir()
+    expect(await nextFreePath(d, "a-seq0.mp4")).toBe(path.join(d, "a-seq0.mp4"))
+  })
+
+  it("never replaces an existing render — it adds the next version", async () => {
+    const d = await dir()
+    await writeFile(path.join(d, "a-seq0.mp4"), "")
+    expect(await nextFreePath(d, "a-seq0.mp4")).toBe(
+      path.join(d, "a-seq0-v2.mp4"),
+    )
+    await writeFile(path.join(d, "a-seq0-v2.mp4"), "")
+    expect(await nextFreePath(d, "a-seq0.mp4")).toBe(
+      path.join(d, "a-seq0-v3.mp4"),
+    )
+  })
+
+  it("keeps the suffix out of the extension", async () => {
+    const d = await dir()
+    await writeFile(path.join(d, "a-seq0-ru-wide.mp4"), "")
+    expect(await nextFreePath(d, "a-seq0-ru-wide.mp4")).toBe(
+      path.join(d, "a-seq0-ru-wide-v2.mp4"),
     )
   })
 })

@@ -40,8 +40,16 @@ export type DevotionalConnectors = {
     /** Replace the rotated settle line for THIS run. Used when a cut has to
      *  avoid a word the card after it already says. */
     settleOverride?: string | null,
+    /** Speak the hook ALONE. With the stepper on, the settle line's job — ask
+     *  the viewer to slow down — belongs to the stepper's own opening line,
+     *  and hearing both back to back says the same thing twice. */
+    omitSettle?: boolean,
   ) => string
-  /** Scripture card, ending with the lead-in to the video clip. */
+  /**
+   * Scripture card. `ref` is spoken here ONLY when the step card didn't say it
+   * (steps on) — with steps off the READ connector still carries it, and this
+   * is called with an empty ref so it isn't said twice.
+   */
   scripture: (ref: string, verse: string) => string
   /** Opens the FIRST reflection card only. */
   reflectionOpen: (chunk: string) => string
@@ -49,6 +57,31 @@ export type DevotionalConnectors = {
   conclusion: (line: string) => string
   /** Question + invitation-to-pray, narrated together on one card. */
   questions: (question: string, prayer: string) => string
+  /**
+   * Spoken on the STEP cards — the stepper screen that names each stage before
+   * it begins (READ / WATCH / REFLECT / PRAY).
+   *
+   * These are the SAME phrases the host cards used to carry inline. They had to
+   * become their own segments: the owner wants the step's light to travel and
+   * land BEFORE the voice names it, and a phrase glued to the end of the
+   * scripture segment ("Let's watch.") leaves no room to play anything before
+   * it. Splitting them is what buys that beat.
+   */
+  steps: {
+    /**
+     * The stepper's OPENING line, spoken over the four stages with none of
+     * them lit yet — the settle line's job, moved onto the screen that shows
+     * the viewer what the next three minutes hold. Returned WITHOUT terminal
+     * punctuation: it is shown on screen as well as spoken.
+     */
+    intro: () => string
+    /** `ref` only when the citation is NOT spoken on the scripture card
+     *  (steps off). With steps on this is called with no argument. */
+    read: (ref?: string) => string
+    watch: () => string
+    reflect: () => string
+    pray: () => string
+  }
 }
 
 export type DevotionalLocale = {
@@ -144,6 +177,22 @@ const EN_SETTLE_LINES = [
   "Let's slow down together before the day takes over.",
 ] as const
 
+/**
+ * The settle line this sequence's cover actually SPEAKS.
+ *
+ * Exported because the manifest needs the exact wording to put it on screen
+ * under the hook — the composition cannot re-derive it, and hardcoding one of
+ * the three would show a line the voice never said on two runs out of three.
+ */
+export function settleLineFor(
+  sequence: number,
+  override?: string | null,
+): string {
+  if (override) return override
+  const n = EN_SETTLE_LINES.length
+  return EN_SETTLE_LINES[((Math.trunc(sequence) % n) + n) % n]
+}
+
 export const EN_LOCALE: DevotionalLocale = {
   lang: "en",
   filmLanguageId: 529,
@@ -164,7 +213,7 @@ export const EN_LOCALE: DevotionalLocale = {
   // English TTS reads "Luke 19:10" fine — no change needed.
   spokenReference: (r) => r,
   connectors: {
-    cover: (hook, sequence, _date, occasion, settleOverride) => {
+    cover: (hook, sequence, _date, occasion, settleOverride, omitSettle) => {
       const occasionLine = occasion ? ` Today is also ${occasion}.` : ""
       // HOOK FIRST, then the settle line. The hook is what stops the scroll, so
       // it cannot wait behind a date; the settle line is what turns a stopped
@@ -175,6 +224,7 @@ export const EN_LOCALE: DevotionalLocale = {
       // watched whenever someone finds it. `_date` stays in the signature
       // because Russian still opens with it.
       // `hook` already arrives with terminal punctuation from the caller.
+      if (omitSettle) return `${hook}${occasionLine}`
       const settle =
         settleOverride ?? EN_SETTLE_LINES[sequence % EN_SETTLE_LINES.length]
       return `${hook}${occasionLine} ${settle}`
@@ -182,14 +232,30 @@ export const EN_LOCALE: DevotionalLocale = {
     // Deliberately does NOT say "scripture" or "passage": the settle line on the
     // cover, spoken seconds earlier, already uses one of those words, and the
     // repetition lands hard when the two are heard back to back.
-    scripture: (ref, verse) =>
-      `Here's where we're reading today. ${ref ? `${ref}. ` : ""}${verse} Let's watch.`,
-    reflectionOpen: (chunk) => `Reflect on this. ${chunk}`,
+    // The lead-ins now live on the step cards (see `steps` below), so the
+    // scripture segment is the verse and nothing else.
+    // The citation is spoken HERE, at the head of the verse, not on the step
+    // card. Owner: the READ step should light up for "Here's where we're
+    // reading today." and hand over to the scripture card the moment the voice
+    // starts naming chapter and verse.
+    scripture: (ref, verse) => (ref ? `${ref}. ${verse}` : verse),
+    reflectionOpen: (chunk) => chunk,
     conclusion: (line) => line,
     questions: (question, prayer) =>
-      [`Here's something to sit with.`, question, prayer]
-        .filter(Boolean)
-        .join("\n\n"),
+      [question, prayer].filter(Boolean).join("\n\n"),
+    steps: {
+      // Owner's wording, and deliberately short: it is read over the four
+      // stages while none of them is lit, and the READ step follows it
+      // immediately.
+      intro: () => `Let’s pause and let Scripture speak`,
+      read: (ref) =>
+        `Here's where we're reading today.${ref ? ` ${ref}.` : ""}`,
+      watch: () => `Let's watch.`,
+      reflect: () => `Reflect on this.`,
+      // Owner's pick over "Here's something to sit with." — that opener said
+      // nothing about prayer, while the card it introduces ends in one.
+      pray: () => `Let's bring this to God.`,
+    },
   },
 }
 
@@ -264,20 +330,33 @@ export const RU_LOCALE: DevotionalLocale = {
     // Russian still opens with the date — the English change (hook first, no
     // date) was made for the English series and has not been reviewed by a
     // native speaker for Russian, so this half is deliberately left alone.
-    cover: (hook, _sequence, date, occasion, _settleOverride) => {
+    cover: (hook, _sequence, date, occasion, _settleOverride, omitSettle) => {
       const occasionLine = occasion ? `Сегодня отмечается ${occasion}.\n\n` : ""
+      if (omitSettle) {
+        return date
+          ? `Сегодня ${date}.\n\n${occasionLine}${hook}`
+          : `${occasionLine}${hook}`
+      }
       return date
         ? `Сегодня ${date}.\n\n${occasionLine}Сделай небольшую паузу. Давай поразмышляем над Божьим Словом.\n\n${hook}`
         : `Давай поразмышляем над Божьим Словом.\n\n${hook}`
     },
-    // The verse is set apart with paragraph breaks (→ pauses), so there is a
-    // clear beat after the verse before the lead-in to the clip.
-    scripture: (ref, verse) =>
-      `Вот отрывок из Писания.${ref ? ` ${ref}.` : ""}\n\n${verse}\n\nДавайте посмотрим.`,
-    reflectionOpen: (chunk) => `Подумай над этим. ${chunk}`,
+    // Lead-ins moved to the step cards, same as English; the citation opens
+    // the verse (see the English note).
+    scripture: (ref, verse) => (ref ? `${ref}. ${verse}` : verse),
+    reflectionOpen: (chunk) => chunk,
     conclusion: (line) => line,
     questions: (question, prayer) =>
-      [`Задумайся вот о чём.`, question, prayer].filter(Boolean).join("\n\n"),
+      [question, prayer].filter(Boolean).join("\n\n"),
+    // FIRST-DRAFT wording, like the rest of the Russian locale — owner (native
+    // speaker) to review before any Russian cut ships.
+    steps: {
+      intro: () => `Давай остановимся и послушаем Писание`,
+      read: (ref) => `Вот отрывок из Писания.${ref ? ` ${ref}.` : ""}`,
+      watch: () => `Давайте посмотрим.`,
+      reflect: () => `Подумай над этим.`,
+      pray: () => `Принесём это Богу.`,
+    },
   },
 }
 

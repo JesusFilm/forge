@@ -61,6 +61,9 @@ export async function slowAndPad(
   bytes: Uint8Array,
   tempo: number,
   tailSec: number,
+  /** Silence prepended BEFORE the audio. Used by the step cards, whose
+   *  transition animation must land before the voice names the step. */
+  leadSec = 0,
 ): Promise<Uint8Array> {
   const tmp = await mkdtemp(path.join(tmpdir(), "devo-slow-"))
   try {
@@ -68,17 +71,59 @@ export async function slowAndPad(
     await writeFile(inp, bytes)
     const slow = path.join(tmp, "slow.mp3")
     await run("ffmpeg", [
-      "-y", "-i", inp, "-filter:a", `atempo=${tempo}`,
-      "-c:a", "libmp3lame", "-b:a", "192k", slow,
+      "-y",
+      "-i",
+      inp,
+      "-filter:a",
+      `atempo=${tempo}`,
+      "-c:a",
+      "libmp3lame",
+      "-b:a",
+      "192k",
+      slow,
     ])
-    const slowed = new Uint8Array(await readFile(slow))
-    // No tail requested → just the slowed audio (used to gently slow a segment
-    // like the scripture reading without adding trailing silence).
+    let slowed: Uint8Array = new Uint8Array(await readFile(slow))
+    if (leadSec > 0) {
+      const lead = path.join(tmp, "lead.mp3")
+      await run("ffmpeg", [
+        "-y",
+        "-f",
+        "lavfi",
+        "-i",
+        "anullsrc=r=44100:cl=stereo",
+        "-t",
+        String(leadSec),
+        "-c:a",
+        "libmp3lame",
+        "-b:a",
+        "192k",
+        lead,
+      ])
+      slowed = new Uint8Array(
+        await joinAudioWithGaps(
+          [new Uint8Array(await readFile(lead)), slowed],
+          0,
+        ),
+      )
+    }
+    // No tail requested → just the (optionally lead-padded) audio. Used to
+    // gently slow a segment like the scripture reading without trailing
+    // silence.
     if (tailSec <= 0) return slowed
     const sil = path.join(tmp, "sil.mp3")
     await run("ffmpeg", [
-      "-y", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo",
-      "-t", String(tailSec), "-c:a", "libmp3lame", "-b:a", "192k", sil,
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      "anullsrc=r=44100:cl=stereo",
+      "-t",
+      String(tailSec),
+      "-c:a",
+      "libmp3lame",
+      "-b:a",
+      "192k",
+      sil,
     ])
     return joinAudioWithGaps([slowed, new Uint8Array(await readFile(sil))], 0)
   } finally {
@@ -108,8 +153,18 @@ export async function joinAudioVarGaps(
       if (i < chunks.length - 1 && gap > 0) {
         const s = path.join(tmp, `s${i}.mp3`)
         await run("ffmpeg", [
-          "-y", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo",
-          "-t", String(gap), "-c:a", "libmp3lame", "-b:a", "192k", s,
+          "-y",
+          "-f",
+          "lavfi",
+          "-i",
+          "anullsrc=r=44100:cl=stereo",
+          "-t",
+          String(gap),
+          "-c:a",
+          "libmp3lame",
+          "-b:a",
+          "192k",
+          s,
         ])
         inputs.push(s)
       }
@@ -117,13 +172,23 @@ export async function joinAudioVarGaps(
     const args: string[] = ["-y"]
     inputs.forEach((f) => args.push("-i", f))
     const pre = inputs
-      .map((_, i) => `[${i}:a]aformat=sample_rates=44100:channel_layouts=stereo[a${i}]`)
+      .map(
+        (_, i) =>
+          `[${i}:a]aformat=sample_rates=44100:channel_layouts=stereo[a${i}]`,
+      )
       .join(";")
     const chain = inputs.map((_, i) => `[a${i}]`).join("")
     const out = path.join(tmp, "out.mp3")
     args.push(
-      "-filter_complex", `${pre};${chain}concat=n=${inputs.length}:v=0:a=1[out]`,
-      "-map", "[out]", "-c:a", "libmp3lame", "-b:a", "192k", out,
+      "-filter_complex",
+      `${pre};${chain}concat=n=${inputs.length}:v=0:a=1[out]`,
+      "-map",
+      "[out]",
+      "-c:a",
+      "libmp3lame",
+      "-b:a",
+      "192k",
+      out,
     )
     await run("ffmpeg", args)
     return new Uint8Array(await readFile(out))
@@ -149,8 +214,18 @@ export async function joinAudioWithGaps(
     if (gapSec > 0) {
       sil = path.join(tmp, "sil.mp3")
       await run("ffmpeg", [
-        "-y", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo",
-        "-t", String(gapSec), "-c:a", "libmp3lame", "-b:a", "192k", sil,
+        "-y",
+        "-f",
+        "lavfi",
+        "-i",
+        "anullsrc=r=44100:cl=stereo",
+        "-t",
+        String(gapSec),
+        "-c:a",
+        "libmp3lame",
+        "-b:a",
+        "192k",
+        sil,
       ])
     }
     const inputs: string[] = []
@@ -161,13 +236,23 @@ export async function joinAudioWithGaps(
     const args: string[] = ["-y"]
     inputs.forEach((f) => args.push("-i", f))
     const pre = inputs
-      .map((_, i) => `[${i}:a]aformat=sample_rates=44100:channel_layouts=stereo[a${i}]`)
+      .map(
+        (_, i) =>
+          `[${i}:a]aformat=sample_rates=44100:channel_layouts=stereo[a${i}]`,
+      )
       .join(";")
     const chain = inputs.map((_, i) => `[a${i}]`).join("")
     const out = path.join(tmp, "out.mp3")
     args.push(
-      "-filter_complex", `${pre};${chain}concat=n=${inputs.length}:v=0:a=1[out]`,
-      "-map", "[out]", "-c:a", "libmp3lame", "-b:a", "192k", out,
+      "-filter_complex",
+      `${pre};${chain}concat=n=${inputs.length}:v=0:a=1[out]`,
+      "-map",
+      "[out]",
+      "-c:a",
+      "libmp3lame",
+      "-b:a",
+      "192k",
+      out,
     )
     await run("ffmpeg", args)
     return new Uint8Array(await readFile(out))

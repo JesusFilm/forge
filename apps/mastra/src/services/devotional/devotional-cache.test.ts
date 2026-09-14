@@ -37,10 +37,17 @@ afterEach(async () => {
 const MALE_D = DEVOTIONAL_VOICES["male-d"]
 const RUSSIAN = DEVOTIONAL_VOICES.russian
 
-function segment(id: string, text: string, voiceId: string = MALE_D) {
+function segment(
+  id: string,
+  text: string,
+  voiceId: string = MALE_D,
+  /** What the voice SAYS, when it differs from what the card shows. */
+  spoken: string = text,
+) {
   return {
     id,
     text,
+    spoken,
     audio: {
       format: "mp3" as const,
       bytes: new Uint8Array([1, 2, 3]),
@@ -122,13 +129,19 @@ describe("loadReusableAudio", () => {
     )
     const reusable = await loadReusableAudio(dir, "male-d")
     expect(
-      reusable.has(audioReuseKey("reflection-first", "First sentence.", "male-d")),
+      reusable.has(
+        audioReuseKey("reflection-first", "First sentence.", "male-d"),
+      ),
     ).toBe(true)
     expect(
-      reusable.has(audioReuseKey("reflection-mid", "Middle sentence.", "male-d")),
+      reusable.has(
+        audioReuseKey("reflection-mid", "Middle sentence.", "male-d"),
+      ),
     ).toBe(true)
     expect(
-      reusable.has(audioReuseKey("reflection-last", "Last sentence.", "male-d")),
+      reusable.has(
+        audioReuseKey("reflection-last", "Last sentence.", "male-d"),
+      ),
     ).toBe(true)
     // Non-reflection segments keep their own id as the role.
     expect(reusable.has(audioReuseKey("cover", "Cover line.", "male-d"))).toBe(
@@ -208,6 +221,53 @@ describe("loadReusableAudio", () => {
         audioReuseKey("reflection-last", "Now the closer.", "male-d"),
       )?.id,
     ).toBe("reflection-3")
+  })
+})
+
+describe("loadReusableAudio — keyed on the SPOKEN text", () => {
+  it("keys a segment by what the voice SAYS, not by what the card shows", async () => {
+    // The connector trap. A reflection card shows its chunk either way, but the
+    // spoken take may carry "Reflect on this." in front of it. Keyed on the
+    // display text the two are indistinguishable — which is how the owner heard
+    // the connector twice, once from the step card and once from a cached
+    // reflection that still had it glued on.
+    await saveCachedAudio(
+      dir,
+      produced([
+        segment(
+          "reflection-1",
+          "He stopped.",
+          MALE_D,
+          "Reflect on this. He stopped.",
+        ),
+      ]),
+    )
+    const reusable = await loadReusableAudio(dir, "male-d")
+    expect(
+      reusable.has(
+        audioReuseKey(
+          "reflection-first",
+          "Reflect on this. He stopped.",
+          "male-d",
+        ),
+      ),
+    ).toBe(true)
+    // The bare chunk is now a MISS: this take says more than that.
+    expect(
+      reusable.has(audioReuseKey("reflection-first", "He stopped.", "male-d")),
+    ).toBe(false)
+  })
+
+  it("DROPS segments cached before the spoken text was recorded", async () => {
+    // What such a take says cannot be known — only what it showed. Reusing it
+    // on the strength of the display text is exactly the bug above, so it is
+    // re-synthesised once instead.
+    await saveCachedAudio(dir, produced([segment("cover", "Cover line.")]))
+    const raw = path.join(dir, "audio", "index.json")
+    const index = JSON.parse(await readFile(raw, "utf8"))
+    for (const seg of index.segments) delete seg.spoken
+    await writeFile(raw, JSON.stringify(index))
+    expect((await loadReusableAudio(dir, "male-d")).size).toBe(0)
   })
 })
 

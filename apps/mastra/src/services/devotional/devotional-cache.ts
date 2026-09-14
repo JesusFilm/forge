@@ -78,10 +78,18 @@ export async function loadCachedAudio(
       segments: {
         id: string
         text: string
+        /** What the voice ACTUALLY SAYS (may carry a connector the screen never
+         *  shows). Absent in caches written before reuse was keyed on it. */
+        spoken?: string
         file: string
         voiceId: string
         model: string
         characterCount: number
+        /** Per-word times from ElevenLabs' alignment. Absent in caches written
+         *  before word timing existed, and in segments whose audio was
+         *  re-timed after synthesis — a card without them simply keeps the
+         *  pace-based caption reveal. */
+        words?: { word: string; startSec: number; endSec: number }[]
       }[]
       music: {
         file: string
@@ -103,12 +111,17 @@ export async function loadCachedAudio(
       segments.push({
         id: s.id,
         text: s.text,
+        ...(s.spoken ? { spoken: s.spoken } : {}),
         audio: {
           format: "mp3" as const,
           bytes,
           voiceId: s.voiceId,
           model: s.model,
           characterCount: s.characterCount,
+          // Carried through reuse: without this a cached segment came back
+          // with no timing and its card silently fell back to the old reveal
+          // (the cover did exactly that on the first word-timing render).
+          ...(s.words && s.words.length > 0 ? { words: s.words } : {}),
         },
       })
     }
@@ -169,10 +182,20 @@ export async function loadCachedAudio(
  */
 export function audioReuseKey(
   role: string,
-  displayText: string,
+  /**
+   * The text the voice SAYS — never the on-screen text.
+   *
+   * This used to be the DISPLAY text, and the two differ exactly where it
+   * matters: a reflection card shows its chunk but may be spoken with a
+   * connector in front of it ("Reflect on this."). Moving that connector onto
+   * its own step card left the display identical, so the key matched and the
+   * old bytes — connector and all — were replayed. The owner heard "Reflect on
+   * this." twice: once from the step card, once from the cached reflection.
+   */
+  spokenText: string,
   voice: string,
 ): string {
-  return `${voice}::${role}::${displayText.trim()}`
+  return `${voice}::${role}::${spokenText.trim()}`
 }
 
 /**
@@ -195,7 +218,13 @@ export function reuseMapFromSegments(
 ): Map<string, ProducedDevotionalAudio["segments"][number]> {
   const out = new Map<string, ProducedDevotionalAudio["segments"][number]>()
   const wantVoiceId = resolveVoiceId(voice)
-  const usable = segments.filter((s) => s.audio.voiceId === wantVoiceId)
+  // Entries with no recorded SPOKEN text predate keying on it, so what they
+  // actually say cannot be known — only what they showed. Reusing them is the
+  // bug above, so they are dropped and re-synthesised once.
+  const usable = segments.filter(
+    (s) =>
+      s.audio.voiceId === wantVoiceId && (s.spoken ?? "").trim().length > 0,
+  )
   // Roles are derived over the USABLE set, so first/last mean what they will
   // mean on THIS run rather than what they meant for another voice's cache.
   const reflections = usable.filter((s) => /^reflection-\d+$/.test(s.id))
@@ -209,7 +238,7 @@ export function reuseMapFromSegments(
           ? "reflection-last"
           : "reflection-mid"
       : s.id
-    out.set(audioReuseKey(role, s.text ?? "", voice), s)
+    out.set(audioReuseKey(role, s.spoken ?? "", voice), s)
   }
   return out
 }
@@ -228,6 +257,23 @@ export async function saveCachedAudio(
   dir: string,
   audio: ProducedDevotionalAudio,
 ): Promise<void> {
+  // THE CACHE IS FOR REAL NARRATION ONLY.
+  //
+  // A silent preview wrote its own silence in here once. The reuse key is
+  // (role, text, voice) and a silent run matches a real one on all three, so
+  // the next render logged "reused 16 cached segment(s)" and staged a
+  // devotional with no narration at all — no error, no warning, -91 dB.
+  //
+  // The guard lives at the cache boundary rather than at the caller because
+  // three separate callers write here, and only one of them was fixed.
+  const synthetic = audio.segments.filter((s) => s.audio.synthetic)
+  if (synthetic.length > 0) {
+    throw new Error(
+      `refusing to cache synthetic narration (${synthetic.length} segment(s), ` +
+        `first "${synthetic[0].id}"): a preview voice must never be reused as ` +
+        `the real thing`,
+    )
+  }
   await mkdir(path.join(dir, "audio"), { recursive: true })
   const segs = []
   for (const s of audio.segments) {
@@ -236,10 +282,14 @@ export async function saveCachedAudio(
     segs.push({
       id: s.id,
       text: s.text,
+      ...(s.spoken ? { spoken: s.spoken } : {}),
       file,
       voiceId: s.audio.voiceId,
       model: s.audio.model,
       characterCount: s.audio.characterCount,
+      ...(s.audio.words && s.audio.words.length > 0
+        ? { words: s.audio.words }
+        : {}),
     })
   }
   let music = null

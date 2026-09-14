@@ -123,10 +123,103 @@ describe("buildNarrationSegments", () => {
     expect(s?.text).not.toMatch(/Today is also/)
   })
 
-  it("includes the scripture connector and reference", () => {
+  it("keeps the lead-ins inline when steps are OFF", () => {
+    // The flag changes WHERE a phrase is spoken, never whether it is. Without
+    // this, turning steps off would silently drop four spoken lines.
     const s = buildNarrationSegments(DEVO).find((x) => x.id === "scripture")
     expect(s?.text).toMatch(/^Here's where we're reading today\. Luke 8:24\. /)
-    expect(s?.text).toMatch(/Let's watch\.$/) // leads into the video card
+    expect(s?.text).toMatch(/Let's watch\.$/)
+  })
+
+  it("moves the lead-ins off the scripture card when steps are ON", () => {
+    // "Let's watch." glued to the END of the verse left no room to play the
+    // step animation before the voice named the step. That is why they moved.
+    const s = buildNarrationSegments(DEVO, undefined, { steps: true }).find(
+      (x) => x.id === "scripture",
+    )
+    expect(s?.text).not.toMatch(/Here's where we're reading/)
+    expect(s?.text).not.toMatch(/Let's watch/)
+  })
+
+  it("emits the four step segments, each carrying its spoken lead-in", () => {
+    const segs = buildNarrationSegments(DEVO, undefined, { steps: true })
+    const byId = new Map(segs.map((x) => [x.id, x]))
+    // ONE opening screen: the line, then the stage, in a single segment — and
+    // no citation on either (owner). The stepper hands over the moment the
+    // voice starts naming chapter and verse.
+    expect(byId.get("step-read")?.text).toBe(
+      "Let’s pause and let Scripture speak. Here's where we're reading today.",
+    )
+    // Only the LINE is on screen; the second sentence is spoken over the
+    // light arriving on READ.
+    expect(byId.get("step-read")?.display).toBe(
+      "Let’s pause and let Scripture speak",
+    )
+    expect(byId.get("scripture")?.text).toMatch(/^Luke 8:24\. /)
+    expect(byId.get("step-watch")?.text).toBe("Let's watch.")
+    expect(byId.get("step-reflect")?.text).toBe("Reflect on this.")
+    expect(byId.get("step-pray")?.text).toBe("Let's bring this to God.")
+    // The later step cards show the stepper and nothing else; only the
+    // opening one has a line on screen.
+    for (const id of ["step-watch", "step-reflect", "step-pray"]) {
+      expect(byId.get(id)?.display).toBe("")
+    }
+  })
+
+  it("orders each step segment immediately BEFORE the card it introduces", () => {
+    const ids = buildNarrationSegments(DEVO, undefined, { steps: true }).map(
+      (x) => x.id,
+    )
+    expect(ids.indexOf("step-read")).toBe(ids.indexOf("scripture") - 1)
+    expect(ids.indexOf("step-watch")).toBe(ids.indexOf("scripture") + 1)
+    expect(ids.indexOf("step-reflect")).toBe(ids.indexOf("reflection-1") - 1)
+    expect(ids.indexOf("step-pray")).toBe(ids.indexOf("questions") - 1)
+  })
+
+  it("opens the stepper with its own line, and takes it off the cover", () => {
+    // The settle line and the stepper's opening line ask for the same thing —
+    // slow down — so with the stepper on only one of them is spoken, and it is
+    // the one that has the four stages on screen behind it.
+    const withSteps = buildNarrationSegments(DEVO, undefined, { steps: true })
+    const byId = new Map(withSteps.map((x) => [x.id, x]))
+    expect(byId.get("step-read")?.text).toMatch(
+      /^Let’s pause and let Scripture speak\./,
+    )
+    expect(byId.get("cover")?.text).not.toMatch(
+      /slow down|sit with|take a moment/i,
+    )
+    // Steps off: the cover keeps its settle line.
+    const without = new Map(buildNarrationSegments(DEVO).map((x) => [x.id, x]))
+    expect(without.get("step-read")).toBeUndefined()
+    expect(without.get("cover")?.text).toMatch(
+      /slow down|sit with|take a moment/i,
+    )
+  })
+
+  it("puts the opening screen between the cover and the scripture", () => {
+    const ids = buildNarrationSegments(DEVO, undefined, { steps: true }).map(
+      (x) => x.id,
+    )
+    expect(ids.indexOf("step-read")).toBe(ids.indexOf("cover") + 1)
+    expect(ids.indexOf("step-read")).toBe(ids.indexOf("scripture") - 1)
+    // It is ONE segment, not two: the line and the stage share a card.
+    expect(ids.filter((i) => i === "step-intro")).toEqual([])
+  })
+
+  it("emits no step segments unless asked", () => {
+    const ids = buildNarrationSegments(DEVO).map((x) => x.id)
+    expect(ids.filter((i) => i.startsWith("step-"))).toEqual([])
+  })
+
+  it("says the citation ONCE, wherever the steps flag puts it", () => {
+    // Steps on: the scripture card opens with it. Steps off: the inline READ
+    // connector still carries it and the verse must not repeat it.
+    const withSteps = buildNarrationSegments(DEVO, undefined, { steps: true })
+    const without = buildNarrationSegments(DEVO)
+    const count = (t: string) => (t.match(/Luke 8:24/g) ?? []).length
+    expect(count(withSteps.find((x) => x.id === "scripture")!.text)).toBe(1)
+    expect(count(withSteps.find((x) => x.id === "step-read")!.text)).toBe(0)
+    expect(count(without.find((x) => x.id === "scripture")!.text)).toBe(1)
   })
 
   it("does not echo the cover's 'Scripture' or 'passage' one card later", () => {
@@ -230,6 +323,34 @@ describe("music library reuse", () => {
       libraryBed: async () => bed,
     })
     expect(out.music?.audio.prompt).toBe("library:hope-2.mp3")
+  })
+
+  it("rotates the bed by CHAPTER, not just the sequence counter", async () => {
+    // Every devotional we cut is sequence 0, so rotating on `sequence` alone
+    // handed the library the same number every time and two different "hope"
+    // episodes came out on the identical bed (owner heard Good Samaritan's
+    // music again under Parable of the Lamp). The rotation key has to tell
+    // two devotionals apart, and the chapter is what differs.
+    const keys: number[] = []
+    const spy = async (_mood: unknown, key: number) => {
+      keys.push(key)
+      return bed
+    }
+    const run = (clipIndex: number) =>
+      produceDevotionalAudio(
+        { ...DEVO, clip: { ...DEVO.clip, index: clipIndex }, sequence: 0 },
+        {
+          voiceover: vi
+            .fn()
+            .mockImplementation(async ({ text }) => okVoice(text)) as never,
+          music: vi.fn().mockResolvedValue(okMusic()) as never,
+          libraryBed: spy as never,
+        },
+      )
+    await run(31) // Good Samaritan
+    await run(18) // Parable of the Lamp
+    expect(keys).toHaveLength(2)
+    expect(keys[0]).not.toBe(keys[1])
   })
 
   it("falls back to generating when the library cannot serve the mood", async () => {

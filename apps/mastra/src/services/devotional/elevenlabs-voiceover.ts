@@ -68,6 +68,12 @@ export const DEFAULT_VOICE_SETTINGS: ElevenVoiceSettings = {
   use_speaker_boost: true,
 }
 
+/** One spoken word with the real time ElevenLabs says it, in seconds from the
+ *  start of THIS segment's audio. Derived from the API's character-level
+ *  alignment (see `withTimestamps`), so captions can be revealed word by word
+ *  in step with the voice instead of at a guessed pace. */
+export type SpokenWord = { word: string; startSec: number; endSec: number }
+
 export type VoiceoverAudio = {
   format: "mp3"
   bytes: Uint8Array
@@ -77,6 +83,17 @@ export type VoiceoverAudio = {
   model: string
   /** Number of characters of narration sent (billing-relevant). */
   characterCount: number
+  /** Present only when the caller passed `withTimestamps`. */
+  words?: SpokenWord[]
+  /**
+   * Set by stand-ins for the real ElevenLabs call (see
+   * `createSilentVoiceover`). The persistent audio cache REFUSES segments
+   * carrying this, because a silent preview once wrote its silence there and
+   * the next real run reused it as finished narration: the reuse key is
+   * (role, text, voice), all three identical, so the only symptom was a
+   * devotional at -91 dB with "reused 16 cached segment(s)" in the log.
+   */
+  synthetic?: boolean
 }
 
 export type VoiceoverResult =
@@ -135,6 +152,39 @@ export type GenerateVoiceoverInput = {
   config?: ElevenLabsConfig
   fetchImpl?: typeof fetch
   timeoutMs?: number
+  /** Ask ElevenLabs for character-level alignment alongside the audio (the
+   *  `/with-timestamps` endpoint) and return per-word times in
+   *  `audio.words`. Off by default: the response is JSON with base64 audio
+   *  rather than raw bytes, so only callers that need caption timing pay the
+   *  extra parse. */
+  withTimestamps?: boolean
+}
+
+/** Group ElevenLabs' character-level alignment into per-word times. */
+export function wordsFromAlignment(alignment: {
+  characters: string[]
+  character_start_times_seconds: number[]
+  character_end_times_seconds: number[]
+}): SpokenWord[] {
+  const words: SpokenWord[] = []
+  let word = ""
+  let startSec = 0
+  let prevEnd = 0
+  const { characters, character_start_times_seconds: starts } = alignment
+  const ends = alignment.character_end_times_seconds
+  for (let i = 0; i < characters.length; i++) {
+    const ch = characters[i]
+    if (ch.trim() === "") {
+      if (word) words.push({ word, startSec, endSec: prevEnd })
+      word = ""
+      continue
+    }
+    if (word === "") startSec = starts[i]
+    word += ch
+    prevEnd = ends[i]
+  }
+  if (word) words.push({ word, startSec, endSec: prevEnd })
+  return words
 }
 
 /** Resolve a named alias (e.g. "male-d") to a voice id; pass ids through unchanged. */
@@ -173,24 +223,28 @@ export async function generateElevenVoiceover(
   const fetchImpl = input.fetchImpl ?? fetch
   const timeoutMs = input.timeoutMs ?? DEFAULT_TIMEOUT_MS
 
+  // The timestamps variant returns JSON (base64 audio + alignment) instead of
+  // raw audio bytes, so the response is read differently below.
+  const wantWords = input.withTimestamps === true
+  const endpoint = wantWords
+    ? `${API_BASE}/v1/text-to-speech/${voiceId}/with-timestamps?output_format=${OUTPUT_FORMAT}`
+    : `${API_BASE}/v1/text-to-speech/${voiceId}?output_format=${OUTPUT_FORMAT}`
+
   let response: Response
   try {
-    response = await fetchImpl(
-      `${API_BASE}/v1/text-to-speech/${voiceId}?output_format=${OUTPUT_FORMAT}`,
-      {
-        method: "POST",
-        headers: {
-          "xi-api-key": config.apiKey,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          text,
-          model_id: config.ttsModel,
-          voice_settings: input.voiceSettings ?? DEFAULT_VOICE_SETTINGS,
-        }),
-        signal: AbortSignal.timeout(timeoutMs),
+    response = await fetchImpl(endpoint, {
+      method: "POST",
+      headers: {
+        "xi-api-key": config.apiKey,
+        "Content-Type": "application/json",
       },
-    )
+      body: JSON.stringify({
+        text,
+        model_id: config.ttsModel,
+        voice_settings: input.voiceSettings ?? DEFAULT_VOICE_SETTINGS,
+      }),
+      signal: AbortSignal.timeout(timeoutMs),
+    })
   } catch (error) {
     return {
       ok: false,
@@ -240,8 +294,27 @@ export async function generateElevenVoiceover(
   }
 
   let bytes: Uint8Array
+  let words: SpokenWord[] | undefined
   try {
-    bytes = new Uint8Array(await response.arrayBuffer())
+    if (wantWords) {
+      const json = (await response.json()) as {
+        audio_base64?: string
+        alignment?: {
+          characters: string[]
+          character_start_times_seconds: number[]
+          character_end_times_seconds: number[]
+        }
+      }
+      bytes = json.audio_base64
+        ? new Uint8Array(Buffer.from(json.audio_base64, "base64"))
+        : new Uint8Array()
+      // Alignment is a bonus, not a contract: a response that carries audio
+      // but no alignment still yields usable narration, just without caption
+      // timing, so the caller falls back to its pace-based reveal.
+      words = json.alignment ? wordsFromAlignment(json.alignment) : undefined
+    } else {
+      bytes = new Uint8Array(await response.arrayBuffer())
+    }
   } catch (error) {
     return {
       ok: false,
@@ -269,6 +342,7 @@ export async function generateElevenVoiceover(
       voiceId,
       model: config.ttsModel,
       characterCount: text.length,
+      ...(words && words.length > 0 ? { words } : {}),
     },
   }
 }

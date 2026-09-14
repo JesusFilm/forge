@@ -1,6 +1,11 @@
 import type { GeneratedDevotional } from "./generate-devotional"
 import { splitReflection } from "./reflection-split"
 
+// The lead lives with the audio that carries it (devotional-audio.ts), so the
+// silence baked into a step segment and the delay the card reports are one
+// number rather than two that can drift.
+import { STEP_LEAD_SEC } from "./devotional-audio"
+
 /**
  * Build the render manifest (the JSON the Remotion `devotional` composition +
  * `render-devotional-video.mjs` consume) from a generated devotional and its
@@ -44,6 +49,11 @@ export type StagedSegment = {
   durationSec: number
   /** The narrated text (shown on-screen for reflection cards). */
   text?: string
+  /** Real per-word times from ElevenLabs' alignment, in seconds from this
+   *  segment's own audio start. Present only when the render asked for
+   *  timestamps AND the audio was not re-timed after synthesis, so a card
+   *  either carries trustworthy word timing or none at all. */
+  words?: { word: string; startSec: number; endSec: number }[]
 }
 
 export type BuildManifestInput = {
@@ -65,6 +75,14 @@ export type BuildManifestInput = {
   /** Fixed-date occasion tag for the cover (e.g. "World Humanitarian Day"),
    *  from `devotional-occasions.ts`. Most days have none. */
   occasion?: string
+  /** The settle line the cover's narration actually speaks, to show it under
+   *  the hook (see `settleLineFor`). */
+  settleLine?: string
+  /** Open the video card SILENT for this many seconds, with `leadLabel` on
+   *  screen, before the clip's own audio eases in. */
+  mutedLeadSec?: number
+  /** The line shown over that silent opening, e.g. "Let's watch". */
+  leadLabel?: string
   /** Captions for the video card, ALREADY timed against the edited clip
    *  (pauses cut + speed applied) — see `mapCuesToEditedTimeline`. */
   videoCaptions?: ReadonlyArray<{
@@ -106,15 +124,57 @@ export function buildDevotionalManifest(
       audioFile: seg.file,
       durationSec: seg.durationSec,
       bgFile: clip,
+      ...(seg.words && seg.words.length > 0 ? { words: seg.words } : {}),
     }
   }
 
+  /**
+   * The stepper screen before a stage. Dropped silently when its narration
+   * segment does not exist, which is what makes `--steps` a flag rather than a
+   * fork: without those segments no step card is emitted and the running order
+   * is exactly what it was.
+   */
+  const stepCard = (
+    id: string,
+    stepIndex: number,
+    extra: Record<string, unknown> = {},
+  ): ManifestCard | null =>
+    withAudio(id, {
+      kind: "step",
+      stepIndex,
+      stepLeadSec: STEP_LEAD_SEC,
+      ...extra,
+    })
+
+  // The cover shows the settle line only when the voice SAYS it. With the
+  // stepper on, that line moved to the stepper's opening screen, so showing it
+  // here would put words on the cover the narration never speaks.
+  const hasSteps = byId.has("step-read")
   const cover = withAudio("cover", {
     kind: "cover",
     title: d.title,
     ...(input.occasion ? { occasion: input.occasion } : {}),
+    ...(input.settleLine && !hasSteps ? { settleLine: input.settleLine } : {}),
+    // No held beat: the cover leaves as soon as the hook has been spoken
+    // (owner). The logo now stamps at a fixed two seconds and the credit
+    // follows it, so both land inside the hook rather than after it.
   })
   if (cover) cards.push(cover)
+
+  // ONE opening stepper screen. Its narration is the opening line followed by
+  // "here's where we're reading today", so the card shows the line filling in
+  // with the voice and then lights READ under it — no crossfade between two
+  // near-identical stepper frames. `headline` is the part that is also on
+  // screen; the composition finds the hand-over point in the word alignment.
+  // The line does NOT follow the later steps (owner): by WATCH the viewer has
+  // been in the passage for a minute and it has nothing left to introduce.
+  const readSeg = byId.get("step-read")
+  const stepRead = stepCard(
+    "step-read",
+    0,
+    readSeg?.text ? { headline: readSeg.text } : {},
+  )
+  if (stepRead) cards.push(stepRead)
 
   const scripture = withAudio("scripture", {
     kind: "scripture",
@@ -122,6 +182,9 @@ export function buildDevotionalManifest(
     citation: d.scripture.reference,
   })
   if (scripture) cards.push(scripture)
+
+  const stepWatch = stepCard("step-watch", 1)
+  if (stepWatch) cards.push(stepWatch)
 
   // The clip, played clear — narrated with its connector ("Let's watch") if
   // that segment was produced.
@@ -141,7 +204,21 @@ export function buildDevotionalManifest(
     durationSec: videoDurationSec,
     ...(videoSeg ? { audioFile: videoSeg.file } : {}),
     ...(captions.length ? { subtitles: captions } : {}),
+    ...(input.mutedLeadSec
+      ? {
+          mutedLeadSec: input.mutedLeadSec,
+          ...(input.leadLabel ? { leadLabel: input.leadLabel } : {}),
+        }
+      : {}),
   })
+
+  const stepReflect = stepCard("step-reflect", 2)
+  if (stepReflect) cards.push(stepReflect)
+  // With the stepper on screen, the "Reflect" eyebrow above the first
+  // reflection card is the third time the same word appears in ten seconds
+  // (step card, voice, label). Owner: drop the label — the stepper names the
+  // stage now. Without step cards it stays exactly as it was.
+  const stepperNamesStages = stepReflect != null
 
   // One reflection card per narrated chunk — the on-screen text is exactly what
   // is spoken on that card, so it advances with the voice.
@@ -205,7 +282,7 @@ export function buildDevotionalManifest(
       kind: "reflection-focus",
       // The reflect label shows on the FIRST card of each half; the rest pass
       // "" to suppress it.
-      ...(k === 0 || k === act2At
+      ...((k === 0 || k === act2At) && !stepperNamesStages
         ? { sectionLabel: labels.reflect }
         : { sectionLabel: "" }),
       text: cardText,
@@ -213,6 +290,7 @@ export function buildDevotionalManifest(
       audioFile: seg.file,
       durationSec: seg.durationSec,
       bgFile: clip,
+      ...(seg.words && seg.words.length > 0 ? { words: seg.words } : {}),
     })
   })
 
@@ -228,6 +306,9 @@ export function buildDevotionalManifest(
 
   // Question + invitation-to-pray on ONE card, with extra hold so the viewer
   // has time to sit with it.
+  const stepPray = stepCard("step-pray", 3)
+  if (stepPray) cards.push(stepPray)
+
   const qp = byId.get("questions")
   if (qp) {
     cards.push({
