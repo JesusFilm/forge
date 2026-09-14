@@ -253,17 +253,24 @@ handed callers `{ locale: undefined, htmlLang: undefined }`. Now guarded with
 
 ### Reviewed and deliberately not changed
 
-- **`/languages` and `/history` ISR fan-out** (performance, confidence 75). Those
-  routes inherit `htmlLang` from the audio slug, so catalog-less languages that
-  previously shared one `/en/en/...` entry now split. The reviewer proposed
-  pinning them to `locale`. Not applied: the split is the fix working — those
-  documents genuinely differ in `lang`/`dir` now — and the suggested change would
-  undo it. `isDeclarableHtmlLangTag` also shrinks the tag space. Flagged for the
-  ticket owner as a product question about what those pages declare.
+- **`/languages` and `/history` ISR fan-out** (performance, confidence 75).
+  Initially not applied on the reasoning that "the split is the fix". That was
+  wrong, and the ticket owner's call (2026-09-14) was to fix it in this PR.
+  Reading the routes settles it: neither page body reads `htmlLang` at all, and
+  both render every string from the `locale` catalog, so declaring the requested
+  audio language labelled English words as Najdi Arabic — the same
+  mis-declaration as the 404 sentinel. `chromeDocumentLang` now gates that
+  branch, with `/videos/[languageSlug]` as the discriminating sibling that keeps
+  its content tag because it really does render in-language inventory titles and
+  `languageNativeName`. The cache split disappears as a side effect rather than
+  as the goal. (`/history` is `force-dynamic` and has no ISR entries at all, so
+  half the original cache concern never existed.)
 - **English chrome inside an RTL document** (correctness, confidence 50). A
-  catalog-less RTL page is now `dir="rtl"` with English chrome. That is the
-  intended reading of the ticket (the content is the RTL thing), but it is a
-  visible change worth a look in review.
+  catalog-less RTL page is `dir="rtl"` with English chrome. Ticket owner's call
+  (2026-09-14): ship as-is. `dir` matches the page's primary content language,
+  which is what the ticket asked for; English chrome still reads left-to-right
+  under the bidi algorithm, only block alignment flips. Narrowed further by the
+  chrome-page fix above, since chrome-only routes no longer go RTL at all.
 - **`textDirectionForLocale` ICU coverage** across ~2,085 tags is measured for
   the tags this change actually surfaces, not exhaustively.
 

@@ -862,6 +862,35 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     expectNotFoundRewrite(response, "/en/en/404")
   })
 
+  // `/languages` and `/history` render only chrome from the `locale` catalog —
+  // neither page body reads `htmlLang` — so they must not declare the
+  // requested audio language. `/videos` is the discriminating sibling: it
+  // renders that language's own inventory, so it keeps the content tag. Both
+  // halves are asserted together because the same proxy branch builds all
+  // three, and a change that collapsed them would only fail one of these.
+  it("declares the chrome language on chrome-only language routes", async () => {
+    const languages = await proxy(makeRequest("/aari.html/languages"))
+    expect(rewritePath(languages)).toBe("/en/en/languages")
+
+    const history = await proxy(makeRequest("/aari.html/history"))
+    expect(rewritePath(history)).toBe("/en/en/history")
+
+    // ...while the inventory page, which does render in-language content,
+    // still carries the tag FGE-170 restored.
+    const videos = await proxy(makeRequest("/aari.html/videos"))
+    expect(rewritePath(videos)).toBe("/en/aiw/videos/aari")
+  })
+
+  // A same-language regional refinement is still honest on a chrome page:
+  // Spanish chrome really is Spanish, so `es-419` is kept rather than
+  // flattened to `es`. This is what stops the fix above from over-reaching.
+  it("keeps a same-language regional tag on chrome-only routes", async () => {
+    const response = await proxy(
+      makeRequest("/spanish-latin-american.html/languages"),
+    )
+    expect(rewritePath(response)).toBe("/es/es-419/languages")
+  })
+
   it("uses the imported Russian UI catalog for Russian public audio URLs", async () => {
     const response = await proxy(makeRequest("/jesus.html/russian.html"))
     expect(rewritePath(response)).toBe("/ru/ru/jesus.html/russian.html")

@@ -341,14 +341,24 @@ function classifyRewrite(
       if (!isWatchAudioLanguageSlug(rawLanguageSlug, manifest)) {
         return { kind: "not-found" }
       }
+      const identity = resolveWatchLocaleIdentity(rawLanguageSlug)
+      // `/videos` renders the language's own inventory — video titles and
+      // `languageNativeName` in that language's script — so it declares the
+      // content language. `/languages` and `/history` render only chrome from
+      // the `locale` catalog and never read `htmlLang`, so declaring the
+      // requested audio language there would label English words as Najdi
+      // Arabic. Same rule as the error sentinels above.
+      const isContentLanguagePage = localeSegment === "videos"
       return {
         kind: "rewrite",
-        ...resolveWatchLocaleIdentity(rawLanguageSlug),
+        locale: identity.locale,
+        htmlLang: isContentLanguagePage
+          ? identity.htmlLang
+          : chromeDocumentLang(identity.locale, identity.htmlLang),
         pathname,
-        internalPathname:
-          localeSegment === "videos"
-            ? `/videos/${rawLanguageSlug}`
-            : `/${localeSegment}`,
+        internalPathname: isContentLanguagePage
+          ? `/videos/${rawLanguageSlug}`
+          : `/${localeSegment}`,
       }
     }
     if (!hasHtmlSuffix(slugSegment) || !hasHtmlSuffix(localeSegment)) {
