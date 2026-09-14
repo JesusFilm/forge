@@ -104,6 +104,12 @@ function runFfmpeg(args, label) {
  *  take starting; short enough that it doesn't wash out a whole phrase. */
 const MUSIC_SEAM_XFADE_SEC = 2.5
 
+/** Hard ceiling on crossfaded copies. A normal 30-60s bed needs well under ten
+ *  to cover a three-minute devotional; anything approaching this means the bed
+ *  is not what we think it is, and thousands of ffmpeg inputs is not a failure
+ *  mode worth waiting out. */
+const MUSIC_MAX_COPIES = 64
+
 /**
  * The music bed must cover the whole devotional. Two steps:
  *
@@ -121,7 +127,7 @@ const MUSIC_SEAM_XFADE_SEC = 2.5
  *    as-is.
  */
 async function stageMusicLooped(srcName, manifestDir, publicDir, needSec) {
-  if (!srcName) return
+  if (!srcName) return false
   const src = path.join(manifestDir, srcName)
   const dest = path.join(publicDir, srcName)
   // Re-encode with a codec that matches the output container's extension
@@ -154,7 +160,7 @@ async function stageMusicLooped(srcName, manifestDir, publicDir, needSec) {
   } catch {
     // Trim failed — fall back to the untrimmed source so music still plays.
     await copyFile(src, dest)
-    return
+    return true
   }
   const dur = await probeDuration(trimmed)
 
@@ -165,16 +171,28 @@ async function stageMusicLooped(srcName, manifestDir, publicDir, needSec) {
       console.log(
         `🎵 music ${dur.toFixed(1)}s (trimmed) ≥ ${needSec.toFixed(1)}s — no loop`,
       )
-    return
+    return true
   }
   // Each crossfade overlaps its two sides, so N copies joined by a d-second
   // fade run N*dur - (N-1)*d, not N*dur. Solve for the N that still covers
   // needSec, and never let the fade exceed half a copy.
   const xfade = Math.max(0.3, Math.min(MUSIC_SEAM_XFADE_SEC, dur / 2))
-  const copies = Math.max(
-    2,
-    Math.ceil((needSec - xfade) / Math.max(0.01, dur - xfade)),
-  )
+  // A bed shorter than twice the fade cannot be crossfaded with itself at all:
+  // `dur - xfade` goes negative, the Math.max(0.01) guard below turns that into
+  // a division by a hundredth, and a 0.2s bed asked for ~22,000 ffmpeg inputs.
+  // ffmpeg would then fail on file descriptors or argv length, but only after
+  // burning the whole 180s watchdog. Degrade immediately instead.
+  const step = dur - xfade
+  const copies =
+    step <= 0
+      ? 0
+      : Math.min(
+          MUSIC_MAX_COPIES,
+          Math.max(2, Math.ceil((needSec - xfade) / step)),
+        )
+  if (copies === 0) {
+    return await loopWithoutCrossfade(trimmed, dest, dur, needSec, codecArgs)
+  }
   const args = ["-y"]
   for (let i = 0; i < copies; i++) args.push("-i", trimmed)
   const filters = []
@@ -199,6 +217,32 @@ async function stageMusicLooped(srcName, manifestDir, publicDir, needSec) {
   } catch {
     // Crossfaded join failed — fall back to the plain butt-joined loop rather
     // than shipping a devotional with no music at all.
+    return await loopWithoutCrossfade(trimmed, dest, dur, needSec, codecArgs)
+  }
+  await rm(trimmed, { force: true }).catch(() => {})
+  console.log(
+    `🎵 music ${dur.toFixed(1)}s (silence-trimmed) ×${copies} joined with ` +
+      `${xfade.toFixed(1)}s crossfades → ${needSec.toFixed(1)}s`,
+  )
+  return true
+}
+
+/**
+ * The butt-joined loop: audible seams, but always available. Reached when the
+ * crossfaded join fails, and directly when the bed is too short to crossfade
+ * with itself at all.
+ *
+ * It degrades ONE more step rather than throwing. The crossfade's catch used to
+ * call ffmpeg again with nothing around it, so a second failure — a bed that
+ * breaks both paths, a full disk, another watchdog kill — propagated out of
+ * staging and killed the whole run. The comment there said the point was to
+ * avoid "a devotional with no music at all"; what it actually produced was no
+ * devotional at all, after the film had already been downloaded, trimmed and
+ * loudnorm'd. The composition tolerates a missing bed, so a silent devotional
+ * is strictly better than a failed one.
+ */
+async function loopWithoutCrossfade(trimmed, dest, dur, needSec, codecArgs) {
+  try {
     await runFfmpeg(
       [
         "-y",
@@ -213,17 +257,20 @@ async function stageMusicLooped(srcName, manifestDir, publicDir, needSec) {
       ],
       "music loop (fallback)",
     )
-    await rm(trimmed, { force: true }).catch(() => {})
     console.log(
-      `🎵 music ${dur.toFixed(1)}s looped WITHOUT crossfade (join failed) → ${needSec.toFixed(1)}s`,
+      `🎵 music ${dur.toFixed(1)}s looped WITHOUT crossfade → ${needSec.toFixed(1)}s`,
     )
-    return
+    return true
+  } catch (err) {
+    console.warn(
+      `⚠️  music could not be looped (${err instanceof Error ? err.message : err}) — ` +
+        "rendering WITHOUT a bed rather than failing the devotional",
+    )
+    await rm(dest, { force: true }).catch(() => {})
+    return false
+  } finally {
+    await rm(trimmed, { force: true }).catch(() => {})
   }
-  await rm(trimmed, { force: true }).catch(() => {})
-  console.log(
-    `🎵 music ${dur.toFixed(1)}s (silence-trimmed) ×${copies} joined with ` +
-      `${xfade.toFixed(1)}s crossfades → ${needSec.toFixed(1)}s`,
-  )
 }
 
 async function main() {
@@ -353,15 +400,38 @@ async function main() {
     // holds, plus a front intro hold, a trailing outro hold, and a per-card tail).
     // Music is looped to at least this, with margin, so it never falls silent.
     const cards = manifest.cards ?? []
+    // MUST mirror packages/shorts-compositions/src/devotional/timing.ts. These
+    // were guessed (0.8s intro, 0.4s tail) and both were wrong: the real tail
+    // is CARD_TAIL_FRAMES 24/30 = 0.8s and the real intro is 30/30 = 1.0s. The
+    // 5s margin absorbed the error only while a devotional had fewer than
+    // twelve cards; the stepper pushed it past twenty.
+    //
+    // The bed does not go silent when it falls short — the composition mounts
+    // it with `loop`, so Remotion restarts the track from frame one, with no
+    // crossfade. That is the seam this whole file crossfades away everywhere
+    // else, reintroduced ~4s before the end of a 22-card devotional: inside the
+    // 8s closing dwell, where the narration has stopped and there is nothing to
+    // mask it. Covering the full runtime means the loop never wraps at all.
+    const CARD_TAIL_SEC = 24 / 30
+    const INTRO_HOLD_SEC = 30 / 30
+    const OUTRO_HOLD_SEC = 240 / 30
     const needSec =
-      cards.reduce((s, c) => s + (c.durationSec ?? 0) + (c.holdSec ?? 0), 0) +
-      0.8 + // intro hold
-      8 + // outro hold
-      0.4 * cards.length + // per-card tail
-      5 // safety margin (covers crossfade extensions)
+      cards.reduce(
+        (s, c) => s + (c.durationSec ?? 0) + (c.holdSec ?? 0) + CARD_TAIL_SEC,
+        0,
+      ) +
+      // The overrides the composition honours, honoured here too.
+      (introHoldSec !== "" ? Number(introHoldSec) : INTRO_HOLD_SEC) +
+      (outroHoldSec !== "" ? Number(outroHoldSec) : OUTRO_HOLD_SEC) +
+      5 // margin ON TOP of the real length, not absorbing an error in it
 
     await stage(manifest.bgFile)
-    await stageMusicLooped(manifest.musicFile, manifestDir, publicDir, needSec)
+    const musicStaged = await stageMusicLooped(
+      manifest.musicFile,
+      manifestDir,
+      publicDir,
+      needSec,
+    )
     // DESIGN TEST: an audio file that belongs to no card (the "Let's watch."
     // phrase cut out of the scripture segment).
     if (arg("demo-watch-audio", "")) await stage(arg("demo-watch-audio", ""))
@@ -427,7 +497,11 @@ async function main() {
       ...(manifest.bgPlaybackRate
         ? { bgPlaybackRate: manifest.bgPlaybackRate }
         : {}),
-      ...(manifest.musicFile ? { musicFile: manifest.musicFile } : {}),
+      // Only name the bed if it was actually staged: `staticFile` on a file
+      // that is not there fails the render, which would undo the degrade above.
+      ...(manifest.musicFile && musicStaged
+        ? { musicFile: manifest.musicFile }
+        : {}),
       // DESIGN TEST only (--comp=stepper-test); ignored by the real compositions.
       ...(arg("stepper-variant", "")
         ? { stepperVariant: arg("stepper-variant", "") }

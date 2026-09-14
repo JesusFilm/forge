@@ -108,7 +108,7 @@ export const devotionalCardSchema = z.object({
   settleLine: z.string().optional(),
   /** Video card only: seconds at the start where the clip plays SILENT while
    *  `leadLabel` is on screen, before its own audio eases in. */
-  mutedLeadSec: z.number().optional(),
+  mutedLeadSec: z.number().nonnegative().optional(),
   /** Video card only: the line shown over that silent opening ("Let's watch"). */
   leadLabel: z.string().optional(),
   /** Real per-word times from the narration's own ElevenLabs alignment, in

@@ -208,16 +208,28 @@ function assertPublicHttpsUrl(raw: string): void {
  * shifted past the card's start would otherwise render at a negative time and
  * simply vanish.
  */
-function shiftCaptions(
+export function shiftCaptions(
   captions: TimedCaption[],
   offsetSec: number,
 ): TimedCaption[] {
   if (offsetSec === 0) return captions
-  return captions.map((c) => ({
-    ...c,
-    startSec: Math.max(0, c.startSec + offsetSec),
-    endSec: Math.max(0, c.endSec + offsetSec),
-  }))
+  return (
+    captions
+      .map((c) => ({
+        ...c,
+        startSec: c.startSec + offsetSec,
+        endSec: c.endSec + offsetSec,
+      }))
+      // Shift the PAIR, then drop what a negative offset pushed off the front
+      // entirely. Clamping the two ends independently collapsed any cue ending
+      // within the offset to {0, 0}, and the composition builds a caption's
+      // fade from [start - fade, start, end, end + fade] — a zero-length cue
+      // makes that range non-monotonic and Remotion throws on every frame of
+      // the card, aborting the encode minutes in with an error that names
+      // neither the cue nor the flag.
+      .filter((c) => c.endSec > 0)
+      .map((c) => ({ ...c, startSec: Math.max(0, c.startSec) }))
+  )
 }
 
 function probeDuration(file: string): Promise<number> {

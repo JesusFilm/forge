@@ -2327,12 +2327,16 @@ function CardBody({
     const lead = card.mutedLeadSec ?? 0
     if (!card.leadLabel || lead <= 0) return null
     const t = frame / fps
-    const opacity = interpolate(
-      t,
-      [0.15, 0.75, Math.max(1, lead - 0.35), lead + 0.35],
-      [0, 1, 1, 0],
-      { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
-    )
+    // Build the hold from a knot that is already past the fade-in, then put the
+    // fade-out after it. Writing the last knot as `lead + 0.35` against a third
+    // knot of `Math.max(1, lead - 0.35)` silently required lead > 0.65: any
+    // shorter lead produced a non-monotonic range and Remotion throws on the
+    // card's first frame. Nothing upstream enforced that — the schema takes any
+    // number and the CLI clamps only to [0, 4].
+    const opacity = interpolate(t, leadLabelKnots(lead), [0, 1, 1, 0], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    })
     if (opacity <= 0) return null
     return (
       <AbsoluteFill
@@ -3124,6 +3128,21 @@ function Background({
  * same time during the cross-dissolve; clearing the text early leaves a real
  * gap between blocks while the BACKGROUND still dissolves seamlessly.
  */
+/**
+ * Opacity knots for the muted-lead label ("Let's watch") over a video card:
+ * fade in, hold, fade out. Exported for the test, because the monotonicity
+ * Remotion's `interpolate` requires used to be an unwritten consequence of two
+ * Math calls — the range was `[0.15, 0.75, Math.max(1, lead - 0.35), lead +
+ * 0.35]`, which is only increasing while lead > 0.65. A shorter lead threw on
+ * the card's first frame, and nothing upstream ruled one out.
+ */
+export function leadLabelKnots(
+  leadSec: number,
+): [number, number, number, number] {
+  const holdUntil = Math.max(0.9, leadSec - 0.35)
+  return [0.15, 0.75, holdUntil, holdUntil + 0.35]
+}
+
 const TEXT_FADE_OUT_SEC = 0.55
 
 /** Fades a card in over its first `xfade` frames — with overlapping sequences
