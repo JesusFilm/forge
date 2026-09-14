@@ -632,6 +632,13 @@ export async function produceDevotionalAudio(
             voiceId: audios[0].voiceId,
             model: audios[0].model,
             characterCount: audios.reduce((s, a) => s + a.characterCount, 0),
+            // A joined segment is synthetic if ANY unit was. This object is
+            // built from scratch rather than spread, and leaving the flag off
+            // it defeated the cache's synthetic guard for every multi-sentence
+            // segment — which is nearly all of them, since units are split per
+            // sentence. The guard then only ever fired on single-sentence
+            // cards, and a silent preview could still reach the cache.
+            ...(audios.some((a) => a.synthetic) ? { synthetic: true } : {}),
           }
     // The last reflection card reads a touch slower. (Scripture is NOT slowed
     // as a whole — slowing the long verse made it sound syllabic; it reads at

@@ -1719,6 +1719,21 @@ export type RenderedDevotional = {
  * fresh audio left the worse hole open: an incomplete run that reached the
  * cache would pass unexamined on every subsequent render, forever.
  */
+/**
+ * True when the run asked for word timings and the cached bundle cannot supply
+ * them. The per-segment path already re-synthesises such a hit; this exists
+ * because the whole-bundle shortcut runs FIRST and used to return the bundle
+ * wholesale, so `--word-timings` on an older cache silently produced a video
+ * with none — the log said "reusing cached audio" and nothing else.
+ */
+export function lacksRequestedWordTimings(
+  cached: ProducedDevotionalAudio,
+  withTimestamps: boolean | undefined,
+): boolean {
+  if (!withTimestamps) return false
+  return cached.segments.some((s) => (s.audio.words?.length ?? 0) === 0)
+}
+
 export function assertNarrationComplete(audio: ProducedDevotionalAudio): void {
   const missing = new Set(audio.skipped)
   const structural = ["cover", "scripture", "conclusion", "questions"].filter(
@@ -1863,6 +1878,17 @@ export async function produceNarration(
           `📝 text changed since the cached narration (${changed
             .map((c) => c.id)
             .join(", ")}) — re-producing those segments`,
+        )
+      } else if (lacksRequestedWordTimings(cached, opts.withTimestamps)) {
+        // The per-segment path re-synthesises a hit that predates word timing;
+        // this whole-bundle shortcut runs BEFORE it and used to return such a
+        // bundle wholesale. The run then staged a manifest with no word times
+        // and every card silently fell back to the pace-based reveal, while
+        // the log said "reusing cached audio" — the requested flag vanished
+        // with no warning. Fall through and let the per-segment path decide.
+        log(
+          "📝 cached narration predates word timing — re-producing the " +
+            "segments that have none",
         )
       } else {
         try {
@@ -2133,6 +2159,12 @@ export async function prepareAndRenderDevotional(
     log(
       printDevotionalForReview(devo, locale, cacheDir, {
         suppressOccasion: input.suppressOccasion ?? false,
+        // Must match the flags the FINGERPRINT is built with (see the
+        // `buildNarrationSegments` call above) or the gate shows one script
+        // and approves another: with steps on, the connectors move onto their
+        // own step cards, so the inline wording printed here was never what
+        // would be synthesised.
+        ...(input.steps ? { steps: true } : {}),
       }),
     )
     if (approval !== "approved") {
