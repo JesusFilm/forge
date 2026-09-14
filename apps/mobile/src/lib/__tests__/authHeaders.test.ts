@@ -2,12 +2,17 @@ import { print } from "graphql"
 import type { DocumentNode, OperationDefinitionNode } from "graphql"
 
 import {
+  FLEET_BEARER_OPERATION_NAMES,
   PROGRESS_OPERATION_NAMES,
   SEARCH_OPERATION_NAME,
   authHeadersForOperation,
   buildAuthHeaders,
   isProgressOperation,
 } from "../authHeaders"
+import {
+  SUBMIT_FEEDBACK,
+  SUBMIT_FEEDBACK_OPERATION_NAME,
+} from "../feedbackQueries"
 import {
   RECORD_WATCH_SEARCH_EVENT,
   WATCH_SEARCH,
@@ -78,6 +83,63 @@ describe("authHeadersForOperation", () => {
     expect(
       authHeadersForOperation("GetVideoBySlug", "abc123", "device-1"),
     ).toEqual({})
+  })
+})
+
+// KTD3. `submitFeedback` is a PUBLIC resolver too, so the bearer is not access
+// here either — it buys the per-install bucket admin's 5-per-10-minutes limit
+// counts in (R14). Without x-viewer-id every install behind one carrier egress
+// shares a bucket and a busy address refuses a stranger's first submission.
+describe("SubmitFeedback rides the fleet bearer", () => {
+  it("sends the bearer and x-viewer-id", () => {
+    expect(
+      authHeadersForOperation(
+        SUBMIT_FEEDBACK_OPERATION_NAME,
+        "abc123",
+        "device-1",
+      ),
+    ).toEqual({
+      Authorization: "Bearer abc123",
+      "x-viewer-id": "device-1",
+    })
+  })
+
+  // R3: signed in or out, the submission still carries the install's bucket.
+  it("sends x-viewer-id with no token configured", () => {
+    expect(
+      authHeadersForOperation(
+        SUBMIT_FEEDBACK_OPERATION_NAME,
+        undefined,
+        "device-1",
+      ),
+    ).toEqual({ "x-viewer-id": "device-1" })
+  })
+
+  // KTD10: the user JWT rides only the progress operations. Feedback is public
+  // and must never carry it, and the progress ops must never gain the fleet key.
+  it("stays out of the user-JWT gate, and the progress ops stay out of this one", () => {
+    expect(isProgressOperation(SUBMIT_FEEDBACK_OPERATION_NAME)).toBe(false)
+    for (const name of PROGRESS_OPERATION_NAMES) {
+      expect(authHeadersForOperation(name, "abc123", "device-1")).toEqual({})
+    }
+  })
+
+  // The gate matches on the operation NAME: renaming the mutation without the
+  // constant drops feedback into the shared public:<ip> bucket (#1622's class).
+  it("pins the constant to the document actually sent", () => {
+    const doc = SUBMIT_FEEDBACK as unknown as DocumentNode
+    const operation = doc.definitions.find(
+      (d): d is OperationDefinitionNode => d.kind === "OperationDefinition",
+    )
+    expect(operation?.name?.value).toBe(SUBMIT_FEEDBACK_OPERATION_NAME)
+  })
+
+  // The allowlist is an ENUMERATION, not a policy. Pinning its whole contents
+  // makes widening it a deliberate edit to this line.
+  it("admits exactly the two operations that need the per-install bucket", () => {
+    expect([...FLEET_BEARER_OPERATION_NAMES].sort()).toEqual(
+      [SEARCH_OPERATION_NAME, SUBMIT_FEEDBACK_OPERATION_NAME].sort(),
+    )
   })
 })
 

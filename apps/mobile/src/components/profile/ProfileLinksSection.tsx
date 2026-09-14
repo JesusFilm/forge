@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
+import { useRouter } from "expo-router"
 
 import { useTypography } from "../../hooks/useTypography"
 import { SURFACE_COLOR, TEXT_PRIMARY, TEXT_SECONDARY } from "../../lib/color"
@@ -22,6 +23,9 @@ type SocialLink = ExternalLink & {
   icon: IoniconsName
 }
 
+/** A row leaves the app or opens an in-app route. Exactly one, never both. */
+type NavLink = ExternalLink | { label: string; route: string }
+
 // URLs mirror apps/web/src/components/home/WatchHomeFooter.tsx (socialLinks +
 // navLinks). Keep in sync when the web footer changes.
 const SOCIAL_LINKS: readonly SocialLink[] = [
@@ -43,10 +47,12 @@ const SOCIAL_LINKS: readonly SocialLink[] = [
   },
 ]
 
-const NAV_LINKS: readonly ExternalLink[] = [
+const NAV_LINKS: readonly NavLink[] = [
   { label: "Give", url: "https://www.jesusfilm.org/give/" },
   { label: "About", url: "https://www.jesusfilm.org/about/" },
   { label: "Contact", url: "https://www.jesusfilm.org/contact/" },
+  // R1: the in-app door, next to the other ways to reach us.
+  { label: "Send feedback", route: "/feedback" },
   {
     label: "Sign Up For Our Newsletter",
     url: "https://www.jesusfilm.org/email/",
@@ -57,6 +63,7 @@ const NAV_LINKS: readonly ExternalLink[] = [
 
 export function ProfileLinksSection() {
   const typography = useTypography()
+  const router = useRouter()
 
   return (
     <View style={styles.container}>
@@ -81,7 +88,11 @@ export function ProfileLinksSection() {
         {NAV_LINKS.map((link, index) => (
           <Pressable
             key={link.label}
-            onPress={() => openExternalUrl(link.url)}
+            onPress={() =>
+              "url" in link
+                ? openExternalUrl(link.url)
+                : router.push(link.route)
+            }
             style={({ pressed }) => [
               styles.linkRow,
               index > 0 && styles.linkRowSeparator,

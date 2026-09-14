@@ -58,6 +58,7 @@ const OFFLINE_URL = "file:///var/mobile/offline/birth-of-jesus.mp4"
 
 type SheetProps = {
   onClose?: () => void
+  onReportProblem?: () => void
   castActive?: boolean
   streamingUrl?: string | null
 }
@@ -66,6 +67,7 @@ function element(props: SheetProps = {}) {
   return (
     <PlayerSettingsSheet
       onClose={props.onClose ?? (() => {})}
+      onReportProblem={props.onReportProblem ?? (() => {})}
       castActive={props.castActive ?? false}
       streamingUrl={
         props.streamingUrl === undefined ? MUX_URL : props.streamingUrl
@@ -73,6 +75,8 @@ function element(props: SheetProps = {}) {
     />
   )
 }
+
+const REPORT_LABEL = "Report a problem with this video"
 
 async function render(props: SheetProps = {}): Promise<TestInstance> {
   let renderer!: TestInstance
@@ -124,6 +128,36 @@ describe("root list", () => {
     const renderer = await render()
     expect(hasText(renderer, "1.25×")).toBe(true)
     expect(hasText(renderer, "High (720p)")).toBe(true)
+    await unmount(renderer)
+  })
+})
+
+describe("report row (U6/R2)", () => {
+  it("renders in the root list and calls back on a press", async () => {
+    const onReportProblem = jest.fn()
+    const renderer = await render({ onReportProblem })
+    expect(hasText(renderer, REPORT_LABEL)).toBe(true)
+    await press(pressableByLabel(renderer, REPORT_LABEL))
+    expect(onReportProblem).toHaveBeenCalledTimes(1)
+    await unmount(renderer)
+  })
+
+  it("renders while a cast session is active too", async () => {
+    // R2: a viewer casting still reports a problem with the video, and the
+    // quality row that IS hidden while casting makes that easy to conflate.
+    const onReportProblem = jest.fn()
+    const renderer = await render({ castActive: true, onReportProblem })
+    expect(hasText(renderer, "Quality")).toBe(false)
+    expect(hasText(renderer, REPORT_LABEL)).toBe(true)
+    await press(pressableByLabel(renderer, REPORT_LABEL))
+    expect(onReportProblem).toHaveBeenCalledTimes(1)
+    await unmount(renderer)
+  })
+
+  it("stays out of the option lists", async () => {
+    const renderer = await render()
+    await press(pressableByLabel(renderer, "Playback speed"))
+    expect(hasText(renderer, REPORT_LABEL)).toBe(false)
     await unmount(renderer)
   })
 })
@@ -322,6 +356,21 @@ describe("dismissal", () => {
     expect(onClose).not.toHaveBeenCalled()
     await runExitAnimation()
     expect(onClose).toHaveBeenCalledTimes(1)
+    await unmount(renderer)
+  })
+
+  it("reports THEN closes, so the host mounts the feedback sheet after this one", async () => {
+    // KTD5: the host mounts FeedbackModal from onClose. The callback has to
+    // land first, or the host has nothing captured when the close arrives.
+    const calls: string[] = []
+    const renderer = await render({
+      onClose: () => calls.push("close"),
+      onReportProblem: () => calls.push("report"),
+    })
+    await press(pressableByLabel(renderer, REPORT_LABEL))
+    expect(calls).toEqual(["report"])
+    await runExitAnimation()
+    expect(calls).toEqual(["report", "close"])
     await unmount(renderer)
   })
 

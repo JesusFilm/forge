@@ -1,13 +1,6 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react"
+import { useState, useSyncExternalStore } from "react"
 import {
   Animated,
-  Easing,
   Modal,
   Pressable,
   StyleSheet,
@@ -17,6 +10,7 @@ import {
 import Ionicons from "@expo/vector-icons/Ionicons"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
+import { useSlideUpSheet } from "../../hooks/useSlideUpSheet"
 import {
   BG_COLOR,
   BLACK,
@@ -50,11 +44,7 @@ const QUALITY_LABELS: Record<QualityTier, string> = {
 
 type SheetBody = "root" | "speed" | "quality"
 
-// The scrim FADES while the panel SLIDES. RN's Modal `animationType="slide"`
-// translates its whole subtree, scrim included, which reads as a dark sheet
-// dragged up the screen with a hard moving edge instead of the room dimming.
-const ENTER_MS = 240
-const EXIT_MS = 180
+const REPORT_PROBLEM_LABEL = "Report a problem with this video"
 
 const BODY_TITLES: Record<SheetBody, string> = {
   root: "Settings",
@@ -64,6 +54,9 @@ const BODY_TITLES: Record<SheetBody, string> = {
 
 export type PlayerSettingsSheetProps = {
   onClose: () => void
+  /** The feedback door (KTD5). Fires at the tap, BEFORE this sheet's own
+   *  close, so the host captures the playback position the viewer saw. */
+  onReportProblem: () => void
   /** R10: while a cast session is active the sheet offers speed only. */
   castActive: boolean
   /** R9/R11 at the point of use: the quality row exists only for a
@@ -76,6 +69,7 @@ export type PlayerSettingsSheetProps = {
  *  fullscreen player. A pick writes the store; the sheet stays open (R3). */
 export function PlayerSettingsSheet({
   onClose,
+  onReportProblem,
   castActive,
   streamingUrl,
 }: PlayerSettingsSheetProps) {
@@ -83,51 +77,8 @@ export function PlayerSettingsSheet({
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot)
   const insets = useSafeAreaInsets()
   const [body, setBody] = useState<SheetBody>("root")
-
-  // 0 = dismissed, 1 = presented. Drives BOTH the scrim's opacity and the
-  // panel's offset, so they share one clock while animating differently.
-  const progress = useRef(new Animated.Value(0)).current
-  const [panelHeight, setPanelHeight] = useState(0)
-  const closingRef = useRef(false)
-
-  // Presenting waits for the panel's measured height: its offset is expressed
-  // in points, so animating before the layout lands would slide it the wrong
-  // distance. The panel stays parked offscreen until then, one frame at most.
-  useEffect(() => {
-    if (panelHeight === 0 || closingRef.current) return
-    Animated.timing(progress, {
-      toValue: 1,
-      duration: ENTER_MS,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start()
-  }, [panelHeight, progress])
-
-  // The host unmounts this component on `onClose`, so the exit has to finish
-  // BEFORE that call. The timer — not the animation callback — is what fires
-  // it: a native-driver completion never arrives under jest, and an animation
-  // interrupted on-device would otherwise strand the sheet open forever.
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const close = useCallback(() => {
-    if (closingRef.current) return
-    closingRef.current = true
-    Animated.timing(progress, {
-      toValue: 0,
-      duration: EXIT_MS,
-      easing: Easing.in(Easing.cubic),
-      useNativeDriver: true,
-    }).start()
-    closeTimerRef.current = setTimeout(onClose, EXIT_MS)
-  }, [onClose, progress])
-
-  // An unmount from any OTHER path (route pop, player handover) would leave the
-  // timer above pending and fire onClose into a torn-down tree.
-  useEffect(
-    () => () => {
-      if (closeTimerRef.current != null) clearTimeout(closeTimerRef.current)
-    },
-    [],
-  )
+  const { progress, panelHeight, onPanelLayout, close } =
+    useSlideUpSheet(onClose)
 
   const qualityAvailable =
     !castActive && supportsQualityConstraint(streamingUrl)
@@ -213,6 +164,25 @@ export function PlayerSettingsSheet({
           rootRow("Quality", QUALITY_LABELS[snapshot.qualityTier], () =>
             setBody("quality"),
           )}
+        {/* R2: offered while casting too — the quality row above is the one
+            a session hides. The host opens the feedback sheet from onClose,
+            which is why this row closes itself after the callback. */}
+        <Pressable
+          style={({ pressed }) => [
+            styles.row,
+            styles.reportRow,
+            pressed && feedback.pressed,
+          ]}
+          onPress={() => {
+            onReportProblem()
+            close()
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={REPORT_PROBLEM_LABEL}
+        >
+          <Text style={styles.rowTitle}>{REPORT_PROBLEM_LABEL}</Text>
+          <Ionicons name="chevron-forward" size={16} color={TEXT_SECONDARY} />
+        </Pressable>
       </>
     )
   }
@@ -241,7 +211,7 @@ export function PlayerSettingsSheet({
           accessibilityLabel="Dismiss settings"
         />
         <Animated.View
-          onLayout={(e) => setPanelHeight(e.nativeEvent.layout.height)}
+          onLayout={onPanelLayout}
           style={[
             styles.panel,
             { paddingBottom: Math.max(insets.bottom, 12) },
@@ -343,6 +313,12 @@ const styles = StyleSheet.create({
     color: TEXT_PRIMARY,
     fontFamily: "System",
     fontSize: 15,
+  },
+  // A rule above it: this row leaves the sheet, the settings rows do not.
+  reportRow: {
+    marginTop: 4,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: hexToRgba(TEXT_SECONDARY, 0.3),
   },
   rowValue: {
     flexDirection: "row",

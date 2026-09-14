@@ -1,8 +1,8 @@
 /**
  * R11 suppression: the floating window hides while an in-app sheet is
  * presented, and returns to its corner when that sheet closes. Two mechanisms
- * live here because the app presents sheets two ways — six real sheet ROUTES
- * in the watch and series groups, and the sheets that are component state.
+ * live here because the app presents sheets two ways — real sheet ROUTES, and
+ * the sheets that are component state.
  *
  * React-native-free by construction: routes arrive as expo-router segments and
  * the non-route sheets arrive as a count.
@@ -17,11 +17,9 @@ export function routePattern(segments: readonly string[]): string {
   return segments.filter(Boolean).join("/")
 }
 
-/**
- * The six group sheet routes, read from `app/watch/_layout.tsx` and
- * `app/series/_layout.tsx` — every screen either layout declares with
- * `presentation: "formSheet"`.
- */
+/** Every `presentation: "formSheet"` route: six group sheets in
+ * `watch/_layout.tsx` + `series/_layout.tsx`, plus the ROOT `feedback` sheet
+ * in `app/_layout.tsx` the Profile tab pushes. */
 export const IN_APP_SHEET_ROUTE_PATTERNS = [
   "watch/language",
   "watch/subtitle",
@@ -29,6 +27,7 @@ export const IN_APP_SHEET_ROUTE_PATTERNS = [
   "series/language",
   "series/subtitle",
   "series/download",
+  "feedback",
 ] as const
 
 const SHEET_ROUTE_SET: ReadonlySet<string> = new Set(
@@ -39,17 +38,14 @@ export function isInAppSheetRoute(segments: readonly string[]): boolean {
   return SHEET_ROUTE_SET.has(routePattern(segments))
 }
 
-/**
- * The sheets that are component state rather than routes: the Library delete
- * confirmation (`src/components/library/DeleteConfirmSheet.tsx`, hosted by
- * `app/(tabs)/library.tsx`), the SDUI quiz modal, and the player settings
- * sheet (`src/components/watch/PlayerSettingsSheet.tsx`, hosted by
- * `VideoPlayer.tsx` — a routed form sheet cannot cover the fullscreen player).
- */
+/** Component-state sheets, not routes: libraryDeleteConfirm
+ * (`library/DeleteConfirmSheet.tsx`, hosted by `(tabs)/library.tsx`), sduiQuiz,
+ * playerSettings and feedbackModal (both hosted by `VideoPlayer.tsx`). */
 export type NonRouteSheetId =
   | "libraryDeleteConfirm"
   | "sduiQuiz"
   | "playerSettings"
+  | "feedbackModal"
 
 export type NonRouteSheetCounter = {
   /** Presented count — zero means nothing is suppressing the window. */

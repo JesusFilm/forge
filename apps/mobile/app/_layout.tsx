@@ -242,6 +242,18 @@ export const unstable_settings = {
   initialRouteName: "(tabs)",
 }
 
+// One FULL detent, unlike the watch/series list sheets: the feedback form is
+// taller, it hosts a keyboard, and its two steps differ in height — a single
+// detent cannot resize between them or hide the message field behind the keys.
+const FEEDBACK_SHEET_OPTIONS = {
+  headerShown: false,
+  presentation: "formSheet" as const,
+  sheetInitialDetentIndex: 0,
+  sheetGrabberVisible: true,
+  sheetCornerRadius: 16,
+  sheetAllowedDetents: [1],
+}
+
 export default function RootLayout() {
   if (moduleError) {
     // Both, like the App Error path. Nothing reaches the session on this
@@ -425,6 +437,13 @@ export default function RootLayout() {
                               // flat band. The screen renders its own floating
                               // back button instead.
                               options={{ headerShown: false }}
+                            />
+                            {/* The Profile door (KTD4). A ROOT sheet, not a
+                                group one, so the Profile tab can push it —
+                                hence its entry in IN_APP_SHEET_ROUTE_PATTERNS. */}
+                            <Stack.Screen
+                              name="feedback"
+                              options={FEEDBACK_SHEET_OPTIONS}
                             />
                             {/* Both player stacks confine the back-swipe to the
                               left edge: iOS 26 defaults it to full-width,
