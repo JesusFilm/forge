@@ -17,6 +17,7 @@ import {
   getWatchVideoLocalizedCopyBySlugOperation,
   getWatchVideoRouteSnapshotBySlugOperation,
   legacyWatchExperienceFragment,
+  preCopyWatchExperienceFragment,
   watchExperienceFragment,
   watchVideoDubDetailFragment,
   watchVideoLocalizedCopyFragment,
@@ -66,6 +67,17 @@ const GET_LEGACY_WATCH_EXPERIENCE = adminGraphql(
   [legacyWatchExperienceFragment],
 )
 
+const GET_PRE_COPY_WATCH_EXPERIENCE = adminGraphql(
+  `
+    query GetPreCopyWatchExperience($locale: String!, $slug: String!) {
+      experienceBySlug(locale: $locale, slug: $slug) {
+        ...PreCopyWatchExperience
+      }
+    }
+  `,
+  [preCopyWatchExperienceFragment],
+)
+
 const GET_WATCH_SETTINGS = adminGraphql(
   `
     query GetWatchSettings($locale: String!) {
@@ -98,6 +110,19 @@ const GET_LEGACY_WATCH_SETTINGS = adminGraphql(
     }
   `,
   [legacyWatchExperienceFragment],
+)
+
+const GET_PRE_COPY_WATCH_SETTINGS = adminGraphql(
+  `
+    query GetPreCopyWatchSettings($locale: String!) {
+      watchSetting(locale: $locale) {
+        documentId
+        homepageExperience { ...PreCopyWatchExperience }
+        defaultTemplateExperience { ...PreCopyWatchExperience }
+      }
+    }
+  `,
+  [preCopyWatchExperienceFragment],
 )
 
 type WatchSettingsData = AdminResultOf<typeof GET_WATCH_SETTINGS>
@@ -506,28 +531,75 @@ const BLOCK_SCHEMA_LAG_MESSAGES = [
   /^Cannot query field "tiles" on type "WatchHomeCategoryRailBlock"\./,
 ]
 
-function isUnknownCategoryRailTypenameValidation(result: {
+const CATEGORY_RAIL_COPY_FIELDS = [
+  "eyebrow",
+  "title",
+  "description",
+  "ctaLabel",
+] as const
+const CATEGORY_RAIL_COPY_SCHEMA_LAG_MESSAGES = CATEGORY_RAIL_COPY_FIELDS.map(
+  (field) =>
+    new RegExp(
+      `^Cannot query field "${field}" on type "WatchHomeCategoryRailBlock"\\.`,
+    ),
+)
+
+function isValidationShaped(entry: GraphqlErrorCandidate): boolean {
+  if (entry.path != null) return false
+  const code =
+    typeof entry.extensions === "object" &&
+    entry.extensions !== null &&
+    "code" in entry.extensions
+      ? entry.extensions.code
+      : undefined
+  return code === undefined || code === "GRAPHQL_VALIDATION_FAILED"
+}
+
+type CategoryRailSchemaLag = "none" | "copy" | "legacy"
+
+function classifyCategoryRailSchemaLag(result: {
   error?: ErrorLike | null
   errors?: unknown[] | undefined
-}): boolean {
-  return graphqlErrorsFromResult(result).some((entry) => {
-    if (
-      typeof entry.message !== "string" ||
-      !BLOCK_SCHEMA_LAG_MESSAGES.some((pattern) =>
-        pattern.test(entry.message as string),
-      ) ||
-      entry.path != null
-    ) {
-      return false
-    }
+}): CategoryRailSchemaLag {
+  const errors = graphqlErrorsFromResult(result)
+  if (errors.length === 0 || !errors.every(isValidationShaped)) return "none"
 
-    const code =
-      typeof entry.extensions === "object" &&
-      entry.extensions !== null &&
-      "code" in entry.extensions
-        ? entry.extensions.code
-        : undefined
-    return code === undefined || code === "GRAPHQL_VALIDATION_FAILED"
+  const messages = errors.map((entry) =>
+    typeof entry.message === "string" ? entry.message : "",
+  )
+  if (
+    messages.every((message) =>
+      BLOCK_SCHEMA_LAG_MESSAGES.some((p) => p.test(message)),
+    )
+  ) {
+    return "legacy"
+  }
+
+  const matchedCopyFields = new Set(
+    messages.flatMap((message) =>
+      CATEGORY_RAIL_COPY_SCHEMA_LAG_MESSAGES.flatMap((pattern, index) =>
+        pattern.test(message) ? [CATEGORY_RAIL_COPY_FIELDS[index]] : [],
+      ),
+    ),
+  )
+  return errors.length === CATEGORY_RAIL_COPY_FIELDS.length &&
+    matchedCopyFields.size === CATEGORY_RAIL_COPY_FIELDS.length
+    ? "copy"
+    : "none"
+}
+
+async function queryExperienceBySlug(
+  query:
+    | typeof GET_WATCH_EXPERIENCE
+    | typeof GET_PRE_COPY_WATCH_EXPERIENCE
+    | typeof GET_LEGACY_WATCH_EXPERIENCE,
+  locale: string,
+  slug: string,
+) {
+  return client.query({
+    query,
+    variables: { locale, slug },
+    fetchPolicy: "no-cache",
   })
 }
 
@@ -551,12 +623,44 @@ async function getLegacyExperienceBySlug(
 async function getExperienceBySlug(
   locale: string,
   slug: string,
-  categoryRailCompatibility?: "supported" | "legacy-schema",
+  categoryRailCompatibility?: "supported" | "pre-copy" | "legacy-schema",
 ): Promise<NonNullable<WatchExperience> | null> {
   if (categoryRailCompatibility === "legacy-schema") {
     return getLegacyExperienceBySlug(locale, slug)
   }
 
+  if (categoryRailCompatibility === "pre-copy") {
+    let preCopyRejectedLag: CategoryRailSchemaLag = "none"
+    const preCopy = await queryExperienceBySlug(
+      GET_PRE_COPY_WATCH_EXPERIENCE,
+      locale,
+      slug,
+    ).catch((error: unknown) => {
+      preCopyRejectedLag = classifyCategoryRailSchemaLag({
+        error: error as ErrorLike,
+      })
+      if (preCopyRejectedLag === "legacy") return null
+      throw error
+    })
+    if (preCopy === null) {
+      return getLegacyExperienceBySlug(locale, slug)
+    }
+    if (
+      classifyCategoryRailSchemaLag(
+        preCopy as { error?: ErrorLike; errors?: unknown[] },
+      ) === "legacy"
+    ) {
+      return getLegacyExperienceBySlug(locale, slug)
+    }
+    const error = graphqlError(
+      preCopy as { error?: ErrorLike; errors?: unknown[] },
+    )
+    if (error) throw error
+    return (preCopy.data?.experienceBySlug ??
+      null) as NonNullable<WatchExperience> | null
+  }
+
+  let rejectedLag: CategoryRailSchemaLag = "none"
   const result = await client
     .query({
       query: GET_WATCH_EXPERIENCE,
@@ -564,9 +668,8 @@ async function getExperienceBySlug(
       fetchPolicy: "no-cache",
     })
     .catch((error: unknown) => {
-      if (
-        isUnknownCategoryRailTypenameValidation({ error: error as ErrorLike })
-      ) {
+      rejectedLag = classifyCategoryRailSchemaLag({ error: error as ErrorLike })
+      if (rejectedLag !== "none") {
         return null
       }
       throw error
@@ -576,15 +679,20 @@ async function getExperienceBySlug(
     error?: ErrorLike
     errors?: unknown[]
   }
-  if (
-    result === null ||
-    isUnknownCategoryRailTypenameValidation(resultWithErrors)
-  ) {
+  const lag =
+    result === null
+      ? rejectedLag
+      : classifyCategoryRailSchemaLag(resultWithErrors)
+  if (lag === "copy") {
+    return getExperienceBySlug(locale, slug, "pre-copy")
+  }
+  if (lag === "legacy") {
     return getLegacyExperienceBySlug(locale, slug)
   }
 
   const error = graphqlError(resultWithErrors)
   if (error) throw error
+  if (result === null) throw new Error("Watch experience query failed")
 
   return (result.data?.experienceBySlug ??
     null) as NonNullable<WatchExperience> | null
@@ -592,8 +700,9 @@ async function getExperienceBySlug(
 
 async function getWatchSettings(locale: string): Promise<{
   setting: WatchSetting | null
-  categoryRailCompatibility: "supported" | "legacy-schema"
+  categoryRailCompatibility: "supported" | "pre-copy" | "legacy-schema"
 }> {
+  let rejectedLag: CategoryRailSchemaLag = "none"
   const result = await client
     .query({
       query: GET_WATCH_SETTINGS,
@@ -601,9 +710,8 @@ async function getWatchSettings(locale: string): Promise<{
       fetchPolicy: "no-cache",
     })
     .catch((error: unknown) => {
-      if (
-        isUnknownCategoryRailTypenameValidation({ error: error as ErrorLike })
-      ) {
+      rejectedLag = classifyCategoryRailSchemaLag({ error: error as ErrorLike })
+      if (rejectedLag !== "none") {
         return null
       }
       throw error
@@ -613,10 +721,47 @@ async function getWatchSettings(locale: string): Promise<{
     error?: ErrorLike
     errors?: unknown[]
   }
-  if (
-    result === null ||
-    isUnknownCategoryRailTypenameValidation(resultWithErrors)
-  ) {
+  const lag =
+    result === null
+      ? rejectedLag
+      : classifyCategoryRailSchemaLag(resultWithErrors)
+  if (lag === "copy") {
+    let preCopyRejectedLag: CategoryRailSchemaLag = "none"
+    const preCopyResult = await client
+      .query({
+        query: GET_PRE_COPY_WATCH_SETTINGS,
+        variables: { locale },
+        fetchPolicy: "no-cache",
+      })
+      .catch((error: unknown) => {
+        preCopyRejectedLag = classifyCategoryRailSchemaLag({
+          error: error as ErrorLike,
+        })
+        if (preCopyRejectedLag === "legacy") return null
+        throw error
+      })
+    const preCopyLag =
+      preCopyResult === null
+        ? preCopyRejectedLag
+        : classifyCategoryRailSchemaLag(
+            preCopyResult as { error?: ErrorLike; errors?: unknown[] },
+          )
+    if (preCopyLag === "legacy") {
+      // Continue into the existing no-rail fallback below.
+    } else {
+      if (preCopyResult === null) throw new Error("Watch settings query failed")
+      const preCopyError = graphqlError(
+        preCopyResult as { error?: ErrorLike; errors?: unknown[] },
+      )
+      if (preCopyError) throw preCopyError
+      return {
+        setting: (preCopyResult.data?.watchSetting ??
+          null) as WatchSetting | null,
+        categoryRailCompatibility: "pre-copy",
+      }
+    }
+  }
+  if (lag === "legacy" || lag === "copy") {
     const legacyResult = await client.query({
       query: GET_LEGACY_WATCH_SETTINGS,
       variables: { locale },
@@ -635,6 +780,7 @@ async function getWatchSettings(locale: string): Promise<{
 
   const error = graphqlError(resultWithErrors)
   if (error) throw error
+  if (result === null) throw new Error("Watch settings query failed")
 
   return {
     setting: result.data?.watchSetting ?? null,
@@ -1336,7 +1482,10 @@ async function resolveHomepage(
   return {
     kind: "experience",
     experience: homepageExperience,
-    watchHomeCategoryRailCompatibility: categoryRailCompatibility,
+    watchHomeCategoryRailCompatibility:
+      categoryRailCompatibility === "legacy-schema"
+        ? "legacy-schema"
+        : "supported",
   }
 }
 
@@ -1414,7 +1563,7 @@ const fetchResolvedWatchPage = unstable_cache(
       }
     }
   },
-  ["watch-page", "v5-category-rail-compatibility"],
+  ["watch-page", "v6-category-rail-copy"],
   {
     revalidate: 60,
     tags: [
@@ -1458,7 +1607,7 @@ const fetchResolvedWatchExperiencePage = unstable_cache(
       }
     }
   },
-  ["watch-experience-page", "v2-category-rail-compatibility"],
+  ["watch-experience-page", "v3-category-rail-copy"],
   { revalidate: 60, tags: [WATCH_CACHE_TAGS.experience] },
 )
 

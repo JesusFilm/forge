@@ -142,7 +142,7 @@ describe("resolveWatchPage", () => {
     expect(unstableCacheCalls).toEqual(
       expect.arrayContaining([
         {
-          keyParts: ["watch-page", "v5-category-rail-compatibility"],
+          keyParts: ["watch-page", "v6-category-rail-copy"],
           options: {
             revalidate: 60,
             tags: [
@@ -154,7 +154,7 @@ describe("resolveWatchPage", () => {
           },
         },
         {
-          keyParts: ["watch-experience-page", "v2-category-rail-compatibility"],
+          keyParts: ["watch-experience-page", "v3-category-rail-copy"],
           options: { revalidate: 60, tags: ["watch:experience"] },
         },
         {
@@ -212,6 +212,122 @@ describe("resolveWatchPage", () => {
         slug: "home",
       },
     })
+  })
+
+  const copyLagErrors = ["eyebrow", "title", "description", "ctaLabel"].map(
+    (field) => ({
+      message: `Cannot query field "${field}" on type "WatchHomeCategoryRailBlock".`,
+      extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+    }),
+  )
+
+  it("retries a complete copy-only lag with the rail-and-tiles projection", async () => {
+    queryMock
+      .mockResolvedValueOnce({ errors: copyLagErrors })
+      .mockResolvedValueOnce({
+        data: {
+          watchSetting: {
+            documentId: "watch-settings-1",
+            homepageExperience: {
+              id: "exp-home-1",
+              slug: "home",
+              blocks: [
+                {
+                  __typename: "WatchHomeCategoryRailBlock",
+                  categoryIds: ["family"],
+                  tiles: [
+                    {
+                      id: "custom",
+                      title: "Give",
+                      href: "https://example.org",
+                    },
+                  ],
+                },
+              ],
+            },
+            defaultTemplateExperience: null,
+          },
+        },
+      })
+
+    const { resolveWatchPage } = await import("./content")
+    const result = await resolveWatchPage("en")
+
+    expect(queryMock).toHaveBeenCalledTimes(2)
+    expect(print(queryMock.mock.calls[0][0].query)).toContain("ctaLabel")
+    const preCopySource = print(queryMock.mock.calls[1][0].query)
+    expect(preCopySource).toContain("AdminPreCopyWatchHomeCategoryRail")
+    expect(preCopySource).toContain("categoryIds")
+    expect(preCopySource).toContain("tiles")
+    expect(preCopySource).toMatch(
+      /fragment AdminPreCopyWatchHomeCategoryRail[\s\S]*?categoryIds[\s\S]*?tiles[\s\S]*?\n}/,
+    )
+    expect(preCopySource).not.toMatch(
+      /fragment AdminPreCopyWatchHomeCategoryRail[\s\S]*?ctaLabel[\s\S]*?\n}/,
+    )
+    expect(result).toMatchObject({
+      error: null,
+      data: {
+        kind: "experience",
+        watchHomeCategoryRailCompatibility: "supported",
+        experience: {
+          blocks: [{ tiles: [{ id: "custom" }] }],
+        },
+      },
+    })
+  })
+
+  it("uses the legacy no-rail tier only when the pre-copy projection also proves rail lag", async () => {
+    queryMock
+      .mockResolvedValueOnce({ errors: copyLagErrors })
+      .mockResolvedValueOnce({
+        errors: [
+          {
+            message:
+              'Cannot query field "tiles" on type "WatchHomeCategoryRailBlock".',
+            extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        data: {
+          watchSetting: {
+            documentId: "watch-settings-1",
+            homepageExperience: { id: "exp-home-1", slug: "home", blocks: [] },
+            defaultTemplateExperience: null,
+          },
+        },
+      })
+
+    const { resolveWatchPage } = await import("./content")
+    const result = await resolveWatchPage("en")
+
+    expect(queryMock).toHaveBeenCalledTimes(3)
+    expect(print(queryMock.mock.calls[1][0].query)).toContain(
+      "AdminPreCopyWatchHomeCategoryRail",
+    )
+    expect(print(queryMock.mock.calls[2][0].query)).not.toContain(
+      "WatchHomeCategoryRailBlock",
+    )
+    expect(result).toMatchObject({
+      error: null,
+      data: { watchHomeCategoryRailCompatibility: "legacy-schema" },
+    })
+  })
+
+  it.each([
+    ["partial", copyLagErrors.slice(0, 3)],
+    [
+      "mixed",
+      [...copyLagErrors, { message: "Something else broke.", extensions: {} }],
+    ],
+  ])("does not retry a %s copy-lag error set", async (_label, errors) => {
+    queryMock.mockResolvedValueOnce({ errors })
+    const { resolveWatchPage } = await import("./content")
+    const result = await resolveWatchPage("en")
+    expect(queryMock).toHaveBeenCalledTimes(1)
+    expect(result.data).toBeNull()
+    expect(result.error).not.toBeNull()
   })
 
   it.each(["WatchHomeCategoryRailBlock", "HomepageRecommendationsBlock"])(
@@ -325,6 +441,23 @@ describe("resolveWatchPage", () => {
     const result = await resolveWatchPage("en")
 
     expect(queryMock).toHaveBeenCalledTimes(1)
+    expect(result.error).not.toBeNull()
+  })
+
+  it("does not hide an unrelated error mixed with a known rail-lag error", async () => {
+    queryMock.mockResolvedValueOnce({
+      errors: [
+        {
+          message: 'Unknown type "WatchHomeCategoryRailBlock".',
+          extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+        },
+        { message: "Database unavailable", path: ["watchSetting"] },
+      ],
+    })
+    const { resolveWatchPage } = await import("./content")
+    const result = await resolveWatchPage("en")
+    expect(queryMock).toHaveBeenCalledTimes(1)
+    expect(result.data).toBeNull()
     expect(result.error).not.toBeNull()
   })
 

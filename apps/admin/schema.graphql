@@ -2753,12 +2753,16 @@ Top-level Watch homepage category carousel with an authored tile subset and orde
 """
 type WatchHomeCategoryRailBlock {
   categoryIds: [String!]!
+  ctaLabel: String
+  description: String
+  eyebrow: String
   sectionKey: String
   t: String
   """
   Authored tiles in render order. Null on blocks stored before tile authoring existed — read categoryIds instead. When non-null this is authoritative and categoryIds is a compatibility mirror of its predefined members.
   """
   tiles: [WatchHomeCategoryRailTile!]
+  title: String
 }
 
 """

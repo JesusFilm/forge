@@ -20,6 +20,7 @@ import {
   adminVideoHeroFragment,
   adminVideoRecommendationsFragment,
   adminHomepageRecommendationsFragment,
+  adminPreCopyWatchHomeCategoryRailFragment,
   adminWatchHomeCategoryRailFragment,
   adminWatchHomeHeroFragment,
 } from "@forge/admin-graphql/fragments"
@@ -28,9 +29,9 @@ import { previewMediaCollectionTitlesFragment } from "@/lib/fragments/preview-me
 
 import client from "@/lib/admin-client"
 
-const EXPERIENCE_PREVIEW_SHAPE = adminGraphql(
+const EXPERIENCE_PREVIEW_BASE_SHAPE = adminGraphql(
   `
-    fragment ExperiencePreviewShape on ExperiencePreview @_unmask {
+    fragment ExperiencePreviewBaseShape on ExperiencePreview @_unmask {
         experienceId
         localeId
         locale
@@ -96,9 +97,6 @@ const EXPERIENCE_PREVIEW_SHAPE = adminGraphql(
           ... on HomepageRecommendationsBlock {
             ...AdminHomepageRecommendations
           }
-          ... on WatchHomeCategoryRailBlock {
-            ...AdminWatchHomeCategoryRail
-          }
           ... on WatchHomeHeroBlock {
             ...AdminWatchHomeHero
           }
@@ -125,9 +123,32 @@ const EXPERIENCE_PREVIEW_SHAPE = adminGraphql(
     adminVideoHeroFragment,
     adminVideoRecommendationsFragment,
     adminHomepageRecommendationsFragment,
-    adminWatchHomeCategoryRailFragment,
     adminWatchHomeHeroFragment,
   ],
+)
+
+const EXPERIENCE_PREVIEW_SHAPE = adminGraphql(
+  `
+    fragment ExperiencePreviewShape on ExperiencePreview @_unmask {
+      ...ExperiencePreviewBaseShape
+      blocks {
+        ... on WatchHomeCategoryRailBlock { ...AdminWatchHomeCategoryRail }
+      }
+    }
+  `,
+  [EXPERIENCE_PREVIEW_BASE_SHAPE, adminWatchHomeCategoryRailFragment],
+)
+
+const PRE_COPY_EXPERIENCE_PREVIEW_SHAPE = adminGraphql(
+  `
+    fragment PreCopyExperiencePreviewShape on ExperiencePreview @_unmask {
+      ...ExperiencePreviewBaseShape
+      blocks {
+        ... on WatchHomeCategoryRailBlock { ...AdminPreCopyWatchHomeCategoryRail }
+      }
+    }
+  `,
+  [EXPERIENCE_PREVIEW_BASE_SHAPE, adminPreCopyWatchHomeCategoryRailFragment],
 )
 
 // Tier 2 of the fallback ladder in `getExperiencePreview`: the exact selection
@@ -157,6 +178,27 @@ const EXPERIENCE_PREVIEW_WITH_TITLES = adminGraphql(
     }
   `,
   [EXPERIENCE_PREVIEW_SHAPE, previewMediaCollectionTitlesFragment],
+)
+
+const PRE_COPY_EXPERIENCE_PREVIEW = adminGraphql(
+  `
+    query PreCopyExperiencePreview($token: String!) {
+      experiencePreview(token: $token) { ...PreCopyExperiencePreviewShape }
+    }
+  `,
+  [PRE_COPY_EXPERIENCE_PREVIEW_SHAPE],
+)
+
+const PRE_COPY_EXPERIENCE_PREVIEW_WITH_TITLES = adminGraphql(
+  `
+    query PreCopyExperiencePreviewWithTitles($token: String!) {
+      experiencePreview(token: $token) {
+        ...PreCopyExperiencePreviewShape
+        ...PreviewMediaCollectionTitles
+      }
+    }
+  `,
+  [PRE_COPY_EXPERIENCE_PREVIEW_SHAPE, previewMediaCollectionTitlesFragment],
 )
 
 // Rollout-only equivalent for Web revisions that can still reach an Admin
@@ -305,7 +347,20 @@ const PREVIEW_TITLE_SCHEMA_LAG_MESSAGES = [
   /^Cannot query field "previewResolvedTitle" on type "MediaCollectionItem"\./,
 ]
 
-type PreviewSchemaLag = "none" | "titles" | "category-rail"
+const COPY_FIELDS = ["eyebrow", "title", "description", "ctaLabel"] as const
+const COPY_SCHEMA_LAG_MESSAGES = COPY_FIELDS.map(
+  (field) =>
+    new RegExp(
+      `^Cannot query field "${field}" on type "WatchHomeCategoryRailBlock"\\.`,
+    ),
+)
+
+type PreviewSchemaLag =
+  | "none"
+  | "titles"
+  | "copy"
+  | "copy-and-titles"
+  | "category-rail"
 
 // A validation error carries no `path` (nothing resolved) and is either
 // explicitly coded as a validation failure or carries no code at all.
@@ -347,12 +402,39 @@ function classifyPreviewSchemaLag(value: unknown): PreviewSchemaLag {
   const errors = graphqlErrorsFrom(value)
   if (errors.length === 0) return "none"
 
+  if (!errors.every(isValidationShaped)) return "none"
+
+  const isTitle = (entry: GraphqlErrorCandidate) =>
+    matchesSchemaLagMessage(entry, PREVIEW_TITLE_SCHEMA_LAG_MESSAGES)
+  const isLegacy = (entry: GraphqlErrorCandidate) =>
+    matchesSchemaLagMessage(entry, BLOCK_SCHEMA_LAG_MESSAGES)
+  const copyFieldIndexes = errors.flatMap((entry) =>
+    COPY_SCHEMA_LAG_MESSAGES.flatMap((pattern, index) =>
+      matchesSchemaLagMessage(entry, [pattern]) ? [index] : [],
+    ),
+  )
+  const hasCompleteCopySet =
+    new Set(copyFieldIndexes).size === COPY_FIELDS.length &&
+    copyFieldIndexes.length === COPY_FIELDS.length
+
   if (
-    errors.some((entry) =>
-      matchesSchemaLagMessage(entry, BLOCK_SCHEMA_LAG_MESSAGES),
-    )
+    errors.some(isLegacy) &&
+    errors.every((entry) => isLegacy(entry) || isTitle(entry))
   ) {
     return "category-rail"
+  }
+
+  if (
+    hasCompleteCopySet &&
+    errors.every(
+      (entry) =>
+        isTitle(entry) ||
+        COPY_SCHEMA_LAG_MESSAGES.some((pattern) =>
+          matchesSchemaLagMessage(entry, [pattern]),
+        ),
+    )
+  ) {
+    return errors.some(isTitle) ? "copy-and-titles" : "copy"
   }
 
   // `every` over a known non-empty array: a title lag routes to tier 2 only
@@ -371,6 +453,8 @@ function classifyPreviewSchemaLag(value: unknown): PreviewSchemaLag {
 type PreviewQueryDocument =
   | typeof EXPERIENCE_PREVIEW_WITH_TITLES
   | typeof EXPERIENCE_PREVIEW
+  | typeof PRE_COPY_EXPERIENCE_PREVIEW_WITH_TITLES
+  | typeof PRE_COPY_EXPERIENCE_PREVIEW
   | typeof LEGACY_EXPERIENCE_PREVIEW
 
 /**
@@ -441,7 +525,34 @@ export async function getExperiencePreview(
   if (withTitles.lag === "titles") {
     const shapeOnly = await runPreviewTier(EXPERIENCE_PREVIEW, token)
     if (shapeOnly.ok) return shapeOnly.preview
-    if (shapeOnly.lag !== "category-rail") {
+    if (shapeOnly.lag === "copy") {
+      const preCopy = await runPreviewTier(PRE_COPY_EXPERIENCE_PREVIEW, token)
+      if (preCopy.ok) return preCopy.preview
+      if (preCopy.lag !== "category-rail") {
+        throw new Error("Experience preview query failed")
+      }
+    } else if (shapeOnly.lag !== "category-rail") {
+      throw new Error("Experience preview query failed")
+    }
+  } else if (withTitles.lag === "copy") {
+    const preCopyWithTitles = await runPreviewTier(
+      PRE_COPY_EXPERIENCE_PREVIEW_WITH_TITLES,
+      token,
+    )
+    if (preCopyWithTitles.ok) return preCopyWithTitles.preview
+    if (preCopyWithTitles.lag === "titles") {
+      const preCopy = await runPreviewTier(PRE_COPY_EXPERIENCE_PREVIEW, token)
+      if (preCopy.ok) return preCopy.preview
+      if (preCopy.lag !== "category-rail") {
+        throw new Error("Experience preview query failed")
+      }
+    } else if (preCopyWithTitles.lag !== "category-rail") {
+      throw new Error("Experience preview query failed")
+    }
+  } else if (withTitles.lag === "copy-and-titles") {
+    const preCopy = await runPreviewTier(PRE_COPY_EXPERIENCE_PREVIEW, token)
+    if (preCopy.ok) return preCopy.preview
+    if (preCopy.lag !== "category-rail") {
       throw new Error("Experience preview query failed")
     }
   }
