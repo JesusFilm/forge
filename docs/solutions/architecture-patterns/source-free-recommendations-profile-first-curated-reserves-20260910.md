@@ -1,6 +1,7 @@
 ---
 title: "Extend recommendations without a seed while preserving profile and coverage boundaries"
 date: "2026-09-10"
+last_updated: "2026-09-14"
 category: "architecture-patterns"
 module: "Admin and Web user recommendations"
 problem_type: "architecture_pattern"
@@ -113,11 +114,13 @@ separately, following the existing mixed-version rollout guidance.
 
 ## Verification and references
 
-The implementation and local preview are on `codex/feat-477-user-recommendations`.
-Production coverage remains gated; these are implementation learnings, not a
-production success claim.
+The implementation and original local preview are on
+`codex/feat-477-user-recommendations`. Production is now enabled for 51 exact
+contexts. The owner accepted partial coverage without weakening per-request
+eligibility. Additional coverage and runtime reliability are separate follow-ups.
 
 - [Consumer and operations contract](../../operations/user-recommendations.md)
+- [Production activation and limits](../../operations/user-recommendations-activation-2026-09-14.md)
 - [Exhaustive local coverage evidence](../../recommendations/curation/2026-09-10/all-context-coverage-report.md)
 - [Recommendation boundary hardening](production-recommendation-boundary-hardening-pattern.md)
 - [Recover transient admission on profile refresh](../ui-bugs/watch-recommendation-consent-refresh-in-flight-admission-race.md)
@@ -137,3 +140,29 @@ Prisma reads and insert return values even in seeded delivery tests; adding view
 retention also affects the existing purge test. Updating only the production
 migration chain leaves these fixtures inconsistent. Run the real PostgreSQL suite,
 including seeded delivery, retention, profile concurrency and the new pool tests.
+
+## Production activation lessons
+
+**Keep readiness boundaries separate.** Deployed schema, effective runtime flags,
+an active curated pointer and published homepage content are separate checks.
+Admin's CI mode skips Zod defaults: a schema-only default change left source-free
+serving off. Normalize the default before validation and test the actual skipped
+environment module, preserving explicit `false`. Verify live delivery after that
+deployment; CI passing alone does not prove activation.
+
+**Preserve unrelated drafts during publication.** Read both canonical content and
+the active revision. Publishing an existing draft just to add a block can also
+release unrelated editorial work. The activation staged canonical-plus-block,
+published through the revision-aware service, then restored draft-plus-block
+within one locked transaction. Compare normalized content and revalidate public
+caches after the outer commit. Inspect old canonical JSON as well as the incoming
+patch: the Spanish draft gateway rejected retired item keys before applying the
+otherwise-valid patch, requiring a narrowly scoped, archived data repair first.
+
+**Retain unsuccessful observations.** A complete local language audit is not a
+completed production audit. A public-connection failure after hundreds of queries
+cannot be reported as passed coverage. Save bounded progress reports before
+expanding the work. Likewise, HTTP 200 can contain `delivery_timeout`; validate
+result, distinct cards, selection and playback feedback. Recognized headless
+traffic is intentionally rejected by the evidence boundary, so browser evidence
+must state its user-agent setup and must not silently weaken that policy.
