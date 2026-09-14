@@ -130,3 +130,11 @@ owned by `feat-464`.
   the underlying shared-runtime source unresolved. Keep this ticket open. See
   `docs/plans/2026-09-15-fix-homepage-recommendation-recovery.md` for trace IDs and
   the bounded recovery scope.
+- The next pass reproduces shared Web starvation under cached catalog traffic.
+  The English inventory response is 9.5 MB; Next's synchronous ETag hash is the
+  dominant CPU hotspot. Disabling generated page ETags (retaining ISR and
+  Cache-Control) changes a matched local probe from 3/17 profile HTTP 503s to
+  0/20, and maximum event-loop delay from 481 ms to 155 ms. See
+  `docs/solutions/performance-issues/watch-etag-hashing-starves-recommendation-admission-20260915.md`
+  and `apps/web/scripts/probe-recommendation-runtime.mjs`. Production verification
+  remains required; keep the authored homepage block removed.
