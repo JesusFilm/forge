@@ -201,6 +201,11 @@ function makeCard(overrides: Record<string, unknown> = {}) {
     coreId: "1_jf-0-0",
     title: "Jesus",
     label: "Feature film",
+    // Deliberately eligible, despite the display label and the `1_jf-0-0`
+    // core id, so every pre-existing test here keeps exercising the render
+    // path. The intro's feature-film exclusion is covered by its own tests,
+    // which override this to `FEATURE_FILM`.
+    videoLabel: "SEGMENT",
     metaLabel: "2:03",
     href: "/jesus.html/english.html",
     imageUrl: "https://cdn.example/jesus.jpg",
@@ -3585,5 +3590,109 @@ describe("WatchHomePage", () => {
     expect(
       railFrame.querySelector('[data-testid="watch-home-tv-active-title"]'),
     ).not.toBeNull()
+  })
+  describe("feature-film exclusion on the hero path", () => {
+    // `heroSlides` is built from each configured source's PARENT video, so it
+    // is the one entry point that can hand the intro a whole film. Measured
+    // against production admin on 2026-09-14, two of the four configured hero
+    // sources are feature films: `1_jf-0-0` at 7674s and `2_GOJ-0-0` at
+    // 10994s. `makeModel()` ships no carousel pools, so these render through
+    // `watchHomeHeroSlidesToTvCarouselSlides`.
+    it("mounts no media for a feature-film hero slide", async () => {
+      await act(async () => {
+        root.render(
+          <WatchHomePage
+            model={makeModel({
+              heroSlides: [
+                {
+                  ...makeCard({
+                    coreId: "1_jf-0-0",
+                    videoLabel: "FEATURE_FILM",
+                    durationSeconds: 7674,
+                  }),
+                  eyebrow: "Featured",
+                },
+              ],
+            })}
+          />,
+        )
+      })
+
+      expect(
+        container.querySelector('[data-testid="watch-home-tv-video"]'),
+      ).toBeNull()
+    })
+
+    it("keeps the eligible slide and drops only the feature film", async () => {
+      await act(async () => {
+        root.render(
+          <WatchHomePage
+            model={makeModel({
+              heroSlides: [
+                {
+                  ...makeCard({
+                    id: "film",
+                    coreId: "1_jf-0-0",
+                    videoLabel: "FEATURE_FILM",
+                    playbackId: "mux-film",
+                    hls: "https://stream.example/film.m3u8",
+                  }),
+                  eyebrow: "Featured",
+                },
+                {
+                  ...makeCard({
+                    id: "segment",
+                    coreId: "1_jf-0-1",
+                    title: "A Segment",
+                    videoLabel: "SEGMENT",
+                    playbackId: "mux-segment",
+                    hls: "https://stream.example/segment.m3u8",
+                  }),
+                  eyebrow: "Featured",
+                },
+              ],
+            })}
+          />,
+        )
+      })
+
+      const video = container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      ) as HTMLVideoElement | null
+
+      // The segment takes the first turn because the film is gone, not merely
+      // reordered behind it.
+      expect(video).not.toBeNull()
+      expect(video?.getAttribute("src")).toContain("segment.m3u8")
+      expect(
+        container.querySelector('[data-testid="watch-home-tv-active-title"]')
+          ?.textContent,
+      ).toContain("A Segment")
+    })
+
+    it("renders the page without media when every hero slide is a feature film", async () => {
+      // Not production-reachable today — two configured sources are
+      // COLLECTIONs — but the guard must degrade to a posterless page rather
+      // than throw.
+      await act(async () => {
+        root.render(
+          <WatchHomePage
+            model={makeModel({
+              heroSlides: [
+                {
+                  ...makeCard({ videoLabel: "FEATURE_FILM" }),
+                  eyebrow: "Featured",
+                },
+              ],
+            })}
+          />,
+        )
+      })
+
+      expect(
+        container.querySelector('[data-testid="watch-home-tv-video"]'),
+      ).toBeNull()
+      expect(container.textContent).toContain("Discover the full story")
+    })
   })
 })

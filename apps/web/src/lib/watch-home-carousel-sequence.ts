@@ -26,6 +26,37 @@ export function isWatchHomeHeroPlayableAspect(
   return width / height >= WATCH_HOME_HERO_MIN_ASPECT_RATIO
 }
 
+/**
+ * Labels that never take a turn in the home intro, whatever the pool offers.
+ *
+ * These are admin's WIRE labels, not the display text. `WatchHomeCard.label`
+ * holds the rendered string ("Feature film"), so comparing against that would
+ * silently never match and would also break the moment the copy changes or is
+ * translated. The wire value is the semantic one, so it is what this guard
+ * keys on — see `WatchHomeCard.videoLabel`.
+ *
+ * Feature films are excluded because the intro plays each slide to its natural
+ * end (FGE-237). Two of the four configured hero sources are feature films —
+ * `1_jf-0-0` measured 7674s and `2_GOJ-0-0` measured 10994s against production
+ * admin on 2026-09-14 — so without this guard a single turn can hold the hero
+ * for two to three hours. The pooled path is unaffected either way: it prefers
+ * a source's children, which for both films are SEGMENTs.
+ */
+export const WATCH_HOME_INTRO_EXCLUDED_VIDEO_LABELS: ReadonlySet<string> =
+  new Set(["FEATURE_FILM"])
+
+/**
+ * Unknown and absent labels are allowed through, matching
+ * `isWatchHomeHeroPlayableAspect`: this guard only ever acts on a label it
+ * positively recognises as excluded.
+ */
+export function isWatchHomeIntroEligibleVideoLabel(
+  videoLabel: string | null | undefined,
+): boolean {
+  if (typeof videoLabel !== "string") return true
+  return !WATCH_HOME_INTRO_EXCLUDED_VIDEO_LABELS.has(videoLabel)
+}
+
 export type WatchHomeTvCarouselVideoSlide = {
   kind: "video"
   id: string

@@ -29,6 +29,7 @@ import {
 } from "@/lib/watch-player-chrome-events"
 import type { WatchHomeHeroSlide } from "@/lib/watch-home"
 import type { WatchHomeCarouselSequenceData } from "@/lib/watch-home-carousel-sequence"
+import { isWatchHomeIntroEligibleVideoLabel } from "@/lib/watch-home-carousel-sequence"
 import { cn } from "@/lib/utils"
 import {
   WATCH_HOME_TV_TIMELINE_FUTURE_COUNT,
@@ -160,38 +161,43 @@ function appendAutoplaySignal(href: string, playbackTimeSeconds = 0): string {
 export function watchHomeHeroSlidesToTvCarouselSlides(
   slides: readonly WatchHomeHeroSlide[],
 ): WatchHomeTvCarouselSlide[] {
-  return slides.map((slide) => {
-    const muxThumbnail = muxThumbnailUrl(slide.playbackId)
-    // Frame-first for the hero, authored-first for the card below. The admin
-    // library holds only mobile derivatives for these videos (measured 640x300
-    // for `mobileCinematicHigh`), which a full-bleed intro upscales about
-    // fourfold; the Mux frame is 1280x720 from the same warm derivative the
-    // watch-page hero requests. At card size the authored image has pixels to
-    // spare, so it stays preferred there.
-    // `||`, not `??`: a present-but-blank `imageUrl` is a real admin shape,
-    // and `??` would both keep it and suppress the Mux tier below it.
-    const posterUrl =
-      resolveMuxHeroPosterUrlAtMaxWidth(slide.playbackId) ||
-      slide.imageUrl ||
-      muxThumbnail
+  // `heroSlides` is built from each configured source's PARENT video, so unlike
+  // the pooled path (which prefers a source's children) it can hand the intro a
+  // whole feature film. Same guard, applied to the other entry point.
+  return slides
+    .filter((slide) => isWatchHomeIntroEligibleVideoLabel(slide.videoLabel))
+    .map((slide) => {
+      const muxThumbnail = muxThumbnailUrl(slide.playbackId)
+      // Frame-first for the hero, authored-first for the card below. The admin
+      // library holds only mobile derivatives for these videos (measured 640x300
+      // for `mobileCinematicHigh`), which a full-bleed intro upscales about
+      // fourfold; the Mux frame is 1280x720 from the same warm derivative the
+      // watch-page hero requests. At card size the authored image has pixels to
+      // spare, so it stays preferred there.
+      // `||`, not `??`: a present-but-blank `imageUrl` is a real admin shape,
+      // and `??` would both keep it and suppress the Mux tier below it.
+      const posterUrl =
+        resolveMuxHeroPosterUrlAtMaxWidth(slide.playbackId) ||
+        slide.imageUrl ||
+        muxThumbnail
 
-    return {
-      kind: "video",
-      id: slide.coreId,
-      title: slide.title,
-      label: slide.eyebrow || slide.label,
-      href: slide.href,
-      posterUrl,
-      thumbnailUrl:
-        slide.imageUrl ?? muxThumbnailUrl(slide.playbackId, 640) ?? posterUrl,
-      imageAlt: slide.imageAlt,
-      src: slide.hls ?? muxStreamUrl(slide.playbackId),
-      playbackId: slide.playbackId,
-      subtitleVttSrc: slide.subtitleVttSrc,
-      subtitleLanguageBcp47: slide.subtitleLanguageBcp47,
-      durationSeconds: slide.durationSeconds,
-    }
-  })
+      return {
+        kind: "video",
+        id: slide.coreId,
+        title: slide.title,
+        label: slide.eyebrow || slide.label,
+        href: slide.href,
+        posterUrl,
+        thumbnailUrl:
+          slide.imageUrl ?? muxThumbnailUrl(slide.playbackId, 640) ?? posterUrl,
+        imageAlt: slide.imageAlt,
+        src: slide.hls ?? muxStreamUrl(slide.playbackId),
+        playbackId: slide.playbackId,
+        subtitleVttSrc: slide.subtitleVttSrc,
+        subtitleLanguageBcp47: slide.subtitleLanguageBcp47,
+        durationSeconds: slide.durationSeconds,
+      }
+    })
 }
 
 function PrimaryAction({

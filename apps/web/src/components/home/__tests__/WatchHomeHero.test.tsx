@@ -24,6 +24,7 @@ const fallbackSlide = {
   coreId: "fallback-core",
   title: "Jesus",
   label: "Feature film",
+  videoLabel: "SEGMENT",
   metaLabel: null,
   href: null,
   imageUrl: "https://cdn.example/jesus.jpg",
