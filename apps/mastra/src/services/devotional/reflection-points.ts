@@ -53,6 +53,19 @@ const ROMAN_LEAD_IN =
   /(?:^|[.!?]\s+|\n\s*)((?:I|II|III|IV|V|VI|VII|VIII|IX|X)\.)\s+(?=[A-Z])/g
 
 /**
+ * Ryle's third lead-in shape: "We see, for one thing... We see, for another
+ * thing... for a third thing." No ordinal WORD, no roman numeral, so neither
+ * pattern above matched it, and a quarter of the Ryle-Luke corpus (40 of 144
+ * entries measured) has NO ordinal or roman marks despite being clearly
+ * multi-point. Those excerpts fell through as "continuous exposition" and
+ * went to the writer whole — which is what happened on ch21-seq0: Ryle's two
+ * points (Christ's power, then the gospel picture) both landed in one
+ * reflection with no room to develop either.
+ */
+const THING_LEAD_IN =
+  /(?:^|[.!?]\s+|\n\s*)(?:we\s+(?:should\s+)?(?:see|learn|notice|observe|mark|are\s+taught)|let\s+us\s+(?:see|notice|observe|mark|learn))\s*,?\s+for\s+(one|another|a third|a fourth|a fifth)\s+thing\b/gi
+
+/**
  * Split `text` into its ordinal-marked points. Returns an EMPTY array when the
  * excerpt has no ordinal structure at all (roughly a fifth of the corpus is
  * continuous exposition) — callers should then use the excerpt as-is rather
@@ -61,9 +74,16 @@ const ROMAN_LEAD_IN =
 export function splitCommentaryPoints(text: string): CommentaryPoint[] {
   const ordinal = [...text.matchAll(ORDINAL_LEAD_IN)]
   // Ryle's ordinals win when present: they mark his argument, where a stray
-  // roman in the same text would only be a citation.
+  // roman in the same text would only be a citation. "For one thing" is the
+  // last resort, tried only when neither of the other two structures fired.
   const matches =
-    ordinal.length >= 2 ? ordinal : [...text.matchAll(ROMAN_LEAD_IN)]
+    ordinal.length >= 2
+      ? ordinal
+      : (() => {
+          const roman = [...text.matchAll(ROMAN_LEAD_IN)]
+          if (roman.length >= 2) return roman
+          return [...text.matchAll(THING_LEAD_IN)]
+        })()
   if (matches.length < 2) return [] // 0 or 1 marker → not a multi-point piece
 
   const points: CommentaryPoint[] = []
@@ -94,7 +114,13 @@ export function splitCommentaryPoints(text: string): CommentaryPoint[] {
 export function commentaryPreamble(text: string): string {
   const ordinal = [...text.matchAll(ORDINAL_LEAD_IN)]
   const marks =
-    ordinal.length >= 2 ? ordinal : [...text.matchAll(ROMAN_LEAD_IN)]
+    ordinal.length >= 2
+      ? ordinal
+      : (() => {
+          const roman = [...text.matchAll(ROMAN_LEAD_IN)]
+          if (roman.length >= 2) return roman
+          return [...text.matchAll(THING_LEAD_IN)]
+        })()
   const first = marks[0]
   if (!first || first.index == null) return ""
   // The roman pattern anchors on the preceding sentence break, so its match

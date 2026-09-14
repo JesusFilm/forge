@@ -113,3 +113,55 @@ describe("Matthew Henry's roman-numeral points", () => {
     ])
   })
 })
+
+describe("Ryle's 'for one thing / for another thing' points", () => {
+  const TWO_THING_POINTS = `The miracle described in these verses is more frequently related than any other.
+
+We see, for one thing, in these verses a striking example of our Lord's divine power. He feeds an assembly of five thousand men with five loaves and two fish.
+
+We see, for another thing, in these verses a striking emblem of Christ's ability to supply the spiritual needs of mankind. The whole miracle is a picture.`
+
+  it("splits on the phrase even with no ordinal word or roman numeral", () => {
+    // ch21-seq0 (Jesus Feeds the Five Thousand): this excerpt has neither an
+    // ordinal ("firstly") nor a roman numeral, so it matched ZERO points
+    // before this pattern existed and the writer received Ryle's whole
+    // two-point exposition with no narrowing — which produced a reflection
+    // that jumped between "Christ's power" and "the gospel picture" with no
+    // room to develop either, exactly what the owner flagged on read.
+    const points = splitCommentaryPoints(TWO_THING_POINTS)
+    expect(points).toHaveLength(2)
+    expect(points[0].text).toContain("for one thing")
+    expect(points[1].text).toContain("for another thing")
+  })
+
+  it("keeps the preamble before the first point", () => {
+    expect(commentaryPreamble(TWO_THING_POINTS)).toContain(
+      "more frequently related",
+    )
+  })
+
+  it("does not split a single 'for one thing' with no pair", () => {
+    // 11 of 40 Ryle-Luke entries use the phrase exactly once — a single point
+    // needs no splitting, and treating it as a marker would wrongly try to
+    // narrow a one-point excerpt.
+    const points = splitCommentaryPoints(
+      "We see, for one thing, in these verses that Christ never changes.",
+    )
+    expect(points).toEqual([])
+  })
+
+  it("recognises the verb variants found across the corpus", () => {
+    // "we should observe/notice/learn" and "let us mark" all occur alongside
+    // "we see" in Ryle-Luke; missing any of them silently reproduces the same
+    // bug on a different chapter.
+    const variants = [
+      "We should observe, for one thing, in these verses that Christ warns us. We should observe, for another thing, that grace is free.",
+      "We should notice, for one thing in the text that sin spreads. We should notice, for another thing, that mercy remains.",
+      "Let us mark, for one thing, in this passage that faith is tested. Let us mark, for another thing, that God is faithful.",
+      "We should learn, for one thing, from this scene that pride destroys. We should learn, for another thing, that humility saves.",
+    ]
+    for (const v of variants) {
+      expect(splitCommentaryPoints(v).length).toBe(2)
+    }
+  })
+})
