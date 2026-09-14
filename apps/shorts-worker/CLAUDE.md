@@ -334,6 +334,40 @@ smoke asserts the unsupported-language skip path instead of real captions.
 Point `SHORTS_WORKER_LOCAL_ARTIFACTS_DIR` at `../manager/.tmp/artifacts` for
 manager↔worker local parity.
 
+## Devotional render scripts (separate from the HTTP job service)
+
+`scripts/render-devotional-video.mjs` and its siblings are a LOCAL script path
+driven by `apps/mastra`'s `render-one-devotional.ts`, not the job service the
+rest of this file documents: no JobRecord, no manager polling, no artifact
+store. They render the `devotional` composition from a staged manifest.
+
+Review affordances, cheapest first. Each answers a different question, and
+picking the wrong one is how a 3:22 encode gets spent proving something a
+20-second check would have shown:
+
+- `--review` (mastra CLI) — the words only. Stops before any TTS spend.
+- `--silent-preview` — pacing with a synthetic voice, no external calls. Its
+  audio is marked `synthetic` and rejected by the narration cache boundary, so
+  a preview cannot poison a real render.
+- `--stop-before-render`, then `node scripts/preview-audio.mjs
+--manifest=<stage>/manifest.json --out=<file>.m4a` — the soundtrack on the
+  render's REAL clock (narration + clip dialogue + music bed), in seconds. No
+  picture.
+- `--stills=N` / `--stills-frames=a,b,c` — layout at chosen frames, one browser
+  pass, no MP4.
+- `--frame-range=START-END` — a real MP4 slice WITH audio, about a twelfth of a
+  full encode. Stills prove layout; only a rendered slice proves motion, so the
+  animated opening is reviewed this way before the full render.
+
+Both frame-list flags are parsed ONLY when the flag is actually present:
+`"".split(",")` is `[""]` and `Number("")` is `0`, so parsing an unset flag the
+same way as a set one once replaced every ordinary MP4 render with a single
+frame-0 PNG while still logging DONE and exiting 0.
+
+The screen-by-screen contract these scripts render (cover, stepper, scripture,
+and the word-timing traps) is
+`docs/solutions/design-patterns/devotional-opening-sequence-stepper-contract-20260905.md`.
+
 ## Known gaps
 
 - **The container smoke has NOT yet been run** (here or in CI): `docker

@@ -65,3 +65,6 @@ forge.code-workspace
 # Daily-devotional generated artifacts: rendered videos, downloaded clips, audio,
 # manifests, caches, previews. All reproducible output — never committed.
 devo/
+# ...and the symlink a worktree uses to point at that directory on an
+# external volume. A symlink is not a directory, so `devo/` misses it.
+devo

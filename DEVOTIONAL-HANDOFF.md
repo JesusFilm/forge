@@ -57,6 +57,7 @@ fast-forward'ом, ничего не потеряно.
 Все три критика прошли на реальном прогоне: coherence OK, **depth 4/5**, fidelity OK.
 
 Утверждено владельцем сегодня:
+
 - **conclusion:** «Grace that finds you is grace that will not leave you the same.»
 - **question:** «Is there a place in your life where his grace has been received, but hasn't shown itself yet?»
 - **prayer:** «Ask God to show you where his grace is asking for more than words from you.»
@@ -80,8 +81,17 @@ and dwell in your heart if you will only receive him»). Причина — ау
 через `.mjs`, флаги надо передавать руками. В прошлой сессии этот дефолт молча дал неверный
 грейд, и владелец это заметила.
 
+Обновление 2026-09-05 (не отменяет написанное выше): серия притч
+(ch31, «Добрый самарянин») рендерилась с `--style=grain`, флаги передаются явно
+в командной строке, дефолты `.mjs` не участвуют. Владелец приняла результат.
+splittone/grounded остаётся утверждённой комбинацией для Закхея — у серии
+просто свой грейд.
+
 Прочее по видео:
-- карточка видео 30–60 с (в коде `MIN_VIDEO_CARD_SEC` / `MAX_VIDEO_CARD_SEC`)
+
+- карточка видео 30–60 с (в коде `MIN_VIDEO_CARD_SEC` / `MAX_VIDEO_CARD_SEC`);
+  нижняя граница снижена до 24 с по просьбе владельца, чтобы короткие притчи
+  не приходилось ускорять
 - ch33 делится на два акта на 64.08 с: акт 1 — «сегодня надобно Мне быть у тебя в доме» +
   реакция толпы; акт 2 — Закхей уже в доме. Владелец подтвердила, что это ровно то деление
   по смыслу, которое она просила.
@@ -92,15 +102,15 @@ and dwell in your heart if you will only receive him»). Причина — ау
 Это главное, что экономит контекст. Все правила уже вложены в промпты. Не надо пересказывать
 историю их появления — надо открыть файлы:
 
-| Файл | Что в нём |
-|---|---|
-| `reflection-modernizer.ts` | главный промпт: держаться близко к оригиналу, современная лексика, «не командовать», не менять аудиторию автора, механический regex-гейт на запрещённые формулировки |
-| `reflection-point-picker.ts` | выбор максимум 2 пунктов, блок про аудиторию |
-| `devotional-conclusion.ts` | отдельный агент для conclusion, блок про аудиторию |
-| `devotional-reflection-critic.ts` | критик глубины, включая точную границу «что считать учением о предопределении» |
-| `reflection-fidelity-critic.ts` | сверка адаптации с источником |
-| `devotional-quality-gate.ts` | все три критика как один гейт до озвучки и видео |
-| `devotional-models.ts` | какая модель у какого агента |
+| Файл                              | Что в нём                                                                                                                                                            |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `reflection-modernizer.ts`        | главный промпт: держаться близко к оригиналу, современная лексика, «не командовать», не менять аудиторию автора, механический regex-гейт на запрещённые формулировки |
+| `reflection-point-picker.ts`      | выбор максимум 2 пунктов, блок про аудиторию                                                                                                                         |
+| `devotional-conclusion.ts`        | отдельный агент для conclusion, блок про аудиторию                                                                                                                   |
+| `devotional-reflection-critic.ts` | критик глубины, включая точную границу «что считать учением о предопределении»                                                                                       |
+| `reflection-fidelity-critic.ts`   | сверка адаптации с источником                                                                                                                                        |
+| `devotional-quality-gate.ts`      | все три критика как один гейт до озвучки и видео                                                                                                                     |
+| `devotional-models.ts`            | какая модель у какого агента                                                                                                                                         |
 
 Ограничения владельца, зафиксированные в этих промптах (перенеси как контекст, если новая
 сессия будет трогать промпты):
@@ -118,6 +128,17 @@ and dwell in your heart if you will only receive him»). Причина — ау
 
 ### 2.4 Свежая функция: карточки для соцсетей
 
+> **Частично устарело (2026-09-05).** Обложка девоушнала с тех пор перестроена,
+> и её текущий контракт — вместе с новым экраном шагов (READ / WATCH / REFLECT /
+> PRAY) и правилами анимации Писания — описан в
+> `docs/solutions/design-patterns/devotional-opening-sequence-stepper-contract-20260905.md`.
+> Главное расхождение: правило «никогда дата — всегда TODAY'S DEVOTIONAL»
+> больше не действует. Слот даты пуст совсем (`hideCoverDate` теперь
+> подставляется по умолчанию в `devotional-render.ts`), потому что подпись
+> раскрывалась уже ПОСЛЕ того, как знак успокоился, а владелец хочет, чтобы
+> анимация заканчивалась на сжатии логотипа в символ. Атрибуция переехала под
+> заголовок. Ниже — как было; удалять не стал по конвенции инвентаря.
+
 Только что добавлено в composition (`hideCoverDate`, `coverTextStatic`, `coverSecondaryLine`):
 дата убирается, заголовок и атрибуция видны с нулевого кадра, анимация логотипа доигрывает до
 сжатия в символ, вторичная строка появляется побуквенно в стиле даты.
@@ -131,7 +152,7 @@ and dwell in your heart if you will only receive him»). Причина — ау
 ### 2.5 Базлайн проверок
 
 ```bash
-pnpm --filter @forge/mastra test -- --run                    # 99 файлов, 850 тестов
+pnpm --filter @forge/mastra test -- --run                    # 112 файлов, 980 тестов (2026-09-05)
 pnpm --filter @forge/mastra exec tsc --noEmit                # чисто
 pnpm --filter @forge/shorts-compositions test -- --run       # 6 файлов, 59 тестов
 pnpm --filter @forge/shorts-compositions exec tsc --noEmit   # чисто
@@ -153,6 +174,7 @@ pnpm --filter @forge/shorts-compositions exec tsc --noEmit   # чисто
 (проверено по кадрам).
 
 Два пункта остаются **непроверенными на слух** — арифметикой их не проверить:
+
 - плавность нарастания громкости на входе в видео (1.6 с, квадратичная кривая)
 - приглушение музыки на **втором** акте (исправлено с `findIndex` на `flatMap`)
 
@@ -226,12 +248,16 @@ shell-команд, семантический обход кода, индекс
 skill-инструкции.
 
 ```typescript
-import { Workspace, LocalFilesystem, LocalSandbox } from '@mastra/core/workspace'
+import {
+  Workspace,
+  LocalFilesystem,
+  LocalSandbox,
+} from "@mastra/core/workspace"
 
 const workspace = new Workspace({
-  filesystem: new LocalFilesystem({ basePath: './workspace' }),
-  sandbox: new LocalSandbox({ workingDirectory: './workspace' }),
-  skills: ['skills'],
+  filesystem: new LocalFilesystem({ basePath: "./workspace" }),
+  sandbox: new LocalSandbox({ workingDirectory: "./workspace" }),
+  skills: ["skills"],
 })
 ```
 

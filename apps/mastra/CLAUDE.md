@@ -169,13 +169,13 @@ pnpm --filter @forge/mastra lint
 | `FIRECRAWL_MAX_SEARCH_RESULTS`               | Runtime cap for Firecrawl search results exposed to agents/workflows. Defaults to `5`, max `20`.                           |
 | `FIRECRAWL_MAX_MARKDOWN_CHARS`               | Runtime cap for markdown returned by Firecrawl search hydration and scrape. Defaults to `16000`.                           |
 | `INSTAGRAM_DISCOVERY_ARTIFACT_DIR`           | Directory for Instagram discovery report JSON artifacts. Defaults to `<storage>/instagram-discovery`.                      |
-| `DEVOTIONAL_SITE_INGEST_URL`                 | Watch-site "Today's Devotional" ingest endpoint. Optional; unset means publish is skipped (generation still runs).        |
-| `DEVOTIONAL_SITE_INGEST_API_KEY`             | Bearer key Mastra presents to the devotional ingest endpoint. Optional; required alongside the URL to publish.            |
-| `DEVOTIONAL_PARTNER_DOMAINS`                 | CSV allowlist of trusted partner domains for grounding and the optional further-reading link. Empty disables grounding.   |
+| `DEVOTIONAL_SITE_INGEST_URL`                 | Watch-site "Today's Devotional" ingest endpoint. Optional; unset means publish is skipped (generation still runs).         |
+| `DEVOTIONAL_SITE_INGEST_API_KEY`             | Bearer key Mastra presents to the devotional ingest endpoint. Optional; required alongside the URL to publish.             |
+| `DEVOTIONAL_PARTNER_DOMAINS`                 | CSV allowlist of trusted partner domains for grounding and the optional further-reading link. Empty disables grounding.    |
 | `DEVOTIONAL_DEFAULT_VIDEO_ID`                | Fallback Jesus Film clip id used when video search returns nothing above threshold (always-a-clip, A8).                    |
-| `DEVOTIONAL_MODEL`                           | OpenRouter chat model for hook / scripture / writer. Defaults to `anthropic/claude-haiku-4-5`.                            |
-| `DEVOTIONAL_SAFETY_MODEL`                    | OpenRouter chat model for the safety gate. Defaults to `anthropic/claude-haiku-4-5`; upgrade independently if needed.     |
-| `DEVOTIONAL_ARTIFACT_DIR`                    | Directory for daily devotional report JSON artifacts. Defaults to `<storage>/daily-devotional`.                           |
+| `DEVOTIONAL_MODEL`                           | OpenRouter chat model for hook / scripture / writer. Defaults to `anthropic/claude-haiku-4-5`.                             |
+| `DEVOTIONAL_SAFETY_MODEL`                    | OpenRouter chat model for the safety gate. Defaults to `anthropic/claude-haiku-4-5`; upgrade independently if needed.      |
+| `DEVOTIONAL_ARTIFACT_DIR`                    | Directory for daily devotional report JSON artifacts. Defaults to `<storage>/daily-devotional`.                            |
 | `PORT`                                       | Railway-provided runtime port. Mastra defaults to `4111` locally.                                                          |
 | `MASTRA_STUDIO_PATH`                         | Set to `.mastra/output/studio` when starting the built server with Studio assets.                                          |
 
@@ -506,6 +506,46 @@ OpenRouter key is configured), `generation_failed` (502, carries the failing
 `ADMIN_SEARCH_EVAL_SEARCH_URL` + `ADMIN_SEARCH_EVAL_API_KEY`; the exact
 production video-search contract is confirmed at exec time and the search client
 is an injectable seam.
+
+### Narration cache and the video render
+
+The section above describes the TEXT pipeline. A devotional is also a rendered
+video: `buildNarrationSegments` turns the approved text into one spoken segment
+per card, ElevenLabs narrates each one, `buildDevotionalManifest` lays the cards
+out on a timeline, and `apps/shorts-worker/scripts/render-devotional-video.mjs`
+renders the Remotion composition in `packages/shorts-compositions`. Segments,
+the music bed and the generated text are cached per (chapter, sequence) under
+`devo/cache/ch<N>-seq<M>/` — that cache is also the serializable seam between
+the Mastra sub-workflows, since audio bytes cannot cross a workflow step
+boundary.
+
+**The narration reuse key is (voice id, delivery role, SPOKEN text) — never the
+displayed text.** They differ exactly where a spoken connector moves between
+cards, and keying on the displayed text let a stale take be replayed with no
+error, no warning and no failing test: the finished video said "Reflect on
+this." twice. Cached segments record `spoken`; entries written before that field
+existed are dropped rather than guessed, which costs one full re-synthesis per
+devotional and is the honest price of not knowing what old bytes say. The
+whole-bundle staleness check compares the same field. See
+`docs/solutions/logic-errors/narration-cache-keyed-on-display-instead-of-spoken-text-20260905.md`.
+
+**Two more properties the same cache has to hold, each of which failed once.**
+`saveCachedAudio` rejects `synthetic` segments at the boundary, so a
+`--silent-preview` run cannot poison it (it did: a later render reused −91 dB
+silence and reported success). And a "everything is cached" shortcut must
+compare text, not merely check that segments exist.
+
+**The opening sequence — cover, stepper, scripture — is a settled contract, not
+a per-video decision.** The four stages (READ / WATCH / REFLECT / PRAY), what
+the cover shows and when, and how on-screen text is aligned to ElevenLabs word
+timings are all recorded, with the reasoning, in
+`docs/solutions/design-patterns/devotional-opening-sequence-stepper-contract-20260905.md`.
+Two traps from it belong here because they fail silently: `STEP_LEAD_SEC` is
+baked into the step audio as real silence AFTER synthesis, so word times are
+relative to the pre-lead audio and anything aligning to them must add the lead;
+and the `steps` flag must reach EVERY call to `buildNarrationSegments` in a run
+(production, staleness check, approval fingerprint) or the manifest and the
+audio diverge without an error.
 
 ## Railway Storage
 
