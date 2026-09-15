@@ -1104,6 +1104,20 @@ An ordered, schema-validated content unit within an Experience. Blocks carry a d
 
 An Experience Block that groups ordered watch content beneath independently authored category, title, supporting-title, description, call-to-action, and footer semantics; its presentation variant may change the media layout but not the authored content hierarchy.
 
+### Immersive Backdrop
+
+The blurred, dimmed, desaturated wash of a collection's own artwork that a Watch web surface paints behind a panel's content, so the panel carries the mood of what it contains without competing with the text over it.
+
+The same treatment appears on more than one Watch web surface — authored Media Collection Blocks and the collection panels of the Watch Language Inventory — and is meant to read identically on each, so an editor's preview matches what a viewer sees. It is purely decorative: it takes no interaction, is derived from still artwork rather than from playback, and conveys nothing a reader would lose if it failed to load.
+
+### Authored Destination
+
+A link target an editor types into an Experience Block, as distinct from one the application derives from a content slug.
+
+Because the block payload holding it is machine-writable as well as editor-writable, a governed Authored Destination is re-checked wherever it renders rather than trusted from its write-time check. Two shapes are admitted: a same-origin path inside the watch tree, or an absolute secure-scheme URL. Anything else drops the element carrying it, rather than substituting a default target — a silently redirected destination is worse than a missing one. Admission is decided on the destination as a browser would resolve it, not as it was typed; the two differ, and the typed form is not the one that takes effect. An admitted external destination opens in a new browsing context and is never handed to the client-side router.
+
+Governance is per-field and currently partial: it covers the category tile destination. The older call-to-action link fields predate the policy, remain unvalidated, and reach an anchor directly — treat them as ungoverned until converted, and do not read this entry as describing them.
+
 ### Dynamic Collection Feed
 
 A Media Collection Block whose `itemsSource` is `dynamicCollections`, causing
@@ -1413,6 +1427,21 @@ Because a revert lands the episode back in the downloaded state, a canceled or f
 
 Stopping an in-flight download's native task and neutralizing its callbacks — without touching its record — so a replacement download can safely reuse the same Video's task identity. Needed because the native downloader routes terminal events by task id to whichever task currently holds it, so an un-superseded old task's dying event could strike its replacement.
 
+## Raw export
+
+### Raw Export
+
+Saving a plain video file into the device's own photo library, where the viewer owns it like any other photo or video, as distinct from an offline copy the app manages in its own storage and can revoke.
+_Avoid:_ Save to Photos — that is the viewer-facing label for the same thing.
+
+A Raw Export creates no Download Record, so nothing derived from offline copies reflects one: a series control shows the same idle label for the whole run, and the library lists nothing new. Anything that must observe an export therefore reads the export's own state, never an offline aggregate. An exported file survives deleting the app, so there is nothing to resume and nothing to reclaim.
+
+### Export Run
+
+One pass of a Raw Export across a series, carrying its own identity and covering the episodes in order, one at a time.
+
+A run outlives every episode inside it, so any state that must survive between two episodes belongs to the run rather than to the episode currently transferring — a stop is the case that matters. Stopping a run ends the whole run, and episodes already written to the photo library stay in it. The run's own end releases its cancellation state, so a later run for the same series never inherits it.
+
 ## AI chat
 
 ### Seeker Agent
@@ -1543,4 +1572,5 @@ It is hostile input at two distinct boundaries, and neither boundary's control s
 - "Search Passport" had named a known-caller check as though it were specific to search, and as though it gated access there. Both are wrong: the check is a general known-caller concept, and the public search surface admits anonymous callers — a key there selects Rate-Limit Identity only. Use **Known-Caller Check**, and say explicitly whether a given surface gates on it.
 - "Chapter" carries two unrelated meanings. A **Chapter** is a segment of one feature film (a catalog relationship); a **felt-need chapter** is a themed section of Showcase Mode's reel, announced by a Chapter Card. Qualify which is meant whenever both surfaces are in scope.
 - "Episode" had been used loosely for any child Video, which is what let a film's Chapters be counted and billed as episodes. An Episode is a child of a series and stands alone; a film's children are Chapters.
+- "Backdrop" names two unrelated blurred-artwork layers on different platforms: the **Immersive Backdrop** is the Watch web wash behind a collection panel, while the **Ambient Backdrop** fills the letterboxing around the mobile and TV player. Qualify which is meant.
 - "Description" is ambiguous for a Video's localized copy: a locale carries both a short authored snippet and a longer catalog description, and which one a surface shows is decided per surface, not per client. The watch-home hero and the video watch page prefer the snippet and fall back to the description; the series page body, SEO metadata, and structured data prefer the description and fall back to the snippet. So a request to change or remove "the description" may act on either field — name the surface, and check its fallback order before assuming which.

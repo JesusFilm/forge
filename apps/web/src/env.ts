@@ -196,6 +196,7 @@ export const env = createEnv({
     // helpers return local defaults so preview/local environments can boot
     // before LaunchDarkly is provisioned.
     LAUNCHDARKLY_SDK_KEY: z.string().optional(),
+    FORGE_WATCH_HOMEPAGE_RECOMMENDATIONS_DEFAULT: z.string().optional(),
     FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: z.string().optional(),
     FORGE_WATCH_CTA_TEXT_COPY_DEFAULT: z.string().optional(),
     FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT: z.string().optional(),
@@ -379,6 +380,8 @@ export const env = createEnv({
     ),
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
     LAUNCHDARKLY_SDK_KEY: process.env.LAUNCHDARKLY_SDK_KEY,
+    FORGE_WATCH_HOMEPAGE_RECOMMENDATIONS_DEFAULT:
+      process.env.FORGE_WATCH_HOMEPAGE_RECOMMENDATIONS_DEFAULT,
     FORGE_WATCH_PLAYER_MIGRATION_DEFAULT:
       process.env.FORGE_WATCH_PLAYER_MIGRATION_DEFAULT,
     FORGE_WATCH_CTA_TEXT_COPY_DEFAULT:

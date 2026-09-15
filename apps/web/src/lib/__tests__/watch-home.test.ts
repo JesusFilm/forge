@@ -189,14 +189,18 @@ describe("buildWatchHomeModelFromVideos", () => {
       "1_jf-0-0",
       "2_GOJ-0-0",
     ])
-    expect(model.carousel.pools[0]).toMatchObject({
-      collectionIds: ["1_jf-0-0"],
-    })
-    expect(model.carousel.pools[0]?.videos[0]).toMatchObject({
-      kind: "video",
-      title: "Jesus",
-      src: "https://stream.example/jesus.m3u8",
-    })
+    // Both fixtures are childless FEATURE_FILMs, and the intro plays a slide
+    // to its natural end, so neither may take a turn — `1_jf-0-0` measured
+    // 7674s and `2_GOJ-0-0` 10994s against production admin on 2026-09-14.
+    // A pool whose only candidate is excluded drops out entirely.
+    expect(model.carousel.pools).toEqual([])
+    // The films stay in `heroSlides` regardless: that list also drives poster
+    // selection and the page's own "is there any hero content" gate, so the
+    // exclusion belongs to the carousel conversion, not to the model.
+    expect(model.heroSlides.map((slide) => slide.videoLabel)).toEqual([
+      "FEATURE_FILM",
+      "FEATURE_FILM",
+    ])
     // feat-440: the homepage carousel carries pooled library videos only.
     expect(Object.keys(model.carousel)).toEqual(["pools"])
   })
@@ -459,6 +463,43 @@ describe("buildWatchHomeModelFromVideos", () => {
     expect(originsPool?.videos.map((video) => video.id)).toEqual([
       "7_OriginsAllowed",
     ])
+  })
+
+  it("pools a feature film's segments instead of the film itself", async () => {
+    // The production shape for `1_jf-0-0`: a FEATURE_FILM source with 61
+    // SEGMENT children (measured 2026-09-14). `playableSlidesForSource`
+    // prefers children, so the pool is populated by the segments and the
+    // hours-long parent never takes a turn. This is what keeps the intro
+    // working after the feature-film exclusion, so it is the discriminating
+    // case for that guard rather than the childless one above.
+    const { buildWatchHomeModelFromVideos } = await import("../watch-home")
+
+    const model = buildWatchHomeModelFromVideos({
+      locale: "en",
+      languageSlug: "english",
+      videos: [
+        makeVideo({
+          label: "FEATURE_FILM",
+          durationSeconds: 7674,
+          children: [
+            {
+              child: makeChild({
+                documentId: "seg-1",
+                coreId: "1_jf-0-1",
+                slug: "segment-one",
+                label: "SEGMENT",
+              }),
+            },
+          ],
+        }),
+      ] as never,
+    })
+
+    const jesusPool = model.carousel.pools.find((pool) =>
+      pool.collectionIds.includes("1_jf-0-0"),
+    )
+
+    expect(jesusPool?.videos.map((video) => video.id)).toEqual(["1_jf-0-1"])
   })
 
   it("uses Mux thumbnails when admin images are missing and records the image gap", async () => {

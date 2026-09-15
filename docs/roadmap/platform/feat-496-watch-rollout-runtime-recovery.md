@@ -116,3 +116,54 @@ owned by `feat-464`.
   Continue investigating residual runtime failures using fixed windows.
 - Fixed-window evidence and remaining deployment checks:
   `docs/operations/watch-runtime-diagnosis-2026-09-14.md`.
+- The 15 September recovery pass reproduces a browser budget mismatch and
+  terminal handling of transient HTTP-200 delivery failures. The Web row now
+  permits three 3-second attempts separated by the 5-second admission cooldown;
+  Admin retrieval/issuance/release waits stay inside their existing deadline.
+  Stage diagnostics distinguish state/history/retrieval/issuance failures.
+- `forge.watch.homepageRecommendations` gates both Web availability and delivery,
+  default off, using verified Watch account subject/email. Keep the English
+  homepage's authored block removed per owner instruction. Production needs an
+  LD server SDK key before account targeting can take effect. Do not enable a
+  blanket production fallback to simulate targeting.
+- Late Admin work and Web event-loop stalls remain confirmed observations, with
+  the underlying shared-runtime source unresolved. Keep this ticket open. See
+  `docs/plans/2026-09-15-fix-homepage-recommendation-recovery.md` for trace IDs and
+  the bounded recovery scope.
+- The next pass reproduces shared Web starvation under cached catalog traffic.
+  The English inventory response is 9.5 MB; Next's synchronous ETag hash is the
+  dominant CPU hotspot. Disabling generated page ETags (retaining ISR and
+  Cache-Control) changes a matched local probe from 3/17 profile HTTP 503s to
+  0/20, and maximum event-loop delay from 481 ms to 155 ms. See
+  `docs/solutions/performance-issues/watch-etag-hashing-starves-recommendation-admission-20260915.md`
+  and `apps/web/scripts/probe-recommendation-runtime.mjs`. Production verification
+  remains required; keep the authored homepage block removed.
+- Production after #2297 isolated an early Redis-clock expiry: the profile
+  request failed in 184 ms inside its 250 ms budget. Refresh once only after
+  Lua explicitly confirms no mutation, sharing the original monotonic deadline.
+  Red/green real-Redis proof includes single increment and no late retry writes.
+  See `docs/solutions/performance-issues/redis-clock-sample-can-expire-admission-early-20260915.md`.
+  Genuine later event-loop timeouts remain under investigation; keep open.
+- The Web ETag fix is merged in #2297. A separate primary-host trace reveals
+  legacy contextual recovery running 34 serial SQL queries past Web's 6.5-second
+  deadline. The exact combined query retains every seed and candidate rule;
+  local Augustine service parity improves 32,129 ms / 37 statements to 933 ms /
+  three statements with an identical six-item response. The isolated Postgres
+  regressions pass. See
+  `docs/solutions/performance-issues/contextual-recommendations-repeat-catalog-work-20260915.md`.
+  Production deployment and verification remain pending.
+- #2298 contextual recovery is deployed: five production probes return six
+  distinct candidates, including JESUS in English/Spanish/French, in 666–2,591
+  ms. Startup source-free probes still isolate curated metadata/issuance delays.
+  A single metadata snapshot reduces native cold retrieval from eight SQL
+  statements to five, preserving full English/French/Hindi output and live
+  eligibility. See
+  `docs/solutions/performance-issues/curated-fallback-serial-metadata-reads-exhaust-budget-20260915.md`.
+  #2299 Redis clock refresh is merged; continue through deployment monitoring.
+- The Redis clock fix still left a reproduced callback-starvation failure:
+  healthy Redis TIME fails when page processing blocks the same Node loop for 350 ms.
+  The isolated admission worker succeeds with the main loop blocked for 650 ms while
+  preserving atomic limits and late-write prevention. Two cache-codec experiments
+  were rejected for residual stalls or page-loading regressions. Worker build,
+  lifecycle, performance and deployment validation remain in progress in
+  `docs/plans/2026-09-15-fix-admission-event-loop-isolation.md`.

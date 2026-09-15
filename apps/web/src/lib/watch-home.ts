@@ -28,6 +28,7 @@ import type {
   WatchHomeCarouselSequenceData,
   WatchHomeTvCarouselVideoSlide,
 } from "@/lib/watch-home-carousel-sequence"
+import { isWatchHomeIntroEligibleVideoLabel } from "@/lib/watch-home-carousel-sequence"
 import { getWatchHomeVideosOperation } from "@/lib/fragments/watch-home"
 import { WATCH_CACHE_TAGS } from "@/lib/watch-cache-tags"
 
@@ -97,7 +98,14 @@ export type WatchHomeCard = {
   sourceId: string
   coreId: string
   title: string
+  /** Display text, e.g. "Feature film". Presentation only — never compared. */
   label: string
+  /**
+   * Admin's raw wire label, e.g. `FEATURE_FILM`. Kept alongside the display
+   * `label` so eligibility decisions key on the semantic value instead of
+   * rendered copy (see `isWatchHomeIntroEligibleVideoLabel`).
+   */
+  videoLabel: string | null
   metaLabel: string | null
   href: string | null
   imageUrl: string | null
@@ -449,6 +457,7 @@ function normalizeCard(args: {
     coreId: args.video.coreId,
     title,
     label,
+    videoLabel: args.video.label ?? null,
     metaLabel: buildMetaLabel({
       label,
       durationSeconds: args.video.durationSeconds ?? null,
@@ -634,6 +643,11 @@ export function cardToCarouselSlide(
 ): WatchHomeTvCarouselVideoSlide | null {
   if (!card.hls) return null
   if (WATCH_HOME_COLLECTION_BLACKLIST.has(card.coreId)) return null
+  // The intro plays a slide to its natural end, so a feature film would hold
+  // the hero for hours. Excluded here rather than from `heroSlides` itself:
+  // that list also drives poster selection and the page's own
+  // "is there any hero content" gate.
+  if (!isWatchHomeIntroEligibleVideoLabel(card.videoLabel)) return null
 
   return {
     kind: "video",

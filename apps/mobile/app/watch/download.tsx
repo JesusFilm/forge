@@ -1,13 +1,19 @@
 import { useEffect } from "react"
 import { useLocalSearchParams, useRouter } from "expo-router"
 
-import { DownloadSheetContent } from "../../src/components/watch/DownloadSheet"
+import {
+  DownloadSheetContent,
+  type DownloadMode,
+} from "../../src/components/watch/DownloadSheet"
 import { SheetLoading } from "../../src/components/watch/SheetLoading"
 import { SheetError } from "../../src/components/watch/SheetError"
 import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
 import { useDownloads } from "../../src/contexts/DownloadsProvider"
 import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider"
 import type { WatchDownload } from "../../src/lib/normalizeVideo"
+import { RAW_EXPORT_ENABLED } from "../../src/lib/rawExportConstants"
+import { sizeBytesOf } from "../../src/lib/rawExportRun"
+import { getRawExportAdapter } from "../../src/lib/rawExportRuntime"
 import { resolveActiveSubtitle } from "../../src/lib/subtitleSelection"
 
 export default function DownloadSheetRoute() {
@@ -22,11 +28,20 @@ export default function DownloadSheetRoute() {
     activeSubtitleSlug,
     setSnackbarMessage,
   } = useWatchSession()
-  const { startDownload, swapDownload } = useDownloads()
+  const { startDownload, swapDownload, getRecord } = useDownloads()
   const { wifiOnly } = useWatchPreferences()
   // Opened via "Change quality / language" on a downloaded video → swap mode.
-  const { swap } = useLocalSearchParams<{ swap?: string }>()
+  // `mode=raw` is the "Save to Photos" entry, which opens straight on export.
+  const { swap, mode: modeParam } = useLocalSearchParams<{
+    swap?: string
+    mode?: string
+  }>()
   const isSwap = swap === "1"
+  // The switch gates the seed as well as the control: raw mode without the
+  // mode control is a sheet with no way back to offline and a confirm that
+  // refuses. Mirrors app/series/download.tsx.
+  const initialMode: DownloadMode =
+    RAW_EXPORT_ENABLED && modeParam === "raw" ? "raw" : "offline"
 
   // Downloads are fetched lazily per dub — kick off the active variant's fetch
   // when the sheet opens (no-op if already loaded / in flight).
@@ -52,14 +67,67 @@ export default function DownloadSheetRoute() {
   // The bundled subtitle is inherited from the watch session, not picked here:
   // the dub's active subtitle (set on the Video Details sheet), regardless of the
   // toggle. null when none is active or the active language has no track here.
-  const activeSubtitle = resolveActiveSubtitle(
-    activeSubtitleSlug,
-    activeVariantMedia?.subtitles ?? [],
-  )
+  const subtitles = activeVariantMedia?.subtitles ?? []
+  const activeSubtitle = resolveActiveSubtitle(activeSubtitleSlug, subtitles)
 
-  const onStartDownload = async (rendition: WatchDownload) => {
+  // R37: only a verified copy is reusable, so an in-flight or failed record
+  // names no quality.
+  const offlineRecord = getRecord(video.slug)
+  const offlineCopy =
+    offlineRecord?.state === "downloaded"
+      ? {
+          renditionId: offlineRecord.renditionDocumentId,
+          quality: offlineRecord.qualityLabel,
+        }
+      : null
+
+  /**
+   * The raw branch. R33 refuses every new export, and R15 dismisses the sheet
+   * FIRST because the export outlives this route (R29) — its outcome is
+   * reported by the root-level host, not here.
+   */
+  const startRawExport = (rendition: WatchDownload) => {
+    if (!RAW_EXPORT_ENABLED || !rendition.url) return
+    const request = {
+      videoSlug: video.slug,
+      runId: `${video.slug}:${Date.now()}`,
+      title: video.title,
+      rendition: {
+        documentId: rendition.documentId,
+        qualityLabel: rendition.quality,
+        url: rendition.url,
+        sizeBytes: sizeBytesOf(rendition.size),
+      },
+      wifiOnly,
+      // R23: the subtitle raw mode hid is passed so the core can PROVE it
+      // changes neither the transferred file nor the computed size.
+      subtitleHiddenByRawMode: activeSubtitle
+        ? {
+            languageSlug: activeSubtitle.languageSlug,
+            url: activeSubtitle.vttSrc,
+          }
+        : null,
+    }
+    router.back()
+    void getRawExportAdapter().exportVideo(request)
+  }
+
+  const onStartDownload = async (
+    rendition: WatchDownload,
+    mode: DownloadMode,
+    subtitleSlug: string | null,
+  ) => {
+    // The SHEET owns the subtitle now, so raw mode's R23 payload has to name
+    // the track the sheet hid — not whatever the watch session was showing.
+    const chosenSubtitle = subtitles.find(
+      (sub) => sub.languageSlug === subtitleSlug,
+    )
+    if (mode === "raw") {
+      startRawExport(rendition)
+      return
+    }
     if (!activeVariant) return
-    // Audio = active dub; subtitle = the dub's active subtitle. Store identity
+    // Audio = active dub; subtitle = the one picked in the sheet. Store identity
     // (dub + rendition documentId, subtitle slug) so the engine re-resolves fresh
     // URLs before each (re)start; title + poster feed the offline library.
     const enqueue = isSwap ? swapDownload : startDownload
@@ -68,8 +136,8 @@ export default function DownloadSheetRoute() {
       title: video.title ?? "",
       dubDocumentId: activeVariant.documentId,
       rendition,
-      subtitleLanguageSlug: activeSubtitle?.languageSlug ?? null,
-      subtitleUrl: activeSubtitle?.vttSrc ?? null,
+      subtitleLanguageSlug: chosenSubtitle?.languageSlug ?? null,
+      subtitleUrl: chosenSubtitle?.vttSrc ?? null,
       posterUrl: video.posterUrl,
       allowCellular: !wifiOnly,
       // seriesEpisodeIndex stays undefined here — episode order is a series-batch
@@ -84,6 +152,13 @@ export default function DownloadSheetRoute() {
       setSnackbarMessage("Not enough storage to download this video.")
       return
     }
+    // `exists` means the pipeline did NOTHING — the same rendition AND the same
+    // subtitle are already held, or a live record blocks a fresh start. Saying
+    // "Download started" there is a lie the subtitle picker makes easy to hit.
+    if (!result.ok && result.reason === "exists") {
+      setSnackbarMessage("This download is already saved at that quality.")
+      return
+    }
     setSnackbarMessage(isSwap ? "Updating download…" : "Download started")
     router.back()
   }
@@ -94,7 +169,15 @@ export default function DownloadSheetRoute() {
       duration={video.duration}
       languageName={activeVariant?.languageName ?? null}
       downloads={activeVariantMedia?.downloads ?? []}
-      subtitleLanguageName={activeSubtitle?.languageName ?? null}
+      initialMode={initialMode}
+      subtitles={subtitles}
+      subtitleLanguageSlug={activeSubtitle?.languageSlug ?? null}
+      offlineCopy={offlineCopy}
+      offlineCopySubtitleSlug={
+        offlineRecord?.state === "downloaded"
+          ? offlineRecord.subtitleLanguageSlug
+          : undefined
+      }
       onStartDownload={onStartDownload}
     />
   )

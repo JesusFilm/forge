@@ -2120,8 +2120,11 @@
 .watch-home-player-enter {
   animation: watch-home-player-enter 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
+/* The duration is always supplied inline from the slide's resolved length.
+   The fallback only covers a ring rendered before that value lands; it is
+   deliberately not the old 30s preview cap, which no longer exists. */
 .watch-home-progress-ring {
-  animation: watch-home-progress-ring var(--watch-home-progress-duration, 30s)
+  animation: watch-home-progress-ring var(--watch-home-progress-duration, 10s)
     linear forwards;
 }
 

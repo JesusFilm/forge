@@ -2,7 +2,13 @@ import { createHash } from "node:crypto"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { adminUserRecommendationsOperation } from "@forge/admin-graphql/operations"
 import { resetRecommendationMutationAdmissionForTests } from "@/lib/recommendation-mutation-admission"
-const { query } = vi.hoisted(() => ({ query: vi.fn() }))
+const { query, enabled } = vi.hoisted(() => ({
+  query: vi.fn(),
+  enabled: vi.fn(),
+}))
+vi.mock("@/lib/homepage-recommendations-flag", () => ({
+  homepageRecommendationsEnabled: enabled,
+}))
 vi.mock("@/env", () => ({
   env: { NEXT_PUBLIC_CANONICAL_ORIGIN: "https://watch.example" },
 }))
@@ -27,10 +33,20 @@ function request(value: unknown = body, headers: Record<string, string> = {}) {
 }
 beforeEach(() => {
   vi.clearAllMocks()
+  enabled.mockResolvedValue(true)
   resetRecommendationMutationAdmissionForTests()
   query.mockResolvedValue({ data: { userRecommendations: delivery } })
 })
 describe("source-free Web adapter", () => {
+  it("denies unflagged requests before reaching Admin or issuing a recommendation session", async () => {
+    enabled.mockResolvedValue(false)
+    const response = await POST(request())
+    expect(response.status).toBe(403)
+    expect(await response.json()).toEqual({ error: "feature_disabled" })
+    expect(response.headers.get("cache-control")).toMatch(/private.*no-store/)
+    expect(response.headers.get("set-cookie")).toBeNull()
+    expect(query).not.toHaveBeenCalled()
+  })
   it("issues private no-store responses and requests six using a host-only session", async () => {
     const response = await POST(request())
     expect(response.status).toBe(200)

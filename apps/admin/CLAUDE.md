@@ -1870,6 +1870,16 @@ migration for any contraction. The complete activation, health, rotation,
 purge, recovery, rollback, redaction, and isolated-preview procedure is in
 `docs/operations/semantic-recommendation-tracer.md`.
 
+Source-free `UserRecommendationDeliveryService` fills profile shortfalls from
+`CuratedPoolsService`. Its runtime metadata lookup is
+`src/services/recommendations/curated-pools.runtime.ts`: one bounded SQL snapshot
+for the active generation, exact locale/audio pools, interest membership and
+editorial ranks. Keep publication/playback/artwork/identity hydration live on
+every request; do not cache that eligibility or reintroduce serial metadata
+reads inside the 1.5-second delivery budget. The real-Postgres lifecycle test
+pins five native SQL statements for cold retrieval. See
+`docs/solutions/performance-issues/curated-fallback-serial-metadata-reads-exhaust-budget-20260915.md`.
+
 ## Scene recommendations (R5 of admin migration playbook)
 
 Admin owns public scene-similarity recommendations — given a seed video
@@ -1886,7 +1896,7 @@ shape drift.
   Constants ported from cms: `DEFAULT_LIMIT = 10`, `MAX_LIMIT = 50`,
   `OVERFETCH_FACTOR = 3`.
 - **Retriever:** `src/services/scene-recommendations-retriever.ts`
-  exports four `$queryRaw` helpers:
+  provides these retrieval helpers:
   - `resolveSlugToVideoId(slug)` — non-deleted `video.slug` → cuid.
   - `fetchInputEmbeddings(videoId, locale, sceneIndex?)` — per-chunk or
     per-video transcript input embeddings in the requested locale. The
@@ -1903,14 +1913,22 @@ shape drift.
     dub/mux so rows without a resolvable playback are filtered out
     (preserves cms's non-null `playbackId` contract; distinct from hybrid
     search which uses LEFT JOIN).
+  - `queryScenesSimilarMany(queryEmbeddings, locale, excludeIds, limit)` —
+    exact multi-seed search with materialized eligible chunks, preferred dubs
+    and parsed vectors. Keep vector parsing materialized: inlining the cast
+    repeats it for every candidate comparison. Per-seed limits precede the
+    best-per-video union; all seed chunks remain represented.
 - **Dedup:** 3-layer video dedup (coreId prefix, exact title, embedding
   cosine > 0.95) via the shared `dedupeByVideoIdentity` primitive in
   `src/services/video-dedup.ts`. Same primitive R4 hybrid-search uses.
 - **Per-scene vs per-video modes.** Per-scene (sceneIndex provided OR
   seed has one scene) runs one similarity query with
   `limit * OVERFETCH_FACTOR` overfetch. Per-video (seed has multiple
-  scenes) queries each scene, merges best-similarity-per-candidate,
-  then dedups. Ported verbatim from cms's `getRecommendations`.
+  scenes) uses `queryScenesSimilarMany` to preserve the per-scene limit and
+  best-similarity-per-candidate rule in one statement, then dedups. Verify
+  compatibility against the single-seed loop with
+  `src/services/scene-recommendations-batch.db.test.ts` and representative
+  catalog inputs when changing this query.
 - **Identity delta from cms.** `videoId` on the response is a **cuid
   `ID!`** (not cms's `Int!`). apps/web's renderer uses it only as a
   React key, so the cutover is a one-line TypeScript-type update on

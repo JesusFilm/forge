@@ -127,6 +127,12 @@ Public Watch language namespace: `src/lib/language-bcp47-map.ts` (slug → BCP-4
 
 Adding a UI locale: drop `messages/{locale}.json`, then run `pnpm --filter @forge/web generate:ui-locales` or any build/test script that runs it. The generated edge-safe catalog module drives middleware, route helpers, and next-intl catalog membership without a manual TypeScript whitelist. CI runs `check:ui-locales` during lint before build/test scripts can regenerate the file, and the drift gate in `src/i18n/__tests__/messages-parity.test.ts` verifies the generated list matches filesystem catalogs. The structural-parity test also enforces every namespace key exists in every catalog.
 
+`resolveWatchLocaleIdentity` returns two fields that answer different questions and must not be collapsed into each other: `locale` is the message-catalog key the CHROME renders in (bounded to generated UI catalogs, falls back to `en`), while `htmlLang` declares the language the CONTENT is in — `arabic-najdi` → `{ locale: "en", htmlLang: "ars" }`. Only ~224 of 2,329 public language slugs ship a catalog, so requiring the two to agree (as the code did before FGE-170 / W-082) declared pages of Najdi Arabic or Pashto as `lang="en" dir="ltr"`.
+
+`htmlLang` is not simply "whatever `slugToBcp47Tag` returns". That helper is deliberately permissive — its third branch accepts any `BCP47_TAG_PATTERN`-shaped string so the internal `[htmlLang]` segment can be read back off a URL — and the generated map also carries tags that are not valid BCP-47 at all (`hainanese` → `nan-CN-46`, `javanese-banten` → `jv-ID-BT`; `new Intl.Locale()` throws on both). A tag is therefore only DECLARED when `isDeclarableHtmlLangTag` accepts it: it must be a tag this app knows (an override/map value or a UI catalog key) **and** parse as BCP-47. Everything else — including a language admin published after the last corpus regeneration — falls back to `locale` and degrades to `<html lang="en">` as described above.
+
+Only pages that actually RENDER in-language content declare it. `proxy.ts`'s `chromeDocumentLang` is the gate: it keeps a same-language regional refinement (`es-419` on Spanish copy) but drops a different content language (`aiw` on English copy). Applies to every chrome-only surface — `/404`, the unavailable-language sentinel, `/languages`, and `/history`, none of whose page bodies read `htmlLang`. `/videos/[languageSlug]` is the counter-example that keeps the content tag, because it renders that language's own inventory titles and `languageNativeName`. When adding a route under `[locale]/[htmlLang]`, decide which of the two it is; the default should be chrome language unless the page renders the language's own words. Keep `WATCH_ORDINARY_NOT_FOUND_INTERNAL_PATHS` built through the same helper — it must mirror exactly what `buildNotFound` emits.
+
 Critical: `src/i18n/generated-ui-locales.ts` is the only catalog list safe to import from middleware, route helpers, and client-reachable modules. Do NOT copy filesystem discovery into request-path modules (filesystem I/O in the request path is a regression), and do NOT import `src/i18n/locales.ts` into middleware or client-safe helpers because it is a server-only re-export for next-intl request configuration. Keep the internal `[locale]` segment bounded to generated message catalogs; use `[htmlLang]` only for the static HTML language tag.
 
 ## Watch cache invalidation
@@ -285,3 +291,22 @@ for the watch-page floating question panel. `false` hides the panel;
 intentionally testing the panel.
 
 See root `CLAUDE.md` for cross-app patterns and the broader data-layer-flip plan reference.
+
+`forge.watch.homepageRecommendations` gates the Homepage Recommendations Block
+and its Web delivery adapter. Default/fallback is false. Evaluate at runtime via
+`/watch/api/recommendations/for-you/availability`, never in the cached homepage.
+The signed-in Web session supplies context kind `user`, key = account subject,
+and email for targeting. Anonymous requests use `watch-anonymous`; recommendation
+profile cookies, capabilities, access tokens and viewing history never enter LD.
+The Admin device-agnostic API remains independent of this Web rollout flag.
+`WATCH_FOR_YOU_ENABLED=false` remains the environment kill switch.
+
+### Recommendation admission runtime
+
+Production recommendation admission runs the shared Redis TIME/EVAL core in one
+Node worker so page processing cannot delay its socket callbacks. Keep the native
+worker compilation in `build:admission-worker` and preserve its `.next/admission-worker`
+output in deployment packaging. Do not move session identity or profile data into
+the worker. Deadline checks and active-admission draining belong in the shared
+core; the main watchdog must drain completed MessagePort results before failing.
+See `docs/solutions/performance-issues/page-rendering-blocks-redis-admission-callbacks-20260915.md`.

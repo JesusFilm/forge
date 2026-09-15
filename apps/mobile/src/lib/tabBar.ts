@@ -14,6 +14,18 @@ export const TAB_BAR_HEIGHT_IOS = 49
 export const TAB_BAR_CLEARANCE_GAP = 12
 
 /**
+ * What the iOS bar occupies measured from the SCREEN BOTTOM — not from the safe
+ * area. iOS 26 draws a floating pill anchored to the bottom edge, so this does
+ * NOT vary with the home indicator. Measured 2026-09-14 on the iPhone 17
+ * (inset 34), iPhone 17 Pro Max (inset 34) and iPhone SE 3rd generation
+ * (inset 0): the bar's top edge sits 83pt above the screen bottom on all three.
+ *
+ * Only a ROOT-mounted surface needs this. A tab SCREEN already has the bar
+ * inside its own `insets.bottom` and must not add anything.
+ */
+export const TAB_BAR_SCREEN_EXTENT_IOS = 83
+
+/**
  * Contrast floor for text over the frosted material, measured on the iPhone 17
  * Pro Max simulator (2026-09-08) over a bright Home feed. Untinted, the worst
  * ground read rgb(86,74,77) and idle labels 3.35:1, below the 4.5:1 AA
@@ -36,6 +48,18 @@ export const TAB_BAR_MATERIAL_TINT = "rgba(0, 0, 0, 0.3)"
 export const TAB_ROUTE_NAMES = ["index", "watch", "library", "profile"] as const
 
 export type TabRouteName = (typeof TAB_ROUTE_NAMES)[number]
+
+/** The expo-router group the tab screens live in. */
+export const TAB_GROUP_SEGMENT = "(tabs)"
+
+/**
+ * Is the viewer on a tab screen? Key off the GROUP marker, never a tab name —
+ * `app/watch/[slug].tsx` is a root-stack sibling and emits the bare segment
+ * `watch`, which is also the Discover tab's name.
+ */
+export function isTabGroupRoute(segments: readonly string[]): boolean {
+  return segments.includes(TAB_GROUP_SEGMENT)
+}
 
 /**
  * Space the bar occupies ABOVE the safe-area inset. The mini player reserves

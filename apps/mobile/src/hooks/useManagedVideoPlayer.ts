@@ -89,6 +89,16 @@ export function useManagedVideoPlayer(
      * outgoing video (AE10's admission hazard).
      */
     onSourceApplied?: (url: string) => void
+    /**
+     * Does this source change keep the viewer's position? The adapter can see
+     * only two URL strings, so it cannot tell a completed download replacing
+     * the stream (same video) from a dub change (different asset) — the host
+     * knows, and answers here.
+     *
+     * True means the host owns the resume: it seeks on `sourceLoad` and plays
+     * afterwards, so a play at promise time would start at 0:00 first.
+     */
+    preservesPosition?: (previousUrl: string | null, nextUrl: string) => boolean
     /** KTD4: true while a cast session drives playback. The AppState pair,
      *  the local recorder tick and the stall watchdog are suppressed; the
      *  background flush and the QoE time read stay on. */
@@ -128,6 +138,8 @@ export function useManagedVideoPlayer(
 
   const onSourceAppliedRef = useRef(options?.onSourceApplied)
   onSourceAppliedRef.current = options?.onSourceApplied
+  const preservesPositionRef = useRef(options?.preservesPosition)
+  preservesPositionRef.current = options?.preservesPosition
   // The creation source is applied by construction — the player was made
   // holding it. Swaps report their own apply below, on settle.
   useEffect(() => {
@@ -277,6 +289,12 @@ export function useManagedVideoPlayer(
       sameAsset &&
       previousUrl != null &&
       !sameQualityConstraint(previousUrl, sourceUrl)
+    // The host's answer for swaps this module cannot classify from URLs alone
+    // — today, a completed download replacing the stream. Same consequence as
+    // a constraint swap: the host seeks first, so this module must not play.
+    const hostPreservesPosition =
+      preservesPositionRef.current?.(previousUrl, sourceUrl) ?? false
+    const positionPreserved = constraintSwap || hostPreservesPosition
     loadedUrlRef.current = sourceUrl
     if (sameAsset && !constraintSwap) {
       // Same asset behind a new string: the player already holds it.
@@ -289,16 +307,21 @@ export function useManagedVideoPlayer(
     // A genuine cross-asset swap ends this QoE session and opens a new one so
     // watched_ms/rebuffers/source attribute to the right asset (R36/R38). A
     // constraint swap is the SAME asset, so its session continues (R14).
-    if (!constraintSwap) {
+    // A position-preserving swap is the SAME content, so its QoE session
+    // continues: ending it "abandoned" would split one watch into two and
+    // attribute the second to a fresh start. Deliberate, not a side effect of
+    // the resume fix.
+    if (!positionPreserved) {
       endSession("abandoned")
       startQoeSession(sourceUrl)
     }
     isSwappingRef.current = true
 
     // Preserve playback across a cross-asset swap: replace() drops the playing
-    // state. A constraint swap suppresses this — the host's sourceLoad latch
-    // owns resume there (seek first), so a play here would restart at zero.
-    const wasPlaying = !constraintSwap && player.playing
+    // state. A position-preserving swap suppresses this — the host's
+    // sourceLoad latch owns resume there (seek first), so a play here would
+    // restart at zero.
+    const wasPlaying = !positionPreserved && player.playing
     const resume = () => {
       // Bail if the app backgrounded while replaceAsync was in flight — the
       // AppState 'active' handler re-resumes on foreground via wasPlayingRef.
