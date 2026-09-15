@@ -1,5 +1,6 @@
 import { PageSection, StatusPill } from "@/components/admin-ui"
 import type { RecommendationRequestDetailData } from "@/services/recommendations/admin-ops"
+import { ShadowSlateEvidence } from "./shadow-slate-evidence"
 import {
   displayRecommendationToken,
   formatRecommendationDateTime,
@@ -115,6 +116,8 @@ export function RecommendationCandidateEvidence({
                   />
                 </dl>
 
+                <ShadowSlateEvidence nominations={comparison.nominations} />
+
                 <details className="mt-4">
                   <summary className="cursor-pointer text-[12px] font-medium">
                     Inspect {comparison.nominations.length} bounded nomination
@@ -155,9 +158,10 @@ export function RecommendationCandidateEvidence({
                               {nomination.sourceScore.toFixed(3)}
                               <div className="mt-1 text-[var(--color-text-muted)]">
                                 {Object.entries(nomination.provenance ?? {})
+                                  .filter(([key]) => !key.startsWith("slate"))
                                   .map(([key, value]) => `${key}=${value}`)
                                   .join(" · ") ||
-                                  `provenance keys ${nomination.provenanceKeys.join(", ") || "none"}`}
+                                  `provenance keys ${nomination.provenanceKeys.filter((key) => !key.startsWith("slate")).join(", ") || "none"}`}
                               </div>
                             </td>
                             <td className="px-3 py-3">

@@ -13,6 +13,7 @@ import {
 } from "../ranker"
 import { composeRecommendationSlate } from "../slate"
 import { unionAndCanonicalizeCandidates } from "../union"
+import { composeShadowSlate } from "./slate-composer"
 
 export const SHADOW_EVALUATION_POLICY_VERSION =
   "generic-shadow-candidate-evaluation-v1" as const
@@ -91,6 +92,20 @@ export function evaluateShadowProjection(input: {
       ? { currentVideoId: input.currentVideoId }
       : {},
   ).composed
+  // Supplemental row comparison. The existing candidate evaluation and its
+  // terminal decision still describe `composed`, never this unpromoted policy.
+  const compositionStartedAt = performance.now()
+  const slateComparison = composeShadowSlate({
+    ordered,
+    context: input.context,
+    limit: input.limit,
+    composition: { currentVideoId: input.currentVideoId },
+  })
+  const compositionLatencyMs =
+    Math.round((performance.now() - compositionStartedAt) * 1_000) / 1_000
+  const slateEvidence = new Map(
+    slateComparison.evidence.map((entry) => [entry.candidateKey, entry]),
+  )
   const shadowOrder = composed.map((candidate) => candidate.targetMediaId)
   const liveSet = new Set(immutableLiveOrder)
   const overlapCount = shadowOrder.filter((id) => liveSet.has(id)).length
@@ -112,6 +127,14 @@ export function evaluateShadowProjection(input: {
   const eligibleNominationKeys = new Set(
     eligibility.eligible.flatMap((candidate) =>
       candidate.nominations.map((nomination) => nomination.nominationKey),
+    ),
+  )
+  const eligibleKeyByNomination = new Map(
+    eligibility.eligible.flatMap((candidate) =>
+      candidate.nominations.map(
+        (nomination) =>
+          [nomination.nominationKey, candidate.candidateKey] as const,
+      ),
     ),
   )
   const contributions = new Map<string, number>()
@@ -161,7 +184,10 @@ export function evaluateShadowProjection(input: {
       const canonical = canonicalizationByNomination.get(
         nomination.nominationKey,
       )
-      const candidateKey = canonical?.candidateKey ?? nomination.targetMediaId
+      const candidateKey =
+        eligibleKeyByNomination.get(nomination.nominationKey) ??
+        canonical?.candidateKey ??
+        nomination.targetMediaId
       return {
         ordinal,
         candidateKey,
@@ -176,7 +202,40 @@ export function evaluateShadowProjection(input: {
         ).slice(0, 16),
         shadowPosition: positionByCandidate.get(candidateKey) ?? null,
         overlapsLive: liveSet.has(candidateKey),
-        provenance: sanitizeProvenance(nomination.source.evidence),
+        provenance: {
+          ...sanitizeProvenance(nomination.source.evidence),
+          // Derived, bounded, request-rooted evidence inherits nomination
+          // expiry and profile-generation erasure. No vectors or identity.
+          slatePolicy: slateComparison.policyVersion,
+          slateRank: slateEvidence.get(candidateKey)?.orderedPosition ?? null,
+          slatePosition:
+            slateEvidence.get(candidateKey)?.composedPosition ?? null,
+          slateReasons: [
+            ...(slateEvidence.get(candidateKey)?.reasonCodes ?? [
+              "ineligible_before_composition",
+            ]),
+            ...(canonical && canonical.targetMediaId !== candidateKey
+              ? ["canonical_duplicate"]
+              : []),
+          ]
+            .join(",")
+            .slice(0, 256),
+          slateScore: slateEvidence.get(candidateKey)?.score ?? null,
+          slateThemeSimilarity:
+            slateEvidence.get(candidateKey)?.themeSimilarity ?? null,
+          slateSourceGain: slateEvidence.get(candidateKey)?.sourceGain ?? 0,
+          slateInterestGain: slateEvidence.get(candidateKey)?.interestGain ?? 0,
+          slateFallback: slateComparison.fallbackReason ?? "none",
+          slateDecision: slateComparison.decision,
+          slateLatencyMs: compositionLatencyMs,
+          slateSourceCoverage: `${slateComparison.coverage.sources}/${slateComparison.coverage.availableSources}`,
+          slateInterestCoverage: `${slateComparison.coverage.interests}/${slateComparison.coverage.availableInterests}`,
+          slateThemeCoverage: `${slateComparison.coverage.itemsWithThemes}/${slateComparison.composed.length}`,
+          // Existing shadow generators do not capture historical context or
+          // published editorial constraints. Absence is not zero repetition.
+          slateHistory: "unavailable",
+          slateEditorial: "adapter_pending",
+        },
       }
     }),
   }
@@ -254,7 +313,7 @@ function themeDiversity(themeSets: readonly string[][]): number {
 function sanitizeProvenance(
   value: Readonly<Record<string, string | number | boolean | null>>,
 ): Record<string, string | number | boolean | null> {
-  return Object.fromEntries(
+  const bounded = Object.fromEntries(
     Object.entries(value)
       .slice(0, 16)
       .filter(
@@ -267,6 +326,14 @@ function sanitizeProvenance(
         typeof entry === "string" ? entry.slice(0, 128) : entry,
       ]),
   )
+  // Leave room for derived slate fields and JSONB structural overhead under
+  // the existing 2048-byte database constraint, including multibyte strings.
+  const result: Record<string, string | number | boolean | null> = {}
+  for (const [key, value] of Object.entries(bounded)) {
+    if (Buffer.byteLength(JSON.stringify({ ...result, [key]: value })) <= 512)
+      result[key] = value
+  }
+  return result
 }
 
 export function digestIds(ids: readonly string[]): string {

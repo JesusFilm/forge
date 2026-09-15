@@ -1,5 +1,6 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { mapRecommendationRequestDetail } from "./detail.mapper"
+import { shadowSlateProvenanceSql } from "./shadow-slate-provenance"
 import type {
   DetailAuditRow,
   DetailCandidateRunRow,
@@ -340,7 +341,7 @@ export async function loadRecommendationRequestDetail(
                   WHEN jsonb_typeof(nomination.provenance -> 'fallbackReason') = 'string'
                   THEN left(nomination.provenance ->> 'fallbackReason', 64)
                 END
-              )) AS provenance
+              )) || ${shadowSlateProvenanceSql} AS provenance
             FROM recommendation_shadow_nomination nomination
             JOIN recommendation_shadow_run run ON run.id = nomination.run_id
             WHERE run.request_id = ${root.id}
