@@ -9,6 +9,7 @@ import {
   FOCUS_SPEED_PER_SEC,
   leadLabelKnots,
   pathAt,
+  spreadWords,
 } from "./DevotionalVideo"
 import {
   CARD_TAIL_FRAMES,
@@ -145,5 +146,39 @@ describe("pathAt", () => {
   })
   it("is centred with no path", () => {
     expect(pathAt([], 3)).toBe(0.5)
+  })
+})
+
+describe("spreadWords", () => {
+  it("places every word inside the line's window, in order, leaving a tail", () => {
+    const words = spreadWords("No one lights a lamp and covers it", 10, 14)
+    expect(words.map((w) => w.token)).toEqual([
+      "No",
+      "one",
+      "lights",
+      "a",
+      "lamp",
+      "and",
+      "covers",
+      "it",
+    ])
+    for (let i = 1; i < words.length; i++) {
+      expect(words[i].startSec).toBeGreaterThan(words[i - 1].startSec)
+    }
+    expect(words[0].startSec).toBe(10)
+    // The last word lands before the line ends, not as it fades.
+    expect(words.at(-1)!.endSec).toBeLessThanOrEqual(14 - 0.25 + 1e-9)
+  })
+
+  it("gives a long word more time than a short one", () => {
+    const [a, b] = spreadWords("a extraordinary", 0, 2)
+    expect(b.endSec - b.startSec).toBeGreaterThan(a.endSec - a.startSec)
+  })
+
+  it("copes with a degenerate window and an empty line", () => {
+    expect(spreadWords("", 0, 1)).toEqual([])
+    const w = spreadWords("hi there", 5, 5.1)
+    expect(w).toHaveLength(2)
+    expect(w[1].startSec).toBeGreaterThanOrEqual(w[0].startSec)
   })
 })

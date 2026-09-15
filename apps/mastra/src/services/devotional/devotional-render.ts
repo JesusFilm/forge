@@ -1508,7 +1508,12 @@ async function renderInStage(
   manifest.bgFile = "bg.mp4"
   // Pin the held beats the composition adds to the first/last card, so its
   // layout can't drift from the budget computed above.
-  manifest.introHoldSec = INTRO_HOLD_SEC
+  // The intro hold is a silent beat for the COVER to land before the voice.
+  // Clip-first opens on the film, which is already playing; the beat became a
+  // second of muted footage between the film's last line and the stepper, and
+  // the gap there measured 2.8s of near-silence.
+  manifest.introHoldSec =
+    options.structure === "clip-first" ? 0 : INTRO_HOLD_SEC
   manifest.outroHoldSec = OUTRO_HOLD_SEC
   // If the usable film is SHORTER than the background timeline, slow the ONE
   // continuous clip so it stretches across every card instead of running out

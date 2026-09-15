@@ -275,6 +275,34 @@ function LetterReveal({
 const VIDEO_WINDOW_TOP_PCT = 3
 /** Bottom of that window (top + the fixed 56.25% square crop height). */
 const VIDEO_WINDOW_BOTTOM_PCT = VIDEO_WINDOW_TOP_PCT + 56.25
+/**
+ * Word timings for a caption line that only has LINE timing (the clip's
+ * subtitle cues). Words are placed in proportion to their length across the
+ * line's window, minus a short tail so the last word is not still arriving as
+ * the line fades. Good enough for slow, clear dialogue; word-level ASR would
+ * be the upgrade if a fast line ever reads out of step.
+ */
+export function spreadWords(
+  text: string,
+  startSec: number,
+  endSec: number,
+): { token: string; startSec: number; endSec: number }[] {
+  const tokens = text.split(/\s+/).filter(Boolean)
+  if (tokens.length === 0) return []
+  const window = Math.max(0.2, endSec - startSec - 0.25)
+  const weights = tokens.map((w) =>
+    Math.max(2, w.replace(/[^\p{L}\p{N}]/gu, "").length + 1),
+  )
+  const total = weights.reduce((a, b) => a + b, 0)
+  let acc = 0
+  return tokens.map((token, i) => {
+    const s = startSec + (acc / total) * window
+    acc += weights[i]
+    const e = startSec + (acc / total) * window
+    return { token, startSec: s, endSec: e }
+  })
+}
+
 function VideoSubtitles({
   cues,
   px,
@@ -284,6 +312,7 @@ function VideoSubtitles({
   safeRight,
   safeBottom,
   fullBleed = false,
+  style,
 }: {
   cues: NonNullable<DevotionalCard["subtitles"]>
   style: DevotionalStyle
@@ -355,12 +384,14 @@ function VideoSubtitles({
             <span
               style={{
                 display: "inline-block",
-                maxWidth: px(300),
+                maxWidth: fullBleed ? px(320) : px(300),
                 textAlign: "center",
                 fontFamily: SANS,
-                fontWeight: 600,
-                fontSize: px(20),
-                lineHeight: 1.34,
+                fontWeight: fullBleed ? 700 : 600,
+                // Full-frame (clip-first): the film IS the hook, so its words
+                // are the opening line of the piece — a size up.
+                fontSize: fullBleed ? px(24) : px(20),
+                lineHeight: 1.3,
                 color: "#f4efe8",
                 // No pill/blur: matches the cards' plain-text treatment; the
                 // shadow alone carries legibility over moving footage.
@@ -368,7 +399,23 @@ function VideoSubtitles({
                   "0 2px 12px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.95)",
               }}
             >
-              {c.text}
+              {fullBleed ? (
+                // Word by word, in step with the line, each word flashing the
+                // accent as it lands — the same reveal the reflection uses, so
+                // the film's dialogue reads as part of the piece rather than
+                // as a subtitle track. The clip's cues carry line timing only,
+                // so word times are spread across the line by word length.
+                <WordReveal
+                  timings={spreadWords(c.text, c.startSec, c.endSec)}
+                  frame={frame}
+                  fps={fps}
+                  audioDelaySec={0}
+                  style={style}
+                  restColor="#f4efe8"
+                />
+              ) : (
+                c.text
+              )}
             </span>
           </div>
         )
