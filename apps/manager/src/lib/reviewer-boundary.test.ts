@@ -9,7 +9,9 @@ const representativeOperatorRoutes = [
   "app/api/jobs/route.ts",
   "app/api/coverage-snapshots/route.ts",
   "app/api/smart-crop/jobs/[id]/approve/route.ts",
-  "app/api/shorts/jobs/route.ts",
+  // `/api/shorts/jobs` became `/api/shorts/command` in #2246/#2248; every
+  // Shorts route now enters through `authenticateStudioRequest`.
+  "app/api/shorts/command/route.ts",
   "app/api/automations/route.ts",
 ] as const
 
@@ -23,7 +25,7 @@ describe("reviewer authorization boundary", () => {
       )
 
       expect(source).toMatch(
-        /authenticate(?:Request|InteractiveManagerRequest|ManagerOverrideRequest)/,
+        /authenticate(?:Request|InteractiveManagerRequest|ManagerOverrideRequest|StudioRequest)/,
       )
       expect(source).not.toContain("authenticateInteractiveReviewerRequest")
     },
@@ -38,6 +40,21 @@ describe("reviewer authorization boundary", () => {
     expect(source).toContain('import { requireAuth } from "@/lib/require-auth"')
     expect(source).toContain("await requireAuth()")
     expect(source).not.toContain("requireReviewerAuth")
+  })
+
+  // `authenticateStudioRequest` is an indirection, so accepting it in the
+  // alternation above is only sound while it still delegates to the
+  // operator-only authenticator. Pin that, or the Shorts row goes vacuous.
+  it("keeps every Shorts route's Studio guard operator-only", async () => {
+    const source = await readFile(
+      resolve(managerSourceRoot, "lib/studio-request.ts"),
+      "utf8",
+    )
+
+    expect(source).toContain(
+      "return authenticateInteractiveManagerRequest(request)",
+    )
+    expect(source).not.toContain("authenticateInteractiveReviewerRequest")
   })
 
   it("keeps SEO decisions behind their operator-only guard", async () => {

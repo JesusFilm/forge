@@ -42,7 +42,7 @@ vi.mock("@/services/subtitle-eval-artifacts", () => ({
   readVerifiedSubtitleEvalArtifact: readArtifactMock,
 }))
 vi.mock("@/services/mux", () => ({
-  getMuxAssetPlayback: muxPlaybackMock,
+  getMuxAsset: muxPlaybackMock,
   getPlaybackUrl: (playbackId: string) =>
     `https://stream.mux.com/${playbackId}.m3u8`,
 }))

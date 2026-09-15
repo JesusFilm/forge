@@ -359,50 +359,50 @@ packages, exact Remotion version lockstep and React-free server imports intact.
 
 ## Environment variables (Doppler project: forge-manager)
 
-| Variable                                          | Description                                                                                   |
-| ------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| MUX_TOKEN_ID                                      | Mux API token ID                                                                              |
-| MUX_TOKEN_SECRET                                  | Mux API token secret                                                                          |
-| OPENROUTER_API_KEY | OpenRouter key for Manager-owned legacy paths; Lab provider calls use Mastra's paid-first key resolution |
-| ELEVENLABS_API_KEY                                | ElevenLabs API key for audio isolation (optional — enables audio cleanup)                     |
-| RAILWAY_S3_ENDPOINT | Railway Object Storage endpoint; optional for local development, required as part of the complete Lab S3 tuple in production |
-| RAILWAY_S3_REGION                                 | Railway S3 region (default: auto)                                                             |
-| RAILWAY_S3_BUCKET | Railway S3 bucket; the Lab fails closed in production when the S3 tuple is absent or incomplete |
-| RAILWAY_S3_ACCESS_KEY_ID | Railway S3 access key; required for production Lab artifact storage |
-| RAILWAY_S3_SECRET_ACCESS_KEY | Railway S3 secret key; required for production Lab artifact storage |
-| MANAGER_DATA_MODE                                 | `admin` or `mock` (default `admin`)                                                           |
-| MANAGER_BACKEND_MODE                              | Optional override for data/job backend mode (`admin` or `mock`)                               |
-| MANAGER_MOCK_SESSION_SECRET                       | Required in `mock` mode to sign Manager-issued mock sessions                                  |
-| MANAGER_MOCK_DATA_PATH                            | Optional mock runtime store path (default `.tmp/mock-cms/store.json`)                         |
-| WORKFLOW_API_KEY | workflow API key; optional locally, required for durable production Lab execution |
-| MANAGER_API_KEY | API key for external clients and the service-bearer-only Lab recovery endpoint (optional in dev) |
-| MANAGER_BASE_URL | Canonical Manager origin used for same-origin Lab mutations; required in production |
-| MANAGER_SESSION_SECRET                            | Secret for Auth-backed `manager-session` cookies                                              |
-| AUTH_ISSUER_URL                                   | Shared Auth issuer URL, normally `https://auth.jesusfilm.org`                                 |
-| AUTH_MANAGER_CLIENT_ID                            | Manager OAuth client ID registered in Auth                                                    |
-| AUTH_MANAGER_CLIENT_SECRET                        | Manager OAuth client secret                                                                   |
-| AUTH_MANAGER_SERVICE_CLIENT_ID                    | Manager service OAuth client ID for Admin session validation                                  |
-| AUTH_MANAGER_SERVICE_CLIENT_SECRET                | Manager service OAuth client secret for Admin session validation                              |
-| ADMIN_MANAGER_API_KEY                             | Legacy bearer key Manager uses for Admin Manager session/read/job contracts                   |
-| ADMIN_MANAGER_SESSION_URL                         | Optional override for Admin Manager session validation endpoint                               |
-| SUBTITLE_REVIEW_ASSERTION_ENVIRONMENT | Environment binding shared with Admin for interactive Lab proofs |
-| SUBTITLE_REVIEW_SESSION_KEY_ID | Active Ed25519 Lab proof key ID; must exist in Admin's public-key ring |
-| SUBTITLE_REVIEW_SESSION_PRIVATE_KEY | PKCS8 Ed25519 private key used server-side for short-lived interactive Lab proofs |
-| SEO_ASSERTION_ENVIRONMENT                         | Environment bound into delegated SEO approval assertions                                      |
-| SEO_APPROVAL_KEY_ID                               | Active Ed25519 key ID used only for interactive SEO decisions                                 |
-| SEO_APPROVAL_PRIVATE_KEY                          | PKCS8 Ed25519 private key matching an Admin verifier entry                                    |
-| ADMIN_GRAPHQL_URL                                 | Full URL of admin's `/api/graphql` (used by `/api/admin-embeds/*`)                            |
-| ADMIN_EMBED_TRIGGER_API_KEY                       | Bearer key, must match an entry in admin's `WORKFLOW_API_KEYS`                                |
-| ADMIN_TRIGGER_API_KEYS                            | CSV of bearer keys admin can use to call `/api/admin-trigger/*` (feat-119 PR2)                |
-| MASTRA_BASE_URL                                   | Internal Mastra runtime URL for transcript embedding and subtitle launches                    |
-| MASTRA_SERVICE_API_KEY                            | Bearer key Manager presents to Mastra service routes                                          |
-| MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS            | Optional timeout for the Manager to Mastra transcript launch call                             |
-| MASTRA_SUBTITLE_ENRICHMENT_TIMEOUT_MS             | Optional timeout for the Manager to Mastra subtitle enrichment launch call                    |
-| MASTRA_TRANSCRIPT_SCRIPTURE_CORRECTION_TIMEOUT_MS | Optional timeout for the Manager to Mastra source transcript scripture correction launch call |
-| CROP_WORKER_BASE_URL                              | crop-worker base URL (optional — enables Smart Crop)                                          |
-| CROP_WORKER_API_KEY                               | Bearer key Manager presents to crop-worker (optional — enables Smart Crop)                    |
-| MASTRA_SMART_CROP_TIMEOUT_MS                      | Optional per-call timeout for Mastra smart-crop launches (default 120000)                     |
-| NEXT_PUBLIC_WATCH_URL                             | Public video watch URL (optional)                                                             |
+| Variable                                          | Description                                                                                                                  |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| MUX_TOKEN_ID                                      | Mux API token ID                                                                                                             |
+| MUX_TOKEN_SECRET                                  | Mux API token secret                                                                                                         |
+| OPENROUTER_API_KEY                                | OpenRouter key for Manager-owned legacy paths; Lab provider calls use Mastra's paid-first key resolution                     |
+| ELEVENLABS_API_KEY                                | ElevenLabs API key for audio isolation (optional — enables audio cleanup)                                                    |
+| RAILWAY_S3_ENDPOINT                               | Railway Object Storage endpoint; optional for local development, required as part of the complete Lab S3 tuple in production |
+| RAILWAY_S3_REGION                                 | Railway S3 region (default: auto)                                                                                            |
+| RAILWAY_S3_BUCKET                                 | Railway S3 bucket; the Lab fails closed in production when the S3 tuple is absent or incomplete                              |
+| RAILWAY_S3_ACCESS_KEY_ID                          | Railway S3 access key; required for production Lab artifact storage                                                          |
+| RAILWAY_S3_SECRET_ACCESS_KEY                      | Railway S3 secret key; required for production Lab artifact storage                                                          |
+| MANAGER_DATA_MODE                                 | `admin` or `mock` (default `admin`)                                                                                          |
+| MANAGER_BACKEND_MODE                              | Optional override for data/job backend mode (`admin` or `mock`)                                                              |
+| MANAGER_MOCK_SESSION_SECRET                       | Required in `mock` mode to sign Manager-issued mock sessions                                                                 |
+| MANAGER_MOCK_DATA_PATH                            | Optional mock runtime store path (default `.tmp/mock-cms/store.json`)                                                        |
+| WORKFLOW_API_KEY                                  | workflow API key; optional locally, required for durable production Lab execution                                            |
+| MANAGER_API_KEY                                   | API key for external clients and the service-bearer-only Lab recovery endpoint (optional in dev)                             |
+| MANAGER_BASE_URL                                  | Canonical Manager origin used for same-origin Lab mutations; required in production                                          |
+| MANAGER_SESSION_SECRET                            | Secret for Auth-backed `manager-session` cookies                                                                             |
+| AUTH_ISSUER_URL                                   | Shared Auth issuer URL, normally `https://auth.jesusfilm.org`                                                                |
+| AUTH_MANAGER_CLIENT_ID                            | Manager OAuth client ID registered in Auth                                                                                   |
+| AUTH_MANAGER_CLIENT_SECRET                        | Manager OAuth client secret                                                                                                  |
+| AUTH_MANAGER_SERVICE_CLIENT_ID                    | Manager service OAuth client ID for Admin session validation                                                                 |
+| AUTH_MANAGER_SERVICE_CLIENT_SECRET                | Manager service OAuth client secret for Admin session validation                                                             |
+| ADMIN_MANAGER_API_KEY                             | Legacy bearer key Manager uses for Admin Manager session/read/job contracts                                                  |
+| ADMIN_MANAGER_SESSION_URL                         | Optional override for Admin Manager session validation endpoint                                                              |
+| SUBTITLE_REVIEW_ASSERTION_ENVIRONMENT             | Environment binding shared with Admin for interactive Lab proofs                                                             |
+| SUBTITLE_REVIEW_SESSION_KEY_ID                    | Active Ed25519 Lab proof key ID; must exist in Admin's public-key ring                                                       |
+| SUBTITLE_REVIEW_SESSION_PRIVATE_KEY               | PKCS8 Ed25519 private key used server-side for short-lived interactive Lab proofs                                            |
+| SEO_ASSERTION_ENVIRONMENT                         | Environment bound into delegated SEO approval assertions                                                                     |
+| SEO_APPROVAL_KEY_ID                               | Active Ed25519 key ID used only for interactive SEO decisions                                                                |
+| SEO_APPROVAL_PRIVATE_KEY                          | PKCS8 Ed25519 private key matching an Admin verifier entry                                                                   |
+| ADMIN_GRAPHQL_URL                                 | Full URL of admin's `/api/graphql` (used by `/api/admin-embeds/*`)                                                           |
+| ADMIN_EMBED_TRIGGER_API_KEY                       | Bearer key, must match an entry in admin's `WORKFLOW_API_KEYS`                                                               |
+| ADMIN_TRIGGER_API_KEYS                            | CSV of bearer keys admin can use to call `/api/admin-trigger/*` (feat-119 PR2)                                               |
+| MASTRA_BASE_URL                                   | Internal Mastra runtime URL for transcript embedding and subtitle launches                                                   |
+| MASTRA_SERVICE_API_KEY                            | Bearer key Manager presents to Mastra service routes                                                                         |
+| MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS            | Optional timeout for the Manager to Mastra transcript launch call                                                            |
+| MASTRA_SUBTITLE_ENRICHMENT_TIMEOUT_MS             | Optional timeout for the Manager to Mastra subtitle enrichment launch call                                                   |
+| MASTRA_TRANSCRIPT_SCRIPTURE_CORRECTION_TIMEOUT_MS | Optional timeout for the Manager to Mastra source transcript scripture correction launch call                                |
+| CROP_WORKER_BASE_URL                              | crop-worker base URL (optional — enables Smart Crop)                                                                         |
+| CROP_WORKER_API_KEY                               | Bearer key Manager presents to crop-worker (optional — enables Smart Crop)                                                   |
+| MASTRA_SMART_CROP_TIMEOUT_MS                      | Optional per-call timeout for Mastra smart-crop launches (default 120000)                                                    |
+| NEXT_PUBLIC_WATCH_URL                             | Public video watch URL (optional)                                                                                            |
 
 ## Subtitle Quality Lab operations
 

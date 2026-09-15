@@ -70,10 +70,15 @@ describe("reviewer denial at existing route boundaries", () => {
   })
 
   it("denies Smart Crop and Shorts operator mutations", async () => {
-    const [{ POST: approveSmartCrop }, { POST: createShort }] =
+    // `/api/shorts/jobs` was replaced by the single `/api/shorts/command`
+    // Studio RPC entry point in #2246/#2248. That route's authenticator runs
+    // its same-origin check BEFORE the role check, so this request must carry
+    // a matching `origin` — otherwise the 403 proves same-origin rejection
+    // and says nothing about reviewer isolation.
+    const [{ POST: approveSmartCrop }, { POST: runShortsCommand }] =
       await Promise.all([
         import("@/app/api/smart-crop/jobs/[id]/approve/route"),
-        import("@/app/api/shorts/jobs/route"),
+        import("@/app/api/shorts/command/route"),
       ])
 
     const [smartCropResponse, shortsResponse] = await Promise.all([
@@ -85,17 +90,25 @@ describe("reviewer denial at existing route boundaries", () => {
         }),
         { params: Promise.resolve({ id: "job-1" }) },
       ),
-      createShort(
-        reviewerRequest("/api/shorts/jobs", {
+      runShortsCommand(
+        reviewerRequest("/api/shorts/command", {
           method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ muxAssetId: "asset-1" }),
+          headers: {
+            "content-type": "application/json",
+            origin: "http://example.test",
+          },
+          body: JSON.stringify({ action: "shorts.create", input: {} }),
         }),
       ),
     ])
 
     expect(smartCropResponse.status).toBe(403)
-    expect(shortsResponse.status).toBe(403)
+    // A REVIEWER session is not an OPERATOR session, so the interactive
+    // authenticator sees no session at all and answers 401 (no bearer).
+    expect(shortsResponse.status).toBe(401)
+    await expect(shortsResponse.json()).resolves.toEqual({
+      error: "Interactive Manager session required",
+    })
   })
 
   it("denies an SEO decision before CSRF consumption", async () => {

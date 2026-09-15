@@ -10,7 +10,7 @@ import {
 } from "@/features/subtitle-lab/subtitle-lab-route"
 import { hasReviewerLanguageGrant } from "@/lib/auth"
 import { readVerifiedSubtitleEvalArtifact } from "@/services/subtitle-eval-artifacts"
-import { getMuxAssetPlayback, getPlaybackUrl } from "@/services/mux"
+import { getMuxAsset, getPlaybackUrl } from "@/services/mux"
 
 const artifactKindSchema = z.enum([
   "source",
@@ -56,9 +56,7 @@ export async function GET(
         detail.editionIdentity,
       )
       if (!video) return blockedVideoContext("VIDEO_CONTEXT_UNAVAILABLE")
-      const playback = await getMuxAssetPlayback(video.muxAssetId).catch(
-        () => null,
-      )
+      const playback = await getMuxAsset(video.muxAssetId).catch(() => null)
       if (
         !playback ||
         playback.assetId !== video.muxAssetId ||
