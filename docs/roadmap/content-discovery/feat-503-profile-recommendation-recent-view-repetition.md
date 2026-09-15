@@ -3,7 +3,7 @@ id: "feat-503"
 title: "Audit recent-view repetition in profile recommendations"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-15"
 duration: 3
 depends_on: []
@@ -53,3 +53,20 @@ Add real-DB and focused behavior cases for direct/search/recommendation origin; 
 ## Identity and coordination
 
 Renumbered from the local recommendation ticket feat-478 because main already uses that ID for analytics documentation. Work starts from main at `3cc4017af`, in `codex/recommendation-quality-feedback`. The active feat-496 task owns Web admission/runtime recovery.
+
+## Implementation and verification
+
+The recent-context reader now merges bounded source-neutral episode starts into
+the existing authorized recent-history preference. Server receipt time preserves
+accepted buffered and clock-skewed starts; attempts without a start are excluded.
+Migration `0096_recommendation_recent_episode_index` adds the matching concurrent
+session/created-time index.
+
+Six actual PostgreSQL cases cover authorization, privacy reset, expiry, origins,
+clock differences and count bounds. The 439-case recommendation service unit run
+and existing fresh-first/refill regressions pass. A 10,000-unrelated-episode fixture
+used the new index and measured 1.94 ms median / 4.41 ms p95 over 25 calls.
+
+Implementation is complete locally. Production repeat-rate and delivery-latency
+verification remains a post-deployment check through the normal PR-to-main flow;
+see `docs/operations/recommendation-quality-validation-2026-09-15.md`.

@@ -86,5 +86,66 @@ Use the normal reviewed PR-to-main path. After deployment, the owner should:
    revert can restore the reader while retaining the harmless additive index.
    Do not trigger direct Railway redeploys from local worktrees.
 
-Observation, composition and controlled-evaluation verification is recorded in
-their corresponding implementation artifacts before integration.
+## Shadow composition
+
+The versioned row composer is integrated as supplemental shadow evidence. It
+preserves eligibility, deterministic refill and explicit editorial constraints,
+and shows pre/post positions and missing inputs in authorized Admin request detail.
+The live slate and existing candidate-evaluation decision remain unchanged.
+
+See [the verification report](../validation/feat-393-slate-shadow/verification.md)
+for real-database provenance checks, desktop/mobile screenshots, and synthetic
+render measurements. The composer adds no client module or network dependency.
+Feat-393 remains in progress until editorial/history inputs, calibration and a
+terminal composition decision are available.
+
+## Immediate departures and playback context
+
+`playback-observations-v1` uses a ten-second diagnostic window from known intent
+to retained route/page departure, preserving elapsed time separately from active
+playback. Before-start, after-start, completion, errors, visibility interruptions
+and missing evidence remain distinct. Preference interpretation is always
+`unknown`; these observations do not change durable interests or click weights.
+
+The additive observation summary records expected start, error, seek, navigation
+and QoE evidence. Missing facts make the projection incomplete. The recorder keeps
+ordinary playback event IDs and payloads unchanged and can retry those events
+alone when an older Web or Admin rejects the optional observation kinds. It does
+not use that fallback for authorization or binding refusals.
+
+The authorized Admin playback detail and latest-20-episode sample expose the
+observations. See [the playback verification report](../validation/feat-504-playback-observations/README.md)
+for protocol, retention, independent family coverage, browser evidence and local
+load measurements. Feat-370 remains in progress: intent/severity instrumentation,
+device/network breakdowns and whole-window readiness decisions are still absent.
+
+## Controlled usefulness evaluation
+
+The offline evaluator and read-only readiness inventory are integrated. The
+primary metric is qualified recommendation views per assigned eligible profile,
+including profiles without exposure. It reports uncertainty by assignment unit
+and blocks conclusions when data is immature, sparse, contaminated or unhealthy.
+
+See [the evaluation procedure](recommendation-usefulness-evaluation-2026-09-15.md).
+Profile-based routing and A/A validation still need implementation and verification
+before enrollment. Feat-505 remains in progress; the observational CTR difference
+in the live audit is not an experiment result.
+
+## Review
+
+The parent reviewed scope, project standards, privacy/retention boundaries,
+agent-accessible evidence, query bounds and shadow behavior. Independent reviewers
+examined repeat-history correctness, the evaluator and playback lifecycle/protocol
+changes. Review fixes cover:
+
+- Buffered/client-clock-skewed playback starts use accepted server receipts for
+  recent-history ordering.
+- Mixed-version rejection retries immutable baseline facts without extensions.
+- React StrictMode setup replay does not finalize an unused episode.
+- Pausing during buffering closes the buffering interval.
+- Missing terminal or expected facts cannot become complete coverage or an
+  inferred before-start/rapid departure.
+
+The final playback and evaluator re-reviews found no remaining actionable defects
+within the implemented scope. Open ticket gates above remain explicit; this is
+not a production effectiveness or experiment-readiness approval.

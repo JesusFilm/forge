@@ -59,3 +59,18 @@ preparation, no guessed uplift, and no satisfaction inference from watch time.
 Reconcile assignment, unexposed denominators, mature latest outcome revisions,
 sample ratio, coverage and uncertainty. Record actual readiness and unresolved
 gates. Code or a prepared experiment alone cannot complete the evaluation ticket.
+
+## September 15 preparation
+
+The runnable evaluator is
+`apps/admin/src/services/recommendations/experiment/usefulness-offline.ts`.
+It measures mature qualified recommendation views per assigned profile, retains
+zero-exposure units, bootstraps uncertainty by profile, and rejects unhealthy or
+immature evidence. The adjacent `usefulness-readiness.sql` is a bounded read-only
+inventory, not an experiment activation command.
+
+`docs/operations/recommendation-usefulness-evaluation-2026-09-15.md` records the
+fixed stopping rule, minimum sample, maturity/retention limits and routing gaps.
+The current direct-profile path bypasses experiment assignment; a profile-unit
+A/A, pre-assignment cohort routing, exposure reconciliation and mature controlled
+data remain prerequisites. The ticket stays in progress and no uplift is claimed.

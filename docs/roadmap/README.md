@@ -7,10 +7,10 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 ## Status (September 15, 2026)
 
 - **Total tickets:** 686
-- **Complete:** 509
-- **In progress:** 57
+- **Complete:** 511
+- **In progress:** 56
 - **Not started:** 43
-- **Blocked:** 77
+- **Blocked:** 76
 - **Overdue and not complete:** 0
 
 ## Feature Index
@@ -166,8 +166,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-465](content-discovery/feat-465-watch-search-transcript-publication-convergence.md)                      | Watch search transcript publication convergence                                                 | codex      | P1       | —     | 1    | —   | complete    |
 | [feat-487](content-discovery/feat-487-one-time-recommendation-fallback-curation.md)                            | Curate one-time recommendation fallback pools                                                   | nisal      | P1       | —     | 1    | —   | complete    |
 | [feat-488](content-discovery/feat-488-source-free-user-recommendations.md)                                     | Source-free user recommendations and Web For you row                                            | nisal      | P1       | —     | 10   | —   | complete    |
-| [feat-503](content-discovery/feat-503-profile-recommendation-recent-view-repetition.md)                        | Audit recent-view repetition in profile recommendations                                         | nisal      | P1       | —     | 3    | —   | in-progress |
-| [feat-504](content-discovery/feat-504-immediate-exit-profile-observations.md)                                  | Preserve immediate exits as uninterpreted profile observations                                  | nisal      | P1       | —     | 4    | —   | blocked     |
+| [feat-503](content-discovery/feat-503-profile-recommendation-recent-view-repetition.md)                        | Audit recent-view repetition in profile recommendations                                         | nisal      | P1       | —     | 3    | —   | complete    |
+| [feat-504](content-discovery/feat-504-immediate-exit-profile-observations.md)                                  | Preserve immediate exits as uninterpreted profile observations                                  | nisal      | P1       | —     | 4    | —   | complete    |
 | [feat-505](content-discovery/feat-505-personalization-controlled-usefulness-evaluation.md)                     | Evaluate personalization usefulness with a controlled comparison                                | nisal      | P1       | —     | 5    | —   | blocked     |
 | [feat-043](content-discovery/feat-043-visual-shot-detection-fusion.md)                                         | Video Vectorization — Visual Shot Detection Fusion                                              | nisal      | P2       | —     | 10   | —   | blocked     |
 | [feat-063](content-discovery/feat-063-personalize-discovery-experiences.md)                                    | Personalize Discovery Experiences                                                               | tataihono  | P2       | —     | 45   | —   | blocked     |

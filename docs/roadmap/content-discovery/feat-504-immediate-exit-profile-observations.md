@@ -3,7 +3,7 @@ id: "feat-504"
 title: "Preserve immediate exits as uninterpreted profile observations"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-15"
 duration: 4
 depends_on:
@@ -54,3 +54,23 @@ not deliberate exits. Browser cleanup alone cannot prove viewer intent.
 Cover rapid exit, before-start exit, long pause/buffer, completion, fatal error,
 missing coverage, duplicate/late evidence, and profile reset. Demonstrate that the
 observation does not create qualified positive or inferred negative interests.
+
+## Implementation and verification
+
+The versioned collector and Admin projection are implemented with a ten-second
+diagnostic departure window and explicit unknown preference interpretation.
+Expected start, error, seek, navigation and QoE counts make missing retained facts
+visible; insufficient evidence cannot become a confident departure classification.
+Ordinary playback events remain compatible with older Web/Admin deployments.
+
+The authorized Admin detail and latest-20-episode sample expose the observations.
+These are episode-linked diagnostic observations; they do not change durable
+profile interests, existing click weights or qualified-view classification.
+
+Verification: 54 focused Admin tests, 72 focused Web tests, seven real PostgreSQL
+episode cases, independent review, browser lifecycle checks and before/after load
+measurements. Full evidence and rollout checks are in
+`docs/validation/feat-504-playback-observations/README.md`. Implementation is
+complete locally; production rollout and the broader feat-370 instrumentation
+remain separate work. Choosing a preference meaning or weight requires an
+evaluated interpretation decision.
