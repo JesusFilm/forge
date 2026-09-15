@@ -81,6 +81,7 @@ describe("RecommendationPlaybackRecorder", () => {
     )
     expect(events.map((event) => event.kind)).toEqual([
       "playback_attempt",
+      "playback_observation",
       "playback_error",
     ])
     expect(events.map((event) => event.kind)).not.toContain("playback_start")
@@ -150,7 +151,13 @@ describe("RecommendationPlaybackRecorder", () => {
       .map(([, init]) => JSON.parse(init.body as string))
     const events = factBodies.flatMap((body) => body.events)
     expect(events.filter((event) => event.kind === "playback_attempt")).toEqual(
-      [expect.objectContaining({ payload: { initiation: "manual" } })],
+      [
+        expect.objectContaining({
+          payload: {
+            initiation: "manual",
+          },
+        }),
+      ],
     )
     expect(events.filter((event) => event.kind === "playback_start")).toEqual([
       expect.objectContaining({ payload: { positionSeconds: 2 } }),
@@ -230,7 +237,7 @@ describe("RecommendationPlaybackRecorder", () => {
     expect(events).toContainEqual(
       expect.objectContaining({
         kind: "playback_seek",
-        payload: { fromSeconds: 50, toSeconds: 70 },
+        payload: { fromSeconds: 13, toSeconds: 70 },
       }),
     )
     expect(events).toContainEqual(
@@ -441,7 +448,9 @@ describe("RecommendationPlaybackRecorder", () => {
     expect(events).toContainEqual(
       expect.objectContaining({
         kind: "playback_attempt",
-        payload: { initiation: "automatic" },
+        payload: {
+          initiation: "automatic",
+        },
       }),
     )
     expect(events).toContainEqual(

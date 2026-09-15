@@ -432,7 +432,9 @@ describe("RecommendationPlaybackRecorder claim lifecycle", () => {
     expect(events).toEqual([
       expect.objectContaining({
         kind: "playback_attempt",
-        payload: { initiation: "manual" },
+        payload: {
+          initiation: "manual",
+        },
       }),
       expect.objectContaining({
         kind: "playback_start",

@@ -43,9 +43,20 @@ const MAX_FACTS_BY_KIND: Readonly<
   playback_start: 1,
   playback_progress: 64,
   playback_seek: 32,
+  playback_observation: 1,
+  playback_navigation: 16,
+  playback_qoe: 16,
   playback_active_visible_playing: 64,
   playback_end: 1,
   playback_error: 1,
+}
+
+function isObservationEvent(fact: RecommendationPlaybackEvent): boolean {
+  return [
+    "playback_observation",
+    "playback_navigation",
+    "playback_qoe",
+  ].includes(fact.kind)
 }
 
 type EndReason = Extract<
@@ -146,7 +157,8 @@ async function postPlayback(
         }
         if (
           response.status === 400 &&
-          value?.error === "playback_request_invalid"
+          (value?.error === "playback_request_invalid" ||
+            value?.error === "invalid_body")
         ) {
           throw new DefinitivePlaybackError("request_invalid")
         }
@@ -308,6 +320,14 @@ export function RecommendationPlaybackRecorder({
   durationSeconds?: number | null
 }) {
   const initiationRef = useRef(initiation)
+  const durationRef = useRef(durationSeconds)
+  const lifecycleGenerationRef = useRef(0)
+  const observationsEnabledRef = useRef(true)
+  const observationCountsRef = useRef({ navigation: 0, qoe: 0, seek: 0 })
+  const observeInitiationRef = useRef<() => void>(() => undefined)
+  const attemptedAtRef = useRef<number | null>(null)
+  const bufferingRef = useRef(false)
+  const bfcacheSuspendedRef = useRef(false)
   const episodeRef = useRef<RecommendationEpisodeCapability | null>(null)
   const claimStartedRef = useRef(false)
   const claimSettledRef = useRef(false)
@@ -332,9 +352,14 @@ export function RecommendationPlaybackRecorder({
   const playbackStartedAtRef = useRef<number | null>(null)
   const lastProgressAtRef = useRef<number | null>(null)
   const seekFromRef = useRef<number | null>(null)
+  const lastPositionRef = useRef<number | null>(null)
   useEffect(() => {
     initiationRef.current = initiation
+    observeInitiationRef.current()
   }, [initiation])
+  useEffect(() => {
+    durationRef.current = durationSeconds
+  }, [durationSeconds])
 
   const sendOutbound = useCallback(() => {
     if (flushScheduledRef.current || !episodeRef.current) return
@@ -448,6 +473,27 @@ export function RecommendationPlaybackRecorder({
               }
             }
           } catch (error) {
+            if (
+              error instanceof DefinitivePlaybackError &&
+              error.reason === "request_invalid" &&
+              events.some(isObservationEvent)
+            ) {
+              // Schema validation rejects the complete batch before ingestion.
+              // Preserve baseline event IDs AND payloads: an earlier ambiguous
+              // delivery may already have committed them on a newer Admin pod.
+              observationsEnabledRef.current = false
+              const dropped = outboundRef.current.filter(isObservationEvent)
+              outboundRef.current = outboundRef.current.filter(
+                (fact) => !isObservationEvent(fact),
+              )
+              for (const fact of dropped)
+                deliveryAttemptsRef.current.delete(fact.eventId)
+              reportDegradation(
+                "request_invalid",
+                dropped.map((fact) => fact.eventId),
+              )
+              continue
+            }
             if (error instanceof DefinitivePlaybackError) {
               const dropped = outboundRef.current.splice(0)
               episodeRef.current = null
@@ -523,6 +569,32 @@ export function RecommendationPlaybackRecorder({
   const enqueue = useCallback(
     (next: RecommendationPlaybackEvent, terminal = false) => {
       if (terminalRecordedRef.current && !terminal) return
+      if (isObservationEvent(next) && !observationsEnabledRef.current) return
+      if (next.kind === "playback_seek")
+        observationCountsRef.current.seek = Math.min(
+          65535,
+          observationCountsRef.current.seek + 1,
+        )
+      if (next.kind === "playback_navigation")
+        observationCountsRef.current.navigation = Math.min(
+          65535,
+          observationCountsRef.current.navigation + 1,
+        )
+      if (next.kind === "playback_qoe")
+        observationCountsRef.current.qoe = Math.min(
+          65535,
+          observationCountsRef.current.qoe + 1,
+        )
+      // Optional observations cannot consume the pending slots reserved for
+      // attempt/start, active-time and terminal evidence during a slow claim.
+      if (
+        (next.kind === "playback_navigation" || next.kind === "playback_qoe") &&
+        !episodeRef.current &&
+        pendingRef.current.length >= 8
+      ) {
+        reportDegradation("pending_claim", [next.eventId])
+        return
+      }
       const factLimit = terminal ? MAX_EPISODE_FACTS : MAX_EPISODE_FACTS - 1
       const kindCount = factKindCountsRef.current[next.kind] ?? 0
       if (
@@ -632,6 +704,7 @@ export function RecommendationPlaybackRecorder({
 
   useEffect(() => {
     if (!player) return
+    const lifecycleGeneration = ++lifecycleGenerationRef.current
 
     const canMeasureVisibility = typeof document.visibilityState === "string"
     const canMeasurePlayerState = typeof player.paused === "boolean"
@@ -701,21 +774,72 @@ export function RecommendationPlaybackRecorder({
         return
       }
       attemptRecordedRef.current = true
+      attemptedAtRef.current ??= Date.now()
       enqueue(
         event<
           Extract<RecommendationPlaybackEvent, { kind: "playback_attempt" }>
-        >({
-          kind: "playback_attempt",
-          payload: { initiation: initiationRef.current },
-        }),
+        >(
+          {
+            kind: "playback_attempt",
+            payload: {
+              initiation: initiationRef.current,
+            },
+          },
+          new Date(attemptedAtRef.current),
+        ),
       )
     }
 
+    const navigation = (
+      action: Extract<
+        RecommendationPlaybackEvent,
+        { kind: "playback_navigation" }
+      >["payload"]["action"],
+    ) => {
+      if (!terminalRecordedRef.current) recordAttempt()
+      if (!attemptRecordedRef.current || terminalRecordedRef.current) return
+      enqueue(
+        event<
+          Extract<RecommendationPlaybackEvent, { kind: "playback_navigation" }>
+        >({
+          kind: "playback_navigation",
+          payload: {
+            action,
+            cause: "unknown",
+            positionSeconds: boundedPosition(player),
+          },
+        }),
+      )
+    }
+    const qoe = (
+      action: Extract<
+        RecommendationPlaybackEvent,
+        { kind: "playback_qoe" }
+      >["payload"]["action"],
+    ) => {
+      if (!attemptRecordedRef.current || terminalRecordedRef.current) return
+      enqueue(
+        event<Extract<RecommendationPlaybackEvent, { kind: "playback_qoe" }>>({
+          kind: "playback_qoe",
+          payload: {
+            action,
+            cause: "unknown",
+            positionSeconds: boundedPosition(player),
+          },
+        }),
+      )
+    }
     const onPlay = () => recordAttempt()
     const onPlaying = () => {
       if (initiationRef.current == null) return
       recordAttempt()
+      if (bufferingRef.current) {
+        qoe("buffering_end")
+        bufferingRef.current = false
+      } else if (startRecordedRef.current && !playingRef.current)
+        navigation("resume")
       playingRef.current = true
+      lastPositionRef.current = boundedPosition(player)
       if (!startRecordedRef.current) {
         startRecordedRef.current = true
         const now = Date.now()
@@ -733,14 +857,24 @@ export function RecommendationPlaybackRecorder({
       startActive()
     }
     const onPause = () => {
+      if (playingRef.current || bufferingRef.current) navigation("pause")
+      if (bufferingRef.current) qoe("buffering_end")
+      bufferingRef.current = false
       playingRef.current = false
       flushActive()
     }
-    const onBuffering = () => {
+    const onBuffering = (action: "waiting" | "stalled") => {
+      if (bufferingRef.current || !attemptRecordedRef.current) return
+      bufferingRef.current = true
+      qoe(action)
       playingRef.current = false
       flushActive()
     }
+    const onWaiting = () => onBuffering("waiting")
+    const onStalled = () => onBuffering("stalled")
     const onTimeUpdate = () => {
+      if (seekFromRef.current == null)
+        lastPositionRef.current = boundedPosition(player)
       const now = Date.now()
       if (
         playbackStartedAtRef.current == null ||
@@ -762,7 +896,7 @@ export function RecommendationPlaybackRecorder({
         >({
           kind: "playback_progress",
           payload: {
-            ...playbackPosition(player, durationSeconds),
+            ...playbackPosition(player, durationRef.current),
             wallElapsedMilliseconds: Math.min(
               6 * 60 * 60 * 1_000,
               Math.max(0, now - playbackStartedAtRef.current),
@@ -772,11 +906,14 @@ export function RecommendationPlaybackRecorder({
       )
     }
     const onSeeking = () => {
-      seekFromRef.current = boundedPosition(player)
+      // Native seeking fires after currentTime changes. Use the last observed
+      // position rather than reporting the seek target as both endpoints.
+      seekFromRef.current ??= lastPositionRef.current ?? boundedPosition(player)
     }
     const onSeeked = () => {
       const fromSeconds = seekFromRef.current
       seekFromRef.current = null
+      lastPositionRef.current = boundedPosition(player)
       if (fromSeconds == null || !startRecordedRef.current) return
       enqueue(
         event<Extract<RecommendationPlaybackEvent, { kind: "playback_seek" }>>({
@@ -785,17 +922,59 @@ export function RecommendationPlaybackRecorder({
         }),
       )
     }
+    const recordObservation = (errorObserved: boolean) => {
+      const playerState = bufferingRef.current
+        ? "buffering"
+        : canMeasurePlayerState
+          ? player.paused
+            ? "paused"
+            : "playing"
+          : "unknown"
+      enqueue(
+        event<
+          Extract<RecommendationPlaybackEvent, { kind: "playback_observation" }>
+        >({
+          kind: "playback_observation",
+          payload: {
+            version: "playback-observations-v1",
+            elapsedMilliseconds: Math.min(
+              6 * 60 * 60 * 1000,
+              Math.max(0, Date.now() - (attemptedAtRef.current ?? Date.now())),
+            ),
+            visibility: canMeasureVisibility
+              ? isVisible()
+                ? "visible"
+                : "hidden"
+              : "unknown",
+            playerState,
+            startObserved: startRecordedRef.current,
+            errorObserved,
+            seekCount: observationCountsRef.current.seek,
+            navigationCount: observationCountsRef.current.navigation,
+            qoeCount: observationCountsRef.current.qoe,
+          },
+        }),
+      )
+    }
     const recordEnd = (reason: EndReason, completed = false) => {
-      if (terminalRecordedRef.current || !startRecordedRef.current) return
+      if (!terminalRecordedRef.current && !bfcacheSuspendedRef.current)
+        recordAttempt()
+      if (
+        terminalRecordedRef.current ||
+        !attemptRecordedRef.current ||
+        bfcacheSuspendedRef.current
+      )
+        return
       playingRef.current = false
       flushActive()
+      recordObservation(false)
       terminalRecordedRef.current = true
       enqueue(
         event<Extract<RecommendationPlaybackEvent, { kind: "playback_end" }>>({
           kind: "playback_end",
           payload: {
             reason,
-            ...playbackPosition(player, durationSeconds),
+            ...playbackPosition(player, durationRef.current),
             completed,
           },
         }),
@@ -804,6 +983,7 @@ export function RecommendationPlaybackRecorder({
     }
     const onEnded = () => recordEnd("ended", true)
     const onError = () => {
+      if (!terminalRecordedRef.current) recordAttempt()
       if (
         terminalRecordedRef.current ||
         (!startRecordedRef.current && !attemptRecordedRef.current)
@@ -812,6 +992,7 @@ export function RecommendationPlaybackRecorder({
       }
       playingRef.current = false
       flushActive()
+      recordObservation(true)
       terminalRecordedRef.current = true
       enqueue(
         event<Extract<RecommendationPlaybackEvent, { kind: "playback_error" }>>(
@@ -828,6 +1009,8 @@ export function RecommendationPlaybackRecorder({
     }
     const onPageHide = (event: PageTransitionEvent) => {
       if (event.persisted) {
+        navigation("bfcache_suspend")
+        bfcacheSuspendedRef.current = true
         bfcacheWasPlayingRef.current = playingRef.current
         playingRef.current = false
         flushActive()
@@ -835,6 +1018,8 @@ export function RecommendationPlaybackRecorder({
     }
     const onPageShow = (event: PageTransitionEvent) => {
       if (!event.persisted) return
+      bfcacheSuspendedRef.current = false
+      navigation("bfcache_resume")
       playingRef.current =
         bfcacheWasPlayingRef.current &&
         (!canMeasurePlayerState || !player.paused)
@@ -842,15 +1027,20 @@ export function RecommendationPlaybackRecorder({
       startActive()
     }
     const onVisibilityChange = () => {
-      if (document.visibilityState === "hidden") flushActive()
-      else startActive()
+      if (document.visibilityState === "hidden") {
+        navigation("hidden")
+        flushActive()
+      } else {
+        navigation("visible")
+        startActive()
+      }
     }
 
     player.addEventListener("play", onPlay)
     player.addEventListener("playing", onPlaying)
     player.addEventListener("pause", onPause)
-    player.addEventListener("waiting", onBuffering)
-    player.addEventListener("stalled", onBuffering)
+    player.addEventListener("waiting", onWaiting)
+    player.addEventListener("stalled", onStalled)
     player.addEventListener("timeupdate", onTimeUpdate)
     player.addEventListener("seeking", onSeeking)
     player.addEventListener("seeked", onSeeked)
@@ -859,15 +1049,31 @@ export function RecommendationPlaybackRecorder({
     window.addEventListener("pagehide", onPageHide)
     window.addEventListener("pageshow", onPageShow)
     document.addEventListener("visibilitychange", onVisibilityChange)
-    if (initiation != null && !player.paused) onPlaying()
+    // Intent may arrive after preview playback. Updating intent or duration
+    // must not tear down this lifecycle and manufacture a route departure.
+    observeInitiationRef.current = () => {
+      if (initiationRef.current == null) return
+      attemptedAtRef.current ??= Date.now()
+      if (!player.paused) onPlaying()
+    }
+    observeInitiationRef.current()
 
+    const finalizeDeparture = () => {
+      if (lifecycleGenerationRef.current === lifecycleGeneration)
+        recordEnd("route_exit")
+    }
     return () => {
-      recordEnd("route_exit")
+      observeInitiationRef.current = () => undefined
+      playingRef.current = false
+      flushActive()
+      // StrictMode replays setup/cleanup without a departure. A replacement
+      // setup invalidates this callback; a genuine unmount keeps its generation.
+      queueMicrotask(finalizeDeparture)
       player.removeEventListener("play", onPlay)
       player.removeEventListener("playing", onPlaying)
       player.removeEventListener("pause", onPause)
-      player.removeEventListener("waiting", onBuffering)
-      player.removeEventListener("stalled", onBuffering)
+      player.removeEventListener("waiting", onWaiting)
+      player.removeEventListener("stalled", onStalled)
       player.removeEventListener("timeupdate", onTimeUpdate)
       player.removeEventListener("seeking", onSeeking)
       player.removeEventListener("seeked", onSeeked)
@@ -877,7 +1083,7 @@ export function RecommendationPlaybackRecorder({
       window.removeEventListener("pageshow", onPageShow)
       document.removeEventListener("visibilitychange", onVisibilityChange)
     }
-  }, [durationSeconds, enqueue, initiation, mediaId, player])
+  }, [enqueue, mediaId, player])
 
   return null
 }
