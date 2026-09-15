@@ -14,162 +14,105 @@ tags:
   - "infrastructure"
 ---
 
-## Problem
+## Problem and scope
 
-Renumbered from `feat-486`, then `feat-495`, on 14 September 2026 because
-independently merged roadmap tickets reused those IDs. This ticket retains ownership of the Watch
-runtime investigation. The owner subsequently authorized restoring and activating
-`feat-488`; this investigation remains open independently of that launch.
-
-The 14 September activation passed English/Spanish row checks and a complete
-selection/playback/feedback/homepage-return journey. A seven-minute window had
-5,408 Web requests and zero 5xx, but subsequent language probes again returned
-`delivery_timeout`. Trace `6aa7403d00000000262e20db7880e1dd` shows issuance
-exceeding its remaining 238 ms transaction budget (298 ms elapsed), after
-successful retrieval. Selection deadlines can also expire before browser
-acknowledgment. Investigate without speculative timeout increases. A separate
-Admin `pg-pool` double-release error at 00:31:26 UTC is an observation, not an
-established cause. See
+Resolve production recommendation admission and database deadline failures using
+reproductions, scoped fixes and actual request observations. This ticket was
+renumbered from feat-486, then feat-495, after independently merged tickets reused
+those IDs. Earlier rollout, rollback and partial recovery evidence remains in
+`docs/operations/user-recommendations-rollout-2026-09-10.md`,
+`docs/operations/watch-runtime-diagnosis-2026-09-14.md` and
 `docs/operations/user-recommendations-activation-2026-09-14.md`.
 
-The disabled-feature Web deployment from #2249 coincided with sustained Redis
-admission failures, image connection timeouts and increased event-loop delay.
-The Web-only rollback in #2250 reduced errors substantially without restoring the
-pre-release baseline in its first fifteen minutes. Existing playback and seeded
-recommendations pass fresh browser checks. The full cause of the runtime
-regression remains unproven. Broader evidence-transport reliability remains
-owned by `feat-464`.
+A short healthy window did not establish recovery: Redis admission errors and
+Admin delivery timeouts returned. The final investigation reproduced distinct
+causes rather than attributing all failures to the homepage block or to Redis
+transport. Final release identities and fixed-window evidence are recorded in
+`docs/operations/watch-runtime-recovery-2026-09-15.md`.
 
-## Entry Points — Read These First
+## Changes
 
-1. `docs/operations/user-recommendations-rollout-2026-09-10.md` — fixed windows,
-   deployment identities, recovery scope, remaining failures and trace links.
-2. `apps/web/src/lib/recommendation-mutation-admission.ts` — bounded Redis
-   connection/TIME/EVAL, shared client retirement and retry backoff.
-3. `apps/web/src/lib/recommendation-route-policy.ts` — failure response contracts.
-4. `apps/web/src/lib/content.ts` and `packages/admin-graphql/src/fragments/watch-experience.ts`
-   — schema compatibility and the shared experience query.
-5. `apps/web/src/instrumentation.ts` and `apps/web/next.config.mjs` — production
-   instrumentation and image handling; unchanged by the original feature.
-6. #2249 and preserved branch `codex/feat-477-user-recommendations` — Web block and
-   source-free route implementation available for later restoration.
+- #2276 drains concurrent Redis admissions before retiring a failed connection;
+  #2278 batches preferred-dub lookup work to reduce homepage database contention.
+- #2295 aligns browser retry/recovery with upstream budgets, bounds source-free
+  delivery work and gates the optional row behind LaunchDarkly, default off.
+- #2297 removes synchronous generated page ETag hashing while retaining ISR and
+  Cache-Control. The local cached-inventory reproduction improves from 3/17
+  failed profiles to 0/20 and maximum loop delay from 481 ms to 155 ms.
+- #2298 combines contextual fallback catalog work while preserving every seed,
+  exact ranking and complete output; production multilingual probes pass.
+- #2299 refreshes an expired Redis clock sample once, only after Lua proves no
+  mutation, using the original remaining budget.
+- #2300 reads curated generation/pool/membership metadata in one snapshot while
+  preserving live video eligibility, interests and history rules.
+- #2301 isolates Redis admission I/O from Web page processing on one bounded
+  native Node worker. Real Redis fails with the main loop blocked for 350 ms on
+  the old path and succeeds with a 650 ms block on the worker path. Existing
+  no-late-write, atomic-limit and concurrent-draining guarantees remain intact.
+- #2302 returns known failed issuance callbacks while Prisma finishes rollback.
+  Callback work retains its original deadline; successful commit acknowledgment
+  is still awaited so a committed ISSUED request returns its issued response.
 
-## Grep These
+Two cache experiments were rejected for remaining stalls or page-loading
+regressions. No production cache policy changed as part of those experiments.
 
-- `recommendation.admission|admission_unavailable|redisRetryAt|retireDefaultRedis`
-- `COMMAND_TIMEOUT_MS|PLAYBACK_CONTEXT_COMMAND_TIMEOUT_MS|observeAdmissionFailure`
-- `HomepageRecommendationsBlock|WATCH_FOR_YOU_ENABLED|WatchForYouRecommendations`
-- `runtime.node.event_loop.delay|ETIMEDOUT|internalConnectMultiple`
+## Entry points
 
-## What To Build
+- `apps/web/src/lib/recommendation-mutation-admission.ts` — identity, namespace
+  and production worker dispatch.
+- `apps/web/src/lib/recommendation-redis-admission.ts` — one shared Redis core.
+- `apps/web/src/lib/recommendation-admission-worker-client.ts` — bounded worker
+  lifetime, deadlines, message draining and per-request failure logging.
+- `apps/web/src/lib/recommendation-admission-worker.ts` and
+  `apps/web/tsconfig.admission-worker.json` — native worker and release packaging.
+- `apps/admin/src/services/recommendations/delivery-runtime.ts` — transaction
+  callback deadline and known-failure reporting, preserving commit acknowledgment.
+- `apps/admin/src/services/recommendations/curated-pools.runtime.ts` — curated
+  metadata snapshot.
+- `docs/solutions/performance-issues/*20260915.md` — six cause-specific learnings.
+- `apps/web/scripts/probe-recommendation-runtime.mjs` — local-only load probe.
 
-1. Determine whether the event-loop increase follows the Web source changes,
-   instrumentation, cold-cache workload or container resources/network. Compare
-   the tested revisions under equivalent load; add targeted diagnostics only if
-   the available telemetry cannot distinguish these explanations.
-2. Verify primary-host request/error populations rather than treating shared
-   `env:prod` metric tags as proof of the primary Railway environment. Preserve
-   fixed windows and separate recommendation-route rates from all page traffic.
-3. Implement a reproduced, bounded fix if a code defect is established. Do not
-   attribute the incident to a frontend defect solely because rollback helped.
-4. Preserve the restored Web implementation, canonical block name, profile-first
-   fill rules, explicit serving kill switches and new Admin API compatibility.
+## Invariants and launch state
 
-## Constraints
+- No deadline inflation, ambiguous mutation retries, weaker atomicity or new
+  public API shape. Preserve profile identity, language eligibility, six-card
+  profile-first fill, history, capabilities and existing rate limits.
+- The authored English Homepage Recommendations Block stays removed per owner
+  instruction. `forge.watch.homepageRecommendations` stays default off. Production
+  targeting requires an LD server SDK key and authored block; do not substitute
+  blanket enablement. Activation/curation ownership remains feat-487/feat-488.
+- This recovery work changes Web and shared Admin runtime only. No mobile/TV
+  frontend edits, account linking or curation republishing.
+- Deploy through normal PR/main only. Preserve the original forwarded preview
+  and unrelated worktrees.
 
-- No direct Railway deployment or speculative deadline increases.
-- Do not discard the new Admin schema, migrations or curation work; the old-Web,
-  new-Admin control window was healthy relative to the pre-release baseline.
-- Keep cold-start coverage and pool activation in `feat-487`/`feat-488`.
-- Do not claim recovery from successful page rendering alone or from a reduction
-  in aggregate errors that hides recommendation API failures.
-- Preserve the original forwarded preview and unrelated worktrees.
+## Validation and release status
 
-## Verification
+Final Web CI passed 4,271 tests and eight real Redis cases, plus build, types,
+lint, formatting and security analysis. Final Admin CI passed; the local full
+suite passed 6,596 tests and four real PostgreSQL curation/issuance cases. Query
+changes also have complete multilingual parity and real database regressions.
+Sequential Compound Engineering review found no unresolved code findings.
 
-- A cause supported by a reproduction or discriminating production evidence;
-  current observations establish mitigation, not root cause.
-- Relevant real-Redis regression tests if admission behavior changes, plus Web
-  lint/type checks, a production build and scoped browser/performance checks.
-- Normal PR-to-main deployment followed by fixed pre/post request windows with
-  ingestion lag, actual playback, profile feedback, seeded recommendation fill,
-  and GA/RUM request receipts. Keep primary/secondary environments separate.
-- Restore the source-free homepage block only with six-card local validation and
-  a healthy production observation; activation still requires the separate
-  curation/eligibility requirements in `feat-488`.
+Local production-build browser verification passed six stable cards, selection,
+36 seconds playback, evidence/feedback and fresh homepage recommendations.
+Matched rebuilt performance controls retained equivalent page throughput.
 
-## Current investigation
+Web #2301 deployed at 02:19:07 UTC. The production browser smoke passed normal
+playback and recommendations while confirming that the authored row and flag
+remain off. Admin #2302 deployed at 02:34:45 UTC; fresh English, Spanish, French
+and Hindi source-free probes and the final production playback journey passed.
+The 02:19–02:49 window contains 2,863 recommendation calls with zero HTTP 5xx,
+but a later 02:55:34 Redis delay caused four HTTP 503s. This ticket remains open
+until that remaining delay is diagnosed and addressed. The detailed EVAL
+timeout is in Railway worker stdout; Datadog contains only the generic caller
+failure. Read the recovery report before interpreting a clean short window.
+Use Web APM env:prod and Admin APM env:production, actual primary-host traces,
+revision-scoped request populations and structured delivery outcomes.
 
-- The final worker rollout exposed a separate failed-issuance boundary: trace
-  `6aa8a5a80000000070cd728ca94d97f9` waits 2,294 ms for rollback after an insertion
-  exceeds its budget. Reproduce early reporting of known callback failure while
-  retaining successful commit acknowledgment and atomic rollback. See
-  `docs/plans/2026-09-15-fix-failed-issuance-rollback-wait.md`.
+## Separate follow-ups
 
-- A regression test reproduces cross-request cancellation: a 250 ms admission
-  timeout destroys the shared Redis socket while a concurrent playback admission
-  still has its 500 ms budget. Drain active admissions before closing the retired
-  socket, retaining existing deadlines, fail-closed behavior and retry backoff.
-- Current primary-host traces also show Admin accepting playback after Web's
-  3-second timeout. A simultaneous homepage request has hundreds of per-video
-  preferred-dub lookups. The bounded loader reduces actual homepage SQL from
-  1,337 to 40; four concurrent requests reduce peak connection queueing from
-  1,003 to 19 on the same local pool. PostgreSQL selection tests and exact
-  multilingual GraphQL parity pass, alongside the full Admin suite and build.
-  This reproduces avoidable contention, not the complete historical incident.
-- Redis cancellation fix #2276 and Admin batching #2278 are merged and deployed.
-  Web restoration #2279 and serving defaults #2280/#2281 are also deployed.
-  Continue investigating residual runtime failures using fixed windows.
-- Fixed-window evidence and remaining deployment checks:
-  `docs/operations/watch-runtime-diagnosis-2026-09-14.md`.
-- The 15 September recovery pass reproduces a browser budget mismatch and
-  terminal handling of transient HTTP-200 delivery failures. The Web row now
-  permits three 3-second attempts separated by the 5-second admission cooldown;
-  Admin retrieval/issuance/release waits stay inside their existing deadline.
-  Stage diagnostics distinguish state/history/retrieval/issuance failures.
-- `forge.watch.homepageRecommendations` gates both Web availability and delivery,
-  default off, using verified Watch account subject/email. Keep the English
-  homepage's authored block removed per owner instruction. Production needs an
-  LD server SDK key before account targeting can take effect. Do not enable a
-  blanket production fallback to simulate targeting.
-- Late Admin work and Web event-loop stalls remain confirmed observations, with
-  the underlying shared-runtime source unresolved. Keep this ticket open. See
-  `docs/plans/2026-09-15-fix-homepage-recommendation-recovery.md` for trace IDs and
-  the bounded recovery scope.
-- The next pass reproduces shared Web starvation under cached catalog traffic.
-  The English inventory response is 9.5 MB; Next's synchronous ETag hash is the
-  dominant CPU hotspot. Disabling generated page ETags (retaining ISR and
-  Cache-Control) changes a matched local probe from 3/17 profile HTTP 503s to
-  0/20, and maximum event-loop delay from 481 ms to 155 ms. See
-  `docs/solutions/performance-issues/watch-etag-hashing-starves-recommendation-admission-20260915.md`
-  and `apps/web/scripts/probe-recommendation-runtime.mjs`. Production verification
-  remains required; keep the authored homepage block removed.
-- Production after #2297 isolated an early Redis-clock expiry: the profile
-  request failed in 184 ms inside its 250 ms budget. Refresh once only after
-  Lua explicitly confirms no mutation, sharing the original monotonic deadline.
-  Red/green real-Redis proof includes single increment and no late retry writes.
-  See `docs/solutions/performance-issues/redis-clock-sample-can-expire-admission-early-20260915.md`.
-  Genuine later event-loop timeouts remain under investigation; keep open.
-- The Web ETag fix is merged in #2297. A separate primary-host trace reveals
-  legacy contextual recovery running 34 serial SQL queries past Web's 6.5-second
-  deadline. The exact combined query retains every seed and candidate rule;
-  local Augustine service parity improves 32,129 ms / 37 statements to 933 ms /
-  three statements with an identical six-item response. The isolated Postgres
-  regressions pass. See
-  `docs/solutions/performance-issues/contextual-recommendations-repeat-catalog-work-20260915.md`.
-  Production deployment and verification remain pending.
-- #2298 contextual recovery is deployed: five production probes return six
-  distinct candidates, including JESUS in English/Spanish/French, in 666–2,591
-  ms. Startup source-free probes still isolate curated metadata/issuance delays.
-  A single metadata snapshot reduces native cold retrieval from eight SQL
-  statements to five, preserving full English/French/Hindi output and live
-  eligibility. See
-  `docs/solutions/performance-issues/curated-fallback-serial-metadata-reads-exhaust-budget-20260915.md`.
-  #2299 Redis clock refresh is merged; continue through deployment monitoring.
-- The Redis clock fix still left a reproduced callback-starvation failure:
-  healthy Redis TIME fails when page processing blocks the same Node loop for 350 ms.
-  The isolated admission worker succeeds with the main loop blocked for 650 ms while
-  preserving atomic limits and late-write prevention. Two cache-codec experiments
-  were rejected for residual stalls or page-loading regressions. Worker build,
-  lifecycle, performance and deployment validation remain in progress in
-  `docs/plans/2026-09-15-fix-admission-event-loop-isolation.md`.
+- feat-464 owns broader playback evidence transport/reconciliation reliability.
+- feat-487/feat-488 own curated coverage and homepage launch configuration.
+- feat-506 tracks pre-existing diagnostic command noise from missing ps/cache
+  paths; it is separate from the recommendation request timeouts.

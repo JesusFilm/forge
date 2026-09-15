@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "subtitle-human-review/v1",
+  "runId": "replace-with-report-run-id",
+  "reviewer": "replace-with-reviewer-identity",
+  "reviewedAt": "2026-08-20T00:00:00.000Z",
+  "caseId": "replace-with-case-id",
+  "targetLanguage": "replace-with-bcp47",
+  "ratings": {
+    "meaningPreservation": 0,
+    "naturalness": 0,
+    "terminologyAndNames": 0,
+    "subtitleReadability": 0
+  },
+  "criticalErrors": {
+    "scriptureOrTheology": false,
+    "fabricatedContent": false,
+    "materialOmission": false
+  },
+  "verdict": "needs-review",
+  "notes": []
+}

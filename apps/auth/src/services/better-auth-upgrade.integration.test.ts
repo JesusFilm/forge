@@ -36,6 +36,10 @@ const OTHER_CLIENT_ID = "jfp_upgrade_baseline_other"
 const MANAGER_CLIENT_ID = "jfp_upgrade_baseline_manager_service"
 const REDIRECT_URI = "http://127.0.0.1:49173/callback"
 const MANAGER_AUDIENCE = "http://localhost:3003/api/manager/session"
+const MANAGER_SCOPES = [
+  "admin:manager-session:validate",
+  "admin:manager-backend",
+]
 const ADMIN_MCP_AUDIENCE = "http://localhost:3003/mcp"
 const CHANGELOG_MCP_AUDIENCE = "http://localhost:3000/mcp"
 const RESOURCE_B = "https://resource-b.example.test/mcp"
@@ -241,12 +245,12 @@ describeIntegration("Better Auth PostgreSQL compatibility contract", () => {
       where: { clientId: MANAGER_CLIENT_ID },
       update: {
         clientSecret: hash(CLIENT_SECRET_BODY),
-        scopes: ["admin:manager-session:validate"],
+        scopes: MANAGER_SCOPES,
         public: false,
         requirePKCE: false,
         tokenEndpointAuthMethod: "client_secret_basic",
         applicationType: "web",
-        clientCredentialsScopes: ["admin:manager-session:validate"],
+        clientCredentialsScopes: MANAGER_SCOPES,
         grantTypes: ["client_credentials"],
         responseTypes: [],
         metadata: {
@@ -259,7 +263,7 @@ describeIntegration("Better Auth PostgreSQL compatibility contract", () => {
         clientId: MANAGER_CLIENT_ID,
         name: "Upgrade baseline Manager session service",
         clientSecret: hash(CLIENT_SECRET_BODY),
-        scopes: ["admin:manager-session:validate"],
+        scopes: MANAGER_SCOPES,
         redirectUris: [],
         postLogoutRedirectUris: [],
         grantTypes: ["client_credentials"],
@@ -269,7 +273,7 @@ describeIntegration("Better Auth PostgreSQL compatibility contract", () => {
         requirePKCE: false,
         tokenEndpointAuthMethod: "client_secret_basic",
         applicationType: "web",
-        clientCredentialsScopes: ["admin:manager-session:validate"],
+        clientCredentialsScopes: MANAGER_SCOPES,
         skipConsent: true,
         metadata: {
           appKey: "manager",
@@ -280,6 +284,10 @@ describeIntegration("Better Auth PostgreSQL compatibility contract", () => {
     })
     const managerResource = await prisma.oauthResource.findUniqueOrThrow({
       where: { identifier: MANAGER_AUDIENCE },
+    })
+    await prisma.oauthResource.update({
+      where: { identifier: managerResource.identifier },
+      data: { allowedScopes: MANAGER_SCOPES },
     })
     await prisma.oauthClientResource.upsert({
       where: {
@@ -544,7 +552,7 @@ describeIntegration("Better Auth PostgreSQL compatibility contract", () => {
       {
         grant_type: "client_credentials",
         resource: MANAGER_AUDIENCE,
-        scope: "admin:manager-session:validate",
+        scope: MANAGER_SCOPES.join(" "),
       },
       { clientId: MANAGER_CLIENT_ID, secret: CLIENT_SECRET },
     )
@@ -554,7 +562,7 @@ describeIntegration("Better Auth PostgreSQL compatibility contract", () => {
     expect(claims).toMatchObject({
       aud: MANAGER_AUDIENCE,
       azp: MANAGER_CLIENT_ID,
-      scope: "admin:manager-session:validate",
+      scope: MANAGER_SCOPES.join(" "),
       iss: "http://localhost:3004/api/auth",
       "https://jesusfilm.org/claims/environment": "local",
       "https://jesusfilm.org/claims/app": "manager",
@@ -562,7 +570,7 @@ describeIntegration("Better Auth PostgreSQL compatibility contract", () => {
     expect(claims.sub).toBe(MANAGER_CLIENT_ID)
     expect(tokens).toMatchObject({
       token_type: "Bearer",
-      scope: "admin:manager-session:validate",
+      scope: MANAGER_SCOPES.join(" "),
       expires_in: 30 * 60,
     })
 

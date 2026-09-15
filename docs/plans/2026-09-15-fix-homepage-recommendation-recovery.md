@@ -98,12 +98,15 @@ Use the existing loading treatment; add no decorative motion or polling.
   `/home/nisal/.cache/forge-recommendation-reliability/`, including
   `browser-recovery.json`, `recovered-row.png` and `journey-desktop.json`.
 
-## Release checks still required
+## Release outcome
 
-Merge through the normal PR/main path after CI passes. Verify the deployed Web
-availability response is disabled and private, an anonymous direct POST is
-denied before delivery, and normal Watch playback remains healthy. Verify Admin
-deployment and stage diagnostics. Keep the published English block removed.
-Targeted production delivery cannot be validated until an LD server key, remote
-flag configuration and authored block are present; do not treat disabled traffic
-as proof that the shared runtime stalls have been resolved.
+Merged and deployed in #2295. Subsequent production browser checks confirm the
+availability response is disabled and private, direct anonymous source-free
+POST returns the expected HTTP 403, and normal Watch playback remains healthy.
+The authored English block remains removed per owner instruction. Follow-on
+runtime fixes and final observation are recorded in
+`docs/operations/watch-runtime-recovery-2026-09-15.md`.
+
+Targeted Web launch still requires an LD server key, remote flag configuration
+and authored block. That launch configuration belongs to feat-488; it is not
+substituted with blanket enablement or claimed as verified by disabled traffic.

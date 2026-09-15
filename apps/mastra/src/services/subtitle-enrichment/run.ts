@@ -36,8 +36,26 @@ import {
   type ValidateSubtitleScriptureAccuracyInput,
 } from "./scripture-validation"
 import { segmentsToVtt } from "./vtt"
+import type { OpenRouterProviderCall, OpenRouterUsage } from "./openrouter"
 
 const DEFAULT_CONCURRENCY_LIMIT = 10
+
+export type SubtitleEnrichmentProviderOperation =
+  | "scripture_detection"
+  | "translation"
+  | "retiming"
+  | "scripture_validation"
+
+export type SubtitleEnrichmentProviderUsageEvent = {
+  operation: SubtitleEnrichmentProviderOperation
+  usage: OpenRouterUsage
+}
+
+export type SubtitleEnrichmentProviderCall = OpenRouterProviderCall & {
+  operation: SubtitleEnrichmentProviderOperation
+  chunkIndex: number | null
+  operationAttempt: number
+}
 
 export type RunSubtitleEnrichmentInput = {
   assetId: string
@@ -46,6 +64,8 @@ export type RunSubtitleEnrichmentInput = {
   model: string
   apiKey?: string
   timeoutMs: number
+  /** Absolute deadline shared by every provider request in a cloud cell. */
+  deadlineAtMs?: number
   concurrency?: number
   translationContext?: SubtitleTranslationContext
 }
@@ -59,8 +79,12 @@ export type RunSubtitleEnrichmentDeps = {
     model: string
     apiKey?: string
     timeoutMs: number
+    deadlineAtMs?: number
     config?: LanguageConfig
     scriptureContext?: SubtitleScriptureContext
+    onUsage?: (usage: OpenRouterUsage) => void
+    onUsageUnavailable?: () => void
+    onProviderCall?: (call: OpenRouterProviderCall) => void
   }) => Promise<TranslateChunkResult>
   retime?: (input: {
     chunk: Chunk
@@ -69,8 +93,14 @@ export type RunSubtitleEnrichmentDeps = {
     model: string
     apiKey?: string
     timeoutMs: number
+    deadlineAtMs?: number
     config?: LanguageConfig
     scriptureContext?: SubtitleScriptureContext
+    onUsage?: (usage: OpenRouterUsage) => void
+    onUsageUnavailable?: () => void
+    onProviderCall?: (
+      call: OpenRouterProviderCall & { operationAttempt: number },
+    ) => void
   }) => Promise<RetimeChunkResult>
   detectScriptureContext?: (
     input: DetectSubtitleScriptureContextInput,
@@ -80,6 +110,11 @@ export type RunSubtitleEnrichmentDeps = {
     input: ValidateSubtitleScriptureAccuracyInput,
   ) => Promise<SubtitleScriptureValidationResult>
   loadConfig?: typeof loadLanguageConfig
+  onProviderUsage?: (event: SubtitleEnrichmentProviderUsageEvent) => void
+  onProviderUsageUnavailable?: (
+    operation: SubtitleEnrichmentProviderOperation,
+  ) => void
+  onProviderCall?: (call: SubtitleEnrichmentProviderCall) => void
 }
 
 type TranscriptArtifact = {
@@ -179,6 +214,9 @@ export async function runSubtitleEnrichment(
   const validateScripture =
     deps.validateScripture ?? validateSubtitleScriptureAccuracy
   const loadConfig = deps.loadConfig ?? loadLanguageConfig
+  const onProviderUsage = deps.onProviderUsage
+  const onProviderUsageUnavailable = deps.onProviderUsageUnavailable
+  const onProviderCall = deps.onProviderCall
 
   const transcript = parseTranscriptArtifact(
     await readArtifact(input.assetId, "transcript", "json"),
@@ -195,6 +233,18 @@ export async function runSubtitleEnrichment(
         model: input.model,
         apiKey: input.apiKey,
         timeoutMs: input.timeoutMs,
+        deadlineAtMs: input.deadlineAtMs,
+        onUsage: (usage) =>
+          onProviderUsage?.({ operation: "scripture_detection", usage }),
+        onUsageUnavailable: () =>
+          onProviderUsageUnavailable?.("scripture_detection"),
+        onProviderCall: (call) =>
+          onProviderCall?.({
+            ...call,
+            operation: "scripture_detection",
+            chunkIndex: null,
+            operationAttempt: 0,
+          }),
       })
         .then((context) =>
           context
@@ -229,6 +279,7 @@ export async function runSubtitleEnrichment(
         model: input.model,
         apiKey: input.apiKey,
         timeoutMs: input.timeoutMs,
+        deadlineAtMs: input.deadlineAtMs,
         scriptureContext,
         translate,
         retime,
@@ -236,6 +287,9 @@ export async function runSubtitleEnrichment(
         validateScripture,
         writeArtifact,
         loadConfig,
+        onProviderUsage,
+        onProviderUsageUnavailable,
+        onProviderCall,
       }),
   )
 }
@@ -249,6 +303,7 @@ async function translateLanguage(input: {
   model: string
   apiKey?: string
   timeoutMs: number
+  deadlineAtMs?: number
   scriptureContext?: SubtitleScriptureContext
   translate: NonNullable<RunSubtitleEnrichmentDeps["translate"]>
   retime: NonNullable<RunSubtitleEnrichmentDeps["retime"]>
@@ -256,6 +311,11 @@ async function translateLanguage(input: {
   validateScripture: NonNullable<RunSubtitleEnrichmentDeps["validateScripture"]>
   writeArtifact: (options: WriteSubtitleArtifactOptions) => Promise<string>
   loadConfig: typeof loadLanguageConfig
+  onProviderUsage?: (event: SubtitleEnrichmentProviderUsageEvent) => void
+  onProviderUsageUnavailable?: (
+    operation: SubtitleEnrichmentProviderOperation,
+  ) => void
+  onProviderCall?: (call: SubtitleEnrichmentProviderCall) => void
 }): Promise<SubtitleLanguageResult> {
   if (input.sourceLanguage === input.targetLanguage) {
     return writeNoOpTranslationArtifacts(input)
@@ -272,8 +332,20 @@ async function translateLanguage(input: {
         model: input.model,
         apiKey: input.apiKey,
         timeoutMs: input.timeoutMs,
+        deadlineAtMs: input.deadlineAtMs,
         config,
         scriptureContext: input.scriptureContext,
+        onUsage: (usage) =>
+          input.onProviderUsage?.({ operation: "translation", usage }),
+        onUsageUnavailable: () =>
+          input.onProviderUsageUnavailable?.("translation"),
+        onProviderCall: (call) =>
+          input.onProviderCall?.({
+            ...call,
+            operation: "translation",
+            chunkIndex: chunk.index,
+            operationAttempt: 0,
+          }),
       })
       const retimed = await input.retime({
         chunk,
@@ -282,8 +354,19 @@ async function translateLanguage(input: {
         model: input.model,
         apiKey: input.apiKey,
         timeoutMs: input.timeoutMs,
+        deadlineAtMs: input.deadlineAtMs,
         config,
         scriptureContext: input.scriptureContext,
+        onUsage: (usage) =>
+          input.onProviderUsage?.({ operation: "retiming", usage }),
+        onUsageUnavailable: () =>
+          input.onProviderUsageUnavailable?.("retiming"),
+        onProviderCall: (call) =>
+          input.onProviderCall?.({
+            ...call,
+            operation: "retiming",
+            chunkIndex: chunk.index,
+          }),
       })
       allSegments.push(...retimed.segments)
     }
@@ -298,9 +381,13 @@ async function translateLanguage(input: {
       model: input.model,
       apiKey: input.apiKey,
       timeoutMs: input.timeoutMs,
+      deadlineAtMs: input.deadlineAtMs,
       loadBiblePassage: input.loadBiblePassage,
       validateScripture: input.validateScripture,
       writeArtifact: input.writeArtifact,
+      onProviderUsage: input.onProviderUsage,
+      onProviderUsageUnavailable: input.onProviderUsageUnavailable,
+      onProviderCall: input.onProviderCall,
     })
   } catch (error) {
     const message =
@@ -321,6 +408,11 @@ async function writeNoOpTranslationArtifacts(input: {
   targetLanguage: string
   transcriptSegments: TranscriptSegment[]
   writeArtifact: (options: WriteSubtitleArtifactOptions) => Promise<string>
+  onProviderUsage?: (event: SubtitleEnrichmentProviderUsageEvent) => void
+  onProviderUsageUnavailable?: (
+    operation: SubtitleEnrichmentProviderOperation,
+  ) => void
+  onProviderCall?: (call: SubtitleEnrichmentProviderCall) => void
 }): Promise<SubtitleLanguageResult> {
   return writeCompletedTranslationArtifacts({
     assetId: input.assetId,
@@ -342,11 +434,17 @@ async function writeCompletedTranslationArtifacts(input: {
   model?: string
   apiKey?: string
   timeoutMs?: number
+  deadlineAtMs?: number
   loadBiblePassage?: NonNullable<RunSubtitleEnrichmentDeps["loadBiblePassage"]>
   validateScripture?: NonNullable<
     RunSubtitleEnrichmentDeps["validateScripture"]
   >
   writeArtifact: (options: WriteSubtitleArtifactOptions) => Promise<string>
+  onProviderUsage?: (event: SubtitleEnrichmentProviderUsageEvent) => void
+  onProviderUsageUnavailable?: (
+    operation: SubtitleEnrichmentProviderOperation,
+  ) => void
+  onProviderCall?: (call: SubtitleEnrichmentProviderCall) => void
 }): Promise<SubtitleLanguageResult> {
   const vttContent = segmentsToVtt(input.segments, {
     language: input.targetLanguage,
@@ -414,11 +512,17 @@ async function writeScriptureValidationArtifact(input: {
   model?: string
   apiKey?: string
   timeoutMs?: number
+  deadlineAtMs?: number
   loadBiblePassage?: NonNullable<RunSubtitleEnrichmentDeps["loadBiblePassage"]>
   validateScripture?: NonNullable<
     RunSubtitleEnrichmentDeps["validateScripture"]
   >
   writeArtifact: (options: WriteSubtitleArtifactOptions) => Promise<string>
+  onProviderUsage?: (event: SubtitleEnrichmentProviderUsageEvent) => void
+  onProviderUsageUnavailable?: (
+    operation: SubtitleEnrichmentProviderOperation,
+  ) => void
+  onProviderCall?: (call: SubtitleEnrichmentProviderCall) => void
 }): Promise<
   | { artifactKey?: string; summary: SubtitleScriptureValidationSummary }
   | undefined
@@ -441,7 +545,10 @@ async function writeScriptureValidationArtifact(input: {
       const lookup = await input.loadBiblePassage({
         targetLanguage: input.targetLanguage,
         references,
-        timeoutMs: input.timeoutMs,
+        timeoutMs: remainingSubtitleDeadlineMs({
+          timeoutMs: input.timeoutMs,
+          deadlineAtMs: input.deadlineAtMs,
+        }),
       })
       if (lookup.ok) {
         biblePassage = lookup.passage
@@ -461,9 +568,24 @@ async function writeScriptureValidationArtifact(input: {
       scriptureContext: input.scriptureContext,
       model: input.model,
       apiKey: input.apiKey,
-      timeoutMs: input.timeoutMs,
+      timeoutMs: remainingSubtitleDeadlineMs({
+        timeoutMs: input.timeoutMs,
+        deadlineAtMs: input.deadlineAtMs,
+      }),
+      deadlineAtMs: input.deadlineAtMs,
       biblePassage,
       fallbackReason,
+      onUsage: (usage) =>
+        input.onProviderUsage?.({ operation: "scripture_validation", usage }),
+      onUsageUnavailable: () =>
+        input.onProviderUsageUnavailable?.("scripture_validation"),
+      onProviderCall: (call) =>
+        input.onProviderCall?.({
+          ...call,
+          operation: "scripture_validation",
+          chunkIndex: null,
+          operationAttempt: 0,
+        }),
     })
   } catch (error) {
     console.warn(
@@ -512,9 +634,26 @@ async function writeScriptureValidationArtifact(input: {
   }
 }
 
+function remainingSubtitleDeadlineMs(input: {
+  timeoutMs: number
+  deadlineAtMs?: number
+}) {
+  if (input.deadlineAtMs == null) return input.timeoutMs
+  const remaining = Math.min(input.timeoutMs, input.deadlineAtMs - Date.now())
+  if (remaining <= 0) {
+    throw new SubtitleProviderError(
+      "provider_failed",
+      true,
+      "Subtitle evaluation cell deadline expired",
+    )
+  }
+  return Math.max(1, remaining)
+}
+
 export const _internals = {
   parseTranscriptArtifact,
   mapWithConcurrency,
   shouldValidateScripture,
   validationSummaryFromResult,
+  remainingSubtitleDeadlineMs,
 }

@@ -91,6 +91,22 @@ describe("submitFeedbackWithHeaders", () => {
     expect(linear.createIssue).toHaveBeenCalledWith(minimalPayload)
   })
 
+  it("accepts feedback with no reporter name at all", async () => {
+    // The composer stopped requiring a name, and it OMITS the key rather
+    // than sending an empty one. Only a test against the real schema proves
+    // the server agrees — every client-side test mocks this action away, so
+    // losing the `.optional()` would fail real submissions while the
+    // component suite stayed green. Note the rejected `name: ""` case below
+    // is deliberately still a rejection: absent and blank are not the same.
+    const namelessPayload: Record<string, unknown> = { ...validPayload }
+    Reflect.deleteProperty(namelessPayload, "name")
+
+    await expect(
+      submitFeedbackWithHeaders(namelessPayload, requestHeaders()),
+    ).resolves.toEqual({ ok: true, receipt: "opaque-receipt" })
+    expect(linear.createIssue).toHaveBeenCalledWith(namelessPayload)
+  })
+
   it.each([
     { ...validPayload, email: "not-an-email" },
     { ...validPayload, name: "" },
