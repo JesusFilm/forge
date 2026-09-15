@@ -282,6 +282,13 @@ export const devotionalInputPropsSchema = z.object({
    *  reads as the video restarting. Opt-in, so the full devotional's curated
    *  window is untouched. */
   continuousClip: z.boolean().optional(),
+  /**
+   * Seconds of the shared background take to skip before the first card that
+   * uses it. The staged background opens with a 0.6s fade from black; under
+   * the cover that reads as the video starting, but when the first card on
+   * the take is the stepper (clip-first) it is a black flash after the film.
+   */
+  bgStartOffsetSec: z.number().nonnegative().optional(),
   /** Hold the text of the card BEFORE a video card on screen for this long as
    *  the video comes up (seconds).
    *

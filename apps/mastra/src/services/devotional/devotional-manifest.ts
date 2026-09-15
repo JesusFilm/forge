@@ -37,6 +37,8 @@ export type DevotionalManifest = {
    *  renderer so its background budget can't drift from the composition's
    *  own default. */
   introHoldSec?: number
+  /** Seconds of background skipped before the first card on it; see schema. */
+  bgStartOffsetSec?: number
   /** Held beat on the LAST card after its narration ends (s). Same reason. */
   outroHoldSec?: number
   cards: ManifestCard[]
@@ -222,6 +224,9 @@ function buildClipFirstManifest(
   return {
     schemaVersion: "2",
     headerDate: input.headerDate,
+    // The take fades in from black over 0.6s; the stepper is the first card
+    // on it here and would flash black after the film.
+    bgStartOffsetSec: 0.75,
     ...(d.reflection.attribution
       ? { attribution: d.reflection.attribution }
       : {}),

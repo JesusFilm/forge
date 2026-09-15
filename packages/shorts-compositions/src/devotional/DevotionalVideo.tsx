@@ -2976,7 +2976,15 @@ function Background({
           : {})}
         muted={clipAudioLevel <= 0}
         volume={(f) => {
-          const clipEnd = Math.round((card.durationSec ?? 1) * fps)
+          // Full-frame (clip-first): the film's sound carries through the
+          // card's breath tail up to the cut, instead of fading half a second
+          // before the tail begins — that left 1.7s of near-silence between
+          // the last line and the stepper's music.
+          const clipEnd = Math.round(
+            ((card.durationSec ?? 1) +
+              (fullBleedVideo ? CARD_TAIL_FRAMES / fps : 0)) *
+              fps,
+          )
           // Owner rule: open the clip SILENT while "Let's watch" is on screen,
           // then ease its sound in — so the cut into the film lands as a beat
           // rather than a jump in volume.
@@ -3604,7 +3612,10 @@ export function DevotionalVideo(props: DevotionalInputProps) {
   // invisible (no repeated motion, no scale pop). The video card plays its own
   // curated clip and does not consume the background timeline.
   const bgRate = props.bgPlaybackRate ?? 1
-  let bgAcc = 0
+  // Skip the take's fade-in when asked (clip-first): the first card on the
+  // take is the stepper, right after a hard cut from the film, and a black
+  // frame there is a flash rather than an opening.
+  let bgAcc = Math.round((props.bgStartOffsetSec ?? 0) * fps)
   const bgStartFrames = props.cards.map((c, i) => {
     // A video card normally shows its OWN window, so it starts at frame 0 and
     // does not consume any of the shared take. `continuousClip` makes it part

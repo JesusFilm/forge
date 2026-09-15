@@ -522,6 +522,9 @@ async function main() {
       ...(manifest.bgDurationSec
         ? { bgDurationSec: manifest.bgDurationSec }
         : {}),
+      ...(manifest.bgStartOffsetSec != null
+        ? { bgStartOffsetSec: manifest.bgStartOffsetSec }
+        : {}),
       ...(manifest.bgPlaybackRate
         ? { bgPlaybackRate: manifest.bgPlaybackRate }
         : {}),
