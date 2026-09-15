@@ -56,6 +56,9 @@ overrides:
 packageExtensionsChecksum: 761effde9ea347f55480f3487fd5e5be
 
 patchedDependencies:
+  '@fortedigital/nextjs-cache-handler@3.2.1':
+    hash: 5euoeic6bifwd364tqwtkq6smm
+    path: patches/@fortedigital__nextjs-cache-handler@3.2.1.patch
   '@datadog/mobile-react-native@3.5.2':
     hash: zwconjjexlpshgvnd2tqnblelu
     path: patches/@datadog__mobile-react-native@3.5.2.patch
@@ -1368,7 +1371,7 @@ importers:
         version: link:../../packages/watch-url-policy
       '@fortedigital/nextjs-cache-handler':
         specifier: 3.2.1
-        version: 3.2.1(@redis/client@6.2.0(@opentelemetry/api@1.9.1))(ioredis@5.10.1)(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(babel-plugin-macros@3.1.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+        version: 3.2.1(patch_hash=5euoeic6bifwd364tqwtkq6smm)(@redis/client@6.2.0(@opentelemetry/api@1.9.1))(ioredis@5.10.1)(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(babel-plugin-macros@3.1.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
       '@hebcal/hdate':
         specifier: ^0.21.1
         version: 0.21.1
@@ -19327,7 +19330,7 @@ snapshots:
     dependencies:
       '@formatjs/fast-memoize': 3.1.5
 
-  '@fortedigital/nextjs-cache-handler@3.2.1(@redis/client@6.2.0(@opentelemetry/api@1.9.1))(ioredis@5.10.1)(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(babel-plugin-macros@3.1.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
+  '@fortedigital/nextjs-cache-handler@3.2.1(patch_hash=5euoeic6bifwd364tqwtkq6smm)(@redis/client@6.2.0(@opentelemetry/api@1.9.1))(ioredis@5.10.1)(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(babel-plugin-macros@3.1.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
     dependencies:
       '@redis/client': 6.2.0(@opentelemetry/api@1.9.1)
       cluster-key-slot: 1.1.2

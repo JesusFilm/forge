@@ -1,3 +1,4 @@
+import "../../scripts/redis-cache-cleanup.redis-cases.mjs"
 import { execFileSync } from "node:child_process"
 import { createRequire } from "node:module"
 import { resolve } from "node:path"
