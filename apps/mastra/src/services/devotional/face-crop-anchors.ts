@@ -365,6 +365,10 @@ export type TrackTuning = {
   decideOverSec?: number
   /** How long a needed move will wait for a cut to hide in. */
   waitForCutSec?: number
+  /** How long an empty frame is tolerated before spacing stops applying. */
+  emptyOverrideSec?: number
+  /** How far ahead candidate framings are scored for staying power. */
+  lookaheadSec?: number
 }
 
 /**
@@ -401,13 +405,11 @@ export function trackFaceAnchors(
   // any single move, is what read as jerky.
   // Must exceed the LONGEST glide the composition can run (3.5s at the adopted
   // pan speed), or a move lands on one still in flight and the crop snaps out
-  // of it. It doubles as the frequency limit the owner asked for: "the camera
-  // moves too often". At six seconds the background reframes about once every
-  // nine seconds of reflection — thirteen times across the whole piece, down
-  // from twenty-seven. It costs nine points of face-in-frame, and that is the
-  // right way round: a face missed for a few seconds is a worse frame, a
-  // camera that keeps moving is a worse video.
-  const dwell = tuning.dwellSec ?? 6.0
+  // of it. It is no longer the main brake on restlessness: choosing framings
+  // that LAST does that job without ever pinning the camera on nobody, which
+  // is what a long spacing did — it held the back of a man's head at 1:13
+  // while Jesus stood clearly in frame beside him.
+  const dwell = tuning.dwellSec ?? 2.0
   // A detection smaller than this is not a face anyone would notice, and
   // treating one as a subject is how the crop ended up on a wall: Haar's
   // phantoms run 0.2-1% of the frame while the real faces here run 2-13%.
@@ -415,6 +417,10 @@ export function trackFaceAnchors(
   const snap = tuning.snapSec ?? 0.7
   const decideOverSec = tuning.decideOverSec ?? 1.5
   const waitForCut = tuning.waitForCutSec ?? 2.5
+  /** How long the crop may sit on nobody before the spacing rule is ignored. */
+  const emptyOverrideSec = tuning.emptyOverrideSec ?? 0.5
+  /** How far ahead a candidate framing is scored. */
+  const lookaheadSec = tuning.lookaheadSec ?? 12
 
   const framed = (x: number | null, cx: number) =>
     Math.abs(cx - (x ?? 0.5)) <= reach
@@ -437,6 +443,55 @@ export function trackFaceAnchors(
       .sort((a, b) => a - b)
     if (xs.length === 0) return undefined
     return xs[Math.floor(xs.length / 2)]
+  }
+
+  /** How long `anchor` keeps SOMEBODY in frame, looking forward from `from`. */
+  const holdsFor = (anchor: number | null, from: number): number => {
+    let last = from
+    for (const s of samples) {
+      if (s.atSec < from) continue
+      if (s.atSec > from + lookaheadSec) break
+      const someone = s.faces.some(
+        (f) => f.area >= minArea && framed(anchor, f.cx),
+      )
+      // A shot with nobody in it does not end a framing — the conversation
+      // usually resumes on the same angle after a cutaway.
+      if (!someone && biggest(s)) return s.atSec - from
+      last = s.atSec
+    }
+    return last - from
+  }
+
+  /**
+   * Where to point so the crop can STAY there.
+   *
+   * Aiming at whoever is largest right now is what made the camera restless:
+   * the choice is re-made every time that person turns away, which on this
+   * cutting is every few seconds. Scoring each candidate by how long it would
+   * survive picks framings that outlast the shot, and centre wins ties because
+   * a centred frame is the one that needs no explanation.
+   */
+  const bestAnchor = (from: number): number | null | undefined => {
+    const aim = aimFrom(from)
+    if (aim == null) return undefined
+    const candidates: Array<number | null> = [null]
+    for (const s of samples) {
+      if (s.atSec < from || s.atSec > from + decideOverSec) continue
+      for (const f of s.faces) if (f.area >= minArea) candidates.push(f.cx)
+    }
+    let best: number | null = null
+    let bestHold = -1
+    for (const c of candidates) {
+      // Only consider a framing that works RIGHT NOW; the point is to fix the
+      // empty frame, not to pre-position for later.
+      if (!framed(c, aim)) continue
+      const hold = holdsFor(c, from)
+      if (hold > bestHold + 0.01) {
+        bestHold = hold
+        best = c
+      }
+    }
+    return bestHold < 0 ? aim : best
   }
 
   const segments: ShotAnchor[] = []
@@ -471,16 +526,22 @@ export function trackFaceAnchors(
     }
     if (missingSince == null) missingSince = s.atSec
     if (s.atSec - missingSince < patience) continue
-    if (s.atSec - lastMove < dwell) continue
+    // The spacing rule keeps the camera from chasing back and forth between
+    // faces. It must NOT pin the camera on nobody: at 1:13 of the Parable of
+    // the Lamp it held the back of a man's head for seconds while Jesus stood
+    // clearly in frame beside him, because a move six seconds earlier had used
+    // up the allowance. An empty frame overrides the spacing once it has
+    // lasted this long — the thing being avoided is restlessness, not looking
+    // at the person who is there.
+    const emptyFor = s.atSec - (missingSince as number)
+    if (emptyFor < emptyOverrideSec && s.atSec - lastMove < dwell) continue
 
-    const aim = aimFrom(missingSince)
-    if (aim == null) {
+    const chosen = bestAnchor(missingSince)
+    if (chosen === undefined) {
       missingSince = null
       continue
     }
-    // Move. Prefer centre when centre frames this face: the picture should
-    // spend its time at rest rather than parked wherever a face last was.
-    const next = framed(null, aim) ? null : aim
+    const next = chosen
     // Put the change ON a cut wherever possible: the picture is already
     // changing there, so the crop moving with it cannot be seen. A move in the
     // middle of a held shot is the one the eye catches, and nineteen of
