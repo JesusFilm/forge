@@ -7,6 +7,7 @@ import {
   adminRecordSemanticRecommendationPlaybackOperation,
 } from "@forge/admin-graphql/operations"
 import { RecommendationRouteError } from "@/lib/recommendation-route-policy"
+import type { RecommendationPlaybackEvent } from "@/lib/recommendation-contracts"
 
 const { admit, mutate } = vi.hoisted(() => ({
   admit: vi.fn(),
@@ -249,6 +250,68 @@ describe("POST /watch/api/recommendations/playback", () => {
     expect(variables).not.toHaveProperty("requestId")
     expect(variables).not.toHaveProperty("itemId")
   })
+
+  it.each([
+    {
+      eventId: "observation-1",
+      kind: "playback_observation",
+      occurredAt: "2026-08-19T03:00:00.000Z",
+      payload: {
+        version: "playback-observations-v1",
+        elapsedMilliseconds: 3000,
+        visibility: "visible",
+        playerState: "paused",
+        startObserved: true,
+        errorObserved: false,
+        seekCount: 1,
+        navigationCount: 1,
+        qoeCount: 1,
+      },
+    },
+    {
+      eventId: "navigation-1",
+      kind: "playback_navigation",
+      occurredAt: "2026-08-19T03:00:00.000Z",
+      payload: { action: "pause", cause: "unknown", positionSeconds: 3 },
+    },
+    {
+      eventId: "qoe-1",
+      kind: "playback_qoe",
+      occurredAt: "2026-08-19T03:00:00.000Z",
+      payload: { action: "waiting", cause: "unknown", positionSeconds: 3 },
+    },
+  ] satisfies RecommendationPlaybackEvent[])(
+    "accepts and forwards the complete $kind event to Admin",
+    async (event) => {
+      const receipts = [
+        { eventId: event.eventId, status: "accepted", sequence: 3 },
+      ]
+      mutate.mockResolvedValueOnce({
+        data: { recordSemanticRecommendationPlayback: receipts },
+      })
+
+      const response = await POST(
+        request(
+          JSON.stringify({
+            action: "facts",
+            contractVersion: "recommendation-evidence-v1",
+            capability: "episode-capability-secret",
+            episodeId: "episode-1",
+            mediaId: "media-1",
+            events: [event],
+          }),
+        ),
+      )
+
+      expect(response.status).toBe(200)
+      expect(await response.json()).toEqual({ receipts })
+      expect(mutate).toHaveBeenCalledTimes(1)
+      expect(mutate.mock.calls[0]?.[0]?.mutation).toBe(
+        adminRecordSemanticRecommendationPlaybackOperation,
+      )
+      expect(mutate.mock.calls[0]?.[0]?.variables.events).toEqual([event])
+    },
+  )
 
   it.each(["context", "claim", "facts"])(
     "rejects crawler %s before any Admin mutation",

@@ -1,7 +1,7 @@
 ---
 title: "Harden a production recommendation slice at every irreversible boundary"
 date: "2026-08-26"
-last_updated: "2026-09-14"
+last_updated: "2026-09-16"
 category: "architecture-patterns"
 module: "apps/admin and apps/web recommendations"
 problem_type: "architecture_pattern"
@@ -12,18 +12,16 @@ applies_when:
   - "A new lifecycle model must deploy over databases restored from pre-final snapshots"
   - "Browser playback telemetry may retry, race navigation, or arrive after the active window"
   - "A hybrid personalization manifest is authorized only as a bounded, versioned experiment"
+  - "Adding optional playback facts or bounded Admin observation projections"
 tags:
   - "recommendations"
   - "latency-budget"
-  - "snapshot-repair"
   - "idempotent-telemetry"
-  - "terminal-events"
   - "anonymous-profile"
-  - "bounded-pilot"
   - "production-boundary"
-  - "apollo-errors"
-  - "serializable-contention"
-  - "evidence-observability"
+  - "playback-observations"
+  - "mixed-version"
+  - "release-validation"
 related_components:
   - "database"
   - "frontend_stimulus"
@@ -467,3 +465,52 @@ reproduction proves cancellation amplification; it does not identify why the
 original command was slow. See
 `docs/operations/watch-runtime-diagnosis-2026-09-14.md` for the separate Admin
 timeout evidence and production observation requirements.
+
+### Preserve observations without inventing preference
+
+A departure within ten seconds of observed intent is diagnostic evidence.
+Preserve before-start, after-start, completion, error, interrupted visibility and
+missing evidence separately. Elapsed time differs from active playback.
+Preference remains unknown and ranking influence false. Summary start/error
+presence and expected event counts must reconcile before declaring complete
+coverage (`playback-observations.ts`).
+
+Keep baseline event IDs and payloads immutable. Put observation metadata in
+separate optional facts. Only a recognized schema-validation rejection permits
+removing optional facts and retrying identical baseline facts: an ambiguous
+previous request might already have committed. Authentication, binding and unknown
+failures keep their ordinary handling. Missing optional summaries mean missing
+coverage. StrictMode setup replay and ordinary duration updates must not
+manufacture departures.
+
+### Prove the handoff and the bound with discriminating fixtures
+
+Independent reader and composer tests cannot prove their handoff. The direct and
+search PostgreSQL cases in `recent-context.db.test.ts` pass stored authorized
+history into `runCandidatePlatform`: the watched candidate wins without history,
+six fresh candidates win with history, and five fresh candidates permit refill.
+Assert the actual `recent_playback_start` rejection and current-video exclusion.
+See the [focused recency account](../logic-errors/source-neutral-playback-recent-history-20260915.md).
+
+A sample-size assertion with fewer than twenty episodes cannot distinguish a
+bounded read from an unbounded read. Seed twenty-one retained episodes and give
+only the oldest a completion classification. Verify the overview contains exactly
+the newest twenty and excludes completion, while direct inspection still
+classifies the oldest correctly (`playback-episode.db.test.ts`).
+
+### Validate migration policy and recovery together
+
+An isolated concurrent-index migration succeeded locally, but the full Admin
+suite caught the repository prohibition before release. Run the global
+`prisma-migration-deploy-safety.test.ts` alongside focused database tests.
+Migration 0096 uses transaction-compatible additive DDL with a two-second lock
+wait and fifteen-second statement limit, resetting both settings afterward.
+Ordinary index creation briefly blocks writes; it is not an online build.
+
+Validate the actual fresh Prisma chain, replay, a representative build and a
+held-writer timeout. Local 150,000-row measurements were 348–387 ms; a held lock
+failed with `55P03` after 2,002 ms and succeeded after release. These are fixture
+measurements. A failed migration needs inspection and explicit Prisma recovery;
+application rollback can retain the additive index. See the
+[migration safety precedent](../workflow-issues/yt-video-mapper-prisma-migration-deploy-safety-guard.md)
+and [release evidence and recovery procedure](../../operations/recommendation-release-validation-2026-09-16.md).

@@ -62,8 +62,10 @@ as confirmed defects.
   The actual reader query used `recommendation_episode_session_created_idx`.
   These are local fixture measurements, not production latency promises.
 - The complete Prisma migration chain applied to a fresh disposable database,
-  including `0096_recommendation_recent_episode_index`. Its concurrent index build
-  keeps episode ingestion available. Admin TypeScript and focused lint pass.
+  including `0096_recommendation_recent_episode_index`. The release regression
+  subsequently caught the repository's prohibition on concurrent index DDL.
+  The corrected migration bounds lock acquisition to two seconds and the
+  write-blocking build to fifteen seconds. Admin TypeScript and focused lint pass.
 
 Reproduce the database test using `RECOMMENDATION_DB_TEST=1` and a disposable local
 `DATABASE_URL`, then run `pnpm --filter @forge/admin exec vitest run
@@ -149,3 +151,9 @@ changes. Review fixes cover:
 The final playback and evaluator re-reviews found no remaining actionable defects
 within the implemented scope. Open ticket gates above remain explicit; this is
 not a production effectiveness or experiment-readiness approval.
+
+## Release regression follow-through
+
+The [September 16 release validation](recommendation-release-validation-2026-09-16.md)
+supersedes the focused local test counts above and records full suites, review
+fixes, fresh migration rehearsal, browser regression and rollout recovery.

@@ -59,8 +59,9 @@ Renumbered from the local recommendation ticket feat-478 because main already us
 The recent-context reader now merges bounded source-neutral episode starts into
 the existing authorized recent-history preference. Server receipt time preserves
 accepted buffered and clock-skewed starts; attempts without a start are excluded.
-Migration `0096_recommendation_recent_episode_index` adds the matching concurrent
-session/created-time index.
+Migration `0096_recommendation_recent_episode_index` adds the matching
+session/created-time index using transaction-compatible DDL with bounded lock and
+statement timeouts.
 
 Six actual PostgreSQL cases cover authorization, privacy reset, expiry, origins,
 clock differences and count bounds. The 439-case recommendation service unit run

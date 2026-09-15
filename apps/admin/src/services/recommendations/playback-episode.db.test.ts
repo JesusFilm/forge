@@ -1219,7 +1219,6 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         window: "24h",
         now: current,
       })
-      expect(overview.observationSample.size).toBeLessThanOrEqual(20)
       expect(overview.observationSample.qoeObserved).toBeGreaterThanOrEqual(1)
       await expect(
         loadPlaybackEpisodeDetail(prisma, {
@@ -1235,6 +1234,72 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           now: new Date(began.getTime() + 30 * 86400_000),
         }),
       ).resolves.toBeNull()
+    })
+
+    it("samples only the 20 newest retained episodes and excludes the oldest classification", async () => {
+      // Use a separate reporting window so earlier fixtures cannot enter the sample.
+      const began = new Date(startedAt.getTime() + 2 * 86400_000)
+      const now = new Date(began.getTime() + 3600_000)
+      const expiresAt = new Date(began.getTime() + 29 * 86400_000)
+      const episodes = Array.from({ length: 21 }, (_, index) => ({
+        id: `sample-bound-${index.toString().padStart(2, "0")}`,
+        mediaId: `sample-media-${index}`,
+        sessionDigest: "d".repeat(64),
+        state: "CLAIMED" as const,
+        capabilityJti: `sample-bound-capability-${index}`,
+        claimedAt: new Date(began.getTime() + index * 1000),
+        activeUntil: new Date(began.getTime() + 4 * 3600_000),
+        hardUntil: new Date(began.getTime() + 6 * 3600_000),
+        createdAt: new Date(began.getTime() + index * 1000),
+        expiresAt,
+      }))
+      await prisma.recommendationPlaybackEpisode.createMany({ data: episodes })
+      await prisma.recommendationPlaybackFact.create({
+        data: {
+          episodeId: episodes[0].id,
+          capabilityJti: episodes[0].capabilityJti,
+          eventId: "sample-oldest-completion",
+          payloadDigest: "e".repeat(64),
+          sequence: 1,
+          kind: "playback_end",
+          payload: {
+            reason: "ended",
+            positionSeconds: 120,
+            durationSeconds: 120,
+            progress: 1,
+            completed: true,
+          },
+          occurredAt: new Date(began.getTime() + 500),
+          receivedAt: new Date(began.getTime() + 500),
+          expiresAt,
+        },
+      })
+      const oldest = await loadPlaybackEpisodeDetail(prisma, {
+        episodeId: episodes[0].id,
+        actorDigest: "f".repeat(64),
+        now,
+      })
+      expect(oldest?.observations.departure.classification).toBe("completion")
+
+      const overview = await loadPlaybackEvidenceOverview(prisma, {
+        window: "24h",
+        now,
+      })
+
+      expect(overview.counts.episodes).toBe(21)
+      expect(overview.recent.map((episode) => episode.id)).toEqual(
+        episodes
+          .slice(1)
+          .reverse()
+          .map((episode) => episode.id),
+      )
+      expect(overview.observationSample.size).toBe(20)
+      expect(overview.observationSample.classificationCounts).toEqual({
+        insufficient_evidence: 20,
+      })
+      expect(
+        overview.observationSample.classificationCounts,
+      ).not.toHaveProperty("completion")
     })
   },
 )

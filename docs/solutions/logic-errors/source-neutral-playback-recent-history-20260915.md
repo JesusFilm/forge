@@ -1,6 +1,7 @@
 ---
 title: "Use source-neutral episode roots and server receipt time for recent playback"
 date: "2026-09-15"
+last_updated: "2026-09-16"
 category: "logic-errors"
 module: "Admin recommendation recent context"
 problem_type: "logic_error"
@@ -51,9 +52,11 @@ already verified the event against its episode capability, including the bounded
 client-clock allowance. A playback attempt alone is not a start.
 
 The additive `(session_digest, created_at DESC, id DESC)` index supports bounded
-episode lookup without scanning unrelated viewers. The concurrent migration is
-tested through Prisma's full migration path. No new identity or retained history
-table is introduced.
+episode lookup without scanning unrelated viewers. The migration uses ordinary
+transaction-compatible DDL with a two-second lock timeout and a fifteen-second
+statement timeout. It briefly blocks writes while building; a timeout fails the
+deployment and requires inspection and Prisma failure resolution before retry.
+No new identity or retained history table is introduced.
 
 ## Why This Works
 
@@ -74,6 +77,9 @@ The final composer still decides whether recent videos can refill a sparse row.
   explicit reaction. An immediate exit has unknown preference meaning.
 - Inspect actual rejected-stage reason codes; a composed position movement alone
   is not proof of prior suppression.
+- Run the Admin-wide migration safety guard as well as the focused database suite.
+  A successful isolated migration does not prove compatibility with the repository's
+  migration runner. Concurrent index DDL is forbidden in Prisma migrations here.
 
 ## Related Issues
 

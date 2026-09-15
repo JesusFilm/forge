@@ -128,6 +128,22 @@ describe("offline qualified viewing evaluation", () => {
     expect(evaluateUsefulnessSnapshot(unchanged).decision).toBe("inconclusive")
   })
 
+  it("rejects an otherwise improving challenger when operational guardrails fail", () => {
+    const input = snapshot()
+    input.units.forEach((unit) => {
+      if (unit.arm === "challenger") unit.qualifiedViews += 2
+    })
+    expect(evaluateUsefulnessSnapshot(input).decision).toBe("improve")
+
+    input.health.guardrailsPassed = false
+
+    expect(evaluateUsefulnessSnapshot(input)).toMatchObject({
+      decision: "no_benefit",
+      reasonCodes: ["operational_guardrail_failed"],
+      uncertainty: null,
+    })
+  })
+
   it("refuses operational-session identities and malformed numeric input", () => {
     const input = snapshot()
     const sessionInput = JSON.parse(JSON.stringify(input))

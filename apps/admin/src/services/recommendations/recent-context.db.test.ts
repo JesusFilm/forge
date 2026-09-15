@@ -3,6 +3,8 @@ import { PrismaClient } from "@prisma/client"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
+import { adaptSemanticCandidates } from "./candidate"
+import { runCandidatePlatform } from "./orchestration"
 import { getRecommendationRecentContext } from "./recent-context.service"
 
 const RUN_REAL_DB_TEST = env.RECOMMENDATION_DB_TEST === "1"
@@ -495,6 +497,135 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         },
       ])
     })
+
+    it.each(["direct", "search"])(
+      "prefers fresh profile candidates after stored %s playback and keeps sparse refill",
+      async (discoverySource) => {
+        const prefix = `slate-regression-${discoverySource}`
+        const sessionDigest = (discoverySource === "direct" ? "4" : "5").repeat(
+          64,
+        )
+        const profileTokenDigest = (
+          discoverySource === "direct" ? "6" : "7"
+        ).repeat(64)
+        await admin.query(
+          `INSERT INTO recommendation_profile (
+            id, token_digest, privacy_generation, choice, state, expires_at, updated_at
+          ) VALUES ($1, $2, 1, 'durable_allowed', 'active', '2027-02-01', $3);
+          `,
+          [prefix, profileTokenDigest, now],
+        )
+        await admin.query(
+          `INSERT INTO recommendation_profile_session_link (
+            id, profile_id, privacy_generation, session_digest, linked_at, expires_at
+          ) VALUES ($1, $1, 1, $2, '2026-08-26T10:00:00Z', '2026-08-27T00:00:00Z')`,
+          [prefix, sessionDigest],
+        )
+        const watched = `${prefix}-watched`
+        const current = `${prefix}-current`
+        const fresh = Array.from(
+          { length: 6 },
+          (_, index) => `${prefix}-fresh-${index}`,
+        )
+        await insertStandalonePlayback({
+          id: `${prefix}-episode`,
+          mediaId: watched,
+          sessionDigest,
+          discoverySource,
+        })
+        const context = {
+          surface: "watch-below-player-v1" as const,
+          purpose: "watch" as const,
+          locale: "en",
+          audioLanguageSlug: "english",
+        }
+        const nominations = adaptSemanticCandidates(
+          [current, watched, ...fresh].map((videoId, index) => ({
+            videoId,
+            videoSlug: videoId,
+            videoTitle: videoId,
+            videoCoreId: videoId,
+            embeddingText: null,
+            imageUrl: `https://images.example/${videoId}.jpg`,
+            sceneIndex: 0,
+            description: "Recommendation regression fixture",
+            startSeconds: 0,
+            endSeconds: 120,
+            similarity: 0.99 - index * 0.01,
+            themes: [],
+            demographics: [],
+            spiritualContext: [],
+            playbackId: `playback-${videoId}`,
+            locale: "en",
+            audioLanguageSlug: "english",
+            watchPlayable: true,
+            localePublished: true,
+          })),
+          context,
+        ).nominations
+        const hybrid = nominations.flatMap((nomination) => [
+          nomination,
+          {
+            ...nomination,
+            nominationKey: `profile:${nomination.targetMediaId}`,
+            source: {
+              ...nomination.source,
+              generator: "multi-interest-profile",
+              generatorVersion: "multi-interest-profile-candidate-v1",
+              evidence: { interestOrdinal: 0 },
+            },
+          },
+        ])
+        const recent = await getRecommendationRecentContext(prisma, {
+          sessionDigest,
+          profileTokenDigest,
+          allowDurableProfileLinks: true,
+          now,
+        })
+        const withoutHistory = runCandidatePlatform({
+          context,
+          generatorVersion: "semantic-profile-hybrid-generators-v1",
+          nominations: hybrid,
+          limit: 6,
+          composition: { currentVideoId: current },
+        })
+        expect(withoutHistory.composed[0]?.targetMediaId).toBe(watched)
+
+        const withHistory = runCandidatePlatform({
+          context,
+          generatorVersion: "semantic-profile-hybrid-generators-v1",
+          nominations: hybrid,
+          limit: 6,
+          composition: { currentVideoId: current, recentVideos: recent.videos },
+        })
+        expect(withHistory.composed.map((item) => item.targetMediaId)).toEqual(
+          fresh,
+        )
+        expect(withHistory.evidence).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              stage: "rejected",
+              targetMediaId: watched,
+              reasonCodes: ["recent_playback_start"],
+            }),
+          ]),
+        )
+
+        const sparse = runCandidatePlatform({
+          context,
+          generatorVersion: "semantic-profile-hybrid-generators-v1",
+          nominations: hybrid.filter(
+            (nomination) => nomination.targetMediaId !== fresh[5],
+          ),
+          limit: 6,
+          composition: { currentVideoId: current, recentVideos: recent.videos },
+        })
+        expect(sparse.composed.map((item) => item.targetMediaId)).toEqual([
+          ...fresh.slice(0, 5),
+          watched,
+        ])
+      },
+    )
 
     it("uses the session index for bounded lookup amid unrelated episode history", async () => {
       await admin.query(`INSERT INTO recommendation_playback_episode (

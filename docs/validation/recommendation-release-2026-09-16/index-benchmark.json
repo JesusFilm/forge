@@ -1,0 +1,8 @@
+{
+  "rows": 150000,
+  "buildMilliseconds": [354, 387, 348],
+  "lockTimeoutMilliseconds": 2002,
+  "heapBytes": 72286208,
+  "lockTimeoutCode": "55P03",
+  "indexValid": true
+}
