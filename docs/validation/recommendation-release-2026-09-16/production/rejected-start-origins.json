@@ -1,0 +1,20 @@
+{
+  "capturedAt": "2026-09-15T22:02:42.730Z",
+  "results": [
+    {
+      "name": "five_post_admin_recent_start_rejections_source_check",
+      "milliseconds": 446,
+      "rows": [
+        {
+          "bounded_rejected_entries": "5",
+          "with_nonrecommendation_accepted_start": "5",
+          "with_recommendation_accepted_start": "0",
+          "unmatched_current_session_entries": "0",
+          "start_source_counts": {
+            "direct": 5
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -142,7 +142,9 @@ export type RecommendationPlaybackEvent =
       eventId: string
       kind: "playback_attempt"
       occurredAt: string
-      payload: { initiation: "manual" | "automatic" }
+      payload: {
+        initiation: "manual" | "automatic"
+      }
     }
   | {
       eventId: string
@@ -178,6 +180,48 @@ export type RecommendationPlaybackEvent =
             coverage: "partial"
             missingReason: "visibility_unavailable" | "player_state_unavailable"
           }
+    }
+  | {
+      eventId: string
+      kind: "playback_observation"
+      occurredAt: string
+      payload: {
+        version: "playback-observations-v1"
+        elapsedMilliseconds: number
+        visibility: "visible" | "hidden" | "unknown"
+        playerState: "playing" | "paused" | "buffering" | "unknown"
+        startObserved: boolean
+        errorObserved: boolean
+        seekCount: number
+        navigationCount: number
+        qoeCount: number
+      }
+    }
+  | {
+      eventId: string
+      kind: "playback_navigation"
+      occurredAt: string
+      payload: {
+        action:
+          | "pause"
+          | "resume"
+          | "hidden"
+          | "visible"
+          | "bfcache_suspend"
+          | "bfcache_resume"
+        cause: "unknown"
+        positionSeconds: number
+      }
+    }
+  | {
+      eventId: string
+      kind: "playback_qoe"
+      occurredAt: string
+      payload: {
+        action: "waiting" | "stalled" | "buffering_end"
+        cause: "unknown"
+        positionSeconds: number
+      }
     }
   | {
       eventId: string

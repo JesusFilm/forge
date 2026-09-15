@@ -1,4 +1,8 @@
-import { requestOpenRouterChat, type OpenRouterUsage } from "./openrouter"
+import {
+  requestOpenRouterChat,
+  type OpenRouterProviderCall,
+  type OpenRouterUsage,
+} from "./openrouter"
 import type { Chunk, LanguageConfig, SubtitleScriptureContext } from "./types"
 
 export type TranslateChunkOptions = {
@@ -7,9 +11,13 @@ export type TranslateChunkOptions = {
   model: string
   apiKey?: string
   timeoutMs: number
+  deadlineAtMs?: number
   config?: LanguageConfig
   scriptureContext?: SubtitleScriptureContext
   fetchImpl?: typeof fetch
+  onUsage?: (usage: OpenRouterUsage) => void
+  onUsageUnavailable?: () => void
+  onProviderCall?: (call: OpenRouterProviderCall) => void
 }
 
 export type TranslateChunkResult = {
@@ -23,15 +31,23 @@ export async function translateChunk({
   model,
   apiKey,
   timeoutMs,
+  deadlineAtMs,
   config,
   scriptureContext,
   fetchImpl,
+  onUsage,
+  onUsageUnavailable,
+  onProviderCall,
 }: TranslateChunkOptions): Promise<TranslateChunkResult> {
   const result = await requestOpenRouterChat({
     apiKey,
     model,
     timeoutMs,
+    deadlineAtMs,
     fetchImpl,
+    onUsage,
+    onUsageUnavailable,
+    onProviderCall,
     messages: [
       {
         role: "system",

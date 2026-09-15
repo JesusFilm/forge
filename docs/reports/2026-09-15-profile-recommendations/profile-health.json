@@ -1,0 +1,130 @@
+[
+  [
+    {
+      "active_profiles": "119096",
+      "no_projection": "795",
+      "empty_projection": "117093",
+      "usable_profiles": "1208",
+      "durable_profiles": "1171",
+      "session_signal_profiles": "55",
+      "contributed_but_no_live_interest": "0",
+      "populated_with_multiple_generations": "1208",
+      "populated_median_contributions": 1,
+      "populated_p95_contributions": 13
+    }
+  ],
+  [
+    {
+      "durable_interest_count": 0,
+      "session_intent_present": true,
+      "profiles": "37",
+      "minimum_contributions": 1,
+      "median_contributions": 1,
+      "maximum_contributions": 3
+    },
+    {
+      "durable_interest_count": 1,
+      "session_intent_present": false,
+      "profiles": "705",
+      "minimum_contributions": 1,
+      "median_contributions": 1,
+      "maximum_contributions": 5
+    },
+    {
+      "durable_interest_count": 1,
+      "session_intent_present": true,
+      "profiles": "10",
+      "minimum_contributions": 2,
+      "median_contributions": 2,
+      "maximum_contributions": 4
+    },
+    {
+      "durable_interest_count": 2,
+      "session_intent_present": false,
+      "profiles": "174",
+      "minimum_contributions": 2,
+      "median_contributions": 2,
+      "maximum_contributions": 5
+    },
+    {
+      "durable_interest_count": 2,
+      "session_intent_present": true,
+      "profiles": "4",
+      "minimum_contributions": 3,
+      "median_contributions": 3.5,
+      "maximum_contributions": 6
+    },
+    {
+      "durable_interest_count": 3,
+      "session_intent_present": false,
+      "profiles": "72",
+      "minimum_contributions": 3,
+      "median_contributions": 3,
+      "maximum_contributions": 10
+    },
+    {
+      "durable_interest_count": 3,
+      "session_intent_present": true,
+      "profiles": "1",
+      "minimum_contributions": 6,
+      "median_contributions": 6,
+      "maximum_contributions": 6
+    },
+    {
+      "durable_interest_count": 4,
+      "session_intent_present": false,
+      "profiles": "202",
+      "minimum_contributions": 4,
+      "median_contributions": 9,
+      "maximum_contributions": 64
+    },
+    {
+      "durable_interest_count": 4,
+      "session_intent_present": true,
+      "profiles": "3",
+      "minimum_contributions": 5,
+      "median_contributions": 8,
+      "maximum_contributions": 11
+    }
+  ],
+  [
+    {
+      "kind": "qualified_outcome",
+      "contributions": "4442",
+      "profiles": "1171",
+      "missing_outcome": "0",
+      "unqualified_outcome": "0",
+      "wrong_classifier": "0",
+      "unfinished_episode": "0",
+      "wrong_media": "0",
+      "wrong_privacy_generation": "0",
+      "expired_contributions": "0"
+    },
+    {
+      "kind": "session_selection",
+      "contributions": "67",
+      "profiles": "55",
+      "missing_outcome": "0",
+      "unqualified_outcome": "0",
+      "wrong_classifier": "0",
+      "unfinished_episode": "0",
+      "wrong_media": "0",
+      "wrong_privacy_generation": "0",
+      "expired_contributions": "0"
+    }
+  ],
+  [
+    {
+      "scope": "durable",
+      "personalized_requests": "5380",
+      "profiles": "855",
+      "used_generations": "3103",
+      "missing_projection": "0",
+      "expired_when_used": "0",
+      "published_after_request": "0",
+      "zero_interest_count": "0",
+      "retrieval_p50_ms": 114,
+      "retrieval_p95_ms": 271.0500000000002
+    }
+  ]
+]

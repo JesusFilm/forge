@@ -169,6 +169,84 @@ export default async function PlaybackEpisodePage({
       </PageSection>
 
       <PageSection
+        title="Navigation and playback quality"
+        meta={detail.observations.version}
+      >
+        <p className="px-4 py-3 text-[13px] text-[var(--color-text-muted)]">
+          Preference meaning is unknown. These observations do not change taste
+          weights. A quick departure is within ten seconds of the observed
+          attempt; cleanup alone cannot establish intent.
+        </p>
+        <div className="grid gap-px bg-[var(--color-hairline)] md:grid-cols-2 lg:grid-cols-4">
+          <Value
+            label="Departure observation"
+            value={displayRecommendationToken(
+              detail.observations.departure.classification,
+            )}
+          />
+          <Value
+            label="Playback stage"
+            value={displayRecommendationToken(
+              detail.observations.departure.stage,
+            )}
+          />
+          <Value
+            label="Elapsed since attempt"
+            value={`${detail.observations.departure.elapsedMilliseconds ?? "Unknown"} ms`}
+          />
+          <Value
+            label="Active playback / coverage"
+            value={`${detail.observations.departure.activeMilliseconds} ms / ${detail.observations.departure.activeCoverage}`}
+          />
+          <Value
+            label="Navigation coverage / decision"
+            value={`${detail.observations.navigation.coverage} / ${detail.observations.navigation.decision}`}
+          />
+          <Value
+            label="Pause / resume"
+            value={`${detail.observations.navigation.pauses} / ${detail.observations.navigation.resumes}`}
+          />
+          <Value
+            label="Seek forward / backward / to start"
+            value={`${detail.observations.navigation.forwardSeeks} / ${detail.observations.navigation.backwardSeeks} / ${detail.observations.navigation.returnsToStart}`}
+          />
+          <Value
+            label="Automatic attempt"
+            value={
+              detail.observations.navigation.automaticAttempt
+                ? "Observed"
+                : "Not observed"
+            }
+          />
+          <Value
+            label="QoE coverage / decision"
+            value={`${detail.observations.qoe.coverage} / ${detail.observations.qoe.decision}`}
+          />
+          <Value
+            label="Attempt to first start"
+            value={`${detail.observations.qoe.startupMilliseconds ?? "Unknown"} ms`}
+          />
+          <Value
+            label="Closed buffering intervals"
+            value={`${detail.observations.qoe.bufferingMilliseconds} ms / ${detail.observations.qoe.bufferingEpisodes} observed episodes`}
+          />
+          <Value
+            label="Errors / open buffering interval"
+            value={`${detail.observations.qoe.errors} / ${detail.observations.qoe.openBufferingInterval ? "Yes" : "No"}`}
+          />
+        </div>
+        <p className="px-4 py-3 text-[12px] text-[var(--color-text-muted)]">
+          Pause and navigation causes, deliberate skip/replay, error
+          recoverability, startup timeout, device and network are unavailable.
+          Each family remains inconclusive.
+        </p>
+        <p className="break-all px-4 pb-3 font-mono text-[10px] text-[var(--color-text-muted)]">
+          Fact watermark {detail.observations.factWatermark} · digest{" "}
+          {detail.observations.inputDigest}
+        </p>
+      </PageSection>
+
+      <PageSection
         title="Revisioned outcomes"
         meta={`${detail.outcomes.length} IMMUTABLE ROWS`}
       >

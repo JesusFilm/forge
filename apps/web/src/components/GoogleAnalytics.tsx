@@ -79,6 +79,114 @@ export function reportGoogleAnalyticsEvent(
   )
 }
 
+/**
+ * Longest a queued event waits for the Google tag, and how often it checks.
+ * Same budget the page-view collector below uses (~10s), for the same reason:
+ * the tag is loaded async, so an interaction in the first moments of a visit
+ * can beat it.
+ */
+const QUEUED_EVENT_POLL_MS = 200
+const QUEUED_EVENT_MAX_ATTEMPTS = 50
+/** A cold tag should not let a runaway caller grow this without bound. */
+const MAX_QUEUED_EVENTS = 20
+
+type QueuedGoogleAnalyticsEvent = {
+  name: string
+  params: GoogleAnalyticsEventParams
+  /** Name plus serialized params, so an exact repeat can be recognized. */
+  fingerprint: string
+}
+
+let queuedEvents: QueuedGoogleAnalyticsEvent[] = []
+let queueTimer: ReturnType<typeof setTimeout> | null = null
+let queueAttempts = 0
+
+function googleTagReady(): boolean {
+  return typeof window !== "undefined" && typeof window.gtag === "function"
+}
+
+function flushQueuedGoogleAnalyticsEvents(): void {
+  const pending = queuedEvents
+  queuedEvents = []
+  for (const event of pending)
+    reportGoogleAnalyticsEvent(event.name, event.params)
+}
+
+function pollForGoogleTag(): void {
+  if (queueTimer !== null) return
+  queueTimer = setTimeout(() => {
+    queueTimer = null
+    queueAttempts += 1
+    if (googleTagReady()) {
+      queueAttempts = 0
+      flushQueuedGoogleAnalyticsEvents()
+      return
+    }
+    if (queueAttempts > QUEUED_EVENT_MAX_ATTEMPTS) {
+      // The tag is not coming — a blocker, or it is simply not configured.
+      // Drop the queue rather than hold the strings forever.
+      queuedEvents = []
+      queueAttempts = 0
+      return
+    }
+    pollForGoogleTag()
+  }, QUEUED_EVENT_POLL_MS)
+}
+
+/**
+ * Like `reportGoogleAnalyticsEvent`, but holds the event until the Google tag
+ * exists instead of dropping it.
+ *
+ * `reportGoogleAnalyticsEvent` no-ops when `window.gtag` is not a function
+ * yet. For an event fired by a deliberate click in the first seconds of a
+ * visit, that silently loses the FIRST step of a funnel while every later
+ * step survives — which reads as broken data rather than as a lost event.
+ *
+ * Deliberately additive: existing callers keep the drop-on-cold behaviour, so
+ * no established event's delivery changes.
+ */
+export function reportGoogleAnalyticsEventWhenReady(
+  name: string,
+  params: GoogleAnalyticsEventParams = {},
+) {
+  if (typeof window === "undefined") return
+  if (googleTagReady()) {
+    // Drain first, and only then emit. The tag can arrive BETWEEN two events
+    // — the later one would otherwise go straight out while the earlier one
+    // waited for the next poll tick, and a funnel that reports a step view
+    // before its own open reads as a broken journey rather than a late tag.
+    if (queuedEvents.length > 0) {
+      if (queueTimer !== null) {
+        clearTimeout(queueTimer)
+        queueTimer = null
+      }
+      queueAttempts = 0
+      flushQueuedGoogleAnalyticsEvents()
+    }
+    reportGoogleAnalyticsEvent(name, params)
+    return
+  }
+  // Collapse an exact repeat rather than spending a slot on it. A reader
+  // pressing a blocked button over and over while the tag is still cold would
+  // otherwise fill the queue with identical events and push out the one that
+  // says how their session ended.
+  const fingerprint = `${name}:${JSON.stringify(params)}`
+  if (queuedEvents.some((queued) => queued.fingerprint === fingerprint)) return
+  if (queuedEvents.length >= MAX_QUEUED_EVENTS) return
+  queuedEvents.push({ name, params, fingerprint })
+  pollForGoogleTag()
+}
+
+/** Test seam: drops anything waiting and stops the poll. */
+export function resetQueuedGoogleAnalyticsEvents(): void {
+  queuedEvents = []
+  queueAttempts = 0
+  if (queueTimer !== null) {
+    clearTimeout(queueTimer)
+    queueTimer = null
+  }
+}
+
 function pagePathFromLocation(pathname: string, queryString: string): string {
   return queryString ? `${pathname}?${queryString}` : pathname
 }

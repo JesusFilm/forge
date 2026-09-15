@@ -50,7 +50,9 @@ const PlaybackEvent = z.discriminatedUnion("kind", [
       ...eventBase,
       kind: z.literal("playback_attempt"),
       payload: z
-        .object({ initiation: z.enum(["manual", "automatic"]) })
+        .object({
+          initiation: z.enum(["manual", "automatic"]),
+        })
         .strict(),
     })
     .strict(),
@@ -104,6 +106,58 @@ const PlaybackEvent = z.discriminatedUnion("kind", [
             (payload.coverage === "partial" && payload.missingReason != null)
           if (!valid) context.addIssue({ code: "custom" })
         }),
+    })
+    .strict(),
+  z
+    .object({
+      ...eventBase,
+      kind: z.literal("playback_observation"),
+      payload: z
+        .object({
+          version: z.literal("playback-observations-v1"),
+          elapsedMilliseconds: wallElapsedMilliseconds,
+          visibility: z.enum(["visible", "hidden", "unknown"]),
+          playerState: z.enum(["playing", "paused", "buffering", "unknown"]),
+          startObserved: z.boolean(),
+          errorObserved: z.boolean(),
+          seekCount: z.number().int().min(0).max(65535),
+          navigationCount: z.number().int().min(0).max(65535),
+          qoeCount: z.number().int().min(0).max(65535),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      ...eventBase,
+      kind: z.literal("playback_navigation"),
+      payload: z
+        .object({
+          action: z.enum([
+            "pause",
+            "resume",
+            "hidden",
+            "visible",
+            "bfcache_suspend",
+            "bfcache_resume",
+          ]),
+          cause: z.literal("unknown"),
+          positionSeconds,
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      ...eventBase,
+      kind: z.literal("playback_qoe"),
+      payload: z
+        .object({
+          action: z.enum(["waiting", "stalled", "buffering_end"]),
+          cause: z.literal("unknown"),
+          positionSeconds,
+        })
+        .strict(),
     })
     .strict(),
   z

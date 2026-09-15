@@ -320,11 +320,21 @@ describe("shadow evaluation service", () => {
         expect.objectContaining({
           targetMediaId: "video-b",
           overlapsLive: true,
-          provenance: { interestOrdinal: 1 },
+          provenance: expect.objectContaining({
+            interestOrdinal: 1,
+            slatePolicy: "source-interest-theme-mmr-shadow-v1",
+            slatePosition: 0,
+            slateDecision: "pending",
+            slateHistory: "unavailable",
+            slateEditorial: "adapter_pending",
+          }),
           expiresAt: EXPIRES,
         }),
       ],
     })
+    expect(
+      JSON.stringify(tx.recommendationShadowNomination.createMany.mock.calls),
+    ).not.toContain("must-not-persist")
     expect(tx.recommendationShadowRun.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({

@@ -84,6 +84,29 @@ describe("WhatsNewFaq", () => {
     expect(rows().every((row) => row.open)).toBe(true)
   })
 
+  it("ignores the toggle echo its own bulk write provokes", () => {
+    // Expanding all sets `open` on every <details> from React, and the
+    // browser answers each write with a `toggle` event indistinguishable
+    // from a click. Without the equality guard in `setRow`, those echoes
+    // append ids that are already tracked, `open.length` overshoots
+    // `ALL_IDS.length`, and the control reports itself collapsed while every
+    // row on screen is open.
+    act(() => {
+      toggleAll().click()
+    })
+    expect(rows().every((row) => row.open)).toBe(true)
+
+    act(() => {
+      for (const row of rows()) {
+        row.dispatchEvent(new Event("toggle"))
+      }
+    })
+
+    expect(toggleAll().getAttribute("aria-expanded")).toBe("true")
+    expect(toggleAll().textContent).toContain(WHATS_NEW_FAQ.collapseAll)
+    expect(rows().every((row) => row.open)).toBe(true)
+  })
+
   it("hides the default marker so the chevron is the only affordance", () => {
     const summary = rows()[0].querySelector("summary")!
     expect(summary.className).toContain("list-none")

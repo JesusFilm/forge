@@ -17,7 +17,7 @@ tags: ["redis", "recommendations", "node", "workers", "event-loop", "deadline"]
 ## Cause and evidence
 
 After the ETag and conservative-clock fixes, primary-host profile trace
-`4122266214311152701` still failed at 01:16:23UTC on Web cc252f9d.
+`4122266214311152701` still failed at 01:16:23 UTC on Web cc252f9d.
 TIME logged 348 ms on its 250 ms command budget. The same release recorded a 559 ms
 maximum event-loop stall. Redis uses the Railway private network. Large cached
 HTML/Flight values still require synchronous JSON decoding and response encoding
@@ -28,7 +28,7 @@ The original algorithm fails closed with untouched counters. Running that exact
 algorithm on a separate thread succeeds even while the main loop is blocked for 650 ms.
 This isolates callback starvation from Redis slowness and the previous stale-clock
 bug. The main thread cannot respond while blocked, but successful work completed
-inside its deadline must not become an artificial503 when it resumes.
+inside its deadline must not become an artificial 503 when it resumes.
 
 ## Fix and invariants
 
@@ -52,6 +52,10 @@ inside its deadline must not become an artificial503 when it resumes.
 - The normal Web build separately compiles the native Node worker into
   `.next/admission-worker`. Use Node's runtime constructor so Turbopack does not
   infer a broad dynamic Web Worker import and bundle application tests/assets.
+- Log a failure from the calling request's Promise continuation. A shared
+  MessagePort listener inherits the context of the request that created it and
+  can attribute subsequent failures to the wrong trace. An AsyncLocalStorage
+  red/green test verifies that concurrent failures retain their own request IDs.
 
 ## Validation
 
@@ -71,10 +75,14 @@ was shipped. Isolating the small admission operation avoids copying page payload
 between threads and leaves cache storage/invalidation unchanged.
 
 Always rebuild the control from the same source/dependency versions: an initial
-control had stale output (9.5MB catalog), while the actual current page was7.1MB.
+control had stale output (9.5 MB catalog), while the actual current page was 7.1 MB.
 Discard that comparison. A clean six-minute production window also proved
 insufficient: genuine profile failures recurred a minute later. Use actual route
 populations, fixed revision windows, complete traces and fresh playback/API probes.
+Give separately built local previews different cache prefixes: cached HTML from
+another build can point at missing JavaScript chunks and invalidate browser results.
 
 See `docs/plans/2026-09-15-fix-admission-event-loop-isolation.md` and
-`redis-clock-sample-can-expire-admission-early-20260915.md`.
+`redis-clock-sample-can-expire-admission-early-20260915.md`. The final deployment,
+test populations and production observations are recorded in
+`docs/operations/watch-runtime-recovery-2026-09-15.md`.

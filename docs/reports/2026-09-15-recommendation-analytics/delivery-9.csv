@@ -1,0 +1,3 @@
+created_at,decision,sample_count,paired_count,missing_count,agreement_rate,active_qualified_rate,legacy_qualified_rate,reason_codes
+2026-09-14T11:05:09.934Z,revise,32657,32657,17839,0.8947851915362709,0.2547692684569924,0.3493891049392167,['active_coverage_missing']
+2026-09-13T11:05:13.913Z,revise,34049,34049,20318,0.9065170783282915,0.2242356603718171,0.3080266674498517,['active_coverage_missing']

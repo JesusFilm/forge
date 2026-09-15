@@ -3,7 +3,9 @@ import { NextResponse } from "next/server"
 import {
   isLocalMockManagerLoginEnabled,
   LOCAL_MOCK_MANAGER_SESSION,
+  LOCAL_MOCK_REVIEWER_SESSION,
 } from "@/lib/mock-manager-login"
+import { resolveRoleCompatibleManagerReturnToURL } from "@/lib/manager-route-access"
 import {
   createManagerSessionCookie,
   MANAGER_SESSION_COOKIE,
@@ -18,16 +20,24 @@ export async function GET(request: Request) {
 
   const managerBaseUrl = getManagerBaseUrl()
   const requestUrl = new URL(request.url)
-  const returnTo = resolveManagerReturnToURL(
-    requestUrl.searchParams.get("returnTo") ?? undefined,
-    `${managerBaseUrl}/dashboard/coverage`,
+  const requestedReturnTo = requestUrl.searchParams.get("returnTo") ?? undefined
+  const reviewerRequested =
+    requestUrl.searchParams.get("role") === "reviewer" ||
+    requestedReturnTo === "/subtitle-review" ||
+    requestedReturnTo?.startsWith("/subtitle-review/")
+  const principal = reviewerRequested
+    ? LOCAL_MOCK_REVIEWER_SESSION
+    : LOCAL_MOCK_MANAGER_SESSION
+  const returnTo = resolveRoleCompatibleManagerReturnToURL({
+    returnTo: requestedReturnTo,
+    role: principal.managerRole,
     managerBaseUrl,
-  )
+  })
 
   const response = NextResponse.redirect(returnTo)
   response.cookies.set(
     MANAGER_SESSION_COOKIE,
-    await createManagerSessionCookie(LOCAL_MOCK_MANAGER_SESSION),
+    await createManagerSessionCookie(principal),
     managerSessionCookieOptions(),
   )
 
@@ -35,20 +45,3 @@ export async function GET(request: Request) {
 }
 
 export const POST = GET
-
-function resolveManagerReturnToURL(
-  returnTo: string | undefined,
-  fallbackURL: string,
-  managerBaseUrl: string,
-): string {
-  if (!returnTo) return fallbackURL
-
-  try {
-    const parsed = new URL(returnTo, fallbackURL)
-    return parsed.origin === new URL(managerBaseUrl).origin
-      ? parsed.toString()
-      : fallbackURL
-  } catch {
-    return fallbackURL
-  }
-}
