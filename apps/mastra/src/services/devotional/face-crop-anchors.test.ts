@@ -6,7 +6,6 @@ import {
   anchorsForShots,
   defaultScriptPath,
   bgFocusForCards,
-  pictureChanges,
   dominantFaceX,
   stabiliseAnchors,
   type FaceSample,
@@ -72,6 +71,24 @@ describe("bgFocusForCards", () => {
       { atSec: 0, x: 0.8 },
       { atSec: 0.2, x: 0.2 },
     ])
+  })
+
+  it("plans in take time when the composition starts the background offset", () => {
+    // The composition skips the take's first 0.75s, so the first card runs
+    // 0.75s..5.55s of the take and meets the cut at 5s itself (4.25s in, on
+    // the frame grid), while the second card opens already inside shot two.
+    // Planned from zero, the same cut would have landed 0.2s into card two,
+    // three quarters of a second before the picture actually changes.
+    const focus = bgFocusForCards(
+      [{ durationSec: 4 }, { durationSec: 4 }],
+      shots,
+      { ...holds, bgStartOffsetSec: 0.75 },
+    )
+    expect(focus[0]).toEqual([
+      { atSec: 0, x: 0.8 },
+      { atSec: 4.233, x: 0.2 },
+    ])
+    expect(focus[1]).toEqual([{ atSec: 0, x: 0.2 }])
   })
 
   it("does not let a video card consume the shared background take", () => {
@@ -306,44 +323,5 @@ describe("defaultScriptPath", () => {
     } finally {
       process.chdir(cwd)
     }
-  })
-})
-
-describe("pictureChanges", () => {
-  const s = (atSec: number, cx?: number) => ({
-    atSec,
-    faces: cx == null ? [] : [{ cx, cy: 0.4, area: 0.05 }],
-  })
-
-  it("finds a cut the scene metric missed, from the faces jumping", () => {
-    // ffmpeg called 44s-73s of this background ONE shot across four setups.
-    // When the picture changes the faces move, and that is visible here.
-    const out = pictureChanges(
-      [s(0, 0.7), s(0.5, 0.7), s(1, 0.2)],
-      [],
-      0.02,
-      0.1,
-    )
-    expect(out).toContain(1)
-  })
-
-  it("keeps the cuts it was given and does not duplicate them", () => {
-    const out = pictureChanges(
-      [s(0, 0.5), s(0.5, 0.5)],
-      [3.25, 3.25],
-      0.02,
-      0.1,
-    )
-    expect(out).toEqual([3.25])
-  })
-
-  it("does not call a small drift a change", () => {
-    const out = pictureChanges([s(0, 0.5), s(0.5, 0.56)], [], 0.02, 0.1)
-    expect(out).toEqual([])
-  })
-
-  it("ignores detections too small to be faces", () => {
-    const tiny = { atSec: 1, faces: [{ cx: 0.1, cy: 0.4, area: 0.001 }] }
-    expect(pictureChanges([s(0, 0.8), tiny], [], 0.02, 0.1)).toEqual([])
   })
 })

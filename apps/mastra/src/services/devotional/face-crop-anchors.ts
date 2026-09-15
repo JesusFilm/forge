@@ -386,45 +386,6 @@ export type TrackTuning = {
  * the change is snapped onto a nearby cut so it happens where the picture is
  * already changing.
  */
-/**
- * Times where the PICTURE changes, from two sources that cover each other's
- * gaps.
- *
- * ffmpeg's scene metric misses this footage's softer cuts — at its default
- * sensitivity it called 44s to 73s of the Parable of the Lamp a single shot
- * across four setups. But when the shot changes, the faces jump, and that is
- * visible in the detector's own samples. A face leaping further than the crop
- * can reach between two samples half a second apart is a cut, whatever the
- * scene metric thought.
- *
- * This matters because a crop move must never be left half-finished by a cut:
- * the glide is interrupted by a new picture and reads as a stumble. Knowing
- * where the picture changes is what lets a move be put ON a cut, or held back
- * until after one.
- */
-export function pictureChanges(
-  samples: ReadonlyArray<FaceSample>,
-  cuts: ReadonlyArray<number>,
-  minArea: number,
-  reach: number,
-): number[] {
-  const out = [...cuts]
-  let prev: number | null = null
-  for (const s of samples) {
-    const big = s.faces
-      .filter((f) => f.area >= minArea)
-      .sort((a, b) => b.area - a.area)[0]
-    const cx = big?.cx ?? null
-    if (prev != null && cx != null && Math.abs(cx - prev) > reach) {
-      out.push(s.atSec)
-    }
-    if (cx != null) prev = cx
-  }
-  return [...new Set(out.map((t) => Number(t.toFixed(3))))].sort(
-    (a, b) => a - b,
-  )
-}
-
 export function trackFaceAnchors(
   samples: ReadonlyArray<FaceSample>,
   cuts: ReadonlyArray<number>,
@@ -543,7 +504,14 @@ export function trackFaceAnchors(
     return bestHold < 0 ? aim : best
   }
 
-  const changes = pictureChanges(samples, cuts, minArea, reach)
+  // Only a MEASURED cut may hide a move. A face leaping between two samples
+  // used to count as a cut too, on the theory that the scene metric missed
+  // the softer ones; at the current sensitivity it misses none of this
+  // footage's cuts (every real one scores 0.29+, held shots under 0.02), while
+  // the leaps came from the detector switching between the two men of a
+  // two-shot. Seven of ten "hidden" snaps in one render were in plain view
+  // inside a held shot. A move in a held shot is eased instead.
+  const changes = [...cuts].sort((a, b) => a - b)
   const segments: ShotAnchor[] = []
   let current: number | null = null
   let since = 0
@@ -646,10 +614,19 @@ export function bgFocusForCards(
     holdSec?: number
   }>,
   shots: ReadonlyArray<ShotAnchor>,
-  opts: { introHoldSec: number; outroHoldSec: number },
+  opts: {
+    introHoldSec: number
+    outroHoldSec: number
+    /** Where in the take the composition starts the background (`bgStartOffsetSec`). */
+    bgStartOffsetSec?: number
+  },
 ): Array<BgFocusStep[] | null> {
   const out: Array<BgFocusStep[] | null> = cards.map(() => null)
-  let acc = 0
+  // Card time and take time differ by the offset the composition skips into.
+  // Planning from zero when the picture starts at 0.75s put every anchor
+  // three quarters of a second AHEAD of its cut: a snap meant to hide inside
+  // the change of shot landed in the held shot before it, in plain view.
+  let acc = Math.round((opts.bgStartOffsetSec ?? 0) * FPS)
   cards.forEach((c, i) => {
     const frames =
       Math.round((c.durationSec ?? 0) * FPS) +
@@ -714,6 +691,7 @@ export async function planFaceCropAnchors(opts: {
   }>
   introHoldSec: number
   outroHoldSec: number
+  bgStartOffsetSec?: number
   /** Interpreter with opencv available. Defaults to DEVO_FACE_PYTHON, else python3. */
   python?: string
   scriptPath?: string
@@ -768,5 +746,8 @@ export async function planFaceCropAnchors(opts: {
   return bgFocusForCards(opts.cards, shots, {
     introHoldSec: opts.introHoldSec,
     outroHoldSec: opts.outroHoldSec,
+    ...(opts.bgStartOffsetSec != null
+      ? { bgStartOffsetSec: opts.bgStartOffsetSec }
+      : {}),
   })
 }

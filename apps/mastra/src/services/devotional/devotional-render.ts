@@ -1624,6 +1624,9 @@ async function renderInStage(
       cards: manifest.cards,
       introHoldSec: manifest.introHoldSec ?? 1,
       outroHoldSec: manifest.outroHoldSec ?? 8,
+      ...(manifest.bgStartOffsetSec != null
+        ? { bgStartOffsetSec: manifest.bgStartOffsetSec }
+        : {}),
       log,
     })
     focus.forEach((steps, i) => {
