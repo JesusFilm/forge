@@ -19,7 +19,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react"
-import { Linking, Pressable, StyleSheet, Text, View } from "react-native"
+import { Pressable, StyleSheet, Text, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useSegments } from "expo-router"
 import Ionicons from "@expo/vector-icons/Ionicons"
@@ -31,12 +31,7 @@ import {
   TAB_BAR_SCREEN_EXTENT_IOS,
   useTabBarClearance,
 } from "../lib/tabBar"
-import {
-  ACCENT_ON_DARK,
-  SURFACE_COLOR,
-  TEXT_PRIMARY,
-  TEXT_SECONDARY,
-} from "../lib/color"
+import { SURFACE_COLOR, TEXT_PRIMARY, TEXT_SECONDARY } from "../lib/color"
 import {
   getSeriesExportProgressSnapshot,
   subscribeToSeriesExportProgress,
@@ -55,7 +50,6 @@ export type { ExportReportSignal } from "../lib/exportReport"
 
 const MAX_BUFFERED_SIGNALS = 20
 
-const SETTINGS_LABEL = "Open settings"
 const DISMISS_LABEL = "Dismiss export report"
 const REPORT_LABEL = "Export report"
 
@@ -154,17 +148,13 @@ export function ExportReportHost() {
     const deadlines = reports
       .filter((record) => !keepsRunning(record))
       .map((record) => record.expiresAt)
-      .filter((value): value is number => value !== null)
     if (deadlines.length === 0) return
     const timer = setTimeout(
       () => {
         const now = Date.now()
         setReports((current) => {
           const next = current.filter(
-            (record) =>
-              record.expiresAt === null ||
-              record.expiresAt > now ||
-              keepsRunning(record),
+            (record) => record.expiresAt > now || keepsRunning(record),
           )
           return next.length === current.length ? current : next
         })
@@ -177,14 +167,6 @@ export function ExportReportHost() {
   const dismiss = useCallback((runId: string) => {
     setReports((current) => current.filter((record) => record.runId !== runId))
   }, [])
-
-  const openSettings = useCallback(
-    (runId: string) => {
-      dismiss(runId)
-      Linking.openSettings().catch(() => undefined)
-    },
-    [dismiss],
-  )
 
   if (reports.length === 0) return null
 
@@ -224,19 +206,6 @@ export function ExportReportHost() {
                 <Text style={[styles.detail, typography.caption]}>
                   {view.detail}
                 </Text>
-              ) : null}
-              {view.settings ? (
-                <Pressable
-                  onPress={() => openSettings(record.runId)}
-                  accessibilityRole="button"
-                  accessibilityLabel={SETTINGS_LABEL}
-                  hitSlop={8}
-                  style={styles.action}
-                >
-                  <Text style={[styles.actionText, typography.bodySmall]}>
-                    {SETTINGS_LABEL}
-                  </Text>
-                </Pressable>
               ) : null}
             </View>
             <Pressable
@@ -291,13 +260,5 @@ const styles = StyleSheet.create({
   detail: {
     color: TEXT_SECONDARY,
     fontFamily: "System",
-  },
-  action: {
-    paddingTop: 8,
-  },
-  actionText: {
-    color: ACCENT_ON_DARK,
-    fontFamily: "System",
-    fontWeight: "600",
   },
 })

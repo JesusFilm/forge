@@ -79,7 +79,7 @@ beforeEach(() => {
 describe("SeriesEpisodeCard download badge", () => {
   it("draws the export badge and speaks the export (R16)", async () => {
     const renderer = await render("exporting")
-    expect(cardLabel(renderer)).toBe("Episode One, saving to Photos")
+    expect(cardLabel(renderer)).toBe("Episode One, saving to Files")
     // Same arrow as a download badge, and now the same white too (owner
     // decision 2026-09-14), so only the spoken label separates them.
     expect(mockIcons.map((icon) => icon.name)).toEqual(["arrow-down-circle"])
@@ -97,7 +97,7 @@ describe("SeriesEpisodeCard download badge", () => {
    */
   it("is told apart from a plain download by its LABEL, not by sight", async () => {
     const exporting = await render("exporting")
-    expect(cardLabel(exporting)).toBe("Episode One, saving to Photos")
+    expect(cardLabel(exporting)).toBe("Episode One, saving to Files")
     const exportBadge = { ...mockIcons[0] }
 
     mockIcons.length = 0
@@ -111,7 +111,7 @@ describe("SeriesEpisodeCard download badge", () => {
     // The row speaks for the whole run, so this badge is the only place one
     // held episode is named — and it matches the held offline badge exactly.
     const renderer = await render("exporting-paused")
-    expect(cardLabel(renderer)).toBe("Episode One, saving to Photos, paused")
+    expect(cardLabel(renderer)).toBe("Episode One, saving to Files, paused")
     expect(mockIcons.map((icon) => icon.name)).toEqual(["pause-circle"])
     const pausedExport = mockIcons[0].color
 

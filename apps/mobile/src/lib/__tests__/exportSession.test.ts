@@ -10,7 +10,6 @@ import {
   type ExportStoragePort,
 } from "../exportSession"
 import {
-  RAW_EXPORT_ALBUM_NAME,
   RAW_EXPORT_DIR_NAME,
   RAW_EXPORT_ENABLED,
   RAW_EXPORT_ID_PREFIX,
@@ -59,8 +58,7 @@ describe("rawExportConstants", () => {
     expect(exportId).not.toMatch(/^[a-z0-9-]+$/)
   })
 
-  it("fixes the album name, the staging directory and the filename bound", () => {
-    expect(RAW_EXPORT_ALBUM_NAME).toBe("Jesus Film Watch")
+  it("fixes the staging directory and the filename bound", () => {
     expect(RAW_EXPORT_DIR_NAME).toBe("raw-exports")
     expect(RAW_EXPORT_MAX_FILENAME_LENGTH).toBe(120)
     expect(RAW_EXPORT_ENABLED).toBe(true)
@@ -207,7 +205,6 @@ describe("terminal outcomes release the slot", () => {
     "saved",
     "failed",
     "blocked",
-    "refused",
     "cancelled",
     "abandoned",
   ]
@@ -364,7 +361,7 @@ describe("cancellation", () => {
     const run = store.run(
       { target: TARGET, runId: "run-1", onCancel },
       async (handle): Promise<ExportOutcome> => {
-        await handle.stage({ stagedPath: "/x.mp4", albumIntent: "album" })
+        await handle.stage({ stagedPath: "/x.mp4" })
         return "saved"
       },
     )
@@ -396,9 +393,7 @@ describe("staging notes", () => {
       async (handle): Promise<ExportOutcome> => {
         await handle.stage({
           stagedPath: "/raw-exports/run-1/birth-of-jesus.mp4",
-          albumIntent: "album",
         })
-        await handle.markTransferFinished()
         return gate.promise
       },
     )
@@ -414,36 +409,9 @@ describe("staging notes", () => {
       target: TARGET,
       runId: "run-1",
       stagedPath: "/raw-exports/run-1/birth-of-jesus.mp4",
-      albumIntent: "album",
-      transferFinished: true,
     })
     await expect(relaunched.listStagingNotes()).resolves.toHaveLength(1)
     expect(values.size).toBe(1)
-
-    gate.resolve("saved")
-    await run
-  })
-
-  it("records an unfinished transfer until the run marks it finished", async () => {
-    const { port } = memoryPort()
-    const store = createExportSessionStore({ storage: port })
-    const gate = deferred<ExportOutcome>()
-    const run = store.run(
-      { target: TARGET, runId: "run-1" },
-      async (handle): Promise<ExportOutcome> => {
-        await handle.stage({
-          stagedPath: "/raw-exports/run-1/file.mp4",
-          albumIntent: "library",
-        })
-        return gate.promise
-      },
-    )
-    await new Promise<void>((resolve) => setImmediate(() => resolve()))
-
-    await expect(store.readStagingNote(TARGET)).resolves.toMatchObject({
-      transferFinished: false,
-      albumIntent: "library",
-    })
 
     gate.resolve("saved")
     await run
@@ -455,6 +423,7 @@ describe("staging notes", () => {
     for (const outcome of [
       "saved",
       "failed",
+      "blocked",
       "cancelled",
       "abandoned",
     ] as ExportOutcome[]) {
@@ -463,7 +432,6 @@ describe("staging notes", () => {
         async (handle): Promise<ExportOutcome> => {
           await handle.stage({
             stagedPath: `/raw-exports/${outcome}/file.mp4`,
-            albumIntent: "album",
           })
           return outcome
         },
@@ -479,8 +447,6 @@ describe("staging notes", () => {
       target: TARGET,
       runId: "run-1",
       stagedPath: "/raw-exports/run-1/file.mp4",
-      albumIntent: "album",
-      transferFinished: false,
     })
 
     await store.run({ target: TARGET, runId: "run-1" }, () => {
@@ -490,28 +456,6 @@ describe("staging notes", () => {
     await expect(store.readStagingNote(TARGET)).resolves.toBeNull()
   })
 
-  it("keeps a deferred note past the terminal outcome for the later save (KTD4)", async () => {
-    const { port } = memoryPort()
-    const store = createExportSessionStore({ storage: port })
-    await store.run(
-      { target: TARGET, runId: "run-1" },
-      async (handle): Promise<ExportOutcome> => {
-        await handle.stage({
-          stagedPath: "/raw-exports/run-1/file.mp4",
-          albumIntent: "album",
-        })
-        await handle.markTransferFinished()
-        handle.deferStagingNote()
-        return "saved"
-      },
-    )
-
-    await expect(store.readStagingNote(TARGET)).resolves.toMatchObject({
-      transferFinished: true,
-    })
-    expect(store.getSnapshot().activeCount).toBe(0)
-  })
-
   it("keeps one target's note when another target's run ends", async () => {
     const { port } = memoryPort()
     const store = createExportSessionStore({ storage: port })
@@ -519,8 +463,6 @@ describe("staging notes", () => {
       target: "jesus-calms-the-storm",
       runId: "run-9",
       stagedPath: "/raw-exports/run-9/other.mp4",
-      albumIntent: "album",
-      transferFinished: true,
     })
 
     await store.run(
@@ -528,7 +470,6 @@ describe("staging notes", () => {
       async (handle): Promise<ExportOutcome> => {
         await handle.stage({
           stagedPath: "/raw-exports/run-1/file.mp4",
-          albumIntent: "album",
         })
         return "saved"
       },
@@ -547,15 +488,11 @@ describe("staging notes", () => {
         target: "a",
         runId: "run-1",
         stagedPath: "/raw-exports/run-1/a.mp4",
-        albumIntent: "album",
-        transferFinished: false,
       }),
       store.writeStagingNote({
         target: "b",
         runId: "run-1",
         stagedPath: "/raw-exports/run-1/b.mp4",
-        albumIntent: "album",
-        transferFinished: false,
       }),
     ])
 
@@ -565,26 +502,32 @@ describe("staging notes", () => {
   it("carries the run size so a later sweep folds the run into one report", async () => {
     const { port } = memoryPort()
     const store = createExportSessionStore({ storage: port })
-    await store.run(
+    const gate = deferred<ExportOutcome>()
+    const run = store.run(
       { target: TARGET, runId: "run-1" },
       async (handle): Promise<ExportOutcome> => {
         await handle.stage({
           stagedPath: "/raw-exports/run-1/file.mp4",
-          albumIntent: "album",
           runSize: 12,
         })
-        handle.deferStagingNote()
-        return "abandoned"
+        return gate.promise
       },
     )
+    await new Promise<void>((resolve) => setImmediate(() => resolve()))
 
+    // Only a killed process leaves a note behind, so read it while in flight.
     await expect(store.readStagingNote(TARGET)).resolves.toMatchObject({
       version: EXPORT_STAGING_NOTE_VERSION,
       runSize: 12,
     })
+
+    gate.resolve("saved")
+    await run
   })
 
-  it("reads a note the previous build wrote with no run size", async () => {
+  it("reads the notes the photo-library build wrote, so the sweep can clean up", async () => {
+    // Both old versions carried albumIntent and transferFinished. The sweep
+    // discards every note, so the extra fields are read past, not rejected.
     const { port, values } = memoryPort()
     values.set(
       EXPORT_STAGING_NOTES_STORAGE_KEY,
@@ -597,13 +540,32 @@ describe("staging notes", () => {
           albumIntent: "album",
           transferFinished: true,
         },
+        "jesus-calms-the-storm": {
+          version: 2,
+          target: "jesus-calms-the-storm",
+          runId: "run-2",
+          stagedPath: "/raw-exports/run-2/file.mp4",
+          albumIntent: "library",
+          transferFinished: false,
+          runSize: 3,
+        },
       }),
     )
     const store = createExportSessionStore({ storage: port })
 
-    const note = await store.readStagingNote(TARGET)
-    expect(note).toMatchObject({ version: 1, transferFinished: true })
-    expect(note?.runSize).toBeUndefined()
+    const v1 = await store.readStagingNote(TARGET)
+    expect(v1).toMatchObject({
+      version: 1,
+      target: TARGET,
+      runId: "run-1",
+      stagedPath: "/raw-exports/run-1/file.mp4",
+    })
+    expect(v1?.runSize).toBeUndefined()
+
+    await expect(
+      store.readStagingNote("jesus-calms-the-storm"),
+    ).resolves.toMatchObject({ version: 2, runSize: 3 })
+    await expect(store.listStagingNotes()).resolves.toHaveLength(2)
   })
 
   it("drops a corrupt or foreign-version persisted note", async () => {
@@ -636,9 +598,7 @@ describe("staging notes", () => {
     const result = await store.run(
       { target: TARGET, runId: "run-1" },
       async (handle): Promise<ExportOutcome> => {
-        await handle
-          .stage({ stagedPath: "/x.mp4", albumIntent: "album" })
-          .catch(() => undefined)
+        await handle.stage({ stagedPath: "/x.mp4" }).catch(() => undefined)
         return "saved"
       },
     )
@@ -652,8 +612,7 @@ describe("staging notes", () => {
     const result = await store.run(
       { target: TARGET, runId: "run-1" },
       async (handle): Promise<ExportOutcome> => {
-        await handle.stage({ stagedPath: "/x.mp4", albumIntent: "album" })
-        await handle.markTransferFinished()
+        await handle.stage({ stagedPath: "/x.mp4" })
         return "saved"
       },
     )
@@ -671,8 +630,6 @@ describe("staging notes", () => {
       target: TARGET,
       runId: "run-1",
       stagedPath: "/raw-exports/run-1/file.mp4",
-      albumIntent: "album",
-      transferFinished: true,
     })
 
     await expect(store.readStagingNote(TARGET)).resolves.toMatchObject({
@@ -691,9 +648,7 @@ describe("the staging note is not offline state", () => {
       async (handle): Promise<ExportOutcome> => {
         await handle.stage({
           stagedPath: "/raw-exports/run-1/file.mp4",
-          albumIntent: "album",
         })
-        await handle.markTransferFinished()
         return "saved"
       },
     )
@@ -718,17 +673,13 @@ describe("the staging note is not offline state", () => {
       target: TARGET,
       runId: "run-1",
       stagedPath: "/raw-exports/run-1/file.mp4",
-      albumIntent: "album",
-      transferFinished: true,
     })
 
     const note = await store.readStagingNote(TARGET)
     expect(Object.keys(note ?? {}).sort()).toEqual([
-      "albumIntent",
       "runId",
       "stagedPath",
       "target",
-      "transferFinished",
       "version",
     ])
   })

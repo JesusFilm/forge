@@ -8,72 +8,43 @@
  * supplies the effects, and `applyExportSweep` routes each action to exactly one
  * of them.
  *
- * The sweep enumerates the export ROOT rather than the live task list. KTD4's
- * window — the transfer is complete and the library write has not run — has no
- * live native task at all, so a task-based sweep cannot see it.
+ * Every note is discarded, whether or not its transfer finished. The viewer's
+ * folder grant lives only as long as the process that asked for it, so a later
+ * launch has nowhere to copy the bytes and cannot open a picker to ask again.
  */
 
 import type { ExportSessionSnapshot, ExportStagingNote } from "./exportSession"
 import { sanitizeSegment } from "./offlineFiles"
 import { buildExportTaskId } from "./rawExport"
-import { RAW_EXPORT_ENABLED } from "./rawExportConstants"
 
 export type ExportSweepInput = {
   /** Every staging note that survived the last process. */
   notes: readonly ExportStagingNote[]
   /** Entry names directly under the export root — one directory per target. */
   stagedEntries: readonly string[]
-  /** Targets whose noted staged file is still on disk. */
-  existingStagedFiles: ReadonlySet<string>
   /** Ids of every native task that survived, export ids included. */
   liveTaskIds: ReadonlySet<string>
-  /**
-   * R33's build-time switch. It defaults to the shipped constant so no call
-   * site can pin the posture; a test passes it to reach the other branch.
-   */
-  enabled?: boolean
 }
 
 export type ExportSweepAction =
-  /** R28: the transfer finished, so the library write it never ran runs now. */
-  | { action: "finish"; note: ExportStagingNote }
-  /** R18: interrupted while staging — remove the file, report it unfinished. */
+  /** R18: remove the staged file and report the export unfinished. */
   | { action: "discard"; note: ExportStagingNote; stopTaskId: string | null }
-  /** A note whose staged file is already gone: nothing to save, nothing to say. */
-  | { action: "dropNote"; target: string }
   /** A staged directory no note claims — bytes nobody can attribute. */
   | { action: "removeStagedDir"; target: string }
 
 export function planExportSweep(input: ExportSweepInput): ExportSweepAction[] {
-  const enabled = input.enabled ?? RAW_EXPORT_ENABLED
   const actions: ExportSweepAction[] = []
   const claimed = new Set<string>()
 
   for (const note of input.notes) {
-    const staged = input.existingStagedFiles.has(note.target)
-
-    // R28/R33: only a finished transfer takes the irreversible step, and only
-    // while the feature is on. A disabled build discards the stage instead.
-    if (note.transferFinished && enabled) {
-      if (!staged) {
-        // Nothing to save without the bytes. The directory stays UNCLAIMED so
-        // the orphan pass below removes whatever kept it alive.
-        actions.push({ action: "dropNote", target: note.target })
-        continue
-      }
-      claimed.add(sanitizeSegment(note.target))
-      actions.push({ action: "finish", note })
-      continue
-    }
-
-    // Both remaining actions delete the target's directory themselves, so the
-    // orphan pass must not queue a second removal for it.
+    // The discard deletes the target's directory itself, so the orphan pass
+    // must not queue a second removal for it.
     claimed.add(sanitizeSegment(note.target))
 
-    // An unfinished transfer is discarded whether or not its file landed yet —
-    // the note can outlive a kill that happened before the first byte. Skipping
-    // this branch on a missing file would leave a surviving native task running
-    // with nothing tracking it, which is the hazard the id namespace exists for.
+    // A note is discarded whether or not its file landed yet — the note can
+    // outlive a kill that happened before the first byte. Skipping this on a
+    // missing file would leave a surviving native task running with nothing
+    // tracking it, which is the hazard the id namespace exists for.
     const taskId = buildExportTaskId(note.target)
     actions.push({
       action: "discard",
@@ -91,17 +62,15 @@ export function planExportSweep(input: ExportSweepInput): ExportSweepAction[] {
 }
 
 /**
- * The two adapter calls the sweep may make. Passing the adapter itself, rather
- * than two named callbacks, is what stops a call site swapping them.
+ * The one adapter call the sweep may make. Passing the adapter itself, rather
+ * than a bare callback, is what keeps the report and the slot with it.
  */
 export type ExportSweepAdapter = {
-  completeStagedExport: (note: ExportStagingNote) => Promise<unknown>
   discardStagedExport: (note: ExportStagingNote) => Promise<unknown>
 }
 
 export type ExportSweepEffects = {
   adapter: ExportSweepAdapter
-  clearStagingNote: (target: string) => Promise<unknown>
   removeStagedDir: (target: string) => Promise<unknown>
   stopExportTask: (taskId: string) => Promise<unknown>
   /** The launch effect's own guard; a torn-down provider stops the sweep. */
@@ -120,17 +89,11 @@ export async function applyExportSweep(
     if (effects.isCancelled?.()) return
     try {
       switch (action.action) {
-        case "finish":
-          await effects.adapter.completeStagedExport(action.note)
-          break
         case "discard":
           // The transfer stops first: a live task writing into the file the
           // discard is about to remove would re-create the stage behind it.
           if (action.stopTaskId) await effects.stopExportTask(action.stopTaskId)
           await effects.adapter.discardStagedExport(action.note)
-          break
-        case "dropNote":
-          await effects.clearStagingNote(action.target)
           break
         case "removeStagedDir":
           await effects.removeStagedDir(action.target)

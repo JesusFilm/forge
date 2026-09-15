@@ -6,7 +6,7 @@ import {
 } from "../actionMenu"
 
 const CHANGE: MenuAction = { text: "Change quality or subtitles" }
-const SAVE: MenuAction = { text: "Save to Photos" }
+const SAVE: MenuAction = { text: "Save to Files" }
 const REMOVE: MenuAction = {
   text: "Remove all downloads",
   style: "destructive",
@@ -29,7 +29,7 @@ describe("iosSheetOptions", () => {
   it("keeps the options in the order given", () => {
     expect(iosSheetOptions([CHANGE, SAVE, REMOVE, CANCEL]).options).toEqual([
       "Change quality or subtitles",
-      "Save to Photos",
+      "Save to Files",
       "Remove all downloads",
       "Cancel",
     ])

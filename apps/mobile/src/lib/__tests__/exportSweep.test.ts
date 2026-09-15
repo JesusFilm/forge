@@ -4,6 +4,8 @@ import type { ExportReportSignal } from "../../components/ExportReportHost"
 import { reconcile, type ReconcileAction } from "../downloadReconciliation"
 import {
   createExportSessionStore,
+  EXPORT_STAGING_NOTE_VERSION,
+  EXPORT_STAGING_NOTES_STORAGE_KEY,
   type ExportOutcome,
   type ExportStagingNote,
   type ExportStoragePort,
@@ -17,11 +19,9 @@ import {
 import { OFFLINE_ROOT, offlineVideoDir } from "../offlineFileSystem"
 import type { OfflineDownloadRecord } from "../offlineManifest"
 import type {
-  LibraryPermissionResponse,
   RawExportTransferReport,
   RawExportTransferSpec,
 } from "../rawExport"
-import { RAW_EXPORT_ENABLED } from "../rawExportConstants"
 import { createRawExportAdapter } from "../rawExportAdapter"
 import {
   buildExportRoot,
@@ -37,14 +37,24 @@ const STAGED = `${ROOT}/${SLUG}/The_Birth_of_Jesus.mp4`
 
 function note(overrides: Partial<ExportStagingNote> = {}): ExportStagingNote {
   return {
-    version: 1,
+    version: EXPORT_STAGING_NOTE_VERSION,
     target: SLUG,
     runId: "run-1",
     stagedPath: STAGED,
-    albumIntent: "album",
-    transferFinished: false,
     ...overrides,
   }
+}
+
+/**
+ * A note the photo-library build wrote. `transferFinished` once selected a
+ * "finish" action. The type dropped the field, so the helper asserts the shape.
+ */
+function legacyNote(overrides: Partial<ExportStagingNote> = {}) {
+  return {
+    ...note({ version: 1, ...overrides }),
+    albumIntent: "album",
+    transferFinished: true,
+  } as ExportStagingNote
 }
 
 function deferred<T>() {
@@ -60,17 +70,10 @@ function recordingEffects(overrides: Partial<ExportSweepEffects> = {}) {
   const calls: string[] = []
   const effects: ExportSweepEffects = {
     adapter: {
-      completeStagedExport: async (staged) => {
-        calls.push(`finish:${staged.target}`)
-        return "saved"
-      },
       discardStagedExport: async (staged) => {
         calls.push(`discard:${staged.target}`)
         return "abandoned"
       },
-    },
-    clearStagingNote: async (target) => {
-      calls.push(`clearNote:${target}`)
     },
     removeStagedDir: async (target) => {
       calls.push(`removeDir:${target}`)
@@ -84,28 +87,28 @@ function recordingEffects(overrides: Partial<ExportSweepEffects> = {}) {
 }
 
 describe("planExportSweep", () => {
-  it("AE13: discards a stage the transfer never finished, with no live task", () => {
-    const interrupted = note({ transferFinished: false })
+  it("AE13: discards a surviving note, and removes its directory only once", () => {
+    const interrupted = note()
 
     const actions = planExportSweep({
       notes: [interrupted],
       stagedEntries: [SLUG],
-      existingStagedFiles: new Set([SLUG]),
       liveTaskIds: new Set(),
     })
 
+    // `discard` deletes the directory itself, so the orphan pass must not queue
+    // a second removal for the same target.
     expect(actions).toEqual([
       { action: "discard", note: interrupted, stopTaskId: null },
     ])
   })
 
   it("names the surviving export task so the sweep can stop it first", () => {
-    const interrupted = note({ transferFinished: false })
+    const interrupted = note()
 
     const actions = planExportSweep({
       notes: [interrupted],
       stagedEntries: [SLUG],
-      existingStagedFiles: new Set([SLUG]),
       liveTaskIds: new Set([buildExportTaskId(SLUG), OTHER]),
     })
 
@@ -118,29 +121,15 @@ describe("planExportSweep", () => {
     ])
   })
 
-  it("AE16: finishes a stage whose transfer completed", () => {
-    const finished = note({ transferFinished: true })
+  it("discards a legacy note that recorded a finished transfer", () => {
+    // The folder grant died with the process that staged the bytes, so there
+    // is nowhere to finish the copy — the old "finish" action has no successor.
+    const finished = legacyNote()
 
     const actions = planExportSweep({
       notes: [finished],
       stagedEntries: [SLUG],
-      existingStagedFiles: new Set([SLUG]),
       liveTaskIds: new Set(),
-      enabled: true,
-    })
-
-    expect(actions).toEqual([{ action: "finish", note: finished }])
-  })
-
-  it("discards rather than finishes a completed stage when the switch is off", () => {
-    const finished = note({ transferFinished: true })
-
-    const actions = planExportSweep({
-      notes: [finished],
-      stagedEntries: [SLUG],
-      existingStagedFiles: new Set([SLUG]),
-      liveTaskIds: new Set(),
-      enabled: false,
     })
 
     expect(actions).toEqual([
@@ -148,53 +137,15 @@ describe("planExportSweep", () => {
     ])
   })
 
-  it("reads the build-time switch itself, so no call site can pin the posture", () => {
-    const finished = note({ transferFinished: true })
-    const input = {
-      notes: [finished],
-      stagedEntries: [SLUG],
-      existingStagedFiles: new Set([SLUG]),
-      liveTaskIds: new Set<string>(),
-    }
-
-    const withDefault = planExportSweep(input)
-
-    expect(withDefault).toEqual(
-      RAW_EXPORT_ENABLED
-        ? [{ action: "finish", note: finished }]
-        : [{ action: "discard", note: finished, stopTaskId: null }],
-    )
-    // Anti-vacuous: the assertion above tracks the constant, so prove the
-    // opposite posture is reachable through the same input.
-    expect(
-      planExportSweep({ ...input, enabled: !RAW_EXPORT_ENABLED }),
-    ).not.toEqual(withDefault)
-  })
-
-  it("drops a note whose staged file is gone, without reporting an outcome", () => {
-    const stale = note({ transferFinished: true })
+  it("discards a note whose directory never landed, and stops its task", () => {
+    // The kill-before-the-first-byte case: the run wrote the note, but the
+    // engine had not made the directory yet. A silent drop would leave a
+    // surviving native task with nothing that tracks it.
+    const stale = note()
 
     const actions = planExportSweep({
       notes: [stale],
       stagedEntries: [],
-      existingStagedFiles: new Set(),
-      liveTaskIds: new Set(),
-    })
-
-    expect(actions).toEqual([{ action: "dropNote", target: SLUG }])
-  })
-
-  it("discards an unfinished note whose file never landed, and stops its task", () => {
-    // The kill-before-the-first-byte case: `ensureDirectory` ran and the note
-    // was written, but the engine had not produced the file yet. Dropping the
-    // note here — the earlier behaviour — left a surviving native task running
-    // with nothing tracking it, and told the viewer nothing.
-    const stale = note({ transferFinished: false })
-
-    const actions = planExportSweep({
-      notes: [stale],
-      stagedEntries: [SLUG],
-      existingStagedFiles: new Set(),
       liveTaskIds: new Set([buildExportTaskId(SLUG)]),
     })
 
@@ -203,101 +154,99 @@ describe("planExportSweep", () => {
     ])
   })
 
-  it("discards an unfinished note with no live task, and removes nothing twice", () => {
-    const stale = note({ transferFinished: false })
+  it("discards a note whose directory never landed, with no live task", () => {
+    const stale = note()
 
     const actions = planExportSweep({
       notes: [stale],
-      stagedEntries: [SLUG],
-      existingStagedFiles: new Set(),
+      stagedEntries: [],
       liveTaskIds: new Set(),
     })
 
-    // `discard` deletes the directory itself, so the orphan pass must not queue
-    // a second removal for the same target.
     expect(actions).toEqual([
       { action: "discard", note: stale, stopTaskId: null },
     ])
   })
 
-  it("deletes a staged file that no note claims", () => {
-    const kept = note({ transferFinished: true })
+  it("deletes a staged directory that no note claims", () => {
+    const kept = note()
 
     const actions = planExportSweep({
       notes: [kept],
       stagedEntries: [SLUG, OTHER],
-      existingStagedFiles: new Set([SLUG]),
       liveTaskIds: new Set(),
-      enabled: true,
     })
 
     expect(actions).toEqual([
-      { action: "finish", note: kept },
+      { action: "discard", note: kept, stopTaskId: null },
+      { action: "removeStagedDir", target: OTHER },
+    ])
+  })
+
+  it("deletes every orphan directory when there are no notes at all", () => {
+    const actions = planExportSweep({
+      notes: [],
+      stagedEntries: [SLUG, OTHER],
+      liveTaskIds: new Set(),
+    })
+
+    expect(actions).toEqual([
+      { action: "removeStagedDir", target: SLUG },
       { action: "removeStagedDir", target: OTHER },
     ])
   })
 
   it("matches a directory entry against the SANITIZED target", () => {
-    // The staging directory is named by `sanitizeSegment`, so a target that
-    // sanitizes would otherwise read as an unclaimed directory and be deleted.
-    const odd = note({ target: "a/b c", transferFinished: true })
+    // `sanitizeSegment` names the staging directory, so a target that sanitizes
+    // would otherwise read as an unclaimed directory and get a second removal.
+    const odd = note({ target: "a/b c" })
 
     const actions = planExportSweep({
       notes: [odd],
       stagedEntries: ["a_b_c"],
-      existingStagedFiles: new Set(["a/b c"]),
       liveTaskIds: new Set(),
-      enabled: true,
     })
 
-    expect(actions).toEqual([{ action: "finish", note: odd }])
+    expect(actions).toEqual([
+      { action: "discard", note: odd, stopTaskId: null },
+    ])
   })
 
   it("sweeps every note, not just the first", () => {
-    const one = note({ target: SLUG, transferFinished: true })
-    const two = note({ target: OTHER, runId: "run-2", transferFinished: false })
+    const one = note({ target: SLUG })
+    const two = note({ target: OTHER, runId: "run-2" })
 
     const actions = planExportSweep({
       notes: [one, two],
       stagedEntries: [SLUG, OTHER],
-      existingStagedFiles: new Set([SLUG, OTHER]),
-      liveTaskIds: new Set(),
-      enabled: true,
+      liveTaskIds: new Set([buildExportTaskId(OTHER)]),
     })
 
     expect(actions).toEqual([
-      { action: "finish", note: one },
-      { action: "discard", note: two, stopTaskId: null },
+      { action: "discard", note: one, stopTaskId: null },
+      { action: "discard", note: two, stopTaskId: buildExportTaskId(OTHER) },
     ])
   })
 })
 
 describe("applyExportSweep", () => {
   it("routes each action to its own effect", async () => {
-    const finished = note({ target: SLUG, transferFinished: true })
-    const interrupted = note({ target: OTHER, transferFinished: false })
+    const interrupted = note({ target: OTHER })
     const { calls, effects } = recordingEffects()
 
     await applyExportSweep(
       [
-        { action: "finish", note: finished },
         { action: "discard", note: interrupted, stopTaskId: null },
-        { action: "dropNote", target: "stale" },
         { action: "removeStagedDir", target: "orphan" },
       ],
       effects,
     )
 
-    expect(calls).toEqual([
-      `finish:${SLUG}`,
-      `discard:${OTHER}`,
-      "clearNote:stale",
-      "removeDir:orphan",
-    ])
+    expect(calls).toEqual([`discard:${OTHER}`, "removeDir:orphan"])
   })
 
   it("stops a surviving transfer BEFORE it removes the stage", async () => {
-    const interrupted = note({ transferFinished: false })
+    const interrupted = note()
     const taskId = buildExportTaskId(SLUG)
     const { calls, effects } = recordingEffects()
 
@@ -309,22 +258,43 @@ describe("applyExportSweep", () => {
     expect(calls).toEqual([`stop:${taskId}`, `discard:${SLUG}`])
   })
 
-  it("keeps sweeping after one effect throws", async () => {
+  it("keeps sweeping after a discard throws", async () => {
     const { calls, effects } = recordingEffects({
-      clearStagingNote: async () => {
-        throw new Error("storage fault")
+      adapter: {
+        discardStagedExport: async () => {
+          throw new Error("storage fault")
+        },
       },
     })
 
     await applyExportSweep(
       [
-        { action: "dropNote", target: "stale" },
+        { action: "discard", note: note(), stopTaskId: null },
         { action: "removeStagedDir", target: "orphan" },
       ],
       effects,
     )
 
     expect(calls).toEqual(["removeDir:orphan"])
+  })
+
+  it("keeps sweeping after an orphan removal throws", async () => {
+    const { calls, effects } = recordingEffects({
+      removeStagedDir: async (target) => {
+        if (target === "orphan") throw new Error("storage fault")
+        calls.push(`removeDir:${target}`)
+      },
+    })
+
+    await applyExportSweep(
+      [
+        { action: "removeStagedDir", target: "orphan" },
+        { action: "discard", note: note(), stopTaskId: null },
+      ],
+      effects,
+    )
+
+    expect(calls).toEqual([`discard:${SLUG}`])
   })
 
   it("stops when the launch effect has been cancelled", async () => {
@@ -352,16 +322,9 @@ describe("applyExportSweep", () => {
 
 // ── Composed against the REAL adapter ───────────────────────────────
 
-const GRANTED: LibraryPermissionResponse = {
-  granted: true,
-  status: "granted",
-  canAskAgain: true,
-  accessPrivileges: "addOnly",
-}
-
-function memoryStorage(): ExportStoragePort {
+function memoryStorage() {
   const values = new Map<string, string>()
-  return {
+  const port: ExportStoragePort = {
     get: async (key) => values.get(key) ?? null,
     set: async (key, value) => {
       values.set(key, value)
@@ -370,19 +333,22 @@ function memoryStorage(): ExportStoragePort {
       values.delete(key)
     },
   }
+  return { port, values }
 }
 
 function adapterHarness(seedFiles: Record<string, string>) {
   const files = new Map<string, string>(Object.entries(seedFiles))
   const reports: ExportReportSignal[] = []
-  const store = createExportSessionStore({ storage: memoryStorage() })
+  const storage = memoryStorage()
+  const store = createExportSessionStore({ storage: storage.port })
 
-  const library = {
-    getPermission: jest.fn(async () => GRANTED),
-    requestPermission: jest.fn(async () => GRANTED),
-    saveToLibrary: jest.fn(async () => undefined),
-    createAsset: jest.fn(async (uri: string) => ({ id: "asset-1", uri })),
-    createAlbum: jest.fn(async () => ({ id: "album-1" })),
+  const destination = {
+    pickFolder: jest.fn(async () => ({
+      uri: "content://tree/primary%3ADownload",
+    })),
+    listNames: jest.fn(async (): Promise<readonly string[]> => []),
+    copyInto: jest.fn(async () => undefined),
+    removeIfExists: jest.fn(async () => undefined),
   }
 
   const adapter = createRawExportAdapter({
@@ -413,9 +379,7 @@ function adapterHarness(seedFiles: Record<string, string>) {
       fileExists: jest.fn(async (uri: string) => files.has(uri)),
       freeDiskBytes: jest.fn(async () => 500_000_000_000),
     },
-    library,
-    platform: "android",
-    getAppState: () => "active",
+    destination,
     findOfflineRecord: () => null,
     report: (signal) => reports.push(signal),
     session: store,
@@ -423,97 +387,73 @@ function adapterHarness(seedFiles: Record<string, string>) {
 
   const effects: ExportSweepEffects = {
     adapter,
-    clearStagingNote: (target) => store.clearStagingNote(target),
     removeStagedDir: async (target) => {
       files.delete(exportStagingDir(ROOT, target))
     },
     stopExportTask: async () => undefined,
   }
 
-  return { adapter, effects, files, library, reports, store }
+  return { adapter, destination, effects, files, reports, storage, store }
 }
 
 describe("the sweep composed with the real export adapter", () => {
   it("AE13: deletes the partial stage and reports it unfinished", async () => {
     const h = adapterHarness({ [STAGED]: "partial-bytes" })
-    const interrupted = note({ transferFinished: false })
+    const interrupted = note()
 
     await applyExportSweep(
       planExportSweep({
         notes: [interrupted],
         stagedEntries: [SLUG],
-        existingStagedFiles: new Set([SLUG]),
         liveTaskIds: new Set(),
       }),
       h.effects,
     )
 
     expect(h.files.has(STAGED)).toBe(false)
-    expect(h.library.saveToLibrary).not.toHaveBeenCalled()
-    expect(h.library.createAsset).not.toHaveBeenCalled()
+    expect(h.destination.copyInto).not.toHaveBeenCalled()
+    expect(h.destination.pickFolder).not.toHaveBeenCalled()
     expect(h.reports).toEqual([
       { runId: "run-1", target: SLUG, outcome: "abandoned" },
     ])
   })
 
-  it("AE16: saves a completed stage instead of discarding it", async () => {
+  it("discards a finished stage the photo-library build left, and never asks for a folder", async () => {
+    // The v1 note carries `transferFinished: true`, which the old sweep
+    // completed into the library. The store still reads v1, so this build can
+    // remove those files. The sweep has no folder to copy them into.
     const h = adapterHarness({ [STAGED]: "whole-bytes" })
-    const finished = note({ transferFinished: true })
+    h.storage.values.set(
+      EXPORT_STAGING_NOTES_STORAGE_KEY,
+      JSON.stringify({ [SLUG]: legacyNote() }),
+    )
+    const notes = await h.store.listStagingNotes()
+    expect(notes).toHaveLength(1)
 
     await applyExportSweep(
       planExportSweep({
-        notes: [finished],
+        notes,
         stagedEntries: [SLUG],
-        existingStagedFiles: new Set([SLUG]),
         liveTaskIds: new Set(),
-        enabled: true,
       }),
       h.effects,
     )
 
-    expect(h.library.createAsset).toHaveBeenCalledWith(STAGED)
-    expect(h.reports).toEqual([
-      {
-        runId: "run-1",
-        target: SLUG,
-        outcome: "saved",
-        albumIntent: "album",
-      },
-    ])
+    expect(h.destination.pickFolder).not.toHaveBeenCalled()
+    expect(h.destination.copyInto).not.toHaveBeenCalled()
     expect(h.files.has(STAGED)).toBe(false)
-  })
-
-  it("never writes the library for a completed stage when the switch is off", async () => {
-    const h = adapterHarness({ [STAGED]: "whole-bytes" })
-    const finished = note({ transferFinished: true })
-
-    await applyExportSweep(
-      planExportSweep({
-        notes: [finished],
-        stagedEntries: [SLUG],
-        existingStagedFiles: new Set([SLUG]),
-        liveTaskIds: new Set(),
-        enabled: false,
-      }),
-      h.effects,
-    )
-
-    expect(h.library.createAsset).not.toHaveBeenCalled()
-    expect(h.library.saveToLibrary).not.toHaveBeenCalled()
-    expect(h.files.has(STAGED)).toBe(false)
+    expect(await h.store.listStagingNotes()).toEqual([])
     expect(h.reports).toEqual([
       { runId: "run-1", target: SLUG, outcome: "abandoned" },
     ])
   })
 
-  it("drops a stale note from storage without reporting an outcome", async () => {
+  it("clears a note whose stage is gone from storage, and reports it abandoned", async () => {
     const h = adapterHarness({})
     await h.store.writeStagingNote({
       target: SLUG,
       runId: "run-1",
       stagedPath: STAGED,
-      albumIntent: "album",
-      transferFinished: true,
     })
     const notes = await h.store.listStagingNotes()
 
@@ -521,14 +461,34 @@ describe("the sweep composed with the real export adapter", () => {
       planExportSweep({
         notes,
         stagedEntries: [],
-        existingStagedFiles: new Set(),
         liveTaskIds: new Set(),
       }),
       h.effects,
     )
 
     expect(await h.store.listStagingNotes()).toEqual([])
-    expect(h.reports).toEqual([])
+    expect(h.destination.copyInto).not.toHaveBeenCalled()
+    expect(h.reports).toEqual([
+      { runId: "run-1", target: SLUG, outcome: "abandoned" },
+    ])
+  })
+
+  it("folds a series note's runSize into the abandoned report", async () => {
+    const h = adapterHarness({ [STAGED]: "partial-bytes" })
+    const interrupted = note({ runSize: 5 })
+
+    await applyExportSweep(
+      planExportSweep({
+        notes: [interrupted],
+        stagedEntries: [SLUG],
+        liveTaskIds: new Set(),
+      }),
+      h.effects,
+    )
+
+    expect(h.reports).toEqual([
+      { runId: "run-1", target: SLUG, outcome: "abandoned", runSize: 5 },
+    ])
   })
 })
 

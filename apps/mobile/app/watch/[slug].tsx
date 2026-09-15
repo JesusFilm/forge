@@ -764,7 +764,7 @@ export default function WatchVideoPage() {
                 // video that is being exported over an existing transfer.
                 if (exportEntry) {
                   if (exportEntry.paused) {
-                    Alert.alert("Saving to Photos", "This export is paused.", [
+                    Alert.alert("Saving to Files", "This export is paused.", [
                       {
                         text: "Stop Download",
                         style: "destructive",

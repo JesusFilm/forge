@@ -145,7 +145,8 @@ describe("containment across the scheme boundary", () => {
   })
 
   it("adopts a scheme-less location in the root's URI form", () => {
-    // The library write needs the `file://` URI, so adoption restores it.
+    // The copy into the chosen folder needs the `file://` URI, so adoption
+    // restores it.
     expect(adoptStagedPath(schemeless(`${ROOT}/v/Title.mp4`), ROOT)).toBe(
       `${ROOT}/v/Title.mp4`,
     )

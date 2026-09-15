@@ -13,7 +13,6 @@ import {
   type ExportReportRecord,
   type ExportReportSignal,
 } from "../exportReport"
-import { RAW_EXPORT_ALBUM_NAME } from "../rawExportConstants"
 
 const NOW = 1_000_000
 
@@ -65,7 +64,7 @@ describe("folding a run into one report", () => {
   it("folds twelve episode signals into one record", () => {
     const record = only([
       ...Array.from({ length: 10 }, (_value, index) =>
-        episode(`episode-${index}`, "saved", { albumIntent: "album" }),
+        episode(`episode-${index}`, "saved", { folderName: "Downloads" }),
       ),
       episode("episode-10", "failed"),
       episode("episode-11", "failed"),
@@ -90,7 +89,7 @@ describe("folding a run into one report", () => {
 
   it("keeps two runs apart by run id", () => {
     const records = fold([
-      single("saved", { albumIntent: "album" }),
+      single("saved", { folderName: "Downloads" }),
       { ...single("failed"), runId: "run-2", target: "the-story-of-jesus" },
     ])
 
@@ -120,14 +119,14 @@ describe("folding a run into one report", () => {
     expect(viewFor(record).headline).toBe("Saved 1 of 5 episodes.")
   })
 
-  it("keeps the title and the album intent a later signal omits", () => {
+  it("keeps the title and the folder name a later signal omits", () => {
     const record = only([
-      episode("episode-0", "saved", { runSize: 2, albumIntent: "album" }),
+      episode("episode-0", "saved", { runSize: 2, folderName: "Downloads" }),
       { ...episode("episode-1", "saved", { runSize: 2 }), title: undefined },
     ])
 
     expect(record.title).toBe("Washi Gospel")
-    expect(record.albumIntent).toBe("album")
+    expect(record.folderName).toBe("Downloads")
   })
 })
 
@@ -142,11 +141,7 @@ describe("the worst outcome wins for a single export", () => {
     ["saved", "failed", "The video did not save."],
     ["failed", "saved", "The video did not save."],
     ["failed", "blocked", "The export did not start."],
-    [
-      "blocked",
-      "refused",
-      "Permission is needed to save to your photo library.",
-    ],
+    ["abandoned", "blocked", "The export did not start."],
     ["cancelled", "abandoned", "The export did not finish."],
     ["saved", "cancelled", "Export cancelled."],
   ]
@@ -161,17 +156,15 @@ describe("the worst outcome wins for a single export", () => {
   })
 
   it("reports a lone saved export as saved", () => {
-    expect(viewFor(only([single("saved")])).headline).toBe(
-      "Saved to your photo library.",
-    )
+    expect(viewFor(only([single("saved")])).headline).toBe("Saved to Files.")
   })
 })
 
 describe("the run size splits the single view from the series view", () => {
   it("reads a signal with no run size as a single export", () => {
-    const view = viewFor(only([single("saved", { albumIntent: "album" })]))
+    const view = viewFor(only([single("saved", { folderName: "Downloads" })]))
 
-    expect(view.headline).toBe(`Saved to the ${RAW_EXPORT_ALBUM_NAME} album.`)
+    expect(view.headline).toBe("Saved to Downloads.")
   })
 
   it("reads a run size of one as a single export", () => {
@@ -188,65 +181,20 @@ describe("the run size splits the single view from the series view", () => {
 })
 
 describe("the saved headline names where the video landed", () => {
-  it("names the album when the grant made one", () => {
-    const view = viewFor(only([single("saved", { albumIntent: "album" })]))
+  it("names the folder the viewer picked", () => {
+    const view = viewFor(only([single("saved", { folderName: "Downloads" })]))
 
-    expect(view.headline).toBe(`Saved to the ${RAW_EXPORT_ALBUM_NAME} album.`)
+    expect(view.headline).toBe("Saved to Downloads.")
   })
 
-  it("names the library when the grant could not make an album", () => {
-    const view = viewFor(only([single("saved", { albumIntent: "library" })]))
+  it("names Files when the folder name could not be read from the uri", () => {
+    const view = viewFor(only([single("saved", { folderName: null })]))
 
-    expect(view.headline).toBe("Saved to your photo library.")
-    expect(view.headline).not.toContain(RAW_EXPORT_ALBUM_NAME)
+    expect(view.headline).toBe("Saved to Files.")
   })
 
-  it("names the library when no intent reached the report", () => {
-    expect(viewFor(only([single("saved")])).headline).toBe(
-      "Saved to your photo library.",
-    )
-  })
-})
-
-describe("a refusal the system will not prompt for again", () => {
-  it("offers settings and never expires", () => {
-    const record = only([single("refused", { canAskAgain: false })])
-    const view = viewFor(record)
-
-    expect(record.expiresAt).toBeNull()
-    expect(view.settings).toBe(true)
-    expect(view.headline).toBe("Photo library access is off for this app.")
-  })
-
-  it("expires a first refusal and offers no settings action", () => {
-    const record = only([single("refused", { canAskAgain: true })])
-    const view = viewFor(record)
-
-    expect(record.expiresAt).toBe(NOW + EXPORT_REPORT_AUTO_DISMISS_MS)
-    expect(view.settings).toBe(false)
-    expect(view.headline).toBe(
-      "Permission is needed to save to your photo library.",
-    )
-  })
-
-  it("holds a permanent refusal through a later episode outcome", () => {
-    const record = only([
-      episode("episode-0", "refused", { runSize: 3, canAskAgain: false }),
-      episode("episode-1", "saved", { runSize: 3 }),
-    ])
-    const view = viewFor(record)
-
-    expect(record.expiresAt).toBeNull()
-    expect(view.settings).toBe(true)
-    expect(view.detail).toContain("Turn on photo access in Settings")
-  })
-
-  it("words a first refusal in a run differently", () => {
-    const record = only([
-      episode("episode-0", "refused", { runSize: 3, canAskAgain: true }),
-    ])
-
-    expect(viewFor(record).detail).toBe("Photo library permission was refused.")
+  it("names Files when no folder name reached the report", () => {
+    expect(viewFor(only([single("saved")])).headline).toBe("Saved to Files.")
   })
 })
 
@@ -313,9 +261,7 @@ describe("a run's report waits for its next episode", () => {
       NOW,
     )
     const later = NOW + 30_000
-    const survived = first.filter(
-      (record) => record.expiresAt === null || record.expiresAt > later,
-    )
+    const survived = first.filter((record) => record.expiresAt > later)
     expect(survived).toHaveLength(1)
 
     const next = foldSignal(
@@ -353,12 +299,16 @@ describe("a run's report waits for its next episode", () => {
     )
   })
 
-  it("still never expires a permanent refusal", () => {
-    const record = only([
-      episode("episode-0", "refused", { runSize: 5, canAskAgain: false }),
-    ])
-    expect(record.expiresAt).toBeNull()
-  })
+  it.each(["saved", "failed", "blocked", "cancelled", "abandoned"] as const)(
+    "expires a %s export, since no outcome holds a report for the viewer",
+    (outcome) => {
+      // The permission refusal that once pinned a card open is gone with the
+      // photo library, so `expiresAt` is a number on every outcome.
+      const record = only([single(outcome)])
+
+      expect(record.expiresAt).toBe(NOW + EXPORT_REPORT_AUTO_DISMISS_MS)
+    },
+  )
 })
 
 describe("the title names the episode the run is on", () => {
@@ -434,7 +384,7 @@ describe("the series icon reports problems, not completeness", () => {
     expect(view.iconColor).toBe(AMBER)
   })
 
-  it.each(["failed", "blocked", "refused", "cancelled", "abandoned"] as const)(
+  it.each(["failed", "blocked", "cancelled", "abandoned"] as const)(
     "treats a %s episode as a problem",
     (outcome) => {
       const view = viewFor(

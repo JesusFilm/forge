@@ -15,7 +15,7 @@ export type SeriesExportRunProgress = {
   /** The run this belongs to, so the export report can tell whether the run
    *  behind one of its cards is still going. */
   runId: string
-  /** Episodes of this run already written to the photo library. */
+  /** Episodes of this run already copied into the chosen folder. */
   saved: number
   /** Episodes the run covers. Never 0 while a run is live. */
   total: number
@@ -82,8 +82,9 @@ export function getSeriesExportProgressSnapshot(): Snapshot {
  *
  * The session's own cancel flag lives on a per-episode entry that is deleted
  * the moment that episode finishes, so it cannot answer "did the viewer stop
- * this RUN" during the library write or in the gap between two episodes — the
- * two windows where a stop used to be lost while the run carried on.
+ * this RUN" during the copy into the chosen folder or in the gap between two
+ * episodes — the two windows where a stop used to be lost while the run
+ * carried on.
  */
 const cancelledRuns = new Set<string>()
 

@@ -136,7 +136,7 @@ describe("SeriesActionRow download-all control", () => {
 
     it("offers the pause while the export runs (R16, R24 revised)", async () => {
       const renderer = await render(exporting)
-      expect(downloadLabel(renderer)).toBe("Saving to Photos. Tap to pause")
+      expect(downloadLabel(renderer)).toBe("Saving to Files. Tap to pause")
     })
 
     it("draws the RED pause in the ring, like an offline download", async () => {
@@ -151,7 +151,7 @@ describe("SeriesActionRow download-all control", () => {
 
     it("reaches the export's pause, never the pause-all handler (R30)", async () => {
       const renderer = await render(exporting)
-      await pressAll(labelled(renderer, "Saving to Photos. Tap to pause"))
+      await pressAll(labelled(renderer, "Saving to Files. Tap to pause"))
       expect(onPauseExport).toHaveBeenCalledTimes(1)
       expect(onDownload).not.toHaveBeenCalled()
     })
@@ -165,7 +165,7 @@ describe("SeriesActionRow download-all control", () => {
       })
       const renderer = await render(paused)
       const label = downloadLabel(renderer)
-      expect(label).toBe("Saving to Photos, paused. Tap to resume or stop")
+      expect(label).toBe("Saving to Files, paused. Tap to resume or stop")
       expect(mockIcons.map((icon) => icon.name)).toContain("play")
       await pressAll(labelled(renderer, label))
       expect(onResumeExport).toHaveBeenCalledTimes(1)
@@ -185,8 +185,8 @@ describe("SeriesActionRow download-all control", () => {
           progress: 0.7,
         }),
       )
-      expect(downloadLabel(renderer)).toBe("Saving to Photos. Tap to pause")
-      await pressAll(labelled(renderer, "Saving to Photos. Tap to pause"))
+      expect(downloadLabel(renderer)).toBe("Saving to Files. Tap to pause")
+      await pressAll(labelled(renderer, "Saving to Files. Tap to pause"))
       expect(onDownload).not.toHaveBeenCalled()
     })
 
@@ -201,7 +201,7 @@ describe("SeriesActionRow download-all control", () => {
           pausedExport: false,
         }),
       )
-      expect(downloadLabel(renderer)).toBe("Saving to Photos. Tap to pause")
+      expect(downloadLabel(renderer)).toBe("Saving to Files. Tap to pause")
       expect(mockIcons.map((icon) => icon.name)).not.toContain(
         "checkmark-circle-outline",
       )
@@ -210,7 +210,27 @@ describe("SeriesActionRow download-all control", () => {
     it("promises no tap it cannot honour when no handler is wired", async () => {
       const renderer = await render(exporting, null)
       const label = downloadLabel(renderer)
-      expect(label).toBe("Saving to Photos")
+      expect(label).toBe("Saving to Files")
+      const nodes = labelled(renderer, label)
+      expect(nodes.some((n) => typeof n.props.onPress === "function")).toBe(
+        false,
+      )
+      await pressAll(nodes)
+      expect(onDownload).not.toHaveBeenCalled()
+    })
+
+    it("names the paused export without a tap when no handler is wired", async () => {
+      const renderer = await render(
+        state({
+          exporting: true,
+          exportProgress: 0.4,
+          exportingSlugs: ["b"],
+          pausedExport: true,
+        }),
+        null,
+      )
+      const label = downloadLabel(renderer)
+      expect(label).toBe("Saving to Files, paused")
       const nodes = labelled(renderer, label)
       expect(nodes.some((n) => typeof n.props.onPress === "function")).toBe(
         false,

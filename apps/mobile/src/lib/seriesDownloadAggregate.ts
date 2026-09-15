@@ -30,7 +30,7 @@ export type SeriesDownloadState = {
    */
   exporting: boolean
   /**
-   * 0..1 for the export ring, counted in EPISODES SAVED to the photo library,
+   * 0..1 for the export ring, counted in EPISODES SAVED to the chosen folder,
    * so it steps once per episode and reads full only when the run has saved
    * them all — the offline ring's shape, on the export's own unit.
    *

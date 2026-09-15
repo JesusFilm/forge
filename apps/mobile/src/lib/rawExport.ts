@@ -8,10 +8,10 @@ import type { StorageGate } from "./seriesDownloadEnqueue"
 import { validateActionUrl } from "./validateUrl"
 
 /**
- * Every raw-export decision: the storage gate, the library-permission
- * classification, the transfer spec and the interruption translation. Pure and
- * React-free, with each crossing injected, so jest needs no native module. All
- * imports here are type-only or plain constants.
+ * Every raw-export decision: the storage gate, the destination folder's display
+ * name, the transfer spec and the interruption translation. Pure and React-free,
+ * with each crossing injected, so jest needs no native module. All imports here
+ * are type-only or plain constants.
  */
 
 // ── Export task id (KTD2) ───────────────────────────────────────────
@@ -41,7 +41,7 @@ export type ExportSizing = {
 }
 
 export type ExportStorageGateInput = {
-  /** One entry per library copy the run will produce. */
+  /** One entry per saved copy the run will produce. */
   exports: ExportSizing[]
   freeBytes: number
   reserveBytes?: number
@@ -58,9 +58,9 @@ function knownBytes(exports: ExportSizing[]): number[] {
 
 /**
  * Peak use, not cumulative use: the run stages ONE file at a time and deletes
- * each staged copy after its library write, so the peak is the largest single
- * file plus every library copy plus the reserve. A reused offline copy skips the
- * transfer but still duplicates into the library, so it counts the same.
+ * each staged copy after its folder copy, so the peak is the largest single
+ * file plus every saved copy plus the reserve. A reused offline copy skips the
+ * transfer but still duplicates into the folder, so it counts the same.
  *
  * KTD9: this extends the aggregate fail-closed gate. An unreadable free reading
  * blocks, and an unknown rendition size makes the total a LOWER bound.
@@ -76,9 +76,9 @@ export function evaluateExportStorageGate(
   }
 
   const sizes = knownBytes(exports)
-  const libraryBytes = sizes.reduce((total, size) => total + size, 0)
+  const savedBytes = sizes.reduce((total, size) => total + size, 0)
   const stagedPeakBytes = sizes.length > 0 ? Math.max(...sizes) : 0
-  const requiredBytes = libraryBytes + stagedPeakBytes + reserveBytes
+  const requiredBytes = savedBytes + stagedPeakBytes + reserveBytes
 
   if (freeBytes < requiredBytes) {
     return { kind: "insufficient", requiredBytes, freeBytes }
@@ -91,55 +91,44 @@ export function evaluateExportStorageGate(
   }
 }
 
-// ── Library permission (R25, R26, KTD10) ────────────────────────────
+// ── The destination folder ──────────────────────────────────────────
 
-/** What expo-media-library answers, read defensively. */
-export type LibraryPermissionResponse = {
-  status?: string
-  granted?: boolean
-  canAskAgain?: boolean
-  accessPrivileges?: string
-}
-
-export type LibraryPermissionDecision =
-  /** `fullAccess` decides whether a named album is reachable (R17). */
-  | { kind: "granted"; fullAccess: boolean }
-  | { kind: "refused"; canAskAgain: boolean }
-
-export type LibraryRefusal = Extract<
-  LibraryPermissionDecision,
-  { kind: "refused" }
->
-
-/** A refusal never reaches the failure path (KTD10). */
-export type ExportRefusal = {
-  reason: "permission-denied"
-  canAskAgain: boolean
-  /** R25: only a refusal the system will not prompt for again offers settings. */
-  offerSettings: boolean
+/**
+ * The folder the viewer picked. The uri is opaque to every module but the
+ * runtime binding: iOS hands back a security-scoped `file://` url and Android a
+ * SAF `content://` tree.
+ */
+export type ExportFolder = {
+  uri: string
 }
 
 /**
- * Fail closed: anything that is not an explicit grant reads as a refusal. An
- * absent `canAskAgain` reads as "can ask again", so an unreadable response
- * cannot claim a permanence the system never reported.
+ * The on-disk name of the Files app's "On My iPhone" root. It is what the
+ * picker returns for that choice, and it is not a name a viewer ever sees, so
+ * the confirmation falls back to naming the Files app instead. Observed on the
+ * iPhone 17 Pro Max simulator, iOS 26.5, 2026-09-15.
  */
-export function classifyLibraryPermission(
-  response: LibraryPermissionResponse | null | undefined,
-): LibraryPermissionDecision {
-  const granted = response?.granted === true || response?.status === "granted"
-  if (granted) {
-    return { kind: "granted", fullAccess: response?.accessPrivileges === "all" }
-  }
-  return { kind: "refused", canAskAgain: response?.canAskAgain !== false }
-}
+const IOS_LOCAL_FILES_ROOT = "File Provider Storage"
 
-export function refusalFromPermission(decision: LibraryRefusal): ExportRefusal {
-  return {
-    reason: "permission-denied",
-    canAskAgain: decision.canAskAgain,
-    offerSettings: !decision.canAskAgain,
+/**
+ * What the confirmation calls the folder. Android's SAF uri ends in an opaque
+ * tree id whose readable half follows a colon, so the last path segment is
+ * decoded and then cut there. Null means "no viewer-legible name".
+ */
+export function exportFolderName(uri: string): string | null {
+  const withoutQuery = uri.split(/[?#]/)[0].replace(/\/+$/, "")
+  const lastSegment = withoutQuery.split("/").pop()
+  if (!lastSegment) return null
+  let decoded = lastSegment
+  try {
+    decoded = decodeURIComponent(lastSegment)
+  } catch {
+    // A malformed escape is not worth failing an export that already saved.
   }
+  const afterColon = decoded.slice(decoded.lastIndexOf(":") + 1)
+  const name = afterColon.trim()
+  if (name.length === 0 || name === IOS_LOCAL_FILES_ROOT) return null
+  return name
 }
 
 // ── Interruption translation (KTD11, R24, R26) ──────────────────────
@@ -228,10 +217,6 @@ export type RawExportTransferReport =
 
 export type RawExportDeps = {
   fs: { freeDiskBytes: () => Promise<number> }
-  library: {
-    getPermission: () => Promise<LibraryPermissionResponse>
-    requestPermission: () => Promise<LibraryPermissionResponse>
-  }
   /** The staging transfer. R24 gives it no pause and no resume. */
   transfer: {
     run: (
@@ -259,7 +244,7 @@ export type RawExportRequest = {
     url: string
     sizeBytes?: number | null
   } | null
-  /** Every library copy still ahead in this run; defaults to this export alone. */
+  /** Every saved copy still ahead in this run; defaults to this export alone. */
   runExports?: ExportSizing[]
   onProgress?: RawExportTransferHooks["onProgress"]
 }
@@ -273,18 +258,18 @@ export type ExportBlock =
   | { reason: "invalid-url" }
 
 export type ExportFailure = {
-  cause: TransferInterruption["kind"] | "transferError" | "permissionError"
+  cause: TransferInterruption["kind"] | "transferError"
   /** Already sanitized. A transfer error carries the signed media URL, so the
    *  field never holds raw text — not even before it reaches telemetry. */
   errorMessage: string | null
 }
 
 /** The terminal vocabulary is the session store's, minus the states this
- *  module cannot reach (`saved` needs the library write; `abandoned` needs a
- *  process death). */
+ *  module cannot reach (`saved` needs the copy into the folder; `abandoned`
+ *  needs a process death). */
 type TerminalOutcome = Extract<
   ExportOutcome,
-  "blocked" | "refused" | "cancelled" | "failed"
+  "blocked" | "cancelled" | "failed"
 >
 
 export type RawExportAdmission =
@@ -292,11 +277,8 @@ export type RawExportAdmission =
       kind: "admitted"
       spec: RawExportTransferSpec
       storage: Extract<StorageGate, { kind: "ok" }>
-      /** R17: an add-only grant cannot create a named album. */
-      fullAccess: boolean
     }
   | { kind: "blocked"; block: ExportBlock }
-  | { kind: "refused"; refusal: ExportRefusal }
   | { kind: "failed"; failure: ExportFailure }
 
 export type RawExportStageResult =
@@ -307,14 +289,13 @@ export type RawExportStageResult =
       spec: RawExportTransferSpec
     }
   | { outcome: Extract<TerminalOutcome, "blocked">; block: ExportBlock }
-  | { outcome: Extract<TerminalOutcome, "refused">; refusal: ExportRefusal }
   | { outcome: Extract<TerminalOutcome, "cancelled"> }
   | { outcome: Extract<TerminalOutcome, "failed">; failure: ExportFailure }
 
 /**
- * One export's decisions, from admission to a staged file. The library write,
- * the staging note and the file removals belong to the port, so this factory
- * stops at the staged bytes.
+ * One export's decisions, from admission to a staged file. The copy into the
+ * viewer's folder, the staging note and the file removals belong to the port, so
+ * this factory stops at the staged bytes.
  */
 export function createRawExportDecider(deps: RawExportDeps) {
   const info = (message: string, context: Record<string, unknown>): void => {
@@ -382,42 +363,9 @@ export function createRawExportDecider(deps: RawExportDeps) {
       }
     }
 
-    let decision: LibraryPermissionDecision
-    try {
-      decision = classifyLibraryPermission(await deps.library.getPermission())
-      // R10: a grant can be revoked between episodes, so each run reads it
-      // afresh. Prompt only where the system will still show a prompt.
-      if (decision.kind === "refused" && decision.canAskAgain) {
-        decision = classifyLibraryPermission(
-          await deps.library.requestPermission(),
-        )
-      }
-    } catch (error) {
-      const failure: ExportFailure = {
-        cause: "permissionError",
-        errorMessage: telemetryErrorMessage(error),
-      }
-      warn("raw_export.failed", {
-        export_state: "failed",
-        export_target: request.videoSlug,
-        export_failure_cause: failure.cause,
-        error_message: failure.errorMessage,
-      })
-      return { kind: "failed", failure }
-    }
-
-    if (decision.kind === "refused") {
-      const refusal = refusalFromPermission(decision)
-      // R26: a refusal is reported as a refusal on the info path, never as a
-      // failure, so no error surface anywhere counts it.
-      info("raw_export.refused", {
-        export_state: "refused",
-        export_target: request.videoSlug,
-        export_offer_settings: refusal.offerSettings,
-      })
-      return { kind: "refused", refusal }
-    }
-
+    // No permission step: the viewer already named a folder, and the picker
+    // that asked is the consent. A folder the app cannot write to fails at the
+    // copy, which is the only place that can tell.
     return {
       kind: "admitted",
       spec: buildExportTransferSpec({
@@ -427,7 +375,6 @@ export function createRawExportDecider(deps: RawExportDeps) {
         wifiOnly: request.wifiOnly,
       }),
       storage: gate,
-      fullAccess: decision.fullAccess,
     }
   }
 
@@ -437,9 +384,6 @@ export function createRawExportDecider(deps: RawExportDeps) {
     const admission = await admit(request)
     if (admission.kind === "blocked") {
       return { outcome: "blocked", block: admission.block }
-    }
-    if (admission.kind === "refused") {
-      return { outcome: "refused", refusal: admission.refusal }
     }
     if (admission.kind === "failed") {
       return { outcome: "failed", failure: admission.failure }
