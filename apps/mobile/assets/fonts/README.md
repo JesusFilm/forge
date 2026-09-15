@@ -6,6 +6,12 @@ The animated splash sets the word `Jesus` in this face (R12). The face is
 embedded at build time through the `expo-font` config plugin, so it is available
 at the first frame and can never render in a fallback face and then swap.
 
+> **Note added 2026-09-15:** the animated splash is disabled behind
+> `ANIMATED_SPLASH_ENABLED` (`src/lib/splash/animatedSplashEnabled.ts`), so this
+> face has no default-path consumer today. It stays embedded by decision:
+> removing the `expo-font` plugin entry moves the fingerprint runtime version
+> and strands OTA updates, and re-enabling the splash needs it present.
+
 - **Source:** the Noto Project's hinted TTF release,
   `fonts/NotoSerif/hinted/ttf/NotoSerif-SemiBold.ttf` from
   `notofonts/notofonts.github.io`, downloaded 2026-09-09.
