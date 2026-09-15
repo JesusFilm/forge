@@ -429,8 +429,16 @@ async function main() {
         0,
       ) +
       // The overrides the composition honours, honoured here too.
-      (introHoldSec !== "" ? Number(introHoldSec) : INTRO_HOLD_SEC) +
-      (outroHoldSec !== "" ? Number(outroHoldSec) : OUTRO_HOLD_SEC) +
+      (introHoldSec !== ""
+        ? Number(introHoldSec)
+        : manifest.introHoldSec != null
+          ? Number(manifest.introHoldSec)
+          : INTRO_HOLD_SEC) +
+      (outroHoldSec !== ""
+        ? Number(outroHoldSec)
+        : manifest.outroHoldSec != null
+          ? Number(manifest.outroHoldSec)
+          : OUTRO_HOLD_SEC) +
       5 // margin ON TOP of the real length, not absorbing an error in it
 
     await stage(manifest.bgFile)
@@ -473,8 +481,20 @@ async function main() {
       ...(arg("blur-scale", "")
         ? { blurScale: Number(arg("blur-scale", "")) }
         : {}),
-      ...(outroHoldSec !== "" ? { outroHoldSec: Number(outroHoldSec) } : {}),
-      ...(introHoldSec !== "" ? { introHoldSec: Number(introHoldSec) } : {}),
+      // CLI flag wins; otherwise the MANIFEST's holds. The manifest carried
+      // `introHoldSec` for months and nothing here read it, so the clip-first
+      // cut asked for no intro hold and got the composition's default second
+      // anyway — a second of muted footage before the stepper.
+      ...(outroHoldSec !== ""
+        ? { outroHoldSec: Number(outroHoldSec) }
+        : manifest.outroHoldSec != null
+          ? { outroHoldSec: Number(manifest.outroHoldSec) }
+          : {}),
+      ...(introHoldSec !== ""
+        ? { introHoldSec: Number(introHoldSec) }
+        : manifest.introHoldSec != null
+          ? { introHoldSec: Number(manifest.introHoldSec) }
+          : {}),
       ...(noEndFade ? { noEndFade: true } : {}),
       ...(muteVideoAudio ? { muteVideoAudio: true } : {}),
       ...(videoAudioLevel !== ""
