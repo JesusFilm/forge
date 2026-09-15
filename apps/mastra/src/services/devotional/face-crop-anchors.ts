@@ -386,6 +386,45 @@ export type TrackTuning = {
  * the change is snapped onto a nearby cut so it happens where the picture is
  * already changing.
  */
+/**
+ * Times where the PICTURE changes, from two sources that cover each other's
+ * gaps.
+ *
+ * ffmpeg's scene metric misses this footage's softer cuts — at its default
+ * sensitivity it called 44s to 73s of the Parable of the Lamp a single shot
+ * across four setups. But when the shot changes, the faces jump, and that is
+ * visible in the detector's own samples. A face leaping further than the crop
+ * can reach between two samples half a second apart is a cut, whatever the
+ * scene metric thought.
+ *
+ * This matters because a crop move must never be left half-finished by a cut:
+ * the glide is interrupted by a new picture and reads as a stumble. Knowing
+ * where the picture changes is what lets a move be put ON a cut, or held back
+ * until after one.
+ */
+export function pictureChanges(
+  samples: ReadonlyArray<FaceSample>,
+  cuts: ReadonlyArray<number>,
+  minArea: number,
+  reach: number,
+): number[] {
+  const out = [...cuts]
+  let prev: number | null = null
+  for (const s of samples) {
+    const big = s.faces
+      .filter((f) => f.area >= minArea)
+      .sort((a, b) => b.area - a.area)[0]
+    const cx = big?.cx ?? null
+    if (prev != null && cx != null && Math.abs(cx - prev) > reach) {
+      out.push(s.atSec)
+    }
+    if (cx != null) prev = cx
+  }
+  return [...new Set(out.map((t) => Number(t.toFixed(3))))].sort(
+    (a, b) => a - b,
+  )
+}
+
 export function trackFaceAnchors(
   samples: ReadonlyArray<FaceSample>,
   cuts: ReadonlyArray<number>,
@@ -419,6 +458,16 @@ export function trackFaceAnchors(
   const waitForCut = tuning.waitForCutSec ?? 2.5
   /** How long the crop may sit on nobody before the spacing rule is ignored. */
   const emptyOverrideSec = tuning.emptyOverrideSec ?? 0.5
+  // Same rule the composition uses to time a glide, duplicated because the two
+  // packages cannot import each other. A test pins them together.
+  const GLIDE_SPEED = 0.125
+  const GLIDE_MIN = 0.8
+  const GLIDE_MAX = 3.5
+  const glideSec = (from: number | null, to: number | null) =>
+    Math.min(
+      GLIDE_MAX,
+      Math.max(GLIDE_MIN, Math.abs((to ?? 0.5) - (from ?? 0.5)) / GLIDE_SPEED),
+    )
   /** How far ahead a candidate framing is scored. */
   const lookaheadSec = tuning.lookaheadSec ?? 12
 
@@ -494,6 +543,7 @@ export function trackFaceAnchors(
     return bestHold < 0 ? aim : best
   }
 
+  const changes = pictureChanges(samples, cuts, minArea, reach)
   const segments: ShotAnchor[] = []
   let current: number | null = null
   let since = 0
@@ -547,18 +597,31 @@ export function trackFaceAnchors(
     // middle of a held shot is the one the eye catches, and nineteen of
     // twenty-seven moves were landing mid-shot before this.
     const at = missingSince as number
-    const behind = cuts
+    const behind = changes
       .filter((c) => c <= at && at - c <= snap)
       .sort((a, b) => b - a)[0]
-    const ahead = cuts
-      .filter((c) => c > at && c - at <= waitForCut)
+    // Wait for a change that is coming DURING the move, not just soon: a glide
+    // left half-run by the next shot is the stumble the owner described. The
+    // window is the move's own length, so a long move waits longer.
+    const window = Math.max(waitForCut, glideSec(current, next) + 0.5)
+    const ahead = changes
+      .filter((c) => c > at && c - at <= window)
       .sort((a, b) => a - b)[0]
     // Prefer the cut just BEHIND: that is where this shot began, so the new
     // framing belongs from its first frame and the half-second of wall before
     // the miss was noticed never reaches the screen. Nine of the ten remaining
     // bad samples were exactly that lag. Only when no cut started this shot
     // does it wait for the next one.
-    const when = behind ?? ahead ?? at
+    let when = behind ?? ahead ?? at
+    // Last guard: whatever time was chosen, the glide from it must not run
+    // into a change of picture. Snapping BACK to the cut that opened this shot
+    // can put the move earlier and leave it crossing the NEXT one — the same
+    // stumble, arrived at from the other side. If that is what would happen,
+    // the move goes ON the change instead, where it costs nothing to be
+    // instant.
+    const glide = glideSec(current, next)
+    const crossing = changes.find((c) => c > when + 0.15 && c < when + glide)
+    if (crossing != null) when = crossing
     // Spacing is checked against the time the move ACTUALLY lands on, not the
     // moment the miss was noticed. Snapping can pull a move up to a second
     // backwards or push it two forwards, and checking the wrong one let moves
