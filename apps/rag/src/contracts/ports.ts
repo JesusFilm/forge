@@ -92,6 +92,8 @@ export interface RawDocumentReader {
    * handoff — the write side is RawDocumentStore.
    */
   listPending(opts?: {
+    /** Literal canonical URL prefix, applied before limit. */
+    canonicalUrlPrefix?: string
     sourceKey?: string
     limit?: number
     includeIngested?: boolean

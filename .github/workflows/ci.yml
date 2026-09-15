@@ -152,9 +152,13 @@ jobs:
           src/services/recommendations/migration.candidates.db.test.ts
           src/services/recommendations/migration.lifecycle.db.test.ts
           src/services/recommendations/migration.operations.db.test.ts
+          src/services/recommendations/migration.attribution-reliability.db.test.ts
+          src/services/recommendations/playback-episode.db.test.ts
           src/services/recommendations/snapshot-repair.db.test.ts
           src/services/recommendations/promotion/service.db.test.ts
           src/services/recommendations/profile.service.db.test.ts
+          src/services/recommendations/viewer-identity.service.db.test.ts
+          src/services/recommendations/curated-pools.service.db.test.ts
           src/services/recommendations/recent-context.db.test.ts
           src/services/recommendations/admin-ops/detail.db.test.ts
           --no-file-parallelism
@@ -253,7 +257,7 @@ jobs:
         env:
           AUTH_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
           BETTER_AUTH_SECRET: auth-integration-secret-not-for-production
-        run: pnpm --filter @forge/auth test -- src/services/better-auth-upgrade.integration.test.ts src/services/device-grant.integration.test.ts src/services/changelog-oauth-grant.integration.test.ts src/services/changelog-local-reader-grant.integration.test.ts --no-file-parallelism
+        run: pnpm --filter @forge/auth test -- src/services/better-auth-upgrade.integration.test.ts src/services/device-grant.integration.test.ts src/services/changelog-oauth-grant.integration.test.ts src/services/changelog-local-reader-grant.integration.test.ts src/services/changelog-production-access.integration.test.ts --no-file-parallelism
 
   rag-postgres-integration:
     runs-on: ubuntu-latest
@@ -433,6 +437,9 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Install renderer native security test prerequisites
+        if: matrix.service == '@forge/studio-render'
+        run: bash apps/studio-render/scripts/install-native-test-prerequisites.sh
       - name: Load CI env files
         run: |
           for f in $(find apps packages -name '.env.ci' 2>/dev/null); do

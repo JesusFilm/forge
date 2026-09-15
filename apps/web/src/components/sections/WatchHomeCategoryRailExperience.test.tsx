@@ -33,6 +33,10 @@ describe("WatchHomeCategoryRail Experience dispatch", () => {
             {
               __typename: "WatchHomeCategoryRailBlock",
               categoryIds: ["family", "jesus"],
+              eyebrow: "Explore now",
+              title: "Choose a story",
+              description: "Made for this moment.",
+              ctaLabel: "See every video",
             } as never
           }
           languageSlug="spanish-latin-american"
@@ -54,6 +58,10 @@ describe("WatchHomeCategoryRail Experience dispatch", () => {
       "/family.html/spanish-latin-american.html",
       "/jesus.html/spanish-latin-american.html",
     ])
+    expect(container.textContent).toContain("Explore now")
+    expect(container.textContent).toContain("Choose a story")
+    expect(container.textContent).toContain("Made for this moment.")
+    expect(container.textContent).toContain("See every video")
 
     await act(async () => root.unmount())
   })

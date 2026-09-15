@@ -86,6 +86,10 @@ After the user is legitimately `ACTIVE`, run the guarded hosted-Auth procedure f
 
 ## Related
 
+- Production grant inspection, Admin provisioning, and revocation are a
+  SEPARATE operator command family, shipped 2026-09-05 (feat-458): see
+  `docs/auth-changelog-production-access.md`. The command this doc covers
+  remains Local-Reader-only.
 - [OAuth loopback dynamic client registration normalization](./oauth-loopback-dynamic-client-registration-normalization.md)
 - [Better Auth authorization resource binding upgrade](./better-auth-authorization-resource-binding-upgrade.md)
 - [Auth-owned agent login handles for local and preview OAuth](./auth-owned-agent-login-handles-for-local-preview-oauth-20260611.md)

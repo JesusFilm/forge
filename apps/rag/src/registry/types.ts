@@ -2,7 +2,7 @@
  * SourceRegistry data types — the richer, crawl-time shape of a source (the
  * persisted projection is `SourceRecord` in contracts/sources.ts). Pure data:
  * no I/O, no behavior. The registry may import only `contracts`. See
- * docs/architecture.md §3 (Acquisition) and §5.1.
+ * docs/architecture.md §3 (Acquisition) and §4–§5.
  */
 import type { IngestionMode, SourceTrust } from "../contracts/index.js"
 
@@ -43,6 +43,9 @@ export interface CrawlPolicy {
   /**
    * Sitemap URLs (or paths against `baseUrl`) to discover content URLs from.
    * A `<sitemapindex>` is auto-recursed into its child `<sitemap>` entries.
+   * Discovery fetches, redirects, and children stay within the origin and
+   * parent directory of a registered sitemap. Article `allow` patterns do not
+   * authorize sitemap transport; they still filter discovered content URLs.
    * Presence of this field makes the source a discovery crawl.
    */
   sitemaps?: string[]
@@ -60,6 +63,8 @@ export interface CrawlPolicy {
   requestDelayMs: number
   /** Safety cap on pages fetched per run. */
   maxPages: number
+  /** Optional exact inventory gate, checked before resume-skip or truncation. */
+  expectedPages?: number
   /** Drop a page whose extracted text is shorter than this many characters. */
   minContentLength: number
 }
@@ -80,5 +85,7 @@ export interface SourceEntry {
     enabled: false
     reason: string
   }
+  /** Explicit opt-in path slices; the default crawl stays unchanged. */
+  pathCrawls?: Record<string, CrawlPolicy>
   crawl: CrawlPolicy
 }

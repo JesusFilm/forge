@@ -527,7 +527,8 @@
     "previousVideoPreview": "Ukážka predchádzajúceho videa",
     "nextVideoPreview": "Ukážka ďalšieho videa",
     "mediaCollection": "Mediálna zbierka",
-    "scrollToVideo": "Posunúť na video {title}"
+    "scrollToVideo": "Posunúť na video {title}",
+    "forYou": "Pre vás"
   },
   "WatchFooter": {
     "home": "Domovská stránka Jesus Film Project",
@@ -597,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -713,9 +714,9 @@
   "WatchUnavailableLanguage": {
     "metadataTitle": "Jazyková verzia nie je dostupná",
     "eyebrow": "Jazyková verzia nie je dostupná",
-    "title": "<contentTitle>{title}</contentTitle> nie je dostupné v jazyku <languageName>{language}</languageName>",
+    "title": "<contentTitle>{title}</contentTitle>: verzia v jazyku <languageName>„{language}“</languageName> nie je dostupná",
     "actionsLabel": "Dostupné možnosti sledovania",
-    "browseInLanguage": "Prehliadať videá v jazyku {language}",
+    "browseInLanguage": "Všetky videá v jazyku „{language}“",
     "backToSearch": "Späť na vyhľadávanie",
     "audioVersionsTitle": "Ďalšie zvukové verzie",
     "audioVersionsDescription": "Vyberte jazyk zvuku a pokračujte v sledovaní videa.",

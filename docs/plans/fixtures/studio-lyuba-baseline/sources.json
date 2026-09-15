@@ -1,0 +1,26 @@
+{
+  "devo-data.zip": {
+    "bytes": 23968735,
+    "sha256": "9943078d9e385f27dbb6b86ebcb735d62927e000d394e3c0f444a184175ed883"
+  },
+  "fork.bundle": {
+    "bytes": 88443449,
+    "sha256": "92468da6e9a700c5e8125bfbc5be6a7af4d2387a924a1a8b02e8d11d968f368b"
+  },
+  "DEVOTIONAL-ARCHITECTURE.md": {
+    "bytes": 12119,
+    "sha256": "1497d6a121c93ecd482c64bc884e8ff0ac495043bf67d7c5bed86a55744bfac5"
+  },
+  "HANDOFF-README.md": {
+    "bytes": 6216,
+    "sha256": "80f70aee591ad2949854d8192bfcd454772306223653d3d0418b8da92bc2a6b5"
+  },
+  "devotional-pipeline-handoff.patch": {
+    "bytes": 267389,
+    "sha256": "c36d4d72173b5849874d2c1b16fc312febea78c0e6e6fec9dad4e288c4fc82f4"
+  },
+  "devotional-pipeline.html": {
+    "bytes": 26040,
+    "sha256": "cd0a5ecefb3c2376e296e13b1e8b19b5ac26e14ded2c12a46e01137fdaa71d38"
+  }
+}

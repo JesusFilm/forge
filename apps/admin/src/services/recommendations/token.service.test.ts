@@ -193,7 +193,7 @@ describe("recommendation capability tokens", () => {
     ).rejects.toBeInstanceOf(RecommendationTokenInvalidError)
   })
 
-  it("accepts only terminal episode facts during the bounded late window", async () => {
+  it("accepts reordered episode facts during the bounded late window when occurrence stayed active", async () => {
     const service = createRecommendationTokenService({
       keyring: parseRecommendationKeyring(rawKeyring()),
       readRevokedKids: async () => [],
@@ -218,7 +218,7 @@ describe("recommendation capability tokens", () => {
         occurredAt,
         receivedAt,
       }),
-    ).rejects.toBeInstanceOf(RecommendationTokenInvalidError)
+    ).resolves.toMatchObject({ late: true })
     await expect(
       service.verifyEpisodeCapability(token, {
         ...episodeBinding,
@@ -241,6 +241,40 @@ describe("recommendation capability tokens", () => {
         eventKind: "playback_end",
         occurredAt,
         receivedAt: new Date(now.getTime() + 6 * 60 * 60 * 1000 + 1_000),
+      }),
+    ).rejects.toBeInstanceOf(RecommendationTokenInvalidError)
+  })
+
+  it("binds source-neutral episode capabilities without fabricated recommendation ids", async () => {
+    const service = createRecommendationTokenService({
+      keyring: parseRecommendationKeyring(rawKeyring()),
+      readRevokedKids: async () => [],
+      now: () => now,
+    })
+    const binding = {
+      jti: "direct-episode-jti",
+      episodeId: "direct-episode",
+      sessionDigest: "a".repeat(64),
+      mediaId: "video-direct",
+      generation: 1,
+    }
+    const token = await service.signEpisodeCapability(binding)
+
+    await expect(
+      service.verifyEpisodeCapability(token, {
+        ...binding,
+        eventKind: "playback_start",
+        occurredAt: now,
+        receivedAt: now,
+      }),
+    ).resolves.toMatchObject(binding)
+    await expect(
+      service.verifyEpisodeCapability(token, {
+        ...binding,
+        mediaId: "other-video",
+        eventKind: "playback_start",
+        occurredAt: now,
+        receivedAt: now,
       }),
     ).rejects.toBeInstanceOf(RecommendationTokenInvalidError)
   })

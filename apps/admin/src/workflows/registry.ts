@@ -8,6 +8,7 @@ import { runRecommendationShadowEvaluation } from "@/workflows/recommendationSha
 import { runRecommendationExperimentEvaluation } from "@/workflows/recommendationExperimentEvaluation"
 import { runRecommendationPromotion } from "@/workflows/recommendationPromotion"
 import { runRecommendationProfileProjection } from "@/workflows/recommendationProfileProjection"
+import { runRecommendationProfileReconciliationScheduler } from "@/workflows/recommendationProfileReconciliation"
 import {
   runRecommendationRetention,
   runRecommendationRetentionScheduler,
@@ -33,6 +34,7 @@ export function getKnownRecommendationWorkflowIds(): string[] {
     runRecommendationExperimentEvaluation,
     runRecommendationPromotion,
     runRecommendationProfileProjection,
+    runRecommendationProfileReconciliationScheduler,
     runRecommendationRetention,
     runRecommendationRetentionScheduler,
   ].map((workflow) => {

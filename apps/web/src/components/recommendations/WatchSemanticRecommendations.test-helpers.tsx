@@ -162,6 +162,18 @@ export function jsonResponse(body: unknown, status = 200) {
   })
 }
 
+export function acceptedEvidenceResponse(init: RequestInit | undefined) {
+  const body = JSON.parse(String(init?.body ?? "{}")) as {
+    events?: Array<{ eventId: string }>
+  }
+  return jsonResponse({
+    receipts: (body.events ?? []).map((event) => ({
+      eventId: event.eventId,
+      status: "accepted",
+    })),
+  })
+}
+
 export function requestBodies(fetchMock: ReturnType<typeof vi.fn>) {
   return fetchMock.mock.calls.map(([, init]) =>
     JSON.parse(String((init as RequestInit | undefined)?.body ?? "{}")),

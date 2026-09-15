@@ -17,13 +17,15 @@ export type AdminMcpToolDefinition = {
 }
 
 const WATCH_HOME_CATEGORY_RAIL_MCP_GUIDANCE =
-  `The watchHomeCategoryRail block is a homepage-only top-level singleton with shape {t:"watchHomeCategoryRail",categoryIds:[...],tiles?:[...]}. ` +
+  `The homepageRecommendations block is a top-level singleton with shape {t:"homepageRecommendations",sectionKey?:string,title?:string}. It renders six private viewer recommendations; leave title blank for the localized default heading. ` +
+  `The watchHomeCategoryRail block is a homepage-only top-level singleton with shape {t:"watchHomeCategoryRail",eyebrow?:string,title?:string,description?:string,ctaLabel?:string,categoryIds:[...],tiles?:[...]}. ` +
+  `The copy limits for eyebrow/title/description/ctaLabel are 80/160/500/80 characters. Nonblank values are literal locale-owned overrides; omitting a field or making it blank or whitespace-only restores that field's translated default independently. The CTA destination is not authorable, so never add an href, URL, link, or destination for it. ` +
   `categoryIds must be a non-empty unique subset of ${WATCH_HOME_CATEGORY_CATALOG.map(({ id }) => id).join(", ")}. ` +
   `tiles is the authoritative ordered tile list when present; each tile is {id, categoryId?, title?, href?, icon?, style?} with a unique id, at most one tile per categoryId, and title/href/icon/style overriding that category's defaults. ` +
   `A tile without categoryId is fully custom and requires both title and href; href must be a site path starting with / or an https:// URL. ` +
   `icon must be one of ${WATCH_HOME_TILE_ICON_KEYS.join(", ")}; style must be one of ${WATCH_HOME_TILE_STYLE_KEYS.join(", ")}. ` +
   "When tiles is present keep categoryIds as the ordered list of its predefined members so older renderers stay correct. " +
-  "When changing it, send the complete blocks array and preserve unrelated blocks and their order."
+  "When changing any block, send the complete blocks array and preserve unrelated blocks and their order; preserve the rail's copy fields, tiles, categoryIds compatibility mirror, and their order unless the requested edit explicitly changes them."
 
 export const ADMIN_MCP_TOOLS = [
   {

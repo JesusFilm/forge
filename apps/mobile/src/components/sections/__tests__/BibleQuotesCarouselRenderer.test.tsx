@@ -12,9 +12,27 @@ jest.mock("../../../lib/openPassageSheet", () => ({
   openPassageSheet: (...args: unknown[]) => mockOpenPassageSheet(...args),
 }))
 
+/**
+ * A jest.fn component is the assertion surface: zero calls means no image
+ * element, which is what stops the prop cases below passing against an absent
+ * node. `prefetch` is a module static the carousel calls directly.
+ */
+const mockImage = jest.fn((_props: Record<string, unknown>) => null)
+const mockPrefetch = jest.fn((..._args: unknown[]) => Promise.resolve(true))
+jest.mock("expo-image", () => {
+  const Image = (props: Record<string, unknown>) => mockImage(props)
+  Image.prefetch = (...args: unknown[]) => mockPrefetch(...args)
+  return { __esModule: true, Image }
+})
+
+const mockWarn = jest.fn()
+jest.mock("../../../lib/datadog", () => ({
+  datadogLog: { info: jest.fn(), warn: (...a: unknown[]) => mockWarn(...a) },
+}))
+
 import { act } from "react"
 import type React from "react"
-import { Dimensions } from "react-native"
+import { AccessibilityInfo, Dimensions } from "react-native"
 
 import {
   CARD_CONTENT_PADDING,
@@ -99,19 +117,57 @@ function renderAtSize(
   }
 }
 
-function render(quotes: Quote[]): TestInstance {
-  const section = {
+function sectionOf(quotes: Quote[]): AdminBlock {
+  return {
     __typename: "BibleQuotesCarouselBlock",
     heading: "Bible Quotes",
     quotes,
   } as unknown as AdminBlock
+}
 
+/**
+ * Every renderer is torn down after its test: the card subscribes to the OS
+ * reduce-motion read, so one left mounted re-renders inside the NEXT test's
+ * `act`, landing its props in the image mock ahead of the card under test.
+ */
+const mounted: TestInstance[] = []
+
+function render(
+  quotes: Quote[],
+  onArtworkFailed?: (cardIndex: number, failedUrl: string) => void,
+): TestInstance {
   let renderer!: TestInstance
   act(() => {
     renderer = TestRenderer.create(
-      (<BibleQuotesCarouselRenderer section={section} />) as React.ReactElement,
+      (
+        <BibleQuotesCarouselRenderer
+          section={sectionOf(quotes)}
+          onArtworkFailed={onArtworkFailed}
+        />
+      ) as React.ReactElement,
     )
   })
+  mounted.push(renderer)
+  return renderer
+}
+
+/** Lets the reduce-motion read resolve before anything is asserted. */
+async function renderSettled(
+  quotes: Quote[],
+  onArtworkFailed?: (cardIndex: number, failedUrl: string) => void,
+): Promise<TestInstance> {
+  let renderer!: TestInstance
+  await act(async () => {
+    renderer = TestRenderer.create(
+      (
+        <BibleQuotesCarouselRenderer
+          section={sectionOf(quotes)}
+          onArtworkFailed={onArtworkFailed}
+        />
+      ) as React.ReactElement,
+    )
+  })
+  mounted.push(renderer)
   return renderer
 }
 
@@ -599,6 +655,453 @@ describe("fit constants match the rendered styles", () => {
       (node) => flatStyle(node).padding === CARD_CONTENT_PADDING,
     )
     expect(content.length).toBeGreaterThan(0)
+  })
+})
+
+// ── Card artwork ────────────────────────────────────────────────────────────
+
+const STILL_A =
+  "https://image.mux.com/playbackA/thumbnail.webp?width=800&height=800&fit_mode=smartcrop&time=140.00"
+const STILL_B =
+  "https://image.mux.com/playbackA/thumbnail.webp?width=800&height=800&fit_mode=smartcrop&time=420.00"
+const STOCK_A = "https://images.unsplash.com/photo-1480869799327?q=80&w=800"
+
+/** A watch-page card that resolved the top rung of the ladder. */
+function stillQuote(overrides: Quote = {}): Quote {
+  return {
+    ...PASSAGE_QUOTE,
+    imageUrl: STILL_A,
+    artCandidates: [STILL_A, STOCK_A],
+    artIndex: 0,
+    ...overrides,
+  }
+}
+
+function imageProps(): Record<string, unknown> | undefined {
+  return mockImage.mock.calls[0]?.[0]
+}
+/** A still can be pure white, so that is what any backdrop must survive. */
+const WORST_STILL: Rgba = { r: 255, g: 255, b: 255, a: 1 }
+
+/**
+ * The opaque colour the text actually sits on, whichever backdrop renders.
+ * Read off the tree, so changing CARD_TREATMENT RE-POINTS this guard rather
+ * than deleting it — the failure that made the guard treatment-agnostic.
+ */
+function backdrop(renderer: TestInstance): Rgba {
+  const gradient = renderer.root.findAll((n) =>
+    Array.isArray(n.props.colors),
+  )[0]
+  if (gradient != null) {
+    const colors = gradient.props.colors as string[]
+    return parseColor(colors[colors.length - 1] as string)
+  }
+  const tints = renderer.root
+    // Host nodes only: a composite and its host carry the same props, so an
+    // unfiltered scan counts the one tint twice.
+    .findAll(
+      (n) =>
+        typeof n.type === "string" &&
+        typeof flatStyle(n).backgroundColor === "string",
+    )
+    .map((n) => parseColor(flatStyle(n).backgroundColor as unknown as string))
+    .filter((c) => c.a < 1)
+  if (tints.length !== 1) {
+    throw new Error(`expected exactly one tint, found ${tints.length}`)
+  }
+  return composite(tints[0] as Rgba, WORST_STILL)
+}
+
+type Rgba = { r: number; g: number; b: number; a: number }
+
+function parseColor(value: string): Rgba {
+  const rgba = /^rgba?\(([^)]+)\)$/.exec(value.trim())
+  if (rgba?.[1] != null) {
+    const parts = rgba[1].split(",").map((p) => Number(p.trim()))
+    return {
+      r: parts[0] ?? 0,
+      g: parts[1] ?? 0,
+      b: parts[2] ?? 0,
+      a: parts[3] ?? 1,
+    }
+  }
+  const hex = value.replace("#", "")
+  return {
+    r: parseInt(hex.slice(0, 2), 16),
+    g: parseInt(hex.slice(2, 4), 16),
+    b: parseInt(hex.slice(4, 6), 16),
+    a: 1,
+  }
+}
+
+const channel = (c: number) => {
+  const v = c / 255
+  return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
+}
+const luminance = (c: Rgba) =>
+  0.2126 * channel(c.r) + 0.7152 * channel(c.g) + 0.0722 * channel(c.b)
+
+function composite(fg: Rgba, bg: Rgba): Rgba {
+  return {
+    r: fg.a * fg.r + (1 - fg.a) * bg.r,
+    g: fg.a * fg.g + (1 - fg.a) * bg.g,
+    b: fg.a * fg.b + (1 - fg.a) * bg.b,
+    a: 1,
+  }
+}
+
+function contrast(a: Rgba, b: Rgba): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x)
+  return ((hi ?? 0) + 0.05) / ((lo ?? 0) + 0.05)
+}
+
+/** The colour each named text region actually rendered with. */
+function regionColor(renderer: TestInstance, needle: string): Rgba {
+  const node = findText(renderer, needle)
+  const color = flatStyle(node).color as unknown as string
+  if (typeof color !== "string") throw new Error(`no colour on "${needle}"`)
+  return parseColor(color)
+}
+
+beforeEach(() => {
+  mockImage.mockClear()
+  mockPrefetch.mockClear()
+  mockWarn.mockClear()
+  // The card reads the OS reduce-motion setting asynchronously. Left to
+  // resolve, it lands a state update outside `act` in every synchronous case
+  // here. The two cases that care about the setting override this and await.
+  jest
+    .spyOn(AccessibilityInfo, "isReduceMotionEnabled")
+    .mockReturnValue(new Promise<boolean>(() => {}))
+})
+
+afterEach(() => {
+  act(() => {
+    mounted.splice(0).forEach((renderer) => renderer.unmount())
+  })
+  jest.restoreAllMocks()
+})
+
+describe("BibleQuotesCarouselRenderer — card artwork", () => {
+  it("renders an image element when the card has a candidate", () => {
+    // Anti-vacuous: every prop assertion below reads mock call zero, which
+    // would be undefined — and silently absent — without this.
+    render([stillQuote()])
+    expect(mockImage).toHaveBeenCalledTimes(1)
+    expect(imageProps()?.source).toBe(STILL_A)
+  })
+
+  it("renders no image element and no broken frame when there is no candidate", () => {
+    render([{ ...PASSAGE_QUOTE, imageUrl: null, artCandidates: [] }])
+    expect(mockImage).not.toHaveBeenCalled()
+  })
+
+  it("clears 4.5:1 for all four text regions over the worst still (AE13)", () => {
+    const renderer = render([stillQuote()])
+    // Whichever backdrop the active treatment draws, composited over a
+    // pure-white still. Not the gradient specifically: bound to one branch,
+    // this guard was deleted rather than re-pointed by changing the treatment.
+    const ground = backdrop(renderer)
+    const regions: Array<[string, Rgba]> = [
+      ["verse", regionColor(renderer, "Let’s make man")],
+      ["reference", regionColor(renderer, "GENESIS 1:26-27")],
+      ["translation", regionColor(renderer, "World English Bible")],
+      ["copyright", regionColor(renderer, "Public Domain")],
+    ]
+    for (const [name, color] of regions) {
+      const ratio = contrast(composite(color, ground), ground)
+      expect({ name, ratio: ratio >= 4.5 }).toEqual({ name, ratio: true })
+    }
+  })
+
+  it("keeps the backdrop at the floor, so lowering it cannot pass (AE13)", () => {
+    const renderer = render([stillQuote()])
+    const ground = backdrop(renderer)
+    const worst = Math.min(
+      ...(
+        [
+          "Let’s make man",
+          "GENESIS 1:26-27",
+          "World English Bible",
+          "Public Domain",
+        ] as const
+      ).map((needle) =>
+        contrast(composite(regionColor(renderer, needle), ground), ground),
+      ),
+    )
+    // The tightest region clears the floor but is NEAR it. Without the upper
+    // bound a backdrop could be darkened arbitrarily and still pass, so the
+    // constant would stop being the floor its own comment claims it is.
+    expect(worst).toBeGreaterThanOrEqual(4.5)
+    expect(worst).toBeLessThan(5.0)
+  })
+
+  it("pins the image to the memory and disk cache tiers", () => {
+    render([stillQuote()])
+    expect(imageProps()?.cachePolicy).toBe("memory-disk")
+  })
+
+  it("ranks the card image below the player it competes with", () => {
+    render([stillQuote()])
+    expect(imageProps()?.priority).toBe("low")
+  })
+
+  it("fades the still in over an explicit duration", async () => {
+    jest
+      .spyOn(AccessibilityInfo, "isReduceMotionEnabled")
+      .mockResolvedValue(false)
+    await renderSettled([stillQuote()])
+    // `.at(-1)`, not call zero: the first render still carries the hook's
+    // initial false, so reading it would pass without the resolved value ever
+    // being exercised.
+    expect(mockImage.mock.calls.at(-1)?.[0]?.transition).toBe(200)
+  })
+
+  it("snaps rather than fades when reduce motion is on (AE8)", async () => {
+    jest
+      .spyOn(AccessibilityInfo, "isReduceMotionEnabled")
+      .mockResolvedValue(true)
+    await renderSettled([stillQuote()])
+
+    // A NUMBER, not an object without a duration: the transition record
+    // defaults to 100ms on iOS and 0 on Android, so the object form would fade
+    // on iOS and not at all on Android — and an iOS-only check would pass.
+    const last = mockImage.mock.calls.at(-1)?.[0]
+    expect(last?.transition).toBe(0)
+  })
+
+  it("keys recycling off the resolved source, not the reference label (AE9)", () => {
+    // Two citations really can resolve to one label; keying on it would tell
+    // the list the two cards are the same image. Only the visible card mounts
+    // (`initialNumToRender`), so the label is ruled out on that one directly.
+    render([
+      stillQuote({ imageUrl: STILL_A, artCandidates: [STILL_A] }),
+      stillQuote({ imageUrl: STILL_B, artCandidates: [STILL_B] }),
+    ])
+    const keys = mockImage.mock.calls.map((call) => call[0]?.recyclingKey)
+    expect(keys).toEqual([STILL_A])
+    expect(keys[0]).not.toBe(PASSAGE_QUOTE.reference)
+  })
+
+  it("renders a ladder-resolved URL byte-identically (KTD12)", () => {
+    // The render-time validator is idempotent on an absolute URL, which is why
+    // keeping it for the Experience and SDUI paths costs this path nothing.
+    render([stillQuote()])
+    expect(imageProps()?.source).toBe(STILL_A)
+  })
+
+  it("hides the still from assistive technology (AE14)", () => {
+    const renderer = render([stillQuote()])
+    expect(imageProps()?.accessible).toBe(false)
+    expect(imageProps()?.accessibilityLabel).toBeUndefined()
+
+    // The card is one grouped element and announces itself once.
+    expect(cardLabels(renderer)).toContain(
+      composeCardLabel("Genesis 1:26-27", String(PASSAGE_QUOTE.text)),
+    )
+  })
+
+  it("reports a load failure upward rather than holding its own tier (AE11)", () => {
+    const onArtworkFailed = jest.fn()
+    render([stillQuote()], onArtworkFailed)
+
+    act(() => {
+      ;(imageProps()?.onError as () => void)()
+    })
+    expect(onArtworkFailed).toHaveBeenCalledWith(0, STILL_A)
+  })
+
+  it("emits the exhaustion signal once when the last rung fails", () => {
+    const onArtworkFailed = jest.fn()
+    render(
+      [
+        stillQuote({
+          imageUrl: STOCK_A,
+          artCandidates: [STOCK_A],
+          artIndex: 0,
+        }),
+      ],
+      onArtworkFailed,
+    )
+
+    act(() => {
+      ;(imageProps()?.onError as () => void)()
+    })
+
+    expect(mockWarn).toHaveBeenCalledTimes(1)
+    expect(mockWarn.mock.calls[0]?.[0]).toBe("bible_card_art.exhausted")
+  })
+
+  it("emits the exhaustion signal once when one load reports twice", () => {
+    // SDWebImage's completion closure can call `onError` twice for one failed
+    // load, both in the same render pass. The terminal check alone would then
+    // double-count the only signal separating an exhausted card from a loading one.
+    const onArtworkFailed = jest.fn()
+    render(
+      [
+        stillQuote({
+          imageUrl: STOCK_A,
+          artCandidates: [STOCK_A],
+          artIndex: 0,
+        }),
+      ],
+      onArtworkFailed,
+    )
+
+    act(() => {
+      const onError = imageProps()?.onError as () => void
+      onError()
+      onError()
+    })
+
+    expect(mockWarn).toHaveBeenCalledTimes(1)
+  })
+
+  it("stays quiet when a failure still has somewhere to fall to", () => {
+    render([stillQuote()], jest.fn())
+    act(() => {
+      ;(imageProps()?.onError as () => void)()
+    })
+    expect(mockWarn).not.toHaveBeenCalled()
+  })
+
+  it("reports nothing for a card that never entered the ladder", () => {
+    const onArtworkFailed = jest.fn()
+    // The Experience path: an image field, but no candidate list behind it.
+    render([{ ...EXPERIENCE_QUOTE, imageUrl: STOCK_A }], onArtworkFailed)
+
+    act(() => {
+      ;(imageProps()?.onError as () => void)()
+    })
+    expect(onArtworkFailed).not.toHaveBeenCalled()
+    expect(mockWarn).not.toHaveBeenCalled()
+  })
+})
+
+describe("BibleQuotesCarouselRenderer — the Experience parity gap", () => {
+  it("renders no image for a quote carrying admin's own artwork field", () => {
+    // Admin's quote item defines `imageAsset` and `backgroundImageAsset`; this
+    // renderer reads `imageUrl`, which the type does not define. Pinning
+    // today's behaviour, NOT endorsing it — closing the gap is out of scope.
+    render([{ ...EXPERIENCE_QUOTE, imageAsset: STOCK_A }])
+    expect(mockImage).not.toHaveBeenCalled()
+  })
+
+  it("still resolves and validates an image field that does arrive", () => {
+    render([{ ...EXPERIENCE_QUOTE, imageUrl: "javascript:alert(1)" }])
+    expect(mockImage).not.toHaveBeenCalled()
+
+    render([{ ...EXPERIENCE_QUOTE, imageUrl: STOCK_A }])
+    expect(imageProps()?.source).toBe(STOCK_A)
+  })
+})
+
+describe("BibleQuotesCarouselRenderer — bounded prefetch", () => {
+  /** Every card carries its own still, which is the shape a real video has. */
+  function carousel(count: number, overrides: Quote = {}): Quote[] {
+    return Array.from({ length: count }, (_, i) =>
+      stillQuote({
+        reference: `Psalm ${i + 1}:1`,
+        imageUrl: `https://image.mux.com/p/thumbnail.webp?time=${i}.00`,
+        artCandidates: [`https://image.mux.com/p/thumbnail.webp?time=${i}.00`],
+        ...overrides,
+      }),
+    )
+  }
+
+  const settleCard = (index: number) =>
+    act(() => {
+      ;(mockImage.mock.calls[index]?.[0]?.onLoad as () => void)()
+    })
+
+  it("issues no prefetch before the visible card has settled", () => {
+    render(carousel(3))
+    // The API takes no priority, so ordering behind the visible card's own load
+    // is the only thing keeping an off-screen still from outranking it.
+    expect(mockPrefetch).not.toHaveBeenCalled()
+  })
+
+  it("prefetches past the cards the list already mounts", () => {
+    render(carousel(3))
+    settleCard(0)
+
+    // Card 2, NOT card 1. The list mounts its own neighbour, whose `<Image>`
+    // requests that URL itself, so aiming at +1 re-asked for a load already in
+    // flight and the gate bounded nothing at all.
+    expect(mockPrefetch).toHaveBeenCalledTimes(1)
+    expect(mockPrefetch.mock.calls[0]?.[0]).toEqual([
+      "https://image.mux.com/p/thumbnail.webp?time=2.00",
+    ])
+  })
+
+  it("prefetches with the cache policy the render itself uses", () => {
+    render(carousel(3))
+    settleCard(0)
+    expect(mockPrefetch.mock.calls[0]?.[1]).toEqual({
+      cachePolicy: "memory-disk",
+    })
+  })
+
+  it("does not re-issue a request for a card already prefetched", () => {
+    render(carousel(3))
+    settleCard(0)
+    settleCard(0)
+    settleCard(1)
+    expect(mockPrefetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("issues nothing at the end of the carousel rather than an empty list", () => {
+    // `Image.prefetch` never settles when handed an empty array — both native
+    // implementations resolve only from inside a per-URL callback.
+    render(carousel(1))
+    settleCard(0)
+    expect(mockPrefetch).not.toHaveBeenCalled()
+  })
+
+  it("issues nothing for a video whose ladder yields no artwork", () => {
+    render([
+      { ...PASSAGE_QUOTE, imageUrl: null, artCandidates: [] },
+      { ...PASSAGE_QUOTE, imageUrl: null, artCandidates: [] },
+    ])
+    expect(mockPrefetch).not.toHaveBeenCalled()
+  })
+
+  it("prefetches when the visible card errors rather than loads", () => {
+    render(carousel(3), jest.fn())
+    act(() => {
+      ;(mockImage.mock.calls[0]?.[0]?.onError as () => void)()
+    })
+    expect(mockPrefetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("prefetches immediately when the visible card has nothing to load", () => {
+    // A held card is settled by construction: waiting on an image it will never
+    // request would suppress the prefetch for the rest of the session.
+    render([
+      { ...PASSAGE_QUOTE, imageUrl: null, artCandidates: [] },
+      ...carousel(2),
+    ])
+    expect(mockPrefetch).toHaveBeenCalledTimes(1)
+    expect(mockPrefetch.mock.calls[0]?.[0]).toEqual([
+      "https://image.mux.com/p/thumbnail.webp?time=1.00",
+    ])
+  })
+
+  it("releases the gate on a load that never settles, and not before", () => {
+    jest.useFakeTimers()
+    try {
+      render(carousel(3))
+      // Asserted in BOTH directions: absence alone would pass against a
+      // prefetch that never fires at all.
+      expect(mockPrefetch).not.toHaveBeenCalled()
+
+      act(() => {
+        jest.advanceTimersByTime(3000)
+      })
+      expect(mockPrefetch).toHaveBeenCalledTimes(1)
+    } finally {
+      jest.useRealTimers()
+    }
   })
 })
 

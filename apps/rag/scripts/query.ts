@@ -6,6 +6,7 @@ import { loadEnvironmentFiles } from "../src/config/env.js"
 import { wire } from "../src/main.js"
 
 function parse(argv: string[]): { query: string; policy: RetrievalPolicy } {
+  if (argv[0] === "--") argv = argv.slice(1)
   const policy: RetrievalPolicy = {}
   const free: string[] = []
   for (let index = 0; index < argv.length; index++) {

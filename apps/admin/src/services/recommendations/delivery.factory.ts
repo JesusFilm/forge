@@ -4,14 +4,17 @@ import { prisma as defaultPrisma } from "@/db/client"
 import { SceneRecommendationsService } from "@/services/scene-recommendations.service"
 import { createRecommendationDeliveryAdmission } from "./admission"
 import { getLiveProfileCandidates } from "./candidates/profile-candidate.service"
-import { RECOMMENDATION_CONTRACTS } from "./contracts"
+import {
+  RECOMMENDATION_CONTRACTS,
+  RECOMMENDATION_PROFILE_SESSION_LINK_HOURS,
+} from "./contracts"
 import { getSemanticDeliveryCandidatePool } from "./delivery-retriever"
 import {
   runRecommendationDeliveryTransaction,
   runRecommendationRetrievalQuery,
 } from "./delivery-runtime"
+import type { DeliveryDependencies } from "./delivery.types"
 import { RecommendationDeliveryService } from "./delivery.service"
-import { resolveExperimentAssignment } from "./experiment/assignment"
 import { getRecommendationServingState } from "./manifest.service"
 import { getRecommendationRecentContext } from "./recent-context.service"
 import { readRecommendationRetentionHealth } from "./retention.service"
@@ -20,8 +23,16 @@ import { createRuntimeRecommendationTokenService } from "./runtime-token"
 export function createRecommendationDeliveryService(
   prisma: PrismaClient = defaultPrisma,
 ): RecommendationDeliveryService {
+  return new RecommendationDeliveryService(
+    createRecommendationDeliveryDependencies(prisma),
+  )
+}
+
+export function createRecommendationDeliveryDependencies(
+  prisma: PrismaClient,
+): DeliveryDependencies {
   const token = createRuntimeRecommendationTokenService(prisma)
-  return new RecommendationDeliveryService({
+  return {
     prisma,
     admission: createRecommendationDeliveryAdmission(),
     tokenService: token,
@@ -61,14 +72,6 @@ export function createRecommendationDeliveryService(
             prisma: scopedPrisma,
           }).recheckEligibility(items, input.locale, input.audioLanguageSlug),
       ),
-    assignExperiment: (input) =>
-      runRecommendationDeliveryTransaction(
-        prisma,
-        input.deadlineAt,
-        (tx) =>
-          resolveExperimentAssignment(tx as unknown as PrismaClient, input),
-        Date.now,
-      ),
     authorizeProfile: (input) =>
       runRecommendationDeliveryTransaction(
         prisma,
@@ -78,7 +81,7 @@ export function createRecommendationDeliveryService(
             where: { tokenDigest: input.consentReceiptDigest },
             include: { profile: true },
           })
-          return Boolean(
+          const authorized = Boolean(
             receipt &&
             receipt.state === "ACTIVE" &&
             receipt.contractVersion === "recommendation-consent-v1" &&
@@ -90,6 +93,33 @@ export function createRecommendationDeliveryService(
             receipt.profile.privacyGeneration === receipt.privacyGeneration &&
             receipt.profile.expiresAt > input.now,
           )
+          if (!authorized || !receipt?.profile) return false
+          const expiresAt = new Date(
+            Math.min(
+              receipt.expiresAt.getTime(),
+              receipt.profile.expiresAt.getTime(),
+              input.now.getTime() +
+                RECOMMENDATION_PROFILE_SESSION_LINK_HOURS * 3_600_000,
+            ),
+          )
+          await tx.recommendationProfileSessionLink.upsert({
+            where: {
+              profileId_privacyGeneration_sessionDigest: {
+                profileId: receipt.profile.id,
+                privacyGeneration: receipt.profile.privacyGeneration,
+                sessionDigest: input.sessionDigest,
+              },
+            },
+            create: {
+              profileId: receipt.profile.id,
+              privacyGeneration: receipt.profile.privacyGeneration,
+              sessionDigest: input.sessionDigest,
+              linkedAt: input.now,
+              expiresAt,
+            },
+            update: { expiresAt },
+          })
+          return true
         },
         Date.now,
       ),
@@ -124,5 +154,5 @@ export function createRecommendationDeliveryService(
             now: input.now,
           }),
       ),
-  })
+  }
 }

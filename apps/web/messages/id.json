@@ -343,7 +343,8 @@
     "nextVideoPreview": "Pratinjau video berikutnya",
     "featured": "Unggulan",
     "mediaCollection": "Koleksi media",
-    "scrollToVideo": "Gulir ke video {title}"
+    "scrollToVideo": "Gulir ke video {title}",
+    "forYou": "Direkomendasikan untuk Anda"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Bahasa",
@@ -462,7 +463,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -713,9 +714,9 @@
   "WatchUnavailableLanguage": {
     "metadataTitle": "Versi bahasa tidak tersedia",
     "eyebrow": "Versi bahasa tidak tersedia",
-    "title": "<contentTitle>{title}</contentTitle> tidak tersedia dalam <languageName>{language}</languageName>",
+    "title": "<contentTitle>{title}</contentTitle> tidak tersedia dalam bahasa <languageName>{language}</languageName>",
     "actionsLabel": "Pilihan tontonan yang tersedia",
-    "browseInLanguage": "Jelajahi video dalam {language}",
+    "browseInLanguage": "Jelajahi video dalam bahasa {language}",
     "backToSearch": "Kembali ke pencarian",
     "audioVersionsTitle": "Versi audio lainnya",
     "audioVersionsDescription": "Pilih bahasa audio untuk melanjutkan menonton video ini.",

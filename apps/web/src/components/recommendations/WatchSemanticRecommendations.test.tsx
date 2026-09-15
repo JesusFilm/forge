@@ -35,6 +35,11 @@ vi.mock("@/components/watch/MuxHoverPreview", () => ({
 
 import { WatchSemanticRecommendations } from "@/components/recommendations/WatchSemanticRecommendations"
 import {
+  completeRecommendationConsentBootstrap,
+  startRecommendationConsentBootstrap,
+} from "@/lib/recommendation-consent-bootstrap"
+import {
+  acceptedEvidenceResponse,
   container,
   deferred,
   delivery,
@@ -55,6 +60,35 @@ import {
 setupWatchRecommendationsTestHarness()
 
 describe("WatchSemanticRecommendations", () => {
+  it("waits for first-visit consent initialization before delivery", async () => {
+    startRecommendationConsentBootstrap()
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL) =>
+      jsonResponse({ delivery: sixItemDelivery }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    act(() => {
+      root.render(
+        <WatchSemanticRecommendations
+          seedMediaId="seed-1"
+          locale="en"
+          audioLanguageSlug="english"
+        />,
+      )
+    })
+    await flush()
+    expect(fetchMock).not.toHaveBeenCalled()
+
+    completeRecommendationConsentBootstrap()
+    await flush()
+    expect(
+      fetchMock.mock.calls.filter(([input]) =>
+        String(input).endsWith("/api/recommendations"),
+      ),
+    ).toHaveLength(1)
+    expect(container.textContent).toContain("Target video")
+  })
+
   it("renders the compatible profile lane with a privacy-safe explanation", async () => {
     const profileDelivery = {
       ...delivery,
@@ -342,10 +376,13 @@ describe("WatchSemanticRecommendations", () => {
 
     expect(deliveryCalls).toBe(1)
     expect((selectionSignal as AbortSignal | null)?.aborted).toBe(false)
+    const selectionBody = requestBodies(fetchMock).find(
+      (body) => body.eventId != null,
+    )
 
     pendingSelection.resolve(
       jsonResponse({
-        claimNonce: "qualified-claim-nonce",
+        claimNonce: selectionBody?.claimNonce,
         canonicalHref: sixItemDelivery.items[0].canonicalHref,
         targetMediaId: sixItemDelivery.items[0].targetMediaId,
       }),
@@ -386,7 +423,7 @@ describe("WatchSemanticRecommendations", () => {
     })
     await flush()
 
-    expect(container.querySelector('[data-state="unavailable"]')).not.toBeNull()
+    expect(container.querySelector('[data-state="unavailable"]')).toBeNull()
     expect(container.querySelector("a[data-recommendation-key]")).toBeNull()
   })
 
@@ -441,9 +478,7 @@ describe("WatchSemanticRecommendations", () => {
       })
       await flush()
 
-      expect(
-        container.querySelector('[data-state="unavailable"]'),
-      ).not.toBeNull()
+      expect(container.querySelector('[data-state="unavailable"]')).toBeNull()
       expect(container.textContent).not.toContain("Target video")
       expect(container.querySelector("a")).toBeNull()
       expect(
@@ -456,15 +491,15 @@ describe("WatchSemanticRecommendations", () => {
   )
 
   it("loads after mount, keeps the capability out of DOM, and emits render/impression once per committed envelope", async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      const url = String(input)
-      if (url.endsWith("/api/recommendations")) {
-        return jsonResponse({ delivery })
-      }
-      return jsonResponse({
-        receipts: [{ eventId: "event", status: "accepted" }],
-      })
-    })
+    const fetchMock = vi.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+        if (url.endsWith("/api/recommendations")) {
+          return jsonResponse({ delivery })
+        }
+        return acceptedEvidenceResponse(init)
+      },
+    )
     vi.stubGlobal("fetch", fetchMock)
 
     act(() => {
@@ -562,11 +597,11 @@ describe("WatchSemanticRecommendations", () => {
   })
 
   it.each([
-    ["empty", emptyDelivery, false],
-    ["unavailable", unavailableDelivery, true],
+    ["empty", emptyDelivery],
+    ["unavailable", unavailableDelivery],
   ])(
-    "renders the %s sentinel without recommendation links",
-    async (state, sentinelDelivery, showsUnavailableMessage) => {
+    "renders nothing for a terminal %s delivery",
+    async (_state, sentinelDelivery) => {
       vi.stubGlobal(
         "fetch",
         vi.fn(() =>
@@ -585,13 +620,7 @@ describe("WatchSemanticRecommendations", () => {
       })
       await flush()
 
-      expect(container.querySelector(`[data-state="${state}"]`)).not.toBeNull()
-      expect(container.querySelector("a")).toBeNull()
-      expect(container.textContent).toContain(
-        showsUnavailableMessage
-          ? "Recommended videos are temporarily unavailable."
-          : "No recommendations found for this video in this language.",
-      )
+      expect(container.innerHTML).toBe("")
     },
   )
 
@@ -641,6 +670,167 @@ describe("WatchSemanticRecommendations", () => {
       expect(container.querySelector('[data-state="unavailable"]')).toBeNull()
     },
   )
+
+  it("retries one transient delivery failure before showing unavailable", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({ error: "temporarily_unavailable" }, 503),
+      )
+      .mockResolvedValueOnce(jsonResponse({ delivery }))
+      .mockResolvedValue(jsonResponse({ receipts: [] }))
+    vi.stubGlobal("fetch", fetchMock)
+
+    act(() => {
+      root.render(
+        <WatchSemanticRecommendations
+          seedMediaId="seed-1"
+          locale="en"
+          audioLanguageSlug="english"
+        />,
+      )
+    })
+    await flush()
+
+    expect(container.querySelector('[data-state="loading"]')).not.toBeNull()
+    expect(container.querySelector('[data-state="unavailable"]')).toBeNull()
+
+    await act(async () => vi.advanceTimersByTime(500))
+    await flush()
+
+    expect(container.textContent).toContain("Target video")
+    expect(container.querySelector('[data-state="unavailable"]')).toBeNull()
+    expect(
+      fetchMock.mock.calls.filter(([input]) =>
+        String(input).endsWith("/api/recommendations"),
+      ),
+    ).toHaveLength(2)
+  })
+
+  it("keeps all retries inside one delivery deadline", async () => {
+    const pending = deferred<Response>()
+    const fetchMock = vi.fn().mockReturnValueOnce(pending.promise)
+    vi.stubGlobal("fetch", fetchMock)
+
+    act(() => {
+      root.render(
+        <WatchSemanticRecommendations
+          seedMediaId="seed-1"
+          locale="en"
+          audioLanguageSlug="english"
+        />,
+      )
+    })
+    await flush()
+
+    await act(async () => vi.advanceTimersByTime(11_750))
+    await act(async () => {
+      pending.resolve(
+        jsonResponse({
+          delivery: {
+            ...unavailableDelivery,
+            reason: "delivery_unavailable",
+          },
+        }),
+      )
+      await pending.promise
+    })
+    await flush()
+
+    expect(container.querySelector('[data-state="unavailable"]')).toBeNull()
+    await act(async () => vi.advanceTimersByTime(1_000))
+    expect(
+      fetchMock.mock.calls.filter(([input]) =>
+        String(input).endsWith("/api/recommendations"),
+      ),
+    ).toHaveLength(1)
+  })
+
+  it("does not retry a permanent delivery rejection", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ error: "invalid_request" }, 400))
+    vi.stubGlobal("fetch", fetchMock)
+
+    act(() => {
+      root.render(
+        <WatchSemanticRecommendations
+          seedMediaId="seed-1"
+          locale="en"
+          audioLanguageSlug="english"
+        />,
+      )
+    })
+    await flush()
+
+    expect(container.querySelector('[data-state="unavailable"]')).toBeNull()
+    await act(async () => vi.advanceTimersByTime(500))
+    await flush()
+    expect(
+      fetchMock.mock.calls.filter(([input]) =>
+        String(input).endsWith("/api/recommendations"),
+      ),
+    ).toHaveLength(1)
+  })
+
+  it("does not retry a deployment-disabled delivery", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        delivery: { ...unavailableDelivery, reason: "environment_disabled" },
+      }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    act(() => {
+      root.render(
+        <WatchSemanticRecommendations
+          seedMediaId="seed-1"
+          locale="en"
+          audioLanguageSlug="english"
+        />,
+      )
+    })
+    await flush()
+    expect(container.querySelector('[data-state="unavailable"]')).toBeNull()
+
+    await act(async () => vi.advanceTimersByTime(500))
+    await flush()
+    expect(
+      fetchMock.mock.calls.filter(([input]) =>
+        String(input).endsWith("/api/recommendations"),
+      ),
+    ).toHaveLength(1)
+  })
+
+  it("does not retry a malformed successful delivery response", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response("not-json", {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    act(() => {
+      root.render(
+        <WatchSemanticRecommendations
+          seedMediaId="seed-1"
+          locale="en"
+          audioLanguageSlug="english"
+        />,
+      )
+    })
+    await flush()
+    expect(container.querySelector('[data-state="unavailable"]')).toBeNull()
+
+    await act(async () => vi.advanceTimersByTime(500))
+    await flush()
+    expect(
+      fetchMock.mock.calls.filter(([input]) =>
+        String(input).endsWith("/api/recommendations"),
+      ),
+    ).toHaveLength(1)
+  })
 
   it("keeps a fallback slate actionable and announces that it is saved", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
@@ -761,24 +951,26 @@ describe("WatchSemanticRecommendations", () => {
 
   it("retries rejected render evidence with the same event id", async () => {
     let evidenceAttempts = 0
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      const url = String(input)
-      if (url.endsWith("/api/recommendations")) {
-        return jsonResponse({ delivery })
-      }
-      if (url.endsWith("/api/recommendations/profile")) {
-        return jsonResponse({
-          profile: {
-            state: "session_only",
-            privacyGeneration: null,
-          },
-        })
-      }
-      evidenceAttempts += 1
-      return evidenceAttempts === 1
-        ? jsonResponse({ error: "temporary" }, 503)
-        : jsonResponse({ receipts: [] })
-    })
+    const fetchMock = vi.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+        if (url.endsWith("/api/recommendations")) {
+          return jsonResponse({ delivery })
+        }
+        if (url.endsWith("/api/recommendations/profile")) {
+          return jsonResponse({
+            profile: {
+              state: "session_only",
+              privacyGeneration: null,
+            },
+          })
+        }
+        evidenceAttempts += 1
+        return evidenceAttempts === 1
+          ? jsonResponse({ error: "temporary" }, 503)
+          : acceptedEvidenceResponse(init)
+      },
+    )
     vi.stubGlobal("fetch", fetchMock)
 
     act(() => {
@@ -802,6 +994,56 @@ describe("WatchSemanticRecommendations", () => {
     )
     expect(evidenceBodies).toHaveLength(2)
     expect(evidenceBodies[1]).toEqual(evidenceBodies[0])
+  })
+
+  it("retries a successful response that omits the per-event receipt", async () => {
+    let evidenceAttempts = 0
+    const degraded = vi.fn()
+    window.addEventListener("forge:recommendation-evidence-degraded", degraded)
+    const fetchMock = vi.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).endsWith("/api/recommendations")) {
+          return jsonResponse({ delivery })
+        }
+        evidenceAttempts += 1
+        return evidenceAttempts === 1
+          ? jsonResponse({ receipts: [] })
+          : acceptedEvidenceResponse(init)
+      },
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    act(() => {
+      root.render(
+        <WatchSemanticRecommendations
+          seedMediaId="seed-1"
+          locale="en"
+          audioLanguageSlug="english"
+        />,
+      )
+    })
+    await flush()
+    expect(evidenceAttempts).toBe(1)
+
+    await act(async () => vi.advanceTimersByTimeAsync(100))
+    expect(evidenceAttempts).toBe(2)
+    const evidenceBodies = requestBodies(fetchMock).filter(
+      (body) => body.requestId === "request-1" && Array.isArray(body.events),
+    )
+    expect(evidenceBodies).toHaveLength(2)
+    expect(evidenceBodies[1]).toEqual(evidenceBodies[0])
+    expect(degraded).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          reason: "receipt_missing",
+          disposition: "retrying",
+        }),
+      }),
+    )
+    window.removeEventListener(
+      "forge:recommendation-evidence-degraded",
+      degraded,
+    )
   })
 
   it("does not let stale evidence failure degrade a replacement slate", async () => {

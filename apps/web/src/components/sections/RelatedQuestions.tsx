@@ -10,7 +10,10 @@ import type {
 import Markdown from "react-markdown"
 import { relatedQuestionsFragment } from "@/lib/fragments/related-questions"
 import { Button } from "@/components/ui/button"
-import { WatchFaqList } from "@/components/watch/WatchFaqList"
+import {
+  WatchFaqList,
+  WATCH_FAQ_HEADING_CLASS,
+} from "@/components/watch/WatchFaqList"
 
 export { relatedQuestionsFragment }
 
@@ -106,28 +109,34 @@ export function RelatedQuestions({ data }: RelatedQuestionsProps) {
       data-testid="RelatedQuestionsSection"
       className="w-full pt-6 xl:pt-4"
     >
-      <WatchFaqList
-        items={items}
-        openIds={openId == null ? [] : [openId]}
-        onToggle={handleToggle}
-        heading={heading ?? undefined}
-        itemTestId="RelatedQuestionsItem"
-        headerAction={
-          ctaLink ? (
-            <Button
-              variant="pill"
-              nativeButton={false}
-              aria-label={ctaLabel || t("askYours")}
-              render={
-                <a href={ctaLink} target="_blank" rel="noopener noreferrer" />
-              }
-            >
-              <MessageCircleIcon />
-              <span>{ctaLabel || t("askYours")}</span>
-            </Button>
-          ) : null
-        }
-      />
+      <div className="flex flex-wrap items-end justify-between gap-x-10 gap-y-6">
+        {heading && (
+          <h2 className={`max-w-2xl ${WATCH_FAQ_HEADING_CLASS}`}>{heading}</h2>
+        )}
+
+        {ctaLink ? (
+          <Button
+            variant="pill"
+            nativeButton={false}
+            aria-label={ctaLabel || t("askYours")}
+            render={
+              <a href={ctaLink} target="_blank" rel="noopener noreferrer" />
+            }
+          >
+            <MessageCircleIcon />
+            <span>{ctaLabel || t("askYours")}</span>
+          </Button>
+        ) : null}
+      </div>
+
+      <div className="mt-10 lg:mt-14">
+        <WatchFaqList
+          items={items}
+          openIds={openId == null ? [] : [openId]}
+          onToggle={handleToggle}
+          itemTestId="RelatedQuestionsItem"
+        />
+      </div>
     </section>
   )
 }

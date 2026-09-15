@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto"
 
 import type { PrismaClient } from "@prisma/client"
 import {
-  currentEmbeddingProviderIdentity,
+  currentContentQueryEmbeddingIdentity,
   EmbeddingsBatchError,
   generateExperienceEmbedding,
 } from "./embeddings.service"
@@ -201,9 +201,12 @@ export type WatchSearchLaneStatus = {
 export type WatchSearchRetrievalIdentity = {
   profile: "CURRENT" | "CANDIDATE"
   generationId: string | null
-  applicationRevision: string | null
+  indexContractRevision: string | null
+  contentEmbeddingContractId: string | null
+  transcriptChunkingVersion: string | null
   rankingRevision: string
   transcriptProjectionRevision: string | null
+  activeTranscriptProjectionRevision: string | null
   evaluationRevision: string | null
 }
 
@@ -445,7 +448,9 @@ export class WatchSearchService {
         })
         const exactTitle = await exactTitlePromise
         const exactVideoIds = new Set(
-          exactTitle.map((candidate) => candidate.resultId),
+          exactTitle
+            .filter(isExactTitleCandidate)
+            .map((candidate) => candidate.resultId),
         )
         const metadataCandidates = fuseMetadataCandidates({
           keywordWeighted,
@@ -543,8 +548,12 @@ export class WatchSearchService {
       semanticPipeline.semanticWatchabilityLaneStatus,
     )
     const rawCandidates = exactPipeline.exactTitle
+    const exactCandidates = rawCandidates.filter(isExactTitleCandidate)
+    const curatedCandidates = rawCandidates
+      .filter((candidate) => candidate.curated === true)
+      .map(curatedCandidateFromExactTitle)
     const exactVideoIds = new Set(
-      rawCandidates.map((candidate) => candidate.resultId),
+      exactCandidates.map((candidate) => candidate.resultId),
     )
     const uniqueMetadataCandidates = metadataPipeline.metadataCandidates.filter(
       (candidate) => !exactVideoIds.has(candidate.resultId),
@@ -556,7 +565,14 @@ export class WatchSearchService {
     const uniqueSemanticCandidates = semanticPipeline.semanticCandidates.filter(
       (candidate) => !lexicalVideoIds.has(candidate.resultId),
     )
-    const rankedExactCandidates = rawCandidates
+    const organicVideoIds = new Set([
+      ...lexicalVideoIds,
+      ...uniqueSemanticCandidates.map((candidate) => candidate.resultId),
+    ])
+    const uniqueCuratedCandidates = curatedCandidates.filter(
+      (candidate) => !organicVideoIds.has(candidate.resultId),
+    )
+    const rankedExactCandidates = exactCandidates
       .map((candidate, index) => ({ candidate, index }))
       .sort((left, right) => {
         const availabilityDelta =
@@ -577,9 +593,13 @@ export class WatchSearchService {
         kind: "semantic" as const,
         candidate,
       })),
+      ...uniqueCuratedCandidates.map((candidate) => ({
+        kind: "curated" as const,
+        candidate,
+      })),
     ]
     const watchabilityFor = (entry: RankedWatchCandidate) => {
-      if (entry.kind === "exact") {
+      if (entry.kind === "exact" || entry.kind === "curated") {
         return exactWatchability.get(entry.candidate.resultId)
       }
       if (entry.kind === "metadata") {
@@ -587,7 +607,7 @@ export class WatchSearchService {
       }
       return semanticPipeline.semanticWatchability.get(entry.candidate.resultId)
     }
-    const rankedCandidates = mergedCandidates
+    const naturallyRankedCandidates = mergedCandidates
       .map((entry) => {
         const watchability = watchabilityFor(entry)
         const { rankingRelevance, scoreBreakdown } = candidateScores(
@@ -621,6 +641,18 @@ export class WatchSearchService {
 
         return left.candidate.resultId.localeCompare(right.candidate.resultId)
       })
+    const curatedPositions = new Map(
+      curatedCandidates.flatMap((candidate) => {
+        const watchability = exactWatchability.get(candidate.resultId)
+        return watchability && watchability.kind !== "unavailable"
+          ? [[candidate.resultId, candidate.curationPosition] as const]
+          : []
+      }),
+    )
+    const rankedCandidates = guaranteeCuratedDefaultFirstPage(
+      naturallyRankedCandidates,
+      curatedPositions,
+    )
     const candidates = rankedCandidates
       .slice(offset, offset + limit + 1)
       .map((entry) => entry)
@@ -635,6 +667,13 @@ export class WatchSearchService {
       }
       if (entry.kind === "metadata") {
         return mapMetadataCandidate({
+          candidate: entry.candidate,
+          scoreBreakdown: entry.scoreBreakdown,
+          watchability: entry.watchability,
+        })
+      }
+      if (entry.kind === "curated") {
+        return mapCuratedCandidate({
           candidate: entry.candidate,
           scoreBreakdown: entry.scoreBreakdown,
           watchability: entry.watchability,
@@ -934,10 +973,15 @@ type MetadataCandidate = FusedResult & {
   description: string | null
 }
 
+type CuratedCandidate = MetadataCandidate & {
+  curationPosition: number
+}
+
 type RankedWatchCandidate =
   | { kind: "exact"; candidate: ExactTitleCandidate }
   | { kind: "metadata"; candidate: MetadataCandidate }
   | { kind: "semantic"; candidate: SemanticVideoSearchResult }
+  | { kind: "curated"; candidate: CuratedCandidate }
 
 type EvidenceLocale = {
   languageSlug: string
@@ -1006,6 +1050,7 @@ type QueryEmbeddingCacheLookup =
     }
 
 type QueryEmbeddingCacheKey = {
+  contractId: string
   provider: string
   model: string
   dimensions: number
@@ -1016,9 +1061,13 @@ function normalizeEmbeddingCacheText(text: string): string {
   return text.replace(/\s+/g, " ").trim()
 }
 
-function queryEmbeddingCacheKey(text: string): QueryEmbeddingCacheKey {
-  const identity = currentEmbeddingProviderIdentity()
+async function queryEmbeddingCacheKey(
+  prisma: PrismaClient,
+  text: string,
+): Promise<QueryEmbeddingCacheKey> {
+  const identity = await currentContentQueryEmbeddingIdentity(prisma)
   const cacheIdentity = JSON.stringify({
+    contractId: identity.contractId,
     provider: identity.provider,
     model: identity.model,
     dimensions: identity.dimensions,
@@ -1026,6 +1075,7 @@ function queryEmbeddingCacheKey(text: string): QueryEmbeddingCacheKey {
   })
 
   return {
+    contractId: identity.contractId,
     provider: identity.provider,
     model: identity.model,
     dimensions: identity.dimensions,
@@ -1095,7 +1145,8 @@ async function deleteCachedQueryEmbedding(
 ): Promise<void> {
   await prisma.$executeRaw`
     DELETE FROM query_embedding_cache
-    WHERE provider = ${key.provider}
+    WHERE contract_id = ${key.contractId}
+      AND provider = ${key.provider}
       AND model = ${key.model}
       AND dimensions = ${key.dimensions}
       AND query_hash = ${key.queryHash}
@@ -1110,7 +1161,8 @@ async function readCachedQueryEmbedding(
     UPDATE query_embedding_cache
     SET last_used_at = CURRENT_TIMESTAMP,
         updated_at = CURRENT_TIMESTAMP
-    WHERE provider = ${key.provider}
+    WHERE contract_id = ${key.contractId}
+      AND provider = ${key.provider}
       AND model = ${key.model}
       AND dimensions = ${key.dimensions}
       AND query_hash = ${key.queryHash}
@@ -1151,6 +1203,7 @@ async function rememberQueryEmbedding(
   await prisma.$executeRaw`
     INSERT INTO query_embedding_cache (
       id,
+      contract_id,
       provider,
       model,
       dimensions,
@@ -1163,6 +1216,7 @@ async function rememberQueryEmbedding(
     )
     VALUES (
       ${randomUUID()},
+      ${key.contractId},
       ${key.provider},
       ${key.model},
       ${key.dimensions},
@@ -1173,7 +1227,7 @@ async function rememberQueryEmbedding(
       CURRENT_TIMESTAMP,
       CURRENT_TIMESTAMP
     )
-    ON CONFLICT (provider, model, dimensions, query_hash)
+    ON CONFLICT (contract_id, provider, model, dimensions, query_hash)
     DO UPDATE SET
       embedding = EXCLUDED.embedding,
       expires_at = EXCLUDED.expires_at,
@@ -1186,7 +1240,7 @@ export async function defaultWatchSearchEmbedder(
   prisma: PrismaClient,
   text: string,
 ): Promise<WatchSearchQueryEmbeddingResult> {
-  const key = queryEmbeddingCacheKey(text)
+  const key = await queryEmbeddingCacheKey(prisma, text)
   const processCached = watchSearchQueryEmbeddingProcessCache.get(key)
   if (processCached != null) {
     return { embedding: processCached, detail: "cache_l1_hit" }
@@ -1360,9 +1414,79 @@ function fuseMetadataCandidates({
   }))
 }
 
+function isExactTitleCandidate(candidate: ExactTitleCandidate): boolean {
+  return candidate.titleMatched !== false
+}
+
+function curatedCandidateFromExactTitle(
+  candidate: ExactTitleCandidate,
+): CuratedCandidate {
+  return {
+    resultType: "video",
+    resultId: candidate.resultId,
+    videoCoreId: candidate.videoCoreId,
+    videoSlug: candidate.videoSlug,
+    videoTitle: candidate.videoTitle,
+    imageUrl: null,
+    description: candidate.description,
+    score: 0,
+    curationPosition: candidate.curationPosition ?? 1,
+  }
+}
+
+function guaranteeCuratedDefaultFirstPage<
+  T extends { candidate: { resultId: string } },
+>(
+  candidates: readonly T[],
+  curatedPositions: ReadonlyMap<string, number>,
+): T[] {
+  const orderedIds = [...curatedPositions.entries()]
+    .sort(([leftId, leftPosition], [rightId, rightPosition]) =>
+      leftPosition === rightPosition
+        ? leftId.localeCompare(rightId)
+        : leftPosition - rightPosition,
+    )
+    .map(([videoId]) => videoId)
+  const idsToMove = orderedIds
+    .filter((videoId) => {
+      const index = candidates.findIndex(
+        (entry) => entry.candidate.resultId === videoId,
+      )
+      return index >= DEFAULT_LIMIT
+    })
+    .slice(0, DEFAULT_LIMIT)
+  if (idsToMove.length === 0) return [...candidates]
+
+  const moveIds = new Set(idsToMove)
+  const movingById = new Map(
+    candidates
+      .filter((entry) => moveIds.has(entry.candidate.resultId))
+      .map((entry) => [entry.candidate.resultId, entry] as const),
+  )
+  const moving = idsToMove.flatMap((videoId) => {
+    const entry = movingById.get(videoId)
+    return entry ? [entry] : []
+  })
+  const remaining = candidates.filter(
+    (entry) => !moveIds.has(entry.candidate.resultId),
+  )
+  const insertionIndex = Math.min(
+    Math.max(0, DEFAULT_LIMIT - moving.length),
+    remaining.length,
+  )
+
+  return [
+    ...remaining.slice(0, insertionIndex),
+    ...moving,
+    ...remaining.slice(insertionIndex),
+  ]
+}
+
 function resultCandidateScore(entry: RankedWatchCandidate): number {
   if (entry.kind === "semantic") return entry.candidate.similarity
-  if (entry.kind === "metadata") return entry.candidate.score
+  if (entry.kind === "metadata" || entry.kind === "curated") {
+    return entry.candidate.score
+  }
   return 1
 }
 
@@ -1377,7 +1501,7 @@ function matchScore(entry: RankedWatchCandidate, query: string): number {
   if (entry.kind === "exact") {
     return isWholeTitleMatch(query, entry.candidate.videoTitle) ? 0.45 : 0.2
   }
-  if (entry.kind === "metadata") return 0.14
+  if (entry.kind === "metadata" || entry.kind === "curated") return 0.14
   return 0.08
 }
 
@@ -1425,9 +1549,17 @@ function candidateScores(
 }
 
 function passesMinimumConfidence(
-  entry: RankedWatchCandidate & { scoreBreakdown: WatchSearchScoreBreakdown },
+  entry: RankedWatchCandidate & {
+    scoreBreakdown: WatchSearchScoreBreakdown
+    watchability: SearchWatchability | undefined
+  },
 ) {
   if (entry.kind === "exact") return true
+  if (entry.kind === "curated") {
+    return (
+      entry.watchability != null && entry.watchability.kind !== "unavailable"
+    )
+  }
   if (entry.kind === "metadata") {
     return entry.scoreBreakdown.total >= MIN_METADATA_TOTAL_SCORE
   }
@@ -1658,6 +1790,25 @@ function mapMetadataCandidate({
     fallback: {
       kind: fallbackKindForWatchability(watchability),
       message: fallbackMessageForWatchability(watchability),
+    },
+  }
+}
+
+function mapCuratedCandidate({
+  candidate,
+  scoreBreakdown,
+  watchability,
+}: {
+  candidate: CuratedCandidate
+  scoreBreakdown: WatchSearchScoreBreakdown
+  watchability: SearchWatchability | undefined
+}): WatchSearchResult {
+  return {
+    ...mapMetadataCandidate({ candidate, scoreBreakdown, watchability }),
+    evidence: {
+      kind: "metadata",
+      languageSlug: null,
+      label: "Editorial match",
     },
   }
 }

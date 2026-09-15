@@ -141,7 +141,12 @@ function formatDuration(seconds: number): string {
   return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`
 }
 
-function buildMetaLabel(args: {
+/**
+ * The one owner of card chip text: "N episodes" wins over a duration, which
+ * wins over the label. Search passes an empty `label` — it wants no label
+ * fallback — so callers must treat "" as "no chip".
+ */
+export function buildMetaLabel(args: {
   label: string
   durationSeconds: number | null
   childCount: number

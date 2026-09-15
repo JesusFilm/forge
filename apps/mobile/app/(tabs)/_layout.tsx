@@ -1,27 +1,28 @@
 import { Tabs } from "expo-router"
-import { Platform, type ViewStyle } from "react-native"
+import { Platform } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
+
+import { useTabBarStyle } from "../../src/lib/tabBar"
 
 const ACCENT = "#CB333B"
 const MUTED = "#a8a29e"
 const BG_COLOR = "#1c1917"
 
-// Shared so the Library screen can RESTORE this exact style after hiding the
-// tab bar during selection — restoring to `undefined` falls back to RN's
-// default (light) bar, not the navigator's dark one (that was the bug).
-export const TAB_BAR_STYLE: ViewStyle = {
-  backgroundColor: BG_COLOR,
-  borderTopColor: "transparent",
-}
-
+/**
+ * Android's tab bar. iOS is shadowed by `_layout.ios.tsx` and its UIKit bar
+ * (feat-500) — but this file MUST stay: expo-router resolves the platform
+ * sibling by specificity and throws without an extension-less fallback.
+ */
 export default function TabLayout() {
+  const tabBarStyle = useTabBarStyle()
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: ACCENT,
         tabBarInactiveTintColor: MUTED,
-        tabBarStyle: TAB_BAR_STYLE,
+        tabBarStyle,
         tabBarLabelStyle: {
           fontSize: Platform.select({ ios: 10, android: 12 }),
           fontFamily: "System",
@@ -42,14 +43,14 @@ export default function TabLayout() {
       <Tabs.Screen
         name="watch"
         options={{
-          title: "Discover",
+          title: "Search",
           headerShown: true,
-          headerTitle: "Discover",
+          headerTitle: "Search",
           headerStyle: { backgroundColor: BG_COLOR },
           headerTintColor: "#f5f5f4",
           headerShadowVisible: false,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="compass" size={size} color={color as string} />
+            <Ionicons name="search" size={size} color={color as string} />
           ),
         }}
       />

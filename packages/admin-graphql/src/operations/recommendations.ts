@@ -82,7 +82,9 @@ export const adminRecordSemanticRecommendationEvidenceMutation = `
     $capability: String!
     $requestId: ID!
     $itemId: ID!
-    $sessionDigest: String!
+    $sessionDigest: String
+    $viewerToken: String
+    $sessionToken: String
     $events: [RecommendationEvidenceEventInput!]!
   ) {
     recordSemanticRecommendationEvidence(
@@ -91,6 +93,8 @@ export const adminRecordSemanticRecommendationEvidenceMutation = `
       requestId: $requestId
       itemId: $itemId
       sessionDigest: $sessionDigest
+      viewerToken: $viewerToken
+      sessionToken: $sessionToken
       events: $events
     ) {
       eventId
@@ -109,10 +113,13 @@ export const adminSelectSemanticRecommendationMutation = `
     $capability: String!
     $requestId: ID!
     $itemId: ID!
-    $sessionDigest: String!
+    $sessionDigest: String
+    $viewerToken: String
+    $sessionToken: String
     $eventId: String!
     $occurredAt: String!
     $tabDigest: String
+    $claimNonce: String!
   ) {
     selectSemanticRecommendation(
       contractVersion: $contractVersion
@@ -120,9 +127,12 @@ export const adminSelectSemanticRecommendationMutation = `
       requestId: $requestId
       itemId: $itemId
       sessionDigest: $sessionDigest
+      viewerToken: $viewerToken
+      sessionToken: $sessionToken
       eventId: $eventId
       occurredAt: $occurredAt
       tabDigest: $tabDigest
+      claimNonce: $claimNonce
     ) {
       status
       claimNonce
@@ -138,12 +148,16 @@ export const adminSelectSemanticRecommendationOperation = adminGraphql(
 
 export const adminClaimSemanticRecommendationEpisodeMutation = `
   mutation ClaimSemanticRecommendationEpisode(
-    $sessionDigest: String!
+    $sessionDigest: String
+    $viewerToken: String
+    $sessionToken: String
     $claimNonce: String!
     $mediaId: ID!
   ) {
     claimSemanticRecommendationEpisode(
       sessionDigest: $sessionDigest
+      viewerToken: $viewerToken
+      sessionToken: $sessionToken
       claimNonce: $claimNonce
       mediaId: $mediaId
     ) {
@@ -159,12 +173,41 @@ export const adminClaimSemanticRecommendationEpisodeOperation = adminGraphql(
   adminClaimSemanticRecommendationEpisodeMutation,
 )
 
+export const adminIssueWatchPlaybackContextMutation = `
+  mutation IssueWatchPlaybackContext(
+    $sessionDigest: String
+    $viewerToken: String
+    $sessionToken: String
+    $mediaId: ID!
+    $discoverySource: String!
+    $provenance: JSON!
+  ) {
+    issueWatchPlaybackContext(
+      sessionDigest: $sessionDigest
+      viewerToken: $viewerToken
+      sessionToken: $sessionToken
+      mediaId: $mediaId
+      discoverySource: $discoverySource
+      provenance: $provenance
+    ) {
+      claimNonce
+      contextVersion
+    }
+  }
+` as const
+
+export const adminIssueWatchPlaybackContextOperation = adminGraphql(
+  adminIssueWatchPlaybackContextMutation,
+)
+
 export const adminRecordSemanticRecommendationPlaybackMutation = `
   mutation RecordSemanticRecommendationPlayback(
     $contractVersion: String!
     $capability: String!
     $episodeId: ID!
-    $sessionDigest: String!
+    $sessionDigest: String
+    $viewerToken: String
+    $sessionToken: String
     $mediaId: ID!
     $events: [RecommendationPlaybackEventInput!]!
   ) {
@@ -173,6 +216,8 @@ export const adminRecordSemanticRecommendationPlaybackMutation = `
       capability: $capability
       episodeId: $episodeId
       sessionDigest: $sessionDigest
+      viewerToken: $viewerToken
+      sessionToken: $sessionToken
       mediaId: $mediaId
       events: $events
     ) {
@@ -190,7 +235,9 @@ export const adminRecordSemanticRecommendationPlaybackOperation = adminGraphql(
 export const adminRecordRecommendationContentActionMutation = `
   mutation RecordRecommendationContentAction(
     $contractVersion: String!
-    $sessionDigest: String!
+    $sessionDigest: String
+    $viewerToken: String
+    $sessionToken: String
     $eventId: String!
     $occurredAt: String!
     $mediaId: ID!
@@ -200,6 +247,8 @@ export const adminRecordRecommendationContentActionMutation = `
     recordRecommendationContentAction(
       contractVersion: $contractVersion
       sessionDigest: $sessionDigest
+      viewerToken: $viewerToken
+      sessionToken: $sessionToken
       eventId: $eventId
       occurredAt: $occurredAt
       mediaId: $mediaId

@@ -27,6 +27,11 @@ const fieldManifests = {
   transcript: [{ name: "embedding", type: "float[]", num_dim: 1536 }],
 } as const
 
+const transcriptCompatibility = {
+  contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+  transcriptChunkingVersion: "mastra-v1",
+} as const
+
 describe("Typesense Watch search profiles", () => {
   it("keeps current on the existing aliases with compatibility enabled", () => {
     const profile = createCurrentWatchSearchProfile()
@@ -40,7 +45,9 @@ describe("Typesense Watch search profiles", () => {
         transcript: TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
       },
       generationId: null,
-      applicationRevision: null,
+      indexContractRevision: null,
+      contentEmbeddingContractId: null,
+      transcriptChunkingVersion: null,
       transcriptProjectionRevision: null,
       qrelsRevision: null,
       fieldManifests: null,
@@ -53,7 +60,8 @@ describe("Typesense Watch search profiles", () => {
   it("creates one immutable candidate profile from an explicit resolved generation", () => {
     const profile = createCandidateWatchSearchProfile({
       generationId: "generation-1",
-      applicationRevision: "revision-1",
+      indexContractRevision: "revision-1",
+      ...transcriptCompatibility,
       transcriptProjectionRevision: 7n,
       fieldManifests,
       collections: {
@@ -67,7 +75,8 @@ describe("Typesense Watch search profiles", () => {
     expect(profile).toMatchObject({
       kind: "CANDIDATE",
       generationId: "generation-1",
-      applicationRevision: "revision-1",
+      indexContractRevision: "revision-1",
+      ...transcriptCompatibility,
       transcriptProjectionRevision: 7n,
       allowCompatibilityFallback: false,
     })
@@ -106,7 +115,8 @@ describe("Typesense Watch search profiles", () => {
       expect(() =>
         createCandidateWatchSearchProfile({
           generationId: "generation-1",
-          applicationRevision: "revision-1",
+          indexContractRevision: "revision-1",
+          ...transcriptCompatibility,
           transcriptProjectionRevision: 7n,
           fieldManifests,
           collections,
@@ -149,7 +159,8 @@ describe("Typesense Watch search profiles", () => {
   it("constructs a candidate only after exact generation validation", async () => {
     const resolveGeneration = vi.fn(async () => ({
       generationId: "generation-1",
-      applicationRevision: "revision-1",
+      indexContractRevision: "revision-1",
+      ...transcriptCompatibility,
       transcriptProjectionRevision: 7n,
       fieldManifests,
       collections: {
@@ -163,8 +174,9 @@ describe("Typesense Watch search profiles", () => {
     const profile = await resolveCandidateWatchSearchProfile({
       generations: { resolveGeneration },
       generationId: "generation-1",
-      applicationRevision: "revision-1",
+      indexContractRevision: "revision-1",
       transcriptCollection: "watch_search_transcripts_20260809",
+      ...transcriptCompatibility,
       transcriptProjectionRevision: 7n,
       requireQualified: true,
       currentBindings: ["current-catalog", "current-transcript"],
@@ -174,8 +186,9 @@ describe("Typesense Watch search profiles", () => {
 
     expect(resolveGeneration).toHaveBeenCalledWith({
       generationId: "generation-1",
-      applicationRevision: "revision-1",
+      indexContractRevision: "revision-1",
       transcriptCollection: "watch_search_transcripts_20260809",
+      ...transcriptCompatibility,
       transcriptProjectionRevision: 7n,
       requireQualified: true,
       currentBindings: ["current-catalog", "current-transcript"],
@@ -194,8 +207,9 @@ describe("Typesense Watch search profiles", () => {
           }),
         },
         generationId: "generation-1",
-        applicationRevision: "revision-1",
+        indexContractRevision: "revision-1",
         transcriptCollection: "watch_search_transcripts_20260809",
+        ...transcriptCompatibility,
         transcriptProjectionRevision: 7n,
       }),
     ).rejects.toThrow("not READY")
@@ -218,7 +232,8 @@ describe("Typesense Watch search profiles", () => {
     })
     const candidate = createCandidateWatchSearchProfile({
       generationId: "generation-1",
-      applicationRevision: "revision-1",
+      indexContractRevision: "revision-1",
+      ...transcriptCompatibility,
       transcriptProjectionRevision: 7n,
       fieldManifests,
       collections: {
@@ -230,8 +245,9 @@ describe("Typesense Watch search profiles", () => {
     })
     const lease = {
       generationId: "generation-1",
-      applicationRevision: "revision-1",
+      indexContractRevision: "revision-1",
       transcriptCollection: "watch_search_transcripts_physical-1",
+      ...transcriptCompatibility,
       transcriptProjectionRevision: 7n,
       currentBindings: watchSearchBindingMembers(current),
       expiresAt: new Date("2026-08-10T00:01:00.000Z"),

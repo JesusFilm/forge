@@ -92,6 +92,8 @@ ever used the Seeker must email an operator.
 
 ## What To Build
 
+**Additional lifecycle obligation (recorded 2026-09-09, owner decision in feat-247 planning):** [feat-247](feat-247-chat-history-management.md) plans durable conversation deletion records containing conversation ID and owner/resource ID without title/messages. They survive ordinary conversation retention. Its operator-erasure extension will remove matching records even with no live conversations. When implementing this cascade, consume that extended erasure seam and include record-only users; do not assume all Seeker data ages out within 25 days. Removing records removes protection against recreation by outstanding requests or still-valid sessions. Whether additional safeguards are needed for public release remains open in [feat-339](feat-339-seeker-public-release-register.md). This note does not approve the cascade's failure policy or claim feat-247 is implemented.
+
 A Mastra-side surface that wraps the feat-337 functions, plus an
 `apps/auth` side effect that calls it. `apps/auth` cannot import
 `apps/mastra` source, so the seam is HTTP — but the SHAPE of that surface is

@@ -36,7 +36,10 @@ const healthyCounts: ExperimentCounts = {
   conflictingOutcomes: 0,
 }
 
-function harness(evidence: ExperimentCounts[] = [healthyCounts]) {
+function harness(
+  evidence: ExperimentCounts[] = [healthyCounts],
+  options: { databaseEvidence?: boolean } = {},
+) {
   const evaluations: Array<Record<string, unknown>> = []
   const runs = new Map([
     [
@@ -68,6 +71,7 @@ function harness(evidence: ExperimentCounts[] = [healthyCounts]) {
   ])
   const tx = {
     $executeRaw: vi.fn(async () => 1),
+    $queryRaw: vi.fn(async () => [healthyCounts]),
     recommendationExperimentEvaluationRun: {
       findUnique: vi.fn(async ({ where }: { where: { id: string } }) =>
         runs.get(where.id),
@@ -112,16 +116,20 @@ function harness(evidence: ExperimentCounts[] = [healthyCounts]) {
     prisma: prisma as never,
     now: () => capturedAt,
     newId: () => `evaluation-${++id}`,
-    loadEvidence: async () => ({
-      counts: evidence[Math.min(evidenceIndex++, evidence.length - 1)]!,
-      watermarks: {
-        assignment: windowEnd,
-        exposure: windowEnd,
-        outcome: windowEnd,
-        mission: windowEnd,
-        eligibility: windowEnd,
-      },
-    }),
+    ...(options.databaseEvidence
+      ? {}
+      : {
+          loadEvidence: async () => ({
+            counts: evidence[Math.min(evidenceIndex++, evidence.length - 1)]!,
+            watermarks: {
+              assignment: windowEnd,
+              exposure: windowEnd,
+              outcome: windowEnd,
+              mission: windowEnd,
+              eligibility: windowEnd,
+            },
+          }),
+        }),
   })
   return { service, evaluations, runs, tx }
 }
@@ -195,5 +203,30 @@ describe("RecommendationExperimentEvaluationService", () => {
         claimId: "wrong-claim",
       }),
     ).resolves.toEqual({ status: "fenced", reason: "claim_lost" })
+  })
+
+  it("admits only impression-qualified selections to experiment evidence", async () => {
+    const { service, tx } = harness([healthyCounts], {
+      databaseEvidence: true,
+    })
+
+    await expect(
+      service.evaluateClaimedRun({
+        runId: "run-1",
+        expectedGeneration: 1,
+        expectedExperimentGeneration: 1,
+        claimId: "11111111-1111-4111-8111-111111111111",
+      }),
+    ).resolves.toMatchObject({ status: "published" })
+
+    const query = (tx.$queryRaw.mock.calls as unknown[][])[0]?.[0] as {
+      sql?: string
+      text?: string
+      strings?: string[]
+    }
+    const sql = String(query.sql ?? query.text ?? query.strings)
+    expect(sql).toContain("attribution_eligible_episodes")
+    expect(sql).toContain("selection.attribution_eligible_at <=")
+    expect(sql).toContain("JOIN attribution_eligible_episodes episode")
   })
 })

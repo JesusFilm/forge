@@ -1,5 +1,5 @@
 /**
- * GotQuestions.org — English slice of a same-domain multilingual source.
+ * GotQuestions.org — shared source with an opt-in Icelandic path slice.
  *
  * The site publishes a flat English sitemap: both answer articles and navigation
  * pages use `/<slug>.html`, so discovery needs an explicit negative policy for
@@ -19,11 +19,31 @@ export const gotquestions: SourceEntry = {
   domain: "www.gotquestions.org",
   trust: "trusted",
   ingestionMode: "html-scrape",
-  languages: ["en"],
+  languages: ["en", "is"],
   defaultTags: ["gotquestions", "bible-questions", "theology", "seeker-qa"],
   defaultCategory: "theology",
   rights:
     "Got Questions Ministries — publicly accessible teaching; citations and canonical URLs preserved; not redistributed.",
+  pathCrawls: {
+    "/islenska/": {
+      baseUrl: "https://www.gotquestions.org",
+      fetchStrategy: "plain-http",
+      sitemaps: ["/islenska/icelandic.xml"],
+      allow: [
+        "^https://www\\.gotquestions\\.org/islenska/(?:icelandic\\.xml|[^/?#]+\\.html)$",
+      ],
+      articleHints: [
+        "^https://www\\.gotquestions\\.org/islenska/[^/?#]+\\.html$",
+      ],
+      block: ["^https://www\\.gotquestions\\.org/islenska/index\\.html$"],
+      contentSelectors: ["main .content"],
+      stripSelectors: ["script", "style", "noscript", "svg"],
+      requestDelayMs: 1500,
+      maxPages: 51,
+      expectedPages: 51,
+      minContentLength: 250,
+    },
+  },
   crawl: {
     baseUrl: "https://www.gotquestions.org",
     sitemaps: ["/sitemap.xml"],

@@ -176,6 +176,87 @@ PNGs or `assets/AppIcon.icon/` — regenerate.** The script borrows `apps/admin`
   combinations `brandpad.io/jfp` permits. It matches the existing tvOS tile, which
   has the same issue. Pending a waiver from the brand owner.
 
+## Cold-start splash
+
+**The animated splash is OFF** (`ANIMATED_SPLASH_ENABLED = false` in
+`src/lib/splash/animatedSplashEnabled.ts`, since 2026-09-15 — the product lead
+did not approve the animation). The code stays in the tree, disabled, not
+removed: `SplashHost`, `SplashCoveredTree`, `SplashSequence`, the splash
+session, the embedded Noto Serif face, and the projector rasters. Do not delete
+any of it. The `expo-font` plugin entry and its TTF are fingerprint inputs, so
+removing them moves the runtime version. `SplashSequence` imports the two
+projector rasters statically, so deleting one fails the bundler with `Unable to
+resolve module` and nothing ships. A warm dev server is NOT the check: it can
+keep serving a cached bundle after the file is gone. Verified by hand
+2026-09-15 — `npx expo export --platform ios` exits 0 with the raster and exits
+1 without it, naming `SplashSequence.tsx`, while a live Metro served a
+byte-identical cached bundle either way.
+
+What a cold launch does with the flag off: the native splash shows
+`assets/splash-icon.png` — the JFP symbol on the `#1c1917` ground — until the
+React tree's first commit, then Home. `app/_layout.tsx` still takes the native
+hold at module scope (KTD2) and `SplashHost` still lowers it, on the same
+never-plays path a deep-link launch takes. `getSplashSession().start()` settles
+that snapshot synchronously, so nothing waits on the deep-link gate. The flag is
+a required `createSplashSession` dep. `splashSession.test.ts` pins the
+singleton's behaviour against the constant, and
+`src/lib/splash/__tests__/splashKillSwitch.guard.test.js` pins the four halves
+no behavioural suite ties together: the call site passes the constant and not a
+literal, the flag file declares it exactly once as a bare literal, the
+generator reads that file with the same pattern, and the committed PNG matches
+the flag by md5.
+
+**The native asset follows the flag, and the generator enforces it.**
+`pnpm icons:generate` reads the flag file by regex (one line, bare literal;
+the generator refuses a second declaration, even a commented one) and emits
+the symbol when off, the flat field when on. A flip without a regeneration, or
+a hand-edited PNG, fails the guard.
+
+**The symbol reaches a binary only through prebuild.** Every binary built from
+the flat asset — dev clients from 2026-09-10 to 2026-09-15 and TestFlight
+1.0.0 (7) — runs this JS as a flat field, then Home, with no logo anywhere.
+Android is the same restore as before #2216: `enableFullScreenImage_legacy` is
+iOS-only, and Android draws the symbol as the small icon in its system-splash
+slot.
+
+To see the new native splash on a local simulator:
+
+1. `npx expo prebuild --platform ios --no-install`. `expo run:ios` skips
+   prebuild when `ios/` exists, so without this step the build ships the old
+   imageset. Prebuild rewrites `ios/Podfile`; before `pod install`, re-add the
+   `post_install` hook that puts `__STDC_WANT_LIB_EXT1__=1` on the `MMKVCore`
+   and `MMKV` targets, or the build fails on `memset_s` under Xcode 26 (see
+   `docs/solutions/integration-issues/expo-dev-launcher-root-vc-blocks-fullscreen-rotate.md`).
+2. Confirm `ios/forgewatch/Images.xcassets/SplashScreenLegacy.imageset/image.png`
+   changed (it is RGBA and about 12 KB with the symbol; the flat field was
+   5,861 B).
+3. `npx expo run:ios --device <udid>`.
+
+To re-enable, all three steps, in one PR:
+
+1. Set `ANIMATED_SPLASH_ENABLED = true`.
+2. Run `pnpm icons:generate` — the native splash must be flat again, or the
+   handover shows a symbol-to-blank flip.
+3. Ship a NATIVE build before the next `eas update`. The asset moves the
+   fingerprint runtime version. A whole-branch OTA targets a runtime no
+   installed build carries and reaches nobody; a flag-only OTA on the old
+   runtime cuts from the flat field straight to Home.
+
+The reverse (this change) needs the same native build for the same reason. The
+design record is `docs/plans/2026-09-09-1059-feat-mobile-animated-splash-plan.md`.
+
+**Until that native build ships, the production channel is dark.** Every
+`update:production` from `main` targets a runtime version no installed build
+carries. `eas update` still exits 0 and reports success, so an unrelated JS
+hotfix published in this window reaches nobody and nothing says so. Installed
+testers keep the animation until they install the new build. The only OTA that
+could reach them is the flag off with the OLD flat asset, and
+`splashKillSwitch.guard.test.js` rejects that pairing by md5 on any committed
+tree, by design. **Open decision, owner: the release caller.** The default
+posture is to wait for the build. Taking the animation off installed devices
+sooner needs a deliberate throwaway-branch OTA and an explicit call; do not
+improvise it from `main`.
+
 ## Running on a simulator (env setup)
 
 **Before launching apps/mobile on a simulator, ALWAYS run
@@ -361,6 +442,49 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
   shows the login form after sign-out. A user cancel settles session-less —
   the expo plugin never throws for it — so a thrown browser open always
   classifies as a retryable error (`src/lib/authFlows.ts`).
+- **The hosted flow is `signIn.social({ provider: "jfp" })`, and the Better
+  Auth client version is pinned in LOCKSTEP with `apps/auth`.** Better Auth
+  1.7 removed the generic-oauth plugin's own endpoints (`/sign-in/oauth2`,
+  `/oauth2/callback/:id`) and its `genericOAuthClient`; generic providers now
+  ride the core `/sign-in/social` + `/callback/:id`. Auth moved to 1.7.1 on
+  2026-08-24 (#1978) while mobile stayed on 1.6.2, so every sign-in from
+  TestFlight build 1.0.0 (4) POSTed to a route that no longer existed: 404 →
+  `result.error` → the retry card, with no sheet ever opening. No mobile test
+  could see it — the client is mocked at the module boundary and the server
+  lives in another package — so
+  `src/lib/__tests__/betterAuthVersionLockstep.guard.test.js` reads BOTH
+  manifests and fails on any drift of `better-auth` / `@better-auth/expo`.
+  Bump the two apps together, in one PR; auth's
+  `mobile-expo-plugin.guard.test.ts` pins the installed `@better-auth/expo`
+  dist and fails on every bump until the mirrored proxy is re-verified.
+  Five auth-side pieces the same flow depends on:
+  the route wrapper must pass a `forgemobile://` callback through
+  (`resolveMobileCallbackURL`); `mobileAwareExpoPlugin` must re-admit the
+  self-RP authorize URL in the 1.7 browser proxy — a bare `expo()` there ends
+  every sign-in on `{"message":"Invalid authorizationURL"}` inside the sheet;
+  `accountLinking.requireLocalEmailVerified` must stay `false`, or a user
+  without a `jfp` account row (every hosted sign-up) ends on
+  `error=account_not_linked` and the app reads a quiet cancel; the
+  session stamp must read `params.id` (the 1.7 core callback is
+  `/callback/:id`), or the JWT carries no mobile claim for progress writes;
+  and `selfRpStateCookiePlugin` must plant the self-RP `state` cookie again
+  when `/oauth2/authorize` hands the browser its code — a Google or Okta
+  sign-in on the hosted page is a second OAuth flow in the same sheet that
+  consumes the ONE `state` cookie 1.7 checks, so without it every provider
+  sign-in ended on `forgemobile:///?error=state_mismatch` and the app read a
+  quiet cancel (build 1.0.0 (5), 2026-09-07; the password form never
+  triggers it, which is why the #2176 verification passed). A quiet cancel
+  hides every one of these from the user: when the sheet closes and the
+  Profile tab still says Sign in, read production auth's deploy log first.
+  `@better-auth/utils` rides the same lockstep: it is `@better-auth/core`'s
+  EXACT peer, and with both apps carrying `core`, pnpm resolved auth's peers
+  against `better-call`'s `^0.5.0` walk, split `core` into two lockfile
+  variants, and failed auth's typecheck — the explicit `0.4.2` pin in BOTH
+  manifests holds the walk. A provider-side failure inside the flow returns
+  as `forgemobile:///?error=<code>` (auth's `errorCallbackURL`); the Expo
+  client ignores that param, so the app reads a quiet cancel, but the sheet
+  no longer strands on a web page. Deploy order: auth first, then the
+  mobile build.
 - **iOS auth session is EPHEMERAL** (`webBrowserOptions.preferEphemeralSession`
   on the expo client, iOS-only): no Safari cookie sharing, so no per-sign-in
   "Wants to Use…to Sign In" consent alert and no iOS shared-device residual.
@@ -709,6 +833,163 @@ the app's own `#1c1917` instead of the platform contrast scrim.
   content. That guarantee is now gone app-wide, so any surface drawing light
   pixels behind the bar (a bright fullscreen video frame) can hide the buttons.
   No replacement scrim ships yet.
+
+## Tab bar — UIKit's own bar on iOS, a flush JS bar on Android
+
+`src/lib/tabBar.ts` owns every number. Both navigators, the Library screen, the
+mini player and six scroll surfaces read it from there, so no two files can
+disagree about the bar's size.
+
+> **The native tabs migration shipped on 2026-09-14** (feat-500). iOS now runs
+> UIKit's own tab bar. Read the Results section of
+> `docs/roadmap/platform/feat-500-mobile-native-tabs-migration.md` for the
+> device measurements and the carried-forward items. The iOS floating pill,
+> `TabBarLens.tsx` and `tabIndexForSegments` are deleted. Their rules are
+> history, not current guidance — with ONE exception that is live again. The
+> group-marker rule survives as `isTabGroupRoute` in `src/lib/tabBar.ts`:
+> `app/watch/[slug].tsx` is a root-stack sibling and emits the bare segment
+> `watch`, which is also the Discover tab's name, so "am I on a tab route" must
+> key off `(tabs)` and never a tab name.
+
+- **A ROOT-mounted surface does not get the bar in its inset, and must clear it
+  from the SCREEN bottom.** A tab SCREEN's `insets.bottom` contains the bar; the
+  root `SafeAreaProvider` does not, because the bar belongs to the tab
+  controller the root sits outside of. Do NOT derive the lift from the inset:
+  the iOS 26 bar is a floating pill anchored to the bottom EDGE, so its top sits
+  a constant 83pt above the screen bottom whatever the inset is. Measured
+  2026-09-14 — iPhone 17 and 17 Pro Max (inset 34) and iPhone SE 3rd gen
+  (inset 0) all report a bar frame 83pt tall. Use
+  `TAB_BAR_SCREEN_EXTENT_IOS`, not `insets.bottom + TAB_BAR_HEIGHT_IOS`; the two
+  agree only at inset 34, which is why a 34pt device cannot catch the mistake.
+  The export toast sat 21pt inside the bar on a 0-inset device, and its first
+  fix still sat 6pt inside, until this was measured.
+
+- **`PlaybackHost`'s `TAB_BAR_CONTENT_HEIGHT` has the same unfixed shape.** It
+  is `TAB_BAR_OCCUPIED_HEIGHT` (49), reserved by the root-mounted mini player,
+  so on a 0-inset device the window reserves 49 against an 83pt bar. Not
+  investigated on device; do not copy the pattern.
+
+- **A tab screen's `insets.bottom` ALREADY contains the iOS bar.** Know this
+  before you touch a scroll surface. `useTabBarClearance()` returns
+  `insets.bottom + TAB_BAR_CLEARANCE_GAP` on iOS, and `0` on Android, where the
+  bar displaces content instead of drawing over it. It must NOT add
+  `TAB_BAR_HEIGHT_IOS` again: UIKit reports the bar as part of the safe area,
+  and a tab screen measures `insets.bottom` 83 = a 34pt home indicator + the
+  49pt bar, on iOS 18.6 and 26.5 alike. `tabBar.test.ts` holds that exact
+  falsification, because the doubled formula is what a careless revert restores.
+- **`TAB_BAR_HEIGHT_IOS` is 49 — the real UIKit bar, not a design number.** The
+  mini player reserves `TAB_BAR_OCCUPIED_HEIGHT` (49 on iOS, 56 on Android)
+  rather than the inset, because it lives in the ROOT provider, outside the tab
+  controller, and cannot read the per-tab safe area. `TAB_BAR_OCCUPIED_HEIGHT`
+  resolves the platform once at import, which no test can reach; pin the
+  branches through `tabBarOccupiedHeightFor(platform)` beside it.
+- **iOS renders `app/(tabs)/_layout.ios.tsx`.** It uses `NativeTabs` from
+  `expo-router/unstable-native-tabs`, which is a real `UITabBarController`. It
+  builds one trigger per name in `TAB_ROUTE_NAMES`, and it sets
+  `disableAutomaticContentInsets` on each one. UIKit's automatic inset only
+  reaches a scroll view that is first in the subview chain, and no tab screen
+  has one there — on Home that position holds the horizontal hero pager — so
+  the screens pad themselves through `useTabBarClearance()` instead.
+- **`app/(tabs)/_layout.tsx` MUST stay on disk.** It now serves Android only.
+  Do not delete it: expo-router resolves the platform sibling by specificity,
+  and it throws without an extension-less fallback file.
+- **The Library screen hides the iOS bar through a module store.** `NativeTabs`
+  has no per-screen `tabBarStyle`, and its only hide lever is the
+  navigator-level `hidden` prop. A context cannot carry the flag, because the
+  layout renders the screen and is therefore an ANCESTOR, not a descendant. So
+  the flag lives in `src/lib/tabBarVisibility.ts`. Call `setTabBarHidden(true)`
+  to hide it, and `resetTabBarHidden()` on blur and on unmount, or a tab switch
+  strands the bar hidden. Android keeps its own lever,
+  `navigation.setOptions({ tabBarStyle })`.
+- **The hide removes the 49pt bar from `insets.bottom`, one frame later.** Two
+  places add it back by hand, and neither may trust the raw inset during that
+  frame. `SelectionActionBar` clamps it — `insets.bottom >= TAB_BAR_HEIGHT_IOS`
+  gives `insets.bottom - TAB_BAR_HEIGHT_IOS`, anything smaller passes through —
+  so the home indicator reads 34 from both 83 and 34, and 0 from 49 on a
+  home-button device. `library.tsx` pads its list by `TAB_BAR_HEIGHT_IOS + 24`
+  while selection runs.
+- **`TabBarBackground` survives, but `SelectionActionBar` is its only
+  consumer.** The navigator dropped it: UIKit draws its own material. The action
+  bar stands in the same place over the same content, so the measured tint floor
+  still applies there. `TAB_BAR_MATERIAL_TINT` is `rgba(0,0,0,0.3)`. Untinted, a
+  bright Home backdrop drops the idle labels to 3.35:1, under the 4.5:1 AA
+  floor. **A tint on the material is not the same problem as a tint over bare
+  content:** the material has already darkened the ground, so contrast rises
+  monotonically with alpha and there is no bad middle value to avoid. 0.26 is
+  the computed minimum; 0.30 ships. The plan's original floor of 0.78 came from
+  a sweep over a bare white backdrop, which crosses the label's own luminance
+  and invents both the bad middle and a 3x-too-high minimum — see
+  `docs/solutions/best-practices/contrast-floor-must-be-derived-over-the-real-compositing-stack.md`.
+- **iOS 18 honours the appearance props; iOS 26 ignores them.**
+  `backgroundColor`, `blurEffect`, `iconColor` and `labelStyle` land exactly on
+  iOS 18.6 — the bar measured the app's own three colours byte-exact — while
+  iOS 26 draws Liquid Glass and keeps UIKit's near-white idle tint. Do not fight
+  it. `disableTransparentOnScrollEdge` is load-bearing on 18: without it the bar
+  turns transparent wherever content reaches its bottom edge.
+- **iPadOS 26 puts the bar at the TOP, and `sidebarAdaptable={false}` does not
+  move it.** That option maps to `tabBarControllerMode: 'tabBar'` and changed
+  nothing across a cold relaunch. feat-500 accepted the top bar. A size-class
+  branch that keeps the JS bar on iPad is the follow-up if the owner wants one.
+- **`<NativeTabs hidden>` is verified on iOS 26 only.** The iOS 16.4-17 branch
+  takes `tabBar.hidden` rather than `setTabBarHidden:animated:`, and that
+  runtime is not installed on this machine.
+- **Android's `tabBarStyle` is applied AFTER the bar's own `backgroundColor`**
+  (`BottomTabBar.js:220` sets it, `:258` appends yours). Keep `#1c1917` in
+  `TAB_BAR_FLAT_STYLE`, and change the fill there rather than anywhere else.
+- **Android must not be given a `tabBarBackground` option at all.** The bar
+  checks the returned ELEMENT, not what it renders, so a wrapper returning
+  `<TabBarBackground />` is non-null on every platform and forces the bar's own
+  fill transparent. `app/(tabs)/_layout.tsx` passes the option on no platform,
+  which keeps Android's opacity on two independent mechanisms rather than on
+  `TAB_BAR_FLAT_STYLE.backgroundColor` alone. `tabBarLayout.test.tsx` pins the
+  absence.
+- **`@react-navigation/bottom-tabs` does not resolve from this app.** Android
+  runs expo-router's vendored fork. Import `useBottomTabBarHeight` from
+  `expo-router/js-tabs`; the obvious import passes `tsc` and fails in Metro. No
+  file needs it today.
+- **The ACTIVE label still fails AA and no tint can fix it.** `#CB333B` on the
+  app ground is 3.39:1, and it sits at a middling luminance, so it fails against
+  dark and light grounds alike. Only a colour change fixes it, and both
+  navigators share the value. Untouched deliberately.
+- **`tabBarLayout.test.tsx` pins BOTH navigators.** It mocks
+  `expo-router/unstable-native-tabs` as well as `expo-router`, because
+  `NativeTabs` does not come from the root module. jest-expo runs the `ios`
+  platform, so it loads the Android layout through a `require` with the explicit
+  `.tsx` extension — an extension-less import resolves to the `.ios` sibling,
+  and every Android assertion then tests the wrong navigator.
+- **`tabBarLensOrder.guard.test.js` keeps its old name and still does a job.**
+  It pins `TAB_ROUTE_NAMES` against the group's route FILES, because expo-router
+  appends an undeclared `app/(tabs)/*` file as a fifth tab, which a scan of
+  either layout cannot see. It reads the `<Tabs.Screen>` order from
+  `_layout.tsx`; the iOS trigger order comes from `TAB_ROUTE_NAMES` itself and
+  `tabBarLayout.test.tsx` pins that.
+- **No test can see the RENDERED material.** Every render suite mocks
+  `GlassView` and `PlatformBlur` to `() => null`, so only a simulator proves the
+  frosting. The branch selection and props ARE covered — see
+  `TabBarBackground.test.tsx` — and `tabBar.test.ts` computes the composited
+  WCAG ratio from the tint's full `rgba()` -- colour AND alpha, since
+  compositing a hard-coded black scored a WHITE tint 4.79:1 while it measures
+  1.52:1 -- so changing `TAB_BAR_MATERIAL_TINT` either way now fails a test.
+  `tabBarClearance.guard.test.js` is an ENUMERATION of six surfaces, not a
+  sweep — a seventh scroller escapes it silently. Add a row whenever you add
+  one. It checks the clearance is APPLIED, not merely imported, and it strips
+  `scrollIndicatorInsets` first -- that prop contains `bottom: tabBarClearance`
+  and satisfied the naive pattern on its own.
+- **`tabBarSingleSource.guard.test.js` holds the one-source claim.** It strips
+  comments before matching -- LEADING and TRAILING, because a trailing
+  `// from "../../lib/tabBar"` beside a hand-copied number is a live revert --
+  and it compares the assigned token rather than using a lookahead, whose
+  `\s*` can match zero characters and slip past the value it was told to
+  reject.
+- **A fade is not available on the material.** `GlassView` renders nothing
+  inside a layer whose opacity an ancestor animates, so any fade of
+  `TabBarBackground` forces `PlatformBlur` on every iOS version and changes the
+  look.
+- **Fast Refresh does not reliably apply changes to the material.** A branch
+  swap looked applied and measured identically to the previous run; a magenta
+  probe proved the old code was still live. Terminate and relaunch the dev
+  client, and prove the reload landed with an unmistakable colour before
+  trusting any measurement.
 
 ## Component render tests
 

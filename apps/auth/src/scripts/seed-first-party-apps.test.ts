@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import {
   ADMIN_MCP_DEFAULT_SCOPES,
   CHANGELOG_DEFAULT_SCOPES,
+  STUDIO_MCP_APP_SEED,
 } from "@/domain/apps"
 
 const upsertScope = vi.fn()
@@ -58,6 +59,11 @@ const PUBLIC_RESOURCE_ROWS: Array<{
   disabled: boolean
   identifier: string
 }> = [
+  ...STUDIO_MCP_APP_SEED.environments.map((e) => ({
+    identifier: e.mcpResourceAudience!,
+    disabled: false,
+    allowedScopes: [...e.defaultScopes],
+  })),
   ...[
     "http://localhost:3003/mcp",
     "https://admin-preview.jesusfilm.org/mcp",
@@ -132,10 +138,10 @@ describe("seedFirstPartyApps", () => {
     // admin-mcp 5 + mobile 2 + tv 4 = 31 environments; oauthClients adds the 4 manager
     // session-service clients on top.
     await expect(seedFirstPartyApps()).resolves.toEqual({
-      apps: 9,
-      environments: 31,
-      oauthClients: 35,
-      scopes: 24,
+      apps: 10,
+      environments: 35,
+      oauthClients: 39,
+      scopes: 28,
       resourceRepair: {
         createdLinks: 0,
         eligibleClients: 0,
@@ -871,7 +877,7 @@ describe("seedFirstPartyApps", () => {
 
     const { seedFirstPartyApps } = await import("./seed-first-party-apps")
     await expect(seedFirstPartyApps()).rejects.toThrow(
-      "Public OAuth resource seed invariant failed (5/6 scope-compatible rows)",
+      "Public OAuth resource seed invariant failed (9/10 scope-compatible rows)",
     )
 
     expect(findManyOAuthClients).not.toHaveBeenCalled()
@@ -890,7 +896,7 @@ describe("seedFirstPartyApps", () => {
 
     const { seedFirstPartyApps } = await import("./seed-first-party-apps")
     await expect(seedFirstPartyApps()).rejects.toThrow(
-      "Public OAuth resource seed invariant failed (5/6 scope-compatible rows)",
+      "Public OAuth resource seed invariant failed (9/10 scope-compatible rows)",
     )
 
     expect(findManyOAuthClients).not.toHaveBeenCalled()

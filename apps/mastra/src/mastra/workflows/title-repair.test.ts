@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url"
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-// Partial env mock: overrides `env` plus the four gate accessors the sweep
+// Partial env mock: overrides `env` plus the gate accessors the sweep
 // reads; everything else comes from the real module. buildSeekerGatewayModelEntry
 // (the gateway gate) reads the mocked `env` too, so the key-presence gate is
 // driven through the same state.
@@ -18,8 +18,7 @@ const mockEnv = vi.hoisted(() => ({
   },
   titleRepairEnabled: true,
   seekerRouteEnabled: true,
-  backend: "postgres" as "postgres" | "memory",
-  canPersist: true,
+  storageBackend: "postgres" as "postgres" | "memory",
 }))
 
 vi.mock("../../config/env", async (importOriginal) => ({
@@ -27,8 +26,7 @@ vi.mock("../../config/env", async (importOriginal) => ({
   env: mockEnv.env,
   isTitleRepairEnabled: () => mockEnv.titleRepairEnabled,
   isSeekerRouteEnabled: () => mockEnv.seekerRouteEnabled,
-  resolveAiChatMemoryBackend: () => mockEnv.backend,
-  canAiChatDataPersist: () => mockEnv.canPersist,
+  canAiChatDataPersist: () => mockEnv.storageBackend === "postgres",
   isAiGatewaySeekerEnabled: () =>
     mockEnv.env.AI_GATEWAY_SEEKER_ENABLED === "true",
 }))
@@ -54,8 +52,7 @@ const OWNER = `${USER_RESOURCE_PREFIX}oidc-sub-1`
 function armGates() {
   mockEnv.titleRepairEnabled = true
   mockEnv.seekerRouteEnabled = true
-  mockEnv.backend = "postgres"
-  mockEnv.canPersist = true
+  mockEnv.storageBackend = "postgres"
   mockEnv.env.DATABASE_URL = "postgresql://u:p@db.internal:5432/forge"
   mockEnv.env.AI_GATEWAY_CHAT_API_KEY = "sk-test"
 }
@@ -204,13 +201,7 @@ describe("resolveTitleRepairSkip (KTD4 gate ladder)", () => {
     [
       "backend_not_postgres",
       () => {
-        mockEnv.backend = "memory"
-      },
-    ],
-    [
-      "persistence_unavailable",
-      () => {
-        mockEnv.canPersist = false
+        mockEnv.storageBackend = "memory"
       },
     ],
     [
@@ -352,10 +343,14 @@ describe("resolveTitleRepairSkip (KTD4 gate ladder)", () => {
     })
   })
 
-  it("the step gates BEFORE constructing the pool (zero pool activity on a skip)", () => {
+  it("the shared-memory gate precedes model, pool, and Memory construction", () => {
+    mockEnv.storageBackend = "memory"
+    expect(resolveTitleRepairSkip()).toBe("backend_not_postgres")
+
     // Source-order pin: the early return on resolveTitleRepairSkip() must sit
-    // before `new Pool(` in the step's execute, so a gate miss can never open
-    // a connection. Comments stripped so prose cannot satisfy it.
+    // before every construction entry point in the step, so a shared-memory
+    // skip cannot open a connection or instantiate a model/Memory. Comments
+    // stripped so prose cannot satisfy it.
     const source = readFileSync(
       fileURLToPath(new URL("./title-repair.ts", import.meta.url)),
       "utf8",
@@ -366,10 +361,19 @@ describe("resolveTitleRepairSkip (KTD4 gate ladder)", () => {
     const gateIndex = code.indexOf("resolveTitleRepairSkip()")
     const lastGateUse = code.lastIndexOf("resolveTitleRepairSkip()")
     const poolIndex = code.indexOf("new Pool(")
+    const registerIndex = code.indexOf("registerTitleRepairMastra(mastra)")
+    const memoryIndex = code.indexOf("getAiChatMemory().recall")
+    const modelIndex = code.indexOf("getTitleRepairAgent().generate")
     expect(gateIndex).toBeGreaterThan(-1)
     expect(poolIndex).toBeGreaterThan(-1)
+    expect(registerIndex).toBeGreaterThan(-1)
+    expect(memoryIndex).toBeGreaterThan(-1)
+    expect(modelIndex).toBeGreaterThan(-1)
     // The step's gate call (the last use — the resolver body comes first).
     expect(lastGateUse).toBeLessThan(poolIndex)
+    expect(lastGateUse).toBeLessThan(registerIndex)
+    expect(lastGateUse).toBeLessThan(memoryIndex)
+    expect(lastGateUse).toBeLessThan(modelIndex)
   })
 })
 
@@ -869,6 +873,10 @@ describe("title-repair module source pins", () => {
     expect(code).toContain(
       'if (env.AI_GATEWAY_CHAT_API_KEY === undefined) return "gateway_unconfigured"',
     )
+  })
+
+  it("uses exactly one shared-postgres predicate", () => {
+    expect(code.match(/canAiChatDataPersist\(\)/g)).toHaveLength(1)
   })
 
   it("wires the output cap through the typed modelSettings home", () => {

@@ -7,7 +7,7 @@ status: "complete"
 start_date: "2026-08-29"
 duration: 3
 depends_on: ["feat-424"]
-blocks: ["feat-426"]
+blocks: ["feat-426", "feat-460"]
 tags: ["rag", "postgres", "migration"]
 ---
 

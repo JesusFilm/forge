@@ -6,7 +6,7 @@ import React, {
   type AnchorHTMLAttributes,
   type ReactNode,
 } from "react"
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("next/image", () => ({
   default: ({ src, alt }: { src: string; alt: string }) => (
@@ -33,6 +33,10 @@ vi.mock("@/components/watch/MuxHoverPreview", () => ({
 }))
 
 import { WatchSemanticRecommendations } from "@/components/recommendations/WatchSemanticRecommendations"
+import {
+  completeRecommendationConsentBootstrap,
+  startRecommendationConsentBootstrap,
+} from "@/lib/recommendation-consent-bootstrap"
 import { RECOMMENDATION_TAB_CORRELATION_KEY } from "@/lib/recommendation-contracts"
 import {
   container,
@@ -49,6 +53,11 @@ import {
 setupWatchRecommendationsTestHarness()
 
 describe("WatchSemanticRecommendations lifecycle", () => {
+  beforeEach(() => {
+    startRecommendationConsentBootstrap()
+    completeRecommendationConsentBootstrap()
+  })
+
   it("hides a stale slate while a changed Watch seed loads", async () => {
     let resolveReplacement!: (response: Response) => void
     const replacement = new Promise<Response>((resolve) => {
@@ -132,7 +141,8 @@ describe("WatchSemanticRecommendations lifecycle", () => {
 
     await act(async () => vi.advanceTimersByTime(12_000))
     expect(container.querySelector('[data-state="loading"]')).toBeNull()
-    expect(container.querySelector('[data-state="unavailable"]')).not.toBeNull()
+    expect(container.querySelector('[data-state="unavailable"]')).toBeNull()
+    expect(container.innerHTML).toBe("")
   })
 
   it("makes pointer/keyboard activation single-flight, stores only the fresh claim nonce, and navigates once", async () => {
@@ -140,7 +150,7 @@ describe("WatchSemanticRecommendations lifecycle", () => {
     const selectionResponse = new Promise<Response>((resolve) => {
       resolveSelection = resolve
     })
-    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+    const fetchMock = vi.fn((input: RequestInfo | URL, _init?: RequestInit) => {
       const url = String(input)
       if (url.endsWith("/api/recommendations")) {
         return Promise.resolve(jsonResponse({ delivery }))
@@ -177,10 +187,17 @@ describe("WatchSemanticRecommendations lifecycle", () => {
     expect(
       fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/select")),
     ).toHaveLength(1)
+    expect(
+      fetchMock.mock.calls.find(([url]) => String(url).endsWith("/select"))?.[1]
+        ?.keepalive,
+    ).toBe(true)
 
+    const selectionBody = requestBodies(fetchMock).find(
+      (body) => body.eventId != null,
+    )
     resolveSelection(
       jsonResponse({
-        claimNonce: "fresh_claim_nonce_1234567890",
+        claimNonce: selectionBody?.claimNonce,
         canonicalHref: "/watch/target.html",
         targetMediaId: "target-1",
       }),
@@ -191,7 +208,7 @@ describe("WatchSemanticRecommendations lifecycle", () => {
     expect(navigate).toHaveBeenCalledWith("/watch/target.html")
     expect(sessionStorage).toHaveLength(1)
     expect(sessionStorage.getItem(RECOMMENDATION_TAB_CORRELATION_KEY)).toBe(
-      "fresh_claim_nonce_1234567890",
+      selectionBody?.claimNonce,
     )
     expect(JSON.stringify(requestBodies(fetchMock))).toContain(
       "capability-secret",
@@ -245,7 +262,7 @@ describe("WatchSemanticRecommendations lifecycle", () => {
 
     resolveSelection(
       jsonResponse({
-        claimNonce: "fresh_claim_nonce_1234567890",
+        claimNonce: selectionBodies[0]?.claimNonce,
         canonicalHref: "/watch/target.html",
         targetMediaId: "target-1",
       }),
@@ -364,6 +381,111 @@ describe("WatchSemanticRecommendations lifecycle", () => {
     expect(navigate).toHaveBeenCalledOnce()
   })
 
+  it("navigates once to the trusted href without retrying terminal selection input", async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith("/api/recommendations")) {
+        return Promise.resolve(jsonResponse({ delivery }))
+      }
+      if (url.endsWith("/select")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ error: "evidence_request_invalid" }), {
+            status: 400,
+          }),
+        )
+      }
+      return Promise.resolve(jsonResponse({ receipts: [] }))
+    })
+    vi.stubGlobal("fetch", fetchMock)
+    const navigate = vi.fn()
+    act(() =>
+      root.render(
+        <WatchSemanticRecommendations
+          seedMediaId="seed-1"
+          locale="en"
+          audioLanguageSlug="english"
+          navigate={navigate}
+        />,
+      ),
+    )
+    await flush()
+    act(() => {
+      container
+        .querySelector("a")!
+        .dispatchEvent(
+          new MouseEvent("click", { bubbles: true, cancelable: true }),
+        )
+    })
+    await flush()
+    await act(async () => vi.advanceTimersByTimeAsync(5_000))
+    expect(
+      fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/select")),
+    ).toHaveLength(1)
+    expect(navigate).toHaveBeenCalledExactlyOnceWith("/watch/target.html")
+  })
+
+  it("reuses the client handoff nonce after a lost selection response", async () => {
+    let selectionAttempts = 0
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.endsWith("/api/recommendations")) {
+        return Promise.resolve(jsonResponse({ delivery }))
+      }
+      if (url.endsWith("/select")) {
+        selectionAttempts += 1
+        if (selectionAttempts === 1) {
+          return Promise.reject(new Error("response lost after commit"))
+        }
+        const body = JSON.parse(String(init?.body)) as {
+          claimNonce: string
+        }
+        return Promise.resolve(
+          jsonResponse({
+            claimNonce: body.claimNonce,
+            canonicalHref: "/watch/target.html",
+            targetMediaId: "target-1",
+          }),
+        )
+      }
+      return Promise.resolve(jsonResponse({ receipts: [] }))
+    })
+    vi.stubGlobal("fetch", fetchMock)
+    const navigate = vi.fn()
+
+    act(() => {
+      root.render(
+        <WatchSemanticRecommendations
+          seedMediaId="seed-1"
+          locale="en"
+          audioLanguageSlug="english"
+          navigate={navigate}
+        />,
+      )
+    })
+    await flush()
+    act(() => {
+      container
+        .querySelector("a")!
+        .dispatchEvent(
+          new MouseEvent("click", { bubbles: true, cancelable: true }),
+        )
+    })
+    await act(async () => vi.advanceTimersByTimeAsync(100))
+    await flush()
+
+    const selectionBodies = requestBodies(fetchMock).filter(
+      (body) => body.eventId != null,
+    )
+    expect(selectionBodies).toHaveLength(2)
+    expect(selectionBodies[1]).toEqual(selectionBodies[0])
+    expect(selectionBodies[0]?.claimNonce).toEqual(expect.any(String))
+    expect(sessionStorage.getItem(RECOMMENDATION_TAB_CORRELATION_KEY)).toBe(
+      selectionBodies[0]?.claimNonce,
+    )
+    expect(navigate).toHaveBeenCalledOnce()
+    expect(navigate).toHaveBeenCalledWith("/watch/target.html")
+  })
+
   it("fails open to the trusted href when tab storage is unavailable", async () => {
     const storageGet = vi
       .spyOn(Storage.prototype, "getItem")
@@ -375,15 +497,16 @@ describe("WatchSemanticRecommendations lifecycle", () => {
       .mockImplementation(() => {
         throw new DOMException("Storage disabled", "SecurityError")
       })
-    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
       if (url.endsWith("/api/recommendations")) {
         return Promise.resolve(jsonResponse({ delivery }))
       }
       if (url.endsWith("/select")) {
+        const body = JSON.parse(String(init?.body)) as { claimNonce: string }
         return Promise.resolve(
           jsonResponse({
-            claimNonce: "fresh_claim_nonce_1234567890",
+            claimNonce: body.claimNonce,
             canonicalHref: "/watch/target.html",
             targetMediaId: "target-1",
           }),

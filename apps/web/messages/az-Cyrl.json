@@ -527,7 +527,8 @@
     "previousVideoPreview": "Əvvəlki video önizləməsi",
     "nextVideoPreview": "Növbəti video önizləməsi",
     "mediaCollection": "Media kolleksiyası",
-    "scrollToVideo": "{title} videosuna sürüşdürün"
+    "scrollToVideo": "{title} videosuna sürüşdürün",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project ana səhifəsi",
@@ -597,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -715,7 +716,7 @@
     "eyebrow": "Дил версијасы мөвҹуд дејил",
     "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> дилиндә мөвҹуд дејил",
     "actionsLabel": "Мөвҹуд бахыш сечимләри",
-    "browseInLanguage": "{language} дилиндә видеолара бахын",
+    "browseInLanguage": "Бүтүн видеолар {language} дилиндә",
     "backToSearch": "Ахтарыша гајыт",
     "audioVersionsTitle": "Башга аудио версијалары",
     "audioVersionsDescription": "Бу видеону изләмәјә давам етмәк үчүн аудио дили сечин.",

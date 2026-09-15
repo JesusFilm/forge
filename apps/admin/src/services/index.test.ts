@@ -21,6 +21,13 @@ const fields = {
   transcript: [{ name: "embedding", type: "float[]" }],
 }
 
+const transcriptProjection = {
+  transcriptCollection: "watch_search_transcripts_20260810",
+  contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+  transcriptChunkingVersion: "mastra-v1",
+  projectionRevision: 7n,
+} as const
+
 function fixture() {
   const getPointer = vi.fn(async () => ({
     kind: "SERVING" as const,
@@ -37,8 +44,10 @@ function fixture() {
   }))
   const resolveGeneration = vi.fn(async (input) => ({
     generationId: input.generationId,
-    applicationRevision: input.applicationRevision,
-    transcriptProjectionRevision: input.transcriptProjectionRevision,
+    indexContractRevision: input.indexContractRevision,
+    contentEmbeddingContractId: transcriptProjection.contentEmbeddingContractId,
+    transcriptChunkingVersion: transcriptProjection.transcriptChunkingVersion,
+    transcriptProjectionRevision: input.transcriptProjectionRevision ?? 7n,
     collections: {
       catalog: `watch_search_candidate_${input.generationId}_catalog`,
       availability: `watch_search_candidate_${input.generationId}_availability`,
@@ -113,9 +122,9 @@ describe("resolveWatchSearchServingProfile", () => {
     const { getAlias, getPointer, resolveGeneration } = fixture()
     const profile = await resolveWatchSearchServingProfile({
       selector: "CURRENT",
-      applicationRevision: null,
+      indexContractRevision: null,
       rankingRevision: null,
-      transcriptProjectionRevision: null,
+      transcriptProjection: null,
       qrelsRevision: null,
       typesense: { getAlias },
       generations: { getPointer, resolveGeneration },
@@ -139,9 +148,9 @@ describe("resolveWatchSearchServingProfile", () => {
     const { getAlias, getPointer, resolveGeneration } = fixture()
     const profile = await resolveWatchSearchServingProfile({
       selector: "CANDIDATE:generation-a",
-      applicationRevision: "revision-a",
+      indexContractRevision: "revision-a",
       rankingRevision: "title-and-brand-v2",
-      transcriptProjectionRevision: 17n,
+      transcriptProjection,
       qrelsRevision: "qrels-1",
       typesense: { getAlias },
       generations: { getPointer, resolveGeneration },
@@ -149,10 +158,12 @@ describe("resolveWatchSearchServingProfile", () => {
 
     expect(resolveGeneration).toHaveBeenCalledWith({
       generationId: "generation-a",
-      applicationRevision: "revision-a",
+      indexContractRevision: "revision-a",
       rankingRevision: "title-and-brand-v2",
       transcriptCollection: "watch_search_transcripts_20260810",
-      transcriptProjectionRevision: 17n,
+      contentEmbeddingContractId:
+        transcriptProjection.contentEmbeddingContractId,
+      transcriptChunkingVersion: transcriptProjection.transcriptChunkingVersion,
       requireQualified: true,
       currentBindings: [
         `${TYPESENSE_WATCH_CATALOG_ALIAS}_20260810`,
@@ -174,9 +185,9 @@ describe("resolveWatchSearchServingProfile", () => {
     await expect(
       resolveWatchSearchServingProfile({
         selector: "CANDIDATE:generation-a",
-        applicationRevision: null,
+        indexContractRevision: null,
         rankingRevision: "title-and-brand-v2",
-        transcriptProjectionRevision: 17n,
+        transcriptProjection,
         qrelsRevision: "qrels-1",
         typesense: { getAlias: first.getAlias },
         generations: {
@@ -184,7 +195,7 @@ describe("resolveWatchSearchServingProfile", () => {
           resolveGeneration: first.resolveGeneration,
         },
       }),
-    ).rejects.toThrow(/application revision/i)
+    ).rejects.toThrow(/index contract revision/i)
 
     const second = fixture()
     second.resolveGeneration.mockRejectedValueOnce(
@@ -193,9 +204,9 @@ describe("resolveWatchSearchServingProfile", () => {
     await expect(
       resolveWatchSearchServingProfile({
         selector: "CANDIDATE:generation-a",
-        applicationRevision: "revision-a",
+        indexContractRevision: "revision-a",
         rankingRevision: "title-and-brand-v2",
-        transcriptProjectionRevision: 17n,
+        transcriptProjection,
         qrelsRevision: "qrels-1",
         typesense: { getAlias: second.getAlias },
         generations: {
@@ -218,9 +229,9 @@ describe("resolveWatchSearchServingProfile", () => {
     await expect(
       resolveWatchSearchServingProfile({
         selector: "CANDIDATE:generation-a",
-        applicationRevision: "revision-a",
+        indexContractRevision: "revision-a",
         rankingRevision: "title-and-brand-v2",
-        transcriptProjectionRevision: 17n,
+        transcriptProjection,
         qrelsRevision: "qrels-1",
         typesense: { getAlias: fixtureValue.getAlias },
         generations: {
@@ -230,5 +241,25 @@ describe("resolveWatchSearchServingProfile", () => {
       }),
     ).rejects.toThrow(/serving pointer/i)
     expect(fixtureValue.resolveGeneration).not.toHaveBeenCalled()
+  })
+
+  it("fails closed when the current transcript alias drifts from the published projection", async () => {
+    const { getAlias, getPointer, resolveGeneration } = fixture()
+
+    await expect(
+      resolveWatchSearchServingProfile({
+        selector: "CANDIDATE:generation-a",
+        indexContractRevision: "revision-a",
+        rankingRevision: "title-and-brand-v2",
+        transcriptProjection: {
+          ...transcriptProjection,
+          transcriptCollection: "watch_search_transcripts_other",
+        },
+        qrelsRevision: "qrels-1",
+        typesense: { getAlias },
+        generations: { getPointer, resolveGeneration },
+      }),
+    ).rejects.toThrow(/alias drifted/i)
+    expect(resolveGeneration).not.toHaveBeenCalled()
   })
 })

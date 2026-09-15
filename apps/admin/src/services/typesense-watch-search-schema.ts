@@ -1,4 +1,5 @@
 import type { TypesenseCollectionSchema } from "./typesense-client"
+import { ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS } from "./content-embedding-contract"
 import { TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD } from "./typesense-watch-search-exact-title"
 import { TYPESENSE_WATCH_TOKENIZER_LOCALES } from "./typesense-watch-search-lexical"
 
@@ -7,7 +8,9 @@ export const TYPESENSE_WATCH_AVAILABILITY_ALIAS = "watch_search_availability"
 export const TYPESENSE_WATCH_LEXICAL_ALIAS = "watch_search_lexical"
 export const TYPESENSE_WATCH_TRANSCRIPT_ALIAS = "watch_search_transcripts"
 export const TYPESENSE_WATCH_CANDIDATE_PREFIX = "watch_search_candidate"
-export const TYPESENSE_WATCH_EMBEDDING_DIMENSIONS = 1536
+export const TYPESENSE_WATCH_CURATION_SET_PREFIX = "watch_search_curations"
+export const TYPESENSE_WATCH_EMBEDDING_DIMENSIONS =
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS
 
 export type TypesenseWatchLocale = {
   locale: string
@@ -126,6 +129,14 @@ function candidateGenerationId(generationId: string): string {
   return generationId
 }
 
+export function watchCurationSetName(buildId: string): string {
+  return physicalName(TYPESENSE_WATCH_CURATION_SET_PREFIX, buildId)
+}
+
+export function candidateWatchCurationSetName(generationId: string): string {
+  return `${TYPESENSE_WATCH_CANDIDATE_PREFIX}_${candidateGenerationId(generationId)}_curations`
+}
+
 export function candidateWatchCollectionNames(generationId: string) {
   const id = candidateGenerationId(generationId)
   const prefix = `${TYPESENSE_WATCH_CANDIDATE_PREFIX}_${id}`
@@ -152,6 +163,7 @@ export function candidateWatchCollectionSchemas(
     },
     lexical: {
       ...candidateWatchLexicalCollectionSchema("candidate", tokenizerLocales),
+      curation_sets: [candidateWatchCurationSetName(generationId)],
       name: names.lexical,
     },
   } satisfies Record<
@@ -250,6 +262,7 @@ export function watchAvailabilityCollectionSchema(
 export function watchLexicalCollectionSchema(
   buildId: string,
   tokenizerLocales: readonly string[] = TYPESENSE_WATCH_TOKENIZER_LOCALES,
+  curationSets: readonly string[] = [],
 ): TypesenseCollectionSchema {
   const localizedFields = [...new Set(tokenizerLocales)].flatMap((locale) =>
     ["title", "metadata"].map((lane) => ({
@@ -261,6 +274,7 @@ export function watchLexicalCollectionSchema(
   )
   return {
     name: physicalName(TYPESENSE_WATCH_LEXICAL_ALIAS, buildId),
+    ...(curationSets.length > 0 ? { curation_sets: [...curationSets] } : {}),
     fields: [
       { name: "videoId", type: "string", facet: true },
       { name: "canonicalVideoId", type: "string", facet: true },

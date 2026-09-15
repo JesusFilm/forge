@@ -48,7 +48,7 @@ describe("resolveWatchHomeTiles — legacy categoryIds path", () => {
     expect(card.title).toBeNull()
     expect(card.gradient).toBe(JESUS.gradient)
     expect(card.iconKey).toBe("film")
-    expect(card.external).toBe(false)
+    expect(card.kind).toBe("watch")
   })
 
   it("builds the default destination from the request locale", () => {
@@ -77,7 +77,7 @@ describe("resolveWatchHomeTiles — authored tiles", () => {
       title: null,
       gradient: JESUS.gradient,
       iconKey: "film",
-      external: false,
+      kind: "watch",
     })
   })
 
@@ -99,28 +99,58 @@ describe("resolveWatchHomeTiles — authored tiles", () => {
     )
   })
 
-  it("uses an authored href verbatim instead of the locale-aware default", () => {
+  it("takes an authored destination over the locale-aware default", () => {
     // Admin has no locale context when the operator types a destination, so
     // rewriting it would be guessing.
+    expect(
+      resolve(
+        [{ id: "t1", categoryId: "jesus", href: "/other.html" }],
+        null,
+        spanish,
+      )[0].href,
+    ).toBe("/other.html")
+  })
+
+  // An operator copies the destination out of the address bar, so the stored
+  // value carries `/watch`. `next/link` prepends the base path itself, so the
+  // prefix has to come off here or the tile renders `/watch/watch/other.html`.
+  it("strips a stored base-path prefix from an authored destination", () => {
     expect(
       resolve(
         [{ id: "t1", categoryId: "jesus", href: "/watch/other.html" }],
         null,
         spanish,
       )[0].href,
-    ).toBe("/watch/other.html")
+    ).toBe("/other.html")
+  })
+
+  // A catalog destination is built by our own route builder and is already
+  // base-path-relative, so it must not be run through the authored-href
+  // policy a second time.
+  it("leaves a catalog destination unstripped", () => {
+    expect(resolve(null, ["jesus"], spanish)[0].href).toContain("jesus")
+    expect(resolve(null, ["jesus"], spanish)[0].href).not.toContain("/watch/")
   })
 
   it("marks an https destination external and a path internal", () => {
     expect(
       resolve([
         { id: "t1", title: "Give", href: "https://example.org/give" },
-      ])[0].external,
-    ).toBe(true)
-    expect(
-      resolve([{ id: "t1", title: "Give", href: "/give" }])[0].external,
-    ).toBe(false)
+      ])[0].kind,
+    ).toBe("external")
+    expect(resolve([{ id: "t1", title: "Give", href: "/give" }])[0].kind).toBe(
+      "watch",
+    )
   })
+
+  // Prefetch is enabled on this rail, so the browser may request an authored
+  // destination before anyone clicks it.
+  it.each(["/api/auth/logout", "/watch/api/auth/logout", "/watch/../api/x"])(
+    "drops the side-effecting destination %j",
+    (href) => {
+      expect(resolve([{ id: "t1", title: "Danger", href }])).toEqual([])
+    },
+  )
 
   it("gives a fully custom tile the default icon and style", () => {
     const [card] = resolve([{ id: "t1", title: "Give", href: "/give" }])

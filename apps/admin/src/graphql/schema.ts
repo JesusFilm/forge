@@ -15,7 +15,10 @@ import "@/graphql/types/videoTranscript"
 import "@/graphql/types/managerSession"
 import "@/graphql/types/managerReadModels"
 import "@/graphql/types/managerJob"
+import "@/graphql/types/studio"
+import "@/graphql/types/studio-assets"
 import "@/graphql/types/managerSeo"
+import "@/graphql/types/managerWatchRouteAlerts"
 import "@/graphql/types/watch-events"
 import "@/graphql/types/watch-progress"
 // Block union types must register before experience.ts since
@@ -31,13 +34,17 @@ import "@/graphql/mutations/manager-enrichment"
 import "@/graphql/mutations/watch-search-events"
 import "@/graphql/mutations/recommendation-evidence"
 import "@/graphql/mutations/recommendation-profile"
+import "@/graphql/mutations/recommendation-viewer"
 import "@/graphql/mutations/whats-new-feature-votes"
 import "@/graphql/queries/search"
 import "@/graphql/queries/watch-search"
 import "@/graphql/queries/scene-recommendations"
 import "@/graphql/queries/recommendation-delivery"
+import "@/graphql/queries/user-recommendations"
 import "@/graphql/queries/sync-status"
 // Must register after Experience (depends on ExperienceLocale).
 import "@/graphql/types/watch-setting"
 
 export const schema = builder.toSchema()
+
+import "./types/studio-catalog"

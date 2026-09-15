@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 import {
   createProfileSourceNominationGenerator,
+  getLiveProfileCandidates,
   MULTI_INTEREST_PROFILE_GENERATOR_VERSION,
 } from "./profile-candidate.service"
 
@@ -23,6 +24,47 @@ const PRESENTATION = {
 }
 
 describe("multi-interest profile candidate generator", () => {
+  it("fences ineligible current lineage before loading candidate vectors", async () => {
+    const queryRaw = vi.fn().mockResolvedValue([
+      {
+        id: "contaminated-generation",
+        scope: "durable",
+        generation: 4,
+        projectionVersion: "multi-interest-profile-projection-v1",
+        inputDigest: "a".repeat(64),
+        publishedAt: new Date("2026-08-25T09:59:00.000Z"),
+        expiresAt: new Date("2099-08-26T09:59:00.000Z"),
+        cohortQuality: 0.8,
+        sessionIntentPresent: false,
+        lineageEligible: false,
+        ordinal: null,
+        kind: null,
+        vectorText: null,
+      },
+    ])
+
+    await expect(
+      getLiveProfileCandidates({ $queryRaw: queryRaw } as never, {
+        sessionDigest: "a".repeat(64),
+        profileTokenDigest: "b".repeat(64),
+        now: new Date("2026-08-26T00:00:00.000Z"),
+        context: {
+          surface: "watch-below-player-v1",
+          purpose: "watch",
+          locale: "en",
+          audioLanguageSlug: "english",
+          seedMediaId: "seed-video",
+          manifestId: "semantic-profile-hybrid-v1",
+        },
+      }),
+    ).rejects.toMatchObject({ code: "profile_lineage_ineligible" })
+    expect(queryRaw).toHaveBeenCalledOnce()
+    const sql = queryRaw.mock.calls[0]![0].strings.join(" ")
+    expect(sql).toContain("source_eligibility_decision_id")
+    expect(sql).toContain("recommendation_impression")
+    expect(sql).toContain("episode.state::text <> 'finalized'")
+  })
+
   it("nominates per interest through one bounded ANN statement with privacy-safe provenance", async () => {
     const loadProjection = vi.fn().mockResolvedValue({
       id: "projection-generation-1",

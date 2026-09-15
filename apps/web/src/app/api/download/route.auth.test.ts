@@ -6,8 +6,13 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const { queryMock, recordWatchEventWithAccessTokenMock } = vi.hoisted(() => ({
+const {
+  queryMock,
+  readWatchDownloadCapabilityMock,
+  recordWatchEventWithAccessTokenMock,
+} = vi.hoisted(() => ({
   queryMock: vi.fn(),
+  readWatchDownloadCapabilityMock: vi.fn(),
   recordWatchEventWithAccessTokenMock: vi.fn(),
 }))
 
@@ -24,6 +29,10 @@ vi.mock("@/lib/admin-client", () => ({
   default: {
     query: queryMock,
   },
+}))
+
+vi.mock("@/lib/watch-download-capability", () => ({
+  readWatchDownloadCapability: readWatchDownloadCapabilityMock,
 }))
 
 vi.mock("next/cache", () => ({
@@ -118,6 +127,7 @@ async function webSessionCookie() {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  readWatchDownloadCapabilityMock.mockResolvedValue(null)
 })
 
 afterEach(() => {
@@ -131,6 +141,7 @@ afterEach(() => {
 describe("GET /watch/api/download - account gate", () => {
   beforeEach(() => {
     vi.spyOn(console, "error").mockImplementation(() => undefined)
+    vi.spyOn(console, "warn").mockImplementation(() => undefined)
   })
 
   it("returns 401 before DNS or upstream fetch when the request has no auth cookie", async () => {
@@ -140,8 +151,11 @@ describe("GET /watch/api/download - account gate", () => {
     const { GET } = await importRoute()
     const response = await GET(
       makeRequest({
+        capability: "opaque-capability",
+        downloadId: "download-1",
         filename: "jesus-highest.mp4",
-        url: "https://stream.mux.com/abc.mp4",
+        variantId: "variant-1",
+        videoSlug: "jesus",
       }),
     )
 
@@ -152,6 +166,7 @@ describe("GET /watch/api/download - account gate", () => {
     })
     expect(dns.resolve4).not.toHaveBeenCalled()
     expect(fetchMock).not.toHaveBeenCalled()
+    expect(readWatchDownloadCapabilityMock).not.toHaveBeenCalled()
   })
 
   it("redirects anonymous opaque-ID downloads when the account gate is disabled", async () => {
@@ -286,6 +301,207 @@ describe("GET /watch/api/download - account gate", () => {
     )
   })
 
+  it("uses a matching collection capability without repeating the Admin lookup", async () => {
+    readWatchDownloadCapabilityMock.mockResolvedValueOnce({
+      downloadId: "download-1",
+      variantId: "variant-1",
+      videoSlug: "jesus",
+      target: "https://stream.mux.com/abc.mp4",
+      event: {
+        videoId: "video-1",
+        videoDubId: "variant-1",
+        languageId: "language-1",
+      },
+      subject: "user_123",
+    })
+    recordWatchEventWithAccessTokenMock.mockResolvedValueOnce({
+      ok: true,
+      recorded: true,
+    })
+
+    const { GET } = await importRoute()
+    const response = await GET(
+      makeRequest(
+        {
+          capability: "opaque-capability",
+          downloadId: "download-1",
+          filename: "jesus-highest.mp4",
+          variantId: "variant-1",
+          videoSlug: "jesus",
+        },
+        { headers: { cookie: await webSessionCookie() } },
+      ),
+    )
+
+    expect(response.status).toBe(302)
+    expect(response.headers.get("location")).toBe(
+      "https://stream.mux.com/abc.mp4?download=jesus-highest.mp4",
+    )
+    expect(queryMock).not.toHaveBeenCalled()
+    expect(recordWatchEventWithAccessTokenMock).toHaveBeenCalledWith(
+      "jfp_at_secret",
+      {
+        eventType: "download",
+        videoId: "video-1",
+        videoDubId: "variant-1",
+        languageId: "language-1",
+      },
+    )
+    expect(recordWatchEventWithAccessTokenMock).toHaveBeenCalledTimes(1)
+    const logs = JSON.stringify([
+      vi.mocked(console.error).mock.calls,
+      vi.mocked(console.warn).mock.calls,
+    ])
+    expect(logs).not.toContain("opaque-capability")
+    expect(logs).not.toContain("stream.mux.com/abc.mp4")
+  })
+
+  it("rejects a capability whose bound identifiers do not match", async () => {
+    readWatchDownloadCapabilityMock.mockResolvedValueOnce({
+      downloadId: "another-download",
+      variantId: "variant-1",
+      videoSlug: "jesus",
+      target: "https://stream.mux.com/abc.mp4",
+      event: {
+        videoId: "video-1",
+        videoDubId: "variant-1",
+        languageId: "language-1",
+      },
+      subject: "user_123",
+    })
+
+    const { GET } = await importRoute()
+    const response = await GET(
+      makeRequest(
+        {
+          capability: "opaque-capability",
+          downloadId: "download-1",
+          variantId: "variant-1",
+          videoSlug: "jesus",
+        },
+        { headers: { cookie: await webSessionCookie() } },
+      ),
+    )
+
+    expect(response.status).toBe(404)
+    expect(queryMock).not.toHaveBeenCalled()
+    expect(dns.resolve4).not.toHaveBeenCalled()
+  })
+
+  it.each([undefined, "user_456"])(
+    "rejects a capability bound to %s while the account gate is active",
+    async (subject) => {
+      readWatchDownloadCapabilityMock.mockResolvedValueOnce({
+        downloadId: "download-1",
+        variantId: "variant-1",
+        videoSlug: "jesus",
+        target: "https://stream.mux.com/abc.mp4",
+        event: {
+          videoId: "video-1",
+          videoDubId: "variant-1",
+          languageId: "language-1",
+        },
+        ...(subject ? { subject } : {}),
+      })
+
+      const { GET } = await importRoute()
+      const response = await GET(
+        makeRequest(
+          {
+            capability: "opaque-capability",
+            downloadId: "download-1",
+            variantId: "variant-1",
+            videoSlug: "jesus",
+          },
+          { headers: { cookie: await webSessionCookie() } },
+        ),
+      )
+
+      expect(response.status).toBe(404)
+      expect(queryMock).not.toHaveBeenCalled()
+      expect(dns.resolve4).not.toHaveBeenCalled()
+    },
+  )
+
+  it("accepts a subjectless capability while the account gate is disabled", async () => {
+    readWatchDownloadCapabilityMock.mockResolvedValueOnce({
+      downloadId: "download-1",
+      variantId: "variant-1",
+      videoSlug: "jesus",
+      target: "https://stream.mux.com/abc.mp4",
+      event: {
+        videoId: "video-1",
+        videoDubId: "variant-1",
+        languageId: "language-1",
+      },
+    })
+
+    const { GET } = await importRouteWithAccountGateDisabled()
+    const response = await GET(
+      makeRequest({
+        capability: "opaque-capability",
+        downloadId: "download-1",
+        variantId: "variant-1",
+        videoSlug: "jesus",
+      }),
+    )
+
+    expect(response.status).toBe(302)
+    expect(queryMock).not.toHaveBeenCalled()
+  })
+
+  it("does not fall back to opaque-ID lookup for an invalid capability attempt", async () => {
+    queryMock.mockResolvedValueOnce({ data: adminVideoDub() })
+
+    const { GET } = await importRouteWithAccountGateDisabled()
+    const response = await GET(
+      makeRequest({
+        capability: "",
+        downloadId: "download-1",
+        variantId: "variant-1",
+        videoSlug: "jesus",
+      }),
+    )
+
+    expect(response.status).toBe(404)
+    expect(readWatchDownloadCapabilityMock).toHaveBeenCalledWith("")
+    expect(queryMock).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ["https://evil.example/abc.mp4", ["203.0.113.1"], 403],
+    ["https://stream.mux.com/abc.mp4", ["127.0.0.1"], 403],
+  ] as const)(
+    "retains origin and DNS validation for capability target %s",
+    async (target, addresses, expectedStatus) => {
+      readWatchDownloadCapabilityMock.mockResolvedValueOnce({
+        downloadId: "download-1",
+        variantId: "variant-1",
+        videoSlug: "jesus",
+        target,
+        event: {
+          videoId: "video-1",
+          videoDubId: "variant-1",
+          languageId: "language-1",
+        },
+      })
+      vi.mocked(dns.resolve4).mockResolvedValueOnce([...addresses])
+
+      const { GET } = await importRouteWithAccountGateDisabled()
+      const response = await GET(
+        makeRequest({
+          capability: "opaque-capability",
+          downloadId: "download-1",
+          variantId: "variant-1",
+          videoSlug: "jesus",
+        }),
+      )
+
+      expect(response.status).toBe(expectedStatus)
+      expect(queryMock).not.toHaveBeenCalled()
+    },
+  )
+
   it("returns a shaped 503 when opaque ID lookup fails before redirecting", async () => {
     queryMock.mockRejectedValueOnce(new Error("admin unavailable"))
     const fetchMock = vi.fn(async () => new Response("should not happen"))
@@ -348,11 +564,14 @@ describe("HEAD /watch/api/download - opaque download target", () => {
 
     const { HEAD } = await importRoute()
     const response = await HEAD(
-      makeRequest({
-        downloadId: "download-1",
-        variantId: "variant-1",
-        videoSlug: "jesus",
-      }),
+      makeRequest(
+        {
+          downloadId: "download-1",
+          variantId: "variant-1",
+          videoSlug: "jesus",
+        },
+        { headers: { cookie: await webSessionCookie() } },
+      ),
     )
 
     expect(response.status).toBe(302)
@@ -365,6 +584,118 @@ describe("HEAD /watch/api/download - opaque download target", () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it("applies the account gate before resolving an opaque HEAD request", async () => {
+    const { HEAD } = await importRoute()
+    const response = await HEAD(
+      makeRequest({
+        capability: "opaque-capability",
+        downloadId: "download-1",
+        variantId: "variant-1",
+        videoSlug: "jesus",
+      }),
+    )
+
+    expect(response.status).toBe(401)
+    expect(response.headers.get("x-watch-download-error")).toBe("auth-required")
+    expect(queryMock).not.toHaveBeenCalled()
+    expect(readWatchDownloadCapabilityMock).not.toHaveBeenCalled()
+  })
+
+  it("redirects a subjectless capability when the account gate is disabled", async () => {
+    readWatchDownloadCapabilityMock.mockResolvedValueOnce({
+      downloadId: "download-1",
+      variantId: "variant-1",
+      videoSlug: "jesus",
+      target: "https://stream.mux.com/abc.mp4",
+      event: {
+        videoId: "video-1",
+        videoDubId: "variant-1",
+        languageId: "language-1",
+      },
+    })
+
+    const { HEAD } = await importRouteWithAccountGateDisabled()
+    const response = await HEAD(
+      makeRequest({
+        capability: "opaque-capability",
+        downloadId: "download-1",
+        variantId: "variant-1",
+        videoSlug: "jesus",
+      }),
+    )
+
+    expect(response.status).toBe(302)
+    expect(queryMock).not.toHaveBeenCalled()
+    expect(recordWatchEventWithAccessTokenMock).not.toHaveBeenCalled()
+  })
+
+  it.each([undefined, "user_456"])(
+    "rejects a capability bound to %s without recording an event",
+    async (subject) => {
+      readWatchDownloadCapabilityMock.mockResolvedValueOnce({
+        downloadId: "download-1",
+        variantId: "variant-1",
+        videoSlug: "jesus",
+        target: "https://stream.mux.com/abc.mp4",
+        event: {
+          videoId: "video-1",
+          videoDubId: "variant-1",
+          languageId: "language-1",
+        },
+        ...(subject ? { subject } : {}),
+      })
+
+      const { HEAD } = await importRoute()
+      const response = await HEAD(
+        makeRequest(
+          {
+            capability: "opaque-capability",
+            downloadId: "download-1",
+            variantId: "variant-1",
+            videoSlug: "jesus",
+          },
+          { headers: { cookie: await webSessionCookie() } },
+        ),
+      )
+
+      expect(response.status).toBe(404)
+      expect(queryMock).not.toHaveBeenCalled()
+      expect(recordWatchEventWithAccessTokenMock).not.toHaveBeenCalled()
+    },
+  )
+
+  it("redirects a matching capability without recording a download event", async () => {
+    readWatchDownloadCapabilityMock.mockResolvedValueOnce({
+      downloadId: "download-1",
+      variantId: "variant-1",
+      videoSlug: "jesus",
+      target: "https://stream.mux.com/abc.mp4",
+      event: {
+        videoId: "video-1",
+        videoDubId: "variant-1",
+        languageId: "language-1",
+      },
+      subject: "user_123",
+    })
+
+    const { HEAD } = await importRoute()
+    const response = await HEAD(
+      makeRequest(
+        {
+          capability: "opaque-capability",
+          downloadId: "download-1",
+          variantId: "variant-1",
+          videoSlug: "jesus",
+        },
+        { headers: { cookie: await webSessionCookie() } },
+      ),
+    )
+
+    expect(response.status).toBe(302)
+    expect(queryMock).not.toHaveBeenCalled()
+    expect(recordWatchEventWithAccessTokenMock).not.toHaveBeenCalled()
+  })
+
   it("returns a shaped 503 when opaque ID lookup fails before HEAD can redirect", async () => {
     queryMock.mockRejectedValueOnce(new Error("admin unavailable"))
     const fetchMock = vi.fn(async () => new Response(null))
@@ -372,11 +703,14 @@ describe("HEAD /watch/api/download - opaque download target", () => {
 
     const { HEAD } = await importRoute()
     const response = await HEAD(
-      makeRequest({
-        downloadId: "download-1",
-        variantId: "variant-1",
-        videoSlug: "jesus",
-      }),
+      makeRequest(
+        {
+          downloadId: "download-1",
+          variantId: "variant-1",
+          videoSlug: "jesus",
+        },
+        { headers: { cookie: await webSessionCookie() } },
+      ),
     )
 
     expect(response.status).toBe(503)

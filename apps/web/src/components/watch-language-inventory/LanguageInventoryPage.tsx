@@ -27,7 +27,11 @@ import {
   WATCH_PILL_BUTTON_CLASS,
   WATCH_SECTION_EYEBROW_CLASS,
 } from "@/components/watch/watch-section-styles"
-import { resolveMuxFrameThumbnailUrl } from "@/lib/url"
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
+import {
+  resolveBlurredBackdropUrl,
+  resolveMuxFrameThumbnailUrl,
+} from "@/lib/url"
 import { cn } from "@/lib/utils"
 import { videoLabelMessageKey } from "@/lib/video-labels"
 import {
@@ -49,6 +53,28 @@ type IconComponent = ComponentType<{ className?: string }>
 
 // Anchor target for the end-of-page "Back to top" link.
 const LANGUAGE_INVENTORY_TOP_ID = "language-inventory-top"
+
+// Skip layout, style and paint for the ~1,000 episode rows that are nowhere
+// near the viewport.
+//
+// `contain-intrinsic-size` sizes the CONTENT box, and the row adds `py-4`
+// (32px) on top, so 56px stands in as an 88px placeholder. Measured
+// 2026-09-12 on /watch/english.html/videos: real rows are 80-95px tall at
+// 390px and a flat 89px from 768px up, and this value reproduces the whole
+// document's height to within 0.24% at 390px and exactly at 768px and 1280px
+// (144,365px -> 144,707px / 161,091px / 106,697px unchanged). Retune it if the
+// row's vertical padding or `min-h` changes — an over-estimate inflates the
+// scrollbar and moves every in-page anchor below it.
+//
+// The `auto` keyword makes the browser remember each row's real size once it
+// has been rendered, so the estimate only ever governs rows that have never
+// been on screen. Verified unchanged under this rule at 390px: find-in-page
+// (`window.find` into row 900 still scrolls to it), `#audio-collections` hash
+// navigation (identical landing offset), the "Back to top" link, and the
+// client filter — which hides rows with the `hidden` property, whose
+// `display: none` outranks content-visibility.
+const COMPACT_ROW_CONTAIN_CLASS =
+  "[content-visibility:auto] [contain-intrinsic-size:auto_56px]"
 
 type LanguageInventoryPageProps = {
   inventory: WatchLanguageInventoryModel
@@ -259,7 +285,7 @@ function inventoryFacetAttributes(item: WatchLanguageInventoryCard) {
     // which then match no window.
     //
     // Only attributes a filter actually READS are emitted: this page ships
-    // ~9.5MB of HTML, and an unread attribute across ~990 items is pure weight.
+    // ~7MB of HTML, and an unread attribute across ~990 items is pure weight.
     "data-inv-age-days":
       facets.ageDays == null ? "unknown" : String(facets.ageDays),
   } as const
@@ -314,7 +340,7 @@ function InventoryCard({
           <VideoThumbnailInteractionFrame data-testid="language-inventory-thumbnail-frame" />
         ) : null}
         <div
-          className="absolute top-3 left-3 inline-flex items-center gap-1 rounded bg-black/45 px-2.5 py-1 text-sm sm:text-xs font-medium text-white backdrop-blur"
+          className="absolute top-3 left-3 inline-flex items-center gap-1 rounded bg-black/55 px-2.5 py-1 text-sm sm:text-xs font-medium text-white"
           {...englishAssistAttributes(
             item.availability === "AUDIO" ? "stateAudio" : "stateSubtitlesOnly",
           )}
@@ -326,7 +352,7 @@ function InventoryCard({
           )}
           {availability}
         </div>
-        <div className="absolute right-3 bottom-3 inline-flex items-center gap-1 rounded bg-black/45 px-2.5 py-1 text-sm sm:text-xs font-medium text-white backdrop-blur">
+        <div className="absolute right-3 bottom-3 inline-flex items-center gap-1 rounded bg-black/55 px-2.5 py-1 text-sm sm:text-xs font-medium text-white">
           {item.childCount === 0 && item.href ? (
             <Play className="h-3.5 w-3.5 fill-current" aria-hidden />
           ) : null}
@@ -491,29 +517,50 @@ function CompactVideoRow({
     .join(" / ")
   const content = (
     <>
-      <span className="mr-1 w-10 shrink-0 text-right text-base font-medium text-stone-500 tabular-nums sm:mr-2 sm:text-lg">
+      {/* Phones centre the ordinal in a `min-w-5` box whose width matches the
+          row's `px-2`/`gap-2`, so the space either side of the digits is equal
+          whatever their count; `sm` and up keep the wider right-aligned column
+          so the numbers stay in one vertical line beside a roomier row. */}
+      <span className="min-w-5 shrink-0 text-center text-base font-medium text-stone-500 tabular-nums sm:mr-2 sm:w-10 sm:text-right sm:text-lg">
         {index + 1}
       </span>
       <span
         className={cn(
           "relative shrink-0 overflow-hidden rounded bg-stone-800 ring-1 ring-white/10",
+          // Phones get a taller thumbnail than `sm`+ on purpose: the compact
+          // row is the whole browsing surface there, and a 48px frame read as
+          // an icon next to a two-line title.
           isPortrait
-            ? "h-12 aspect-[2/3] sm:h-14"
-            : "h-12 w-20 sm:h-14 sm:w-24",
+            ? "h-16 aspect-[2/3] sm:h-14"
+            : "h-16 w-28 sm:h-14 sm:w-24",
         )}
       >
         {thumbnailUrl ? (
+          // Explicit `width`/`height` rather than `fill` + a `sizes` string,
+          // because Next only narrows the candidate list when `sizes` carries
+          // a `vw` unit: a pixel-only `sizes` falls through to a `w`-descriptor
+          // srcset over EVERY configured device and image size. Measured
+          // 2026-09-12 on the live English page, that was 15 candidates per
+          // row and 2.81 MB of srcset attributes across 1,000 rows — 30% of a
+          // 9.44 MB document. `width`/`height` emits the 2-candidate `1x`/`2x`
+          // form instead.
+          //
+          // The intrinsic dimensions preserve the aspect ratios of the largest
+          // phone frames added in #2275. Landscape produces 256w/384w
+          // candidates for the 112px CSS slot, retaining a 3-DPR option;
+          // portrait produces 64w/128w for its narrower 42.67px CSS slot.
+          // Both avoid restoring the 15-candidate pixel-only `sizes` list on
+          // every row.
+          //
+          // The classes reproduce what `fill` set inline, so the rendered box
+          // is unchanged.
           <Image
             src={thumbnailUrl}
             alt=""
-            fill
-            sizes={
-              isPortrait
-                ? "(max-width: 640px) 32px, 37px"
-                : "(max-width: 640px) 80px, 96px"
-            }
+            width={isPortrait ? 64 : 168}
+            height={96}
             className={cn(
-              "object-cover transition duration-300 group-hover:scale-105",
+              "absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105",
               isPortrait ? "object-center" : "object-left-top",
             )}
           />
@@ -524,8 +571,19 @@ function CompactVideoRow({
           className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent"
           aria-hidden
         />
+        {/* No `backdrop-blur` on any per-item chip. This page renders the
+            whole inventory in one document (WATCH_LANGUAGE_INVENTORY_LIMIT =
+            1000), so a blur here is ~990 backdrop-filter elements, each one a
+            separate compositing layer the GPU re-reads and re-blurs on every
+            scrolled frame. Measured on /watch/english.html/videos at a 390px
+            mobile viewport under 4x CPU throttle: 5 dropped frames per 100
+            scrolled with the blurs, 0 without — and disabling only the fixed
+            header's blur changed nothing, so these chips were the whole cost.
+            The blur was invisible anyway: it sits under a `bg-black/70` fill
+            on top of a `from-black/65` scrim. The opacity is bumped a notch to
+            carry the contrast the blur was nominally providing. */}
         {item.href ? (
-          <span className="absolute bottom-1.5 left-1.5 grid size-6 place-items-center rounded bg-black/60 text-amber-100 backdrop-blur">
+          <span className="absolute bottom-1.5 left-1.5 grid size-6 place-items-center rounded bg-black/70 text-amber-100">
             <Play className="h-3.5 w-3.5 fill-current" aria-hidden />
           </span>
         ) : null}
@@ -549,7 +607,8 @@ function CompactVideoRow({
     </>
   )
   const className = cn(
-    "flex min-h-20 items-center gap-3 px-3 py-4 transition sm:px-4",
+    "flex min-h-20 items-center gap-2 px-2 py-3 transition sm:gap-3 sm:px-4 sm:py-4",
+    COMPACT_ROW_CONTAIN_CLASS,
     item.href && "group hover:bg-white/[0.055]",
     item.href && VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
   )
@@ -686,7 +745,7 @@ function CollectionGroupOverview({
           <div className="absolute inset-0 bg-[linear-gradient(135deg,#171717,#3f3f46_48%,#134e4a)]" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
-        <span className="absolute right-3 bottom-3 rounded bg-black/55 px-2.5 py-1 text-sm sm:text-xs font-medium text-white backdrop-blur">
+        <span className="absolute right-3 bottom-3 rounded bg-black/65 px-2.5 py-1 text-sm sm:text-xs font-medium text-white">
           {t("videoCount", { count: group.items.length })}
         </span>
       </div>
@@ -771,7 +830,7 @@ function GroupedVideoListSection({
       data-testid={testId}
       data-inv-section=""
     >
-      <div className="mx-auto max-w-7xl px-5 sm:px-8">
+      <div className={WATCH_PAGE_CONTENT_CLASSES}>
         <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="max-w-3xl">
             <div
@@ -812,9 +871,8 @@ function GroupedVideoListSection({
                 // The sidebar gets a wider track from `xl` up: at 1280px the
                 // group is 1201px wide and 340px left the collection panel only
                 // 28% of it, cramping the title and description against a
-                // 859px-wide episode list. No `2xl` step — the section content is
-                // capped at `max-w-7xl`, so measured group width stops growing at
-                // 1216px (verified 1536/1920/2560px all identical).
+                // 859px-wide episode list. Keep the 440px maximum at wider
+                // breakpoints so the episode list receives the added rail space.
                 className="overflow-clip rounded-lg border border-white/10 bg-white/[0.035] lg:grid lg:grid-cols-[minmax(260px,340px)_minmax(0,1fr)] xl:grid-cols-[minmax(320px,440px)_minmax(0,1fr)]"
                 aria-label={group.title}
                 data-testid="language-inventory-collection-group"
@@ -832,7 +890,16 @@ function GroupedVideoListSection({
                   {/* Same immersive backdrop as authored Experience collection
                     sections: `MediaCollection` reads these exact shared
                     constants, so blur, brightness, and base colour cannot
-                    drift between the two surfaces. */}
+                    drift between the two surfaces.
+
+                    The SOURCE is deliberately not the same one the panel
+                    thumbnail beside it uses. A CSS background is not lazy —
+                    and `content-visibility` does not defer it either — so all
+                    111 of these download on every page load. At the authored
+                    `w=1280,h=600,q=95` that was 27.1 MB of a 29.0 MB page.
+                    `resolveBlurredBackdropUrl` asks for the 128px-wide
+                    derivative, which is strictly more detail than survives
+                    `blur-2xl`. */}
                   {groupImageUrl ? (
                     <div
                       aria-hidden
@@ -842,7 +909,9 @@ function GroupedVideoListSection({
                         WATCH_IMMERSIVE_BACKGROUND_BRIGHTNESS_CLASS,
                         WATCH_IMMERSIVE_BACKGROUND_SATURATION_CLASS,
                       )}
-                      style={{ backgroundImage: `url("${groupImageUrl}")` }}
+                      style={{
+                        backgroundImage: `url("${resolveBlurredBackdropUrl(groupImageUrl)}")`,
+                      }}
                     />
                   ) : null}
                   <div
@@ -902,7 +971,7 @@ function InventorySection({
       data-testid={testId}
       data-inv-section=""
     >
-      <div className="mx-auto max-w-7xl px-5 sm:px-8">
+      <div className={WATCH_PAGE_CONTENT_CLASSES}>
         <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="max-w-3xl">
             <div
@@ -1018,7 +1087,9 @@ export function LanguageInventoryPage({
         {/* 54vh is three quarters of the previous 72vh. Read as "reduce to 3/4"
             rather than a 3:4 aspect ratio: the hero is already 2.2:1, so a 3:4
             ratio would have made it ~3x TALLER, not shorter. */}
-        <div className="relative mx-auto grid min-h-[54vh] max-w-7xl items-end gap-8 px-5 pt-36 pb-10 sm:px-8 sm:pt-40 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:gap-10 lg:pt-44">
+        <div
+          className={`relative grid min-h-[54vh] items-end gap-8 pt-36 pb-10 sm:pt-40 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:gap-10 lg:pt-44 ${WATCH_PAGE_CONTENT_CLASSES}`}
+        >
           <div className="max-w-4xl">
             <h1 className="text-2xl leading-[1.08] font-bold text-balance break-words text-white drop-shadow-lg sm:text-4xl md:max-w-[18ch] md:text-6xl xl:max-w-[20ch] xl:text-7xl">
               {t("heroTitle", { language: languageDisplayName })}
@@ -1062,7 +1133,7 @@ export function LanguageInventoryPage({
             className="border-t border-white/10 py-14"
             data-testid="language-inventory-empty"
           >
-            <div className="mx-auto max-w-7xl px-5 sm:px-8">
+            <div className={WATCH_PAGE_CONTENT_CLASSES}>
               <p className="rounded-lg border border-white/10 bg-white/[0.04] px-5 py-8 text-stone-300">
                 {t("noPublishedVideos")}
               </p>
@@ -1088,7 +1159,7 @@ export function LanguageInventoryPage({
           no client JavaScript and keeps this Server Component free of a client
           boundary. Styled as the shared watch pill, like "Open collection". */}
       <div className="border-t border-white/10 py-10">
-        <div className="mx-auto flex max-w-7xl justify-center px-5 sm:px-8">
+        <div className={`flex justify-center ${WATCH_PAGE_CONTENT_CLASSES}`}>
           <a
             href={`#${LANGUAGE_INVENTORY_TOP_ID}`}
             data-slot="button"

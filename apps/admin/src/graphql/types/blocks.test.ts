@@ -197,6 +197,11 @@ const fixtures: Readonly<Record<BlockKind, object>> = {
     t: "videoRecommendations",
     limit: 10,
   },
+  homepageRecommendations: {
+    t: "homepageRecommendations",
+    sectionKey: "recommended",
+    title: "Recommended for You",
+  },
   watchHomeCategoryRail: {
     t: "watchHomeCategoryRail",
     categoryIds: ["family", "gospels", "jesus"],
@@ -231,6 +236,30 @@ describe("WatchHomeCategoryRailBlock fields", () => {
       "WatchHomeCategoryRailBlock",
     ) as GraphQLObjectType
     expect(String(type.getFields().categoryIds?.type)).toBe("[String!]!")
+  })
+
+  it("exposes each optional locale-owned copy field", async () => {
+    const authored = {
+      ...fixtures.watchHomeCategoryRail,
+      eyebrow: "Explore",
+      title: "Choose a story",
+      description: "Stories for every season.",
+      ctaLabel: "See everything",
+    }
+
+    for (const field of [
+      "eyebrow",
+      "title",
+      "description",
+      "ctaLabel",
+    ] as const) {
+      const resolve = fieldResolver("WatchHomeCategoryRailBlock", field)
+      expect(await resolve(authored, {}, {}, fakeInfo)).toBe(authored[field])
+      const type = schema.getType(
+        "WatchHomeCategoryRailBlock",
+      ) as GraphQLObjectType
+      expect(String(type.getFields()[field]?.type)).toBe("String")
+    }
   })
 })
 

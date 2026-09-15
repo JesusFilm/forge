@@ -148,5 +148,9 @@ skipped in the aggregate command), focused route tests, Auth typecheck and
 lint, plus 104 Changelog tests and Changelog typecheck. The earlier PostgreSQL
 CI receipt above covers all 18 Forge integration tests. Preview registration
 remains deliberately deferred until Changelog has a stable preview domain.
-Supported grant provisioning and revocation remain separate production-
-readiness work and are still prerequisites for enabling production issuance.
+Supported production grant provisioning and revocation subsequently shipped in
+[feat-458](feat-458-changelog-production-grant-operations.md). Production issuance
+was enabled on 2026-09-05 after the pilot grant was verified; that ticket records
+deployment and browser verification evidence. Use the
+[production access runbook](../../auth-changelog-production-access.md) for
+inspection, provisioning, and revocation.

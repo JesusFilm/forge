@@ -6,6 +6,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server"
 
 import { WatchHistoryClient } from "@/components/watch/WatchHistoryClient"
 import { verifyAuthSession } from "@/lib/auth-session"
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { resolveWatchLocaleIdentity } from "@/lib/locale"
 import { watchPath } from "@/lib/watch-paths"
 import {
@@ -46,7 +47,7 @@ export default async function WatchHistoryPage({ params }: HistoryPageProps) {
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       <main className="min-h-screen bg-[#050505] pt-24 text-white">
-        <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+        <div className={`${WATCH_PAGE_CONTENT_CLASSES} py-10 sm:py-14`}>
           <h1 className="text-3xl font-bold tracking-tight text-white sm:text-5xl">
             {t("title")}
           </h1>

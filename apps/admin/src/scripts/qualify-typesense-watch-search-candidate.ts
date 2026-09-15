@@ -15,7 +15,7 @@ import {
   WATCH_SEARCH_CANDIDATE_OPERATOR_ACCEPTANCE_SCHEMA,
 } from "@/services/typesense-watch-search-candidate-qualification"
 import {
-  candidateWatchSearchApplicationRevision,
+  candidateWatchSearchIndexContractRevision,
   candidateWatchSearchRankingRevision,
 } from "@/services/typesense-watch-search-candidate-identity"
 import {
@@ -27,11 +27,13 @@ import { TypesenseClient } from "@/services/typesense-client"
 type QualificationGeneration = {
   id: string
   state: string
-  applicationRevision: string
+  indexContractRevision: string
   catalogCollection: string
   availabilityCollection: string
   lexicalCollection: string
   transcriptCollection: string
+  contentEmbeddingContractId: string
+  transcriptChunkingVersion: string
   transcriptProjectionRevision: bigint
 }
 
@@ -43,9 +45,11 @@ type QualificationPointer = {
 type RecordQualificationInput = {
   generationId: string
   status: CandidateAuthorizingQualificationStatus
-  applicationRevision: string
+  indexContractRevision: string
   rankingRevision: string
   transcriptCollection: string
+  contentEmbeddingContractId: string
+  transcriptChunkingVersion: string
   transcriptProjectionRevision: bigint
   qrelsRevision: string
   currentBindings: readonly string[]
@@ -55,7 +59,7 @@ type RecordQualificationInput = {
 
 type PinServingInput = {
   generationId: string
-  applicationRevision: string
+  indexContractRevision: string
   expectedPointerVersion: number
   currentBindings: readonly string[]
   qrelsRevision: string
@@ -91,9 +95,11 @@ type QualifiedReport = {
   reviewerIdentity?: string
   identity: {
     generationId: string
-    applicationRevision: string
+    indexContractRevision: string
     rankingRevision: string
     transcriptCollection: string
+    contentEmbeddingContractId: string
+    transcriptChunkingVersion: string
     transcriptProjectionRevision: bigint
     qrelsRevision: string
     currentBindings: readonly string[]
@@ -223,11 +229,11 @@ function parseReport(bytes: Buffer): QualifiedReport {
       )
     }
     if (
-      bundle.identity.applicationRevision !==
-      candidateWatchSearchApplicationRevision()
+      bundle.identity.indexContractRevision !==
+      candidateWatchSearchIndexContractRevision()
     ) {
       throw new QualificationOperatorError(
-        "operator acceptance application revision is incompatible with this application",
+        "operator acceptance index contract revision is incompatible with this application",
       )
     }
     if (
@@ -243,9 +249,11 @@ function parseReport(bytes: Buffer): QualifiedReport {
       reviewerIdentity: bundle.userAcceptance.reviewerIdentity,
       identity: {
         generationId: bundle.identity.generationId,
-        applicationRevision: bundle.identity.applicationRevision,
+        indexContractRevision: bundle.identity.indexContractRevision,
         rankingRevision: bundle.identity.rankingRevision,
         transcriptCollection: bundle.identity.transcriptCollection,
+        contentEmbeddingContractId: bundle.identity.contentEmbeddingContractId,
+        transcriptChunkingVersion: bundle.identity.transcriptChunkingVersion,
         transcriptProjectionRevision: BigInt(
           bundle.identity.transcriptProjectionRevision,
         ),
@@ -290,13 +298,13 @@ function parseReport(bytes: Buffer): QualifiedReport {
       "transcript projection revision must be a non-negative integer",
     )
   }
-  const applicationRevision = requiredString(
-    identity.applicationRevision,
-    "application revision",
+  const indexContractRevision = requiredString(
+    identity.indexContractRevision,
+    "index contract revision",
   )
-  if (applicationRevision !== candidateWatchSearchApplicationRevision()) {
+  if (indexContractRevision !== candidateWatchSearchIndexContractRevision()) {
     throw new QualificationOperatorError(
-      "qualification report application revision is incompatible with this application",
+      "qualification report index contract revision is incompatible with this application",
     )
   }
   const rankingRevision = requiredString(
@@ -313,11 +321,19 @@ function parseReport(bytes: Buffer): QualifiedReport {
     authorizationStatus: "PASSED",
     identity: {
       generationId: requiredString(identity.generationId, "generation id"),
-      applicationRevision,
+      indexContractRevision,
       rankingRevision,
       transcriptCollection: requiredString(
         identity.transcriptCollection,
         "transcript collection",
+      ),
+      contentEmbeddingContractId: requiredString(
+        identity.contentEmbeddingContractId,
+        "content embedding contract id",
+      ),
+      transcriptChunkingVersion: requiredString(
+        identity.transcriptChunkingVersion,
+        "transcript chunking version",
       ),
       transcriptProjectionRevision: BigInt(transcriptProjectionRevision),
       qrelsRevision: requiredString(identity.qrelsRevision, "qrels revision"),
@@ -452,8 +468,12 @@ function assertGenerationMatches(
   if (
     generation.id !== identity.generationId ||
     generation.state !== "READY" ||
-    generation.applicationRevision !== identity.applicationRevision ||
+    generation.indexContractRevision !== identity.indexContractRevision ||
     generation.transcriptCollection !== identity.transcriptCollection ||
+    generation.contentEmbeddingContractId !==
+      identity.contentEmbeddingContractId ||
+    generation.transcriptChunkingVersion !==
+      identity.transcriptChunkingVersion ||
     generation.transcriptProjectionRevision !==
       identity.transcriptProjectionRevision ||
     generation.catalogCollection !== identity.candidateBindings.catalog ||
@@ -553,9 +573,11 @@ export async function runWatchSearchCandidateQualificationOperator(
     const qualification = await dependencies.service.recordQualification({
       generationId: report.identity.generationId,
       status: report.authorizationStatus,
-      applicationRevision: report.identity.applicationRevision,
+      indexContractRevision: report.identity.indexContractRevision,
       rankingRevision: report.identity.rankingRevision,
       transcriptCollection: report.identity.transcriptCollection,
+      contentEmbeddingContractId: report.identity.contentEmbeddingContractId,
+      transcriptChunkingVersion: report.identity.transcriptChunkingVersion,
       transcriptProjectionRevision:
         report.identity.transcriptProjectionRevision,
       qrelsRevision: report.identity.qrelsRevision,
@@ -589,7 +611,7 @@ export async function runWatchSearchCandidateQualificationOperator(
   }
   const pinned = await dependencies.service.pinServingGeneration({
     generationId: report.identity.generationId,
-    applicationRevision: report.identity.applicationRevision,
+    indexContractRevision: report.identity.indexContractRevision,
     expectedPointerVersion: parsedArguments.expectedPointerVersion!,
     currentBindings,
     qrelsRevision: report.identity.qrelsRevision,

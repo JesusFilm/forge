@@ -4,12 +4,14 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "pnpm run generate:ui-locales && next dev",
-    "build": "pnpm run generate:ui-locales && next build && pnpm run prune:next-isr",
+    "build": "pnpm run generate:ui-locales && next build && pnpm run build:admission-worker && pnpm run prune:next-isr",
     "start": "next start",
+    "build:admission-worker": "tsc -p tsconfig.admission-worker.json",
     "fetch-secrets": "../../scripts/fetch-secrets.sh forge-web .env",
     "lint": "pnpm run check:ui-locales && eslint .",
     "typecheck": "pnpm run generate:ui-locales && tsc --noEmit",
     "test": "pnpm run generate:ui-locales && vitest run",
+    "test:e2e": "playwright test",
     "test:watch": "pnpm run generate:ui-locales && vitest",
     "datadog:sourcemaps": "node ../../scripts/upload-datadog-sourcemaps.mjs --service forge-web --minified-path-prefix /watch/_next/static/",
     "prune:next-isr": "node scripts/prune-next-isr-output.mjs",
@@ -21,7 +23,9 @@
     "audit:watch-sitemap": "tsx scripts/audit-watch-sitemap.ts",
     "verify:categories": "tsx scripts/verify-categories.ts",
     "probe:watch-urls": "tsx scripts/probe-watch-urls.ts",
-    "probe:watch-video-snapshot": "tsx scripts/probe-watch-video-snapshot.ts"
+    "probe:watch-video-snapshot": "tsx scripts/probe-watch-video-snapshot.ts",
+    "generate:language-bcp47-map": "tsx scripts/generate-language-bcp47-map.ts",
+    "check:language-bcp47-map": "tsx scripts/generate-language-bcp47-map.ts --check"
   },
   "dependencies": {
     "@apollo/client": "^4.1.4",
@@ -58,6 +62,7 @@
   "devDependencies": {
     "@playwright/test": "1.61.1",
     "@tailwindcss/postcss": "^4.1.18",
+    "@types/node": "25.2.3",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.0.0",

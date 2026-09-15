@@ -1,16 +1,23 @@
+import { isEligibleHumanRequest } from "@/lib/recommendation-human-admission"
 import { z } from "zod"
 import {
   asLocaleSlug,
   tryAsContentSlug,
+  watchEpisodePath,
   watchVideoPath,
   WATCH_BASE_PATH,
   WATCH_CANONICAL_ORIGIN,
 } from "@/lib/routes"
 import {
   getContextualSceneRecommendations,
+  getContextualCollectionRecommendations,
   getSemanticRecommendationDelivery,
 } from "@/lib/recommendations"
-import { CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY } from "@/lib/recommendation-contracts"
+import {
+  CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY,
+  SEMANTIC_RECOMMENDATION_CONTRACT,
+  WATCH_RECOMMENDATION_SURFACE,
+} from "@/lib/recommendation-contracts"
 import {
   RECOMMENDATION_DELIVERY_BODY_BYTES,
   RECOMMENDATION_DELIVERY_RESPONSE_BYTES,
@@ -29,6 +36,7 @@ import {
 } from "@/lib/recommendation-session"
 import { readRecommendationConsentCookie } from "@/lib/recommendation-consent"
 import { requestHasRecommendationWithdrawalPending } from "@/lib/recommendation-withdrawal-pending"
+import { resolvePosterUrl } from "@/lib/url"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -36,51 +44,78 @@ export const revalidate = 0
 const DeliveryInput = z
   .object({
     seedMediaId: z.string().min(1).max(191),
+    seedMediaSlug: z
+      .string()
+      .max(191)
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+      .optional(),
     locale: z.string().regex(/^[A-Za-z0-9-]{1,32}$/),
     audioLanguageSlug: z.string().regex(/^[a-z0-9-]{1,64}$/),
   })
   .strict()
 
-const MACHINE_USER_AGENT =
-  /(?:bot|crawler|spider|headless|lighthouse|slurp|bingpreview|facebookexternalhit)/i
-
-function isEligibleHumanRequest(request: Request): boolean {
-  const purpose = [
-    request.headers.get("purpose"),
-    request.headers.get("sec-purpose"),
-  ]
-    .filter(Boolean)
-    .join(";")
-  if (/\b(?:prefetch|prerender)\b/i.test(purpose)) return false
-
-  const userAgent = request.headers.get("user-agent")
-  return userAgent == null || !MACHINE_USER_AGENT.test(userAgent)
+function unavailableSemanticDelivery() {
+  return {
+    contractVersion: SEMANTIC_RECOMMENDATION_CONTRACT,
+    surfaceVersion: WATCH_RECOMMENDATION_SURFACE,
+    strategyVersion: "semantic-delivery-unavailable-v1",
+    classifierVersion: "unavailable-v1",
+    requestId: null,
+    result: "unavailable" as const,
+    reason: "delivery_unavailable",
+    expiresAt: null,
+    requestedCount: null,
+    composedCount: null,
+    shortfallReason: null,
+    items: [],
+    personalization: null,
+  }
 }
 
 async function recoverContextualDelivery(
-  delivery: Awaited<ReturnType<typeof getSemanticRecommendationDelivery>>,
+  delivery:
+    | Awaited<ReturnType<typeof getSemanticRecommendationDelivery>>
+    | ReturnType<typeof unavailableSemanticDelivery>,
   input: z.infer<typeof DeliveryInput>,
 ) {
-  if (delivery.result !== "unavailable") return delivery
-  let recommendations
-  try {
-    recommendations = await getContextualSceneRecommendations(
-      input.seedMediaId,
-      input.locale,
-      6,
-    )
-  } catch {
+  if (delivery.result !== "unavailable" && delivery.result !== "empty") {
     return delivery
   }
+  const scenePromise = getContextualSceneRecommendations(
+    input.seedMediaId,
+    input.locale,
+    6,
+  ).catch(() => [])
+  const collectionPromise = input.seedMediaSlug
+    ? getContextualCollectionRecommendations(
+        input.seedMediaSlug,
+        input.locale,
+        input.audioLanguageSlug,
+        6,
+      ).catch(() => [])
+    : Promise.resolve([])
+  const [sceneRecommendations, collectionRecommendations] = await Promise.all([
+    scenePromise,
+    collectionPromise,
+  ])
+  const recommendations =
+    sceneRecommendations.length > 0
+      ? sceneRecommendations
+      : collectionRecommendations
   const seenTargets = new Set<string>()
   const seenHrefs = new Set<string>()
   const items = recommendations.flatMap((recommendation) => {
     const slug = tryAsContentSlug(recommendation.videoSlug)
     if (!slug || seenTargets.has(recommendation.videoId)) return []
-    const canonicalHref = `${WATCH_BASE_PATH}${watchVideoPath(
-      slug,
-      asLocaleSlug(input.audioLanguageSlug),
-    )}`
+    const languageSlug = asLocaleSlug(input.audioLanguageSlug)
+    const collectionSlug = recommendation.collectionSlug
+      ? tryAsContentSlug(recommendation.collectionSlug)
+      : null
+    const canonicalHref = `${WATCH_BASE_PATH}${
+      collectionSlug
+        ? watchEpisodePath(collectionSlug, slug, languageSlug)
+        : watchVideoPath(slug, languageSlug)
+    }`
     if (seenHrefs.has(canonicalHref)) return []
     const position = seenTargets.size
     if (position >= 6) return []
@@ -100,9 +135,14 @@ async function recoverContextualDelivery(
     ]
   })
   if (items.length === 0) return delivery
+  const collectionFallback = recommendations.some(
+    (recommendation) => recommendation.collectionSlug != null,
+  )
   return {
     ...delivery,
-    strategyVersion: "scene-recommendations-contextual-v1",
+    strategyVersion: collectionFallback
+      ? "collection-siblings-contextual-v1"
+      : "scene-recommendations-contextual-v1",
     classifierVersion: "contextual-fallback-v1",
     requestId: null,
     result: "fallback" as const,
@@ -116,7 +156,9 @@ async function recoverContextualDelivery(
       contractVersion: "anonymous-profile-personalization-v1" as const,
       lane: "semantic_fallback" as const,
       executionMode: "semantic_fallback" as const,
-      effectiveManifestId: "scene-recommendations-contextual-v1",
+      effectiveManifestId: collectionFallback
+        ? "collection-siblings-contextual-v1"
+        : "scene-recommendations-contextual-v1",
       profileState: null,
       projectionVersion: null,
       projectionGeneration: null,
@@ -144,8 +186,13 @@ export async function POST(request: Request) {
     const withdrawalPending = requestHasRecommendationWithdrawalPending(request)
     const consentReceiptDigest =
       !withdrawalPending && consent.kind === "valid" ? consent.digest : null
+    const semanticInput = {
+      seedMediaId: parsed.data.seedMediaId,
+      locale: parsed.data.locale,
+      audioLanguageSlug: parsed.data.audioLanguageSlug,
+    }
     const semanticDelivery = await getSemanticRecommendationDelivery({
-      ...parsed.data,
+      ...semanticInput,
       sessionDigest: session.digest,
       consentReceiptDigest,
       profileTokenDigest:
@@ -153,11 +200,21 @@ export async function POST(request: Request) {
           ? profile.digest
           : null,
       eligibleHuman: isEligibleHumanRequest(request),
-    })
-    const delivery = await recoverContextualDelivery(
+    }).catch(() => unavailableSemanticDelivery())
+    const recoveredDelivery = await recoverContextualDelivery(
       semanticDelivery,
       parsed.data,
     )
+    const delivery = {
+      ...recoveredDelivery,
+      items: recoveredDelivery.items.map((item) => ({
+        ...item,
+        imageUrl: resolvePosterUrl(
+          { thumbnail: item.imageUrl },
+          item.playbackId,
+        ),
+      })),
+    }
     const serialized = JSON.stringify({ delivery })
     if (
       new TextEncoder().encode(serialized).byteLength >

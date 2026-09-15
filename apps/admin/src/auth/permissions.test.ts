@@ -51,6 +51,7 @@ const PERMISSION_KEY_REGISTRY: Record<PermissionKey, true> = {
   "read:manager-read-models": true,
   "read:manager-seo": true,
   "read:manager-seo-audit-detail": true,
+  "read:manager-watch-route-alerts": true,
   "read:recommendation-aggregates": true,
   "read:recommendation-traces": true,
   "operate:recommendation-experiments": true,
@@ -710,6 +711,7 @@ describe("permission matrix completeness", () => {
         "read:manager-read-models",
         "read:manager-seo",
         "read:manager-seo-audit-detail",
+        "read:manager-watch-route-alerts",
         "write:manager-jobs",
       ])
       for (const key of ALL_PERMISSION_KEYS) {

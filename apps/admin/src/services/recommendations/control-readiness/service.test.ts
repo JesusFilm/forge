@@ -112,6 +112,8 @@ describe("RecommendationControlReadinessService", () => {
       "ORDER BY decision.source_key, decision.revision DESC",
     )
     expect(sql).toContain("outcome.actor_class IN")
+    expect(sql).toContain("selection.attribution_eligible_at <=")
+    expect(sql).toContain("selection.attribution_eligible_at IS NULL")
     expect(sql).toContain("'human_anonymous'")
     expect(sql).toContain("'human_signed_in'")
     expect(sql).toContain("action.purpose IN ('find_to_share', 'course_build')")

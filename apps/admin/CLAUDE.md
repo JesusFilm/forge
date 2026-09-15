@@ -283,6 +283,9 @@ is redundant and loses the plugin's column-pruning.
 - Env vars validated at startup via `src/config/env.ts`. Never read `process.env` directly.
 - Env vars managed by Doppler (project: `forge-admin`). Use `pnpm fetch-secrets` for local dev.
 - Tests colocated as `*.test.ts` / `*.test.tsx` beside source files.
+- Next production builds use `tsconfig.build.json` to exclude colocated tests
+  from their duplicate TypeScript pass. Keep `pnpm typecheck` on
+  `tsconfig.json` so the complete test corpus remains typechecked in CI.
 - **Adding a new Pothos type** requires three steps:
   1. Create `src/graphql/types/<name>.ts` and call `builder.prismaObject(...)`
   2. Add a side-effect import in `src/graphql/schema.ts` so the type registers on the builder before `builder.toSchema()` runs
@@ -1157,9 +1160,10 @@ provider metadata).
 Mastra writes vectors through Admin's narrow internal ingest route:
 `POST /api/internal/mastra/transcript-embeddings`. The route validates
 `MASTRA_TRANSCRIPT_INGEST_API_KEYS`, accepts only transcript payloads,
-guards `dimensions === 1536`, resolves Admin or external targets before
-writing, and is idempotent by default. Explicit modes are `idempotent`,
-`repair`, `force`, and `model-upgrade`.
+guards `dimensions === 1536`, caps the streamed JSON body at 16 MiB and each
+transcript at 1,024 chunks, resolves Admin or external targets before writing,
+and is idempotent by default. Explicit modes are `idempotent`, `repair`,
+`force`, and `model-upgrade`.
 
 - **Schema:** `VideoTranscript` attaches to `VideoEdition` (same cut-
   aware attachment as `VideoSubtitle` / `VideoScene`). One row per
@@ -1187,6 +1191,64 @@ writing, and is idempotent by default. Explicit modes are `idempotent`,
   (`sourceArtifactKey`, `sourceContentHash`, provider, Mastra run id,
   generation mode, chunking version), and delegates the actual table
   write to the existing indexer service.
+- **Incremental Watch Search publication:** every accepted canonical ingest
+  increments `sourceGeneration` and writes one identity-only publication event
+  in the same serializable transaction. The dedicated Admin worker reloads the
+  vectors from PostgreSQL, upserts stable chunk document ids into the current
+  transcript collection, independently reads the documents and normalized
+  vectors back, removes stale ids, and atomically completes the event while
+  advancing one durable projection revision. Before the first mutation, it
+  reads the exact physical collection schema and requires the complete Watch
+  Search transcript field contract, including grouping/visibility facets and
+  the 1,536-dimension vector declaration; document readback alone cannot prove
+  that the real reader can query an incorrectly shaped collection. Once an
+  external mutation starts, a failed JSONL upsert removes current ids but keeps
+  exact stale ids until every current upsert has succeeded; failures after
+  stale deletion starts remove and verify the complete affected id set under
+  the same publication lock before retry. An incomplete attempt must not leave
+  a newly public transcript searchable. Claims are generation/token fenced,
+  and the next live worker dead-letters an attempt-exhausted crashed claim
+  before making another external call. Bounded failures enter `DEAD_LETTER`
+  without losing repair evidence, and a later source generation can coalesce
+  that evidence. A canonical transcript/video cascade appends identity-only
+  `LIFECYCLE` cleanup before deleting the parent, combining incremental event
+  evidence with canonical chunk ids published only by a full rebuild;
+  publication events therefore deliberately have no transcript foreign key
+  and retain transcript, video, edition, language, contract, chunking, and
+  exact document identity. A thrown final
+  PostgreSQL commit is reconciled from the durable event and projection rows
+  before compensation because the commit acknowledgement may be lost after a
+  successful commit; an unavailable reconciliation preserves the claim and
+  documents until retry rather than deleting a potentially completed
+  publication that has no pending event left to restore it. Enable it only on
+  the Admin worker
+  with `WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED=true`; the default is
+  `false`. Enabling also requires `WORKFLOW_RUNNER_ENABLED=true`,
+  `WORKFLOW_TARGET_WORLD=@workflow/world-postgres`, `TYPESENSE_HOST`, and
+  `TYPESENSE_OPERATOR_API_KEY`. Missing Typesense operator configuration is a
+  fail-fast startup error before the workflow runtime or any scheduler starts
+  when publication is explicitly enabled, as is enabling the publisher without
+  the Postgres Workflow runner settings above. Incremental publication waits
+  for active evaluation leases but remains compatible with an already
+  qualified serving candidate that shares the same transcript collection,
+  embedding contract, and chunking version; a routine projection-revision
+  advance must not require requalification or promotion. Every configured
+  reader credential, including the legacy `TYPESENSE_API_KEY` even when a
+  dedicated search key takes precedence, must remain distinct from
+  `TYPESENSE_OPERATOR_API_KEY`; Admin enforces this at startup so no reader or
+  benchmark path can silently inherit publication and deletion authority.
+  Both current-index and candidate-index publication commands require the
+  operator key; the legacy key is never publication authority. Production
+  Admin web startup rejects an injected operator key; the credential is valid
+  only on the dedicated Postgres worker, even while incremental publication is
+  still disabled for a staged rollout. Railway project-level variables may
+  inject reader keys into every service, so `railway.worker.toml` explicitly
+  unsets `TYPESENSE_API_KEY` and `TYPESENSE_SEARCH_API_KEY` before the worker's
+  build, migration, and runtime commands load Admin's fail-closed credential
+  checks. Build and migration additionally unset
+  `TYPESENSE_OPERATOR_API_KEY` and
+  `WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED`; the operator key remains
+  available only to the worker runtime.
 - **Backfill workflow:**
   `src/workflows/transcriptEmbeddingBackfill.ts` — useworkflow job
   that enumerates one target per `(video, edition, bcp47)` triple.
@@ -1808,6 +1870,16 @@ migration for any contraction. The complete activation, health, rotation,
 purge, recovery, rollback, redaction, and isolated-preview procedure is in
 `docs/operations/semantic-recommendation-tracer.md`.
 
+Source-free `UserRecommendationDeliveryService` fills profile shortfalls from
+`CuratedPoolsService`. Its runtime metadata lookup is
+`src/services/recommendations/curated-pools.runtime.ts`: one bounded SQL snapshot
+for the active generation, exact locale/audio pools, interest membership and
+editorial ranks. Keep publication/playback/artwork/identity hydration live on
+every request; do not cache that eligibility or reintroduce serial metadata
+reads inside the 1.5-second delivery budget. The real-Postgres lifecycle test
+pins five native SQL statements for cold retrieval. See
+`docs/solutions/performance-issues/curated-fallback-serial-metadata-reads-exhaust-budget-20260915.md`.
+
 ## Scene recommendations (R5 of admin migration playbook)
 
 Admin owns public scene-similarity recommendations — given a seed video
@@ -1824,7 +1896,7 @@ shape drift.
   Constants ported from cms: `DEFAULT_LIMIT = 10`, `MAX_LIMIT = 50`,
   `OVERFETCH_FACTOR = 3`.
 - **Retriever:** `src/services/scene-recommendations-retriever.ts`
-  exports four `$queryRaw` helpers:
+  provides these retrieval helpers:
   - `resolveSlugToVideoId(slug)` — non-deleted `video.slug` → cuid.
   - `fetchInputEmbeddings(videoId, locale, sceneIndex?)` — per-chunk or
     per-video transcript input embeddings in the requested locale. The
@@ -1841,14 +1913,22 @@ shape drift.
     dub/mux so rows without a resolvable playback are filtered out
     (preserves cms's non-null `playbackId` contract; distinct from hybrid
     search which uses LEFT JOIN).
+  - `queryScenesSimilarMany(queryEmbeddings, locale, excludeIds, limit)` —
+    exact multi-seed search with materialized eligible chunks, preferred dubs
+    and parsed vectors. Keep vector parsing materialized: inlining the cast
+    repeats it for every candidate comparison. Per-seed limits precede the
+    best-per-video union; all seed chunks remain represented.
 - **Dedup:** 3-layer video dedup (coreId prefix, exact title, embedding
   cosine > 0.95) via the shared `dedupeByVideoIdentity` primitive in
   `src/services/video-dedup.ts`. Same primitive R4 hybrid-search uses.
 - **Per-scene vs per-video modes.** Per-scene (sceneIndex provided OR
   seed has one scene) runs one similarity query with
   `limit * OVERFETCH_FACTOR` overfetch. Per-video (seed has multiple
-  scenes) queries each scene, merges best-similarity-per-candidate,
-  then dedups. Ported verbatim from cms's `getRecommendations`.
+  scenes) uses `queryScenesSimilarMany` to preserve the per-scene limit and
+  best-similarity-per-candidate rule in one statement, then dedups. Verify
+  compatibility against the single-seed loop with
+  `src/services/scene-recommendations-batch.db.test.ts` and representative
+  catalog inputs when changing this query.
 - **Identity delta from cms.** `videoId` on the response is a **cuid
   `ID!`** (not cms's `Int!`). apps/web's renderer uses it only as a
   React key, so the cutover is a one-line TypeScript-type update on
@@ -2778,3 +2858,30 @@ seed:first-party-apps` (updates the `scope` table + stored client scopes),
 - Next.js App Router route handlers cannot directly export the Yoga instance:
   type signatures mismatch. Wrap in a `(request, context) => yoga.handle(...)`
   function and export that as `GET`/`POST`/`OPTIONS`.
+
+## Studio authoring foundation
+
+For Studio project commands, history, approval or publication changes, read
+`docs/solutions/database-issues/studio-command-revisions-and-publication-latch.md`
+from the repository root. Admin owns the durable module; Manager uses
+`apps/manager/src/backend/studio-client.ts` through Admin GraphQL. The neutral contract is
+`@forge/studio-contracts`. The internal publication seam has no public publish
+mutation until feat-460 supplies its catalog/render/approval checks.
+
+For Studio hosted instructions, OAuth MCP authority, or execution admission, read
+`docs/solutions/security-issues/studio-native-agent-admission.md` from the repository
+root before changing those boundaries.
+
+### Studio release admission controls
+
+`STUDIO_PRODUCTION_ENABLED` and `STUDIO_PUBLICATION_ENABLED` default to `false`.
+The canonical checks live in `src/services/studio-authoring/release-controls.ts`:
+new attempts/experiments/paid runs and execution claims are separate from accepted
+receipts, consumed calls and late settlement. New publication checks follow exact
+receipt lookup, including stored scheduled envelopes. Unpublish and Watch delivery
+reconciliation stay available. Configure all Admin HTTP/workflow replicas and drain
+old processes; process environment is not an instantaneous fleet barrier. See
+`docs/runbooks/studio-release-canary-and-rollback.md` at the repository root for the
+operation map, rollout order and external acceptance gates. Local DB fixtures that
+exercise enabled production/publication must explicitly set both flags to `true`;
+do not change default-off production behavior to accommodate tests.

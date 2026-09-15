@@ -1,0 +1,504 @@
+{
+  "observedAt": "2026-09-10T03:39:11.459016+00:00",
+  "checked": 62,
+  "hlsHeadersPassed": 1,
+  "rows": [
+    {
+      "videoCoreId": "1_jf-0-0",
+      "variantCoreId": "1_144134-jf-0-0",
+      "hasMux": true,
+      "status": 200,
+      "finalHost": "stream.mux.com",
+      "contentType": "application/x-mpegURL",
+      "hlsHeader": true
+    },
+    {
+      "videoCoreId": "1_jf6101-0-0",
+      "variantCoreId": "1_144134-jf6101-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6102-0-0",
+      "variantCoreId": "1_144134-jf6102-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6103-0-0",
+      "variantCoreId": "1_144134-jf6103-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6104-0-0",
+      "variantCoreId": "1_144134-jf6104-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6105-0-0",
+      "variantCoreId": "1_144134-jf6105-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6106-0-0",
+      "variantCoreId": "1_144134-jf6106-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6107-0-0",
+      "variantCoreId": "1_144134-jf6107-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6108-0-0",
+      "variantCoreId": "1_144134-jf6108-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6109-0-0",
+      "variantCoreId": "1_144134-jf6109-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6110-0-0",
+      "variantCoreId": "1_144134-jf6110-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6111-0-0",
+      "variantCoreId": "1_144134-jf6111-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6112-0-0",
+      "variantCoreId": "1_144134-jf6112-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6113-0-0",
+      "variantCoreId": "1_144134-jf6113-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6114-0-0",
+      "variantCoreId": "1_144134-jf6114-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6115-0-0",
+      "variantCoreId": "1_144134-jf6115-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6116-0-0",
+      "variantCoreId": "1_144134-jf6116-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6117-0-0",
+      "variantCoreId": "1_144134-jf6117-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6118-0-0",
+      "variantCoreId": "1_144134-jf6118-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6119-0-0",
+      "variantCoreId": "1_144134-jf6119-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6120-0-0",
+      "variantCoreId": "1_144134-jf6120-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6121-0-0",
+      "variantCoreId": "1_144134-jf6121-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6122-0-0",
+      "variantCoreId": "1_144134-jf6122-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6123-0-0",
+      "variantCoreId": "1_144134-jf6123-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6124-0-0",
+      "variantCoreId": "1_144134-jf6124-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6125-0-0",
+      "variantCoreId": "1_144134-jf6125-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6126-0-0",
+      "variantCoreId": "1_144134-jf6126-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6127-0-0",
+      "variantCoreId": "1_144134-jf6127-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6128-0-0",
+      "variantCoreId": "1_144134-jf6128-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6129-0-0",
+      "variantCoreId": "1_144134-jf6129-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6130-0-0",
+      "variantCoreId": "1_144134-jf6130-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6131-0-0",
+      "variantCoreId": "1_144134-jf6131-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6132-0-0",
+      "variantCoreId": "1_144134-jf6132-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6133-0-0",
+      "variantCoreId": "1_144134-jf6133-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6134-0-0",
+      "variantCoreId": "1_144134-jf6134-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6135-0-0",
+      "variantCoreId": "1_144134-jf6135-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6136-0-0",
+      "variantCoreId": "1_144134-jf6136-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6137-0-0",
+      "variantCoreId": "1_144134-jf6137-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6138-0-0",
+      "variantCoreId": "1_144134-jf6138-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6139-0-0",
+      "variantCoreId": "1_144134-jf6139-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6140-0-0",
+      "variantCoreId": "1_144134-jf6140-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6141-0-0",
+      "variantCoreId": "1_144134-jf6141-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6142-0-0",
+      "variantCoreId": "1_144134-jf6142-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6143-0-0",
+      "variantCoreId": "1_144134-jf6143-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6144-0-0",
+      "variantCoreId": "1_144134-jf6144-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6145-0-0",
+      "variantCoreId": "1_144134-jf6145-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6146-0-0",
+      "variantCoreId": "1_144134-jf6146-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6147-0-0",
+      "variantCoreId": "1_144134-jf6147-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6148-0-0",
+      "variantCoreId": "1_144134-jf6148-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6149-0-0",
+      "variantCoreId": "1_144134-jf6149-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6150-0-0",
+      "variantCoreId": "1_144134-jf6150-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6151-0-0",
+      "variantCoreId": "1_144134-jf6151-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6152-0-0",
+      "variantCoreId": "1_144134-jf6152-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6153-0-0",
+      "variantCoreId": "1_144134-jf6153-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6154-0-0",
+      "variantCoreId": "1_144134-jf6154-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6155-0-0",
+      "variantCoreId": "1_144134-jf6155-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6156-0-0",
+      "variantCoreId": "1_144134-jf6156-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6157-0-0",
+      "variantCoreId": "1_144134-jf6157-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6158-0-0",
+      "variantCoreId": "1_144134-jf6158-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6159-0-0",
+      "variantCoreId": "1_144134-jf6159-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6160-0-0",
+      "variantCoreId": "1_144134-jf6160-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    },
+    {
+      "videoCoreId": "1_jf6161-0-0",
+      "variantCoreId": "1_144134-jf6161-0-0",
+      "hasMux": false,
+      "status": 302,
+      "error": "HTTPError",
+      "hlsHeader": false
+    }
+  ]
+}

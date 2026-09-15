@@ -527,7 +527,8 @@
     "previousVideoPreview": "Алдыңғы видеоның алдын ала көрінісі",
     "nextVideoPreview": "Келесі видеоның алдын ала көрінісі",
     "mediaCollection": "Медиа жинағы",
-    "scrollToVideo": "{title} видеосына өту"
+    "scrollToVideo": "{title} видеосына өту",
+    "forYou": "Сіз үшін"
   },
   "WatchFooter": {
     "home": "Jesus Film Project басты беті",
@@ -597,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -713,9 +714,9 @@
   "WatchUnavailableLanguage": {
     "metadataTitle": "Тілдік нұсқа қолжетімсіз",
     "eyebrow": "Тілдік нұсқа қолжетімсіз",
-    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> тілінде қолжетімсіз",
+    "title": "<contentTitle>{title}</contentTitle>: <languageName>«{language}»</languageName> нұсқасы жоқ",
     "actionsLabel": "Қолжетімді көру нұсқалары",
-    "browseInLanguage": "{language} тіліндегі бейнелерді шолу",
+    "browseInLanguage": "Барлық бейнелер: «{language}»",
     "backToSearch": "Іздеуге оралу",
     "audioVersionsTitle": "Басқа аудио нұсқалар",
     "audioVersionsDescription": "Бұл бейнені көруді жалғастыру үшін аудио тілін таңдаңыз.",

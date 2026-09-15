@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   adminLegacyWatchExperienceFragment,
+  adminPreCopyWatchExperienceFragment,
   adminWatchExperienceFragment,
 } from "@forge/admin-graphql/fragments"
 
@@ -41,7 +42,7 @@ function collectResolvedTitlePaths(
 }
 
 describe("Web Watch Experience media collection titles", () => {
-  it("keeps the legacy compatibility fragment identical except for the category rail", () => {
+  it("keeps the legacy compatibility fragment identical except for newer top-level blocks", () => {
     const currentDefinition = adminWatchExperienceFragment.definitions.find(
       (candidate) => candidate.kind === "FragmentDefinition",
     )
@@ -72,8 +73,10 @@ describe("Web Watch Experience media collection titles", () => {
             selections: selection.selectionSet?.selections.filter(
               (blockSelection) =>
                 blockSelection.kind !== "InlineFragment" ||
-                blockSelection.typeCondition?.name.value !==
+                ![
                   "WatchHomeCategoryRailBlock",
+                  "HomepageRecommendationsBlock",
+                ].includes(blockSelection.typeCondition?.name.value ?? ""),
             ),
           },
         }
@@ -87,6 +90,21 @@ describe("Web Watch Experience media collection titles", () => {
       "WatchHomeCategoryRailBlock",
     )
     expect(print(adminWatchExperienceFragment)).toContain("categoryIds")
+    expect(print(adminWatchExperienceFragment)).toContain("ctaLabel")
+    const preCopyDefinition =
+      adminPreCopyWatchExperienceFragment.definitions.find(
+        (definition) =>
+          definition.kind === "FragmentDefinition" &&
+          definition.name.value === "AdminPreCopyWatchHomeCategoryRail",
+      )
+    const preCopy = print(preCopyDefinition!)
+    expect(preCopy).toContain("WatchHomeCategoryRailBlock")
+    expect(preCopy).toContain("categoryIds")
+    expect(preCopy).toContain("tiles")
+    expect(preCopy).not.toContain("ctaLabel")
+    expect(print(adminWatchExperienceFragment)).toContain(
+      "AdminHomepageRecommendations",
+    )
     expect(print(adminLegacyWatchExperienceFragment)).not.toContain(
       "WatchHomeCategoryRailBlock",
     )

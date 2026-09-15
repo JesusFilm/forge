@@ -3,16 +3,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { MouseEvent } from "react"
 import type { Route } from "next"
-import { useTranslations } from "next-intl"
 import { VideoRecommendations } from "@/components/sections/VideoRecommendations"
 import { RecommendationPersonalizationControl } from "@/components/recommendations/RecommendationPersonalizationControl"
 import { useEligibleRecommendationImpression } from "@/components/recommendations/useEligibleRecommendationImpression"
 import {
   randomRecommendationNonce,
   recommendationEventId,
-  recommendationFetchWithRetry,
-  recommendationJsonWithDeadline,
+  recommendationJsonWithRetry,
+  withinRecommendationDeadline,
 } from "@/lib/recommendation-browser"
+import {
+  waitForRecommendationConsentBootstrap,
+  withRecommendationConsentLock,
+} from "@/lib/recommendation-consent-bootstrap"
 import type { SceneRecommendation } from "@/lib/recommendations"
 import {
   CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY,
@@ -20,22 +23,50 @@ import {
   RECOMMENDATION_TAB_CORRELATION_KEY,
   SEMANTIC_RECOMMENDATION_CONTRACT,
   WATCH_RECOMMENDATION_SURFACE,
+  parseRecommendationEvidenceReceipts,
 } from "@/lib/recommendation-contracts"
 import {
   isCanonicalWatchRecommendationHref,
   WATCH_BASE_PATH,
 } from "@/lib/routes"
+import { RecommendationRuntimeError } from "@/lib/recommendation-errors"
+import { RECOMMENDATION_EVIDENCE_BROWSER_DEADLINE_MS } from "@/lib/recommendation-timeouts"
 import { watchPath } from "@/lib/watch-paths"
 
 const DELIVERY_ENDPOINT = watchPath("/api/recommendations")
 const EVIDENCE_ENDPOINT = watchPath("/api/recommendations/evidence")
 const SELECTION_ENDPOINT = watchPath("/api/recommendations/select")
 const DELIVERY_DEADLINE_MS = 12_000
+const DELIVERY_RETRY_MS = 500
+const DELIVERY_MAX_ATTEMPTS = 3
 // Recommendation delivery admission v1 uses this exact same-session/seed
 // cooldown and currently exposes it through the versioned response reason.
 const DELIVERY_COOLDOWN_MS = 5_000
 const SELECTION_DEADLINE_MS = 800
-const EVIDENCE_DEADLINE_MS = 1_000
+const EVIDENCE_DEADLINE_MS = RECOMMENDATION_EVIDENCE_BROWSER_DEADLINE_MS
+
+async function recommendationDeliveryJsonWithDeadline(
+  init: RequestInit,
+  deadlineMs: number,
+): Promise<unknown> {
+  return withinRecommendationDeadline(
+    init.signal,
+    deadlineMs,
+    async (signal) => {
+      const response = await fetch(DELIVERY_ENDPOINT, { ...init, signal })
+      if (!response.ok) {
+        throw new RecommendationRuntimeError(
+          response.status >= 500 ? "delivery_unavailable" : "request_failed",
+        )
+      }
+      try {
+        return await response.json()
+      } catch {
+        throw new RecommendationRuntimeError("request_failed")
+      }
+    },
+  )
+}
 
 type SemanticRecommendationItem = SceneRecommendation & {
   id: string
@@ -424,18 +455,19 @@ function recommendationKey(item: SemanticRecommendationItem): string {
 
 export function WatchSemanticRecommendations({
   seedMediaId,
+  seedMediaSlug,
   locale,
   audioLanguageSlug,
   navigate = defaultNavigate,
 }: {
   seedMediaId: string
+  seedMediaSlug?: string
   locale: string
   audioLanguageSlug: string
   navigate?: (href: string) => void
 }) {
-  const t = useTranslations("VideoRecommendations")
   const [profileRevision, setProfileRevision] = useState(0)
-  const requestKey = `${seedMediaId}\0${locale}\0${audioLanguageSlug}\0${profileRevision}`
+  const requestKey = `${seedMediaId}\0${seedMediaSlug ?? ""}\0${locale}\0${audioLanguageSlug}\0${profileRevision}`
   const [state, setState] = useState<RecommendationState>({
     requestKey,
     status: "loading",
@@ -484,7 +516,8 @@ export function WatchSemanticRecommendations({
   useEffect(() => {
     let active = true
     let controller: AbortController | null = null
-    let cooldownRetryTimer: number | null = null
+    let deliveryRetryTimer: number | null = null
+    let deliveryDeadlineAt: number | null = null
     selectionGenerationRef.current += 1
     selectionAttemptRef.current?.controller.abort()
     selectionAttemptRef.current = null
@@ -497,21 +530,61 @@ export function WatchSemanticRecommendations({
     queueMicrotask(() => {
       if (!active) return
       setState({ requestKey, status: "loading" })
-      const load = (canRetryCooldown: boolean) => {
+      const scheduleRetry = (attempt: number, delayMs: number) => {
+        if (
+          !active ||
+          attempt + 1 >= DELIVERY_MAX_ATTEMPTS ||
+          (deliveryDeadlineAt != null &&
+            Date.now() + delayMs >= deliveryDeadlineAt)
+        ) {
+          return false
+        }
+        deliveryRetryTimer = window.setTimeout(() => {
+          deliveryRetryTimer = null
+          load(attempt + 1)
+        }, delayMs)
+        return true
+      }
+      const load = (attempt: number) => {
         if (!active) return
-        controller = new AbortController()
-        void recommendationJsonWithDeadline(
-          DELIVERY_ENDPOINT,
-          {
-            method: "POST",
-            cache: "no-store",
-            credentials: "same-origin",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ seedMediaId, locale, audioLanguageSlug }),
-            signal: controller.signal,
-          },
-          DELIVERY_DEADLINE_MS,
-        )
+        if (
+          deliveryDeadlineAt != null &&
+          deliveryDeadlineAt - Date.now() <= 0
+        ) {
+          setState({ requestKey, status: "unavailable" })
+          return
+        }
+        const attemptController = new AbortController()
+        controller = attemptController
+        void waitForRecommendationConsentBootstrap()
+          .then(() =>
+            withRecommendationConsentLock(async () => {
+              if (!active || attemptController.signal.aborted) {
+                throw new RecommendationRuntimeError("deadline")
+              }
+              deliveryDeadlineAt ??= Date.now() + DELIVERY_DEADLINE_MS
+              const attemptRemainingMs = deliveryDeadlineAt - Date.now()
+              if (attemptRemainingMs <= 0) {
+                throw new RecommendationRuntimeError("deadline")
+              }
+              return recommendationDeliveryJsonWithDeadline(
+                {
+                  method: "POST",
+                  cache: "no-store",
+                  credentials: "same-origin",
+                  headers: { "content-type": "application/json" },
+                  body: JSON.stringify({
+                    seedMediaId,
+                    ...(seedMediaSlug ? { seedMediaSlug } : {}),
+                    locale,
+                    audioLanguageSlug,
+                  }),
+                  signal: attemptController.signal,
+                },
+                attemptRemainingMs,
+              )
+            }),
+          )
           .then((value) => {
             if (!active || !value || typeof value !== "object") return
             const envelope = parseEnvelope(
@@ -530,33 +603,46 @@ export function WatchSemanticRecommendations({
             } else if (envelope.result === "empty") {
               setState({ requestKey, status: "empty" })
             } else if (
-              canRetryCooldown &&
               envelope.result === "unavailable" &&
+              attempt + 1 < DELIVERY_MAX_ATTEMPTS &&
               (envelope.reason === "cooldown" ||
-                envelope.reason === "in_flight")
+                envelope.reason === "in_flight" ||
+                envelope.reason === "delivery_unavailable" ||
+                envelope.reason === "delivery_timeout")
             ) {
-              cooldownRetryTimer = window.setTimeout(() => {
-                cooldownRetryTimer = null
-                load(false)
-              }, DELIVERY_COOLDOWN_MS)
+              const retryMs =
+                envelope.reason === "cooldown" ||
+                envelope.reason === "in_flight"
+                  ? DELIVERY_COOLDOWN_MS
+                  : DELIVERY_RETRY_MS
+              if (!scheduleRetry(attempt, retryMs)) {
+                setState({ requestKey, status: "unavailable" })
+              }
             } else {
               setState({ requestKey, status: "unavailable" })
             }
           })
-          .catch(() => {
-            if (active) setState({ requestKey, status: "unavailable" })
+          .catch((error) => {
+            if (!active) return
+            const transientFailure =
+              !(error instanceof RecommendationRuntimeError) ||
+              error.code === "delivery_unavailable"
+            if (transientFailure && scheduleRetry(attempt, DELIVERY_RETRY_MS)) {
+              return
+            }
+            setState({ requestKey, status: "unavailable" })
           })
       }
-      load(true)
+      load(0)
     })
     return () => {
       active = false
-      if (cooldownRetryTimer != null) {
-        window.clearTimeout(cooldownRetryTimer)
+      if (deliveryRetryTimer != null) {
+        window.clearTimeout(deliveryRetryTimer)
       }
       controller?.abort()
     }
-  }, [audioLanguageSlug, locale, requestKey, seedMediaId])
+  }, [audioLanguageSlug, locale, requestKey, seedMediaId, seedMediaSlug])
 
   const currentState = useMemo<RecommendationState>(
     () =>
@@ -604,7 +690,9 @@ export function WatchSemanticRecommendations({
       ) {
         return
       }
-      await recommendationFetchWithRetry(
+      const evidenceEventId = eventId(kind, item.id)
+      const submittedEventIds = new Set([evidenceEventId])
+      const value = await recommendationJsonWithRetry(
         EVIDENCE_ENDPOINT,
         {
           method: "POST",
@@ -619,7 +707,7 @@ export function WatchSemanticRecommendations({
             capability: item.capability,
             events: [
               {
-                eventId: eventId(kind, item.id),
+                eventId: evidenceEventId,
                 kind,
                 occurredAt: new Date().toISOString(),
                 payload:
@@ -631,7 +719,51 @@ export function WatchSemanticRecommendations({
           }),
         },
         EVIDENCE_DEADLINE_MS,
+        {
+          accept: (candidate) => {
+            const receipts = parseRecommendationEvidenceReceipts(
+              candidate,
+              submittedEventIds,
+            )
+            return receipts?.length === submittedEventIds.size
+          },
+          onAttemptFailure: ({ reason, willRetry }) => {
+            window.dispatchEvent(
+              new CustomEvent("forge:recommendation-evidence-degraded", {
+                detail: {
+                  reason:
+                    reason === "rejected"
+                      ? "admission_rejected"
+                      : reason === "response_invalid"
+                        ? "receipt_missing"
+                        : willRetry
+                          ? "transport_retry"
+                          : "transport_exhausted",
+                  disposition: willRetry ? "retrying" : "dropped",
+                  eventIds: [evidenceEventId],
+                },
+              }),
+            )
+          },
+        },
       )
+      const receipts = parseRecommendationEvidenceReceipts(
+        value,
+        submittedEventIds,
+      )
+      const receipt = receipts?.[0]
+      if (!receipt || receipt.status === "conflict") {
+        window.dispatchEvent(
+          new CustomEvent("forge:recommendation-evidence-degraded", {
+            detail: {
+              reason: receipt ? "integrity_conflict" : "receipt_missing",
+              disposition: "dropped",
+              eventIds: [evidenceEventId],
+            },
+          }),
+        )
+        throw new RecommendationRuntimeError("evidence_failed")
+      }
     },
     [requestId],
   )
@@ -710,16 +842,21 @@ export function WatchSemanticRecommendations({
       }
       setBusyState({ requestKey, itemId: item.id })
       const correlation = tabNonce()
+      const claimNonce = randomRecommendationNonce()
+      // Persist before the fail-open navigation. If the selection commits but
+      // its response is lost, Watch can still claim the exact server binding.
+      storeClaimNonce(claimNonce)
       const isCurrentAttempt = () =>
         mountedRef.current &&
         selectionGenerationRef.current === attemptId &&
         selectionAttemptRef.current?.id === attemptId
-      void recommendationJsonWithDeadline(
+      void recommendationJsonWithRetry(
         SELECTION_ENDPOINT,
         {
           method: "POST",
           cache: "no-store",
           credentials: "same-origin",
+          keepalive: true,
           headers: { "content-type": "application/json" },
           signal: controller.signal,
           body: JSON.stringify({
@@ -730,23 +867,26 @@ export function WatchSemanticRecommendations({
             eventId: eventId("selection", item.id),
             occurredAt: new Date().toISOString(),
             tabNonce: correlation,
+            claimNonce,
           }),
         },
         SELECTION_DEADLINE_MS,
+        {
+          accept: (value) => {
+            if (!value || typeof value !== "object" || Array.isArray(value)) {
+              return false
+            }
+            const handoff = value as Record<string, unknown>
+            return (
+              handoff.claimNonce === claimNonce &&
+              handoff.canonicalHref === item.canonicalHref &&
+              handoff.targetMediaId === item.targetMediaId
+            )
+          },
+        },
       )
-        .then((value) => {
+        .then(() => {
           if (!isCurrentAttempt()) return
-          const handoff = value as Record<string, unknown>
-          if (
-            nonEmptyString(handoff.claimNonce, 191) &&
-            handoff.claimNonce.length >= 16 &&
-            handoff.canonicalHref === item.canonicalHref &&
-            handoff.targetMediaId === item.targetMediaId
-          ) {
-            storeClaimNonce(handoff.claimNonce)
-            navigateOnce(item.canonicalHref)
-            return
-          }
           navigateOnce(item.canonicalHref)
         })
         .catch(() => {
@@ -777,27 +917,11 @@ export function WatchSemanticRecommendations({
       />
     )
   }
-  if (currentState.status === "empty") {
-    return (
-      <section
-        data-block-type="SemanticRecommendations"
-        data-state="empty"
-        className="min-h-48 py-12 text-center text-stone-400"
-      >
-        <p>{t("none")}</p>
-      </section>
-    )
-  }
-  if (currentState.status === "unavailable") {
-    return (
-      <section
-        data-block-type="SemanticRecommendations"
-        data-state="unavailable"
-        className="min-h-48 py-12 text-center text-stone-400"
-      >
-        <p>Recommended videos are temporarily unavailable.</p>
-      </section>
-    )
+  if (
+    currentState.status === "empty" ||
+    currentState.status === "unavailable"
+  ) {
+    return null
   }
 
   let announcement = ""

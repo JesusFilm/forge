@@ -1,3 +1,4 @@
+import { canonicalPrefix, scopeSource } from "./lib/path-scope.js"
 import { acquireSource } from "../src/acquisition/index.js"
 import {
   acquirableSources,
@@ -7,13 +8,12 @@ import {
 } from "../src/registry/index.js"
 import { RagOperationalError } from "../src/contracts/index.js"
 import { parseAcquireArgs } from "./lib/maintenance-args.js"
-import { installProductionEnvironment } from "./lib/production-target.js"
+import { installForgeProductionEnvironment } from "./lib/production-target.js"
 
 async function main() {
-  const argv = process.argv.slice(2)
+  const argv = process.argv.slice(process.argv[2] === "--" ? 3 : 2)
   const production = argv.includes("--production")
   const args = parseAcquireArgs(argv)
-  if (production) installProductionEnvironment(process.env, args.apply)
   const entries = args.all
     ? acquirableSources()
     : [getSource(args.source as string)]
@@ -30,6 +30,13 @@ async function main() {
         `source '${entries[0].key}' is not acquirable: ${reason}`,
       )
   }
+  // Resolve every registered slice before environment mutation or runtime wiring.
+  const scopedEntries = entries.flatMap((entry) =>
+    entry ? [scopeSource(entry, args.pathPrefix)] : [],
+  )
+  const target = production
+    ? installForgeProductionEnvironment(process.env, args.apply)
+    : { target: "local", mode: args.apply ? "apply" : "preview" }
   if (args.all)
     for (const entry of disabledAcquisitionSources())
       console.log(
@@ -43,8 +50,17 @@ async function main() {
   const wiring = wire()
   try {
     const failures: Error[] = []
-    for (const entry of entries) {
-      if (!entry) continue
+    for (const entry of scopedEntries) {
+      const operation = {
+        ...target,
+        source: entry.key,
+        pathPrefix: args.pathPrefix ?? null,
+        canonicalUrlPrefix: canonicalPrefix(entry, args.pathPrefix) ?? null,
+        maxPages: entry.crawl.maxPages,
+        resume: args.resume,
+        dryRun: args.dryRun,
+      }
+      console.log(JSON.stringify({ event: "acquire-start", ...operation }))
       try {
         const result = await acquireSource(
           { fetcher: wiring.fetcherFor(entry), store: wiring.rawDocumentStore },
@@ -55,7 +71,13 @@ async function main() {
             onProgress: console.log,
           },
         )
-        console.log(JSON.stringify(result))
+        console.log(
+          JSON.stringify({
+            event: "acquire-complete",
+            ...result,
+            ...operation,
+          }),
+        )
       } catch (error) {
         const failure =
           error instanceof Error ? error : new Error(String(error))

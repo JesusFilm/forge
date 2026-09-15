@@ -527,7 +527,8 @@
     "previousVideoPreview": "Pregled prethodnog videa",
     "nextVideoPreview": "Pregled sledećeg videa",
     "mediaCollection": "Zbirka medija",
-    "scrollToVideo": "Pomeri se do videa {title}"
+    "scrollToVideo": "Pomeri se do videa {title}",
+    "forYou": "За вас"
   },
   "WatchFooter": {
     "home": "Početna stranica Jesus Film Project",
@@ -597,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -713,9 +714,9 @@
   "WatchUnavailableLanguage": {
     "metadataTitle": "Језичка верзија није доступна",
     "eyebrow": "Језичка верзија није доступна",
-    "title": "<contentTitle>{title}</contentTitle> није доступан на језику <languageName>{language}</languageName>",
+    "title": "<contentTitle>{title}</contentTitle>: нема верзије на језику <languageName>„{language}“</languageName>",
     "actionsLabel": "Доступне опције гледања",
-    "browseInLanguage": "Прегледајте видео-снимке на језику {language}",
+    "browseInLanguage": "Сви видео-снимци на језику „{language}“",
     "backToSearch": "Назад на претрагу",
     "audioVersionsTitle": "Друге звучне верзије",
     "audioVersionsDescription": "Изаберите језик звука да бисте наставили да гледате овај видео.",

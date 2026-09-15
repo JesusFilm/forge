@@ -19,6 +19,10 @@ import {
   loadPromotionState,
   recommendationPromotionOverview,
 } from "./overview-profile-promotion"
+import {
+  loadRecommendationProfileReconciliationOverview,
+  type RecommendationProfileReconciliationOverview,
+} from "./profile-reconciliation.service"
 
 type AggregateRow = Readonly<{
   preparedRequests: bigint | number
@@ -131,6 +135,7 @@ export type RecommendationOverviewData = Readonly<{
   experimentEvaluation: RecommendationExperimentEvaluationData | null
   promotion: RecommendationPromotionOverviewData | null
   profileShadow: RecommendationProfileShadowOverviewData | null
+  profileReconciliation: RecommendationProfileReconciliationOverview | null
 }>
 
 export type RecommendationProfileShadowOverviewData = Readonly<{
@@ -330,6 +335,7 @@ export async function loadRecommendationOverview(
       experimentEvaluation,
       promotionState,
       profileShadow,
+      profileReconciliation,
     ] = await Promise.all([
       prisma.$queryRaw<AggregateRow[]>(Prisma.sql`
         WITH active_roots AS (
@@ -404,13 +410,12 @@ export async function loadRecommendationOverview(
         ),
         selection_summary AS (
           SELECT
-            COUNT(*) AS selections,
             COUNT(*) FILTER (
-              WHERE NOT EXISTS (
-                SELECT 1
-                FROM recommendation_impression impression
-                WHERE impression.item_id = selection.item_id
-              )
+              WHERE selection.attribution_eligible_at <= ${now}
+            ) AS selections,
+            COUNT(*) FILTER (
+              WHERE selection.attribution_eligible_at IS NULL
+                OR selection.attribution_eligible_at > ${now}
             ) AS "selectionWithoutImpression"
           FROM recommendation_selection selection
           JOIN active_roots root ON root.id = selection.request_id
@@ -653,6 +658,11 @@ export async function loadRecommendationOverview(
       }) ?? Promise.resolve(null),
       loadPromotionState(prisma, now),
       loadProfileShadowOverview(prisma, window, now),
+      loadRecommendationProfileReconciliationOverview(
+        prisma,
+        window,
+        now,
+      ).catch(() => null),
     ])
     const row = rows[0]
     if (!row) {
@@ -847,6 +857,7 @@ export async function loadRecommendationOverview(
           })
         : null,
       profileShadow,
+      profileReconciliation,
     }
   } catch {
     console.warn(
@@ -870,6 +881,7 @@ export async function loadRecommendationOverview(
       experimentEvaluation: null,
       promotion: null,
       profileShadow: null,
+      profileReconciliation: null,
     }
   }
 }

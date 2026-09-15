@@ -343,7 +343,8 @@
     "nextVideoPreview": "Podgląd następnego filmu",
     "featured": "Polecane",
     "mediaCollection": "Kolekcja multimediów",
-    "scrollToVideo": "Przewiń do filmu {title}"
+    "scrollToVideo": "Przewiń do filmu {title}",
+    "forYou": "Dla Ciebie"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Języki",
@@ -462,7 +463,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -713,9 +714,9 @@
   "WatchUnavailableLanguage": {
     "metadataTitle": "Wersja językowa jest niedostępna",
     "eyebrow": "Wersja językowa jest niedostępna",
-    "title": "<contentTitle>{title}</contentTitle> nie jest dostępny w języku <languageName>{language}</languageName>",
+    "title": "<contentTitle>{title}</contentTitle>: brak wersji w języku <languageName>„{language}”</languageName>",
     "actionsLabel": "Dostępne opcje oglądania",
-    "browseInLanguage": "Przeglądaj filmy w języku {language}",
+    "browseInLanguage": "Wszystkie filmy w języku „{language}”",
     "backToSearch": "Wróć do wyszukiwania",
     "audioVersionsTitle": "Inne wersje językowe",
     "audioVersionsDescription": "Wybierz język dźwięku, aby kontynuować oglądanie tego filmu.",

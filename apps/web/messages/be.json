@@ -527,7 +527,8 @@
     "previousVideoPreview": "Папярэдні папярэдні прагляд відэа",
     "nextVideoPreview": "Наступны папярэдні прагляд відэа",
     "mediaCollection": "Медыякалекцыя",
-    "scrollToVideo": "Пракруціць да відэа {title}"
+    "scrollToVideo": "Пракруціць да відэа {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Галоўная Jesus Film Project",
@@ -597,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -713,9 +714,9 @@
   "WatchUnavailableLanguage": {
     "metadataTitle": "Моўная версія недаступная",
     "eyebrow": "Моўная версія недаступная",
-    "title": "<contentTitle>{title}</contentTitle> недаступна на мове <languageName>{language}</languageName>",
+    "title": "<contentTitle>{title}</contentTitle>: няма версіі на мове <languageName>«{language}»</languageName>",
     "actionsLabel": "Даступныя варыянты прагляду",
-    "browseInLanguage": "Праглядаць відэа на мове {language}",
+    "browseInLanguage": "Усе відэа на мове «{language}»",
     "backToSearch": "Назад да пошуку",
     "audioVersionsTitle": "Іншыя аўдыяверсіі",
     "audioVersionsDescription": "Выберыце мову аўдыя, каб працягнуць прагляд гэтага відэа.",

@@ -343,7 +343,8 @@
     "nextVideoPreview": "Preview ng susunod na video",
     "featured": "Tampok",
     "mediaCollection": "Koleksyon ng media",
-    "scrollToVideo": "Mag-scroll sa video na {title}"
+    "scrollToVideo": "Mag-scroll sa video na {title}",
+    "forYou": "Para sa iyo"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Mga wika",
@@ -462,7 +463,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",

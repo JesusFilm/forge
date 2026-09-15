@@ -41,6 +41,7 @@ import {
   WATCH_LANGUAGE_TAG_CLASS,
   WATCH_SECTION_EYEBROW_CLASS,
 } from "@/components/watch/watch-section-styles"
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { LanguageInventoryPage } from "./LanguageInventoryPage"
 import {
   isNewRelease,
@@ -993,9 +994,21 @@ describe("LanguageInventoryPage collection group layout", () => {
     expect(group?.className).toContain(
       "xl:grid-cols-[minmax(320px,440px)_minmax(0,1fr)]",
     )
-    // No `2xl` track: the section content is capped at `max-w-7xl`, so the
-    // group stops growing at 1216px (1536/1920/2560px all measured identical).
+    // The sidebar deliberately holds its 440px maximum while the shared Watch
+    // rail gives the episode list any additional wide-screen space.
     expect(group?.className).not.toContain("2xl:grid-cols-")
+
+    const sectionRail = group?.closest("[data-inv-section]")?.firstElementChild
+    for (const className of WATCH_PAGE_CONTENT_CLASSES.split(" ")) {
+      expect(sectionRail?.className).toContain(className)
+    }
+
+    const filterRail = container.querySelector(
+      '[data-testid="language-inventory-filters"] > div',
+    )
+    for (const className of WATCH_PAGE_CONTENT_CLASSES.split(" ")) {
+      expect(filterRail?.className).toContain(className)
+    }
   })
 })
 
@@ -1283,15 +1296,31 @@ describe("LanguageInventoryPage episode row index", () => {
     expect(index?.className).toContain("sm:text-lg")
     expect(index?.className).not.toContain("text-xs")
 
-    // Its own trailing margin, so the number/thumbnail gap grows without also
-    // spreading thumbnail-to-title (the row's `gap-3` is shared by all three).
-    expect(index?.className).toContain("mr-1")
+    // From `sm` up the ordinal keeps its own trailing margin, so the
+    // number/thumbnail gap grows without also spreading thumbnail-to-title
+    // (the row's `gap-3` is shared by all three). Phones drop it: there the
+    // ordinal is pulled against the row edge and every pixel of the shared
+    // gap is wanted by the title.
+    expect(index?.className).not.toContain("mr-1")
     expect(index?.className).toContain("sm:mr-2")
 
-    // `w-10` keeps three digits on one line at the larger size — measured
-    // 38px of glyph in a 40px box for "999".
-    expect(index?.className).toContain("w-10")
+    // `sm:w-10` keeps three digits on one line at the larger size — measured
+    // 38px of glyph in a 40px box for "999". On phones the box is a `min-w-5`
+    // floor instead of a fixed width: one- and two-digit ordinals (16px
+    // tabular glyphs, ~19px for two) still right-align to the same edge so the
+    // thumbnail column holds, and a three-digit ordinal grows the box rather
+    // than clipping.
+    expect(index?.className).toContain("min-w-5")
+    expect(index?.className).toContain("sm:w-10")
+    expect(index?.className).not.toContain(" w-10")
     expect(index?.className).toContain("tabular-nums")
+
+    // Phones centre the digits in that box so the space before and after the
+    // ordinal is equal (the box width matches the row's `px-2`/`gap-2`);
+    // right-alignment is a `sm`+ concern, where the column is fixed-width.
+    expect(index?.className).toContain("text-center")
+    expect(index?.className).toContain("sm:text-right")
+    expect(index?.className).not.toContain(" text-right")
   })
 })
 

@@ -327,6 +327,7 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
     expect(watchSemanticRecommendationsMock).toHaveBeenCalledWith(
       expect.objectContaining({
         seedMediaId: "video-1",
+        seedMediaSlug: "jesus",
         locale: "en",
         audioLanguageSlug: "english",
       }),

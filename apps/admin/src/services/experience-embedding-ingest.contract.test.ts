@@ -1,4 +1,14 @@
 import { describe, expect, it, vi } from "vitest"
+import {
+  ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
+  ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
+  ACTIVE_CONTENT_QUERY_EMBEDDING_MODEL,
+  ACTIVE_CONTENT_QUERY_EMBEDDING_PROVIDER,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+  CONTENT_EMBEDDING_CONTRACT_POINTER_ID,
+} from "./content-embedding-contract"
 
 import { buildExperienceEmbeddingSource } from "@/services/embeddings.service"
 import { ingestExperienceEmbedding } from "@/services/experience-embedding-ingest.service"
@@ -63,6 +73,24 @@ function buildContractLocale(): StoredExperienceLocale {
 function buildContractPrisma(locale = buildContractLocale()) {
   const queryRaw = vi.fn(async (strings: TemplateStringsArray) => {
     const sql = strings.join(" ")
+    if (sql.includes("FROM content_embedding_contract_pointer")) {
+      return [
+        {
+          pointerId: CONTENT_EMBEDDING_CONTRACT_POINTER_ID,
+          contractId: ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
+          queryProvider: ACTIVE_CONTENT_QUERY_EMBEDDING_PROVIDER,
+          queryModel: ACTIVE_CONTENT_QUERY_EMBEDDING_MODEL,
+          queryNativeDimensions: ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
+          queryDimensions: ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
+          queryTransformVersion: null,
+          storageProvider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+          storageModel: ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+          storageNativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+          storageDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+          storageTransformVersion: null,
+        },
+      ]
+    }
 
     if (sql.includes("pg_advisory_xact_lock")) {
       return []
@@ -163,11 +191,10 @@ function contractPayload(locale: StoredExperienceLocale) {
       summary: source.summary,
     },
     model: {
-      name: "embeddings",
-      provider: "jesus-film-ai-gateway",
-      dimensions: 1536,
-      nativeDimensions: 4096,
-      transformVersion: "matryoshka-truncate-1536-v1",
+      name: ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+      provider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+      dimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+      nativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
     },
     generation: {
       mode: "idempotent",
@@ -201,10 +228,10 @@ describe("Mastra experience ingest contract", () => {
       embeddingSourceContentHash: contractPayload(locale).source.contentHash,
       embeddingSourceSummary: contractPayload(locale).source.summary,
       embeddingModel: "embeddings",
-      embeddingDimensions: 1536,
-      embeddingProvider: "jesus-film-ai-gateway",
-      embeddingNativeDimensions: 4096,
-      embeddingTransformVersion: "matryoshka-truncate-1536-v1",
+      embeddingDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+      embeddingProvider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+      embeddingNativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+      embeddingTransformVersion: null,
       embeddingGenerationMode: "idempotent",
       embeddingMastraRunId: "mastra-run-contract",
     })

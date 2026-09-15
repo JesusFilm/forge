@@ -7,7 +7,7 @@ status: "complete"
 start_date: "2026-09-18"
 duration: 5
 depends_on: ["feat-430"]
-blocks: ["feat-432", "feat-445", "feat-446"]
+blocks: ["feat-432", "feat-445", "feat-446", "feat-452"]
 tags: ["rag", "acquisition", "indexing"]
 ---
 
@@ -60,3 +60,6 @@ explicit source-scoped limits for production maintenance writes. The direct
 HTTP DNS-rebinding residual risk and its expansion triggers are recorded in the
 operator runbook. Broader registry-test consolidation and typed-error cleanup
 continue in `feat-445` and `feat-446`.
+
+Migration audit recovery of the omitted source-scoped raw-document promotion
+path is tracked by `feat-452`.

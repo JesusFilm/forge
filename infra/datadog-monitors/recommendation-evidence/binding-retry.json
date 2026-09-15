@@ -1,0 +1,18 @@
+{
+  "name": "[forge] Invalid binding marked retryable",
+  "type": "log alert",
+  "query": "logs(\"service:forge-web (env:prod OR @env:prod) \\\"event=recommendation.evidence\\\" \\\"reason=invalid_binding\\\" \\\"retryDisposition=retryable\\\"\").index(\"*\").rollup(\"count\").last(\"5m\") >= 1",
+  "message": "A definitive invalid binding must return 409 and terminate that capability. Inspect error normalization and browser retry disposition.\n\nRunbook: docs/operations/recommendation-evidence-transport.md. Configure the approved notification destination before installation.",
+  "tags": ["team:forge", "env:prod", "feature:feat-464"],
+  "priority": 2,
+  "options": {
+    "thresholds": {
+      "critical": 1
+    },
+    "notify_no_data": false,
+    "evaluation_delay": 60,
+    "renotify_interval": 60,
+    "enable_logs_sample": false,
+    "include_tags": true
+  }
+}

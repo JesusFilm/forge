@@ -182,7 +182,7 @@ export const BACK_SWIPE_RESPONSE_DISTANCE = {
 
 **Half one — confine the pop.** Every screen on a player stack carries
 `gestureResponseDistance: BACK_SWIPE_RESPONSE_DISTANCE`: the root stack's `watch`
-and `series` entries (`apps/mobile/app/_layout.tsx:355-371`), plus each nested
+and `series` entries (`apps/mobile/app/_layout.tsx:376-392`), plus each nested
 `[slug]` for episode-to-episode pops (`apps/mobile/app/watch/_layout.tsx:46`,
 `apps/mobile/app/series/_layout.tsx:47`).
 
@@ -246,7 +246,7 @@ screen that is about 6% of the timeline, deleted for free. The gate lives at the
 single call site:
 
 ```tsx
-// apps/mobile/src/components/watch/PlayerControls.tsx:350-352
+// apps/mobile/src/components/watch/PlayerControls.tsx:495-497
 edgeGuardWidth={
   Platform.OS === "ios" && !fullscreen ? BACK_SWIPE_EDGE_WIDTH : 0
 }
@@ -321,8 +321,8 @@ Verified on the iOS 26.4 simulator: a paused video still edge-swipes away, a
 mid-track scrub seeks without dismissing, an edge-origin drag does not scrub, and
 an edge swipe across the scrubber band dismisses. Verified on a Pixel 9a
 (Android 15) emulator: a mid-track scrub works and the leftmost 24 dp of the
-timeline responds again. Shipped on PR #1966 (open at the time of writing, on
-`fix/mobile-scrubber-back-swipe-watch-polish`).
+timeline responds again. Shipped on PR #1966, merged to `main` on 2026-08-19 from
+`fix/mobile-scrubber-back-swipe-watch-polish`.
 
 ## Prevention
 
@@ -378,9 +378,13 @@ paths are untracked, so they exist only after an install.
 **Check the FORK, not the package, for react-navigation behaviour.** expo-router
 ships its own copy at
 `apps/mobile/node_modules/expo-router/build/react-navigation/native-stack/views/NativeStackView.native.js`.
-That is the file that runs. `@react-navigation/native-stack` is also installed
-and happens to agree today; treating it as authoritative is a habit that will
-eventually give a confidently wrong answer.
+That is the file that runs. On 2026-08-19 `@react-navigation/native-stack` was
+also installed and happened to agree; treating it as authoritative was already a
+habit that will eventually give a confidently wrong answer. It since did. As of
+2026-09-08 no `@react-navigation/*` package resolves from `apps/mobile` at all
+(`require.resolve` returns `MODULE_NOT_FOUND`), because this app's `expo-router`
+declares no react-navigation dependency and vendors the code instead. Reading the
+standalone package now answers a question about a different tree.
 
 **Verify a gesture fix on BOTH platforms before calling it done.** A guard that
 buys back a native recognizer on one platform is a pure cost on a platform with
@@ -396,9 +400,18 @@ by `@available(iOS 26, *)` and `RNS_IPHONE_OS_VERSION_AVAILABLE(26_0)`; re-check
 `isFullScreenSwipeEffectivelyEnabled` and the `ScreenViewManager.kt` iOS-only
 block after any react-native-screens upgrade.
 
+Re-verified 2026-09-08. react-native-screens is unchanged at 4.26.2, so every
+native citation above still holds; `RNSScreen.mm:95`, `RNSScreen.mm:423`,
+`RNSScreenStack.mm:1083`, `RNSScreenStack.mm:1111`, `RNSScreenStack.mm:1014` and
+`ScreenViewManager.kt:281` (inside the iOS-only block at 234-326) were each
+re-checked line-exact. The app has since moved to expo 57.0.20, expo-router
+57.0.19 and react-native 0.86.3, and the shipped solution is intact:
+`BACK_SWIPE_EDGE_WIDTH = 24`, `mayStartScrub`, the two responder gates and the
+`Platform.OS === "ios"` guard are all still in place.
+
 ## Related Issues
 
-- PR [#1966](https://github.com/JesusFilm/forge/pull/1966) — the change documented here (open at the time of writing).
+- PR [#1966](https://github.com/JesusFilm/forge/pull/1966) — the change documented here (merged 2026-08-19).
 - PR [#1948](https://github.com/JesusFilm/forge/pull/1948) — immediate predecessor; introduced the `useFullscreenPresentation.ts` surface this fix also writes to.
 - [Paged hero chrome unreachable](../ui-bugs/paged-hero-overlay-chrome-touch-architecture.md) — the repo's prior art for settling gesture ownership by predetermined geometry rather than a runtime race. This learning applies the same principle one layer down, at the native-stack-vs-JS boundary.
 - [Autostart veil gate strands viewers](../logic-errors/mobile-watch-autostart-veil-gate-missing-release-path.md) — the rejected chrome-mounted hold failed through the exact same mechanism: `shouldArmHideTimer` never arms while paused or ended, so anything keyed off chrome visibility never releases. Second instance of the same gap.

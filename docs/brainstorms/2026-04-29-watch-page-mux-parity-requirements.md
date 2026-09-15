@@ -158,7 +158,7 @@ The technical question that has been blocking design ("video.js 10 or Mux Player
 - All audio-track and subtitle-track switching documented for the reference asset works — 12 subtitles within the English variant via Mux Player's captions menu, 13 audio-language navigations via the Language picker.
 - Mux Data telemetry shows `view_start`, `playback_failure_*`, and `player_startup_time` events for every watch session, with `player_name` and `viewer_user_id` populated.
 - video.js is fully removed from `apps/web` and `packages/video-player`'s package.json. `useVideoPlayerCore` is deleted. No `import "video.js"` remains in apps/web source.
-- Cookie / consent posture matches JFP's existing privacy stance (default `disable-cookies` on Mux Player unless explicitly opted in).
+- Configured Mux telemetry follows `docs/analytics-and-recommendation-policy.md` without a consent prerequisite. Cookie-minimizing SDK settings may remain; preserve the configured Watch analytics baseline during player changes.
 - A downstream `ce-plan` invocation can begin implementation work without inventing data models, route shapes, modal flows, or player choices.
 
 ---

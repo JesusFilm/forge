@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { HYBRID_PERSONALIZED_MANIFEST_ID } from "./promotion/manifest"
 import { VideoNotFoundError } from "@/services/scene-recommendations.service"
+import { RecommendationInternalStateError } from "./errors"
 
 import {
   candidate,
@@ -16,21 +17,62 @@ afterEach(() => {
 })
 
 describe("RecommendationDeliveryService", () => {
-  it("combines an assigned profile nomination with semantic refill and persists hybrid execution", async () => {
+  it("uses an authorized profile directly without shadow or promotion assignment", async () => {
     const harness = makeHarness()
     harness.assignExperiment.mockResolvedValue({
-      assignment: {
-        assignmentId: "assignment-profile",
-        experimentId: "anonymous-profile-pilot-v1",
-        experimentVersion: "anonymous-profile-pilot-v1",
-        experimentGeneration: 1,
-        arm: "challenger",
-        effectiveManifestId: HYBRID_PERSONALIZED_MANIFEST_ID,
-        assignmentProbability: 0.1,
-        configurationDigest: "f".repeat(64),
-      },
-      bypassReason: null,
+      assignment: null,
+      bypassReason: "promotion_not_active",
     })
+    harness.retrieveProfile.mockResolvedValue(profileCandidateResult)
+    harness.retrieve.mockResolvedValue(semanticCandidates(6))
+
+    const delivery = await harness.service.deliver(
+      personalizedInput("direct-profile-seed"),
+    )
+
+    expect(harness.assignExperiment).not.toHaveBeenCalled()
+    expect(harness.signDeliveryCapability).toHaveBeenCalledWith(
+      expect.not.objectContaining({ assignmentId: expect.anything() }),
+    )
+    expect(
+      harness.tx.recommendationRequest.create.mock.calls[0]?.[0].data,
+    ).toMatchObject({
+      experimentAssignmentId: null,
+      experimentBypassReason: null,
+    })
+    expect(harness.retrieveProfile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        profileTokenDigest: "d".repeat(64),
+        manifestId: "semantic-transcript-pgvector-v1",
+      }),
+    )
+    expect(harness.authorizeProfile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionDigest: "a".repeat(64),
+        profileTokenDigest: "d".repeat(64),
+      }),
+    )
+    expect(delivery).toMatchObject({
+      result: "served",
+      reason: null,
+      personalization: {
+        lane: "profile_challenger",
+        executionMode: "hybrid_personalized",
+        effectiveManifestId: "semantic-transcript-pgvector-v1",
+        interestCount: 1,
+        reason: null,
+      },
+      items: expect.arrayContaining([
+        expect.objectContaining({
+          targetMediaId: "personalized-video",
+          candidateGenerator: "multi-interest-profile",
+        }),
+      ]),
+    })
+  })
+
+  it("combines an authorized profile nomination with semantic refill and persists hybrid execution", async () => {
+    const harness = makeHarness()
     harness.retrieveProfile.mockResolvedValue(profileCandidateResult)
     harness.retrieve.mockResolvedValue(semanticCandidates(6))
 
@@ -72,7 +114,7 @@ describe("RecommendationDeliveryService", () => {
       contractVersion: "anonymous-profile-personalization-v1",
       lane: "profile_challenger",
       executionMode: "hybrid_personalized",
-      effectiveManifestId: HYBRID_PERSONALIZED_MANIFEST_ID,
+      effectiveManifestId: "semantic-transcript-pgvector-v1",
       profileState: "session",
       projectionVersion: "multi-interest-profile-projection-v1",
       projectionGeneration: 2,
@@ -431,7 +473,7 @@ describe("RecommendationDeliveryService", () => {
     expect(harness.retrieve).toHaveBeenCalledOnce()
   })
 
-  it("falls back to semantic when the profile projection is unavailable", async () => {
+  it("serves semantic context normally while an authorized profile is cold", async () => {
     const harness = makeHarness()
     harness.assignExperiment.mockResolvedValue({
       assignment: {
@@ -451,17 +493,57 @@ describe("RecommendationDeliveryService", () => {
       personalizedInput("profile-fallback"),
     )
 
-    expect(delivery.result).toBe("fallback")
+    expect(delivery.result).toBe("served")
+    expect(delivery.reason).toBeNull()
     expect(delivery.items[0]).toMatchObject({
       targetMediaId: "target-video",
       candidateGenerator: "semantic",
     })
     expect(delivery.personalization).toMatchObject({
-      lane: "semantic_fallback",
-      executionMode: "semantic_fallback",
-      reason: "profile_projection_unavailable",
+      lane: "semantic_control",
+      executionMode: "semantic_contextual",
+      reason: "profile_cold_start",
     })
     expect(harness.orchestrateHybrid).not.toHaveBeenCalled()
+    expect(
+      harness.tx.recommendationCandidateRun.create.mock.calls[0]?.[0].data,
+    ).toMatchObject({ evidenceComplete: true, fallbackReason: null })
+  })
+
+  it("falls back explicitly when profile retrieval fails", async () => {
+    const harness = makeHarness()
+    harness.retrieveProfile.mockRejectedValueOnce(
+      new Error("profile store unavailable"),
+    )
+
+    await expect(
+      harness.service.deliver(personalizedInput("profile-store-failure")),
+    ).resolves.toMatchObject({
+      result: "fallback",
+      personalization: {
+        lane: "semantic_fallback",
+        executionMode: "semantic_fallback",
+        reason: "profile_projection_unavailable",
+      },
+    })
+  })
+
+  it("records lineage fencing as source-local semantic degradation", async () => {
+    const harness = makeHarness()
+    harness.retrieveProfile.mockRejectedValueOnce(
+      new RecommendationInternalStateError("profile_lineage_ineligible"),
+    )
+
+    await expect(
+      harness.service.deliver(personalizedInput("profile-lineage-fenced")),
+    ).resolves.toMatchObject({
+      result: "fallback",
+      personalization: {
+        lane: "semantic_fallback",
+        executionMode: "semantic_fallback",
+        reason: "profile_lineage_ineligible",
+      },
+    })
   })
 
   it("treats an empty profile nomination set as source-local sparsity", async () => {
@@ -706,8 +788,9 @@ describe("RecommendationDeliveryService", () => {
       result: "fallback",
       reason: "candidate_pool_fallback",
       personalization: {
-        lane: "semantic_fallback",
-        reason: "profile_projection_unavailable",
+        lane: "semantic_control",
+        executionMode: "semantic_contextual",
+        reason: "profile_cold_start",
       },
     })
     expect(
@@ -716,7 +799,7 @@ describe("RecommendationDeliveryService", () => {
     expect(
       harness.tx.recommendationPersonalizationDecision.create.mock.calls[1]?.[0]
         .data,
-    ).toMatchObject({ reasonCode: "profile_projection_unavailable" })
+    ).toMatchObject({ reasonCode: "profile_cold_start" })
   })
   it("signs A/A attribution without changing semantic item order and bypasses assignment failure", async () => {
     const firstHarness = makeHarness()

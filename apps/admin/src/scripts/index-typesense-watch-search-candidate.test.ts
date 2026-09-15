@@ -68,13 +68,32 @@ const snapshot: TypesenseWatchCandidateProjectionSnapshot = {
       metadata_zh: ["耶稣的一生"],
     },
   ],
+  curations: [
+    {
+      id: "rescue-project-intro",
+      targetVideoCoreId: "core-1",
+      scope: "PUBLISHED_LOCALES",
+      position: 1,
+      enabled: true,
+      aliases: [
+        {
+          id: "rescue-project-intro-en",
+          query: "rescue project",
+          normalizedQuery: "rescue project",
+          locale: null,
+          active: true,
+        },
+      ],
+    },
+  ],
   tokenizerLocales: ["en", "zh"],
   counts: { catalog: 1, availability: 0, lexical: 2 },
   digests: {
     catalog: `sha256:${"a".repeat(64)}`,
     availability: `sha256:${"b".repeat(64)}`,
     lexical: `sha256:${"c".repeat(64)}`,
-    combined: `sha256:${"d".repeat(64)}`,
+    curations: `sha256:${"d".repeat(64)}`,
+    combined: `sha256:${"e".repeat(64)}`,
   },
   lexicalMemory: {
     searchableBytes: 64,
@@ -83,6 +102,13 @@ const snapshot: TypesenseWatchCandidateProjectionSnapshot = {
     exactTitleKeyBytes: 64,
   },
 }
+
+const transcriptIdentity = {
+  collection: "watch_search_transcripts_active",
+  contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+  chunkingVersion: "mastra-v1",
+  projectionRevision: 17n,
+} as const
 
 function lifecycleDouble(generationId = "generation_01") {
   let row: Record<string, unknown> | null = null
@@ -217,9 +243,11 @@ function typesenseDouble() {
     ],
   ])
   const documents = new Map<string, unknown[]>()
+  const curationSets = new Map<string, unknown>()
   return {
     schemas,
     documents,
+    curationSets,
     client: {
       getCollectionSchema: vi.fn(async (name: string) => {
         const schema = schemas.get(name)
@@ -232,6 +260,13 @@ function typesenseDouble() {
           return schema
         },
       ),
+      upsertCurationSet: vi.fn(async (name: string, set: unknown) => {
+        curationSets.set(name, set)
+        return set
+      }),
+      deleteCurationSet: vi.fn(async (name: string) => {
+        curationSets.delete(name)
+      }),
       importDocuments: vi.fn(
         async (collection: string, batch: unknown[], action: string) => {
           expect(action).toBe("upsert")
@@ -300,12 +335,9 @@ describe("Typesense Watch candidate index CLI", () => {
       typesense: typesense.client as never,
       generations: generation.lifecycle as never,
       generationId: generation.generationId,
-      applicationRevision: "app-sha-1",
+      indexContractRevision: "app-sha-1",
       sourceEpoch: "source-42",
-      transcript: {
-        collection: "watch_search_transcripts_active",
-        projectionRevision: 17n,
-      },
+      transcript: { ...transcriptIdentity },
       loadSnapshot: async () => snapshot,
       runCurrentCanary: currentCanary,
     })
@@ -318,6 +350,26 @@ describe("Typesense Watch candidate index CLI", () => {
       "watch_search_candidate_generation_01_availability",
       "watch_search_candidate_generation_01_lexical",
     ])
+    expect(typesense.client.upsertCurationSet).toHaveBeenCalledWith(
+      "watch_search_candidate_generation_01_curations",
+      expect.objectContaining({
+        items: [
+          expect.objectContaining({
+            rule: expect.objectContaining({ query: "rescue project" }),
+          }),
+        ],
+      }),
+    )
+    expect(
+      typesense.client.upsertCurationSet.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      typesense.client.createCollection.mock.invocationCallOrder[0]!,
+    )
+    expect(
+      typesense.schemas.get("watch_search_candidate_generation_01_lexical"),
+    ).toMatchObject({
+      curation_sets: ["watch_search_candidate_generation_01_curations"],
+    })
     expect(
       generation.lifecycle.createBuildingGeneration.mock.invocationCallOrder[0],
     ).toBeLessThan(
@@ -395,22 +447,19 @@ describe("Typesense Watch candidate index CLI", () => {
       generations: generation.lifecycle as never,
       generationId: generation.generationId,
       sourceEpoch: "source-42",
-      transcript: {
-        collection: "watch_search_transcripts_active",
-        projectionRevision: 17n,
-      },
+      transcript: { ...transcriptIdentity },
       loadSnapshot: async () => snapshot,
     }
 
     await publishTypesenseWatchSearchCandidate({
       ...input,
-      applicationRevision: "watch-search-candidate/v1",
+      indexContractRevision: "watch-search-candidate/v1",
     })
 
     await expect(
       publishTypesenseWatchSearchCandidate({
         ...input,
-        applicationRevision: "watch-search-candidate/v3",
+        indexContractRevision: "watch-search-candidate/v3",
       }),
     ).rejects.toThrow(/immutable publication input/)
     expect(generation.lifecycle.createBuildingGeneration).toHaveBeenCalledTimes(
@@ -431,12 +480,9 @@ describe("Typesense Watch candidate index CLI", () => {
         typesense: typesense.client as never,
         generations: generation.lifecycle as never,
         generationId: generation.generationId,
-        applicationRevision: "watch-search-candidate/v3",
+        indexContractRevision: "watch-search-candidate/v3",
         sourceEpoch: "source-42",
-        transcript: {
-          collection: "watch_search_transcripts_active",
-          projectionRevision: 17n,
-        },
+        transcript: { ...transcriptIdentity },
         loadSnapshot: async () => ({
           ...snapshot,
           lexicalMemory: { ...snapshot.lexicalMemory, exactTitleKeyBytes: 0 },
@@ -464,12 +510,9 @@ describe("Typesense Watch candidate index CLI", () => {
         typesense: typesense.client as never,
         generations: generation.lifecycle as never,
         generationId: generation.generationId,
-        applicationRevision: "watch-search-candidate/v3",
+        indexContractRevision: "watch-search-candidate/v3",
         sourceEpoch: "source-42",
-        transcript: {
-          collection: "watch_search_transcripts_active",
-          projectionRevision: 17n,
-        },
+        transcript: { ...transcriptIdentity },
         loadSnapshot: async () => ({
           ...snapshot,
           lexical: [withoutExactKeys, ...remaining],
@@ -510,12 +553,9 @@ describe("Typesense Watch candidate index CLI", () => {
         typesense: typesense.client as never,
         generations: generation.lifecycle as never,
         generationId: generation.generationId,
-        applicationRevision: "watch-search-candidate/v3",
+        indexContractRevision: "watch-search-candidate/v3",
         sourceEpoch: "source-42",
-        transcript: {
-          collection: "watch_search_transcripts_active",
-          projectionRevision: 17n,
-        },
+        transcript: { ...transcriptIdentity },
         loadSnapshot: async () => snapshot,
       }),
     ).rejects.toThrow(/exact title key read smoke/)
@@ -527,7 +567,7 @@ describe("Typesense Watch candidate index CLI", () => {
     ).not.toHaveBeenCalled()
   })
 
-  it("leaves a durable BUILDING owner when external publication fails", async () => {
+  it("leaves a durable BUILDING owner and removes pre-promotion curations when external publication fails", async () => {
     const generation = lifecycleDouble()
     const typesense = typesenseDouble()
 
@@ -537,12 +577,9 @@ describe("Typesense Watch candidate index CLI", () => {
         typesense: typesense.client as never,
         generations: generation.lifecycle as never,
         generationId: generation.generationId,
-        applicationRevision: "app-sha-1",
+        indexContractRevision: "app-sha-1",
         sourceEpoch: "source-42",
-        transcript: {
-          collection: "watch_search_transcripts_active",
-          projectionRevision: 17n,
-        },
+        transcript: { ...transcriptIdentity },
         loadSnapshot: async () => snapshot,
         failpoint: (step) => {
           if (step === "catalog:created") throw new Error("failpoint")
@@ -551,10 +588,38 @@ describe("Typesense Watch candidate index CLI", () => {
     ).rejects.toThrow("failpoint")
 
     expect(generation.row).toMatchObject({ state: "BUILDING" })
+    expect(typesense.client.upsertCurationSet).toHaveBeenCalledTimes(1)
+    expect(typesense.client.deleteCurationSet).toHaveBeenCalledWith(
+      "watch_search_candidate_generation_01_curations",
+    )
     expect(generation.lifecycle.validateAndMarkReady).not.toHaveBeenCalled()
     expect(
       generation.lifecycle.publishEvaluationGeneration,
     ).not.toHaveBeenCalled()
+  })
+
+  it("retains curations when evaluation publication may have committed", async () => {
+    const generation = lifecycleDouble()
+    const typesense = typesenseDouble()
+    generation.lifecycle.publishEvaluationGeneration.mockRejectedValueOnce(
+      new Error("publication outcome unknown"),
+    )
+
+    await expect(
+      publishTypesenseWatchSearchCandidate({
+        prisma: {} as PrismaClient,
+        typesense: typesense.client as never,
+        generations: generation.lifecycle as never,
+        generationId: generation.generationId,
+        indexContractRevision: "app-sha-1",
+        sourceEpoch: "source-42",
+        transcript: { ...transcriptIdentity },
+        loadSnapshot: async () => snapshot,
+      }),
+    ).rejects.toThrow("publication outcome unknown")
+
+    expect(generation.row).toMatchObject({ state: "READY" })
+    expect(typesense.client.deleteCurationSet).not.toHaveBeenCalled()
   })
 
   it("retires exact owned members resumably and never deletes current or transcript state", async () => {
@@ -621,6 +686,9 @@ describe("Typesense Watch candidate index CLI", () => {
     expect(
       deleted.filter((name) => name.endsWith("_availability")),
     ).toHaveLength(2)
+    expect(typesense.client.deleteCurationSet).toHaveBeenCalledWith(
+      "watch_search_candidate_generation_01_curations",
+    )
     expect(generation.lifecycle.beginRetirement).toHaveBeenCalledWith(
       generation.generationId,
     )

@@ -1,4 +1,5 @@
 import {
+  STUDIO_MCP_APP_SEED,
   ADMIN_MCP_APP_KEY,
   ADMIN_MCP_APP_SEED,
   ADMIN_MCP_DEFAULT_SCOPES,
@@ -12,6 +13,7 @@ import {
 import { AUTH_SCOPES, type AuthScopeKey } from "./scopes"
 
 export type OAuthResourceClass =
+  | "shorts-mcp"
   | "admin-mcp"
   | "changelog-mcp"
   | "manager-session"
@@ -109,6 +111,17 @@ export function createOAuthResourceCatalog({
     allowedScopes: CHANGELOG_DEFAULT_SCOPES,
   }).forEach(add)
   managerSessionResourcePolicies().forEach(add)
+  STUDIO_MCP_APP_SEED.environments.forEach((e) =>
+    add({
+      identifier: e.mcpResourceAudience!,
+      resourceClass: "shorts-mcp",
+      trustedProduct: "manager",
+      trustedApp: "shorts-mcp",
+      trustedEnvironment: e.kind,
+      allowedScopes: e.defaultScopes,
+      dcrExposure: "public",
+    }),
+  )
 
   add({
     identifier: authIssuer,

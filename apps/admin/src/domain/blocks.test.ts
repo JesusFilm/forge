@@ -25,6 +25,16 @@ import {
 // -----------------------------------------------------------------------------
 
 describe("BlockSchema — all top-level types validate", () => {
+  it("keeps user recommendations a single top-level block without authored items", () => {
+    const block = { t: "homepageRecommendations", title: "Recommended for You" }
+    expect(BlocksSchema.safeParse([block]).success).toBe(true)
+    expect(BlocksSchema.safeParse([block, block]).success).toBe(false)
+    expect(SectionContentBlockSchema.safeParse(block).success).toBe(false)
+    expect(ContainerContentBlockSchema.safeParse(block).success).toBe(false)
+    expect(
+      BlockSchema.safeParse({ ...block, videoIds: ["video-1"] }).success,
+    ).toBe(false)
+  })
   const samples: Array<{ name: string; value: unknown }> = [
     {
       name: "adventCountdown",
@@ -81,6 +91,10 @@ describe("BlockSchema — all top-level types validate", () => {
       value: { t: "videoRecommendations" },
     },
     {
+      name: "homepageRecommendations",
+      value: { t: "homepageRecommendations" },
+    },
+    {
       name: "watchHomeCategoryRail",
       value: { t: "watchHomeCategoryRail", categoryIds: ["family", "jesus"] },
     },
@@ -115,11 +129,11 @@ describe("BlockSchema — all top-level types validate", () => {
     })
   }
 
-  it("covers all 20 top-level block types listed in the experience schema", () => {
+  it("covers all top-level block types listed in the experience schema", () => {
     // 16 legacy cms-sourced blocks + R5's forward-looking
     // videoRecommendations variant (schema only; no cms precedent) +
     // watchHomeHero's homepage-only placeholder.
-    expect(samples.length).toBe(20)
+    expect(samples.length).toBe(BlockSchema.options.length)
   })
 
   it("accepts an ordered category subset and keeps the rail top-level only", () => {
@@ -294,6 +308,48 @@ describe("BlockSchema — all top-level types validate", () => {
           rail([{ id: "custom-1", title: "A", href }]),
         ).success,
       ).toBe(true)
+    })
+  })
+
+  describe("watchHomeCategoryRail copy", () => {
+    const base = {
+      t: "watchHomeCategoryRail" as const,
+      categoryIds: ["family" as const],
+    }
+
+    it("accepts optional locale-owned copy and keeps old blocks valid", () => {
+      expect(WatchHomeCategoryRailBlockSchema.safeParse(base).success).toBe(
+        true,
+      )
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse({
+          ...base,
+          eyebrow: "Explore",
+          title: "Find something to watch",
+          description: "Stories for every season of life.",
+          ctaLabel: "See everything",
+        }).success,
+      ).toBe(true)
+    })
+
+    it.each([
+      ["eyebrow", 80],
+      ["title", 160],
+      ["description", 500],
+      ["ctaLabel", 80],
+    ] as const)("bounds %s at %i characters", (field, maxLength) => {
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse({
+          ...base,
+          [field]: "x".repeat(maxLength),
+        }).success,
+      ).toBe(true)
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse({
+          ...base,
+          [field]: "x".repeat(maxLength + 1),
+        }).success,
+      ).toBe(false)
     })
   })
 

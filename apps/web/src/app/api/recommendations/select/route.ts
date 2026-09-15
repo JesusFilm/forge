@@ -1,3 +1,5 @@
+import { observeEvidenceResponse } from "@/lib/recommendation-evidence-response"
+import { assertRecommendationHumanAdmission } from "@/lib/recommendation-human-admission"
 import { z } from "zod"
 import {
   isCanonicalWatchRecommendationHref,
@@ -31,11 +33,13 @@ const SelectionInput = z
     eventId: z.string().min(1).max(191),
     occurredAt: z.string().datetime({ offset: true }),
     tabNonce: z.string().min(1).max(191),
+    claimNonce: z.string().min(16).max(191),
   })
   .strict()
 
 export async function POST(request: Request) {
   try {
+    assertRecommendationHumanAdmission(request)
     const raw = await readStrictRecommendationJson(request, {
       expectedOrigin: WATCH_CANONICAL_ORIGIN,
       maxBytes: RECOMMENDATION_EVIDENCE_BODY_BYTES,
@@ -57,25 +61,33 @@ export async function POST(request: Request) {
       occurredAt: parsed.data.occurredAt,
       sessionDigest: session.digest,
       tabDigest: digestRecommendationValue(parsed.data.tabNonce),
+      claimNonce: parsed.data.claimNonce,
     })
-    if (selection.status !== "accepted" || !selection.claimNonce) {
+    if (
+      (selection.status !== "accepted" && selection.status !== "replay") ||
+      !selection.claimNonce
+    ) {
       throw new RecommendationRouteError(409, "selection_unavailable")
     }
     if (
       selection.claimNonce.length < 16 ||
       selection.claimNonce.length > 191 ||
+      selection.claimNonce !== parsed.data.claimNonce ||
       !selection.targetMediaId ||
       selection.targetMediaId.length > 191 ||
       !isCanonicalWatchRecommendationHref(selection.canonicalHref)
     ) {
       throw new RecommendationRouteError(502, "invalid_admin_response")
     }
+    observeEvidenceResponse(request, "select", 200, undefined, [selection])
     return recommendationJson({
       claimNonce: selection.claimNonce,
       canonicalHref: selection.canonicalHref,
       targetMediaId: selection.targetMediaId,
     })
   } catch (error) {
-    return recommendationError(error)
+    const response = recommendationError(error)
+    observeEvidenceResponse(request, "select", response.status, error)
+    return response
   }
 }

@@ -1,0 +1,507 @@
+import { assertStudioProductionEnabled } from "./release-controls"
+import { completeStudioAttempt } from "./completion"
+import { canReviewStudio } from "@/auth/permissions"
+import { resolveStudioPackSources } from "./packs"
+import type { PrismaClient } from "@prisma/client"
+import {
+  studioActorSchema,
+  studioCreateSchema,
+  studioDocumentSchema,
+  studioIdSchema,
+  studioApplySchema,
+  studioRequestSchema,
+  studioAttemptSchema,
+  studioApproveSchema,
+  studioCommandBaseSchema,
+  studioStartSchema,
+  studioListSchema,
+  studioProjectSummarySchema,
+  studioProjectSchema,
+  studioHistorySchema,
+  studioRevisionSchema,
+  studioApprovalSchema,
+} from "@forge/studio-contracts"
+import type { Principal } from "@/auth/principal"
+import { ForbiddenError, NotFoundError } from "../errors"
+
+import { StudioCommandError } from "./errors"
+import {
+  studioActor,
+  studioHash,
+  lockProject,
+  assertEditable,
+  receipt,
+  saveReceipt,
+  scriptHash,
+  publicationDependencyHash,
+} from "./state"
+import { applyOperations } from "./operations"
+import {
+  resolveStudioDocumentSources,
+  assertStudioRenderSources,
+} from "./sources"
+export { StudioCommandError } from "./errors"
+export class StudioAuthoringService {
+  constructor(private readonly db: PrismaClient) {}
+  async create(user: Principal | null, raw: unknown) {
+    const actor = studioActor(user)
+    const input = studioCreateSchema.parse(raw)
+    return this.db.$transaction(async (tx) => {
+      // Serializes creation of an absent ID. All existing-project writes hold its row lock.
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${input.projectId}, 454))::text`
+      const hash = studioHash({ command: "create", actor, input })
+      const retry = await receipt(
+        tx,
+        input.projectId,
+        input.idempotencyKey,
+        hash,
+      )
+      if (retry) return retry
+      if (await tx.short.findUnique({ where: { id: input.projectId } }))
+        throw new StudioCommandError("CONFLICT")
+      if (
+        input.sourceVideoDubId &&
+        !(await tx.videoDub.findFirst({
+          where: {
+            id: input.sourceVideoDubId,
+            deletedAt: null,
+            video: { deletedAt: null },
+          },
+          select: { id: true },
+        }))
+      )
+        throw new NotFoundError("Source VideoDub", input.sourceVideoDubId)
+      await tx.short.create({
+        data: {
+          id: input.projectId,
+          currentRevision: 1,
+          ownerId: actor.id,
+          sourceVideoDubId: input.sourceVideoDubId ?? null,
+        },
+      })
+      await resolveStudioPackSources(tx, input.document.packRevisionIds)
+      await resolveStudioDocumentSources(tx, input.document)
+      await tx.shortRevision.create({
+        data: {
+          projectId: input.projectId,
+          number: 1,
+          document: input.document,
+          actor,
+        },
+      })
+      const result = {
+        projectId: input.projectId,
+        revision: 1,
+        outcome: "ACCEPTED" as const,
+      }
+      await saveReceipt(
+        tx,
+        input.projectId,
+        input.idempotencyKey,
+        hash,
+        actor,
+        result,
+      )
+      return result
+    })
+  }
+  async apply(user: Principal | null, raw: unknown) {
+    const actor = studioActor(user)
+    const input = studioApplySchema.parse(raw)
+    return this.db.$transaction(async (tx) => {
+      const project = await lockProject(tx, input.projectId)
+      const hash = studioHash({ command: "apply", actor, input })
+      const retry = await receipt(
+        tx,
+        input.projectId,
+        input.idempotencyKey,
+        hash,
+      )
+      if (retry) return retry
+      assertEditable(project, input.expectedRevision)
+      const previous = await tx.shortRevision.findUniqueOrThrow({
+        where: {
+          projectId_number: {
+            projectId: input.projectId,
+            number: project.currentRevision,
+          },
+        },
+      })
+      const document = applyOperations(
+        studioDocumentSchema.parse(previous.document),
+        input.operations,
+      )
+      await resolveStudioPackSources(tx, document.packRevisionIds)
+      await resolveStudioDocumentSources(tx, document)
+      const revision = project.currentRevision + 1
+      await tx.shortRevision.create({
+        data: { projectId: project.id, number: revision, document, actor },
+      })
+      await tx.short.update({
+        where: { id: project.id },
+        data: { currentRevision: revision },
+      })
+      const result = {
+        projectId: project.id,
+        revision,
+        outcome: "ACCEPTED" as const,
+      }
+      await saveReceipt(
+        tx,
+        project.id,
+        input.idempotencyKey,
+        hash,
+        actor,
+        result,
+      )
+      return result
+    })
+  }
+  async request(user: Principal | null, raw: unknown) {
+    const actor = studioActor(user)
+    const input = studioRequestSchema.parse(raw)
+    return this.db.$transaction(async (tx) => {
+      const project = await lockProject(tx, input.projectId)
+      const hash = studioHash({ command: "request", actor, input })
+      const retry = await receipt(tx, project.id, input.idempotencyKey, hash)
+      if (retry) return retry
+      assertStudioProductionEnabled()
+      assertEditable(project, input.expectedRevision)
+      const revision = await tx.shortRevision.findUniqueOrThrow({
+        where: {
+          projectId_number: {
+            projectId: project.id,
+            number: project.currentRevision,
+          },
+        },
+      })
+      if (input.kind === "RENDER")
+        await assertStudioRenderSources(
+          tx,
+          studioDocumentSchema.parse(revision.document),
+        )
+      if (input.kind === "NARRATION") {
+        const dependencyHash = scriptHash(
+          studioDocumentSchema.parse(revision.document),
+        )
+        const approved = await tx.shortApproval.findFirst({
+          where: { projectId: project.id, kind: "SCRIPT", dependencyHash },
+        })
+        if (!approved) throw new StudioCommandError("APPROVAL_REQUIRED")
+      }
+      const attempt = await tx.shortAttempt.create({
+        data: {
+          projectId: project.id,
+          baseRevision: project.currentRevision,
+          kind: input.kind,
+          inputHash: studioHash({
+            document: revision.document,
+            ...(input.executionInputDigest
+              ? { executionInputDigest: input.executionInputDigest }
+              : {}),
+            instructions: input.instructions,
+            kind: input.kind,
+          }),
+          actor,
+          instructions: input.instructions,
+        },
+      })
+      const result = {
+        projectId: project.id,
+        revision: project.currentRevision,
+        attemptId: attempt.id,
+        outcome: "ACCEPTED" as const,
+      }
+      await saveReceipt(
+        tx,
+        project.id,
+        input.idempotencyKey,
+        hash,
+        actor,
+        result,
+      )
+      return result
+    })
+  }
+  async complete(user: Principal | null, raw: unknown) {
+    return this.db.$transaction((tx) => completeStudioAttempt(tx, user, raw))
+  }
+  async readAttempt(
+    user: Principal | null,
+    projectId: string,
+    attemptId: string,
+  ) {
+    studioActor(user)
+    const row = await this.db.shortAttempt.findFirst({
+      where: {
+        id: studioIdSchema.parse(attemptId),
+        projectId: studioIdSchema.parse(projectId),
+      },
+    })
+    if (!row) throw new NotFoundError("ShortAttempt")
+    return studioAttemptSchema.strip().parse(row)
+  }
+  async approve(user: Principal | null, raw: unknown) {
+    const actor = studioActor(user)
+    if (!canReviewStudio(user))
+      throw new ForbiddenError("Human review required")
+    const input = studioApproveSchema.parse(raw)
+    return this.db.$transaction(async (tx) => {
+      const project = await lockProject(tx, input.projectId)
+      const hash = studioHash({ command: "approve", actor, input })
+      const retry = await receipt(tx, project.id, input.idempotencyKey, hash)
+      if (retry) return retry
+      assertEditable(project, input.expectedRevision)
+      const row = await tx.shortRevision.findUniqueOrThrow({
+        where: {
+          projectId_number: {
+            projectId: project.id,
+            number: project.currentRevision,
+          },
+        },
+      })
+      const document = studioDocumentSchema.parse(row.document)
+      let dependencyHash = scriptHash(document)
+      if (input.kind === "SCRIPT" && input.renderAttemptId)
+        throw new StudioCommandError("INVALID")
+      if (input.kind === "PUBLICATION") {
+        if (!input.renderAttemptId)
+          throw new StudioCommandError("APPROVAL_REQUIRED")
+        dependencyHash = await publicationDependencyHash(
+          tx,
+          project,
+          document,
+          input.renderAttemptId,
+        )
+      }
+      const approval = await tx.shortApproval.create({
+        data: {
+          projectId: project.id,
+          revision: project.currentRevision,
+          kind: input.kind,
+          dependencyHash,
+          actor,
+          renderAttemptId: input.renderAttemptId,
+        },
+      })
+      const result = {
+        projectId: project.id,
+        revision: project.currentRevision,
+        approvalId: approval.id,
+        outcome: "ACCEPTED" as const,
+      }
+      await saveReceipt(
+        tx,
+        project.id,
+        input.idempotencyKey,
+        hash,
+        actor,
+        result,
+      )
+      return result
+    })
+  }
+  async unpublish(user: Principal | null, raw: unknown) {
+    const actor = studioActor(user)
+    if (!canReviewStudio(user))
+      throw new ForbiddenError("Human authority required")
+    const input = studioCommandBaseSchema.parse(raw)
+    return this.db.$transaction(async (tx) => {
+      const project = await lockProject(tx, input.projectId)
+      const hash = studioHash({ command: "unpublish", actor, input })
+      const retry = await receipt(tx, project.id, input.idempotencyKey, hash)
+      if (retry) return retry
+      if (project.currentRevision !== input.expectedRevision)
+        throw new StudioCommandError("CONFLICT")
+      if (project.lifecycle !== "PUBLISHED" || !project.firstPublishedAt)
+        throw new StudioCommandError("IMMUTABLE")
+      await tx.short.update({
+        where: { id: project.id },
+        data: { lifecycle: "UNPUBLISHED", unpublishedAt: new Date() },
+      })
+      const result = {
+        projectId: project.id,
+        revision: project.currentRevision,
+        outcome: "ACCEPTED" as const,
+      }
+      await saveReceipt(
+        tx,
+        project.id,
+        input.idempotencyKey,
+        hash,
+        actor,
+        result,
+      )
+      return result
+    })
+  }
+  async start(user: Principal | null, raw: unknown) {
+    const actor = studioActor(user)
+    if (actor.kind !== "service")
+      throw new ForbiddenError("Only a trusted worker can start an attempt")
+    const input = studioStartSchema.parse(raw)
+    return this.db.$transaction(async (tx) => {
+      const project = await lockProject(tx, input.projectId)
+      const hash = studioHash({ command: "start", actor, input })
+      const retry = await receipt(tx, project.id, input.idempotencyKey, hash)
+      if (retry) return retry
+      assertEditable(project, input.expectedRevision)
+      const attempt = await tx.shortAttempt.findUnique({
+        where: { id: input.attemptId },
+      })
+      if (!attempt || attempt.projectId !== project.id)
+        throw new NotFoundError("ShortAttempt")
+      if (
+        attempt.baseRevision !== input.expectedRevision ||
+        attempt.status !== "QUEUED"
+      )
+        throw new StudioCommandError("CONFLICT")
+      await tx.shortAttempt.update({
+        where: { id: attempt.id },
+        data: { status: "RUNNING", jobReference: input.jobReference },
+      })
+      const result = {
+        projectId: project.id,
+        revision: project.currentRevision,
+        attemptId: attempt.id,
+        outcome: "ACCEPTED" as const,
+      }
+      await saveReceipt(
+        tx,
+        project.id,
+        input.idempotencyKey,
+        hash,
+        actor,
+        result,
+      )
+      return result
+    })
+  }
+  async list(user: Principal | null, raw: unknown = {}) {
+    studioActor(user)
+    const input = studioListSchema.parse(raw)
+    const rows = await this.db.short.findMany({
+      where: input.cursor ? { id: { gt: input.cursor } } : undefined,
+      orderBy: { id: "asc" },
+      take: input.limit,
+      select: { id: true, currentRevision: true, lifecycle: true },
+    })
+    return rows.map((row) =>
+      studioProjectSummarySchema.parse({
+        projectId: row.id,
+        revision: row.currentRevision,
+        lifecycle: row.lifecycle,
+      }),
+    )
+  }
+  async listSummaries(user: Principal | null, raw: unknown = {}) {
+    const rows = await this.list(user, raw)
+    if (!rows.length) return []
+    const revisions = await this.db.shortRevision.findMany({
+      where: {
+        OR: rows.map((row) => ({
+          projectId: row.projectId,
+          number: row.revision,
+        })),
+      },
+      select: { projectId: true, document: true },
+    })
+    const documents = new Map(
+      revisions.map((row) => [row.projectId, row.document]),
+    )
+    return rows.map((row) => {
+      const document = studioDocumentSchema.parse(documents.get(row.projectId))
+      return {
+        ...row,
+        title: document.title,
+        width: document.width,
+        height: document.height,
+        durationInFrames: document.durationInFrames,
+        fps: document.fps,
+      }
+    })
+  }
+  async history(user: Principal | null, projectId: string, raw: unknown = {}) {
+    studioActor(user)
+    studioIdSchema.parse(projectId)
+    const input = studioHistorySchema.parse(raw)
+    const rows = await this.db.shortRevision.findMany({
+      where: {
+        projectId,
+        number: input.beforeRevision ? { lt: input.beforeRevision } : undefined,
+      },
+      orderBy: { number: "desc" },
+      take: input.limit,
+    })
+    return rows.map((row) =>
+      studioRevisionSchema.parse({
+        revision: row.number,
+        document: row.document,
+        actor: row.actor,
+      }),
+    )
+  }
+  async attempts(user: Principal | null, projectId: string, raw: unknown = {}) {
+    studioActor(user)
+    studioIdSchema.parse(projectId)
+    const input = studioListSchema.parse(raw)
+    const rows = await this.db.shortAttempt.findMany({
+      where: { projectId, id: input.cursor ? { gt: input.cursor } : undefined },
+      orderBy: { id: "asc" },
+      take: input.limit,
+    })
+    return rows.map((row) => studioAttemptSchema.strip().parse(row))
+  }
+  async approvals(
+    user: Principal | null,
+    projectId: string,
+    raw: unknown = {},
+  ) {
+    studioActor(user)
+    studioIdSchema.parse(projectId)
+    const input = studioListSchema.parse(raw)
+    const rows = await this.db.shortApproval.findMany({
+      where: { projectId, id: input.cursor ? { gt: input.cursor } : undefined },
+      orderBy: { id: "asc" },
+      take: input.limit,
+    })
+    return rows.map((row) => studioApprovalSchema.strip().parse(row))
+  }
+  async readRevision(
+    user: Principal | null,
+    projectId: string,
+    number: number,
+  ) {
+    studioActor(user)
+    studioIdSchema.parse(projectId)
+    const row = await this.db.shortRevision.findUnique({
+      where: { projectId_number: { projectId, number } },
+    })
+    if (!row) throw new NotFoundError("ShortRevision")
+    return {
+      revision: row.number,
+      document: studioDocumentSchema.parse(row.document),
+      actor: studioActorSchema.parse(row.actor),
+    }
+  }
+  async read(user: Principal | null, rawId: string) {
+    studioActor(user)
+    const id = studioIdSchema.parse(rawId)
+    const project = await this.db.short.findUnique({ where: { id } })
+    if (!project) throw new NotFoundError("Short", id)
+    const revision = await this.db.shortRevision.findUniqueOrThrow({
+      where: {
+        projectId_number: { projectId: id, number: project.currentRevision },
+      },
+    })
+    return studioProjectSchema.parse({
+      projectId: id,
+      sourceVideoDubId: project.sourceVideoDubId,
+      revision: revision.number,
+      lifecycle: project.lifecycle,
+      firstPublishedAt: project.firstPublishedAt?.toISOString() ?? null,
+      document: studioDocumentSchema.parse(revision.document),
+      actor: studioActorSchema.parse(revision.actor),
+    })
+  }
+}

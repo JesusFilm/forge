@@ -32,7 +32,6 @@ import {
   type CandidatePlatformResult,
 } from "./orchestration"
 import type { ExperimentAssignmentResolution } from "./experiment/assignment"
-import { HYBRID_PERSONALIZED_MANIFEST_ID } from "./promotion/manifest"
 import type { RecommendationRecentContext } from "./recent-context.service"
 
 import type {
@@ -164,6 +163,7 @@ export class RecommendationDeliveryService {
           return (await withinDeadline(
             () =>
               this.deps.authorizeProfile!({
+                sessionDigest: input.sessionDigest,
                 consentReceiptDigest: input.consentReceiptDigest!,
                 profileTokenDigest: input.profileTokenDigest!,
                 now,
@@ -179,8 +179,11 @@ export class RecommendationDeliveryService {
         }
       })()
       const experimentPromise = profileTokenDigestPromise.then(
-        (profileTokenDigest) =>
-          this.resolveExperiment(
+        (profileTokenDigest) => {
+          if (profileTokenDigest != null) {
+            return { assignment: null, bypassReason: null }
+          }
+          return this.resolveExperiment(
             {
               ...input,
               profileTokenDigest,
@@ -189,57 +192,53 @@ export class RecommendationDeliveryService {
             now,
             candidateDeadlineAt,
             nowMilliseconds,
-          ),
+          )
+        },
       )
-      const profilePromise = Promise.all([
-        experimentPromise,
-        profileTokenDigestPromise,
-      ]).then(async ([experiment, profileTokenDigest]) => {
-        if (
-          profileTokenDigest == null ||
-          experiment.assignment?.arm !== "challenger" ||
-          experiment.assignment.effectiveManifestId !==
-            HYBRID_PERSONALIZED_MANIFEST_ID
-        ) {
-          return { profile: null, failureReason: null, latencyMs: null }
-        }
-        const profileStartedAt = nowMilliseconds()
-        try {
-          const profile = this.deps.retrieveProfile
-            ? await withinDeadline(
-                () =>
-                  this.deps.retrieveProfile!({
-                    sessionDigest: input.sessionDigest,
-                    profileTokenDigest,
-                    seedMediaId,
-                    locale,
-                    audioLanguageSlug,
-                    manifestId: experiment.assignment!.effectiveManifestId,
-                    deadlineAt: candidateDeadlineAt,
-                    now,
-                  }),
-                candidateDeadlineAt,
-                nowMilliseconds,
-              )
-            : null
-          return {
-            profile,
-            failureReason: profile
-              ? null
-              : ("profile_projection_unavailable" as const),
-            latencyMs: Math.max(0, nowMilliseconds() - profileStartedAt),
+      const profilePromise = profileTokenDigestPromise.then(
+        async (profileTokenDigest) => {
+          if (profileTokenDigest == null) {
+            return { profile: null, failureReason: null, latencyMs: null }
           }
-        } catch (error) {
-          return {
-            profile: null,
-            failureReason:
-              error instanceof RecommendationRetrievalTimeoutError
-                ? ("profile_retrieval_timeout" as const)
-                : ("profile_projection_unavailable" as const),
-            latencyMs: Math.max(0, nowMilliseconds() - profileStartedAt),
+          const profileStartedAt = nowMilliseconds()
+          try {
+            const profile = this.deps.retrieveProfile
+              ? await withinDeadline(
+                  () =>
+                    this.deps.retrieveProfile!({
+                      sessionDigest: input.sessionDigest,
+                      profileTokenDigest,
+                      seedMediaId,
+                      locale,
+                      audioLanguageSlug,
+                      manifestId: manifest.id,
+                      deadlineAt: candidateDeadlineAt,
+                      now,
+                    }),
+                  candidateDeadlineAt,
+                  nowMilliseconds,
+                )
+              : null
+            return {
+              profile,
+              failureReason: profile ? null : ("profile_cold_start" as const),
+              latencyMs: Math.max(0, nowMilliseconds() - profileStartedAt),
+            }
+          } catch (error) {
+            return {
+              profile: null,
+              failureReason:
+                error instanceof RecommendationRetrievalTimeoutError
+                  ? ("profile_retrieval_timeout" as const)
+                  : error instanceof RecommendationInternalStateError &&
+                      error.code === "profile_lineage_ineligible"
+                    ? ("profile_lineage_ineligible" as const)
+                    : ("profile_projection_unavailable" as const),
+              latencyMs: Math.max(0, nowMilliseconds() - profileStartedAt),
+            }
           }
-        }
-      })
+        },
+      )
       const cached = readCandidatePool(poolKey)
       const hasLiveCachedPool =
         cached !== undefined && cached.expiresAt > nowMilliseconds()
@@ -436,13 +435,21 @@ export class RecommendationDeliveryService {
       }
       let profileProjectionId: string | null = null
       let profileRetrievalLatencyMs: number | null = null
-      if (
-        experiment.assignment?.arm === "challenger" &&
-        experiment.assignment.effectiveManifestId ===
-          HYBRID_PERSONALIZED_MANIFEST_ID
-      ) {
+      const profileColdStart =
+        profileTokenDigest != null &&
+        !profileResolution.profile &&
+        profileResolution.failureReason === "profile_cold_start"
+      if (profileTokenDigest != null) {
+        profileRetrievalLatencyMs = profileResolution.latencyMs
+      }
+      if (profileColdStart) {
+        personalization = {
+          ...personalization,
+          reason: "profile_cold_start",
+        }
+      }
+      if (profileTokenDigest != null && !profileColdStart) {
         try {
-          profileRetrievalLatencyMs = profileResolution.latencyMs
           if (!profileResolution.profile) {
             throw new RecommendationInternalStateError(
               profileResolution.failureReason ??
@@ -549,7 +556,7 @@ export class RecommendationDeliveryService {
             contractVersion: "anonymous-profile-personalization-v1",
             lane: "profile_challenger",
             executionMode: "hybrid_personalized",
-            effectiveManifestId: experiment.assignment.effectiveManifestId,
+            effectiveManifestId: manifest.id,
             profileState: profile.projection.scope ?? "session",
             projectionVersion: profile.projection.projectionVersion,
             projectionGeneration: profile.projection.generation ?? null,
@@ -932,6 +939,7 @@ function hybridFallbackReason(error: unknown) {
   switch (error.code) {
     case "profile_retrieval_timeout":
     case "profile_candidates_sparse":
+    case "profile_lineage_ineligible":
     case "semantic_candidates_unavailable":
     case "hybrid_candidate_platform_unavailable":
     case "hybrid_slate_empty":

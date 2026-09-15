@@ -153,26 +153,35 @@ export class RecommendationContentActionService {
             orderBy: [{ createdAt: "desc" }, { id: "desc" }],
           })
         : null
-    const lineage =
-      episode && episode.generation === episode.request.generation
-        ? {
-            requestId: episode.requestId,
-            itemId: episode.itemId,
-            episodeId: episode.id,
-            candidateGenerator: episode.item.candidateGenerator,
-            expiresAt: episode.request.expiresAt,
-            late: occurredAt > episode.activeUntil || now > episode.activeUntil,
-          }
-        : {
-            requestId: null,
-            itemId: null,
-            episodeId: null,
-            candidateGenerator: null,
-            expiresAt: new Date(
-              now.getTime() + RECOMMENDATION_RAW_RETENTION_DAYS * 86_400_000,
-            ),
-            late: false,
-          }
+    const lineage = (() => {
+      if (
+        episode == null ||
+        episode.request == null ||
+        episode.item == null ||
+        episode.requestId == null ||
+        episode.itemId == null ||
+        episode.generation !== episode.request.generation
+      ) {
+        return {
+          requestId: null,
+          itemId: null,
+          episodeId: null,
+          candidateGenerator: null,
+          expiresAt: new Date(
+            now.getTime() + RECOMMENDATION_RAW_RETENTION_DAYS * 86_400_000,
+          ),
+          late: false,
+        }
+      }
+      return {
+        requestId: episode.requestId,
+        itemId: episode.itemId,
+        episodeId: episode.id,
+        candidateGenerator: episode.item.candidateGenerator,
+        expiresAt: episode.request.expiresAt,
+        late: occurredAt > episode.activeUntil || now > episode.activeUntil,
+      }
+    })()
     const payloadDigest = recommendationEvidenceDigest(parsed)
     const newId = this.deps.newId ?? randomUUID
     const newAuditId = this.deps.newAuditId ?? randomUUID

@@ -9,6 +9,7 @@ import {
   WATCH_PILL_BUTTON_CLASS,
   WATCH_SECTION_EYEBROW_CLASS,
 } from "@/components/watch/watch-section-styles"
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { cn } from "@/lib/utils"
 import {
   INVENTORY_ADDED_WINDOW_DAYS,
@@ -19,7 +20,7 @@ import {
 
 // Filtering is applied to the SERVER-rendered markup by toggling `hidden`,
 // rather than by re-rendering the cards on the client. The English page carries
-// ~1,170 items and ~9.5 MB of HTML; re-rendering that subtree in the browser to
+// ~1,170 items and ~7 MB of HTML; re-rendering that subtree in the browser to
 // hide rows would cost far more than reading a few data attributes. So this
 // component renders the controls and passes `children` straight through — those
 // nodes are never reconciled against client state.
@@ -148,7 +149,7 @@ export function InventoryFilterShell({
         // so a rule here read as a second, redundant divider.
         className="py-8"
       >
-        <div className="mx-auto max-w-7xl px-5 sm:px-8">
+        <div className={WATCH_PAGE_CONTENT_CLASSES}>
           <div className="flex flex-wrap items-center gap-3">
             <h2 id="language-inventory-filters-heading" className="contents">
               <button

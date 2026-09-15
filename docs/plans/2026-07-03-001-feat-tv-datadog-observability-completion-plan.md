@@ -27,7 +27,7 @@ Product Contract preservation: R3/R16 were rewritten during initial enrichment. 
 
 ### Summary
 
-Finish TV observability end to end, match web's data where tvOS permits, and instrument what makes TV different from web. Production telemetry activated behind a privacy gate; crash reports made readable via a secret-gated symbol upload + a CI patch guard; telemetry made agent-queryable with a Hermes profiler path; the roadmap trued up; web's non-sensitive signals mirrored (clean action naming, the idle Logs pipe, a per-search log + result-click action); and a deliberate divergence for TV's core product — video playback QoE (time-to-first-frame, rebuffering, errors, completion) plus optional focus-navigation health — which web's browsing-shaped telemetry has no counterpart for. Session Replay and user PII stay unmatched by design.
+Finish TV observability end to end, match web's data where tvOS permits, and instrument what makes TV different from web. Production telemetry activated through environment configuration; crash reports made readable via a secret-gated symbol upload + a CI patch guard; telemetry made agent-queryable with a Hermes profiler path; the roadmap trued up; web's non-sensitive signals mirrored (clean action naming, the idle Logs pipe, a per-search log + result-click action); and a deliberate divergence for TV's core product — video playback QoE (time-to-first-frame, rebuffering, errors, completion) plus optional focus-navigation health — which web's browsing-shaped telemetry has no counterpart for. Session Replay and user PII stay unmatched by design.
 
 ### Problem Frame
 

@@ -85,6 +85,13 @@ The seeker's model chain is two free-tier Gemma 4 OpenRouter models that error i
 - **KTD4 — Pin chat-completions via `.chat(modelId)`.** The bare provider callable defaults to the Responses API, which crashes the gateway's vLLM backend on multi-turn tool conversations (a documented, open vLLM issue class). Shipped precedent: `default-chat-agent.ts:83-90`.
 - **KTD5 — Gate requires key AND flag, checked before construction.** The key is shared with the experience opt-in, so key presence alone must never flip the seeker. Constructing the provider only inside the gate also avoids the throw-on-missing-key path. Gate shape mirrors `default-chat-agent.ts:67`.
 - **KTD6 — Flag reads go through an exported resolver, `isAiGatewaySeekerEnabled()`.** Matches the established env.ts pattern (`isSeekerRouteEnabled()`, `resolveAiChatMemoryBackend()`); no raw `env.X === "true"` at call sites.
+
+  > **Superseded (2026-09-08, feat-464):**
+  > `resolveAiChatMemoryBackend()` was retired with the per-surface memory
+  > override. This completed plan's resolver comparison is historical;
+  > current AI-chat backend decisions read `MASTRA_STORAGE_BACKEND` directly
+  > or use `canAiChatDataPersist()` for the shared-Postgres fact.
+
 - **KTD7 — `maxRetries: 1` on the gateway entry; failover observability via built-in logs.** Mastra's fallback loop advances on any thrown error (only retryable classes are retried first), and a context-overflow 400 fails over pre-first-token. Failover is silent in the chat UX; Mastra's per-model error log (`Error executing model <modelId>`) through PinoLogger is the dogfood signal — no new logging code.
 - **KTD8 — Type cast per established convention.** The provider-returned model needs `as unknown as LanguageModel` (or a justified `eslint-disable @typescript-eslint/no-explicit-any`) inside the array entry due to AI SDK peer-version union drift — same discipline as `default-chat-agent.ts:144-148` and `specialized-agents.ts:74`.
 - **KTD9 — Per-attempt timeout on the gateway entry, strictly below the turn budget.** Mastra's fallback loop advances only on a thrown error, the AI SDK's default fetch has no timeout, and Cloudflare's ~100s proxy read timeout exceeds the route's 90s `TIME_BUDGET_MS.chatTurn` — a gateway that accepts connections but hangs would eat the whole turn instead of failing over. The gated construction passes a custom `fetch` wrapped with `AbortSignal.timeout` at a budget strictly below the turn budget (~30s) so a hang throws and fails over to Gemma in-budget. `ModelWithRetries.modelSettings` has no `abortSignal`, so the timeout must live in the provider construction. Follows the repo's outbound-timeout-shorter-than-caller-budget law.
@@ -145,6 +152,12 @@ Directional guidance: `buildSeekerModelList()` is exported for direct unit testi
 - **Approach:** Extract the current literal array into `buildSeekerModelList()`. Inside the gate (key AND resolver — KTD5): load `createOpenAI` via `createRequire(import.meta.url)` (KTD2), construct with `apiKey`, `baseURL: env.AI_GATEWAY_CHAT_BASE_URL ?? DEFAULT_AI_GATEWAY_CHAT_BASE_URL`, `name: "jesusfilm"`, and the `AI_GATEWAY_USER_AGENT` header from `../gateway-constants`; prepend `{ model: gateway.chat(env.AI_GATEWAY_CHAT_MODEL ?? "coding"), maxRetries: 1 }` with the KTD8 cast and a comment carrying the `.chat()`/Responses-API rationale (mirror `default-chat-agent.ts:83-88`); the construction passes a timeout-wrapping custom `fetch` per KTD9. Update the existing model comment block (seeker-agent.ts:60-71) to describe both branches. This is the file's first `env` import and first `createRequire` use — both established patterns in this directory.
 - **Technical design (directional):** the singleton stays `model: buildSeekerModelList()`; no factory refactor of the agent itself.
 - **Patterns to follow:** `specialized-agents.ts:74-116` (`resolveAgentModel()` — gate shape, shim, rationale comment, eslint-disable placement); `multi-step-draft.test.ts:1-24, 394-398` (`vi.hoisted` mockEnv + `enableGateway()` helper) — this introduces env mocking to `seeker-agent.test.ts` for the first time, and the mock MUST be a partial mock: `vi.mock("../../config/env", async (importOriginal) => ({ ...(await importOriginal()), env: mockEnv.env, isAiGatewaySeekerEnabled: () => mockEnv.env.AI_GATEWAY_SEEKER_ENABLED === "true" }))`. A full-module mock crashes the test file at import — `memory.ts` calls `getMastraDatabaseUrl`/`resolveAiChatMemoryBackend` from `config/env` at module load. The overridden resolver's real exact-`"true"` semantics stay pinned by U1's `env.test.ts`.
+
+  > **Superseded (2026-09-08, feat-464):** This test-mock instruction is
+  > historical. `resolveAiChatMemoryBackend()` no longer exists, and current
+  > partial mocks expose `env.MASTRA_STORAGE_BACKEND` for AI-chat backend
+  > selection.
+
 - **Test scenarios:**
   - Default mock env (nothing set) → exactly today's two-entry array, same order, same `maxRetries` (keeps the existing pinned test, now under an explicit disabled-state mock).
   - Key + flag `"true"` → three entries; entry 0's `model` field is a model instance (not a string) whose `modelId` is `"coding"`; entries 1-2 remain the unchanged `{ model: <Gemma router string>, maxRetries: 1 }` objects, same order.

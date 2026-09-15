@@ -84,6 +84,7 @@ export type DeliveryDependencies = {
   orchestrate?: typeof import("./orchestration").runSemanticCandidatePlatform
   orchestrateHybrid?: typeof import("./orchestration").runCandidatePlatform
   authorizeProfile?: (input: {
+    sessionDigest: string
     consentReceiptDigest: string
     profileTokenDigest: string
     now: Date
@@ -100,7 +101,7 @@ export type DeliveryDependencies = {
   retrieveProfile?: (input: {
     sessionDigest: string
     profileTokenDigest: string | null
-    seedMediaId: string
+    seedMediaId: string | null
     locale: string
     audioLanguageSlug: string
     manifestId: string

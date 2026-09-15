@@ -9,6 +9,7 @@ const projectionRun = vi.hoisted(() => ({
 }))
 const project = vi.hoisted(() => vi.fn())
 const queryRaw = vi.hoisted(() => vi.fn())
+const executeRaw = vi.hoisted(() => vi.fn())
 const sessionLink = vi.hoisted(() => ({ findFirst: vi.fn() }))
 const transaction = vi.hoisted(() => vi.fn())
 vi.mock("workflow/api", () => ({ start }))
@@ -46,10 +47,12 @@ beforeEach(() => {
   })
   projectionRun.updateMany.mockResolvedValue({ count: 1 })
   queryRaw.mockResolvedValue([{ id: "profile-1" }])
+  executeRaw.mockResolvedValue(1)
   sessionLink.findFirst.mockResolvedValue({ id: "link-1" })
   transaction.mockImplementation(async (work) =>
     work({
       $queryRaw: queryRaw,
+      $executeRaw: executeRaw,
       recommendationProfileSessionLink: sessionLink,
       recommendationProfileProjectionRun: projectionRun,
     }),
@@ -65,6 +68,7 @@ beforeEach(() => {
 
 describe("recommendation profile projection workflow job", () => {
   it("creates private business truth before dispatch", async () => {
+    queryRaw.mockResolvedValueOnce([])
     await expect(
       dispatchRecommendationProfileProjection({
         sessionDigest: "a".repeat(64),
@@ -75,8 +79,16 @@ describe("recommendation profile projection workflow job", () => {
 
     expect(projectionRun.create).toHaveBeenCalledBefore(start)
     expect(projectionRun.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ sessionDigest: "a".repeat(64) }),
+      data: expect.objectContaining({
+        sessionDigest: "a".repeat(64),
+        expectedGenerationId: null,
+        expectedPointerGeneration: 0,
+      }),
     })
+    expect(executeRaw).toHaveBeenCalledOnce()
+    expect(executeRaw.mock.calls[0]?.[0].strings.join("?")).toContain(
+      "pg_advisory_xact_lock",
+    )
     expect(start).toHaveBeenCalledWith(runRecommendationProfileProjection, [
       { runId: "run-1", expectedGeneration: 1 },
     ])
@@ -100,7 +112,7 @@ describe("recommendation profile projection workflow job", () => {
     expect(projectionRun.updateMany).toHaveBeenCalledTimes(1)
   })
 
-  it("marks projection truth failed when workflow start fails", async () => {
+  it("leaves recoverable projection truth pending when workflow start fails", async () => {
     start.mockRejectedValueOnce(new Error("runtime unavailable"))
 
     await expect(
@@ -112,7 +124,10 @@ describe("recommendation profile projection workflow job", () => {
     ).rejects.toThrow("runtime unavailable")
     expect(projectionRun.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ state: "FAILED" }),
+        data: expect.objectContaining({
+          lastTransitionReason: "workflow_dispatch_failed",
+          completedAt: null,
+        }),
       }),
     )
   })
@@ -232,6 +247,8 @@ describe("recommendation profile projection workflow job", () => {
   })
 
   it("claims, publishes and completes with generation fencing", async () => {
+    queryRaw.mockResolvedValueOnce([{ generation: 1, attemptCount: 1 }])
+
     await expect(
       runRecommendationProfileProjectionJob({
         runId: "run-1",
@@ -242,16 +259,9 @@ describe("recommendation profile projection workflow job", () => {
       generationId: "projection-1",
     })
 
-    expect(projectionRun.updateMany).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({
-        where: expect.objectContaining({
-          id: "run-1",
-          generation: 1,
-          state: "PENDING",
-        }),
-        data: expect.objectContaining({ state: "CLAIMED" }),
-      }),
+    const claimSql = queryRaw.mock.calls[0]?.[0]
+    expect(claimSql.strings.join("?")).toContain(
+      "attempt_count = attempt_count + 1",
     )
     expect(projectionRun.updateMany).toHaveBeenLastCalledWith(
       expect.objectContaining({
@@ -264,7 +274,7 @@ describe("recommendation profile projection workflow job", () => {
   })
 
   it("does not publish after a stale run generation loses its claim", async () => {
-    projectionRun.updateMany.mockResolvedValueOnce({ count: 0 })
+    queryRaw.mockResolvedValueOnce([])
     await expect(
       runRecommendationProfileProjectionJob({
         runId: "run-1",
@@ -272,5 +282,103 @@ describe("recommendation profile projection workflow job", () => {
       }),
     ).resolves.toEqual({ status: "fenced", reason: "claim_generation_changed" })
     expect(project).not.toHaveBeenCalled()
+  })
+
+  it("reclaims an expired lease with a new fenced generation and bounded attempt", async () => {
+    projectionRun.findUnique.mockResolvedValueOnce({
+      id: "run-1",
+      scope: "SESSION",
+      profileId: null,
+      privacyGeneration: null,
+      sessionDigest: "a".repeat(64),
+      state: "CLAIMED",
+      generation: 1,
+      attemptCount: 1,
+      leaseExpiresAt: new Date("2026-01-01T00:00:00.000Z"),
+      expectedGenerationId: "projection-old",
+      expectedPointerGeneration: 4,
+    })
+    queryRaw.mockResolvedValueOnce([{ generation: 2, attemptCount: 2 }])
+
+    await expect(
+      runRecommendationProfileProjectionJob({
+        runId: "run-1",
+        expectedGeneration: 1,
+      }),
+    ).resolves.toMatchObject({ status: "published" })
+    expect(project).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expectedPointer: {
+          generationId: "projection-old",
+          pointerGeneration: 4,
+        },
+        runFence: expect.objectContaining({
+          runId: "run-1",
+          generation: 2,
+        }),
+      }),
+    )
+  })
+
+  it("terminalizes an attempt-exhausted projection without publishing", async () => {
+    projectionRun.findUnique.mockResolvedValueOnce({
+      id: "run-1",
+      scope: "SESSION",
+      profileId: null,
+      privacyGeneration: null,
+      sessionDigest: "a".repeat(64),
+      state: "PENDING",
+      generation: 3,
+      attemptCount: 3,
+    })
+    queryRaw.mockResolvedValueOnce([])
+
+    await expect(
+      runRecommendationProfileProjectionJob({
+        runId: "run-1",
+        expectedGeneration: 3,
+      }),
+    ).resolves.toEqual({
+      status: "fenced",
+      reason: "claim_generation_changed",
+    })
+    expect(project).not.toHaveBeenCalled()
+    expect(projectionRun.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ attemptCount: { gte: 3 } }),
+        data: expect.objectContaining({
+          state: "FAILED",
+          failureReason: "projection_attempts_exhausted",
+        }),
+      }),
+    )
+  })
+
+  it("carries an explicit absent-pointer fence into the first publisher", async () => {
+    projectionRun.findUnique.mockResolvedValueOnce({
+      id: "run-1",
+      scope: "SESSION",
+      profileId: null,
+      privacyGeneration: null,
+      sessionDigest: "a".repeat(64),
+      state: "PENDING",
+      generation: 1,
+      attemptCount: 0,
+      expectedGenerationId: null,
+      expectedPointerGeneration: 0,
+    })
+    queryRaw.mockResolvedValueOnce([{ generation: 1, attemptCount: 1 }])
+
+    await expect(
+      runRecommendationProfileProjectionJob({
+        runId: "run-1",
+        expectedGeneration: 1,
+      }),
+    ).resolves.toMatchObject({ status: "published" })
+    expect(project).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expectedPointer: { generationId: null, pointerGeneration: 0 },
+      }),
+    )
   })
 })

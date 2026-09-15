@@ -11,6 +11,7 @@ import {
 import {
   createConversation,
   deriveTitle,
+  normalizeConversationTitle,
   titleFromFirstUser,
   type Conversation,
   type Message,
@@ -20,6 +21,8 @@ import {
   type FetchHistoryThreadResult,
   type HistoryMessage,
   type HistoryThreadSummary,
+  type RenameHistoryFailureReason,
+  type RenameHistoryThreadResult,
 } from "./history-client"
 
 /**
@@ -40,6 +43,9 @@ export type ConversationSessionSnapshot = {
   /** True only when the ACTIVE conversation is waiting on a reply. */
   pending: boolean
   pendingIds: ReadonlySet<string>
+  /** Conversations with a rename write in flight (feat-450). The row's
+   * rename control is disabled while listed. */
+  renamingIds: ReadonlySet<string>
   streamingMessageId: string | null
   history: {
     loading: boolean
@@ -67,6 +73,13 @@ export type ConversationSessionDeps = {
     conversationId: string
     signal?: AbortSignal
   }) => Promise<FetchHistoryThreadResult>
+  /** feat-450: the rename write. Never throws by contract; the action still
+   * catches, so a throwing seam reads as an outage, never a rejection. */
+  renameHistoryThread: (input: {
+    conversationId: string
+    title: string
+    signal?: AbortSignal
+  }) => Promise<RenameHistoryThreadResult>
   seekerEnabled: boolean
   /** Deep-link seed (feat-209): when set, construction seeds this id as the
    * ONLY row (an adopted server-origin conversation) and the active id;
@@ -109,7 +122,25 @@ export type ConversationSession = {
   retryHistory(): void
   loadMoreHistory(): void
   retryReplay(): void
+  /**
+   * Rename a conversation (feat-450, KTD6). Pessimistic: the title changes
+   * only after the server confirms (client-only rows commit locally). An
+   * empty, unchanged, or unknown-id draft resolves ok with no request (KD4),
+   * as does a submit for an id already in flight. Failures return their
+   * reason for the row's inline notice; `not_available` also marks the row.
+   * Never rejects.
+   */
+  renameConversation(
+    id: string,
+    draft: string,
+  ): Promise<RenameConversationResult>
 }
+
+/** The rename action's outcome: committed (or nothing to send), or the
+ * failure reason the row renders (KTD9's copy table). */
+export type RenameConversationResult =
+  | { ok: true }
+  | { ok: false; reason: RenameHistoryFailureReason }
 
 // Internal list-hydration phase. "denied" = a mid-session access denial
 // (401 invalid_session / 403 gate_denied) reverted the sidebar to client-only
@@ -138,11 +169,14 @@ const HISTORY_IDLE: HistoryState = {
  * its first-seen position (cross-page dedupe). New rows join as message-less
  * server-origin conversations with replay "idle" and the server `updatedAt`
  * as their activity key. Every listed row is server-persisted by definition.
+ * feat-450 (KTD7): ids in `fencedIds` — renamed AFTER this page's fetch
+ * started — keep their client title; the page's copy predates the rename.
  * Pure — exported for direct unit coverage.
  */
 export function mergeServerThreads(
   prev: Conversation[],
   rows: HistoryThreadSummary[],
+  fencedIds: ReadonlySet<string> = new Set(),
 ): Conversation[] {
   const byId = new Map(prev.map((c) => [c.id, c]))
   const next = [...prev]
@@ -151,7 +185,10 @@ export function mergeServerThreads(
     if (existing) {
       const merged: Conversation = {
         ...existing,
-        title: row.title.trim().length > 0 ? row.title : existing.title,
+        title:
+          row.title.trim().length > 0 && !fencedIds.has(row.id)
+            ? row.title
+            : existing.title,
         serverPersisted: true,
         lastActivityAt: existing.lastActivityAt ?? row.updatedAt,
       }
@@ -350,6 +387,18 @@ export function createConversationSession(
   // Survives deactivate() — cache semantics, not fetch-completing state.
   const deadAdoptedIds = new Set<string>()
 
+  // Rename writes in flight by conversation id (feat-450, KTD6): set by
+  // renameConversation, released in its finally on EVERY settlement path,
+  // cleared by deactivate(); one slot per id. `renamingIds` snapshots the keys.
+  const renameControllers = new Map<string, AbortController>()
+  let renamingIds: ReadonlySet<string> = new Set()
+
+  // Rename fence (feat-450, KTD7): a monotonic counter plus each id's count at
+  // its last COMMITTED rename; a page fetch started before that skips the
+  // page's stale title. Settled state: survives deactivate(), never cleared.
+  let renameSerial = 0
+  const renameFence = new Map<string, number>()
+
   // History fetches get their own abort tracking (KTD11) — one session-owned
   // controller aborted on deactivate; select-away never aborts a replay fetch.
   let historyAbort: AbortController | null = null
@@ -378,6 +427,7 @@ export function createConversationSession(
       draft,
       pending: pendingIds.has(activeConversation.id),
       pendingIds,
+      renamingIds,
       streamingMessageId: streamingIds.get(activeConversation.id) ?? null,
       history: {
         loading: history.phase === "loading",
@@ -408,6 +458,30 @@ export function createConversationSession(
 
   function syncPendingIds() {
     pendingIds = new Set(controllers.keys())
+  }
+
+  function syncRenamingIds() {
+    renamingIds = new Set(renameControllers.keys())
+  }
+
+  // Commit a title and stamp the fence (KTD7) — the one write site for both
+  // the server-confirmed and the client-only rename paths.
+  function commitTitle(conversationId: string, title: string) {
+    renameSerial += 1
+    renameFence.set(conversationId, renameSerial)
+    conversations = conversations.map((c) =>
+      c.id === conversationId ? { ...c, title } : c,
+    )
+    commit()
+  }
+
+  // Ids renamed AFTER a fetch that captured `serialAtStart` began.
+  function fencedSince(serialAtStart: number): ReadonlySet<string> {
+    const fenced = new Set<string>()
+    for (const [id, serial] of renameFence) {
+      if (serial > serialAtStart) fenced.add(id)
+    }
+    return fenced
   }
 
   function startReply(
@@ -541,6 +615,9 @@ export function createConversationSession(
 
   function runHistoryPageFetch(page: number) {
     const controller = historyController()
+    // KTD7: captured at fetch START, so a rename committing while this page
+    // is in flight fences its id against the page's older title.
+    const serialAtStart = renameSerial
     void (async () => {
       const result = await deps.fetchHistoryPage({
         page,
@@ -560,7 +637,11 @@ export function createConversationSession(
         return
       }
       nextPage = page + 1
-      conversations = mergeServerThreads(conversations, result.threads)
+      conversations = mergeServerThreads(
+        conversations,
+        result.threads,
+        fencedSince(serialAtStart),
+      )
       // A hydration-confirmed row is proven part of the user's history — it
       // stops being "adopted" AND stops counting as session-dead (a listed
       // row is live by definition, feat-209).
@@ -925,6 +1006,77 @@ export function createConversationSession(
     commit()
   }
 
+  // ---------------------------------------------------------------------------
+  // Rename (feat-450, KTD6)
+  // ---------------------------------------------------------------------------
+
+  async function renameConversation(
+    id: string,
+    draft: string,
+  ): Promise<RenameConversationResult> {
+    const title = normalizeConversationTitle(draft)
+    const target = conversations.find((c) => c.id === id)
+    // KD4: empty or unchanged cancels quietly — nothing to send.
+    if (target === undefined || title.length === 0 || title === target.title) {
+      return { ok: true }
+    }
+    // A row the server never persisted renames in session state only (R9).
+    if (target.serverPersisted !== true) {
+      commitTitle(id, title)
+      return { ok: true }
+    }
+    // One write per id: the editor is read-only while saving, so a second
+    // submit is a no-op, never a second request (the first one answers).
+    if (renameControllers.has(id)) return { ok: true }
+    const controller = new AbortController()
+    renameControllers.set(id, controller)
+    syncRenamingIds()
+    commit()
+    // The whole body sits inside try/finally so the slot releases on EVERY
+    // settlement path — ok, each failure, an abort, and a synchronous throw
+    // before the await (the slot-leak law).
+    try {
+      const result = await deps.renameHistoryThread({
+        conversationId: id,
+        title,
+        signal: controller.signal,
+      })
+      // An aborted write (deactivation) must never apply state — and the
+      // tree that asked is gone, so the outcome is moot.
+      if (!active || controller.signal.aborted) {
+        return { ok: false, reason: "unavailable" }
+      }
+      if (result.ok) {
+        // Adopt the ECHOED title — the server clamp is the authority (R11).
+        commitTitle(id, result.title)
+        return { ok: true }
+      }
+      if (result.reason === "not_available") {
+        // R18 shape: forbidden/vanished removes the affordance (AE7).
+        setReplayState(id, "not_available")
+      }
+      // `access` deliberately does NOT invoke revertToClientOnly(): that path
+      // is the read contract's silent degrade, and reusing it here would
+      // remove the row the person is looking at with no notice (KD5).
+      return { ok: false, reason: result.reason }
+    } catch {
+      // A 504/500 on the write leg is INDETERMINATE (the UPDATE may have
+      // committed): the kept title is not proof; hydration shows the truth.
+      return { ok: false, reason: "unavailable" }
+    } finally {
+      // Identity-checked: a stale finally after deactivate() cleared the map
+      // must not release a NEWER slot for the same id. Skip the visible-state
+      // sync after deactivation (never notify a torn-down tree).
+      if (renameControllers.get(id) === controller) {
+        renameControllers.delete(id)
+        if (active) {
+          syncRenamingIds()
+          commit()
+        }
+      }
+    }
+  }
+
   function activate() {
     active = true
     // Hydration fires on activation under a full gate grant (KTD9), guarded on
@@ -944,6 +1096,12 @@ export function createConversationSession(
     // teardown; same for in-flight history/replay fetches.
     for (const controller of controllers.values()) controller.abort()
     controllers.clear()
+    // Rename slots are state only an in-flight write could clear: abort and
+    // release them now so the re-armed instance never shows a stuck pencil.
+    // The rename FENCE deliberately survives — a committed rename is settled.
+    for (const controller of renameControllers.values()) controller.abort()
+    renameControllers.clear()
+    renamingIds = new Set()
     historyAbort?.abort()
     // Null it so the next activation lazily mints a FRESH controller instead
     // of reusing the aborted one.
@@ -992,5 +1150,6 @@ export function createConversationSession(
     retryHistory,
     loadMoreHistory,
     retryReplay,
+    renameConversation,
   }
 }

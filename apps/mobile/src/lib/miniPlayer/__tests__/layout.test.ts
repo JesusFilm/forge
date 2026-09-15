@@ -5,6 +5,7 @@ import {
   MIN_VIDEO_WIDTH,
   allowedCorners,
   defaultCornerFrame,
+  WINDOW_EDGE_MARGIN,
   miniPlayerCornerFrame,
   miniPlayerCornerFrames,
   miniPlayerMinWidth,
@@ -13,12 +14,14 @@ import {
   type MiniPlayerCorner,
   type MiniPlayerLayoutConfig,
 } from "../layout"
+import { TAB_BAR_OCCUPIED_HEIGHT, TAB_BAR_HEIGHT_IOS } from "../../tabBar"
 
-/** An iPhone-shaped screen with a notch, home indicator, and the tab bar. */
+/** An iPhone-shaped screen with a notch, home indicator, and the tab bar.
+ *  The chrome height is READ from production — a literal here would drift. */
 const PHONE: MiniPlayerLayoutConfig = {
   screen: { width: 390, height: 844 },
   insets: { top: 59, right: 0, bottom: 34, left: 0 },
-  chrome: { top: 0, bottom: 49 },
+  chrome: { top: 0, bottom: TAB_BAR_OCCUPIED_HEIGHT },
 }
 
 describe("KTD6 minimum width", () => {
@@ -176,11 +179,25 @@ describe("corner frames", () => {
 
 describe("snap thresholds", () => {
   it("switches side at the midpoint of each axis's own travel", () => {
-    // Midpoints for PHONE: x 113, y 364.
-    expect(snapToCorner(PHONE, { x: 112, y: 363 }).corner).toBe("topLeft")
-    expect(snapToCorner(PHONE, { x: 114, y: 363 }).corner).toBe("topRight")
-    expect(snapToCorner(PHONE, { x: 112, y: 365 }).corner).toBe("bottomLeft")
-    expect(snapToCorner(PHONE, { x: 114, y: 365 }).corner).toBe("bottomRight")
+    // Derived, not hand-copied: the y midpoint moves whenever the tab bar's
+    // reserved height does, and a literal here silently re-tunes the gesture.
+    const topLeft = miniPlayerCornerFrame(PHONE, "topLeft")
+    const bottomRight = miniPlayerCornerFrame(PHONE, "bottomRight")
+    const midX = (topLeft.x + bottomRight.x) / 2
+    const midY = (topLeft.y + bottomRight.y) / 2
+
+    expect(snapToCorner(PHONE, { x: midX - 1, y: midY - 1 }).corner).toBe(
+      "topLeft",
+    )
+    expect(snapToCorner(PHONE, { x: midX + 1, y: midY - 1 }).corner).toBe(
+      "topRight",
+    )
+    expect(snapToCorner(PHONE, { x: midX - 1, y: midY + 1 }).corner).toBe(
+      "bottomLeft",
+    )
+    expect(snapToCorner(PHONE, { x: midX + 1, y: midY + 1 }).corner).toBe(
+      "bottomRight",
+    )
   })
 
   it("honours a caller's snap bias", () => {
@@ -223,5 +240,44 @@ describe("excluded corners", () => {
     const config = { ...PHONE, excludedCorners: corners }
     expect(allowedCorners(config)).toEqual([DEFAULT_CORNER])
     expect(snapToCorner(config, { x: 0, y: 0 }).corner).toBe(DEFAULT_CORNER)
+  })
+})
+
+describe("the resting window clears the native tab bar", () => {
+  // The gap is WINDOW_EDGE_MARGIN by construction whenever chrome.bottom and
+  // the bar top come from the same constant, so asserting it against PHONE
+  // alone proves nothing. Pin the constant, then show the assertion can fail.
+  it("reserves the UIKit bar's own height on iOS", () => {
+    expect(TAB_BAR_OCCUPIED_HEIGHT).toBe(TAB_BAR_HEIGHT_IOS)
+  })
+
+  it("leaves an oversized gap when the reservation still holds the retired pill's 68", () => {
+    const stale = { ...PHONE, chrome: { top: 0, bottom: 68 } }
+    const frame = defaultCornerFrame(stale)
+    const windowBottom = frame.y + frame.height
+    // The bar top comes from the REAL bar, never from the reservation, so an
+    // over-reservation lifts the window: a 730pt bottom under a 761pt bar top.
+    const barTop =
+      stale.screen.height - stale.insets.bottom - TAB_BAR_HEIGHT_IOS
+    expect(barTop - windowBottom).toBeGreaterThan(WINDOW_EDGE_MARGIN)
+  })
+
+  it("overlaps the bar when the reservation is smaller than the real bar", () => {
+    const short = { ...PHONE, chrome: { top: 0, bottom: 30 } }
+    const frame = defaultCornerFrame(short)
+    const windowBottom = frame.y + frame.height
+    // The other direction: an under-reservation drops the window onto the bar,
+    // to a 768pt bottom below the same 761pt bar top.
+    const barTop =
+      short.screen.height - short.insets.bottom - TAB_BAR_HEIGHT_IOS
+    expect(barTop - windowBottom).toBeLessThan(0)
+  })
+
+  it("leaves WINDOW_EDGE_MARGIN once the reservation matches the bar", () => {
+    const frame = defaultCornerFrame(PHONE)
+    const windowBottom = frame.y + frame.height
+    const barTop =
+      PHONE.screen.height - PHONE.insets.bottom - TAB_BAR_HEIGHT_IOS
+    expect(barTop - windowBottom).toBe(WINDOW_EDGE_MARGIN)
   })
 })

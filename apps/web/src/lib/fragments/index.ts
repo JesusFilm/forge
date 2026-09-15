@@ -1,5 +1,6 @@
 export {
   legacyWatchExperienceFragment,
+  preCopyWatchExperienceFragment,
   watchExperienceFragment,
 } from "./watch-experience"
 export {

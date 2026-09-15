@@ -647,3 +647,48 @@ describe("Replay access loss — KTD8 uniformity", () => {
     expect(getTextarea()).toBeEnabled()
   })
 })
+
+describe("Rename control gating through the shell (feat-450, R2)", () => {
+  it("renders a pencil per hydrated row on a GRANTED shell, named after the display title", async () => {
+    renderSeeker(() => [], { listFor: () => ({ threads: [ALPHA, UNTITLED] }) })
+    await screen.findByRole("button", { name: "Alpha thread" })
+    const nav = getConversationNav()
+    expect(
+      within(nav).getByRole("button", { name: "Rename Alpha thread" }),
+    ).toBeInTheDocument()
+    expect(
+      within(nav).getByRole("button", {
+        name: `Rename ${fallbackTitle(UNTITLED.updatedAt)}`,
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it("renders no pencil on a flag-off shell", async () => {
+    await sendMessage("a local conversation")
+    await screen.findByRole("button", {
+      name: deriveTitle("a local conversation"),
+    })
+    expect(
+      within(getConversationNav()).queryAllByRole("button", {
+        name: /^Rename /,
+      }),
+    ).toHaveLength(0)
+  })
+
+  it("renders no pencil on a denial shell even with the raw flag on — keyed on grantedShell, never seekerEnabled", async () => {
+    // SYNTHETIC prop pair (2026-09-02, feat-450): `deepLinkShell` never emits
+    // seekerEnabled=true alongside deniedScreen, so this is producer-
+    // unreachable; it pins the consumer belt feeding the rail (grantedShell).
+    view.unmount()
+    renderShell(true, {
+      deniedScreen: "unavailable",
+      initialConversationId: "0f3b2c1e-6d4a-4b8f-9c2d-1e5f7a9b3c4d",
+    })
+    await act(async () => {})
+    expect(
+      within(getConversationNav()).queryAllByRole("button", {
+        name: /^Rename /,
+      }),
+    ).toHaveLength(0)
+  })
+})

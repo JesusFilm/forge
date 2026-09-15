@@ -637,12 +637,8 @@ describe("FloatingSearchProvider — header backdrop", () => {
     expect(FLOATING_HEADER_PINNED_TOP_CLASS).toContain(
       `${compactLandscape}:top-[calc(env(safe-area-inset-top,0px)+0.5rem)]`,
     )
-    expect(WATCH_PAGE_LEFT_EDGE_CLASSES).toContain(
-      `${compactLandscape}:left-[max(1.25rem,env(safe-area-inset-left,0px))]`,
-    )
-    expect(WATCH_PAGE_RIGHT_EDGE_CLASSES).toContain(
-      `${compactLandscape}:right-[max(1.25rem,env(safe-area-inset-right,0px))]`,
-    )
+    expect(WATCH_PAGE_LEFT_EDGE_CLASSES).not.toContain(compactLandscape)
+    expect(WATCH_PAGE_RIGHT_EDGE_CLASSES).not.toContain(compactLandscape)
     expect(header?.className).toContain(FLOATING_HEADER_TOP_CLASS)
     expect(backdrop?.className).toContain(
       `${compactLandscape}:h-[calc(4.25rem+env(safe-area-inset-top,0px))]`,
@@ -1259,10 +1255,7 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
     expect(header?.className).toContain("h-[52px]")
     expect(header?.className).toContain(FLOATING_HEADER_LAYOUT_CLASS)
     expect(header?.className).toContain(
-      "grid-cols-[minmax(80px,1fr)_minmax(0,800px)_minmax(80px,1fr)]",
-    )
-    expect(header?.className).toContain(
-      "md:grid-cols-[minmax(139px,1fr)_minmax(0,800px)_minmax(139px,1fr)]",
+      "grid-cols-[minmax(max-content,1fr)_minmax(0,800px)_minmax(max-content,1fr)]",
     )
     expect(header?.className).toContain("items-center")
     expect(header?.className).toContain("gap-3")
@@ -2446,6 +2439,7 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     expect(languageButton?.className).toContain("w-11")
     expect(languageButton?.className).toContain("md:h-[52px]")
     expect(languageButton?.className).toContain("md:w-12")
+    expect(languageButton?.className).toContain("-mr-[18.25px]")
     expect(header?.className).toContain("z-50")
     expect(languageButton?.className).toContain("cursor-pointer")
     expect(languageButton?.querySelector("svg")?.className.baseVal).toContain(
@@ -2627,11 +2621,15 @@ describe("FloatingSearchProvider — language videos link", () => {
         `See all videos in ${ISOLATE_START}${expectedLanguage}${ISOLATE_END}`,
       )
       // Glyph still present alongside the label, and it is the shared video-
-      // library glyph — the watch-home "See all video collections" CTA renders
+      // library glyph — the watch-home "See all videos" CTA renders
       // the same one via `WatchLibraryIcon`.
       expect(link?.querySelector("svg")?.getAttribute("class")).toContain(
         "lucide-list-video",
       )
+      const labelClassName = link?.querySelector("span")?.getAttribute("class")
+      expect(labelClassName).toContain("text-xs")
+      expect(labelClassName).toContain("sm:text-[10px]")
+      expect(labelClassName).toContain("tracking-[0.14em]")
     },
   )
 
@@ -2731,6 +2729,11 @@ describe("FloatingSearchProvider — language videos link", () => {
       "floating-header-language-button",
       "floating-header-search-close",
     ])
+    expect(
+      trailingControls?.querySelector(
+        '[data-testid="floating-header-language-button"]',
+      )?.className,
+    ).not.toContain("-mr-[18.25px]")
     expect(languageVideosLink()).toBeNull()
   })
 })
@@ -4286,6 +4289,43 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(document.activeElement).toBe(input)
   })
 
+  it("closes the instant shell from its backdrop but not its search field", () => {
+    const setOpen = vi.fn()
+
+    act(() => {
+      root.render(
+        <SearchOverlayInstantShell
+          open
+          closing={false}
+          query=""
+          setOpen={setOpen}
+          setQuery={vi.fn()}
+          onSubmit={vi.fn()}
+          headerTopClass={FLOATING_HEADER_TOP_CLASS}
+          logoSlotClass="w-12"
+          headerLanguageControlVisible={false}
+        />,
+      )
+    })
+
+    const shell = document.querySelector(
+      '[data-testid="search-overlay-instant-shell"]',
+    ) as HTMLElement
+    const fieldShell = document.querySelector(
+      '[data-testid="search-overlay-instant-field-shell"]',
+    ) as HTMLElement
+    const content = document.querySelector(
+      '[data-testid="search-overlay-instant-content"]',
+    ) as HTMLElement
+
+    act(() => fieldShell.click())
+    act(() => content.click())
+    expect(setOpen).not.toHaveBeenCalled()
+
+    act(() => shell.click())
+    expect(setOpen).toHaveBeenCalledWith(false)
+  })
+
   it("renders the search input shell immediately while the full controller loads", async () => {
     type LanguageOptionsResponse = Awaited<
       ReturnType<typeof getSearchLanguageOptions>
@@ -4469,6 +4509,34 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
       'input[aria-label="Search videos by keyword"]',
     ) as HTMLInputElement | null
     expect(reopenedInput?.value).toBe("")
+  })
+
+  it("closes the loaded search overlay from its backdrop", async () => {
+    vi.useFakeTimers()
+    await openSearchOverlay()
+
+    const overlay = document.querySelector(
+      '[aria-label="Search and browse videos"]',
+    ) as HTMLElement
+    const fieldShell = document.querySelector(
+      '[data-testid="search-overlay-field-shell"]',
+    ) as HTMLElement
+
+    act(() => fieldShell.click())
+    expect(
+      document.querySelector('[data-testid="floating-header-search-close"]'),
+    ).not.toBeNull()
+
+    act(() => overlay.click())
+    await act(async () => {
+      vi.advanceTimersByTime(220)
+      await Promise.resolve()
+    })
+
+    expect(document.querySelector('input[type="search"]')).toBeNull()
+    expect(
+      document.querySelector('[data-testid="floating-header-search-close"]'),
+    ).toBeNull()
   })
 
   it("ignores an in-flight search response after the modal closes", async () => {
@@ -5083,7 +5151,9 @@ describe("FloatingSearchProvider — search pagination", () => {
     await submitSearch(input, "the bible project")
 
     const link = Array.from(document.querySelectorAll("a")).find(
-      (anchor) => anchor.getAttribute("href") === "/first-result-slug.html",
+      (anchor) =>
+        anchor.getAttribute("href") ===
+        "/first-result-slug.html?playback_source=search",
     )
     const searchRequestId =
       mockedRunSearch.mock.calls[0]?.[0].languageContext?.clientRequestId

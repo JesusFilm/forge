@@ -27,9 +27,11 @@ export type CandidateOperatorAcceptanceBundle = Readonly<{
   status: "OPERATOR_ACCEPTED"
   identity: Readonly<{
     generationId: string
-    applicationRevision: string
+    indexContractRevision: string
     rankingRevision: string
     transcriptCollection: string
+    contentEmbeddingContractId: string
+    transcriptChunkingVersion: string
     transcriptProjectionRevision: string
     qrelsRevision: string
     currentBindings: readonly string[]
@@ -221,9 +223,9 @@ function acceptanceIdentity(value: unknown, decisionId: string) {
       identity.generationId,
       "identity.generationId",
     ),
-    applicationRevision: acceptanceString(
-      identity.applicationRevision,
-      "identity.applicationRevision",
+    indexContractRevision: acceptanceString(
+      identity.indexContractRevision,
+      "identity.indexContractRevision",
     ),
     rankingRevision: acceptanceString(
       identity.rankingRevision,
@@ -232,6 +234,14 @@ function acceptanceIdentity(value: unknown, decisionId: string) {
     transcriptCollection: acceptanceString(
       identity.transcriptCollection,
       "identity.transcriptCollection",
+    ),
+    contentEmbeddingContractId: acceptanceString(
+      identity.contentEmbeddingContractId,
+      "identity.contentEmbeddingContractId",
+    ),
+    transcriptChunkingVersion: acceptanceString(
+      identity.transcriptChunkingVersion,
+      "identity.transcriptChunkingVersion",
     ),
     transcriptProjectionRevision,
     qrelsRevision,

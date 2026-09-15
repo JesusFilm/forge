@@ -12,7 +12,39 @@ const path = require("path")
 // docs/solutions/conventions/datadog-reserved-log-attribute-name-shadowing.md
 const RESERVED = ["source", "host", "service", "status", "message", "trace_id"]
 
-const CALL = /\b(?:datadogLog|DdLogs)\.(?:info|warn|error|debug)\s*\(/g
+// `telemetry` is the INJECTED alias for the same sink (DownloadTelemetry in
+// downloadRequestBuilders.ts). A scan of the two direct sinks alone cannot see
+// a call through it, and one live `message` collision hid there.
+// `?\.` is not cosmetic: the sink is OPTIONAL on every injected port, so
+// `deps.telemetry?.info(...)` is the shape a module without a wrapper emits.
+const CALL =
+  /\b(?:datadogLog|DdLogs|telemetry)\??\.(?:info|warn|error|debug)\s*\(/g
+
+// SECOND shape, and the one the export path uses: a module wraps the injected
+// sink once — `const info = (message, context) => deps.telemetry?.info(message,
+// context)` — and every emit site then calls the LOCAL name. The alias above
+// matches only the wrapper's own forwarding call, whose context is a variable,
+// so the known limit below skips it and the rule reaches nothing. Match the
+// binding, then scan calls to the name it binds.
+const LOCAL_TELEMETRY_WRAPPER =
+  /\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s+)?\([^)]*\)\s*(?::\s*[^=>{]*)?=>\s*\{?\s*(?:return\s+)?(?:void\s+)?(?:await\s+)?[\w$.]*\btelemetry\??\.(?:info|warn|error|debug)\s*\(/g
+
+/** Local names bound to a wrapper over the injected sink, in this file. */
+function localTelemetryWrappers(source) {
+  const names = new Set()
+  LOCAL_TELEMETRY_WRAPPER.lastIndex = 0
+  let match
+  while ((match = LOCAL_TELEMETRY_WRAPPER.exec(source)) != null) {
+    names.add(match[1])
+  }
+  return names
+}
+
+/** Call sites of those local names. The lookbehind keeps `x.info(` out. */
+function localWrapperCallPattern(names) {
+  const alternatives = Array.from(names).join("|")
+  return new RegExp(`(?<![.\\w$])(?:${alternatives})\\s*\\(`, "g")
+}
 
 // Returns the source text between `open` (index of a bracket) and its match,
 // skipping strings, template literals, and comments. null if unbalanced.
@@ -181,20 +213,27 @@ function objectStart(args) {
 //
 // KNOWN LIMIT: only object LITERALS at the call site are checked. A context
 // built elsewhere (`const ctx = { source: 1 }; datadogLog.info("e", ctx)`)
-// passes unflagged — static scanning cannot follow it.
+// passes unflagged — static scanning cannot follow it. The local-wrapper
+// pattern follows exactly ONE hop, from a wrapper's emit sites; a context
+// handed through a second indirection is still outside the rule.
 function findReservedAttributes(entries) {
   const hits = []
   for (const entry of entries) {
-    CALL.lastIndex = 0
-    while (CALL.exec(entry.content) != null) {
-      const args = balanced(entry.content, CALL.lastIndex - 1)
-      if (args == null) continue
-      const objStart = objectStart(args)
-      if (objStart < 0) continue
-      const body = balanced(args, objStart)
-      if (body == null) continue
-      for (const key of topLevelKeys(body)) {
-        if (RESERVED.includes(key)) hits.push(`${entry.relative}: ${key}`)
+    const wrappers = localTelemetryWrappers(entry.content)
+    const patterns =
+      wrappers.size > 0 ? [CALL, localWrapperCallPattern(wrappers)] : [CALL]
+    for (const pattern of patterns) {
+      pattern.lastIndex = 0
+      while (pattern.exec(entry.content) != null) {
+        const args = balanced(entry.content, pattern.lastIndex - 1)
+        if (args == null) continue
+        const objStart = objectStart(args)
+        if (objStart < 0) continue
+        const body = balanced(args, objStart)
+        if (body == null) continue
+        for (const key of topLevelKeys(body)) {
+          if (RESERVED.includes(key)) hits.push(`${entry.relative}: ${key}`)
+        }
       }
     }
   }
@@ -227,6 +266,39 @@ describe("no Datadog log attribute shadows a reserved field", () => {
     expect(findReservedAttributes(entries)).toEqual([])
   })
 
+  it("the wrapper shape resolves in the real export modules", () => {
+    // Anti-vacuous. The widening is worth its code only if it resolves the
+    // names those modules actually emit through; both define `info` and `warn`.
+    const root = path.resolve(__dirname, "../../..")
+    for (const relative of [
+      "src/lib/rawExport.ts",
+      "src/lib/rawExportAdapter.ts",
+    ]) {
+      const content = fs.readFileSync(path.join(root, relative), "utf8")
+      expect(Array.from(localTelemetryWrappers(content)).sort()).toEqual([
+        "info",
+        "warn",
+      ])
+    }
+  })
+
+  it("a reserved key at a real export emit site is flagged", () => {
+    // Falsification, kept: every export log goes through the local wrapper, so
+    // before this pattern existed a `status` here reached Datadog and was
+    // dropped on ingest with the whole suite green.
+    const root = path.resolve(__dirname, "../../..")
+    const relative = "src/lib/rawExport.ts"
+    const content = fs.readFileSync(path.join(root, relative), "utf8")
+    const mutated = content.replace(
+      `export_state: "blocked",`,
+      `status: "blocked",`,
+    )
+    expect(mutated).not.toBe(content)
+    expect(findReservedAttributes([{ relative, content: mutated }])).toEqual([
+      `${relative}: status`,
+    ])
+  })
+
   it("positive control: every reserved name is flagged on its own", () => {
     // One fixture per name, so dropping any entry from RESERVED fails here.
     const entries = RESERVED.map((name) => ({
@@ -250,6 +322,46 @@ describe("no Datadog log attribute shadows a reserved field", () => {
         },
       ]),
     ).toEqual(["a.tsx: message", "b.tsx: message"])
+  })
+
+  it("positive control: a call through a local wrapper is flagged", () => {
+    // Both export modules define exactly this wrapper and emit through it. The
+    // alias widening alone reached ZERO of those call sites: every `telemetry`
+    // call it matched was the wrapper's own forwarding call, whose context is a
+    // VARIABLE — the known limit below. The emit sites are `info(` / `warn(`.
+    expect(
+      findReservedAttributes([
+        {
+          relative: "wrapper.ts",
+          content:
+            `const info = (message: string, context: Record<string, unknown>): void => {\n` +
+            `  deps.telemetry?.info(message, context)\n` +
+            `}\n` +
+            `const warn = (message: string, context: Record<string, unknown>): void => {\n` +
+            `  deps.telemetry?.warn(message, context)\n` +
+            `}\n` +
+            `info("raw_export.blocked", { export_state: "blocked", status: gate.kind })\n` +
+            `warn("raw_export.failed", { message: raw })`,
+        },
+      ]),
+    ).toEqual(["wrapper.ts: message", "wrapper.ts: status"])
+  })
+
+  it("positive control: an injected telemetry alias is flagged", () => {
+    // The sink arrives as `DownloadTelemetry`, so the call site never names
+    // datadogLog. This is the form that hid downloadLifecycle's live drop.
+    expect(
+      findReservedAttributes([
+        {
+          relative: "local.ts",
+          content: `telemetry.warn("download.native_error", { message: raw })`,
+        },
+        {
+          relative: "member.ts",
+          content: `deps.telemetry?.info("download.begin", { status })`,
+        },
+      ]),
+    ).toEqual(["local.ts: message", "member.ts: status"])
   })
 
   it("positive control: a brace inside the first argument does not hide the object", () => {

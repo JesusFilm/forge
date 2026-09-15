@@ -527,7 +527,8 @@
     "previousVideoPreview": "Hor-u-muujinta fiidiyowga hore",
     "nextVideoPreview": "Hor-u-muujinta fiidiyowga xiga",
     "mediaCollection": "Uruurinta warbaahinta",
-    "scrollToVideo": "U deg fiidiyowga {title}"
+    "scrollToVideo": "U deg fiidiyowga {title}",
+    "forYou": "Adiga kuu gaar ah"
   },
   "WatchFooter": {
     "home": "Bogga hore ee Jesus Film Project",
@@ -597,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",

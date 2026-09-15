@@ -28,14 +28,26 @@ it("loads package-local environment files without overriding injected values", a
       }) as unknown as Wiring,
   )
 
-  await runQuery(["--top-k", "3", "hope"], {
-    packageDirectory,
-    environment: {
-      DATABASE_URL: "postgresql://injected:injected@runtime.example.test/rag",
+  await runQuery(
+    [
+      "--",
+      "--source",
+      "gotquestions",
+      "--language",
+      "is",
+      "--top-k",
+      "3",
+      "hope",
+    ],
+    {
+      packageDirectory,
+      environment: {
+        DATABASE_URL: "postgresql://injected:injected@runtime.example.test/rag",
+      },
+      createWiring,
+      log: vi.fn(),
     },
-    createWiring,
-    log: vi.fn(),
-  })
+  )
 
   expect(createWiring).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -44,6 +56,10 @@ it("loads package-local environment files without overriding injected values", a
       EMBED_MODEL_ID: "local-model",
     }),
   )
-  expect(search).toHaveBeenCalledWith("hope", { topK: 3 })
+  expect(search).toHaveBeenCalledWith("hope", {
+    topK: 3,
+    allowedSourceKeys: ["gotquestions"],
+    language: "is",
+  })
   expect(shutdown).toHaveBeenCalledOnce()
 })

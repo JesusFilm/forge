@@ -50,6 +50,19 @@ export function deferred<T>() {
 export const response = (body: unknown, ok = true, status = ok ? 200 : 503) =>
   ({ ok, status, json: vi.fn().mockResolvedValue(body) }) as unknown as Response
 
+export function acceptedFactsResponse(init: RequestInit | undefined): Response {
+  const body = JSON.parse(String(init?.body ?? "{}")) as {
+    events?: Array<{ eventId: string }>
+  }
+  return response({
+    receipts: (body.events ?? []).map((event, index) => ({
+      eventId: event.eventId,
+      status: "accepted",
+      sequence: index + 1,
+    })),
+  })
+}
+
 /** Register the common jsdom lifecycle while keeping state local to a suite. */
 export function usePlaybackRecorderHarness(
   setHarness: (harness: PlaybackRecorderHarness) => void,

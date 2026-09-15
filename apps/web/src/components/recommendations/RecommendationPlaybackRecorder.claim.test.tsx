@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import { RecommendationPlaybackRecorder } from "./RecommendationPlaybackRecorder"
 import {
+  acceptedFactsResponse,
   deferred,
   makePlayer,
   response,
@@ -15,6 +16,7 @@ import {
   usePlaybackRecorderHarness,
 } from "./RecommendationPlaybackRecorder.test-fixtures"
 import { RECOMMENDATION_TAB_CORRELATION_KEY } from "@/lib/recommendation-contracts"
+import { withRecommendationConsentLock } from "@/lib/recommendation-consent-bootstrap"
 
 describe("RecommendationPlaybackRecorder claim lifecycle", () => {
   let root: Root
@@ -23,6 +25,122 @@ describe("RecommendationPlaybackRecorder claim lifecycle", () => {
   usePlaybackRecorderHarness((harness) => {
     root = harness.root
     fetchMock = harness.fetchMock
+  })
+
+  it("serializes source-neutral context issuance with session bootstrap", async () => {
+    const acquired = deferred<void>()
+    const release = deferred<void>()
+    const lock = withRecommendationConsentLock(async () => {
+      acquired.resolve(undefined)
+      await release.promise
+    })
+    await acquired.promise
+    fetchMock
+      .mockResolvedValueOnce(
+        response({ claimNonce: "serialized-context-claim-nonce" }),
+      )
+      .mockResolvedValueOnce(
+        response({
+          episode: {
+            episodeId: "serialized-episode",
+            capability: "serialized-capability",
+            activeUntil: "2026-08-19T07:00:00.000Z",
+            hardUntil: "2026-08-19T09:00:00.000Z",
+          },
+        }),
+      )
+
+    await act(async () => {
+      root.render(
+        <RecommendationPlaybackRecorder
+          player={makePlayer()}
+          initiation={null}
+          mediaId="media-1"
+          durationSeconds={120}
+        />,
+      )
+      await Promise.resolve()
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+
+    await act(async () => {
+      release.resolve(undefined)
+      await lock
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(fetchMock).toHaveBeenCalled()
+    expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).toEqual({
+      action: "context",
+      mediaId: "media-1",
+      discoverySource: "direct",
+      provenance: {},
+    })
+  })
+
+  it("issues and claims a source-neutral context when there is no recommendation handoff", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        response({
+          claimNonce: "direct-context-claim-nonce",
+          contextVersion: "playback-context-v1",
+        }),
+      )
+      .mockResolvedValueOnce(
+        response({
+          episode: {
+            episodeId: "direct-episode",
+            capability: "direct-episode-capability",
+            activeUntil: "2026-08-19T07:00:00.000Z",
+            hardUntil: "2026-08-19T09:00:00.000Z",
+          },
+        }),
+      )
+      .mockImplementation((_url, init) =>
+        Promise.resolve(acceptedFactsResponse(init)),
+      )
+    const player = makePlayer()
+
+    await act(async () => {
+      root.render(
+        <RecommendationPlaybackRecorder
+          player={player}
+          initiation="manual"
+          mediaId="media-1"
+          durationSeconds={120}
+        />,
+      )
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    player.paused = false
+    await act(async () => {
+      player.dispatch("playing")
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).toEqual({
+      action: "context",
+      mediaId: "media-1",
+      discoverySource: "direct",
+      provenance: {},
+    })
+    expect(JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string)).toEqual({
+      action: "claim",
+      claimNonce: "direct-context-claim-nonce",
+      mediaId: "media-1",
+    })
+    const facts = fetchMock.mock.calls.slice(2).flatMap(([, init]) => {
+      const body = JSON.parse(init.body as string) as { events?: unknown[] }
+      return body.events ?? []
+    })
+    expect(facts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: "playback_attempt" }),
+        expect.objectContaining({ kind: "playback_start" }),
+      ]),
+    )
   })
 
   it("retains the nonce until a valid claim response and does not delay player availability", async () => {
@@ -75,6 +193,48 @@ describe("RecommendationPlaybackRecorder claim lifecycle", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
+  it("accepts a healthy 1.91-second claim acknowledgement without retrying", async () => {
+    let claimSignal: AbortSignal | undefined
+    fetchMock.mockImplementationOnce((_url, init) => {
+      claimSignal = init.signal ?? undefined
+      return new Promise((resolve) =>
+        window.setTimeout(
+          () =>
+            resolve(
+              response({
+                episode: {
+                  episodeId: "episode-1",
+                  capability: "episode-capability",
+                  activeUntil: "2026-08-19T07:00:00.000Z",
+                  hardUntil: "2026-08-19T09:00:00.000Z",
+                },
+              }),
+            ),
+          1_910,
+        ),
+      )
+    })
+    sessionStorage.setItem(
+      RECOMMENDATION_TAB_CORRELATION_KEY,
+      "claim-nonce-1234567890",
+    )
+    await act(async () => {
+      root.render(
+        <RecommendationPlaybackRecorder
+          player={makePlayer()}
+          initiation={null}
+          mediaId="media-1"
+        />,
+      )
+    })
+    await act(async () => vi.advanceTimersByTimeAsync(1_910))
+    expect(claimSignal?.aborted).toBe(false)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(
+      sessionStorage.getItem(RECOMMENDATION_TAB_CORRELATION_KEY),
+    ).toBeNull()
+  })
+
   it("aborts a claim whose headers arrive but JSON body exceeds the deadline", async () => {
     let claimSignal: AbortSignal | undefined
     fetchMock.mockImplementationOnce(
@@ -104,45 +264,95 @@ describe("RecommendationPlaybackRecorder claim lifecycle", () => {
     })
     expect(claimSignal?.aborted).toBe(false)
 
-    await act(async () => vi.advanceTimersByTime(1_000))
+    await act(async () => vi.advanceTimersByTime(5_000))
     expect(claimSignal?.aborted).toBe(true)
     expect(sessionStorage.getItem(RECOMMENDATION_TAB_CORRELATION_KEY)).toBe(
       "claim-nonce-1234567890",
     )
   })
 
-  it("fails open and clears the nonce after a definitive claim rejection", async () => {
-    fetchMock.mockResolvedValueOnce(
-      response({ error: "invalid_body" }, false, 400),
-    )
-    sessionStorage.setItem(
-      RECOMMENDATION_TAB_CORRELATION_KEY,
-      "claim-nonce-1234567890",
-    )
-    const player = makePlayer()
-
-    await act(async () => {
-      root.render(
-        <RecommendationPlaybackRecorder
-          player={player}
-          initiation="manual"
-          mediaId="media-1"
-          durationSeconds={120}
-        />,
+  it.each([401, 403])(
+    "stops claim admission %s without retry or standalone fallback",
+    async (status) => {
+      sessionStorage.setItem(
+        RECOMMENDATION_TAB_CORRELATION_KEY,
+        "rejected-claim-nonce",
       )
-      await Promise.resolve()
-    })
-    player.paused = false
-    await act(async () => {
-      player.dispatch("playing")
-      await Promise.resolve()
-    })
+      fetchMock.mockResolvedValue(
+        response({ error: "machine_evidence_rejected" }, false, status),
+      )
+      await act(async () => {
+        root.render(
+          <RecommendationPlaybackRecorder
+            player={makePlayer()}
+            initiation="manual"
+            mediaId="media-1"
+          />,
+        )
+      })
+      await act(async () => vi.advanceTimersByTime(20_000))
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(
+        sessionStorage.getItem(RECOMMENDATION_TAB_CORRELATION_KEY),
+      ).toBeNull()
+    },
+  )
 
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(sessionStorage.length).toBe(0)
-    expect(localStorage.length).toBe(0)
-    expect(player.addEventListener).toHaveBeenCalled()
-  })
+  it.each([400, 409])(
+    "falls back once to a standalone context after stale nonce HTTP %s",
+    async (status) => {
+      fetchMock
+        .mockResolvedValueOnce(
+          response({ error: "playback_binding_invalid" }, false, status),
+        )
+        .mockResolvedValueOnce(
+          response({ claimNonce: "standalone-context-nonce" }),
+        )
+        .mockResolvedValueOnce(
+          response({
+            episode: {
+              episodeId: "standalone-episode",
+              capability: "standalone-capability",
+              activeUntil: "2026-08-19T07:00:00.000Z",
+              hardUntil: "2026-08-19T09:00:00.000Z",
+            },
+          }),
+        )
+        .mockImplementation((_url, init) =>
+          Promise.resolve(acceptedFactsResponse(init)),
+        )
+      sessionStorage.setItem(
+        RECOMMENDATION_TAB_CORRELATION_KEY,
+        "claim-nonce-1234567890",
+      )
+      const player = makePlayer()
+
+      await act(async () => {
+        root.render(
+          <RecommendationPlaybackRecorder
+            player={player}
+            initiation="manual"
+            mediaId="media-1"
+            durationSeconds={120}
+          />,
+        )
+        await Promise.resolve()
+      })
+      player.paused = false
+      await act(async () => {
+        player.dispatch("playing")
+        await Promise.resolve()
+      })
+
+      const actions = fetchMock.mock.calls
+        .slice(0, 3)
+        .map(([, init]) => JSON.parse(init.body as string).action)
+      expect(actions).toEqual(["claim", "context", "claim"])
+      expect(sessionStorage.length).toBe(0)
+      expect(localStorage.length).toBe(0)
+      expect(player.addEventListener).toHaveBeenCalled()
+    },
+  )
 
   it("retries an ambiguous committed claim with the same nonce and preserves pending facts", async () => {
     fetchMock
@@ -157,7 +367,9 @@ describe("RecommendationPlaybackRecorder claim lifecycle", () => {
           },
         }),
       )
-      .mockResolvedValue(response({ receipts: [] }))
+      .mockImplementation((_url, init) =>
+        Promise.resolve(acceptedFactsResponse(init)),
+      )
     sessionStorage.setItem(
       RECOMMENDATION_TAB_CORRELATION_KEY,
       "claim-nonce-1234567890",

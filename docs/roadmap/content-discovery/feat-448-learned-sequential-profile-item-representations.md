@@ -27,7 +27,7 @@ tags:
 
 ## Problem
 
-Semantic medoids provide an inspectable multi-interest profile baseline, but they cannot learn sequence, context, or behavioral relationships in one shared viewer–item space. Forge needs a governed successor to the cancelled `feat-092` that learns reusable profile and item representations without replacing evidence truth, consent controls, semantic fallback, or the independently observable candidate generators.
+Semantic medoids provide an inspectable multi-interest profile baseline, but they cannot learn sequence, context, or behavioral relationships in one shared viewer–item space. Forge needs a governed successor to the cancelled `feat-092` that learns reusable profile and item representations without replacing evidence truth, personalization controls, semantic fallback, or the independently observable candidate generators.
 
 ## Entry Points — Read These First
 
@@ -52,10 +52,10 @@ Semantic medoids provide an inspectable multi-interest profile baseline, but the
 ## What To Build
 
 - Record a data-volume and evidence-readiness decision before selecting a training stack. The semantic-medoid profile remains the production baseline until the learned representation clears its gates.
-- Build point-in-time training examples from source-neutral, consent- and integrity-eligible qualified sequences. Discovery source remains provenance and a possible feature; it cannot decide whether an otherwise equivalent outcome may influence the profile.
+- Build point-in-time training examples from source-neutral, integrity-eligible qualified sequences. Discovery source remains provenance and a possible feature; it cannot decide whether an otherwise equivalent outcome may influence the profile.
 - Train a profile encoder from qualified viewing sequence, completions, explicit title feedback, recent session context, existing medoid interests, eligible search intent, language, device/surface context, and bounded recency. Keep durable and session representations separately identifiable.
 - Train an item encoder from canonical identity, transcript, title/description, themes, series/course/format, language, duration, and the versioned directional co-watch features from `feat-387`; reserve versioned extension points for future visual and audio representations.
-- Publish immutable, versioned profile and item embedding generations with training snapshot, feature schema, code/model digest, evidence watermark, integrity policy, consent generation, privacy generation, and expiry/staleness policy.
+- Publish immutable, versioned profile and item embedding generations with training snapshot, feature schema, code/model digest, evidence watermark, integrity policy, personalization-settings generation, privacy generation, and expiry/staleness policy.
 - Retrieve bounded profile-to-item ANN candidates behind the common generator seam. Keep semantic medoid candidates as control/fallback and retain all generator provenance through union, ranking, and composition.
 - Use durable batch publication plus a bounded, separately versioned near-session update. Serving reads only complete published generations and never raw history or partial model state.
 - Run the representation and ANN generator in shadow first; create a later controlled-exposure change only after its exact terminal decision is `promote-to-experiment`.
@@ -71,7 +71,7 @@ The ticket is not complete until this result is visible and reconcilable in the 
 ## Constraints
 
 - Admin owns training, publication, retrieval, evaluation, and artifact lifecycle; Watch receives only ordinary versioned recommendation results.
-- The model is a projection of recommendation-owned eligible evidence, not a replacement authority for playback outcomes, consent, integrity, explicit feedback, co-watch truth, or catalog metadata.
+- The model is a projection of recommendation-owned eligible evidence, not a replacement authority for playback outcomes, personalization settings, integrity, explicit feedback, co-watch truth, or catalog metadata.
 - Raw vectors, profile identifiers, histories, sequences, and training examples never enter browser responses, request traces, logs, or general telemetry.
 - Missing, stale, sparse, failed, withdrawn, or deleted learned state falls back to semantic medoids within the existing complete-service deadline.
 - Publication is atomic, replayable, deletion-aware, and fenced by privacy/integrity generations; stale workers cannot reactivate influence.
@@ -81,7 +81,7 @@ The ticket is not complete until this result is visible and reconcilable in the 
 
 ## Verification
 
-- Test point-in-time sequence construction, source-neutral eligibility, consent and integrity exclusion, explicit-feedback semantics, language/context boundaries, cold start, and stale/missing optional inputs.
+- Test point-in-time sequence construction, source-neutral eligibility, explicit personalization-disable and integrity exclusion, explicit-feedback semantics, language/context boundaries, cold start, and stale/missing optional inputs.
 - Test deterministic snapshot reproduction, artifact digest/version compatibility, atomic publication, stale-worker fencing, replay, rollback, withdrawal, deletion, restore, and rebuild equivalence.
 - Test ANN recall/coverage, semantic-medoid fallback, candidate provenance, duplicate suppression, playability/locale eligibility, sparse profiles, bounded session updates, and complete-service latency.
 - Run offline representation and retrieval evaluation by cohort and outcome without using the same future outcome as both feature and label.

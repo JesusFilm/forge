@@ -1,16 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   BackHandler,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native"
-import { useNavigation, useRouter } from "expo-router"
+import { useIsFocused, useNavigation, useRouter } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
-import { TAB_BAR_STYLE } from "./_layout"
+import {
+  TAB_BAR_HEIGHT_IOS,
+  useTabBarClearance,
+  useTabBarStyle,
+} from "../../src/lib/tabBar"
+import {
+  resetTabBarHidden,
+  setTabBarHidden,
+} from "../../src/lib/tabBarVisibility"
 
 import { DeleteConfirmSheet } from "../../src/components/library/DeleteConfirmSheet"
 import { DownloadRow } from "../../src/components/library/DownloadRow"
@@ -58,9 +67,12 @@ const HINT_VISIBLE_MS = 4000
 
 export default function LibraryScreen() {
   const insets = useSafeAreaInsets()
+  const tabBarStyle = useTabBarStyle()
+  const tabBarClearance = useTabBarClearance()
   const typography = useTypography()
   const router = useRouter()
   const navigation = useNavigation()
+  const isFocused = useIsFocused()
   const {
     offlineRecords,
     isReady,
@@ -75,7 +87,10 @@ export default function LibraryScreen() {
   } = useWatchPreferences()
 
   const [capacityBytes, setCapacityBytes] = useState(0)
+  // Every tab mounts at cold launch, so the disk read waits for focus instead
+  // of running while another tab is on screen.
   useEffect(() => {
+    if (!isFocused) return
     let cancelled = false
     void totalDiskBytes().then((bytes) => {
       if (!cancelled) setCapacityBytes(bytes)
@@ -83,20 +98,29 @@ export default function LibraryScreen() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [isFocused])
 
   const [selectionState, setSelectionState] = useState<LibrarySelectionState>(
     INITIAL_SELECTION_STATE,
   )
   const { selecting, selected } = selectionState
+  // The iOS action bar stands where the native tab bar did, but hiding that bar
+  // drops the bar height out of insets.bottom — so add it back here.
+  const selectionPad = selecting
+    ? Platform.OS === "android"
+      ? 120
+      : TAB_BAR_HEIGHT_IOS + 24
+    : 24
   const [hintVisible, setHintVisible] = useState(false)
   const [confirmVisible, setConfirmVisible] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
-  // Also gated on prefsReady: before the persisted blob hydrates,
-  // longPressHintSeen reads false and the hint would flash for returning users.
+  // Gated on prefsReady because longPressHintSeen reads false before the
+  // persisted blob hydrates. Gated on focus because every tab mounts at cold
+  // launch, and the timer would expire while another tab is on screen.
   useEffect(() => {
     if (
+      !isFocused ||
       !isReady ||
       !prefsReady ||
       offlineRecords.length === 0 ||
@@ -109,15 +133,29 @@ export default function LibraryScreen() {
     setHintVisible(true)
     const timer = setTimeout(() => setHintVisible(false), HINT_VISIBLE_MS)
     return () => clearTimeout(timer)
-  }, [isReady, prefsReady, offlineRecords.length, selecting, longPressHintSeen])
+  }, [
+    isFocused,
+    isReady,
+    prefsReady,
+    offlineRecords.length,
+    selecting,
+    longPressHintSeen,
+  ])
 
   // KTD8: the action bar replaces the tab bar during selection; restored
   // whenever selection turns off, on blur (switching tabs), and on unmount.
+  //
+  // Two mechanisms, because the two navigators take different levers. Android's
+  // JS bar hides per screen through `setOptions`; iOS runs a UITabBarController
+  // whose only hide lever is the navigator-level `hidden` prop, so the flag has
+  // to travel UP to `_layout.ios.tsx` through the module store.
   useEffect(() => {
+    setTabBarHidden(selecting)
+    if (Platform.OS === "ios") return
     navigation.setOptions({
-      tabBarStyle: selecting ? { display: "none" } : TAB_BAR_STYLE,
+      tabBarStyle: selecting ? { display: "none" } : tabBarStyle,
     })
-  }, [selecting, navigation])
+  }, [selecting, navigation, tabBarStyle])
 
   useEffect(() => {
     const unsubscribeBlur = navigation.addListener("blur", () => {
@@ -125,9 +163,11 @@ export default function LibraryScreen() {
     })
     return () => {
       unsubscribeBlur()
-      navigation.setOptions({ tabBarStyle: TAB_BAR_STYLE })
+      resetTabBarHidden()
+      if (Platform.OS === "ios") return
+      navigation.setOptions({ tabBarStyle })
     }
-  }, [navigation])
+  }, [navigation, tabBarStyle])
 
   // R20: prune selected slugs the provider no longer has; auto-exit when empty.
   // Keyed ONLY on offlineRecords (selectionState via ref) — reacting to the
@@ -351,7 +391,7 @@ export default function LibraryScreen() {
         <ScrollView
           contentContainerStyle={[
             styles.scrollContent,
-            selecting && styles.scrollContentSelecting,
+            { paddingBottom: selectionPad + tabBarClearance },
           ]}
           showsVerticalScrollIndicator={false}
         >
@@ -417,6 +457,7 @@ export default function LibraryScreen() {
       />
 
       <Snackbar
+        clearsTabBar
         message={toastMessage ?? ""}
         visible={toastMessage != null}
         onDismiss={() => setToastMessage(null)}
@@ -495,9 +536,5 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingBottom: 24,
-  },
-  scrollContentSelecting: {
-    paddingBottom: 120,
   },
 })

@@ -1,0 +1,590 @@
+{
+  "validationVersion": "curated-admin-eligibility-v1",
+  "version": "2026-09-10.astra-admin-preview.v2",
+  "sourceDigest": "7b73866bcf1a66b65fa6d8b356f395e5b9ecb9791b76add090025b603f403c72",
+  "checkedAt": "2026-09-10T00:53:38.050Z",
+  "passed": true,
+  "requirement": {
+    "requestedCount": 6,
+    "excludedReserve": 24
+  },
+  "unknownCoreVideoIds": [],
+  "contexts": [
+    {
+      "locale": "en",
+      "audioLanguageSlug": "english",
+      "coreLanguageId": "529",
+      "passed": true,
+      "languageIdentityValid": true,
+      "requiredUnique": 30,
+      "startUnique": 191,
+      "unionUnique": 191,
+      "poolCounts": {
+        "start": 191,
+        "meaning-and-purpose": 81,
+        "hope-and-perseverance": 65,
+        "love-and-belonging": 68,
+        "forgiveness-and-new-beginnings": 45,
+        "exploring-jesus": 94
+      },
+      "rejected": [
+        {
+          "coreVideoId": "2_0-Jatku-Leiba",
+          "reason": "watch_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-Vinyl",
+          "reason": "canonical_duplicate"
+        },
+        {
+          "coreVideoId": "2_0-Happiness",
+          "reason": "canonical_duplicate"
+        },
+        {
+          "coreVideoId": "2_0-Invisible",
+          "reason": "canonical_duplicate"
+        },
+        {
+          "coreVideoId": "2_0-La_Busqueda_The_Search",
+          "reason": "watch_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-Venia",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "2_0-Uninvited",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "2_0-Marea",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "2_0-To-Be-Like-You",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "1_jf6109-0-0",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "1_wl604430-0-0",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "1_wl604418-0-0",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "1_jf6102-0-0",
+          "reason": "canonical_duplicate"
+        },
+        {
+          "coreVideoId": "9_CreationtoChrist0705",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "6_GOJohn2220",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "6_GOLuke2607",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "6_GOLuke2609",
+          "reason": "editorial_review_pending"
+        }
+      ]
+    },
+    {
+      "locale": "fr",
+      "audioLanguageSlug": "french",
+      "coreLanguageId": "496",
+      "passed": true,
+      "languageIdentityValid": true,
+      "requiredUnique": 30,
+      "startUnique": 164,
+      "unionUnique": 164,
+      "poolCounts": {
+        "start": 164,
+        "meaning-and-purpose": 65,
+        "hope-and-perseverance": 58,
+        "love-and-belonging": 58,
+        "forgiveness-and-new-beginnings": 39,
+        "exploring-jesus": 87
+      },
+      "rejected": [
+        {
+          "coreVideoId": "16_Happy0301",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-ComingHome",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-Jatku-Leiba",
+          "reason": "watch_unavailable"
+        },
+        {
+          "coreVideoId": "2_Broken1Vessel",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-HappinessPuzzle",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-InfiniteAbyss",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-2TorchHavePurpose",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-3TorchLightPurpose",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-TimeForChange",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-Coffee-Shop",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_FourPerfectLove",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-Solitude",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-Vinyl",
+          "reason": "canonical_duplicate"
+        },
+        {
+          "coreVideoId": "2_0-Happiness",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-Conversation",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-Pennyhouse",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-Invisible",
+          "reason": "canonical_duplicate"
+        },
+        {
+          "coreVideoId": "2_0-Portions",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_Broken2Promise",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_Broken3PickUp",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "17_SayIAm",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-La_Busqueda_The_Search",
+          "reason": "watch_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-AndreasStory",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "16_Known0301",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "16_Hope0301",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-Venia",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "2_0-Uninvited",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "2_0-Marea",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "2_0-To-Be-Like-You",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "1_jf6109-0-0",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "1_wl604430-0-0",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "1_wl604418-0-0",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "9_CreationtoChrist0701",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "9_CreationtoChrist0704",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "9_CreationtoChrist0705",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "9_CreationtoChrist0706",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "9_CreationtoChrist0707",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "6_GOJohn2220",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "6_GOLuke2607",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "6_GOLuke2609",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "2_0-ADream",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-AltroMare",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-Crushing",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-SongOfReeds",
+          "reason": "exact_audio_unavailable"
+        }
+      ]
+    },
+    {
+      "locale": "hi",
+      "audioLanguageSlug": "hindi",
+      "coreLanguageId": "6464",
+      "passed": true,
+      "languageIdentityValid": true,
+      "requiredUnique": 30,
+      "startUnique": 141,
+      "unionUnique": 141,
+      "poolCounts": {
+        "start": 141,
+        "meaning-and-purpose": 57,
+        "hope-and-perseverance": 47,
+        "love-and-belonging": 54,
+        "forgiveness-and-new-beginnings": 34,
+        "exploring-jesus": 77
+      },
+      "rejected": [
+        {
+          "coreVideoId": "16_Happy0301",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-ComingHome",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-Jatku-Leiba",
+          "reason": "watch_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-Jatku-Leiba",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_Broken1Vessel",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-HappinessPuzzle",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-Tarek",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-WhatisChristianity",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-InfiniteAbyss",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-2TorchHavePurpose",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-3TorchLightPurpose",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-TimeForChange",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-Coffee-Shop",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_FourPerfectLove",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-Solitude",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-Vinyl",
+          "reason": "canonical_duplicate"
+        },
+        {
+          "coreVideoId": "2_0-Happiness",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-CanKnowGod",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-Conversation",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-Pennyhouse",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-Invisible",
+          "reason": "canonical_duplicate"
+        },
+        {
+          "coreVideoId": "2_0-Portions",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_Broken2Promise",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_Broken3PickUp",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-Restored",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-GodsRescuePlan",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-BibleTrusted",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "17_SayIAm",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-JesusReally",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-JesusBackFromDead",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-La_Busqueda_The_Search",
+          "reason": "watch_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-AndreasStory",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_JessicaStory",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "16_Known0301",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "16_Hope0301",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "14_TPP",
+          "reason": "locale_unpublished"
+        },
+        {
+          "coreVideoId": "2_0-Venia",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "2_0-Uninvited",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "2_0-Marea",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "2_0-To-Be-Like-You",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "1_jf6109-0-0",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "1_wl604430-0-0",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "1_wl604418-0-0",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "1_jf6102-0-0",
+          "reason": "canonical_duplicate"
+        },
+        {
+          "coreVideoId": "2_JoyGoneCTA",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "9_CreationtoChrist0705",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "6_GOJohn2220",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "6_GOLuke2607",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "6_GOLuke2609",
+          "reason": "editorial_review_pending"
+        },
+        {
+          "coreVideoId": "2_0-ADream",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-AltroMare",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-BornToPlay",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-Crushing",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-SongOfReeds",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "4_Injury1Injury",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "4_Injury2AskingWhy",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "4_Injury3AudienceOfOne",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "4_Loss1Loss",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "4_Loss2Forgiveness",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "4_Loss3NotAlone",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "4_Win1Winning",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "4_Win3GodPath",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-DidJesusHaveToDie",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "2_0-OneGod",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "1_wjv_02-0-0",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "1_wjv_03-0-0",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "1_wjv_04-0-0",
+          "reason": "exact_audio_unavailable"
+        },
+        {
+          "coreVideoId": "1_wjv_05-0-0",
+          "reason": "exact_audio_unavailable"
+        }
+      ]
+    }
+  ]
+}

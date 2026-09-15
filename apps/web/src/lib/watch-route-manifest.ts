@@ -1,3 +1,4 @@
+import { isPublicWatchLanguageSlug } from "./locale"
 import { logWatchServerEvent } from "./watch-observability"
 
 export type WatchRouteManifest = {
@@ -288,6 +289,30 @@ function isEpisodeAudioLanguageAdmitted(
   if (exactLanguages) return exactLanguages.has(audioLanguageSlug)
   if (index.hasEpisodeAudioLanguageIndex) return false
   return index.audioLanguageSlugs.has(audioLanguageSlug)
+}
+
+/**
+ * Whether a public URL segment names an audio language, for route-shape
+ * disambiguation (`/{content}.html/{language}.html` vs
+ * `/{series}.html/{episode}.html`).
+ *
+ * The compiled `PUBLIC_WATCH_LANGUAGE_SLUGS` corpus is a generated snapshot
+ * and is only the synchronous fallback here. The live manifest is the
+ * authority for languages admin published after that snapshot: before this
+ * helper existed, 58 newly published languages (e.g. `german-pennsylvania`)
+ * were reinterpreted as implicit-English episode slugs and 404'd even though
+ * the same manifest already admitted them (Linear FGE-81).
+ *
+ * A `null` manifest (fetch failed or not configured) degrades to the corpus
+ * alone, so an unavailable manifest never widens the namespace.
+ */
+export function isWatchAudioLanguageSlug(
+  slug: string,
+  manifest: WatchRouteManifest | null,
+): boolean {
+  if (isPublicWatchLanguageSlug(slug)) return true
+  if (!manifest) return false
+  return getManifestIndex(manifest).audioLanguageSlugs.has(slug)
 }
 
 export function isWatchRouteAdmittedByManifest(

@@ -283,6 +283,12 @@ const navItems: Array<{
     icon: SearchCheck,
   },
   {
+    key: "alerts",
+    href: "/dashboard/alerts",
+    label: "Alerts",
+    icon: Bell,
+  },
+  {
     key: "agents",
     href: "/dashboard/agents",
     label: "Agents",
@@ -342,16 +348,24 @@ function getBreadcrumbs(pathname: string): string[] {
     return ["Studio", "SEO"]
   }
 
+  if (pathname.startsWith("/dashboard/alerts")) {
+    return ["Studio", "Alerts"]
+  }
+
   if (pathname.startsWith("/dashboard/smart-crop")) {
     return ["Studio", "Smart Crop"]
   }
 
   if (pathname.startsWith("/dashboard/shorts/new")) {
-    return ["Studio", "Shorts", "New short"]
+    return ["Studio", "Shorts", "New project"]
+  }
+
+  if (pathname === "/dashboard/shorts/calendar") {
+    return ["Studio", "Shorts", "Planning calendar"]
   }
 
   if (pathname.startsWith("/dashboard/shorts/")) {
-    return ["Studio", "Shorts", "Short detail"]
+    return ["Studio", "Shorts", "Project"]
   }
 
   if (pathname.startsWith("/dashboard/shorts")) {
@@ -840,7 +854,22 @@ export function ManagerDashboardShell({
             </div>
 
             <div className="design-system-sidebar-content">
-              <StudioReportSwitcher />
+              {pathname.startsWith("/dashboard/shorts") ? (
+                <Link
+                  href="/dashboard/shorts"
+                  className="design-system-workspace-button"
+                >
+                  <span className="design-system-avatar design-system-avatar--report">
+                    <Clapperboard size={18} />
+                  </span>
+                  <span className="design-system-workspace-copy">
+                    <strong>Shorts</strong>
+                    <small>Standalone projects</small>
+                  </span>
+                </Link>
+              ) : (
+                <StudioReportSwitcher />
+              )}
 
               <nav className="design-system-shell-nav" aria-label="Primary">
                 {navItems.map((item) => {
@@ -851,6 +880,7 @@ export function ManagerDashboardShell({
                     <Link
                       key={item.key}
                       href={item.href}
+                      aria-label={item.label}
                       className={isActive ? "is-active" : undefined}
                       {...(isActive ? { "aria-current": "page" as const } : {})}
                     >

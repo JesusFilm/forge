@@ -5,6 +5,12 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": resolve(__dirname, "src"),
+      // Match Next's App Router alias: the default package entry uses the
+      // Pages Router loader, which swallows import failures in production.
+      "next/dynamic": resolve(
+        __dirname,
+        "node_modules/next/dist/shared/lib/app-dynamic.js",
+      ),
       // server-only throws at import time; stub it out so vitest can load
       // server-helper modules (the guard is only meaningful at Next.js
       // build time, not inside the test runner). Mirrors apps/web.

@@ -1,7 +1,10 @@
+import { observeEvidenceResponse } from "@/lib/recommendation-evidence-response"
+import { assertRecommendationHumanAdmission } from "@/lib/recommendation-human-admission"
 import { z } from "zod"
 
 import {
   claimSemanticRecommendationEpisode,
+  issueWatchPlaybackContext,
   recordSemanticRecommendationPlayback,
 } from "@/lib/recommendations"
 import {
@@ -14,11 +17,16 @@ import {
   RecommendationRouteError,
   readStrictRecommendationJson,
 } from "@/lib/recommendation-route-policy"
+import { assertRecommendationMutationAdmission } from "@/lib/recommendation-mutation-admission"
 import {
   recommendationError,
   recommendationJson,
 } from "@/lib/recommendation-route-response"
-import { readRecommendationSession } from "@/lib/recommendation-session"
+import {
+  attachRecommendationSession,
+  ensureRecommendationSession,
+  readRecommendationSession,
+} from "@/lib/recommendation-session"
 import { WATCH_CANONICAL_ORIGIN } from "@/lib/routes"
 
 export const dynamic = "force-dynamic"
@@ -135,6 +143,23 @@ const ClaimInput = z
   })
   .strict()
 
+const ContextInput = z
+  .object({
+    action: z.literal("context"),
+    mediaId: identifier,
+    discoverySource: z.enum([
+      "direct",
+      "search",
+      "share",
+      "acquisition",
+      "editorial",
+    ]),
+    provenance: z
+      .record(z.string().regex(/^[a-z][a-z0-9_]{0,31}$/), z.string().max(191))
+      .refine((value) => Object.keys(value).length <= 8),
+  })
+  .strict()
+
 const FactsInput = z
   .object({
     action: z.literal("facts"),
@@ -158,10 +183,16 @@ const FactsInput = z
     }
   })
 
-const PlaybackInput = z.discriminatedUnion("action", [ClaimInput, FactsInput])
+const PlaybackInput = z.discriminatedUnion("action", [
+  ContextInput,
+  ClaimInput,
+  FactsInput,
+])
 
 export async function POST(request: Request) {
+  let action: "playback" | "context" | "claim" | "facts" = "playback"
   try {
+    assertRecommendationHumanAdmission(request)
     const raw = await readStrictRecommendationJson(request, {
       expectedOrigin: WATCH_CANONICAL_ORIGIN,
       maxBytes: RECOMMENDATION_PLAYBACK_BODY_BYTES,
@@ -170,6 +201,25 @@ export async function POST(request: Request) {
     if (!parsed.success) {
       throw new RecommendationRouteError(400, "invalid_body")
     }
+    action = parsed.data.action
+    if (parsed.data.action === "context") {
+      await assertRecommendationMutationAdmission(
+        request.headers,
+        "playback-context",
+      )
+      const session = ensureRecommendationSession(request)
+      const context = await issueWatchPlaybackContext({
+        sessionDigest: session.digest,
+        mediaId: parsed.data.mediaId,
+        discoverySource: parsed.data.discoverySource,
+        provenance: parsed.data.provenance,
+      })
+      const response = recommendationJson(context)
+      attachRecommendationSession(response, session)
+      observeEvidenceResponse(request, action, response.status)
+      return response
+    }
+
     const session = readRecommendationSession(request)
     if (!session) {
       throw new RecommendationRouteError(401, "recommendation_session_required")
@@ -185,6 +235,7 @@ export async function POST(request: Request) {
       if (!episode) {
         throw new RecommendationRouteError(502, "invalid_admin_response")
       }
+      observeEvidenceResponse(request, action, 200)
       return recommendationJson({ episode })
     }
 
@@ -196,8 +247,11 @@ export async function POST(request: Request) {
       events: parsed.data.events,
       sessionDigest: session.digest,
     })
+    observeEvidenceResponse(request, action, 200, undefined, receipts)
     return recommendationJson({ receipts })
   } catch (error) {
-    return recommendationError(error)
+    const response = recommendationError(error)
+    observeEvidenceResponse(request, action, response.status, error)
+    return response
   }
 }

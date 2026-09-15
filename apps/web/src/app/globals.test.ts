@@ -24,6 +24,26 @@ function blockBody(source: string, needle: string): string {
   return ""
 }
 
+/**
+ * The `@media` block that ENCLOSES a given rule, found by walking back from
+ * the rule to the nearest preceding `@media` header.
+ *
+ * `blockBody(guard, "@media (width >= 64rem)")` cannot do this job: the
+ * guard holds several blocks with that identical header (the card fan has
+ * one of its own), and it returns the FIRST — which is how the estimate
+ * assertions below first passed against the fan's block and proved nothing.
+ */
+function enclosingMedia(source: string, rule: string): string {
+  const at = source.indexOf(rule)
+  if (at === -1) return ""
+  const header = source.lastIndexOf("@media", at)
+  if (header === -1) return ""
+  const from = source.slice(header)
+  // Header AND body: the assertions need the breakpoint condition, which
+  // `blockBody` alone throws away.
+  return from.slice(0, from.indexOf("{")) + blockBody(from, "@media")
+}
+
 describe("scroll-driven timeline choreography", () => {
   const guard = blockBody(css, "@supports (animation-timeline: view())")
 
@@ -752,5 +772,263 @@ describe("improvement colour band", () => {
     // #0c0a09 is the page base the mixes fall back to; any OTHER literal
     // hex is a colour that ignores the cell's tint.
     expect(band).not.toMatch(/#(?!0c0a09\b)[0-9a-f]{6}/i)
+  })
+})
+
+describe("the audience fan's entrance", () => {
+  const guard = blockBody(css, "@supports (animation-timeline: view())")
+
+  it("starts the three cards as a staircase hanging below the row", () => {
+    // They used to enter level and merely spread sideways, which read as
+    // one row sliding in. A step per card — the first level with its
+    // landing place, the second a step under it, the third two — is what
+    // makes the gather look like three things coming together.
+    const gather = blockBody(css, "@keyframes watch-fan-gather")
+    const rule = blockBody(guard, ".watch-scroll-fan {")
+
+    // The start state carries a vertical offset...
+    expect(gather).toContain(
+      "translate: var(--fan-open-x, 0) var(--fan-open-y, 0)",
+    )
+    // ...and the end state does not, so the row lands level.
+    expect(gather).toContain(
+      "translate: var(--fan-closed-x, 0) var(--fan-drop, 0)",
+    )
+
+    // One step per card, off the same -1/0/+1 that drives the sideways
+    // spread — so the staircase cannot fall out of step with the fan. The
+    // `+ 1` shifts the whole run BELOW the row, so every card rises into
+    // place instead of the first one dropping while the others climb.
+    //
+    // Matched as the WHOLE declaration, not a substring: the first card's
+    // `dir` is -1, so this expression is zero for it and it lands where it
+    // was laid out without moving. Any constant added on the end (there
+    // was a 2.5/4rem `--fan-open-rise` floor) lifts the whole staircase
+    // and reopens the space between that card and the section heading
+    // above it — a `toContain` on the product term alone reads a floor as
+    // a pass, which is how the gap came back the first time.
+    expect(rule).toMatch(
+      /--fan-open-y:\s*calc\(\(var\(--fan-dir, 0\) \+ 1\) \* var\(--fan-step-y\)\);/,
+    )
+    // Whole file, not just this rule: the `lg` override is a separate
+    // `.watch-scroll-fan` block and used to carry its own 4rem floor.
+    expect(css).not.toMatch(/--fan-open-rise/)
+    expect(rule).toMatch(/--fan-step-y: [\d.]+rem/)
+
+    // And nothing in the gather may scale a card. The origin the fan needs
+    // for its pivot sits 190% below the box, so ANY opening scale below 1
+    // drags the top edge down — measured at ~20px for the 0.96 this used to
+    // open on, which is drift the first card's zero offset cannot absorb.
+    // The list still comes forward as one piece; see `watch-fan-lift`.
+    expect(gather).not.toMatch(/scale:/)
+  })
+
+  it("never fades the cards in — they are legible from the first frame", () => {
+    // They used to animate `opacity: 0 -> 1` across the gather, which
+    // opened the section on a heading with an empty band under it. Every
+    // "close the gap" fix that moved boxes around was chasing that, not a
+    // spacing bug. Position animates; visibility does not.
+    const gather = blockBody(css, "@keyframes watch-fan-gather")
+
+    expect(gather).not.toContain("opacity")
+    // Anti-vacuous: the keyframes still animate something.
+    expect(gather).toContain("translate:")
+    expect(gather).toContain("rotate:")
+  })
+
+  it("keeps the stair height inside the motion guard", () => {
+    // Same load-bearing rule as every other start state on this page: a
+    // browser without scroll-driven animation must get the finished row,
+    // never three cards frozen mid-staircase.
+    const all = [...css.matchAll(/--fan-step-y:/g)].length
+    const guarded = [...guard.matchAll(/--fan-step-y:/g)].length
+
+    expect(all).toBeGreaterThan(0)
+    expect(guarded).toBe(all)
+  })
+})
+
+describe("the audiences stage", () => {
+  const guard = blockBody(css, "@supports (animation-timeline: view())")
+
+  it("keeps every audience-stage rule inside the motion guard", () => {
+    // LOAD-BEARING, same reason as the timeline rules above: the travelling
+    // cell's keyframes end translated and rotated, the cleared cards' end at
+    // `opacity: 0`, and the question's start there. A rule that escapes the
+    // guard leaves the question permanently invisible, or two of the three
+    // cards permanently gone, in a browser without scroll-driven animation.
+    const all = [...css.matchAll(/\.watch-audience-[a-z-]+\s*[,{]/g)].length
+    const guarded = [...guard.matchAll(/\.watch-audience-[a-z-]+\s*[,{]/g)]
+      .length
+
+    expect(all).toBeGreaterThan(0)
+    expect(guarded).toBe(all)
+  })
+
+  it("pins and travels only where there are columns to cross", () => {
+    const wide = enclosingMedia(guard, ".watch-audience-stage {")
+
+    expect(wide).toContain("width >= 64rem")
+    expect(wide).toContain("view-timeline-name: --watch-audience")
+    expect(wide).toContain("position: sticky")
+    expect(wide).toContain("animation-timeline: --watch-audience")
+
+    // The pin is exactly its content, and the centring that keeps the
+    // stuck group off the top of the screen lives in `top`.
+    //
+    // Written as a pair on purpose. A screenful-tall pin that centres its
+    // contents looks identical once stuck and is wrong before that: the
+    // slack it splits above the pair is a 135px band between the section's
+    // heading and the first card, visible from the moment the section
+    // appears. Anchoring a tall pin to the top instead just moves the void
+    // under the cards. Only a content-height box has neither.
+    const pin = blockBody(guard, ".watch-audience-pin {")
+
+    // Declaration-anchored: the prose above these two lines in the CSS
+    // names both properties, so a bare substring match reads the
+    // explanation as the thing it explains and fails on a correct rule.
+    expect(pin).not.toMatch(/^\s*min-height:/m)
+    expect(pin).not.toMatch(/^\s*align-content:/m)
+    expect(pin).toMatch(/top: max\(/)
+    expect(pin).toContain("50svh")
+  })
+
+  it("gives the narrow layout a plain entrance and no pin", () => {
+    // Anti-vacuous companion: without this, deleting the narrow block
+    // entirely would still pass the guard test above, and every reader under
+    // 1024px would get a question that never appears.
+    const narrow = enclosingMedia(
+      guard,
+      ".watch-audience-quiz {\n          animation: watch-scroll-rise",
+    )
+
+    expect(narrow).toContain("width < 64rem")
+    expect(narrow).toContain("animation-timeline: view()")
+    expect(narrow).not.toContain("position: sticky")
+  })
+
+  it("moves the travelling cell by whole columns, gap included", () => {
+    // The card has to land IN the first column, not beside it. The distance
+    // is one card width plus one gap per column crossed — expressed against
+    // the cell's own box, so it stays correct at any width — and then two
+    // corrections for the transforms still acting on the card.
+    const travel = blockBody(css, "@keyframes watch-audience-travel")
+    const rule = blockBody(guard, ".watch-audience-travel {")
+
+    // The keyframe consumes the distance; the rule computes it.
+    expect(travel).toContain("translate: var(--travel-x)")
+    expect(rule).toContain(
+      "var(--travel-columns, 0) * (-100% - var(--audience-gap))",
+    )
+
+    // Correction 1: the hand's growth, taken from the hand's own constant.
+    expect(rule).toContain("var(--fan-scale-end) - 1")
+    // Correction 2: the card's own gather close, from the fan's own travel.
+    expect(rule).toContain("var(--fan-travel-end)")
+
+    // And the cell cancels the tilt and drop the fan gave the card, so it
+    // arrives square rather than still leaning out of the hand.
+    expect(travel).toContain("calc(-1 * var(--fan-rotate, 0deg))")
+    expect(travel).toContain("calc(-1 * var(--fan-drop, 0px))")
+  })
+
+  it("keeps the travel gap in step with the fan list's own gap", () => {
+    // The fan list is `lg:gap-8` (2rem). If these drift, the card lands a
+    // gap short of the column and overlaps its neighbour instead of
+    // replacing it — and nothing else in the suite would notice.
+    const wide = enclosingMedia(guard, ".watch-audience-stage {")
+
+    expect(wide).toContain("--audience-gap: 2rem")
+  })
+
+  it("starts the question hidden and the cleared cards visible", () => {
+    const quiz = blockBody(css, "@keyframes watch-audience-quiz")
+    const clear = blockBody(css, "@keyframes watch-audience-clear")
+
+    expect(quiz).toContain("opacity: 0")
+    expect(quiz).toContain("opacity: 1")
+    expect(clear).toContain("opacity: 1")
+    expect(clear).toContain("opacity: 0")
+  })
+
+  /**
+   * Each stage-timeline rule's own `contain a% b%` window, looked up BY
+   * SELECTOR. An earlier form read every range out of the media block in
+   * source order and destructured them positionally, which silently
+   * reassigns every name the moment a rule is added above another — adding
+   * the heading's fade turned `travel` into the heading's window and made
+   * the ordering assertions below compare the wrong pair.
+   */
+  const containRange = (selector: string): [number, number] => {
+    const body = blockBody(guard, selector)
+    const m = /animation-range: contain (\d+)% contain (\d+)%/.exec(body)
+    if (m == null) throw new Error(`no contain range on ${selector}`)
+    return [Number(m[1]), Number(m[2])]
+  }
+
+  it("clears the ground before the question lands on it", () => {
+    // Order matters: the two cards have to be gone (or going) before the
+    // question fades in over the space they occupied, or the question
+    // arrives on top of them and the overlap reads as a rendering fault.
+    const travel = containRange(".watch-audience-travel {")
+    const cleared = containRange(".watch-audience-fade {")
+    const quiz = containRange(".watch-audience-quiz {")
+
+    expect(cleared[1]).toBeLessThanOrEqual(quiz[0])
+    // The card crosses into the space the other two are vacating, so it may
+    // not set off before they start going.
+    expect(travel[0]).toBe(cleared[0])
+  })
+
+  it("takes the heading away with the cards it counts", () => {
+    // "serves three overlapping audiences" over one card and a question is
+    // a label for something that is no longer on screen, so the heading
+    // leaves on exactly the cards' beat rather than outliving them.
+    const heading = containRange(".watch-audience-heading {")
+    const cleared = containRange(".watch-audience-fade {")
+
+    expect(heading).toEqual(cleared)
+
+    // Opacity only. `visibility`/`display` would reflow the pinned group
+    // mid-hold and drop the `<h2>` out of the accessibility tree — and it
+    // is this section's `aria-labelledby` target, so the section would lose
+    // its accessible name partway down the page.
+    const rule = blockBody(guard, ".watch-audience-heading {")
+    expect(rule).toContain("animation: watch-audience-clear")
+    expect(rule).not.toMatch(/^\s*(visibility|display|content-visibility):/m)
+  })
+
+  it("budgets the pinned window as hold, then motion, then dwell", () => {
+    /**
+     * The three stage percentages only mean something against the height
+     * that stretches them, so they are checked in svh — a percentage
+     * threshold reads as a tightening when the stage grows and as a
+     * loosening when it shrinks, and the earlier form of this test
+     * (`travel[1] <= 35`) was written when the motion started at 0% and
+     * would reject any hold at all.
+     *
+     * `contain` for a subject taller than the viewport spans exactly the
+     * pinned window, so its length is the stage height less one screen.
+     */
+    const wide = enclosingMedia(guard, ".watch-audience-stage {")
+    const stageSvh = Number(/min-height: (\d+)svh/.exec(wide)?.[1])
+    const containSvh = stageSvh - 100
+
+    expect(stageSvh).toBeGreaterThan(100)
+
+    const cleared = containRange(".watch-audience-fade {")
+    const quiz = containRange(".watch-audience-quiz {")
+    const svh = (percent: number) => (percent / 100) * containSvh
+
+    // HOLD — the assembled row, level and opaque, standing still. This is
+    // the whole point of the section and it used to be zero: the fade began
+    // at `contain 0%` with the gather still closing.
+    expect(svh(cleared[0])).toBeGreaterThanOrEqual(25)
+
+    // DWELL — what is left after the question has finished arriving. The
+    // slider is dragged here, so it cannot be spent on the hold. Measured
+    // at ~30svh the dwell was ~280px at 900, which was not enough scroll to
+    // drag in; hence a floor comfortably above it.
+    expect(svh(100 - quiz[1])).toBeGreaterThanOrEqual(40)
   })
 })

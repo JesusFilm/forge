@@ -53,6 +53,16 @@ export type HistoryMessage = {
 /** The closed client-side failure vocabulary (see module JSDoc). */
 export type HistoryFailureReason = "access" | "not_available" | "unavailable"
 
+/** The rename write's vocabulary (feat-450, KTD6): the read set verbatim
+ * plus `invalid_title` — the server clamp emptied the submitted title. */
+export type RenameHistoryFailureReason = HistoryFailureReason | "invalid_title"
+
+/** Rename outcome: the ECHOED stored title (the server clamp's output, which
+ * the session adopts over the submitted draft), or a mapped failure. */
+export type RenameHistoryThreadResult =
+  | { ok: true; title: string }
+  | { ok: false; reason: RenameHistoryFailureReason }
+
 /** Listing outcome: one page of sidebar rows plus the server's `hasMore`
  * envelope (the page size lives server-side only), or a mapped failure. */
 export type FetchHistoryPageResult =
@@ -79,15 +89,25 @@ export const HISTORY_FETCH_TIMEOUT_MS = 15_000
  * the proxy's own `thread_forbidden`/`thread_not_found` reason — a reasonless
  * 404 (deploy skew, route absent at the chat layer, CDN interception) is a
  * config-shaped outage and must stay retryable, never read as data loss.
+ * feat-450 extends it for the write: a 400 carrying `invalid_title` maps to
+ * that member; the READ fetchers fold it back to `unavailable` below so
+ * their closed union never widens.
  */
 async function failureReasonFor(
   response: Response,
-): Promise<HistoryFailureReason> {
+): Promise<RenameHistoryFailureReason> {
   if (response.status === 401) return "access"
-  if (response.status === 403 || response.status === 404) {
+  if (
+    response.status === 400 ||
+    response.status === 403 ||
+    response.status === 404
+  ) {
     const body = (await response.json().catch(() => undefined)) as
       | { reason?: unknown }
       | undefined
+    if (response.status === 400) {
+      return body?.reason === "invalid_title" ? "invalid_title" : "unavailable"
+    }
     if (body?.reason === "gate_denied") return "access"
     if (
       body?.reason === "thread_forbidden" ||
@@ -97,6 +117,15 @@ async function failureReasonFor(
     }
   }
   return "unavailable"
+}
+
+/** The read fetchers' mapping: the shared classifier with the write-only
+ * member folded to `unavailable` (unreachable on the read wires anyway). */
+async function readFailureReasonFor(
+  response: Response,
+): Promise<HistoryFailureReason> {
+  const reason = await failureReasonFor(response)
+  return reason === "invalid_title" ? "unavailable" : reason
 }
 
 async function postJson(
@@ -192,7 +221,7 @@ export async function fetchHistoryPage({
   )
   if (response === null) return { ok: false, reason: "unavailable" }
   if (!response.ok) {
-    return { ok: false, reason: await failureReasonFor(response) }
+    return { ok: false, reason: await readFailureReasonFor(response) }
   }
   const body = (await response.json().catch(() => undefined)) as
     | { threads?: unknown; hasMore?: unknown }
@@ -230,7 +259,7 @@ export async function fetchHistoryThread({
   )
   if (response === null) return { ok: false, reason: "unavailable" }
   if (!response.ok) {
-    return { ok: false, reason: await failureReasonFor(response) }
+    return { ok: false, reason: await readFailureReasonFor(response) }
   }
   const body = (await response.json().catch(() => undefined)) as
     | { messages?: unknown }
@@ -257,4 +286,44 @@ export async function fetchHistoryThread({
     console.warn(`[chat-video] event=replay_projection_rejected ${counts}`)
   }
   return { ok: true, messages }
+}
+
+/**
+ * Rename one persisted thread (feat-450, KTD6): `{ threadId, title }` only —
+ * never a resource field. Never throws. The 200 body is projected
+ * field-by-field: `{ ok: true, title }` only when `title` is a string
+ * (mirroring `fetchHistoryPage`'s array guard), so a title-less 200 can
+ * never write `undefined` into a row. Same client-side ceiling as the reads.
+ */
+export async function renameHistoryThread({
+  conversationId,
+  title,
+  fetchImpl = fetch,
+  signal,
+  timeoutMs = HISTORY_FETCH_TIMEOUT_MS,
+}: {
+  conversationId: string
+  title: string
+  fetchImpl?: typeof fetch
+  signal?: AbortSignal
+  timeoutMs?: number
+}): Promise<RenameHistoryThreadResult> {
+  const response = await postJson(
+    "/api/history/rename",
+    { threadId: conversationId, title },
+    fetchImpl,
+    signal,
+    timeoutMs,
+  )
+  if (response === null) return { ok: false, reason: "unavailable" }
+  if (!response.ok) {
+    return { ok: false, reason: await failureReasonFor(response) }
+  }
+  const body = (await response.json().catch(() => undefined)) as
+    | { title?: unknown }
+    | undefined
+  if (typeof body?.title !== "string") {
+    return { ok: false, reason: "unavailable" }
+  }
+  return { ok: true, title: body.title }
 }

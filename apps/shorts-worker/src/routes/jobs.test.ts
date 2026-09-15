@@ -8,10 +8,7 @@ import type {
   RunDevotionalRenderInput,
 } from "../devotional-render.js"
 import type { DevotionalWorkspaceTransfer } from "../devotional-transfer.js"
-import type { runPrepare, RunPrepareInput } from "../prepare.js"
-import type { runRender, RunRenderInput } from "../render.js"
 import { createHandleRequest } from "../server.js"
-import type { PrepareReport, RenderReport } from "../types.js"
 
 class TestResponse extends Writable {
   statusCode = 200
@@ -88,18 +85,7 @@ async function settle(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0))
 }
 
-const prepareReport: PrepareReport = {
-  hasAudio: true,
-  clipDurationSec: 10,
-  captionsCount: 4,
-  annotation: null,
-}
-
-const renderReport: RenderReport = {
-  outputDurationSec: 10.1,
-  width: 1080,
-  height: 1920,
-}
+const renderReport = { outputDurationSec: 10.1, width: 1080, height: 1920 }
 
 const validProps = {
   templateId: "focus",
@@ -262,19 +248,11 @@ const auth = { apiKeysCsv: "test-key", nodeEnv: "production" }
 function buildHandler(overrides?: Parameters<typeof createHandleRequest>[0]) {
   return createHandleRequest({
     queue: createJobLanes({
-      prepare: { concurrency: 1, limit: 2 },
       render: { concurrency: 1, limit: 2 },
     }),
     auth,
     devotionalWorkspaceAllowedOrigin: "https://bucket.example",
-    runPrepareImpl: (async () => ({
-      artifacts: [],
-      report: prepareReport,
-    })) as typeof runPrepare,
-    runRenderImpl: (async () => ({
-      artifacts: [],
-      report: renderReport,
-    })) as typeof runRender,
+    runDevotionalRenderImpl: async () => signedDevotionalResult,
     ...overrides,
   })
 }
@@ -326,22 +304,11 @@ describe("POST /jobs validation", () => {
     const handler = buildHandler()
 
     const invalidBodies: unknown[] = [
-      { kind: "transcode", assetId: "x" },
-      // Unsafe assetId (slash) — must fail the SAFE pattern.
-      { ...prepareBody, assetId: "../escape" },
-      // endSec <= startSec.
-      { ...prepareBody, clip: { startSec: 15, endSec: 15 } },
-      // Missing transcription.
-      { ...prepareBody, transcription: undefined },
-      // Bad propsHash (uppercase / wrong length).
-      { ...renderBody, propsHash: "F".repeat(64) },
-      { ...renderBody, propsHash: "abc123" },
-      // Non-integer draftVersion.
-      { ...renderBody, draftVersion: 1.5 },
-      // Props failing the compositions schema (bad accent color).
-      { ...renderBody, props: { ...validProps, accentColor: "red" } },
-      // Props missing a server-injected field the worker requires.
-      { ...renderBody, props: { ...validProps, clipDurationSec: undefined } },
+      {},
+      { ...devotionalRenderBody, kind: "unknown" },
+      { ...devotionalRenderBody, runId: "../escape" },
+      { ...devotionalRenderBody, inputHash: "not-a-digest" },
+      { ...devotionalRenderBody, outputAssetId: "" },
     ]
 
     for (const body of invalidBodies) {
@@ -355,33 +322,6 @@ describe("POST /jobs validation", () => {
         JSON.stringify(body),
       ).resolves.toEqual({ statusCode: 400, body: { error: "invalid_body" } })
     }
-  })
-
-  it("strips a smuggled clipUrl from render props (server-injected only)", async () => {
-    const inputs: RunRenderInput[] = []
-    const handler = buildHandler({
-      runRenderImpl: (async (input: RunRenderInput) => {
-        inputs.push(input)
-        return { artifacts: [], report: renderReport }
-      }) as typeof runRender,
-    })
-
-    const submit = await dispatch(handler, {
-      method: "POST",
-      url: "/jobs",
-      headers: authedHeaders,
-      body: {
-        ...renderBody,
-        props: { ...validProps, clipUrl: "https://evil.example/x.mp4" },
-      },
-    })
-    expect(submit.statusCode).toBe(202)
-    await settle()
-
-    expect(inputs).toHaveLength(1)
-    expect("clipUrl" in (inputs[0]!.props as Record<string, unknown>)).toBe(
-      false,
-    )
   })
 
   it("rejects non-JSON content types and malformed JSON with 400", async () => {
@@ -419,190 +359,38 @@ describe("POST /jobs validation", () => {
       }),
     ).resolves.toEqual({ statusCode: 413, body: { error: "body_too_large" } })
   })
-
-  it("rejects a non-allowlisted prepare source with 400 BEFORE enqueueing", async () => {
-    let prepareCalls = 0
-    const handler = buildHandler({
-      nodeEnv: "production",
-      allowedSourceHosts: ["stream.mux.com"],
-      runPrepareImpl: (async () => {
-        prepareCalls += 1
-        return { artifacts: [], report: prepareReport }
-      }) as typeof runPrepare,
-    })
-
-    for (const url of [
-      "https://stream.mux.com.evil.com/x.m3u8",
-      "https://169.254.169.254/x",
-      "file:///etc/passwd",
-      "http://stream.mux.com/x.m3u8",
-    ]) {
-      await expect(
-        dispatch(handler, {
-          method: "POST",
-          url: "/jobs",
-          headers: authedHeaders,
-          body: { ...prepareBody, source: { url } },
-        }),
-        url,
-      ).resolves.toEqual({ statusCode: 400, body: { error: "invalid_body" } })
-    }
-    await settle()
-    expect(prepareCalls).toBe(0)
-  })
 })
 
-describe("prepare job lifecycle", () => {
-  it("accepts with 202 and completes with the contract snapshot shape", async () => {
-    const inputs: RunPrepareInput[] = []
+describe("devotional render job lifecycle", () => {
+  it("retains structured failure status when rendering fails", async () => {
     const handler = buildHandler({
-      runPrepareImpl: (async (input: RunPrepareInput) => {
-        inputs.push(input)
-        return {
-          artifacts: [
-            {
-              assetId: input.assetId,
-              artifactType: "shorts-clip-v1",
-              ext: "mp4",
-            },
-          ],
-          report: prepareReport,
-        }
-      }) as typeof runPrepare,
+      runDevotionalRenderImpl: async () => {
+        throw new Error("render failed")
+      },
     })
-
-    const submit = await dispatch(handler, {
+    const result = await dispatch(handler, {
       method: "POST",
       url: "/jobs",
       headers: authedHeaders,
-      body: prepareBody,
+      body: devotionalRenderBody,
     })
-
-    expect(submit.statusCode).toBe(202)
-    expect(submit.body.status).toBe("queued")
-    const workerJobId = submit.body.workerJobId as string
-    expect(workerJobId).toMatch(/^wj_/)
-
     await settle()
-    expect(inputs).toHaveLength(1)
-    expect(inputs[0]).toMatchObject({
-      assetId: "muxasset1-short-ab12cd34",
-      sourceUrl: "https://stream.mux.com/pb_abc.m3u8",
-      clip: { startSec: 5, endSec: 15 },
-      language: "en",
-    })
-    expect(inputs[0]!.deps?.deadline?.capTimeoutMs).toBeTypeOf("function")
-    expect(inputs[0]!.deps!.deadline!.remainingMs()).toBeGreaterThan(0)
-
     const status = await dispatch(handler, {
       method: "GET",
-      url: `/jobs/${workerJobId}`,
+      url: `/jobs/${result.body.workerJobId}`,
       headers: authedHeaders,
     })
-
-    expect(status.statusCode).toBe(200)
-    expect(status.body).toEqual({
-      workerJobId,
-      kind: "prepare",
-      status: "completed",
-      progress: 1,
-      message: null,
-      error: null,
-      result: {
-        artifacts: [
-          {
-            assetId: "muxasset1-short-ab12cd34",
-            artifactType: "shorts-clip-v1",
-            ext: "mp4",
-          },
-        ],
-        report: prepareReport,
+    expect(status.body).toMatchObject({
+      status: "failed",
+      result: null,
+      error: {
+        reason: "internal_error",
+        messages: ["render failed"],
+        retryable: false,
       },
     })
   })
 
-  it("passes a null language through (unsupported-language path)", async () => {
-    const inputs: RunPrepareInput[] = []
-    const handler = buildHandler({
-      runPrepareImpl: (async (input: RunPrepareInput) => {
-        inputs.push(input)
-        return { artifacts: [], report: prepareReport }
-      }) as typeof runPrepare,
-    })
-
-    await dispatch(handler, {
-      method: "POST",
-      url: "/jobs",
-      headers: authedHeaders,
-      body: { ...prepareBody, transcription: { language: null } },
-    })
-    await settle()
-
-    expect(inputs[0]!.language).toBeNull()
-  })
-})
-
-describe("render job lifecycle", () => {
-  it("maps the request body onto runRender input (propsHash opaque passthrough)", async () => {
-    const inputs: RunRenderInput[] = []
-    const handler = buildHandler({
-      runRenderImpl: (async (input: RunRenderInput) => {
-        inputs.push(input)
-        return { artifacts: [], report: renderReport }
-      }) as typeof runRender,
-    })
-
-    const submit = await dispatch(handler, {
-      method: "POST",
-      url: "/jobs",
-      headers: authedHeaders,
-      body: renderBody,
-    })
-    expect(submit.statusCode).toBe(202)
-    await settle()
-
-    expect(inputs).toHaveLength(1)
-    expect(inputs[0]).toMatchObject({
-      assetId: "muxasset1-short-ab12cd34",
-      propsHash: "f".repeat(64),
-      draftVersion: 2,
-    })
-    expect(inputs[0]!.props.templateId).toBe("focus")
-    expect(inputs[0]!.deps?.deadline?.capTimeoutMs).toBeTypeOf("function")
-  })
-
-  it("surfaces a STRUCTURED error through GET /jobs/{id} on failure", async () => {
-    const handler = buildHandler({
-      runRenderImpl: (async () => {
-        throw new Error("renderMedia exploded")
-      }) as typeof runRender,
-    })
-
-    const submit = await dispatch(handler, {
-      method: "POST",
-      url: "/jobs",
-      headers: authedHeaders,
-      body: renderBody,
-    })
-    await settle()
-
-    const status = await dispatch(handler, {
-      method: "GET",
-      url: `/jobs/${submit.body.workerJobId as string}`,
-      headers: authedHeaders,
-    })
-
-    expect(status.body.status).toBe("failed")
-    expect(status.body.error).toEqual({
-      reason: "internal_error",
-      messages: ["renderMedia exploded"],
-      retryable: false,
-    })
-    expect(status.body.result).toBeNull()
-  })
-})
-
-describe("devotional render job lifecycle", () => {
   it("requires auth and rejects unsafe identifiers", async () => {
     const handler = buildHandler()
     await expect(
@@ -819,8 +607,8 @@ describe("devotional render job lifecycle", () => {
 describe("queue limits, dedupe, unknown jobs", () => {
   it("returns 409 queue_full when a lane is at its cap", async () => {
     const handler = buildHandler({
-      runPrepareImpl: (async () =>
-        new Promise(() => {})) as unknown as typeof runPrepare,
+      runDevotionalRenderImpl: (async () =>
+        new Promise(() => {})) as unknown as typeof runDevotionalRender,
     })
 
     // Lane limit 2: running + queued. Distinct assetIds — identical bodies
@@ -830,7 +618,7 @@ describe("queue limits, dedupe, unknown jobs", () => {
         method: "POST",
         url: "/jobs",
         headers: authedHeaders,
-        body: { ...prepareBody, assetId },
+        body: { ...devotionalRenderBody, outputAssetId: assetId },
       })
       expect(accepted.statusCode, `submission ${index}`).toBe(202)
     }
@@ -839,34 +627,25 @@ describe("queue limits, dedupe, unknown jobs", () => {
       method: "POST",
       url: "/jobs",
       headers: authedHeaders,
-      body: { ...prepareBody, assetId: "asset-c" },
+      body: { ...devotionalRenderBody, outputAssetId: "asset-c" },
     })
     expect(rejected).toEqual({
       statusCode: 409,
       body: { error: "queue_full" },
     })
-
-    // The render lane is unaffected.
-    const render = await dispatch(handler, {
-      method: "POST",
-      url: "/jobs",
-      headers: authedHeaders,
-      body: renderBody,
-    })
-    expect(render.statusCode).toBe(202)
   })
 
-  it("re-attaches a duplicate render POST to the ACTIVE job (same propsHash, different jobId)", async () => {
+  it("re-attaches a duplicate devotional render POST to the ACTIVE job (same inputHash, different jobId)", async () => {
     const handler = buildHandler({
-      runRenderImpl: (async () =>
-        new Promise(() => {})) as unknown as typeof runRender,
+      runDevotionalRenderImpl: (async () =>
+        new Promise(() => {})) as unknown as typeof runDevotionalRender,
     })
 
     const first = await dispatch(handler, {
       method: "POST",
       url: "/jobs",
       headers: authedHeaders,
-      body: renderBody,
+      body: devotionalRenderBody,
     })
     expect(first.statusCode).toBe(202)
     await settle()
@@ -875,18 +654,18 @@ describe("queue limits, dedupe, unknown jobs", () => {
       method: "POST",
       url: "/jobs",
       headers: authedHeaders,
-      body: { ...renderBody, jobId: "manager-job-relaunched" },
+      body: { ...devotionalRenderBody, jobId: "manager-job-relaunched" },
     })
     expect(duplicate.statusCode).toBe(202)
     expect(duplicate.body.workerJobId).toBe(first.body.workerJobId)
     expect(duplicate.body.status).toBe("running")
 
-    // A DIFFERENT propsHash is a new logical job (re-render after an edit).
+    // A DIFFERENT inputHash is a new logical job (re-render after an edit).
     const edited = await dispatch(handler, {
       method: "POST",
       url: "/jobs",
       headers: authedHeaders,
-      body: { ...renderBody, propsHash: "0".repeat(64) },
+      body: { ...devotionalRenderBody, inputHash: "0".repeat(64) },
     })
     expect(edited.statusCode).toBe(202)
     expect(edited.body.workerJobId).not.toBe(first.body.workerJobId)
@@ -899,7 +678,7 @@ describe("queue limits, dedupe, unknown jobs", () => {
       method: "POST",
       url: "/jobs",
       headers: authedHeaders,
-      body: renderBody,
+      body: devotionalRenderBody,
     })
     await settle()
 
@@ -907,7 +686,7 @@ describe("queue limits, dedupe, unknown jobs", () => {
       method: "POST",
       url: "/jobs",
       headers: authedHeaders,
-      body: renderBody,
+      body: devotionalRenderBody,
     })
     expect(second.statusCode).toBe(202)
     expect(second.body.workerJobId).not.toBe(first.body.workerJobId)
@@ -924,4 +703,34 @@ describe("queue limits, dedupe, unknown jobs", () => {
       }),
     ).resolves.toEqual({ statusCode: 404, body: { error: "not_found" } })
   })
+})
+
+describe("retired Shorts admission", () => {
+  it.each([prepareBody, renderBody])(
+    "rejects $kind without reserving devotional capacity",
+    async (body) => {
+      const handler = buildHandler({
+        queue: createJobLanes({ render: { concurrency: 1, limit: 1 } }),
+        runDevotionalRenderImpl: async () => signedDevotionalResult,
+      })
+      expect(
+        await dispatch(handler, {
+          method: "POST",
+          url: "/jobs",
+          headers: authedHeaders,
+          body,
+        }),
+      ).toEqual({ statusCode: 400, body: { error: "invalid_body" } })
+      expect(
+        (
+          await dispatch(handler, {
+            method: "POST",
+            url: "/jobs",
+            headers: authedHeaders,
+            body: devotionalRenderBody,
+          })
+        ).statusCode,
+      ).toBe(202)
+    },
+  )
 })

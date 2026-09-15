@@ -1,7 +1,8 @@
 /**
  * Sightline Ministry (sightlineministry.org) — slice #4. The first source to
- * REUSE slice #3's discovery-crawl machinery (docs/architecture.md §3 fetch
- * policy / FOLLOW-UP F) with no new acquisition code: same WordPress/Yoast shape
+ * REUSE slice #3's discovery-crawl machinery (docs/architecture.md §3,
+ * Acquisition). FOLLOW-UP F was the standalone implementation trail; Forge
+ * needs no new acquisition code for this source: same WordPress/Yoast shape
  * as jesusfilm.org (`sitemap_index.xml`, serves 200, empty `Disallow:`, no
  * challenge wall — probed 2026-05-27). PARTNER content. Distinctive value is the
  * apologetics / skeptic / evidence axis.

@@ -40,7 +40,6 @@ function render(
         items={ITEMS}
         openIds={openIds}
         onToggle={onToggle}
-        heading="Questions"
         itemTestId="faq-row"
       />,
     )

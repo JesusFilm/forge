@@ -1,3 +1,4 @@
+import { assertRecommendationHumanAdmission } from "@/lib/recommendation-human-admission"
 import { z } from "zod"
 import { recordRecommendationContentAction } from "@/lib/recommendations"
 import {
@@ -39,6 +40,7 @@ const Input = z
 
 export async function POST(request: Request) {
   try {
+    assertRecommendationHumanAdmission(request)
     const raw = await readStrictRecommendationJson(request, {
       expectedOrigin: WATCH_CANONICAL_ORIGIN,
       maxBytes: RECOMMENDATION_CONTENT_ACTION_BODY_BYTES,

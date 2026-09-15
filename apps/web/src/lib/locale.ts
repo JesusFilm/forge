@@ -76,10 +76,11 @@ const HTML_LANG_OVERRIDES: Readonly<Record<string, string>> = Object.freeze({
   // slug. Keep the distinct British homepage on its actual regional identity
   // so HTML language and sitemap hreflang signals agree.
   "english-british": "en-GB",
-  // Admin's generated Language.bcp47 corpus does not currently include this
-  // public audio slug, but the URL contract does. Keep the raw dub slug in
-  // the path while allowing the static root layout to emit the regional SEO
-  // tag instead of collapsing <html lang> to plain "es".
+  // Admin exposes generic `es` for this regional public audio slug (and the
+  // generated corpus force-includes it via PUBLIC_WATCH_LANGUAGE_SLUG_OVERRIDES
+  // in lib/language-bcp47-map-codegen.ts). Keep the raw dub slug in the path
+  // while allowing the static root layout to emit the regional SEO tag
+  // instead of collapsing <html lang> to plain "es".
   "spanish-latin-american": "es-419",
 })
 
@@ -160,6 +161,52 @@ export function textDirectionForLocale(locale: string): LocaleTextDirection {
     }
     return "ltr"
   }
+}
+
+/**
+ * Tags this app is willing to DECLARE as a document language.
+ *
+ * `slugToBcp47Tag` is deliberately permissive — its third branch accepts any
+ * `BCP47_TAG_PATTERN`-shaped string so the internal `[htmlLang]` segment can be
+ * read back off a URL. That is the right contract for route matching and wrong
+ * for `<html lang>`, which must not assert a language we cannot stand behind.
+ *
+ * Two classes are excluded:
+ *
+ *   1. Tags admin emits that are not valid BCP-47 at all. The generated map
+ *      really does carry `hainanese: "nan-CN-46"`, `javanese-banten:
+ *      "jv-ID-BT"`, `huasteco-san-luis-potosi: "hus-MX-SLP"` and
+ *      `romani-kalderash-western: "rmy-kal"`; `new Intl.Locale(...)` throws
+ *      `RangeError` on each. Declaring one would put a string no user agent can
+ *      parse into `lang`, which is worse than the English fallback.
+ *   2. Shape-only matches that are not a tag this app knows. A public slug is
+ *      an English NAME (`bel`), and the generated map maps that name to an
+ *      unrelated tag (`bel: "gdd"`). If the corpus is stale and the map lookup
+ *      misses, the permissive branch would read the slug itself as a tag and
+ *      `bel` canonicalizes to Belarusian — a confident, wrong declaration.
+ *
+ * Anything excluded here falls back to the UI locale, which is the documented
+ * and honest degradation.
+ */
+const DECLARABLE_HTML_LANG_TAGS: ReadonlySet<string> = new Set(
+  [
+    ...Object.values(HTML_LANG_OVERRIDES),
+    ...Object.values(LANGUAGE_BCP47_MAP),
+    ...AVAILABLE_UI_LOCALES,
+  ]
+    .map((tag) => normalizeBcp47Tag(tag))
+    .filter((tag) => {
+      try {
+        new Intl.Locale(tag)
+        return true
+      } catch {
+        return false
+      }
+    }),
+)
+
+export function isDeclarableHtmlLangTag(tag: string): boolean {
+  return DECLARABLE_HTML_LANG_TAGS.has(normalizeBcp47Tag(tag))
 }
 
 export function slugToBcp47Tag(slug: string): string | null {
@@ -345,10 +392,35 @@ export function resolveWatchLocaleIdentity(
   if (!localeSegment) {
     return { locale: DEFAULT_LOCALE, htmlLang: DEFAULT_LOCALE }
   }
-  const override = WATCH_LOCALE_IDENTITY_OVERRIDES[localeSegment]
+  // `Object.hasOwn`, not a bare read: a bare bracket access resolves inherited
+  // Object members, so `resolveWatchLocaleIdentity("constructor")` would return
+  // the Object constructor through the truthiness check below and hand every
+  // caller an identity whose `locale` and `htmlLang` are both `undefined`.
+  // `slugToBcp47Tag` already guards its two tables the same way.
+  const override = Object.hasOwn(WATCH_LOCALE_IDENTITY_OVERRIDES, localeSegment)
+    ? WATCH_LOCALE_IDENTITY_OVERRIDES[localeSegment]
+    : undefined
   if (override) return override
   const locale = resolveUiLocale(localeSegment) ?? DEFAULT_LOCALE
   const tag = slugToBcp47Tag(localeSegment)
-  const htmlLang = tag && resolveUiLocale(tag) === locale ? tag : locale
+  // `locale` and `htmlLang` answer different questions: `locale` picks the
+  // message catalog the CHROME renders in, `htmlLang` declares the language
+  // the CONTENT is in. Only 224 of 2,329 public language slugs ship a
+  // catalog, so requiring `resolveUiLocale(tag) === locale` here (FGE-170 /
+  // W-082) discarded a known tag for the other ~2,100 and declared pages of
+  // Najdi Arabic or Pashto as `lang="en" dir="ltr"`.
+  //
+  // Keeping the tag whenever we have one is safe because the two resolutions
+  // cannot disagree in any other way: `resolveUiLocale` derives its own tag
+  // from the same slug, so a catalog-backed slug always agrees with its tag's
+  // family (`english-british` → `en-GB`, `spanish-latin-american` → `es-419`),
+  // and the one deliberate exception — Hassaniyya's Latin-script catalog —
+  // returns from WATCH_LOCALE_IDENTITY_OVERRIDES above before reaching here.
+  //
+  // The tag is only DECLARED when this app can stand behind it — see
+  // `isDeclarableHtmlLangTag`. A slug with no resolvable tag (`german`), a tag
+  // admin emits that is not valid BCP-47 (`hainanese` → `nan-CN-46`), and a
+  // shape-only match on an unknown slug all fall back to `locale`.
+  const htmlLang = tag && isDeclarableHtmlLangTag(tag) ? tag : locale
   return { locale, htmlLang }
 }

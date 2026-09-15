@@ -299,7 +299,12 @@ describe("handleAiChatHistoryListRequest — happy path + clamps (KTD6)", () => 
           resourceId: OWNER,
           metadata: { secret: "NEVER_ON_WIRE" },
         },
-        { id: "t-untitled", title: "", updatedAt: "2026-07-10T08:00:00.000Z" },
+        {
+          id: "t-untitled",
+          title: "",
+          updatedAt: "2026-07-10T08:00:00.000Z",
+          resourceId: OWNER,
+        },
       ],
       total: 72,
       hasMore: true,
@@ -349,6 +354,7 @@ describe("handleAiChatHistoryListRequest — happy path + clamps (KTD6)", () => 
       threads: [
         {
           id: "t-long",
+          resourceId: OWNER,
           title: "x".repeat(10_000),
           updatedAt: new Date("2026-07-12T08:00:00.000Z"),
         },
@@ -366,6 +372,7 @@ describe("handleAiChatHistoryListRequest — happy path + clamps (KTD6)", () => 
       threads: [
         {
           id: "t-messy",
+          resourceId: OWNER,
           title: "  Who  is   Jesus?\n\n  really  ",
           updatedAt: new Date("2026-07-12T08:00:00.000Z"),
         },
@@ -383,7 +390,12 @@ describe("handleAiChatHistoryListRequest — happy path + clamps (KTD6)", () => 
     // sweep now, but still the shape the client's date label keys on.
     const { memory } = makeMemory({
       threads: [
-        { id: "t-empty", title: "", updatedAt: "2026-07-10T08:00:00.000Z" },
+        {
+          id: "t-empty",
+          resourceId: OWNER,
+          title: "",
+          updatedAt: "2026-07-10T08:00:00.000Z",
+        },
       ],
     })
     const outcome = await handleAiChatHistoryListRequest(
@@ -400,6 +412,81 @@ describe("handleAiChatHistoryListRequest — happy path + clamps (KTD6)", () => 
       page: 0,
       perPage: AI_CHAT_HISTORY_DEFAULT_PER_PAGE,
     })
+  })
+})
+
+describe("handleAiChatHistoryListRequest — ownership re-check (feat-363)", () => {
+  it.each([
+    ["foreign owner", { resourceId: "user:PRIVATE-other" }],
+    ["owner prefix only", { resourceId: `${OWNER}-other` }],
+    ["missing owner", {}],
+    ["null owner", { resourceId: null }],
+  ])(
+    "drops a row with %s before projection and logs only the count",
+    async (_label, owner) => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+      const { memory, listCalls, getCalls } = makeMemory({
+        threads: [
+          { id: "owned", title: "My conversation", resourceId: OWNER },
+          { id: "PRIVATE-thread", title: "PRIVATE-title", ...owner },
+          {
+            id: "owned-later",
+            title: "Another conversation",
+            resourceId: OWNER,
+          },
+        ],
+        total: 72,
+        hasMore: true,
+      })
+      const outcome = await handleAiChatHistoryListRequest(baseInput(memory))
+      expect(outcome).toEqual({
+        status: 200,
+        body: {
+          threads: [
+            { id: "owned", title: "My conversation", updatedAt: "" },
+            { id: "owned-later", title: "Another conversation", updatedAt: "" },
+          ],
+          page: 0,
+          perPage: AI_CHAT_HISTORY_DEFAULT_PER_PAGE,
+          total: 72,
+          hasMore: true,
+        },
+      })
+      expect(warn.mock.calls).toEqual([
+        ["[ai-chat-history] event=history_filter_mismatch count=1"],
+      ])
+      expect(listCalls).toHaveLength(1)
+      expect(getCalls).toHaveLength(0)
+    },
+  )
+
+  it("returns an empty page and one counted warning when every row is foreign", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const { memory } = makeMemory({
+      threads: [
+        { id: "private-1", resourceId: "user:other-1" },
+        { id: "private-2", resourceId: "user:other-2" },
+      ],
+    })
+    const outcome = await handleAiChatHistoryListRequest(baseInput(memory))
+    expect(outcome.status).toBe(200)
+    expect(outcome.body).toMatchObject({ threads: [] })
+    expect(warn.mock.calls).toEqual([
+      ["[ai-chat-history] event=history_filter_mismatch count=2"],
+    ])
+  })
+
+  it("does not log a mismatch for an owned or empty page", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    for (const threads of [[], [{ id: "owned", resourceId: OWNER }]]) {
+      const { memory } = makeMemory({ threads })
+      const outcome = await handleAiChatHistoryListRequest(baseInput(memory))
+      expect(outcome.status).toBe(200)
+      expect(outcome.body).toMatchObject({
+        threads: threads.map(({ id }) => ({ id, title: "", updatedAt: "" })),
+      })
+    }
+    expect(warn).not.toHaveBeenCalled()
   })
 })
 

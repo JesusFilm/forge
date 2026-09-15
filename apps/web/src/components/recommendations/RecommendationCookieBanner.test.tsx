@@ -10,6 +10,7 @@ import {
   markRecommendationWithdrawalPending,
 } from "@/lib/recommendation-withdrawal-pending"
 import { RecommendationConsentShell } from "./RecommendationConsentShell"
+import { RecommendationCookieSettingsTrigger } from "./RecommendationCookieSettingsTrigger"
 
 let container: HTMLDivElement
 let root: Root
@@ -27,6 +28,26 @@ const undecided = {
   consentCookieDisposition: "keep",
 }
 
+const activeProfile = {
+  ...undecided,
+  state: "active",
+  choice: "durable_allowed",
+  privacyGeneration: 1,
+  expiresAt: "2027-02-23T00:00:00.000Z",
+  erasureState: "not_required",
+  cookieDisposition: "set",
+  consentChoice: "personalization",
+  consentExpiresAt: "2027-02-23T00:00:00.000Z",
+  consentCookieDisposition: "set",
+}
+
+const essentialOnlyProfile = {
+  ...undecided,
+  consentChoice: "essential_only",
+  consentExpiresAt: "2027-02-23T00:00:00.000Z",
+  consentCookieDisposition: "keep",
+}
+
 function response(profile: Record<string, unknown>) {
   return new Response(JSON.stringify({ profile }), {
     status: 200,
@@ -36,6 +57,8 @@ function response(profile: Record<string, unknown>) {
 
 async function flush() {
   await act(async () => {
+    await Promise.resolve()
+    await Promise.resolve()
     await Promise.resolve()
     await Promise.resolve()
   })
@@ -57,12 +80,21 @@ function renderShell() {
         }}
       >
         <RecommendationConsentShell />
+        <footer>
+          <RecommendationCookieSettingsTrigger label="Cookie settings" />
+        </footer>
       </NextIntlClientProvider>,
     ),
   )
 }
 
 beforeEach(() => {
+  vi.stubGlobal("navigator", {
+    locks: {
+      request: (_name: string, operation: () => Promise<unknown>) =>
+        operation(),
+    },
+  })
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -86,45 +118,170 @@ describe("RecommendationConsentShell", () => {
     expect(timeoutSpy).toHaveBeenCalledWith(expect.any(Function), 5_000)
   })
 
-  it("shows the three-action first-visit banner and Essential only dismisses it while settings remain", async () => {
+  it("defaults a first visit to personalization without rendering a banner", async () => {
+    const consentChanged = vi.fn()
+    const profileChanged = vi.fn()
+    window.addEventListener(
+      "forge:recommendation-consent-changed",
+      consentChanged,
+    )
+    window.addEventListener(
+      "forge:recommendation-profile-changed",
+      profileChanged,
+    )
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(response(undecided))
-      .mockResolvedValueOnce(
-        response({
-          ...undecided,
-          consentChoice: "essential_only",
-          consentExpiresAt: "2027-02-23T00:00:00.000Z",
-          consentCookieDisposition: "set",
-        }),
-      )
+      .mockResolvedValueOnce(response(activeProfile))
     vi.stubGlobal("fetch", fetchMock)
 
     renderShell()
-    await flush()
-    expect(container.textContent).toContain("Your privacy choices")
-    expect(button("Accept all")).toBeTruthy()
-    expect(button("Essential only")).toBeTruthy()
-    expect(button("Manage choices")).toBeTruthy()
-
-    await act(async () => button("Essential only").click())
     await flush()
 
     expect(container.textContent).not.toContain("Your privacy choices")
     expect(button("Cookie settings")).toBeTruthy()
     expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
       contractVersion: "recommendation-profile-v1",
-      action: "withdraw",
+      action: "grant",
     })
+    expect(consentChanged).not.toHaveBeenCalled()
+    expect(profileChanged).not.toHaveBeenCalled()
+    window.removeEventListener(
+      "forge:recommendation-consent-changed",
+      consentChanged,
+    )
+    window.removeEventListener(
+      "forge:recommendation-profile-changed",
+      profileChanged,
+    )
   })
 
-  it("defaults the optional choice on in Manage choices but persists nothing when cancelled", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(response(undecided))
+  it("blocks Cookie settings mutations while the automatic grant is pending", async () => {
+    let resolveGrant: ((value: Response) => void) | undefined
+    const pendingGrant = new Promise<Response>((resolve) => {
+      resolveGrant = resolve
+    })
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(response(undecided))
+      .mockReturnValueOnce(pendingGrant)
     vi.stubGlobal("fetch", fetchMock)
 
     renderShell()
     await flush()
-    const manage = button("Manage choices")
+    act(() => button("Cookie settings").click())
+
+    const save = button("Saving…")
+    expect(save.disabled).toBe(true)
+    act(() => save.click())
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+
+    await act(async () => {
+      resolveGrant?.(response(activeProfile))
+      await pendingGrant
+    })
+    await flush()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it("releases a pending automatic grant when another tab withdraws", async () => {
+    const channel: {
+      onmessage: ((event: { data?: unknown }) => void) | null
+      postMessage: ReturnType<typeof vi.fn>
+      close: ReturnType<typeof vi.fn>
+    } = {
+      onmessage: null,
+      postMessage: vi.fn(),
+      close: vi.fn(),
+    }
+    vi.stubGlobal(
+      "BroadcastChannel",
+      vi.fn(function () {
+        return channel
+      }),
+    )
+    let resolveGrant: ((value: Response) => void) | undefined
+    const pendingGrant = new Promise<Response>((resolve) => {
+      resolveGrant = resolve
+    })
+    const active = {
+      ...undecided,
+      state: "active",
+      choice: "durable_allowed",
+      privacyGeneration: 1,
+      expiresAt: "2027-02-23T00:00:00.000Z",
+      erasureState: "not_required",
+      cookieDisposition: "keep",
+      consentChoice: "personalization",
+      consentExpiresAt: "2027-02-23T00:00:00.000Z",
+    }
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(response(undecided))
+      .mockReturnValueOnce(pendingGrant)
+      .mockResolvedValueOnce(response(active))
+    vi.stubGlobal("fetch", fetchMock)
+
+    renderShell()
+    await flush()
+    act(() => button("Cookie settings").click())
+    expect(button("Saving…").disabled).toBe(true)
+
+    await act(async () =>
+      channel.onmessage?.({
+        data: { type: "withdrawal_pending", choice: "essential_only" },
+      }),
+    )
+    await flush()
+
+    expect(button("Save choices").disabled).toBe(false)
+    expect(
+      container.querySelector<HTMLInputElement>(
+        'input[name="recommendation-personalization"]',
+      )?.checked,
+    ).toBe(false)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+
+    await act(async () => {
+      resolveGrant?.(response(activeProfile))
+      await pendingGrant
+    })
+  })
+
+  it("aborts initialization before an unmounted shell can issue a stale grant", async () => {
+    let resolveStatus: ((value: Response) => void) | undefined
+    const pendingStatus = new Promise<Response>((resolve) => {
+      resolveStatus = resolve
+    })
+    const fetchMock = vi.fn().mockReturnValueOnce(pendingStatus)
+    vi.stubGlobal("fetch", fetchMock)
+
+    renderShell()
+    await flush()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const signal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+
+    act(() => root.render(<></>))
+    expect(signal.aborted).toBe(true)
+    await act(async () => {
+      resolveStatus?.(response(undecided))
+      await pendingStatus
+    })
+    await flush()
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("shows the defaulted optional choice in Cookie settings and persists nothing when cancelled", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(response(undecided))
+      .mockResolvedValueOnce(response(activeProfile))
+    vi.stubGlobal("fetch", fetchMock)
+
+    renderShell()
+    await flush()
+    const manage = button("Cookie settings")
     manage.focus()
     act(() => manage.click())
 
@@ -136,30 +293,31 @@ describe("RecommendationConsentShell", () => {
     )!
     expect(personalization.checked).toBe(true)
 
+    const dialog = container.querySelector('[role="dialog"]')
+    const viewport = container.querySelector(
+      '[data-testid="recommendation-cookie-settings-viewport"]',
+    )
+    expect(viewport?.className).toContain("overflow-y-auto")
+    expect(dialog?.parentElement).toBe(viewport)
+    expect(dialog?.className).toContain("m-auto")
+    expect(dialog?.className).toContain("shrink-0")
+    expect(dialog?.className).not.toContain("overflow-y-auto")
+    expect(dialog?.className).not.toContain("max-h-")
+    expect(document.body.style.overflow).toBe("hidden")
+
     act(() => button("Cancel").click())
+    expect(document.body.style.overflow).toBe("")
     expect(container.querySelector('[role="dialog"]')).toBeNull()
     expect(document.activeElement).toBe(manage)
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(container.textContent).toContain("Your privacy choices")
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(container.textContent).not.toContain("Your privacy choices")
   })
 
-  it("Accept all grants personalization and Cookie settings can later withdraw it", async () => {
-    const active = {
-      ...undecided,
-      state: "active",
-      choice: "durable_allowed",
-      privacyGeneration: 1,
-      expiresAt: "2027-02-23T00:00:00.000Z",
-      erasureState: "not_required",
-      cookieDisposition: "set",
-      consentChoice: "personalization",
-      consentExpiresAt: "2027-02-23T00:00:00.000Z",
-      consentCookieDisposition: "set",
-    }
+  it("automatically grants personalization and Cookie settings can later withdraw it", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(response(undecided))
-      .mockResolvedValueOnce(response(active))
+      .mockResolvedValueOnce(response(activeProfile))
       .mockResolvedValueOnce(
         response({
           ...undecided,
@@ -172,8 +330,6 @@ describe("RecommendationConsentShell", () => {
     vi.stubGlobal("fetch", fetchMock)
 
     renderShell()
-    await flush()
-    await act(async () => button("Accept all").click())
     await flush()
     expect(container.textContent).not.toContain("Your privacy choices")
 
@@ -212,18 +368,6 @@ describe("RecommendationConsentShell", () => {
         return channel
       }),
     )
-    const active = {
-      ...undecided,
-      state: "active",
-      choice: "durable_allowed",
-      privacyGeneration: 1,
-      expiresAt: "2027-02-23T00:00:00.000Z",
-      erasureState: "not_required",
-      cookieDisposition: "set",
-      consentChoice: "personalization",
-      consentExpiresAt: "2027-02-23T00:00:00.000Z",
-      consentCookieDisposition: "set",
-    }
     const essential = {
       ...undecided,
       consentChoice: "essential_only",
@@ -233,9 +377,9 @@ describe("RecommendationConsentShell", () => {
     }
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce(response(active))
+      .mockResolvedValueOnce(response(activeProfile))
       .mockRejectedValueOnce(new Error("ambiguous withdrawal"))
-      .mockResolvedValueOnce(response(active))
+      .mockResolvedValueOnce(response(activeProfile))
       .mockResolvedValueOnce(response(essential))
     vi.stubGlobal("fetch", fetchMock)
     const consentChanged = vi.fn()
@@ -324,7 +468,7 @@ describe("RecommendationConsentShell", () => {
     expect(button("Cookie settings")).toBeTruthy()
   })
 
-  it("pins Cookie settings clear of the feedback launcher and below its modal", async () => {
+  it("keeps Cookie settings in document flow", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -341,13 +485,8 @@ describe("RecommendationConsentShell", () => {
     await flush()
 
     const settings = button("Cookie settings")
-    expect(settings.className).toContain(
-      "bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))]",
-    )
-    expect(settings.className).toContain(
-      "left-[calc(1rem+env(safe-area-inset-left,0px))]",
-    )
-    expect(settings.className).toContain("z-[45]")
+    expect(settings.closest("footer")).toBeTruthy()
+    expect(settings.className).not.toContain("fixed")
   })
 
   it("keeps a persisted pending withdrawal contextual until a fresh grant is confirmed", async () => {
@@ -416,7 +555,7 @@ describe("RecommendationConsentShell", () => {
     )
   })
 
-  it("keeps the banner open and Essential only available when Accept all fails", async () => {
+  it("keeps Cookie settings available without restoring the banner when automatic grant fails", async () => {
     vi.stubGlobal(
       "fetch",
       vi
@@ -427,14 +566,50 @@ describe("RecommendationConsentShell", () => {
 
     renderShell()
     await flush()
-    await act(async () => button("Accept all").click())
-    await flush()
 
-    expect(container.textContent).toContain("Your privacy choices")
+    expect(container.textContent).not.toContain("Your privacy choices")
+    expect(button("Cookie settings")).toBeTruthy()
+    act(() => button("Cookie settings").click())
+    expect(
+      container.querySelector<HTMLInputElement>(
+        'input[name="recommendation-personalization"]',
+      )?.checked,
+    ).toBe(false)
     expect(container.textContent).toContain(
       "Personalization could not be enabled. Essential only remains available.",
     )
-    expect(button("Essential only").disabled).toBe(false)
+  })
+
+  it("retries a transient automatic grant failure without requiring a reload", async () => {
+    vi.useFakeTimers()
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(response(undecided))
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce(response(activeProfile))
+    vi.stubGlobal("fetch", fetchMock)
+
+    try {
+      renderShell()
+      await flush()
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+
+      await act(async () => vi.advanceTimersByTime(500))
+      await flush()
+
+      expect(fetchMock).toHaveBeenCalledTimes(3)
+      act(() => button("Cookie settings").click())
+      expect(
+        container.querySelector<HTMLInputElement>(
+          'input[name="recommendation-personalization"]',
+        )?.checked,
+      ).toBe(true)
+      expect(container.textContent).not.toContain(
+        "Personalization could not be enabled. Essential only remains available.",
+      )
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("coalesces repeated choice clicks while the first transition is pending", async () => {
@@ -444,33 +619,28 @@ describe("RecommendationConsentShell", () => {
     })
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce(response(undecided))
+      .mockResolvedValueOnce(response(essentialOnlyProfile))
       .mockReturnValueOnce(pendingGrant)
     vi.stubGlobal("fetch", fetchMock)
 
     renderShell()
     await flush()
+    act(() => button("Cookie settings").click())
+    act(() =>
+      container
+        .querySelector<HTMLInputElement>(
+          'input[name="recommendation-personalization"]',
+        )
+        ?.click(),
+    )
     act(() => {
-      button("Accept all").click()
-      button("Accept all").click()
+      button("Save choices").click()
+      button("Save choices").click()
     })
 
     expect(fetchMock).toHaveBeenCalledTimes(2)
     await act(async () => {
-      resolveGrant?.(
-        response({
-          ...undecided,
-          state: "active",
-          choice: "durable_allowed",
-          privacyGeneration: 1,
-          expiresAt: "2027-02-23T00:00:00.000Z",
-          erasureState: "not_required",
-          cookieDisposition: "set",
-          consentChoice: "personalization",
-          consentExpiresAt: "2027-02-23T00:00:00.000Z",
-          consentCookieDisposition: "set",
-        }),
-      )
+      resolveGrant?.(response(activeProfile))
       await pendingGrant
     })
     await flush()
@@ -629,35 +799,31 @@ describe("RecommendationConsentShell", () => {
     const pendingGrant = new Promise<Response>((resolve) => {
       resolveGrant = resolve
     })
-    const active = {
-      ...undecided,
-      state: "active",
-      choice: "durable_allowed",
-      privacyGeneration: 1,
-      expiresAt: "2027-02-23T00:00:00.000Z",
-      erasureState: "not_required",
-      cookieDisposition: "set",
-      consentChoice: "personalization",
-      consentExpiresAt: "2027-02-23T00:00:00.000Z",
-      consentCookieDisposition: "set",
-    }
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce(response(undecided))
+      .mockResolvedValueOnce(response(essentialOnlyProfile))
       .mockReturnValueOnce(pendingGrant)
-      .mockResolvedValueOnce(response(active))
+      .mockResolvedValueOnce(response(activeProfile))
     vi.stubGlobal("fetch", fetchMock)
 
     renderShell()
     await flush()
-    act(() => button("Accept all").click())
+    act(() => button("Cookie settings").click())
+    act(() =>
+      container
+        .querySelector<HTMLInputElement>(
+          'input[name="recommendation-personalization"]',
+        )
+        ?.click(),
+    )
+    act(() => button("Save choices").click())
     act(() => {
       channel.onmessage?.()
       channel.onmessage?.()
     })
     expect(fetchMock).toHaveBeenCalledTimes(2)
     await act(async () => {
-      resolveGrant?.(response(active))
+      resolveGrant?.(response(activeProfile))
       await pendingGrant
     })
     await flush()
@@ -693,7 +859,9 @@ describe("RecommendationConsentShell", () => {
       consentChoice: "personalization",
       consentExpiresAt: "2027-02-23T00:00:00.000Z",
     }
-    const fetchMock = vi.fn().mockResolvedValue(response(active))
+    const fetchMock = vi.fn((_url: string, _init?: RequestInit) =>
+      Promise.resolve(response(active)),
+    )
     vi.stubGlobal("fetch", fetchMock)
     const profileChanged = vi.fn()
     window.addEventListener(
@@ -722,22 +890,39 @@ describe("RecommendationConsentShell", () => {
     expect(profileChanged).toHaveBeenCalledOnce()
 
     clearRecommendationWithdrawalPending()
+    expect(document.cookie).not.toContain(
+      "forge_recommendation_withdrawal_pending=1",
+    )
     await act(async () =>
       channel.onmessage?.({
         data: { type: "choice_changed", choice: "personalization" },
       }),
     )
     await flush()
+    await act(async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 0))
+    })
 
-    expect(
-      container.querySelector<HTMLInputElement>(
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect({
+      checked: container.querySelector<HTMLInputElement>(
         'input[name="recommendation-personalization"]',
       )?.checked,
-    ).toBe(true)
-    expect(container.textContent).not.toContain(
-      "Profile erasure is pending. Contextual recommendations are already active.",
-    )
-    expect(fetchMock).toHaveBeenCalledTimes(3)
+      erasurePending: container.textContent?.includes(
+        "Profile erasure is pending. Contextual recommendations are already active.",
+      ),
+      loadError: container.textContent?.includes(
+        "Your choice could not be loaded. You can still choose below.",
+      ),
+      actions: fetchMock.mock.calls.map(
+        ([, init]) => JSON.parse(String(init?.body)).action,
+      ),
+    }).toEqual({
+      checked: true,
+      erasurePending: false,
+      loadError: false,
+      actions: ["status", "status", "status"],
+    })
     window.removeEventListener(
       "forge:recommendation-profile-changed",
       profileChanged,

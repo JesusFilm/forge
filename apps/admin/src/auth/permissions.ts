@@ -50,6 +50,7 @@ export type PermissionKey =
   | "read:manager-read-models"
   | "read:manager-seo"
   | "read:manager-seo-audit-detail"
+  | "read:manager-watch-route-alerts"
   | "read:recommendation-aggregates"
   | "read:recommendation-traces"
   | "operate:recommendation-experiments"
@@ -118,6 +119,7 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   "read:manager-read-models": "PUBLIC",
   "read:manager-seo": "PUBLIC",
   "read:manager-seo-audit-detail": "PUBLIC",
+  "read:manager-watch-route-alerts": "PUBLIC",
   // Recommendation operations are deliberately split: EDITOR may inspect
   // windowed aggregate health, while only ADMIN may inspect request roots.
   "read:recommendation-aggregates": "EDITOR",
@@ -291,6 +293,7 @@ const MANAGER_BACKEND_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
   "read:manager-read-models",
   "read:manager-seo",
   "read:manager-seo-audit-detail",
+  "read:manager-watch-route-alerts",
   "write:manager-jobs",
 ])
 
@@ -516,4 +519,28 @@ export function canEditVideo(user: Principal | null): boolean {
 export function canWriteDerived(user: Principal | null): boolean {
   const role = principalRole(user)
   return role === "SYSTEM" || role === "ADMIN"
+}
+
+/** Studio is a shared operator workspace; all verified operators can author it. */
+export function isStudioHuman(user: Principal | null): boolean {
+  return Boolean(
+    user?.id &&
+    user.role !== "SYSTEM" &&
+    user.role !== "MANAGER_BACKEND" &&
+    (user.role === "ADMIN" || user.managerRole === "OPERATOR"),
+  )
+}
+
+/** Service principals can manage attempts/edits but cannot manufacture review. */
+export function canAuthorStudio(user: Principal | null): boolean {
+  return (
+    isStudioHuman(user) ||
+    user?.role === "SYSTEM" ||
+    user?.role === "MANAGER_BACKEND"
+  )
+}
+
+/** Attribution does not confer explicit operator review authority. */
+export function canReviewStudio(user: Principal | null): boolean {
+  return isStudioHuman(user) && user?.studioAuthority === "interactive"
 }

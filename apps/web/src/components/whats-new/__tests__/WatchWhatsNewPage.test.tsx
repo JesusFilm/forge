@@ -12,6 +12,7 @@ import { WatchWhatsNewPage } from "@/components/whats-new/WatchWhatsNewPage"
 import {
   WHATS_NEW_ASSISTANTS,
   WHATS_NEW_AUDIENCES,
+  WHATS_NEW_CLOSING,
   WHATS_NEW_CONTENTS,
   WHATS_NEW_FORMATS,
   WHATS_NEW_DELIVERY,
@@ -22,7 +23,6 @@ import {
   WHATS_NEW_LEDE,
   WHATS_NEW_PARTNER_LETTER,
   WHATS_NEW_QUIZ,
-  WHATS_NEW_SELF_ID,
 } from "@/components/whats-new/whats-new-content"
 import { WHATS_NEW_LANGUAGE_SWITCHER } from "@/components/whats-new/whats-new-content"
 import { WATCH_FEEDBACK_OPEN_EVENT } from "@/lib/watch-feedback-events"
@@ -1065,27 +1065,38 @@ describe("WatchWhatsNewPage", () => {
 
     expect(fan?.className).toContain("watch-scroll-fan-hand")
     for (const card of cards) {
-      expect(card.parentElement).toBe(fan)
-      // The growth must not migrate onto the cards themselves.
+      // Each card sits in its own cell now — the cell carries the travel,
+      // the card carries the fan transform — so the list is the card's
+      // GRANDparent rather than its parent. What still has to hold is that
+      // the growth belongs to the list and to nothing inside it.
+      expect(card.closest("ul")).toBe(fan)
       expect(card.className).not.toContain("watch-scroll-fan-hand")
+      expect(card.parentElement?.className).not.toContain(
+        "watch-scroll-fan-hand",
+      )
     }
   })
 
-  it("reserves room for the grown hand above the closing line", () => {
+  it("reserves room below the grown hand", () => {
     // The hand ends 12% larger than its slot, so its lowest rotated corner
-    // reaches about 20px below the list box — measured clearance to this
-    // paragraph at `mt-10` was -13px at 820 and -21px at 1920, i.e. a card
-    // corner resting on the first line. The reserve starts at `md`, which
-    // is where the fan itself starts.
-    const closing = container.querySelector(
-      '[data-testid="whats-new-audience-closing"]',
+    // reaches about 20px below the list box. It used to overhang a closing
+    // paragraph, which is what the reserve was measured against (-13px at
+    // 820, -21px at 1920 — a card corner resting on the first line); that
+    // paragraph was removed, so what it overhangs now is the foot of the
+    // section, and the padding there is the clearance.
+    const stage = container.querySelector(
+      '[data-testid="whats-new-audience-stage"]',
     )
     const fan = container.querySelector(
       '[data-testid="whats-new-audience-fan"]',
     )
 
-    expect(closing?.previousElementSibling).toBe(fan)
-    expect(closing?.className).toMatch(/\bmd:mt-1[68]\b/)
+    expect(stage?.contains(fan!)).toBe(true)
+    // Nothing follows the stage inside the section any more, so the section
+    // padding is what has to carry it.
+    expect(stage?.nextElementSibling).toBeNull()
+    expect(stage?.parentElement?.className).toMatch(/\bpy-16\b/)
+    expect(stage?.parentElement?.className).toMatch(/\blg:py-24\b/)
   })
 
   it("fills each card with its colour and blends where they overlap", () => {
@@ -1164,30 +1175,6 @@ describe("WatchWhatsNewPage", () => {
     }
   })
 
-  it("closes the audiences section by asking the reader which one they are", () => {
-    const selfId = container.querySelector('[data-testid="whats-new-self-id"]')
-
-    expect(selfId).not.toBeNull()
-    expect(
-      selfId?.closest("section")?.getAttribute("id"),
-      "the question belongs to the audiences section, not a neighbouring one",
-    ).toBe("why")
-    expect(selfId?.textContent).toContain(WHATS_NEW_SELF_ID.question)
-
-    // After the cards: the reader has to have seen the three audiences
-    // before being asked to pick one of them.
-    const cards = [
-      ...container.querySelectorAll('[data-testid="whats-new-audience-card"]'),
-    ]
-    expect(cards.length).toBeGreaterThan(0)
-    for (const card of cards) {
-      expect(
-        card.compareDocumentPosition(selfId!) &
-          Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy()
-    }
-  })
-
   it("tells the platform-move story under the improvements it explains", () => {
     const band = container.querySelector('[data-testid="whats-new-delivery"]')
 
@@ -1202,61 +1189,150 @@ describe("WatchWhatsNewPage", () => {
     expect(band?.textContent).toContain("Brightcove")
     expect(band?.textContent).toContain("Mux")
 
-    for (const paragraph of WHATS_NEW_DELIVERY.paragraphs) {
-      expect(band?.textContent).toContain(paragraph)
-    }
-    for (const point of WHATS_NEW_DELIVERY.points) {
-      expect(band?.textContent).toContain(point)
-    }
-    for (const paragraph of WHATS_NEW_DELIVERY.downloads.paragraphs) {
-      expect(band?.textContent).toContain(paragraph)
-    }
-    expect(band?.textContent).toContain(WHATS_NEW_DELIVERY.closing)
+    expect(band?.textContent).toContain(WHATS_NEW_DELIVERY.paragraph)
+
+    // One paragraph, by decision. The band used to carry three bullets, a
+    // downloads sub-block and a hand-counted support-ticket KPI pair; those
+    // were removed, and a figure that comes back without the window and
+    // method that made it honest is the regression this guards.
+    expect(band?.querySelectorAll("li")).toHaveLength(0)
+    expect(band?.querySelectorAll("dl")).toHaveLength(0)
+    expect(
+      band?.querySelectorAll("p"),
+      "the eyebrow and the one paragraph",
+    ).toHaveLength(2)
   })
 
-  it("never prints a complaint figure without its window and its method", () => {
-    // These are checkable claims on a public page. A bare "0" invites the
-    // reading "zero complaints, ever"; the window and the ticket count are
-    // what make it a measurement, and the note is what makes it honest —
-    // hand-counted, and against an update that also shipped the redesign.
-    const stats = [
-      ...container.querySelectorAll('[data-testid="whats-new-delivery-stat"]'),
-    ]
+  it("closes the audiences section with the travelling card and the question", () => {
+    // The self-identification question that used to close this section was
+    // removed. The third audience card now slides across the row and the
+    // guess question arrives beside it, so the reader is estimating a share
+    // ABOUT a card still in front of them.
+    const stage = container.querySelector(
+      '[data-testid="whats-new-audience-stage"]',
+    )
+    const panel = stage?.querySelector(
+      '[data-testid="whats-new-estimate-panel"]',
+    )
 
-    expect(stats).toHaveLength(WHATS_NEW_DELIVERY.stats.length)
-    for (const [index, stat] of stats.entries()) {
-      const source = WHATS_NEW_DELIVERY.stats[index]
-      expect(stat.querySelector("dd")?.textContent).toBe(source.value)
-      expect(stat.querySelector("dt")?.textContent).toContain(source.label)
-      expect(stat.querySelector("dt")?.textContent).toContain(source.detail)
-      // Label before value in the DOM: a screen reader must never reach
-      // the figure before the window it belongs to.
-      expect(
-        stat
-          .querySelector("dt")!
-          .compareDocumentPosition(stat.querySelector("dd")!) &
-          Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy()
-    }
-
-    const band = container.querySelector('[data-testid="whats-new-delivery"]')
-    expect(band?.textContent).toContain(WHATS_NEW_DELIVERY.statsHeading)
-    expect(band?.textContent).toContain(WHATS_NEW_DELIVERY.note)
+    expect(stage).not.toBeNull()
+    expect(
+      stage?.closest("section")?.getAttribute("id"),
+      "the stage belongs to the audiences section, not a neighbouring one",
+    ).toBe("why")
+    expect(
+      stage?.querySelector('[data-testid="whats-new-audience-fan"]'),
+    ).not.toBeNull()
+    expect(
+      panel?.querySelector('[data-testid="whats-new-quiz"]'),
+    ).not.toBeNull()
   })
 
-  it("keeps display figures proportional, not tabular", () => {
-    // `tabular-nums` gives every digit the width of a zero, which reads as
-    // loose spacing at 3rem. It belongs in columns that must align.
-    const values = [
-      ...container.querySelectorAll(
-        '[data-testid="whats-new-delivery-stat"] dd',
+  it("pins the section's heading with the cards it names", () => {
+    // The heading has to be INSIDE the pinned box, not a sibling above the
+    // stage. As a sibling it scrolls away while the stage holds, and the
+    // reader spends the whole hold looking at three cards and a question
+    // about a share with nothing on screen saying what any of it is about.
+    //
+    // Asserted against the pin element itself rather than the stage: the
+    // stage is the scroll runway and contains the pin, so a heading moved
+    // back out to the top of the stage — the exact regression — still sits
+    // inside the stage and would pass a `stage.contains` check.
+    const pin = container.querySelector(".watch-audience-pin")
+    const heading = container.querySelector("#whats-new-audiences-heading")
+
+    expect(pin).not.toBeNull()
+    expect(heading?.tagName).toBe("H2")
+    expect(pin?.contains(heading!)).toBe(true)
+    // And the cards it names are in the same box, so the two hold together.
+    expect(
+      pin?.querySelector('[data-testid="whats-new-audience-fan"]'),
+    ).not.toBeNull()
+  })
+
+  it("travels ONE card, and never draws a second copy of it", () => {
+    /**
+     * The regression this exists for shipped once: the stage drew its own
+     * ministry-partners card lower down the page and slid that into place,
+     * so both copies sat on screen together and the effect read exactly
+     * like what it was — two cards, not one moving.
+     *
+     * Counting rendered titles is what catches it. A duplicate would pass
+     * every other assertion in this file.
+     */
+    const partner = WHATS_NEW_AUDIENCES.cards.find(
+      (entry) => entry.icon === "handshake",
+    )
+    expect(partner, "the ministry-partners card must still exist").toBeDefined()
+
+    const titles = [
+      ...container.querySelectorAll('[data-testid="whats-new-audience-card"]'),
+    ].filter((card) => card.textContent?.includes(partner!.title))
+    expect(titles).toHaveLength(1)
+
+    const cells = [
+      ...container.querySelectorAll<HTMLElement>(
+        '[data-testid="whats-new-audience-cell"]',
       ),
     ]
+    expect(cells).toHaveLength(WHATS_NEW_AUDIENCES.cards.length)
 
-    expect(values.length).toBeGreaterThan(0)
-    for (const value of values) {
-      expect(value.className).not.toContain("tabular-nums")
+    const travelling = cells.filter((cell) => cell.dataset.travels === "true")
+    expect(travelling).toHaveLength(1)
+    expect(travelling[0].textContent).toContain(partner!.title)
+    expect(travelling[0].className).toContain("watch-audience-travel")
+
+    for (const cell of cells.filter((c) => c.dataset.travels !== "true")) {
+      expect(cell.className).toContain("watch-audience-fade")
     }
+  })
+
+  it("keeps the question in the card row's cell, on the right half", () => {
+    // Same grid cell as the cards, so the cell is as tall as the taller of
+    // the two and the pinned pair can be centred as one group — it was
+    // absolutely positioned before, which left the group sitting 318px
+    // from the top of the pin and 127px from the bottom.
+    //
+    // And the right HALF rather than columns two and three: the card in
+    // column one still carries the hand's 12% growth, so it is wider than
+    // its column and its right edge crosses that line.
+    const panel = container.querySelector(
+      '[data-testid="whats-new-estimate-panel"]',
+    )
+    const fan = container.querySelector(
+      '[data-testid="whats-new-audience-fan"]',
+    )
+
+    for (const token of ["lg:col-start-1", "lg:row-start-1"]) {
+      expect(panel?.className, token).toContain(token)
+      expect(fan?.className, token).toContain(token)
+    }
+    expect(panel?.className).toContain("lg:w-1/2")
+    // And the card row keeps its own height inside that cell rather than
+    // stretching to the question's: stretched, each card grew to match and
+    // carried 150px of dead space under four lines of copy.
+    expect(fan?.className).toContain("lg:self-center")
+    expect(panel?.className).toContain("lg:justify-self-end")
+    // Stacked, not overlaid, below that breakpoint.
+    expect(panel?.className).toContain("mt-8")
+  })
+
+  it("splits the travel from the fan transform across two elements", () => {
+    // Two animations cannot both own `translate` on one element, so the cell
+    // carries the travel and the card inside it carries the fan's own
+    // rotate/translate/scale. Collapsing them onto one element is the
+    // refactor that silently kills one of the two movements.
+    const cell = container.querySelector<HTMLElement>(
+      '[data-testid="whats-new-audience-cell"][data-travels="true"]',
+    )
+    const card = cell?.querySelector('[data-testid="whats-new-audience-card"]')
+
+    expect(card).not.toBeNull()
+    expect(card?.className).toContain("watch-scroll-fan")
+    expect(cell?.className).not.toContain("watch-scroll-fan")
+    expect(Number(cell?.style.getPropertyValue("--travel-columns"))).toBe(
+      WHATS_NEW_AUDIENCES.cards.findIndex((c) => c.icon === "handshake"),
+    )
   })
 
   it("addresses field partners in one signed letter, after the audiences", () => {
@@ -1289,13 +1365,74 @@ describe("WatchWhatsNewPage", () => {
       WHATS_NEW_PARTNER_LETTER.feedbackCta,
     )
 
-    // The letter answers the self-identification question above it, so it
-    // has to come after that question, not before.
-    const selfId = container.querySelector('[data-testid="whats-new-self-id"]')
+    // The letter answers the question the estimate stage has just put to
+    // the reader, so it has to come after that stage, not before.
+    const stage = container.querySelector(
+      '[data-testid="whats-new-audience-stage"]',
+    )
     expect(
-      selfId!.compareDocumentPosition(letter!) &
+      stage!.compareDocumentPosition(letter!) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
+  })
+
+  it("shows partners what shipped and what is coming, and links the shipped", () => {
+    const future = container.querySelector(
+      '[data-testid="whats-new-letter-future"]',
+    )
+
+    expect(future).not.toBeNull()
+    expect(future?.textContent).toContain(
+      WHATS_NEW_PARTNER_LETTER.future.loyalty,
+    )
+    expect(future?.textContent).toContain(
+      WHATS_NEW_PARTNER_LETTER.future.pledge,
+    )
+
+    for (const item of WHATS_NEW_PARTNER_LETTER.future.shipped) {
+      expect(future?.textContent).toContain(item.text)
+    }
+    for (const item of WHATS_NEW_PARTNER_LETTER.future.coming) {
+      expect(future?.textContent).toContain(item)
+    }
+
+    // Shipped and coming are LABELLED as two lists. The credibility of the
+    // whole passage is the reader being able to tell which is which, so a
+    // future edit that merges them into one list has to fail here.
+    expect(future?.textContent).toContain(
+      WHATS_NEW_PARTNER_LETTER.future.shippedLead,
+    )
+    expect(future?.textContent).toContain(
+      WHATS_NEW_PARTNER_LETTER.future.comingLead,
+    )
+    expect(future?.querySelectorAll("ul")).toHaveLength(2)
+  })
+
+  it("points the shipped links at real in-app routes, basePath and all", () => {
+    // Hrefs come from the route builders in `src/lib/routes.ts`, never typed
+    // by hand: the app has a `/watch` basePath, so a literal "/languages"
+    // here would send a reader out of the app to the site root. `next/link`
+    // adds the prefix, which is why these assert the builder's OUTPUT rather
+    // than the final browser URL.
+    const links = [
+      ...container.querySelectorAll<HTMLAnchorElement>(
+        '[data-testid="whats-new-letter-future-link"]',
+      ),
+    ]
+    const linked = WHATS_NEW_PARTNER_LETTER.future.shipped.filter(
+      (item) => "link" in item && item.link,
+    )
+
+    expect(links).toHaveLength(linked.length)
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+      "/languages",
+      // The reader's OWN language, not a hard-coded English: the page is
+      // rendered here with `languageSlug="english"`.
+      "/english.html/videos",
+    ])
+    for (const link of links) {
+      expect(link.textContent?.trim().length).toBeGreaterThan(0)
+    }
   })
 
   it("makes the share of visitors unskimmable, and quotes one number", () => {
@@ -1353,6 +1490,57 @@ describe("WatchWhatsNewPage", () => {
     // deleting it should still fail here.
     expect(container.querySelector('section[id="partners"]')).not.toBeNull()
     expect(container.querySelector('nav[aria-label="On this page"]')).toBeNull()
+  })
+
+  it("sets the arc's conclusion beside the diagram's heading", () => {
+    // It used to trail the era stage, two screens up, where it read as an
+    // orphan under a section that had already let go of the reader. Level
+    // with this heading it is the conclusion of the arc the diagram draws.
+    const closing = container.querySelector(
+      '[data-testid="whats-new-lede-closing"]',
+    )
+    const aside = container.querySelector(
+      '[data-testid="whats-new-format-aside"]',
+    )
+    const diagram = container.querySelector(
+      '[data-testid="whats-new-format-diagram"]',
+    )
+
+    expect(closing?.textContent).toBe(WHATS_NEW_LEDE.closing)
+    expect(aside?.contains(closing!)).toBe(true)
+    expect(diagram?.contains(aside!)).toBe(true)
+
+    // Two columns from `lg` up, aligned on their last lines.
+    const row = aside?.parentElement
+    expect(row?.className).toContain("lg:grid-cols-2")
+    expect(row?.className).toContain("items-end")
+    expect(row?.querySelector("#whats-new-formats-heading")).not.toBeNull()
+  })
+
+  it("sets the AI-shift intro beside its own heading on desktop", () => {
+    // Stacked, that heading runs to three lines of display type and the
+    // intro started most of a screen below it — the section opened on a
+    // wall of large text with its explanation out of sight.
+    const intro = container.querySelector(
+      '[data-testid="whats-new-assistants-intro"]',
+    )
+    const header = intro?.parentElement
+
+    expect(intro?.textContent).toContain(WHATS_NEW_ASSISTANTS.intro[0])
+    expect(header?.tagName).toBe("HEADER")
+    expect(header?.className).toContain("lg:grid-cols-2")
+    expect(header?.className).toContain("items-end")
+    expect(
+      header?.querySelector("#whats-new-assistants-heading"),
+    ).not.toBeNull()
+
+    // Heading first in the DOM, so the single-column layout below `lg`
+    // still reads heading-then-intro.
+    const heading = container.querySelector("#whats-new-assistants-heading")
+    expect(
+      heading!.compareDocumentPosition(intro!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
   })
 
   it("draws the whole delivery arc as one diagram, reel to assistant", () => {
@@ -1635,6 +1823,58 @@ describe("WatchWhatsNewPage", () => {
     }
   })
 
+  it("puts the tell-us block beside the questions, not three sections earlier", () => {
+    // It used to be a full-width band of its own, above the cork board —
+    // which meant a reader whose question was not answered had already
+    // scrolled past the only way to say so. As the FAQ's sidebar it is
+    // beside the answers and sticks while they scroll.
+    const faq = container.querySelector('[data-testid="whats-new-faq"]')
+    const aside = container.querySelector('[data-testid="whats-new-faq-aside"]')
+    const closing = container.querySelector('[data-testid="whats-new-closing"]')
+
+    expect(aside?.tagName).toBe("ASIDE")
+    expect(faq?.contains(aside!)).toBe(true)
+    expect(aside?.contains(closing!)).toBe(true)
+
+    // It is a labelled region, not a loose card, and it carries the ask.
+    expect(closing?.getAttribute("aria-labelledby")).toBe(
+      "whats-new-closing-heading",
+    )
+    expect(
+      container.querySelector("#whats-new-closing-heading")?.textContent,
+    ).toBe(WHATS_NEW_CLOSING.heading)
+    expect(closing?.querySelector("button")?.textContent).toContain(
+      WHATS_NEW_HERO.feedbackCta,
+    )
+
+    // Sticky, so it stays reachable down the whole list.
+    expect(aside?.className).toMatch(/\blg:sticky\b/)
+
+    // After the questions in the DOM: the ask is what you do once the
+    // answers have not helped, and that is the order a narrow viewport
+    // stacks them in.
+    const lastItem = [
+      ...container.querySelectorAll('[data-testid="whats-new-faq-item"]'),
+    ].at(-1)
+    expect(
+      lastItem!.compareDocumentPosition(aside!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it("no longer ends the dark run on its own tell-us band", () => {
+    // Anti-vacuous companion: moving the block but leaving the old
+    // full-width band in place would pass every assertion above and print
+    // the same ask twice.
+    const headings = container.querySelectorAll("#whats-new-closing-heading")
+    expect(headings).toHaveLength(1)
+
+    const closings = container.querySelectorAll(
+      '[data-testid="whats-new-closing"]',
+    )
+    expect(closings).toHaveLength(1)
+  })
+
   it("publishes the FAQ as FAQPage structured data", () => {
     // This page's own argument is that discovery is moving to search and
     // assistants. Its answers should be legible to both, not only to a
@@ -1668,17 +1908,22 @@ describe("WatchWhatsNewPage", () => {
     expect(container.querySelector('nav[aria-label="On this page"]')).toBeNull()
   })
 
-  it("offers the language switcher at the top and the bottom of the page", () => {
+  it("offers the language switcher once, in the hero", () => {
+    // It used to be repeated in the closing band. Removed on request: a
+    // reader who cannot read this page needs the way out BEFORE spending
+    // the scroll, and the hero is where they are when they need it.
     const switchers = container.querySelectorAll(
       '[data-testid="whats-new-language-switcher"]',
     )
 
-    // The page is long and English-only; a non-English reader must not have
-    // to scroll to the end to find a way out, nor back to the top.
-    expect(switchers).toHaveLength(2)
-    for (const switcher of switchers) {
-      expect(switcher.textContent).toContain(WHATS_NEW_LANGUAGE_SWITCHER.label)
-    }
+    expect(switchers).toHaveLength(1)
+    expect(switchers[0].textContent).toContain(
+      WHATS_NEW_LANGUAGE_SWITCHER.label,
+    )
+    expect(
+      switchers[0].closest("section")?.querySelector("h1"),
+      "the one switcher belongs to the hero",
+    ).not.toBeNull()
   })
 
   it("aligns the hero row on its bottom edge, not its middle", () => {
@@ -1702,18 +1947,16 @@ describe("WatchWhatsNewPage", () => {
     ).toBe(true)
   })
 
-  it("asks for feedback in solid brand fill beside each switcher", () => {
-    // The two buttons that sit next to a language switcher are the page's
-    // primary ask and are filled; the one in the partner letter stays
-    // outlined, because there it is a footnote rather than the point.
-    // Counted across the WHOLE page, not filtered by the hero's label
-    // first: the partner letter's button carries different copy, so a
-    // label-filtered count cannot see it gaining the fill.
-    // Scanned across every BUTTON on the page rather than filtered by the
-    // hero's label first: the partner letter's button carries different copy,
-    // so a label-filtered count could not see it gaining the fill. Scoped to
-    // buttons because the footer's "Give Now" link wears the same brand red —
-    // it is where this fill was taken from.
+  it("asks for feedback in solid brand fill, everywhere it asks", () => {
+    // Every feedback button on the page wears the brand fill now: the hero's,
+    // the FAQ sidebar's, and the partner letter's. The letter's was outlined
+    // on the theory that its ask is a footnote — it is not, so it matches.
+    //
+    // Scanned across every BUTTON rather than filtered by the hero's label
+    // first: the letter's button carries different copy, so a label-filtered
+    // count could not see it losing the fill. Scoped to buttons because the
+    // footer's "Give Now" link wears the same brand red — it is where this
+    // fill was taken from.
     //
     // Filtered in JS, not by selector: the class contains brackets, which a
     // `[class*=...]` selector cannot carry.
@@ -1727,19 +1970,20 @@ describe("WatchWhatsNewPage", () => {
     )
 
     expect(heroLabelled.length).toBeGreaterThanOrEqual(2)
-    expect(filled).toHaveLength(2)
+    expect(filled).toHaveLength(3)
     // Anti-vacuous: filled means filled, not merely outlined-and-hovered.
     for (const button of filled) {
       expect(button.className).not.toContain("bg-white/5")
     }
   })
 
-  it("passes every supplied language into both switchers", () => {
+  it("passes every supplied language into the switcher", () => {
     const combos = [
       ...container.querySelectorAll('[data-testid="language-combobox-mock"]'),
     ]
 
-    expect(combos).toHaveLength(2)
+    // One, since the closing band's repeat was removed.
+    expect(combos).toHaveLength(1)
     for (const combo of combos) {
       expect(combo.getAttribute("data-option-slugs")).toBe(
         LANGUAGES.map((language) => language.slug).join(","),
@@ -1779,6 +2023,112 @@ describe("WatchWhatsNewPage", () => {
     expect(opens).toHaveBeenCalledTimes(2)
   })
 
+  /**
+   * The page's order is the load-bearing decision, not a layout preference.
+   * It is written for a reader who arrives irritated — something they relied
+   * on moved or broke — and who will not scroll six screens through a
+   * history of film distribution, a traffic chart and three academic
+   * citations to reach the first sentence that acknowledges them.
+   *
+   * Every assertion here is about DOCUMENT ORDER, because that is the thing
+   * a well-meaning edit silently reverts: moving the history stage back to
+   * the top reads as restoring a strong opening and costs nothing that any
+   * other test in this file can see.
+   */
+  /**
+   * The page's order is a load-bearing decision, not a layout preference.
+   *
+   * It once opened on the history arc: a reader who came because their work
+   * broke got film-distribution history, a traffic chart and three academic
+   * citations before a word addressed to them. The arc and the AI argument
+   * now sit AFTER the letter, so a partner who stops reading at the letter
+   * has already had the reason and the commitment, and everything below is
+   * the longer case for whoever wants it.
+   *
+   * Asserted as DOCUMENT ORDER, because that is what a well-meaning edit
+   * silently reverts: moving the history stage back to the top reads as
+   * restoring a strong opening and costs nothing any other test can see.
+   */
+  describe("the order it answers things in", () => {
+    function precedes(first: Element | null, second: Element | null) {
+      expect(first, "first element missing").not.toBeNull()
+      expect(second, "second element missing").not.toBeNull()
+
+      return Boolean(
+        first!.compareDocumentPosition(second!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      )
+    }
+
+    it("opens on the history arc, then the audiences, then the letter", () => {
+      // The arc is the page's opening: second section, straight after the
+      // hero. It has been on both sides of the letter — it was moved below
+      // it once, on the argument that an irritated partner should hear the
+      // acknowledgement first, and then back up here because the arc frames
+      // everything after it. Whichever way it goes, the ORDER is the
+      // decision, so it is asserted rather than left to the file's layout.
+      const eras = container.querySelector('[data-testid="whats-new-eras"]')
+      const letter = container.querySelector('[data-testid="whats-new-letter"]')
+
+      expect(
+        precedes(eras, container.querySelector('section[id="why"]')),
+        "the arc opens the page, ahead of the audiences",
+      ).toBe(true)
+      expect(
+        precedes(eras, letter),
+        "and ahead of the letter that argues from it",
+      ).toBe(true)
+
+      // The rest of the long case still follows the letter.
+      for (const later of [
+        'section[id="formats"]',
+        'section[id="assistants"]',
+      ]) {
+        expect(
+          precedes(letter, container.querySelector(later)),
+          `${later} must come after the partner letter`,
+        ).toBe(true)
+      }
+    })
+
+    it("puts the audiences and the letter next, in that order", () => {
+      // The history arc's own section carries no id, so the id list starts
+      // at the audiences. What matters is that the two sections written for
+      // this reader stay adjacent and stay ahead of the deeper case.
+      const sections = [
+        ...container.querySelectorAll<HTMLElement>("section[id]"),
+      ].map((section) => section.id)
+
+      expect(sections[0]).toBe("why")
+      expect(sections[1]).toBe("partners")
+      expect(
+        precedes(
+          container.querySelector('section[id="why"]'),
+          container.querySelector('[data-testid="whats-new-letter"]'),
+        ),
+        "the letter answers the question the estimate stage just asked",
+      ).toBe(true)
+    })
+  })
+
+  it("dates the page where the reader decides whether to trust it", () => {
+    // A page titled "what's new" with no date reads stale on its second
+    // day, and the leadership reader checks the date before the copy.
+    const stamp = container.querySelector(
+      '[data-testid="whats-new-last-updated"]',
+    )
+
+    expect(stamp).not.toBeNull()
+    expect(stamp?.closest("section")?.querySelector("h1")).not.toBeNull()
+    expect(stamp?.textContent).toContain(WHATS_NEW_HERO.lastUpdated)
+
+    // Machine-readable as well as human-readable, and pinned to the same
+    // field the prose comes from rather than a second hand-typed date.
+    const time = stamp?.querySelector("time")
+    expect(time?.getAttribute("datetime")).toBe(WHATS_NEW_HERO.lastUpdatedIso)
+    expect(time?.textContent).toBe(WHATS_NEW_HERO.lastUpdated)
+  })
+
   describe("the AI-assistant section", () => {
     it("gives every on-this-page entry a section that actually exists", () => {
       // The on-page nav that rendered these entries is gone, so
@@ -1790,15 +2140,19 @@ describe("WatchWhatsNewPage", () => {
       }
     })
 
-    it("renders one card per reason", () => {
+    it("makes the case with the transcript, not with reason cards", () => {
+      // The "why this traffic matters" heading and its three reason cards
+      // were removed: the phone shows the moment they described in prose,
+      // and showing it once beat asserting it three times beside it.
       expect(
         container.querySelectorAll(
           '[data-testid="whats-new-assistant-reason"]',
         ),
-      ).toHaveLength(WHATS_NEW_ASSISTANTS.reasons.length)
+      ).toHaveLength(0)
+      expect(textContent()).not.toContain("Why this traffic matters")
     })
 
-    it("illustrates the reasons with a phone showing the whole exchange", () => {
+    it("shows the whole exchange on the phone", () => {
       const phone = container.querySelector(
         '[data-testid="whats-new-assistant-phone"]',
       )
@@ -1969,6 +2323,32 @@ describe("WatchWhatsNewPage", () => {
         expect(text).toContain(source.finding)
         expect(text).toContain(source.quoteNote)
       }
+    })
+
+    it("folds the studies away by default, without hiding them", () => {
+      // Three studies with quotes, authors, publications and dates are the
+      // right depth for a reader evaluating whether we know what we are
+      // doing, and the wrong depth for the partner who came to find out why
+      // their language picker moved. Collapsed, `researchIntro` above still
+      // carries the claim in plain language.
+      const research = container.querySelector<HTMLDetailsElement>(
+        '[data-testid="whats-new-research"]',
+      )
+
+      expect(research?.tagName).toBe("DETAILS")
+      expect(research?.hasAttribute("open"), "closed by default").toBe(false)
+      expect(research?.querySelector("summary")?.textContent).toContain(
+        WHATS_NEW_ASSISTANTS.sourcesToggleLabel,
+      )
+
+      // Folded away, never dropped: every source stays inside the
+      // disclosure, so it is still crawled, still found by in-page search,
+      // and still checkable by the test below.
+      expect(
+        research?.querySelectorAll(
+          '[data-testid="whats-new-assistant-source"]',
+        ),
+      ).toHaveLength(WHATS_NEW_ASSISTANTS.sources.length)
     })
 
     it("makes every study checkable — one off-site link per source", () => {

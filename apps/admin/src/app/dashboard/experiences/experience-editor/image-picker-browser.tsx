@@ -1,6 +1,6 @@
 "use client"
 
-import { ImageIcon, Search, UploadCloud, X } from "lucide-react"
+import { ImageIcon, LoaderCircle, Search, UploadCloud, X } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { cx } from "@/components/admin-ui"
 import type {
@@ -19,11 +19,15 @@ type ImagePickerBrowserProps = {
   selectedAssetId: string | null
   canClearImage: boolean
   canUpload: boolean
+  loading?: boolean
+  loadError?: boolean
   uploadAction: (formData: FormData) => Promise<UploadActionResult>
+  onUploadSuccess?: () => void | Promise<void>
   onQueryChange: (query: string) => void
   onSelectFolder: (folderId: string | null) => void
   onSelectImage: (asset: MediaLibraryBrowserImage) => void
   onClearImage: () => void
+  onRetryLoad?: () => void
   onClose: () => void
 }
 
@@ -35,11 +39,15 @@ export function ImagePickerBrowser({
   selectedAssetId,
   canClearImage,
   canUpload,
+  loading = false,
+  loadError = false,
   uploadAction,
+  onUploadSuccess,
   onQueryChange,
   onSelectFolder,
   onSelectImage,
   onClearImage,
+  onRetryLoad,
   onClose,
 }: ImagePickerBrowserProps) {
   const [draftSelectedAssetId, setDraftSelectedAssetId] = useState<
@@ -132,6 +140,13 @@ export function ImagePickerBrowser({
   const draftSelectedAsset =
     mediaLibrary.images.find((asset) => asset.id === draftSelectedAssetId) ??
     null
+  const libraryStatusAnnouncement = loading
+    ? "Loading image library."
+    : loadError
+      ? "Image library failed to load."
+      : draftSelectedAsset
+        ? `${draftSelectedAsset.displayName} selected. Image library loaded.`
+        : "No image selected. Image library loaded."
 
   return (
     <div
@@ -211,9 +226,48 @@ export function ImagePickerBrowser({
                 selectedFolderLabel={selectedFolderLabel}
                 acceptedMimePrefix="image/"
                 contentClassName="h-full min-h-0"
+                onUploadSuccess={onUploadSuccess}
               >
                 <div className="h-full overflow-x-hidden overflow-y-auto [scrollbar-color:rgba(255,255,255,0.12)_transparent] [scrollbar-width:thin]">
-                  {visibleImages.length === 0 ? (
+                  {loading ? (
+                    <div
+                      className="flex min-h-[320px] items-center justify-center px-6 py-10"
+                      role="status"
+                      aria-live="polite"
+                    >
+                      <div className="grid justify-items-center gap-3 text-center text-[13px] text-[var(--color-text-muted)]">
+                        <LoaderCircle
+                          className="h-5 w-5 animate-spin"
+                          strokeWidth={1.5}
+                        />
+                        Loading image library…
+                      </div>
+                    </div>
+                  ) : loadError ? (
+                    <div
+                      className="flex min-h-[320px] items-center justify-center px-6 py-10"
+                      role="alert"
+                    >
+                      <div className="grid max-w-sm justify-items-center gap-3 text-center">
+                        <div className="text-[14px] font-medium text-[var(--color-text-primary)]">
+                          Unable to load the image library
+                        </div>
+                        <div className="text-[13px] leading-6 text-[var(--color-text-muted)]">
+                          Existing canvas images are still available. Retry to
+                          browse all image assets.
+                        </div>
+                        {onRetryLoad ? (
+                          <button
+                            type="button"
+                            onClick={onRetryLoad}
+                            className="inline-flex h-9 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface)]"
+                          >
+                            Retry
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : visibleImages.length === 0 ? (
                     <ImagePickerEmptyState
                       title={emptyState.title}
                       description={emptyState.description}
@@ -279,9 +333,7 @@ export function ImagePickerBrowser({
               : "Select an image to attach."}
           </div>
           <span className="sr-only" aria-live="polite">
-            {draftSelectedAsset
-              ? `${draftSelectedAsset.displayName} selected.`
-              : "No image selected."}
+            {libraryStatusAnnouncement}
           </span>
           <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:items-center">
             {canClearImage ? (

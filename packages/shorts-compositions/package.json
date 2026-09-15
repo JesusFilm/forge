@@ -10,7 +10,12 @@
     "./devotional/styles": "./src/devotional/styles.ts",
     "./registry": "./src/templates/registry.ts",
     "./entry": "./src/entry.ts",
-    "./version": "./src/version.ts"
+    "./version": "./src/version.ts",
+    "./studio-proof/manifest": "./src/studio-proof/manifest.ts",
+    "./studio-proof/example": "./src/studio-proof/example.ts",
+    "./studio-proof/entry": "./src/studio-proof/entry.tsx",
+    "./studio/Composition": "./src/studio/Composition.tsx",
+    "./studio/entry": "./src/studio/entry.tsx"
   },
   "scripts": {
     "lint": "eslint .",
@@ -20,8 +25,12 @@
   "dependencies": {
     "@remotion/captions": "4.0.475",
     "@remotion/media-utils": "4.0.475",
+    "@remotion/player": "4.0.475",
+    "hls.js": "1.6.16",
     "remotion": "4.0.475",
-    "zod": "^4.3.6"
+    "sucrase": "3.35.1",
+    "zod": "^4.3.6",
+    "@forge/studio-contracts": "workspace:*"
   },
   "peerDependencies": {
     "react": "^19",

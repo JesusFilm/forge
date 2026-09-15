@@ -4,8 +4,7 @@ import Image from "next/image"
 import { WHATS_NEW_ASSISTANTS } from "@/components/whats-new/whats-new-content"
 
 /**
- * Phone showing the real ChatGPT exchange the three reason cards beside it
- * are describing.
+ * Phone showing the real ChatGPT exchange this section is about.
  *
  * Drawn in CSS rather than shipped as a screenshot: a capture would be
  * unreadable at this width, would need re-taking every time ChatGPT
@@ -206,17 +205,23 @@ export function WhatsNewAssistantPhone() {
               </svg>
 
               <span className="ml-auto flex items-center gap-4">
-                {/* OpenAI knot mark, simplified to a single stroked path at
-                  this size — the full six-lobe outline turns to mud below
-                  about 24px. */}
-                <svg
+                {/* The real mark, not a redrawn one — the ChatGPT desktop
+                  app's own icon, lifted from its install on this machine
+                  (`/usr/lib/chatgpt/resources/icon-chatgpt.png`, trimmed to
+                  its squircle and resized). It replaced a hand-simplified
+                  knot path that was legible but wrong in the details.
+
+                  The icon's near-white squircle disappears against the
+                  app's own white chrome at this size, which is exactly what
+                  the real header looks like. */}
+                <Image
+                  src="/watch/images/whats-new/chatgpt-app-icon.png"
+                  alt=""
                   aria-hidden
-                  viewBox="0 0 24 24"
-                  className="size-[1.15rem] text-[#111111]"
-                  fill="currentColor"
-                >
-                  <path d="M12 2.6a4 4 0 0 1 3.6 2.2 4 4 0 0 1 3.7 5.9 4 4 0 0 1-1.3 5.9 4 4 0 0 1-4.4 4.3A4 4 0 0 1 12 21.4a4 4 0 0 1-3.6-2.2 4 4 0 0 1-3.7-5.9 4 4 0 0 1 1.3-5.9A4 4 0 0 1 10.4 3 4 4 0 0 1 12 2.6Zm0 3.1L8.3 7.9v4.5l3.7 2.2 3.7-2.2V7.9L12 5.7Z" />
-                </svg>
+                  width={64}
+                  height={64}
+                  className="size-[1.15rem]"
+                />
                 <svg
                   aria-hidden
                   viewBox="0 0 24 24"
@@ -600,19 +605,22 @@ export function WhatsNewAssistantPhone() {
                     <div className="relative aspect-square">
                       <div
                         data-testid="whats-new-phone-app-icon"
-                        className="watch-chat-icon watch-scroll-chat-icon absolute inset-0 grid place-items-center rounded-[22%] bg-white shadow-[0_0.35rem_0.9rem_rgba(0,0,0,0.45)]"
+                        /* No `bg-white` and no glyph inside: the real icon
+                           carries its own squircle, so the tile is just the
+                           box that clips and shadows it. */
+                        className="watch-chat-icon watch-scroll-chat-icon absolute inset-0 overflow-hidden rounded-[22%] shadow-[0_0.35rem_0.9rem_rgba(0,0,0,0.45)]"
                         style={
                           { "--step-range": CHAT_STEPS.tap } as CSSProperties
                         }
                       >
-                        <svg
+                        <Image
+                          src="/watch/images/whats-new/chatgpt-app-icon.png"
+                          alt=""
                           aria-hidden
-                          viewBox="0 0 24 24"
-                          className="size-[68%] text-[#111111]"
-                          fill="currentColor"
-                        >
-                          <path d="M12 2.6a4 4 0 0 1 3.6 2.2 4 4 0 0 1 3.7 5.9 4 4 0 0 1-1.3 5.9 4 4 0 0 1-4.4 4.3A4 4 0 0 1 12 21.4a4 4 0 0 1-3.6-2.2 4 4 0 0 1-3.7-5.9 4 4 0 0 1 1.3-5.9A4 4 0 0 1 10.4 3 4 4 0 0 1 12 2.6Zm0 3.1L8.3 7.9v4.5l3.7 2.2 3.7-2.2V7.9L12 5.7Z" />
-                        </svg>
+                          width={256}
+                          height={256}
+                          className="size-full object-cover"
+                        />
                       </div>
                       {/* The pointer, INSIDE the icon it is aiming for. Its
                         travel is a translate away from centre, so it lands

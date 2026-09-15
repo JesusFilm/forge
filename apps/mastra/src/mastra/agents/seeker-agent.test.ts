@@ -1,10 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 // Partial env mock (feat-237): overrides ONLY `env` and the seeker gateway
-// resolver; everything else (getMastraDatabaseUrl, resolveAiChatMemoryBackend,
-// ...) comes from the real module via importOriginal. A full-module mock would
-// crash this file at import — memory.ts calls those functions from config/env
-// at module load.
+// resolver; everything else comes from the real module via importOriginal. A
+// full-module mock would crash this file at import — memory modules call config
+// helpers at module load.
 const mockEnv = vi.hoisted(() => ({
   env: {
     AI_GATEWAY_CHAT_API_KEY: undefined as string | undefined,

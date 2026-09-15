@@ -527,7 +527,8 @@
     "previousVideoPreview": "Iepriekšējā video priekšskatījums",
     "nextVideoPreview": "Nākamā video priekšskatījums",
     "mediaCollection": "Mediju kolekcija",
-    "scrollToVideo": "Ritināt līdz {title} video"
+    "scrollToVideo": "Ritināt līdz {title} video",
+    "forYou": "Jums"
   },
   "WatchFooter": {
     "home": "Jesus Film Project sākumlapa",
@@ -597,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -713,9 +714,9 @@
   "WatchUnavailableLanguage": {
     "metadataTitle": "Versija šajā valodā nav pieejama",
     "eyebrow": "Versija šajā valodā nav pieejama",
-    "title": "<contentTitle>{title}</contentTitle> nav pieejams valodā „<languageName>{language}</languageName>“",
+    "title": "<contentTitle>{title}</contentTitle>: nav versijas <languageName>{language}</languageName> valodā",
     "actionsLabel": "Pieejamās skatīšanās iespējas",
-    "browseInLanguage": "Pārlūkot videoklipus valodā „{language}“",
+    "browseInLanguage": "Visi video {language} valodā",
     "backToSearch": "Atpakaļ uz meklēšanu",
     "audioVersionsTitle": "Citas audio versijas",
     "audioVersionsDescription": "Izvēlieties audio valodu, lai turpinātu skatīties šo videoklipu.",

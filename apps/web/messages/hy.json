@@ -527,7 +527,8 @@
     "previousVideoPreview": "Նախորդ տեսանյութի նախադիտում",
     "nextVideoPreview": "Հաջորդ տեսանյութի նախադիտում",
     "mediaCollection": "Մեդիա հավաքածու",
-    "scrollToVideo": "Տեղափոխվել դեպի {title} տեսանյութը"
+    "scrollToVideo": "Տեղափոխվել դեպի {title} տեսանյութը",
+    "forYou": "Ձեզ համար"
   },
   "WatchFooter": {
     "home": "Jesus Film Project գլխավոր էջ",
@@ -597,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",

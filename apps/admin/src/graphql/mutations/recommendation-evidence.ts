@@ -1,5 +1,6 @@
 /** @classification public-shape */
 import { builder } from "@/graphql/builder"
+import { resolveRecommendationSessionIdentity } from "@/services/recommendations/viewer-identity.service"
 import { prisma } from "@/db/client"
 import {
   createRecommendationEvidenceService,
@@ -16,6 +17,7 @@ import {
   createRecommendationContentActionService,
   type RecommendationContentActionReceipt,
 } from "@/services/recommendations/content-action.service"
+import { PlaybackContextDiscoverySourceSchema } from "@/services/recommendations/contracts"
 
 type SelectionReceipt = {
   status: "accepted" | "replay" | "conflict"
@@ -29,6 +31,11 @@ type EpisodeClaim = {
   capability: string
   activeUntil: string
   hardUntil: string
+}
+
+type PlaybackContextReceipt = {
+  claimNonce: string
+  contextVersion: string
 }
 
 const RecommendationEvidenceEventInput = builder.inputType(
@@ -114,6 +121,16 @@ EpisodeClaimRef.implement({
   }),
 })
 
+const PlaybackContextReceiptRef = builder.objectRef<PlaybackContextReceipt>(
+  "WatchPlaybackContextReceipt",
+)
+PlaybackContextReceiptRef.implement({
+  fields: (t) => ({
+    claimNonce: t.exposeString("claimNonce", { nullable: false }),
+    contextVersion: t.exposeString("contextVersion", { nullable: false }),
+  }),
+})
+
 function evidenceKind(kind: string): "render" | "impression" {
   if (kind !== "render" && kind !== "impression") {
     throw new RecommendationInputError(
@@ -137,6 +154,38 @@ function evidencePayload(payload: unknown): Record<string, unknown> {
 }
 
 builder.mutationFields((t) => ({
+  issueWatchPlaybackContext: t.field({
+    type: PlaybackContextReceiptRef,
+    nullable: false,
+    authScopes: { public: true },
+    args: {
+      sessionDigest: t.arg.string({ required: false }),
+      viewerToken: t.arg.string({ required: false }),
+      sessionToken: t.arg.string({ required: false }),
+      mediaId: t.arg.id({ required: true }),
+      discoverySource: t.arg.string({ required: true }),
+      provenance: t.arg({ type: "JSON", required: true }),
+    },
+    resolve: (_root, args, ctx) =>
+      resolveRecommendationOperation(async () =>
+        createRecommendationEpisodeService(prisma).issueContext({
+          ...(await resolveRecommendationSessionIdentity(
+            prisma,
+            ctx.user,
+            args,
+          )),
+          mediaId: String(args.mediaId),
+          discoverySource: PlaybackContextDiscoverySourceSchema.parse(
+            args.discoverySource,
+          ),
+          provenance: evidencePayload(args.provenance) as Record<
+            string,
+            string
+          >,
+        }),
+      ),
+  }),
+
   recordSemanticRecommendationEvidence: t.field({
     type: [EvidenceReceiptRef],
     nullable: false,
@@ -146,21 +195,26 @@ builder.mutationFields((t) => ({
       capability: t.arg.string({ required: true }),
       requestId: t.arg.id({ required: true }),
       itemId: t.arg.id({ required: true }),
-      sessionDigest: t.arg.string({ required: true }),
+      sessionDigest: t.arg.string({ required: false }),
+      viewerToken: t.arg.string({ required: false }),
+      sessionToken: t.arg.string({ required: false }),
       events: t.arg({
         type: [RecommendationEvidenceEventInput],
         required: true,
       }),
     },
     resolve: (_root, args, ctx) =>
-      resolveRecommendationOperation(() =>
+      resolveRecommendationOperation(async () =>
         createRecommendationEvidenceService(prisma).record({
-          caller: ctx.user,
+          ...(await resolveRecommendationSessionIdentity(
+            prisma,
+            ctx.user,
+            args,
+          )),
           contractVersion: args.contractVersion,
           capability: args.capability,
           requestId: String(args.requestId),
           itemId: String(args.itemId),
-          sessionDigest: args.sessionDigest,
           events: args.events.map((event) => ({
             eventId: event.eventId,
             kind: evidenceKind(event.kind),
@@ -180,23 +234,30 @@ builder.mutationFields((t) => ({
       capability: t.arg.string({ required: true }),
       requestId: t.arg.id({ required: true }),
       itemId: t.arg.id({ required: true }),
-      sessionDigest: t.arg.string({ required: true }),
+      sessionDigest: t.arg.string({ required: false }),
+      viewerToken: t.arg.string({ required: false }),
+      sessionToken: t.arg.string({ required: false }),
       eventId: t.arg.string({ required: true }),
       occurredAt: t.arg.string({ required: true }),
       tabDigest: t.arg.string({ required: false }),
+      claimNonce: t.arg.string({ required: true }),
     },
     resolve: (_root, args, ctx) =>
-      resolveRecommendationOperation(() =>
+      resolveRecommendationOperation(async () =>
         createRecommendationEpisodeService(prisma).select({
-          caller: ctx.user,
+          ...(await resolveRecommendationSessionIdentity(
+            prisma,
+            ctx.user,
+            args,
+          )),
           contractVersion: args.contractVersion,
           capability: args.capability,
           requestId: String(args.requestId),
           itemId: String(args.itemId),
-          sessionDigest: args.sessionDigest,
           eventId: args.eventId,
           occurredAt: args.occurredAt,
           tabDigest: args.tabDigest,
+          claimNonce: args.claimNonce,
         }),
       ),
   }),
@@ -206,15 +267,20 @@ builder.mutationFields((t) => ({
     nullable: false,
     authScopes: { public: true },
     args: {
-      sessionDigest: t.arg.string({ required: true }),
+      sessionDigest: t.arg.string({ required: false }),
+      viewerToken: t.arg.string({ required: false }),
+      sessionToken: t.arg.string({ required: false }),
       claimNonce: t.arg.string({ required: true }),
       mediaId: t.arg.id({ required: true }),
     },
     resolve: (_root, args, ctx) =>
-      resolveRecommendationOperation(() =>
+      resolveRecommendationOperation(async () =>
         createRecommendationEpisodeService(prisma).claim({
-          caller: ctx.user,
-          sessionDigest: args.sessionDigest,
+          ...(await resolveRecommendationSessionIdentity(
+            prisma,
+            ctx.user,
+            args,
+          )),
           claimNonce: args.claimNonce,
           mediaId: String(args.mediaId),
         }),
@@ -229,7 +295,9 @@ builder.mutationFields((t) => ({
       contractVersion: t.arg.string({ required: true }),
       capability: t.arg.string({ required: true }),
       episodeId: t.arg.id({ required: true }),
-      sessionDigest: t.arg.string({ required: true }),
+      sessionDigest: t.arg.string({ required: false }),
+      viewerToken: t.arg.string({ required: false }),
+      sessionToken: t.arg.string({ required: false }),
       mediaId: t.arg.id({ required: true }),
       events: t.arg({
         type: [RecommendationPlaybackEventInput],
@@ -237,13 +305,16 @@ builder.mutationFields((t) => ({
       }),
     },
     resolve: (_root, args, ctx) =>
-      resolveRecommendationOperation(() =>
+      resolveRecommendationOperation(async () =>
         createRecommendationPlaybackService(prisma).record({
-          caller: ctx.user,
+          ...(await resolveRecommendationSessionIdentity(
+            prisma,
+            ctx.user,
+            args,
+          )),
           contractVersion: args.contractVersion,
           capability: args.capability,
           episodeId: String(args.episodeId),
-          sessionDigest: args.sessionDigest,
           mediaId: String(args.mediaId),
           events: args.events,
         }),
@@ -256,7 +327,9 @@ builder.mutationFields((t) => ({
     authScopes: { public: true },
     args: {
       contractVersion: t.arg.string({ required: true }),
-      sessionDigest: t.arg.string({ required: true }),
+      sessionDigest: t.arg.string({ required: false }),
+      viewerToken: t.arg.string({ required: false }),
+      sessionToken: t.arg.string({ required: false }),
       eventId: t.arg.string({ required: true }),
       occurredAt: t.arg.string({ required: true }),
       mediaId: t.arg.id({ required: true }),
@@ -264,11 +337,14 @@ builder.mutationFields((t) => ({
       actionDetail: t.arg.string({ required: false }),
     },
     resolve: (_root, args, ctx) =>
-      resolveRecommendationOperation(() =>
+      resolveRecommendationOperation(async () =>
         createRecommendationContentActionService(prisma).record({
-          caller: ctx.user,
+          ...(await resolveRecommendationSessionIdentity(
+            prisma,
+            ctx.user,
+            args,
+          )),
           contractVersion: args.contractVersion,
-          sessionDigest: args.sessionDigest,
           eventId: args.eventId,
           occurredAt: args.occurredAt,
           mediaId: String(args.mediaId),

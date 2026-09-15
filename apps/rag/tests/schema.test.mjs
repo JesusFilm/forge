@@ -13,6 +13,13 @@ const migration = readFileSync(
   ),
   "utf8",
 )
+const promotionIndexMigration = readFileSync(
+  new URL(
+    "../prisma/migrations/20260904000000_add_raw_document_promotion_index/migration.sql",
+    import.meta.url,
+  ),
+  "utf8",
+)
 
 const expectedTables = [
   "sources",
@@ -67,6 +74,15 @@ describe("RAG Prisma schema and initial migration", () => {
       migration.match(/ON DELETE CASCADE ON UPDATE NO ACTION/g),
     ).toHaveLength(4)
     expect(migration).not.toMatch(/\bCONCURRENTLY\b/i)
+  })
+
+  it("indexes the latest-row promotion traversal order", () => {
+    expect(schema).toContain(
+      '@@index([sourceKey, canonicalUrl, fetchedAt(sort: Desc), id(sort: Desc)], map: "raw_documents_promotion_latest_idx")',
+    )
+    expect(promotionIndexMigration).toContain(
+      'CREATE INDEX CONCURRENTLY IF NOT EXISTS "raw_documents_promotion_latest_idx"',
+    )
   })
 
   it("does not invent identities missing from the source schema", () => {

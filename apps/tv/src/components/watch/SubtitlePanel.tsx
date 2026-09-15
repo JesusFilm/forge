@@ -6,16 +6,25 @@ import { Modal, ScrollView, Text, View } from "react-native"
 
 import { useWatchSession } from "../../contexts/WatchSessionProvider"
 import { TVFocusGuideView } from "../TVFocusGuideView"
-import { deriveSubtitlePanelState, isSubtitleRowActive } from "./panelState"
+import {
+  deriveSubtitlePanelState,
+  isSubtitleRowActive,
+  type DetailsDataState,
+} from "./panelState"
+import { PanelLoading } from "./PanelLoading"
 import { WatchOptionRow } from "./WatchOptionRow"
 import { watchMenuStyles } from "./watchMenuStyles"
 
 export function SubtitlePanel({
   visible,
   onClose,
+  dataState,
+  onRetry,
 }: {
   visible: boolean
   onClose: () => void
+  dataState?: DetailsDataState
+  onRetry?: () => void
 }) {
   const {
     activeVariantMediaState,
@@ -23,11 +32,15 @@ export function SubtitlePanel({
     setSubtitleEnabled,
     activeSubtitleSlug,
     setActiveSubtitleSlug,
+    ensureActiveVariantMedia,
   } = useWatchSession()
 
   // Re-derive the discriminated UI state from the session's media struct; the
   // pure mapping in panelState.ts owns the loading/error/loaded precedence.
-  const panelState = deriveSubtitlePanelState(activeVariantMediaState)
+  const panelState = deriveSubtitlePanelState(
+    activeVariantMediaState,
+    dataState,
+  )
 
   return (
     <Modal
@@ -70,14 +83,31 @@ export function SubtitlePanel({
 
             {/* loading: non-focusable status row. */}
             {panelState.kind === "loading" ? (
-              <Text style={watchMenuStyles.status}>Loading…</Text>
+              dataState != null ? (
+                <PanelLoading label="Loading subtitles…" />
+              ) : (
+                <Text style={watchMenuStyles.status}>Loading…</Text>
+              )
             ) : null}
 
             {/* error: non-focusable status row (vs. a misleading empty list). */}
             {panelState.kind === "error" ? (
-              <Text style={watchMenuStyles.status}>
-                Couldn’t load subtitles
-              </Text>
+              <>
+                <Text style={watchMenuStyles.status}>
+                  Couldn’t load subtitles
+                </Text>
+                {dataState != null ? (
+                  <WatchOptionRow
+                    icon="refresh-outline"
+                    label="Try again"
+                    onPress={
+                      dataState === "error"
+                        ? (onRetry ?? ensureActiveVariantMedia)
+                        : ensureActiveVariantMedia
+                    }
+                  />
+                ) : null}
+              </>
             ) : null}
 
             {/* loaded-empty: non-focusable status row. */}

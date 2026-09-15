@@ -9,6 +9,141 @@ import {
 } from "./recommendation-display"
 import { PromotionControls } from "./PromotionControls"
 
+export function ProfileEligibilityReconciliation({
+  overview,
+}: {
+  overview: RecommendationOverviewData
+}) {
+  const reconciliation = overview.profileReconciliation
+  if (!reconciliation) {
+    return (
+      <PageSection
+        title="Profile eligibility reconciliation"
+        meta="UNAVAILABLE / SEMANTIC FALLBACK ACTIVE"
+      >
+        <p className="px-4 py-5 text-[13px] text-[var(--color-text-muted)]">
+          Aggregate reconciliation evidence is unavailable. Profile-derived
+          candidates stay fail-closed and semantic recommendations remain the
+          live fallback.
+        </p>
+      </PageSection>
+    )
+  }
+  const counts = reconciliation.counts
+  const aggregateCount = (value: number | undefined) =>
+    counts ? formatCount(value) : "Suppressed"
+  const tone =
+    reconciliation.state === "healthy"
+      ? "success"
+      : reconciliation.state === "degraded"
+        ? "danger"
+        : "warning"
+  return (
+    <PageSection
+      title="Profile eligibility reconciliation"
+      meta="AGGREGATE ONLY / OBSERVATIONAL / NO REPAIR CONTROLS"
+    >
+      <div className="p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusPill tone={tone}>
+            {displayRecommendationToken(reconciliation.state)}
+          </StatusPill>
+          <StatusPill
+            tone={
+              reconciliation.currentPointerInvariant === "clean"
+                ? "success"
+                : "danger"
+            }
+          >
+            Current-pointer audit {reconciliation.currentPointerInvariant}
+          </StatusPill>
+        </div>
+        <p className="mt-3 max-w-4xl text-[13px] text-[var(--color-text-secondary)]">
+          {profileReconciliationDescription(reconciliation.state)}
+        </p>
+      </div>
+      <div className="grid gap-px border-t border-[var(--color-hairline)] bg-[var(--color-hairline)] sm:grid-cols-2 lg:grid-cols-6">
+        <Definition
+          label="Affected pointers"
+          value={aggregateCount(counts?.affectedPointers)}
+        />
+        <Definition
+          label="Ineligible contributions"
+          value={aggregateCount(counts?.affectedContributions)}
+        />
+        <Definition
+          label="Rebuild backlog"
+          value={aggregateCount(counts?.rebuildBacklog)}
+        />
+        <Definition
+          label="Replacement publications"
+          value={aggregateCount(counts?.replacementPublications)}
+        />
+        <Definition
+          label="Stale / reclaimed runs"
+          value={
+            counts
+              ? `${counts.staleClaims} / ${counts.reclaimedRuns}`
+              : "Suppressed"
+          }
+        />
+        <Definition
+          label="Terminal runs"
+          value={aggregateCount(counts?.terminalRuns)}
+        />
+      </div>
+      <div className="grid gap-4 border-t border-[var(--color-hairline)] p-4 lg:grid-cols-2">
+        <div>
+          <div className="label-text">Serving impact</div>
+          <p className="mt-2 text-[12px] text-[var(--color-text-secondary)]">
+            Profile-source fences {aggregateCount(counts?.servingFences)} ·
+            affected requests {aggregateCount(counts?.affectedRequests)} · clean
+            hybrid requests {aggregateCount(counts?.cleanHybridRequests)}
+          </p>
+          <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
+            Fencing is source-local and does not change the 1.5 second complete
+            service deadline or block Watch navigation and playback.
+          </p>
+        </div>
+        <div>
+          <div className="label-text">Current bounded reasons</div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {reconciliation.reasonCodes.map((reason) => (
+              <StatusPill key={reason.reasonCode} tone="warning">
+                {displayRecommendationToken(reason.reasonCode)} · {reason.count}
+              </StatusPill>
+            ))}
+            {reconciliation.reasonCodes.length === 0 ? (
+              <span className="text-[12px] text-[var(--color-text-muted)]">
+                {reconciliation.suppressed
+                  ? "Reason detail is privacy-suppressed."
+                  : "No current ineligible-lineage reasons."}
+              </span>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </PageSection>
+  )
+}
+
+function profileReconciliationDescription(
+  state: NonNullable<
+    RecommendationOverviewData["profileReconciliation"]
+  >["state"],
+): string {
+  switch (state) {
+    case "healthy":
+      return "All current profile pointers have eligible exact-source lineage; no repair backlog is present."
+    case "repairing":
+      return "Affected pointers or expired claims are being rebuilt by the bounded five-minute reconciliation worker."
+    case "degraded":
+      return "Ineligible lineage or terminal repair work remains. Live requests fence the profile source and continue with semantic delivery."
+    case "suppressed":
+      return "A small reconciliation cohort is present. Counts and reason codes are privacy-suppressed while profile serving remains fail-closed."
+  }
+}
+
 export function ProfileShadowEvaluation({
   overview,
 }: {

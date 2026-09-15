@@ -203,4 +203,25 @@ describe("RecommendationRequestDetailPanel", () => {
       /profileId|sessionId|watchHistory|profileVector|cookieValue/i,
     )
   })
+
+  it("shows a request-scoped lineage fence without exposing profile identity", () => {
+    const base = hybridDetail()
+    const detail: RecommendationRequestDetailData = {
+      ...base,
+      candidateExecution: base.candidateExecution
+        ? {
+            ...base.candidateExecution,
+            fallbackReason: "profile_lineage_ineligible",
+          }
+        : null,
+    }
+    const html = renderToStaticMarkup(
+      <RecommendationRequestDetailPanel detail={detail} />,
+    )
+
+    expect(html).toContain("Fallback: Profile Lineage Ineligible")
+    expect(html).not.toMatch(
+      /profileId|sessionId|watchHistory|profileVector|cookieValue/i,
+    )
+  })
 })

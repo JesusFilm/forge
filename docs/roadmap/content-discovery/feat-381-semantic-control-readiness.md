@@ -11,6 +11,7 @@ depends_on:
   - "feat-369"
   - "feat-372"
   - "feat-376"
+  - "feat-459"
 blocks:
   - "feat-382"
   - "feat-383"

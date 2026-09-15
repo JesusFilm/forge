@@ -12,6 +12,12 @@ export async function runRecommendationControlReadinessScheduler(
       // Each failed evaluation has its own ledger. Keep the durable daily
       // scheduler alive after bounded retries are exhausted.
     }
+    try {
+      await stepRunPlaybackProxyReadiness()
+    } catch {
+      // Proxy readiness is offline evidence only. Keep the shared daily
+      // scheduler alive after its independently logged evaluation fails.
+    }
     const next = await stepNextRecommendationControlReadinessRun(input)
     await sleep(next)
   }
@@ -42,6 +48,20 @@ async function stepRunRecommendationControlReadiness(): Promise<void> {
 }
 
 stepRunRecommendationControlReadiness.maxRetries = 5
+
+async function stepRunPlaybackProxyReadiness(): Promise<void> {
+  "use step"
+  const { runPlaybackProxyReadinessFromScheduler } =
+    await import("@/services/recommendations/proxy-readiness.job")
+  const result = await runPlaybackProxyReadinessFromScheduler()
+  if (!result.ok) {
+    throw new RetryableError("Playback proxy readiness failed", {
+      retryAfter: "5m",
+    })
+  }
+}
+
+stepRunPlaybackProxyReadiness.maxRetries = 5
 
 async function stepNextRecommendationControlReadinessRun(input: {
   ledgerRunId?: string

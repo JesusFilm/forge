@@ -1,7 +1,7 @@
 ---
 title: "Harden a production recommendation slice at every irreversible boundary"
 date: "2026-08-26"
-last_updated: "2026-08-31"
+last_updated: "2026-09-14"
 category: "architecture-patterns"
 module: "apps/admin and apps/web recommendations"
 problem_type: "architecture_pattern"
@@ -21,6 +21,9 @@ tags:
   - "anonymous-profile"
   - "bounded-pilot"
   - "production-boundary"
+  - "apollo-errors"
+  - "serializable-contention"
+  - "evidence-observability"
 related_components:
   - "database"
   - "frontend_stimulus"
@@ -29,6 +32,8 @@ related_components:
 ---
 
 # Harden a production recommendation slice at every irreversible boundary
+
+> **Current enablement policy:** follow `docs/analytics-and-recommendation-policy.md`. Consent-named fields and transitions here are implementation history, not requirements to obtain consent. Recommendation/profile defaults and the restored GA/Datadog baseline remain active when configured.
 
 ## Context
 
@@ -58,8 +63,10 @@ unmigratable, or a terminal outcome unable to supersede earlier evidence
 real PostgreSQL, pgvector, Redis, and browser journeys rather than by isolated
 happy paths.
 
-This learning describes [PR #1976](https://github.com/JesusFilm/forge/pull/1976),
-which is open and unmerged as of 2026-08-31.
+This learning began with
+[PR #1976](https://github.com/JesusFilm/forge/pull/1976), which merged on
+2026-08-31, and now includes the source-neutral playback extension built for
+feat-369.
 
 ## Guidance
 
@@ -113,32 +120,89 @@ digests are distinct, are not raw identifiers, and are not unsalted hashes of
 those identifiers
 (`apps/admin/src/services/recommendations/snapshot-repair.db.test.ts:116-193`).
 
-### Treat playback telemetry as an idempotent terminal protocol
+### Treat playback as a source-neutral immutable measurement ledger
 
-Watch assigns a stable event ID when each fact is created. Its sender drains
-one batch at a time and keeps the same IDs and payloads after a failed post
-(`apps/web/src/components/recommendations/RecommendationPlaybackRecorder.tsx:49-62`,
-`apps/web/src/components/recommendations/RecommendationPlaybackRecorder.tsx:189-238`).
+Watch playback is broader than recommendation playback. Direct, search, share,
+acquisition, and editorial arrivals issue a one-use context without request,
+item, or selection lineage; only the trusted selection path may create a
+`recommendation` episode with complete lineage
+(`apps/admin/src/services/recommendations/episode.service.ts:88-133`,
+`apps/admin/src/services/recommendations/episode.service.ts:315-348`). The
+database requires lineage to be wholly present or wholly absent and rejects
+standalone recommendation attribution
+(`apps/admin/prisma/migrations/0072_recommendation_source_neutral_playback_episodes/migration.sql:41-81`).
+Discovery is bounded context, not attribution or learning eligibility.
 
-A page-exit terminal is queued in order before the same event is attempted as a
-keepalive fast path. The recorder reserves capacity for terminal truth and emits
-at most one terminal across end, page hide, visibility loss, route exit, and
-media failure
-(`apps/web/src/components/recommendations/RecommendationPlaybackRecorder.tsx:243-287`,
-`apps/web/src/components/recommendations/RecommendationPlaybackRecorder.tsx:482-557`).
+Issue a short-lived claim nonce, store only its digest, and leave an unclaimed
+context without a finalization deadline. Claim atomically binds session, media,
+generation, and capability before facts are accepted
+(`apps/admin/src/services/recommendations/episode.service.ts:88-133`,
+`apps/admin/src/services/recommendations/episode.service.ts:595-727`). Put the
+same mutation-admission guard in front of source-neutral context issuance as
+the other public recommendation mutations
+(`apps/web/src/app/api/recommendations/playback/route.ts:190-215`).
 
-Admin decides replay versus conflict under the episode boundary. The same
-episode/event identity with the same payload digest is a replay; a different
-digest is quarantined without consuming another sequence number
-(`apps/admin/src/services/recommendations/playback.service.ts:190-262`). New
-facts receive one atomic sequence range, and terminal truth makes the episode
-immediately due for finalization
-(`apps/admin/src/services/recommendations/playback.service.ts:264-400`).
+Keep playback fail-open. The recorder can observe and buffer bounded facts
+while context claim is unresolved, retry an ambiguous claim with the same nonce
+and event identities, and abandon telemetry without blocking the player. A
+definitively stale recommendation handoff falls back once to a fresh standalone
+context rather than discarding observed facts or inventing recommendation
+lineage
+(`apps/web/src/components/recommendations/RecommendationPlaybackRecorder.tsx:315-423`).
 
-Finalization binds each immutable outcome revision to its fact watermark and
-input digest. Equal inputs replay exactly, later watermarks append a monotonic
-revision, and stale generations or lower watermarks cannot become current
-(`apps/admin/src/services/recommendations/outcome.service.ts:278-410`).
+Represent complete-coverage active playback only as explicit intervals in
+which playback is both playing and document-visible. Close those intervals on
+pause, buffering, stalling, hidden visibility, or BFCache suspension. A
+persisted `pagehide` pauses and flushes measurement, then `pageshow` resumes the
+same episode without counting time spent in cache; a non-persisted page
+transition remains terminal
+(`apps/web/src/components/recommendations/RecommendationPlaybackRecorder.tsx:425-489`,
+`apps/web/src/components/recommendations/RecommendationPlaybackRecorder.tsx:621-657`).
+On the server, merge overlapping or adjacent active intervals and sum their
+union. When visibility cannot be observed, preserve and surface partial
+coverage rather than claiming foreground certainty. Position, progress, seeks,
+elapsed wall time, and overlapping retries do not add to the interval total
+(`apps/admin/src/services/recommendations/outcome.service.ts:85-128`,
+`apps/admin/src/services/recommendations/contracts.ts:530-584`).
+
+Watch assigns a stable event ID when each fact is created. Under the episode
+boundary, the same event ID and payload digest is a replay; a different digest
+is a conflict; only a new fact receives the next atomic server sequence
+(`apps/admin/src/services/recommendations/playback.service.ts:191-389`). Late
+facts append truth rather than rewriting it. When an accepted fact advances an
+already timed-out episode, ingestion rearms finalization so the new watermark
+can publish another revision
+(`apps/admin/src/services/recommendations/playback.service.ts:319-338`,
+`apps/admin/src/services/recommendations/playback.service.ts:452-468`).
+
+Finalization binds each immutable outcome revision to an exact fact watermark
+and input digest. Equal input replays exactly; later watermarks append a
+monotonic revision with explicit supersession; stale generations, lower
+watermarks, and same-watermark digest conflicts cannot become current
+(`apps/admin/src/services/recommendations/outcome.service.ts:164-204`,
+`apps/admin/src/services/recommendations/outcome.service.ts:290-413`). Retain a
+rebuild path that independently derives watermark, digest, classifications,
+duration cohort, coverage, and merged intervals from immutable facts and
+reports any drift for operational enforcement
+(`apps/admin/src/services/recommendations/outcome.service.ts:463-524`).
+
+Publish through a stable source-neutral outcome envelope, then let downstream
+consumers own integrity, explicit personalization settings, profile, and purpose-specific eligibility.
+Measurement publication itself never authorizes learning
+(`apps/admin/src/services/recommendations/playback-outcome-consumer.ts:12-104`).
+If consumer dispatch fails after the outcome commits, rearm the durable due
+marker and fail the workflow so recovery reuses the exact outcome and retries
+delivery instead of silently losing it
+(`apps/admin/src/services/recommendations/finalization/job.ts:179-211`).
+
+Treat readiness as offline evidence, never live-ranking authority. Compare the
+legacy position cohort with the active-time cohort over one closed, lagged
+window, persist the exact evaluation revision, and enforce
+`rankingInfluence = false`
+(`apps/admin/src/services/recommendations/proxy-readiness.service.ts:29-199`,
+`apps/admin/prisma/migrations/0072_recommendation_source_neutral_playback_episodes/migration.sql:158-195`).
+Retention, backlog health, integrity, and authorized Admin trace views must
+include standalone episodes as first-class roots.
 
 ### Make bounded hybrid personalization immutable by identity
 
@@ -147,7 +211,7 @@ semantic and profile generators, canonical union, eligibility, ranker,
 composer, delivery and surface contracts, slate bound, projection versions,
 semantic fallback, service deadline, and learning source. The separate
 experiment identity fixes bounded-live authority and exposure. Both generators
-may nominate, but only consent-authorized profile input participates; an empty
+may nominate, but only eligible profile input participates; an empty
 or failed profile source is absence of signal, not a second semantic vote.
 Semantic-only remains the control, fallback, kill-switch target, and
 last-known-good strategy
@@ -170,7 +234,7 @@ Rollback and emergency stop remain available.
 
 ### Preserve exact-six as a composition invariant
 
-Do not let a consented profile source replace semantic availability. Preserve
+Keep semantic availability when adding a profile source. Preserve
 the complete bounded semantic reserve before adding profile nominations; use
 only the remaining 64-nomination capacity for profile candidates
 (`apps/admin/src/services/recommendations/delivery-candidate-mapping.ts:37-61`).
@@ -234,12 +298,15 @@ The implementation protects the pattern with separate executable boundaries:
 - CI's PostgreSQL jobs cover clean migration, historical repair, real
   promotion, vector retrieval, and profile candidate retrieval; Redis jobs
   execute the actual admission Lua paths (`.github/workflows/ci.yml:97-202`).
-- Playback tests cover duplicate terminals, pending-claim page exit, replay,
-  conflict, bounded lateness, and monotonic outcome publication.
-- Browser QA proves that essential-only and newly consented flows each receive
+- Playback tests cover unresolved and stale claims, BFCache suspension,
+  duplicate terminals, replay, conflict, bounded lateness, interval union,
+  monotonic supersession, consumer retry, and rebuild parity. A real PostgreSQL
+  case races finalizers and proves the incremental outcome matches a fresh
+  rebuild (`apps/admin/src/services/recommendations/playback-episode.db.test.ts`).
+- The historical browser QA exercised essential-only and newly consented flows; each received
   six recommendations with loaded thumbnails.
-  After consent, selection, and a qualified finalized playback publish profile
-  generation 3, the traced follow-up request receives an exact-six
+  In that historical run, consent, selection, and a qualified finalized playback published profile
+  generation 3; the traced follow-up request received an exact-six
   `hybrid_personalized` slate with two interests in 800 ms. Its Admin evidence
   contains semantic and profile contributions without exposing a profile
   identifier, cookie, history, or vector.
@@ -266,6 +333,137 @@ percentage in place.
 - [Bounded semantic pgvector fan-out](../performance-issues/semantic-recommendation-retrieval-bounded-pgvector-fanout.md)
 - [Forward-only Prisma migration history](../database-issues/prisma-migration-backed-revert-state-check.md)
 - [Canonical server telemetry and supplemental browser context](canonical-server-search-analytics-supplemental-rum-pattern.md)
+- [Atomic database lock and claim transitions](../database-issues/db-lock-must-be-atomic-update-not-select-for-update.md)
+- [Durable Admin workflow operations](../best-practices/admin-postgres-workflow-operations-pattern-20260501.md)
 - [Manifest identity bound to execution and evidence](bind-eval-manifest-identity-to-execution-and-evidence.md)
 - [Immutable experiment ledger boundary](mastra-seo-experiment-ledger-boundary.md)
 - [Admin trace retention pattern](../platform/admin-search-trace-retention-pattern.md)
+
+## Evidence transport closeout (feat-464, 2026-09-09)
+
+Apollo's default mutation error policy rejects GraphQL failures before returned
+result inspection. Normalize both rejected `CombinedGraphQLErrors.errors` and
+compatible returned/legacy envelopes using `extensions.recommendationCode`,
+never message matching. Claims and facts map proven `invalid_binding` to terminal
+HTTP 409. Generic structured `extensions.code = BAD_USER_INPUT` on playback
+operations maps to HTTP 400 `playback_request_invalid`; this includes capability
+validation that does not carry a binding subtype. Render/impression input
+rejection maps to HTTP 400 `evidence_request_invalid`, which its existing JSON
+retry helper treats as terminal. The playback browser retires that
+episode only for the matching status/code pair. Unrecognized error bodies remain
+ambiguous. Real local signature rejection must leave decoded media running.
+Authentication and recognized-machine rejection must not trigger a
+standalone context fallback. Ambiguous acknowledgements retain the original nonce,
+event identifiers, timestamps and payload.
+
+The recommendation complete-service deadline remains 1.5 seconds. Evidence transport
+is a distinct acknowledgement contract: provisionally 3 seconds upstream and
+5 seconds in the browser, including acknowledgement-body consumption, based on the
+ticket's measured successful 1.91-second p95. A timed-out mutation may still commit;
+the retry must be idempotent rather than assuming cancellation. The stalled-body
+test must withhold JSON, not merely response headers.
+
+Blocking `pg_advisory_xact_lock` inside a Serializable transaction can establish
+the snapshot before lock acquisition. Queued callers then read stale counters and
+exhaust P2034 recovery. Two callers hid the problem; eight delayed concurrent
+replays reproduced it against PostgreSQL. Ingestion and finalization now use the
+same nonblocking advisory key, roll back busy transactions, and retry acquisition
+outside the transaction under a separate bounded contention budget. Serializable
+isolation, P2034 recovery, sequence CAS, privacy fences and reservation-before-receipt
+insertion remain intact. A losing claim revalidates once and reconstructs the
+committed capability with its original signing key.
+
+Operational observers must not become a new playback dependency. Runtime-allowlist
+fixed enums before logging, isolate logger failures, and use plain
+`event=… key=value` logging per the existing
+[Railway logsV2 learning](../runtime-errors/railway-logsv2-silences-nextjs-stdout-runtime-20260518.md).
+Missing observations are unknown, never healthy zero. Logs are not authoritative
+HTTP denominators, committed-fact counts, or a recovery queue.
+
+The optional Redis counter collector introduced in PR #2211 only fed an extra
+Admin panel. It had no recommendation, analytics-ledger or ranking consumer.
+After production monitoring showed collector unavailability while transport logs
+remained usable, the owner chose to remove the duplicate store. Keep operational
+aggregation in Datadog and durable playback/profile audits in authorized Admin.
+A new cache or collector needs a demonstrated consumer and measured benefit;
+an additional dashboard alone did not justify another connection lifecycle.
+
+Discriminating regression references:
+
+- `apps/web/src/app/api/recommendations/playback/route.test.ts`: rejected Apollo
+  failures and crawler exclusion before mutation.
+- `apps/web/src/components/recommendations/RecommendationPlaybackRecorder.test.tsx`:
+  stalled acknowledgements, exact replay, definitive rejection and playback independence.
+- `apps/admin/src/services/recommendations/playback-episode.db.test.ts`: eight-way
+  replay and claims, mixed late/conflicting facts with concurrent finalization,
+  exact receipt ordinals, immutable original facts and authoritative rebuild equality.
+- `apps/admin/src/services/recommendations/evidence-observability.test.ts` and
+  `apps/web/src/lib/recommendation-evidence-observability.test.ts`: shared safe
+  log vocabulary, identity stripping and isolation of logger failures.
+
+These tests verify local mechanisms. They do not establish historical crawler
+ownership: stored browser discovery provenance is not trusted user-agent evidence.
+Do not relabel episodes by timestamps or aggregate APM counts. Preserve bounded
+uncertainty and require the separate production canary and authorized
+zero-ineligible-current-pointer audit before closing feat-464/feat-459 or advancing
+profile ranking. `active-watch-proxy-v1` remains fail-closed.
+
+### Diagnose admission before tuning its budget
+
+An `admission_unavailable` label does not distinguish configuration, connection,
+TIME, EVAL, Redis-clock rejection or subsequent client backoff. Log fixed stage
+and reason values plus clamped durations; exclude raw errors, Redis URLs, keys,
+headers and capabilities. Isolate logging failures from admission behavior.
+Do not count both a backoff and its load-unavailable observation as two requests.
+
+A Redis TIME sample has round-trip uncertainty. Computing the Lua deadline as
+`redisTime + (commandBudget - elapsedTime)` deliberately uses a conservative
+clock bound, which can reject work before the apparent client timer expires.
+Do not remove that subtraction: a late queued EVAL must never write after the
+caller's deadline. The real Redis regression delays the TIME reply by 160 ms,
+then separately holds EVAL until after caller timeout and checks both buckets
+remain absent. Production context traces justified 500 ms for its TIME/EVAL
+work, retaining 250 ms for connection and other namespaces. Audit every caller
+before widening a shared budget: content-action transport has a tighter browser
+deadline. Context admission reserves 750 ms within its five-second browser and
+three-second upstream ceilings. A local pass does not replace the production canary.
+
+APM request-count metrics and retained span/log populations differ. Verify actual
+metric dimensions before claiming a complete environment-specific denominator;
+a shared agent hostname and a revision deployed to two environments cannot
+separate those populations. Checked-in monitor definitions are not installed
+monitors, and a local signed Admin fixture cannot establish production pointer
+integrity. Query reconciliation heartbeats across both verified primary Admin and
+worker hosts: execution can move between them, and a worker-only filter creates
+apparent cadence gaps. Record unresolved access and actual cadence gaps explicitly.
+
+Audit adjacent evidence mutations for the same error classification. Playback
+and render fixes left selection returning 503 for structured `BAD_USER_INPUT`;
+the canary found two such requests about 400 ms apart. Share the domain-error
+wrapper across those operations, retain specific binding errors, and verify a
+terminal selection still navigates once to its trusted token-free fallback href.
+
+### Retiring a shared connection must respect other callers' deadlines
+
+A command timeout belongs to its request. Destroying a shared Redis connection
+immediately can turn one slow request into failures for otherwise viable callers.
+Watch admission shares one client across namespaces with different budgets:
+profile work has 250 ms and playback context has 500 ms. A deterministic regression
+stalls profile TIME while playback EVAL would finish at 300 ms. Immediate socket
+destruction cancels playback at 250 ms despite its remaining budget.
+
+Stop lending a retired connection immediately, retain the retry backoff, and
+count active admissions on that connection. Release each admission in `finally`;
+destroy the retired socket when the last active admission finishes. Every active
+caller must retain its own bounded command deadline, and a stale asynchronous
+loader result must not reacquire a retired client. A draining connection must
+never destroy a newer replacement connection.
+
+`recommendation-mutation-admission.test.ts` verifies the independent successful
+playback, refusal of new work during retirement, bounded cleanup when every
+caller stalls, and reconnection after backoff. The real Redis suite continues to
+verify atomic limits and the prohibition on late Lua counter writes. This
+reproduction proves cancellation amplification; it does not identify why the
+original command was slow. See
+`docs/operations/watch-runtime-diagnosis-2026-09-14.md` for the separate Admin
+timeout evidence and production observation requirements.

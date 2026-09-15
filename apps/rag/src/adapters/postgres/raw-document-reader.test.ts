@@ -34,12 +34,14 @@ describe("PostgresRawDocumentReader model-aware batches", () => {
 
     const first = await reader.listPending({
       sourceKey: "cru",
+      canonicalUrlPrefix: "https://example.com/islenska/",
       includeIngested: true,
       targetEmbeddingModel: "target/model",
       limit: 1,
     })
     const second = await reader.listPending({
       sourceKey: "cru",
+      canonicalUrlPrefix: "https://example.com/islenska/",
       includeIngested: true,
       targetEmbeddingModel: "target/model",
       limit: 1,
@@ -53,5 +55,38 @@ describe("PostgresRawDocumentReader model-aware batches", () => {
       sql.indexOf("LIMIT"),
     )
     expect(sql).toContain("r.ingested_at IS NULL")
+    expect(sql.indexOf("starts_with(r.canonical_url")).toBeLessThan(
+      sql.indexOf("LIMIT"),
+    )
+    expect(db.rawDocument.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          sourceKey: "cru",
+          canonicalUrl: { startsWith: "https://example.com/islenska/" },
+        }),
+      }),
+    )
   })
+})
+
+it("applies the literal canonical prefix before the normal pending-row limit", async () => {
+  const findMany = vi.fn().mockResolvedValue([])
+  const reader = new PostgresRawDocumentReader({
+    rawDocument: { findMany },
+  } as never)
+  await reader.listPending({
+    sourceKey: "gotquestions",
+    canonicalUrlPrefix: "https://example.com/is_test%/",
+    limit: 1,
+  })
+  expect(findMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: expect.objectContaining({
+        sourceKey: "gotquestions",
+        ingestedAt: null,
+        canonicalUrl: { startsWith: "https://example.com/is\\_test\\%/" },
+      }),
+      take: 1,
+    }),
+  )
 })

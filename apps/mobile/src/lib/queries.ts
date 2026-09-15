@@ -65,6 +65,7 @@ export const WATCH_SEARCH = adminGraphql(`
         score
         label
         childCount
+        durationSeconds
       }
     }
   }
@@ -144,6 +145,8 @@ export type SearchResult = {
   readonly score: number | null
   readonly label: string | null
   readonly childCount: number | null
+  /** Leaf videos carry this; a series/collection carries childCount instead. */
+  readonly durationSeconds: number | null
 }
 
 export type SearchResponse = {

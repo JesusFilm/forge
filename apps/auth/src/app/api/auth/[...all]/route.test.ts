@@ -1136,6 +1136,70 @@ describe("Auth route wrapper", () => {
     })
   })
 
+  // 1.7 routes the jfp self-RP through /sign-in/social, so the mobile app's
+  // app-scheme callback lands here; dropped, the Expo cookie handoff never
+  // fires. Errors must also return to the scheme, or the sheet cannot close.
+  it("forwards the mobile app's scheme callback through social sign-in", async () => {
+    authPost.mockResolvedValueOnce(
+      Response.json({
+        url: "http://localhost:3004/api/auth/oauth2/authorize?client_id=jfp_mobile_local",
+        redirect: true,
+      }),
+    )
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/sign-in/social", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "expo-origin": "forgemobile://",
+        },
+        body: JSON.stringify({
+          callbackURL: "forgemobile:///",
+          provider: "jfp",
+        }),
+      }),
+      { params: Promise.resolve({ all: ["sign-in", "social"] }) },
+    )
+
+    expect(response.status).toBe(200)
+    const forwardedRequest = authPost.mock.calls[0]?.[0] as Request
+    const forwardedBody = (await forwardedRequest.json()) as Record<
+      string,
+      unknown
+    >
+    expect(forwardedBody).toMatchObject({
+      callbackURL: "forgemobile:///",
+      errorCallbackURL: "forgemobile:///",
+      provider: "jfp",
+    })
+  })
+
+  it("still drops a foreign-scheme callback from social sign-in", async () => {
+    authPost.mockResolvedValueOnce(
+      Response.json({ url: "https://google.test" }),
+    )
+    const { POST } = await import("./route")
+    await POST(
+      new Request("http://localhost:3004/api/auth/sign-in/social", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ callbackURL: "otherapp:///", provider: "jfp" }),
+      }),
+      { params: Promise.resolve({ all: ["sign-in", "social"] }) },
+    )
+
+    const forwardedRequest = authPost.mock.calls[0]?.[0] as Request
+    const forwardedBody = (await forwardedRequest.json()) as Record<
+      string,
+      unknown
+    >
+    expect(forwardedBody).not.toHaveProperty("callbackURL")
+    // errorCallbackURL rides the same resolveMobileCallbackURL value; pin
+    // that the foreign scheme cannot leak through either field.
+    expect(forwardedBody).not.toHaveProperty("errorCallbackURL")
+  })
+
   it("returns the configured provider for an existing social account", async () => {
     vi.stubEnv("GOOGLE_CLIENT_ID", "google-client")
     vi.stubEnv("GOOGLE_CLIENT_SECRET", "google-secret")

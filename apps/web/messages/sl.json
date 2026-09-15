@@ -527,7 +527,8 @@
     "previousVideoPreview": "Predogled prejšnjega videoposnetka",
     "nextVideoPreview": "Predogled naslednjega videoposnetka",
     "mediaCollection": "Zbirka medijskih vsebin",
-    "scrollToVideo": "Pomakni se do videoposnetka {title}"
+    "scrollToVideo": "Pomakni se do videoposnetka {title}",
+    "forYou": "Za vas"
   },
   "WatchFooter": {
     "home": "Domača stran Jesus Film Project",
@@ -597,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -713,9 +714,9 @@
   "WatchUnavailableLanguage": {
     "metadataTitle": "Jezikovna različica ni na voljo",
     "eyebrow": "Jezikovna različica ni na voljo",
-    "title": "<contentTitle>{title}</contentTitle> ni na voljo v jeziku <languageName>{language}</languageName>",
+    "title": "<contentTitle>{title}</contentTitle>: različica v jeziku <languageName>»{language}«</languageName> ni na voljo",
     "actionsLabel": "Razpoložljive možnosti ogleda",
-    "browseInLanguage": "Brskaj po videoposnetkih v jeziku {language}",
+    "browseInLanguage": "Vsi videoposnetki v jeziku »{language}«",
     "backToSearch": "Nazaj na iskanje",
     "audioVersionsTitle": "Druge zvočne različice",
     "audioVersionsDescription": "Izberite jezik zvoka in nadaljujte ogled videoposnetka.",

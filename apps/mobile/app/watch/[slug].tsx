@@ -5,6 +5,7 @@ import {
   Animated,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  Platform,
   Pressable,
   ScrollView,
   Share,
@@ -27,6 +28,7 @@ import type { AdminBlock } from "../../src/lib/queries"
 import {
   normalizeVideo,
   type WatchBibleCitation,
+  type WatchVariant,
 } from "../../src/lib/normalizeVideo"
 import { isSeriesRecord } from "../../src/lib/isSeriesRecord"
 import { decodeWatchSeed } from "../../src/lib/watchSeed"
@@ -66,8 +68,15 @@ import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkele
 import { WatchAmbient } from "../../src/components/watch/WatchAmbient"
 import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
 import { ActionButtonRow } from "../../src/components/watch/ActionButtonRow"
+import { rawModeLabel } from "../../src/components/watch/DownloadSheet"
+import { RAW_EXPORT_ENABLED } from "../../src/lib/rawExportConstants"
+import { presentActionMenu } from "../../src/lib/actionMenu"
 import { SignInPrompt } from "../../src/components/watch/SignInPrompt"
 import { useWatchProgressEntry } from "../../src/hooks/useWatchProgressEntry"
+import {
+  exportControls,
+  useExportEntry,
+} from "../../src/hooks/useExportSession"
 import {
   progressBarState,
   resumePositionSeconds,
@@ -96,6 +105,7 @@ import {
 } from "../../src/lib/subtitleSelection"
 
 const EMPTY_CITATIONS: WatchBibleCitation[] = []
+const EMPTY_VARIANTS: WatchVariant[] = []
 
 export default function WatchVideoPage() {
   const { slug, seed: seedParam } = useLocalSearchParams<{
@@ -234,7 +244,16 @@ export default function WatchVideoPage() {
   // request for the last one's — and paint its references for a frame.
   const routeCitations =
     video?.slug === decodedSlug ? video.bibleCitations : EMPTY_CITATIONS
-  const bibleQuotes = useBibleVerses(decodedSlug, routeCitations)
+  // Threaded from here: the hook's only call site, and the only place the dubs
+  // and authored image are in scope. `loading` is the settled signal — the
+  // query returns partial cached data with neither runtime nor playback id.
+  const bibleQuotes = useBibleVerses(decodedSlug, routeCitations, {
+    variants: video?.slug === decodedSlug ? video.variants : EMPTY_VARIANTS,
+    authoredImageUrl: video?.slug === decodedSlug ? video.posterUrl : null,
+    primaryLanguageCoreId:
+      video?.slug === decodedSlug ? video.primaryLanguageCoreId : null,
+    payloadSettled: !loading,
+  })
 
   // Captions on (possibly carried over a language switch) → make sure the
   // active dub's subtitles are fetched so the player has a track to show.
@@ -291,6 +310,8 @@ export default function WatchVideoPage() {
   // auto-seek and autostart.
   const progressEntry = useWatchProgressEntry(video?.documentId)
   const progressState = progressBarState(progressEntry)
+  // R16: a raw export outranks the offline state on this video's control.
+  const exportEntry = useExportEntry(video?.slug)
   const resumeAtSeconds =
     progressEntry && progressState.resumeEligible
       ? resumePositionSeconds(
@@ -729,6 +750,7 @@ export default function WatchVideoPage() {
         {hasVideo ? (
           <>
             <ActionButtonRow
+              exportEntry={exportEntry}
               downloadState={getRecord(video.slug)?.state ?? null}
               downloadProgress={(() => {
                 const record = getRecord(video.slug)
@@ -737,28 +759,73 @@ export default function WatchVideoPage() {
                   : null
               })()}
               onDownload={() => {
+                // An export outranks every offline state (R16), so it is tested
+                // FIRST. Falling through would pause the offline download of a
+                // video that is being exported over an existing transfer.
+                if (exportEntry) {
+                  if (exportEntry.paused) {
+                    Alert.alert("Saving to Photos", "This export is paused.", [
+                      {
+                        text: "Stop Download",
+                        style: "destructive",
+                        onPress: () => {
+                          exportControls.stop(video.slug)
+                        },
+                      },
+                      {
+                        text: "Resume",
+                        onPress: () => {
+                          exportControls.resume(video.slug)
+                        },
+                      },
+                      { text: "Cancel", style: "cancel" },
+                    ])
+                  } else {
+                    // Running → the ring's pause glyph pauses it immediately,
+                    // mirroring the offline control.
+                    exportControls.pause(video.slug)
+                  }
+                  return
+                }
                 const state = getRecord(video.slug)?.state
                 if (state === "downloaded") {
                   // Saved: offer a non-destructive quality/language swap or a
                   // delete (the current copy stays playable during a swap).
-                  Alert.alert(
-                    "Offline download",
-                    "This video is saved for offline viewing.",
-                    [
+                  // Four options outrun Android's three-button dialog, so the
+                  // menu goes through presentActionMenu rather than Alert.
+                  presentActionMenu({
+                    title: "Offline download",
+                    message: "This video is saved for offline viewing.",
+                    ios: "alert",
+                    actions: [
                       {
                         text: "Change quality / language",
                         onPress: () => router.push("/watch/download?swap=1"),
                       },
+                      // R33's switch removes the whole export feature, so the
+                      // option goes with it rather than opening a sheet that
+                      // cannot offer the mode. It routes to the sheet instead
+                      // of exporting straight away, because the Terms gate is
+                      // the consent surface and lives there.
+                      ...(RAW_EXPORT_ENABLED
+                        ? [
+                            {
+                              text: rawModeLabel(Platform.OS),
+                              onPress: () =>
+                                router.push("/watch/download?mode=raw"),
+                            },
+                          ]
+                        : []),
                       {
                         text: "Remove download",
-                        style: "destructive",
+                        style: "destructive" as const,
                         onPress: () => {
                           void deleteDownload(video.slug)
                         },
                       },
-                      { text: "Cancel", style: "cancel" },
+                      { text: "Cancel", style: "cancel" as const },
                     ],
-                  )
+                  })
                 } else if (state === "paused") {
                   // Paused (mirrors the series ring): resume, or remove entirely.
                   Alert.alert("Offline download", "This download is paused.", [
@@ -825,7 +892,15 @@ export default function WatchVideoPage() {
 
             {bibleCitationsBlock != null && (
               <View style={styles.sectionGap}>
-                <BibleQuotesCarouselRenderer section={bibleCitationsBlock} />
+                {/* Keyed per video: Up Next replaces the route params rather
+                    than remounting, and a stale prefetch-gate latch would let
+                    the next video skip the wait. */}
+                <BibleQuotesCarouselRenderer
+                  key={decodedSlug}
+                  section={bibleCitationsBlock}
+                  onArtworkFailed={bibleQuotes.reportArtworkFailure}
+                  videoSlug={decodedSlug}
+                />
               </View>
             )}
           </>

@@ -85,7 +85,8 @@ module.exports = {
       severity: "error",
       from: {
         path: "(?:^tests/|\\.(?:test|spec)\\.[cm]?[jt]sx?$)",
-        pathNot: "^(?:src/adapters/|tests/adapters\\.integration\\.test\\.ts$)",
+        pathNot:
+          "^(?:src/adapters/|tests/(?:adapters|raw-document-promotion)\\.integration\\.test\\.ts$)",
       },
       to: { path: "^src/adapters/" },
     },

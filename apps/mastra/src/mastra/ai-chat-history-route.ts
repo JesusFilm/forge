@@ -220,6 +220,7 @@ export type AiChatHistoryMemory = {
   }) => Promise<{
     threads: Array<{
       id: string
+      resourceId?: string | null
       title?: string | null
       updatedAt?: Date | string | null
     }>
@@ -717,8 +718,20 @@ export async function handleAiChatHistoryListRequest({
       }),
       budgetSignal,
     )
+    // Re-check the dependency's filter before exposing any row (feat-363).
+    // Missing ownership fails closed; this read path drops and counts rather
+    // than aborting an otherwise useful page. No additional store reads.
+    const ownedThreads = result.threads.filter(
+      (thread) => thread.resourceId === body.resourceId,
+    )
+    const mismatchedRows = result.threads.length - ownedThreads.length
+    if (mismatchedRows > 0) {
+      console.warn(
+        `[ai-chat-history] event=history_filter_mismatch count=${mismatchedRows}`,
+      )
+    }
     return jsonOutcome(200, {
-      threads: result.threads.map(projectThreadRow),
+      threads: ownedThreads.map(projectThreadRow),
       page: result.page,
       perPage: result.perPage,
       total: result.total,

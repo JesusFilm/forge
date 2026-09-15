@@ -1,3 +1,4 @@
+import { RecommendationSurfaceSchema } from "./token.service"
 import { createHash, randomBytes, randomUUID } from "node:crypto"
 import {
   RecommendationAuditKind,
@@ -8,7 +9,13 @@ import {
 } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { prisma as defaultPrisma } from "@/db/client"
-import { RECOMMENDATION_CONTRACTS } from "./contracts"
+import {
+  PLAYBACK_CONTEXT_VERSION,
+  PlaybackContextIssueSchema,
+  RECOMMENDATION_CONTRACTS,
+  RECOMMENDATION_RAW_RETENTION_DAYS,
+  type PlaybackContextDiscoverySource,
+} from "./contracts"
 import { assertWebRecommendationCaller } from "./caller"
 import {
   isRecommendationAssignmentCapabilityCurrent,
@@ -25,6 +32,7 @@ import {
   recommendationEvidenceDigest,
   recordRecommendationConflict,
 } from "./evidence.service"
+import { observeRecommendationEvidence } from "./evidence-observability"
 import { createRuntimeRecommendationTokenService } from "./runtime-token"
 import { consumeDeliveryCapabilitySubmissions } from "./submission-budget"
 import {
@@ -32,6 +40,7 @@ import {
   scheduleRecommendationEpisodeFinalization,
   type RecommendationFinalizationWake,
 } from "./finalization/job"
+import { resolveActiveRecommendationProfileLink } from "./profiles/active-profile-link"
 import type {
   DeliveryCapabilityBinding,
   EpisodeCapabilityBinding,
@@ -45,6 +54,8 @@ import {
 const HANDOFF_LIFETIME_MS = 10 * 60 * 1_000
 const EPISODE_ACTIVE_MS = EPISODE_CAPABILITY_ACTIVE_SECONDS * 1_000
 const EPISODE_HARD_MS = EPISODE_CAPABILITY_HARD_SECONDS * 1_000
+const EPISODE_RETENTION_MS =
+  RECOMMENDATION_RAW_RETENTION_DAYS * 24 * 60 * 60 * 1_000
 
 type EpisodeTokenService = {
   activeKid: string
@@ -56,6 +67,13 @@ type EpisodeTokenService = {
     binding: EpisodeCapabilityBinding,
     replay?: { issuedAt: Date; signingKid: string },
   ): Promise<string>
+}
+
+type EpisodeClaimInput = {
+  caller: Principal | null
+  sessionDigest: string
+  claimNonce: string
+  mediaId: string
 }
 
 type EpisodeDependencies = {
@@ -71,10 +89,59 @@ type EpisodeDependencies = {
     privacyGeneration: number
     evidenceWatermark: Date
   }) => Promise<unknown>
+  classifySelection?: (selectionId: string) => Promise<unknown>
 }
 
 export class RecommendationEpisodeService {
   constructor(private readonly deps: EpisodeDependencies) {}
+
+  async issueContext(input: {
+    caller: Principal | null
+    sessionDigest: string
+    mediaId: string
+    discoverySource: PlaybackContextDiscoverySource
+    provenance?: Record<string, string>
+  }) {
+    assertWebRecommendationCaller(input.caller)
+    const parsed = PlaybackContextIssueSchema.parse({
+      sessionDigest: input.sessionDigest,
+      mediaId: input.mediaId,
+      discoverySource: input.discoverySource,
+      provenance: input.provenance ?? {},
+    })
+    const now = this.deps.now?.() ?? new Date()
+    const newId = this.deps.newId ?? randomUUID
+    const claimNonce =
+      this.deps.newClaimNonce?.() ?? randomBytes(32).toString("base64url")
+    const claimNonceDigest = createHash("sha256")
+      .update(claimNonce)
+      .digest("hex")
+    const activeUntil = new Date(now.getTime() + EPISODE_ACTIVE_MS)
+    const hardUntil = new Date(now.getTime() + EPISODE_HARD_MS)
+
+    await this.deps.prisma.recommendationPlaybackEpisode.create({
+      data: {
+        id: newId(),
+        requestId: null,
+        itemId: null,
+        selectionId: null,
+        contextVersion: PLAYBACK_CONTEXT_VERSION,
+        discoverySource: parsed.discoverySource,
+        provenance: parsed.provenance,
+        claimNonceDigest,
+        handoffExpiresAt: new Date(now.getTime() + HANDOFF_LIFETIME_MS),
+        mediaId: parsed.mediaId,
+        sessionDigest: parsed.sessionDigest,
+        state: RecommendationEpisodeState.PENDING,
+        activeUntil,
+        hardUntil,
+        finalizationDueAt: null,
+        expiresAt: new Date(now.getTime() + EPISODE_RETENTION_MS),
+      },
+    })
+
+    return { claimNonce, contextVersion: PLAYBACK_CONTEXT_VERSION }
+  }
 
   async select(input: {
     caller: Principal | null
@@ -86,6 +153,7 @@ export class RecommendationEpisodeService {
     eventId: string
     occurredAt: string
     tabDigest?: string | null
+    claimNonce: string
   }) {
     assertWebRecommendationCaller(input.caller)
     if (input.contractVersion !== RECOMMENDATION_CONTRACTS.evidence) {
@@ -106,7 +174,9 @@ export class RecommendationEpisodeService {
       input.itemId.length < 1 ||
       input.itemId.length > 191 ||
       input.eventId.length < 1 ||
-      input.eventId.length > 191
+      input.eventId.length > 191 ||
+      input.claimNonce.length < 16 ||
+      input.claimNonce.length > 191
     ) {
       throw new RecommendationBindingError(
         "Recommendation selection binding is invalid",
@@ -153,7 +223,7 @@ export class RecommendationEpisodeService {
         requestId: item.requestId,
         itemId: item.id,
         sessionDigest: item.request.sessionDigest,
-        surface: RECOMMENDATION_CONTRACTS.surface,
+        surface: RecommendationSurfaceSchema.parse(item.request.surfaceVersion),
         manifestId: item.request.manifestId,
         ...(assignment
           ? {
@@ -206,14 +276,16 @@ export class RecommendationEpisodeService {
       kind: "selection",
       occurredAt: input.occurredAt,
       tabDigest: input.tabDigest ?? null,
+      claimNonceDigest: createHash("sha256")
+        .update(input.claimNonce)
+        .digest("hex"),
     })
     const newId = this.deps.newId ?? randomUUID
-    const claimNonce =
-      this.deps.newClaimNonce?.() ?? randomBytes(32).toString("base64url")
     const claimNonceDigest = createHash("sha256")
-      .update(claimNonce)
+      .update(input.claimNonce)
       .digest("hex")
     const episodeId = newId()
+    const selectionId = newId()
     const initialActiveUntil = new Date(now.getTime() + EPISODE_ACTIVE_MS)
     const initialHardUntil = new Date(now.getTime() + EPISODE_HARD_MS)
 
@@ -230,11 +302,25 @@ export class RecommendationEpisodeService {
         )
       }
       await lockRecommendationItemEvidence(tx, item.id)
+      const impression = await tx.recommendationImpression.findUnique({
+        where: { itemId: item.id },
+        select: { receivedAt: true },
+      })
       const existing = await tx.recommendationSelection.findUnique({
         where: { itemId: item.id },
       })
       if (existing) {
         if (existing.payloadDigest === digest) {
+          const reconciliation =
+            existing.attributionEligibleAt == null && impression
+              ? await tx.recommendationSelection.updateMany({
+                  where: {
+                    id: existing.id,
+                    attributionEligibleAt: null,
+                  },
+                  data: { attributionEligibleAt: now },
+                })
+              : { count: 0 }
           await tx.recommendationEvidenceAudit.create({
             data: {
               requestId: item.requestId,
@@ -243,7 +329,14 @@ export class RecommendationEpisodeService {
               expiresAt: item.request.expiresAt,
             },
           })
-          return { status: "replay" as const }
+          return {
+            status: "replay" as const,
+            selectionId: existing.id,
+            attributionEligible:
+              existing.attributionEligibleAt != null ||
+              reconciliation.count === 1,
+            attributionReconciled: reconciliation.count === 1,
+          }
         }
         await recordRecommendationConflict(tx, {
           requestId: item.requestId,
@@ -253,11 +346,16 @@ export class RecommendationEpisodeService {
           rejectedDigest: digest,
           expiresAt: item.request.expiresAt,
         })
-        return { status: "conflict" as const }
+        return {
+          status: "conflict" as const,
+          selectionId: null,
+          attributionEligible: false,
+          attributionReconciled: false,
+        }
       }
       await tx.recommendationSelection.create({
         data: {
-          id: newId(),
+          id: selectionId,
           requestId: item.requestId,
           itemId: item.id,
           capabilityJti,
@@ -265,6 +363,7 @@ export class RecommendationEpisodeService {
           payloadDigest: digest,
           tabDigest: input.tabDigest ?? null,
           claimNonceDigest,
+          attributionEligibleAt: impression ? now : null,
           handoffExpiresAt: new Date(now.getTime() + HANDOFF_LIFETIME_MS),
           occurredAt,
           receivedAt: now,
@@ -272,6 +371,11 @@ export class RecommendationEpisodeService {
           episode: {
             create: {
               id: episodeId,
+              contextVersion: PLAYBACK_CONTEXT_VERSION,
+              discoverySource: "recommendation",
+              provenance: {},
+              claimNonceDigest,
+              handoffExpiresAt: new Date(now.getTime() + HANDOFF_LIFETIME_MS),
               mediaId: item.targetMediaId,
               sessionDigest: item.request.sessionDigest,
               state: RecommendationEpisodeState.PENDING,
@@ -292,9 +396,14 @@ export class RecommendationEpisodeService {
           expiresAt: item.request.expiresAt,
         },
       })
-      return { status: "accepted" as const }
+      return {
+        status: "accepted" as const,
+        selectionId,
+        attributionEligible: impression != null,
+        attributionReconciled: false,
+      }
     })
-    if (result.status !== "accepted") {
+    if (result.status === "conflict") {
       return {
         status: result.status,
         claimNonce: null,
@@ -302,46 +411,90 @@ export class RecommendationEpisodeService {
         targetMediaId: item.targetMediaId,
       }
     }
-    scheduleRecommendationEpisodeFinalization(this.deps.dispatchFinalization, {
-      episodeId,
-      generation: 1,
-      reason: "episode-opened",
-      notBefore: initialActiveUntil,
-    })
+    if (result.status === "accepted") {
+      scheduleRecommendationEpisodeFinalization(
+        this.deps.dispatchFinalization,
+        {
+          episodeId,
+          generation: 1,
+          reason: "episode-opened",
+          notBefore: initialActiveUntil,
+        },
+      )
+    }
     if (
-      assignment?.profileId &&
-      assignment.privacyGeneration != null &&
-      assignment.profile?.state === "ACTIVE"
+      (result.status === "accepted" && result.attributionEligible) ||
+      result.attributionReconciled
     ) {
-      void this.deps
-        .dispatchProfileFeedback?.({
-          sessionDigest: item.request.sessionDigest,
-          profileId: assignment.profileId,
-          privacyGeneration: assignment.privacyGeneration,
-          // Coalescing must advance from immutable committed server evidence,
-          // never a browser-controlled timestamp that can be replayed far into
-          // the past or future.
-          evidenceWatermark: now,
-        })
-        .catch(() => {
-          // Projection workflow truth records dispatch failures. Selection and
-          // navigation never wait for profile learning.
-        })
+      void this.classifyAndDispatchSelectionFeedback({
+        selectionId: result.selectionId,
+        sessionDigest: item.request.sessionDigest,
+        evidenceWatermark: now,
+      })
     }
     return {
-      status: "accepted" as const,
-      claimNonce,
+      status: result.status,
+      claimNonce: input.claimNonce,
       canonicalHref: item.canonicalHref,
       targetMediaId: item.targetMediaId,
     }
   }
 
-  async claim(input: {
-    caller: Principal | null
+  private async classifyAndDispatchSelectionFeedback(input: {
+    selectionId: string
     sessionDigest: string
-    claimNonce: string
-    mediaId: string
-  }) {
+    evidenceWatermark: Date
+  }): Promise<void> {
+    try {
+      await this.deps.classifySelection?.(input.selectionId)
+      const activeProfile = await resolveActiveRecommendationProfileLink(
+        this.deps.prisma,
+        { sessionDigest: input.sessionDigest, now: input.evidenceWatermark },
+      )
+      if (!activeProfile) return
+      await this.deps.dispatchProfileFeedback?.({
+        sessionDigest: input.sessionDigest,
+        profileId: activeProfile.profileId,
+        privacyGeneration: activeProfile.privacyGeneration,
+        // Coalescing advances from committed server receipt time, never the
+        // browser-controlled selection timestamp.
+        evidenceWatermark: input.evidenceWatermark,
+      })
+    } catch {
+      // Selection acknowledgement and navigation remain fail-open. Durable
+      // reconciliation will retry both classification and projection.
+    }
+  }
+
+  async claim(input: EpisodeClaimInput) {
+    try {
+      try {
+        return await this.claimOnce(input, false)
+      } catch (error) {
+        if (!(error instanceof RecommendationConflictError)) throw error
+        // Another claimant may have committed the identical nonce. Revalidate
+        // once and reconstruct only that persisted capability, never a new claim.
+        return await this.claimOnce(input, true)
+      }
+    } catch (error) {
+      observeRecommendationEvidence({
+        action: "claim",
+        outcome:
+          error instanceof RecommendationBindingError ? "rejected" : "failed",
+        reason:
+          error instanceof RecommendationBindingError
+            ? "invalid_binding"
+            : "unknown",
+        retryDisposition:
+          error instanceof RecommendationBindingError
+            ? "terminal"
+            : "retryable",
+      })
+      throw error
+    }
+  }
+
+  private async claimOnce(input: EpisodeClaimInput, replayOnly: boolean) {
     assertWebRecommendationCaller(input.caller)
     if (
       !/^[a-f0-9]{64}$/.test(input.sessionDigest) ||
@@ -372,8 +525,21 @@ export class RecommendationEpisodeService {
         },
       },
     )
+    if (!selection) {
+      const context =
+        await this.deps.prisma.recommendationPlaybackEpisode.findUnique({
+          where: { claimNonceDigest },
+        })
+      return this.claimStandaloneContext({
+        context,
+        sessionDigest: input.sessionDigest,
+        mediaId: input.mediaId,
+        now,
+        replayOnly,
+      })
+    }
     if (
-      !selection?.episode ||
+      !selection.episode ||
       selection.request.sessionDigest !== input.sessionDigest ||
       selection.item.targetMediaId !== input.mediaId ||
       selection.request.expiresAt <= now ||
@@ -419,6 +585,11 @@ export class RecommendationEpisodeService {
         },
         { issuedAt: episode.claimedAt!, signingKid: episode.signingKid },
       )
+      observeRecommendationEvidence({
+        action: "claim",
+        outcome: "replay",
+        retryDisposition: "idempotent_replay",
+      })
       return {
         episodeId: episode.id,
         capability,
@@ -427,6 +598,11 @@ export class RecommendationEpisodeService {
       }
     }
 
+    if (replayOnly) {
+      throw new RecommendationConflictError(
+        "Recommendation claim did not commit",
+      )
+    }
     if (
       selection.handoffExpiresAt <= now ||
       selection.episode.state !== RecommendationEpisodeState.PENDING
@@ -507,8 +683,156 @@ export class RecommendationEpisodeService {
       notBefore: activeUntil,
     })
 
+    observeRecommendationEvidence({ action: "claim", outcome: "accepted" })
     return {
       episodeId: selection.episode.id,
+      capability,
+      activeUntil: activeUntil.toISOString(),
+      hardUntil: hardUntil.toISOString(),
+    }
+  }
+
+  private async claimStandaloneContext(input: {
+    context: {
+      id: string
+      requestId: string | null
+      itemId: string | null
+      selectionId: string | null
+      mediaId: string
+      sessionDigest: string
+      state: RecommendationEpisodeState
+      capabilityJti: string | null
+      signingKid: string | null
+      handoffExpiresAt: Date | null
+      activeUntil: Date
+      hardUntil: Date
+      generation: number
+      claimedAt: Date | null
+      expiresAt: Date
+    } | null
+    sessionDigest: string
+    mediaId: string
+    now: Date
+    replayOnly: boolean
+  }) {
+    const { context, now } = input
+    if (
+      !context ||
+      context.requestId != null ||
+      context.itemId != null ||
+      context.selectionId != null ||
+      context.sessionDigest !== input.sessionDigest ||
+      context.mediaId !== input.mediaId ||
+      context.expiresAt <= now
+    ) {
+      throw new RecommendationBindingError(
+        "Recommendation handoff binding is invalid",
+      )
+    }
+
+    if (context.claimedAt != null) {
+      const replayHorizonsMatch =
+        context.activeUntil.getTime() ===
+          context.claimedAt.getTime() + EPISODE_ACTIVE_MS &&
+        context.hardUntil.getTime() ===
+          context.claimedAt.getTime() + EPISODE_HARD_MS
+      if (
+        context.state !== RecommendationEpisodeState.CLAIMED ||
+        context.capabilityJti == null ||
+        context.signingKid == null ||
+        !replayHorizonsMatch ||
+        context.activeUntil <= now
+      ) {
+        throw new RecommendationBindingError(
+          "Recommendation handoff binding is invalid",
+        )
+      }
+      const capability = await this.deps.tokenService.signEpisodeCapability(
+        {
+          jti: context.capabilityJti,
+          episodeId: context.id,
+          sessionDigest: context.sessionDigest,
+          mediaId: context.mediaId,
+          generation: context.generation,
+        },
+        { issuedAt: context.claimedAt, signingKid: context.signingKid },
+      )
+      observeRecommendationEvidence({
+        action: "claim",
+        outcome: "replay",
+        retryDisposition: "idempotent_replay",
+      })
+      return {
+        episodeId: context.id,
+        capability,
+        activeUntil: context.activeUntil.toISOString(),
+        hardUntil: context.hardUntil.toISOString(),
+      }
+    }
+
+    if (input.replayOnly) {
+      throw new RecommendationConflictError(
+        "Recommendation claim did not commit",
+      )
+    }
+    if (
+      context.handoffExpiresAt == null ||
+      context.handoffExpiresAt <= now ||
+      context.state !== RecommendationEpisodeState.PENDING
+    ) {
+      throw new RecommendationBindingError(
+        "Recommendation handoff binding is invalid",
+      )
+    }
+    const capabilityJti = (this.deps.newId ?? randomUUID)()
+    const activeUntil = new Date(now.getTime() + EPISODE_ACTIVE_MS)
+    const hardUntil = new Date(now.getTime() + EPISODE_HARD_MS)
+    const capability = await this.deps.tokenService.signEpisodeCapability(
+      {
+        jti: capabilityJti,
+        episodeId: context.id,
+        sessionDigest: context.sessionDigest,
+        mediaId: context.mediaId,
+        generation: context.generation,
+      },
+      { issuedAt: now, signingKid: this.deps.tokenService.activeKid },
+    )
+
+    await this.deps.prisma.$transaction(async (tx) => {
+      const opened = await tx.recommendationPlaybackEpisode.updateMany({
+        where: {
+          id: context.id,
+          state: RecommendationEpisodeState.PENDING,
+          generation: context.generation,
+          claimedAt: null,
+          handoffExpiresAt: { gt: now },
+        },
+        data: {
+          state: RecommendationEpisodeState.CLAIMED,
+          capabilityJti,
+          signingKid: this.deps.tokenService.activeKid,
+          activeUntil,
+          hardUntil,
+          finalizationDueAt: activeUntil,
+          claimedAt: now,
+        },
+      })
+      if (opened.count !== 1) {
+        throw new RecommendationConflictError(
+          "Recommendation episode claim conflicted",
+        )
+      }
+    })
+
+    scheduleRecommendationEpisodeFinalization(this.deps.dispatchFinalization, {
+      episodeId: context.id,
+      generation: context.generation,
+      reason: "episode-opened",
+      notBefore: activeUntil,
+    })
+    observeRecommendationEvidence({ action: "claim", outcome: "accepted" })
+    return {
+      episodeId: context.id,
       capability,
       activeUntil: activeUntil.toISOString(),
       hardUntil: hardUntil.toISOString(),
@@ -529,6 +853,13 @@ export function createRecommendationEpisodeService(
       const { dispatchRecommendationProfileFeedback } =
         await import("./profiles/job")
       return dispatchRecommendationProfileFeedback(input)
+    },
+    classifySelection: async (selectionId) => {
+      const { createRecommendationIntegrityService } =
+        await import("./integrity.service")
+      return createRecommendationIntegrityService(prisma).classifySelection(
+        selectionId,
+      )
     },
   })
 }

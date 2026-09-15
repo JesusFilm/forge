@@ -233,6 +233,34 @@ export async function purgeExpiredRecommendationRequests(
         select: { id: true },
       })
       const directActionIds = directActions.map((action) => action.id)
+      const standaloneEpisodes =
+        await tx.recommendationPlaybackEpisode.findMany({
+          where: { requestId: null, expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          take: batchSize,
+          select: { id: true },
+        })
+      const standaloneEpisodeIds = standaloneEpisodes.map(({ id }) => id)
+      rowCounts.expiredStandalonePlaybackFacts =
+        standaloneEpisodeIds.length === 0
+          ? 0
+          : await tx.recommendationPlaybackFact.count({
+              where: { episodeId: { in: standaloneEpisodeIds } },
+            })
+      rowCounts.expiredStandaloneOutcomes =
+        standaloneEpisodeIds.length === 0
+          ? 0
+          : await tx.recommendationOutcomeRevision.count({
+              where: { episodeId: { in: standaloneEpisodeIds } },
+            })
+      rowCounts.expiredStandaloneEpisodes =
+        standaloneEpisodeIds.length === 0
+          ? 0
+          : (
+              await tx.recommendationPlaybackEpisode.deleteMany({
+                where: { id: { in: standaloneEpisodeIds } },
+              })
+            ).count
       rowCounts.expiredEligibilityDecisions =
         directActionIds.length === 0
           ? 0
@@ -283,6 +311,21 @@ export async function purgeExpiredRecommendationRequests(
       rowCounts.expiredProfileProjectionGenerations = (
         await tx.recommendationProfileProjectionGeneration.deleteMany({
           where: { expiresAt: { lte: now } },
+        })
+      ).count
+      const expiredViewers = await tx.recommendationViewer.findMany({
+        where: { expiresAt: { lte: now } },
+        take: batchSize,
+        orderBy: { expiresAt: "asc" },
+        select: { tokenDigest: true },
+      })
+      rowCounts.expiredViewers = (
+        await tx.recommendationViewer.deleteMany({
+          where: {
+            tokenDigest: {
+              in: expiredViewers.map((viewer) => viewer.tokenDigest),
+            },
+          },
         })
       ).count
       rowCounts.expiredConsentReceipts = (
@@ -550,6 +593,7 @@ export async function purgeExpiredRecommendationRequests(
         oldestExpiredProfileProjectionContribution,
         oldestExpiredProfileInterest,
         oldestExpiredProfileProjectionGeneration,
+        oldestExpiredStandaloneEpisode,
       ] = await Promise.all([
         tx.recommendationRequest.findFirst({
           where: { expiresAt: { lte: now } },
@@ -631,6 +675,11 @@ export async function purgeExpiredRecommendationRequests(
           orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
           select: { expiresAt: true },
         }),
+        tx.recommendationPlaybackEpisode.findFirst({
+          where: { requestId: null, expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
       ])
       const oldestExpiredAt = earliestDate([
         oldestExpiredRoot?.expiresAt,
@@ -649,6 +698,7 @@ export async function purgeExpiredRecommendationRequests(
         oldestExpiredProfileProjectionContribution?.expiresAt,
         oldestExpiredProfileInterest?.expiresAt,
         oldestExpiredProfileProjectionGeneration?.expiresAt,
+        oldestExpiredStandaloneEpisode?.expiresAt,
       ])
       const overdueAfterRun =
         oldestExpiredAt != null &&
@@ -724,6 +774,7 @@ export async function readRecommendationRetentionHealth(
         WHERE status = 'succeeded'
       ) AS "latestSuccessAt",
       LEAST(
+        (SELECT min(expires_at) FROM recommendation_viewer WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_request WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_content_action WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_eligibility_decision WHERE expires_at <= ${propagationCutoff}),
@@ -739,7 +790,8 @@ export async function readRecommendationRetentionHealth(
         (SELECT min(expires_at) FROM recommendation_profile_projection_run WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_profile_projection_contribution WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_profile_interest WHERE expires_at <= ${propagationCutoff}),
-        (SELECT min(expires_at) FROM recommendation_profile_projection_generation WHERE expires_at <= ${propagationCutoff})
+        (SELECT min(expires_at) FROM recommendation_profile_projection_generation WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM recommendation_playback_episode WHERE request_id IS NULL AND expires_at <= ${propagationCutoff})
       ) AS "oldestOverdueAt"
   `)
   const latestSuccessAt = snapshot?.latestSuccessAt ?? null

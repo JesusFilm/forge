@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { rm } from "node:fs/promises"
 import { join } from "node:path"
@@ -15,7 +16,14 @@ vi.mock("./s3", () => ({
   readObject: vi.fn(async () => new TextEncoder().encode("from-s3")),
 }))
 
-const LOCAL_MEDIA_DIR = join(process.cwd(), ".tmp", "media-assets")
+const localTestAsset = `storage-test-${randomUUID()}`
+const LOCAL_MEDIA_DIR = join(
+  process.cwd(),
+  ".tmp",
+  "media-assets",
+  "media-assets",
+  localTestAsset,
+)
 
 afterEach(async () => {
   vi.clearAllMocks()
@@ -64,13 +72,13 @@ describe("media storage", () => {
   it("writes and reads local media objects without S3 credentials", async () => {
     const key = await writeMediaObject({
       backend: "LOCAL",
-      assetId: "asset_123",
+      assetId: localTestAsset,
       filename: "hero.jpg",
       body: "image-bytes",
       contentType: "image/jpeg",
     })
 
-    expect(key).toBe("media-assets/asset_123/original/hero.jpg")
+    expect(key).toBe(`media-assets/${localTestAsset}/original/hero.jpg`)
 
     const bytes = await readMediaObject({ backend: "LOCAL", key })
     expect(new TextDecoder().decode(bytes)).toBe("image-bytes")

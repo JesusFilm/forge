@@ -193,12 +193,19 @@ any `changelog:*` scope. Auth downscopes before Better Auth creates its native
 authorization code and revalidates the current grant from provider-owned user,
 scope, and resource context before code-exchange or refresh token persistence.
 
-Keep `AUTH_CHANGELOG_PRODUCTION_ENABLED=false` (or unset) in every production
-environment until a supported grant-provisioning and revocation workflow is
-operational. Direct database edits are not a launch procedure. Enabling the
-flag does not create grants; it only permits matching approved, non-revoked
-production AppGrants to be considered. Preview remains intentionally deferred
-until Changelog has a stable preview deployment and callback domain.
+`AUTH_CHANGELOG_PRODUCTION_ENABLED` is now `true` in production (superseded
+2026-09-07; the launch gate below is met): the supported grant-provisioning
+and revocation workflow shipped as the `changelog:production-access`
+operator commands (feat-458 — see
+[`docs/auth-changelog-production-access.md`](../../../docs/auth-changelog-production-access.md)),
+and production issuance was enabled on 2026-09-05 after the pilot grant was
+verified. Do not set the flag back to `false` as hygiene: disabling it is a
+deliberate rollback step that stops all production Changelog issuance. The
+flag still defaults to disabled where unset, direct database edits are
+still not a launch procedure, and enabling the flag still does not create
+grants; it only permits matching approved, non-revoked production
+AppGrants to be considered. Preview remains intentionally deferred until
+Changelog has a stable preview deployment and callback domain.
 
 This boundary depends on the completed Better Auth 1.7 native-resource rollout
 (`feat-401`). Do not replace it with authorization-code record rewrites, a

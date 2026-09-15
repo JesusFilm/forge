@@ -145,6 +145,46 @@ function acceptTerms() {
 }
 
 describe("DownloadModal — header metadata", () => {
+  it.each([
+    { name: "download", accountGateEnabled: false, authRequiredLoginUrl: null },
+    {
+      name: "sign-in",
+      accountGateEnabled: true,
+      authRequiredLoginUrl: "/login",
+    },
+  ])(
+    "scrolls the $name layout at the viewport edge instead of inside the modal",
+    ({ accountGateEnabled, authRequiredLoginUrl }) => {
+      act(() => {
+        root.render(
+          <TestDownloadModal
+            open
+            downloads={[makeDownload({ documentId: "dl-1" })]}
+            accountGateEnabled={accountGateEnabled}
+            authRequiredLoginUrl={authRequiredLoginUrl}
+            onClose={vi.fn()}
+          />,
+        )
+      })
+
+      const modal = $('[data-testid="watch-download-modal"]')
+      const viewport = modal?.parentElement
+      const content = $('[data-testid="watch-download-modal-content"]')
+
+      expect(viewport?.getAttribute("data-slot")).toBe("dialog-viewport")
+      expect(viewport?.className).toContain("fixed")
+      expect(viewport?.className).toContain("inset-0")
+      expect(viewport?.className).toContain("overflow-y-auto")
+      expect(modal?.className).toContain("m-auto")
+      expect(modal?.className).toContain("shrink-0")
+      expect(content?.className).not.toContain("overflow-y-auto")
+      expect(content?.className).not.toContain("max-h-")
+      expect(
+        modal?.contains($('[data-testid="watch-download-modal-close"]')),
+      ).toBe(true)
+    },
+  )
+
   it("renders title, language pill, and duration overlay when provided", () => {
     act(() => {
       root.render(
@@ -537,6 +577,14 @@ describe("DownloadModal — Terms of Use agreement", () => {
     expect(
       $('[data-testid="watch-download-modal-terms-body"]')?.textContent,
     ).toContain("PLEASE CAREFULLY REVIEW THE TERMS OF USE")
+    const termsOverlay = $('[data-testid="watch-download-modal-terms-overlay"]')
+    const termsDialog = $('[data-testid="watch-download-modal-terms-dialog"]')
+    const termsBody = $('[data-testid="watch-download-modal-terms-body"]')
+    expect(termsOverlay?.className).toContain("overflow-y-auto")
+    expect(termsDialog?.className).toContain("m-auto")
+    expect(termsDialog?.className).toContain("shrink-0")
+    expect(termsDialog?.className).not.toContain("max-h-")
+    expect(termsBody?.className).not.toContain("overflow-y-auto")
     const canonicalLink = $(
       '[data-testid="watch-download-modal-terms-canonical-notice"] a',
     ) as HTMLAnchorElement

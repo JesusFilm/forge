@@ -132,6 +132,24 @@ describe("LanguageCombobox", () => {
     expect(triggerCode?.className).not.toContain("size-8")
   })
 
+  it("merges trigger overrides so conflicting base surface classes are removed", () => {
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={OPTIONS}
+          value="spanish"
+          onChange={vi.fn()}
+          compact
+          triggerClassName="bg-stone-900/70"
+        />,
+      )
+    })
+
+    const trigger = $('[data-testid="language-combobox-trigger"]')
+    expect(trigger?.className).toContain("bg-stone-900/70")
+    expect(trigger?.className).not.toContain("bg-white/5")
+  })
+
   it("uses a dark translucent selected option state", () => {
     act(() => {
       root.render(

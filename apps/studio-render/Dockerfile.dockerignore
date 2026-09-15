@@ -1,0 +1,21 @@
+# Allow only the exact execution build dependency closure.
+**
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!patches
+!patches/**
+!apps
+!apps/studio-render
+!apps/studio-render/**
+!packages
+!packages/studio-contracts
+!packages/studio-contracts/**
+!packages/shorts-compositions
+!packages/shorts-compositions/**
+**/node_modules
+**/.env*
+**/dist
+**/.next
+**/.turbo
+**/coverage

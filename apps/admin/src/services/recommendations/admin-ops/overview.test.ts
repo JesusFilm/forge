@@ -398,6 +398,8 @@ describe("recommendation admin overview", () => {
     expect(aggregateSql).toContain("decision.id IS NULL")
     expect(aggregateSql).toContain("decision.id IS NOT NULL")
     expect(aggregateSql).toContain("cardinality(decision.eligible_scopes)")
+    expect(aggregateSql).toContain("selection.attribution_eligible_at <=")
+    expect(aggregateSql).toContain("selection.attribution_eligible_at IS NULL")
     expect(aggregateSql).not.toContain("session_digest AS")
     expect(aggregateSql).not.toContain("LEFT JOIN active_roots root")
     expect(prisma.recommendationRequest.findMany).not.toHaveBeenCalled()

@@ -1,4 +1,5 @@
 import type { ErrorLike } from "@apollo/client"
+import { resolveMuxHeroPosterUrlAtMaxWidth } from "@/lib/url"
 import { cache } from "react"
 import { unstable_cache } from "next/cache"
 import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
@@ -27,6 +28,7 @@ import type {
   WatchHomeCarouselSequenceData,
   WatchHomeTvCarouselVideoSlide,
 } from "@/lib/watch-home-carousel-sequence"
+import { isWatchHomeIntroEligibleVideoLabel } from "@/lib/watch-home-carousel-sequence"
 import { getWatchHomeVideosOperation } from "@/lib/fragments/watch-home"
 import { WATCH_CACHE_TAGS } from "@/lib/watch-cache-tags"
 
@@ -96,7 +98,14 @@ export type WatchHomeCard = {
   sourceId: string
   coreId: string
   title: string
+  /** Display text, e.g. "Feature film". Presentation only — never compared. */
   label: string
+  /**
+   * Admin's raw wire label, e.g. `FEATURE_FILM`. Kept alongside the display
+   * `label` so eligibility decisions key on the semantic value instead of
+   * rendered copy (see `isWatchHomeIntroEligibleVideoLabel`).
+   */
+  videoLabel: string | null
   metaLabel: string | null
   href: string | null
   imageUrl: string | null
@@ -448,6 +457,7 @@ function normalizeCard(args: {
     coreId: args.video.coreId,
     title,
     label,
+    videoLabel: args.video.label ?? null,
     metaLabel: buildMetaLabel({
       label,
       durationSeconds: args.video.durationSeconds ?? null,
@@ -627,11 +637,17 @@ function buildSections(args: {
   }).filter((section) => section.cards.length > 0)
 }
 
-function cardToCarouselSlide(
+/** Exported for tests: this is the slide shape the live /watch pools serve. */
+export function cardToCarouselSlide(
   card: WatchHomeCard,
 ): WatchHomeTvCarouselVideoSlide | null {
   if (!card.hls) return null
   if (WATCH_HOME_COLLECTION_BLACKLIST.has(card.coreId)) return null
+  // The intro plays a slide to its natural end, so a feature film would hold
+  // the hero for hours. Excluded here rather than from `heroSlides` itself:
+  // that list also drives poster selection and the page's own
+  // "is there any hero content" gate.
+  if (!isWatchHomeIntroEligibleVideoLabel(card.videoLabel)) return null
 
   return {
     kind: "video",
@@ -639,7 +655,18 @@ function cardToCarouselSlide(
     title: card.title,
     label: card.label,
     href: card.href,
-    posterUrl: card.imageUrl,
+    // Frame-first for the hero surface, authored-first for the card. The admin
+    // library holds only mobile derivatives for these videos (measured 640x300
+    // for `mobileCinematicHigh`), which a full-bleed intro upscales about
+    // fourfold; the Mux frame is 1280x720 from the same warm derivative the
+    // watch-page hero requests.
+    // `||`, not `??`: admin passes image columns through raw, so a present-
+    // but-blank string is a real shape, and `??` would keep it and render an
+    // empty tile.
+    posterUrl:
+      resolveMuxHeroPosterUrlAtMaxWidth(card.playbackId) ||
+      card.imageUrl ||
+      null,
     thumbnailUrl: card.imageUrl,
     imageAlt: card.imageAlt,
     src: card.hls,

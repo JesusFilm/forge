@@ -28,6 +28,8 @@ tags:
 
 # Watch recommendation consent refresh must recover from transient delivery admission
 
+> **Current policy:** `docs/analytics-and-recommendation-policy.md` requires no consent prerequisite. The consent-named APIs and bootstrap states below describe the existing runtime and its race fix; they are not instructions to add an opt-in gate. Preserve automatic initialization, explicit personalization controls, and configured analytics.
+
 ## Problem
 
 Accepting personalization writes the consent/profile cookies and announces a

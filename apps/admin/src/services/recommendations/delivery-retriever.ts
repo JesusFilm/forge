@@ -1,12 +1,9 @@
 import type { PrismaClient } from "@prisma/client"
 import type { SceneRecommendation } from "@/services/scene-recommendations.service"
 import { VideoNotFoundError } from "@/services/scene-recommendations.service"
+import { activeTranscriptContentEmbeddingWhere } from "@/services/content-embedding-contract"
 import { dedupeByVideoIdentity } from "@/services/video-dedup"
 import type { SemanticCandidatePoolItem } from "./candidate"
-
-const QWEN_CONTENT_EMBEDDING_PROVIDER = "jesus-film-ai-gateway"
-const QWEN_CONTENT_EMBEDDING_MODEL = "embeddings"
-const QWEN_CONTENT_EMBEDDING_DIMENSIONS = 1536
 
 // Delivery has a hard 1.5-second retrieval budget. Sampling evenly across a
 // long transcript bounds the number of ANN probes without reverting to the
@@ -75,13 +72,10 @@ export async function getSemanticDeliveryCandidatePool(
         AND vt.language = ${input.locale}
         AND vtc.language = ${input.locale}
         AND vtc.embedding IS NOT NULL
-        AND vt.embedding_provider = ${QWEN_CONTENT_EMBEDDING_PROVIDER}
-        AND vt.model = ${QWEN_CONTENT_EMBEDDING_MODEL}
-        AND vt.dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
-        AND vt.embedding_native_dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
-        AND vt.embedding_transform_version IS NULL
-        AND vtc.model = ${QWEN_CONTENT_EMBEDDING_MODEL}
-        AND vtc.dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
+        ${activeTranscriptContentEmbeddingWhere({
+          transcriptAlias: "vt",
+          chunkAlias: "vtc",
+        })}
     ),
     bucketed_seed_chunks AS MATERIALIZED (
       SELECT
@@ -106,11 +100,6 @@ export async function getSemanticDeliveryCandidatePool(
       UNION
       SELECT child_id FROM video_relation WHERE parent_id = ${input.seedMediaId}
     ),
-    excluded_transcript_ids AS MATERIALIZED (
-      SELECT vt.id
-      FROM video_transcript vt
-      JOIN excluded_video_ids excluded ON excluded.id = vt.video_id
-    ),
     nearest_chunks AS MATERIALIZED (
       SELECT nearest.*
       FROM seed_chunks seed
@@ -134,12 +123,23 @@ export async function getSemanticDeliveryCandidatePool(
         FROM video_transcript_chunk candidate
         WHERE candidate.embedding IS NOT NULL
           AND candidate.language = ${input.locale}
-          AND candidate.model = ${QWEN_CONTENT_EMBEDDING_MODEL}
-          AND candidate.dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
-          AND NOT EXISTS (
-            SELECT 1
-            FROM excluded_transcript_ids excluded
-            WHERE excluded.id = candidate.transcript_id
+          -- Keep parent provenance as a scalar filter on the ordered ANN scan.
+          -- Joining the parent here can instead plan a full scan/distance sort.
+          -- The primary key permits at most one row; missing or incompatible
+          -- provenance yields NULL and is rejected before the neighbor limit.
+          AND (
+            SELECT true
+            FROM video_transcript candidate_transcript
+            WHERE candidate_transcript.id = candidate.transcript_id
+              ${activeTranscriptContentEmbeddingWhere({
+                transcriptAlias: "candidate_transcript",
+                chunkAlias: "candidate",
+              })}
+              AND NOT EXISTS (
+                SELECT 1
+                FROM excluded_video_ids excluded
+                WHERE excluded.id = candidate_transcript.video_id
+              )
           )
         ORDER BY
           candidate.embedding OPERATOR(public.<=>) seed.seed_embedding
@@ -172,11 +172,9 @@ export async function getSemanticDeliveryCandidatePool(
       JOIN video_transcript vt
         ON vt.id = nearest.transcript_id
         AND vt.language = ${input.locale}
-        AND vt.embedding_provider = ${QWEN_CONTENT_EMBEDDING_PROVIDER}
-        AND vt.model = ${QWEN_CONTENT_EMBEDDING_MODEL}
-        AND vt.dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
-        AND vt.embedding_native_dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
-        AND vt.embedding_transform_version IS NULL
+        ${activeTranscriptContentEmbeddingWhere({
+          transcriptAlias: "vt",
+        })}
       JOIN video v
         ON v.id = vt.video_id
         AND v.deleted_at IS NULL

@@ -1,5 +1,6 @@
 import Image from "next/image"
 import { useTranslations } from "next-intl"
+import { WatchHomeBodyZone } from "@/components/home/WatchHomeBodyZone"
 import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
 import { WatchHomePromo } from "@/components/home/WatchHomePromo"
 import { WatchHomeSection } from "@/components/home/WatchHomeSection"
@@ -28,7 +29,13 @@ export function WatchHomePage({ model }: WatchHomePageProps) {
   const backdrop = findBackdropImage(model)
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-black text-white">
+    <main
+      // `overflow-x-clip`, never `overflow-x-hidden`: hidden computes the other
+      // axis to `auto`, which makes this element the scroll container and
+      // silently stops the hero below from sticking. Clip does not establish a
+      // scroll container, so the pin survives.
+      className="min-h-screen overflow-x-clip bg-black text-white"
+    >
       <div
         className="relative font-sans text-white"
         style={{ minHeight: "100svh" }}
@@ -57,17 +64,22 @@ export function WatchHomePage({ model }: WatchHomePageProps) {
           <div aria-hidden className="absolute inset-0 bg-black/35" />
         </div>
 
-        <div className="relative z-10 mx-auto -mt-[100vh] max-w-[1920px] overflow-x-clip">
+        {/* No `overflow-x-clip` here: the hero media bleeds past this 1920px
+            rail to the viewport edges. `html`/`body` already clip the page,
+            so nothing gains a horizontal scrollbar. */}
+        <div className="relative z-10 mx-auto -mt-[100vh] max-w-[1920px]">
           <h1 className="sr-only">{t("pageTitle")}</h1>
           <WatchHomeTvCarousel
             slides={model.heroSlides}
             sequence={model.carousel}
           />
-          {model.sections.map((section) => (
-            <WatchHomeSection key={section.id} section={section} />
-          ))}
-          <WatchHomePromo />
-          <WatchHomeFooter />
+          <WatchHomeBodyZone>
+            {model.sections.map((section) => (
+              <WatchHomeSection key={section.id} section={section} />
+            ))}
+            <WatchHomePromo />
+            <WatchHomeFooter />
+          </WatchHomeBodyZone>
         </div>
       </div>
     </main>

@@ -324,7 +324,7 @@ export type ShadowGeneratorContext = Readonly<{
   purpose: "watch"
   locale: string
   audioLanguageSlug: string
-  seedMediaId: string
+  seedMediaId: string | null
   manifestId: string
   contextProjection: Readonly<{
     ref: string | null

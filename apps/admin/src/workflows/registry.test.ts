@@ -4,6 +4,7 @@ import {
   runRecommendationRetention,
   runRecommendationRetentionScheduler,
 } from "./recommendationRetention"
+import { runRecommendationProfileReconciliationScheduler } from "./recommendationProfileReconciliation"
 
 describe("recommendation workflow registry", () => {
   it("keeps both retention workflows in the deployment discovery graph", () => {
@@ -25,6 +26,13 @@ describe("recommendation workflow registry", () => {
     )
     expect(workflowIds).toContain(
       retentionSchedulerWorkflowId ?? runRecommendationRetentionScheduler.name,
+    )
+    expect(workflowIds).toContain(
+      (
+        runRecommendationProfileReconciliationScheduler as typeof runRecommendationProfileReconciliationScheduler & {
+          workflowId?: string
+        }
+      ).workflowId ?? runRecommendationProfileReconciliationScheduler.name,
     )
   })
 })

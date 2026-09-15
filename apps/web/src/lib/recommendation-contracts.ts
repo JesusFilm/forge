@@ -26,6 +26,83 @@ export type RecommendationEpisodeCapability = {
   hardUntil: string
 }
 
+export type RecommendationPlaybackReceipt = {
+  eventId: string
+  status: "accepted" | "replay" | "conflict"
+  sequence: number
+}
+
+export type RecommendationEvidenceReceipt = {
+  eventId: string
+  status: "accepted" | "replay" | "conflict"
+}
+
+export function parseRecommendationEvidenceReceipts(
+  value: unknown,
+  submittedEventIds: ReadonlySet<string>,
+): RecommendationEvidenceReceipt[] | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null
+  const receipts = (value as Record<string, unknown>).receipts
+  if (!Array.isArray(receipts)) return null
+  const seen = new Set<string>()
+  const parsed: RecommendationEvidenceReceipt[] = []
+  for (const value of receipts) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null
+    const receipt = value as Record<string, unknown>
+    if (
+      typeof receipt.eventId !== "string" ||
+      !submittedEventIds.has(receipt.eventId) ||
+      seen.has(receipt.eventId) ||
+      (receipt.status !== "accepted" &&
+        receipt.status !== "replay" &&
+        receipt.status !== "conflict")
+    ) {
+      return null
+    }
+    seen.add(receipt.eventId)
+    parsed.push({
+      eventId: receipt.eventId,
+      status: receipt.status,
+    })
+  }
+  return parsed
+}
+
+export function parseRecommendationPlaybackReceipts(
+  value: unknown,
+  submittedEventIds: ReadonlySet<string>,
+): RecommendationPlaybackReceipt[] | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null
+  const receipts = (value as Record<string, unknown>).receipts
+  if (!Array.isArray(receipts)) return null
+  const seen = new Set<string>()
+  const parsed: RecommendationPlaybackReceipt[] = []
+  for (const value of receipts) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null
+    const receipt = value as Record<string, unknown>
+    if (
+      typeof receipt.eventId !== "string" ||
+      !submittedEventIds.has(receipt.eventId) ||
+      seen.has(receipt.eventId) ||
+      (receipt.status !== "accepted" &&
+        receipt.status !== "replay" &&
+        receipt.status !== "conflict") ||
+      typeof receipt.sequence !== "number" ||
+      !Number.isSafeInteger(receipt.sequence) ||
+      receipt.sequence < 1
+    ) {
+      return null
+    }
+    seen.add(receipt.eventId)
+    parsed.push({
+      eventId: receipt.eventId,
+      status: receipt.status,
+      sequence: receipt.sequence,
+    })
+  }
+  return parsed
+}
+
 export function parseRecommendationEpisodeCapability(
   value: unknown,
 ): RecommendationEpisodeCapability | null {
