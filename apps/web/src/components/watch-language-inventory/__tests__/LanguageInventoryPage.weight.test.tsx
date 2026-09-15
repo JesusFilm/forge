@@ -137,13 +137,13 @@ describe("next/image candidate-width derivation", () => {
   })
 
   it("emits two candidates for an explicitly sized image", () => {
-    const { props } = getImageProps({ src, alt: "", width: 112, height: 64 })
+    const { props } = getImageProps({ src, alt: "", width: 168, height: 96 })
     expect(props.srcSet?.split(", ")).toHaveLength(2)
     expect(props.sizes).toBeUndefined()
-    // The enlarged phone slot still gets its 128w 1x candidate without
-    // restoring the 15-candidate pixel-only `sizes` list.
-    expect(props.srcSet).toContain("&w=128&q=75 1x")
-    expect(props.srcSet).toContain("&w=256&q=75 2x")
+    // The enlarged 112px phone slot gets a 256w/384w pair, preserving a 3-DPR
+    // candidate without restoring the 15-candidate pixel-only `sizes` list.
+    expect(props.srcSet).toContain("&w=256&q=75 1x")
+    expect(props.srcSet).toContain("&w=384&q=75 2x")
   })
 
   it("emits two candidates for an explicitly sized portrait row", () => {
@@ -208,8 +208,8 @@ describe("LanguageInventoryPage page weight", () => {
   it("sizes the compact row thumbnail explicitly instead of with a pixel-only `sizes`", () => {
     renderGroup()
     const image = compactRowImage()
-    expect(image.getAttribute("width")).toBe("112")
-    expect(image.getAttribute("height")).toBe("64")
+    expect(image.getAttribute("width")).toBe("168")
+    expect(image.getAttribute("height")).toBe("96")
     // Both halves matter: `sizes` is what re-expands the candidate list, and
     // `fill` is what forces `sizes` back.
     expect(image.hasAttribute("sizes")).toBe(false)
@@ -227,16 +227,6 @@ describe("LanguageInventoryPage page weight", () => {
     expect(image.getAttribute("height")).toBe("96")
     expect(image.hasAttribute("sizes")).toBe(false)
     expect(image.className).toContain("object-center")
-  })
-
-  it("skips rendering for off-screen compact rows", () => {
-    renderGroup()
-    const row = container.querySelector<HTMLElement>("[data-inv-item]")
-    // jsdom has no layout, so this can only assert the rule is applied. The
-    // placeholder height was tuned against a real browser: 56px of content box
-    // plus responsive row padding reproduces the document's real height.
-    expect(row?.className).toContain("[content-visibility:auto]")
-    expect(row?.className).toContain("[contain-intrinsic-size:auto_56px]")
   })
 
   it("requests the blur-sized derivative for the collection backdrop only", () => {

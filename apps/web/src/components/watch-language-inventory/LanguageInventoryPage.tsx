@@ -545,18 +545,20 @@ function CompactVideoRow({
           // 9.44 MB document. `width`/`height` emits the 2-candidate `1x`/`2x`
           // form instead.
           //
-          // The intrinsic dimensions follow the largest phone frames added in
-          // #2275. They produce 128w/256w landscape and 64w/128w portrait
-          // candidates: enough for the enlarged slots without restoring the
-          // 15-candidate pixel-only `sizes` list on every row.
+          // The intrinsic dimensions preserve the aspect ratios of the largest
+          // phone frames added in #2275. Landscape produces 256w/384w
+          // candidates for the 112px CSS slot, retaining a 3-DPR option;
+          // portrait produces 64w/128w for its narrower 42.67px CSS slot.
+          // Both avoid restoring the 15-candidate pixel-only `sizes` list on
+          // every row.
           //
           // The classes reproduce what `fill` set inline, so the rendered box
           // is unchanged.
           <Image
             src={thumbnailUrl}
             alt=""
-            width={isPortrait ? 64 : 112}
-            height={isPortrait ? 96 : 64}
+            width={isPortrait ? 64 : 168}
+            height={96}
             className={cn(
               "absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105",
               isPortrait ? "object-center" : "object-left-top",

@@ -419,8 +419,8 @@ describe("LanguageInventoryPage thumbnail sources", () => {
     expect(frame?.classList.contains("sm:w-24")).toBe(true)
     expect(frame?.classList.contains("aspect-[2/3]")).toBe(false)
     expect(image?.classList.contains("object-left-top")).toBe(true)
-    expect(image?.getAttribute("width")).toBe("112")
-    expect(image?.getAttribute("height")).toBe("64")
+    expect(image?.getAttribute("width")).toBe("168")
+    expect(image?.getAttribute("height")).toBe("96")
     expect(
       row?.querySelector(
         '[data-testid="language-inventory-compact-thumbnail-frame"]',
