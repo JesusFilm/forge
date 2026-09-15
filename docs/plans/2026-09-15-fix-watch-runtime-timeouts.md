@@ -14,7 +14,8 @@ API contracts, viewing-history rules, atomic admission and existing deadlines.
 
 ## Evidence and assumptions
 
-- Main and production run `c769661236623fde33f669a1f23e5c0311ff26e5`.
+- At investigation start, main and production ran
+  `c769661236623fde33f669a1f23e5c0311ff26e5`.
 - Fresh primary Web failures at 23:05 UTC on 14 September fail inside Redis
   admission before Admin. A first timeout retires the shared connection and
   subsequent callers fail during backoff. Trace
