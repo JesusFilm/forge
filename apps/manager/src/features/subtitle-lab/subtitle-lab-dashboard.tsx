@@ -33,11 +33,13 @@ import type {
 } from "./subtitle-lab-operator-types"
 
 const PANEL =
-  "rounded-[var(--ds-radius)] border border-[color:var(--ds-line)] bg-[color:var(--ds-panel)] p-5 shadow-[0_8px_24px_rgba(17,17,17,0.04)]"
+  "min-w-0 rounded-[var(--ds-radius)] border border-[color:var(--ds-line)] bg-[color:var(--ds-panel)] p-5 shadow-[0_8px_24px_rgba(17,17,17,0.04)]"
 const INPUT =
   "min-h-11 w-full rounded-[var(--ds-radius)] border border-[color:var(--ds-line-strong)] bg-[color:var(--ds-panel)] px-3 py-2 text-sm text-[color:var(--ds-ink)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--ds-black)]"
 const BUTTON =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--ds-radius)] border border-[color:var(--ds-black)] bg-[color:var(--ds-black)] px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ds-black)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45"
+const QUIET_BUTTON =
+  "inline-flex min-h-8 items-center rounded-full border border-[color:var(--ds-line-strong)] px-3 py-1 text-xs font-medium text-[color:var(--ds-ink)] hover:bg-[color:var(--ds-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--ds-black)] disabled:cursor-not-allowed disabled:opacity-45"
 const SECONDARY_BUTTON =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--ds-radius)] border border-[color:var(--ds-line-strong)] bg-[color:var(--ds-panel)] px-4 py-2 text-sm font-semibold text-[color:var(--ds-ink)] hover:bg-[color:var(--ds-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--ds-black)] disabled:cursor-not-allowed disabled:opacity-45"
 
@@ -45,6 +47,53 @@ const MODEL = SUBTITLE_EVAL_ALLOWED_MODELS[0]
 const PROVIDER = SUBTITLE_EVAL_ALLOWED_PROVIDER
 const PROMPT_POLICY = SUBTITLE_EVAL_PROMPT_POLICY_ID
 const WORKFLOW_POLICY = SUBTITLE_EVAL_WORKFLOW_POLICY_DIGEST
+
+/**
+ * Run status colours are lifted from Manager's existing job badges
+ * (`.jobs-summary-status-badge` in globals.css) so the Lab reads as the same
+ * product rather than inventing a second status vocabulary.
+ */
+const RUN_STATUS_META: Record<
+  string,
+  { label: string; background: string; needsOperator: boolean }
+> = {
+  QUEUED: { label: "Queued", background: "#475569", needsOperator: false },
+  RUNNING: { label: "Running", background: "#fe8549", needsOperator: false },
+  COMPLETED: {
+    label: "Completed",
+    background: "#0f8a64",
+    needsOperator: false,
+  },
+  PARTIAL: { label: "Partial", background: "#b45309", needsOperator: true },
+  FAILED: { label: "Failed", background: "#b91c1c", needsOperator: true },
+  CANCELLED: {
+    label: "Cancelled",
+    background: "#475569",
+    needsOperator: false,
+  },
+}
+
+function runStatusMeta(status: string) {
+  return (
+    RUN_STATUS_META[status] ?? {
+      label: statusLabel(status),
+      background: "#475569",
+      needsOperator: false,
+    }
+  )
+}
+
+function RunStatusBadge({ status }: { status: string }) {
+  const meta = runStatusMeta(status)
+  return (
+    <span
+      className="inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-semibold text-white"
+      style={{ background: meta.background }}
+    >
+      {meta.label}
+    </span>
+  )
+}
 
 type ActionState =
   | { type: "idle" }
@@ -119,16 +168,14 @@ function CorpusEvidence({ corpus }: { corpus: SubtitleLabCorpusVersion }) {
   }
 
   return (
-    <section className={PANEL} aria-labelledby="subtitle-corpus-title">
+    <div>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <span className="studio-page-eyebrow">Frozen gold evidence</span>
-          <h2 id="subtitle-corpus-title" className="mt-1 text-xl font-semibold">
-            Corpus authority
-          </h2>
-          <p className="mt-2 max-w-3xl text-sm text-[color:var(--ds-muted)]">
-            Exact source and human-reference snapshots are content addressed.
-            Approval certifies these bytes; it does not publish subtitles.
+          <p className="max-w-3xl text-sm text-[color:var(--ds-muted)]">
+            Every source and reference subtitle is stored by a hash of its
+            bytes, so a run can always be traced to the exact text it was scored
+            against. Approving a corpus certifies that text. It does not publish
+            anything.
           </p>
         </div>
         <span className="inline-flex items-center gap-2 rounded-full border border-[color:var(--ds-line-strong)] px-3 py-1 text-xs font-semibold">
@@ -290,7 +337,7 @@ function CorpusEvidence({ corpus }: { corpus: SubtitleLabCorpusVersion }) {
           {formatSubtitleLabDate(corpus.approvedAt)}.
         </p>
       )}
-    </section>
+    </div>
   )
 }
 
@@ -340,14 +387,8 @@ function ImportCorpus() {
   }
 
   return (
-    <section className={PANEL} aria-labelledby="subtitle-import-title">
+    <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <span className="studio-page-eyebrow">Versioned seed</span>
-          <h2 id="subtitle-import-title" className="mt-1 text-xl font-semibold">
-            Import frozen corpus
-          </h2>
-        </div>
         <button
           className={SECONDARY_BUTTON}
           onClick={() => setOpen((value) => !value)}
@@ -405,15 +446,27 @@ function ImportCorpus() {
           {actionMessage(state)}
         </form>
       ) : null}
-    </section>
+    </div>
   )
 }
+
+const MAX_RUN_CELLS = 20
 
 function LaunchRun({ corpus }: { corpus: SubtitleLabCorpusVersion | null }) {
   const [selected, setSelected] = useState<string[]>([])
   const [state, setState] = useState<ActionState>({ type: "idle" })
   const actionKey = useStableActionKey()
   const canLaunch = corpus?.status === "APPROVED" && selected.length > 0
+  const cells = corpus?.cells ?? []
+  const selectable = corpus?.status === "APPROVED"
+
+  // Selecting a whole corpus used to cost one click per cell. These act on the
+  // cells the operator can actually run, capped at the same limit Admin
+  // enforces, and stay deliberate: nothing is preselected, because starting a
+  // run spends money.
+  function selectAll() {
+    setSelected(cells.slice(0, MAX_RUN_CELLS).map((cell) => cell.id))
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -464,13 +517,13 @@ function LaunchRun({ corpus }: { corpus: SubtitleLabCorpusVersion | null }) {
       <div className="flex items-center gap-2">
         <Play aria-hidden="true" size={19} />
         <h2 id="subtitle-launch-title" className="text-xl font-semibold">
-          Launch bounded cloud run
+          Start a run
         </h2>
       </div>
       <p className="mt-2 text-sm text-[color:var(--ds-muted)]">
-        At most 20 frozen cells, concurrency 1–3, 60–600 seconds, and two
-        attempts. Admin applies stricter active-run and spend budgets before
-        dispatch.
+        Each selected cell is one paid translation. Pick the cells, then start
+        the run — spend limits are enforced before anything is dispatched, so a
+        run that would exceed them is refused rather than trimmed.
       </p>
       {!corpus ? (
         <p className="mt-4 text-sm">Open a corpus version to select cells.</p>
@@ -484,8 +537,28 @@ function LaunchRun({ corpus }: { corpus: SubtitleLabCorpusVersion | null }) {
         {corpus ? (
           <fieldset>
             <legend className="text-sm font-semibold">
-              Approved corpus cells ({selected.length}/20 selected)
+              Cells to measure ({selected.length} of{" "}
+              {Math.min(cells.length, MAX_RUN_CELLS)} selected)
             </legend>
+            {selectable ? (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <button
+                  className={QUIET_BUTTON}
+                  onClick={selectAll}
+                  type="button"
+                >
+                  Select all
+                </button>
+                <button
+                  className={QUIET_BUTTON}
+                  disabled={selected.length === 0}
+                  onClick={() => setSelected([])}
+                  type="button"
+                >
+                  Clear
+                </button>
+              </div>
+            ) : null}
             <div className="mt-2 grid max-h-72 gap-2 overflow-y-auto rounded-[var(--ds-radius)] border border-[color:var(--ds-line)] p-3 lg:grid-cols-2">
               {corpus.cells.map((cell) => (
                 <label
@@ -583,7 +656,7 @@ function LaunchRun({ corpus }: { corpus: SubtitleLabCorpusVersion | null }) {
           disabled={!canLaunch || state.type === "busy"}
           type="submit"
         >
-          <Play aria-hidden="true" size={17} /> Create report-backed run
+          <Play aria-hidden="true" size={17} /> Start run
         </button>
         {actionMessage(state)}
       </form>
@@ -597,48 +670,66 @@ function RunHistory({ runs }: { runs: SubtitleLabRunSummary[] }) {
       <div className="flex items-center gap-2">
         <History aria-hidden="true" size={19} />
         <h2 id="subtitle-runs-title" className="text-xl font-semibold">
-          Active and recent runs
+          Runs
         </h2>
       </div>
-      <p className="mt-2 text-sm text-[color:var(--ds-muted)]">
-        Terminal reports are immutable. Partial and failed runs remain
-        first-class evidence.
-      </p>
       <div className="mt-4 grid gap-2">
         {runs.length === 0 ? (
-          <p className="rounded-[var(--ds-radius)] border border-dashed border-[color:var(--ds-line-strong)] p-6 text-center text-sm text-[color:var(--ds-muted)]">
-            No retained subtitle evaluation runs.
+          <p className="rounded-[var(--ds-radius)] border border-dashed border-[color:var(--ds-line-strong)] p-6 text-sm text-[color:var(--ds-muted)]">
+            No runs yet. Pick the cells you want to measure and start one.
           </p>
         ) : (
           runs.map((run) => (
             <a
-              className="group flex items-center gap-3 rounded-[var(--ds-radius)] border border-[color:var(--ds-line)] p-3 hover:bg-[color:var(--ds-hover)]"
+              className="group flex min-w-0 items-center gap-3 rounded-[var(--ds-radius)] border border-[color:var(--ds-line)] p-3 hover:bg-[color:var(--ds-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--ds-black)]"
               href={`/dashboard/subtitle-lab/runs/${encodeURIComponent(run.id)}`}
               key={run.id}
             >
+              <RunStatusBadge status={run.status} />
               <span className="min-w-0 flex-1">
-                <span className="flex flex-wrap items-center gap-2">
-                  <strong>{statusLabel(run.status)}</strong>
-                  <span className="rounded-full border border-[color:var(--ds-line-strong)] px-2 py-0.5 text-xs">
-                    {run.cellCount} cells
-                  </span>
+                <span className="block break-words text-sm font-medium text-[color:var(--ds-ink)]">
+                  {run.cellCount} cells · {run.requestedModel}
                 </span>
-                <span className="mt-1 block truncate font-mono text-xs text-[color:var(--ds-muted)]">
+                <span className="mt-0.5 block text-xs text-[color:var(--ds-muted)]">
+                  Started {formatSubtitleLabDate(run.createdAt)}
+                  {run.terminalAt
+                    ? ` · finished ${formatSubtitleLabDate(run.terminalAt)}`
+                    : ""}
+                </span>
+                <span className="mt-0.5 block truncate font-mono text-[11px] text-[color:var(--ds-soft)]">
                   {run.id}
-                </span>
-                <span className="mt-1 block text-xs text-[color:var(--ds-muted)]">
-                  {run.requestedModel} · {run.promptPolicyId} ·{" "}
-                  {formatSubtitleLabDate(run.createdAt)}
                 </span>
               </span>
               <ArrowRight
                 aria-hidden="true"
-                className="shrink-0 transition-transform group-hover:translate-x-0.5"
+                className="shrink-0 text-[color:var(--ds-muted)] transition-transform group-hover:translate-x-0.5"
                 size={18}
               />
             </a>
           ))
         )}
+      </div>
+      <div className="mt-3 space-y-2 text-xs text-[color:var(--ds-muted)]">
+        <p>
+          Reports never change once a run finishes. A partial or failed run is
+          still evidence — open it to see which cells succeeded, and to assign
+          reviewers from run detail.
+        </p>
+        {/* The interpretation caveat lives here, next to the results it
+            qualifies, rather than as a banner in the page header. */}
+        <p className="flex items-start gap-2">
+          <ShieldCheck
+            aria-hidden="true"
+            className="mt-0.5 shrink-0"
+            size={14}
+          />
+          <span>
+            <strong className="font-semibold">Development benchmark.</strong>{" "}
+            Scores describe how close a translation is to the reference. They do
+            not approve reference data, publish subtitles, activate a prompt or
+            model, or show that a change caused the difference.
+          </span>
+        </p>
       </div>
     </section>
   )
@@ -684,12 +775,13 @@ function ReferenceIssues({ issues }: { issues: SubtitleLabReferenceIssue[] }) {
       <div className="flex items-center gap-2">
         <AlertTriangle aria-hidden="true" size={19} />
         <h2 id="subtitle-issues-title" className="text-xl font-semibold">
-          Open reference issues
+          Questions about the reference
         </h2>
       </div>
       <p className="mt-2 text-sm text-[color:var(--ds-muted)]">
-        An open reference question blocks approval for the affected corpus cell.
-        Accepted corrections must point to a new frozen corpus version.
+        A reviewer thinks the reference itself is wrong. While the question is
+        open, that cell cannot be approved. Accepting a correction means
+        creating a new corpus version — the existing one is never edited.
       </p>
       <div className="mt-4 grid gap-3">
         {issues.length === 0 ? (
@@ -722,9 +814,21 @@ function ReferenceIssues({ issues }: { issues: SubtitleLabReferenceIssue[] }) {
                 >
                   <label className="text-xs font-semibold">
                     Disposition
-                    <select className={`${INPUT} mt-1`} name="disposition">
-                      <option value="REJECTED">Reference is valid</option>
-                      <option value="ACCEPTED">Correction accepted</option>
+                    <select
+                      className={`${INPUT} mt-1`}
+                      defaultValue=""
+                      name="disposition"
+                      required
+                    >
+                      <option disabled value="">
+                        Choose…
+                      </option>
+                      <option value="REJECTED">
+                        Reference is right, keep it
+                      </option>
+                      <option value="ACCEPTED">
+                        Reviewer is right, needs a correction
+                      </option>
                     </select>
                   </label>
                   <label className="text-xs font-semibold">
@@ -748,7 +852,7 @@ function ReferenceIssues({ issues }: { issues: SubtitleLabReferenceIssue[] }) {
                     disabled={states[issue.id]?.type === "busy"}
                     type="submit"
                   >
-                    Append disposition
+                    Record decision
                   </button>
                 </form>
               ) : null}
@@ -844,12 +948,13 @@ function ComparisonBuilder({ runs }: { runs: SubtitleLabRunSummary[] }) {
       <div className="flex items-center gap-2">
         <Beaker aria-hidden="true" size={19} />
         <h2 id="subtitle-compare-title" className="text-xl font-semibold">
-          Compare immutable reports
+          Compare two runs
         </h2>
       </div>
       <p className="mt-2 text-sm text-[color:var(--ds-muted)]">
-        One declared changed axis. Every other identity difference remains
-        visible; unmatched cells never enter aggregate deltas.
+        Name the one thing you changed between the two runs. Everything else
+        that differs is still reported, and cells that do not appear in both
+        runs are left out of the totals.
       </p>
       <form className="mt-4 grid gap-4 lg:grid-cols-3" onSubmit={submit}>
         <label className="text-sm font-medium">
@@ -889,7 +994,7 @@ function ComparisonBuilder({ runs }: { runs: SubtitleLabRunSummary[] }) {
           disabled={state.type === "busy"}
           type="submit"
         >
-          <Beaker aria-hidden="true" size={17} /> Create descriptive comparison
+          <Beaker aria-hidden="true" size={17} /> Compare runs
         </button>
       </form>
       {actionKey.peek() ? (
@@ -915,6 +1020,75 @@ function ComparisonBuilder({ runs }: { runs: SubtitleLabRunSummary[] }) {
   )
 }
 
+function StateStrip({
+  runs,
+  issueCount,
+}: {
+  runs: SubtitleLabRunSummary[]
+  issueCount: number
+}) {
+  const active = runs.filter(
+    (run) => run.status === "RUNNING" || run.status === "QUEUED",
+  ).length
+  const attention = runs.filter(
+    (run) => runStatusMeta(run.status).needsOperator,
+  ).length
+
+  const items = [
+    {
+      label: active === 1 ? "run in progress" : "runs in progress",
+      value: active,
+    },
+    {
+      label: attention === 1 ? "run needs a look" : "runs need a look",
+      value: attention,
+    },
+    {
+      label:
+        issueCount === 1
+          ? "question on the reference"
+          : "questions on the reference",
+      value: issueCount,
+    },
+  ]
+
+  return (
+    <dl className="grid gap-3 sm:grid-cols-3">
+      {items.map((item) => (
+        <div
+          className="rounded-[var(--ds-radius)] border border-[color:var(--ds-line)] bg-[color:var(--ds-panel)] px-4 py-3"
+          key={item.label}
+        >
+          <dd className="text-2xl font-semibold tabular-nums">{item.value}</dd>
+          <dt className="mt-0.5 text-xs text-[color:var(--ds-muted)]">
+            {item.label}
+          </dt>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
+function CollapsedPanel({
+  title,
+  summary,
+  children,
+}: {
+  title: string
+  summary: string
+  children: React.ReactNode
+}) {
+  return (
+    <details className={PANEL}>
+      <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--ds-black)]">
+        <span className="text-xl font-semibold">{title}</span>
+        <span className="text-xs text-[color:var(--ds-muted)]">{summary}</span>
+      </summary>
+      <div className="mt-4">{children}</div>
+    </details>
+  )
+}
+
 export function SubtitleLabDashboard({
   initialCorpus,
   initialReferenceIssues,
@@ -924,84 +1098,76 @@ export function SubtitleLabDashboard({
   initialReferenceIssues: SubtitleLabReferenceIssue[]
   initialRuns: SubtitleLabRunSummary[]
 }) {
+  const corpusSummary = initialCorpus
+    ? `${initialCorpus.id} · ${statusLabel(initialCorpus.status).toLowerCase()} · ${initialCorpus.cells.length} cells`
+    : "No corpus open"
+
   return (
     <section
       className="mx-auto grid w-full max-w-[1600px] gap-5 px-4 py-6 md:px-6"
       aria-labelledby="subtitle-lab-title"
     >
-      <header className="rounded-[var(--ds-radius)] border border-[color:var(--ds-line)] bg-[color:var(--ds-panel)] p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <span className="studio-page-eyebrow">
-              Human-reviewed experimentation
-            </span>
-            <h1
-              className="mt-1 text-3xl font-semibold tracking-tight"
-              id="subtitle-lab-title"
-            >
-              Subtitle Quality Lab
-            </h1>
-            <p className="mt-2 max-w-3xl text-sm text-[color:var(--ds-muted)]">
-              Run the same frozen human-reference corpus against Mastra, inspect
-              machine evidence, and route irreducible language and theology
-              decisions to qualified contributors.
-            </p>
-          </div>
-          <div className="max-w-sm rounded-[var(--ds-radius)] border border-[color:var(--ds-line-strong)] p-3 text-sm">
-            <strong className="flex items-center gap-2">
-              <ShieldCheck aria-hidden="true" size={17} /> Development benchmark
-            </strong>
-            <p className="mt-1 text-xs text-[color:var(--ds-muted)]">
-              Descriptive only. Machine metrics do not approve gold data,
-              publish subtitles, activate prompts, deploy code, or establish
-              causality.
-            </p>
-          </div>
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1
+            className="text-3xl font-semibold tracking-tight"
+            id="subtitle-lab-title"
+          >
+            Subtitle Quality Lab
+          </h1>
+          <p className="mt-1 max-w-2xl text-sm text-[color:var(--ds-muted)]">
+            Measure subtitle translations against a fixed set of human
+            references, and send the calls only a person can make to a reviewer
+            who speaks the language.
+          </p>
         </div>
-        <nav
-          className="mt-5 flex flex-wrap gap-2 text-sm"
-          aria-label="Subtitle Lab sections"
-        >
-          <a className={SECONDARY_BUTTON} href="#subtitle-corpus-title">
-            Corpus
-          </a>
-          <a className={SECONDARY_BUTTON} href="#subtitle-launch-title">
-            Launch
-          </a>
-          <a className={SECONDARY_BUTTON} href="#subtitle-runs-title">
-            Reports
-          </a>
-          <a className={SECONDARY_BUTTON} href="#subtitle-compare-title">
-            Compare
-          </a>
-          <a className={SECONDARY_BUTTON} href="#subtitle-issues-title">
-            Reference issues
-          </a>
-        </nav>
+        <span className="inline-flex items-center gap-2 rounded-full border border-[color:var(--ds-line-strong)] px-3 py-1.5 font-mono text-xs">
+          <Database aria-hidden="true" size={14} />
+          {corpusSummary}
+        </span>
       </header>
+
+      <StateStrip
+        runs={initialRuns}
+        issueCount={initialReferenceIssues.length}
+      />
+
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <RunHistory runs={initialRuns} />
+        <LaunchRun corpus={initialCorpus} />
+      </div>
+
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <ReferenceIssues issues={initialReferenceIssues} />
+        <ComparisonBuilder runs={initialRuns} />
+      </div>
+
       {initialCorpus ? (
-        <CorpusEvidence corpus={initialCorpus} />
+        <CollapsedPanel
+          summary={`${initialCorpus.cells.length} cells · ${statusLabel(initialCorpus.status).toLowerCase()}`}
+          title="Reference corpus"
+        >
+          <CorpusEvidence corpus={initialCorpus} />
+        </CollapsedPanel>
       ) : (
         <section className={PANEL}>
           <div className="flex items-center gap-2">
             <Languages aria-hidden="true" size={19} />
-            <h2 className="text-xl font-semibold">Open corpus evidence</h2>
+            <h2 className="text-xl font-semibold">No corpus open</h2>
           </div>
           <p className="mt-2 text-sm text-[color:var(--ds-muted)]">
-            Add <code>?corpusId=&lt;version&gt;</code> to inspect exact frozen
-            bytes and launch eligible cells.
+            Open a corpus version by its id to see its cells and start a run.
+            Import one below if there is none yet.
           </p>
         </section>
       )}
-      <ImportCorpus />
-      <LaunchRun corpus={initialCorpus} />
-      <RunHistory runs={initialRuns} />
-      <ComparisonBuilder runs={initialRuns} />
-      <ReferenceIssues issues={initialReferenceIssues} />
-      <p className="text-center text-xs text-[color:var(--ds-muted)]">
-        Assign reviewers from run detail. Every contributor candidate is
-        rechecked against exact Language.id + Language.slug grants.
-      </p>
+
+      <CollapsedPanel
+        summary="Once per corpus version"
+        title="Import a corpus version"
+      >
+        <ImportCorpus />
+      </CollapsedPanel>
     </section>
   )
 }

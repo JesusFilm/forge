@@ -86,21 +86,63 @@ describe("SubtitleLabDashboard", () => {
     )
 
     expect(markup).toContain("Subtitle Quality Lab")
+    // The interpretation caveat moved out of the page header and now sits with
+    // the runs it qualifies, but it must still be on the page.
     expect(markup).toContain("Development benchmark")
+    expect(markup).toContain("do not approve reference data")
     expect(markup).toContain("PROVISIONAL")
     expect(markup).toContain(corpus.manifestDigest)
     expect(markup).toContain(corpus.lockDigest)
-    expect(markup).toContain("Import frozen corpus")
+    expect(markup).toContain("Import a corpus version")
     expect(markup).toContain("Certify exact snapshots")
     expect(markup).toContain('max="3"')
     expect(markup).toContain('min="60"')
     expect(markup).toContain('max="600"')
     expect(markup).toContain("google/gemini-2.5-flash")
     expect(markup).toContain("Partial")
-    expect(markup).toContain("Open reference issues")
-    expect(markup).toContain("Assign reviewers from run detail")
-    expect(markup).toContain("Compare immutable reports")
-    expect(markup).toContain("One declared changed axis")
+    expect(markup).toContain("Questions about the reference")
+    expect(markup).toContain("assign reviewers from run detail")
+    expect(markup).toContain("Compare two runs")
+    expect(markup).toContain("Name the one thing you changed")
     expect(markup).not.toMatch(/>\s*(Publish|Activate prompt|Deploy)\s*</i)
+  })
+
+  it("answers what needs attention before any reference detail", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SubtitleLabDashboard, {
+        initialCorpus: corpus,
+        initialReferenceIssues: issues,
+        initialRuns: runs,
+      }),
+    )
+
+    // Runs and the launch control precede the corpus digest table. The old
+    // layout put a 20-row digest table above everything an operator does.
+    expect(markup.indexOf("Runs")).toBeLessThan(
+      markup.indexOf(corpus.manifestDigest),
+    )
+    expect(markup.indexOf("Start a run")).toBeLessThan(
+      markup.indexOf(corpus.manifestDigest),
+    )
+    // Reference material is collapsed, not removed.
+    expect(markup).toContain("<details")
+    expect(markup).toContain("Reference corpus")
+  })
+
+  it("does not preselect a disposition for a reviewer's reference question", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SubtitleLabDashboard, {
+        initialCorpus: corpus,
+        initialReferenceIssues: issues,
+        initialRuns: runs,
+      }),
+    )
+
+    // A preselected "reference is right" would nudge an operator into
+    // dismissing a reviewer's finding with one click.
+    expect(markup).toContain("Choose…")
+    expect(markup).not.toMatch(
+      /<option[^>]*selected[^>]*>\s*Reference is right/,
+    )
   })
 })
