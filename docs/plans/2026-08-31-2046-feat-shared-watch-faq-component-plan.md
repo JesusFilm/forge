@@ -248,9 +248,9 @@ Consolidating them changed the disclosure primitive, and that reaches past styli
 - **Requirements:** R9
 - **Dependencies:** U5
 - **Files:**
-  - `docs/roadmap/platform/feat-450-related-questions-cross-platform-realignment.md` (create)
+  - `docs/roadmap/platform/feat-508-related-questions-cross-platform-realignment.md` (create)
 - **Approach:**
-  1. Create a roadmap ticket at the next unused id (450 at time of writing — re-derive it) covering mobile and TV re-alignment of `RelatedQuestionsRenderer`.
+  1. Create a roadmap ticket at the next unused id (508; main's highest was 507) covering mobile and TV re-alignment of `RelatedQuestionsRenderer`.
   2. Name both renderers, state that web moved to hairline rows under a display heading and why, and link this plan.
   3. Set `status: "not-started"` and leave sequencing to its owner.
 - **Test expectation:** none -- roadmap tracking only.
