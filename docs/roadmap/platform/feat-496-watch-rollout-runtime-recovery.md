@@ -160,3 +160,10 @@ owned by `feat-464`.
   eligibility. See
   `docs/solutions/performance-issues/curated-fallback-serial-metadata-reads-exhaust-budget-20260915.md`.
   #2299 Redis clock refresh is merged; continue through deployment monitoring.
+- The Redis clock fix still left a reproduced callback-starvation failure:
+  healthy Redis TIME fails when page processing blocks the same Node loop for 350 ms.
+  The isolated admission worker succeeds with the main loop blocked for 650 ms while
+  preserving atomic limits and late-write prevention. Two cache-codec experiments
+  were rejected for residual stalls or page-loading regressions. Worker build,
+  lifecycle, performance and deployment validation remain in progress in
+  `docs/plans/2026-09-15-fix-admission-event-loop-isolation.md`.

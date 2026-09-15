@@ -300,3 +300,13 @@ and email for targeting. Anonymous requests use `watch-anonymous`; recommendatio
 profile cookies, capabilities, access tokens and viewing history never enter LD.
 The Admin device-agnostic API remains independent of this Web rollout flag.
 `WATCH_FOR_YOU_ENABLED=false` remains the environment kill switch.
+
+### Recommendation admission runtime
+
+Production recommendation admission runs the shared Redis TIME/EVAL core in one
+Node worker so page processing cannot delay its socket callbacks. Keep the native
+worker compilation in `build:admission-worker` and preserve its `.next/admission-worker`
+output in deployment packaging. Do not move session identity or profile data into
+the worker. Deadline checks and active-admission draining belong in the shared
+core; the main watchdog must drain completed MessagePort results before failing.
+See `docs/solutions/performance-issues/page-rendering-blocks-redis-admission-callbacks-20260915.md`.
