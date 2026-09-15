@@ -1,0 +1,10 @@
+result,fallback_reason,requests
+served,,56087
+empty,no_candidates,7878
+empty,seed_embedding_unavailable,3675
+unavailable,retrieval_timeout,2032
+fallback,profile_retrieval_timeout,180
+fallback,profile_lineage_ineligible,78
+unavailable,candidate_pool_stale,36
+fallback,candidate_pool_fallback,4
+empty,candidate_pool_ineligible,3

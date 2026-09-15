@@ -168,6 +168,52 @@ describe("shadow candidate projection", () => {
     ])
   })
 
+  it("reconciles canonical duplicates against the eligible replacement and keeps composition unpromoted", () => {
+    const first = nomination("video-a", 1, 0.9)
+    const replacement = nomination("video-a-square", 2, 0.8)
+    const result = evaluateShadowProjection({
+      context,
+      liveOrder: ["video-a-square"],
+      nominations: [
+        {
+          ...first,
+          presentation: { ...first.presentation, watchPlayable: false },
+        },
+        {
+          ...replacement,
+          canonicalIdentity: {
+            ...first.canonicalIdentity,
+            videoId: replacement.targetMediaId,
+          },
+        },
+      ],
+      limit: 6,
+      projectionCapturedAt: null,
+      evaluatedAt: new Date(),
+      latencyMs: 1,
+      cohortQuality: null,
+    })
+    expect(result.shadowOrder).toEqual(["video-a-square"])
+    expect(
+      result.nominations.every(
+        (row) =>
+          row.candidateKey === "video-a-square" &&
+          row.shadowPosition === 0 &&
+          row.overlapsLive,
+      ),
+    ).toBe(true)
+    expect(result.nominations[0]?.provenance.slateReasons).toContain(
+      "canonical_duplicate",
+    )
+    expect(result.nominations[1]?.provenance).toMatchObject({
+      slateDecision: "pending",
+      slateRank: 0,
+      slatePosition: 0,
+      slateHistory: "unavailable",
+      slateEditorial: "adapter_pending",
+    })
+  })
+
   it("records a conservative terminal decision with a required reevaluation condition", () => {
     expect(
       decideShadowEvaluation({

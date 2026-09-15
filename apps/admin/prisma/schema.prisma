@@ -4482,6 +4482,7 @@ model RecommendationPlaybackEpisode {
   @@index([state, activeUntil], map: "recommendation_episode_state_deadline_idx")
   @@index([requestId], map: "recommendation_episode_request_idx")
   @@index([discoverySource, createdAt, id], map: "recommendation_episode_source_created_idx")
+  @@index([sessionDigest, createdAt(sort: Desc), id(sort: Desc)], map: "recommendation_episode_session_created_idx")
   @@index([createdAt, id], map: "recommendation_episode_created_idx")
   @@index([finalizedAt, id], map: "recommendation_episode_finalized_idx")
   @@index([expiresAt])

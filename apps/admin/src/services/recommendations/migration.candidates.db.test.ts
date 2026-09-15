@@ -3,6 +3,12 @@ import { readFileSync } from "node:fs"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
+import {
+  adaptSemanticCandidates,
+  type RecommendationCandidateContext,
+} from "./candidate"
+import { evaluateShadowProjection } from "./shadow-evaluation/projection"
+import { shadowSlateProvenanceSql } from "./admin-ops/shadow-slate-provenance"
 
 const RUN_REAL_DB_TEST = env.RECOMMENDATION_DB_TEST === "1"
 const migrationSql = [
@@ -278,6 +284,57 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         )`,
         ["d".repeat(64), "e".repeat(64), expiresAt],
       )
+      const context: RecommendationCandidateContext = {
+        surface: "watch-below-player-v1",
+        purpose: "watch",
+        locale: "en",
+        audioLanguageSlug: "english",
+      }
+      const nominations = adaptSemanticCandidates(
+        [
+          {
+            videoId: "video-a",
+            videoSlug: "video-a",
+            videoTitle: "Video A",
+            imageUrl: "https://images.example/a.jpg",
+            sceneIndex: 0,
+            description: "",
+            startSeconds: 0,
+            endSeconds: null,
+            themes: [],
+            demographics: [],
+            spiritualContext: [],
+            playbackId: "playback-a",
+            similarity: 0.9,
+          },
+        ],
+        context,
+      ).nominations.map((nomination) => ({
+        ...nomination,
+        source: {
+          ...nomination.source,
+          evidence: {
+            interestOrdinal: 1,
+            ...Object.fromEntries(
+              Array.from({ length: 15 }, (_, index) => [
+                `evidence${index}`,
+                "界".repeat(128),
+              ]),
+            ),
+          },
+        },
+      }))
+      const projection = evaluateShadowProjection({
+        context,
+        liveOrder: ["video-a"],
+        nominations,
+        limit: 6,
+        projectionCapturedAt: null,
+        evaluatedAt: new Date("2026-08-25T00:00:00.000Z"),
+        latencyMs: 1,
+        cohortQuality: null,
+      })
+      const provenance = projection.nominations[0]!.provenance
       await client.query(
         `INSERT INTO recommendation_shadow_nomination (
           id, run_id, ordinal, candidate_key, target_media_id, generator,
@@ -286,10 +343,30 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         ) VALUES (
           'shadow-nomination-1', 'shadow-run-1', 0, 'video-a', 'video-a',
           'profile', 'profile-v1', 1, 0.9, true, 0, true,
-          '{"interestOrdinal":1}'::jsonb, $1
+          $2::jsonb, $1
         )`,
-        [expiresAt],
+        [expiresAt, JSON.stringify(provenance)],
       )
+      const stored =
+        await client.query(`SELECT pg_column_size(provenance) AS bytes, provenance
+        FROM recommendation_shadow_nomination WHERE id = 'shadow-nomination-1'`)
+      expect(stored.rows[0].bytes).toBeLessThanOrEqual(2048)
+      expect(stored.rows[0].provenance).toMatchObject({
+        slateDecision: "pending",
+        slateRank: 0,
+        slatePosition: 0,
+      })
+      const inspected =
+        await client.query(`SELECT ${shadowSlateProvenanceSql.text} AS provenance
+        FROM recommendation_shadow_nomination nomination WHERE id = 'shadow-nomination-1'`)
+      expect(inspected.rows[0].provenance).toMatchObject({
+        slateDecision: "pending",
+        slateRank: 0,
+        slatePosition: 0,
+        slateHistory: "unavailable",
+        slateEditorial: "adapter_pending",
+      })
+      expect(inspected.rows[0].provenance).not.toHaveProperty("evidence0")
       await expect(
         client.query(
           `INSERT INTO recommendation_shadow_nomination (

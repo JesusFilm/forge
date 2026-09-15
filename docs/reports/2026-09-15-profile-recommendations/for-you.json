@@ -1,0 +1,42 @@
+[
+  [
+    {
+      "profile_cards": "0",
+      "requests": "811",
+      "cards": "4866",
+      "first_request": "2026-09-14T00:16:06.571Z",
+      "latest_request": "2026-09-15T01:29:58.370Z",
+      "latency_p50_ms": 668,
+      "latency_p95_ms": 1166.5
+    },
+    {
+      "profile_cards": "6",
+      "requests": "13",
+      "cards": "78",
+      "first_request": "2026-09-14T00:25:44.663Z",
+      "latest_request": "2026-09-14T05:46:02.718Z",
+      "latency_p50_ms": 438,
+      "latency_p95_ms": 806.1999999999999
+    }
+  ],
+  [
+    {
+      "key": "cohort"
+    },
+    {
+      "key": "curatedCount"
+    },
+    {
+      "key": "poolKey"
+    },
+    {
+      "key": "poolVersion"
+    },
+    {
+      "key": "profileCount"
+    },
+    {
+      "key": "projectionId"
+    }
+  ]
+]

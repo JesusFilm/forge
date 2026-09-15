@@ -1,0 +1,4 @@
+cohort,profile_count,curated_count,requests,identifiable_profiles_via_projection,linked_projections,expired_projection_at_request,future_projection_at_request,median_contributions
+cold_start,0,6,809,0,0,0,0,
+returning,6,0,13,9,13,0,0,3
+returning,0,6,2,0,0,0,0,

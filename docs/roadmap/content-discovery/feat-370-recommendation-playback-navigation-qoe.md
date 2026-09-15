@@ -3,12 +3,13 @@ id: "feat-370"
 title: "Recommendation playback navigation and QoE signals"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
-start_date: ""
+status: "in-progress"
+start_date: "2026-09-15"
 duration: 4
 depends_on:
   - "feat-369"
 blocks:
+  - "feat-504"
   - "feat-391"
 tags:
   - "admin"
@@ -65,3 +66,20 @@ The ticket is not complete until this result is visible and reconcilable in the 
 - Run focused Web and Admin tests plus affected-app lint and type checking.
 - Run affected application checks: `pnpm --filter @forge/web test`, `pnpm --filter @forge/web lint`, and `pnpm --filter @forge/web typecheck`; `pnpm --filter @forge/admin test`, `pnpm --filter @forge/admin lint`, and `pnpm --filter @forge/admin typecheck`.
 - Run `pnpm --filter roadmap lint` after updating roadmap metadata.
+
+## September 15 implementation
+
+The bounded Web collector and recomputable Admin observation projection now cover
+pause/resume, seek direction, visibility/bfcache, startup timing, buffering and
+unknown-severity errors. Each family has separate completeness and inconclusive
+readiness. The Admin playback detail and explicitly bounded latest-20-episode
+sample reconcile observations against attempts, starts and finalized episodes.
+
+See `docs/validation/feat-504-playback-observations/README.md` for protocol,
+mixed-version fallback, retention/access ownership, tests and browser/load proof.
+Immediate departures remain unknown preference observations under feat-504.
+
+This ticket remains in progress. Manual-skip/replay intent, user/system pause
+causes, recoverability/fatal severity, startup timeout, device/network breakdowns,
+independent persisted readiness decisions and whole-window funnels are not yet
+implemented. Raw navigation and QoE do not influence live ranking.
