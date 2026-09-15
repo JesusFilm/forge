@@ -24,6 +24,12 @@ tags:
 
 ## Problem
 
+September 16 follow-up: [feat-509](feat-509-playback-sqlstate-serialization-retry.md)
+records a pre-existing raw-query SQLSTATE `40001` gap: it escapes the `P2034`-only
+retry classifier and can become terminal Web HTTP 400. The recommendation
+release's live verification reproduced it once and found it on older revisions;
+this ticket's broader production acceptance remains open.
+
 Latest verification: the [authorized production integrity audit](../../operations/recommendation-evidence-production-integrity-2026-09-10.md)
 now proves current-pointer convergence, stored receipt consistency and zero
 substantive failures across 23 reconciliation batches. The previous lack of

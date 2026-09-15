@@ -514,3 +514,33 @@ measurements. A failed migration needs inspection and explicit Prisma recovery;
 application rollback can retain the additive index. See the
 [migration safety precedent](../workflow-issues/yt-video-mapper-prisma-migration-deploy-safety-guard.md)
 and [release evidence and recovery procedure](../../operations/recommendation-release-validation-2026-09-16.md).
+
+### Verify activation separately from stored recommendation evidence
+
+Stored source-free requests do not prove that people can see a For you row.
+The September 16 release check found a healthy availability endpoint returning
+`enabled=false`, an English homepage without the authored recommendation block,
+and a Spanish homepage with the block still gated off. This matched the explicit
+owner hold in feat-496; enabling it would have overridden another workstream's
+launch decision.
+
+Verify the public availability response, the published page's block composition,
+and the actual browser request path before claiming an end-to-end journey.
+Preserve explicit rollout holds and record that the journey remains unverified.
+Code correctness, published placement, feature targeting and usefulness are
+separate acceptance facts. See the
+[production verification](../../operations/recommendation-production-verification-2026-09-16.md).
+
+### Use resumed playback to test unknown quick-exit semantics
+
+A useful production smoke revisits a previously watched video and leaves within
+the diagnostic window. In this release, the player resumed near 42 seconds but
+the new episode contained only 1.106 seconds of active viewing. The legacy
+position-based diagnostic classified it as qualified; the active-watch outcome
+correctly remained unqualified and produced zero profile contributions.
+
+Inspect the current published profile pointer and contributions from the tested
+episode. A pre-existing interest from the earlier long watch is not evidence that
+the quick exit trained the profile. Keep the departure observation's unknown
+meaning separate from qualified-view learning, and verify both through retained
+facts rather than media position or successful HTTP receipts alone.
