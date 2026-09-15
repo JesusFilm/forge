@@ -2,7 +2,8 @@
 
 ## Delivery and repository findings
 
-Documentation-only delivery on `docs/rag-consumer-access-usage-plan`:
+Documentation-only delivery in [draft PR #2304](https://github.com/JesusFilm/forge/pull/2304)
+on `docs/rag-consumer-access-usage-plan`:
 
 - [Implementation plan](2026-09-15-001-feat-rag-consumer-access-usage-plan.md).
 - [Planning record feat-501](../roadmap/rag/feat-501-rag-consumer-access-planning.md).
@@ -84,6 +85,7 @@ J007 itself could not access `/workspace/agent` or its transactional writer.
 
 ## Validation results
 
+- PASS: full repository `prettier --check .` (exit 0).
 - PASS: changed-file Prettier 3.8.1 check and `git diff --check`.
 - PASS: targeted validation of new ID uniqueness, required frontmatter,
   reciprocal dependencies, all 30 RAG index entries/status totals and relative

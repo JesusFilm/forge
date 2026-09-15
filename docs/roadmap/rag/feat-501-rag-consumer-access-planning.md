@@ -3,7 +3,7 @@ id: "feat-501"
 title: "Plan formal RAG consumer access and usage visibility"
 owner: "jaco"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-15"
 duration: 1
 depends_on: []
@@ -41,3 +41,11 @@ A completed planning record does not complete its implementation dependents.
 
 Format changed Markdown; validate frontmatter, new IDs, reciprocal dependencies,
 relative links, lane counts and hidden-lane CI checks. Review coverage against J007.
+
+## Resolution
+
+Planning delivered in [Forge draft PR #2304](https://github.com/JesusFilm/forge/pull/2304).
+The plan and separate implementation tickets are complete as documentation;
+feat-502 and feat-503 remain not-started. The investigation report includes
+validation results and the authorized wiki fallback payload. No implementation
+or live release verification was performed.
