@@ -93,6 +93,8 @@ const MAX_QUEUED_EVENTS = 20
 type QueuedGoogleAnalyticsEvent = {
   name: string
   params: GoogleAnalyticsEventParams
+  /** Name plus serialized params, so an exact repeat can be recognized. */
+  fingerprint: string
 }
 
 let queuedEvents: QueuedGoogleAnalyticsEvent[] = []
@@ -164,8 +166,14 @@ export function reportGoogleAnalyticsEventWhenReady(
     reportGoogleAnalyticsEvent(name, params)
     return
   }
+  // Collapse an exact repeat rather than spending a slot on it. A reader
+  // pressing a blocked button over and over while the tag is still cold would
+  // otherwise fill the queue with identical events and push out the one that
+  // says how their session ended.
+  const fingerprint = `${name}:${JSON.stringify(params)}`
+  if (queuedEvents.some((queued) => queued.fingerprint === fingerprint)) return
   if (queuedEvents.length >= MAX_QUEUED_EVENTS) return
-  queuedEvents.push({ name, params })
+  queuedEvents.push({ name, params, fingerprint })
   pollForGoogleTag()
 }
 

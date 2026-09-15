@@ -1353,6 +1353,74 @@ describe("FeedbackLauncher", () => {
       window.gtag = undefined
     })
 
+    it("takes the element picker away with the composer", async () => {
+      await openFeedback()
+      selectFeedbackCategory("problem")
+      submitCurrentStep()
+      setValue(
+        document.querySelector("textarea") as HTMLTextAreaElement,
+        "Playback failed after I pressed Watch.",
+      )
+      submitCurrentStep()
+      submitCurrentStep()
+      act(() =>
+        (
+          document.querySelector(
+            '[data-testid="feedback-select-element"]',
+          ) as HTMLButtonElement
+        ).click(),
+      )
+      expect(
+        document.querySelector('[data-testid="feedback-element-picker"]'),
+      ).not.toBeNull()
+
+      // Global search takes precedence and closes the composer mid-pick.
+      searchState.searchOpen = true
+      act(() => root.render(<FeedbackLauncher />))
+      await act(async () => {
+        await new Promise((resolve) => window.requestAnimationFrame(resolve))
+      })
+
+      // A full-screen picker with document listeners must not outlive the
+      // composer that opened it — unmounting used to guarantee that.
+      expect(
+        document.querySelector('[data-testid="feedback-element-picker"]'),
+      ).toBeNull()
+    })
+
+    it("does not carry a diagnostics opt-in into the next report", async () => {
+      await openFeedback()
+      selectFeedbackCategory("problem")
+      submitCurrentStep()
+      setValue(
+        document.querySelector("textarea") as HTMLTextAreaElement,
+        "Playback failed after I pressed Watch.",
+      )
+      const diagnostics = document.querySelector(
+        'input[type="checkbox"]',
+      ) as HTMLInputElement
+      act(() => diagnostics.click())
+      expect(
+        (document.querySelector('input[type="checkbox"]') as HTMLInputElement)
+          .checked,
+      ).toBe(true)
+
+      dismiss()
+      await openFeedback()
+
+      // The draft legitimately brings the category and message back — and
+      // lands on the same step, which is why the checkbox is in reach here.
+      expect(
+        document.querySelector('[data-testid="feedback-step-2"]'),
+      ).not.toBeNull()
+      // But attaching browser, device, viewport, URL and time zone is a
+      // decision about ONE report, and does not come back with it.
+      expect(
+        (document.querySelector('input[type="checkbox"]') as HTMLInputElement)
+          .checked,
+      ).toBe(false)
+    })
+
     it("clears a validation error rather than greeting the next session with it", async () => {
       await openFeedback()
       submitCurrentStep()

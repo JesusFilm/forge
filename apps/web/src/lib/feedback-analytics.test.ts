@@ -12,6 +12,7 @@ import {
   reportFeedbackStepBlocked,
   reportFeedbackStepViewed,
   reportFeedbackSubmitFailed,
+  reportFeedbackSubmitted,
 } from "@/lib/feedback-analytics"
 
 function events(): Array<[string, Record<string, unknown>]> {
@@ -159,18 +160,42 @@ describe("feedback funnel analytics", () => {
     ])
   })
 
-  it("stops queueing rather than growing without bound on a cold tag", () => {
+  it("does not let a repeated event crowd out how the session ended", () => {
+    // A reader jabbing a blocked button while the tag is cold used to fill
+    // the queue with identical events and push the terminal one out.
     vi.useFakeTimers()
     window.gtag = undefined
+    reportFeedbackOpened({ source: "launcher" })
     for (let i = 0; i < 40; i += 1) {
-      reportFeedbackStepViewed({ step: 1, category: null })
+      reportFeedbackStepBlocked({ step: 1, fields: ["category"] })
     }
+    reportFeedbackSubmitted({
+      category: "problem",
+      hasName: false,
+      hasEmail: false,
+      hasLanguageIssue: false,
+      hasContent: false,
+      hasSelectedElement: false,
+      hasDiagnostics: false,
+    })
 
     const gtag = vi.fn()
     window.gtag = gtag
     vi.advanceTimersByTime(200)
 
-    expect(gtag.mock.calls.length).toBe(20)
+    expect(gtag.mock.calls.map(([, name]) => name)).toEqual([
+      "feedback_opened",
+      "feedback_step_blocked",
+      "feedback_submitted",
+    ])
+  })
+
+  it("records a failure with no category chosen yet", () => {
+    reportFeedbackSubmitFailed({ category: null, reason: "invalid" })
+
+    expect(events()).toEqual([
+      ["feedback_submit_failed", { reason: "invalid" }],
+    ])
   })
 
   it("never throws into the click handler when there is no tag", () => {

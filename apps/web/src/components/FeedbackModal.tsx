@@ -639,8 +639,22 @@ export function FeedbackModal({
     setSelectingElement(false)
     setError("")
     setFieldErrors({})
+    // Deliberately not drafted and always cleared: attaching diagnostics is a
+    // decision about ONE report. Carrying an earlier opt-in forward would
+    // send this reader's browser, device, viewport, URL and time zone on a
+    // report they never agreed to attach them to.
+    setIncludeDiagnostics(false)
+    setDetailsOpen(false)
     reportedStepRef.current = 0
   }, [])
+
+  // Pointing at something is abandoned along with the composer. Gating the
+  // render above stops the picker being visible; this stops it waiting in
+  // state to reappear the instant the composer is opened again.
+  useEffect(() => {
+    if (open) return
+    setSelectingElement(false)
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -998,7 +1012,7 @@ export function FeedbackModal({
     setSelectingElement(false)
   }
 
-  if (selectingElement) {
+  if (open && selectingElement) {
     return (
       <ElementPicker
         onCancel={() => setSelectingElement(false)}
