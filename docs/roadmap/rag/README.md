@@ -8,12 +8,12 @@ database into Admin.
 > This lane is intentionally invisible to the public roadmap viewer and the
 > generated `docs/roadmap/README.md` totals. This index is maintained by hand.
 
-## Status (September 10, 2026)
+## Status (September 15, 2026)
 
-- **Total tickets:** 27
+- **Total tickets:** 30
 - **Complete:** 19
-- **In progress:** 1
-- **Not started:** 7
+- **In progress:** 2
+- **Not started:** 9
 - **Blocked:** 0
 
 ## Feature Index
@@ -47,6 +47,9 @@ database into Admin.
 | [feat-470](feat-470-rag-production-operations.md)                 | —                                                             | Make production acquisition and indexing self-contained            | complete    | [#2215](https://github.com/JesusFilm/forge/pull/2215)                                                        |
 | [feat-471](feat-471-rag-production-operations-rollout.md)         | —                                                             | Verify direct production maintenance and the Icelandic path        | not-started | [#2215](https://github.com/JesusFilm/forge/pull/2215)                                                        |
 | [feat-479](feat-479-rag-corpus-transaction-timeouts.md)           | —                                                             | Bound corpus transactions for production latency                   | complete    | [#2233](https://github.com/JesusFilm/forge/pull/2233)                                                        |
+| [feat-501](feat-501-rag-consumer-access-planning.md)              | —                                                             | Plan consumer access and usage visibility                          | in-progress | —                                                                                                            |
+| [feat-502](feat-502-rag-consumer-access-lifecycle.md)             | —                                                             | Implement consumer access lifecycle                                | not-started | —                                                                                                            |
+| [feat-503](feat-503-rag-consumer-usage-visibility.md)             | —                                                             | Deliver usage reporting and dogfood proof                          | not-started | —                                                                                                            |
 
 The September 8 operator decision in [feat-435](feat-435-rag-proof-soak-archive.md)
 accepts the baseline for acquisition/ingestion with the three concerns tracked
