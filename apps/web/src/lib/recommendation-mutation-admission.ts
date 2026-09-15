@@ -289,58 +289,74 @@ export function createRecommendationMutationAdmission(dependencies?: {
         // application-clock deadline can move admission into the past or let
         // a queued EVAL mutate after the caller has already timed out.
         const startedAt = monotonicNow()
-        const redisTime = await withTimeout(redis.time(), commandTimeoutMs)
-        const elapsedMs = Math.max(0, monotonicNow() - startedAt)
-        const remainingMs = Math.floor(commandTimeoutMs - elapsedMs)
-        if (remainingMs <= 0) {
+        let remainingMs = commandTimeoutMs
+        for (let attempt = 0; ; attempt += 1) {
+          stage = "time"
+          stageBudgetMs = remainingMs
+          stageStartedAt = performance.now()
+          const redisTime = await withTimeout(redis.time(), remainingMs)
+          const elapsedMs = Math.max(0, monotonicNow() - startedAt)
+          remainingMs = Math.floor(commandTimeoutMs - elapsedMs)
+          if (remainingMs <= 0) {
+            observeAdmissionFailure(
+              "time",
+              "budget_exhausted",
+              elapsedMs,
+              commandTimeoutMs,
+            )
+            retireDefaultRedis(redis)
+            return { allowed: false, reason: "admission_unavailable" }
+          }
+          const redisNowMs =
+            Number(redisTime[0]) * 1_000 +
+            Math.floor(Number(redisTime[1]) / 1_000)
+          if (!Number.isSafeInteger(redisNowMs)) {
+            observeAdmissionFailure(
+              "time",
+              "invalid_clock",
+              elapsedMs,
+              commandTimeoutMs,
+            )
+            retireDefaultRedis(redis)
+            return { allowed: false, reason: "admission_unavailable" }
+          }
+          stage = "eval"
+          stageBudgetMs = remainingMs
+          stageStartedAt = performance.now()
+          const result = (await withTimeout(
+            redis.eval(ADMIT_LUA, {
+              keys: [clientKey, aggregateKey],
+              arguments: [
+                String(RECOMMENDATION_MUTATION_CLIENT_LIMIT),
+                String(RECOMMENDATION_MUTATION_AGGREGATE_LIMIT),
+                String(WINDOW_MS),
+                String(redisNowMs + remainingMs),
+              ],
+            }),
+            remainingMs,
+          )) as string[]
+          if (result[0] === "allowed") return { allowed: true }
+          if (result[0] === "rate_limited") {
+            return { allowed: false, reason: "rate_limited" }
+          }
+          if (result[0] === "unavailable" && attempt === 0) {
+            // A delayed TIME reply can expire this conservative Redis-clock
+            // deadline early. Only this explicit Lua result proves no mutation
+            // occurred. Refresh once, without restarting the caller's budget;
+            // never retry a timeout or transport failure with unknown effects.
+            remainingMs = Math.floor(
+              commandTimeoutMs - Math.max(0, monotonicNow() - startedAt),
+            )
+            if (remainingMs > 0) continue
+          }
           observeAdmissionFailure(
-            "time",
-            "budget_exhausted",
-            elapsedMs,
-            commandTimeoutMs,
+            "eval",
+            result[0] === "unavailable" ? "redis_deadline" : "invalid_result",
+            performance.now() - stageStartedAt,
+            stageBudgetMs,
           )
-          retireDefaultRedis(redis)
           return { allowed: false, reason: "admission_unavailable" }
         }
-        const redisNowMs =
-          Number(redisTime[0]) * 1_000 +
-          Math.floor(Number(redisTime[1]) / 1_000)
-        if (!Number.isSafeInteger(redisNowMs)) {
-          observeAdmissionFailure(
-            "time",
-            "invalid_clock",
-            elapsedMs,
-            commandTimeoutMs,
-          )
-          retireDefaultRedis(redis)
-          return { allowed: false, reason: "admission_unavailable" }
-        }
-        stage = "eval"
-        stageBudgetMs = remainingMs
-        stageStartedAt = performance.now()
-        const result = (await withTimeout(
-          redis.eval(ADMIT_LUA, {
-            keys: [clientKey, aggregateKey],
-            arguments: [
-              String(RECOMMENDATION_MUTATION_CLIENT_LIMIT),
-              String(RECOMMENDATION_MUTATION_AGGREGATE_LIMIT),
-              String(WINDOW_MS),
-              String(redisNowMs + remainingMs),
-            ],
-          }),
-          remainingMs,
-        )) as string[]
-        if (result[0] === "allowed") return { allowed: true }
-        if (result[0] === "rate_limited") {
-          return { allowed: false, reason: "rate_limited" }
-        }
-        observeAdmissionFailure(
-          "eval",
-          result[0] === "unavailable" ? "redis_deadline" : "invalid_result",
-          performance.now() - stageStartedAt,
-          stageBudgetMs,
-        )
-        return { allowed: false, reason: "admission_unavailable" }
       } catch (error) {
         observeAdmissionFailure(
           stage,
