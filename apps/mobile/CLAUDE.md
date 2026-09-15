@@ -185,9 +185,12 @@ removed: `SplashHost`, `SplashCoveredTree`, `SplashSequence`, the splash
 session, the embedded Noto Serif face, and the projector rasters. Do not delete
 any of it. The `expo-font` plugin entry and its TTF are fingerprint inputs, so
 removing them moves the runtime version. `SplashSequence` imports the two
-projector rasters statically, so deleting a raster fails the Metro bundle with
-`Unable to resolve module`. Every dev reload, `eas build` and `eas update`
-export then goes red, and nothing ships.
+projector rasters statically, so deleting one fails the bundler with `Unable to
+resolve module` and nothing ships. A warm dev server is NOT the check: it can
+keep serving a cached bundle after the file is gone. Verified by hand
+2026-09-15 — `npx expo export --platform ios` exits 0 with the raster and exits
+1 without it, naming `SplashSequence.tsx`, while a live Metro served a
+byte-identical cached bundle either way.
 
 What a cold launch does with the flag off: the native splash shows
 `assets/splash-icon.png` — the JFP symbol on the `#1c1917` ground — until the
@@ -241,6 +244,18 @@ To re-enable, all three steps, in one PR:
 
 The reverse (this change) needs the same native build for the same reason. The
 design record is `docs/plans/2026-09-09-1059-feat-mobile-animated-splash-plan.md`.
+
+**Until that native build ships, the production channel is dark.** Every
+`update:production` from `main` targets a runtime version no installed build
+carries. `eas update` still exits 0 and reports success, so an unrelated JS
+hotfix published in this window reaches nobody and nothing says so. Installed
+testers keep the animation until they install the new build. The only OTA that
+could reach them is the flag off with the OLD flat asset, and
+`splashKillSwitch.guard.test.js` rejects that pairing by md5 on any committed
+tree, by design. **Open decision, owner: the release caller.** The default
+posture is to wait for the build. Taking the animation off installed devices
+sooner needs a deliberate throwaway-branch OTA and an explicit call; do not
+improvise it from `main`.
 
 ## Running on a simulator (env setup)
 

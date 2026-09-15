@@ -51,6 +51,35 @@ function md5(bytes) {
   return crypto.createHash("md5").update(bytes).digest("hex")
 }
 
+/** The generator's `if (animatedSplash) { … } else { … }`, brace-matched. */
+function splitSplashBranch(source) {
+  const head = "if (animatedSplash) {"
+  const open = source.indexOf(head)
+  if (open === -1) return null
+  let depth = 0
+  let elseAt = -1
+  for (let i = open + head.length - 1; i < source.length; i += 1) {
+    if (source[i] === "{") depth += 1
+    else if (source[i] === "}") {
+      depth -= 1
+      if (depth === 0) {
+        if (elseAt === -1) {
+          if (!source.startsWith("} else {", i)) return null
+          elseAt = i
+          depth = 1
+          i += "} else {".length - 1
+        } else {
+          return {
+            on: source.slice(open + head.length, elseAt),
+            off: source.slice(elseAt + "} else {".length, i),
+          }
+        }
+      }
+    }
+  }
+  return null
+}
+
 describe("the animated splash kill-switch", () => {
   it("parses the flag the same way the generator does (positive control)", () => {
     expect(readFlags("export const ANIMATED_SPLASH_ENABLED = false")).toEqual([
@@ -95,6 +124,26 @@ describe("the animated splash kill-switch", () => {
     const generator = fs.readFileSync(GENERATOR, "utf8")
     expect(generator).toContain("src/lib/splash/animatedSplashEnabled.ts")
     expect(generator).toContain(FLAG_PATTERN.source)
+  })
+
+  it("splits a branch the same way the generator writes one (positive control)", () => {
+    const halves = splitSplashBranch(
+      "if (animatedSplash) {\n A \n} else {\n B \n}",
+    )
+    expect(halves).toEqual({ on: "\n A \n", off: "\n B \n" })
+    expect(splitSplashBranch("if (somethingElse) {\n A \n}")).toBeNull()
+  })
+
+  // The generator runs by hand, so nothing executes this branch until someone
+  // regenerates — by which time a swapped branch has already written the wrong
+  // asset. Pin which emission each half calls.
+  it("emits the flat field on the ON half and the symbol on the OFF half", () => {
+    const halves = splitSplashBranch(fs.readFileSync(GENERATOR, "utf8"))
+    expect(halves).not.toBeNull()
+    expect(halves.on).toContain("flatSvg(SIZE, SPLASH_GROUND)")
+    expect(halves.on).not.toContain("markSvg(")
+    expect(halves.off).toContain("markSvg(SIZE, WIDTH_SPLASH)")
+    expect(halves.off).not.toContain("flatSvg(")
   })
 
   it("commits the asset the flag calls for", () => {
