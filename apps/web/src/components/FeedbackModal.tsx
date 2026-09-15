@@ -24,6 +24,7 @@ import {
   type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
+  useCallback,
   useEffect,
   useId,
   useMemo,
@@ -57,6 +58,23 @@ import {
   type FeedbackSubmission,
 } from "@/lib/feedback"
 import { addFeedbackFollowUpEmail, submitFeedback } from "@/lib/feedback-action"
+import {
+  clampFeedbackDraftStep,
+  clearFeedbackDraft,
+  loadFeedbackDraft,
+  saveFeedbackDraft,
+  type FeedbackDraft,
+} from "@/lib/feedback-draft"
+import {
+  FEEDBACK_STEP_COUNT,
+  FEEDBACK_STEP_KEYS,
+  reportFeedbackStepBlocked,
+  reportFeedbackStepViewed,
+  reportFeedbackSubmitFailed,
+  reportFeedbackSubmitted,
+  type FeedbackBlockedField,
+  type FeedbackProgress,
+} from "@/lib/feedback-analytics"
 import { publicWatchAudioLanguageSlugForLocale } from "@/lib/locale"
 import { loadGlobalWatchLanguageOptions } from "@/lib/watch-interaction-loader"
 import {
@@ -64,7 +82,6 @@ import {
   type WatchSearchSuggestion,
 } from "@/lib/watch-search-client"
 
-const FEEDBACK_STEP_COUNT = 5
 const FEEDBACK_SUBMISSION_TIMEOUT_MS = 15_000
 const SUPPORT_FORM_URL = "https://www.jesusfilm.org/contact/"
 
@@ -121,7 +138,9 @@ function followUpErrorKey(reason: FeedbackFollowUpFailureReason): string {
 }
 
 // Message-key names under the Feedback.steps namespace, one per wizard step.
-const STEP_KEYS = ["type", "describe", "context", "point", "about"] as const
+// Shared with the analytics funnel so the `step_name` a report shows is the
+// same name as the copy the reader saw.
+const STEP_KEYS = FEEDBACK_STEP_KEYS
 
 // The success screen's follow-up copy is keyed by the persisted category
 // value; problem and confusing share the "problem" copy group.
@@ -137,6 +156,7 @@ type FeedbackModalProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   onReady?: () => void
+  onProgress?: (progress: Partial<FeedbackProgress>) => void
 }
 
 // Persisted `value` fields are wire/persisted enums — never localize them.
@@ -437,6 +457,7 @@ export function FeedbackModal({
   open,
   onOpenChange,
   onReady,
+  onProgress,
 }: FeedbackModalProps) {
   const t = useTranslations("Feedback")
   const [step, setStep] = useState(1)
@@ -491,6 +512,10 @@ export function FeedbackModal({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const formRef = useRef<HTMLFormElement>(null)
   const stepHeadingRef = useRef<HTMLHeadingElement>(null)
+  // Which step the funnel has already reported. Scoped to one OPEN session,
+  // not to the component: the modal now outlives a close, and a ref carried
+  // across sessions would swallow the next session's first step view.
+  const reportedStepRef = useRef(0)
 
   const categoryOption = useMemo(
     () =>
@@ -555,17 +580,159 @@ export function FeedbackModal({
     onReady?.()
   }, [onReady])
 
+  /*
+   * Every open starts from a known state.
+   *
+   * This used to be `setStep(1)` and nothing else, which was harmless only
+   * because closing the composer UNMOUNTED it — React threw the rest away.
+   * Keeping it mounted (so a dismissal no longer destroys what was typed)
+   * removed that safety net, and the one-line reset then leaked three ways:
+   * a submitted report left the success pane pinned forever so no second
+   * report could be filed; the previous page's text stayed resident and the
+   * save effect re-persisted it under the NEW page's path, defeating the
+   * draft's own page scoping; and the reported-step ref kept suppressing the
+   * first step view of the next session.
+   *
+   * So the applier is exhaustive and shared: the restore branch and the
+   * fresh-start branch both go through it, and a field added to the draft
+   * cannot be restored in one branch and forgotten in the other.
+   */
+  const applyDraft = useCallback((draft: FeedbackDraft | null) => {
+    setStep(draft ? clampFeedbackDraftStep(draft) : 1)
+    setCategory(draft?.category ?? null)
+    setMessage(draft?.message ?? "")
+    setName(draft?.name ?? "")
+    setEmail(draft?.email ?? "")
+    setLanguageArea(draft?.languageArea ?? "")
+    setLanguageSlug(draft?.languageSlug ?? "")
+    setCustomLanguageName(draft?.customLanguageName ?? "")
+    setUseCustomLanguage(draft?.useCustomLanguage ?? false)
+    setContentScope(draft?.contentScope ?? "")
+    setContentQuery(draft?.contentQuery ?? "")
+    setSelectedContent(
+      // Rehydrated from the bounded projection the draft stores. The dropped
+      // fields are search-result metadata the composer never reads back:
+      // `kind`/`matchSource` describe how the suggestion was matched, and
+      // `childCount` only decorates the live results list.
+      draft?.selectedContent
+        ? {
+            kind: "content",
+            matchSource: "title",
+            childCount: null,
+            title: draft.selectedContent.title,
+            description: draft.selectedContent.description,
+            id: draft.selectedContent.id,
+            slug: draft.selectedContent.slug,
+            label: draft.selectedContent.label,
+          }
+        : null,
+    )
+    setSelectedElement(draft?.selectedElement ?? null)
+    // Terminal and transient state is never drafted — a finished submission
+    // and a validation error both belong to the session that produced them.
+    setSubmitted(false)
+    setSubmittedWithEmail(false)
+    setSubmissionReceipt("")
+    setFollowUpEmail("")
+    setFollowUpAdded(false)
+    setFollowUpError("")
+    setSelectingElement(false)
+    setError("")
+    setFieldErrors({})
+    // Deliberately not drafted and always cleared: attaching diagnostics is a
+    // decision about ONE report. Carrying an earlier opt-in forward would
+    // send this reader's browser, device, viewport, URL and time zone on a
+    // report they never agreed to attach them to.
+    setIncludeDiagnostics(false)
+    setDetailsOpen(false)
+    reportedStepRef.current = 0
+  }, [])
+
+  // Pointing at something is abandoned along with the composer. Gating the
+  // render above stops the picker being visible; this stops it waiting in
+  // state to reappear the instant the composer is opened again.
+  useEffect(() => {
+    if (open) return
+    setSelectingElement(false)
+  }, [open])
+
   useEffect(() => {
     if (!open) return
-    setStep(1)
     setPage(collectFeedbackPageContext())
-  }, [open])
+
+    // Restore before anything else: a draft that only loads after the first
+    // paint would be overwritten by the save effect below, which runs on the
+    // empty state it just rendered.
+    applyDraft(loadFeedbackDraft(window.location.pathname))
+  }, [applyDraft, open])
+
+  // Save on every change while the composer is open and unsent. Deliberately
+  // not debounced: `sessionStorage.setItem` of a <2KB string is microseconds,
+  // and a debounce would open exactly the window this exists to close — the
+  // keystrokes between the last tick and an Escape are the ones lost.
+  useEffect(() => {
+    if (!open || submitted) return
+    const draft: FeedbackDraft = {
+      path: window.location.pathname,
+      step,
+      category,
+      message,
+      name,
+      email,
+      languageArea,
+      languageSlug,
+      customLanguageName,
+      useCustomLanguage,
+      contentScope,
+      contentQuery,
+      selectedContent: selectedContent
+        ? {
+            title: selectedContent.title,
+            id: selectedContent.id,
+            slug: selectedContent.slug,
+            label: selectedContent.label,
+            description: selectedContent.description,
+          }
+        : null,
+      selectedElement,
+    }
+    saveFeedbackDraft(draft)
+  }, [
+    category,
+    contentQuery,
+    contentScope,
+    customLanguageName,
+    email,
+    languageArea,
+    languageSlug,
+    message,
+    name,
+    open,
+    selectedContent,
+    selectedElement,
+    step,
+    submitted,
+    useCustomLanguage,
+  ])
 
   useEffect(() => {
     if (!open) return
     if (formRef.current) formRef.current.scrollTop = 0
     if (step > 1) stepHeadingRef.current?.focus()
   }, [open, step])
+
+  // One `feedback_step_viewed` per ARRIVAL at a step, per open session. The ref suppresses the
+  // re-renders that do not change the step (every keystroke, picking a
+  // category) and the StrictMode setup/cleanup/setup cycle, while still
+  // counting a genuine return — stepping back to 2 and forward to 3 again is
+  // two real views of step 3, and the funnel should say so.
+  useEffect(() => {
+    if (!open) return
+    onProgress?.({ step, category })
+    if (reportedStepRef.current === step) return
+    reportedStepRef.current = step
+    reportFeedbackStepViewed({ step, category })
+  }, [category, onProgress, open, step])
 
   useEffect(() => {
     if (!includeDiagnostics) {
@@ -651,7 +818,23 @@ export function FeedbackModal({
     }
   }, [contentQuery, contentScope, contentSearchLanguageSlug, selectedContent])
 
-  function validateStep(targetStep: number): boolean {
+  /**
+   * Returns the fields that BLOCKED the step — empty means "may advance".
+   * It returns the fields rather than a boolean so `feedback_step_blocked`
+   * can say which validation held the reader up: the step-view counts alone
+   * cannot tell "lost interest on step 2" from "step 2 would not let them
+   * through".
+   */
+  /**
+   * Steps 3 and 4 are both optional, and until now only step 4 said so: step 3
+   * read "Continue", which makes skippable work look required. The advance CTA
+   * reads this to offer "Skip for now" whenever an optional step is untouched.
+   */
+  const optionalStepIsEmpty =
+    (step === 3 && !languageArea && !contentScope) ||
+    (step === 4 && !selectedElement)
+
+  function validateStep(targetStep: number): FeedbackBlockedField[] {
     const next: Record<string, string> = {}
     if (targetStep === 1 && !category) {
       next.category = t("validation.category")
@@ -659,7 +842,6 @@ export function FeedbackModal({
     if (targetStep === 2 && message.trim().length < 10) {
       next.message = t("validation.message")
     }
-    if (targetStep === 5 && !name.trim()) next.name = t("validation.name")
     if (
       targetStep === 5 &&
       email.trim() &&
@@ -668,26 +850,32 @@ export function FeedbackModal({
       next.email = t("validation.email")
     }
     setFieldErrors(next)
-    return Object.keys(next).length === 0
+    return Object.keys(next) as FeedbackBlockedField[]
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (step < FEEDBACK_STEP_COUNT) {
-      if (validateStep(step)) setStep((current) => current + 1)
-      else if (step === 2) {
-        document.getElementById("feedback-message")?.focus()
+      const blockedFields = validateStep(step)
+      if (blockedFields.length === 0) setStep((current) => current + 1)
+      else {
+        reportFeedbackStepBlocked({ step, fields: blockedFields })
+        if (step === 2) document.getElementById("feedback-message")?.focus()
       }
       return
     }
-    if (!validateStep(5) || !page) {
-      document
-        .getElementById(name.trim() ? "feedback-email" : "feedback-name")
-        ?.focus()
+    const finalBlockedFields = validateStep(FEEDBACK_STEP_COUNT)
+    if (finalBlockedFields.length > 0 || !page) {
+      reportFeedbackStepBlocked({
+        step: FEEDBACK_STEP_COUNT,
+        fields: finalBlockedFields,
+      })
+      document.getElementById("feedback-email")?.focus()
       return
     }
     if (!category) {
       setFieldErrors({ category: t("validation.category") })
+      reportFeedbackStepBlocked({ step: 1, fields: ["category"] })
       setStep(1)
       return
     }
@@ -695,8 +883,8 @@ export function FeedbackModal({
     const payload: FeedbackSubmission = {
       category,
       message: message.trim(),
-      name: name.trim(),
       page,
+      ...(name.trim() ? { name: name.trim() } : {}),
       ...(email.trim() ? { email: email.trim() } : {}),
       ...(languageArea
         ? {
@@ -752,12 +940,32 @@ export function FeedbackModal({
         setSubmittedWithEmail(Boolean(email.trim()))
         setSubmissionReceipt(result.receipt ?? "")
         setSubmitted(true)
+        // The report has landed; the draft has nothing left to protect.
+        clearFeedbackDraft()
+        onProgress?.({ submitted: true })
+        // Shapes only — which optional sections people actually fill in.
+        // None of their CONTENTS becomes an analytics parameter.
+        reportFeedbackSubmitted({
+          category,
+          hasName: Boolean(payload.name),
+          hasEmail: Boolean(payload.email),
+          hasLanguageIssue: Boolean(payload.languageIssue),
+          hasContent: Boolean(payload.content),
+          hasSelectedElement: Boolean(payload.selectedElement),
+          hasDiagnostics: Boolean(payload.diagnostics),
+        })
       }
       // Render locale-aware copy keyed by the typed reason; the server's
       // `message` string is English-only and is deliberately not rendered.
-      else setError(t(submissionErrorKey(result.reason)))
+      else {
+        setError(t(submissionErrorKey(result.reason)))
+        // Distinct from abandonment: they finished the form and the send did
+        // not land, which is feedback already written and then lost.
+        reportFeedbackSubmitFailed({ category, reason: result.reason })
+      }
     } catch {
       setError(t("errors.sendFailed"))
+      reportFeedbackSubmitFailed({ category, reason: "exception" })
     } finally {
       if (timeoutId !== undefined) window.clearTimeout(timeoutId)
       setSubmitting(false)
@@ -804,7 +1012,7 @@ export function FeedbackModal({
     setSelectingElement(false)
   }
 
-  if (selectingElement) {
+  if (open && selectingElement) {
     return (
       <ElementPicker
         onCancel={() => setSelectingElement(false)}
@@ -1307,7 +1515,9 @@ export function FeedbackModal({
                 <label>
                   <FieldLabel>
                     {t("fields.name.label")}{" "}
-                    <span className="text-brand-red">*</span>
+                    <span className="font-normal text-stone-500">
+                      {t("fields.optional")}
+                    </span>
                   </FieldLabel>
                   <input
                     id="feedback-name"
@@ -1553,7 +1763,7 @@ export function FeedbackModal({
                     ? t("nav.sending")
                     : step === FEEDBACK_STEP_COUNT
                       ? t("nav.send")
-                      : step === 4 && !selectedElement
+                      : optionalStepIsEmpty
                         ? t("nav.skip")
                         : t("nav.continue")}
                 </button>
