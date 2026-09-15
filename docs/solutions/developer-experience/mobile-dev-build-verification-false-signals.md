@@ -11,11 +11,13 @@ applies_when:
   - "`expo run:ios` (or `xcodebuild`/`devicectl`) reports install success but the app does not appear, or appears stale, on the device or simulator"
   - Judging a timed animation (a splash, a transition) from a screenshot or a low-frame-rate screen recording
   - Deciding whether a visual defect belongs to product code or to the dev-build toolchain around it
+  - Asserting that a tree still resolves, or that deleting a file broke the bundle
 symptoms:
   - A static app-icon splash appears before the real animated splash, and reads as an extra leftover splash screen
   - A Debug build shows the system font where a custom embedded font was expected, even though the font file, Info.plist entry, and Xcode build phase all look correct
   - '`expo run:ios` prints "Build Succeeded", "0 error(s)", and 100% install complete, but the app is not on the device'
   - A ~2.5s splash animation looks like it is missing a beat in a 6fps screen recording, but is not missing it
+  - "A running dev server keeps serving a working bundle after a statically imported file was deleted, while `expo export` exits 1"
 severity: medium
 tags:
   [
@@ -103,14 +105,14 @@ tool that built, installed, or launched it.
 2. **Instrument adequacy.** Can the capture you are about to take actually
    contain the thing you are looking for?
 
-A build tool, an installer, and a launcher each report on their own step. None
-of them reports on the state you are about to judge. A success-shaped message
+A bundler's dev server, a build tool, an installer, and a launcher each report on
+their own step. None of them reports on the state you are about to judge. A success-shaped message
 from any of them is an acknowledgement, not evidence. This repo already carries
 the same law for infrastructure writes:
 `docs/solutions/best-practices/verify-infra-writes-via-independent-read-path-20260420.md`.
 The rule here is that law applied to a device, and it transfers to Android, to
-tvOS, and to any platform where a build step, an install step, and a launch
-step are three separate programs.
+tvOS, and to any platform where a bundle step, a build step, an install step, and
+a launch step are separate programs.
 
 Each question below leads with its discriminating check. Run the check first.
 Read configuration files only after the check disagrees with them.
@@ -289,6 +291,45 @@ for r in ~/Library/Developer/Xcode/DerivedData/forgewatch-*; do
 done
 ```
 
+### Instance 4 — a warm dev server can serve a bundle for a tree that no longer builds
+
+> **Added 2026-09-15**, from a later session than the three instances above. The
+> Context section records the 2026-09-11 session only.
+
+**Discriminating check: run the bundler against the tree with `expo export`. Do
+not read a running dev server, and do not read the bundle it serves.**
+
+```bash
+cd apps/mobile
+npx expo export --platform ios
+```
+
+`apps/mobile/src/components/splash/SplashSequence.tsx:13-14` imports two rasters
+statically:
+
+```ts
+import markCrimson from "../../../assets/splash-mark-crimson.png"
+import markWhite from "../../../assets/splash-mark-white.png"
+```
+
+With one of the two deleted, `expo export --platform ios` exited 1 and named the
+importing file: `Unable to resolve module ../../../assets/splash-mark-crimson.png
+from …/SplashSequence.tsx`. The control run, with the file present, exited 0.
+Across that same deletion a live Metro dev server kept serving a byte-identical
+bundle of 13,108,193 bytes. Nothing in the dev loop changed, and nothing reported
+the break.
+
+This is the law above applied to a fourth program. A dev server reports on its own
+cache. It does not report on what the tree resolves to now, so it answers for a
+tree that no longer builds, and the break stays invisible until something runs the
+bundler.
+
+Assert a bundler-resolution claim against `expo export`, never against a running
+dev server. The distinction that decides it is EDIT against DELETION. An edit
+usually arrives over Fast Refresh, and the bundle grep in the Metro-side sibling
+doc finds it. A deleted module produces no new literal to grep, so that same grep
+reads the stale bundle and agrees with you.
+
 ### The instrument half: choose a capture that can contain the thing
 
 Artifact identity is only the first question. A correct artifact still gives a
@@ -322,9 +363,9 @@ of motion inside a 2500ms hold. `SPLASH_SEQUENCE_MS` at
 `apps/mobile/src/components/splash/SplashSequence.tsx:70-75` is the maximum of
 four beat sums, and the word beat is the largest: `SPLASH_WORD_DELAY_MS = 1400`
 (line 65) plus `SPLASH_WORD_MS = 700` (line 66) is 2100.
-`SPLASH_HOLD_MS = 2_500` sits at `apps/mobile/src/lib/splash/splashSession.ts:63`.
+`SPLASH_HOLD_MS = 2_500` sits at `apps/mobile/src/lib/splash/splashSession.ts:66`.
 The 400ms of slack runs against `SPLASH_MOUNT_LAG_ALLOWANCE_MS = 300`
-(`splashSession.ts:87`), whose own comment records about 200ms of mount lag
+(`splashSession.ts:90`), whose own comment records about 200ms of mount lag
 measured on an iPhone 17 Pro Max simulator from a Release build. Development
 builds mount more slowly, so in a development build the word beat lands during
 the exit fade. A 6 fps capture missed the word beat completely and read as a
@@ -381,6 +422,11 @@ Use these, in this order:
   products and absent from the Release product, which also carries a baked
   `main.jsbundle`. That is strong corroboration, not a direct observation of
   the launcher drawing that frame.
+- Instance 4's mechanism is not isolated. The export ran for `ios` only, and
+  which cache answered for the dev server — Metro's transform cache, its
+  in-memory graph, or the dev client's own copy — was not determined. The
+  discriminating result (exit 1 against a byte-identical served bundle) does not
+  depend on that answer.
 - All measurements here come from iOS simulators, one physical iPhone, and one
   macOS host. The two questions transfer to Android and tvOS; the exact
   commands do not.
@@ -507,7 +553,12 @@ colour, `(28,25,23)`, which matches `backgroundColor` at
 ### Related
 
 - `docs/solutions/developer-experience/expo-dev-client-cached-bundle-verification.md`
-  — the Metro-side half: prove your edit is in the served bundle.
+  — the Metro-side half: prove your edit is in the served bundle. Its bundle grep
+  answers for an EDIT. It cannot see a DELETION, which is Instance 4.
+- `docs/solutions/developer-experience/deleted-worktree-under-live-metro-unresolve-error.md`
+  — the same actor and the same error string at the opposite polarity: there a
+  live Metro invents `Unable to resolve module`; in Instance 4 a live Metro hides
+  a real one.
 - `docs/solutions/best-practices/verify-infra-writes-via-independent-read-path-20260420.md`
   — the same law for infrastructure writes.
 - `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md`

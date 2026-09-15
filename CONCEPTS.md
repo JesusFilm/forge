@@ -1367,9 +1367,7 @@ Closing the window ends playback, while expanding it returns the same playback t
 
 ### Splash Cover
 
-> **Note added 2026-09-15:** the Splash Cover is off. `ANIMATED_SPLASH_ENABLED` in `apps/mobile/src/lib/splash/animatedSplashEnabled.ts` disables it. With the flag off, the app draws no cover on any launch. The session settles to its never-plays state before React mounts. The platform's own launch screen shows the JFP symbol on the app ground again, and it stays up until the app tree's first commit. The term still names the mechanism the code carries. To re-enable it, regenerate the flat native asset. Then ship a native build. See `apps/mobile/CLAUDE.md` "Cold-start splash" for the recipe.
-
-The branded layer drawn over the app's own tree on a cold start, holding a brand moment while the first screen loads underneath it rather than behind a gate in front of it.
+The branded layer drawn over the app's own tree on a cold start, holding a brand moment while the first screen loads underneath it rather than behind a gate in front of it. It is switchable: with the cover off, the platform's own launch screen carries the brand instead and hands straight over to the first screen.
 
 The tree beneath the cover is live: the first screen mounts and begins fetching while the animation plays, so the brand moment and the first network round trip overlap instead of running one after the other. The platform's own launch screen stays up until this layer has painted its first frame, so the handover between them shows neither a gap nor a flash of bare background. The cover holds for a fixed span even when content arrives sooner — the moment is deliberately consistent rather than adaptive — and then releases once the first screen reports it has something to paint, or reports a failure, since a failure is the point at which there is something for the viewer to retry. An unconditional ceiling releases it whatever the screen is doing, and the diagnostic panels release it at once, because nothing may sit over a surface a viewer needs in order to act. Only a cold process start raises it; a resume finds the session spent.
 
