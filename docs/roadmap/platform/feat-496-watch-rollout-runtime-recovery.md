@@ -100,6 +100,12 @@ owned by `feat-464`.
 
 ## Current investigation
 
+- The final worker rollout exposed a separate failed-issuance boundary: trace
+  `6aa8a5a80000000070cd728ca94d97f9` waits 2,294 ms for rollback after an insertion
+  exceeds its budget. Reproduce early reporting of known callback failure while
+  retaining successful commit acknowledgment and atomic rollback. See
+  `docs/plans/2026-09-15-fix-failed-issuance-rollback-wait.md`.
+
 - A regression test reproduces cross-request cancellation: a 250 ms admission
   timeout destroys the shared Redis socket while a concurrent playback admission
   still has its 500 ms budget. Drain active admissions before closing the retired

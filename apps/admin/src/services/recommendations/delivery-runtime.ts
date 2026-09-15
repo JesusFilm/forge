@@ -138,21 +138,41 @@ export async function runRecommendationDeliveryTransaction<T>(
 ): Promise<T> {
   const remaining = Math.floor(deadlineAt - nowMilliseconds())
   if (remaining <= 0) throw new RecommendationRetrievalTimeoutError()
-  return prisma.$transaction(
+  let reportCallbackFailure!: (error: unknown) => void
+  const callbackFailure = new Promise<never>((_, reject) => {
+    reportCallbackFailure = reject
+  })
+  const transaction = prisma.$transaction(
     async (tx) => {
-      const queryRemaining = Math.floor(deadlineAt - nowMilliseconds())
-      if (queryRemaining <= 0) {
-        throw new RecommendationRetrievalTimeoutError()
-      }
-      await tx.$queryRaw`
-        SELECT set_config(
-          'statement_timeout',
-          ${String(queryRemaining)},
-          true
+      try {
+        return await withinDeadline(
+          async () => {
+            const queryRemaining = Math.floor(deadlineAt - nowMilliseconds())
+            if (queryRemaining <= 0) {
+              throw new RecommendationRetrievalTimeoutError()
+            }
+            await tx.$queryRaw`
+              SELECT set_config(
+                'statement_timeout',
+                ${String(queryRemaining)},
+                true
+              )
+            `
+            return operation(tx)
+          },
+          deadlineAt,
+          nowMilliseconds,
         )
-      `
-      return operation(tx)
+      } catch (error) {
+        // A rejected callback cannot commit. Let the caller recover while
+        // Prisma finishes rollback; the race still observes its final rejection.
+        reportCallbackFailure(error)
+        throw error
+      }
     },
     { maxWait: remaining, timeout: remaining },
   )
+  // Do not time out a successful callback's commit acknowledgment: an ISSUED
+  // transaction that committed must still return its issued response.
+  return Promise.race([transaction, callbackFailure])
 }
