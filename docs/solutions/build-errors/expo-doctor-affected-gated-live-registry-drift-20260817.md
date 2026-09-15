@@ -67,11 +67,15 @@ the drift.
 
 ## Fix
 
-Do NOT hand-bump only the packages the first log names. Bumping `expo` raises
+Do not assume that changing only the first reported versions is sufficient. Bumping `expo` can raise
 the expected patch floor of its **sibling** packages, so doctor then flags a
 second wave (`expo-constants`, `expo-dev-client`, `expo-file-system`,
 `expo-image`, `expo-linking`, …) plus a duplicate-native-module complaint from
-the half-aligned tree. Align the whole set with Expo's own tool:
+the half-aligned tree. Use Expo's installer and rerun compatibility validation
+after it finishes. For a scoped maintenance PR, start with the reported package
+names (`expo install expo expo-build-properties --pnpm`, for example); inspect
+any additional requirements before expanding scope. For an explicitly approved
+full alignment, use:
 
 ```bash
 cd apps/mobile
@@ -93,8 +97,9 @@ suite and typecheck green, full CI matrix green.
   (rerun-identical; no dependency diff) before reading it as your regression.
 - **A green main is only as fresh as its last run.** Compare run timestamps to
   upstream release dates before citing main as evidence.
-- **Use `expo install --fix`, never selective hand-bumps** — the SDK's expected
-  versions move as a set.
+- **Use Expo's installer and validate its final result.** A successful install
+  is not proof of compatibility. Named-package installation is appropriate for
+  bounded maintenance; `--fix` is appropriate when the full alignment is in scope.
 - **Scope honesty:** the fix is a mobile dependency change riding in whatever PR
   woke the check. Say so in the commit message and offer to split it out; note
   that merging publishes nothing (mobile ships via EAS builds, not autodeploy),
@@ -103,6 +108,28 @@ suite and typecheck green, full CI matrix green.
   separately hit a "successful" build that had failed with exit 65. Capture
   `EXIT=$?` into the log file, or grep the log for the error summary, before
   trusting any piped build output.
+
+## September 16, 2026 recurrence: Web rollout dependency
+
+PR #2311 changed Web's Redis cache-handler patch and woke the Mobile check through
+the workspace lockfile. All other PR checks passed, but existing `expo` 57.0.22
+and `expo-build-properties` 57.0.17 failed the current patch recommendations.
+The same failure reproduced in untouched, previously merged d9dce17.
+
+Merging a scoped fix with a documented baseline failure did **not** make its
+Web rollout ready: the production Railway Web trigger has `checkSuites: true`.
+The normal deployment waits for repository CI, including this unrelated check.
+Inspect that trigger before treating an existing CI failure as release-neutral.
+Repair the baseline through a separate normal PR; do not bypass the deployment
+gate or redeploy local code.
+
+feat-510 uses Expo's named-package installer to select 57.0.23 and 57.0.19. It
+also updates three required Expo toolchain patches in the generated lockfile;
+React, React Native and application source remain unchanged. The standalone
+version check passes, and the exact CI isolation procedure passes all 19 Doctor
+checks: `pnpm --filter @forge/mobile deploy --prod <temp>` followed by the pinned
+Doctor with `EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK=1`. That setting belongs
+only to the isolated second check; the preceding version check remains enabled.
 
 ## Cross-references
 
