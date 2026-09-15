@@ -547,6 +547,22 @@ and the `steps` flag must reach EVERY call to `buildNarrationSegments` in a run
 (production, staleness check, approval fingerprint) or the manifest and the
 audio diverge without an error.
 
+**The series look is the DEFAULT of `render-one-devotional.ts`; opt OUT, never
+opt in.** Stepper screen, serif text, ElevenLabs word timings (voice-synced
+text), face-aware background crop, hard cuts between cards and a title-first
+cover are all on with no flags; `--no-steps`, `--text-font=sans`,
+`--no-word-timings`, `--no-face-crop`, `--card-xfade=0.85` and
+`--no-cover-title-first` turn each off. Every one of these used to be opt-in
+and every one fails SILENTLY when forgotten — a render with the flags missing
+exits 0 and looks plausible. The 2026-09-15 YouTube cuts of ch21, ch33 and
+ch19 went out that way: a cover that showed only the logo for five seconds and
+text that appeared in blocks instead of with the voice, and the owner caught
+it, not the pipeline. Two consequences to keep in mind: with word timings on,
+a cache recorded WITHOUT them is re-synthesised (that is the point, and it
+bills), and a run that must cost nothing is made with `ELEVENLABS_API_KEY`
+unset so any synthesis fails loudly instead of billing. `--approve` stays
+explicit: it is a human gate, not a look.
+
 ## Railway Storage
 
 Production `@forge/mastra` uses the existing Mastra Postgres database through

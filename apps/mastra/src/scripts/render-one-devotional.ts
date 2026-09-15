@@ -58,15 +58,19 @@ async function main() {
       // the only honest way to answer "how long does the music play alone at the
       // end" — the constants in timing.ts are only part of the sum.
       stopBeforeRender: process.argv.includes("--stop-before-render"),
-      wordTimings: process.argv.includes("--word-timings"),
-      faceCrop: process.argv.includes("--face-crop"),
-      ...(arg("card-xfade") ? { cardXfadeSec: Number(arg("card-xfade")) } : {}),
+      // THE SERIES LOOK IS THE DEFAULT. Every one of these used to be opt-in
+      // and each fails silently when forgotten: the three YouTube cuts of
+      // 2026-09-15 went out with a five-second empty cover and no voice-synced
+      // text because the flags were not on the command line. Opt OUT instead.
+      wordTimings: !process.argv.includes("--no-word-timings"),
+      faceCrop: !process.argv.includes("--no-face-crop"),
+      // Hard cuts between cards (owner rule). `--card-xfade=0.85` restores the
+      // old dissolve.
+      cardXfadeSec: Number(arg("card-xfade", "0")),
       ...(arg("video-speed") ? { videoSpeed: Number(arg("video-speed")) } : {}),
       ...(arg("muted-lead") ? { mutedLeadSec: Number(arg("muted-lead")) } : {}),
       showSettleLine: process.argv.includes("--show-settle-line"),
-      ...(arg("text-font")
-        ? { textFont: arg("text-font") as "sans" | "serif" }
-        : {}),
+      textFont: arg("text-font", "serif") as "sans" | "serif",
       ...(arg("video-filter") ? { videoFilter: arg("video-filter") } : {}),
       // Screenshots instead of an encode, for reviewing layout/type/colour
       // before paying for the full render.
@@ -77,7 +81,7 @@ async function main() {
       ...(arg("grain-filter") ? { grainFilter: arg("grain-filter") } : {}),
       ...(arg("grain-blend") ? { grainBlend: arg("grain-blend") } : {}),
       ...(arg("blur-scale") ? { blurScale: Number(arg("blur-scale")) } : {}),
-      steps: process.argv.includes("--steps"),
+      steps: !process.argv.includes("--no-steps"),
       ...(arg("silent-wps")
         ? { silentPreviewWordsPerSec: Number(arg("silent-wps")) }
         : {}),
@@ -89,7 +93,8 @@ async function main() {
       coverOnly: process.argv.includes("--cover-only"),
       ...(arg("music-file") ? { musicFile: arg("music-file") } : {}),
       ...(arg("settle-line") ? { settleLine: arg("settle-line") } : {}),
-      coverTitleFirst: process.argv.includes("--cover-title-first"),
+      // Title leads the cover, the mark follows two seconds later (owner rule).
+      coverTitleFirst: !process.argv.includes("--no-cover-title-first"),
       suppressOccasion: process.argv.includes("--no-occasion"),
       ...(arg("caption-offset")
         ? { captionOffsetSec: Number(arg("caption-offset")) }
