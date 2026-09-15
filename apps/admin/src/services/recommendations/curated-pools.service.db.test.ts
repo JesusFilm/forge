@@ -9,6 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
 import { CuratedPoolsService } from "./curated-pools.service"
 import { digestValue } from "./promotion/manifest"
+import { runRecommendationDeliveryTransaction } from "./delivery-runtime"
 import {
   CuratedPoolCoverageError,
   CuratedPoolPromotionError,
@@ -370,6 +371,42 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       expect(await prisma.recommendationRequest.count()).toBe(before)
       expect(await prisma.recommendationServedItem.count()).toBe(itemsBefore)
       expect(h.release).toHaveBeenCalledOnce()
+    })
+
+    it("rolls back earlier writes when the callback exceeds its deadline", async () => {
+      await admin.query(
+        `CREATE TABLE "${schema}".deadline_probe (id integer PRIMARY KEY)`,
+      )
+      let operationSettled!: () => void
+      const settled = new Promise<void>((resolve) => {
+        operationSettled = resolve
+      })
+      const started = performance.now()
+      const result = await runRecommendationDeliveryTransaction(
+        prisma,
+        Date.now() + 200,
+        async (tx) => {
+          try {
+            await tx.$executeRawUnsafe(
+              `INSERT INTO "${schema}".deadline_probe (id) VALUES (1)`,
+            )
+            await tx.$queryRaw`SELECT 1 FROM pg_sleep(1)`
+            return "committed"
+          } finally {
+            operationSettled()
+          }
+        },
+        Date.now,
+      ).catch(() => "failed")
+      expect(result).toBe("failed")
+      expect(performance.now() - started).toBeLessThan(600)
+      await settled
+      // The query has settled and the transaction callback rejected. A later
+      // transaction cannot observe the earlier write, including after cleanup.
+      const rows = await admin.query(
+        `SELECT id FROM "${schema}".deadline_probe`,
+      )
+      expect(rows.rows).toEqual([])
     })
   },
 )
