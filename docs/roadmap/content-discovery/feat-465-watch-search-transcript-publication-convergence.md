@@ -93,9 +93,10 @@ needed to remove an already published transcript.
 ## Post-merge recovery
 
 The dedicated Admin worker build began exhausting its smaller builder after the
-real-Postgres convergence suite expanded. A clean package typecheck included
-465 test files, consumed about 3.9 GB, and spent 114 seconds in Next's duplicate
-TypeScript phase. `next build` now uses `apps/admin/tsconfig.build.json`, which
-excludes test files from that production-only pass. The package `typecheck`
-command deliberately continues to use `apps/admin/tsconfig.json`, so CI still
-checks the complete unit and integration test corpus.
+real-Postgres convergence suite expanded. Excluding 465 test files still left
+Next constructing a second TypeScript program over 644 production files after
+the package's complete typecheck. Production builds now skip that redundant
+Next pass. The package `typecheck` command deliberately runs `next typegen`
+before `tsc` on `apps/admin/tsconfig.json`, so CI still checks generated route
+and page contracts plus the complete unit and integration test corpus in its
+required typecheck gate.

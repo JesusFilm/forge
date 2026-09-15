@@ -15,7 +15,7 @@
     "restore:video-db:latest": "tsx src/scripts/restore-latest-video-db.ts",
     "fetch-secrets": "../../scripts/fetch-secrets.sh forge-admin .env",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "db:generate": "prisma generate",
