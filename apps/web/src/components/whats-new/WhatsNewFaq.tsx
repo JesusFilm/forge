@@ -7,11 +7,6 @@ import { WatchFaqList } from "@/components/watch/WatchFaqList"
 import { WHATS_NEW_FAQ } from "@/components/whats-new/whats-new-content"
 
 const ALL_IDS = WHATS_NEW_FAQ.items.map((item) => item.id)
-const ITEMS = WHATS_NEW_FAQ.items.map((item) => ({
-  id: item.id,
-  question: item.question,
-  answer: item.answer,
-}))
 
 /**
  * The FAQ presentation lives in `WatchFaqList`, shared with the authored
@@ -50,7 +45,7 @@ export function WhatsNewFaq({ contentClass }: { contentClass: string }) {
     >
       <div className={`${contentClass} py-16 sm:py-20 lg:py-24`}>
         <WatchFaqList
-          items={ITEMS}
+          items={WHATS_NEW_FAQ.items}
           openIds={open}
           onToggle={setRow}
           eyebrow={WHATS_NEW_FAQ.eyebrow}

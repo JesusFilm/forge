@@ -118,6 +118,9 @@ export function WatchFaqList({
   // FGE-40 is restored explicitly. One base per component instance keeps two
   // lists on the same page from colliding.
   const panelIdBase = useId()
+  // Set rather than `openIds.includes` per row: the multi-open caller can
+  // hold every id at once, which makes the scan quadratic in the row count.
+  const openSet = new Set(openIds)
 
   return (
     <>
@@ -152,7 +155,7 @@ export function WatchFaqList({
           return (
             <details
               key={item.id}
-              open={openIds.includes(item.id)}
+              open={openSet.has(item.id)}
               onToggle={(event) => onToggle(item.id, event.currentTarget.open)}
               data-testid={itemTestId}
               className="group border-t border-current/10 last:border-b"

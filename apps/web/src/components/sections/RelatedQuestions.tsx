@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import type { ReactNode } from "react"
 import { useTranslations } from "next-intl"
 import type {
   FragmentOf,
@@ -15,6 +16,17 @@ export { relatedQuestionsFragment }
 
 type RelatedQuestionsProps = {
   data: FragmentOf<typeof relatedQuestionsFragment>
+}
+
+/**
+ * Only `ul` needs an override — react-markdown's own `li` and `p` renderers
+ * already emit exactly those tags, and the answer's line-height comes from the
+ * wrapper in `WatchFaqList`. Hoisted so it is not reallocated per question.
+ */
+const MARKDOWN_ANSWER_COMPONENTS = {
+  ul: ({ children }: { children?: ReactNode }) => (
+    <ul className="mt-2 list-disc space-y-2 pl-6">{children}</ul>
+  ),
 }
 
 /** Speech-bubble icon used inside the "Ask yours" pill button. */
@@ -68,15 +80,7 @@ export function RelatedQuestions({ data }: RelatedQuestionsProps) {
       id: `q-${idx}`,
       question: q.question ?? "",
       answer: (
-        <Markdown
-          components={{
-            ul: ({ children }) => (
-              <ul className="mt-2 list-disc space-y-2 pl-6">{children}</ul>
-            ),
-            li: ({ children }) => <li>{children}</li>,
-            p: ({ children }) => <p>{children}</p>,
-          }}
-        >
+        <Markdown components={MARKDOWN_ANSWER_COMPONENTS}>
           {q.answer ?? ""}
         </Markdown>
       ),
