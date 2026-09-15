@@ -28,7 +28,8 @@ Web reads from admin via the typed `adminGraphql()` factory exported from `@forg
 - `src/lib/fragments/watch-experience.ts` — re-exports `adminWatchExperienceFragment` from `@forge/admin-graphql/fragments` (the root composition over admin's 17 block fragments).
 - `src/lib/fragments/watch-video.ts` — local `WatchVideo` fragment + the two query operations on admin's `Video` with field aliases bridging vocab (`documentId: id`, `variants: dubs`, `value: text`).
 - `src/lib/{search,recommendations,demo-search,enrichment,experience-metadata}.ts` — all read from admin.
-- `src/lib/watch-search-client.ts` is the one deliberate browser-direct exception: the global search modal calls the public GraphQL gateway without an Admin bearer. Its handwritten operation and mapping must stay aligned with `src/lib/search.ts` via colocated parity tests; this exception is not precedent for other clients.
+- `src/lib/watch-search-client.ts` is a deliberate browser-direct exception: the global search modal calls the public GraphQL gateway without an Admin bearer. Its handwritten operation and mapping must stay aligned with `src/lib/search.ts` via colocated parity tests; this exception is not precedent for other clients.
+- `src/lib/whats-new-votes.ts` is the second, narrower browser-direct exception: anonymous sticker voting on `/watch/whats-new` reads `whatsNewFeatureVoteTallies` and writes `castWhatsNewFeatureVote` / `retractWhatsNewFeatureVote` with no Admin bearer. It qualifies for the same reasons search does — the fields are `public: true`, the page is statically cached so a server hop buys nothing, and nothing sent is trusted (Admin validates every id and caps what one ballot holds). Two rules keep it honest: the document TEXT is what goes on the wire and the `adminGraphql(...)` node beside it exists only to typecheck that text against Admin's SDL (posting the node sends `[object Object]`), and a write refusal arrives as `accepted: false` DATA that must never be retried, while a thrown transport error must be. Neither exception is precedent for a third client.
 
 Production floating Watch search calls Admin directly from the browser through
 `src/lib/watch-search-client.ts` to avoid a Web server hop. The client omits mode
@@ -55,7 +56,48 @@ Required env vars (both flipped from `.optional()` in U13):
   `auth.jesusfilm.org` (PR #909 trap).
 - `WEB_ADMIN_API_KEYS` — single key or CSV; web reads the first entry as the outbound bearer so traffic identifies as `consumer:<key>` at admin's rate limiter.
 
-`REVALIDATION_SECRET` remains required for the `/api/revalidate` route. `STRAPI_PREVIEW_SECRET` remains required for the `/api/preview` Next draft-mode entry token (Strapi-era surface that hasn't migrated yet; out of data-layer scope).
+`REVALIDATION_SECRET` remains required for the `/api/revalidate` route.
+`CLOUDFLARE_ZONE_ID` and `CLOUDFLARE_CACHE_PURGE_TOKEN` are an optional pair:
+when both are present, successful live infinite-feed responses emit
+Cloudflare-only shared cache headers and relevant revalidation webhooks purge
+the `watch-dynamic-collections` cache tag. `STRAPI_PREVIEW_SECRET` remains
+required for the `/api/preview` Next draft-mode entry token (Strapi-era surface
+that hasn't migrated yet; out of data-layer scope).
+
+## Watch semantic recommendations
+
+Eligible Watch routes include exactly one route-owned semantic recommendation
+slot immediately after `WatchBody`. The lazy client boundary calls the
+same-origin, dynamic, private/no-store `/watch/api/recommendations*` routes only
+after the player shell is available. Do not turn recommendation delivery or
+telemetry into an RSC/static-page dependency, authored-block override, player
+startup dependency, or precedent for direct browser-to-Admin GraphQL.
+
+The pinned browser contracts are `semantic-recommendation-v1`,
+`recommendation-evidence-v1`, and `watch-below-player-v1`. The Web Route
+Handlers alone hold `WEB_ADMIN_API_KEYS` and the 24-hour host-only HttpOnly
+recommendation session cookie. Delivery and episode capabilities remain in
+memory and request bodies only; no capability may enter a URL, referrer, SSR
+HTML, DOM field, JavaScript-readable persistent storage, log, analytics event,
+or retained browser artifact. The one sessionStorage value is a non-secret tab
+correlation/claim nonce and is never authorization.
+
+An eligible impression means at least 50% of a card was continuously visible
+for one second while the document was visible. Selection is single-flight,
+body-POSTed, and navigates to Admin's stored-item-derived target; its short
+deadline fails open to the already-rendered token-free href. The target player
+claims the one-use handoff asynchronously and records best-effort bounded facts
+without changing the legacy `WatchEventRecorder`. Delivery, evidence, claim,
+or Admin failure must preserve source and target player availability.
+
+For a local proof, Admin `WATCH_CANONICAL_ORIGIN` and Web
+`NEXT_PUBLIC_CANONICAL_ORIGIN` must use the same scheme and host, and Web's
+first consumer bearer must be accepted by Admin. Non-production recommendation
+routes accept a same-host loopback origin when a local preview proxy changes
+only the port; production still requires the exact canonical origin. Follow
+`docs/operations/semantic-recommendation-tracer.md`; retain only redacted URL
+path, status, timing, and request ID evidence, and delete raw Playwright traces
+before a PR.
 
 ## Common Pitfalls
 
@@ -63,7 +105,7 @@ Required env vars (both flipped from `.optional()` in U13):
 - `'use client'` is a boundary — everything imported below it is also client.
 - The admin bearer (`WEB_ADMIN_API_KEYS`) is in the server-only env block. Never reference it from a client component or `NEXT_PUBLIC_*` var.
 - For authenticated browser-initiated data calls, write a `"use server"` action that wraps the resolver — see `src/lib/search-actions.ts`. Anonymous direct calls need an explicit package-local contract such as the floating Watch search exception above. The read-only infinite collection feed is one such exception: `GET /watch/api/dynamic-collections` uses `src/lib/dynamic-collection-contract.ts`, because the public Watch edge admits `/watch/api/*` while page-bound Server Action POSTs are not guaranteed to reach Next.js.
-- ISR cache: static watch routes under `src/app/[locale]/[htmlLang]/**` use route-level `revalidate = 3600`. Watch resolver `unstable_cache` wrappers in `src/lib/content.ts` / `src/lib/watch-home.ts` keep short data TTLs (`60` seconds, except child dub languages at `1h`) and attach coarse tags from `src/lib/watch-cache-tags.ts`. `/api/revalidate` must invalidate both layers: `revalidatePath` for route output and `revalidateTag(tag, { expire: 0 })` for resolver data so webhook-triggered renders do not serve stale Data Cache first. The 1 hour route TTL is the fallback for a missed webhook or process-local invalidation miss; do not raise resolver TTLs until production cache topology and webhook reliability are proven.
+- ISR cache: static watch routes under `src/app/[locale]/[htmlLang]/**` use route-level `revalidate = 3600`. Most Watch resolver `unstable_cache` wrappers in `src/lib/content.ts` / `src/lib/watch-home.ts` keep short data TTLs (`60` seconds, except child dub languages at `1h`) and attach coarse tags from `src/lib/watch-cache-tags.ts`. The deterministic infinite collection feed is the deliberate exception: live batches use the shared Redis-backed Data Cache for `24h`, previews use `15m`, and both retain the home/video invalidation tags. `/api/revalidate` must invalidate both layers: `revalidatePath` for route output and `revalidateTag(tag, { expire: 0 })` for resolver data so webhook-triggered renders do not serve stale Data Cache first. Long Cloudflare feed caching is additionally gated on configured cache-tag purge.
 - 15 orphaned Strapi block fragment files remain at `src/lib/fragments/*` because section components in `src/components/sections/*.tsx` still derive prop types via `FragmentOf<typeof strapiFragment>`. Runtime data is admin-shape via the renderer's `as unknown as` cast bridge. Migrating section components to admin fragment imports is a clean follow-up bundle.
 - **Static locale root layout**: cacheable watch surfaces live under the internal route tree `src/app/[locale]/[htmlLang]/**`. `src/proxy.ts` rewrites public `/watch` URLs into that tree, so the root layout gets static params for both the next-intl message catalog key (`[locale]`) and `<html lang>` (`[htmlLang]`) without calling `headers()` or `cookies()`. Keep request-time dynamic APIs out of this tree unless the route is intentionally dynamic.
 
@@ -81,7 +123,15 @@ and derive the visual active card from that pending payload so it self-invalidat
 when the route commits. See
 `docs/solutions/design-patterns/watch-chapter-optimistic-navigation-feedback.md`.
 
+Public Watch language namespace: `src/lib/language-bcp47-map.ts` (slug → BCP-47, drives `<html lang>` and the UI-catalog fallback) and `packages/watch-url-policy/src/public-watch-language-slugs.ts` (slug-only corpus for URL-grammar disambiguation and the client-side pickers/parsers) are BOTH generated from admin's public `languages` query by `pnpm --filter @forge/web generate:language-bcp47-map`; `check:language-bcp47-map` reports drift and the scheduled `watch-language-corpus-drift` workflow opens a refresh PR when admin publishes new languages. The corpus is a fallback, not the route authority: `src/proxy.ts` and the catch-all page decide whether an ambiguous `.html` segment is a language through `isWatchAudioLanguageSlug` (compiled corpus OR the live route manifest), so a language admin published after the last regeneration still routes and plays — it only degrades to English chrome and `<html lang="en">` until the corpus is refreshed. Never re-introduce a bare `isPublicWatchLanguageSlug` check in either classifier: that frozen-snapshot veto is what 404'd 58 newly published languages as fake implicit-English episodes (Linear FGE-81). Keep the page's manifest await lazy (only when the corpus misses) so content resolution never serializes behind the manifest request.
+
 Adding a UI locale: drop `messages/{locale}.json`, then run `pnpm --filter @forge/web generate:ui-locales` or any build/test script that runs it. The generated edge-safe catalog module drives middleware, route helpers, and next-intl catalog membership without a manual TypeScript whitelist. CI runs `check:ui-locales` during lint before build/test scripts can regenerate the file, and the drift gate in `src/i18n/__tests__/messages-parity.test.ts` verifies the generated list matches filesystem catalogs. The structural-parity test also enforces every namespace key exists in every catalog.
+
+`resolveWatchLocaleIdentity` returns two fields that answer different questions and must not be collapsed into each other: `locale` is the message-catalog key the CHROME renders in (bounded to generated UI catalogs, falls back to `en`), while `htmlLang` declares the language the CONTENT is in — `arabic-najdi` → `{ locale: "en", htmlLang: "ars" }`. Only ~224 of 2,329 public language slugs ship a catalog, so requiring the two to agree (as the code did before FGE-170 / W-082) declared pages of Najdi Arabic or Pashto as `lang="en" dir="ltr"`.
+
+`htmlLang` is not simply "whatever `slugToBcp47Tag` returns". That helper is deliberately permissive — its third branch accepts any `BCP47_TAG_PATTERN`-shaped string so the internal `[htmlLang]` segment can be read back off a URL — and the generated map also carries tags that are not valid BCP-47 at all (`hainanese` → `nan-CN-46`, `javanese-banten` → `jv-ID-BT`; `new Intl.Locale()` throws on both). A tag is therefore only DECLARED when `isDeclarableHtmlLangTag` accepts it: it must be a tag this app knows (an override/map value or a UI catalog key) **and** parse as BCP-47. Everything else — including a language admin published after the last corpus regeneration — falls back to `locale` and degrades to `<html lang="en">` as described above.
+
+Only pages that actually RENDER in-language content declare it. `proxy.ts`'s `chromeDocumentLang` is the gate: it keeps a same-language regional refinement (`es-419` on Spanish copy) but drops a different content language (`aiw` on English copy). Applies to every chrome-only surface — `/404`, the unavailable-language sentinel, `/languages`, and `/history`, none of whose page bodies read `htmlLang`. `/videos/[languageSlug]` is the counter-example that keeps the content tag, because it renders that language's own inventory titles and `languageNativeName`. When adding a route under `[locale]/[htmlLang]`, decide which of the two it is; the default should be chrome language unless the page renders the language's own words. Keep `WATCH_ORDINARY_NOT_FOUND_INTERNAL_PATHS` built through the same helper — it must mirror exactly what `buildNotFound` emits.
 
 Critical: `src/i18n/generated-ui-locales.ts` is the only catalog list safe to import from middleware, route helpers, and client-reachable modules. Do NOT copy filesystem discovery into request-path modules (filesystem I/O in the request path is a regression), and do NOT import `src/i18n/locales.ts` into middleware or client-safe helpers because it is a server-only re-export for next-intl request configuration. Keep the internal `[locale]` segment bounded to generated message catalogs; use `[htmlLang]` only for the static HTML language tag.
 
@@ -102,6 +152,24 @@ Redis across deploys and web instances. Production should set `REDIS_URL`;
 local, CI, build, and no-Redis runs fall back to the handler's process-local
 memory map. Use `NEXT_CACHE_REDIS_PREFIX` when sharing a Redis instance.
 
+`GET /watch/api/dynamic-collections` is non-personalized. Its live cache
+identity is locale, audio-language slug, frozen mobile/desktop feed profile,
+cursor, normalized child-ID exclusions, and normalized parent-slug exclusions;
+never add cookies, account identity, IP, geography, or user-agent values. Only
+variants carrying a server-issued, domain-separated HMAC over that complete
+identity enter the long-lived Next Data Cache. The signature is public cache
+admission metadata, not authorization; unsigned or altered requests remain
+functional but bypass shared storage. The browser always receives
+`Cache-Control: no-store`. When Cloudflare purge is fully configured, canonical
+signed live `200` responses also carry
+`Cloudflare-CDN-Cache-Control` plus `Cache-Tag: watch-dynamic-collections`;
+draft previews send `scope=preview` and never receive those edge headers.
+Cloudflare still needs a production Cache Rule that makes this exact GET path
+eligible while respecting the origin's CDN cache-control header and full query
+string. Do not configure the rule to ignore or normalize away query parameters.
+The response supplies the next cursor signature in a header so the strict JSON
+DTO and older clients remain compatible.
+
 The route manifest cache in `src/lib/watch-route-manifest.ts` is process-local. The webhook clears only the process that receives it; other web instances rely on the 60 second manifest TTL unless production uses shared cache storage or all-instance webhook fan-out.
 
 The SEO sitemap manifest cache in `src/lib/watch-seo-manifest.ts` follows the
@@ -114,6 +182,10 @@ Production proof on 2026-06-10 showed `@forge/web` online in Railway US West beh
 See `docs/plans/2026-06-10-001-fix-watch-cache-invalidation-plan.md`.
 
 ## Datadog observability
+
+Preserve the configured Watch GA and Datadog integrations restored by PR #2229.
+`docs/analytics-and-recommendation-policy.md` defines the required event coverage,
+enablement without consent prerequisites, and post-deploy receipt verification.
 
 `src/instrumentation.ts` configures `dd-trace` for the Node runtime and enables
 Datadog's built-in `graphql` plugin with source and variables disabled. Keep
@@ -219,3 +291,22 @@ for the watch-page floating question panel. `false` hides the panel;
 intentionally testing the panel.
 
 See root `CLAUDE.md` for cross-app patterns and the broader data-layer-flip plan reference.
+
+`forge.watch.homepageRecommendations` gates the Homepage Recommendations Block
+and its Web delivery adapter. Default/fallback is false. Evaluate at runtime via
+`/watch/api/recommendations/for-you/availability`, never in the cached homepage.
+The signed-in Web session supplies context kind `user`, key = account subject,
+and email for targeting. Anonymous requests use `watch-anonymous`; recommendation
+profile cookies, capabilities, access tokens and viewing history never enter LD.
+The Admin device-agnostic API remains independent of this Web rollout flag.
+`WATCH_FOR_YOU_ENABLED=false` remains the environment kill switch.
+
+### Recommendation admission runtime
+
+Production recommendation admission runs the shared Redis TIME/EVAL core in one
+Node worker so page processing cannot delay its socket callbacks. Keep the native
+worker compilation in `build:admission-worker` and preserve its `.next/admission-worker`
+output in deployment packaging. Do not move session identity or profile data into
+the worker. Deadline checks and active-admission draining belong in the shared
+core; the main watchdog must drain completed MessagePort results before failing.
+See `docs/solutions/performance-issues/page-rendering-blocks-redis-admission-callbacks-20260915.md`.

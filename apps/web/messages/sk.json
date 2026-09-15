@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Zmeniť jazyk zvuku",
     "home": "Domovská stránka JesusFilm",
     "closeSearch": "Zavrieť vyhľadávanie",
-    "submitSearch": "Hľadať"
+    "submitSearch": "Hľadať",
+    "library": "Knižnica"
   },
   "SearchOverlay": {
     "dialogLabel": "Vyhľadávať a prehliadať videá",
@@ -467,6 +468,7 @@
     "sports": "Šport",
     "collections": "Zbierky",
     "subtitlesOnly": "Iba titulky",
+    "backToTop": "Späť nahor",
     "newlyAdded": "Novo pridané",
     "newVideosTitle": "Nové kresťanské videá v jazyku {language}",
     "newestFirst": "Najnovšie najprv",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Samostatné videá",
     "videosFromCollection": "Videá zo zbierky {collection}.",
     "standaloneDescription": "Samostatné videá v tomto jazyku.",
-    "openCollection": "Otvoriť zbierku"
+    "openCollection": "Otvoriť zbierku",
+    "filters": "Filtre",
+    "filterLength": "Dĺžka",
+    "filterLength_under5": "Do 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Nad 30 min",
+    "filterType": "Typ",
+    "clearFilters": "Vymazať filtre",
+    "filterResults": "Zobrazené {count} z {total}",
+    "noFilterResults": "Žiadne video nezodpovedá týmto filtrom. Skúste jeden odstrániť.",
+    "filterAdded": "Pridané",
+    "filterAdded_60d": "Posledných 60 dní",
+    "filterAdded_6m": "Posledných 6 mesiacov",
+    "filterAdded_12m": "Posledných 12 mesiacov"
   },
   "WatchHome": {
     "pageTitle": "Sledovanie Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Ukážka predchádzajúceho videa",
     "nextVideoPreview": "Ukážka ďalšieho videa",
     "mediaCollection": "Mediálna zbierka",
-    "scrollToVideo": "Posunúť na video {title}"
+    "scrollToVideo": "Posunúť na video {title}",
+    "forYou": "Pre vás"
   },
   "WatchFooter": {
     "home": "Domovská stránka Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Späť na Sledovať",
     "browseVideos": "Prehliadať videá"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Pozrieť krátky film",
-    "actions": {
-      "joinUs": "Pridajte sa k nám",
-      "shareMission": "Podieľajte sa na našom poslaní"
-    },
-    "welcomeStart": {
-      "label": "Viera a Písmo",
-      "title": "Dnešný výber videí",
-      "description": "Videá z našej knižnice zamerané na vieru, ktoré majú inšpirovať, vyzvať a podnietiť zamyslenie."
-    },
-    "welcomeMorning": {
-      "label": "Ranná inšpirácia",
-      "title": "Dobré ráno! Čakajú vás dnešné biblické chvíle.",
-      "description": "Začnite deň povzbudivými biblickými momentmi, ktoré majú inšpirovať a povzbudiť vášho ducha."
-    },
-    "welcomeAfternoon": {
-      "label": "Popoludňajšia inšpirácia",
-      "title": "Dobrý deň! Biblické chvíle pre váš deň.",
-      "description": "Povzbudivé biblické obsahy ideálne na popoludňajšiu prestávku alebo ďalšiu dávku inšpirácie."
-    },
-    "welcomeEvening": {
-      "label": "Večerná inšpirácia",
-      "title": "Dobrý večer! Oddýchnite si s biblickými chvíľami.",
-      "description": "Pokojné biblické chvíle, ktoré vám pomôžu premýšľať a nájsť útechu na konci dňa."
-    },
-    "joinUs": {
-      "label": "Pridajte sa k nám",
-      "title": "Miliardy ľudí hľadajú",
-      "description": "Žatva je tu. Pridajte sa k nám, keď zdieľame evanjelium so svetom prostredníctvom digitálnych médií."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Poďme spolu",
-      "title": "Rozprávajme príbeh Ježiša spolu",
-      "description": "Aby mohli počuť a vidieť Ježišovu lásku vo svojom vlastnom jazyku tam, kde práve sú."
-    }
-  },
   "VideoRecommendations": {
     "match": "Zhoda na {percent} %",
     "none": "Pre toto video sa v danom jazyku nenašli žiadne odporúčania."
@@ -735,14 +714,37 @@
   "WatchUnavailableLanguage": {
     "metadataTitle": "Jazyková verzia nie je dostupná",
     "eyebrow": "Jazyková verzia nie je dostupná",
-    "title": "<contentTitle>{title}</contentTitle> nie je dostupné v jazyku <languageName>{language}</languageName>",
+    "title": "<contentTitle>{title}</contentTitle>: verzia v jazyku <languageName>„{language}“</languageName> nie je dostupná",
     "actionsLabel": "Dostupné možnosti sledovania",
-    "browseInLanguage": "Prehliadať videá v jazyku {language}",
+    "browseInLanguage": "Všetky videá v jazyku „{language}“",
     "backToSearch": "Späť na vyhľadávanie",
     "audioVersionsTitle": "Ďalšie zvukové verzie",
     "audioVersionsDescription": "Vyberte jazyk zvuku a pokračujte v sledovaní videa.",
     "languageVersionLabel": "Jazyk zvuku",
     "selectLanguageVersion": "Vyberte jazykovú verziu",
     "watchSelectedVersion": "Pozrieť vybranú verziu"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Voľby súborov cookie",
+    "bannerTitle": "Vaše voľby ochrany súkromia",
+    "bannerDescription": "Nevyhnutné súbory cookie udržiavajú Watch bezpečný a funkčný. S vaším súhlasom si môže voliteľný súbor cookie prvej strany pamätať vaše záujmy medzi návštevami a prispôsobiť odporúčania. Kontextové odporúčania budú dostupné v oboch prípadoch.",
+    "acceptAll": "Prijať všetko",
+    "essentialOnly": "Len nevyhnutné",
+    "manageChoices": "Spravovať voľby",
+    "savingChoice": "Ukladá sa voľba súborov cookie",
+    "settings": "Nastavenia súborov cookie",
+    "settingsDescription": "Vyberte, či si Watch môže medzi návštevami pamätať záujmy pre odporúčania. Toto môžete kedykoľvek zmeniť.",
+    "essentialCookies": "Nevyhnutné súbory cookie",
+    "essentialDescription": "Zabezpečenie, prehrávanie, voľby ochrany súkromia a priradenie požiadaviek na odporúčania.",
+    "alwaysActive": "Vždy aktívne",
+    "personalization": "Personalizácia",
+    "personalizationDescription": "Pamätať si obmedzené záujmy medzi návštevami. Po vypnutí budú kontextové odporúčania naďalej dostupné.",
+    "erasurePending": "Vymazanie profilu prebieha. Kontextové odporúčania sú už aktívne.",
+    "cancel": "Zrušiť",
+    "saveChoices": "Uložiť voľby",
+    "saving": "Ukladá sa…",
+    "loadError": "Vašu voľbu sa nepodarilo načítať. Stále si ju môžete vybrať nižšie.",
+    "grantError": "Personalizáciu sa nepodarilo zapnúť. Možnosť len nevyhnutných zostáva k dispozícii.",
+    "saveError": "Vašu voľbu sa nepodarilo uložiť. Skúste to znova."
   }
 }

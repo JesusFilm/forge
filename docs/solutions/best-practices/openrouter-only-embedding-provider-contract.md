@@ -16,6 +16,14 @@ tags: [admin, embeddings, openrouter, qwen, search, readiness]
 
 # OpenRouter-only embedding provider contract
 
+> **Superseded for active Watch Search on 2026-09-07.** The immutable
+> `semantic-transcript-pgvector-v2` contract uses
+> `fireworks/fireworks/qwen3-embedding-8b` for low-latency live query
+> embeddings while retaining the existing AI Gateway transcript-vector tuple.
+> This document still governs the historical v1 rollback contract and the
+> general rule that provider changes require an explicit, provider-bound
+> contract rather than a permissive runtime fallback.
+
 ## Context
 
 Admin live search owns query embedding generation. When the query embedding

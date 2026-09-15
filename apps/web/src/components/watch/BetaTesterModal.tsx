@@ -57,7 +57,7 @@ export function BetaTesterModal({
             target="_blank"
             rel="noopener noreferrer nofollow"
             aria-label={t("openFormNewTab")}
-            className="inline-flex min-h-11 items-center gap-2 rounded-full px-3 text-sm font-medium text-stone-200 transition hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
+            className="inline-flex min-h-11 items-center gap-2 rounded-full px-3 text-base sm:text-sm font-medium text-stone-200 transition hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
           >
             <span className="hidden sm:inline">{t("openFormNewTab")}</span>
             <ExternalLink aria-hidden className="h-4 w-4" />

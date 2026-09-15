@@ -196,7 +196,7 @@ export function BibleQuotesSection({
                 <div className="z-1 p-8 pt-0 md:p-10 md:pt-0">
                   <span
                     data-testid="watch-bible-quotes-promo-eyebrow"
-                    className="mb-3 block text-sm font-medium tracking-[0.18em] text-white/80 uppercase"
+                    className="mb-3 block text-base sm:text-sm font-medium tracking-[0.18em] text-white/80 uppercase"
                   >
                     {t("freeResources")}
                   </span>
@@ -303,7 +303,7 @@ function BibleCitationCard({
         {versionLabel && (
           <p
             data-testid="watch-bible-quotes-version"
-            className="relative mt-3 text-xs leading-relaxed font-semibold text-white/65"
+            className="relative mt-3 text-sm sm:text-xs leading-relaxed font-semibold text-white/65"
           >
             {versionLabel}
           </p>
@@ -311,7 +311,7 @@ function BibleCitationCard({
         {passage?.copyright && (
           <p
             data-testid="watch-bible-quotes-copyright"
-            className="relative mt-0 line-clamp-2 max-w-[36ch] text-xs leading-relaxed text-white/55"
+            className="relative mt-0 line-clamp-2 max-w-[36ch] text-sm sm:text-xs leading-relaxed text-white/55"
           >
             {passage.copyright}
           </p>

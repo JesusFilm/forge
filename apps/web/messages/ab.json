@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио бызшәa аԥсахра",
     "home": "JesusFilm ахатә хы",
     "closeSearch": "Аԥшаара аԥкра",
-    "submitSearch": "Аԥшаара"
+    "submitSearch": "Аԥшаара",
+    "library": "Абиблиотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Авидеонқәа рыԥшаара нас рылаԥшҵара",
@@ -467,6 +468,7 @@
     "sports": "Аспорт",
     "collections": "Аколлекциақәа",
     "subtitlesOnly": "Аҭарқәа мацара",
+    "backToTop": "Хыхьара",
     "newlyAdded": "Иацаҵоу",
     "newVideosTitle": "{language} бызшәала иҿыу христиан видеоқәа",
     "newestFirst": "Иҿыуқәа раԥхьа",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Иаужьҭым авидеонқәа",
     "videosFromCollection": "{collection} аҟынтәи авидеонқәа.",
     "standaloneDescription": "Ари абызшәаҿы иаужьҭым авидеонқәа.",
-    "openCollection": "Аколлекциа аарт"
+    "openCollection": "Аколлекциа аарт",
+    "filters": "Афильтрқәа",
+    "filterLength": "Аура",
+    "filterLength_under5": "5 минуҭ рацәажәа",
+    "filterLength_5to10": "5-10 минуҭ",
+    "filterLength_10to30": "10-30 минуҭ",
+    "filterLength_over30": "30 минуҭ инарзынаԥшуа",
+    "filterType": "Аҩыза",
+    "clearFilters": "Афильтрқәа рырӡра",
+    "filterResults": "{total} аҟынтә {count} иаагоуп",
+    "noFilterResults": "Абри афильтрқәа ирықәшәо авидео ыҟаӡам. Аӡәы иашәых.",
+    "filterAdded": "Иацҵоуп",
+    "filterAdded_60d": "Аҵыхәтәантәи 60 мш",
+    "filterAdded_6m": "Аҵыхәтәантәи 6 мз",
+    "filterAdded_12m": "Аҵыхәтәантәи 12 мз"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — Ахәаҧшра",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Аԥхьатәи авидео аԥшра",
     "nextVideoPreview": "Анашьҭатәи авидео аԥшра",
     "mediaCollection": "Медиа коллекциа",
-    "scrollToVideo": "{title} авидео ахь аиасра"
+    "scrollToVideo": "{title} авидео ахь аиасра",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project ахатә хы",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Аԥшрахь ахынҳәра",
     "browseVideos": "Авидеонқәа ҭышәҵаа"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Аҟәыҷьам афильм ахәаԥшра",
-    "actions": {
-      "joinUs": "Ҳара ҳзымҵашә",
-      "shareMission": "Ҳара ҳмиссиаҿы шәҽалацәшәыр"
-    },
-    "welcomeStart": {
-      "label": "Ақьырсианҵара & Аҩыра",
-      "title": "Иахьа иалху авидеонқәа",
-      "description": "Ҳбиблиотека аҟынтәи агәрахаҵаратә видеоҭыхымҭақәа — игәыӷрагьо, игәыҟаҵогьы, насгьы азхәыцра ҟазҵо."
-    },
-    "welcomeMorning": {
-      "label": "Ашьыжьтәи агәынкылара",
-      "title": "Уа бзиара! Иахьа иҟоу абиблиатәи аамҭақәа шәзыԥшуп.",
-      "description": "Шәҽазыҟашәҵа иахьатәи шәаамҭа агәырӷьара ҿыц ҭазааит ҳәа абиблиатәи аурокқәа рыла."
-    },
-    "welcomeAfternoon": {
-      "label": "Агәыбжьантәи агәынкылара",
-      "title": "Уа бзиара! Иахьа рзы абиблиатәи аамҭақәа.",
-      "description": "Агәыӷра шьҭыхтәу абиблиатәи видеоҭыхымҭақәа — аԥхынра шәаамҭаҟны ма агәылԥхара иацҵаразы."
-    },
-    "welcomeEvening": {
-      "label": "Ахәылԥазтәи агәынкылара",
-      "title": "Уа бзиара! Абиблиатәи аамҭақәа рыла шәаамҭа ҭынчашәырга.",
-      "description": "Аҭынч абиблиатәи аамҭақәа — шәаамҭа ахыркәшараҿы азхәыцра, аманшәалара, агәҭынчра рзы."
-    },
-    "joinUs": {
-      "label": "Ҳара ҳзымҵашә",
-      "title": "Миллиардла ауаа иԥшаауеит",
-      "description": "Аҳәа ԥыхьӡуп. Цифратә медиа ала адунеи ахь евангелиа ҳаԥшәаразы ҳзымҵашә."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Ҳара ҳзамала",
-      "title": "Иисус иусқәа ҳалацәажәо, еицуп",
-      "description": "Убас имҳауеит, насгьы иахьеи иахьеи иҟаҵоу аҭыԥ аҟны, рхы бызшәала Иисус игәыбылра рыхәҭаҩрақәеи рҟыҩи рбарц."
-    }
-  },
   "VideoRecommendations": {
     "match": "Аиқәшәара — {percent}%",
     "none": "Ари абызшәала ари авидео азы абжьгарақәа ԥшааӡам."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Аудиабызшәа",
     "selectLanguageVersion": "Абызшәатә версиа алышәх",
     "watchSelectedVersion": "Иалху аверсиа шәахәаԥшы"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Акәыки алхрақәа",
+    "bannerTitle": "Шәара шәхатәы маӡазы алхрақәа",
+    "bannerDescription": "Ихадоу акәыкиқәа Watch ашәарҭадара иарҭоит, насгьы аус арутәуеит. Шәара иҷыдоу анилшәҭалак, ихымԥадатәиу раԥхьатәи акәыки аҭаарақәак рыбжьара аинтересқәа иргәаларшәап, абжьгарақәа хаҭалатәины ирықәыршәахарц. Аҭагылазаашьа иадҳәалоу абжьгарақәа усгьы, аиҳабыроуп.",
+    "acceptAll": "Зегьы аднакыл",
+    "essentialOnly": "Ихадоуқәа мацара",
+    "manageChoices": "Алхрақәа анапхга",
+    "savingChoice": "Акәыки алхра аиқәырхара",
+    "settings": "Акәыки архиарақәа",
+    "settingsDescription": "Алшәх, Watch аҭаарақәак рыбжьара абжьгара аинтересқәа игәаларшәалароу. Ари зегь аамҭакгьы аԥсахра шәылшоит.",
+    "essentialCookies": "Ихадоу акәыкиқәа",
+    "essentialDescription": "Ашәарҭадара, авидео арҳәара, шәхатәы маӡазы алхрақәа, насгьы абжьгара азыҳәа ахьынтәиаз аилкаара.",
+    "alwaysActive": "Иара еснагь иаҿуп",
+    "personalization": "Хаҭалатәи аиқәыршәахара",
+    "personalizationDescription": "Аҭаарақәак рыбжьара ҳәаақәҵоу аинтересқәа игәаларшәа. Ари ааныжьны иҟашәҵар, аҭагылазаашьа иадҳәалоу абжьгарақәа ишырымоу иаанхоит.",
+    "erasurePending": "Аԥрофиль аԥыхра макьана иаԥшуп. Аҭагылазаашьа иадҳәалоу абжьгарақәа уажәнатә иаҿуп.",
+    "cancel": "Аԥыхра",
+    "saveChoices": "Алхрақәа еиқәырхатәуп",
+    "saving": "Иаиқәырхахоит…",
+    "loadError": "Шәалхра аҭагалара залымшеит. Усгьы, ҵаҟа иалшәхыр шәылшоит.",
+    "grantError": "Хаҭалатәи аиқәыршәахара аҿакра залымшеит. Ихадоуқәа мацара макьана иҳамоуп.",
+    "saveError": "Шәалхра аиқәырхара залымшеит. Иҭабуп, даҽа знык шәҽазшәа."
   }
 }

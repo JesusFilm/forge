@@ -862,3 +862,70 @@ describe("session teardown", () => {
     expect(store.getSnapshot().request).toBeNull()
   })
 })
+
+/**
+ * The `playing` bridge (WatchAmbient's cross-fade reads it through
+ * `usePlaybackPlaying`). Mirrors the `setLoadFailed` coverage above: both are
+ * booleans the root host publishes for layers it cannot reach by prop.
+ *
+ * Without these, deleting either `setPlaying` effect in PlaybackHost left the
+ * whole suite green — the only other assertion on this mechanism is a regex
+ * over WatchAmbient's source text, which cannot observe the store at all.
+ */
+describe("setPlaying", () => {
+  it("publishes the flag onto the snapshot", () => {
+    const { store } = makeStores()
+    store.attachSlot(makeRequest())
+    expect(store.getSnapshot().playing).toBe(false)
+
+    store.setPlaying(true)
+
+    expect(store.getSnapshot().playing).toBe(true)
+  })
+
+  it("survives on the retained request after the slot detaches", () => {
+    // The window outlives the route, so a dismissed-but-playing video must not
+    // lose the flag when its slot goes — the retained snapshot is built by a
+    // different branch than the attached one.
+    const { store, sessionStore } = makeStores({
+      started: true,
+      position: 12,
+      duration: 600,
+    })
+    const id = store.attachSlot(makeRequest())
+    store.setPlaying(true)
+
+    store.detachSlot(id)
+
+    expect(sessionStore.getSnapshot().session).not.toBeNull()
+    expect(store.getSnapshot().playing).toBe(true)
+  })
+
+  it("does not notify subscribers when the value is unchanged", () => {
+    // Play/pause is a transport-cadence event. A repeat that still committed
+    // would wake every subscriber on the app's one player for nothing.
+    const { store } = makeStores()
+    store.attachSlot(makeRequest())
+    store.setPlaying(true)
+    const listener = jest.fn()
+    store.subscribe(listener)
+
+    store.setPlaying(true)
+
+    expect(listener).not.toHaveBeenCalled()
+
+    store.setPlaying(false)
+
+    expect(listener).toHaveBeenCalled()
+  })
+
+  it("clears on reset, so it cannot leak across test files", () => {
+    const { store } = makeStores()
+    store.attachSlot(makeRequest())
+    store.setPlaying(true)
+
+    store.reset()
+
+    expect(store.getSnapshot().playing).toBe(false)
+  })
+})

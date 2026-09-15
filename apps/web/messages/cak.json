@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Tijäl ruk'ux ri ch'ab'äl audio",
     "home": "JesusFilm ruxaq alaxik",
     "closeSearch": "Titz'apïx kanöxik",
-    "submitSearch": "Tikanöx"
+    "submitSearch": "Tikanöx",
+    "library": "Wuj jay"
   },
   "SearchOverlay": {
     "dialogLabel": "Tikanöx chuqa' tapeq videos",
@@ -467,6 +468,7 @@
     "sports": "Ki'kotem",
     "collections": "K'amonel",
     "subtitlesOnly": "Xaq xe' subtitles",
+    "backToTop": "Tikꞌatzalij chikaj",
     "newlyAdded": "K'ak'a' xtz'aqatisäx",
     "newVideosTitle": "K'ak'a' Christian taq video pa {language}",
     "newestFirst": "Ri k'ak'a' nab'ey",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Ta video ri k'aq",
     "videosFromCollection": "Taq video pa {collection}.",
     "standaloneDescription": "Ta video ri k'aq pa re ch'ab'äl re'.",
-    "openCollection": "Tijaq k'amonel"
+    "openCollection": "Tijaq k'amonel",
+    "filters": "Chaꞌonik",
+    "filterLength": "Ruqꞌaꞌ",
+    "filterLength_under5": "Man nïm ta chuwäch 5 minutos",
+    "filterLength_5to10": "5-10 minutos",
+    "filterLength_10to30": "10-30 minutos",
+    "filterLength_over30": "Nïm chuwäch 30 minutos",
+    "filterType": "Ruwäch",
+    "clearFilters": "Tichupïx ri chaꞌonik",
+    "filterResults": "{count} chi {total} nikꞌut",
+    "noFilterResults": "Majun video nijunumäx rikꞌin re chaꞌonik reꞌ. Tawelesaj jun.",
+    "filterAdded": "Xokisäx chi",
+    "filterAdded_60d": "Ruqꞌisbꞌal 60 qꞌij",
+    "filterAdded_6m": "Ruqꞌisbꞌal 6 ikꞌ",
+    "filterAdded_12m": "Ruqꞌisbꞌal 12 ikꞌ"
   },
   "WatchHome": {
     "pageTitle": "Tatz'eta' pa Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Video preview chuwäch",
     "nextVideoPreview": "Video preview ch'aqa' chik",
     "mediaCollection": "K'amonel media",
-    "scrollToVideo": "Tatzijin pa ri video {title}"
+    "scrollToVideo": "Tatzijin pa ri video {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project ruxaq alaxik",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Tzolin chik pa Watch",
     "browseVideos": "Tanik'oj videos"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tatz'eta' ko'öl film",
-    "actions": {
-      "joinUs": "Jutijoj chik qawäch",
-      "shareMission": "Tawila' pa qamision"
-    },
-    "welcomeStart": {
-      "label": "Fe chuqa' Escritura",
-      "title": "Taq video ri nikajo' wakami",
-      "description": "Video content pa qach'amonel ri k'o ruq'ij ajowab'al, nitijon, chuqa' nuban na'oj."
-    },
-    "welcomeMorning": {
-      "label": "Nab'ey q'ijil na'oj",
-      "title": "Utz q'ij! Taq Biblia moment ri k'o wakami.",
-      "description": "Titikïr aq'ij rik'in taq Biblia moment ri nib'an richin nakuxtaj chuqa' nak'axaj awanima'."
-    },
-    "welcomeAfternoon": {
-      "label": "Aftan na'oj",
-      "title": "Utz aq'ij! Taq Biblia moment richin ri awiq'ij.",
-      "description": "Taq Biblia content ri nib'an animan chi ya'oj, utz richin ri aq'ij k'iyil o richin nib'anon na'oj chik."
-    },
-    "welcomeEvening": {
-      "label": "Aq'ab' na'oj",
-      "title": "Utz aq'ab'! Taqak'oj jun b'ey rik'in taq Biblia moment.",
-      "description": "Tz'ib'an taq Biblia moment richin nak'axaj na'oj chuqa' natz'ët uchuk'ulem tok ri aq'ij nitzaq."
-    },
-    "joinUs": {
-      "label": "Jutijoj chik qawäch",
-      "title": "Jun'ulik le' are tajin nikanöx",
-      "description": "Ri k'axk'ol k'o wakami. Jutijoj chik qawäch richin niya' rutzijol ri evangelio chuweqaj ri ruwach'ulew rik'in digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Qe'chakun junam",
-      "title": "Nitzijoj ri tzij ri Jesús, junam",
-      "description": "Richin nikitz'ët chuqa' nik'axaj ri rutzilal ri Jesús pa ri achike ch'ab'äl ri k'o chikiwäch chila' achike k'o wi."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% nik'äm ri'",
     "none": "Majun chilab'enïk xk'ulutäj richin re video re' pa re ch'ab'äl re'."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Ruchʼabʼäl kʼoxom",
     "selectLanguageVersion": "Tachaʼ jun ruwäch chʼabʼäl",
     "watchSelectedVersion": "Tatzʼetaʼ ri ruwäch xachaʼ"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cha'oj pa taq cookie",
+    "bannerTitle": "Acha'oj richin awichinil",
+    "bannerDescription": "Ri k'atzinel taq cookie yekechajij ri Watch chuqa' yekib'än chi ütz nisamäj. We niya' q'ij, jun cha'ojel first-party cookie nitikïr nunataj taq rayib'äl chi kijolom taq b'ey richin yeb'an ichinan taq chilab'enïk. Ri taq chilab'enïk pa ruk'ojlem k'o wi chupam xab'achike.",
+    "acceptAll": "Tak'ulu' ronojel",
+    "essentialOnly": "Xa xe k'atzinel",
+    "manageChoices": "Tanuk'saj taq cha'oj",
+    "savingChoice": "Niyak ri cha'oj pa cookie",
+    "settings": "Taq runuk'ulem cookie",
+    "settingsDescription": "Tacha'oj we Watch nitikïr nunataj taq rayib'äl richin chilab'enïk chi kijolom taq b'ey. Yatikïr najäl ri re' xab'achike q'ij.",
+    "essentialCookies": "K'atzinel taq cookie",
+    "essentialDescription": "Jikomal, tzijob'äl, taq acha'oj richin awichinil, chuqa' retal k'utunïk richin chilab'enïk.",
+    "alwaysActive": "Junelïk tzijon",
+    "personalization": "Ichinan rub'anik",
+    "personalizationDescription": "Kenataj taq rayib'äl pa taq kijolom b'ey. We natzäp re', ri taq chilab'enïk pa ruk'ojlem k'a e k'o na.",
+    "erasurePending": "Ri ruyujik ri ruwäch b'i'aj k'a oyob'en na. Ri taq chilab'enïk pa ruk'ojlem xecha'öx yan.",
+    "cancel": "Tiq'at",
+    "saveChoices": "Keyak taq cha'oj",
+    "saving": "Niyak…",
+    "loadError": "Man xitikïr ta xusamajib'ëx ri acha'oj. K'a yatikïr na yacha'oj pan ichin.",
+    "grantError": "Man xitikïr ta xetzijöx ri ichinan rub'anik. Xa xe ri k'atzinel k'o wi.",
+    "saveError": "Man xitikïr ta xeyak ri acha'oj. Tatojtob'ej chik."
   }
 }

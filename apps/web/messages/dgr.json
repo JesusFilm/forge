@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio language nàtł’ı̨",
     "home": "JesusFilm kǫ̀",
     "closeSearch": "Search nàahdee",
-    "submitSearch": "Search hòɂǫ"
+    "submitSearch": "Search hòɂǫ",
+    "library": "Enı̨htł'è kǫ̀"
   },
   "SearchOverlay": {
     "dialogLabel": "Video łè search hı̨la, weghàda",
@@ -467,6 +468,7 @@
     "sports": "Sports eghàlats’èeda łè",
     "collections": "Collection łè",
     "subtitlesOnly": "Subtitles sı̀ı̀ t’ą̀a",
+    "backToTop": "Yaghǫ̀ǫ nàwo",
     "newlyAdded": "Łahdàa gı̨la",
     "newVideosTitle": "{language}: Christian video łahdàa łè",
     "newestFirst": "T’àa łahdàa sı̀ı̀ nàtsǫǫ̀",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Video ede t’alàa łè",
     "videosFromCollection": "{collection} gots’ǫ̀ video łè.",
     "standaloneDescription": "Dı̀ı̀ yatıı̀ k’e video ede t’alàa łè.",
-    "openCollection": "Collection open hòɂǫ"
+    "openCollection": "Collection open hòɂǫ",
+    "filters": "Wets'ǫ̀ eghàlats'eeda",
+    "filterLength": "Nezı̨",
+    "filterLength_under5": "Sìı 5 dzę̀ hòt'a",
+    "filterLength_5to10": "5-10 dzę̀",
+    "filterLength_10to30": "10-30 dzę̀",
+    "filterLength_over30": "30 dzę̀ hazǫǫ̀",
+    "filterType": "Wek'èezhǫ",
+    "clearFilters": "Wets'ǫ̀ eghàlats'eeda nàgedı",
+    "filterResults": "{total} gots'ǫ̀ {count} wek'èahsǫ",
+    "noFilterResults": "Eyıts'ǫ wets'ǫ̀ eghàlats'eeda gha video hazǫǫ̀ ìle. Įłè nàgedı.",
+    "filterAdded": "Kǫ̀ta ghǫ",
+    "filterAdded_60d": "Dzę̀ 60 wets'ǫ̀",
+    "filterAdded_6m": "Sà 6 wets'ǫ̀",
+    "filterAdded_12m": "Sà 12 wets'ǫ̀"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project eghàeda",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Video preview nàtsǫǫ̀",
     "nextVideoPreview": "Video preview yàa",
     "mediaCollection": "Media łè ełàa gı̀lı̨",
-    "scrollToVideo": "{title} video k’e gòɂǫ"
+    "scrollToVideo": "{title} video k’e gòɂǫ",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project kǫ̀",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Watch k’e nàke gòɂǫ",
     "browseVideos": "Video łè weghàda"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Short Film eghàeda",
-    "actions": {
-      "joinUs": "Nàke nàgı̨ı̨t’į",
-      "shareMission": "Dèè t’àa mission ełàa gòɂǫ"
-    },
-    "welcomeStart": {
-      "label": "Yek’eè̀dı eyits’ǫ Bible yatıı̀",
-      "title": "Dı̀ı̀ dzàa video t’àa gı̀lı̨",
-      "description": "Library gots’ǫ̀ faith-centered video łè, inspire ha, challenge ha, eyits’ǫ nàowo hı̨la ha."
-    },
-    "welcomeMorning": {
-      "label": "Sahdèè nàowo hı̨la",
-      "title": "Good Morning! Dı̀ı̀ dzàa Bible moments gı̀lı̨.",
-      "description": "Dzàa nàtsǫǫ̀ k’e Bible moments łè, nàowo hı̨la eyits’ǫ spirit t’àa hòɂǫ ha."
-    },
-    "welcomeAfternoon": {
-      "label": "Dzàa edzàa k’e nàowo hı̨la",
-      "title": "Good Afternoon! Dı̀ı̀ dzàa Bible moments łè.",
-      "description": "Bible content łè nàowo hı̨la ha, afternoon break ghà ełexèè, kǫ inspire ha."
-    },
-    "welcomeEvening": {
-      "label": "Xèhts’ǫ̀ nàowo hı̨la",
-      "title": "Good Evening! Bible moments k’e eghàeda.",
-      "description": "Bible moments łè, nàowo hı̨la eyits’ǫ comfort nàke ha, dzàa gots’ǫ̀ end k’e."
-    },
-    "joinUs": {
-      "label": "Nàke nàgı̨ı̨t’į",
-      "title": "Billions search adlè",
-      "description": "Harvest nàt’è. Digital media k’e gospel nàts’ǫ̀, nàke nàgı̨ı̨t’į."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Ełexèè hòɂǫ",
-      "title": "Jesus t’àa story ełàa gòɂǫ",
-      "description": "Dǫ wɔnàhts’ǫ̀ Jesus weghà love, nı̨ yatıı̀ k’e, nı̨ hı̨t’è gots’ǫ̀, eghǫ gòɂǫ ha."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% ełàa gı̀lı̨",
     "none": "Dı̀ı̀ yatıı̀ k’e dı̀ı̀ video ghà video wèghà gı̨ı̨dè sı̀ı̀ nàgı̨ı̨t’į."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Audio yatıì",
     "selectLanguageVersion": "Yatıì nàowo łaà wı̨̀ı̨̀",
     "watchSelectedVersion": "Nàowo wı̨̀ı̨̀ nàhtsʼı̨"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie t'a goghàı̀ı̀",
+    "bannerTitle": "Nàxǫǫ̀ǫ̀ k’e eghàlats’ı̨ı̨ goghàı̀ı̀",
+    "bannerDescription": "Cookie ts’ı̨ı̨ deghá gogha Watch goghàı̀ı̀ nàt’ı̨ı̨ k’ǫ̀ǫ̀ asìi k’ehshì. Ełèè há nı̨de, cookie goɂǫ̀ı̀ nàowo ts’ı̨ı̨ eyits’ǫ̀ goghàı̀ı̀ k’e t’a nàxǫǫ̀ǫ̀ k’ehshì t’á seghàgoht’e nàowo xà xàgot’ı̨ı̨. Dèèzha k’e goghà nàxǫǫ̀ǫ̀ k’ehshì kò goɂǫ̀ı̀ k’ehshì.",
+    "acceptAll": "Łeghàı̨ı̨ nı̨de",
+    "essentialOnly": "Ts’ı̨ı̨ deghá t’á łeeyìı",
+    "manageChoices": "Goghàı̀ı̀ nàt’ı̨ı̨",
+    "savingChoice": "Cookie goghàı̀ı̀ eghàlats’ı̨ı̨",
+    "settings": "Cookie k’eghálats’ı̨ı̨",
+    "settingsDescription": "Watch eyits’ǫ̀ nàowo xà nàxǫǫ̀ǫ̀ t’a seghàgoht’e goghàı̀ı̀. Dı̨ı̨ k’e eghàlats’ı̨ı̨ dìı nàowo xà eghàlats’ı̨ı̨ hále.",
+    "essentialCookies": "Cookie ts’ı̨ı̨ deghá",
+    "essentialDescription": "Nàt’ı̨ı̨ k’ǫ̀ǫ̀, play k’ehshì, nàxǫǫ̀ǫ̀ goghàı̀ı̀, k’eyìıɂà recommendation request.",
+    "alwaysActive": "T’á k’ehshì nàt’ı̨ı̨",
+    "personalization": "K’e t’a seghàgoht’e",
+    "personalizationDescription": "Nàowo eyits’ǫ̀ t’á seghàgoht’e xà xàgot’ı̨ı̨. Dı̨ı̨ xà eghàłìı de, dèèzha k’e goghà recommendation t’á k’ehshì.",
+    "erasurePending": "Profile łets’eedi gha gohłı̨ı̨ ha. Dèèzha k’e goghà recommendation k’ǫ̀ǫ̀ t’á k’ehshì.",
+    "cancel": "Gots’ę̀",
+    "saveChoices": "Goghàı̀ı̀ eghàlats’ı̨ı̨",
+    "saving": "Eghàlats’ı̨ı̨…",
+    "loadError": "Nı̨ goghàı̀ı̀ k’ehshì ats’eedlàı̨ı̨ shı̨ı̨le. Kò goghàı̀ı̀ siı ts’ı̨ı̨ nàt’ı̨ı̨ hále.",
+    "grantError": "Personalization k’ehshì ats’ı̨ı̨t’e shı̨ı̨le. Ts’ı̨ı̨ deghá t’á łeeyìı nàt’ı̨ı̨.",
+    "saveError": "Nı̨ goghàı̀ı̀ eghàlats’ı̨ı̨ shı̨ı̨le. Nàowo gòòhshı̀ ı̨lı̨."
   }
 }

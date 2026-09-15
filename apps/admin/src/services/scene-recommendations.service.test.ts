@@ -19,7 +19,9 @@ vi.mock("./scene-recommendations-retriever", () => ({
   resolveSlugToVideoId: vi.fn(),
   fetchInputEmbeddings: vi.fn(),
   getRelatedVideoIds: vi.fn(),
+  getEligibleRecommendationVideoIds: vi.fn(),
   queryScenesSimilar: vi.fn(),
+  queryScenesSimilarMany: vi.fn(),
 }))
 
 import * as retriever from "./scene-recommendations-retriever"
@@ -62,6 +64,45 @@ beforeEach(() => {
   vi.clearAllMocks()
   // Reset row counter so default fixture shapes are hermetic across tests.
   rowCounter = 0
+})
+
+describe("SceneRecommendationsService.recheckEligibility", () => {
+  it("preserves cache order while dropping candidates that are no longer playable", async () => {
+    vi.mocked(
+      retriever.getEligibleRecommendationVideoIds,
+    ).mockResolvedValueOnce(new Set(["vid-2"]))
+    const svc = makeService()
+    const first = row({ video_id: "vid-1" })
+    const second = row({ video_id: "vid-2" })
+
+    const results = await svc.recheckEligibility(
+      [first, second].map((entry) => ({
+        videoId: entry.video_id,
+        videoSlug: entry.video_slug,
+        videoTitle: entry.video_title ?? "",
+        imageUrl: null,
+        sceneIndex: entry.scene_index,
+        description: entry.description,
+        startSeconds: entry.start_seconds,
+        endSeconds: entry.end_seconds,
+        similarity: entry.similarity,
+        themes: entry.themes,
+        demographics: entry.demographics,
+        spiritualContext: entry.spiritual_context,
+        playbackId: entry.playback_id,
+      })),
+      "en",
+      "english",
+    )
+
+    expect(results.map((item) => item.videoId)).toEqual(["vid-2"])
+    expect(retriever.getEligibleRecommendationVideoIds).toHaveBeenCalledWith(
+      expect.anything(),
+      ["vid-1", "vid-2"],
+      "en",
+      "english",
+    )
+  })
 })
 
 describe("SceneRecommendationsService.getRecommendations", () => {
@@ -139,16 +180,10 @@ describe("SceneRecommendationsService.getRecommendations", () => {
     ])
     vi.mocked(retriever.getRelatedVideoIds).mockResolvedValueOnce(["vid-1"])
 
-    // scene 0 returns vid-2 at 0.5
-    // scene 1 returns vid-2 at 0.9 (better) + vid-3 at 0.4
-    vi.mocked(retriever.queryScenesSimilar)
-      .mockResolvedValueOnce([
-        row({ video_id: "vid-2", similarity: 0.5, scene_index: 0 }),
-      ])
-      .mockResolvedValueOnce([
-        row({ video_id: "vid-2", similarity: 0.9, scene_index: 3 }),
-        row({ video_id: "vid-3", similarity: 0.4, scene_index: 0 }),
-      ])
+    vi.mocked(retriever.queryScenesSimilarMany).mockResolvedValueOnce([
+      row({ video_id: "vid-2", similarity: 0.9, scene_index: 3 }),
+      row({ video_id: "vid-3", similarity: 0.4, scene_index: 0 }),
+    ])
 
     const svc = makeService()
     const results = await svc.getRecommendations({
@@ -156,23 +191,20 @@ describe("SceneRecommendationsService.getRecommendations", () => {
       locale: "en",
     })
 
-    expect(retriever.queryScenesSimilar).toHaveBeenCalledTimes(2)
+    expect(retriever.queryScenesSimilarMany).toHaveBeenCalledOnce()
     expect(results.map((r) => r.videoId)).toEqual(["vid-2", "vid-3"])
     const vid2 = results.find((r) => r.videoId === "vid-2")!
     expect(vid2.similarity).toBeCloseTo(0.9)
     expect(vid2.sceneIndex).toBe(3)
 
-    // Arg fidelity: each scene's embedding must be passed to its own
-    // queryScenesSimilar call in order. Guards against a refactor that
-    // accidentally queries the same embedding twice.
-    const calls = vi.mocked(retriever.queryScenesSimilar).mock.calls
-    expect(calls[0]![1]).toBe("[0.1]")
-    expect(calls[1]![1]).toBe("[0.2]")
-    // Locale + excludeIds must be identical across calls.
-    expect(calls[0]![2]).toBe("en")
-    expect(calls[1]![2]).toBe("en")
-    expect(calls[0]![3]).toEqual(["vid-1"])
-    expect(calls[1]![3]).toEqual(["vid-1"])
+    expect(retriever.queryScenesSimilarMany).toHaveBeenCalledWith(
+      expect.anything(),
+      ["[0.1]", "[0.2]"],
+      "en",
+      ["vid-1"],
+      30,
+    )
+    expect(retriever.queryScenesSimilar).not.toHaveBeenCalled()
   })
 
   it("per-scene mode (sceneIndex provided) takes the single-embedding path", async () => {
@@ -296,7 +328,7 @@ describe("SceneRecommendationsService.getRecommendations", () => {
       { embedding: "[0.2]", sceneIndex: 1 },
     ])
     vi.mocked(retriever.getRelatedVideoIds).mockResolvedValueOnce(["vid-1"])
-    vi.mocked(retriever.queryScenesSimilar).mockResolvedValue([])
+    vi.mocked(retriever.queryScenesSimilarMany).mockResolvedValue([])
 
     const svc = makeService()
     await svc.getRecommendations({
@@ -305,9 +337,9 @@ describe("SceneRecommendationsService.getRecommendations", () => {
       limit: 30,
     })
 
-    const calls = vi.mocked(retriever.queryScenesSimilar).mock.calls
+    const calls = vi.mocked(retriever.queryScenesSimilarMany).mock.calls
     expect(calls[0]![4]).toBe(MAX_LIMIT)
-    expect(calls[1]![4]).toBe(MAX_LIMIT)
+    expect(calls).toHaveLength(1)
   })
 
   it("clamps limit to [1, MAX_LIMIT]", async () => {

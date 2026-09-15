@@ -403,8 +403,9 @@ model AppEnvironment {
   createdAt        DateTime           @default(now()) @map("created_at")
   updatedAt        DateTime           @updatedAt @map("updated_at")
 
-  grants AppGrant[]
-  tokens TokenRecord[]
+  preapprovals ChangelogPreapproval[]
+  grants       AppGrant[]
+  tokens       TokenRecord[]
 
   @@unique([appId, key])
   @@index([kind, status])
@@ -537,4 +538,24 @@ model AuthAuditEvent {
   @@index([actorUserId, createdAt])
   @@index([appId, createdAt])
   @@map("auth_audit_event")
+}
+
+// Email approval is independent of recipient signup. Historical Auth user IDs
+// survive account deletion; live authority is always rechecked through User.
+model ChangelogPreapproval {
+  id            String         @id
+  email         String
+  environmentId String         @map("environment_id")
+  environment   AppEnvironment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  approverId    String         @map("approver_id")
+  state         String         @default("pending")
+  version       Int            @default(0)
+  expiresAt     DateTime       @map("expires_at")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  redeemedAt    DateTime?      @map("redeemed_at")
+  redeemedById  String?        @map("redeemed_by_id")
+
+  @@index([environmentId, approverId, state])
+  @@map("changelog_preapproval")
 }

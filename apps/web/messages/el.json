@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Αλλαγή γλώσσας ήχου",
     "home": "Αρχική JesusFilm",
     "closeSearch": "Κλείσιμο αναζήτησης",
-    "submitSearch": "Αναζήτηση"
+    "submitSearch": "Αναζήτηση",
+    "library": "Βιβλιοθήκη"
   },
   "SearchOverlay": {
     "dialogLabel": "Αναζήτηση και περιήγηση σε βίντεο",
@@ -467,6 +468,7 @@
     "sports": "Αθλητισμός",
     "collections": "Συλλογές",
     "subtitlesOnly": "Μόνο υπότιτλοι",
+    "backToTop": "Επιστροφή στην αρχή",
     "newlyAdded": "Νέα προσθήκη",
     "newVideosTitle": "Νέα χριστιανικά βίντεο στα {language}",
     "newestFirst": "Τα νεότερα πρώτα",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Αυτόνομα βίντεο",
     "videosFromCollection": "Βίντεο από τη συλλογή {collection}.",
     "standaloneDescription": "Αυτόνομα βίντεο σε αυτή τη γλώσσα.",
-    "openCollection": "Άνοιγμα συλλογής"
+    "openCollection": "Άνοιγμα συλλογής",
+    "filters": "Φίλτρα",
+    "filterLength": "Διάρκεια",
+    "filterLength_under5": "Κάτω από 5 λεπτά",
+    "filterLength_5to10": "5-10 λεπτά",
+    "filterLength_10to30": "10-30 λεπτά",
+    "filterLength_over30": "Πάνω από 30 λεπτά",
+    "filterType": "Τύπος",
+    "clearFilters": "Καθαρισμός φίλτρων",
+    "filterResults": "Εμφανίζονται {count} από {total}",
+    "noFilterResults": "Κανένα βίντεο δεν ταιριάζει με αυτά τα φίλτρα. Δοκιμάστε να αφαιρέσετε ένα.",
+    "filterAdded": "Προστέθηκε",
+    "filterAdded_60d": "Τελευταίες 60 ημέρες",
+    "filterAdded_6m": "Τελευταίοι 6 μήνες",
+    "filterAdded_12m": "Τελευταίοι 12 μήνες"
   },
   "WatchHome": {
     "pageTitle": "Παρακολούθηση Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Προεπισκόπηση προηγούμενου βίντεο",
     "nextVideoPreview": "Προεπισκόπηση επόμενου βίντεο",
     "mediaCollection": "Συλλογή πολυμέσων",
-    "scrollToVideo": "Κύλιση στο βίντεο {title}"
+    "scrollToVideo": "Κύλιση στο βίντεο {title}",
+    "forYou": "Για εσάς"
   },
   "WatchFooter": {
     "home": "Αρχική Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Επιστροφή στην Παρακολούθηση",
     "browseVideos": "Περιήγηση σε βίντεο"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Παρακολουθήστε μικρού μήκους ταινία",
-    "actions": {
-      "joinUs": "Ελάτε μαζί μας",
-      "shareMission": "Συμμετέχετε στην αποστολή μας"
-    },
-    "welcomeStart": {
-      "label": "Πίστη & Γραφή",
-      "title": "Οι σημερινές προτάσεις βίντεο",
-      "description": "Περιεχόμενο βίντεο με επίκεντρο την πίστη από τη βιβλιοθήκη μας, για έμπνευση, πρόκληση και προβληματισμό."
-    },
-    "welcomeMorning": {
-      "label": "Πρωινή έμπνευση",
-      "title": "Καλημέρα! Σας περιμένουν οι σημερινές στιγμές της Βίβλου.",
-      "description": "Ξεκινήστε τη μέρα σας με ενθαρρυντικές στιγμές από τη Βίβλο, σχεδιασμένες να εμπνεύσουν και να αναζωογονήσουν το πνεύμα σας."
-    },
-    "welcomeAfternoon": {
-      "label": "Απογευματινή έμπνευση",
-      "title": "Καλό απόγευμα! Στιγμές από τη Βίβλο για τη μέρα σας.",
-      "description": "Ενθαρρυντικό περιεχόμενο από τη Βίβλο, ιδανικό για το απογευματινό σας διάλειμμα ή για συνεχή έμπνευση."
-    },
-    "welcomeEvening": {
-      "label": "Βραδινή έμπνευση",
-      "title": "Καλησπέρα! Χαλαρώστε με στιγμές από τη Βίβλο.",
-      "description": "Ήρεμες στιγμές από τη Βίβλο, για να σας βοηθήσουν να συλλογιστείτε και να βρείτε παρηγοριά καθώς κλείνει η μέρα σας."
-    },
-    "joinUs": {
-      "label": "Ελάτε μαζί μας",
-      "title": "Δισεκατομμύρια αναζητούν",
-      "description": "Ο θερισμός είναι εδώ. Ελάτε μαζί μας καθώς μοιραζόμαστε το ευαγγέλιο με τον κόσμο μέσω ψηφιακών μέσων."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Πάμε μαζί",
-      "title": "Αφηγούμαστε μαζί την ιστορία του Ιησού",
-      "description": "Για να μπορούν να ακούσουν και να δουν την αγάπη του Ιησού στη δική τους γλώσσα, εκεί όπου βρίσκονται."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% αντιστοιχία",
     "none": "Δεν βρέθηκαν προτάσεις για αυτό το βίντεο σε αυτή τη γλώσσα."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Γλώσσα ήχου",
     "selectLanguageVersion": "Επιλέξτε γλωσσική έκδοση",
     "watchSelectedVersion": "Παρακολούθηση επιλεγμένης έκδοσης"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Επιλογές cookie",
+    "bannerTitle": "Οι επιλογές απορρήτου σας",
+    "bannerDescription": "Τα απαραίτητα cookie διατηρούν το Watch ασφαλές και σε λειτουργία. Με την άδειά σας, ένα προαιρετικό cookie πρώτου μέρους μπορεί να θυμάται τα ενδιαφέροντά σας μεταξύ επισκέψεων, ώστε να εξατομικεύει τις προτάσεις. Οι προτάσεις βάσει περιεχομένου παραμένουν διαθέσιμες σε κάθε περίπτωση.",
+    "acceptAll": "Αποδοχή όλων",
+    "essentialOnly": "Μόνο τα απαραίτητα",
+    "manageChoices": "Διαχείριση επιλογών",
+    "savingChoice": "Αποθήκευση επιλογής cookie",
+    "settings": "Ρυθμίσεις cookie",
+    "settingsDescription": "Επιλέξτε αν το Watch μπορεί να θυμάται τα ενδιαφέροντά σας για προτάσεις μεταξύ επισκέψεων. Μπορείτε να το αλλάξετε αυτό οποιαδήποτε στιγμή.",
+    "essentialCookies": "Απαραίτητα cookie",
+    "essentialDescription": "Ασφάλεια, αναπαραγωγή, επιλογές απορρήτου και απόδοση αιτημάτων προτάσεων.",
+    "alwaysActive": "Πάντα ενεργά",
+    "personalization": "Εξατομίκευση",
+    "personalizationDescription": "Απομνημόνευση συγκεκριμένων ενδιαφερόντων μεταξύ επισκέψεων. Αν το απενεργοποιήσετε, οι προτάσεις βάσει περιεχομένου θα παραμείνουν διαθέσιμες.",
+    "erasurePending": "Εκκρεμεί διαγραφή προφίλ. Οι προτάσεις βάσει περιεχομένου είναι ήδη ενεργές.",
+    "cancel": "Ακύρωση",
+    "saveChoices": "Αποθήκευση επιλογών",
+    "saving": "Αποθήκευση…",
+    "loadError": "Δεν ήταν δυνατή η φόρτωση της επιλογής σας. Μπορείτε ακόμη να επιλέξετε παρακάτω.",
+    "grantError": "Δεν ήταν δυνατή η ενεργοποίηση της εξατομίκευσης. Παραμένει διαθέσιμη μόνο η βασική λειτουργία.",
+    "saveError": "Δεν ήταν δυνατή η αποθήκευση της επιλογής σας. Παρακαλούμε δοκιμάστε ξανά."
   }
 }

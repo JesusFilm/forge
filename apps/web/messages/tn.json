@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Fetola leleme la modumo",
     "home": "Letlakala la gae la JesusFilm",
     "closeSearch": "Tswalela nyakišišo",
-    "submitSearch": "Batla"
+    "submitSearch": "Batla",
+    "library": "Laeborari"
   },
   "SearchOverlay": {
     "dialogLabel": "Nyaka le go phetla dibidio",
@@ -467,6 +468,7 @@
     "sports": "Dipapadi",
     "collections": "Dikoleke",
     "subtitlesOnly": "Dihlogwana fela",
+    "backToTop": "Boela godimo",
     "newlyAdded": "E sa tšwago go oketšwa",
     "newVideosTitle": "Dibidio tše mpsha tša Bokreste ka {language}",
     "newestFirst": "Tša morago bjale pele",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Dibidio tše ikemetšego",
     "videosFromCollection": "Dibidio go tšwa go {collection}.",
     "standaloneDescription": "Dibidio tše ikemetšego ka leleme le.",
-    "openCollection": "Bula pokello"
+    "openCollection": "Bula pokello",
+    "filters": "Difiltara",
+    "filterLength": "Boleele",
+    "filterLength_under5": "Ka fa tlase ga metsotso e 5",
+    "filterLength_5to10": "Metsotso e 5-10",
+    "filterLength_10to30": "Metsotso e 10-30",
+    "filterLength_over30": "Ka fa godimo ga metsotso e 30",
+    "filterType": "Mofuta",
+    "clearFilters": "Phimola difiltara",
+    "filterResults": "{count} ya {total} e bontshitsweng",
+    "noFilterResults": "Ga go bidio e e dumalanang le difiltara tse. Leka go tlosa e nngwe.",
+    "filterAdded": "E okeditswe",
+    "filterAdded_60d": "Malatsi a 60 a fetileng",
+    "filterAdded_6m": "Dikgwedi tse 6 tse fetileng",
+    "filterAdded_12m": "Dikgwedi tse 12 tse fetileng"
   },
   "WatchHome": {
     "pageTitle": "Bogela mo Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Ponelopele ya video e fetilego",
     "nextVideoPreview": "Ponelopele ya video e latelago",
     "mediaCollection": "Pokello ya media",
-    "scrollToVideo": "Ya go {title} video"
+    "scrollToVideo": "Ya go {title} video",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Letlakala la gae la Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Boela go Watch",
     "browseVideos": "Phetla dibidio"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Bogela filimi e khutšo",
-    "actions": {
-      "joinUs": "Tsenela",
-      "shareMission": "Abelana mošomo wa rena"
-    },
-    "welcomeStart": {
-      "label": "Tumelo le Lengwalo",
-      "title": "Dikgetho tša video tša lehono",
-      "description": "Dikagare tša video tša tumelo go tšwa bokgobapukung bja rena go hlohleletša, go go tlhohleletša, le go hlohleletša go gopola."
-    },
-    "welcomeMorning": {
-      "label": "Hlohleletšo ya mesong",
-      "title": "Mesong e botse! Dikanegelo tša Baebele tša lehono di a leta.",
-      "description": "Thoma letšatši la gago ka dikanegelo tša Baebele tše di kgothatšago tše di hlamilwego go go hlohleletša le go go imolla monagano."
-    },
-    "welcomeAfternoon": {
-      "label": "Hlohleletšo ya mosegare",
-      "title": "Mosegare o botse! Dikanegelo tša Baebele tša letšatši la gago.",
-      "description": "Dikagare tša Baebele tše di kgothatšago, tše di loketšego kgefutšo ya gago ya mosegare goba go tšwela pele ka hlohleletšo."
-    },
-    "welcomeEvening": {
-      "label": "Hlohleletšo ya mašego",
-      "title": "Mantsiboa a mabotse! Iphomole ka dikanegelo tša Baebele.",
-      "description": "Dikanegelo tša Baebele tše di nago le khutšo go go thuša go ipontšha le go hwetša kgothatšo ge letšatši la gago le fetša."
-    },
-    "joinUs": {
-      "label": "Tsenela rena",
-      "title": "Dimilione di a nyaka",
-      "description": "Kuno e fihlile. Tsenela rena ge re abelana efangele le lefase ka media wa dijithale."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "A re ye mmogo",
-      "title": "Go bolela kanegelo ya Jesu, mmogo",
-      "description": "Gore ba kgone go kwa le go bona lerato la Jesu ka leleme la bona ka boyona fa ba lego gona."
-    }
-  },
   "VideoRecommendations": {
     "match": "E tsamaelana ka {percent}%",
     "none": "Ga go na ditshitshinyo tse di bonweng tsa bidio eno ka puo eno."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Puo ya modumo",
     "selectLanguageVersion": "Tlhopha phetolelo ya puo",
     "watchSelectedVersion": "Lebelela phetolelo e e tlhophilweng"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Dikgetho tsa cookie",
+    "bannerTitle": "Dikgetho tsa gago tsa sephiri",
+    "bannerDescription": "Di-cookie tsa botlhokwa di boloka Watch e sireletsegile e bile e dira sentle. Fa o re naya tetla, cookie ya boikgethelo ya ntlha e ka gopola dikgatlhego tsotlhe mo maetong a a farologaneng gore ditshitsinyo di nne tsa gago. Ditshitsinyo tsa mo seemong di tla nna tsotlhe di le teng ka tsela nngwe le nngwe.",
+    "acceptAll": "Amogela tsotlhe",
+    "essentialOnly": "Tsa botlhokwa fela",
+    "manageChoices": "Laola dikgetho",
+    "savingChoice": "Go boloka kgetho ya cookie",
+    "settings": "Dipeakanyo tsa cookie",
+    "settingsDescription": "Tlhopha gore a Watch e ka gopola dikgatlhego tsa ditshitsinyo mo maetong a a farologaneng. O ka fetola seno nako nngwe le nngwe.",
+    "essentialCookies": "Di-cookie tsa botlhokwa",
+    "essentialDescription": "Tshireletsego, go tshameka video, dikgetho tsa sephiri, le kabelo ya kopo ya ditshitsinyo.",
+    "alwaysActive": "Ka tsotlhe e a dira",
+    "personalization": "Go dira gore e nne ya motho ka namana",
+    "personalizationDescription": "Gopola dikgatlhego tse di lekanyeditsweng mo maetong a a farologaneng. Fa o tima seno, ditshitsinyo tsa mo seemong di tla nna di sa ntse di le teng.",
+    "erasurePending": "Go phimolwa ga porofaele go sa ntse go emetse. Ditshitsinyo tsa mo seemong di setse di dira.",
+    "cancel": "Khansela",
+    "saveChoices": "Boloka dikgetho",
+    "saving": "E a bolokwa…",
+    "loadError": "Kgetho ya gago ga e a kgona go laisiwa. O sa ntse o ka tlhopha fa tlase.",
+    "grantError": "Go dira gore e nne ya motho ka namana ga go a kgona go tsenngwa tirisong. Tsa botlhokwa fela di sa ntse di le teng.",
+    "saveError": "Kgetho ya gago ga e a kgona go bolokwa. Tsweetswee leka gape."
   }
 }

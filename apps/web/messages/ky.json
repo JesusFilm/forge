@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио тилди өзгөртүү",
     "home": "JesusFilm башкы барагы",
     "closeSearch": "Издөөнү жабуу",
-    "submitSearch": "Издөө"
+    "submitSearch": "Издөө",
+    "library": "Китепкана"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеолорду издөө жана карап чыгуу",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Жыйнактар",
     "subtitlesOnly": "Субтитр гана",
+    "backToTop": "Жогорку жагына",
     "newlyAdded": "Жаңы кошулган",
     "newVideosTitle": "{language} тилиндеги жаңы христиан видеолору",
     "newestFirst": "Эң жаңылары биринчи",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Өзүнчө видеолор",
     "videosFromCollection": "{collection} жыйнагындагы видеолор.",
     "standaloneDescription": "Бул тилдеги өзүнчө видеолор.",
-    "openCollection": "Жыйнакты ачуу"
+    "openCollection": "Жыйнакты ачуу",
+    "filters": "Фильтрлер",
+    "filterLength": "Узундугу",
+    "filterLength_under5": "5 мүнөттөн аз",
+    "filterLength_5to10": "5-10 мүнөт",
+    "filterLength_10to30": "10-30 мүнөт",
+    "filterLength_over30": "30 мүнөттөн көп",
+    "filterType": "Түрү",
+    "clearFilters": "Фильтрлерди тазалоо",
+    "filterResults": "{total} ичинен {count} көрсөтүлдү",
+    "noFilterResults": "Бул фильтрлерге туура келген видео жок. Бирин алып көрүңүз.",
+    "filterAdded": "Кошулду",
+    "filterAdded_60d": "Акыркы 60 күн",
+    "filterAdded_6m": "Акыркы 6 ай",
+    "filterAdded_12m": "Акыркы 12 ай"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project көрүү",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Мурунку видеонун алдын ала көрүүсү",
     "nextVideoPreview": "Кийинки видеонун алдын ала көрүүсү",
     "mediaCollection": "Медиа жыйнагы",
-    "scrollToVideo": "{title} видеосуна чейин жылдыруу"
+    "scrollToVideo": "{title} видеосуна чейин жылдыруу",
+    "forYou": "Сиз үчүн"
   },
   "WatchFooter": {
     "home": "Jesus Film Project башкы барагы",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Көрүүгө кайтуу",
     "browseVideos": "Видеолорду карап чыгуу"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Кыска тасманы көрүү",
-    "actions": {
-      "joinUs": "Бизге кошулуңуз",
-      "shareMission": "Биздин миссияга кошулуңуз"
-    },
-    "welcomeStart": {
-      "label": "Ишеним жана Ыйык Жазма",
-      "title": "Бүгүнкү видеолордун тандоосу",
-      "description": "Кызмат кылып, ойго салуучу жана шыктандыруучу, китепканабыздагы ишенимге багытталган видео мазмун."
-    },
-    "welcomeMorning": {
-      "label": "Таңкы шыктануу",
-      "title": "Кутман таң! Бүгүнкү Ыйык Китептеги учурлар сизди күтөт.",
-      "description": "Күнүңүздү шыктандырып, көңүлүңүздү көтөрө турган Ыйык Китептеги жүрөктү жибиткен учурлар менен баштаңыз."
-    },
-    "welcomeAfternoon": {
-      "label": "Түштөн кийинки шыктануу",
-      "title": "Кутман түштөн кийин! Күнүңүз үчүн Ыйык Китептеги учурлар.",
-      "description": "Түштөн кийинки тыныгууңузга же улантылган шыктанууга ылайыктуу жүрөктү жандандыруучу Ыйык Китеп мазмуну."
-    },
-    "welcomeEvening": {
-      "label": "Кечки шыктануу",
-      "title": "Кутман кеч! Ыйык Китептеги учурлар менен тынчтаныңыз.",
-      "description": "Күн аяктап баратканда ой жүгүртүп, сооронуч табууга жардам берген тынчтуу Ыйык Китептеги учурлар."
-    },
-    "joinUs": {
-      "label": "Бизге кошулуңуз",
-      "title": "Миллиарддар издеп жатышат",
-      "description": "Түшүм бышып жетилди. Санарип медиа аркылуу дүйнө менен Инжилди бөлүшүүдө бизге кошулуңуз."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Келгиле, чогуу баралы",
-      "title": "Исанын окуясын чогуу баяндайбыз",
-      "description": "Ошондо алар Исанын сүйүүсүн өздөрү турган жерде, өз тилинде угуп жана көрө алышат."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% дал келет",
     "none": "Бул тилде бул видео үчүн сунуштар табылган жок."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Аудио тили",
     "selectLanguageVersion": "Тилдик версияны тандаңыз",
     "watchSelectedVersion": "Тандалган версияны көрүү"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie тандоолору",
+    "bannerTitle": "Купуялыгыңыз боюнча тандоолор",
+    "bannerDescription": "Маанилүү cookie файлдары Watch'ты коопсуз жана иштеп турушуна жардам берет. Уруксатыңыз менен, кошумча өздүк cookie файлы сунуштарды жекелештирүү үчүн кызыгууларыңызды сапарлар арасында эстеп калат. Контексттик сунуштар болсо кайсынысын тандабаңыз да жеткиликтүү бойдон калат.",
+    "acceptAll": "Баарын кабыл алуу",
+    "essentialOnly": "Маанилүүлөрү гана",
+    "manageChoices": "Тандоолорду башкаруу",
+    "savingChoice": "Cookie тандоосу сакталууда",
+    "settings": "Cookie жөндөөлөрү",
+    "settingsDescription": "Watch сунуштарга байланышкан кызыгууларыңызды сапарлар арасында эстеп калышын каалайсызбы, тандаңыз. Муну каалаган убакта өзгөртө аласыз.",
+    "essentialCookies": "Маанилүү cookie файлдары",
+    "essentialDescription": "Коопсуздук, ойнотуу, купуялык тандоолору жана сунуш сурамдарынын таандыктыгын аныктоо.",
+    "alwaysActive": "Ар дайым активдүү",
+    "personalization": "Жекелештирүү",
+    "personalizationDescription": "Чектелген кызыгууларды сапарлар арасында эстеп калуу. Муну өчүрсөңүз да, контексттик сунуштар жеткиликтүү бойдон калат.",
+    "erasurePending": "Профилди өчүрүү күтүлүүдө. Контексттик сунуштар мурунтан эле активдүү.",
+    "cancel": "Жокко чыгаруу",
+    "saveChoices": "Тандоолорду сактоо",
+    "saving": "Сакталууда…",
+    "loadError": "Тандооңузду жүктөө мүмкүн болгон жок. Ошентсе да төмөндөн тандай аласыз.",
+    "grantError": "Жекелештирүүнү иштетүү мүмкүн болгон жок. Маанилүү cookie файлдары гана жеткиликтүү бойдон калат.",
+    "saveError": "Тандооңузду сактоо мүмкүн болгон жок. Кайра аракет кылып көрүңүз."
   }
 }

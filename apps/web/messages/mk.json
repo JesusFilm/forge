@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Промени јазик на аудио",
     "home": "Почетна страница на JesusFilm",
     "closeSearch": "Затвори пребарување",
-    "submitSearch": "Пребарај"
+    "submitSearch": "Пребарај",
+    "library": "Библиотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Пребарувај и прелистувај видеа",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Колекции",
     "subtitlesOnly": "Само преводи",
+    "backToTop": "Назад на врв",
     "newlyAdded": "Ново додадено",
     "newVideosTitle": "Нови христијански видеа на {language}",
     "newestFirst": "Најновите први",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Самостојни видеа",
     "videosFromCollection": "Видеа од {collection}.",
     "standaloneDescription": "Самостојни видеа на овој јазик.",
-    "openCollection": "Отвори колекција"
+    "openCollection": "Отвори колекција",
+    "filters": "Филтри",
+    "filterLength": "Траење",
+    "filterLength_under5": "Помалку од 5 мин",
+    "filterLength_5to10": "5-10 мин",
+    "filterLength_10to30": "10-30 мин",
+    "filterLength_over30": "Повеќе од 30 мин",
+    "filterType": "Вид",
+    "clearFilters": "Исчисти филтри",
+    "filterResults": "Прикажани {count} од {total}",
+    "noFilterResults": "Ниту едно видео не одговара на овие филтри. Пробајте да отстраните еден.",
+    "filterAdded": "Додадено",
+    "filterAdded_60d": "Последните 60 дена",
+    "filterAdded_6m": "Последните 6 месеци",
+    "filterAdded_12m": "Последните 12 месеци"
   },
   "WatchHome": {
     "pageTitle": "Гледање на Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Преглед на претходното видео",
     "nextVideoPreview": "Преглед на следното видео",
     "mediaCollection": "Медиумска колекција",
-    "scrollToVideo": "Скролувај до видеото {title}"
+    "scrollToVideo": "Скролувај до видеото {title}",
+    "forYou": "За вас"
   },
   "WatchFooter": {
     "home": "Почетна страница на Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Назад на Гледање",
     "browseVideos": "Прелистувај видеа"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Гледај краток филм",
-    "actions": {
-      "joinUs": "Придружете ни се",
-      "shareMission": "Споделете ја нашата мисија"
-    },
-    "welcomeStart": {
-      "label": "Вера и Свето Писмо",
-      "title": "Денешни видео препораки",
-      "description": "Видеосодржина од нашата библиотека фокусирана на верата, за да инспирира, предизвика и поттикне размислување."
-    },
-    "welcomeMorning": {
-      "label": "Утринска инспирација",
-      "title": "Добро утро! Ве очекуваат денешните библиски моменти.",
-      "description": "Започнете го денот со охрабрувачки библиски моменти осмислени да ве инспирираат и да ви го подигнат духот."
-    },
-    "welcomeAfternoon": {
-      "label": "Попладневна инспирација",
-      "title": "Добар ден! Библиски моменти за вашиот ден.",
-      "description": "Охрабрувачка библиска содржина, идеална за вашата попладневна пауза или за дополнителна инспирација."
-    },
-    "welcomeEvening": {
-      "label": "Вечерна инспирација",
-      "title": "Добра вечер! Опуштете се со библиски моменти.",
-      "description": "Мирни библиски моменти што ќе ви помогнат да размислите и да најдете утеха додека денот завршува."
-    },
-    "joinUs": {
-      "label": "Придружете ни се",
-      "title": "Милијарди бараат",
-      "description": "Жетвата е тука. Придружете ни се додека го споделуваме евангелието со светот преку дигитални медиуми."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Ајде заедно",
-      "title": "Да ја раскажуваме приказната за Исус, заедно",
-      "description": "За да можат да ја слушнат и видат љубовта на Исус на својот јазик, токму таму каде што се."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% совпаѓање",
     "none": "Не се пронајдени препораки за ова видео на овој јазик."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Јазик на звукот",
     "selectLanguageVersion": "Изберете јазична верзија",
     "watchSelectedVersion": "Гледај ја избраната верзија"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Избор на колачиња",
+    "bannerTitle": "Вашите избори за приватност",
+    "bannerDescription": "Неопходните колачиња го одржуваат Watch безбеден и функционален. Со ваша дозвола, изборно колаче од прва страна може да ги запамети интересите при повеќе посети за да ги персонализира препораките. Контекстуалните препораки се достапни во секој случај.",
+    "acceptAll": "Прифати ги сите",
+    "essentialOnly": "Само неопходни",
+    "manageChoices": "Управувај со изборите",
+    "savingChoice": "Се зачувува изборот за колачиња",
+    "settings": "Поставки за колачиња",
+    "settingsDescription": "Изберете дали Watch смее да ги памети интересите за препораки при повеќе посети. Ова може да го промените во секое време.",
+    "essentialCookies": "Неопходни колачиња",
+    "essentialDescription": "Безбедност, репродукција, избори за приватност и припишување на барањата за препораки.",
+    "alwaysActive": "Секогаш активно",
+    "personalization": "Персонализација",
+    "personalizationDescription": "Ги памети ограничените интереси при повеќе посети. Ако го исклучите ова, контекстуалните препораки ќе останат достапни.",
+    "erasurePending": "Бришењето на профилот е во тек. Контекстуалните препораки веќе се активни.",
+    "cancel": "Откажи",
+    "saveChoices": "Зачувај ги изборите",
+    "saving": "Се зачувува…",
+    "loadError": "Вашиот избор не можеше да се вчита. Сепак, може да изберете подолу.",
+    "grantError": "Персонализацијата не можеше да се овозможи. Само неопходните остануваат достапни.",
+    "saveError": "Вашиот избор не можеше да се зачува. Обидете се повторно."
   }
 }

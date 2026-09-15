@@ -1,3 +1,10 @@
+import { createCalendarRuntime } from "../services/studio-authoring/calendar-runtime"
+import {
+  serializeStudioInstructions,
+  finishStudioExecution,
+} from "../services/studio-authoring/execution"
+import { Pool } from "pg"
+import { createStudioRuntime } from "../services/studio-authoring/runtime"
 import { mkdirSync } from "node:fs"
 import { join } from "node:path"
 import { randomUUID } from "node:crypto"
@@ -146,6 +153,7 @@ import {
 } from "./workflows/youtube-ai-christian-discovery"
 import { dailySupportResearchWorkflow } from "./workflows/daily-support-research"
 import { datadogMobileTriageWorkflow } from "./workflows/datadog-mobile-triage"
+import { titleRepairWorkflow } from "./workflows/title-repair"
 import {
   handlePinterestDiscoveryRouteRequest,
   pinterestAiChristianDiscoveryWorkflow,
@@ -166,6 +174,7 @@ import {
 import { seoDailyAuditWorkflow } from "./workflows/seo-daily-audit"
 import { seoExperimentEvaluationWorkflow } from "./workflows/seo-experiment-evaluation"
 import { seoTicketDispatchWorkflow } from "./workflows/seo-ticket-dispatch"
+import { watchRouteAlertsWorkflow } from "./workflows/watch-route-alerts"
 import {
   isValidServiceBearer,
   parseServiceApiKeys,
@@ -175,6 +184,7 @@ import {
   handleAiChatHistoryListRequest,
   handleAiChatHistoryReplayRequest,
 } from "./ai-chat-history-route"
+import { handleAiChatHistoryRenameRequest } from "./ai-chat-history-write-route"
 import { startAiChatRetentionPurge } from "./ai-chat-retention"
 import { startSeekerPromptHealthMonitor } from "../services/seeker-prompt-health"
 import { startLangfuseTraceRetention } from "./langfuse-trace-retention"
@@ -325,6 +335,7 @@ export const mastra = new Mastra({
     youtubeAiChristianDiscoveryWorkflow,
     dailySupportResearchWorkflow,
     datadogMobileTriageWorkflow,
+    titleRepairWorkflow,
     pinterestAiChristianDiscoveryWorkflow,
     subtitleEnrichmentWorkflow,
     subtitleTranslationEvalWorkflow,
@@ -332,6 +343,7 @@ export const mastra = new Mastra({
     seoDailyAuditWorkflow,
     seoExperimentEvaluationWorkflow,
     seoTicketDispatchWorkflow,
+    watchRouteAlertsWorkflow,
     // Ported draft-authoring workflows (consolidation U4). Registered by their
     // workflow id so the U5 route can drive them via
     // `mastra.getWorkflowById("multi-step-draft" | "quick-draft")` — which
@@ -416,6 +428,31 @@ export const mastra = new Mastra({
       },
     ],
     apiRoutes: [
+      registerApiRoute("/forge-shorts-calendar", {
+        method: "POST",
+        handler: async (c) => {
+          if (
+            env.STUDIO_AGENT_ENABLED !== "true" ||
+            !env.STUDIO_INTERACTIVE_PUBLIC_KEYS ||
+            !env.STUDIO_ADMISSION_SECRET
+          )
+            return c.json({ error: "Studio planner unavailable" }, 503)
+          getStudioRuntime()
+          return calendarRuntime!(c.req.raw)
+        },
+      }),
+      registerApiRoute("/forge-shorts", {
+        method: "POST",
+        handler: async (c) => {
+          if (
+            env.STUDIO_AGENT_ENABLED !== "true" ||
+            !env.STUDIO_INTERACTIVE_PUBLIC_KEYS ||
+            !env.STUDIO_ADMISSION_SECRET
+          )
+            return c.json({ error: "Studio agent unavailable" }, 503)
+          return getStudioRuntime()(c.req.raw)
+        },
+      }),
       registerApiRoute("/forge-smoke", {
         method: "POST",
         handler: async (c) => {
@@ -564,8 +601,9 @@ export const mastra = new Mastra({
             requestSignal: c.req.raw.signal,
           }),
       }),
-      // The seeker send route + the two history read routes below are the
-      // ai-chat lane: their flag + bearer preamble lives in the shared lane
+      // The seeker send route + the three history routes below (two reads and
+      // the rename write) are the ai-chat lane: their flag + bearer preamble
+      // lives in the shared lane
       // admission module (feat-283), which sources the dedicated
       // AI_CHAT_SERVICE_API_KEYS lane CSV internally (KTD2/feat-250 — never
       // the shared pool), so no key list is threaded through here.
@@ -597,6 +635,20 @@ export const mastra = new Mastra({
         method: "POST",
         handler: async (c) => {
           const outcome = await handleAiChatHistoryReplayRequest({
+            authHeader: c.req.header("authorization"),
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-ai-chat-history-rename", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleAiChatHistoryRenameRequest({
             authHeader: c.req.header("authorization"),
             readJson: () => c.req.json(),
           })
@@ -994,11 +1046,12 @@ setInstructionResolver(async (agentId) => {
 // ai-chat retention purge (feat-208): boot drain + daily timer over the
 // `ai_chat` schema. Gated to the deployed runtime (NODE_ENV=production) so a
 // build / `mastra dev` CLI-analysis import never fires DB I/O at module load;
-// it additionally no-ops unless a postgres backend is configured at all
-// (canAiChatDataPersist) — deliberately NOT the resolved ai-chat backend: the
-// kill-switch (AI_CHAT_MEMORY_BACKEND=memory) stops writes, never retention
-// on already-stored rows. Single-instance assumption: replicas would each run
-// redundant (harmless, wasteful) sweeps — add a leader guard before scaling out.
+// it additionally no-ops unless the shared backend is Postgres
+// (canAiChatDataPersist), keeping shared-memory local runs pool-free. Retention
+// deliberately remains independent of SEEKER_ROUTE_ENABLED: route admission
+// does not suspend the durable-row lifecycle obligation. Single-instance
+// assumption: replicas would each run redundant (harmless, wasteful) sweeps —
+// add a leader guard before scaling out.
 if (env.NODE_ENV === "production") {
   startAiChatRetentionPurge()
   startSeekerPromptHealthMonitor()
@@ -1012,4 +1065,66 @@ if (env.NODE_ENV === "production") {
   // retention (kill-switch completeness follows data lifetime). Same
   // single-instance assumption as above.
   startLangfuseTraceRetention()
+}
+
+let calendarRuntime: ReturnType<typeof createCalendarRuntime> | undefined
+let studioRuntime: ReturnType<typeof createStudioRuntime> | undefined
+function getStudioRuntime() {
+  if (!studioRuntime) {
+    const pool = new Pool({
+      connectionString: getMastraDatabaseUrl(),
+      max: 2,
+      connectionTimeoutMillis: 5000,
+    })
+    // Authoritative native instructions are never handed to the generic Editor.
+    // Same Postgres provider/database, separate native schema; no body copy/fallback.
+    const studioStorage = new PostgresStore({
+      id: "studio-authoring-native-storage",
+      connectionString: getMastraDatabaseUrl(),
+      schemaName: "mastra_shorts_authoring",
+    })
+    const calendarPool = new Pool({
+      connectionString: getMastraDatabaseUrl(),
+      max: 1,
+      connectionTimeoutMillis: 5000,
+      statement_timeout: 5000,
+      query_timeout: 5000,
+    })
+    calendarRuntime = createCalendarRuntime(studioStorage, {
+      publicKeys: env.STUDIO_INTERACTIVE_PUBLIC_KEYS!,
+      environment: env.STUDIO_ENVIRONMENT,
+      model: env.STUDIO_AGENT_MODEL,
+      admissionSecret: env.STUDIO_ADMISSION_SECRET!,
+      serialize: (work) => serializeStudioInstructions(pool, work),
+      claim: async (id, digest) => {
+        const result = await calendarPool.query({
+          text: "INSERT INTO short_agent_execution(id,instruction_digest) VALUES($1,$2) ON CONFLICT DO NOTHING RETURNING id",
+          values: [id, digest],
+        })
+        return result.rowCount === 1
+      },
+      finish: (id, status, context) =>
+        finishStudioExecution(calendarPool, id, status, context),
+    })
+    studioRuntime = createStudioRuntime(studioStorage, {
+      adminUrl: env.STUDIO_ADMIN_URL,
+      publicKeys: env.STUDIO_INTERACTIVE_PUBLIC_KEYS!,
+      environment: env.STUDIO_ENVIRONMENT,
+      model: env.STUDIO_AGENT_MODEL,
+      admissionSecret: env.STUDIO_ADMISSION_SECRET!,
+      claim: async (id, digest) => {
+        const result = await pool.query(
+          "INSERT INTO short_agent_execution (id, instruction_digest) VALUES ($1,$2) ON CONFLICT DO NOTHING RETURNING id",
+          [id, digest],
+        )
+        return result.rowCount === 1
+      },
+      finish: (id, status, context) =>
+        finishStudioExecution(pool, id, status, context),
+      report: (event) =>
+        mastra.getLogger().info("Studio native run timing", event),
+      serialize: (work) => serializeStudioInstructions(pool, work),
+    })
+  }
+  return studioRuntime
 }

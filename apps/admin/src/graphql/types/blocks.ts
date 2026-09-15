@@ -47,6 +47,9 @@ import type {
   VideoCarouselItemSchema,
   VideoHeroBlockSchema,
   VideoRecommendationsBlockSchema,
+  HomepageRecommendationsBlockSchema,
+  WatchHomeCategoryRailBlockSchema,
+  WatchHomeCategoryRailTileSchema,
   WatchHomeHeroBlockSchema,
 } from "@/domain/blocks"
 import type { z } from "zod"
@@ -70,7 +73,22 @@ type InfoBlockItem = z.infer<typeof InfoBlockItemSchema>
 type InfoBlocksBlock = z.infer<typeof InfoBlocksBlockSchema>
 type LanguageGlobeBlock = z.infer<typeof LanguageGlobeBlockSchema>
 type MediaCollectionBlock = z.infer<typeof MediaCollectionBlockSchema>
-type MediaCollectionItem = z.infer<typeof MediaCollectionItemSchema>
+type AuthoredMediaCollectionItem = z.infer<typeof MediaCollectionItemSchema>
+
+/**
+ * Authored item plus the non-persisted preview locale that
+ * `services/experience-preview-blocks.ts` stamps on when the item is read
+ * through `ExperiencePreview`. The key is absent on every published read, so
+ * `previewResolvedTitle` resolves to null there rather than borrowing a locale.
+ *
+ * Kept off `MediaCollectionItemSchema` on purpose: that schema is `.strict()`
+ * and describes persisted JSON, and this is a read-time projection.
+ */
+type MediaCollectionItem = AuthoredMediaCollectionItem & {
+  // Mirrors PREVIEW_LOCALE_KEY in services/experience-preview-blocks.ts, which
+  // a type position cannot import. Rename both together.
+  previewLocale?: string
+}
 type NavigationCarouselBlock = z.infer<typeof NavigationCarouselBlockSchema>
 type NavigationCarouselItem = z.infer<typeof NavigationCarouselItemSchema>
 type PromoBannerBlock = z.infer<typeof PromoBannerBlockSchema>
@@ -84,6 +102,13 @@ type VideoCarouselBlock = z.infer<typeof VideoCarouselBlockSchema>
 type VideoCarouselItem = z.infer<typeof VideoCarouselItemSchema>
 type VideoHeroBlock = z.infer<typeof VideoHeroBlockSchema>
 type VideoRecommendationsBlock = z.infer<typeof VideoRecommendationsBlockSchema>
+type HomepageRecommendationsBlock = z.infer<
+  typeof HomepageRecommendationsBlockSchema
+>
+type WatchHomeCategoryRailBlock = z.infer<
+  typeof WatchHomeCategoryRailBlockSchema
+>
+type WatchHomeCategoryRailTile = z.infer<typeof WatchHomeCategoryRailTileSchema>
 type WatchHomeHeroBlock = z.infer<typeof WatchHomeHeroBlockSchema>
 
 type MediaPreviewContext = {
@@ -430,6 +455,44 @@ InfoBlockItemRef.implement({
   }),
 })
 
+/**
+ * Shared title projection behind both `resolvedTitle` (published, caller
+ * supplies the locale) and `previewResolvedTitle` (preview, the locale is
+ * bound to the row). One body is what keeps the two from drifting; splitting
+ * it would reintroduce exactly the preview/published divergence this exists to
+ * close.
+ */
+async function resolveItemTitle(
+  row: MediaCollectionItem,
+  locale: string | null,
+  ctx: ContextShape,
+): Promise<string | null> {
+  const titleOverride = row.titleOverride?.trim()
+  if (titleOverride) return titleOverride
+
+  if (!locale) return null
+
+  const videoId = optionalString(row.videoId)
+  if (!videoId) return null
+
+  const video = await ctx.loaders.videoById.load(videoId)
+  if (video == null || video.deletedAt) return null
+
+  const locales = await ctx.loaders.videoLocalesByVideoIdAndFilter.load({
+    videoId,
+    locale,
+    languageSlug: null,
+    visibleOnly: true,
+  })
+
+  for (const localeRow of locales) {
+    if (localeRow.locale !== locale) continue
+    const title = localeRow.title?.trim()
+    if (title) return title
+  }
+  return null
+}
+
 const MediaCollectionItemRef = builder.objectRef<MediaCollectionItem>(
   "MediaCollectionItem",
 )
@@ -507,30 +570,14 @@ MediaCollectionItemRef.implement({
       args: {
         locale: t.arg.string({ required: true }),
       },
-      resolve: async (row, args, ctx) => {
-        const titleOverride = row.titleOverride?.trim()
-        if (titleOverride) return titleOverride
-
-        const videoId = optionalString(row.videoId)
-        if (!videoId) return null
-
-        const video = await ctx.loaders.videoById.load(videoId)
-        if (video == null || video.deletedAt) return null
-
-        const locales = await ctx.loaders.videoLocalesByVideoIdAndFilter.load({
-          videoId,
-          locale: args.locale,
-          languageSlug: null,
-          visibleOnly: true,
-        })
-
-        for (const locale of locales) {
-          if (locale.locale !== args.locale) continue
-          const title = locale.title?.trim()
-          if (title) return title
-        }
-        return null
-      },
+      resolve: (row, args, ctx) => resolveItemTitle(row, args.locale, ctx),
+    }),
+    previewResolvedTitle: t.string({
+      nullable: true,
+      description:
+        "Same projection as resolvedTitle, resolved against the locale of the Experience being previewed. Takes no locale argument, so a preview caller cannot request a different locale than the one on screen. Null outside an ExperiencePreview, where no preview locale is bound to the item.",
+      resolve: (row, _args, ctx) =>
+        resolveItemTitle(row, optionalString(row.previewLocale), ctx),
     }),
     subtitleOverride: t.exposeString("subtitleOverride", { nullable: true }),
     labelOverride: t.exposeString("labelOverride", { nullable: true }),
@@ -1091,6 +1138,20 @@ VideoCarouselBlockRef.implement({
   }),
 })
 
+const HomepageRecommendationsBlockRef =
+  builder.objectRef<HomepageRecommendationsBlock>(
+    "HomepageRecommendationsBlock",
+  )
+HomepageRecommendationsBlockRef.implement({
+  description:
+    "A page-level personalized video row. The consumer resolves recommendations privately at viewing time.",
+  fields: (t) => ({
+    t: t.exposeString("t"),
+    sectionKey: t.exposeString("sectionKey", { nullable: true }),
+    title: t.exposeString("title", { nullable: true }),
+  }),
+})
+
 const VideoRecommendationsBlockRef =
   builder.objectRef<VideoRecommendationsBlock>("VideoRecommendationsBlock")
 VideoRecommendationsBlockRef.implement({
@@ -1167,6 +1228,57 @@ WatchHomeHeroBlockRef.implement({
   fields: (t) => ({
     t: t.exposeString("t"),
     sectionKey: t.exposeString("sectionKey", { nullable: true }),
+  }),
+})
+
+const WatchHomeCategoryRailTileRef =
+  builder.objectRef<WatchHomeCategoryRailTile>("WatchHomeCategoryRailTile")
+WatchHomeCategoryRailTileRef.implement({
+  description:
+    "Single authored tile in WatchHomeCategoryRailBlock.tiles. A non-null categoryId marks a predefined tile whose unset fields fall back to the consumer's catalog defaults; every field null but categoryId means 'render the predefined tile unchanged'.",
+  fields: (t) => ({
+    id: t.exposeString("id"),
+    categoryId: t.exposeString("categoryId", { nullable: true }),
+    title: t.exposeString("title", { nullable: true }),
+    href: t.exposeString("href", { nullable: true }),
+    icon: t.exposeString("icon", { nullable: true }),
+    style: t.exposeString("style", { nullable: true }),
+  }),
+})
+
+const WatchHomeCategoryRailBlockRef =
+  builder.objectRef<WatchHomeCategoryRailBlock>("WatchHomeCategoryRailBlock")
+WatchHomeCategoryRailBlockRef.implement({
+  description:
+    "Top-level Watch homepage category carousel with an authored tile subset and order.",
+  fields: (t) => ({
+    t: t.exposeString("t"),
+    sectionKey: t.exposeString("sectionKey", { nullable: true }),
+    eyebrow: t.string({
+      nullable: true,
+      resolve: (row) => row.eyebrow ?? null,
+    }),
+    title: t.string({ nullable: true, resolve: (row) => row.title ?? null }),
+    description: t.string({
+      nullable: true,
+      resolve: (row) => row.description ?? null,
+    }),
+    ctaLabel: t.string({
+      nullable: true,
+      resolve: (row) => row.ctaLabel ?? null,
+    }),
+    categoryIds: t.field({
+      type: ["String"],
+      nullable: false,
+      resolve: (row) => row.categoryIds,
+    }),
+    tiles: t.field({
+      type: [WatchHomeCategoryRailTileRef],
+      nullable: true,
+      description:
+        "Authored tiles in render order. Null on blocks stored before tile authoring existed — read categoryIds instead. When non-null this is authoritative and categoryIds is a compatibility mirror of its predefined members.",
+      resolve: (row) => row.tiles ?? null,
+    }),
   }),
 })
 
@@ -1300,6 +1412,8 @@ export const T_TO_TYPENAME = {
   videoCarousel: "VideoCarouselBlock",
   videoHero: "VideoHeroBlock",
   videoRecommendations: "VideoRecommendationsBlock",
+  homepageRecommendations: "HomepageRecommendationsBlock",
+  watchHomeCategoryRail: "WatchHomeCategoryRailBlock",
   watchHomeHero: "WatchHomeHeroBlock",
 } as const satisfies Record<
   Block["t"] | SectionContentBlockValue["t"] | ContainerContentBlockValue["t"],
@@ -1351,6 +1465,8 @@ export const ExperienceBlock = builder.unionType("ExperienceBlock", {
     VideoCarouselBlockRef,
     VideoHeroBlockRef,
     VideoRecommendationsBlockRef,
+    HomepageRecommendationsBlockRef,
+    WatchHomeCategoryRailBlockRef,
     WatchHomeHeroBlockRef,
   ],
   resolveType: (value: Block) => resolveBlockTypename(value),

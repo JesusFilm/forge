@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Səs dilini dəyişin",
     "home": "JesusFilm ana səhifəsi",
     "closeSearch": "Axtarışı bağla",
-    "submitSearch": "Ахтар"
+    "submitSearch": "Ахтар",
+    "library": "Китабхана"
   },
   "SearchOverlay": {
     "dialogLabel": "Videoları axtarın və gözdən keçirin",
@@ -467,6 +468,7 @@
     "sports": "İdman",
     "collections": "Kolleksiyalar",
     "subtitlesOnly": "Yalnız altyazılar",
+    "backToTop": "Јухарыја гајыт",
     "newlyAdded": "Yeni əlavə olunub",
     "newVideosTitle": "{language} dilində yeni xristian videolar",
     "newestFirst": "Ən yenilər əvvəl",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Müstəqil videolar",
     "videosFromCollection": "{collection} kolleksiyasından videolar.",
     "standaloneDescription": "Bu dildə müstəqil videolar.",
-    "openCollection": "Kolleksiyanı açın"
+    "openCollection": "Kolleksiyanı açın",
+    "filters": "Филтрләр",
+    "filterLength": "Узунлуг",
+    "filterLength_under5": "5 дәгигәдән аз",
+    "filterLength_5to10": "5-10 дәгигә",
+    "filterLength_10to30": "10-30 дәгигә",
+    "filterLength_over30": "30 дәгигәдән чох",
+    "filterType": "Нөв",
+    "clearFilters": "Филтрләри тәмизлә",
+    "filterResults": "{total} нәтиҹәдән {count} ҝөстәрилир",
+    "noFilterResults": "Бу филтрләрә ујғун видео јохдур. Бирини силмәјә чалышын.",
+    "filterAdded": "Әлавә едилиб",
+    "filterAdded_60d": "Сон 60 ҝүн",
+    "filterAdded_6m": "Сон 6 ај",
+    "filterAdded_12m": "Сон 12 ај"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — Бахыш",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Əvvəlki video önizləməsi",
     "nextVideoPreview": "Növbəti video önizləməsi",
     "mediaCollection": "Media kolleksiyası",
-    "scrollToVideo": "{title} videosuna sürüşdürün"
+    "scrollToVideo": "{title} videosuna sürüşdürün",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project ana səhifəsi",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Baxa qayıt",
     "browseVideos": "Videolara baxın"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Qısa filmi izləyin",
-    "actions": {
-      "joinUs": "Bizə qoşulun",
-      "shareMission": "Missiyamızı paylaşın"
-    },
-    "welcomeStart": {
-      "label": "İman və Müqəddəs Yazı",
-      "title": "Bu günün video seçimləri",
-      "description": "İlham vermək, düşündürmək və düşüncəni oyatmaq üçün kitabxanamızdan iman mərkəzli video məzmun."
-    },
-    "welcomeMorning": {
-      "label": "Səhər ilhamı",
-      "title": "Sabahınız xeyir! Bu günün Müqəddəs Kitab anları sizi gözləyir.",
-      "description": "Gününüzü ruhlandırmaq və ürəyinizi yüksəltmək üçün hazırlanmış həvəsləndirici Müqəddəs Kitab anları ilə başlayın."
-    },
-    "welcomeAfternoon": {
-      "label": "Günorta ilhamı",
-      "title": "Günortanız xeyir! Gününüz üçün Müqəddəs Kitab anları.",
-      "description": "Günorta fasiləniz üçün uyğun, həvəsləndirici Müqəddəs Kitab məzmunu və ya davam edən ilham."
-    },
-    "welcomeEvening": {
-      "label": "Axşam ilhamı",
-      "title": "Axşamınız xeyir! Müqəddəs Kitab anları ilə dincəlin.",
-      "description": "Gününüz başa çatarkən düşünməyinizə və təsəlli tapmağınıza kömək edən sakit Müqəddəs Kitab anları."
-    },
-    "joinUs": {
-      "label": "Bizə qoşulun",
-      "title": "Milyardlarla insan axtarışdadır",
-      "description": "Məhsul vaxtı yetişib. Rəqəmsal media vasitəsilə dünyaya Müjdəni yayarkən bizə qoşulun."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Gəlin birlikdə irəliləyək",
-      "title": "İsanın hekayəsini birlikdə danışırıq",
-      "description": "Beləcə onlar olduqları yerdəcə, öz dillərində İsanın məhəbbətini eşidib görə bilsinlər."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% ујғунлуг",
     "none": "Бу дилдә бу видео үчүн төвсијә тапылмады."
@@ -737,12 +716,35 @@
     "eyebrow": "Дил версијасы мөвҹуд дејил",
     "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> дилиндә мөвҹуд дејил",
     "actionsLabel": "Мөвҹуд бахыш сечимләри",
-    "browseInLanguage": "{language} дилиндә видеолара бахын",
+    "browseInLanguage": "Бүтүн видеолар {language} дилиндә",
     "backToSearch": "Ахтарыша гајыт",
     "audioVersionsTitle": "Башга аудио версијалары",
     "audioVersionsDescription": "Бу видеону изләмәјә давам етмәк үчүн аудио дили сечин.",
     "languageVersionLabel": "Аудио дили",
     "selectLanguageVersion": "Дил версијасыны сечин",
     "watchSelectedVersion": "Сечилмиш версијаја бахын"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie сечимляри",
+    "bannerTitle": "Сизин мэхфилик сечимляриниз",
+    "bannerDescription": "Зярури cookie-ляр Watch-ы тящлюкясиз вя ишляк сахлайыр. Ижазяниз олса, ихтийари биринжи тяряф cookie-си тяклифляри фярдилэшдирмяк үчүн зийарятляр арасында мараглары хатырлайа биляр. Контекстя уйьун тяклифляр ися щяр ики щалда да мювжуд олур.",
+    "acceptAll": "Щамысыны гябул ет",
+    "essentialOnly": "Йалныз зярури",
+    "manageChoices": "Сечимляри идаря ет",
+    "savingChoice": "Cookie сечими сахланыр",
+    "settings": "Cookie айарлары",
+    "settingsDescription": "Watch-ын тяклиф марагларыны зийарятляр арасында хатырлайыб-хатырламамасыны сечин. Буну истянилян вахт дяйишя билярсиниз.",
+    "essentialCookies": "Зярури cookie-ляр",
+    "essentialDescription": "Тящлюкясизлик, ойнадылма, мэхфилик сечимляри вя тяклиф сорьусу аидиййяти.",
+    "alwaysActive": "Щямишя актив",
+    "personalization": "Фярдилэшдирмя",
+    "personalizationDescription": "Мящдуд мараглары зийарятляр арасында хатырла. Буны сюндцрмяк контекстя уйьун тяклифляри ялчатан сахлайыр.",
+    "erasurePending": "Профилин силинмяси эюзлянилир. Контекстя уйьун тяклифляр артыг активдир.",
+    "cancel": "Ляьв ет",
+    "saveChoices": "Сечимляри сахла",
+    "saving": "Сахланыр…",
+    "loadError": "Сечиминиз йцкляня билмяди. Йеня дя ашаьыда сечя билярсиниз.",
+    "grantError": "Фярдилэшдирмяни активляшдирмяк мцмкцн олмады. Йалныз зярури вариант ялчатан галыр.",
+    "saveError": "Сечиминиз сахланыла билмяди. Зящмят олмаса, йенидян жящд един."
   }
 }

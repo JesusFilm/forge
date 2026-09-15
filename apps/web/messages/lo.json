@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ປ່ຽນພາສາສຽງ",
     "home": "ໜ້າຫຼັກ JesusFilm",
     "closeSearch": "ປິດການຄົ້ນຫາ",
-    "submitSearch": "ຄົ້ນຫາ"
+    "submitSearch": "ຄົ້ນຫາ",
+    "library": "ຫ້ອງສະໝຸດ"
   },
   "SearchOverlay": {
     "dialogLabel": "ຄົ້ນຫາ ແລະ ຊອກຫາວິດີໂອ",
@@ -467,6 +468,7 @@
     "sports": "ກິລາ",
     "collections": "ຄໍເລັກຊັນ",
     "subtitlesOnly": "ມີຄຳບັນຍາຍເທົ່ານັ້ນ",
+    "backToTop": "ກັບຄືນຂຶ້ນເທິງ",
     "newlyAdded": "ເພີ່ມໃໝ່",
     "newVideosTitle": "ວິດີໂອຄຣິສຕຽນໃໝ່ໃນ {language}",
     "newestFirst": "ໃໝ່ສຸດກ່ອນ",
@@ -497,7 +499,21 @@
     "standaloneVideos": "ວິດີໂອແຍກຕ່າງຫາກ",
     "videosFromCollection": "ວິດີໂອຈາກ {collection}.",
     "standaloneDescription": "ວິດີໂອແຍກຕ່າງຫາກໃນພາສານີ້.",
-    "openCollection": "ເປີດຄໍເລັກຊັນ"
+    "openCollection": "ເປີດຄໍເລັກຊັນ",
+    "filters": "ຕົວກອງ",
+    "filterLength": "ຄວາມຍາວ",
+    "filterLength_under5": "ຕ່ຳກວ່າ 5 ນາທີ",
+    "filterLength_5to10": "5-10 ນາທີ",
+    "filterLength_10to30": "10-30 ນາທີ",
+    "filterLength_over30": "ຫຼາຍກວ່າ 30 ນາທີ",
+    "filterType": "ປະເພດ",
+    "clearFilters": "ລຶບຕົວກອງ",
+    "filterResults": "ສະແດງ {count} ຈາກ {total}",
+    "noFilterResults": "ບໍ່ມີວິດີໂອທີ່ຕົງກັບຕົວກອງນີ້. ລອງເອົາອອກໜຶ່ງອັນ.",
+    "filterAdded": "ເພີ່ມແລ້ວ",
+    "filterAdded_60d": "60 ວັນຜ່ານມາ",
+    "filterAdded_6m": "6 ເດືອນຜ່ານມາ",
+    "filterAdded_12m": "12 ເດືອນຜ່ານມາ"
   },
   "WatchHome": {
     "pageTitle": "ຮັບຊົມ Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "ຕົວຢ່າງວິດີໂອກ່ອນໜ້າ",
     "nextVideoPreview": "ຕົວຢ່າງວິດີໂອຕໍ່ໄປ",
     "mediaCollection": "ຄໍເລັກຊັນສື່",
-    "scrollToVideo": "ເລື່ອນໄປທີ່ວິດີໂອ {title}"
+    "scrollToVideo": "ເລື່ອນໄປທີ່ວິດີໂອ {title}",
+    "forYou": "ສຳລັບທ່ານ"
   },
   "WatchFooter": {
     "home": "ໜ້າຫຼັກ Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "ກັບໄປຮັບຊົມ",
     "browseVideos": "ຊອກຫາວິດີໂອ"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "ຮັບຊົມຮູບເງົາສັ້ນ",
-    "actions": {
-      "joinUs": "ຮ່ວມກັບເຮົາ",
-      "shareMission": "ຮ່ວມກັນໃນພາລະກິດຂອງເຮົາ"
-    },
-    "welcomeStart": {
-      "label": "ຄວາມເຊື່ອ ແລະພຣະຄຳພີ",
-      "title": "ວິດີໂອທີ່ແນະນຳສຳລັບມື້ນີ້",
-      "description": "ເນື້ອຫາວິດີໂອທີ່ເນັ້ນຄວາມເຊື່ອຈາກຄັງວິດີໂອຂອງເຮົາ ເພື່ອສ້າງແຮງບັນດານໃຈ, ທ້າທາຍຄວາມຄິດ, ແລະກະຕຸ້ນການຄິດທົບທວນ."
-    },
-    "welcomeMorning": {
-      "label": "ແຮງບັນດານໃຈຍາມເຊົ້າ",
-      "title": "ສະບາຍດີຕອນເຊົ້າ! ຊ່ວງເວລາໃນພຣະຄຳພີຂອງມື້ນີ້ກຳລັງລໍຖ້າທ່ານຢູ່.",
-      "description": "ເລີ່ມມື້ຂອງທ່ານດ້ວຍຊ່ວງເວລາໃນພຣະຄຳພີທີ່ໜຸນໃຈ ອອກແບບເພື່ອສ້າງແຮງບັນດານໃຈ ແລະເຕີມພະລັງໃຫ້ຈິດວິນຍານຂອງທ່ານ."
-    },
-    "welcomeAfternoon": {
-      "label": "ແຮງບັນດານໃຈຍາມບ່າຍ",
-      "title": "ສະບາຍດີຕອນບ່າຍ! ຊ່ວງເວລາໃນພຣະຄຳພີສຳລັບມື້ຂອງທ່ານ.",
-      "description": "ເນື້ອຫາພຣະຄຳພີທີ່ໜຸນໃຈ ເໝາະສຳລັບຊ່ວງພັກຕອນບ່າຍ ຫຼືເປັນແຮງບັນດານໃຈຕໍ່ໄປ."
-    },
-    "welcomeEvening": {
-      "label": "ແຮງບັນດານໃຈຍາມແລງ",
-      "title": "ສະບາຍດີຕອນແລງ! ຜ່ອນຄາຍກັບຊ່ວງເວລາໃນພຣະຄຳພີ.",
-      "description": "ຊ່ວງເວລາໃນພຣະຄຳພີທີ່ສະຫງົບ ເພື່ອຊ່ວຍໃຫ້ທ່ານຄິດທົບທວນ ແລະພົບຄວາມປອບໂຍນເມື່ອມື້ຂອງທ່ານກຳລັງຈົບລົງ."
-    },
-    "joinUs": {
-      "label": "ຮ່ວມກັບເຮົາ",
-      "title": "ຫຼາຍພັນລ້ານຄົນກຳລັງຄົ້ນຫາ",
-      "description": "ເວລາເກັບກ່ຽວມາເຖິງແລ້ວ. ມາຮ່ວມກັບເຮົາໃນການແບ່ງປັນພຣະກິດຕິຄຸນໃຫ້ຊາວໂລກຜ່ານສື່ດິຈິຕອນ."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "ໄປນຳກັນ",
-      "title": "ເລົ່າເລື່ອງຂອງພຣະເຢຊູຮ່ວມກັນ",
-      "description": "ເພື່ອວ່າພວກເຂົາຈະໄດ້ຍິນ ແລະເຫັນຄວາມຮັກຂອງພຣະເຢຊູໃນພາສາຂອງຕົນເອງ ຢູ່ໃນບ່ອນທີ່ເຂົາຢູ່."
-    }
-  },
   "VideoRecommendations": {
     "match": "ກົງກັນ {percent}%",
     "none": "ບໍ່ພົບວິດີໂອແນະນຳສຳລັບວິດີໂອນີ້ໃນພາສານີ້."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "ພາສາສຽງ",
     "selectLanguageVersion": "ເລືອກສະບັບພາສາ",
     "watchSelectedVersion": "ເບິ່ງສະບັບທີ່ເລືອກ"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "ທາງເລືອກຄຸກກີ",
+    "bannerTitle": "ທາງເລືອກຄວາມເປັນສ່ວນຕົວຂອງທ່ານ",
+    "bannerDescription": "ຄຸກກີທີ່ຈຳເປັນຊ່ວຍໃຫ້ Watch ປອດໄພແລະໃຊ້ງານໄດ້ປົກກະຕິ. ດ້ວຍການອະນຸຍາດຂອງທ່ານ ຄຸກກີເສີມຂອງເວັບໄຊນີ້ອາດຈະຈື່ຈຳຄວາມສົນໃຈຂອງທ່ານລະຫວ່າງການເຂົ້າຊົມແຕ່ລະຄັ້ງ ເພື່ອປັບຄຳແນະນຳໃຫ້ເໝາະກັບທ່ານ. ບໍ່ວ່າທ່ານຈະເລືອກແບບໃດ ຄຳແນະນຳຕາມບໍລິບົດຍັງຄົງໃຊ້ໄດ້.",
+    "acceptAll": "ຍອມຮັບທັງໝົດ",
+    "essentialOnly": "ຈຳເປັນເທົ່ານັ້ນ",
+    "manageChoices": "ຈັດການທາງເລືອກ",
+    "savingChoice": "ກຳລັງບັນທຶກທາງເລືອກຄຸກກີ",
+    "settings": "ການຕັ້ງຄ່າຄຸກກີ",
+    "settingsDescription": "ເລືອກວ່າ Watch ຈະຈື່ຈຳຄວາມສົນໃຈສຳລັບຄຳແນະນຳຂ້າມການເຂົ້າຊົມໄດ້ຫຼືບໍ່. ທ່ານສາມາດປ່ຽນແປງສິ່ງນີ້ໄດ້ທຸກເວລາ.",
+    "essentialCookies": "ຄຸກກີທີ່ຈຳເປັນ",
+    "essentialDescription": "ຄວາມປອດໄພ, ການຫຼິ້ນວິດີໂອ, ທາງເລືອກຄວາມເປັນສ່ວນຕົວ ແລະ ການລະບຸທີ່ມາຂອງຄຳຂໍຄຳແນະນຳ",
+    "alwaysActive": "ເປີດໃຊ້ຢູ່ສະເໝີ",
+    "personalization": "ການປັບໃຫ້ເໝາະກັບບຸກຄົນ",
+    "personalizationDescription": "ຈື່ຈຳຄວາມສົນໃຈທີ່ກຳນົດໄວ້ຂ້າມການເຂົ້າຊົມ. ການປິດສິ່ງນີ້ຈະຍັງຄົງໃຫ້ຄຳແນະນຳຕາມບໍລິບົດໃຊ້ໄດ້.",
+    "erasurePending": "ການລຶບໂປຣໄຟລ໌ກຳລັງດຳເນີນການ. ຄຳແນະນຳຕາມບໍລິບົດໄດ້ເປີດໃຊ້ແລ້ວ.",
+    "cancel": "ຍົກເລີກ",
+    "saveChoices": "ບັນທຶກທາງເລືອກ",
+    "saving": "ກຳລັງບັນທຶກ…",
+    "loadError": "ບໍ່ສາມາດໂຫຼດທາງເລືອກຂອງທ່ານໄດ້. ທ່ານຍັງສາມາດເລືອກຂ້າງລຸ່ມໄດ້.",
+    "grantError": "ບໍ່ສາມາດເປີດໃຊ້ການປັບໃຫ້ເໝາະກັບບຸກຄົນໄດ້. ທ່ານຍັງໃຊ້ໄດ້ສະເພາະຄຸກກີທີ່ຈຳເປັນ.",
+    "saveError": "ບໍ່ສາມາດບັນທຶກທາງເລືອກຂອງທ່ານໄດ້. ກະລຸນາລອງອີກຄັ້ງ."
   }
 }

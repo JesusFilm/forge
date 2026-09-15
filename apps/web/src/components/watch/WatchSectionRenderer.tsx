@@ -1,6 +1,7 @@
 "use client"
 
 import type { MuxPlayerRef } from "@forge/video-player"
+import { DEFAULT_WATCH_LANGUAGE_SLUG } from "@forge/watch-url-policy/routes"
 
 import {
   type MergedWatchBlock,
@@ -9,6 +10,7 @@ import {
 } from "@/lib/content"
 import { isWatchBlock } from "@/lib/watch-blocks"
 import { ExperienceSectionRenderer } from "@/components/sections"
+import { WatchSemanticRecommendations } from "@/components/recommendations/WatchSemanticRecommendations"
 import { BibleQuotesSection } from "@/components/watch/BibleQuotesSection"
 import { HeroPlayer } from "@/components/watch/HeroPlayer"
 import { SiblingCarousel } from "@/components/watch/SiblingCarousel"
@@ -16,6 +18,7 @@ import { WatchBody } from "@/components/watch/WatchBody"
 import type { WatchModalCallbacks } from "@/components/watch/WatchPageClient"
 import type { WatchChapterNavigationIntent } from "@/components/watch/chapter-navigation"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
+import { DEFAULT_LOCALE } from "@/lib/locale"
 import { isPlayableLanguageVariant } from "@/lib/playable-variant"
 
 // Typo guard: literal-union typing fails the type check on misspellings.
@@ -39,6 +42,7 @@ export function WatchSectionRenderer({
   onPlayerReady,
   onPlayerActivated,
   languageSlug,
+  locale,
   hasSubtitleOptions = false,
   subtitleLanguageCode,
   shareHref,
@@ -56,8 +60,9 @@ export function WatchSectionRenderer({
   downloadPending?: boolean
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
-  onPlayerActivated?: () => void
+  onPlayerActivated?: (initiation: "manual" | "automatic") => void
   languageSlug?: string
+  locale?: string
   hasSubtitleOptions?: boolean
   subtitleLanguageCode?: string | null
   shareHref?: string
@@ -102,6 +107,7 @@ export function WatchSectionRenderer({
           onPlayerReady={onPlayerReady}
           onPlayerActivated={onPlayerActivated}
           languageSlug={languageSlug}
+          locale={locale}
           hasSubtitleOptions={hasSubtitleOptions}
           subtitleLanguageCode={subtitleLanguageCode}
           shareHref={shareHref}
@@ -145,6 +151,7 @@ export function WatchSectionRenderer({
                   onPlayerReady={onPlayerReady}
                   onPlayerActivated={onPlayerActivated}
                   languageSlug={languageSlug}
+                  locale={locale}
                   hasSubtitleOptions={hasSubtitleOptions}
                   subtitleLanguageCode={subtitleLanguageCode}
                   shareHref={shareHref}
@@ -175,6 +182,7 @@ function WatchBlockEntry({
   onPlayerReady,
   onPlayerActivated,
   languageSlug,
+  locale,
   hasSubtitleOptions,
   subtitleLanguageCode,
   shareHref,
@@ -194,8 +202,9 @@ function WatchBlockEntry({
   studyQuestionsBlock: WatchStudyQuestionsBlock | null
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
-  onPlayerActivated?: () => void
+  onPlayerActivated?: (initiation: "manual" | "automatic") => void
   languageSlug?: string
+  locale?: string
   hasSubtitleOptions: boolean
   subtitleLanguageCode?: string | null
   shareHref?: string
@@ -219,6 +228,7 @@ function WatchBlockEntry({
         onPlayerReady={onPlayerReady}
         onPlayerActivated={onPlayerActivated}
         languageSlug={languageSlug}
+        locale={locale}
         hasSubtitleOptions={hasSubtitleOptions}
         subtitleLanguageCode={subtitleLanguageCode}
         shareHref={shareHref}
@@ -251,6 +261,7 @@ function SyntheticBlock({
   onPlayerReady,
   onPlayerActivated,
   languageSlug,
+  locale,
   hasSubtitleOptions,
   subtitleLanguageCode,
   shareHref,
@@ -269,8 +280,9 @@ function SyntheticBlock({
   studyQuestionsBlock: WatchStudyQuestionsBlock | null
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
-  onPlayerActivated?: () => void
+  onPlayerActivated?: (initiation: "manual" | "automatic") => void
   languageSlug?: string
+  locale?: string
   hasSubtitleOptions: boolean
   subtitleLanguageCode?: string | null
   shareHref?: string
@@ -337,6 +349,15 @@ function SyntheticBlock({
           studyQuestions={studyQuestionsBlock}
           onDownloadClick={modalCallbacks?.openDownload ?? noop}
           optimisticTitle={pendingChapter?.title ?? null}
+        />
+      )
+    case "SemanticRecommendations":
+      return (
+        <WatchSemanticRecommendations
+          seedMediaId={block.seedMediaId}
+          seedMediaSlug={block.seedMediaSlug}
+          locale={locale ?? DEFAULT_LOCALE}
+          audioLanguageSlug={languageSlug ?? DEFAULT_WATCH_LANGUAGE_SLUG}
         />
       )
     case "StudyQuestions":

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Shintsha ulimi lomsindo",
     "home": "Ikhasi lasekhaya le-JesusFilm",
     "closeSearch": "Vala usesho",
-    "submitSearch": "Sesha"
+    "submitSearch": "Sesha",
+    "library": "Ilayibrari"
   },
   "SearchOverlay": {
     "dialogLabel": "Sesha futhi uphequlule amavidiyo",
@@ -467,6 +468,7 @@
     "sports": "Ezemidlalo",
     "collections": "Amaqoqo",
     "subtitlesOnly": "Izihlokwana kuphela",
+    "backToTop": "Buyela phezulu",
     "newlyAdded": "Okusanda kufakwa",
     "newVideosTitle": "Amavidiyo amasha amaKristu ngesi-{language}",
     "newestFirst": "Okusha kuqala",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Amavidiyo azimele",
     "videosFromCollection": "Amavidiyo avela ku-{collection}.",
     "standaloneDescription": "Amavidiyo azimele ngalolu limi.",
-    "openCollection": "Vula iqoqo"
+    "openCollection": "Vula iqoqo",
+    "filters": "Iinhlungi",
+    "filterLength": "Ubude",
+    "filterLength_under5": "Ngaphasi kwemizuzu emi-5",
+    "filterLength_5to10": "Imizuzu emi-5-10",
+    "filterLength_10to30": "Imizuzu eli-10-30",
+    "filterLength_over30": "Ngaphezu kwemizuzu engama-30",
+    "filterType": "Uhlobo",
+    "clearFilters": "Sula iinhlungi",
+    "filterResults": "{count} kwe-{total} ekutjengiswako",
+    "noFilterResults": "Akunamavidiyo ahambisana neenhlungi lezi. Zama ukususa esinye.",
+    "filterAdded": "Kwengezwe",
+    "filterAdded_60d": "Amalanga angama-60 adluleko",
+    "filterAdded_6m": "Iinyanga eziyisi-6 ezidluleko",
+    "filterAdded_12m": "Iinyanga eziyi-12 ezidluleko"
   },
   "WatchHome": {
     "pageTitle": "Ukubuka kwe-Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Ukubuka kuqala kwevidiyo edlule",
     "nextVideoPreview": "Ukubuka kuqala kwevidiyo elandelayo",
     "mediaCollection": "Iqoqo lezindaba",
-    "scrollToVideo": "Skrola uye kuvidiyo ethi {title}"
+    "scrollToVideo": "Skrola uye kuvidiyo ethi {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Ikhasi lasekhaya le-Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Buyela ekubukeni",
     "browseVideos": "Phequlula amavidiyo"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Buka ifilimu emfushane",
-    "actions": {
-      "joinUs": "Joyina thina",
-      "shareMission": "Yabelana emsebenzini wethu"
-    },
-    "welcomeStart": {
-      "label": "Ukholo & Umbhalo Ongcwele",
-      "title": "Izincomo zevidiyo zanamuhla",
-      "description": "Okuqukethwe kwamavidiyo okugxile ekukholweni okuvela emtatsheni wethu ukuze kukhuthaze, kuphonsela inselelo, futhi kuvuse ukucabanga."
-    },
-    "welcomeMorning": {
-      "label": "Ugqozi lwasekuseni",
-      "title": "Sawubona! Imizuzu yeBhayibheli yanamuhla ilindile.",
-      "description": "Qala usuku lwakho ngemizuzu yeBhayibheli ekhuthazayo eyenzelwe ukukhuthaza futhi iphakamise umoya wakho."
-    },
-    "welcomeAfternoon": {
-      "label": "Ugqozi lwantambama",
-      "title": "Ntambama enhle! Imizuzu yeBhayibheli yosuku lwakho.",
-      "description": "Okuqukethwe kweBhayibheli okukhuthazayo okulungele ikhefu lakho lantambama noma ukuqhubeka nogqozi."
-    },
-    "welcomeEvening": {
-      "label": "Ugqozi lwakusihlwa",
-      "title": "Kusihlwa okuhle! Phola ngemizuzu yeBhayibheli.",
-      "description": "Imizuzu yeBhayibheli enokuthula ukukusiza ucabange futhi uthole induduzo njengoba usuku luphela."
-    },
-    "joinUs": {
-      "label": "Joyina thina",
-      "title": "Izigidigidi ziyafuna",
-      "description": "Isivuno sesifikile. Joyina thina njengoba sabelana ngevangeli nomhlaba sisebenzisa imidiya yedijithali."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Asihambe ndawonye",
-      "title": "Ukuxoxa Indaba KaJesu, Ndawonye",
-      "description": "Ukuze bezwe futhi babone uthando lukaJesu ngolimi lwabo lapho bekhona khona."
-    }
-  },
   "VideoRecommendations": {
     "match": "Kufana ngo-{percent}%",
     "none": "Azikho izincomo ezitholakele zale vidiyo ngalolu limi."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Ilimi lomsindo",
     "selectLanguageVersion": "Khetha inguqulo yelimi",
     "watchSelectedVersion": "Bukela inguqulo ekhethiwe"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Ukukhetha ama-cookie",
+    "bannerTitle": "Ukukhetha kwakho kobumfihlo",
+    "bannerDescription": "Ama-cookie aqakathekileko enza i-Watch ihlale ivikelekile begodu isebenza kuhle. Ngevumo lakho, i-cookie yokuzikhethela yangaphakathi ingakhumbula izinto ozithandako phakathi kokutjhelela kwakho ukuze yenze izincomo zibe ngezomuntu. Izincomo zomongo zisatholakala nanyana kunjalo.",
+    "acceptAll": "Yamukela koke",
+    "essentialOnly": "Okuqakathekileko kwaphela",
+    "manageChoices": "Lawula okukhethileko",
+    "savingChoice": "Kugcinwa ukukhetha kwama-cookie",
+    "settings": "Amasethingi wama-cookie",
+    "settingsDescription": "Khetha bona i-Watch ingakhumbula na izinto ozithandako zezincomo phakathi kokutjhelela kwakho. Ungakutjhugulula lokhu nanyana kunini.",
+    "essentialCookies": "Ama-cookie aqakathekileko",
+    "essentialDescription": "Ukuvikeleka, ukudlaleka, ukukhetha kobumfihlo, nokulandelelwa kwesicelo sezincomo.",
+    "alwaysActive": "Kuhlala kusebenza",
+    "personalization": "Ukwenzelwa umuntu mathupha",
+    "personalizationDescription": "Khumbula izinto ozithandako ezilinganiselweko phakathi kokutjhelela kwakho. Ukucima lokhu kwenza izincomo zomongo zihlale zitholakala.",
+    "erasurePending": "Ukusulwa kwephrofayili kusekulindweni. Izincomo zomongo sele zisebenza.",
+    "cancel": "Khansela",
+    "saveChoices": "Gcina okukhethileko",
+    "saving": "Kuyagcinwa…",
+    "loadError": "Ukukhetha kwakho akukalayitjhwa. Usengakhetha ngezansi.",
+    "grantError": "Ukwenzelwa umuntu mathupha akukavunyeliswa. Okuqakathekileko kwaphela kusatholakala.",
+    "saveError": "Ukukhetha kwakho akukagcinwa. Sibawa uzame godu."
   }
 }

@@ -11,9 +11,30 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("next/image", () => ({
-  default: ({ src, alt }: { src: string; alt: string }) => (
+  default: ({
+    src,
+    alt,
+    className,
+    sizes,
+    width,
+    height,
+  }: {
+    src: string
+    alt: string
+    className?: string
+    sizes?: string
+    width?: number
+    height?: number
+  }) => (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} alt={alt} />
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      sizes={sizes}
+      width={width}
+      height={height}
+    />
   ),
 }))
 vi.mock("@/components/ui/carousel", () => {
@@ -83,6 +104,7 @@ function model(
     audioCollections: [],
     audioVideos: [],
     subtitleOnlyVideos: [],
+    collectionLanguageCounts: {},
     ...overrides,
   }
 }
@@ -243,6 +265,47 @@ describe("LanguageInventoryPage thumbnail sources", () => {
     ).toBe(true)
   })
 
+  it("keeps the hero on authored artwork rather than a synthesized frame", () => {
+    act(() => {
+      root.render(
+        <LanguageInventoryPage
+          inventory={model({
+            // Newest collection has only a playback id, so the first group can
+            // synthesize a 448x252 frame. A later collection carries real
+            // artwork, and the `priority` / `sizes="100vw"` hero must take that
+            // instead of upscaling a thumbnail.
+            audioCollections: [
+              card({
+                id: "newest",
+                muxPlaybackId: "mux-newest-frame",
+                publishedAt: "2026-07-31 00:00:00+00",
+              }),
+              card({
+                id: "older",
+                imageUrl: "https://cdn.test/older-authored.jpg",
+                publishedAt: "2025-01-01 00:00:00+00",
+              }),
+            ],
+            audioVideos: [
+              card({
+                id: "newest-episode",
+                parentSlug: "newest",
+                muxPlaybackId: "mux-newest-episode",
+              }),
+              card({
+                id: "older-episode",
+                parentSlug: "older",
+                muxPlaybackId: "mux-older-episode",
+              }),
+            ],
+          })}
+        />,
+      )
+    })
+
+    expect(heroSource(container)).toBe("https://cdn.test/older-authored.jpg")
+  })
+
   it("renders no image at all with neither artwork nor playback", () => {
     act(() => {
       root.render(
@@ -255,5 +318,113 @@ describe("LanguageInventoryPage thumbnail sources", () => {
     })
 
     expect(sources(container)).toEqual([])
+  })
+
+  it.each([
+    {
+      markerSource: "Core ID",
+      overrides: { coreId: "portrait-episode-9x16" },
+    },
+    {
+      markerSource: "own slug",
+      overrides: { slug: "portrait-episode-vertical" },
+    },
+    {
+      markerSource: "parent slug with an unmarked localized title",
+      overrides: {
+        title: "Un titre localisé",
+        parentSlug: "portrait-series-vertical",
+      },
+    },
+    {
+      markerSource: "localized title",
+      overrides: { title: "Invitation (Vertical)" },
+    },
+    {
+      markerSource: "parent title",
+      overrides: { parentTitle: "Portrait Series (Vertical)" },
+    },
+  ])(
+    "uses a portrait compact frame for a $markerSource marker",
+    ({ overrides }) => {
+      act(() => {
+        root.render(
+          <LanguageInventoryPage
+            inventory={model({
+              audioVideos: [
+                card({
+                  id: "portrait-episode",
+                  imageUrl: "https://cdn.test/portrait-episode.jpg",
+                  href: "/portrait-episode.html" as Route,
+                  ...overrides,
+                }),
+              ],
+            })}
+          />,
+        )
+      })
+
+      const row = container.querySelector('a[href="/portrait-episode.html"]')
+      const image = row?.querySelector("img")
+      const frame = image?.parentElement
+
+      expect(row).not.toBeNull()
+      expect(frame?.classList.contains("h-16")).toBe(true)
+      expect(frame?.classList.contains("sm:h-14")).toBe(true)
+      expect(frame?.classList.contains("aspect-[2/3]")).toBe(true)
+      expect(frame?.classList.contains("w-28")).toBe(false)
+      expect(frame?.classList.contains("sm:w-24")).toBe(false)
+      expect(image?.classList.contains("object-center")).toBe(true)
+      // Explicit intrinsic dimensions keep next/image on a two-candidate
+      // srcset while still supplying the enlarged phone frame at up to 3 DPR.
+      expect(image?.getAttribute("width")).toBe("64")
+      expect(image?.getAttribute("height")).toBe("96")
+      expect(
+        row?.querySelector(
+          '[data-testid="language-inventory-compact-thumbnail-frame"]',
+        ),
+      ).not.toBeNull()
+    },
+  )
+
+  it("leaves an ordinary compact thumbnail and its interaction contract unchanged", () => {
+    act(() => {
+      root.render(
+        <LanguageInventoryPage
+          inventory={model({
+            audioVideos: [
+              card({
+                id: "ordinary-episode",
+                coreId: "ordinary-core-id",
+                slug: "ordinary-episode",
+                title: "Ordinary episode",
+                parentSlug: "ordinary-series",
+                imageUrl: "https://cdn.test/ordinary-episode.jpg",
+                href: "/ordinary-episode.html" as Route,
+              }),
+            ],
+          })}
+        />,
+      )
+    })
+
+    const row = container.querySelector('a[href="/ordinary-episode.html"]')
+    const image = row?.querySelector("img")
+    const frame = image?.parentElement
+
+    expect(row?.getAttribute("href")).toBe("/ordinary-episode.html")
+    expect(frame?.classList.contains("h-16")).toBe(true)
+    expect(frame?.classList.contains("w-28")).toBe(true)
+    expect(frame?.classList.contains("sm:h-14")).toBe(true)
+    expect(frame?.classList.contains("sm:w-24")).toBe(true)
+    expect(frame?.classList.contains("aspect-[2/3]")).toBe(false)
+    expect(image?.classList.contains("object-left-top")).toBe(true)
+    expect(image?.getAttribute("width")).toBe("168")
+    expect(image?.getAttribute("height")).toBe("96")
+    expect(
+      row?.querySelector(
+        '[data-testid="language-inventory-compact-thumbnail-frame"]',
+      ),
+    ).not.toBeNull()
   })
 })

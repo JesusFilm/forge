@@ -1,0 +1,35 @@
+{
+  "name": "@forge/studio-contracts",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./assets": "./src/assets.ts",
+    "./content-packs": "./src/content-packs.ts",
+    "./sources": "./src/sources.ts",
+    "./experiments": "./src/experiments.ts",
+    "./catalog": "./src/catalog.ts",
+    "./transport": "./src/transport.ts",
+    "./preview": "./src/preview.ts",
+    "./agent": "./src/agent.ts",
+    "./production": "./src/production.ts",
+    "./generation": "./src/generation.ts",
+    "./publication": "./src/publication.ts",
+    "./render": "./src/render.ts",
+    "./publication-state": "./src/publication-state.ts",
+    "./calendar": "./src/calendar.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "vitest": "3.2.4"
+  }
+}

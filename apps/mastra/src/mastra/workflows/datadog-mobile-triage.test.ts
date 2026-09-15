@@ -778,6 +778,9 @@ describe("executeDatadogTriage sweep", () => {
     await run({ datadog: mobile })
     expect(mobile.aggregateRumEvents).toHaveBeenCalled()
     expect(mobile.aggregateLogs).not.toHaveBeenCalled()
+    // The issue-search track must be the PROFILE's, not a constant: the client
+    // test pins its own fixture, so only this assertion catches a hardcode.
+    expect(vi.mocked(mobile.searchIssues).mock.calls[0]?.[0]?.track).toBe("rum")
 
     const admin = datadog()
     await run({
@@ -795,6 +798,7 @@ describe("executeDatadogTriage sweep", () => {
     })
     expect(admin.aggregateLogs).toHaveBeenCalled()
     expect(admin.aggregateRumEvents).not.toHaveBeenCalled()
+    expect(vi.mocked(admin.searchIssues).mock.calls[0]?.[0]?.track).toBe("logs")
   })
 
   it("Covers AE6: only configured services are read at all", async () => {

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Na'halom i lenguahe gi audio",
     "home": "Home gi JesusFilm",
     "closeSearch": "Serrá search",
-    "submitSearch": "Ekka"
+    "submitSearch": "Ekka",
+    "library": "Bibliotekan"
   },
   "SearchOverlay": {
     "dialogLabel": "Ekka yan guiya video siha",
@@ -467,6 +468,7 @@
     "sports": "Deportes",
     "collections": "Koleksión siha",
     "subtitlesOnly": "Subtítulos lang",
+    "backToTop": "Hånao tåtte gi hilo'",
     "newlyAdded": "Ma'añadi' nuebu",
     "newVideosTitle": "Bago na Christian videos gi {language}",
     "newestFirst": "I pinakanuebu sa'ot",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Video siha na ha'ågu",
     "videosFromCollection": "Video siha ginen {collection}.",
     "standaloneDescription": "Video siha na ha'ågu gi este na lenguahe.",
-    "openCollection": "Abri koleksión"
+    "openCollection": "Abri koleksión",
+    "filters": "Fifiltro",
+    "filterLength": "Anaku",
+    "filterLength_under5": "Menos ki 5 na minutu",
+    "filterLength_5to10": "5-10 na minutu",
+    "filterLength_10to30": "10-30 na minutu",
+    "filterLength_over30": "Mås ki 30 na minutu",
+    "filterType": "Klasi",
+    "clearFilters": "Na'suha i fifiltro",
+    "filterResults": "Manafanhanao {count} gi {total}",
+    "noFilterResults": "Taya' video ni parehu yan este siha na fifiltro. Prueba na un na'suha unu.",
+    "filterAdded": "Manaña'i",
+    "filterAdded_60d": "Ultimo 60 dias",
+    "filterAdded_6m": "Ultimo 6 mes",
+    "filterAdded_12m": "Ultimo 12 mes"
   },
   "WatchHome": {
     "pageTitle": "Atan gi Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Preview gi hinåtsa na video",
     "nextVideoPreview": "Preview gi suma' na video",
     "mediaCollection": "Koleksión gi media",
-    "scrollToVideo": "Liyang gi video {title}"
+    "scrollToVideo": "Liyang gi video {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Home gi Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Bumalik gi Watch",
     "browseVideos": "Guya video siha"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Atan i ma'ikli' na pelikula",
-    "actions": {
-      "joinUs": "Mångge' guiya ham",
-      "shareMission": "Isparti i misión-måme"
-    },
-    "welcomeStart": {
-      "label": "P'å'na yan Scripture",
-      "title": "I napogo' na video siha para hoy",
-      "description": "Video content ginen i library-måme na nakå'halom i p'uma'å'ni, ma'leffok, yan ma'na'isisok para i refleksión."
-    },
-    "welcomeMorning": {
-      "label": "Inspirasión gi mañåna",
-      "title": "Buenas días! I Bible moments para hoy guaha.",
-      "description": "Sugod i día-mu yan ma'añonggue na Bible moments na ma'designa para ma'inspira yan na'ånnok i espiritu-mu."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirasión gi harriåga",
-      "title": "Buenas tardes! Mga Bible moments para i día-mu.",
-      "description": "Ma'añonggue na Bible content na akma para i rest-mu gi harriåga pat para umula' mas inspirasión."
-    },
-    "welcomeEvening": {
-      "label": "Inspirasión gi pupuenge",
-      "title": "Buenas puenge! Pumehla yan Bible moments.",
-      "description": "Mamåyo' na Bible moments para un makapausa yan makahunong cómodo habang matatapos i día-mu."
-    },
-    "joinUs": {
-      "label": "Mångge' guiya ham",
-      "title": "Bilyones na taotao man-ga'ga' i katnan",
-      "description": "Guaha na i pag-ani. Mångge' guiya ham habang ta'ätaya i ebanghelyo gi sanlibutan gamit digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Håfå ije yan guiya ham",
-      "title": "Na'i i Istoria ni Jesus, yan guiya ham",
-      "description": "Påra siña ti guaha i taotao siha na dumingge' yan manaitsi i gugua ni Jesus gi i lenguahe-ña mismo gi anda ya guaha siya."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% na parehu",
     "none": "Ti guaha rekomendasión para este na video gi este na lenguahe."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Finoʼ audio",
     "selectLanguageVersion": "Ayek un bersión finoʼ",
     "watchSelectedVersion": "Atan i inayek na bersión"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Inafan cookie",
+    "bannerTitle": "Inafan para i pribasidåt-mu",
+    "bannerDescription": "I nesesåt na cookie siha ha na'seguru si Watch ya u funsiona por maolek. Yanggen un na'ånu, un opsional na first-party cookie siña un na'ånña' gui hinengge-mu gi entalo bisita siha para u ma'åjusta i rekomendasion siha. I rekomendasion siha sigun gi contexto gaige guaha maseha håfa.",
+    "acceptAll": "Eksèpta todu",
+    "essentialOnly": "I nesesåt ha' only",
+    "manageChoices": "Guinaha inafan",
+    "savingChoice": "Manasåttba i inafan cookie",
+    "settings": "Ajuste cookie",
+    "settingsDescription": "Ayek yanggen si Watch siña ha na'ånña' i hinengge rekomendasion gi entalo bisita siha. Siña un cambia este kada tiempo.",
+    "essentialCookies": "Cookie nesesåt siha",
+    "essentialDescription": "Seguridåt, playback, inafan pribasidåt, yan attribution para petision rekomendasion.",
+    "alwaysActive": "Siempre aktibu",
+    "personalization": "Personalizasion",
+    "personalizationDescription": "Na'ånña' i limitado na hinengge siha gi entalo bisita siha. Yanggen un apaga este, i rekomendasion sigun gi contexto siempre guaha.",
+    "erasurePending": "I diniliti perfil ti ha fina'na'guaha guini. I rekomendasion sigun gi contexto aktibuña måpos.",
+    "cancel": "Kansela",
+    "saveChoices": "Såttba i inafan siha",
+    "saving": "Manasåttba…",
+    "loadError": "Ti siña ma'karga i inafan-mu. Lao siña ha' un ayek guini gi papa'.",
+    "grantError": "Ti siña ma'aktiba i personalizasion. I nesesåt ha' siempre guaha.",
+    "saveError": "Ti siña ma'såttba i inafan-mu. Pot fabot, chule' fanu nuebu."
   }
 }

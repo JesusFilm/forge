@@ -43,7 +43,9 @@ type ScrubberProps = {
 
 const THUMB = 14
 const TRACK_HEIGHT = 3
-const HIT_HEIGHT = 44
+/** The transparent grab area's height. Exported so the caption above it
+ *  can clear the TOUCH target, not just the thin visible track. */
+export const SCRUBBER_HIT_HEIGHT = 44
 
 /**
  * Draggable seek bar (built-in PanResponder — gesture-handler is forbidden under Expo Go). Position uses an
@@ -259,7 +261,7 @@ const styles = StyleSheet.create({
   // Tall (44px), transparent hit area for an easy, accessible grab; the visible
   // track is thin and vertically centered within it.
   hitArea: {
-    height: HIT_HEIGHT,
+    height: SCRUBBER_HIT_HEIGHT,
     justifyContent: "center",
   },
   hitAreaBottom: {
@@ -285,13 +287,13 @@ const styles = StyleSheet.create({
     borderRadius: THUMB / 2,
     backgroundColor: ACCENT,
     // Vertically center on the track; horizontally center on the position.
-    top: (HIT_HEIGHT - THUMB) / 2,
+    top: (SCRUBBER_HIT_HEIGHT - THUMB) / 2,
     left: 0,
     marginLeft: -THUMB / 2,
   },
   // Centered on a bottom-aligned track. The track touches the player's edge, so
   // the lower half draws past it — the caller must not clip its overflow.
   thumbBottom: {
-    top: HIT_HEIGHT - TRACK_HEIGHT / 2 - THUMB / 2,
+    top: SCRUBBER_HIT_HEIGHT - TRACK_HEIGHT / 2 - THUMB / 2,
   },
 })

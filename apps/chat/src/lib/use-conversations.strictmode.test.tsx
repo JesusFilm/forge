@@ -150,4 +150,70 @@ describe("useConversations under dev StrictMode", () => {
     expect(view.result.current.activeConversation.messages).toHaveLength(0)
     expect(view.result.current.draft).toBe("")
   })
+
+  // feat-450: the mount cycle deactivates and re-activates the SAME session;
+  // the re-armed instance must still rename normally with no stuck slot and
+  // no unhandled rejection (the mid-flight abort is pinned in the session suite).
+  it("leaves no rename slot stuck across the cycle and renames normally afterwards", async () => {
+    const renameCalls: RequestInit[] = []
+    const fetchMock = vi.fn().mockImplementation((url, init?: RequestInit) => {
+      if (String(url) === "/api/history/list") {
+        return Promise.resolve(
+          jsonRes(200, {
+            threads: [
+              {
+                id: "thread-alpha",
+                title: "Alpha thread",
+                updatedAt: "2026-07-12T08:00:00.000Z",
+              },
+            ],
+            page: 0,
+            perPage: 20,
+            total: 1,
+            hasMore: false,
+          }),
+        )
+      }
+      if (String(url) === "/api/history/rename") {
+        renameCalls.push(init ?? {})
+        const { title } = JSON.parse(String(init?.body)) as { title: string }
+        return Promise.resolve(jsonRes(200, { ok: true, title }))
+      }
+      return Promise.reject(new Error("unexpected fetch"))
+    })
+    vi.stubGlobal("fetch", fetchMock)
+    const unhandled: unknown[] = []
+    const onUnhandled = (reason: unknown) => unhandled.push(reason)
+    process.on("unhandledRejection", onUnhandled)
+    try {
+      const view = renderHook(() => useConversations(true), strict)
+      await waitFor(() =>
+        expect(view.result.current.conversations.map((c) => c.title)).toContain(
+          "Alpha thread",
+        ),
+      )
+      // The cycle already ran at mount. Deactivate mid-rename by unmounting
+      // is a REAL unmount (fresh instance next time), so exercise the seam
+      // the cycle uses: rename, then rename again after the settled result.
+      let outcome: unknown
+      await act(async () => {
+        outcome = await view.result.current.renameConversation(
+          "thread-alpha",
+          "Renamed alpha",
+        )
+      })
+      expect(outcome).toEqual({ ok: true })
+      expect(view.result.current.renamingIds.size).toBe(0)
+      expect(
+        view.result.current.conversations.find((c) => c.id === "thread-alpha")
+          ?.title,
+      ).toBe("Renamed alpha")
+      expect(renameCalls).toHaveLength(1)
+      expect((renameCalls[0]!.signal as AbortSignal).aborted).toBe(false)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(unhandled).toEqual([])
+    } finally {
+      process.off("unhandledRejection", onUnhandled)
+    }
+  })
 })

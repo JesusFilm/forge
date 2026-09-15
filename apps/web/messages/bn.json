@@ -180,7 +180,8 @@
     "changeAudioLanguage": "অডিও ভাষা পরিবর্তন করুন",
     "home": "JesusFilm হোম",
     "closeSearch": "সার্চ বন্ধ করুন",
-    "submitSearch": "সার্চ করুন"
+    "submitSearch": "সার্চ করুন",
+    "library": "লাইব্রেরি"
   },
   "SearchOverlay": {
     "dialogLabel": "ভিডিও সার্চ ও ব্রাউজ করুন",
@@ -283,6 +284,7 @@
     "sports": "খেলাধুলা",
     "collections": "সংকলন",
     "subtitlesOnly": "শুধু সাবটাইটেল",
+    "backToTop": "উপরে ফিরে যান",
     "newlyAdded": "নতুন যোগ করা",
     "newVideosTitle": "{language} ভাষায় নতুন খ্রিস্টীয় ভিডিও",
     "newestFirst": "সর্বশেষ আগে",
@@ -313,7 +315,21 @@
     "standaloneVideos": "স্বতন্ত্র ভিডিও",
     "videosFromCollection": "{collection} থেকে ভিডিও।",
     "standaloneDescription": "এই ভাষার স্বতন্ত্র ভিডিও।",
-    "openCollection": "সংকলন খুলুন"
+    "openCollection": "সংকলন খুলুন",
+    "filters": "ফিল্টার",
+    "filterLength": "দৈর্ঘ্য",
+    "filterLength_under5": "৫ মিনিটের কম",
+    "filterLength_5to10": "৫-১০ মিনিট",
+    "filterLength_10to30": "১০-৩০ মিনিট",
+    "filterLength_over30": "৩০ মিনিটের বেশি",
+    "filterType": "ধরন",
+    "clearFilters": "ফিল্টার মুছুন",
+    "filterResults": "{total} টির মধ্যে {count} টি দেখানো হচ্ছে",
+    "noFilterResults": "এই ফিল্টারগুলোর সাথে কোনো ভিডিও মেলে না। একটি সরিয়ে দেখুন।",
+    "filterAdded": "যোগ করা হয়েছে",
+    "filterAdded_60d": "শেষ ৬০ দিন",
+    "filterAdded_6m": "শেষ ৬ মাস",
+    "filterAdded_12m": "শেষ ১২ মাস"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project দেখুন",
@@ -327,7 +343,8 @@
     "nextVideoPreview": "পরের ভিডিওর প্রিভিউ",
     "featured": "বৈশিষ্ট্যপূর্ণ",
     "mediaCollection": "মিডিয়া সংগ্রহ",
-    "scrollToVideo": "{title} ভিডিওতে স্ক্রল করুন"
+    "scrollToVideo": "{title} ভিডিওতে স্ক্রল করুন",
+    "forYou": "আপনার জন্য"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "ভাষাসমূহ",
@@ -446,7 +463,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
       "openSupportForm": "Open support form"
     }
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "স্বল্পদৈর্ঘ্য চলচ্চিত্র দেখুন",
-    "actions": {
-      "joinUs": "আমাদের সঙ্গে যোগ দিন",
-      "shareMission": "আমাদের মিশনে অংশ নিন"
-    },
-    "welcomeStart": {
-      "label": "বিশ্বাস ও শাস্ত্র",
-      "title": "আজকের ভিডিও বাছাই",
-      "description": "অনুপ্রেরণা দিতে, চ্যালেঞ্জ জানাতে, এবং ভাবনাকে জাগিয়ে তুলতে আমাদের লাইব্রেরির বিশ্বাসকেন্দ্রিক ভিডিও কনটেন্ট।"
-    },
-    "welcomeMorning": {
-      "label": "সকালের অনুপ্রেরণা",
-      "title": "সুপ্রভাত! আজকের বাইবেলের মুহূর্তগুলো অপেক্ষা করছে।",
-      "description": "উৎসাহব্যঞ্জক বাইবেলের মুহূর্ত দিয়ে দিন শুরু করুন, যা আপনাকে অনুপ্রাণিত ও উদ্দীপিত করতে তৈরি।"
-    },
-    "welcomeAfternoon": {
-      "label": "দুপুরের অনুপ্রেরণা",
-      "title": "শুভ দুপুর! আপনার দিনের জন্য বাইবেলের মুহূর্ত।",
-      "description": "দুপুরের বিরতিতে বা দিনের পরের অংশে অনুপ্রেরণা পেতে উপযোগী উৎসাহজনক বাইবেল কনটেন্ট।"
-    },
-    "welcomeEvening": {
-      "label": "সন্ধ্যার অনুপ্রেরণা",
-      "title": "শুভ সন্ধ্যা! বাইবেলের মুহূর্ত দিয়ে দিন শেষ করুন।",
-      "description": "দিন শেষের সময় ভাবনা ও সান্ত্বনা পেতে শান্ত বাইবেলের মুহূর্ত।"
-    },
-    "joinUs": {
-      "label": "আমাদের সঙ্গে যোগ দিন",
-      "title": "কোটি কোটি মানুষ খুঁজছে",
-      "description": "ফসল প্রস্তুত। ডিজিটাল মিডিয়া ব্যবহার করে বিশ্বের কাছে সুসমাচার ভাগ করে নিতে আমাদের সঙ্গে যোগ দিন।"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "চলুন একসঙ্গে এগোই",
-      "title": "যিশুর গল্প, একসাথে বলা",
-      "description": "যাতে তারা যেখানে আছে সেখানেই, নিজেদের ভাষায় যিশুর ভালোবাসা শুনতে ও দেখতে পারে।"
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% মিল",
     "none": "এই ভাষায় এই ভিডিওটির জন্য কোনো সুপারিশ পাওয়া যায়নি।"
@@ -744,5 +723,28 @@
     "languageVersionLabel": "অডিও ভাষা",
     "selectLanguageVersion": "একটি ভাষার সংস্করণ বেছে নিন",
     "watchSelectedVersion": "নির্বাচিত সংস্করণটি দেখুন"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "কুকি পছন্দসমূহ",
+    "bannerTitle": "আপনার গোপনীয়তার পছন্দসমূহ",
+    "bannerDescription": "প্রয়োজনীয় কুকি Watch-কে নিরাপদ ও সচল রাখে। আপনার অনুমতিতে, একটি ঐচ্ছিক first-party কুকি ভিজিটগুলোর মধ্যে আপনার আগ্রহ মনে রেখে সুপারিশগুলোকে ব্যক্তিগতকৃত করতে পারে। যেকোনো অবস্থাতেই প্রাসঙ্গিক সুপারিশ পাওয়া যাবে।",
+    "acceptAll": "সব গ্রহণ করুন",
+    "essentialOnly": "শুধু প্রয়োজনীয়",
+    "manageChoices": "পছন্দসমূহ পরিচালনা করুন",
+    "savingChoice": "কুকি পছন্দ সংরক্ষণ করা হচ্ছে",
+    "settings": "কুকি সেটিংস",
+    "settingsDescription": "Watch ভিজিটগুলোর মধ্যে সুপারিশের আগ্রহ মনে রাখতে পারবে কি না, তা বেছে নিন। আপনি যেকোনো সময় এটি পরিবর্তন করতে পারেন।",
+    "essentialCookies": "প্রয়োজনীয় কুকি",
+    "essentialDescription": "নিরাপত্তা, প্লেব্যাক, গোপনীয়তার পছন্দ এবং সুপারিশের অনুরোধের উৎস-সংক্রান্ত তথ্য।",
+    "alwaysActive": "সবসময় সক্রিয়",
+    "personalization": "ব্যক্তিগতকরণ",
+    "personalizationDescription": "ভিজিটগুলোর মধ্যে সীমিত আগ্রহ মনে রাখুন। এটি বন্ধ করলে প্রাসঙ্গিক সুপারিশ পাওয়া যাবে।",
+    "erasurePending": "প্রোফাইল মুছে ফেলার প্রক্রিয়া চলমান। প্রাসঙ্গিক সুপারিশ ইতিমধ্যেই সক্রিয় আছে।",
+    "cancel": "বাতিল",
+    "saveChoices": "পছন্দসমূহ সংরক্ষণ করুন",
+    "saving": "সংরক্ষণ করা হচ্ছে…",
+    "loadError": "আপনার পছন্দ লোড করা যায়নি। তবুও আপনি নিচে পছন্দ করতে পারেন।",
+    "grantError": "ব্যক্তিগতকরণ চালু করা যায়নি। শুধু প্রয়োজনীয় বিকল্পটি এখনও উপলভ্য আছে।",
+    "saveError": "আপনার পছন্দ সংরক্ষণ করা যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।"
   }
 }

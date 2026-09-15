@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio language kɛ",
     "home": "JesusFilm sa",
     "closeSearch": "Search mɛ",
-    "submitSearch": "Search kɛ"
+    "submitSearch": "Search kɛ",
+    "library": "Kaz liv"
   },
   "SearchOverlay": {
     "dialogLabel": "Video search o browse kɛ",
@@ -467,6 +468,7 @@
     "sports": "Sports kɛŋ",
     "collections": "Collections kɛŋ",
     "subtitlesOnly": "Subtitles taŋ",
+    "backToTop": "Tounen anlè",
     "newlyAdded": "A add new",
     "newVideosTitle": "Christian videos dɔɔ in {language}",
     "newestFirst": "New first",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Standalone videos kɛŋ",
     "videosFromCollection": "Videos {collection} te.",
     "standaloneDescription": "Language nin te standalone videos.",
-    "openCollection": "Collection fɛmbu"
+    "openCollection": "Collection fɛmbu",
+    "filters": "Filt",
+    "filterLength": "Longè",
+    "filterLength_under5": "Mwens ki 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Plis ki 30 min",
+    "filterType": "Kalité",
+    "clearFilters": "Efasé filt",
+    "filterResults": "{count} asou {total} montré",
+    "noFilterResults": "Pa ni videyo ki kòresponn ba filt sala. Éséyé rétiré yonn.",
+    "filterAdded": "Ajouté",
+    "filterAdded_60d": "60 dènyé jou",
+    "filterAdded_6m": "6 dènyé mwa",
+    "filterAdded_12m": "12 dènyé mwa"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Watch sa",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Video preview nyɛŋ",
     "nextVideoPreview": "Video preview kɛrɛ",
     "mediaCollection": "ಮೀಡಿಯಾ ಸಂಗ್ರಹ",
-    "scrollToVideo": "{title} ವಿಡಿಯೋಗೆ ಸ್ಕ್ರೋಲ್ ಮಾಡಿ"
+    "scrollToVideo": "{title} ವಿಡಿಯೋಗೆ ಸ್ಕ್ರೋಲ್ ಮಾಡಿ",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project sa",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Watch te kɛrɛ",
     "browseVideos": "Video dɔɔ browse kɛ"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "ಕಿರುಚಿತ್ರ ನೋಡಿ",
-    "actions": {
-      "joinUs": "ನಮ್ಮೊಂದಿಗೆ ಸೇರಿ",
-      "shareMission": "ನಮ್ಮ ಧ್ಯೇಯದಲ್ಲಿ ಪಾಲುಗೊಳ್ಳಿ"
-    },
-    "welcomeStart": {
-      "label": "ನಂಬಿಕೆ ಮತ್ತು ಶಾಸ್ತ್ರ",
-      "title": "ಇಂದಿನ ವಿಡಿಯೋ ಆಯ್ಕೆಗಳು",
-      "description": "ಪ್ರೇರಣೆ, ಸವಾಲು ಮತ್ತು ಚಿಂತನೆಗೆ ದಾರಿ ಮಾಡುವ ನಮ್ಮ ಸಂಗ್ರಹದ ನಂಬಿಕೆ-ಕೇಂದ್ರಿತ ವಿಡಿಯೋ ವಿಷಯ."
-    },
-    "welcomeMorning": {
-      "label": "ಬೆಳಗಿನ ಪ್ರೇರಣೆ",
-      "title": "ಶುಭೋದಯ! ಇಂದಿನ ಬೈಬಲ್ ಕ್ಷಣಗಳು ನಿಮ್ಮನ್ನು ಕಾಯುತ್ತಿವೆ.",
-      "description": "ನಿಮ್ಮ ದಿನವನ್ನು ಪ್ರೋತ್ಸಾಹಕಾರಿ ಬೈಬಲ್ ಕ್ಷಣಗಳಿಂದ ಆರಂಭಿಸಿ; ಅವು ನಿಮ್ಮ ಆತ್ಮವನ್ನು ಉನ್ನತಗೊಳಿಸಲು ರೂಪಿಸಲಾಗಿದೆ."
-    },
-    "welcomeAfternoon": {
-      "label": "ಮಧ್ಯಾಹ್ನದ ಪ್ರೇರಣೆ",
-      "title": "ಶುಭ ಮಧ್ಯಾಹ್ನ! ನಿಮ್ಮ ದಿನಕ್ಕೆ ಬೈಬಲ್ ಕ್ಷಣಗಳು.",
-      "description": "ಮಧ್ಯಾಹ್ನದ ವಿರಾಮಕ್ಕೆ ಅಥವಾ ಮುಂದುವರಿದ ಪ್ರೇರಣೆಗೆ ಸೂಕ್ತವಾದ ಪ್ರೋತ್ಸಾಹಕಾರಿ ಬೈಬಲ್ ವಿಷಯ."
-    },
-    "welcomeEvening": {
-      "label": "ಸಂಜೆಯ ಪ್ರೇರಣೆ",
-      "title": "ಶುಭ ಸಂಜೆ! ಬೈಬಲ್ ಕ್ಷಣಗಳೊಂದಿಗೆ ವಿಶ್ರಾಂತಿ ಪಡೆಯಿರಿ.",
-      "description": "ನಿಮ್ಮ ದಿನ ಮುಕ್ತಾಯವಾಗುವಾಗ ಚಿಂತಿಸಲು ಮತ್ತು ಸಮಾಧಾನ ಪಡೆಯಲು ಸಹಾಯಕವಾದ ಶಾಂತ ಬೈಬಲ್ ಕ್ಷಣಗಳು."
-    },
-    "joinUs": {
-      "label": "ನಮ್ಮೊಂದಿಗೆ ಸೇರಿ",
-      "title": "ಕೋಟ್ಯಂತರ ಜನರು ಹುಡುಕುತ್ತಿದ್ದಾರೆ",
-      "description": "ಬೆಳೆ ಈಗಿದೆ. ಡಿಜಿಟಲ್ ಮೀಡಿಯಾ ಬಳಸಿ ವಿಶ್ವಕ್ಕೆ ಸುವಾರ್ತೆಯನ್ನು ಹಂಚುವಲ್ಲಿ ನಮ್ಮೊಂದಿಗೆ ಸೇರಿ."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "ಒಟ್ಟಾಗಿ ಸಾಗೋಣ",
-      "title": "ಯೇಸುವಿನ ಕಥೆಯನ್ನು ಒಟ್ಟಾಗಿ ಹೇಳುವುದು",
-      "description": "ಅವರು ಇರುವಲ್ಲೇ, ಅವರದೇ ಭಾಷೆಯಲ್ಲಿ ಯೇಸುವಿನ ಪ್ರೀತಿ ಕೇಳಿ ಮತ್ತು ನೋಡಿ ಅರಿಯುವಂತೆ."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% a match",
     "none": "Video nin te recommendation te sɔrɔ language nin te."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Audio language i",
     "selectLanguageVersion": "Language version dɔɔ",
     "watchSelectedVersion": "Version dɔɔ watch kɛ"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Pilixis yi cookie",
+    "bannerTitle": "Pilixis yi sutura maa",
+    "bannerDescription": "Cookie yi fanang Watch ka to a salama ni ka ligi. Si i yabi, cookie buy maŋa ka faa i baŋiriyu foti fu i toŋe yiremaŋ sene-sene. Nibandiyu yi xaalis maŋa na to tɛ fo.",
+    "acceptAll": "Yabi bee",
+    "essentialOnly": "Fanang yi to ligi domaa",
+    "manageChoices": "Tiya pilixis",
+    "savingChoice": "Ka sigi pilixis yi cookie",
+    "settings": "Nadɔŋ yi cookie",
+    "settingsDescription": "Suŋo ndi Watch nataa ka toŋe i baŋiriyu fu yiremaŋ sene-sene. I nataa ka bɛti yo waati bee.",
+    "essentialCookies": "Cookie yi to ligi",
+    "essentialDescription": "Salama, ka tala video, pilixis yi sutura, ni ka dɔŋ ndixandaaru yi yiremaŋ.",
+    "alwaysActive": "A to ligi waati bee",
+    "personalization": "Ka toŋe fu i domaa",
+    "personalizationDescription": "Toŋe baŋiriyu yi dafa fu i yiremaŋ sene-sene. Si i dafi yo, yiremaŋ yi xaalis na to tɛ.",
+    "erasurePending": "Faraŋ i profile ka kɛs maŋ. Yiremaŋ yi xaalis a ligi tia.",
+    "cancel": "Tina",
+    "saveChoices": "Sigi pilixis",
+    "saving": "Ka sigi…",
+    "loadError": "A manaa ka loodi i pilixis. I nataa ka suŋo yi ganna le.",
+    "grantError": "A manaa ka da personalization. Fanang yi to ligi domaa na to tɛ.",
+    "saveError": "A manaa ka sigi i pilixis. I yandi ka fuŋta fan."
   }
 }

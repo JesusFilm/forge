@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Veisautaka na vagalalataka ni domo",
     "home": "Tabana levu ni JesusFilm",
     "closeSearch": "Tauri na vakasaqaqara",
-    "submitSearch": "Vakasaqara"
+    "submitSearch": "Vakasaqara",
+    "library": "Vale ni ivola"
   },
   "SearchOverlay": {
     "dialogLabel": "Vakasaqara ka vakadikeva na vidio",
@@ -467,6 +468,7 @@
     "sports": "Tadrava",
     "collections": "Veikau",
     "subtitlesOnly": "Subtitles ga",
+    "backToTop": "Lesu ki cake",
     "newlyAdded": "Sa qai vakuri wale ga",
     "newVideosTitle": "Na vidio Vakarisito vou ena {language}",
     "newestFirst": "Na vou taumada",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Vidio duadua",
     "videosFromCollection": "Vidio mai na {collection}.",
     "standaloneDescription": "Na vidio duadua ena vosa oqo.",
-    "openCollection": "Dolava na collection"
+    "openCollection": "Dolava na collection",
+    "filters": "iWase",
+    "filterLength": "Balavu",
+    "filterLength_under5": "Sivia na 5 miniti",
+    "filterLength_5to10": "5-10 miniti",
+    "filterLength_10to30": "10-30 miniti",
+    "filterLength_over30": "Sivia na 30 miniti",
+    "filterType": "Mataqali",
+    "clearFilters": "Bokoca na iwase",
+    "filterResults": "{count} mai na {total} e vakaraitaki",
+    "noFilterResults": "Sega ni dua na vidio e salavata kei na iwase oqo. Tovolea mo kauta tani e dua.",
+    "filterAdded": "Kuria",
+    "filterAdded_60d": "Na 60 na siga sa oti",
+    "filterAdded_6m": "Na 6 na vula sa oti",
+    "filterAdded_12m": "Na 12 na vula sa oti"
   },
   "WatchHome": {
     "pageTitle": "Watch ni Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Preview ni vidio e liu",
     "nextVideoPreview": "Preview ni vidio e tarava",
     "mediaCollection": "Veikau ni media",
-    "scrollToVideo": "Lako ki na vidio {title}"
+    "scrollToVideo": "Lako ki na vidio {title}",
+    "forYou": "Me baleti iko"
   },
   "WatchFooter": {
     "home": "Tabana levu ni Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Lesu tale ki na Watch",
     "browseVideos": "Vakadikeva na vidio"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Raica na Vidio Lailai",
-    "actions": {
-      "joinUs": "Mai vata kei keitou",
-      "shareMission": "Veitokoni ena neitou misioni"
-    },
-    "welcomeStart": {
-      "label": "Vakabauta kei na iVola Tabu",
-      "title": "Na Vidio Digitaki Nikua",
-      "description": "Na itukutuku ni vidio e vakatokai ena vakabauta mai na neitou veikau me vakauqeti, vakatovolei, ka vakavurea na vakasama."
-    },
-    "welcomeMorning": {
-      "label": "Veivakauqeti ena mataka",
-      "title": "Ni sa mataka vinaka! Sa waraki iko na veika ni iVolatabu ni siga nikua.",
-      "description": "Tekivu na nomu siga ena veika ni iVolatabu era vakauqeti ka vakaukauwataki iko."
-    },
-    "welcomeAfternoon": {
-      "label": "Veivakauqeti ena yakavi",
-      "title": "Ni sa yalovinaka na yakavi! Veika ni iVolatabu me baleta na nomu siga.",
-      "description": "Na itukutuku ni iVolatabu e vakauqeti, e ganita vinaka na nomu vakacegu ena yakavi se me tomani kina na veivakauqeti."
-    },
-    "welcomeEvening": {
-      "label": "Veivakauqeti ena bogi",
-      "title": "Ni sa bogi vinaka! Vakacegu vata kei na veika ni iVolatabu.",
-      "description": "Na veika ni iVolatabu e malua ka vakacegu me vukei iko mo vakasamataka ka kunea na vakacegu ni sa cava na siga."
-    },
-    "joinUs": {
-      "label": "Mai vata kei keitou",
-      "title": "Era vakasaqarai tiko na veimama bilioni",
-      "description": "Sa yaco mai na tatamusuki. Mai vata kei keitou ena noda wasea na kosipeli kei na vuravura ena mekasini vakalivaliva."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Me da lako vata",
-      "title": "Talanoa ni bula nei Jisu, vata",
-      "description": "Me ra rogoca ka raica kina na loloma nei Jisu ena nodra vosa ga, ena vanua era tiko kina."
-    }
-  },
   "VideoRecommendations": {
     "match": "Veiganiti ena {percent}%",
     "none": "E sega ni kunei e dua na vidio e vakaturi me baleta na vidio oqo ena vosa oqo."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Vosa ni vakarorogo",
     "selectLanguageVersion": "Digitaka e dua na mataqali vosa",
     "watchSelectedVersion": "Sarava na mataqali sa digitaki"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Digidigi ni cookie",
+    "bannerTitle": "Nomu digidigi ni taqomaki vakaitaukei",
+    "bannerDescription": "Na cookie bibi e maroroya me taqomaki qai cakacaka tiko na Watch. Kevaka o vakadonuya, e dua na cookie digitaki ni matai ni tabana ena rawa ni nanuma na ka o taleitaka ena veisiko eso me vakataki kina na vakatutu vei iko. Na vakatutu vakaivakarau era se tiko ga se cava ga nomu digidigi.",
+    "acceptAll": "Ciqoma kece",
+    "essentialOnly": "Na ka bibi walega",
+    "manageChoices": "Lewena na digidigi",
+    "savingChoice": "Sa maroroi tiko na digidigi ni cookie",
+    "settings": "iVakarautaki ni cookie",
+    "settingsDescription": "Digitaka kevaka ena rawa vei Watch me nanuma na ka o taleitaka ena vakatutu ena veisiko eso. O rawa ni veisautaka qo ena dua ga na gauna.",
+    "essentialCookies": "Cookie bibi",
+    "essentialDescription": "Taqomaki, sarasara ni vidio, digidigi ni taqomaki vakaitaukei, kei na kena kilai na kerekere ni vakatutu.",
+    "alwaysActive": "Cakacaka tiko ga",
+    "personalization": "Vakataki vakatamata",
+    "personalizationDescription": "Nanuma na ka o dau taleitaka ena veisiko eso. Kevaka o bokoca oqo, ena se tiko ga na vakatutu vakaivakarau.",
+    "erasurePending": "Sa waraki tiko na bokoci ni porofaili. Sa cakacaka tiko qo na vakatutu vakaivakarau.",
+    "cancel": "Bokoca",
+    "saveChoices": "Maroroya na digidigi",
+    "saving": "Sa maroroi tiko…",
+    "loadError": "A sega ni rawa ni lavaki nomu digidigi. Ia o rawa tiko ga ni digitaka e ra.",
+    "grantError": "A sega ni rawa ni vakavuna na vakataki vakatamata. Na ka bibi walega e se rawa tiko ga.",
+    "saveError": "A sega ni rawa ni maroroi nomu digidigi. Yalovinaka tovolea tale."
   }
 }

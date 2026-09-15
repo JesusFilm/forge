@@ -163,6 +163,17 @@ function expectSolidWhiteInteractionFrame(outline: HTMLElement | null) {
   expect(outlineClasses).not.toContain("landscape")
 }
 
+/**
+ * Card hrefs here are BASE-PATH-RELATIVE on purpose. `next/link` prepends the
+ * configured `/watch` basePath itself, and `__NEXT_ROUTER_BASEPATH` is unset
+ * under vitest, so the rendered attribute has no prefix. Re-adding `/watch` to
+ * these expectations would mean hand-prefixing in the component again, which
+ * renders `/watch/watch/...` in production.
+ *
+ * The production URL is pinned separately in
+ * `MediaCollection.basepath.test.tsx`, which sets the basePath env before the
+ * module graph loads.
+ */
 describe("MediaCollection VideoCard href", () => {
   it("keeps authored carousel callers on the existing default snap behavior", () => {
     act(() => {
@@ -285,12 +296,12 @@ describe("MediaCollection VideoCard href", () => {
 
     expect(
       container.querySelector<HTMLAnchorElement>(
-        "a[href='/watch/jesus.html/spanish-castilian.html']",
+        "a[href='/jesus.html/spanish-castilian.html']",
       ),
     ).not.toBeNull()
     expect(
       container.querySelector<HTMLAnchorElement>(
-        "a[href='/watch/jesus.html/english.html']",
+        "a[href='/jesus.html/english.html']",
       ),
     ).toBeNull()
   })
@@ -315,7 +326,7 @@ describe("MediaCollection VideoCard href", () => {
 
     expect(
       container.querySelector<HTMLAnchorElement>(
-        "a[href='/watch/jesus.html/spanish-castilian.html']",
+        "a[href='/jesus.html/spanish-castilian.html']",
       ),
     ).not.toBeNull()
   })
@@ -362,25 +373,25 @@ describe("MediaCollection VideoCard href", () => {
   it.each([
     {
       variant: "grid",
-      expectedSlideWidth: "auto-cols-[56%]",
+      expectedSlideWidth: "auto-cols-[72%]",
       expectedCardAspect: "aspect-video",
     },
     {
       variant: "collection",
-      expectedSlideWidth: "auto-cols-[34%]",
+      expectedSlideWidth: "auto-cols-[46%]",
       expectedCardAspect: "aspect-[2/3]",
       expectedDesktopColumns: "md:grid-cols-4",
     },
     {
       variant: "hero",
-      expectedSlideWidth: "auto-cols-[56%]",
+      expectedSlideWidth: "auto-cols-[72%]",
       expectedCardAspect: "aspect-video",
       expectedDesktopColumns: "md:grid-cols-2",
       expectedDesktopGap: "md:gap-5",
     },
     {
       variant: "player",
-      expectedSlideWidth: "auto-cols-[56%]",
+      expectedSlideWidth: "auto-cols-[72%]",
       expectedCardAspect: "aspect-video",
       expectedDesktopColumns: "md:grid-cols-2",
       expectedDesktopGap: "md:gap-5",
@@ -496,13 +507,17 @@ describe("MediaCollection VideoCard href", () => {
     expect(frame?.getAttribute("class")).toContain("md:min-h-[10rem]")
     expect(copy?.getAttribute("class")).toContain("px-2.5")
     expect(copy?.getAttribute("class")).toContain("md:px-4")
-    expect(label?.getAttribute("class")).toContain("text-[10px]")
-    expect(label?.getAttribute("class")).toContain("sm:text-xs")
-    expect(title?.getAttribute("class")).toContain("text-sm")
+    // Phone tier floors card labels at 12px (`text-xs`) and lifts card titles
+    // to 16px (`text-base`); every larger tier is unchanged. The negative pins
+    // are the ones that go red if a sub-12px size comes back.
+    expect(label?.getAttribute("class")).toContain("text-xs")
+    expect(label?.getAttribute("class")).not.toContain("text-[10px]")
+    expect(title?.getAttribute("class")).toContain("text-base")
+    expect(title?.getAttribute("class")).not.toContain("text-sm")
     expect(title?.getAttribute("class")).toContain("md:text-xl")
     expect(itemNumber?.getAttribute("class")).toContain("text-3xl")
     expect(itemNumber?.getAttribute("class")).toContain("md:text-5xl")
-    expect(image?.getAttribute("sizes")).toContain("56vw")
+    expect(image?.getAttribute("sizes")).toContain("72vw")
   })
 
   it("keeps a single non-carousel item full width on mobile", () => {
@@ -801,7 +816,7 @@ describe("MediaCollection VideoCard href", () => {
       'a[data-testid="VideoCard"]',
     )
     expect(link).not.toBeNull()
-    expect(link?.getAttribute("href")).toBe("/watch/the-gospel-of-john.html")
+    expect(link?.getAttribute("href")).toBe("/the-gospel-of-john.html")
   })
 
   it("renders a non-link <div> wrapper when the item has no videoSlug", () => {
@@ -851,7 +866,7 @@ describe("MediaCollection VideoCard href", () => {
     const link = container.querySelector<HTMLAnchorElement>(
       'a[data-testid="VideoCard"]',
     )
-    expect(link?.getAttribute("href")).toBe("/watch/the-gospel-of-luke.html")
+    expect(link?.getAttribute("href")).toBe("/the-gospel-of-luke.html")
   })
 
   it("renders the Admin-resolved linked video title", () => {
@@ -1201,7 +1216,10 @@ describe("MediaCollection VideoCard href", () => {
     )
 
     expect(categoryLabel?.textContent).toBe("New series")
-    expect(categoryLabel?.classList).toContain("text-xs")
+    // Section eyebrow rides the phone tier: 14px on phones, the authored 12px
+    // restored from `sm:` up so every larger tier is unchanged.
+    expect(categoryLabel?.classList).toContain("text-sm")
+    expect(categoryLabel?.classList).toContain("sm:text-xs")
     expect(categoryLabel?.classList).toContain("tracking-eyebrow")
     expect(categoryLabel?.classList).toContain("text-red-100/60")
     expect(categoryLabel?.parentElement).toBe(titleRow)
@@ -1216,7 +1234,9 @@ describe("MediaCollection VideoCard href", () => {
     expect(description?.parentElement).not.toBe(titleRow)
     expect(carousel).not.toBeNull()
     expect(footer).not.toBeNull()
-    expect(footer?.classList).toContain("text-xs")
+    // Footer copy rides the phone tier: 14px on phones, authored 12px from `sm:` up.
+    expect(footer?.classList).toContain("text-sm")
+    expect(footer?.classList).toContain("sm:text-xs")
     expect(footer?.classList).toContain("xl:text-sm")
     expect(supportingTitle?.textContent).toBe("Short supporting title")
     expect(description?.textContent).toBe("Intro copy")
@@ -1439,7 +1459,7 @@ describe("MediaCollection VideoCard href", () => {
     },
   )
 
-  it("uses the authored background color as the media collection tint", () => {
+  it("uses a dark warm-neutral background instead of the authored color", () => {
     act(() => {
       root.render(
         <MediaCollection
@@ -1465,10 +1485,67 @@ describe("MediaCollection VideoCard href", () => {
     const section = container.querySelector<HTMLElement>(
       '[data-testid="media-collection-section"]',
     )
-    expect(section?.style.backgroundColor).toBe("rgb(18, 52, 86)")
+    const tint = container.querySelector<HTMLElement>(
+      '[data-testid="media-collection-tint"]',
+    )
+    expect(section?.style.backgroundColor).toBe("rgb(26, 24, 21)")
+    expect(tint?.style.background).toContain("rgba(26, 24, 21, 0.92)")
+    expect(tint?.style.background).not.toContain("rgb(18, 52, 86)")
     expect(section?.className).toContain("py-10")
     expect(section?.className).toContain("md:py-16")
   })
+
+  it.each(["carousel", "grid"])(
+    "restrains the decorative %s background without desaturating cards",
+    (mediaCollectionVariant) => {
+      act(() => {
+        root.render(
+          <MediaCollection
+            data={makeData({
+              mediaCollectionVariant,
+              itemsSource: "manual",
+              items: [
+                makeManualItem({
+                  imageAsset: {
+                    previewUrl: "https://example.com/episode-one.jpg",
+                  },
+                }),
+              ],
+            })}
+          />,
+        )
+      })
+
+      const defaultBackdrop = container.querySelector<HTMLElement>(
+        '[data-testid="media-collection-default-backdrop"]',
+      )
+      const tint = container.querySelector<HTMLElement>(
+        '[data-testid="media-collection-tint"]',
+      )
+      const card = container.querySelector<HTMLElement>(
+        '[data-testid="VideoCard"]',
+      )
+
+      expect(defaultBackdrop?.className).toContain("saturate-75")
+      expect(defaultBackdrop?.className).toContain("brightness-50")
+      expect(defaultBackdrop?.className).not.toMatch(/saturate-(110|125)/)
+      expect(tint?.className).toContain("saturate-75")
+      expect(tint?.className).toContain("brightness-50")
+      expect(card?.className).not.toContain("saturate-75")
+      expect(card?.className).not.toContain("brightness-50")
+
+      act(() => {
+        card?.focus()
+      })
+
+      const hoverBackdrop = container.querySelector<HTMLElement>(
+        '[data-testid="media-collection-hover-backdrop"]',
+      )
+      expect(hoverBackdrop?.className).toContain("saturate-75")
+      expect(hoverBackdrop?.className).toContain("brightness-50")
+      expect(hoverBackdrop?.className).not.toMatch(/saturate-(110|125)/)
+    },
+  )
 
   it("uses dominant color for the vertical card text scrim, not the whole card", () => {
     act(() => {

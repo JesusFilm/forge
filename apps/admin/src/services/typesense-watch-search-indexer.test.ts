@@ -1,6 +1,13 @@
 import type { PrismaClient } from "@prisma/client"
 import { describe, expect, it, vi } from "vitest"
-import type { TypesenseClient } from "./typesense-client"
+import {
+  ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED,
+  CONTENT_EMBEDDING_CONTRACT_POINTER_ID,
+} from "./content-embedding-contract"
+import type {
+  TypesenseClient,
+  TypesenseCollectionSchema,
+} from "./typesense-client"
 import {
   buildAvailabilityDocuments,
   buildCatalogDocuments,
@@ -37,6 +44,45 @@ function viewerSafeVideo(title: string) {
     images: [],
     children: [],
   }
+}
+
+function rawSqlText(query: unknown): string {
+  return Array.isArray(query)
+    ? query.join(" ")
+    : ((query as { strings?: string[] }).strings?.join(" ") ?? "")
+}
+
+function transcriptCompatibilityQueryResult(
+  query: unknown,
+  contractId: string = ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.id,
+): unknown[] | undefined {
+  const sql = rawSqlText(query)
+  if (
+    sql.includes("FROM content_embedding_contract_pointer") &&
+    sql.includes('AS "contractId"')
+  ) {
+    const contract = ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED
+    return [
+      {
+        pointerId: CONTENT_EMBEDDING_CONTRACT_POINTER_ID,
+        contractId,
+        queryProvider: contract.query.provider,
+        queryModel: contract.query.model,
+        queryNativeDimensions: contract.query.nativeDimensions,
+        queryDimensions: contract.query.dimensions,
+        queryTransformVersion: contract.query.transformVersion,
+        storageProvider: contract.storage.provider,
+        storageModel: contract.storage.model,
+        storageNativeDimensions: contract.storage.nativeDimensions,
+        storageDimensions: contract.storage.dimensions,
+        storageTransformVersion: contract.storage.transformVersion,
+      },
+    ]
+  }
+  if (sql.includes('AS "chunkingVersion"')) {
+    return [{ chunkingVersion: "test-transcript-chunking-v1" }]
+  }
+  return undefined
 }
 
 describe("Typesense Watch Search indexer", () => {
@@ -268,6 +314,7 @@ describe("Typesense Watch Search indexer", () => {
             actionPriority: 1,
           },
         ]),
+        containerLanguagesJson: "[]",
       },
     ])
 
@@ -304,6 +351,9 @@ describe("Typesense Watch Search indexer", () => {
             }),
           },
           $queryRaw: vi.fn(async () => []),
+          watchSearchCuration: {
+            findMany: vi.fn(async () => []),
+          },
         }
         expect(options).toEqual({
           isolationLevel: "RepeatableRead",
@@ -380,14 +430,129 @@ describe("Typesense Watch Search indexer", () => {
     ).rejects.toThrow("batch size must be a positive integer")
   })
 
+  it("publishes PostgreSQL curations before linking the new lexical collection", async () => {
+    const prisma = {
+      video: {
+        findMany: vi.fn(async () => [
+          {
+            ...viewerSafeVideo("Visual Vernacular Intro"),
+            coreId: "13_0-RPGospelIntro",
+          },
+        ]),
+      },
+      $queryRaw: vi.fn(async () => []),
+    } as unknown as PrismaClient
+    const upsertCurationSet = vi.fn(async () => ({ items: [] }))
+    const createCollection = vi.fn(
+      async (_schema: TypesenseCollectionSchema) => ({}),
+    )
+    const deleteCurationSet = vi.fn(async () => undefined)
+    const typesense = {
+      listCollections: vi.fn(async () => [
+        {
+          name: "watch_search_lexical_previous",
+          fields: [],
+          curation_sets: ["watch_search_curations_previous"],
+        },
+        {
+          name: "watch_search_transcripts_active",
+          fields: [{ name: "videoEditionId", type: "string" }],
+        },
+      ]),
+      getAlias: vi.fn(async (alias: string) => ({
+        name: alias,
+        collection_name:
+          alias === TYPESENSE_WATCH_TRANSCRIPT_ALIAS
+            ? "watch_search_transcripts_active"
+            : `${alias}_previous`,
+      })),
+      createCollection,
+      importDocuments: vi.fn(async () => undefined),
+      multiSearch: vi.fn(async () => [
+        { found: 1, out_of: 1, page: 1, search_time_ms: 1, hits: [] },
+        { found: 1, out_of: 1, page: 1, search_time_ms: 1, hits: [] },
+      ]),
+      upsertCurationSet,
+      deleteCurationSet,
+      upsertAlias: vi.fn(async () => ({})),
+      deleteCollection: vi.fn(async () => undefined),
+    } as unknown as TypesenseClient
+
+    const stats = await rebuildTypesenseWatchSearchIndex({
+      prisma,
+      typesense,
+      buildId: "curated-build",
+      loadCurations: async () => [
+        {
+          id: "rescue-project-visual-vernacular-intro",
+          targetVideoCoreId: "13_0-RPGospelIntro",
+          scope: "PUBLISHED_LOCALES",
+          position: 1,
+          enabled: true,
+          aliases: [
+            {
+              id: "rescue-project-en",
+              query: "Rescue Project",
+              normalizedQuery: "rescue project",
+              locale: null,
+              active: true,
+            },
+          ],
+        },
+      ],
+    })
+
+    expect(upsertCurationSet).toHaveBeenCalledWith(
+      "watch_search_curations_curated-build",
+      {
+        items: [
+          expect.objectContaining({
+            rule: expect.objectContaining({
+              query: "rescue project",
+              match: "exact",
+            }),
+            includes: [{ id: "video-1:slug:english", position: 1 }],
+            filter_curated_hits: true,
+          }),
+        ],
+      },
+    )
+    expect(createCollection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "watch_search_lexical_curated-build",
+        curation_sets: ["watch_search_curations_curated-build"],
+      }),
+    )
+    expect(upsertCurationSet.mock.invocationCallOrder[0]).toBeLessThan(
+      createCollection.mock.invocationCallOrder.find(
+        (_order, index) =>
+          createCollection.mock.calls[index]?.[0]?.name ===
+          "watch_search_lexical_curated-build",
+      ) ?? Number.POSITIVE_INFINITY,
+    )
+    expect(deleteCurationSet).toHaveBeenCalledWith(
+      "watch_search_curations_previous",
+    )
+    expect(stats.curationSet).toBe("watch_search_curations_curated-build")
+  })
+
   it("indexes the broad transcript corpus with per-record public visibility", async () => {
     const embeddingText = `[${new Array(TYPESENSE_WATCH_EMBEDDING_DIMENSIONS)
       .fill("0")
       .join(",")}]`
-    const queryRaw = vi
-      .fn()
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
+    // Dispatched on SQL content, not call order: buildCatalogDocuments issues
+    // several raw queries before the transcript batch, so an order-keyed mock
+    // silently feeds transcript rows to whichever query happens to land second.
+    let transcriptBatchesServed = 0
+    const queryRaw = vi.fn(async (query: unknown) => {
+      const sql = rawSqlText(query)
+      const compatibility = transcriptCompatibilityQueryResult(query)
+      if (compatibility) return compatibility
+      if (!sql.includes('AS "publiclyVisible"')) return []
+      // Serve the corpus once; the transcript loader pages until a short batch.
+      if (transcriptBatchesServed > 0) return []
+      transcriptBatchesServed += 1
+      return [
         {
           id: "chunk-private",
           videoId: "video-private",
@@ -410,8 +575,8 @@ describe("Typesense Watch Search indexer", () => {
           embeddingText,
           publiclyVisible: true,
         },
-      ])
-      .mockResolvedValueOnce([])
+      ]
+    })
     const prisma = {
       video: {
         findMany: vi.fn(async () => [
@@ -434,11 +599,17 @@ describe("Typesense Watch Search indexer", () => {
         ]),
       },
       $queryRaw: queryRaw,
+      watchSearchCurrentTranscriptProjection: {
+        findUnique: vi.fn(async () => null),
+        upsert: vi.fn(async ({ create }) => create),
+      },
     } as unknown as PrismaClient
     const typesense = {
       listCollections: vi.fn(async () => []),
       getAlias: vi.fn(async () => undefined),
       createCollection: vi.fn(async () => ({})),
+      upsertCurationSet: vi.fn(async () => ({ items: [] })),
+      deleteCurationSet: vi.fn(async () => undefined),
       importDocuments: vi.fn(async () => undefined),
       upsertAlias: vi.fn(async () => ({})),
     } as unknown as TypesenseClient
@@ -447,12 +618,21 @@ describe("Typesense Watch Search indexer", () => {
       prisma,
       typesense,
       buildId: "broad-corpus-test",
+      loadCurations: async () => [],
     })
 
-    const transcriptSql = (
-      queryRaw.mock.calls[1]?.[0] as unknown as { strings: string[] }
-    ).strings.join(" ")
+    // Matched by content, not call index: buildCatalogDocuments issues several
+    // raw queries (subtitle rows, container descendant languages) before the
+    // transcript batch, and their order is not this assertion's contract.
+    const rawSql = queryRaw.mock.calls.map((call) => rawSqlText(call[0]))
+    const transcriptSql = rawSql.find((sql) =>
+      sql.includes('AS "publiclyVisible"'),
+    )
+    expect(transcriptSql).toBeDefined()
     expect(transcriptSql).toContain('AS "publiclyVisible"')
+    expect(transcriptSql).toContain(
+      "AND NOT ('watch' = ANY(v.restrict_view_platforms))",
+    )
     expect(transcriptSql).not.toMatch(
       /JOIN video v\s+ON v\.id = vt\.video_id\s+AND v\.deleted_at/,
     )
@@ -516,6 +696,8 @@ describe("Typesense Watch Search indexer", () => {
             : `${alias}_previous`,
       })),
       createCollection: vi.fn(async () => ({})),
+      upsertCurationSet: vi.fn(async () => ({ items: [] })),
+      deleteCurationSet: vi.fn(async () => undefined),
       importDocuments: vi.fn(async () => undefined),
       multiSearch: vi.fn(async () => [
         {
@@ -541,6 +723,7 @@ describe("Typesense Watch Search indexer", () => {
       prisma,
       typesense,
       buildId: "metadata-only-test",
+      loadCurations: async () => [],
     })
 
     expect(typesense.createCollection).toHaveBeenCalledTimes(3)
@@ -584,7 +767,19 @@ describe("Typesense Watch Search indexer", () => {
     expect(typesense.deleteCollection).not.toHaveBeenCalledWith(
       "unrelated_collection",
     )
-    expect(prisma.$queryRaw).toHaveBeenCalledTimes(1)
+    // A reuse rebuild reads the catalog's own raw sources — subtitle rows and
+    // container descendant languages — and no transcript batch. The point of
+    // this assertion is that the transcript corpus was NOT re-read, so it
+    // matches on content rather than pinning a call count that grows whenever
+    // the catalog projection gains a source.
+    const reuseSql = vi
+      .mocked(prisma.$queryRaw)
+      .mock.calls.map((call) =>
+        (call[0] as unknown as { strings: string[] }).strings.join(" "),
+      )
+    expect(reuseSql.some((sql) => sql.includes('AS "publiclyVisible"'))).toBe(
+      false,
+    )
   })
 
   it("requires an explicit rebuild when reused transcripts lack edition IDs", async () => {
@@ -611,6 +806,8 @@ describe("Typesense Watch Search indexer", () => {
             : `${alias}_previous`,
       })),
       createCollection: vi.fn(async () => ({})),
+      upsertCurationSet: vi.fn(async () => ({ items: [] })),
+      deleteCurationSet: vi.fn(async () => undefined),
     } as unknown as TypesenseClient
 
     await expect(
@@ -618,6 +815,7 @@ describe("Typesense Watch Search indexer", () => {
         prisma,
         typesense,
         buildId: "missing-edition-id",
+        loadCurations: async () => [],
       }),
     ).rejects.toThrow("rerun with --rebuild-transcripts")
     expect(typesense.createCollection).not.toHaveBeenCalled()
@@ -648,6 +846,8 @@ describe("Typesense Watch Search indexer", () => {
             : `${alias}_previous`,
       })),
       createCollection: vi.fn(async () => ({})),
+      upsertCurationSet: vi.fn(async () => ({ items: [] })),
+      deleteCurationSet: vi.fn(async () => undefined),
       importDocuments: vi.fn(async () => undefined),
       deleteDocumentsByFilter: vi.fn(async () => 0),
       updateDocumentsByFilter: vi.fn(async () => 0),
@@ -687,6 +887,7 @@ describe("Typesense Watch Search indexer", () => {
       prisma,
       typesense,
       buildId: "metadata-hybrid-test",
+      loadCurations: async () => [],
     })
 
     expect(typesense.multiSearch).toHaveBeenCalledWith([
@@ -762,6 +963,8 @@ describe("Typesense Watch Search indexer", () => {
         { found: 1, out_of: 2, page: 1, search_time_ms: 1, hits: [] },
       ]),
       createCollection: vi.fn(async () => ({})),
+      upsertCurationSet: vi.fn(async () => ({ items: [] })),
+      deleteCurationSet: vi.fn(async () => undefined),
       importDocuments: vi.fn(async () => undefined),
       deleteDocumentsByFilter: vi.fn(async () => 0),
       updateDocumentsByFilter: vi.fn(async () => 1),
@@ -773,6 +976,7 @@ describe("Typesense Watch Search indexer", () => {
       prisma,
       typesense,
       buildId: "title-rename",
+      loadCurations: async () => [],
     })
 
     expect(typesense.importDocuments).toHaveBeenCalledWith(
@@ -786,7 +990,14 @@ describe("Typesense Watch Search indexer", () => {
   it("rebuilds transcripts when explicitly requested", async () => {
     const prisma = {
       video: { findMany: vi.fn(async () => []) },
-      $queryRaw: vi.fn(async () => []),
+      $queryRaw: vi.fn(
+        async (query: unknown) =>
+          transcriptCompatibilityQueryResult(query) ?? [],
+      ),
+      watchSearchCurrentTranscriptProjection: {
+        findUnique: vi.fn(async () => null),
+        upsert: vi.fn(async ({ create }) => create),
+      },
     } as unknown as PrismaClient
     const typesense = {
       listCollections: vi.fn(async () => [
@@ -799,6 +1010,8 @@ describe("Typesense Watch Search indexer", () => {
         collection_name: `${alias}_previous`,
       })),
       createCollection: vi.fn(async () => ({})),
+      upsertCurationSet: vi.fn(async () => ({ items: [] })),
+      deleteCurationSet: vi.fn(async () => undefined),
       importDocuments: vi.fn(async () => undefined),
       upsertAlias: vi.fn(async () => ({})),
       deleteCollection: vi.fn(async () => undefined),
@@ -808,6 +1021,7 @@ describe("Typesense Watch Search indexer", () => {
       prisma,
       typesense,
       buildId: "manual-full-test",
+      loadCurations: async () => [],
       transcriptStrategy: "rebuild",
     })
 
@@ -826,6 +1040,73 @@ describe("Typesense Watch Search indexer", () => {
       "watch_search_availability_previous",
       "watch_search_transcripts_previous",
     ])
+  })
+
+  it("pins one transcript contract and aborts before aliases move when compatibility rotates", async () => {
+    const rotatedContractId = `${ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.id}-rotated`
+    let contractReads = 0
+    const queryRaw = vi.fn(async (query: unknown) => {
+      const sql = rawSqlText(query)
+      if (
+        sql.includes("FROM content_embedding_contract_pointer") &&
+        sql.includes('AS "contractId"')
+      ) {
+        contractReads += 1
+        return transcriptCompatibilityQueryResult(
+          query,
+          contractReads === 1
+            ? ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.id
+            : rotatedContractId,
+        )
+      }
+      const compatibility = transcriptCompatibilityQueryResult(query)
+      if (compatibility) return compatibility
+      return []
+    })
+    const prisma = {
+      video: { findMany: vi.fn(async () => []) },
+      $queryRaw: queryRaw,
+    } as unknown as PrismaClient
+    const typesense = {
+      listCollections: vi.fn(async () => []),
+      getAlias: vi.fn(async () => undefined),
+      createCollection: vi.fn(async () => ({})),
+      upsertCurationSet: vi.fn(async () => ({ items: [] })),
+      deleteCurationSet: vi.fn(async () => undefined),
+      importDocuments: vi.fn(async () => undefined),
+      upsertAlias: vi.fn(async () => ({})),
+      deleteCollection: vi.fn(async () => undefined),
+    } as unknown as TypesenseClient
+
+    await expect(
+      rebuildTypesenseWatchSearchIndex({
+        prisma,
+        typesense,
+        buildId: "contract-rotation-test",
+        loadCurations: async () => [],
+        transcriptStrategy: "rebuild",
+      }),
+    ).rejects.toThrow("transcript compatibility changed during rebuild")
+
+    const transcriptQuery = queryRaw.mock.calls
+      .map(
+        ([query]) =>
+          query as unknown as { strings?: string[]; values?: unknown[] },
+      )
+      .find((query) =>
+        query.strings?.join(" ").includes('AS "publiclyVisible"'),
+      )
+    expect(transcriptQuery?.strings?.join(" ")).toContain(
+      "FROM content_embedding_contract contract",
+    )
+    expect(transcriptQuery?.strings?.join(" ")).not.toContain(
+      "content_embedding_contract_pointer pointer",
+    )
+    expect(transcriptQuery?.values).toContain(
+      ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.id,
+    )
+    expect(typesense.upsertAlias).not.toHaveBeenCalled()
+    expect(typesense.deleteCollection).toHaveBeenCalledTimes(4)
   })
 
   it("rolls back the new lexical alias without touching reused transcripts", async () => {
@@ -869,6 +1150,8 @@ describe("Typesense Watch Search indexer", () => {
         },
       ]),
       createCollection: vi.fn(async () => ({})),
+      upsertCurationSet: vi.fn(async () => ({ items: [] })),
+      deleteCurationSet: vi.fn(async () => undefined),
       importDocuments: vi.fn(async () => undefined),
       deleteDocumentsByFilter: vi.fn(async () => 1),
       updateDocumentsByFilter: vi.fn(async () => 1),
@@ -878,6 +1161,12 @@ describe("Typesense Watch Search indexer", () => {
           collection !== `${TYPESENSE_WATCH_CATALOG_ALIAS}_previous`
         ) {
           throw new Error("catalog alias failed")
+        }
+        if (
+          alias === TYPESENSE_WATCH_LEXICAL_ALIAS &&
+          collection === `${TYPESENSE_WATCH_LEXICAL_ALIAS}_previous`
+        ) {
+          throw new Error("lexical alias rollback failed")
         }
       }),
       deleteAlias: vi.fn(async () => undefined),
@@ -889,6 +1178,7 @@ describe("Typesense Watch Search indexer", () => {
         prisma,
         typesense,
         buildId: "failed-hybrid-refresh",
+        loadCurations: async () => [],
       }),
     ).rejects.toThrow("catalog alias failed")
 
@@ -903,6 +1193,10 @@ describe("Typesense Watch Search indexer", () => {
     )
     expect(typesense.deleteDocumentsByFilter).not.toHaveBeenCalled()
     expect(typesense.updateDocumentsByFilter).not.toHaveBeenCalled()
+    expect(typesense.deleteCollection).not.toHaveBeenCalledWith(
+      "watch_search_lexical_failed-hybrid-refresh",
+    )
+    expect(typesense.deleteCurationSet).not.toHaveBeenCalled()
   })
 
   it("rolls back metadata aliases without touching a reused transcript alias", async () => {
@@ -925,6 +1219,8 @@ describe("Typesense Watch Search indexer", () => {
             : `${alias}_previous`,
       })),
       createCollection: vi.fn(async () => ({})),
+      upsertCurationSet: vi.fn(async () => ({ items: [] })),
+      deleteCurationSet: vi.fn(async () => undefined),
       importDocuments: vi.fn(async () => undefined),
       multiSearch: vi.fn(async () => [
         {
@@ -959,6 +1255,7 @@ describe("Typesense Watch Search indexer", () => {
         prisma,
         typesense,
         buildId: "metadata-rollback-test",
+        loadCurations: async () => [],
       }),
     ).rejects.toThrow("catalog alias failed")
 
@@ -975,7 +1272,10 @@ describe("Typesense Watch Search indexer", () => {
   it("restores the first alias when publishing the second alias fails", async () => {
     const prisma = {
       video: { findMany: vi.fn(async () => []) },
-      $queryRaw: vi.fn(async () => []),
+      $queryRaw: vi.fn(
+        async (query: unknown) =>
+          transcriptCompatibilityQueryResult(query) ?? [],
+      ),
     } as unknown as PrismaClient
     const typesense = {
       listCollections: vi.fn(async () => []),
@@ -991,6 +1291,8 @@ describe("Typesense Watch Search indexer", () => {
                 : "catalog_previous",
       })),
       createCollection: vi.fn(async () => ({})),
+      upsertCurationSet: vi.fn(async () => ({ items: [] })),
+      deleteCurationSet: vi.fn(async () => undefined),
       importDocuments: vi.fn(async () => undefined),
       upsertAlias: vi.fn(async (alias: string, collection: string) => {
         if (
@@ -1009,6 +1311,7 @@ describe("Typesense Watch Search indexer", () => {
         prisma,
         typesense,
         buildId: "rollback-test",
+        loadCurations: async () => [],
         transcriptStrategy: "rebuild",
       }),
     ).rejects.toThrow("catalog alias failed")

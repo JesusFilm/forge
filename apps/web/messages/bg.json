@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Промени езика на аудиото",
     "home": "Начална страница на JesusFilm",
     "closeSearch": "Затвори търсенето",
-    "submitSearch": "Търси"
+    "submitSearch": "Търси",
+    "library": "Библиотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Търсене и разглеждане на видеа",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Колекции",
     "subtitlesOnly": "Само субтитри",
+    "backToTop": "Обратно горе",
     "newlyAdded": "Ново добавени",
     "newVideosTitle": "Нови християнски видеа на {language}",
     "newestFirst": "Първо най-новите",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Самостоятелни видеа",
     "videosFromCollection": "Видеа от {collection}.",
     "standaloneDescription": "Самостоятелни видеа на този език.",
-    "openCollection": "Отвори колекцията"
+    "openCollection": "Отвори колекцията",
+    "filters": "Филтри",
+    "filterLength": "Дължина",
+    "filterLength_under5": "Под 5 мин",
+    "filterLength_5to10": "5-10 мин",
+    "filterLength_10to30": "10-30 мин",
+    "filterLength_over30": "Над 30 мин",
+    "filterType": "Тип",
+    "clearFilters": "Изчисти филтрите",
+    "filterResults": "Показани {count} от {total}",
+    "noFilterResults": "Няма видеа, отговарящи на тези филтри. Опитайте да махнете един.",
+    "filterAdded": "Добавено",
+    "filterAdded_60d": "Последните 60 дни",
+    "filterAdded_6m": "Последните 6 месеца",
+    "filterAdded_12m": "Последните 12 месеца"
   },
   "WatchHome": {
     "pageTitle": "Гледайте Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Предишен преглед на видео",
     "nextVideoPreview": "Следващ преглед на видео",
     "mediaCollection": "Медийна колекция",
-    "scrollToVideo": "Превъртете до видеото {title}"
+    "scrollToVideo": "Превъртете до видеото {title}",
+    "forYou": "За вас"
   },
   "WatchFooter": {
     "home": "Начална страница на Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Обратно към Watch",
     "browseVideos": "Разгледай видеа"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Гледайте късометражния филм",
-    "actions": {
-      "joinUs": "Присъединете се",
-      "shareMission": "Участвайте в нашата мисия"
-    },
-    "welcomeStart": {
-      "label": "Вяра и Писание",
-      "title": "Днешните видеопредложения",
-      "description": "Видео съдържание, съсредоточено върху вярата, от нашата библиотека, което вдъхновява, предизвиква и подтиква към размисъл."
-    },
-    "welcomeMorning": {
-      "label": "Утринно вдъхновение",
-      "title": "Добро утро! Днешните библейски моменти ви очакват.",
-      "description": "Започнете деня си с насърчителни библейски моменти, създадени да вдъхновяват и да ви издигат духом."
-    },
-    "welcomeAfternoon": {
-      "label": "Следобедно вдъхновение",
-      "title": "Добър следобед! Библейски моменти за вашия ден.",
-      "description": "Насърчително библейско съдържание, идеално за следобедната ви почивка или за допълнително вдъхновение."
-    },
-    "welcomeEvening": {
-      "label": "Вечерно вдъхновение",
-      "title": "Добър вечер! Отпуснете се с библейски моменти.",
-      "description": "Спокойни библейски моменти, които ще ви помогнат да размислите и да намерите утеха, когато денят ви приключва."
-    },
-    "joinUs": {
-      "label": "Присъединете се",
-      "title": "Милиарди хора търсят",
-      "description": "Жътвата е тук. Присъединете се към нас, докато споделяме евангелието със света чрез дигитални медии."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Нека вървим заедно",
-      "title": "Разказваме историята на Исус заедно",
-      "description": "За да могат да чуят и видят любовта на Исус на своя собствен език, точно там, където са."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% съвпадение",
     "none": "Не са намерени препоръки за това видео на този език."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Език на аудиото",
     "selectLanguageVersion": "Изберете езикова версия",
     "watchSelectedVersion": "Гледайте избраната версия"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Избор за бисквитките",
+    "bannerTitle": "Вашите настройки за поверителност",
+    "bannerDescription": "Необходимите бисквитки поддържат Watch защитен и работещ. С ваше разрешение допълнителна бисквитка от първа страна може да запомня интересите ви между посещенията, за да персонализира препоръките. Контекстуални препоръки са достъпни и в двата случая.",
+    "acceptAll": "Приемане на всички",
+    "essentialOnly": "Само необходимите",
+    "manageChoices": "Управление на избора",
+    "savingChoice": "Запазване на избора за бисквитките",
+    "settings": "Настройки за бисквитките",
+    "settingsDescription": "Изберете дали Watch може да запомня интересите ви за препоръки между посещенията. Можете да промените това по всяко време.",
+    "essentialCookies": "Необходими бисквитки",
+    "essentialDescription": "Сигурност, възпроизвеждане, настройки за поверителност и отчитане на заявките за препоръки.",
+    "alwaysActive": "Винаги активни",
+    "personalization": "Персонализиране",
+    "personalizationDescription": "Запомня ограничени интереси между посещенията. Ако изключите това, контекстуалните препоръки ще останат достъпни.",
+    "erasurePending": "Изтриването на профила е в процес на изпълнение. Контекстуалните препоръки вече са активни.",
+    "cancel": "Отказ",
+    "saveChoices": "Запазване на избора",
+    "saving": "Запазване…",
+    "loadError": "Изборът ви не можа да бъде зареден. Все пак можете да изберете по-долу.",
+    "grantError": "Персонализирането не можа да бъде активирано. Опцията само с необходимите остава налична.",
+    "saveError": "Изборът ви не можа да бъде запазен. Моля, опитайте отново."
   }
 }

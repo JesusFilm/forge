@@ -30,7 +30,7 @@ export default function WatchPageError({
         <button
           type="button"
           onClick={reset}
-          className="rounded-full border border-amber-400 px-4 py-2 text-sm font-semibold text-amber-400 transition hover:bg-amber-400 hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+          className="rounded-full border border-amber-400 px-4 py-2 text-base sm:text-sm font-semibold text-amber-400 transition hover:bg-amber-400 hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
         >
           {t("tryAgain")}
         </button>

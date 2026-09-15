@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио кылсэ воштӥ",
     "home": "JesusFilm шоры",
     "closeSearch": "Уттонэз пыдаты",
-    "submitSearch": "Лахъин"
+    "submitSearch": "Лахъин",
+    "library": "Библиотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоосэз утт да кара",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Калекцыяос",
     "subtitlesOnly": "Тикъе субтитръёс",
+    "backToTop": "Ялун зana",
     "newlyAdded": "Выль ӵемытэм",
     "newVideosTitle": "{language} кылын выль христиан видеоос",
     "newestFirst": "Выльдыз бӧрсьынан",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Тӥндэн видеоос",
     "videosFromCollection": "{collection} кытчысь видеоос.",
     "standaloneDescription": "Тазі кылын тӥндэн видеоос.",
-    "openCollection": "Коллекцияны вуо"
+    "openCollection": "Коллекцияны вуо",
+    "filters": "Ккаккан бансса",
+    "filterLength": "Ттуршуку",
+    "filterLength_under5": "5 минутрая чансса",
+    "filterLength_5to10": "5-10 минут",
+    "filterLength_10to30": "10-30 минут",
+    "filterLength_over30": "30 минутрая гьарта",
+    "filterType": "Жура",
+    "clearFilters": "Ккаккан бансса марцӏ бан",
+    "filterResults": "{total}-рая {count} ккаккан бунни",
+    "noFilterResults": "Ва ккаккан бансса видео дакъар. Ца дуккан бува.",
+    "filterAdded": "Хъирив бувну",
+    "filterAdded_60d": "Ахъирисса 60 кьини",
+    "filterAdded_6m": "Ахъирисса 6 барз",
+    "filterAdded_12m": "Ахъирисса 12 барз"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — кара",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Ӟӧкыт видео preview",
     "nextVideoPreview": "Ӧдӥц видео preview",
     "mediaCollection": "Медиа коллекция",
-    "scrollToVideo": "{title} видео шоры шорыты"
+    "scrollToVideo": "{title} видео шоры шорыты",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project шоры",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Watch шоры ву",
     "browseVideos": "Видеоосэз кара"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Пичи фильм кара",
-    "actions": {
-      "joinUs": "Тӥнъёс",
-      "shareMission": "Миссияме ваньтэ кылдыт"
-    },
-    "welcomeStart": {
-      "label": "Вера но Scripture",
-      "title": "Тулыс видео пӧртэмъёс",
-      "description": "Асьме библиотекаысь вера луон видеоос тӥнъёслы, тӧдъянлы но ойдо кырӟанлы."
-    },
-    "welcomeMorning": {
-      "label": "Тулыс вдохновение",
-      "title": "Сӥзь лу! Вералысьӧн видео моментъёс валэктэм.",
-      "description": "Сӥзь кутсконды вералысь ӟучлысь видео моментъёсымен, соос тӥнъёслы вдохновение но йырсэт келяны кылдытӥсько."
-    },
-    "welcomeAfternoon": {
-      "label": "Ӧдӥс вдохновение",
-      "title": "Ӧдӥс лу! Та дырызлы вералысь видео моментъёс.",
-      "description": "Ӧдӥс тыныд кылдытэм вералысь видео контент, гырись тыныд тыныд шӧдӥське оло азьлань вдохновениея."
-    },
-    "welcomeEvening": {
-      "label": "Шӧрӥс вдохновение",
-      "title": "Шӧрӥс лу! Вера моментъёсын тыныд тынысь.",
-      "description": "Тынысь вера моментъёс, күндызь йыресен сярысь думбыртытӥсько но тыныд тыныш кылдытӥсько."
-    },
-    "joinUs": {
-      "label": "Тӥнъёс",
-      "title": "Биллионъёс утчаско",
-      "description": "Урожай татын. Диджитал медиа пыр инвожо дырмытэ но gospel вань дунъялы кылдытӥсько."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Вандыс кылим",
-      "title": "Jesus тыраныз веран, ваньмыз белән",
-      "description": "Соос асьсэ кылын, асьсэ лулэзын Jesus йыртӥськылэз кылыниське но көрыниське, татын кырӟан их."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% мувофикъ",
     "none": "Тту мазрай тту видеолиз рекомендацияр дакъар."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Аудио маз",
     "selectLanguageVersion": "Мазрал версия буллан",
     "watchSelectedVersion": "Буллалисса версия ккаккан"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie къарщив",
+    "bannerTitle": "Хъунийну къарщив",
+    "bannerDescription": "Жагьилсса cookie-рду Watch-рал мукъу ва зузи хъанай дакъацӀан. Дурссагу къабул бувссарча, ттун ххуйсса optional first-party cookie-рду гьарца цӀусса хъанай бучӀан бувчӀинсса къасдру хъунмасса, рекомендациярду хусуси хъанай буллан бюхъайсса. Контекстран рекомендациярду вацӀлу къалансса хъанай личӀи.",
+    "acceptAll": "Бары дачин къабул бан",
+    "essentialOnly": "Жагьилсса гъанминнал гьарца",
+    "manageChoices": "Къарщив къулагъас бан",
+    "savingChoice": "Cookie къарщиву хъинну ххал бан",
+    "settings": "Cookie къулагъасру",
+    "settingsDescription": "Watch-рал гьарца цӀусса чӀалачӀинна рекомендациярдал къасдру хъунмасса бувчӀин бюхъайсса ягукъа — му къарщиву къуллугъ бан. Муну гьарца вахтрай цӀакь бан бюхъайсса.",
+    "essentialCookies": "Жагьилсса cookie-рду",
+    "essentialDescription": "Мукъу, оьрчӀру цӀакь бан, хъунийну къарщив, ва рекомендация гьаз бувну къайда.",
+    "alwaysActive": "Гьарца вахтрай зузи",
+    "personalization": "Хусусиласав",
+    "personalizationDescription": "Гьарца цӀусса чӀалачӀинна чӀявусса къасдру бувчӀин. Му ххишала бувссарча, контекстран рекомендациярду личӀи къаланнах.",
+    "erasurePending": "Профиль чулух къатта бан кӀулссар. Контекстран рекомендациярду гьанна зузи бухьурча.",
+    "cancel": "Тархъан бан",
+    "saveChoices": "Къарщив хъинну ххал бан",
+    "saving": "Ххал бан…",
+    "loadError": "Къарщиву ласун къабюхъайссар. Аьчухну къарщиву увчӀан бюхъайссар.",
+    "grantError": "Хусусиласав кабизан къабюхъайссар. Жагьилсса гъанминнал гьарца къаланссар.",
+    "saveError": "Къарщиву ххал бан къабюхъайссар. ЦӀуну цӀакь баву."
   }
 }

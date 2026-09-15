@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio gwich’in tr’ahłii",
     "home": "JesusFilm ch’àn gwik’it",
     "closeSearch": "Search nąįį",
-    "submitSearch": "Nah’in"
+    "submitSearch": "Nah’in",
+    "library": "Gwiindaii ko"
   },
   "SearchOverlay": {
     "dialogLabel": "Videos search k’eejìi nah’in",
@@ -467,6 +468,7 @@
     "sports": "Sports gwandak",
     "collections": "Video collections",
     "subtitlesOnly": "Subtitles-zheh",
+    "backToTop": "Nakhwaa nihdeetak",
     "newlyAdded": "Łyaa gwiłtsaii",
     "newVideosTitle": "{language}: Christian videos łyaa",
     "newestFirst": "Łyaa t’ehk’it",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Collection kwaa videos",
     "videosFromCollection": "{collection} k’it videos.",
     "standaloneDescription": "Jii gwich’in k’it standalone videos.",
-    "openCollection": "Collection nah’in"
+    "openCollection": "Collection nah’in",
+    "filters": "Diikʼinjik",
+    "filterLength": "Nitsii",
+    "filterLength_under5": "5 minit tsʼąʼ nihkʼit",
+    "filterLength_5to10": "5-10 minit",
+    "filterLength_10to30": "10-30 minit",
+    "filterLength_over30": "30 minit tsʼąʼ nakhwaa",
+    "filterType": "Gwitrʼit",
+    "clearFilters": "Diikʼinjik nichʼit",
+    "filterResults": "{total} tsʼąʼ {count} gwitrʼit",
+    "noFilterResults": "Video kwaa diikʼinjik jiʼ gwikʼit. Chan nichʼit.",
+    "filterAdded": "Nikhwaa",
+    "filterAdded_60d": "60 dzaa gwikʼit",
+    "filterAdded_6m": "6 sahzhrii gwikʼit",
+    "filterAdded_12m": "12 sahzhrii gwikʼit"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project k’it nah’in",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Video dinjii preview",
     "nextVideoPreview": "Video łyaa preview",
     "mediaCollection": "Gwandaii collection",
-    "scrollToVideo": "{title} video nah’in"
+    "scrollToVideo": "{title} video nah’in",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project ch’àn gwik’it",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Watch ts’àt ch’àn",
     "browseVideos": "Videos nah’in"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Short Film nah’in",
-    "actions": {
-      "joinUs": "Nihłaa gwitr’it",
-      "shareMission": "Niin mission k’it nihłaa gwiłtsaii"
-    },
-    "welcomeStart": {
-      "label": "Gwandaii ts’àt Scripture",
-      "title": "Jùu video choices",
-      "description": "Nakhwanh library k’it faith-centered video content, diiyahk encourage, challenge, ts’àt reflection gwiłtsaii."
-    },
-    "welcomeMorning": {
-      "label": "Dawn inspiration",
-      "title": "Dawn łyaa! Jùu Bible moments nah’in.",
-      "description": "Jii dinjii Bible moments ts’àt nishìi start, encourages ts’àt your spirit uplift gwiłtsaii."
-    },
-    "welcomeAfternoon": {
-      "label": "Noon inspiration",
-      "title": "Noon łyaa! Nii dinjii Bible moments.",
-      "description": "Bible content gwiinzii, afternoon break k’it ihłeh, continue encouragement gwiłtsaii."
-    },
-    "welcomeEvening": {
-      "label": "Evening inspiration",
-      "title": "Evening łyaa! Bible moments ts’àt nihłt’ii.",
-      "description": "Peaceful Bible moments, dinjii reflection ts’àt comfort gwiłtsaii, ninii drin nahshii."
-    },
-    "joinUs": {
-      "label": "Nihłaa gwitr’it",
-      "title": "Billions search gwiłtsaii",
-      "description": "Harvest ihłii. Digital media ts’àt gospel nihłaa gwitr’it, jii world ts’àt."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Nihłaa ch’ihłii",
-      "title": "Jesus gwandak, nihłaa",
-      "description": "Jii dinjii Jesus love nihłts’ąįį, their own language ts’àt, where they are."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% nihłaa ahłii",
     "none": "Jii video ts’àt jii gwich’in k’it recommendations gwiłtsąįį kwaa."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Audio ginjik",
     "selectLanguageVersion": "Ginjik version akʼàa",
     "watchSelectedVersion": "Version akʼàa nąįį"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie gwitchii zhìh",
+    "bannerTitle": "Nakhwanjit ts’ii tr’igwatsal zhìh",
+    "bannerDescription": "Essential cookie Watch gogwandak nagwàhch’ìi, k’iinzhat ts’àh ginlii. Nihkhan tr’ihłìi nàhts’įį, optional first-party cookie nihkhwanh tr’igwatsal gwiidandii łuk gwats’an tr’iinjik, recommendations personalize ginjih. Contextual recommendations łi’ gwintsal gohkwìi.",
+    "acceptAll": "Łak’at gòonlii tr’ahłìi",
+    "essentialOnly": "Essential gòonlii han",
+    "manageChoices": "Zhìh k’iigwiindài",
+    "savingChoice": "Cookie zhìh k’iigwiindài dagwahłìi",
+    "settings": "Cookie settings gòonlii",
+    "settingsDescription": "Watch recommendations tr’igwatsal gwintsal gwiidandii łuk gwats’an tr’iinjik ginjih, shìh choo. Diihkwìi nìi tr’ahłìi k’eh.",
+    "essentialCookies": "Essential cookie gòonlii",
+    "essentialDescription": "Security, playback, privacy zhìh, k’iinzhat recommendation request attribution.",
+    "alwaysActive": "Łak’at jìi gwintsal",
+    "personalization": "Nihkhwanh tr’igwatsal k’iigwiindài",
+    "personalizationDescription": "Bounded interests gwintsal gwiidandii łuk gwats’an tr’iinjik. Diihkwìi tr’igiilhtsii, contextual recommendations łi’ gwintsal.",
+    "erasurePending": "Profile nanahch’uu dagwahłìi. Contextual recommendations akhànjii gwintsal.",
+    "cancel": "Anhàa",
+    "saveChoices": "Zhìh k’iigwiindài nagwahłìi",
+    "saving": "Nagwahłìi…",
+    "loadError": "Nakhwanjit zhìh dagoo’ìi łeek’it. Nihkhwanh deetth’ak choo.",
+    "grantError": "Personalization k’eh tr’igiinlih łeek’it. Essential only łi’ gwintsal.",
+    "saveError": "Nakhwanjit zhìh nagwahłìi łeek’it. Gwintsii, zheh gwahandaii."
   }
 }

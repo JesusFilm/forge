@@ -19,6 +19,12 @@ const s3Mocks = vi.hoisted(() => ({
   send: vi.fn(),
 }))
 
+const pgMocks = vi.hoisted(() => ({
+  connect: vi.fn(),
+  end: vi.fn(),
+  query: vi.fn(),
+}))
+
 vi.mock("node:child_process", async (importOriginal) => {
   const actual = await importOriginal<typeof import("node:child_process")>()
   return { ...actual, spawn: commandMocks.spawn }
@@ -30,6 +36,12 @@ vi.mock("@aws-sdk/client-s3", () => ({
   PutObjectCommand: s3Mocks.putObjectCommand,
   S3Client: vi.fn(function S3Client() {
     return { send: s3Mocks.send, destroy: s3Mocks.destroy }
+  }),
+}))
+
+vi.mock("pg", () => ({
+  Client: vi.fn(function Client() {
+    return pgMocks
   }),
 }))
 
@@ -65,6 +77,13 @@ function mockSuccessfulPgDump(
   contents: Buffer,
   externalSocialImageReferences = 0,
 ): void {
+  pgMocks.query.mockResolvedValue({
+    rows: [
+      {
+        compatibility: JSON.stringify({ externalSocialImageReferences }),
+      },
+    ],
+  })
   commandMocks.spawn.mockImplementation((command: string, args: string[]) => {
     if (command === "pg_dump") {
       const fileIndex = args.indexOf("--file")
@@ -74,7 +93,7 @@ function mockSuccessfulPgDump(
     const child = new EventEmitter() as EventEmitter & {
       stdout?: EventEmitter & { setEncoding: (encoding: string) => void }
     }
-    if (command === "psql" && args.includes("--no-align")) {
+    if (command === "psql") {
       const stdout = new EventEmitter() as EventEmitter & {
         setEncoding: (encoding: string) => void
       }
@@ -403,6 +422,14 @@ describe("backup execution", () => {
     expect(result.size).toBe(contents.byteLength)
     expect(result.exportDurationMs).toEqual(expect.any(Number))
     expect(result.uploadDurationMs).toEqual(expect.any(Number))
+    expect(pgMocks.connect).toHaveBeenCalledOnce()
+    expect(pgMocks.query).toHaveBeenCalledWith(
+      expect.stringContaining("externalSocialImageReferences"),
+    )
+    expect(pgMocks.end).toHaveBeenCalledOnce()
+    expect(
+      commandMocks.spawn.mock.calls.some(([command]) => command === "psql"),
+    ).toBe(false)
     expect(
       stdout.mock.calls.map(([value]) => String(value)).join(""),
     ).toContain('"event":"video-db.backup.dump.complete"')
@@ -410,6 +437,23 @@ describe("backup execution", () => {
       stdout.mock.calls.map(([value]) => String(value)).join(""),
     ).toContain(`"size":${contents.byteLength},"exportDurationMs":`)
     await expect(stat(generatedPath)).rejects.toMatchObject({ code: "ENOENT" })
+  })
+
+  it("retains native libpq preflight support for multi-host sources", async () => {
+    mockSuccessfulPgDump(Buffer.from("multi-host dump"))
+    Object.assign(process.env, uploadEnv, {
+      SOURCE_DATABASE_URL:
+        "postgresql://db-a.example.com:5432,db-b.example.com:5432/prod?target_session_attrs=read-write",
+    })
+
+    await expect(executeBackupPlan(parseArgs("backup", []))).resolves.toEqual(
+      expect.objectContaining({ event: "video-db.backup.complete" }),
+    )
+
+    expect(pgMocks.connect).not.toHaveBeenCalled()
+    expect(
+      commandMocks.spawn.mock.calls.some(([command]) => command === "psql"),
+    ).toBe(true)
   })
 
   it("reports completed dump size and removes a generated dump when upload fails", async () => {
@@ -482,6 +526,23 @@ describe("backup execution", () => {
       "profile excludes editorial media assets",
     )
 
+    expect(
+      commandMocks.spawn.mock.calls.some(([command]) => command === "pg_dump"),
+    ).toBe(false)
+  })
+
+  it("closes the source connection and redacts a failed compatibility query", async () => {
+    const privateError = new Error(
+      "connection failed for postgresql://private-user:private-password@example.com/prod",
+    )
+    pgMocks.query.mockRejectedValue(privateError)
+    Object.assign(process.env, uploadEnv)
+
+    await expect(executeBackupPlan(parseArgs("backup", []))).rejects.toThrow(
+      "Backup preflight could not verify source profile compatibility",
+    )
+
+    expect(pgMocks.end).toHaveBeenCalledOnce()
     expect(
       commandMocks.spawn.mock.calls.some(([command]) => command === "pg_dump"),
     ).toBe(false)

@@ -13,6 +13,7 @@ depends_on:
 blocks:
   - "feat-394"
   - "feat-395"
+  - "feat-449"
 tags:
   - "admin"
   - "recommendations"
@@ -41,6 +42,7 @@ Item scores alone cannot produce a good final list; Forge needs a transparent fi
 ## What To Build
 
 - Extend the minimal composer with versioned MMR-style diversity, source and interest coverage, recent-ignore suppression, repetition limits, and calibrated familiar-versus-discovery balance.
+- Keep the contract scoped to one ranked list or row. Publish its inputs, output, constraints, and explanations for reuse by a later page orchestrator without selecting or ordering rows here.
 - Preserve fixed editorial order, pins, and approved-pool semantics.
 - Record every removal, movement, pin, fallback, and policy version.
 - Evaluate composition policies in shadow and record a terminal decision before controlled exposure.
@@ -55,6 +57,7 @@ The ticket is not complete until this result is visible and reconcilable in the 
 ## Constraints
 
 - Composition happens after item ranking and cannot redefine eligibility or experiment objectives.
+- This ticket cannot absorb row eligibility, row ordering, cross-row deduplication, page budgets, or page-level exposure; those belong to `feat-449`.
 - Fixed editorial pins cannot be displaced by exploration or diversity.
 - Sparse and failed policies use a deterministic safe fallback.
 - Every new recommendation record declares purpose, identity class, retention, access, deletion behavior, ingestion health, and rollback or fallback.

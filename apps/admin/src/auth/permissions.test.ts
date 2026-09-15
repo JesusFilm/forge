@@ -45,35 +45,46 @@ const SYSTEM: Principal = { id: null, role: "SYSTEM" }
  * sets — and so adding a key to `PermissionKey` is one edit here rather than
  * a silently-missing column in each walk.
  */
-const ALL_PERMISSION_KEYS: PermissionKey[] = [
-  "read:experiences",
-  "read:videos",
-  "read:video-metadata",
-  "read:video-mapper-catalog",
-  "read:reference",
-  "read:media-assets",
-  "access:manager",
-  "read:manager-read-models",
-  "read:manager-subtitle-eval",
-  "write:experiences",
-  "write:videos",
-  "write:media-assets",
-  "write:transcript-embeddings",
-  "write:experience-embeddings",
-  "write:watch-events",
-  "read:watch-progress:own",
-  "write:watch-progress:own",
-  "delete:watch-progress:own",
-  "write:manager-enrichment-trigger",
-  "write:manager-jobs",
-  "write:manager-subtitle-eval",
-  "delete:media-assets",
-  "publish:experiences",
-  "archive:experiences",
-  "system:trigger-workflow",
-  "system:write-derived",
-  "admin:all",
-]
+const PERMISSION_KEY_REGISTRY: Record<PermissionKey, true> = {
+  "read:experiences": true,
+  "read:videos": true,
+  "read:video-metadata": true,
+  "read:video-mapper-catalog": true,
+  "read:reference": true,
+  "read:media-assets": true,
+  "access:manager": true,
+  "read:manager-read-models": true,
+  "read:manager-seo": true,
+  "read:manager-seo-audit-detail": true,
+  "read:manager-subtitle-eval": true,
+  "read:manager-watch-route-alerts": true,
+  "read:recommendation-aggregates": true,
+  "read:recommendation-traces": true,
+  "operate:recommendation-experiments": true,
+  "rollback:recommendations": true,
+  "approve:recommendation-permanent": true,
+  "write:experiences": true,
+  "write:videos": true,
+  "write:media-assets": true,
+  "write:transcript-embeddings": true,
+  "write:experience-embeddings": true,
+  "write:watch-events": true,
+  "read:watch-progress:own": true,
+  "write:watch-progress:own": true,
+  "delete:watch-progress:own": true,
+  "write:manager-enrichment-trigger": true,
+  "write:manager-jobs": true,
+  "write:manager-subtitle-eval": true,
+  "delete:media-assets": true,
+  "publish:experiences": true,
+  "archive:experiences": true,
+  "system:trigger-workflow": true,
+  "system:write-derived": true,
+  "admin:all": true,
+}
+const ALL_PERMISSION_KEYS = Object.keys(
+  PERMISSION_KEY_REGISTRY,
+) as PermissionKey[]
 const WEB_USER: Principal = {
   id: "auth-user-1",
   role: "WEB_USER",
@@ -122,6 +133,16 @@ describe("hasPermission — tier-based gate", () => {
       { key: "read:media-assets", role: "PUBLIC", expected: false },
       { key: "access:manager", role: "PUBLIC", expected: false },
       { key: "read:manager-read-models", role: "PUBLIC", expected: false },
+      {
+        key: "read:recommendation-aggregates",
+        role: "PUBLIC",
+        expected: false,
+      },
+      {
+        key: "read:recommendation-traces",
+        role: "PUBLIC",
+        expected: false,
+      },
       { key: "write:experiences", role: "PUBLIC", expected: false },
       { key: "write:media-assets", role: "PUBLIC", expected: false },
       { key: "write:manager-jobs", role: "PUBLIC", expected: false },
@@ -136,6 +157,16 @@ describe("hasPermission — tier-based gate", () => {
       { key: "read:media-assets", role: "VIEWER", expected: false },
       { key: "access:manager", role: "VIEWER", expected: false },
       { key: "read:manager-read-models", role: "VIEWER", expected: false },
+      {
+        key: "read:recommendation-aggregates",
+        role: "VIEWER",
+        expected: false,
+      },
+      {
+        key: "read:recommendation-traces",
+        role: "VIEWER",
+        expected: false,
+      },
       { key: "write:experiences", role: "VIEWER", expected: false },
       { key: "write:media-assets", role: "VIEWER", expected: false },
       { key: "write:manager-jobs", role: "VIEWER", expected: false },
@@ -151,6 +182,16 @@ describe("hasPermission — tier-based gate", () => {
       { key: "write:media-assets", role: "EDITOR", expected: true },
       { key: "access:manager", role: "EDITOR", expected: false },
       { key: "read:manager-read-models", role: "EDITOR", expected: false },
+      {
+        key: "read:recommendation-aggregates",
+        role: "EDITOR",
+        expected: true,
+      },
+      {
+        key: "read:recommendation-traces",
+        role: "EDITOR",
+        expected: false,
+      },
       { key: "write:manager-jobs", role: "EDITOR", expected: false },
       { key: "write:watch-events", role: "EDITOR", expected: false },
       { key: "delete:media-assets", role: "EDITOR", expected: false },
@@ -167,6 +208,16 @@ describe("hasPermission — tier-based gate", () => {
       { key: "write:media-assets", role: "ADMIN", expected: true },
       { key: "access:manager", role: "ADMIN", expected: false },
       { key: "read:manager-read-models", role: "ADMIN", expected: false },
+      {
+        key: "read:recommendation-aggregates",
+        role: "ADMIN",
+        expected: true,
+      },
+      {
+        key: "read:recommendation-traces",
+        role: "ADMIN",
+        expected: true,
+      },
       { key: "write:manager-jobs", role: "ADMIN", expected: false },
       { key: "write:watch-events", role: "ADMIN", expected: true },
       { key: "delete:media-assets", role: "ADMIN", expected: true },
@@ -664,38 +715,7 @@ describe("permission matrix completeness", () => {
         "write:experience-embeddings",
         "read:video-metadata",
       ])
-      const allKeys: Record<PermissionKey, true> = {
-        "read:experiences": true,
-        "read:videos": true,
-        "read:video-metadata": true,
-        "read:video-mapper-catalog": true,
-        "read:reference": true,
-        "read:media-assets": true,
-        "access:manager": true,
-        "read:manager-read-models": true,
-        "read:manager-seo": true,
-        "read:manager-seo-audit-detail": true,
-        "read:manager-subtitle-eval": true,
-        "write:experiences": true,
-        "write:videos": true,
-        "write:media-assets": true,
-        "write:transcript-embeddings": true,
-        "write:experience-embeddings": true,
-        "write:watch-events": true,
-        "read:watch-progress:own": true,
-        "write:watch-progress:own": true,
-        "delete:watch-progress:own": true,
-        "write:manager-enrichment-trigger": true,
-        "write:manager-jobs": true,
-        "write:manager-subtitle-eval": true,
-        "delete:media-assets": true,
-        "publish:experiences": true,
-        "archive:experiences": true,
-        "system:trigger-workflow": true,
-        "system:write-derived": true,
-        "admin:all": true,
-      }
-      for (const key of Object.keys(allKeys) as PermissionKey[]) {
+      for (const key of ALL_PERMISSION_KEYS) {
         const expected = allowedKeys.has(key)
         expect(hasPermission(WORKFLOW_TRIGGER, key)).toBe(expected)
       }
@@ -709,41 +729,11 @@ describe("permission matrix completeness", () => {
         "read:manager-seo",
         "read:manager-seo-audit-detail",
         "read:manager-subtitle-eval",
+        "read:manager-watch-route-alerts",
         "write:manager-jobs",
         "write:manager-subtitle-eval",
       ])
-      const allKeys: Record<PermissionKey, true> = {
-        "read:experiences": true,
-        "read:videos": true,
-        "read:video-metadata": true,
-        "read:video-mapper-catalog": true,
-        "read:reference": true,
-        "read:media-assets": true,
-        "access:manager": true,
-        "read:manager-read-models": true,
-        "read:manager-seo": true,
-        "read:manager-seo-audit-detail": true,
-        "read:manager-subtitle-eval": true,
-        "write:experiences": true,
-        "write:videos": true,
-        "write:media-assets": true,
-        "write:transcript-embeddings": true,
-        "write:experience-embeddings": true,
-        "write:watch-events": true,
-        "read:watch-progress:own": true,
-        "write:watch-progress:own": true,
-        "delete:watch-progress:own": true,
-        "write:manager-enrichment-trigger": true,
-        "write:manager-jobs": true,
-        "write:manager-subtitle-eval": true,
-        "delete:media-assets": true,
-        "publish:experiences": true,
-        "archive:experiences": true,
-        "system:trigger-workflow": true,
-        "system:write-derived": true,
-        "admin:all": true,
-      }
-      for (const key of Object.keys(allKeys) as PermissionKey[]) {
+      for (const key of ALL_PERMISSION_KEYS) {
         const expected = allowedKeys.has(key)
         expect(hasPermission(MANAGER_BACKEND_PRINCIPAL, key)).toBe(expected)
       }
@@ -760,38 +750,7 @@ describe("permission matrix completeness", () => {
       const allowedKeys: ReadonlySet<PermissionKey> = new Set([
         "read:video-mapper-catalog",
       ])
-      const allKeys: Record<PermissionKey, true> = {
-        "read:experiences": true,
-        "read:videos": true,
-        "read:video-metadata": true,
-        "read:video-mapper-catalog": true,
-        "read:reference": true,
-        "read:media-assets": true,
-        "access:manager": true,
-        "read:manager-read-models": true,
-        "read:manager-seo": true,
-        "read:manager-seo-audit-detail": true,
-        "read:manager-subtitle-eval": true,
-        "write:experiences": true,
-        "write:videos": true,
-        "write:media-assets": true,
-        "write:transcript-embeddings": true,
-        "write:experience-embeddings": true,
-        "write:watch-events": true,
-        "read:watch-progress:own": true,
-        "write:watch-progress:own": true,
-        "delete:watch-progress:own": true,
-        "write:manager-enrichment-trigger": true,
-        "write:manager-jobs": true,
-        "write:manager-subtitle-eval": true,
-        "delete:media-assets": true,
-        "publish:experiences": true,
-        "archive:experiences": true,
-        "system:trigger-workflow": true,
-        "system:write-derived": true,
-        "admin:all": true,
-      }
-      for (const key of Object.keys(allKeys) as PermissionKey[]) {
+      for (const key of ALL_PERMISSION_KEYS) {
         const expected = allowedKeys.has(key)
         expect(hasPermission(VIDEO_MAPPER, key)).toBe(expected)
       }
@@ -816,39 +775,8 @@ describe("permission matrix completeness", () => {
       // Adding a new PermissionKey forces a compile error here AND a
       // test failure unless explicitly added to the registry. The
       // Record exhaustiveness check pairs with the runtime walk.
-      const allKeys: Record<PermissionKey, true> = {
-        "read:experiences": true,
-        "read:videos": true,
-        "read:video-metadata": true,
-        "read:video-mapper-catalog": true,
-        "read:reference": true,
-        "read:media-assets": true,
-        "access:manager": true,
-        "read:manager-read-models": true,
-        "read:manager-seo": true,
-        "read:manager-seo-audit-detail": true,
-        "read:manager-subtitle-eval": true,
-        "write:experiences": true,
-        "write:videos": true,
-        "write:media-assets": true,
-        "write:transcript-embeddings": true,
-        "write:experience-embeddings": true,
-        "write:watch-events": true,
-        "read:watch-progress:own": true,
-        "write:watch-progress:own": true,
-        "delete:watch-progress:own": true,
-        "write:manager-enrichment-trigger": true,
-        "write:manager-jobs": true,
-        "write:manager-subtitle-eval": true,
-        "delete:media-assets": true,
-        "publish:experiences": true,
-        "archive:experiences": true,
-        "system:trigger-workflow": true,
-        "system:write-derived": true,
-        "admin:all": true,
-      }
       const bearer = CONSUMER_BEARER_PRINCIPAL({ rateLimitBucketKey: "any" })
-      for (const key of Object.keys(allKeys) as PermissionKey[]) {
+      for (const key of ALL_PERMISSION_KEYS) {
         expect(hasPermission(bearer, key)).toBe(false)
       }
     })

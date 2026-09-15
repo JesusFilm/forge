@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудиоялъе миллат бади",
     "home": "JesusFilm хона",
     "closeSearch": "Кӏалъан бекьизе",
-    "submitSearch": "Кӏалъе"
+    "submitSearch": "Кӏалъе",
+    "library": "Библиотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео кӏалъе ва къадалъан бие",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Коллекциял",
     "subtitlesOnly": "Субтитрал ган",
+    "backToTop": "Тӏадегӏан",
     "newlyAdded": "Цӏидаса кьабул гьабураб",
     "newVideosTitle": "{language}-да цӏияб христианский видеол",
     "newestFirst": "Бищун цӏияб аввал",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Тӏатӏа видеол",
     "videosFromCollection": "{collection}-дан видеол.",
     "standaloneDescription": "Гьаб тилалда тӏатӏа видеол.",
-    "openCollection": "Коллекция къоларух"
+    "openCollection": "Коллекция къоларух",
+    "filters": "Тӏасалъиял",
+    "filterLength": "Халалъи",
+    "filterLength_under5": "5 минуталдаса дагьаб",
+    "filterLength_5to10": "5-10 минут",
+    "filterLength_10to30": "10-30 минут",
+    "filterLength_over30": "30 минуталдаса цӏикӏкӏун",
+    "filterType": "Тайпа",
+    "clearFilters": "Тӏасалъиял цӏунизе",
+    "filterResults": "{total}-даса {count} бихьизабуна",
+    "noFilterResults": "Гьал тӏасалъиялде рекъараб видео гьечӏо. Цо бахъизе гьабе.",
+    "filterAdded": "Жубараб",
+    "filterAdded_60d": "Ахирисел 60 къо",
+    "filterAdded_6m": "Ахирисел 6 моцӏ",
+    "filterAdded_12m": "Ахирисел 12 моцӏ"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project: Смотре",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Авал видео preview",
     "nextVideoPreview": "Къваналаб видео preview",
     "mediaCollection": "Медиа коллекция",
-    "scrollToVideo": "{title} видеоялде кӏолӏе"
+    "scrollToVideo": "{title} видеоялде кӏолӏе",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project хона",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Смотрелде тӏадбухъе",
     "browseVideos": "Видео къадалъе"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Къиса фильм къадалъе",
-    "actions": {
-      "joinUs": "Нижги къолӏе",
-      "shareMission": "Миссиябилъе гьаб хъвалин пайдам гьабе"
-    },
-    "welcomeStart": {
-      "label": "Иман ва Scripture",
-      "title": "Гьанжисел video тӏалъатӏал",
-      "description": "Къалъулал хъвалил, таасир гьабизе ва фикиралде къотӏизе кумек гьабулеб видеолал нашей библиотекадан."
-    },
-    "welcomeMorning": {
-      "label": "Багъараб ильхам",
-      "title": "Багъараб хъвазе! Гьанжисел Библиялал моментал күтӏул буго.",
-      "description": "Дий къадалъараб Библиялал моменталдалъан багъараб бастӏизе ва рухӏ къотӏизе кумек гьабе."
-    },
-    "welcomeAfternoon": {
-      "label": "Къадалъадаб ильхам",
-      "title": "Къадалъаб хъвазе! Кунгейлъе Библиялал моментал.",
-      "description": "Къадалъараб тынысалда цӏалул лъулалъе гьабураб, ильхам кьолеб Библия контент."
-    },
-    "welcomeEvening": {
-      "label": "Къантӏизе ильхам",
-      "title": "Къантӏаб хъвазе! Библиялал моменталдалъан къотӏе.",
-      "description": "Къантӏараб Библиялал моментал, кӏалъазе ва гьанжисел къалбазе тыныс кьолеб."
-    },
-    "joinUs": {
-      "label": "Нижги къолӏе",
-      "title": "Миллиардал къваригьал буго",
-      "description": "Хъулухъал гьанже буго. Цифровой медиа пайдал гьабулеб гьазе дунъялалде Инжил бицине нижги къолӏе."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Цӏияб хъвалилде кӏолӏе",
-      "title": "Исаалъул хъвалил бицине, нижги гьабе",
-      "description": "Гьедал ахьвине ва дидизе кӏола, Исаалъул махӏабат жиндаго тилалда, жиндир бугеб хӏалалда тӏад."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% рекъола",
     "none": "Гьаб тилалда гьаб видеоялъе тавсиял батичӏо."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Аудио мацӏ",
     "selectLanguageVersion": "Мацӏалъул версия бихье",
     "watchSelectedVersion": "Бихьараб версия къалъе"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie къагӀараз",
+    "bannerTitle": "Дур хъвадарухъ гьорклъаби",
+    "bannerDescription": "Бищун хӀажатал cookie-базе Watch бехатарлъун ва хӀалтӀулеблъун цӀунила. Дур изнуялда рекъон, тӀаде бугеб ихтиярияб first-party cookie-ялъ тӀадвуссинал гьоркьор интересал ракӀалде щвезе ккола, рекомендацияби хаслъизаризе. Контексталиял рекомендацияби щибаб хӀалалъги руго.",
+    "acceptAll": "Кинабго къабул гьабизе",
+    "essentialOnly": "ХӀажатал гӀинтӀаме",
+    "manageChoices": "КъагӀараз тӀадретӀизе",
+    "savingChoice": "Cookie къагӀара цӀунизе буго",
+    "settings": "Cookie рихьизариял",
+    "settingsDescription": "Watch-алъ тӀадвуссинал гьоркьор рекомендациязул интересал ракӀалде щвезе бегьилищ тӀаса бища. Мун цебе-къоялда гьеб хисизе вугев.",
+    "essentialCookies": "Бищун хӀажатал cookie-бал",
+    "essentialDescription": "Бехатарлъи, тӀамун бихьизаби, хъвадарухъ къагӀараз ва рекомендация тӀалабалъул атрибуция.",
+    "alwaysActive": "Гьел гьанже вакилаб руго",
+    "personalization": "Хаслъи гьабиял",
+    "personalizationDescription": "ТӀадвуссинал гьоркьор чӀезарурал интересал ракӀалде щвезаризе. Гьеб свалил къотӀизе ккани, контексталиял рекомендацияби цойги руго.",
+    "erasurePending": "Профиль нахъе чӀвай тӀаде буго. Контексталиял рекомендацияби хӀинкъунго хӀалтӀула руго.",
+    "cancel": "Тохта",
+    "saveChoices": "КъагӀараз цӀунизе",
+    "saving": "ЦӀунила…",
+    "loadError": "Дур къагӀара щвезе кӀвечӀо. АскӀоб тӀаса бищизе мунде хӀанжар буго.",
+    "grantError": "Хаслъи гьабиял кабизе кӀвечӀо. ХӀажатал гӀинтӀаме хӀалтӀизе бегьула.",
+    "saveError": "Дур къагӀара цӀунизе кӀвечӀо. Хадуб цойги хӀалбихьизе."
   }
 }

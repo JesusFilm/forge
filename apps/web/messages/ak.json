@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Sesa kasa a wɔde kasa no",
     "home": "JesusFilm fie",
     "closeSearch": "Ka search no mu",
-    "submitSearch": "Hwehwɛ"
+    "submitSearch": "Hwehwɛ",
+    "library": "Nwomakorabea"
   },
   "SearchOverlay": {
     "dialogLabel": "Hwehwɛ na hwehwɛ videos mu",
@@ -467,6 +468,7 @@
     "sports": "Agumadi",
     "collections": "Nhyira ahorow",
     "subtitlesOnly": "Subtitles nko ara",
+    "backToTop": "San kɔ soro",
     "newlyAdded": "Wɔde ka ho foforo",
     "newVideosTitle": "Christian videos foforo wɔ {language} mu",
     "newestFirst": "Nea aba foforo no di kan",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Videos a ɛgyina hɔ ara",
     "videosFromCollection": "Videos a efi {collection} mu.",
     "standaloneDescription": "Videos a ɛgyina hɔ ara wɔ kasa yi mu.",
-    "openCollection": "Bue collection no"
+    "openCollection": "Bue collection no",
+    "filters": "Nsosɔeɛ",
+    "filterLength": "Tenten",
+    "filterLength_under5": "Bɛn simma 5",
+    "filterLength_5to10": "Simma 5-10",
+    "filterLength_10to30": "Simma 10-30",
+    "filterLength_over30": "Boro simma 30",
+    "filterType": "Suban",
+    "clearFilters": "Yi nsosɔeɛ",
+    "filterResults": "{count} wɔ {total} mu na wɔda no adi",
+    "noFilterResults": "Video biara nni hɔ a ɛne nsosɔeɛ yi hyia. Sɔ hwɛ na yi baako.",
+    "filterAdded": "Wɔde aka ho",
+    "filterAdded_60d": "Nnansa 60 a atwam",
+    "filterAdded_6m": "Abosome 6 a atwam",
+    "filterAdded_12m": "Abosome 12 a atwam"
   },
   "WatchHome": {
     "pageTitle": "Hwɛ wɔ Jesus Film Project So",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Video a edi kan preview",
     "nextVideoPreview": "Video a edi hɔ preview",
     "mediaCollection": "Media nhyehyɛe",
-    "scrollToVideo": "Kɔ video {title} no so"
+    "scrollToVideo": "Kɔ video {title} no so",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project fie",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "San kɔ Watch so",
     "browseVideos": "Hwehwɛ videos mu"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Hwɛ short film no",
-    "actions": {
-      "joinUs": "Ka yɛn ho",
-      "shareMission": "Kyɛ yɛn asɛmpaka no mu"
-    },
-    "welcomeStart": {
-      "label": "Gyidi ne Kyerɛwsɛm",
-      "title": "Video a yɛapaw ama ɛnnɛ",
-      "description": "Video nsɛm a gyidi wom a efi yɛn library mu a ɛbɛhyɛ wo nkuran, afa wo ahwɛ, na ama woatɔ wo tirim ho dwuma."
-    },
-    "welcomeMorning": {
-      "label": "Anɔpa nkuranhyɛ",
-      "title": "Anɔpa pa! Bible mu bere a ɛfata ama ɛnnɛ retwɛn wo.",
-      "description": "Fi wo da no ase wɔ Bible mu bere a ɛhyɛ wo nkuran na ɛma wo honhom so."
-    },
-    "welcomeAfternoon": {
-      "label": "Awia nkuranhyɛ",
-      "title": "Awia pa! Bible mu bere ma wo da no.",
-      "description": "Bible nsɛm a ɛhyɛ nkuran a ɛfata ma wo awia ahomegye anaa nkuranhyɛ a ɛkɔ so."
-    },
-    "welcomeEvening": {
-      "label": "Anadwo nkuranhyɛ",
-      "title": "Anadwo pa! Home da ase wɔ Bible mu bere mu.",
-      "description": "Bible mu bere a ɛyɛ komm a ɛbɛboa wo ma woadwen nneɛma ho na woahu awerɛkyekye bere a wo da no reyɛ awie."
-    },
-    "joinUs": {
-      "label": "Ka yɛn ho",
-      "title": "Miliɔn mpempem rekyerɛ kwan",
-      "description": "Otwa no adu ha. Ka yɛn ho ma yɛne wiase nka asɛmpa no denam dijitaal media so."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Momma yɛnkɔ mu mmoa mu",
-      "title": "Yɛreka Yesu ho asɛm, yɛn nyinaa bom",
-      "description": "Na wɔate na wɔahu Yesu dɔ no wɔ wɔn ankasa kasa mu, faako a wɔwɔ no."
-    }
-  },
   "VideoRecommendations": {
     "match": "Ɛne no hyia {percent}%",
     "none": "Wɔanhu video yi ho nyansahyɛ biara wɔ kasa yi mu."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Ɔdio kasa",
     "selectLanguageVersion": "Yi kasa nkyerɛase",
     "watchSelectedVersion": "Hwɛ nkyerɛase a woapaw"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie paw",
+    "bannerTitle": "Wo kokoam ahintasɛm ho paw",
+    "bannerDescription": "Cookie a ɛho hia no ma Watch tena asew mu na ɛyɛ adwuma yiye. Sɛ woma kwan a, optional first-party cookie bi betumi akae anigye ahorow wɔ nsrahwɛ ahorow mu de ayɛ recommendation no sɛnea ɛfata wo. Contextual recommendation no da so wɔ hɔ wɔ kwan biara so.",
+    "acceptAll": "Gye nyinaa to mu",
+    "essentialOnly": "Deɛ ɛho hia nkutoo",
+    "manageChoices": "Hwɛ paw no so",
+    "savingChoice": "Rekora cookie paw no so",
+    "settings": "Cookie nhyehyɛe",
+    "settingsDescription": "Paw sɛ Watch betumi akae recommendation anigye ahorow wɔ nsrahwɛ ahorow mu anaa. Wubetumi asesa eyi bere biara.",
+    "essentialCookies": "Cookie a ɛho hia",
+    "essentialDescription": "Ahobammɔ, video a wɔbɔ, kokoam ahintasɛm ho paw, ne recommendation abisadeɛ ho nkyerɛkyerɛmu.",
+    "alwaysActive": "Ɛyɛ adwuma bere nyinaa",
+    "personalization": "Sɛnea ɛfata wo",
+    "personalizationDescription": "Kae anigye ahorow a wɔahyɛ ano wɔ nsrahwɛ ahorow mu. Sɛ wodum eyi a, contextual recommendation no da so bɛtena hɔ.",
+    "erasurePending": "Profile no pepa no gu so. Contextual recommendation no ayɛ adwuma dedaw.",
+    "cancel": "Twa mu",
+    "saveChoices": "Kora paw no so",
+    "saving": "Rekora so…",
+    "loadError": "Yɛantumi ansoa wo paw no. Nanso wokura kwan so sɛ wobɛpaw deɛ ɛwɔ ase ha.",
+    "grantError": "Yɛantumi amma personalization no anyɛ adwuma. Deɛ ɛho hia nkutoo da so wɔ hɔ.",
+    "saveError": "Yɛantumi ankora wo paw no so. Yɛsrɛ wo, san sɔ hwɛ bio."
   }
 }

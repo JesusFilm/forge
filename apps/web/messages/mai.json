@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ऑडियो भाषा बदलू",
     "home": "JesusFilm होम",
     "closeSearch": "खोज बन्द करू",
-    "submitSearch": "खोजू"
+    "submitSearch": "खोजू",
+    "library": "पुस्तकालय"
   },
   "SearchOverlay": {
     "dialogLabel": "वीडियो खोजू आ ब्राउज़ करू",
@@ -467,6 +468,7 @@
     "sports": "खेल",
     "collections": "संग्रह",
     "subtitlesOnly": "केवल उपशीर्षक",
+    "backToTop": "उपर जाउ",
     "newlyAdded": "नव जोड़ल गेल",
     "newVideosTitle": "{language} मे नव ईसाई वीडियो",
     "newestFirst": "सबसँ नया पहिले",
@@ -497,7 +499,21 @@
     "standaloneVideos": "अलग वीडियो",
     "videosFromCollection": "{collection} सँ वीडियो।",
     "standaloneDescription": "एहि भाषामे अलग वीडियो।",
-    "openCollection": "संग्रह खोलू"
+    "openCollection": "संग्रह खोलू",
+    "filters": "फिल्टर",
+    "filterLength": "अवधि",
+    "filterLength_under5": "5 मिनटसँ कम",
+    "filterLength_5to10": "5-10 मिनट",
+    "filterLength_10to30": "10-30 मिनट",
+    "filterLength_over30": "30 मिनटसँ बेसी",
+    "filterType": "प्रकार",
+    "clearFilters": "फिल्टर हटाउ",
+    "filterResults": "{total} मे सँ {count} देखाओल गेल",
+    "noFilterResults": "एहि फिल्टरसँ कोनो वीडियो नहि मिलैत अछि। एक हटाउ।",
+    "filterAdded": "जोड़ल गेल",
+    "filterAdded_60d": "पछिला 60 दिन",
+    "filterAdded_6m": "पछिला 6 मास",
+    "filterAdded_12m": "पछिला 12 मास"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project वॉच",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "पछिला वीडियो पूर्वावलोकन",
     "nextVideoPreview": "अगिला वीडियो पूर्वावलोकन",
     "mediaCollection": "मीडिया संग्रह",
-    "scrollToVideo": "{title} वीडियो दिस स्क्रोल करू"
+    "scrollToVideo": "{title} वीडियो दिस स्क्रोल करू",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project होम",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "फेर वॉच पर जाउ",
     "browseVideos": "वीडियो ब्राउज़ करू"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "लघु फिल्म देखू",
-    "actions": {
-      "joinUs": "हमर संग जुड़ू",
-      "shareMission": "हमर मिशनमे सहभागी बनू"
-    },
-    "welcomeStart": {
-      "label": "विश्वास आ धर्मशास्त्र",
-      "title": "आजक वीडियो चुनाउ",
-      "description": "हमर संग्रहसँ विश्वास-केंद्रित वीडियो सामग्री, जे प्रेरित करए, चुनौती देए, आ मनन जगा देए।"
-    },
-    "welcomeMorning": {
-      "label": "प्रभातक प्रेरणा",
-      "title": "सुप्रभात! आजक बाइबल क्षण प्रतीक्षा क रहल अछि।",
-      "description": "अपन दिनक शुरुआत उत्साहजनक बाइबल क्षणसँ करू, जे अहाँक आत्माकेँ प्रेरित आ उत्साहित करबाक लेल बनाओल गेल अछि।"
-    },
-    "welcomeAfternoon": {
-      "label": "अपराह्णक प्रेरणा",
-      "title": "शुभ अपराह्ण! अहाँक दिन लेल बाइबल क्षण।",
-      "description": "उत्साहजनक बाइबल सामग्री, अहाँक दोपहरक विराम वा चलैत प्रेरणाक लेल उत्तम।"
-    },
-    "welcomeEvening": {
-      "label": "सांझक प्रेरणा",
-      "title": "शुभ संध्या! बाइबल क्षण संग दिन समेटू।",
-      "description": "शान्त बाइबल क्षण, जे दिन समाप्त होइत समय अहाँकेँ मनन करबामे आ सान्त्वना पाबयमे सहायता करत।"
-    },
-    "joinUs": {
-      "label": "हमर संग जुड़ू",
-      "title": "अरबो लोक खोजि रहल छथि",
-      "description": "कटनी तैयार अछि। डिजिटल मीडिया क उपयोग कए संसारक संग सुसमाचार साझा करैत हमर संग जुड़ू।"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "आबू, एक संग चलू",
-      "title": "एक संग, यीशुक कथा सुनबैत",
-      "description": "ताकि ओ सभ अपनहि भाषा मे, अपनहि स्थान पर, यीशुक प्रेम सुनि आ देखि सकथि।"
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% मिलान",
     "none": "एहि भाषामे एहि वीडियो लेल कोनो सुझाव नहि भेटल।"
@@ -744,5 +723,28 @@
     "languageVersionLabel": "ऑडियो भाषा",
     "selectLanguageVersion": "भाषा संस्करण चुनू",
     "watchSelectedVersion": "चुनल संस्करण देखू"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "कुकी विकल्प",
+    "bannerTitle": "अहाँक गोपनीयता विकल्प",
+    "bannerDescription": "जरूरी कुकी Watch केँ सुरक्षित आ ठीक सँ चलैत रखैत अछि। अहाँक अनुमति सँ, एक वैकल्पिक फर्स्ट-पार्टी कुकी अलग-अलग भेटमे रुचि याद राखि सकैत अछि जाहिसँ सिफारिश सभ केँ व्यक्तिगत बनाओल जा सकै। संदर्भ आधारित सिफारिश सभ दुनू स्थिति मे उपलब्ध रहत।",
+    "acceptAll": "सभ स्वीकार करू",
+    "essentialOnly": "केवल जरूरी",
+    "manageChoices": "विकल्प प्रबंधित करू",
+    "savingChoice": "कुकी विकल्प सहेजल जा रहल अछि",
+    "settings": "कुकी सेटिंग",
+    "settingsDescription": "चुनू जे Watch अलग-अलग भेटमे सिफारिश संबंधी रुचि याद राखि सकैत अछि कि नहि। अहाँ एहि केँ कहियो बदलि सकैत छी।",
+    "essentialCookies": "जरूरी कुकी",
+    "essentialDescription": "सुरक्षा, प्लेबैक, गोपनीयता विकल्प, आ सिफारिश अनुरोधक श्रेय-निर्धारण।",
+    "alwaysActive": "सदैव सक्रिय",
+    "personalization": "वैयक्तिकरण",
+    "personalizationDescription": "अलग-अलग भेटमे सीमित रुचि याद राखू। एहि केँ बंद कएला पर सेहो संदर्भ आधारित सिफारिश सभ उपलब्ध रहत।",
+    "erasurePending": "प्रोफाइल मेटाओनाय लंबित अछि। संदर्भ आधारित सिफारिश सभ पहिनेसँ सक्रिय अछि।",
+    "cancel": "रद्द करू",
+    "saveChoices": "विकल्प सहेजू",
+    "saving": "सहेजल जा रहल अछि…",
+    "loadError": "अहाँक विकल्प लोड नहि भ' सकल। अहाँ एखनहुँ नीचाँ चुनि सकैत छी।",
+    "grantError": "वैयक्तिकरण चालू नहि भ' सकल। केवल जरूरी विकल्प उपलब्ध अछि।",
+    "saveError": "अहाँक विकल्प सहेजल नहि भ' सकल। कृपया फेर प्रयास करू।"
   }
 }

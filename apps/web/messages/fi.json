@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Vaihda äänikieltä",
     "home": "JesusFilm-etusivu",
     "closeSearch": "Sulje haku",
-    "submitSearch": "Hae"
+    "submitSearch": "Hae",
+    "library": "Kirjasto"
   },
   "SearchOverlay": {
     "dialogLabel": "Hae ja selaa videoita",
@@ -467,6 +468,7 @@
     "sports": "Urheilu",
     "collections": "Kokoelmat",
     "subtitlesOnly": "Vain tekstitykset",
+    "backToTop": "Takaisin ylös",
     "newlyAdded": "Äskettäin lisätty",
     "newVideosTitle": "Uusia kristillisiä videoita kielellä {language}",
     "newestFirst": "Uusin ensin",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Itsenäiset videot",
     "videosFromCollection": "Videot kokoelmasta {collection}.",
     "standaloneDescription": "Itsenäiset videot tällä kielellä.",
-    "openCollection": "Avaa kokoelma"
+    "openCollection": "Avaa kokoelma",
+    "filters": "Suodattimet",
+    "filterLength": "Kesto",
+    "filterLength_under5": "Alle 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Yli 30 min",
+    "filterType": "Tyyppi",
+    "clearFilters": "Tyhjennä suodattimet",
+    "filterResults": "{count} / {total} näytetään",
+    "noFilterResults": "Mikään video ei vastaa näitä suodattimia. Kokeile poistaa yksi.",
+    "filterAdded": "Lisätty",
+    "filterAdded_60d": "Viimeiset 60 päivää",
+    "filterAdded_6m": "Viimeiset 6 kuukautta",
+    "filterAdded_12m": "Viimeiset 12 kuukautta"
   },
   "WatchHome": {
     "pageTitle": "Katso | Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Edellisen videon esikatselu",
     "nextVideoPreview": "Seuraavan videon esikatselu",
     "mediaCollection": "Mediakokoelma",
-    "scrollToVideo": "Vieritä videoon {title}"
+    "scrollToVideo": "Vieritä videoon {title}",
+    "forYou": "Sinulle"
   },
   "WatchFooter": {
     "home": "Jesus Film Project -etusivu",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Takaisin katseluun",
     "browseVideos": "Selaa videoita"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Katso lyhytelokuva",
-    "actions": {
-      "joinUs": "Liity mukaan",
-      "shareMission": "Osallistu lähetystehtäväämme"
-    },
-    "welcomeStart": {
-      "label": "Usko ja Raamattu",
-      "title": "Tämän päivän videovalinnat",
-      "description": "Uskoon keskittyviä videoita kirjastostamme inspiroimaan, haastamaan ja herättämään ajatuksia."
-    },
-    "welcomeMorning": {
-      "label": "Aamun inspiraatio",
-      "title": "Hyvää huomenta! Tämän päivän raamatulliset hetket odottavat.",
-      "description": "Aloita päiväsi rohkaisevilla raamatunkohdilla, jotka on suunniteltu innostamaan ja kohottamaan mieltäsi."
-    },
-    "welcomeAfternoon": {
-      "label": "Iltapäivän inspiraatio",
-      "title": "Hyvää iltapäivää! Raamatullisia hetkiä päivääsi.",
-      "description": "Rohkaisevaa raamatullista sisältöä iltapäivän tauolle tai jatkamaan inspiraatiota."
-    },
-    "welcomeEvening": {
-      "label": "Illan inspiraatio",
-      "title": "Hyvää iltaa! Rentoudu raamatullisten hetkien parissa.",
-      "description": "Rauhallisia raamatullisia hetkiä, jotka auttavat sinua pohtimaan ja löytämään lohtua päivän päättyessä."
-    },
-    "joinUs": {
-      "label": "Liity mukaan",
-      "title": "Miljardit etsivät",
-      "description": "Sadonkorjuun aika on nyt. Tule mukaan, kun jaamme evankeliumia maailmalle digitaalisen median avulla."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Lähdetään yhdessä",
-      "title": "Kerrotaan Jeesuksen tarina yhdessä",
-      "description": "Jotta ihmiset voisivat kuulla ja nähdä Jeesuksen rakkauden omalla kielellään siellä missä ovat."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent} % vastaavuus",
     "none": "Tälle videolle ei löytynyt suosituksia tällä kielellä."
@@ -735,14 +714,37 @@
   "WatchUnavailableLanguage": {
     "metadataTitle": "Kieliversio ei ole saatavilla",
     "eyebrow": "Kieliversio ei ole saatavilla",
-    "title": "<contentTitle>{title}</contentTitle> ei ole saatavilla kielellä <languageName>{language}</languageName>",
+    "title": "<contentTitle>{title}</contentTitle>: ei versiota kielellä <languageName>”{language}”</languageName>",
     "actionsLabel": "Saatavilla olevat katseluvaihtoehdot",
-    "browseInLanguage": "Selaa videoita kielellä {language}",
+    "browseInLanguage": "Kaikki videot kielellä ”{language}”",
     "backToSearch": "Takaisin hakuun",
     "audioVersionsTitle": "Muut ääniversiot",
     "audioVersionsDescription": "Valitse äänen kieli jatkaaksesi videon katselua.",
     "languageVersionLabel": "Äänen kieli",
     "selectLanguageVersion": "Valitse kieliversio",
     "watchSelectedVersion": "Katso valittu versio"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Evästevalinnat",
+    "bannerTitle": "Tietosuoja-asetuksesi",
+    "bannerDescription": "Välttämättömät evästeet pitävät Watchin turvallisena ja toimivana. Luvallasi valinnainen ensimmäisen osapuolen eväste voi muistaa kiinnostuksenkohteesi eri käyntikerroilla, jotta suosituksia voidaan personoida. Kontekstuaaliset suositukset ovat käytettävissä joka tapauksessa.",
+    "acceptAll": "Hyväksy kaikki",
+    "essentialOnly": "Vain välttämättömät",
+    "manageChoices": "Hallitse valintoja",
+    "savingChoice": "Tallennetaan evästevalintaa",
+    "settings": "Evästeasetukset",
+    "settingsDescription": "Valitse, saako Watch muistaa suosituksiin liittyvät kiinnostuksenkohteesi eri käyntikerroilla. Voit muuttaa tätä milloin tahansa.",
+    "essentialCookies": "Välttämättömät evästeet",
+    "essentialDescription": "Turvallisuus, toisto, tietosuoja-asetukset ja suosituspyyntöjen kohdistus.",
+    "alwaysActive": "Aina käytössä",
+    "personalization": "Personointi",
+    "personalizationDescription": "Muista rajatut kiinnostuksenkohteet eri käyntikerroilla. Jos poistat tämän käytöstä, kontekstuaaliset suositukset ovat edelleen käytettävissä.",
+    "erasurePending": "Profiilin poisto odottaa käsittelyä. Kontekstuaaliset suositukset ovat jo käytössä.",
+    "cancel": "Peruuta",
+    "saveChoices": "Tallenna valinnat",
+    "saving": "Tallennetaan…",
+    "loadError": "Valintaasi ei voitu ladata. Voit silti tehdä valinnan alla.",
+    "grantError": "Personointia ei voitu ottaa käyttöön. Vain välttämättömät ovat edelleen käytettävissä.",
+    "saveError": "Valintaasi ei voitu tallentaa. Yritä uudelleen."
   }
 }

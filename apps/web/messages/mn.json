@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Дууны хэлийг өөрчлөх",
     "home": "JesusFilm нүүр хуудас",
     "closeSearch": "Хайлтыг хаах",
-    "submitSearch": "Хайх"
+    "submitSearch": "Хайх",
+    "library": "Номын сан"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео хайх, үзэх",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Цуглуулгууд",
     "subtitlesOnly": "Зөвхөн хадмал",
+    "backToTop": "Дээш буцах",
     "newlyAdded": "Шинээр нэмэгдсэн",
     "newVideosTitle": "{language} хэл дээрх шинэ Христийн видео",
     "newestFirst": "Хамгийн шинэ эхэнд",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Бие даасан видеонууд",
     "videosFromCollection": "{collection}-оос видеонууд.",
     "standaloneDescription": "Энэ хэл дээрх бие даасан видеонууд.",
-    "openCollection": "Цуглуулга нээх"
+    "openCollection": "Цуглуулга нээх",
+    "filters": "Шүүлтүүр",
+    "filterLength": "Урт",
+    "filterLength_under5": "5 минутаас бага",
+    "filterLength_5to10": "5-10 минут",
+    "filterLength_10to30": "10-30 минут",
+    "filterLength_over30": "30 минутаас их",
+    "filterType": "Төрөл",
+    "clearFilters": "Шүүлтүүрийг арилгах",
+    "filterResults": "{total}-аас {count} харуулж байна",
+    "noFilterResults": "Эдгээр шүүлтүүрт тохирох видео байхгүй. Нэгийг хасаж үзээрэй.",
+    "filterAdded": "Нэмэгдсэн",
+    "filterAdded_60d": "Сүүлийн 60 хоног",
+    "filterAdded_6m": "Сүүлийн 6 сар",
+    "filterAdded_12m": "Сүүлийн 12 сар"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project үзэх хэсэг",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Өмнөх видеоны урьдчилсан үзүүлбэр",
     "nextVideoPreview": "Дараагийн видеоны урьдчилсан үзүүлбэр",
     "mediaCollection": "Медиа цуглуулга",
-    "scrollToVideo": "{title} видеон руу очих"
+    "scrollToVideo": "{title} видеон руу очих",
+    "forYou": "Танд зориулсан"
   },
   "WatchFooter": {
     "home": "Jesus Film Project нүүр хуудас",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Үзэх хэсэг рүү буцах",
     "browseVideos": "Видео үзэх"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Богино хэмжээний кино үзэх",
-    "actions": {
-      "joinUs": "Бидэнтэй нэгдэх",
-      "shareMission": "Бидний эрхэм зорилгыг түгээх"
-    },
-    "welcomeStart": {
-      "label": "Итгэл ба Судар",
-      "title": "Өнөөдрийн онцлох видеонууд",
-      "description": "Манай сангаас итгэл төвтэй видео контент — урам зориг өгөх, сорих, эргэцүүлэхэд туслах агуулга."
-    },
-    "welcomeMorning": {
-      "label": "Өглөөний урам зориг",
-      "title": "Өглөөний мэнд! Өнөөдрийн Библийн мөчүүд таныг хүлээж байна.",
-      "description": "Өдрөө эхлүүлэхэд тань урам өгч, сэтгэлийг тань өргөх Библийн мөчүүдээр эхлээрэй."
-    },
-    "welcomeAfternoon": {
-      "label": "Үдээс хойшхи урам зориг",
-      "title": "Өдрийн мэнд! Өнөөдрийн Библийн мөчүүд таны төлөө байна.",
-      "description": "Үдээс хойших завсарлагадаа үзэхэд тохиромжтой, эсвэл урам зориг үргэлжлүүлэн өгөх Библийн агуулга."
-    },
-    "welcomeEvening": {
-      "label": "Оройн урам зориг",
-      "title": "Оройн мэнд! Библийн мөчүүдээр тайвширъя.",
-      "description": "Өдрөө дүгнэж, тайвшрал олоход тань туслах амар тайван Библийн мөчүүд."
-    },
-    "joinUs": {
-      "label": "Бидэнтэй нэгдэх",
-      "title": "Тэрбум тэрбумаар нь хайж байна",
-      "description": "Хадуур бэлэн байна. Дижитал медиа ашиглан дэлхийд сайн мэдээг түгээхэд бидэнтэй нэгдээрэй."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Хамтдаа явцгаая",
-      "title": "Есүсийн түүхийг хамтдаа өгүүлэх нь",
-      "description": "Тэгснээр тэд Есүсийн хайрыг өөрсдийн хэлээр, байгаа газарт нь сонсож, харж чадна."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% тохирч байна",
     "none": "Энэ хэл дээр энэ видеоны зөвлөмж олдсонгүй."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Аудио хэл",
     "selectLanguageVersion": "Хэлний хувилбар сонгох",
     "watchSelectedVersion": "Сонгосон хувилбарыг үзэх"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Күүкигийн сонголтууд",
+    "bannerTitle": "Таны нууцлалын сонголтууд",
+    "bannerDescription": "Шаардлагатай күүки нь Watch-ийг аюулгүй, хэвийн ажиллуулдаг. Таны зөвшөөрлөөр, нэмэлт анхдагч талын күүки нь зочилтуудын хооронд таны сонирхлыг санаж, зөвлөмжийг илүү хувийн болгоно. Нөхцөлд суурилсан зөвлөмжүүд аль ч тохиолдолд боломжтой хэвээр байна.",
+    "acceptAll": "Бүгдийг зөвшөөрөх",
+    "essentialOnly": "Зөвхөн шаардлагатай",
+    "manageChoices": "Сонголтоо удирдах",
+    "savingChoice": "Күүкигийн сонголтыг хадгалж байна",
+    "settings": "Күүкигийн тохиргоо",
+    "settingsDescription": "Watch зочилтуудын хооронд зөвлөмжийн сонирхлыг санаж болох эсэхийг сонгоно уу. Та үүнийг хүссэн үедээ өөрчилж болно.",
+    "essentialCookies": "Шаардлагатай күүки",
+    "essentialDescription": "Аюулгүй байдал, тоглуулалт, нууцлалын сонголтууд, мөн зөвлөмжийн хүсэлтийн эх сурвалжийг тэмдэглэхэд хэрэглэнэ.",
+    "alwaysActive": "Үргэлж идэвхтэй",
+    "personalization": "Хувийн тохируулга",
+    "personalizationDescription": "Зочилтуудын хооронд хязгаарлагдмал сонирхлыг санана. Үүнийг унтраасан ч нөхцөлд суурилсан зөвлөмжүүд боломжтой хэвээр байна.",
+    "erasurePending": "Профайлыг устгах үйл явц хүлээгдэж байна. Нөхцөлд суурилсан зөвлөмжүүд аль хэдийн идэвхтэй болсон.",
+    "cancel": "Цуцлах",
+    "saveChoices": "Сонголтыг хадгалах",
+    "saving": "Хадгалж байна…",
+    "loadError": "Таны сонголтыг ачаалж чадсангүй. Та доороос сонголтоо хийж болно.",
+    "grantError": "Хувийн тохируулгыг идэвхжүүлж чадсангүй. Зөвхөн шаардлагатай сонголт боломжтой хэвээр байна.",
+    "saveError": "Таны сонголтыг хадгалж чадсангүй. Дахин оролдоно уу."
   }
 }

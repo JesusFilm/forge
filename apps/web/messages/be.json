@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Змяніць мову аўдыё",
     "home": "Галоўная JesusFilm",
     "closeSearch": "Закрыць пошук",
-    "submitSearch": "Шукаць"
+    "submitSearch": "Шукаць",
+    "library": "Бібліятэка"
   },
   "SearchOverlay": {
     "dialogLabel": "Пошук і прагляд відэа",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Калекцыі",
     "subtitlesOnly": "Толькі субцітры",
+    "backToTop": "Уверх",
     "newlyAdded": "Нядаўна дададзеныя",
     "newVideosTitle": "Новыя хрысціянскія відэа на {language}",
     "newestFirst": "Спачатку найноўшыя",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Асобныя відэа",
     "videosFromCollection": "Відэа з {collection}.",
     "standaloneDescription": "Асобныя відэа на гэтай мове.",
-    "openCollection": "Адкрыць калекцыю"
+    "openCollection": "Адкрыць калекцыю",
+    "filters": "Фільтры",
+    "filterLength": "Працягласць",
+    "filterLength_under5": "Менш за 5 хв",
+    "filterLength_5to10": "5-10 хв",
+    "filterLength_10to30": "10-30 хв",
+    "filterLength_over30": "Больш за 30 хв",
+    "filterType": "Тып",
+    "clearFilters": "Скінуць фільтры",
+    "filterResults": "Паказана {count} з {total}",
+    "noFilterResults": "Няма відэа, якія адпавядаюць гэтым фільтрам. Спрабуйце зняць адзін.",
+    "filterAdded": "Дадана",
+    "filterAdded_60d": "Останнія 60 дзён",
+    "filterAdded_6m": "Останнія 6 месяцаў",
+    "filterAdded_12m": "Останнія 12 месяцаў"
   },
   "WatchHome": {
     "pageTitle": "Прагляд Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Папярэдні папярэдні прагляд відэа",
     "nextVideoPreview": "Наступны папярэдні прагляд відэа",
     "mediaCollection": "Медыякалекцыя",
-    "scrollToVideo": "Пракруціць да відэа {title}"
+    "scrollToVideo": "Пракруціць да відэа {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Галоўная Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Назад да прагляду",
     "browseVideos": "Праглядзець відэа"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Прагледзець кароткаметражны фільм",
-    "actions": {
-      "joinUs": "Далучайцеся да нас",
-      "shareMission": "Удзельнічайце ў нашай місіі"
-    },
-    "welcomeStart": {
-      "label": "Вера і Пісанне",
-      "title": "Сённяшнія відэавыбары",
-      "description": "Відэакантэнт з нашай бібліятэкі пра веру, каб натхніць, кінуць выклік і заахвоціць да разважанняў."
-    },
-    "welcomeMorning": {
-      "label": "Ранішняе натхненне",
-      "title": "Добрай раніцы! Чакаюць біблейскія моманты на сёння.",
-      "description": "Пачніце дзень з натхняльных біблейскіх момантаў, створаных, каб узняць настрой і натхніць ваш дух."
-    },
-    "welcomeAfternoon": {
-      "label": "Дзённае натхненне",
-      "title": "Добры дзень! Біблейскія моманты на ваш дзень.",
-      "description": "Натхняльны біблейскі кантэнт, які ідэальна падыходзіць для дзённага перапынку або працягнення натхнення."
-    },
-    "welcomeEvening": {
-      "label": "Вячэрняе натхненне",
-      "title": "Добры вечар! Супакойцеся з біблейскімі момантамі.",
-      "description": "Спакойныя біблейскія моманты, якія дапамогуць вам паразважаць і знайсці суцяшэнне ў канцы дня."
-    },
-    "joinUs": {
-      "label": "Далучайцеся да нас",
-      "title": "Мільярды шукаюць",
-      "description": "Жніво ўжо тут. Далучайцеся да нас, калі мы дзелімся Евангеллем з светам праз лічбавыя медыя."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Пойдзем разам",
-      "title": "Расказваем гісторыю Езуса разам",
-      "description": "Каб яны маглі чуць і бачыць любоў Езуса на сваёй мове там, дзе яны ёсць."
-    }
-  },
   "VideoRecommendations": {
     "match": "Супадзенне: {percent}%",
     "none": "Для гэтага відэа няма рэкамендацый на гэтай мове."
@@ -735,14 +714,37 @@
   "WatchUnavailableLanguage": {
     "metadataTitle": "Моўная версія недаступная",
     "eyebrow": "Моўная версія недаступная",
-    "title": "<contentTitle>{title}</contentTitle> недаступна на мове <languageName>{language}</languageName>",
+    "title": "<contentTitle>{title}</contentTitle>: няма версіі на мове <languageName>«{language}»</languageName>",
     "actionsLabel": "Даступныя варыянты прагляду",
-    "browseInLanguage": "Праглядаць відэа на мове {language}",
+    "browseInLanguage": "Усе відэа на мове «{language}»",
     "backToSearch": "Назад да пошуку",
     "audioVersionsTitle": "Іншыя аўдыяверсіі",
     "audioVersionsDescription": "Выберыце мову аўдыя, каб працягнуць прагляд гэтага відэа.",
     "languageVersionLabel": "Мова аўдыя",
     "selectLanguageVersion": "Выберыце моўную версію",
     "watchSelectedVersion": "Глядзець выбраную версію"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Налады cookie",
+    "bannerTitle": "Ваш выбар прыватнасці",
+    "bannerDescription": "Абавязковыя cookie забяспечваюць бяспеку і працу Watch. З вашага дазволу дадатковы ўласны cookie можа запамінаць інтарэсы паміж наведваннямі, каб персаналізаваць рэкамендацыі. Кантэкстныя рэкамендацыі будуць даступныя ў любым выпадку.",
+    "acceptAll": "Прыняць усе",
+    "essentialOnly": "Толькі абавязковыя",
+    "manageChoices": "Кіраваць выбарам",
+    "savingChoice": "Захаванне выбару cookie",
+    "settings": "Налады cookie",
+    "settingsDescription": "Выберыце, ці можа Watch запамінаць інтарэсы для рэкамендацый паміж наведваннямі. Вы можаце змяніць гэта ў любы час.",
+    "essentialCookies": "Абавязковыя cookie",
+    "essentialDescription": "Бяспека, прайграванне, налады прыватнасці і атрыбуцыя запытаў на рэкамендацыі.",
+    "alwaysActive": "Заўсёды актыўныя",
+    "personalization": "Персаналізацыя",
+    "personalizationDescription": "Запамінаць абмежаваныя інтарэсы паміж наведваннямі. Калі выключыць гэта, кантэкстныя рэкамендацыі ўсё роўна будуць даступныя.",
+    "erasurePending": "Выдаленне профілю чакаецца. Кантэкстныя рэкамендацыі ўжо актыўныя.",
+    "cancel": "Скасаваць",
+    "saveChoices": "Захаваць выбар",
+    "saving": "Захаванне…",
+    "loadError": "Не ўдалося загрузіць ваш выбар. Вы ўсё яшчэ можаце выбраць ніжэй.",
+    "grantError": "Не ўдалося ўключыць персаналізацыю. Застаюцца даступнымі толькі абавязковыя cookie.",
+    "saveError": "Не ўдалося захаваць ваш выбар. Паспрабуйце яшчэ раз."
   }
 }

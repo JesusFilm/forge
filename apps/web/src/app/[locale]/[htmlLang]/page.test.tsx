@@ -56,7 +56,7 @@ import { WATCH_HOME_CLIENT_MESSAGE_NAMESPACES } from "@/i18n/client-messages"
 const heroModel = {
   heroSlides: [{ id: "hero-1", imageUrl: "https://example.com/hero.jpg" }],
   sections: [],
-  carousel: { pools: [], muxInserts: [] },
+  carousel: { pools: [] },
   missingData: [],
 }
 
@@ -129,6 +129,7 @@ describe("Watch root homepage", () => {
       blocks,
       locale: "en",
       languageSlug: "english",
+      legacyCategoryRailCompatibility: false,
     })
   })
 
@@ -144,7 +145,26 @@ describe("Watch root homepage", () => {
       blocks: [],
       locale: "en",
       languageSlug: "english",
+      legacyCategoryRailCompatibility: false,
     })
+  })
+
+  it("threads the old-schema category rail compatibility flag", async () => {
+    resolveWatchPageMock.mockResolvedValue({
+      data: {
+        kind: "experience",
+        experience: { blocks: [] },
+        watchHomeCategoryRailCompatibility: "legacy-schema",
+      },
+      error: null,
+    })
+
+    const element = await HomePage({
+      params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
+    })
+    const home = element.props.children.props.children.props.children[1]
+
+    expect(home.props.legacyCategoryRailCompatibility).toBe(true)
   })
 
   it("emits a canonical CollectionPage from the server-visible hero", async () => {
@@ -169,7 +189,6 @@ describe("Watch root homepage", () => {
                   kind: "video",
                   id: "jesus",
                   title: "JESUS",
-                  description: null,
                   label: "Feature film",
                   href: "/watch/jesus.html/english.html",
                   posterUrl: null,
@@ -182,7 +201,6 @@ describe("Watch root homepage", () => {
               ],
             },
           ],
-          muxInserts: [],
         },
         missingData: [],
       },
@@ -221,7 +239,7 @@ describe("Watch root homepage", () => {
       data: {
         heroSlides: [],
         sections: [],
-        carousel: { pools: [], muxInserts: [] },
+        carousel: { pools: [] },
         missingData: [],
       },
       error: null,
@@ -245,7 +263,7 @@ describe("Watch root homepage", () => {
           videos: [],
         },
       ],
-      carousel: { pools: [], muxInserts: [] },
+      carousel: { pools: [] },
       missingData: [],
     }
     resolveWatchHomeMock.mockResolvedValue({

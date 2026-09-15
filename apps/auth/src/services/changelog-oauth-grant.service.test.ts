@@ -150,6 +150,25 @@ describe("Changelog OAuth grant decision", () => {
     expect(deps.findTargetEnvironment).toHaveBeenCalledWith("local")
   })
 
+  it("denies a dynamic local client without an approved reader grant", async () => {
+    const deps = dependencies({ clientEnvironment: null, grants: [] })
+
+    await expect(
+      createChangelogOAuthGrantDecision(
+        {
+          ...authorizationInput,
+          clientId: "dynamic_client",
+          requestedScopes: ["openid", "changelog:read"],
+          resources: ["http://localhost:3000/mcp"],
+        },
+        deps,
+      ),
+    ).resolves.toEqual({
+      allowed: false,
+      reason: "changelog_access_denied",
+    })
+  })
+
   it("resolves native issuance from provider-owned resources without client metadata", async () => {
     const deps = dependencies({
       clientEnvironment: null,

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Đổi ngôn ngữ âm thanh",
     "home": "Trang chủ JesusFilm",
     "closeSearch": "Đóng tìm kiếm",
-    "submitSearch": "Tìm kiếm"
+    "submitSearch": "Tìm kiếm",
+    "library": "Thư viện"
   },
   "SearchOverlay": {
     "dialogLabel": "Tìm kiếm và xem video",
@@ -283,6 +284,7 @@
     "sports": "Thể thao",
     "collections": "Bộ sưu tập",
     "subtitlesOnly": "Chỉ phụ đề",
+    "backToTop": "Về đầu trang",
     "newlyAdded": "Mới thêm",
     "newVideosTitle": "Video Cơ Đốc mới bằng {language}",
     "newestFirst": "Mới nhất trước",
@@ -313,7 +315,21 @@
     "standaloneVideos": "Video độc lập",
     "videosFromCollection": "Video từ {collection}.",
     "standaloneDescription": "Các video độc lập bằng ngôn ngữ này.",
-    "openCollection": "Mở bộ sưu tập"
+    "openCollection": "Mở bộ sưu tập",
+    "filters": "Bộ lọc",
+    "filterLength": "Thời lượng",
+    "filterLength_under5": "Dưới 5 phút",
+    "filterLength_5to10": "5-10 phút",
+    "filterLength_10to30": "10-30 phút",
+    "filterLength_over30": "Trên 30 phút",
+    "filterType": "Loại",
+    "clearFilters": "Xóa bộ lọc",
+    "filterResults": "Hiển thị {count} trên {total}",
+    "noFilterResults": "Không có video nào khớp với các bộ lọc này. Hãy thử bỏ một bộ lọc.",
+    "filterAdded": "Đã thêm",
+    "filterAdded_60d": "60 ngày qua",
+    "filterAdded_6m": "6 tháng qua",
+    "filterAdded_12m": "12 tháng qua"
   },
   "WatchHome": {
     "pageTitle": "Xem | Jesus Film Project",
@@ -327,7 +343,8 @@
     "nextVideoPreview": "Xem trước video tiếp theo",
     "featured": "Nổi bật",
     "mediaCollection": "Bộ sưu tập truyền thông",
-    "scrollToVideo": "Cuộn đến video {title}"
+    "scrollToVideo": "Cuộn đến video {title}",
+    "forYou": "Đề xuất cho bạn"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Ngôn ngữ",
@@ -446,7 +463,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
       "openSupportForm": "Open support form"
     }
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Xem phim ngắn",
-    "actions": {
-      "joinUs": "Tham gia cùng chúng tôi",
-      "shareMission": "Chung tay trong sứ mệnh của chúng tôi"
-    },
-    "welcomeStart": {
-      "label": "Đức tin & Kinh Thánh",
-      "title": "Các video được chọn hôm nay",
-      "description": "Nội dung video xoay quanh đức tin từ thư viện của chúng tôi để truyền cảm hứng, thách thức và khơi gợi suy ngẫm."
-    },
-    "welcomeMorning": {
-      "label": "Nguồn cảm hứng buổi sáng",
-      "title": "Chào buổi sáng! Những khoảnh khắc Kinh Thánh hôm nay đang chờ bạn.",
-      "description": "Bắt đầu ngày mới với những khoảnh khắc Kinh Thánh đầy khích lệ, giúp truyền cảm hứng và nâng đỡ tâm linh bạn."
-    },
-    "welcomeAfternoon": {
-      "label": "Nguồn cảm hứng buổi chiều",
-      "title": "Chào buổi chiều! Những khoảnh khắc Kinh Thánh cho ngày của bạn.",
-      "description": "Nội dung Kinh Thánh khích lệ, rất phù hợp cho giờ nghỉ chiều hoặc để tiếp thêm cảm hứng cho bạn."
-    },
-    "welcomeEvening": {
-      "label": "Nguồn cảm hứng buổi tối",
-      "title": "Chào buổi tối! Thư giãn với những khoảnh khắc Kinh Thánh.",
-      "description": "Những khoảnh khắc Kinh Thánh bình an giúp bạn suy ngẫm và tìm được sự an ủi khi ngày dần khép lại."
-    },
-    "joinUs": {
-      "label": "Tham gia cùng chúng tôi",
-      "title": "Tỷ tỷ người đang tìm kiếm",
-      "description": "Mùa gặt đã đến. Hãy cùng chúng tôi chia sẻ Tin Mừng cho thế giới bằng phương tiện số."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Cùng nhau tiến bước",
-      "title": "Kể câu chuyện về Chúa Giê-su, cùng nhau",
-      "description": "Để họ có thể nghe và thấy tình yêu của Chúa Giê-su bằng chính ngôn ngữ của mình, ngay tại nơi họ đang sống."
-    }
-  },
   "VideoRecommendations": {
     "match": "Phù hợp {percent}%",
     "none": "Không tìm thấy video đề xuất nào cho video này bằng ngôn ngữ này."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Ngôn ngữ âm thanh",
     "selectLanguageVersion": "Chọn phiên bản ngôn ngữ",
     "watchSelectedVersion": "Xem phiên bản đã chọn"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Lựa chọn cookie",
+    "bannerTitle": "Lựa chọn quyền riêng tư của bạn",
+    "bannerDescription": "Cookie thiết yếu giúp Watch an toàn và hoạt động ổn định. Khi có sự cho phép của bạn, một cookie tùy chọn của bên thứ nhất có thể ghi nhớ sở thích giữa các lần truy cập để cá nhân hóa đề xuất. Dù bạn chọn thế nào, các đề xuất theo ngữ cảnh vẫn luôn khả dụng.",
+    "acceptAll": "Chấp nhận tất cả",
+    "essentialOnly": "Chỉ cookie thiết yếu",
+    "manageChoices": "Quản lý lựa chọn",
+    "savingChoice": "Đang lưu lựa chọn cookie",
+    "settings": "Cài đặt cookie",
+    "settingsDescription": "Chọn xem Watch có thể ghi nhớ sở thích đề xuất giữa các lần truy cập hay không. Bạn có thể thay đổi điều này bất cứ lúc nào.",
+    "essentialCookies": "Cookie thiết yếu",
+    "essentialDescription": "Bảo mật, phát video, lựa chọn quyền riêng tư và ghi nhận nguồn yêu cầu đề xuất.",
+    "alwaysActive": "Luôn hoạt động",
+    "personalization": "Cá nhân hóa",
+    "personalizationDescription": "Ghi nhớ các sở thích giới hạn giữa các lần truy cập. Tắt tính năng này vẫn cho phép nhận các đề xuất theo ngữ cảnh.",
+    "erasurePending": "Việc xóa hồ sơ đang chờ xử lý. Các đề xuất theo ngữ cảnh đã được bật.",
+    "cancel": "Hủy",
+    "saveChoices": "Lưu lựa chọn",
+    "saving": "Đang lưu…",
+    "loadError": "Không thể tải lựa chọn của bạn. Bạn vẫn có thể chọn ở bên dưới.",
+    "grantError": "Không thể bật cá nhân hóa. Tùy chọn chỉ dùng cookie thiết yếu vẫn khả dụng.",
+    "saveError": "Không thể lưu lựa chọn của bạn. Vui lòng thử lại."
   }
 }

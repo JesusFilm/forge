@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Palitan ang wika ng audio",
     "home": "Tahanan ng JesusFilm",
     "closeSearch": "Isara ang paghahanap",
-    "submitSearch": "Maghanap"
+    "submitSearch": "Maghanap",
+    "library": "Aklatan"
   },
   "SearchOverlay": {
     "dialogLabel": "Maghanap at mag-browse ng mga video",
@@ -283,6 +284,7 @@
     "sports": "Palakasan",
     "collections": "Mga koleksyon",
     "subtitlesOnly": "Subtitle lang",
+    "backToTop": "Bumalik sa itaas",
     "newlyAdded": "Bagong dagdag",
     "newVideosTitle": "Mga bagong Kristiyanong video sa {language}",
     "newestFirst": "Pinakabago muna",
@@ -313,7 +315,21 @@
     "standaloneVideos": "Mga standalone na video",
     "videosFromCollection": "Mga video mula sa {collection}.",
     "standaloneDescription": "Mga standalone na video sa wikang ito.",
-    "openCollection": "Buksan ang koleksyon"
+    "openCollection": "Buksan ang koleksyon",
+    "filters": "Mga filter",
+    "filterLength": "Haba",
+    "filterLength_under5": "Mas mababa sa 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Higit sa 30 min",
+    "filterType": "Uri",
+    "clearFilters": "Alisin ang mga filter",
+    "filterResults": "{count} sa {total} ang nakikita",
+    "noFilterResults": "Walang videong tugma sa mga filter na ito. Subukang alisin ang isa.",
+    "filterAdded": "Naidagdag",
+    "filterAdded_60d": "Huling 60 araw",
+    "filterAdded_6m": "Huling 6 buwan",
+    "filterAdded_12m": "Huling 12 buwan"
   },
   "WatchHome": {
     "pageTitle": "Manood sa Jesus Film Project",
@@ -327,7 +343,8 @@
     "nextVideoPreview": "Preview ng susunod na video",
     "featured": "Tampok",
     "mediaCollection": "Koleksyon ng media",
-    "scrollToVideo": "Mag-scroll sa video na {title}"
+    "scrollToVideo": "Mag-scroll sa video na {title}",
+    "forYou": "Para sa iyo"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Mga wika",
@@ -446,7 +463,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
       "openSupportForm": "Open support form"
     }
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Manood ng Maikling Pelikula",
-    "actions": {
-      "joinUs": "Sumali sa Amin",
-      "shareMission": "Makibahagi sa Aming Misyon"
-    },
-    "welcomeStart": {
-      "label": "Pananampalataya at Kasulatan",
-      "title": "Mga Napiling Video Ngayon",
-      "description": "Nilalaman ng video mula sa aming library na nakasentro sa pananampalataya upang magbigay-inspirasyon, hamunin, at magpasiklab ng pagninilay."
-    },
-    "welcomeMorning": {
-      "label": "Inspirasyon sa Umaga",
-      "title": "Magandang umaga! Hinihintay ka ng mga sandali sa Bibliya ngayong araw.",
-      "description": "Simulan ang iyong araw sa mga nakapagpapatibay na sandali sa Bibliya na idinisenyong magbigay-inspirasyon at magpasigla ng iyong espiritu."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirasyon sa Hapon",
-      "title": "Magandang hapon! Mga sandali sa Bibliya para sa iyong araw.",
-      "description": "Nakakapagpalakas ng loob na nilalaman sa Bibliya na akma para sa iyong pahinga sa hapon o para sa patuloy na inspirasyon."
-    },
-    "welcomeEvening": {
-      "label": "Inspirasyon sa Gabi",
-      "title": "Magandang gabi! Magpahinga kasama ang mga sandali sa Bibliya.",
-      "description": "Mapayapang mga sandali sa Bibliya upang tulungan kang magnilay at makatagpo ng ginhawa habang natatapos ang iyong araw."
-    },
-    "joinUs": {
-      "label": "Sumali sa Amin",
-      "title": "Bilyon-bilyon ang naghahanap",
-      "description": "Narito na ang ani. Sumali sa amin sa pagbabahagi ng ebanghelyo sa buong mundo gamit ang digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Magkasama tayo",
-      "title": "Pagkukuwento ng Buhay ni Jesus, Magkasama",
-      "description": "Upang marinig at makita nila ang pag-ibig ni Jesus sa sarili nilang wika, mismo kung nasaan sila."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% tugma",
     "none": "Walang nakitang rekomendasyon para sa video na ito sa wikang ito."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Wika ng audio",
     "selectLanguageVersion": "Pumili ng bersyon ng wika",
     "watchSelectedVersion": "Panoorin ang napiling bersyon"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Mga pagpipilian sa cookie",
+    "bannerTitle": "Mga pagpipilian mo sa privacy",
+    "bannerDescription": "Pinananatiling ligtas at maayos na gumagana ng mahahalagang cookie ang Watch. Kapag pumayag ka, maaaring tandaan ng opsyonal na first-party cookie ang iyong mga interes sa iba’t ibang pagbisita para ma-personalize ang mga rekomendasyon. Mananatiling available ang mga rekomendasyong ayon sa konteksto alinman dito.",
+    "acceptAll": "Tanggapin lahat",
+    "essentialOnly": "Mahahalaga lang",
+    "manageChoices": "Pamahalaan ang mga pagpipilian",
+    "savingChoice": "Sine-save ang pagpili sa cookie",
+    "settings": "Mga setting ng cookie",
+    "settingsDescription": "Piliin kung maaaring tandaan ng Watch ang mga interes mo sa rekomendasyon sa iba’t ibang pagbisita. Maaari mo itong baguhin anumang oras.",
+    "essentialCookies": "Mahahalagang cookie",
+    "essentialDescription": "Seguridad, pag-playback, mga pagpipilian sa privacy, at atribusyon ng kahilingan sa rekomendasyon.",
+    "alwaysActive": "Palaging aktibo",
+    "personalization": "Pag-personalize",
+    "personalizationDescription": "Tandaan ang mga limitadong interes sa iba’t ibang pagbisita. Kapag naka-off ito, mananatiling available ang mga rekomendasyong ayon sa konteksto.",
+    "erasurePending": "Nakahintay pa ang pagbura ng profile. Aktibo na ang mga rekomendasyong ayon sa konteksto.",
+    "cancel": "Kanselahin",
+    "saveChoices": "I-save ang mga pagpipilian",
+    "saving": "Sine-save…",
+    "loadError": "Hindi na-load ang iyong pinili. Maaari ka pa ring pumili sa ibaba.",
+    "grantError": "Hindi na-enable ang pag-personalize. Mahahalaga lang ang mananatiling available.",
+    "saveError": "Hindi na-save ang iyong pinili. Pakisubukan muli."
   }
 }

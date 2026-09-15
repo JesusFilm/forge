@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Zmień język audio",
     "home": "Strona główna JesusFilm",
     "closeSearch": "Zamknij wyszukiwanie",
-    "submitSearch": "Szukaj"
+    "submitSearch": "Szukaj",
+    "library": "Biblioteka"
   },
   "SearchOverlay": {
     "dialogLabel": "Szukaj i przeglądaj filmy",
@@ -283,6 +284,7 @@
     "sports": "Sport",
     "collections": "Kolekcje",
     "subtitlesOnly": "Tylko napisy",
+    "backToTop": "Powrót na górę",
     "newlyAdded": "Nowo dodane",
     "newVideosTitle": "Nowe filmy chrześcijańskie w języku {language}",
     "newestFirst": "Najnowsze najpierw",
@@ -313,7 +315,21 @@
     "standaloneVideos": "Filmy samodzielne",
     "videosFromCollection": "Filmy z kolekcji {collection}.",
     "standaloneDescription": "Samodzielne filmy w tym języku.",
-    "openCollection": "Otwórz kolekcję"
+    "openCollection": "Otwórz kolekcję",
+    "filters": "Filtry",
+    "filterLength": "Długość",
+    "filterLength_under5": "Poniżej 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Powyżej 30 min",
+    "filterType": "Typ",
+    "clearFilters": "Wyczyść filtry",
+    "filterResults": "Pokazano {count} z {total}",
+    "noFilterResults": "Żadne wideo nie odpowiada tym filtrom. Spróbuj usunąć jeden.",
+    "filterAdded": "Dodano",
+    "filterAdded_60d": "Ostatnie 60 dni",
+    "filterAdded_6m": "Ostatnie 6 miesięcy",
+    "filterAdded_12m": "Ostatnie 12 miesięcy"
   },
   "WatchHome": {
     "pageTitle": "Oglądaj w Jesus Film Project",
@@ -327,7 +343,8 @@
     "nextVideoPreview": "Podgląd następnego filmu",
     "featured": "Polecane",
     "mediaCollection": "Kolekcja multimediów",
-    "scrollToVideo": "Przewiń do filmu {title}"
+    "scrollToVideo": "Przewiń do filmu {title}",
+    "forYou": "Dla Ciebie"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Języki",
@@ -446,7 +463,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
       "openSupportForm": "Open support form"
     }
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Oglądaj film krótkometrażowy",
-    "actions": {
-      "joinUs": "Dołącz do nas",
-      "shareMission": "Weź udział w naszej misji"
-    },
-    "welcomeStart": {
-      "label": "Wiara i Pismo Święte",
-      "title": "Dzisiejsze propozycje filmowe",
-      "description": "Filmy z naszej biblioteki oparte na wierze, które inspirują, stawiają wyzwania i skłaniają do refleksji."
-    },
-    "welcomeMorning": {
-      "label": "Poranna inspiracja",
-      "title": "Dzień dobry! Czekają dzisiejsze biblijne chwile.",
-      "description": "Rozpocznij dzień od budujących biblijnych momentów, które mają inspirować i podnosić na duchu."
-    },
-    "welcomeAfternoon": {
-      "label": "Popołudniowa inspiracja",
-      "title": "Dzień dobry! Biblijne chwile na Twój dzień.",
-      "description": "Budujące treści biblijne idealne na popołudniową przerwę albo jako dalsza inspiracja."
-    },
-    "welcomeEvening": {
-      "label": "Wieczorna inspiracja",
-      "title": "Dobry wieczór! Zrelaksuj się przy biblijnych chwilach.",
-      "description": "Spokojne biblijne chwile, które pomogą Ci się zatrzymać, pomyśleć i znaleźć pocieszenie na koniec dnia."
-    },
-    "joinUs": {
-      "label": "Dołącz do nas",
-      "title": "Miliardy ludzi szukają",
-      "description": "Żniwo jest już gotowe. Dołącz do nas, gdy dzielimy się ewangelią ze światem za pomocą mediów cyfrowych."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Idźmy razem",
-      "title": "Opowiadając razem historię Jezusa",
-      "description": "Aby mogli słyszeć i widzieć miłość Jezusa we własnym języku, tam, gdzie są."
-    }
-  },
   "VideoRecommendations": {
     "match": "Dopasowanie: {percent}%",
     "none": "Nie znaleziono polecanych filmów w tym języku."
@@ -735,14 +714,37 @@
   "WatchUnavailableLanguage": {
     "metadataTitle": "Wersja językowa jest niedostępna",
     "eyebrow": "Wersja językowa jest niedostępna",
-    "title": "<contentTitle>{title}</contentTitle> nie jest dostępny w języku <languageName>{language}</languageName>",
+    "title": "<contentTitle>{title}</contentTitle>: brak wersji w języku <languageName>„{language}”</languageName>",
     "actionsLabel": "Dostępne opcje oglądania",
-    "browseInLanguage": "Przeglądaj filmy w języku {language}",
+    "browseInLanguage": "Wszystkie filmy w języku „{language}”",
     "backToSearch": "Wróć do wyszukiwania",
     "audioVersionsTitle": "Inne wersje językowe",
     "audioVersionsDescription": "Wybierz język dźwięku, aby kontynuować oglądanie tego filmu.",
     "languageVersionLabel": "Język dźwięku",
     "selectLanguageVersion": "Wybierz wersję językową",
     "watchSelectedVersion": "Obejrzyj wybraną wersję"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Ustawienia plików cookie",
+    "bannerTitle": "Twoje ustawienia prywatności",
+    "bannerDescription": "Niezbędne pliki cookie zapewniają bezpieczeństwo i prawidłowe działanie Watch. Za Twoją zgodą opcjonalny własny plik cookie może zapamiętywać zainteresowania między wizytami, aby personalizować rekomendacje. Rekomendacje kontekstowe są dostępne niezależnie od wyboru.",
+    "acceptAll": "Zaakceptuj wszystko",
+    "essentialOnly": "Tylko niezbędne",
+    "manageChoices": "Zarządzaj ustawieniami",
+    "savingChoice": "Zapisywanie ustawień plików cookie",
+    "settings": "Ustawienia plików cookie",
+    "settingsDescription": "Wybierz, czy Watch może zapamiętywać zainteresowania rekomendacji między wizytami. To ustawienie możesz zmienić w dowolnym momencie.",
+    "essentialCookies": "Niezbędne pliki cookie",
+    "essentialDescription": "Bezpieczeństwo, odtwarzanie, ustawienia prywatności i przypisanie żądania rekomendacji.",
+    "alwaysActive": "Zawsze aktywne",
+    "personalization": "Personalizacja",
+    "personalizationDescription": "Zapamiętywanie określonych zainteresowań między wizytami. Wyłączenie tej opcji nie wpływa na dostępność rekomendacji kontekstowych.",
+    "erasurePending": "Usunięcie profilu jest w toku. Rekomendacje kontekstowe są już aktywne.",
+    "cancel": "Anuluj",
+    "saveChoices": "Zapisz ustawienia",
+    "saving": "Zapisywanie…",
+    "loadError": "Nie udało się wczytać Twojego wyboru. Nadal możesz wybrać opcję poniżej.",
+    "grantError": "Nie udało się włączyć personalizacji. Nadal dostępna jest opcja tylko niezbędnych plików cookie.",
+    "saveError": "Nie udało się zapisać Twojego wyboru. Spróbuj ponownie."
   }
 }

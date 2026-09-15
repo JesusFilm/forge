@@ -8,4 +8,5 @@ Scope: `apps/rag` only. This is the canonical, provider-agnostic package guide; 
 - Retrieval is mechanism, not consumer policy. Consumers own generation, intent, tone, and audience weighting.
 - Only indexing writes corpus rows. Serving and retrieval are read-only.
 - Never log or commit secrets, bearer values, corpus text, or production migration evidence containing either.
+- Follow `docs/ops/environment-and-secrets.md` for environment validation, receiver-first provisioning, rotation, and revocation.
 - Production changes use the normal PR-to-main Railway autodeploy path. Never deploy local worktree code directly.

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Emoambue ñe'ẽ ayvu",
     "home": "JesusFilm óga",
     "closeSearch": "Emboty jeheka",
-    "submitSearch": "Eheka"
+    "submitSearch": "Eheka",
+    "library": "Kuatiarenda"
   },
   "SearchOverlay": {
     "dialogLabel": "Eheka ha ehora videos",
@@ -467,6 +468,7 @@
     "sports": "Deportes",
     "collections": "Colecciones",
     "subtitlesOnly": "Solo subtítulos",
+    "backToTop": "Jevy yvate",
     "newlyAdded": "Oñemoĩramo pyahu",
     "newVideosTitle": "Video cristiano pyahu {language}-pe",
     "newestFirst": "Pya'eve guive",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Video ojehechakuaa hag̃uáicha",
     "videosFromCollection": "Video {collection} guive.",
     "standaloneDescription": "Video ojehechakuaa hag̃uáicha ko ñe'ẽme.",
-    "openCollection": "Eike colección-pe"
+    "openCollection": "Eike colección-pe",
+    "filters": "Mboavykuéra",
+    "filterLength": "Puku",
+    "filterLength_under5": "5 aravo'imi mboyve",
+    "filterLength_5to10": "5-10 aravo'i",
+    "filterLength_10to30": "10-30 aravo'i",
+    "filterLength_over30": "30 aravo'i rire",
+    "filterType": "Tipo",
+    "clearFilters": "Emboguete mboavykuéra",
+    "filterResults": "{count} {total} apytégui ojechauka",
+    "noFilterResults": "Mba'evete ta'angamýi ojojoguái ko mboavykuérandi. Eñeha'ã emboguete peteĩ.",
+    "filterAdded": "Ojeikeve",
+    "filterAdded_60d": "60 ára paha",
+    "filterAdded_6m": "6 jasy paha",
+    "filterAdded_12m": "12 jasy paha"
   },
   "WatchHome": {
     "pageTitle": "Ehecha Jesus Film Project-pe",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Video mboyvegua preview",
     "nextVideoPreview": "Video oútava preview",
     "mediaCollection": "Colección de medios",
-    "scrollToVideo": "Ehecha hag̃ua video {title}"
+    "scrollToVideo": "Ehecha hag̃ua video {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project óga",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Evytajejy Watch-pe",
     "browseVideos": "Ehesa'ỹijo videos"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Ehecha película mbykymíva",
-    "actions": {
-      "joinUs": "Eike ore ndive",
-      "shareMission": "Emboja'o ore misión ndive"
-    },
-    "welcomeStart": {
-      "label": "Fe ha Escritura",
-      "title": "Video ñeporavo ko árape g̃uarã",
-      "description": "Oĩ video ore biblioteca-gui oñemopyenda hag̃ua fe rehe, oipytyvõ hag̃ua, ha omoakã hag̃ua reflexión."
-    },
-    "welcomeMorning": {
-      "label": "Ñepyrũ porã ko ãra",
-      "title": "Mba'éichapa! Ko árape Biblia moménto oha'arõ ndéve.",
-      "description": "Eñepyrũ hag̃ua nde ára umi moménto bíblico oipytyvõva, ohechauka hag̃uáicha ha omopu'ã hag̃ua ne ánga."
-    },
-    "welcomeAfternoon": {
-      "label": "Yvápe ñemoingove",
-      "title": "Mba'éichapa! Biblia moménto nde ára pehẽnguépe.",
-      "description": "Contenido bíblico oipytyvõva, iporãite hag̃ua ne descanso ka'aru térã ne ñemokyre'ỹrã."
-    },
-    "welcomeEvening": {
-      "label": "Ka'aru porã ñemoingove",
-      "title": "Mba'éichapa! Ehasa hag̃uáicha nde ára Biblia moménto reheve.",
-      "description": "Moménto bíblico py'aguapýva oipytyvõ hag̃ua reñemomombyry hag̃ua, reñemomandu'a hag̃ua ha revy'a hag̃ua nde ára opakuévo."
-    },
-    "joinUs": {
-      "label": "Eike ore ndive",
-      "title": "Hetaite tapicha ohekáva",
-      "description": "Oguahẽma trigo jeikutu. Eike ore ndive jaikuaauka hag̃ua evangelio ko yvy ape ári medios digitales rupive."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Jaha hag̃ua oñondive",
-      "title": "Jesús rembiasakue oñemombe'u hag̃ua oñondive",
-      "description": "Upéicha ohendu ha ohecha hag̃ua Jesús mborayhu iñe'ẽ tee hag̃uáicha, oĩ hag̃uáicha oñeime hag̃uáicha."
-    }
-  },
   "VideoRecommendations": {
     "match": "Ojoaju {percent}%",
     "none": "Ndojejuhúi video oñembojeroviáva ko ñe'ẽme."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Ñe’ẽpu ñe’ẽ",
     "selectLanguageVersion": "Eiporavo peteĩ ñe’ẽ versión",
     "watchSelectedVersion": "Ehecha versión reiporavóva"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Jeporavorã cookie rehegua",
+    "bannerTitle": "Nde poravokuéra ñemigua rehegua",
+    "bannerDescription": "Umi cookie tekotevẽva omantene Watch hag̃ua seguro ha oiko porã hag̃uáicha. Nde permiso rupive, peteĩ cookie jeporavopyre ko sitiopegua ikatu nemandu'a umi mba'e nde rehecharamóva nde jevy jave hag̃ua ome'ẽ hag̃ua ndéve ñeñemoñe'ẽ oĩporãva ndéve g̃uarã. Umi ñeñemoñe'ẽ contexto rehegua katu oĩnte mokõive hendáicha.",
+    "acceptAll": "Emoneĩ opaite",
+    "essentialOnly": "Tekotevẽva añoite",
+    "manageChoices": "Eñangareko nde poravokuéra rehe",
+    "savingChoice": "Oñeñongatu hína cookie jeporavo",
+    "settings": "Cookie ñemboheko",
+    "settingsDescription": "Eiporavo ikatúpa Watch nemandu'a umi mba'e ñeñemoñe'ẽ rehegua nde jevy hag̃ua jave. Ikatu emoambue ko mba'e araka'eve.",
+    "essentialCookies": "Cookie tekotevẽva",
+    "essentialDescription": "Tekorosã, reproducción, poravokuéra ñemigua rehegua ha ñeñemoñe'ẽ jerure ñemombe'upy.",
+    "alwaysActive": "Tapiaite oñemyendy",
+    "personalization": "Ñemomba'ete hag̃ua ndéve g̃uarã",
+    "personalizationDescription": "Tomandu'a umi mba'e nde rehecharamóva nde jevy jave. Embogue ramo kóva, umi ñeñemoñe'ẽ contexto rehegua oĩta gueteri.",
+    "erasurePending": "Nde perfil ñemboguete oha'arõ hína. Umi ñeñemoñe'ẽ contexto rehegua oñemyendyma.",
+    "cancel": "Heja rei",
+    "saveChoices": "Eñongatu nde poravokuéra",
+    "saving": "Oñeñongatu hína…",
+    "loadError": "Nde jeporavo ndaikatúi oñemyenyhẽ. Ikatu gueteri eiporavo iguýpe.",
+    "grantError": "Ndaikatúi oñemyendy ñemomba'ete ndéve g̃uarã. Tekotevẽva añoite opyta disponible.",
+    "saveError": "Nde jeporavo ndaikatúi oñeñongatu. Eha'ãjey."
   }
 }

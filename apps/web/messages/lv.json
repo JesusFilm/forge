@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Mainīt audio valodu",
     "home": "JesusFilm sākumlapa",
     "closeSearch": "Aizvērt meklēšanu",
-    "submitSearch": "Meklēt"
+    "submitSearch": "Meklēt",
+    "library": "Bibliotēka"
   },
   "SearchOverlay": {
     "dialogLabel": "Meklēt un pārlūkot video",
@@ -467,6 +468,7 @@
     "sports": "Sports un atlēti",
     "collections": "Kolekcijas",
     "subtitlesOnly": "Tikai subtitri",
+    "backToTop": "Atpakaļ uz augšu",
     "newlyAdded": "Nesen pievienots",
     "newVideosTitle": "Jauni kristīgi video {language} valodā",
     "newestFirst": "Vispirms jaunākie",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Atsevišķi video",
     "videosFromCollection": "Video no {collection}.",
     "standaloneDescription": "Atsevišķi video šajā valodā.",
-    "openCollection": "Atvērt kolekciju"
+    "openCollection": "Atvērt kolekciju",
+    "filters": "Filtri",
+    "filterLength": "Garums",
+    "filterLength_under5": "Mazāk par 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Vairāk par 30 min",
+    "filterType": "Veids",
+    "clearFilters": "Notīrīt filtrus",
+    "filterResults": "Parādīts {count} no {total}",
+    "noFilterResults": "Neviens video neatbilst šiem filtriem. Mēģiniet noņemt vienu.",
+    "filterAdded": "Pievienots",
+    "filterAdded_60d": "Pēdējās 60 dienas",
+    "filterAdded_6m": "Pēdējie 6 mēneši",
+    "filterAdded_12m": "Pēdējie 12 mēneši"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project skatīšanās",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Iepriekšējā video priekšskatījums",
     "nextVideoPreview": "Nākamā video priekšskatījums",
     "mediaCollection": "Mediju kolekcija",
-    "scrollToVideo": "Ritināt līdz {title} video"
+    "scrollToVideo": "Ritināt līdz {title} video",
+    "forYou": "Jums"
   },
   "WatchFooter": {
     "home": "Jesus Film Project sākumlapa",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Atpakaļ uz skatīšanos",
     "browseVideos": "Pārlūkot video"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Skatīties īsfilmu",
-    "actions": {
-      "joinUs": "Pievienojieties mums",
-      "shareMission": "Dalieties mūsu misijā"
-    },
-    "welcomeStart": {
-      "label": "Ticība un Raksti",
-      "title": "Šodienas video ieteikumi",
-      "description": "No ticības iedvesmots video saturs no mūsu bibliotēkas, lai iedvesmotu, izaicinātu un rosinātu pārdomas."
-    },
-    "welcomeMorning": {
-      "label": "Rīta iedvesma",
-      "title": "Labrīt! Šodienas Bībeles mirkļi jūs gaida.",
-      "description": "Sāciet dienu ar iedvesmojošiem Bībeles mirkļiem, kas stiprinās un uzmundrinās jūsu garu."
-    },
-    "welcomeAfternoon": {
-      "label": "Pēcpusdienas iedvesma",
-      "title": "Labu pēcpusdienu! Bībeles mirkļi jūsu dienai.",
-      "description": "Iedvesmojošs Bībeles saturs, kas lieliski piemērots jūsu pēcpusdienas pauzei vai turpmākai iedvesmai."
-    },
-    "welcomeEvening": {
-      "label": "Vakara iedvesma",
-      "title": "Labvakar! Atpūtieties ar Bībeles mirkļiem.",
-      "description": "Mierpilni Bībeles mirkļi, kas palīdzēs pārdomāt dienu un rast mierinājumu dienas noslēgumā."
-    },
-    "joinUs": {
-      "label": "Pievienojieties mums",
-      "title": "Miljardi meklē",
-      "description": "Raža ir klāt. Pievienojieties mums, daloties evaņģēlijā ar pasauli, izmantojot digitālos medijus."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Iesim kopā",
-      "title": "Stāstām Jēzus stāstu kopā",
-      "description": "Lai viņi varētu dzirdēt un redzēt Jēzus mīlestību savā valodā turpat, kur viņi ir."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% atbilstība",
     "none": "Šim video šajā valodā ieteikumi nav atrasti."
@@ -735,14 +714,37 @@
   "WatchUnavailableLanguage": {
     "metadataTitle": "Versija šajā valodā nav pieejama",
     "eyebrow": "Versija šajā valodā nav pieejama",
-    "title": "<contentTitle>{title}</contentTitle> nav pieejams valodā „<languageName>{language}</languageName>“",
+    "title": "<contentTitle>{title}</contentTitle>: nav versijas <languageName>{language}</languageName> valodā",
     "actionsLabel": "Pieejamās skatīšanās iespējas",
-    "browseInLanguage": "Pārlūkot videoklipus valodā „{language}“",
+    "browseInLanguage": "Visi video {language} valodā",
     "backToSearch": "Atpakaļ uz meklēšanu",
     "audioVersionsTitle": "Citas audio versijas",
     "audioVersionsDescription": "Izvēlieties audio valodu, lai turpinātu skatīties šo videoklipu.",
     "languageVersionLabel": "Audio valoda",
     "selectLanguageVersion": "Izvēlieties valodas versiju",
     "watchSelectedVersion": "Skatīties izvēlēto versiju"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Sīkfailu izvēles",
+    "bannerTitle": "Jūsu privātuma izvēles",
+    "bannerDescription": "Nepieciešamās sīkdatnes nodrošina Watch drošību un darbību. Ar jūsu atļauju izvēles pirmās puses sīkdatne var atcerēties intereses starp apmeklējumiem, lai personalizētu ieteikumus. Kontekstuāli ieteikumi ir pieejami jebkurā gadījumā.",
+    "acceptAll": "Pieņemt visu",
+    "essentialOnly": "Tikai nepieciešamās",
+    "manageChoices": "Pārvaldīt izvēles",
+    "savingChoice": "Saglabā sīkfailu izvēli",
+    "settings": "Sīkfailu iestatījumi",
+    "settingsDescription": "Izvēlieties, vai Watch drīkst atcerēties ieteikumu intereses starp apmeklējumiem. To varat mainīt jebkurā laikā.",
+    "essentialCookies": "Nepieciešamās sīkdatnes",
+    "essentialDescription": "Drošība, atskaņošana, privātuma izvēles un ieteikumu pieprasījumu attiecināšana.",
+    "alwaysActive": "Vienmēr aktīvas",
+    "personalization": "Personalizācija",
+    "personalizationDescription": "Atcerēties noteiktas intereses starp apmeklējumiem. Izslēdzot šo opciju, kontekstuāli ieteikumi joprojām būs pieejami.",
+    "erasurePending": "Profila dzēšana tiek apstrādāta. Kontekstuāli ieteikumi jau ir aktīvi.",
+    "cancel": "Atcelt",
+    "saveChoices": "Saglabāt izvēles",
+    "saving": "Saglabā...",
+    "loadError": "Jūsu izvēli nevarēja ielādēt. Jūs joprojām varat izvēlēties zemāk.",
+    "grantError": "Personalizāciju nevarēja ieslēgt. Joprojām ir pieejama tikai nepieciešamo sīkdatņu opcija.",
+    "saveError": "Jūsu izvēli nevarēja saglabāt. Lūdzu, mēģiniet vēlreiz."
   }
 }

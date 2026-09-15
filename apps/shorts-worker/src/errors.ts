@@ -32,3 +32,10 @@ export function toJobErrorBody(error: unknown): JobErrorBody {
   const message = error instanceof Error ? error.message : String(error)
   return { reason: "internal_error", messages: [message], retryable: false }
 }
+
+/** Cleanup failure cannot be reported as a successful service drain. */
+export class WorkerCleanupError extends WorkerError {
+  constructor() {
+    super("Worker resource cleanup failed", "cleanup_failed", false)
+  }
+}

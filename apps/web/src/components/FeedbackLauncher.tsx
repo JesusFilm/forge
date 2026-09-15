@@ -15,6 +15,7 @@ import {
 import { useFloatingSearchPinned } from "@/components/FloatingSearchProvider"
 import { useWatchModalActivity } from "@/components/watch/WatchModalActivityProvider"
 import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
+import { WATCH_FEEDBACK_OPEN_EVENT } from "@/lib/watch-feedback-events"
 
 const FeedbackLoadingCancelContext = createContext<() => void>(() => {})
 
@@ -33,7 +34,7 @@ export function FeedbackLoadNotice({
       role={error ? "alert" : "status"}
       aria-live={error ? "assertive" : "polite"}
       data-testid="feedback-modal-loading"
-      className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] left-[calc(1rem+env(safe-area-inset-left,0px))] z-[46] w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-white/15 bg-stone-950/95 p-4 pt-16 text-sm text-stone-100 shadow-2xl backdrop-blur-md"
+      className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] left-[calc(1rem+env(safe-area-inset-left,0px))] z-[46] w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-white/15 bg-stone-950/95 p-4 pt-16 text-base sm:text-sm text-stone-100 shadow-2xl backdrop-blur-md"
     >
       <WatchModalViewportCloseButton
         open
@@ -114,13 +115,25 @@ export function FeedbackLauncher() {
     return () => window.cancelAnimationFrame(frame)
   }, [searchOpen])
 
-  function openFeedback() {
+  const openFeedback = useCallback(() => {
     if (searchOpen) return
     setOpen(true)
-  }
+  }, [searchOpen])
+
+  // Page-level CTAs (e.g. the /whats-new feedback invitation) open the same
+  // composer without duplicating the modal. Re-registered whenever
+  // `openFeedback` changes so the search-open precedence stays current.
+  useEffect(() => {
+    window.addEventListener(WATCH_FEEDBACK_OPEN_EVENT, openFeedback)
+    return () =>
+      window.removeEventListener(WATCH_FEEDBACK_OPEN_EVENT, openFeedback)
+  }, [openFeedback])
 
   return (
     <>
+      {/* This launcher opts out of the phone type tier on purpose: its label
+          sits behind `overflow-hidden` and only reveals on hover/focus-visible,
+          so touch never sees it, and 16px overflows the fixed h-11 box. */}
       {!searchOpen ? (
         <button
           ref={launcherRef}

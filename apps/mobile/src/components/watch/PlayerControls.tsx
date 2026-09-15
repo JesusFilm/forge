@@ -36,7 +36,7 @@ import {
 import { playerCenterControl } from "../../lib/playerCenterControl"
 import { SKIP_SECONDS } from "../../lib/tapSeek"
 import { PlatformBlur } from "../ui/PlatformBlur"
-import { Scrubber } from "./Scrubber"
+import { Scrubber, SCRUBBER_HIT_HEIGHT } from "./Scrubber"
 
 /** Cast button state (R1/R2) — derived by VideoPlayer, rendered here. */
 export type PlayerControlsCastUi = {
@@ -82,6 +82,31 @@ type PlayerControlsProps = {
 // Side inset for the bar's text and icons. The inline seek bar cancels it so
 // the track reaches the player's edges.
 const BAR_PADDING_H = 12
+
+// Gap between the pill/exit row and the seek bar below it.
+const TIME_ROW_GAP = 6
+
+// Shared by every round chrome button, so the row's height stays one number.
+const ICON_BUTTON_SIZE = 44
+
+/**
+ * How far above the player's bottom edge a fullscreen caption must sit to clear
+ * the SEEK BAR: its 44pt grab area and the row gap, on top of the bar's own
+ * safe-area padding.
+ *
+ * Exported and derived rather than eyeballed: the caption lives in VideoPlayer
+ * while the bar lives here, so a hard-coded number on that side silently rots
+ * whenever this layout changes.
+ *
+ * It deliberately does NOT also clear the pill/exit row. A version that did was
+ * reviewed on the shipped build and rejected as too high — the caption belongs
+ * near the bar it reads against. The row it can now reach costs nothing
+ * functional: the overlay is `pointerEvents="none"`, so a wide cue draws over
+ * the pill and the exit button without ever swallowing a tap on either.
+ */
+export function fullscreenCaptionOffset(bottomInset: number): number {
+  return Math.max(bottomInset, 8) + SCRUBBER_HIT_HEIGHT + TIME_ROW_GAP
+}
 
 function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60)
@@ -627,9 +652,15 @@ export function PlayerControls({
             },
           ]}
         >
-          <View style={styles.timeRow}>{timePill}</View>
+          {/* Exit sits ABOVE the seek bar. Below it, its 44pt row pushed the
+              bar up off the bottom edge — the whole point of landscape is that
+              the bar hugs the screen's bottom. `timeRow` is already
+              space-between, so the pill keeps the left and exit takes the right. */}
+          <View style={styles.timeRow}>
+            {timePill}
+            <View style={styles.iconRow}>{fullscreenButton}</View>
+          </View>
           {scrubber}
-          <View style={styles.iconRow}>{fullscreenButton}</View>
         </View>
       ) : (
         <View style={styles.bottomBar} pointerEvents="box-none">
@@ -742,7 +773,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 6,
+    marginBottom: TIME_ROW_GAP,
   },
   timeText: {
     color: TEXT_ON_OVERLAY,
@@ -755,9 +786,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   iconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: ICON_BUTTON_SIZE,
+    height: ICON_BUTTON_SIZE,
+    borderRadius: ICON_BUTTON_SIZE / 2,
     justifyContent: "center",
     alignItems: "center",
     overflow: "hidden",

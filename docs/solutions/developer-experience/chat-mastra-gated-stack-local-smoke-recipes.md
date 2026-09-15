@@ -204,10 +204,10 @@ vars does — this recipe changes only the auth trio + the minted cookie.
 postgres (`apps/mastra/src/config/env.ts:218`); `memory` selects an
 `InMemoryStore` for runtime storage
 (`apps/mastra/src/mastra/index.ts:133-140`). The ai-chat lane follows it:
-`resolveAiChatMemoryBackend()` is `AI_CHAT_MEMORY_BACKEND ?? MASTRA_STORAGE_BACKEND`
-(`env.ts:793-794`), and `buildAiChatMemory` builds on an `InMemoryStore` under
-the `memory` backend (`apps/mastra/src/mastra/memory.ts:160-165`). No model
-key is needed to boot: `assertMastraRuntimeEnv` returns early outside
+`buildAiChatMemory` reads `MASTRA_STORAGE_BACKEND` and builds on a dedicated
+`InMemoryStore` under the `memory` backend
+(`apps/mastra/src/mastra/ai-chat-memory.ts`). No model key is needed to boot:
+`assertMastraRuntimeEnv` returns early outside
 production (`env.ts:698`) — the model-key requirement lives in the
 production-only `missing` list. What IS asserted in EVERY environment
 (`env.ts:684-687`): `AI_CHAT_SERVICE_API_KEYS` and `MASTRA_SERVICE_API_KEYS`

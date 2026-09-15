@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Byt ljudspråk",
     "home": "JesusFilm startsida",
     "closeSearch": "Stäng sökning",
-    "submitSearch": "Sök"
+    "submitSearch": "Sök",
+    "library": "Bibliotek"
   },
   "SearchOverlay": {
     "dialogLabel": "Sök och bläddra bland videor",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Samlingar",
     "subtitlesOnly": "Endast undertexter",
+    "backToTop": "Tillbaka till toppen",
     "newlyAdded": "Nyligen tillagt",
     "newVideosTitle": "Nya kristna videor på {language}",
     "newestFirst": "Nyast först",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Fristående videor",
     "videosFromCollection": "Videor från {collection}.",
     "standaloneDescription": "Fristående videor på det här språket.",
-    "openCollection": "Öppna samling"
+    "openCollection": "Öppna samling",
+    "filters": "Filter",
+    "filterLength": "Längd",
+    "filterLength_under5": "Kortare än 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Över 30 min",
+    "filterType": "Typ",
+    "clearFilters": "Rensa filter",
+    "filterResults": "{count} av {total} visas",
+    "noFilterResults": "Inga videor matchar dessa filter. Prova att ta bort ett.",
+    "filterAdded": "Tillagd",
+    "filterAdded_60d": "Senaste 60 dagarna",
+    "filterAdded_6m": "Senaste 6 månaderna",
+    "filterAdded_12m": "Senaste 12 månaderna"
   },
   "WatchHome": {
     "pageTitle": "Titta | Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Föregående förhandsvisning av video",
     "nextVideoPreview": "Nästa förhandsvisning av video",
     "mediaCollection": "Mediesamling",
-    "scrollToVideo": "Bläddra till videon {title}"
+    "scrollToVideo": "Bläddra till videon {title}",
+    "forYou": "För dig"
   },
   "WatchFooter": {
     "home": "Jesus Film Project startsida",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Tillbaka till Titta",
     "browseVideos": "Bläddra bland videor"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Titta på kortfilmen",
-    "actions": {
-      "joinUs": "Gå med oss",
-      "shareMission": "Dela vår mission"
-    },
-    "welcomeStart": {
-      "label": "Tro och Skrift",
-      "title": "Dagens videotips",
-      "description": "Troscentrerat videoinnehåll från vårt bibliotek som inspirerar, utmanar och väcker eftertanke."
-    },
-    "welcomeMorning": {
-      "label": "Morgoninspiration",
-      "title": "God morgon! Dagens bibelögonblick väntar.",
-      "description": "Börja dagen med uppmuntrande bibelögonblick som är skapade för att inspirera och lyfta din ande."
-    },
-    "welcomeAfternoon": {
-      "label": "Eftermiddagsinspiration",
-      "title": "God eftermiddag! Bibelögonblick för din dag.",
-      "description": "Uppmuntrande bibelinnehåll som passar perfekt för din eftermiddagspaus eller som fortsatt inspiration."
-    },
-    "welcomeEvening": {
-      "label": "Kvällsinspiration",
-      "title": "God kväll! Varva ner med bibelögonblick.",
-      "description": "Fridfulla bibelögonblick som hjälper dig att reflektera och finna tröst när dagen går mot sitt slut."
-    },
-    "joinUs": {
-      "label": "Gå med oss",
-      "title": "Miljarder söker",
-      "description": "Skörden är här. Gå med oss när vi delar evangeliet med världen genom digitala medier."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Låt oss gå tillsammans",
-      "title": "Berättelsen om Jesus, tillsammans",
-      "description": "Så att de kan höra och se Jesu kärlek på sitt eget språk, där de är."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent} % matchning",
     "none": "Inga rekommendationer hittades för den här videon på det här språket."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Ljudspråk",
     "selectLanguageVersion": "Välj en språkversion",
     "watchSelectedVersion": "Titta på vald version"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookieval",
+    "bannerTitle": "Dina val för integritet",
+    "bannerDescription": "Nödvändiga cookies håller Watch säkert och fungerande. Med ditt tillstånd kan en valfri förstapartscookie komma ihåg intressen mellan besök för att anpassa rekommendationer. Kontextuella rekommendationer finns tillgängliga oavsett.",
+    "acceptAll": "Acceptera alla",
+    "essentialOnly": "Endast nödvändiga",
+    "manageChoices": "Hantera val",
+    "savingChoice": "Sparar ditt cookieval",
+    "settings": "Cookieinställningar",
+    "settingsDescription": "Välj om Watch får komma ihåg rekommendationsintressen mellan besök. Du kan ändra detta när som helst.",
+    "essentialCookies": "Nödvändiga cookies",
+    "essentialDescription": "Säkerhet, uppspelning, integritetsval och attribution för rekommendationsförfrågningar.",
+    "alwaysActive": "Alltid aktivt",
+    "personalization": "Anpassning",
+    "personalizationDescription": "Kom ihåg avgränsade intressen mellan besök. Om detta stängs av finns fortfarande kontextuella rekommendationer tillgängliga.",
+    "erasurePending": "Profilradering väntar. Kontextuella rekommendationer är redan aktiva.",
+    "cancel": "Avbryt",
+    "saveChoices": "Spara val",
+    "saving": "Sparar…",
+    "loadError": "Ditt val kunde inte läsas in. Du kan fortfarande göra ett val nedan.",
+    "grantError": "Anpassning kunde inte aktiveras. Endast nödvändiga är fortfarande tillgängliga.",
+    "saveError": "Ditt val kunde inte sparas. Försök igen."
   }
 }

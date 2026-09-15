@@ -4,6 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
 import {
+  memo,
   useCallback,
   useEffect,
   useMemo,
@@ -17,88 +18,115 @@ import {
 import type { MuxPlayerRef } from "@forge/video-player"
 import MuxVideo from "@forge/video-player/mux-video"
 import { useTranslations } from "next-intl"
-import {
-  Play,
-  Share2,
-  SkipForward,
-  UserPlus,
-  Volume2,
-  VolumeX,
-} from "lucide-react"
-import {
-  Carousel,
-  type CarouselApi,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel"
+import { Play, Volume2, VolumeX } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import {
-  VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
-  VideoThumbnailInteractionFrame,
-} from "@/components/ui/video-thumbnail-interaction-frame"
-import {
-  VideoThumbnailCaption,
-  VideoThumbnailEyebrow,
-  VideoThumbnailTitle,
-} from "@/components/ui/video-thumbnail-caption"
-import {
-  WATCH_PAGE_CONTENT_CLASSES,
-  WATCH_PAGE_RAIL_PADDING_CLASSES,
-} from "@/lib/content-width"
+import { WATCH_PAGE_RAIL_PADDING_CLASSES } from "@/lib/content-width"
 import { FORGE_SUBTITLE_TRACK_LABEL } from "@/components/watch/subtitle-track"
-import { HeroPlayerControls } from "@/components/watch/HeroPlayerControls"
 import { usePauseForWatchModal } from "@/components/watch/WatchModalActivityProvider"
 import {
   WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
   type WatchPlayerChromeVisibilityDetail,
 } from "@/lib/watch-player-chrome-events"
 import type { WatchHomeHeroSlide } from "@/lib/watch-home"
-import type {
-  WatchHomeCarouselSequenceData,
-  WatchHomeTvCarouselMuxSlide,
-} from "@/lib/watch-home-carousel-sequence"
+import type { WatchHomeCarouselSequenceData } from "@/lib/watch-home-carousel-sequence"
+import { isWatchHomeIntroEligibleVideoLabel } from "@/lib/watch-home-carousel-sequence"
 import { cn } from "@/lib/utils"
 import {
+  WATCH_HOME_TV_TIMELINE_FUTURE_COUNT,
   useWatchHomeTvCarousel,
-  watchHomeTvAdvanceTargetSeconds,
   type WatchHomeTvCarouselSlide,
 } from "@/components/home/useWatchHomeTvCarousel"
 import { videoLabelMessageKey } from "@/lib/video-labels"
-import { getWebVttCueText } from "@/lib/webvtt"
 import {
-  useWatchHomeTvSlideCopy,
-  watchHomeMuxActionMessageKey,
-} from "@/components/home/useWatchHomeTvSlideCopy"
+  useWatchHomeHeroFittedHeight,
+  useWatchHomeHeroScrollPause,
+} from "@/components/home/useWatchHomeHero"
+import { WATCH_MUTED_INTRO_HEIGHT_CLASS } from "@/lib/watch-home-hero-fit"
+import {
+  WATCH_HERO_PRIMARY_ACTION_CLASS,
+  WatchHeroOverlay,
+} from "@/components/watch/WatchHeroOverlay"
+import { resolveMuxHeroPosterUrlAtMaxWidth } from "@/lib/url"
+import {
+  applyMuxMaxResolution,
+  type MuxMaxResolution,
+} from "@/lib/mux-stream-quality"
+import { WATCH_HERO_BODY_OVERLAP_CSS } from "@/lib/watch-hero-preview-overlap"
+import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
+import { getWebVttCueText } from "@/lib/webvtt"
 
 type WatchHomeTvCarouselProps = {
   slides: WatchHomeHeroSlide[]
   sequence?: WatchHomeCarouselSequenceData | null
+  /**
+   * Pin the intro and let the body scroll over it. False for an authored hero
+   * block placed mid-page: it renders inside the body zone, so it has nothing
+   * above it to pin against and nothing to be covered by.
+   */
+  pinned?: boolean
 }
-
-type WatchHomeShortFilmPhase = "transitioning" | "playing"
-
-const WATCH_HOME_SHORT_FILM_TRANSITION_MS = 360
 
 function WatchHomeTvCarouselRegion({
   activeSlide,
   children,
+  pinned,
 }: {
   activeSlide: WatchHomeTvCarouselSlide
   children: ReactNode
+  pinned: boolean
 }) {
-  const copy = useWatchHomeTvSlideCopy(activeSlide)
-
   return (
     <section
-      aria-label={copy.title}
-      className="relative bg-black"
+      aria-label={activeSlide.title}
+      // Pinned, like the watch-page hero: the body scrolls UP over the intro
+      // instead of the intro scrolling away, and `z-0` keeps it below the body
+      // zone that covers it. An authored hero placed mid-page is NOT pinned —
+      // it sits inside that body zone, so pinning it would leave it stuck at
+      // the top under content that measures as covering all of it.
+      className={cn("bg-black", pinned ? "sticky top-0 z-0" : "relative")}
       data-testid="watch-home-tv-carousel"
+      data-pinned={pinned ? "true" : "false"}
     >
       {children}
     </section>
   )
+}
+
+/**
+ * The intro plays whole films now, so the rendition it requests is a real
+ * cost decision rather than a detail. Measured against the live catalog on
+ * 2026-09-13, an uncapped ladder tops out at 1920x1080 / 6,807,900 bps,
+ * `720p` at 1280x720 / 3,458,400 bps, and `480p` at 854x480 / 1,657,700 bps.
+ *
+ * `480p`, not `720p`, because Mux installs its own `MinCapLevelController`
+ * with a 720 floor, so player-size capping never selects below the 720p rung
+ * on its own. A `720p` URL cap therefore lands exactly on the floor the
+ * controller already enforces — it would REMOVE this guard rather than halve
+ * it. The cost is a 2.25x upscale on a full-bleed desktop hero; the default
+ * state is muted, where the frame is height-clamped and sits under a
+ * full-opacity scrim.
+ */
+export const WATCH_HOME_INTRO_MAX_RESOLUTION: MuxMaxResolution = "480p"
+
+/**
+ * Deliberately a sibling of `HERO_HLS_CONFIG` in `watch/HeroPlayer.tsx`
+ * rather than a shared import: the two surfaces have different dwell
+ * profiles and should be able to move independently. The values match today
+ * because the reasoning does.
+ *
+ * `maxBufferSize` is the binding lever — hls.js computes read-ahead as
+ * `min(max(8 * maxBufferSize / levelBitrate, maxBufferLength), maxMaxBufferLength)`,
+ * so lowering `maxBufferLength` alone changes nothing. `backBufferLength`
+ * matters much more now that a slide can run for a whole film; Mux's own
+ * base config sets it to 30s, not hls.js's `Infinity`. `enableWebVTT: false`
+ * because this carousel injects its own subtitle track below, exactly as the
+ * watch-page hero does.
+ */
+export const WATCH_HOME_INTRO_HLS_CONFIG = {
+  maxBufferLength: 10,
+  maxBufferSize: 5_000_000,
+  backBufferLength: 5,
+  enableWebVTT: false,
 }
 
 function muxStreamUrl(playbackId: string | null) {
@@ -133,96 +161,62 @@ function appendAutoplaySignal(href: string, playbackTimeSeconds = 0): string {
 export function watchHomeHeroSlidesToTvCarouselSlides(
   slides: readonly WatchHomeHeroSlide[],
 ): WatchHomeTvCarouselSlide[] {
-  return slides.map((slide) => {
-    const muxThumbnail = muxThumbnailUrl(slide.playbackId)
-    const posterUrl = slide.imageUrl ?? muxThumbnail
+  // `heroSlides` is built from each configured source's PARENT video, so unlike
+  // the pooled path (which prefers a source's children) it can hand the intro a
+  // whole feature film. Same guard, applied to the other entry point.
+  return slides
+    .filter((slide) => isWatchHomeIntroEligibleVideoLabel(slide.videoLabel))
+    .map((slide) => {
+      const muxThumbnail = muxThumbnailUrl(slide.playbackId)
+      // Frame-first for the hero, authored-first for the card below. The admin
+      // library holds only mobile derivatives for these videos (measured 640x300
+      // for `mobileCinematicHigh`), which a full-bleed intro upscales about
+      // fourfold; the Mux frame is 1280x720 from the same warm derivative the
+      // watch-page hero requests. At card size the authored image has pixels to
+      // spare, so it stays preferred there.
+      // `||`, not `??`: a present-but-blank `imageUrl` is a real admin shape,
+      // and `??` would both keep it and suppress the Mux tier below it.
+      const posterUrl =
+        resolveMuxHeroPosterUrlAtMaxWidth(slide.playbackId) ||
+        slide.imageUrl ||
+        muxThumbnail
 
-    return {
-      kind: "video",
-      id: slide.coreId,
-      title: slide.title,
-      description: slide.description,
-      label: slide.eyebrow || slide.label,
-      href: slide.href,
-      posterUrl,
-      thumbnailUrl:
-        slide.imageUrl ?? muxThumbnailUrl(slide.playbackId, 640) ?? posterUrl,
-      imageAlt: slide.imageAlt,
-      src: slide.hls ?? muxStreamUrl(slide.playbackId),
-      playbackId: slide.playbackId,
-      subtitleVttSrc: slide.subtitleVttSrc,
-      subtitleLanguageBcp47: slide.subtitleLanguageBcp47,
-      durationSeconds: slide.durationSeconds,
-    }
-  })
-}
-
-type PrimaryActionIconName = NonNullable<
-  WatchHomeTvCarouselMuxSlide["action"]
->["icon"]
-
-function PrimaryActionIcon({ icon }: { icon: PrimaryActionIconName }) {
-  const iconClassName = "h-5 w-5 shrink-0"
-
-  if (icon === "join") {
-    return <UserPlus className={iconClassName} aria-hidden />
-  }
-
-  if (icon === "share") {
-    return <Share2 className={iconClassName} aria-hidden />
-  }
-
-  return <Play className={`${iconClassName} fill-current`} aria-hidden />
+      return {
+        kind: "video",
+        id: slide.coreId,
+        title: slide.title,
+        label: slide.eyebrow || slide.label,
+        href: slide.href,
+        posterUrl,
+        thumbnailUrl:
+          slide.imageUrl ?? muxThumbnailUrl(slide.playbackId, 640) ?? posterUrl,
+        imageAlt: slide.imageAlt,
+        src: slide.hls ?? muxStreamUrl(slide.playbackId),
+        playbackId: slide.playbackId,
+        subtitleVttSrc: slide.subtitleVttSrc,
+        subtitleLanguageBcp47: slide.subtitleLanguageBcp47,
+        durationSeconds: slide.durationSeconds,
+      }
+    })
 }
 
 function PrimaryAction({
-  onWatchShortFilm,
   playbackTimeSeconds,
   slide,
 }: {
-  onWatchShortFilm?: (slide: WatchHomeTvCarouselSlide) => void
   playbackTimeSeconds: number
   slide: WatchHomeTvCarouselSlide
 }) {
   const t = useTranslations("WatchHome")
-  const muxCopy = useTranslations("WatchHomeMuxInserts")
-  const primaryClassName =
-    "inline-flex h-11 min-w-0 max-w-full items-center gap-2 rounded-full bg-brand-red px-4 text-sm font-bold text-white shadow-[0_14px_32px_rgba(0,0,0,0.34)] transition hover:bg-brand-red/90 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none sm:h-14 sm:gap-3 sm:px-6 sm:text-lg"
-  const secondaryClassName =
-    "inline-flex h-11 min-w-0 max-w-full items-center gap-2 rounded-full border border-white/35 bg-black/30 px-4 text-sm font-bold text-white shadow-[0_14px_32px_rgba(0,0,0,0.22)] backdrop-blur transition hover:border-white/60 hover:bg-white/12 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none sm:h-14 sm:gap-3 sm:px-6 sm:text-lg"
 
-  const secondaryAction =
-    slide.kind === "mux" && slide.secondaryAction && slide.src ? (
-      <button
-        type="button"
-        className={secondaryClassName}
-        onClick={() => onWatchShortFilm?.(slide)}
-      >
-        <Play className="h-5 w-5 shrink-0 fill-current" aria-hidden />
-        <span className="truncate">{muxCopy("watchShortFilm")}</span>
-      </button>
-    ) : null
-
-  if (slide.kind === "mux" && slide.action) {
-    return (
-      <div className="flex max-w-[calc(100vw-9rem)] flex-col items-start gap-3 sm:max-w-full sm:flex-row sm:items-center">
-        <a href={slide.action.url} className={primaryClassName}>
-          <PrimaryActionIcon icon={slide.action.icon} />
-          <span className="truncate">
-            {muxCopy(watchHomeMuxActionMessageKey(slide.action.copyId))}
-          </span>
-        </a>
-        {secondaryAction}
-      </div>
-    )
-  }
-
-  if (!slide.href) return secondaryAction
+  if (!slide.href) return null
 
   return (
     <Link
       href={appendAutoplaySignal(slide.href, playbackTimeSeconds) as Route}
-      className={primaryClassName}
+      // The watch page's primary hero action, so both surfaces show the same
+      // pill; `min-w-0 max-w-full` keeps a long title from stretching it.
+      className={cn(WATCH_HERO_PRIMARY_ACTION_CLASS, "min-w-0 max-w-full")}
     >
       <Play className="h-5 w-5 shrink-0 fill-current" aria-hidden />
       <span className="truncate">{t("watchNow")}</span>
@@ -232,43 +226,43 @@ function PrimaryAction({
 
 function WatchHomeTvMedia({
   activeSlide,
-  fullPlayerMode,
-  playerTransitioning,
   isMuted,
   leavingSlide,
   mediaReady,
   onCanPlay,
   onEnded,
   onLoadedMetadata,
+  onPause,
+  onPlay,
   onPlayerReady,
+  onPlaying,
   onSubtitleCueTextChange,
   onTimeUpdate,
+  onWaiting,
   videoRef,
   wrapperRef,
 }: {
   activeSlide: WatchHomeTvCarouselSlide
-  fullPlayerMode: boolean
-  playerTransitioning: boolean
   isMuted: boolean
   leavingSlide: WatchHomeTvCarouselSlide | null
   mediaReady: boolean
   onCanPlay: () => void
   onEnded?: () => void
   onLoadedMetadata: () => void
+  onPause: () => void
+  onPlay: () => void
   onPlayerReady?: (player: MuxPlayerRef | null) => void
+  onPlaying: () => void
   onSubtitleCueTextChange: (cueText: string | null) => void
   onTimeUpdate: () => void
+  onWaiting: () => void
   videoRef: MutableRefObject<HTMLVideoElement | null>
   wrapperRef: RefObject<HTMLDivElement | null>
 }) {
-  const subtitleVttSrc =
-    isMuted && activeSlide.kind === "video"
-      ? (activeSlide.subtitleVttSrc ?? null)
-      : null
-  const subtitleLanguageBcp47 =
-    isMuted && activeSlide.kind === "video"
-      ? (activeSlide.subtitleLanguageBcp47 ?? null)
-      : null
+  const subtitleVttSrc = isMuted ? (activeSlide.subtitleVttSrc ?? null) : null
+  const subtitleLanguageBcp47 = isMuted
+    ? (activeSlide.subtitleLanguageBcp47 ?? null)
+    : null
 
   useWatchHomeMutedSubtitles({
     activeSlideId: activeSlide.id,
@@ -285,15 +279,45 @@ function WatchHomeTvMedia({
     },
     [onPlayerReady, videoRef],
   )
-  const takeoverActive = fullPlayerMode || playerTransitioning
-
+  // One seam covers both slide builders. Memoized so the mounted element is
+  // never handed a fresh string: a `src` swap reloads HLS from zero while the
+  // advance clock keeps counting.
+  const previewSrc = useMemo(
+    () =>
+      activeSlide.src
+        ? applyMuxMaxResolution(
+            activeSlide.src,
+            WATCH_HOME_INTRO_MAX_RESOLUTION,
+          )
+        : null,
+    [activeSlide.src],
+  )
   return (
     <div
       ref={wrapperRef}
-      className="absolute inset-0 isolate z-0 overflow-hidden bg-black"
+      // The hero frame stays on the 1920px content rail so the overlay copy
+      // lines up with the rest of the page, but the media itself bleeds to the
+      // viewport edges the way the watch-page hero does. `<main>` carries
+      // `overflow-x-clip` (see WatchHomePage/WatchHomeExperiencePage), so the
+      // 100vw span never adds horizontal scroll.
+      style={
+        {
+          "--watch-hero-body-overlap": WATCH_HERO_BODY_OVERLAP_CSS,
+        } as CSSProperties
+      }
+      className={cn(
+        "absolute top-0 left-1/2 isolate z-0 w-screen max-w-none -translate-x-1/2 overflow-hidden bg-black",
+        // While muted the media reaches below the frame's flow bottom so the
+        // video continues behind the panel that covers it, the way a watch
+        // page's hero runs on under its body. Unmuting drops it, exactly as
+        // revealing that hero's chrome drops its overlap to zero.
+        isMuted
+          ? "bottom-[calc(-1_*_var(--watch-hero-body-overlap))]"
+          : "bottom-0",
+      )}
       data-testid="watch-home-tv-media-frame"
     >
-      {leavingSlide && !fullPlayerMode ? (
+      {leavingSlide ? (
         <WatchHomeTvVisualLayer
           key={`${leavingSlide.id}-leaving`}
           slide={leavingSlide}
@@ -301,43 +325,75 @@ function WatchHomeTvMedia({
           priority={false}
         />
       ) : null}
-      {!fullPlayerMode ? (
-        <WatchHomeTvVisualLayer
-          key={`${activeSlide.id}-entering`}
-          slide={activeSlide}
-          className="watch-home-media-enter z-10"
-          priority
-        />
-      ) : null}
-      {activeSlide.src ? (
+      <WatchHomeTvVisualLayer
+        key={`${activeSlide.id}-entering`}
+        slide={activeSlide}
+        className="watch-home-media-enter z-10"
+        priority
+      />
+      {previewSrc ? (
         <MuxVideo
           key={activeSlide.id}
           ref={handleVideoRef}
-          src={activeSlide.src}
+          src={previewSrc}
+          _hlsConfig={WATCH_HOME_INTRO_HLS_CONFIG}
           poster={activeSlide.posterUrl ?? undefined}
-          muted={takeoverActive ? false : isMuted}
+          muted={isMuted}
           playsInline
           disableTracking
           controls={false}
           crossOrigin="anonymous"
           onCanPlay={onCanPlay}
-          onEnded={takeoverActive ? undefined : onEnded}
+          onEnded={onEnded}
           onLoadedMetadata={onLoadedMetadata}
+          onPause={onPause}
+          onPlay={onPlay}
+          onPlaying={onPlaying}
+          onStalled={onWaiting}
           onTimeUpdate={onTimeUpdate}
+          onWaiting={onWaiting}
           className={cn(
             "absolute inset-0 z-20 h-full w-full opacity-0 transition-opacity duration-[900ms] ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none",
-            fullPlayerMode ? "object-contain" : "object-cover",
-            fullPlayerMode || mediaReady ? "opacity-100" : "opacity-0",
-            playerTransitioning && "watch-home-player-enter",
+            "object-cover",
+            mediaReady ? "opacity-100" : "opacity-0",
           )}
         />
       ) : null}
-      {!fullPlayerMode ? (
-        <>
-          <div className="absolute inset-0 z-30 bg-[linear-gradient(180deg,rgba(0,0,0,0.18),rgba(0,0,0,0)_36%,rgba(0,0,0,0.35)_70%,rgba(0,0,0,0.72)_100%)]" />
-          <div className="absolute inset-y-0 left-0 z-30 w-3/5 bg-[linear-gradient(90deg,rgba(0,0,0,0.48)_0%,rgba(0,0,0,0)_100%)]" />
-        </>
-      ) : null}
+      {/* Muted preview wears the exact scrim the watch-page hero uses for its
+          own muted state (`hero-player-muted-backdrop`), so the home intro and
+          the inner pages read identically while sound is off. Unmuting drops
+          the flat dim — same as the hero revealing its chrome — and falls back
+          to the legibility gradients the overlay copy needs. */}
+      <div
+        aria-hidden
+        data-testid="watch-home-tv-muted-backdrop"
+        className={cn(
+          "pointer-events-none absolute inset-0 z-30 [background:var(--watch-player-muted-backdrop)] transition-opacity duration-500 motion-reduce:transition-none",
+          isMuted ? "opacity-100" : "opacity-0",
+        )}
+        style={
+          {
+            "--watch-player-muted-backdrop":
+              WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND,
+          } as CSSProperties
+        }
+      />
+      <div
+        aria-hidden
+        data-testid="watch-home-tv-unmuted-scrim"
+        className={cn(
+          "pointer-events-none absolute inset-0 z-30 bg-[linear-gradient(180deg,rgba(0,0,0,0.18),rgba(0,0,0,0)_36%,rgba(0,0,0,0.35)_70%,rgba(0,0,0,0.72)_100%)] transition-opacity duration-500 motion-reduce:transition-none",
+          isMuted ? "opacity-0" : "opacity-100",
+        )}
+      />
+      <div
+        aria-hidden
+        data-testid="watch-home-tv-unmuted-scrim"
+        className={cn(
+          "pointer-events-none absolute inset-y-0 left-0 z-30 w-3/5 bg-[linear-gradient(90deg,rgba(0,0,0,0.48)_0%,rgba(0,0,0,0)_100%)] transition-opacity duration-500 motion-reduce:transition-none",
+          isMuted ? "opacity-0" : "opacity-100",
+        )}
+      />
     </div>
   )
 }
@@ -446,8 +502,6 @@ function WatchHomeTvVisualLayer({
   priority: boolean
   slide: WatchHomeTvCarouselSlide
 }) {
-  const copy = useWatchHomeTvSlideCopy(slide)
-
   return (
     <div
       className={cn("absolute inset-0", className)}
@@ -456,7 +510,7 @@ function WatchHomeTvVisualLayer({
       {slide.posterUrl ? (
         <Image
           src={slide.posterUrl}
-          alt={copy.imageAlt}
+          alt={slide.imageAlt}
           fill
           priority={priority}
           sizes="100vw"
@@ -473,73 +527,65 @@ function WatchHomeTvVisualLayer({
 }
 
 function WatchHomeTvOverlay({
+  activeIndex,
   activeSlide,
-  exitingToPlayer,
-  fullPlayerMode,
+  advanceDurationSeconds,
+  isBuffering,
+  isTurnHeld,
   isMuted,
   leavingSlide,
-  onNext,
+  onSelectSlide,
   onToggleMuted,
-  onWatchShortFilm,
   playbackTimeSeconds,
+  slides,
+  ringAnimationKey,
 }: {
+  activeIndex: number
   activeSlide: WatchHomeTvCarouselSlide
-  exitingToPlayer: boolean
-  fullPlayerMode: boolean
+  advanceDurationSeconds: number
+  isBuffering: boolean
+  isTurnHeld: boolean
   isMuted: boolean
   leavingSlide: WatchHomeTvCarouselSlide | null
-  onNext: () => void
+  onSelectSlide: (slideId: string) => void
   onToggleMuted: () => void
-  onWatchShortFilm: (slide: WatchHomeTvCarouselSlide) => void
   playbackTimeSeconds: number
+  ringAnimationKey: string
+  slides: readonly WatchHomeTvCarouselSlide[]
 }) {
   const t = useTranslations("WatchHome")
-  const advanceDurationSeconds =
-    watchHomeTvSlideAdvanceDurationSeconds(activeSlide)
-
-  if (fullPlayerMode && !exitingToPlayer) return null
 
   return (
     <div
       className={cn(
-        "absolute inset-x-0 z-10 flex items-end justify-between gap-4",
-        fullPlayerMode
-          ? "pointer-events-none bottom-16 pb-4 sm:hidden"
-          : "bottom-0 pb-4 sm:pb-8",
+        "absolute inset-x-0 bottom-0 z-10 flex items-end justify-between gap-4 pb-4 sm:pb-8 compact-landscape:pb-4",
         WATCH_PAGE_RAIL_PADDING_CLASSES,
       )}
+      data-testid="watch-home-tv-overlay"
     >
-      <div className="relative min-w-0 flex-1 text-white drop-shadow-[0_2px_16px_rgba(0,0,0,0.7)]">
-        {leavingSlide ? (
+      <div className="min-w-0 flex-1 text-white drop-shadow-[0_2px_16px_rgba(0,0,0,0.7)]">
+        <div className="relative">
+          {leavingSlide ? (
+            <WatchHomeTvOverlayContent
+              key={`${leavingSlide.id}-leaving-copy`}
+              mode="leaving"
+              slide={leavingSlide}
+            />
+          ) : null}
           <WatchHomeTvOverlayContent
-            key={`${leavingSlide.id}-leaving-copy`}
-            mode="leaving"
-            playbackTimeSeconds={0}
-            slide={leavingSlide}
+            key={`${activeSlide.id}-entering-copy`}
+            enterDelayOffsetMs={leavingSlide ? 430 : 0}
+            mode="entering"
+            slide={activeSlide}
           />
-        ) : null}
-        <WatchHomeTvOverlayContent
-          key={`${activeSlide.id}-${exitingToPlayer ? "player-exit" : "entering"}-copy`}
-          enterDelayOffsetMs={leavingSlide ? 430 : 0}
-          mode={exitingToPlayer ? "leaving" : "entering"}
-          onWatchShortFilm={onWatchShortFilm}
-          playbackTimeSeconds={playbackTimeSeconds}
-          showAction={!fullPlayerMode}
-          slide={activeSlide}
-        />
-      </div>
-      {!fullPlayerMode ? (
+        </div>
         <div
-          className={cn(
-            "hidden shrink-0 items-center gap-4 text-white sm:flex",
-            exitingToPlayer && "watch-home-controls-exit pointer-events-none",
-          )}
+          data-testid="watch-home-tv-actions"
+          className="mt-3 flex flex-nowrap items-center gap-x-3 sm:mt-4 sm:gap-x-5 compact-landscape:mt-1 compact-landscape:gap-x-3"
         >
-          <NextVideoButton
-            advanceDurationSeconds={advanceDurationSeconds}
-            animationKey={activeSlide.id}
-            onClick={onNext}
-            size="large"
+          <PrimaryAction
+            slide={activeSlide}
+            playbackTimeSeconds={playbackTimeSeconds}
           />
           <Button
             type="button"
@@ -547,33 +593,53 @@ function WatchHomeTvOverlay({
             size="icon"
             aria-label={isMuted ? t("unmutePreview") : t("mutePreview")}
             onClick={onToggleMuted}
-            className="h-14 w-14 rounded-full text-white/80 hover:bg-white/10 hover:text-white"
+            className="group/mute relative isolate h-11 w-11 overflow-hidden rounded-full border-0 bg-black/55 text-white shadow-lg shadow-black/30 ring-0 hover:scale-105 hover:bg-black/70 hover:text-white focus-visible:bg-black/70 focus-visible:text-white focus-visible:ring-2 focus-visible:ring-white/80 active:scale-95 md:h-13 md:w-13"
           >
             {isMuted ? (
-              <VolumeX className="size-7" aria-hidden />
+              <VolumeX className="relative z-10 size-7" aria-hidden />
             ) : (
-              <Volume2 className="size-7" aria-hidden />
+              <Volume2 className="relative z-10 size-7" aria-hidden />
             )}
+            <span
+              aria-hidden
+              data-testid="watch-home-mute-bevel"
+              className="pointer-events-none absolute inset-0 z-20 rounded-[inherit] mix-blend-overlay shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)] transition-shadow duration-200 group-hover/mute:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.48)]"
+            />
           </Button>
+          <div className="ml-auto flex shrink-0 items-center text-white sm:hidden">
+            <WatchHomeVideoTimeline
+              activeIndex={activeIndex}
+              advanceDurationSeconds={advanceDurationSeconds}
+              animationKey={ringAnimationKey}
+              buffering={isBuffering}
+              onSelectSlide={onSelectSlide}
+              paused={isTurnHeld}
+              size="compact"
+              slides={slides}
+            />
+          </div>
         </div>
-      ) : null}
+      </div>
+      <div className="hidden shrink-0 items-center gap-4 text-white sm:flex">
+        <WatchHomeVideoTimeline
+          activeIndex={activeIndex}
+          advanceDurationSeconds={advanceDurationSeconds}
+          animationKey={ringAnimationKey}
+          buffering={isBuffering}
+          onSelectSlide={onSelectSlide}
+          paused={isTurnHeld}
+          size="large"
+          slides={slides}
+        />
+      </div>
     </div>
   )
-}
-
-function watchHomeTvSlideAdvanceDurationSeconds(
-  slide: WatchHomeTvCarouselSlide,
-) {
-  if (!slide.src) return 7
-  return watchHomeTvAdvanceTargetSeconds(slide.durationSeconds ?? Number.NaN)
 }
 
 function WatchHomeTvSlideLabel({ slide }: { slide: WatchHomeTvCarouselSlide }) {
   const t = useTranslations("WatchHome")
   const videoLabels = useTranslations("VideoLabels")
-  const copy = useWatchHomeTvSlideCopy(slide)
 
-  if (slide.kind === "mux") return copy.label
   if (slide.label === "Featured") return t("featured")
   return videoLabels(videoLabelMessageKey(slide.label))
 }
@@ -581,27 +647,23 @@ function WatchHomeTvSlideLabel({ slide }: { slide: WatchHomeTvCarouselSlide }) {
 function WatchHomeTvOverlayContent({
   enterDelayOffsetMs = 0,
   mode,
-  onWatchShortFilm,
-  playbackTimeSeconds,
-  showAction = true,
   slide,
 }: {
   enterDelayOffsetMs?: number
   mode: "entering" | "leaving"
-  onWatchShortFilm?: (slide: WatchHomeTvCarouselSlide) => void
-  playbackTimeSeconds: number
-  showAction?: boolean
   slide: WatchHomeTvCarouselSlide
 }) {
-  const copy = useWatchHomeTvSlideCopy(slide)
-  const enterDelays = [0, 70, 140, 210]
-  const exitDelays = [0, 35, 70, 105]
+  // One entry per rotating copy item. The action row stays mounted outside
+  // this keyed subtree so a slide advance cannot steal keyboard focus.
+  const enterDelays = [0, 70]
+  const exitDelays = [0, 35]
   const itemClassName =
     mode === "entering" ? "watch-home-copy-enter" : "watch-home-copy-exit"
+  // Positioning only — WatchHeroOverlay owns the copy stack itself.
   const wrapperClassName =
     mode === "leaving"
-      ? "pointer-events-none absolute bottom-0 left-0 flex w-full flex-col items-start gap-3 sm:gap-4"
-      : "relative flex flex-col items-start gap-3 sm:gap-4"
+      ? "pointer-events-none absolute bottom-0 left-0 w-full sm:gap-4"
+      : "relative sm:gap-4"
   const delayStyle = (index: number) => {
     const delay =
       mode === "entering"
@@ -611,79 +673,232 @@ function WatchHomeTvOverlayContent({
   }
 
   return (
-    <div className={wrapperClassName} aria-hidden={mode === "leaving"}>
-      <div className="min-w-0">
-        <p
-          className={cn(
-            itemClassName,
-            "text-xs font-bold tracking-[0.24em] text-amber-300 uppercase sm:text-sm",
-          )}
-          style={delayStyle(0)}
-        >
-          <WatchHomeTvSlideLabel slide={slide} />
-        </p>
-        <p
-          className={cn(
-            itemClassName,
-            "line-clamp-3 leading-tight font-extrabold sm:line-clamp-2",
-            "text-3xl max-[360px]:text-2xl sm:text-5xl md:text-6xl",
-          )}
-          data-testid={
-            mode === "entering" ? "watch-home-tv-active-title" : undefined
-          }
-          style={delayStyle(1)}
-        >
-          {copy.title}
-        </p>
-        {copy.description ? (
-          <p
-            className={cn(
-              itemClassName,
-              "mt-2 hidden max-w-[min(52rem,calc(100vw-2.5rem))] text-base leading-7 font-semibold text-white/78 sm:mt-3 sm:line-clamp-3 sm:block sm:text-lg md:text-xl",
-            )}
-            style={delayStyle(2)}
-          >
-            {copy.description}
-          </p>
-        ) : null}
-      </div>
-      {showAction ? (
-        <div className={itemClassName} style={delayStyle(3)}>
-          <PrimaryAction
-            slide={slide}
-            onWatchShortFilm={onWatchShortFilm}
-            playbackTimeSeconds={playbackTimeSeconds}
-          />
-        </div>
-      ) : null}
-    </div>
+    // The watch page's hero copy block, reused: same eyebrow, same title
+    // treatment. What differs is passed in — the title is a `p` here because
+    // the page heading lives outside the carousel. Player actions stay in an
+    // unkeyed sibling so focus survives automatic slide changes.
+    <WatchHeroOverlay
+      className={wrapperClassName}
+      ariaHidden={mode === "leaving"}
+      label={<WatchHomeTvSlideLabel slide={slide} />}
+      labelSlot={{ className: itemClassName, style: delayStyle(0) }}
+      title={slide.title}
+      titleAs="p"
+      titleTestId={
+        mode === "entering" ? "watch-home-tv-active-title" : undefined
+      }
+      titleSlot={{
+        className: cn(itemClassName, "line-clamp-3 sm:line-clamp-2"),
+        style: delayStyle(1),
+      }}
+    />
   )
 }
 
-function NextVideoButton({
+function watchHomeVideoTimelineItems(
+  activeIndex: number,
+  slides: readonly WatchHomeTvCarouselSlide[],
+) {
+  if (slides.length === 0 || activeIndex < 0 || activeIndex >= slides.length) {
+    return []
+  }
+
+  const items: Array<{
+    offset: number
+    slide: WatchHomeTvCarouselSlide
+  }> = []
+  const seenSlideIds = new Set<string>()
+  const addItem = (offset: number) => {
+    const index = activeIndex + offset
+    if (index < 0 || index >= slides.length) return
+    const slide = slides[index]
+    if (!slide || seenSlideIds.has(slide.id)) return
+    seenSlideIds.add(slide.id)
+    items.push({ offset, slide })
+  }
+
+  addItem(-1)
+  addItem(0)
+  for (
+    let offset = 1;
+    offset <= WATCH_HOME_TV_TIMELINE_FUTURE_COUNT;
+    offset++
+  ) {
+    addItem(offset)
+  }
+
+  return items
+}
+
+function WatchHomePlaybackProgressRing({
   advanceDurationSeconds,
   animationKey,
-  onClick,
+  buffering,
+  paused,
+  showResetRing,
   size,
 }: {
   advanceDurationSeconds: number
   animationKey: string
-  onClick: () => void
+  /**
+   * Waiting on bytes. Only this draws the spinner and dims the arc — a viewer
+   * who scrolled past or opened a modal is not stalled and must not be shown
+   * a loading state.
+   */
+  buffering: boolean
+  /** Held for any reason — buffering OR deliberately paused. The ring stops
+   * where it is rather than timing a still frame. */
+  paused: boolean
+  showResetRing: boolean
   size: "large" | "compact"
 }) {
-  const t = useTranslations("WatchHome")
-  const radius = size === "large" ? 30 : 24
+  const radius = size === "large" ? 26 : 20
   const circumference = 2 * Math.PI * radius
-  const buttonClassName =
-    size === "large"
-      ? "h-14 w-14 rounded-full text-white/80 hover:bg-white/10 hover:text-white"
-      : "h-11 w-11 rounded-full bg-black/35 text-white hover:bg-black/55"
-  const iconClassName = "size-7 fill-current"
-  const svgSize = size === "large" ? 68 : 56
+  const svgSize = size === "large" ? 60 : 46
   const center = svgSize / 2
+  return (
+    <svg
+      aria-hidden
+      data-testid="watch-home-current-progress"
+      className="pointer-events-none absolute inset-1/2 z-30 -translate-x-1/2 -translate-y-1/2 -rotate-90 overflow-visible"
+      height={svgSize}
+      width={svgSize}
+      viewBox={`0 0 ${svgSize} ${svgSize}`}
+    >
+      <circle
+        cx={center}
+        cy={center}
+        r={radius}
+        fill="none"
+        stroke="rgba(255,255,255,0.18)"
+        strokeWidth="3"
+      />
+      <circle
+        key={animationKey}
+        cx={center}
+        cy={center}
+        r={radius}
+        fill="none"
+        stroke="rgba(255,255,255,0.9)"
+        strokeLinecap="round"
+        strokeWidth="3"
+        className="watch-home-progress-ring"
+        data-paused={paused ? "true" : "false"}
+        strokeDasharray={circumference}
+        strokeDashoffset={circumference}
+        style={
+          {
+            "--watch-home-progress-duration": `${advanceDurationSeconds}s`,
+            animationPlayState: paused ? "paused" : "running",
+            // Held progress stays readable — a stall at 60% still shows where
+            // it stopped — but steps back so the spinner reads as the live
+            // element of the two arcs. Only a STALL dims it; a deliberate
+            // pause leaves the arc at full strength.
+            opacity: buffering ? 0.4 : 1,
+          } as CSSProperties
+        }
+      />
+      {/* The loading state belongs on the ring itself: this circle is what
+          promised the viewer that something was playing, so it is where the
+          correction has to appear. The group carries a CSS-delayed fade so a
+          stream that arrives promptly never flashes it. */}
+      {buffering ? (
+        <g
+          className="watch-home-progress-loading"
+          data-testid="watch-home-progress-loading"
+        >
+          <circle
+            cx={center}
+            cy={center}
+            r={radius}
+            fill="none"
+            stroke="rgba(255,255,255,0.95)"
+            strokeLinecap="round"
+            strokeWidth="3"
+            className="watch-home-progress-ring-loading"
+            strokeDasharray={`${circumference * 0.22} ${circumference}`}
+          />
+        </g>
+      ) : null}
+      {showResetRing ? (
+        <circle
+          key={`${animationKey}-reset`}
+          data-testid="watch-home-progress-reset"
+          cx={center}
+          cy={center}
+          r={radius}
+          fill="none"
+          stroke="rgba(255,255,255,0.92)"
+          strokeLinecap="round"
+          strokeWidth="3"
+          className="watch-home-progress-ring-reset"
+          strokeDasharray={circumference}
+          strokeDashoffset={0}
+          style={
+            {
+              "--watch-home-progress-circumference": circumference,
+            } as CSSProperties
+          }
+        />
+      ) : null}
+    </svg>
+  )
+}
+
+const WatchHomeVideoTimeline = memo(function WatchHomeVideoTimeline({
+  activeIndex,
+  advanceDurationSeconds,
+  animationKey,
+  buffering,
+  onSelectSlide,
+  paused,
+  size,
+  slides,
+}: {
+  activeIndex: number
+  advanceDurationSeconds: number
+  animationKey: string
+  buffering: boolean
+  onSelectSlide: (slideId: string) => void
+  paused: boolean
+  size: "large" | "compact"
+  slides: readonly WatchHomeTvCarouselSlide[]
+}) {
+  const t = useTranslations("WatchHome")
+  const items = useMemo(() => {
+    const timelineItems = watchHomeVideoTimelineItems(activeIndex, slides)
+
+    return size === "compact"
+      ? timelineItems.filter(({ offset }) => offset === 0 || offset === 1)
+      : timelineItems
+  }, [activeIndex, size, slides])
   const completedRef = useRef(false)
+  // Mirrors the paused ring: the completion clock measures the animation, so it
+  // has to stop and resume with it or a buffered slide would be credited with a
+  // full ring it never drew.
+  const completionElapsedRef = useRef(0)
+  const focusedSlideIdRef = useRef<string | null>(null)
   const previousAnimationKeyRef = useRef(animationKey)
+  const timelineRef = useRef<HTMLDivElement | null>(null)
   const [showResetRing, setShowResetRing] = useState(false)
+  const buttonClassName =
+    size === "large" ? "h-12 w-12 rounded-full" : "h-9 w-9 rounded-full"
+  const imageSize = size === "large" ? "48px" : "36px"
+
+  useEffect(() => {
+    const focusedSlideId = focusedSlideIdRef.current
+    if (
+      !focusedSlideId ||
+      items.some(({ slide }) => slide.id === focusedSlideId) ||
+      document.activeElement !== document.body
+    ) {
+      return
+    }
+
+    timelineRef.current
+      ?.querySelector<HTMLButtonElement>('[aria-current="true"]')
+      ?.focus({ preventScroll: true })
+  }, [items])
 
   useEffect(() => {
     const previousCompleted = completedRef.current
@@ -694,6 +909,7 @@ function NextVideoButton({
     let resetTimeout = 0
     if (animationKeyChanged) {
       previousAnimationKeyRef.current = animationKey
+      completionElapsedRef.current = 0
       setShowResetRing(previousCompleted)
       if (previousCompleted) {
         resetTimeout = window.setTimeout(() => {
@@ -702,467 +918,256 @@ function NextVideoButton({
       }
     }
 
+    if (paused) {
+      return () => {
+        if (resetTimeout !== 0) window.clearTimeout(resetTimeout)
+      }
+    }
+
+    const startedAt = Date.now()
     const completionTimeout = window.setTimeout(
       () => {
         completedRef.current = true
       },
-      Math.max(0, advanceDurationSeconds * 1000 - 80),
+      Math.max(
+        0,
+        advanceDurationSeconds * 1000 - 80 - completionElapsedRef.current,
+      ),
     )
 
     return () => {
       window.clearTimeout(completionTimeout)
+      completionElapsedRef.current += Date.now() - startedAt
       if (resetTimeout !== 0) window.clearTimeout(resetTimeout)
     }
-  }, [advanceDurationSeconds, animationKey])
-
-  return (
-    <div className="relative grid place-items-center">
-      <svg
-        aria-hidden
-        data-testid="watch-home-next-progress"
-        className="pointer-events-none absolute inset-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 overflow-visible"
-        height={svgSize}
-        width={svgSize}
-        viewBox={`0 0 ${svgSize} ${svgSize}`}
-      >
-        <circle
-          cx={center}
-          cy={center}
-          r={radius}
-          fill="none"
-          stroke="rgba(255,255,255,0.18)"
-          strokeWidth="3"
-        />
-        <circle
-          key={animationKey}
-          cx={center}
-          cy={center}
-          r={radius}
-          fill="none"
-          stroke="rgba(255,255,255,0.9)"
-          strokeLinecap="round"
-          strokeWidth="3"
-          className="watch-home-progress-ring"
-          strokeDasharray={circumference}
-          strokeDashoffset={circumference}
-          style={
-            {
-              "--watch-home-progress-duration": `${advanceDurationSeconds}s`,
-            } as CSSProperties
-          }
-        />
-        {showResetRing ? (
-          <circle
-            key={`${animationKey}-reset`}
-            cx={center}
-            cy={center}
-            r={radius}
-            fill="none"
-            stroke="rgba(255,255,255,0.92)"
-            strokeLinecap="round"
-            strokeWidth="3"
-            className="watch-home-progress-ring-reset"
-            strokeDasharray={circumference}
-            strokeDashoffset={0}
-            style={
-              {
-                "--watch-home-progress-circumference": circumference,
-              } as CSSProperties
-            }
-          />
-        ) : null}
-      </svg>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        aria-label={t("nextVideo")}
-        onClick={onClick}
-        className={buttonClassName}
-      >
-        <SkipForward className={iconClassName} aria-hidden />
-      </Button>
-    </div>
-  )
-}
-
-function WatchHomeTvCard({
-  isActive,
-  onSelect,
-  progress,
-  slide,
-}: {
-  isActive: boolean
-  onSelect: () => void
-  progress: number
-  slide: WatchHomeTvCarouselSlide
-}) {
-  const t = useTranslations("WatchHome")
-  const copy = useWatchHomeTvSlideCopy(slide)
-
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={cn(
-        "group relative block aspect-video w-[clamp(13.5rem,68vw,26.25rem)] overflow-hidden rounded-lg bg-stone-950 text-left shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)] transition-[opacity,box-shadow] sm:w-[clamp(14.75rem,30vw,26.25rem)] md:w-full",
-        VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
-        isActive
-          ? "opacity-100"
-          : "opacity-62 hover:opacity-95 focus-visible:opacity-95 hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
-      )}
-      aria-pressed={isActive}
-      aria-label={t("showVideo", { title: copy.title })}
-      data-testid="watch-home-tv-carousel-card"
-    >
-      {slide.thumbnailUrl ? (
-        <Image
-          src={slide.thumbnailUrl}
-          alt=""
-          fill
-          sizes="(max-width: 640px) 72vw, (max-width: 767px) min(30vw, 26.25rem), 33vw"
-          className="object-cover transition-transform duration-300 group-hover:scale-105 group-focus-visible:scale-105"
-        />
-      ) : (
-        <div
-          aria-hidden
-          className="h-full w-full bg-[linear-gradient(135deg,#111827,#4c1d1d_52%,#064e3b)]"
-        />
-      )}
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0)_28%,rgba(0,0,0,0.72)_100%)]" />
-      {isActive ? (
-        <div className="absolute inset-x-0 bottom-0 h-1 bg-white/25">
-          <div
-            className="h-full bg-brand-red"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      ) : null}
-      <VideoThumbnailCaption>
-        <VideoThumbnailEyebrow as="p" size="compact-sm">
-          <WatchHomeTvSlideLabel slide={slide} />
-        </VideoThumbnailEyebrow>
-        <VideoThumbnailTitle as="span" size="regular-sm">
-          {copy.title}
-        </VideoThumbnailTitle>
-      </VideoThumbnailCaption>
-      <div
-        aria-hidden
-        data-testid="watch-home-tv-card-bevel"
-        className="pointer-events-none absolute inset-0 z-40 rounded-lg opacity-40 mix-blend-soft-light shadow-[inset_0_0_0_1px_rgba(255,255,255,0.7)]"
-      />
-      <VideoThumbnailInteractionFrame
-        data-testid="watch-home-tv-card-hover-outline"
-        interactive={!isActive}
-      />
-      <div
-        aria-hidden
-        data-testid="watch-home-tv-card-active-outline"
-        className={cn(
-          "pointer-events-none absolute inset-0 z-[60] rounded-lg shadow-[inset_0_0_0_4px_rgba(255,255,255,1),inset_0_0_0_5px_rgba(0,0,0,0.45)] transition-[opacity,transform] duration-300 ease-out",
-          isActive ? "scale-100 opacity-100" : "scale-[0.985] opacity-0",
-        )}
-      />
-    </button>
-  )
-}
-
-function WatchHomeTvRail({
-  activeSlideId,
-  onSelect,
-  progress,
-  slides,
-}: {
-  activeSlideId: string
-  onSelect: (slideId: string) => void
-  progress: number
-  slides: readonly WatchHomeTvCarouselSlide[]
-}) {
-  const t = useTranslations("WatchHome")
-  const [api, setApi] = useState<CarouselApi | null>(null)
-
-  useEffect(() => {
-    if (!api) return
-    const activeIndex = slides.findIndex((slide) => slide.id === activeSlideId)
-    if (activeIndex < 0) return
-
-    api.scrollTo(activeIndex)
-  }, [activeSlideId, api, slides])
+  }, [advanceDurationSeconds, animationKey, paused])
 
   return (
     <div
-      className="relative z-20 bg-black/45 py-4 backdrop-blur-sm"
-      data-testid="watch-home-tv-rail"
+      ref={timelineRef}
+      data-size={size}
+      data-testid="watch-home-video-timeline"
+      className={cn(
+        "flex shrink-0 items-center",
+        size === "large" ? "gap-2.5" : "gap-1.5",
+      )}
     >
-      <div className={cn("relative w-full", WATCH_PAGE_CONTENT_CLASSES)}>
-        <Carousel
-          opts={{
-            align: "start",
-            containScroll: "trimSnaps",
-            dragFree: true,
-            loop: true,
-          }}
-          setApi={setApi}
-          className="-mx-5 w-[calc(100%+2.5rem)] pl-5 md:mx-0 md:w-full md:pl-0"
-        >
-          <CarouselContent
-            className="-ml-4"
-            viewportClassName="overflow-x-visible md:overflow-x-clip"
-          >
-            {slides.map((slide) => (
-              <CarouselItem
-                key={slide.id}
-                className="basis-auto pl-4 md:basis-1/3 lg:basis-1/4"
-              >
-                <WatchHomeTvCard
-                  slide={slide}
-                  isActive={slide.id === activeSlideId}
-                  progress={slide.id === activeSlideId ? progress : 0}
-                  onSelect={() => onSelect(slide.id)}
-                />
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-          <CarouselPrevious label={t("previousVideoPreview")} />
-          <CarouselNext label={t("nextVideoPreview")} />
-        </Carousel>
-      </div>
-    </div>
-  )
-}
+      {items.map(({ offset, slide }) => {
+        const isCurrent = offset === 0
+        const thumbnailUrl = slide.thumbnailUrl || slide.posterUrl
 
-export function WatchHomeTvCarousel({
-  sequence = null,
-  slides,
-}: WatchHomeTvCarouselProps) {
-  const t = useTranslations("WatchHome")
-  const carouselSlides = useMemo(
-    () => watchHomeHeroSlidesToTvCarouselSlides(slides),
-    [slides],
-  )
-  const [shortFilmSlide, setShortFilmSlide] =
-    useState<WatchHomeTvCarouselMuxSlide | null>(null)
-  const [shortFilmPhase, setShortFilmPhase] =
-    useState<WatchHomeShortFilmPhase | null>(null)
-  const {
-    activeSlide,
-    advance,
-    handleCanPlay,
-    handleEnded,
-    handleLoadedMetadata,
-    handleTimeUpdate,
-    isMuted,
-    leavingSlide,
-    mediaReady,
-    playbackTimeSeconds,
-    progress,
-    selectSlide,
-    slides: displaySlides,
-    toggleMuted,
-    videoRef,
-  } = useWatchHomeTvCarousel(carouselSlides, sequence, {
-    autoAdvancePausedForSlideId: shortFilmSlide?.id ?? null,
-    suppressLeavingSlide: shortFilmSlide != null,
-  })
-  const [subtitleCueText, setSubtitleCueText] = useState<string | null>(null)
-  const wrapperRef = useRef<HTMLDivElement | null>(null)
-  const shortFilmTakeoverSlideIdRef = useRef<string | null>(null)
-  const [player, setPlayer] = useState<MuxPlayerRef | null>(null)
-  usePauseForWatchModal(player, activeSlide?.id ?? null)
-  const [overlayAnchor, setOverlayAnchor] = useState<HTMLDivElement | null>(
-    null,
-  )
-  const handlePlayerReady = useCallback((next: MuxPlayerRef | null) => {
-    setPlayer((current) => (current === next ? current : next))
-  }, [])
-  const handleOpenShortFilm = useCallback(
-    (slide: WatchHomeTvCarouselSlide) => {
-      if (slide.kind !== "mux" || !slide.src) return
-      shortFilmTakeoverSlideIdRef.current = slide.id
-      setShortFilmSlide(slide)
-      setShortFilmPhase("transitioning")
-      if (isMuted) toggleMuted()
-      const video = videoRef.current
-      if (!video) return
-      setPlayer(video as unknown as MuxPlayerRef)
-      video.muted = false
-      const playResult = video.play()
-      if (playResult && typeof playResult.catch === "function") {
-        playResult.catch(() => undefined)
-      }
-    },
-    [isMuted, toggleMuted, videoRef],
-  )
-  const handlePlayerChromeVisibilityChange = useCallback(
-    (detail: WatchPlayerChromeVisibilityDetail) => {
-      if (typeof window === "undefined") return
-      window.dispatchEvent(
-        new CustomEvent<WatchPlayerChromeVisibilityDetail>(
-          WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
-          { detail },
-        ),
-      )
-    },
-    [],
-  )
-
-  useEffect(() => {
-    const video = videoRef.current
-    if (!video || shortFilmSlide == null) return
-    video.muted = false
-    video.controls = false
-  }, [shortFilmSlide, videoRef])
-
-  useEffect(() => {
-    if (shortFilmSlide == null || shortFilmPhase !== "transitioning") return
-    const timeout = window.setTimeout(() => {
-      setShortFilmPhase("playing")
-    }, WATCH_HOME_SHORT_FILM_TRANSITION_MS)
-    return () => window.clearTimeout(timeout)
-  }, [shortFilmPhase, shortFilmSlide])
-
-  const fullPlayerMode =
-    shortFilmSlide != null &&
-    shortFilmPhase === "playing" &&
-    activeSlide?.id === shortFilmSlide.id
-  const playerTransitioning =
-    shortFilmSlide != null &&
-    shortFilmPhase === "transitioning" &&
-    activeSlide?.id === shortFilmSlide.id
-  const handleMediaEnded = useCallback(() => {
-    if (
-      shortFilmTakeoverSlideIdRef.current != null &&
-      activeSlide?.id === shortFilmTakeoverSlideIdRef.current
-    ) {
-      return
-    }
-    handleEnded()
-  }, [activeSlide?.id, handleEnded])
-
-  useEffect(() => {
-    if (fullPlayerMode || playerTransitioning) return
-    handlePlayerChromeVisibilityChange({ visible: true, opacity: 1 })
-  }, [fullPlayerMode, playerTransitioning, handlePlayerChromeVisibilityChange])
-
-  useEffect(() => {
-    if (!fullPlayerMode) return
-
-    const revealHeaderOffPlayer = () => {
-      const rect = wrapperRef.current?.getBoundingClientRect()
-      if (!rect) return
-      if (rect.bottom <= 0 || rect.top >= window.innerHeight) {
-        handlePlayerChromeVisibilityChange({ visible: true, opacity: 1 })
-      }
-    }
-
-    window.addEventListener("scroll", revealHeaderOffPlayer, { passive: true })
-    window.addEventListener("resize", revealHeaderOffPlayer)
-    return () => {
-      window.removeEventListener("scroll", revealHeaderOffPlayer)
-      window.removeEventListener("resize", revealHeaderOffPlayer)
-    }
-  }, [fullPlayerMode, handlePlayerChromeVisibilityChange])
-
-  const handleSelectSlide = useCallback(
-    (slideId: string) => {
-      shortFilmTakeoverSlideIdRef.current = null
-      setShortFilmSlide(null)
-      setShortFilmPhase(null)
-      selectSlide(slideId)
-    },
-    [selectSlide],
-  )
-
-  if (!activeSlide) return null
-
-  return (
-    <WatchHomeTvCarouselRegion activeSlide={activeSlide}>
-      <div className="relative mx-auto h-[66svh] w-full max-w-[1920px] overflow-hidden bg-black md:h-[min(100svh,56.25vw)]">
-        <WatchHomeTvMedia
-          activeSlide={activeSlide}
-          fullPlayerMode={fullPlayerMode}
-          isMuted={isMuted}
-          leavingSlide={leavingSlide}
-          mediaReady={mediaReady}
-          onCanPlay={handleCanPlay}
-          onEnded={handleMediaEnded}
-          onLoadedMetadata={handleLoadedMetadata}
-          onPlayerReady={handlePlayerReady}
-          onSubtitleCueTextChange={setSubtitleCueText}
-          onTimeUpdate={handleTimeUpdate}
-          playerTransitioning={playerTransitioning}
-          videoRef={videoRef}
-          wrapperRef={wrapperRef}
-        />
-        <WatchHomeTvOverlay
-          activeSlide={activeSlide}
-          exitingToPlayer={playerTransitioning}
-          fullPlayerMode={fullPlayerMode}
-          isMuted={isMuted}
-          leavingSlide={leavingSlide}
-          onNext={advance}
-          onToggleMuted={toggleMuted}
-          onWatchShortFilm={handleOpenShortFilm}
-          playbackTimeSeconds={playbackTimeSeconds}
-        />
-        {subtitleCueText && !fullPlayerMode ? (
-          <WatchHomeSubtitleOverlay cueText={subtitleCueText} />
-        ) : null}
-        {fullPlayerMode ? (
-          <HeroPlayerControls
-            player={player}
-            playerRef={videoRef as unknown as RefObject<MuxPlayerRef | null>}
-            wrapperRef={wrapperRef}
-            overlayAnchor={overlayAnchor}
-            playbackId={activeSlide.playbackId ?? undefined}
-            showLanguageButton={false}
-            onVisibilityChange={handlePlayerChromeVisibilityChange}
-          />
-        ) : null}
-        {!fullPlayerMode ? (
+        return (
           <div
-            className={cn(
-              "absolute right-5 bottom-4 z-30 flex gap-2 sm:hidden",
-              playerTransitioning &&
-                "watch-home-controls-exit pointer-events-none",
-            )}
+            key={slide.id}
+            data-offset={offset}
+            data-testid="watch-home-video-circle"
+            className="relative grid shrink-0 place-items-center"
           >
-            <NextVideoButton
-              advanceDurationSeconds={watchHomeTvSlideAdvanceDurationSeconds(
-                activeSlide,
-              )}
-              animationKey={activeSlide.id}
-              onClick={advance}
-              size="compact"
-            />
+            {isCurrent ? (
+              <WatchHomePlaybackProgressRing
+                advanceDurationSeconds={advanceDurationSeconds}
+                animationKey={animationKey}
+                buffering={buffering}
+                paused={paused}
+                showResetRing={showResetRing}
+                size={size}
+              />
+            ) : null}
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              aria-label={isMuted ? t("unmutePreview") : t("mutePreview")}
-              onClick={toggleMuted}
-              className="h-11 w-11 rounded-full bg-black/35 text-white hover:bg-black/55"
-            >
-              {isMuted ? (
-                <VolumeX className="size-7" aria-hidden />
-              ) : (
-                <Volume2 className="size-7" aria-hidden />
+              aria-current={isCurrent ? "true" : undefined}
+              aria-disabled={isCurrent ? "true" : undefined}
+              aria-label={
+                isCurrent ? slide.title : t("showVideo", { title: slide.title })
+              }
+              onBlur={() => {
+                focusedSlideIdRef.current = null
+              }}
+              onFocus={() => {
+                focusedSlideIdRef.current = slide.id
+              }}
+              onClick={() => {
+                if (!isCurrent) onSelectSlide(slide.id)
+              }}
+              className={cn(
+                buttonClassName,
+                "group relative isolate overflow-hidden border-0 bg-black/35 p-0 text-white shadow-[0_4px_18px_rgba(0,0,0,0.35)] transition-[opacity,transform] hover:scale-105 hover:bg-black/45 focus-visible:ring-2 focus-visible:ring-white",
+                !isCurrent && "opacity-65 hover:opacity-100",
               )}
+            >
+              <Play className="relative z-0 size-5 fill-current" aria-hidden />
+              {thumbnailUrl ? (
+                <>
+                  <Image
+                    src={thumbnailUrl}
+                    alt=""
+                    fill
+                    loading="lazy"
+                    sizes={imageSize}
+                    className="z-10 object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "absolute inset-0 z-20 transition-colors",
+                      isCurrent
+                        ? "bg-black/5"
+                        : "bg-black/20 group-hover:bg-black/5",
+                    )}
+                  />
+                </>
+              ) : null}
+              <span
+                aria-hidden
+                data-testid="watch-home-video-bevel"
+                className="pointer-events-none absolute inset-0 z-30 rounded-[inherit] mix-blend-overlay shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)] transition-shadow duration-200 group-hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.48)]"
+              />
             </Button>
           </div>
+        )
+      })}
+    </div>
+  )
+})
+
+export function WatchHomeTvCarousel({
+  pinned = true,
+  sequence = null,
+  slides,
+}: WatchHomeTvCarouselProps) {
+  const carouselSlides = useMemo(
+    () => watchHomeHeroSlidesToTvCarouselSlides(slides),
+    [slides],
+  )
+  const {
+    activeIndex,
+    activeSlide,
+    advanceDurationSeconds,
+    handleCanPlay,
+    handleEnded,
+    handleLoadedMetadata,
+    handlePause,
+    handlePlay,
+    handlePlaying,
+    handleTimeUpdate,
+    handleWaiting,
+    isBuffering,
+    isTurnHeld,
+    isMuted,
+    leavingSlide,
+    mediaReady,
+    playbackTimeSeconds,
+    ringAnimationKey,
+    selectSlide,
+    slides: timelineSlides,
+    toggleMuted,
+    videoRef,
+  } = useWatchHomeTvCarousel(carouselSlides, sequence)
+  const [subtitleCueText, setSubtitleCueText] = useState<string | null>(null)
+  const wrapperRef = useRef<HTMLDivElement | null>(null)
+  // Separate from wrapperRef: that one is on the media layer, which reaches
+  // below the frame while muted. Coverage must be measured against the frame
+  // the viewer actually sees.
+  const heroFrameRef = useRef<HTMLDivElement | null>(null)
+  const [player, setPlayer] = useState<MuxPlayerRef | null>(null)
+  usePauseForWatchModal(player, activeSlide?.id ?? null)
+  const fittedHeroHeight = useWatchHomeHeroFittedHeight(pinned && isMuted)
+  useWatchHomeHeroScrollPause({
+    enabled: pinned,
+    fittedHeight: fittedHeroHeight,
+    heroRef: heroFrameRef,
+    player,
+    videoRef,
+  })
+  const handlePlayerReady = useCallback((next: MuxPlayerRef | null) => {
+    setPlayer((current) => (current === next ? current : next))
+  }, [])
+  // Chrome visibility is shell-level state that survives client-side
+  // navigation, so arriving from a watch page whose player hid the header has
+  // to restore it explicitly.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    window.dispatchEvent(
+      new CustomEvent<WatchPlayerChromeVisibilityDetail>(
+        WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
+        { detail: { visible: true, opacity: 1 } },
+      ),
+    )
+  }, [])
+
+  if (!activeSlide) return null
+
+  return (
+    <WatchHomeTvCarouselRegion activeSlide={activeSlide} pinned={pinned}>
+      {/* Two things this frame does NOT do. It has no `overflow-hidden` — the
+          media layer below deliberately spans the full viewport width and
+          clips itself. And while muted it stands shorter than the 16:9 frame
+          by the same ceiling `HeroPlayer` pulls its episode rail up by, so the
+          muted intro reads at the height an inner watch page's muted preview
+          does; unmuting expands it back, the way revealing the hero's chrome
+          drops that overlap to zero. */}
+      <div
+        ref={heroFrameRef}
+        style={
+          {
+            // Measured fit wins once hydrated; the classes below are the
+            // pre-hydration estimate it refines (and the fallback when the
+            // page has no categories rail to measure).
+            ...(fittedHeroHeight != null
+              ? { height: `${fittedHeroHeight}px` }
+              : {}),
+          } as CSSProperties
+        }
+        className={cn(
+          "relative mx-auto w-full max-w-[1920px] bg-black transition-[height] duration-[700ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+          isMuted
+            ? // Short enough for the categories rail to sit fully inside the
+              // first viewport, floored so a squat window keeps a usable intro
+              // rather than collapsing it. `min(…, 56.25vw)` also keeps the
+              // watch-page behaviour where the overlap stops biting once the
+              // 16:9 frame already leaves room below.
+              WATCH_MUTED_INTRO_HEIGHT_CLASS
+            : "h-[66svh] md:h-[min(100svh,56.25vw)]",
+        )}
+      >
+        <WatchHomeTvMedia
+          activeSlide={activeSlide}
+          isMuted={isMuted}
+          leavingSlide={leavingSlide}
+          mediaReady={mediaReady}
+          onCanPlay={handleCanPlay}
+          onEnded={handleEnded}
+          onLoadedMetadata={handleLoadedMetadata}
+          onPause={handlePause}
+          onPlay={handlePlay}
+          onPlayerReady={handlePlayerReady}
+          onPlaying={handlePlaying}
+          onSubtitleCueTextChange={setSubtitleCueText}
+          onTimeUpdate={handleTimeUpdate}
+          onWaiting={handleWaiting}
+          videoRef={videoRef}
+          wrapperRef={wrapperRef}
+        />
+        <WatchHomeTvOverlay
+          activeIndex={activeIndex}
+          activeSlide={activeSlide}
+          advanceDurationSeconds={advanceDurationSeconds}
+          isBuffering={isBuffering}
+          isTurnHeld={isTurnHeld}
+          isMuted={isMuted}
+          leavingSlide={leavingSlide}
+          onSelectSlide={selectSlide}
+          onToggleMuted={toggleMuted}
+          playbackTimeSeconds={playbackTimeSeconds}
+          ringAnimationKey={ringAnimationKey}
+          slides={timelineSlides}
+        />
+        {subtitleCueText ? (
+          <WatchHomeSubtitleOverlay cueText={subtitleCueText} />
         ) : null}
       </div>
-      <div
-        ref={setOverlayAnchor}
-        data-testid="watch-home-player-overlay-anchor"
-        className="relative z-40 mx-auto h-0 w-full max-w-[1920px]"
-      />
-      <WatchHomeTvRail
-        slides={displaySlides}
-        activeSlideId={activeSlide.id}
-        progress={progress}
-        onSelect={handleSelectSlide}
-      />
     </WatchHomeTvCarouselRegion>
   )
 }

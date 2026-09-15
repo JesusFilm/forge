@@ -3,6 +3,7 @@ import { memo } from "react"
 import { type Message, type ReplyFailureReason } from "@/lib/conversations"
 
 import { AssistantMarkdown } from "./assistant-markdown"
+import { FollowUps } from "./follow-ups"
 import { SourcesList } from "./sources-list"
 import { VideoCard } from "./video-card"
 
@@ -12,6 +13,12 @@ type MessageListProps = {
   // streaming pulse renders against this id rather than re-deriving "not yet
   // finalized" from Message field absence.
   streamingMessageId: string | null
+  // feat-366: absent means no chips render at all. Given, it receives the
+  // tapped question verbatim (KD4) and the caller sends it.
+  onSelectFollowUp?: (question: string) => void
+  // feat-366 R3: defensive pass-through to the chip block. No production
+  // state reaches it — see the synthetic-fixture label in follow-ups.test.tsx.
+  followUpsDisabled?: boolean
 }
 
 // User-facing failure copy, mapped from the reason to R16's buckets (timeout /
@@ -55,6 +62,10 @@ function failureNotice(reason: ReplyFailureReason): string {
 function assertNever(value: never): never {
   throw new Error(`Unhandled ReplyFailureReason: ${String(value)}`)
 }
+
+// Shared identity for "this turn shows no chips" — a fresh [] per render would
+// defeat AssistantTurn's memo on every finalized turn in the transcript.
+const NO_FOLLOW_UPS: string[] = []
 
 // Visible engine copy renders on STUB turns only (feat-270) — the codename
 // meant nothing to users. R20 distinguishability survives: stub turns are
@@ -115,9 +126,18 @@ function GroundedBadge({
 const AssistantTurn = memo(function AssistantTurn({
   message,
   streaming,
+  followUps,
+  followUpsDisabled,
+  onSelectFollowUp,
 }: {
   message: Message
   streaming: boolean
+  // Already reduced by the list: the questions to show on THIS turn, empty on
+  // every turn but the last (R3). Shared empty constant, so a turn without
+  // chips keeps a stable prop identity and stays memoized.
+  followUps: string[]
+  followUpsDisabled: boolean
+  onSelectFollowUp?: (question: string) => void
 }) {
   if (streaming) {
     return (
@@ -171,6 +191,15 @@ const AssistantTurn = memo(function AssistantTurn({
           {message.engine === "seeker" || (message.sources?.length ?? 0) > 0 ? (
             <SourcesList sources={message.sources ?? []} />
           ) : null}
+          {/* feat-366 sibling block, after the sources disclosure and never
+              through the markdown allowlist — the reading path ends here. */}
+          {onSelectFollowUp ? (
+            <FollowUps
+              questions={followUps}
+              disabled={followUpsDisabled}
+              onSelect={onSelectFollowUp}
+            />
+          ) : null}
         </div>
       )}
     </li>
@@ -187,7 +216,15 @@ const AssistantTurn = memo(function AssistantTurn({
 export function MessageList({
   messages,
   streamingMessageId,
+  onSelectFollowUp,
+  followUpsDisabled = false,
 }: MessageListProps) {
+  // Chips belong to the conversation's LAST turn only (R3). Deriving the id
+  // here — rather than per turn — keeps the rule in one place, and makes the
+  // block self-clearing: a chip click appends turns, so the answer that
+  // carried them stops being last.
+  const lastMessageId = messages[messages.length - 1]?.id
+
   return (
     <ul className="flex flex-col gap-8">
       {messages.map((message) => {
@@ -205,11 +242,20 @@ export function MessageList({
         }
         // The streaming turn is the one the hook flagged as in-flight.
         const streaming = message.id === streamingMessageId
+        const isLast = message.id === lastMessageId
         return (
           <AssistantTurn
             key={message.id}
             message={message}
             streaming={streaming}
+            followUps={
+              isLast && message.followUps ? message.followUps : NO_FOLLOW_UPS
+            }
+            // Scoped to the ONE turn that can render chips: followUpsDisabled
+            // flips on every pending transition, so passing it to every turn
+            // would break the memo and re-parse the whole transcript.
+            followUpsDisabled={isLast ? followUpsDisabled : false}
+            onSelectFollowUp={isLast ? onSelectFollowUp : undefined}
           />
         )
       })}

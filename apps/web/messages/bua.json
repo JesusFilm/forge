@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Дууны хэлийг солих",
     "home": "JesusFilm нүүр хуудас",
     "closeSearch": "Хайлт хаах",
-    "submitSearch": "Бэдэрхэ"
+    "submitSearch": "Бэдэрхэ",
+    "library": "Номой сан"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео хайж үзэх",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Цуглуулгууд",
     "subtitlesOnly": "Зөвхөн хадмал",
+    "backToTop": "Дээшээ бусаха",
     "newlyAdded": "Шинээр нэмэгдсэн",
     "newVideosTitle": "{language}-д байгаа шинэ Христийн видеонууд",
     "newestFirst": "Шинэ нь эхэнд",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Бие даасан видеонууд",
     "videosFromCollection": "{collection}-ын видеонууд.",
     "standaloneDescription": "Энэ хэл дээрх бие даасан видеонууд.",
-    "openCollection": "Цуглуулга нээх"
+    "openCollection": "Цуглуулга нээх",
+    "filters": "Шүүлтүүрнүүд",
+    "filterLength": "Утань",
+    "filterLength_under5": "5 минутаһаа багаар",
+    "filterLength_5to10": "5-10 минута",
+    "filterLength_10to30": "10-30 минута",
+    "filterLength_over30": "30 минутаһаа ехээр",
+    "filterType": "Түхэл",
+    "clearFilters": "Шүүлтүүрнүүдые арилгаха",
+    "filterResults": "{total}-һаа {count} харуулагдана",
+    "noFilterResults": "Эдэ шүүлтүүрнүүдтэ таарамжатай видео үгы. Нэгыень абажа хараад үзэгты.",
+    "filterAdded": "Нэмэгдэбэ",
+    "filterAdded_60d": "Һүүлшын 60 үдэр",
+    "filterAdded_6m": "Һүүлшын 6 һара",
+    "filterAdded_12m": "Һүүлшын 12 һара"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — хараха",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Өмнөх видеоны урьдчилан харалт",
     "nextVideoPreview": "Дараагийн видеоны урьдчилан харалт",
     "mediaCollection": "Медиа цуглуулга",
-    "scrollToVideo": "{title} видеог харуулахаар гүйлгэх"
+    "scrollToVideo": "{title} видеог харуулахаар гүйлгэх",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project нүүр хуудас",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Үзэх хэсэг рүү буцах",
     "browseVideos": "Видео үзэх"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Богино хэмжээний киног үзэх",
-    "actions": {
-      "joinUs": "Бидэнтэй нэгдэх",
-      "shareMission": "Бидний номлолд оролцох"
-    },
-    "welcomeStart": {
-      "label": "Итгэл ба Бичвэр",
-      "title": "Өнөөдрийн санал болгож буй видеонууд",
-      "description": "Бидний сан дахь итгэл төвтэй видео агуулга таныг урамшуулж, сорьж, эргэцүүлэхэд тусална."
-    },
-    "welcomeMorning": {
-      "label": "Өглөөний урам зориг",
-      "title": "Өглөөний мэнд! Өнөөдрийн Библийн мөчүүд таныг хүлээж байна.",
-      "description": "Өдрөө Библийн урам өгөх мөчүүдээр эхэлж, сэтгэлээ өргөөрэй."
-    },
-    "welcomeAfternoon": {
-      "label": "Үдээс хойшхи урам зориг",
-      "title": "Үдээс хойшийн мэнд! Өнөөдрийн Библийн мөчүүд.",
-      "description": "Үдээс хойших амралтад тань тохирох, эсвэл үргэлжлүүлэн урам авахад тань тустай Библийн урам зоригтой агуулга."
-    },
-    "welcomeEvening": {
-      "label": "Оройн урам зориг",
-      "title": "Оройн мэнд! Библийн мөчүүдээр тайвшир.",
-      "description": "Өдрөө өндөрлүүлэхдээ эргэцүүлж, тайвшрал олоход тань туслах амар амгалан Библийн мөчүүд."
-    },
-    "joinUs": {
-      "label": "Бидэнтэй нэгдэх",
-      "title": "Тэрбум тэрбумаар хүмүүс хайж байна",
-      "description": "Ургац бэлэн боллоо. Дижитал медиа ашиглан сайн мэдээг дэлхийд түгээхэд бидэнтэй нэгдээрэй."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Хамтдаа явцгаая",
-      "title": "Есүсийн түүхийг хамтдаа өгүүлэх нь",
-      "description": "Тэгснээр тэд Есүсийн хайрыг өөрсдийн хэлээр, байгаа газартаа сонсож, харж чадна."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% тааралдана",
     "none": "Энэ хэлэн дээрэ энэ видеодо дурадхал олдобогүй."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Аудио хэлэн",
     "selectLanguageVersion": "Хэлэнэй хубилбари шэлэхэ",
     "watchSelectedVersion": "Шэлэгдэһэн хубилбари хараха"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie-нуудай шэлэлтэ",
+    "bannerTitle": "Танай нюуса байдалай шэлэлтэнүүд",
+    "bannerDescription": "Шухала cookie-нүүд Watch-ые аюулгүйгөөр хүдэлгэжэ байдаг. Танай зүбшөөлөөр нэмэлтэ нэгэдэхи талын cookie айлшалалтануудай хоорондо һонирхолнуудые һанажа, дурадхалнуудые хубиин хэрэгсээндэ тааруулжа шадаха. Ямаршье шэлэлтэ хэһэн байбашье, нөхэсэл байдалда таараһан дурадхалнууд байһаар.",
+    "acceptAll": "Бүгэдыень абаха",
+    "essentialOnly": "Гансал шухала",
+    "manageChoices": "Шэлэлтэнүүдээ тааруулха",
+    "savingChoice": "Cookie-нуудай шэлэлтые хадагалжа байна",
+    "settings": "Cookie-нуудай тохиргоо",
+    "settingsDescription": "Watch айлшалалтануудай хоорондо дурадхалай һонирхолнуудые һанаха гү гэжэ шэлэгты. Та үүниие ямаршье үедэ хубилгажа шадахат.",
+    "essentialCookies": "Шухала cookie-нүүд",
+    "essentialDescription": "Аюулгүй байдал, тоглолго, нюуса байдалай шэлэлтэнүүд, мүн дурадхал хүсэлтын холбоо.",
+    "alwaysActive": "Үргэлжэ идэбхитэй",
+    "personalization": "Хубиин тааруулга",
+    "personalizationDescription": "Айлшалалтануудай хоорондо хизаартай һонирхолнуудые һанаха. Эние унтараабал, нөхэсэл байдалда таараһан дурадхалнууд байһаар.",
+    "erasurePending": "Профиль устгалгада хүлээгдэжэ байна. Нөхэсэл байдалда таараһан дурадхалнууд аль хэдынэ идэбхитэй.",
+    "cancel": "Болихо",
+    "saveChoices": "Шэлэлтэнүүдээ хадагалха",
+    "saving": "Хадагалжа байна…",
+    "loadError": "Танай шэлэлтэ ашаалагдажа шадаагүй. Та доороһоо шэлэжэ болонот.",
+    "grantError": "Хубиин тааруулга идэбхижүүлэгдэжэ шадаагүй. Гансал шухала гэһэн шэлэлтэ бии зандаа.",
+    "saveError": "Танай шэлэлтэ хадагалагдажа шадаагүй. Дахин оролдоно уу."
   }
 }

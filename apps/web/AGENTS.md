@@ -8,6 +8,8 @@ Scope: `apps/web`.
 
 ## Do
 
+- Preserve configured GA page views, navigation and Watch events, and Datadog RUM. Apply `docs/analytics-and-recommendation-policy.md`; recommendation or analytics changes must not introduce a consent prerequisite.
+
 - Use Next.js App Router patterns and default to Server Components.
 - Read data via `@forge/admin-graphql` operations only (admin's GraphQL surface).
 - Add `loading.tsx` for async routes and `error.tsx` at route segments.

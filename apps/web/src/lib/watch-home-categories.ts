@@ -21,9 +21,20 @@
  * client module graph along (same rule as `search-categories.ts`).
  */
 
+import {
+  WATCH_HOME_CATEGORY_CATALOG,
+  type WatchHomeCategoryId,
+} from "@forge/watch-url-policy/watch-home-categories"
+import {
+  WATCH_HOME_CATEGORY_TILE_DEFAULTS,
+  watchHomeTileGradient,
+} from "@forge/watch-url-policy/watch-home-tiles"
+
+export type { WatchHomeCategoryId }
+
 export type WatchHomeCategory = {
   /** Stable structural identifier. React key, icon key, and test id. */
-  id: string
+  id: WatchHomeCategoryId
   /** Collection parent content slug — the `/watch/<slug>.html` destination. */
   slug: string
   /** Key inside the `WatchHomeCategories` message namespace. */
@@ -32,85 +43,38 @@ export type WatchHomeCategory = {
   gradient: string
 }
 
-export const WATCH_HOME_CATEGORIES = [
-  {
-    id: "jesus",
-    slug: "jesus",
-    titleKey: "jesus",
-    gradient: "linear-gradient(135deg, #b91c1c 0%, #7f1d1d 100%)",
-  },
-  {
-    id: "gospels",
-    slug: "lumo",
-    titleKey: "gospels",
-    gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-  },
-  {
-    id: "short-videos",
-    slug: "conversation-starters",
-    titleKey: "shortVideos",
-    gradient: "linear-gradient(135deg, #f97316 0%, #c2410c 100%)",
-  },
-  {
-    id: "family",
-    slug: "family",
-    titleKey: "family",
-    gradient: "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
-  },
-  {
-    id: "relationships",
-    slug: "relationships",
-    titleKey: "relationships",
-    gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-  },
-  {
-    id: "women",
-    slug: "women-resources",
-    titleKey: "women",
-    gradient: "linear-gradient(135deg, #a855f7 0%, #6d28d9 100%)",
-  },
-  {
-    id: "students",
-    slug: "student-resources",
-    titleKey: "students",
-    gradient: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
-  },
-  {
-    id: "sports",
-    slug: "sports",
-    titleKey: "sports",
-    gradient: "linear-gradient(135deg, #0ea5e9 0%, #1d4ed8 100%)",
-  },
-  {
-    id: "good-news",
-    slug: "evangelism",
-    titleKey: "goodNews",
-    gradient: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
-  },
-  {
-    id: "hope",
-    slug: "hope-collection",
-    titleKey: "hope",
-    gradient: "linear-gradient(135deg, #14b8a6 0%, #0f766e 100%)",
-  },
-  {
-    id: "training",
-    slug: "training",
-    titleKey: "training",
-    gradient: "linear-gradient(135deg, #64748b 0%, #334155 100%)",
-  },
-  {
-    id: "easter",
-    slug: "easter",
-    titleKey: "easter",
-    gradient: "linear-gradient(135deg, #f59e0b 0%, #b45309 100%)",
-  },
-  {
-    id: "christmas",
-    slug: "christmas",
-    titleKey: "christmas",
-    gradient: "linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
-  },
-] as const satisfies readonly WatchHomeCategory[]
+type WatchHomeCategoryTitleKeys = Record<WatchHomeCategoryId, string>
 
-export type WatchHomeCategoryId = (typeof WATCH_HOME_CATEGORIES)[number]["id"]
+/**
+ * Localized-copy keys stay here; the gradient does NOT. Since admins can pick
+ * a tile's visual style in the experience editor, the gradient VALUES live in
+ * the shared `WATCH_HOME_TILE_STYLES` catalog and each category names one of
+ * them through `WATCH_HOME_CATEGORY_TILE_DEFAULTS`. Sourcing the default from
+ * there is what keeps the editor's swatch and this renderer showing the same
+ * colour (pinned by `watch-home-categories.test.ts`).
+ */
+const WATCH_HOME_CATEGORY_TITLE_KEY_BY_ID = {
+  jesus: "jesus",
+  gospels: "gospels",
+  "short-videos": "shortVideos",
+  family: "family",
+  relationships: "relationships",
+  women: "women",
+  students: "students",
+  sports: "sports",
+  "good-news": "goodNews",
+  hope: "hope",
+  training: "training",
+  easter: "easter",
+  christmas: "christmas",
+} as const satisfies WatchHomeCategoryTitleKeys
+
+export const WATCH_HOME_CATEGORIES = WATCH_HOME_CATEGORY_CATALOG.map(
+  (category) => ({
+    ...category,
+    titleKey: WATCH_HOME_CATEGORY_TITLE_KEY_BY_ID[category.id],
+    gradient: watchHomeTileGradient(
+      WATCH_HOME_CATEGORY_TILE_DEFAULTS[category.id].style,
+    ),
+  }),
+) satisfies readonly WatchHomeCategory[]

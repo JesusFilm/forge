@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Arsuwin arup mayjt’ayaña",
     "home": "JesusFilm uta",
     "closeSearch": "Thaqhaña llawuña",
-    "submitSearch": "Thaqhaña"
+    "submitSearch": "Thaqhaña",
+    "library": "Panka uta"
   },
   "SearchOverlay": {
     "dialogLabel": "Video-naka thaqhaña ukhamaraki uñakipaña",
@@ -467,6 +468,7 @@
     "sports": "Deporte-naka",
     "collections": "Tantachäwinaka",
     "subtitlesOnly": "Subtítulos ukiki",
+    "backToTop": "Alayaru kutt'aña",
     "newlyAdded": "Machaq uñt’atatäxi",
     "newVideosTitle": "{language} arun machaq cristiano video-naka",
     "newestFirst": "Machaqanak nayraqata",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Sapak videos",
     "videosFromCollection": "{collection} ukan video-naka.",
     "standaloneDescription": "Aka arun sapak video-naka.",
-    "openCollection": "Tantachäwi jist’arña"
+    "openCollection": "Tantachäwi jist’arña",
+    "filters": "Chhijllawinaka",
+    "filterLength": "Jayapa",
+    "filterLength_under5": "5 minututa jukʼa",
+    "filterLength_5to10": "5-10 minutu",
+    "filterLength_10to30": "10-30 minutu",
+    "filterLength_over30": "30 minututa juk'ampi",
+    "filterType": "Kasta",
+    "clearFilters": "Chhijllawinaka qʼumachaña",
+    "filterResults": "{total} ukat {count} uñachtʼayata",
+    "noFilterResults": "Kuna videos ukanakas jani aka chhijllawinakampi chikachasiti. Mayni apsuñäni.",
+    "filterAdded": "Yapt'ata",
+    "filterAdded_60d": "Qhipa 60 uru",
+    "filterAdded_6m": "Qhipa 6 phaxsi",
+    "filterAdded_12m": "Qhipa 12 phaxsi"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Uñch’ukiña",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Nayrïri video preview",
     "nextVideoPreview": "Jutiri video preview",
     "mediaCollection": "Media tantachäwi",
-    "scrollToVideo": "{title} video ukar ch’amañchaña"
+    "scrollToVideo": "{title} video ukar ch’amañchaña",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project uta",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Uñch’ukiñaru kutt’aña",
     "browseVideos": "Video-naka uñakipaña"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Corto metraje uñch’ukiña",
-    "actions": {
-      "joinUs": "Jiwasamp mayacht’asiña",
-      "shareMission": "Misión apost’ar mayacht’asiña"
-    },
-    "welcomeStart": {
-      "label": "Iyawsäwi ukhamaraki Qillqatanaka",
-      "title": "Jichha uru video ajllitanaka",
-      "description": "Bibliasataki video yatiyawinaka, chuymacht’aña, amtasiña ukhamaraki amuyt’aña sartayañataki."
-    },
-    "welcomeMorning": {
-      "label": "Qhantati chuymacht’äwi",
-      "title": "Aski alwatäxiwa. Jichha uru Biblia yäwinakax suyt’asiwa.",
-      "description": "Uru qalltañamatakix Biblia yäwinakamp ch’amañcht’ata, chuymar aynacht’ayañataki wakichata."
-    },
-    "welcomeAfternoon": {
-      "label": "Inti jayp’u chuymacht’äwi",
-      "title": "Aski jayp’utäxiwa. Uruympi Biblia yäwinaka.",
-      "description": "Biblia yatiyawinaka chuymacht’añatakiwa, jayp’u samart’añamataki jan ukax juk’amp chuymacht’äwinakataki wali aski."
-    },
-    "welcomeEvening": {
-      "label": "Jayp’u chuymacht’äwi",
-      "title": "Aski jayp’utäxiwa. Biblia yäwinakampi samart’aña.",
-      "description": "Samarañ Biblia yäwinaka, urum tukuyki ukhaw amuyt’añataki ukhamaraki chuymachasiñataki yanapt’i."
-    },
-    "joinUs": {
-      "label": "Jiwasamp mayacht’asiña",
-      "title": "Waranqanakax thaqhapxiwa",
-      "description": "Aka yapux utjiwa. Digital media apnaqasa uraqpachar evangelio yatiyañataki jiwasamp mayacht’asiña."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Juk’amp chiqankañäni",
-      "title": "Jesus tuqit saräwi, mayacht’asisana",
-      "description": "Ukhamat kawkhankki uka chiqanxa Jesus ukan munasiwipx arupansa uñt’asa ist’asipxani."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% chikachasiwi",
     "none": "Aka arun aka videotakix janiw kuna iwxäwinakas jikxataskiti."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Audio aru",
     "selectLanguageVersion": "Mä aru versión ajlliña",
     "watchSelectedVersion": "Ajllita versión uñchʼukiña"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie ajllinaka",
+    "bannerTitle": "Juman privacidad ajllinakamapa",
+    "bannerDescription": "Wakiskir cookies ukanakax Watch ukarux seguro ukhamarak irnaqirakiwa. Permisomampi, mä opcional cookie de primera parte ukax walja kuti mantatanakan munañanakam amtaspa, ukhamat recomendaciones ukanakax sapa maynirjamäñapataki. Recomendaciones contextuales ukanakax ukhamarak utjaskakiwa.",
+    "acceptAll": "Taqpach katuqaña",
+    "essentialOnly": "Wakiskirinakaki",
+    "manageChoices": "Ajllinaka apnaqaña",
+    "savingChoice": "Cookie ajlliwi imaski",
+    "settings": "Cookie wakicht'äwinaka",
+    "settingsDescription": "Ajllim Watch ukax walja kuti mantatanakan recomendación munañanakam amtaspa janicha. Akaxa kuna pachas mayjt'ayasmawa.",
+    "essentialCookies": "Wakiskir cookies",
+    "essentialDescription": "Seguridad, reproducción, privacidad ajllinaka, ukhamarak recomendación mayiwin uñt'ayaña.",
+    "alwaysActive": "Wiñay activo",
+    "personalization": "Sapa maynirjama wakichaña",
+    "personalizationDescription": "Walja kuti mantatanakanx juk'a munañanakam amtaña. Aka jiwt'ayasinxa, recomendaciones contextuales ukanakax utjaskakiwa.",
+    "erasurePending": "Perfil chhaqtayañax lurasiñapatak suyt'aski. Recomendaciones contextuales ukanakax niyaw activöxi.",
+    "cancel": "Janiwa",
+    "saveChoices": "Ajllinaka imaña",
+    "saving": "Imaski…",
+    "loadError": "Ajlliwimax janiw qhantkaspati. Ukampis aynachanx ajlliskakismawa.",
+    "grantError": "Personalización ukax janiw qhantayaskaspati. Wakiskirinakakïskiwa.",
+    "saveError": "Ajlliwimax janiw imatäkaspati. Mira, wasitamp yant'am."
   }
 }

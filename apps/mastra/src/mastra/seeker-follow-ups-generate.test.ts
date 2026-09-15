@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
+
 import { Mastra } from "@mastra/core"
 import { MockLanguageModelV3, simulateReadableStream } from "ai/test"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -10,10 +13,12 @@ import {
 } from "./seeker-follow-ups"
 import {
   FOLLOW_UPS_AGENT_ID,
+  FOLLOW_UPS_MAX_OUTPUT_TOKENS,
   buildFollowUpsGeneratorAgent,
   generateSeekerFollowUps,
   registerFollowUpsMastra,
   __resetFollowUpsGeneratorForTesting,
+  type FollowUpsAgentLike,
   type FollowUpsGenerateSeam,
 } from "./seeker-follow-ups-generate"
 
@@ -343,6 +348,56 @@ describe("generateSeekerFollowUps — real-agent usage extraction (KTD10 dist-fa
     expect(outcome.questions).toEqual(["Why pray?"])
     expect(outcome.tokensIn).toBe(-1)
     expect(outcome.tokensOut).toBe(-1)
+  })
+})
+
+// ===========================================================================
+// Output-cap wiring: @mastra/core 1.55.0's generate() never reads a top-level
+// maxOutputTokens option — the provider cap travels ONLY via modelSettings
+// (verified against the installed dist 2026-08-28; re-verify on bumps). These
+// pins keep the cap on the honored slot so it cannot silently revert to the
+// unread top-level key.
+// ===========================================================================
+
+describe("generateSeekerFollowUps — output cap rides modelSettings", () => {
+  it("passes maxOutputTokens inside modelSettings and NEVER as a top-level generate option", async () => {
+    let captured: Record<string, unknown> | undefined
+    const agent: FollowUpsAgentLike = {
+      generate: async (_prompt, options) => {
+        captured = options as Record<string, unknown>
+        return { text: '["Why pray?"]' }
+      },
+    }
+    const outcome = await generateSeekerFollowUps({
+      question: "who is jesus",
+      answer: ANSWER,
+      agent,
+    })
+    expect(outcome.questions).toEqual(["Why pray?"])
+    expect(captured).toBeDefined()
+    expect(captured?.modelSettings).toEqual({
+      maxOutputTokens: FOLLOW_UPS_MAX_OUTPUT_TOKENS,
+    })
+    // A top-level key here is silently dropped: the model call is rebuilt
+    // from an explicit field list that carries only modelSettings.
+    expect(captured && "maxOutputTokens" in captured).toBe(false)
+  })
+
+  it("source pin: the default seam spells the cap as modelSettings.maxOutputTokens", () => {
+    const source = readFileSync(
+      join(__dirname, "seeker-follow-ups-generate.ts"),
+      "utf8",
+    )
+    const withoutComments = source
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/[^\n]*/g, "")
+    expect(withoutComments).toMatch(
+      /modelSettings:\s*\{\s*maxOutputTokens:\s*FOLLOW_UPS_MAX_OUTPUT_TOKENS,?\s*\}/,
+    )
+    // Anti-revert companion: no top-level spelling anywhere outside comments.
+    expect(withoutComments).not.toMatch(
+      /^\s*maxOutputTokens:\s*FOLLOW_UPS_MAX_OUTPUT_TOKENS/m,
+    )
   })
 })
 

@@ -137,7 +137,7 @@ Pure config/reporting helpers live in `src/lib/datadog.ts` (`getDatadogRumConfig
 the `TvDatadogProvider` wrapper lives in `src/components/DatadogRum.tsx` and is mounted in
 `app/_layout.tsx` below the root `ErrorBoundary`. Service = `forge-tv`.
 
-- **Opt-in / no-op when unprovisioned.** `getDatadogRumConfig()` returns `null` unless BOTH
+- **Environment-configured / no-op when unprovisioned.** `getDatadogRumConfig()` returns `null` unless BOTH
   `EXPO_PUBLIC_DATADOG_CLIENT_TOKEN` and `EXPO_PUBLIC_DATADOG_APPLICATION_ID` are set, so an
   unprovisioned build boots normally (dev builds log a `[datadog] RUM disabled` warning).
   Provision via `eas env:create` per environment (see `.env.example` and the TV runbook in
@@ -185,8 +185,8 @@ the `TvDatadogProvider` wrapper lives in `src/components/DatadogRum.tsx` and is 
   profiler (`react-native-release-profiler`) for client-render root-cause (the ~2.8–3.2s series parse).
 - **Status:** development + preview EAS environments carry credentials; sessions verified from
   the tvOS simulator. Still pending (runbook in `docs/observability/datadog.md`): the intake
-  alert, real Apple TV / Android TV hardware sessions, and the privacy-gated production
-  provisioning.
+  alert, real Apple TV / Android TV hardware sessions, and production provisioning. Follow `docs/analytics-and-recommendation-policy.md`;
+  consent approval is not a provisioning or telemetry prerequisite.
 
 ## TV-Specific Patterns
 

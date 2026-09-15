@@ -24,6 +24,12 @@ type HomeHeaderProps = {
   homeVariant?: boolean
 }
 
+/**
+ * Home-tab header actions are hidden for now. The buttons below stay wired up;
+ * set this to true to show them again.
+ */
+const SHOW_HOME_ACTIONS = false
+
 export function HomeHeader({
   title,
   titleOpacity,
@@ -64,6 +70,13 @@ export function HomeHeader({
     </Pressable>
   )
 
+  const hideActions = homeVariant && !SHOW_HOME_ACTIONS
+  const leading = homeVariant ? profileButton : searchButton
+  const trailing = homeVariant ? searchButton : profileButton
+  // An empty 40pt slot holds the row at the height HomeScreen's
+  // HEADER_ALLOWANCE assumes, so hiding the actions shifts nothing below it.
+  const slot = <View style={styles.slot} />
+
   return (
     <View style={[styles.container, { paddingTop: insets.top + 4 }]}>
       <LinearGradient
@@ -71,7 +84,7 @@ export function HomeHeader({
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
-      {homeVariant ? profileButton : searchButton}
+      {hideActions ? slot : leading}
 
       {title != null && titleOpacity > 0 && (
         <GlassView
@@ -85,7 +98,7 @@ export function HomeHeader({
         </GlassView>
       )}
 
-      {homeVariant ? searchButton : profileButton}
+      {hideActions ? slot : trailing}
     </View>
   )
 }
@@ -123,6 +136,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontFamily: "System",
     textAlign: "center",
+  },
+  slot: {
+    width: 40,
+    height: 40,
   },
   glassButton: {
     width: 40,

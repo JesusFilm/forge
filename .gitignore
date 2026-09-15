@@ -79,6 +79,7 @@ devo/
 # Seeker eval working runs (paid artifacts land in apps/mastra/evals/results/ when promoted to baseline)
 apps/mastra/eval-runs/
 eval-runs/
+apps/rag/eval/attempts/
 # Explicit local-only Seeker prompt debugging. Repository evidence writers
 # reject traversal and never target this scratch tree.
 apps/mastra/.seeker-eval-debug/

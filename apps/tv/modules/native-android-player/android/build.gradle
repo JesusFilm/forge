@@ -1,0 +1,26 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.nativeandroidplayer'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.nativeandroidplayer"
+  defaultConfig {
+    versionCode 1
+    versionName '0.1.0'
+  }
+}
+
+dependencies {
+  implementation 'androidx.activity:activity:1.9.0'
+  implementation 'androidx.core:core:1.15.0'
+  testImplementation 'junit:junit:4.13.2'
+  def androidxMedia3Version = "1.8.0"
+  implementation "androidx.media3:media3-session:${androidxMedia3Version}"
+  implementation "androidx.media3:media3-exoplayer:${androidxMedia3Version}"
+  implementation "androidx.media3:media3-exoplayer-hls:${androidxMedia3Version}"
+  implementation "androidx.media3:media3-ui:${androidxMedia3Version}"
+}

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio-Sprooch änneren",
     "home": "JesusFilm-Startsäit",
     "closeSearch": "Sich zoumaachen",
-    "submitSearch": "Sichen"
+    "submitSearch": "Sichen",
+    "library": "Bibliothek"
   },
   "SearchOverlay": {
     "dialogLabel": "Videoen sichen a duerchkucken",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Kollektiounen",
     "subtitlesOnly": "Nëmme Ënnertitelen",
+    "backToTop": "Zréck no uewen",
     "newlyAdded": "Nei dobäigesat",
     "newVideosTitle": "Nei chrëschtlech Videoen op {language}",
     "newestFirst": "Déi neisten éischt",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Eenzel Videoen",
     "videosFromCollection": "Videoen aus {collection}.",
     "standaloneDescription": "Eenzel Videoen op dëser Sprooch.",
-    "openCollection": "Kollektioun opmaachen"
+    "openCollection": "Kollektioun opmaachen",
+    "filters": "Filteren",
+    "filterLength": "Längt",
+    "filterLength_under5": "Ënner 5 Min.",
+    "filterLength_5to10": "5-10 Min.",
+    "filterLength_10to30": "10-30 Min.",
+    "filterLength_over30": "Iwwer 30 Min.",
+    "filterType": "Typ",
+    "clearFilters": "Filteren zurécksetzen",
+    "filterResults": "{count} vun {total} gewisen",
+    "noFilterResults": "Kee Video passt zu dëse Filteren. Probéier een ewechzehuelen.",
+    "filterAdded": "Dobäigesat",
+    "filterAdded_60d": "Lescht 60 Deeg",
+    "filterAdded_6m": "Lescht 6 Méint",
+    "filterAdded_12m": "Lescht 12 Méint"
   },
   "WatchHome": {
     "pageTitle": "Videoe kucken | Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Virschau vum viregte Video",
     "nextVideoPreview": "Virschau vum nächste Video",
     "mediaCollection": "Mediekollektioun",
-    "scrollToVideo": "Zum Video {title} rullen"
+    "scrollToVideo": "Zum Video {title} rullen",
+    "forYou": "Fir dech"
   },
   "WatchFooter": {
     "home": "Jesus Film Project Startsäit",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Zréck op Watch",
     "browseVideos": "Videoen duerchkucken"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Kuerzfilm kucken",
-    "actions": {
-      "joinUs": "Maacht mat",
-      "shareMission": "Maacht mat bei eiser Missioun"
-    },
-    "welcomeStart": {
-      "label": "Glaawen & Schrëft",
-      "title": "Déi hauteg Video-Auswiel",
-      "description": "Glaawenszentéiert Videoen aus eiser Bibliothéik, déi inspiréieren, erausfuerderen an zum Nokéieren anregen."
-    },
-    "welcomeMorning": {
-      "label": "Moiesinspiratioun",
-      "title": "Gudde Moien! Hauteg Bibelmomenter waarden op Iech.",
-      "description": "Start Ären Dag mat ermunternden Bibelmomenter, déi inspiréieren an Äre Geescht opbauen."
-    },
-    "welcomeAfternoon": {
-      "label": "Nomëttesinspiratioun",
-      "title": "Gudden Nomëtteg! Bibelmomenter fir Ären Dag.",
-      "description": "Ermuetigend Bibelinhalter, ideal fir Är Nomëttespaus oder fir weider Inspiratioun."
-    },
-    "welcomeEvening": {
-      "label": "Owensinspiratioun",
-      "title": "Gudden Owend! Entspannt Iech mat Bibelmomenter.",
-      "description": "Roueg Bibelmomenter, déi Iech hëllefen, nozedenken an Trouscht ze fannen, wann Ären Dag op en Enn geet."
-    },
-    "joinUs": {
-      "label": "Maacht mat",
-      "title": "Milliarde si am Sich",
-      "description": "D’Ernte ass do. Maacht mat a deelt d’Evangelium mat der Welt iwwer digital Medie."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Loosst eis et zesumme maachen",
-      "title": "D’Geschicht vu Jesus zesumme erzielen",
-      "description": "Sou kënne si d’Léift vu Jesus an hirer eegener Sprooch héieren a gesinn, direkt do wou si sinn."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent} % Iwwereestëmmung",
     "none": "Fir dëse Video goufe keng Recommandatiounen an dëser Sprooch fonnt."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Audiosprooch",
     "selectLanguageVersion": "Eng Sproochversioun auswielen",
     "watchSelectedVersion": "Ausgewielte Versioun kucken"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie-Astellungen",
+    "bannerTitle": "Är Privatsphär-Astellungen",
+    "bannerDescription": "Néideg Cookies halen Watch sécher a funktiounsfäeg. Mat Ärer Zoustëmmung kann en optionale First-Party-Cookie Är Interessen iwwer méi Visitte späicheren, fir Recommandatiounen ze personaliséieren. Kontextuell Recommandatioune bleiwen esou oder esou verfügbar.",
+    "acceptAll": "Alles akzeptéieren",
+    "essentialOnly": "Nëmmen dat Néidegst",
+    "manageChoices": "Astellungen verwalten",
+    "savingChoice": "Cookie-Astellung gëtt gespäichert",
+    "settings": "Cookie-Astellungen",
+    "settingsDescription": "Wielt, ob Watch Recommandatiounsinteressen iwwer méi Visitte späichere kann. Dir kënnt dat zu all Moment änneren.",
+    "essentialCookies": "Néideg Cookies",
+    "essentialDescription": "Sécherheet, Ofspillen, Privatsphär-Astellungen an Zouuerdnung vu Recommandatiounsufroen.",
+    "alwaysActive": "Ëmmer aktiv",
+    "personalization": "Personaliséierung",
+    "personalizationDescription": "Späichert begrenzten Interessen iwwer méi Visitten. Wann dat ausgeschalt ass, bleiwen kontextuell Recommandatioune verfügbar.",
+    "erasurePending": "D'Läsche vum Profil ass nach amgaang. Kontextuell Recommandatioune si schonn aktiv.",
+    "cancel": "Ofbriechen",
+    "saveChoices": "Astellunge späicheren",
+    "saving": "Gëtt gespäichert…",
+    "loadError": "Är Astellung konnt net geluede ginn. Dir kënnt awer hei ënnendrënner nach wielen.",
+    "grantError": "Personaliséierung konnt net aktivéiert ginn. Nëmmen dat Néidegst bleift verfügbar.",
+    "saveError": "Är Astellung konnt net gespäichert ginn. Probéiert w.e.g. nach eng Kéier."
   }
 }

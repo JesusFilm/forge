@@ -180,7 +180,8 @@
     "changeAudioLanguage": "የድምጽ ቋንቋ ቀይር",
     "home": "JesusFilm መነሻ",
     "closeSearch": "ፍለጋ ዝጋ",
-    "submitSearch": "ፈልግ"
+    "submitSearch": "ፈልግ",
+    "library": "ቤተ መጻሕፍት"
   },
   "SearchOverlay": {
     "dialogLabel": "ቪዲዮዎችን ፈልግ እና አስስ",
@@ -467,6 +468,7 @@
     "sports": "ስፖርት",
     "collections": "ስብስቦች",
     "subtitlesOnly": "ንዑስ ጽሑፎች ብቻ",
+    "backToTop": "ወደ ላይ ተመለስ",
     "newlyAdded": "አዲስ የተጨመሩ",
     "newVideosTitle": "በ{language} አዲስ ክርስቲያናዊ ቪዲዮዎች",
     "newestFirst": "አዲሱ መጀመሪያ",
@@ -497,7 +499,21 @@
     "standaloneVideos": "ብቻውን ያሉ ቪዲዮዎች",
     "videosFromCollection": "ከ{collection} የተወሰዱ ቪዲዮዎች።",
     "standaloneDescription": "በዚህ ቋንቋ ብቻውን ያሉ ቪዲዮዎች።",
-    "openCollection": "ስብስብ ክፈት"
+    "openCollection": "ስብስብ ክፈት",
+    "filters": "አጣሪዎች",
+    "filterLength": "ርዝመት",
+    "filterLength_under5": "ከ5 ደቂቃ በታች",
+    "filterLength_5to10": "5-10 ደቂቃ",
+    "filterLength_10to30": "10-30 ደቂቃ",
+    "filterLength_over30": "ከ30 ደቂቃ በላይ",
+    "filterType": "ዓይነት",
+    "clearFilters": "አጣሪዎችን አጽዳ",
+    "filterResults": "ከ{total} ውስጥ {count} ይታያል",
+    "noFilterResults": "ከእነዚህ አጣሪዎች ጋር የሚዛመድ ቪዲዮ የለም። አንዱን ያስወግዱ።",
+    "filterAdded": "ተጨምሯል",
+    "filterAdded_60d": "ያለፉ 60 ቀናት",
+    "filterAdded_6m": "ያለፉ 6 ወራት",
+    "filterAdded_12m": "ያለፉ 12 ወራት"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project ዋች",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "የቀደመ ቪዲዮ ቅድመ እይታ",
     "nextVideoPreview": "የሚቀጥለው ቪዲዮ ቅድመ እይታ",
     "mediaCollection": "የሚዲያ ስብስብ",
-    "scrollToVideo": "ወደ {title} ቪዲዮ ይሸብልሉ"
+    "scrollToVideo": "ወደ {title} ቪዲዮ ይሸብልሉ",
+    "forYou": "ለእርስዎ"
   },
   "WatchFooter": {
     "home": "Jesus Film Project መነሻ",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "ወደ Watch ተመለስ",
     "browseVideos": "ቪዲዮዎችን አስስ"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}፦ {title}",
-    "watchShortFilm": "አጭር ፊልም ይመልከቱ",
-    "actions": {
-      "joinUs": "ይቀላቀሉን",
-      "shareMission": "በተልዕኳችን ይካፈሉ"
-    },
-    "welcomeStart": {
-      "label": "እምነት እና ቅዱስ መጽሐፍ",
-      "title": "የዛሬ የቪዲዮ ምርጦች",
-      "description": "ከማዕከላችን የተመረጠ በእምነት ላይ ያተኮረ የቪዲዮ ይዘት፣ ለማነሳሳት፣ ለመፈተን እና ለማሰብ የሚያነሳሳ።"
-    },
-    "welcomeMorning": {
-      "label": "የጠዋት ማበረታቻ",
-      "title": "እንደምን አደሩ! የዛሬ የመጽሐፍ ቅዱስ አፍታዎች ይጠብቁዎታል።",
-      "description": "ቀንዎን ለማበረታታት እና መንፈስዎን ለማነሳሳት በተዘጋጁ አበረታች የመጽሐፍ ቅዱስ አፍታዎች ይጀምሩ።"
-    },
-    "welcomeAfternoon": {
-      "label": "የከሰዓት ማበረታቻ",
-      "title": "እንደምን አረፈዱ! ለቀንዎ የመጽሐፍ ቅዱስ አፍታዎች።",
-      "description": "ለከሰዓት እረፍትዎ ወይም ለቀጣይ ማበረታቻ ተመራጭ የሆነ አበረታች የመጽሐፍ ቅዱስ ይዘት።"
-    },
-    "welcomeEvening": {
-      "label": "የምሽት ማበረታቻ",
-      "title": "መልካም ምሽት! በመጽሐፍ ቅዱስ አፍታዎች ዘና ይበሉ።",
-      "description": "ቀንዎ ሲያበቃ እንዲያሰላስሉ እና መጽናናት እንዲያገኙ የሚረዱ የሰላም የመጽሐፍ ቅዱስ አፍታዎች።"
-    },
-    "joinUs": {
-      "label": "ይቀላቀሉን",
-      "title": "ቢሊዮኖች እየፈለጉ ነው",
-      "description": "መከሩ አሁን አለ። ከዓለም ጋር ወንጌልን በዲጂታል ሚዲያ ለማካፈል ይቀላቀሉን።"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "አብረን እንጓዝ",
-      "title": "የኢየሱስን ታሪክ በአንድነት መንገር",
-      "description": "እርሱ ባሉበት በራሳቸው ቋንቋ የኢየሱስን ፍቅር እንዲሰሙ እና እንዲያዩ ዘንድ።"
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% ይዛመዳል",
     "none": "ለዚህ ቪዲዮ በዚህ ቋንቋ ምንም የተመከሩ ቪዲዮዎች አልተገኙም።"
@@ -744,5 +723,28 @@
     "languageVersionLabel": "የድምፅ ቋንቋ",
     "selectLanguageVersion": "የቋንቋ ስሪት ይምረጡ",
     "watchSelectedVersion": "የተመረጠውን ስሪት ይመልከቱ"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "የኩኪ ምርጫዎች",
+    "bannerTitle": "የእርስዎ የግላዊነት ምርጫዎች",
+    "bannerDescription": "አስፈላጊ ኩኪዎች Watch እንዲጠበቅ እና በትክክል እንዲሰራ ያግዛሉ። በእርስዎ ፈቃድ፣ አማራጭ የመጀመሪያ ወገን ኩኪ ለግል የተበጀ ምክረ ሃሳብ ለማቅረብ ፍላጎቶችን በተለያዩ ጉብኝቶች መካከል ሊያስታውስ ይችላል። በዐውድ ላይ የተመሠረቱ ምክረ ሃሳቦች በማንኛውም ሁኔታ ይቀራሉ።",
+    "acceptAll": "ሁሉንም ተቀበል",
+    "essentialOnly": "አስፈላጊዎቹ ብቻ",
+    "manageChoices": "ምርጫዎችን አስተዳድር",
+    "savingChoice": "የኩኪ ምርጫ በማስቀመጥ ላይ",
+    "settings": "የኩኪ ቅንብሮች",
+    "settingsDescription": "Watch ለምክረ ሃሳብ ፍላጎቶችን በተለያዩ ጉብኝቶች መካከል እንዲያስታውስ ይፈቅዱ ወይም አይፈቅዱ። ይህን በማንኛውም ጊዜ መቀየር ይችላሉ።",
+    "essentialCookies": "አስፈላጊ ኩኪዎች",
+    "essentialDescription": "ደህንነት፣ መልሶ ማጫወት፣ የግላዊነት ምርጫዎች እና የምክረ ሃሳብ ጥያቄ ተያያዥነት።",
+    "alwaysActive": "ሁልጊዜ ንቁ",
+    "personalization": "ግላዊ ማበጀት",
+    "personalizationDescription": "የተገደቡ ፍላጎቶችን በተለያዩ ጉብኝቶች መካከል አስታውስ። ይህን ካጠፉት በዐውድ ላይ የተመሠረቱ ምክረ ሃሳቦች እንደሚገኙ ይቀጥላሉ።",
+    "erasurePending": "የመገለጫ ስረዛ በመጠባበቅ ላይ ነው። በዐውድ ላይ የተመሠረቱ ምክረ ሃሳቦች አስቀድመው ንቁ ናቸው።",
+    "cancel": "ሰርዝ",
+    "saveChoices": "ምርጫዎችን አስቀምጥ",
+    "saving": "በማስቀመጥ ላይ…",
+    "loadError": "ምርጫዎ መጫን አልተቻለም። ከታች አሁንም መምረጥ ይችላሉ።",
+    "grantError": "ግላዊ ማበጀትን ማስነሳት አልተቻለም። አስፈላጊዎቹ ብቻ አሁንም ይገኛሉ።",
+    "saveError": "ምርጫዎ ማስቀመጥ አልተቻለም። እባክዎ እንደገና ይሞክሩ።"
   }
 }

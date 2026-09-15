@@ -110,6 +110,10 @@ export const adminMessages = {
           label: "Search",
           description: "Retrieval quality and trace inspection.",
         },
+        recommendations: {
+          label: "Recommendations",
+          description: "Semantic delivery health and authorized traces.",
+        },
         users: {
           label: "Users",
           description: "Permissions, invites, and role posture.",
@@ -1233,6 +1237,11 @@ export const adminMessages = {
         search: {
           label: "Busqueda semantica",
           description: "Calidad de recuperacion e inspeccion de trazas.",
+        },
+        recommendations: {
+          label: "Recomendaciones",
+          description:
+            "Salud de entrega semantica y trazas con acceso autorizado.",
         },
         users: {
           label: "Usuarios",

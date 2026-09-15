@@ -140,7 +140,7 @@ export default function InteractiveSubtitleTranscript({
               <time
                 dateTime={`PT${Math.floor(cue.start)}S`}
                 className={[
-                  "shrink-0 font-mono text-xs tabular-nums tracking-tight transition-colors",
+                  "shrink-0 font-mono text-sm sm:text-xs tabular-nums tracking-tight transition-colors",
                   isActive
                     ? "text-amber-300"
                     : "text-stone-500 group-hover:text-stone-300",

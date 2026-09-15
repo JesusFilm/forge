@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Sakula lulaka lwa audio",
     "home": "Tshikupu tsha JesusFilm",
     "closeSearch": "Vuala kusaka",
-    "submitSearch": "Saka"
+    "submitSearch": "Saka",
+    "library": "Nzubu wa mikanda"
   },
   "SearchOverlay": {
     "dialogLabel": "Saka ne sebele mavidiyo",
@@ -467,6 +468,7 @@
     "sports": "Midlalo",
     "collections": "Mibumba",
     "subtitlesOnly": "Subtitles kaka",
+    "backToTop": "Pinganyina kuulu",
     "newlyAdded": "Bikatswa pya",
     "newVideosTitle": "Mavidiyo a Bukristu a pya mu {language}",
     "newestFirst": "Bya pya kumpala",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Mavidiyo a mueyele",
     "videosFromCollection": "Mavidiyo aku mu {collection}.",
     "standaloneDescription": "Mavidiyo a mueyele mu lulaka elu.",
-    "openCollection": "Vula kusangula"
+    "openCollection": "Vula kusangula",
+    "filters": "Bilubulukishi",
+    "filterLength": "Buule",
+    "filterLength_under5": "Muinshi wa minitshi 5",
+    "filterLength_5to10": "Minitshi 5-10",
+    "filterLength_10to30": "Minitshi 10-30",
+    "filterLength_over30": "Kupita minitshi 30",
+    "filterType": "Mushindu",
+    "clearFilters": "Umbusha bilubulukishi",
+    "filterResults": "{count} pa {total} bileja",
+    "noFilterResults": "Kakuena vidyo udi upetangana ne bilubulukishi ebi. Tshima kumbusha kimwe.",
+    "filterAdded": "Mbadikilu",
+    "filterAdded_60d": "Matuku 60 mapite",
+    "filterAdded_6m": "Ngondo 6 mipite",
+    "filterAdded_12m": "Ngondo 12 mipite"
   },
   "WatchHome": {
     "pageTitle": "Talala pa Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Preview ya video ya kumpala",
     "nextVideoPreview": "Preview ya video ilandile",
     "mediaCollection": "Mbufa ya media",
-    "scrollToVideo": "Pumbula ku video ya {title}"
+    "scrollToVideo": "Pumbula ku video ya {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Tshikupu tsha Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Lwela ku Watch",
     "browseVideos": "Selebula mavidiyo"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Talala filme ya mukese",
-    "actions": {
-      "joinUs": "Kanga na betu",
-      "shareMission": "Kabana mu mision yetu"
-    },
-    "welcomeStart": {
-      "label": "Lukwikilu ne Maandishe a Bulemu",
-      "title": "Mavidiyo a lelo a kusankula",
-      "description": "Mavidiyo a mu mutshima wa lukwikilu a mu bufuku bwa betu, a kufwasa, a kukumina, ne a kubuulula mabanza."
-    },
-    "welcomeMorning": {
-      "label": "Bwambile bwa mu tshiambo",
-      "title": "Mpepo ya mu tshiandi! Bintu bya Biblia bya lelo bidi kulaya.",
-      "description": "Tshikala tshebe na mavidiyo a Biblia a kulonga mutshima ne kukulombola mu dikolo dia lelo."
-    },
-    "welcomeAfternoon": {
-      "label": "Bwambile bwa mu ditumba",
-      "title": "Mpepo ya mu ditumba! Bintu bya Biblia bya lelo bidi ku yebe.",
-      "description": "Mavidiyo a Biblia a kulomba mutshima, a kufwasa mu dikolo dia mu ditumba ne kuikala luishi."
-    },
-    "welcomeEvening": {
-      "label": "Bwambile bwa mu diloba",
-      "title": "Mpepo ya mu diloba! Pumuka ne bintu bya Biblia.",
-      "description": "Bintu bya Biblia bya kimpepe bi kukwasa kusambuka ne kupata lulendo luwama ne dikolo dia lelo diishi."
-    },
-    "joinUs": {
-      "label": "Kanga na betu",
-      "title": "Bilonda bidi kusaka",
-      "description": "Buvuna buleli. Kanga na betu mu kusakidila evangile pa buloba ne media ya digital."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Tenda na betu",
-      "title": "Kutenda Nsangu ya Yesu, na betu",
-      "description": "Tudi kuleta mukanda ne luse lwa Yesu mu lulaka lwabo, mu njiya yawu mene."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% idi iwendangana",
     "none": "Katshi na mavidiyo a kuludila afwanyikile ku video eyi mu lulaka elu."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Muakulu wa diyi",
     "selectLanguageVersion": "Sungula mushindu wa muakulu",
     "watchSelectedVersion": "Mona mushindu muwasungula"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Nsoolo ya ba cookie",
+    "bannerTitle": "Nsoolo yebe ya bumfihla",
+    "bannerDescription": "Ba cookie ba mushinga badi balame Watch mu dikuba ne mu mudimu wau. Bu udi witabuuja, cookie wa diboso wa kusungula udi mwa kuvuluka bidi bisankisha pakwiza cyabu cyonse bua kupanga bimanyinu bia kujikija. Bimanyinu bia pa mbandu bidi bikala bipeteka mu nzila yonse.",
+    "acceptAll": "Tambula byonso",
+    "essentialOnly": "Bya mushinga nkaayi",
+    "manageChoices": "Longolola nsoolo",
+    "savingChoice": "Kulama nsoolo ya ba cookie",
+    "settings": "Mikandu ya ba cookie",
+    "settingsDescription": "Sungula ne Watch mmumvu wa kuvuluka bidi bisankisha bimanyinu pakwiza cyabu cyonse anyi to. Udi mwa kubialuja pa diba dyonsodi.",
+    "essentialCookies": "Ba cookie ba mushinga",
+    "essentialDescription": "Dikuba, kutangila video, nsoolo ya bumfihla, ne ditumba dia malomba a bimanyinu.",
+    "alwaysActive": "Bidi bikala bienda misangu yonso",
+    "personalization": "Kupanga bua muntu yeka yeka",
+    "personalizationDescription": "Vuluka bidi bisankisha bia pa ndilu pakwiza cyabu cyonse. Bu udi uciimuna, bimanyinu bia pa mbandu bidi bikala bipeteka.",
+    "erasurePending": "Kujimija profil kucidi kulindila. Bimanyinu bia pa mbandu bidi kale bienda.",
+    "cancel": "Cancela",
+    "saveChoices": "Lama nsoolo",
+    "saving": "Kulama…",
+    "loadError": "Nsoolo yebe kayi muvuluibue to. Udi ucidi mwa kusungula panshi apa.",
+    "grantError": "Kupanga bua muntu yeka yeka kakuenaku kujingulula to. Bya mushinga nkaayi bidi bicidi bipeteka.",
+    "saveError": "Nsoolo yebe kayi mulamibue to. Swaku, tente kabidi."
   }
 }

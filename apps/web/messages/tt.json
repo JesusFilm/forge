@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио телен үзгәртү",
     "home": "JesusFilm баш бите",
     "closeSearch": "Эзләүне ябу",
-    "submitSearch": "Эзләү"
+    "submitSearch": "Эзләү",
+    "library": "Китапханә"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоларны эзләү һәм карау",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Җыентыклар",
     "subtitlesOnly": "Бары тик субтитрлар",
+    "backToTop": "Өскә кайту",
     "newlyAdded": "Яңа өстәлгән",
     "newVideosTitle": "{language} телендә яңа христиан видеолары",
     "newestFirst": "Иң яңалары башта",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Аерым видеолар",
     "videosFromCollection": "{collection} җыентыгындагы видеолар.",
     "standaloneDescription": "Бу телдәге аерым видеолар.",
-    "openCollection": "Җыентыкны ачу"
+    "openCollection": "Җыентыкны ачу",
+    "filters": "Фильтрлар",
+    "filterLength": "Озынлык",
+    "filterLength_under5": "5 минуттан кимрәк",
+    "filterLength_5to10": "5-10 минут",
+    "filterLength_10to30": "10-30 минут",
+    "filterLength_over30": "30 минуттан артык",
+    "filterType": "Төр",
+    "clearFilters": "Фильтрларны бетерү",
+    "filterResults": "{total} дән {count} күрсәтелә",
+    "noFilterResults": "Бу фильтрларга туры килгән видео юк. Берсен алып карагыз.",
+    "filterAdded": "Өстәлде",
+    "filterAdded_60d": "Соңгы 60 көн",
+    "filterAdded_6m": "Соңгы 6 ай",
+    "filterAdded_12m": "Соңгы 12 ай"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project карау",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Алдагы видео алдан карау",
     "nextVideoPreview": "Киләсе видео алдан карау",
     "mediaCollection": "Медиа җыентыгы",
-    "scrollToVideo": "{title} видеосына күчү"
+    "scrollToVideo": "{title} видеосына күчү",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project баш бите",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Карау битенә кире",
     "browseVideos": "Видеоларны карау"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Кыска фильм карау",
-    "actions": {
-      "joinUs": "Безгә кушылыгыз",
-      "shareMission": "Безнең миссиядә катнашыгыз"
-    },
-    "welcomeStart": {
-      "label": "Иман һәм Изге Язма",
-      "title": "Бүгенге видео сайламнары",
-      "description": "Безнең китапханәдән иманга нигезләнгән видеоконтент — илһамландыру, уйландыру һәм фикергә этәрү өчен."
-    },
-    "welcomeMorning": {
-      "label": "Иртәнге илһам",
-      "title": "Хәерле иртә! Бүгенге Изге Язма мизгелләре сезне көтә.",
-      "description": "Көнеңезне күтәренке рух һәм илһам бирүче Изге Язма мизгелләре белән башлап җибәрегез."
-    },
-    "welcomeAfternoon": {
-      "label": "Төшке илһам",
-      "title": "Хәерле көн! Көнегез өчен Изге Язма мизгелләре.",
-      "description": "Төшке тәнәфес өчен яки илһамны дәвам итәр өчен бик кулай күтәренке Изге Язма эчтәлеге."
-    },
-    "welcomeEvening": {
-      "label": "Кичке илһам",
-      "title": "Хәерле кич! Изге Язма мизгелләре белән ял итегез.",
-      "description": "Көнегез тәмамланганда уйланырга һәм тынычлык табарга ярдәм итүче тыныч Изге Язма мизгелләре."
-    },
-    "joinUs": {
-      "label": "Безгә кушылыгыз",
-      "title": "Миллиардларча кеше эзли",
-      "description": "Урып-җыю өлгерде. Санлы медиалар ярдәмендә Инҗилне дөнья белән бүлешүдә безгә кушылыгыз."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Бергә барыйк",
-      "title": "Гайсә турында хикәяне бергә сөйләү",
-      "description": "Шулай итеп, алар Гайсәнең мәхәббәтен үз телләрендә, үзләре булган җирдә ишетә һәм күрә алсын."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% туры килә",
     "none": "Бу телдә бу видео өчен тәкъдимнәр табылмады."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Аудио теле",
     "selectLanguageVersion": "Тел версиясен сайлау",
     "watchSelectedVersion": "Сайланган версияне карау"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie сайлаулары",
+    "bannerTitle": "Хосусыйлык буенча сайлауларыгыз",
+    "bannerDescription": "Мөһим cookie файллары Watch сервисының имин һәм дөрес эшләвен тәэмин итә. Сезнең рөхсәт белән, өстәмә беренче як cookie файлы тәкъдимнәрне шәхсиләштерү өчен, керүләр арасында кызыксынуларны истә калдыра ала. Контекстка бәйле тәкъдимнәр теләсә кайсы очракта да кулланырга мөмкин.",
+    "acceptAll": "Барысын да кабул итү",
+    "essentialOnly": "Мөһимнәре генә",
+    "manageChoices": "Сайлауларны көйләү",
+    "savingChoice": "Cookie сайлавы саклана",
+    "settings": "Cookie көйләүләре",
+    "settingsDescription": "Watch сервисы керүләр арасында тәкъдим кызыксынуларын истә калдырасынмы-юкмы икәнен сайлагыз. Моны теләсә кайсы вакытта үзгәртә аласыз.",
+    "essentialCookies": "Мөһим cookie файллары",
+    "essentialDescription": "Иминлек, карату, хосусыйлык сайлаулары һәм тәкъдим соравы чыганагын билгеләү.",
+    "alwaysActive": "Һәрвакыт актив",
+    "personalization": "Шәхсиләштерү",
+    "personalizationDescription": "Керүләр арасында чикләнгән кызыксынуларны истә калдырырга. Моны сүндерү контекстка бәйле тәкъдимнәрне куллану мөмкинлеген саклый.",
+    "erasurePending": "Профильне бетерү көтелә. Контекстка бәйле тәкъдимнәр инде актив.",
+    "cancel": "Баш тарту",
+    "saveChoices": "Сайлауларны саклау",
+    "saving": "Саклана…",
+    "loadError": "Сезнең сайлауны йөкләп булмады. Шулай да астарак сайлый аласыз.",
+    "grantError": "Шәхсиләштерүне кабызып булмады. Мөһим вариант кына кулланыла ала.",
+    "saveError": "Сезнең сайлауны саклап булмады. Зинһар, яңадан тырышып карагыз."
   }
 }

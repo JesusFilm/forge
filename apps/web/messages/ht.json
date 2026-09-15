@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Chanje lang odyo a",
     "home": "Akèy JesusFilm",
     "closeSearch": "Fèmen rechèch la",
-    "submitSearch": "Chèche"
+    "submitSearch": "Chèche",
+    "library": "Bibliyotèk"
   },
   "SearchOverlay": {
     "dialogLabel": "Chèche epi browse videyo yo",
@@ -467,6 +468,7 @@
     "sports": "Espò",
     "collections": "Koleksyon",
     "subtitlesOnly": "Sèlman sous-titre",
+    "backToTop": "Retounen anwo",
     "newlyAdded": "Fèk ajoute",
     "newVideosTitle": "Nouvo videyo kretyen an {language}",
     "newestFirst": "Pi resan an premye",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Videyo endepandan",
     "videosFromCollection": "Videyo ki soti nan {collection}.",
     "standaloneDescription": "Videyo endepandan nan lang sa a.",
-    "openCollection": "Louvri koleksyon an"
+    "openCollection": "Louvri koleksyon an",
+    "filters": "Filtè",
+    "filterLength": "Longè",
+    "filterLength_under5": "Mwens pase 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Plis pase 30 min",
+    "filterType": "Kalite",
+    "clearFilters": "Efase filtè yo",
+    "filterResults": "{count} sou {total} montre",
+    "noFilterResults": "Pa gen videyo ki matche ak filtè sa yo. Eseye retire youn.",
+    "filterAdded": "Ajoute",
+    "filterAdded_60d": "60 dènye jou",
+    "filterAdded_6m": "6 dènye mwa",
+    "filterAdded_12m": "12 dènye mwa"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Gade",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Aperçu videyo anvan an",
     "nextVideoPreview": "Aperçu pwochen videyo a",
     "mediaCollection": "Koleksyon medya",
-    "scrollToVideo": "Desann pou videyo {title} a"
+    "scrollToVideo": "Desann pou videyo {title} a",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Akèy Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Tounen nan Watch",
     "browseVideos": "Browse videyo yo"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Gade fim kout",
-    "actions": {
-      "joinUs": "Vin jwenn nou",
-      "shareMission": "Pataje nan misyon nou"
-    },
-    "welcomeStart": {
-      "label": "Lafwa ak Ekriti",
-      "title": "Chwa videyo pou jodi a",
-      "description": "Kontni videyo ki santre sou lafwa nan bibliyotèk nou an pou enspire w, defi w, epi limen refleksyon."
-    },
-    "welcomeMorning": {
-      "label": "Enspirasyon maten",
-      "title": "Bonjou! Moman Labib pou jounen an ap tann ou.",
-      "description": "Kòmanse jounen w ak moman Labib ki ankourajan, fèt pou enspire w epi leve lespri w."
-    },
-    "welcomeAfternoon": {
-      "label": "Enspirasyon aprèmidi",
-      "title": "Bon aprèmidi! Moman Labib pou jounen w.",
-      "description": "Kontni Labib ki ankourajan, pafè pou poz aprèmidi w oswa pou kontinye jwenn enspirasyon."
-    },
-    "welcomeEvening": {
-      "label": "Enspirasyon aswè",
-      "title": "Bonswa! Pran yon ti moman ak moman Labib.",
-      "description": "Moman Labib ki trankil pou ede w reflechi epi jwenn konsolasyon pandan jounen w ap fini."
-    },
-    "joinUs": {
-      "label": "Vin jwenn nou",
-      "title": "Milya moun ap chèche",
-      "description": "Rekòt la la a. Vin jwenn nou pandan n ap pataje levanjil la ak mond lan atravè medya dijital."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Ann ale ansanm",
-      "title": "Rakonte Istwa Jezi a ansanm",
-      "description": "Pou yo ka tande ak wè lanmou Jezi a nan pwòp lang yo, jis kote yo ye a."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% korespondans",
     "none": "Pa jwenn okenn rekòmandasyon pou videyo sa a nan lang sa a."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Lang odyo",
     "selectLanguageVersion": "Chwazi yon vèsyon lang",
     "watchSelectedVersion": "Gade vèsyon ou chwazi a"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Chwa cookie yo",
+    "bannerTitle": "Chwa vi prive ou",
+    "bannerDescription": "Cookie esansyèl yo kenbe Watch an sekirite epi fè li mache byen. Avèk pèmisyon ou, yon cookie opsyonèl ki soti dirèkteman nan sit la ka sonje enterè ou ant vizit yo pou pèsonalize rekòmandasyon yo. Rekòmandasyon selon kontèks yo ap toujou disponib nan toude ka yo.",
+    "acceptAll": "Aksepte tout",
+    "essentialOnly": "Esansyèl sèlman",
+    "manageChoices": "Jere chwa yo",
+    "savingChoice": "Ap anrejistre chwa cookie yo",
+    "settings": "Paramèt cookie yo",
+    "settingsDescription": "Chwazi si Watch ka sonje enterè rekòmandasyon ou yo ant vizit yo. Ou ka chanje sa nenpòt ki lè.",
+    "essentialCookies": "Cookie esansyèl yo",
+    "essentialDescription": "Sekirite, lekti videyo, chwa vi prive, ak atribisyon demann rekòmandasyon yo.",
+    "alwaysActive": "Toujou aktif",
+    "personalization": "Pèsonalizasyon",
+    "personalizationDescription": "Sonje enterè limite yo ant vizit yo. Si ou dezaktive sa, rekòmandasyon selon kontèks yo ap toujou disponib.",
+    "erasurePending": "Efasman pwofil la annatant. Rekòmandasyon selon kontèks yo deja aktif.",
+    "cancel": "Anile",
+    "saveChoices": "Anrejistre chwa yo",
+    "saving": "Ap anrejistre...",
+    "loadError": "Nou pa t kapab chaje chwa ou a. Ou ka toujou chwazi anba a.",
+    "grantError": "Nou pa t kapab aktive pèsonalizasyon an. Esansyèl sèlman rete disponib.",
+    "saveError": "Nou pa t kapab anrejistre chwa ou a. Tanpri eseye ankò."
   }
 }

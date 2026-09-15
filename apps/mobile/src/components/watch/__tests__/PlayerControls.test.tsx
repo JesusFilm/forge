@@ -55,7 +55,11 @@ jest.mock("react-native-safe-area-context", () => ({
 import { act } from "react"
 import { Platform } from "react-native"
 
-import { PlayerControls, type PlayerControlsCastUi } from "../PlayerControls"
+import {
+  PlayerControls,
+  type PlayerControlsCastUi,
+  fullscreenCaptionOffset,
+} from "../PlayerControls"
 import type { PlaybackTarget } from "../../../lib/playbackTarget"
 import {
   TestRenderer,
@@ -210,6 +214,29 @@ describe("PlayerControls chrome", () => {
     const renderer = await render(true)
     expect(hasLabel(renderer, "Exit fullscreen")).toBe(true)
     expect(labelCount(renderer, "Fullscreen")).toBe(0)
+    await unmount(renderer)
+  })
+
+  it("puts the exit control ABOVE the seek bar in fullscreen", async () => {
+    // Below the bar, the exit control's 44pt row pushes the seek bar up off the
+    // bottom edge in landscape — the one place the bar should hug it.
+    //
+    // Asserted by tree ORDER, not by style: the fullscreen bottom bar is a
+    // plain flex column, so "renders earlier" IS "sits higher". A style
+    // assertion would keep passing with the two rows simply swapped back.
+    // `findAll` walks depth-first, so one query over both nodes preserves their
+    // relative position without needing to reconstruct the tree.
+    const renderer = await render(true)
+    const ordered = renderer.root.findAll(
+      (n) =>
+        n.props.accessibilityLabel === "Exit fullscreen" ||
+        n.props.accessibilityRole === "adjustable",
+    )
+    expect(ordered.length).toBeGreaterThanOrEqual(2)
+    expect(ordered[0].props.accessibilityLabel).toBe("Exit fullscreen")
+    expect(
+      ordered.some((n) => n.props.accessibilityRole === "adjustable"),
+    ).toBe(true)
     await unmount(renderer)
   })
 })
@@ -606,5 +633,56 @@ describe("Cast remote mode (KTD4)", () => {
     expect(castTarget.seekTo).not.toHaveBeenCalled()
     expect(player.play).not.toHaveBeenCalled()
     await unmount(renderer)
+  })
+})
+
+/**
+ * The caption lives in VideoPlayer while the bar it must clear lives in
+ * PlayerControls, so the offset is DERIVED here rather than eyeballed there. It
+ * had been a hard-coded 92, which silently assumed one device's home-indicator
+ * inset and then rotted outright when the exit control moved above the bar.
+ */
+describe("fullscreenCaptionOffset", () => {
+  it("clears the seek bar's GRAB area, not just its visible track", () => {
+    // The track is 3pt but the touch target is 44pt. Clearing only the track
+    // would put the caption inside the area a scrub starts from.
+    expect(fullscreenCaptionOffset(0)).toBeGreaterThanOrEqual(44)
+  })
+
+  it("clears the seek bar and its row gap, and nothing above them", () => {
+    // The bar stacks (from the bottom): its safe-area padding, the seek bar's
+    // 44pt grab area, a 6pt gap, then the 44pt pill/exit row. The caption
+    // clears the first three ONLY -- clearing the row too was rejected on the
+    // shipped build as too high, and it is safe to sit in that row because the
+    // overlay is pointerEvents="none".
+    const PADDING_FLOOR = 8
+    const SEEK_GRAB = 44
+    const ROW_GAP = 6
+    const throughSeekBar = PADDING_FLOOR + SEEK_GRAB + ROW_GAP
+
+    expect(fullscreenCaptionOffset(0)).toBe(throughSeekBar)
+    expect(fullscreenCaptionOffset(8)).toBe(throughSeekBar)
+  })
+
+  it("keeps that clearance on a device with a home indicator", () => {
+    // A landscape iPhone reports ~21 here. The clearance above the bar must not
+    // shrink just because the bar's own padding grew.
+    const CLEARANCE = 44 + 6
+    expect(fullscreenCaptionOffset(21)).toBe(21 + CLEARANCE)
+    expect(fullscreenCaptionOffset(34)).toBe(34 + CLEARANCE)
+    expect(fullscreenCaptionOffset(34) - fullscreenCaptionOffset(21)).toBe(13)
+  })
+
+  it("does NOT lift the caption over the pill and exit row", () => {
+    // The inverse of the guard this file used to carry. It is pinned, not just
+    // dropped, because the reviewed-and-rejected version is the tempting one:
+    // without this a future 'fix' silently re-raises the caption by a row.
+    const ROW_ABOVE_SEEK_BAR = 44
+    const throughSeekBar = Math.max(21, 8) + 44 + 6
+
+    expect(fullscreenCaptionOffset(21)).toBe(throughSeekBar)
+    expect(fullscreenCaptionOffset(21)).toBeLessThan(
+      throughSeekBar + ROW_ABOVE_SEEK_BAR,
+    )
   })
 })

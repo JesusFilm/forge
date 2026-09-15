@@ -180,7 +180,8 @@
     "changeAudioLanguage": "گۆڕینی زمانی دەنگ",
     "home": "سەرەکیی JesusFilm",
     "closeSearch": "داخستنی گەڕان",
-    "submitSearch": "بگەڕێ"
+    "submitSearch": "بگەڕێ",
+    "library": "کتێبخانە"
   },
   "SearchOverlay": {
     "dialogLabel": "گەڕان و گەڕان لە ویدۆکان",
@@ -467,6 +468,7 @@
     "sports": "وەرزش",
     "collections": "کۆمەڵەکان",
     "subtitlesOnly": "تەنها ژێرنوسین",
+    "backToTop": "گەڕانەوە بۆ سەرەوە",
     "newlyAdded": "تازە زیادکراو",
     "newVideosTitle": "ویدۆی مەسیحی نوێ بە {language}",
     "newestFirst": "نوێترین لە سەرەوە",
@@ -497,7 +499,21 @@
     "standaloneVideos": "ویدۆی سەربەخۆ",
     "videosFromCollection": "ویدۆ لە {collection}.",
     "standaloneDescription": "ویدۆی سەربەخۆ لەم زمانەدا.",
-    "openCollection": "کردنەوەی کۆمەڵە"
+    "openCollection": "کردنەوەی کۆمەڵە",
+    "filters": "فلتەرەکان",
+    "filterLength": "درێژی",
+    "filterLength_under5": "کەمتر لە 5 خولەک",
+    "filterLength_5to10": "5-10 خولەک",
+    "filterLength_10to30": "10-30 خولەک",
+    "filterLength_over30": "زیاتر لە 30 خولەک",
+    "filterType": "جۆر",
+    "clearFilters": "سڕینەوەی فلتەرەکان",
+    "filterResults": "{count} لە {total} پیشاندرا",
+    "noFilterResults": "هیچ ڤیدیۆیەک لەگەڵ ئەم فلتەرەکان ناگونجێت. هەوڵ بدە یەکێکیان لابەریت.",
+    "filterAdded": "زیادکراو",
+    "filterAdded_60d": "60 ڕۆژی ڕابردوو",
+    "filterAdded_6m": "6 مانگی ڕابردوو",
+    "filterAdded_12m": "12 مانگی ڕابردوو"
   },
   "WatchHome": {
     "pageTitle": "Watchی Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "پێشبینی ویدۆی پێشووتر",
     "nextVideoPreview": "پێشبینی ویدۆی داهاتوو",
     "mediaCollection": "کۆمەڵەی میدیا",
-    "scrollToVideo": "بڕۆ بۆ ویدۆی {title}"
+    "scrollToVideo": "بڕۆ بۆ ویدۆی {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "سەرەکیی Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "گەڕانەوە بۆ Watch",
     "browseVideos": "گەڕان لە ویدۆکان"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "فیلمی کورت ببینە",
-    "actions": {
-      "joinUs": "پەیوەندیمان پێوە بکە",
-      "shareMission": "له‌ میسۆنەکەماندا هاوبەش بە"
-    },
-    "welcomeStart": {
-      "label": "باوەڕ و دەقی پیرۆز",
-      "title": "هەڵبژاردەکانی ویدۆی ئەمڕۆ",
-      "description": "ناوەڕۆکی ویدۆیی بنەڕەت باوەڕیی لە کۆگاکەمانەوە بۆ هاندان، ڕووبەڕووبوونەوە، و هەڵچوونی بیرکردنەوە."
-    },
-    "welcomeMorning": {
-      "label": "هاندان بۆ بەیانی",
-      "title": "بەیانی باش! خولەکەکانی کتێبی پیرۆزت ئەمڕۆ چاوەڕێت دەکەن.",
-      "description": "ڕۆژەکەت بە خولەکە هاندانکەرەکانی کتێبی پیرۆز دەست پێ بکە کە بۆ هاندانی دڵ و بەرزکردنەوەی ڕووحەت دروستکراون."
-    },
-    "welcomeAfternoon": {
-      "label": "هاندان بۆ نیوەڕۆ",
-      "title": "نیوەڕۆ باش! خولەکەکانی کتێبی پیرۆز بۆ ڕۆژەکەت.",
-      "description": "ناوەڕۆکی هاندانکەری کتێبی پیرۆز کە بۆ پشووی نیوەڕۆکەت یان بۆ بەردەوامبوونی هاندانت گونجاوە."
-    },
-    "welcomeEvening": {
-      "label": "هاندان بۆ ئێوارە",
-      "title": "شەوی باش! بە خولەکەکانی کتێبی پیرۆز ئارام ببە.",
-      "description": "خولەکە ئارامەکانی کتێبی پیرۆز بۆ ئەوەی بیر بکەیتەوە و ئاسوودەیی بدۆزیەوە کە ڕۆژەکەت کۆتایی دێت."
-    },
-    "joinUs": {
-      "label": "پەیوەندیمان پێوە بکە",
-      "title": "میلیاردەها کەس دەگەڕێن",
-      "description": "کاتی دڕوو دەگات. پەیوەندیمان پێوە بکە لەکاتی هاوبەشکردنی ئینجیل لەگەڵ جیهان بە بەکارهێنانی میدیای دیجیتاڵ."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "بە یەکەوە بڕۆین",
-      "title": "چیرۆکی عیسا، بە یەکەوە دەگێڕینەوە",
-      "description": "تا بتوانن لە زمانە خۆیاندا، لەو شوێنەی خۆیانن، خۆشەویستی عیسا بشنێن و ببینن."
-    }
-  },
   "VideoRecommendations": {
     "match": "لە سەدا {percent} هاوتایە",
     "none": "هیچ پێشنیارێک بۆ ئەم ویدۆیە بەم زمانە نەدۆزرایەوە."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "زمانی دەنگ",
     "selectLanguageVersion": "وەشانێکی زمان هەڵبژێرە",
     "watchSelectedVersion": "وەشانی هەڵبژێردراو ببینە"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "هەڵبژاردەکانی کوکی",
+    "bannerTitle": "هەڵبژاردەکانی تایبەتمەندیی تۆ",
+    "bannerDescription": "کوکییە بنەڕەتییەکان Watch پارێزراو و کارا دەھێڵنەوە. بە ڕێگەپێدانى تۆ، کوکییەکی هەڵبژاردەیی سەر بە خۆمان دەتوانێت حەزەکانت لە نێوان سەردانەکاندا بیهێڵێتەوە بۆ کەسی‌کردنی پێشنیارەکان. پێشنیارەکانی لەسەر بنەمای ناوەڕۆک لە هەردوو حاڵەتەکەدا بەردەست دەمێننەوە.",
+    "acceptAll": "هەمووی قبوڵ بکە",
+    "essentialOnly": "تەنها بنەڕەتییەکان",
+    "manageChoices": "بەڕێوەبردنی هەڵبژاردەکان",
+    "savingChoice": "هەڵبژاردەی کوکی پاشەکەوت دەکرێت",
+    "settings": "ڕێکخستنەکانی کوکی",
+    "settingsDescription": "هەڵبژێرە ئایا Watch دەتوانێت حەزەکانی پێشنیارکردن لە نێوان سەردانەکاندا بیهێڵێتەوە یان نا. دەتوانیت لە هەر کاتێکدا ئەمە بگۆڕیت.",
+    "essentialCookies": "کوکییە بنەڕەتییەکان",
+    "essentialDescription": "ئاسایش، لێدانی ڤیدیۆ، هەڵبژاردەکانی تایبەتمەندی، و ناساندنی داواکاریی پێشنیار.",
+    "alwaysActive": "هەمیشە چالاکە",
+    "personalization": "کەسی‌کردن",
+    "personalizationDescription": "حەزە سنووردارەکان لە نێوان سەردانەکاندا بیهێڵێتەوە. کوژاندنەوەی ئەمە پێشنیارەکانی لەسەر بنەمای ناوەڕۆک بەردەست دەھێڵێتەوە.",
+    "erasurePending": "سڕینەوەی پڕۆفایل لە چاوەڕوانیدایە. پێشنیارەکانی لەسەر بنەمای ناوەڕۆک ئێستا چالاکن.",
+    "cancel": "هەڵوەشاندنەوە",
+    "saveChoices": "پاشەکەوتکردنی هەڵبژاردەکان",
+    "saving": "پاشەکەوت دەکرێت…",
+    "loadError": "نەتوانرا هەڵبژاردەکەت باربکرێت. هێشتا دەتوانیت لە خوارەوە هەڵبژێریت.",
+    "grantError": "نەتوانرا کەسی‌کردن چالاک بکرێت. تەنها بنەڕەتییەکان هێشتا بەردەستن.",
+    "saveError": "نەتوانرا هەڵبژاردەکەت پاشەکەوت بکرێت. تکایە دووبارە هەوڵ بدەوە."
   }
 }

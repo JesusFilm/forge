@@ -56,6 +56,7 @@ describe("OAuth consent UI", () => {
         scopes={[]}
         target={{
           environment: "Local",
+          product: "Changelog",
           resource: "http://localhost:3000/mcp",
         }}
         unverifiedDynamicClient
@@ -64,6 +65,26 @@ describe("OAuth consent UI", () => {
 
     expect(html).toContain("Local Changelog")
     expect(html).toContain("http://localhost:3000/mcp")
+    expect(html).toContain("Unverified client name")
+  })
+
+  it("shows the exact Admin product, environment, and canonical resource", () => {
+    const html = renderToStaticMarkup(
+      <OAuthConsentPageClient
+        oauthQuery="client_id=dynamic-client&amp;resource=https%3A%2F%2Fadmin.jesusfilm.org%2Fmcp"
+        requestingAppName="Jesus Film Admin"
+        scopes={[]}
+        target={{
+          environment: "Production",
+          product: "Forge Admin MCP",
+          resource: "https://admin.jesusfilm.org/mcp",
+        }}
+        unverifiedDynamicClient
+      />,
+    )
+
+    expect(html).toContain("Production Forge Admin MCP")
+    expect(html).toContain("https://admin.jesusfilm.org/mcp")
     expect(html).toContain("Unverified client name")
   })
 })

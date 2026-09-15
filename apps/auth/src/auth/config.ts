@@ -1,7 +1,9 @@
-import { expo } from "@better-auth/expo"
+import { refuseUnverifiedConsumerLink } from "@/auth/account-linking-guard"
+import { mobileAwareExpoPlugin } from "@/auth/mobile-expo-plugin"
+import { selfRpStateCookiePlugin } from "@/auth/self-rp-state-cookie-plugin"
 import { prismaAdapter } from "@better-auth/prisma-adapter"
 import { oauthProvider } from "@better-auth/oauth-provider"
-import { betterAuth } from "better-auth"
+import { betterAuth, type BetterAuthOptions } from "better-auth"
 import { APIError } from "better-auth/api"
 import { toNextJsHandler, nextCookies } from "better-auth/next-js"
 import { genericOAuth, jwt, okta } from "better-auth/plugins"
@@ -21,9 +23,12 @@ import {
 } from "@/domain/apps"
 import { AUTH_SCOPES } from "@/domain/scopes"
 import {
-  CHANGELOG_OAUTH_RESOURCES,
-  CHANGELOG_OAUTH_SCOPES,
-} from "@/services/oauth-policy.service"
+  createOAuthResourceCatalog,
+  getPublicDcrAllowedScopes,
+  getPublicDcrResources,
+  resolveOAuthResource,
+} from "@/domain/oauth-resources"
+import { CHANGELOG_OAUTH_SCOPES } from "@/services/oauth-policy.service"
 import { createChangelogOAuthGrantDecision } from "@/services/changelog-oauth-grant.service"
 import { buildAccountDeletionHooks } from "@/services/account-deletion.service"
 import {
@@ -32,18 +37,19 @@ import {
   getAdminWatchProgressErasureConfig,
   getAppleNativeClientConfig,
   getAuthBaseUrl,
+  getAuthCustomAudiences,
   getAuthTrustedOrigins,
-  getAuthValidAudiences,
 } from "@/config/env"
 import { prisma } from "@/db/client"
 
 assertProductionAuthSecrets()
 
-const protectedResources = getAuthValidAudiences()
-const changelogResources: readonly string[] = Object.values(
-  CHANGELOG_OAUTH_RESOURCES,
-)
-
+const protectedResources = createOAuthResourceCatalog({
+  authIssuer: getAuthBaseUrl(),
+  customAudiences: getAuthCustomAudiences(),
+})
+const publicDcrResources = getPublicDcrResources(protectedResources)
+const publicDcrAllowedScopes = getPublicDcrAllowedScopes(protectedResources)
 const accountDeletionHooks = buildAccountDeletionHooks({
   findAppleAccount: (userId) =>
     prisma.account.findFirst({
@@ -154,18 +160,19 @@ const socialProviders = {
     : {}),
 }
 
-// Mobile's hosted-page sign-in (the only mobile login since feat-349): Auth
-// acts as OAuth client toward its own oauth-provider (self-RP), so any
-// hosted sign-in method ends in a real Better Auth session the Expo plugin
-// can hand back to the app.
+// Mobile's hosted-page sign-in (feat-349) makes Auth the OAuth client of its own
+// oauth-provider (self-RP), so every hosted method ends in a real session the
+// Expo plugin hands back. One expression for the provider AND the browser proxy.
+const mobileSelfRpClientId =
+  process.env.NODE_ENV === "production"
+    ? MOBILE_PRODUCTION_CLIENT_ID
+    : MOBILE_LOCAL_CLIENT_ID
+
 const jfpMobileSelfProvider = {
   providerId: JFP_MOBILE_PROVIDER_ID,
   discoveryUrl: `${getAuthBaseUrl()}/.well-known/openid-configuration`,
   requireIdTokenVerification: true,
-  clientId:
-    process.env.NODE_ENV === "production"
-      ? MOBILE_PRODUCTION_CLIENT_ID
-      : MOBILE_LOCAL_CLIENT_ID,
+  clientId: mobileSelfRpClientId,
   scopes: [...MOBILE_DEFAULT_SCOPES],
   redirectURI: `${getAuthBaseUrl()}/api/auth/callback/${JFP_MOBILE_PROVIDER_ID}`,
   pkce: true,
@@ -213,6 +220,41 @@ function firstPartyUserClaims(user: {
   }
 }
 
+// Typed explicitly: a second inline hook changed betterAuth's options
+// inference and broke the oauth-provider plugin's `init` return type.
+const databaseHooks: NonNullable<BetterAuthOptions["databaseHooks"]> = {
+  account: {
+    create: {
+      // Keeps 1.7's consumer-link guard that requireLocalEmailVerified
+      // switches off (account-linking-guard.ts). No endpoint context means
+      // no browser OAuth link is in flight, so nothing to refuse.
+      before: async (account, ctx) => {
+        const adapter = ctx?.context.internalAdapter
+        if (!adapter) return
+        await refuseUnverifiedConsumerLink(
+          { providerId: account.providerId, userId: account.userId },
+          {
+            consumerProviders: new Set(Object.keys(socialProviders)),
+            findUser: (userId) => adapter.findUserById(userId),
+            findAccounts: (userId) => adapter.findAccounts(userId),
+          },
+        )
+      },
+    },
+  },
+  session: {
+    create: {
+      before: async (session, ctx) => {
+        const clientKind = resolveSessionClientKind(
+          (ctx ?? undefined) as { path?: string; body?: unknown } | undefined,
+        )
+        if (!clientKind) return
+        return { data: { ...session, clientKind } }
+      },
+    },
+  },
+}
+
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: "postgresql",
@@ -221,6 +263,14 @@ export const auth = betterAuth({
   secret: betterAuthSecret,
   baseURL: getAuthBaseUrl(),
   trustedOrigins: getAuthTrustedOrigins(),
+  advanced: {
+    ipAddress: {
+      // Cloudflare supplies one client address before Railway forwards the
+      // request. Better Auth 1.7 rejects an untrusted X-Forwarded-For chain
+      // and otherwise pools every visitor into one rate-limit bucket.
+      ipAddressHeaders: ["cf-connecting-ip"],
+    },
+  },
   account: {
     accountLinking: {
       enabled: true,
@@ -228,6 +278,10 @@ export const auth = betterAuth({
       // okta and the jfp self-RP are internal identity assertions — jfp's
       // userinfo email IS the matched user row's own (unique) email.
       trustedProviders: ["okta", JFP_MOBILE_PROVIDER_ID],
+      // 1.7 defaults this to true: no provider links to a user whose LOCAL
+      // email is unverified, and no verification email exists here, so every
+      // first jfp sign-in failed. The account hook keeps the consumer guard.
+      requireLocalEmailVerified: false,
     },
   },
   user: {
@@ -251,21 +305,15 @@ export const auth = betterAuth({
       beforeDelete: accountDeletionHooks.beforeDelete,
     },
   },
-  databaseHooks: {
-    session: {
-      create: {
-        before: async (session, ctx) => {
-          const clientKind = resolveSessionClientKind(
-            (ctx ?? undefined) as { path?: string; body?: unknown } | undefined,
-          )
-          if (!clientKind) return
-          return { data: { ...session, clientKind } }
-        },
-      },
-    },
-  },
+  databaseHooks,
   plugins: [
-    expo(),
+    // The upstream expo plugin with its browser proxy re-opened for the jfp
+    // self-RP authorize URL (mobile-expo-plugin.ts). A bare expo() here
+    // turns every mobile sign-in into a 400 inside the sheet.
+    mobileAwareExpoPlugin({ selfRpClientId: mobileSelfRpClientId }),
+    // Re-plants the self-RP `state` cookie when the provider issues the code:
+    // a Google/Okta flow inside the hosted page consumes the one 1.7 checks.
+    selfRpStateCookiePlugin(),
     // Lean payload + short expiry: sign-out revokes the session but an
     // already-minted JWT lives to its exp — 15m bounds that window (KTD1).
     jwt({
@@ -290,12 +338,12 @@ export const auth = betterAuth({
       // to server startup after migrations, not static route collection.
       resources: isNextBuild
         ? []
-        : protectedResources.map((identifier) => ({
+        : protectedResources.map(({ identifier, allowedScopes }) => ({
             identifier,
-            allowedScopes: AUTH_SCOPES.map((scope) => scope.key),
+            allowedScopes: [...allowedScopes],
           })),
-      clientRegistrationAllowedResources: isNextBuild ? [] : protectedResources,
-      clientRegistrationDefaultResources: isNextBuild ? [] : changelogResources,
+      clientRegistrationAllowedResources: isNextBuild ? [] : publicDcrResources,
+      clientRegistrationDefaultResources: isNextBuild ? [] : publicDcrResources,
       advertisedMetadata: {
         scopes_supported: AUTH_SCOPES.map((scope) => scope.key),
         claims_supported: [
@@ -318,7 +366,7 @@ export const auth = betterAuth({
         ],
       },
       clientRegistrationDefaultScopes: ["openid", "profile:read", "email:read"],
-      clientRegistrationAllowedScopes: AUTH_SCOPES.map((scope) => scope.key),
+      clientRegistrationAllowedScopes: publicDcrAllowedScopes,
       clientCredentialGrantDefaultScopes: ["openid"],
       accessTokenExpiresIn: 60 * 60,
       m2mAccessTokenExpiresIn: 60 * 30,
@@ -340,15 +388,28 @@ export const auth = betterAuth({
         resources,
         metadata,
       }) => {
+        const target =
+          resources?.length === 1
+            ? resolveOAuthResource(protectedResources, resources[0])
+            : undefined
+        if (
+          target?.resourceClass === "admin-mcp" ||
+          target?.resourceClass === "shorts-mcp"
+        ) {
+          return {
+            "https://jesusfilm.org/claims/environment":
+              target.trustedEnvironment,
+            "https://jesusfilm.org/claims/app": target.trustedApp,
+          }
+        }
         const changelogAware =
-          resources?.some((resource) =>
-            changelogResources.includes(resource),
-          ) ||
-          scopes.some((scope) =>
-            CHANGELOG_OAUTH_SCOPES.includes(
-              scope as (typeof CHANGELOG_OAUTH_SCOPES)[number],
-            ),
-          )
+          target?.resourceClass === "changelog-mcp" ||
+          (resources?.length !== 1 &&
+            scopes.some((scope) =>
+              CHANGELOG_OAUTH_SCOPES.includes(
+                scope as (typeof CHANGELOG_OAUTH_SCOPES)[number],
+              ),
+            ))
         if (!changelogAware) {
           return {
             ...(typeof metadata?.environmentKind === "string"

@@ -108,6 +108,7 @@ export function mapWatchSearchResult(
     score: item.score ?? null,
     label: item.label ?? null,
     childCount: item.childCount ?? null,
+    durationSeconds: item.durationSeconds ?? null,
   }
 }
 

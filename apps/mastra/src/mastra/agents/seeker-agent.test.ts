@@ -1,10 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 // Partial env mock (feat-237): overrides ONLY `env` and the seeker gateway
-// resolver; everything else (getMastraDatabaseUrl, resolveAiChatMemoryBackend,
-// ...) comes from the real module via importOriginal. A full-module mock would
-// crash this file at import — memory.ts calls those functions from config/env
-// at module load.
+// resolver; everything else comes from the real module via importOriginal. A
+// full-module mock would crash this file at import — memory modules call config
+// helpers at module load.
 const mockEnv = vi.hoisted(() => ({
   env: {
     AI_GATEWAY_CHAT_API_KEY: undefined as string | undefined,
@@ -341,6 +340,29 @@ describe("createGatewayFetchWithTimeout (KTD9 abort mechanism)", () => {
       signal?.addEventListener("abort", resolve, { once: true }),
     )
     expect((signal?.reason as DOMException).name).toBe("TimeoutError")
+  })
+
+  it("pins redirect: 'error' on every gateway request, unoverridable by callers (feat-440)", async () => {
+    // The feat-440 allowlist bounds the CONFIGURED URL only; refusing
+    // redirects is what keeps the credentialed POST from being 3xx'd off the
+    // allowlisted host. The option sits AFTER the init spread, so even a
+    // caller passing redirect: "follow" must lose.
+    const captured: { redirect: RequestRedirect | undefined } = {
+      redirect: undefined,
+    }
+    const fetchImpl = (async (
+      _input: RequestInfo | URL,
+      init?: RequestInit,
+    ) => {
+      captured.redirect = init?.redirect
+      return new Response("ok")
+    }) as typeof fetch
+    await createGatewayFetchWithTimeout(60_000, fetchImpl)(
+      "https://gateway.test/v1",
+      { redirect: "follow" },
+    )
+
+    expect(captured.redirect).toBe("error")
   })
 })
 

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Shandukisani luambo lwa mudumo",
     "home": "Muhuri wa JesusFilm",
     "closeSearch": "Valani ṱhoḓisiso",
-    "submitSearch": "Ṱolani"
+    "submitSearch": "Ṱolani",
+    "library": "Bugu ya vhutanzi"
   },
   "SearchOverlay": {
     "dialogLabel": "Ṱolani na u browse video",
@@ -467,6 +468,7 @@
     "sports": "Mitambo",
     "collections": "Miṱaṱisano",
     "subtitlesOnly": "Zwibulo fhedzi",
+    "backToTop": "Vhuya nṱha",
     "newlyAdded": "Zwo engedzwa zwenezwino",
     "newVideosTitle": "Vidio dza Vhukriste dza zwenezwino nga {language}",
     "newestFirst": "Zwine zwa vha zwiswa nga phanda",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Vidio dzi imelelaho",
     "videosFromCollection": "Vidio u bva kha {collection}.",
     "standaloneDescription": "Vidio dzi imelelaho kha heḽi luambo.",
-    "openCollection": "Vulani muṱaṱisano"
+    "openCollection": "Vulani muṱaṱisano",
+    "filters": "Zwifhaṱi",
+    "filterLength": "Vhulapfu",
+    "filterLength_under5": "Nga fhasi ha mimunithi ya 5",
+    "filterLength_5to10": "Mimunithi ya 5-10",
+    "filterLength_10to30": "Mimunithi ya 10-30",
+    "filterLength_over30": "Nga nṱha ha mimunithi ya 30",
+    "filterType": "Lushaka",
+    "clearFilters": "Phumula zwifhaṱi",
+    "filterResults": "{count} kha {total} zwo sumbedzwa",
+    "noFilterResults": "A hu na vidio ine ya tshimbidzana na zwifhaṱi hezwi. Lingedza u bvisa tshiṅwe.",
+    "filterAdded": "Yo engedzwa",
+    "filterAdded_60d": "Maḓuvha a 60 o fhelaho",
+    "filterAdded_6m": "Miṅwedzi ya 6 yo fhelaho",
+    "filterAdded_12m": "Miṅwedzi ya 12 yo fhelaho"
   },
   "WatchHome": {
     "pageTitle": "U Lavhelesa ha Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Preview ya video yo fhiraho",
     "nextVideoPreview": "Preview ya video i tevhelaho",
     "mediaCollection": "Muṱaṱisano wa media",
-    "scrollToVideo": "Iḓani kha video ya {title}"
+    "scrollToVideo": "Iḓani kha video ya {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Muhuri wa Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Vhuyelani kha Watch",
     "browseVideos": "Ṱolani vidio"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Lavhelani Filimu Pfufhi",
-    "actions": {
-      "joinUs": "Dzhianani na Rine",
-      "shareMission": "Avelani kha Mishumo Yashu"
-    },
-    "welcomeStart": {
-      "label": "Lutendo na Maṅwalo",
-      "title": "Zwaṋu zwa Vidio zwa Ṋamusi",
-      "description": "Zwi re ngomu zwa vidio zwa lutendo u bva kha layibureari yashu zwi itelaho u ṱuṱuwedza, u ṱhasela mihumbulo, na u ita uri muṅwe a elekanye."
-    },
-    "welcomeMorning": {
-      "label": "U ṱuṱuwedza ha Muṅwe Na Muṅwe",
-      "title": "Matsheloni! Zwipiḓa zwa Bivhili zwa ṋamusi zwi khou lindela.",
-      "description": "Thomani ḓuvha ḽaṋu nga zwipiḓa zwa Bivhili zwi ṱuṱuwedzaho zwo itelwaho u ṱuṱuwedza na u khwinisa muya waṋu."
-    },
-    "welcomeAfternoon": {
-      "label": "U ṱuṱuwedza ha Thafha",
-      "title": "Masikuwani! Zwipiḓa zwa Bivhili zwa ḓuvha ḽaṋu.",
-      "description": "Zwi re ngomu zwa Bivhili zwi ṱuṱuwedzaho zwi faneleaho u awela masikuwani kana u isa phanḓa na u ṱuṱuwedzwa."
-    },
-    "welcomeEvening": {
-      "label": "U ṱuṱuwedza ha Madekwana",
-      "title": "Vhusiku! Awelani nga zwipiḓa zwa Bivhili.",
-      "description": "Zwipiḓa zwa Bivhili zwine zwa fha mulalo zwi a ni thusa u elekanya na u wana khuthadzo musi ḓuvha ḽiṋu ḽi tshi khou fhela."
-    },
-    "joinUs": {
-      "label": "Dzhianani na Rine",
-      "title": "Vhabiliyoni vha khou ṱoḓa",
-      "description": "Ṱhoḓea i fhano. Dzhianani na rine musi ri tshi kovhela vhathu vhoṱhe mafhungo maḓifha nga media dza dijithala."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "A ri tshimbile roṱhe",
-      "title": "U Anḓadza Nyambo ya Yesu, Roṱhe",
-      "description": "Uri vha kone u pfa na u vhona lufuno lwa Yesu nga luambo lwavho, fhethu he vha vha vha hone."
-    }
-  },
   "VideoRecommendations": {
     "match": "Zwi fana nga {percent}%",
     "none": "A hu na vidio dzo themendelwa dzo wanalaho kha iyi video nga holu luambo."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Luambo lwa mubvumo",
     "selectLanguageVersion": "Nangani vesheni ya luambo",
     "watchSelectedVersion": "Ṱalelani vesheni yo nangiwaho"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Dzikhhetho dza cookie",
+    "bannerTitle": "Dzikhhetho zwanu zwa tshidzumbe",
+    "bannerDescription": "Cookie dza ndeme dzi ita uri Watch i dzule yo tsireledzea nahone i shume zwavhuḓi. Nga thendelo yanu, cookie ya u tou bva kha saiti iyi i nga humbula zwine na takalela zwone kha maetele o fhambanaho u itela u ita themendelo dzo teaho. Themendelo dzi yelanaho na zwi re hone dzi a wanala naho zwo ralo.",
+    "acceptAll": "Ṱanganedzani zwoṱhe",
+    "essentialOnly": "Dza ndeme fhedzi",
+    "manageChoices": "Langulani dzikhhetho",
+    "savingChoice": "Khouthu ya cookie i khou vhulungiwa",
+    "settings": "Mavhekanyele a cookie",
+    "settingsDescription": "Nangani arali Watch i tshi tea u humbula zwine na takalela zwa themendelo kha maetele o fhambanaho. Ni nga shandukisa hezwi tshifhinga tshiṅwe na tshiṅwe.",
+    "essentialCookies": "Cookie dza ndeme",
+    "essentialDescription": "Tsireledzo, u tamba vidio, dzikhhetho zwa tshidzumbe, na u sumbedza hune khumbelo ya themendelo ya bva hone.",
+    "alwaysActive": "Dzi dzula dzo shumiswa",
+    "personalization": "U ita zwa muthu nga eṱhe",
+    "personalizationDescription": "Humbulani zwine na takalela zwine zwa vhalelwa kha maetele o fhambanaho. U tima hezwi zwi ita uri themendelo dzi yelanaho na zwi re hone dzi dzule dzi hone.",
+    "erasurePending": "U phumulwa ha phurofaili hu kha di lindelwa. Themendelo dzi yelanaho na zwi re hone dzo no thoma u shuma.",
+    "cancel": "Fhelisani",
+    "saveChoices": "Vhulungani dzikhhetho",
+    "saving": "Zwi khou vhulungiwa…",
+    "loadError": "Khetho yanu a yo ngo kona u laisiwa. Ni kha ḓi nga nanga afho fhasi.",
+    "grantError": "U ita zwa muthu nga eṱhe a zwo ngo kona u shumiswa. Dza ndeme fhedzi dzi kha ḓi wanala.",
+    "saveError": "Khetho yanu a yo ngo kona u vhulungiwa. Ri humbela ni lingedze hafhu."
   }
 }

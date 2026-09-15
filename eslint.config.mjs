@@ -12,6 +12,7 @@ export default defineConfig(
       "**/build/**",
       "**/.next/**",
       "**/node_modules/**",
+      "**/src/generated/**",
       "**/next-env.d.ts",
     ],
   },
@@ -44,6 +45,21 @@ export default defineConfig(
     // next/core-web-vitals config — a directive valid in one lint pass
     // must not be an unknown rule or unused suppression in the other.
     files: ["apps/chat/**/*.tsx", "apps/chat/**/*.ts"],
+    plugins: {
+      "react-hooks": reactHooksPlugin,
+      "@next/next": nextPlugin,
+    },
+    rules: {
+      "react-hooks/set-state-in-effect": "warn",
+      "react-hooks/exhaustive-deps": "warn",
+      "@next/next/no-img-element": "warn",
+    },
+  },
+  {
+    // Same rule as the apps/chat block above: apps/web's own lint pass runs
+    // next/core-web-vitals, so a react-hooks directive valid there must not
+    // be an unknown rule in this pass (it error-fails lint-staged at commit).
+    files: ["apps/web/**/*.tsx", "apps/web/**/*.ts"],
     plugins: {
       "react-hooks": reactHooksPlugin,
       "@next/next": nextPlugin,

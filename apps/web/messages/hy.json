@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Փոխել ձայնի լեզուն",
     "home": "JesusFilm գլխավոր էջ",
     "closeSearch": "Փակել որոնումը",
-    "submitSearch": "Որոնել"
+    "submitSearch": "Որոնել",
+    "library": "Գրադարան"
   },
   "SearchOverlay": {
     "dialogLabel": "Որոնել և դիտել տեսանյութեր",
@@ -467,6 +468,7 @@
     "sports": "Սպորտ",
     "collections": "Հավաքածուներ",
     "subtitlesOnly": "Միայն ենթագրեր",
+    "backToTop": "Վերև",
     "newlyAdded": "Նոր ավելացված",
     "newVideosTitle": "Նոր քրիստոնեական տեսանյութեր՝ {language}-ով",
     "newestFirst": "Նորերը սկզբում",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Առանձին տեսանյութեր",
     "videosFromCollection": "Տեսանյութեր {collection}-ից։",
     "standaloneDescription": "Այս լեզվով առանձին տեսանյութեր։",
-    "openCollection": "Բացել հավաքածուն"
+    "openCollection": "Բացել հավաքածուն",
+    "filters": "Զտիչներ",
+    "filterLength": "Տևողություն",
+    "filterLength_under5": "5 րոպեից պակաս",
+    "filterLength_5to10": "5-10 րոպե",
+    "filterLength_10to30": "10-30 րոպե",
+    "filterLength_over30": "30 րոպեից ավելի",
+    "filterType": "Տեսակ",
+    "clearFilters": "Մաքրել զտիչները",
+    "filterResults": "Ցուցադրված է {count}՝ {total}-ից",
+    "noFilterResults": "Այս զտիչներին համապատասխանող տեսանյութ չկա։ Փորձեք հեռացնել մեկը։",
+    "filterAdded": "Ավելացվել է",
+    "filterAdded_60d": "Վերջին 60 օրը",
+    "filterAdded_6m": "Վերջին 6 ամիսը",
+    "filterAdded_12m": "Վերջին 12 ամիսը"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project դիտում",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Նախորդ տեսանյութի նախադիտում",
     "nextVideoPreview": "Հաջորդ տեսանյութի նախադիտում",
     "mediaCollection": "Մեդիա հավաքածու",
-    "scrollToVideo": "Տեղափոխվել դեպի {title} տեսանյութը"
+    "scrollToVideo": "Տեղափոխվել դեպի {title} տեսանյութը",
+    "forYou": "Ձեզ համար"
   },
   "WatchFooter": {
     "home": "Jesus Film Project գլխավոր էջ",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Վերադառնալ դիտմանը",
     "browseVideos": "Դիտել տեսանյութերը"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}՝ {title}",
-    "watchShortFilm": "Դիտել կարճամետրաժ ֆիլմը",
-    "actions": {
-      "joinUs": "Միացեք մեզ",
-      "shareMission": "Մասնակցեք մեր առաքելությանը"
-    },
-    "welcomeStart": {
-      "label": "Հավատք և Սուրբ Գիրք",
-      "title": "Այսօրվա տեսանյութերի ընտրանին",
-      "description": "Մեր գրադարանից հավատքի վրա կենտրոնացած տեսաբովանդակություն՝ ներշնչելու, մարտահրավեր նետելու և մտորելու համար։"
-    },
-    "welcomeMorning": {
-      "label": "Առավոտյան ներշնչանք",
-      "title": "Բարի լույս։ Այսօրվա Աստվածաշնչյան պահերը սպասում են ձեզ։",
-      "description": "Սկսեք օրը Աստվածաշնչյան քաջալերող պահերով, որոնք նախատեսված են ներշնչելու և ոգին բարձրացնելու համար։"
-    },
-    "welcomeAfternoon": {
-      "label": "Ցերեկային ներշնչանք",
-      "title": "Բարի օր։ Աստվածաշնչյան պահեր՝ ձեր օրվա համար։",
-      "description": "Աստվածաշնչյան քաջալերող բովանդակություն՝ ձեր ցերեկային ընդմիջման կամ շարունակվող ներշնչանքի համար։"
-    },
-    "welcomeEvening": {
-      "label": "Երեկոյան ներշնչանք",
-      "title": "Բարի երեկո։ Օրը հանգստացրեք Աստվածաշնչյան պահերով։",
-      "description": "Խաղաղ Աստվածաշնչյան պահեր՝ օգնելու ձեզ խորհել և մխիթարություն գտնել, երբ օրը մոտենում է ավարտին։"
-    },
-    "joinUs": {
-      "label": "Միացեք մեզ",
-      "title": "Միլիարդավոր մարդիկ են փնտրում",
-      "description": "Հասել է բերքահավաքի ժամանակը։ Միացեք մեզ, երբ մենք թվային մեդիայի միջոցով Ավետարանն ենք կիսում աշխարհի հետ։"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Եկեք միասին գնանք",
-      "title": "Հիսուսի պատմությունը միասին պատմելով",
-      "description": "Որպեսզի նրանք կարողանան լսել և տեսնել Հիսուսի սերը իրենց սեփական լեզվով՝ հենց այնտեղ, որտեղ գտնվում են։"
-    }
-  },
   "VideoRecommendations": {
     "match": "Համապատասխանություն՝ {percent}%",
     "none": "Այս լեզվով այս տեսանյութի համար առաջարկություններ չեն գտնվել։"
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Ձայնի լեզու",
     "selectLanguageVersion": "Ընտրել լեզվական տարբերակ",
     "watchSelectedVersion": "Դիտել ընտրված տարբերակը"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie-ների ընտրանքներ",
+    "bannerTitle": "Ձեր գաղտնիության ընտրանքները",
+    "bannerDescription": "Անհրաժեշտ cookie-ները պահպանում են Watch-ը անվտանգ և գործող։ Ձեր թույլտվությամբ կամընտրական առաջին կողմի cookie-ն կարող է հիշել հետաքրքրությունները այցելությունների միջև՝ առաջարկությունները անհատականացնելու համար։ Համատեքստային առաջարկությունները հասանելի են մնում ցանկացած դեպքում։",
+    "acceptAll": "Ընդունել բոլորը",
+    "essentialOnly": "Միայն անհրաժեշտները",
+    "manageChoices": "Կառավարել ընտրանքները",
+    "savingChoice": "Պահվում է cookie-ի ընտրությունը",
+    "settings": "Cookie-ների կարգավորումներ",
+    "settingsDescription": "Ընտրեք՝ արդյոք Watch-ը կարող է հիշել առաջարկությունների հետ կապված հետաքրքրությունները այցելությունների միջև։ Դուք կարող եք սա փոխել ցանկացած ժամանակ։",
+    "essentialCookies": "Անհրաժեշտ cookie-ներ",
+    "essentialDescription": "Անվտանգություն, նվագարկում, գաղտնիության ընտրանքներ և առաջարկության հարցման վերագրում։",
+    "alwaysActive": "Միշտ ակտիվ",
+    "personalization": "Անհատականացում",
+    "personalizationDescription": "Հիշել սահմանափակ հետաքրքրությունները այցելությունների միջև։ Սա անջատելու դեպքում համատեքստային առաջարկությունները կմնան հասանելի։",
+    "erasurePending": "Պրոֆիլի ջնջումը սպասման մեջ է։ Համատեքստային առաջարկություններն արդեն ակտիվ են։",
+    "cancel": "Չեղարկել",
+    "saveChoices": "Պահել ընտրանքները",
+    "saving": "Պահվում է…",
+    "loadError": "Չհաջողվեց բեռնել ձեր ընտրությունը։ Դուք դեռ կարող եք ընտրել ստորև։",
+    "grantError": "Չհաջողվեց միացնել անհատականացումը։ Միայն անհրաժեշտները մնում են հասանելի։",
+    "saveError": "Չհաջողվեց պահպանել ձեր ընտրությունը։ Խնդրում ենք փորձել կրկին։"
   }
 }

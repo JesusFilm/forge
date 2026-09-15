@@ -53,10 +53,10 @@ export type CanonicalizeInput = {
 const MAX_PATH_LEN = 2048
 
 // Literals that MUST NOT trigger Rule 5 (single-segment-duplicate).
-// `languages` is a 1-segment index; `search` is a deprecated inbound redirect
-// into the global search modal. Neither should become a synthetic `.html`
-// watch URL.
-const ONE_SEGMENT_EXEMPT = new Set(["languages", "search"])
+// `languages` is a 1-segment index; `whats-new` is the 1-segment Watch
+// product-update page; `search` is a deprecated inbound redirect into the
+// global search modal. None should become a synthetic `.html` watch URL.
+const ONE_SEGMENT_EXEMPT = new Set(["languages", "whats-new", "search"])
 const LOCALIZED_UTILITY_SEGMENTS = new Set(["videos", "languages", "history"])
 
 // Origin-invariance + injection guard. Any input that fails MUST short-circuit

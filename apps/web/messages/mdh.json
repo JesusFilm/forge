@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Iliso so wika sa audio",
     "home": "Homepage sa JesusFilm",
     "closeSearch": "Sara search",
-    "submitSearch": "Pangita"
+    "submitSearch": "Pangita",
+    "library": "Aklatan"
   },
   "SearchOverlay": {
     "dialogLabel": "Pangita ago browse video",
@@ -467,6 +468,7 @@
     "sports": "Isports",
     "collections": "Mga koleksyon",
     "subtitlesOnly": "Subtitles lang",
+    "backToTop": "Bumalik sa taas",
     "newlyAdded": "Bag-o a naidugang",
     "newVideosTitle": "Bag-o a Christian videos sa {language}",
     "newestFirst": "Pinakabago una",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Mga standalone video",
     "videosFromCollection": "Mga video gika sa {collection}.",
     "standaloneDescription": "Mga standalone video sa ini a wika.",
-    "openCollection": "Abrihi so collection"
+    "openCollection": "Abrihi so collection",
+    "filters": "Mga filter",
+    "filterLength": "Kahaba",
+    "filterLength_under5": "Kulang sa 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Labaw sa 30 min",
+    "filterType": "Klase",
+    "clearFilters": "Limpyohan ang mga filter",
+    "filterResults": "{count} sa {total} ang gipakita",
+    "noFilterResults": "Walay video nga nahiuyon niining mga filter. Sulayi kuhaon ang usa.",
+    "filterAdded": "Nadugang",
+    "filterAdded_60d": "Nakalabay nga 60 adlaw",
+    "filterAdded_6m": "Nakalabay nga 6 bulan",
+    "filterAdded_12m": "Nakalabay nga 12 bulan"
   },
   "WatchHome": {
     "pageTitle": "Panonood sa Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Nakaraan a video preview",
     "nextVideoPreview": "Masunod a video preview",
     "mediaCollection": "Koleksyon sa media",
-    "scrollToVideo": "I-scroll papunta sa video ni {title}"
+    "scrollToVideo": "I-scroll papunta sa video ni {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Homepage sa Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Balik sa Watch",
     "browseVideos": "Browse mga video"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tan-awa so maikling pelikula",
-    "actions": {
-      "joinUs": "Sumali ka sa amon",
-      "shareMission": "Ibagi so amon misyon"
-    },
-    "welcomeStart": {
-      "label": "Pananampalataya ago Kasulatan",
-      "title": "Mga napiling video para karon",
-      "description": "Mga video gika sa amon library na nakasentro sa pananampalataya para mag-inspire, maghamon, ago magpahuna-huna."
-    },
-    "welcomeMorning": {
-      "label": "Inspirasyon sa buntag",
-      "title": "Marayaw a buntag! Naa na so mga Bible moment para karon.",
-      "description": "Sugdi so adlaw mo kaama so mga Bible moment na makapanganyaya ago makaangat sa imo espiritu."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirasyon sa hapon",
-      "title": "Marayaw a hapon! Mga Bible moment para sa adlaw mo.",
-      "description": "Mga Bible content na makapanganyaya, marayaw para sa imo hapon a pahuway o padayon a inspirasyon."
-    },
-    "welcomeEvening": {
-      "label": "Inspirasyon sa gabi",
-      "title": "Marayaw a gabi! Magpahuway ka kaama so mga Bible moment.",
-      "description": "Kalma a mga Bible moment para tabangan ka maghunahuna ago makakapta so komportable habang gaahin na so adlaw mo."
-    },
-    "joinUs": {
-      "label": "Sumali ka sa amon",
-      "title": "Bilyon-bilyon so ga-pangita",
-      "description": "Naa na so anihan. Sumali ka sa amon sa pagbahagi sa ebanghelyo sa kalibutan gamit digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Mag-inabi kita",
-      "title": "Pag-istorya sa Buhat ni Jesus, kaama so bawat isa",
-      "description": "Agod mabanalan ago makita nira so gugma ni Jesus sa ila sarili a wika didto mismo sa lugar nira."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% a katugma",
     "none": "Daa nakuan a rekomendasyon para sa ini a video sa ini a wika."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Basa nu suwara",
     "selectLanguageVersion": "Pili ka bersiyon nu basa",
     "watchSelectedVersion": "Gilay ka su napili a bersiyon"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Mga pilian sa cookie",
+    "bannerTitle": "Mga pilian mo sa privacy",
+    "bannerDescription": "I mga importante a cookie na pagpanatilihen so Watch a ligtas ago gumagana. Sabap sa idin a kapahintulutan, may isa a opsyonal a first-party cookie a makapakatanda sa mga interes mo sa magkabagi-bagi a pagbisita para maipersonalisa so mga rekomendasyon. I mga rekomendasyon aayon sa konteksto na magagamit piyan, apiya ngkaano.",
+    "acceptAll": "Tanggapin tanan",
+    "essentialOnly": "Importante lang",
+    "manageChoices": "Ayusin so mga pilian",
+    "savingChoice": "Sisimpan so pinili a cookie",
+    "settings": "Mga setting sa cookie",
+    "settingsDescription": "Pilion niyo o ba mapakatandaan o Watch so mga interes sa rekomendasyon sa magkabagi-bagi a pagbisita. Mababago niyo ini sa apiya antona.",
+    "essentialCookies": "Mga importante a cookie",
+    "essentialDescription": "Seguridad, playback, mga pilian sa privacy, ago attribution sa kahilingan sa rekomendasyon.",
+    "alwaysActive": "Pirmaninti a aktibo",
+    "personalization": "Personalisasyon",
+    "personalizationDescription": "Tandaan so limitadu a mga interes sa magkabagi-bagi a pagbisita. O patayen niyo ini, magagamit piyan so mga rekomendasyon aayon sa konteksto.",
+    "erasurePending": "Nakaantabay pan so pagbura sa profile. Aktibo den so mga rekomendasyon aayon sa konteksto.",
+    "cancel": "Kanselahin",
+    "saveChoices": "Isimpan so mga pilian",
+    "saving": "Sisimpan…",
+    "loadError": "Di naikarga so pinili mo. Makapili ka piyan sa baba.",
+    "grantError": "Di napagana so personalisasyon. Magagamit piyan so importante lang.",
+    "saveError": "Di naisimpan so pinili mo. Pakisubuk tano."
   }
 }

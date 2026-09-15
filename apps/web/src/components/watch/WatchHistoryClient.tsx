@@ -169,7 +169,7 @@ export function WatchHistoryClient() {
       <div className="mt-10 rounded-lg border border-white/10 bg-white/[0.04] p-8 text-stone-300">
         <Clock3 aria-hidden="true" className="mb-4 h-8 w-8 text-stone-400" />
         <p className="text-lg font-semibold text-white">{t("empty")}</p>
-        <p className="mt-2 max-w-xl text-sm leading-6">
+        <p className="mt-2 max-w-xl text-base sm:text-sm leading-6">
           {t("emptyDescription")}
         </p>
       </div>
@@ -180,7 +180,7 @@ export function WatchHistoryClient() {
     <div className="mt-10 space-y-10">
       {groups.map((group) => (
         <section key={group.heading} aria-label={group.heading}>
-          <h2 className="mb-4 text-sm font-bold tracking-[0.22em] text-stone-400 uppercase">
+          <h2 className="mb-4 text-base sm:text-sm font-bold tracking-[0.22em] text-stone-400 uppercase">
             {group.heading}
           </h2>
           <div className="divide-y divide-white/10 overflow-hidden rounded-lg border border-white/10 bg-white/[0.035]">
@@ -227,7 +227,7 @@ function HistoryRow({ item }: { item: WatchHistoryItem }) {
 
       <div className="flex min-w-0 items-center justify-between gap-4">
         <div className="min-w-0">
-          <div className="mb-1 text-[10px] font-semibold tracking-[0.18em] text-stone-400 uppercase">
+          <div className="mb-1 text-xs font-semibold tracking-[0.18em] text-stone-400 uppercase sm:text-[10px]">
             {videoLabels(videoLabelMessageKey(item.label))}
           </div>
           <h3 className="line-clamp-2 text-base leading-snug font-semibold text-white sm:text-lg">

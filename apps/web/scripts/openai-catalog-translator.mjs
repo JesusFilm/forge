@@ -17,6 +17,8 @@ const FALLBACK_LANGUAGE_NAMES = {
   xin: "Xinca",
 }
 
+const DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1"
+
 const UI_SURFACE_CONTEXTS = {
   AccountControl: "the Watch account menu",
   BetaTesterModal: "the Watch beta-feedback dialog",
@@ -33,6 +35,8 @@ const UI_SURFACE_CONTEXTS = {
   LanguageCombobox: "a searchable language selector",
   LanguageInventory: "a page listing videos available in one language",
   LanguagePickerModal: "the Watch language and subtitle picker",
+  RecommendationConsent:
+    "the Watch cookie consent banner and privacy settings dialog",
   SearchOverlay: "the full-screen Watch search experience",
   SearchResultCard: "a card in Watch search results",
   SeriesPage: "a Watch series and episodes page",
@@ -82,6 +86,11 @@ const MESSAGE_CONTEXT_OVERRIDES = {
     role: "authentication failure message",
     composition:
       "Rendered inside a failed-to-load sentence. It represents failed authentication with the content service, not a network connection failure.",
+  },
+  "FloatingSearch.library": {
+    role: "site-header navigation button label",
+    composition:
+      "Labels the header control that opens the full catalogue of watchable VIDEOS for the visitor's language. `Library` here means a browsable collection of videos — a video library or video catalogue — NOT a building that lends books, an archive of documents, or a software/code library. Prefer the conventional target-language wording a streaming or video-on-demand product would use for its full video catalogue. Keep it short enough for a header button beside an icon.",
   },
   "LanguageCombobox.languages": {
     role: "language results list accessibility label",
@@ -192,6 +201,16 @@ const MESSAGE_CONTEXT_OVERRIDES = {
     role: "screen-reader prefix before the 404 heading",
     visibility: "assistive technology only",
   },
+  "WatchUnavailableLanguage.title": {
+    role: "page heading",
+    composition:
+      "Rendered as `{title} is not available in {language}`; judge and write the complete rendered message. `{title}` is a runtime video or collection title in any language, so a predicate that agrees with it in gender or number will be wrong for most titles; prefer a frame whose subject is a noun you supply yourself, such as `there is no <version> in ...`. `{language}` is a citation-form language name supplied by Intl.DisplayNames (`русский`, `ruština`, `orosz`) and is never inflected; for languages outside the ICU dataset it can arrive as an English name instead.",
+  },
+  "WatchUnavailableLanguage.browseInLanguage": {
+    role: "action label",
+    composition:
+      "Labels the link to the complete catalogue of every video that does exist in {language}. The video the visitor asked for does NOT exist in that language — that is the entire reason this page is shown — so the label must never read as `watch this video in {language}`. Name the whole catalogue with an unambiguously plural or collective noun, and where the target language would otherwise read as a single video, say `all videos`. The citation-form `{language}` constraint described for WatchUnavailableLanguage.title applies here too.",
+  },
   "WatchUnavailableLanguage.actionsLabel": {
     role: "recovery-page actions accessibility label",
     visibility: "assistive technology only",
@@ -296,6 +315,7 @@ const UNIVERSAL_TARGET_LANGUAGE_WRITING_INSTRUCTIONS = [
   "When English uses a biblical metaphor or idiom, identify its intended meaning and UI purpose before translating. Use established scripture wording only when the allusion remains clear in that surface; otherwise express the meaning naturally instead of translating the imagery word for word. Preserve the theological meaning without inventing an interpretation.",
   "When the provided context contains equivalent target-catalog copy for the same user action or state, reuse that equivalent target-catalog copy unless the UI behavior differs materially.",
   "Do not add product claims, promises, instructions, or theological meaning that are absent from the English source and UI context.",
+  "Interpolated runtime values such as {language} and {title} arrive in citation form: they are never inflected at runtime, and their grammatical gender, number, and declension class are unknown when you write the message. Choose a frame that stays grammatical for every possible value — an attributive slot the citation form already fits, quotation marks, or a label and colon — instead of a preposition, postposition, or predicate that silently requires agreement the runtime value cannot supply.",
 ]
 
 function targetLanguageWritingInstructions(locale) {
@@ -644,6 +664,7 @@ function retryDelay(attempt, retryAfterHeader) {
 
 async function requestTranslations({
   apiKey,
+  baseUrl = DEFAULT_OPENAI_BASE_URL,
   locale,
   inventoryEntry,
   messages,
@@ -655,6 +676,7 @@ async function requestTranslations({
   fetchImpl = globalThis.fetch,
   waitForRetry = wait,
 }) {
+  const normalizedBaseUrl = baseUrl.replace(/\/+$/, "")
   let previousError = ""
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const useResponsesApi =
@@ -674,8 +696,8 @@ async function requestTranslations({
     try {
       response = await fetchImpl(
         useResponsesApi
-          ? "https://api.openai.com/v1/responses"
-          : "https://api.openai.com/v1/chat/completions",
+          ? `${normalizedBaseUrl}/responses`
+          : `${normalizedBaseUrl}/chat/completions`,
         {
           method: "POST",
           headers: {
@@ -802,6 +824,7 @@ async function requestTranslations({
 }
 
 export {
+  DEFAULT_OPENAI_BASE_URL,
   buildUserPrompt,
   explicitScriptContractError,
   isSourceEquivalent,

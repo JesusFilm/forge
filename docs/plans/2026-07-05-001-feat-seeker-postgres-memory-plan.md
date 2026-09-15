@@ -84,6 +84,13 @@ CASCADE`. Pool arithmetic recorded in the file header: runtime store defaults
 `max ?? 20` → ~32 potential connections service-wide (20 + 5 experience-chat +
 2 vector + 5 ai-chat).
 
+> **Superseded (2026-09-08, feat-464):** The override and production
+> kill-switch described in this section and referenced later in this completed
+> plan were retired. AI-chat memory now follows `MASTRA_STORAGE_BACKEND`
+> directly; `memory` remains the local development/test path and is rejected
+> in production. The dedicated `ai_chat` schema and direct durable retention
+> path remain.
+
 ## B. Memory factory — backend-aware, seam-injectable, kill-switch
 
 `buildAiChatMemory()` replaces `buildSeekerMemory()`: resolved backend

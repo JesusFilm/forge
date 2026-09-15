@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ශ්‍රව්‍ය භාෂාව වෙනස් කරන්න",
     "home": "JesusFilm මුල් පිටුව",
     "closeSearch": "සෙවීම වසන්න",
-    "submitSearch": "සොයන්න"
+    "submitSearch": "සොයන්න",
+    "library": "පුස්තකාලය"
   },
   "SearchOverlay": {
     "dialogLabel": "වීඩියෝ සෙවීම සහ බ්‍රවුස් කිරීම",
@@ -467,6 +468,7 @@
     "sports": "ක්‍රීඩා",
     "collections": "එකතු",
     "subtitlesOnly": "උපසිරැසි පමණි",
+    "backToTop": "ඉහළට",
     "newlyAdded": "අලුතින් එක් කළ",
     "newVideosTitle": "{language} භාෂාවේ නව ක්‍රිස්තියානි වීඩියෝ",
     "newestFirst": "අලුත්ම පළමුව",
@@ -497,7 +499,21 @@
     "standaloneVideos": "ස්වාධීන වීඩියෝ",
     "videosFromCollection": "{collection} වෙතින් වීඩියෝ.",
     "standaloneDescription": "මෙම භාෂාවේ ස්වාධීන වීඩියෝ.",
-    "openCollection": "එකතුව විවෘත කරන්න"
+    "openCollection": "එකතුව විවෘත කරන්න",
+    "filters": "පෙරහන්",
+    "filterLength": "දිග",
+    "filterLength_under5": "මිනිත්තු 5 ට අඩු",
+    "filterLength_5to10": "මිනිත්තු 5-10",
+    "filterLength_10to30": "මිනිත්තු 10-30",
+    "filterLength_over30": "මිනිත්තු 30 ට වැඩි",
+    "filterType": "වර්ගය",
+    "clearFilters": "පෙරහන් හිස් කරන්න",
+    "filterResults": "{total} කින් {count} පෙන්වයි",
+    "noFilterResults": "මෙම පෙරහන්වලට ගැළපෙන වීඩියෝ නැත. එකක් ඉවත් කර බලන්න.",
+    "filterAdded": "එකතු කළා",
+    "filterAdded_60d": "පසුගිය දින 60",
+    "filterAdded_6m": "පසුගිය මාස 6",
+    "filterAdded_12m": "පසුගිය මාස 12"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project නැරඹීම",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "පෙර වීඩියෝ පූර්වදර්ශනය",
     "nextVideoPreview": "ඊළඟ වීඩියෝ පූර්වදර්ශනය",
     "mediaCollection": "මාධ්‍ය එකතුව",
-    "scrollToVideo": "{title} වීඩියෝවට පහළට යන්න"
+    "scrollToVideo": "{title} වීඩියෝවට පහළට යන්න",
+    "forYou": "ඔබ වෙනුවෙන්"
   },
   "WatchFooter": {
     "home": "Jesus Film Project මුල් පිටුව",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "නැරඹීමට ආපසු",
     "browseVideos": "වීඩියෝ බ්‍රවුස් කරන්න"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "කෙටි චිත්‍රපටය නරඹන්න",
-    "actions": {
-      "joinUs": "අප හා එක්වන්න",
-      "shareMission": "අපගේ මෙහෙවරට එක්වන්න"
-    },
-    "welcomeStart": {
-      "label": "විශ්වාසය සහ ශාස්ත්‍රය",
-      "title": "අද දින වීඩියෝ තේරීම්",
-      "description": "අපගේ එකතුවේ විශ්වාසය මූලික කරගත් වීඩියෝ අන්තර්ගතය ඔබව ආශ්වාදයට, අභියෝගයට සහ සිතුවිල්ලට පොළඹවීමට."
-    },
-    "welcomeMorning": {
-      "label": "උදෑසන ආශ්වාදය",
-      "title": "සුබ උදෑසනක්! අද දින බයිබල් අවස්ථා ඔබ වෙනුවෙන් බලා සිටී.",
-      "description": "ඔබේ දිනය ආරම්භ කරන්න ආශ්වාදජනක බයිබල් අවස්ථා සමඟ — ඔබේ ආත්මය උද්දීපනය කර ශක්තිමත් කිරීමට."
-    },
-    "welcomeAfternoon": {
-      "label": "දහවල් ආශ්වාදය",
-      "title": "සුබ දවල්! ඔබේ දිනය සඳහා බයිබල් අවස්ථා.",
-      "description": "දහවල් විවේකයට හෝ දිගටම ආශ්වාදය ලබාගැනීමට සුදුසු ආදරණීය බයිබල් අන්තර්ගතය."
-    },
-    "welcomeEvening": {
-      "label": "සවස ආශ්වාදය",
-      "title": "සුබ සන්ධ්‍යාවක්! බයිබල් අවස්ථා සමඟ සැනසිලිවත්ව විවේක ගන්න.",
-      "description": "ඔබේ දිනය අවසන් වන විට සිතා බැලීමටත් සැනසීම සොයාගැනීමටත් උපකාර වන සාමකාමී බයිබල් අවස්ථා."
-    },
-    "joinUs": {
-      "label": "අප හා එක්වන්න",
-      "title": "බිලියන ගණනක් සොයමින් සිටී",
-      "description": "අස්වැන්න මෙතැනයි. ඩිජිටල් මාධ්‍ය භාවිත කරමින් ලෝකයට සුභාරංචිය බෙදාදීමට අප හා එක්වන්න."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "එකට ගමන් කරමු",
-      "title": "යේසුස්ගේ කතාව එකට කියමු",
-      "description": "ඔවුන් සිටින තැනදීම, ඔවුන්ගේම භාෂාවෙන් යේසුස්ගේ ප්‍රේමය අසා දැක ගත හැකි වන පරිදි."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}%ක් ගැළපේ",
     "none": "මෙම භාෂාවෙන් මෙම වීඩියෝව සඳහා නිර්දේශ කිසිවක් හමු නොවීය."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "ශ්‍රව්‍ය භාෂාව",
     "selectLanguageVersion": "භාෂා අනුවාදයක් තෝරන්න",
     "watchSelectedVersion": "තෝරාගත් අනුවාදය බලන්න"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "කුකී තේරීම්",
+    "bannerTitle": "ඔබගේ පුද්ගලිකත්ව තේරීම්",
+    "bannerDescription": "අත්‍යවශ්‍ය කුකී Watch ආරක්ෂිතව හා නිසි ලෙස ක්‍රියා කිරීමට උපකාර කරයි. ඔබගේ අවසරයෙන්, විකල්ප පළමු-පාර්ශ්වීය කුකියක් නැවත පැමිණීම් අතර රුචිකත්වයන් මතක තබාගෙන නිර්දේශ පුද්ගලීකරණය කළ හැක. කෙසේ වුවද, සන්දර්භානුකූල නිර්දේශ දෙපාර්ශවයෙන්ම ලබාගත හැක.",
+    "acceptAll": "සියල්ල පිළිගන්න",
+    "essentialOnly": "අත්‍යවශ්‍ය ඒවා පමණි",
+    "manageChoices": "තේරීම් කළමනාකරණය කරන්න",
+    "savingChoice": "කුකී තේරීම සුරකිමින්",
+    "settings": "කුකී සැකසුම්",
+    "settingsDescription": "නැවත පැමිණීම් අතර නිර්දේශ රුචිකත්වයන් Watch ට මතක තබාගත හැකිද යන්න තෝරන්න. මෙය ඔබට ඕනෑම වේලාවක වෙනස් කළ හැක.",
+    "essentialCookies": "අත්‍යවශ්‍ය කුකී",
+    "essentialDescription": "ආරක්ෂාව, ධාවනය, පුද්ගලිකත්ව තේරීම් සහ නිර්දේශ ඉල්ලීම් සම්බන්ධකරණය.",
+    "alwaysActive": "සැමවිටම සක්‍රියයි",
+    "personalization": "පුද්ගලීකරණය",
+    "personalizationDescription": "නැවත පැමිණීම් අතර සීමිත රුචිකත්වයන් මතක තබාගන්න. මෙය අක්‍රිය කළත් සන්දර්භානුකූල නිර්දේශ තවමත් ලබාගත හැක.",
+    "erasurePending": "පැතිකඩ මකා දැමීම ප්‍රතික්ෂේපිතව පවතී. සන්දර්භානුකූල නිර්දේශ දැනටමත් සක්‍රියයි.",
+    "cancel": "අවලංගු කරන්න",
+    "saveChoices": "තේරීම් සුරකින්න",
+    "saving": "සුරකිමින්…",
+    "loadError": "ඔබගේ තේරීම පූරණය කළ නොහැකි විය. එහෙත් පහතින් තවමත් තෝරාගත හැක.",
+    "grantError": "පුද්ගලීකරණය සක්‍රිය කළ නොහැකි විය. අත්‍යවශ්‍ය ඒවා පමණක් තවමත් ලබාගත හැක.",
+    "saveError": "ඔබගේ තේරීම සුරකින්නට නොහැකි විය. කරුණාකර නැවත උත්සාහ කරන්න."
   }
 }

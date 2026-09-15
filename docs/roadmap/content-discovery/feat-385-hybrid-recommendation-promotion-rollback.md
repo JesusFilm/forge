@@ -3,12 +3,13 @@ id: "feat-385"
 title: "Hybrid recommendation promotion and rollback"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "complete"
 start_date: ""
 duration: 6
 depends_on:
   - "feat-384"
 blocks:
+  - "feat-447"
   - "feat-394"
   - "feat-395"
 tags:

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Maqt’a rimay simita tikray",
     "home": "JesusFilm wasin",
     "closeSearch": "Maskayta wichq’ay",
-    "submitSearch": "Maskay"
+    "submitSearch": "Maskay",
+    "library": "Qillqa wasi"
   },
   "SearchOverlay": {
     "dialogLabel": "Video-kunata maskay y qhaway",
@@ -467,6 +468,7 @@
     "sports": "Deportes",
     "collections": "Huñuyninkuna",
     "subtitlesOnly": "Subtítuloslla",
+    "backToTop": "Wichaykuy",
     "newlyAdded": "Mushuq churisqa",
     "newVideosTitle": "{language}-pi mushuq cristiano video-kuna",
     "newestFirst": "Mushuq kaq ñawpaq",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Sapanchasqa video-kuna",
     "videosFromCollection": "{collection}manta video-kuna.",
     "standaloneDescription": "Kay simipi sapanchasqa video-kuna.",
-    "openCollection": "Huñuyninta kichay"
+    "openCollection": "Huñuyninta kichay",
+    "filters": "Suysunakuna",
+    "filterLength": "Sayay",
+    "filterLength_under5": "5 minutumanta pisi",
+    "filterLength_5to10": "5-10 minutu",
+    "filterLength_10to30": "10-30 minutu",
+    "filterLength_over30": "30 minutumanta aswan",
+    "filterType": "Rikch'aq",
+    "clearFilters": "Suysunakuna pichay",
+    "filterResults": "{total} ukhumanta {count} rikuchisqa",
+    "noFilterResults": "Mana ima videopas kay suysunakunawan tinkinchu. Hukta qichuy.",
+    "filterAdded": "Yapasqa",
+    "filterAdded_60d": "Qhipa 60 p'unchaw",
+    "filterAdded_6m": "Qhipa 6 killa",
+    "filterAdded_12m": "Qhipa 12 killa"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Qhawana",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Ñawpaq video ñawpa qhaway",
     "nextVideoPreview": "Qhipa video ñawpa qhaway",
     "mediaCollection": "Media huñuynin",
-    "scrollToVideo": "{title} video kaqman surkuy"
+    "scrollToVideo": "{title} video kaqman surkuy",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project wasin",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Watchman kutiy",
     "browseVideos": "Video-kunata qhaway"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Pisi filmta qhaway",
-    "actions": {
-      "joinUs": "Ñoqanchikwan huñunakuy",
-      "shareMission": "Misiónnchikwan t’aqachiy"
-    },
-    "welcomeStart": {
-      "label": "Yuyay & Escritura",
-      "title": "Kunan p’unchawpa video akllayninkuna",
-      "description": "Hamutayta, kuyuchiyta, yuyayta rikch’ariyta yanapakuq, biblioteca-ykuqmanta fe centrado video contenido."
-    },
-    "welcomeMorning": {
-      "label": "Tutamanta yuyaychay",
-      "title": "Allin qhawa! Kunan p’unchawpa Biblia kutikuna suyasachkan.",
-      "description": "P’unchaykita qallariy Biblia kutikunawan, yuyaychaypaq y allichaypaq ruwasqa."
-    },
-    "welcomeAfternoon": {
-      "label": "K’anchaymanta yuyaychay",
-      "title": "Allin k’anchay! Kunan p’unchawpaq Biblia kutikuna.",
-      "description": "Yanapakuq Biblia contenido, k’anchaymanta samayniki utaq ashka yuyaychaypaq allin."
-    },
-    "welcomeEvening": {
-      "label": "Tuta yuyaychay",
-      "title": "Allin tuta! Biblia kutikunawan samaykachiy.",
-      "description": "Samaykuchiq Biblia kutikuna, p’unchay tukukuyta yuyayta, sonqochayta yanapanapaq."
-    },
-    "joinUs": {
-      "label": "Ñoqanchikwan huñunakuy",
-      "title": "Waranqakuna maskachkan",
-      "description": "Mink’aqa chaypim. Mundo kaqman evangeliota digital mediawan willachispa, ñoqanchikwan huñunakuy."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Hamunanchik",
-      "title": "Jesuspa willakuyninta willaspa, huñusqa",
-      "description": "Jesuspa munayninta paykuna kikinkupaq simipi, kashanpi, uyariyta, qhawayta atinanpaq."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% tupan",
     "none": "Kay videopaq kay simipi mana ima yuyaychasqa videopas tarisqachu."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Uyariypa simin",
     "selectLanguageVersion": "Simip ruwasqanta akllay",
     "watchSelectedVersion": "Akllasqa ruwasqata qhaway"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie akllanakuna",
+    "bannerTitle": "Pakayniyki akllanakuna",
+    "bannerDescription": "Wakin cookiekunaqa Watch nisqata allinta waqaychan, hinallataq llamk'achin. Qonqaykiwanqa, huk akllasqa first-party cookie nisqa watukuykunapura munasqaykikunata yuyarinman, chaywan yachachisqa yuyaykuna qollonapaq. Contextopi qollosqa yuyaykunaqa imayna kaptinpas kanqaraqmi.",
+    "acceptAll": "Llapan chaskiy",
+    "essentialOnly": "Pisi mana faltakuqllataq",
+    "manageChoices": "Akllanakunata kamachiy",
+    "savingChoice": "Cookie akllayta waqaychaspa",
+    "settings": "Cookie churaykuna",
+    "settingsDescription": "Akllay Watch nisqa watukuykunapura yuyarinanchu mana yuyarinanchu qollonapaq munasqaykikunata. Kaytaqa ima pachas tikrayta atinki.",
+    "essentialCookies": "Pisi mana faltakuq cookiekuna",
+    "essentialDescription": "Amañakuy, purichiy, pakay akllanakuna, hinallataq qollona mañakuy sutinchay.",
+    "alwaysActive": "Wiñay llamk'asqa",
+    "personalization": "Sapaqchasqa qollona",
+    "personalizationDescription": "Watukuykunapura tukunasqa munasqaykikunata yuyariy. Kayta wisq'aspaqa contextual recomendaciones kanqaraqmi.",
+    "erasurePending": "Perfil pichayqa manaraq tukusqachu. Contextual recomendacionesqa ñanmi llamk'ashan.",
+    "cancel": "Qichuy",
+    "saveChoices": "Akllanakunata waqaychay",
+    "saving": "Waqaychaspa…",
+    "loadError": "Akllayniykiqa mana apamuyta atikurqanchu. Uraypiqa akllayta atinkiraqmi.",
+    "grantError": "Personalización nisqataqa mana ruwachiyta atikurqanchu. Pisi mana faltakuqllaqa kanqaraqmi.",
+    "saveError": "Akllayniykiqa mana waqaychayta atikurqanchu. Yapamanta kallpachakuy."
   }
 }

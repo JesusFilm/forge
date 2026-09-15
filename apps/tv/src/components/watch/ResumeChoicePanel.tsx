@@ -4,12 +4,13 @@
 // the LanguagePanel/SubtitlePanel visual language; Resume is the default
 // (preferred focus), so remote-mashing lands on the least surprising choice.
 
-import { Modal, Text, View } from "react-native"
+import { Modal, Platform, Text, View } from "react-native"
 
 import { TVFocusGuideView } from "../TVFocusGuideView"
 import { formatResumeLabel } from "./detailsHelpers"
 import { WatchOptionRow } from "./WatchOptionRow"
 import { watchMenuStyles } from "./watchMenuStyles"
+import { AndroidResumeChoice } from "./AndroidResumeChoice"
 
 export function ResumeChoicePanel({
   visible,
@@ -25,6 +26,16 @@ export function ResumeChoicePanel({
   onClose: () => void
 }) {
   if (!visible) return null
+  if (Platform.OS === "android") {
+    return (
+      <AndroidResumeChoice
+        resumeLabel={formatResumeLabel(resumeAtSeconds)}
+        onResume={onResume}
+        onStartOver={onStartOver}
+        onClose={onClose}
+      />
+    )
+  }
   return (
     <Modal transparent animationType="fade" onRequestClose={onClose}>
       <View style={watchMenuStyles.scrim}>

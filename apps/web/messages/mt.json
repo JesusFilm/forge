@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Ibdel il-lingwa tal-awdjo",
     "home": "Dar JesusFilm",
     "closeSearch": "Agħlaq it-tfittxija",
-    "submitSearch": "Fittex"
+    "submitSearch": "Fittex",
+    "library": "Librerija"
   },
   "SearchOverlay": {
     "dialogLabel": "Fittex u ibrawżja videos",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Kollezzjonijiet",
     "subtitlesOnly": "Sottotitli biss",
+    "backToTop": "Lura fil-quċċata",
     "newlyAdded": "Miżjud reċentement",
     "newVideosTitle": "Videos Kristjani ġodda bil-{language}",
     "newestFirst": "L-aktar ġodda l-ewwel",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Videos waħedhom",
     "videosFromCollection": "Videos minn {collection}.",
     "standaloneDescription": "Videos waħedhom f'din il-lingwa.",
-    "openCollection": "Iftaħ il-kollezzjoni"
+    "openCollection": "Iftaħ il-kollezzjoni",
+    "filters": "Filtri",
+    "filterLength": "Tul",
+    "filterLength_under5": "Taħt 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Aktar minn 30 min",
+    "filterType": "Tip",
+    "clearFilters": "Neħħi l-filtri",
+    "filterResults": "{count} minn {total} murija",
+    "noFilterResults": "L-ebda video ma jaqbel ma' dawn il-filtri. Ipprova neħħi wieħed.",
+    "filterAdded": "Miżjud",
+    "filterAdded_60d": "L-aħħar 60 jum",
+    "filterAdded_6m": "L-aħħar 6 xhur",
+    "filterAdded_12m": "L-aħħar 12 xahar"
   },
   "WatchHome": {
     "pageTitle": "Ara fuq Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Previżjoni tal-video preċedenti",
     "nextVideoPreview": "Previżjoni tal-video li jmiss",
     "mediaCollection": "Kollezzjoni tal-media",
-    "scrollToVideo": "Skrollja għall-video {title}"
+    "scrollToVideo": "Skrollja għall-video {title}",
+    "forYou": "Għalik"
   },
   "WatchFooter": {
     "home": "Dar Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Lura għall-Watch",
     "browseVideos": "Ibrawżja videos"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Ara film qasir",
-    "actions": {
-      "joinUs": "Ingħaqad magħna",
-      "shareMission": "Aqsam fil-missjoni tagħna"
-    },
-    "welcomeStart": {
-      "label": "Fidi u Skrittura",
-      "title": "L-aqwa videos għal-lum",
-      "description": "Kontenut tal-video iċċentrat fuq il-fidi mil-librerija tagħna biex jispira, jisfida, u jqajjem ir-riflessjoni."
-    },
-    "welcomeMorning": {
-      "label": "Ispirazzjoni ta’ filgħodu",
-      "title": "L-isbaħ filgħodu! Il-mumenti tal-Bibbja għal-lum qed jistennuk.",
-      "description": "Ibda l-ġurnata tiegħek b’mumenti tal-Bibbja li jinkoraġġuk u jispirawk."
-    },
-    "welcomeAfternoon": {
-      "label": "Ispirazzjoni ta’ wara nofsinhar",
-      "title": "Wara nofsinhar it-tajjeb! Mumenti tal-Bibbja għal jumek.",
-      "description": "Kontenut tal-Bibbja li jinkoraġġik, perfett għall-mistrieħ ta’ wara nofsinhar jew għal aktar ispirazzjoni."
-    },
-    "welcomeEvening": {
-      "label": "Ispirazzjoni ta’ filgħaxija",
-      "title": "Il-lejla t-tajba! Irtira bil-mumenti tal-Bibbja.",
-      "description": "Mumenti paċifiċi tal-Bibbja biex jgħinuk tirrifletti u ssib il-kumdità hekk kif il-ġurnata tasal fi tmiemha."
-    },
-    "joinUs": {
-      "label": "Ingħaqad magħna",
-      "title": "Miliards qed ifittxu",
-      "description": "Il-ħsad wasal. Ingħaqad magħna hekk kif naqsmu l-evanġelju mad-dinja permezz tal-media diġitali."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Ejjew flimkien",
-      "title": "Nirrakkontaw l-Istorja ta’ Ġesù, flimkien",
-      "description": "Sabiex jisimgħu u jaraw l-imħabba ta’ Ġesù bil-lingwa tagħhom stess, fejn jinsabu."
-    }
-  },
   "VideoRecommendations": {
     "match": "Jaqbel {percent}%",
     "none": "Ma nstabet l-ebda rakkomandazzjoni għal dan il-vidjo b’din il-lingwa."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Lingwa tal-awdjo",
     "selectLanguageVersion": "Agħżel verżjoni tal-lingwa",
     "watchSelectedVersion": "Ara l-verżjoni magħżula"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Għażliet tal-cookies",
+    "bannerTitle": "L-għażliet tiegħek dwar il-privatezza",
+    "bannerDescription": "Il-cookies essenzjali jżommu lil Watch sigur u jaħdem kif suppost. Bil-permess tiegħek, cookie fakultattiva tal-ewwel parti tista’ tiftakar l-interessi bejn iż-żjarat biex tippersonalizza r-rakkomandazzjonijiet. Ir-rakkomandazzjonijiet kuntestwali jibqgħu disponibbli xorta waħda.",
+    "acceptAll": "Aċċetta kollox",
+    "essentialOnly": "Essenzjali biss",
+    "manageChoices": "Immaniġġja l-għażliet",
+    "savingChoice": "Qed nissejvjaw l-għażla tal-cookies",
+    "settings": "Is-settings tal-cookies",
+    "settingsDescription": "Agħżel jekk Watch jistax jiftakar l-interessi tar-rakkomandazzjonijiet bejn iż-żjarat. Tista’ tbiddel dan fi kwalunkwe ħin.",
+    "essentialCookies": "Cookies essenzjali",
+    "essentialDescription": "Sigurtà, daqq, għażliet tal-privatezza u attribuzzjoni tat-talbiet għar-rakkomandazzjonijiet.",
+    "alwaysActive": "Dejjem attivi",
+    "personalization": "Personalizzazzjoni",
+    "personalizationDescription": "Jiftakar interessi limitati bejn iż-żjarat. Jekk titfi dan, ir-rakkomandazzjonijiet kuntestwali jibqgħu disponibbli.",
+    "erasurePending": "It-tħassir tal-profil għadu pendenti. Ir-rakkomandazzjonijiet kuntestwali huma diġà attivi.",
+    "cancel": "Ikkanċella",
+    "saveChoices": "Issejvja l-għażliet",
+    "saving": "Qed nissejvjaw…",
+    "loadError": "Ma stajniex intellgħu l-għażla tiegħek. Xorta tista’ tagħżel hawn taħt.",
+    "grantError": "Ma setgħetx tiġi attivata l-personalizzazzjoni. L-għażla essenzjali biss tibqa’ disponibbli.",
+    "saveError": "Ma stajniex nissejvjaw l-għażla tiegħek. Jekk jogħġbok erġa’ pprova."
   }
 }

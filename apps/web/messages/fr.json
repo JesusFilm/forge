@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Changer la langue audio",
     "home": "Accueil JesusFilm",
     "closeSearch": "Fermer la recherche",
-    "submitSearch": "Rechercher"
+    "submitSearch": "Rechercher",
+    "library": "Bibliothèque"
   },
   "SearchOverlay": {
     "dialogLabel": "Rechercher et explorer des vidéos",
@@ -283,6 +284,7 @@
     "sports": "Sport",
     "collections": "Collections disponibles",
     "subtitlesOnly": "Sous-titres uniquement",
+    "backToTop": "Retour en haut",
     "newlyAdded": "Récemment ajoutés",
     "newVideosTitle": "Nouvelles vidéos chrétiennes en {language}",
     "newestFirst": "Les plus récentes d’abord",
@@ -313,7 +315,21 @@
     "standaloneVideos": "Vidéos autonomes",
     "videosFromCollection": "Vidéos de {collection}.",
     "standaloneDescription": "Vidéos autonomes dans cette langue.",
-    "openCollection": "Ouvrir la collection"
+    "openCollection": "Ouvrir la collection",
+    "filters": "Filtres",
+    "filterLength": "Durée",
+    "filterLength_under5": "Moins de 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Plus de 30 min",
+    "filterType": "Catégorie",
+    "clearFilters": "Effacer les filtres",
+    "filterResults": "{count} sur {total} affichées",
+    "noFilterResults": "Aucune vidéo ne correspond à ces filtres. Essayez d'en retirer un.",
+    "filterAdded": "Ajouté",
+    "filterAdded_60d": "60 derniers jours",
+    "filterAdded_6m": "6 derniers mois",
+    "filterAdded_12m": "12 derniers mois"
   },
   "WatchHome": {
     "pageTitle": "Regarder | Jesus Film Project",
@@ -327,7 +343,8 @@
     "nextVideoPreview": "Aperçu de la vidéo suivante",
     "featured": "À la une",
     "mediaCollection": "Collection de médias",
-    "scrollToVideo": "Faire défiler jusqu’à la vidéo {title}"
+    "scrollToVideo": "Faire défiler jusqu’à la vidéo {title}",
+    "forYou": "Recommandé pour vous"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Langues",
@@ -446,7 +463,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
       "openSupportForm": "Open support form"
     }
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date} : {title}",
-    "watchShortFilm": "Voir le court métrage",
-    "actions": {
-      "joinUs": "Rejoignez-nous",
-      "shareMission": "Participez à notre mission"
-    },
-    "welcomeStart": {
-      "label": "Foi et Écriture",
-      "title": "Les vidéos du jour",
-      "description": "Des vidéos centrées sur la foi, issues de notre bibliothèque, pour inspirer, interpeller et susciter la réflexion."
-    },
-    "welcomeMorning": {
-      "label": "Inspiration du matin",
-      "title": "Bonjour ! Les moments bibliques du jour vous attendent.",
-      "description": "Commencez votre journée avec des moments bibliques encourageants, pensés pour inspirer et fortifier votre esprit."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspiration de l’après-midi",
-      "title": "Bon après-midi ! Des moments bibliques pour votre journée.",
-      "description": "Du contenu biblique encourageant, parfait pour votre pause de l’après-midi ou pour poursuivre votre inspiration."
-    },
-    "welcomeEvening": {
-      "label": "Inspiration du soir",
-      "title": "Bonsoir ! Détendez-vous avec des moments bibliques.",
-      "description": "Des moments bibliques paisibles pour vous aider à méditer et à trouver du réconfort en fin de journée."
-    },
-    "joinUs": {
-      "label": "Rejoignez-nous",
-      "title": "Des milliards de personnes cherchent",
-      "description": "La moisson est là. Rejoignez-nous pour partager l’Évangile avec le monde à l’aide des médias numériques."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Allons-y ensemble",
-      "title": "Raconter l’histoire de Jésus, ensemble",
-      "description": "Pour qu’ils puissent entendre et voir l’amour de Jésus dans leur propre langue, là où ils sont."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent} % de correspondance",
     "none": "Aucune recommandation trouvée pour cette vidéo dans cette langue."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Langue audio",
     "selectLanguageVersion": "Sélectionner une version linguistique",
     "watchSelectedVersion": "Regarder la version sélectionnée"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Choix des cookies",
+    "bannerTitle": "Vos choix de confidentialité",
+    "bannerDescription": "Les cookies essentiels permettent à Watch de rester sécurisé et de fonctionner correctement. Avec votre autorisation, un cookie propriétaire facultatif peut mémoriser vos centres d’intérêt d’une visite à l’autre afin de personnaliser les recommandations. Les recommandations contextuelles restent disponibles dans tous les cas.",
+    "acceptAll": "Tout accepter",
+    "essentialOnly": "Essentiels uniquement",
+    "manageChoices": "Gérer les choix",
+    "savingChoice": "Enregistrement du choix des cookies",
+    "settings": "Paramètres des cookies",
+    "settingsDescription": "Choisissez si Watch peut mémoriser vos préférences de recommandation d’une visite à l’autre. Vous pouvez modifier ce choix à tout moment.",
+    "essentialCookies": "Cookies essentiels",
+    "essentialDescription": "Sécurité, lecture, choix de confidentialité et attribution des demandes de recommandation.",
+    "alwaysActive": "Toujours actifs",
+    "personalization": "Personnalisation",
+    "personalizationDescription": "Mémoriser des centres d’intérêt limités d’une visite à l’autre. Si vous désactivez cette option, les recommandations contextuelles resteront disponibles.",
+    "erasurePending": "La suppression du profil est en attente. Les recommandations contextuelles sont déjà actives.",
+    "cancel": "Annuler",
+    "saveChoices": "Enregistrer les choix",
+    "saving": "Enregistrement…",
+    "loadError": "Impossible de charger votre choix. Vous pouvez quand même choisir ci-dessous.",
+    "grantError": "Impossible d’activer la personnalisation. L’option essentiels uniquement reste disponible.",
+    "saveError": "Impossible d’enregistrer votre choix. Veuillez réessayer."
   }
 }

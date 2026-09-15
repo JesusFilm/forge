@@ -30,6 +30,8 @@ import {
   type TypesenseWatchSearchCollectionBinding,
 } from "./typesense-watch-search-profile"
 import {
+  containerWatchability,
+  previewWatchabilityKind,
   typesenseLexicalMatchQuality,
   TypesenseWatchSearchService,
 } from "./typesense-watch-search.service"
@@ -92,6 +94,7 @@ const catalogDocument: TypesenseWatchCatalogDocument = {
     },
   ]),
   subtitleOptionsJson: "[]",
+  containerLanguagesJson: "[]",
 }
 
 const jesusChineseCatalogDocument: TypesenseWatchCatalogDocument = {
@@ -138,6 +141,7 @@ const jesusChineseCatalogDocument: TypesenseWatchCatalogDocument = {
     },
   ]),
   subtitleOptionsJson: "[]",
+  containerLanguagesJson: "[]",
 }
 
 const japaneseCatalogDocument: TypesenseWatchCatalogDocument = {
@@ -172,6 +176,7 @@ const japaneseCatalogDocument: TypesenseWatchCatalogDocument = {
     },
   ]),
   subtitleOptionsJson: "[]",
+  containerLanguagesJson: "[]",
 }
 
 const candidateFieldManifests = {
@@ -197,10 +202,16 @@ const candidateFieldManifests = {
   transcript: [{ name: "embedding", type: "float[]", num_dim: 1536 }],
 } as const
 
+const transcriptCompatibility = {
+  contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+  transcriptChunkingVersion: "mastra-v1",
+} as const
+
 function candidateProfile() {
   return createCandidateWatchSearchProfile({
     generationId: "generation-1",
-    applicationRevision: "revision-1",
+    indexContractRevision: "revision-1",
+    ...transcriptCompatibility,
     transcriptProjectionRevision: 7n,
     fieldManifests: candidateFieldManifests,
     collections: {
@@ -271,6 +282,8 @@ function typesenseFixture({
     lexical: TYPESENSE_WATCH_LEXICAL_ALIAS,
     transcript: TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
   },
+  curatedVideoId,
+  curatedQuery = "rescue project",
 }: {
   lexical?: TypesenseWatchCatalogDocument[]
   lexicalLanes?: Partial<
@@ -301,6 +314,8 @@ function typesenseFixture({
   availabilityFound?: number
   availabilityError?: Error
   binding?: TypesenseWatchSearchCollectionBinding
+  curatedVideoId?: string
+  curatedQuery?: string
 }) {
   function projectDocument<TDocument extends object>(
     document: TDocument,
@@ -435,6 +450,19 @@ function typesenseFixture({
               hits: group.slice(0, groupLimit).map((entry) => ({
                 vector_distance: entry.vectorDistance,
                 text_match_info: entry.textMatchInfo,
+                curated:
+                  request.collection === binding.lexical &&
+                  String(request.query_by).startsWith("metadata_") &&
+                  request.curation_tags === "watch-search-editorial" &&
+                  String(request.q)
+                    .trim()
+                    .replace(/\s+/g, " ")
+                    .toLocaleLowerCase() ===
+                    curatedQuery
+                      .trim()
+                      .replace(/\s+/g, " ")
+                      .toLocaleLowerCase() &&
+                  entry.document.videoId === curatedVideoId,
                 document: projectDocument(entry.document, request),
               })),
             })),
@@ -623,7 +651,8 @@ describe("TypesenseWatchSearchService", () => {
     const profile = createCandidateWatchSearchProfile(
       {
         generationId: "generation-1",
-        applicationRevision: "revision-1",
+        indexContractRevision: "revision-1",
+        ...transcriptCompatibility,
         transcriptProjectionRevision: 7n,
         fieldManifests: candidateFieldManifests,
         collections: {
@@ -665,16 +694,20 @@ describe("TypesenseWatchSearchService", () => {
         query_by: "title_exact_keys",
         prefix: false,
         num_typos: 0,
+        enable_curations: false,
       }),
       expect.objectContaining({
         query_by:
           "title_fr,title_fallback,title_en,title_ja,title_ru,title_tr,title_zh",
         filter_by: undefined,
+        enable_curations: false,
       }),
       expect.objectContaining({
         query_by:
           "metadata_fr,metadata_fallback,metadata_en,metadata_ja,metadata_ru,metadata_tr,metadata_zh",
         filter_by: undefined,
+        curation_tags: "watch-search-editorial",
+        filter_curated_hits: true,
       }),
       expect.objectContaining({
         filter_by: "documentKind:=transcript && publiclyVisible:=true",
@@ -697,16 +730,20 @@ describe("TypesenseWatchSearchService", () => {
     expect(response.retrievalIdentity).toEqual({
       profile: "CANDIDATE",
       generationId: "generation-1",
-      applicationRevision: "revision-1",
-      rankingRevision: "title-and-brand-v1",
+      indexContractRevision: "revision-1",
+      ...transcriptCompatibility,
+      rankingRevision: WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION,
       transcriptProjectionRevision: "7",
+      activeTranscriptProjectionRevision: null,
       evaluationRevision: "none:operator-accepted:launch-1",
     })
     expect(diagnostics).toMatchObject({
       profile: "CANDIDATE",
       generationId: "generation-1",
-      applicationRevision: "revision-1",
+      indexContractRevision: "revision-1",
+      ...transcriptCompatibility,
       transcriptProjectionRevision: 7n,
+      activeTranscriptProjectionRevision: null,
       binding: profile.binding,
       retrievalCalls: 2,
       logicalSubsearches: 6,
@@ -795,6 +832,7 @@ describe("TypesenseWatchSearchService", () => {
       subtitleLanguageSlugs: [],
       audioOptionsJson: "[]",
       subtitleOptionsJson: "[]",
+      containerLanguagesJson: "[]",
     }
     const playableSibling: TypesenseWatchCatalogDocument = {
       ...catalogDocument,
@@ -1020,6 +1058,67 @@ describe("TypesenseWatchSearchService", () => {
     expect(diagnostics.rankingTrace).toEqual([])
   })
 
+  it("keeps modern ranking available for a legacy language tag", async () => {
+    vi.mocked(resolveSearchLanguageSignals).mockResolvedValueOnce({
+      queryLanguageSlug: "albanian-kosovar",
+      queryNamedLanguageSlug: null,
+      targetLanguageSlug: "albanian-kosovar",
+      targetLanguageSource: "explicit_target",
+      displayLanguageSlug: "albanian-kosovar",
+      displayLanguageBcp47: "sq-aln",
+      routeLanguageSlug: "albanian-kosovar",
+      routeLanguageBcp47: "sq-aln",
+      currentWatchLanguageSlug: null,
+      acceptLanguage: null,
+      acceptLanguageSlug: null,
+    })
+    const albanian: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "video-bible-project-albanian-kosovar",
+      coreId: "core-bible-project-albanian-kosovar",
+      titles: ["The BibleProject Collection"],
+      localeCodes: ["sq-aln"],
+      localesJson: JSON.stringify([
+        {
+          locale: "sq-aln",
+          languageSlug: "albanian-kosovar",
+          title: "The BibleProject Collection",
+          description: null,
+        },
+      ]),
+    }
+    const profile = candidateProfile()
+    const service = new TypesenseWatchSearchService(
+      prismaFixture({
+        targetLanguage: {
+          id: "language-sq-aln",
+          slug: "albanian-kosovar",
+          name: { en: "Albanian, Kosovar" },
+        },
+        evidenceLanguages: [{ slug: "albanian-kosovar", bcp47: "sq-aln" }],
+      }),
+      typesenseFixture({
+        lexical: [albanian],
+        exactLexical: [albanian],
+        titleLexical: [albanian],
+        metadataLexical: [],
+        catalog: [albanian],
+        binding: profile.binding,
+      }) as unknown as TypesenseClient,
+      { profile, embedder: vi.fn(async () => []) },
+    )
+
+    const { response, diagnostics } = await service.searchWithDiagnostics({
+      query: "the bible project",
+      targetLanguageSlug: "albanian-kosovar",
+    })
+
+    expect(response.results.map(({ id }) => id)).toEqual([albanian.id])
+    expect(diagnostics.rankingImplementation).toBe(
+      WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION,
+    )
+  })
+
   it("does not let Typesense order break ties between duplicate exact titles", async () => {
     const duplicates = ["alpha", "beta"].map(
       (suffix): TypesenseWatchCatalogDocument => ({
@@ -1084,7 +1183,8 @@ describe("TypesenseWatchSearchService", () => {
   it("never retries a missing candidate projection through current aliases", async () => {
     const profile = createCandidateWatchSearchProfile({
       generationId: "generation-1",
-      applicationRevision: "revision-1",
+      indexContractRevision: "revision-1",
+      ...transcriptCompatibility,
       transcriptProjectionRevision: 7n,
       fieldManifests: candidateFieldManifests,
       collections: {
@@ -1149,7 +1249,8 @@ describe("TypesenseWatchSearchService", () => {
 
     expect(diagnostics).toMatchObject({
       profile: "CANDIDATE",
-      rankingImplementation: "title-and-brand-v1",
+      rankingImplementation:
+        WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION,
       rankingMode: "TITLE_AND_BRAND",
       rankingAnchor: {
         compactCore: "bibleproject",
@@ -1436,9 +1537,12 @@ describe("TypesenseWatchSearchService", () => {
     expect(response.retrievalIdentity).toEqual({
       profile: "CURRENT",
       generationId: null,
-      applicationRevision: null,
+      indexContractRevision: null,
+      contentEmbeddingContractId: null,
+      transcriptChunkingVersion: null,
       rankingRevision: "legacy-rrf",
       transcriptProjectionRevision: null,
+      activeTranscriptProjectionRevision: null,
       evaluationRevision: null,
     })
     expect(diagnostics).toMatchObject({
@@ -2625,7 +2729,7 @@ describe("TypesenseWatchSearchService", () => {
         request.collection !== TYPESENSE_WATCH_AVAILABILITY_ALIAS &&
         request.q === "*" &&
         request.include_fields ===
-          "id,slug,titles,localesJson,label,childCount,imageUrl,imageBlurDataUrl",
+          "id,slug,titles,localesJson,label,childCount,imageUrl,imageBlurDataUrl,containerLanguagesJson",
     )
     const availabilityRequest = requests.find(
       (request) => request.collection === TYPESENSE_WATCH_AVAILABILITY_ALIAS,
@@ -2688,6 +2792,103 @@ describe("TypesenseWatchSearchService", () => {
     expect(response.hasMore).toBe(true)
   })
 
+  it("applies exact editorial curations only to metadata and keeps a curated result on the first page", async () => {
+    const organic = Array.from({ length: 25 }, (_value, index) => ({
+      ...catalogDocument,
+      id: `organic-${index.toString().padStart(2, "0")}`,
+      coreId: `organic-core-${index}`,
+      slug: `organic-${index}`,
+      titles: [`Organic result ${index}`],
+      localesJson: JSON.stringify([
+        {
+          locale: "fr",
+          languageSlug: "french",
+          title: `Organic result ${index}`,
+          description: "Rescue Project background",
+        },
+      ]),
+    }))
+    const intro = {
+      ...catalogDocument,
+      id: "visual-vernacular-intro",
+      coreId: "13_0-RPGospelIntro",
+      slug: "visual-vernacular-intro",
+      titles: ["Visual Vernacular Intro"],
+      localesJson: JSON.stringify([
+        {
+          locale: "fr",
+          languageSlug: "french",
+          title: "Visual Vernacular Intro",
+          description: null,
+        },
+      ]),
+    }
+    const catalog = [...organic, intro]
+    const typesense = typesenseFixture({
+      lexical: catalog,
+      catalog,
+      curatedVideoId: intro.id,
+    })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesense as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const rescue = await service.search({
+      query: "Rescue   Project",
+      targetLanguageSlug: "french",
+    })
+    const lexicalRequests = typesense.multiSearch.mock.calls[0]?.[0] ?? []
+    const titleRequest = lexicalRequests.find((request) =>
+      String(request.query_by).startsWith("title_"),
+    )
+    const metadataRequest = lexicalRequests.find((request) =>
+      String(request.query_by).startsWith("metadata_"),
+    )
+
+    expect(titleRequest).toMatchObject({ enable_curations: false })
+    expect(metadataRequest).toMatchObject({
+      q: "rescue project",
+      curation_tags: "watch-search-editorial",
+      filter_curated_hits: true,
+    })
+    expect(rescue.results).toHaveLength(20)
+    expect(rescue.results.map(({ id }) => id)).toEqual([
+      ...organic.slice(0, 19).map(({ id }) => id),
+      intro.id,
+    ])
+
+    vi.clearAllMocks()
+    const customPage = await service.search({
+      query: "Rescue Project",
+      targetLanguageSlug: "french",
+      limit: 10,
+    })
+    expect(customPage.results.map(({ id }) => id)).toEqual([
+      ...organic.slice(0, 9).map(({ id }) => id),
+      intro.id,
+    ])
+
+    vi.clearAllMocks()
+    const secondCustomPage = await service.search({
+      query: "Rescue Project",
+      targetLanguageSlug: "french",
+      limit: 10,
+      offset: 10,
+    })
+    expect(secondCustomPage.results.map(({ id }) => id)).toEqual(
+      organic.slice(9, 19).map(({ id }) => id),
+    )
+
+    vi.clearAllMocks()
+    const jesus = await service.search({
+      query: "JESUS",
+      targetLanguageSlug: "french",
+    })
+    expect(jesus.results.map(({ id }) => id)).not.toContain(intro.id)
+  })
+
   it("falls back to legacy catalog watchability while the availability alias is absent", async () => {
     const logger = { warn: vi.fn() }
     const typesense = typesenseFixture({
@@ -2727,7 +2928,7 @@ describe("TypesenseWatchSearchService", () => {
           (request) =>
             request.q === "*" &&
             request.include_fields ===
-              "id,slug,titles,localesJson,label,childCount,imageUrl,imageBlurDataUrl,audioOptionsJson,subtitleOptionsJson",
+              "id,slug,titles,localesJson,label,childCount,imageUrl,imageBlurDataUrl,containerLanguagesJson,audioOptionsJson,subtitleOptionsJson",
         ),
     ).toBe(true)
     expect(logger.warn).toHaveBeenCalledWith(
@@ -3054,7 +3255,7 @@ describe("TypesenseWatchSearchService", () => {
           search.include_fields != null,
       )
     expect(semanticCatalogHydration?.include_fields).toBe(
-      "id,slug,titles,localesJson,label,childCount,imageUrl,imageBlurDataUrl",
+      "id,slug,titles,localesJson,label,childCount,imageUrl,imageBlurDataUrl,containerLanguagesJson",
     )
     expect(
       typesense.multiSearch.mock.calls
@@ -3062,7 +3263,7 @@ describe("TypesenseWatchSearchService", () => {
         .some(
           (search) =>
             search.include_fields ===
-            "id,audioLanguageSlugs,subtitleLanguageSlugs",
+            "id,audioLanguageSlugs,subtitleLanguageSlugs,containerLanguagesJson",
         ),
     ).toBe(false)
   })
@@ -3156,6 +3357,7 @@ describe("TypesenseWatchSearchService", () => {
       subtitleLanguageSlugs: [],
       audioOptionsJson: "[]",
       subtitleOptionsJson: "[]",
+      containerLanguagesJson: "[]",
     }
     const playable: TypesenseWatchCatalogDocument = {
       ...catalogDocument,
@@ -3384,6 +3586,7 @@ describe("TypesenseWatchSearchService", () => {
       audioOptionsJson: "[]",
       subtitleLanguageSlugs: ["french"],
       subtitleOptionsJson: "[]",
+      containerLanguagesJson: "[]",
     }
     const typesense = typesenseFixture({
       lexical: [],
@@ -3453,6 +3656,7 @@ describe("TypesenseWatchSearchService", () => {
       audioOptionsJson: "[]",
       subtitleLanguageSlugs: ["french"],
       subtitleOptionsJson: "[]",
+      containerLanguagesJson: "[]",
     }
     const typesense = typesenseFixture({
       lexical: [],
@@ -3939,5 +4143,333 @@ describe("TypesenseWatchSearchService", () => {
     ).rejects.toThrow("upstream unavailable")
     expect(embedder).toHaveBeenCalledTimes(1)
     expect(typesense.multiSearch).toHaveBeenCalledTimes(1)
+  })
+
+  describe("container availability", () => {
+    const containerLanguages = (
+      ...languages: Array<[slug: string, englishName: string | null]>
+    ) =>
+      JSON.stringify(
+        languages.map(([languageSlug, languageEnglishName]) => ({
+          languageSlug,
+          languageEnglishName,
+        })),
+      )
+
+    const target = {
+      slug: "japanese",
+      fallbackLanguageSlugs: ["english", "french"],
+    }
+
+    it("selects the target language when a descendant carries it", () => {
+      expect(
+        containerWatchability(
+          containerLanguages(["english", "English"], ["japanese", "Japanese"]),
+          target,
+        ),
+      ).toMatchObject({
+        kind: "container",
+        languageSlug: "japanese",
+        languageEnglishName: "Japanese",
+        hrefLanguageSlug: "japanese",
+      })
+    })
+
+    it("prefers the highest-priority fallback when the target is absent", () => {
+      // `french` is listed FIRST in the projection and `english` second, so a
+      // selector that scanned the projection instead of the fallback priority
+      // order would pick french. Falsify by reversing the fallback loop.
+      expect(
+        containerWatchability(
+          containerLanguages(["french", "French"], ["english", "English"]),
+          target,
+        ),
+      ).toMatchObject({ kind: "container", languageSlug: "english" })
+    })
+
+    it("carries no playback identity", () => {
+      const resolved = containerWatchability(
+        containerLanguages(["japanese", "Japanese"]),
+        target,
+      )
+      expect(resolved).toMatchObject({
+        playbackId: null,
+        durationSeconds: null,
+        audio: false,
+        subtitles: false,
+      })
+    })
+
+    it("resolves nothing when no projected language is accepted", () => {
+      expect(
+        containerWatchability(
+          containerLanguages(["swahili", "Swahili"]),
+          target,
+        ),
+      ).toBeNull()
+    })
+
+    it("treats an absent projection as unavailable without throwing", () => {
+      // A catalog document written by a generation predating the container
+      // projection carries no key at all. An unguarded parse here throws
+      // inside hydrateResultDocuments' try, where the classifier rethrows and
+      // fails the whole search rather than one card.
+      expect(() => containerWatchability(undefined, target)).not.toThrow()
+      expect(containerWatchability(undefined, target)).toBeNull()
+      expect(containerWatchability("", target)).toBeNull()
+    })
+
+    it("degrades a malformed projection to unavailable without throwing", () => {
+      expect(() => containerWatchability("{not json", target)).not.toThrow()
+      expect(containerWatchability("{not json", target)).toBeNull()
+    })
+
+    it("keeps a container's own playable Dub ahead of its descendants", async () => {
+      // KTD9: the container branch runs LAST in every resolver's cascade, so a
+      // Series-Shaped Video carrying its own Dub keeps the state that Dub
+      // earned it. This is deliberately the OPPOSITE of watchabilityRank,
+      // which sorts container ABOVE related_language. Falsify by moving the
+      // container branch ahead of the related-language branch in
+      // resolveWatchability: this goes red while the rank tests stay green.
+      const containerWithOwnDub: TypesenseWatchCatalogDocument = {
+        ...japaneseCatalogDocument,
+        id: "video-collection",
+        coreId: "core-collection",
+        slug: "collection",
+        label: "collection",
+        childCount: 3,
+        // Its own Dub is in a FALLBACK language, and a descendant is playable
+        // in the TARGET language. Direct playback must still win.
+        containerLanguagesJson: JSON.stringify([
+          { languageSlug: "spanish-castilian", languageEnglishName: "Spanish" },
+        ]),
+      }
+      const profile = candidateProfile()
+      const typesense = typesenseFixture({
+        lexical: [containerWithOwnDub],
+        binding: profile.binding,
+      })
+      const prisma = prismaFixture({
+        targetLanguage: {
+          id: "language-es",
+          slug: "spanish-castilian",
+          name: { en: "Spanish" },
+        },
+        fallbackLanguages: [{ id: "language-japanese", slug: "japanese" }],
+        evidenceLanguages: [
+          { slug: "japanese", bcp47: "ja" },
+          { slug: "spanish-castilian", bcp47: "es" },
+        ],
+      })
+      const service = new TypesenseWatchSearchService(
+        prisma,
+        typesense as unknown as TypesenseClient,
+        { profile, embedder: vi.fn(async () => embedding) },
+      )
+
+      const response = await service.search({
+        query: "hope",
+        targetLanguageSlug: "spanish-castilian",
+      })
+
+      expect(response.results[0]?.availability?.kind).toBe("related_language")
+      expect(response.results[0]?.availability?.kind).not.toBe("container")
+    })
+
+    it("resolves a container with no Dub of its own from its descendants", async () => {
+      // The anti-vacuous companion: strip the own-Dub evidence and the same
+      // document must resolve to container, proving the case above is about
+      // precedence rather than the container branch simply never firing.
+      const container: TypesenseWatchCatalogDocument = {
+        ...japaneseCatalogDocument,
+        id: "video-collection-bare",
+        coreId: "core-collection-bare",
+        slug: "collection-bare",
+        label: "collection",
+        childCount: 3,
+        audioLanguageSlugs: [],
+        subtitleLanguageSlugs: [],
+        audioOptionsJson: "[]",
+        subtitleOptionsJson: "[]",
+        containerLanguagesJson: JSON.stringify([
+          { languageSlug: "spanish-castilian", languageEnglishName: "Spanish" },
+        ]),
+      }
+      const profile = candidateProfile()
+      const typesense = typesenseFixture({
+        lexical: [container],
+        binding: profile.binding,
+      })
+      const prisma = prismaFixture({
+        targetLanguage: {
+          id: "language-es",
+          slug: "spanish-castilian",
+          name: { en: "Spanish" },
+        },
+        evidenceLanguages: [{ slug: "spanish-castilian", bcp47: "es" }],
+      })
+      const service = new TypesenseWatchSearchService(
+        prisma,
+        typesense as unknown as TypesenseClient,
+        { profile, embedder: vi.fn(async () => embedding) },
+      )
+
+      const response = await service.search({
+        query: "hope",
+        targetLanguageSlug: "spanish-castilian",
+      })
+
+      expect(response.results[0]?.availability).toMatchObject({
+        kind: "container",
+        languageSlug: "spanish-castilian",
+      })
+      expect(response.results[0]?.playbackId).toBeNull()
+    })
+
+    // The container branch exists in THREE resolvers, and the tests above only
+    // drive the native/full-hydration one. These two cover the other two live
+    // paths: the availability-alias fallback (resolveLegacyWatchability) and the
+    // lexical-projection fallback (previewWatchabilityKind). Without them,
+    // deleting either branch leaves the whole suite green while containers
+    // silently report unavailable during exactly the degraded windows where
+    // nobody is watching.
+    it("resolves a container on the legacy catalog path when the availability alias is absent", async () => {
+      const containerDocument: TypesenseWatchCatalogDocument = {
+        ...catalogDocument,
+        id: "video-legacy-container",
+        coreId: "core-legacy-container",
+        slug: "legacy-container",
+        label: "collection",
+        childCount: 4,
+        audioLanguageSlugs: [],
+        subtitleLanguageSlugs: [],
+        audioOptionsJson: "[]",
+        subtitleOptionsJson: "[]",
+        containerLanguagesJson: JSON.stringify([
+          { languageSlug: "french", languageEnglishName: "French" },
+        ]),
+      }
+      const service = new TypesenseWatchSearchService(
+        prismaFixture(),
+        typesenseFixture({
+          lexical: [containerDocument],
+          availabilityError: new TypesenseRequestError(
+            "availability alias missing",
+            404,
+          ),
+        }) as unknown as TypesenseClient,
+        { embedder: vi.fn(async () => embedding), logger: { warn: vi.fn() } },
+      )
+
+      const response = await service.search({
+        query: "communion",
+        targetLanguageSlug: "french",
+      })
+
+      expect(response.results[0]).toMatchObject({
+        availability: { kind: "container", languageSlug: "french" },
+        playbackId: null,
+      })
+    })
+
+    it("ranks a container on the lexical-projection fallback path", async () => {
+      const containerDocument: TypesenseWatchCatalogDocument = {
+        ...catalogDocument,
+        id: "video-preview-container",
+        coreId: "core-preview-container",
+        slug: "preview-container",
+        label: "collection",
+        childCount: 4,
+        audioLanguageSlugs: [],
+        subtitleLanguageSlugs: [],
+        audioOptionsJson: "[]",
+        subtitleOptionsJson: "[]",
+        containerLanguagesJson: JSON.stringify([
+          { languageSlug: "french", languageEnglishName: "French" },
+        ]),
+      }
+      const service = new TypesenseWatchSearchService(
+        prismaFixture(),
+        typesenseFixture({
+          lexical: [containerDocument],
+          hybridError: new TypesenseRequestError(
+            "Field canonicalVideoId not found",
+            400,
+          ),
+        }) as unknown as TypesenseClient,
+        { embedder: vi.fn(async () => embedding), logger: { warn: vi.fn() } },
+      )
+
+      const { response, diagnostics } = await service.searchWithDiagnostics({
+        query: "communion",
+        targetLanguageSlug: "french",
+      })
+
+      // Proves the compatibility retrieval path actually ran; otherwise this
+      // would silently be another test of the native path.
+      expect(diagnostics.rankingImplementation).toBe("legacy-rrf")
+      expect(response.results[0]).toMatchObject({
+        availability: { kind: "container", languageSlug: "french" },
+        playbackId: null,
+      })
+    })
+
+    // previewWatchabilityKind only affects RANK on the compatibility path -- the
+    // emitted kind still comes from resolveWatchability -- so an end-to-end
+    // assertion on a result's availability cannot discriminate it. Pinned here
+    // directly: deleting its container branch turns exactly this red.
+    it("classifies a container during compatibility-path ranking", () => {
+      const preview = {
+        id: "video-preview",
+        audioLanguageSlugs: [],
+        subtitleLanguageSlugs: [],
+        containerLanguagesJson: JSON.stringify([
+          { languageSlug: "japanese", languageEnglishName: "Japanese" },
+        ]),
+      }
+      expect(previewWatchabilityKind(preview, target)).toBe("container")
+      // Anti-vacuous companion: the same document with nothing projected must
+      // stay unavailable, so the assertion above is about the projection and
+      // not about the classifier returning "container" unconditionally.
+      expect(
+        previewWatchabilityKind(
+          { ...preview, containerLanguagesJson: "[]" },
+          target,
+        ),
+      ).toBe("unavailable")
+    })
+
+    it("keeps a container behind self-scoped kinds during ranking", () => {
+      const withOwnAudio = {
+        id: "video-preview-audio",
+        audioLanguageSlugs: ["japanese"],
+        subtitleLanguageSlugs: [],
+        containerLanguagesJson: JSON.stringify([
+          { languageSlug: "japanese", languageEnglishName: "Japanese" },
+        ]),
+      }
+      expect(previewWatchabilityKind(withOwnAudio, target)).toBe("target_audio")
+
+      const withFallbackAudio = {
+        id: "video-preview-fallback",
+        audioLanguageSlugs: ["english"],
+        subtitleLanguageSlugs: [],
+        containerLanguagesJson: JSON.stringify([
+          { languageSlug: "japanese", languageEnglishName: "Japanese" },
+        ]),
+      }
+      expect(previewWatchabilityKind(withFallbackAudio, target)).toBe(
+        "related_language",
+      )
+    })
+
+    it("ignores a projected entry with no language slug", () => {
+      expect(
+        containerWatchability(
+          JSON.stringify([{ languageEnglishName: "Nameless" }]),
+          target,
+        ),
+      ).toBeNull()
+    })
   })
 })

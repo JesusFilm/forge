@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Tjalpa' rutzij ta audio",
     "home": "Ruwotot JesusFilm",
     "closeSearch": "Tatz'apka' sa'j",
-    "submitSearch": "Sa'j"
+    "submitSearch": "Sa'j",
+    "library": "Wuj ja"
   },
   "SearchOverlay": {
     "dialogLabel": "Sa'j y k'axpa' videos",
@@ -467,6 +468,7 @@
     "sports": "Deportes",
     "collections": "Colecciones",
     "subtitlesOnly": "Subtitles xa'",
+    "backToTop": "Tzalij chikaj",
     "newlyAdded": "Añadido ch'utx",
     "newVideosTitle": "Videos cristianos nuevos ta {language}",
     "newestFirst": "Más nuevo primero",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Videos ta junxan",
     "videosFromCollection": "Videos ta {collection}.",
     "standaloneDescription": "Videos ta junxan ta ch'ab'äl ri.",
-    "openCollection": "Taq'apa' colección"
+    "openCollection": "Taq'apa' colección",
+    "filters": "Chaꞌonik",
+    "filterLength": "Rakan",
+    "filterLength_under5": "Man nim ta chwach 5 minutos",
+    "filterLength_5to10": "5-10 minutos",
+    "filterLength_10to30": "10-30 minutos",
+    "filterLength_over30": "Nim chwach 30 minutos",
+    "filterType": "Rwach",
+    "clearFilters": "Chupij ri chaꞌonik",
+    "filterResults": "{count} chi {total} kꞌutun",
+    "noFilterResults": "Man kꞌo ta jun video junam rukꞌ ri chaꞌonik riꞌ. Chesaj jun.",
+    "filterAdded": "Xkoj chik",
+    "filterAdded_60d": "Kꞌisbal 60 qꞌij",
+    "filterAdded_6m": "Kꞌisbal 6 ikꞌ",
+    "filterAdded_12m": "Kꞌisbal 12 ikꞌ"
   },
   "WatchHome": {
     "pageTitle": "Watz'otz' ta Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Preview ta video chikej",
     "nextVideoPreview": "Preview ta video chik",
     "mediaCollection": "Colección ta medios",
-    "scrollToVideo": "Tz'otz' ta video {title}"
+    "scrollToVideo": "Tz'otz' ta video {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Ruwotot Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Tatz'ul chik ta Watch",
     "browseVideos": "K'axpa' videos"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tz'otz' película ch'ut",
-    "actions": {
-      "joinUs": "Tajb'ej junam",
-      "shareMission": "Sa'j yoj ru misión"
-    },
-    "welcomeStart": {
-      "label": "Fe y Escritura",
-      "title": "Videos ta q'ijojb'il ri",
-      "description": "Tzij ta video ta fe ta nuestra biblioteca para k'utb'ej, k'amchik, y k'ajb'ej na'oj."
-    },
-    "welcomeMorning": {
-      "label": "K'utb'il ta ajaw",
-      "title": "Buenos días! Lqi'ik ta Biblia ta q'ij ri.",
-      "description": "Taq'ape' awu'q'ij yoj k'utb'il ta Biblia ta k'amk'oja' y k'utb'ej awanima'."
-    },
-    "welcomeAfternoon": {
-      "label": "K'utb'il ta oq'oj",
-      "title": "Buenos días! K'utb'il ta Biblia pa awu'q'ij.",
-      "description": "Tzij ta Biblia ta k'amk'oja' ta noq'oj o yoj k'utb'il chik."
-    },
-    "welcomeEvening": {
-      "label": "K'utb'il ta ak'ochel",
-      "title": "Buenas noches! Tz'otz' yoj k'utb'il ta Biblia.",
-      "description": "K'utb'il ta Biblia ta k'uxch'och' para awil na'oj y utz ta awu'q'ij ta q'axem."
-    },
-    "joinUs": {
-      "label": "Tajb'ej junam",
-      "title": "Miles millones tajin k'amk'oja'",
-      "description": "Ri cosecha ya'k. Tajb'ej junam chi yoj sa'j ri evangelio pa mundo yoj media digital."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Tiyoj junam",
-      "title": "K'utb'ej ri historia ta Jesús, junam",
-      "description": "Pa ta kawil y ta kach'aj ri ru'amor ta Jesús pa ch'ab'äl ri, jarar ak'ojk'il."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% junam",
     "none": "Awan k'utb'il ta video ri pa ch'ab'äl ri."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Ch'ab'äl ta audio",
     "selectLanguageVersion": "Chak'uxpa' jun ruwach ch'ab'äl",
     "watchSelectedVersion": "Tawila' ruwach chak'uxum"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Ajch'ubir cookie",
+    "bannerTitle": "Awejchojresir privacidad",
+    "bannerDescription": "Majaxir cookie ayanob t'ut'u Watch watar e secure y watar e lok'eswar. War a k'ajpesyaj, jun optional first-party cookie uyub'i uk'ajpes inte'res yaja' tor e sutpa' e k'otoyob cha'res ukojresic e recomendacionob. E recomendacionob contextual ayanob ajni ub'an ch'ujb'ir.",
+    "acceptAll": "Ch'a'ni tuno'r",
+    "essentialOnly": "Majaxir iraj ixto",
+    "manageChoices": "Kojres ajch'ubir",
+    "savingChoice": "War uk'ajpesyaj ajch'ubir cookie",
+    "settings": "Ajustes cookie",
+    "settingsDescription": "Cha'resb'a ma Watch uyub'i uk'ajpes inte'res recomendacion cha'xtak e k'otoyob. Uyub'it a sutpa' ya'ni uyajr.",
+    "essentialCookies": "Majaxir cookie",
+    "essentialDescription": "Seguridad, reproducción, ajch'ubir privacidad, y atribución e solicitud recomendacion.",
+    "alwaysActive": "Aktivo tuno'r tiempo",
+    "personalization": "Personalización",
+    "personalizationDescription": "K'ajpes inte'resob limitados cha'xtak e k'otoyob. Jay a tares uyokse' ch'i, e recomendacionob contextual ayanob ajni.",
+    "erasurePending": "Ajsupres profile war uyub'i. E recomendacionob contextual aktivo takarix.",
+    "cancel": "Cancelar",
+    "saveChoices": "K'ajpes ajch'ubir",
+    "saving": "War uk'ajpesyaj…",
+    "loadError": "Ma ani uyub'i ak'ochres ajch'ubir. Pero uyub'it ajcha'res tara' ixin.",
+    "grantError": "Ma ani uyub'i uk'ani personalización. Majaxir ixto ayan ajni.",
+    "saveError": "Ma ani uyub'i ak'ajpes ajch'ubir. Tz'akpes ch'i otronyajr."
   }
 }

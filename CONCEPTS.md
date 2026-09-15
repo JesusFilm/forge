@@ -26,6 +26,16 @@ Registering a Dynamic MCP Client identifies the client but grants no application
 
 A Registered Application contains Application Environments. Application Grants and issued tokens target an Application Environment, while a Dynamic MCP Client requests access to the protected resource associated with that environment.
 
+## Studio authoring
+
+### Content Pack
+
+A reusable set of source material and editorial guidance used to plan or generate
+content. A Content Pack can guide an individual project or a period of calendar
+planning; it is distinct from a viewer-facing video collection.
+
+_Avoid_: Source Collection, Preacher Pack.
+
 ## Devotional generation
 
 ### Devotional Workspace
@@ -202,6 +212,21 @@ external collections are a fallback only when that intrinsic rail does not
 qualify; they do not become the standalone Video's canonical or next-item
 identity.
 
+### Containing Work
+
+A parent Video that the child is a constituent part of — a film whose Chapters
+it is one of, or a series whose Episodes it is one of — as distinct from a
+curated collection the child was merely gathered into alongside unrelated
+material. The distinction is carried by the parent's own label, not by the
+parent/child link, which is why a link alone cannot settle it.
+
+Where a Video has several eligible parents and only one may be presented, a
+Containing Work outranks a curated collection: it is the work the viewer is
+already inside. The relationship's playback position does not decide this — it
+orders a child within one parent and says nothing about how two parents compare.
+When several Containing Works are eligible, the relationship carries no signal
+that separates them.
+
 ### Watch Route Manifest
 
 An Admin-owned snapshot of public Watch route dimensions used by consumers to
@@ -216,6 +241,36 @@ When a consumer synthesizes a selectable context from parent/child relations,
 exact admission means the manifest proves the parent/child pair and that
 specific child's selected audio language. A global language entry or fallback
 playback stream is not proof that the contextual route exists.
+
+### Watch Route Monitor Run
+
+One bounded attempt to reconcile Watch page-not-found evidence for one
+analytics property and reporting window against current route truth and live
+HTTP behavior.
+
+A run preserves the completeness of each evidence lane. Only a complete live
+run can advance monitoring progress or provide the absence evidence needed for
+recovery. Diagnostic and failed runs do not change alert lifecycle; a partial
+live run may open or update observed alerts but cannot recover them or advance
+progress.
+
+### Watch Route Alert
+
+A durable operator-facing record that a normalized public Watch path has been
+observed as a supported-route failure or a plausible missing route.
+
+Its identity survives recurrence and recovery. Analytics traffic, route-manifest
+classification, live-probe evidence, and source completeness describe the alert
+without making any one signal sufficient to close it.
+
+### Watch Route Alert Episode
+
+One open-to-recovered occurrence of a Watch Route Alert. A later recurrence
+creates another episode under the same stable alert identity rather than
+discarding its history.
+
+Recovery requires both a complete clean analytics window and an explicit
+healthy live re-probe. Incomplete evidence leaves the episode open.
 
 ### Watch Search & Social Metadata Overlay
 
@@ -243,9 +298,17 @@ The physical compatibility identity that binds a Watch Search Candidate
 Generation to the schema, projection, and retrieval-field contract able to use
 its collections.
 
-It remains stable across unrelated application deployments. A change means
-existing generations require rebuilding; ordinary deploy identity and
-application-side ranking behavior are not Candidate collection compatibility.
+It remains stable across unrelated application deployments. Ordinary deploy
+identity and application-side ranking behavior are not Candidate collection
+compatibility.
+
+A change is retroactive, not forward-looking: it reclassifies every generation
+already built under the previous revision as incompatible, including one the
+Serving pointer currently names. Resolution then fails closed by refusing to
+serve rather than falling back to another search implementation, so changing
+this revision while a generation is serving public traffic removes that traffic's
+only backend. Treat a revision change as a change to the Serving pointer and
+sequence it the same way.
 
 ### Watch Search Candidate Ranking Revision
 
@@ -582,6 +645,13 @@ language, duplication, degradation, latency, and capacity evidence must agree
 with pointwise judgment and named operator review before the candidate can
 become a baseline.
 
+Its pointwise measures are computed over successfully judged cases only, so a
+run in which some cases fail reports rates over a subsample rather than over the
+query set. Coverage — cases judged against cases attempted — is therefore part
+of reading the gate's evidence, and two runs' rates are comparable only at equal
+coverage. A failed case lowers coverage without lowering the rate, so a more
+degraded run can report a better score than a clean one.
+
 ### Search Candidate Identity
 
 The immutable identity under which one search release candidate was evaluated:
@@ -680,9 +750,11 @@ language is appropriate for that result's display or target context.
 
 ### Search Watchability
 
-The target-language playback state attached to a Watch search candidate, distinguishing playable target audio, target subtitles, related-language audio, and no qualifying playback option. Search Watchability describes what the viewer can play and where the result should link; it refines ordering only after textual match and relevance.
+The target-language playback state attached to a Watch search candidate, distinguishing playable target audio, target subtitles, related-language audio, browsable container, and no qualifying playback option. Search Watchability describes what the viewer can play and where the result should link; it refines ordering only after textual match and relevance.
 
 Target-audio and related-language states carry a playable Dub directly. A target-subtitle state keeps the requested subtitle language as availability truth while carrying a deterministic playable Dub action on the compatible Video Edition; the public route uses that action language and passes the subtitle language as explicit intent. A no-option state carries no playable action, so its Search Language remains request context and must not be promoted into a playback identity.
+
+A container state belongs to a Series-Shaped record that owns no Dub of its own but has a playable descendant. It is derived rather than direct: the language it carries describes the descendant that made the record browsable, and it carries no playback identity, so it must never be treated as a play action. Its route is the record's own series page. The state resolves only after every self-scoped state has been ruled out, so a Series-Shaped record with its own playable Dub keeps that stronger state; a record whose own public route does not resolve stays in the no-option state however playable its descendants are.
 
 The no-option state also governs presentation: catalog evidence may remain
 visible for recognition and recovery, but playback-derived controls, progress,
@@ -802,6 +874,152 @@ A reviewed, profile-scoped, data-only export of production Admin video data for 
 
 A Video Database Snapshot reuses stored vectors; it does not generate Content Embeddings or perform an Embedding Backfill.
 
+## Recommendations
+
+### Recommendation Request
+
+The immutable root of one versioned, admitted recommendation delivery attempt
+for an ephemeral session, seed media item, locale, surface, strategy manifest,
+and classifier. It records whether a complete slate or safe reason-coded
+unavailable result was prepared and issued, retrieval timing, and one fixed
+expiry; failures before safe attribution or during persistence have no root,
+and the root is not a viewer profile or a legacy Watch event.
+
+All request-owned evidence inherits the root's retention and is erased with it.
+
+### Recommendation Admission
+
+The pre-delivery capacity gate that decides whether a recommendation attempt
+may start for a session and seed while enforcing single-flight, cooldown, and
+rate budgets before a Recommendation Request can exist.
+
+A rejected admission is a reason-coded availability result, not an empty or
+failed Recommendation Request. Callers may recover from explicitly transient
+reasons with a bounded retry while leaving capacity and infrastructure
+rejections terminal.
+
+### Recommendation Served Item
+
+One canonical, ordered member of a committed Recommendation Request slate. Its
+target, position, presentation, generator, and bounded provenance are server
+facts fixed before attribution is issued; browser-supplied values cannot
+rewrite them.
+
+### Recommendation Capability
+
+A short-lived, purpose-specific signed authority bound to stored request,
+item, session, surface, manifest, and—after handoff—episode/media identity. It
+is transported only in same-origin request bodies and browser memory. The
+server stores its identifier, digest, and signing key version where needed,
+never the raw token.
+
+A tab nonce is non-authoritative correlation. A claim nonce is a one-use
+session/media handoff credential; neither is a Recommendation Capability or can
+claim a different episode.
+
+### Eligible Recommendation Impression
+
+A recommendation exposure that satisfied the versioned surface visibility
+policy, not merely an item that was served or rendered. For
+`watch-below-player-v1`, at least half of the card must remain intersecting for
+one continuous second while the document is visible.
+
+### Recommendation Evidence
+
+A durable observation that a Recommendation Served Item was rendered, became
+an Eligible Recommendation Impression, was selected, or produced an ordered
+playback fact. Evidence is attributed through its Recommendation Request and
+served-item lineage rather than inferred later from unrelated analytics.
+
+### Recommendation Playback Episode
+
+A source-neutral root for append-only playback evidence, claimed once for one
+session and media item. It may carry complete Recommendation Request,
+Recommendation Served Item, and selection lineage, but ordinary Watch arrivals
+exist without that lineage and keep discovery provenance separate from
+attribution.
+
+It carries server-sequenced attempt, start, progress, seek,
+active-visible-playing, terminal, and error facts within bounded active and hard
+horizons. When visibility coverage is complete, active playback is derived from
+the union of foreground-playing intervals, never from wall time, player
+position, progress, seeks, or background time; incomplete coverage is retained
+as an explicit qualification rather than presented as certain foreground time.
+
+### Recommendation Outcome Revision
+
+An immutable, recomputable classifier result over one episode's ordered fact
+watermark and digest. A later fact watermark may append a monotonic superseding
+revision; an old retry cannot become latest. `legacy-position-v0` is a named
+position/progress comparator with no continuous weight or satisfaction claim,
+while active-playback classifiers derive their result from explicit interval
+facts. Publication is learning-ineligible; downstream consumers independently
+decide whether a revision may influence a particular purpose.
+
+### Recommendation Strategy Manifest
+
+Immutable operator/configuration truth that pins the generator, delivery
+contract, surface contract, and slate bound used by a Recommendation Request.
+The bootstrap manifest is `semantic-transcript-pgvector-v1`; a separate shared
+serving-control row points to it and can stop new issuance without deleting
+history.
+
+### Recommendation Profile
+
+A pseudonymous continuity record for anonymous recommendation personalization,
+created by default when personalization is enabled. The browser holds the opaque first-party identifier while the
+recommendation system retains only its one-way identity and server-owned
+interests; disabling personalization severs relinkable continuity and begins erasure.
+
+### Recommendation Profile Projection
+
+An immutable, bounded interpretation of eligible recommendation behavior into
+multiple durable interests and current-session intent. Readers use only a
+fully published generation, so an incomplete rebuild cannot become serving
+truth and a privacy-generation change fences stale work.
+
+### Recommendation Personalization Decision
+
+The request-owned record that keeps immutable experiment-assignment truth
+separate from actual serving truth. `lane` retains the historic assignment
+label (`semantic_control`, `profile_challenger`, or `semantic_fallback`) so old
+experiment evidence never changes meaning; `executionMode` records whether the
+request actually executed semantic contextual retrieval or the versioned
+semantic-plus-profile hybrid pipeline. When personalized, the record references
+the published Recommendation Profile Projection that authorized profile input,
+without exposing profile identifiers, histories, or vectors to Watch or Admin.
+
+### Hybrid Recommendation Manifest
+
+An immutable Recommendation Strategy Manifest whose semantic and
+profile generators enabled by the viewer's personalization settings nominate into one canonical union,
+eligibility, deterministic ranker, repetition-aware composer, and exact-six
+slate. Semantic-only remains the control, fallback, kill-switch target, and
+last-known-good strategy. Historic `profile_challenger` assignment evidence is
+not reinterpreted as hybrid; a request proves hybrid execution through its
+exact manifest identity and `hybrid_personalized` execution mode.
+
+### Bounded Personalization Experiment
+
+A live anonymous-personalization experiment whose exact Recommendation
+Strategy Manifest and cohort limit define its authority. An assignment arm is
+authorization and attribution truth, not a candidate-generator selector: an
+authorized challenger can execute the exact hybrid manifest while its legacy
+`profile_challenger` lane label remains unchanged. Rollback remains an allowed
+transition, but wider exposure or permanent-default status creates a new
+versioned experiment rather than changing accumulated assignments and evidence
+in place.
+
+### Recommendation Evidence-Gate State
+
+The Admin interpretation of durable recommendation-owned evidence. It
+distinguishes `healthy` and verified `zero_activity` from
+`unavailable_unknown`, `loss_suspected`, `replay`, `conflict`, `late`,
+`classifier_lag`, and `retention_overdue`. Absence becomes zero only after a
+current database probe, healthy retention, and a durable success watermark;
+selection without impression and valid out-of-order evidence remain visible
+facts rather than invented loss.
+
 ## Known-caller auth
 
 ### Known-Caller Check
@@ -851,6 +1069,14 @@ the original grant ceiling.
 One of the project's own applications that the auth provider recognizes as its own rather than as a third-party integration, registered with the provider so it can be issued tokens and have sign-in routed back to it.
 
 Registration is per environment, not per app: an app holds a separate registration for each environment it runs in, each carrying its own client identifier, exact-match redirect targets, allowed browser origins, default scopes, and approval posture. Apps differ in how a person signs in — a browser redirect, a code displayed on one screen and approved on another device, or a native platform credential — but every route resolves to the same person and the same SSO Session. The registry is upsert-only and never prunes: editing a registration is scrubbed into the provider on the next deploy, while removing one from the registry leaves the live registration in place, so retiring an app is a deliberate out-of-band step rather than a deletion from the list.
+
+### Self-RP Sign-In
+
+A sign-in arrangement where the auth provider registers itself as a relying client of its own OAuth provider, so a native app can send a person to the provider's hosted login page and receive back a normal provider session. The provider is both ends of the exchange: it issues the authorization as it would for any First-Party App, and it consumes that authorization to establish the session it hands to the app. Whatever sign-in methods the hosted page offers reach the app this way without an app release.
+
+Because the provider's sign-in machinery discovers its own endpoints the way it would discover a third party's, a starting instance can fetch metadata from itself before it can answer requests. An environment that runs one instance must answer that self-fetch without routing it through the starting instance, or startup waits on itself.
+
+A provider button on the hosted page starts a second, inner authorization inside the self-RP one, in the same browser. The provider binds each authorization to one per-browser sign-in token and consumes that token when the inner authorization completes, so the outer authorization must be bound again before it returns to the provider, or it is refused as a forgery. The password form starts no inner authorization, so a verification that uses only the password form cannot see this.
 
 ### SSO Session
 
@@ -909,6 +1135,28 @@ An ordered, schema-validated content unit within an Experience. Blocks carry a d
 ### Media Collection Block
 
 An Experience Block that groups ordered watch content beneath independently authored category, title, supporting-title, description, call-to-action, and footer semantics; its presentation variant may change the media layout but not the authored content hierarchy.
+
+### Immersive Backdrop
+
+The blurred, dimmed, desaturated wash of a collection's own artwork that a Watch web surface paints behind a panel's content, so the panel carries the mood of what it contains without competing with the text over it.
+
+The same treatment appears on more than one Watch web surface — authored Media Collection Blocks and the collection panels of the Watch Language Inventory — and is meant to read identically on each, so an editor's preview matches what a viewer sees. It is purely decorative: it takes no interaction, is derived from still artwork rather than from playback, and conveys nothing a reader would lose if it failed to load.
+
+### Authored Destination
+
+A link target an editor types into an Experience Block, as distinct from one the application derives from a content slug.
+
+Because the block payload holding it is machine-writable as well as editor-writable, a governed Authored Destination is re-checked wherever it renders rather than trusted from its write-time check. Two shapes are admitted: a same-origin path inside the watch tree, or an absolute secure-scheme URL. Anything else drops the element carrying it, rather than substituting a default target — a silently redirected destination is worse than a missing one. Admission is decided on the destination as a browser would resolve it, not as it was typed; the two differ, and the typed form is not the one that takes effect. An admitted external destination opens in a new browsing context and is never handed to the client-side router.
+
+Governance is per-field and currently partial: it covers the category tile destination. The older call-to-action link fields predate the policy, remain unvalidated, and reach an anchor directly — treat them as ungoverned until converted, and do not read this entry as describing them.
+
+### Dynamic Collection Feed
+
+A Media Collection Block whose `itemsSource` is `dynamicCollections`, causing
+Web to fill bounded carousel pages from the shared Watch collection feed as the
+viewer approaches it. It is still an editor-authored Experience Block: its
+position comes from the Experience block sequence, while its generated page
+identity is shared across viewers and excludes account or device identity.
 
 ### Homepage Experience
 
@@ -991,15 +1239,21 @@ A child Video of a series that is a work in its own right — watchable and mean
 
 ### Series-Shaped
 
-The classification that routes a record to a series surface instead of the single-video watch screen: a Video whose label is SERIES or COLLECTION. The test is label-only — there is no separate series type in the schema — and every entry point (search, home cards, deep links) applies the same rule.
+The classification that routes a record to a series surface instead of the single-video watch screen: a Video whose label is SERIES or COLLECTION. There is no separate series type in the schema, and every entry point (search, home cards, deep links) applies the same rule.
 
-Children are deliberately **not** part of the test. A feature film may carry its own Chapters as children while remaining one playable item, so presence of children says nothing about whether a record is a container. Both directions of the watch/series redirect read this one classification, which is what keeps them exact inverses.
+A label decides alone. A record that carries a label is classified by that label and by nothing else, so a feature film that owns its Chapters stays one playable item — for a labelled record, having children is never evidence of series-shape. Children decide only for a record that arrives with no label at all, and that lone case is the one place the clients differ: some read an unlabelled record with children as series-shaped, while the TV client treats any unlabelled record as a leaf and never consults children at all. Both directions of the watch/series redirect read this one classification, which is what keeps them exact inverses.
 
 ### First Rail Ready
 
 The moment the series detail screen first shows a populated episode rail — the canonical series-load performance signal, recorded once per screen visit as the `series_first_rail_ready` view timing.
 
 Fires only on real content readiness: a partially-cached series that paints its hero before episodes arrive has not reached First Rail Ready, and returning to an already-loaded series never re-fires it — a near-zero re-measure would poison the metric's percentiles.
+
+### Bible Passage
+
+The credited scripture text a Watch surface renders for a Bible Citation, resolved server-side and cached by Admin rather than fetched by the client. The Citation is identity — book, chapter, and verse range sourced from Core — while the Passage is the rendered words plus the translation name and copyright line that licence them.
+
+The split matters because a Citation always exists while a Passage may not. Admin returns none when no provider key is configured, when the citation cannot be mapped, or when the translation supplies no copyright string. Attribution is therefore fail-closed by construction: a surface holding verse text always holds the credit that belongs with it.
 
 ## Home hero UI
 
@@ -1018,7 +1272,7 @@ _Avoid:_ Mux insert.
 
 The ordered lineup of slides the watch-home hero rotates through, built by drawing candidate videos round-robin from the Carousel Pools and merging Hero Inserts at their configured positions. The lineup is deterministic for a given calendar day — a date-seeded pick, identical for every user — so the rotation changes daily without anyone editing it.
 
-A rebuilt Hero Queue restarts the rotation from its first slide, so clients avoid rebuilding while a user is mid-viewing unless the underlying content actually changed. The queue holds a fixed size as content is consumed: unseen videos lead, and when they cannot fill the target, already-played videos return behind them rather than the carousel shrinking. When every eligible video has already been seen, the queue wraps: it rebuilds ignoring the Played Set, and the set starts a fresh cycle.
+A rebuilt Hero Queue restarts the rotation from its first slide, so clients avoid rebuilding while a user is mid-viewing unless the underlying content actually changed. Unseen videos lead, and when they cannot fill the target, already-played videos return behind them rather than the carousel shrinking. This rollover ignores the Played Set only for candidate selection; it keeps the set intact for later hero choices and visits.
 
 ### Carousel Pool
 
@@ -1032,7 +1286,7 @@ An eligible film is emitted as a single parent tile, never expanded into its Cha
 
 ### Played Set
 
-The per-user memory of which videos the watch-home rotation has already shown, used so Hero Queue rebuilds lead with unseen content — played videos are deprioritized behind unseen ones rather than excluded outright. It resets each calendar month, and a Hero Queue wrap clears it early — but a content outage that merely looks like a wrap must not.
+The per-user memory of which videos the watch-home rotation has already shown, used so Hero Queue rebuilds lead with unseen content — played videos are deprioritized behind unseen ones rather than excluded outright. It resets each calendar month, and a separate bounded cycling policy can clear it early; selection-only Hero Queue rollover does not.
 
 A video enters the set when the rotation departs its slide, regardless of why it departed — watched to the end, navigated away, or skipped by a playback failure — so a persistently failing slide is recorded as "seen" just like a watched one and yields its priority until the set resets.
 
@@ -1065,7 +1319,7 @@ Activity begins when the first owner opens and ends only after the final owner r
 
 ### Chrome
 
-The auto-hiding controls overlay on the watch video player — the play/pause, scrubber, skip, mute, and fullscreen affordances layered over the footage. Distinct from the captions, which are a separate, always-visible layer that does not hide with it — captions instead reposition to stay clear of the Chrome while it is visible and return when it hides.
+The auto-hiding controls overlay on the watch video player — the play/pause, scrubber, skip, mute, and fullscreen affordances layered over the footage. Distinct from the captions, which are a separate, always-visible layer that does not hide with it — captions instead lift while it is visible and return when it hides. How far they lift is a judgement about appearance, not about input: captions take no touches, so where a wide cue overlaps a control the cost is how it looks and never a swallowed press, and clearance bought beyond that is paid for on every cue.
 
 The Chrome is visible when playback starts, auto-hides after a few idle seconds while playing, stays up while paused or buffering, and toggles on a tap of the video body. It fades rather than cutting, and is unmounted only after the fade-out completes so a fully-hidden Chrome stops intercepting touches. The home hero's controls are also Chrome; they fade with scroll position rather than idle time, but follow the same rule that hidden Chrome must stop intercepting touches.
 
@@ -1155,6 +1409,32 @@ The handoff and the app's departure are not simultaneous, and which comes first 
 
 Closing the window ends playback, while expanding it returns the same playback to the app. Both raise the same signal from the window, so they are told apart by what follows rather than by the signal itself, and a video the viewer paused inside the window stays paused through either. Only a surface armed for automatic entry can be handed off, and a video that was not playing is never handed off at all.
 
+## App launch
+
+### Splash Cover
+
+The branded layer drawn over the app's own tree on a cold start, holding a brand moment while the first screen loads underneath it rather than behind a gate in front of it. It is switchable: with the cover off, the platform's own launch screen carries the brand instead and hands straight over to the first screen.
+
+The tree beneath the cover is live: the first screen mounts and begins fetching while the animation plays, so the brand moment and the first network round trip overlap instead of running one after the other. The platform's own launch screen stays up until this layer has painted its first frame, so the handover between them shows neither a gap nor a flash of bare background. The cover holds for a fixed span even when content arrives sooner — the moment is deliberately consistent rather than adaptive — and then releases once the first screen reports it has something to paint, or reports a failure, since a failure is the point at which there is something for the viewer to retry. An unconditional ceiling releases it whatever the screen is doing, and the diagnostic panels release it at once, because nothing may sit over a surface a viewer needs in order to act. Only a cold process start raises it; a resume finds the session spent.
+
+Everything the cover holds off answers to one predicate — the covering pixels, the touches it swallows, and the removal of the tree beneath it from the screen reader — so those can never disagree about whether the cover is up. A report from the first screen belongs to the instance that made it: when the shell swaps its own element type mid-hold and remounts that screen, the report must be withdrawn, and this holds for a reported failure exactly as it holds for reported content. A report that outlives its reporter hands the cover over to whatever the replacement instance happens to be showing, which is the spinner the report was supposed to prove was gone.
+
+## App navigation chrome
+
+### Material Tint
+
+A flat colour laid on a translucent material — glass or blur — so that text on that material keeps its contrast over arbitrary content behind it. Distinct from a scrim, which is laid over bare content and carries the whole contrast burden by itself.
+
+The distinction decides the shape of the contrast curve, so a scrim's rule cannot be reused here. A material has already moved the ground away from the text before the tint is applied, so darkening it further moves the ground further away and contrast rises for every increase in the tint's opacity. A minimum is therefore computable and any value above it is safe. Over a bare backdrop on the far side of the text, the same sweep instead drags the ground through the text's own luminance, so contrast collapses to nothing at the crossing and only recovers well beyond it — which reads as a forbidden middle and a much higher floor. Both effects are artefacts of the backdrop, not properties of the tint, so the floor must be derived over the stack the pixels actually pass through, against the brightest content the app can put behind it.
+
+A tint fixes only the text it darkens the ground beneath. Text at a middling luminance fails against dark and light grounds alike, so no tint rescues it and only a colour change does.
+
+### Tab Bar Clearance
+
+The space a scrolling surface holds free at its bottom edge so the tab bar cannot cover its last row.
+
+What the clearance has to contain depends on who draws the bar, and the wrong answer is silent rather than loud. Where the platform owns the bar, the platform already counts the bar's height inside the safe area it reports, so the clearance adds only a breathing gap above it; adding the bar's height a second time double-counts it and strands content well above the bar. Where the app draws the bar itself and the bar displaces content instead of floating over it, no clearance is needed at all. Ownership is therefore part of the term's meaning, not an implementation detail of it: when a bar changes hands between the app and the platform, every surface that reserves space against it changes meaning too, including the surfaces that read the safe area directly and never ask for the clearance.
+
 ## Offline downloads
 
 ### Download Record
@@ -1178,6 +1458,21 @@ Because a revert lands the episode back in the downloaded state, a canceled or f
 ### Supersede
 
 Stopping an in-flight download's native task and neutralizing its callbacks — without touching its record — so a replacement download can safely reuse the same Video's task identity. Needed because the native downloader routes terminal events by task id to whichever task currently holds it, so an un-superseded old task's dying event could strike its replacement.
+
+## Raw export
+
+### Raw Export
+
+Saving a plain video file into the device's own photo library, where the viewer owns it like any other photo or video, as distinct from an offline copy the app manages in its own storage and can revoke.
+_Avoid:_ Save to Photos — that is the viewer-facing label for the same thing.
+
+A Raw Export creates no Download Record, so nothing derived from offline copies reflects one: a series control shows the same idle label for the whole run, and the library lists nothing new. Anything that must observe an export therefore reads the export's own state, never an offline aggregate. An exported file survives deleting the app, so there is nothing to resume and nothing to reclaim.
+
+### Export Run
+
+One pass of a Raw Export across a series, carrying its own identity and covering the episodes in order, one at a time.
+
+A run outlives every episode inside it, so any state that must survive between two episodes belongs to the run rather than to the episode currently transferring — a stop is the case that matters. Stopping a run ends the whole run, and episodes already written to the photo library stay in it. The run's own end releases its cancellation state, so a later run for the same series never inherits it.
 
 ## AI chat
 
@@ -1211,15 +1506,27 @@ The pane is not the shell. A shell showing a SERVER-DECIDED denial screen is nev
 
 The stable owner identity every Seeker conversation is stored under — a namespaced string distinguishing a signed-in account from an anonymous browser session, with a shared fallback key stamped on internal callers that supply none. The key is treated as opaque past its namespace prefix (matching never splits or parses the remainder), the same value keys the subject's conversations in the persistence store and their traces in observability, and the shared fallback key aggregates many people's turns so nothing keyed to it can be attributed — or erased — per person.
 
+### Chat Deletion Record
+
+The content-free record that keeps a deleted conversation's identity bound to its exact Resource Key and prevents delayed writers from recreating that conversation.
+
+It survives ordinary retention and can exist before any conversation content was saved. Subject Erasure removes it, intentionally ending recreation protection without authorizing access to another owner's conversation.
+
 ### Subject Erasure
 
-The operator-run deletion of one Resource Key's Seeker data from every store that holds it — conversations and their messages, plus the observability traces keyed to the same value. Erasure matches the full key by exact equality only (never prefix or pattern), previews its blast radius read-only before any destructive run, and refuses outright when what it read cannot prove exactly what it would delete — an unprovable owner or an unaddressable row is an escalation, never a skipped record. Completion is claimed per key erased, never per person: a person's data may span several keys, anonymous keys cannot be discovered from an identity, and data under the shared fallback key is only ever removed by retention aging it out.
+The operator-run deletion of one Resource Key's Seeker data from every store that holds it — conversations and their messages, Chat Deletion Records, plus the observability traces keyed to the same value. Erasure matches the full key by exact equality only (never prefix or pattern), previews its blast radius read-only before any destructive run, and refuses outright when what it read cannot prove exactly what it would delete — an unprovable owner or an unaddressable row is an escalation, never a skipped record. Completion is claimed per key erased, never per person: a person's data may span several keys, anonymous keys cannot be discovered from an identity, and data under the shared fallback key is only ever removed by retention aging it out.
 
 ### Featured Video
 
 The single library video the Seeker may attach to one reply — a recommendation rendered as an inline player beside the answer, distinct from the cited passages that ground the answer's text.
 
 The model **declares** a pick and never authors its payload: it may only name a video the same turn's own search returned, and every displayed field is re-projected from that search result through shape gates rather than taken from the model. A missing, malformed, or unmatched declaration attaches nothing and is never an error the reader sees. Because replies persist, a featured video is also re-derived when a conversation is replayed, so a replayed reply shows the video the turn featured, though a long title may appear shortened.
+
+### Suggested Follow-Ups
+
+Up to three tappable questions the Seeker offers under a finished answer, proposing where the conversation could go next — generated after the answer's text by a separate minimal model call, so a generation failure or timeout only means the suggestions do not appear; the answer itself is never affected. Tapping one sends that question verbatim as the person's own next message.
+
+Suggestions appear only after grounded, substantive answers, and they are stored with the reply they followed; on replay, only the conversation's latest reply shows its stored suggestions. Turning the capability off stops new suggestions but does not retract stored ones — retraction follows the conversation data's own lifecycle, not the flag.
 
 ### JesusFilm RAG
 
@@ -1259,6 +1566,12 @@ The standing activity a covered service already had when triage began watching i
 
 That first run deliberately files nothing: it exists so pre-existing errors read as pre-existing instead of as a sudden flood of new ones. A read the sweep could not complete refuses to seed a baseline at all, because a partial view recorded as "everything that existed" would make the unseen remainder look new forever.
 
+### Release-Session Filter
+
+The gate deciding whether a Triage Signal's activity came from a real release build or from a developer's own session, so development noise never becomes a triage ticket. The version the activity carries is the primary discriminator; textual development markers are secondary, used only when no version is present.
+
+It fails open toward coverage: activity spanning both a development session and a release build stays in, and an unusable filter configuration refuses to run rather than silently excluding everything. Loosening the filter makes previously excluded noise look new, so a filter change requires re-seeding the affected Service Baseline.
+
 ### Epoch
 
 The dedup generation of a Triage Signal — the counter that decides whether an already-ticketed problem may be ticketed again.
@@ -1291,3 +1604,5 @@ It is hostile input at two distinct boundaries, and neither boundary's control s
 - "Search Passport" had named a known-caller check as though it were specific to search, and as though it gated access there. Both are wrong: the check is a general known-caller concept, and the public search surface admits anonymous callers — a key there selects Rate-Limit Identity only. Use **Known-Caller Check**, and say explicitly whether a given surface gates on it.
 - "Chapter" carries two unrelated meanings. A **Chapter** is a segment of one feature film (a catalog relationship); a **felt-need chapter** is a themed section of Showcase Mode's reel, announced by a Chapter Card. Qualify which is meant whenever both surfaces are in scope.
 - "Episode" had been used loosely for any child Video, which is what let a film's Chapters be counted and billed as episodes. An Episode is a child of a series and stands alone; a film's children are Chapters.
+- "Backdrop" names two unrelated blurred-artwork layers on different platforms: the **Immersive Backdrop** is the Watch web wash behind a collection panel, while the **Ambient Backdrop** fills the letterboxing around the mobile and TV player. Qualify which is meant.
+- "Description" is ambiguous for a Video's localized copy: a locale carries both a short authored snippet and a longer catalog description, and which one a surface shows is decided per surface, not per client. The watch-home hero and the video watch page prefer the snippet and fall back to the description; the series page body, SEO metadata, and structured data prefer the description and fall back to the snippet. So a request to change or remove "the description" may act on either field — name the surface, and check its fallback order before assuming which.

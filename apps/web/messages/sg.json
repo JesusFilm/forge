@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Bongola monoko ya mongongo",
     "home": "Ndako ya JesusFilm",
     "closeSearch": "Kanga boluki",
-    "submitSearch": "Gi"
+    "submitSearch": "Gi",
+    "library": "Da-mbeti"
   },
   "SearchOverlay": {
     "dialogLabel": "Luka mpe tala bavideo",
@@ -467,6 +468,7 @@
     "sports": "Masano",
     "collections": "Ba collections",
     "subtitlesOnly": "Kakitisi ya maloba kaka",
+    "backToTop": "Kiri na li",
     "newlyAdded": "Ebakisami sika",
     "newVideosTitle": "Bavideo ya boklisto ya sika na {language}",
     "newestFirst": "Ya sika liboso",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Bavideo ya solo",
     "videosFromCollection": "Bavideo uta na {collection}.",
     "standaloneDescription": "Bavideo ya solo na monoko oyo.",
-    "openCollection": "Fungola collection"
+    "openCollection": "Fungola collection",
+    "filters": "Akungbi",
+    "filterLength": "Yongoro",
+    "filterLength_under5": "Na gbe ti ngbonga 5",
+    "filterLength_5to10": "Ngbonga 5-10",
+    "filterLength_10to30": "Ngbonga 10-30",
+    "filterLength_over30": "Na ndo ti ngbonga 30",
+    "filterType": "Marä",
+    "clearFilters": "Zi akungbi",
+    "filterResults": "{count} na yâ ti {total} a fa",
+    "noFilterResults": "Mbeni video oko ape so alingbi na akungbi so. Tara ti zi oko.",
+    "filterAdded": "A yeke zia",
+    "filterAdded_60d": "Alango 60 so ahon",
+    "filterAdded_6m": "Anze 6 so ahon",
+    "filterAdded_12m": "Anze 12 so ahon"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project: Bâa",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Preview ya video oyo eleki",
     "nextVideoPreview": "Preview ya video oyo elandi",
     "mediaCollection": "Laibɛli ya media",
-    "scrollToVideo": "Kende ti video {title}"
+    "scrollToVideo": "Kende ti video {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Ndako ya Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Zonga na Watch",
     "browseVideos": "Tala bavideo"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tala film mokuse",
-    "actions": {
-      "joinUs": "Kota na biso",
-      "shareMission": "Kabola na misio na biso"
-    },
-    "welcomeStart": {
-      "label": "Bondɔko & Makomi",
-      "title": "Bavideo oyo tobɛti lelo",
-      "description": "Bavideo ya kondima oyo euti na laibɛli na biso mpo na kopesa mpiko, kotya mikakatano, mpe kolamusa makanisi."
-    },
-    "welcomeMorning": {
-      "label": "Elendiseli ya tongo",
-      "title": "Mbote tongo! Makambo ya Biblia mpo na lelo ezali kozela yo.",
-      "description": "Bandá mokolo na yo na makambo ya Biblia oyo elendisaka, oyo esalemi mpo na kolendisa mpe kotombola molimo na yo."
-    },
-    "welcomeAfternoon": {
-      "label": "Elendiseli ya midi",
-      "title": "Mbote midi! Makambo ya Biblia mpo na mokolo na yo.",
-      "description": "Makambo ya Biblia oyo elendisaka mpe ekokani malamu mpo na kopema na midi to kokoba kolendisama."
-    },
-    "welcomeEvening": {
-      "label": "Elendiseli ya mpokwa",
-      "title": "Mbote mpokwa! Pema na makambo ya Biblia.",
-      "description": "Makambo ya Biblia ya kimya mpo na kosalisa yo kotya makanisi mpe kozwa kobɔndisama ntango mokolo ezali kosila."
-    },
-    "joinUs": {
-      "label": "Kota na biso",
-      "title": "Bamiliare bazali koluka",
-      "description": "Mbuma ekomi. Kota na biso na kopanza nsango malamu na mokili mobimba na nzela ya media ya dijitali."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Tókende elongo",
-      "title": "Koyebisa lisolo ya Yesu, elongo",
-      "description": "Pona ete bakoka koyoka mpe komona bolingo ya Yesu na monoko na bango moko, epai bazali."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% alingbi",
     "none": "A wara vidéo oko pëpe ti mû na mo na pekô ti vidéo so na yângâ so."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Yanga ti mbïrïmbïrï",
     "selectLanguageVersion": "Soro version ti yanga",
     "watchSelectedVersion": "Tala version so mo soro"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Mbeti ti cookie",
+    "bannerTitle": "Mbeti ti siriri mo",
+    "bannerDescription": "Cookie so ayeke na mfingo ayeke kobatango Watch na siriri mpe ayeke sala nzoni. Na maboko mo, cookie ti kusala mo yeke ti kobosongo mokuse a yeke tene mabeti ti mo na kati ti mabanga ti hinga ti kopesa mabongisi ti recommandation na lege ti mo. Recommandation ti kôzo-kôzo ayeke duti ape, nyonso lege.",
+    "acceptAll": "Mû na nyonso",
+    "essentialOnly": "Mbeni ti mfingo kaka",
+    "manageChoices": "Tî mbi na mbeti so",
+    "savingChoice": "A yeke kobika mbeti ti cookie",
+    "settings": "Réglage ti cookie",
+    "settingsDescription": "Hinga so mo yeke sala tene Watch a lingbi ti kobosongo mabeti ti recommandation ti mo na kati ti mabanga ti hinga. Mo lingbi ti kobongola ni na ngonga nyonso.",
+    "essentialCookies": "Cookie ti mfingo",
+    "essentialDescription": "Siriri, playback, mbeti ti siriri, na attribution ti demande ti recommandation.",
+    "alwaysActive": "Ayeke sala ngbii nyonso",
+    "personalization": "Kusala na lege ti mo",
+    "personalizationDescription": "Bosongo mabeti ti mo a yeke na ndurü na kati ti mabanga ti hinga. So mo mû ni pepe, recommandation ti kôzo-kôzo ayeke duti ape.",
+    "erasurePending": "Kpi ti profil a de na ndo ti kusû. Recommandation ti kôzo-kôzo ayeke sala fini.",
+    "cancel": "Mû na pekô",
+    "saveChoices": "Bika mbeti so",
+    "saving": "A yeke kobika…",
+    "loadError": "A lingbi ape ti laa mbeti ti mo. Walâ mo lingbi ti hinga na bêbe so na nze.",
+    "grantError": "A lingbi ape ti mû nzönî na kusala na lege ti mo. Mbeni ti mfingo kaka ayeke duti ape.",
+    "saveError": "A lingbi ape ti bika mbeti ti mo. Biani, zia âla na ndâ ti kusala ndo ake."
   }
 }

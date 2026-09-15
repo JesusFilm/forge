@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Liliu ʻa e lea ʻo e ongo",
     "home": "Peesi kamata ʻo e JesusFilm",
     "closeSearch": "Katia ʻa e fekumí",
-    "submitSearch": "Fekumi"
+    "submitSearch": "Fekumi",
+    "library": "Falekoloa tohi"
   },
   "SearchOverlay": {
     "dialogLabel": "Fekumi mo vakaiʻi ngaahi vitio",
@@ -467,6 +468,7 @@
     "sports": "Sipoti",
     "collections": "Ngaahi kolekisoni",
     "subtitlesOnly": "Ngaahi subtitle pē",
+    "backToTop": "Foki ki ʻolunga",
     "newlyAdded": "Kuo toki tānaki mai",
     "newVideosTitle": "Ngaahi vitio fakakalisitiane foʻou ʻi he {language}",
     "newestFirst": "Foʻou taha ʻuluaki",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Ngaahi vitio taʻekau",
     "videosFromCollection": "Ngaahi vitio mei he {collection}.",
     "standaloneDescription": "Ngaahi vitio taʻekau ʻi he lea ni.",
-    "openCollection": "Fakaava ʻa e kolekisoni"
+    "openCollection": "Fakaava ʻa e kolekisoni",
+    "filters": "Filifili",
+    "filterLength": "Lōloa",
+    "filterLength_under5": "Siʻi hifo ʻi he 5 miniti",
+    "filterLength_5to10": "5-10 miniti",
+    "filterLength_10to30": "10-30 miniti",
+    "filterLength_over30": "Lahi hake ʻi he 30 miniti",
+    "filterType": "Faʻahinga",
+    "clearFilters": "Tamateʻi ʻa e filifili",
+    "filterResults": "ʻOku fakahā ʻa e {count} mei he {total}",
+    "noFilterResults": "ʻOku ʻikai ha vitiō ʻoku tatau mo e ngaahi filifili ni. Feinga ke toʻo ha taha.",
+    "filterAdded": "Tānaki",
+    "filterAdded_60d": "ʻAho 60 kuo ʻosi",
+    "filterAdded_6m": "Māhina 6 kuo ʻosi",
+    "filterAdded_12m": "Māhina 12 kuo ʻosi"
   },
   "WatchHome": {
     "pageTitle": "Sio ʻi he Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Preview ʻo e vitio ki muʻa",
     "nextVideoPreview": "Preview ʻo e vitio hoko",
     "mediaCollection": "Kolekisoni ʻo e media",
-    "scrollToVideo": "Loloa ki he vitio {title}"
+    "scrollToVideo": "Loloa ki he vitio {title}",
+    "forYou": "Maʻau"
   },
   "WatchFooter": {
     "home": "Peesi kamata ʻo e Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Hoko ki he Watch",
     "browseVideos": "Vakaiʻi ʻa e ngaahi vitio"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Sio ki he Filimi Nounou",
-    "actions": {
-      "joinUs": "Kau Mai",
-      "shareMission": "Kau ʻi Homau Misioná"
-    },
-    "welcomeStart": {
-      "label": "Tui & Folofola",
-      "title": "Ngaahi fili vitio ʻo e ʻaho ni",
-      "description": "Ko e ngaahi vitio mei heʻemau falaní ʻoku fakatefito ʻi he tui ke ueʻi, fakamalohia, mo fakakaukauʻi."
-    },
-    "welcomeMorning": {
-      "label": "Ueʻi Fakamālōlō",
-      "title": "Mālō e pongipongi! ʻOku tali atu ʻa e ngaahi momeniti Tohi Tapu ʻo e ʻaho ni.",
-      "description": "Kamata hoʻo ʻaho ʻaki ha ngaahi momeniti Tohi Tapu fakalotolahi ke ueʻi mo hiki hake hoʻo laumālie."
-    },
-    "welcomeAfternoon": {
-      "label": "Ueʻi ʻi he Afiafi",
-      "title": "Mālō e efiafi! Ngaahi momeniti Tohi Tapu maʻá ho ʻaho.",
-      "description": "Ko e ngaahi fakamatala Tohi Tapu fakalotolahi ʻoku feʻunga pe ki hoʻo mālōlō ʻi he efiafi pe ki ha fakalotolahi hokohoko atu."
-    },
-    "welcomeEvening": {
-      "label": "Ueʻi ʻi he Pō",
-      "title": "Mālō e pō! Malolo mo e ngaahi momeniti Tohi Tapu.",
-      "description": "Ko e ngaahi momeniti Tohi Tapu mālie ke tokoni atu ke ke fakalaulauloto mo maʻu ʻa e fiemālie ʻi he ngataʻanga hoʻo ʻaho."
-    },
-    "joinUs": {
-      "label": "Kau Mai",
-      "title": "ʻOku kumi ʻe he lau piliona",
-      "description": "Kuo aʻu mai ʻa e fua. Kau mai ke tau vahevahe ʻa e ongoongolelei ki mamani ʻaki ʻa e ngaahi media fakavahaʻa taimi."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Tau fononga fakataha",
-      "title": "Tala ʻo Sīsū, fakataha",
-      "description": "Koeʻuhí ke nau fanongo mo mamata ki he ʻofa ʻa Sīsū ʻi honau lea pē ʻi honau feituʻu."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% ʻoku fenāpasi",
     "none": "ʻIkai maʻu ha ngaahi vitio fokotuʻu ki he vitio ni ʻi he lea ni."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Lea ʻo e ongo",
     "selectLanguageVersion": "Fili ha tatau lea",
     "watchSelectedVersion": "Mamata ʻi he tatau kuo fili"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Ngaahi fili kukisi",
+    "bannerTitle": "Hoʻo ngaahi fili ki he totonu fakapulipuli",
+    "bannerDescription": "ʻOku tokoni ʻa e ngaahi kukisi mahuʻinga ke malu mo ngaue ʻa e Watch. Kapau te ke fakangofua, ʻe lava ke manatuʻi ʻe ha kukisi fili ʻa e saiti ni hoʻo ngaahi fiekaunga ʻi he ngaahi ʻaʻahi kehekehe ke fakataautahaʻi ʻa e ngaahi fokotuʻu. ʻOku kei ʻatā pē ʻa e ngaahi fokotuʻu fakatatau ki he tuʻunga ʻi ha founga pē.",
+    "acceptAll": "Tali kotoa",
+    "essentialOnly": "Ngaahi mahuʻinga pē",
+    "manageChoices": "Tokangaʻi ʻa e ngaahi fili",
+    "savingChoice": "Tuku tauhi ʻa e fili kukisi",
+    "settings": "Ngaahi fokotuʻutuʻu kukisi",
+    "settingsDescription": "Fili pe ʻe lava ke manatuʻi ʻe he Watch ʻa e ngaahi fiekaunga ki he fokotuʻu ʻi he ngaahi ʻaʻahi kehekehe. ʻE lava ke ke liliu eni ʻi ha taimi pē.",
+    "essentialCookies": "Ngaahi kukisi mahuʻinga",
+    "essentialDescription": "Maluʻi, tā ʻo e vitiō, ngaahi fili ki he totonu fakapulipuli, mo e ʻuhinga ʻo e kole fokotuʻu.",
+    "alwaysActive": "Ngāue maʻu pē",
+    "personalization": "Fakataautahaʻi",
+    "personalizationDescription": "Manatuʻi ʻa e ngaahi fiekaunga fakangatangata ʻi he ngaahi ʻaʻahi kehekehe. Kapau ʻe tamateʻi eni, ʻe kei lava pē ʻa e ngaahi fokotuʻu fakatatau ki he tuʻunga.",
+    "erasurePending": "ʻOku kei tatali ʻa hono toʻo ʻo e palofaili. ʻOku ʻosi ngāue ʻa e ngaahi fokotuʻu fakatatau ki he tuʻunga.",
+    "cancel": "Kaniseli",
+    "saveChoices": "Tuku tauhi ʻa e ngaahi fili",
+    "saving": "ʻOku tuku tauhi…",
+    "loadError": "ʻIkai lava ke ʻomi hoʻo fili. ʻE kei lava pē ke ke fili ʻi lalo.",
+    "grantError": "ʻIkai lava ke fakaʻatā ʻa e fakataautahaʻi. ʻOku kei ʻatā pē ʻa e ngaahi mahuʻinga.",
+    "saveError": "ʻIkai lava ke tuku tauhi hoʻo fili. Kātaki ʻo toe feinga."
   }
 }

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Овоз тилини ўзгартириш",
     "home": "JesusFilm бош саҳифаси",
     "closeSearch": "Қидирувни ёпиш",
-    "submitSearch": "Қидириш"
+    "submitSearch": "Қидириш",
+    "library": "Кутубхона"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоларни қидириш ва кўриб чиқиш",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Тўпламлар",
     "subtitlesOnly": "Фақат субтитрлар",
+    "backToTop": "Юқорига",
     "newlyAdded": "Янги қўшилган",
     "newVideosTitle": "{language} тилидаги янги христиан видеолари",
     "newestFirst": "Энг янги аввал",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Мустақил видеолар",
     "videosFromCollection": "{collection} дан видеолар.",
     "standaloneDescription": "Бу тилдаги мустақил видеолар.",
-    "openCollection": "Тўпламни очиш"
+    "openCollection": "Тўпламни очиш",
+    "filters": "Филтрлар",
+    "filterLength": "Давомийлиги",
+    "filterLength_under5": "5 дақиқадан кам",
+    "filterLength_5to10": "5-10 дақиқа",
+    "filterLength_10to30": "10-30 дақиқа",
+    "filterLength_over30": "30 дақиқадан кўп",
+    "filterType": "Тури",
+    "clearFilters": "Филтрларни тозалаш",
+    "filterResults": "{total} дан {count} кўрсатилди",
+    "noFilterResults": "Бу филтрларга мос видео йўқ. Биттасини олиб ташлаб кўринг.",
+    "filterAdded": "Қўшилган",
+    "filterAdded_60d": "Охирги 60 кун",
+    "filterAdded_6m": "Охирги 6 ой",
+    "filterAdded_12m": "Охирги 12 ой"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project кўриш",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Аввалги видео олдиндан кўриниши",
     "nextVideoPreview": "Кейинги видео олдиндан кўриниши",
     "mediaCollection": "Медиа тўплам",
-    "scrollToVideo": "{title} видеосига ўтиш"
+    "scrollToVideo": "{title} видеосига ўтиш",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project бош саҳифаси",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Кўришга қайтиш",
     "browseVideos": "Видеоларни кўриш"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Қисқа фильмни кўриш",
-    "actions": {
-      "joinUs": "Бизга қўшилинг",
-      "shareMission": "Миссиямизда иштирок этинг"
-    },
-    "welcomeStart": {
-      "label": "Имон ва Муқаддас Ёзув",
-      "title": "Бугунги видео танловлари",
-      "description": "Руҳлантириш, ўйлантириш ва мулоҳаза уйғотиш учун кутубхонамиздан имонга йўналтирилган видео мазмун."
-    },
-    "welcomeMorning": {
-      "label": "Тонгги илҳом",
-      "title": "Ассалому алайкум! Бугунги Библия лаҳзалари сизни кутмоқда.",
-      "description": "Кунни руҳлантирувчи, илҳом бағишлаш ва қалбингизни кўтариш учун тайёрланган Библия лаҳзалари билан бошланг."
-    },
-    "welcomeAfternoon": {
-      "label": "Пешинги илҳом",
-      "title": "Кундуз хайр! Кунингиз учун Библия лаҳзалари.",
-      "description": "Кундузги танаффусингиз ёки руҳланишингиз учун мос, кўнгилни кўтарувчи Библия мазмуни."
-    },
-    "welcomeEvening": {
-      "label": "Оқшомги илҳом",
-      "title": "Оқшом хайр! Библия лаҳзалари билан тин олинг.",
-      "description": "Кун охирида мулоҳаза қилиш ва тасалли топишга ёрдам берадиган осойишта Библия лаҳзалари."
-    },
-    "joinUs": {
-      "label": "Бизга қўшилинг",
-      "title": "Миллиардлаб одамлар излаяпти",
-      "description": "Ҳосил бу ерда. Рақамли медиа орқали бутун дунёга хушхабарни етказишда бизга қўшилинг."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Бирга йўл олдик",
-      "title": "Исо ҳақидаги ҳикояни бирга баён қиламиз",
-      "description": "Шунда улар Исо муҳаббатини ўз тилида, ўзи турган жойда эшитиб, кўра оладилар."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% мос келади",
     "none": "Бу тилда бу видео учун тавсиялар топилмади."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Аудио тили",
     "selectLanguageVersion": "Тил версиясини танланг",
     "watchSelectedVersion": "Танланган версияни кўриш"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie танловлари",
+    "bannerTitle": "Махфийлик танловларингиз",
+    "bannerDescription": "Зарур cookie файллари Watch хавфсиз ва тўғри ишлашини таъминлайди. Рухсатингиз билан, ихтиёрий биринчи томон cookie файли ташрифлар орасида қизиқишларни эслаб, тавсияларни шахсийлаштириши мумкин. Контекстга асосланган тавсиялар ҳар икки ҳолатда ҳам мавжуд бўлади.",
+    "acceptAll": "Барчасини қабул қилиш",
+    "essentialOnly": "Фақат зарурлари",
+    "manageChoices": "Танловларни бошқариш",
+    "savingChoice": "Cookie танлови сақланмоқда",
+    "settings": "Cookie созламалари",
+    "settingsDescription": "Watch ташрифлар орасида тавсия қизиқишларини эслаб қолиш-қолмаслигини танланг. Буни исталган вақтда ўзгартиришингиз мумкин.",
+    "essentialCookies": "Зарур cookie файллари",
+    "essentialDescription": "Хавфсизлик, кўриш, махфийлик танловлари ва тавсия сўрови манбасини белгилаш.",
+    "alwaysActive": "Доим фаол",
+    "personalization": "Шахсийлаштириш",
+    "personalizationDescription": "Ташрифлар орасида чекланган қизиқишларни эслаб қолади. Буни ўчириш контекстга асосланган тавсияларни сақлаб қолади.",
+    "erasurePending": "Профилни ўчириш жараёни кутилмоқда. Контекстга асосланган тавсиялар аллақачон фаол.",
+    "cancel": "Бекор қилиш",
+    "saveChoices": "Танловларни сақлаш",
+    "saving": "Сақланмоқда…",
+    "loadError": "Танловингизни юклаб бўлмади. Барибир қуйида танлашингиз мумкин.",
+    "grantError": "Шахсийлаштиришни ёқиб бўлмади. Фақат зарурлари режими мавжуд бўлиб қолади.",
+    "saveError": "Танловингизни сақлаб бўлмади. Илтимос, яна уриниб кўринг."
   }
 }

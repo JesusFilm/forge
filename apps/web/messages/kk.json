@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Дыбыс тілін өзгерту",
     "home": "JesusFilm басты беті",
     "closeSearch": "Іздеуді жабу",
-    "submitSearch": "Іздеу"
+    "submitSearch": "Іздеу",
+    "library": "Кітапхана"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоларды іздеу және шолу",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Жинақтар",
     "subtitlesOnly": "Тек субтитрлер",
+    "backToTop": "Жоғарыға",
     "newlyAdded": "Жаңа қосылған",
     "newVideosTitle": "{language} тіліндегі жаңа христиан видеолары",
     "newestFirst": "Алдымен ең жаңасы",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Жеке видеолар",
     "videosFromCollection": "{collection} жинағындағы видеолар.",
     "standaloneDescription": "Осы тілдегі жеке видеолар.",
-    "openCollection": "Жинақты ашу"
+    "openCollection": "Жинақты ашу",
+    "filters": "Сүзгілер",
+    "filterLength": "Ұзақтығы",
+    "filterLength_under5": "5 минуттан кем",
+    "filterLength_5to10": "5-10 минут",
+    "filterLength_10to30": "10-30 минут",
+    "filterLength_over30": "30 минуттан көп",
+    "filterType": "Түрі",
+    "clearFilters": "Сүзгілерді тазалау",
+    "filterResults": "{total} ішінен {count} көрсетілді",
+    "noFilterResults": "Бұл сүзгілерге сай бейне жоқ. Біреуін алып көріңіз.",
+    "filterAdded": "Қосылды",
+    "filterAdded_60d": "Соңғы 60 күн",
+    "filterAdded_6m": "Соңғы 6 ай",
+    "filterAdded_12m": "Соңғы 12 ай"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project видеоларын көру",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Алдыңғы видеоның алдын ала көрінісі",
     "nextVideoPreview": "Келесі видеоның алдын ала көрінісі",
     "mediaCollection": "Медиа жинағы",
-    "scrollToVideo": "{title} видеосына өту"
+    "scrollToVideo": "{title} видеосына өту",
+    "forYou": "Сіз үшін"
   },
   "WatchFooter": {
     "home": "Jesus Film Project басты беті",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Watch бетіне оралу",
     "browseVideos": "Видеоларды шолу"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Қысқаметражды фильмді көру",
-    "actions": {
-      "joinUs": "Бізге қосылыңыз",
-      "shareMission": "Біздің миссиямызға үлес қосыңыз"
-    },
-    "welcomeStart": {
-      "label": "Сенім және Жазба",
-      "title": "Бүгінгі видео таңдаулары",
-      "description": "Жүрекке жетіп, ой салатын және шабыттандыратын біздің кітапханадан сенімге негізделген видео мазмұн."
-    },
-    "welcomeMorning": {
-      "label": "Таңғы шабыт",
-      "title": "Қайырлы таң! Бүгінгі Інжіл сәттері күтіп тұр.",
-      "description": "Күніңізді жігер беретін Інжіл сәттерімен бастап, рухыңызды көтеріңіз."
-    },
-    "welcomeAfternoon": {
-      "label": "Түстен кейінгі шабыт",
-      "title": "Қайырлы күн! Күніңізге арналған Інжіл сәттері.",
-      "description": "Түстен кейінгі үзіліске немесе шабытты жалғастыруға лайық жігер беретін Інжіл мазмұны."
-    },
-    "welcomeEvening": {
-      "label": "Кешкі шабыт",
-      "title": "Қайырлы кеш! Інжіл сәттерімен тынығыңыз.",
-      "description": "Күніңіз аяқталарда ойлануға және жұбаныш табуға көмектесетін тыныш Інжіл сәттері."
-    },
-    "joinUs": {
-      "label": "Бізге қосылыңыз",
-      "title": "Миллиардтаған адам іздеп жүр",
-      "description": "Егін мол. Сандық медиа арқылы әлемге Ізгі хабарды жеткізуге бізге қосылыңыз."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Бірге жүрейік",
-      "title": "Исаның тарихын бірге баяндау",
-      "description": "Сонда олар Исаның сүйіспеншілігін өз тілінде, өздері тұрған жерде ести де, көре де алады."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% сәйкес",
     "none": "Бұл видеоға осы тілде ұсыныстар табылмады."
@@ -735,14 +714,37 @@
   "WatchUnavailableLanguage": {
     "metadataTitle": "Тілдік нұсқа қолжетімсіз",
     "eyebrow": "Тілдік нұсқа қолжетімсіз",
-    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> тілінде қолжетімсіз",
+    "title": "<contentTitle>{title}</contentTitle>: <languageName>«{language}»</languageName> нұсқасы жоқ",
     "actionsLabel": "Қолжетімді көру нұсқалары",
-    "browseInLanguage": "{language} тіліндегі бейнелерді шолу",
+    "browseInLanguage": "Барлық бейнелер: «{language}»",
     "backToSearch": "Іздеуге оралу",
     "audioVersionsTitle": "Басқа аудио нұсқалар",
     "audioVersionsDescription": "Бұл бейнені көруді жалғастыру үшін аудио тілін таңдаңыз.",
     "languageVersionLabel": "Аудио тілі",
     "selectLanguageVersion": "Тілдік нұсқаны таңдаңыз",
     "watchSelectedVersion": "Таңдалған нұсқаны көру"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie таңдаулары",
+    "bannerTitle": "Құпиялылыққа қатысты таңдауларыңыз",
+    "bannerDescription": "Маңызды cookie файлдары Watch қызметінің қауіпсіз әрі дұрыс жұмыс істеуін қамтамасыз етеді. Рұқсат берсеңіз, қосымша бірінші тарап cookie файлы ұсыныстарды жекелендіру үшін қызығушылықтарыңызды келулер арасында есте сақтай алады. Мәнмәтіндік ұсыныстар кез келген жағдайда қолжетімді болып қалады.",
+    "acceptAll": "Барлығын қабылдау",
+    "essentialOnly": "Тек маңыздылары",
+    "manageChoices": "Таңдауларды басқару",
+    "savingChoice": "Cookie таңдауы сақталуда",
+    "settings": "Cookie баптаулары",
+    "settingsDescription": "Watch келулер арасында ұсыныстарға қатысты қызығушылықтарды есте сақтай ала ма, соны таңдаңыз. Мұны кез келген уақытта өзгерте аласыз.",
+    "essentialCookies": "Маңызды cookie файлдары",
+    "essentialDescription": "Қауіпсіздік, ойнату, құпиялылық таңдаулары және ұсыныс сұрауының тиесілігін анықтау.",
+    "alwaysActive": "Әрқашан белсенді",
+    "personalization": "Жекелендіру",
+    "personalizationDescription": "Шектеулі қызығушылықтарды келулер арасында есте сақтау. Мұны өшірсеңіз де, мәнмәтіндік ұсыныстар қолжетімді болып қалады.",
+    "erasurePending": "Профильді жою күтілуде. Мәнмәтіндік ұсыныстар әлдеқашан белсенді.",
+    "cancel": "Болдырмау",
+    "saveChoices": "Таңдауларды сақтау",
+    "saving": "Сақталуда…",
+    "loadError": "Таңдауыңызды жүктеу мүмкін болмады. Төменнен әлі де таңдай аласыз.",
+    "grantError": "Жекелендіруді қосу мүмкін болмады. Тек маңыздысы режимі қолжетімді болып қалады.",
+    "saveError": "Таңдауыңызды сақтау мүмкін болмады. Қайталап көріңіз."
   }
 }

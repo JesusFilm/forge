@@ -107,6 +107,10 @@ export type PlaybackRequestSnapshot = {
   /** Published by the host from the player's own status, so the full view and
    *  the window both read one failure state (R22). */
   loadFailed: boolean
+  /** Whether the one root player is playing right now. Published here for the
+   *  same reason `loadFailed` is: the host is a `<Stack>` SIBLING, so a route's
+   *  layer cannot reach the host's React state by context or by prop. */
+  playing: boolean
 }
 
 export type PlaybackRequestStore = ReturnType<typeof createPlaybackRequestStore>
@@ -287,6 +291,7 @@ export function createPlaybackRequestStore(deps: {
   let nextSlotId = 1
   let facts: PlaybackFactsSource = EMPTY_FACTS
   let loadFailed = false
+  let playing = false
   // The request of a video whose slot has gone but whose session still owns the
   // player. This is what makes the player outlive the route (R1, R4).
   let retained: PlaybackRequest | null = null
@@ -297,6 +302,7 @@ export function createPlaybackRequestStore(deps: {
     rect: null,
     slotId: null,
     loadFailed: false,
+    playing: false,
   }
   let reconciling = false
   let depth = 0
@@ -339,9 +345,21 @@ export function createPlaybackRequestStore(deps: {
     const id = currentSlotId()
     if (id != null) {
       const slot = slots.get(id) as Slot
-      return { request: slot.request, rect: slot.rect, slotId: id, loadFailed }
+      return {
+        request: slot.request,
+        rect: slot.rect,
+        slotId: id,
+        loadFailed,
+        playing,
+      }
     }
-    return { request: retained, rect: null, slotId: null, loadFailed }
+    return {
+      request: retained,
+      rect: null,
+      slotId: null,
+      loadFailed,
+      playing,
+    }
   }
 
   /**
@@ -497,6 +515,12 @@ export function createPlaybackRequestStore(deps: {
       commit()
     },
 
+    setPlaying(next: boolean): void {
+      if (playing === next) return
+      playing = next
+      commit()
+    },
+
     /** Module singletons outlive a test file; this is the seam that clears one
      *  without reaching into its internals. */
     reset(): void {
@@ -504,6 +528,7 @@ export function createPlaybackRequestStore(deps: {
       retained = null
       facts = EMPTY_FACTS
       loadFailed = false
+      playing = false
       commit()
     },
   }

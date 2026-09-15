@@ -15,3 +15,18 @@ export function usePlaybackFrameVisible(): boolean {
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot)
   return snapshot.rect != null && snapshot.slotId != null
 }
+
+/**
+ * Whether the one root player is playing, for layers outside the host's tree.
+ *
+ * The primitive is derived INSIDE the selector on purpose: every commit() gives
+ * the cached snapshot a new identity, so returning the snapshot would re-render
+ * this subscriber on unrelated changes (a rect update, a loadFailed flip).
+ */
+export function usePlaybackPlaying(): boolean {
+  const store = getPlaybackRequestStore()
+  return useSyncExternalStore(
+    store.subscribe,
+    () => store.getSnapshot().playing,
+  )
+}

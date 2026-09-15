@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { SeriesEpisodesGrid } from "@/components/watch/SeriesEpisodesGrid"
 import { SERIES_CONTENT_GLASS_CLASS_NAME } from "@/components/watch/series-page-styles"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 
 type Series = ResolvedSeriesBySlug["video"]
 type Episodes = NonNullable<Series["children"]>
@@ -144,6 +145,10 @@ describe("SeriesEpisodesGrid", () => {
     )
     for (const className of SERIES_CONTENT_GLASS_CLASS_NAME.split(" ")) {
       expect(wrapper?.className).toContain(className)
+    }
+    const grid = container.querySelector('[data-testid="series-episodes-grid"]')
+    for (const className of WATCH_PAGE_CONTENT_CLASSES.split(" ")) {
+      expect(grid?.className).toContain(className)
     }
     expect(
       wrapper?.querySelector('[data-testid*="series-episodes-grid-backdrop"]'),

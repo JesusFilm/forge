@@ -115,6 +115,9 @@ export function isPending(): boolean {
   return getLog().querySelector("[data-pending]") !== null
 }
 
+// The rail's New ACTION, told apart from a same-named ROW by excluding <nav>.
+// Still not vacuous after feat-401: a row titled from a first message of the
+// literal text "New conversation" collides again (no test sends it today).
 export function getNewConversationAction(): HTMLButtonElement {
   const nav = getConversationNav()
   const action = screen
@@ -303,12 +306,13 @@ export function historyThreadCallCount(
   ).length
 }
 
-// Sidebar row titles in render order (via the button title attr, which always
-// carries the display title — sr-only suffixes never leak in).
+// Sidebar row titles in render order via the SELECT button's title attr
+// (the display title, no sr-only suffixes), scoped by data-row-select since
+// feat-450's pencil button sits beside it in every granted row.
 export function navRowTitles(): string[] {
-  return Array.from(getConversationNav().querySelectorAll("ul li button")).map(
-    (button) => button.getAttribute("title") ?? "",
-  )
+  return Array.from(
+    getConversationNav().querySelectorAll("ul li button[data-row-select]"),
+  ).map((button) => button.getAttribute("title") ?? "")
 }
 
 // Shared feat-241 fixtures.

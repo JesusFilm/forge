@@ -1,12 +1,34 @@
 import { createHash } from "node:crypto"
 import { Prisma, type PrismaClient } from "@prisma/client"
-import { notRestrictedFromWatchWhere } from "./search-watchability"
+import {
+  CONTAINER_DESCENDANT_MAX_DEPTH,
+  notRestrictedFromWatchWhere,
+  PUBLIC_CONTENT_SLUG_SQL_PATTERN,
+  PUBLIC_LANGUAGE_SLUG_SQL_PATTERN,
+  SERIES_SHAPED_LABELS,
+  VISIBLE_DESCENDANT_SQL,
+} from "./search-watchability"
+import { transcriptContentEmbeddingWhereForContractId } from "./content-embedding-contract"
+import {
+  resolveCurrentWatchSearchTranscriptCompatibility,
+  type WatchSearchTranscriptCompatibilityIdentity,
+} from "./typesense-watch-search-transcript-compatibility"
+import {
+  advanceCurrentWatchSearchTranscriptProjection,
+  initialCurrentWatchSearchTranscriptProjectionRevision,
+  WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID,
+} from "./typesense-watch-search-current-transcript-projection"
 import { TypesenseClient } from "./typesense-client"
 import { canonicalTypesenseVideoId } from "./typesense-watch-search-identifiers"
 import {
   bestVideoImageUrl,
   sortVideoImagesByDisplayPreference,
 } from "./video-image-selection"
+import {
+  buildTypesenseWatchCurationProjection,
+  loadWatchSearchCurations,
+  type WatchSearchCurationProjection,
+} from "./typesense-watch-search-curation"
 import {
   buildTypesenseWatchCandidateLexicalDocuments,
   buildTypesenseWatchLexicalDocuments,
@@ -18,17 +40,20 @@ import {
 import {
   TYPESENSE_WATCH_AVAILABILITY_ALIAS,
   TYPESENSE_WATCH_CATALOG_ALIAS,
+  TYPESENSE_WATCH_CURATION_SET_PREFIX,
   TYPESENSE_WATCH_EMBEDDING_DIMENSIONS,
   TYPESENSE_WATCH_LEXICAL_ALIAS,
   TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
   type TypesenseWatchAudioOption,
   type TypesenseWatchAvailabilityDocument,
   type TypesenseWatchCatalogDocument,
+  type TypesenseWatchContainerLanguage,
   type TypesenseWatchLocale,
   type TypesenseWatchSubtitleOption,
   type TypesenseWatchTranscriptDocument,
   watchAvailabilityCollectionSchema,
   watchCatalogCollectionSchema,
+  watchCurationSetName,
   watchLexicalCollectionSchema,
   watchTranscriptCollectionSchema,
 } from "./typesense-watch-search-schema"
@@ -79,8 +104,13 @@ export type TypesenseWatchSearchIndexStats = {
   transcriptCollection: string
   transcriptReused: boolean
   hybridReady: boolean
+  curationSet: string
+  curationItems: number
+  skippedCurationAliases: number
   retiredCollections: string[]
   retirementFailures: Array<{ collection: string; error: string }>
+  retiredCurationSets: string[]
+  curationRetirementFailures: Array<{ curationSet: string; error: string }>
 }
 
 export type TypesenseWatchSearchTranscriptStrategy = "reuse" | "rebuild"
@@ -120,6 +150,101 @@ export class TypesenseWatchSearchIndexError extends Error {
   constructor(message: string) {
     super(message)
     this.name = "TypesenseWatchSearchIndexError"
+  }
+}
+
+export class TypesenseWatchSearchProjectionCommitIndeterminateError extends Error {
+  constructor(
+    readonly completionError: unknown,
+    readonly reconciliationError: unknown,
+  ) {
+    super("Watch Search transcript projection commit could not be reconciled", {
+      cause: reconciliationError,
+    })
+    this.name = "TypesenseWatchSearchProjectionCommitIndeterminateError"
+  }
+}
+
+type TranscriptProjectionSnapshot = {
+  transcriptCollection: string | null
+  contentEmbeddingContractId: string | null
+  transcriptChunkingVersion: string | null
+  projectionRevision: bigint
+}
+
+function sameTranscriptProjection(
+  left: TranscriptProjectionSnapshot | null,
+  right: TranscriptProjectionSnapshot | null,
+): boolean {
+  return (
+    left?.transcriptCollection === right?.transcriptCollection &&
+    left?.contentEmbeddingContractId === right?.contentEmbeddingContractId &&
+    left?.transcriptChunkingVersion === right?.transcriptChunkingVersion &&
+    left?.projectionRevision === right?.projectionRevision
+  )
+}
+
+async function advanceRebuiltTranscriptProjection(
+  prisma: PrismaClient,
+  input: {
+    transcriptCollection: string
+    contentEmbeddingContractId: string
+    transcriptChunkingVersion: string
+  },
+): Promise<void> {
+  const select = {
+    transcriptCollection: true,
+    contentEmbeddingContractId: true,
+    transcriptChunkingVersion: true,
+    projectionRevision: true,
+  } as const
+  const before = await prisma.watchSearchCurrentTranscriptProjection.findUnique(
+    {
+      where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },
+      select,
+    },
+  )
+  const expectedRevision = before
+    ? before.projectionRevision + 1n
+    : initialCurrentWatchSearchTranscriptProjectionRevision()
+
+  try {
+    await advanceCurrentWatchSearchTranscriptProjection(prisma, input)
+    return
+  } catch (completionError) {
+    let observed: TranscriptProjectionSnapshot | null
+    try {
+      observed = await prisma.watchSearchCurrentTranscriptProjection.findUnique(
+        {
+          where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },
+          select,
+        },
+      )
+    } catch (reconciliationError) {
+      throw new TypesenseWatchSearchProjectionCommitIndeterminateError(
+        completionError,
+        reconciliationError,
+      )
+    }
+
+    if (
+      observed?.transcriptCollection === input.transcriptCollection &&
+      observed.contentEmbeddingContractId ===
+        input.contentEmbeddingContractId &&
+      observed.transcriptChunkingVersion === input.transcriptChunkingVersion &&
+      observed.projectionRevision === expectedRevision
+    ) {
+      return
+    }
+    if (sameTranscriptProjection(observed, before)) {
+      throw completionError
+    }
+    throw new TypesenseWatchSearchProjectionCommitIndeterminateError(
+      completionError,
+      new TypesenseWatchSearchIndexError(
+        "Watch Search transcript projection changed while rebuild completion was indeterminate",
+      ),
+    )
   }
 }
 
@@ -167,11 +292,24 @@ export function parseTypesenseVector(value: string): number[] {
 
 export { canonicalTypesenseVideoId } from "./typesense-watch-search-identifiers"
 
-function subtitleOptionsByVideo(rows: readonly SubtitleIndexRow[]) {
-  const result = new Map<string, TypesenseWatchSubtitleOption[]>()
+/** Group ordered rows into per-video lists, preserving row order within a video. */
+function groupByVideoId<Row extends { videoId: string }, Value>(
+  rows: readonly Row[],
+  toValue: (row: Row) => Value,
+): Map<string, Value[]> {
+  const result = new Map<string, Value[]>()
   for (const row of rows) {
-    const options = result.get(row.videoId) ?? []
-    options.push({
+    const values = result.get(row.videoId) ?? []
+    values.push(toValue(row))
+    result.set(row.videoId, values)
+  }
+  return result
+}
+
+function subtitleOptionsByVideo(rows: readonly SubtitleIndexRow[]) {
+  return groupByVideoId(
+    rows,
+    (row): TypesenseWatchSubtitleOption => ({
       id: row.id,
       videoEditionId: row.videoEditionId,
       languageId: row.languageId,
@@ -182,10 +320,134 @@ function subtitleOptionsByVideo(rows: readonly SubtitleIndexRow[]) {
       durationSeconds: row.durationSeconds,
       actionVideoDubId: row.actionVideoDubId,
       actionPriority: row.actionPriority,
-    })
-    result.set(row.videoId, options)
-  }
-  return result
+    }),
+  )
+}
+
+type ContainerLanguageRow = {
+  videoId: string
+  languageSlug: string
+  languageName: unknown
+}
+
+/**
+ * Languages in which a Series-Shaped Video has a visible playable descendant,
+ * computed once for the whole catalog at index time.
+ *
+ * This is the index-time mirror of `SearchWatchabilityService`'s container
+ * tier (`containersForCandidates` in search-watchability.ts). The Postgres tier
+ * runs per request and filters descendants to the caller's accepted languages;
+ * this loader has no target language, so it drops that filter and returns the
+ * complete language SET per container. Query time then picks target-first,
+ * then fallback-by-priority — which emits the same language the Postgres tier's
+ * `DISTINCT ON` picks, because that ORDER BY leads with `array_position` over
+ * the accepted list and every lower key breaks ties inside one language.
+ *
+ * Two differences from the per-request tier are deliberate and load-bearing:
+ *
+ * 1. The root is excluded from its own descendant set. `video_relation` has no
+ *    self-reference or cycle constraint. The per-request tier is gated to ids
+ *    no self-scoped tier resolved, so a container with its own Dub never
+ *    reaches it; this loader has no such gate, and without the exclusion a
+ *    self-loop would let a container admit itself from its own Dub.
+ * 2. The root gate is restated here in full rather than inherited. The label
+ *    comparison MUST stay in SQL against the stored column: SERIES_SHAPED_LABELS
+ *    holds the VideoLabel `@map` values (`collection`, `series`), while Prisma
+ *    reads `label` as the enum identifier (`COLLECTION`, `SERIES`). Comparing
+ *    the projected document's label to those constants in TypeScript matches
+ *    nothing and admits zero containers in production.
+ *
+ * The db-suite cases in search-watchability.db.test.ts are the enforcement
+ * point for parity with the per-request tier — raw SQL cannot import a Prisma
+ * where-helper, and the indexer's mocked suite cannot discriminate the label
+ * gate at all.
+ *
+ * Of the root-gate conditions below, only three are load-bearing HERE, and each
+ * was falsified individually against a real database (remove it, watch exactly
+ * one case go red, restore):
+ *
+ *   - the Series-Shaped label test
+ *   - the public content-slug pattern
+ *   - the public language-slug pattern on the descendant's Dub
+ *
+ * Publication, `no_index`, and the `watch` platform restriction are restated
+ * for faithfulness to the tier this mirrors, but they are REDUNDANT in this
+ * context: `buildCatalogDocuments`' own `where` already excludes such videos,
+ * so a container failing them has no catalog document to carry the projection.
+ * Removing any of the three turns nothing red, and that is expected — do not
+ * read their presence as covered, and do not delete them either, because this
+ * query must keep matching the per-request tier it mirrors.
+ */
+async function loadContainerLanguageRows(
+  prisma: PrismaClient,
+): Promise<ContainerLanguageRow[]> {
+  return prisma.$queryRaw<ContainerLanguageRow[]>(Prisma.sql`
+    WITH RECURSIVE root AS (
+      SELECT container.id
+      FROM video container
+      WHERE container.deleted_at IS NULL
+        AND container.no_index = FALSE
+        AND container.label::text = ANY(${[...SERIES_SHAPED_LABELS]}::text[])
+        AND container.slug ~ ${PUBLIC_CONTENT_SLUG_SQL_PATTERN}
+        AND NOT ('watch' = ANY(container.restrict_view_platforms))
+        AND EXISTS (
+          SELECT 1
+          FROM video_locale root_locale
+          WHERE root_locale.video_id = container.id
+            AND root_locale.deleted_at IS NULL
+            AND root_locale.status = 'published'
+        )
+    ),
+    descendant(root_id, video_id, depth) AS (
+      SELECT root.id, descendant_video.id, 1
+      FROM root
+      JOIN video_relation relation ON relation.parent_id = root.id
+      JOIN video descendant_video
+        ON descendant_video.id = relation.child_id
+       AND descendant_video.id <> root.id
+       AND ${VISIBLE_DESCENDANT_SQL}
+      UNION ALL
+      SELECT descendant.root_id, descendant_video.id, descendant.depth + 1
+      FROM descendant
+      JOIN video_relation relation ON relation.parent_id = descendant.video_id
+      JOIN video descendant_video
+        ON descendant_video.id = relation.child_id
+       AND descendant_video.id <> descendant.root_id
+       AND ${VISIBLE_DESCENDANT_SQL}
+      WHERE descendant.depth < ${CONTAINER_DESCENDANT_MAX_DEPTH}
+    )
+    SELECT DISTINCT
+      descendant.root_id AS "videoId",
+      dub_language.slug AS "languageSlug",
+      dub_language.name AS "languageName"
+    FROM descendant
+    JOIN video_dub child_dub
+      ON child_dub.video_id = descendant.video_id
+     AND child_dub.deleted_at IS NULL
+     AND child_dub.published = TRUE
+     AND NULLIF(BTRIM(child_dub.hls), '') IS NOT NULL
+    LEFT JOIN video_edition child_edition
+      ON child_edition.id = child_dub.video_edition_id
+    JOIN language dub_language
+      ON dub_language.id = child_dub.language_id
+     AND dub_language.deleted_at IS NULL
+     AND dub_language.slug IS NOT NULL
+     AND dub_language.slug ~ ${PUBLIC_LANGUAGE_SLUG_SQL_PATTERN}
+    WHERE (child_dub.video_edition_id IS NULL OR child_edition.deleted_at IS NULL)
+    ORDER BY descendant.root_id, dub_language.slug
+  `)
+}
+
+function containerLanguagesByVideo(
+  rows: readonly ContainerLanguageRow[],
+): Map<string, TypesenseWatchContainerLanguage[]> {
+  return groupByVideoId(
+    rows,
+    (row): TypesenseWatchContainerLanguage => ({
+      languageSlug: row.languageSlug,
+      languageEnglishName: englishName(row.languageName),
+    }),
+  )
 }
 
 async function loadSubtitleRows(
@@ -221,7 +483,7 @@ async function loadSubtitleRows(
         ON fallback_language.id = video_dub.language_id
        AND fallback_language.deleted_at IS NULL
        AND fallback_language.slug IS NOT NULL
-       AND fallback_language.slug ~ '^[a-z0-9-]+$'
+       AND fallback_language.slug ~ ${PUBLIC_LANGUAGE_SLUG_SQL_PATTERN}
       LEFT JOIN mux_video
         ON mux_video.id = video_dub.mux_video_id
        AND mux_video.deleted_at IS NULL
@@ -266,7 +528,7 @@ async function loadSubtitleRows(
       ON target_language.id = vs.language_id
      AND target_language.deleted_at IS NULL
      AND target_language.slug IS NOT NULL
-     AND target_language.slug ~ '^[a-z0-9-]+$'
+     AND target_language.slug ~ ${PUBLIC_LANGUAGE_SLUG_SQL_PATTERN}
     WHERE vs.deleted_at IS NULL
       AND (vs.video_id IS NULL OR vs.video_id = preferred_dub.video_id)
       AND NULLIF(BTRIM(vs.vtt_src), '') IS NOT NULL
@@ -282,7 +544,7 @@ async function loadSubtitleRows(
 export async function buildCatalogDocuments(
   prisma: PrismaClient,
 ): Promise<TypesenseWatchCatalogDocument[]> {
-  const [videos, subtitleRows] = await Promise.all([
+  const [videos, subtitleRows, containerLanguageRows] = await Promise.all([
     prisma.video.findMany({
       where: {
         deletedAt: null,
@@ -350,8 +612,12 @@ export async function buildCatalogDocuments(
       },
     }),
     loadSubtitleRows(prisma),
+    loadContainerLanguageRows(prisma),
   ])
   const subtitlesByVideo = subtitleOptionsByVideo(subtitleRows)
+  const containerLanguagesByVideoId = containerLanguagesByVideo(
+    containerLanguageRows,
+  )
 
   return videos.flatMap((video) => {
     const locales: TypesenseWatchLocale[] = video.locales.flatMap((locale) =>
@@ -411,6 +677,12 @@ export async function buildCatalogDocuments(
         ],
         audioOptionsJson: JSON.stringify(audioOptions),
         subtitleOptionsJson: JSON.stringify(subtitleOptions),
+        // Emitted on EVERY document, containers and leaves alike, so "absent"
+        // and "admitted to nothing" are the same shape at query time. A leaf
+        // carries "[]".
+        containerLanguagesJson: JSON.stringify(
+          containerLanguagesByVideoId.get(video.id) ?? [],
+        ),
       },
     ]
   })
@@ -480,12 +752,14 @@ export type TypesenseWatchCandidateProjectionSnapshot = {
   catalog: TypesenseWatchCatalogDocument[]
   availability: TypesenseWatchAvailabilityDocument[]
   lexical: ReturnType<typeof buildTypesenseWatchCandidateLexicalDocuments>
+  curations: WatchSearchCurationProjection[]
   tokenizerLocales: string[]
   counts: { catalog: number; availability: number; lexical: number }
   digests: {
     catalog: string
     availability: string
     lexical: string
+    curations: string
     combined: string
   }
   lexicalMemory: TypesenseCandidateKeywordMemoryEstimate
@@ -527,24 +801,29 @@ export async function buildTypesenseWatchCandidateProjectionSnapshot(
       const lexical = buildTypesenseWatchCandidateLexicalDocuments(
         catalog,
       ).sort((left, right) => left.id.localeCompare(right.id))
+      const curations = await loadWatchSearchCurations(tx as PrismaClient)
       const tokenizerLocales = typesenseWatchTokenizerLocales(lexical)
       const catalogDigest = projectionDigest(catalog)
       const availabilityDigest = projectionDigest(availability)
       const lexicalDigest = projectionDigest(lexical)
+      const curationsDigest = projectionDigest(curations)
       const digests = {
         catalog: catalogDigest,
         availability: availabilityDigest,
         lexical: lexicalDigest,
+        curations: curationsDigest,
         combined: projectionDigest({
           catalog: catalogDigest,
           availability: availabilityDigest,
           lexical: lexicalDigest,
+          curations: curationsDigest,
         }),
       }
       return {
         catalog,
         availability,
         lexical,
+        curations,
         tokenizerLocales,
         counts: {
           catalog: catalog.length,
@@ -564,6 +843,7 @@ export async function buildTypesenseWatchCandidateProjectionSnapshot(
 
 async function loadTranscriptBatch(
   prisma: PrismaClient,
+  contentEmbeddingContractId: string,
   afterId: string | null,
   limit: number,
 ): Promise<TranscriptIndexRow[]> {
@@ -584,6 +864,7 @@ async function loadTranscriptBatch(
       (
         v.deleted_at IS NULL
         AND v.no_index = false
+        AND NOT ('watch' = ANY(v.restrict_view_platforms))
         AND EXISTS (
           SELECT 1 FROM video_locale vl
           WHERE vl.video_id = v.id
@@ -595,16 +876,14 @@ async function loadTranscriptBatch(
     FROM video_transcript_chunk vtc
     JOIN video_transcript vt
       ON vt.id = vtc.transcript_id
-     AND vt.embedding_provider = 'jesus-film-ai-gateway'
-     AND vt.model = 'embeddings'
-     AND vt.dimensions = ${TYPESENSE_WATCH_EMBEDDING_DIMENSIONS}
-     AND vt.embedding_native_dimensions = ${TYPESENSE_WATCH_EMBEDDING_DIMENSIONS}
-     AND vt.embedding_transform_version IS NULL
     JOIN video v
       ON v.id = vt.video_id
     WHERE vtc.embedding IS NOT NULL
-      AND vtc.model = 'embeddings'
-      AND vtc.dimensions = ${TYPESENSE_WATCH_EMBEDDING_DIMENSIONS}
+      ${transcriptContentEmbeddingWhereForContractId({
+        contractId: contentEmbeddingContractId,
+        transcriptAlias: "vt",
+        chunkAlias: "vtc",
+      })}
       AND (${afterId}::text IS NULL OR vtc.id > ${afterId})
     ORDER BY vtc.id ASC
     LIMIT ${limit}
@@ -617,6 +896,7 @@ export async function rebuildTypesenseWatchSearchIndex({
   buildId = new Date().toISOString(),
   batchSize = DEFAULT_BATCH_SIZE,
   transcriptStrategy = "reuse",
+  loadCurations = () => loadWatchSearchCurations(prisma),
   onProgress,
 }: {
   prisma: PrismaClient
@@ -624,6 +904,7 @@ export async function rebuildTypesenseWatchSearchIndex({
   buildId?: string
   batchSize?: number
   transcriptStrategy?: TypesenseWatchSearchTranscriptStrategy
+  loadCurations?: () => Promise<WatchSearchCurationProjection[]>
   onProgress?: (stats: {
     catalogDocuments: number
     availabilityDocuments: number
@@ -641,6 +922,7 @@ export async function rebuildTypesenseWatchSearchIndex({
   const catalogSchema = watchCatalogCollectionSchema(buildId)
   const availabilitySchema = watchAvailabilityCollectionSchema(buildId)
   const transcriptSchema = watchTranscriptCollectionSchema(buildId)
+  const curationSetName = watchCurationSetName(buildId)
   const [
     existingCollections,
     previousCatalogAlias,
@@ -678,12 +960,27 @@ export async function rebuildTypesenseWatchSearchIndex({
   const hybridReady = transcriptReused
     ? isHybridTranscriptCollection(reusedTranscriptCollection)
     : true
+  // A rebuild must project one immutable vector contract. Resolving the active
+  // pointer inside every page can silently mix contracts if an operator rotates
+  // it while the build is running, then certify that mixture as the final
+  // contract. Pin the compatibility tuple before the first transcript read and
+  // require it to remain current before any alias moves.
+  const rebuiltTranscriptCompatibility: WatchSearchTranscriptCompatibilityIdentity | null =
+    transcriptReused
+      ? null
+      : await resolveCurrentWatchSearchTranscriptCompatibility(prisma)
   const catalog = await buildCatalogDocuments(prisma)
   const availability = buildAvailabilityDocuments(catalog)
   const lexical = buildTypesenseWatchLexicalDocuments(catalog)
+  const curationProjection = buildTypesenseWatchCurationProjection({
+    setName: curationSetName,
+    curations: await loadCurations(),
+    lexicalDocuments: lexical,
+  })
   const lexicalSchema = watchLexicalCollectionSchema(
     buildId,
     typesenseWatchTokenizerLocales(lexical),
+    [curationSetName],
   )
   const keywordMemory = estimateTypesenseKeywordMemory(lexical)
   let catalogDocuments = 0
@@ -723,8 +1020,12 @@ export async function rebuildTypesenseWatchSearchIndex({
     publicTranscriptDocuments = publicTranscripts?.found ?? 0
   }
 
-  await typesense.createCollection(catalogSchema)
   try {
+    await typesense.upsertCurationSet(
+      curationProjection.name,
+      curationProjection.set,
+    )
+    await typesense.createCollection(catalogSchema)
     await typesense.createCollection(availabilitySchema)
     await typesense.createCollection(lexicalSchema)
     if (!transcriptReused) {
@@ -771,9 +1072,19 @@ export async function rebuildTypesenseWatchSearchIndex({
     }
 
     if (!transcriptReused) {
+      if (!rebuiltTranscriptCompatibility) {
+        throw new TypesenseWatchSearchIndexError(
+          "Watch Search transcript rebuild compatibility is missing",
+        )
+      }
       let afterId: string | null = null
       for (;;) {
-        const rows = await loadTranscriptBatch(prisma, afterId, batchSize)
+        const rows = await loadTranscriptBatch(
+          prisma,
+          rebuiltTranscriptCompatibility.contentEmbeddingContractId,
+          afterId,
+          batchSize,
+        )
         if (rows.length === 0) break
         const documents: TypesenseWatchTranscriptDocument[] = rows.map(
           (row) => ({
@@ -810,6 +1121,21 @@ export async function rebuildTypesenseWatchSearchIndex({
       }
     }
 
+    if (rebuiltTranscriptCompatibility) {
+      const currentCompatibility =
+        await resolveCurrentWatchSearchTranscriptCompatibility(prisma)
+      if (
+        currentCompatibility.contentEmbeddingContractId !==
+          rebuiltTranscriptCompatibility.contentEmbeddingContractId ||
+        currentCompatibility.transcriptChunkingVersion !==
+          rebuiltTranscriptCompatibility.transcriptChunkingVersion
+      ) {
+        throw new TypesenseWatchSearchIndexError(
+          "Watch Search transcript compatibility changed during rebuild",
+        )
+      }
+    }
+
     await typesense.upsertAlias(
       TYPESENSE_WATCH_AVAILABILITY_ALIAS,
       availabilitySchema.name,
@@ -832,7 +1158,25 @@ export async function rebuildTypesenseWatchSearchIndex({
       catalogSchema.name,
     )
     catalogAliasUpdated = true
+    if (rebuiltTranscriptCompatibility) {
+      await advanceRebuiltTranscriptProjection(prisma, {
+        transcriptCollection,
+        contentEmbeddingContractId:
+          rebuiltTranscriptCompatibility.contentEmbeddingContractId,
+        transcriptChunkingVersion:
+          rebuiltTranscriptCompatibility.transcriptChunkingVersion,
+      })
+    }
   } catch (error) {
+    // A failed reconciliation cannot distinguish a rolled-back projection
+    // write from a committed write whose acknowledgement was lost. Preserve
+    // the new aliases and collections in that case: restoring the aliases may
+    // strand a committed durable projection on a collection deleted below.
+    if (
+      error instanceof TypesenseWatchSearchProjectionCommitIndeterminateError
+    ) {
+      throw error
+    }
     const restoreAlias = async (
       alias: string,
       previousCollection: string | undefined,
@@ -888,7 +1232,12 @@ export async function rebuildTypesenseWatchSearchIndex({
         ? [typesense.deleteCollection(availabilitySchema.name)]
         : []),
       ...(lexicalRestored
-        ? [typesense.deleteCollection(lexicalSchema.name)]
+        ? [
+            (async () => {
+              await typesense.deleteCollection(lexicalSchema.name)
+              await typesense.deleteCurationSet(curationSetName)
+            })(),
+          ]
         : []),
     ])
     throw error
@@ -925,6 +1274,42 @@ export async function rebuildTypesenseWatchSearchIndex({
       })
     }
   })
+  const retiredCollectionSet = new Set(retiredCollections)
+  const curationSetsToRetire = [
+    ...new Set(
+      existingCollections
+        .filter((collection) => retiredCollectionSet.has(collection.name))
+        .flatMap((collection) => collection.curation_sets ?? [])
+        .filter(
+          (name) =>
+            name.startsWith(`${TYPESENSE_WATCH_CURATION_SET_PREFIX}_`) &&
+            name !== curationSetName,
+        ),
+    ),
+  ]
+  const curationRetirementResults = await Promise.allSettled(
+    curationSetsToRetire.map((name) => typesense.deleteCurationSet(name)),
+  )
+  const retiredCurationSets: string[] = []
+  const curationRetirementFailures: Array<{
+    curationSet: string
+    error: string
+  }> = []
+  curationRetirementResults.forEach((result, index) => {
+    const curationSet = curationSetsToRetire[index]
+    if (curationSet == null) return
+    if (result.status === "fulfilled") {
+      retiredCurationSets.push(curationSet)
+    } else {
+      curationRetirementFailures.push({
+        curationSet,
+        error:
+          result.reason instanceof Error
+            ? result.reason.message
+            : String(result.reason),
+      })
+    }
+  })
 
   return {
     catalogDocuments,
@@ -944,7 +1329,15 @@ export async function rebuildTypesenseWatchSearchIndex({
     transcriptCollection,
     transcriptReused,
     hybridReady,
+    curationSet: curationSetName,
+    curationItems: curationProjection.set.items.length,
+    skippedCurationAliases: curationProjection.coverage.reduce(
+      (total, entry) => total + entry.skippedAliasIds.length,
+      0,
+    ),
     retiredCollections,
     retirementFailures,
+    retiredCurationSets,
+    curationRetirementFailures,
   }
 }

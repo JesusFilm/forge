@@ -206,6 +206,22 @@ architecture, and a JS-driver loop won't update native views — use a single
 `Animated.loop(Animated.timing(...))` + interpolation on the native driver for
 continuous animation. (auto memory [claude])
 
+**Scope amendment, 2026-09-09 — the note above is too narrow, and the narrow
+reading shipped a defect.** The single-run behaviour is not confined to a loop
+wrapping a sequence. On `apps/mobile` (Expo SDK 57, RN 0.86.3, Fabric), a plain
+`Animated.sequence` nested inside an `Animated.parallel`, with no
+`Animated.loop` anywhere, **never ran at all** on an Android release build,
+while its sibling plain timings in the same `parallel` ran correctly. iOS ran
+the identical code. A feature plan reasoned faithfully from the note above and
+concluded that the defect could not appear, because nothing wrapped a sequence
+in a loop; the defect appeared anyway and reached a device. Treat any
+`Animated.sequence` composed into a native-driver animation as suspect
+regardless of whether a loop is involved, and carry multi-phase motion on one
+timing plus `interpolate()`. Full write-up, including the guard shapes that
+catch it and the reason a call-shape assertion alone does not:
+`docs/solutions/ui-bugs/animated-sequence-nested-in-parallel-never-runs-on-android-fabric.md`
+(PR #2216).
+
 ## Related
 
 - `docs/solutions/ui-bugs/tv-home-backdrop-crossfade-aba-stall-20260615.md` —

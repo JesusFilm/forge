@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Alterar idioma do áudio",
     "home": "Início do JesusFilm",
     "closeSearch": "Fechar pesquisa",
-    "submitSearch": "Pesquisar"
+    "submitSearch": "Pesquisar",
+    "library": "Biblioteca"
   },
   "SearchOverlay": {
     "dialogLabel": "Pesquisar e explorar vídeos",
@@ -283,6 +284,7 @@
     "sports": "Desporto",
     "collections": "Coleções",
     "subtitlesOnly": "Apenas legendas",
+    "backToTop": "Voltar ao início",
     "newlyAdded": "Adicionados recentemente",
     "newVideosTitle": "Novos vídeos cristãos em {language}",
     "newestFirst": "Mais recentes primeiro",
@@ -313,7 +315,21 @@
     "standaloneVideos": "Vídeos individuais",
     "videosFromCollection": "Vídeos de {collection}.",
     "standaloneDescription": "Vídeos individuais neste idioma.",
-    "openCollection": "Abrir coleção"
+    "openCollection": "Abrir coleção",
+    "filters": "Filtros",
+    "filterLength": "Duração",
+    "filterLength_under5": "Menos de 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Mais de 30 min",
+    "filterType": "Tipo",
+    "clearFilters": "Limpar filtros",
+    "filterResults": "{count} de {total} exibidos",
+    "noFilterResults": "Nenhum vídeo corresponde a estes filtros. Tente remover um.",
+    "filterAdded": "Adicionado",
+    "filterAdded_60d": "Últimos 60 dias",
+    "filterAdded_6m": "Últimos 6 meses",
+    "filterAdded_12m": "Últimos 12 meses"
   },
   "WatchHome": {
     "pageTitle": "Assistir | Jesus Film Project",
@@ -327,7 +343,8 @@
     "nextVideoPreview": "Pré-visualização do próximo vídeo",
     "featured": "Em destaque",
     "mediaCollection": "Coleção de media",
-    "scrollToVideo": "Deslocar até ao vídeo {title}"
+    "scrollToVideo": "Deslocar até ao vídeo {title}",
+    "forYou": "Recomendados para você"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Idiomas",
@@ -446,7 +463,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
       "openSupportForm": "Open support form"
     }
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Ver curta-metragem",
-    "actions": {
-      "joinUs": "Junte-se a nós",
-      "shareMission": "Partilhe a nossa missão"
-    },
-    "welcomeStart": {
-      "label": "Fé e Escrituras",
-      "title": "As escolhas de vídeo de hoje",
-      "description": "Conteúdo de vídeo centrado na fé, da nossa biblioteca, para inspirar, desafiar e despertar reflexão."
-    },
-    "welcomeMorning": {
-      "label": "Inspiração da manhã",
-      "title": "Bom dia! Os momentos bíblicos de hoje esperam por si.",
-      "description": "Comece o seu dia com momentos bíblicos encorajadores, pensados para inspirar e elevar o seu espírito."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspiração da tarde",
-      "title": "Boa tarde! Momentos bíblicos para o seu dia.",
-      "description": "Conteúdo bíblico encorajador, perfeito para a sua pausa da tarde ou para continuar a inspirar-se."
-    },
-    "welcomeEvening": {
-      "label": "Inspiração da noite",
-      "title": "Boa noite! Descontraia com momentos bíblicos.",
-      "description": "Momentos bíblicos de paz para o ajudar a refletir e encontrar conforto ao terminar o dia."
-    },
-    "joinUs": {
-      "label": "Junte-se a nós",
-      "title": "Mil milhões procuram",
-      "description": "A colheita está aqui. Junte-se a nós enquanto partilhamos o evangelho com o mundo através dos media digitais."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Vamos juntos",
-      "title": "Contar a história de Jesus, juntos",
-      "description": "Para que possam ouvir e ver o amor de Jesus na sua própria língua, exatamente onde estão."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% de correspondência",
     "none": "Não foram encontradas recomendações para este vídeo neste idioma."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Idioma do áudio",
     "selectLanguageVersion": "Selecionar uma versão de idioma",
     "watchSelectedVersion": "Assistir à versão selecionada"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Opções de cookies",
+    "bannerTitle": "As suas opções de privacidade",
+    "bannerDescription": "Os cookies essenciais mantêm o Watch seguro e em funcionamento. Com a sua permissão, um cookie primário opcional pode lembrar os seus interesses entre visitas para personalizar as recomendações. As recomendações contextuais continuam disponíveis em qualquer caso.",
+    "acceptAll": "Aceitar tudo",
+    "essentialOnly": "Apenas essenciais",
+    "manageChoices": "Gerir opções",
+    "savingChoice": "A guardar a opção de cookies",
+    "settings": "Definições de cookies",
+    "settingsDescription": "Escolha se o Watch pode lembrar os seus interesses de recomendação entre visitas. Pode alterar isto a qualquer momento.",
+    "essentialCookies": "Cookies essenciais",
+    "essentialDescription": "Segurança, reprodução, opções de privacidade e atribuição de pedidos de recomendação.",
+    "alwaysActive": "Sempre ativos",
+    "personalization": "Personalização",
+    "personalizationDescription": "Lembrar interesses definidos entre visitas. Desativar esta opção mantém disponíveis as recomendações contextuais.",
+    "erasurePending": "A eliminação do perfil está pendente. As recomendações contextuais já estão ativas.",
+    "cancel": "Cancelar",
+    "saveChoices": "Guardar opções",
+    "saving": "A guardar…",
+    "loadError": "Não foi possível carregar a sua opção. Ainda pode escolher abaixo.",
+    "grantError": "Não foi possível ativar a personalização. A opção apenas essenciais continua disponível.",
+    "saveError": "Não foi possível guardar a sua opção. Tente novamente."
   }
 }

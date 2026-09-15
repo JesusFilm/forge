@@ -37,7 +37,7 @@ export function SearchResults({
         <h2 className="text-lg font-semibold text-stone-100">
           No results for &apos;{query}&apos;
         </h2>
-        <p className="mt-2 text-sm text-stone-400">
+        <p className="mt-2 text-base sm:text-sm text-stone-400">
           Try different keywords or browse videos
         </p>
       </div>
@@ -90,11 +90,11 @@ export function SearchResults({
 
       {error && (
         <div className="mt-6 text-center">
-          <p className="text-sm text-red-400">{error}</p>
+          <p className="text-base sm:text-sm text-red-400">{error}</p>
           <button
             type="button"
             onClick={loadMore}
-            className="mt-2 rounded-lg bg-stone-700 px-4 py-2 text-sm text-stone-200 transition hover:bg-stone-600"
+            className="mt-2 rounded-lg bg-stone-700 px-4 py-2 text-base sm:text-sm text-stone-200 transition hover:bg-stone-600"
           >
             Retry
           </button>
@@ -107,7 +107,7 @@ export function SearchResults({
             type="button"
             onClick={loadMore}
             disabled={loading}
-            className="flex items-center gap-2 rounded-lg bg-stone-800 px-6 py-3 text-sm font-medium text-stone-200 transition hover:bg-stone-700 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-lg bg-stone-800 px-6 py-3 text-base sm:text-sm font-medium text-stone-200 transition hover:bg-stone-700 disabled:opacity-50"
           >
             {loading && (
               <svg

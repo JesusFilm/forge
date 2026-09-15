@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio-taal feroarje",
     "home": "JesusFilm-startside",
     "closeSearch": "Sykjen slute",
-    "submitSearch": "Sykje"
+    "submitSearch": "Sykje",
+    "library": "Bibleteek"
   },
   "SearchOverlay": {
     "dialogLabel": "Fideo's sykje en blêdzje",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Kolleksjes",
     "subtitlesOnly": "Allinnich ûndertiteling",
+    "backToTop": "Werom nei boppen",
     "newlyAdded": "Koartlyn tafoege",
     "newVideosTitle": "Nije kristlike fideo's yn {language}",
     "newestFirst": "Nijste earst",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Aparte fideo's",
     "videosFromCollection": "Fideo's út {collection}.",
     "standaloneDescription": "Aparte fideo's yn dizze taal.",
-    "openCollection": "Kolleksje iepenje"
+    "openCollection": "Kolleksje iepenje",
+    "filters": "Filterkarren",
+    "filterLength": "Lingte",
+    "filterLength_under5": "Minder as 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Mear as 30 min",
+    "filterType": "Soarte",
+    "clearFilters": "Filters wiskje",
+    "filterResults": "{count} fan {total} toand",
+    "noFilterResults": "Gjin fideo's passe by dizze filters. Probearje ien fuort te heljen.",
+    "filterAdded": "Tafoege",
+    "filterAdded_60d": "Lêste 60 dagen",
+    "filterAdded_6m": "Lêste 6 moannen",
+    "filterAdded_12m": "Lêste 12 moannen"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Sjen",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Foarbyld fan foarige fideo",
     "nextVideoPreview": "Foarbyld fan folgjende fideo",
     "mediaCollection": "Mediakolleksje",
-    "scrollToVideo": "Skowje nei de fideo {title}"
+    "scrollToVideo": "Skowje nei de fideo {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project-startside",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Werom nei Sjen",
     "browseVideos": "Blêdzje troch fideo's"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Koarte film besjen",
-    "actions": {
-      "joinUs": "Doch mei",
-      "shareMission": "Diel mei yn ús missy"
-    },
-    "welcomeStart": {
-      "label": "Leauwe & Skrift",
-      "title": "Fideokar fan hjoed",
-      "description": "Leauwe-rjochte fideo-ynhâld út ús bibleteek om te ynspirearjen, út te daagjen en ta neitinken oan te setten."
-    },
-    "welcomeMorning": {
-      "label": "Moarnsyntspanning",
-      "title": "Goeie moarn! De bibeleminten fan hjoed wachtsje.",
-      "description": "Begjin jo dei mei bemoedigjende bibelmominten dy't ûntwurpen binne om jo te ynspirearjen en jo geast te ferheffen."
-    },
-    "welcomeAfternoon": {
-      "label": "Midsmidde-yntspanning",
-      "title": "Goeie middei! Bibelmominten foar jo dei.",
-      "description": "Bemoedigjende bibelynhâld, perfekt foar jo middeipauze of foar trochgeande ynspiraasje."
-    },
-    "welcomeEvening": {
-      "label": "Jûnsynspiraasje",
-      "title": "Goedejûn! Kom ta rêst mei bibelmominten.",
-      "description": "Fredefolle bibelmominten om te helpen neitinke en treast te finen as jo dei ta ein rint."
-    },
-    "joinUs": {
-      "label": "Doch mei",
-      "title": "Miljarden sykje",
-      "description": "De rispinge is der. Doch mei as wy it evangeelje mei de wrâld diele fia digitale media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Litte wy tegearre gean",
-      "title": "Tegearre it ferhaal fan Jezus fertelle",
-      "description": "Sadat se de leafde fan Jezus yn har eigen taal hearre en sjen kinne, krekt wêr't se binne."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% oerienkomst",
     "none": "Gjin oanbefellings foar dizze fideo yn dizze taal fûn."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Audiotaal",
     "selectLanguageVersion": "Selektearje in taalferzje",
     "watchSelectedVersion": "Selektearre ferzje besjen"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookiekarren",
+    "bannerTitle": "Dyn privacykar",
+    "bannerDescription": "Essinsjele cookies hâlde Watch feilich en wurkjend. Mei dyn tastimming kin in opsjonele first-party-cookie ynteresses tusken besiken ûnthâlde om oanbefellings te personalisearjen. Kontekstuele oanbefellings bliuwe yn beide gefallen beskikber.",
+    "acceptAll": "Alles akseptearje",
+    "essentialOnly": "Allinnich essinsjeel",
+    "manageChoices": "Karren beheare",
+    "savingChoice": "Cookiekar wurdt bewarre",
+    "settings": "Cookie-ynstellings",
+    "settingsDescription": "Kies oft Watch oanbefellingsynteresses tusken besiken ûnthâlde mei. Do kinst dit altyd feroarje.",
+    "essentialCookies": "Essinsjele cookies",
+    "essentialDescription": "Feiligens, ôfspyljen, privacykarren en taskriuwing fan oanbefellingsfersiken.",
+    "alwaysActive": "Altyd aktyf",
+    "personalization": "Personalisaasje",
+    "personalizationDescription": "Beheinde ynteresses tusken besiken ûnthâlde. As dit útstiet, bliuwe kontekstuele oanbefellings beskikber.",
+    "erasurePending": "It wiskjen fan it profyl stiet noch út. Kontekstuele oanbefellings binne al aktyf.",
+    "cancel": "Ofbrekke",
+    "saveChoices": "Karren bewarje",
+    "saving": "Bewarret…",
+    "loadError": "Dyn kar koe net laden wurde. Do kinst hjirûnder noch altyd in kar meitsje.",
+    "grantError": "Personalisaasje koe net ynskeakele wurde. Allinnich essinsjeel bliuwt beskikber.",
+    "saveError": "Dyn kar koe net bewarre wurde. Probearje it opnij."
   }
 }

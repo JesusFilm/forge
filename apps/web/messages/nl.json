@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audiotaal wijzigen",
     "home": "JesusFilm-startpagina",
     "closeSearch": "Zoeken sluiten",
-    "submitSearch": "Zoeken"
+    "submitSearch": "Zoeken",
+    "library": "Bibliotheek"
   },
   "SearchOverlay": {
     "dialogLabel": "Video's zoeken en doorbladeren",
@@ -283,6 +284,7 @@
     "sports": "Sport",
     "collections": "Collecties",
     "subtitlesOnly": "Alleen ondertiteling",
+    "backToTop": "Terug naar boven",
     "newlyAdded": "Nieuw toegevoegd",
     "newVideosTitle": "Nieuwe christelijke video's in {language}",
     "newestFirst": "Nieuwste eerst",
@@ -313,7 +315,21 @@
     "standaloneVideos": "Losstaande video's",
     "videosFromCollection": "Video's uit {collection}.",
     "standaloneDescription": "Losstaande video's in deze taal.",
-    "openCollection": "Collectie openen"
+    "openCollection": "Collectie openen",
+    "filters": "Filteropties",
+    "filterLength": "Lengte",
+    "filterLength_under5": "Minder dan 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Meer dan 30 min",
+    "filterType": "Soort",
+    "clearFilters": "Filters wissen",
+    "filterResults": "{count} van {total} weergegeven",
+    "noFilterResults": "Geen video's passen bij deze filters. Verwijder er een.",
+    "filterAdded": "Toegevoegd",
+    "filterAdded_60d": "Laatste 60 dagen",
+    "filterAdded_6m": "Laatste 6 maanden",
+    "filterAdded_12m": "Laatste 12 maanden"
   },
   "WatchHome": {
     "pageTitle": "Kijken bij Jesus Film Project",
@@ -327,7 +343,8 @@
     "nextVideoPreview": "Voorbeeld van volgende video",
     "featured": "Uitgelicht",
     "mediaCollection": "Mediacollectie",
-    "scrollToVideo": "Scroll naar de video van {title}"
+    "scrollToVideo": "Scroll naar de video van {title}",
+    "forYou": "Aanbevolen voor jou"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Talen",
@@ -446,7 +463,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
       "openSupportForm": "Open support form"
     }
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Korte film bekijken",
-    "actions": {
-      "joinUs": "Doe mee",
-      "shareMission": "Deel onze missie"
-    },
-    "welcomeStart": {
-      "label": "Geloof en Schrift",
-      "title": "Videokeuzes van vandaag",
-      "description": "Videocontent uit onze bibliotheek rond geloof om te inspireren, uit te dagen en tot nadenken aan te zetten."
-    },
-    "welcomeMorning": {
-      "label": "Ochtedinspiratie",
-      "title": "Goedemorgen! De Bijbelmomenten van vandaag wachten op je.",
-      "description": "Begin je dag met bemoedigende Bijbelmomenten die zijn bedoeld om je te inspireren en je geest op te bouwen."
-    },
-    "welcomeAfternoon": {
-      "label": "Middaginspiratie",
-      "title": "Goedemiddag! Bijbelmomenten voor jouw dag.",
-      "description": "Bemoedigende Bijbelcontent, perfect voor je middagpauze of als extra inspiratie."
-    },
-    "welcomeEvening": {
-      "label": "Avonddinspiratie",
-      "title": "Goedenavond! Kom tot rust met Bijbelmomenten.",
-      "description": "Rustige Bijbelmomenten om je te helpen nadenken en troost te vinden aan het einde van je dag."
-    },
-    "joinUs": {
-      "label": "Doe mee",
-      "title": "Miljarden zijn op zoek",
-      "description": "De oogst is er. Sluit je aan en help ons het evangelie met de wereld te delen via digitale media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Laten we samen op weg gaan",
-      "title": "Samen het verhaal van Jezus vertellen",
-      "description": "Zodat mensen de liefde van Jezus in hun eigen taal kunnen horen en zien, precies waar ze zijn."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% overeenkomst",
     "none": "Geen aanbevelingen voor deze video gevonden in deze taal."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Audiotaal",
     "selectLanguageVersion": "Selecteer een taalversie",
     "watchSelectedVersion": "Geselecteerde versie bekijken"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookiekeuzes",
+    "bannerTitle": "Uw privacykeuzes",
+    "bannerDescription": "Essentiële cookies zorgen ervoor dat Watch veilig blijft en goed werkt. Met uw toestemming kan een optionele first-party-cookie interesses tussen bezoeken onthouden om aanbevelingen te personaliseren. Contextuele aanbevelingen blijven in beide gevallen beschikbaar.",
+    "acceptAll": "Alles accepteren",
+    "essentialOnly": "Alleen essentieel",
+    "manageChoices": "Keuzes beheren",
+    "savingChoice": "Cookiekeuze wordt opgeslagen",
+    "settings": "Cookie-instellingen",
+    "settingsDescription": "Kies of Watch aanbevelingsinteresses tussen bezoeken mag onthouden. U kunt dit op elk moment wijzigen.",
+    "essentialCookies": "Essentiële cookies",
+    "essentialDescription": "Beveiliging, afspelen, privacykeuzes en toeschrijving van aanbevelingsverzoeken.",
+    "alwaysActive": "Altijd actief",
+    "personalization": "Personalisatie",
+    "personalizationDescription": "Onthoud beperkte interesses tussen bezoeken. Als u dit uitschakelt, blijven contextuele aanbevelingen beschikbaar.",
+    "erasurePending": "Profielverwijdering is in behandeling. Contextuele aanbevelingen zijn al actief.",
+    "cancel": "Annuleren",
+    "saveChoices": "Keuzes opslaan",
+    "saving": "Opslaan…",
+    "loadError": "Uw keuze kon niet worden geladen. U kunt hieronder nog steeds een keuze maken.",
+    "grantError": "Personalisatie kon niet worden ingeschakeld. Alleen essentieel blijft beschikbaar.",
+    "saveError": "Uw keuze kon niet worden opgeslagen. Probeer het opnieuw."
   }
 }

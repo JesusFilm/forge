@@ -13,6 +13,7 @@ import {
 } from "react"
 import { createPortal } from "react-dom"
 import { buildCanonicalWatchVideoPath } from "@forge/watch-url-policy/routes"
+import { EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS } from "@/domain/experience-editor-dub-selectors"
 import {
   PointerSensor,
   useSensor,
@@ -91,6 +92,17 @@ import type { MediaLibraryBrowserData } from "@/app/dashboard/media/media-librar
 import { watchLanguageSlugForLocale } from "@/lib/watch-language-slug"
 import type { UploadActionResult } from "@/app/dashboard/media/media-actions"
 import {
+  cachedBoundedTtlValue,
+  type BoundedTtlCache,
+} from "@/services/bounded-ttl-promise-cache"
+import type {
+  ExperienceEditorCollectionChildPageActionInput,
+  ExperienceEditorDubPage,
+  ExperienceEditorDubPageActionInput,
+  ExperienceEditorDubSelectionValidationActionInput,
+  ExperienceEditorDubSelectionValidation,
+} from "@/services/experience-editor-video.service"
+import {
   matchesVideoLibraryCategory,
   type VideoLibraryCategory,
 } from "@/app/dashboard/video-library-utils"
@@ -117,6 +129,7 @@ import {
   createTemplateBlock,
   contentParagraphsFromEditorText,
   editorTextFromContentParagraphs,
+  extractAuthoredVideoDubSelectors,
   isContainerSlotBlock,
   normalizeEditorBlocks,
   parseClipInput,
@@ -138,6 +151,11 @@ import {
 } from "./experience-editor/block-helpers"
 import { CanvasBlockList } from "./experience-editor/canvas-block-list"
 import { ContainerWorkspace } from "./experience-editor/container-workspace"
+import { WatchHomeCategoryRailEditor } from "./experience-editor/watch-home-category-rail-editor"
+import {
+  railBlockPatch,
+  readRailTiles,
+} from "./experience-editor/watch-home-category-rail-tiles"
 import {
   DuplicateExperienceControl,
   type DuplicateActionResult,
@@ -390,6 +408,20 @@ const BLOCK_LIBRARY: BlockTemplateDefinition[] = [
     icon: MonitorPlay,
   },
   {
+    key: "watchHomeCategoryRail",
+    label: "Watch Category Rail",
+    description: "Homepage carousel with a selectable, ordered set of tiles.",
+    category: "Experience",
+    icon: ListOrdered,
+  },
+  {
+    key: "homepageRecommendations",
+    label: "Homepage Recommendations Block",
+    description: "Six recommendations based on each viewer's viewing history.",
+    category: "Experience",
+    icon: MonitorPlay,
+  },
+  {
     key: "languageGlobe",
     label: "Language Globe",
     description:
@@ -567,6 +599,8 @@ type SectionContentTemplateKey =
       | "routeVideo"
       | "routeVideoCarousel"
       | "dynamicMediaCollection"
+      | "watchHomeCategoryRail"
+      | "homepageRecommendations"
     >
   | "quizButton"
 
@@ -630,6 +664,10 @@ function isDynamicCollectionBlock(block: unknown) {
     asString(record?.t) === "mediaCollection" &&
     asString(record?.itemsSource) === "dynamicCollections"
   )
+}
+
+function isWatchHomeCategoryRailBlock(block: unknown) {
+  return asString(asRecord(block)?.t) === "watchHomeCategoryRail"
 }
 
 function keepDynamicCollectionBlockLast(blocks: unknown[]) {
@@ -982,63 +1020,225 @@ function videoDubOptionMatchesSearch(
     .includes(query)
 }
 
+const EXPERIENCE_EDITOR_DUB_CACHE_TTL_MS = 5 * 60 * 1_000
+const EXPERIENCE_EDITOR_DUB_CACHE_MAX_ENTRIES = 20
+const EXPERIENCE_EDITOR_DUB_PAGE_SIZE = 50
+const EXPERIENCE_EDITOR_ACTION_ITEM_LIMIT = 500
+const EXPERIENCE_EDITOR_SERVER_EXPANDED_CAROUSEL_LIMIT = 100
+const experienceEditorDubPageCache = new WeakMap<
+  object,
+  BoundedTtlCache<ExperienceEditorDubPage>
+>()
+
+function normalizedDubSearch(value: string) {
+  return value.replace(/\s+/g, " ").trim().toLocaleLowerCase("en")
+}
+
+function mergeUniqueDubs(
+  ...groups: ReadonlyArray<readonly VideoLibraryPlayableDub[]>
+) {
+  const seen = new Set<string>()
+  return groups.flatMap((group) =>
+    group.filter((dub) => {
+      const identity = dub.languageIdentity ?? dub.languageId ?? dub.key
+      if (seen.has(identity)) return false
+      seen.add(identity)
+      return true
+    }),
+  )
+}
+
 function SearchableVideoDubControl({
   dubs,
   label,
+  loadPageAction,
+  locale,
   onSelect,
   selectedDub,
+  selectedLanguageId,
+  selectedLegacyStreamingUrl,
+  selectedUnavailable,
+  videoId,
 }: {
   dubs: VideoLibraryPlayableDub[]
   label: string
-  onSelect: (dubKey: string) => void
+  loadPageAction?: (
+    input: ExperienceEditorDubPageActionInput,
+  ) => Promise<ExperienceEditorDubPage>
+  locale: string
+  onSelect: (dub: VideoLibraryPlayableDub) => void
   selectedDub: VideoLibraryPlayableDub | null
+  selectedLanguageId: string | null
+  selectedLegacyStreamingUrl: string | null
+  selectedUnavailable: boolean
+  videoId: string
 }) {
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState("")
+  const [choices, setChoices] = useState<VideoLibraryPlayableDub[]>([])
+  const [selectedChoice, setSelectedChoice] =
+    useState<VideoLibraryPlayableDub | null>(null)
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [status, setStatus] = useState<
+    "not-loaded" | "loading" | "loaded" | "error"
+  >("not-loaded")
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [loadMoreError, setLoadMoreError] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(-1)
   const controlId = useId()
   const listboxId = `${controlId}-listbox`
+  const statusId = `${controlId}-status`
   const rootRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const requestIdentityRef = useRef(0)
   const selectedDuration =
     formatReadableDuration(selectedDub?.durationSeconds ?? null) ??
     selectedDub?.duration ??
     null
-  const filteredDubs = useMemo(
-    () => dubs.filter((dub) => videoDubOptionMatchesSearch(dub, searchValue)),
-    [dubs, searchValue],
+  const renderedChoices = useMemo(
+    () =>
+      loadPageAction
+        ? mergeUniqueDubs(
+            selectedChoice ? [selectedChoice] : [],
+            selectedDub ? [selectedDub] : [],
+            choices,
+          )
+        : dubs.filter((dub) => videoDubOptionMatchesSearch(dub, searchValue)),
+    [choices, dubs, loadPageAction, searchValue, selectedChoice, selectedDub],
   )
+
+  const close = useCallback((restoreFocus: boolean) => {
+    requestIdentityRef.current += 1
+    setOpen(false)
+    setActiveIndex(-1)
+    setLoadingMore(false)
+    if (restoreFocus) {
+      window.setTimeout(() => triggerRef.current?.focus(), 0)
+    }
+  }, [])
 
   useEffect(() => {
     if (!open) return
 
     const handlePointerDown = (event: PointerEvent) => {
       if (!rootRef.current?.contains(event.target as Node)) {
-        setOpen(false)
-      }
-    }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpen(false)
+        close(false)
       }
     }
 
     document.addEventListener("pointerdown", handlePointerDown)
-    document.addEventListener("keydown", handleKeyDown)
 
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown)
-      document.removeEventListener("keydown", handleKeyDown)
     }
-  }, [open])
+  }, [close, open])
 
   useEffect(() => {
     if (!open) return
     window.setTimeout(() => searchInputRef.current?.focus(), 0)
   }, [open])
 
+  useEffect(() => {
+    requestIdentityRef.current += 1
+    setChoices([])
+    setSelectedChoice(null)
+    setNextCursor(null)
+    setStatus("not-loaded")
+    setLoadingMore(false)
+    setLoadMoreError(false)
+    setActiveIndex(-1)
+  }, [loadPageAction, locale, selectedLanguageId, videoId])
+
+  const loadPage = useCallback(
+    async (cursor: string | null, append: boolean) => {
+      if (!loadPageAction) {
+        setStatus("loaded")
+        return
+      }
+
+      const normalizedQuery = normalizedDubSearch(searchValue)
+      const requestIdentity = ++requestIdentityRef.current
+      if (append) {
+        setLoadingMore(true)
+        setLoadMoreError(false)
+      } else {
+        setStatus("loading")
+        setChoices([])
+        setNextCursor(null)
+      }
+      const input: ExperienceEditorDubPageActionInput = {
+        videoId,
+        query: normalizedQuery,
+        cursor,
+        pageSize: EXPERIENCE_EDITOR_DUB_PAGE_SIZE,
+        selectedLanguageId,
+        selectedLegacyStreamingUrl,
+      }
+      const cacheKey = JSON.stringify([
+        locale.trim().toLocaleLowerCase("en"),
+        videoId,
+        normalizedQuery,
+        cursor ?? "",
+        EXPERIENCE_EDITOR_DUB_PAGE_SIZE,
+        selectedLanguageId ?? "",
+        selectedLegacyStreamingUrl ?? "",
+      ])
+
+      try {
+        const page = await cachedBoundedTtlValue({
+          cacheByOwner: experienceEditorDubPageCache,
+          owner: loadPageAction as unknown as object,
+          key: cacheKey,
+          ttlMs: EXPERIENCE_EDITOR_DUB_CACHE_TTL_MS,
+          maxEntries: EXPERIENCE_EDITOR_DUB_CACHE_MAX_ENTRIES,
+          loader: () => loadPageAction(input),
+        })
+        if (requestIdentity !== requestIdentityRef.current) return
+        setChoices((current) =>
+          append
+            ? mergeUniqueDubs(current, page.choices)
+            : mergeUniqueDubs(page.choices),
+        )
+        setSelectedChoice(page.selectedChoice)
+        setNextCursor(page.nextCursor)
+        setStatus("loaded")
+        setActiveIndex(-1)
+      } catch {
+        if (requestIdentity !== requestIdentityRef.current) return
+        if (append) setLoadMoreError(true)
+        else setStatus("error")
+      } finally {
+        if (requestIdentity === requestIdentityRef.current) {
+          setLoadingMore(false)
+        }
+      }
+    },
+    [
+      loadPageAction,
+      locale,
+      searchValue,
+      selectedLanguageId,
+      selectedLegacyStreamingUrl,
+      videoId,
+    ],
+  )
+
+  useEffect(() => {
+    if (!open) return
+    const timeout = window.setTimeout(
+      () => void loadPage(null, false),
+      searchValue.trim() ? 180 : 0,
+    )
+    return () => {
+      window.clearTimeout(timeout)
+      requestIdentityRef.current += 1
+    }
+  }, [loadPage, open, searchValue])
+
   function toggleOpen() {
     if (open) {
-      setOpen(false)
+      close(false)
       return
     }
 
@@ -1047,17 +1247,51 @@ function SearchableVideoDubControl({
   }
 
   function selectDub(
-    dubKey: string,
+    dub: VideoLibraryPlayableDub,
     event: ReactMouseEvent<HTMLButtonElement>,
   ) {
     event.preventDefault()
-    setOpen(false)
-    onSelect(dubKey)
+    close(true)
+    onSelect(dub)
+  }
+
+  function handlePickerKeyDown(event: React.KeyboardEvent) {
+    if (event.key === "Escape") {
+      event.preventDefault()
+      event.stopPropagation()
+      close(true)
+      return
+    }
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") {
+      if (event.key === "Enter" && activeIndex >= 0) {
+        const active = renderedChoices[activeIndex]
+        if (active) {
+          event.preventDefault()
+          close(true)
+          onSelect(active)
+        }
+      }
+      return
+    }
+    event.preventDefault()
+    setActiveIndex((current) => {
+      if (renderedChoices.length === 0) return -1
+      if (event.key === "ArrowDown") {
+        return current >= renderedChoices.length - 1 ? 0 : current + 1
+      }
+      return current <= 0 ? renderedChoices.length - 1 : current - 1
+    })
   }
 
   return (
-    <div ref={rootRef} className="relative min-w-0">
+    <div
+      ref={rootRef}
+      className="relative min-w-0"
+      data-experience-dub-picker
+      onKeyDown={handlePickerKeyDown}
+    >
       <button
+        ref={triggerRef}
         type="button"
         aria-controls={listboxId}
         aria-expanded={open}
@@ -1068,7 +1302,9 @@ function SearchableVideoDubControl({
         role="combobox"
       >
         <span className="min-w-0 truncate">
-          {selectedDub?.label ?? "Select language"}
+          {selectedUnavailable
+            ? "Unavailable language"
+            : (selectedDub?.label ?? "Select language")}
         </span>
         <span className="ml-auto shrink-0 font-mono text-[11px] text-[var(--color-text-muted)]">
           {selectedDuration}
@@ -1081,7 +1317,10 @@ function SearchableVideoDubControl({
       </button>
 
       {open ? (
-        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] p-1 shadow-[0_18px_50px_rgba(0,0,0,0.45)]">
+        <div
+          aria-busy={status === "loading" || loadingMore}
+          className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] p-1 shadow-[0_18px_50px_rgba(0,0,0,0.45)]"
+        >
           <label className="mb-1 flex h-9 items-center gap-2 rounded-[2px] border border-[var(--color-hairline)] bg-[var(--color-bg)] px-2">
             <Search
               aria-hidden="true"
@@ -1093,7 +1332,20 @@ function SearchableVideoDubControl({
               ref={searchInputRef}
               type="search"
               value={searchValue}
-              onChange={(event) => setSearchValue(event.currentTarget.value)}
+              onChange={(event) => {
+                setActiveIndex(-1)
+                setChoices([])
+                setNextCursor(null)
+                setLoadMoreError(false)
+                setSearchValue(event.currentTarget.value)
+              }}
+              aria-activedescendant={
+                activeIndex >= 0
+                  ? `${controlId}-option-${activeIndex}`
+                  : undefined
+              }
+              aria-controls={listboxId}
+              aria-describedby={statusId}
               placeholder="Search languages"
               className="min-w-0 flex-1 border-0 bg-transparent font-mono text-[12px] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-disabled)]"
             />
@@ -1103,45 +1355,98 @@ function SearchableVideoDubControl({
             id={listboxId}
             role="listbox"
             aria-label={label}
+            aria-busy={status === "loading" || loadingMore}
             className="max-h-64 overflow-y-auto overscroll-contain py-0.5 [scrollbar-width:thin]"
           >
-            {filteredDubs.length > 0 ? (
-              filteredDubs.map((dub) => {
-                const selected = dub.key === selectedDub?.key
-                const duration =
-                  formatReadableDuration(dub.durationSeconds) ?? dub.duration
+            {status === "loading" ? (
+              <div className="px-2 py-2 text-[12px] text-[var(--color-text-muted)]">
+                Loading languages…
+              </div>
+            ) : status === "error" ? (
+              <div className="flex items-center justify-between gap-3 px-2 py-2 text-[12px] text-[var(--color-text-muted)]">
+                <span>Languages could not be loaded.</span>
+                <button
+                  type="button"
+                  onClick={() => void loadPage(null, false)}
+                  className="shrink-0 font-medium text-[var(--color-text-primary)] underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-brand)]"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : renderedChoices.length > 0 ? (
+              <>
+                {renderedChoices.map((dub, index) => {
+                  const selected = dub.key === selectedDub?.key
+                  const duration =
+                    formatReadableDuration(dub.durationSeconds) ?? dub.duration
 
-                return (
-                  <button
-                    key={dub.key}
-                    type="button"
-                    role="option"
-                    aria-selected={selected}
-                    onClick={(event) => selectDub(dub.key, event)}
-                    className="flex min-h-9 w-full items-center justify-between gap-3 rounded-[2px] px-2 py-1 text-left text-[12px] text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)] focus-visible:bg-[var(--color-surface-raised)] focus-visible:text-[var(--color-text-primary)] focus-visible:outline-none"
-                  >
-                    <span className="min-w-0 truncate">{dub.label}</span>
-                    <span className="ml-auto shrink-0 font-mono text-[11px] text-[var(--color-text-muted)]">
-                      {duration}
-                    </span>
-                    <Check
-                      aria-hidden="true"
+                  return (
+                    <button
+                      key={dub.key}
+                      id={`${controlId}-option-${index}`}
+                      type="button"
+                      role="option"
+                      aria-selected={selected}
+                      onMouseEnter={() => setActiveIndex(index)}
+                      onClick={(event) => selectDub(dub, event)}
                       className={cx(
-                        "h-3.5 w-3.5 shrink-0",
-                        selected
-                          ? "text-[var(--color-brand)]"
-                          : "text-transparent",
+                        "flex min-h-9 w-full items-center justify-between gap-3 rounded-[2px] px-2 py-1 text-left text-[12px] text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)] focus-visible:bg-[var(--color-surface-raised)] focus-visible:text-[var(--color-text-primary)] focus-visible:outline-none",
+                        activeIndex === index &&
+                          "bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]",
                       )}
-                      strokeWidth={1.8}
-                    />
-                  </button>
-                )
-              })
+                    >
+                      <span className="min-w-0 truncate">{dub.label}</span>
+                      <span className="ml-auto shrink-0 font-mono text-[11px] text-[var(--color-text-muted)]">
+                        {duration}
+                      </span>
+                      <Check
+                        aria-hidden="true"
+                        className={cx(
+                          "h-3.5 w-3.5 shrink-0",
+                          selected
+                            ? "text-[var(--color-brand)]"
+                            : "text-transparent",
+                        )}
+                        strokeWidth={1.8}
+                      />
+                    </button>
+                  )
+                })}
+                {loadPageAction && nextCursor ? (
+                  <div className="flex min-h-9 items-center justify-center gap-2 px-2 text-[12px] text-[var(--color-text-muted)]">
+                    {loadMoreError ? <span>More languages failed.</span> : null}
+                    <button
+                      type="button"
+                      disabled={loadingMore}
+                      onClick={() => void loadPage(nextCursor, true)}
+                      className="font-medium text-[var(--color-text-secondary)] underline-offset-2 hover:text-[var(--color-text-primary)] hover:underline disabled:opacity-60"
+                    >
+                      {loadingMore
+                        ? "Loading more…"
+                        : loadMoreError
+                          ? "Retry"
+                          : "Load more"}
+                    </button>
+                  </div>
+                ) : null}
+              </>
             ) : (
               <div className="px-2 py-2 text-[12px] text-[var(--color-text-muted)]">
                 No languages found
               </div>
             )}
+          </div>
+          <div
+            id={statusId}
+            role="status"
+            aria-live="polite"
+            className="sr-only"
+          >
+            {status === "loading"
+              ? "Loading languages"
+              : status === "error"
+                ? "Languages could not be loaded"
+                : `${renderedChoices.length} language${renderedChoices.length === 1 ? "" : "s"} available`}
           </div>
         </div>
       ) : null}
@@ -1249,7 +1554,8 @@ export function ExperienceEditor({
   revisionEntries,
   localeEntries,
   videoLibrary,
-  mediaLibrary,
+  mediaLibrary: initialMediaLibrary,
+  loadMediaLibraryAction,
   canUploadImages,
   calendarDate,
   watchOrigin,
@@ -1263,7 +1569,11 @@ export function ExperienceEditor({
   restoreAction,
   uploadImageAction,
   loadVideoCollectionChildrenAction,
+  loadVideoCollectionChildrenPageAction,
+  loadVideoDubPageAction,
+  validateVideoDubSelectionsAction,
   searchVideoLibraryAction,
+  onBlocksChange,
   onCanvasController,
 }: {
   canPublish: boolean
@@ -1276,6 +1586,7 @@ export function ExperienceEditor({
   localeEntries: LocaleEntry[]
   videoLibrary: VideoLibraryItem[]
   mediaLibrary: MediaLibraryBrowserData
+  loadMediaLibraryAction?: () => Promise<MediaLibraryBrowserData>
   canUploadImages: boolean
   calendarDate: string
   /** Forge watch-app origin (env.WATCH_CANONICAL_ORIGIN) for preview links. */
@@ -1305,6 +1616,19 @@ export function ExperienceEditor({
   loadVideoCollectionChildrenAction?: (
     parentVideoId: string,
   ) => Promise<VideoLibraryItem[]>
+  loadVideoCollectionChildrenPageAction?: (
+    input: ExperienceEditorCollectionChildPageActionInput,
+  ) => Promise<{
+    items: VideoLibraryItem[]
+    nextCursor: string | null
+    total: number
+  }>
+  loadVideoDubPageAction?: (
+    input: ExperienceEditorDubPageActionInput,
+  ) => Promise<ExperienceEditorDubPage>
+  validateVideoDubSelectionsAction?: (
+    input: ExperienceEditorDubSelectionValidationActionInput,
+  ) => Promise<ExperienceEditorDubSelectionValidation>
   searchVideoLibraryAction?: (
     query: string,
     context?: {
@@ -1312,6 +1636,7 @@ export function ExperienceEditor({
       client?: VideoLibrarySearchClient
     },
   ) => Promise<VideoLibraryItem[]>
+  onBlocksChange?: (blocks: readonly unknown[]) => void
   /**
    * Optional imperative bridge published once on mount so the chat panel
    * (sibling component at the page level) can read current canvas state
@@ -1378,6 +1703,14 @@ export function ExperienceEditor({
   const [ogImageUrl, setOgImageUrl] = useState(initialValues.ogImageUrl)
   const [isHomepage, setIsHomepage] = useState(initialValues.isHomepage)
   const isTemplate = initialValues.isTemplate
+  const [mediaLibrary, setMediaLibrary] = useState(initialMediaLibrary)
+  const [mediaLibraryLoaded, setMediaLibraryLoaded] = useState(
+    loadMediaLibraryAction == null,
+  )
+  const [mediaLibraryLoadStatus, setMediaLibraryLoadStatus] = useState<
+    "idle" | "loading" | "error"
+  >("idle")
+  const mediaLibraryLoadPromiseRef = useRef<Promise<void> | null>(null)
 
   const [parsedBlocks, setParsedBlocks] = useState<unknown[]>(() => {
     try {
@@ -1388,8 +1721,16 @@ export function ExperienceEditor({
       return []
     }
   })
+  const firstBlock = asRecord(parsedBlocks[0])
+  const initiallyCollapseLargeCarousel =
+    firstBlock?.t === "videoCarousel" &&
+    asArray(firstBlock.items).length >
+      EXPERIENCE_EDITOR_SERVER_EXPANDED_CAROUSEL_LIMIT
+  // Selecting the first block in the mount effect preserves the interaction,
+  // while a long leading carousel stays collapsed for the first client commit
+  // and defers its complete expanded-card tree by one frame.
   const [selectedBlockIndex, setSelectedBlockIndex] = useState<number | null>(
-    parsedBlocks.length > 0 ? 0 : null,
+    parsedBlocks.length > 0 && !initiallyCollapseLargeCarousel ? 0 : null,
   )
   // ---- Chat panel canvas bridge (U4) ----------------------------------
   // Refs always read the latest state without triggering reruns of the
@@ -1407,6 +1748,10 @@ export function ExperienceEditor({
     ogImageUrl,
     blocks: parsedBlocks,
   }
+  useEffect(() => {
+    onBlocksChange?.(parsedBlocks)
+  }, [onBlocksChange, parsedBlocks])
+
   useEffect(() => {
     if (!onCanvasController) return
     const controller = {
@@ -1550,6 +1895,8 @@ export function ExperienceEditor({
     loop: false,
     showControls: true,
   })
+  const [videoPickerSelectedDubOverride, setVideoPickerSelectedDubOverride] =
+    useState<VideoLibraryPlayableDub | null>(null)
   const [activeClipHandle, setActiveClipHandle] = useState<ClipHandle | null>(
     null,
   )
@@ -1568,8 +1915,23 @@ export function ExperienceEditor({
     useState(false)
   const [videoLibrarySearchError, setVideoLibrarySearchError] = useState(false)
   const [videoPickerApplyPending, setVideoPickerApplyPending] = useState(false)
+  const videoPickerApplyPendingRef = useRef(false)
+  const videoPickerApplyIdentityRef = useRef(0)
+  const invalidateVideoPickerApply = useCallback(() => {
+    videoPickerApplyIdentityRef.current += 1
+    videoPickerApplyPendingRef.current = false
+    setVideoPickerApplyPending(false)
+  }, [])
+  const [videoPickerApplyProgress, setVideoPickerApplyProgress] = useState<{
+    completed: number
+    total: number
+  } | null>(null)
+  const [videoPickerApplyError, setVideoPickerApplyError] = useState<
+    string | null
+  >(null)
   const [videoLibrarySearchResultKeys, setVideoLibrarySearchResultKeys] =
     useState<readonly string[]>([])
+  const videoLibraryBrowseLoadedRef = useRef(false)
   const [imagePickerTarget, setImagePickerTarget] =
     useState<ImagePickerTarget | null>(null)
   const [imageLibraryQuery, setImageLibraryQuery] = useState("")
@@ -1661,6 +2023,11 @@ export function ExperienceEditor({
         distance: 6,
       },
     }),
+  )
+
+  const mediaAssetById = useMemo(
+    () => new Map(mediaLibrary.images.map((asset) => [asset.id, asset])),
+    [mediaLibrary.images],
   )
 
   const blockSummaries = parsedBlocks.map((block, index) =>
@@ -1783,6 +2150,14 @@ export function ExperienceEditor({
     }
 
     if (block.key === "watchHomeHero") return isHomepage
+    if (block.key === "watchHomeCategoryRail") {
+      return isHomepage && !parsedBlocks.some(isWatchHomeCategoryRailBlock)
+    }
+    if (block.key === "homepageRecommendations") {
+      return !parsedBlocks.some(
+        (item) => asString(asRecord(item)?.t) === "homepageRecommendations",
+      )
+    }
     if (block.key === "dynamicMediaCollection") {
       return isHomepage && !parsedBlocks.some(isDynamicCollectionBlock)
     }
@@ -1917,7 +2292,11 @@ export function ExperienceEditor({
     if (!searchVideoLibraryAction) return
 
     const query = videoLibraryQuery.trim()
-    if (!query && videoLibraryCategory === "all") {
+    const initialBrowse =
+      !query &&
+      videoLibraryCategory === "all" &&
+      !videoLibraryBrowseLoadedRef.current
+    if (!query && videoLibraryCategory === "all" && !initialBrowse) {
       setVideoLibrarySearchPending(false)
       setVideoLibrarySearchError(false)
       setVideoLibrarySearchResultKeys([])
@@ -1928,26 +2307,30 @@ export function ExperienceEditor({
     setVideoLibrarySearchPending(true)
     setVideoLibrarySearchError(false)
     const client = videoLibrarySearchClientForMode(videoPickerMode)
-    const timeout = window.setTimeout(() => {
-      searchVideoLibraryAction(query, {
-        category: videoLibraryCategory,
-        client,
-      })
-        .then((results) => {
-          if (ignore) return
-          setVideoLibrarySearchResultKeys(results.map((result) => result.key))
-          setVideoLibrarySearchError(false)
+    const timeout = window.setTimeout(
+      () => {
+        searchVideoLibraryAction(query, {
+          category: videoLibraryCategory,
+          client,
         })
-        .catch(() => {
-          if (ignore) return
-          setVideoLibrarySearchResultKeys([])
-          setVideoLibrarySearchError(true)
-        })
-        .finally(() => {
-          if (ignore) return
-          setVideoLibrarySearchPending(false)
-        })
-    }, 220)
+          .then((results) => {
+            if (ignore) return
+            if (initialBrowse) videoLibraryBrowseLoadedRef.current = true
+            setVideoLibrarySearchResultKeys(results.map((result) => result.key))
+            setVideoLibrarySearchError(false)
+          })
+          .catch(() => {
+            if (ignore) return
+            setVideoLibrarySearchResultKeys([])
+            setVideoLibrarySearchError(true)
+          })
+          .finally(() => {
+            if (ignore) return
+            setVideoLibrarySearchPending(false)
+          })
+      },
+      initialBrowse ? 0 : 220,
+    )
 
     return () => {
       ignore = true
@@ -1993,13 +2376,33 @@ export function ExperienceEditor({
     "-",
   )[0]
 
+  const boundedPlayableDubsForVideo = useCallback(
+    (video: VideoLibraryItem | null): VideoLibraryPlayableDub[] => {
+      if (!video) return []
+      return mergeUniqueDubs(
+        video.authoredDubs ?? [],
+        video.defaultDub ? [video.defaultDub] : [],
+        video.playableDubs ?? [],
+      )
+    },
+    [],
+  )
+
   const preferredPlayableDubForVideo = useCallback(
     (
       video: VideoLibraryItem | null,
       preferredStreamUrl: string | null,
+      preferredLanguageId: string | null = null,
     ): VideoLibraryPlayableDub | null => {
-      const dubs = video?.playableDubs ?? []
+      const dubs = boundedPlayableDubsForVideo(video)
       if (dubs.length === 0) return null
+
+      if (preferredLanguageId) {
+        const languageMatch = dubs.find(
+          (dub) => dub.languageId === preferredLanguageId,
+        )
+        if (languageMatch) return languageMatch
+      }
 
       if (preferredStreamUrl) {
         const streamMatch = dubs.find(
@@ -2020,31 +2423,71 @@ export function ExperienceEditor({
         )
       })
 
-      return localeMatch ?? dubs[0] ?? null
+      return video?.defaultDub ?? localeMatch ?? dubs[0] ?? null
     },
-    [currentLocaleCode, videoPickerLanguageSlug, videoPickerLocaleBase],
+    [
+      boundedPlayableDubsForVideo,
+      currentLocaleCode,
+      videoPickerLanguageSlug,
+      videoPickerLocaleBase,
+    ],
   )
 
   function selectedPlayableDubForVideo(
     video: VideoLibraryItem | null,
   ): VideoLibraryPlayableDub | null {
-    const dubs = video?.playableDubs ?? []
-    return (
-      dubs.find((dub) => dub.key === videoPickerDraft.dubKey) ??
-      preferredPlayableDubForVideo(
-        video,
-        asString(videoPickerBlockRecord?.streamingUrl) || null,
-      )
+    const dubs = boundedPlayableDubsForVideo(video)
+    const explicitDraftChoice = [videoPickerSelectedDubOverride, ...dubs].find(
+      (dub) => dub?.key === videoPickerDraft.dubKey,
     )
+    if (explicitDraftChoice) return explicitDraftChoice
+
+    const isAuthoredVideo =
+      videoPickerMode === "block" &&
+      video?.key === asString(videoPickerBlockRecord?.videoId)
+    if (isAuthoredVideo) {
+      const languageId = asString(videoPickerBlockRecord?.languageId) || null
+      const streamingUrl =
+        asString(videoPickerBlockRecord?.streamingUrl) || null
+      if (languageId || streamingUrl) {
+        return (
+          dubs.find(
+            (dub) => languageId != null && dub.languageId === languageId,
+          ) ??
+          dubs.find(
+            (dub) => streamingUrl != null && dub.streamUrl === streamingUrl,
+          ) ??
+          null
+        )
+      }
+    }
+
+    return preferredPlayableDubForVideo(video, null)
   }
 
   const videoPickerSelectedDub = selectedPlayableDubForVideo(
     videoPickerSelectedVideo,
   )
-  const videoPickerPreviewStreamUrl =
-    videoPickerSelectedDub?.streamUrl ??
-    videoPickerSelectedVideo?.previewStreamUrl ??
-    null
+  const videoPickerAuthoredSelector =
+    videoPickerMode === "block" &&
+    videoPickerSelectedVideo?.key ===
+      asString(videoPickerBlockRecord?.videoId) &&
+    (asString(videoPickerBlockRecord?.languageId) ||
+      asString(videoPickerBlockRecord?.streamingUrl))
+      ? {
+          videoId: videoPickerSelectedVideo.key,
+          languageId: asString(videoPickerBlockRecord?.languageId) || null,
+          legacyStreamingUrl:
+            asString(videoPickerBlockRecord?.streamingUrl) || null,
+        }
+      : null
+  const videoPickerSelectedDubUnavailable =
+    videoPickerAuthoredSelector != null && videoPickerSelectedDub == null
+  const videoPickerPreviewStreamUrl = !videoPickerSelectedDubUnavailable
+    ? (videoPickerSelectedDub?.streamUrl ??
+      videoPickerSelectedVideo?.previewStreamUrl ??
+      null)
+    : null
   const videoPickerDurationSeconds =
     videoPickerSelectedDub?.durationSeconds ??
     videoPickerSelectedVideo?.durationSeconds ??
@@ -2395,6 +2838,49 @@ export function ExperienceEditor({
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [ctaLinkModalVisible])
 
+  const closeVideoPicker = useCallback(() => {
+    invalidateVideoPickerApply()
+    const preview = videoPickerPreviewRef.current
+    if (preview) {
+      preview.pause()
+      preview.currentTime = 0
+    }
+
+    if (document.fullscreenElement === videoPickerPreviewContainerRef.current) {
+      void document.exitFullscreen().catch(() => {})
+    }
+
+    setActiveClipHandle(null)
+    setPreviewCurrentTime(0)
+    setPreviewIsPlaying(false)
+    setPreviewControlsVisible(true)
+    setPreviewFlashIcon(null)
+    setPreviewMuted(true)
+    setPreviewIsLoading(false)
+    setPreviewIsFullscreen(false)
+    setVideoPickerBlockIndex(null)
+    setVideoPickerSelectedDubOverride(null)
+    setVideoPickerApplyProgress(null)
+    setVideoPickerApplyError(null)
+    if (videoPickerModeResetTimeout.current !== null) {
+      window.clearTimeout(videoPickerModeResetTimeout.current)
+    }
+    videoPickerModeResetTimeout.current = window.setTimeout(() => {
+      setVideoPickerMode("block")
+      videoPickerModeResetTimeout.current = null
+    }, 180)
+    setVideoPickerDraft({
+      videoKey: null,
+      dubKey: null,
+      clipStartSeconds: "",
+      clipEndSeconds: "",
+      autoplay: true,
+      muted: true,
+      loop: false,
+      showControls: true,
+    })
+  }, [invalidateVideoPickerApply])
+
   useEffect(() => {
     if (videoPickerBlockIndex === null) return
 
@@ -2406,7 +2892,7 @@ export function ExperienceEditor({
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [videoPickerBlockIndex])
+  }, [closeVideoPicker, videoPickerBlockIndex])
 
   useEffect(() => {
     if (videoPickerBlockIndex === null) return
@@ -2420,6 +2906,7 @@ export function ExperienceEditor({
       return
     }
 
+    if (videoPickerApplyPendingRef.current) invalidateVideoPickerApply()
     setVideoPickerDraft((current) => {
       const nextVideoKey =
         videoPickerLibraryRows[0]?.key ?? videoPickerCurrentVideo?.key ?? null
@@ -2444,6 +2931,7 @@ export function ExperienceEditor({
     videoPickerCurrentVideo,
     videoPickerDraft.videoKey,
     videoPickerDraft.dubKey,
+    invalidateVideoPickerApply,
     preferredPlayableDubForVideo,
   ])
 
@@ -2455,6 +2943,10 @@ export function ExperienceEditor({
     videoPickerDraft.videoKey,
     videoPickerDraft.dubKey,
   ])
+
+  useEffect(() => {
+    setVideoPickerSelectedDubOverride(null)
+  }, [videoPickerDraft.videoKey])
 
   useEffect(() => {
     function handleFullscreenChange() {
@@ -2924,6 +3416,12 @@ export function ExperienceEditor({
       }
       nextBlocks.push(nextBlock)
       insertionIndex = nextBlocks.length - 1
+    } else if (template === "watchHomeCategoryRail") {
+      if (!isHomepage || nextBlocks.some(isWatchHomeCategoryRailBlock)) {
+        pushToast("The Watch homepage can contain one category rail.", "error")
+        return
+      }
+      nextBlocks.splice(index, 0, nextBlock)
     } else {
       nextBlocks.splice(index, 0, nextBlock)
     }
@@ -3747,9 +4245,39 @@ export function ExperienceEditor({
   function mediaAssetPreviewUrl(assetId: unknown) {
     const id = asString(assetId)
     if (!id) return ""
-    return (
-      mediaLibrary.images.find((asset) => asset.id === id)?.previewUrl ?? ""
-    )
+    return mediaAssetById.get(id)?.previewUrl ?? ""
+  }
+
+  function requestMediaLibrary(): Promise<void> {
+    if (!loadMediaLibraryAction || mediaLibraryLoadPromiseRef.current) {
+      return mediaLibraryLoadPromiseRef.current ?? Promise.resolve()
+    }
+
+    setMediaLibraryLoadStatus("loading")
+    const request = loadMediaLibraryAction()
+      .then((library) => {
+        setMediaLibrary(library)
+        setMediaLibraryLoaded(true)
+        setMediaLibraryLoadStatus("idle")
+      })
+      .catch(() => {
+        setMediaLibraryLoaded(false)
+        setMediaLibraryLoadStatus("error")
+      })
+      .finally(() => {
+        mediaLibraryLoadPromiseRef.current = null
+      })
+    mediaLibraryLoadPromiseRef.current = request
+    return request
+  }
+
+  function ensureMediaLibraryLoaded() {
+    return mediaLibraryLoaded ? Promise.resolve() : requestMediaLibrary()
+  }
+
+  async function refreshMediaLibrary() {
+    await mediaLibraryLoadPromiseRef.current
+    return requestMediaLibrary()
   }
 
   function chooseBackgroundImage(
@@ -3967,7 +4495,7 @@ export function ExperienceEditor({
 
   function openImagePickerTarget(target: ImagePickerTarget) {
     const selectedAsset = target.selectedAssetId
-      ? mediaLibrary.images.find((asset) => asset.id === target.selectedAssetId)
+      ? mediaAssetById.get(target.selectedAssetId)
       : null
     const rememberedFolderId =
       lastImagePickerFolderId === null ||
@@ -3987,6 +4515,7 @@ export function ExperienceEditor({
     setImagePickerSelectedFolderId(
       selectedAsset ? selectedAsset.folderId : rememberedFolderId,
     )
+    void ensureMediaLibraryLoaded()
   }
 
   function closeImagePicker() {
@@ -4204,6 +4733,17 @@ export function ExperienceEditor({
     })
   }
 
+  function authoredSelectorForVideo(
+    video: VideoLibraryItem,
+    selectedStreamUrl: string | null = null,
+  ) {
+    const dub = preferredPlayableDubForVideo(video, selectedStreamUrl)
+    return {
+      languageId: dub?.languageId ?? undefined,
+      streamingUrl: dub && !dub.languageId ? dub.streamUrl : undefined,
+    }
+  }
+
   function appendVideoCarouselItems(
     index: number,
     videos: VideoLibraryItem[],
@@ -4223,11 +4763,7 @@ export function ExperienceEditor({
           ...currentItems,
           ...additions.map((video) => ({
             videoId: video.key,
-            languageId:
-              preferredPlayableDubForVideo(video, selectedStreamUrl)
-                ?.languageId ??
-              initialValues.videoLanguageId ??
-              undefined,
+            ...authoredSelectorForVideo(video, selectedStreamUrl),
             titleOverride: "",
             subtitleOverride: "",
           })),
@@ -4621,6 +5157,7 @@ export function ExperienceEditor({
   function appendMediaCollectionVideoItems(
     index: number,
     videos: VideoLibraryItem[],
+    selectedStreamUrl: string | null = null,
   ) {
     const block = readBlockAt(index)
     if (block?.t !== "mediaCollection") return 0
@@ -4636,10 +5173,7 @@ export function ExperienceEditor({
           ...currentItems,
           ...additions.map((video) => ({
             videoId: video.key,
-            languageId:
-              preferredPlayableDubForVideo(video, null)?.languageId ??
-              initialValues.videoLanguageId ??
-              undefined,
+            ...authoredSelectorForVideo(video, selectedStreamUrl),
             titleOverride: "",
             subtitleOverride: "",
           })),
@@ -4647,6 +5181,57 @@ export function ExperienceEditor({
       }
     })
     return additions.length
+  }
+
+  function exceedsSelectorLimitAfterAppend(
+    index: number,
+    videos: VideoLibraryItem[],
+    selectedStreamUrl: string | null = null,
+  ) {
+    const block = readBlockAt(index)
+    if (block?.t !== "videoCarousel" && block?.t !== "mediaCollection") {
+      return false
+    }
+    const additions = videosNotAlreadyIncluded(asArray(block.items), videos)
+    const nextBlock = {
+      ...block,
+      items: [
+        ...asArray(block.items),
+        ...additions.map((video) => ({
+          videoId: video.key,
+          ...authoredSelectorForVideo(video, selectedStreamUrl),
+        })),
+      ],
+    }
+    const nextBlocks = parsedBlocks.map((candidate, blockIndex) =>
+      blockIndex === index ? nextBlock : candidate,
+    )
+    return (
+      extractAuthoredVideoDubSelectors(nextBlocks).length >
+      EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS
+    )
+  }
+
+  function exceedsSelectorLimitAfterBlockSelection(
+    index: number,
+    video: VideoLibraryItem,
+    dub: VideoLibraryPlayableDub,
+  ) {
+    const block = readBlockAt(index)
+    if (block?.t !== "video" && block?.t !== "videoHero") return false
+    const nextBlock = {
+      ...block,
+      videoId: video.key,
+      languageId: dub.languageId ?? undefined,
+      streamingUrl: dub.languageId ? undefined : dub.streamUrl,
+    }
+    const nextBlocks = parsedBlocks.map((candidate, blockIndex) =>
+      blockIndex === index ? nextBlock : candidate,
+    )
+    return (
+      extractAuthoredVideoDubSelectors(nextBlocks).length >
+      EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS
+    )
   }
 
   function removeMediaCollectionItem(index: number, itemIndex: number) {
@@ -5416,20 +6001,37 @@ export function ExperienceEditor({
   }
 
   function openVideoPicker(index: number, mode: VideoPickerMode = "block") {
+    invalidateVideoPickerApply()
     const block = readBlockAt(index)
     const currentVideo = findVideoLibraryItem(block?.videoId)
+    const currentLanguageId = asString(block?.languageId) || null
+    const currentStreamingUrl = asString(block?.streamingUrl) || null
+    const currentDubs = boundedPlayableDubsForVideo(currentVideo)
+    const currentAuthoredDub =
+      currentDubs.find(
+        (dub) =>
+          currentLanguageId != null && dub.languageId === currentLanguageId,
+      ) ??
+      currentDubs.find(
+        (dub) =>
+          currentStreamingUrl != null && dub.streamUrl === currentStreamingUrl,
+      ) ??
+      null
     setVideoPickerMode(mode)
     setVideoPickerBlockIndex(index)
     setVideoLibraryQuery("")
     setVideoLibraryCategory("all")
     setVideoLibrarySearchResultKeys([])
+    setVideoPickerSelectedDubOverride(null)
+    setVideoPickerApplyProgress(null)
+    setVideoPickerApplyError(null)
     setVideoPickerDraft({
       videoKey: mode === "block" ? (currentVideo?.key ?? null) : null,
       dubKey:
         mode === "block"
-          ? (preferredPlayableDubForVideo(
-              currentVideo,
-              asString(block?.streamingUrl) || null,
+          ? ((currentLanguageId || currentStreamingUrl
+              ? currentAuthoredDub
+              : preferredPlayableDubForVideo(currentVideo, null)
             )?.key ?? null)
           : null,
       clipStartSeconds: stringFromOptionalNumber(block?.clipStartSeconds),
@@ -5445,46 +6047,8 @@ export function ExperienceEditor({
     })
   }
 
-  function closeVideoPicker() {
-    const preview = videoPickerPreviewRef.current
-    if (preview) {
-      preview.pause()
-      preview.currentTime = 0
-    }
-
-    if (document.fullscreenElement === videoPickerPreviewContainerRef.current) {
-      void document.exitFullscreen().catch(() => {})
-    }
-
-    setActiveClipHandle(null)
-    setPreviewCurrentTime(0)
-    setPreviewIsPlaying(false)
-    setPreviewControlsVisible(true)
-    setPreviewFlashIcon(null)
-    setPreviewMuted(true)
-    setPreviewIsLoading(false)
-    setPreviewIsFullscreen(false)
-    setVideoPickerBlockIndex(null)
-    if (videoPickerModeResetTimeout.current !== null) {
-      window.clearTimeout(videoPickerModeResetTimeout.current)
-    }
-    videoPickerModeResetTimeout.current = window.setTimeout(() => {
-      setVideoPickerMode("block")
-      videoPickerModeResetTimeout.current = null
-    }, 180)
-    setVideoPickerDraft({
-      videoKey: null,
-      dubKey: null,
-      clipStartSeconds: "",
-      clipEndSeconds: "",
-      autoplay: true,
-      muted: true,
-      loop: false,
-      showControls: true,
-    })
-  }
-
   async function applyVideoPickerSelection() {
+    if (videoPickerApplyPendingRef.current) return
     if (videoPickerBlockIndex === null) return
     const selectedVideo = findVideoLibraryItem(videoPickerDraft.videoKey)
     if (!selectedVideo) return
@@ -5512,18 +6076,125 @@ export function ExperienceEditor({
         videoPickerMode === "mediaCollectionAppend") &&
       selectedVideo.isCollectionTarget
     ) {
-      if (!loadVideoCollectionChildrenAction) {
+      if (
+        !loadVideoCollectionChildrenPageAction &&
+        !loadVideoCollectionChildrenAction
+      ) {
         pushToast("Unable to load collection videos.", "error")
         return
       }
+      videoPickerApplyPendingRef.current = true
       setVideoPickerApplyPending(true)
+      const applyIdentity = ++videoPickerApplyIdentityRef.current
+      setVideoPickerApplyError(null)
+      setVideoPickerApplyProgress({
+        completed: 0,
+        total: selectedVideo.childCount ?? 0,
+      })
       try {
-        const children = await loadVideoCollectionChildrenAction(
-          selectedVideo.key,
-        )
+        const children: VideoLibraryItem[] = []
+        if (loadVideoCollectionChildrenPageAction) {
+          let cursor: string | null = null
+          let pageCount = 0
+          let declaredTotal: number | null = null
+          const seenCursors = new Set<string>()
+          const seenChildKeys = new Set<string>()
+          do {
+            if (applyIdentity !== videoPickerApplyIdentityRef.current) return
+            if (cursor && seenCursors.has(cursor)) {
+              throw new Error("Collection page cursor did not advance.")
+            }
+            if (cursor) seenCursors.add(cursor)
+            const page = await loadVideoCollectionChildrenPageAction({
+              parentVideoId: selectedVideo.key,
+              cursor,
+              pageSize: 100,
+            })
+            if (applyIdentity !== videoPickerApplyIdentityRef.current) return
+            pageCount += 1
+            declaredTotal ??= page.total
+            if (page.total !== declaredTotal) {
+              throw new Error("Collection page total changed during expansion.")
+            }
+            const duplicateChild = page.items.some((item) =>
+              seenChildKeys.has(item.key),
+            )
+            if (
+              pageCount > Math.max(1, declaredTotal) ||
+              children.length + page.items.length > page.total ||
+              (page.items.length === 0 && page.nextCursor) ||
+              duplicateChild
+            ) {
+              throw new Error(
+                "Collection page count exceeded its declared total.",
+              )
+            }
+            page.items.forEach((item) => seenChildKeys.add(item.key))
+            children.push(...page.items)
+            setVideoPickerApplyProgress({
+              completed: children.length,
+              total: page.total,
+            })
+            cursor = page.nextCursor
+          } while (cursor)
+          if (children.length !== declaredTotal) {
+            throw new Error(
+              "Collection expansion ended before every child loaded.",
+            )
+          }
+        } else if (loadVideoCollectionChildrenAction) {
+          children.push(
+            ...(await loadVideoCollectionChildrenAction(selectedVideo.key)),
+          )
+          if (applyIdentity !== videoPickerApplyIdentityRef.current) return
+          setVideoPickerApplyProgress({
+            completed: children.length,
+            total: children.length,
+          })
+        }
         if (children.length === 0) {
           pushToast("This collection has no videos to add.", "error")
           return
+        }
+        if (applyIdentity !== videoPickerApplyIdentityRef.current) return
+        if (exceedsSelectorLimitAfterAppend(videoPickerBlockIndex, children)) {
+          const message = `This collection would exceed the ${EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS.toLocaleString()} video audio selection limit. Nothing was added.`
+          setVideoPickerApplyError(message)
+          pushToast(message, "error")
+          return
+        }
+        if (validateVideoDubSelectionsAction) {
+          const selectors = children.map((video) => {
+            const selector = authoredSelectorForVideo(video)
+            return {
+              videoId: video.key,
+              languageId: selector.languageId ?? null,
+              legacyStreamingUrl: selector.streamingUrl ?? null,
+            }
+          })
+          const newlyUnavailable: ExperienceEditorDubSelectionValidation["unavailable"] =
+            []
+          for (
+            let index = 0;
+            index < selectors.length;
+            index += EXPERIENCE_EDITOR_ACTION_ITEM_LIMIT
+          ) {
+            const validation = await validateVideoDubSelectionsAction({
+              selectors: selectors.slice(
+                index,
+                index + EXPERIENCE_EDITOR_ACTION_ITEM_LIMIT,
+              ),
+            })
+            if (applyIdentity !== videoPickerApplyIdentityRef.current) return
+            newlyUnavailable.push(
+              ...validation.unavailable.filter((item) => !item.preExisting),
+            )
+          }
+          if (newlyUnavailable.length > 0) {
+            throw new Error(
+              `${newlyUnavailable.length} collection videos have no available audio.`,
+            )
+          }
         }
         const addedCount =
           videoPickerMode === "carouselAppend"
@@ -5537,26 +6208,131 @@ export function ExperienceEditor({
           "success",
         )
       } catch {
+        if (applyIdentity !== videoPickerApplyIdentityRef.current) return
+        setVideoPickerApplyError(
+          "Collection videos could not be loaded. Nothing was added.",
+        )
         pushToast("Unable to load collection videos.", "error")
       } finally {
-        setVideoPickerApplyPending(false)
+        if (applyIdentity === videoPickerApplyIdentityRef.current) {
+          videoPickerApplyPendingRef.current = false
+          setVideoPickerApplyPending(false)
+        }
       }
+      return
+    }
+    if (videoPickerSelectedDubUnavailable || !videoPickerSelectedDub) {
+      pushToast(
+        "Choose an available audio language before applying this video.",
+        "error",
+      )
+      return
+    }
+    let validatedSelectedDub = videoPickerSelectedDub
+    if (validateVideoDubSelectionsAction) {
+      videoPickerApplyPendingRef.current = true
+      setVideoPickerApplyPending(true)
+      const applyIdentity = ++videoPickerApplyIdentityRef.current
+      try {
+        const validation = await validateVideoDubSelectionsAction({
+          selectors: [
+            {
+              videoId: selectedVideo.key,
+              languageId: videoPickerSelectedDub.languageId,
+              legacyStreamingUrl: videoPickerSelectedDub.languageId
+                ? null
+                : videoPickerSelectedDub.streamUrl,
+            },
+          ],
+        })
+        if (validation.unavailable.length > 0) {
+          pushToast(
+            "That audio language is no longer available. Choose another language.",
+            "error",
+          )
+          return
+        }
+        const currentChoice = validation.available[0]?.choice
+        if (
+          !currentChoice ||
+          currentChoice.key !== videoPickerSelectedDub.key ||
+          currentChoice.languageId !== videoPickerSelectedDub.languageId ||
+          currentChoice.streamUrl !== videoPickerSelectedDub.streamUrl ||
+          currentChoice.durationSeconds !==
+            videoPickerSelectedDub.durationSeconds
+        ) {
+          if (currentChoice) {
+            setVideoPickerSelectedDubOverride(currentChoice)
+            setVideoPickerDraft((current) => ({
+              ...current,
+              dubKey: currentChoice.key,
+            }))
+          }
+          pushToast(
+            "That audio language changed. Review it and apply again.",
+            "error",
+          )
+          return
+        }
+        validatedSelectedDub = currentChoice
+      } catch {
+        if (applyIdentity !== videoPickerApplyIdentityRef.current) return
+        pushToast("Unable to verify that audio language. Try again.", "error")
+        return
+      } finally {
+        if (applyIdentity === videoPickerApplyIdentityRef.current) {
+          videoPickerApplyPendingRef.current = false
+          setVideoPickerApplyPending(false)
+        }
+      }
+      if (applyIdentity !== videoPickerApplyIdentityRef.current) return
+    }
+    if (
+      (videoPickerMode === "carouselAppend" ||
+        videoPickerMode === "mediaCollectionAppend") &&
+      exceedsSelectorLimitAfterAppend(
+        videoPickerBlockIndex,
+        [selectedVideo],
+        validatedSelectedDub.streamUrl,
+      )
+    ) {
+      pushToast(
+        `This block would exceed the ${EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS.toLocaleString()} video audio selection limit.`,
+        "error",
+      )
       return
     }
     if (videoPickerMode === "carouselAppend") {
       appendVideoCarouselItems(
         videoPickerBlockIndex,
         [selectedVideo],
-        videoPickerPreviewStreamUrl,
+        validatedSelectedDub.streamUrl,
       )
       closeVideoPicker()
       pushToast("Video added to carousel.", "success")
       return
     }
     if (videoPickerMode === "mediaCollectionAppend") {
-      appendMediaCollectionVideoItems(videoPickerBlockIndex, [selectedVideo])
+      appendMediaCollectionVideoItems(
+        videoPickerBlockIndex,
+        [selectedVideo],
+        validatedSelectedDub.streamUrl,
+      )
       closeVideoPicker()
       pushToast("Video added to media collection.", "success")
+      return
+    }
+    if (
+      exceedsSelectorLimitAfterBlockSelection(
+        videoPickerBlockIndex,
+        selectedVideo,
+        validatedSelectedDub,
+      )
+    ) {
+      pushToast(
+        `This draft would exceed the ${EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS.toLocaleString()} video audio selection limit.`,
+        "error",
+      )
       return
     }
     const clipStart = parseClipInput(videoPickerDraft.clipStartSeconds)
@@ -5569,10 +6345,12 @@ export function ExperienceEditor({
     updateBlockAt(videoPickerBlockIndex, (block) => ({
       ...block,
       videoId: selectedVideo.key,
-      languageId:
-        videoPickerSelectedDub?.languageId ??
-        initialValues.videoLanguageId ??
-        undefined,
+      languageId: validatedSelectedDub.languageId ?? undefined,
+      // Canonicalize when the Dub has a language; language-less Dubs retain
+      // their exact legacy stream selector so reopening resolves the same Dub.
+      streamingUrl: validatedSelectedDub.languageId
+        ? undefined
+        : validatedSelectedDub.streamUrl,
       useRouteVideo: false,
       headingSource:
         block.t === "videoHero" && shouldUseVideoHeroHeadingMetadata(block)
@@ -8343,7 +9121,61 @@ export function ExperienceEditor({
           </span>
         </div>
 
-        {type === "languageGlobe" ? (
+        {type === "homepageRecommendations" ? (
+          <div className="rounded-sm bg-[#09090b] p-6 text-left text-white">
+            <input
+              aria-label="Recommendation heading"
+              value={asString(blockRecord?.title)}
+              placeholder="Recommended for You"
+              maxLength={160}
+              onClick={(event) => {
+                event.stopPropagation()
+                activateBlock(index)
+              }}
+              onFocus={() => activateBlock(index)}
+              onChange={(event) =>
+                updateBlockStringField(index, "title", event.target.value)
+              }
+              className="w-full border-0 bg-transparent text-2xl font-bold outline-none placeholder:text-white"
+            />
+            <p className="mt-2 text-sm text-white/60">
+              Leave the heading blank to use the viewer’s translated heading.
+              Videos are personalized when the viewer opens the page.
+            </p>
+            <div
+              aria-hidden="true"
+              className="mt-6 grid grid-cols-3 gap-3 md:grid-cols-6"
+            >
+              {Array.from({ length: 6 }, (_, cardIndex) => (
+                <div
+                  key={cardIndex}
+                  className="aspect-video rounded-md bg-white/10"
+                />
+              ))}
+            </div>
+          </div>
+        ) : type === "watchHomeCategoryRail" ? (
+          <WatchHomeCategoryRailEditor
+            tiles={readRailTiles(blockRecord)}
+            copy={{
+              eyebrow: asString(blockRecord?.eyebrow),
+              title: asString(blockRecord?.title),
+              description: asString(blockRecord?.description),
+              ctaLabel: asString(blockRecord?.ctaLabel),
+            }}
+            onCopyChange={(field, value) =>
+              updateBlockAt(index, (currentBlock) => ({
+                ...currentBlock,
+                [field]: value,
+              }))
+            }
+            onChange={(tiles) =>
+              updateBlockAt(index, (currentBlock) =>
+                railBlockPatch(currentBlock, tiles),
+              )
+            }
+          />
+        ) : type === "languageGlobe" ? (
           <div className="relative min-h-[300px] overflow-hidden rounded-sm bg-[#09090b] p-6 text-left text-white">
             <div
               aria-hidden="true"
@@ -8786,14 +9618,17 @@ export function ExperienceEditor({
                     >
                       <div className="min-h-0">
                         <div className="space-y-3">
-                          {asArray(blockRecord?.items).map((item, itemIndex) =>
-                            renderVideoCarouselItemCard(
-                              index,
-                              item,
-                              itemIndex,
-                              true,
-                            ),
-                          )}
+                          {selectedBlockIndex === index
+                            ? asArray(blockRecord?.items).map(
+                                (item, itemIndex) =>
+                                  renderVideoCarouselItemCard(
+                                    index,
+                                    item,
+                                    itemIndex,
+                                    true,
+                                  ),
+                              )
+                            : null}
                         </div>
                       </div>
                     </div>
@@ -10649,16 +11484,20 @@ export function ExperienceEditor({
         }
         open={imagePickerTarget !== null}
         mediaLibrary={mediaLibrary}
+        loading={mediaLibraryLoadStatus === "loading"}
+        loadError={mediaLibraryLoadStatus === "error"}
         query={imageLibraryQuery}
         selectedFolderId={imagePickerSelectedFolderId}
         selectedAssetId={imagePickerTarget?.selectedAssetId ?? null}
         canClearImage={imagePickerTarget?.canClear ?? false}
         canUpload={canUploadImages}
         uploadAction={uploadImageAction}
+        onUploadSuccess={refreshMediaLibrary}
         onQueryChange={setImageLibraryQuery}
         onSelectFolder={selectImagePickerFolder}
         onSelectImage={applyImagePickerSelection}
         onClearImage={clearImagePickerSelection}
+        onRetryLoad={() => void ensureMediaLibraryLoaded()}
         onClose={closeImagePicker}
       />
       <div
@@ -10799,7 +11638,11 @@ export function ExperienceEditor({
                           <button
                             key={video.key}
                             type="button"
-                            onClick={() =>
+                            onClick={() => {
+                              invalidateVideoPickerApply()
+                              setVideoPickerSelectedDubOverride(null)
+                              setVideoPickerApplyError(null)
+                              setVideoPickerApplyProgress(null)
                               setVideoPickerDraft((current) => ({
                                 ...current,
                                 videoKey: video.key,
@@ -10807,7 +11650,7 @@ export function ExperienceEditor({
                                   preferredPlayableDubForVideo(video, null)
                                     ?.key ?? null,
                               }))
-                            }
+                            }}
                             className={cx(
                               "grid w-full min-w-0 cursor-pointer grid-cols-[128px_minmax(0,1fr)] gap-3 overflow-hidden border-b px-4 py-3 text-left transition-all duration-[120ms] ease-out",
                               isCurrent
@@ -11115,23 +11958,38 @@ export function ExperienceEditor({
                             {videoPickerSelectedVideo.labelLabel}
                           </div>
                         ) : null}
-                        {(videoPickerSelectedVideo.playableDubs?.length ?? 0) >
-                        1 ? (
+                        {(videoPickerSelectedVideo.playableLanguageCount ??
+                          videoPickerSelectedVideo.playableDubs?.length ??
+                          0) > 1 || videoPickerSelectedDubUnavailable ? (
                           <div className="mt-3 grid w-full gap-1.5">
                             <span className="label-text">Audio language</span>
                             <SearchableVideoDubControl
-                              dubs={videoPickerSelectedVideo.playableDubs ?? []}
+                              dubs={boundedPlayableDubsForVideo(
+                                videoPickerSelectedVideo,
+                              )}
                               label="Audio language"
+                              loadPageAction={loadVideoDubPageAction}
+                              locale={currentLocaleCode}
                               selectedDub={videoPickerSelectedDub}
-                              onSelect={(nextDubKey) => {
-                                const nextDubKeyOrNull = nextDubKey || null
-                                const nextDub =
-                                  videoPickerSelectedVideo.playableDubs?.find(
-                                    (dub) => dub.key === nextDubKeyOrNull,
-                                  ) ?? null
+                              selectedLanguageId={
+                                videoPickerSelectedDub?.languageId ??
+                                videoPickerAuthoredSelector?.languageId ??
+                                null
+                              }
+                              selectedLegacyStreamingUrl={
+                                videoPickerAuthoredSelector?.legacyStreamingUrl ??
+                                null
+                              }
+                              selectedUnavailable={
+                                videoPickerSelectedDubUnavailable
+                              }
+                              videoId={videoPickerSelectedVideo.key}
+                              onSelect={(nextDub) => {
+                                invalidateVideoPickerApply()
+                                setVideoPickerSelectedDubOverride(nextDub)
                                 setVideoPickerDraft((current) => ({
                                   ...current,
-                                  dubKey: nextDubKeyOrNull,
+                                  dubKey: nextDub.key,
                                   clipStartSeconds: "0",
                                   clipEndSeconds: "",
                                 }))
@@ -11146,6 +12004,17 @@ export function ExperienceEditor({
                                 }
                               }}
                             />
+                            {videoPickerSelectedDubUnavailable ? (
+                              <p
+                                role="status"
+                                className="text-[11px] leading-5 text-[var(--color-warning)]"
+                              >
+                                This draft’s audio language is no longer
+                                available. Choose another language to restore
+                                playback; your current selection and clip stay
+                                unchanged until you apply it.
+                              </p>
+                            ) : null}
                           </div>
                         ) : null}
                         {videoPickerSelectedVideo.description ? (
@@ -11322,6 +12191,21 @@ export function ExperienceEditor({
           </div>
 
           <div className="mt-4 flex items-center justify-end gap-3 border-t border-[var(--color-hairline)] pt-4">
+            <div className="mr-auto min-w-0 text-[11px] text-[var(--color-text-muted)]">
+              {videoPickerApplyPending && videoPickerApplyProgress ? (
+                <span role="status" aria-live="polite">
+                  Loading collection videos…{" "}
+                  {videoPickerApplyProgress.completed}
+                  {videoPickerApplyProgress.total > 0
+                    ? ` of ${videoPickerApplyProgress.total}`
+                    : ""}
+                </span>
+              ) : videoPickerApplyError ? (
+                <span role="alert" className="text-[var(--color-warning)]">
+                  {videoPickerApplyError}
+                </span>
+              ) : null}
+            </div>
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -11339,13 +12223,15 @@ export function ExperienceEditor({
               >
                 {videoPickerApplyPending
                   ? "Adding videos…"
-                  : videoPickerMode === "carouselAppend"
-                    ? "Add video"
-                    : videoPickerMode === "mediaCollectionAppend"
+                  : videoPickerApplyError
+                    ? "Retry collection"
+                    : videoPickerMode === "carouselAppend"
                       ? "Add video"
-                      : videoPickerMode === "dynamicCollectionBlacklistAppend"
-                        ? "Exclude media"
-                        : "Apply video"}
+                      : videoPickerMode === "mediaCollectionAppend"
+                        ? "Add video"
+                        : videoPickerMode === "dynamicCollectionBlacklistAppend"
+                          ? "Exclude media"
+                          : "Apply video"}
               </button>
             </div>
           </div>
@@ -11530,6 +12416,44 @@ export function ExperienceEditor({
             pendingPreviewWindowRef.current = null
             let previewWindowNavigated = false
             try {
+              if (validateVideoDubSelectionsAction) {
+                const selectors = extractAuthoredVideoDubSelectors(
+                  normalizedParsedBlocks,
+                )
+                const unavailable: ExperienceEditorDubSelectionValidation["unavailable"] =
+                  []
+                for (
+                  let index = 0;
+                  index < selectors.length;
+                  index += EXPERIENCE_EDITOR_ACTION_ITEM_LIMIT
+                ) {
+                  const validation = await validateVideoDubSelectionsAction({
+                    selectors: selectors.slice(
+                      index,
+                      index + EXPERIENCE_EDITOR_ACTION_ITEM_LIMIT,
+                    ),
+                  })
+                  unavailable.push(...validation.unavailable)
+                }
+                const newlyUnavailable = unavailable.filter(
+                  (item) => !item.preExisting,
+                )
+                if (newlyUnavailable.length > 0) {
+                  previewWindow?.close()
+                  pushToast(
+                    `${newlyUnavailable.length} newly selected audio ${newlyUnavailable.length === 1 ? "language is" : "languages are"} unavailable. Choose an available language before saving.`,
+                    "error",
+                  )
+                  return
+                }
+                const retainedWarnings = unavailable.length
+                if (retainedWarnings > 0) {
+                  pushToast(
+                    `Draft keeps ${retainedWarnings} pre-existing unavailable audio ${retainedWarnings === 1 ? "selection" : "selections"}.`,
+                    "error",
+                  )
+                }
+              }
               const result = await saveAction(formData)
               if (!result.ok) {
                 previewWindow?.close()

@@ -1,4 +1,7 @@
 import { type Blocks } from "@/domain/blocks"
+import { WATCH_HOME_CATEGORY_CATALOG } from "@forge/watch-url-policy/watch-home-categories"
+
+export { extractAuthoredVideoDubSelectors } from "@/domain/experience-editor-dub-selectors"
 
 export type BlockTone = "hero" | "quote" | "grid" | "standard"
 
@@ -32,6 +35,8 @@ export type BlockTemplateKey =
   | "videoCarousel"
   | "videoHero"
   | "watchHomeHero"
+  | "watchHomeCategoryRail"
+  | "homepageRecommendations"
   | "routeVideo"
   | "routeVideoCarousel"
   | "routeVideoHero"
@@ -41,6 +46,8 @@ export const BLOCK_TEMPLATE_KEYS: BlockTemplateKey[] = [
   "video",
   "videoCarousel",
   "watchHomeHero",
+  "watchHomeCategoryRail",
+  "homepageRecommendations",
   "languageGlobe",
   "routeVideoHero",
   "routeVideo",
@@ -99,7 +106,6 @@ export function editorTextFromContentParagraphs(
 const legacyEditorOnlyKeys = new Set([
   "backgroundImageUrl",
   "imageUrl",
-  "streamingUrl",
   "videoSlug",
 ])
 
@@ -120,6 +126,23 @@ export type VideoLibraryItem = {
   durationSeconds: number | null
   previewImageUrl: string | null
   previewStreamUrl: string | null
+  playableLanguageCount?: number
+  playableLanguageChips?: Array<{
+    code: string
+    flagUrl: string | null
+  }>
+  defaultDub?: VideoLibraryPlayableDub | null
+  authoredDubs?: VideoLibraryPlayableDub[]
+  dubInventory?:
+    | { status: "not-loaded" }
+    | { status: "loading" }
+    | {
+        status: "loaded"
+        choices: VideoLibraryPlayableDub[]
+        nextCursor: string | null
+      }
+    | { status: "error"; message: string }
+  /** Compatibility-only field for legacy callers; editor summaries stay bounded. */
   playableDubs?: VideoLibraryPlayableDub[]
   hasGrounding: boolean
   collectionPreviewItems?: Array<{
@@ -135,9 +158,58 @@ export type VideoLibraryPlayableDub = {
   languageId: string | null
   languageSlug: string | null
   bcp47: string | null
+  iso3?: string | null
+  languageIdentity?: string
   streamUrl: string
   duration: string
   durationSeconds: number | null
+}
+
+function mergeVideoLibraryDubs(
+  current: readonly VideoLibraryPlayableDub[] | undefined,
+  incoming: readonly VideoLibraryPlayableDub[] | undefined,
+) {
+  if (!incoming) return current ? [...current] : undefined
+  const byKey = new Map((current ?? []).map((item) => [item.key, item]))
+  incoming.forEach((item) => byKey.set(item.key, item))
+  return Array.from(byKey.values())
+}
+
+/** Merge exact-selector top-ups without dropping Dubs already hydrated for a video. */
+export function mergeVideoLibrarySummaries(
+  current: VideoLibraryItem[],
+  incoming: readonly VideoLibraryItem[],
+) {
+  if (incoming.length === 0) return current
+  const next = [...current]
+  const indexes = new Map<string, number>()
+  next.forEach((item, index) => {
+    indexes.set(item.key, index)
+    indexes.set(item.id, index)
+  })
+  for (const item of incoming) {
+    const index = indexes.get(item.key) ?? indexes.get(item.id)
+    if (index === undefined) {
+      indexes.set(item.key, next.length)
+      indexes.set(item.id, next.length)
+      next.push(item)
+      continue
+    }
+    const existing = next[index]!
+    next[index] = {
+      ...existing,
+      ...item,
+      authoredDubs: mergeVideoLibraryDubs(
+        existing.authoredDubs,
+        item.authoredDubs,
+      ),
+      playableDubs: mergeVideoLibraryDubs(
+        existing.playableDubs,
+        item.playableDubs,
+      ),
+    }
+  }
+  return next
 }
 
 export type VideoHeroHeadingSource = "manual" | "videoTitle"
@@ -254,6 +326,13 @@ const optionalEmptyStringKeys = new Set([
   "videoId",
 ])
 
+const watchHomeCategoryRailCopyKeys = new Set([
+  "eyebrow",
+  "title",
+  "description",
+  "ctaLabel",
+])
+
 export function asRecord(value: unknown): BlockRecord | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as BlockRecord)
@@ -262,6 +341,41 @@ export function asRecord(value: unknown): BlockRecord | null {
 
 export function asString(value: unknown) {
   return typeof value === "string" ? value : ""
+}
+
+const MEDIA_ASSET_ID_FIELDS = new Set([
+  "backgroundImageAssetId",
+  "imageAssetId",
+  "mediaAssetId",
+])
+
+/** Collect the managed image ids needed to render an Experience canvas. */
+export function mediaAssetIdsFromExperienceBlocks(
+  blocks: readonly unknown[],
+): string[] {
+  const assetIds = new Set<string>()
+
+  function visit(value: unknown) {
+    if (Array.isArray(value)) {
+      value.forEach(visit)
+      return
+    }
+
+    const record = asRecord(value)
+    if (!record) return
+
+    for (const [field, child] of Object.entries(record)) {
+      if (MEDIA_ASSET_ID_FIELDS.has(field)) {
+        const assetId = asString(child).trim()
+        if (assetId) assetIds.add(assetId)
+      } else {
+        visit(child)
+      }
+    }
+  }
+
+  visit(blocks)
+  return Array.from(assetIds)
 }
 
 export function asBoolean(value: unknown) {
@@ -315,13 +429,29 @@ export function normalizeEditorBlockPayload(value: unknown): unknown {
 
   const record = value as BlockRecord
   const normalizedEntries = Object.entries(record)
-    .map(([key, item]) => [key, normalizeEditorBlockPayload(item)] as const)
+    .map(([key, item]) => {
+      const normalizedItem = normalizeEditorBlockPayload(item)
+      return [
+        key,
+        record.t === "watchHomeCategoryRail" &&
+        watchHomeCategoryRailCopyKeys.has(key) &&
+        typeof normalizedItem === "string"
+          ? normalizedItem.trim()
+          : normalizedItem,
+      ] as const
+    })
     .filter(([key, item]) => {
       if (legacyEditorOnlyKeys.has(key)) return false
       if (record.t === "container" && key === "slots") return false
       if (item === null || item === undefined) return false
       if (typeof item !== "string") return true
       if (item.trim().length > 0) return true
+      if (
+        record.t === "watchHomeCategoryRail" &&
+        watchHomeCategoryRailCopyKeys.has(key)
+      ) {
+        return false
+      }
       return !optionalEmptyStringKeys.has(key) && !key.endsWith("Url")
     })
 
@@ -396,6 +526,39 @@ export function summarizeBlock(
       title: "Watch Home Hero",
       body: "Renders the static Watch homepage hero.",
       tone: "hero",
+      badges: ["WATCH_HOME"],
+    }
+  }
+
+  if (type === "homepageRecommendations") {
+    return {
+      key: summaryKey,
+      typeLabel: "Homepage Recommendations Block",
+      title: asString(value.title).trim() || "Recommended for You",
+      body: "Six videos personalized for each viewer, with curated starters for new viewers.",
+      tone: "grid",
+      badges: ["PERSONALIZED"],
+    }
+  }
+
+  if (type === "watchHomeCategoryRail") {
+    // `tiles` is authoritative when present; `categoryIds` is what blocks
+    // stored before tile authoring carry (and the mirror kept for old readers).
+    const tiles = asArray(value.tiles)
+    const tileCount =
+      tiles.length > 0 ? tiles.length : asArray(value.categoryIds).length
+    const customCount = tiles.filter(
+      (tile) => asString(asRecord(tile)?.categoryId).length === 0,
+    ).length
+    return {
+      key: summaryKey,
+      typeLabel: "Watch Category Rail",
+      title: asString(value.title).trim() || "Browse by category",
+      body:
+        customCount > 0
+          ? `${tileCount} ${tileCount === 1 ? "tile" : "tiles"} · ${customCount} custom`
+          : `${tileCount} ${tileCount === 1 ? "tile" : "tiles"}`,
+      tone: "standard",
       badges: ["WATCH_HOME"],
     }
   }
@@ -707,6 +870,21 @@ export function createTemplateBlock(
     return {
       t: "watchHomeHero",
       sectionKey: `watch-home-hero-${index}`,
+    }
+  }
+
+  if (template === "homepageRecommendations") {
+    return {
+      t: "homepageRecommendations",
+      sectionKey: `user-recommendations-${index}`,
+    }
+  }
+
+  if (template === "watchHomeCategoryRail") {
+    return {
+      t: "watchHomeCategoryRail",
+      sectionKey: `watch-home-category-rail-${index}`,
+      categoryIds: WATCH_HOME_CATEGORY_CATALOG.map(({ id }) => id),
     }
   }
 

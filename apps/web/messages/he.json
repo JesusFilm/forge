@@ -180,7 +180,8 @@
     "changeAudioLanguage": "שנו שפת שמע",
     "home": "דף הבית של JesusFilm",
     "closeSearch": "סגירת החיפוש",
-    "submitSearch": "חיפוש"
+    "submitSearch": "חיפוש",
+    "library": "ספרייה"
   },
   "SearchOverlay": {
     "dialogLabel": "חיפוש ועיון בסרטונים",
@@ -467,6 +468,7 @@
     "sports": "ספורט",
     "collections": "אוספים",
     "subtitlesOnly": "כתוביות בלבד",
+    "backToTop": "חזרה למעלה",
     "newlyAdded": "נוסף לאחרונה",
     "newVideosTitle": "סרטונים נוצריים חדשים ב־{language}",
     "newestFirst": "החדשים תחילה",
@@ -497,7 +499,21 @@
     "standaloneVideos": "סרטונים עצמאיים",
     "videosFromCollection": "סרטונים מתוך {collection}.",
     "standaloneDescription": "סרטונים עצמאיים בשפה זו.",
-    "openCollection": "פתחו אוסף"
+    "openCollection": "פתחו אוסף",
+    "filters": "מסננים",
+    "filterLength": "אורך",
+    "filterLength_under5": "פחות מ-5 דקות",
+    "filterLength_5to10": "5-10 דקות",
+    "filterLength_10to30": "10-30 דקות",
+    "filterLength_over30": "יותר מ-30 דקות",
+    "filterType": "סוג",
+    "clearFilters": "נקה מסננים",
+    "filterResults": "מוצגים {count} מתוך {total}",
+    "noFilterResults": "אין סרטונים שתואמים למסננים אלה. נסה להסיר אחד.",
+    "filterAdded": "נוסף",
+    "filterAdded_60d": "60 הימים האחרונים",
+    "filterAdded_6m": "6 החודשים האחרונים",
+    "filterAdded_12m": "12 החודשים האחרונים"
   },
   "WatchHome": {
     "pageTitle": "צפייה של Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "תצוגה מקדימה של הסרטון הקודם",
     "nextVideoPreview": "תצוגה מקדימה של הסרטון הבא",
     "mediaCollection": "אוסף מדיה",
-    "scrollToVideo": "גללו לסרטון {title}"
+    "scrollToVideo": "גללו לסרטון {title}",
+    "forYou": "בשבילך"
   },
   "WatchFooter": {
     "home": "דף הבית של Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "חזרה לצפייה",
     "browseVideos": "עיון בסרטונים"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "צפו בסרט קצר",
-    "actions": {
-      "joinUs": "הצטרפו אלינו",
-      "shareMission": "שותפו בשליחות שלנו"
-    },
-    "welcomeStart": {
-      "label": "אמונה וכתובים",
-      "title": "בחירות הווידאו של היום",
-      "description": "תוכן וידאו מהספרייה שלנו, ממוקד אמונה, כדי לעורר השראה, לאתגר ולעודד מחשבה."
-    },
-    "welcomeMorning": {
-      "label": "השראה לבוקר",
-      "title": "בוקר טוב! רגעי התנ״ך של היום מחכים לכם.",
-      "description": "פתחו את היום ברגעי תנ״ך מעודדים שנועדו להעניק השראה ולהרים את רוחכם."
-    },
-    "welcomeAfternoon": {
-      "label": "השראה לצהריים",
-      "title": "צהריים טובים! רגעי תנ״ך ליום שלכם.",
-      "description": "תוכן תנ״כי מעודד, מושלם להפסקת הצהריים שלכם או להמשך השראה."
-    },
-    "welcomeEvening": {
-      "label": "השראה לערב",
-      "title": "ערב טוב! הירגעו עם רגעי תנ״ך.",
-      "description": "רגעי תנ״ך שלווים שיעזרו לכם להרהר ולמצוא נחמה עם סיום היום."
-    },
-    "joinUs": {
-      "label": "הצטרפו אלינו",
-      "title": "מיליארדים מחפשים",
-      "description": "הקציר כבר כאן. הצטרפו אלינו כשאנחנו משתפים את הבשורה עם העולם באמצעות מדיה דיגיטלית."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "בואו נצעד יחד",
-      "title": "מספרים את סיפורו של ישו, יחד",
-      "description": "כדי שיוכלו לשמוע ולראות את אהבתו של ישו בשפתם, ממש במקום שבו הם נמצאים."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% התאמה",
     "none": "לא נמצאו המלצות לסרטון הזה בשפה זו."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "שפת שמע",
     "selectLanguageVersion": "בחירת גרסת שפה",
     "watchSelectedVersion": "צפייה בגרסה שנבחרה"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "העדפות קובצי Cookie",
+    "bannerTitle": "העדפות הפרטיות שלך",
+    "bannerDescription": "קובצי Cookie חיוניים שומרים על Watch מאובטח ופועל כראוי. באישורך, קובץ Cookie אופציונלי של האתר יכול לזכור תחומי עניין בין ביקורים כדי להתאים אישית המלצות. המלצות לפי הקשר יישארו זמינות בכל מקרה.",
+    "acceptAll": "אישור הכול",
+    "essentialOnly": "חיוניים בלבד",
+    "manageChoices": "ניהול העדפות",
+    "savingChoice": "שומר את בחירת קובצי ה-Cookie",
+    "settings": "הגדרות קובצי Cookie",
+    "settingsDescription": "בחר אם Watch יוכל לזכור תחומי עניין להמלצות בין ביקורים. אפשר לשנות זאת בכל עת.",
+    "essentialCookies": "קובצי Cookie חיוניים",
+    "essentialDescription": "אבטחה, ניגון, העדפות פרטיות וייחוס בקשות להמלצות.",
+    "alwaysActive": "פעיל תמיד",
+    "personalization": "התאמה אישית",
+    "personalizationDescription": "זכירת תחומי עניין מוגבלים בין ביקורים. כיבוי אפשרות זו ישאיר המלצות לפי הקשר זמינות.",
+    "erasurePending": "מחיקת הפרופיל ממתינה. המלצות לפי הקשר כבר פעילות.",
+    "cancel": "ביטול",
+    "saveChoices": "שמירת העדפות",
+    "saving": "שומר…",
+    "loadError": "לא ניתן היה לטעון את הבחירה שלך. עדיין אפשר לבחור למטה.",
+    "grantError": "לא ניתן היה להפעיל התאמה אישית. האפשרות של חיוניים בלבד עדיין זמינה.",
+    "saveError": "לא ניתן היה לשמור את הבחירה שלך. נא לנסות שוב."
   }
 }

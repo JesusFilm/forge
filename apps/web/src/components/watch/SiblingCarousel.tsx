@@ -312,7 +312,7 @@ export function SiblingCarousel({
       <header className="mb-4 px-5 md:px-0">
         {selectableParents != null ? (
           selectableParents.length === 1 ? (
-            <p className="flex min-w-0 items-center gap-2 overflow-hidden text-sm font-normal text-stone-200">
+            <p className="flex min-w-0 items-center gap-2 overflow-hidden text-base sm:text-sm font-normal text-stone-200">
               {parentHref != null ? (
                 <Link
                   href={parentHref}
@@ -351,7 +351,7 @@ export function SiblingCarousel({
                 data-testid="sibling-carousel-parent-selector"
                 value={selectedParent.documentId}
                 disabled={validPendingNavigation != null}
-                className="min-h-11 w-full min-w-0 max-w-full truncate rounded-md border border-stone-600 bg-stone-800 px-3 py-2 text-sm font-medium text-stone-100 outline-none focus-visible:border-stone-300 focus-visible:ring-2 focus-visible:ring-white/80 disabled:cursor-wait disabled:opacity-60 md:w-auto md:max-w-xs md:flex-1"
+                className="min-h-11 w-full min-w-0 max-w-full truncate rounded-md border border-stone-600 bg-stone-800 px-3 py-2 text-base sm:text-sm font-medium text-stone-100 outline-none focus-visible:border-stone-300 focus-visible:ring-2 focus-visible:ring-white/80 disabled:cursor-wait disabled:opacity-60 md:w-auto md:max-w-xs md:flex-1"
                 onChange={(event) => {
                   setApi(null)
                   deferInitialAutoScrollRef.current = false
@@ -369,7 +369,7 @@ export function SiblingCarousel({
               </select>
               <span
                 data-testid="sibling-carousel-label"
-                className="shrink-0 text-sm font-normal text-stone-300"
+                className="shrink-0 text-base sm:text-sm font-normal text-stone-300"
               >
                 {positionLabel}
               </span>
@@ -384,7 +384,7 @@ export function SiblingCarousel({
             </div>
           )
         ) : (
-          <p className="flex min-w-0 items-center gap-2 overflow-hidden text-sm font-normal text-stone-200">
+          <p className="flex min-w-0 items-center gap-2 overflow-hidden text-base sm:text-sm font-normal text-stone-200">
             {parentHref != null ? (
               <Link
                 href={parentHref}
@@ -484,7 +484,7 @@ export function SiblingCarousel({
                     src={thumb}
                     alt={thumbnailAlt}
                     fill
-                    sizes="(max-width: 640px) 48vw, (max-width: 768px) 36vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
+                    sizes="(max-width: 639.98px) 70vw, (max-width: 768px) 36vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
                     className="object-cover transition-transform duration-300 group-hover:scale-105"
                     {...(blurDataURL
                       ? {
@@ -503,14 +503,14 @@ export function SiblingCarousel({
                 ) : (
                   <div
                     data-testid="sibling-carousel-thumb-placeholder"
-                    className="flex h-full w-full items-center justify-center bg-stone-900 text-xs text-stone-600"
+                    className="flex h-full w-full items-center justify-center bg-stone-900 text-sm sm:text-xs text-stone-600"
                   >
                     {t("noImage")}
                   </div>
                 )}
                 <MuxHoverPreview
                   previewUrl={href ? muxPreview : null}
-                  sizes="(max-width: 640px) 48vw, (max-width: 768px) 36vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
+                  sizes="(max-width: 639.98px) 70vw, (max-width: 768px) 36vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
                 />
 
                 {/* Soften the image into the lower caption zone. */}
@@ -613,7 +613,7 @@ export function SiblingCarousel({
             return (
               <CarouselItem
                 key={child.documentId}
-                className="basis-[48%] sm:basis-[36%] md:basis-1/3 lg:basis-1/4 xl:basis-1/5 2xl:basis-1/6"
+                className="basis-[70%] sm:basis-[36%] md:basis-1/3 lg:basis-1/4 xl:basis-1/5 2xl:basis-1/6"
                 aria-current={isActive ? "true" : undefined}
               >
                 {/* Active cards use a real inside border. Inactive cards keep

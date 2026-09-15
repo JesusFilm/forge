@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Cambiar idioma do audio",
     "home": "Inicio de JesusFilm",
     "closeSearch": "Pechar busca",
-    "submitSearch": "Buscar"
+    "submitSearch": "Buscar",
+    "library": "Biblioteca"
   },
   "SearchOverlay": {
     "dialogLabel": "Buscar e explorar vídeos",
@@ -467,6 +468,7 @@
     "sports": "Deportes",
     "collections": "Coleccións",
     "subtitlesOnly": "Só subtítulos",
+    "backToTop": "Volver arriba",
     "newlyAdded": "Engadido recentemente",
     "newVideosTitle": "Novos vídeos cristiáns en {language}",
     "newestFirst": "Máis recentes primeiro",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Vídeos independentes",
     "videosFromCollection": "Vídeos da colección {collection}.",
     "standaloneDescription": "Vídeos independentes neste idioma.",
-    "openCollection": "Abrir colección"
+    "openCollection": "Abrir colección",
+    "filters": "Filtros",
+    "filterLength": "Duración",
+    "filterLength_under5": "Menos de 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Máis de 30 min",
+    "filterType": "Tipo",
+    "clearFilters": "Borrar filtros",
+    "filterResults": "{count} de {total} amosados",
+    "noFilterResults": "Ningún vídeo coincide con estes filtros. Proba a quitar un.",
+    "filterAdded": "Engadido",
+    "filterAdded_60d": "Últimos 60 días",
+    "filterAdded_6m": "Últimos 6 meses",
+    "filterAdded_12m": "Últimos 12 meses"
   },
   "WatchHome": {
     "pageTitle": "Ver en Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Vista previa do vídeo anterior",
     "nextVideoPreview": "Vista previa do seguinte vídeo",
     "mediaCollection": "Colección de medios",
-    "scrollToVideo": "Desprázate ata o vídeo de {title}"
+    "scrollToVideo": "Desprázate ata o vídeo de {title}",
+    "forYou": "Para ti"
   },
   "WatchFooter": {
     "home": "Inicio de Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Volver a Watch",
     "browseVideos": "Explorar vídeos"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Ver curtametraxe",
-    "actions": {
-      "joinUs": "Únete a nós",
-      "shareMission": "Comparte a nosa misión"
-    },
-    "welcomeStart": {
-      "label": "Fe e Escritura",
-      "title": "Seleccións de vídeo de hoxe",
-      "description": "Contido en vídeo centrado na fe da nosa biblioteca para inspirar, desafiar e espertar a reflexión."
-    },
-    "welcomeMorning": {
-      "label": "Inspíración da mañá",
-      "title": "Bos días! Agardan os momentos bíblicos de hoxe.",
-      "description": "Comeza o día con momentos bíblicos alentadores deseñados para inspirarte e elevar o teu espírito."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspíración da tarde",
-      "title": "Boas tardes! Momentos bíblicos para o teu día.",
-      "description": "Contido bíblico alentador, perfecto para o teu descanso da tarde ou para seguir inspirándote."
-    },
-    "welcomeEvening": {
-      "label": "Inspíración da noite",
-      "title": "Boas noites! Relaxa con momentos bíblicos.",
-      "description": "Momentos bíblicos de paz para axudarche a reflexionar e atopar consolo ao rematar o día."
-    },
-    "joinUs": {
-      "label": "Únete a nós",
-      "title": "Miles de millóns están a buscar",
-      "description": "A colleita está aquí. Únete a nós para compartir o Evanxeo co mundo usando medios dixitais."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Imos xuntos",
-      "title": "Contar xuntos a historia de Xesús",
-      "description": "Para que poidan escoitar e ver o amor de Xesús no seu propio idioma xusto onde están."
-    }
-  },
   "VideoRecommendations": {
     "match": "Coincidencia: {percent} %",
     "none": "Non se atoparon recomendacións para este vídeo neste idioma."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Idioma do audio",
     "selectLanguageVersion": "Seleccionar unha versión de idioma",
     "watchSelectedVersion": "Ver a versión seleccionada"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Preferencias de cookies",
+    "bannerTitle": "As túas preferencias de privacidade",
+    "bannerDescription": "As cookies esenciais manteñen Watch seguro e en funcionamento. Co teu permiso, unha cookie opcional propia pode lembrar os teus intereses entre visitas para personalizar as recomendacións. As recomendacións contextuais seguirán estando dispoñibles en calquera caso.",
+    "acceptAll": "Aceptar todas",
+    "essentialOnly": "Só esenciais",
+    "manageChoices": "Xestionar preferencias",
+    "savingChoice": "Gardando a preferencia de cookies",
+    "settings": "Configuración de cookies",
+    "settingsDescription": "Escolle se Watch pode lembrar os intereses de recomendación entre visitas. Podes cambialo en calquera momento.",
+    "essentialCookies": "Cookies esenciais",
+    "essentialDescription": "Seguridade, reprodución, preferencias de privacidade e atribución das solicitudes de recomendación.",
+    "alwaysActive": "Sempre activas",
+    "personalization": "Personalización",
+    "personalizationDescription": "Lembra intereses limitados entre visitas. Se desactivas isto, as recomendacións contextuais seguirán dispoñibles.",
+    "erasurePending": "A eliminación do perfil está pendente. As recomendacións contextuais xa están activas.",
+    "cancel": "Cancelar",
+    "saveChoices": "Gardar preferencias",
+    "saving": "Gardando…",
+    "loadError": "Non foi posible cargar a túa elección. Aínda así, podes escoller abaixo.",
+    "grantError": "Non foi posible activar a personalización. Segue dispoñible a opción de só esenciais.",
+    "saveError": "Non foi posible gardar a túa elección. Téntao de novo."
   }
 }

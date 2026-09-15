@@ -9,6 +9,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import {
   fetchInputEmbeddings,
+  getEligibleRecommendationVideoIds,
   getRelatedVideoIds,
   queryScenesSimilar,
   resolveSlugToVideoId,
@@ -91,6 +92,30 @@ describe("getRelatedVideoIds", () => {
     const prisma = mockPrisma()
     prisma.$queryRaw.mockResolvedValueOnce([{ id: "vid-self" }])
     expect(await getRelatedVideoIds(prisma, "vid-self")).toEqual(["vid-self"])
+  })
+})
+
+describe("getEligibleRecommendationVideoIds", () => {
+  it("returns only the currently visible and playable candidate ids", async () => {
+    const prisma = mockPrisma()
+    prisma.$queryRaw.mockResolvedValueOnce([{ id: "vid-playable" }])
+
+    await expect(
+      getEligibleRecommendationVideoIds(
+        prisma,
+        ["vid-hidden", "vid-playable"],
+        "en",
+      ),
+    ).resolves.toEqual(new Set(["vid-playable"]))
+    expect(prisma.$queryRaw).toHaveBeenCalledOnce()
+  })
+
+  it("avoids a database query for an empty pool", async () => {
+    const prisma = mockPrisma()
+    await expect(
+      getEligibleRecommendationVideoIds(prisma, [], "en"),
+    ).resolves.toEqual(new Set())
+    expect(prisma.$queryRaw).not.toHaveBeenCalled()
   })
 })
 

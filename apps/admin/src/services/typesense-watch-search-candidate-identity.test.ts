@@ -3,25 +3,45 @@ import { readFileSync } from "node:fs"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import {
-  candidateWatchSearchApplicationRevision,
+  candidateWatchSearchIndexContractRevision,
   candidateWatchSearchRankingRevision,
 } from "./typesense-watch-search-candidate-identity"
 
-describe("candidateWatchSearchApplicationRevision", () => {
+describe("candidateWatchSearchIndexContractRevision", () => {
   afterEach(() => vi.unstubAllEnvs())
 
   it("does not change when an unrelated deployment commit changes", () => {
     vi.stubEnv("RAILWAY_GIT_COMMIT_SHA", "deployment-a")
-    const firstRevision = candidateWatchSearchApplicationRevision()
+    const firstRevision = candidateWatchSearchIndexContractRevision()
 
     vi.stubEnv("RAILWAY_GIT_COMMIT_SHA", "deployment-b")
 
-    expect(candidateWatchSearchApplicationRevision()).toBe(firstRevision)
-    expect(firstRevision).toBe("watch-search-candidate/v2")
+    expect(candidateWatchSearchIndexContractRevision()).toBe(firstRevision)
+    expect(firstRevision).toBe("watch-search-candidate/v4")
   })
 
   it("tracks ranking qualification separately from collection compatibility", () => {
-    expect(candidateWatchSearchRankingRevision()).toBe("title-and-brand-v1")
+    expect(candidateWatchSearchRankingRevision()).toBe("title-and-brand-v3")
+  })
+
+  it("invalidates generations built before the curation projection", () => {
+    // A v3 generation has no linked curation set, so it can satisfy the old
+    // collection schema while silently omitting editorial results. The v4
+    // contract requires a fresh generation whose lexical collection links to
+    // the curations captured in its candidate snapshot.
+    expect(candidateWatchSearchIndexContractRevision()).toBe(
+      "watch-search-candidate/v4",
+    )
+  })
+
+  it("keeps the two revisions independently variable", () => {
+    // They answer different questions -- physical/projection compatibility vs
+    // application-side ranking behaviour -- so they must never be aliased to
+    // one value, or a ranking-only change would force a needless rebuild and a
+    // projection change could hide behind a requalification.
+    expect(candidateWatchSearchIndexContractRevision()).not.toBe(
+      candidateWatchSearchRankingRevision(),
+    )
   })
 
   it("is the only revision source used by every candidate boundary", () => {
@@ -47,7 +67,7 @@ describe("candidateWatchSearchApplicationRevision", () => {
 
     for (const consumer of consumers) {
       const source = readFileSync(consumer, "utf8")
-      expect(source).toContain("candidateWatchSearchApplicationRevision()")
+      expect(source).toContain("candidateWatchSearchIndexContractRevision()")
       expect(source).not.toMatch(
         /NEXT_PUBLIC_DATADOG_VERSION|RAILWAY_GIT_COMMIT_SHA|VERCEL_GIT_COMMIT_SHA|GIT_COMMIT_SHA/,
       )

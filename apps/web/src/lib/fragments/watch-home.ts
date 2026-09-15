@@ -26,8 +26,6 @@ export const watchHomeVideoFragment = adminGraphql(`
       documentId: id
       languageSlug
       title
-      description
-      snippet
       imageAlt
     }
     preferredVariant: preferredPlayableDub(languageSlug: $languageSlug) {
@@ -77,8 +75,6 @@ export const watchHomeVideoFragment = adminGraphql(`
           documentId: id
           languageSlug
           title
-          description
-          snippet
           imageAlt
         }
         preferredVariant: preferredPlayableDub(languageSlug: $languageSlug) {

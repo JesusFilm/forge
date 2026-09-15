@@ -124,6 +124,9 @@ resource)`.
   `threads.generateTitle` nesting throws mid-turn), `""` untitled sentinel,
   fire-and-forget timing, `AI_CHAT_TITLE_MODEL` as a plain model-router
   string (no static `@ai-sdk/*` import — trips the Mastra CLI bundler).
+  _(Superseded 2026-08-28, feat-405: `AI_CHAT_TITLE_MODEL` is retired — the
+  title model default is now a function returning the seeker's gateway-first
+  chain; the other KTD12 semantics stand.)_
 - `USER_RESOURCE_PREFIX` is imported from `ai-chat-thread-ownership.ts`,
   never re-declared (contract-locality — handoff Ruling 3, requirement 1).
 - The retention purge keeps building over the persisted store

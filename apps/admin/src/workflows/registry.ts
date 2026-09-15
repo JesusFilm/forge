@@ -2,6 +2,17 @@ import {
   runVideoDbBackup,
   runVideoDbBackupScheduler,
 } from "@/workflows/videoDbBackup"
+import { runRecommendationEpisodeFinalization } from "@/workflows/recommendationEpisodeFinalization"
+import { runRecommendationControlReadinessScheduler } from "@/workflows/recommendationControlReadiness"
+import { runRecommendationShadowEvaluation } from "@/workflows/recommendationShadowEvaluation"
+import { runRecommendationExperimentEvaluation } from "@/workflows/recommendationExperimentEvaluation"
+import { runRecommendationPromotion } from "@/workflows/recommendationPromotion"
+import { runRecommendationProfileProjection } from "@/workflows/recommendationProfileProjection"
+import { runRecommendationProfileReconciliationScheduler } from "@/workflows/recommendationProfileReconciliation"
+import {
+  runRecommendationRetention,
+  runRecommendationRetentionScheduler,
+} from "@/workflows/recommendationRetention"
 
 type WorkflowExport = {
   name: string
@@ -10,6 +21,23 @@ type WorkflowExport = {
 
 export function getKnownVideoDbBackupWorkflowIds(): string[] {
   return [runVideoDbBackup, runVideoDbBackupScheduler].map((workflow) => {
+    const registered = workflow as WorkflowExport
+    return registered.workflowId ?? registered.name
+  })
+}
+
+export function getKnownRecommendationWorkflowIds(): string[] {
+  return [
+    runRecommendationEpisodeFinalization,
+    runRecommendationControlReadinessScheduler,
+    runRecommendationShadowEvaluation,
+    runRecommendationExperimentEvaluation,
+    runRecommendationPromotion,
+    runRecommendationProfileProjection,
+    runRecommendationProfileReconciliationScheduler,
+    runRecommendationRetention,
+    runRecommendationRetentionScheduler,
+  ].map((workflow) => {
     const registered = workflow as WorkflowExport
     return registered.workflowId ?? registered.name
   })

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Muda língua di áudio",
     "home": "Inisiu di JesusFilm",
     "closeSearch": "Fixa buska",
-    "submitSearch": "Buska"
+    "submitSearch": "Buska",
+    "library": "Kaŋ kayiti"
   },
   "SearchOverlay": {
     "dialogLabel": "Buska i navega vídeus",
@@ -467,6 +468,7 @@
     "sports": "Sportis",
     "collections": "Kolesons",
     "subtitlesOnly": "Só legendas",
+    "backToTop": "Fandiŋ jeegi",
     "newlyAdded": "Adisionadu resenti",
     "newVideosTitle": "Vídeus kriston novos na {language}",
     "newestFirst": "Mas novu primeru",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Vídeus independente",
     "videosFromCollection": "Vídeus di {collection}.",
     "standaloneDescription": "Vídeus independente na es língua.",
-    "openCollection": "Abri koleson"
+    "openCollection": "Abri koleson",
+    "filters": "Ñoolaani",
+    "filterLength": "Ndooli",
+    "filterLength_under5": "Reki 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Fopi 30 min",
+    "filterType": "Kaŋami",
+    "clearFilters": "Feesi ñoolaani",
+    "filterResults": "{count} ca {total} a woni",
+    "noFilterResults": "Amul widewo ba mos ak ñoolaani yii. Feesi kenn.",
+    "filterAdded": "A yokki",
+    "filterAdded_60d": "Baax 60 fanaan",
+    "filterAdded_6m": "Baax 6 weer",
+    "filterAdded_12m": "Baax 12 weer"
   },
   "WatchHome": {
     "pageTitle": "Odja Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Prévia di vídeu anterior",
     "nextVideoPreview": "Prévia di prósimu vídeu",
     "mediaCollection": "Koleson di média",
-    "scrollToVideo": "Rol pa vídeu {title}"
+    "scrollToVideo": "Rol pa vídeu {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Inisiu di Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Volta pa Watch",
     "browseVideos": "Navega vídeus"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Odja filmi kurtu",
-    "actions": {
-      "joinUs": "Junta ku nu",
-      "shareMission": "Partilha na n'sa mison"
-    },
-    "welcomeStart": {
-      "label": "Fé i Skritura",
-      "title": "N'sa skolta di vídeus pa oji",
-      "description": "Kontéudu di vídeu ku fé di n'sa biblioteka pa inspirá, desafiá i desparta meditación."
-    },
-    "welcomeMorning": {
-      "label": "Inspirason di manhan",
-      "title": "Bon dia! Momentus di Bíblia pa oji sta ta spera.",
-      "description": "Bia di dia ku momentus di Bíblia pa inspirá i levantá bu espírtu."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirason di tardi",
-      "title": "Bon tardi! Momentus di Bíblia pa bu dia.",
-      "description": "Kontéudu di Bíblia pa animá, prudu pa bu pausa di tardi ou pa kontinua ta inspirá."
-    },
-    "welcomeEvening": {
-      "label": "Inspirason di noti",
-      "title": "Bon noti! Deskança ku momentus di Bíblia.",
-      "description": "Momentus di Bíblia pa trankilidá ta ajuda-bu medita i atxa konsolu na fin di dia."
-    },
-    "joinUs": {
-      "label": "Junta ku nu",
-      "title": "Milhoris ta buska",
-      "description": "Kosecha li. Junta ku nu enkuantu nu ta partilha evangelhu ku mundu pa média dijital."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Bai juntus",
-      "title": "Ta konta istória di Jesus, juntus",
-      "description": "Pa ki elis pudi obi i odja amor di Jesus na ses propi língua li ki elis sta."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% di korespondénsia",
     "none": "Ka atxadu rekomendasons pa es vídeu na es língua."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Língua di áudiu",
     "selectLanguageVersion": "Skolhi un versaun di língua",
     "watchSelectedVersion": "Odja versaun skolhidu"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Njagui yi cookie",
+    "bannerTitle": "Njagui sa sutura",
+    "bannerDescription": "Cookie yi a bega a yir Watch a ka suru te a ka liga. Bu nuyit, cookie ya m’bulu m’bulu ya baax maŋ a tigi fisaŋ visita yi ngir a personálisa recomendation yi. Recomendation yi contextual a ka mana de iwa, masi bulo.",
+    "acceptAll": "Nangu yépp",
+    "essentialOnly": "Yi mu soxla doŋ",
+    "manageChoices": "Saytu njagui yi",
+    "savingChoice": "Denc njagui cookie",
+    "settings": "Parameetar yi cookie",
+    "settingsDescription": "Tann bu Watch man a faatliku interes yi recomendation ci visita yi. Man nga ko soppi saa su nekk.",
+    "essentialCookies": "Cookie yi mu soxla",
+    "essentialDescription": "Suru, playback, njagui sa sutura, ak attribution bu laaj recomendation.",
+    "alwaysActive": "Dafa dox bepp saa",
+    "personalization": "Personalisasion",
+    "personalizationDescription": "Faatliku interes yi ñu digle ci visita yi. Su nga ko fey, recomendation yi contextual dinañu des disponibles.",
+    "erasurePending": "Far sa profil mungi ci yoon. Recomendation yi contextual dañu ba noppi di dox.",
+    "cancel": "Neenal",
+    "saveChoices": "Denc njagui yi",
+    "saving": "Mi ngi denc…",
+    "loadError": "Mënuñu a yebbi sa njagui. Waaye man nga a tann ci suuf.",
+    "grantError": "Mënuñu a dogal personalisasion. Yi mu soxla rekk la fi des.",
+    "saveError": "Mënuñu a denc sa njagui. Jéemaatal."
   }
 }

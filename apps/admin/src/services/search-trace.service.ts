@@ -35,6 +35,7 @@ import type {
   WatchSearchResponse,
   WatchSearchResult,
 } from "@/services/watch-search.service"
+import { availabilityScoreForKind } from "./watch-search-availability-score"
 
 export type SearchTraceRouteSourceLabel = "rest" | "graphql"
 export type SearchTraceOutcomeLabel = "success" | "degraded" | "failed"
@@ -289,15 +290,6 @@ function safeLaneStatusMetadata(
     reason: lane.reason,
     detail: lane.detail,
   }
-}
-
-function availabilityScoreForKind(
-  kind: WatchSearchResult["availability"]["kind"],
-): number {
-  if (kind === "target_audio") return 0.25
-  if (kind === "target_subtitle") return 0.18
-  if (kind === "related_language") return 0.08
-  return 0
 }
 
 function safeResultMetadata(row: WatchSearchResult): Prisma.InputJsonObject {

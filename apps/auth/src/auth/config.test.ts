@@ -1,3 +1,4 @@
+import type { BetterAuthOptions } from "better-auth"
 import { google, type GoogleOptions } from "better-auth/social-providers"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -5,6 +6,8 @@ const authConfigCapture = vi.hoisted(() => ({
   betterAuth: vi.fn((options: unknown) => ({ options })),
   oauthProvider: vi.fn(() => ({})),
   genericOAuth: vi.fn((_options: unknown) => ({})),
+  mobileAwareExpoPlugin: vi.fn((_options: unknown) => ({ id: "expo" })),
+  selfRpStateCookiePlugin: vi.fn(() => ({ id: "self-rp-state-cookie" })),
   jwt: vi.fn((_options: unknown) => ({})),
   env: {} as Record<string, string | undefined>,
   findAccountUnique: vi.fn(
@@ -38,6 +41,14 @@ vi.mock("@better-auth/expo", () => ({
   expo: vi.fn(() => ({})),
 }))
 
+vi.mock("@/auth/mobile-expo-plugin", () => ({
+  mobileAwareExpoPlugin: authConfigCapture.mobileAwareExpoPlugin,
+}))
+
+vi.mock("@/auth/self-rp-state-cookie-plugin", () => ({
+  selfRpStateCookiePlugin: authConfigCapture.selfRpStateCookiePlugin,
+}))
+
 vi.mock("@better-auth/prisma-adapter", () => ({
   prismaAdapter: vi.fn(() => ({})),
 }))
@@ -52,11 +63,8 @@ vi.mock("@/config/env", () => ({
   getAdminWatchProgressErasureConfig: vi.fn(() => null),
   getAppleNativeClientConfig: vi.fn(() => null),
   getAuthBaseUrl: vi.fn(() => "http://localhost:3004"),
+  getAuthCustomAudiences: vi.fn(() => ["https://custom.example.test"]),
   getAuthTrustedOrigins: vi.fn(() => []),
-  getAuthValidAudiences: vi.fn(() => [
-    "http://localhost:3004",
-    "http://localhost:3003/mcp",
-  ]),
 }))
 
 vi.mock("@/db/client", () => ({
@@ -69,6 +77,8 @@ vi.mock("@/services/changelog-oauth-grant.service", () => ({
 }))
 
 type CapturedAuthOptions = {
+  advanced?: BetterAuthOptions["advanced"]
+  plugins: unknown[]
   socialProviders: Record<string, unknown> & {
     google: GoogleOptions
     apple?: {
@@ -82,7 +92,11 @@ type CapturedAuthOptions = {
     }
   }
   account: {
-    accountLinking: { enabled: boolean; trustedProviders: string[] }
+    accountLinking: {
+      enabled: boolean
+      trustedProviders: string[]
+      requireLocalEmailVerified?: boolean
+    }
   }
   user: {
     additionalFields?: Record<
@@ -101,6 +115,14 @@ type CapturedAuthOptions = {
     additionalFields?: Record<string, { type: string; input?: boolean }>
   }
   databaseHooks?: {
+    account?: {
+      create?: {
+        before?: (
+          account: { providerId: string; userId: string },
+          ctx: { context: { internalAdapter: unknown } } | null,
+        ) => Promise<void>
+      }
+    }
     session?: {
       create?: {
         before?: (
@@ -189,6 +211,53 @@ describe("auth provider configuration", () => {
     authConfigCapture.decideChangelogGrant.mockReset()
   })
 
+  it("isolates OAuth authorization limits between Cloudflare clients", async () => {
+    const options = await captureAuthOptions()
+    const { betterAuth } =
+      await vi.importActual<typeof import("better-auth")>("better-auth")
+    const { oauthProvider } = await vi.importActual<
+      typeof import("@better-auth/oauth-provider")
+    >("@better-auth/oauth-provider")
+    const { jwt } = await vi.importActual<typeof import("better-auth/plugins")>(
+      "better-auth/plugins",
+    )
+    const instance = betterAuth({
+      baseURL: "https://auth.example.test",
+      secret: "test-only-secret-for-client-rate-limit-isolation",
+      advanced: options.advanced,
+      rateLimit: { enabled: true, storage: "memory" },
+      plugins: [
+        jwt(),
+        oauthProvider({ loginPage: "/login", consentPage: "/consent" }),
+      ],
+      logger: { disabled: true },
+    })
+    const authorize = (
+      ip: string,
+      forwardedFor = "198.51.100.1, 198.51.100.2",
+    ) =>
+      instance.handler(
+        new Request(
+          "https://auth.example.test/api/auth/oauth2/authorize?client_id=unknown-client&response_type=code",
+          {
+            headers: {
+              "cf-connecting-ip": ip,
+              "x-forwarded-for": forwardedFor,
+            },
+          },
+        ),
+      )
+
+    // Invalid clients still traverse the real OAuth endpoint's limiter;
+    // no production account, database, or sign-in credential is needed.
+    for (let i = 0; i < 30; i++) {
+      expect((await authorize("203.0.113.10")).status).not.toBe(429)
+    }
+    expect((await authorize("203.0.113.10")).status).toBe(429)
+    expect((await authorize("203.0.113.10", "192.0.2.99")).status).toBe(429)
+    expect((await authorize("203.0.113.11")).status).not.toBe(429)
+  })
+
   it("always requests Google account selection when Google is enabled", async () => {
     const options = await captureAuthOptions()
 
@@ -244,29 +313,69 @@ describe("auth provider configuration", () => {
     )
   })
 
-  it("uses native protected resources without weakening per-client registration", async () => {
+  it("uses resource-specific policy without exposing protected audiences to DCR", async () => {
     const options = await captureOAuthProviderOptions()
 
     expect(options.allowDynamicClientRegistration).toBe(true)
     expect(options.allowUnauthenticatedClientRegistration).toBe(true)
     expect(options).not.toHaveProperty("enforcePerClientResources")
     expect(options.clientRegistrationAllowedResources).toEqual([
-      "http://localhost:3004",
       "http://localhost:3003/mcp",
+      "https://admin-preview.jesusfilm.org/mcp",
+      "https://admin-stage.jesusfilm.org/mcp",
+      "https://admin.jesusfilm.org/mcp",
+      "http://localhost:3000/mcp",
+      "https://changelog.jesusfilm.org/mcp",
+      "http://localhost:3002/mcp",
+      "https://manager-preview.jesusfilm.org/mcp",
+      "https://manager-stage.jesusfilm.org/mcp",
+      "https://manager.jesusfilm.org/mcp",
     ])
     expect(options.resources.map(({ identifier }) => identifier)).toEqual(
-      options.clientRegistrationAllowedResources,
+      expect.arrayContaining([
+        ...options.clientRegistrationAllowedResources,
+        "http://localhost:3004",
+        "https://custom.example.test",
+        "https://admin.jesusfilm.org/api/manager/session",
+      ]),
     )
-    expect(options.resources[1]?.allowedScopes).toContain("experience:read")
+    expect(
+      options.resources.find(
+        ({ identifier }) => identifier === "https://admin.jesusfilm.org/mcp",
+      )?.allowedScopes,
+    ).toContain("experience:read")
+    expect(
+      options.resources.find(
+        ({ identifier }) =>
+          identifier === "https://changelog.jesusfilm.org/mcp",
+      )?.allowedScopes,
+    ).not.toContain("experience:read")
+    expect(
+      options.resources.find(
+        ({ identifier }) =>
+          identifier === "https://admin.jesusfilm.org/api/manager/session",
+      )?.allowedScopes,
+    ).toEqual(["admin:manager-session:validate"])
+    expect(options.clientRegistrationAllowedScopes).not.toContain(
+      "admin:manager-session:validate",
+    )
     expect(options).not.toHaveProperty("validAudiences")
   })
 
-  it("links dynamic registrations to both Changelog resources by default", async () => {
+  it("links dynamic registrations to every public MCP resource by default", async () => {
     const options = await captureOAuthProviderOptions()
 
     expect(options.clientRegistrationDefaultResources).toEqual([
+      "http://localhost:3003/mcp",
+      "https://admin-preview.jesusfilm.org/mcp",
+      "https://admin-stage.jesusfilm.org/mcp",
+      "https://admin.jesusfilm.org/mcp",
       "http://localhost:3000/mcp",
       "https://changelog.jesusfilm.org/mcp",
+      "http://localhost:3002/mcp",
+      "https://manager-preview.jesusfilm.org/mcp",
+      "https://manager-stage.jesusfilm.org/mcp",
+      "https://manager.jesusfilm.org/mcp",
     ])
   })
 
@@ -301,6 +410,42 @@ describe("auth provider configuration", () => {
       requestedScopes: ["openid", "changelog:read"],
       resources: ["http://localhost:3000/mcp"],
       scopeCeiling: ["openid", "changelog:read"],
+    })
+  })
+
+  it("derives Admin claims from the exact resource instead of dynamic metadata", async () => {
+    const options = await captureOAuthProviderOptions()
+
+    await expect(
+      options.customAccessTokenClaims({
+        user: { id: "user_123", membershipStatus: "ACTIVE" },
+        scopes: ["openid", "experience:read", "changelog:admin"],
+        resources: ["https://admin.jesusfilm.org/mcp"],
+        metadata: { environmentKind: "staging", appKey: "changelog" },
+      }),
+    ).resolves.toEqual({
+      "https://jesusfilm.org/claims/environment": "production",
+      "https://jesusfilm.org/claims/app": "admin-mcp",
+    })
+    expect(authConfigCapture.decideChangelogGrant).not.toHaveBeenCalled()
+  })
+
+  it("derives Studio claims from the exact resource without granting review authority", async () => {
+    const options = await captureOAuthProviderOptions()
+    await expect(
+      options.customAccessTokenClaims({
+        user: { id: "user_123", membershipStatus: "ACTIVE" },
+        scopes: ["openid", "shorts:read", "shorts:edit"],
+        resources: ["https://manager.jesusfilm.org/mcp"],
+        metadata: {
+          environmentKind: "staging",
+          appKey: "manager",
+          studioAuthority: "interactive",
+        },
+      }),
+    ).resolves.toEqual({
+      "https://jesusfilm.org/claims/environment": "production",
+      "https://jesusfilm.org/claims/app": "shorts-mcp",
     })
   })
 
@@ -355,6 +500,7 @@ describe("auth provider configuration", () => {
       const options = await captureOAuthProviderOptions()
       expect(options.resources).toEqual([])
       expect(options.clientRegistrationAllowedResources).toEqual([])
+      expect(options.clientRegistrationDefaultResources).toEqual([])
     } finally {
       vi.unstubAllEnvs()
     }
@@ -490,6 +636,68 @@ describe("mobile login configuration", () => {
       prompt: "login",
     })
     expect(jfp).not.toHaveProperty("clientSecret")
+  })
+
+  // The Expo browser proxy admits ONE same-origin authorize URL: the jfp
+  // self-RP client's. The two ids are read from the same expression, so a
+  // NODE_ENV-keyed client swap cannot leave the proxy pinned to the other.
+  it("hands the mobile-aware expo plugin the jfp provider's own client id", async () => {
+    const options = await captureAuthOptions()
+
+    const genericOAuthCall = authConfigCapture.genericOAuth.mock
+      .calls[0]?.[0] as { config: Array<Record<string, unknown>> }
+    const jfp = genericOAuthCall.config.find(
+      (entry) => entry.providerId === "jfp",
+    )
+
+    expect(authConfigCapture.mobileAwareExpoPlugin).toHaveBeenCalledWith({
+      selfRpClientId: jfp?.clientId,
+    })
+    // The wrapper's return is what registers — not a bare expo() plugin.
+    expect(options.plugins).toContainEqual({ id: "expo" })
+  })
+
+  // Without it, a Google/Okta sign-in inside the hosted page consumes the
+  // `state` cookie and `/callback/jfp` ends on forgemobile:///?error=…
+  it("registers the self-RP state cookie re-plant beside the expo plugin", async () => {
+    const options = await captureAuthOptions()
+    expect(authConfigCapture.selfRpStateCookiePlugin).toHaveBeenCalled()
+    expect(options.plugins).toContainEqual({ id: "self-rp-state-cookie" })
+  })
+
+  // 1.7's `requireLocalEmailVerified` default (true) refused every first
+  // self-RP sign-in here, because no verification email exists. The account
+  // hook below keeps that guard for consumer providers only.
+  it("does not require a verified local email to link a provider account", async () => {
+    const options = await captureAuthOptions()
+    expect(options.account.accountLinking.requireLocalEmailVerified).toBe(false)
+  })
+
+  it("refuses a consumer provider linking onto an unverified existing user, not jfp", async () => {
+    const options = await captureAuthOptions()
+    const before = options.databaseHooks?.account?.create?.before
+    expect(before).toBeTypeOf("function")
+    const ctx = {
+      context: {
+        internalAdapter: {
+          findUserById: async () => ({ id: "u1", emailVerified: false }),
+          findAccounts: async () => [{ providerId: "credential" }],
+        },
+      },
+    }
+
+    await expect(
+      before!({ providerId: "google", userId: "u1" }, ctx),
+    ).rejects.toMatchObject({
+      body: { code: "CONSUMER_LINK_REQUIRES_VERIFIED_EMAIL" },
+    })
+    await expect(
+      before!({ providerId: "jfp", userId: "u1" }, ctx),
+    ).resolves.toBeUndefined()
+    // No endpoint context: no browser link in flight, nothing to refuse.
+    await expect(
+      before!({ providerId: "google", userId: "u1" }, null),
+    ).resolves.toBeUndefined()
   })
 
   it("enables account deletion without a verification email (fresh-session SSO re-auth instead)", async () => {

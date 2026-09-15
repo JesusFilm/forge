@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ऑडिओ भास बदला",
     "home": "JesusFilm मुखपान",
     "closeSearch": "शोध बंद करात",
-    "submitSearch": "सोदात"
+    "submitSearch": "सोदात",
+    "library": "ग्रंथालय"
   },
   "SearchOverlay": {
     "dialogLabel": "व्हिडिओ सोदात आनी ब्राऊझ करात",
@@ -467,6 +468,7 @@
     "sports": "क्रीडा",
     "collections": "संग्रह",
     "subtitlesOnly": "फकत उपशीर्षकां",
+    "backToTop": "वयर परत",
     "newlyAdded": "नव्येन जोडिल्लो",
     "newVideosTitle": "{language} त नवे ख्रिस्ती व्हिडिओ",
     "newestFirst": "सर्वांत नवें प्रथम",
@@ -497,7 +499,21 @@
     "standaloneVideos": "स्वतंत्र व्हिडिओ",
     "videosFromCollection": "{collection} तले व्हिडिओ.",
     "standaloneDescription": "ह्या भाशेंतले स्वतंत्र व्हिडिओ.",
-    "openCollection": "संग्रह उगडात"
+    "openCollection": "संग्रह उगडात",
+    "filters": "चाळणी",
+    "filterLength": "लांबाय",
+    "filterLength_under5": "5 मिनटां परस उणे",
+    "filterLength_5to10": "5-10 मिनटां",
+    "filterLength_10to30": "10-30 मिनटां",
+    "filterLength_over30": "30 मिनटां परस चड",
+    "filterType": "प्रकार",
+    "clearFilters": "चाळणी काडात",
+    "filterResults": "{total} पैकी {count} दाखयल्यां",
+    "noFilterResults": "ह्या चाळणींक जुळपी खंयचोच व्हिडिओ ना. एक काडून पळयात.",
+    "filterAdded": "जोडलां",
+    "filterAdded_60d": "निमाणे 60 दीस",
+    "filterAdded_6m": "निमाणे 6 म्हयने",
+    "filterAdded_12m": "निमाणे 12 म्हयने"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project पळोवपाचें पान",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "मागलो व्हिडिओ पूर्वावलोकन",
     "nextVideoPreview": "पुढलो व्हिडिओ पूर्वावलोकन",
     "mediaCollection": "मीडिया संग्रह",
-    "scrollToVideo": "{title} व्हिडिओक सरकात"
+    "scrollToVideo": "{title} व्हिडिओक सरकात",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project मुखपान",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "पळोवपाक परत",
     "browseVideos": "व्हिडिओ ब्राऊझ करात"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "लहान चित्रपट पळयात",
-    "actions": {
-      "joinUs": "आमचेकडे या",
-      "shareMission": "आमच्या मिशनांत सहभागी जावात"
-    },
-    "welcomeStart": {
-      "label": "विश्वास आनी शास्त्र",
-      "title": "आतांच्यो व्हिडिओ निवडी",
-      "description": "प्रेरणा दियपाक, आव्हान करपाक, आनी चिंतन जागोवपाक आमच्या लायब्ररीतलो विश्वास-केंद्रीत व्हिडिओ मजकूर."
-    },
-    "welcomeMorning": {
-      "label": "सकाळची प्रेरणा",
-      "title": "सुप्रभात! आजचे बायबल क्षण तुमची वाट पळयतात.",
-      "description": "तुमच्या दिवसाची सुरवात उत्साहवर्धक बायबल क्षणांनी करात; ते प्रेरणा आनी उंचावपाक तयार केल्ले आसा."
-    },
-    "welcomeAfternoon": {
-      "label": "दुपारची प्रेरणा",
-      "title": "नमस्कार! तुमच्या दिवसाखातीर बायबल क्षण.",
-      "description": "दुपारच्या विसाव्याखातीर वा पुढल्या प्रेरणेखातीर योग्य असो उत्साहवर्धक बायबल मजकूर."
-    },
-    "welcomeEvening": {
-      "label": "सांजची प्रेरणा",
-      "title": "शुभ संध्याकाळ! बायबल क्षणांसांगत शांत व्हात.",
-      "description": "तुमचो दिवस संपत आसतना चिंतन करपाक आनी आधार मेळोवपाक मदत करपी शांत बायबल क्षण."
-    },
-    "joinUs": {
-      "label": "आमचेकडे या",
-      "title": "अब्जो लोक सोदत आसात",
-      "description": "पीक तयार आसा. डिजिटल माध्यमांच्या मदतीन जगाक सुवार्ता सांगत आम्हांक जोडात."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "चला एकठांय वचया",
-      "title": "येशूची कथा, एकठांय सांगत",
-      "description": "जाल्यार तांकां तांच्याच भाषेंत, तांकां जंय आसात तेंचेर, येशूचें प्रेम ऐकपाक आनी पळोवपाक मेळचें."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% जुळटा",
     "none": "ह्या भाशेंत ह्या व्हिडिओ खातीर शिफारसी मेळ्ळ्यो ना."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "आवाजाची भास",
     "selectLanguageVersion": "भाशेची आवृत्ती निवडात",
     "watchSelectedVersion": "निवडिल्ली आवृत्ती पळयात"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "कुकी निवडी",
+    "bannerTitle": "तुमच्या गोपनीयतेच्या निवडी",
+    "bannerDescription": "आवश्यक कुकीज Watch सुरक्षित आनी चालू दवरतात. तुमच्या परवानगीन, एक ऐच्छिक फर्स्ट-पार्टी कुकी वेगवेगळ्या भेटींत तुमची आवड लक्षांत दवरून शिफारशी वैयक्तिक करूंक शकता. संदर्भाधारित शिफारशी कोणत्याय पर्यायांत उपलब्ध रावतली.",
+    "acceptAll": "सगळे स्वीकारा",
+    "essentialOnly": "फक्त आवश्यक",
+    "manageChoices": "निवडी व्यवस्थापित करा",
+    "savingChoice": "कुकीची निवड जतन करता",
+    "settings": "कुकी सेटिंग्ज",
+    "settingsDescription": "Watch वेगवेगळ्या भेटींत शिफारशीसाठीच्या आवडी लक्षांत दवरूंक शकता काय, ते निवडा. हें तुमी केन्नाय बदलूंक शकतात.",
+    "essentialCookies": "आवश्यक कुकीज",
+    "essentialDescription": "सुरक्षा, प्लेबॅक, गोपनीयतेच्या निवडी, आनी शिफारस विनंतीची नोंद.",
+    "alwaysActive": "सदांच सक्रिय",
+    "personalization": "वैयक्तिकीकरण",
+    "personalizationDescription": "वेगवेगळ्या भेटींत मर्यादित आवडी लक्षांत दवरात. हें बंद केल्यार संदर्भाधारित शिफारशी उपलब्ध रावतात.",
+    "erasurePending": "प्रोफाइल मिटोवप प्रलंबित आसा. संदर्भाधारित शिफारशी आधींच सक्रिय आसात.",
+    "cancel": "रद्द करा",
+    "saveChoices": "निवडी जतन करा",
+    "saving": "जतन करता…",
+    "loadError": "तुमची निवड लोड जावंक शकली ना. तरीय तुमी खाल्यान निवड करूंक शकतात.",
+    "grantError": "वैयक्तिकीकरण सुरू जावंक शकले ना. फक्त आवश्यक पर्याय उपलब्ध आसा.",
+    "saveError": "तुमची निवड जतन जावंक शकली ना. उपकार करून परत प्रयत्न करा."
   }
 }

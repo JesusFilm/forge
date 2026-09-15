@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Promijeni jezik zvuka",
     "home": "Početna stranica JesusFilm",
     "closeSearch": "Zatvori pretragu",
-    "submitSearch": "Pretraži"
+    "submitSearch": "Pretraži",
+    "library": "Biblioteka"
   },
   "SearchOverlay": {
     "dialogLabel": "Pretraži i pregledaj videozapise",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Zbirke",
     "subtitlesOnly": "Samo titlovi",
+    "backToTop": "Natrag na vrh",
     "newlyAdded": "Nedavno dodano",
     "newVideosTitle": "Novi hrišćanski videozapisi na {language}",
     "newestFirst": "Najnovije prvo",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Samostalni videozapisi",
     "videosFromCollection": "Videozapisi iz zbirke {collection}.",
     "standaloneDescription": "Samostalni videozapisi na ovom jeziku.",
-    "openCollection": "Otvori zbirku"
+    "openCollection": "Otvori zbirku",
+    "filters": "Filteri",
+    "filterLength": "Trajanje",
+    "filterLength_under5": "Manje od 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Više od 30 min",
+    "filterType": "Vrsta",
+    "clearFilters": "Očisti filtere",
+    "filterResults": "Prikazano {count} od {total}",
+    "noFilterResults": "Nijedan video ne odgovara ovim filterima. Pokušajte ukloniti jedan.",
+    "filterAdded": "Dodano",
+    "filterAdded_60d": "Zadnjih 60 dana",
+    "filterAdded_6m": "Zadnjih 6 mjeseci",
+    "filterAdded_12m": "Zadnjih 12 mjeseci"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Gledanje",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Pregled prethodnog videozapisa",
     "nextVideoPreview": "Pregled sljedećeg videozapisa",
     "mediaCollection": "Zbirka medija",
-    "scrollToVideo": "Pomjeri se na videozapis {title}"
+    "scrollToVideo": "Pomjeri se na videozapis {title}",
+    "forYou": "Za vas"
   },
   "WatchFooter": {
     "home": "Početna stranica Jesus Film Projecta",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Natrag na Gledanje",
     "browseVideos": "Pregledaj videozapise"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Pogledaj kratki film",
-    "actions": {
-      "joinUs": "Pridružite nam se",
-      "shareMission": "Učestvujte u našoj misiji"
-    },
-    "welcomeStart": {
-      "label": "Vjera i Pismo",
-      "title": "Današnji odabir videozapisa",
-      "description": "Video sadržaj iz naše biblioteke usmjeren na vjeru, da inspiriše, izazove i potakne na razmišljanje."
-    },
-    "welcomeMorning": {
-      "label": "Jutarnja inspiracija",
-      "title": "Dobro jutro! Čekaju vas današnji biblijski trenuci.",
-      "description": "Započnite dan ohrabrujućim biblijskim trenucima osmišljenim da inspirišu i podignu vaš duh."
-    },
-    "welcomeAfternoon": {
-      "label": "Popodnevna inspiracija",
-      "title": "Dobar dan! Biblijski trenuci za vaš dan.",
-      "description": "Ohrabrujući biblijski sadržaj savršen za vašu popodnevnu pauzu ili za nastavak inspiracije."
-    },
-    "welcomeEvening": {
-      "label": "Večernja inspiracija",
-      "title": "Dobro veče! Smirite se uz biblijske trenutke.",
-      "description": "Mirni biblijski trenuci koji će vam pomoći da razmislite i pronađete utjehu dok se dan bliži kraju."
-    },
-    "joinUs": {
-      "label": "Pridružite nam se",
-      "title": "Milijarde tragaju",
-      "description": "Žetva je ovdje. Pridružite nam se dok dijelimo evanđelje sa svijetom koristeći digitalne medije."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Krenimo zajedno",
-      "title": "Pričamo priču o Isusu, zajedno",
-      "description": "Da mogu čuti i vidjeti Isusovu ljubav na svom jeziku, tamo gdje jesu."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% podudarnosti",
     "none": "Nisu pronađene preporuke za ovaj videozapis na ovom jeziku."
@@ -735,14 +714,37 @@
   "WatchUnavailableLanguage": {
     "metadataTitle": "Jezička verzija nije dostupna",
     "eyebrow": "Jezička verzija nije dostupna",
-    "title": "<contentTitle>{title}</contentTitle> nije dostupan na jeziku <languageName>{language}</languageName>",
+    "title": "<contentTitle>{title}</contentTitle>: nema verzije na jeziku <languageName>„{language}“</languageName>",
     "actionsLabel": "Dostupne opcije gledanja",
-    "browseInLanguage": "Pregledajte videozapise na jeziku {language}",
+    "browseInLanguage": "Svi videozapisi na jeziku „{language}“",
     "backToSearch": "Nazad na pretragu",
     "audioVersionsTitle": "Druge audio verzije",
     "audioVersionsDescription": "Odaberite jezik zvuka da nastavite gledati ovaj video.",
     "languageVersionLabel": "Jezik zvuka",
     "selectLanguageVersion": "Odaberite jezičku verziju",
     "watchSelectedVersion": "Gledajte odabranu verziju"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Postavke kolačića",
+    "bannerTitle": "Vaši izbori privatnosti",
+    "bannerDescription": "Neophodni kolačići čuvaju Watch sigurnim i funkcionalnim. Uz vašu dozvolu, opcionalni kolačić prve strane može pamtiti interese između posjeta kako bi preporuke bile prilagođene vama. Kontekstualne preporuke ostaju dostupne u svakom slučaju.",
+    "acceptAll": "Prihvati sve",
+    "essentialOnly": "Samo neophodno",
+    "manageChoices": "Upravljaj izborima",
+    "savingChoice": "Spremanje izbora kolačića",
+    "settings": "Postavke kolačića",
+    "settingsDescription": "Odaberite može li Watch pamtiti interese za preporuke između posjeta. Ovo možete promijeniti u bilo kojem trenutku.",
+    "essentialCookies": "Neophodni kolačići",
+    "essentialDescription": "Sigurnost, reprodukcija, izbori privatnosti i pripisivanje zahtjeva za preporuke.",
+    "alwaysActive": "Uvijek aktivno",
+    "personalization": "Personalizacija",
+    "personalizationDescription": "Pamti ograničene interese između posjeta. Ako ovo isključite, kontekstualne preporuke će i dalje biti dostupne.",
+    "erasurePending": "Brisanje profila je u toku. Kontekstualne preporuke su već aktivne.",
+    "cancel": "Otkaži",
+    "saveChoices": "Sačuvaj izbore",
+    "saving": "Spremanje…",
+    "loadError": "Vaš izbor nije mogao biti učitan. I dalje možete odabrati ispod.",
+    "grantError": "Personalizacija nije mogla biti uključena. Dostupna je samo neophodna opcija.",
+    "saveError": "Vaš izbor nije mogao biti sačuvan. Molimo pokušajte ponovo."
   }
 }

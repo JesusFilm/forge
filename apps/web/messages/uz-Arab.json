@@ -180,7 +180,8 @@
     "changeAudioLanguage": "تغییر زبان صدا",
     "home": "صفحهٔ اصلی JesusFilm",
     "closeSearch": "بستن جست‌وجو",
-    "submitSearch": "قیدیریش"
+    "submitSearch": "قیدیریش",
+    "library": "کتابخانه"
   },
   "SearchOverlay": {
     "dialogLabel": "جست‌وجو و مرور ویدیوها",
@@ -467,6 +468,7 @@
     "sports": "ورزش",
     "collections": "مجموعه‌ها",
     "subtitlesOnly": "فقط زیرنویس",
+    "backToTop": "یوقاریگه",
     "newlyAdded": "تازه افزوده‌شده",
     "newVideosTitle": "ویدیوهای مسیحی جدید به زبان {language}",
     "newestFirst": "جدیدترین‌ها در ابتدا",
@@ -497,7 +499,21 @@
     "standaloneVideos": "ویدیوهای مستقل",
     "videosFromCollection": "ویدیوهای مجموعهٔ {collection}.",
     "standaloneDescription": "ویدیوهای مستقل به این زبان.",
-    "openCollection": "باز کردن مجموعه"
+    "openCollection": "باز کردن مجموعه",
+    "filters": "فیلترلر",
+    "filterLength": "داوامیتی",
+    "filterLength_under5": "۵ دقیقهدن کم",
+    "filterLength_5to10": "۵-۱۰ دقیقه",
+    "filterLength_10to30": "۱۰-۳۰ دقیقه",
+    "filterLength_over30": "۳۰ دقیقهدن کوپ",
+    "filterType": "تۆری",
+    "clearFilters": "فیلترلرنی تازهلش",
+    "filterResults": "{total} دن {count} کۆرسهتیلدی",
+    "noFilterResults": "بو فیلترلرگه ماس ویدیو یوق. بیتتهسینی آلیب تشلب کۆرینگ.",
+    "filterAdded": "قوشیلگن",
+    "filterAdded_60d": "آخرگی ۶۰ کۆن",
+    "filterAdded_6m": "آخرگی ۶ آی",
+    "filterAdded_12m": "آخرگی ۱۲ آی"
   },
   "WatchHome": {
     "pageTitle": "تماشای Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "پیش‌نمایش ویدیوی قبلی",
     "nextVideoPreview": "پیش‌نمایش ویدیوی بعدی",
     "mediaCollection": "مجموعهٔ رسانه‌ای",
-    "scrollToVideo": "به ویدیوی {title} بروید"
+    "scrollToVideo": "به ویدیوی {title} بروید",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "صفحهٔ اصلی Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "بازگشت به تماشا",
     "browseVideos": "مرور ویدیوها"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "فیلم کوتاه را تماشا کنید",
-    "actions": {
-      "joinUs": "به ما بپیوندید",
-      "shareMission": "در مأموریت ما سهیم شوید"
-    },
-    "welcomeStart": {
-      "label": "ایمان و کتاب‌مقدس",
-      "title": "گزیده‌های ویدیویی امروز",
-      "description": "محتوای ویدیوییِ مبتنی بر ایمان از کتابخانهٔ ما برای الهام‌بخشی، چالش‌برانگیز کردن و برانگیختن تأمل."
-    },
-    "welcomeMorning": {
-      "label": "الهام صبحگاهی",
-      "title": "صبح بخیر! لحظه‌های کتاب‌مقدسیِ امروز در انتظارند.",
-      "description": "روز خود را با لحظه‌های دلگرم‌کنندهٔ کتاب‌مقدس آغاز کنید؛ برای الهام‌بخشی و تقویت روح شما."
-    },
-    "welcomeAfternoon": {
-      "label": "الهام عصرگاهی",
-      "title": "عصر بخیر! لحظه‌های کتاب‌مقدسی برای روز شما.",
-      "description": "محتوای دلگرم‌کنندهٔ کتاب‌مقدس، مناسبِ استراحت عصرگاهی یا ادامهٔ الهام."
-    },
-    "welcomeEvening": {
-      "label": "الهام شبانگاهی",
-      "title": "شب بخیر! با لحظه‌های کتاب‌مقدسی آرام بگیرید.",
-      "description": "لحظه‌های آرام کتاب‌مقدس برای کمک به تأمل و یافتن آرامش در پایان روز."
-    },
-    "joinUs": {
-      "label": "به ما بپیوندید",
-      "title": "میلیاردها نفر در جست‌وجو هستند",
-      "description": "زمان برداشت فرارسیده است. در رساندن انجیل به جهان از راه رسانهٔ دیجیتال با ما همراه شوید."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "بیایید با هم پیش برویم",
-      "title": "روایت داستان عیسی، با هم",
-      "description": "تا بتوانند محبت عیسی را به زبان خودشان، همان‌جایی که هستند، بشنوند و ببینند."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}٪ موسلیک",
     "none": "بو ویدیو اوچون بو تیلده هیچ قندای توصیه تاپیلمدی."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "آودیو تیلی",
     "selectLanguageVersion": "تیل نۇسخە‌سینى تاللەڭ",
     "watchSelectedVersion": "تاللەنگەن نۇسخە‌نى كۆرۈڭ"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "کوکی تاللوولری",
+    "bannerTitle": "محرم‌لیگینگیز تانلوولری",
+    "bannerDescription": "اساسی کوکی‌لر Watch نی خاۋپسیز و ایشلایدیغان حالده ساقلایدی. اجازتینگیز بیلن، اختیارى بیرینچی تەرەپ کوکی‌سی شخصی‌لەشتىریلگەن تاوصیه‌لر اوچون قیزیقیش‌لرنی کیرگنلر آراسی‌ده اسلب قالیشی ممکن. هر ایکّی حالت‌ده هم وضعیتگه قاراپ تاوصیه‌لر موجود بولادی.",
+    "acceptAll": "همه‌سینی قبول قیلیش",
+    "essentialOnly": "فقط اساسی‌لر",
+    "manageChoices": "تانلوولرنی باشقریش",
+    "savingChoice": "کوکی تانلووینی ساقلاش",
+    "settings": "کوکی سازلامالری",
+    "settingsDescription": "Watch کیرگنلر آراسی‌ده تاوصیه قیزیقیش‌لرینی اسلب قاله آلدیمی، شونی تنگلنگ. بونی هر وقت اوزگرتیره آلاسیز.",
+    "essentialCookies": "اساسی کوکی‌لر",
+    "essentialDescription": "خاۋپسیزلیک، پلېیبک، محرم‌لیگ تانلوولری و تاوصیه سورووی نسبت‌بەریشی.",
+    "alwaysActive": "همیشه فعال",
+    "personalization": "شخصی‌لەشتىریش",
+    "personalizationDescription": "چگەرەلەنگەن قیزیقیش‌لرنی کیرگنلر آراسی‌ده اسلب قالیش. بونی اوچیریب قويیش وضعیتگه قاراپ تاوصیه‌لرنی موجود حالده قالدیرادی.",
+    "erasurePending": "پروفیلنی اوچیریش کوتیش حالته‌ده. وضعیتگه قاراپ تاوصیه‌لر آللا قچان فعال.",
+    "cancel": "بیکار قیلیش",
+    "saveChoices": "تانلوولرنی ساقلاش",
+    "saving": "ساقلانیپ یاتیر…",
+    "loadError": "تانلووینگیزنی یوکلهب بولمادی. پاست‌ده یانه تنگلشینگیز ممکن.",
+    "grantError": "شخصی‌لەشتىریشنی یاقیب بولمادی. فقط اساسی‌لر موجود بولیب قالادی.",
+    "saveError": "تانلووینگیز ساقلنمادی. لطفاً یانه اورینیب کورینگ."
   }
 }

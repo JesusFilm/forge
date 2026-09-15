@@ -20,6 +20,8 @@ implementation_authority: docs/plans/2026-08-18-2219-feat-watch-recommendation-l
 
 # Archived Backup — Live Personalized Watch Recommendations - Plan
 
+> **Current enablement authority:** `docs/analytics-and-recommendation-policy.md` supersedes consent prerequisites in this archived backup. Keep this material historical; it does not authorize implementation or changes to the restored analytics baseline.
+
 <!-- ARCHIVED BACKUP: DO NOT IMPLEMENT, PLAN, TICKET, OR LOAD AS ACTIVE CONTEXT. -->
 
 > [!CAUTION]

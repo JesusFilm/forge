@@ -374,4 +374,55 @@ describe("searchVideos", () => {
       availabilityLanguageEnglishName: "Russian",
     })
   })
+
+  it("maps a CONTAINER availability to a browsable container result", async () => {
+    semanticSearchAdminQuery.mockResolvedValueOnce({
+      data: {
+        watchSearch: {
+          results: [
+            {
+              type: "VIDEO",
+              id: "video-easter",
+              slug: "easter",
+              title: "Easter",
+              imageUrl: "https://example.com/easter.jpg",
+              imageBlurDataUrl: null,
+              muxThumbnailBlurDataUrl: null,
+              snippet: "",
+              playbackId: null,
+              startSeconds: null,
+              score: 0.7,
+              label: "COLLECTION",
+              durationSeconds: null,
+              childCount: 29,
+              languageSlug: null,
+              languageEnglishName: null,
+              availability: {
+                kind: "CONTAINER",
+                languageSlug: "english",
+                languageEnglishName: "English",
+              },
+              evidence: null,
+              action: { hrefLanguageSlug: "english" },
+            },
+          ],
+          hasMore: false,
+          query: "Easter",
+          searchMode: "watch-search",
+          latencyMs: 12,
+          nextOffset: 0,
+        },
+      },
+    })
+
+    const data = await searchVideos("Easter")
+
+    expect(data.results[0]).toMatchObject({
+      slug: "easter",
+      availabilityKind: "container",
+      languageSlug: "english",
+      playbackId: null,
+      childCount: 29,
+    })
+  })
 })

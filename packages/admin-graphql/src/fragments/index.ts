@@ -21,5 +21,14 @@ export { adminVideoFragment } from "./blocks/video"
 export { adminVideoCarouselFragment } from "./blocks/video-carousel"
 export { adminVideoHeroFragment } from "./blocks/video-hero"
 export { adminVideoRecommendationsFragment } from "./blocks/video-recommendations"
+export { adminHomepageRecommendationsFragment } from "./blocks/homepage-recommendations"
+export {
+  adminPreCopyWatchHomeCategoryRailFragment,
+  adminWatchHomeCategoryRailFragment,
+} from "./blocks/watch-home-category-rail"
 export { adminWatchHomeHeroFragment } from "./blocks/watch-home-hero"
-export { adminWatchExperienceFragment } from "./watch-experience"
+export {
+  adminLegacyWatchExperienceFragment,
+  adminPreCopyWatchExperienceFragment,
+  adminWatchExperienceFragment,
+} from "./watch-experience"

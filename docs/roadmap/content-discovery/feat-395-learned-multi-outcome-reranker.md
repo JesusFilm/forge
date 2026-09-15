@@ -43,6 +43,7 @@ After trustworthy exposure and outcome evidence exists, Forge can evaluate an in
 
 - Record an implementation decision for the smallest reproducible training and inference stack, model format, artifact store, registry, and repository command before model code begins.
 - Build point-in-time train, validation, and test snapshots with exact feature, outcome, policy, code, eligibility, privacy-cutoff, and exploration-propensity lineage.
+- Publish one versioned training/serving feature contract that can accept semantic score; interest weight, support, stability, and freshness; co-watch lift and confidence; continuation signals; future profile/item embedding score; session embedding; and request context. Missing future features must remain explicit and backward-compatible.
 - Train an interpretable logistic-regression or gradient-boosted-tree challenger with separate calibrated outcome targets combined only by explicit surface policy.
 - Publish model artifacts atomically, serve through a versioned adapter, retain the deterministic ranker as control/fallback, and evaluate in shadow before any new exposure ticket.
 
@@ -56,6 +57,7 @@ The ticket is not complete until this result is visible and reconcilable in the 
 ## Constraints
 
 - Training and serving share one versioned feature definition.
+- This ticket owns outcome prediction and feature consumption, not profile construction, item representation training, or ANN candidate retrieval; those remain independently versioned producers behind the feature contract.
 - Deletion blocks future snapshot inclusion; model revocation behavior is explicit in the manifest’s privacy policy.
 - Model failure or stale artifacts fall back to the deterministic ranker.
 - Every new recommendation record declares purpose, identity class, retention, access, deletion behavior, ingestion health, and rollback or fallback.
@@ -64,6 +66,7 @@ The ticket is not complete until this result is visible and reconcilable in the 
 ## Verification
 
 - Test target leakage, point-in-time joins, missing features, stale/model-load failure, calibration drift, cohort regression, deletion, artifact reproducibility, and deterministic fallback.
+- Test forward/backward feature-contract compatibility and equivalence when optional representation features are absent, stale, or withdrawn.
 - Run offline calibration and ranking metrics by outcome and cohort plus serving latency tests.
 - Reconcile model lineage, shadow evidence, and decision in Admin.
 - Run affected application checks: `pnpm --filter @forge/admin test`, `pnpm --filter @forge/admin lint`, and `pnpm --filter @forge/admin typecheck`.

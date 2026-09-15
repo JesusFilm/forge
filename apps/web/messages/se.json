@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Rievdat jietna gielat",
     "home": "JesusFilm ruovttusiidu",
     "closeSearch": "Gidde ohcan",
-    "submitSearch": "Oza"
+    "submitSearch": "Oza",
+    "library": "Girjerádju"
   },
   "SearchOverlay": {
     "dialogLabel": "Oza ja geahččal videoaid",
@@ -467,6 +468,7 @@
     "sports": "Spábbaileamit",
     "collections": "Čoakkáldagat",
     "subtitlesOnly": "Dušše lávlagat",
+    "backToTop": "Máhcca bajás",
     "newlyAdded": "Ođđa lasihuvvon",
     "newVideosTitle": "Ođđa kristtalaš videoat {language}:s",
     "newestFirst": "Ođđemus álggos",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Oktasoavttadit videoat",
     "videosFromCollection": "Videoat {collection}:s.",
     "standaloneDescription": "Oktasoavttadit videoat dán gillii.",
-    "openCollection": "Raba čoakkáldaga"
+    "openCollection": "Raba čoakkáldaga",
+    "filters": "Sillat",
+    "filterLength": "Guhkkodat",
+    "filterLength_under5": "Unnit go 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Eanet go 30 min",
+    "filterType": "Šládja",
+    "clearFilters": "Sihko sillat",
+    "filterResults": "Čájehuvvo {count} / {total}",
+    "noFilterResults": "Ii oktage video heive dáid sillaide. Geahččal váldit eret ovtta.",
+    "filterAdded": "Lasihuvvon",
+    "filterAdded_60d": "Maŋimuš 60 beaivvi",
+    "filterAdded_6m": "Maŋimuš 6 mánu",
+    "filterAdded_12m": "Maŋimuš 12 mánu"
   },
   "WatchHome": {
     "pageTitle": "Geahččal | Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Ovddit video ovdančájeheapmi",
     "nextVideoPreview": "Boahtte video ovdančájeheapmi",
     "mediaCollection": "Mediabuvttad",
-    "scrollToVideo": "Rullat {title} videoa guvlui"
+    "scrollToVideo": "Rullat {title} videoa guvlui",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project ruovttusiidu",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Maŋŋá geahččamii",
     "browseVideos": "Geahččal videoaid"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Geahččal oanehis filmma",
-    "actions": {
-      "joinUs": "Oasseváldde min",
-      "shareMission": "Juoge min missiijii"
-    },
-    "welcomeStart": {
-      "label": "Osko ja Skrifta",
-      "title": "Dálá videočoakkáldat",
-      "description": "Oskojulggašuvvon videosisdoallu min buvttas mii deaivvada, hástala ja movttiidahttá jurddašit."
-    },
-    "welcomeMorning": {
-      "label": "Iđitmovttiidahttin",
-      "title": "Bures boahtin! Dálá Biibbalmuitalusat várrejit dutnje.",
-      "description": "Álggaše beaivvi buorit Biibbalmuitalusain, mat leat hábmejuvvon movttiidahttit ja bajidit du oaiviliid."
-    },
-    "welcomeAfternoon": {
-      "label": "Iđitmovttiidahttin",
-      "title": "Bures boahtin! Biibbalmuitalusat du beivvi várás.",
-      "description": "Buorit Biibbalmuitalusat, heivvolaččat iežat beaivegaskkamii dahje jotkkolaš movttiidahttimii."
-    },
-    "welcomeEvening": {
-      "label": "Eahketmovttiidahttin",
-      "title": "Bures boahtin! Háliidatgo hávdadit Biibbalmuitalusain?",
-      "description": "Roahkkadit Biibbalmuitalusat, mat veahkehit dutnje jurddašit ja gávdnat roahtu go beaivi nohká."
-    },
-    "joinUs": {
-      "label": "Oasseváldde min",
-      "title": "Miljjáhtat ohcet",
-      "description": "Sáddu lea das. Oasseváldde min go juohkit evangeliuma máilmái digitála media bokte."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Vázzet oktan",
-      "title": "Jesus muitalusa čuovvut oktanaga",
-      "description": "Vai sii ožžot guldalit ja oaidnit Jesus ráhkisvuođa iežaset gielas, dan sadjái gos sii orrot."
-    }
-  },
   "VideoRecommendations": {
     "match": "Heiveheapmi: {percent} %",
     "none": "Dán video várás eai gávdnon ávžžuhusat dán gillii."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Jietnagiella",
     "selectLanguageVersion": "Vállje giellaveršuvnna",
     "watchSelectedVersion": "Geahča válljejuvvon veršuvnna"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie-válljen",
+    "bannerTitle": "Du priváhtaváljen",
+    "bannerDescription": "Vuđolaš cookie:t doallet Watcha sihkkarin ja doaibmamin. Du lohpiin sáhttá válljejuvvon vuosttášbeali cookie muitit beroštumiid galledemiid rastá, vai ávžžuhusat heivehuvvojit dutnje. Konteksttalaš ávžžuhusat leat olamuttus goabbáge láhkai.",
+    "acceptAll": "Dohkket buot",
+    "essentialOnly": "Dušše vuđolaččat",
+    "manageChoices": "Hálddaš válljemiid",
+    "savingChoice": "Vurkemin cookie-válljema",
+    "settings": "Cookie-heivehusat",
+    "settingsDescription": "Vállje, sáhttágo Watch muitit ávžžuhusberoštumiid galledemiid rastá. Dán sáhtát rievdadit goas beare.",
+    "essentialCookies": "Vuđolaš cookie:t",
+    "essentialDescription": "Sihkkarvuohta, čuojahan, priváhtaváljen ja ávžžuhusjearahusa čujuhus.",
+    "alwaysActive": "Álo aktiivvalaš",
+    "personalization": "Heiveheapmi persovdnii",
+    "personalizationDescription": "Muitte ráddjejuvvon beroštumiid galledemiid rastá. Jos dát botket eret, konteksttalaš ávžžuhusat leat ain olamuttus.",
+    "erasurePending": "Profiila sihkkun lea joatkimin. Konteksttalaš ávžžuhusat leat juo aktiivvalaččat.",
+    "cancel": "Gaskkalduhte",
+    "saveChoices": "Vurke válljemiid",
+    "saving": "Vurkemin…",
+    "loadError": "Du válljen ii sáhttán viežžat. Don sáhtát vel válljet vuolábealde.",
+    "grantError": "Persovdnalaš heiveheapmi ii sáhttán aktiveret. Dušše vuđolaččat leat ain olamuttus.",
+    "saveError": "Du válljen ii sáhttán vurkejuvvot. Geahččal ođđasit."
   }
 }

@@ -10,7 +10,7 @@ tags:
   - rate-limiting
   - admin
 problem_type: architectural_pattern
-component: apps/admin/src/app/api/auth/[...all]/route.ts
+component: apps/auth/src/app/api/auth/[...all]/route.ts
 ---
 
 ## Context
@@ -30,10 +30,23 @@ route publicly would also let unknown users create accounts directly.
 
 ## Guidance
 
-Keep the migration signup path **server-internal** and block public signup at
-the HTTP route layer.
+> **Where this lives now (2026-09-07 refresh):** the mechanism moved wholesale
+> to the standalone auth app when auth was extracted from admin —
+> `apps/auth/src/app/api/auth/[...all]/route.ts` (`handleEmailSignIn`, the
+> Firebase fallback with `verifyFirebaseIdToken` and the
+> `providerId: "firebase"` account upsert, and `handleEmailSignUp`). One
+> deliberate evolution: auth now serves PUBLIC viewer signup, so the blanket
+> `sign-up/email` 404 below is the historical admin-era shape; the shipped
+> successor is duplicate-account protection in front of Better Auth
+> (`existingAccountSignUpResponse()` → 409), exactly as the closing paragraph
+> of this section anticipated. The rate-limit-wraps-everything rule is
+> unchanged. Admin no longer hosts any credential or migration logic.
 
-In Forge admin, the route handler does three separate things:
+Keep the migration signup path **server-internal** and block public signup at
+the HTTP route layer (or, where public signup is a requirement, gate it with
+duplicate-account protection as above).
+
+In the admin-era route handler, the handler did three separate things:
 
 1. `POST /api/auth/sign-in/email` is rate-limited before _any_ auth work
 2. the route first delegates to Better Auth's normal sign-in handler
@@ -183,7 +196,9 @@ if (tooManyRequests(request)) {
 
 ## Related
 
-- [spike-auth-header-must-be-env-gated.md](/workspace/docs/solutions/auth/spike-auth-header-must-be-env-gated.md)
-- [route.ts](/workspace/apps/admin/src/app/api/auth/[...all]/route.ts:1)
-- [config.ts](/workspace/apps/admin/src/auth/config.ts:1)
-- [rate-limit.ts](/workspace/apps/admin/src/auth/rate-limit.ts:1)
+- [spike-auth-header-must-be-env-gated.md](./spike-auth-header-must-be-env-gated.md)
+- `apps/auth/src/app/api/auth/[...all]/route.ts` — the current home of the
+  sign-in fallback, Firebase account upsert, and duplicate-account signup gate
+- `apps/auth/src/auth/rate-limit.ts` — the auth-route limiter
+- `apps/auth/src/auth/config.ts` — the Better Auth config (the admin-era
+  `apps/admin` copies of these files no longer exist)

@@ -386,7 +386,7 @@ function MuxBackedVideoPlayer({
 
           <span
             ref={timeRef}
-            className="ml-1 min-w-[60px] shrink-0 text-right text-xs text-white"
+            className="ml-1 min-w-[60px] shrink-0 text-right text-sm sm:text-xs text-white"
           >
             0:00 / 0:00
           </span>

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ಆಡಿಯೊ ಭಾಷೆ ಬದಲಾಯಿಸಿ",
     "home": "JesusFilm ಮುಖಪುಟ",
     "closeSearch": "ಹುಡುಕಾಟ ಮುಚ್ಚಿ",
-    "submitSearch": "ಹುಡುಕಿ"
+    "submitSearch": "ಹುಡುಕಿ",
+    "library": "ಲೈಬ್ರರಿ"
   },
   "SearchOverlay": {
     "dialogLabel": "ವೀಡಿಯೊಗಳನ್ನು ಹುಡುಕಿ ಮತ್ತು ಬ್ರೌಸ್ ಮಾಡಿ",
@@ -467,6 +468,7 @@
     "sports": "ಕ್ರೀಡೆಗಳು",
     "collections": "ಸಂಗ್ರಹಗಳು",
     "subtitlesOnly": "ಉಪಶೀರ್ಷಿಕೆಗಳು ಮಾತ್ರ",
+    "backToTop": "ಮೇಲಕ್ಕೆ ಹಿಂತಿರುಗಿ",
     "newlyAdded": "ಹೊಸಾಗಿ ಸೇರಿಸಲಾಗಿದೆ",
     "newVideosTitle": "{language} ನಲ್ಲಿ ಹೊಸ ಕ್ರಿಶ್ಚಿಯನ್ ವೀಡಿಯೊಗಳು",
     "newestFirst": "ಅತ್ಯಂತ ಹೊಸದನ್ನು ಮೊದಲು",
@@ -497,7 +499,21 @@
     "standaloneVideos": "ಸ್ವತಂತ್ರ ವೀಡಿಯೊಗಳು",
     "videosFromCollection": "{collection} ನಿಂದ ವೀಡಿಯೊಗಳು.",
     "standaloneDescription": "ಈ ಭಾಷೆಯಲ್ಲಿನ ಸ್ವತಂತ್ರ ವೀಡಿಯೊಗಳು.",
-    "openCollection": "ಸಂಗ್ರಹ ತೆರೆಯಿರಿ"
+    "openCollection": "ಸಂಗ್ರಹ ತೆರೆಯಿರಿ",
+    "filters": "ಫಿಲ್ಟರ್‌ಗಳು",
+    "filterLength": "ಉದ್ದ",
+    "filterLength_under5": "5 ನಿಮಿಷಕ್ಕಿಂತ ಕಡಿಮೆ",
+    "filterLength_5to10": "5-10 ನಿಮಿಷ",
+    "filterLength_10to30": "10-30 ನಿಮಿಷ",
+    "filterLength_over30": "30 ನಿಮಿಷಕ್ಕಿಂತ ಹೆಚ್ಚು",
+    "filterType": "ಪ್ರಕಾರ",
+    "clearFilters": "ಫಿಲ್ಟರ್‌ಗಳನ್ನು ಅಳಿಸಿ",
+    "filterResults": "{total} ರಲ್ಲಿ {count} ತೋರಿಸಲಾಗಿದೆ",
+    "noFilterResults": "ಈ ಫಿಲ್ಟರ್‌ಗಳಿಗೆ ಯಾವ ವೀಡಿಯೊ ಹೊಂದಿಕೆಯಾಗುವುದಿಲ್ಲ. ಒಂದನ್ನು ತೆಗೆದು ನೋಡಿ.",
+    "filterAdded": "ಸೇರಿಸಲಾಗಿದೆ",
+    "filterAdded_60d": "ಕಳೆದ 60 ದಿನಗಳು",
+    "filterAdded_6m": "ಕಳೆದ 6 ತಿಂಗಳು",
+    "filterAdded_12m": "ಕಳೆದ 12 ತಿಂಗಳು"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project ವಾಚ್",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "ಹಿಂದಿನ ವೀಡಿಯೊ ಪೂರ್ವವೀಕ್ಷಣೆ",
     "nextVideoPreview": "ಮುಂದಿನ ವೀಡಿಯೊ ಪೂರ್ವವೀಕ್ಷಣೆ",
     "mediaCollection": "ಮಾಧ್ಯಮ ಸಂಗ್ರಹ",
-    "scrollToVideo": "{title} ವೀಡಿಯೊಗೆ ಸ್ಕ್ರಾಲ್ ಮಾಡಿ"
+    "scrollToVideo": "{title} ವೀಡಿಯೊಗೆ ಸ್ಕ್ರಾಲ್ ಮಾಡಿ",
+    "forYou": "ನಿಮಗಾಗಿ"
   },
   "WatchFooter": {
     "home": "Jesus Film Project ಮುಖಪುಟ",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "ವೀಕ್ಷಣೆಗೆ ಹಿಂತಿರುಗಿ",
     "browseVideos": "ವೀಡಿಯೊಗಳನ್ನು ಬ್ರೌಸ್ ಮಾಡಿ"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "ಕಿರುಚಿತ್ರ ನೋಡಿ",
-    "actions": {
-      "joinUs": "ನಮ್ಮೊಂದಿಗೆ ಸೇರಿ",
-      "shareMission": "ನಮ್ಮ ಧ್ಯೇಯದಲ್ಲಿ ಪಾಲ್ಗೊಳ್ಳಿ"
-    },
-    "welcomeStart": {
-      "label": "ನಂಬಿಕೆ ಮತ್ತು ಶಾಸ್ತ್ರ",
-      "title": "ಇಂದಿನ ವೀಡಿಯೊ ಆಯ್ಕೆಗಳು",
-      "description": "ಪ್ರೇರಣೆ, ಸವಾಲು ಮತ್ತು ಚಿಂತನೆಯನ್ನು ಉಂಟುಮಾಡುವಂತೆ ನಮ್ಮ ಗ್ರಂಥಾಲಯದಿಂದ ನಂಬಿಕೆಕೇಂದ್ರೀತ ವೀಡಿಯೊ ವಿಷಯ."
-    },
-    "welcomeMorning": {
-      "label": "ಬೆಳಗಿನ ಪ್ರೇರಣೆ",
-      "title": "ಶುಭೋದಯ! ಇಂದಿನ ಬೈಬಲ್ ಕ್ಷಣಗಳು ಕಾಯುತ್ತಿವೆ.",
-      "description": "ಪ್ರೋತ್ಸಾಹಿಸುವ ಬೈಬಲ್ ಕ್ಷಣಗಳೊಂದಿಗೆ ನಿಮ್ಮ ದಿನವನ್ನು ಆರಂಭಿಸಿ; ನಿಮ್ಮ ಆತ್ಮವನ್ನು ಪ್ರೇರೇಪಿಸಿ ಉನ್ನತಿಗೊಳಿಸಲು ರೂಪಿಸಲಾಗಿದೆ."
-    },
-    "welcomeAfternoon": {
-      "label": "ಮಧ್ಯಾಹ್ನದ ಪ್ರೇರಣೆ",
-      "title": "ಶುಭ ಮಧ್ಯಾಹ್ನ! ನಿಮ್ಮ ದಿನಕ್ಕಾಗಿ ಬೈಬಲ್ ಕ್ಷಣಗಳು.",
-      "description": "ಮಧ್ಯಾಹ್ನದ ವಿಶ್ರಾಂತಿಗೆ ಅಥವಾ ಮುಂದಿನ ಪ್ರೇರಣೆಗೆ ಸೂಕ್ತವಾದ ಪ್ರೋತ್ಸಾಹಕ ಬೈಬಲ್ ವಿಷಯ."
-    },
-    "welcomeEvening": {
-      "label": "ಸಾಯಂಕಾಲದ ಪ್ರೇರಣೆ",
-      "title": "ಶುಭ ಸಂಜೆ! ಬೈಬಲ್ ಕ್ಷಣಗಳೊಂದಿಗೆ ವಿಶ್ರಾಂತಿ ಪಡೆಯಿರಿ.",
-      "description": "ನಿಮ್ಮ ದಿನ ಮುಗಿಯುವಾಗ ಚಿಂತನೆ ಮಾಡಿ ಸಾಂತ್ವನ ಪಡೆಯಲು ಸಹಾಯಕ ಶಾಂತ ಬೈಬಲ್ ಕ್ಷಣಗಳು."
-    },
-    "joinUs": {
-      "label": "ನಮ್ಮೊಂದಿಗೆ ಸೇರಿ",
-      "title": "ಅನೇಕರು ಹುಡುಕುತ್ತಿದ್ದಾರೆ",
-      "description": "ಬೆಳೆ ಇಲ್ಲಿ ಇದೆ. ಡಿಜಿಟಲ್ ಮಾಧ್ಯಮದ ಮೂಲಕ ಸುವಾರ್ತೆಯನ್ನು ಜಗತ್ತಿನೊಂದಿಗೆ ಹಂಚಿಕೊಳ್ಳುವಾಗ ನಮ್ಮೊಂದಿಗೆ ಸೇರಿ."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "ಒಟ್ಟಿಗೆ ಮುಂದುವರಿಯೋಣ",
-      "title": "ಯೇಸುವಿನ ಕಥೆಯನ್ನು ಒಟ್ಟಾಗಿ ಹೇಳುವುದು",
-      "description": "ಅವರು ಇರುವಲ್ಲೇ, ಅವರದೇ ಭಾಷೆಯಲ್ಲಿ ಯೇಸುವಿನ ಪ್ರೀತಿ ಕೇಳಿ ಕಾಣಲು."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% ಹೊಂದಾಣಿಕೆ",
     "none": "ಈ ಭಾಷೆಯಲ್ಲಿ ಈ ವೀಡಿಯೊಗೆ ಯಾವುದೇ ಶಿಫಾರಸುಗಳು ಕಂಡುಬಂದಿಲ್ಲ."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "ಆಡಿಯೊ ಭಾಷೆ",
     "selectLanguageVersion": "ಭಾಷೆಯ ಆವೃತ್ತಿಯನ್ನು ಆಯ್ಕೆಮಾಡಿ",
     "watchSelectedVersion": "ಆಯ್ಕೆಮಾಡಿದ ಆವೃತ್ತಿಯನ್ನು ವೀಕ್ಷಿಸಿ"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "ಕುಕೀ ಆಯ್ಕೆಗಳು",
+    "bannerTitle": "ನಿಮ್ಮ ಗೌಪ್ಯತೆ ಆಯ್ಕೆಗಳು",
+    "bannerDescription": "ಅಗತ್ಯ ಕುಕీలు Watch ಅನ್ನು ಸುರಕ್ಷಿತವಾಗಿ ಮತ್ತು ಸರಿಯಾಗಿ ಕಾರ್ಯನಿರ್ವಹಿಸುವಂತೆ ಇಡುತ್ತವೆ. ನಿಮ್ಮ ಅನುಮತಿಯಿದ್ದರೆ, ಐಚ್ಛಿಕ ಮೊದಲ-ಪಕ್ಷದ ಕುಕೀವು ವೈಯಕ್ತಿಕ ಶಿಫಾರಸುಗಳಿಗಾಗಿ ಭೇಟಿ ನಡುವೆಯೂ ನಿಮ್ಮ ಆಸಕ್ತಿಗಳನ್ನು ನೆನಪಿಟ್ಟುಕೊಳ್ಳಬಹುದು. ಯಾವುದೇ ಆಯ್ಕೆಯಿದ್ದರೂ ಸಂದರ್ಭಾಧಾರಿತ ಶಿಫಾರಸುಗಳು ಲಭ್ಯವಾಗುತ್ತವೆ.",
+    "acceptAll": "ಎಲ್ಲವನ್ನೂ ಒಪ್ಪಿಕೊಳ್ಳಿ",
+    "essentialOnly": "ಅಗತ್ಯವಷ್ಟೇ",
+    "manageChoices": "ಆಯ್ಕೆಗಳನ್ನು ನಿರ್ವಹಿಸಿ",
+    "savingChoice": "ಕುಕೀ ಆಯ್ಕೆಯನ್ನು ಉಳಿಸಲಾಗುತ್ತಿದೆ",
+    "settings": "ಕುಕೀ ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
+    "settingsDescription": "ಭೇಟಿಗಳ ನಡುವೆಯೂ ಶಿಫಾರಸುಗಳಿಗೆ ಸಂಬಂಧಿಸಿದ ಆಸಕ್ತಿಗಳನ್ನು Watch ನೆನಪಿಟ್ಟುಕೊಳ್ಳಬಹುದೇ ಎಂಬುದನ್ನು ಆರಿಸಿ. ಇದನ್ನು ನೀವು ಯಾವಾಗ ಬೇಕಾದರೂ ಬದಲಾಯಿಸಬಹುದು.",
+    "essentialCookies": "ಅಗತ್ಯ ಕುಕీలు",
+    "essentialDescription": "ಭದ್ರತೆ, ಪ್ಲೇಬ್ಯಾಕ್, ಗೌಪ್ಯತೆ ಆಯ್ಕೆಗಳು ಮತ್ತು ಶಿಫಾರಸು ವಿನಂತಿಯ ಮೂಲ ಗುರುತಿಸುವಿಕೆ.",
+    "alwaysActive": "ಯಾವಾಗಲೂ ಸಕ್ರಿಯ",
+    "personalization": "ವೈಯಕ್ತೀಕರಣ",
+    "personalizationDescription": "ಭೇಟಿಗಳ ನಡುವೆಯೂ ಸೀಮಿತ ಆಸಕ್ತಿಗಳನ್ನು ನೆನಪಿಟ್ಟುಕೊಳ್ಳಿ. ಇದನ್ನು ಆಫ್ ಮಾಡಿದರೂ ಸಂದರ್ಭಾಧಾರಿತ ಶಿಫಾರಸುಗಳು ಲಭ್ಯವಾಗುತ್ತವೆ.",
+    "erasurePending": "ಪ್ರೊಫೈಲ್ ಅಳಿಸುವಿಕೆ ಬಾಕಿಯಿದೆ. ಸಂದರ್ಭಾಧಾರಿತ ಶಿಫಾರಸುಗಳು ಈಗಾಗಲೇ ಸಕ್ರಿಯವಾಗಿವೆ.",
+    "cancel": "ರದ್ದುಮಾಡಿ",
+    "saveChoices": "ಆಯ್ಕೆಗಳನ್ನು ಉಳಿಸಿ",
+    "saving": "ಉಳಿಸಲಾಗುತ್ತಿದೆ…",
+    "loadError": "ನಿಮ್ಮ ಆಯ್ಕೆಯನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ. ಆದರೂ ಕೆಳಗೆ ನೀವು ಆಯ್ಕೆ ಮಾಡಬಹುದು.",
+    "grantError": "ವೈಯಕ್ತೀಕರಣವನ್ನು ಸಕ್ರಿಯಗೊಳಿಸಲಾಗಲಿಲ್ಲ. ಅಗತ್ಯವಷ್ಟೇ ಆಯ್ಕೆ ಇನ್ನೂ ಲಭ್ಯವಿದೆ.",
+    "saveError": "ನಿಮ್ಮ ಆಯ್ಕೆಯನ್ನು ಉಳಿಸಲಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ."
   }
 }

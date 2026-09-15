@@ -1,0 +1,12 @@
+ALTER TABLE "watch_search_current_transcript_publication_event"
+RENAME CONSTRAINT "watch_search_current_transcript_publication_event_transcript_id"
+TO "watch_search_transcript_pub_transcript_id_fkey";
+
+ALTER INDEX "watch_search_current_transcript_publication_event_transcript_id"
+RENAME TO "watch_search_transcript_pub_transcript_generation_key";
+
+ALTER INDEX "watch_search_current_transcript_publication_event_status_next_a"
+RENAME TO "watch_search_transcript_pub_status_retry_created_idx";
+
+ALTER INDEX "watch_search_current_transcript_publication_event_transcript_st"
+RENAME TO "watch_search_transcript_pub_transcript_status_created_idx";

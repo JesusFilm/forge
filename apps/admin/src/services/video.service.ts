@@ -180,6 +180,16 @@ export type WatchLanguageInventoryItem = {
   updatedAt: string | null
 }
 
+/// Distinct language counts aggregated across a collection's visible children.
+/// `audioLanguageCount` mirrors `getChildDubLanguages` exactly (verified
+/// against production: the JESUS film reports 2,267 from both), so the /videos
+/// sidebar can never contradict the series page's own count.
+export type WatchCollectionLanguageCounts = {
+  slug: string
+  audioLanguageCount: number
+  subtitleLanguageCount: number
+}
+
 export type WatchLanguageInventoryCounts = {
   audioCollections: number
   audioVideos: number
@@ -429,6 +439,25 @@ const WATCH_LANGUAGE_INVENTORY_DEFAULT_ITEMS_PER_BUCKET =
 const WATCH_LANGUAGE_INVENTORY_PROMOTED_COUNT = 12
 const WATCH_LANGUAGE_INVENTORY_STATEMENT_TIMEOUT_MS = 10_000
 const WATCH_LANGUAGE_INVENTORY_TRANSACTION_TIMEOUT_MS = 11_000
+// Collection language counts are a SEPARATE query from
+// `getWatchLanguageInventory`, deliberately: they are not language-scoped, so
+// they cannot reuse that query's CTEs, and folding an unscoped
+// children-x-dubs aggregate into a query whose timeout failure blanks the
+// whole /videos page trades a missing indicator for a missing page.
+// Measured against a restored production snapshot (2026-08-27, PostgreSQL
+// 18.6, 1,107 videos / 211,661 dubs / 117 collections): ~220 ms for every
+// collection in the catalog, both counts, one round trip.
+const WATCH_COLLECTION_LANGUAGE_COUNTS_STATEMENT_TIMEOUT_MS = 5_000
+// Strictly above the statement timeout, matching every sibling here (10s/11s).
+// Prisma's interactive-transaction default is also 5000ms, so leaving it
+// implicit lets P2028 win the race against the SQL guard — the statement
+// timeout would never surface as a clean 57014.
+const WATCH_COLLECTION_LANGUAGE_COUNTS_TRANSACTION_TIMEOUT_MS = 6_000
+const WATCH_COLLECTION_LANGUAGE_COUNTS_STATEMENT_TIMEOUT_SQL = `SET LOCAL statement_timeout = '${WATCH_COLLECTION_LANGUAGE_COUNTS_STATEMENT_TIMEOUT_MS}ms'`
+// The /videos page renders ~112 collections for English. The cap bounds a
+// hostile or buggy caller without truncating any real page.
+export const WATCH_COLLECTION_LANGUAGE_COUNTS_MAX_SLUGS = 400
+
 const WATCH_LANGUAGE_INVENTORY_STATEMENT_TIMEOUT_SQL = `SET LOCAL statement_timeout = '${WATCH_LANGUAGE_INVENTORY_STATEMENT_TIMEOUT_MS}ms'`
 const WATCH_COLLECTION_FEED_DEFAULT_PAGE_SIZE = 3
 const WATCH_COLLECTION_FEED_MAX_PAGE_SIZE = 3
@@ -2513,6 +2542,111 @@ export class VideoService {
     }
   }
 
+  /// Distinct audio + subtitle language counts across each collection's
+  /// visible children, for the /videos language-collection sidebars.
+  ///
+  /// The child-visibility gate and the audio predicate are transcribed from
+  /// `getChildDubLanguages` (not re-derived): published + non-deleted dub with
+  /// an `hls`, a non-deleted language carrying a slug, and a child that is
+  /// non-deleted, has a PUBLISHED locale, and is not watch-restricted. A
+  /// looser predicate here would print a different number than the series page
+  /// shows for the same series — the off-by-one that mismatch produces
+  /// (2,268 vs 2,267 on JESUS) is exactly how this was caught.
+  async getWatchCollectionLanguageCounts({
+    slugs,
+  }: {
+    slugs: readonly string[]
+  }): Promise<WatchCollectionLanguageCounts[]> {
+    // Dedupe BEFORE capping: capping first lets duplicate entries consume
+    // slots, silently dropping real collections from the answer.
+    const normalized = [
+      ...new Set(
+        slugs.map((slug) => slug.trim()).filter((slug) => slug.length > 0),
+      ),
+    ].slice(0, WATCH_COLLECTION_LANGUAGE_COUNTS_MAX_SLUGS)
+    if (normalized.length === 0) return []
+
+    const rows = await this.prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRawUnsafe(
+          WATCH_COLLECTION_LANGUAGE_COUNTS_STATEMENT_TIMEOUT_SQL,
+        )
+        return tx.$queryRaw<WatchCollectionLanguageCountsRow[]>`
+        WITH requested AS (
+          SELECT parent.id, parent.slug
+          FROM video parent
+          WHERE parent.slug = ANY(${normalized}::text[])
+            AND parent.deleted_at IS NULL
+        ),
+        visible_child AS MATERIALIZED (
+          SELECT requested.id AS "parentId", child.id AS "childId"
+          FROM requested
+          JOIN video_relation relation
+            ON relation.parent_id = requested.id
+          JOIN video child
+            ON child.id = relation.child_id
+          WHERE child.deleted_at IS NULL
+            AND NOT ('watch' = ANY(child.restrict_view_platforms))
+            AND EXISTS (
+              SELECT 1
+              FROM video_locale child_locale
+              WHERE child_locale.video_id = child.id
+                AND child_locale.deleted_at IS NULL
+                AND child_locale.status = 'published'
+            )
+        ),
+        audio AS (
+          SELECT
+            visible_child."parentId",
+            COUNT(DISTINCT dub.language_id)::int AS "count"
+          FROM visible_child
+          JOIN video_dub dub
+            ON dub.video_id = visible_child."childId"
+           AND dub.deleted_at IS NULL
+           AND dub.published = TRUE
+           AND dub.hls IS NOT NULL
+           AND dub.language_id IS NOT NULL
+          JOIN language dub_language
+            ON dub_language.id = dub.language_id
+           AND dub_language.slug IS NOT NULL
+           AND dub_language.deleted_at IS NULL
+          GROUP BY visible_child."parentId"
+        ),
+        subtitle AS (
+          SELECT
+            visible_child."parentId",
+            COUNT(DISTINCT subtitle.language_id)::int AS "count"
+          FROM visible_child
+          JOIN video_subtitle subtitle
+            ON subtitle.video_id = visible_child."childId"
+           AND subtitle.deleted_at IS NULL
+           AND subtitle.language_id IS NOT NULL
+           AND NULLIF(BTRIM(subtitle.vtt_src), '') IS NOT NULL
+          JOIN language subtitle_language
+            ON subtitle_language.id = subtitle.language_id
+           AND subtitle_language.slug IS NOT NULL
+           AND subtitle_language.deleted_at IS NULL
+          GROUP BY visible_child."parentId"
+        )
+        SELECT
+          requested.slug,
+          COALESCE(audio."count", 0) AS "audioLanguageCount",
+          COALESCE(subtitle."count", 0) AS "subtitleLanguageCount"
+        FROM requested
+        LEFT JOIN audio ON audio."parentId" = requested.id
+        LEFT JOIN subtitle ON subtitle."parentId" = requested.id
+      `
+      },
+      { timeout: WATCH_COLLECTION_LANGUAGE_COUNTS_TRANSACTION_TIMEOUT_MS },
+    )
+
+    return rows.map((row) => ({
+      slug: row.slug,
+      audioLanguageCount: row.audioLanguageCount ?? 0,
+      subtitleLanguageCount: row.subtitleLanguageCount ?? 0,
+    }))
+  }
+
   async getWatchLanguageInventory({
     languageSlug,
     limit,
@@ -3395,6 +3529,12 @@ type WatchLanguageInventoryBucket =
   | "audio_collection"
   | "audio_video"
   | "subtitle_video"
+
+type WatchCollectionLanguageCountsRow = {
+  slug: string
+  audioLanguageCount: number | null
+  subtitleLanguageCount: number | null
+}
 
 type WatchLanguageInventoryRow = WatchLanguageInventoryItem & {
   bucket: WatchLanguageInventoryBucket

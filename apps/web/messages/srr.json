@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Waññi làkk bu baat bi",
     "home": "JesusFilm kër",
     "closeSearch": "Tëj seet bi",
-    "submitSearch": "Seet"
+    "submitSearch": "Seet",
+    "library": "Kaŋ kayit"
   },
   "SearchOverlay": {
     "dialogLabel": "Seet ak xool videos",
@@ -467,6 +468,7 @@
     "sports": "Wàllu sports",
     "collections": "Koleksyon yi",
     "subtitlesOnly": "Subtitles rekk",
+    "backToTop": "Fandiŋ kaŋ jeeg",
     "newlyAdded": "Bu ñu dolli",
     "newVideosTitle": "Video yu xamle ci {language}",
     "newestFirst": "Bu bees ci topp",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Videos yu àndul",
     "videosFromCollection": "Videos yu jóge ci {collection}.",
     "standaloneDescription": "Videos yu àndul ci làkk bii.",
-    "openCollection": "Ubbi koleksyon bi"
+    "openCollection": "Ubbi koleksyon bi",
+    "filters": "Ñoolaan",
+    "filterLength": "Ndoolo",
+    "filterLength_under5": "Rek 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Fop 30 min",
+    "filterType": "Kaŋam",
+    "clearFilters": "Fees ñoolaan",
+    "filterResults": "{count} ca {total} a wonwaa",
+    "noFilterResults": "Amul widewo ba mos ak ñoolaan yiin. Fees kiin.",
+    "filterAdded": "A yokku",
+    "filterAdded_60d": "Baax 60 fanaan",
+    "filterAdded_6m": "Baax 6 weer",
+    "filterAdded_12m": "Baax 12 weer"
   },
   "WatchHome": {
     "pageTitle": "Xool ci Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Preview bu video bu jiitu",
     "nextVideoPreview": "Preview bu video bu topp",
     "mediaCollection": "Koleksyon bu media",
-    "scrollToVideo": "Wonaa {title} video bi"
+    "scrollToVideo": "Wonaa {title} video bi",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project kër",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Dellu ci Watch",
     "browseVideos": "Xool videos"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Wone film bu gàtt",
-    "actions": {
-      "joinUs": "Bokk",
-      "shareMission": "Bokk ci sunu mission"
-    },
-    "welcomeStart": {
-      "label": "Ngëm ak Téere bu Sell",
-      "title": "Video yu ñu tànne teg",
-      "description": "Video yu ngëm bu nekk ci sunu bibliotèk ngir jox xel, jéemal, ak tax xalaat."
-    },
-    "welcomeMorning": {
-      "label": "Xelal bu Suba",
-      "title": "Suba jàmm! Momen yu Biibël bi ci tey ñu ngi nax.",
-      "description": "Tambali sa bés ak momen yu Biibël bu rafet ngir jox la xel ak doole."
-    },
-    "welcomeAfternoon": {
-      "label": "Xelal bu Ndegam",
-      "title": "Ndegam jàmm! Momen yu Biibël ngir sa bés.",
-      "description": "Xibaar yu Biibël yu neex ngir sa wàccu bu ndegam walla ngir yeneen xelal."
-    },
-    "welcomeEvening": {
-      "label": "Xelal bu Ngoon",
-      "title": "Ngoon jàmm! Dëppal ak momen yu Biibël.",
-      "description": "Momen yu Biibël yu jàmm ngir aajowoo te gis jàmm bu sa bés di jeex."
-    },
-    "joinUs": {
-      "label": "Bokk ak nun",
-      "title": "Milliyoŋ yi di seet",
-      "description": "Jàngaaji bi fii la. Bokk ak nun ci xamle xibaar bu baax bi ci àddina bi ak media bu dijital."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Nub nuy dem",
-      "title": "Xamle xibaaru Jesus, ñun ñépp",
-      "description": "Ngir ñu dégg te gis mbëggeelu Jesus ci seen làkk bi ci kanam ñu nekka."
-    }
-  },
   "VideoRecommendations": {
     "match": "Méngoo na {percent}% bi",
     "none": "Amul benn digal bu ñu gis ngir video bii ci làkk bii."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "O ƭat o baat",
     "selectLanguageVersion": "Tànnal sumbum o ƭat",
     "watchSelectedVersion": "Xool sumb bi nga tànn"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Tànn yi ci cookie",
+    "bannerTitle": "Sa tànn yi ci sutura",
+    "bannerDescription": "Cookie yu am solo yi di jàppale Watch ngir mu wóor te di dox. Boo ko mayee ndigal, benn cookie bu tànneef bu Watch moom mëna fàttali sa bëgg-bëgg yi ci seeti yu wuute ngir joxe laytal yu méngook yaw. Laytal yu aju ci mbir mi dañuy am sax ci ñaar ñépp.",
+    "acceptAll": "Nangu lépp",
+    "essentialOnly": "Yu am solo rekk",
+    "manageChoices": "Saytu tànn yi",
+    "savingChoice": "Mi ngi denc tànn cookie bi",
+    "settings": "Parameetar yi ci cookie",
+    "settingsDescription": "Tànnal ndax Watch mëna fàttali sa bëgg-bëgg yu laytal ci seeti yu wuute. Mën nga soppi li saa su ne.",
+    "essentialCookies": "Cookie yu am solo",
+    "essentialDescription": "Kaarange, xëtal vidéo, tànn yi ci sutura, ak melokaanu laaj yu laytal.",
+    "alwaysActive": "Dafa doon dox saa su ne",
+    "personalization": "Wone li méngook yaw",
+    "personalizationDescription": "Fàttali bëgg-bëgg yu diggante ci seeti yu wuute. Boo ko tëjée, laytal yu aju ci mbir mi dañuy des di am.",
+    "erasurePending": "Fàrampal sa profil mi ngi xaar. Laytal yu aju ci mbir mi dañoo ba noppi tàmbali.",
+    "cancel": "Neenal",
+    "saveChoices": "Denc tànn yi",
+    "saving": "Mi ngi denc…",
+    "loadError": "Mënunu jël sa tànn. Waaye man nga tànn ci suuf.",
+    "grantError": "Mënunu tàmbali wone li méngook yaw. Yu am solo rekk la fi des.",
+    "saveError": "Mënunu denc sa tànn. Jéemaatal."
   }
 }

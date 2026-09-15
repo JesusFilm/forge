@@ -1,4 +1,7 @@
-import { env } from "@/config/env"
+import {
+  env,
+  resolveWatchSearchTranscriptPublicationEnabled,
+} from "@/config/env"
 
 type WorkflowStartupState = {
   retryTimer?: ReturnType<typeof setTimeout>
@@ -10,6 +13,20 @@ type WatchSearchPrewarmState = {
   started: boolean
 }
 
+type RecommendationRecoveryState = {
+  retryTimer?: ReturnType<typeof setTimeout>
+  started: boolean
+  starting: boolean
+  attempt: number
+}
+
+type ProfileReconciliationRecoveryState = {
+  checking: boolean
+  retryTimer?: ReturnType<typeof setTimeout>
+}
+
+const PROFILE_RECONCILIATION_RECOVERY_INTERVAL_MS = 5 * 60_000
+
 const TRANSIENT_WORKFLOW_STARTUP_PATTERNS = [
   /too many clients already/i,
   /remaining connection slots are reserved/i,
@@ -20,7 +37,31 @@ function workflowStartupGlobal() {
   return globalThis as typeof globalThis & {
     __forgeAdminWorkflowStartup?: WorkflowStartupState
     __forgeAdminWatchSearchPrewarm?: WatchSearchPrewarmState
+    __forgeAdminRecommendationRecovery?: RecommendationRecoveryState
+    __forgeAdminProfileReconciliationRecovery?: ProfileReconciliationRecoveryState
   }
+}
+
+function profileReconciliationRecoveryState() {
+  const global = workflowStartupGlobal()
+  const current = global.__forgeAdminProfileReconciliationRecovery
+  if (current) return current
+  const state: ProfileReconciliationRecoveryState = { checking: false }
+  global.__forgeAdminProfileReconciliationRecovery = state
+  return state
+}
+
+function recommendationRecoveryState() {
+  const global = workflowStartupGlobal()
+  const current = global.__forgeAdminRecommendationRecovery
+  if (current) return current
+  const state: RecommendationRecoveryState = {
+    started: false,
+    starting: false,
+    attempt: 0,
+  }
+  global.__forgeAdminRecommendationRecovery = state
+  return state
 }
 
 function workflowStartupState() {
@@ -44,8 +85,27 @@ function maxTransientWorkflowStartupAttempts() {
   return positiveIntegerValue(env.WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS, 12)
 }
 
+function maxRecommendationRecoveryAttempts() {
+  return positiveIntegerValue(env.RECOMMENDATION_RECOVERY_MAX_ATTEMPTS, 12)
+}
+
 function transientWorkflowStartupDelayMs() {
   return positiveIntegerValue(env.WORKFLOW_STARTUP_TRANSIENT_DELAY_MS, 10_000)
+}
+
+export function recommendationRecoveryBackoffMs(
+  attempt: number,
+  random: () => number = Math.random,
+): number {
+  const cappedExponentialMs = Math.min(
+    60_000,
+    transientWorkflowStartupDelayMs() *
+      2 ** Math.min(Math.max(0, attempt - 1), 6),
+  )
+  // Equal jitter prevents every Admin replica from retrying the recovery scan
+  // against Postgres at the same instant after a shared outage.
+  const boundedRandom = Math.min(1, Math.max(0, random()))
+  return Math.ceil(cappedExponentialMs * (0.5 + boundedRandom * 0.5))
 }
 
 function errorText(error: unknown) {
@@ -94,6 +154,53 @@ export function shouldStartWorkflowWorld(): boolean {
   )
 }
 
+export class WorkflowStartupConfigurationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "WorkflowStartupConfigurationError"
+  }
+}
+
+export function assertWatchSearchTranscriptPublicationRuntime(): void {
+  const publicationEnabled = resolveWatchSearchTranscriptPublicationEnabled()
+  const isDedicatedPostgresWorker =
+    env.WORKFLOW_RUNNER_ENABLED === "true" &&
+    env.WORKFLOW_TARGET_WORLD === "@workflow/world-postgres"
+  if (
+    env.NODE_ENV === "production" &&
+    env.TYPESENSE_OPERATOR_API_KEY?.trim() &&
+    !isDedicatedPostgresWorker
+  ) {
+    throw new WorkflowStartupConfigurationError(
+      "TYPESENSE_OPERATOR_API_KEY is restricted to the dedicated Postgres worker in production",
+    )
+  }
+  if (!publicationEnabled) return
+  if (!isDedicatedPostgresWorker) {
+    throw new WorkflowStartupConfigurationError(
+      "WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED requires WORKFLOW_RUNNER_ENABLED=true and WORKFLOW_TARGET_WORLD=@workflow/world-postgres",
+    )
+  }
+  if (!env.TYPESENSE_HOST || !env.TYPESENSE_OPERATOR_API_KEY?.trim()) {
+    throw new WorkflowStartupConfigurationError(
+      "WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED requires TYPESENSE_HOST and TYPESENSE_OPERATOR_API_KEY",
+    )
+  }
+  let typesenseProtocol: string
+  try {
+    typesenseProtocol = new URL(env.TYPESENSE_HOST).protocol
+  } catch {
+    throw new WorkflowStartupConfigurationError(
+      "WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED requires TYPESENSE_HOST to be an HTTP(S) URL",
+    )
+  }
+  if (typesenseProtocol !== "http:" && typesenseProtocol !== "https:") {
+    throw new WorkflowStartupConfigurationError(
+      "WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED requires TYPESENSE_HOST to be an HTTP(S) URL",
+    )
+  }
+}
+
 async function startWorkflowWorld(): Promise<void> {
   const { getWorld } = await import("workflow/runtime")
   const { startWorkflowWorkerHeartbeat } =
@@ -104,12 +211,101 @@ async function startWorkflowWorld(): Promise<void> {
     await import("@/services/video-db-backup/job")
   const { ensureSearchTraceRetentionSchedulerStarted } =
     await import("@/services/search-trace-retention/job")
+  const { ensureRecommendationRetentionSchedulerStarted } =
+    await import("@/services/recommendations/retention/job")
+  const { ensureRecommendationControlReadinessSchedulerStarted } =
+    await import("@/services/recommendations/control-readiness/job")
+  const { ensureRecommendationProfileReconciliationSchedulerStarted } =
+    await import("@/services/recommendations/profiles/reconciliation.job")
+  const { ensureRecommendationEpisodeFinalizationRecovery } =
+    await import("@/services/recommendations/finalization/job")
+  const {
+    ensureStudioCalendarSchedulerStarted,
+    ensureStudioCalendarPublicationSchedulerStarted,
+  } = await import("@/services/studio-authoring/calendar-scheduler")
+  const { ensureWatchSearchTranscriptPublicationWorkerStarted } =
+    await import("@/services/typesense-watch-search-transcript-publication")
   const world = getWorld()
   await world.start?.()
   await startWorkflowWorkerHeartbeat()
+  await ensureStudioCalendarSchedulerStarted()
+  await ensureStudioCalendarPublicationSchedulerStarted()
   await ensureCoreSyncSchedulerStarted()
   await ensureVideoDbBackupSchedulerStarted()
   await ensureSearchTraceRetentionSchedulerStarted()
+  await ensureRecommendationRetentionSchedulerStarted()
+  await ensureRecommendationControlReadinessSchedulerStarted()
+  await ensureRecommendationProfileReconciliationSchedulerStarted()
+  scheduleProfileReconciliationRecovery(
+    ensureRecommendationProfileReconciliationSchedulerStarted,
+  )
+  const { prisma } = await import("@/db/client")
+  await ensureWatchSearchTranscriptPublicationWorkerStarted(prisma)
+  void ensureRecommendationRecovery(
+    ensureRecommendationEpisodeFinalizationRecovery,
+  )
+}
+
+function scheduleProfileReconciliationRecovery(
+  ensure: () => Promise<unknown> | unknown,
+): void {
+  const state = profileReconciliationRecoveryState()
+  if (state.retryTimer || state.checking) return
+  state.retryTimer = setTimeout(() => {
+    state.retryTimer = undefined
+    void runProfileReconciliationRecovery(ensure)
+  }, PROFILE_RECONCILIATION_RECOVERY_INTERVAL_MS)
+  state.retryTimer.unref?.()
+}
+
+async function runProfileReconciliationRecovery(
+  ensure: () => Promise<unknown> | unknown,
+): Promise<void> {
+  const state = profileReconciliationRecoveryState()
+  if (state.checking) return
+  state.checking = true
+  try {
+    await ensure()
+  } catch (error) {
+    console.warn(
+      `[recommendation-profile-reconciliation] event=scheduler_recovery_failure error_class=${error instanceof Error ? error.constructor.name : "UnknownError"}`,
+    )
+  } finally {
+    state.checking = false
+    scheduleProfileReconciliationRecovery(ensure)
+  }
+}
+
+async function ensureRecommendationRecovery(
+  ensure: () => Promise<unknown> | unknown,
+): Promise<void> {
+  const state = recommendationRecoveryState()
+  if (state.started || state.starting) return
+  state.starting = true
+  try {
+    await ensure()
+    state.started = true
+    state.attempt = 0
+  } catch (error) {
+    state.attempt += 1
+    console.warn(
+      `[recommendation-finalization] event=recovery_start_failure error_class=${error instanceof Error ? error.constructor.name : "UnknownError"}`,
+    )
+    if (state.attempt >= maxRecommendationRecoveryAttempts()) {
+      console.error(
+        `[recommendation-finalization] event=recovery_start_exhausted attempts=${state.attempt}`,
+      )
+      return
+    }
+    const delayMs = recommendationRecoveryBackoffMs(state.attempt)
+    state.retryTimer = setTimeout(() => {
+      state.retryTimer = undefined
+      void ensureRecommendationRecovery(ensure)
+    }, delayMs)
+    state.retryTimer.unref?.()
+  } finally {
+    state.starting = false
+  }
 }
 
 function scheduleWorkflowStartupRetry(attempt: number) {
@@ -151,6 +347,7 @@ async function startWorkflowWorldWithTransientRetry(
 
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    assertWatchSearchTranscriptPublicationRuntime()
     const { configureDatadog } = await import("@/observability/datadog")
     configureDatadog()
     startWatchSearchPrewarm()

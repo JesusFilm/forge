@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио кылез воштӥл",
     "home": "JesusFilm шӧр",
     "closeSearch": "Утчалонез пыдӥл",
-    "submitSearch": "Утчалы"
+    "submitSearch": "Утчалы",
+    "library": "Библиотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоос утчалы но выжыты",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Сборникъёс",
     "subtitlesOnly": "Только субтитръёс",
+    "backToTop": "Вылэ берытскыны",
     "newlyAdded": "Нырыз пыдӥсез",
     "newVideosTitle": "{language} кылын тӥ христиан видеоос",
     "newestFirst": "Нырыз тӥ ӧтӥсько",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Кузьы видеоос",
     "videosFromCollection": "{collection} вылысь видеоос.",
     "standaloneDescription": "Та кылын кузьы видеоос.",
-    "openCollection": "Сборникез ӧтӥл"
+    "openCollection": "Сборникез ӧтӥл",
+    "filters": "Пыртонъёс",
+    "filterLength": "Кузьдала",
+    "filterLength_under5": "5 минутлэсь ӧжыт",
+    "filterLength_5to10": "5-10 минут",
+    "filterLength_10to30": "10-30 минут",
+    "filterLength_over30": "30 минутлэсь трос",
+    "filterType": "Мында",
+    "clearFilters": "Пыртонъёсты сузяны",
+    "filterResults": "{total}-ысь {count} возьматӥсько",
+    "noFilterResults": "Та пыртонъёслы тупась видео ӧвӧл. Огзэ басьтыса учке.",
+    "filterAdded": "Ватсамын",
+    "filterAdded_60d": "Берпуметӥ 60 нунал",
+    "filterAdded_6m": "Берпуметӥ 6 толэзь",
+    "filterAdded_12m": "Берпуметӥ 12 толэзь"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — ваньтон",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Ваньгес видео превью",
     "nextVideoPreview": "Икебас видео превью",
     "mediaCollection": "Медиа йыйынтык",
-    "scrollToVideo": "{title} видеоез шоры скроллить"
+    "scrollToVideo": "{title} видеоез шоры скроллить",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project шӧр",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Ӧтӥл шоры бертӥ",
     "browseVideos": "Видеоосез выжыты"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Кыска фильмез ваньты",
-    "actions": {
-      "joinUs": "Миеныз пырӟиськыла",
-      "shareMission": "Миссиямыз шӧртэмләсе пӧртэм"
-    },
-    "welcomeStart": {
-      "label": "Вера но Писание",
-      "title": "Танязы видео таңдаос",
-      "description": "Библиотекамысь вералы юрттӥсь видео контент, тауъяськыны, ӧрскытӥськыны но ойлымон карыны."
-    },
-    "welcomeMorning": {
-      "label": "Тангыртэмен шӧр",
-      "title": "Тау, тани кезьыт! Библияны кӧня мылкыдъёс күтэ.",
-      "description": "Кояшьыны но шӧдӥськыны юрттӥсь Библия мылкыдъёсымен уд кал. Ческе күнез заводить карыны."
-    },
-    "welcomeAfternoon": {
-      "label": "Пусӥськон пум",
-      "title": "Тау, пусӥськон пум! Кунлы Библия мылкыдъёс.",
-      "description": "Пусӥськон пумын тынад тыныды тупатысь, ӧрскытӥськись Библия контент."
-    },
-    "welcomeEvening": {
-      "label": "Шуныт пум",
-      "title": "Тау, шуныт пум! Библия мылкыдъёсын тыныныз.",
-      "description": "Күн потэм вакытлы ойгыны, ойлымон карӥськыны но тыныд табыныны юрттӥсь шуныт Библия мылкыдъёс."
-    },
-    "joinUs": {
-      "label": "Миеныз пырӟиськыла",
-      "title": "Миллиардъёс утчают",
-      "description": "Уҗэз тадыр. Цифровой медиа пыр быдӥсь улослы Евангелиеез верамын миеныз пырӟиськыла."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Ваньмыз ӧтчыяськыны",
-      "title": "Jesus тарихез ваньмыз ӧтчыяськыны верамын",
-      "description": "Солэн калыкез лэсьтӥськыны, соин кылын, йыртыдлы асьтӥд урын туж юн ӧлӟыны да көриськыны."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% тупаськон",
     "none": "Та кылын та видеолы сӥземъёс ӧвӧл."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Аудио кыл",
     "selectLanguageVersion": "Кыл версияез быръе",
     "watchSelectedVersion": "Быръем версияез учке"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Куки көтъёслэн быръемъёсы",
+    "bannerTitle": "Тонлэн приватлык быръемъёсы",
+    "bannerDescription": "Важез кукиос Watch-ез утчанысь но возьматысь луо. Тонлэн лэзёнэн, выль визитъёслэн куспын интересъёсты тодматон понна, соды тырмыса луон выль куки возьматыны быгатэ. Контекстъя рекомендациос любоеякы но кельшо.",
+    "acceptAll": "Ваньзэ кутыны",
+    "essentialOnly": "Важезлэсь гинэ",
+    "manageChoices": "Быръемъёсты виктыны",
+    "savingChoice": "Куки быръемез возьматэм",
+    "settings": "Куки кылдытэтъёс",
+    "settingsDescription": "Watch выль визитъёслэн куспын рекомендациос понна интересъёсты возьматыны быгатоз-а, сое быре. Тае кезьыт каде воштыны быгатоды.",
+    "essentialCookies": "Важез кукиос",
+    "essentialDescription": "Утчанлык, видео возьматон, приватлык быръемъёс но рекомендация куронлэн атрибуцияез.",
+    "alwaysActive": "Тулыс ужась",
+    "personalization": "Персонализация",
+    "personalizationDescription": "Визитъёслэн куспын чектэм интересъёсты возьматыны. Тае кылытэк, контекстъя рекомендациос кельшо.",
+    "erasurePending": "Профильез быртон возьматиське. Контекстъя рекомендациос берло ужало ни.",
+    "cancel": "Бертыны",
+    "saveChoices": "Быръемъёсты возьматыны",
+    "saving": "Возьматэм…",
+    "loadError": "Тонлэн быръемед эз быдӟа лыдъяськыны. Улын на бырены быгатоды.",
+    "grantError": "Персонализациязэ утьыны эз лу. Важезлэсь гинэ вариант кельше.",
+    "saveError": "Тонлэн быръемедэз возьматыны эз лу. Мар вераськыса выльысь туртты."
   }
 }

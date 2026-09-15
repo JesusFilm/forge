@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ប្ដូរភាសាសំឡេង",
     "home": "ទំព័រដើម JesusFilm",
     "closeSearch": "បិទការស្វែងរក",
-    "submitSearch": "ស្វែងរក"
+    "submitSearch": "ស្វែងរក",
+    "library": "បណ្ណាល័យ"
   },
   "SearchOverlay": {
     "dialogLabel": "ស្វែងរក និងរុករកវីដេអូ",
@@ -467,6 +468,7 @@
     "sports": "កីឡា",
     "collections": "កម្រង",
     "subtitlesOnly": "មានតែចំណងជើងរង",
+    "backToTop": "ត្រឡប់ទៅលើ",
     "newlyAdded": "បានបន្ថែមថ្មីៗ",
     "newVideosTitle": "វីដេអូគ្រីស្ទានថ្មីជា {language}",
     "newestFirst": "ថ្មីបំផុតមុន",
@@ -497,7 +499,21 @@
     "standaloneVideos": "វីដេអូឯករាជ្យ",
     "videosFromCollection": "វីដេអូពី {collection}។",
     "standaloneDescription": "វីដេអូឯករាជ្យក្នុងភាសានេះ។",
-    "openCollection": "បើកកម្រង"
+    "openCollection": "បើកកម្រង",
+    "filters": "តម្រង",
+    "filterLength": "រយៈពេល",
+    "filterLength_under5": "តិចជាង ៥ នាទី",
+    "filterLength_5to10": "៥-១០ នាទី",
+    "filterLength_10to30": "១០-៣០ នាទី",
+    "filterLength_over30": "លើស ៣០ នាទី",
+    "filterType": "ប្រភេទ",
+    "clearFilters": "សម្អាតតម្រង",
+    "filterResults": "បង្ហាញ {count} ក្នុង {total}",
+    "noFilterResults": "គ្មានវីដេអូត្រូវនឹងតម្រងទាំងនេះទេ។ សូមព្យាយាមដកមួយចេញ។",
+    "filterAdded": "បានបញ្ចូល",
+    "filterAdded_60d": "៦០ ថ្ងៃចុងក្រោយ",
+    "filterAdded_6m": "៦ ខែចុងក្រោយ",
+    "filterAdded_12m": "១២ ខែចុងក្រោយ"
   },
   "WatchHome": {
     "pageTitle": "ទស្សនា Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "មើលវីដេអូមុនជាមុន",
     "nextVideoPreview": "មើលវីដេអូបន្ទាប់ជាមុន",
     "mediaCollection": "កម្រងមេឌៀ",
-    "scrollToVideo": "រំកិលទៅកាន់វីដេអូ {title}"
+    "scrollToVideo": "រំកិលទៅកាន់វីដេអូ {title}",
+    "forYou": "សម្រាប់អ្នក"
   },
   "WatchFooter": {
     "home": "ទំព័រដើម Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "ត្រឡប់ទៅមើល",
     "browseVideos": "រុករកវីដេអូ"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "មើលភាពយន្តខ្លី",
-    "actions": {
-      "joinUs": "ចូលរួមជាមួយយើង",
-      "shareMission": "ចែករំលែកក្នុងបេសកកម្មរបស់យើង"
-    },
-    "welcomeStart": {
-      "label": "ជំនឿ និងបទគម្ពីរ",
-      "title": "ជម្រើសវីដេអូថ្ងៃនេះ",
-      "description": "មាតិកាវីដេអូផ្តោតលើជំនឿពីបណ្ណាល័យរបស់យើង ដើម្បីលើកទឹកចិត្ត ប្រកួតប្រជែង និងជំរុញការពិចារណា។"
-    },
-    "welcomeMorning": {
-      "label": "ការបំផុសគំនិតពេលព្រឹក",
-      "title": "អរុណសួស្តី! ពេលវេលាព្រះគម្ពីរថ្ងៃនេះកំពុងរង់ចាំ។",
-      "description": "ចាប់ផ្តើមថ្ងៃរបស់អ្នកជាមួយនឹងពេលវេលាព្រះគម្ពីរដែលលើកទឹកចិត្ត រចនាឡើងដើម្បីបំផុស និងលើកស្ទួយវិញ្ញាណរបស់អ្នក។"
-    },
-    "welcomeAfternoon": {
-      "label": "ការបំផុសគំនិតពេលរសៀល",
-      "title": "រសៀលសួស្តី! ពេលវេលាព្រះគម្ពីរសម្រាប់ថ្ងៃរបស់អ្នក។",
-      "description": "មាតិកាព្រះគម្ពីរលើកទឹកចិត្ត ដែលសមស្របសម្រាប់ការសម្រាកពេលរសៀល ឬសម្រាប់ការបំផុសបន្ត។"
-    },
-    "welcomeEvening": {
-      "label": "ការបំផុសគំនិតពេលល្ងាច",
-      "title": "ល្ងាចសួស្តី! បន្ធូរអារម្មណ៍ជាមួយពេលវេលាព្រះគម្ពីរ។",
-      "description": "ពេលវេលាព្រះគម្ពីរដ៏ស្ងប់ស្ងាត់ ដើម្បីជួយឲ្យអ្នកពិចារណា និងរកបានការលួងលោម ខណៈថ្ងៃរបស់អ្នកកំពុងបញ្ចប់។"
-    },
-    "joinUs": {
-      "label": "ចូលរួមជាមួយយើង",
-      "title": "មនុស្សរាប់ពាន់លានកំពុងស្វែងរក",
-      "description": "ការច្រូតកាត់បានមកដល់ហើយ។ ចូលរួមជាមួយយើង ខណៈយើងចែកចាយដំណឹងល្អទៅកាន់ពិភពលោក ដោយប្រើមេឌៀឌីជីថល។"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "ទៅជាមួយគ្នា",
-      "title": "ប្រាប់រឿងរ៉ាវរបស់ព្រះយេស៊ូវ ជាមួយគ្នា",
-      "description": "ដើម្បីឲ្យពួកគេអាចឮ និងឃើញសេចក្តីស្រឡាញ់របស់ព្រះយេស៊ូវ ជាភាសារបស់ខ្លួន នៅកន្លែងដែលពួកគេនៅ។"
-    }
-  },
   "VideoRecommendations": {
     "match": "ត្រូវគ្នា {percent}%",
     "none": "រកមិនឃើញវីដេអូណែនាំសម្រាប់វីដេអូនេះជាភាសានេះទេ។"
@@ -744,5 +723,28 @@
     "languageVersionLabel": "ភាសាសំឡេង",
     "selectLanguageVersion": "ជ្រើសរើសកំណែភាសា",
     "watchSelectedVersion": "មើលកំណែដែលបានជ្រើសរើស"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "ជម្រើសខូគី",
+    "bannerTitle": "ជម្រើសឯកជនភាពរបស់អ្នក",
+    "bannerDescription": "ខូគីចាំបាច់ជួយឱ្យ Watch មានសុវត្ថិភាព និងដំណើរការបានត្រឹមត្រូវ។ ដោយមានការអនុញ្ញាតពីអ្នក ខូគីជម្រើសពីភាគីទីមួយអាចចងចាំចំណាប់អារម្មណ៍រវាងការចូលមកប្រើប្រាស់ ដើម្បីកំណត់ការណែនាំឱ្យសមនឹងអ្នក។ ទោះជាជ្រើសរើសបែបណាក៏ដោយ ការណែនាំតាមបរិបទនៅតែអាចប្រើបាន។",
+    "acceptAll": "យល់ព្រមទាំងអស់",
+    "essentialOnly": "តែអ្វីដែលចាំបាច់",
+    "manageChoices": "គ្រប់គ្រងជម្រើស",
+    "savingChoice": "កំពុងរក្សាទុកជម្រើសខូគី",
+    "settings": "ការកំណត់ខូគី",
+    "settingsDescription": "ជ្រើសរើសថា Watch អាចចងចាំចំណាប់អារម្មណ៍សម្រាប់ការណែនាំរវាងការចូលមកប្រើប្រាស់បានឬអត់។ អ្នកអាចផ្លាស់ប្តូរវាបានគ្រប់ពេល។",
+    "essentialCookies": "ខូគីចាំបាច់",
+    "essentialDescription": "សុវត្ថិភាព ការចាក់播放 ការជ្រើសរើសឯកជនភាព និងការកំណត់ប្រភពសំណើការណែនាំ។",
+    "alwaysActive": "ដំណើរការជានិច្ច",
+    "personalization": "ការកំណត់ផ្ទាល់ខ្លួន",
+    "personalizationDescription": "ចងចាំចំណាប់អារម្មណ៍ដែលបានកំណត់រវាងការចូលមកប្រើប្រាស់។ ការបិទវានឹងនៅតែអនុញ្ញាតឱ្យប្រើការណែនាំតាមបរិបទបាន។",
+    "erasurePending": "ការលុបទិន្នន័យប្រវត្តិរូបកំពុងរង់ចាំដំណើរការ។ ការណែនាំតាមបរិបទបានដំណើរការរួចហើយ។",
+    "cancel": "បោះបង់",
+    "saveChoices": "រក្សាទុកជម្រើស",
+    "saving": "កំពុងរក្សាទុក…",
+    "loadError": "មិនអាចផ្ទុកជម្រើសរបស់អ្នកបានទេ។ អ្នកនៅតែអាចជ្រើសរើសខាងក្រោមបាន។",
+    "grantError": "មិនអាចបើកការកំណត់ផ្ទាល់ខ្លួនបានទេ។ ជម្រើសតែអ្វីដែលចាំបាច់នៅតែអាចប្រើបាន។",
+    "saveError": "មិនអាចរក្សាទុកជម្រើសរបស់អ្នកបានទេ។ សូមព្យាយាមម្តងទៀត។"
   }
 }

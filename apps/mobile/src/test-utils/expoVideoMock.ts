@@ -30,6 +30,7 @@ export type FakePlayer = {
   volume: number
   playing: boolean
   playbackRate: number
+  preservesPitch: boolean
   currentTime: number
   duration: number
   status: VideoPlayerStatus
@@ -95,6 +96,11 @@ export function makeFakePlayer(): FakePlayer {
     volume: 1,
     playing: false,
     playbackRate: 1,
+    // Mirrors ANDROID's native default (`VideoPlayer.kt`: `var preservesPitch
+    // = false`), not the `@default true` the TS types claim. Android is the
+    // platform that shifts pitch, so false is what makes an assertion here
+    // discriminating — a `true` can only come from the app setting it.
+    preservesPitch: false,
     currentTime: 0,
     duration: 0,
     status: "idle",
@@ -177,6 +183,7 @@ export function makeFakePlayer(): FakePlayer {
       player.volume = 1
       player.playing = false
       player.playbackRate = 1
+      player.preservesPitch = false
       player.currentTime = 0
       player.duration = 0
       player.status = "idle"

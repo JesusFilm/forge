@@ -4,6 +4,7 @@ import { useMemo } from "react"
 
 import { type ChatIdentity } from "@/auth/session-cookie"
 import { cn } from "@/lib/cn"
+import { type RenameConversationResult } from "@/lib/conversation-session"
 import { type Conversation } from "@/lib/conversations"
 
 import { SidebarAccount } from "./sidebar-account"
@@ -18,6 +19,11 @@ type SidebarProps = {
   conversations: Conversation[]
   activeId: string
   pendingIds: ReadonlySet<string>
+  /** feat-450: rows with a rename write in flight (pencil disabled). */
+  renamingIds: ReadonlySet<string>
+  /** feat-450 (R2): rename controls render only on a gate-granted shell —
+   * AppShell's `grantedShell` derivation, never raw `seekerEnabled`. */
+  grantedShell: boolean
   collapsed: boolean
   mobileOpen: boolean
   authConfigured: boolean
@@ -34,6 +40,7 @@ type SidebarProps = {
   onCloseMobile: () => void
   onRetryHistory: () => void
   onLoadMore: () => void
+  onRename: (id: string, draft: string) => Promise<RenameConversationResult>
 }
 
 // Stable id so the mobile trigger can reference the drawer via aria-controls.
@@ -54,6 +61,8 @@ export function Sidebar({
   conversations,
   activeId,
   pendingIds,
+  renamingIds,
+  grantedShell,
   collapsed,
   mobileOpen,
   authConfigured,
@@ -68,6 +77,7 @@ export function Sidebar({
   onCloseMobile,
   onRetryHistory,
   onLoadMore,
+  onRename,
 }: SidebarProps) {
   const { clip, closeRef, handleToggleCollapsed, handleTransitionEnd } =
     useSidebarChrome({
@@ -142,12 +152,15 @@ export function Sidebar({
           conversations={visibleConversations}
           activeId={activeId}
           pendingIds={pendingIds}
+          renamingIds={renamingIds}
+          grantedShell={grantedShell}
           styles={styles}
           history={history}
           onSelect={onSelect}
           onCloseMobile={onCloseMobile}
           onRetryHistory={onRetryHistory}
           onLoadMore={onLoadMore}
+          onRename={onRename}
         />
         <SidebarAccount
           authConfigured={authConfigured}

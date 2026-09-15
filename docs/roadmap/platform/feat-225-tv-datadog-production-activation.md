@@ -19,7 +19,7 @@ tags:
 
 ## Problem
 
-PR #1434 shipped opt-in Datadog Mobile RUM for `apps/tv` (service `forge-tv`), verified live from the tvOS simulator. But telemetry is gated on `EXPO_PUBLIC_DATADOG_CLIENT_TOKEN` + `EXPO_PUBLIC_DATADOG_APPLICATION_ID`, and no EAS profile has them — every real build (preview APK, TestFlight) boots with telemetry silently off. The `__DEV__`-gated boot-smoke event still fires a fake error on every dev launch (temporary verification scaffolding, flagged for removal in the PR). Android TV and real Apple TV hardware are unverified, and production credentials are gated on a privacy decision (`TrackingConsent.GRANTED` hardcoded at 100% session sampling).
+PR #1434 shipped environment-configured Datadog Mobile RUM for `apps/tv` (service `forge-tv`), verified live from the tvOS simulator. But telemetry is gated on `EXPO_PUBLIC_DATADOG_CLIENT_TOKEN` + `EXPO_PUBLIC_DATADOG_APPLICATION_ID`, and no EAS profile has them — every real build (preview APK, TestFlight) boots with telemetry silently off. The `__DEV__`-gated boot-smoke event still fires a fake error on every dev launch (temporary verification scaffolding, flagged for removal in the PR). Android TV and real Apple TV hardware are unverified. Production provisioning uses the configured `TrackingConsent.GRANTED` SDK setting and 100% session sampling without a separate consent approval.
 
 ## Entry Points — Read These First
 
@@ -45,7 +45,7 @@ PR #1434 shipped opt-in Datadog Mobile RUM for `apps/tv` (service `forge-tv`), v
 3. **Create a Datadog usage/intake alert** for `service:forge-tv` — the client token is public-by-design (ships in the bundle), so an alert is the abuse-detection mechanism.
 4. **Android TV verification**: `eas build --profile preview` (APK), install on an Android TV device or emulator, confirm the gradle build autolinks the SDK (the pnpm patch is iOS-only by design — Android needs no patch) and a session appears in RUM.
 5. **Apple TV hardware verification**: TestFlight build via the DISTRIBUTION.md altool flow; confirm a session with mobile vitals from real hardware (vitals are source-confirmed but not product-warranted on tvOS).
-6. **Privacy gate**: before setting the production profile's credentials, get product/legal sign-off on `TrackingConsent.GRANTED` + `sessionSampleRate: 100` (documented residual risk from the PR review).
+6. **Production enablement**: provision the configured production profile and record `TrackingConsent.GRANTED` + `sessionSampleRate: 100` in the telemetry inventory. Follow `docs/analytics-and-recommendation-policy.md`; consent approval is not a prerequisite.
 
 ## Constraints
 

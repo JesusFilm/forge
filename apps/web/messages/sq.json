@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Ndrysho gjuhën e audios",
     "home": "Faqja kryesore e JesusFilm",
     "closeSearch": "Mbyll kërkimin",
-    "submitSearch": "Kërko"
+    "submitSearch": "Kërko",
+    "library": "Bibliotekë"
   },
   "SearchOverlay": {
     "dialogLabel": "Kërko dhe shfleto videot",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Koleksione",
     "subtitlesOnly": "Vetëm titra",
+    "backToTop": "Kthehu lart",
     "newlyAdded": "Sapo shtuar",
     "newVideosTitle": "Video të reja të krishtera në {language}",
     "newestFirst": "Më të rejat të parat",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Video të veçanta",
     "videosFromCollection": "Video nga {collection}.",
     "standaloneDescription": "Video të veçanta në këtë gjuhë.",
-    "openCollection": "Hap koleksionin"
+    "openCollection": "Hap koleksionin",
+    "filters": "Filtra",
+    "filterLength": "Kohëzgjatja",
+    "filterLength_under5": "Nën 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Mbi 30 min",
+    "filterType": "Tipi",
+    "clearFilters": "Fshi filtrat",
+    "filterResults": "{count} nga {total} të shfaqura",
+    "noFilterResults": "Asnjë video nuk përputhet me këta filtra. Provoni të hiqni një.",
+    "filterAdded": "Shtuar",
+    "filterAdded_60d": "60 ditët e fundit",
+    "filterAdded_6m": "6 muajt e fundit",
+    "filterAdded_12m": "12 muajt e fundit"
   },
   "WatchHome": {
     "pageTitle": "Shikimi i Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Parapamja e videos së mëparshme",
     "nextVideoPreview": "Parapamja e videos tjetër",
     "mediaCollection": "Koleksion mediash",
-    "scrollToVideo": "Lëviz te videoja {title}"
+    "scrollToVideo": "Lëviz te videoja {title}",
+    "forYou": "Për ju"
   },
   "WatchFooter": {
     "home": "Faqja kryesore e Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Kthehu te Shikimi",
     "browseVideos": "Shfleto videot"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Shiko filmin e shkurtër",
-    "actions": {
-      "joinUs": "Bashkohuni me ne",
-      "shareMission": "Ndani misionin tonë"
-    },
-    "welcomeStart": {
-      "label": "Besim & Shkrimi i Shenjtë",
-      "title": "Përzgjedhjet e sotme të videove",
-      "description": "Përmbajtje video me në qendër besimin nga biblioteka jonë, për të frymëzuar, sfiduar dhe nxitur reflektim."
-    },
-    "welcomeMorning": {
-      "label": "Frymëzim i mëngjesit",
-      "title": "Mirëmëngjes! Ju presin momentet e sotme biblike.",
-      "description": "Filloni ditën me momente inkurajuese biblike, të krijuara për të frymëzuar dhe ngritur shpirtin tuaj."
-    },
-    "welcomeAfternoon": {
-      "label": "Frymëzim i pasdites",
-      "title": "Mirëdita! Momente biblike për ditën tuaj.",
-      "description": "Përmbajtje inkurajuese biblike, e përsosur për pushimin e pasdites ose për frymëzim të mëtejshëm."
-    },
-    "welcomeEvening": {
-      "label": "Frymëzim i mbrëmjes",
-      "title": "Mirëmbrëma! Qetësohuni me momente biblike.",
-      "description": "Momente paqësore biblike për t’ju ndihmuar të reflektoni dhe të gjeni ngushëllim ndërsa dita po mbyllet."
-    },
-    "joinUs": {
-      "label": "Bashkohuni me ne",
-      "title": "Miliarda njerëz po kërkojnë",
-      "description": "Të korrat janë këtu. Bashkohuni me ne ndërsa ndajmë ungjillin me botën përmes mediave digjitale."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Le të shkojmë së bashku",
-      "title": "Të tregojmë historinë e Jezusit, së bashku",
-      "description": "Që ata të mund të dëgjojnë dhe të shohin dashurinë e Jezusit në gjuhën e tyre, pikërisht aty ku janë."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% përputhje",
     "none": "Nuk u gjetën rekomandime për këtë video në këtë gjuhë."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Gjuha e audios",
     "selectLanguageVersion": "Zgjidh një version gjuhësor",
     "watchSelectedVersion": "Shiko versionin e zgjedhur"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Zgjedhjet e cookie-ve",
+    "bannerTitle": "Zgjedhjet tuaja për privatësinë",
+    "bannerDescription": "Cookie-t thelbësore e mbajnë Watch të sigurt dhe funksional. Me lejen tuaj, një cookie opsionale e palës së parë mund të mbajë mend interesat në vizita të ndryshme për të personalizuar rekomandimet. Rekomandimet kontekstuale mbeten të disponueshme në çdo rast.",
+    "acceptAll": "Pranoji të gjitha",
+    "essentialOnly": "Vetëm thelbësoret",
+    "manageChoices": "Menaxho zgjedhjet",
+    "savingChoice": "Po ruhen zgjedhjet për cookie-t",
+    "settings": "Cilësimet e cookie-ve",
+    "settingsDescription": "Zgjidhni nëse Watch mund të mbajë mend interesat për rekomandime në vizita të ndryshme. Këtë mund ta ndryshoni në çdo kohë.",
+    "essentialCookies": "Cookie thelbësore",
+    "essentialDescription": "Siguria, riprodhimi, zgjedhjet për privatësinë dhe atribuimi i kërkesave për rekomandime.",
+    "alwaysActive": "Gjithmonë aktive",
+    "personalization": "Personalizimi",
+    "personalizationDescription": "Mban mend interesa të kufizuara në vizita të ndryshme. Nëse e çaktivizoni këtë, rekomandimet kontekstuale mbeten të disponueshme.",
+    "erasurePending": "Fshirja e profilit është në pritje. Rekomandimet kontekstuale janë tashmë aktive.",
+    "cancel": "Anulo",
+    "saveChoices": "Ruaj zgjedhjet",
+    "saving": "Po ruhet…",
+    "loadError": "Zgjedhja juaj nuk mund të ngarkohej. Mund të zgjidhni gjithsesi më poshtë.",
+    "grantError": "Personalizimi nuk mund të aktivizohej. Opsioni vetëm thelbësoret mbetet i disponueshëm.",
+    "saveError": "Zgjedhja juaj nuk mund të ruhej. Ju lutemi, provoni përsëri."
   }
 }

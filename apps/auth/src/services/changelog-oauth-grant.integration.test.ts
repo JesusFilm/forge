@@ -2,6 +2,11 @@ import { createHash, randomBytes, randomUUID } from "node:crypto"
 
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 
+import {
+  createOAuthResourceCatalog,
+  getPublicDcrResources,
+} from "@/domain/oauth-resources"
+
 /**
  * Opt-in native-provider proof. The target must be a disposable PostgreSQL
  * database with Auth migrations applied; this suite seeds the normal
@@ -11,6 +16,14 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
  *   BETTER_AUTH_SECRET=changelog-integration-secret-not-for-production \
  *     pnpm --filter @forge/auth test -- changelog-oauth-grant.integration
  */
+// The production gate is parsed once in deployment. Keep it switchable here
+// so the same native-provider suite can exercise both deployment postures.
+vi.mock("@/config/env", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/config/env")>()),
+  isChangelogProductionEnabled: () =>
+    process.env.AUTH_CHANGELOG_PRODUCTION_ENABLED === "true",
+}))
+
 const databaseUrl = process.env.AUTH_TEST_DATABASE_URL
 const describeIntegration = databaseUrl ? describe : describe.skip
 
@@ -26,6 +39,12 @@ const PRODUCTION_RESOURCE = "https://changelog.jesusfilm.org/mcp"
 const REDIRECT_URI = "http://127.0.0.1:49191/callback"
 const SEEDED_REDIRECT_URI = "http://localhost:3000/api/auth/callback"
 const nativeFetch = globalThis.fetch
+const PUBLIC_MCP_RESOURCES = getPublicDcrResources(
+  createOAuthResourceCatalog({
+    authIssuer: process.env.AUTH_BASE_URL!,
+    customAudiences: [],
+  }),
+).sort()
 
 function stubSelfDiscovery() {
   vi.stubGlobal(
@@ -108,27 +127,30 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
       data: { membershipStatus: "ACTIVE" },
     })
 
-    const registered = (await auth.api.registerOAuthClient({
-      body: {
-        client_name: "Changelog integration dynamic client",
-        redirect_uris: [REDIRECT_URI],
-        token_endpoint_auth_method: "none",
-        grant_types: ["authorization_code", "refresh_token"],
-        response_types: ["code"],
-        application_type: "native",
-      },
-    })) as unknown as { client_id: string }
+    const registrationResponse = await routePost(
+      new Request("http://localhost:3004/api/auth/oauth2/register", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          client_name: "Changelog integration dynamic client",
+          redirect_uris: [REDIRECT_URI],
+        }),
+      }),
+      { params: Promise.resolve({ all: ["oauth2", "register"] }) },
+    )
+    expect(registrationResponse.status).toBeGreaterThanOrEqual(200)
+    expect(registrationResponse.status).toBeLessThan(300)
+    const registered = (await registrationResponse.json()) as {
+      client_id: string
+    }
     clientId = registered.client_id
-    await expect(
-      prisma.oauthClientResource.findMany({
+    const registeredResourceIds = await prisma.oauthClientResource
+      .findMany({
         where: { clientId },
         select: { resourceId: true },
-        orderBy: { resourceId: "asc" },
-      }),
-    ).resolves.toEqual([
-      { resourceId: LOCAL_RESOURCE },
-      { resourceId: PRODUCTION_RESOURCE },
-    ])
+      })
+      .then((rows) => rows.map(({ resourceId }) => resourceId).sort())
+    expect(registeredResourceIds).toEqual(PUBLIC_MCP_RESOURCES)
 
     const environment = await prisma.appEnvironment.findFirstOrThrow({
       where: { kind: "LOCAL", app: { key: "changelog" } },
@@ -160,11 +182,854 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
     }
     if (grantId) await prisma.appGrant.deleteMany({ where: { id: grantId } })
     if (userId) {
+      await prisma.changelogPreapproval.deleteMany({
+        where: { approverId: userId },
+      })
       await prisma.session.deleteMany({ where: { userId } })
       await prisma.user.deleteMany({ where: { id: userId } })
     }
     await prisma.$disconnect()
   })
+
+  it("persists preapprovals before signup without creating access", async () => {
+    const { POST, GET } = await import("@/app/api/changelog/preapprovals/route")
+    const scope = await prisma.scope.findUniqueOrThrow({
+      where: { key: "changelog:admin" },
+    })
+    await prisma.appGrantScope.create({ data: { grantId, scopeId: scope.id } })
+    try {
+      const authorized = await authorize({
+        requestedClientId: "jfp_changelog_local",
+        redirectUri: SEEDED_REDIRECT_URI,
+        resource: null,
+        scope: "openid changelog:read changelog:submit changelog:admin",
+      })
+      const code = await authorizationCode(authorized.response)
+      const exchanged = await postToken(
+        new URLSearchParams({
+          grant_type: "authorization_code",
+          client_id: "jfp_changelog_local",
+          code,
+          code_verifier: authorized.verifier,
+          redirect_uri: SEEDED_REDIRECT_URI,
+        }),
+      )
+      const headers = {
+        authorization: `Bearer ${exchanged.body.access_token}`,
+        "content-type": "application/json",
+      }
+      const email = `preapproval-${randomUUID()}@example.test`
+      const id = randomUUID()
+      const request = () =>
+        new Request("http://localhost:3004/api/changelog/preapprovals", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            clientId: "jfp_changelog_local",
+            action: "create",
+            id,
+            email: ` ${email.toUpperCase()} `,
+          }),
+        })
+      const created = await POST(request())
+      expect(created.status).toBe(200)
+      const approval = await created.json()
+      expect(approval).toMatchObject({
+        id,
+        email,
+        state: "pending",
+        approverId: userId,
+        version: 0,
+        redeemedById: null,
+      })
+      expect(
+        Date.parse(approval.expiresAt) - Date.parse(approval.createdAt),
+      ).toBe(30 * 24 * 60 * 60 * 1000)
+      expect(await (await POST(request())).json()).toEqual(approval)
+      const listed = await GET(
+        new Request(
+          "http://localhost:3004/api/changelog/preapprovals?clientId=jfp_changelog_local",
+          { headers },
+        ),
+      )
+      expect((await listed.json()).preapprovals).toContainEqual(approval)
+      expect(await prisma.user.findUnique({ where: { email } })).toBeNull()
+      const mutate = (action: string, version: number, extra = {}) =>
+        POST(
+          new Request("http://localhost:3004/api/changelog/preapprovals", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              clientId: "jfp_changelog_local",
+              action,
+              id,
+              version,
+              ...extra,
+            }),
+          }),
+        )
+      const list = () =>
+        GET(
+          new Request(
+            "http://localhost:3004/api/changelog/preapprovals?clientId=jfp_changelog_local",
+            { headers },
+          ),
+        )
+      expect(
+        (await mutate("cancel", 0, { scope: "changelog:admin" })).status,
+      ).toBe(400)
+      expect((await mutate("cancel", 0)).status).toBe(200)
+      expect((await (await list()).json()).preapprovals).toContainEqual(
+        expect.objectContaining({ id, state: "canceled", version: 1 }),
+      )
+      expect((await mutate("renew", 0)).status).toBe(409)
+      expect((await mutate("renew", 1)).status).toBe(200)
+      expect((await mutate("cancel", 0)).status).toBe(409)
+      const boundary = new Date()
+      await prisma.changelogPreapproval.update({
+        where: { id },
+        data: { expiresAt: boundary },
+      })
+      vi.useFakeTimers({ toFake: ["Date"] })
+      vi.setSystemTime(new Date(boundary.getTime() - 1))
+      expect((await (await list()).json()).preapprovals).toContainEqual(
+        expect.objectContaining({ id, state: "pending" }),
+      )
+      vi.setSystemTime(boundary)
+      expect((await (await list()).json()).preapprovals).toContainEqual(
+        expect.objectContaining({ id, state: "expired" }),
+      )
+      vi.useRealTimers()
+      expect((await mutate("renew", 2)).status).toBe(200)
+      // Membership loss must persist cancellation, even if authority is restored
+      // before anybody lists or attempts to redeem the approval.
+      await prisma.user.update({
+        where: { id: userId },
+        data: { membershipStatus: "SUSPENDED" },
+      })
+      expect((await list()).status).toBe(403)
+      expect((await mutate("renew", 3)).status).toBe(403)
+      await prisma.user.update({
+        where: { id: userId },
+        data: { membershipStatus: "ACTIVE" },
+      })
+      expect((await (await list()).json()).preapprovals).toContainEqual(
+        expect.objectContaining({ id, state: "canceled", version: 4 }),
+      )
+      const signup = await auth.api.signUpEmail({
+        asResponse: true,
+        body: {
+          email: `renewing-admin-${randomUUID()}@example.test`,
+          name: "Renewing admin",
+          password: `Test-${randomUUID()}!`,
+        },
+      })
+      const second = (await signup.json()).user
+      const originalCookie = cookie
+      const originalCredential = headers.authorization
+      const environment = await prisma.appEnvironment.findUniqueOrThrow({
+        where: { clientId: "jfp_changelog_local" },
+      })
+      await prisma.user.update({
+        where: { id: second.id },
+        data: { membershipStatus: "ACTIVE" },
+      })
+      const secondGrant = await prisma.appGrant.create({
+        data: {
+          appId: environment.appId,
+          environmentId: environment.id,
+          subjectType: "USER",
+          userId: second.id,
+          status: "APPROVED",
+          scopes: { create: { scopeId: scope.id } },
+        },
+      })
+      try {
+        cookie = signup.headers.get("set-cookie")!.split(";")[0]
+        const authorization = await authorize({
+          requestedClientId: "jfp_changelog_local",
+          redirectUri: SEEDED_REDIRECT_URI,
+          resource: null,
+          scope: "openid changelog:read changelog:submit changelog:admin",
+        })
+        const secondCode = await authorizationCode(authorization.response)
+        const secondExchange = await postToken(
+          new URLSearchParams({
+            grant_type: "authorization_code",
+            client_id: "jfp_changelog_local",
+            code: secondCode,
+            code_verifier: authorization.verifier,
+            redirect_uri: SEEDED_REDIRECT_URI,
+          }),
+        )
+        cookie = originalCookie
+        headers.authorization = `Bearer ${secondExchange.body.access_token}`
+        const renewed = await mutate("renew", 4)
+        expect(renewed.status).toBe(200)
+        expect(await renewed.json()).toMatchObject({
+          approverId: second.id,
+          state: "pending",
+          version: 5,
+        })
+        await prisma.appGrantScope.deleteMany({
+          where: { grantId, scopeId: scope.id },
+        })
+        expect((await (await list()).json()).preapprovals).toContainEqual(
+          expect.objectContaining({
+            id,
+            state: "pending",
+            approverId: second.id,
+          }),
+        )
+        await prisma.appGrantScope.create({
+          data: { grantId, scopeId: scope.id },
+        })
+        headers.authorization = originalCredential
+        await prisma.appGrant.update({
+          where: { id: secondGrant.id },
+          data: { status: "REVOKED", revokedAt: new Date() },
+        })
+        expect((await (await list()).json()).preapprovals).toContainEqual(
+          expect.objectContaining({ id, state: "canceled", version: 6 }),
+        )
+        expect((await mutate("renew", 6)).status).toBe(200)
+        // A scope association can disappear independently of its parent grant.
+        await prisma.appGrantScope.deleteMany({
+          where: { grantId, scopeId: scope.id },
+        })
+        await prisma.appGrantScope.create({
+          data: { grantId, scopeId: scope.id },
+        })
+        expect((await (await list()).json()).preapprovals).toContainEqual(
+          expect.objectContaining({ id, state: "canceled", version: 8 }),
+        )
+        const competing = await Promise.all([
+          mutate("cancel", 8),
+          mutate("renew", 8),
+        ])
+        expect(
+          competing.filter((response) => response.status === 200),
+        ).toHaveLength(1)
+        expect(
+          competing.every((response) =>
+            [200, 409, 503].includes(response.status),
+          ),
+        ).toBe(true)
+        expect((await mutate("renew", 8)).status).toBe(409)
+        // Fixture represents the transition owned by #131; management must keep it terminal.
+        await prisma.changelogPreapproval.update({
+          where: { id },
+          data: {
+            state: "redeemed",
+            redeemedAt: new Date(),
+            redeemedById: second.id,
+          },
+        })
+        expect((await mutate("renew", 9)).status).toBe(409)
+        expect((await mutate("cancel", 9)).status).toBe(409)
+        expect((await (await list()).json()).preapprovals).toContainEqual(
+          expect.objectContaining({
+            id,
+            state: "redeemed",
+            redeemedById: second.id,
+          }),
+        )
+        expect(
+          await prisma.appGrant.count({
+            where: { userId: second.id, status: "APPROVED" },
+          }),
+        ).toBe(0)
+        const deniedBodies = [
+          {
+            clientId: "jfp_changelog_production",
+            action: "renew",
+            id,
+            version: 9,
+          },
+          { clientId: "arbitrary", action: "create", id: randomUUID(), email },
+        ]
+        for (const body of deniedBodies)
+          expect(
+            (
+              await POST(
+                new Request(
+                  "http://localhost:3004/api/changelog/preapprovals",
+                  { method: "POST", headers, body: JSON.stringify(body) },
+                ),
+              )
+            ).status,
+          ).toBe(403)
+        expect(
+          (
+            await GET(
+              new Request(
+                "http://localhost:3004/api/changelog/preapprovals?clientId=jfp_changelog_local",
+              ),
+            )
+          ).status,
+        ).toBe(401)
+        expect(
+          (
+            await POST(
+              new Request("http://localhost:3004/api/changelog/preapprovals", {
+                method: "POST",
+                body: JSON.stringify({
+                  clientId: "jfp_changelog_local",
+                  action: "create",
+                  id: randomUUID(),
+                  email,
+                }),
+              }),
+            )
+          ).status,
+        ).toBe(401)
+      } finally {
+        cookie = originalCookie
+        headers.authorization = originalCredential
+        await prisma.changelogPreapproval.deleteMany({ where: { id } })
+        await prisma.user.delete({ where: { id: second.id } })
+      }
+    } finally {
+      vi.useRealTimers()
+      await prisma.user.update({
+        where: { id: userId },
+        data: { membershipStatus: "ACTIVE" },
+      })
+      await prisma.appGrantScope.deleteMany({
+        where: { grantId, scopeId: scope.id },
+      })
+    }
+  })
+
+  it("manages existing Contributors with current authority and exact grant scope", async () => {
+    const { GET, POST } = await import("@/app/api/changelog/contributors/route")
+    const adminScope = await prisma.scope.findUniqueOrThrow({
+      where: { key: "changelog:admin" },
+    })
+    await prisma.appGrantScope.create({
+      data: { grantId, scopeId: adminScope.id },
+    })
+    try {
+      const authorized = await authorize({
+        requestedClientId: "jfp_changelog_local",
+        redirectUri: SEEDED_REDIRECT_URI,
+        resource: null,
+        scope: "openid changelog:read changelog:submit changelog:admin",
+      })
+      const code = await authorizationCode(authorized.response)
+      const exchanged = await postToken(
+        new URLSearchParams({
+          grant_type: "authorization_code",
+          client_id: "jfp_changelog_local",
+          code,
+          code_verifier: authorized.verifier,
+          redirect_uri: SEEDED_REDIRECT_URI,
+        }),
+      )
+      expect(exchanged.response.status).toBe(200)
+      const response = await GET(
+        new Request(
+          "http://localhost:3004/api/changelog/contributors?clientId=jfp_changelog_local",
+          {
+            headers: { authorization: `Bearer ${exchanged.body.access_token}` },
+          },
+        ),
+      )
+      expect(response.status).toBe(200)
+      expect(await response.json()).toMatchObject({
+        environment: "local",
+        contributors: [{ id: userId, canRevoke: false }],
+      })
+      const signup = await auth.api.signUpEmail({
+        asResponse: true,
+        body: {
+          name: "Existing Contributor",
+          email: `contributor-${randomUUID()}@example.test`,
+          password: "integration-contributor-password",
+        },
+      })
+      expect(signup.status).toBe(200)
+      const recipient = ((await signup.json()) as { user: { id: string } }).user
+      const recipientCookie = signup.headers.get("set-cookie")!.split(";")[0]
+      await prisma.user.update({
+        where: { id: recipient.id },
+        data: { membershipStatus: "ACTIVE" },
+      })
+      const local = await prisma.appEnvironment.findUniqueOrThrow({
+        where: { clientId: "jfp_changelog_local" },
+      })
+      const production = await prisma.appEnvironment.findUniqueOrThrow({
+        where: { clientId: "jfp_changelog_production" },
+      })
+      async function grant(environment: typeof local, scopes: string[]) {
+        return prisma.appGrant.create({
+          data: {
+            appId: environment.appId,
+            environmentId: environment.id,
+            userId: recipient.id,
+            subjectType: "USER",
+            status: "APPROVED",
+            scopes: {
+              create: await Promise.all(
+                scopes.map(async (key) => ({
+                  scopeId: (
+                    await prisma.scope.findUniqueOrThrow({ where: { key } })
+                  ).id,
+                })),
+              ),
+            },
+          },
+        })
+      }
+      const mixed = await grant(local, [
+        "changelog:submit",
+        "changelog:read",
+        "profile:read",
+      ])
+      const reader = await grant(local, ["changelog:read"])
+      const otherEnvironment = await grant(production, ["changelog:submit"])
+      const contributorOnly = await grant(local, ["changelog:submit"])
+      const unrelatedEnvironment = await prisma.appEnvironment.findFirstOrThrow(
+        { where: { kind: "LOCAL", app: { key: "admin" } } },
+      )
+      const unrelated = await grant(unrelatedEnvironment, ["admin:access"])
+      const token = String(exchanged.body.access_token)
+      const request = (
+        body: Record<string, string> = {
+          clientId: "jfp_changelog_local",
+          recipientId: recipient.id,
+        },
+        credential = token,
+      ) =>
+        new Request("http://localhost:3004/api/changelog/contributors", {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${credential}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify(body),
+        })
+      try {
+        const list = (credential = token, client = "jfp_changelog_local") =>
+          GET(
+            new Request(
+              `http://localhost:3004/api/changelog/contributors?clientId=${client}`,
+              { headers: { authorization: `Bearer ${credential}` } },
+            ),
+          )
+        expect((await list()).status).toBe(200)
+        await prisma.user.update({
+          where: { id: userId },
+          data: { membershipStatus: "SUSPENDED" },
+        })
+        expect((await list()).status).toBe(403)
+        expect((await POST(request())).status).toBe(403)
+        await prisma.user.update({
+          where: { id: userId },
+          data: { membershipStatus: "ACTIVE" },
+        })
+        const actorSessionId = String(decodeJwtPayload(token).sid)
+        const actorSession = await prisma.session.findUniqueOrThrow({
+          where: { id: actorSessionId },
+        })
+        await prisma.session.update({
+          where: { id: actorSessionId },
+          data: { expiresAt: new Date(0) },
+        })
+        expect((await list()).status).toBe(403)
+        expect((await POST(request())).status).toBe(403)
+        await prisma.session.update({
+          where: { id: actorSessionId },
+          data: { expiresAt: actorSession.expiresAt },
+        })
+        vi.useFakeTimers({ toFake: ["Date"] })
+        vi.setSystemTime(new Date(Date.now() + 7_200_000))
+        try {
+          expect((await list()).status).toBe(403)
+          expect((await POST(request())).status).toBe(403)
+        } finally {
+          vi.useRealTimers()
+        }
+        for (const credential of [
+          "",
+          "forged",
+          token.slice(0, -8) + "AAAAAAAA",
+          String(exchanged.body.id_token),
+        ]) {
+          expect((await list(credential)).status).toBeGreaterThanOrEqual(400)
+          expect(
+            (await POST(request(undefined, credential))).status,
+          ).toBeGreaterThanOrEqual(400)
+        }
+        process.env.AUTH_CHANGELOG_PRODUCTION_ENABLED = "true"
+        expect((await list(token, "jfp_changelog_production")).status).toBe(403)
+        expect(
+          (
+            await POST(
+              request({
+                clientId: "jfp_changelog_production",
+                recipientId: recipient.id,
+              }),
+            )
+          ).status,
+        ).toBe(403)
+        process.env.AUTH_CHANGELOG_PRODUCTION_ENABLED = "false"
+        for (const field of [
+          "application",
+          "scope",
+          "subject",
+          "environment",
+        ]) {
+          expect(
+            (
+              await POST(
+                request({
+                  clientId: "jfp_changelog_local",
+                  recipientId: recipient.id,
+                  [field]: "forged",
+                }),
+              )
+            ).status,
+          ).toBe(400)
+        }
+        await prisma.appGrantScope.deleteMany({
+          where: { grantId, scopeId: adminScope.id },
+        })
+        expect((await list()).status).toBe(403)
+        expect((await POST(request())).status).toBe(403)
+        const readerAuthorization = await authorize({
+          requestedClientId: "jfp_changelog_local",
+          redirectUri: SEEDED_REDIRECT_URI,
+          resource: null,
+          scope: "openid changelog:read",
+        })
+        const readerCode = await authorizationCode(readerAuthorization.response)
+        const readerToken = await postToken(
+          new URLSearchParams({
+            grant_type: "authorization_code",
+            client_id: "jfp_changelog_local",
+            code: readerCode,
+            code_verifier: readerAuthorization.verifier,
+            redirect_uri: SEEDED_REDIRECT_URI,
+          }),
+        )
+        expect(readerToken.response.status).toBe(200)
+        await prisma.appGrantScope.create({
+          data: { grantId, scopeId: adminScope.id },
+        })
+        expect((await list(String(readerToken.body.access_token))).status).toBe(
+          403,
+        )
+        expect(
+          (
+            await POST(
+              request(undefined, String(readerToken.body.access_token)),
+            )
+          ).status,
+        ).toBe(403)
+        // The recipient became Admin AFTER the list was loaded.
+        const promoted = await grant(local, ["changelog:admin"])
+        expect((await POST(request())).status).toBe(409)
+        const promotedList = await (await list()).json()
+        expect(
+          promotedList.contributors.find(
+            (person: { id: string }) => person.id === recipient.id,
+          ).canRevoke,
+        ).toBe(false)
+        await prisma.appGrant.delete({ where: { id: promoted.id } })
+        const actorCookie = cookie
+        let issued, stale
+        try {
+          cookie = recipientCookie
+          const recipientAuthorization = await authorize()
+          const recipientCode = await authorizationCode(
+            recipientAuthorization.response,
+          )
+          issued = await postToken(
+            new URLSearchParams({
+              grant_type: "authorization_code",
+              client_id: clientId,
+              code: recipientCode,
+              code_verifier: recipientAuthorization.verifier,
+              redirect_uri: REDIRECT_URI,
+              resource: LOCAL_RESOURCE,
+            }),
+          )
+          expect(issued.response.status).toBe(200)
+          expect(issued.body.scope).toBe(
+            "openid changelog:read changelog:submit",
+          )
+          const staleAuthorization = await authorize()
+          stale = {
+            code: await authorizationCode(staleAuthorization.response),
+            verifier: staleAuthorization.verifier,
+          }
+        } finally {
+          cookie = actorCookie
+        }
+        let unlock!: () => void
+        let ready!: () => void
+        const held = new Promise<void>((resolve) => {
+          unlock = resolve
+        })
+        const locked = new Promise<void>((resolve) => {
+          ready = resolve
+        })
+        const lock = prisma.$transaction(
+          async (tx) => {
+            await tx.$queryRaw`SELECT id FROM app_environment WHERE id = ${local.id} FOR UPDATE`
+            ready()
+            await held
+          },
+          { timeout: 10_000 },
+        )
+        await locked
+        const started = Date.now()
+        try {
+          expect((await POST(request())).status).toBe(503)
+          expect(Date.now() - started).toBeLessThan(9000)
+        } finally {
+          unlock()
+          await lock
+        }
+        const revoked = await POST(request())
+        expect(revoked.status).toBe(200)
+        const remaining = await prisma.appGrant.findMany({
+          where: { userId: recipient.id },
+          include: { scopes: { include: { scope: true } } },
+        })
+        const scopesFor = (id: string) =>
+          remaining
+            .find((item) => item.id === id)!
+            .scopes.map(({ scope }) => scope.key)
+            .sort()
+        expect(scopesFor(mixed.id)).toEqual(["changelog:read", "profile:read"])
+        expect(scopesFor(reader.id)).toEqual(["changelog:read"])
+        expect(scopesFor(otherEnvironment.id)).toEqual(["changelog:submit"])
+        expect(scopesFor(contributorOnly.id)).toEqual([])
+        expect(scopesFor(unrelated.id)).toEqual(["admin:access"])
+        const rejectedExchange = await postToken(
+          new URLSearchParams({
+            grant_type: "authorization_code",
+            client_id: clientId,
+            code: stale.code,
+            code_verifier: stale.verifier,
+            redirect_uri: REDIRECT_URI,
+            resource: LOCAL_RESOURCE,
+          }),
+        )
+        expect(rejectedExchange.response.status).toBe(400)
+        const rejectedRefresh = await postToken(
+          new URLSearchParams({
+            grant_type: "refresh_token",
+            client_id: clientId,
+            refresh_token: String(issued.body.refresh_token),
+          }),
+        )
+        expect(rejectedRefresh.response.status).toBe(400)
+        expect(
+          (await (await list()).json()).contributors.some(
+            (person: { id: string }) => person.id === recipient.id,
+          ),
+        ).toBe(false)
+        expect(await (await POST(request())).json()).toEqual({ changed: false })
+      } finally {
+        await prisma.user.delete({ where: { id: recipient.id } })
+      }
+    } finally {
+      await prisma.appGrantScope.deleteMany({
+        where: { grantId, scopeId: adminScope.id },
+      })
+    }
+  }, 20_000)
+
+  it.each([
+    {
+      scenario: "recipient promotion",
+      operation: "grant-admin",
+      actorTarget: false,
+      status: 503,
+      retryStatus: 409,
+      scopes: ["changelog:admin", "changelog:submit"],
+    },
+    {
+      scenario: "actor revocation",
+      operation: "revoke",
+      actorTarget: true,
+      status: 503,
+      retryStatus: 403,
+      scopes: ["changelog:submit"],
+    },
+    {
+      scenario: "read-only inspection",
+      operation: "inspect",
+      actorTarget: false,
+      status: 200,
+      retryStatus: 200,
+      scopes: [],
+    },
+  ] as const)(
+    "handles concurrent $scenario before management obtains its lock",
+    async ({ operation, actorTarget, status, retryStatus, scopes }) => {
+      const { POST } = await import("@/app/api/changelog/contributors/route")
+      const { operateChangelogProductionAccess } =
+        await import("./changelog-production-access.service")
+      const actor = await prisma.user.update({
+        where: { id: userId },
+        data: { emailVerified: true },
+      })
+      const recipient = await prisma.user.create({
+        data: {
+          id: randomUUID(),
+          name: "Concurrent promotion recipient",
+          email: `promotion-${randomUUID()}@example.test`,
+          emailVerified: true,
+          membershipStatus: "ACTIVE",
+        },
+      })
+      const production = await prisma.appEnvironment.findUniqueOrThrow({
+        where: { clientId: "jfp_changelog_production" },
+      })
+      let unlock: (() => void) | undefined
+      let lock: Promise<unknown> | undefined
+      let operator: Promise<unknown> | undefined
+      let revocation: Promise<Response> | undefined
+      try {
+        process.env.AUTH_CHANGELOG_PRODUCTION_ENABLED = "true"
+        await operateChangelogProductionAccess("grant-admin", actor.email)
+        await prisma.appGrant.create({
+          data: {
+            appId: production.appId,
+            environmentId: production.id,
+            userId: recipient.id,
+            subjectType: "USER",
+            status: "APPROVED",
+            scopes: {
+              create: { scope: { connect: { key: "changelog:submit" } } },
+            },
+          },
+        })
+        const authorized = await authorize({
+          requestedClientId: "jfp_changelog_production",
+          redirectUri: "https://changelog.jesusfilm.org/api/auth/callback",
+          resource: null,
+          scope: "openid changelog:admin",
+        })
+        const code = await authorizationCode(authorized.response)
+        const exchanged = await postToken(
+          new URLSearchParams({
+            grant_type: "authorization_code",
+            client_id: "jfp_changelog_production",
+            code,
+            code_verifier: authorized.verifier,
+            redirect_uri: "https://changelog.jesusfilm.org/api/auth/callback",
+          }),
+        )
+        expect(exchanged.response.status).toBe(200)
+        const request = () =>
+          new Request("http://localhost:3004/api/changelog/contributors", {
+            method: "POST",
+            headers: {
+              authorization: `Bearer ${exchanged.body.access_token}`,
+              "content-type": "application/json",
+            },
+            body: JSON.stringify({
+              clientId: "jfp_changelog_production",
+              recipientId: recipient.id,
+            }),
+          })
+        const environmentBefore = await prisma.appEnvironment.findUniqueOrThrow(
+          {
+            where: { id: production.id },
+          },
+        )
+        const held = new Promise<void>((resolve) => {
+          unlock = resolve
+        })
+        let ready!: () => void
+        const locked = new Promise<void>((resolve) => {
+          ready = resolve
+        })
+        lock = prisma.$transaction(
+          async (tx) => {
+            await tx.$queryRaw`SELECT id FROM app_environment WHERE id = ${production.id} FOR UPDATE`
+            ready()
+            await held
+          },
+          { timeout: 10_000 },
+        )
+        await locked
+        // Queue the real operator first, then management. Both must have reached
+        // PostgreSQL's lock wait before release; no timing sleeps or mocked DB.
+        const waitForBlocked = (count: number) =>
+          vi.waitFor(
+            async () => {
+              const rows = await prisma.$queryRaw<{ count: bigint }[]>`
+              SELECT count(*) FROM pg_stat_activity
+              WHERE datname = current_database() AND wait_event_type = 'Lock'
+                AND query LIKE '%app_environment%'
+            `
+              expect(Number(rows[0].count)).toBe(count)
+            },
+            { timeout: 2000, interval: 10 },
+          )
+        operator = operateChangelogProductionAccess(
+          operation,
+          actorTarget ? actor.email : recipient.email,
+        )
+        await waitForBlocked(1)
+        revocation = POST(request())
+        await waitForBlocked(2)
+        unlock?.()
+        await lock
+        await operator
+        expect((await revocation).status).toBe(status)
+        const retried = await POST(request())
+        expect(retried.status).toBe(retryStatus)
+        if (operation === "inspect") {
+          expect(await retried.json()).toEqual({ changed: false })
+          const environmentAfter =
+            await prisma.appEnvironment.findUniqueOrThrow({
+              where: { id: production.id },
+            })
+          expect(environmentAfter.updatedAt).toEqual(
+            environmentBefore.updatedAt,
+          )
+        }
+        const { hashAuditSubject } = await import("./audit.service")
+        expect(
+          await prisma.authAuditEvent.count({
+            where: {
+              subjectHash: hashAuditSubject(recipient.id),
+              eventType: "changelog_contributor_revoked",
+            },
+          }),
+        ).toBe(operation === "inspect" ? 1 : 0)
+        const grants = await prisma.appGrant.findMany({
+          where: { userId: recipient.id },
+          include: { scopes: { include: { scope: true } } },
+        })
+        expect(
+          grants
+            .flatMap((grant) => grant.scopes.map(({ scope }) => scope.key))
+            .sort(),
+        ).toEqual(scopes)
+      } finally {
+        unlock?.()
+        await Promise.allSettled([lock, operator, revocation])
+        process.env.AUTH_CHANGELOG_PRODUCTION_ENABLED = "false"
+        await prisma.user.delete({ where: { id: recipient.id } })
+        await prisma.appGrant.deleteMany({
+          where: { userId, environmentId: production.id },
+        })
+        await prisma.user.update({
+          where: { id: userId },
+          data: { emailVerified: false },
+        })
+      }
+    },
+    20_000,
+  )
 
   async function authorize({
     requestedClientId = clientId,

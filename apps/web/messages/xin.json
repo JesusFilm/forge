@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Cambiar idioma del audio",
     "home": "Inicio de JesusFilm",
     "closeSearch": "Cerrar búsqueda",
-    "submitSearch": "Tz'ib'an"
+    "submitSearch": "Tz'ib'an",
+    "library": "Libreria"
   },
   "SearchOverlay": {
     "dialogLabel": "Buscar y explorar videos",
@@ -467,6 +468,7 @@
     "sports": "Deportes",
     "collections": "Colecciones",
     "subtitlesOnly": "Solo subtítulos",
+    "backToTop": "Naru pari",
     "newlyAdded": "Recién agregado",
     "newVideosTitle": "Videos cristianos nuevos en {language}",
     "newestFirst": "Más recientes primero",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Videos independientes",
     "videosFromCollection": "Videos de {collection}.",
     "standaloneDescription": "Videos independientes en este idioma.",
-    "openCollection": "Abrir colección"
+    "openCollection": "Abrir colección",
+    "filters": "Filtros",
+    "filterLength": "Wapal",
+    "filterLength_under5": "Kanan 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Muy 30 min",
+    "filterType": "Tipo",
+    "clearFilters": "Nakiya filtros",
+    "filterResults": "{count} kanan {total} nakinuki",
+    "noFilterResults": "Xawi video sanaka filtros ini. Nakiya ku'una.",
+    "filterAdded": "Sanaki",
+    "filterAdded_60d": "Nak 60 pari",
+    "filterAdded_6m": "Nak 6 wari",
+    "filterAdded_12m": "Nak 12 wari"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Ver",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Vista previa del video anterior",
     "nextVideoPreview": "Vista previa del siguiente video",
     "mediaCollection": "Colección de medios",
-    "scrollToVideo": "Desplazarse hasta el video {title}"
+    "scrollToVideo": "Desplazarse hasta el video {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Inicio de Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Volver a Ver",
     "browseVideos": "Explorar videos"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Ver cortometraje",
-    "actions": {
-      "joinUs": "Únete a nosotros",
-      "shareMission": "Comparte nuestra misión"
-    },
-    "welcomeStart": {
-      "label": "Fe y Escritura",
-      "title": "Selecciones de video de hoy",
-      "description": "Contenido de video centrado en la fe de nuestra biblioteca para inspirar, desafiar y despertar reflexión."
-    },
-    "welcomeMorning": {
-      "label": "Inspiración matutina",
-      "title": "¡Buenos días! Te esperan los momentos bíblicos de hoy.",
-      "description": "Empieza el día con momentos bíblicos alentadores, pensados para inspirarte y levantar tu espíritu."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspiración de la tarde",
-      "title": "¡Buenas tardes! Momentos bíblicos para tu día.",
-      "description": "Contenido bíblico alentador, perfecto para tu descanso de la tarde o para seguir recibiendo inspiración."
-    },
-    "welcomeEvening": {
-      "label": "Inspiración nocturna",
-      "title": "¡Buenas noches! Relájate con momentos bíblicos.",
-      "description": "Momentos bíblicos de paz para ayudarte a reflexionar y encontrar consuelo al terminar el día."
-    },
-    "joinUs": {
-      "label": "Únete a nosotros",
-      "title": "Miles de millones están buscando",
-      "description": "La cosecha ya está lista. Únete a nosotros mientras compartimos el evangelio con el mundo por medio de los medios digitales."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Vayamos juntos",
-      "title": "Contar juntos la historia de Jesús",
-      "description": "Para que puedan oír y ver el amor de Jesús en su propio idioma, dondequiera que estén."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% de coincidencia",
     "none": "No se encontraron recomendaciones para este video en este idioma."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "'Apa xa tumu",
     "selectLanguageVersion": "Pula tuk'u 'apa",
     "watchSelectedVersion": "Lak'u tuk'u pula"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Nawataj cookie",
+    "bannerTitle": "Nawataj privacidad ay",
+    "bannerDescription": "Cookie esencial Watch naxik'ama seguro ha naxik'ama sirik. Tawín permiso ay, jun cookie opcional propio puy ruya intereses pakin visitas para recomendaciones personalizadas. Recomendaciones contextuales kaway disponibles maski naxan.",
+    "acceptAll": "K'ulna masan",
+    "essentialOnly": "Esencial sanan",
+    "manageChoices": "Nawataj elección",
+    "savingChoice": "Nimaq'ana elección cookie",
+    "settings": "Ajustes cookie",
+    "settingsDescription": "Chaw elección si Watch puy ruya intereses de recomendación pakin visitas. Atin puy naxach'aya ankuh.",
+    "essentialCookies": "Cookie esencial",
+    "essentialDescription": "Seguridad, reproducción, nawataj privacidad, ha atribución de solicitud de recomendación.",
+    "alwaysActive": "Sanan activo",
+    "personalization": "Personalización",
+    "personalizationDescription": "Ruya intereses limitados pakin visitas. Si anin naxamutej, recomendaciones contextuales kaway disponibles.",
+    "erasurePending": "Borrado de perfil kaway paq'an. Recomendaciones contextuales kaway activas.",
+    "cancel": "Cancelar",
+    "saveChoices": "Nimaq'ana elección",
+    "saving": "Nimaq'ana…",
+    "loadError": "Elección ay ma' naxik'ama cargar. Kaway puy nachaw abajo.",
+    "grantError": "Personalización ma' naxik'ama habilitar. Esencial sanan kaway disponible.",
+    "saveError": "Elección ay ma' naxik'ama nimaq'ar. Chanin, k'ulna intento chik."
   }
 }

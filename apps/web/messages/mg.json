@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Ovay ny fitenin'ny feo",
     "home": "Pejy fandraisana JesusFilm",
     "closeSearch": "Hidio ny fikarohana",
-    "submitSearch": "Karohy"
+    "submitSearch": "Karohy",
+    "library": "Tranomboky"
   },
   "SearchOverlay": {
     "dialogLabel": "Karohy sy zaha lahatsary",
@@ -467,6 +468,7 @@
     "sports": "Fanatanjahantena",
     "collections": "Fitambarana",
     "subtitlesOnly": "Dikanteny fotsiny",
+    "backToTop": "Hiverina eny ambony",
     "newlyAdded": "Nampidirina vao haingana",
     "newVideosTitle": "Lahatsary kristianina vaovao amin'ny {language}",
     "newestFirst": "Vaovao indrindra aloha",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Lahatsary misaraka",
     "videosFromCollection": "Lahatsary avy amin'ny {collection}.",
     "standaloneDescription": "Lahatsary misaraka amin'ity fiteny ity.",
-    "openCollection": "Sokafy ny fitambarana"
+    "openCollection": "Sokafy ny fitambarana",
+    "filters": "Sivana",
+    "filterLength": "Halavany",
+    "filterLength_under5": "Latsaky ny 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Mihoatra ny 30 min",
+    "filterType": "Karazana",
+    "clearFilters": "Hanadio ny sivana",
+    "filterResults": "{count} amin'ny {total} no aseho",
+    "noFilterResults": "Tsy misy horonantsary mifanaraka amin'ireo sivana ireo. Andramo esorina ny iray.",
+    "filterAdded": "Nampiana",
+    "filterAdded_60d": "60 andro farany",
+    "filterAdded_6m": "6 volana farany",
+    "filterAdded_12m": "12 volana farany"
   },
   "WatchHome": {
     "pageTitle": "Fijerena Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Topimaso lahatsary teo aloha",
     "nextVideoPreview": "Topimaso lahatsary manaraka",
     "mediaCollection": "Fitambaran'ny media",
-    "scrollToVideo": "Tadiavo ny lahatsary {title}"
+    "scrollToVideo": "Tadiavo ny lahatsary {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Pejy fandraisana Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Miverina amin'ny Fijerena",
     "browseVideos": "Zaha lahatsary"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Jereo ny sarimihetsika fohy",
-    "actions": {
-      "joinUs": "Miaraha aminay",
-      "shareMission": "Anjara amin'ny iraka iombonana"
-    },
-    "welcomeStart": {
-      "label": "Finoana sy Soratra Masina",
-      "title": "Safidin'ny lahatsary anio",
-      "description": "Votoaty lahatsary mifototra amin'ny finoana avy amin'ny tranombokintsika hanentana, hanohitra, ary hamoha fandinihana."
-    },
-    "welcomeMorning": {
-      "label": "Fanentanana maraina",
-      "title": "Maraina tsara! Miandry anao ny fotoana ao amin'ny Baiboly anio.",
-      "description": "Atombohy amin'ny fotoana mampahery avy ao amin'ny Baiboly ny andronao, natao hanentana sy hampiakatra fanahy anao."
-    },
-    "welcomeAfternoon": {
-      "label": "Fanentanana hariva atoandro",
-      "title": "Hariva tsara! Fotoana ao amin'ny Baiboly ho an'ny andronao.",
-      "description": "Votoaty mampahery avy ao amin'ny Baiboly, mety tsara amin'ny fitsaharanao atoandro na hanohizana ny fanentanana anao."
-    },
-    "welcomeEvening": {
-      "label": "Fanentanana hariva",
-      "title": "Hariva tsara! Mialà sasatra miaraka amin'ny fotoana ao amin'ny Baiboly.",
-      "description": "Fotoana milamina ao amin'ny Baiboly hanampy anao handinika sy hahita fampiononana rehefa hifarana ny andronao."
-    },
-    "joinUs": {
-      "label": "Miaraha aminay",
-      "title": "Maro an'arivony tapitrisa no mitady",
-      "description": "Eto ny vokatra. Miaraha aminay amin'ny fizarana ny Filazantsara amin'izao tontolo izao amin'ny alalan'ny media nomerika."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Andao hiara-dia",
-      "title": "Mitantara ny tantaran'i Jesosy, miaraka",
-      "description": "Mba ho henony sy ho hitany amin'ny fiteniny manokana, eo amin'izay misy azy, ny fitiavan'i Jesosy."
-    }
-  },
   "VideoRecommendations": {
     "match": "Mifanentana {percent}%",
     "none": "Tsy nahitana soso-kevitra ho an'ity lahatsary ity amin'ity fiteny ity."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Fitenin'ny feo",
     "selectLanguageVersion": "Misafidiana dikan-teny",
     "watchSelectedVersion": "Hijery ny dikan-teny voafidy"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Safidy momba ny cookie",
+    "bannerTitle": "Ny safidinao momba ny tsiambaratelo",
+    "bannerDescription": "Ny cookie ilaina dia mitazona an’i Watch ho azo antoka sy hiasa tsara. Raha manome alalana ianao, dia afaka mitadidy ny zavatra mahaliana anao mandritra ny fitsidihana samihafa ny cookie an’ny tranonkala mba hanokana ny soso-kevitra ho anao. Mbola hisy foana ny soso-kevitra mifanaraka amin’ny toe-javatra na izany aza.",
+    "acceptAll": "Ekeo daholo",
+    "essentialOnly": "Ny ilaina ihany",
+    "manageChoices": "Hitantana safidy",
+    "savingChoice": "Mitahiry ny safidy cookie",
+    "settings": "Fikirana cookie",
+    "settingsDescription": "Fidio raha azon’i Watch tehirizina mandritra ny fitsidihana samihafa ny zavatra mahaliana anao amin’ny soso-kevitra. Azonao ovaina amin’ny fotoana rehetra izany.",
+    "essentialCookies": "Cookie ilaina",
+    "essentialDescription": "Fiarovana, famerenana horonan-tsary, safidy momba ny tsiambaratelo, ary fanondroana ny fangatahana soso-kevitra.",
+    "alwaysActive": "Miasa hatrany",
+    "personalization": "Fampanokanana manokana",
+    "personalizationDescription": "Mitadidy ireo zavatra mahaliana voafetra mandritra ny fitsidihana samihafa. Raha vonoina ity dia mbola hisy foana ny soso-kevitra mifanaraka amin’ny toe-javatra.",
+    "erasurePending": "Eo am-piandrasana ny famafana ny mombamomba anao. Efa mandeha ny soso-kevitra mifanaraka amin’ny toe-javatra.",
+    "cancel": "Hanafoana",
+    "saveChoices": "Tehirizo ny safidy",
+    "saving": "Mitahiry…",
+    "loadError": "Tsy azo nalaina ny safidinao. Mbola afaka misafidy etsy ambany ianao.",
+    "grantError": "Tsy afaka navela ny fampanokanana manokana. Mbola azo ampiasaina ny safidy ilaina ihany.",
+    "saveError": "Tsy voatahiry ny safidinao. Andramo indray azafady."
   }
 }

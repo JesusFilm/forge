@@ -36,6 +36,26 @@ function softHostAllowlistRefine(
   }
 }
 
+/**
+ * Optional boolean env var with NO schema-level default. An unset or empty
+ * value parses to `undefined` so an environment that has not been provisioned
+ * still boots; the read site supplies the runtime default. Use this for opt-in
+ * scaffolding (canary flags, migration toggles) rather than a required var,
+ * which bricks a Railway deploy the moment it is missing.
+ */
+function optionalBooleanEnv() {
+  return z.preprocess((value) => {
+    if (value == null) return undefined
+
+    const normalized = String(value).trim().toLowerCase()
+    if (!normalized) return undefined
+    if (["1", "true", "yes", "y", "on"].includes(normalized)) return true
+    if (["0", "false", "no", "n", "off"].includes(normalized)) return false
+
+    return value
+  }, z.boolean().optional())
+}
+
 function booleanEnv(defaultValue: boolean) {
   return z
     .preprocess((value) => {
@@ -159,6 +179,15 @@ export const env = createEnv({
     // a separate future unit.
     STRAPI_PREVIEW_SECRET: z.string().optional(),
     REVALIDATION_SECRET: z.string(),
+    WATCH_FOR_YOU_ENABLED: z.enum(["true", "false"]).default("true"),
+    // Optional Cloudflare cache-tag purge credentials. The dynamic collection
+    // route emits shared edge-cache headers only when both are configured, so
+    // a long-lived edge object can always be purged after content publication.
+    CLOUDFLARE_ZONE_ID: z
+      .string()
+      .regex(/^[A-Fa-f0-9]{32}$/)
+      .optional(),
+    CLOUDFLARE_CACHE_PURGE_TOKEN: z.string().min(1).optional(),
     // Optional: used only by the /demo-search AI experience generator.
     // Absent in most preview environments; the server action surfaces a
     // graceful "not configured" state when unset.
@@ -167,6 +196,7 @@ export const env = createEnv({
     // helpers return local defaults so preview/local environments can boot
     // before LaunchDarkly is provisioned.
     LAUNCHDARKLY_SDK_KEY: z.string().optional(),
+    FORGE_WATCH_HOMEPAGE_RECOMMENDATIONS_DEFAULT: z.string().optional(),
     FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: z.string().optional(),
     FORGE_WATCH_CTA_TEXT_COPY_DEFAULT: z.string().optional(),
     FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT: z.string().optional(),
@@ -258,6 +288,22 @@ export const env = createEnv({
     // R19 trigger: drop `video.js` from apps/web after this has been `true`
     // in production for one stable release.
     NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION: booleanEnv(false),
+    // U3 — Watch GA4 measurement contract v2 collector flag (R24, KTD6).
+    // Unset/`false` keeps the v1 Google tag initialization and emission path
+    // untouched. `true` selects the explicit SPA page-view owner and the typed
+    // event dispatcher TOGETHER, so hybrid v1/v2 behavior cannot create
+    // duplicate or contextless events.
+    //
+    // `.optional()` on purpose: this is opt-in scaffolding, and a required var
+    // with no default would brick every Railway environment that has not been
+    // provisioned. The read site
+    // (`isWatchAnalyticsContractV2Enabled` in `src/lib/watch-analytics-contract.ts`)
+    // defaults an absent value to `false`.
+    //
+    // Rollback is `NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2=false` through the
+    // normal deploy path; `NEXT_PUBLIC_*` values are inlined by `next build`,
+    // so it costs a rebuild rather than a restart.
+    NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2: optionalBooleanEnv(),
     // Optional Datadog RUM configuration. Application id + client token gate
     // initialization; when absent, the client component no-ops so local and
     // preview environments can boot before Datadog is provisioned.
@@ -296,11 +342,11 @@ export const env = createEnv({
       ),
     // U10 — Environment-specific absolute origin used by the watch-page Share
     // modal to build sharable Copy Link / Copy Embed Code values that DO
-    // include `/watch/` (the Next.js basePath). Defaults to
-    // `http://localhost:3000` for safer dev / CI experience — `z.url()` would
-    // otherwise hard-fail boot on environments where the value isn't set
-    // explicitly. Public SEO/social metadata intentionally does not read this
-    // value; it emits the indexed www host from routes.ts.
+    // include `/watch/` (the Next.js basePath). Production defaults to the
+    // indexed public Watch host so same-origin browser writes remain valid when
+    // the deployment variable is missing. Dev / CI keep the loopback default.
+    // Public SEO/social metadata intentionally does not read this value; it
+    // emits the indexed www host from routes.ts.
     //
     // F21: refine with a soft allowlist of known-good host shapes. When a
     // value falls outside the allowlist we WARN at module-import time
@@ -312,7 +358,9 @@ export const env = createEnv({
     // still letting unrelated deployments stand up cleanly.
     NEXT_PUBLIC_CANONICAL_ORIGIN: z
       .url()
-      .default("http://localhost:3000")
+      .default(
+        productionDefault("https://www.jesusfilm.org", "http://localhost:3000"),
+      )
       .refine(
         softHostAllowlistRefine(
           "NEXT_PUBLIC_CANONICAL_ORIGIN",
@@ -325,8 +373,15 @@ export const env = createEnv({
   runtimeEnv: {
     STRAPI_PREVIEW_SECRET: process.env.STRAPI_PREVIEW_SECRET,
     REVALIDATION_SECRET: process.env.REVALIDATION_SECRET,
+    WATCH_FOR_YOU_ENABLED: process.env.WATCH_FOR_YOU_ENABLED,
+    CLOUDFLARE_ZONE_ID: emptyToUndefined(process.env.CLOUDFLARE_ZONE_ID),
+    CLOUDFLARE_CACHE_PURGE_TOKEN: emptyToUndefined(
+      process.env.CLOUDFLARE_CACHE_PURGE_TOKEN,
+    ),
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
     LAUNCHDARKLY_SDK_KEY: process.env.LAUNCHDARKLY_SDK_KEY,
+    FORGE_WATCH_HOMEPAGE_RECOMMENDATIONS_DEFAULT:
+      process.env.FORGE_WATCH_HOMEPAGE_RECOMMENDATIONS_DEFAULT,
     FORGE_WATCH_PLAYER_MIGRATION_DEFAULT:
       process.env.FORGE_WATCH_PLAYER_MIGRATION_DEFAULT,
     FORGE_WATCH_CTA_TEXT_COPY_DEFAULT:
@@ -364,6 +419,9 @@ export const env = createEnv({
       process.env.WATCH_SEARCH_DEFAULT_SHADOW_ENABLED,
     NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION:
       process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,
+    NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2: emptyToUndefined(
+      process.env.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2,
+    ),
     NEXT_PUBLIC_DATADOG_APPLICATION_ID:
       process.env.NEXT_PUBLIC_DATADOG_APPLICATION_ID,
     NEXT_PUBLIC_DATADOG_CLIENT_TOKEN:

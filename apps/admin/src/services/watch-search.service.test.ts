@@ -30,11 +30,14 @@ vi.mock("./embeddings.service", () => ({
   },
   EXPERIENCE_EMBEDDING_DIMENSIONS: 3,
   OPENROUTER_EMBEDDING_MODEL: "qwen/qwen3-embedding-8b",
-  currentEmbeddingProviderIdentity: () => ({
+  currentContentQueryEmbeddingIdentity: vi.fn(async () => ({
+    contractId: "semantic-transcript-pgvector-v1",
     provider: "openrouter",
     model: "qwen/qwen3-embedding-8b",
+    nativeDimensions: 3,
     dimensions: 3,
-  }),
+    transformVersion: null,
+  })),
   generateExperienceEmbedding: generateExperienceEmbeddingMock,
 }))
 
@@ -57,8 +60,11 @@ vi.mock("./search-watchability", () => ({
 import { EmbeddingsBatchError } from "./embeddings.service"
 
 import {
+  availabilityScore,
   defaultWatchSearchEmbedder,
+  fallbackKindForWatchability,
   prewarmWatchSearchQueryEmbeddings,
+  watchabilityRank,
   WATCH_SEARCH_STARTER_QUERIES,
   WatchSearchService,
   WatchSearchValidationError,
@@ -1068,6 +1074,63 @@ describe("WatchSearchService", () => {
     expect(firstPage.hasMore).toBe(true)
   })
 
+  it("guarantees an exact-query editorial target on the default first page without duplicating page two", async () => {
+    const organicRows = Array.from({ length: 25 }, (_, index) =>
+      exactTitleResult(
+        `organic-${String(index).padStart(2, "0")}`,
+        `Organic result ${index}`,
+      ),
+    )
+    const curatedRow = {
+      ...exactTitleResult(
+        "zz-rescue-intro",
+        "Rescue Project Introduction in Visual Vernacular",
+      ),
+      titleMatched: false,
+      curated: true,
+      curationPosition: 1,
+    }
+    mockLexicalResults(
+      lexicalResults({ exactTitle: [...organicRows, curatedRow] }),
+    )
+    hydrateMock.mockImplementation(
+      async ({ candidates }: { candidates: Array<{ videoId: string }> }) =>
+        new Map(
+          candidates.map(({ videoId }) => [
+            videoId,
+            watchabilityForKind(videoId, "target_audio"),
+          ]),
+        ),
+    )
+
+    const firstPage = await service.search({
+      query: "Rescue Project",
+      targetLanguageSlug: "english",
+      displayLanguageSlug: "english",
+      limit: 20,
+      offset: 0,
+    })
+    const secondPage = await service.search({
+      query: "Rescue Project",
+      targetLanguageSlug: "english",
+      displayLanguageSlug: "english",
+      limit: 20,
+      offset: 20,
+    })
+
+    const firstPageIds = firstPage.results.map((row) => row.id)
+    const secondPageIds = secondPage.results.map((row) => row.id)
+    expect(firstPageIds).toHaveLength(20)
+    expect(firstPageIds[19]).toBe("zz-rescue-intro")
+    expect(secondPageIds).not.toContain("zz-rescue-intro")
+    expect(new Set([...firstPageIds, ...secondPageIds]).size).toBe(
+      firstPageIds.length + secondPageIds.length,
+    )
+    expect(firstPage.results[19]).toMatchObject({
+      evidence: { kind: "metadata", label: "Editorial match" },
+    })
+  })
+
   it("fills exact-title results with bounded transcript-semantic results without duplicating videos", async () => {
     prisma.language.findMany.mockResolvedValue([
       { slug: "russian", bcp47: "ru" },
@@ -1838,5 +1901,52 @@ describe("WatchSearchService", () => {
         message: "Target-language subtitles are available.",
       },
     })
+  })
+})
+
+describe("container availability kind", () => {
+  const watchability = (kind: string) =>
+    ({ kind }) as unknown as Parameters<typeof watchabilityRank>[0]
+
+  it("ranks container between target subtitle and related language", () => {
+    expect(watchabilityRank(watchability("target_audio"))).toBe(0)
+    expect(watchabilityRank(watchability("target_subtitle"))).toBe(1)
+    expect(watchabilityRank(watchability("container"))).toBe(2)
+    expect(watchabilityRank(watchability("related_language"))).toBe(3)
+    expect(watchabilityRank(watchability("unavailable"))).toBe(4)
+    expect(watchabilityRank(undefined)).toBe(4)
+  })
+
+  it("preserves the relative order of every pre-existing kind", () => {
+    const order = [
+      "target_audio",
+      "target_subtitle",
+      "related_language",
+      "unavailable",
+    ] as const
+    const ranks = order.map((kind) => watchabilityRank(watchability(kind)))
+    expect(ranks).toEqual([...ranks].sort((left, right) => left - right))
+    expect(new Set(ranks).size).toBe(order.length)
+  })
+
+  it("scores a container so it clears the recall floor its zero score failed", () => {
+    expect(availabilityScore(watchability("container"))).toBe(0.18)
+    expect(availabilityScore(watchability("container"))).toBeGreaterThan(
+      availabilityScore(watchability("related_language")),
+    )
+    expect(availabilityScore(watchability("container"))).toBeLessThanOrEqual(
+      availabilityScore(watchability("target_audio")),
+    )
+    expect(availabilityScore(watchability("unavailable"))).toBe(0)
+  })
+
+  it("reports no playback fallback for a container", () => {
+    expect(fallbackKindForWatchability(watchability("container"))).toBe("none")
+    expect(fallbackKindForWatchability(watchability("unavailable"))).toBe(
+      "unavailable",
+    )
+    expect(fallbackKindForWatchability(watchability("related_language"))).toBe(
+      "related_language",
+    )
   })
 })

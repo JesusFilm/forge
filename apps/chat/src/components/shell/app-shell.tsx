@@ -82,6 +82,7 @@ export function AppShell({
     draft,
     pending,
     pendingIds,
+    renamingIds,
     streamingMessageId,
     history,
     setDraft,
@@ -93,6 +94,7 @@ export function AppShell({
     retryHistory,
     loadMoreHistory,
     retryReplay,
+    renameConversation,
   } = useConversations(
     grantedShell,
     // KTD5 guard: on a denial shell the id serves ONLY the returnTo links —
@@ -107,9 +109,9 @@ export function AppShell({
   // most natural escapes move no conversation id (see dismissUnresolvable).
   const [unresolvableActive, setUnresolvableActive] =
     useState(deepLinkUnresolvable)
-  // Explicit because activeId cannot detect the release: the landing row IS
-  // the fresh empty one, so New no-ops and clicking that active rail row
-  // early-returns. Setting false when already false skips the re-render.
+  // Explicit because activeId cannot detect the release: the landing
+  // conversation IS the fresh empty one, so New no-ops and moves no id
+  // (and since feat-401 it has no rail row to click either).
   const dismissUnresolvable = useCallback(
     () => setUnresolvableActive(false),
     [],
@@ -257,6 +259,8 @@ export function AppShell({
         conversations={conversations}
         activeId={activeId}
         pendingIds={pendingIds}
+        renamingIds={renamingIds}
+        grantedShell={grantedShell}
         collapsed={collapsed}
         mobileOpen={mobileOpen}
         authConfigured={authConfigured}
@@ -271,6 +275,7 @@ export function AppShell({
         onCloseMobile={closeMobile}
         onRetryHistory={retryHistory}
         onLoadMore={loadMoreHistory}
+        onRename={renameConversation}
       />
       {/* `inert` while the drawer is open traps focus inside it and blocks
           interaction with the content behind the scrim (mobile only — the
@@ -296,7 +301,14 @@ export function AppShell({
           <BrandLockup />
         </header>
         {paneDenial !== undefined ? (
-          <DenialScreen screen={paneDenial} returnTo={signInReturnTo} />
+          <DenialScreen
+            screen={paneDenial}
+            returnTo={signInReturnTo}
+            // feat-402: ONLY the granted causes (escalation, unresolvable
+            // deep link) get the client-side New; grantedShell — never
+            // deniedScreen === undefined — keeps that structural (KTD6).
+            onStartNew={grantedShell ? newConversationFocused : undefined}
+          />
         ) : (
           <Chat
             conversation={activeConversation}

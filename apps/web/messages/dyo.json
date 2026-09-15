@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Soppi làkku audio bi",
     "home": "Kër Jesus Film Project",
     "closeSearch": "Tëj seetlu bi",
-    "submitSearch": "Seet"
+    "submitSearch": "Seet",
+    "library": "Kaŋ kayitaŋ"
   },
   "SearchOverlay": {
     "dialogLabel": "Seet te gëstu wideo yi",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Àtte yi",
     "subtitlesOnly": "Subtitles rekk",
+    "backToTop": "Sofukoŋ jaat",
     "newlyAdded": "Añs bu bees",
     "newVideosTitle": "Wideo yu Kirist yu bees ci {language}",
     "newestFirst": "Yees bu jiitu",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Wideo yu këpp",
     "videosFromCollection": "Wideo yu ñëw ci {collection}.",
     "standaloneDescription": "Wideo yu këpp ci làkk bii.",
-    "openCollection": "Ubbi àtte"
+    "openCollection": "Ubbi àtte",
+    "filters": "Kañaŋ",
+    "filterLength": "Bujaat",
+    "filterLength_under5": "Sikanaŋ 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Bukanaŋ 30 min",
+    "filterType": "Nabaj",
+    "clearFilters": "Buŋoŋ kañaŋ",
+    "filterResults": "{count} ka {total} bujukolaŋ",
+    "noFilterResults": "Awul widewo bumos nan kañaŋ yaayi. Buŋoŋ enoŋ.",
+    "filterAdded": "Bulaŋ",
+    "filterAdded_60d": "60 fanaŋ bujom",
+    "filterAdded_6m": "6 uroŋ bujom",
+    "filterAdded_12m": "12 uroŋ bujom"
   },
   "WatchHome": {
     "pageTitle": "Watch bu Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Preview bu wideo bu jiitu",
     "nextVideoPreview": "Preview bu wideo bu topp",
     "mediaCollection": "Collection de médias",
-    "scrollToVideo": "Faire défiler jusqu’à la vidéo {title}"
+    "scrollToVideo": "Faire défiler jusqu’à la vidéo {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Kër Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Dellusi ci Watch",
     "browseVideos": "Gëstu wideo yi"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date} : {title}",
-    "watchShortFilm": "Regarder le court métrage",
-    "actions": {
-      "joinUs": "Rejoignez-nous",
-      "shareMission": "Partagez notre mission"
-    },
-    "welcomeStart": {
-      "label": "Foi et Écriture",
-      "title": "Sélection vidéo du jour",
-      "description": "Des vidéos centrées sur la foi, tirées de notre bibliothèque, pour inspirer, interpeller et inviter à la réflexion."
-    },
-    "welcomeMorning": {
-      "label": "Inspiration du matin",
-      "title": "Bonjour ! Les moments bibliques du jour vous attendent.",
-      "description": "Commencez la journée avec des moments bibliques encourageants pour vous inspirer et vous fortifier."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspiration de l’après-midi",
-      "title": "Bon après-midi ! Des moments bibliques pour votre journée.",
-      "description": "Du contenu biblique encourageant, parfait pour votre pause de l’après-midi ou pour continuer à vous inspirer."
-    },
-    "welcomeEvening": {
-      "label": "Inspiration du soir",
-      "title": "Bonsoir ! Terminez la journée avec des moments bibliques.",
-      "description": "Des moments bibliques paisibles pour vous aider à réfléchir et à trouver du réconfort en fin de journée."
-    },
-    "joinUs": {
-      "label": "Rejoignez-nous",
-      "title": "Des milliards de personnes cherchent",
-      "description": "La moisson est là. Rejoignez-nous pour partager l’Évangile avec le monde par les médias numériques."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Allons-y ensemble",
-      "title": "Raconter l’histoire de Jésus, ensemble",
-      "description": "Pour qu’ils puissent entendre et voir l’amour de Jésus dans leur propre langue, là où ils se trouvent."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% méngoo",
     "none": "Amul benn wideo bu ñu digal ngir wideo bii ci làkk bii."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Kanam audio",
     "selectLanguageVersion": "Tan bersionu kanam",
     "watchSelectedVersion": "Gis bersion bi nga tan"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Tànn yi ci cookie",
+    "bannerTitle": "Say tànn ci sutura sa bopp",
+    "bannerDescription": "Cookie yu soxla yi dañuy tax Watch am kaaraange te muy liggéey bu baax. Bu nga maye, benn cookie buy jot ci saet bi mën na fàttali sa yiw ngir solo ndigal yi ci wàll visit yi nga di dellu. Ndigal yu aju ci li ngay seet dañuy nekk maslaa sax.",
+    "acceptAll": "Nangu lépp",
+    "essentialOnly": "Yi soxla rekk",
+    "manageChoices": "Saytu tànn yi",
+    "savingChoice": "Mi ngi denc tànn cookie bi",
+    "settings": "Parameetar yu cookie",
+    "settingsDescription": "Tànnal ndax Watch man na fàttali sa yiw ci ndigal yi ci diggante visit yi ngay def. Mën nga ko soppi saa su ne.",
+    "essentialCookies": "Cookie yu soxla",
+    "essentialDescription": "Kaaraange, play, tànn yu sutura sa bopp, ak xamle ki laaj ndigal yi.",
+    "alwaysActive": "Dafa doon liggéey saa su ne",
+    "personalization": "Solo ku ñuul",
+    "personalizationDescription": "Fàttali yiw yi ñu teg kem-kem ci diggante visit yi. Su nga ko tëjée, ndigal yu aju ci li ngay seet dinañu nekk.",
+    "erasurePending": "Mbugal far sa profayl bi mi ngi xaar. Ndigal yu aju ci li ngay seet tàmbali na ba noppi.",
+    "cancel": "Neenal",
+    "saveChoices": "Denc tànn yi",
+    "saving": "Mi ngi denc…",
+    "loadError": "Mënu ñu yebbi sa tànn. Waaye mën nga tànn ci suuf.",
+    "grantError": "Mënu ñu doxal personalization bi. Yi soxla rekk lañuy wéyal.",
+    "saveError": "Mënu ñu denc sa tànn. Jéemaatal."
   }
 }

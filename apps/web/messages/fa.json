@@ -180,7 +180,8 @@
     "changeAudioLanguage": "تغییر زبان صدا",
     "home": "صفحهٔ اصلی JesusFilm",
     "closeSearch": "بستن جستجو",
-    "submitSearch": "جستجو"
+    "submitSearch": "جستجو",
+    "library": "کتابخانه"
   },
   "SearchOverlay": {
     "dialogLabel": "جستجو و مرور ویدیوها",
@@ -467,6 +468,7 @@
     "sports": "ورزش",
     "collections": "مجموعه‌ها",
     "subtitlesOnly": "فقط زیرنویس",
+    "backToTop": "بازگشت به بالا",
     "newlyAdded": "تازه اضافه‌شده",
     "newVideosTitle": "ویدیوهای جدید مسیحی به زبان {language}",
     "newestFirst": "جدیدترین ابتدا",
@@ -497,7 +499,21 @@
     "standaloneVideos": "ویدیوهای مستقل",
     "videosFromCollection": "ویدیوهای از {collection}.",
     "standaloneDescription": "ویدیوهای مستقل در این زبان.",
-    "openCollection": "باز کردن مجموعه"
+    "openCollection": "باز کردن مجموعه",
+    "filters": "فیلترها",
+    "filterLength": "مدت",
+    "filterLength_under5": "کمتر از ۵ دقیقه",
+    "filterLength_5to10": "۵-۱۰ دقیقه",
+    "filterLength_10to30": "۱۰-۳۰ دقیقه",
+    "filterLength_over30": "بیش از ۳۰ دقیقه",
+    "filterType": "نوع",
+    "clearFilters": "پاک کردن فیلترها",
+    "filterResults": "{count} از {total} نمایش داده شد",
+    "noFilterResults": "هیچ ویدیویی با این فیلترها مطابقت ندارد. یکی را حذف کنید.",
+    "filterAdded": "افزوده‌شده",
+    "filterAdded_60d": "۶۰ روز گذشته",
+    "filterAdded_6m": "۶ ماه گذشته",
+    "filterAdded_12m": "۱۲ ماه گذشته"
   },
   "WatchHome": {
     "pageTitle": "تماشای Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "پیش‌نمایش ویدیوی قبلی",
     "nextVideoPreview": "پیش‌نمایش ویدیوی بعدی",
     "mediaCollection": "مجموعهٔ رسانه‌ها",
-    "scrollToVideo": "رفتن به ویدیوی {title}"
+    "scrollToVideo": "رفتن به ویدیوی {title}",
+    "forYou": "برای شما"
   },
   "WatchFooter": {
     "home": "صفحهٔ اصلی Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "بازگشت به تماشا",
     "browseVideos": "مرور ویدیوها"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "تماشای فیلم کوتاه",
-    "actions": {
-      "joinUs": "به ما بپیوندید",
-      "shareMission": "در مأموریت ما سهیم شوید"
-    },
-    "welcomeStart": {
-      "label": "ایمان و کتاب‌مقدس",
-      "title": "انتخاب‌های ویدیویی امروز",
-      "description": "محتوای ویدیوییِ ایمانی از کتابخانهٔ ما برای الهام‌بخشی، به چالش کشیدن و برانگیختن تأمل."
-    },
-    "welcomeMorning": {
-      "label": "الهام صبحگاهی",
-      "title": "صبح بخیر! لحظات کتاب‌مقدسِ امروز در انتظارند.",
-      "description": "روزتان را با لحظات دلگرم‌کنندهٔ کتاب‌مقدس آغاز کنید؛ لحظاتی برای الهام‌بخشی و تقویت روح شما."
-    },
-    "welcomeAfternoon": {
-      "label": "الهام عصرگاهی",
-      "title": "عصر بخیر! لحظات کتاب‌مقدس برای امروز شما.",
-      "description": "محتوای دلگرم‌کنندهٔ کتاب‌مقدس که برای استراحت عصرگاهی یا ادامهٔ الهام‌بخشی مناسب است."
-    },
-    "welcomeEvening": {
-      "label": "الهام شبانه",
-      "title": "شب بخیر! با لحظات کتاب‌مقدس آرام بگیرید.",
-      "description": "لحظات آرامِ کتاب‌مقدس برای کمک به تأمل و یافتن آرامش در پایان روز."
-    },
-    "joinUs": {
-      "label": "به ما بپیوندید",
-      "title": "میلیاردها نفر در جست‌وجو هستند",
-      "description": "زمانِ برداشت فرا رسیده است. با ما همراه شوید تا از طریق رسانه‌های دیجیتال انجیل را با جهان در میان بگذاریم."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "بیایید با هم برویم",
-      "title": "بازگویی داستان عیسی، با هم",
-      "description": "تا بتوانند محبت عیسی را به زبان خودشان، درست همان‌جا که هستند، بشنوند و ببینند."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}٪ مطابقت",
     "none": "برای این ویدیو به این زبان هیچ پیشنهادی یافت نشد."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "زبان صوتی",
     "selectLanguageVersion": "انتخاب نسخهٔ زبانی",
     "watchSelectedVersion": "تماشای نسخهٔ انتخاب‌شده"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "انتخاب‌های کوکی",
+    "bannerTitle": "انتخاب‌های حریم خصوصی شما",
+    "bannerDescription": "کوکی‌های ضروری Watch را امن و فعال نگه می‌دارند. با اجازه شما، یک کوکی اختیاریِ شخصِ اول می‌تواند برای شخصی‌سازی پیشنهادها، علایق را در بازدیدهای مختلف به خاطر بسپارد. در هر صورت، پیشنهادهای مبتنی بر زمینه همچنان در دسترس هستند.",
+    "acceptAll": "پذیرفتن همه",
+    "essentialOnly": "فقط ضروری",
+    "manageChoices": "مدیریت انتخاب‌ها",
+    "savingChoice": "در حال ذخیره انتخاب کوکی",
+    "settings": "تنظیمات کوکی",
+    "settingsDescription": "انتخاب کنید که آیا Watch مجاز باشد علایق مربوط به پیشنهادها را در بازدیدهای مختلف به خاطر بسپارد یا نه. هر زمان بخواهید می‌توانید این را تغییر دهید.",
+    "essentialCookies": "کوکی‌های ضروری",
+    "essentialDescription": "امنیت، پخش، انتخاب‌های حریم خصوصی و نسبت‌دادن درخواست پیشنهادها.",
+    "alwaysActive": "همیشه فعال",
+    "personalization": "شخصی‌سازی",
+    "personalizationDescription": "علایق محدود را در بازدیدهای مختلف به خاطر می‌سپارد. خاموش کردن این گزینه باعث می‌شود پیشنهادهای مبتنی بر زمینه همچنان در دسترس باشند.",
+    "erasurePending": "حذف نمایه در حال انجام است. پیشنهادهای مبتنی بر زمینه از قبل فعال هستند.",
+    "cancel": "لغو",
+    "saveChoices": "ذخیره انتخاب‌ها",
+    "saving": "در حال ذخیره…",
+    "loadError": "انتخاب شما بارگیری نشد. همچنان می‌توانید از پایین انتخاب کنید.",
+    "grantError": "شخصی‌سازی فعال نشد. گزینه فقط ضروری همچنان در دسترس است.",
+    "saveError": "انتخاب شما ذخیره نشد. لطفاً دوباره تلاش کنید."
   }
 }

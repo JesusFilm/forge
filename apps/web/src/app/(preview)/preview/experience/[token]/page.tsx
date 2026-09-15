@@ -55,7 +55,7 @@ function DraftPreviewBanner({ locale }: { locale: string }) {
     <aside
       role="status"
       aria-live="polite"
-      className="sticky top-0 z-[100] flex min-h-12 items-center justify-center gap-3 border-b border-amber-300/40 bg-amber-300 px-4 py-2 text-center font-sans text-sm font-semibold text-stone-950 shadow-lg"
+      className="sticky top-0 z-[100] flex min-h-12 items-center justify-center gap-3 border-b border-amber-300/40 bg-amber-300 px-4 py-2 text-center font-sans text-base sm:text-sm font-semibold text-stone-950 shadow-lg"
     >
       <span>Draft preview</span>
       <span aria-hidden="true">•</span>
@@ -129,6 +129,7 @@ export default async function ExperiencePreviewPage({
           heroModel={home.data}
           blocks={blocks}
           languageSlug={languageSlug}
+          dynamicCollectionCacheScope="preview"
         />
       )
     }

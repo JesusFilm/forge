@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Usba an yinaknan han audio",
     "home": "Home han JesusFilm",
     "closeSearch": "Sirad-i an search",
-    "submitSearch": "Pamilnga"
+    "submitSearch": "Pamilnga",
+    "library": "Librarya"
   },
   "SearchOverlay": {
     "dialogLabel": "Pamilnga ngan usisa an mga video",
@@ -467,6 +468,7 @@
     "sports": "Isports",
     "collections": "Mga koleksyon",
     "subtitlesOnly": "Mga subtitle la",
+    "backToTop": "Balik sa igbaw",
     "newlyAdded": "Bag-o nga nadugang",
     "newVideosTitle": "Bag-o nga Kristohanon nga mga video ha {language}",
     "newestFirst": "Pinakabag-o anay",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Mga video nga standalone",
     "videosFromCollection": "Mga video tikang ha {collection}.",
     "standaloneDescription": "Mga video nga standalone hini nga yinaknan.",
-    "openCollection": "Ablihi an koleksyon"
+    "openCollection": "Ablihi an koleksyon",
+    "filters": "Mga filter",
+    "filterLength": "Kahilaba",
+    "filterLength_under5": "Ubos sa 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Labaw sa 30 min",
+    "filterType": "Klase",
+    "clearFilters": "Limpyohi an mga filter",
+    "filterResults": "{count} han {total} an ginpapakita",
+    "noFilterResults": "Waray video nga nauyon hini nga mga filter. Kuhaa an usa.",
+    "filterAdded": "Gindugang",
+    "filterAdded_60d": "Naglabay nga 60 ka adlaw",
+    "filterAdded_6m": "Naglabay nga 6 ka bulan",
+    "filterAdded_12m": "Naglabay nga 12 ka bulan"
   },
   "WatchHome": {
     "pageTitle": "Pagtan-aw ha Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Preview han naglabay nga video",
     "nextVideoPreview": "Preview han sunod nga video",
     "mediaCollection": "Koleksyon han media",
-    "scrollToVideo": "I-scroll ngadto ha video nga {title}"
+    "scrollToVideo": "I-scroll ngadto ha video nga {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Home han Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Balik ha Watch",
     "browseVideos": "Usisa an mga video"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tan-awa an Mubo nga Pelikula",
-    "actions": {
-      "joinUs": "Uupod ha amon",
-      "shareMission": "Ipaambit an aton Misyon"
-    },
-    "welcomeStart": {
-      "label": "Pagtuo ngan Kasuratan",
-      "title": "Mga Pili nga Video Karuyag Mo Yana nga Adlaw",
-      "description": "Mga video nga nakasentro ha pagtuo tikang ha amon librarya nga makakapadasig, makakahagit, ngan makakapagpahinumdom."
-    },
-    "welcomeMorning": {
-      "label": "Padasig ha Aga",
-      "title": "Maayong aga! Mga Hugna han Biblia para yana nga adlaw, naghuhulat na.",
-      "description": "Umpisa an imo adlaw upod an mga mapupulsanon nga hugna han Biblia nga gindisenyo basi makapadasig ngan makapalipay ha imo espiritu."
-    },
-    "welcomeAfternoon": {
-      "label": "Padasig ha Hapon",
-      "title": "Maayong hapon! Mga Hugna han Biblia para ha imo adlaw.",
-      "description": "Mga hugna han Biblia nga makapadasig, angay para ha imo pahulay ha hapon o padayon nga padasig."
-    },
-    "welcomeEvening": {
-      "label": "Padasig ha Gab-i",
-      "title": "Maayong gab-i! Magpahuway upod an mga hugna han Biblia.",
-      "description": "Hapsay nga mga hugna han Biblia nga mabulig ha imo paghunahuna ngan pagkarawat hin kahupayan samtang nagtutunaw an imo adlaw."
-    },
-    "joinUs": {
-      "label": "Uupod ha amon",
-      "title": "Binilyon an namimiling",
-      "description": "Aada na an ani. Uupod ha amon samtang ginsusumat namon an ebanghelyo ha kalibotan gamit an digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Magkaupod kita",
-      "title": "Pagsumat han Estorya ni Jesus, Magkaupod kita",
-      "description": "Basi madungog ngan makita nira an gugma ni Jesus ha ira kalugaringon nga yinaknan, dida mismo ha ira kon diin hira aada."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% nga kapareho",
     "none": "Waray nakit-an nga girekomendar para hini nga video hini nga yinaknan."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Yinaknan han audio",
     "selectLanguageVersion": "Pagpili hin bersyon han yinaknan",
     "watchSelectedVersion": "Kitaa an ginpili nga bersyon"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Mga kapilian ha cookie",
+    "bannerTitle": "Imo mga kapilian ha pribasiya",
+    "bannerDescription": "An kinahanglanon nga mga cookie naghihimo nga an Watch luwas ngan nagtitin-aw an pag-andar. Kon tugotan mo, an usa nga opsyonal nga first-party cookie puyde makadumdom han imo mga interes ha kada pagbalik basi maangay an mga rekomendasyon. Magagamit la gihapon an mga rekomendasyong kontekstwál bisan ano an imo pilion.",
+    "acceptAll": "Karawata ngatanan",
+    "essentialOnly": "Kinahanglanon la",
+    "manageChoices": "Dumara an mga kapilian",
+    "savingChoice": "Gintigana an kapilian ha cookie",
+    "settings": "Mga setting han cookie",
+    "settingsDescription": "Pilia kon puyde ba han Watch hinumdoman an imo mga interes ha rekomendasyon ha kada pagbalik. Mahimo mo ini bag-uhon bisan san-o.",
+    "essentialCookies": "Kinahanglanon nga mga cookie",
+    "essentialDescription": "Seguridad, playback, mga kapilian ha pribasiya, ngan pag-ila han ginhalinan han pangaro para ha rekomendasyon.",
+    "alwaysActive": "Pirme aktibo",
+    "personalization": "Pag-angay ha imo",
+    "personalizationDescription": "Hinumdoman an limitado nga mga interes ha kada pagbalik. Kon patayon ini, magagamit la gihapon an mga rekomendasyong kontekstwál.",
+    "erasurePending": "Naghuhulat pa an pagwara han profile. Aktibo na an mga rekomendasyong kontekstwál.",
+    "cancel": "Kanselahon",
+    "saveChoices": "Tipigi an mga kapilian",
+    "saving": "Gintigana…",
+    "loadError": "Diri na-load an imo kapilian. Makakapili ka la gihapon ha ubos.",
+    "grantError": "Diri ma-enable an personalization. An kinahanglanon la an padayon nga magagamit.",
+    "saveError": "Diri natipig an imo kapilian. Alayon pagsari utro."
   }
 }

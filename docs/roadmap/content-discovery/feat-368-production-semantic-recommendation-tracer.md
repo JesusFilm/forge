@@ -3,7 +3,7 @@ id: "feat-368"
 title: "Production semantic recommendation tracer"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "complete"
 start_date: ""
 duration: 10
 depends_on: []

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio language къыщызэIэт",
     "home": "JesusFilm ипэ бзылъфыгъэ",
     "closeSearch": "Search къыхэ",
-    "submitSearch": "Лъыхъу"
+    "submitSearch": "Лъыхъу",
+    "library": "Тхылъэщ"
   },
   "SearchOverlay": {
     "dialogLabel": "Videos search е browse",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Коллекциехэр",
     "subtitlesOnly": "Subtitles къанэ",
+    "backToTop": "Шъхьащ къэгъэзэжьын",
     "newlyAdded": "Ныбжь къыщыIэщ",
     "newVideosTitle": "{language}-м new Christian videos",
     "newestFirst": "Ныбжьыр апэ",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Зыщыщ видеохэр",
     "videosFromCollection": "{collection} къыщыжьы videos.",
     "standaloneDescription": "А language-м standalone videos.",
-    "openCollection": "Collection къыдэIэ"
+    "openCollection": "Collection къыдэIэ",
+    "filters": "Гъэкъэбзэхэр",
+    "filterLength": "Кӏыхьагъэ",
+    "filterLength_under5": "5 такъикъым нахьи нахь макӏэ",
+    "filterLength_5to10": "5-10 такъикъ",
+    "filterLength_10to30": "10-30 такъикъ",
+    "filterLength_over30": "30 такъикъым нахьи нахьыб",
+    "filterType": "Лъэпкъ",
+    "clearFilters": "Гъэкъэбзэхэр гъэкъэбзэн",
+    "filterResults": "{total}-м щыщэу {count} къэгъэлъэгъуагъ",
+    "noFilterResults": "Мы гъэкъэбзэхэм афэкӏурэ видео щыӏэп. Зы тепхыжьынэу зыгъэхьазыр.",
+    "filterAdded": "Хагъэхьагъ",
+    "filterAdded_60d": "Аужырэ 60 маф",
+    "filterAdded_6m": "Аужырэ 6 маз",
+    "filterAdded_12m": "Аужырэ 12 маз"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project еплъэн",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Video preview нэмыкI",
     "nextVideoPreview": "Video preview къбжь",
     "mediaCollection": "Медиа коллекцие",
-    "scrollToVideo": "{title} видеом къыщыбжьэ"
+    "scrollToVideo": "{title} видеом къыщыбжьэ",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project ипэ бзылъфыгъэ",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Watch-м къегъазэ",
     "browseVideos": "Videos къыжьыбжь"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "КIэкI фильм къыплъэ",
-    "actions": {
-      "joinUs": "ТыкъэIэ",
-      "shareMission": "Ти миссие къыдэIэ"
-    },
-    "welcomeStart": {
-      "label": "Иман & Тхыгъэр",
-      "title": "Нобэ къыхэгъэщ видеохэр",
-      "description": "Ти library-м щыIэ, иман къыщыбзэжъо videohэр — фыкъыIуатэ, фыкъыбжьэ, е гупсысэ фэхъуэу."
-    },
-    "welcomeMorning": {
-      "label": "Пщэдджыжьым и илъэсыкI",
-      "title": "Пщэдджыжь! Нобэ Библием и momentхэр фыхуежь.",
-      "description": "Нобэ псэуныгъэм фыкъыщыбжьэн папщIэ, Библием и гупсысэхэр тыншэу фыщыбжьэ."
-    },
-    "welcomeAfternoon": {
-      "label": "Тхьаубэ и илъэсыкI",
-      "title": "Тхьаубэ! Нобэ папщIэ Библием и momentхэр.",
-      "description": "Тхьаубэжьым фыкъыхуешъоу, еплъэн хуэдэ, Библием и content"
-    },
-    "welcomeEvening": {
-      "label": "Щымэбжьым и илъэсыкI",
-      "title": "Щымэбжь! Библием и momentхэмкIэ фыжьыжьы.",
-      "description": "Тхыжьыгъэ Библием и momentхэр — гупсысэ къыфгъэщын, тхьэкIэу фыжьыжьыныгъэу, нобэ фыкъыхэкIынэу."
-    },
-    "joinUs": {
-      "label": "ТыкъэIэ",
-      "title": "Миллиардхэр къыбжьэжь",
-      "description": "Уасэ ахэр мэфэ. Digital media-мкIэ дунейм Евангелиер къыдэIэмкIэ фыкъытху."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Тыкъэу тэбжь",
-      "title": "Иисус и таурыхьыр тхьэмэдэу къыIуатэ",
-      "description": "Ащыщтхэм я бзэмкIэ Иисус и лъапIэныгъэ къагъэхъужьыр, къагъэшIым, къадэIэм."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% зэфэдэ",
     "none": "А видеом а бзэмкIэ рекомендациехэр хэмыт."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Аудио бзэ",
     "selectLanguageVersion": "Бзэм и версие къыхэх",
     "watchSelectedVersion": "Къыхэхыгъэ версием еплъ"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Куки тхьэщыӏэхэр",
+    "bannerTitle": "Уи хъумэфэ тхьэщыӏэхэр",
+    "bannerDescription": "Мыкӏод кукихэр Watch-ым иныбжьэгъу хъунэу ыкӏыфэгъэхьа, ауэ ыгъэпсэу. Уи тхылъэщ зэхъуэжьыркъымэ, нэмыс куки зыри сайтми еплъэныгъэхэм ящыщ интересхэр къызэригъэплъыну, рекомендацэхэр узыщыӏэу къызэригъэпсонэфыну. Контекстым и рекомендацэхэр апхуэдэу-къэу къыщыт.",
+    "acceptAll": "Псори къыщыгъэхьа",
+    "essentialOnly": "Фӏэкӏа мыкӏодхэр",
+    "manageChoices": "Тхьэщыӏэхэр гъэпкъар",
+    "savingChoice": "Куки тхьэщыӏэр гъэсэбэп",
+    "settings": "Куки щытыкӏэхэр",
+    "settingsDescription": "Watch-м рекомендацэ интересхэр сайтми еплъэныгъэхэм ящыщ къызэригъэплъыну фӏыуэ щыӏэу къыбгъэбжьа. Мыри сэлам къыбгъэщӏэжынфай.",
+    "essentialCookies": "Мыкӏод кукихэр",
+    "essentialDescription": "Бзаджэм къыщыхъумэныр, къегъэщӏэным, хъумэфэ тхьэщыӏэхэр, рекомендацэ запросыр зиӏэ лъэныкъуэр.",
+    "alwaysActive": "Зымафӏэу мэкӏу",
+    "personalization": "Хэтэгъэкӏ",
+    "personalizationDescription": "Сайтми еплъэныгъэхэм ящыщ гъэпкъ интересхэр къыгъэплъ. Мыри уигъэупщӏэмэ, контекстым и рекомендацэхэр щытэп.",
+    "erasurePending": "Профильр епцӏыхыныр къыщыужьыгъ. Контекстым и рекомендацэхэр инде къызэфӏэт.",
+    "cancel": "Къэмыжь",
+    "saveChoices": "Тхьэщыӏэхэр гъэсэбэп",
+    "saving": "Гъэсэбэп…",
+    "loadError": "Уи тхьэщыӏэр къыгъэзэщӏэныр къэхъукӏыфакӏым. Ащыгъу мыдэ къыбгъэбжьафай.",
+    "grantError": "Хэтэгъэкӏыр къыщыгъэхьэжыныр къэхъукӏыфакӏым. Фӏэкӏа мыкӏодхэр къытэп.",
+    "saveError": "Уи тхьэщыӏэр гъэсэбэпын къэхъукӏыфакӏым. Къытегъэплъыжьыу."
   }
 }

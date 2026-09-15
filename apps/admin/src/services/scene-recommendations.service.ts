@@ -12,8 +12,8 @@
  *     transcript chunk): run ONE similarity query against the seed embedding,
  *     overfetch × `OVERFETCH_FACTOR`, dedup, slice to `limit`.
  *   - **Per-video** (sceneIndex omitted, seed video has ≥2 transcript chunks):
- *     run one similarity query per chunk, accumulate
- *     best-similarity-per-candidate into a Map, sort, dedup, slice.
+ *     search all chunks in one statement, keeping the same per-chunk
+ *     limit and best similarity per candidate, then dedup and slice.
  *
  * `VideoNotFoundError` is thrown when the seed video cannot be resolved
  * or has no embedded transcript chunks in the requested locale. REST maps this to
@@ -24,8 +24,10 @@ import type { PrismaClient } from "@prisma/client"
 import { dedupeByVideoIdentity } from "./video-dedup"
 import {
   fetchInputEmbeddings,
+  getEligibleRecommendationVideoIds,
   getRelatedVideoIds,
   queryScenesSimilar,
+  queryScenesSimilarMany,
   resolveSlugToVideoId,
   type SceneRecommendationSqlRow,
 } from "./scene-recommendations-retriever"
@@ -44,6 +46,7 @@ export type SceneRecommendation = {
   description: string
   startSeconds: number
   endSeconds: number | null
+  durationSeconds?: number | null
   similarity: number
   themes: string[]
   demographics: string[]
@@ -95,7 +98,9 @@ function mapRow(row: SceneRecommendationSqlRow): SceneRecommendation {
 }
 
 export class SceneRecommendationsService {
-  constructor(private readonly deps: { prisma: PrismaClient }) {}
+  constructor(
+    private readonly deps: { prisma: Pick<PrismaClient, "$queryRaw"> },
+  ) {}
 
   async getRecommendations(
     params: RecommendationParams,
@@ -149,33 +154,33 @@ export class SceneRecommendationsService {
       )
     }
 
-    // Per-video path — query per scene, keep best similarity per candidate.
-    const bestByVideo = new Map<string, SceneRecommendationSqlRow>()
+    // Preserve every seed and its candidate limit without serial catalog scans.
     const perSceneLimit = Math.min(limit * OVERFETCH_FACTOR, MAX_LIMIT)
-
-    for (const emb of embeddings) {
-      const candidates = await queryScenesSimilar(
-        prisma,
-        emb.embedding,
-        locale,
-        excludeIds,
-        perSceneLimit,
-      )
-      for (const candidate of candidates) {
-        const existing = bestByVideo.get(candidate.video_id)
-        if (!existing || candidate.similarity > existing.similarity) {
-          bestByVideo.set(candidate.video_id, candidate)
-        }
-      }
-    }
-
-    const sorted = [...bestByVideo.values()].sort(
-      (a, b) => b.similarity - a.similarity,
+    const sorted = await queryScenesSimilarMany(
+      prisma,
+      embeddings.map(({ embedding }) => embedding),
+      locale,
+      excludeIds,
+      perSceneLimit,
     )
 
     return dedupeByVideoIdentity(asDedupeInput(sorted), limit).map((entry) =>
       mapRow(entry.row),
     )
+  }
+
+  async recheckEligibility(
+    items: SceneRecommendation[],
+    locale: string,
+    audioLanguageSlug: string = locale,
+  ): Promise<SceneRecommendation[]> {
+    const eligible = await getEligibleRecommendationVideoIds(
+      this.deps.prisma,
+      items.map((item) => item.videoId),
+      locale,
+      audioLanguageSlug,
+    )
+    return items.filter((item) => eligible.has(item.videoId))
   }
 }
 

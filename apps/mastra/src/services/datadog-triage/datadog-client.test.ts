@@ -34,10 +34,9 @@ function stubFetch(response: Response | (() => Response | Promise<Response>)) {
 }
 
 /**
- * The exact field names observed live through the Datadog MCP against the real
- * `forge-mobile` project on 2026-08-19. This fixture is the VERIFIED half of
- * the contract: per-issue `total_count`, `state`, and the two version fields
- * the release-session filter reads all appeared on every returned issue.
+ * Field names observed live via the Datadog MCP (2026-08-19). SYNTHETIC shape:
+ * the MCP flattens rows, while the live 2026-08-27 envelope carries detail in
+ * `included[]`. The schema accepts both, so this pins the flattened fallback.
  */
 const LIVE_ISSUE_ROW = {
   issue_id: "30a2cc1a-976b-11f1-89f7-da7ad0900002",
@@ -57,6 +56,7 @@ const LIVE_ISSUE_ROW = {
 
 const WINDOW = {
   service: "forge-mobile",
+  track: "rum" as const,
   from: new Date("2026-08-18T10:00:00Z"),
   to: new Date("2026-08-18T11:00:00Z"),
 }
@@ -91,10 +91,9 @@ describe("DatadogTriageClient issue search", () => {
   })
 
   it("reads the same fields when the envelope nests them under attributes", async () => {
-    // UNVERIFIED half: the JSON:API `data[].attributes` + `included[]` wrapping
-    // comes from the API documentation, not an observed response. Accepting
-    // both shapes is why an envelope difference degrades instead of blanking
-    // the sweep. The pre-enable smoke settles which one production sends.
+    // VERIFIED live 2026-08-27: production sends counts in `data[]` and issue
+    // detail under `included[]` (with include=issue). Accepting both shapes
+    // stays deliberate — envelope drift degrades instead of blanking the sweep.
     const fetchImpl = stubFetch(
       jsonResponse({
         data: [
@@ -359,8 +358,10 @@ describe("DatadogTriageClient issue search", () => {
 
     const [url, init] = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock
       .calls[0] as [URL, RequestInit]
+    // `include=issue` and `track` were both verified REQUIRED on the live
+    // API 2026-08-27: without them detail rows are absent / the call 400s.
     expect(url.toString()).toBe(
-      "https://api.datadoghq.com/api/v2/error-tracking/issues/search",
+      "https://api.datadoghq.com/api/v2/error-tracking/issues/search?include=issue",
     )
     expect(init.redirect).toBe("error")
     expect(init.headers).toMatchObject({
@@ -372,6 +373,7 @@ describe("DatadogTriageClient issue search", () => {
         type: "search_request",
         attributes: {
           query: "service:forge-mobile",
+          track: "rum",
           from: WINDOW.from.getTime(),
           to: WINDOW.to.getTime(),
           page: { limit: 100 },

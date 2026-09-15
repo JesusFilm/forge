@@ -1,7 +1,7 @@
 import { createEnv } from "@t3-oss/env-nextjs"
 import { z } from "zod"
 import { MOBILE_APP_SCHEME } from "@/auth/mobile-session"
-import { CHANGELOG_OAUTH_RESOURCES } from "@/domain/changelog-oauth-resources"
+import { createOAuthResourceCatalog } from "@/domain/oauth-resources"
 
 const emptyToUndefined = (value: string | undefined) =>
   value === "" ? undefined : value
@@ -166,21 +166,18 @@ export function getAdminWatchProgressErasureConfig(): {
   }
 }
 
+export function getAuthCustomAudiences(): string[] {
+  return (env.AUTH_VALID_AUDIENCES ?? "")
+    .split(",")
+    .map((audience) => audience.trim())
+    .filter((audience) => audience.length > 0)
+}
+
 export function getAuthValidAudiences(): string[] {
-  return Array.from(
-    new Set([
-      getAuthBaseUrl(),
-      "http://localhost:3003/mcp",
-      "https://admin-preview.jesusfilm.org/mcp",
-      "https://admin-stage.jesusfilm.org/mcp",
-      "https://admin.jesusfilm.org/mcp",
-      ...Object.values(CHANGELOG_OAUTH_RESOURCES),
-      ...(env.AUTH_VALID_AUDIENCES ?? "")
-        .split(",")
-        .map((audience) => audience.trim())
-        .filter((audience) => audience.length > 0),
-    ]),
-  )
+  return createOAuthResourceCatalog({
+    authIssuer: getAuthBaseUrl(),
+    customAudiences: getAuthCustomAudiences(),
+  }).map(({ identifier }) => identifier)
 }
 
 export function isChangelogProductionEnabled(): boolean {

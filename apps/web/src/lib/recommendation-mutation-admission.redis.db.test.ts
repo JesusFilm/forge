@@ -1,0 +1,308 @@
+import { execFileSync } from "node:child_process"
+import { createRequire } from "node:module"
+import { resolve } from "node:path"
+import { createAdmissionWorkerClient } from "./recommendation-admission-worker-client"
+import { runRedisAdmission } from "./recommendation-redis-admission"
+import { createHmac, randomUUID } from "node:crypto"
+import { setTimeout as delay } from "node:timers/promises"
+import { createClient } from "redis"
+import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import {
+  RECOMMENDATION_MUTATION_CLIENT_LIMIT,
+  createRecommendationMutationAdmission,
+  resetRecommendationMutationAdmissionForTests,
+  type RecommendationAdmissionNamespace,
+} from "./recommendation-mutation-admission"
+
+const RUN_REDIS_TEST =
+  process.env.RECOMMENDATION_REDIS_TEST === "1" &&
+  Boolean(process.env.REDIS_URL?.trim())
+
+function hmacKey(secret: string, namespace: string, value: string): string {
+  return createHmac("sha256", secret)
+    .update(namespace)
+    .update("\0")
+    .update(value)
+    .digest("hex")
+}
+
+function admissionKeys(
+  secret: string,
+  namespace: RecommendationAdmissionNamespace,
+  address: string,
+): string[] {
+  const clientDigest = hmacKey(
+    secret,
+    `recommendation-admission-client-v2:${namespace}`,
+    address,
+  )
+  const aggregateDigest = hmacKey(
+    secret,
+    `recommendation-admission-aggregate-v2:${namespace}`,
+    "all",
+  )
+  return [
+    `recommendation:admission:${namespace}:client:${clientDigest}`,
+    `recommendation:admission:${namespace}:aggregate:${aggregateDigest}`,
+  ]
+}
+
+describe.skipIf(!RUN_REDIS_TEST)("Watch recommendation Redis admission", () => {
+  const secret = `recommendation-admission-test-${randomUUID()}`
+  const address = "198.51.100.240"
+  const keys = [
+    ...admissionKeys(secret, "profile-status", address),
+    ...admissionKeys(secret, "privacy-control", address),
+    ...admissionKeys(secret, "playback-context", address),
+  ]
+  let cleanupClient: ReturnType<typeof createClient>
+
+  beforeAll(async () => {
+    cleanupClient = createClient({ url: process.env.REDIS_URL })
+    await cleanupClient.connect()
+    await cleanupClient.del(keys)
+  })
+
+  afterAll(async () => {
+    resetRecommendationMutationAdmissionForTests()
+    await cleanupClient.del(keys)
+    await cleanupClient.quit()
+  })
+
+  it("executes the atomic Lua limit while preserving privacy-control capacity", async () => {
+    const admit = createRecommendationMutationAdmission({
+      production: true,
+      secret,
+    })
+    const headers = new Headers({ "cf-connecting-ip": address })
+
+    for (
+      let attempt = 0;
+      attempt < RECOMMENDATION_MUTATION_CLIENT_LIMIT;
+      attempt += 1
+    ) {
+      await expect(admit(headers, "profile-status")).resolves.toEqual({
+        allowed: true,
+      })
+    }
+
+    await expect(admit(headers, "profile-status")).resolves.toEqual({
+      allowed: false,
+      reason: "rate_limited",
+    })
+    await expect(admit(headers, "privacy-control")).resolves.toEqual({
+      allowed: true,
+    })
+    await expect(cleanupClient.mGet(keys.slice(0, 4))).resolves.toEqual([
+      String(RECOMMENDATION_MUTATION_CLIENT_LIMIT),
+      String(RECOMMENDATION_MUTATION_CLIENT_LIMIT),
+      "1",
+      "1",
+    ])
+  })
+
+  it("admits after the observed 160 ms TIME reply delay without weakening the Redis deadline", async () => {
+    const admit = createRecommendationMutationAdmission({
+      production: true,
+      secret,
+      redis: async () => ({
+        time: async () => {
+          const sampled = await cleanupClient.time()
+          await delay(160)
+          return sampled
+        },
+        eval: (script, options) => cleanupClient.eval(script, options),
+      }),
+    })
+    await expect(
+      admit(new Headers({ "cf-connecting-ip": address }), "playback-context"),
+    ).resolves.toEqual({ allowed: true })
+    await expect(
+      cleanupClient.mGet(admissionKeys(secret, "playback-context", address)),
+    ).resolves.toEqual(["1", "1"])
+  })
+
+  it("refreshes a stale clock after an explicit no-mutation reply within the original budget", async () => {
+    const profileKeys = admissionKeys(secret, "profile-status", address)
+    await cleanupClient.del(profileKeys)
+    let timeCalls = 0
+    let evalCalls = 0
+    const admit = createRecommendationMutationAdmission({
+      production: true,
+      secret,
+      redis: async () => ({
+        time: async () => {
+          const sampled = await cleanupClient.time()
+          if (timeCalls++ === 0) await delay(135)
+          return sampled
+        },
+        eval: async (script, options) => {
+          if (evalCalls++ === 0) await delay(46)
+          return cleanupClient.eval(script, options)
+        },
+      }),
+    })
+    await expect(
+      admit(new Headers({ "cf-connecting-ip": address }), "profile-status"),
+    ).resolves.toEqual({ allowed: true })
+    expect(timeCalls).toBe(2)
+    expect(evalCalls).toBe(2)
+    await expect(cleanupClient.mGet(profileKeys)).resolves.toEqual(["1", "1"])
+  })
+
+  it("does not mutate admission buckets when a queued EVAL runs after the caller timed out", async () => {
+    await cleanupClient.del(admissionKeys(secret, "playback-context", address))
+    let releaseEval!: () => void
+    const release = new Promise<void>((resolve) => {
+      releaseEval = resolve
+    })
+    let evaluated!: Promise<unknown>
+    const admit = createRecommendationMutationAdmission({
+      production: true,
+      secret,
+      redis: async () => ({
+        time: () => cleanupClient.time(),
+        eval: (script, options) => {
+          evaluated = release.then(() => cleanupClient.eval(script, options))
+          return evaluated
+        },
+      }),
+    })
+    await expect(
+      admit(new Headers({ "cf-connecting-ip": address }), "playback-context"),
+    ).resolves.toEqual({ allowed: false, reason: "admission_unavailable" })
+    releaseEval()
+    await expect(evaluated).resolves.toEqual(["unavailable"])
+    await expect(
+      cleanupClient.mGet(admissionKeys(secret, "playback-context", address)),
+    ).resolves.toEqual([null, null])
+  })
+
+  it("does not mutate when the refreshed EVAL runs after the original deadline", async () => {
+    const profileKeys = admissionKeys(secret, "profile-status", address)
+    await cleanupClient.del(profileKeys)
+    let timeCalls = 0
+    let evalCalls = 0
+    let releaseEval!: () => void
+    const release = new Promise<void>((resolve) => {
+      releaseEval = resolve
+    })
+    let evaluated!: Promise<unknown>
+    const admit = createRecommendationMutationAdmission({
+      production: true,
+      secret,
+      redis: async () => ({
+        time: async () => {
+          const sampled = await cleanupClient.time()
+          if (timeCalls++ === 0) await delay(135)
+          return sampled
+        },
+        eval: async (script, options) => {
+          if (evalCalls++ === 0) {
+            await delay(46)
+            return cleanupClient.eval(script, options)
+          }
+          evaluated = release.then(() => cleanupClient.eval(script, options))
+          return evaluated
+        },
+      }),
+    })
+    await expect(
+      admit(new Headers({ "cf-connecting-ip": address }), "profile-status"),
+    ).resolves.toEqual({ allowed: false, reason: "admission_unavailable" })
+    expect(timeCalls).toBe(2)
+    expect(evalCalls).toBe(2)
+    releaseEval()
+    await expect(evaluated).resolves.toEqual(["unavailable"])
+    await expect(cleanupClient.mGet(profileKeys)).resolves.toEqual([null, null])
+  })
+})
+
+const enabled =
+  process.env.RECOMMENDATION_REDIS_TEST === "1" &&
+  Boolean(process.env.REDIS_URL)
+const workerRequire = createRequire(import.meta.url)
+function blockMain(ms: number) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
+}
+
+describe.skipIf(!enabled)(
+  "Redis admission isolated from page processing",
+  () => {
+    const prefix = `admission-worker-test:${randomUUID()}`
+    const keys = Array.from({ length: 8 }, (_, n) => `${prefix}:${n}`)
+    const redis = createClient({ url: process.env.REDIS_URL })
+    const worker = createAdmissionWorkerClient({
+      workerFile: resolve(
+        ".next/admission-worker/recommendation-admission-worker.js",
+      ),
+    })
+    beforeAll(async () => {
+      execFileSync(
+        process.execPath,
+        [
+          workerRequire.resolve("typescript/bin/tsc"),
+          "-p",
+          "tsconfig.admission-worker.json",
+        ],
+        { stdio: "pipe" },
+      )
+      await redis.connect()
+    }, 30_000)
+    afterAll(async () => {
+      worker.close()
+      await redis.del(keys)
+      await redis.quit()
+    })
+
+    it("reproduces the old timeout when page work prevents a healthy TIME reply being consumed", async () => {
+      let started!: () => void
+      const commandStarted = new Promise<void>((resolve) => {
+        started = resolve
+      })
+      const admission = runRedisAdmission(keys[0], keys[1], "profile-status", {
+        redis: async () => ({
+          time: () => {
+            const result = redis.time()
+            started()
+            return result
+          },
+          eval: (script, options) => redis.eval(script, options),
+        }),
+      })
+      await commandStarted
+      blockMain(350)
+      await expect(admission).resolves.toEqual({
+        allowed: false,
+        reason: "admission_unavailable",
+      })
+      expect(await redis.mGet(keys.slice(0, 2))).toEqual([null, null])
+    })
+
+    it("completes the same Redis gate while the page thread is blocked beyond its watchdog", async () => {
+      await expect(
+        worker.admit(keys[2], keys[3], "profile-status"),
+      ).resolves.toEqual({ allowed: true })
+      const admission = worker.admit(keys[2], keys[3], "profile-status")
+      blockMain(650)
+      await expect(admission).resolves.toEqual({ allowed: true })
+      expect(await redis.mGet(keys.slice(2, 4))).toEqual(["2", "2"])
+      expect(await redis.pTTL(keys[2])).toBeGreaterThan(0)
+    })
+
+    it("preserves per-client limits and separate privacy-control capacity", async () => {
+      for (let n = 0; n < 30; n++) {
+        await expect(
+          worker.admit(keys[4], keys[5], "profile-status"),
+        ).resolves.toEqual({ allowed: true })
+      }
+      await expect(
+        worker.admit(keys[4], keys[5], "profile-status"),
+      ).resolves.toEqual({ allowed: false, reason: "rate_limited" })
+      await expect(
+        worker.admit(keys[6], keys[7], "privacy-control"),
+      ).resolves.toEqual({ allowed: true })
+      expect(await redis.mGet(keys.slice(4))).toEqual(["30", "30", "1", "1"])
+    })
+  },
+)

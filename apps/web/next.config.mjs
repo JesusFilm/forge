@@ -72,6 +72,11 @@ export const nextConfig = {
   // dominating the simulated-mobile LCP budget. compress:true wires
   // Next's built-in gzip middleware on every text/* response.
   compress: true,
+  // Next hashes every cached HTML/RSC response synchronously for its ETag.
+  // Multi-megabyte language catalogs block the shared request thread long
+  // enough to expire recommendation admission. Keep ISR/Cache-Control, but
+  // avoid repeating that full-body hash on every cache hit.
+  generateEtags: false,
   // typedRoutes moved to top-level in Next 16 (stable).
   typedRoutes: true,
   cacheHandler: fileURLToPath(new URL("./cache-handler.mjs", import.meta.url)),
@@ -117,6 +122,10 @@ export const nextConfig = {
     },
   },
   images: {
+    // Next re-encodes on the way out and defaults to 75, which smears the
+    // text in UI screenshots. Non-default qualities must be allowlisted
+    // since Next 15.4 or the optimizer returns an error, not an image.
+    qualities: [75, 94],
     dangerouslyAllowLocalIP: process.env.NODE_ENV !== "production",
     remotePatterns: [
       { protocol: "http", hostname: "localhost", pathname: "/uploads/**" },
@@ -147,6 +156,15 @@ export const nextConfig = {
       },
       ...adminMediaImageHost,
       { protocol: "https", hostname: "images.unsplash.com" },
+      // Editorial photography hot-linked from the main jesusfilm.org
+      // WordPress library (same org, deliberately not vendored into this
+      // repo). Scoped to the uploads path so the allowlist cannot widen to
+      // arbitrary jesusfilm.org routes.
+      {
+        protocol: "https",
+        hostname: "www.jesusfilm.org",
+        pathname: "/wp-content/uploads/**",
+      },
       {
         protocol: "https",
         hostname: "admin.jesusfilm.org",

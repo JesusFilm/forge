@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Schimbă limba audio",
     "home": "Pagina principală JesusFilm",
     "closeSearch": "Închide căutarea",
-    "submitSearch": "Caută"
+    "submitSearch": "Caută",
+    "library": "Bibliotecă"
   },
   "SearchOverlay": {
     "dialogLabel": "Caută și răsfoiește videoclipuri",
@@ -283,6 +284,7 @@
     "sports": "Sport",
     "collections": "Colecții",
     "subtitlesOnly": "Doar subtitrări",
+    "backToTop": "Sus",
     "newlyAdded": "Adăugat recent",
     "newVideosTitle": "Videoclipuri creștine noi în {language}",
     "newestFirst": "Cele mai noi primele",
@@ -313,7 +315,21 @@
     "standaloneVideos": "Videoclipuri independente",
     "videosFromCollection": "Videoclipuri din {collection}.",
     "standaloneDescription": "Videoclipuri independente în această limbă.",
-    "openCollection": "Deschide colecția"
+    "openCollection": "Deschide colecția",
+    "filters": "Filtre",
+    "filterLength": "Durată",
+    "filterLength_under5": "Sub 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Peste 30 min",
+    "filterType": "Tip",
+    "clearFilters": "Șterge filtrele",
+    "filterResults": "{count} din {total} afișate",
+    "noFilterResults": "Niciun videoclip nu corespunde acestor filtre. Încearcă să elimini unul.",
+    "filterAdded": "Adăugat",
+    "filterAdded_60d": "Ultimele 60 de zile",
+    "filterAdded_6m": "Ultimele 6 luni",
+    "filterAdded_12m": "Ultimele 12 luni"
   },
   "WatchHome": {
     "pageTitle": "Vizionare Jesus Film Project",
@@ -327,7 +343,8 @@
     "nextVideoPreview": "Previzualizarea videoclipului următor",
     "featured": "Recomandate",
     "mediaCollection": "Colecție media",
-    "scrollToVideo": "Derulează la videoclipul {title}"
+    "scrollToVideo": "Derulează la videoclipul {title}",
+    "forYou": "Pentru tine"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Limbi",
@@ -446,7 +463,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
       "openSupportForm": "Open support form"
     }
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Urmărește scurtmetrajul",
-    "actions": {
-      "joinUs": "Alătură-te nouă",
-      "shareMission": "Ia parte la misiunea noastră"
-    },
-    "welcomeStart": {
-      "label": "Credință și Scriptură",
-      "title": "Selecția video de astăzi",
-      "description": "Conținut video centrat pe credință din biblioteca noastră, pentru a inspira, a provoca și a stârni reflecția."
-    },
-    "welcomeMorning": {
-      "label": "Inspirație de dimineață",
-      "title": "Bună dimineața! Te așteaptă momente biblice pentru astăzi.",
-      "description": "Începe-ți ziua cu momente biblice încurajatoare, gândite să inspire și să-ți înalțe sufletul."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirație de după-amiază",
-      "title": "Bună după-amiaza! Momente biblice pentru ziua ta.",
-      "description": "Conținut biblic încurajator, perfect pentru pauza de după-amiază sau pentru inspirație în continuare."
-    },
-    "welcomeEvening": {
-      "label": "Inspirație de seară",
-      "title": "Bună seara! Încheie ziua cu momente biblice.",
-      "description": "Momente biblice liniștitoare, care te ajută să reflectezi și să găsești mângâiere pe măsură ce ziua se apropie de sfârșit."
-    },
-    "joinUs": {
-      "label": "Alătură-te nouă",
-      "title": "Miliarde de oameni caută răspunsuri",
-      "description": "Secerișul este aici. Alătură-te nouă în timp ce împărtășim Evanghelia cu lumea prin media digitală."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Să mergem împreună",
-      "title": "Spunem împreună povestea lui Isus",
-      "description": "Ca să poată auzi și vedea dragostea lui Isus în limba lor, chiar acolo unde se află."
-    }
-  },
   "VideoRecommendations": {
     "match": "Potrivire de {percent}%",
     "none": "Nu s-au găsit recomandări pentru acest videoclip în această limbă."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Limba audio",
     "selectLanguageVersion": "Selectați o versiune lingvistică",
     "watchSelectedVersion": "Vizionați versiunea selectată"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Opțiuni privind cookie-urile",
+    "bannerTitle": "Opțiunile tale de confidențialitate",
+    "bannerDescription": "Cookie-urile esențiale mențin Watch sigur și funcțional. Cu permisiunea ta, un cookie opțional de primă parte poate reține interesele tale între vizite pentru a personaliza recomandările. Recomandările contextuale rămân disponibile în orice caz.",
+    "acceptAll": "Acceptă tot",
+    "essentialOnly": "Doar esențiale",
+    "manageChoices": "Gestionează opțiunile",
+    "savingChoice": "Se salvează alegerea privind cookie-urile",
+    "settings": "Setări cookie-uri",
+    "settingsDescription": "Alege dacă Watch poate reține interesele pentru recomandări între vizite. Poți schimba aceasta oricând.",
+    "essentialCookies": "Cookie-uri esențiale",
+    "essentialDescription": "Securitate, redare, opțiuni de confidențialitate și atribuirea solicitărilor de recomandări.",
+    "alwaysActive": "Întotdeauna activ",
+    "personalization": "Personalizare",
+    "personalizationDescription": "Reține interese limitate între vizite. Dacă dezactivezi această opțiune, recomandările contextuale rămân disponibile.",
+    "erasurePending": "Ștergerea profilului este în curs. Recomandările contextuale sunt deja active.",
+    "cancel": "Anulează",
+    "saveChoices": "Salvează opțiunile",
+    "saving": "Se salvează…",
+    "loadError": "Opțiunea ta nu a putut fi încărcată. Poți totuși alege mai jos.",
+    "grantError": "Personalizarea nu a putut fi activată. Opțiunea doar esențiale rămâne disponibilă.",
+    "saveError": "Opțiunea ta nu a putut fi salvată. Încearcă din nou."
   }
 }

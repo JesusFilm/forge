@@ -8,7 +8,10 @@ import {
 
 import { BROWSE_TOPICS } from "../../lib/browseTopics"
 import { TEXT_SECONDARY } from "../../lib/color"
+import { useIsFocused } from "expo-router"
+
 import { useCategoryThumbnails } from "../../hooks/useCategoryThumbnails"
+import { useTabBarClearance } from "../../lib/tabBar"
 import { TopicCard } from "./TopicCard"
 
 const GRID_PADDING = 16
@@ -22,7 +25,10 @@ export interface BrowseTopicsProps {
 // grid of gradient cards. Tapping a card routes through onSelect (wired to the
 // screen's stale-guarded search).
 export function BrowseTopics({ onSelect }: BrowseTopicsProps) {
-  const thumbnails = useCategoryThumbnails()
+  // Every tab mounts at cold launch under the native tab bar (feat-500), so
+  // the six thumbnail searches wait until the viewer actually opens Search.
+  const thumbnails = useCategoryThumbnails(useIsFocused())
+  const tabBarClearance = useTabBarClearance()
   const { width } = useWindowDimensions()
   // Explicit two-column width: full width minus the content padding and the
   // single inter-card gap, halved. An explicit width keeps the grid reliably
@@ -32,7 +38,11 @@ export function BrowseTopics({ onSelect }: BrowseTopicsProps) {
   return (
     <ScrollView
       style={styles.scroll}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[
+        styles.content,
+        { paddingBottom: 24 + tabBarClearance },
+      ]}
+      scrollIndicatorInsets={{ bottom: tabBarClearance }}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >

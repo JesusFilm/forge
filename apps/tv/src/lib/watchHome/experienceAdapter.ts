@@ -57,10 +57,12 @@ function mapThumbnailOrientation(
 }
 
 // KTD7: block types with no TV rail slot. WatchHomeHeroBlock (client-owned banner),
-// SectionBlock (mission tail), and promo/CTA are expected in the prod Experience and
-// skipped silently; only a genuinely unrecognized __typename dev-warns (R6/AE6).
+// WatchHomeCategoryRailBlock (Web-only), SectionBlock (mission tail), and promo/CTA
+// are expected in the prod Experience and skipped silently; only a genuinely
+// unrecognized __typename dev-warns (R6/AE6).
 const SILENT_SKIP_BLOCKS = new Set([
   "WatchHomeHeroBlock",
+  "WatchHomeCategoryRailBlock",
   "SectionBlock",
   "PromoBannerBlock",
   "CtaBlock",

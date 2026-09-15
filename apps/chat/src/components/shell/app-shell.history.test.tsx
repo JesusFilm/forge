@@ -54,13 +54,14 @@ describe("Server history — hydration + sidebar states (feat-241)", () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it("hydrates the first page post-mount: titles + date fallback labels, most-recent-first, fresh pane on top (AE8, AE6)", async () => {
+  it("hydrates the first page post-mount: titles + date fallback labels, most-recent-first, server rows only (AE8, AE6)", async () => {
     renderSeeker(() => [], {
       listFor: () => ({ threads: [ALPHA, BETA, UNTITLED] }),
     })
     await waitFor(() =>
+      // feat-401: the landing conversation is unstarted, so the rail is the
+      // server history and nothing else — no "New conversation" row on top.
       expect(navRowTitles()).toEqual([
-        "New conversation",
         "Alpha thread",
         "Beta thread",
         fallbackTitle(UNTITLED.updatedAt),
@@ -69,10 +70,9 @@ describe("Server history — hydration + sidebar states (feat-241)", () => {
     // AE8: the main pane is a fresh chat — starter questions, composer live.
     expect(container).toHaveTextContent("What would you like to ask?")
     expect(getTextarea()).toBeEnabled()
-    const active = within(getConversationNav()).getByRole("button", {
-      name: "New conversation",
-    })
-    expect(active).toHaveAttribute("aria-current", "true")
+    // ...and nothing in the rail claims to be the open conversation, because
+    // the open one has no row (feat-401).
+    expect(getConversationNav().querySelector("[aria-current]")).toBeNull()
   })
 
   it("appends the next page on Load more without duplicating rows (AE13)", async () => {
@@ -123,7 +123,10 @@ describe("Server history — hydration + sidebar states (feat-241)", () => {
     const nav = getConversationNav()
     await waitFor(() => expect(navRowTitles()).toContain("Alpha thread"))
     await user.click(within(nav).getByRole("button", { name: "Load more" }))
-    await waitFor(() => expect(navRowTitles()).toEqual(["New conversation"]))
+    // feat-401: the reverted rail is EMPTY — the fresh local conversation the
+    // session lands on is unstarted, so it contributes no row. The fresh-pane
+    // assertions elsewhere in this file carry the "landed on a new chat" half.
+    await waitFor(() => expect(navRowTitles()).toEqual([]))
     // Quiet: no error banner, no nudge — today's client-only look.
     expect(nav.querySelector("[data-history]")).toBeNull()
   })
@@ -605,7 +608,8 @@ describe("Replay access loss — KTD8 uniformity", () => {
 
     // Same silent fall-back the list path uses: server rows disappear, a
     // fresh pane takes over — never the data-loss "no longer available" copy.
-    await waitFor(() => expect(navRowTitles()).toEqual(["New conversation"]))
+    // The rail empties completely (feat-401: the fresh pane has no row).
+    await waitFor(() => expect(navRowTitles()).toEqual([]))
     expect(container).not.toHaveTextContent("no longer available")
     expect(container).toHaveTextContent("What would you like to ask?")
     expect(getConversationNav().querySelector("[data-history]")).toBeNull()
@@ -631,7 +635,7 @@ describe("Replay access loss — KTD8 uniformity", () => {
     await user.click(
       within(getConversationNav()).getByRole("button", { name: "Load more" }),
     )
-    await waitFor(() => expect(navRowTitles()).toEqual(["New conversation"]))
+    await waitFor(() => expect(navRowTitles()).toEqual([]))
     expect(container).toHaveTextContent("What would you like to ask?")
 
     // The in-flight replay resolving later is a harmless no-op — no zombie
@@ -641,5 +645,50 @@ describe("Replay access loss — KTD8 uniformity", () => {
     expect(messageTexts()).not.toContain("old answer")
     expect(container).not.toHaveTextContent("no longer available")
     expect(getTextarea()).toBeEnabled()
+  })
+})
+
+describe("Rename control gating through the shell (feat-450, R2)", () => {
+  it("renders a pencil per hydrated row on a GRANTED shell, named after the display title", async () => {
+    renderSeeker(() => [], { listFor: () => ({ threads: [ALPHA, UNTITLED] }) })
+    await screen.findByRole("button", { name: "Alpha thread" })
+    const nav = getConversationNav()
+    expect(
+      within(nav).getByRole("button", { name: "Rename Alpha thread" }),
+    ).toBeInTheDocument()
+    expect(
+      within(nav).getByRole("button", {
+        name: `Rename ${fallbackTitle(UNTITLED.updatedAt)}`,
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it("renders no pencil on a flag-off shell", async () => {
+    await sendMessage("a local conversation")
+    await screen.findByRole("button", {
+      name: deriveTitle("a local conversation"),
+    })
+    expect(
+      within(getConversationNav()).queryAllByRole("button", {
+        name: /^Rename /,
+      }),
+    ).toHaveLength(0)
+  })
+
+  it("renders no pencil on a denial shell even with the raw flag on — keyed on grantedShell, never seekerEnabled", async () => {
+    // SYNTHETIC prop pair (2026-09-02, feat-450): `deepLinkShell` never emits
+    // seekerEnabled=true alongside deniedScreen, so this is producer-
+    // unreachable; it pins the consumer belt feeding the rail (grantedShell).
+    view.unmount()
+    renderShell(true, {
+      deniedScreen: "unavailable",
+      initialConversationId: "0f3b2c1e-6d4a-4b8f-9c2d-1e5f7a9b3c4d",
+    })
+    await act(async () => {})
+    expect(
+      within(getConversationNav()).queryAllByRole("button", {
+        name: /^Rename /,
+      }),
+    ).toHaveLength(0)
   })
 })

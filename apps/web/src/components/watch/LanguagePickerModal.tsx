@@ -641,7 +641,7 @@ export function LanguagePickerModal({
                   data-testid="watch-language-picker-subtitles-toggle"
                   disabled={!hasSelectableSubtitleOptions}
                   onClick={() => setDraftSubtitleEnabled((value) => !value)}
-                  className={`relative flex h-9 w-16 shrink-0 cursor-pointer items-center overflow-hidden rounded-full p-1 text-[10px] font-bold uppercase transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-45 ${LANGUAGE_PICKER_FOCUS_RING_CLASS} ${
+                  className={`relative flex h-9 w-16 shrink-0 cursor-pointer items-center overflow-hidden rounded-full p-1 text-xs font-bold uppercase sm:text-[10px] transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-45 ${LANGUAGE_PICKER_FOCUS_RING_CLASS} ${
                     draftSubtitleEnabled
                       ? "bg-stone-100 text-stone-950"
                       : "border border-stone-500/80 bg-stone-950/70 text-stone-300"
@@ -679,7 +679,7 @@ export function LanguagePickerModal({
                     data-testid="watch-language-picker-request-ai-translation"
                     disabled={translationRequestSent}
                     onClick={() => setTranslationRequestSent(true)}
-                    className={`min-w-0 max-w-full flex-1 shrink gap-1.5 cursor-pointer rounded-full border border-stone-400/50 bg-transparent px-3 py-1.5 text-center text-[11px] leading-4 font-bold tracking-wider whitespace-normal text-stone-300 uppercase transition-colors duration-200 hover:border-stone-200 hover:bg-transparent hover:text-white disabled:cursor-default disabled:border-stone-500/35 disabled:text-stone-500 disabled:opacity-100 sm:flex-none ${LANGUAGE_PICKER_FOCUS_RING_CLASS}`}
+                    className={`min-w-0 max-w-full flex-1 shrink gap-1.5 cursor-pointer rounded-full border border-stone-400/50 bg-transparent px-3 py-1.5 text-center text-xs leading-4 font-bold tracking-wider sm:text-[11px] whitespace-normal text-stone-300 uppercase transition-colors duration-200 hover:border-stone-200 hover:bg-transparent hover:text-white disabled:cursor-default disabled:border-stone-500/35 disabled:text-stone-500 disabled:opacity-100 sm:flex-none ${LANGUAGE_PICKER_FOCUS_RING_CLASS}`}
                   >
                     {translationRequestSent ? (
                       <Check
@@ -732,7 +732,7 @@ export function LanguagePickerModal({
             {!hasSelectableSubtitleOptions ? (
               <p
                 data-testid="watch-language-picker-subtitles-unavailable"
-                className="text-sm leading-6 text-stone-400"
+                className="text-base sm:text-sm leading-6 text-stone-400"
               >
                 {subtitleUnavailableLabel}
               </p>

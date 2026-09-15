@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ऑडिओ भाषा बदला",
     "home": "JesusFilm मुख्यपृष्ठ",
     "closeSearch": "शोध बंद करा",
-    "submitSearch": "शोधा"
+    "submitSearch": "शोधा",
+    "library": "लायब्ररी"
   },
   "SearchOverlay": {
     "dialogLabel": "व्हिडिओ शोधा आणि ब्राउझ करा",
@@ -467,6 +468,7 @@
     "sports": "क्रीडा",
     "collections": "संग्रह",
     "subtitlesOnly": "फक्त सबटायटल्स",
+    "backToTop": "वर परत",
     "newlyAdded": "नवीन जोडलेले",
     "newVideosTitle": "{language} मधील नवीन ख्रिस्ती व्हिडिओ",
     "newestFirst": "नवीनतम पहिले",
@@ -497,7 +499,21 @@
     "standaloneVideos": "स्वतंत्र व्हिडिओ",
     "videosFromCollection": "{collection} मधील व्हिडिओ.",
     "standaloneDescription": "या भाषेतील स्वतंत्र व्हिडिओ.",
-    "openCollection": "संग्रह उघडा"
+    "openCollection": "संग्रह उघडा",
+    "filters": "फिल्टर",
+    "filterLength": "लांबी",
+    "filterLength_under5": "5 मिनिटांपेक्षा कमी",
+    "filterLength_5to10": "5-10 मिनिटे",
+    "filterLength_10to30": "10-30 मिनिटे",
+    "filterLength_over30": "30 मिनिटांपेक्षा जास्त",
+    "filterType": "प्रकार",
+    "clearFilters": "फिल्टर साफ करा",
+    "filterResults": "{total} पैकी {count} दाखवले",
+    "noFilterResults": "या फिल्टरशी कोणताही व्हिडिओ जुळत नाही. एक काढून पहा.",
+    "filterAdded": "जोडले",
+    "filterAdded_60d": "गेल्या 60 दिवस",
+    "filterAdded_6m": "गेल्या 6 महिने",
+    "filterAdded_12m": "गेल्या 12 महिने"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project पाहा",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "मागील व्हिडिओ पूर्वदृश्य",
     "nextVideoPreview": "पुढील व्हिडिओ पूर्वदृश्य",
     "mediaCollection": "मीडिया संग्रह",
-    "scrollToVideo": "{title} व्हिडिओकडे स्क्रोल करा"
+    "scrollToVideo": "{title} व्हिडिओकडे स्क्रोल करा",
+    "forYou": "तुमच्यासाठी"
   },
   "WatchFooter": {
     "home": "Jesus Film Project मुख्यपृष्ठ",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "पुन्हा Watch वर जा",
     "browseVideos": "व्हिडिओ ब्राउझ करा"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "लघुपट पाहा",
-    "actions": {
-      "joinUs": "आमच्यात सामील व्हा",
-      "shareMission": "आमच्या मिशनमध्ये सहभागी व्हा"
-    },
-    "welcomeStart": {
-      "label": "विश्वास आणि शास्त्रलेखन",
-      "title": "आजची व्हिडिओ निवड",
-      "description": "प्रेरणा देणारे, आव्हान करणारे आणि चिंतनाला चालना देणारे आमच्या संग्रहातील विश्वासकेंद्रित व्हिडिओ."
-    },
-    "welcomeMorning": {
-      "label": "सकाळची प्रेरणा",
-      "title": "शुभ प्रभात! आजचे बायबल क्षण तुमची वाट पाहत आहेत.",
-      "description": "तुमचा दिवस बायबलमधील प्रेरणादायी क्षणांनी सुरू करा, जे तुम्हाला उभारी देतील आणि मनोबल वाढवतील."
-    },
-    "welcomeAfternoon": {
-      "label": "दुपारची प्रेरणा",
-      "title": "शुभ दुपार! तुमच्या दिवसासाठी बायबल क्षण.",
-      "description": "दुपारच्या विश्रांतीसाठी किंवा पुढील प्रेरणेसाठी उपयुक्त असे बायबलमधील प्रोत्साहनपर कंटेंट."
-    },
-    "welcomeEvening": {
-      "label": "संध्याकाळची प्रेरणा",
-      "title": "शुभ संध्या! बायबल क्षणांसह विश्रांती घ्या.",
-      "description": "दिवस संपताना चिंतन करण्यास आणि दिलासा मिळवण्यास मदत करणारे शांत, बायबलमधील क्षण."
-    },
-    "joinUs": {
-      "label": "आमच्यात सामील व्हा",
-      "title": "अब्जावधी लोक शोधत आहेत",
-      "description": "कापणीची वेळ आली आहे. डिजिटल माध्यमांचा वापर करून सुवार्ता जगापर्यंत पोहोचवण्यासाठी आमच्यात सामील व्हा."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "चला एकत्र जाऊया",
-      "title": "येशूची कहाणी, एकत्र सांगत",
-      "description": "जेणेकरून ते जिथे आहेत तिथेच, त्यांच्या स्वतःच्या भाषेत येशूचे प्रेम ऐकू आणि पाहू शकतील."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% जुळते",
     "none": "या भाषेत या व्हिडिओसाठी कोणत्याही शिफारसी सापडल्या नाहीत."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "ऑडिओ भाषा",
     "selectLanguageVersion": "भाषा आवृत्ती निवडा",
     "watchSelectedVersion": "निवडलेली आवृत्ती पहा"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "कुकी पर्याय",
+    "bannerTitle": "तुमचे गोपनीयता पर्याय",
+    "bannerDescription": "आवश्यक कुकीज Watch ला सुरक्षित ठेवतात आणि नीट कार्यरत ठेवतात. तुमच्या परवानगीने, एक ऐच्छिक प्रथम-पक्ष कुकी शिफारसी वैयक्तिक करण्यासाठी भेटींमधील आवडी लक्षात ठेवू शकते. कोणत्याही पर्यायात संदर्भाधारित शिफारसी उपलब्ध राहतील.",
+    "acceptAll": "सर्व स्वीकारा",
+    "essentialOnly": "फक्त आवश्यक",
+    "manageChoices": "पर्याय व्यवस्थापित करा",
+    "savingChoice": "कुकी निवड जतन करत आहे",
+    "settings": "कुकी सेटिंग्ज",
+    "settingsDescription": "भेटींमधून शिफारसींसाठीच्या आवडी Watch ने लक्षात ठेवाव्यात की नाही ते निवडा. तुम्ही हे कधीही बदलू शकता.",
+    "essentialCookies": "आवश्यक कुकीज",
+    "essentialDescription": "सुरक्षा, प्लेबॅक, गोपनीयता पर्याय आणि शिफारस विनंतीचे श्रेयांकन.",
+    "alwaysActive": "नेहमी सक्रिय",
+    "personalization": "वैयक्तिकरण",
+    "personalizationDescription": "भेटींमधील मर्यादित आवडी लक्षात ठेवा. हे बंद केल्यावरही संदर्भाधारित शिफारसी उपलब्ध राहतील.",
+    "erasurePending": "प्रोफाइल हटवण्याची प्रक्रिया प्रलंबित आहे. संदर्भाधारित शिफारसी आधीपासून सक्रिय आहेत.",
+    "cancel": "रद्द करा",
+    "saveChoices": "पर्याय जतन करा",
+    "saving": "जतन करत आहे…",
+    "loadError": "तुमचा पर्याय लोड करता आला नाही. तरीही तुम्ही खाली निवड करू शकता.",
+    "grantError": "वैयक्तिकरण सक्षम करता आले नाही. फक्त आवश्यक पर्याय उपलब्ध राहील.",
+    "saveError": "तुमचा पर्याय जतन करता आला नाही. कृपया पुन्हा प्रयत्न करा."
   }
 }

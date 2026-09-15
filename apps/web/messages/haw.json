@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Hoʻololi i ka ʻōlelo leo",
     "home": "ʻAoʻao home o JesusFilm",
     "closeSearch": "Pani i ka huli",
-    "submitSearch": "Huli"
+    "submitSearch": "Huli",
+    "library": "Waihona"
   },
   "SearchOverlay": {
     "dialogLabel": "Huli a nānā i nā wikiō",
@@ -467,6 +468,7 @@
     "sports": "Haʻuki",
     "collections": "Nā Hōʻiliʻili",
     "subtitlesOnly": "Nā wehewehe ma lalo wale nō",
+    "backToTop": "Hoʻi i luna",
     "newlyAdded": "Hoʻohui hou ʻia",
     "newVideosTitle": "Nā wikiō Kalikiano hou ma {language}",
     "newestFirst": "Nā mea hou ma mua",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Nā wikiō kūʻokoʻa",
     "videosFromCollection": "Nā wikiō mai {collection}.",
     "standaloneDescription": "Nā wikiō kūʻokoʻa ma kēia ʻōlelo.",
-    "openCollection": "Wehe i ka hōʻiliʻili"
+    "openCollection": "Wehe i ka hōʻiliʻili",
+    "filters": "Nā kānana",
+    "filterLength": "Lōʻihi",
+    "filterLength_under5": "Ma lalo o 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Ma luna o 30 min",
+    "filterType": "ʻAno",
+    "clearFilters": "Hoʻomaʻemaʻe i nā kānana",
+    "filterResults": "Hōʻike ʻia {count} o {total}",
+    "noFilterResults": "ʻAʻohe wikiō e kūlike me kēia mau kānana. E hoʻāʻo e wehe i kekahi.",
+    "filterAdded": "Hoʻohui ʻia",
+    "filterAdded_60d": "Nā lā 60 i hala",
+    "filterAdded_6m": "Nā mahina 6 i hala",
+    "filterAdded_12m": "Nā mahina 12 i hala"
   },
   "WatchHome": {
     "pageTitle": "Nānā ʻo Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Nāmua wikiō ma mua",
     "nextVideoPreview": "Nāmua wikiō aʻe",
     "mediaCollection": "Hōʻiliʻili Media",
-    "scrollToVideo": "ʻAu i ka wikiō {title}"
+    "scrollToVideo": "ʻAu i ka wikiō {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "ʻAoʻao home o Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Hoʻi i Nānā",
     "browseVideos": "Nānā i nā wikiō"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Nānā Kiʻiʻoniʻoni Pōkole",
-    "actions": {
-      "joinUs": "E hui pū me mākou",
-      "shareMission": "E kaʻana i kā mākou mikionali"
-    },
-    "welcomeStart": {
-      "label": "ʻO ka manaʻoʻiʻo a me ka Palapala Hemolele",
-      "title": "Nā Koho Wikiō o kēia Lā",
-      "description": "Nā wikiō ma muli o ka manaʻoʻiʻo mai kā mākou waihona e hoʻoulu, e hoʻāʻo, a e hoʻāla i ka noʻonoʻo."
-    },
-    "welcomeMorning": {
-      "label": "Hoʻoulu no ke Kakahiaka",
-      "title": "Aloha kakahiaka! E kali mai ana nā manawa Baibala o kēia lā.",
-      "description": "E hoʻomaka i kou lā me nā manawa Baibala hoʻoulu e paipai a hoʻokiʻekiʻe i kou ʻuhane."
-    },
-    "welcomeAfternoon": {
-      "label": "Hoʻoulu no ke Auinalā",
-      "title": "Aloha auinalā! Nā manawa Baibala no kou lā.",
-      "description": "Nā maʻiʻo Baibala hoʻoulu kūpono no kou wā hoʻomaha auinalā a i ʻole no ka hoʻomau ʻana i ka hoʻoikaika."
-    },
-    "welcomeEvening": {
-      "label": "Hoʻoulu no ke Ahiahi",
-      "title": "Aloha ahiahi! E hoʻomaha me nā manawa Baibala.",
-      "description": "Nā manawa Baibala mālie e kōkua iā ʻoe e noʻonoʻo a loaʻa ka hōʻoluʻolu i ka pau ʻana o kou lā."
-    },
-    "joinUs": {
-      "label": "E hui pū me mākou",
-      "title": "Ke ʻimi nei nā piliona",
-      "description": "Aia ka ʻohi. E hui pū me mākou i ko kākou kaʻana ʻana i ka ʻeuanelio i ka honua ma o nā media kikohoʻe."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "E hele pū kākou",
-      "title": "Ke haʻi pū nei i ka Moʻolelo no Iesu",
-      "description": "I lohe a ʻike lākou i ke aloha o Iesu ma kā lākou ʻōlelo iho ma kahi a lākou e noho ai."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% kūlike",
     "none": "ʻAʻohe wikiō paipai i loaʻa no kēia wikiō ma kēia ʻōlelo."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "ʻŌlelo leo",
     "selectLanguageVersion": "Koho i kahi mana ʻōlelo",
     "watchSelectedVersion": "Nānā i ka mana i koho ʻia"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Koho kuki",
+    "bannerTitle": "Kāu mau koho pilikino",
+    "bannerDescription": "Mālama nā kuki pono i ka palekana a me ka holo pono o Watch. Inā ʻae mai ʻoe, hiki i kekahi kuki koho mua ke hoʻomanaʻo i nā hoihoi ma waena o nā kipa ʻana e hoʻopilikino i nā paipai. Loaʻa nō nā paipai pili-kūlana ma kēlā me kēia ala.",
+    "acceptAll": "ʻAe i nā mea a pau",
+    "essentialOnly": "Nā mea pono wale nō",
+    "manageChoices": "Mālama i nā koho",
+    "savingChoice": "Ke mālama nei i ke koho kuki",
+    "settings": "Nā hoʻonohonoho kuki",
+    "settingsDescription": "E koho inā hiki iā Watch ke hoʻomanaʻo i nā hoihoi paipai ma waena o nā kipa ʻana. Hiki iā ʻoe ke hoʻololi i kēia i kēlā me kēia manawa.",
+    "essentialCookies": "Nā kuki pono",
+    "essentialDescription": "Palekana, pāʻani hou ʻana, nā koho pilikino, a me ka hāʻawi ʻana i ke kumu o nā noi paipai.",
+    "alwaysActive": "ʻĀ mau nō ia",
+    "personalization": "Hoʻopilikino",
+    "personalizationDescription": "E hoʻomanaʻo i nā hoihoi i kaupalena ʻia ma waena o nā kipa ʻana. Inā pio kēia, e loaʻa nō nā paipai pili-kūlana.",
+    "erasurePending": "Ke kali nei ka holoi ʻana i ka moʻokāki. Ke hana nei nā paipai pili-kūlana i kēia manawa.",
+    "cancel": "Hoʻōki",
+    "saveChoices": "Mālama i nā koho",
+    "saving": "Ke mālama nei…",
+    "loadError": "ʻAʻole hiki ke hoʻouka ʻia kāu koho. Hiki nō iā ʻoe ke koho ma lalo.",
+    "grantError": "ʻAʻole hiki ke hoʻā i ka hoʻopilikino. Loaʻa nō ka koho mea pono wale nō.",
+    "saveError": "ʻAʻole hiki ke mālama ʻia kāu koho. E hoʻāʻo hou."
   }
 }

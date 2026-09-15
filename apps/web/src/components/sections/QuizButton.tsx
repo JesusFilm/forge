@@ -36,7 +36,7 @@ export function QuizButton({ data }: QuizButtonProps): ReactElement {
           <div className="flex cursor-pointer items-center justify-between p-4 xl:p-6">
             <div className="absolute inset-0 bg-[url(/watch/assets/overlay.svg)] bg-repeat opacity-50 mix-blend-multiply" />
             <div className="relative z-1 flex w-full items-center leading-[1.2] font-semibold md:text-xl xl:text-2xl">
-              <span className="mr-4 flex-none rounded-lg border-2 border-white px-2 py-1 text-xs font-extrabold tracking-wider uppercase">
+              <span className="mr-4 flex-none rounded-lg border-2 border-white px-2 py-1 text-sm sm:text-xs font-extrabold tracking-wider uppercase">
                 {studyT("quiz")}
               </span>
               <div className="flex-auto text-center">{buttonText}</div>

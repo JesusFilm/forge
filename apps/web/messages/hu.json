@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Hang nyelvének módosítása",
     "home": "JesusFilm kezdőlap",
     "closeSearch": "Keresés bezárása",
-    "submitSearch": "Keresés"
+    "submitSearch": "Keresés",
+    "library": "Médiatár"
   },
   "SearchOverlay": {
     "dialogLabel": "Videók keresése és böngészése",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Gyűjtemények",
     "subtitlesOnly": "Csak felirat",
+    "backToTop": "Vissza a tetejére",
     "newlyAdded": "Újonnan hozzáadva",
     "newVideosTitle": "Új keresztény videók {language} nyelven",
     "newestFirst": "A legújabb elöl",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Önálló videók",
     "videosFromCollection": "Videók innen: {collection}.",
     "standaloneDescription": "Önálló videók ebben a nyelvben.",
-    "openCollection": "Gyűjtemény megnyitása"
+    "openCollection": "Gyűjtemény megnyitása",
+    "filters": "Szűrők",
+    "filterLength": "Hossz",
+    "filterLength_under5": "5 percnél rövidebb",
+    "filterLength_5to10": "5-10 perc",
+    "filterLength_10to30": "10-30 perc",
+    "filterLength_over30": "30 percnél hosszabb",
+    "filterType": "Típus",
+    "clearFilters": "Szűrők törlése",
+    "filterResults": "{count} / {total} megjelenítve",
+    "noFilterResults": "Egyik videó sem felel meg ezeknek a szűrőknek. Próbálj eltávolítani egyet.",
+    "filterAdded": "Hozzáadva",
+    "filterAdded_60d": "Utolsó 60 nap",
+    "filterAdded_6m": "Utolsó 6 hónap",
+    "filterAdded_12m": "Utolsó 12 hónap"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project nézés",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Előző videó előnézete",
     "nextVideoPreview": "Következő videó előnézete",
     "mediaCollection": "Médiagyűjtemény",
-    "scrollToVideo": "Görgess a {title} videóhoz"
+    "scrollToVideo": "Görgess a {title} videóhoz",
+    "forYou": "Neked"
   },
   "WatchFooter": {
     "home": "Jesus Film Project kezdőlap",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Vissza a megtekintéshez",
     "browseVideos": "Videók böngészése"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Rövidfilm megtekintése",
-    "actions": {
-      "joinUs": "Csatlakozz hozzánk",
-      "shareMission": "Vállalj részt a küldetésünkben"
-    },
-    "welcomeStart": {
-      "label": "Hit és Írás",
-      "title": "Mai videóajánlatok",
-      "description": "Hitközpontú videótartalmak a gyűjteményünkből, hogy inspiráljanak, kihívást jelentsenek, és gondolkodásra indítsanak."
-    },
-    "welcomeMorning": {
-      "label": "Reggeli inspiráció",
-      "title": "Jó reggelt! Várnak a mai bibliai pillanatok.",
-      "description": "Kezdd a napot bátorító bibliai pillanatokkal, amelyek inspirálnak és felemelnek."
-    },
-    "welcomeAfternoon": {
-      "label": "Délutáni inspiráció",
-      "title": "Jó napot! Bibliai pillanatok a napodhoz.",
-      "description": "Bátorító bibliai tartalmak egy délutáni szünethez vagy további inspirációhoz."
-    },
-    "welcomeEvening": {
-      "label": "Esti inspiráció",
-      "title": "Jó estét! Pihenj meg bibliai pillanatokkal.",
-      "description": "Nyugodt bibliai pillanatok, hogy elcsendesedj, elgondolkodj, és vigaszt találj a nap végén."
-    },
-    "joinUs": {
-      "label": "Csatlakozz hozzánk",
-      "title": "Milliárdok keresnek választ",
-      "description": "Itt van az aratás. Csatlakozz hozzánk, és osszuk meg az evangéliumot a világgal digitális médián keresztül."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Induljunk együtt",
-      "title": "Jézus történetét együtt elmesélve",
-      "description": "Hogy a saját nyelvükön hallhassák és láthassák Jézus szeretetét, ott, ahol vannak."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}%-os egyezés",
     "none": "Ehhez a videóhoz ezen a nyelven nem található ajánlás."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Hangsáv nyelve",
     "selectLanguageVersion": "Nyelvi változat kiválasztása",
     "watchSelectedVersion": "Kiválasztott változat megtekintése"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie-beállítások",
+    "bannerTitle": "Adatvédelmi beállításaid",
+    "bannerDescription": "Az alapvető cookie-k biztonságossá teszik a Watch használatát, és biztosítják a működését. Az engedélyeddel egy opcionális saját cookie megjegyezheti az érdeklődési köreidet a látogatások között, hogy személyre szabott ajánlásokat adhassunk. A kontextuális ajánlások így is, úgy is elérhetők maradnak.",
+    "acceptAll": "Összes elfogadása",
+    "essentialOnly": "Csak az alapvetők",
+    "manageChoices": "Beállítások kezelése",
+    "savingChoice": "Cookie-beállítás mentése",
+    "settings": "Cookie-beállítások",
+    "settingsDescription": "Válaszd ki, hogy a Watch megjegyezheti-e az ajánlási érdeklődési köreidet a látogatások között. Ezt bármikor módosíthatod.",
+    "essentialCookies": "Alapvető cookie-k",
+    "essentialDescription": "Biztonság, lejátszás, adatvédelmi beállítások és az ajánláskérések hozzárendelése.",
+    "alwaysActive": "Mindig aktív",
+    "personalization": "Személyre szabás",
+    "personalizationDescription": "Megjegyzi a korlátozott érdeklődési köröket a látogatások között. Ha ezt kikapcsolod, a kontextuális ajánlások továbbra is elérhetők maradnak.",
+    "erasurePending": "A profil törlése folyamatban van. A kontextuális ajánlások már aktívak.",
+    "cancel": "Mégse",
+    "saveChoices": "Beállítások mentése",
+    "saving": "Mentés…",
+    "loadError": "Nem sikerült betölteni a beállításodat. Alább továbbra is választhatsz.",
+    "grantError": "Nem sikerült bekapcsolni a személyre szabást. Továbbra is csak az alapvető beállítások érhetők el.",
+    "saveError": "Nem sikerült menteni a beállításodat. Kérjük, próbáld újra."
   }
 }

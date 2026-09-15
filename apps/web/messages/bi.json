@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Jenisem lanwis blong audio",
     "home": "JesusFilm hom",
     "closeSearch": "Satem search",
-    "submitSearch": "Sokem"
+    "submitSearch": "Sokem",
+    "library": "Laebri"
   },
   "SearchOverlay": {
     "dialogLabel": "Sokem mo browse ol video",
@@ -467,6 +468,7 @@
     "sports": "Ol Spot",
     "collections": "Ol kolosen",
     "subtitlesOnly": "Ol subtitle nomo",
+    "backToTop": "Go bak antap",
     "newlyAdded": "Niu i joenem",
     "newVideosTitle": "Ol niu Kristin video long {language}",
     "newestFirst": "Niu fastaem",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Ol video we i stanap olsem",
     "videosFromCollection": "Ol video from {collection}.",
     "standaloneDescription": "Ol video we i stanap olsem long lanwis ia.",
-    "openCollection": "Openem collection"
+    "openCollection": "Openem collection",
+    "filters": "Filta",
+    "filterLength": "Longfala",
+    "filterLength_under5": "Andanit long 5 minit",
+    "filterLength_5to10": "5-10 minit",
+    "filterLength_10to30": "10-30 minit",
+    "filterLength_over30": "Antap long 30 minit",
+    "filterType": "Kaen",
+    "clearFilters": "Rimuvum ol filta",
+    "filterResults": "Soem {count} long {total}",
+    "noFilterResults": "I no gat video we i stret wetem ol filta ia. Traem rimuvum wan.",
+    "filterAdded": "Ademap",
+    "filterAdded_60d": "Las 60 dei",
+    "filterAdded_6m": "Las 6 manis",
+    "filterAdded_12m": "Las 12 manis"
   },
   "WatchHome": {
     "pageTitle": "Lukluk long Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Preview blong video bifo",
     "nextVideoPreview": "Preview blong nex video",
     "mediaCollection": "Kolosen blong media",
-    "scrollToVideo": "Scroll go long video {title}"
+    "scrollToVideo": "Scroll go long video {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project hom",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Go bak long Watch",
     "browseVideos": "Browsem olketa video"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Lukluk Sot Film",
-    "actions": {
-      "joinUs": "Join wetem mifala",
-      "shareMission": "Sharem mission blong mifala"
-    },
-    "welcomeStart": {
-      "label": "Bilif mo Baebol",
-      "title": "Video we mifala i pikim tede",
-      "description": "Ol video long library blong mifala we i stap long faith mo Scripture blong givim inspiration, challenge, mo mekem tingting i go dip."
-    },
-    "welcomeMorning": {
-      "label": "Inspirason blong Moning",
-      "title": "Gud moning! Ol Bible moment blong tede i wet long yu.",
-      "description": "Statem de blong yu wetem ol encouragem Bible moment we i mekem spirit blong yu i kam antap."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirason blong Aftenun",
-      "title": "Gud aftenun! Ol Bible moment blong de blong yu.",
-      "description": "Ol encouragem Bible video we i fit long aftenun rest blong yu o blong gohed blong kisim inspiration."
-    },
-    "welcomeEvening": {
-      "label": "Inspirason blong Ivning",
-      "title": "Gud ivning! Rest gud wetem ol Bible moment.",
-      "description": "Ol kwaet Bible moment blong helpem yu tingting bakegen mo faenem comfort taem de blong yu i go finis."
-    },
-    "joinUs": {
-      "label": "Join wetem mifala",
-      "title": "Billion i stap lukaot",
-      "description": "Harvest i kamap. Kam join wetem mifala taem mifala i serem gospel long wol long digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Yumi go tugeta",
-      "title": "Yumi talem stori blong Jisas tugeta",
-      "description": "Blong oli save harem mo luklavem blong Jisas long olgeta wanfala lanwis, stret long ples we oli stap long hem."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% i match",
     "none": "I no faenem eni video we i stret blong rekomendem wetem video ia long lanwis ia."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Odio lanwis",
     "selectLanguageVersion": "Jusum wan lanwis vesen",
     "watchSelectedVersion": "Lukluk vesen we yu jusum"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Ol joes blong cookie",
+    "bannerTitle": "Ol joes blong praevasi blong yu",
+    "bannerDescription": "Ol impoten cookie oli mekem Watch i stap sef mo i wok gud. Sipos yu agri, wan opsenel fas-pati cookie i save tingbaot ol intres blong yu long plante visit blong mekem ol rekomendesen oli stret moa long yu. Ol rekomendesen we oli folem konteks bambae oli stap yet nomata wanem joes yu mekem.",
+    "acceptAll": "Agri long olgeta",
+    "essentialOnly": "Ol impoten nomo",
+    "manageChoices": "Manejim ol joes",
+    "savingChoice": "Stap sevem joes blong cookie",
+    "settings": "Ol seting blong cookie",
+    "settingsDescription": "Jusum sipos Watch i save tingbaot ol intres blong rekomendesen blong yu long plante visit. Yu save jenisim hem eni taem.",
+    "essentialCookies": "Ol impoten cookie",
+    "essentialDescription": "Sikuriti, plebak, ol joes blong praevasi, mo atribusen blong ol rikwest blong rekomendesen.",
+    "alwaysActive": "I stap aktif oltaem",
+    "personalization": "Mekem i stret long yu",
+    "personalizationDescription": "Tingbaot ol intres we oli makem finis long plante visit. Sipos yu tanem hem i of, ol rekomendesen we oli folem konteks bambae oli stap yet.",
+    "erasurePending": "Stap wet blong klinim profail. Ol rekomendesen we oli folem konteks oli stap aktif finis.",
+    "cancel": "Kensel",
+    "saveChoices": "Sevem ol joes",
+    "saving": "Stap sevem…",
+    "loadError": "No save lodem joes blong yu. Be yu save jusum yet long daonbilo.",
+    "grantError": "No save mekem personalization i wok. Opsen blong ol impoten nomo i stap yet.",
+    "saveError": "No save sevem joes blong yu. Plis traem bakegen."
   }
 }

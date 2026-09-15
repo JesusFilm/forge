@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио телен үҙгәртеү",
     "home": "JesusFilm баш бите",
     "closeSearch": "Эҙләүҙе ябыу",
-    "submitSearch": "Эҙләү"
+    "submitSearch": "Эҙләү",
+    "library": "Китапхана"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоларҙы эҙләү һәм ҡарау",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Йыйынтыҡтар",
     "subtitlesOnly": "Тик субтитрҙар",
+    "backToTop": "Өҫкә ҡайтыу",
     "newlyAdded": "Яңыраҡ өҫтәлгән",
     "newVideosTitle": "{language} телендәге яңы христиан видеолары",
     "newestFirst": "Иң яңылары өҫтә",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Айырым видеолар",
     "videosFromCollection": "{collection} йыйынтығынан видеолар.",
     "standaloneDescription": "Был телдәге айырым видеолар.",
-    "openCollection": "Йыйынтыҡты асыу"
+    "openCollection": "Йыйынтыҡты асыу",
+    "filters": "Фильтрҙар",
+    "filterLength": "Оҙонлоғо",
+    "filterLength_under5": "5 минуттан кәм",
+    "filterLength_5to10": "5-10 минут",
+    "filterLength_10to30": "10-30 минут",
+    "filterLength_over30": "30 минуттан күп",
+    "filterType": "Төрө",
+    "clearFilters": "Фильтрҙарҙы таҙартыу",
+    "filterResults": "{total} иҫәбенән {count} күрһәтелде",
+    "noFilterResults": "Был фильтрҙарға тап килгән видео юҡ. Берәүһен алып ҡарағыҙ.",
+    "filterAdded": "Өҫтәлде",
+    "filterAdded_60d": "Һуңғы 60 көн",
+    "filterAdded_6m": "Һуңғы 6 ай",
+    "filterAdded_12m": "Һуңғы 12 ай"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project ҡарау",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Алдағы видеоны алдан ҡарау",
     "nextVideoPreview": "Киләһе видеоны алдан ҡарау",
     "mediaCollection": "Медиа-йыйынтыҡ",
-    "scrollToVideo": "{title} видеоһына тиклем һөрөтөп барығыҙ"
+    "scrollToVideo": "{title} видеоһына тиклем һөрөтөп барығыҙ",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project баш бите",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Ҡарауға ҡайтыу",
     "browseVideos": "Видеоларҙы ҡарау"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Ҡыҫҡа фильмды ҡарау",
-    "actions": {
-      "joinUs": "Беҙгә ҡушылығыҙ",
-      "shareMission": "Беҙҙең миссияла ҡатнашығыҙ"
-    },
-    "welcomeStart": {
-      "label": "Иман һәм Изге Яҙма",
-      "title": "Бөгөнгө видео һайланмаһы",
-      "description": "Рухландырһын, уйландырһын һәм фекер уятһын өсөн китапханабыҙҙан алынған иманға йүнәлтелгән видео контент."
-    },
-    "welcomeMorning": {
-      "label": "Иртәнге рухландырғыс",
-      "title": "Хәйерле иртә! Бөгөнгө Изге Яҙма мәлдәре һеҙҙе көтә.",
-      "description": "Көнөгөҙҙө рухландырыусы һәм күңелегеҙҙе күтәреүсе Изге Яҙма мәлдәре менән башлағыҙ."
-    },
-    "welcomeAfternoon": {
-      "label": "Төштән һуңғы рухландырғыс",
-      "title": "Хәйерле көндөҙ! Бөгөнгө көн өсөн Изге Яҙма мәлдәре.",
-      "description": "Төштән һуңғы тәнәфесегеҙ өсөн йәки дауамлы рухландырғыс булараҡ тап килгән рухи Изге Яҙма контенты."
-    },
-    "welcomeEvening": {
-      "label": "Киске рухландырғыс",
-      "title": "Хәйерле кис! Изге Яҙма мәлдәре менән тынығығыҙ.",
-      "description": "Көнөңҙөң аҙағына еткәндә уйланырға һәм йыуаныс табырға ярҙам иткән тыныс Изге Яҙма мәлдәре."
-    },
-    "joinUs": {
-      "label": "Беҙгә ҡушылығыҙ",
-      "title": "Миллиардтар эҙләй",
-      "description": "Ураҡ бына хәҙер. Цифрлы медиа ярҙамында донъя менән Инжил хәбәрен уртаҡлашҡан саҡта беҙгә ҡушылығыҙ."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Бергә барайыҡ",
-      "title": "Ғайса тураһында хикәйәне бергә һөйләйек",
-      "description": "Шулай итеп, улар Ғайсаның мөхәббәтен үҙҙәре булған ерҙә, үҙҙәренең телендә ишетә һәм күрә алһын."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% тап килә",
     "none": "Был телдә ошо видеоға тәҡдимдәр табылманы."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Аудиотел",
     "selectLanguageVersion": "Тел версияһын һайлау",
     "watchSelectedVersion": "Һайланған версияны ҡарау"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie һайлауҙары",
+    "bannerTitle": "Хосусилыҡ буйынса һайлауҙарығыҙ",
+    "bannerDescription": "Мотлаҡ cookie файлдары Watch сервисының хәүефһеҙ һәм төҙөк эшләүен тәьмин итә. Һеҙҙең рөхсәт менән, өҫтәмә беренсе яҡ cookie файлы килеүҙәр араһында ҡыҙыҡһыныуҙарығыҙҙы иҫтә ҡалдырып, тәҡдимдәрҙе шәхсиләштерә ала. Контекстлы тәҡдимдәр ике осраҡта ла ҡулланырға мөмкин.",
+    "acceptAll": "Барыһын да ҡабул итеү",
+    "essentialOnly": "Мотлаҡ ҡына",
+    "manageChoices": "Һайлауҙарҙы көйләү",
+    "savingChoice": "Cookie буйынса һайлауҙы һаҡлау",
+    "settings": "Cookie көйләүҙәре",
+    "settingsDescription": "Watch килеүҙәр араһында тәҡдимдәргә бәйле ҡыҙыҡһыныуҙарығыҙҙы иҫтә ҡалдырһынмы-юҡмы, шуны һайлағыҙ. Быны теләһә ҡайһы ваҡытта үҙгәртә алаһығыҙ.",
+    "essentialCookies": "Мотлаҡ cookie файлдары",
+    "essentialDescription": "Хәүефһеҙлек, видео ҡарау, хосусилыҡ буйынса һайлауҙар һәм тәҡдим һорауҙарына бәйле сығанаҡты теркәү.",
+    "alwaysActive": "Һәр ваҡыт әүҙем",
+    "personalization": "Шәхсиләштереү",
+    "personalizationDescription": "Килеүҙәр араһында сикләнгән ҡыҙыҡһыныуҙарҙы иҫтә ҡалдырыу. Быны һүндерһәгеҙ, контекстлы тәҡдимдәр барыбер һаҡлана.",
+    "erasurePending": "Профильде юйыу көтөлә. Контекстлы тәҡдимдәр инде әүҙем.",
+    "cancel": "Баш тартыу",
+    "saveChoices": "Һайлауҙарҙы һаҡлау",
+    "saving": "Һаҡлана…",
+    "loadError": "Һеҙҙең һайлауҙы тейәп булманы. Шулай ҙа түбәндә һайлай алаһығыҙ.",
+    "grantError": "Шәхсиләштереүҙе ҡабыҙып булманы. Мотлаҡ ҡына тигән вариант ҡулланыла ала.",
+    "saveError": "Һеҙҙең һайлауҙы һаҡлап булманы. Зинһар, ҡабаттан һынап ҡарағыҙ."
   }
 }

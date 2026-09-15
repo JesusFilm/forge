@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Fakafesuiaʻi te language o te leo",
     "home": "Te kāiga o JesusFilm",
     "closeSearch": "Tapuni te search",
-    "submitSearch": "Saili"
+    "submitSearch": "Saili",
+    "library": "Fale tusi"
   },
   "SearchOverlay": {
     "dialogLabel": "Saili kae browse vitio",
@@ -467,6 +468,7 @@
     "sports": "Taaloga",
     "collections": "Fakaputuga",
     "subtitlesOnly": "Subtitles fua",
+    "backToTop": "Toe foki ki luga",
     "newlyAdded": "Faatoā fakapuloua",
     "newVideosTitle": "Vitio faka-Kelisiano fou i te {language}",
     "newestFirst": "Mea fou muamua",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Vitio tūtasi",
     "videosFromCollection": "Videos mai {collection}.",
     "standaloneDescription": "Standalone videos i tenei language.",
-    "openCollection": "Tatala collection"
+    "openCollection": "Tatala collection",
+    "filters": "Fakamama",
+    "filterLength": "Loa",
+    "filterLength_under5": "Fakaitiiti ifo i te 5 minuti",
+    "filterLength_5to10": "5-10 minuti",
+    "filterLength_10to30": "10-30 minuti",
+    "filterLength_over30": "Sili atu i te 30 minuti",
+    "filterType": "Vaega",
+    "clearFilters": "Tapena a fakamama",
+    "filterResults": "E fakaasi {count} mai te {total}",
+    "noFilterResults": "Seai se vitio e fetaui mo fakamama konei. Taumafai ke ave keatea se tasi.",
+    "filterAdded": "Fakaopoopo",
+    "filterAdded_60d": "Aso 60 ko teka",
+    "filterAdded_6m": "Masina 6 ko teka",
+    "filterAdded_12m": "Masina 12 ko teka"
   },
   "WatchHome": {
     "pageTitle": "Matamata i te Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Vitio preview muamua",
     "nextVideoPreview": "Vitio preview e sosoa",
     "mediaCollection": "Fakaputuga o te media",
-    "scrollToVideo": "Sukesuke ki lalo ki te vitio {title}"
+    "scrollToVideo": "Sukesuke ki lalo ki te vitio {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Te kāiga o Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Toe foki ki te Watch",
     "browseVideos": "Browse vitio"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Matamata ki te ata tifaga poto",
-    "actions": {
-      "joinUs": "Fakatasi mai",
-      "shareMission": "Tufa i te matou Misiona"
-    },
-    "welcomeStart": {
-      "label": "Fakatuanaki mo te Tusi Tapu",
-      "title": "Vitio filifili mō te aso nei",
-      "description": "Vitio fakavae ki te fakatuanaki mai te matou library ke fakamalosi, fakalotolotolua, mo fakaosooso mafaufauga."
-    },
-    "welcomeMorning": {
-      "label": "Fakamalosiga i te taeao",
-      "title": "Taeao manuia! E fakaasi atu a mea mai te Tusi Tapu mō te aso nei.",
-      "description": "Amata tou aso mo a mea fakamalosi mai te Tusi Tapu ne fuafuagina ke fakamalosia kae fakaola tou loto."
-    },
-    "welcomeAfternoon": {
-      "label": "Fakamalosiga i te afiafi",
-      "title": "Afiafi manuia! Mea mai te Tusi Tapu mō tou aso.",
-      "description": "Tala fakamalosia mai te Tusi Tapu e fetaui lelei mō tou mālōlō i te afiafi io me ke tumau tou fakamalosiga."
-    },
-    "welcomeEvening": {
-      "label": "Fakamalosiga i te afiafi po",
-      "title": "Afiafi manuia! Malōlō mālie mo a mea mai te Tusi Tapu.",
-      "description": "A mea filemu mai te Tusi Tapu ke fesoasoani ki a koe o mafaufau kae maua te fakamafanafana i te fakaotiga o tou aso."
-    },
-    "joinUs": {
-      "label": "Fakatasi mai",
-      "title": "E tokouke a tino e sailivili",
-      "description": "Kua oko mai te taimi o te seleselega. Fakatafai mai mo matou ke tufa te tala lei ki te lalolagi mā te media faka-igitali."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Tatou olo fakatasi",
-      "title": "Faipati ki te tala o Iesu, fakatasi",
-      "description": "Ke mafai o lagona kae kilo atu latou ki te alofa o Iesu i tālatou lava language i te koga telā e nofo ei latou."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% e fetaui",
     "none": "Seai ne fautuaga ne maua mō te vitio tenei i te language tenei."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Gana leo",
     "selectLanguageVersion": "Filifili se vaega i te gana",
     "watchSelectedVersion": "Kilo ki te vaega ne filifili"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Filifiliga kuki",
+    "bannerTitle": "Au filifiliga puipuiga totino",
+    "bannerDescription": "Kuki tāua e tausi ei a Watch ke saogalemu kae galue tonu. Kafai koe e talia, e mafai ne se kuki filifiliga a te saite o masaua a mea e fiafia koe ki ei i asiga keseese ko te mea ke fakaŋofogofie a fakatakitakiga. Fautuaga e fetaui mo te tulaga e avanoa faeloa i auala e lua.",
+    "acceptAll": "Talia katoa",
+    "essentialOnly": "Mea tāua fua",
+    "manageChoices": "Pule ki filifiliga",
+    "savingChoice": "Faasao te filifiliga kuki",
+    "settings": "Tulaga kuki",
+    "settingsDescription": "Filifili me mafai o masaua ne Watch a mea e fiafia koe ki ei mō fautuaga i asiga keseese. E mafai o sui ne koe i so se taimi.",
+    "essentialCookies": "Kuki tāua",
+    "essentialDescription": "Saogalemu, tā fakasolo o vitio, filifiliga puipuiga totino, mo te māfuaaga o talosaga fautuaga.",
+    "alwaysActive": "Galue faeloa",
+    "personalization": "Fakatino ki a koe",
+    "personalizationDescription": "Masaua a mea e fiafia koe ki ei i asiga keseese. Kafai e tamate ne koe te mea tenei, e avanoa faeloa a fautuaga e fetaui mo te tulaga.",
+    "erasurePending": "Te soloiga o te talaaga koi fakaatali. Fautuaga e fetaui mo te tulaga ko oti ne fakaola.",
+    "cancel": "Fakaseai",
+    "saveChoices": "Faasao filifiliga",
+    "saving": "Faasao…",
+    "loadError": "Ne seki mafai o uta mai tau filifiliga. E mafai faeloa o filifili koe i lalo.",
+    "grantError": "Ne seki mafai o fakaola te fakatino ki a koe. Mea tāua fua e avanoa faeloa.",
+    "saveError": "Ne seki mafai o faasao tau filifiliga. Fakamolemole toe taumafai."
   }
 }

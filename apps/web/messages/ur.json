@@ -180,7 +180,8 @@
     "changeAudioLanguage": "آڈیو زبان تبدیل کریں",
     "home": "JesusFilm ہوم",
     "closeSearch": "تلاش بند کریں",
-    "submitSearch": "تلاش کریں"
+    "submitSearch": "تلاش کریں",
+    "library": "لائبریری"
   },
   "SearchOverlay": {
     "dialogLabel": "ویڈیوز تلاش اور براؤز کریں",
@@ -467,6 +468,7 @@
     "sports": "کھیل",
     "collections": "مجموعے",
     "subtitlesOnly": "صرف سب ٹائٹلز",
+    "backToTop": "اوپر واپس",
     "newlyAdded": "نیا شامل شدہ",
     "newVideosTitle": "{language} میں نئی مسیحی ویڈیوز",
     "newestFirst": "نئی ترین پہلے",
@@ -497,7 +499,21 @@
     "standaloneVideos": "الگ ویڈیوز",
     "videosFromCollection": "{collection} سے ویڈیوز۔",
     "standaloneDescription": "اس زبان میں الگ ویڈیوز۔",
-    "openCollection": "مجموعہ کھولیں"
+    "openCollection": "مجموعہ کھولیں",
+    "filters": "فلٹرز",
+    "filterLength": "دورانیہ",
+    "filterLength_under5": "5 منٹ سے کم",
+    "filterLength_5to10": "5-10 منٹ",
+    "filterLength_10to30": "10-30 منٹ",
+    "filterLength_over30": "30 منٹ سے زیادہ",
+    "filterType": "قسم",
+    "clearFilters": "فلٹرز صاف کریں",
+    "filterResults": "{total} میں سے {count} دکھائے گئے",
+    "noFilterResults": "ان فلٹرز سے کوئی ویڈیو میل نہیں کھاتی۔ ایک ہٹا کر دیکھیں۔",
+    "filterAdded": "شامل کیا گیا",
+    "filterAdded_60d": "پچھلے 60 دن",
+    "filterAdded_6m": "پچھلے 6 ماہ",
+    "filterAdded_12m": "پچھلے 12 ماہ"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project واچ",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "پچھلی ویڈیو کا پیش نظارہ",
     "nextVideoPreview": "اگلی ویڈیو کا پیش نظارہ",
     "mediaCollection": "میڈیا کلیکشن",
-    "scrollToVideo": "{title} ویڈیو تک اسکرول کریں"
+    "scrollToVideo": "{title} ویڈیو تک اسکرول کریں",
+    "forYou": "آپ کے لیے"
   },
   "WatchFooter": {
     "home": "Jesus Film Project ہوم",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "واچ پر واپس جائیں",
     "browseVideos": "ویڈیوز براؤز کریں"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "مختصر فلم دیکھیں",
-    "actions": {
-      "joinUs": "ہمارے ساتھ شامل ہوں",
-      "shareMission": "ہمارے مشن میں شریک ہوں"
-    },
-    "welcomeStart": {
-      "label": "ایمان اور صحیفہ",
-      "title": "آج کی منتخب ویڈیوز",
-      "description": "ہماری لائبریری سے ایمان پر مبنی ویڈیو مواد، جو حوصلہ دے، چیلنج کرے، اور غور و فکر کو جنم دے۔"
-    },
-    "welcomeMorning": {
-      "label": "صبح کی تحریک",
-      "title": "صبح بخیر! آج کے بائبل لمحات آپ کے منتظر ہیں۔",
-      "description": "اپنے دن کا آغاز بائبل کے حوصلہ افزا لمحات کے ساتھ کریں، جو آپ کے دل کو تحریک اور تازگی دینے کے لیے بنائے گئے ہیں۔"
-    },
-    "welcomeAfternoon": {
-      "label": "دوپہر کی تحریک",
-      "title": "دوپہر بخیر! آپ کے دن کے لیے بائبل لمحات۔",
-      "description": "حوصلہ افزا بائبل مواد، جو آپ کے دوپہر کے وقفے یا مزید تحریک کے لیے بہترین ہے۔"
-    },
-    "welcomeEvening": {
-      "label": "شام کی تحریک",
-      "title": "شام بخیر! بائبل لمحات کے ساتھ دن سمیٹیں۔",
-      "description": "پُرسکون بائبل لمحات، جو دن کے اختتام پر غور کرنے اور تسلی پانے میں مدد دیں۔"
-    },
-    "joinUs": {
-      "label": "ہمارے ساتھ شامل ہوں",
-      "title": "اربوں لوگ تلاش میں ہیں",
-      "description": "فصل تیار ہے۔ ڈیجیٹل میڈیا کے ذریعے دنیا کو خوشخبری سنانے میں ہمارے ساتھ شامل ہوں۔"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "آئیے مل کر آگے بڑھیں",
-      "title": "یسوع کی کہانی، مل کر سناتے ہیں",
-      "description": "تاکہ وہ جہاں ہیں وہیں اپنی زبان میں یسوع کی محبت سن اور دیکھ سکیں۔"
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% مطابقت",
     "none": "اس زبان میں اس ویڈیو کے لیے کوئی تجویز نہیں ملی۔"
@@ -744,5 +723,28 @@
     "languageVersionLabel": "آڈیو زبان",
     "selectLanguageVersion": "زبان کا ورژن منتخب کریں",
     "watchSelectedVersion": "منتخب ورژن دیکھیں"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "کوکی کے انتخاب",
+    "bannerTitle": "آپ کی رازداری کے انتخاب",
+    "bannerDescription": "ضروری کوکیز Watch کو محفوظ اور درست طور پر چلانے میں مدد دیتی ہیں۔ آپ کی اجازت سے، ایک اختیاری فرسٹ پارٹی کوکی آپ کی دلچسپیوں کو مختلف دوروں میں یاد رکھ سکتی ہے تاکہ سفارشات کو ذاتی بنایا جا سکے۔ سیاق و سباق کے مطابق سفارشات ہر صورت دستیاب رہیں گی۔",
+    "acceptAll": "سب قبول کریں",
+    "essentialOnly": "صرف ضروری",
+    "manageChoices": "انتخاب منظم کریں",
+    "savingChoice": "کوکی کا انتخاب محفوظ کیا جا رہا ہے",
+    "settings": "کوکی کی ترتیبات",
+    "settingsDescription": "منتخب کریں کہ آیا Watch مختلف دوروں میں سفارشات سے متعلق دلچسپیاں یاد رکھے۔ آپ اسے کسی بھی وقت بدل سکتے ہیں۔",
+    "essentialCookies": "ضروری کوکیز",
+    "essentialDescription": "سیکیورٹی، پلے بیک، رازداری کے انتخاب، اور سفارش کی درخواست کی نسبت۔",
+    "alwaysActive": "ہمیشہ فعال",
+    "personalization": "ذاتی نوعیت",
+    "personalizationDescription": "محدود دلچسپیوں کو مختلف دوروں میں یاد رکھیں۔ اسے بند کرنے پر بھی سیاق و سباق کے مطابق سفارشات دستیاب رہیں گی۔",
+    "erasurePending": "پروفائل حذف کرنے کا عمل جاری ہے۔ سیاق و سباق کے مطابق سفارشات پہلے ہی فعال ہیں۔",
+    "cancel": "منسوخ کریں",
+    "saveChoices": "انتخاب محفوظ کریں",
+    "saving": "محفوظ کیا جا رہا ہے…",
+    "loadError": "آپ کا انتخاب لوڈ نہ ہو سکا۔ پھر بھی آپ نیچے انتخاب کر سکتے ہیں۔",
+    "grantError": "ذاتی نوعیت کو فعال نہ کیا جا سکا۔ صرف ضروری والا اختیار اب بھی دستیاب ہے۔",
+    "saveError": "آپ کا انتخاب محفوظ نہ ہو سکا۔ براہِ کرم دوبارہ کوشش کریں۔"
   }
 }

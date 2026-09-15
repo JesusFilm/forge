@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Cambia lingua audio",
     "home": "Home di JesusFilm",
     "closeSearch": "Chiudi ricerca",
-    "submitSearch": "Cerca"
+    "submitSearch": "Cerca",
+    "library": "Videoteca"
   },
   "SearchOverlay": {
     "dialogLabel": "Cerca e sfoglia video",
@@ -283,6 +284,7 @@
     "sports": "Sport",
     "collections": "Raccolte",
     "subtitlesOnly": "Solo sottotitoli",
+    "backToTop": "Torna su",
     "newlyAdded": "Aggiunti di recente",
     "newVideosTitle": "Nuovi video cristiani in {language}",
     "newestFirst": "Più recenti prima",
@@ -313,7 +315,21 @@
     "standaloneVideos": "Video autonomi",
     "videosFromCollection": "Video da {collection}.",
     "standaloneDescription": "Video autonomi in questa lingua.",
-    "openCollection": "Apri raccolta"
+    "openCollection": "Apri raccolta",
+    "filters": "Filtri",
+    "filterLength": "Durata",
+    "filterLength_under5": "Meno di 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Più di 30 min",
+    "filterType": "Tipo",
+    "clearFilters": "Cancella filtri",
+    "filterResults": "{count} di {total} mostrati",
+    "noFilterResults": "Nessun video corrisponde a questi filtri. Prova a rimuoverne uno.",
+    "filterAdded": "Aggiunto",
+    "filterAdded_60d": "Ultimi 60 giorni",
+    "filterAdded_6m": "Ultimi 6 mesi",
+    "filterAdded_12m": "Ultimi 12 mesi"
   },
   "WatchHome": {
     "pageTitle": "Guarda | Jesus Film Project",
@@ -327,7 +343,8 @@
     "nextVideoPreview": "Anteprima video successivo",
     "featured": "In evidenza",
     "mediaCollection": "Collezione multimediale",
-    "scrollToVideo": "Scorri fino al video {title}"
+    "scrollToVideo": "Scorri fino al video {title}",
+    "forYou": "Consigliati per te"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Lingue",
@@ -446,7 +463,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
       "openSupportForm": "Open support form"
     }
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Guarda il cortometraggio",
-    "actions": {
-      "joinUs": "Unisciti a noi",
-      "shareMission": "Partecipa alla nostra missione"
-    },
-    "welcomeStart": {
-      "label": "Fede e Scrittura",
-      "title": "Le selezioni video di oggi",
-      "description": "Contenuti video incentrati sulla fede dalla nostra raccolta per ispirare, mettere alla prova e stimolare la riflessione."
-    },
-    "welcomeMorning": {
-      "label": "Ispirazione del mattino",
-      "title": "Buongiorno! Ti aspettano i momenti biblici di oggi.",
-      "description": "Inizia la giornata con momenti biblici incoraggianti, pensati per ispirarti e sollevare il tuo spirito."
-    },
-    "welcomeAfternoon": {
-      "label": "Ispirazione del pomeriggio",
-      "title": "Buon pomeriggio! Momenti biblici per la tua giornata.",
-      "description": "Contenuti biblici incoraggianti, perfetti per la pausa pomeridiana o per continuare a trarre ispirazione."
-    },
-    "welcomeEvening": {
-      "label": "Ispirazione della sera",
-      "title": "Buonasera! Rilassati con i momenti biblici.",
-      "description": "Momenti biblici di pace per aiutarti a riflettere e trovare conforto mentre la giornata volge al termine."
-    },
-    "joinUs": {
-      "label": "Unisciti a noi",
-      "title": "Miliardi di persone stanno cercando",
-      "description": "Il raccolto è qui. Unisciti a noi mentre condividiamo il Vangelo con il mondo attraverso i media digitali."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Andiamo insieme",
-      "title": "Raccontare insieme la storia di Gesù",
-      "description": "Così possano ascoltare e vedere l'amore di Gesù nella loro lingua, proprio dove si trovano."
-    }
-  },
   "VideoRecommendations": {
     "match": "Affinità: {percent}%",
     "none": "Non sono stati trovati video consigliati in questa lingua."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Lingua audio",
     "selectLanguageVersion": "Seleziona una versione linguistica",
     "watchSelectedVersion": "Guarda la versione selezionata"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Scelte sui cookie",
+    "bannerTitle": "Le tue scelte sulla privacy",
+    "bannerDescription": "I cookie essenziali mantengono Watch sicuro e funzionante. Con il tuo consenso, un cookie proprietario facoltativo può ricordare i tuoi interessi tra una visita e l’altra per personalizzare i consigli. I consigli contestuali restano disponibili in ogni caso.",
+    "acceptAll": "Accetta tutti",
+    "essentialOnly": "Solo essenziali",
+    "manageChoices": "Gestisci le scelte",
+    "savingChoice": "Salvataggio della scelta sui cookie",
+    "settings": "Impostazioni dei cookie",
+    "settingsDescription": "Scegli se Watch può ricordare i tuoi interessi per i consigli tra una visita e l’altra. Puoi modificare questa scelta in qualsiasi momento.",
+    "essentialCookies": "Cookie essenziali",
+    "essentialDescription": "Sicurezza, riproduzione, scelte sulla privacy e attribuzione delle richieste di consigli.",
+    "alwaysActive": "Sempre attivi",
+    "personalization": "Personalizzazione",
+    "personalizationDescription": "Ricorda interessi limitati tra una visita e l’altra. Se la disattivi, i consigli contestuali restano disponibili.",
+    "erasurePending": "L’eliminazione del profilo è in attesa. I consigli contestuali sono già attivi.",
+    "cancel": "Annulla",
+    "saveChoices": "Salva le scelte",
+    "saving": "Salvataggio in corso…",
+    "loadError": "Impossibile caricare la tua scelta. Puoi comunque scegliere qui sotto.",
+    "grantError": "Impossibile attivare la personalizzazione. Resta disponibile solo l’opzione essenziale.",
+    "saveError": "Impossibile salvare la tua scelta. Riprova."
   }
 }

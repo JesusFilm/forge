@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Изменить язык звука",
     "home": "Главная JesusFilm",
     "closeSearch": "Закрыть поиск",
-    "submitSearch": "Вешендомс"
+    "submitSearch": "Вешендомс",
+    "library": "Библиотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Поиск и просмотр видео",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Подборки",
     "subtitlesOnly": "Только субтитры",
+    "backToTop": "Вяре мърдамс",
     "newlyAdded": "Недавно добавлено",
     "newVideosTitle": "Новые христианские видео на {language}",
     "newestFirst": "Сначала новые",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Отдельные видео",
     "videosFromCollection": "Видео из {collection}.",
     "standaloneDescription": "Отдельные видео на этом языке.",
-    "openCollection": "Открыть подборку"
+    "openCollection": "Открыть подборку",
+    "filters": "Ванфтомат",
+    "filterLength": "Кувалмоц",
+    "filterLength_under5": "5 минутда сяда кржа",
+    "filterLength_5to10": "5-10 минут",
+    "filterLength_10to30": "10-30 минут",
+    "filterLength_over30": "30 минутда сяда лама",
+    "filterType": "Тип",
+    "clearFilters": "Ванфтоматнень нардамс",
+    "filterResults": "{total}-ста {count} няфтьф",
+    "noFilterResults": "Тя ванфтоматненди лаcsемс видео аш. Фкя нардак да вант.",
+    "filterAdded": "Поладф",
+    "filterAdded_60d": "Меельце 60 ши",
+    "filterAdded_6m": "Меельце 6 ков",
+    "filterAdded_12m": "Меельце 12 ков"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — просмотр",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Предпросмотр предыдущего видео",
     "nextVideoPreview": "Предпросмотр следующего видео",
     "mediaCollection": "Коллекция медиа",
-    "scrollToVideo": "Прокрутить к видео {title}"
+    "scrollToVideo": "Прокрутить к видео {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Главная Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Назад к просмотру",
     "browseVideos": "Просмотреть видео"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Смотреть короткометражный фильм",
-    "actions": {
-      "joinUs": "Присоединяйтесь",
-      "shareMission": "Разделите нашу миссию"
-    },
-    "welcomeStart": {
-      "label": "Вера и Писание",
-      "title": "Сегодняшние подборки видео",
-      "description": "Видео на тему веры из нашей библиотеки — чтобы вдохновлять, побуждать к размышлению и задавать важные вопросы."
-    },
-    "welcomeMorning": {
-      "label": "Утреннее вдохновение",
-      "title": "Доброе утро! Вас ждут библейские моменты дня.",
-      "description": "Начните день с ободряющих библейских моментов, которые вдохновляют и поднимают дух."
-    },
-    "welcomeAfternoon": {
-      "label": "Дневное вдохновение",
-      "title": "Добрый день! Библейские моменты на ваш день.",
-      "description": "Ободряющий библейский контент, подходящий для дневного перерыва или для дальнейшего вдохновения."
-    },
-    "welcomeEvening": {
-      "label": "Вечернее вдохновение",
-      "title": "Добрый вечер! Завершите день с библейскими моментами.",
-      "description": "Спокойные библейские моменты, чтобы помочь вам поразмышлять и найти утешение в конце дня."
-    },
-    "joinUs": {
-      "label": "Присоединяйтесь",
-      "title": "Миллиарды людей в поиске",
-      "description": "Время жатвы пришло. Присоединяйтесь к нам, чтобы делиться Евангелием с миром через цифровые медиа."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Пойдём вместе",
-      "title": "Рассказываем историю Иисуса вместе",
-      "description": "Чтобы люди могли слышать и видеть любовь Иисуса на своём языке там, где они находятся."
-    }
-  },
   "VideoRecommendations": {
     "match": "Совпадениясь — {percent}%",
     "none": "Тя видеонди тя кяльса рекомендацият эзть муев."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Аудио кяль",
     "selectLanguageVersion": "Кяль версия кочкамс",
     "watchSelectedVersion": "Кочф версиянть ваномс"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie кочказт",
+    "bannerTitle": "Те приватностень кочказт",
+    "bannerDescription": "Важнай cookie-ть Watch-нь ванфтема ды тевс сонь аф кадовтомс. Тонь лядяфтовкст мархта, валдаф first-party cookie содамс маштсы интереснеть тев фкса-коряс визитнень юткста, рекомендациятнень персонализациямс. Контекстовой рекомендациятне улихть кода-аф кода-аф.",
+    "acceptAll": "Сяксе пяльт",
+    "essentialOnly": "Важнайт кена",
+    "manageChoices": "Кочказтнень викшнемс",
+    "savingChoice": "Cookie кочказень ванфтома",
+    "settings": "Cookie параметрат",
+    "settingsDescription": "Кочкак, Watch маштай ли машттомс рекомендациянь интереснеть тев фкса-коряс визитнень юткста. Тят саемс маштат кодама-шкаста.",
+    "essentialCookies": "Важнай cookie-ть",
+    "essentialDescription": "Ванфтема, проигрывань, приватностень кочказт ды рекомендациянь вешень содавтома.",
+    "alwaysActive": "Сембе пингста тевса",
+    "personalization": "Персонализация",
+    "personalizationDescription": "Визитнень юткста рамазу интереснеть машттомс. Тянь сувак аф тевс, контекстовой рекомендациятне улихть ули.",
+    "erasurePending": "Профилень нардамоц аф содави пек. Контекстовой рекомендациятне ни тевса.",
+    "cancel": "Аф теемс",
+    "saveChoices": "Кочказтнень ванфтомс",
+    "saving": "Ванфтови…",
+    "loadError": "Тонь кочказць аф ули йокстовозь. Улихть алда кочкамс.",
+    "grantError": "Персонализациясь аф маряфтовсь. Важнайт кена улихть доступнайхть.",
+    "saveError": "Тонь кочказць аф ванфтовсь. Тяфтомс одтава."
   }
 }

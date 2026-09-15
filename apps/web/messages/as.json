@@ -180,7 +180,8 @@
     "changeAudioLanguage": "অডিঅ’ ভাষা সলনি কৰক",
     "home": "JesusFilm হোম",
     "closeSearch": "সন্ধান বন্ধ কৰক",
-    "submitSearch": "সন্ধান কৰক"
+    "submitSearch": "সন্ধান কৰক",
+    "library": "পুথিভঁৰাল"
   },
   "SearchOverlay": {
     "dialogLabel": "ভিডিঅ’ সন্ধান আৰু ব্ৰাউজ কৰক",
@@ -467,6 +468,7 @@
     "sports": "ক্ৰীড়া",
     "collections": "সংকলনসমূহ",
     "subtitlesOnly": "কেৱল চাবটাইটেল",
+    "backToTop": "ওপৰলৈ যাওক",
     "newlyAdded": "নতুনকৈ যোগ কৰা",
     "newVideosTitle": "{language} ভাষাত নতুন খ্ৰীষ্টীয় ভিডিঅ’",
     "newestFirst": "সৰ্বাধিক নতুন প্ৰথমে",
@@ -497,7 +499,21 @@
     "standaloneVideos": "স্বতন্ত্ৰ ভিডিঅ’",
     "videosFromCollection": "{collection}ৰ ভিডিঅ’সমূহ।",
     "standaloneDescription": "এই ভাষাত স্বতন্ত্ৰ ভিডিঅ’সমূহ।",
-    "openCollection": "সংকলন খোলক"
+    "openCollection": "সংকলন খোলক",
+    "filters": "ফিল্টাৰ",
+    "filterLength": "দীঘলতা",
+    "filterLength_under5": "৫ মিনিটৰ কম",
+    "filterLength_5to10": "৫-১০ মিনিট",
+    "filterLength_10to30": "১০-৩০ মিনিট",
+    "filterLength_over30": "৩০ মিনিটৰ অধিক",
+    "filterType": "ধৰণ",
+    "clearFilters": "ফিল্টাৰ মচক",
+    "filterResults": "{total} ৰ {count} দেখুৱাইছে",
+    "noFilterResults": "এই ফিল্টাৰবোৰৰ সৈতে কোনো ভিডিঅ' মিলা নাই। এটা আঁতৰাই চাওক।",
+    "filterAdded": "যোগ কৰা হৈছে",
+    "filterAdded_60d": "শেষৰ ৬০ দিন",
+    "filterAdded_6m": "শেষৰ ৬ মাহ",
+    "filterAdded_12m": "শেষৰ ১২ মাহ"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project ৱাচ",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "পূৰ্বৰ ভিডিঅ’ পূৰ্বদৰ্শন",
     "nextVideoPreview": "পৰৱৰ্তী ভিডিঅ’ পূৰ্বদৰ্শন",
     "mediaCollection": "মিডিয়া সংকলন",
-    "scrollToVideo": "{title} ভিডিঅ’লৈ স্ক্ৰল কৰক"
+    "scrollToVideo": "{title} ভিডিঅ’লৈ স্ক্ৰল কৰক",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project হোম",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "ৱাচলৈ উভতি যাওক",
     "browseVideos": "ভিডিঅ’সমূহ ব্ৰাউজ কৰক"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "চুটি ছবি চাওক",
-    "actions": {
-      "joinUs": "আমাৰ সৈতে যোগদান কৰক",
-      "shareMission": "আমাৰ মিছনত অংশীদাৰ হওক"
-    },
-    "welcomeStart": {
-      "label": "বিশ্বাস আৰু শাস্ত্ৰ",
-      "title": "আজিৰ ভিডিঅ’ বাছনি",
-      "description": "আমাৰ লাইব্ৰেৰীৰ বিশ্বাস-কেন্দ্ৰিক ভিডিঅ’ বিষয়বস্তু, যিয়ে অনুপ্ৰাণিত, প্ৰত্যাহ্বান জনোৱা, আৰু চিন্তন জাগ্ৰত কৰে।"
-    },
-    "welcomeMorning": {
-      "label": "পুৱা অনুপ্ৰেৰণা",
-      "title": "শুভ প্ৰভাত! আজিৰ বাইবেলিক মুহূৰ্তসমূহ আপোনাৰ বাবে অপেক্ষা কৰি আছে।",
-      "description": "আপোনাৰ দিন আৰম্ভ কৰক উৎসাহজনক বাইবেলিক মুহূৰ্তৰ সৈতে, যিবোৰে আপোনাৰ আত্মাক অনুপ্ৰাণিত আৰু উৎফুল্ল কৰিবলৈ সাজু কৰা হৈছে।"
-    },
-    "welcomeAfternoon": {
-      "label": "দুপৰীয়াৰ অনুপ্ৰেৰণা",
-      "title": "শুভ দুপৰীয়া! আপোনাৰ দিনৰ বাবে বাইবেলিক মুহূৰ্ত।",
-      "description": "উৎসাহজনক বাইবেল বিষয়বস্তু, দুপৰীয়া বিৰতিৰ বাবে বা আগুৱাই অনুপ্ৰেৰণা পাবলৈ উপযুক্ত।"
-    },
-    "welcomeEvening": {
-      "label": "সন্ধিয়াৰ অনুপ্ৰেৰণা",
-      "title": "শুভ সন্ধিয়া! বাইবেলিক মুহূৰ্তৰ সৈতে দিনটো শান্ত কৰক।",
-      "description": "শান্তিদায়ক বাইবেলিক মুহূৰ্ত, যিয়ে দিন শেষ হোৱাৰ লগে লগে মনন আৰু সান্ত্বনা বিচাৰি পোৱাত সহায় কৰে।"
-    },
-    "joinUs": {
-      "label": "আমাৰ সৈতে যোগদান কৰক",
-      "title": "কোটি কোটি লোক বিচাৰি আছে",
-      "description": "শস্য কাটনিৰ সময় আহিছে। ডিজিটেল মিডিয়া ব্যৱহাৰ কৰি আমি কেনেকৈ সমগ্ৰ পৃথিৱীত শুভবাৰ্তা ভাগ-বতৰা কৰোঁ, তাৰ অংশ হওক।"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "একেলগে আগবাঢ়োঁ",
-      "title": "একেলগে যীচুৰ কাহিনী কোৱা",
-      "description": "যাতে তেওঁলোকে নিজৰ ভাষাত, নিজৰ ঠাইতে, যীচুৰ প্ৰেম শুনিব আৰু দেখিব পাৰে।"
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% মিল",
     "none": "এই ভাষাত এই ভিডিঅ’টোৰ বাবে কোনো পৰামৰ্শ পোৱা নগ'ল।"
@@ -744,5 +723,28 @@
     "languageVersionLabel": "অডিঅ' ভাষা",
     "selectLanguageVersion": "এটা ভাষাৰ সংস্কৰণ বাছক",
     "watchSelectedVersion": "বাছনি কৰা সংস্কৰণটো চাওক"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "কুকি বিকল্পসমূহ",
+    "bannerTitle": "আপোনাৰ গোপনীয়তা বিকল্পসমূহ",
+    "bannerDescription": "আৱশ্যকীয় কুকিসমূহে Watch-ক সুৰক্ষিত ৰাখে আৰু সঠিকভাৱে চলিবলৈ সহায় কৰে। আপোনাৰ অনুমতি থাকিলে, এটা ঐচ্ছিক first-party cookie-এ ভ্ৰমণসমূহৰ মাজত আপোনাৰ আগ্ৰহসমূহ মনত ৰাখি পৰামৰ্শসমূহ ব্যক্তিগতকৰণ কৰিব পাৰে। যিকোনো ক্ষেত্ৰতে প্ৰাসংগিক পৰামৰ্শসমূহ উপলব্ধ থাকিব।",
+    "acceptAll": "সকলো গ্ৰহণ কৰক",
+    "essentialOnly": "কেৱল আৱশ্যকীয়",
+    "manageChoices": "বিকল্পসমূহ পৰিচালনা কৰক",
+    "savingChoice": "কুকি বিকল্প সংৰক্ষণ কৰা হৈছে",
+    "settings": "কুকি ছেটিংসমূহ",
+    "settingsDescription": "Watch-এ ভ্ৰমণসমূহৰ মাজত পৰামৰ্শৰ আগ্ৰহসমূহ মনত ৰাখিব নে নাই, সেয়া বাছনি কৰক। আপুনি যিকোনো সময়তে এইটো সলনি কৰিব পাৰে।",
+    "essentialCookies": "আৱশ্যকীয় কুকিসমূহ",
+    "essentialDescription": "সুৰক্ষা, প্লেবেক, গোপনীয়তা বিকল্পসমূহ, আৰু পৰামৰ্শ অনুৰোধৰ এট্ৰিবিউচন।",
+    "alwaysActive": "সদায় সক্ৰিয়",
+    "personalization": "ব্যক্তিগতকৰণ",
+    "personalizationDescription": "ভ্ৰমণসমূহৰ মাজত সীমিত আগ্ৰহসমূহ মনত ৰাখক। এইটো বন্ধ কৰিলে প্ৰাসংগিক পৰামৰ্শসমূহ তেতিয়াও উপলব্ধ থাকিব।",
+    "erasurePending": "প্ৰফাইল মচি পেলোৱাৰ প্ৰক্ৰিয়া অপেক্ষমাণ। প্ৰাসংগিক পৰামৰ্শসমূহ ইতিমধ্যে সক্ৰিয়।",
+    "cancel": "বাতিল কৰক",
+    "saveChoices": "বিকল্পসমূহ সংৰক্ষণ কৰক",
+    "saving": "সংৰক্ষণ কৰা হৈছে…",
+    "loadError": "আপোনাৰ বিকল্প ল'ড কৰিব পৰা নগ'ল। তথাপি আপুনি তলত বাছনি কৰিব পাৰে।",
+    "grantError": "ব্যক্তিগতকৰণ সক্ষম কৰিব পৰা নগ'ল। কেৱল আৱশ্যকীয় বিকল্প এতিয়াও উপলব্ধ।",
+    "saveError": "আপোনাৰ বিকল্প সংৰক্ষণ কৰিব পৰা নগ'ল। অনুগ্ৰহ কৰি পুনৰ চেষ্টা কৰক।"
   }
 }

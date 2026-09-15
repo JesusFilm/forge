@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ઓડિયો ભાષા બદલો",
     "home": "JesusFilm હોમ",
     "closeSearch": "શોધ બંધ કરો",
-    "submitSearch": "શોધો"
+    "submitSearch": "શોધો",
+    "library": "લાઇબ્રેરી"
   },
   "SearchOverlay": {
     "dialogLabel": "વીડિયો શોધો અને બ્રાઉઝ કરો",
@@ -467,6 +468,7 @@
     "sports": "રમતગમત",
     "collections": "સંગ્રહો",
     "subtitlesOnly": "માત્ર ઉપશીર્ષકો",
+    "backToTop": "ઉપર પરત",
     "newlyAdded": "નવતર ઉમેરાયેલ",
     "newVideosTitle": "{language} માં નવા ખ્રિસ્તી વીડિયો",
     "newestFirst": "સૌથી નવા પહેલા",
@@ -497,7 +499,21 @@
     "standaloneVideos": "સ્વતંત્ર વીડિયો",
     "videosFromCollection": "{collection}માંથી વીડિયો.",
     "standaloneDescription": "આ ભાષામાં સ્વતંત્ર વીડિયો.",
-    "openCollection": "સંગ્રહ ખોલો"
+    "openCollection": "સંગ્રહ ખોલો",
+    "filters": "ફિલ્ટર",
+    "filterLength": "લંબાઈ",
+    "filterLength_under5": "5 મિનિટથી ઓછું",
+    "filterLength_5to10": "5-10 મિનિટ",
+    "filterLength_10to30": "10-30 મિનિટ",
+    "filterLength_over30": "30 મિનિટથી વધુ",
+    "filterType": "પ્રકાર",
+    "clearFilters": "ફિલ્ટર સાફ કરો",
+    "filterResults": "{total} માંથી {count} બતાવ્યા",
+    "noFilterResults": "આ ફિલ્ટર સાથે કોઈ વિડિયો મેળ ખાતો નથી. એક દૂર કરી જુઓ.",
+    "filterAdded": "ઉમેરાયું",
+    "filterAdded_60d": "છેલ્લા 60 દિવસ",
+    "filterAdded_6m": "છેલ્લા 6 મહિના",
+    "filterAdded_12m": "છેલ્લા 12 મહિના"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project જુઓ",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "પાછલા વીડિયાનો પૂર્વાવલોકન",
     "nextVideoPreview": "આગામી વીડિયાનો પૂર્વાવલોકન",
     "mediaCollection": "મીડિયા સંગ્રહ",
-    "scrollToVideo": "{title} વીડિયોની તરફ સ્ક્રોલ કરો"
+    "scrollToVideo": "{title} વીડિયોની તરફ સ્ક્રોલ કરો",
+    "forYou": "તમારા માટે"
   },
   "WatchFooter": {
     "home": "Jesus Film Project હોમ",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "વૉચ પર પાછા જાઓ",
     "browseVideos": "વીડિયો બ્રાઉઝ કરો"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "ટૂંકી ફિલ્મ જુઓ",
-    "actions": {
-      "joinUs": "અમારી સાથે જોડાઓ",
-      "shareMission": "અમારા મિશનમાં ભાગ લો"
-    },
-    "welcomeStart": {
-      "label": "વિશ્વાસ અને શાસ્ત્ર",
-      "title": "આજના વિડિયો પસંદગીઓ",
-      "description": "પ્રેરણા આપવા, પડકારવા, અને મનન જગાવવા માટે અમારી લાઇબ્રેરીમાંથી વિશ્વાસ-કેન્દ્રિત વીડિયો સામગ્રી."
-    },
-    "welcomeMorning": {
-      "label": "સવારની પ્રેરણા",
-      "title": "સુપ્રભાત! આજના બાઇબલના પળો તમારી રાહ જુએ છે.",
-      "description": "તમારા દિવસની શરૂઆત પ્રોત્સાહક બાઇબલ પળોથી કરો, જે તમારા આત્માને પ્રેરણા અને ઉત્સાહ આપે."
-    },
-    "welcomeAfternoon": {
-      "label": "બપોરની પ્રેરણા",
-      "title": "શુભ બપોર! તમારા દિવસ માટે બાઇબલના પળો.",
-      "description": "પ્રોત્સાહક બાઇબલ સામગ્રી, જે તમારી બપોરની વિરામ માટે અથવા વધુ પ્રેરણા માટે ઉત્તમ છે."
-    },
-    "welcomeEvening": {
-      "label": "સાંજની પ્રેરણા",
-      "title": "શુભ સાંજ! બાઇબલના પળો સાથે શાંતિથી દિવસ પૂરું કરો.",
-      "description": "શાંત બાઇબલ પળો, જે દિવસ પૂરો થાય ત્યારે તમને મનન કરવા અને સાંત્વના મેળવવામાં મદદ કરે."
-    },
-    "joinUs": {
-      "label": "અમારી સાથે જોડાઓ",
-      "title": "અબજો લોકો શોધી રહ્યા છે",
-      "description": "ફસલ અહીં છે. ડિજિટલ મીડિયાનો ઉપયોગ કરીને વિશ્વને સુસમાચાર જણાવવામાં અમારી સાથે જોડાઓ."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "ચાલો સાથે આગળ વધીએ",
-      "title": "એક સાથે ઈસુની વાર્તા કહેતા",
-      "description": "જેથી તેઓ જ્યાં છે ત્યાં જ, પોતાની ભાષામાં ઈસુનો પ્રેમ સાંભળી અને જોઈ શકે."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% મેળ",
     "none": "આ ભાષામાં આ વીડિયો માટે કોઈ ભલામણ મળી નથી."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "ઑડિયો ભાષા",
     "selectLanguageVersion": "ભાષાનું સંસ્કરણ પસંદ કરો",
     "watchSelectedVersion": "પસંદ કરેલું સંસ્કરણ જુઓ"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "કુકી પસંદગીઓ",
+    "bannerTitle": "તમારી ગોપનીયતા પસંદગીઓ",
+    "bannerDescription": "આવશ્યક કુકીઝ Watch ને સુરક્ષિત રાખે છે અને યોગ્ય રીતે કાર્યરત રાખે છે. તમારી મંજૂરીથી, વૈકલ્પિક પ્રથમ-પક્ષની કુકી ભલામણોને વ્યક્તિગત બનાવવા માટે મુલાકાતો દરમિયાન તમારી રસની બાબતો યાદ રાખી શકે છે. સંદર્ભાનુસાર ભલામણો બંને સ્થિતિમાં ઉપલબ્ધ રહેશે.",
+    "acceptAll": "બધું સ્વીકારો",
+    "essentialOnly": "ફક્ત આવશ્યક",
+    "manageChoices": "પસંદગીઓ સંચાલિત કરો",
+    "savingChoice": "કુકી પસંદગી સાચવી રહ્યા છીએ",
+    "settings": "કુકી સેટિંગ્સ",
+    "settingsDescription": "Watch મુલાકાતો વચ્ચે ભલામણ સંબંધિત રસ યાદ રાખી શકે કે નહીં તે પસંદ કરો. તમે આ કોઈપણ સમયે બદલી શકો છો.",
+    "essentialCookies": "આવશ્યક કુકીઝ",
+    "essentialDescription": "સુરક્ષા, પ્લેબેક, ગોપનીયતા પસંદગીઓ અને ભલામણ વિનંતીની ઓળખ.",
+    "alwaysActive": "હંમેશા સક્રિય",
+    "personalization": "વ્યક્તિગતીકરણ",
+    "personalizationDescription": "મુલાકાતો દરમિયાન મર્યાદિત રસ યાદ રાખો. આ બંધ કરવાથી પણ સંદર્ભાનુસાર ભલામણો ઉપલબ્ધ રહેશે.",
+    "erasurePending": "પ્રોફાઇલ મિટાવવાની પ્રક્રિયા ચાલુ છે. સંદર્ભાનુસાર ભલામણો પહેલેથી સક્રિય છે.",
+    "cancel": "રદ કરો",
+    "saveChoices": "પસંદગીઓ સાચવો",
+    "saving": "સાચવી રહ્યા છીએ…",
+    "loadError": "તમારી પસંદગી લોડ થઈ શકી નથી. તેમ છતાં તમે નીચે પસંદગી કરી શકો છો.",
+    "grantError": "વ્યક્તિગતીકરણ સક્રિય થઈ શક્યું નથી. ફક્ત આવશ્યક વિકલ્પ ઉપલબ્ધ રહેશે.",
+    "saveError": "તમારી પસંદગી સાચવી શકાઈ નથી. કૃપા કરીને ફરી પ્રયાસ કરો."
   }
 }

@@ -1,0 +1,239 @@
+/**
+ * Home's only report into the splash session (U5, R3/R15).
+ *
+ * The splash draws ABOVE this screen and needs to know when it may hand over.
+ * Nothing here waits on the splash, so the whole contract is: report the first
+ * model, report a failure that leaves nothing to paint, and never report twice.
+ *
+ * Every branch this suite renders is one of Home's three simple states, so the
+ * feed's own children stay mocked out.
+ */
+
+jest.mock("@expo/vector-icons/Ionicons", () => ({
+  __esModule: true,
+  default: () => null,
+}))
+jest.mock("@shopify/flash-list", () => ({ FlashList: () => null }))
+jest.mock("expo-image", () => {
+  const Image = () => null
+  Image.prefetch = () => Promise.resolve(true)
+  return { __esModule: true, Image }
+})
+jest.mock("expo-linear-gradient", () => ({
+  __esModule: true,
+  LinearGradient: () => null,
+}))
+jest.mock("expo-router", () => ({
+  useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
+  useNavigation: () => ({ addListener: () => () => {} }),
+}))
+jest.mock("react-native-safe-area-context", () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}))
+jest.mock("../HomeHeroPager", () => ({
+  HERO_CHROME_BOTTOM: 0,
+  HERO_CTA_HEIGHT: 0,
+  HomeHeroPager: () => null,
+}))
+jest.mock("../HomeShelf", () => ({ HomeShelf: () => null }))
+jest.mock("../HomeMissionSection", () => ({ HomeMissionSection: () => null }))
+jest.mock("../HomeHeroSelectorRail", () => ({
+  HomeHeroSelectorRail: () => null,
+}))
+jest.mock("../../ui/HomeHeader", () => ({ HomeHeader: () => null }))
+jest.mock("../../../hooks/useMiniPlayerHoldsVideo", () => ({
+  useMiniPlayerHoldsVideo: () => false,
+}))
+jest.mock("../../../lib/miniPlayer/heroYield", () => ({
+  heroPlaybackPaused: () => false,
+}))
+jest.mock("../../../hooks/useWatchHomeCarouselMemory", () => ({
+  useWatchHomeCarouselMemory: () => ({
+    playedIdsRef: { current: new Set<string>() },
+    startPoolIndexRef: { current: 0 },
+    hydrated: true,
+    markVideoPlayed: jest.fn(),
+    resetPlayedIds: jest.fn(),
+    persistActiveSlide: jest.fn(),
+  }),
+}))
+jest.mock("../../../hooks/useWatchHome", () => ({ useWatchHome: jest.fn() }))
+jest.mock("../../../lib/splash/splashSession", () => {
+  const session = {
+    reportHomeContent: jest.fn(),
+    retractHomeContent: jest.fn(),
+    reportHomeFailure: jest.fn(),
+    retractHomeFailure: jest.fn(),
+  }
+  return { getSplashSession: () => session, __session: session }
+})
+
+import { act, createElement } from "react"
+
+import { HomeScreen } from "../HomeScreen"
+import {
+  TestRenderer,
+  type TestInstance,
+} from "../../../test-utils/rnTestRenderer"
+import type { WatchHomeModel } from "../../../lib/watchHome/model"
+
+const { useWatchHome } = jest.requireMock("../../../hooks/useWatchHome") as {
+  useWatchHome: jest.Mock
+}
+const { __session: splash } = jest.requireMock(
+  "../../../lib/splash/splashSession",
+) as {
+  __session: {
+    reportHomeContent: jest.Mock
+    retractHomeContent: jest.Mock
+    reportHomeFailure: jest.Mock
+    retractHomeFailure: jest.Mock
+  }
+}
+
+/** A model with nothing renderable — Home's "No content available" branch. */
+function emptyModel(): WatchHomeModel {
+  return {
+    sections: [],
+    carousel: { pools: [], muxInserts: [] },
+  } as unknown as WatchHomeModel
+}
+
+type HookState = {
+  model: WatchHomeModel | null
+  loading?: boolean
+  refreshing?: boolean
+  error?: string | null
+}
+
+function setHookState(state: HookState) {
+  useWatchHome.mockReturnValue({
+    model: state.model,
+    loading: state.loading ?? false,
+    refreshing: state.refreshing ?? false,
+    error: state.error ?? null,
+    refetch: jest.fn(),
+  })
+}
+
+function render(): TestInstance {
+  let renderer: TestInstance | undefined
+  act(() => {
+    renderer = TestRenderer.create(createElement(HomeScreen))
+  })
+  if (!renderer) throw new Error("render failed")
+  return renderer
+}
+
+beforeEach(() => {
+  jest.clearAllMocks()
+})
+
+describe("Home's handover report to the splash", () => {
+  it("reports content once a model lands, and says nothing before", () => {
+    setHookState({ model: null, loading: true })
+    const renderer = render()
+    expect(splash.reportHomeContent).not.toHaveBeenCalled()
+
+    setHookState({ model: emptyModel() })
+    act(() => renderer.update(createElement(HomeScreen)))
+    expect(splash.reportHomeContent).toHaveBeenCalledTimes(1)
+    expect(splash.reportHomeFailure).not.toHaveBeenCalled()
+    act(() => renderer.unmount())
+  })
+
+  it("takes the report back when this screen goes away", () => {
+    setHookState({ model: emptyModel() })
+    const renderer = render()
+    expect(splash.reportHomeContent).toHaveBeenCalledTimes(1)
+    expect(splash.retractHomeContent).not.toHaveBeenCalled()
+
+    // ExperienceShell swaps its element type when the slug resolves and
+    // remounts this screen mid-hold. Without the retraction the cover would
+    // hand over to whatever the NEW instance is showing — a spinner — on the
+    // strength of a report the old instance made.
+    act(() => renderer.unmount())
+    expect(splash.retractHomeContent).toHaveBeenCalledTimes(1)
+  })
+
+  it("re-reports once the remounted screen has content of its own", () => {
+    setHookState({ model: emptyModel() })
+    const first = render()
+    act(() => first.unmount())
+    expect(splash.retractHomeContent).toHaveBeenCalledTimes(1)
+
+    const second = render()
+    expect(splash.reportHomeContent).toHaveBeenCalledTimes(2)
+    act(() => second.unmount())
+  })
+
+  it("reports the failure when the fetch leaves nothing to paint", () => {
+    setHookState({ model: null, loading: true })
+    const renderer = render()
+
+    setHookState({ model: null, error: "network" })
+    act(() => renderer.update(createElement(HomeScreen)))
+    // R15: the retry card is reachable as soon as there is something to retry,
+    // rather than the cover holding to the 6 second ceiling.
+    expect(splash.reportHomeFailure).toHaveBeenCalledTimes(1)
+    expect(splash.reportHomeContent).not.toHaveBeenCalled()
+    act(() => renderer.unmount())
+  })
+
+  it("takes the failure back when this screen goes away", () => {
+    setHookState({ model: null, error: "network" })
+    const renderer = render()
+    expect(splash.reportHomeFailure).toHaveBeenCalledTimes(1)
+    expect(splash.retractHomeFailure).not.toHaveBeenCalled()
+
+    // The same remount that retracts a content report has to retract a
+    // failure. Otherwise the latch outlives its reporter, and the floor drops
+    // the cover onto the NEW instance's spinner rather than its retry card.
+    act(() => renderer.unmount())
+    expect(splash.retractHomeFailure).toHaveBeenCalledTimes(1)
+  })
+
+  it("re-reports the failure once the remounted screen fails too", () => {
+    setHookState({ model: null, error: "network" })
+    const first = render()
+    act(() => first.unmount())
+    expect(splash.retractHomeFailure).toHaveBeenCalledTimes(1)
+
+    const second = render()
+    expect(splash.reportHomeFailure).toHaveBeenCalledTimes(2)
+    act(() => second.unmount())
+  })
+
+  it("retracts nothing while the fetch is still in flight", () => {
+    setHookState({ model: null, loading: true })
+    const renderer = render()
+
+    act(() => renderer.unmount())
+    expect(splash.retractHomeFailure).not.toHaveBeenCalled()
+    expect(splash.retractHomeContent).not.toHaveBeenCalled()
+  })
+
+  it("prefers the model when both arrive in the same render", () => {
+    // Both set BEFORE the first render, so the one-shot latch is still open
+    // and the effect has to choose. Reporting the model first is the whole
+    // property; a sequential render latches before `error` is ever seen and
+    // would pass whichever branch came first.
+    setHookState({ model: emptyModel(), error: "network" })
+    const renderer = render()
+
+    expect(splash.reportHomeContent).toHaveBeenCalledTimes(1)
+    expect(splash.reportHomeFailure).not.toHaveBeenCalled()
+    act(() => renderer.unmount())
+  })
+
+  it("does not drop the cover when a refetch fails over live content", () => {
+    setHookState({ model: emptyModel() })
+    const renderer = render()
+    expect(splash.reportHomeContent).toHaveBeenCalledTimes(1)
+
+    setHookState({ model: emptyModel(), error: "network" })
+    act(() => renderer.update(createElement(HomeScreen)))
+    expect(splash.reportHomeFailure).not.toHaveBeenCalled()
+    act(() => renderer.unmount())
+  })
+})

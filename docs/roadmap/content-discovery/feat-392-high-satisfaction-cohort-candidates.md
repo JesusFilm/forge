@@ -44,7 +44,7 @@ Similar-interest cohorts can surface valuable videos only when support, privacy,
 
 ## What To Build
 
-- Define cohorts from consent-eligible interest generations and write exact versioned contributions.
+- Define cohorts from eligible interest generations and write exact versioned contributions.
 - Require minimum distinct support and confidence; combine behavioral, mission, and reported outcomes as a visible vector rather than one opaque label.
 - Correct for popularity and survey non-response, suppress unsafe or weak cohorts, and publish only aggregate immutable generations.
 - Run the generator in shadow and record a terminal decision.

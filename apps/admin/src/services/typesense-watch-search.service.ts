@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto"
 import type { PrismaClient } from "@prisma/client"
+import { resolveWatchSearchRuntimeEnv } from "@/config/env"
 
 import {
   cachedBoundedTtlValue,
@@ -13,12 +14,17 @@ import {
   type TypesenseSearchRequest,
   type TypesenseSearchResult,
 } from "./typesense-client"
+import {
+  availabilityScoreForKind,
+  watchabilityRankForKind,
+} from "./watch-search-availability-score"
 import { resolveTypesenseWatchSearchApiKey } from "./typesense-client-config"
 import { tokenizeForExactTitle } from "./hybrid-search-keyword-first-retrievers"
 import {
   type TypesenseWatchAudioOption,
   type TypesenseWatchAvailabilityDocument,
   type TypesenseWatchCatalogDocument,
+  type TypesenseWatchContainerLanguage,
   type TypesenseWatchSubtitleOption,
   type TypesenseWatchTranscriptDocument,
 } from "./typesense-watch-search-schema"
@@ -26,6 +32,10 @@ import {
   TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD,
   typesenseWatchExactTitleKey,
 } from "./typesense-watch-search-exact-title"
+import {
+  normalizeWatchSearchCurationQuery,
+  TYPESENSE_WATCH_SEARCH_CURATION_TAG,
+} from "./typesense-watch-search-curation"
 import {
   typesenseWatchLanguageIdentity,
   type TypesenseWatchLexicalDocument,
@@ -107,9 +117,20 @@ const CATALOG_PREVIEW_EXCLUDED_FIELDS =
   "coreId,slug,descriptions,localesJson,label,childCount,imageUrl,imageBlurDataUrl,audioOptionsJson,subtitleOptionsJson"
 const LEGACY_CATALOG_LOCALE_FIELDS = "id,titles,localesJson"
 const CATALOG_WATCHABILITY_PREVIEW_FIELDS =
-  "id,audioLanguageSlugs,subtitleLanguageSlugs"
+  "id,audioLanguageSlugs,subtitleLanguageSlugs,containerLanguagesJson"
+// `containerLanguagesJson` is requested unconditionally, including during the
+// window between deploying this code and running the operator reindex, when no
+// document in the live collection carries the key yet.
+//
+// Verified by hand 2026-08-28 against Typesense 30.2 (the pinned local build,
+// `scripts/typesense-watch-search-local.sh start`): an `include_fields` list
+// naming a field that NO document in the collection carries returns HTTP 200
+// and simply omits it — it is not a 400. That matters because a 400 here would
+// land in hydrateResultDocuments' catch, whose classifiers only recognise
+// AVAILABILITY-side field failures, and would be rethrown — failing the whole
+// search rather than degrading one card. Re-verify on a major Typesense upgrade.
 const CATALOG_RESULT_FIELDS =
-  "id,slug,titles,localesJson,label,childCount,imageUrl,imageBlurDataUrl"
+  "id,slug,titles,localesJson,label,childCount,imageUrl,imageBlurDataUrl,containerLanguagesJson"
 const AVAILABILITY_RESULT_FIELDS =
   "id,videoId,videoEditionId,languageId,languageSlug,languageEnglishName,audio,subtitles,playbackId,durationSeconds,hrefLanguageSlug,actionVideoDubId,actionPriority"
 const LEGACY_CATALOG_RESULT_FIELDS = `${CATALOG_RESULT_FIELDS},audioOptionsJson,subtitleOptionsJson`
@@ -153,8 +174,11 @@ type TypesenseWatchSearchDeps = {
 export type TypesenseWatchSearchDiagnostics = {
   profile: TypesenseWatchSearchProfile["kind"]
   generationId: string | null
-  applicationRevision: string | null
+  indexContractRevision: string | null
+  contentEmbeddingContractId: string | null
+  transcriptChunkingVersion: string | null
   transcriptProjectionRevision: bigint | null
+  activeTranscriptProjectionRevision: bigint | null
   binding: TypesenseWatchSearchCollectionBinding
   retrievalCalls: number
   logicalSubsearches: number
@@ -280,6 +304,7 @@ type CandidateRetrieval = {
 )
 
 type RankedCandidateGroup = WatchSearchRankingGroup & {
+  curated: boolean
   evidenceTier: WatchSearchRankingEvidenceTier
   members: Candidate[]
 }
@@ -294,15 +319,65 @@ type RankedCandidate = {
   watchabilityKind: IndexedWatchability["kind"]
 }
 
+function ensureCuratedGroupsOnFirstPage(
+  groups: readonly RankedCandidateGroup[],
+  offset: number,
+  nativeOffset: number,
+  limit: number,
+): RankedCandidateGroup[] {
+  const retrievalWindowStart = offset - nativeOffset
+  if (retrievalWindowStart !== 0 || groups.length <= limit) {
+    return [...groups]
+  }
+
+  const firstPage = groups.slice(0, limit)
+  const promoted = groups
+    .slice(limit)
+    .filter(({ curated }) => curated)
+    .slice(0, firstPage.filter(({ curated }) => !curated).length)
+  if (promoted.length === 0) return [...groups]
+
+  const promotedIds = new Set(
+    promoted.map(({ canonicalVideoId }) => canonicalVideoId),
+  )
+  const retainedFirstPage = [...firstPage]
+  const displaced: RankedCandidateGroup[] = []
+  for (let index = retainedFirstPage.length - 1; index >= 0; index -= 1) {
+    if (displaced.length >= promoted.length) break
+    if (retainedFirstPage[index]?.curated) continue
+    const [group] = retainedFirstPage.splice(index, 1)
+    if (group) displaced.unshift(group)
+  }
+
+  return [
+    ...retainedFirstPage,
+    ...promoted,
+    ...displaced,
+    ...groups
+      .slice(limit)
+      .filter(({ canonicalVideoId }) => !promotedIds.has(canonicalVideoId)),
+  ]
+}
+
 type TypesenseWatchLegacyCatalogLocaleDocument = Pick<
   TypesenseWatchCatalogDocument,
   "id" | "titles" | "localesJson"
 >
 
+/**
+ * Optional because a catalog document written by a generation that predates the
+ * container projection carries no such key at all. Every reader must tolerate
+ * its absence rather than assume the current projection.
+ */
+type WithOptionalContainerLanguages = Partial<
+  Pick<TypesenseWatchCatalogDocument, "containerLanguagesJson">
+>
+
 type TypesenseWatchCatalogWatchabilityPreviewDocument = Pick<
   TypesenseWatchCatalogDocument,
   "id" | "audioLanguageSlugs" | "subtitleLanguageSlugs"
->
+> &
+  WithOptionalContainerLanguages
 
 type TypesenseWatchCatalogResultDocument = Pick<
   TypesenseWatchCatalogDocument,
@@ -314,7 +389,8 @@ type TypesenseWatchCatalogResultDocument = Pick<
   | "childCount"
   | "imageUrl"
   | "imageBlurDataUrl"
->
+> &
+  WithOptionalContainerLanguages
 
 type TypesenseWatchLegacyCatalogResultDocument =
   TypesenseWatchCatalogResultDocument &
@@ -324,7 +400,12 @@ type TypesenseWatchLegacyCatalogResultDocument =
     >
 
 type IndexedWatchability = {
-  kind: "target_audio" | "target_subtitle" | "related_language" | "unavailable"
+  kind:
+    | "target_audio"
+    | "target_subtitle"
+    | "container"
+    | "related_language"
+    | "unavailable"
   languageSlug: string | null
   languageEnglishName: string | null
   audio: boolean
@@ -553,6 +634,7 @@ function lexicalLaneRequest(
   languageIdentities: readonly string[] | null,
   candidateLimit: number,
   offset: number,
+  lane: "title" | "metadata",
 ): TypesenseSearchRequest {
   const perPage = Math.min(candidateLimit, MAX_FUSED_CANDIDATES)
   const isFallbackField = (field: string) => field.endsWith("_fallback")
@@ -578,6 +660,12 @@ function lexicalLaneRequest(
     text_match_type: "max_weight",
     prioritize_exact_match: true,
     drop_tokens_threshold: 1,
+    ...(lane === "title"
+      ? { enable_curations: false }
+      : {
+          curation_tags: TYPESENSE_WATCH_SEARCH_CURATION_TAG,
+          filter_curated_hits: true,
+        }),
     include_fields: [
       "id",
       "videoId",
@@ -608,6 +696,7 @@ function exactTitleLaneRequest(
     prefix: false,
     num_typos: 0,
     drop_tokens_threshold: 0,
+    enable_curations: false,
     include_fields: [
       "id",
       "videoId",
@@ -649,9 +738,18 @@ function semanticLaneRequest(
   }
 }
 
-function previewWatchabilityKind(
+/**
+ * Pre-hydration watchability classifier for the compatibility retrieval path.
+ *
+ * Exported for unit testing: this runs during RANKING only, and the emitted
+ * availability kind still comes from `resolveWatchability` afterwards, so an
+ * end-to-end assertion on a result's kind cannot discriminate this function at
+ * all. Its observable effect is result ORDER, and therefore which rows survive
+ * the page slice -- which is why it is pinned directly.
+ */
+export function previewWatchabilityKind(
   document: TypesenseWatchCatalogWatchabilityPreviewDocument,
-  target: TargetLanguageContext,
+  target: Pick<TargetLanguageContext, "slug" | "fallbackLanguageSlugs">,
 ): IndexedWatchability["kind"] {
   if (document.audioLanguageSlugs.includes(target.slug)) return "target_audio"
   if (document.subtitleLanguageSlugs.includes(target.slug)) {
@@ -663,6 +761,13 @@ function previewWatchabilityKind(
     )
   ) {
     return "related_language"
+  }
+  // Container tier runs LAST — see the note in resolveWatchability. This
+  // classifier feeds the compatibility ranking branch, so a container that
+  // stayed "unavailable" here would be ranked as the weakest kind before the
+  // page slice is taken.
+  if (containerWatchability(document.containerLanguagesJson, target)) {
+    return "container"
   }
   return "unavailable"
 }
@@ -798,6 +903,14 @@ function resolveLegacyWatchability(
       }
     }
   }
+  // Container tier runs LAST here too — see the note in resolveWatchability.
+  // This path is reached on availability-alias fallback and on overflow, so it
+  // must agree with the modern path or containers flip state under load.
+  const container = containerWatchability(
+    document.containerLanguagesJson,
+    target,
+  )
+  if (container) return container
   return {
     kind: "unavailable",
     languageSlug: null,
@@ -815,6 +928,7 @@ function resolveWatchability(
   target: TargetLanguageContext,
   candidateVideoEditionId: string | null,
   requireVideoEditionIdForSubtitle: boolean,
+  containerLanguagesJson?: string,
 ): IndexedWatchability {
   const targetAudio = availability.find(
     (option) => option.languageSlug === target.slug && option.audio,
@@ -873,6 +987,14 @@ function resolveWatchability(
       }
     }
   }
+  // Container tier runs LAST, mirroring SearchWatchabilityService.hydrate: a
+  // Series-Shaped Video carrying its own playable Dub keeps the state that Dub
+  // earned it, so descendants never override direct playback. Note this is
+  // deliberately the opposite order from watchabilityRank, which places
+  // container ABOVE related_language — rank answers "which is the better
+  // representative", resolution answers "what is this video's own state".
+  const container = containerWatchability(containerLanguagesJson, target)
+  if (container) return container
   return {
     kind: "unavailable",
     languageSlug: null,
@@ -882,6 +1004,73 @@ function resolveWatchability(
     playbackId: null,
     durationSeconds: null,
     hrefLanguageSlug: null,
+  }
+}
+
+/**
+ * Pick the browse language for a container from its projected descendant
+ * languages: the target language first, then each fallback in priority order.
+ *
+ * This is the query-time half of the container tier. The index-time loader
+ * (`loadContainerLanguageRows` in typesense-watch-search-indexer.ts) drops the
+ * per-request accepted-language filter and stores the complete SET, so this
+ * selection reproduces what the Postgres tier's `DISTINCT ON ... ORDER BY
+ * array_position(accepted, language_id)` emits: that ORDER BY leads with the
+ * accepted-list position, and every lower key breaks ties inside one language,
+ * so the emitted language is a function of the language set and the accepted
+ * order alone.
+ *
+ * Note this compares SLUGS while the related-language branch above it compares
+ * language IDs. That asymmetry is deliberate — the projection carries slugs,
+ * which are `@unique`, so the switch is lossless. `target.fallbackLanguageSlugs`
+ * is built by dropping null-slug entries, so it is NOT index-aligned with
+ * `target.fallbackLanguageIds`; never pair the two by index.
+ */
+export function containerWatchability(
+  containerLanguagesJson: string | undefined,
+  target: Pick<TargetLanguageContext, "slug" | "fallbackLanguageSlugs">,
+): IndexedWatchability | null {
+  // Never let a parse failure escape. A catalog document written by a
+  // generation that predates this field carries no key at all (`undefined`,
+  // normalised to an empty array below), and a malformed value would throw.
+  // Either throw would land inside hydrateResultDocuments' try, where the
+  // error classifier does not recognise it and rethrows — failing the whole
+  // search rather than degrading one card to unavailable.
+  let languages: TypesenseWatchContainerLanguage[]
+  try {
+    languages = parseJsonArray<TypesenseWatchContainerLanguage>(
+      containerLanguagesJson ?? "[]",
+    )
+  } catch {
+    return null
+  }
+  if (languages.length === 0) return null
+
+  const bySlug = new Map(
+    languages.flatMap((language) =>
+      language?.languageSlug
+        ? [[language.languageSlug, language] as const]
+        : [],
+    ),
+  )
+  const selected =
+    bySlug.get(target.slug) ??
+    target.fallbackLanguageSlugs
+      .map((slug) => bySlug.get(slug))
+      .find((language) => language != null)
+  if (!selected) return null
+
+  return {
+    kind: "container",
+    languageSlug: selected.languageSlug,
+    languageEnglishName: selected.languageEnglishName,
+    audio: false,
+    subtitles: false,
+    // A container offers browsing, not playback. Never surface a descendant's
+    // playback identity on the container row.
+    playbackId: null,
+    durationSeconds: null,
+    hrefLanguageSlug: selected.languageSlug,
   }
 }
 
@@ -927,14 +1116,7 @@ function candidateScore(
   const sourceRelevance = candidate.sourceScore * 0.55
   const relevance = candidateRelevance(candidate)
   const evidenceBoost = relevance - sourceRelevance
-  const availability =
-    watchability.kind === "target_audio"
-      ? 0.25
-      : watchability.kind === "target_subtitle"
-        ? 0.18
-        : watchability.kind === "related_language"
-          ? 0.08
-          : 0
+  const availability = availabilityScoreForKind(watchability.kind)
   const round = (value: number) => Math.round(value * 1000) / 1000
   return {
     rankingRelevance: relevance,
@@ -951,10 +1133,7 @@ function candidateScore(
 }
 
 function watchabilityRank(kind: IndexedWatchability["kind"]): number {
-  if (kind === "target_audio") return 0
-  if (kind === "target_subtitle") return 1
-  if (kind === "related_language") return 2
-  return 3
+  return watchabilityRankForKind(kind)
 }
 
 function laneStatus({
@@ -1011,15 +1190,20 @@ export class TypesenseWatchSearchService {
   private readonly logger: Pick<Console, "warn">
   private readonly profile: TypesenseWatchSearchProfile
   private readonly rankingImplementation: WatchSearchRankingImplementation
+  private readonly activeTranscriptProjectionRevision: bigint | null
 
   private retrievalIdentity(): WatchSearchRetrievalIdentity {
     return {
       profile: this.profile.kind,
       generationId: this.profile.generationId,
-      applicationRevision: this.profile.applicationRevision,
+      indexContractRevision: this.profile.indexContractRevision,
+      contentEmbeddingContractId: this.profile.contentEmbeddingContractId,
+      transcriptChunkingVersion: this.profile.transcriptChunkingVersion,
       rankingRevision: this.rankingImplementation,
       transcriptProjectionRevision:
         this.profile.transcriptProjectionRevision?.toString() ?? null,
+      activeTranscriptProjectionRevision:
+        this.activeTranscriptProjectionRevision?.toString() ?? null,
       evaluationRevision: this.profile.qrelsRevision ?? null,
     }
   }
@@ -1039,6 +1223,8 @@ export class TypesenseWatchSearchService {
       this.profile.kind === "CANDIDATE"
         ? WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION
         : WATCH_SEARCH_LEGACY_RANKING_IMPLEMENTATION
+    this.activeTranscriptProjectionRevision =
+      resolveWatchSearchRuntimeEnv().transcriptProjectionRevision ?? null
   }
 
   async searchWithDiagnostics(input: WatchSearchInput): Promise<{
@@ -1048,8 +1234,12 @@ export class TypesenseWatchSearchService {
     const diagnostics: MutableSearchDiagnostics = {
       profile: this.profile.kind,
       generationId: this.profile.generationId,
-      applicationRevision: this.profile.applicationRevision,
+      indexContractRevision: this.profile.indexContractRevision,
+      contentEmbeddingContractId: this.profile.contentEmbeddingContractId,
+      transcriptChunkingVersion: this.profile.transcriptChunkingVersion,
       transcriptProjectionRevision: this.profile.transcriptProjectionRevision,
+      activeTranscriptProjectionRevision:
+        this.activeTranscriptProjectionRevision,
       binding: this.profile.binding,
       retrievalCalls: 0,
       logicalSubsearches: 0,
@@ -1266,7 +1456,12 @@ export class TypesenseWatchSearchService {
       laneStatuses,
       diagnostics,
     })
-    const rankingGroups = retrieval.groups
+    const rankingGroups = ensureCuratedGroupsOnFirstPage(
+      retrieval.groups,
+      offset,
+      retrieval.nativeOffset,
+      limit,
+    )
     const candidates = rankingGroups.flatMap((group) => group.members)
     const nativeRanking = retrieval.kind === "native"
     const nativeCandidateGroups = nativeRanking ? rankingGroups : null
@@ -1678,17 +1873,19 @@ export class TypesenseWatchSearchService {
           globalCandidateRecall ? null : lexicalLanguageIdentities,
           candidateLimit,
           offset,
+          "title",
         ),
       },
       {
         kind: "metadata",
         request: lexicalLaneRequest(
           this.profile.binding.lexical,
-          titleQuery,
+          normalizeWatchSearchCurationQuery(titleQuery),
           metadataFields,
           globalCandidateRecall ? null : lexicalLanguageIdentities,
           candidateLimit,
           offset,
+          "metadata",
         ),
       },
       ...(embedding
@@ -1907,6 +2104,7 @@ export class TypesenseWatchSearchService {
       metadataValues: string[]
       titleValueSet: Set<string>
       metadataValueSet: Set<string>
+      curated: boolean
       members: Map<string, Candidate>
     }
     const groups = new Map<string, GroupState>()
@@ -2058,6 +2256,7 @@ export class TypesenseWatchSearchService {
           canonicalVideoId,
           fusedScore: 0,
           wholeTitleMatch: false,
+          curated: false,
           titleValues: [],
           metadataValues: [],
           titleValueSet: new Set<string>(),
@@ -2074,6 +2273,7 @@ export class TypesenseWatchSearchService {
           { candidate: Candidate; quality: number }
         >()
         let bestGroupQuality = 0
+        state.curated ||= group.hits.some((hit) => hit.curated === true)
         for (const hit of group.hits) {
           const quality = typesenseLexicalMatchQuality(hit.text_match_info)
           bestGroupQuality = Math.max(bestGroupQuality, quality)
@@ -2185,6 +2385,7 @@ export class TypesenseWatchSearchService {
         canonicalVideoId,
         fusedScore: 0,
         wholeTitleMatch: false,
+        curated: false,
         titleValues: [],
         metadataValues: [],
         titleValueSet: new Set<string>(),
@@ -2368,6 +2569,7 @@ export class TypesenseWatchSearchService {
         canonicalVideoId: candidate.videoId,
         fusedScore: relevance,
         wholeTitleMatch: candidate.wholeTitleMatch,
+        curated: false,
         titleValues: titleValuesByVideoId.get(candidate.videoId) ?? [],
         metadataValues: [],
         laneEvidence: {
@@ -2517,6 +2719,9 @@ export class TypesenseWatchSearchService {
                   target,
                   candidateScope?.videoEditionId ?? null,
                   candidateScope?.kind === "semantic",
+                  // A container owns no availability document, so its state
+                  // rides the catalog document instead.
+                  document.containerLanguagesJson,
                 ),
               },
             ] as const

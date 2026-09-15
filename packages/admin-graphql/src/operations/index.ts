@@ -4,3 +4,32 @@ export {
   adminWatchSearchSuggestionsOperation,
   adminWatchSearchSuggestionsQuery,
 } from "./watch-search"
+export {
+  adminClaimSemanticRecommendationEpisodeMutation,
+  adminClaimSemanticRecommendationEpisodeOperation,
+  adminIssueWatchPlaybackContextMutation,
+  adminIssueWatchPlaybackContextOperation,
+  adminRecommendationProfileStatusMutation,
+  adminRecommendationProfileStatusOperation,
+  adminRecordSemanticRecommendationEvidenceMutation,
+  adminRecordSemanticRecommendationEvidenceOperation,
+  adminRecordSemanticRecommendationPlaybackMutation,
+  adminRecordSemanticRecommendationPlaybackOperation,
+  adminRecordRecommendationContentActionMutation,
+  adminRecordRecommendationContentActionOperation,
+  adminSelectSemanticRecommendationMutation,
+  adminSelectSemanticRecommendationOperation,
+  adminSemanticRecommendationDeliveryOperation,
+  adminSemanticRecommendationDeliveryQuery,
+  adminTransitionRecommendationProfileMutation,
+  adminTransitionRecommendationProfileOperation,
+} from "./recommendations"
+
+export {
+  adminUserRecommendationsQuery,
+  adminUserRecommendationsOperation,
+  adminCreateRecommendationViewerMutation,
+  adminCreateRecommendationViewerOperation,
+  adminUpdateRecommendationViewerMutation,
+  adminUpdateRecommendationViewerOperation,
+} from "./user-recommendations"

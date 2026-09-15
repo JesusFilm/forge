@@ -679,7 +679,7 @@ describe("SiblingCarousel — happy path", () => {
     )
     expect(items.length).toBe(10)
     const firstItemSlot = items[0]?.closest("[data-slot='carousel-item']")
-    expect(firstItemSlot?.className).toContain("basis-[48%]")
+    expect(firstItemSlot?.className).toContain("basis-[70%]")
     expect(firstItemSlot?.className).toContain("sm:basis-[36%]")
     expect(firstItemSlot?.className).toContain("md:basis-1/3")
 

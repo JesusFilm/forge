@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио бызэм къэщIэн",
     "home": "JesusFilm IэIэ",
     "closeSearch": "КъыщIэн къэгъэпщыкIын",
-    "submitSearch": "КъыщIэн"
+    "submitSearch": "КъыщIэн",
+    "library": "Тхылъэщ"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео къыщIэн да зэбгъэзэхъуэжь",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Коллекцияхэр",
     "subtitlesOnly": "Субтитрэхэр только",
+    "backToTop": "Ищхьэм гъэзэжын",
     "newlyAdded": "Ичыхь къыщIауэ",
     "newVideosTitle": "{language}-м къыщIэ шинэ христиан видео",
     "newestFirst": "Ичыхь хъун",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Тхыгъэхэу видео",
     "videosFromCollection": "{collection}-мкIэ видео.",
     "standaloneDescription": "А бызэм къыщIэ тхыгъэхэу видео.",
-    "openCollection": "Коллекция къыдэкIын"
+    "openCollection": "Коллекция къыдэкIын",
+    "filters": "Гъэкъабзэхэр",
+    "filterLength": "КIыхьагъ",
+    "filterLength_under5": "5 дакъикъэм нэхърэ нэхъ мащIэ",
+    "filterLength_5to10": "5-10 дакъикъэ",
+    "filterLength_10to30": "10-30 дакъикъэ",
+    "filterLength_over30": "30 дакъикъэм нэхърэ нэхъыбэ",
+    "filterType": "Хуэдэ",
+    "clearFilters": "Гъэкъабзэхэр гъэкъэбзэн",
+    "filterResults": "{total}-м щыщу {count} къагъэлъагъуэ",
+    "noFilterResults": "Мы гъэкъабзэхэм хуэкIуэ видео щыIэкъым. Зы тегъэкIыну зыгъэхьэзыр.",
+    "filterAdded": "Хагъэхьащ",
+    "filterAdded_60d": "ЗэхэкI 60 махуэ",
+    "filterAdded_6m": "ЗэхэкI 6 мазэ",
+    "filterAdded_12m": "ЗэхэкI 12 мазэ"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — Еплъэн",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Зынджэ видео preview",
     "nextVideoPreview": "Къэгъэлъэгъу видео preview",
     "mediaCollection": "Медиаколлекция",
-    "scrollToVideo": "{title} видео къэплъэну ищIэн"
+    "scrollToVideo": "{title} видео къэплъэну ищIэн",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project IэIэ",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Watch къэщIэжьыжьы",
     "browseVideos": "Видеохэр къыщIэн"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Шыгъуэ фильм къэплъэн",
-    "actions": {
-      "joinUs": "Ди псом къыщыщэн",
-      "shareMission": "Ди миссиям къыщыщэн"
-    },
-    "welcomeStart": {
-      "label": "Иман да Scripture",
-      "title": "Нобэ видео пщIэхэр",
-      "description": "Ди библиотекэм щыщ, иманым къытехьэу видео контент, псалъэ къыдэкIэн, зэбзэхъуэн, да псалъэбжь къэхъуну."
-    },
-    "welcomeMorning": {
-      "label": "ИщIэ щыпсэу",
-      "title": "Сабий къызэщIэн! Нобэ Библиям и мыхъыжьхэр ухуейщ.",
-      "description": "Уи нобэ къыщIэну Библиям и мыхъыжьхэр къеплъэн, псэм къыдэшIэну да къэпщыну."
-    },
-    "welcomeAfternoon": {
-      "label": "Ибжьэщхьэ щыпсэу",
-      "title": "Къэщхьэ! Нобэ үчүн Библиям и мыхъыжьхэр.",
-      "description": "Ибжьэщхьэ щыпсэу е щыщIэ къэщIэну хуэдэ Библия контент."
-    },
-    "welcomeEvening": {
-      "label": "Ижьыбжьэ щыпсэу",
-      "title": "Къэщхьэбзи! Библиям и мыхъыжьхэр къыдэплъэн.",
-      "description": "Псым къыдэкIэу Библиям и мыхъыжьхэр, уи нобэ къэщIэну да тыныс къыпщыкIэну."
-    },
-    "joinUs": {
-      "label": "Ди псом къыщыщэн",
-      "title": "Миллиардхэр къыщIэну ыбжьэжь",
-      "description": "Уръуэбжьымыжьы щыIэ. Дижьыжьыжьыу, digital media-мкIэ, дунейм хъыбар къыдэхыжьыным ди псом къыщыщэн."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Ди зэхэщIэнкIэ щыщэн",
-      "title": "Jesus и хъыбарым ди зэхэщIэн",
-      "description": "Ашым щыщ, Jesus и псалъэбжь да лъагъуныгъэ яуэ бызэмкIэ, къыдэкIауэ гъуэгу хэмыхъуэу, зэрыщыIэм щхьа."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% зэрыхуэдэ",
     "none": "А видеом мы бызэмкIэ рекомендацэхэр къыхыщIауэ щыIэп."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Аудио бызэ",
     "selectLanguageVersion": "Бызэ версие къыхэх",
     "watchSelectedVersion": "Къыхэха версием еплъын"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie къыхэхахэр",
+    "bannerTitle": "Уи хьэл-щэныгъэм къыхэхахэр",
+    "bannerDescription": "Мыкъутэ cookie-хэр Watch-ыр къэгъэхъуэну, иныбжьэгъу еплъыну къызэрагъэпэщыт. Уэ фIэщIу къызэфIэмыгъэхьэ, тхылъым и cookie-м нэгъуэщIу зэхэгъэкIыныр къэкIуэкIыжхэм ящыщ уи интересхэр къэгъэнэну, рекомендацэхэр уи щхьэусыгъуэкIэ гъэпэщытыну. Контекстуальнэ рекомендацэхэр апхуэдэуи къыпщIэщт.",
+    "acceptAll": "Псори къыщIэсын",
+    "essentialOnly": "Мыхъумэ къэзыухьыр щхьэху",
+    "manageChoices": "Къыхэхахэр гъэпкъыр",
+    "savingChoice": "Cookie къыхэхам къызэрагъэхъу",
+    "settings": "Cookie щIэпхъуэжхэр",
+    "settingsDescription": "Watch-м рекомендацэм и интересхэр къэкIуэкIыжхэм ящыщ къэгъэнэн хуейрэ, хуеймэ къыхэх. Мыри зы сыхьэткIэ уиIуэ узыщIэпхъуэжын щыIэщ.",
+    "essentialCookies": "Мыхъумэ cookie-хэр",
+    "essentialDescription": "Щытхъуныгъэ, къеплъэн, хьэл-щэныгъэ къыхэхахэр, рекомендацэ Iэмалыр зыхэлъагъу.",
+    "alwaysActive": "Зэхэту щыIэ",
+    "personalization": "Уи щхьэусыгъуэкIэ гъэпэщытын",
+    "personalizationDescription": "КъэкIуэкIыжхэм ящыщ зэфIэкI интересхэр къэгъэнэн. Мыри къыпхуэмыхьауэ, контекстуальнэ рекомендацэхэр къыпщIэщт.",
+    "erasurePending": "Профилыр епцIыхуэн щыIэу къыщIэкIащ. Контекстуальнэ рекомендацэхэр иджыри зэхэтщ.",
+    "cancel": "Къэмыбжьэн",
+    "saveChoices": "Къыхэхахэр гъэхъу",
+    "saving": "Гъэхъу жыпIэм…",
+    "loadError": "Уи къыхэхам къызэрагъэшэж хъумэщ. Ащыгъу къекIуэу щIалэбжьэу къыхэхын пхуохьэщ.",
+    "grantError": "Уи щхьэусыгъуэкIэ гъэпэщытын щIэрымыкIыфIэщ. Мыхъумэ къэзыухьыр щхьэху щыIэу къэнэщт.",
+    "saveError": "Уи къыхэхам гъэхъу хъумэщ. Гъэпытэжын къытхъуэ."
   }
 }

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Senisim tokples bilong audio",
     "home": "JesusFilm hom",
     "closeSearch": "Pasim painim",
-    "submitSearch": "Tahua"
+    "submitSearch": "Tahua",
+    "library": "Buka haus"
   },
   "SearchOverlay": {
     "dialogLabel": "Painim na brosim ol video",
@@ -467,6 +468,7 @@
     "sports": "Spos",
     "collections": "Ol koleksen",
     "subtitlesOnly": "Sutaitol tasol",
+    "backToTop": "Lou lao guba",
     "newlyAdded": "Nau tasol i go insait",
     "newVideosTitle": "Nupela Kristen video long {language}",
     "newestFirst": "Nupela pastaim",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Ol video i stap nating",
     "videosFromCollection": "Ol video long {collection}.",
     "standaloneDescription": "Ol video i stap nating long dispela tokples.",
-    "openCollection": "Opim koleksen"
+    "openCollection": "Opim koleksen",
+    "filters": "Hahekere",
+    "filterLength": "Lababa",
+    "filterLength_under5": "5 miniti latanai",
+    "filterLength_5to10": "5-10 miniti",
+    "filterLength_10to30": "10-30 miniti",
+    "filterLength_over30": "30 miniti hereva",
+    "filterType": "Bamona",
+    "clearFilters": "Hahekere kokia",
+    "filterResults": "{total} amo {count} hahedinaraia",
+    "noFilterResults": "Video ta be inai hahekere ida hegeregere lasi. Ta kokia toho.",
+    "filterAdded": "Atoa vada",
+    "filterAdded_60d": "Dina 60 idohore",
+    "filterAdded_6m": "Hua 6 idohore",
+    "filterAdded_12m": "Hua 12 idohore"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Lukluk",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Past video preview",
     "nextVideoPreview": "Neks video preview",
     "mediaCollection": "Media koleksen",
-    "scrollToVideo": "Skrol go long {title} video"
+    "scrollToVideo": "Skrol go long {title} video",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project hom",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Go bek long Watch",
     "browseVideos": "Brosim ol video"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Lukluk long shotpela film",
-    "actions": {
-      "joinUs": "Joinim mipela",
-      "shareMission": "Serim misin bilong mipela"
-    },
-    "welcomeStart": {
-      "label": "Bilip & Skripcha",
-      "title": "Video pick bilong tude",
-      "description": "Ol video i stap long bilip long library bilong mipela long kirapim yu, challengeim yu, na kirapim tingting bilong yu."
-    },
-    "welcomeMorning": {
-      "label": "Moning inspiration",
-      "title": "Moning gut! Ol Baibel moment bilong tude i wetim yu.",
-      "description": "Statim de bilong yu wantaim ol gutpela Baibel moment we inap kirapim na strongim spirit bilong yu."
-    },
-    "welcomeAfternoon": {
-      "label": "Aftenun inspiration",
-      "title": "Aftenun gut! Ol Baibel moment bilong de bilong yu.",
-      "description": "Ol gutpela Baibel stori i stret long aftenun brek o long kisim moa inspiration."
-    },
-    "welcomeEvening": {
-      "label": "Evening inspiration",
-      "title": "Gutnait! Sindaun isi wantaim ol Baibel moment.",
-      "description": "Ol isi Baibel moment bilong helpim yu long tingim na kisim comfort taim de i pinis."
-    },
-    "joinUs": {
-      "label": "Joinim mipela",
-      "title": "Bilikn are dispela i painim",
-      "description": "Harvest i stap nau. Joinim mipela taim mipela i serim gospel wantaim wol long digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Go wantaim mipela",
-      "title": "Tokaut long stori bilong Jisas, wantaim mipela",
-      "description": "Ol bai harim na lukim laik bilong Jisas long tokples bilong ol yet stret long hap ol i stap."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% i hegeregere",
     "none": "Video inai dekenai, tokples inai ai video ma haida hariharilaia be lasi."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Dobe gado",
     "selectLanguageVersion": "Gado vesin ta abia",
     "watchSelectedVersion": "Abia vesin itaia"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Kuki pilakwana",
+    "bannerTitle": "Oi emu pilakwana na ginigunana",
+    "bannerDescription": "Kuki bada ta Watch lalonai e hamaoroa bona e halaoa. Oi emu anina bainegore, kuki ta idoinai hereva ta nainega emu ura bainehaguardia ena mai mai taudia, bona ena dainai hahetoho sisivana bainehamomokani. Hahetoho be hereva gauna hegeregere ai be noho helaoreana namonamo.",
+    "acceptAll": "Abia idoinai",
+    "essentialOnly": "Bada taudia sibona",
+    "manageChoices": "Pilakwana hadibaia",
+    "savingChoice": "Kuki pilakwana ihamuria helaoreana",
+    "settings": "Kuki settin",
+    "settingsDescription": "Pilakwana lau ba Watch emu hahetoho ura bainehaguardia ena mai mai taudia eiava lasi. Oi nainega idoinai oi bainehamaorolaia.",
+    "essentialCookies": "Kuki bada taudia",
+    "essentialDescription": "Hamaoromaoro, pilai, oi emu pilakwana na ginigunana, bona hahetoho noinoi kahana.",
+    "alwaysActive": "Noho gaudia hanaihanai",
+    "personalization": "Hahegeregere oi emu ura hegeregerena",
+    "personalizationDescription": "Ura pauka taudia bainehaguardia ena mai mai taudia. Oi ina ba kokwaia, hahetoho hereva gauna hegeregere ai be do noho helaoreana.",
+    "erasurePending": "Profile dokona isiri noho. Hahetoho hereva gauna hegeregere ai be vara ona noho.",
+    "cancel": "Hadoko",
+    "saveChoices": "Pilakwana hamuria",
+    "saving": "Ihamuria noho…",
+    "loadError": "Oi emu pilakwana na diba lasi itaia. A lalo be oi emu pilakwana ihaoho diba noho.",
+    "grantError": "Personalization bainevara diba lasi. Bada taudia sibona be noho helaoreana.",
+    "saveError": "Oi emu pilakwana hamuria diba lasi. Mani ba tovo lou."
   }
 }

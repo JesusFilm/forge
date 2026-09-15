@@ -5,11 +5,17 @@ const {
   clearWatchSeoManifestCacheMock,
   revalidatePathMock,
   revalidateTagMock,
+  purgeWatchDynamicCollectionsCacheMock,
 } = vi.hoisted(() => ({
   clearWatchRouteManifestCacheMock: vi.fn(),
   clearWatchSeoManifestCacheMock: vi.fn(),
   revalidatePathMock: vi.fn(),
   revalidateTagMock: vi.fn(),
+  purgeWatchDynamicCollectionsCacheMock: vi.fn(),
+}))
+
+vi.mock("@/lib/cloudflare-cache", () => ({
+  purgeWatchDynamicCollectionsCache: purgeWatchDynamicCollectionsCacheMock,
 }))
 
 vi.mock("@/lib/watch-route-manifest", () => ({
@@ -31,6 +37,8 @@ describe("POST /api/revalidate", () => {
     clearWatchSeoManifestCacheMock.mockReset()
     revalidatePathMock.mockReset()
     revalidateTagMock.mockReset()
+    purgeWatchDynamicCollectionsCacheMock.mockReset()
+    purgeWatchDynamicCollectionsCacheMock.mockResolvedValue("purged")
     vi.doUnmock("@/i18n/generated-ui-locales")
     vi.resetModules()
   })
@@ -104,6 +112,7 @@ describe("POST /api/revalidate", () => {
     expect(revalidateTagMock).toHaveBeenCalledWith("watch:home", {
       expire: 0,
     })
+    expect(purgeWatchDynamicCollectionsCacheMock).toHaveBeenCalledTimes(1)
     expect(revalidateTagMock).toHaveBeenCalledWith("watch:settings", {
       expire: 0,
     })
@@ -251,6 +260,28 @@ describe("POST /api/revalidate", () => {
     } finally {
       warnSpy.mockRestore()
     }
+  })
+
+  it("keeps webhook invalidation successful when Cloudflare purge fails", async () => {
+    purgeWatchDynamicCollectionsCacheMock.mockResolvedValue("failed")
+    const { POST } = await import("./route")
+
+    const response = await POST(
+      new Request("http://example.test/api/revalidate", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          Authorization: "Bearer test-revalidation-secret",
+        },
+        body: JSON.stringify({ model: "video", entry: {} }),
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    expect(revalidateTagMock).toHaveBeenCalledWith("watch:home", {
+      expire: 0,
+    })
+    expect(purgeWatchDynamicCollectionsCacheMock).toHaveBeenCalledTimes(1)
   })
 
   it("uses the canonical public audio slug for non-English localized content", async () => {
@@ -589,6 +620,7 @@ describe("POST /api/revalidate", () => {
     expect(revalidateTagMock).toHaveBeenCalledWith("watch:route-manifest", {
       expire: 0,
     })
+    expect(purgeWatchDynamicCollectionsCacheMock).not.toHaveBeenCalled()
   })
 
   it("clears the cached watch seo manifest and revalidates sitemap routes", async () => {
@@ -640,6 +672,7 @@ describe("POST /api/revalidate", () => {
     )
 
     expect(response.status).toBe(401)
+    expect(purgeWatchDynamicCollectionsCacheMock).not.toHaveBeenCalled()
     expect(revalidatePathMock).not.toHaveBeenCalled()
     expect(revalidateTagMock).not.toHaveBeenCalled()
   })

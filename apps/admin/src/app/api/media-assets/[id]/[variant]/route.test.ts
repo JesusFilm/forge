@@ -44,6 +44,7 @@ const readyImageAsset = {
   backend: "LOCAL",
   kind: "IMAGE",
   status: "READY",
+  visibility: "PUBLIC",
   mimeType: "image/webp",
   originalFilename: "Hero image.webp",
   objectKey: "media-assets/asset-1/original/hero.webp",
@@ -72,7 +73,7 @@ describe("GET /api/media-assets/[id]/[variant]", () => {
     )
 
     expect(mediaAssetFindFirst).toHaveBeenCalledWith({
-      where: { id: "asset-1", status: "READY" },
+      where: { id: "asset-1", status: "READY", visibility: "PUBLIC" },
     })
     expect(getById).not.toHaveBeenCalled()
     expect(readMediaObject).toHaveBeenCalledWith({
@@ -118,5 +119,39 @@ describe("GET /api/media-assets/[id]/[variant]", () => {
 
     expect(response.status).toBe(404)
     expect(readMediaObject).not.toHaveBeenCalled()
+  })
+  it("refuses private anonymous previews even if a query adapter returns a private row", async () => {
+    resolvePrincipalFromRequest.mockResolvedValueOnce(null)
+    mediaAssetFindFirst.mockResolvedValueOnce({
+      ...readyImageAsset,
+      visibility: "PRIVATE",
+    })
+    const response = await GET(
+      new Request(
+        "https://admin.example.test/api/media-assets/asset-1/preview",
+      ),
+      { params: Promise.resolve({ id: "asset-1", variant: "preview" }) },
+    )
+    expect(response.status).toBe(404)
+    expect(readMediaObject).not.toHaveBeenCalled()
+  })
+  it("keeps authorized private dashboard previews usable", async () => {
+    resolvePrincipalFromRequest.mockResolvedValueOnce({
+      id: "editor",
+      role: "EDITOR",
+    })
+    getById.mockResolvedValueOnce({ ...readyImageAsset, visibility: "PRIVATE" })
+    readMediaObject.mockResolvedValueOnce(new Uint8Array([4, 5]))
+    const response = await GET(
+      new Request(
+        "https://admin.example.test/api/media-assets/asset-1/preview",
+      ),
+      { params: Promise.resolve({ id: "asset-1", variant: "preview" }) },
+    )
+    expect(response.status).toBe(200)
+    expect(response.headers.get("cache-control")).toBe("private, max-age=60")
+    expect(Array.from(new Uint8Array(await response.arrayBuffer()))).toEqual([
+      4, 5,
+    ])
   })
 })

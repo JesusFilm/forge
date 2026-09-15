@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Pabalian so lengguahe na audio",
     "home": "Home na JesusFilm",
     "closeSearch": "Isara so saliksik",
-    "submitSearch": "Saliksiken"
+    "submitSearch": "Saliksiken",
+    "library": "Librarya"
   },
   "SearchOverlay": {
     "dialogLabel": "Saliksiken tan liboten so mga video",
@@ -467,6 +468,7 @@
     "sports": "Isports",
     "collections": "Mga Koleksyon",
     "subtitlesOnly": "Subtitle laeng",
+    "backToTop": "Ompawil ed tagey",
     "newlyAdded": "Kakabalo a naidugang",
     "newVideosTitle": "Balo a Kristiyanong video ed {language}",
     "newestFirst": "Pinakabalo anay",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Mga video a nag-iisa",
     "videosFromCollection": "Mga video gapo ed {collection}.",
     "standaloneDescription": "Mga video a nag-iisa ed sayan a lengguahe.",
-    "openCollection": "I-abri so koleksyon"
+    "openCollection": "I-abri so koleksyon",
+    "filters": "Filter",
+    "filterLength": "Kaabigan",
+    "filterLength_under5": "Kulang ed 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Masulok ed 30 min",
+    "filterType": "Klase",
+    "clearFilters": "Ekalen so filter",
+    "filterResults": "{count} ed {total} so nipanengneng",
+    "noFilterResults": "Anggapoy video ya mitunosan ed sarayan filter. Salien mo ekalen so sakey.",
+    "filterAdded": "Niyarum",
+    "filterAdded_60d": "Sampot ya 60 agew",
+    "filterAdded_6m": "Sampot ya 6 bulan",
+    "filterAdded_12m": "Sampot ya 12 bulan"
   },
   "WatchHome": {
     "pageTitle": "Panonood ed Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Nakasabin a preview na video",
     "nextVideoPreview": "Susundan a preview na video",
     "mediaCollection": "Koleksyon na Media",
-    "scrollToVideo": "I-scroll so video a {title}"
+    "scrollToVideo": "I-scroll so video a {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Home na Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Balik ed Watch",
     "browseVideos": "Liboten so mga video"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Panooren so Maikling Pelikula",
-    "actions": {
-      "joinUs": "Sumapi ka ed Amin",
-      "shareMission": "Ibahagi so Ating Misyon"
-    },
-    "welcomeStart": {
-      "label": "Pananampalataya & Kasulatan",
-      "title": "Mga Pinili a Video ya Ngatan",
-      "description": "Mga video a nakasentro ed pananampalataya gapo ed library mi a mangengganyo, manghamon, tan mangpaiduma na pagsariwa."
-    },
-    "welcomeMorning": {
-      "label": "Agsabi a Inspirasion",
-      "title": "Naimbag a Agsabi! Antayen so Mga Momento na Biblia ed Ngatan.",
-      "description": "Umpisan so aldaw mo kaibat so nakakapagpasigla a mga biblikal a momento a dinisenyo para mangengganyo tan mangpalakas na espiritu mo."
-    },
-    "welcomeAfternoon": {
-      "label": "Aldew a Inspirasion",
-      "title": "Naimbag a Aldew! Mga Momento na Biblia para ed Aldew mo.",
-      "description": "Nakakapagpasigla a nilalaman na Biblia a bagay para ed aldew a pahinga mo o tuloy a inspirasyon."
-    },
-    "welcomeEvening": {
-      "label": "Labat a Inspirasion",
-      "title": "Naimbag a Labat! Mamaral so daya kaibat so Mga Momento na Biblia.",
-      "description": "Mapayapa a mga momonto na Biblia a mangtulong ya makapagmuni-muni ka tan makatalaw na awas habang mamagbabba so aldaw mo."
-    },
-    "joinUs": {
-      "label": "Sumapi ka ed Amin",
-      "title": "Bilyones so maaarap",
-      "description": "Andi so aaningen. Sumapi ka ed amin ya ipamulong mi so ebanghelyo ed bilog a mundo paagi ed digital a media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Manganibang tayo!",
-      "title": "Ikuwento so Istorya ni Jesus, Akin a Tayo",
-      "description": "Tapno marinig dan makit-an so ayat ni Jesus ed sikara ya sariling lengguahe, mismo ya agta lugar da."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% a katugma",
     "none": "Aga'y nabilay a rekomendasyon para ed sayan a video ed sayan a lengguahe."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Lengguahe na boses",
     "selectLanguageVersion": "Piliin so bersyon na lengguahe",
     "watchSelectedVersion": "Panonood so pinili a bersyon"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Pagpilian ed cookie",
+    "bannerTitle": "Dagiti pilim ya pagkapribado",
+    "bannerDescription": "Dagiti importantin cookie et mangisalaknib tan mangipapagana ed Watch. No ipalubos mo, sakey a opsyonal a first-party cookie so makanengnengneng na dagiti interes mo ed amin a bisita pian mapersonalisar so rekomendasion. Dagiti kontekstuwal a rekomendasion et magawa la met maski anton man so piliem.",
+    "acceptAll": "Awaten amin",
+    "essentialOnly": "Importanti labat",
+    "manageChoices": "Asikasuen so pagpipilian",
+    "savingChoice": "Isasalba so pinilim a cookie",
+    "settings": "Settings na cookie",
+    "settingsDescription": "Pilien no maari ya tandaanen na Watch dagiti interes mo ed rekomendasion ed amin a bisita. Mabalin mo itan ya baliwen anyaman ya oras.",
+    "essentialCookies": "Importantin cookie",
+    "essentialDescription": "Seguridad, playback, dagiti pilim ya pagkapribado, tan atribusion na kerew ed rekomendasion.",
+    "alwaysActive": "Aktibo lan amin oras",
+    "personalization": "Personalisasion",
+    "personalizationDescription": "Tandaan dagiti limitadon interes ed amin a bisita. No patayen mo iya, magawa la met so dagiti kontekstuwal a rekomendasion.",
+    "erasurePending": "Agtatalaran niyaman so panagpunas na profile. Aktibo la natan so dagiti kontekstuwal a rekomendasion.",
+    "cancel": "Ikansela",
+    "saveChoices": "Isalba so pagpipilian",
+    "saving": "Isasalba…",
+    "loadError": "Agew na-load so pinilim. Mabalin ka la met a mamili ed baba.",
+    "grantError": "Agew na-on so personalisasion. Available la so importantin cookie labat.",
+    "saveError": "Agew naisalba so pinilim. Pangaasi ta subok manen."
   }
 }

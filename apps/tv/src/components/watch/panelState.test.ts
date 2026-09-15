@@ -6,6 +6,8 @@ import type {
 } from "../../lib/normalizeVideo"
 import {
   annotateVariantRows,
+  deriveDetailsDataState,
+  deriveDetailsPlayState,
   deriveSubtitlePanelState,
   isSubtitleRowActive,
   isVariantPlayable,
@@ -48,6 +50,108 @@ function variant(overrides: Partial<WatchVariant> = {}): WatchVariant {
 }
 
 const NOT_LOADED: DubMediaState = { media: null, loading: false, error: false }
+
+describe("details metadata loading", () => {
+  it("does not expose Play until metadata and a valid source are ready", () => {
+    expect(
+      deriveDetailsPlayState(false, "https://stream.mux.com/video.m3u8"),
+    ).toBe("loading")
+    expect(deriveDetailsPlayState(true, null)).toBe("unavailable")
+    expect(
+      deriveDetailsPlayState(true, "https://untrusted.test/video.m3u8"),
+    ).toBe("unavailable")
+    expect(
+      deriveDetailsPlayState(true, "https://stream.mux.com/video.m3u8"),
+    ).toBe("ready")
+  })
+  it("keeps partial or previous video data in loading until the query finishes", () => {
+    expect(
+      deriveDetailsDataState({
+        loading: true,
+        error: false,
+        currentVideoReady: true,
+      }),
+    ).toBe("loading")
+    expect(
+      deriveDetailsDataState({
+        loading: false,
+        error: false,
+        currentVideoReady: false,
+      }),
+    ).toBe("loading")
+  })
+
+  it("finishes with ready or error, and retry returns to loading", () => {
+    expect(
+      deriveDetailsDataState({
+        loading: false,
+        error: false,
+        currentVideoReady: true,
+      }),
+    ).toBe("ready")
+    expect(
+      deriveDetailsDataState({
+        loading: false,
+        error: true,
+        currentVideoReady: false,
+      }),
+    ).toBe("error")
+    expect(
+      deriveDetailsDataState({
+        loading: true,
+        error: true,
+        currentVideoReady: false,
+      }),
+    ).toBe("loading")
+  })
+
+  it("does not show old subtitle tracks while the current video is loading or failed", () => {
+    const loaded = {
+      media: media([subtitle("english")]),
+      loading: false,
+      error: false,
+    }
+    expect(deriveSubtitlePanelState(loaded, "loading")).toEqual({
+      kind: "loading",
+    })
+    expect(deriveSubtitlePanelState(loaded, "error")).toEqual({ kind: "error" })
+    expect(deriveSubtitlePanelState(loaded, "ready")).toEqual({
+      kind: "loaded",
+      subtitles: [subtitle("english")],
+    })
+  })
+
+  it("keeps subtitle loading after the video metadata completes", () => {
+    expect(deriveSubtitlePanelState(NOT_LOADED, "ready")).toEqual({
+      kind: "loading",
+    })
+  })
+
+  it("does not inspect or sort language rows while preparation is disabled", () => {
+    const unavailable = variant()
+    Object.defineProperty(unavailable, "hls", {
+      get() {
+        throw new Error("Should not inspect hidden rows")
+      },
+    })
+    expect(annotateVariantRows([unavailable], 0, false)).toEqual([])
+  })
+
+  it("prepares sorted options with original selection identity when enabled", () => {
+    const rows = annotateVariantRows(
+      [
+        variant({ languageName: "Zulu" }),
+        variant({ documentId: "v2", languageName: "English" }),
+      ],
+      0,
+      true,
+    )
+    expect(rows.map(({ index, active }) => ({ index, active }))).toEqual([
+      { index: 1, active: false },
+      { index: 0, active: true },
+    ])
+  })
+})
 
 // ── deriveSubtitlePanelState ─────────────────────────────────────────────────
 

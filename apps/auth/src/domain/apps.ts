@@ -1,4 +1,5 @@
 import { CHANGELOG_OAUTH_SCOPES, type AuthScopeKey } from "./scopes"
+import { CHANGELOG_OAUTH_RESOURCES } from "./changelog-oauth-resources"
 
 export const FIRST_PARTY_OWNER = {
   ownerType: "jesus_film",
@@ -27,6 +28,7 @@ export type AppEnvironmentSeed = {
   clientId: string
   managerSessionServiceClientId?: string
   managerSessionServiceAudience?: string
+  mcpResourceAudience?: string
   redirectUris: string[]
   postLogoutRedirectUris: string[]
   allowedOrigins: string[]
@@ -414,6 +416,7 @@ export const CHANGELOG_APP_SEED: RegisteredAppSeed = {
       key: "local",
       kind: "local",
       clientId: CHANGELOG_LOCAL_CLIENT_ID,
+      mcpResourceAudience: CHANGELOG_OAUTH_RESOURCES.local,
       redirectUris: ["http://localhost:3000/api/auth/callback"],
       postLogoutRedirectUris: ["http://localhost:3000/api/auth/login"],
       allowedOrigins: ["http://localhost:3000"],
@@ -424,6 +427,7 @@ export const CHANGELOG_APP_SEED: RegisteredAppSeed = {
       key: "production",
       kind: "production",
       clientId: CHANGELOG_PRODUCTION_CLIENT_ID,
+      mcpResourceAudience: CHANGELOG_OAUTH_RESOURCES.production,
       redirectUris: ["https://changelog.jesusfilm.org/api/auth/callback"],
       postLogoutRedirectUris: [
         "https://changelog.jesusfilm.org/api/auth/login",
@@ -446,6 +450,7 @@ export const ADMIN_MCP_APP_SEED: RegisteredAppSeed = {
       key: "local",
       kind: "local",
       clientId: "jfp_admin_mcp_local",
+      mcpResourceAudience: "http://localhost:3003/mcp",
       redirectUris: ["http://localhost:3003/mcp/oauth/callback"],
       postLogoutRedirectUris: ["http://localhost:3003/dashboard/experiences"],
       allowedOrigins: ["http://localhost:3003"],
@@ -456,6 +461,7 @@ export const ADMIN_MCP_APP_SEED: RegisteredAppSeed = {
       key: "preview",
       kind: "preview",
       clientId: "jfp_admin_mcp_preview",
+      mcpResourceAudience: "https://admin-preview.jesusfilm.org/mcp",
       redirectUris: ["https://admin-preview.jesusfilm.org/mcp/oauth/callback"],
       postLogoutRedirectUris: [
         "https://admin-preview.jesusfilm.org/dashboard/experiences",
@@ -468,6 +474,7 @@ export const ADMIN_MCP_APP_SEED: RegisteredAppSeed = {
       key: "staging",
       kind: "staging",
       clientId: "jfp_admin_mcp_staging",
+      mcpResourceAudience: "https://admin-stage.jesusfilm.org/mcp",
       redirectUris: ["https://admin-stage.jesusfilm.org/mcp/oauth/callback"],
       postLogoutRedirectUris: [
         "https://admin-stage.jesusfilm.org/dashboard/experiences",
@@ -480,6 +487,7 @@ export const ADMIN_MCP_APP_SEED: RegisteredAppSeed = {
       key: "production",
       kind: "production",
       clientId: "jfp_admin_mcp_production",
+      mcpResourceAudience: "https://admin.jesusfilm.org/mcp",
       redirectUris: ["https://admin.jesusfilm.org/mcp/oauth/callback"],
       postLogoutRedirectUris: [
         "https://admin.jesusfilm.org/dashboard/experiences",
@@ -494,6 +502,7 @@ export const ADMIN_MCP_APP_SEED: RegisteredAppSeed = {
       key: "codex",
       kind: "production",
       clientId: ADMIN_MCP_CODEX_CLIENT_ID,
+      mcpResourceAudience: "https://admin.jesusfilm.org/mcp",
       redirectUris: [],
       postLogoutRedirectUris: [],
       allowedOrigins: [],
@@ -619,7 +628,35 @@ export const TV_DEVICE_CLIENT_IDS = [
   "jfp_tv_production",
 ] as const
 
+export const STUDIO_MCP_APP_SEED: RegisteredAppSeed = {
+  key: "shorts-mcp",
+  displayName: "Shorts MCP",
+  description: "Delegated Shorts authoring without human review authority.",
+  ...FIRST_PARTY_OWNER,
+  environments: MANAGER_APP_SEED.environments.map((e) => ({
+    ...e,
+    clientId: `jfp_shorts_mcp_${e.kind}`,
+    managerSessionServiceClientId: undefined,
+    managerSessionServiceAudience: undefined,
+    mcpResourceAudience: new URL("/mcp", e.allowedOrigins[0]!).toString(),
+    redirectUris: [
+      new URL("/mcp/oauth/callback", e.allowedOrigins[0]!).toString(),
+    ],
+    defaultScopes: [
+      "openid",
+      "profile:read",
+      "email:read",
+      "shorts:read",
+      "shorts:edit",
+      "shorts:chat",
+      "shorts:instructions:read",
+    ],
+    autoApprove: false,
+  })),
+}
+
 export const FIRST_PARTY_APP_SEEDS = [
+  STUDIO_MCP_APP_SEED,
   ADMIN_APP_SEED,
   MANAGER_APP_SEED,
   WEB_APP_SEED,
@@ -630,3 +667,19 @@ export const FIRST_PARTY_APP_SEEDS = [
   MOBILE_APP_SEED,
   TV_APP_SEED,
 ] satisfies RegisteredAppSeed[]
+
+export const FIRST_PARTY_OAUTH_CLIENT_IDS = FIRST_PARTY_APP_SEEDS.flatMap(
+  (app) =>
+    app.environments.flatMap((environment) => [
+      environment.clientId,
+      ...(environment.managerSessionServiceClientId
+        ? [environment.managerSessionServiceClientId]
+        : []),
+    ]),
+)
+
+const FIRST_PARTY_OAUTH_CLIENT_ID_SET = new Set(FIRST_PARTY_OAUTH_CLIENT_IDS)
+
+export function isFirstPartyOAuthClientId(clientId: string): boolean {
+  return FIRST_PARTY_OAUTH_CLIENT_ID_SET.has(clientId)
+}

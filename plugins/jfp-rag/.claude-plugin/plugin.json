@@ -1,0 +1,12 @@
+{
+  "name": "jfp-rag",
+  "version": "0.1.0",
+  "description": "Provider-neutral operator workflows for the Forge RAG service.",
+  "author": {
+    "name": "Jesus Film Project",
+    "url": "https://www.jesusfilm.org"
+  },
+  "repository": "https://github.com/JesusFilm/forge",
+  "license": "UNLICENSED",
+  "keywords": ["jesus-film", "rag", "operations", "evaluation"]
+}

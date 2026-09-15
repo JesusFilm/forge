@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио чажытын өөред",
     "home": "JesusFilm баш бети",
     "closeSearch": "Издеңин жаба бер",
-    "submitSearch": "Изде"
+    "submitSearch": "Изде",
+    "library": "Библиотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоларды издеп, көрүп тур",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Жыйнактар",
     "subtitlesOnly": "Тек субтитр",
+    "backToTop": "Өрү чанары",
     "newlyAdded": "Жаңы кошулган",
     "newVideosTitle": "{language} де жаңы христиан видеолар",
     "newestFirst": "Эң жаңысы алдыда",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Өзүнчө видеолор",
     "videosFromCollection": "{collection} дын видеолору.",
     "standaloneDescription": "Бу чажыттагы өзүнчө видеолор.",
-    "openCollection": "Жыйнакты ач"
+    "openCollection": "Жыйнакты ач",
+    "filters": "Фильтрлер",
+    "filterLength": "Узуну",
+    "filterLength_under5": "5 минутадан эвээш",
+    "filterLength_5to10": "5-10 минута",
+    "filterLength_10to30": "10-30 минута",
+    "filterLength_over30": "30 минутадан хөй",
+    "filterType": "Хевири",
+    "clearFilters": "Фильтрлерни аштаары",
+    "filterResults": "{total} дан {count} көргүзүттүнген",
+    "noFilterResults": "Бо фильтрлерге дүгжүр видео чок. Бирээзин ап көрүңер.",
+    "filterAdded": "Немешкен",
+    "filterAdded_60d": "Сөөлгү 60 хонук",
+    "filterAdded_6m": "Сөөлгү 6 ай",
+    "filterAdded_12m": "Сөөлгү 12 ай"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Көрү",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Илгерги видео алдын ала көрүшү",
     "nextVideoPreview": "Кийинки видео алдын ала көрүшү",
     "mediaCollection": "Медиа жыйнагы",
-    "scrollToVideo": "{title} видеосуна түшүңүз"
+    "scrollToVideo": "{title} видеосуна түшүңүз",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project баш бети",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Көрүүгө кайтар",
     "browseVideos": "Видеолорду көрүп тур"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Кыска фильм көр",
-    "actions": {
-      "joinUs": "Бизге кошул",
-      "shareMission": "Биздин миссияны бөлүш"
-    },
-    "welcomeStart": {
-      "label": "Ишеним жана Ыйык Жазма",
-      "title": "Бүгүнкү видео тандоолор",
-      "description": "Бөлүштүргөн китепканабыздагы ишенимге багытталган видеолор сизди шыктандырып, ойготуп, ой жүгүртүүгө түрткү берет."
-    },
-    "welcomeMorning": {
-      "label": "Эртең мененки шыктануу",
-      "title": "Кутман таң! Бүгүнкү Библия учурлары сизди күтүп турат.",
-      "description": "Күнүңүздү дем берип, көңүл көтөргөн Библия учурлары менен баштаңыз."
-    },
-    "welcomeAfternoon": {
-      "label": "Түштөн кийинки шыктануу",
-      "title": "Кутман түштөн кийин! Бүгүнкү Библия учурлары сиз үчүн.",
-      "description": "Түштөн кийинки эс алууңузга же дем алдырууга ылайык Библия мазмуну."
-    },
-    "welcomeEvening": {
-      "label": "Кечки шыктануу",
-      "title": "Кутман кеч! Библия учурлары менен эс алыңыз.",
-      "description": "Күн аяктай баштаганда ой жүгүртүп, жубаныш табууга жардам берген тынч Библия учурлары."
-    },
-    "joinUs": {
-      "label": "Бизге кошул",
-      "title": "Миллиарддар издеп жатат",
-      "description": "Түшүм бышып жетти. Санарип медиа аркылуу дүйнөгө Инжилди таратууга бизге кошулуңуз."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Бирге баралы",
-      "title": "Ыйсанын тарыхын бирге айтуу",
-      "description": "Ошондо алар Ыйсанын сүйүүсүн өз тилинде, өздөрү турган жерде угуп, көрө алышат."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% таарыжылга",
     "none": "Бу видео үчүн бу чажытта кеңеш кылыр видео табылбады."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Аудио дыл",
     "selectLanguageVersion": "Дыл версиязын шилип алыңар",
     "watchSelectedVersion": "Шилип алган версияны көрүңер"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie шилилилер",
+    "bannerTitle": "Силерниң хамааржылга шилилилериңер",
+    "bannerDescription": "Керек cookie-лер Watch-ту аянчырдандап, ажылдап турарынга дузалжаар. Ынчаар уруксаатыңар-биле, кошумак биринчи-талалыг cookie барыр чүүлгелериңерни келирлер аразында сактып, сүмелелерни хуудаштырып турар. Контексттиг сүмелелер кайы чүве болза-даа бар болур.",
+    "acceptAll": "Бүгүнүн хүлээп алыр",
+    "essentialOnly": "Чүге керек арыг",
+    "manageChoices": "Шилилилерни башкарыр",
+    "savingChoice": "Cookie шилилин хадарып турар",
+    "settings": "Cookie көйлери",
+    "settingsDescription": "Watch келирлер аразында сүмеле чүүлгелериңерни сактып болур-боолурнү шилиңер. Моонү кажан-даа солуп болур силер.",
+    "essentialCookies": "Чүге керек cookie-лер",
+    "essentialDescription": "Кодурал, көргүзер, хамааржылга шилилили, болгаш сүмеле дилегиниң холбаалы.",
+    "alwaysActive": "Каш уеде идевиктиг",
+    "personalization": "Хуудаштырулга",
+    "personalizationDescription": "Чектелген чүүлгелериңерни келирлер аразында сактыр. Моонү ундуруп салзаңар, контексттиг сүмелелер база-даа бар болур.",
+    "erasurePending": "Профильди өжүрери сактып турар. Контексттиг сүмелелер амдыы чедир идевиктиг.",
+    "cancel": "Догдур",
+    "saveChoices": "Шилилилерни хадарыңар",
+    "saving": "Хадап турар…",
+    "loadError": "Силерниң шилилиңерни чүктеп болбады. Ындаа ада шилиип болур силер.",
+    "grantError": "Хуудаштырулганы идевиктидирип болбады. Чүге керек арыг база-даа бар.",
+    "saveError": "Силерниң шилилиңерни хадарып болбады. Катап көрүңер."
   }
 }

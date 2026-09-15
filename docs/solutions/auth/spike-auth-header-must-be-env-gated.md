@@ -12,6 +12,15 @@ problem_type: security_issue
 component: apps/admin/src/graphql/context.ts
 ---
 
+> **Superseded mechanism (2026-09-07 refresh):** `x-spike-role`,
+> `SPIKE_ROLES`, and `parseSpikeRole` no longer exist anywhere in the
+> codebase. Unit 5 replaced the spike path with admin-local OAuth session
+> resolution, and the current `apps/admin/src/graphql/context.ts` states the
+> surviving invariant directly: SYSTEM remains an in-process-only principal
+> that HTTP requests can never mint. The prevention rules below stay the
+> doctrine for any future spike or placeholder auth surface; the code
+> snippets are historical.
+
 ## Problem
 
 The admin app's Unit 6 GraphQL context read an `x-spike-role` header as a

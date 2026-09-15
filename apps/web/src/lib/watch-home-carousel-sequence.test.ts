@@ -3,16 +3,18 @@
  */
 
 import { beforeEach, describe, expect, it } from "vitest"
-import type { WatchHomeMuxInsertConfig } from "@/lib/watch-home-config"
 import {
   WATCH_HOME_TV_CURRENT_VIDEO_STORAGE_KEY,
-  WATCH_HOME_TV_MUX_SELECTIONS_STORAGE_KEY,
   WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY,
   addWatchHomeTvPlayedId,
+  addWatchHomeVerticalVideoId,
+  boundedRandomIndex,
   buildWatchHomeVideoQueue,
   getWatchHomeDeterministicOffset,
+  isWatchHomeHeroPlayableAspect,
+  pickRandomWatchHomeHeroVideo,
+  readWatchHomeVerticalVideoIds,
   loadWatchHomeCurrentVideoSession,
-  mergeWatchHomeMuxInserts,
   poolFailuresStorageKey,
   poolVideosStorageKey,
   readWatchHomeTvPlayedIds,
@@ -28,7 +30,6 @@ function video(id: string): WatchHomeTvCarouselVideoSlide {
     kind: "video",
     id,
     title: id,
-    description: null,
     label: "Short film",
     href: `/${id}.html/english.html`,
     posterUrl: `${id}.jpg`,
@@ -47,18 +48,6 @@ function pool(id: string, videos: string[]): WatchHomeCarouselPool {
     videos: videos.map(video),
   }
 }
-
-const muxInsert = {
-  id: "welcome-start",
-  copyId: "welcomeStart",
-  enabled: true,
-  playbackIds: ["playback-a"],
-  durationSeconds: 9,
-  action: null,
-  logo: true,
-  posterOverride: null,
-  trigger: { type: "sequence-start" },
-} satisfies WatchHomeMuxInsertConfig
 
 describe("watch home carousel sequence helpers", () => {
   beforeEach(() => {
@@ -83,6 +72,187 @@ describe("watch home carousel sequence helpers", () => {
       }),
     )
     expect(getWatchHomeDeterministicOffset("pool-a", 0, { now })).toBe(0)
+  })
+
+  it("draws the hero uniformly from every pooled video the server shipped", () => {
+    const pools = [
+      pool("pool-a", ["video-a", "video-b"]),
+      pool("pool-b", ["video-c"]),
+    ]
+    const drawn = [0, 0.5, 0.99].map(
+      (value) =>
+        pickRandomWatchHomeHeroVideo({ pools, random: () => value })?.id,
+    )
+
+    expect(drawn).toEqual(["video-a", "video-b", "video-c"])
+    expect(
+      pickRandomWatchHomeHeroVideo({ pools, random: () => 0.5 })?.poolId,
+    ).toBe("pool-a")
+  })
+
+  it("keeps portrait and near-square sources out of the wide hero frame", () => {
+    // 16:9 and 4:3 fill the frame; 1:1, 4:5 and 9:16 would render as a cropped
+    // centre strip under object-cover.
+    expect(isWatchHomeHeroPlayableAspect(1920, 1080)).toBe(true)
+    expect(isWatchHomeHeroPlayableAspect(1440, 1080)).toBe(true)
+    expect(isWatchHomeHeroPlayableAspect(1080, 1080)).toBe(false)
+    expect(isWatchHomeHeroPlayableAspect(1080, 1350)).toBe(false)
+    expect(isWatchHomeHeroPlayableAspect(1080, 1920)).toBe(false)
+  })
+
+  it("allows anything it cannot measure rather than dropping it", () => {
+    expect(isWatchHomeHeroPlayableAspect(0, 0)).toBe(true)
+    expect(isWatchHomeHeroPlayableAspect(null, null)).toBe(true)
+    expect(isWatchHomeHeroPlayableAspect(undefined, undefined)).toBe(true)
+    expect(isWatchHomeHeroPlayableAspect(Number.NaN, 1080)).toBe(true)
+    expect(isWatchHomeHeroPlayableAspect(1920, 0)).toBe(true)
+  })
+
+  it("never draws an excluded video, even once everything else is played", () => {
+    const pools = [pool("pool-a", ["video-a", "video-b"])]
+
+    expect(
+      pickRandomWatchHomeHeroVideo({
+        pools,
+        excludedIds: ["video-a"],
+        random: () => 0,
+      })?.id,
+    ).toBe("video-b")
+    // playedIds fall back to the full set when everything has been seen;
+    // excludedIds must not.
+    expect(
+      pickRandomWatchHomeHeroVideo({
+        pools,
+        excludedIds: ["video-a"],
+        playedIds: ["video-a", "video-b"],
+        random: () => 0,
+      })?.id,
+    ).toBe("video-b")
+    expect(
+      pickRandomWatchHomeHeroVideo({
+        pools,
+        excludedIds: ["video-a", "video-b"],
+        random: () => 0,
+      }),
+    ).toBeNull()
+  })
+
+  it("keeps excluded videos out of every queue-build path", () => {
+    const pools = [pool("pool-a", ["video-a", "video-b", "video-c"])]
+    const excludedIds = ["video-b"]
+
+    const built = buildWatchHomeVideoQueue({
+      pools,
+      excludedIds,
+      targetVideoCount: 3,
+      useStoredProgress: false,
+    })
+    expect(built.videos.map((entry) => entry.id)).not.toContain("video-b")
+
+    // The early-exit path returns existing videos untouched otherwise.
+    const earlyExit = buildWatchHomeVideoQueue({
+      pools,
+      excludedIds,
+      existingVideos: [video("video-b"), video("video-c")],
+      targetVideoCount: 1,
+      useStoredProgress: false,
+    })
+    expect(earlyExit.videos.map((entry) => entry.id)).toEqual(["video-c"])
+  })
+
+  it("remembers measured-portrait videos for the current month only", () => {
+    const now = new Date("2026-08-27T12:00:00.000Z")
+    addWatchHomeVerticalVideoId("video-a", now)
+    addWatchHomeVerticalVideoId("video-a", now)
+    addWatchHomeVerticalVideoId("video-b", now)
+
+    expect(readWatchHomeVerticalVideoIds(now)).toEqual(["video-a", "video-b"])
+    expect(
+      readWatchHomeVerticalVideoIds(new Date("2026-09-01T00:00:00.000Z")),
+    ).toEqual([])
+    expect(readWatchHomeVerticalVideoIds(now)).toEqual([])
+  })
+
+  it("skips already played videos until the whole library has been seen", () => {
+    const pools = [pool("pool-a", ["video-a", "video-b"])]
+
+    expect(
+      pickRandomWatchHomeHeroVideo({
+        pools,
+        playedIds: ["video-a"],
+        random: () => 0,
+      })?.id,
+    ).toBe("video-b")
+    expect(
+      pickRandomWatchHomeHeroVideo({
+        pools,
+        playedIds: ["video-a", "video-b"],
+        random: () => 0,
+      })?.id,
+    ).toBe("video-a")
+    expect(
+      pickRandomWatchHomeHeroVideo({ pools: [], random: () => 0 }),
+    ).toBeNull()
+  })
+
+  it("never draws a video without a playable source", () => {
+    const unplayable = { ...video("video-b"), src: null }
+    const pools = [
+      {
+        id: "pool-a",
+        collectionIds: ["pool-a"],
+        videos: [video("video-a"), unplayable],
+      },
+    ]
+
+    expect(
+      pickRandomWatchHomeHeroVideo({ pools, random: () => 0.99 })?.id,
+    ).toBe("video-a")
+  })
+
+  it("keeps a random draw inside the candidate list", () => {
+    expect(boundedRandomIndex(3, () => 0.999999)).toBe(2)
+    expect(boundedRandomIndex(3, () => 1)).toBe(2)
+    expect(boundedRandomIndex(3, () => -1)).toBe(0)
+    expect(boundedRandomIndex(3, () => Number.NaN)).toBe(0)
+    expect(boundedRandomIndex(0, () => 0.5)).toBe(0)
+  })
+
+  it("swaps the daily pool offset for a per-visit draw when a random source is supplied", () => {
+    const pools = [pool("pool-a", ["video-a", "video-b", "video-c"])]
+    const now = new Date("2026-06-04T12:00:00.000Z")
+
+    const deterministic = buildWatchHomeVideoQueue({
+      pools,
+      targetVideoCount: 1,
+      now,
+      useStoredProgress: false,
+    }).videos.map((entry) => entry.id)
+    const lastFirst = buildWatchHomeVideoQueue({
+      pools,
+      targetVideoCount: 1,
+      now,
+      useStoredProgress: false,
+      randomSource: () => 0.99,
+    }).videos.map((entry) => entry.id)
+    const firstFirst = buildWatchHomeVideoQueue({
+      pools,
+      targetVideoCount: 1,
+      now,
+      useStoredProgress: false,
+      randomSource: () => 0,
+    }).videos.map((entry) => entry.id)
+
+    expect(deterministic).toEqual(
+      buildWatchHomeVideoQueue({
+        pools,
+        targetVideoCount: 1,
+        now,
+        useStoredProgress: false,
+      }).videos.map((entry) => entry.id),
+    )
+    expect(lastFirst).toEqual(["video-c"])
+    expect(firstFirst).toEqual(["video-a"])
   })
 
   it("stores and expires persistent played ids in the Core monthly shape", () => {
@@ -133,6 +303,141 @@ describe("watch home carousel sequence helpers", () => {
       "pool-b",
     ])
     expect(result.nextPoolIndex).toBe(2)
+  })
+
+  it("rolls over played history after preserving the final unplayed hero", () => {
+    const now = new Date("2026-06-04T12:00:00.000Z")
+    addWatchHomeTvPlayedId("video-a", now)
+    addWatchHomeTvPlayedId("video-b", now)
+
+    const result = buildWatchHomeVideoQueue({
+      existingVideos: [video("video-c")],
+      pools: [pool("pool-a", ["video-a", "video-b", "video-c"])],
+      targetVideoCount: 3,
+      now,
+      randomSource: () => 0,
+    })
+
+    expect(result.videos.map((item) => item.id)).toEqual([
+      "video-c",
+      "video-a",
+      "video-b",
+    ])
+    expect(readWatchHomeTvPlayedIds(now)).toEqual(["video-a", "video-b"])
+  })
+
+  it("preserves persistent and per-pool progress during queue rollover", () => {
+    const now = new Date("2026-06-04T12:00:00.000Z")
+    for (const id of ["video-a", "video-b", "video-c"]) {
+      addWatchHomeTvPlayedId(id, now)
+    }
+    window.sessionStorage.setItem(
+      poolVideosStorageKey("pool-a"),
+      JSON.stringify(["video-a", "video-b", "video-c"]),
+    )
+    window.sessionStorage.setItem(poolFailuresStorageKey("pool-a"), "2")
+
+    const persistentBefore = window.localStorage.getItem(
+      WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY,
+    )
+    const poolProgressBefore = window.sessionStorage.getItem(
+      poolVideosStorageKey("pool-a"),
+    )
+    const poolFailuresBefore = window.sessionStorage.getItem(
+      poolFailuresStorageKey("pool-a"),
+    )
+
+    const result = buildWatchHomeVideoQueue({
+      existingVideos: [video("video-c")],
+      pools: [pool("pool-a", ["video-a", "video-b", "video-c"])],
+      targetVideoCount: 3,
+      now,
+      randomSource: () => 0,
+    })
+
+    expect(result.videos.map((item) => item.id)).toEqual([
+      "video-c",
+      "video-a",
+      "video-b",
+    ])
+    expect(
+      window.localStorage.getItem(WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY),
+    ).toBe(persistentBefore)
+    expect(window.sessionStorage.getItem(poolVideosStorageKey("pool-a"))).toBe(
+      poolProgressBefore,
+    )
+    expect(
+      window.sessionStorage.getItem(poolFailuresStorageKey("pool-a")),
+    ).toBe(poolFailuresBefore)
+  })
+
+  it("keeps hard exclusions out of the rollover pass", () => {
+    const now = new Date("2026-06-04T12:00:00.000Z")
+
+    const result = buildWatchHomeVideoQueue({
+      existingVideos: [video("video-c")],
+      excludedIds: ["video-b"],
+      playedIds: ["video-a", "video-b", "video-c"],
+      pools: [pool("pool-a", ["video-a", "video-b", "video-c"])],
+      targetVideoCount: 3,
+      now,
+      randomSource: () => 0,
+    })
+
+    expect(result.videos.map((item) => item.id)).toEqual(["video-c", "video-a"])
+  })
+
+  it("respects explicit played ids without browser-backed progress", () => {
+    const result = buildWatchHomeVideoQueue({
+      playedIds: ["video-a"],
+      pools: [pool("pool-a", ["video-a", "video-b"])],
+      targetVideoCount: 1,
+      useStoredProgress: false,
+      randomSource: () => 0,
+    })
+
+    expect(result.videos.map((item) => item.id)).toEqual(["video-b"])
+  })
+
+  it("terminates empty and one-video queues at their eligible catalog size", () => {
+    const empty = buildWatchHomeVideoQueue({
+      pools: [pool("pool-a", [])],
+      targetVideoCount: 7,
+      useStoredProgress: false,
+    })
+    const oneVideo = buildWatchHomeVideoQueue({
+      existingVideos: [video("video-a")],
+      pools: [pool("pool-a", ["video-a"])],
+      targetVideoCount: 7,
+      useStoredProgress: false,
+    })
+
+    expect(empty).toEqual({ videos: [], nextPoolIndex: 0 })
+    expect(oneVideo).toEqual({
+      videos: [video("video-a")],
+      nextPoolIndex: 0,
+    })
+  })
+
+  it("stops after each distinct eligible video is queued", () => {
+    for (let videoCount = 2; videoCount <= 6; videoCount += 1) {
+      const ids = Array.from(
+        { length: videoCount },
+        (_, index) => `video-${index}`,
+      )
+      const result = buildWatchHomeVideoQueue({
+        pools: [pool("pool-a", ids)],
+        targetVideoCount: 7,
+        useStoredProgress: false,
+        randomSource: () => 0,
+      })
+
+      expect(result.videos.map((item) => item.id)).toEqual(ids)
+      expect(new Set(result.videos.map((item) => item.id)).size).toBe(
+        videoCount,
+      )
+      expect(result.nextPoolIndex).toBe(videoCount)
+    }
   })
 
   it("tracks repeated pool failures and marks depleted pools exhausted", () => {
@@ -201,79 +506,5 @@ describe("watch home carousel sequence helpers", () => {
     )
 
     expect(loadWatchHomeCurrentVideoSession(new Date("2026-06-04"))).toBeNull()
-  })
-
-  it("merges Mux inserts with date prefix and session-stable playback ids", () => {
-    const slides = mergeWatchHomeMuxInserts(
-      [video("video-1"), video("video-2")],
-      [
-        muxInsert,
-        {
-          ...muxInsert,
-          id: "join-us",
-          copyId: "joinUs",
-          playbackIds: ["join-a", "join-b"],
-          trigger: { type: "after-count", count: 1 },
-          action: {
-            copyId: "joinUs",
-            url: "https://example.com",
-          },
-        },
-      ],
-      new Date("2026-06-04T12:00:00.000Z"),
-    )
-
-    expect(slides.map((slide) => slide.id)).toEqual([
-      "mux-welcome-start",
-      "video-1",
-      "mux-join-us",
-      "video-2",
-    ])
-    expect(slides[0]).toMatchObject({
-      kind: "mux",
-      copyId: "welcomeStart",
-      titleDate: "2026-06-04T12:00:00.000Z",
-      playbackId: "playback-a",
-      secondaryAction: null,
-    })
-    expect(slides[2]).toMatchObject({
-      kind: "mux",
-      copyId: "joinUs",
-      secondaryAction: {
-        type: "watch-short-film",
-      },
-    })
-    const stored = JSON.parse(
-      window.sessionStorage.getItem(WATCH_HOME_TV_MUX_SELECTIONS_STORAGE_KEY) ??
-        "{}",
-    )
-    expect(["join-a", "join-b"]).toContain(stored["join-us"])
-  })
-
-  it("preserves the stable copy id of a selected conditional overlay", () => {
-    const [slide] = mergeWatchHomeMuxInserts(
-      [],
-      [
-        {
-          ...muxInsert,
-          conditionalOverlays: [
-            {
-              copyId: "welcomeMorning",
-              priority: 10,
-              conditions: [{ type: "time-range", range: { start: 5, end: 9 } }],
-              overlay: {},
-            },
-          ],
-        },
-      ],
-      new Date("2026-06-04T12:00:00.000Z"),
-      { useStoredSelections: false },
-    )
-
-    expect(slide).toMatchObject({
-      kind: "mux",
-      copyId: "welcomeMorning",
-      titleDate: "2026-06-04T12:00:00.000Z",
-    })
   })
 })

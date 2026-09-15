@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Bongola monoko ya mongongo",
     "home": "Ndako ya JesusFilm",
     "closeSearch": "Kokanga boluki",
-    "submitSearch": "Luka"
+    "submitSearch": "Luka",
+    "library": "Nzo ya mikanda"
   },
   "SearchOverlay": {
     "dialogLabel": "Luka mpe tala ba vidéo",
@@ -467,6 +468,7 @@
     "sports": "Masano",
     "collections": "Masangani",
     "subtitlesOnly": "Kaka mibenga ya nse",
+    "backToTop": "Vutuka na zulu",
     "newlyAdded": "Ebakisami sika",
     "newVideosTitle": "Ba vidéo ya boklisto ya sika na {language}",
     "newestFirst": "Ya sika liboso",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Ba vidéo ya sekele",
     "videosFromCollection": "Ba vidéo uta na {collection}.",
     "standaloneDescription": "Ba vidéo ya sekele na monoko oyo.",
-    "openCollection": "Fungola lisangá"
+    "openCollection": "Fungola lisangá",
+    "filters": "Bafiltre",
+    "filterLength": "Nda",
+    "filterLength_under5": "Na nsi ya miniti 5",
+    "filterLength_5to10": "Miniti 5-10",
+    "filterLength_10to30": "Miniti 10-30",
+    "filterLength_over30": "Kuluta miniti 30",
+    "filterType": "Mutindu",
+    "clearFilters": "Katula bafiltre",
+    "filterResults": "{count} na {total} bemonisa",
+    "noFilterResults": "Vidéo mosi ve ke wakana ti bafiltre yayi. Meka kukatula mosi.",
+    "filterAdded": "Yikamene",
+    "filterAdded_60d": "Bilumbu 60 bileki",
+    "filterAdded_6m": "Bangonda 6 bileki",
+    "filterAdded_12m": "Bangonda 12 bileki"
   },
   "WatchHome": {
     "pageTitle": "Kotala ya Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Preview ya vidéo oyo eleki",
     "nextVideoPreview": "Preview ya vidéo oyo ekolanda",
     "mediaCollection": "Lisangá ya média",
-    "scrollToVideo": "Kokita na vidéo ya {title}"
+    "scrollToVideo": "Kokita na vidéo ya {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Ndako ya Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Zonga na Watch",
     "browseVideos": "Talá ba vidéo"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Talá film mokuse",
-    "actions": {
-      "joinUs": "Bóyá elongo na biso",
-      "shareMission": "Kabola na mosala na biso"
-    },
-    "welcomeStart": {
-      "label": "Kondima & Makomami",
-      "title": "Piké ya vidéo ya lelo",
-      "description": "Contenu ya vidéo oyo etongami na kondima uta na bibliothèque na biso mpo na kopesa bokasi, kotinda na mokano, mpe kolamusa makanisi."
-    },
-    "welcomeMorning": {
-      "label": "Kolamuka ya tongo",
-      "title": "Tongo malamu! Ba moments ya Biblia ya lelo ezali kozela yo.",
-      "description": "Bandá mokolo na yo na ba moments ya Biblia oyo elendisaka mpe ekotombola molimo na yo."
-    },
-    "welcomeAfternoon": {
-      "label": "Kolamuka ya midi",
-      "title": "Midi malamu! Ba moments ya Biblia mpo na mokolo na yo.",
-      "description": "Contenu ya Biblia oyo elendisaka, malamu mpenza mpo na pause na yo ya midi to mpo na kopesa yo bokasi lisusu."
-    },
-    "welcomeEvening": {
-      "label": "Kolamuka ya mpokwa",
-      "title": "Mpokwa malamu! Pema na ba moments ya Biblia.",
-      "description": "Ba moments ya Biblia ya kimya mpo na kosalisa yo okanisa mpe omona kobondisama ntango mokolo na yo ezali kokóma na nsuka."
-    },
-    "joinUs": {
-      "label": "Bóyá elongo na biso",
-      "title": "Bamiliare ezali koluka",
-      "description": "Mbuma ezali awa. Bóyá elongo na biso mpo na kokabola Nsango Malamu na mokili na nzela ya média numérique."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Tókende elongo",
-      "title": "Koyebisa lisolo ya Yesu, elongo",
-      "description": "Mpo bázwa mpe bamona bolingo ya Yesu na monoko na bango moko, epai bazali."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% ya kufwanana",
     "none": "Ata nsonga mosi ve me monana sambu na video yayi na ndinga yayi."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Ndinga ya audio",
     "selectLanguageVersion": "Pona mutindu ya ndinga",
     "watchSelectedVersion": "Tala mutindu yina me ponama"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Maponi ya cookie",
+    "bannerTitle": "Maponi na nge ya kimfumu",
+    "bannerDescription": "Cookie ya mfunu kebumbaka Watch mbote mpi kesadisaka yo kusala. Kana nge pesa nzila, cookie ya kimuntu mosi ya kusobama lenda kubambuka bansatu na nge na bantangu ya kuvutuka sambu na kupesa masonuku ya kulandakana ya me landa nge. Masonuku ya kulandakana ya ntangu yai kele kaka ntangu yonso.",
+    "acceptAll": "Ndima yonso",
+    "essentialOnly": "Ya mfunu kaka",
+    "manageChoices": "Yala maponi",
+    "savingChoice": "Kebumba diponi ya cookie",
+    "settings": "Bisika ya kutula cookie",
+    "settingsDescription": "Sola kana Watch lenda kubambuka bansatu ya masonuku ya kulandakana na bantangu ya kuvutuka. Nge lenda soba yai ntangu yonso.",
+    "essentialCookies": "Cookie ya mfunu",
+    "essentialDescription": "Lukengolo, kutala video, maponi ya kimfumu, mpi nsamunu ya kusosa masonuku ya kulandakana.",
+    "alwaysActive": "Kezingaka ntangu yonso",
+    "personalization": "Kupesa na mutindu ya nge",
+    "personalizationDescription": "Bambuka bansatu ya me tulama ndilu na bantangu ya kuvutuka. Kana nge katula yai, masonuku ya kulandakana ya ntangu yai ta zinga kaka.",
+    "erasurePending": "Kufuta profil kele kaka na nzila. Masonuku ya kulandakana ya ntangu yai kele dezia ya kusadila.",
+    "cancel": "Katula",
+    "saveChoices": "Bumba maponi",
+    "saving": "Kebumba…",
+    "loadError": "Diponi na nge malembe ko kuloadama. Nge lenda kaka kusola na nsi awa.",
+    "grantError": "Personalisation malembe ko kupesama nzila. Ya mfunu kaka kele kaka ya kusadila.",
+    "saveError": "Diponi na nge malembe ko kubumbama. Meka diaka."
   }
 }

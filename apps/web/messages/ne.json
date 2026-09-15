@@ -180,7 +180,8 @@
     "changeAudioLanguage": "अडियो भाषा परिवर्तन गर्नुहोस्",
     "home": "JesusFilm गृहपृष्ठ",
     "closeSearch": "खोज बन्द गर्नुहोस्",
-    "submitSearch": "खोज्नुहोस्"
+    "submitSearch": "खोज्नुहोस्",
+    "library": "पुस्तकालय"
   },
   "SearchOverlay": {
     "dialogLabel": "भिडियो खोज्नुहोस् र हेर्नुहोस्",
@@ -283,6 +284,7 @@
     "sports": "खेलकुद",
     "collections": "संग्रहहरू",
     "subtitlesOnly": "उपशीर्षक मात्र",
+    "backToTop": "माथि फर्कनु",
     "newlyAdded": "नयाँ थपिएको",
     "newVideosTitle": "{language} मा नयाँ ख्रिस्टियन भिडियोहरू",
     "newestFirst": "सबैभन्दा नयाँ पहिले",
@@ -313,7 +315,21 @@
     "standaloneVideos": "स्वतन्त्र भिडियोहरू",
     "videosFromCollection": "{collection} बाट भिडियोहरू।",
     "standaloneDescription": "यस भाषाका स्वतन्त्र भिडियोहरू।",
-    "openCollection": "संग्रह खोल्नुहोस्"
+    "openCollection": "संग्रह खोल्नुहोस्",
+    "filters": "फिल्टर",
+    "filterLength": "अवधि",
+    "filterLength_under5": "5 मिनेटभन्दा कम",
+    "filterLength_5to10": "5-10 मिनेट",
+    "filterLength_10to30": "10-30 मिनेट",
+    "filterLength_over30": "30 मिनेटभन्दा बढी",
+    "filterType": "प्रकार",
+    "clearFilters": "फिल्टर हटाउनु",
+    "filterResults": "{total} मध्ये {count} देखाइएको",
+    "noFilterResults": "यी फिल्टरसँग कुनै भिडियो मेल खाँदैन। एउटा हटाउनुहोस्।",
+    "filterAdded": "थपिएको",
+    "filterAdded_60d": "पछिल्ला 60 दिन",
+    "filterAdded_6m": "पछिल्ला 6 महिना",
+    "filterAdded_12m": "पछिल्ला 12 महिना"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project हेर्नुहोस्",
@@ -327,7 +343,8 @@
     "nextVideoPreview": "अर्को भिडियो पूर्वावलोकन",
     "featured": "विशेष",
     "mediaCollection": "मिडिया संग्रह",
-    "scrollToVideo": "{title} भिडियोमा स्क्रोल गर्नुहोस्"
+    "scrollToVideo": "{title} भिडियोमा स्क्रोल गर्नुहोस्",
+    "forYou": "तपाईंको लागि"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "भाषाहरू",
@@ -446,7 +463,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
       "openSupportForm": "Open support form"
     }
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "छोटो फिल्म हेर्नुहोस्",
-    "actions": {
-      "joinUs": "हामीसँग जोडिनुहोस्",
-      "shareMission": "हाम्रो मिसनमा सहभागी हुनुहोस्"
-    },
-    "welcomeStart": {
-      "label": "विश्वास र धर्मशास्त्र",
-      "title": "आजका भिडियो छनोटहरू",
-      "description": "हाम्रो पुस्तकालयबाट विश्वासकेन्द्रित भिडियो सामग्री, जसले प्रेरित गर्न, चुनौती दिन, र चिन्तन जगाउन मद्दत गर्छ।"
-    },
-    "welcomeMorning": {
-      "label": "बिहानी प्रेरणा",
-      "title": "शुभ प्रभात! आजका बाइबल क्षणहरू तपाईंको प्रतीक्षामा छन्।",
-      "description": "तपाईंको दिन सुरु गर्न प्रेरणादायी बाइबल क्षणहरूसँग शुरुआत गर्नुहोस्, जसले तपाईंलाई उत्साहित र सशक्त पार्न डिजाइन गरिएको छ।"
-    },
-    "welcomeAfternoon": {
-      "label": "दिउँसो प्रेरणा",
-      "title": "शुभ अपराह्न! तपाईंको दिनका लागि बाइबल क्षणहरू।",
-      "description": "दिउँसोको विश्राम वा निरन्तर प्रेरणाका लागि उपयुक्त प्रेरणादायी बाइबल सामग्री।"
-    },
-    "welcomeEvening": {
-      "label": "साँझ प्रेरणा",
-      "title": "शुभ साँझ! बाइबल क्षणहरूसँग विश्राम लिनुहोस्।",
-      "description": "तपाईंको दिन समाप्त हुँदै गर्दा मनन गर्न र सान्त्वना पाउन मद्दत गर्ने शान्त बाइबल क्षणहरू।"
-    },
-    "joinUs": {
-      "label": "हामीसँग जोडिनुहोस्",
-      "title": "अरबौँ मानिसहरू खोजिरहेका छन्",
-      "description": "फसल तयार छ। डिजिटल मिडिया प्रयोग गरेर संसारसँग सुसमाचार बाँड्न हामीसँग सामेल हुनुहोस्।"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "साथै अघि बढौँ",
-      "title": "येशूको कथा, सँगै सुनाउँदै",
-      "description": "ताकि उनीहरूले जहाँ छन् त्यहीँ आफ्नै भाषामा येशूको प्रेम सुन्न र देख्न सकून्।"
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% मिल्दो",
     "none": "यो भिडियोका लागि यस भाषामा कुनै सिफारिस भेटिएन।"
@@ -744,5 +723,28 @@
     "languageVersionLabel": "अडियो भाषा",
     "selectLanguageVersion": "भाषा संस्करण छान्नुहोस्",
     "watchSelectedVersion": "छानिएको संस्करण हेर्नुहोस्"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "कुकी छनोटहरू",
+    "bannerTitle": "तपाईंका गोपनीयता छनोटहरू",
+    "bannerDescription": "आवश्यक कुकीहरूले Watch लाई सुरक्षित र सही रूपमा चलिरहन मद्दत गर्छन्। तपाईंको अनुमतिसँग, वैकल्पिक पहिलो-पक्षको कुकीले सिफारिसहरूलाई व्यक्तिगत बनाउन भ्रमणहरूबीच तपाईंका रुचिहरू सम्झन सक्छ। सन्दर्भअनुसारका सिफारिसहरू भने दुवै अवस्थामा उपलब्ध रहन्छन्।",
+    "acceptAll": "सबै स्वीकार गर्नुहोस्",
+    "essentialOnly": "आवश्यक मात्र",
+    "manageChoices": "छनोटहरू व्यवस्थापन गर्नुहोस्",
+    "savingChoice": "कुकी छनोट सुरक्षित गर्दै",
+    "settings": "कुकी सेटिङहरू",
+    "settingsDescription": "Watch ले भ्रमणहरूबीच सिफारिससम्बन्धी रुचिहरू सम्झन पाउने वा नपाउने छनोट गर्नुहोस्। तपाईंले यो कुनै पनि समयमा परिवर्तन गर्न सक्नुहुन्छ।",
+    "essentialCookies": "आवश्यक कुकीहरू",
+    "essentialDescription": "सुरक्षा, प्लेब्याक, गोपनीयता छनोटहरू, र सिफारिस अनुरोधको श्रेयांकन।",
+    "alwaysActive": "सधैँ सक्रिय",
+    "personalization": "व्यक्तिकरण",
+    "personalizationDescription": "भ्रमणहरूबीच सीमित रुचिहरू सम्झनुहोस्। यसलाई बन्द गर्दा पनि सन्दर्भअनुसारका सिफारिसहरू उपलब्ध रहन्छन्।",
+    "erasurePending": "प्रोफाइल मेटाउने प्रक्रिया बाँकी छ। सन्दर्भअनुसारका सिफारिसहरू पहिले नै सक्रिय छन्।",
+    "cancel": "रद्द गर्नुहोस्",
+    "saveChoices": "छनोटहरू सुरक्षित गर्नुहोस्",
+    "saving": "सुरक्षित गर्दै…",
+    "loadError": "तपाईंको छनोट लोड गर्न सकिएन। तपाईं अझै तल छनोट गर्न सक्नुहुन्छ।",
+    "grantError": "व्यक्तिकरण सक्षम गर्न सकिएन। आवश्यक मात्र विकल्प उपलब्ध छ।",
+    "saveError": "तपाईंको छनोट सुरक्षित गर्न सकिएन। कृपया फेरि प्रयास गर्नुहोस्।"
   }
 }

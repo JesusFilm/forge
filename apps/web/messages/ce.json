@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио мотт къобалдолла",
     "home": "JesusFilm коьрта",
     "closeSearch": "Ларх дӀакхахьа",
-    "submitSearch": "Лар"
+    "submitSearch": "Лар",
+    "library": "Библиотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео лар а хьажар а",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Коллекцеш",
     "subtitlesOnly": "Субтитраш гана",
+    "backToTop": "Лакхара юха",
     "newlyAdded": "Ийна дӀаяздина",
     "newVideosTitle": "{language} мотте цӀийча христиански видеолаш",
     "newestFirst": "Деррига халха",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Къастийна видеолаш",
     "videosFromCollection": "{collection} чохь видеолаш.",
     "standaloneDescription": "Цу моттехь къастийна видеолаш.",
-    "openCollection": "Коллекци ачуьлла"
+    "openCollection": "Коллекци ачуьлла",
+    "filters": "Литтарш",
+    "filterLength": "Деха",
+    "filterLength_under5": "5 минотана к1езиг",
+    "filterLength_5to10": "5-10 минот",
+    "filterLength_10to30": "10-30 минот",
+    "filterLength_over30": "30 минотана дукха",
+    "filterType": "Тайпа",
+    "clearFilters": "Литтарш цIандар",
+    "filterResults": "{total} чуьра {count} гайтина",
+    "noFilterResults": "Оцу литтаршна тайна видео дац. Цхьаъ дIаяккха гIортта.",
+    "filterAdded": "Т1етоьхна",
+    "filterAdded_60d": "Т1аьххьара 60 де",
+    "filterAdded_6m": "Т1аьххьара 6 бутт",
+    "filterAdded_12m": "Т1аьххьара 12 бутт"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — хьажар",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Халха видео превью",
     "nextVideoPreview": "Кхин видео превью",
     "mediaCollection": "Медиа коллекци",
-    "scrollToVideo": "{title} видео тӀе кӀелахьа"
+    "scrollToVideo": "{title} видео тӀе кӀелахьа",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project коьрта",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Watch ахь дӀахьа",
     "browseVideos": "Видеолаш хьажа"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Къеззиг фильм хьажа",
-    "actions": {
-      "joinUs": "Тхайца цхьаьна хилла",
-      "shareMission": "Хьалхе хила тхайн миссица"
-    },
-    "welcomeStart": {
-      "label": "Иман а Писани а",
-      "title": "ХӀинца хьажа видеолаш",
-      "description": "Тхайн библиотекара иманца дӀакхачийна видеоконтент, дехар дийла, тӀехьхьа хьалхе хетараш къобалдолла."
-    },
-    "welcomeMorning": {
-      "label": "Сехьа тӀехь хьалхе дӀахьа",
-      "title": "Сеха дӀахьа! ХӀинца Библияра хьалхараш күтт ду.",
-      "description": "Хьоьн дехар а сийлахь хетар а гӀо, хӀараран деза Библияра хьалхарашца денна хьалха дӀахьа."
-    },
-    "welcomeAfternoon": {
-      "label": "Шовда тӀехь хьалхе дӀахьа",
-      "title": "Шовда дӀахьа! Хьан денна Библияра хьалхараш.",
-      "description": "Шовда дӀахьарца я кхин а хьалхе хетарца деза Библияра контент."
-    },
-    "welcomeEvening": {
-      "label": "Санахьа тӀехь хьалхе дӀахьа",
-      "title": "Санахьа дӀахьа! Библияра хьалхарашца гӀерта.",
-      "description": "Саба Библияра хьалхараш, ден йолуш вуьзча хенахь хьоьн тӀехьхьа хетар а тӀасса хьажар а гӀо."
-    },
-    "joinUs": {
-      "label": "Тхайца цхьаьна хилла",
-      "title": "Миллиардш ларучуш ду",
-      "description": "Хъарчахьа хили. Digital media лелош, дуненанца Инжил дӀакхачахьа, тхайца цхьаьна хили."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Цхьаьна гӀо",
-      "title": "Исан тарих дӀакхачийна, цхьаьна",
-      "description": "Шайн моттехь, шен къастийна чохь, Исан мах, хьажар а хьалхара а дехар болуш хила."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% нийса догӀу",
     "none": "ХӀара видео хӀокху маттахь рекомендацеш ца карийна."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Аудиомотт",
     "selectLanguageVersion": "Меттан верси харжа",
     "watchSelectedVersion": "Хержина верси хьажа"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie харжамаш",
+    "bannerTitle": "Хьан конфиденциальность харжамаш",
+    "bannerDescription": "Лазаме cookie-файлаш Watch хьалхаькха а, болх бан а дика латто. Хьан тӀедилларца, хьаша optional first-party cookie могуш ю хьан соцамаш визиташ юкъара дӀаяздан, рекомендацеш хьуна хетаргашка хьаьжжина таӀоран. Контекстийн рекомендацеш кхин а карор ю иштта а, иштта доцуш а.",
+    "acceptAll": "Массо а тӀеэца",
+    "essentialOnly": "Цхьанна лазаме",
+    "manageChoices": "Харжамаш кхачам бан",
+    "savingChoice": "Cookie харжам ларбар",
+    "settings": "Cookie тохарш",
+    "settingsDescription": "Watch-на визиташ юкъара рекомендацийн соцамаш дӀаяздан мегар дуй хьажа. Иза хьо цу хенахь а хийца мега.",
+    "essentialCookies": "Лазаме cookie-файлаш",
+    "essentialDescription": "Безопасность, вахар playback, конфиденциальность харжамаш, а рекомендаци дехарийн attribution.",
+    "alwaysActive": "Дайма тӀехьа",
+    "personalization": "Шенна таӀоран",
+    "personalizationDescription": "Визиташ юкъара хьалхадоьккху соцамаш дӀаязде. Иза дӀадаккхарца контекстийн рекомендацеш кхин а карор ю.",
+    "erasurePending": "Профиль дӀадаккхар тӀехьадогӀуш ду. Контекстийн рекомендацеш хьанна хӀинца а тӀехьа ю.",
+    "cancel": "Бекъа",
+    "saveChoices": "Харжамаш ларбе",
+    "saving": "Ларбеш ду…",
+    "loadError": "Хьан харжам чуйолуш хила ца мегира. Хьо кхузахьа харжам бан мега.",
+    "grantError": "Шенна таӀоран тӀетуьйра ца мегира. Цхьанна лазаме кхин а карор ду.",
+    "saveError": "Хьан харжам ларбан ца мегира. Дехар ду, юха а хьажа."
   }
 }

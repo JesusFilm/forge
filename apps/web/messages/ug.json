@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ئاۋاز تىلىنى ئۆزگەرتىش",
     "home": "JesusFilm باش بېتى",
     "closeSearch": "ئىزدەشنى يېپىش",
-    "submitSearch": "ئىزدەش"
+    "submitSearch": "ئىزدەش",
+    "library": "كۇتۇپخانا"
   },
   "SearchOverlay": {
     "dialogLabel": "سىنلارنى ئىزدەش ۋە كۆرۈش",
@@ -467,6 +468,7 @@
     "sports": "تەنتەربىيە",
     "collections": "يىغقۇلار",
     "subtitlesOnly": "پەقەت تارتىم",
+    "backToTop": "ئۈستىگە قايتىش",
     "newlyAdded": "يېڭى قوشۇلغان",
     "newVideosTitle": "{language} دىكى يېڭى خىرىستىيان سىنلىرى",
     "newestFirst": "ئەڭ يېڭىسى ئالدىدا",
@@ -497,7 +499,21 @@
     "standaloneVideos": "مۇستەقىل سىنلار",
     "videosFromCollection": "{collection} دىكى سىنلار.",
     "standaloneDescription": "بۇ تىلدىكى مۇستەقىل سىنلار.",
-    "openCollection": "يىغقۇنى ئېچىش"
+    "openCollection": "يىغقۇنى ئېچىش",
+    "filters": "سۈزگۈچلەر",
+    "filterLength": "ئۇزۇنلۇقى",
+    "filterLength_under5": "5 مىنۇتتىن ئاز",
+    "filterLength_5to10": "5-10 مىنۇت",
+    "filterLength_10to30": "10-30 مىنۇت",
+    "filterLength_over30": "30 مىنۇتتىن كۆپ",
+    "filterType": "تىپى",
+    "clearFilters": "سۈزگۈچلەرنى تازىلاش",
+    "filterResults": "{total} دىن {count} كۆرسىتىلدى",
+    "noFilterResults": "بۇ سۈزگۈچلەرگە ماس كېلىدىغان سىن يوق. بىرىنى ئېلىۋېتىپ سىناڭ.",
+    "filterAdded": "قوشۇلغان",
+    "filterAdded_60d": "ئاخىرقى 60 كۈن",
+    "filterAdded_6m": "ئاخىرقى 6 ئاي",
+    "filterAdded_12m": "ئاخىرقى 12 ئاي"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project كۆرۈش",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "ئالدىنقى سىن ئالدىن كۆرۈشى",
     "nextVideoPreview": "كېيىنكى سىن ئالدىن كۆرۈشى",
     "mediaCollection": "مېدىيا يىغقۇسى",
-    "scrollToVideo": "{title} سىنىغا سۈرۈش"
+    "scrollToVideo": "{title} سىنىغا سۈرۈش",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project باش بېتى",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "كۆرۈشكە قايتىش",
     "browseVideos": "سىنلارنى كۆرۈش"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "قىسقا فىلىمنى كۆرۈش",
-    "actions": {
-      "joinUs": "بىزگە قوشۇلۇڭ",
-      "shareMission": "بىزنىڭ ۋەزىپىمىزگە قوشۇلۇڭ"
-    },
-    "welcomeStart": {
-      "label": "ئېتىقاد ۋە مۇقەددەس كىتاب",
-      "title": "بۈگۈنكى تاللانغان سىنلار",
-      "description": "مەنبە كۇتۇپخانىسىمىزدىكى ئېتىقاد مەركەزلەشكەن سىن مەزمۇنى سىزنى ئىلھاملاندۇرۇش، قىيىنلاشتۇرۇش ۋە ئويغا سالىش ئۈچۈن."
-    },
-    "welcomeMorning": {
-      "label": "ئەتىگەنلىك ئىلھام",
-      "title": "خەيرلىك سەھەر! بۈگۈنكى ئىنجىل دەقىقىلىرى سىزنى كۈتمەكتە.",
-      "description": "كۈننى كۆڭۈلنى ئىلھاملاندۇرىدىغان، روھىڭىزنى كۆتۈرىدىغان ئىنجىل دەقىقىلىرى بىلەن باشلاڭ."
-    },
-    "welcomeAfternoon": {
-      "label": "چۈشتىن كېيىنكى ئىلھام",
-      "title": "خەيرلىك چۈش! كۈنىڭىز ئۈچۈن ئىنجىل دەقىقىلىرى.",
-      "description": "چۈشتىن كېيىنكى ئارام ۋاقتىڭىز ياكى داۋاملىق ئىلھام ئېلىشىڭىز ئۈچۈن مۇۋاپىق بولغان ئىلھاملاندۇرغۇچى ئىنجىل مەزمۇنى."
-    },
-    "welcomeEvening": {
-      "label": "كەچلىك ئىلھام",
-      "title": "خەيرلىك كەچ! ئىنجىل دەقىقىلىرى بىلەن ئارام ئېلىڭ.",
-      "description": "كۈنىڭىز ئاخىرلاشقاندا ئويلىنىشىڭىز ۋە تەسەللى تېپىشىڭىزغا ياردەم بېرىدىغان تىنچ ئىنجىل دەقىقىلىرى."
-    },
-    "joinUs": {
-      "label": "بىزگە قوشۇلۇڭ",
-      "title": "مىلياردلار ئىزدەۋاتىدۇ",
-      "description": "ھوسۇل ۋاقتى كەلدى. رەقەملىك مېدىيا ئارقىلىق خۇش خەۋەرنى دۇنياغا يەتكۈزۈشتە بىزگە قوشۇلۇڭ."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "بىرلىكتە ئالغا ئىلگىرلەيلى",
-      "title": "ئەيسا مەسىھنىڭ ھېكايىسىنى بىرلىكتە سۆزلەيلى",
-      "description": "شۇنداق بولغاندا ئۇلار ئۆز تىلىدا، ئۆزلىرى تۇرغان جايىدا ئەيسانىڭ مۇھەببىتىنى ئاڭلاپ ۋە كۆرەلەيدۇ."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% ماس كېلىدۇ",
     "none": "بۇ تىلدا بۇ سىن ئۈچۈن ھېچقانداق تەۋسىيە تېپىلمىدى."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "ئاۋاز تىلى",
     "selectLanguageVersion": "تىل نۇسخىسىنى تاللاڭ",
     "watchSelectedVersion": "تاللانغان نۇسخىنى كۆرۈڭ"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie تاللاشلىرى",
+    "bannerTitle": "مەخپىيەتلىك تاللىشىڭىز",
+    "bannerDescription": "زۆرۈر cookie لار Watch نى بىخەتەر ۋە نورمال ئىشلەيدىغان ھالەتتە ساقلايدۇ. ئىجازەت بەرسىڭىز، قوشۇمچە بىرىنچى تەرەپ cookie سى زىيارەتلەر ئارىسىدا قىزىقىشلىرىڭىزنى ئەسلەپ، تەۋسىيەلەرنى خاسلاشتۇرىدۇ. مەزمۇنغا ئاساسلانغان تەۋسىيەلەر ھەر ئىككى ھالەتتىمۇ ئىشلەتكىلى بولىدۇ.",
+    "acceptAll": "ھەممىسىنى قوبۇل قىلىش",
+    "essentialOnly": "پەقەت زۆرۈرلىرى",
+    "manageChoices": "تاللاشلارنى باشقۇرۇش",
+    "savingChoice": "Cookie تاللىشى ساقلىنىۋاتىدۇ",
+    "settings": "Cookie تەڭشەكلىرى",
+    "settingsDescription": "Watch نىڭ زىيارەتلەر ئارىسىدا تەۋسىيە قىزىقىشلىرىڭىزنى ئەسلەپ قېلىشىنى خالايدىغان-خالىمايدىغانلىقىڭىزنى تاللاڭ. بۇنى خالىغان ۋاقىتتا ئۆزگەرتەلەيسىز.",
+    "essentialCookies": "زۆرۈر cookie لار",
+    "essentialDescription": "بىخەتەرلىك، قويۇش، مەخپىيەتلىك تاللاشلىرى ۋە تەۋسىيە ئىلتىماس مەنبەسىنى بەلگىلەش.",
+    "alwaysActive": "ھەمىشە ئاكتىپ",
+    "personalization": "خاسلاشتۇرۇش",
+    "personalizationDescription": "زىيارەتلەر ئارىسىدا چەكلىك قىزىقىشلارنى ئەسلەپ قالىدۇ. بۇنى ئېتىۋەتسىڭىز، مەزمۇنغا ئاساسلانغان تەۋسىيەلەر يەنىلا ئىشلىتىلىدۇ.",
+    "erasurePending": "پروفايلنى ئۆچۈرۈش بىر تەرەپ قىلىنىۋاتىدۇ. مەزمۇنغا ئاساسلانغان تەۋسىيەلەر ئاللىقاچان ئاكتىپ.",
+    "cancel": "ۋاز كېچىش",
+    "saveChoices": "تاللاشلارنى ساقلاش",
+    "saving": "ساقلىنىۋاتىدۇ…",
+    "loadError": "تاللىشىڭىزنى يۈكلىگىلى بولمىدى. تۆۋەندە يەنىلا تاللىيالايسىز.",
+    "grantError": "خاسلاشتۇرۇشنى قوزغىتالمىدى. پەقەت زۆرۈر تاللاش يەنىلا ئىشلەتكىلى بولىدۇ.",
+    "saveError": "تاللىشىڭىزنى ساقلىغىلى بولمىدى. قايتا سىناپ بېقىڭ."
   }
 }

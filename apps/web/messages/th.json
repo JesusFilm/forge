@@ -180,7 +180,8 @@
     "changeAudioLanguage": "เปลี่ยนภาษาเสียง",
     "home": "หน้าแรก JesusFilm",
     "closeSearch": "ปิดการค้นหา",
-    "submitSearch": "ค้นหา"
+    "submitSearch": "ค้นหา",
+    "library": "คลังวิดีโอ"
   },
   "SearchOverlay": {
     "dialogLabel": "ค้นหาและเลือกดูวิดีโอ",
@@ -283,6 +284,7 @@
     "sports": "กีฬา",
     "collections": "คอลเลกชัน",
     "subtitlesOnly": "เฉพาะคำบรรยาย",
+    "backToTop": "กลับขึ้นด้านบน",
     "newlyAdded": "เพิ่มใหม่",
     "newVideosTitle": "วิดีโอคริสเตียนใหม่ในภาษา{language}",
     "newestFirst": "ใหม่ล่าสุดก่อน",
@@ -313,7 +315,21 @@
     "standaloneVideos": "วิดีโอเดี่ยว",
     "videosFromCollection": "วิดีโอจาก {collection}",
     "standaloneDescription": "วิดีโอเดี่ยวในภาษานี้",
-    "openCollection": "เปิดคอลเลกชัน"
+    "openCollection": "เปิดคอลเลกชัน",
+    "filters": "ตัวกรอง",
+    "filterLength": "ความยาว",
+    "filterLength_under5": "น้อยกว่า 5 นาที",
+    "filterLength_5to10": "5-10 นาที",
+    "filterLength_10to30": "10-30 นาที",
+    "filterLength_over30": "มากกว่า 30 นาที",
+    "filterType": "ประเภท",
+    "clearFilters": "ล้างตัวกรอง",
+    "filterResults": "แสดง {count} จาก {total}",
+    "noFilterResults": "ไม่มีวิดีโอที่ตรงกับตัวกรองเหล่านี้ ลองนำออกหนึ่งรายการ",
+    "filterAdded": "เพิ่มเมื่อ",
+    "filterAdded_60d": "60 วันที่ผ่านมา",
+    "filterAdded_6m": "6 เดือนที่ผ่านมา",
+    "filterAdded_12m": "12 เดือนที่ผ่านมา"
   },
   "WatchHome": {
     "pageTitle": "Watch ของ Jesus Film Project",
@@ -327,7 +343,8 @@
     "nextVideoPreview": "ตัวอย่างวิดีโอถัดไป",
     "featured": "แนะนำ",
     "mediaCollection": "คอลเลกชันสื่อ",
-    "scrollToVideo": "เลื่อนไปที่วิดีโอ {title}"
+    "scrollToVideo": "เลื่อนไปที่วิดีโอ {title}",
+    "forYou": "แนะนำสำหรับคุณ"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "ภาษา",
@@ -446,7 +463,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
       "openSupportForm": "Open support form"
     }
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "ชมภาพยนตร์สั้น",
-    "actions": {
-      "joinUs": "เข้าร่วมกับเรา",
-      "shareMission": "ร่วมแบ่งปันพันธกิจของเรา"
-    },
-    "welcomeStart": {
-      "label": "ความเชื่อและพระคัมภีร์",
-      "title": "วิดีโอแนะนำสำหรับวันนี้",
-      "description": "วิดีโอจากคลังของเราที่เน้นความเชื่อ เพื่อสร้างแรงบันดาลใจ ท้าทายใจ และกระตุ้นให้คิดไตร่ตรอง"
-    },
-    "welcomeMorning": {
-      "label": "แรงบันดาลใจยามเช้า",
-      "title": "สวัสดีตอนเช้า! ช่วงเวลาดี ๆ จากพระคัมภีร์วันนี้รอคุณอยู่",
-      "description": "เริ่มวันของคุณด้วยช่วงเวลาดี ๆ จากพระคัมภีร์ที่ช่วยหนุนใจและยกระดับจิตใจ"
-    },
-    "welcomeAfternoon": {
-      "label": "แรงบันดาลใจยามบ่าย",
-      "title": "สวัสดีตอนบ่าย! ช่วงเวลาดี ๆ จากพระคัมภีร์สำหรับวันนี้",
-      "description": "เนื้อหาพระคัมภีร์ที่ช่วยหนุนใจ เหมาะสำหรับช่วงพักยามบ่ายหรือเติมแรงบันดาลใจต่อเนื่อง"
-    },
-    "welcomeEvening": {
-      "label": "แรงบันดาลใจยามเย็น",
-      "title": "สวัสดีตอนเย็น! ผ่อนคลายไปกับช่วงเวลาดี ๆ จากพระคัมภีร์",
-      "description": "ช่วงเวลาดี ๆ จากพระคัมภีร์ที่สงบ ช่วยให้คุณไตร่ตรองและพบความปลอบประโลมเมื่อวันกำลังสิ้นสุดลง"
-    },
-    "joinUs": {
-      "label": "เข้าร่วมกับเรา",
-      "title": "มีคนนับพันล้านกำลังค้นหา",
-      "description": "ฤดูเก็บเกี่ยวมาถึงแล้ว มาร่วมกับเราในการแบ่งปันพระกิตติคุณแก่โลกผ่านสื่อดิจิทัล"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "ไปด้วยกันเถอะ",
-      "title": "บอกเล่าเรื่องราวของพระเยซูไปด้วยกัน",
-      "description": "เพื่อให้พวกเขาได้ยินและเห็นความรักของพระเยซูในภาษาของตนเอง ณ ที่ที่พวกเขาอยู่"
-    }
-  },
   "VideoRecommendations": {
     "match": "ตรงกัน {percent}%",
     "none": "ไม่พบวิดีโอแนะนำที่เกี่ยวข้องกับวิดีโอนี้ในภาษานี้"
@@ -735,14 +714,37 @@
   "WatchUnavailableLanguage": {
     "metadataTitle": "ไม่มีเวอร์ชันภาษานี้",
     "eyebrow": "ไม่มีเวอร์ชันภาษานี้",
-    "title": "<contentTitle>{title}</contentTitle> ไม่มีในภาษา <languageName>{language}</languageName>",
+    "title": "<contentTitle>{title}</contentTitle> ไม่มีในภาษา<languageName>{language}</languageName>",
     "actionsLabel": "ตัวเลือกการรับชมที่มี",
-    "browseInLanguage": "เรียกดูวิดีโอในภาษา {language}",
+    "browseInLanguage": "เรียกดูวิดีโอในภาษา{language}",
     "backToSearch": "กลับไปที่การค้นหา",
     "audioVersionsTitle": "เวอร์ชันเสียงอื่น",
     "audioVersionsDescription": "เลือกภาษาเสียงเพื่อรับชมวิดีโอนี้ต่อ",
     "languageVersionLabel": "ภาษาเสียง",
     "selectLanguageVersion": "เลือกเวอร์ชันภาษา",
     "watchSelectedVersion": "ดูเวอร์ชันที่เลือก"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "ตัวเลือกคุกกี้",
+    "bannerTitle": "ตัวเลือกความเป็นส่วนตัวของคุณ",
+    "bannerDescription": "คุกกี้ที่จำเป็นช่วยให้ Watch ปลอดภัยและทำงานได้ตามปกติ เมื่อได้รับอนุญาตจากคุณ คุกกี้ทางเลือกจากเว็บไซต์นี้สามารถจดจำความสนใจของคุณข้ามการเข้าชมเพื่อปรับแต่งคำแนะนำให้เหมาะกับคุณได้ ไม่ว่าคุณจะเลือกแบบใด คำแนะนำตามบริบทยังคงใช้งานได้",
+    "acceptAll": "ยอมรับทั้งหมด",
+    "essentialOnly": "เฉพาะที่จำเป็น",
+    "manageChoices": "จัดการตัวเลือก",
+    "savingChoice": "กำลังบันทึกตัวเลือกคุกกี้",
+    "settings": "การตั้งค่าคุกกี้",
+    "settingsDescription": "เลือกได้ว่า Watch จะจดจำความสนใจสำหรับคำแนะนำของคุณข้ามการเข้าชมหรือไม่ คุณเปลี่ยนการตั้งค่านี้ได้ทุกเมื่อ",
+    "essentialCookies": "คุกกี้ที่จำเป็น",
+    "essentialDescription": "ความปลอดภัย การเล่นวิดีโอ ตัวเลือกความเป็นส่วนตัว และการระบุที่มาของคำขอคำแนะนำ",
+    "alwaysActive": "เปิดใช้งานตลอดเวลา",
+    "personalization": "การปรับให้เหมาะกับคุณ",
+    "personalizationDescription": "จดจำความสนใจที่กำหนดขอบเขตไว้ข้ามการเข้าชม การปิดตัวเลือกนี้จะยังคงให้คำแนะนำตามบริบทใช้งานได้",
+    "erasurePending": "กำลังดำเนินการลบโปรไฟล์อยู่ ขณะนี้คำแนะนำตามบริบทเปิดใช้งานแล้ว",
+    "cancel": "ยกเลิก",
+    "saveChoices": "บันทึกตัวเลือก",
+    "saving": "กำลังบันทึก…",
+    "loadError": "ไม่สามารถโหลดตัวเลือกของคุณได้ แต่คุณยังเลือกด้านล่างได้",
+    "grantError": "ไม่สามารถเปิดใช้การปรับให้เหมาะกับคุณได้ ยังใช้ได้เฉพาะคุกกี้ที่จำเป็น",
+    "saveError": "ไม่สามารถบันทึกตัวเลือกของคุณได้ โปรดลองอีกครั้ง"
   }
 }

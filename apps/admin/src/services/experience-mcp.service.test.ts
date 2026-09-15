@@ -258,6 +258,27 @@ describe("ExperienceMcpService", () => {
     expect(prisma.experience.create).not.toHaveBeenCalled()
   })
 
+  it("rejects a homepage-only category rail on experience.create without partial persistence", async () => {
+    prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
+
+    await expect(
+      service.createExperience({
+        input: {
+          ...VALID_INPUT,
+          blocks: [
+            {
+              t: "watchHomeCategoryRail",
+              categoryIds: ["family", "gospels", "jesus"],
+            },
+          ],
+        },
+        user: ADMIN,
+      }),
+    ).rejects.toThrow("Watch category rail")
+    expect(prisma.experience.create).not.toHaveBeenCalled()
+    expect(prisma.contentRevisionCreate).not.toHaveBeenCalled()
+  })
+
   it("rejects unknown fields loudly instead of silently dropping them", async () => {
     // CreateExperienceInput STRIPS unknown keys; the tool schema is `.strict()`
     // so a caller passing metaDescription gets an error, not silent data loss.

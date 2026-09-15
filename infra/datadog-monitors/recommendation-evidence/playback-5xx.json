@@ -1,0 +1,18 @@
+{
+  "name": "[forge] Playback evidence sustained 5xx",
+  "type": "log alert",
+  "query": "logs(\"service:forge-web (env:prod OR @env:prod) \\\"event=recommendation.evidence\\\" (\\\"action=playback\\\" OR \\\"action=context\\\" OR \\\"action=claim\\\" OR \\\"action=facts\\\") (\\\"httpStatus=500\\\" OR \\\"httpStatus=502\\\" OR \\\"httpStatus=503\\\" OR \\\"httpStatus=504\\\")\").index(\"*\").rollup(\"count\").last(\"5m\") >= 5",
+  "message": "Investigate normalized reasons and upstream/acknowledgement timeouts. Compare complete HTTP request numerator and denominator; the production canary requires under 1%, not merely a quiet count alert.\n\nRunbook: docs/operations/recommendation-evidence-transport.md. Configure the approved notification destination before installation.",
+  "tags": ["team:forge", "env:prod", "feature:feat-464"],
+  "priority": 2,
+  "options": {
+    "thresholds": {
+      "critical": 5
+    },
+    "notify_no_data": false,
+    "evaluation_delay": 60,
+    "renotify_interval": 60,
+    "enable_logs_sample": false,
+    "include_tags": true
+  }
+}

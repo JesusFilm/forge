@@ -20,6 +20,10 @@ import {
   freezeCurrentWatchSearchProfile,
   watchSearchBindingMembers,
 } from "./typesense-watch-search-profile"
+import {
+  resolveCurrentWatchSearchTranscriptProjection,
+  resolveCurrentWatchSearchTranscriptProjectionWithFallback,
+} from "./typesense-watch-search-current-transcript-projection"
 
 export type CandidateGenerationState = WatchSearchCandidateGenerationState
 
@@ -48,9 +52,11 @@ export type CandidateCollectionMember = {
 
 export type CandidateGenerationInput = {
   id: string
-  applicationRevision: string
+  indexContractRevision: string
   sourceEpoch: string
   sourceDigests: Record<string, unknown>
+  contentEmbeddingContractId: string
+  transcriptChunkingVersion: string
   transcriptProjectionRevision: bigint
   members: {
     catalog: CandidateCollectionMember
@@ -60,6 +66,15 @@ export type CandidateGenerationInput = {
   }
 }
 
+type CurrentTranscriptProjectionResolver = (
+  prisma: Pick<PrismaClient, "watchSearchCurrentTranscriptProjection">,
+) => Promise<{
+  transcriptCollection: string
+  contentEmbeddingContractId: string
+  transcriptChunkingVersion: string
+  projectionRevision: bigint
+}>
+
 type SchemaClient = Pick<TypesenseClient, "getAlias" | "getCollectionSchema">
 type PointerKind = WatchSearchCandidatePointerKind
 
@@ -67,11 +82,13 @@ type StoredGeneration = {
   id: string
   state: CandidateGenerationState
   version: number
-  applicationRevision: string
+  indexContractRevision: string
   catalogCollection: string
   availabilityCollection: string
   lexicalCollection: string
   transcriptCollection: string
+  contentEmbeddingContractId: string
+  transcriptChunkingVersion: string
   transcriptProjectionRevision: bigint
   catalogFields: unknown
   availabilityFields: unknown
@@ -213,9 +230,11 @@ function assertOperatorAcceptedQualificationEvidence(
   generation: StoredGeneration,
   input: {
     generationId: string
-    applicationRevision: string
+    indexContractRevision: string
     rankingRevision: string
     transcriptCollection: string
+    contentEmbeddingContractId: string
+    transcriptChunkingVersion: string
     transcriptProjectionRevision: bigint
     qrelsRevision: string
     currentBindings: readonly string[]
@@ -237,9 +256,13 @@ function assertOperatorAcceptedQualificationEvidence(
   if (
     audit.evidenceBundleByteLength === undefined ||
     bundle.identity.generationId !== input.generationId ||
-    bundle.identity.applicationRevision !== input.applicationRevision ||
+    bundle.identity.indexContractRevision !== input.indexContractRevision ||
     bundle.identity.rankingRevision !== input.rankingRevision ||
     bundle.identity.transcriptCollection !== input.transcriptCollection ||
+    bundle.identity.contentEmbeddingContractId !==
+      input.contentEmbeddingContractId ||
+    bundle.identity.transcriptChunkingVersion !==
+      input.transcriptChunkingVersion ||
     bundle.identity.transcriptProjectionRevision !==
       input.transcriptProjectionRevision.toString() ||
     bundle.identity.qrelsRevision !== input.qrelsRevision ||
@@ -262,9 +285,11 @@ function assertPassingQualificationEvidence(
   evidence: Record<string, unknown>,
   input: {
     generationId: string
-    applicationRevision: string
+    indexContractRevision: string
     rankingRevision: string
     transcriptCollection: string
+    contentEmbeddingContractId: string
+    transcriptChunkingVersion: string
     transcriptProjectionRevision: bigint
     qrelsRevision: string
     currentBindings: readonly string[]
@@ -286,9 +311,11 @@ function assertPassingQualificationEvidence(
     !Array.isArray(evidence.reasons) ||
     evidence.reasons.length !== 0 ||
     identity?.generationId !== input.generationId ||
-    identity?.applicationRevision !== input.applicationRevision ||
+    identity?.indexContractRevision !== input.indexContractRevision ||
     identity?.rankingRevision !== input.rankingRevision ||
     identity?.transcriptCollection !== input.transcriptCollection ||
+    identity?.contentEmbeddingContractId !== input.contentEmbeddingContractId ||
+    identity?.transcriptChunkingVersion !== input.transcriptChunkingVersion ||
     identity?.transcriptProjectionRevision !==
       input.transcriptProjectionRevision.toString() ||
     identity?.qrelsRevision !== input.qrelsRevision ||
@@ -356,12 +383,20 @@ function validateMember(
 
 function validateInput(input: CandidateGenerationInput) {
   const id = requiredString(input.id, "generation id")
-  const applicationRevision = requiredString(
-    input.applicationRevision,
-    "application revision",
+  const indexContractRevision = requiredString(
+    input.indexContractRevision,
+    "index contract revision",
   )
   const sourceEpoch = requiredString(input.sourceEpoch, "source epoch")
   assertJsonObject(input.sourceDigests, "source digests")
+  const contentEmbeddingContractId = requiredString(
+    input.contentEmbeddingContractId,
+    "content embedding contract id",
+  )
+  const transcriptChunkingVersion = requiredString(
+    input.transcriptChunkingVersion,
+    "transcript chunking version",
+  )
   if (input.transcriptProjectionRevision < 0n) {
     throw new CandidateGenerationValidationError(
       "transcript projection revision cannot be negative",
@@ -394,9 +429,11 @@ function validateInput(input: CandidateGenerationInput) {
 
   return {
     id,
-    applicationRevision,
+    indexContractRevision,
     sourceEpoch,
     sourceDigests: input.sourceDigests,
+    contentEmbeddingContractId,
+    transcriptChunkingVersion,
     transcriptProjectionRevision: input.transcriptProjectionRevision,
     catalog,
     availability,
@@ -459,20 +496,27 @@ function assertGenerationReady(generation: StoredGeneration): void {
 function assertExactIdentity(
   generation: StoredGeneration,
   identity: {
-    applicationRevision: string
+    indexContractRevision: string
     transcriptCollection: string
-    transcriptProjectionRevision: bigint
+    contentEmbeddingContractId: string
+    transcriptChunkingVersion: string
+    transcriptProjectionRevision?: bigint
   },
 ): void {
-  if (generation.applicationRevision !== identity.applicationRevision) {
+  if (generation.indexContractRevision !== identity.indexContractRevision) {
     throw new CandidateGenerationCompatibilityError(
-      `candidate generation ${generation.id} is not compatible with application revision ${identity.applicationRevision}`,
+      `candidate generation ${generation.id} is not compatible with index contract revision ${identity.indexContractRevision}`,
     )
   }
   if (
     generation.transcriptCollection !== identity.transcriptCollection ||
-    generation.transcriptProjectionRevision !==
-      identity.transcriptProjectionRevision
+    generation.contentEmbeddingContractId !==
+      identity.contentEmbeddingContractId ||
+    generation.transcriptChunkingVersion !==
+      identity.transcriptChunkingVersion ||
+    (identity.transcriptProjectionRevision !== undefined &&
+      generation.transcriptProjectionRevision !==
+        identity.transcriptProjectionRevision)
   ) {
     throw new CandidateGenerationCompatibilityError(
       `candidate generation ${generation.id} transcript identity is stale`,
@@ -536,7 +580,69 @@ export class TypesenseWatchSearchCandidateGenerationService {
     private readonly prisma: PrismaClient,
     private readonly typesense: SchemaClient,
     private readonly now: () => Date = () => new Date(),
+    private readonly resolveCurrentTranscriptProjection: CurrentTranscriptProjectionResolver = resolveCurrentWatchSearchTranscriptProjection,
   ) {}
+
+  private async loadCurrentTranscriptProjection(
+    prisma: Pick<
+      PrismaClient,
+      "watchSearchCurrentTranscriptProjection" | "$queryRaw"
+    >,
+    currentProfile?: Awaited<
+      ReturnType<typeof freezeCurrentWatchSearchProfile>
+    >,
+  ) {
+    return this.resolveCurrentTranscriptProjection ===
+      resolveCurrentWatchSearchTranscriptProjection
+      ? resolveCurrentWatchSearchTranscriptProjectionWithFallback({
+          prisma,
+          ...(currentProfile
+            ? { currentProfile }
+            : { typesense: this.typesense }),
+        })
+      : this.resolveCurrentTranscriptProjection(prisma)
+  }
+
+  private async assertExactCurrentTranscriptCompatibility(input: {
+    generation: StoredGeneration
+    currentBindings?: readonly string[]
+    prisma?: Pick<PrismaClient, "watchSearchCurrentTranscriptProjection">
+  }): Promise<void> {
+    const currentProfile = await freezeCurrentWatchSearchProfile(this.typesense)
+    const authoritativeCurrentBindings =
+      watchSearchBindingMembers(currentProfile)
+    if (
+      input.currentBindings &&
+      JSON.stringify(normalizedBindings(input.currentBindings)) !==
+        JSON.stringify(authoritativeCurrentBindings)
+    ) {
+      throw new CandidateGenerationValidationError(
+        "current physical bindings changed after qualification",
+      )
+    }
+
+    const currentProjection = await this.loadCurrentTranscriptProjection(
+      (input.prisma ?? this.prisma) as Pick<
+        PrismaClient,
+        "watchSearchCurrentTranscriptProjection" | "$queryRaw"
+      >,
+      currentProfile,
+    )
+    if (
+      input.generation.transcriptCollection !==
+        currentProfile.binding.transcript ||
+      input.generation.transcriptCollection !==
+        currentProjection.transcriptCollection ||
+      input.generation.contentEmbeddingContractId !==
+        currentProjection.contentEmbeddingContractId ||
+      input.generation.transcriptChunkingVersion !==
+        currentProjection.transcriptChunkingVersion
+    ) {
+      throw new CandidateGenerationCompatibilityError(
+        `candidate generation ${input.generation.id} transcript identity is stale`,
+      )
+    }
+  }
 
   async createBuildingGeneration(input: CandidateGenerationInput) {
     const validated = validateInput(input)
@@ -544,13 +650,15 @@ export class TypesenseWatchSearchCandidateGenerationService {
       data: {
         id: validated.id,
         state: "BUILDING",
-        applicationRevision: validated.applicationRevision,
+        indexContractRevision: validated.indexContractRevision,
         sourceEpoch: validated.sourceEpoch,
         sourceDigests: asJson(validated.sourceDigests),
         catalogCollection: validated.catalog.collection,
         availabilityCollection: validated.availability.collection,
         lexicalCollection: validated.lexical.collection,
         transcriptCollection: validated.transcript.collection,
+        contentEmbeddingContractId: validated.contentEmbeddingContractId,
+        transcriptChunkingVersion: validated.transcriptChunkingVersion,
         transcriptProjectionRevision: validated.transcriptProjectionRevision,
         catalogFields: asJson(validated.catalog.fields),
         availabilityFields: asJson(validated.availability.fields),
@@ -729,7 +837,7 @@ export class TypesenseWatchSearchCandidateGenerationService {
 
   pinServingGeneration(input: {
     generationId: string
-    applicationRevision: string
+    indexContractRevision: string
     expectedPointerVersion: number
     currentBindings: readonly string[]
     qrelsRevision: string
@@ -742,9 +850,11 @@ export class TypesenseWatchSearchCandidateGenerationService {
 
   async resolveGeneration(input: {
     generationId: string
-    applicationRevision: string
+    indexContractRevision: string
     transcriptCollection: string
-    transcriptProjectionRevision: bigint
+    contentEmbeddingContractId: string
+    transcriptChunkingVersion: string
+    transcriptProjectionRevision?: bigint
     requireQualified?: boolean
     currentBindings?: readonly string[]
     qrelsRevision?: string
@@ -755,11 +865,12 @@ export class TypesenseWatchSearchCandidateGenerationService {
 
     if (
       generation.transcriptCollection !== input.transcriptCollection ||
-      generation.transcriptProjectionRevision !==
-        input.transcriptProjectionRevision
+      generation.contentEmbeddingContractId !==
+        input.contentEmbeddingContractId ||
+      generation.transcriptChunkingVersion !== input.transcriptChunkingVersion
     ) {
       console.warn(
-        `[watch-search-candidate] event=candidate_transcript_identity_mismatch generation_id=${generation.id} stored_collection=${generation.transcriptCollection} requested_collection=${input.transcriptCollection} stored_revision=${generation.transcriptProjectionRevision.toString()} requested_revision=${String(input.transcriptProjectionRevision)} requested_revision_type=${typeof input.transcriptProjectionRevision}`,
+        `[watch-search-candidate] event=candidate_transcript_identity_mismatch generation_id=${generation.id} stored_collection=${generation.transcriptCollection} requested_collection=${input.transcriptCollection} stored_embedding_contract_id=${generation.contentEmbeddingContractId} requested_embedding_contract_id=${input.contentEmbeddingContractId} stored_chunking_version=${generation.transcriptChunkingVersion} requested_chunking_version=${input.transcriptChunkingVersion}`,
       )
       await this.prisma.watchSearchCandidateGeneration.updateMany({
         where: {
@@ -772,7 +883,7 @@ export class TypesenseWatchSearchCandidateGenerationService {
           version: { increment: 1 },
           invalidatedAt: this.now(),
           invalidationReason:
-            "transcript physical collection or projection revision changed",
+            "transcript physical collection, embedding contract, or chunking version changed",
         },
       })
       throw new CandidateGenerationCompatibilityError(
@@ -806,7 +917,9 @@ export class TypesenseWatchSearchCandidateGenerationService {
 
     return {
       generationId: generation.id,
-      applicationRevision: generation.applicationRevision,
+      indexContractRevision: generation.indexContractRevision,
+      contentEmbeddingContractId: generation.contentEmbeddingContractId,
+      transcriptChunkingVersion: generation.transcriptChunkingVersion,
       transcriptProjectionRevision: generation.transcriptProjectionRevision,
       collections: {
         catalog: generation.catalogCollection,
@@ -831,9 +944,11 @@ export class TypesenseWatchSearchCandidateGenerationService {
 
   async resolvePointer(input: {
     kind: PointerKind
-    applicationRevision: string
+    indexContractRevision: string
     transcriptCollection: string
-    transcriptProjectionRevision: bigint
+    contentEmbeddingContractId: string
+    transcriptChunkingVersion: string
+    transcriptProjectionRevision?: bigint
     requireQualified?: boolean
   }) {
     const pointer = await this.prisma.watchSearchCandidatePointer.findUnique({
@@ -852,7 +967,8 @@ export class TypesenseWatchSearchCandidateGenerationService {
 
   async invalidateForTranscriptChange(input: {
     transcriptCollection: string
-    transcriptProjectionRevision: bigint
+    contentEmbeddingContractId: string
+    transcriptChunkingVersion: string
     reason: string
   }): Promise<number> {
     const reason = requiredString(input.reason, "invalidation reason")
@@ -862,8 +978,13 @@ export class TypesenseWatchSearchCandidateGenerationService {
         OR: [
           { transcriptCollection: { not: input.transcriptCollection } },
           {
-            transcriptProjectionRevision: {
-              not: input.transcriptProjectionRevision,
+            contentEmbeddingContractId: {
+              not: input.contentEmbeddingContractId,
+            },
+          },
+          {
+            transcriptChunkingVersion: {
+              not: input.transcriptChunkingVersion,
             },
           },
         ],
@@ -881,9 +1002,11 @@ export class TypesenseWatchSearchCandidateGenerationService {
   async recordQualification(input: {
     generationId: string
     status: WatchSearchCandidateQualificationStatus
-    applicationRevision: string
+    indexContractRevision: string
     rankingRevision: string
     transcriptCollection: string
+    contentEmbeddingContractId: string
+    transcriptChunkingVersion: string
     transcriptProjectionRevision: bigint
     qrelsRevision: string
     currentBindings: readonly string[]
@@ -916,6 +1039,11 @@ export class TypesenseWatchSearchCandidateGenerationService {
         }
         assertGenerationReady(generation)
         assertExactIdentity(generation, input)
+        await this.assertExactCurrentTranscriptCompatibility({
+          generation,
+          currentBindings,
+          prisma: tx,
+        })
         if (input.status === "OPERATOR_ACCEPTED") {
           assertOperatorAcceptedQualificationEvidence(
             input.evidence,
@@ -932,8 +1060,10 @@ export class TypesenseWatchSearchCandidateGenerationService {
           data: {
             generationId: generation.id,
             status: input.status,
-            applicationRevision: generation.applicationRevision,
+            indexContractRevision: generation.indexContractRevision,
             transcriptCollection: generation.transcriptCollection,
+            contentEmbeddingContractId: generation.contentEmbeddingContractId,
+            transcriptChunkingVersion: generation.transcriptChunkingVersion,
             transcriptProjectionRevision:
               generation.transcriptProjectionRevision,
             qrelsRevision,
@@ -952,16 +1082,16 @@ export class TypesenseWatchSearchCandidateGenerationService {
     holderToken: string
     ttlMs: number
     generationId: string
-    applicationRevision: string
+    indexContractRevision: string
     transcriptCollection: string
+    contentEmbeddingContractId: string
+    transcriptChunkingVersion: string
     transcriptProjectionRevision: bigint
     currentBindings: readonly string[]
   }) {
     const resourceKey = requiredString(input.resourceKey, "lease resource key")
     const holderToken = requiredString(input.holderToken, "lease holder token")
     const currentBindings = normalizedBindings(input.currentBindings)
-    const now = this.now()
-    const expiry = expiresAt(now, input.ttlMs)
 
     return this.prisma.$transaction(
       async (tx) => {
@@ -971,6 +1101,12 @@ export class TypesenseWatchSearchCandidateGenerationService {
           ) AS acquired
         `
         if (lock[0]?.acquired !== true) return null
+        // The lease begins when admission wins the publication lock, not when
+        // the caller entered this method. Prisma may wait for a pool slot or
+        // transaction start long enough for a pre-lock timestamp to shorten or
+        // even immediately expire the lease while evaluation is still active.
+        const now = this.now()
+        const expiry = expiresAt(now, input.ttlMs)
         const generation = await tx.watchSearchCandidateGeneration.findUnique({
           where: { id: input.generationId },
         })
@@ -981,13 +1117,24 @@ export class TypesenseWatchSearchCandidateGenerationService {
         }
         assertGenerationReady(generation)
         assertExactIdentity(generation, input)
+        // Profile resolution happens before lease admission. Publication or a
+        // rebuild may complete before this transaction wins the shared lock,
+        // so re-freeze aliases and durable compatibility before persisting the
+        // lease. A routine revision-only advance remains compatible.
+        await this.assertExactCurrentTranscriptCompatibility({
+          generation,
+          currentBindings,
+          prisma: tx,
+        })
 
         const data = {
           kind: input.kind,
           holderToken,
           generationId: generation.id,
-          applicationRevision: generation.applicationRevision,
+          indexContractRevision: generation.indexContractRevision,
           transcriptCollection: generation.transcriptCollection,
+          contentEmbeddingContractId: generation.contentEmbeddingContractId,
+          transcriptChunkingVersion: generation.transcriptChunkingVersion,
           transcriptProjectionRevision: generation.transcriptProjectionRevision,
           currentBindings: asJson(currentBindings),
           acquiredAt: now,
@@ -1024,7 +1171,6 @@ export class TypesenseWatchSearchCandidateGenerationService {
     holderToken: string
     ttlMs: number
   }): Promise<boolean> {
-    const now = this.now()
     const resourceKey = requiredString(input.resourceKey, "lease resource key")
     const holderToken = requiredString(input.holderToken, "lease holder token")
     return this.prisma.$transaction(
@@ -1035,6 +1181,11 @@ export class TypesenseWatchSearchCandidateGenerationService {
           ) AS acquired
         `
         if (lock[0]?.acquired !== true) return false
+        // Read time only after winning the publication lock. A renewal may
+        // have entered this transaction before its old deadline while a
+        // publisher completed after that deadline; using the earlier time
+        // would resurrect a lease over the newly published projection.
+        const now = this.now()
         const update = await tx.watchSearchCandidateLease.updateMany({
           where: {
             resourceKey,
@@ -1294,7 +1445,8 @@ export class TypesenseWatchSearchCandidateGenerationService {
 
   async assertTranscriptNotLeased(
     transcriptCollection: string,
-    transcriptProjectionRevision: bigint,
+    contentEmbeddingContractId: string,
+    transcriptChunkingVersion: string,
   ): Promise<void> {
     const active = await this.prisma.watchSearchCandidateLease.findFirst({
       where: {
@@ -1302,14 +1454,21 @@ export class TypesenseWatchSearchCandidateGenerationService {
           transcriptCollection,
           "transcript collection",
         ),
-        transcriptProjectionRevision,
+        contentEmbeddingContractId: requiredString(
+          contentEmbeddingContractId,
+          "content embedding contract id",
+        ),
+        transcriptChunkingVersion: requiredString(
+          transcriptChunkingVersion,
+          "transcript chunking version",
+        ),
         expiresAt: { gt: this.now() },
       },
       select: { resourceKey: true },
     })
     if (active) {
       throw new CandidateGenerationLeaseError(
-        `transcript projection ${transcriptCollection}@${transcriptProjectionRevision} is leased`,
+        `transcript compatibility ${transcriptCollection}@${contentEmbeddingContractId}/${transcriptChunkingVersion} is leased`,
       )
     }
   }
@@ -1318,31 +1477,21 @@ export class TypesenseWatchSearchCandidateGenerationService {
     rebuildTranscripts: boolean
   }): Promise<void> {
     const now = this.now()
-    const [activeLease, transcriptCandidate, servingPointer] =
-      await Promise.all([
-        this.prisma.watchSearchCandidateLease.findFirst({
-          where: { expiresAt: { gt: now } },
-          select: { resourceKey: true },
-        }),
-        input.rebuildTranscripts
-          ? this.prisma.watchSearchCandidateGeneration.findFirst({
-              where: { state: { in: ["BUILDING", "READY"] } },
-              select: { id: true },
-            })
-          : Promise.resolve(null),
-        this.prisma.watchSearchCandidatePointer.findUnique({
-          where: { kind: "SERVING" },
-          select: { generationId: true },
-        }),
-      ])
+    const [activeLease, transcriptCandidate] = await Promise.all([
+      this.prisma.watchSearchCandidateLease.findFirst({
+        where: { expiresAt: { gt: now } },
+        select: { resourceKey: true },
+      }),
+      input.rebuildTranscripts
+        ? this.prisma.watchSearchCandidateGeneration.findFirst({
+            where: { state: { in: ["BUILDING", "READY"] } },
+            select: { id: true },
+          })
+        : Promise.resolve(null),
+    ])
     if (activeLease) {
       throw new CandidateGenerationLeaseError(
         "current publication is blocked by an active candidate lease",
-      )
-    }
-    if (servingPointer?.generationId) {
-      throw new CandidateGenerationLeaseError(
-        `current publication is blocked by serving candidate generation ${servingPointer.generationId}`,
       )
     }
     if (transcriptCandidate) {
@@ -1356,7 +1505,7 @@ export class TypesenseWatchSearchCandidateGenerationService {
     kind: PointerKind,
     input: {
       generationId: string
-      applicationRevision?: string
+      indexContractRevision?: string
       expectedPointerVersion: number
       currentBindings?: readonly string[]
       qrelsRevision?: string
@@ -1391,37 +1540,31 @@ export class TypesenseWatchSearchCandidateGenerationService {
         assertGenerationReady(generation)
         if (requireQualification) {
           if (
-            !input.applicationRevision ||
+            !input.indexContractRevision ||
             !input.currentBindings ||
             !input.qrelsRevision ||
             !input.rankingRevision ||
             !input.qualificationAudit
           ) {
             throw new CandidateGenerationValidationError(
-              "serving promotion requires application revision, current bindings, qrels revision, ranking revision, and qualification audit attribution",
+              "serving promotion requires index contract revision, current bindings, qrels revision, ranking revision, and qualification audit attribution",
             )
           }
-          const applicationRevision = requiredString(
-            input.applicationRevision,
-            "application revision",
+          const indexContractRevision = requiredString(
+            input.indexContractRevision,
+            "index contract revision",
           )
-          if (generation.applicationRevision !== applicationRevision) {
+          if (generation.indexContractRevision !== indexContractRevision) {
             throw new CandidateGenerationCompatibilityError(
-              `candidate generation ${generation.id} is not compatible with application revision ${applicationRevision}`,
+              `candidate generation ${generation.id} is not compatible with index contract revision ${indexContractRevision}`,
             )
           }
           const currentBindings = normalizedBindings(input.currentBindings)
-          const authoritativeCurrentBindings = watchSearchBindingMembers(
-            await freezeCurrentWatchSearchProfile(this.typesense),
-          )
-          if (
-            JSON.stringify(authoritativeCurrentBindings) !==
-            JSON.stringify(currentBindings)
-          ) {
-            throw new CandidateGenerationValidationError(
-              "current physical bindings changed after qualification",
-            )
-          }
+          await this.assertExactCurrentTranscriptCompatibility({
+            generation,
+            currentBindings,
+            prisma: tx,
+          })
           const qrelsRevision = requiredString(
             input.qrelsRevision,
             "qrels revision",
@@ -1439,10 +1582,11 @@ export class TypesenseWatchSearchCandidateGenerationService {
               where: {
                 generationId: generation.id,
                 status: qualificationStatus,
-                applicationRevision,
+                indexContractRevision,
                 transcriptCollection: generation.transcriptCollection,
-                transcriptProjectionRevision:
-                  generation.transcriptProjectionRevision,
+                contentEmbeddingContractId:
+                  generation.contentEmbeddingContractId,
+                transcriptChunkingVersion: generation.transcriptChunkingVersion,
                 qrelsRevision,
                 currentBindings: { equals: asJson(currentBindings) },
                 AND: [
@@ -1527,9 +1671,10 @@ export class TypesenseWatchSearchCandidateGenerationService {
       where: {
         generationId: generation.id,
         status: { in: [...WATCH_SEARCH_CANDIDATE_AUTHORIZING_STATUSES] },
-        applicationRevision: generation.applicationRevision,
+        indexContractRevision: generation.indexContractRevision,
         transcriptCollection: generation.transcriptCollection,
-        transcriptProjectionRevision: generation.transcriptProjectionRevision,
+        contentEmbeddingContractId: generation.contentEmbeddingContractId,
+        transcriptChunkingVersion: generation.transcriptChunkingVersion,
         qrelsRevision: requiredString(qrelsRevision, "qrels revision"),
         currentBindings: {
           equals: asJson(normalizedBindings(currentBindings)),

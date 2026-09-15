@@ -180,7 +180,8 @@
     "changeAudioLanguage": "更改音訊語言",
     "home": "JesusFilm 首頁",
     "closeSearch": "關閉搜尋",
-    "submitSearch": "搜尋"
+    "submitSearch": "搜尋",
+    "library": "影片庫"
   },
   "SearchOverlay": {
     "dialogLabel": "搜尋與瀏覽影片",
@@ -467,6 +468,7 @@
     "sports": "體育",
     "collections": "合集",
     "subtitlesOnly": "僅字幕",
+    "backToTop": "轉去頂端",
     "newlyAdded": "新加入",
     "newVideosTitle": "以 {language} 提供的新基督教影片",
     "newestFirst": "最新優先",
@@ -497,7 +499,21 @@
     "standaloneVideos": "獨立影片",
     "videosFromCollection": "來自 {collection} 的影片。",
     "standaloneDescription": "此語言的獨立影片。",
-    "openCollection": "開啟合集"
+    "openCollection": "開啟合集",
+    "filters": "篩選",
+    "filterLength": "長度",
+    "filterLength_under5": "5 分鐘以內",
+    "filterLength_5to10": "5-10 分鐘",
+    "filterLength_10to30": "10-30 分鐘",
+    "filterLength_over30": "30 分鐘以上",
+    "filterType": "類型",
+    "clearFilters": "清除篩選",
+    "filterResults": "已顯示 {count} / {total}",
+    "noFilterResults": "無影片符合這些篩選條件。試看覓移除一項。",
+    "filterAdded": "加入時間",
+    "filterAdded_60d": "最近 60 工",
+    "filterAdded_6m": "最近 6 個月",
+    "filterAdded_12m": "最近 12 個月"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project 觀看頁面",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "上一支影片預覽",
     "nextVideoPreview": "下一支影片預覽",
     "mediaCollection": "媒體合集",
-    "scrollToVideo": "捲動到 {title} 影片"
+    "scrollToVideo": "捲動到 {title} 影片",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project 首頁",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "回到觀看頁面",
     "browseVideos": "瀏覽影片"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}：{title}",
-    "watchShortFilm": "觀看短片",
-    "actions": {
-      "joinUs": "加入我們",
-      "shareMission": "與我們一同參與使命"
-    },
-    "welcomeStart": {
-      "label": "信仰與聖經",
-      "title": "今日精選影片",
-      "description": "來自我們影音庫的信仰主題內容，帶來激勵、挑戰，並啟發你深思。"
-    },
-    "welcomeMorning": {
-      "label": "早晨靈感",
-      "title": "早安！今日聖經時刻等你來看。",
-      "description": "用鼓舞人心的聖經時刻開始一天，讓你的心靈得著激勵與提升。"
-    },
-    "welcomeAfternoon": {
-      "label": "午後靈感",
-      "title": "午安！為你今天預備的聖經時刻。",
-      "description": "適合午後休息時觀看的鼓勵性聖經內容，讓你持續得著啟發。"
-    },
-    "welcomeEvening": {
-      "label": "晚間靈感",
-      "title": "晚安！用聖經時刻放鬆一下。",
-      "description": "平靜的聖經時刻，陪你在一天結束時反思並得著安慰。"
-    },
-    "joinUs": {
-      "label": "加入我們",
-      "title": "數十億人正在尋找",
-      "description": "莊稼已經成熟。讓我們一起用數位媒體向世界傳揚福音。"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "一起前行",
-      "title": "一起述說耶穌的故事",
-      "description": "好讓他們能在自己所在之處、用自己的語言聽見並看見耶穌的愛。"
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% 相符合",
     "none": "這支影片佇這个語言揣無推薦內容。"
@@ -744,5 +723,28 @@
     "languageVersionLabel": "聲音語言",
     "selectLanguageVersion": "揀一个語言版本",
     "watchSelectedVersion": "觀看揀好的版本"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie 選擇",
+    "bannerTitle": "你的隱私選擇",
+    "bannerDescription": "必要的 Cookie 會予 Watch 安全閣正常運作。若你同意，一个選用的第一方 Cookie 會使記持跨次造訪的興趣，來個人化推薦。無論你按怎選，情境式推薦攏猶原會當使用。",
+    "acceptAll": "全部接受",
+    "essentialOnly": "干焦必要",
+    "manageChoices": "管理選擇",
+    "savingChoice": "咧儲存 Cookie 選擇",
+    "settings": "Cookie 設定",
+    "settingsDescription": "選擇 Watch 是毋是會當記持你跨次造訪的推薦興趣。你隨時攏會當修改。",
+    "essentialCookies": "必要的 Cookie",
+    "essentialDescription": "安全、播放、隱私選擇，佮推薦請求來源記錄。",
+    "alwaysActive": "一直啟用",
+    "personalization": "個人化",
+    "personalizationDescription": "記持你跨次造訪的有限興趣。關掉了後，情境式推薦嘛猶原會當使用。",
+    "erasurePending": "個人資料刣除申請咧處理中。情境式推薦已經啟用。",
+    "cancel": "取消",
+    "saveChoices": "儲存選擇",
+    "saving": "咧儲存…",
+    "loadError": "你的選擇無法度載入。你猶原會當佇下跤做選擇。",
+    "grantError": "無法度啟用個人化。猶原會當使用干焦必要的設定。",
+    "saveError": "你的選擇無法度儲存。請閣試一遍。"
   }
 }

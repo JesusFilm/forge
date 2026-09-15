@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audiosprache ändern",
     "home": "JesusFilm-Startseite",
     "closeSearch": "Suche schließen",
-    "submitSearch": "Suchen"
+    "submitSearch": "Suchen",
+    "library": "Mediathek"
   },
   "SearchOverlay": {
     "dialogLabel": "Videos suchen und entdecken",
@@ -283,6 +284,7 @@
     "sports": "Sport",
     "collections": "Sammlungen",
     "subtitlesOnly": "Nur Untertitel",
+    "backToTop": "Nach oben",
     "newlyAdded": "Neu hinzugefügt",
     "newVideosTitle": "Neue christliche Videos in {language}",
     "newestFirst": "Neueste zuerst",
@@ -313,7 +315,21 @@
     "standaloneVideos": "Einzelvideos",
     "videosFromCollection": "Videos aus {collection}.",
     "standaloneDescription": "Einzelvideos in dieser Sprache.",
-    "openCollection": "Sammlung öffnen"
+    "openCollection": "Sammlung öffnen",
+    "filters": "Filter",
+    "filterLength": "Länge",
+    "filterLength_under5": "Unter 5 Min.",
+    "filterLength_5to10": "5-10 Min.",
+    "filterLength_10to30": "10-30 Min.",
+    "filterLength_over30": "Über 30 Min.",
+    "filterType": "Art",
+    "clearFilters": "Filter zurücksetzen",
+    "filterResults": "{count} von {total} angezeigt",
+    "noFilterResults": "Keine Videos entsprechen diesen Filtern. Entfernen Sie einen davon.",
+    "filterAdded": "Hinzugefügt",
+    "filterAdded_60d": "Letzte 60 Tage",
+    "filterAdded_6m": "Letzte 6 Monate",
+    "filterAdded_12m": "Letzte 12 Monate"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project – Videos ansehen",
@@ -327,7 +343,8 @@
     "nextVideoPreview": "Vorschau des nächsten Videos",
     "featured": "Empfohlen",
     "mediaCollection": "Mediensammlung",
-    "scrollToVideo": "Zum Video {title} scrollen"
+    "scrollToVideo": "Zum Video {title} scrollen",
+    "forYou": "Für dich empfohlen"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Sprachen",
@@ -446,7 +463,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
       "openSupportForm": "Open support form"
     }
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Kurzfilm ansehen",
-    "actions": {
-      "joinUs": "Mach mit",
-      "shareMission": "Teile unsere Mission"
-    },
-    "welcomeStart": {
-      "label": "Glaube & Schrift",
-      "title": "Die heutigen Video-Empfehlungen",
-      "description": "Glaubenszentrierte Videoinhalte aus unserer Bibliothek, die inspirieren, herausfordern und zum Nachdenken anregen."
-    },
-    "welcomeMorning": {
-      "label": "Morgendliche Inspiration",
-      "title": "Guten Morgen! Die heutigen Bibelmomente warten.",
-      "description": "Beginnen Sie Ihren Tag mit ermutigenden Bibelmomenten, die Ihren Geist inspirieren und erheben sollen."
-    },
-    "welcomeAfternoon": {
-      "label": "Nachmittags-Inspiration",
-      "title": "Guten Nachmittag! Bibelmomente für Ihren Tag.",
-      "description": "Ermutigende Bibelinhalte, perfekt für Ihre Nachmittagsauszeit oder zur weiteren Inspiration."
-    },
-    "welcomeEvening": {
-      "label": "Abendliche Inspiration",
-      "title": "Guten Abend! Lassen Sie den Tag mit Bibelmomenten ausklingen.",
-      "description": "Friedliche Bibelmomente, die Ihnen helfen, nachzudenken und Trost zu finden, wenn Ihr Tag zu Ende geht."
-    },
-    "joinUs": {
-      "label": "Mach mit",
-      "title": "Milliarden suchen",
-      "description": "Die Ernte ist da. Machen Sie mit, wenn wir das Evangelium mit digitalen Medien in die Welt tragen."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Gehen wir gemeinsam",
-      "title": "Gemeinsam die Geschichte von Jesus erzählen",
-      "description": "Damit sie die Liebe Jesu in ihrer eigenen Sprache direkt dort hören und sehen können, wo sie sind."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent} % Übereinstimmung",
     "none": "Für dieses Video wurden in dieser Sprache keine Empfehlungen gefunden."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Audiosprache",
     "selectLanguageVersion": "Sprachversion auswählen",
     "watchSelectedVersion": "Ausgewählte Version ansehen"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie-Einstellungen",
+    "bannerTitle": "Ihre Datenschutzoptionen",
+    "bannerDescription": "Erforderliche Cookies sorgen dafür, dass Watch sicher ist und funktioniert. Mit Ihrer Zustimmung kann ein optionales First-Party-Cookie Interessen über mehrere Besuche hinweg speichern, um Empfehlungen zu personalisieren. Kontextbezogene Empfehlungen bleiben in jedem Fall verfügbar.",
+    "acceptAll": "Alle akzeptieren",
+    "essentialOnly": "Nur erforderliche",
+    "manageChoices": "Einstellungen verwalten",
+    "savingChoice": "Cookie-Auswahl wird gespeichert",
+    "settings": "Cookie-Einstellungen",
+    "settingsDescription": "Wählen Sie, ob Watch Empfehlungsinteressen über mehrere Besuche hinweg speichern darf. Sie können dies jederzeit ändern.",
+    "essentialCookies": "Erforderliche Cookies",
+    "essentialDescription": "Sicherheit, Wiedergabe, Datenschutzeinstellungen und Zuordnung von Empfehlungsanfragen.",
+    "alwaysActive": "Immer aktiv",
+    "personalization": "Personalisierung",
+    "personalizationDescription": "Begrenzte Interessen über mehrere Besuche hinweg speichern. Wenn dies deaktiviert ist, bleiben kontextbezogene Empfehlungen verfügbar.",
+    "erasurePending": "Die Löschung des Profils steht noch aus. Kontextbezogene Empfehlungen sind bereits aktiv.",
+    "cancel": "Abbrechen",
+    "saveChoices": "Auswahl speichern",
+    "saving": "Wird gespeichert…",
+    "loadError": "Ihre Auswahl konnte nicht geladen werden. Sie können unten trotzdem eine Auswahl treffen.",
+    "grantError": "Personalisierung konnte nicht aktiviert werden. Nur erforderliche Cookies bleiben verfügbar.",
+    "saveError": "Ihre Auswahl konnte nicht gespeichert werden. Bitte versuchen Sie es erneut."
   }
 }

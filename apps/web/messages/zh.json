@@ -180,7 +180,8 @@
     "changeAudioLanguage": "更改音频语言",
     "home": "JesusFilm 主页",
     "closeSearch": "关闭搜索",
-    "submitSearch": "搜索"
+    "submitSearch": "搜索",
+    "library": "影片库"
   },
   "SearchOverlay": {
     "dialogLabel": "搜索并浏览视频",
@@ -283,6 +284,7 @@
     "sports": "体育",
     "collections": "合集",
     "subtitlesOnly": "仅字幕",
+    "backToTop": "返回顶部",
     "newlyAdded": "最新上架",
     "newVideosTitle": "{language}的新基督教视频",
     "newestFirst": "按最新排序",
@@ -313,7 +315,21 @@
     "standaloneVideos": "独立视频",
     "videosFromCollection": "来自{collection}的视频。",
     "standaloneDescription": "该语言的独立视频。",
-    "openCollection": "查看合集"
+    "openCollection": "查看合集",
+    "filters": "筛选",
+    "filterLength": "时长",
+    "filterLength_under5": "5 分钟以内",
+    "filterLength_5to10": "5-10 分钟",
+    "filterLength_10to30": "10-30 分钟",
+    "filterLength_over30": "30 分钟以上",
+    "filterType": "类型",
+    "clearFilters": "清除筛选",
+    "filterResults": "已显示 {count} / {total}",
+    "noFilterResults": "没有影片符合这些筛选条件。试试移除一项。",
+    "filterAdded": "加入时间",
+    "filterAdded_60d": "最近 60 天",
+    "filterAdded_6m": "最近 6 个月",
+    "filterAdded_12m": "最近 12 个月"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project 观看页",
@@ -327,7 +343,8 @@
     "nextVideoPreview": "预览下一个视频",
     "featured": "精选",
     "mediaCollection": "媒体合集",
-    "scrollToVideo": "滚动到视频“{title}”"
+    "scrollToVideo": "滚动到视频“{title}”",
+    "forYou": "为你推荐"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "语言",
@@ -459,7 +476,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -660,44 +677,6 @@
       "name": "Name is required."
     }
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}：{title}",
-    "watchShortFilm": "观看短片",
-    "actions": {
-      "joinUs": "加入我们",
-      "shareMission": "参与我们的使命"
-    },
-    "welcomeStart": {
-      "label": "信仰与圣经",
-      "title": "今日推荐视频",
-      "description": "从影片库精选以信仰为主题的内容，带给你启发、挑战与思考。"
-    },
-    "welcomeMorning": {
-      "label": "晨间启发",
-      "title": "早安！从今天的圣经内容开始吧。",
-      "description": "用鼓舞人心的圣经内容开启新的一天，获得启发与力量。"
-    },
-    "welcomeAfternoon": {
-      "label": "午间鼓励",
-      "title": "午安！来看今天的圣经内容。",
-      "description": "午间休息时，花一点时间从圣经内容中获得鼓励。"
-    },
-    "welcomeEvening": {
-      "label": "晚间安静",
-      "title": "晚安！在圣经内容中安静片刻。",
-      "description": "在一天结束时，通过平静的圣经内容默想并获得安慰。"
-    },
-    "joinUs": {
-      "label": "加入我们",
-      "title": "数十亿人正在寻找答案",
-      "description": "现在正是传扬福音的时候。加入我们，通过数字媒体，让世界各地的人都能听见福音。"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "一起前行",
-      "title": "一起讲述耶稣的故事",
-      "description": "让世界各地的人都能用自己的语言听见并看见耶稣的爱。"
-    }
-  },
   "VideoRecommendations": {
     "match": "匹配度 {percent}%",
     "none": "未找到该语言版本的相关视频。"
@@ -744,5 +723,28 @@
     "start": "全部下载",
     "downloadAgain": "再次下载",
     "retryFailed": "重试失败的项目"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie 选项",
+    "bannerTitle": "您的隐私选择",
+    "bannerDescription": "必要 Cookie 可保障 Watch 的安全与正常运行。经您同意，一个可选的第一方 Cookie 可在您多次访问时记住您的兴趣，以提供个性化推荐。无论您是否同意，情境推荐始终可用。",
+    "acceptAll": "全部接受",
+    "essentialOnly": "仅必要项",
+    "manageChoices": "管理选项",
+    "savingChoice": "正在保存 Cookie 选择",
+    "settings": "Cookie 设置",
+    "settingsDescription": "选择是否允许 Watch 在您多次访问时记住推荐兴趣。您可以随时更改。",
+    "essentialCookies": "必要 Cookie",
+    "essentialDescription": "用于安全、播放、隐私选择和推荐请求归因。",
+    "alwaysActive": "始终启用",
+    "personalization": "个性化",
+    "personalizationDescription": "在您多次访问时记住有限的兴趣。关闭后，情境推荐仍然可用。",
+    "erasurePending": "个人资料删除正在处理中。情境推荐已启用。",
+    "cancel": "取消",
+    "saveChoices": "保存选项",
+    "saving": "正在保存…",
+    "loadError": "无法加载您的选择。您仍可在下方进行选择。",
+    "grantError": "无法启用个性化。您仍可使用仅必要项。",
+    "saveError": "无法保存您的选择。请重试。"
   }
 }

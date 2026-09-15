@@ -8,6 +8,7 @@ import { setRequestLocale } from "next-intl/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
+import { RECOMMENDATION_COOKIE_SETTINGS_OPEN_EVENT } from "@/lib/recommendation-consent"
 
 vi.mock("next/image", () => ({
   default: ({
@@ -170,7 +171,12 @@ describe("WatchHomeFooter", () => {
     )
 
     expect(contactGrid?.classList.contains("grid")).toBe(true)
-    expect(contactGrid?.classList.contains("grid-cols-3")).toBe(true)
+    // Stacks on phones (three 12px columns wrap mid-address below ~640px),
+    // then returns to three equal columns with a real gutter from `sm` up.
+    expect(contactGrid?.classList.contains("grid-cols-1")).toBe(true)
+    expect(contactGrid?.classList.contains("sm:grid-cols-3")).toBe(true)
+    expect(contactGrid?.classList.contains("gap-y-4")).toBe(true)
+    expect(contactGrid?.classList.contains("sm:gap-x-6")).toBe(true)
     expect(contactGrid?.classList.contains("w-full")).toBe(true)
     expect(contactGrid?.classList.contains("break-words")).toBe(true)
     expect(contactGrid?.children).toHaveLength(3)
@@ -197,6 +203,26 @@ describe("WatchHomeFooter", () => {
     )
     expect(addressColumn?.textContent).not.toContain("fea8f46")
     expect(resourcesLink?.textContent).toBe("Resources")
+  })
+
+  it("keeps Cookie settings in the footer without covering page controls", () => {
+    const listener = vi.fn()
+    window.addEventListener(RECOMMENDATION_COOKIE_SETTINGS_OPEN_EVENT, listener)
+    renderFooter()
+
+    const settings = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent === "Cookie settings",
+    )
+
+    expect(settings?.closest("footer")).not.toBeNull()
+    expect(settings?.className).not.toContain("fixed")
+    act(() => settings?.click())
+    expect(listener).toHaveBeenCalledOnce()
+    expect((listener.mock.calls[0]?.[0] as CustomEvent).detail).toBe(settings)
+    window.removeEventListener(
+      RECOMMENDATION_COOKIE_SETTINGS_OPEN_EVENT,
+      listener,
+    )
   })
 
   it("paints its complete white surface above preceding sticky media", () => {

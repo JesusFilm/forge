@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Zmieni jãzëk audio",
     "home": "Strona domô JesusFilm",
     "closeSearch": "Zatrzëmôj szëkbã",
-    "submitSearch": "Szëkôj"
+    "submitSearch": "Szëkôj",
+    "library": "Biblioteka"
   },
   "SearchOverlay": {
     "dialogLabel": "Szëkôj i przerëcëwôj wideo",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Kolekcje",
     "subtitlesOnly": "Tylko titrë",
+    "backToTop": "Nazôd do górë",
     "newlyAdded": "Nowò dodóne",
     "newVideosTitle": "Nowé chrzéścijańsczé wideo pò {language}",
     "newestFirst": "Nônówsze nôprzéd",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Samòstójné wideo",
     "videosFromCollection": "Wideo z {collection}.",
     "standaloneDescription": "Samòstójné wideo w tim jãzëku.",
-    "openCollection": "Òtemkni kolekcjã"
+    "openCollection": "Òtemkni kolekcjã",
+    "filters": "Filtrë",
+    "filterLength": "Dłużëna",
+    "filterLength_under5": "Mni jak 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Wicy jak 30 min",
+    "filterType": "Ôrt",
+    "clearFilters": "Wëczëszczë filtrë",
+    "filterResults": "Pokôzóné {count} z {total}",
+    "noFilterResults": "Niżódné wideo nie pasëje do tëch filtrów. Sprawdzë wëcygnąc jeden.",
+    "filterAdded": "Dodóne",
+    "filterAdded_60d": "Ostatné 60 dni",
+    "filterAdded_6m": "Ostatné 6 miesąców",
+    "filterAdded_12m": "Ostatné 12 miesąców"
   },
   "WatchHome": {
     "pageTitle": "Òglądôj | Jesus Film Project",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Pòprzédny pòdzérk wideo",
     "nextVideoPreview": "Nôstãpny pòdzérk wideo",
     "mediaCollection": "Kolekcjô mediów",
-    "scrollToVideo": "Przesuń do wideo {title}"
+    "scrollToVideo": "Przesuń do wideo {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Strona domô Jesus Film Project",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Wrócë do òglądaniô",
     "browseVideos": "Przerëcëwôj wideo"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Òglądôj krótczé wideo",
-    "actions": {
-      "joinUs": "Dołączë do naju",
-      "shareMission": "Dzielë sã naju misją"
-    },
-    "welcomeStart": {
-      "label": "Wiara ë Pismã",
-      "title": "Dzysiéjszé wideo pòzycje",
-      "description": "Treścë wideo òparte na wierze z naszi biblioteki, bë natchnąc, pòdwinąc do namësłu i zrodzëc refleksjã."
-    },
-    "welcomeMorning": {
-      "label": "Ranno inspiracjô",
-      "title": "Dziéń dobri! Dzysiéjszé biblijné chwile czekają.",
-      "description": "Zacznij dzéń òd zachęcających biblijnëch chwil, co mòją natchnąc i pòdnieść twòj duch."
-    },
-    "welcomeAfternoon": {
-      "label": "Pòpòłniowô inspiracjô",
-      "title": "Dziéń dobri! Biblijné chwile na Twòj dzéń.",
-      "description": "Zachęcającé biblijné treścë, récht dlô pòpòłniowégò òdpòczniku abò dalniejszi inspiracjë."
-    },
-    "welcomeEvening": {
-      "label": "Wieczornô inspiracjô",
-      "title": "Dobrë wieczór! Òdpòczni sã z biblijnymë chwilama.",
-      "description": "Sztëlne biblijné chwile, co pòmògą Ci przëmëslëc sã i nalézc ùspòkónié, jak dzéń sã kùńczë."
-    },
-    "joinUs": {
-      "label": "Dołączë do naju",
-      "title": "Miliardy szëkają",
-      "description": "Żniwa tu są. Dołączë do naju, jak dzélëmë sã ewangjeliją z òkrãgã przez médija cyfrowé."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Chòdzą bëmë razem",
-      "title": "Òpòwiôdanié ò Jezusie razem",
-      "description": "Bë mògli słëchac i widzec mòlëwòsc Jezusë w swòjim jãzëkù, tamò gdze są."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% dopasowaniô",
     "none": "Nie nalazłë sã żódné pòlecenia dlô tegò wideo w tim jãzëkù."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Jãzëk aùdio",
     "selectLanguageVersion": "Wëbierzë jãzëkòwą wersëjã",
     "watchSelectedVersion": "Òbzérôj wëbróną wersëjã"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Wëbiérk cuksów",
+    "bannerTitle": "Twòje wëbiérczi prëwatnoscë",
+    "bannerDescription": "Niezbãdné cuksë trzëmają Watch bezpiecznym ë sprawnym. Za twòjim przëzwòlënim dodôtny cuks pierszi starnë mòże spamiãtac zainteresowania midzë wëzëtama, bë spersonalizowac pòdskôzczi. Kòntekstowé pòdskôzczi są przistãpné w kòżdim przëtrôfkù.",
+    "acceptAll": "Akceptëjë wszëtczé",
+    "essentialOnly": "Blós niezbãdné",
+    "manageChoices": "Sprôwiôj wëbiérkama",
+    "savingChoice": "Zapisëwanié wëbiérkù cuksów",
+    "settings": "Ùstôwë cuksów",
+    "settingsDescription": "Wëbierzë, czë Watch mòże spamiãtac zainteresowania pòdskôzkama midzë wëzëtama. To mòżesz zmienic w kòżdim czasu.",
+    "essentialCookies": "Niezbãdné cuksë",
+    "essentialDescription": "Bezpiecziństwò, òdtwôrzanié, wëbiérczi prëwatnoscë ë przëpisanié żądaniô pòdskôzków.",
+    "alwaysActive": "Wiedno aktiwné",
+    "personalization": "Personalizacjô",
+    "personalizationDescription": "Spamiãtiwùj ògraniczoné zainteresowania midzë wëzëtama. Wëłączenié tegò dali dôwô przistãp do kòntekstowëch pòdskôzków.",
+    "erasurePending": "Rëmòwanié profilu je w bëcé. Kòntekstowé pòdskôzczi są ju aktiwné.",
+    "cancel": "Òstawi",
+    "saveChoices": "Zapiszë wëbiérczi",
+    "saving": "Zapisëwanié…",
+    "loadError": "Nie dało sã wczëtac twòjégò wëbiérkù. Niżéj jesz mòżesz wëbrac.",
+    "grantError": "Nie dało sã włączëc personalizacjë. Blós niezbãdné òstôwają przistãpné.",
+    "saveError": "Nie dało sã zapisac twòjégò wëbiérkù. Spróbùjë jesz rôz."
   }
 }

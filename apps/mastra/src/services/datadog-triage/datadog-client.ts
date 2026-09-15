@@ -31,10 +31,17 @@ import {
  * the plan's open Dependencies assumption — per-issue windowed counts exist,
  * so the fallback per-issue aggregate is NOT needed.
  *
- * NOT VERIFIED: the raw HTTP envelope. The MCP returns its own flattened
- * projection, so the JSON:API `data[].attributes` + `included[]` wrapping
- * modelled below comes from the API documentation, not from an observed
- * response. Two consequences are deliberate: `issueSearchEnvelopeSchema`
+ * VERIFIED live 2026-08-27 against the raw HTTP envelope (scoped-key smoke,
+ * runbook step 5): the request REQUIRES a `track` attribute ("either track or
+ * persona is required") and the `include=issue` query parameter — without the
+ * latter, `data[]` rows carry only `impacted_sessions`/`total_count` and all
+ * issue detail is absent. Detail rows arrive in `included[]` (type `issue`)
+ * keyed by the same id. `meta` and `links` are null and `page.limit` is NOT
+ * honored (13 rows returned against limit 2), so no pagination cursor exists
+ * at either spelling the reader accepts; a genuinely full page therefore
+ * reports `truncated`, which is the documented fail-safe. States use the
+ * OPEN/IGNORED/EXCLUDED vocabulary, matching `MUTED_ISSUE_STATES`.
+ * Two schema consequences remain deliberate: `issueSearchEnvelopeSchema`
  * accepts a row whose fields sit either under `attributes` or directly on the
  * row, and every row that yields no usable issue id is COUNTED as
  * `unparsedRows` rather than dropped in silence — envelope drift then shows up
@@ -78,6 +85,12 @@ export type DatadogSuccess<T> = {
 }
 
 export type DatadogResult<T> = DatadogSuccess<T> | DatadogFailure
+
+/**
+ * Error Tracking search track. Required by the API; the sweep derives it from
+ * the service profile's `spikeSource` (mobile = rum, backend default = logs).
+ */
+export type DatadogIssueTrack = "rum" | "logs" | "trace"
 
 export type DatadogIssue = {
   issueId: string
@@ -195,9 +208,9 @@ const issueSearchEnvelopeSchema = z
   .object({
     data: z.array(issueRowSchema),
     included: z.array(issueRowSchema).optional(),
-    // Two spellings because the envelope is UNVERIFIED (module header). Both
-    // optional: an unknown third spelling stops paging and still reports
-    // `truncated`, degrading to the old behaviour rather than to silence.
+    // Verified 2026-08-27: the live envelope sends NEITHER spelling — meta is
+    // null and no cursor exists. Both stay optional so a future cursor still
+    // gets followed, and a full page without one reports `truncated`.
     meta: z
       .object({
         status: z.unknown(),
@@ -399,6 +412,7 @@ export class DatadogTriageClient {
    */
   async searchIssues(input: {
     service: string
+    track: DatadogIssueTrack
     from: Date
     to: Date
     limit?: number
@@ -421,6 +435,7 @@ export class DatadogTriageClient {
     for (let page = 0; page < maxPages; page += 1) {
       const result = await this.fetchIssuePage({
         service: input.service,
+        track: input.track,
         from: input.from,
         to: input.to,
         limit,
@@ -456,6 +471,7 @@ export class DatadogTriageClient {
 
   private async fetchIssuePage(input: {
     service: string
+    track: DatadogIssueTrack
     from: Date
     to: Date
     limit: number
@@ -472,11 +488,17 @@ export class DatadogTriageClient {
       "api/v2/error-tracking/issues/search",
       {
         method: "POST",
+        // `include=issue` is what makes `included[]` carry issue detail; the
+        // API otherwise returns only ids and counts (verified 2026-08-27).
+        query: { include: "issue" },
         body: {
           data: {
             type: "search_request",
             attributes: {
               query: `service:${input.service}`,
+              // Required: the API 400s with "either track or persona is
+              // required" when absent (verified 2026-08-27).
+              track: input.track,
               from: input.from.getTime(),
               to: input.to.getTime(),
               page: input.cursor

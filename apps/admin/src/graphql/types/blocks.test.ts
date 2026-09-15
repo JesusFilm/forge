@@ -197,6 +197,15 @@ const fixtures: Readonly<Record<BlockKind, object>> = {
     t: "videoRecommendations",
     limit: 10,
   },
+  homepageRecommendations: {
+    t: "homepageRecommendations",
+    sectionKey: "recommended",
+    title: "Recommended for You",
+  },
+  watchHomeCategoryRail: {
+    t: "watchHomeCategoryRail",
+    categoryIds: ["family", "gospels", "jesus"],
+  },
   watchHomeHero: {
     t: "watchHomeHero",
   },
@@ -209,6 +218,48 @@ const expectedKeys = Object.keys(T_TO_TYPENAME) as BlockKind[]
 describe("blocks fixture set covers every kind in T_TO_TYPENAME", () => {
   it("has the same key set as T_TO_TYPENAME (no missing or stale fixtures)", () => {
     expect([...fixtureKeys].sort()).toEqual([...expectedKeys].sort())
+  })
+})
+
+describe("WatchHomeCategoryRailBlock fields", () => {
+  it("preserves the authored category order", async () => {
+    const resolve = fieldResolver("WatchHomeCategoryRailBlock", "categoryIds")
+
+    const result = await resolve(
+      fixtures.watchHomeCategoryRail,
+      {},
+      {},
+      fakeInfo,
+    )
+    expect(result).toEqual(["family", "gospels", "jesus"])
+    const type = schema.getType(
+      "WatchHomeCategoryRailBlock",
+    ) as GraphQLObjectType
+    expect(String(type.getFields().categoryIds?.type)).toBe("[String!]!")
+  })
+
+  it("exposes each optional locale-owned copy field", async () => {
+    const authored = {
+      ...fixtures.watchHomeCategoryRail,
+      eyebrow: "Explore",
+      title: "Choose a story",
+      description: "Stories for every season.",
+      ctaLabel: "See everything",
+    }
+
+    for (const field of [
+      "eyebrow",
+      "title",
+      "description",
+      "ctaLabel",
+    ] as const) {
+      const resolve = fieldResolver("WatchHomeCategoryRailBlock", field)
+      expect(await resolve(authored, {}, {}, fakeInfo)).toBe(authored[field])
+      const type = schema.getType(
+        "WatchHomeCategoryRailBlock",
+      ) as GraphQLObjectType
+      expect(String(type.getFields()[field]?.type)).toBe("String")
+    }
   })
 })
 
@@ -1228,5 +1279,250 @@ describe("Edge cases", () => {
     const blocks: object[] = []
     const dispatched = blocks.map((b) => resolveTypeName("ExperienceBlock", b))
     expect(dispatched).toEqual([])
+  })
+})
+
+// -----------------------------------------------------------------------------
+// Preview-scoped title projection.
+//
+// `previewResolvedTitle` takes no argument so a preview caller cannot select a
+// locale other than the one being previewed. It shares one resolution helper
+// with `resolvedTitle`, and the equivalence table below is the pin that keeps
+// the two from drifting — that shared body is what makes preview and published
+// titles the same by construction rather than by review.
+// -----------------------------------------------------------------------------
+
+describe("MediaCollectionItem previewResolvedTitle resolver", () => {
+  const resolvePreviewTitle = fieldResolver(
+    "MediaCollectionItem",
+    "previewResolvedTitle",
+  )
+  const resolveResolvedTitle = fieldResolver(
+    "MediaCollectionItem",
+    "resolvedTitle",
+  )
+
+  function loaders(video: unknown, locales: unknown) {
+    return {
+      loaders: {
+        videoById: { load: vi.fn().mockResolvedValue(video) },
+        videoLocalesByVideoIdAndFilter: {
+          load: vi.fn().mockResolvedValue(locales),
+        },
+      },
+    }
+  }
+
+  const liveVideo = { id: "video-1", deletedAt: null }
+
+  it("takes no arguments, so no caller can choose the locale", () => {
+    const type = schema.getType("MediaCollectionItem") as GraphQLObjectType
+    const field = type.getFields().previewResolvedTitle
+
+    expect(field?.args).toEqual([])
+    expect(String(field?.type)).toBe("String")
+    expect(
+      type.getFields().resolvedTitle?.args.map((arg) => String(arg.type)),
+    ).toEqual(["String!"])
+  })
+
+  it("resolves the linked video title through the stamped locale", async () => {
+    const result = await resolvePreviewTitle(
+      { videoId: "video-1", previewLocale: "ru" },
+      {},
+      loaders(liveVideo, [{ locale: "ru", title: "  Иисус  " }]),
+      fakeInfo,
+    )
+
+    expect(result).toBe("Иисус")
+  })
+
+  it("uses the stamped locale as the loader key", async () => {
+    const ctx = loaders(liveVideo, [{ locale: "ru", title: "Иисус" }])
+
+    await resolvePreviewTitle(
+      { videoId: "video-1", previewLocale: "ru" },
+      {},
+      ctx,
+      fakeInfo,
+    )
+
+    expect(
+      ctx.loaders.videoLocalesByVideoIdAndFilter.load,
+    ).toHaveBeenCalledWith({
+      videoId: "video-1",
+      locale: "ru",
+      languageSlug: null,
+      visibleOnly: true,
+    })
+  })
+
+  it("returns null without loading anything when the row is unstamped", async () => {
+    const ctx = loaders(liveVideo, [{ locale: "ru", title: "Иисус" }])
+
+    const result = await resolvePreviewTitle(
+      { videoId: "video-1" },
+      {},
+      ctx,
+      fakeInfo,
+    )
+
+    expect(result).toBeNull()
+    expect(ctx.loaders.videoById.load).not.toHaveBeenCalled()
+    expect(
+      ctx.loaders.videoLocalesByVideoIdAndFilter.load,
+    ).not.toHaveBeenCalled()
+  })
+
+  // The anti-divergence pin for the plan's R2: preview and published must be
+  // the same projection, not two projections that happen to agree today.
+  it.each([
+    [
+      "nonblank override wins over linked copy",
+      { videoId: "video-1", titleOverride: "  Day One  " },
+      liveVideo,
+      [{ locale: "ru", title: "Иисус" }],
+      "Day One",
+    ],
+    [
+      "whitespace-only override falls through to linked copy",
+      { videoId: "video-1", titleOverride: "   " },
+      liveVideo,
+      [{ locale: "ru", title: "  Иисус  " }],
+      "Иисус",
+    ],
+    [
+      "no override falls through to linked copy",
+      { videoId: "video-1" },
+      liveVideo,
+      [{ locale: "ru", title: "Иисус" }],
+      "Иисус",
+    ],
+    [
+      "no published title in the locale resolves null",
+      { videoId: "video-1" },
+      liveVideo,
+      [{ locale: "es", title: "Jesus" }],
+      null,
+    ],
+    [
+      "blank published title resolves null",
+      { videoId: "video-1" },
+      liveVideo,
+      [{ locale: "ru", title: "   " }],
+      null,
+    ],
+    ["no linked video resolves null", {}, liveVideo, [], null],
+    [
+      "soft-deleted linked video resolves null",
+      { videoId: "video-1" },
+      { id: "video-1", deletedAt: new Date("2026-08-01T00:00:00.000Z") },
+      [{ locale: "ru", title: "Иисус" }],
+      null,
+    ],
+  ])(
+    "matches resolvedTitle for the same locale: %s",
+    async (_label, row, video, locales, expected) => {
+      const previewResult = await resolvePreviewTitle(
+        { ...row, previewLocale: "ru" },
+        {},
+        loaders(video, locales),
+        fakeInfo,
+      )
+      const publishedResult = await resolveResolvedTitle(
+        row,
+        { locale: "ru" },
+        loaders(video, locales),
+        fakeInfo,
+      )
+
+      expect(previewResult).toBe(expected)
+      expect(previewResult).toBe(publishedResult)
+    },
+  )
+})
+
+// -----------------------------------------------------------------------------
+// Wiring: ExperiencePreview.blocks -> stamped items -> previewResolvedTitle.
+//
+// The helper suite in services/experience-preview-blocks.test.ts calls the
+// stamping function directly, so it stays green if the resolver stops calling
+// it. This is the only test that goes red for that. Keep it that way.
+// -----------------------------------------------------------------------------
+
+describe("ExperiencePreview.blocks preview locale wiring", () => {
+  const resolvePreviewBlocks = fieldResolver("ExperiencePreview", "blocks")
+  const resolvePreviewTitle = fieldResolver(
+    "MediaCollectionItem",
+    "previewResolvedTitle",
+  )
+
+  const previewRow = {
+    experienceId: "experience-1",
+    localeId: "locale-1",
+    locale: "ru",
+    slug: "home",
+    isHomepage: false,
+    blocks: [
+      {
+        t: "section",
+        sectionKey: "outer",
+        content: [
+          {
+            t: "container",
+            sectionKey: "inner",
+            content: [
+              {
+                t: "mediaCollection",
+                sectionKey: "deep",
+                items: [{ videoId: "video-1" }],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  }
+
+  it("binds the preview locale so a nested item resolves its title", async () => {
+    const blocks = (await resolvePreviewBlocks(
+      previewRow,
+      {},
+      { watchHomeCategoryRailRolloutCompleted: true },
+      fakeInfo,
+    )) as Array<{ content: Array<{ content: Array<{ items: object[] }> }> }>
+
+    const item = blocks[0].content[0].content[0].items[0]
+
+    const result = await resolvePreviewTitle(
+      item,
+      {},
+      {
+        loaders: {
+          videoById: {
+            load: vi.fn().mockResolvedValue({ id: "video-1", deletedAt: null }),
+          },
+          videoLocalesByVideoIdAndFilter: {
+            load: vi.fn().mockResolvedValue([{ locale: "ru", title: "Иисус" }]),
+          },
+        },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBe("Иисус")
+  })
+
+  it("does not mutate the stored draft snapshot blocks", async () => {
+    const snapshot = JSON.stringify(previewRow.blocks)
+
+    await resolvePreviewBlocks(
+      previewRow,
+      {},
+      { watchHomeCategoryRailRolloutCompleted: true },
+      fakeInfo,
+    )
+
+    expect(JSON.stringify(previewRow.blocks)).toBe(snapshot)
   })
 })

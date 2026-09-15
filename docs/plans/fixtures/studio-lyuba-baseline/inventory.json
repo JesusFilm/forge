@@ -1,0 +1,2596 @@
+{
+  "schemaVersion": 1,
+  "archive": {
+    "sha256": "9943078d9e385f27dbb6b86ebcb735d62927e000d394e3c0f444a184175ed883",
+    "bytes": 23968735
+  },
+  "files": [
+    {
+      "path": "devo/assets/music/awe-1.mp3",
+      "bytes": 479862,
+      "sha256": "f862e903af30bec2c63e8e5ad7782d4e2ff007d1b2add7c628e0e991f77eded2",
+      "role": "music-library",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/assets/music/manifest.json",
+        "recorded": {
+          "file": "awe-1.mp3",
+          "mood": "awe",
+          "prompt": "PROVENANCE LOST 2026-08-17 — original generation prompt not recovered",
+          "lengthMs": 29988
+        },
+        "originalGenerationPrompt": null,
+        "providerRequest": null
+      }
+    },
+    {
+      "path": "devo/assets/music/awe-2.mp3",
+      "bytes": 479862,
+      "sha256": "9759cabbdf4ef89dd407f0b268a6ebc8d425740322dbcfecc0d3640d7e3bf8ac",
+      "role": "music-library",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/assets/music/manifest.json",
+        "recorded": {
+          "file": "awe-2.mp3",
+          "mood": "awe",
+          "prompt": "PROVENANCE LOST 2026-08-17 — original generation prompt not recovered",
+          "lengthMs": 29988
+        },
+        "originalGenerationPrompt": null,
+        "providerRequest": null
+      }
+    },
+    {
+      "path": "devo/assets/music/awe-3.mp3",
+      "bytes": 480698,
+      "sha256": "006dc1a48fe7613f7acc71480b2f77b729f04c51d6d5bf8c184af9b58da44348",
+      "role": "music-library",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/assets/music/manifest.json",
+        "recorded": {
+          "file": "awe-3.mp3",
+          "mood": "awe",
+          "prompt": "PROVENANCE LOST 2026-08-17 — original generation prompt not recovered",
+          "lengthMs": 30040
+        },
+        "originalGenerationPrompt": null,
+        "providerRequest": null
+      }
+    },
+    {
+      "path": "devo/assets/music/awe-4.mp3",
+      "bytes": 480698,
+      "sha256": "2c0f043dd1905ae75678af366397061245409e5c5fc5b36c5d30a059fccc016a",
+      "role": "music-library",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/assets/music/manifest.json",
+        "recorded": {
+          "file": "awe-4.mp3",
+          "mood": "awe",
+          "prompt": "PROVENANCE LOST 2026-08-17 — original generation prompt not recovered",
+          "lengthMs": 30040
+        },
+        "originalGenerationPrompt": null,
+        "providerRequest": null
+      }
+    },
+    {
+      "path": "devo/assets/music/awe-5.mp3",
+      "bytes": 480698,
+      "sha256": "7331819f6b52d70624b53247a614cf9407e5ddf6f7e96195d40c2983ff290c0b",
+      "role": "music-library",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/assets/music/manifest.json",
+        "recorded": {
+          "file": "awe-5.mp3",
+          "mood": "awe",
+          "prompt": "PROVENANCE LOST 2026-08-17 — original generation prompt not recovered",
+          "lengthMs": 30040
+        },
+        "originalGenerationPrompt": null,
+        "providerRequest": null
+      }
+    },
+    {
+      "path": "devo/assets/music/from-old-zaccheus.mp3",
+      "bytes": 109634,
+      "sha256": "cb3ad53d562cce337fd41e292cab35a943df589df5a23d1c1c3481257611a51c",
+      "role": "music-library",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/assets/music/manifest.json",
+        "recorded": null,
+        "originalGenerationPrompt": null,
+        "providerRequest": null
+      }
+    },
+    {
+      "path": "devo/assets/music/hope-1.mp3",
+      "bytes": 479862,
+      "sha256": "3382ce72095e381a34331590162235c250c80c9905967c3948b4f0e0b5d42a47",
+      "role": "music-library",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/assets/music/manifest.json",
+        "recorded": {
+          "file": "hope-1.mp3",
+          "mood": "hope",
+          "prompt": "PROVENANCE LOST 2026-08-17 — original generation prompt not recovered",
+          "lengthMs": 29988
+        },
+        "originalGenerationPrompt": null,
+        "providerRequest": null
+      }
+    },
+    {
+      "path": "devo/assets/music/hope-2.mp3",
+      "bytes": 479862,
+      "sha256": "3f3e26731d6780377d7879e1986dd75d344667a0ad82b35a294cc329004dd5f5",
+      "role": "music-library",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/assets/music/manifest.json",
+        "recorded": {
+          "file": "hope-2.mp3",
+          "mood": "hope",
+          "prompt": "PROVENANCE LOST 2026-08-17 — original generation prompt not recovered",
+          "lengthMs": 29988
+        },
+        "originalGenerationPrompt": null,
+        "providerRequest": null
+      }
+    },
+    {
+      "path": "devo/assets/music/hope-3.mp3",
+      "bytes": 479862,
+      "sha256": "2bdc2c0c8921f0f2debc8891ca089ba94d69ab2f46288f6e3710a76e1b5a099d",
+      "role": "music-library",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/assets/music/manifest.json",
+        "recorded": {
+          "file": "hope-3.mp3",
+          "mood": "hope",
+          "prompt": "PROVENANCE LOST 2026-08-17 — original generation prompt not recovered",
+          "lengthMs": 29988
+        },
+        "originalGenerationPrompt": null,
+        "providerRequest": null
+      }
+    },
+    {
+      "path": "devo/assets/music/hope-4.mp3",
+      "bytes": 480698,
+      "sha256": "43428a11916719d1ca3b8ac344984a5aeb70df6c8776c104b040d7cd5290358c",
+      "role": "music-library",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/assets/music/manifest.json",
+        "recorded": {
+          "file": "hope-4.mp3",
+          "mood": "hope",
+          "prompt": "PROVENANCE LOST 2026-08-17 — original generation prompt not recovered",
+          "lengthMs": 30040
+        },
+        "originalGenerationPrompt": null,
+        "providerRequest": null
+      }
+    },
+    {
+      "path": "devo/assets/music/hope-5.mp3",
+      "bytes": 480698,
+      "sha256": "635505a78eae824a1330f7878d1db4d81354d9f62b5100b2c5cd567505b546da",
+      "role": "music-library",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/assets/music/manifest.json",
+        "recorded": {
+          "file": "hope-5.mp3",
+          "mood": "hope",
+          "prompt": "PROVENANCE LOST 2026-08-17 — original generation prompt not recovered",
+          "lengthMs": 30040
+        },
+        "originalGenerationPrompt": null,
+        "providerRequest": null
+      }
+    },
+    {
+      "path": "devo/assets/music/lament-1.mp3",
+      "bytes": 480698,
+      "sha256": "fc764829bb4e5242bd5d563c8b7774c1a150c2c36d4a402f0dd39a947f2667c6",
+      "role": "music-library",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/assets/music/manifest.json",
+        "recorded": {
+          "file": "lament-1.mp3",
+          "mood": "lament",
+          "prompt": "PROVENANCE LOST 2026-08-17 — original generation prompt not recovered",
+          "lengthMs": 30040
+        },
+        "originalGenerationPrompt": null,
+        "providerRequest": null
+      }
+    },
+    {
+      "path": "devo/assets/music/lament-2.mp3",
+      "bytes": 479862,
+      "sha256": "2aa5e01b6b86b3658bd9fdf5235f4dc000b111a9b66a38184425a9f3faf4d5ca",
+      "role": "music-library",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/assets/music/manifest.json",
+        "recorded": {
+          "file": "lament-2.mp3",
+          "mood": "lament",
+          "prompt": "PROVENANCE LOST 2026-08-17 — original generation prompt not recovered",
+          "lengthMs": 29988
+        },
+        "originalGenerationPrompt": null,
+        "providerRequest": null
+      }
+    },
+    {
+      "path": "devo/assets/music/lament-3.mp3",
+      "bytes": 479862,
+      "sha256": "a0a8a2a1fd1b7985aaf862a3f33d3836f61918939b414b736b365c0c8fc8bdec",
+      "role": "music-library",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/assets/music/manifest.json",
+        "recorded": {
+          "file": "lament-3.mp3",
+          "mood": "lament",
+          "prompt": "PROVENANCE LOST 2026-08-17 — original generation prompt not recovered",
+          "lengthMs": 29988
+        },
+        "originalGenerationPrompt": null,
+        "providerRequest": null
+      }
+    },
+    {
+      "path": "devo/assets/music/lament-4.mp3",
+      "bytes": 479862,
+      "sha256": "a528e384a2fead005273badaa59a5b5463821d948eacfc9987bf4fce192232f6",
+      "role": "music-library",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/assets/music/manifest.json",
+        "recorded": {
+          "file": "lament-4.mp3",
+          "mood": "lament",
+          "prompt": "PROVENANCE LOST 2026-08-17 — original generation prompt not recovered",
+          "lengthMs": 29988
+        },
+        "originalGenerationPrompt": null,
+        "providerRequest": null
+      }
+    },
+    {
+      "path": "devo/assets/music/lament-5.mp3",
+      "bytes": 480698,
+      "sha256": "c053223f58fda05858c551ad37274e63b5ad78ba635b531ecd1ce3c616e0483e",
+      "role": "music-library",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/assets/music/manifest.json",
+        "recorded": {
+          "file": "lament-5.mp3",
+          "mood": "lament",
+          "prompt": "PROVENANCE LOST 2026-08-17 — original generation prompt not recovered",
+          "lengthMs": 30040
+        },
+        "originalGenerationPrompt": null,
+        "providerRequest": null
+      }
+    },
+    {
+      "path": "devo/assets/music/manifest.json",
+      "bytes": 3676,
+      "sha256": "e76f9b401302c39a6ef323111cf7e8c2255018496710789fbda6a2f210f64159",
+      "role": "music-library",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null
+      }
+    },
+    {
+      "path": "devo/assets/music/peace-1.mp3",
+      "bytes": 480698,
+      "sha256": "288bb89c42e22740d97e0986d4648f8d79faaf66a4a98597f42c70fb352597b3",
+      "role": "music-library",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/assets/music/manifest.json",
+        "recorded": {
+          "file": "peace-1.mp3",
+          "mood": "peace",
+          "prompt": "PROVENANCE LOST 2026-08-17 — original generation prompt not recovered",
+          "lengthMs": 30040
+        },
+        "originalGenerationPrompt": null,
+        "providerRequest": null
+      }
+    },
+    {
+      "path": "devo/assets/music/peace-2.mp3",
+      "bytes": 480698,
+      "sha256": "ad23fa28be948f14bb076d18bae92e3269f37921dfc9dc2e135d7bab27495a9f",
+      "role": "music-library",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/assets/music/manifest.json",
+        "recorded": {
+          "file": "peace-2.mp3",
+          "mood": "peace",
+          "prompt": "PROVENANCE LOST 2026-08-17 — original generation prompt not recovered",
+          "lengthMs": 30040
+        },
+        "originalGenerationPrompt": null,
+        "providerRequest": null
+      }
+    },
+    {
+      "path": "devo/assets/music/peace-3.mp3",
+      "bytes": 480698,
+      "sha256": "91b55c00a4041b1c0c6116f5a5c3c71dbbeaba76f151006f1d02f4f97e3f6692",
+      "role": "music-library",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/assets/music/manifest.json",
+        "recorded": {
+          "file": "peace-3.mp3",
+          "mood": "peace",
+          "prompt": "PROVENANCE LOST 2026-08-17 — original generation prompt not recovered",
+          "lengthMs": 30040
+        },
+        "originalGenerationPrompt": null,
+        "providerRequest": null
+      }
+    },
+    {
+      "path": "devo/assets/music/peace-4.mp3",
+      "bytes": 480698,
+      "sha256": "03d0287adea81b877de48e3aa98826b490486810d4b79f4496544011b9152222",
+      "role": "music-library",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/assets/music/manifest.json",
+        "recorded": {
+          "file": "peace-4.mp3",
+          "mood": "peace",
+          "prompt": "PROVENANCE LOST 2026-08-17 — original generation prompt not recovered",
+          "lengthMs": 30040
+        },
+        "originalGenerationPrompt": null,
+        "providerRequest": null
+      }
+    },
+    {
+      "path": "devo/assets/music/peace-5.mp3",
+      "bytes": 480698,
+      "sha256": "dd5d57a81ddd4518b1bf8ae89807751c26192e2aa0f7d3d5728ab74b97f889db",
+      "role": "music-library",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/assets/music/manifest.json",
+        "recorded": {
+          "file": "peace-5.mp3",
+          "mood": "peace",
+          "prompt": "PROVENANCE LOST 2026-08-17 — original generation prompt not recovered",
+          "lengthMs": 30040
+        },
+        "originalGenerationPrompt": null,
+        "providerRequest": null
+      }
+    },
+    {
+      "path": "devo/cache/ch19-seq102/audio/conclusion.mp3",
+      "bytes": 72351,
+      "sha256": "82a3ed27d924f8a95df84e90ceba3559711d111a56868ab61dcc5598ddeae354",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch19-seq102/audio/index.json",
+        "recorded": {
+          "id": "conclusion",
+          "text": "Even when the storm rages, his presence ensures you're never truly alone.",
+          "file": "conclusion.mp3",
+          "voiceId": "98ujrzs7rxAMEsaC4EpW",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 73
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch19-seq102/audio/cover.mp3",
+      "bytes": 184364,
+      "sha256": "5382668acf06780d160a9b83f8470500b6d288a2dc46a30c99cf0eb338a6b7c5",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch19-seq102/audio/index.json",
+        "recorded": {
+          "id": "cover",
+          "text": "For anyone who knows Jesus but still feels the panic rising. Let's slow down and give Scripture our attention.",
+          "file": "cover.mp3",
+          "voiceId": "98ujrzs7rxAMEsaC4EpW",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 109
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch19-seq102/audio/index.json",
+      "bytes": 6253,
+      "sha256": "fe3ab4bca042ffcd6cfd707507f798484140765f5a162e39f114dadb7481267d",
+      "role": "audio-index",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null
+      }
+    },
+    {
+      "path": "devo/cache/ch19-seq102/audio/music.mp3",
+      "bytes": 480698,
+      "sha256": "91b55c00a4041b1c0c6116f5a5c3c71dbbeaba76f151006f1d02f4f97e3f6692",
+      "role": "cached-music",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "recorded": {
+          "file": "music.mp3",
+          "mood": "peace",
+          "prompt": "library:peace-3.mp3",
+          "lengthMs": 0,
+          "model": "library"
+        }
+      }
+    },
+    {
+      "path": "devo/cache/ch19-seq102/audio/questions.mp3",
+      "bytes": 331067,
+      "sha256": "f962fc406b92303e0a4f67155726683ef6d0c6b5d16ed265ff27421dc6c47133",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch19-seq102/audio/index.json",
+        "recorded": {
+          "id": "questions",
+          "text": "Here's something to sit with.\n\nWhen fear takes over, what would change if you remembered he's still in the boat with you?\n\nBring your fear to Jesus right now and ask him to calm what feels out of control.",
+          "file": "questions.mp3",
+          "voiceId": "98ujrzs7rxAMEsaC4EpW",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 200
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch19-seq102/audio/reflection-1.mp3",
+      "bytes": 174333,
+      "sha256": "6ad3c8634aaeb11098849b066ffcf31e9d0d5b2c0c8766c21f142d89960e5a1d",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch19-seq102/audio/index.json",
+        "recorded": {
+          "id": "reflection-1",
+          "text": "Even true disciples can be overwhelmed by fear when the storm is real enough.",
+          "file": "reflection-1.mp3",
+          "voiceId": "98ujrzs7rxAMEsaC4EpW",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 93
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch19-seq102/audio/reflection-10.mp3",
+      "bytes": 84471,
+      "sha256": "1ed5681e41669798e3d8cea9184630bead3fb44c856dc0574703a5b286d1e1a3",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch19-seq102/audio/index.json",
+        "recorded": {
+          "id": "reflection-10",
+          "text": "Even Peter, James, and John cried out 'Master, we're going to perish!'",
+          "file": "reflection-10.mp3",
+          "voiceId": "98ujrzs7rxAMEsaC4EpW",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 70
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch19-seq102/audio/reflection-11.mp3",
+      "bytes": 77784,
+      "sha256": "557a79b2a0d2e9800c3b58b767ca84bd5c825be981833bd16c29dba84187fe8f",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch19-seq102/audio/index.json",
+        "recorded": {
+          "id": "reflection-11",
+          "text": "When the storm had passed, Jesus asked them, 'Where is your faith?'",
+          "file": "reflection-11.mp3",
+          "voiceId": "98ujrzs7rxAMEsaC4EpW",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 67
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch19-seq102/audio/reflection-12.mp3",
+      "bytes": 24285,
+      "sha256": "525035ef843be956986c980a69da3a983518e139bf167fdbf59640c8c5258b6c",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch19-seq102/audio/index.json",
+        "recorded": {
+          "id": "reflection-12",
+          "text": "That's the question.",
+          "file": "reflection-12.mp3",
+          "voiceId": "98ujrzs7rxAMEsaC4EpW",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 20
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch19-seq102/audio/reflection-13.mp3",
+      "bytes": 42675,
+      "sha256": "7cb432ea4ca1e125de617db0accef1052c54c23b37289c28a04f576056550a3a",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch19-seq102/audio/index.json",
+        "recorded": {
+          "id": "reflection-13",
+          "text": "Having true saving faith is one thing.",
+          "file": "reflection-13.mp3",
+          "voiceId": "98ujrzs7rxAMEsaC4EpW",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 38
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch19-seq102/audio/reflection-14.mp3",
+      "bytes": 84471,
+      "sha256": "41a594d167ad47cf9e1520137565a52162e6f1ce261a4b5b96c708c8c53a3ba5",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch19-seq102/audio/index.json",
+        "recorded": {
+          "id": "reflection-14",
+          "text": "Having that faith ready for use when something unexpected happens is another.",
+          "file": "reflection-14.mp3",
+          "voiceId": "98ujrzs7rxAMEsaC4EpW",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 77
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch19-seq102/audio/reflection-15.mp3",
+      "bytes": 165973,
+      "sha256": "7833256045a22c7bf14c8d90bcfd8e4bf48d581e93ab5b31bfb505f842df691c",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch19-seq102/audio/index.json",
+        "recorded": {
+          "id": "reflection-15",
+          "text": "Many people receive Christ as their Savior and commit their souls to him for time and eternity, yet their faith fails them when they're suddenly tried.",
+          "file": "reflection-15.mp3",
+          "voiceId": "98ujrzs7rxAMEsaC4EpW",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 151
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch19-seq102/audio/reflection-16.mp3",
+      "bytes": 110385,
+      "sha256": "38306096f77b82467fe0f030557ab33e242fb15cf37d7bc1267ab4cf53c1c1b4",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch19-seq102/audio/index.json",
+        "recorded": {
+          "id": "reflection-16",
+          "text": "The faith that carries you through a storm is the faith that sees him who is invisible.",
+          "file": "reflection-16.mp3",
+          "voiceId": "98ujrzs7rxAMEsaC4EpW",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 87
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch19-seq102/audio/reflection-17.mp3",
+      "bytes": 158659,
+      "sha256": "c846628b1f82b0c4741f85abcc444f9a5cb0d9b3846ab42cd1f8af86f0f1d83d",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch19-seq102/audio/index.json",
+        "recorded": {
+          "id": "reflection-17",
+          "text": "It finds Jesus near you in the darkest hour, and blue sky behind the blackest cloud.",
+          "file": "reflection-17.mp3",
+          "voiceId": "98ujrzs7rxAMEsaC4EpW",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 84
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch19-seq102/audio/reflection-2.mp3",
+      "bytes": 131283,
+      "sha256": "e9c8a5a192321f23a26d75975e3e2dfc6c44cf7ee7f0a317ec72befb6d1db44c",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch19-seq102/audio/index.json",
+        "recorded": {
+          "id": "reflection-2",
+          "text": "The disciples had Jesus right there in the boat with them, yet when the water started coming in they were sure they were going to die.",
+          "file": "reflection-2.mp3",
+          "voiceId": "98ujrzs7rxAMEsaC4EpW",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 134
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch19-seq102/audio/reflection-3.mp3",
+      "bytes": 28465,
+      "sha256": "7d43390315bdccafa3f42e058966d5ae244bf375fd77b408abfaf8719fbc0361",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch19-seq102/audio/index.json",
+        "recorded": {
+          "id": "reflection-3",
+          "text": "They forgot his care for them.",
+          "file": "reflection-3.mp3",
+          "voiceId": "98ujrzs7rxAMEsaC4EpW",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 30
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch19-seq102/audio/reflection-4.mp3",
+      "bytes": 84889,
+      "sha256": "fed547db06110cbb8e7a32cbff14734b8213f6e5b68d5f4b9a9a77036e964db0",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch19-seq102/audio/index.json",
+        "recorded": {
+          "id": "reflection-4",
+          "text": "They forgot that as long as they were with him they had to be safe, whatever happened.",
+          "file": "reflection-4.mp3",
+          "voiceId": "98ujrzs7rxAMEsaC4EpW",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 86
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch19-seq102/audio/reflection-5.mp3",
+      "bytes": 60648,
+      "sha256": "34eb6e61a543034015a3a26d6bab9988b4e51bf7c6187a038d2d8bfd7c22b557",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch19-seq102/audio/index.json",
+        "recorded": {
+          "id": "reflection-5",
+          "text": "Sight and sense and feeling make us poor theologians.",
+          "file": "reflection-5.mp3",
+          "voiceId": "98ujrzs7rxAMEsaC4EpW",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 53
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch19-seq102/audio/reflection-6.mp3",
+      "bytes": 47273,
+      "sha256": "6f20b919d9bfdb4408ad78a42579745bd23c39c899a3843458a4604f69367836",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch19-seq102/audio/index.json",
+        "recorded": {
+          "id": "reflection-6",
+          "text": "That's humbling, but it's also instructive.",
+          "file": "reflection-6.mp3",
+          "voiceId": "98ujrzs7rxAMEsaC4EpW",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 43
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch19-seq102/audio/reflection-7.mp3",
+      "bytes": 104951,
+      "sha256": "20edbf87ca9662840f627a34fcdc042a4ac9c7aeb40b756fdd018154be32dfca",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch19-seq102/audio/index.json",
+        "recorded": {
+          "id": "reflection-7",
+          "text": "It teaches us what to watch for in our own hearts, and what to expect in other believers.",
+          "file": "reflection-7.mp3",
+          "voiceId": "98ujrzs7rxAMEsaC4EpW",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 89
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch19-seq102/audio/reflection-8.mp3",
+      "bytes": 45601,
+      "sha256": "0eaeb7c9826ace0c65c0f8c3afa23578259f0ba6b5417f5fe868db0f1448cb9b",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch19-seq102/audio/index.json",
+        "recorded": {
+          "id": "reflection-8",
+          "text": "We have to be moderate in our expectations.",
+          "file": "reflection-8.mp3",
+          "voiceId": "98ujrzs7rxAMEsaC4EpW",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 43
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch19-seq102/audio/reflection-9.mp3",
+      "bytes": 78202,
+      "sha256": "0e7ebae5f99d7c595bca2b1ef3107078097f5c076289777385a851dbff467d9b",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch19-seq102/audio/index.json",
+        "recorded": {
+          "id": "reflection-9",
+          "text": "A person can have real faith and still show great weakness sometimes.",
+          "file": "reflection-9.mp3",
+          "voiceId": "98ujrzs7rxAMEsaC4EpW",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 69
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch19-seq102/audio/scripture.mp3",
+      "bytes": 484040,
+      "sha256": "8f35563de7cbb86c350825840cc02a9efd1914665a6428afbe6636c3b0734376",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch19-seq102/audio/index.json",
+        "recorded": {
+          "id": "scripture",
+          "text": "Here's where we're reading today. Luke 8:24. They came to him, and awoke him, saying, “Master, master, we are dying!” He awoke, and rebuked the wind and the raging of the water, and they ceased, and it was calm. Let's watch.",
+          "file": "scripture.mp3",
+          "voiceId": "98ujrzs7rxAMEsaC4EpW",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 221
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch19-seq102/devo.json",
+      "bytes": 5587,
+      "sha256": "d566512e608bedb618ca51ca7038dd56e009648e898031b7045e96070d8915e8",
+      "role": "script",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null
+      }
+    },
+    {
+      "path": "devo/cache/ch19-seq102/text-approved.json",
+      "bytes": 70,
+      "sha256": "a999442631e3a1788aaf6801f48740a413fb774de7fea3af6483e0fac1b1a9af",
+      "role": "approval",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/audio/conclusion.mp3",
+      "bytes": 69425,
+      "sha256": "c69ed42a6e0145fd9bda45cc3a0dfa24015b7e5f93c9cf816adddd9d1519629e",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch31-seq104/audio/index.json",
+        "recorded": {
+          "id": "conclusion",
+          "text": "True compassion moves beyond words to tangible acts of love.",
+          "file": "conclusion.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 60
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/audio/cover.mp3",
+      "bytes": 167436,
+      "sha256": "a334777b2b3810036439965e0b953f043573779a16b25c137b4009bcf9c6f215",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch31-seq104/audio/index.json",
+        "recorded": {
+          "id": "cover",
+          "text": "Why did the religious men walk past someone dying? Let's slow down together before the day takes over.",
+          "file": "cover.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 101
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/audio/index.json",
+      "bytes": 7734,
+      "sha256": "280db39d1fe8c7fceb0ef3f9ea3ffac1d5dbc9cf906bc4b6f4c96f5085e695dd",
+      "role": "audio-index",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/audio/music.mp3",
+      "bytes": 480698,
+      "sha256": "635505a78eae824a1330f7878d1db4d81354d9f62b5100b2c5cd567505b546da",
+      "role": "cached-music",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "recorded": {
+          "file": "music.mp3",
+          "mood": "hope",
+          "prompt": "library:hope-5.mp3",
+          "lengthMs": 0,
+          "model": "library"
+        }
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/audio/questions.mp3",
+      "bytes": 364922,
+      "sha256": "6f01836f98bdebe427c3826ada4ef4bdd28afb5b67f6336bc7017cf5541c45d0",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch31-seq104/audio/index.json",
+        "recorded": {
+          "id": "questions",
+          "text": "Here's something to sit with.\n\nWhere is God calling you to stop and help when it would be easier to keep walking?\n\nAsk God to show you one person today who needs the kind of love that costs you something.",
+          "file": "questions.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 200
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/audio/reflection-1.mp3",
+      "bytes": 84053,
+      "sha256": "bb7c817d8e6c57390fe8bc24ccbf7879c111e4ab4c59d17b7d127d6378baa3ae",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch31-seq104/audio/index.json",
+        "recorded": {
+          "id": "reflection-1",
+          "text": "True brotherly love is rare.",
+          "file": "reflection-1.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 44
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/audio/reflection-10.mp3",
+      "bytes": 53960,
+      "sha256": "d2564074b27343f365e20b7725cb1532a3d31ab24e1373cf30007740cb809638",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch31-seq104/audio/index.json",
+        "recorded": {
+          "id": "reflection-10",
+          "text": "Selfishness is the leading trait of most people.",
+          "file": "reflection-10.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 48
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/audio/reflection-11.mp3",
+      "bytes": 91577,
+      "sha256": "38f3f65140ae13bd42129213c8ca7cb100e4894abe199226e3ed859f8b794df7",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch31-seq104/audio/index.json",
+        "recorded": {
+          "id": "reflection-11",
+          "text": "That cheap charity which costs nothing more than a small donation is common enough.",
+          "file": "reflection-11.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 83
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/audio/reflection-12.mp3",
+      "bytes": 143822,
+      "sha256": "37b5269038fb3b381d5499ef466987cde14d72b7edba38a27a9bc74ba2e47bbc",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch31-seq104/audio/index.json",
+        "recorded": {
+          "id": "reflection-12",
+          "text": "But that self-sacrificing kindness which doesn't care what trouble it takes, as long as good can be done, is a grace rarely met with.",
+          "file": "reflection-12.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 133
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/audio/reflection-13.mp3",
+      "bytes": 135462,
+      "sha256": "676513ef805fdbcc7de92a9718ccb8e17cc51d560d9fd4ff53b569201f668d8f",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch31-seq104/audio/index.json",
+        "recorded": {
+          "id": "reflection-13",
+          "text": "The only person who helped the wounded traveler was a Samaritan, a man from a nation that had no dealings with the Jews.",
+          "file": "reflection-13.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 120
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/audio/reflection-14.mp3",
+      "bytes": 41004,
+      "sha256": "d3807e6f7e50760c5b207e8512b22170c8af62540972d6c10cbe9a1f78a9dd1a",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch31-seq104/audio/index.json",
+        "recorded": {
+          "id": "reflection-14",
+          "text": "He saw a man stripped and lying half dead.",
+          "file": "reflection-14.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 42
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/audio/reflection-15.mp3",
+      "bytes": 47273,
+      "sha256": "03a7ffb17f7791dd7aa86c726f204529f2df2b9dcbc608936636fbf59f3dc7e0",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch31-seq104/audio/index.json",
+        "recorded": {
+          "id": "reflection-15",
+          "text": "He asked no questions but at once had compassion.",
+          "file": "reflection-15.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 49
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/audio/reflection-16.mp3",
+      "bytes": 39750,
+      "sha256": "9762bf3bb1bd0331b381a2077aeb89e0cfed8026c095ab8c47b87ecea9c4c179",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch31-seq104/audio/index.json",
+        "recorded": {
+          "id": "reflection-16",
+          "text": "He made no excuses but at once gave aid.",
+          "file": "reflection-16.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 40
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/audio/reflection-17.mp3",
+      "bytes": 174333,
+      "sha256": "cb690a1d6cb716af18fb9f01b7eedd221332f80923890280f388b5efae66dc67",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch31-seq104/audio/index.json",
+        "recorded": {
+          "id": "reflection-17",
+          "text": "And Jesus says to us, 'Go and do likewise.' The Samaritan's compassion wasn't confined to feelings.",
+          "file": "reflection-17.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 99
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/audio/reflection-18.mp3",
+      "bytes": 34316,
+      "sha256": "3d2f6954dc5bb084de5a5eb937bfddb622000f502e48ce6ea8699345eb89b05c",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch31-seq104/audio/index.json",
+        "recorded": {
+          "id": "reflection-18",
+          "text": "He took real trouble to give help.",
+          "file": "reflection-18.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 34
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/audio/reflection-19.mp3",
+      "bytes": 28465,
+      "sha256": "2276e29ba7a7b4f18fcda4a1bad44b42bfb7d15545b96020a380538c453cb1af",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch31-seq104/audio/index.json",
+        "recorded": {
+          "id": "reflection-19",
+          "text": "He acted as well as felt.",
+          "file": "reflection-19.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 25
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/audio/reflection-2.mp3",
+      "bytes": 69425,
+      "sha256": "3dcbe7d0b53e6850dee967289cc36324c415213e1aab0e821045413b2590f9ec",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch31-seq104/audio/index.json",
+        "recorded": {
+          "id": "reflection-2",
+          "text": "Jesus tells us about a man beaten by thieves and left half dead on the road.",
+          "file": "reflection-2.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 76
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/audio/reflection-20.mp3",
+      "bytes": 114564,
+      "sha256": "a9c00c80805e9cfefc888697a198df4692aeccff1574fd37885b349f8b4787cb",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch31-seq104/audio/index.json",
+        "recorded": {
+          "id": "reflection-20",
+          "text": "He went to him, bound up his wounds, set him on his own donkey, brought him to an inn, and took care of him.",
+          "file": "reflection-20.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 108
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/audio/reflection-21.mp3",
+      "bytes": 363041,
+      "sha256": "36ae3bd0d04958c17bf81cc021e49638e954486f7ca5eae22e5b2cecaa518d6f",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch31-seq104/audio/index.json",
+        "recorded": {
+          "id": "reflection-21",
+          "text": "The next day he gave the innkeeper money, saying, 'Take care of him, and whatever more you spend, I'll repay you when I come back.' The kindness of a Christian toward others should not be in word only but in deed and in truth.",
+          "file": "reflection-21.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 226
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/audio/reflection-22.mp3",
+      "bytes": 158032,
+      "sha256": "9e7a887d39b336b46157ab8dd38a8c13894ec9b0a5c2205de59cf32746ecc572",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch31-seq104/audio/index.json",
+        "recorded": {
+          "id": "reflection-22",
+          "text": "It should be a practical love, a love which costs something in money and time and trouble.",
+          "file": "reflection-22.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 90
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/audio/reflection-3.mp3",
+      "bytes": 30973,
+      "sha256": "f8aa6218eba8076960689178b244913e27ea958e22faa8d24af694656d9827d7",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch31-seq104/audio/index.json",
+        "recorded": {
+          "id": "reflection-3",
+          "text": "A priest came by and saw him.",
+          "file": "reflection-3.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 29
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/audio/reflection-4.mp3",
+      "bytes": 37660,
+      "sha256": "14300d77f3db434e13741f4afbc0d3e9b9d6f00ea6b75a77822b699da1240b53",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch31-seq104/audio/index.json",
+        "recorded": {
+          "id": "reflection-4",
+          "text": "Then a Levite came by and saw him.",
+          "file": "reflection-4.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 34
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/audio/reflection-5.mp3",
+      "bytes": 93248,
+      "sha256": "0176c5f84418a2cff6c1939e97ee79beeb7fde9aa971a2821c8a742101a7c4d3",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch31-seq104/audio/index.json",
+        "recorded": {
+          "id": "reflection-5",
+          "text": "Both were religious men who should have been ready to help someone in distress.",
+          "file": "reflection-5.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 79
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/audio/reflection-6.mp3",
+      "bytes": 71097,
+      "sha256": "d862628225567a28c72685b5ff8a9fd01cc5ce92aacbe0c9e7549a38fa83f948",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch31-seq104/audio/index.json",
+        "recorded": {
+          "id": "reflection-6",
+          "text": "But both were too selfish or too unfeeling to offer any help.",
+          "file": "reflection-6.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 61
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/audio/reflection-7.mp3",
+      "bytes": 235773,
+      "sha256": "ced98832b78935d7843f2dca627f4cbf594d819252e6478b7c73faf8fdae5a69",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch31-seq104/audio/index.json",
+        "recorded": {
+          "id": "reflection-7",
+          "text": "They probably told themselves they didn't know this man, that he'd maybe gotten into trouble through his own fault, that they had no time to stop, that they had enough to do minding their own business without troubling themselves with strangers.",
+          "file": "reflection-7.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 245
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/audio/reflection-8.mp3",
+      "bytes": 56886,
+      "sha256": "716eb71a2c830ebd8cca653c2f7ddd31322f52218e422bdbbc18798d0f607870",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch31-seq104/audio/index.json",
+        "recorded": {
+          "id": "reflection-8",
+          "text": "So one after the other, they both passed by on the other side.",
+          "file": "reflection-8.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 62
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/audio/reflection-9.mp3",
+      "bytes": 64827,
+      "sha256": "d5e21c437d09599eb833ffbe2e13e7a37be6c8422ef08c44f9d60cafbf9c4127",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch31-seq104/audio/index.json",
+        "recorded": {
+          "id": "reflection-9",
+          "text": "This is an exact picture of what goes on constantly in the world.",
+          "file": "reflection-9.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 65
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/audio/scripture.mp3",
+      "bytes": 275897,
+      "sha256": "57e32c7049780dac0439cc628b76de3aeaea79de32e9d2cc9776a7af86b962a4",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch31-seq104/audio/index.json",
+        "recorded": {
+          "id": "scripture",
+          "text": "Here's where we're reading today. Luke 10:37. He said, “He who showed mercy on him.” Then Jesus said to him, “Go and do likewise.” Let's watch.",
+          "file": "scripture.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 141
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/devo.json",
+      "bytes": 11205,
+      "sha256": "e347f37daca941e02f1c392c599ef2a2e41b14611339dabcff06a8f3ac5a866b",
+      "role": "script",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null
+      }
+    },
+    {
+      "path": "devo/cache/ch31-seq104/text-approved.json",
+      "bytes": 70,
+      "sha256": "32ad7ee4332c0573338942cbb91f0b149c384d24693f0ab562e243ca41a42f34",
+      "role": "approval",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0-ep1/audio/conclusion.mp3",
+      "bytes": 44347,
+      "sha256": "398592a4c0abe210ee29647e823ce23e7d805578b046d30190b29fb9cd72740b",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0-ep1/audio/index.json",
+        "recorded": {
+          "id": "conclusion",
+          "text": "Grace finds you right where your hunger leads you.",
+          "file": "conclusion.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 50
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0-ep1/audio/cover.mp3",
+      "bytes": 277777,
+      "sha256": "14609d16de2ba97da13ff8f523a398dd2359f109fa83c42c0b2cbb36f8ce3440",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0-ep1/audio/index.json",
+        "recorded": {
+          "id": "cover",
+          "text": "For anyone who feels too compromised to approach Jesus boldly. Today is also World Humanitarian Day. Let's slow down and give Scripture our attention.",
+          "file": "cover.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 148
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0-ep1/audio/index.json",
+      "bytes": 6268,
+      "sha256": "4bc1f35f0a0f9267270f58affbf4579ee583f6a61fef772800c5a4a99abf46ea",
+      "role": "audio-index",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0-ep1/audio/music.mp3",
+      "bytes": 479862,
+      "sha256": "3382ce72095e381a34331590162235c250c80c9905967c3948b4f0e0b5d42a47",
+      "role": "cached-music",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "recorded": {
+          "file": "music.mp3",
+          "mood": "hope",
+          "prompt": "library:hope-1.mp3",
+          "lengthMs": 0,
+          "model": "library"
+        }
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0-ep1/audio/questions.mp3",
+      "bytes": 588112,
+      "sha256": "c7142560f9bd42809abfc4158a040a9577ac99456be65130b3bd0bbbd56c288a",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0-ep1/audio/index.json",
+        "recorded": {
+          "id": "questions",
+          "text": "Here's something to sit with.\n\nWhat part of your past are you still letting whisper that you don't belong in his presence?\n\nAsk Jesus to show you one place where shame is keeping you at a distance, and let him call you by name today.",
+          "file": "questions.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 229
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0-ep1/audio/reflection-1.mp3",
+      "bytes": 221353,
+      "sha256": "d5da662882d9f431956500b0d70ea28735c044718c46213a23e4f112d4f05e7a",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0-ep1/audio/index.json",
+        "recorded": {
+          "id": "reflection-1",
+          "text": "Zacchaeus was the chief of the publicans, the head tax collector, a man with real authority and a considerable estate.",
+          "file": "reflection-1.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 134
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0-ep1/audio/reflection-10.mp3",
+      "bytes": 67753,
+      "sha256": "bedfdca0f3b7efcacad75e0507f65120636544495d8b66d9d756b7e77d8f0401",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0-ep1/audio/index.json",
+        "recorded": {
+          "id": "reflection-10",
+          "text": "Just because many tax collectors were corrupt didn't mean all of them were.",
+          "file": "reflection-10.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 75
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0-ep1/audio/reflection-11.mp3",
+      "bytes": 118326,
+      "sha256": "ec847049654e6c8ddb2962df1e633313643d850b21475f74d3c9e551808e2ccc",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0-ep1/audio/index.json",
+        "recorded": {
+          "id": "reflection-11",
+          "text": "Just because Zacchaeus had lived badly in the past didn't mean his heart was still the same now.",
+          "file": "reflection-11.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 96
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0-ep1/audio/reflection-12.mp3",
+      "bytes": 88651,
+      "sha256": "846bb5062605a3a0f6cd05bba979897f87132b03acbbae26c6acb886f25f3c26",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0-ep1/audio/index.json",
+        "recorded": {
+          "id": "reflection-12",
+          "text": "And even if he was still a sinner, that was exactly why Christ came to him.",
+          "file": "reflection-12.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 75
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0-ep1/audio/reflection-13.mp3",
+      "bytes": 54378,
+      "sha256": "46dcf0c127b2a9f852d48f9496c21683c185e7db2b04dc88f0e113084c2da8f8",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0-ep1/audio/index.json",
+        "recorded": {
+          "id": "reflection-13",
+          "text": "A physician goes to the sick, not to the healthy.",
+          "file": "reflection-13.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 49
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0-ep1/audio/reflection-14.mp3",
+      "bytes": 56886,
+      "sha256": "5c7039edaf9cd71f7c5eb1e69f74d646e9bbb7c3f249828ce46c86adddafaca1",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0-ep1/audio/index.json",
+        "recorded": {
+          "id": "reflection-14",
+          "text": "Christ was in no danger of being corrupted by Zacchaeus.",
+          "file": "reflection-14.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 56
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0-ep1/audio/reflection-15.mp3",
+      "bytes": 64827,
+      "sha256": "f7f86b9dd479283a7b189ba670402c2d51d7041de4053de62e2933a207d8e711",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0-ep1/audio/index.json",
+        "recorded": {
+          "id": "reflection-15",
+          "text": "He was there to do good, and Zacchaeus received him joyfully.",
+          "file": "reflection-15.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 61
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0-ep1/audio/reflection-16.mp3",
+      "bytes": 38078,
+      "sha256": "6210a680338d94c823c5da9d09077d21f7fb61c0c7c7ee6c7bb5e2157c175dfa",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0-ep1/audio/index.json",
+        "recorded": {
+          "id": "reflection-16",
+          "text": "That day, salvation came to his house.",
+          "file": "reflection-16.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 38
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0-ep1/audio/reflection-17.mp3",
+      "bytes": 196275,
+      "sha256": "c54a0e07add096e60618a8024b831e6565ad0cc887057b94c0f8dded4fb90054",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0-ep1/audio/index.json",
+        "recorded": {
+          "id": "reflection-17",
+          "text": "What looks scandalous to a narrow soul is often grace doing exactly what it came to do.",
+          "file": "reflection-17.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 87
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0-ep1/audio/reflection-2.mp3",
+      "bytes": 102862,
+      "sha256": "9c882841bf953c293cbf322bbac969394ffc3ea417535eafa381123a121d8870",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0-ep1/audio/index.json",
+        "recorded": {
+          "id": "reflection-2",
+          "text": "When Jesus came through Jericho, this wealthy, powerful man forgot his dignity entirely.",
+          "file": "reflection-2.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 88
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0-ep1/audio/reflection-3.mp3",
+      "bytes": 105787,
+      "sha256": "2b2fa88b2e22e9db8e7cada9c01f4780fd9903c21549155b364e34a15631250f",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0-ep1/audio/index.json",
+        "recorded": {
+          "id": "reflection-3",
+          "text": "He ran ahead through the crowd like a boy and climbed a tree just to catch a glimpse of Jesus.",
+          "file": "reflection-3.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 94
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0-ep1/audio/reflection-4.mp3",
+      "bytes": 23449,
+      "sha256": "6f69c3de6adcebad82be0a772c1d7df92d8cfc82c3b4b235ab5452125ce14eac",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0-ep1/audio/index.json",
+        "recorded": {
+          "id": "reflection-4",
+          "text": "That eagerness mattered.",
+          "file": "reflection-4.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 24
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0-ep1/audio/reflection-5.mp3",
+      "bytes": 135462,
+      "sha256": "5ba435664555376f0abc6542836051a0302347f19fce864d7f6004ab509458db",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0-ep1/audio/index.json",
+        "recorded": {
+          "id": "reflection-5",
+          "text": "When Jesus reached the spot, he looked up, saw him, and called him by name: 'Zacchaeus, hurry and come down.",
+          "file": "reflection-5.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 108
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0-ep1/audio/reflection-6.mp3",
+      "bytes": 126685,
+      "sha256": "4e27e8aeeec7d0f0dae9084c60a46a20a039454bf197ee55d9e4507673197185",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0-ep1/audio/index.json",
+        "recorded": {
+          "id": "reflection-6",
+          "text": "Today I must stay at your house.' Grace met him right where his hunger had brought him.",
+          "file": "reflection-6.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 87
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0-ep1/audio/reflection-7.mp3",
+      "bytes": 29301,
+      "sha256": "cc039cc73476d11aaeb87892ef8c705fe3f90ba5de87bb51b8c5868a0012ed73",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0-ep1/audio/index.json",
+        "recorded": {
+          "id": "reflection-7",
+          "text": "The crowd murmured immediately.",
+          "file": "reflection-7.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 31
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0-ep1/audio/reflection-8.mp3",
+      "bytes": 88651,
+      "sha256": "1679e1378ec3e64d74c8d6fe468287f42928b8c656380cb1cd173e05441a51d8",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0-ep1/audio/index.json",
+        "recorded": {
+          "id": "reflection-8",
+          "text": "They saw Zacchaeus as a sinner, someone Christ had no business associating with.",
+          "file": "reflection-8.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 80
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0-ep1/audio/reflection-9.mp3",
+      "bytes": 50199,
+      "sha256": "7b76e7b03370dc3e3babfbe8d40bdb0a1aa77b8d5ca5b8f0b5e49035bfc13ba1",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0-ep1/audio/index.json",
+        "recorded": {
+          "id": "reflection-9",
+          "text": "But their judgment was unfair on every count.",
+          "file": "reflection-9.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 45
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0-ep1/audio/scripture.mp3",
+      "bytes": 406927,
+      "sha256": "99e647deaa3ebe1bab3c5b15c5e63a532ceb0acb388fd14c8b999dd2d83e9c85",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0-ep1/audio/index.json",
+        "recorded": {
+          "id": "scripture",
+          "text": "Here's where we're reading today. Luke 19:5. When Jesus came to the place, he looked up and saw him, and said to him, “Zacchaeus, hurry and come down, for today I must stay at your house.” Let's watch.",
+          "file": "scripture.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 199
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0-ep1/devo.json",
+      "bytes": 6784,
+      "sha256": "f4f457367ebd6c932d1dc63345334609f55e72278862c5e9e383a2ab01b62e0b",
+      "role": "script",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0-ep1/text-approved.json",
+      "bytes": 70,
+      "sha256": "836287321a731ed10e5743299779843219cfba77bd8856282a8ef0ea67a59d8d",
+      "role": "approval",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0-ep2/devo.json",
+      "bytes": 5700,
+      "sha256": "bb27903c9d65a95d4950715d6b9ea6c124b7358715f2075c7e9709bfc65f703c",
+      "role": "script",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0/audio/conclusion.mp3",
+      "bytes": 61902,
+      "sha256": "32adc1f3ef362477d83ab3c3138edd77aea90746e2cdf294a055f655f98a078a",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0/audio/index.json",
+        "recorded": {
+          "id": "conclusion",
+          "text": "Grace that finds you is grace that will not leave you the same.",
+          "file": "conclusion.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 63
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0/audio/cover.mp3",
+      "bytes": 132328,
+      "sha256": "195bf0ea37caab602d999aed98a042ec1aabe93ed9d90e38712ca051785c5ca1",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0/audio/index.json",
+        "recorded": {
+          "id": "cover",
+          "text": "Jesus stopped for the man everyone despised. Let's give this a few unhurried minutes.",
+          "file": "cover.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 84
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0/audio/index.json",
+      "bytes": 5733,
+      "sha256": "2a1b2fd2b7374ceecc727f8dfffa0f2d819353faed6f5fcbcef881944a8bc104",
+      "role": "audio-index",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0/audio/music.mp3",
+      "bytes": 109634,
+      "sha256": "cb3ad53d562cce337fd41e292cab35a943df589df5a23d1c1c3481257611a51c",
+      "role": "cached-music",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "recorded": {
+          "file": "music.mp3",
+          "mood": "hope",
+          "prompt": "file:/Users/mac/Desktop/devo-data/devo/assets/music/from-old-zaccheus.mp3",
+          "lengthMs": 0,
+          "model": "file"
+        }
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0/audio/questions.mp3",
+      "bytes": 396896,
+      "sha256": "9e1c82371fdec2c339851545c7f8e7dacccd61d862248f89cfef8ff00b076085",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0/audio/index.json",
+        "recorded": {
+          "id": "questions",
+          "text": "Here's something to sit with.\n\nIs there a place in your life where his grace has been received, but hasn't shown itself yet?\n\nAsk God to show you where his grace is asking for more than words from you.",
+          "file": "questions.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 197
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0/audio/reflection-1.mp3",
+      "bytes": 166809,
+      "sha256": "f939e49c88968087cccad50b0db2ed80a9f51a9daf1ffb65dacbcea721e5fd21",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0/audio/index.json",
+        "recorded": {
+          "id": "reflection-1",
+          "text": "Jesus came to seek and save the lost, and no one is too far gone for his grace.",
+          "file": "reflection-1.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 95
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0/audio/reflection-10.mp3",
+      "bytes": 172661,
+      "sha256": "2d18e30b1b68ed0bd2f33ed92a1fd5b6b8b8ef332e79c2b8a31700828e02ba0c",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0/audio/index.json",
+        "recorded": {
+          "id": "reflection-10",
+          "text": "When a wealthy person begins to give away his riches and someone who cheated others starts making restitution, you know something has changed.",
+          "file": "reflection-10.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 142
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0/audio/reflection-11.mp3",
+      "bytes": 58976,
+      "sha256": "614d22a418aeda3263418bad490835e2eaee5452da2c79bbd4071547729fa576",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0/audio/index.json",
+        "recorded": {
+          "id": "reflection-11",
+          "text": "Old things have passed away, and all things become new.",
+          "file": "reflection-11.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 55
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0/audio/reflection-12.mp3",
+      "bytes": 117908,
+      "sha256": "048355ab69baa9fcab929b05bc35a128d2cad28c1644c37ae9603fac76b0346c",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0/audio/index.json",
+        "recorded": {
+          "id": "reflection-12",
+          "text": "Freely pardoned and raised from death to life, Zacchaeus felt he couldn't wait to show whose he was.",
+          "file": "reflection-12.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 100
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0/audio/reflection-13.mp3",
+      "bytes": 89487,
+      "sha256": "3f2ff40f4ddd37eef7576cfe5d825d8b64d10dd001ab9756d766d7314546fe24",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0/audio/index.json",
+        "recorded": {
+          "id": "reflection-13",
+          "text": "A faith that doesn't purify your heart and life isn't saving faith at all.",
+          "file": "reflection-13.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 74
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0/audio/reflection-14.mp3",
+      "bytes": 109549,
+      "sha256": "89618bbf038af3e3e6af74c929bb4695b3445e379699fd41b93e1a93739ee4a4",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0/audio/index.json",
+        "recorded": {
+          "id": "reflection-14",
+          "text": "The heart that has truly tasted Christ's grace will instinctively hate sin and want to live differently.",
+          "file": "reflection-14.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 104
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0/audio/reflection-15.mp3",
+      "bytes": 48945,
+      "sha256": "c6599f4e81b9ed150a10859727bdd411272a7f8189fb10774dd866f97a5cf94d",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0/audio/index.json",
+        "recorded": {
+          "id": "reflection-15",
+          "text": "That's the evidence that matters.",
+          "file": "reflection-15.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 33
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0/audio/reflection-2.mp3",
+      "bytes": 23449,
+      "sha256": "08359c4c507e4121e2065d96b0bed39b3e9080e2d42645564802cf7ec87cead7",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0/audio/index.json",
+        "recorded": {
+          "id": "reflection-2",
+          "text": "Look at Zacchaeus.",
+          "file": "reflection-2.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 18
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0/audio/reflection-3.mp3",
+      "bytes": 48527,
+      "sha256": "20374226e722c35fcad248bb1cb4eb24018fb8af34315b9aa526cfac4d961cd7",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0/audio/index.json",
+        "recorded": {
+          "id": "reflection-3",
+          "text": "Jesus stopped and spoke to him without being asked.",
+          "file": "reflection-3.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 51
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0/audio/reflection-4.mp3",
+      "bytes": 162212,
+      "sha256": "93007b8448120024b67d68f78e19984f7b4a6181ffe25154e975a610e375aeaa",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0/audio/index.json",
+        "recorded": {
+          "id": "reflection-4",
+          "text": "He invited himself to the house of a tax collector, and that very day he sent his renewing grace into Zacchaeus's heart and made him a child of God.",
+          "file": "reflection-4.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 148
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0/audio/reflection-5.mp3",
+      "bytes": 113311,
+      "sha256": "35fd184a3a6d54ef949a5e3300498f6769720ea4643dd1f92c61fd297524fcff",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0/audio/index.json",
+        "recorded": {
+          "id": "reflection-5",
+          "text": "If ever there was a soul sought and saved without having done anything to deserve it, it was Zacchaeus.",
+          "file": "reflection-5.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 103
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0/audio/reflection-6.mp3",
+      "bytes": 130447,
+      "sha256": "0352a748049c2a38e5df88a48ddd94b7afda7fd54d51d54838fa987129f23b45",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0/audio/index.json",
+        "recorded": {
+          "id": "reflection-6",
+          "text": "That's the shape his grace takes: it moves first, before we're worthy of it, before we've done anything to earn it.",
+          "file": "reflection-6.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 115
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0/audio/reflection-7.mp3",
+      "bytes": 64409,
+      "sha256": "a2378a554a59688008d4e96149c92376267993ccbcf49ab71a8a61f9fcefb1eb",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0/audio/index.json",
+        "recorded": {
+          "id": "reflection-7",
+          "text": "When Zacchaeus met Jesus, something real happened.",
+          "file": "reflection-7.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 50
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0/audio/reflection-8.mp3",
+      "bytes": 114146,
+      "sha256": "9f8217a930032fa1c88507dd52c6fac8805cf29e5204500159bc270f9f9a16ff",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0/audio/index.json",
+        "recorded": {
+          "id": "reflection-8",
+          "text": "He promised to give half his possessions to the poor and repay anyone he'd cheated four times over.",
+          "file": "reflection-8.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 99
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0/audio/reflection-9.mp3",
+      "bytes": 24703,
+      "sha256": "728403906e81940efbf2a205201fac38f4b80d34fa566c768d067aa64abca73e",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0/audio/index.json",
+        "recorded": {
+          "id": "reflection-9",
+          "text": "That's not just words.",
+          "file": "reflection-9.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 22
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0/audio/scripture.mp3",
+      "bytes": 259596,
+      "sha256": "de3303402c8733b2ac0f41eaa551155f8d9df84bd1cc156c095b22d8080ec7ae",
+      "role": "narration",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "metadataSource": "devo/cache/ch33-seq0/audio/index.json",
+        "recorded": {
+          "id": "scripture",
+          "text": "Here's where we're reading today. Luke 19:10. For the Son of Man came to seek and to save that which was lost.” Let's watch.",
+          "file": "scripture.mp3",
+          "voiceId": "HKFOb9iktHA85uKXydRT",
+          "model": "eleven_multilingual_v2",
+          "characterCount": 122
+        },
+        "voiceSettings": null,
+        "pronunciationVersion": null,
+        "languageVerified": false
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0/devo.json",
+      "bytes": 7992,
+      "sha256": "acc467a76bd2cd1ba9737b958d6468c87ef1673c66e82d326d3ed4e11a3e37a2",
+      "role": "script",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq0/text-approved.json",
+      "bytes": 70,
+      "sha256": "c76e334c1efd19e6bfd660b592437f9b2bb3e6070db137205a91dba56db2585a",
+      "role": "approval",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null
+      }
+    },
+    {
+      "path": "devo/cache/ch33-seq1/devo.json",
+      "bytes": 7853,
+      "sha256": "207da3b5200f29a97478247074e547b68eacaab4dd9015cb18d8bcb2fb589b52",
+      "role": "script",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null
+      }
+    },
+    {
+      "path": "devo/corpus/matthew-henry-gospels.json",
+      "bytes": 4390857,
+      "sha256": "67f5aac13ff1f2789b13aeb87a78e6a7509d56054ab8f05e801ab1ce495ea847",
+      "role": "corpus",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "retrievalDate": null,
+        "sourceEditionVerified": false
+      }
+    },
+    {
+      "path": "devo/corpus/ryle-luke.json",
+      "bytes": 1172469,
+      "sha256": "960df7a47821943a135d0422a5e6a2cfe2152687ac5bb367ae31fd5f98c94977",
+      "role": "corpus",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "retrievalDate": null,
+        "sourceEditionVerified": false
+      }
+    },
+    {
+      "path": "devo/corpus/ryle-matthew.json",
+      "bytes": 622900,
+      "sha256": "4a806e59c1c2c3b57e82fa8bbf4bb23a82431d300449e8bce0d3a1d7fd58071f",
+      "role": "corpus",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "retrievalDate": null,
+        "sourceEditionVerified": false
+      }
+    },
+    {
+      "path": "devo/corpus/spurgeon-morning-evening.json",
+      "bytes": 1584515,
+      "sha256": "82762fc511701d84b52efec13dda6e41e1f230591801edf3dc45cb69706600e5",
+      "role": "corpus",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "retrievalDate": null,
+        "sourceEditionVerified": false
+      }
+    },
+    {
+      "path": "devo/corpus/web-bible.json",
+      "bytes": 654830,
+      "sha256": "975714964da68f5ef6bc704c803a828029e1ef51838439ead5dc876578ffacf9",
+      "role": "corpus",
+      "provenance": {
+        "source": "supplied archive",
+        "generationRequestId": null,
+        "retrievalDate": null,
+        "sourceEditionVerified": false
+      }
+    }
+  ],
+  "totalBytes": 30574172
+}

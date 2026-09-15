@@ -6,6 +6,7 @@ import { createRoot, type Root } from "react-dom/client"
 import { renderToString } from "react-dom/server"
 import { afterEach, describe, expect, it } from "vitest"
 
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import type { WatchLanguageIndexLanguage } from "@/lib/language-index"
 
 import { WatchLanguageIndexBrowser } from "./WatchLanguageIndexBrowser"
@@ -87,6 +88,17 @@ function searchLanguages(html: HTMLElement, value: string) {
 }
 
 describe("WatchLanguageIndexBrowser", () => {
+  it("uses the shared Watch content rail", () => {
+    const html = renderBrowser({ regions: [] })
+    const section = html
+      .querySelector("#language-index-title")
+      ?.closest("section")
+
+    for (const className of WATCH_PAGE_CONTENT_CLASSES.split(" ")) {
+      expect(section?.className).toContain(className)
+    }
+  })
+
   it("collapses country languages after the top four", () => {
     const languages = [1, 2, 3, 4, 5].map((index) => language(index))
     const html = renderToString(

@@ -47,16 +47,18 @@ import {
 import {
   PlayerControls,
   RouteButtons,
+  fullscreenCaptionOffset,
   type PlayerControlsCastUi,
 } from "./PlayerControls"
 import { PlayerLoadingVeil } from "./PlayerLoadingVeil"
 import { PlayerSettingsSheet } from "./PlayerSettingsSheet"
 import { SubtitleOverlay } from "./SubtitleOverlay"
 
-// Caption distance above the bottom edge (px). In fullscreen the caption lifts
-// clear of the control bar while the chrome is visible and drops to the button
-// row when it hides; inline it sits just above the button row.
-const SUBTITLE_OFFSET_FS_CHROME_VISIBLE = 92
+// Caption distance above the bottom edge (px). In fullscreen with the chrome up
+// the offset is DERIVED from the seek bar's own geometry
+// (`fullscreenCaptionOffset`), so the caption sits as low as it can while still
+// clearing the bar's grab area; it drops further when the chrome hides. Inline
+// it sits just above the button row.
 const SUBTITLE_OFFSET_FS_CHROME_HIDDEN = 12
 const SUBTITLE_OFFSET_INLINE = 14
 
@@ -691,7 +693,7 @@ export function VideoPlayer({
   const insets = useSafeAreaInsets()
   const subtitleBottomOffset = fullscreen
     ? controls.controlsVisible
-      ? SUBTITLE_OFFSET_FS_CHROME_VISIBLE
+      ? fullscreenCaptionOffset(insets.bottom)
       : SUBTITLE_OFFSET_FS_CHROME_HIDDEN
     : SUBTITLE_OFFSET_INLINE
   const subtitleHorizontalInset = fullscreen

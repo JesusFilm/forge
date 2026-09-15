@@ -1,8 +1,9 @@
 # RAG contracts
 
-The future shared home for runtime-neutral HTTP `/v1` contracts consumed by
-Forge applications and external clients. This scaffold exports nothing yet;
-contracts move here in migration issue
-[`JesusFilm/jesusfilm-rag#159`](https://github.com/JesusFilm/jesusfilm-rag/issues/159).
+Runtime-neutral HTTP `/v1` schemas and inferred TypeScript types for Forge RAG
+consumers. Import the public contract from `@forge/rag-contracts`; internal RAG
+ports remain owned by `apps/rag`.
 
-This package must not depend on `apps/rag` or any other application package.
+`openapi.v1.json` is generated from the runtime schemas. Regenerate it with
+`pnpm --filter @forge/rag-contracts contract:generate`; tests fail when the
+committed artifact drifts.

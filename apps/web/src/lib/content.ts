@@ -9,12 +9,15 @@ import {
 import client from "@/lib/admin-client"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichRouteRelatedVideo } from "@/lib/enrichment"
+import { normalizeLabel } from "@/lib/video-labels"
 import {
   getVideoChildDubLanguagesBySlugOperation,
   getWatchLanguagePickerVariantsBySlugOperation,
   getWatchVideoDubDetailOperation,
   getWatchVideoLocalizedCopyBySlugOperation,
   getWatchVideoRouteSnapshotBySlugOperation,
+  legacyWatchExperienceFragment,
+  preCopyWatchExperienceFragment,
   watchExperienceFragment,
   watchVideoDubDetailFragment,
   watchVideoLocalizedCopyFragment,
@@ -53,6 +56,28 @@ const GET_WATCH_EXPERIENCE = adminGraphql(
   [watchExperienceFragment],
 )
 
+const GET_LEGACY_WATCH_EXPERIENCE = adminGraphql(
+  `
+    query GetLegacyWatchExperience($locale: String!, $slug: String!) {
+      experienceBySlug(locale: $locale, slug: $slug) {
+        ...LegacyWatchExperience
+      }
+    }
+  `,
+  [legacyWatchExperienceFragment],
+)
+
+const GET_PRE_COPY_WATCH_EXPERIENCE = adminGraphql(
+  `
+    query GetPreCopyWatchExperience($locale: String!, $slug: String!) {
+      experienceBySlug(locale: $locale, slug: $slug) {
+        ...PreCopyWatchExperience
+      }
+    }
+  `,
+  [preCopyWatchExperienceFragment],
+)
+
 const GET_WATCH_SETTINGS = adminGraphql(
   `
     query GetWatchSettings($locale: String!) {
@@ -68,6 +93,36 @@ const GET_WATCH_SETTINGS = adminGraphql(
     }
   `,
   [watchExperienceFragment],
+)
+
+const GET_LEGACY_WATCH_SETTINGS = adminGraphql(
+  `
+    query GetLegacyWatchSettings($locale: String!) {
+      watchSetting(locale: $locale) {
+        documentId
+        homepageExperience {
+          ...LegacyWatchExperience
+        }
+        defaultTemplateExperience {
+          ...LegacyWatchExperience
+        }
+      }
+    }
+  `,
+  [legacyWatchExperienceFragment],
+)
+
+const GET_PRE_COPY_WATCH_SETTINGS = adminGraphql(
+  `
+    query GetPreCopyWatchSettings($locale: String!) {
+      watchSetting(locale: $locale) {
+        documentId
+        homepageExperience { ...PreCopyWatchExperience }
+        defaultTemplateExperience { ...PreCopyWatchExperience }
+      }
+    }
+  `,
+  [preCopyWatchExperienceFragment],
 )
 
 type WatchSettingsData = AdminResultOf<typeof GET_WATCH_SETTINGS>
@@ -335,7 +390,11 @@ export type RouteVideo = {
 }
 
 export type ResolvedWatchPage =
-  | { kind: "experience"; experience: NonNullable<WatchExperience> }
+  | {
+      kind: "experience"
+      experience: NonNullable<WatchExperience>
+      watchHomeCategoryRailCompatibility: "supported" | "legacy-schema"
+    }
   | {
       kind: "video-template"
       template: NonNullable<WatchExperience>
@@ -438,38 +497,303 @@ function graphqlError(result: {
   return message ? result.error : new Error("An unexpected error occurred.")
 }
 
-async function getExperienceBySlug(
+type GraphqlErrorCandidate = {
+  readonly message?: unknown
+  readonly path?: unknown
+  readonly extensions?: unknown
+}
+
+function graphqlErrorsFromResult(result: {
+  error?: ErrorLike | null
+  errors?: unknown[] | undefined
+}): GraphqlErrorCandidate[] {
+  const direct = Array.isArray(result.errors) ? result.errors : []
+  const nested =
+    typeof result.error === "object" &&
+    result.error !== null &&
+    "errors" in result.error &&
+    Array.isArray(result.error.errors)
+      ? result.error.errors
+      : []
+
+  return [...direct, ...nested].filter(
+    (entry): entry is GraphqlErrorCandidate =>
+      typeof entry === "object" && entry !== null,
+  )
+}
+
+// Admin and Web deploy independently. The legacy projection excludes the
+// category rail and homepage recommendations types, so it can serve either
+// rollout window even when the new recommendation row is disabled.
+const BLOCK_SCHEMA_LAG_MESSAGES = [
+  /^Unknown type "HomepageRecommendationsBlock"\./,
+  /^Unknown type "WatchHomeCategoryRailBlock"\./,
+  /^Cannot query field "tiles" on type "WatchHomeCategoryRailBlock"\./,
+]
+
+const CATEGORY_RAIL_COPY_FIELDS = [
+  "eyebrow",
+  "title",
+  "description",
+  "ctaLabel",
+] as const
+const CATEGORY_RAIL_COPY_SCHEMA_LAG_MESSAGES = CATEGORY_RAIL_COPY_FIELDS.map(
+  (field) =>
+    new RegExp(
+      `^Cannot query field "${field}" on type "WatchHomeCategoryRailBlock"\\.`,
+    ),
+)
+
+function isValidationShaped(entry: GraphqlErrorCandidate): boolean {
+  if (entry.path != null) return false
+  const code =
+    typeof entry.extensions === "object" &&
+    entry.extensions !== null &&
+    "code" in entry.extensions
+      ? entry.extensions.code
+      : undefined
+  return code === undefined || code === "GRAPHQL_VALIDATION_FAILED"
+}
+
+type CategoryRailSchemaLag = "none" | "copy" | "legacy"
+
+function classifyCategoryRailSchemaLag(result: {
+  error?: ErrorLike | null
+  errors?: unknown[] | undefined
+}): CategoryRailSchemaLag {
+  const errors = graphqlErrorsFromResult(result)
+  if (errors.length === 0 || !errors.every(isValidationShaped)) return "none"
+
+  const messages = errors.map((entry) =>
+    typeof entry.message === "string" ? entry.message : "",
+  )
+  const isLegacyMessage = (message: string) =>
+    BLOCK_SCHEMA_LAG_MESSAGES.some((pattern) => pattern.test(message))
+  const isCopyMessage = (message: string) =>
+    CATEGORY_RAIL_COPY_SCHEMA_LAG_MESSAGES.some((pattern) =>
+      pattern.test(message),
+    )
+  if (
+    messages.some(isLegacyMessage) &&
+    messages.every(
+      (message) => isLegacyMessage(message) || isCopyMessage(message),
+    )
+  ) {
+    return "legacy"
+  }
+
+  const matchedCopyFields = new Set(
+    messages.flatMap((message) =>
+      CATEGORY_RAIL_COPY_SCHEMA_LAG_MESSAGES.flatMap((pattern, index) =>
+        pattern.test(message) ? [CATEGORY_RAIL_COPY_FIELDS[index]] : [],
+      ),
+    ),
+  )
+  return messages.every(isCopyMessage) &&
+    errors.length === CATEGORY_RAIL_COPY_FIELDS.length &&
+    matchedCopyFields.size === CATEGORY_RAIL_COPY_FIELDS.length
+    ? "copy"
+    : "none"
+}
+
+async function queryExperienceBySlug(
+  query:
+    | typeof GET_WATCH_EXPERIENCE
+    | typeof GET_PRE_COPY_WATCH_EXPERIENCE
+    | typeof GET_LEGACY_WATCH_EXPERIENCE,
   locale: string,
   slug: string,
-): Promise<NonNullable<WatchExperience> | null> {
-  const result = await client.query({
-    query: GET_WATCH_EXPERIENCE,
+) {
+  return client.query({
+    query,
     variables: { locale, slug },
     fetchPolicy: "no-cache",
   })
+}
 
+async function getLegacyExperienceBySlug(
+  locale: string,
+  slug: string,
+): Promise<NonNullable<WatchExperience> | null> {
+  const result = await queryExperienceBySlug(
+    GET_LEGACY_WATCH_EXPERIENCE,
+    locale,
+    slug,
+  )
   const error = graphqlError(
     result as { error?: ErrorLike; errors?: unknown[] },
   )
   if (error) throw error
+  return (result.data?.experienceBySlug ??
+    null) as NonNullable<WatchExperience> | null
+}
+
+async function getExperienceBySlug(
+  locale: string,
+  slug: string,
+  categoryRailCompatibility?: "supported" | "pre-copy" | "legacy-schema",
+): Promise<NonNullable<WatchExperience> | null> {
+  if (categoryRailCompatibility === "legacy-schema") {
+    return getLegacyExperienceBySlug(locale, slug)
+  }
+
+  if (categoryRailCompatibility === "pre-copy") {
+    let preCopyRejectedLag: CategoryRailSchemaLag = "none"
+    const preCopy = await queryExperienceBySlug(
+      GET_PRE_COPY_WATCH_EXPERIENCE,
+      locale,
+      slug,
+    ).catch((error: unknown) => {
+      preCopyRejectedLag = classifyCategoryRailSchemaLag({
+        error: error as ErrorLike,
+      })
+      if (preCopyRejectedLag === "legacy") return null
+      throw error
+    })
+    if (preCopy === null) {
+      return getLegacyExperienceBySlug(locale, slug)
+    }
+    if (
+      classifyCategoryRailSchemaLag(
+        preCopy as { error?: ErrorLike; errors?: unknown[] },
+      ) === "legacy"
+    ) {
+      return getLegacyExperienceBySlug(locale, slug)
+    }
+    const error = graphqlError(
+      preCopy as { error?: ErrorLike; errors?: unknown[] },
+    )
+    if (error) throw error
+    return (preCopy.data?.experienceBySlug ??
+      null) as NonNullable<WatchExperience> | null
+  }
+
+  let rejectedLag: CategoryRailSchemaLag = "none"
+  const result = await client
+    .query({
+      query: GET_WATCH_EXPERIENCE,
+      variables: { locale, slug },
+      fetchPolicy: "no-cache",
+    })
+    .catch((error: unknown) => {
+      rejectedLag = classifyCategoryRailSchemaLag({ error: error as ErrorLike })
+      if (rejectedLag !== "none") {
+        return null
+      }
+      throw error
+    })
+
+  const resultWithErrors = (result ?? {}) as {
+    error?: ErrorLike
+    errors?: unknown[]
+  }
+  const lag =
+    result === null
+      ? rejectedLag
+      : classifyCategoryRailSchemaLag(resultWithErrors)
+  if (lag === "copy") {
+    return getExperienceBySlug(locale, slug, "pre-copy")
+  }
+  if (lag === "legacy") {
+    return getLegacyExperienceBySlug(locale, slug)
+  }
+
+  const error = graphqlError(resultWithErrors)
+  if (error) throw error
+  if (result === null) throw new Error("Watch experience query failed")
 
   return (result.data?.experienceBySlug ??
     null) as NonNullable<WatchExperience> | null
 }
 
-async function getWatchSettings(locale: string): Promise<WatchSetting | null> {
-  const result = await client.query({
-    query: GET_WATCH_SETTINGS,
-    variables: { locale },
-    fetchPolicy: "no-cache",
-  })
+async function getWatchSettings(locale: string): Promise<{
+  setting: WatchSetting | null
+  categoryRailCompatibility: "supported" | "pre-copy" | "legacy-schema"
+}> {
+  let rejectedLag: CategoryRailSchemaLag = "none"
+  const result = await client
+    .query({
+      query: GET_WATCH_SETTINGS,
+      variables: { locale },
+      fetchPolicy: "no-cache",
+    })
+    .catch((error: unknown) => {
+      rejectedLag = classifyCategoryRailSchemaLag({ error: error as ErrorLike })
+      if (rejectedLag !== "none") {
+        return null
+      }
+      throw error
+    })
 
-  const error = graphqlError(
-    result as { error?: ErrorLike; errors?: unknown[] },
-  )
+  const resultWithErrors = (result ?? {}) as {
+    error?: ErrorLike
+    errors?: unknown[]
+  }
+  const lag =
+    result === null
+      ? rejectedLag
+      : classifyCategoryRailSchemaLag(resultWithErrors)
+  if (lag === "copy") {
+    let preCopyRejectedLag: CategoryRailSchemaLag = "none"
+    const preCopyResult = await client
+      .query({
+        query: GET_PRE_COPY_WATCH_SETTINGS,
+        variables: { locale },
+        fetchPolicy: "no-cache",
+      })
+      .catch((error: unknown) => {
+        preCopyRejectedLag = classifyCategoryRailSchemaLag({
+          error: error as ErrorLike,
+        })
+        if (preCopyRejectedLag === "legacy") return null
+        throw error
+      })
+    const preCopyLag =
+      preCopyResult === null
+        ? preCopyRejectedLag
+        : classifyCategoryRailSchemaLag(
+            preCopyResult as { error?: ErrorLike; errors?: unknown[] },
+          )
+    if (preCopyLag === "legacy") {
+      // Continue into the existing no-rail fallback below.
+    } else {
+      if (preCopyResult === null) throw new Error("Watch settings query failed")
+      const preCopyError = graphqlError(
+        preCopyResult as { error?: ErrorLike; errors?: unknown[] },
+      )
+      if (preCopyError) throw preCopyError
+      return {
+        setting: (preCopyResult.data?.watchSetting ??
+          null) as WatchSetting | null,
+        categoryRailCompatibility: "pre-copy",
+      }
+    }
+  }
+  if (lag === "legacy" || lag === "copy") {
+    const legacyResult = await client.query({
+      query: GET_LEGACY_WATCH_SETTINGS,
+      variables: { locale },
+      fetchPolicy: "no-cache",
+    })
+    const legacyError = graphqlError(
+      legacyResult as { error?: ErrorLike; errors?: unknown[] },
+    )
+    if (legacyError) throw legacyError
+
+    return {
+      setting: (legacyResult.data?.watchSetting ?? null) as WatchSetting | null,
+      categoryRailCompatibility: "legacy-schema",
+    }
+  }
+
+  const error = graphqlError(resultWithErrors)
   if (error) throw error
+  if (result === null) throw new Error("Watch settings query failed")
 
-  return result.data?.watchSetting ?? null
+  return {
+    setting: result.data?.watchSetting ?? null,
+    categoryRailCompatibility: "supported",
+  }
 }
 
 // Admin-shape → flat-shape transform. Single normalisation surface
@@ -1156,7 +1480,8 @@ function normalizeRouteVideo(video: WatchVideoRecord): RouteVideo | null {
 async function resolveHomepage(
   locale: string,
 ): Promise<ResolvedWatchPage | null> {
-  const settings = await getWatchSettings(locale)
+  const { setting: settings, categoryRailCompatibility } =
+    await getWatchSettings(locale)
   const homepageExperience = settings?.homepageExperience ?? null
   if (!homepageExperience) return null
   // Admin's PUBLIC contract guarantees `homepageExperience` is the
@@ -1165,6 +1490,10 @@ async function resolveHomepage(
   return {
     kind: "experience",
     experience: homepageExperience,
+    watchHomeCategoryRailCompatibility:
+      categoryRailCompatibility === "legacy-schema"
+        ? "legacy-schema"
+        : "supported",
   }
 }
 
@@ -1172,7 +1501,8 @@ async function resolveSlugPage(
   locale: string,
   slug: string,
 ): Promise<ResolvedWatchPage | null> {
-  const settings = await getWatchSettings(locale)
+  const { setting: settings, categoryRailCompatibility } =
+    await getWatchSettings(locale)
   // Lowercase both sides of the template-slug comparison. Editors can save
   // `defaultTemplateExperience.slug` as `Single-Video` while users hit
   // `/single-video`; byte-equality would silently mis-route the request.
@@ -1198,9 +1528,17 @@ async function resolveSlugPage(
   // rendering, not a public Experience page. Any non-template slug can still
   // fall back to a curated Experience when no route video exists.
   if (slug.toLowerCase() !== templateSlug) {
-    const experience = await getExperienceBySlug(locale, slug)
+    const experience = await getExperienceBySlug(
+      locale,
+      slug,
+      categoryRailCompatibility,
+    )
     if (experience) {
-      return { kind: "experience", experience }
+      return {
+        kind: "experience",
+        experience,
+        watchHomeCategoryRailCompatibility: "supported",
+      }
     }
   }
 
@@ -1233,7 +1571,7 @@ const fetchResolvedWatchPage = unstable_cache(
       }
     }
   },
-  ["watch-page", "v4-serializable-errors"],
+  ["watch-page", "v6-category-rail-copy"],
   {
     revalidate: 60,
     tags: [
@@ -1262,7 +1600,11 @@ const fetchResolvedWatchExperiencePage = unstable_cache(
 
       return {
         data: JSON.parse(
-          JSON.stringify({ kind: "experience", experience }),
+          JSON.stringify({
+            kind: "experience",
+            experience,
+            watchHomeCategoryRailCompatibility: "supported",
+          }),
         ) as ResolvedWatchPage,
         error: null,
       }
@@ -1273,7 +1615,7 @@ const fetchResolvedWatchExperiencePage = unstable_cache(
       }
     }
   },
-  ["watch-experience-page"],
+  ["watch-experience-page", "v3-category-rail-copy"],
   { revalidate: 60, tags: [WATCH_CACHE_TAGS.experience] },
 )
 
@@ -2484,6 +2826,15 @@ export type CarouselParent = {
   slug: string | null
   title: string | null
   children: WatchChild[]
+  /**
+   * Admin's `VideoLabel` for the parent itself. Optional because the
+   * synthesized-from-current-video parents (`virtualParent` here,
+   * `withCompatibilityAdmittedVideoChildren` in the route) describe the video
+   * being watched rather than a real container, and nothing ranks those.
+   * Populated for standalone `selectableParents`, where it decides which
+   * container the carousel opens on — see `rankSelectableCarouselParents`.
+   */
+  label?: string | null
 }
 
 export type WatchSiblingCarouselBlock = {
@@ -2498,6 +2849,17 @@ export type WatchBodyBlock = {
   kind: "WatchBody"
   video: WatchVideoRecord
   variant: WatchVariant
+}
+
+/**
+ * Route-owned production recommendation slot. It carries only the seed media
+ * identity; locale and audio language stay on the existing Watch client
+ * boundary so the static page never reads request cookies.
+ */
+export type WatchSemanticRecommendationsBlock = {
+  kind: "SemanticRecommendations"
+  seedMediaId: string
+  seedMediaSlug?: string
 }
 
 export type WatchStudyQuestionsBlock = {
@@ -2520,6 +2882,7 @@ export type WatchBlock =
   | WatchHeroPlayerBlock
   | WatchSiblingCarouselBlock
   | WatchBodyBlock
+  | WatchSemanticRecommendationsBlock
   | WatchStudyQuestionsBlock
   | WatchBibleQuotesBlock
   | WatchShareBlock
@@ -2625,6 +2988,59 @@ function nextWatchItemFromChild(
 }
 
 /**
+ * Parent labels that mean "this video is a chapter OF this thing" rather than
+ * "this video was curated INTO this thing". A segment of the Gospel of John
+ * belongs to the film in a way it never belongs to a seasonal playlist, so the
+ * film is the container a standalone page should open on.
+ *
+ * Compared through `normalizeLabel`, the same canonicalizer
+ * `videoLabelMessageKey` uses to render these labels in the carousel itself.
+ * Admin's wire enum is SNAKE_CASE (`VideoLabel` in
+ * `apps/admin/src/graphql/types/video.ts`) and is today the only spelling that
+ * reaches this field — `normalizeParent` passes `parent.label` through
+ * verbatim. The normalizer is reused anyway because a bare `toUpperCase()`
+ * maps a camelCase spelling like `featureFilm` to `FEATUREFILM` and matches
+ * nothing, so a future producer, a renamed enum, or a fixture in that shape
+ * would fail silently — straight back to the old default.
+ */
+const CONTAINING_WORK_PARENT_LABELS = new Set(["FEATURE_FILM", "SERIES"])
+
+function isContainingWorkParent(parent: CarouselParent): boolean {
+  const normalized = normalizeLabel(parent.label)
+  return normalized != null && CONTAINING_WORK_PARENT_LABELS.has(normalized)
+}
+
+/**
+ * Orders standalone carousel parents so the work the video is a chapter of
+ * wins the default slot over a curated collection.
+ *
+ * Admin hands `Video.parents` back sorted by `VideoRelation.order` — which is
+ * the *child's index inside each parent*, not a ranking between parents (see
+ * `docs/plans/2026-06-14-001-fix-watch-video-relation-order-plan.md`, where
+ * that ordering was introduced for `children` and applied to `parents` for
+ * determinism). Sorting parents by it means "whichever collection lists this
+ * video earliest wins", which is coincidence: `the-arrest-of-jesus-and-peter-denial`
+ * is #5 in the "Anticipate the Resurrection" collection and #41 in the
+ * "Life of Jesus (Gospel of John)" film, so the playlist took the default.
+ *
+ * Deliberately two tiers, not a full label ranking: promoting only
+ * FEATURE_FILM/SERIES leaves every other page byte-identical to today, so a
+ * missing or unrecognized label degrades to the previous behavior instead of
+ * reshuffling pages this bug never touched. `Array.prototype.sort` is
+ * spec-stable (ES2019), so relative order inside each tier is admin's order
+ * untouched; it sorts a copy because the caller's array is the resolver's.
+ */
+export function rankSelectableCarouselParents(
+  parents: CarouselParent[],
+): CarouselParent[] {
+  if (parents.length < 2) return parents
+  return [...parents].sort(
+    (a, b) =>
+      Number(isContainingWorkParent(b)) - Number(isContainingWorkParent(a)),
+  )
+}
+
+/**
  * Returns a carousel block with the most relevant peer set, or null when none
  * is available:
  *
@@ -2633,7 +3049,9 @@ function nextWatchItemFromChild(
  * 2. On a standalone route, when the current video has its **own** children
  *    (for example, JESUS with 61 chapter segments), surface those — the user is
  *    looking at the parent, so chapters are the relevant peers.
- * 3. Otherwise, use eligible selectable parents in their supplied order.
+ * 3. Otherwise, use eligible selectable parents ranked by
+ *    `rankSelectableCarouselParents` — the containing film/series first, then
+ *    admin's supplied order.
  *
  * Returns null when neither source has at least 2 entries.
  */
@@ -2678,11 +3096,14 @@ export function buildSiblingCarouselBlock(
   }
 
   if (selectableParents.length > 0) {
+    // Rank once and use the SAME array for both the default and the picker, so
+    // the dropdown's first entry is always the one the carousel opened on.
+    const rankedParents = rankSelectableCarouselParents(selectableParents)
     return {
       kind: "SiblingCarousel",
-      canonicalParent: selectableParents[0]!,
+      canonicalParent: rankedParents[0]!,
       currentVideoDocumentId: video.documentId,
-      selectableParents,
+      selectableParents: rankedParents,
     }
   }
   return null
@@ -2694,6 +3115,17 @@ export function buildWatchBodyBlock(
   variant: WatchVariant,
 ): WatchBodyBlock {
   return { kind: "WatchBody", video, variant }
+}
+
+/** Always returns the one non-authored production semantic slot. */
+export function buildSemanticRecommendationsBlock(
+  video: WatchVideoRecord,
+): WatchSemanticRecommendationsBlock {
+  return {
+    kind: "SemanticRecommendations",
+    seedMediaId: video.documentId,
+    ...(video.slug ? { seedMediaSlug: video.slug } : {}),
+  }
 }
 
 /** Returns null when the video has no study questions. */
@@ -2770,6 +3202,9 @@ type WatchSlotKey =
  */
 function blockSlot(block: MergedWatchBlock): WatchSlotKey | null {
   if ("kind" in block) {
+    // The semantic slot is inserted directly by the route merge below. It is
+    // intentionally outside the Experience override map.
+    if (block.kind === "SemanticRecommendations") return null
     return block.kind
   }
   const tn = (block as { __typename?: string | null }).__typename
@@ -2849,6 +3284,13 @@ export function mergeWatchExperience({
   )
 
   for (const block of experienceBlocks) {
+    // Defensive compatibility guard: even a legacy/untyped Experience payload
+    // cannot author a second live semantic tracer.
+    if (
+      (block as unknown as { kind?: string }).kind === "SemanticRecommendations"
+    ) {
+      continue
+    }
     const slot = blockSlot(block)
     if (slot === "HeroPlayer" && !isWatchBlock(block)) {
       // HeroPlayer slot is type-restricted: only synthetic HeroPlayer blocks
@@ -2887,6 +3329,7 @@ export function mergeWatchExperience({
     ),
   )
   pushSlot("WatchBody", buildWatchBodyBlock(video, variant))
+  result.push(buildSemanticRecommendationsBlock(video))
   pushSlot("StudyQuestions", buildStudyQuestionsBlock(video.studyQuestions))
   pushSlot("BibleQuotes", buildBibleQuotesBlock(video.bibleCitations))
   pushSlot("Share", buildShareBlock(video))

@@ -96,8 +96,8 @@ function ResultPane({
             value={diagnostics.generationId ?? "Current"}
           />
           <Metric
-            label="App revision"
-            value={diagnostics.applicationRevision ?? "Current"}
+            label="Index contract revision"
+            value={diagnostics.indexContractRevision ?? "Current"}
           />
           <Metric
             label="Target"

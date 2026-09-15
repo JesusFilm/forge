@@ -1,5 +1,6 @@
-import { render, screen } from "@testing-library/react"
-import { describe, expect, it } from "vitest"
+import { render, screen, within } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+import { describe, expect, it, vi } from "vitest"
 
 import {
   REPLY_FAILURE_REASONS,
@@ -208,5 +209,269 @@ describe("MessageList markdown split (feat-268)", () => {
     expect(content?.querySelector("blockquote")).toHaveTextContent("Be still")
     expect(content?.querySelectorAll("ul li")).toHaveLength(2)
     expect(container.querySelector("[data-engine]")).toBeNull()
+  })
+})
+
+// ===========================================================================
+// feat-366 U2: WHERE the chips mount. The chip block itself is covered in
+// follow-ups.test.tsx; these pin the placement rules (R1/R3).
+// ===========================================================================
+
+const QUESTIONS = ["Why pray?", "Who wrote the gospels?"]
+
+function answer(over: Partial<Message> = {}): Message {
+  return {
+    id: "a1",
+    role: "assistant",
+    content: "A grounded answer.",
+    engine: "seeker",
+    grounded: true,
+    sources: [],
+    ...over,
+  }
+}
+
+function chipBlock(container: HTMLElement): Element | null {
+  return container.querySelector('[data-follow-ups="section"]')
+}
+
+describe("MessageList follow-up chips (feat-366)", () => {
+  it("renders one chip per question on the conversation's last turn", () => {
+    const { container } = render(
+      <MessageList
+        messages={[answer({ followUps: QUESTIONS })]}
+        streamingMessageId={null}
+        onSelectFollowUp={() => {}}
+      />,
+    )
+    expect(
+      within(chipBlock(container) as HTMLElement)
+        .getAllByRole("button")
+        .map((chip) => chip.textContent),
+    ).toEqual(QUESTIONS)
+  })
+
+  it("renders chips on the LAST turn only, never on an earlier one (R3)", () => {
+    const { container } = render(
+      <MessageList
+        messages={[
+          { id: "u1", role: "user", content: "q1" },
+          answer({ id: "a1", followUps: ["Stale question?"] }),
+          { id: "u2", role: "user", content: "q2" },
+          answer({ id: "a2", followUps: QUESTIONS }),
+        ]}
+        streamingMessageId={null}
+        onSelectFollowUp={() => {}}
+      />,
+    )
+    const blocks = container.querySelectorAll('[data-follow-ups="section"]')
+    expect(blocks).toHaveLength(1)
+    expect(
+      container
+        .querySelector('[data-message-id="a2"]')
+        ?.contains(blocks[0] as Node),
+    ).toBe(true)
+    expect(screen.queryByText("Stale question?")).toBeNull()
+  })
+
+  it("renders NO chips while that turn is still streaming", () => {
+    // Chips arrive WITH the terminal frame, so a streaming turn cannot carry
+    // them in production; the streaming branch must not render them anyway.
+    const { container } = render(
+      <MessageList
+        messages={[answer({ followUps: QUESTIONS })]}
+        streamingMessageId="a1"
+        onSelectFollowUp={() => {}}
+      />,
+    )
+    expect(chipBlock(container)).toBeNull()
+  })
+
+  it("renders no chips when the last turn carries none", () => {
+    const { container } = render(
+      <MessageList
+        messages={[answer()]}
+        streamingMessageId={null}
+        onSelectFollowUp={() => {}}
+      />,
+    )
+    expect(chipBlock(container)).toBeNull()
+  })
+
+  it("renders no chips when the handler is absent", () => {
+    const { container } = render(
+      <MessageList
+        messages={[answer({ followUps: QUESTIONS })]}
+        streamingMessageId={null}
+      />,
+    )
+    expect(chipBlock(container)).toBeNull()
+  })
+
+  it("mounts the chips as a SIBLING block after the sources disclosure", () => {
+    const { container } = render(
+      <MessageList
+        messages={[answer({ followUps: QUESTIONS })]}
+        streamingMessageId={null}
+        onSelectFollowUp={() => {}}
+      />,
+    )
+    const content = container.querySelector("[data-message-content]")!
+    const sources = container.querySelector('[data-sources="empty"]')!
+    const chips = chipBlock(container)!
+    expect(content.contains(chips)).toBe(false)
+    expect(
+      sources.compareDocumentPosition(chips) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it("routes a click to onSelectFollowUp with the question VERBATIM", async () => {
+    const onSelectFollowUp = vi.fn()
+    const user = userEvent.setup()
+    const { container } = render(
+      <MessageList
+        messages={[answer({ followUps: QUESTIONS })]}
+        streamingMessageId={null}
+        onSelectFollowUp={onSelectFollowUp}
+      />,
+    )
+    await user.click(
+      within(chipBlock(container) as HTMLElement).getAllByRole("button")[1],
+    )
+    expect(onSelectFollowUp).toHaveBeenCalledWith("Who wrote the gospels?")
+  })
+
+  it("clears the chips once the click's new turns are appended", () => {
+    // Self-clearing is structural: the previous answer stops being last.
+    const before = render(
+      <MessageList
+        messages={[answer({ id: "a1", followUps: QUESTIONS })]}
+        streamingMessageId={null}
+        onSelectFollowUp={() => {}}
+      />,
+    )
+    expect(chipBlock(before.container)).not.toBeNull()
+    before.rerender(
+      <MessageList
+        messages={[
+          answer({ id: "a1", followUps: QUESTIONS }),
+          { id: "u2", role: "user", content: "Why pray?" },
+          { id: "a2", role: "assistant", content: "" },
+        ]}
+        streamingMessageId="a2"
+        onSelectFollowUp={() => {}}
+      />,
+    )
+    expect(chipBlock(before.container)).toBeNull()
+  })
+
+  it("renders chips on a REPLAYED last turn, which carries no engine tag", () => {
+    // R21: a replayed turn has no engine/grounded metadata by design, so the
+    // chip gate must not hang off the engine tag the way the badge does.
+    const { container } = render(
+      <MessageList
+        messages={[
+          {
+            id: "r1",
+            role: "assistant",
+            content: "Replayed.",
+            followUps: QUESTIONS,
+          },
+        ]}
+        streamingMessageId={null}
+        onSelectFollowUp={() => {}}
+      />,
+    )
+    expect(
+      within(chipBlock(container) as HTMLElement).getAllByRole("button"),
+    ).toHaveLength(2)
+  })
+
+  it("renders no chips on a FAILED last turn", () => {
+    const { container } = render(
+      <MessageList
+        messages={[
+          answer({ error: "generation_failed", followUps: QUESTIONS }),
+        ]}
+        streamingMessageId={null}
+        onSelectFollowUp={() => {}}
+      />,
+    )
+    expect(chipBlock(container)).toBeNull()
+  })
+
+  it("keeps chips enabled by default and disables them on request", () => {
+    // followUpsDisabled is the R3 defensive path — see the synthetic-fixture
+    // label in follow-ups.test.tsx for why no production state reaches it.
+    const enabled = render(
+      <MessageList
+        messages={[answer({ followUps: QUESTIONS })]}
+        streamingMessageId={null}
+        onSelectFollowUp={() => {}}
+      />,
+    )
+    expect(
+      within(chipBlock(enabled.container) as HTMLElement).getAllByRole(
+        "button",
+      )[0],
+    ).toBeEnabled()
+    enabled.unmount()
+
+    const disabled = render(
+      <MessageList
+        messages={[answer({ followUps: QUESTIONS })]}
+        streamingMessageId={null}
+        followUpsDisabled
+        onSelectFollowUp={() => {}}
+      />,
+    )
+    expect(
+      within(chipBlock(disabled.container) as HTMLElement).getAllByRole(
+        "button",
+      )[0],
+    ).toBeDisabled()
+  })
+})
+
+describe("MessageList — the two definitions of 'last turn' (feat-366)", () => {
+  // Mastra puts followUps on the thread's last TEXT-BEARING ASSISTANT message;
+  // this list gates on the last message of ANY role. The two diverge for a
+  // transcript that ends on a user turn — an interrupted send persists the
+  // user row with no answer. Pinned so the divergence stays in the SAFE
+  // direction (no chips) instead of hanging a stale answer's chips under an
+  // unanswered question.
+  it("renders no chips when the last message is an unanswered user turn", () => {
+    const { container } = render(
+      <MessageList
+        messages={[
+          answer({ id: "a1", followUps: QUESTIONS }),
+          { id: "u2", role: "user", content: "an unanswered question" },
+        ]}
+        streamingMessageId={null}
+        onSelectFollowUp={() => {}}
+      />,
+    )
+    expect(chipBlock(container)).toBeNull()
+  })
+
+  it("brings the chips back when that turn is answered", () => {
+    // The same transcript once the reply lands: the answer is last again, so
+    // the safe-direction suppression above is not a permanent loss.
+    const { container } = render(
+      <MessageList
+        messages={[
+          answer({ id: "a1", followUps: ["Stale question?"] }),
+          { id: "u2", role: "user", content: "an answered question" },
+          answer({ id: "a2", followUps: QUESTIONS }),
+        ]}
+        streamingMessageId={null}
+        onSelectFollowUp={() => {}}
+      />,
+    )
+    expect(
+      within(chipBlock(container) as HTMLElement)
+        .getAllByRole("button")
+        .map((chip) => chip.textContent),
+    ).toEqual(QUESTIONS)
   })
 })

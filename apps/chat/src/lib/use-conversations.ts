@@ -2,13 +2,18 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react"
 
-import { streamReply } from "./chat-stub"
+import { streamReply, type SendPromptSource } from "./chat-stub"
 import {
   createConversationSession,
   type ConversationSessionSnapshot,
+  type RenameConversationResult,
 } from "./conversation-session"
 import { type Conversation } from "./conversations"
-import { fetchHistoryPage, fetchHistoryThread } from "./history-client"
+import {
+  fetchHistoryPage,
+  fetchHistoryThread,
+  renameHistoryThread,
+} from "./history-client"
 
 export type UseConversations = {
   /** The FULL conversation list — the sidebar applies its own visible-row
@@ -19,10 +24,14 @@ export type UseConversations = {
   draft: string
   pending: boolean
   pendingIds: ReadonlySet<string>
+  /** feat-450: ids with a rename write in flight (pencil disabled). */
+  renamingIds: ReadonlySet<string>
   streamingMessageId: string | null
   history: ConversationSessionSnapshot["history"]
   setDraft: (value: string) => void
-  send: (text: string) => void
+  /** feat-366 (KTD11): `promptSource` marks a follow-up-chip send; a typed
+   * send omits it and the wire key never appears. */
+  send: (text: string, promptSource?: SendPromptSource) => void
   stopReply: () => void
   newConversation: () => void
   selectConversation: (id: string) => void
@@ -33,6 +42,11 @@ export type UseConversations = {
   retryHistory: () => void
   loadMoreHistory: () => void
   retryReplay: () => void
+  /** feat-450 (KTD6): pessimistic rename; resolves the row's outcome. */
+  renameConversation: (
+    id: string,
+    draft: string,
+  ) => Promise<RenameConversationResult>
 }
 
 /**
@@ -54,6 +68,7 @@ export function useConversations(
       streamReply,
       fetchHistoryPage,
       fetchHistoryThread,
+      renameHistoryThread,
       seekerEnabled,
       initialConversationId,
     }),
@@ -79,6 +94,7 @@ export function useConversations(
     draft: snapshot.draft,
     pending: snapshot.pending,
     pendingIds: snapshot.pendingIds,
+    renamingIds: snapshot.renamingIds,
     streamingMessageId: snapshot.streamingMessageId,
     history: snapshot.history,
     setDraft: session.setDraft,
@@ -90,5 +106,6 @@ export function useConversations(
     retryHistory: session.retryHistory,
     loadMoreHistory: session.loadMoreHistory,
     retryReplay: session.retryReplay,
+    renameConversation: session.renameConversation,
   }
 }

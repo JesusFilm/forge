@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Vaihâta äänen kiel",
     "home": "JesusFilm-etusivu",
     "closeSearch": "Peitt haku",
-    "submitSearch": "Etsi"
+    "submitSearch": "Etsi",
+    "library": "Ǩiiržrââʹjj"
   },
   "SearchOverlay": {
     "dialogLabel": "Etsi ja selaa videoid",
@@ -467,6 +468,7 @@
     "sports": "Urheilu",
     "collections": "Kokoelmat",
     "subtitlesOnly": "Vain tekstitykõk",
+    "backToTop": "Maacc pââʹjjel",
     "newlyAdded": "Uusid lisätty",
     "newVideosTitle": "Uusit kristtillâš videoid kielessä {language}",
     "newestFirst": "Uusimmat ensin",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Itsenäiset videot",
     "videosFromCollection": "Videot kokoelmasta {collection}.",
     "standaloneDescription": "Itsenäiset videot tällä kielellä.",
-    "openCollection": "Lääʹdd kokoelma"
+    "openCollection": "Lääʹdd kokoelma",
+    "filters": "Sillâ",
+    "filterLength": "Kookkadvuõtt",
+    "filterLength_under5": "Occanj ko 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Jäänab ko 30 min",
+    "filterType": "Sorttâ",
+    "clearFilters": "Ciõlkkâd sillâ",
+    "filterResults": "Čuäʹjtet {count} / {total}",
+    "noFilterResults": "Ni õhtt video ij šiõtt tän sillid. Ǩiõčč väʹldded õõut jåura.",
+    "filterAdded": "Lââʹzztum",
+    "filterAdded_60d": "Mââimõs 60 peeiʹv",
+    "filterAdded_6m": "Mââimõs 6 mannu",
+    "filterAdded_12m": "Mââimõs 12 mannu"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project -katselu",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Edellisen videon esikatselu",
     "nextVideoPreview": "Seuraavan videon esikatselu",
     "mediaCollection": "Mediakokoelma",
-    "scrollToVideo": "Vieritä videon {title} kohdalle"
+    "scrollToVideo": "Vieritä videon {title} kohdalle",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project -etusivu",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Takaisin katseluun",
     "browseVideos": "Selaa videoid"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Katso lyhytelokuva",
-    "actions": {
-      "joinUs": "Liity mukaan",
-      "shareMission": "Jaa lähetystehtävässämme"
-    },
-    "welcomeStart": {
-      "label": "Usko ja Raamattu",
-      "title": "Tämän päivän videovalinnat",
-      "description": "Uskoon keskittyviä videoita kirjastostamme inspiroimaan, haastamaan ja herättämään pohdintaa."
-    },
-    "welcomeMorning": {
-      "label": "Aamun inspiraatio",
-      "title": "Hyvää huomenta! Tämän päivän Raamattu-hetket odottavat.",
-      "description": "Aloita päiväsi rohkaisevilla Raamattu-hetkillä, jotka on suunniteltu inspiroimaan ja kohottamaan mieltäsi."
-    },
-    "welcomeAfternoon": {
-      "label": "Iltapäivän inspiraatio",
-      "title": "Hyvää iltapäivää! Raamattu-hetkiä päivääsi.",
-      "description": "Rohkaisevaa Raamattu-sisältöä juuri iltapäivän tauollesi tai jatkamaan inspiraatiota."
-    },
-    "welcomeEvening": {
-      "label": "Illan inspiraatio",
-      "title": "Hyvää iltaa! Rauhoitu Raamattu-hetkien parissa.",
-      "description": "Rauhallisia Raamattu-hetkiä, jotka auttavat sinua hiljentymään ja löytämään lohtua päivän päättyessä."
-    },
-    "joinUs": {
-      "label": "Liity mukaan",
-      "title": "Miljardit etsivät",
-      "description": "Sato on täällä. Liity mukaan, kun jaamme evankeliumia maailmalle digitaalisen median avulla."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Kuljetaan yhdessä",
-      "title": "Kerrotaan Jeesuksen tarina yhdessä",
-      "description": "Jotta he voivat kuulla ja nähdä Jeesuksen rakkauden omalla kielellään juuri siellä missä ovat."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent} % såppâmvuõtt",
     "none": "Tän videose tän ǩiõlâst ij kaunnu ni õhtt suåvtõõzz."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Jiõnnǩiõll",
     "selectLanguageVersion": "Vaʹlljed ǩiõllversio",
     "watchSelectedVersion": "Ǩiõčč vaʹlljum versio"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie-váljjumh",
+    "bannerTitle": "Tuʹst privattvuõtt-váljjumh",
+    "bannerDescription": "Vuâđđ-cookieh vieʹǩǩe Watch:a ââʹnned siõrǥǥsen da toiʹmmjen. Jieʹllem loʹbbin ohtta vääʹld šeäiʹǩǩe optional first-party cookie vuäit mušteed miârkteeiʹrâsâid kuäʹss-neǩ käunnlaž vueʹjjest, što suåvtâs vuâsttažeh leäʹzzed persoonlažžen. Kontekstlaž suåvtâsh lie pääiʹǩest kuõʹbben-ne.",
+    "acceptAll": "Dohkket pukid",
+    "essentialOnly": "Tuʹmm vuâđđ",
+    "manageChoices": "Gâstt váljjumid",
+    "savingChoice": "Cookie-váljjum vuäǯǯad vuâlttem",
+    "settings": "Cookie-asetõõzz",
+    "settingsDescription": "Vaal, vuäit-a Watch mušteed suåvtâs-miârkteeiʹrâsâid kuäʹss-neǩ käunnlaž vueʹjjest. Tääʹzz vuäit mutted mâʹte-ne pääiʹǩ.",
+    "essentialCookies": "Vuâđđ-cookieh",
+    "essentialDescription": "Siõrǥǥvuõtt, čuäjtummuš, privattvuõtt-váljjumh da suåvtâs-ǩiõttʼtõs pieʹllõs.",
+    "alwaysActive": "Âlnn peʹll aktiivlaž",
+    "personalization": "Persoonlažšem",
+    "personalizationDescription": "Mušte bounded miârkteeiʹrâsâid kuäʹss-neǩ käunnlaž vueʹjjest. Jõs tääʹzz pueʹttak pois, kontekstlaž suåvtâsh âânnma še pääiʹǩest.",
+    "erasurePending": "Profiil siõttâm lij vuäǯǯmõššest. Kontekstlaž suåvtâsh lie juʹn aktiivlaž.",
+    "cancel": "Peruiʹtt",
+    "saveChoices": "Vuäǯǯad váljjumid",
+    "saving": "Vuäǯǯad…",
+    "loadError": "Tuʹst váljjum ij puʹhtti luõdded. Vuäit še vaalid vuâlla.",
+    "grantError": "Persoonlažšem ij puʹhtti aktiviirâd. Tuʹmm vuâđđ lij še âânnmõššest.",
+    "saveError": "Tuʹst váljjum ij puʹhtti vuäǯǯad. Vueiʹtǩǩed ođđest."
   }
 }

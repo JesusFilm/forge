@@ -260,6 +260,58 @@ describe("WatchEventRecorder", () => {
     ).toHaveLength(1)
   })
 
+  // v1 CHARACTERIZATION (R11, R12). Freezes the per-identity counts the v2
+  // event contract must reproduce for repeated play/timeupdate/ended events,
+  // including after a seek backwards and a replay.
+  it("keeps v1 start, progress, milestone, and completion counts under repeated events", async () => {
+    const player = makePlayer()
+
+    await act(async () => {
+      root.render(
+        <WatchEventRecorder
+          playerRef={{ current: player }}
+          videoId="video-1"
+          videoDubId="dub-1"
+          durationSeconds={120}
+        />,
+      )
+    })
+
+    await act(async () => {
+      player.currentTime = 0
+      player.dispatch("play")
+      // Cross every milestone, then seek backwards and replay across them.
+      for (const seconds of [12, 30, 60, 90, 108, 120, 12, 30, 60, 90, 108]) {
+        player.currentTime = seconds
+        player.dispatch("timeupdate")
+        player.dispatch("timeupdate")
+      }
+      player.dispatch("pause")
+      player.dispatch("play")
+      player.currentTime = 120
+      player.dispatch("ended")
+      player.dispatch("ended")
+    })
+
+    const gtagMock = window.gtag as unknown as ReturnType<typeof vi.fn>
+    const countOf = (eventName: string) =>
+      gtagMock.mock.calls.filter(([, name]) => name === eventName).length
+
+    // Once per playback identity.
+    expect(countOf("videostarts")).toBe(1)
+    expect(countOf("video_progress")).toBe(1)
+    expect(countOf("videocomplete")).toBe(1)
+    // Once per milestone per identity, surviving seek and replay.
+    expect(countOf("a_media_progress10")).toBe(1)
+    expect(countOf("a_media_progress25")).toBe(1)
+    expect(countOf("a_media_progress50")).toBe(1)
+    expect(countOf("a_media_progress75")).toBe(1)
+    expect(countOf("a_media_progress90")).toBe(1)
+    // Per real transition, not per identity.
+    expect(countOf("videoplay")).toBe(2)
+    expect(countOf("video_pause")).toBe(1)
+  })
+
   it("queues signed-out playback locally and flushes it after sign-in", async () => {
     const player = makePlayer()
     recordMeaningfulWatchEventMock

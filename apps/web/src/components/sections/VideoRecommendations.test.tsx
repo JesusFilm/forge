@@ -76,6 +76,7 @@ function makeRecommendation(
     description: "A scene description",
     startSeconds: 5,
     endSeconds: 12,
+    durationSeconds: 125,
     similarity: 0.87,
     themes: ["hope"],
     demographics: [],
@@ -86,6 +87,93 @@ function makeRecommendation(
 }
 
 describe("VideoRecommendations", () => {
+  it("preserves the scene-start timestamp by default for legacy callers", () => {
+    act(() => {
+      root.render(
+        <VideoRecommendations
+          recommendations={[
+            makeRecommendation({ startSeconds: 45, durationSeconds: 4_946 }),
+          ]}
+          locale="english"
+        />,
+      )
+    })
+
+    expect(
+      container.querySelector('[data-testid="video-recommendation-duration"]')
+        ?.textContent,
+    ).toBe("0:45")
+  })
+
+  it("renders video runtime when the caller selects video-duration mode", () => {
+    act(() => {
+      root.render(
+        <VideoRecommendations
+          recommendations={[
+            makeRecommendation({ startSeconds: 0, durationSeconds: 4_946 }),
+          ]}
+          locale="english"
+          recommendationTimeMode="video-duration"
+        />,
+      )
+    })
+
+    expect(
+      container.querySelector('[data-testid="video-recommendation-duration"]')
+        ?.textContent,
+    ).toBe("1:22:26")
+    expect(container.textContent).toContain("87% match")
+    expect(container.textContent).toContain("hope")
+  })
+
+  it("hides ranking metadata without removing title, description, or runtime", () => {
+    act(() => {
+      root.render(
+        <VideoRecommendations
+          recommendations={[makeRecommendation()]}
+          locale="english"
+          showRankingMetadata={false}
+          recommendationTimeMode="video-duration"
+        />,
+      )
+    })
+
+    expect(container.textContent).toContain("JESUS")
+    expect(container.textContent).toContain("A scene description")
+    expect(container.textContent).toContain("2:05")
+    expect(container.textContent).not.toContain("87% match")
+    expect(container.textContent).not.toContain("hope")
+  })
+
+  it("omits the runtime badge when duration is unavailable", () => {
+    act(() => {
+      root.render(
+        <VideoRecommendations
+          recommendations={[makeRecommendation({ durationSeconds: null })]}
+          locale="english"
+          recommendationTimeMode="video-duration"
+        />,
+      )
+    })
+
+    expect(
+      container.querySelector('[data-testid="video-recommendation-duration"]'),
+    ).toBeNull()
+  })
+
+  it("uses an existing localized thumbnail label when an image is unavailable", () => {
+    act(() => {
+      root.render(
+        <VideoRecommendations
+          recommendations={[makeRecommendation({ imageUrl: null })]}
+          locale="english"
+        />,
+      )
+    })
+
+    expect(container.textContent).toContain("Video thumbnail")
+  })
+
   it("lazy-loads a Mux animated preview when a recommendation card is hovered", () => {
     act(() => {
       root.render(

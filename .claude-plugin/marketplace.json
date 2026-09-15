@@ -1,0 +1,23 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "forge",
+  "owner": {
+    "name": "Jesus Film Project"
+  },
+  "metadata": {
+    "description": "Jesus Film Forge plugins for Claude Code"
+  },
+  "plugins": [
+    {
+      "name": "jfp-admin",
+      "description": "AI-assisted Jesus Film Admin workflows for locale creation.",
+      "author": {
+        "name": "Jesus Film Project",
+        "url": "https://www.jesusfilm.org"
+      },
+      "homepage": "https://admin.jesusfilm.org/dashboard/mcp",
+      "category": "productivity",
+      "source": "./plugins/jfp-admin"
+    }
+  ]
+}

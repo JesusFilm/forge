@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио чӏал эгечӏ",
     "home": "JesusFilm ксар",
     "closeSearch": "Гъарун кьепь",
-    "submitSearch": "Гъарун"
+    "submitSearch": "Гъарун",
+    "library": "Ктабхана"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеолар гъарун ва къарагъун",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Коллекциялар",
     "subtitlesOnly": "Тек субтитрлар",
+    "backToTop": "Кьуле хъфин",
     "newlyAdded": "Цӏийидан эгечӏ",
     "newVideosTitle": "{language}-да цӏийи христиандин видеолар",
     "newestFirst": "Агъаниди кьиливди",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Тӏек видеолар",
     "videosFromCollection": "{collection}-дай видеолар.",
     "standaloneDescription": "И чӏалда тӏек видеолар.",
-    "openCollection": "Коллекция ачухь"
+    "openCollection": "Коллекция ачухь",
+    "filters": "Хкягъунар",
+    "filterLength": "Яргъивал",
+    "filterLength_under5": "5 декьикьадилай тӏимил",
+    "filterLength_5to10": "5-10 декьикьа",
+    "filterLength_10to30": "10-30 декьикьа",
+    "filterLength_over30": "30 декьикьадилай гзаф",
+    "filterType": "Жуьре",
+    "clearFilters": "Хкягъунар михьун",
+    "filterResults": "{total}-дай {count} къалурна",
+    "noFilterResults": "И хкягъунриз кутугай видео авач. Садни къахчун ая.",
+    "filterAdded": "Алава хьана",
+    "filterAdded_60d": "Эхиримжи 60 югъ",
+    "filterAdded_6m": "Эхиримжи 6 варз",
+    "filterAdded_12m": "Эхиримжи 12 варз"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project: Къарагъ",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Кьазмахь видео preview",
     "nextVideoPreview": "Агъани видео preview",
     "mediaCollection": "Медиа коллекция",
-    "scrollToVideo": "{title} видеоалдиз кьазухь"
+    "scrollToVideo": "{title} видеоалдиз кьазухь",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project ксар",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Къарагъдиз хъсан",
     "browseVideos": "Видеолар къарагъ"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Кӏуртӏ фильм къарагъ",
-    "actions": {
-      "joinUs": "Биздал къатӏ",
-      "shareMission": "Биздин миссиядал пайда кьабул авун"
-    },
-    "welcomeStart": {
-      "label": "Иман ва Къуьран",
-      "title": "Гьанин видеолардин тавсияр",
-      "description": "Бизнин библиотекадан имандал кьиливди авай видеоконтент, сизни илхам авун, тӏерез авун ва фикърдаш кьатӏ авун учун."
-    },
-    "welcomeMorning": {
-      "label": "Гьедени илхам",
-      "title": "Сабахьыр хъва! Гьанин Инжилдин лаҳзар кьатӏухьнава.",
-      "description": "Гьанин къуват ва илхам кьабул авунар учун хъсан Инжилдин лаҳзардалди къатӏув авун."
-    },
-    "welcomeAfternoon": {
-      "label": "Гъвечӏин илхам",
-      "title": "Гъвечӏин хъва! Сизнин гьанин Инжилдин лаҳзар.",
-      "description": "Гъвечӏин тӏирдин кьван я са давам илхам учун къулай Инжилдин мазмун."
-    },
-    "welcomeEvening": {
-      "label": "Амалдин илхам",
-      "title": "Гьадин хъва! Инжилдин лаҳзардалди кьарагъ.",
-      "description": "Гьанин къурулуш кьиливди фикир авун ва рагьатвал таб авун учун тӏынч Инжилдин лаҳзар."
-    },
-    "joinUs": {
-      "label": "Биздал къатӏ",
-      "title": "Миллиардар кьетӏар жеда",
-      "description": "Урожай гьанва. Дигитал медиа къуллугъдалди дуьньядал Инжил хабар кьатӏуда биздал къатӏ."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Кьамалди къарагъун",
-      "title": "Иса гьикаятни кьамалди къарагъун",
-      "description": "Аларни Иса-дин мейр ва гьакъий чӏалдал, авайни кьван са кьисмик кьиливди эшитун ва къалурун учун."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% дуьзкъвезва",
     "none": "И чӏалда и видеодиз тавсияр таб хьанач."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Сесин чIал",
     "selectLanguageVersion": "ЧIалан версия хкягъ",
     "watchSelectedVersion": "Хкягъай версиядиз килиг"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Кукирин кьилияр",
+    "bannerTitle": "Чи махфи кьилияр",
+    "bannerDescription": "Зарур кукияр Watch-дини хатасуз ва ишлек авуна кьуна. Куь квез ихтияр гуз, тIимилу кхьин патай тир куки зияратрин арада интересар рикIел хуьз жеда, тавсияр шахсий авунин патал. Контекстдин тавсияр и кьве гьалда къалур жеда.",
+    "acceptAll": "Вири кьабул авун",
+    "essentialOnly": "Садра зарурбур",
+    "manageChoices": "Кьилияр идаре авун",
+    "savingChoice": "Куки кьили хъуьруьн",
+    "settings": "Кукидин настройкаяр",
+    "settingsDescription": "Watch-дини зияратрин арада тавсиярин интересар рикIел хуьн лазим ятIа, кьил авуна. И кьил куьне гьар са вахтунда дегишариз жеда.",
+    "essentialCookies": "Зарур кукияр",
+    "essentialDescription": "Хатасузвал, видеодин къалурун, махфивалдин кьилияр ва тавсиярин тIалабдин атрибуция.",
+    "alwaysActive": "Гьамиша актив",
+    "personalization": "Шахсий авун",
+    "personalizationDescription": "Зияратрин арада чIехи тушир интересар рикIел хуьн. И кар акъуд авуналди, контекстдин тавсияр гележегъ я.",
+    "erasurePending": "Профилдин чIур авун гуьзлемиш жеда. Контекстдин тавсияр эхиримжи актив я.",
+    "cancel": "ИмтIан",
+    "saveChoices": "Кьилияр хуьн",
+    "saving": "Хуьзва…",
+    "loadError": "Куь кьил къачуз хьанач. Куьне агъа кIаник кьил авун мумкин я.",
+    "grantError": "Шахсий авун кабулариз хьанач. Садра зарурбур гележегъ я.",
+    "saveError": "Куь кьил хуьз хьанач. Зегьмет олна, мад сеферда хъийиз."
   }
 }

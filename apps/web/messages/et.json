@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Muuda heli keelt",
     "home": "JesusFilmi avaleht",
     "closeSearch": "Sulge otsing",
-    "submitSearch": "Otsi"
+    "submitSearch": "Otsi",
+    "library": "Teek"
   },
   "SearchOverlay": {
     "dialogLabel": "Otsi ja sirvi videoid",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Kogud",
     "subtitlesOnly": "Ainult subtiitrid",
+    "backToTop": "Tagasi üles",
     "newlyAdded": "Äsja lisatud",
     "newVideosTitle": "Uued kristlikud videod keeles {language}",
     "newestFirst": "Uusimad eespool",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Eraldiseisvad videod",
     "videosFromCollection": "Videod kogust {collection}.",
     "standaloneDescription": "Eraldiseisvad videod selles keeles.",
-    "openCollection": "Ava kogu"
+    "openCollection": "Ava kogu",
+    "filters": "Filtrid",
+    "filterLength": "Pikkus",
+    "filterLength_under5": "Alla 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Üle 30 min",
+    "filterType": "Tüüp",
+    "clearFilters": "Tühjenda filtrid",
+    "filterResults": "Kuvatud {count} / {total}",
+    "noFilterResults": "Ükski video ei vasta neile filtritele. Proovi üks eemaldada.",
+    "filterAdded": "Lisatud",
+    "filterAdded_60d": "Viimased 60 päeva",
+    "filterAdded_6m": "Viimased 6 kuud",
+    "filterAdded_12m": "Viimased 12 kuud"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Projecti vaatamine",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Eelmise video eelvaade",
     "nextVideoPreview": "Järgmise video eelvaade",
     "mediaCollection": "Meediakogu",
-    "scrollToVideo": "Keri video {title} juurde"
+    "scrollToVideo": "Keri video {title} juurde",
+    "forYou": "Sulle"
   },
   "WatchFooter": {
     "home": "Jesus Film Projecti avaleht",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Tagasi vaatama",
     "browseVideos": "Sirvi videoid"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Vaata lühifilmi",
-    "actions": {
-      "joinUs": "Liitu meiega",
-      "shareMission": "Aita meie missiooni"
-    },
-    "welcomeStart": {
-      "label": "Usk ja Pühakiri",
-      "title": "Tänased videovalikud",
-      "description": "Meie kogu usukeskne video­sisu, mis innustab, esitab väljakutseid ja ärgitab mõtisklema."
-    },
-    "welcomeMorning": {
-      "label": "Hommikune inspiratsioon",
-      "title": "Tere hommikust! Tänased Piibli hetked ootavad.",
-      "description": "Alusta päeva julgustavate Piibli hetkede ja videodega, mis innustavad ning tõstavad meelt."
-    },
-    "welcomeAfternoon": {
-      "label": "Pärastlõunane inspiratsioon",
-      "title": "Tere pärastlõunast! Piibli hetked sinu päevaks.",
-      "description": "Julgustav Piibli sisu, mis sobib hästi pärastlõunaseks puhkepausiks või jätkuvaks innustuseks."
-    },
-    "welcomeEvening": {
-      "label": "Õhtune inspiratsioon",
-      "title": "Tere õhtust! Lõõgastu Piibli hetkede saatel.",
-      "description": "Rahulikud Piibli hetked, mis aitavad sul päeva lõppedes mõtiskleda ja lohutust leida."
-    },
-    "joinUs": {
-      "label": "Liitu meiega",
-      "title": "Miljardid otsivad",
-      "description": "Saagikoristus on käes. Liitu meiega, kui jagame evangeeliumi maailmaga digimeedia abil."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Lähme koos",
-      "title": "Jutustame Jeesuse lugu koos",
-      "description": "Et nad kuuleksid ja näeksid Jeesuse armastust oma keeles just seal, kus nad parasjagu on."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% sobivus",
     "none": "Sellele videole ei leitud selles keeles soovitusi."
@@ -735,14 +714,37 @@
   "WatchUnavailableLanguage": {
     "metadataTitle": "Keeleversioon pole saadaval",
     "eyebrow": "Keeleversioon pole saadaval",
-    "title": "<contentTitle>{title}</contentTitle> pole keeles <languageName>{language}</languageName> saadaval",
+    "title": "<contentTitle>{title}</contentTitle>: <languageName>{language}</languageName> keeles versiooni ei ole",
     "actionsLabel": "Saadaolevad vaatamisvalikud",
-    "browseInLanguage": "Sirvi videoid keeles {language}",
+    "browseInLanguage": "Kõik videod {language} keeles",
     "backToSearch": "Tagasi otsingusse",
     "audioVersionsTitle": "Muud heliversioonid",
     "audioVersionsDescription": "Video vaatamise jätkamiseks valige heli keel.",
     "languageVersionLabel": "Heli keel",
     "selectLanguageVersion": "Valige keeleversioon",
     "watchSelectedVersion": "Vaata valitud versiooni"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Küpsiste valikud",
+    "bannerTitle": "Teie privaatsusvalikud",
+    "bannerDescription": "Vajalikud küpsised hoiavad Watchi turvalise ja toimivana. Teie loal võib valikuline esimese osapoole küpsis meeles pidada huvisid eri külastuste vahel, et soovitusi isikupärastada. Kontekstipõhised soovitused on saadaval mõlemal juhul.",
+    "acceptAll": "Nõustu kõigega",
+    "essentialOnly": "Ainult vajalikud",
+    "manageChoices": "Halda valikuid",
+    "savingChoice": "Küpsisevaliku salvestamine",
+    "settings": "Küpsiste seaded",
+    "settingsDescription": "Valige, kas Watch võib eri külastuste vahel soovituste huvisid meeles pidada. Seda saate igal ajal muuta.",
+    "essentialCookies": "Vajalikud küpsised",
+    "essentialDescription": "Turvalisus, taasesitus, privaatsusvalikud ja soovituspäringute omistamine.",
+    "alwaysActive": "Alati aktiivne",
+    "personalization": "Isikupärastamine",
+    "personalizationDescription": "Jäta piiritletud huvid eri külastuste vahel meelde. Selle väljalülitamisel jäävad kontekstipõhised soovitused endiselt kättesaadavaks.",
+    "erasurePending": "Profiili kustutamine on pooleli. Kontekstipõhised soovitused on juba aktiivsed.",
+    "cancel": "Tühista",
+    "saveChoices": "Salvesta valikud",
+    "saving": "Salvestamine…",
+    "loadError": "Teie valikut ei saanud laadida. Saate siiski allpool valida.",
+    "grantError": "Isikupärastamist ei saanud sisse lülitada. Saadaval on endiselt ainult vajalikud küpsised.",
+    "saveError": "Teie valikut ei saanud salvestada. Palun proovige uuesti."
   }
 }

@@ -300,6 +300,23 @@ describe("Rule 5: single-segment → duplicate-with-.html → 307", () => {
     })
   })
 
+  it("does NOT fire for /whats-new (exempt)", () => {
+    expect(canonical({ rawPathname: "/whats-new" })).toEqual({
+      kind: "canonical",
+    })
+  })
+
+  it("still fires for a hyphenated slug outside the exempt set", () => {
+    // Falsifies the case above — the exemption is keyed on the literal, not
+    // on the presence of a hyphen.
+    expect(canonical({ rawPathname: "/whats-old" })).toEqual({
+      kind: "redirect",
+      pathname: "/whats-old.html/whats-old.html",
+      status: 307,
+      cache: "short",
+    })
+  })
+
   it("does NOT fire for deprecated /search", () => {
     expect(canonical({ rawPathname: "/search" })).toEqual({
       kind: "canonical",

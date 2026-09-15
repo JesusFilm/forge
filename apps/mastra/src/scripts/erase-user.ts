@@ -259,7 +259,11 @@ export function exitCodeFor(result: AiChatErasureResult): 0 | 1 | 2 {
   // Hard faults outrank incompleteness, whichever store they came from: a
   // Postgres probe fault, the KTD11 egress-pin refusal (zero requests were
   // issued — never a zero count), and the R7 unprovable-ownership refusal.
-  if (result.postgres.kind === "unreachable") return 1
+  if (
+    result.postgres.kind === "unreachable" ||
+    result.postgres.kind === "not_ready"
+  )
+    return 1
   if (result.langfuse.kind === "egress_refused") return 1
   if (result.langfuse.kind === "refused_unreadable_user_ids") return 1
   // Same anomaly class, same posture: matching rows whose trace ids cannot

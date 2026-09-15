@@ -94,6 +94,9 @@ describe("WatchVideo split operation documents", () => {
     )
     expect(printed).toMatch(/downloads\s*\{/)
     expect(printed).toMatch(/documentId\s*:\s*id/)
+    expect(printed).toMatch(
+      /downloadableChildDubs\([^)]*\)\s*\{[\s\S]*?\bslug\b[\s\S]*?language\s*\{[\s\S]*?documentId\s*:\s*id/,
+    )
     expect(printed).toMatch(/\burl\b/)
   })
 

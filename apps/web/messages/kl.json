@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Oqaatsit allanngortikkit",
     "home": "JesusFilm-imi angerlarsimaffik",
     "closeSearch": "Ujarlerneq matuuk",
-    "submitSearch": "Ujarlerit"
+    "submitSearch": "Ujarlerit",
+    "library": "Atuagaateqarfik"
   },
   "SearchOverlay": {
     "dialogLabel": "Video-t ujarlerlugillu tamanut takuguk",
@@ -467,6 +468,7 @@
     "sports": "Timersorneq",
     "collections": "Katersukkat",
     "subtitlesOnly": "Ilanngunneqartut kisimik",
+    "backToTop": "Qulaanut uterit",
     "newlyAdded": "Nutaanik ilanngunneqartut",
     "newVideosTitle": "{language}-imi kristumiut video-t nutaat",
     "newestFirst": "Nutaanerit siulliullugit",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Video-t nammineertut",
     "videosFromCollection": "Video-t {collection}-imit.",
     "standaloneDescription": "Oqaatsit taakku iluani video-t nammineertut.",
-    "openCollection": "Katersugaasivik ammaruk"
+    "openCollection": "Katersugaasivik ammaruk",
+    "filters": "Immikkoortitsissutit",
+    "filterLength": "Takissusaa",
+    "filterLength_under5": "5 minutsit sinnerlugit",
+    "filterLength_5to10": "5-10 minutsit",
+    "filterLength_10to30": "10-30 minutsit",
+    "filterLength_over30": "30 minutsit sinnerlugit",
+    "filterType": "Suussusaa",
+    "clearFilters": "Immikkoortitsissutit peerit",
+    "filterResults": "{total}-init {count} takutinneqarput",
+    "noFilterResults": "Immikkoortitsissutinut naapertuuttumik videoqanngilaq. Ataaseq peersinnaavat.",
+    "filterAdded": "Ilanngunneqarpoq",
+    "filterAdded_60d": "Kingulliit 60 ulluit",
+    "filterAdded_6m": "Kingulliit 6 qaammatit",
+    "filterAdded_12m": "Kingulliit 12 qaammatit"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project-imi isiginnaarit",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Video siornaartoq",
     "nextVideoPreview": "Video tulleq takussutissaq",
     "mediaCollection": "Media-katersugaasivik",
-    "scrollToVideo": "{title}-mik video-mut ingerlaarit"
+    "scrollToVideo": "{title}-mik video-mut ingerlaarit",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project-imi angerlarsimaffik",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Watch-imut uterit",
     "browseVideos": "Videot alakkarit"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Isiginnaarsiuk filmiliaq mikisooq",
-    "actions": {
-      "joinUs": "Peqataagit",
-      "shareMission": "Suliaq siunertarigutsigu avitseqatigiigit"
-    },
-    "welcomeStart": {
-      "label": "Upperneq & Oqaatsit allassimasut",
-      "title": "Ullumi videot siunnersuutit",
-      "description": "Katersugaasivitsinni uppernermut tunngasut videot eqqarsalersitsisut, ataatsimoortitsisut, aammalu misissueqqissaarnernik aallartisaarisut."
-    },
-    "welcomeMorning": {
-      "label": "Ullaap tungaanut eqqarsaatigalugit",
-      "title": "Ullaakkoq! Ullumi Biibilimi pisoqarfiit utaqqipput.",
-      "description": "Ullup aallartinnerani Biibilimi pisoqarfinnik pitsaasunik eqqarsalersitsisunik aallartigit, qiimmaallannermillu pilersitsisunik."
-    },
-    "welcomeAfternoon": {
-      "label": "Unnuap tungaanut eqqarsaatigalugit",
-      "title": "Ullasoq pitsaasoq! Ullormut Biibilimi pisoqarfiit.",
-      "description": "Biibilimik paasissutissat eqqarsalersitsisut ulloqeqqata kingorna imaluunniit ingerlaqqilluni eqqarsalersitsissutitut naleqquttut."
-    },
-    "welcomeEvening": {
-      "label": "Unnukkut eqqarsaatigalugit",
-      "title": "Unnukkut pitsaasoq! Biibilimi pisoqarfinnik naggasiigit.",
-      "description": "Biibilimi pisoqarfiit eqqissisimanartut ulloq naammassinialerpat eqqarsaatigalugit eqqissiallannissannut iluaqutaassapput."
-    },
-    "joinUs": {
-      "label": "Peqataagit",
-      "title": "Milliarderit ujartuipput",
-      "description": "Periuseq aallartippoq. Nutaaliaq media atorlugu nunarsuaq tamakkerlugu evangeliumi avitseqatigalugit peqataagit."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Ilisimatitsineq ataatsimoorullugu",
-      "title": "Jesusip oqaluttuarnera ataatsimoorluta oqaluttuaralugu",
-      "description": "Taamaalillutik nammineq oqaatsiminnik, nammineq sumiiffimminni, Jesusip asanninnera tusaasinnaassavaat takusinnaassallugulu."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}%-imik naleqquppoq",
     "none": "Video taanna oqaatsini taakkunani innersuussutissaqarfigineqanngilaq."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Nipip oqaasii",
     "selectLanguageVersion": "Oqaatsit saqqummersitaat toqqaruk",
     "watchSelectedVersion": "Saqqummersitaq toqqagaq isiginnaarlugu"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie-nik toqqagassat",
+    "bannerTitle": "Namminerisamik illersuinermut toqqagassatit",
+    "bannerDescription": "Cookie-t pingaaruteqartut Watch-ip isumannaatsuunissaa sulinissaalu qulakkeertarpaat. Akuersiguit, cookie ataasiinnaq nammineq atorneqartoq soqutigisatit tikeraarnerni eqqaamassinnaavai, innersuussutinik nammineq naleqqussakkanik tunniussisinnaaqqullugu. Innersuussutit aalajangersimasumik tunngavigineqartut qanoq ikkaluartorluunniit suli atorneqarsinnaapput.",
+    "acceptAll": "Tamarmik akuersissutigikkit",
+    "essentialOnly": "Pingaaruteqartut kisimik",
+    "manageChoices": "Toqqagassat aqukkit",
+    "savingChoice": "Cookie pillugu toqqagaq toqqorneqarpoq",
+    "settings": "Cookie-nut ilikkakkat",
+    "settingsDescription": "Toqqaruk Watch-ip innersuussutinut soqutigisatit tikeraarnerit akornanni eqqaamassanerai. Tamanna qaqugukkulluunniit allanngortissinnaavat.",
+    "essentialCookies": "Cookie-t pingaaruteqartut",
+    "essentialDescription": "Isumannaallisaaneq, takusinnaaneq, namminerisamik illersuinermut toqqagassat, kiisalu innersuussutisiornermut qinnuteqaatit atassusiinerat.",
+    "alwaysActive": "Tamanna atorluarpoq",
+    "personalization": "Nammineq naleqqussaaneq",
+    "personalizationDescription": "Soqutigisat killilikkat tikeraarnerni eqqaamakkit. Tamanna qamissagukku, innersuussutit aalajangersimasumik tunngavigineqartut suli atorneqarsinnaapput.",
+    "erasurePending": "Profili piiarneqarnissaa utaqqineqarpoq. Innersuussutit aalajangersimasumik tunngavigineqartut ulloq manna atorneqareerput.",
+    "cancel": "Taarsiuk",
+    "saveChoices": "Toqqagassat toqqoruk",
+    "saving": "Toqqorpoq…",
+    "loadError": "Toqqagassatit aaneqarsinnaanngillat. Taamaattorli ataani toqqaasinnaavutit.",
+    "grantError": "Nammineq naleqqussaaneq atorneqalersinnaanngilaq. Pingaaruteqartut kisimik suli atorneqarsinnaapput.",
+    "saveError": "Toqqagassatit toqqorneqarsinnaanngillat. Qinnuigineqarlutik misileqqiguk."
   }
 }

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Verander oudiotaal",
     "home": "JesusFilm-tuis",
     "closeSearch": "Sluit soektog",
-    "submitSearch": "Soek"
+    "submitSearch": "Soek",
+    "library": "Biblioteek"
   },
   "SearchOverlay": {
     "dialogLabel": "Soek en blaai deur video’s",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Versamelings",
     "subtitlesOnly": "Slegs onderskrifte",
+    "backToTop": "Terug na bo",
     "newlyAdded": "Nuut bygevoeg",
     "newVideosTitle": "Nuwe Christelike video’s in {language}",
     "newestFirst": "Nuutste eerste",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Afsonderlike video’s",
     "videosFromCollection": "Video’s uit {collection}.",
     "standaloneDescription": "Afsonderlike video’s in hierdie taal.",
-    "openCollection": "Open versameling"
+    "openCollection": "Open versameling",
+    "filters": "Filteropsies",
+    "filterLength": "Lengte",
+    "filterLength_under5": "Minder as 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Meer as 30 min",
+    "filterType": "Tipe",
+    "clearFilters": "Vee filters uit",
+    "filterResults": "{count} van {total} gewys",
+    "noFilterResults": "Geen video's pas by hierdie filters nie. Probeer een verwyder.",
+    "filterAdded": "Bygevoeg",
+    "filterAdded_60d": "Laaste 60 dae",
+    "filterAdded_6m": "Laaste 6 maande",
+    "filterAdded_12m": "Laaste 12 maande"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Kyk",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "Vorige video-voorskou",
     "nextVideoPreview": "Volgende video-voorskou",
     "mediaCollection": "Mediaversameling",
-    "scrollToVideo": "Scroll na die {title}-video"
+    "scrollToVideo": "Scroll na die {title}-video",
+    "forYou": "Vir jou"
   },
   "WatchFooter": {
     "home": "Jesus Film Project-tuis",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "Terug na Kyk",
     "browseVideos": "Blaai deur video’s"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Kyk kortfilm",
-    "actions": {
-      "joinUs": "Sluit by ons aan",
-      "shareMission": "Deel in ons sending"
-    },
-    "welcomeStart": {
-      "label": "Geloof & Skrif",
-      "title": "Vandag se video-keuses",
-      "description": "Geloofsgerigte videoinhoud uit ons biblioteek om te inspireer, uit te daag en nadenke aan te wakker."
-    },
-    "welcomeMorning": {
-      "label": "Oggendinspirasie",
-      "title": "Goeie môre! Vandag se Bybelmomente wag.",
-      "description": "Begin jou dag met bemoedigende Bybelmomente wat ontwerp is om jou te inspireer en op te bou."
-    },
-    "welcomeAfternoon": {
-      "label": "Middaginspirasie",
-      "title": "Goeie middag! Bybelmomente vir jou dag.",
-      "description": "Bemoedigende Bybelinhoud, perfek vir jou middagpouse of vir verdere inspirasie."
-    },
-    "welcomeEvening": {
-      "label": "Aandinspirasie",
-      "title": "Goeie aand! Ontspan met Bybelmomente.",
-      "description": "Rustige Bybelmomente om jou te help nadink en vertroosting te vind soos jou dag tot ’n einde kom."
-    },
-    "joinUs": {
-      "label": "Sluit by ons aan",
-      "title": "Miljarde soek",
-      "description": "Die oes is hier. Sluit by ons aan terwyl ons die evangelie deur digitale media met die wêreld deel."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Kom ons gaan saam",
-      "title": "Vertel saam die verhaal van Jesus",
-      "description": "Sodat hulle die liefde van Jesus in hul eie taal kan hoor en sien, reg waar hulle is."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% ooreenstemming",
     "none": "Geen aanbevelings is vir hierdie video in dié taal gevind nie."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "Oudiotaal",
     "selectLanguageVersion": "Kies 'n taalweergawe",
     "watchSelectedVersion": "Kyk na gekose weergawe"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Koekiekeuses",
+    "bannerTitle": "Jou privaatheidkeuses",
+    "bannerDescription": "Noodsaaklike koekies hou Watch veilig en laat dit behoorlik werk. Met jou toestemming kan ’n opsionele eerstepartykoekie belangstellings oor verskeie besoeke onthou om aanbevelings te verpersoonlik. Kontekstuele aanbevelings bly in elk geval beskikbaar.",
+    "acceptAll": "Aanvaar alles",
+    "essentialOnly": "Slegs noodsaaklike",
+    "manageChoices": "Bestuur keuses",
+    "savingChoice": "Stoor koekiekeuse",
+    "settings": "Koekie-instellings",
+    "settingsDescription": "Kies of Watch aanbevelingsbelangstellings oor verskeie besoeke mag onthou. Jy kan dit enige tyd verander.",
+    "essentialCookies": "Noodsaaklike koekies",
+    "essentialDescription": "Sekuriteit, afspeel, privaatheidkeuses en toeskrywing van aanbevelingsversoeke.",
+    "alwaysActive": "Altyd aktief",
+    "personalization": "Verpersoonliking",
+    "personalizationDescription": "Onthou beperkte belangstellings oor verskeie besoeke. As jy dit afskakel, bly kontekstuele aanbevelings beskikbaar.",
+    "erasurePending": "Profieluitwissing is hangende. Kontekstuele aanbevelings is reeds aktief.",
+    "cancel": "Kanselleer",
+    "saveChoices": "Stoor keuses",
+    "saving": "Stoor…",
+    "loadError": "Jou keuse kon nie gelaai word nie. Jy kan steeds hieronder kies.",
+    "grantError": "Verpersoonliking kon nie geaktiveer word nie. Slegs noodsaaklike bly beskikbaar.",
+    "saveError": "Jou keuse kon nie gestoor word nie. Probeer asseblief weer."
   }
 }

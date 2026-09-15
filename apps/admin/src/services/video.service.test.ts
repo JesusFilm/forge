@@ -6,6 +6,7 @@ import {
   VideoLookupValidationError,
   VIDEOS_BY_CORE_IDS_MAX,
   WATCH_COLLECTION_FEED_MAX_EXCLUSIONS,
+  WATCH_COLLECTION_LANGUAGE_COUNTS_MAX_SLUGS,
 } from "./video.service"
 
 describe("getWatchRouteSnapshotBySlug", () => {
@@ -751,6 +752,68 @@ describe("VideoService", () => {
       expect(call.orderBy).toEqual([
         { createdAt: "desc" },
         { updatedAt: "desc" },
+      ])
+    })
+  })
+
+  // SQL CORRECTNESS for this method is proven against a restored production
+  // snapshot, not here: the JESUS film reports 2,267 audio languages from both
+  // this query and `Video.childDubLanguages` (verified 2026-08-27, PostgreSQL
+  // 18.6). These cases cover only the input handling a mocked prisma CAN
+  // discriminate — a mocked `$queryRaw` would happily return the right answer
+  // for a wrong predicate.
+  describe("getWatchCollectionLanguageCounts", () => {
+    it("skips the database entirely for an empty or blank slug list", async () => {
+      await expect(
+        service.getWatchCollectionLanguageCounts({ slugs: [] }),
+      ).resolves.toEqual([])
+      await expect(
+        service.getWatchCollectionLanguageCounts({ slugs: ["", "   "] }),
+      ).resolves.toEqual([])
+      expect(prisma.$transaction).not.toHaveBeenCalled()
+    })
+
+    it("deduplicates, trims, and caps the requested slugs", async () => {
+      prisma.tx.$queryRaw.mockResolvedValueOnce([])
+
+      await service.getWatchCollectionLanguageCounts({
+        slugs: [
+          "jesus",
+          " jesus ",
+          "jesus",
+          "  ",
+          ...Array.from({ length: 500 }, (_, index) => `filler-${index}`),
+        ],
+      })
+
+      const [, ...values] = prisma.tx.$queryRaw.mock.calls[0] as [
+        TemplateStringsArray,
+        string[],
+      ]
+      const requested = values[0]
+      expect(requested).toContain("jesus")
+      expect(requested.filter((slug) => slug === "jesus")).toHaveLength(1)
+      expect(requested).not.toContain("  ")
+      expect(requested).toHaveLength(WATCH_COLLECTION_LANGUAGE_COUNTS_MAX_SLUGS)
+    })
+
+    it("coerces null aggregate counts to zero", async () => {
+      prisma.tx.$queryRaw.mockResolvedValueOnce([
+        {
+          slug: "childless",
+          audioLanguageCount: null,
+          subtitleLanguageCount: null,
+        },
+      ])
+
+      await expect(
+        service.getWatchCollectionLanguageCounts({ slugs: ["childless"] }),
+      ).resolves.toEqual([
+        {
+          slug: "childless",
+          audioLanguageCount: 0,
+          subtitleLanguageCount: 0,
+        },
       ])
     })
   })

@@ -193,9 +193,11 @@ export function AccountControl() {
           <div className="flex items-center gap-3 px-4 py-4">
             <Avatar user={user} sizeClassName="h-11 w-11" />
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">{displayName}</p>
+              <p className="truncate text-base sm:text-sm font-semibold">
+                {displayName}
+              </p>
               {email ? (
-                <p className="mt-0.5 truncate text-xs text-stone-300">
+                <p className="mt-0.5 truncate text-sm sm:text-xs text-stone-300">
                   {email}
                 </p>
               ) : null}
@@ -205,7 +207,7 @@ export function AccountControl() {
             <button
               type="button"
               role="menuitem"
-              className="flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-stone-100 transition-colors hover:bg-white/10 focus-visible:bg-white/10 focus-visible:outline-none"
+              className="flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-left text-base sm:text-sm text-stone-100 transition-colors hover:bg-white/10 focus-visible:bg-white/10 focus-visible:outline-none"
               onClick={() => {
                 window.location.assign("/watch/history")
               }}
@@ -216,7 +218,7 @@ export function AccountControl() {
             <button
               type="button"
               role="menuitem"
-              className="flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-stone-100 transition-colors hover:bg-white/10 focus-visible:bg-white/10 focus-visible:outline-none"
+              className="flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-left text-base sm:text-sm text-stone-100 transition-colors hover:bg-white/10 focus-visible:bg-white/10 focus-visible:outline-none"
               onClick={() => {
                 window.location.assign(accountAuthUrl("/api/auth/logout"))
               }}
@@ -281,7 +283,7 @@ function Avatar({
   return (
     <span
       aria-hidden="true"
-      className={`${sizeClassName} inline-flex items-center justify-center rounded-full border border-white/25 bg-stone-100 text-xs font-semibold text-stone-900 shadow-[0_1px_3px_rgba(0,0,0,0.35)]`}
+      className={`${sizeClassName} inline-flex items-center justify-center rounded-full border border-white/25 bg-stone-100 text-sm sm:text-xs font-semibold text-stone-900 shadow-[0_1px_3px_rgba(0,0,0,0.35)]`}
     >
       {initials}
     </span>

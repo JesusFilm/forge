@@ -10,6 +10,7 @@ import {
 } from "@/lib/locale"
 import { WATCH_BASE_PATH, WATCH_PUBLIC_METADATA_ORIGIN } from "@/lib/routes"
 import { resolveWatchLanguageInventory } from "@/lib/watch-language-inventory"
+import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
 import {
   LANGUAGE_INVENTORY_CLIENT_MESSAGE_NAMESPACES,
   loadClientMessages,
@@ -87,6 +88,11 @@ export default async function LanguageVideosPage({ params }: PageProps) {
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       <LanguageInventoryPage inventory={inventory} />
+      {/* Same shared footer, in the same position, as the watch home and
+          single-video pages. It is a Server Component, so its `WatchFooter`
+          namespace resolves from the request catalog and does not need adding
+          to LANGUAGE_INVENTORY_CLIENT_MESSAGE_NAMESPACES. */}
+      <WatchHomeFooter />
     </NextIntlClientProvider>
   )
 }

@@ -138,6 +138,10 @@ export default async function HomePage({ params }: PageProps) {
         blocks={visibleContent.blocks}
         locale={locale}
         languageSlug={languageSlug}
+        legacyCategoryRailCompatibility={
+          pageResult.data?.kind === "experience" &&
+          pageResult.data.watchHomeCategoryRailCompatibility === "legacy-schema"
+        }
       />
     </>,
   )

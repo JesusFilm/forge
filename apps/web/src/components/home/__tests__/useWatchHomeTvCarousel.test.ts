@@ -4,15 +4,16 @@
 
 import { beforeEach, describe, expect, it } from "vitest"
 import {
+  WATCH_HOME_TV_ENDED_BACKSTOP_GRACE_SECONDS,
+  WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS,
   WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY,
-  WATCH_HOME_TV_VIDEO_PREVIEW_MAX_SECONDS,
+  WATCH_HOME_TV_UNKNOWN_DURATION_SECONDS,
   addWatchHomeTvPlayedId,
   firstUnplayedWatchHomeTvCarouselIndex,
   nextUnplayedWatchHomeTvCarouselIndex,
   readWatchHomeTvPlayedIds,
-  shouldAdvanceWatchHomeTvCarousel,
-  watchHomeTvAdvanceTargetSeconds,
-  watchHomeTvProgressPercent,
+  watchHomeTvAdvanceBackstopSeconds,
+  watchHomeTvSlideDurationSeconds,
 } from "@/components/home/useWatchHomeTvCarousel"
 import type { WatchHomeTvCarouselSlide } from "@/components/home/useWatchHomeTvCarousel"
 
@@ -23,7 +24,6 @@ function slide(id: string, src = `${id}.m3u8`): WatchHomeTvCarouselSlide {
     kind: "video",
     id,
     title: id,
-    description: null,
     label: "Featured",
     href: `/${id}.html/english.html`,
     posterUrl: `${id}.jpg`,
@@ -115,19 +115,84 @@ describe("watch home TV carousel browser storage sequencing", () => {
   })
 })
 
-describe("watch home TV carousel preview timing", () => {
-  it("caps long video previews at 30 seconds", () => {
-    expect(watchHomeTvAdvanceTargetSeconds(120)).toBe(
-      WATCH_HOME_TV_VIDEO_PREVIEW_MAX_SECONDS,
+describe("watch home TV carousel advance duration", () => {
+  function videoSlide(
+    durationSeconds: number | null,
+  ): WatchHomeTvCarouselSlide {
+    return { ...slide("video-1"), durationSeconds }
+  }
+
+  function imageSlide(): WatchHomeTvCarouselSlide {
+    return { ...slide("image-1"), src: null, durationSeconds: null }
+  }
+
+  it("plays a long video to its natural end instead of capping it", () => {
+    expect(watchHomeTvSlideDurationSeconds(videoSlide(120), null)).toBe(120)
+    expect(watchHomeTvAdvanceBackstopSeconds(videoSlide(120), null)).toBe(
+      120 + WATCH_HOME_TV_ENDED_BACKSTOP_GRACE_SECONDS,
     )
-    expect(watchHomeTvProgressPercent(15, 120)).toBe(50)
-    expect(watchHomeTvProgressPercent(30, 120)).toBe(100)
-    expect(shouldAdvanceWatchHomeTvCarousel(100, 99)).toBe(true)
   })
 
-  it("keeps short video previews near their natural end", () => {
-    expect(watchHomeTvAdvanceTargetSeconds(20)).toBe(19)
-    expect(watchHomeTvProgressPercent(9.5, 20)).toBe(50)
-    expect(watchHomeTvProgressPercent(19, 20)).toBe(100)
+  it("keeps a short video on the same rule", () => {
+    expect(watchHomeTvSlideDurationSeconds(videoSlide(20), null)).toBe(20)
+    expect(watchHomeTvAdvanceBackstopSeconds(videoSlide(20), null)).toBe(
+      20 + WATCH_HOME_TV_ENDED_BACKSTOP_GRACE_SECONDS,
+    )
+  })
+
+  // The deleted 30-second cap was the only thing absorbing a non-finite
+  // duration. `setTimeout(fn, NaN)` and `setTimeout(fn, Infinity)` both
+  // coerce to 0, which would race the whole queue in a few hundred ms, and
+  // `${NaN}s` in the ring's CSS custom property silently kills the animation.
+  it.each([
+    ["null", null],
+    ["undefined", undefined],
+    ["NaN", Number.NaN],
+    ["Infinity", Number.POSITIVE_INFINITY],
+    ["-Infinity", Number.NEGATIVE_INFINITY],
+    ["a negative number", -1],
+    ["zero", 0],
+    ["a huge number", 1e12],
+  ])("returns a finite positive duration for %s", (_label, measured) => {
+    const ring = watchHomeTvSlideDurationSeconds(
+      videoSlide(null),
+      measured as number | null | undefined,
+    )
+    const backstop = watchHomeTvAdvanceBackstopSeconds(
+      videoSlide(null),
+      measured as number | null | undefined,
+    )
+
+    for (const value of [ring, backstop]) {
+      expect(Number.isFinite(value)).toBe(true)
+      expect(value).toBeGreaterThan(0)
+    }
+  })
+
+  it("falls back well above the retired 30 second cap when nothing is known", () => {
+    expect(watchHomeTvSlideDurationSeconds(videoSlide(null), null)).toBe(
+      WATCH_HOME_TV_UNKNOWN_DURATION_SECONDS,
+    )
+    expect(WATCH_HOME_TV_UNKNOWN_DURATION_SECONDS).toBeGreaterThan(30)
+  })
+
+  it("prefers the measured duration over the slide record", () => {
+    expect(watchHomeTvSlideDurationSeconds(videoSlide(10), 480)).toBe(480)
+  })
+
+  it("falls back to the slide record when the measurement is not usable", () => {
+    expect(watchHomeTvSlideDurationSeconds(videoSlide(10), Number.NaN)).toBe(10)
+    expect(
+      watchHomeTvSlideDurationSeconds(videoSlide(10), Number.POSITIVE_INFINITY),
+    ).toBe(10)
+  })
+
+  it("gives an image slide its own turn length and no backstop grace", () => {
+    expect(watchHomeTvSlideDurationSeconds(imageSlide(), 480)).toBe(
+      WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS,
+    )
+    expect(watchHomeTvAdvanceBackstopSeconds(imageSlide(), 480)).toBe(
+      WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS,
+    )
   })
 })

@@ -19,14 +19,195 @@ import {
   adminVideoFragment,
   adminVideoHeroFragment,
   adminVideoRecommendationsFragment,
+  adminHomepageRecommendationsFragment,
+  adminPreCopyWatchHomeCategoryRailFragment,
+  adminWatchHomeCategoryRailFragment,
   adminWatchHomeHeroFragment,
 } from "@forge/admin-graphql/fragments"
 
+import { previewMediaCollectionTitlesFragment } from "@/lib/fragments/preview-media-collection-titles"
+
 import client from "@/lib/admin-client"
 
+const EXPERIENCE_PREVIEW_BASE_SHAPE = adminGraphql(
+  `
+    fragment ExperiencePreviewBaseShape on ExperiencePreview @_unmask {
+        experienceId
+        localeId
+        locale
+        slug
+        isHomepage
+        title
+        blocks {
+          __typename
+          ... on AdventCountdownBlock {
+            ...AdminAdventCountdown
+          }
+          ... on BibleQuotesCarouselBlock {
+            ...AdminBibleQuotesCarousel
+          }
+          ... on CardBlock {
+            ...AdminCard
+          }
+          ... on ContainerBlock {
+            ...AdminContainer
+          }
+          ... on CtaBlock {
+            ...AdminCta
+          }
+          ... on EasterDatesBlock {
+            ...AdminEasterDates
+          }
+          ... on InfoBlocksBlock {
+            ...AdminInfoBlocks
+          }
+          ... on LanguageGlobeBlock {
+            ...AdminLanguageGlobe
+          }
+          ... on MediaCollectionBlock {
+            ...AdminMediaCollection
+          }
+          ... on NavigationCarouselBlock {
+            ...AdminNavigationCarousel
+          }
+          ... on PromoBannerBlock {
+            ...AdminPromoBanner
+          }
+          ... on RelatedQuestionsBlock {
+            ...AdminRelatedQuestions
+          }
+          ... on SectionBlock {
+            ...AdminSection
+          }
+          ... on TextBlock {
+            ...AdminText
+          }
+          ... on VideoBlock {
+            ...AdminVideoSection
+          }
+          ... on VideoCarouselBlock {
+            ...AdminVideoCarousel
+          }
+          ... on VideoHeroBlock {
+            ...AdminVideoHero
+          }
+          ... on VideoRecommendationsBlock {
+            ...AdminVideoRecommendations
+          }
+          ... on HomepageRecommendationsBlock {
+            ...AdminHomepageRecommendations
+          }
+          ... on WatchHomeHeroBlock {
+            ...AdminWatchHomeHero
+          }
+        }
+    }
+  `,
+  [
+    adminAdventCountdownFragment,
+    adminBibleQuotesCarouselFragment,
+    adminCardFragment,
+    adminContainerFragment,
+    adminCtaFragment,
+    adminEasterDatesFragment,
+    adminInfoBlocksFragment,
+    adminLanguageGlobeFragment,
+    adminMediaCollectionFragment,
+    adminNavigationCarouselFragment,
+    adminPromoBannerFragment,
+    adminRelatedQuestionsFragment,
+    adminSectionFragment,
+    adminTextFragment,
+    adminVideoFragment,
+    adminVideoCarouselFragment,
+    adminVideoHeroFragment,
+    adminVideoRecommendationsFragment,
+    adminHomepageRecommendationsFragment,
+    adminWatchHomeHeroFragment,
+  ],
+)
+
+const EXPERIENCE_PREVIEW_SHAPE = adminGraphql(
+  `
+    fragment ExperiencePreviewShape on ExperiencePreview @_unmask {
+      ...ExperiencePreviewBaseShape
+      blocks {
+        ... on WatchHomeCategoryRailBlock { ...AdminWatchHomeCategoryRail }
+      }
+    }
+  `,
+  [EXPERIENCE_PREVIEW_BASE_SHAPE, adminWatchHomeCategoryRailFragment],
+)
+
+const PRE_COPY_EXPERIENCE_PREVIEW_SHAPE = adminGraphql(
+  `
+    fragment PreCopyExperiencePreviewShape on ExperiencePreview @_unmask {
+      ...ExperiencePreviewBaseShape
+      blocks {
+        ... on WatchHomeCategoryRailBlock { ...AdminPreCopyWatchHomeCategoryRail }
+      }
+    }
+  `,
+  [EXPERIENCE_PREVIEW_BASE_SHAPE, adminPreCopyWatchHomeCategoryRailFragment],
+)
+
+// Tier 2 of the fallback ladder in `getExperiencePreview`: the exact selection
+// Web shipped before preview titles existed. An Admin that predates
+// `previewResolvedTitle` can still serve this, so a title-only schema lag
+// degrades to today's titleless render instead of failing the page.
 const EXPERIENCE_PREVIEW = adminGraphql(
   `
     query ExperiencePreview($token: String!) {
+      experiencePreview(token: $token) {
+        ...ExperiencePreviewShape
+      }
+    }
+  `,
+  [EXPERIENCE_PREVIEW_SHAPE],
+)
+
+// Tier 1: the same shape plus the preview title overlay. This is the operation
+// every current deploy runs.
+const EXPERIENCE_PREVIEW_WITH_TITLES = adminGraphql(
+  `
+    query ExperiencePreviewWithTitles($token: String!) {
+      experiencePreview(token: $token) {
+        ...ExperiencePreviewShape
+        ...PreviewMediaCollectionTitles
+      }
+    }
+  `,
+  [EXPERIENCE_PREVIEW_SHAPE, previewMediaCollectionTitlesFragment],
+)
+
+const PRE_COPY_EXPERIENCE_PREVIEW = adminGraphql(
+  `
+    query PreCopyExperiencePreview($token: String!) {
+      experiencePreview(token: $token) { ...PreCopyExperiencePreviewShape }
+    }
+  `,
+  [PRE_COPY_EXPERIENCE_PREVIEW_SHAPE],
+)
+
+const PRE_COPY_EXPERIENCE_PREVIEW_WITH_TITLES = adminGraphql(
+  `
+    query PreCopyExperiencePreviewWithTitles($token: String!) {
+      experiencePreview(token: $token) {
+        ...PreCopyExperiencePreviewShape
+        ...PreviewMediaCollectionTitles
+      }
+    }
+  `,
+  [PRE_COPY_EXPERIENCE_PREVIEW_SHAPE, previewMediaCollectionTitlesFragment],
+)
+
+// Rollout-only equivalent for Web revisions that can still reach an Admin
+// schema from before WatchHomeCategoryRailBlock existed. Keep this selection
+// identical to EXPERIENCE_PREVIEW except for that one inline fragment and
+// dependency.
+const LEGACY_EXPERIENCE_PREVIEW = adminGraphql(
+  `
+    query LegacyExperiencePreview($token: String!) {
       experiencePreview(token: $token) {
         experienceId
         localeId
@@ -125,31 +306,255 @@ export type ExperiencePreview = NonNullable<
   ExperiencePreviewData["experiencePreview"]
 >
 
+type GraphqlErrorCandidate = {
+  readonly message?: unknown
+  readonly path?: unknown
+  readonly extensions?: unknown
+}
+
+function graphqlErrorsFrom(value: unknown): GraphqlErrorCandidate[] {
+  if (typeof value !== "object" || value === null) return []
+  const record = value as { error?: unknown; errors?: unknown }
+  const direct = Array.isArray(record.errors) ? record.errors : []
+  const nested =
+    typeof record.error === "object" &&
+    record.error !== null &&
+    "errors" in record.error &&
+    Array.isArray(record.error.errors)
+      ? record.error.errors
+      : []
+
+  return [...direct, ...nested].filter(
+    (entry): entry is GraphqlErrorCandidate =>
+      typeof entry === "object" && entry !== null,
+  )
+}
+
+// Admin and Web deploy independently. The legacy projection excludes the
+// category rail and homepage recommendations types, so it can serve either
+// rollout window even when the new recommendation row is disabled.
+const BLOCK_SCHEMA_LAG_MESSAGES = [
+  /^Unknown type "HomepageRecommendationsBlock"\./,
+  /^Unknown type "WatchHomeCategoryRailBlock"\./,
+  /^Cannot query field "tiles" on type "WatchHomeCategoryRailBlock"\./,
+]
+
+// An Admin that predates the preview title field rejects the tier-1 overlay
+// with one unknown-field error PER nesting path, so this arrives four at a
+// time. Match the prefix only: graphql-js appends a `Did you mean ...?`
+// suggestion whose contents depend on the other field names on the type.
+const PREVIEW_TITLE_SCHEMA_LAG_MESSAGES = [
+  /^Cannot query field "previewResolvedTitle" on type "MediaCollectionItem"\./,
+]
+
+const COPY_FIELDS = ["eyebrow", "title", "description", "ctaLabel"] as const
+const COPY_SCHEMA_LAG_MESSAGES = COPY_FIELDS.map(
+  (field) =>
+    new RegExp(
+      `^Cannot query field "${field}" on type "WatchHomeCategoryRailBlock"\\.`,
+    ),
+)
+
+type PreviewSchemaLag =
+  | "none"
+  | "titles"
+  | "copy"
+  | "copy-and-titles"
+  | "category-rail"
+
+// A validation error carries no `path` (nothing resolved) and is either
+// explicitly coded as a validation failure or carries no code at all.
+function isValidationShaped(entry: GraphqlErrorCandidate): boolean {
+  if (entry.path != null) return false
+
+  const code =
+    typeof entry.extensions === "object" &&
+    entry.extensions !== null &&
+    "code" in entry.extensions
+      ? entry.extensions.code
+      : undefined
+  return code === undefined || code === "GRAPHQL_VALIDATION_FAILED"
+}
+
+function matchesSchemaLagMessage(
+  entry: GraphqlErrorCandidate,
+  patterns: readonly RegExp[],
+): boolean {
+  if (typeof entry.message !== "string" || !isValidationShaped(entry)) {
+    return false
+  }
+  return patterns.some((pattern) => pattern.test(entry.message as string))
+}
+
 /**
- * Capability-only preview fetch. The token stays server-side, the response is
- * never written to Apollo's cache, and failures do not include the token.
+ * Classify a failed preview response over its COMPLETE error array.
+ *
+ * First-match classification is wrong here for two reasons. The tier-1
+ * operation selects the title at four nesting paths, so a title lag produces
+ * four errors rather than one; and an Admin lagging on multiple axes can
+ * return rail, copy, and title errors together, where only the legacy tier can
+ * serve the request.
+ *
+ * Any set containing an error outside the known lag axes returns "none".
+ * That routes to the ordinary throw, so an unrelated Admin failure is never
+ * swallowed by a compatibility render.
  */
-export async function getExperiencePreview(
+function classifyPreviewSchemaLag(value: unknown): PreviewSchemaLag {
+  const errors = graphqlErrorsFrom(value)
+  if (errors.length === 0) return "none"
+
+  if (!errors.every(isValidationShaped)) return "none"
+
+  const isTitle = (entry: GraphqlErrorCandidate) =>
+    matchesSchemaLagMessage(entry, PREVIEW_TITLE_SCHEMA_LAG_MESSAGES)
+  const isLegacy = (entry: GraphqlErrorCandidate) =>
+    matchesSchemaLagMessage(entry, BLOCK_SCHEMA_LAG_MESSAGES)
+  const isCopy = (entry: GraphqlErrorCandidate) =>
+    matchesSchemaLagMessage(entry, COPY_SCHEMA_LAG_MESSAGES)
+  const copyFieldIndexes = errors.flatMap((entry) =>
+    COPY_SCHEMA_LAG_MESSAGES.flatMap((pattern, index) =>
+      matchesSchemaLagMessage(entry, [pattern]) ? [index] : [],
+    ),
+  )
+  const hasCompleteCopySet =
+    new Set(copyFieldIndexes).size === COPY_FIELDS.length &&
+    copyFieldIndexes.length === COPY_FIELDS.length
+
+  if (
+    errors.some(isLegacy) &&
+    errors.every((entry) => isLegacy(entry) || isCopy(entry) || isTitle(entry))
+  ) {
+    return "category-rail"
+  }
+
+  if (
+    hasCompleteCopySet &&
+    errors.every((entry) => isTitle(entry) || isCopy(entry))
+  ) {
+    return errors.some(isTitle) ? "copy-and-titles" : "copy"
+  }
+
+  // `every` over a known non-empty array: a title lag routes to tier 2 only
+  // when it is the WHOLE story.
+  if (
+    errors.every((entry) =>
+      matchesSchemaLagMessage(entry, PREVIEW_TITLE_SCHEMA_LAG_MESSAGES),
+    )
+  ) {
+    return "titles"
+  }
+
+  return "none"
+}
+
+type PreviewQueryDocument =
+  | typeof EXPERIENCE_PREVIEW_WITH_TITLES
+  | typeof EXPERIENCE_PREVIEW
+  | typeof PRE_COPY_EXPERIENCE_PREVIEW_WITH_TITLES
+  | typeof PRE_COPY_EXPERIENCE_PREVIEW
+  | typeof LEGACY_EXPERIENCE_PREVIEW
+
+/**
+ * One tier of the fallback ladder. Returns the preview on success, or the
+ * schema-lag classification of its failure so the caller can pick the next
+ * tier. Every non-lag failure raises the capability-redacting public error.
+ */
+async function runPreviewTier(
+  document: PreviewQueryDocument,
   token: string,
-): Promise<ExperiencePreview | null> {
+): Promise<
+  | { ok: true; preview: ExperiencePreview | null }
+  | { ok: false; lag: PreviewSchemaLag }
+> {
+  let result
   try {
-    const result = await client.query({
-      query: EXPERIENCE_PREVIEW,
+    result = await client.query({
+      query: document,
       variables: { token },
       fetchPolicy: "no-cache",
       context: {
         fetchOptions: { cache: "no-store" },
       },
     })
-    const response = result as typeof result & {
-      error?: ErrorLike
-      errors?: readonly unknown[]
-    }
-    if (response.error || response.errors?.length) {
-      throw new Error("Experience preview query failed")
-    }
-    return result.data?.experiencePreview ?? null
-  } catch {
+  } catch (error) {
+    const lag = classifyPreviewSchemaLag(error)
+    if (lag === "none") throw new Error("Experience preview query failed")
+    return { ok: false, lag }
+  }
+
+  const response = result as typeof result & {
+    error?: ErrorLike
+    errors?: readonly unknown[]
+  }
+  const lag = classifyPreviewSchemaLag(response)
+  if (lag !== "none") return { ok: false, lag }
+
+  if (response.error || response.errors?.length) {
     throw new Error("Experience preview query failed")
   }
+  return {
+    ok: true,
+    preview: (result.data?.experiencePreview ??
+      null) as ExperiencePreview | null,
+  }
+}
+
+/**
+ * Capability-only preview fetch. The token stays server-side, the response is
+ * never written to Apollo's cache, and failures do not include the token.
+ *
+ * Two independent schema-lag axes are retried before the legacy tier:
+ *
+ *   - category-rail copy       — Admin predates the four copy fields
+ *   - preview titles           — Admin predates `previewResolvedTitle`
+ *   - legacy selection         — Admin predates WatchHomeCategoryRailBlock
+ *
+ * Every fallback renders exactly what Web rendered before its
+ * respective features shipped, so a deploy window degrades rather than
+ * serving an error page.
+ */
+export async function getExperiencePreview(
+  token: string,
+): Promise<ExperiencePreview | null> {
+  const withTitles = await runPreviewTier(EXPERIENCE_PREVIEW_WITH_TITLES, token)
+  if (withTitles.ok) return withTitles.preview
+
+  if (withTitles.lag === "titles") {
+    const shapeOnly = await runPreviewTier(EXPERIENCE_PREVIEW, token)
+    if (shapeOnly.ok) return shapeOnly.preview
+    if (shapeOnly.lag === "copy") {
+      const preCopy = await runPreviewTier(PRE_COPY_EXPERIENCE_PREVIEW, token)
+      if (preCopy.ok) return preCopy.preview
+      if (preCopy.lag !== "category-rail") {
+        throw new Error("Experience preview query failed")
+      }
+    } else if (shapeOnly.lag !== "category-rail") {
+      throw new Error("Experience preview query failed")
+    }
+  } else if (withTitles.lag === "copy") {
+    const preCopyWithTitles = await runPreviewTier(
+      PRE_COPY_EXPERIENCE_PREVIEW_WITH_TITLES,
+      token,
+    )
+    if (preCopyWithTitles.ok) return preCopyWithTitles.preview
+    if (preCopyWithTitles.lag === "titles") {
+      const preCopy = await runPreviewTier(PRE_COPY_EXPERIENCE_PREVIEW, token)
+      if (preCopy.ok) return preCopy.preview
+      if (preCopy.lag !== "category-rail") {
+        throw new Error("Experience preview query failed")
+      }
+    } else if (preCopyWithTitles.lag !== "category-rail") {
+      throw new Error("Experience preview query failed")
+    }
+  } else if (withTitles.lag === "copy-and-titles") {
+    const preCopy = await runPreviewTier(PRE_COPY_EXPERIENCE_PREVIEW, token)
+    if (preCopy.ok) return preCopy.preview
+    if (preCopy.lag !== "category-rail") {
+      throw new Error("Experience preview query failed")
+    }
+  }
+
+  const legacy = await runPreviewTier(LEGACY_EXPERIENCE_PREVIEW, token)
+  if (!legacy.ok) throw new Error("Experience preview query failed")
+  return legacy.preview
 }

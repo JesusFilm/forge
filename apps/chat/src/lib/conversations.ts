@@ -74,6 +74,10 @@ export type Message = {
   // feat-328: the one video the Seeker featured on this turn. Terminal-frame
   // only (plan D3) — set at finalize, never mid-stream.
   video?: VideoAttachment
+  // feat-366: suggested follow-up questions, bounded by toFollowUps (shape and
+  // size only — mastra owns content) on BOTH wire paths. Absent, never [].
+  // The one wire field that becomes an INPUT: a click sends it verbatim (KD4).
+  followUps?: string[]
   // Set on a failed assistant turn so the UI renders a visible failure notice
   // (R14/R16/R17). Partial streamed text stays in `content`.
   error?: ReplyFailureReason
@@ -144,6 +148,36 @@ export function titleFromFirstUser(
   return currentTitle.trim().length === 0 && firstUserContent
     ? deriveTitle(firstUserContent)
     : currentTitle
+}
+
+/**
+ * Title display bound in UTF-16 units — a MIRROR of Mastra's
+ * `AI_CHAT_TITLE_MAX_UNITS` (`apps/mastra/src/mastra/ai-chat-title-clamp.ts`;
+ * apps cannot cross-import). The editor's `maxLength` client bound; the
+ * server clamp stays the authority and its echo is adopted (R11).
+ */
+export const CONVERSATION_TITLE_MAX_UNITS = 120
+
+/**
+ * The control + invisible-format character class the Mastra clamp strips —
+ * a byte-for-byte MIRROR of the regex in
+ * `apps/mastra/src/mastra/ai-chat-title-clamp.ts` (pinned by reading that
+ * source in `conversations.test.ts`, so drift on either side goes red).
+ * Without the format ranges an invisible-only draft would normalize to a
+ * non-empty "title" that renders blank yet counts as a change (KD4).
+ */
+export const TITLE_STRIP_PATTERN =
+  // eslint-disable-next-line no-control-regex -- stripping control chars is the point
+  /[\u0000-\u001f\u007f-\u009f\u00ad\u200b-\u200f\u2028-\u202e\u2060-\u2064\u2066-\u206f\ufeff]/g
+
+/**
+ * Normalize a rename draft (feat-450, KTD6): strip the mirrored character
+ * class, collapse whitespace runs, trim. Deliberately NO length clamp — the
+ * server clamps and echoes, and the session adopts the echo. `""` means
+ * "nothing to send" (KD4: an empty submit cancels quietly).
+ */
+export function normalizeConversationTitle(raw: string): string {
+  return raw.replace(TITLE_STRIP_PATTERN, " ").replace(/\s+/g, " ").trim()
 }
 
 /**

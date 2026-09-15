@@ -2,14 +2,16 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import {
   Animated,
   FlatList,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 
-import { useRouter } from "expo-router"
+import { useIsFocused, useRouter } from "expo-router"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { getApolloClient } from "../../src/lib/apolloClient"
@@ -42,12 +44,14 @@ import {
 import { encodeWatchSeed } from "../../src/lib/watchSeed"
 import { isSeriesSearchResult } from "../../src/lib/isSeriesRecord"
 import { SearchResultCard } from "../../src/components/search/SearchResultCard"
+import { useSearchPreviewCycle } from "../../src/components/search/useSearchPreviewCycle"
 import {
   REVEAL_FALLBACK_MS,
   entranceDelayMs,
 } from "../../src/components/search/searchEntrance"
 import { SearchResultSkeleton } from "../../src/components/search/SearchResultSkeleton"
 import { BrowseTopics } from "../../src/components/search/BrowseTopics"
+import { useTabBarClearance } from "../../src/lib/tabBar"
 import { useExperienceSelection } from "../../src/contexts/ExperienceSelectionProvider"
 import {
   ACCENT,
@@ -64,6 +68,8 @@ const MAX_PREFETCH_INFLIGHT = 3
 
 export default function DiscoverScreen() {
   const router = useRouter()
+  const insets = useSafeAreaInsets()
+  const tabBarClearance = useTabBarClearance()
   const { selectExperience } = useExperienceSelection()
 
   // Warm the detail query on touch-down so navigation reads a warm cache.
@@ -617,10 +623,40 @@ export default function DiscoverScreen() {
     if (awaitingRevealRef.current) releaseLoadingMore()
   }, [releaseLoadingMore])
 
+  // The grid's preview turn walks these. A stable ref because FlatList
+  // throws if onViewableItemsChanged changes identity between renders.
+  const [visibleIndices, setVisibleIndices] = useState<number[]>([])
+  const handleViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: { index: number | null }[] }) => {
+      setVisibleIndices(
+        viewableItems
+          .map((entry) => entry.index)
+          .filter((i): i is number => i != null),
+      )
+    },
+  ).current
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 60,
+  }).current
+
+  const isFocused = useIsFocused()
+
+  const previewIndex = useSearchPreviewCycle({
+    results,
+    visibleIndices,
+    // A pass belongs to one settled result set: never while a search is
+    // in flight, and never over an error's stale results.
+    // isFocused matters: expo-router Tabs keeps a blurred screen mounted, so
+    // without it the pass keeps spending Mux fetches for an invisible grid.
+    enabled: isFocused && !loading && !error && results.length > 0,
+    passKey: searchRequestIdRef.current,
+  })
+
   const renderItem = useCallback(
     ({ item, index }: { item: SearchResult; index: number }) => (
       <SearchResultCard
         result={item}
+        previewActive={index === previewIndex}
         entranceDelay={entranceDelayMs(index, batchStartRef.current)}
         onSelect={handleSelectResult}
         onPressIn={handlePrefetch}
@@ -631,7 +667,7 @@ export default function DiscoverScreen() {
         }
       />
     ),
-    [handleSelectResult, handlePrefetch, handleBatchRevealed],
+    [handleSelectResult, handlePrefetch, handleBatchRevealed, previewIndex],
   )
 
   const keyExtractor = useCallback(
@@ -641,6 +677,15 @@ export default function DiscoverScreen() {
 
   return (
     <View style={styles.container}>
+      {/* feat-500: NativeTabs has no header options, so the iOS screen draws
+          its own. Android still takes the navigator's header. */}
+      {Platform.OS === "ios" && (
+        <View style={[styles.header, { paddingTop: insets.top }]}>
+          <Text accessibilityRole="header" style={styles.headerTitle}>
+            Search
+          </Text>
+        </View>
+      )}
       <View style={styles.inputContainer}>
         <View style={styles.inputWrapper}>
           <TextInput
@@ -717,7 +762,13 @@ export default function DiscoverScreen() {
               keyExtractor={keyExtractor}
               numColumns={2}
               keyboardDismissMode="on-drag"
-              contentContainerStyle={styles.listContent}
+              onViewableItemsChanged={handleViewableItemsChanged}
+              viewabilityConfig={viewabilityConfig}
+              contentContainerStyle={[
+                styles.listContent,
+                { paddingBottom: 32 + tabBarClearance },
+              ]}
+              scrollIndicatorInsets={{ bottom: tabBarClearance }}
               columnWrapperStyle={styles.columnWrapper}
               ListFooterComponent={
                 <>
@@ -764,6 +815,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: BG_COLOR,
+  },
+  header: {
+    backgroundColor: BG_COLOR,
+  },
+  headerTitle: {
+    color: "#f5f5f4",
+    fontFamily: "System",
+    fontSize: 17,
+    fontWeight: "600",
+    textAlign: "center",
+    paddingBottom: 10,
+    paddingTop: 10,
   },
   contentArea: {
     flex: 1,

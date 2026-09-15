@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import {
   boundedSeoProviderPageSize,
+  createCachedSeoHostResolver,
   fetchSeoUrl,
   readSeoBody,
   validateSeoUrl,
@@ -10,6 +11,20 @@ import {
 const publicDns = async () => [{ address: "93.184.216.34", family: 4 }]
 
 describe("SEO URL safety", () => {
+  it("shares one DNS resolution within a bounded probe session", async () => {
+    const upstream = vi.fn(publicDns)
+    const resolveHost = createCachedSeoHostResolver(upstream)
+
+    const [first, second] = await Promise.all([
+      resolveHost("WWW.JESUSFILM.ORG"),
+      resolveHost("www.jesusfilm.org"),
+    ])
+
+    expect(first).toEqual(second)
+    expect(upstream).toHaveBeenCalledTimes(1)
+    expect(upstream).toHaveBeenCalledWith("www.jesusfilm.org")
+  })
+
   it("bounds provider pages by total, provider, and response limits", () => {
     expect(
       boundedSeoProviderPageSize({

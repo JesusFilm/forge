@@ -180,7 +180,8 @@
     "changeAudioLanguage": "آڊيو ٻولي تبديل ڪريو",
     "home": "JesusFilm هوم",
     "closeSearch": "ڳولا بند ڪريو",
-    "submitSearch": "ڳوليو"
+    "submitSearch": "ڳوليو",
+    "library": "لائبريري"
   },
   "SearchOverlay": {
     "dialogLabel": "وڊيوز ڳوليو ۽ براؤز ڪريو",
@@ -467,6 +468,7 @@
     "sports": "راندين",
     "collections": "مجموعا",
     "subtitlesOnly": "صرف سب ٽائيٽلز",
+    "backToTop": "مٿي واپس",
     "newlyAdded": "نئون شامل ٿيل",
     "newVideosTitle": "{language} ۾ نيون مسيحي وڊيوز",
     "newestFirst": "سڀ کان نئون پهريان",
@@ -497,7 +499,21 @@
     "standaloneVideos": "الڳ وڊيوز",
     "videosFromCollection": "{collection} مان وڊيوز.",
     "standaloneDescription": "هن ٻولي ۾ الڳ وڊيوز.",
-    "openCollection": "مجموعو کوليو"
+    "openCollection": "مجموعو کوليو",
+    "filters": "فلٽر",
+    "filterLength": "ڊگھائي",
+    "filterLength_under5": "5 منٽن کان گھٽ",
+    "filterLength_5to10": "5-10 منٽ",
+    "filterLength_10to30": "10-30 منٽ",
+    "filterLength_over30": "30 منٽن کان وڌيڪ",
+    "filterType": "قسم",
+    "clearFilters": "فلٽر صاف ڪريو",
+    "filterResults": "{total} مان {count} ڏيکاريل",
+    "noFilterResults": "انهن فلٽرن سان ڪوبه وڊيو نه ٿو ملي. هڪ هٽائي ڏسو.",
+    "filterAdded": "شامل ڪيو ويو",
+    "filterAdded_60d": "گذريل 60 ڏينهن",
+    "filterAdded_6m": "گذريل 6 مهينا",
+    "filterAdded_12m": "گذريل 12 مهينا"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project واچ",
@@ -511,7 +527,8 @@
     "previousVideoPreview": "پوئين وڊيو پريويو",
     "nextVideoPreview": "اڳيون وڊيو پريويو",
     "mediaCollection": "ميڊيا مجموعو",
-    "scrollToVideo": "{title} وڊيو ڏانهن اسڪرول ڪريو"
+    "scrollToVideo": "{title} وڊيو ڏانهن اسڪرول ڪريو",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project هوم",
@@ -581,7 +598,7 @@
     "eyebrow": "Browse the library",
     "title": "Browse by category",
     "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all video collections",
+    "seeAll": "See all videos",
     "categories": {
       "jesus": "The JESUS Film",
       "gospels": "Gospels",
@@ -647,44 +664,6 @@
     "backToWatch": "واپس Watch ڏانهن",
     "browseVideos": "وڊيوز براؤز ڪريو"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "مختصر فلم ڏسو",
-    "actions": {
-      "joinUs": "اسان سان شامل ٿيو",
-      "shareMission": "اسان جي مشن ۾ حصو وٺو"
-    },
-    "welcomeStart": {
-      "label": "ايمان ۽ صحيفو",
-      "title": "اڄ جون وڊيو چونڊون",
-      "description": "اسان جي لائبريري مان ايمان مرڪوز وڊيو مواد، جيڪو همت ڏئي، چئلينج ڪري، ۽ سوچ ويچار کي اُڀاري."
-    },
-    "welcomeMorning": {
-      "label": "صبح جي همت افزائي",
-      "title": "صبح بخير! اڄ جا بائبل جا لمحات توهان جو انتظار ڪري رهيا آهن.",
-      "description": "پنهنجو ڏينهن بائبل جي همت ڏيندڙ لمحن سان شروع ڪريو، جيڪي توهان جي روح کي اُڀارڻ لاءِ ٺاهيا ويا آهن."
-    },
-    "welcomeAfternoon": {
-      "label": "منجهند جي همت افزائي",
-      "title": "منجهند بخير! توهان جي ڏينهن لاءِ بائبل جا لمحات.",
-      "description": "منجهند جي وقفي يا وڌيڪ همت لاءِ موزون همت افزا بائبل مواد."
-    },
-    "welcomeEvening": {
-      "label": "شام جي همت افزائي",
-      "title": "شام بخير! بائبل جي لمحن سان آرام ڪريو.",
-      "description": "سڪون ڏيندڙ بائبل لمحات، جيڪي توهان کي سوچ ويچار ۽ آرام ڏيڻ ۾ مدد ڪن جيئن ڏينهن پورو ٿئي."
-    },
-    "joinUs": {
-      "label": "اسان سان شامل ٿيو",
-      "title": "اربين ماڻهو ڳولي رهيا آهن",
-      "description": "فصل تيار آهي. ڊجيٽل ميڊيا ذريعي دنيا سان انجيل شيئر ڪرڻ ۾ اسان سان شامل ٿيو."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "اچو گڏ هلون",
-      "title": "عيسيٰ جي ڪهاڻي گڏجي ٻڌايون",
-      "description": "ته جيئن هو پنهنجي ئي ٻولي ۾، جتي هو آهن اتي ئي، عيسيٰ جي محبت ٻڌي ۽ ڏسي سگهن."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% مطابقت",
     "none": "هن ٻولي ۾ هن وڊيو لاءِ ڪا به سفارش نه ملي."
@@ -744,5 +723,28 @@
     "languageVersionLabel": "آڊيو ٻولي",
     "selectLanguageVersion": "ٻوليءَ جو ورزن چونڊيو",
     "watchSelectedVersion": "چونڊيل ورزن ڏسو"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "ڪوڪي جون چونڊون",
+    "bannerTitle": "توهان جي رازداري جون چونڊون",
+    "bannerDescription": "ضروري ڪوڪيون Watch کي محفوظ ۽ صحيح نموني هلندڙ رکن ٿيون. توهان جي اجازت سان، هڪ اختياري فرسٽ پارٽي ڪوڪي دورن جي وچ ۾ توهان جون دلچسپيون ياد رکي سگهي ٿي ته جيئن سفارشون ذاتي بڻجن. حوالي مطابق سفارشون ٻنهي حالتن ۾ موجود رهنديون.",
+    "acceptAll": "سڀ قبول ڪريو",
+    "essentialOnly": "صرف ضروري",
+    "manageChoices": "چونڊون سنڀاليو",
+    "savingChoice": "ڪوڪي جي چونڊ محفوظ ٿي رهي آهي",
+    "settings": "ڪوڪي سيٽنگون",
+    "settingsDescription": "چونڊيو ته ڇا Watch دورن جي وچ ۾ سفارش بابت دلچسپيون ياد رکي سگهي. توهان هن کي ڪنهن به وقت تبديل ڪري سگهو ٿا.",
+    "essentialCookies": "ضروري ڪوڪيون",
+    "essentialDescription": "سيڪيورٽي، پلے بیک، رازداري جون چونڊون، ۽ سفارش جي درخواست جي نسبت.",
+    "alwaysActive": "هميشه فعال",
+    "personalization": "ذاتي بڻائڻ",
+    "personalizationDescription": "دورن جي وچ ۾ محدود دلچسپيون ياد رکو. هن کي بند ڪرڻ سان به حوالي مطابق سفارشون موجود رهنديون.",
+    "erasurePending": "پروفائل مٽائڻ جو عمل جاري آهي. حوالي مطابق سفارشون اڳ ئي فعال آهن.",
+    "cancel": "منسوخ ڪريو",
+    "saveChoices": "چونڊون محفوظ ڪريو",
+    "saving": "محفوظ ٿي رهيو آهي…",
+    "loadError": "توهان جي چونڊ لوڊ نه ٿي سگهي. توهان اڃا هيٺ چونڊ ڪري سگهو ٿا.",
+    "grantError": "ذاتي بڻائڻ فعال نه ٿي سگهيو. صرف ضروري اختيار موجود رهندو.",
+    "saveError": "توهان جي چونڊ محفوظ نه ٿي سگهي. مهرباني ڪري ٻيهر ڪوشش ڪريو."
   }
 }

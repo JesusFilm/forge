@@ -281,7 +281,7 @@ export function SubtitleTranscript({
   const loadingContent = (
     <div
       id={contentId}
-      className="flex items-center justify-center px-8 py-16 text-sm text-stone-400"
+      className="flex items-center justify-center px-8 py-16 text-base sm:text-sm text-stone-400"
     >
       {t("loading")}
     </div>
@@ -293,7 +293,7 @@ export function SubtitleTranscript({
     content = (
       <div
         id={contentId}
-        className="px-8 py-16 text-center text-sm text-stone-400"
+        className="px-8 py-16 text-center text-base sm:text-sm text-stone-400"
       >
         {t("unavailable")}
       </div>
@@ -361,12 +361,14 @@ export function SubtitleTranscript({
                 {t("heading")}
               </h2>
               {expanded ? (
-                <p className="mt-1 text-sm text-stone-400">{t("subheading")}</p>
+                <p className="mt-1 text-base sm:text-sm text-stone-400">
+                  {t("subheading")}
+                </p>
               ) : null}
             </div>
             <div className="flex items-center gap-3">
               {expanded && transcriptSubtitles.length > 1 ? (
-                <label className="flex items-center gap-2 text-sm text-stone-300">
+                <label className="flex items-center gap-2 text-base sm:text-sm text-stone-300">
                   <span className="sr-only">{t("subtitleLanguage")}</span>
                   <select
                     data-testid="watch-subtitle-language"
@@ -393,7 +395,7 @@ export function SubtitleTranscript({
                         selectedSlug: nextSlug,
                       })
                     }}
-                    className={`appearance-none rounded-full bg-stone-900/80 px-4 py-2 text-sm font-medium text-stone-100 ${GLASS_OUTLINE_CLASS} focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2`}
+                    className={`appearance-none rounded-full bg-stone-900/80 px-4 py-2 text-base sm:text-sm font-medium text-stone-100 ${GLASS_OUTLINE_CLASS} focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2`}
                   >
                     {transcriptSubtitles.map((subtitle) => (
                       <option
@@ -407,7 +409,7 @@ export function SubtitleTranscript({
                   </select>
                 </label>
               ) : (
-                <span className="rounded-full bg-stone-900/60 px-3 py-1 text-xs font-medium uppercase tracking-wide text-stone-300">
+                <span className="rounded-full bg-stone-900/60 px-3 py-1 text-sm sm:text-xs font-medium uppercase tracking-wide text-stone-300">
                   {activeSubtitle ? languageLabel(activeSubtitle) : ""}
                   {activeSubtitle?.aiGenerated ? t("aiSuffix") : ""}
                 </span>

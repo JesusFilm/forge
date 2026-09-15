@@ -8,10 +8,15 @@ import {
 } from "@/services/embedding-ingest-shared"
 import {
   buildExperienceEmbeddingSource,
-  EXPERIENCE_EMBEDDING_DIMENSIONS,
   writeExperienceEmbeddingPayloadInTransaction,
   type ExperienceEmbeddingGenerationMode,
 } from "@/services/embeddings.service"
+import {
+  contentEmbeddingTupleMatches,
+  resolveActiveContentEmbeddingContract,
+  type ContentEmbeddingContract,
+  type ContentEmbeddingTuple,
+} from "@/services/content-embedding-contract"
 
 const TargetSchema = z
   .object({
@@ -95,6 +100,7 @@ export class ExperienceEmbeddingIngestError extends Error {
       | "payload_invalid"
       | "target_not_found"
       | "target_unpublished"
+      | "contract_mismatch"
       | "dimension_mismatch"
       | "source_hash_mismatch"
       | "write_failed",
@@ -106,17 +112,55 @@ export class ExperienceEmbeddingIngestError extends Error {
   }
 }
 
-function validateEmbedding(payload: ExperienceEmbeddingIngestPayload): void {
-  if (payload.model.dimensions !== EXPERIENCE_EMBEDDING_DIMENSIONS) {
+function validateEmbedding(
+  payload: ExperienceEmbeddingIngestPayload,
+  contract: ContentEmbeddingContract,
+): void {
+  if (payload.model.dimensions !== contract.storage.dimensions) {
     throw new ExperienceEmbeddingIngestError(
       "dimension_mismatch",
-      `payload dimensions=${payload.model.dimensions}; expected ${EXPERIENCE_EMBEDDING_DIMENSIONS}`,
+      `payload dimensions=${payload.model.dimensions}; expected ${contract.storage.dimensions}`,
     )
   }
   if (payload.embedding.length !== payload.model.dimensions) {
     throw new ExperienceEmbeddingIngestError(
       "dimension_mismatch",
       "embedding length does not match payload dimensions",
+    )
+  }
+}
+
+function payloadEmbeddingTuple(
+  payload: ExperienceEmbeddingIngestPayload,
+): ContentEmbeddingTuple | null {
+  if (
+    payload.model.provider == null ||
+    payload.model.nativeDimensions == null
+  ) {
+    return null
+  }
+
+  return {
+    provider: payload.model.provider,
+    model: payload.model.name,
+    nativeDimensions: payload.model.nativeDimensions,
+    dimensions: payload.model.dimensions,
+    transformVersion: payload.model.transformVersion ?? null,
+  }
+}
+
+function assertPayloadMatchesActiveContract(
+  payload: ExperienceEmbeddingIngestPayload,
+  contract: ContentEmbeddingContract,
+): void {
+  const payloadTuple = payloadEmbeddingTuple(payload)
+  if (
+    payloadTuple == null ||
+    !contentEmbeddingTupleMatches(contract.storage, payloadTuple)
+  ) {
+    throw new ExperienceEmbeddingIngestError(
+      "contract_mismatch",
+      `experience embedding payload does not match active content embedding contract ${contract.id}`,
     )
   }
 }
@@ -337,11 +381,13 @@ export async function ingestExperienceEmbedding(
   }
 
   const payload = parsed.data
-  validateEmbedding(payload)
   const mode = payload.generation.mode as ExperienceEmbeddingGenerationMode
 
   return prisma.$transaction(
     async (tx) => {
+      const contract = await resolveActiveContentEmbeddingContract(tx)
+      assertPayloadMatchesActiveContract(payload, contract)
+      validateEmbedding(payload, contract)
       await lockExperienceLocale(tx, payload.target.experienceLocaleId)
       const target = await resolveTargetAndValidateSource(tx, payload)
       const existing = await readExistingSummary(tx, target.experienceLocaleId)

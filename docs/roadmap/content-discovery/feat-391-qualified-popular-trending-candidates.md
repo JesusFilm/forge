@@ -15,6 +15,7 @@ depends_on:
   - "feat-383"
 blocks:
   - "feat-392"
+  - "feat-449"
 tags:
   - "admin"
   - "recommendations"
