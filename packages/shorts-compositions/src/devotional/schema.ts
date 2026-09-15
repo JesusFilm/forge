@@ -60,6 +60,22 @@ export const devotionalCardSchema = z.object({
   /** staticFile name of the clip for a `video` card (plays with its own sound). */
   videoFile: z.string().optional(),
   /**
+   * Where the portrait video window crops the 16:9 clip, over time: the
+   * normalized x of the source the window is centred on, as a PATH in seconds
+   * from the clip's start, interpolated linearly between points. Absent means
+   * the old behaviour, a blind centre crop — which on a two-person shot lands
+   * between the people. Two points a frame apart make an instant jump, which is
+   * how a cut in the footage is followed without a visible glide.
+   */
+  clipFocus: z
+    .array(
+      z.object({
+        atSec: z.number().nonnegative(),
+        x: z.number().min(0).max(1),
+      }),
+    )
+    .optional(),
+  /**
    * Timed captions for a `video` card, transcribed from the clip's own audio
    * (experimental subtitle bot). Rendered in the dark band just below the
    * fitted video window. Times are seconds relative to the clip's start.

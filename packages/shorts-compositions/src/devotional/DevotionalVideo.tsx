@@ -2952,6 +2952,27 @@ function Background({
                 width: "100%",
                 height: "56.25%", // 1080/1920 → square in the 9:16 frame
                 objectFit: "cover",
+                // Follow the faces through the clip when the manifest carries a
+                // path; a square window on a 16:9 frame drops 22% either side,
+                // and a centred drop lands between two people.
+                ...(card.clipFocus && card.clipFocus.length > 0
+                  ? {
+                      objectPosition: `${(
+                        coverObjectPositionX(
+                          pathAt(
+                            card.clipFocus,
+                            (frame +
+                              (props.continuousClip
+                                ? Math.max(0, Math.round(bgStartFrame))
+                                : 0)) /
+                              fps,
+                          ),
+                          { width, height: height * 0.5625 },
+                          { width: 16, height: 9 },
+                        ) * 100
+                      ).toFixed(2)}% 50%`,
+                    }
+                  : {}),
                 filter: videoGrade || undefined,
                 transform: `scale(${kbFit})`,
               }
@@ -3273,6 +3294,30 @@ export function focusAt(
   if (!currentEase || tSec >= currentAt + focusEaseSec(prev, current))
     return current
   return eased(prev, current, currentAt, tSec)
+}
+
+/**
+ * Value of a piecewise-linear path at `tSec`. Holds the first point before the
+ * path starts and the last after it ends. Two points a frame apart make an
+ * effectively instant jump — how a cut in the footage is followed.
+ */
+export function pathAt(
+  points: ReadonlyArray<{ atSec: number; x: number }>,
+  tSec: number,
+): number {
+  if (points.length === 0) return 0.5
+  if (tSec <= points[0].atSec) return points[0].x
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1]
+    const b = points[i]
+    if (tSec <= b.atSec) {
+      const span = b.atSec - a.atSec
+      if (span <= 0) return b.x
+      const p = (tSec - a.atSec) / span
+      return a.x + (b.x - a.x) * p
+    }
+  }
+  return points[points.length - 1].x
 }
 
 export function coverObjectPositionX(

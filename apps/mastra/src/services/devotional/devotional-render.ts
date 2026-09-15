@@ -15,6 +15,7 @@ import {
 import { joinAudioVarGaps, slowAndPad } from "./audio-concat"
 import { createSilentVoiceover } from "./devotional-silent-voiceover"
 import { planFaceCropAnchors } from "./face-crop-anchors"
+import { planClipFocus } from "./clip-focus"
 import {
   cacheDirFor,
   loadCachedAudio,
@@ -915,6 +916,9 @@ export type RenderOptions = {
   /** Crop the background toward the faces in it instead of blind-centring it.
    *  Best-effort: without a face detector the render is unchanged. */
   faceCrop?: boolean
+  /** Follow the faces through the film clip's square window instead of
+   *  blind-centring it. Best-effort like `faceCrop`. */
+  clipCrop?: boolean
   /** Review preview: render N evenly spaced PNG stills INSTEAD of the MP4.
    *  Costs one frame of rasterization each — seconds, not minutes — which is
    *  what makes "show me screenshots before you render the whole thing" a
@@ -1598,6 +1602,17 @@ async function renderInStage(
     focus.forEach((steps, i) => {
       if (steps) manifest.cards[i].bgFocus = steps
     })
+  }
+
+  if (options.clipCrop) {
+    for (const card of manifest.cards) {
+      if (card.kind !== "video" || typeof card.videoFile !== "string") continue
+      const focus = await planClipFocus({
+        clipFile: path.join(stage, card.videoFile),
+        log,
+      })
+      if (focus.length > 0) card.clipFocus = focus
+    }
   }
 
   await writeFile(
