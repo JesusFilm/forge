@@ -68,6 +68,9 @@ clock differences and count bounds. The 439-case recommendation service unit run
 and existing fresh-first/refill regressions pass. A 10,000-unrelated-episode fixture
 used the new index and measured 1.94 ms median / 4.41 ms p95 over 25 calls.
 
-Implementation is complete locally. Production repeat-rate and delivery-latency
-verification remains a post-deployment check through the normal PR-to-main flow;
-see `docs/operations/recommendation-quality-validation-2026-09-15.md`.
+Merged in PR #2309 and deployed through the normal PR-to-main flow. In the first
+bounded production sample, all five actual recent-start rejections reconciled to
+direct-origin playback in the same session. The synthetic profile-linked playback
+also appeared in the real recent-context reader. Full regression and production
+evidence, including sample limits and delivery checks, are recorded in
+`docs/operations/recommendation-production-verification-2026-09-16.md`.

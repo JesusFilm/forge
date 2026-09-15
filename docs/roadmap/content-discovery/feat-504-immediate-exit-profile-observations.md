@@ -70,7 +70,14 @@ profile interests, existing click weights or qualified-view classification.
 Verification: 54 focused Admin tests, 72 focused Web tests, seven real PostgreSQL
 episode cases, independent review, browser lifecycle checks and before/after load
 measurements. Full evidence and rollout checks are in
-`docs/validation/feat-504-playback-observations/README.md`. Implementation is
-complete locally; production rollout and the broader feat-370 instrumentation
-remain separate work. Choosing a preference meaning or weight requires an
-evaluated interpretation decision.
+`docs/validation/feat-504-playback-observations/README.md`.
+
+Merged in PR #2309 and verified in production: a synthetic route exit after
+1.106 seconds of active playback finalized as a rapid departure with unknown
+preference and no ranking influence. It created no qualified profile contribution
+or negative evidence. A separate 42.436-second viewing produced one qualified
+durable contribution and retained pause/resume observations. See
+`docs/operations/recommendation-production-verification-2026-09-16.md` for the
+aggregate evidence and limits. Broader feat-370 instrumentation remains open;
+choosing a preference meaning or weight requires an evaluated interpretation
+decision.
