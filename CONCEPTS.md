@@ -1431,16 +1431,20 @@ Stopping an in-flight download's native task and neutralizing its callbacks — 
 
 ### Raw Export
 
-Saving a plain video file into the device's own photo library, where the viewer owns it like any other photo or video, as distinct from an offline copy the app manages in its own storage and can revoke.
-_Avoid:_ Save to Photos — that is the viewer-facing label for the same thing.
+Saving a plain video file into a folder the viewer picks with the device's own file picker, where the viewer owns it like any other file, as distinct from an offline copy the app manages in its own storage and can revoke.
+_Avoid:_ Save to Files — that is the viewer-facing label for the same thing.
 
-A Raw Export creates no Download Record, so nothing derived from offline copies reflects one: a series control shows the same idle label for the whole run, and the library lists nothing new. Anything that must observe an export therefore reads the export's own state, never an offline aggregate. An exported file survives deleting the app, so there is nothing to resume and nothing to reclaim.
+A Raw Export creates no Download Record, so nothing derived from offline copies reflects one: a series control shows the same idle label for the whole run, and the library lists nothing new. Anything that must observe an export therefore reads the export's own state, never an offline aggregate. An exported file lives outside the app's own storage, so there is nothing to resume and nothing to reclaim.
+
+The viewer picks the folder ONCE, before the export starts, and the grant lasts only as long as the process that asked for it. A run interrupted by a process death is therefore discarded rather than finished: the app can neither copy the staged bytes anywhere nor open a picker to ask again.
 
 ### Export Run
 
 One pass of a Raw Export across a series, carrying its own identity and covering the episodes in order, one at a time.
 
-A run outlives every episode inside it, so any state that must survive between two episodes belongs to the run rather than to the episode currently transferring — a stop is the case that matters. Stopping a run ends the whole run, and episodes already written to the photo library stay in it. The run's own end releases its cancellation state, so a later run for the same series never inherits it.
+A run outlives every episode inside it, so any state that must survive between two episodes belongs to the run rather than to the episode currently transferring — a stop is the case that matters. Stopping a run ends the whole run, and episodes already copied into the folder stay there. The run's own end releases its cancellation state, so a later run for the same series never inherits it.
+
+One Export Run covers ONE folder. The viewer answers the picker once and every episode lands beside the last.
 
 ## AI chat
 

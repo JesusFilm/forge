@@ -8,6 +8,18 @@ component: raw-file-export
 
 # expo-media-library's package root throws at runtime, and a name-grep guard cannot see it
 
+> **Package removed on 2026-09-15.** The export destination moved to a folder
+> the viewer picks, `expo-media-library` left the app, and the
+> `mediaLibraryEntryPoint` guard this note describes was deleted with it. The
+> package-specific facts below are history. The transferable lesson — a
+> package whose root and subpath share one typed surface but differ at runtime
+> is only caught by a device run or a guard that READS the entry point — still
+> applies, and it applies to the replacement too: `rawExportRuntime.ts` now
+> imports `documentDirectory` from `expo-file-system/legacy` and `Directory` /
+> `File` from the `expo-file-system` root, and the same root re-exports
+> `legacyWarnings` stubs for the OLD functions. The `/legacy` import survives
+> for exactly the reason this note gives.
+
 ## What happened
 
 `apps/mobile/src/lib/rawExportRuntime.ts` — the composition root for raw file

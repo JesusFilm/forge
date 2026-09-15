@@ -12,6 +12,25 @@ deepened: 2026-09-09
 
 # Mobile Raw File Export - Plan
 
+> **Superseded in part on 2026-09-15 — the destination changed.** Product
+> leadership decided that exported videos must NOT land in the device photo
+> library. The export now copies the file into a folder the viewer picks with
+> the platform's native folder picker (`Directory.pickDirectoryAsync` from
+> `expo-file-system`; no new native module). This plan is the record of the
+> photo-library design as shipped in #2232 and is kept for that history.
+> Everything below that names the photo library, an album, a permission, an
+> add-only scope, a deferred write, or a foreground completion (R10, R11, R17,
+> R25, R26, R28, KD7, KTD4, KTD7, KTD10, U1, and the `expo-media-library`
+> rows of the device pass) is retired. The destination-agnostic requirements
+> (the mode control, the transfer port, the staging root, the session store,
+> the one-at-a-time slot, the series run, the report fold, R8's space
+> arithmetic, R18's clean root, R21, R22, R23, R34, R38) stand unchanged. The
+> two stop conditions in the Goal Capsule are moot: neither a deferred write
+> nor a named album exists any more. The folder grant lives only as long as
+> the process that asked for it, so a run interrupted by a process death is
+> DISCARDED, never finished. See
+> `docs/solutions/mobile/raw-export-folder-destination-20260915.md`.
+
 ## Goal Capsule
 
 - Objective: a viewer can keep a JesusFilm video as an ordinary video file on their own device, so it survives outside the app and plays with the tools their phone already has.
