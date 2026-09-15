@@ -144,3 +144,11 @@ owned by `feat-464`.
   Red/green real-Redis proof includes single increment and no late retry writes.
   See `docs/solutions/performance-issues/redis-clock-sample-can-expire-admission-early-20260915.md`.
   Genuine later event-loop timeouts remain under investigation; keep open.
+- The Web ETag fix is merged in #2297. A separate primary-host trace reveals
+  legacy contextual recovery running 34 serial SQL queries past Web's 6.5-second
+  deadline. The exact combined query retains every seed and candidate rule;
+  local Augustine service parity improves 32,129 ms / 37 statements to 933 ms /
+  three statements with an identical six-item response. The isolated Postgres
+  regressions pass. See
+  `docs/solutions/performance-issues/contextual-recommendations-repeat-catalog-work-20260915.md`.
+  Production deployment and verification remain pending.

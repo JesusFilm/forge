@@ -16,14 +16,25 @@ vi.mock("next/image", () => ({
     alt,
     className,
     sizes,
+    width,
+    height,
   }: {
     src: string
     alt: string
     className?: string
     sizes?: string
+    width?: number
+    height?: number
   }) => (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} alt={alt} className={className} sizes={sizes} />
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      sizes={sizes}
+      width={width}
+      height={height}
+    />
   ),
 }))
 vi.mock("@/components/ui/carousel", () => {
@@ -364,7 +375,10 @@ describe("LanguageInventoryPage thumbnail sources", () => {
       expect(frame?.classList.contains("w-28")).toBe(false)
       expect(frame?.classList.contains("sm:w-24")).toBe(false)
       expect(image?.classList.contains("object-center")).toBe(true)
-      expect(image?.getAttribute("sizes")).toBe("(max-width: 640px) 42px, 37px")
+      // Explicit intrinsic dimensions keep next/image on a two-candidate
+      // srcset while still supplying the enlarged phone frame at up to 3 DPR.
+      expect(image?.getAttribute("width")).toBe("64")
+      expect(image?.getAttribute("height")).toBe("96")
       expect(
         row?.querySelector(
           '[data-testid="language-inventory-compact-thumbnail-frame"]',
@@ -405,7 +419,8 @@ describe("LanguageInventoryPage thumbnail sources", () => {
     expect(frame?.classList.contains("sm:w-24")).toBe(true)
     expect(frame?.classList.contains("aspect-[2/3]")).toBe(false)
     expect(image?.classList.contains("object-left-top")).toBe(true)
-    expect(image?.getAttribute("sizes")).toBe("(max-width: 640px) 112px, 96px")
+    expect(image?.getAttribute("width")).toBe("168")
+    expect(image?.getAttribute("height")).toBe("96")
     expect(
       row?.querySelector(
         '[data-testid="language-inventory-compact-thumbnail-frame"]',
