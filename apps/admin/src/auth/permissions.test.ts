@@ -275,14 +275,33 @@ describe("hasPermission — Manager membership gate", () => {
   // future edit routed some other permission off `managerRole` — this pins the
   // real invariant: a REVIEWER membership grants NOTHING beyond the editorial
   // role the principal already had.
-  it("grants a reviewer membership nothing beyond its editorial role", () => {
-    for (const key of ALL_PERMISSION_KEYS) {
-      expect(
-        hasPermission(MANAGER_REVIEWER_VIEWER, key),
-        `reviewer membership changed the grant for ${key}`,
-      ).toBe(hasPermission(VIEWER, key))
-    }
-  })
+  it.each([
+    ["VIEWER", "VIEWER"],
+    ["EDITOR", "EDITOR"],
+    ["ADMIN", "ADMIN"],
+  ] as const)(
+    "grants a %s reviewer membership nothing beyond its editorial role",
+    (_label, role) => {
+      const withMembership: Principal = {
+        id: "reviewer-1",
+        role,
+        managerRole: "REVIEWER",
+      }
+      const withoutMembership: Principal = { id: "reviewer-1", role }
+
+      // Both sides of the comparison below come from the function under test,
+      // so a globally-false `hasPermission` would satisfy it. Anchor on a
+      // grant the reference principal must have before comparing.
+      expect(hasPermission(withoutMembership, "read:experiences")).toBe(true)
+
+      for (const key of ALL_PERMISSION_KEYS) {
+        expect(
+          hasPermission(withMembership, key),
+          `reviewer membership changed the ${role} grant for ${key}`,
+        ).toBe(hasPermission(withoutMembership, key))
+      }
+    },
+  )
 })
 
 describe("hasPermission — Manager backend bearer gate", () => {

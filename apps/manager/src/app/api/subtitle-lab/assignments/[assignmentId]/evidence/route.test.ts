@@ -112,8 +112,15 @@ describe("reviewer assignment evidence BFF", () => {
   // the helper it replaced did not have. Without this, nothing would fail if
   // the `.catch()` that maps it to a blocked pane were dropped.
   it("blocks playback when the Mux lookup rejects", async () => {
+    // The response alone cannot discriminate this from the signed-only
+    // `publicPlaybackId: null` case -- both render the same blocked pane. The
+    // log assertion is what separates them, and it is also the only thing that
+    // fails if the console.error is deleted, which is the entire point of the
+    // catch: an outage and a legitimately unplayable asset must not look alike
+    // to an operator.
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {})
     muxMock.mockRejectedValueOnce(
-      new Error("Mux asset mux-1 has no playback ID"),
+      new Error("Mux asset mux-1 has no playback ID\nforged=line"),
     )
     const response = await GET(new Request("https://manager.example/api"), {
       params: Promise.resolve({ assignmentId: "assignment-1" }),
@@ -122,6 +129,15 @@ describe("reviewer assignment evidence BFF", () => {
     expect(await response.json()).toMatchObject({
       video: { status: "blocked", reason: "PLAYBACK_UNAVAILABLE" },
     })
+
+    expect(logged).toHaveBeenCalledTimes(1)
+    const line = String(logged.mock.calls[0]?.[0])
+    expect(line).toContain(
+      "[subtitle-lab] event=mux_asset_lookup_failed assetId=mux-1",
+    )
+    // The embedded newline must not forge a second log record.
+    expect(line).not.toContain("\n")
+    logged.mockRestore()
   })
 
   it("returns the same non-disclosing 404 after revocation", async () => {

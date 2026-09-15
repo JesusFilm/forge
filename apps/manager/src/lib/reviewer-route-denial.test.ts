@@ -150,7 +150,36 @@ describe("reviewer denial at existing route boundaries", () => {
       }),
     )
 
-    expect(response.status).not.toBe(401)
+    // Exactly 400: the operator IS admitted and the request then fails the
+    // Studio RPC schema. A loose `not.toBe(401)` would also accept the guard's
+    // pre-auth 403 and the 413 body cap, neither of which proves admission.
+    expect(response.status).toBe(400)
+  })
+
+  // Mechanism-level cover for all 13 Studio routes at once. The source scan in
+  // reviewer-boundary.test.ts pins that `authenticateStudioRequest` delegates
+  // to the operator-only authenticator, but a reviewer-admitting early return
+  // inserted ABOVE that delegation keeps both string assertions green. Only
+  // calling the guard can catch that, and only one Studio route has a
+  // behavioural denial case of its own.
+  it("denies a REVIEWER at the shared Studio guard itself", async () => {
+    const [{ authenticateStudioRequest }, { NextResponse }] = await Promise.all(
+      [import("./studio-request"), import("next/server")],
+    )
+
+    const result = await authenticateStudioRequest(
+      reviewerRequest("/api/shorts/command", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: "http://example.test",
+        },
+        body: JSON.stringify({ action: "shorts.create", input: {} }),
+      }),
+    )
+
+    expect(result).toBeInstanceOf(NextResponse)
+    expect((result as InstanceType<typeof NextResponse>).status).toBe(401)
   })
 
   it("denies an SEO decision before CSRF consumption", async () => {

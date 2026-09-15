@@ -105,7 +105,7 @@ async function reviewerVideoContext(
       // format on purpose -- Railway logsV2 drops JSON.stringify payloads
       // from Next.js runtime route handlers.
       console.error(
-        `[subtitle-lab] event=mux_asset_lookup_failed assetId=${video.muxAssetId} error=${error instanceof Error ? error.message : String(error)}`,
+        `[subtitle-lab] event=mux_asset_lookup_failed assetId=${video.muxAssetId} error=${sanitizeLogValue(error)}`,
       )
       return null
     },
@@ -129,4 +129,14 @@ async function reviewerVideoContext(
       endSeconds: detail.clipEndSeconds,
     },
   }
+}
+
+/**
+ * One-line, newline-free rendering of an upstream error for the key=value log
+ * format. Without the newline strip, a message carrying \n forges additional
+ * `[subtitle-lab] event=...` records in the log stream.
+ */
+function sanitizeLogValue(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error)
+  return message.replace(/[\r\n]+/g, " ").slice(0, 300)
 }
