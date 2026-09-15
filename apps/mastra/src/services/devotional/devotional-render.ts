@@ -10,11 +10,13 @@ import { repoRoot } from "./repo-root"
 import {
   buildNarrationSegments,
   produceDevotionalAudio,
+  type DevotionalStructure,
   type ProducedDevotionalAudio,
 } from "./devotional-audio"
 import { joinAudioVarGaps, slowAndPad } from "./audio-concat"
 import { createSilentVoiceover } from "./devotional-silent-voiceover"
 import { planFaceCropAnchors } from "./face-crop-anchors"
+import { planClipFocus } from "./clip-focus"
 import {
   cacheDirFor,
   loadCachedAudio,
@@ -783,6 +785,8 @@ export function devotionalVideoFilename(input: {
   lang: string
   aspect: "portrait" | "wide"
   episode?: number
+  /** A structural variant ("clipfirst"), so an A/B cut never overwrites A. */
+  variant?: string
 }): string {
   // Trim the edges: a title ending in punctuation ("Jesus' Triumphal Entry!")
   // otherwise leaves a trailing dash and the name comes out double-dashed.
@@ -793,7 +797,8 @@ export function devotionalVideoFilename(input: {
   const ep = input.episode ? `-ep${input.episode}` : ""
   const lang = input.lang === "en" ? "" : `-${input.lang}`
   const aspect = input.aspect === "wide" ? "-wide" : ""
-  return `${slug}-seq${input.sequence}${ep}${lang}${aspect}.mp4`
+  const variant = input.variant ? `-${input.variant}` : ""
+  return `${slug}-seq${input.sequence}${ep}${lang}${aspect}${variant}.mp4`
 }
 
 /**
@@ -915,6 +920,15 @@ export type RenderOptions = {
   /** Crop the background toward the faces in it instead of blind-centring it.
    *  Best-effort: without a face detector the render is unchanged. */
   faceCrop?: boolean
+  /**
+   * Running order. `classic` (default) is cover → read → watch → reflect →
+   * pray. `clip-first` is the owner's A/B variant: the film first, full-frame
+   * and face-tracked, no cover; then WATCH → REFLECT on a three-step stepper,
+   * the reflection, the takeaway, the verse, REFLECT → PRAY, question and
+   * prayer. Must reach every `buildNarrationSegments` call in a run, like
+   * `steps`, or the fingerprint, the reuse check and the audio diverge.
+   */
+  structure?: DevotionalStructure
   /** Review preview: render N evenly spaced PNG stills INSTEAD of the MP4.
    *  Costs one frame of rasterization each — seconds, not minutes — which is
    *  what makes "show me screenshots before you render the whole thing" a
@@ -1404,6 +1418,7 @@ async function renderInStage(
   const manifest = buildDevotionalManifest({
     devotional: devo,
     segments,
+    ...(options.structure ? { structure: options.structure } : {}),
     clipFile: "clip.mp4",
     clipDurationSec,
     videoCardSec,
@@ -1587,6 +1602,17 @@ async function renderInStage(
     )
   }
 
+  if (options.structure === "clip-first") {
+    for (const card of manifest.cards) {
+      if (card.kind !== "video" || typeof card.videoFile !== "string") continue
+      const focus = await planClipFocus({
+        clipFile: path.join(stage, card.videoFile),
+        log,
+      })
+      if (focus.length > 0) card.clipFocus = focus
+    }
+  }
+
   if (options.faceCrop) {
     const focus = await planFaceCropAnchors({
       bgFile: path.join(stage, "bg.mp4"),
@@ -1624,6 +1650,7 @@ async function renderInStage(
     lang: locale.lang,
     aspect,
     ...(options.episode ? { episode: options.episode } : {}),
+    ...(options.structure === "clip-first" ? { variant: "clipfirst" } : {}),
   })
   // Stills write PNGs derived from this name and never produce the MP4, so a
   // preview must NOT burn the next free version number — it would leave a gap
@@ -1874,6 +1901,8 @@ export async function produceNarration(
     withTimestamps?: boolean
     /** Emit step segments (the stepper screen's own narration). */
     steps?: boolean
+    /** Running order; must match every other call in the run. */
+    structure?: DevotionalStructure
   },
 ): Promise<ProducedDevotionalAudio> {
   const log = opts.log ?? (() => {})
@@ -1897,6 +1926,7 @@ export async function produceNarration(
       // changed.
       const wanted = buildNarrationSegments(devo, locale, {
         suppressOccasion: opts.suppressOccasion ?? false,
+        ...(opts.structure ? { structure: opts.structure } : {}),
         ...(opts.settleLine ? { settleLine: opts.settleLine } : {}),
         ...(opts.steps ? { steps: true } : {}),
       })
@@ -1980,6 +2010,7 @@ export async function produceNarration(
       ...(opts.voiceover ? { voiceover: opts.voiceover } : {}),
       ...(opts.withTimestamps ? { withTimestamps: true } : {}),
       ...(opts.steps ? { steps: true } : {}),
+      ...(opts.structure ? { structure: opts.structure } : {}),
     },
     locale,
   )
@@ -2008,10 +2039,15 @@ export function printDevotionalForReview(
   devo: GeneratedDevotional,
   locale: DevotionalLocale,
   cacheDir: string,
-  opts: { suppressOccasion?: boolean; steps?: boolean } = {},
+  opts: {
+    suppressOccasion?: boolean
+    steps?: boolean
+    structure?: DevotionalStructure
+  } = {},
 ): string {
   const spoken = buildNarrationSegments(devo, locale, {
     suppressOccasion: opts.suppressOccasion ?? false,
+    ...(opts.structure ? { structure: opts.structure } : {}),
     ...(opts.steps ? { steps: true } : {}),
   })
   const rule = "─".repeat(72)
@@ -2146,6 +2182,7 @@ export async function prepareAndRenderDevotional(
   // cards is a change the owner re-approves rather than one that slips through.
   const spoken = buildNarrationSegments(devo, locale, {
     suppressOccasion: input.suppressOccasion ?? false,
+    ...(input.structure ? { structure: input.structure } : {}),
     ...(input.steps ? { steps: true } : {}),
   }).map((s) => s.text)
   let approval = await approvalState(cacheDir, spoken)
@@ -2204,6 +2241,7 @@ export async function prepareAndRenderDevotional(
         // own step cards, so the inline wording printed here was never what
         // would be synthesised.
         ...(input.steps ? { steps: true } : {}),
+        ...(input.structure ? { structure: input.structure } : {}),
       }),
     )
     if (approval !== "approved") {
@@ -2228,6 +2266,7 @@ export async function prepareAndRenderDevotional(
     ...(input.settleLine ? { settleLine: input.settleLine } : {}),
     reuse: reuseAudio,
     ...(input.steps ? { steps: true } : {}),
+    ...(input.structure ? { structure: input.structure } : {}),
     // Silence is never cacheable: see `persist` on produceNarration.
     persist: !input.silentPreview,
     ...(input.silentPreview

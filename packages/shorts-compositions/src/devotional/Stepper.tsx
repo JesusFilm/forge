@@ -29,7 +29,6 @@ import { resolveDevotionalStyle } from "./styles"
 
 const SANS = `'${SHORT_FONT_FAMILIES.inter}', -apple-system, system-ui, sans-serif`
 const SERIF = `'${SHORT_FONT_FAMILIES.sourceSerif}', Georgia, 'Times New Roman', serif`
-const STEPS = DEVOTIONAL_STEPS
 
 export const StepperStack: React.FC<{
   variant: "glow" | "rail"
@@ -49,6 +48,9 @@ export const StepperStack: React.FC<{
   lightOpacity?: number
   /** A line above the stack (the opening screen's spoken line). */
   headline?: React.ReactNode
+  /** The stage labels. Defaults to the four; the clip-first structure passes
+   *  three (WATCH / REFLECT / PRAY) because the film has already played. */
+  steps?: ReadonlyArray<string>
 }> = ({
   variant,
   glowPos,
@@ -59,7 +61,9 @@ export const StepperStack: React.FC<{
   height,
   lightOpacity = 1,
   headline,
+  steps,
 }) => {
+  const STEPS = steps ?? DEVOTIONAL_STEPS
   // Owner: round one's type was too big and too heavy. Smaller, and 600 rather
   // than 700 — still a label, no longer a headline.
   const SIZE = px(15)

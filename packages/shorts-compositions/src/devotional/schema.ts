@@ -47,6 +47,10 @@ export const devotionalCardSchema = z.object({
    * `-1` is the OPENING screen: every stage on, none lit, no light at all.
    */
   stepIndex: z.number().int().min(-1).optional(),
+  /** `step` cards only: the stage labels, when not the default four. The
+   *  clip-first structure runs WATCH / REFLECT / PRAY — the film has already
+   *  played, so there is no READ to announce. `stepIndex` indexes THIS list. */
+  steps: z.array(z.string().min(1)).min(2).optional(),
   /** `step` cards only: a line shown above the stack (the opening screen's
    *  spoken line). Revealed letter by letter, like the scripture verse. */
   headline: z.string().optional(),
@@ -59,6 +63,28 @@ export const devotionalCardSchema = z.object({
   stepLeadSec: z.number().nonnegative().optional(),
   /** staticFile name of the clip for a `video` card (plays with its own sound). */
   videoFile: z.string().optional(),
+  /**
+   * How a portrait `video` card fits the 16:9 clip. `window` (default) is the
+   * square window at the top with captions below it. `full` fills the whole
+   * 9:16 frame — the clip-first structure, where the film is the opening and
+   * gets the frame to itself; captions sit over the lower part of the picture.
+   */
+  videoFill: z.enum(["window", "full"]).optional(),
+  /**
+   * Where a full-frame portrait video card crops the 16:9 clip, over time: the
+   * normalized x of the source the frame is centred on, as a PATH in seconds
+   * from the clip's start, interpolated linearly between points. Absent means a
+   * blind centre crop, which on a two-person shot lands between the people.
+   * Two points a frame apart make an instant jump — how a cut is followed.
+   */
+  clipFocus: z
+    .array(
+      z.object({
+        atSec: z.number().nonnegative(),
+        x: z.number().min(0).max(1),
+      }),
+    )
+    .optional(),
   /**
    * Timed captions for a `video` card, transcribed from the clip's own audio
    * (experimental subtitle bot). Rendered in the dark band just below the
@@ -98,6 +124,9 @@ export const devotionalCardSchema = z.object({
   questions: z.array(z.string()).optional(), // questions card
   prayer: z.string().optional(), // questions card
   askLabel: z.string().optional(), // questions card eyebrow (localized "Ask yourself")
+  /** Source credit shown on THIS card. The cover carries it in the classic
+   *  structure; the clip-first cut has no cover, so the closing card does. */
+  attribution: z.string().optional(),
   prayLabel: z.string().optional(), // questions card prayer eyebrow (localized "Pray")
   ctaHeadline: z.string().optional(), // cta card, e.g. "Watch the full devotional"
   ctaHandle: z.string().optional(), // cta card, e.g. "@gospelmedialab"

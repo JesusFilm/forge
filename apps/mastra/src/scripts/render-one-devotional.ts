@@ -82,6 +82,10 @@ async function main() {
       ...(arg("grain-blend") ? { grainBlend: arg("grain-blend") } : {}),
       ...(arg("blur-scale") ? { blurScale: Number(arg("blur-scale")) } : {}),
       steps: !process.argv.includes("--no-steps"),
+      // A/B: `--structure=clip-first` opens on the film (see RenderOptions).
+      ...(arg("structure") === "clip-first"
+        ? { structure: "clip-first" as const }
+        : {}),
       ...(arg("silent-wps")
         ? { silentPreviewWordsPerSec: Number(arg("silent-wps")) }
         : {}),

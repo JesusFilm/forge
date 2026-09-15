@@ -80,6 +80,9 @@ export type DevotionalConnectors = {
     read: (ref?: string) => string
     watch: () => string
     reflect: () => string
+    /** The REFLECT lead-in when the clip has ALREADY played (clip-first
+     *  structure): an invitation, not an instruction. */
+    reflectAfterClip: () => string
     pray: () => string
   }
 }
@@ -252,6 +255,9 @@ export const EN_LOCALE: DevotionalLocale = {
         `Here's where we're reading today.${ref ? ` ${ref}.` : ""}`,
       watch: () => `Let's watch.`,
       reflect: () => `Reflect on this.`,
+      // Owner's wording for the clip-first cut, where this is the first thing
+      // the voice says after the film: it invites rather than instructs.
+      reflectAfterClip: () => `Let's reflect on this.`,
       // Owner's pick over "Here's something to sit with." — that opener said
       // nothing about prayer, while the card it introduces ends in one.
       pray: () => `Let's bring this to God.`,
@@ -355,6 +361,7 @@ export const RU_LOCALE: DevotionalLocale = {
       read: (ref) => `Вот отрывок из Писания.${ref ? ` ${ref}.` : ""}`,
       watch: () => `Давайте посмотрим.`,
       reflect: () => `Подумай над этим.`,
+      reflectAfterClip: () => `Давайте подумаем над этим.`,
       pray: () => `Принесём это Богу.`,
     },
   },

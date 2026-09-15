@@ -57,6 +57,8 @@ export type StagedSegment = {
 }
 
 export type BuildManifestInput = {
+  /** Running order; see `buildNarrationSegments`. Defaults to classic. */
+  structure?: "classic" | "clip-first"
   devotional: GeneratedDevotional
   /** Narration segments that were produced (by id: cover/scripture/reflection/question/prayer). */
   segments: StagedSegment[]
@@ -100,6 +102,131 @@ export type BuildManifestInput = {
     clipFile: string
     durationSec: number
     captions?: ReadonlyArray<{ text: string; startSec: number; endSec: number }>
+  }
+}
+
+/**
+ * The clip-first running order (owner's A/B variant): the film, full-frame,
+ * comes first and there is no cover. Then a three-step stepper — WATCH already
+ * done, REFLECT lighting up — the reflection, the takeaway, the verse as the
+ * reflection's last word, the stepper again landing on PRAY, and the question
+ * and prayer.
+ */
+function buildClipFirstManifest(
+  input: BuildManifestInput,
+  byId: Map<string, BuildManifestInput["segments"][number]>,
+  withAudio: (id: string, base: ManifestCard) => ManifestCard | null,
+  stepCard: (
+    id: string,
+    stepIndex: number,
+    extra?: Record<string, unknown>,
+  ) => ManifestCard | null,
+): DevotionalManifest {
+  const d = input.devotional
+  const clip = input.clipFile
+  const labels = input.labels ?? {
+    reflect: "Reflect",
+    askYourself: "Ask yourself",
+    pray: "Pray",
+  }
+  const STEPS = ["WATCH", "REFLECT", "PRAY"]
+  const cards: ManifestCard[] = []
+
+  const videoDurationSec = Math.min(
+    input.clipDurationSec,
+    input.videoCardSec ?? 18,
+  )
+  const captions = (input.videoCaptions ?? []).filter(
+    (c) => c.startSec < videoDurationSec,
+  )
+  cards.push({
+    kind: "video",
+    videoFile: clip,
+    durationSec: videoDurationSec,
+    // Full-frame vertical crop, not the square window: the film IS the
+    // opening here, so it gets the whole frame. No muted lead — nothing was
+    // said before it, so there is no "Let's watch" to wait for.
+    videoFill: "full",
+    ...(captions.length ? { subtitles: captions } : {}),
+  })
+
+  // WATCH is already behind us; the light travels from it onto REFLECT.
+  const stepReflect = stepCard("step-reflect", 1, { steps: STEPS })
+  if (stepReflect) cards.push(stepReflect)
+
+  const reflectionSegments = input.segments
+    .filter((s) => /^reflection-\d+$/.test(s.id))
+    .sort((a, b) => Number(a.id.split("-")[1]) - Number(b.id.split("-")[1]))
+  const usedHighlights = new Set<number>()
+  reflectionSegments.forEach((seg) => {
+    const cardText = seg.text ?? ""
+    const highlightIndex = (d.reflectionHighlights ?? []).findIndex(
+      (h, i) => h && !usedHighlights.has(i) && cardText.includes(h),
+    )
+    if (highlightIndex >= 0) usedHighlights.add(highlightIndex)
+    const highlight =
+      highlightIndex >= 0 ? d.reflectionHighlights?.[highlightIndex] : undefined
+    cards.push({
+      kind: "reflection-focus",
+      sectionLabel: "",
+      text: cardText,
+      ...(highlight ? { highlight } : {}),
+      audioFile: seg.file,
+      durationSec: seg.durationSec,
+      bgFile: clip,
+      ...(seg.words && seg.words.length > 0 ? { words: seg.words } : {}),
+    })
+  })
+
+  const conclusion = withAudio("conclusion", {
+    kind: "conclusion",
+    text: d.conclusion,
+    highlight: d.conclusion,
+    holdSec: 2,
+  })
+  if (conclusion) cards.push(conclusion)
+
+  // The verse is the reflection's closing word, not its opening.
+  const scripture = withAudio("scripture", {
+    kind: "scripture",
+    verse: d.scripture.text,
+    citation: d.scripture.reference,
+  })
+  if (scripture) cards.push(scripture)
+
+  const stepPray = stepCard("step-pray", 2, { steps: STEPS })
+  if (stepPray) cards.push(stepPray)
+
+  const qp = byId.get("questions")
+  if (qp) {
+    cards.push({
+      kind: "questions",
+      questions: [d.question],
+      prayer: d.prayer,
+      askLabel: labels.askYourself,
+      prayLabel: labels.pray,
+      // No cover in this structure, so the source credit — otherwise only on
+      // the cover — lands on the closing card.
+      ...(d.reflection.attribution
+        ? { attribution: d.reflection.attribution }
+        : {}),
+      audioFile: qp.file,
+      durationSec: qp.durationSec,
+      holdSec: 5,
+      bgFile: clip,
+    })
+  }
+  const finalCard = cards[cards.length - 1]
+  if (finalCard) finalCard.holdSec = (Number(finalCard.holdSec) || 0) + 5
+
+  return {
+    schemaVersion: "2",
+    headerDate: input.headerDate,
+    ...(d.reflection.attribution
+      ? { attribution: d.reflection.attribution }
+      : {}),
+    ...(input.musicFile ? { musicFile: input.musicFile } : {}),
+    cards,
   }
 }
 
@@ -149,6 +276,10 @@ export function buildDevotionalManifest(
   // The cover shows the settle line only when the voice SAYS it. With the
   // stepper on, that line moved to the stepper's opening screen, so showing it
   // here would put words on the cover the narration never speaks.
+  if (input.structure === "clip-first") {
+    return buildClipFirstManifest(input, byId, withAudio, stepCard)
+  }
+
   const hasSteps = byId.has("step-read")
   const cover = withAudio("cover", {
     kind: "cover",

@@ -184,6 +184,62 @@ export function splitSpokenUnits(
  */
 export const STEP_LEAD_SEC = 0.9
 
+export type DevotionalStructure = "classic" | "clip-first"
+
+/**
+ * Clip-first running order. Segment IDS are kept identical to the classic
+ * ones wherever the spoken text is the same (`scripture`, `reflection-N`,
+ * `conclusion`, `step-pray`, `questions`), so a devotional already narrated in
+ * the classic structure re-renders in this one with a single new line of
+ * synthesis: the REFLECT lead-in, whose wording differs ("Let's reflect on
+ * this" after the film, "Reflect on this" before it).
+ */
+function buildClipFirstSegments(
+  d: GeneratedDevotional,
+  locale: DevotionalLocale,
+): NarrationSegment[] {
+  const c = locale.connectors
+  const segments: NarrationSegment[] = []
+  const chunks = splitReflection(d.reflection.text.trim())
+  if (chunks.length > 0) {
+    segments.push({
+      id: "step-reflect",
+      text: c.steps.reflectAfterClip(),
+      display: "",
+    })
+  }
+  chunks.forEach((chunk, i) => {
+    segments.push({
+      id: `reflection-${i + 1}`,
+      text: c.reflectionOpen(chunk),
+      display: chunk,
+    })
+  })
+  if (d.conclusion.trim()) {
+    segments.push({
+      id: "conclusion",
+      text: c.conclusion(ensureTerminal(d.conclusion)),
+    })
+  }
+  const ref = d.scripture.reference.trim()
+  const verse = d.scripture.text.trim()
+  if (verse) {
+    // The verse closes the reflection here. Spoken exactly as the classic
+    // steps-on scripture segment is, so the cached take is reused.
+    segments.push({
+      id: "scripture",
+      text: c.scripture(locale.spokenReference(ref), verse),
+    })
+  }
+  const q = d.question.trim()
+  const pr = d.prayer.trim()
+  if (q || pr) {
+    segments.push({ id: "step-pray", text: c.steps.pray(), display: "" })
+    segments.push({ id: "questions", text: c.questions(q, pr) })
+  }
+  return segments
+}
+
 export function buildNarrationSegments(
   d: GeneratedDevotional,
   locale: DevotionalLocale = EN_LOCALE,
@@ -201,9 +257,21 @@ export function buildNarrationSegments(
      * before the voice names the step.
      */
     steps?: boolean
+    /**
+     * Running order. `classic` is cover → read → watch → reflect → pray.
+     * `clip-first` (an A/B variant the owner asked for) opens on the film with
+     * no cover, then: "Let's reflect on this" over a three-step stepper
+     * (WATCH / REFLECT / PRAY), the reflection, the takeaway, the VERSE as the
+     * reflection's closing word, "Let's bring this to God", question and prayer.
+     * Steps are implied by this structure, so `steps` is ignored for it.
+     */
+    structure?: DevotionalStructure
   } = {},
 ): NarrationSegment[] {
   const c = locale.connectors
+  if (opts.structure === "clip-first") {
+    return buildClipFirstSegments(d, locale)
+  }
   const withSteps = opts.steps === true
   const segments: NarrationSegment[] = []
   if (d.title.trim()) {
@@ -418,6 +486,10 @@ export type ProduceDevotionalAudioDeps = {
   suppressOccasion?: boolean
   /** Emit the step segments (the stepper screen's own narration). */
   steps?: boolean
+  /** Running order — MUST match the caller's `buildNarrationSegments`, or this
+   *  produces one list of segments while the manifest is built from another.
+   *  That happened: the clip-first cut reused the classic REFLECT take. */
+  structure?: DevotionalStructure
   /** Replace the rotated settle line on the cover for this run. */
   settleLine?: string
   /** Use THIS mp3 as the bed, instead of the library or the paid generator.
@@ -487,6 +559,7 @@ export async function produceDevotionalAudio(
   // Cards read a touch slower (owner): scripture and the LAST reflection card.
   const segs = buildNarrationSegments(devotional, locale, {
     suppressOccasion: deps.suppressOccasion ?? false,
+    ...(deps.structure ? { structure: deps.structure } : {}),
     ...(deps.settleLine ? { settleLine: deps.settleLine } : {}),
     // Must match every OTHER call to this function in a run — the staleness
     // check and the approval fingerprint both build the same list, and a flag

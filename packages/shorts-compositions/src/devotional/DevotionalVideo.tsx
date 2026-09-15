@@ -283,6 +283,7 @@ function VideoSubtitles({
   isLandscape,
   safeRight,
   safeBottom,
+  fullBleed = false,
 }: {
   cues: NonNullable<DevotionalCard["subtitles"]>
   style: DevotionalStyle
@@ -294,6 +295,9 @@ function VideoSubtitles({
   safeRight: number
   /** Portrait only: bottom inset clearing the social app's own UI chrome. */
   safeBottom: number
+  /** Full-frame video (clip-first): captions sit over the lower part of the
+   *  picture and grow UP from the safe bottom, instead of below a window. */
+  fullBleed?: boolean
 }) {
   const t = frame / fps
   const fade = 0.18
@@ -309,12 +313,16 @@ function VideoSubtitles({
         // unchanged, the band sits over the blur in the lower-middle.
         top: isLandscape
           ? "45%"
-          : `calc(${VIDEO_WINDOW_BOTTOM_PCT}% + ${px(16)}px)`,
+          : fullBleed
+            ? "62%"
+            : `calc(${VIDEO_WINDOW_BOTTOM_PCT}% + ${px(16)}px)`,
         bottom: isLandscape ? px(28) : safeBottom,
         display: "flex",
         // Landscape keeps growing UP toward the picture above it. Portrait
-        // now has real space below the video, so cues grow DOWN into it.
-        alignItems: isLandscape ? "flex-end" : "flex-start",
+        // now has real space below the video, so cues grow DOWN into it —
+        // except full-frame, where there is picture everywhere and the cues
+        // sit low and grow up, like landscape.
+        alignItems: isLandscape || fullBleed ? "flex-end" : "flex-start",
         justifyContent: "center",
         pointerEvents: "none",
       }}
@@ -338,7 +346,7 @@ function VideoSubtitles({
               position: "absolute",
               left: 0,
               right: 0,
-              ...(isLandscape ? { bottom: 0 } : { top: 0 }),
+              ...(isLandscape || fullBleed ? { bottom: 0 } : { top: 0 }),
               display: "flex",
               justifyContent: "center",
               opacity,
@@ -1641,6 +1649,7 @@ function CardBody({
         width={vw}
         height={vh}
         lightOpacity={lightOpacity}
+        {...(card.steps ? { steps: card.steps } : {})}
         {...(card.headline
           ? {
               headline: headlineTimings ? (
@@ -2715,6 +2724,29 @@ function CardBody({
           </p>
         </div>
       ) : null}
+      {card.attribution ? (
+        // Source credit. Only set on this card when the structure has no
+        // cover to carry it. Small and quiet: a footnote, not a fourth block.
+        <div
+          style={{
+            position: "absolute",
+            left: isLandscape ? undefined : q(40),
+            right: isLandscape ? undefined : q(40),
+            bottom: isLandscape ? px(36) : px(118),
+            textAlign: isLandscape ? "left" : "center",
+            fontFamily: textFont === "serif" ? SERIF : SANS,
+            fontStyle: "italic",
+            fontWeight: 300,
+            fontSize: isLandscape ? px(10) : q(12.5),
+            letterSpacing: 0.2,
+            color: style.body,
+            opacity: 0.55,
+            ...reveal(frame, fps, 1.2, 1, "fade"),
+          }}
+        >
+          {card.attribution}
+        </div>
+      ) : null}
     </AbsoluteFill>
   )
 }
@@ -2746,6 +2778,9 @@ function Background({
   // full-frame instead of the portrait square crop.
   const isLandscape = width > height
   const isVideoCard = card.kind === "video" && Boolean(card.videoFile)
+  /** Clip-first structure: the film fills the portrait frame instead of
+   *  sitting in the square window (landscape is always fitted full-frame). */
+  const fullBleedVideo = isVideoCard && card.videoFill === "full"
   const heavy = HEAVY.has(card.kind)
 
   // Ken-Burns: ONE continuous slow zoom across the WHOLE video (driven by the
@@ -2866,19 +2901,21 @@ function Background({
     <>
       {/* Blurred wings fill. Natural color by default; an optional
           videoCardFilter cools/tints warm source footage to match the grade. */}
-      <OffthreadVideo
-        src={staticFile(src)}
-        muted
-        style={{
-          position: "absolute",
-          inset: 0,
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-          filter: `${videoGrade} blur(${px(26)}px) brightness(0.5)`.trim(),
-          transform: `scale(${kb * 1.08})`,
-        }}
-      />
+      {fullBleedVideo ? null : (
+        <OffthreadVideo
+          src={staticFile(src)}
+          muted
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            filter: `${videoGrade} blur(${px(26)}px) brightness(0.5)`.trim(),
+            transform: `scale(${kb * 1.08})`,
+          }}
+        />
+      )}
       {/* Fitted sharp clip, in color, with its own audio faded in/out and kept
           quieter so it sits at the narration's level. Teasers mute it so the
           loud clip audio doesn't jump against the music bed. */}
@@ -2941,20 +2978,51 @@ function Background({
                 filter: videoGrade || undefined,
                 transform: `scale(${kbFit})`,
               }
-            : {
-                // Portrait: squarish crop (owner), anchored near the TOP of
-                // the frame — the space below is for captions, not a mirror
-                // margin of blurred wings.
-                position: "absolute",
-                left: 0,
-                right: 0,
-                top: `${VIDEO_WINDOW_TOP_PCT}%`,
-                width: "100%",
-                height: "56.25%", // 1080/1920 → square in the 9:16 frame
-                objectFit: "cover",
-                filter: videoGrade || undefined,
-                transform: `scale(${kbFit})`,
-              }
+            : fullBleedVideo
+              ? {
+                  // Clip-first: the film owns the whole 9:16 frame. A 16:9
+                  // source loses 34% either side here, so the crop follows the
+                  // faces via `clipFocus` when the manifest carries a path.
+                  position: "absolute",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  ...(card.clipFocus && card.clipFocus.length > 0
+                    ? {
+                        objectPosition: `${(
+                          coverObjectPositionX(
+                            pathAt(
+                              card.clipFocus,
+                              (frame +
+                                (props.continuousClip
+                                  ? Math.max(0, Math.round(bgStartFrame))
+                                  : 0)) /
+                                fps,
+                            ),
+                            { width, height },
+                            { width: 16, height: 9 },
+                          ) * 100
+                        ).toFixed(2)}% 50%`,
+                      }
+                    : {}),
+                  filter: videoGrade || undefined,
+                  transform: `scale(${kbFit})`,
+                }
+              : {
+                  // Portrait: squarish crop (owner), anchored near the TOP of
+                  // the frame — the space below is for captions, not a mirror
+                  // margin of blurred wings.
+                  position: "absolute",
+                  left: 0,
+                  right: 0,
+                  top: `${VIDEO_WINDOW_TOP_PCT}%`,
+                  width: "100%",
+                  height: "56.25%", // 1080/1920 → square in the 9:16 frame
+                  objectFit: "cover",
+                  filter: videoGrade || undefined,
+                  transform: `scale(${kbFit})`,
+                }
         }
       />
     </>
@@ -3273,6 +3341,29 @@ export function focusAt(
   if (!currentEase || tSec >= currentAt + focusEaseSec(prev, current))
     return current
   return eased(prev, current, currentAt, tSec)
+}
+
+/**
+ * Value of a piecewise-linear path at `tSec`. Holds the first point before the
+ * path starts and the last after it ends. Two points a frame apart make an
+ * effectively instant jump — how a cut in the footage is followed.
+ */
+export function pathAt(
+  points: ReadonlyArray<{ atSec: number; x: number }>,
+  tSec: number,
+): number {
+  if (points.length === 0) return 0.5
+  if (tSec <= points[0].atSec) return points[0].x
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1]
+    const b = points[i]
+    if (tSec <= b.atSec) {
+      const span = b.atSec - a.atSec
+      if (span <= 0) return b.x
+      return a.x + (b.x - a.x) * ((tSec - a.atSec) / span)
+    }
+  }
+  return points[points.length - 1].x
 }
 
 export function coverObjectPositionX(
@@ -3710,6 +3801,7 @@ function CardLayer({
           // clear the action rail and the app's own bottom UI chrome.
           safeRight={px(50.5)}
           safeBottom={px(130)}
+          fullBleed={card.videoFill === "full" && !layerIsLandscape}
         />
       ) : null}
       {showMuteButton ? <MuteButton px={px} style={style} /> : null}

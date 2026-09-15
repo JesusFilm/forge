@@ -297,3 +297,49 @@ describe("buildDevotionalManifest", () => {
     expect(m.cards.filter((c) => c.kind === "video")).toHaveLength(1)
   })
 })
+
+describe("buildDevotionalManifest — clip-first structure", () => {
+  it("opens on a full-frame film card and lays out a three-step stepper", () => {
+    const segs = (ids: string[]) =>
+      ids.map((id) => ({
+        id,
+        file: `${id}.mp3`,
+        durationSec: 3,
+        text: id === "step-reflect" ? "Let's reflect on this." : `${id} text`,
+      }))
+    const manifest = buildDevotionalManifest({
+      devotional: DEVO,
+      segments: segs([
+        "step-reflect",
+        "reflection-1",
+        "conclusion",
+        "scripture",
+        "step-pray",
+        "questions",
+      ]) as never,
+      clipFile: "clip.mp4",
+      clipDurationSec: 30,
+      videoCardSec: 25,
+      headerDate: "x",
+      structure: "clip-first",
+    } as never)
+    const kinds = manifest.cards.map((c) => c.kind)
+    expect(kinds).toEqual([
+      "video",
+      "step",
+      "reflection-focus",
+      "conclusion",
+      "scripture",
+      "step",
+      "questions",
+    ])
+    expect(manifest.cards[0].videoFill).toBe("full")
+    expect(manifest.cards[0].mutedLeadSec).toBeUndefined()
+    const steps = manifest.cards.filter((c) => c.kind === "step")
+    expect(steps[0].steps).toEqual(["WATCH", "REFLECT", "PRAY"])
+    expect(steps[0].stepIndex).toBe(1)
+    expect(steps[1].stepIndex).toBe(2)
+    // No cover to carry the source credit, so the closing card does.
+    expect(manifest.cards.at(-1)?.attribution).toBe(DEVO.reflection.attribution)
+  })
+})

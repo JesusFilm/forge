@@ -8,6 +8,7 @@ import {
   FOCUS_EASE_MIN_SEC,
   FOCUS_SPEED_PER_SEC,
   leadLabelKnots,
+  pathAt,
 } from "./DevotionalVideo"
 import {
   CARD_TAIL_FRAMES,
@@ -121,5 +122,28 @@ describe("focusEaseSec", () => {
   it("never snaps and never turns into a pan", () => {
     expect(focusEaseSec(0.5, 0.5001)).toBe(FOCUS_EASE_MIN_SEC)
     expect(focusEaseSec(0, 1)).toBe(FOCUS_EASE_MAX_SEC)
+  })
+})
+
+describe("pathAt", () => {
+  const pts = [
+    { atSec: 0, x: 0.3 },
+    { atSec: 1, x: 0.5 },
+    { atSec: 1.04, x: 0.8 },
+    { atSec: 2, x: 0.8 },
+  ]
+  it("interpolates linearly between points", () => {
+    expect(pathAt(pts, 0.5)).toBeCloseTo(0.4)
+  })
+  it("holds the first and last values outside the path", () => {
+    expect(pathAt(pts, -5)).toBe(0.3)
+    expect(pathAt(pts, 9)).toBe(0.8)
+  })
+  it("treats two points a frame apart as a jump", () => {
+    expect(pathAt(pts, 1)).toBeCloseTo(0.5)
+    expect(pathAt(pts, 1.04)).toBeCloseTo(0.8)
+  })
+  it("is centred with no path", () => {
+    expect(pathAt([], 3)).toBe(0.5)
   })
 })

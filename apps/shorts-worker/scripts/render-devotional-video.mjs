@@ -139,11 +139,19 @@ async function stageMusicLooped(srcName, manifestDir, publicDir, needSec) {
       : ["-c:a", "aac", "-b:a", "160k"]
 
   // Strip leading + trailing silence (trim leading, reverse, trim leading
-  // again = trailing, reverse back). -50dB peak so only true silence goes, not
-  // a quiet musical intro.
+  // again = trailing, reverse back). The HEAD keeps -50dB peak so a quiet
+  // musical intro survives. The TAIL is cut harder, at -36dB RMS: the library
+  // beds end in a fade-out, and at -50dB the last four seconds of a 30s bed
+  // (-35 to -47 dB, not silence, not music either) stayed in every loop copy.
+  // Looped, that put a dip every ~26 seconds; narration hid it until the
+  // clip-first cut left it alone under the closing hold, where it read as the
+  // music stopping for seven seconds. Cutting the decay makes the crossfade
+  // land on audible music instead of on a fade.
   const trimmed = path.join(publicDir, `._trim_${srcName}`)
-  const sil =
+  const silHead =
     "silenceremove=start_periods=1:start_threshold=-50dB:detection=peak"
+  const silTail =
+    "silenceremove=start_periods=1:start_threshold=-36dB:start_duration=0.25:detection=rms"
   try {
     await runFfmpeg(
       [
@@ -151,7 +159,7 @@ async function stageMusicLooped(srcName, manifestDir, publicDir, needSec) {
         "-i",
         src,
         "-af",
-        `${sil},areverse,${sil},areverse`,
+        `${silHead},areverse,${silTail},areverse`,
         ...codecArgs,
         trimmed,
       ],

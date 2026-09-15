@@ -368,3 +368,70 @@ describe("music library reuse", () => {
     expect(out.music).not.toBeNull()
   })
 })
+
+describe("buildNarrationSegments — clip-first structure", () => {
+  it("runs film → reflect → reflection → takeaway → verse → pray → questions, with no cover", () => {
+    const ids = buildNarrationSegments(DEVO, undefined, {
+      structure: "clip-first",
+    }).map((s) => s.id)
+    expect(ids[0]).toBe("step-reflect")
+    expect(ids).not.toContain("cover")
+    expect(ids).not.toContain("step-read")
+    expect(ids).not.toContain("step-watch")
+    // The verse closes the reflection: after the takeaway, before the prayer.
+    expect(ids.indexOf("scripture")).toBeGreaterThan(ids.indexOf("conclusion"))
+    expect(ids.indexOf("scripture")).toBeLessThan(ids.indexOf("step-pray"))
+    expect(ids.at(-1)).toBe("questions")
+  })
+
+  it("keeps the spoken text of shared segments identical to the classic steps-on cut", () => {
+    // So a devotional narrated in the classic structure re-renders in this
+    // one with a single new line: the REFLECT lead-in.
+    const classic = new Map(
+      buildNarrationSegments(DEVO, undefined, { steps: true }).map((s) => [
+        s.id,
+        s.text,
+      ]),
+    )
+    const clipFirst = buildNarrationSegments(DEVO, undefined, {
+      structure: "clip-first",
+    })
+    for (const seg of clipFirst) {
+      if (seg.id === "step-reflect") {
+        expect(seg.text).toBe("Let's reflect on this.")
+        continue
+      }
+      expect(seg.text).toBe(classic.get(seg.id))
+    }
+  })
+})
+
+describe("the running order reaches every narration call site", () => {
+  it("no call to buildNarrationSegments omits `structure`", async () => {
+    // Same trap as `steps` and `suppressOccasion`: the option was threaded to
+    // the staleness check and the fingerprint but not to the producer, which
+    // then built the CLASSIC list, found every segment cached, and the
+    // clip-first cut shipped "Reflect on this." where "Let's reflect on this."
+    // was wanted — with the log reporting a clean cache hit.
+    const { readdir, readFile } = await import("node:fs/promises")
+    const path = await import("node:path")
+    const { fileURLToPath } = await import("node:url")
+    const here = path.dirname(fileURLToPath(import.meta.url))
+    const files = (await readdir(here)).filter(
+      (f) => f.endsWith(".ts") && !f.endsWith(".test.ts"),
+    )
+    const offenders: string[] = []
+    for (const f of files) {
+      const src = await readFile(path.join(here, f), "utf8")
+      for (const m of src.matchAll(
+        /buildNarrationSegments\(([\s\S]*?)\n\s*\}\)/g,
+      )) {
+        const args = m[1]
+        if (args.includes("d: GeneratedDevotional")) continue
+        if (!args.includes("structure"))
+          offenders.push(`${f}: ${m[0].slice(0, 80)}…`)
+      }
+    }
+    expect(offenders).toEqual([])
+  })
+})
