@@ -44,6 +44,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
   () => {
     const schema = `curated_test_${randomUUID().replaceAll("-", "")}`
     let admin: Client, prisma: PrismaClient, service: CuratedPoolsService
+    const statements: string[] = []
     beforeAll(async () => {
       admin = new Client({ connectionString: env.DATABASE_URL })
       await admin.connect()
@@ -106,7 +107,11 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       const url = new URL(env.DATABASE_URL)
       url.searchParams.delete("options")
       url.searchParams.set("schema", schema)
-      prisma = new PrismaClient({ datasourceUrl: url.toString() })
+      prisma = new PrismaClient({
+        datasourceUrl: url.toString(),
+        log: [{ emit: "event", level: "query" }],
+      })
+      prisma.$on("query", (event) => statements.push(event.query))
       service = new CuratedPoolsService({ prisma })
     }, 30_000)
     afterAll(async () => {
@@ -140,7 +145,12 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         version: "fixture-v1",
         expectedCurrentVersion: null,
       })
+      statements.length = 0
       const first = await read()
+      // Budget guard: BEGIN, timeout, metadata snapshot, live hydration, COMMIT.
+      // Do not regress to serial pointer/generation/pool/membership reads.
+      expect(statements.length).toBeLessThanOrEqual(5)
+      expect(statements.some((query) => query.includes("video_dub"))).toBe(true)
       expect(first.items.map((item) => item.videoId)).toEqual([
         "video-1",
         "video-2",

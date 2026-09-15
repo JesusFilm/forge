@@ -1870,6 +1870,16 @@ migration for any contraction. The complete activation, health, rotation,
 purge, recovery, rollback, redaction, and isolated-preview procedure is in
 `docs/operations/semantic-recommendation-tracer.md`.
 
+Source-free `UserRecommendationDeliveryService` fills profile shortfalls from
+`CuratedPoolsService`. Its runtime metadata lookup is
+`src/services/recommendations/curated-pools.runtime.ts`: one bounded SQL snapshot
+for the active generation, exact locale/audio pools, interest membership and
+editorial ranks. Keep publication/playback/artwork/identity hydration live on
+every request; do not cache that eligibility or reintroduce serial metadata
+reads inside the 1.5-second delivery budget. The real-Postgres lifecycle test
+pins five native SQL statements for cold retrieval. See
+`docs/solutions/performance-issues/curated-fallback-serial-metadata-reads-exhaust-budget-20260915.md`.
+
 ## Scene recommendations (R5 of admin migration playbook)
 
 Admin owns public scene-similarity recommendations — given a seed video

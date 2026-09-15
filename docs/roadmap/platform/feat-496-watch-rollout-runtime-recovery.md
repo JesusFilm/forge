@@ -152,3 +152,11 @@ owned by `feat-464`.
   regressions pass. See
   `docs/solutions/performance-issues/contextual-recommendations-repeat-catalog-work-20260915.md`.
   Production deployment and verification remain pending.
+- #2298 contextual recovery is deployed: five production probes return six
+  distinct candidates, including JESUS in English/Spanish/French, in 666–2,591
+  ms. Startup source-free probes still isolate curated metadata/issuance delays.
+  A single metadata snapshot reduces native cold retrieval from eight SQL
+  statements to five, preserving full English/French/Hindi output and live
+  eligibility. See
+  `docs/solutions/performance-issues/curated-fallback-serial-metadata-reads-exhaust-budget-20260915.md`.
+  #2299 Redis clock refresh is merged; continue through deployment monitoring.

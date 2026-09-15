@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { createVideoIdentityDuplicateReasonResolver } from "@/services/video-dedup"
 import { hydrateCuratedVideos } from "./curated-pools.catalog"
+import { readCuratedRuntimeSnapshot } from "./curated-pools.runtime"
 import { digestValue } from "./promotion/manifest"
 import {
   CURATED_POOL_MAX_RUNTIME_CANDIDATES,
@@ -320,40 +321,16 @@ export class CuratedPoolsService {
     return this.dependencies.prisma.$transaction(
       async (db) => {
         await db.$executeRaw`SELECT set_config('statement_timeout', ${String(timeout)}, true)`
-        const pointer = await db.recommendationCuratedPointer.findUnique({
-          where: { id: CURATED_POOL_POINTER_ID },
-          select: {
-            generationId: true,
-            generation: { select: { version: true } },
-          },
-        })
-        if (!pointer) return { version: null, poolKeys: [], items: [] }
-        const pools = await db.recommendationCuratedPool.findMany({
-          where: {
-            generationId: pointer.generationId,
-            locale: input.locale,
-            audioLanguageSlug: input.audioLanguageSlug,
-          },
-          take: 9,
-          orderBy: { poolKey: "asc" },
-        })
+        const snapshot = await readCuratedRuntimeSnapshot(db, input)
+        if (!snapshot) return { version: null, poolKeys: [], items: [] }
+        const { pools, memberships } = snapshot
         const starter = pools.find((pool) => pool.poolKey === "start")
         if (!starter)
-          return {
-            version: pointer.generation.version,
-            poolKeys: [],
-            items: [],
-          }
-        const interestMemberships = input.interestVideoIds?.length
-          ? await db.recommendationCuratedMembership.findMany({
-              where: {
-                generationId: pointer.generationId,
-                videoId: { in: [...input.interestVideoIds] },
-              },
-              select: { themeKeys: true },
-              take: 64,
-            })
-          : []
+          return { version: snapshot.version, poolKeys: [], items: [] }
+        const interestIds = new Set(input.interestVideoIds ?? [])
+        const interestMemberships = memberships.filter((membership) =>
+          interestIds.has(membership.videoId),
+        )
         const support = new Map<string, number>()
         for (const membership of interestMemberships)
           for (const key of membership.themeKeys)
@@ -394,14 +371,9 @@ export class CuratedPoolsService {
         }
         const ids = [...attribution.keys()]
         const hydrated = await hydrateCuratedVideos(db, ids, starter)
-        const ranks = await db.recommendationCuratedMembership.findMany({
-          where: { generationId: pointer.generationId, videoId: { in: ids } },
-          select: { videoId: true, editorialRank: true },
-          take: CURATED_POOL_MAX_RUNTIME_CANDIDATES,
-        })
         const byId = new Map(hydrated.map((video) => [video.videoId, video]))
         const rankById = new Map(
-          ranks.map((membership) => [
+          memberships.map((membership) => [
             membership.videoId,
             membership.editorialRank,
           ]),
@@ -442,12 +414,12 @@ export class CuratedPoolsService {
             localePublished: true,
             generator: "curated",
             poolKey,
-            poolVersion: pointer.generation.version,
+            poolVersion: snapshot.version,
             editorialRank,
           })
         }
         return {
-          version: pointer.generation.version,
+          version: snapshot.version,
           poolKeys: [...new Set(items.map((item) => item.poolKey))],
           items,
         }
