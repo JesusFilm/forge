@@ -38,4 +38,6 @@ still returns `served`. Full Admin suite: 6,596 passed, 269 skipped, one todo.
 All four tests in the existing real PostgreSQL curation/issuance entrypoint pass,
 including prior-write rollback after the callback deadline. Types, scoped
 lint and the production build pass. Sequential review found no unresolved correctness, data integrity,
-reliability, API or standards findings. Production rollout verification remains in progress.
+reliability, API or standards findings. The fix merged as #2302 and deployed at 02:34:45 UTC. Release probes and
+playback passed; the final observation is recorded in
+`docs/operations/watch-runtime-recovery-2026-09-15.md`.
