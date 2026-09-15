@@ -1,4 +1,5 @@
 import { readdirSync, readFileSync } from "node:fs"
+import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient } from "@prisma/client"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
@@ -61,7 +62,13 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       url.searchParams.delete("options")
       url.searchParams.set("schema", schemaName)
       prisma = new PrismaClient({
-        datasources: { db: { url: url.toString() } },
+        adapter: new PrismaPg(
+          {
+            connectionString: url.toString(),
+            options: `-c search_path=${schemaName},public`,
+          },
+          { schema: schemaName },
+        ),
       })
     })
 

@@ -263,6 +263,8 @@ export function createRecommendationTokenService(
     clockToleranceSeconds: number,
     currentDate: Date,
   ): Promise<JWTPayload> {
+    let payload: JWTPayload
+    let kid: string
     try {
       const header = decodeProtectedHeader(token)
       if (
@@ -275,7 +277,7 @@ export function createRecommendationTokenService(
       }
       const key = dependencies.keyring.keysById.get(header.kid)
       if (!key) throw new RecommendationTokenInvalidError()
-      await assertKidUsable(header.kid)
+      kid = header.kid
       const result = await jwtVerify(token, key.material, {
         algorithms: ["HS256"],
         issuer: ISSUER,
@@ -284,11 +286,15 @@ export function createRecommendationTokenService(
         clockTolerance: clockToleranceSeconds,
         currentDate,
       })
-      return result.payload
+      payload = result.payload
     } catch (error) {
       if (error instanceof RecommendationTokenInvalidError) throw error
       throw new RecommendationTokenInvalidError()
     }
+    // Revocation is still mandatory. A failed storage lookup must fail closed
+    // as a server failure, not permanently reject a valid client capability.
+    await assertKidUsable(kid)
+    return payload
   }
 
   return {

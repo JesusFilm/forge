@@ -20,11 +20,27 @@ export async function lockRecommendationEpisode(
   if (rows[0]?.locked !== true) throw new RecommendationEpisodeLockBusyError()
 }
 
-function prismaErrorCode(error: unknown): string | null {
-  if (!error || typeof error !== "object") return null
-  const code = "code" in error ? String(error.code) : null
-  if (code) return code
-  return "cause" in error ? prismaErrorCode(error.cause) : null
+function isSerializationConflict(error: unknown): boolean {
+  const visited = new Set<object>()
+  for (let depth = 0; depth < 16; depth += 1) {
+    if (!error || typeof error !== "object" || visited.has(error)) return false
+    visited.add(error)
+    const code = "code" in error ? error.code : null
+    if (code === "P2034" || code === "40001") return true
+    // PrismaPg wraps raw-query SQLSTATE in P2010.meta.code. Other raw-query
+    // failures are not serialization conflicts and must not be retried.
+    const meta = "meta" in error ? error.meta : null
+    if (
+      code === "P2010" &&
+      meta != null &&
+      typeof meta === "object" &&
+      "code" in meta &&
+      meta.code === "40001"
+    )
+      return true
+    error = "cause" in error ? error.cause : null
+  }
+  return false
 }
 
 function sleep(milliseconds: number): Promise<void> {
@@ -76,8 +92,9 @@ export async function withRecommendationSerializableRetry<T>(
         await sleep(Math.min(remaining, 15 + Math.floor(Math.random() * 26)))
         continue
       }
-      if (action && prismaErrorCode(error) === "P2034") {
-        const exhausted = serializationAttempt === MAX_SERIALIZABLE_ATTEMPTS
+      if (!isSerializationConflict(error)) throw error
+      const exhausted = serializationAttempt === MAX_SERIALIZABLE_ATTEMPTS
+      if (action) {
         observeRecommendationEvidence({
           action,
           outcome: "failed",
@@ -86,12 +103,10 @@ export async function withRecommendationSerializableRetry<T>(
           retryAttempt: serializationAttempt,
         })
       }
-      if (
-        prismaErrorCode(error) !== "P2034" ||
-        serializationAttempt === MAX_SERIALIZABLE_ATTEMPTS
-      ) {
-        throw error
-      }
+      if (exhausted)
+        throw new RecommendationInternalStateError(
+          "recommendation_serialization_exhausted",
+        )
       await sleep(BASE_RETRY_DELAY_MS * 2 ** (serializationAttempt - 1))
       serializationAttempt += 1
     }
