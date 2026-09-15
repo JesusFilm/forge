@@ -47,7 +47,20 @@ export async function GET(
         assignment.editionIdentity,
       )
       if (!video) return blockedVideoContext("VIDEO_CONTEXT_UNAVAILABLE")
-      const playback = await getMuxAsset(video.muxAssetId).catch(() => null)
+      const playback = await getMuxAsset(video.muxAssetId).catch(
+        (error: unknown) => {
+          // Swallowed so a Mux failure degrades to PLAYBACK_UNAVAILABLE rather
+          // than 500ing the reviewer, but an outage, an auth failure and an
+          // asset that genuinely has no public playback are three different
+          // operator problems that otherwise look identical. Plain-string
+          // format on purpose -- Railway logsV2 drops JSON.stringify payloads
+          // from Next.js runtime route handlers.
+          console.error(
+            `[subtitle-lab] event=mux_asset_lookup_failed assetId=${video.muxAssetId} error=${error instanceof Error ? error.message : String(error)}`,
+          )
+          return null
+        },
+      )
       if (
         !playback ||
         playback.assetId !== video.muxAssetId ||

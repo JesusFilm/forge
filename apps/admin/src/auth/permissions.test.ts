@@ -269,6 +269,20 @@ describe("hasPermission — Manager membership gate", () => {
   it("does not grant operator panel access to reviewer memberships", () => {
     expect(hasPermission(MANAGER_REVIEWER_VIEWER, "access:manager")).toBe(false)
   })
+
+  // REVIEWER is the one narrow principal without its own exhaustive walk.
+  // Asserting the single `access:manager` key above would still pass if a
+  // future edit routed some other permission off `managerRole` — this pins the
+  // real invariant: a REVIEWER membership grants NOTHING beyond the editorial
+  // role the principal already had.
+  it("grants a reviewer membership nothing beyond its editorial role", () => {
+    for (const key of ALL_PERMISSION_KEYS) {
+      expect(
+        hasPermission(MANAGER_REVIEWER_VIEWER, key),
+        `reviewer membership changed the grant for ${key}`,
+      ).toBe(hasPermission(VIEWER, key))
+    }
+  })
 })
 
 describe("hasPermission — Manager backend bearer gate", () => {

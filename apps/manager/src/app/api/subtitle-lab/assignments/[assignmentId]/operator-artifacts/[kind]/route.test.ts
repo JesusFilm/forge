@@ -94,6 +94,9 @@ describe("operator assignment evidence BFF", () => {
     })
     muxPlaybackMock.mockResolvedValue({
       assetId: "mux-asset-1",
+      // `playbackId` is required on MuxAssetInfo and is the unfiltered
+      // first id; the Lab deliberately reads only `publicPlaybackId`.
+      playbackId: "public-playback-1",
       status: "ready",
       duration: 120,
       publicPlaybackId: "public-playback-1",
@@ -170,12 +173,36 @@ describe("operator assignment evidence BFF", () => {
   ])("blocks video when Mux is %s", async (_label, override) => {
     muxPlaybackMock.mockResolvedValueOnce({
       assetId: "mux-asset-1",
+      // `playbackId` is required on MuxAssetInfo and is the unfiltered
+      // first id; the Lab deliberately reads only `publicPlaybackId`.
+      playbackId: "public-playback-1",
       status: "ready",
       duration: 120,
       publicPlaybackId: "public-playback-1",
       ...override,
     })
 
+    const response = await GET(new Request("https://manager.example/api"), {
+      params: Promise.resolve({
+        assignmentId: "assignment-1",
+        kind: "video-context",
+      }),
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({
+      status: "blocked",
+      reason: "PLAYBACK_UNAVAILABLE",
+    })
+  })
+
+  // getMuxAsset throws when an asset carries no playback id at all -- a branch
+  // the helper it replaced did not have. Without this, nothing would fail if
+  // the `.catch()` that maps it to a typed block were dropped.
+  it("returns a typed block when the Mux lookup rejects", async () => {
+    muxPlaybackMock.mockRejectedValueOnce(
+      new Error("Mux asset mux-asset-1 has no playback ID"),
+    )
     const response = await GET(new Request("https://manager.example/api"), {
       params: Promise.resolve({
         assignmentId: "assignment-1",

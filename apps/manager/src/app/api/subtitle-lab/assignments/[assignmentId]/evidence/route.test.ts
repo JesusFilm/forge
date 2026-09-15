@@ -86,6 +86,9 @@ describe("reviewer assignment evidence BFF", () => {
     })
     muxMock.mockResolvedValue({
       assetId: "mux-1",
+      // `playbackId` is required on MuxAssetInfo and is the unfiltered first
+      // id; the Lab deliberately reads only `publicPlaybackId`.
+      playbackId: "playback-1",
       status: "ready",
       publicPlaybackId: "playback-1",
       duration: 30,
@@ -103,6 +106,22 @@ describe("reviewer assignment evidence BFF", () => {
     expect(locatorMock).toHaveBeenCalledTimes(3)
     expect(body).toContain("WEBVTT")
     expect(body).not.toContain("private/")
+  })
+
+  // getMuxAsset throws when an asset carries no playback id at all -- a branch
+  // the helper it replaced did not have. Without this, nothing would fail if
+  // the `.catch()` that maps it to a blocked pane were dropped.
+  it("blocks playback when the Mux lookup rejects", async () => {
+    muxMock.mockRejectedValueOnce(
+      new Error("Mux asset mux-1 has no playback ID"),
+    )
+    const response = await GET(new Request("https://manager.example/api"), {
+      params: Promise.resolve({ assignmentId: "assignment-1" }),
+    })
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      video: { status: "blocked", reason: "PLAYBACK_UNAVAILABLE" },
+    })
   })
 
   it("returns the same non-disclosing 404 after revocation", async () => {

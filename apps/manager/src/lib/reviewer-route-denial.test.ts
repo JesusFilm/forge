@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 
 let reviewerCookie = ""
+let operatorCookie = ""
 
 beforeAll(async () => {
   vi.stubEnv("MANAGER_DATA_MODE", "mock")
@@ -33,11 +34,30 @@ beforeAll(async () => {
     ],
   })
   reviewerCookie = `${MANAGER_SESSION_COOKIE}=${token}`
+
+  const operatorToken = await createManagerSessionCookie({
+    id: "operator-1",
+    subject: "auth-operator-1",
+    email: "operator@forge.test",
+    managerRole: "OPERATOR",
+    scopes: ["openid", "manager:access"],
+  })
+  operatorCookie = `${MANAGER_SESSION_COOKIE}=${operatorToken}`
 })
 
 afterAll(() => {
   vi.unstubAllEnvs()
 })
+
+function operatorRequest(path: string, init?: RequestInit) {
+  return new Request(`http://example.test${path}`, {
+    ...init,
+    headers: {
+      cookie: operatorCookie,
+      ...init?.headers,
+    },
+  })
+}
 
 function reviewerRequest(path: string, init?: RequestInit) {
   return new Request(`http://example.test${path}`, {
@@ -109,6 +129,28 @@ describe("reviewer denial at existing route boundaries", () => {
     await expect(shortsResponse.json()).resolves.toEqual({
       error: "Interactive Manager session required",
     })
+  })
+
+  // Anti-vacuous control for every denial above. Those assertions are all
+  // equally satisfied by a cookie that simply fails to parse, so without a
+  // case proving the fixture mints a session the guard actually reads, a
+  // broken cookie helper would leave this whole file green while proving
+  // nothing about the REVIEWER role.
+  it("admits an OPERATOR session at the same Shorts route", async () => {
+    const { POST: runShortsCommand } =
+      await import("@/app/api/shorts/command/route")
+    const response = await runShortsCommand(
+      operatorRequest("/api/shorts/command", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: "http://example.test",
+        },
+        body: JSON.stringify({ action: "shorts.create", input: {} }),
+      }),
+    )
+
+    expect(response.status).not.toBe(401)
   })
 
   it("denies an SEO decision before CSRF consumption", async () => {
