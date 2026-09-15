@@ -138,3 +138,9 @@ owned by `feat-464`.
   `docs/solutions/performance-issues/watch-etag-hashing-starves-recommendation-admission-20260915.md`
   and `apps/web/scripts/probe-recommendation-runtime.mjs`. Production verification
   remains required; keep the authored homepage block removed.
+- Production after #2297 isolated an early Redis-clock expiry: the profile
+  request failed in 184 ms inside its 250 ms budget. Refresh once only after
+  Lua explicitly confirms no mutation, sharing the original monotonic deadline.
+  Red/green real-Redis proof includes single increment and no late retry writes.
+  See `docs/solutions/performance-issues/redis-clock-sample-can-expire-admission-early-20260915.md`.
+  Genuine later event-loop timeouts remain under investigation; keep open.

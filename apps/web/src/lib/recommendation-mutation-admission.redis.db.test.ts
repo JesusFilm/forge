@@ -117,6 +117,34 @@ describe.skipIf(!RUN_REDIS_TEST)("Watch recommendation Redis admission", () => {
     ).resolves.toEqual(["1", "1"])
   })
 
+  it("refreshes a stale clock after an explicit no-mutation reply within the original budget", async () => {
+    const profileKeys = admissionKeys(secret, "profile-status", address)
+    await cleanupClient.del(profileKeys)
+    let timeCalls = 0
+    let evalCalls = 0
+    const admit = createRecommendationMutationAdmission({
+      production: true,
+      secret,
+      redis: async () => ({
+        time: async () => {
+          const sampled = await cleanupClient.time()
+          if (timeCalls++ === 0) await delay(135)
+          return sampled
+        },
+        eval: async (script, options) => {
+          if (evalCalls++ === 0) await delay(46)
+          return cleanupClient.eval(script, options)
+        },
+      }),
+    })
+    await expect(
+      admit(new Headers({ "cf-connecting-ip": address }), "profile-status"),
+    ).resolves.toEqual({ allowed: true })
+    expect(timeCalls).toBe(2)
+    expect(evalCalls).toBe(2)
+    await expect(cleanupClient.mGet(profileKeys)).resolves.toEqual(["1", "1"])
+  })
+
   it("does not mutate admission buckets when a queued EVAL runs after the caller timed out", async () => {
     await cleanupClient.del(admissionKeys(secret, "playback-context", address))
     let releaseEval!: () => void
@@ -143,5 +171,44 @@ describe.skipIf(!RUN_REDIS_TEST)("Watch recommendation Redis admission", () => {
     await expect(
       cleanupClient.mGet(admissionKeys(secret, "playback-context", address)),
     ).resolves.toEqual([null, null])
+  })
+
+  it("does not mutate when the refreshed EVAL runs after the original deadline", async () => {
+    const profileKeys = admissionKeys(secret, "profile-status", address)
+    await cleanupClient.del(profileKeys)
+    let timeCalls = 0
+    let evalCalls = 0
+    let releaseEval!: () => void
+    const release = new Promise<void>((resolve) => {
+      releaseEval = resolve
+    })
+    let evaluated!: Promise<unknown>
+    const admit = createRecommendationMutationAdmission({
+      production: true,
+      secret,
+      redis: async () => ({
+        time: async () => {
+          const sampled = await cleanupClient.time()
+          if (timeCalls++ === 0) await delay(135)
+          return sampled
+        },
+        eval: async (script, options) => {
+          if (evalCalls++ === 0) {
+            await delay(46)
+            return cleanupClient.eval(script, options)
+          }
+          evaluated = release.then(() => cleanupClient.eval(script, options))
+          return evaluated
+        },
+      }),
+    })
+    await expect(
+      admit(new Headers({ "cf-connecting-ip": address }), "profile-status"),
+    ).resolves.toEqual({ allowed: false, reason: "admission_unavailable" })
+    expect(timeCalls).toBe(2)
+    expect(evalCalls).toBe(2)
+    releaseEval()
+    await expect(evaluated).resolves.toEqual(["unavailable"])
+    await expect(cleanupClient.mGet(profileKeys)).resolves.toEqual([null, null])
   })
 })
