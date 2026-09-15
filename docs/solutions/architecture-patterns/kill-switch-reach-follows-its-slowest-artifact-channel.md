@@ -185,7 +185,10 @@ merging a flag that silences a surface, follow the resource that surface was
 responsible for releasing, and confirm something still releases it when the surface
 never appears. Here the off state reuses the deep-link path deliberately, and the
 review of this change added a source guard pinning the one call the release depends
-on, because deleting it would have looked like dead-code cleanup.
+on, because deleting it would have looked like dead-code cleanup:
+`apps/mobile/app/__tests__/splashHostOwnership.guard.test.js:143-149` asserts that
+`getSplashSession?.().start()` sits in the module-scope require block and follows
+`preventNativeSplashAutoHide()`.
 
 ## Why This Matters
 
@@ -212,9 +215,11 @@ the design.
 
 **The error runs both ways, so state the split rather than a blanket.** When the
 animation shipped, the plan first claimed the whole feature "cannot ship as an OTA
-update"; plan review corrected it, because JavaScript-only changes under
-`apps/mobile/src/` and `apps/mobile/app/` do not move the runtime version
-(session history). Both the blanket "nothing
+update"
+(`docs/plans/2026-09-09-1059-feat-mobile-animated-splash-plan.md:189`); plan review
+corrected it in the same document, because JavaScript-only changes under
+`apps/mobile/src/` and `apps/mobile/app/` do not move the fingerprint runtime
+version (`:194`, and the same rule at `apps/mobile/CLAUDE.md:319`). Both the blanket "nothing
 can ship" and the blanket "it's just a flag" are wrong for the same reason: they
 answer for the change instead of for each artifact. Split the surface and the
 answer falls out — the JavaScript half is OTA-deliverable today, the regenerated
