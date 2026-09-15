@@ -1,0 +1,16 @@
+kind,reason_code,events
+evidence_success,render,119092
+delivery_success,served,56087
+evidence_success,impression,11947
+delivery_success,empty,11556
+evidence_success,playback_progress,2074
+delivery_success,unavailable,2068
+committed_rejection,delivery_timestamp_invalid,1629
+evidence_success,playback_active_visible_playing,1216
+evidence_success,playback_seek,465
+evidence_success,selection,403
+replay,playback_transport_replay,269
+delivery_success,fallback,262
+replay,render_replay,242
+evidence_success,playback_start,215
+evidence_success,playback_attempt,215

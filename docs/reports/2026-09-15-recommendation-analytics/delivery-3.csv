@@ -1,0 +1,7 @@
+execution_mode,reason_code,requests
+semantic_contextual,profile_cold_start,59521
+hybrid_personalized,,5382
+semantic_contextual,,3350
+semantic_fallback,semantic_candidates_unavailable,480
+semantic_fallback,profile_retrieval_timeout,322
+semantic_fallback,profile_lineage_ineligible,94

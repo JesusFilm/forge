@@ -1,0 +1,4 @@
+candidate_generator,learned_outside_recommendations,learned_from_recommendation,repeat_cards,affected_requests,suppression_recorded,refill_or_movement_recorded
+multi-interest-profile,True,False,84,64,1,52
+semantic,True,False,6,5,0,6
+multi-interest-profile,False,True,1,1,1,1

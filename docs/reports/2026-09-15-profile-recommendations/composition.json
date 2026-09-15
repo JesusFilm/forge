@@ -1,0 +1,44 @@
+[
+  [
+    {
+      "slates": "5380",
+      "six_cards": "5249",
+      "duplicate_video_slates": "0",
+      "without_profile_contribution": "463",
+      "without_semantic_contribution": "7",
+      "mean_profile_contributed_cards": "2.8745353159851301"
+    }
+  ],
+  [
+    {
+      "profile_source": false,
+      "semantic_source": true,
+      "cards": "16501",
+      "same_as_current_video": "0",
+      "previously_learned_video": "436",
+      "learned_last_24h": "418",
+      "profile_similarity_p50": null,
+      "profile_similarity_p10": null
+    },
+    {
+      "profile_source": true,
+      "semantic_source": false,
+      "cards": "7270",
+      "same_as_current_video": "0",
+      "previously_learned_video": "3672",
+      "learned_last_24h": "3111",
+      "profile_similarity_p50": 0.9220614524239991,
+      "profile_similarity_p10": 0.6724791350584566
+    },
+    {
+      "profile_source": true,
+      "semantic_source": true,
+      "cards": "8195",
+      "same_as_current_video": "0",
+      "previously_learned_video": "1171",
+      "learned_last_24h": "1035",
+      "profile_similarity_p50": 0.7593534362508852,
+      "profile_similarity_p10": 0.6302858088211654
+    }
+  ]
+]

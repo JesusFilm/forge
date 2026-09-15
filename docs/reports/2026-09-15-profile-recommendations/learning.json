@@ -1,0 +1,189 @@
+[
+  [
+    {
+      "discovery_source": "direct",
+      "state": "eligible",
+      "profile_eligible": true,
+      "has_english_embedding": true,
+      "qualified_outcomes": "743",
+      "profiles": "164",
+      "ever_projected": "743",
+      "in_current_profile": "732"
+    },
+    {
+      "discovery_source": "direct",
+      "state": "excluded",
+      "profile_eligible": false,
+      "has_english_embedding": true,
+      "qualified_outcomes": "172",
+      "profiles": "113",
+      "ever_projected": "0",
+      "in_current_profile": "0"
+    },
+    {
+      "discovery_source": "direct",
+      "state": "eligible",
+      "profile_eligible": true,
+      "has_english_embedding": false,
+      "qualified_outcomes": "43",
+      "profiles": "28",
+      "ever_projected": "0",
+      "in_current_profile": "0"
+    },
+    {
+      "discovery_source": "direct",
+      "state": "excluded",
+      "profile_eligible": false,
+      "has_english_embedding": false,
+      "qualified_outcomes": "25",
+      "profiles": "21",
+      "ever_projected": "0",
+      "in_current_profile": "0"
+    },
+    {
+      "discovery_source": "search",
+      "state": "eligible",
+      "profile_eligible": true,
+      "has_english_embedding": true,
+      "qualified_outcomes": "10",
+      "profiles": "9",
+      "ever_projected": "10",
+      "in_current_profile": "10"
+    },
+    {
+      "discovery_source": "acquisition",
+      "state": "excluded",
+      "profile_eligible": false,
+      "has_english_embedding": true,
+      "qualified_outcomes": "7",
+      "profiles": "6",
+      "ever_projected": "0",
+      "in_current_profile": "0"
+    },
+    {
+      "discovery_source": "recommendation",
+      "state": "eligible",
+      "profile_eligible": true,
+      "has_english_embedding": true,
+      "qualified_outcomes": "7",
+      "profiles": "7",
+      "ever_projected": "7",
+      "in_current_profile": "7"
+    },
+    {
+      "discovery_source": "recommendation",
+      "state": "excluded",
+      "profile_eligible": false,
+      "has_english_embedding": true,
+      "qualified_outcomes": "6",
+      "profiles": "6",
+      "ever_projected": "0",
+      "in_current_profile": "0"
+    },
+    {
+      "discovery_source": "share",
+      "state": "eligible",
+      "profile_eligible": true,
+      "has_english_embedding": true,
+      "qualified_outcomes": "2",
+      "profiles": "2",
+      "ever_projected": "2",
+      "in_current_profile": "2"
+    },
+    {
+      "discovery_source": "acquisition",
+      "state": "eligible",
+      "profile_eligible": true,
+      "has_english_embedding": true,
+      "qualified_outcomes": "2",
+      "profiles": "2",
+      "ever_projected": "2",
+      "in_current_profile": "2"
+    },
+    {
+      "discovery_source": "share",
+      "state": "excluded",
+      "profile_eligible": false,
+      "has_english_embedding": true,
+      "qualified_outcomes": "1",
+      "profiles": "1",
+      "ever_projected": "0",
+      "in_current_profile": "0"
+    },
+    {
+      "discovery_source": "search",
+      "state": "eligible",
+      "profile_eligible": true,
+      "has_english_embedding": false,
+      "qualified_outcomes": "1",
+      "profiles": "1",
+      "ever_projected": "0",
+      "in_current_profile": "0"
+    },
+    {
+      "discovery_source": "search",
+      "state": "excluded",
+      "profile_eligible": false,
+      "has_english_embedding": true,
+      "qualified_outcomes": "1",
+      "profiles": "1",
+      "ever_projected": "0",
+      "in_current_profile": "0"
+    },
+    {
+      "discovery_source": "acquisition",
+      "state": "eligible",
+      "profile_eligible": true,
+      "has_english_embedding": false,
+      "qualified_outcomes": "1",
+      "profiles": "1",
+      "ever_projected": "0",
+      "in_current_profile": "0"
+    }
+  ],
+  [
+    {
+      "projected_outcomes": "4412",
+      "profiles": "1094",
+      "publication_lag_median_seconds": 0.588,
+      "publication_lag_p95_seconds": 1.8416999999999988
+    }
+  ],
+  [
+    {
+      "profiles_with_learned_generation": "1127",
+      "profiles_with_later_personalized_request": "673",
+      "later_personalized_requests": "4813"
+    }
+  ],
+  [
+    {
+      "surface_version": "watch-below-player-v1",
+      "strategy_version": "semantic-transcript-pgvector-v1",
+      "manifest_id": "semantic-transcript-pgvector-v1",
+      "execution_mode": "semantic_contextual",
+      "requests": "62876"
+    },
+    {
+      "surface_version": "watch-below-player-v1",
+      "strategy_version": "semantic-transcript-pgvector-v1",
+      "manifest_id": "semantic-transcript-pgvector-v1",
+      "execution_mode": "hybrid_personalized",
+      "requests": "5380"
+    },
+    {
+      "surface_version": "watch-below-player-v1",
+      "strategy_version": "semantic-transcript-pgvector-v1",
+      "manifest_id": "semantic-transcript-pgvector-v1",
+      "execution_mode": "semantic_fallback",
+      "requests": "897"
+    },
+    {
+      "surface_version": "watch-for-you-v1",
+      "strategy_version": "profile-first-curated-fill-v1",
+      "manifest_id": "semantic-transcript-pgvector-v1",
+      "execution_mode": null,
+      "requests": "824"
+    }
+  ]
+]

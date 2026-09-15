@@ -1,0 +1,15 @@
+discovery_source,state,profile_eligible,has_english_embedding,qualified_outcomes,profiles,ever_projected,in_current_profile
+direct,eligible,True,True,743,164,743,732
+direct,excluded,False,True,172,113,0,0
+direct,eligible,True,False,43,28,0,0
+direct,excluded,False,False,25,21,0,0
+search,eligible,True,True,10,9,10,10
+acquisition,excluded,False,True,7,6,0,0
+recommendation,eligible,True,True,7,7,7,7
+recommendation,excluded,False,True,6,6,0,0
+share,eligible,True,True,2,2,2,2
+acquisition,eligible,True,True,2,2,2,2
+share,excluded,False,True,1,1,0,0
+search,eligible,True,False,1,1,0,0
+search,excluded,False,True,1,1,0,0
+acquisition,eligible,True,False,1,1,0,0

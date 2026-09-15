@@ -10,6 +10,7 @@ const MAX_RECENT_CONTEXT_SESSIONS = 8
 // may accumulate arbitrarily many issued roots inside the seven-day window;
 // only the newest roots per authorized session can influence this request.
 export const MAX_RECENT_CONTEXT_REQUESTS_PER_SESSION = 32
+export const MAX_RECENT_CONTEXT_EPISODES_PER_SESSION = 32
 const MAX_RECENT_CONTEXT_VIDEOS = 24
 const REPEATEDLY_SERVED_THRESHOLD = 2
 
@@ -114,31 +115,64 @@ export async function getRecommendationRecentContext(
         AND selection.occurred_at >= ${windowStart}
         AND selection.occurred_at <= ${input.now}
     ),
-    started_items AS MATERIALIZED (
-      SELECT DISTINCT fact.request_id, fact.item_id
-      FROM recent_requests request
-      JOIN recommendation_playback_fact fact
-        ON fact.request_id = request.id
-        AND fact.kind = 'playback_start'
-        AND fact.occurred_at >= ${windowStart}
-        AND fact.occurred_at <= ${input.now}
+    recent_episodes AS MATERIALIZED (
+      SELECT episode.id, episode.media_id, episode.created_at
+      FROM scoped_sessions session
+      CROSS JOIN LATERAL (
+        SELECT root.id, root.media_id, root.created_at
+        FROM recommendation_playback_episode root
+        WHERE root.session_digest = session.session_digest
+          AND root.created_at >= session.authorization_start
+          AND root.created_at <= ${input.now}
+          AND root.expires_at > ${input.now}
+          AND root.state IN ('claimed', 'finalized', 'timed_out')
+          AND root.conflict_count = 0
+        ORDER BY root.created_at DESC, root.id DESC
+        LIMIT ${MAX_RECENT_CONTEXT_EPISODES_PER_SESSION}
+      ) episode
     ),
-    recent_items AS MATERIALIZED (
+    started_videos AS MATERIALIZED (
+      SELECT episode.media_id, max(fact.received_at) AS latest_at
+      FROM recent_episodes episode
+      JOIN recommendation_playback_fact fact
+        ON fact.episode_id = episode.id
+        AND fact.kind = 'playback_start'
+        AND NOT fact.late
+        -- Ingestion already validates the capability's client-clock allowance.
+        -- Starts may be buffered before context issuance; use server receipt
+        -- time for recency while the episode root fences authorization.
+        AND fact.received_at >= ${windowStart}
+        AND fact.received_at <= ${input.now}
+        AND fact.expires_at > ${input.now}
+      GROUP BY episode.media_id
+    ),
+    served_videos AS MATERIALIZED (
       SELECT
         item.target_media_id AS "targetMediaId",
         count(DISTINCT request.id)::int AS "servedCount",
         bool_or(selected.item_id IS NOT NULL) AS selected,
-        bool_or(started.item_id IS NOT NULL) AS "playbackStarted",
+        false AS "playbackStarted",
         max(request.created_at) AS latest_at
       FROM recent_requests request
       JOIN recommendation_served_item item ON item.request_id = request.id
       LEFT JOIN selected_items selected
         ON selected.request_id = item.request_id
         AND selected.item_id = item.id
-      LEFT JOIN started_items started
-        ON started.request_id = item.request_id
-        AND started.item_id = item.id
       GROUP BY item.target_media_id
+    ),
+    recent_items AS MATERIALIZED (
+      SELECT
+        "targetMediaId",
+        sum("servedCount")::int AS "servedCount",
+        bool_or(selected) AS selected,
+        bool_or("playbackStarted") AS "playbackStarted",
+        max(latest_at) AS latest_at
+      FROM (
+        SELECT * FROM served_videos
+        UNION ALL
+        SELECT media_id, 0, false, true, latest_at FROM started_videos
+      ) evidence
+      GROUP BY "targetMediaId"
     )
     SELECT
       "targetMediaId",

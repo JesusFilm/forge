@@ -3,12 +3,13 @@ id: "feat-370"
 title: "Recommendation playback navigation and QoE signals"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
-start_date: ""
+status: "in-progress"
+start_date: "2026-09-15"
 duration: 4
 depends_on:
   - "feat-369"
 blocks:
+  - "feat-504"
   - "feat-391"
 tags:
   - "admin"

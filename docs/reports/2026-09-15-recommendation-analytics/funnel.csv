@@ -1,0 +1,5 @@
+cohort,requests,sessions,requests_with_items,items,rendered,impressions,impressed_requests,impressed_sessions,selections,selections_after_impression,selecting_sessions,claimed,starts,classified,active_qualified,legacy_qualified,qualified_sessions,missing_active_coverage,qualified_after_impression,active_ms
+last_24h,11140,8590,9434,45720,20915,2008,480,367,66,64,55,63,35,51,13,16,13,23,13,2508995
+last_7d,69973,53393,56349,264640,119085,11941,2886,2213,403,387,316,379,215,388,110,147,102,181,110,17360985
+last_7d_mature_requests,66815,50953,53782,252390,114325,11423,2773,2127,382,367,299,358,204,382,108,145,100,179,108,17208676
+previous_7d,56065,37155,39129,195287,150834,12437,2943,2295,404,373,303,295,133,403,75,101,69,271,70,11936870

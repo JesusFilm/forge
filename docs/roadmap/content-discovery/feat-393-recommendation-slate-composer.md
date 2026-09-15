@@ -3,8 +3,8 @@ id: "feat-393"
 title: "Recommendation slate composer"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
-start_date: ""
+status: "in-progress"
+start_date: "2026-09-15"
 duration: 5
 depends_on:
   - "feat-382"

@@ -12,7 +12,8 @@ const migrations = readdirSync(migrationRoot)
     const ordinal = Number(name.slice(0, 4))
     return (
       (ordinal >= 52 && ordinal <= 76 && name.includes("recommendation")) ||
-      name === "0082_user_recommendation_identity"
+      name === "0082_user_recommendation_identity" ||
+      name === "0096_recommendation_recent_episode_index"
     )
   })
   .sort()
@@ -31,6 +32,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
     let admin: Client
     let adminConnected = false
     let prisma: PrismaClient
+    const observedQueries: Array<{ query: string; params: string }> = []
 
     beforeAll(async () => {
       admin = new Client({ connectionString: env.DATABASE_URL })
@@ -107,9 +109,12 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       const fixtureUrl = new URL(env.DATABASE_URL)
       fixtureUrl.searchParams.delete("options")
       fixtureUrl.searchParams.set("schema", schema)
-      prisma = new PrismaClient({
+      const client = new PrismaClient({
         datasources: { db: { url: fixtureUrl.toString() } },
+        log: [{ emit: "event", level: "query" }],
       })
+      client.$on("query", (query) => observedQueries.push(query))
+      prisma = client
     })
 
     afterAll(async () => {
@@ -221,6 +226,60 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       }
     }
 
+    async function insertStandalonePlayback(input: {
+      id: string
+      sessionDigest: string
+      mediaId?: string
+      requestId?: string
+      discoverySource?: string
+      createdAt?: string
+      expiresAt?: string
+      kind?: string
+      late?: boolean
+      conflictCount?: number
+      occurredAt?: string
+      receivedAt?: string
+    }) {
+      const createdAt = input.createdAt ?? "2026-08-26T11:00:00.000Z"
+      const expiresAt = input.expiresAt ?? "2026-09-24T12:00:00.000Z"
+      await admin.query(
+        `INSERT INTO recommendation_playback_episode (
+          id, media_id, session_digest, state, discovery_source,
+          created_at, claimed_at, active_until, hard_until, expires_at, conflict_count,
+          request_id, item_id, selection_id
+        ) VALUES ($1, $6, $2, 'claimed', $7, $3::timestamptz, $3::timestamptz, LEAST($3::timestamptz + interval '5 minutes', $4::timestamptz - interval '1 second'), LEAST($3::timestamptz + interval '6 hours', $4::timestamptz), $4::timestamptz, $5, $8, $9, $10)`,
+        [
+          input.id,
+          input.sessionDigest,
+          createdAt,
+          expiresAt,
+          input.conflictCount ?? 0,
+          input.mediaId ?? input.id,
+          input.discoverySource ?? "direct",
+          input.requestId ?? null,
+          input.requestId ? `${input.requestId}-item` : null,
+          input.requestId ? `${input.requestId}-selection` : null,
+        ],
+      )
+      await admin.query(
+        `INSERT INTO recommendation_playback_fact (
+          id, episode_id, event_id, capability_jti, payload_digest, sequence, kind,
+          occurred_at, received_at, expires_at, late, request_id, item_id
+        ) VALUES ($1::text, $1::text, $1::text, $1::text, $2, 1, $3, $4, $9, $5, $6, $7, $8)`,
+        [
+          input.id,
+          "e".repeat(64),
+          input.kind ?? "playback_start",
+          input.occurredAt ?? createdAt,
+          expiresAt,
+          input.late ?? false,
+          input.requestId ?? null,
+          input.requestId ? `${input.requestId}-item` : null,
+          input.receivedAt ?? createdAt,
+        ],
+      )
+    }
+
     it("uses only post-authorization current-session facts and explicitly authorized linked sessions", async () => {
       await expect(
         getRecommendationRecentContext(prisma, {
@@ -289,6 +348,192 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           (video) => video.targetMediaId === "bounded-history-video-0",
         ),
       ).toBe(false)
+    })
+
+    it("includes direct playback only within the current authorized profile scope", async () => {
+      for (const input of [
+        { id: "direct-current", sessionDigest: currentSession },
+        { id: "direct-linked", sessionDigest: linkedSession },
+        {
+          id: "search-current",
+          sessionDigest: currentSession,
+          discoverySource: "search",
+        },
+        {
+          id: "recommendation-current",
+          mediaId: "current-selected-video",
+          sessionDigest: currentSession,
+          requestId: "current-selected-request",
+          discoverySource: "recommendation",
+        },
+        { id: "direct-foreign", sessionDigest: "c".repeat(64) },
+        {
+          id: "direct-before-link",
+          sessionDigest: currentSession,
+          createdAt: "2026-08-26T09:00:00.000Z",
+        },
+        {
+          id: "direct-expired",
+          sessionDigest: currentSession,
+          expiresAt: "2026-08-26T11:30:00.000Z",
+        },
+        {
+          id: "attempt-only",
+          sessionDigest: currentSession,
+          kind: "playback_attempt",
+        },
+        { id: "direct-late", sessionDigest: currentSession, late: true },
+        {
+          id: "direct-conflicted",
+          sessionDigest: currentSession,
+          conflictCount: 1,
+        },
+        {
+          id: "direct-future",
+          sessionDigest: currentSession,
+          receivedAt: "2026-08-26T13:00:00.000Z",
+        },
+      ])
+        await insertStandalonePlayback(input)
+
+      const read = (
+        allowDurableProfileLinks: boolean,
+        profileTokenDigest: string | null = tokenDigest,
+      ) =>
+        getRecommendationRecentContext(prisma, {
+          sessionDigest: currentSession,
+          profileTokenDigest,
+          allowDurableProfileLinks,
+          now,
+        })
+      const started = (result: Awaited<ReturnType<typeof read>>) =>
+        result.videos
+          .filter((video) =>
+            video.reasonCodes.includes("recent_playback_start"),
+          )
+          .map((video) => video.targetMediaId)
+          .sort()
+
+      expect(started(await read(false))).toEqual([
+        "current-selected-video",
+        "direct-current",
+        "search-current",
+      ])
+      expect(started(await read(true))).toEqual([
+        "current-selected-video",
+        "direct-current",
+        "direct-linked",
+        "search-current",
+      ])
+      expect(started(await read(false, null))).toEqual([
+        "current-selected-video",
+        "direct-before-link",
+        "direct-current",
+        "search-current",
+      ])
+      expect((await read(true, "f".repeat(64))).videos).toEqual([])
+
+      await admin.query(
+        `UPDATE recommendation_profile_session_link SET expires_at = '2026-08-26T11:30:00Z' WHERE id = 'recent-context-linked-link'`,
+      )
+      expect(started(await read(true))).not.toContain("direct-linked")
+
+      await admin.query(
+        `UPDATE recommendation_profile SET privacy_generation = 3 WHERE id = 'recent-context-profile'`,
+      )
+      expect((await read(true)).videos).toEqual([])
+    })
+
+    it("bounds standalone playback history before joining facts", async () => {
+      const sessionDigest = "9".repeat(64)
+      for (let index = 0; index < 40; index += 1) {
+        await insertStandalonePlayback({
+          id: `direct-bounded-${index}`,
+          sessionDigest,
+          createdAt: `2026-08-26T11:${String(index).padStart(2, "0")}:00.000Z`,
+          // Old starts must not leak through a newer window of attempts.
+          kind: index < 8 ? "playback_start" : "playback_attempt",
+        })
+      }
+      expect(
+        await getRecommendationRecentContext(prisma, {
+          sessionDigest,
+          profileTokenDigest: null,
+          allowDurableProfileLinks: false,
+          now,
+        }),
+      ).toEqual({ videos: [] })
+    })
+
+    it("retains accepted starts buffered before issuance or with an ahead client clock", async () => {
+      const sessionDigest = "8".repeat(64)
+      await insertStandalonePlayback({
+        id: "buffered-before-issuance",
+        sessionDigest,
+        occurredAt: "2026-08-26T10:59:55.000Z",
+      })
+      await insertStandalonePlayback({
+        id: "clock-ahead",
+        sessionDigest,
+        createdAt: "2026-08-26T12:00:00.000Z",
+        occurredAt: "2026-08-26T12:00:05.000Z",
+      })
+      const result = await getRecommendationRecentContext(prisma, {
+        sessionDigest,
+        profileTokenDigest: null,
+        allowDurableProfileLinks: false,
+        now,
+      })
+      expect(result.videos).toEqual([
+        {
+          targetMediaId: "clock-ahead",
+          reasonCodes: ["recent_playback_start"],
+        },
+        {
+          targetMediaId: "buffered-before-issuance",
+          reasonCodes: ["recent_playback_start"],
+        },
+      ])
+    })
+
+    it("uses the session index for bounded lookup amid unrelated episode history", async () => {
+      await admin.query(`INSERT INTO recommendation_playback_episode (
+        id, media_id, session_digest, state, discovery_source,
+        created_at, active_until, hard_until, expires_at
+      ) SELECT 'noise-' || n, 'noise-video-' || n, repeat('7', 64), 'claimed', 'search',
+        '2026-08-26T10:00:00Z'::timestamptz, '2026-08-26T11:00:00Z'::timestamptz,
+        '2026-08-26T16:00:00Z'::timestamptz, '2026-09-24T10:00:00Z'::timestamptz
+      FROM generate_series(1, 10000) n`)
+      await admin.query("ANALYZE recommendation_playback_episode")
+      const timings: number[] = []
+      for (let i = 0; i < 25; i += 1) {
+        const start = performance.now()
+        await getRecommendationRecentContext(prisma, {
+          sessionDigest: currentSession,
+          profileTokenDigest: null,
+          allowDurableProfileLinks: false,
+          now,
+        })
+        timings.push(performance.now() - start)
+      }
+      const query = observedQueries.at(-1)!
+      const explained = await admin.query(
+        `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${query.query}`,
+        JSON.parse(query.params),
+      )
+      expect(JSON.stringify(explained.rows)).toContain(
+        "recommendation_episode_session_created_idx",
+      )
+      timings.sort((a, b) => a - b)
+      console.info(
+        "Recent-context local benchmark (10000 unrelated episodes)",
+        {
+          samples: timings.length,
+          medianMs: timings[12],
+          p95Ms: timings[23],
+          executionMs: explained.rows[0]["QUERY PLAN"][0]["Execution Time"],
+        },
+      )
     })
   },
 )
