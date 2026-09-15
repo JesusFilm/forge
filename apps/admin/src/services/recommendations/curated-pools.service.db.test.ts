@@ -107,11 +107,12 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       const url = new URL(env.DATABASE_URL)
       url.searchParams.delete("options")
       url.searchParams.set("schema", schema)
-      prisma = new PrismaClient({
+      const queryLoggingClient = new PrismaClient({
         datasourceUrl: url.toString(),
         log: [{ emit: "event", level: "query" }],
       })
-      prisma.$on("query", (event) => statements.push(event.query))
+      queryLoggingClient.$on("query", (event) => statements.push(event.query))
+      prisma = queryLoggingClient
       service = new CuratedPoolsService({ prisma })
     }, 30_000)
     afterAll(async () => {
