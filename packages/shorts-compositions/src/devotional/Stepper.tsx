@@ -420,7 +420,7 @@ export const StepperStack: React.FC<{
  *
  * The move from one step to the next is the RAIL drawing down from the step
  * just done to the next one; when it arrives, that label lights gold, grows a
- * fifth and comes into focus, while the step behind it cools to white. Steps
+ * fifth and comes into focus; the steps already passed stay gold. Steps
  * still ahead are dim and out of focus, the further ahead the softer, so the
  * eye is told where it is without reading. Measured off the Figma frame
  * (900 wide = 390 units): label 20 / active 24, tracking 0.13em, rail 1.7
@@ -490,11 +490,11 @@ const StepperLine: React.FC<{
       {steps.map((label, i) => {
         // Where this step stands in the move.
         const isCur = i === cur
-        const isPrev = i === cur - 1
         const ahead = i > cur
-        // Gold: the step being lit warms with `lit`; the one just done stays
-        // gold while the rail draws and cools as the next one lights.
-        const goldness = isCur ? (cur === 0 ? 1 : lit) : isPrev ? 1 - lit : 0
+        // Gold: the step being lit warms with `lit`; steps already passed
+        // stay gold (owner: "make WATCH yellow"), so the column reads as the
+        // ground covered so far.
+        const goldness = isCur ? (cur === 0 ? 1 : lit) : i < cur ? 1 : 0
         const focusBlur = isCur
           ? LINE_AHEAD_BLUR * (1 - lit) * (cur === 0 ? 0 : 1)
           : ahead
