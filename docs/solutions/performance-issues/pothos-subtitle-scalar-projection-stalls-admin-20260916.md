@@ -84,6 +84,15 @@ production timeout rate. The fixture uses synthetic metadata with the measured
 row counts, not a copy of production content. Production verification remains
 necessary, and a short healthy window cannot establish full feat-496 recovery.
 
+## Production confirmation
+
+PR #2322 deployed normally. A bounded capture on Admin `d51e4d41` returned the
+same 100 dubs and 3,660 subtitles in 1.10–1.11 MB of Prisma JSON, compared with
+approximately 5.5 MB before the change. Result parsing took 2.08–3.43 ms. The
+subsequent automatic Admin/worker release `9533506f` includes both catalog fixes.
+See the operations report for the separate HTTP and semantic outcome windows;
+payload reduction alone is not a recovery claim.
+
 ## Diagnostic discipline
 
 Separate SQL execution, locks, pool acquisition and application callbacks.

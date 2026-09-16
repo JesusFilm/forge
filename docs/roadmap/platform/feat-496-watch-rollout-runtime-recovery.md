@@ -162,6 +162,8 @@ revision-scoped request populations and structured delivery outcomes.
 
 - feat-513 tracks the separately observed workflow enqueue/listener ownership
   issue. Its contribution to Watch latency is not yet causally established.
+- feat-516 tracks a near-startup profiler pause that has no matched request
+  failure and was not reproduced in later timing-only observations.
 - feat-464 owns broader playback evidence transport/reconciliation reliability.
 - feat-487/feat-488 own curated coverage and homepage launch configuration.
 - feat-506 tracks pre-existing diagnostic command noise from missing ps/cache
