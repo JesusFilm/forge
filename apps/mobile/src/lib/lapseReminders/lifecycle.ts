@@ -10,6 +10,7 @@
  * real adapter, record store, clock, gate, and logger.
  */
 
+import { telemetryErrorMessage } from "../downloadErrors"
 import {
   LAPSE_REMINDER_COPY,
   LAPSE_REMINDER_IDENTIFIERS,
@@ -97,10 +98,6 @@ export type LapseReminderLifecycle = {
   attach: () => () => void
 }
 
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
-
 export function createLapseReminderLifecycle(
   deps: LapseReminderLifecycleDeps,
 ): LapseReminderLifecycle {
@@ -114,7 +111,10 @@ export function createLapseReminderLifecycle(
       pass_reason: reason,
       step,
       ...(kind == null ? {} : { reminder_kind: kind }),
-      error_message: messageOf(error),
+      // The repo's only sanctioned path for a caught error into telemetry: it
+      // strips urls and paths and caps the length. A native scheduling error
+      // can echo the request, which carries a forgemobile://watch/<slug> url.
+      error_message: telemetryErrorMessage(error),
     })
   }
 

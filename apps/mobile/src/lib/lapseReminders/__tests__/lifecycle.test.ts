@@ -44,6 +44,8 @@ type FakeAdapterOptions = {
   failDismiss?: () => boolean
   failPermission?: () => boolean
   failChannel?: () => boolean
+  /** Lets a case assert what the telemetry sanitizer does to a real message. */
+  scheduleErrorMessage?: string
 }
 
 function createFakeAdapter(options: FakeAdapterOptions = {}) {
@@ -96,7 +98,7 @@ function createFakeAdapter(options: FakeAdapterOptions = {}) {
       calls.push(`schedule:${input.identifier}`)
       await wait()
       if (options.failSchedule?.(input.identifier)) {
-        throw new Error("schedule failed")
+        throw new Error(options.scheduleErrorMessage ?? "schedule failed")
       }
       identifiersUsed.add(input.identifier)
       pending.set(input.identifier, {
@@ -403,6 +405,45 @@ describe("the lapse reminder schedule pass", () => {
         },
       },
     ])
+  })
+
+  it("redacts a url out of a caught error before it reaches telemetry", async () => {
+    // Every other fixture here is a short plain string, which the sanitizer
+    // leaves byte-identical — so without this case the redaction is unpinned.
+    // A native scheduling error can echo the request, and the request carries
+    // the reminder's own forgemobile://watch/<slug> url.
+    const harness = createHarness({
+      failSchedule: (identifier) => identifier === "lapse-reminder-day1",
+      scheduleErrorMessage:
+        "Failed to schedule forgemobile://watch/the-birth-of-jesus at /data/user/0/org.jesusfilm.forgewatch/files",
+    })
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+
+    await lifecycle.runPass("mount")
+
+    const failure = harness.logs.find(
+      (entry) => entry.event === "lapse_reminder.step_failed",
+    )
+    const message = String(failure?.context.error_message)
+    expect(message).not.toContain("forgemobile://")
+    expect(message).not.toContain("the-birth-of-jesus")
+    expect(message).not.toContain("/data/user/0")
+    expect(message).toContain("<url>")
+  })
+
+  it("caps a very long caught error before it reaches telemetry", async () => {
+    const harness = createHarness({
+      failSchedule: (identifier) => identifier === "lapse-reminder-day1",
+      scheduleErrorMessage: "x".repeat(5_000),
+    })
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+
+    await lifecycle.runPass("mount")
+
+    const failure = harness.logs.find(
+      (entry) => entry.event === "lapse_reminder.step_failed",
+    )
+    expect(String(failure?.context.error_message).length).toBeLessThan(250)
   })
 
   it("survives an adapter that rejects on every call", async () => {

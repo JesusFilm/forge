@@ -74,10 +74,9 @@ export function registerDeepLinkUrl(
 }
 
 /**
- * Records an arrival by a slug the caller has already validated. A reminder tap
- * carries `forgemobile://watch/<slug>`, which `watchSlugFromUrl` reads as the
- * WEB share shape and strips a `.html` suffix from, so keying a reminder by its
- * url would file it under a slug the watch route never consumes.
+ * Records an arrival by a slug the caller has already validated. Re-deriving a
+ * reminder's slug from its url would strip a `.html` suffix as the web share
+ * shape, filing it under a slug the watch route never consumes.
  */
 export function registerDeepLinkSlug(
   slug: string,

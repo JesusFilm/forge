@@ -8,6 +8,7 @@
  * the logger. Nothing here reaches a native module or storage by itself.
  */
 
+import { telemetryErrorMessage } from "../downloadErrors"
 import type { LapseReminderTelemetry } from "./lifecycle"
 
 /** The value the latch stores. Only its presence is read (R9). */
@@ -117,10 +118,6 @@ export function isGrantedOutcome(outcome: LapseReminderPromptOutcome): boolean {
   return outcome === "granted" || outcome === "already_granted"
 }
 
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
-
 /**
  * Attach the prompt. It waits for the splash, runs at most once, and returns a
  * detach function. Every piece of state is local to this call, so a StrictMode
@@ -140,7 +137,9 @@ export function attachLapseReminderPermissionPrompt(
   function logFailure(step: LapseReminderPromptStep, error: unknown) {
     deps.telemetry.info("lapse_reminder.permission_failed", {
       step,
-      error_message: messageOf(error),
+      // The repo's only sanctioned path for a caught error into telemetry: a
+      // storage error can carry a path, and it strips those and caps length.
+      error_message: telemetryErrorMessage(error),
     })
   }
 

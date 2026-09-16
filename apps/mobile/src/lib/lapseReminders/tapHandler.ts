@@ -14,6 +14,7 @@
  */
 
 import type { DeepLinkEntry, DeepLinkOrigin } from "../deepLinkOrigin"
+import { telemetryErrorMessage } from "../downloadErrors"
 import type { LapseReminderKind } from "./constants"
 import type { LapseReminderTelemetry } from "./lifecycle"
 import {
@@ -134,10 +135,6 @@ export function decideLapseReminderTap(
   }
 }
 
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
-
 /**
  * Attach the tap handler. Every piece of state is local to this call, so a
  * StrictMode remount gets a fresh one and the detached one settles nothing.
@@ -152,7 +149,9 @@ export function createLapseReminderTapHandler(
   function logFailure(step: LapseReminderTapStep, error: unknown) {
     deps.telemetry.info("lapse_reminder.tap_failed", {
       step,
-      error_message: messageOf(error),
+      // The repo's only sanctioned path for a caught error into telemetry. A
+      // failed navigate echoes the attempted href, so this strips the path.
+      error_message: telemetryErrorMessage(error),
     })
   }
 
