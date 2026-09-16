@@ -405,6 +405,34 @@ describe("POST /watch/api/recommendations/playback", () => {
     },
   )
 
+  it.each(["INTERNAL_SERVER_ERROR", "SERVICE_UNAVAILABLE"])(
+    "returns retryable HTTP 503 for a facts %s response",
+    async (code) => {
+      mutate.mockRejectedValueOnce(
+        new CombinedGraphQLErrors({
+          errors: [{ message: "Unexpected error.", extensions: { code } }],
+        }),
+      )
+      const response = await POST(
+        request(
+          JSON.stringify({
+            action: "facts",
+            contractVersion: "recommendation-evidence-v1",
+            capability: "episode-capability",
+            episodeId: "episode-1",
+            mediaId: "media-1",
+            events: [playbackEvent],
+          }),
+        ),
+      )
+      expect(response.status).toBe(503)
+      expect(await response.json()).toEqual({
+        error: "recommendations_unavailable",
+      })
+      expect(mutate).toHaveBeenCalledOnce()
+    },
+  )
+
   it("does not classify arbitrary GraphQL messages as binding failures", async () => {
     mutate.mockRejectedValueOnce(
       new CombinedGraphQLErrors({

@@ -4,7 +4,9 @@ import { resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 export type UsefulnessSnapshot = {
-  schemaVersion: "recommendation-usefulness-offline-v1"
+  schemaVersion:
+    | "recommendation-usefulness-offline-v1"
+    | "recommendation-usefulness-offline-v2"
   experimentId: string
   configurationDigest: string
   enrollmentStart: string
@@ -109,7 +111,10 @@ export function evaluateUsefulnessSnapshot(input: UsefulnessSnapshot) {
     configurationDigest: input.configurationDigest,
     inputDigest,
     capturedAt: input.capturedAt,
-    metric: "qualified_views_per_assigned_profile_24h",
+    metric:
+      input.schemaVersion === "recommendation-usefulness-offline-v2"
+        ? "qualified_views_any_observed_mode_per_assigned_profile_24h"
+        : "qualified_views_per_assigned_profile_24h",
     sampleRatio: { expectedChallengerProbability: 0.5, chiSquare },
     control: summary(control),
     challenger: summary(challenger),
@@ -215,7 +220,8 @@ function validateSnapshot(value: unknown): asserts value is UsefulnessSnapshot {
       (item.includes(".") ? item : item.replace("Z", ".000Z"))
   if (!record(value)) return fail()
   if (
-    value.schemaVersion !== "recommendation-usefulness-offline-v1" ||
+    (value.schemaVersion !== "recommendation-usefulness-offline-v1" &&
+      value.schemaVersion !== "recommendation-usefulness-offline-v2") ||
     typeof value.experimentId !== "string" ||
     !/^[a-zA-Z0-9_-]{1,191}$/.test(value.experimentId) ||
     typeof value.configurationDigest !== "string" ||

@@ -2,8 +2,12 @@ import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, vi } from "vitest"
 import type { MuxPlayerRef } from "@forge/video-player"
+import {
+  startRecommendationConsentBootstrap,
+  completeRecommendationConsentBootstrap,
+} from "@/lib/recommendation-consent-bootstrap"
 
-type Listener = () => void
+type Listener = (event: Event) => void
 
 export type RecorderFetchMock = ReturnType<typeof vi.fn>
 
@@ -28,7 +32,8 @@ export function makePlayer() {
       listeners.get(event)?.delete(listener)
     }),
     dispatch(event: string) {
-      for (const listener of listeners.get(event) ?? []) listener()
+      for (const listener of listeners.get(event) ?? [])
+        listener(new Event(event))
     },
   } as unknown as MuxPlayerRef & {
     paused: boolean
@@ -71,6 +76,8 @@ export function usePlaybackRecorderHarness(
   let root: Root
 
   beforeEach(() => {
+    startRecommendationConsentBootstrap()
+    completeRecommendationConsentBootstrap()
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2026-08-19T03:00:00.000Z"))
     const fetchMock = vi.fn()
