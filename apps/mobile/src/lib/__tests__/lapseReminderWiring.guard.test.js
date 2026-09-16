@@ -37,6 +37,7 @@ const ADAPTER = path.join(
   "lapseReminders",
   "notificationsAdapter.ts",
 )
+const WATCH_ROUTE = path.join(MOBILE, "app", "watch", "[slug].tsx")
 const ROOTS = [path.join(MOBILE, "src"), path.join(MOBILE, "app")]
 
 const SPECIFIER = "expo-notifications"
@@ -58,6 +59,13 @@ const PROVIDER_WIRING = [
   // reserved-attribute sweep keys on `telemetry`, so a dep renamed to `log`
   // would take every emit site out of that sweep with this suite still green.
   "telemetry: datadogLog",
+  "createLapseReminderTapHandler(",
+  // Without the selection bridge a cold tap still lands, but only after its
+  // deadline: every reminder launch would sit on Home for three seconds.
+  "selectionChanged(",
+  // By the validated slug. Dropping this loses `content.deep_link_open` for
+  // every reminder return, and navigation keeps working, so nothing says so.
+  "registerDeepLinkSlug(",
 ]
 
 function read(file) {
@@ -143,6 +151,19 @@ function sourceFiles() {
   return found
 }
 
+/**
+ * The context literal of the watch route's deep-link attribution event. The
+ * object has no nested braces, so the first `})` after it closes it.
+ */
+function deepLinkOpenContext(source) {
+  const start = source.indexOf('"content.deep_link_open"')
+  if (start === -1) return null
+  const open = source.indexOf("{", start)
+  const close = source.indexOf("})", open)
+  if (open === -1 || close === -1) return null
+  return source.slice(open + 1, close)
+}
+
 /** True when a source imports or requires the notifications module itself. */
 function namesNotificationsModule(source) {
   const stripped = stripComments(source)
@@ -192,6 +213,28 @@ describe("the lapse reminder composition root", () => {
       namesNotificationsModule(fs.readFileSync(file, "utf8")),
     )
     expect(naming).toEqual([ADAPTER])
+  })
+
+  it("carries the arrival origin on the watch route's deep-link event", () => {
+    // The registry now records WHY a slug arrived, and the route is the only
+    // reader. Dropping the key leaves reminder returns inside the share-link
+    // counts, with every test on both sides still green.
+    const context = deepLinkOpenContext(stripComments(read(WATCH_ROUTE)))
+
+    expect(context).not.toBeNull()
+    expect(context).toContain("content_id:")
+    expect(context).toContain("entry:")
+    expect(context).toContain("origin:")
+  })
+
+  it("positive control: a deep-link event without the origin is caught", () => {
+    const source = stripComments(read(WATCH_ROUTE))
+    const stripped = source.replace("origin: arrival.origin,", "")
+
+    expect(stripped).not.toBe(source)
+    expect(deepLinkOpenContext(stripped)).not.toContain("origin:")
+    // And the detector finds a real context rather than passing on anything.
+    expect(deepLinkOpenContext("nothing here")).toBeNull()
   })
 
   it("positive control: a dropped provider dependency is caught", () => {

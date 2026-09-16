@@ -20,7 +20,7 @@ import { useApolloClient, useQuery } from "@apollo/client/react"
 import { GET_VIDEO_BY_SLUG } from "../../src/lib/queries"
 import { datadogLog } from "../../src/lib/datadog"
 import {
-  consumeDeepLinkEntry,
+  consumeDeepLinkArrival,
   whenDeepLinkOriginsReady,
 } from "../../src/lib/deepLinkOrigin"
 import { schedulePersist } from "../../src/lib/cachePersistence"
@@ -535,12 +535,15 @@ export default function WatchVideoPage() {
     let cancelled = false
     void whenDeepLinkOriginsReady().then(() => {
       if (cancelled || deepLinkEmittedRef.current.has(decodedSlug)) return
-      const entry = consumeDeepLinkEntry(decodedSlug)
-      if (entry == null) return
+      const arrival = consumeDeepLinkArrival(decodedSlug)
+      if (arrival == null) return
       deepLinkEmittedRef.current.add(decodedSlug)
+      // Built inline: the reserved-attribute sweep only reads an object
+      // literal written AT the call site.
       datadogLog.info("content.deep_link_open", {
         content_id: decodedSlug,
-        entry,
+        entry: arrival.entry,
+        origin: arrival.origin,
       })
     })
     return () => {

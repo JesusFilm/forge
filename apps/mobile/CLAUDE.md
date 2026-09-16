@@ -242,6 +242,9 @@ To re-enable, all three steps, in one PR:
    installed build carries and reaches nobody; a flag-only OTA on the old
    runtime cuts from the flat field straight to Home.
 
+A cold reminder tap registers its arrival after the splash skip decision's
+budget, so the animation then plays over a reminder launch.
+
 The reverse (this change) needs the same native build for the same reason. The
 design record is `docs/plans/2026-09-09-1059-feat-mobile-animated-splash-plan.md`.
 

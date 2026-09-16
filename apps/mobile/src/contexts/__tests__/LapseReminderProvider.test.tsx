@@ -13,18 +13,36 @@
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
 )
-jest.mock("../../lib/lapseReminders/notificationsAdapter", () => ({
-  lapseReminderNotifications: {
-    ensureChannel: jest.fn(async () => {}),
-    getPermission: jest.fn(async () => ({ granted: true, canAskAgain: false })),
-    requestPermission: jest.fn(async () => ({
-      granted: true,
-      canAskAgain: false,
-    })),
-    schedule: jest.fn(async () => {}),
-    cancel: jest.fn(async () => {}),
-    dismissDelivered: jest.fn(async () => {}),
-  },
+jest.mock("../../lib/lapseReminders/notificationsAdapter", () => {
+  // A named parameter inside a function TYPE trips babel-plugin-jest-hoist's
+  // out-of-scope check, so this factory keeps no listener registry: the test
+  // fires the listener the provider handed to the mock.
+  const unsubscribeResponses = jest.fn()
+  return {
+    lapseReminderNotifications: {
+      ensureChannel: jest.fn(async () => {}),
+      getPermission: jest.fn(async () => ({
+        granted: true,
+        canAskAgain: false,
+      })),
+      requestPermission: jest.fn(async () => ({
+        granted: true,
+        canAskAgain: false,
+      })),
+      schedule: jest.fn(async () => {}),
+      cancel: jest.fn(async () => {}),
+      dismissDelivered: jest.fn(async () => {}),
+      getLastResponseData: jest.fn(() => null),
+      clearLastResponse: jest.fn(),
+      subscribeToResponses: jest.fn(() => unsubscribeResponses),
+    },
+    __unsubscribeResponses: unsubscribeResponses,
+  }
+})
+// The imperative router: the provider navigates from a timer and from a native
+// listener, neither of which is inside a render.
+jest.mock("expo-router", () => ({
+  router: { push: jest.fn(), replace: jest.fn() },
 }))
 jest.mock("../../lib/splash/splashSession", () => {
   const CLEARED = { resolved: true, visible: false, presentation: null }
@@ -91,7 +109,15 @@ import { AppState, type AppStateStatus } from "react-native"
 
 import AsyncStorage from "@react-native-async-storage/async-storage"
 
+import { router } from "expo-router"
+
 import { LapseReminderProvider } from "../LapseReminderProvider"
+import { ExperienceSelectionProvider } from "../ExperienceSelectionProvider"
+import {
+  consumeDeepLinkArrival,
+  resetDeepLinkOrigins,
+} from "../../lib/deepLinkOrigin"
+import { buildLapseReminderPayload } from "../../lib/lapseReminders/payload"
 import {
   LAPSE_REMINDER_IDENTIFIERS,
   LAPSE_REMINDER_PERMISSION_ASKED_STORAGE_KEY,
@@ -127,14 +153,43 @@ const adapter = lapseReminderNotifications as unknown as {
   schedule: jest.Mock
   cancel: jest.Mock
   dismissDelivered: jest.Mock
+  getLastResponseData: jest.Mock
+  clearLastResponse: jest.Mock
+  subscribeToResponses: jest.Mock
 }
+
+const notificationsModule = (require as unknown as NodeRequireLike)(
+  "../../lib/lapseReminders/notificationsAdapter",
+) as {
+  __unsubscribeResponses: jest.Mock
+}
+
+/** Fires a warm tap through every listener the provider has subscribed. A
+ *  detached one is still in the list, which is how a stale listener stays
+ *  testable. */
+function emitResponse(data: unknown) {
+  for (const call of adapter.subscribeToResponses.mock.calls) {
+    const listener = call[0] as (value: unknown) => void
+    listener(data)
+  }
+}
+
+const fakeRouter = router as unknown as { push: jest.Mock; replace: jest.Mock }
+
+/** The stored experience slug. The shell reads it, and the cold tap waits for
+ *  it: the shell swaps element type when it resolves, remounting the stack. */
+const EXPERIENCE_SLUG_STORAGE_KEY = "selectedExperienceSlug"
 
 const appStateListeners = new Set<(state: AppStateStatus) => void>()
 
 async function render(strict = false): Promise<TestInstance> {
   let renderer!: TestInstance
   await act(async () => {
-    const tree = <LapseReminderProvider>{null}</LapseReminderProvider>
+    const tree = (
+      <ExperienceSelectionProvider>
+        <LapseReminderProvider>{null}</LapseReminderProvider>
+      </ExperienceSelectionProvider>
+    )
     renderer = TestRenderer.create(
       strict ? <StrictMode>{tree}</StrictMode> : tree,
     )
@@ -163,6 +218,10 @@ beforeEach(async () => {
   jest.clearAllMocks()
   appStateListeners.clear()
   splashModule.__resetSplash()
+  resetDeepLinkOrigins()
+  // clearAllMocks leaves a queued return value in place, so reset the tap port
+  // explicitly: a leaked response would navigate in an unrelated test.
+  adapter.getLastResponseData.mockReturnValue(null)
   // The DEFAULT fixture is a later launch: the latch is already closed, so the
   // prompt reads it and stops. The first-launch cases below clear it.
   await AsyncStorage.clear()
@@ -170,6 +229,8 @@ beforeEach(async () => {
     LAPSE_REMINDER_PERMISSION_ASKED_STORAGE_KEY,
     LAPSE_REMINDER_PERMISSION_ASKED_VALUE,
   )
+  // A settled selection is the ordinary case; the deadline test clears it.
+  await AsyncStorage.setItem(EXPERIENCE_SLUG_STORAGE_KEY, "watch-home")
   adapter.getPermission.mockResolvedValue({ granted: true, canAskAgain: false })
   adapter.requestPermission.mockResolvedValue({
     granted: true,
@@ -293,9 +354,11 @@ describe("LapseReminderProvider wiring", () => {
     let renderer!: TestInstance
     await act(async () => {
       renderer = TestRenderer.create(
-        <LapseReminderProvider>
-          <>{null}</>
-        </LapseReminderProvider>,
+        <ExperienceSelectionProvider>
+          <LapseReminderProvider>
+            <>{null}</>
+          </LapseReminderProvider>
+        </ExperienceSelectionProvider>,
       )
     })
     await act(async () => {})
@@ -438,5 +501,108 @@ describe("the spent permission latch", () => {
       expect.anything(),
     )
     await act(async () => renderer.unmount())
+  })
+})
+
+describe("the reminder tap (U6)", () => {
+  const SLUG = "the-birth-of-jesus"
+  const WATCH_PATH = `/watch/${SLUG}`
+
+  function coldTap(kind: "day1" | "day7", slug: string | null) {
+    adapter.getLastResponseData.mockReturnValue(
+      buildLapseReminderPayload(kind, slug == null ? null : { slug }),
+    )
+  }
+
+  it("opens the recorded video and leaves a reminder arrival (AE8, R12)", async () => {
+    coldTap("day7", SLUG)
+    const renderer = await render()
+
+    expect(fakeRouter.push).toHaveBeenCalledTimes(1)
+    expect(fakeRouter.push).toHaveBeenCalledWith(WATCH_PATH)
+    // Through the REAL registry, keyed the way the watch route consumes it.
+    expect(consumeDeepLinkArrival(SLUG)).toEqual({
+      entry: "cold",
+      origin: "reminder",
+    })
+    expect(adapter.clearLastResponse).toHaveBeenCalledTimes(1)
+    await act(async () => renderer.unmount())
+  })
+
+  it("logs the tap through the Datadog info sink (R15, KTD9)", async () => {
+    coldTap("day7", SLUG)
+    const renderer = await render()
+
+    expect(datadogLog.info).toHaveBeenCalledWith("lapse_reminder.tap", {
+      outcome: "watch",
+      arrival: "cold",
+      reminder_kind: "day7",
+      content_id: SLUG,
+      parse_reason: null,
+    })
+    await act(async () => renderer.unmount())
+  })
+
+  it("opens the Home tab when there is nothing to resume (AE6, R13)", async () => {
+    coldTap("day1", null)
+    const renderer = await render()
+
+    expect(fakeRouter.replace).toHaveBeenCalledWith("/(tabs)")
+    expect(fakeRouter.push).not.toHaveBeenCalled()
+    expect(consumeDeepLinkArrival(SLUG)).toBeNull()
+    await act(async () => renderer.unmount())
+  })
+
+  // KTD7: the experience shell swaps element type when the stored slug
+  // resolves, which remounts the stack under a route pushed before it. The
+  // handler's own suite pins the deadline that ends this wait.
+  it("waits while the experience selection has no slug", async () => {
+    await AsyncStorage.removeItem(EXPERIENCE_SLUG_STORAGE_KEY)
+    coldTap("day1", SLUG)
+    const renderer = await render()
+
+    expect(fakeRouter.push).not.toHaveBeenCalled()
+    expect(adapter.clearLastResponse).not.toHaveBeenCalled()
+    await act(async () => renderer.unmount())
+  })
+
+  it("navigates at once for a tap that arrives while the app runs (R12)", async () => {
+    const renderer = await render()
+    expect(fakeRouter.push).not.toHaveBeenCalled()
+
+    await act(async () => {
+      emitResponse(buildLapseReminderPayload("day1", { slug: SLUG }))
+    })
+
+    expect(fakeRouter.push).toHaveBeenCalledWith(WATCH_PATH)
+    expect(consumeDeepLinkArrival(SLUG)).toEqual({
+      entry: "warm",
+      origin: "reminder",
+    })
+    await act(async () => renderer.unmount())
+  })
+
+  it("navigates once across a StrictMode remount", async () => {
+    coldTap("day7", SLUG)
+    const renderer = await render(true)
+
+    // Anti-vacuous: two mount passes prove the effect cycle really ran
+    // setup -> cleanup -> setup, so one push is a result and not an accident.
+    expect(adapter.getPermission).toHaveBeenCalledTimes(2)
+    expect(fakeRouter.push).toHaveBeenCalledTimes(1)
+    await act(async () => renderer.unmount())
+  })
+
+  it("stops listening for taps on unmount", async () => {
+    const renderer = await render()
+    expect(adapter.subscribeToResponses).toHaveBeenCalledTimes(1)
+
+    await act(async () => renderer.unmount())
+    // Both halves: the subscription is released, and the listener the module
+    // still holds navigates nothing.
+    emitResponse(buildLapseReminderPayload("day1", { slug: SLUG }))
+
+    expect(notificationsModule.__unsubscribeResponses).toHaveBeenCalledTimes(1)
+    expect(fakeRouter.push).not.toHaveBeenCalled()
   })
 })
