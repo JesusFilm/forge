@@ -253,6 +253,19 @@ export function slugToBcp47Primary(slug: string): string | null {
 }
 
 /**
+ * Whether `slug` is SHAPED like a public watch language slug, independent of
+ * membership in any corpus or manifest.
+ *
+ * Membership checks that consult the live route manifest bypass the compiled
+ * corpus, and therefore bypass the pattern test below. Callers that reflect an
+ * admitted slug straight into a URL (a canonical link, an Open Graph URL) must
+ * apply this first so a malformed manifest entry cannot reach page head output.
+ */
+export function isPublicWatchLanguageSlugShape(slug: string): boolean {
+  return PUBLIC_LANGUAGE_SLUG_PATTERN.test(slug)
+}
+
+/**
  * Public watch content URLs accept English-name audio slugs only
  * (`english`, `spanish-castilian`, `swahili`), never BCP-47 route/catalog
  * keys (`en`, `pt-br`). This is deliberately narrower than

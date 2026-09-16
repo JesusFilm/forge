@@ -29,6 +29,7 @@ import { isPublicWatchHomeLanguageSlug } from "@/lib/locale"
 
 import {
   inventoryAgeDays,
+  isAdmittedWatchInventoryLanguageSlug,
   inventoryLengthBucket,
   inventoryTypeGroup,
   isNewRelease,
@@ -589,5 +590,59 @@ describe("resolveWatchLanguageInventory — languages published since the last c
     expect(inventory.switcherLanguages.map((option) => option.slug)).toContain(
       NEWLY_PUBLISHED,
     )
+  })
+
+  it("refuses a manifest slug that is not shaped like a public language slug", async () => {
+    // The corpus branch applies the slug pattern internally; the manifest
+    // branch bypasses the corpus entirely. Admission has to re-apply the shape
+    // test or a malformed manifest entry reaches this route's canonical URL.
+    const MALFORMED = "Probe Language/../etc"
+    getWatchRouteManifestMock.mockResolvedValue(manifestPublishing(MALFORMED))
+
+    expect(await isAdmittedWatchInventoryLanguageSlug(MALFORMED)).toBe(false)
+    // Anti-vacuous: the manifest really does publish it, so only the shape
+    // test can be what rejected it.
+    expect(manifestPublishing(MALFORMED).audioLanguageSlugs).toContain(
+      MALFORMED,
+    )
+  })
+
+  it("renders a corpus language even when the manifest fetch rejects", async () => {
+    // The admission guard short-circuits on a corpus hit and never touches the
+    // manifest — but the switcher awaits it unconditionally further down. An
+    // uncaught rejection there turns a fully renderable page into a 500, on
+    // the common path, for every language rather than only new ones.
+    getWatchRouteManifestMock.mockRejectedValue(new Error("manifest offline"))
+    mockInventory({ languageSlug: "english" })
+
+    const inventory = await resolveWatchLanguageInventory("en", "english")
+
+    expect(inventory.languageSlug).toBe("english")
+  })
+
+  it("labels the current language from Admin rather than from its slug", async () => {
+    // This is what `new Set([currentSlug])` at the
+    // `resolveWatchLanguageSwitcherOptions` call site buys, and the only
+    // observable difference it makes: without it the current language falls
+    // through to the slug-derived label. Its membership in the picker is not
+    // at stake — `current` is always included — so asserting presence would
+    // pass whether or not the seam existed.
+    getWatchRouteManifestMock.mockResolvedValue(manifestPublishing("english"))
+    queryMock.mockResolvedValue({
+      data: {
+        languages: [
+          {
+            slug: NEWLY_PUBLISHED,
+            bcp47: "xx",
+            name: { en: "Probe Language" },
+          },
+        ],
+      },
+    })
+
+    const options = await resolveWatchLanguageSwitcherOptions(NEWLY_PUBLISHED)
+    const current = options.find((option) => option.slug === NEWLY_PUBLISHED)
+
+    expect(current?.languageName).toBe("Probe Language")
   })
 })
