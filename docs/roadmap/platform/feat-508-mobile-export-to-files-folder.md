@@ -31,8 +31,9 @@ the last part at all, because the grant dies with the process.
 ## Entry Points — Read These First
 
 1. `apps/mobile/src/lib/rawExportRuntime.ts` — the ONE composition root. The
-   `destination` port binds to `Directory.pickDirectoryAsync`, `File.exists`
-   and `File.copy` from `expo-file-system`. No other module touches native.
+   `destination` port binds to `Directory.pickDirectoryAsync`,
+   `Directory.list()` and `File.rename` + `File.copy` from `expo-file-system`.
+   No other module touches native.
 2. `apps/mobile/src/lib/rawExportAdapter.ts` — `ExportDestinationPort`,
    `copyToFolder`, `freeFileName`, `pickExportFolder`. `completeStagedExport`
    is gone.
@@ -42,11 +43,16 @@ the last part at all, because the grant dies with the process.
    — the pick runs BEFORE `router.back()`. The series route picks once and
    threads `folder` into `buildSeriesExportRun`.
 5. `apps/mobile/src/lib/exportSweep.ts` — every note is a `discard`.
-6. `apps/mobile/src/lib/__tests__/rawExportWiring.guard.test.js` — pins the
-   pick-before-dismiss order inside each raw starter.
-7. `apps/mobile/src/lib/__tests__/appJsonNoPhotoLibrary.guard.test.js` — pins
+6. `apps/mobile/src/lib/rawExportStart.ts` and its test — the pick, dismiss and
+   start order. The routes pass the three steps as callbacks on one object
+   literal, so the order lives here and nowhere else.
+7. `apps/mobile/src/lib/__tests__/rawExportWiring.guard.test.js` — pins that
+   each raw starter delegates to `startRawExportAfterPick(` and never dismisses
+   by hand. It does NOT pin the order; a position comparison here would read an
+   object literal's declaration order.
+8. `apps/mobile/src/lib/__tests__/appJsonNoPhotoLibrary.guard.test.js` — pins
    the absence of every photo permission and of `UIFileSharingEnabled`.
-8. `apps/mobile/CLAUDE.md` § "Raw file export — save to a folder the viewer
+9. `apps/mobile/CLAUDE.md` § "Raw file export — save to a folder the viewer
    picks" — the standing rules.
 
 ## Grep These

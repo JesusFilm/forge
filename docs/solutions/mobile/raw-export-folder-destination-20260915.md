@@ -25,14 +25,20 @@ platform's native folder picker.
 
 The whole change sits behind one port. `rawExportAdapter.ts` had a
 `library` port with five photo-library methods; it now has a `destination`
-port with three:
+port with four:
 
 ```ts
 export type ExportDestinationPort = {
   pickFolder: () => Promise<ExportFolder | null> // null = dismissed
-  exists: (args: { folder: ExportFolder; fileName: string }) => Promise<boolean>
+  // The free-name search reads the WHOLE list once. Android resolves no
+  // per-name probe against a SAF tree — see the Android SAF trap below.
+  listNames: (folder: ExportFolder) => Promise<readonly string[]>
   copyInto: (args: {
     stagedPath: string
+    folder: ExportFolder
+    fileName: string
+  }) => Promise<void>
+  removeIfExists: (args: {
     folder: ExportFolder
     fileName: string
   }) => Promise<void>
@@ -40,8 +46,14 @@ export type ExportDestinationPort = {
 ```
 
 `rawExportRuntime.ts` binds it to `Directory.pickDirectoryAsync`,
-`File.exists` and `File.copy` from `expo-file-system` — a package the app
+`Directory.list()` (for both `listNames` and `removeIfExists`) and
+`File.rename` + `File.copy` from `expo-file-system` — a package the app
 already linked. No new native module. `expo-media-library` left the app.
+
+The port started with a per-name `exists` probe and three methods. The Tier-2
+review replaced it: `listNames` because the probe cannot work on Android, and
+`removeIfExists` because a copy that fails part way leaves a truncated file
+under the final name that nothing else removes.
 
 ## Three facts that decided the design
 
@@ -84,10 +96,14 @@ After: **pick folder** → download → stage → **copy** → clean up.
 
 The pick must run while the sheet is still on screen — a headless run has no
 view controller to present from. Both routes call `adapter.pickExportFolder()`
-and only then `router.back()`. Both orders compile and typecheck, so
-`rawExportWiring.guard.test.js` pins the order inside each raw starter with a
-brace-matched slice (an indent-keyed slice read the wrong span for the control
-fixture — the control caught it). A dismissed picker starts nothing, reports
+and only then `router.back()`. Both orders compile and typecheck. The order itself lives in
+`src/lib/rawExportStart.ts` and is pinned by `rawExportStart.test.ts`, which
+CALLS the helper and asserts `["pick", "dismiss", "start:<uri>"]`.
+`rawExportWiring.guard.test.js` holds only that each raw starter delegates to
+`startRawExportAfterPick(` and never dismisses by hand, sliced with a
+brace-matched body (an indent-keyed slice read the wrong span for the control
+fixture — the control caught it). A position comparison there would read an
+object literal's declaration order, which carries no meaning. A dismissed picker starts nothing, reports
 nothing, and leaves the sheet open; the series route restores its `ready`
 phase.
 
@@ -177,10 +193,13 @@ app had just released; it now fires after.
 ## Collision policy
 
 `File.copy` defaults to `overwrite: false` and throws on an existing name.
-`suffixFileName` in `transferPort.ts` walks `Name.mp4`, `Name (2).mp4`,
-`Name (3).mp4` … against `destination.exists`, bounded to 50 attempts and to
-`RAW_EXPORT_MAX_FILENAME_LENGTH` (the stem gives up room for the suffix). The
-viewer keeps both files.
+`freeFileName` in `rawExportAdapter.ts` reads the folder ONCE through
+`destination.listNames`, then walks `Name.mp4`, `Name (2).mp4`, `Name (3).mp4`
+… against that Set — one read, not a probe per candidate, because Android
+resolves no per-name probe against a SAF tree. `suffixFileName` in
+`transferPort.ts` only builds each candidate name, bounded to 50 attempts and
+to `RAW_EXPORT_MAX_FILENAME_LENGTH` (the stem gives up room for the suffix).
+The viewer keeps both files.
 
 ## What the confirmation says
 
@@ -200,7 +219,10 @@ Files."
 - `mediaLibraryEntryPoint.guard.test.js` deleted with the package.
 - `rawExportWiring.guard.test.js` repointed: no `PermissionsAsync` in the
   runtime, `Directory.pickDirectoryAsync(` present, copy-not-move into the
-  folder, and the pick-before-dismiss order with a positive control.
+  folder, the rename-not-join naming, and delegation to
+  `startRawExportAfterPick(` from both raw starters, each with a positive
+  control. The pick-before-dismiss ORDER is pinned by `rawExportStart.test.ts`,
+  not here.
 - `exportErrorRedaction.guard.test.js` expects ONE raw sibling in
   `rawExport.ts` now, not two — the permission catch was the second.
 

@@ -817,13 +817,17 @@ build must ship before the next `eas update`.
   (`pickFolder` / `listNames` / `copyInto` / `removeIfExists`) is bound there
   to `Directory` and `File`. `documentDirectory` still comes from `expo-file-system/legacy`: the
   package root re-exports it through a stub that throws.
-- **Pick FIRST, then dismiss, then run.** Both routes
-  (`app/watch/download.tsx`, `app/series/download.tsx`) call
-  `adapter.pickExportFolder()` while their sheet is still on screen, and only
-  then `router.back()`. A dismissed sheet has no view controller to present
-  from, and both orders compile, so `rawExportWiring.guard.test.js` pins the
-  order inside each raw starter. A dismissed picker starts nothing and reports
-  nothing; the sheet stays open.
+- **Pick FIRST, then dismiss, then run.** The order lives in
+  `src/lib/rawExportStart.ts`. Both routes (`app/watch/download.tsx`,
+  `app/series/download.tsx`) hand it the pick, the dismiss and the start as
+  callbacks on ONE object literal, so neither route body carries a step order
+  of its own. A dismissed sheet has no view controller to present from, and
+  both orders compile, so `rawExportStart.test.ts` pins the order by CALLING
+  the helper. `rawExportWiring.guard.test.js` holds only that each raw starter
+  delegates to `startRawExportAfterPick(` and never dismisses by hand — a
+  position comparison there would read an object literal's declaration order,
+  which means nothing. A dismissed picker starts nothing and reports nothing;
+  the sheet stays open.
 - **A series picks ONCE.** `SeriesExportRun.folder` threads one grant into
   every episode. Each episode still stages, copies and deletes one at a time,
   so R8's space arithmetic did not change.
