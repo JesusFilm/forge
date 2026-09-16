@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react"
+import { Fragment, type CSSProperties, type ReactNode } from "react"
 import {
   AbsoluteFill,
   Audio,
@@ -313,9 +313,11 @@ function VideoSubtitles({
   safeBottom,
   fullBleed = false,
   style,
+  captionStyle = "words",
 }: {
   cues: NonNullable<DevotionalCard["subtitles"]>
   style: DevotionalStyle
+  captionStyle?: NonNullable<DevotionalCard["captionStyle"]>
   px: (n: number) => number
   frame: number
   fps: number
@@ -399,7 +401,15 @@ function VideoSubtitles({
                   "0 2px 12px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.95)",
               }}
             >
-              {fullBleed ? (
+              {fullBleed && captionStyle !== "words" ? (
+                <ClipCaption
+                  timings={spreadWords(c.text, c.startSec, c.endSec)}
+                  t={t}
+                  mode={captionStyle}
+                  accent={style.eyebrow}
+                  restColor="#f4efe8"
+                />
+              ) : fullBleed ? (
                 // Word by word, in step with the line, each word flashing the
                 // accent as it lands — the same reveal the reflection uses, so
                 // the film's dialogue reads as part of the piece rather than
@@ -575,6 +585,178 @@ function WordReveal({
             {w.token}
             {i < timings.length - 1 ? " " : ""}
           </span>
+        )
+      })}
+    </>
+  )
+}
+
+/**
+ * Alternative arrivals for the full-frame film captions (A/B material).
+ *
+ * `typewriter`: letters arrive one at a time inside each word's window, every
+ * letter fading in over a tenth of a second — the soft type-on of the owner's
+ * reference, not a hard terminal print. `typewriter-cursor` adds a steady
+ * accent bar after the last typed letter that blinks once the line is typed.
+ * `pop`: the newest word lands enlarged and in the accent and stays that way
+ * until the next word lands. `pop-settle`: lands the same way, then shrinks
+ * and cools to the line over POP_SETTLE_SEC.
+ *
+ * Every glyph is laid out from the first frame and only its opacity changes,
+ * and the pop is a transform, so nothing on the line ever reflows or re-wraps.
+ */
+const LETTER_FADE_SEC = 0.1
+const POP_SCALE = 1.3
+const POP_HOLD_SEC = 0.1
+const POP_SETTLE_SEC = 0.35
+const CURSOR_BLINK_SEC = 0.5
+
+export function letterTimes(
+  w: { startSec: number; endSec: number },
+  count: number,
+): number[] {
+  // Letters spread over the word's window minus a short tail, so the word is
+  // complete before the next one begins.
+  const window = Math.max(0.12, (w.endSec - w.startSec) * 0.8)
+  return Array.from({ length: count }, (_, i) =>
+    count <= 1 ? w.startSec : w.startSec + (i / (count - 1)) * window,
+  )
+}
+
+function ClipCaption({
+  timings,
+  t,
+  mode,
+  accent,
+  restColor,
+}: {
+  timings: { token: string; startSec: number; endSec: number }[]
+  t: number
+  mode: "typewriter" | "typewriter-cursor" | "pop" | "pop-settle"
+  accent: string
+  restColor: string
+}) {
+  const clampBoth = {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  } as const
+  if (mode === "typewriter" || mode === "typewriter-cursor") {
+    const lastWord = timings[timings.length - 1]
+    const lastLetter = lastWord
+      ? (letterTimes(lastWord, [...lastWord.token].length).slice(-1)[0] ?? 0)
+      : 0
+    const typed = t >= lastLetter + LETTER_FADE_SEC
+    // Cursor: steady while typing, blinking once the line is complete.
+    const cursorOn =
+      !typed || Math.floor((t - lastLetter) / CURSOR_BLINK_SEC) % 2 === 0
+    // The cursor sits after the last letter that has STARTED to appear.
+    let cursorAfter: [number, number] | null = null
+    timings.forEach((w, wi) => {
+      const times = letterTimes(w, [...w.token].length)
+      times.forEach((ts, li) => {
+        if (t >= ts) cursorAfter = [wi, li]
+      })
+    })
+    const cursor =
+      mode === "typewriter-cursor" ? (
+        <span
+          style={{
+            display: "inline-block",
+            width: "0.14em",
+            height: "0.95em",
+            marginLeft: "0.06em",
+            verticalAlign: "-0.12em",
+            background: accent,
+            opacity: cursorOn ? 1 : 0,
+          }}
+        />
+      ) : null
+    return (
+      <>
+        {cursorAfter == null ? cursor : null}
+        {timings.map((w, wi) => {
+          const letters = [...w.token]
+          const times = letterTimes(w, letters.length)
+          return (
+            <span key={wi}>
+              {letters.map((ch, li) => (
+                <span
+                  key={li}
+                  style={{
+                    opacity: interpolate(
+                      t,
+                      [times[li], times[li] + LETTER_FADE_SEC],
+                      [0, 1],
+                      clampBoth,
+                    ),
+                  }}
+                >
+                  {ch}
+                  {cursorAfter && cursorAfter[0] === wi && cursorAfter[1] === li
+                    ? cursor
+                    : null}
+                </span>
+              ))}
+              {wi < timings.length - 1 ? " " : ""}
+            </span>
+          )
+        })}
+      </>
+    )
+  }
+  // pop / pop-settle
+  const newest = timings.reduce(
+    (best, w, i) => (t >= w.startSec ? i : best),
+    -1,
+  )
+  return (
+    <>
+      {timings.map((w, i) => {
+        const opacity = interpolate(
+          t,
+          [w.startSec - 0.06, w.startSec + 0.12],
+          [0, 1],
+          clampBoth,
+        )
+        // How "landed" the word still is: 1 = enlarged and in the accent.
+        let pop = 0
+        if (mode === "pop") pop = i === newest ? 1 : 0
+        else {
+          // The word is back to size BEFORE the next word lands, so an
+          // enlarged word never sits beside another one.
+          const next = timings[i + 1]
+          const settleEnd = Math.min(
+            w.startSec + POP_HOLD_SEC + POP_SETTLE_SEC,
+            next ? next.startSec - 0.02 : Number.POSITIVE_INFINITY,
+          )
+          const settleStart = Math.min(w.startSec + POP_HOLD_SEC, settleEnd)
+          pop =
+            settleEnd > settleStart
+              ? interpolate(t, [settleStart, settleEnd], [1, 0], clampBoth)
+              : t < settleEnd
+                ? 1
+                : 0
+        }
+        // A transform, so the line never reflows or re-wraps (a real font-size
+        // change re-wrapped the caption for a frame and the whole block
+        // jumped). Grown from the word's LEFT edge: the extra width lands over
+        // the words that have not appeared yet, never over the ones already
+        // read. The space lives outside the scaled span.
+        return (
+          <Fragment key={i}>
+            <span
+              style={{
+                display: "inline-block",
+                opacity,
+                transform: `scale(${1 + (POP_SCALE - 1) * pop})`,
+                transformOrigin: "left bottom",
+                color: interpolateColors(pop, [0, 1], [restColor, accent]),
+              }}
+            >
+              {w.token}
+            </span>
+            {i < timings.length - 1 ? " " : ""}
+          </Fragment>
         )
       })}
     </>
@@ -3860,6 +4042,7 @@ function CardLayer({
           safeRight={px(50.5)}
           safeBottom={px(130)}
           fullBleed={card.videoFill === "full" && !layerIsLandscape}
+          {...(card.captionStyle ? { captionStyle: card.captionStyle } : {})}
         />
       ) : null}
       {showMuteButton ? <MuteButton px={px} style={style} /> : null}

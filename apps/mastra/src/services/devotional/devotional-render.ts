@@ -929,6 +929,13 @@ export type RenderOptions = {
    * `steps`, or the fingerprint, the reuse check and the audio diverge.
    */
   structure?: DevotionalStructure
+  /** Clip-first only: how the film's captions arrive (see the card schema). */
+  clipCaptionStyle?:
+    | "words"
+    | "typewriter"
+    | "typewriter-cursor"
+    | "pop"
+    | "pop-settle"
   /** Review preview: render N evenly spaced PNG stills INSTEAD of the MP4.
    *  Costs one frame of rasterization each — seconds, not minutes — which is
    *  what makes "show me screenshots before you render the whole thing" a
@@ -1615,6 +1622,7 @@ async function renderInStage(
         log,
       })
       if (focus.length > 0) card.clipFocus = focus
+      if (options.clipCaptionStyle) card.captionStyle = options.clipCaptionStyle
     }
   }
 

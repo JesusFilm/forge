@@ -71,6 +71,17 @@ export const devotionalCardSchema = z.object({
    */
   videoFill: z.enum(["window", "full"]).optional(),
   /**
+   * How a full-frame video card's captions arrive. `words` (default) reveals
+   * word by word with the accent flash the reflection uses. `typewriter` types
+   * letter by letter, each letter fading in; `typewriter-cursor` adds an accent
+   * cursor after the last typed letter. `pop` lands each new word larger and
+   * in the accent until the next word arrives; `pop-settle` lands it the same
+   * way and then shrinks and cools it to match the line.
+   */
+  captionStyle: z
+    .enum(["words", "typewriter", "typewriter-cursor", "pop", "pop-settle"])
+    .optional(),
+  /**
    * Where a full-frame portrait video card crops the 16:9 clip, over time: the
    * normalized x of the source the frame is centred on, as a PATH in seconds
    * from the clip's start, interpolated linearly between points. Absent means a
