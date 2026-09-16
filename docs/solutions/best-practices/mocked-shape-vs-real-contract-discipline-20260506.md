@@ -594,19 +594,22 @@ you just deleted proves the guard catches the defect you already fixed — not t
 defect a future refactor will write.
 
 A falsification that DID run against the real current shape still carries a date
-rather than a proof. It establishes that the guard discriminated against the code
-as it stood at that moment, and nothing more. The refactor that voids it is often
-your own, minutes later, in the same change: PR #2313's order guard was falsified
-properly — the real statement order was swapped, the test went red, the file was
-restored from a copy, the test went green — and was then disarmed by an
-extraction the same session performed a few edits later. Nothing went red, and no
-test run could have reported it; a reviewer found it. So re-falsify a source pin
-after any edit that moves the code it reads, and treat "I already falsified this"
-as true only of the shape it was falsified against. The earlier round of that
-same guard shows the cost of stopping one layer short: its first version keyed
-the function body off INDENTATION, the positive control caught that before it
-shipped, and the brace-matching rewrite fixed the fragility it had found while
-leaving this one standing (session history).
+rather than a proof. It establishes that the guard discriminated against the
+code as it stood at that moment, and nothing more. The refactor that voids it is
+often your own, minutes later, in the same change: PR #2313's order guard was
+falsified properly — the real statement order was swapped, the test went red,
+the file was restored from a copy, the test went green — and was then disarmed
+by an extraction the same session performed a few edits later. Nothing went red,
+and no test run could have reported it; a reviewer found it. So re-falsify a
+source pin after any edit that moves the code it reads, and treat "I already
+falsified this" as true only of the shape it was falsified against. That is a
+standing obligation rather than one guard's story: every guard test in
+`apps/mobile` reads source text off disk, so any refactor that moves code moves
+what some guard reads. The earlier round of that same guard shows the cost of
+stopping one layer short: its first version keyed the function body off
+INDENTATION, the positive control caught that before it shipped, and the
+brace-matching rewrite fixed the fragility it had found while leaving this
+one standing (session history).
 
 The mirror of a position that stops meaning anything is a reader that never read
 anything. A guard that loops over a config path must first assert the path is
