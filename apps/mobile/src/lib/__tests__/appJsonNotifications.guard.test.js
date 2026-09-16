@@ -1,0 +1,244 @@
+// Plain JS (like the other config guards here): the RN tsconfig has no Node
+// types, and this guard reads app.json and installed package files off disk.
+/* eslint-disable @typescript-eslint/no-require-imports */
+/* global describe, expect, it, require */
+const fs = require("fs")
+const path = require("path")
+
+// U1/KTD1: lapse reminders are LOCAL notifications. Nothing at runtime can see
+// what the build declared — the OS reads the entitlement and the merged
+// manifest, both fixed at prebuild — so the declaration boundary is held here
+// or nowhere.
+//
+// Verified against expo-notifications 57.0.19's plugin + native sources on
+// 2026-09-16. Three premises live in a package this app never edits, and each
+// one decides something this config depends on:
+//
+//   - `withNotificationsIOS` writes `aps-environment` UNCONDITIONALLY, from a
+//     `mode` option that DEFAULTS TO 'development'. The plan accepts the
+//     entitlement (KTD1) but the default value is a release-checklist item, not
+//     a build defect: read it from the production archive, and set `mode` to
+//     "production" if it reads development.
+//   - `UIBackgroundModes: ['remote-notification']` is added ONLY when
+//     `enableBackgroundRemoteNotifications` is truthy. Its ABSENCE below is
+//     therefore load-bearing, not an oversight — this app registers no push
+//     token and must not claim a background mode it never uses.
+//   - `defaultChannel` writes the FCM `default_notification_channel_id`
+//     metadata and CREATES NO CHANNEL. That is why KTD6 makes the adapter's
+//     runtime `setNotificationChannelAsync` the load-bearing step, and why the
+//     option is deliberately unset here rather than forgotten.
+const PLUGIN = "expo-notifications"
+
+// Exactly the options KTD1 pins. `icon` reuses the themed-launcher silhouette:
+// Android renders a notification icon from the ALPHA CHANNEL alone, so a white
+// mark on transparency is the only shape that does not arrive as a grey blob.
+const EXPECTED_OPTIONS = {
+  icon: "./assets/adaptive-icon-monochrome.png",
+  color: "#CB333B",
+}
+
+// Both must stay UNSET — see the premises above for what each one would turn on.
+const FORBIDDEN_OPTION_KEYS = [
+  "defaultChannel",
+  "enableBackgroundRemoteNotifications",
+]
+
+// Google Play restricts these to alarm and calendar apps. R6 tolerates the
+// module's own inexact-alarm fallback instead, so neither may ever appear.
+const EXACT_ALARM_PERMISSIONS = [
+  "android.permission.SCHEDULE_EXACT_ALARM",
+  "android.permission.USE_EXACT_ALARM",
+]
+
+// The module's own manifest contributes this by merge. Blocking it would strip
+// the runtime permission Android 13+ needs and make every schedule a silent
+// no-op — the exact shape of the media-library trap next door.
+const POST_NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS"
+
+// The module's Android build.gradle pulls both of these UNCONDITIONALLY, and
+// together they add about twenty more merged permissions than the two above:
+// ShortcutBadger contributes a per-OEM launcher badge set (Samsung, Huawei,
+// OPPO, Sony, HTC, ZUK, EvMe) plus READ_APP_BADGE, and firebase-messaging
+// contributes com.google.android.c2dm.permission.RECEIVE, WAKE_LOCK and
+// USE_FINGERPRINT. Measured from a real merge on 2026-09-16 (see below).
+//
+// None is a runtime permission, so none prompts anyone, and no Play policy
+// bucket changes — but "the module's two permissions" is NOT the whole delta,
+// and a reviewer counting entries in the merged manifest should know why. They
+// are pinned here so a future version that drops or widens them is visible.
+const TRANSITIVE_ANDROID_DEPENDENCIES = [
+  "me.leolin:ShortcutBadger",
+  "com.google.firebase:firebase-messaging",
+]
+
+const APP_ROOT = path.resolve(__dirname, "../../..")
+
+function readAppJson() {
+  return JSON.parse(fs.readFileSync(path.join(APP_ROOT, "app.json"), "utf8"))
+}
+
+/** The plugin's options object, or null when the entry carries none. */
+function pluginOptions(config, name) {
+  const entries = config.expo.plugins ?? []
+  for (const entry of entries) {
+    if (!Array.isArray(entry)) continue
+    if (entry[0] !== name) continue
+    return entry[1] ?? null
+  }
+  return null
+}
+
+/** Index of a plugin entry in either its bare-string or [name, options] form. */
+function pluginIndex(config, name) {
+  const entries = config.expo.plugins ?? []
+  return entries.findIndex((entry) =>
+    Array.isArray(entry) ? entry[0] === name : entry === name,
+  )
+}
+
+function readInstalled(relative) {
+  const pkg = path.dirname(
+    require.resolve(`${PLUGIN}/package.json`, { paths: [APP_ROOT] }),
+  )
+  return fs.readFileSync(path.join(pkg, relative), "utf8")
+}
+
+describe("the notifications plugin declares no more than local reminders need", () => {
+  it("registers the plugin with exactly the pinned options", () => {
+    const options = pluginOptions(readAppJson(), PLUGIN)
+
+    // Anti-vacuous: a renamed or de-optioned entry would make every assertion
+    // below read against null.
+    expect(options).not.toBeNull()
+    expect(options).toEqual(EXPECTED_OPTIONS)
+  })
+
+  it("leaves the two options that would widen the build unset", () => {
+    const options = pluginOptions(readAppJson(), PLUGIN)
+
+    // `toEqual` above already forbids extra keys; this names the two that
+    // matter so the failure message points at the premise, not at a diff.
+    for (const key of FORBIDDEN_OPTION_KEYS) {
+      expect(options[key]).toBeUndefined()
+    }
+  })
+
+  it("ships the notification icon it names, as a silhouette on transparency", () => {
+    // A missing file fails the Android prebuild; a file with no alpha channel
+    // builds fine and renders a solid square in the status bar.
+    const bytes = fs.readFileSync(path.join(APP_ROOT, EXPECTED_OPTIONS.icon))
+    expect(bytes.subarray(12, 16).toString("ascii")).toBe("IHDR")
+    // Colour type 6 is RGBA. Android scales the source down, so the 1024px
+    // master is comfortably past the 96px floor the plan sets.
+    expect(bytes[25]).toBe(6)
+    expect(bytes.readUInt32BE(16)).toBeGreaterThanOrEqual(96)
+  })
+
+  it("requests no exact-alarm permission anywhere in the config", () => {
+    // Read the WHOLE file, not just the permission arrays: `android.permissions`,
+    // a plugin option and a manifest mod are three different places one could
+    // land, and R6 forbids it in all of them.
+    const source = fs.readFileSync(path.join(APP_ROOT, "app.json"), "utf8")
+
+    for (const permission of EXACT_ALARM_PERMISSIONS) {
+      expect(source).not.toContain(permission)
+      // Also the bare name, which is how a plugin option would spell it.
+      expect(source).not.toContain(
+        permission.replace("android.permission.", ""),
+      )
+    }
+  })
+
+  it("does NOT block the notification permission the module contributes", () => {
+    const blocked = readAppJson().expo.android?.blockedPermissions ?? []
+
+    expect(blocked).not.toContain(POST_NOTIFICATIONS)
+  })
+
+  it("registers the plugin before expo-splash-screen", () => {
+    // The repo's ordering rule (see plugins/withAndroidNavigationBar.js): Expo
+    // runs mods last-registered-first, and expo-splash-screen REPLACES rather
+    // than merges. Leaf modules sit ahead of it.
+    const config = readAppJson()
+    const splash = pluginIndex(config, "expo-splash-screen")
+
+    expect(splash).toBeGreaterThanOrEqual(0)
+    expect(pluginIndex(config, PLUGIN)).toBeLessThan(splash)
+  })
+
+  it("upstream premise: the iOS plugin always writes aps-environment", () => {
+    // The entitlement KTD1 accepts. Pinned because its DEFAULT is the release
+    // checklist item: if a production archive reads `development`, the fix is
+    // this plugin's `mode` option, not a rebuild.
+    const source = readInstalled("plugin/build/withNotificationsIOS.js")
+
+    expect(source).toContain("'aps-environment'")
+    expect(source).toMatch(/mode\s*=\s*'development'/)
+  })
+
+  it("upstream premise: a background mode needs the option we leave unset", () => {
+    // What makes the absent key above a decision. If a future version starts
+    // adding the mode unconditionally, this goes red and the config is wrong.
+    const source = readInstalled("plugin/build/withNotificationsIOS.js")
+    const guard = source.indexOf("if (!enableBackgroundRemoteNotifications)")
+
+    expect(guard).toBeGreaterThan(-1)
+    expect(source.indexOf("UIBackgroundModes")).toBeGreaterThan(guard)
+  })
+
+  it("upstream premise: the module's manifest carries the two permissions", () => {
+    // Neither is declared by hand — they arrive by merge, which is why
+    // `blockedPermissions` is the only thing that could take them away.
+    const manifest = readInstalled("android/src/main/AndroidManifest.xml")
+
+    expect(manifest).toContain(POST_NOTIFICATIONS)
+    expect(manifest).toContain("android.permission.RECEIVE_BOOT_COMPLETED")
+    // R7's boot receiver: it is what reschedules pending reminders after a
+    // restart, and it is the module's, not ours.
+    expect(manifest).toContain("android.intent.action.BOOT_COMPLETED")
+    for (const permission of EXACT_ALARM_PERMISSIONS) {
+      expect(manifest).not.toContain(permission)
+    }
+  })
+
+  it("upstream premise: the module pulls the badge and messaging AARs", () => {
+    // What makes the merged permission list about twenty entries longer than
+    // the module's own manifest. Verified against a real
+    // `:app:processDebugMainManifest` merge on 2026-09-16 (expo-notifications
+    // 57.0.19): POST_NOTIFICATIONS and RECEIVE_BOOT_COMPLETED both present, no
+    // exact-alarm entry, and no READ_MEDIA_* entry surviving the block list.
+    const gradle = readInstalled("android/build.gradle")
+
+    for (const dependency of TRANSITIVE_ANDROID_DEPENDENCIES) {
+      expect(gradle).toContain(dependency)
+    }
+  })
+
+  it("upstream premise: the Android delegate falls back to inexact alarms", () => {
+    // R6 accepts late delivery precisely BECAUSE this branch exists. Without
+    // it, no exact-alarm permission would mean no delivery at all.
+    const source = readInstalled(
+      "android/src/main/java/expo/modules/notifications/service/delegates/ExpoSchedulingDelegate.kt",
+    )
+
+    expect(source).toContain("canScheduleExactAlarms()")
+    expect(source).toContain("setAndAllowWhileIdle")
+  })
+
+  it("negative control: the readers report absence, not a default", () => {
+    // Proves each assertion above would actually fail if its key were dropped,
+    // rather than passing against an undefined the matcher tolerates.
+    const stripped = {
+      expo: {
+        plugins: ["expo-router", [PLUGIN, {}], "expo-image"],
+        android: {},
+      },
+    }
+
+    expect(pluginOptions(stripped, PLUGIN)).not.toEqual(EXPECTED_OPTIONS)
+    expect(pluginOptions(stripped, PLUGIN).icon).toBeUndefined()
+    expect(pluginOptions(stripped, "expo-image")).toBeNull()
+    expect(pluginIndex(stripped, "expo-splash-screen")).toBe(-1)
+    expect(stripped.expo.android.blockedPermissions ?? []).toHaveLength(0)
+  })
+})
