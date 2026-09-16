@@ -87,6 +87,7 @@ async function main() {
         ? {
             clipCaptionStyle: arg("clip-captions") as
               | "words"
+              | "words-lift"
               | "typewriter"
               | "typewriter-cursor"
               | "pop"

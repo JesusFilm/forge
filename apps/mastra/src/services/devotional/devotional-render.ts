@@ -932,6 +932,7 @@ export type RenderOptions = {
   /** Clip-first only: how the film's captions arrive (see the card schema). */
   clipCaptionStyle?:
     | "words"
+    | "words-lift"
     | "typewriter"
     | "typewriter-cursor"
     | "pop"

@@ -401,7 +401,9 @@ function VideoSubtitles({
                   "0 2px 12px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.95)",
               }}
             >
-              {fullBleed && captionStyle !== "words" ? (
+              {fullBleed &&
+              captionStyle !== "words" &&
+              captionStyle !== "words-lift" ? (
                 <ClipCaption
                   timings={spreadWords(c.text, c.startSec, c.endSec)}
                   t={t}
@@ -422,6 +424,9 @@ function VideoSubtitles({
                   audioDelaySec={0}
                   style={style}
                   restColor="#f4efe8"
+                  {...(captionStyle === "words-lift"
+                    ? { liftScale: WORDS_LIFT_SCALE }
+                    : {})}
                 />
               ) : (
                 c.text
@@ -490,6 +495,8 @@ function alignWordsToText(
  * point of a highlight.
  */
 const ACCENT_SETTLE_SEC = 0.42
+/** `words-lift` captions: how much larger the word being spoken lands. */
+const WORDS_LIFT_SCALE = 1.1
 
 function WordReveal({
   timings,
@@ -500,6 +507,7 @@ function WordReveal({
   style,
   restColor,
   preOpacity = 0,
+  liftScale,
 }: {
   timings: { token: string; startSec: number; endSec?: number }[]
   frame: number
@@ -519,6 +527,13 @@ function WordReveal({
    * before it is read.
    */
   preOpacity?: number
+  /**
+   * Lift the word being spoken: it lands this many times its size and eases
+   * back to 1 on the same curve as the accent, so colour and size settle
+   * together. A transform from the word's left edge, so the line never
+   * reflows; the extra width lands over the words not yet revealed.
+   */
+  liftScale?: number
 }) {
   const t = frame / fps - audioDelaySec
   const hlKeys = new Set(
@@ -561,27 +576,42 @@ function WordReveal({
               ),
             )
           : 0
+        const colour = inHl
+          ? {
+              color: style.highlight,
+              fontStyle: style.highlightItalic ? "italic" : undefined,
+            }
+          : restColor
+            ? {
+                color: interpolateColors(
+                  warm,
+                  [0, 1],
+                  [restColor, style.eyebrow],
+                ),
+              }
+            : {}
+        if (liftScale != null) {
+          // The space sits outside the scaled span so the line still wraps
+          // there and the lift never stretches a gap.
+          return (
+            <Fragment key={i}>
+              <span
+                style={{
+                  display: "inline-block",
+                  opacity,
+                  transform: `scale(${1 + (liftScale - 1) * warm})`,
+                  transformOrigin: "left bottom",
+                  ...colour,
+                }}
+              >
+                {w.token}
+              </span>
+              {i < timings.length - 1 ? " " : ""}
+            </Fragment>
+          )
+        }
         return (
-          <span
-            key={i}
-            style={{
-              opacity,
-              ...(inHl
-                ? {
-                    color: style.highlight,
-                    fontStyle: style.highlightItalic ? "italic" : undefined,
-                  }
-                : restColor
-                  ? {
-                      color: interpolateColors(
-                        warm,
-                        [0, 1],
-                        [restColor, style.eyebrow],
-                      ),
-                    }
-                  : {}),
-            }}
-          >
+          <span key={i} style={{ opacity, ...colour }}>
             {w.token}
             {i < timings.length - 1 ? " " : ""}
           </span>

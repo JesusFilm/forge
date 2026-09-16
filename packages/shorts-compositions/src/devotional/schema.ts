@@ -76,10 +76,19 @@ export const devotionalCardSchema = z.object({
    * letter by letter, each letter fading in; `typewriter-cursor` adds an accent
    * cursor after the last typed letter. `pop` lands each new word larger and
    * in the accent until the next word arrives; `pop-settle` lands it the same
-   * way and then shrinks and cools it to match the line.
+   * way and then shrinks and cools it to match the line. `words-lift` is the
+   * default reveal with a gentle lift: the word lands a tenth larger along
+   * with its accent flash and eases back to size as it cools.
    */
   captionStyle: z
-    .enum(["words", "typewriter", "typewriter-cursor", "pop", "pop-settle"])
+    .enum([
+      "words",
+      "words-lift",
+      "typewriter",
+      "typewriter-cursor",
+      "pop",
+      "pop-settle",
+    ])
     .optional(),
   /**
    * Where a full-frame portrait video card crops the 16:9 clip, over time: the
