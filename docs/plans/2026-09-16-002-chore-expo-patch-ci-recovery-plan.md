@@ -1,7 +1,7 @@
 ---
 title: Restore Expo patch compatibility for repository CI
 type: chore
-status: active
+status: completed
 date: 2026-09-16
 roadmap: feat-510
 ---
@@ -26,3 +26,11 @@ main checkout. Repair the dependency baseline in a separate maintenance PR.
 This changes the build dependency baseline only. It adds no Mobile or TV
 recommendation surface and publishes no native build or EAS update. The homepage
 block remains removed and its LaunchDarkly flag stays default off.
+
+## Release result
+
+PR #2312 passed all 98 PR checks and merged as
+`0a1c585998a6dbb4bf1399fe4c5eed25310a5512`. Main CI and CodeQL passed. The normal
+Web deployment reached SUCCESS at 23:43:15 UTC on September 15; installed patch
+verification and the production playback smoke passed. Details are recorded in
+`docs/operations/watch-runtime-followup-2026-09-16.md`.

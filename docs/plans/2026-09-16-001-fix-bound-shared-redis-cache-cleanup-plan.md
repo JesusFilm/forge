@@ -1,7 +1,7 @@
 ---
 title: Bound shared Redis cache cleanup
 type: fix
-status: active
+status: completed
 date: 2026-09-16
 roadmap: feat-496
 ---
@@ -22,7 +22,8 @@ timeouts also remain outside this patch.
 ## Scope and approach
 
 - Reproduce realistic metadata cleanup on isolated local Redis while a separate
-  Node worker samples TIME latency. Production diagnostics remain read-only.
+  Node worker samples TIME latency. Production cache data remains unchanged by
+  diagnostic probes; any temporary latency-monitor setting must be restored.
 - Patch the pinned cache-handler dependency's Redis string handler to delete
   bounded batches, awaiting each batch before submitting the next. Preserve
   both metadata hashes, cache invalidation semantics and existing timeout
@@ -45,3 +46,12 @@ timeouts also remain outside this patch.
   revision, normal production playback and admission outcomes.
 - Compound the confirmed mechanism and record remaining unconfirmed causes in
   the recovery report; keep feat-496 in progress until those are resolved.
+
+## Release result
+
+PR #2311 merged the patch; PR #2312 repaired the unrelated Expo CI failure that
+blocked Web's automatic deployment. Web revision
+`0a1c585998a6dbb4bf1399fe4c5eed25310a5512` reached SUCCESS at 23:43:15 UTC on
+September 15. Both installed exports and the production playback smoke passed.
+See `docs/operations/watch-runtime-followup-2026-09-16.md` for release evidence
+and remaining investigation limits. feat-496 remains in progress.
