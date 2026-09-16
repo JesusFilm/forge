@@ -54,8 +54,13 @@ export function createLastWatchedStore(deps: LastWatchedStoreDeps) {
       return record
     },
 
-    /** Bounded read, once per store. Never rejects — a failed read simply
-     *  leaves the record absent, which the reminders read as Home (R13). */
+    /**
+     * Bounded read. Never rejects — a failed read simply leaves the record
+     * absent, which the reminders read as Home (R13). A read that FAILED
+     * clears the memo, so a later pass retries; only the cold-launch pass is
+     * on a deadline, and memoizing a timeout would send every later reminder
+     * to Home while a real record sat on disk.
+     */
     hydrate(): Promise<void> {
       if (hydration != null) return hydration
       const epochAtStart = clearEpoch
@@ -67,6 +72,7 @@ export function createLastWatchedStore(deps: LastWatchedStoreDeps) {
             LAST_WATCHED_HYDRATE_TIMEOUT_MS,
           )
         } catch {
+          hydration = null
           return
         }
         if (clearEpoch !== epochAtStart) return

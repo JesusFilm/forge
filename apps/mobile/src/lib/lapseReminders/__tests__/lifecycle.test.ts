@@ -43,6 +43,7 @@ type FakeAdapterOptions = {
   failCancel?: (identifier: string) => boolean
   failDismiss?: () => boolean
   failPermission?: () => boolean
+  failChannel?: () => boolean
 }
 
 function createFakeAdapter(options: FakeAdapterOptions = {}) {
@@ -73,6 +74,11 @@ function createFakeAdapter(options: FakeAdapterOptions = {}) {
     },
     get permissionReads() {
       return permissionReads
+    },
+    async ensureChannel() {
+      calls.push("channel")
+      await wait()
+      if (options.failChannel?.()) throw new Error("channel failed")
     },
     async getPermission() {
       calls.push("permission")
@@ -416,17 +422,121 @@ describe("the lapse reminder schedule pass", () => {
     ).toEqual(["cancel", "cancel", "dismiss"])
   })
 
-  it("treats a permission read that rejects as not granted", async () => {
+  it("leaves correct reminders alone when the permission read rejects", async () => {
+    // A failed read says NOTHING about the permission. Cancelling here would
+    // destroy two correct reminders on the last pass before a lapse.
+    let permissionFails = false
+    const harness = createHarness({ failPermission: () => permissionFails })
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+    await lifecycle.runPass("mount")
+    expect(harness.adapter.pending.size).toBe(2)
+
+    harness.adapter.calls.length = 0
+    permissionFails = true
+    await lifecycle.runPass("background")
+
+    expect(harness.adapter.pending.size).toBe(2)
+    expect(harness.adapter.calls).not.toContain("cancel:lapse-reminder-day1")
+    expect(harness.adapter.calls).not.toContain("cancel:lapse-reminder-day7")
+    expect(harness.adapter.calls).not.toContain("dismiss")
+  })
+
+  it("reports an unreadable permission apart from a denial", async () => {
+    // The opt-in dashboard must not count a transient fault as an opt-out.
     const harness = createHarness({ failPermission: () => true })
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+
+    await lifecycle.runPass("background")
+
+    expect(harness.logs).toContainEqual({
+      event: "lapse_reminder.pass",
+      context: { pass_reason: "background", outcome: "permission_unreadable" },
+    })
+    expect(harness.logs).not.toContainEqual({
+      event: "lapse_reminder.pass",
+      context: { pass_reason: "background", outcome: "not_granted" },
+    })
+  })
+
+  it("still stands down on a record clear when the permission is unreadable", async () => {
+    // The one exception: removing the previous account's video outranks
+    // keeping reminders whose correctness we can no longer confirm (R18).
+    const harness = createHarness({ failPermission: () => true })
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+
+    await lifecycle.runPass("record_cleared")
+
+    expect(harness.adapter.pending.size).toBe(0)
+    expect(harness.adapter.calls).toContain("dismiss")
+    expect(harness.logs).toContainEqual({
+      event: "lapse_reminder.pass",
+      context: {
+        pass_reason: "record_cleared",
+        outcome: "permission_unreadable",
+      },
+    })
+  })
+
+  it("cancels an identifier whose re-schedule failed on a record clear", async () => {
+    // R18: a reminder left pending after a failed re-schedule still carries the
+    // signed-out account's video, and nothing runs again until the app is used.
+    const harness = createHarness({
+      failSchedule: (identifier) => identifier === "lapse-reminder-day7",
+    })
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+
+    await lifecycle.runPass("record_cleared")
+
+    expect(harness.adapter.calls).toContain("cancel:lapse-reminder-day7")
+    expect(harness.adapter.pending.has("lapse-reminder-day7")).toBe(false)
+  })
+
+  it("does NOT cancel a failed re-schedule on an ordinary pass", async () => {
+    // Discriminates the clear path from the rest: on a mount or foreground
+    // pass the previous reminder is still the right one to keep.
+    const harness = createHarness({
+      failSchedule: (identifier) => identifier === "lapse-reminder-day7",
+    })
     const lifecycle = createLapseReminderLifecycle(harness.deps)
 
     await lifecycle.runPass("mount")
 
-    expect(harness.adapter.pending.size).toBe(0)
-    expect(harness.logs).toContainEqual({
-      event: "lapse_reminder.pass",
-      context: { pass_reason: "mount", outcome: "not_granted" },
-    })
+    expect(harness.adapter.calls).not.toContain("cancel:lapse-reminder-day7")
+  })
+
+  it("ensures the channel before it schedules, on every pass", async () => {
+    // The prompt runs once per install. A channel created only there is gone
+    // for the life of the install if that one call fails, and every later
+    // reminder falls back to expo's own high-importance channel.
+    const harness = createHarness()
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+
+    await lifecycle.runPass("mount")
+    harness.adapter.calls.length = 0
+    await lifecycle.runPass("active")
+
+    const channelAt = harness.adapter.calls.indexOf("channel")
+    const firstScheduleAt = harness.adapter.calls.findIndex((call) =>
+      call.startsWith("schedule:"),
+    )
+    expect(channelAt).toBeGreaterThanOrEqual(0)
+    expect(channelAt).toBeLessThan(firstScheduleAt)
+  })
+
+  it("schedules anyway when the channel call fails", async () => {
+    // iOS has no channels at all, and a failed upsert must not cost the
+    // reminders themselves.
+    const harness = createHarness({ failChannel: () => true })
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+
+    await lifecycle.runPass("mount")
+
+    expect(harness.adapter.pending.size).toBe(2)
+    expect(
+      harness.logs
+        .filter((entry) => entry.event === "lapse_reminder.step_failed")
+        .map((entry) => entry.context.step),
+    ).toContain("channel")
   })
 })
 

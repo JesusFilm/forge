@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 /* global describe, expect, it, require */
 const fs = require("fs")
+const zlib = require("zlib")
 const path = require("path")
 
 // U1/KTD1: lapse reminders are LOCAL notifications. Nothing at runtime can see
@@ -29,13 +30,19 @@ const path = require("path")
 //     option is deliberately unset here rather than forgotten.
 const PLUGIN = "expo-notifications"
 
-// Exactly the options KTD1 pins. `icon` reuses the themed-launcher silhouette:
-// Android renders a notification icon from the ALPHA CHANNEL alone, so a white
-// mark on transparency is the only shape that does not arrive as a grey blob.
+// Exactly the options KTD1 pins. Android renders a notification icon from the
+// ALPHA CHANNEL alone, so the source is a white mark on transparency. It is a
+// DEDICATED asset, not the themed-launcher silhouette: that one is drawn for
+// the 108dp adaptive canvas whose middle 72dp shows, so reusing it put the mark
+// at 40.6% x 30.2% of the status-bar slot (measured 2026-09-16).
 const EXPECTED_OPTIONS = {
-  icon: "./assets/adaptive-icon-monochrome.png",
+  icon: "./assets/notification-icon.png",
   color: "#CB333B",
 }
+
+// The mark must fill most of its box. Below this it reads as a speck; a value
+// near 1 would clip against the OS's own padding.
+const MIN_MARK_WIDTH_FRACTION = 0.6
 
 // Both must stay UNSET — see the premises above for what each one would turn on.
 const FORBIDDEN_OPTION_KEYS = [
@@ -55,17 +62,19 @@ const EXACT_ALARM_PERMISSIONS = [
 // no-op — the exact shape of the media-library trap next door.
 const POST_NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS"
 
-// The module's Android build.gradle pulls both of these UNCONDITIONALLY, and
-// together they add about twenty more merged permissions than the two above:
-// ShortcutBadger contributes a per-OEM launcher badge set (Samsung, Huawei,
-// OPPO, Sony, HTC, ZUK, EvMe) plus READ_APP_BADGE, and firebase-messaging
-// contributes com.google.android.c2dm.permission.RECEIVE, WAKE_LOCK and
-// USE_FINGERPRINT. Measured from a real merge on 2026-09-16 (see below).
+// The module's Android build.gradle pulls both of these UNCONDITIONALLY, so the
+// merged manifest carries far more than the two permissions above: a per-OEM
+// launcher badge set (Samsung, Huawei, OPPO, Sony, HTC, ZUK, EvMe) plus
+// READ_APP_BADGE from ShortcutBadger, and com.google.android.c2dm.permission
+// .RECEIVE from firebase-messaging. None is a runtime permission, so none
+// prompts anyone, and no Play policy bucket changes.
 //
-// None is a runtime permission, so none prompts anyone, and no Play policy
-// bucket changes — but "the module's two permissions" is NOT the whole delta,
-// and a reviewer counting entries in the merged manifest should know why. They
-// are pinned here so a future version that drops or widens them is visible.
+// SCOPE OF THAT CLAIM: the gradle lines and the merged list were both read on
+// 2026-09-16 (40 permission entries). No baseline WITHOUT this module was
+// captured, so which of the remaining entries are new is NOT established here —
+// WAKE_LOCK and USE_FINGERPRINT in particular are also reachable through the
+// play-services dependency the cast plugin already pulls. The two lines below
+// are pinned so a version that drops or widens them is visible.
 const TRANSITIVE_ANDROID_DEPENDENCIES = [
   "me.leolin:ShortcutBadger",
   "com.google.firebase:firebase-messaging",
@@ -94,6 +103,70 @@ function pluginIndex(config, name) {
   return entries.findIndex((entry) =>
     Array.isArray(entry) ? entry[0] === name : entry === name,
   )
+}
+
+/**
+ * Alpha-channel bounding box of an RGBA PNG. Decoded here rather than measured
+ * with an image library, because the repo ships none outside the generator.
+ */
+function markBounds(file) {
+  const bytes = fs.readFileSync(file)
+  let pos = 8
+  let width = 0
+  let height = 0
+  const chunks = []
+  while (pos < bytes.length) {
+    const length = bytes.readUInt32BE(pos)
+    const type = bytes.subarray(pos + 4, pos + 8).toString("ascii")
+    if (type === "IHDR") {
+      width = bytes.readUInt32BE(pos + 8)
+      height = bytes.readUInt32BE(pos + 12)
+      expect(bytes[pos + 8 + 9]).toBe(6) // colour type 6 = RGBA
+    } else if (type === "IDAT") {
+      chunks.push(bytes.subarray(pos + 8, pos + 8 + length))
+    }
+    pos += 12 + length
+  }
+  const raw = zlib.inflateSync(Buffer.concat(chunks))
+  const stride = width * 4 + 1
+  let previous = Buffer.alloc(width * 4)
+  let minX = width
+  let maxX = -1
+  let minY = height
+  let maxY = -1
+  for (let y = 0; y < height; y += 1) {
+    const filter = raw[y * stride]
+    const line = Buffer.from(raw.subarray(y * stride + 1, (y + 1) * stride))
+    for (let i = 0; i < line.length; i += 1) {
+      const a = i >= 4 ? line[i - 4] : 0
+      const b = previous[i]
+      const c = i >= 4 ? previous[i - 4] : 0
+      if (filter === 1) line[i] = (line[i] + a) & 0xff
+      else if (filter === 2) line[i] = (line[i] + b) & 0xff
+      else if (filter === 3) line[i] = (line[i] + ((a + b) >> 1)) & 0xff
+      else if (filter === 4) {
+        const p = a + b - c
+        const pa = Math.abs(p - a)
+        const pb = Math.abs(p - b)
+        const pc = Math.abs(p - c)
+        line[i] =
+          (line[i] + (pa <= pb && pa <= pc ? a : pb <= pc ? b : c)) & 0xff
+      }
+    }
+    previous = line
+    for (let x = 0; x < width; x += 1) {
+      if (line[x * 4 + 3] <= 8) continue
+      if (x < minX) minX = x
+      if (x > maxX) maxX = x
+      if (y < minY) minY = y
+      if (y > maxY) maxY = y
+    }
+  }
+  return {
+    width,
+    height,
+    bounds: maxX === -1 ? null : { minX, maxX, minY, maxY },
+  }
 }
 
 function readInstalled(relative) {
@@ -132,6 +205,53 @@ describe("the notifications plugin declares no more than local reminders need", 
     // master is comfortably past the 96px floor the plan sets.
     expect(bytes[25]).toBe(6)
     expect(bytes.readUInt32BE(16)).toBeGreaterThanOrEqual(96)
+  })
+
+  it("draws the mark large enough to read in the status bar", () => {
+    // The layer that measures the real artifact rather than the intent. The
+    // adaptive-launcher silhouette passes every other assertion in this file
+    // and still renders the mark at 40% of the slot.
+    const { width, height, bounds } = markBounds(
+      path.join(APP_ROOT, EXPECTED_OPTIONS.icon),
+    )
+
+    expect(bounds).not.toBeNull()
+    expect((bounds.maxX - bounds.minX + 1) / width).toBeGreaterThan(
+      MIN_MARK_WIDTH_FRACTION,
+    )
+    // Not clipped. Deliberately NOT a centring check: the generator centres the
+    // symbol on its CENTROID, not its bounding box, so a box-centred assertion
+    // would fail the asset the design calls for (apps/mobile/CLAUDE.md).
+    expect(bounds.minX).toBeGreaterThan(0)
+    expect(bounds.maxX).toBeLessThan(width - 1)
+    expect(bounds.minY).toBeGreaterThan(0)
+    expect(bounds.maxY).toBeLessThan(height - 1)
+  })
+
+  it("measures the adaptive silhouette as too small (positive control)", () => {
+    // Proves the rule above would have REJECTED the asset this branch first
+    // shipped, rather than passing on any PNG with an alpha channel.
+    const { width, bounds } = markBounds(
+      path.join(APP_ROOT, "assets/adaptive-icon-monochrome.png"),
+    )
+
+    expect((bounds.maxX - bounds.minX + 1) / width).toBeLessThan(
+      MIN_MARK_WIDTH_FRACTION,
+    )
+  })
+
+  it("has the generator emit it at its own width, not the adaptive one", () => {
+    // The generator runs by hand, so nothing executes this until someone
+    // regenerates — by which time a reused constant has written a small mark.
+    const generator = fs.readFileSync(
+      path.join(APP_ROOT, "scripts/generate-app-icon.mjs"),
+      "utf8",
+    )
+
+    expect(generator).toMatch(/const WIDTH_NOTIFICATION = 0\.\d+/)
+    expect(generator).toMatch(
+      /markSvg\(SIZE, WIDTH_NOTIFICATION, "#FFFFFF"\),\s*\n\s*path\.join\(ASSETS, "notification-icon\.png"\),/,
+    )
   })
 
   it("requests no exact-alarm permission anywhere in the config", () => {
@@ -202,11 +322,11 @@ describe("the notifications plugin declares no more than local reminders need", 
   })
 
   it("upstream premise: the module pulls the badge and messaging AARs", () => {
-    // What makes the merged permission list about twenty entries longer than
-    // the module's own manifest. Verified against a real
-    // `:app:processDebugMainManifest` merge on 2026-09-16 (expo-notifications
-    // 57.0.19): POST_NOTIFICATIONS and RECEIVE_BOOT_COMPLETED both present, no
-    // exact-alarm entry, and no READ_MEDIA_* entry surviving the block list.
+    // What makes the merged permission list far longer than the module's own
+    // manifest. Verified against a real `:app:processDebugMainManifest` merge
+    // on 2026-09-16 (expo-notifications 57.0.19): POST_NOTIFICATIONS and
+    // RECEIVE_BOOT_COMPLETED both present, no exact-alarm entry, and no
+    // READ_MEDIA_* entry surviving the block list.
     const gradle = readInstalled("android/build.gradle")
 
     for (const dependency of TRANSITIVE_ANDROID_DEPENDENCIES) {

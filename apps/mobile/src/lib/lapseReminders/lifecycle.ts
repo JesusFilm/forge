@@ -29,11 +29,16 @@ export type LapseReminderPassReason =
   | "record_cleared"
 
 /** What a pass did. Also fixed for KTD9. */
-export type LapseReminderPassOutcome = "scheduled" | "not_granted" | "gate_off"
+export type LapseReminderPassOutcome =
+  | "scheduled"
+  | "not_granted"
+  | "gate_off"
+  | "permission_unreadable"
 
 /** The adapter call that failed, for the step-failure event. */
 export type LapseReminderPassStep =
   | "permission"
+  | "channel"
   | "schedule"
   | "cancel"
   | "dismiss"
@@ -44,6 +49,10 @@ export type LapseReminderPassStep =
  * here, where its consumer can see all of it.
  */
 export type LapseReminderSchedulingPort = {
+  /** Idempotent upsert, owned by the pass rather than by the one-shot prompt.
+   *  A channel created only on the prompt's single launch is gone for the life
+   *  of the install if that one call fails. */
+  ensureChannel: () => Promise<void>
   getPermission: () => Promise<{ granted: boolean }>
   schedule: (input: {
     identifier: string
@@ -134,12 +143,16 @@ export function createLapseReminderLifecycle(
     deps.telemetry.info("lapse_reminder.pass", { pass_reason: reason, outcome })
   }
 
-  async function isGranted(reason: LapseReminderPassReason): Promise<boolean> {
+  /** A read that FAILED is not a denial. The two stay apart: one is the
+   *  viewer's choice, the other is a transient fault that says nothing. */
+  async function readPermission(
+    reason: LapseReminderPassReason,
+  ): Promise<"granted" | "denied" | "unreadable"> {
     try {
-      return (await deps.adapter.getPermission()).granted
+      return (await deps.adapter.getPermission()).granted ? "granted" : "denied"
     } catch (error) {
       logStepFailure(reason, "permission", null, error)
-      return false
+      return "unreadable"
     }
   }
 
@@ -153,13 +166,34 @@ export function createLapseReminderLifecycle(
       await standDown(reason, "gate_off")
       return
     }
-    if (!(await isGranted(reason))) {
+    const permission = await readPermission(reason)
+    if (permission === "denied") {
       await standDown(reason, "not_granted")
+      return
+    }
+    if (permission === "unreadable") {
+      // Cancelling here destroys reminders that were correct, and reporting a
+      // denial bills a transient fault to the opt-in rate. A clear is the one
+      // exception: removing the previous account's video still wins.
+      if (reason === "record_cleared") {
+        await standDown(reason, "permission_unreadable")
+        return
+      }
+      deps.telemetry.info("lapse_reminder.pass", {
+        pass_reason: reason,
+        outcome: "permission_unreadable",
+      })
       return
     }
     // R18: a clear must also take the old video out of the tray, not just out
     // of what is pending.
     if (reason === "record_cleared") await dismissDelivered(reason)
+
+    try {
+      await deps.adapter.ensureChannel()
+    } catch (error) {
+      logStepFailure(reason, "channel", null, error)
+    }
 
     const record = deps.getRecord()
     const targets = computeLapseReminderTargets(deps.now())
@@ -177,6 +211,15 @@ export function createLapseReminderLifecycle(
         })
       } catch (error) {
         logStepFailure(reason, "schedule", kind, error)
+        // On a clear, removal outranks freshness: a reminder left pending under
+        // this identifier still carries the previous account's video (R18).
+        if (reason === "record_cleared") {
+          try {
+            await deps.adapter.cancel(LAPSE_REMINDER_IDENTIFIERS[kind])
+          } catch (cancelError) {
+            logStepFailure(reason, "cancel", kind, cancelError)
+          }
+        }
       }
     }
     deps.telemetry.info("lapse_reminder.pass", {

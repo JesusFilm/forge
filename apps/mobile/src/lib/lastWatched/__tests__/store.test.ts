@@ -204,6 +204,49 @@ describe("hydrate", () => {
 
     expect(storage.getItem).toHaveBeenCalledTimes(1)
   })
+
+  it("retries after a rejected read, so a later pass still finds the record", async () => {
+    // Only the cold-launch pass is on a deadline. Memoizing a failed read sends
+    // every later reminder to Home while a real record sits on disk.
+    const { store, storage } = makeStore()
+    storage.getItem.mockRejectedValueOnce(new Error("storage unavailable"))
+    storage.getItem.mockResolvedValueOnce(blobFor("the-birth-of-jesus"))
+
+    await store.hydrate()
+    expect(store.getRecord()).toBeNull()
+
+    await store.hydrate()
+
+    expect(storage.getItem).toHaveBeenCalledTimes(2)
+    expect(store.getRecord()?.videoSlug).toBe("the-birth-of-jesus")
+  })
+
+  it("retries after a timed-out read", async () => {
+    jest.useFakeTimers()
+    const { store, storage } = makeStore()
+    storage.getItem.mockReturnValueOnce(new Promise<string | null>(() => {}))
+
+    const first = store.hydrate()
+    jest.advanceTimersByTime(LAST_WATCHED_HYDRATE_TIMEOUT_MS + 1)
+    await first
+    expect(store.getRecord()).toBeNull()
+
+    jest.useRealTimers()
+    storage.getItem.mockResolvedValueOnce(blobFor("the-birth-of-jesus"))
+    await store.hydrate()
+
+    expect(store.getRecord()?.videoSlug).toBe("the-birth-of-jesus")
+  })
+
+  it("does NOT retry after a successful read that found nothing", async () => {
+    // An empty store is an answer. Retrying it would read on every pass.
+    const { store, storage } = makeStore(null)
+
+    await store.hydrate()
+    await store.hydrate()
+
+    expect(storage.getItem).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe("clear", () => {

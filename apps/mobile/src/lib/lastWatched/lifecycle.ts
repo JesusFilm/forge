@@ -22,6 +22,9 @@ export type LastWatchedWriterDeps = {
  * so a video already playing is recorded. Returns a detach function.
  */
 export function attachLastWatchedWriter(deps: LastWatchedWriterDeps) {
+  // Deliberately NOT reset when the record store is cleared. A sign-out does
+  // not stop playback, so re-recording the still-playing video would undo the
+  // clear and point the reminders back at the previous account (AE9).
   let lastWrittenSlug: string | null = null
 
   function handlePlaybackChange() {

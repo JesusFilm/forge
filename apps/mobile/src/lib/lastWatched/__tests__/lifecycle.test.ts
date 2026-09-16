@@ -98,6 +98,43 @@ describe("attachLastWatchedWriter", () => {
     expect(write).not.toHaveBeenCalled()
   })
 
+  it("does NOT re-record the same video after a sign-out clears the record", () => {
+    // AE9, and a deliberate consequence of the writer keeping its own latch.
+    // A sign-out does not stop playback, so the signed-out person can keep
+    // watching. Re-recording here would put the previous account's video back
+    // into the reminders the clear just pointed at Home, which is the shared-
+    // device case the Key Decision exists for. Do NOT "fix" this by giving the
+    // writer a clear seam, or by deduping against the store's own record.
+    const store = makeStore()
+    const { write } = attachTo(store)
+
+    store.attachSlot(makeRequest({ session: SESSION_STREAMING }))
+    store.setPlaying(true)
+    expect(write).toHaveBeenCalledTimes(1)
+    write.mockClear()
+
+    // The record store is cleared; the writer is not told, by design.
+    store.setPlaying(false)
+    store.setPlaying(true)
+
+    expect(write).not.toHaveBeenCalled()
+  })
+
+  it("still records a DIFFERENT video after a clear", () => {
+    // The latch bounds only the video that was already recorded. A new title
+    // the signed-out person starts is theirs, and the record follows it.
+    const store = makeStore()
+    const { write } = attachTo(store)
+
+    store.attachSlot(makeRequest({ session: SESSION_STREAMING }))
+    store.setPlaying(true)
+    write.mockClear()
+
+    store.attachSlot(makeRequest({ session: SESSION_DOWNLOADED }))
+
+    expect(write).toHaveBeenCalledWith("washi-gospel-episode-2")
+  })
+
   it("writes once while the playing slug does not change", () => {
     const store = makeStore()
     const { write } = attachTo(store)

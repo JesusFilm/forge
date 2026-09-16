@@ -94,14 +94,33 @@ jest.mock("../../lib/lastWatched/store", () => {
   }
 })
 jest.mock("../../lib/miniPlayer/playbackRequest", () => {
-  const snapshot = { request: null, playing: false }
+  let snapshot: {
+    request: { session: { videoSlug: string } } | null
+    playing: boolean
+  } = { request: null, playing: false }
+  const listeners = new Set<() => void>()
   // One store object, not a fresh one per call: the test reads the same
   // `subscribe` mock the provider was handed.
   const store = {
-    subscribe: jest.fn(() => jest.fn()),
+    subscribe: jest.fn((listener: () => void) => {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
+    }),
     getSnapshot: () => snapshot,
   }
-  return { getPlaybackRequestStore: () => store }
+  return {
+    getPlaybackRequestStore: () => store,
+    // The writer only acts on a notification, so a store that never emits
+    // cannot tell a wired provider from `write: () => {}`.
+    __emitPlaying: (videoSlug: string) => {
+      snapshot = { request: { session: { videoSlug } }, playing: true }
+      for (const listener of [...listeners]) listener()
+    },
+    __resetPlayback: () => {
+      snapshot = { request: null, playing: false }
+      listeners.clear()
+    },
+  }
 })
 
 import { StrictMode, act } from "react"
@@ -137,6 +156,7 @@ const recordStoreModule = (require as unknown as NodeRequireLike)(
 ) as {
   __emitClear: () => void
   __clearListenerCount: () => number
+  getLastWatchedStore: () => { write: jest.Mock; getRecord: jest.Mock }
 }
 
 const splashModule = (require as unknown as NodeRequireLike)(
@@ -319,6 +339,40 @@ describe("LapseReminderProvider wiring", () => {
     await act(async () => renderer.unmount())
   })
 
+  it("writes a playing session through to the record store", async () => {
+    // Subscribing is not wiring. Without this, `write: () => {}` in the
+    // provider leaves every mobile test green and the record never fills.
+    const playback = (require as unknown as NodeRequireLike)(
+      "../../lib/miniPlayer/playbackRequest",
+    ) as { __emitPlaying: (slug: string) => void }
+    const store = recordStoreModule.getLastWatchedStore()
+    const renderer = await render()
+    ;(store.write as jest.Mock).mockClear()
+
+    await act(async () => {
+      playback.__emitPlaying("considering-christmas")
+    })
+
+    expect(store.write).toHaveBeenCalledWith("considering-christmas")
+    await act(async () => renderer.unmount())
+  })
+
+  it("stops writing once the provider unmounts", async () => {
+    const playback = (require as unknown as NodeRequireLike)(
+      "../../lib/miniPlayer/playbackRequest",
+    ) as { __emitPlaying: (slug: string) => void }
+    const store = recordStoreModule.getLastWatchedStore()
+    const renderer = await render()
+
+    await act(async () => renderer.unmount())
+    ;(store.write as jest.Mock).mockClear()
+    await act(async () => {
+      playback.__emitPlaying("rivka")
+    })
+
+    expect(store.write).not.toHaveBeenCalled()
+  })
+
   it("unsubscribes everything on unmount and passes no more", async () => {
     const renderer = await render()
 
@@ -408,10 +462,13 @@ describe("the first-launch permission prompt (U5)", () => {
   })
 
   it("creates the Android channel before it asks (KTD6)", async () => {
+    // The ORDER is the contract, not the count: the schedule pass ensures the
+    // channel too, so a single-call assertion would only pin which module
+    // happened to reach it first.
     const renderer = await render()
     await flush()
 
-    expect(adapter.ensureChannel).toHaveBeenCalledTimes(1)
+    expect(adapter.ensureChannel).toHaveBeenCalled()
     expect(adapter.ensureChannel.mock.invocationCallOrder[0]).toBeLessThan(
       adapter.requestPermission.mock.invocationCallOrder[0],
     )
@@ -448,8 +505,9 @@ describe("the first-launch permission prompt (U5)", () => {
         event === "lapse_reminder.pass" && context.outcome === "not_granted",
     )
     expect(standDowns).toHaveLength(2)
+    // The ASK is the one-shot. The channel upsert is idempotent and now runs
+    // on every pass too, so counting it here would pin an unrelated fact.
     expect(adapter.requestPermission).toHaveBeenCalledTimes(1)
-    expect(adapter.ensureChannel).toHaveBeenCalledTimes(1)
     await act(async () => renderer.unmount())
   })
 

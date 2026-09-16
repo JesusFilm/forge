@@ -75,6 +75,11 @@ function read(file) {
   return content
 }
 
+/** Whatever each `enabled:` call site is given, in source order. */
+function enabledSources(source) {
+  return [...source.matchAll(/\benabled:\s*([^,\n]+)/g)].map((m) => m[1].trim())
+}
+
 /** Strip comments so a mention inside prose cannot satisfy an assertion. */
 function stripComments(source) {
   return source
@@ -203,6 +208,38 @@ describe("the lapse reminder composition root", () => {
 
   it("wires every dependency a pass cannot run without", () => {
     expect(missingWiring(read(PROVIDER), PROVIDER_WIRING)).toEqual([])
+  })
+
+  it("threads the kill switch into EVERY consumer, never a literal", () => {
+    // The gate reaches three independent consumers — the schedule pass, the
+    // permission prompt and the tap handler. A `includes()` check passes with
+    // one of the three present, so a one-line `enabled: true` at either of the
+    // others is the OTA-proof revert this counts instead.
+    const source = stripComments(read(PROVIDER))
+
+    expect(enabledSources(source)).toEqual([
+      "LAPSE_REMINDERS_ENABLED",
+      "LAPSE_REMINDERS_ENABLED",
+      "LAPSE_REMINDERS_ENABLED",
+    ])
+  })
+
+  it("reads each enabled: source the way the rule intends (positive control)", () => {
+    // Proves the reader counts call sites rather than matching the file once,
+    // and that a hardcoded literal at ANY position is visible.
+    const threeGood =
+      "enabled: LAPSE_REMINDERS_ENABLED,\nenabled: LAPSE_REMINDERS_ENABLED,\nenabled: LAPSE_REMINDERS_ENABLED,"
+    expect(enabledSources(threeGood)).toHaveLength(3)
+
+    const oneReverted =
+      "enabled: LAPSE_REMINDERS_ENABLED,\nenabled: true,\nenabled: LAPSE_REMINDERS_ENABLED,"
+    expect(enabledSources(oneReverted)).toEqual([
+      "LAPSE_REMINDERS_ENABLED",
+      "true",
+      "LAPSE_REMINDERS_ENABLED",
+    ])
+    expect(enabledSources("enabled: !__DEV__,")).toEqual(["!__DEV__"])
+    expect(enabledSources("")).toEqual([])
   })
 
   it("lets only the adapter name the notifications module (KTD1)", () => {
