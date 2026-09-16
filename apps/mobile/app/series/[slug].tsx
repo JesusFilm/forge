@@ -20,6 +20,10 @@ import {
   type WatchEpisode,
 } from "../../src/lib/normalizeVideo"
 import { decodeWatchSeed, encodeWatchSeed } from "../../src/lib/watchSeed"
+import {
+  discoverySourceFromParam,
+  markPlaybackDiscovery,
+} from "../../src/lib/recommendations/playbackDiscovery"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { ACCENT, SURFACE_COLOR } from "../../src/lib/color"
 import { layout, text } from "../../src/styles/shared"
@@ -62,11 +66,19 @@ const EMPTY_EPISODES: WatchEpisode[] = []
 // (outside the list) so fullscreen never reparents and scrolling can't obscure it.
 // A poster-only hero instead scrolls away in the grid header.
 export default function SeriesScreen() {
-  const { slug, seed: seedParam } = useLocalSearchParams<{
+  const {
+    slug,
+    seed: seedParam,
+    from: fromParam,
+  } = useLocalSearchParams<{
     slug: string
     seed?: string
+    from?: string
   }>()
   const decodedSlug = slug ? decodeURIComponent(slug) : ""
+  // How this LIST was reached (a search result carries `from=search`); the
+  // episode tap below marks the episode with it for playback attribution.
+  const discoverySource = discoverySourceFromParam(fromParam)
 
   const router = useRouter()
   const { isFullscreen, toggleFullscreen } = useFullscreenPresentation()
@@ -428,9 +440,10 @@ export default function SeriesScreen() {
         imageUrl: episode.posterUrl,
         playbackId: null,
       })
+      if (discoverySource) markPlaybackDiscovery(episode.slug, discoverySource)
       router.push(`/watch/${encodeURIComponent(episode.slug)}?seed=${seed}`)
     },
-    [router],
+    [router, discoverySource],
   )
 
   // Cold deep link with nothing to paint yet → skeleton, not a blank spinner.

@@ -99,6 +99,7 @@ import { useDownloads } from "../../src/contexts/DownloadsProvider"
 import { validateLocalMediaUrl } from "../../src/lib/validateLocalMediaUrl"
 import { OFFLINE_ROOT } from "../../src/lib/offlineFileSystem"
 import { buildSubtitlePath } from "../../src/lib/offlineFiles"
+import { markPlaybackDiscovery } from "../../src/lib/recommendations/playbackDiscovery"
 import {
   resolveActiveSubtitle,
   resolveSubtitleActionLabel,
@@ -538,6 +539,8 @@ export default function WatchVideoPage() {
       const entry = consumeDeepLinkEntry(decodedSlug)
       if (entry == null) return
       deepLinkEmittedRef.current.add(decodedSlug)
+      // An external link is a shared link for playback attribution (feat-516).
+      markPlaybackDiscovery(decodedSlug, "share")
       datadogLog.info("content.deep_link_open", {
         content_id: decodedSlug,
         entry,
