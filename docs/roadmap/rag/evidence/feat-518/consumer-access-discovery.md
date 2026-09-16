@@ -1,6 +1,6 @@
 ---
 title: "J011 RAG consumer access discovery and implementation handoff"
-date: "2026-09-16"
+date: "2026-09-17"
 status: blocked
 module: "apps/rag"
 tags: ["rag", "auth", "postgresql", "usage", "discovery"]
@@ -12,10 +12,31 @@ problem_type: "implementation_readiness"
 ## Outcome, scope and provenance
 
 The five areas below have concrete implementation proposals backed by repository
-inspection. **feat-518 cannot close yet:** the approved senior reviewer identities,
-protected check authority and portal registration choices are not established.
-The owner decisions in the final gate table must be recorded before feat-512 starts.
+inspection. Jaco's September 17 continuation settles the senior/recovery roster,
+GitHub portal choice and consumer-first RAGBot reporting. **feat-518 cannot close
+yet solely because the required review/check enforcement cannot be verified:**
+the visible ruleset still requires zero reviews and no status checks. G2/G3 are
+resolved design choices, with implementation registration/transport details below.
 This is a discovery result, not authorization to provision any of these controls.
+
+### Accepted continuation decisions (September 17)
+
+- Senior RAG approvers: Jaco Brink (`jaco-brink`), Tatai (`tataihono`), Jian Wei
+  (`jianwei1`). Jaco alone is the current recovery authority. Approval does not
+  delegate recovery to Tatai or Jian Wei.
+- Trusted mechanism: protected GitHub PR review plus repository CI required-check
+  and approval enforcement. This supersedes this report's earlier proposal to
+  choose a new trusted workflow or dedicated App; no invented check names are
+  adopted. Exact observed names and the remaining discrepancy are in section 1.
+- Portal option A: internal GitHub authentication, matching both an allowlisted
+  GitHub account and a verified email in the same registry entry; multiple
+  authorized engineers may manage an integration. This supersedes the earlier
+  Google/Forge Auth recommendation in the unchanged programme-planning PR.
+- Report option A: register RAGBot as an ordinary consumer first, then provide
+  aggregate request counts/activity through a narrow internal read-only tool.
+  Jaco and RAGBot alone may view aggregate consumer usage. Reports never mean
+  query results. Transport/provisioning owner are implementation details, not
+  another product decision or a production permission grant.
 
 - Parent: draft [PR #2304](https://github.com/JesusFilm/forge/pull/2304), branch
   `docs/rag-consumer-access-usage-plan`, head
@@ -59,7 +80,7 @@ RAG engineer registry, senior reviewer policy, or RAG access-approval check.
 `.github/workflows/ci.yml` has `format`, `hidden-roadmap-lanes` and `ci-gate`, but
 none establishes senior approval. Its events do not include review changes.
 
-Read-only GitHub API observations on 2026-09-16:
+Read-only GitHub API observations on 2026-09-16, rechecked unchanged on 2026-09-17:
 
 - `GET /repos/JesusFilm/forge/branches/main/protection` returned 404. This alone
   does not establish absence of protection or distinguish visibility limits.
@@ -76,7 +97,31 @@ Read-only GitHub API observations on 2026-09-16:
   effective protection and check-writer authority before activation.
 
 These are GitHub configuration observations, not production service findings.
-No review/protection setting was changed.
+No review/protection setting was changed. Both PRs remain open drafts at the
+original heads before this continuation; neither has comments/reviews containing
+an additional enforcement description. The inspected workflow/config files on
+current main `19b8f062e0b62b84e14882fc828166998265a2da` match the relevant source
+in this branch. No effective rule for named senior approval was found.
+
+| Verified name                                                                                                               | Location / observation                                                               | What it establishes                                                                                             |
+| --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| `Main` (ID `12972651`)                                                                                                      | GitHub ruleset, default branch; rules `pull_request`, `deletion`, `non_fast_forward` | Protected PR/squash and history controls, but zero required approvals and no required checks in returned rules. |
+| `forge-ci`                                                                                                                  | `.github/workflows/ci.yml` workflow                                                  | Repository CI runs on pull requests; not evidence that its checks are required for merge.                       |
+| `ci-gate`                                                                                                                   | Aggregate job in `forge-ci`                                                          | Fails on failed/cancelled prerequisite jobs; does not inspect senior reviews.                                   |
+| `commit-lint`, `affected`, `format`, `patched-deps-guard`, `hidden-roadmap-lanes`, `dev-port-contract`, `experiment-ledger` | Actual checks on discovery head `7621524cc`                                          | All passed in run `35062914744`; no named-senior approval check appears.                                        |
+
+Other `ci-gate` prerequisites are exactly `admin-graphql-generate`,
+`admin-schema-drift`, `web-redis-integration`, `auth-postgres-integration`,
+`rag-postgres-integration`, `lint`, `test`, `expo-doctor`, and `build`; these
+were skipped for this documentation-only diff. Check success does not establish
+required-check protection. The comment immediately above `ci-gate` describes
+it as the stable name that main _can_ require; it does not assert that a ruleset
+currently requires it. The existing solution
+`docs/solutions/auth/better-auth-authorization-resource-binding-upgrade.md` also
+separates job execution from external merge enforcement. No alternative RAG
+approval control was found in the scoped guidance/solutions search. The names `rag-access-policy-schema` and
+`rag-access-policy-approval` in the previous report revision were hypothetical;
+they are withdrawn, not existing or newly approved requirements.
 
 ### Proposed schema and enforcement contract
 
@@ -106,12 +151,28 @@ characters per email, 39 per GitHub login, and 128 per source key; source lists
 cannot exceed the registered source inventory. UUID and numeric-ID formats are
 validated separately. A GitHub account/email pairing is a senior-reviewed identity mapping;
 it is not derived from Git commit author emails, public GitHub profile emails,
-a matching name, or domain membership. Do not populate real people in this PR.
+a matching name, or domain membership. Record approved public approver account
+IDs below, but do not collect private email addresses or create the runtime registry
+in this documentation PR. Actual engineer email bindings are populated through
+the protected registration process during implementation.
 
-Use a separate protected `config/rag-consumer-approvers.json` with schema version
-and senior GitHub numeric IDs/login labels. Explicit IDs are the initial proposal;
-a team alternative requires a named team and trusted live membership resolution.
-No engineer can appoint themselves by editing the head version of either file.
+A future protected `config/rag-consumer-approvers.json` records separate
+`approverGithubUserIds` and `recoveryGithubUserIds` fields plus schema version;
+only Jaco's ID belongs in the recovery field. The authoritative roster is the
+user's continuation, not account biographies or inferred organization roles.
+Public `GET /users/{login}` on September 17 verified these identity bindings:
+
+| Approved person | GitHub login | Numeric GitHub ID | Authority                    |
+| --------------- | ------------ | ----------------- | ---------------------------- |
+| Jaco Brink      | `jaco-brink` | `219753371`       | Senior approval and recovery |
+| Tatai           | `tataihono`  | `802117`          | Senior approval only         |
+| Jian Wei        | `jianwei1`   | `17999235`        | Senior approval only         |
+
+Bind privileges to these immutable IDs; login names are labels. Do not infer
+portal membership, verified email, code-review permission or recovery delegation
+from the public lookup. No engineer can appoint themselves by editing PR-head
+policy. Jaco recovery still requires a verified authorized session and bounded
+audit; it is not a direct database or production bypass.
 The canonical reviewed revision is the merged protected-main commit SHA, recorded
 in the restricted access store and audit. The management service reads the active
 registry revision on every action. A controlled publisher imports only an exact
@@ -120,19 +181,23 @@ and invalidates their sessions. No fallback to a bundled older revision; activat
 fails if synchronization cannot be established. The publication lag is a release
 test/operational gate, not a claim of immediate effect at GitHub merge time.
 
-Propose two unique required checks, `rag-access-policy-schema` and
-`rag-access-policy-approval`, plus existing `ci-gate`. Protect registry/schema,
-approver policy, validator source, all workflow definitions that could spoof the
-check, CODEOWNERS and their dependencies. The approval decision must execute
-trusted base/default-branch code or a dedicated trusted GitHub App, never PR-head
-code with privileged permissions. A generic Actions check name alone is not a
-sufficient trust boundary: another head workflow could emit that name. Prefer a
-required trusted workflow with repository/organization enforcement if available;
-otherwise a dedicated App identity as the required check source. The repo owner
-must choose and attest the enforceable option (gate G1); no App installation or
-ruleset change is authorized here.
+Use the approved protected-PR plus repository-CI mechanism, with existing
+`ci-gate` as the verified aggregate check entry point. The exact approval-check
+name/implementation and effective required-check rule are **not found**; discovery
+cannot certify that `ci-gate` enforces either today. G1 needs Jaco/repository-admin
+evidence naming the intended existing control, or an explicit correction that
+it must be implemented under feat-512. No new check name, App, workflow service,
+or repository setting is chosen or created here.
 
-Approval algorithm for that trusted evaluator:
+The future enforcement must protect registry/schema, approver/recovery policy,
+validator source, relevant workflow definitions, CODEOWNERS and dependencies.
+Evaluate authorization from protected base/default-branch policy, never PR-head
+policy with privileged permissions. A same-name Actions result is not proof of
+trusted approval; the repository mechanism must prevent replacement/spoofing of
+its evaluator and required checks. These are acceptance requirements for the
+approved mechanism, not a request to choose a different authentication product.
+
+Required approval behavior to verify in that repository mechanism:
 
 1. Load approver policy from the protected base revision. Read all changed paths
    and all reviews with pagination; API errors, incomplete pages or missing
@@ -171,60 +236,83 @@ attempt with no trusted successful check. None was executed in this docs job.
 
 ## 2. Portal identity and multi-engineer ownership
 
-### Reusable evidence and limitations
+### Reusable evidence and selected approach
 
-`apps/auth/src/auth/config.ts` conditionally enables Google when configured and
-emits `email_verified` from the Auth user record. `apps/auth/src/domain/apps.ts`
-and `src/scripts/seed-first-party-apps.ts` define/seed distinct first-party
-clients per environment; there is no RAG portal entry. Public dynamic client
-registration exists but grants no RAG management authority.
+`apps/auth/src/auth/config.ts` has conditional Google/Facebook/Apple provider
+wiring but no GitHub provider. `apps/auth/src/domain/apps.ts` has no RAG portal
+client. No existing Forge GitHub portal login can be claimed from this source.
+`apps/chat/src/auth/oauth-state.ts` and `oauth-client.ts` offer state, PKCE and
+bounded exchange patterns; their OIDC id-token/JWKS verifier does not validate
+GitHub OAuth identity. `identity.ts`/`session-cookie.ts` explicitly describe an
+8-hour snapshot unsuitable for general authorization. No cross-app imports.
 
-`apps/chat/src/auth/oauth-client.ts` provides authorization-code + PKCE S256,
-state plumbing, id-token-only verification, JWKS algorithm restrictions,
-issuer/audience/expiry checks and a strictly boolean verified-email claim.
-`apps/chat/src/auth/identity.ts` and `session-cookie.ts` explicitly describe an
-8-hour snapshot unsuitable for general authorization. Reuse the protocol pattern,
-not that session policy or cross-app imports. Repository wiring does not prove
-Google is configured, which emails are verified, or any client is provisioned.
+Jaco selected **GitHub authentication**. Implement a RAG-owned server-side GitHub
+OAuth web flow; do not silently substitute the earlier Google/Forge Auth design
+or assume that adding GitHub to Forge Auth already happened. This keeps the
+portal within RAG while using Forge's established session/CSRF implementation
+patterns as reference. A future shared Auth integration would require proving
+that it preserves the GitHub numeric account and verified-email binding.
 
-### Proposed RAG-owned boundary
+### GitHub account and verified-email contract
 
-Use Forge Auth OIDC, with Google as the preferred upstream login option. Trust
-Forge Auth's verified claim, not a browser assertion about Google. Request only
-`openid profile:read email:read`; require nonempty `sub`, pinned issuer, exact
-portal client audience, valid signature/expiry and `email_verified === true`.
-Require a reviewed email mapping and bind `(issuer, subject)` to the immutable
-engineer ID on first authorized login. Conflicting subject/email bindings fail
-closed and need senior recovery; email edits never silently transfer ownership.
-Add nonce validation to the RAG flow, plus single-use state/PKCE, exact callback
-matching and a bounded token exchange. Reject access-token substitution.
+Use a dedicated OAuth app registration per environment with only `read:user`
+and `user:email`, no repository/org/admin or offline-access scopes. Fixed callback
+`<approved-origin>/api/auth/callback/github`; exact per-environment origin and
+client binding, no wildcard/preview callbacks or browser-supplied issuer/base URL.
+Host selection, GitHub app registration and secret provisioning are feat-515
+implementation tasks; no origin or registration is claimed to exist today.
 
-Proposed registration keys: `rag-consumer-portal`, distinct client IDs
-`jfp_rag_consumer_portal_local`, `_staging`, `_production`; exact callback
-`<approved-origin>/api/auth/callback`, exact post-logout origin, no wildcard or
-ad-hoc preview registration. **Host/origins and client registration owner remain
-G2, not invented deployed URLs.** Use no Auth admin scopes. The future Auth seed
-change belongs to the portal implementation and must respect its local guide.
+Use authorization code flow with single-use random state, PKCE S256 and exact
+redirect matching; exchange only from the backend with bounded network timeouts.
+GitHub documents the [web authorization flow](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps)
+and [OAuth scopes](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps).
+These are protocol references, not proof of a configured client.
 
-Keep management logic in RAG's bounded context: a separate management entrypoint
-and database pools, with same-origin portal backend/session handling. It is not
-mounted on public retrieval `/v1`; browser requests cannot receive a database
-credential, an internal management service credential, or another consumer's data.
-The operator-mediated dogfood precursor calls the same authorized lifecycle
-service using a verified engineer session, not an admin SQL bypass. Choose final
-hosting/entrypoint packaging with G2; no new deployment is created here.
+After each exchange, use that same access token to fetch the
+[authenticated user](https://docs.github.com/en/rest/users/users#get-the-authenticated-user)
+and all [authenticated email addresses](https://docs.github.com/en/rest/users/emails#list-email-addresses-for-the-authenticated-user),
+following pagination. Require numeric user `id` equal to an active registry
+`githubUserId`, and at least one email with `verified === true` whose normalized
+value is in **that same engineer's** `verifiedEmails`. `primary` alone does not
+mean verified. Missing email scope, incomplete pages, API error, no verified
+match or account mismatch deny login. Do not treat public profile email, Git
+commit email, login spelling, an Actions OIDC token, or a browser claim as proof.
+Do not join account A with allowlisted email belonging only to account B.
 
-Use opaque server-side sessions in restricted metadata, hash the session secret,
-HttpOnly/Secure/host-only cookies, CSRF and origin checks for every mutation,
-no-store management responses, and no analytics/replay on issuance pages. Proposed
-maximum session lifetime: one hour with fresh login for key issuance/recovery.
-Every read/mutation rechecks session status/expiry, engineer binding, current
-registry revision, consumer membership, environment and source entitlements.
-Local logout, engineer disable or membership removal takes effect on the next
-management action. Auth-side logout alone must not be advertised as immediate
-RAG revocation: integration with Auth revocation/introspection must be proven,
-or the explicitly bounded session window accepted under G2. Re-authentication
-must revalidate current email verification before issuance.
+Persist only the restricted binding `(provider: github, githubUserId)` to
+`engineerId`, matched-email reference, verification time and local session state.
+A changed login cannot transfer the numeric identity; conflicting bindings require
+Jaco recovery. Discard OAuth token material after callback identity checks; no
+provider-token persistence/refresh is needed for this short local session.
+Keep tokens, authorization codes, PKCE values and email API responses out of
+logging/analytics and out of the browser. No OAuth flow or credential was exercised
+by discovery; the public account-ID lookup was the only account API inspection.
+
+### RAG management and session boundary
+
+Keep a separate RAG management entrypoint/pools with a same-origin portal backend,
+not management routes on public retrieval `/v1`. The operator-mediated dogfood
+precursor calls the same lifecycle authorization using a verified GitHub session;
+it is not a SQL bypass. Multiple allowlisted engineers manage one integration
+through membership records below, never by becoming separate usage consumers.
+
+Use opaque server-side sessions, hashed session secrets, HttpOnly/Secure/host-only
+cookies, CSRF/origin checks on mutations, no-store management responses and no
+analytics/replay on issuance pages. Proposed maximum lifetime is one hour without
+silent extension; issuance/recovery requires a fresh GitHub authorization callback
+and account/email API revalidation. Do not claim that an OAuth callback forces a
+new GitHub password challenge. Every read/mutation checks local session status,
+expiry, active registry revision, engineer binding and consumer membership plus
+environment/source rights. Removal/disable is effective on the next action after
+the registry revision is activated, including existing sessions.
+
+GitHub logout, provider email removal or OAuth-grant revocation does not itself
+revoke an already-issued local session. Bound that snapshot to one hour; use
+local session revocation/engineer disable for immediate administrative removal.
+Revalidation before issuance/recovery prevents stale provider identity from
+issuing keys. Document and test the distinction in feat-515; do not advertise
+instant provider-wide logout propagation. Registration owner and final host are
+implementation assignments, not unresolved G2 choices or permission to provision.
 
 `ConsumerMembership(consumerId, engineerId)` is distinct from the integration's
 credential. Existing managers can add only active, mapped engineers; an invited
@@ -232,7 +320,7 @@ engineer must complete verified binding before exercising management rights.
 Serialize membership/scope changes, rotations and recovery on the consumer row,
 then re-read authorization and registry version inside the transaction. Prevent
 removal of the last active manager; if registry removal disables all managers,
-suspend management and require a named senior recovery action. Do not auto-delete
+suspend management and require Jaco, the sole recovery authority, to act. Do not auto-delete
 or transfer the consumer or its usage history. Audit actor/target/action/outcome,
 consumer/environment, time and registry revision, never secrets or arbitrary notes.
 
@@ -342,7 +430,7 @@ with precise new expected objects, not a blanket ignore of metadata drift.
 
 | Schema/model                                                  | Keys and invariants                                                                                                                                                                                                            |
 | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `rag_access.RegistryRevision`, `Engineer`, `EngineerIdentity` | Active reviewed SHA/version; immutable engineer UUID and unique GitHub ID/email mapping; unique `(issuer, subject)`; disabled state. Restricted identities only.                                                               |
+| `rag_access.RegistryRevision`, `Engineer`, `EngineerIdentity` | Active reviewed SHA/version; immutable engineer UUID and unique GitHub ID/email mapping; unique `(provider, githubUserId)`; disabled state. Restricted identities only.                                                        |
 | `rag_access.Consumer`, `ConsumerEnvironment`                  | Stable UUID, approved bounded label, accountable-owner reference, bounded purpose/contact, state/times; environment PK `(consumerId, environment)`, approved source set, credential version; terminal consumer revoke.         |
 | `rag_access.ConsumerMembership`, `PortalSession`              | Unique consumer/engineer pair; revocable session digest and expiry; last-manager rule enforced under transaction locks.                                                                                                        |
 | `rag_access.Credential`, `LifecycleAudit`                     | Random internal row UUID, verifier/environment uniqueness, single active slot, issue/expiry/revoke/replacement/version; bounded actions/actors, append-only audit. Row ID never travels in token/report.                       |
@@ -495,9 +583,11 @@ one repeatable-read snapshot; the same closed certified window is stable except
 partial rows are visibly labelled (proposed exit 2), complete exit 0. Storage
 outage returns generic service unavailable, not rows fabricated from defaults.
 
-Human reports require the specifically approved Jaco `(issuer, subject)` binding
-and active verified RAG session; a matching display name or email string alone is
-insufficient. RAGBot gets one dedicated report-only opaque capability, separately
+Human reports require Jaco's verified GitHub binding (`githubUserId` =
+`219753371`) and active allowlisted RAG session; a matching display name or email
+string alone is insufficient. First register **RAGBot as an ordinary retrieval
+consumer**, then give it a separate narrow internal read-only usage tool. This
+ordering and aggregate-only access are approved G3 option A. RAGBot gets one dedicated report-only opaque capability, separately
 hashed/domain-bound to `rag-usage-report` and the receiver environment, with
 current-state checks and revocation. It grants only this endpoint, not retrieval,
 registration, rotation, membership changes or general database access. The
@@ -505,9 +595,15 @@ bounded future `forge-rag-usage-report` ops task accepts only the fixed filters,
 never a URL/SQL/header override, and obtains its capability out of band from the
 approved secret store. No credential on command line, stdout or agent transcript.
 The report server uses the aggregate-only database role; the bot receives no DB
-credential. Jaco/RAGBot's exact bindings and provisioning owner remain G3.
+credential. This endpoint/capability is a concrete transport proposal for the
+approved narrow tool, not a new approval prerequisite. feat-513 must document
+the actual tool transport, registered RAGBot consumer ID, runtime binding and
+named provisioning/rotation owner before activation; the RAG access/usage
+implementer owns recording that handoff, with Jaco retaining recovery authority.
+No identity is inferred from an agent process name or a caller-supplied header.
+Provisioning remains a later authorized operation.
 
-RAGBot's **retrieval** dogfood credential remains a separate ordinary consumer
+RAGBot's **retrieval** dogfood credential is its first, separate ordinary consumer
 credential used by actual `forge-rag-retrieve` over `POST /v1/search`. Report access
 does not substitute for that proof. Other engineers/managers receive neither
 report capability nor report access through their membership.
@@ -521,21 +617,22 @@ synthetic grace/cutoff/rollback. No execution of that proof occurred here.
 
 ## Readiness gates and handoff
 
-| Gate                               | Required evidence/decision                                                                                                                                                                                                                                                                     | Owner and timing                                                                                                                            |
-| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| G1 — unresolved security authority | Name senior GitHub IDs/team and recovery authority; accept registry/schema proposal; select trusted required-workflow or dedicated-App check source; administrator attests required checks/current-head reviews/no bypass and bootstrap procedure. Current observed rules do not provide this. | Jaco + repository administrator; before feat-518 closes/feat-512 begins.                                                                    |
-| G2 — unresolved portal boundary    | Approve Forge Auth client/host origins and management process packaging; name registration owner; accept bounded Auth-side logout semantics or choose proven revocation integration. No hosting or client provisioning is claimed.                                                             | Jaco + Auth owner; design choice before gate closes; local synthetic claim/flow proof in implementation, deployed checks before activation. |
-| G3 — unresolved report bindings    | Confirm Jaco's authoritative Auth subject binding procedure and RAGBot machine identity/provisioning owner; accept separate report-only capability and bounded report/window schema. No identities inferred from PR authorship.                                                                | Jaco + RAGBot operator; design confirmation before gate closes, exact restricted bindings before report activation.                         |
-| G4 — implementation proofs         | Synthetic credential races, role isolation/default grants, Node response completion, telemetry crash/gap tests, full authorization matrix and agreed latency budget.                                                                                                                           | feat-512/513; these are future tests, not missing documentation-job tests.                                                                  |
-| G5 — actual dogfood                | Approved task path/revision, selected consumer/source scope/environment, retry behavior and actual HTTP acceptance evidence.                                                                                                                                                                   | feat-514; task is absent from tracked repository and no outside Ops workspace was inspected.                                                |
-| G6 — production authorization      | Communications owner, seven-day grace start and exact cutoff; successful dogfood/report coverage and rollback approval.                                                                                                                                                                        | Separately approved production action only, never automatic from this PR.                                                                   |
+| Gate                                                  | Current finding / remaining handoff                                                                                                                                                                                                                                                                                                                                                                                                                                 | Owner and timing                                                                                                                                     |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G1 — roster resolved; enforcement discrepancy remains | Jaco/Tatai/Jian Wei are named seniors with verified public IDs; Jaco alone recovers. Approved mechanism is protected PR review plus repository CI. Exact observed rule is `Main`, workflow `forge-ci`, aggregate check `ci-gate`; none of the returned settings/source proves required named-senior approval or required-check enforcement. Supply the intended rule/check reference or explicitly move the missing enforcement into feat-512 implementation scope. | Jaco/repository administrator; resolve discrepancy before feat-518 closes/feat-512 begins. No settings change authorized here.                       |
+| G2 — design resolved                                  | GitHub OAuth, same-entry allowlisted account plus verified email, multiple managers. No Google fallback. Register per-environment portal apps/origins and assign provisioning owner; implement the one-hour revocable local session and issuance-time provider revalidation.                                                                                                                                                                                        | feat-515 implementation; host/registration and synthetic login proof before activation, portal delivery after dogfood.                               |
+| G3 — design resolved                                  | RAGBot consumer first; Jaco/RAGBot aggregate counts/activity only through narrow read-only tool. Document actual transport, consumer binding and provisioning owner under the proposed endpoint/capability contract. No query results or general DB capability.                                                                                                                                                                                                     | feat-513 transport/handoff and feat-514 consumer-first dogfood; concrete runtime assignments before activation, not another discovery approval gate. |
+| G4 — implementation proofs                            | Synthetic credential races, role isolation/default grants, Node completion, crash/gap tests, account/email mismatch and removal/session cases, latency budget.                                                                                                                                                                                                                                                                                                      | feat-512/513/515 as applicable; no runtime tests claimed here.                                                                                       |
+| G5 — actual dogfood                                   | Actual `forge-rag-retrieve` task path/revision, selected consumer/source scope/environment, retries and real HTTP acceptance evidence.                                                                                                                                                                                                                                                                                                                              | feat-514; tracked task definition still absent; no outside Ops workspace inspected.                                                                  |
+| G6 — production authorization                         | Communications owner, seven-day grace start/cutoff, complete dogfood/report coverage and rollback approval.                                                                                                                                                                                                                                                                                                                                                         | Separately approved production action only, never authorized by G1–G3 answers.                                                                       |
 
-Existing feat-512–515 own implementation and release work; no new ticket duplicates
-those scopes. feat-518 stays **blocked** for the non-dependency owner decisions
-G1–G3, with this evidence linked. It must not be marked complete to make the
-sequence appear ready. Once decisions are supplied, append them and complete the
-discovery resolution through this separate PR. Operational runbooks and shared
-`/v1` contracts remain untouched.
+Existing feat-512–515 own implementation/release work; no new ticket duplicates
+those scopes. feat-518 stays **blocked only on G1 enforcement verification**.
+Do not ask again for senior identities, GitHub-versus-Google choice, recovery
+delegation or report product choice. Once the precise control is evidenced or
+its absence is explicitly accepted as feat-512 work, record that correction and
+close the discovery resolution through this separate PR. Operational runbooks,
+programme PR #2304 and shared `/v1` contracts remain untouched.
 
 ## Review and durable lessons
 
@@ -588,6 +685,32 @@ cutover verification was performed or is implied by these documentation checks.
 - PR #2304 was re-read before delivery and remained an open draft at the same
   head; it was neither modified nor merged. No deployment or production action.
 - Outcome: evidence delivered; implementation readiness remains blocked by
-  G1–G3. Request the named owner decisions, not general permission to perform
-  already-authorized documentation work. Local check results above are distinct
+  the G1 enforcement discrepancy after the September 17 decisions. G2/G3 and
+  the G1 roster/recovery authority are resolved; do not re-request those choices. Local check results above are distinct
   from GitHub CI, whose latest state is reported in the job's final receipt.
+
+## September 17 continuation review and verification
+
+The existing discovery PR is updated, not replaced. Jaco's explicit GitHub choice
+supersedes the earlier portal recommendation; no changes to the parent planning
+PR are needed to record that precedence. Self-review checked account/email
+same-entry binding, numeric identity versus rename, recovery versus approval,
+consumer-first bot registration versus report capability, and actual check names
+versus suggested names. No new production permission is inferred.
+
+Repository/API recheck: PR #2304 remains at `e5b22f723`; this continuation starts
+from discovery head `7621524cc`. The parent and main evidence revisions above
+are unchanged. Public numeric account lookups and effective-rule reads succeeded;
+legacy branch-protection endpoint again returned 404. Current PR comments/reviews
+contain no additional control description. No credentials or private email API
+was accessed. Exact enforcement remains the only discovery dependency.
+
+Continuation local checks passed: changed Markdown Prettier 3.8.1,
+`git diff --check`, all 33 lane frontmatters/index rows and counts, 38 relative
+links, reciprocal consumer-programme dependencies, hidden-lane tests (2/2) and
+the hidden-lane checker. The same pre-existing feat-461/435 reciprocal-edge
+mismatch and 18 public-lane missing-frontmatter warnings remain outside scope.
+The September 16 results above remain historical evidence. Full repository
+`prettier --check .` also passed on September 17 (all matched files use Prettier
+code style); the final report edit receives a targeted recheck. Revised-head
+GitHub CI is reported separately in the job's final receipt.

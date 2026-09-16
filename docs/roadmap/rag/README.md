@@ -8,7 +8,7 @@ database into Admin.
 > This lane is intentionally invisible to the public roadmap viewer and the
 > generated `docs/roadmap/README.md` totals. This index is maintained by hand.
 
-## Status (September 16, 2026)
+## Status (September 17, 2026)
 
 - **Total tickets:** 33
 - **Complete:** 20
@@ -73,6 +73,9 @@ Consumer programme order: feat-511 planning/design → feat-518 discovery
 Portal design is already captured by feat-511; implementation waits for dogfood.
 
 [Discovery evidence](evidence/feat-518/consumer-access-discovery.md) is delivered
-separately from programme PR #2304. feat-518 remains blocked on named senior/check
-authority, portal registration/session choices and report identity bindings;
-access implementation cannot begin until those decisions close the gate.
+separately from programme PR #2304. September 17 decisions name Jaco, Tatai and
+Jian Wei as senior approvers (Jaco alone recovers), select the GitHub allowlisted
+portal and consumer-first RAGBot aggregate reporting. feat-518 remains blocked
+only on verifying the approved protected-review/required-CI enforcement: observed
+`Main`/`forge-ci`/`ci-gate` do not establish it. G2/G3 registration and transport
+assignments are implementation handoffs; access implementation waits for G1.
