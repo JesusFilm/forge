@@ -154,10 +154,6 @@ jobs:
           src/services/recommendations/migration.operations.db.test.ts
           src/services/recommendations/migration.attribution-reliability.db.test.ts
           src/services/recommendations/playback-episode.db.test.ts
-          src/services/recommendations/transaction-retry.db.test.ts
-          src/services/recommendations/viewing-mode.service.db.test.ts
-          src/services/recommendations/experiment/usefulness.db.test.ts
-          src/services/recommendations/curated-fallback.migration.db.test.ts
           src/services/recommendations/snapshot-repair.db.test.ts
           src/services/recommendations/promotion/service.db.test.ts
           src/services/recommendations/profile.service.db.test.ts

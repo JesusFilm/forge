@@ -1,7 +1,7 @@
 # Recommendation follow-through validation
 
-Status: implementation checkpoint; final review, CI, release and production
-verification remain pending. Branch `codex/recommendation-analytics-followup`.
+Status: implementation and sequential Compound Engineering review complete; CI,
+release and production verification remain pending. Branch `codex/recommendation-analytics-followup`.
 
 ## Verified so far
 
@@ -69,7 +69,7 @@ held off. Do not expand Recommendation Visibility or locale/source scope.
 - Full Web: **4,397 passed**, one unchanged homepage render-count assertion
   failed; all 70 tests in that file passed in isolation. Ten opt-in skips and one
   existing todo. CI on the final revision remains the merge gate.
-- Admin and Web production builds passed with local/CI configuration. Web types,
+- Admin and Web production builds passed with local/CI configuration. both typechecks,
   actual migrations and workflow build registration checks passed. Frozen-lockfile
   installation includes the other task's Expo and Redis patch changes.
 - Production baseline full Watch-page samples are in
@@ -82,3 +82,13 @@ held off. Do not expand Recommendation Visibility or locale/source scope.
   profile-unit protocol. No approval or evaluation pass was fabricated.
 - `compound-review.md` records the sequential Compound Engineering review,
   corrected findings, migration/contract checks and remaining empirical gates.
+
+## CI permissions
+
+The configured GitHub OAuth credential lacks the `workflow` scope, so this
+release retains the existing CI workflow. New native database suites were run
+explicitly against PostgreSQL locally (including retry, mode/privacy, curated
+migration and comparison routing). Existing CI still exercises the application
+suites, schema drift, migrations and its established database suites. The new
+standalone native suite files are not added to the CI database command in this
+release; do not count their skipped ordinary-unit invocations as native coverage.
