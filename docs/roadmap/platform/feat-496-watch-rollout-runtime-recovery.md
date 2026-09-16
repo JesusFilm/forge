@@ -75,7 +75,10 @@ Post-deployment tracing reproduced a selection failure caused by stale receipt
 ordering: an impression can commit after selection captures `now`, and the
 selection attribution marker then predates its prerequisite impression.
 `docs/plans/2026-09-16-003-fix-selection-impression-watermark-plan.md` owns the
-scoped fix and regression; separate 700 ms application delays remain open.
+scoped fix and regression. PR #2315 deployed automatically to Admin; the exact
+`b96f5f738d3357e228da1d05bb79ec9ea2d02d68` revision and both compiled corrections
+were verified at 00:24:29 UTC on September 16. Separate 700 ms application delays
+remain open.
 
 ## Entry points
 
