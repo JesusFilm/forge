@@ -3,7 +3,7 @@ id: "feat-496"
 title: "Resolve remaining Watch admission and database transaction timeouts"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-11"
 duration: 3
 depends_on: []
@@ -25,7 +25,7 @@ those IDs. Earlier rollout, rollback and partial recovery evidence remains in
 `docs/operations/user-recommendations-activation-2026-09-14.md`.
 
 A short healthy window did not establish recovery: Redis admission errors and
-Admin delivery timeouts returned. The final investigation reproduced distinct
+Admin delivery timeouts returned. The September 15 investigation reproduced distinct
 causes rather than attributing all failures to the homepage block or to Redis
 transport. Final release identities and fixed-window evidence are recorded in
 `docs/operations/watch-runtime-recovery-2026-09-15.md`.
@@ -69,7 +69,7 @@ PR #2311 contains that patch; the unrelated Expo compatibility repair in #2312
 unblocked its automatic Web deployment. Both exports were verified in production
 revision `0a1c585998a6dbb4bf1399fe4c5eed25310a5512` at 23:43:18 UTC on September 15,
 and the production playback smoke passed. The follow-up report is
-`docs/operations/watch-runtime-followup-2026-09-16.md`; this ticket remains open.
+`docs/operations/watch-runtime-followup-2026-09-16.md`; this ticket remained open at that checkpoint.
 
 Post-deployment tracing reproduced a selection failure caused by stale receipt
 ordering: an impression can commit after selection captures `now`, and the
@@ -92,13 +92,14 @@ PR #2319 deployed automatically to Admin and worker revision
 `8070374f6a6e3e892926112d5a6ca8f5f7480fa1`. Compiled code and bounded production
 duration results were verified. The 02:15–02:45 observation still contained one
 selection HTTP 503, one browser-observed HTTP 200 `delivery_timeout` fallback,
-and four browser selection aborts (two correlated with server HTTP 200). This
-ticket remains in progress; see
+and four browser selection aborts (two correlated with server HTTP 200). At that checkpoint this
+ticket remained in progress; see
 `docs/operations/watch-admin-duration-recovery-2026-09-16.md`.
 
 The continuation reproduced a second catalog scheduling component: Pothos
 include mode expands 100 selected dubs into 3,660 wide subtitle objects and a
-5.5 MB Prisma result. Selecting requested subtitle/language scalars preserves
+Prisma result with 5.5 million characters. Selecting requested subtitle/language
+scalars preserves
 the response and reduces local maximum loop delay from 153 ms to 31 ms. Neither
 isolated subtitle experiment exceeded 700 ms; release verification must not
 overstate that component result as complete recovery. See
@@ -134,7 +135,36 @@ overstate that component result as complete recovery. See
 - Deploy through normal PR/main only. Preserve the original forwarded preview
   and unrelated worktrees.
 
-## Validation and release status
+## Completion — September 16 Admin continuation
+
+PR #2319 corrected duration relation overfetch; PR #2322 narrowed requested
+subtitle/language scalars. Both merged through normal PR/main and deployed
+automatically. Admin and worker run `9533506f967496dea60c9a4b846bf7a70463772b`;
+Web remains `469edc6f996db1c6bd729b9a1b9f0e2732a0cd58`. Final runtime checks
+confirmed both corrections and a closed inspector at 04:29:47 UTC.
+
+The 03:29:13–04:29:02 browser observation recorded 66 selection HTTP 200s with
+no aborts (414–671 ms); the final 48 also validated acknowledgment bodies.
+All 132 inspected deliveries served six cards with no HTTP failure or semantic
+timeout fallback. The separate 03:29–04:30 HTTP population contains 70 selection
+200s and no recommendation 5xx; 400/403 rejections are recorded separately.
+One React HTML hydration error made the aggregate no-JavaScript-errors browser
+gate fail. RUM confirms this error class predates both Admin fixes; feat-517 owns
+its unresolved cause. Do not describe the browser run as entirely clean.
+
+The causal reproductions, live row/string-length reductions and sustained
+outcome evidence complete this demonstrated Admin scheduling recovery. This
+bounded window does not prove all rare failures impossible or assign historical
+Redis incidents to the Admin causes. The detailed report is
+`docs/operations/watch-admin-duration-recovery-2026-09-16.md`.
+
+After incorporating newer main and its lockfile, validation passed 7,255 Admin
+tests, 28 focused tests including ten real PostgreSQL cases, types, production
+build and formatting. Both code PRs had green checks. The subsequent main run
+has an unrelated Web test failure; its 70-case file passed locally. No deadline,
+authorization, attribution, integrity, rate-limit or launch-state guarantee changed.
+
+## Earlier validation and release attempts
 
 Final Web CI passed 4,271 tests and eight real Redis cases, plus build, types,
 lint, formatting and security analysis. Final Admin CI passed; the local full
@@ -151,8 +181,9 @@ playback and recommendations while confirming that the authored row and flag
 remain off. Admin #2302 deployed at 02:34:45 UTC; fresh English, Spanish, French
 and Hindi source-free probes and the final production playback journey passed.
 The 02:19–02:49 window contains 2,863 recommendation calls with zero HTTP 5xx,
-but a later 02:55:34 Redis delay caused four HTTP 503s. This ticket remains open
-until that remaining delay is diagnosed and addressed. The detailed EVAL
+but a later 02:55:34 Redis delay caused four HTTP 503s. That earlier window
+therefore left this ticket open for the subsequent investigations above. The
+detailed EVAL
 timeout is in Railway worker stdout; Datadog contains only the generic caller
 failure. Read the recovery report before interpreting a clean short window.
 Use Web APM env:prod and Admin APM env:production, actual primary-host traces,
@@ -162,6 +193,10 @@ revision-scoped request populations and structured delivery outcomes.
 
 - feat-513 tracks the separately observed workflow enqueue/listener ownership
   issue. Its contribution to Watch latency is not yet causally established.
+- feat-516 tracks a near-startup profiler pause that has no matched request
+  failure and was not reproduced in later timing-only observations.
+- feat-517 tracks the browser hydration error observed without a recommendation
+  failure during the extended window; its initiating cause remains unproven.
 - feat-464 owns broader playback evidence transport/reconciliation reliability.
 - feat-487/feat-488 own curated coverage and homepage launch configuration.
 - feat-506 tracks pre-existing diagnostic command noise from missing ps/cache

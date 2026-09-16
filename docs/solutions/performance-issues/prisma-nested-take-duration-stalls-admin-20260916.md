@@ -130,3 +130,12 @@ execution in the Admin process require separate evidence. In particular,
 `@workflow/world-postgres` 4.1.1 starts listeners when queueing work even when
 the application's startup runner gate is off; its contribution has not been
 causally isolated. Keep feat-496 open until release monitoring supports recovery.
+
+## Release continuation
+
+The duration fix alone did not finish recovery: its first production window
+still contained a selection HTTP 503 and an HTTP 200 timeout fallback. A second
+proven workload, wide subtitle/language materialization, was corrected in #2322.
+Read `docs/operations/watch-admin-duration-recovery-2026-09-16.md` for the later
+fixed observation window and its separate HTTP, semantic and browser findings.
+Do not attribute every observed delay to this one loader.
