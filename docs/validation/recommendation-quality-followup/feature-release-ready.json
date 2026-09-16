@@ -1,0 +1,90 @@
+{
+  "capturedAt": "2026-09-16T01:48:16.276022+00:00",
+  "expectedRelease": "3028f3305c1b01c2e4671ec9686ee51280dd1115",
+  "originMainSha": "3028f3305c1b01c2e4671ec9686ee51280dd1115",
+  "originMatchesExpected": true,
+  "allServicesOnExpectedRelease": true,
+  "services": {
+    "web": {
+      "latestDeployment": {
+        "id": "af2be67d-266a-416e-a902-ec4253dfafd7",
+        "status": "SUCCESS",
+        "createdAt": "2026-09-16T01:27:24.123Z",
+        "updatedAt": "2026-09-16T01:48:02.206Z",
+        "meta": {
+          "repo": "JesusFilm/forge",
+          "branch": "main",
+          "commitHash": "3028f3305c1b01c2e4671ec9686ee51280dd1115"
+        }
+      },
+      "activeDeployments": [
+        {
+          "id": "af2be67d-266a-416e-a902-ec4253dfafd7",
+          "status": "SUCCESS",
+          "createdAt": "2026-09-16T01:27:24.123Z",
+          "updatedAt": "2026-09-16T01:48:02.206Z",
+          "meta": {
+            "repo": "JesusFilm/forge",
+            "branch": "main",
+            "commitHash": "3028f3305c1b01c2e4671ec9686ee51280dd1115"
+          }
+        }
+      ],
+      "expectedReleaseActive": true
+    },
+    "admin": {
+      "latestDeployment": {
+        "id": "3d35d055-c4af-436e-a6fd-15fe06fcfca3",
+        "status": "SUCCESS",
+        "createdAt": "2026-09-16T01:27:24.520Z",
+        "updatedAt": "2026-09-16T01:34:55.602Z",
+        "meta": {
+          "repo": "JesusFilm/forge",
+          "branch": "main",
+          "commitHash": "3028f3305c1b01c2e4671ec9686ee51280dd1115"
+        }
+      },
+      "activeDeployments": [
+        {
+          "id": "3d35d055-c4af-436e-a6fd-15fe06fcfca3",
+          "status": "SUCCESS",
+          "createdAt": "2026-09-16T01:27:24.520Z",
+          "updatedAt": "2026-09-16T01:34:55.602Z",
+          "meta": {
+            "repo": "JesusFilm/forge",
+            "branch": "main",
+            "commitHash": "3028f3305c1b01c2e4671ec9686ee51280dd1115"
+          }
+        }
+      ],
+      "expectedReleaseActive": true
+    },
+    "worker": {
+      "latestDeployment": {
+        "id": "40de6057-cbd8-4597-8cfa-b9157c2952ef",
+        "status": "SUCCESS",
+        "createdAt": "2026-09-16T01:27:24.024Z",
+        "updatedAt": "2026-09-16T01:35:37.996Z",
+        "meta": {
+          "repo": "JesusFilm/forge",
+          "branch": "main",
+          "commitHash": "3028f3305c1b01c2e4671ec9686ee51280dd1115"
+        }
+      },
+      "activeDeployments": [
+        {
+          "id": "40de6057-cbd8-4597-8cfa-b9157c2952ef",
+          "status": "SUCCESS",
+          "createdAt": "2026-09-16T01:27:24.024Z",
+          "updatedAt": "2026-09-16T01:35:37.996Z",
+          "meta": {
+            "repo": "JesusFilm/forge",
+            "branch": "main",
+            "commitHash": "3028f3305c1b01c2e4671ec9686ee51280dd1115"
+          }
+        }
+      ],
+      "expectedReleaseActive": true
+    }
+  }
+}

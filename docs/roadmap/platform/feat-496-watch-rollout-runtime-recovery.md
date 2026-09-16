@@ -80,6 +80,18 @@ scoped fix and regression. PR #2315 deployed automatically to Admin; the exact
 were verified at 00:24:29 UTC on September 16. Separate 700 ms application delays
 remain open.
 
+The September 16 continuation identified a reproducible scheduling cause:
+`videoPrimaryDubDurationById` used nested Prisma `take: 5`, but PostgreSQL
+returned 142,956 dub rows for a 216-video request. A bounded SQL scalar projection
+preserves that loader's semantics and avoids application-side relation trimming.
+Under matched local catalog load, small-transaction maximum latency fell from
+738 ms to 89 ms and event-loop maximum delay from 419 ms to 15 ms. The real
+PostgreSQL regression measures wire cardinality, not just mocked return values.
+See `docs/solutions/performance-issues/prisma-nested-take-duration-stalls-admin-20260916.md`.
+Release verification and sustained production observation are still required;
+this ticket remains in progress. Delivery fallbacks and selection failures must
+continue to be counted separately.
+
 ## Entry points
 
 - `apps/web/src/lib/recommendation-mutation-admission.ts` — identity, namespace
@@ -136,6 +148,8 @@ revision-scoped request populations and structured delivery outcomes.
 
 ## Separate follow-ups
 
+- feat-513 tracks the separately observed workflow enqueue/listener ownership
+  issue. Its contribution to Watch latency is not yet causally established.
 - feat-464 owns broader playback evidence transport/reconciliation reliability.
 - feat-487/feat-488 own curated coverage and homepage launch configuration.
 - feat-506 tracks pre-existing diagnostic command noise from missing ps/cache

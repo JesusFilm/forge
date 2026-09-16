@@ -86,6 +86,14 @@ describe("WatchSemanticRecommendations", () => {
         String(input).endsWith("/api/recommendations"),
       ),
     ).toHaveLength(1)
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/api\/recommendations$/),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "x-forge-recommendation-client": "viewing-mode-v1",
+        }),
+      }),
+    )
     expect(container.textContent).toContain("Target video")
   })
 

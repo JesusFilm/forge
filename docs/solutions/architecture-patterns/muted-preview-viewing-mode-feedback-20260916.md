@@ -107,3 +107,33 @@ production evidence. Release validation records their measured loading cost.
 
 Related: `docs/plans/2026-09-16-002-feat-recommendation-quality-followthrough-plan.md`;
 `docs/roadmap/content-discovery/feat-512-sound-off-viewing-profile-retrieval.md`.
+
+## Open tabs and strict response enums
+
+An additive server enum can break an already-open client that strictly validates
+it. During rollout, inspect the previous client parser as well as the current
+schema. The Web BFF uses `x-forge-recommendation-client: viewing-mode-v1` to retain
+the new mode explanation only for clients that understand it; older clients get
+unchanged cards and capabilities with optional personalization metadata omitted.
+The authoritative Admin execution decision remains intact. Do not disguise mode
+fit as a legacy topic-interest mode to make parsing succeed.
+
+New curated inventory has a new required source discriminator and needs a fresh
+client. Older tabs retain their prior empty-row behavior until reload. Test both
+missing and unknown client versions, and prove that modern metadata and existing
+attribution survive the compatibility branch.
+
+## Production follow-through
+
+The September 16 real Watch journey retained 41.237 seconds of qualified muted
+preview and then 15.094 seconds of sound-on playback in one episode. A recommended
+destination retained attributed qualified muted preview without a manual start.
+Covering the sticky hero stopped observation credit. Deleting the owned synthetic
+profile removed its mode facets while immutable playback facts remained.
+
+Keep behavioral proof separate from usefulness and rollout health: the first
+15-minute window recovered five empty rows with 30 curated cards, but also had
+nine upstream-timeout 503s and higher retrieval latency than baseline. No video
+had sufficient independent sound-off evidence for the new boost. Use the
+[release report](../../operations/recommendation-quality-release-2026-09-16.md)
+for final revisions, subsequent windows, loading measurements and remaining gates.

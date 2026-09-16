@@ -25,6 +25,7 @@ import {
 } from "@/services/mux-image-derivative.service"
 import { notRestrictedFromWatchWhere } from "@/services/search-watchability"
 import { sortVideoImagesByDisplayPreference } from "@/services/video-image-selection"
+import { loadVideoPrimaryDubDurations } from "@/services/video-primary-dub-duration"
 import {
   getPreferredPlayableDubs,
   PREFERRED_PLAYABLE_DUB_BATCH_SIZE,
@@ -281,32 +282,8 @@ export function createLoaders(prisma: PrismaClient) {
      */
     videoPrimaryDubDurationById: new DataLoader<string, number | null>(
       async (ids) => {
-        const rows = await prisma.video.findMany({
-          where: { id: { in: ids as string[] }, deletedAt: null },
-          select: {
-            id: true,
-            primaryLanguageId: true,
-            dubs: {
-              where: {
-                published: true,
-                hls: { not: null },
-                deletedAt: null,
-                duration: { gt: 0 },
-              },
-              orderBy: [{ duration: "desc" }],
-              take: PRIMARY_DUB_DURATION_SCAN_LIMIT,
-              select: { languageId: true, duration: true },
-            },
-          },
-        })
-        const byId = new Map<string, number | null>()
-        for (const row of rows) {
-          const primaryDub = row.primaryLanguageId
-            ? row.dubs.find((d) => d.languageId === row.primaryLanguageId)
-            : undefined
-          const dub = primaryDub ?? row.dubs[0] ?? null
-          byId.set(row.id, dub?.duration ?? null)
-        }
+        const rows = await loadVideoPrimaryDubDurations(prisma, ids)
+        const byId = new Map(rows.map((row) => [row.id, row.duration]))
         return ids.map((id) => byId.get(id) ?? null)
       },
     ),
@@ -714,12 +691,9 @@ function createVideoMuxDerivativeLoader(
   )
 }
 
-// Bounds the per-video dubs scan in `videoPrimaryDubDurationById`. Matches
-// `HYDRATION_DUBS_PER_VIDEO` in hybrid-search: order by duration desc and
-// take the top N, then prefer the primary-language dub among them. On a
-// heavily-dubbed video the primary may rank below N by duration — accept
-// the longest-dub fallback rather than widen the scan.
-const PRIMARY_DUB_DURATION_SCAN_LIMIT = 5
+// Preserve the Mux fallback's primary-language preference within the five
+// longest dubs. Prisma's nested take caps the relation returned to these
+// callers; it does not bound rows fetched from PostgreSQL.
 const PRIMARY_DUB_PLAYBACK_SCAN_LIMIT = 5
 
 export type VideoMuxPlaybackKey = {

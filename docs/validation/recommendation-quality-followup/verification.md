@@ -1,7 +1,12 @@
 # Recommendation follow-through validation
 
-Status: implementation and sequential Compound Engineering review complete; CI,
-release and production verification remain pending. Branch `codex/recommendation-analytics-followup`.
+Status: implementation, sequential Compound Engineering review and PR CI complete.
+PRs #2317/#2318/#2320 are deployed through normal main/Railway flow. Real browser,
+profile erasure, exact service revisions and bounded operational windows are
+recorded in the [release report](../../operations/recommendation-quality-release-2026-09-16.md).
+The matched pre-release build reproduced the late cold-paint behavior, tracked
+under feat-515; usefulness needs
+independent mode observations and a mature controlled comparison.
 
 ## Verified so far
 
@@ -92,3 +97,63 @@ migration and comparison routing). Existing CI still exercises the application
 suites, schema drift, migrations and its established database suites. The new
 standalone native suite files are not added to the CI database command in this
 release; do not count their skipped ordinary-unit invocations as native coverage.
+
+## Merge validation
+
+PR [#2317](https://github.com/JesusFilm/forge/pull/2317) passed all 22 applicable
+checks on `0bdd22a214c4f70c2041e4bec2eac7e4fe868610`. Admin passed 7,258 tests and
+Web passed 4,398; the earlier local full-suite failures did not recur. Builds,
+types, lint, format, schema drift, the existing PostgreSQL/Redis integration
+suites and CodeQL passed. Opt-in skipped native tests are documented separately
+above and have explicit local PostgreSQL results.
+
+The PR merged at 2026-09-16T01:27:22Z as
+`3028f3305c1b01c2e4671ec9686ee51280dd1115`. Normal Railway deployments started
+from that main revision. No worktree deployment or For you activation was used.
+
+The post-merge [main CI run](https://github.com/JesusFilm/forge/actions/runs/35044154998)
+also passed on the merged revision.
+
+## Production evidence index
+
+- `final-service-revisions.json`: exact successful Web/Admin/worker deployments,
+  with the independent Admin fix preserved and feature ancestry verified.
+- `preview-production-browser.json`, `preview-profile-evidence.json`: real muted
+  preview, covered-player exclusion, Watch now and attributed selected preview.
+- `preview-profile-cleanup.json`, `preview-profile-after-cleanup.json`: only the
+  synthetic profile was deleted; derived mode influence disappeared and immutable
+  facts remained. The public erasure receipt was pending, not claimed completed.
+- `curated-production-browser.json`, `slug-production-browser.json`: six-card
+  curated recovery and the fixed repeated-hyphen destination with six cards.
+- `http-feature-window.json`, `runtime-feature-errors.json`,
+  `runtime-feature-retries.json`: the first window's nine upstream 503s and 38
+  contention observations are retained; no claim that the whole rollout was clean.
+- `http-recovery-window.json`, `db-recovery-window.json`: 02:14–02:24, after the
+  independent Admin duration fix; 2,345 HTTP requests, zero 5xx, eight recovered
+  rows/48 cards. The cohorts are not a causal comparison.
+- `http-final-window.json`, `db-final-window.json`: 02:31–02:36 on the final Web
+  revision; 862 API requests, zero 5xx/400, 148 admission 403s, healthy worker and
+  no stored finalization errors in that cohort. Five retained rows remained empty.
+- `feature-health-final.json`: 92 mode episodes/40 current profiles, no invalid
+  identity/conflict/retention rows, no late mode facts, and no candidate meeting
+  the 20-independent-profile minimum. Counts include synthetic traffic.
+- `page-performance-after.json` and `page-performance-cold-*.json`: preserve warm,
+  cold and late-paint observations. They are synthetic measurements, not field
+  percentiles or a claim that loading performance improved.
+
+The paired `*-queries.json` files contain read-only aggregate SQL. Each query
+uses a separate repeatable-read transaction. Private smoke query parameters,
+profile/session/episode/request identifiers, cookies, tokens and credentials are
+excluded. Request-ID digests in HTTP artifacts only establish scope/deduplication.
+
+## Matched whole-page load comparison
+
+`page-performance-matched.json` records six successful fresh-browser journeys
+against independent pre-release/current production builds, under the same CI
+configuration and shared catalog read backend. Both builds reproduced the
+approximately ten-second late heading-paint observation. Baseline long tasks
+were 111–124ms, current 125–127ms, with no playback/profile dependency regression
+observed. The small sample cannot establish field percentiles, occurrence rates
+or a causal explanation for the pre-existing late paint; feat-515 retains that
+investigation. Local GraphQL endpoint/ISR setup failures were fixed before the
+six valid page measurements and are not counted as page-performance samples.

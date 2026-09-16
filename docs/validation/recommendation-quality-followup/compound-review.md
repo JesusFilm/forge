@@ -75,3 +75,51 @@ causal uplift cannot be inferred from passing tests or the old confounded CTR.
 - `docs/solutions/architecture-patterns/profile-comparison-followup-and-muted-outcomes-20260916.md`
 
 Review complete
+
+## Rollout compatibility follow-up
+
+A release-time contract pass found that pre-release open tabs reject the new
+`viewing_mode_personalized` enum and hide otherwise valid semantic/profile cards.
+The BFF now omits the optional personalization explanation for clients that do
+not advertise `x-forge-recommendation-client: viewing-mode-v1`. New clients retain
+the exact new metadata. Items, ordering, capabilities, request ownership and the
+Admin audit remain unchanged; the response does not relabel mode fit as topic fit.
+
+Two regressions failed before this correction (missing/unknown client version).
+The corrected route and recommendation component suites pass 50 tests, including
+modern metadata and capability/card preservation. Sequential correctness,
+contract, privacy, performance and maintainability review found no remaining
+issue in this correction. The header is a presentation capability, not authority;
+all admission and privacy checks remain mandatory. It adds no requests or waits.
+
+Curated candidates are a new source discriminator. Earlier tabs still need a
+reload to display that newly recovered inventory; those cases were previously
+empty. No existing healthy semantic/profile row depends on curated parsing.
+
+## Production destination slug finding
+
+The real selected-preview journey exposed HTTP 400 on the destination's next
+recommendation request: `origins-of-christmas--episode-1` is a valid canonical
+content slug, but the optional delivery seed-slug field rejected repeated
+hyphens. Feat-514 records this pre-existing mismatch. Two regressions reproduced
+it; the fix reuses `tryAsContentSlug` and retains the 191-character bound. Invalid
+path/query shapes still fail before Admin access. Sequential correctness,
+security, API-contract and simplicity review found no additional issue in the
+one-line schema correction. Production recheck passed on `469edc6f9`: HTTP 200, six cards and no JavaScript errors.
+
+## Release evidence review
+
+Sequential correctness, privacy, operational reliability and measurement review
+reconciled the real browser journey with retained mode facets and primary HTTP
+logs. Synthetic profile deletion removed influence without deleting raw facts.
+The initial nine upstream 503s and higher retrieval latency remain visible in
+the report; later clean windows include the independent Admin fix and cannot
+establish causal recommendation uplift. No new candidate reached the minimum
+independent sound-off evidence, so an active collector is not reported as an
+observed ranking-quality gain.
+
+Cold page-load variance is not dismissed: matched independent builds reproduced
+the late paint on the pre-release version too. Feat-515 retains its cause and
+real-device impact; it is not mislabeled as a new recommendation regression. The broader controlled-quality and reliability
+roadmap gates remain open. This evidence review found no unreported privacy or
+contract failure; it does not promote the experiment, MMR or For you.
