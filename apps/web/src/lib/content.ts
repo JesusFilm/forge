@@ -1583,10 +1583,15 @@ type WatchContentIdentity = {
  *      Manifest-admitted → pass it through;
  *   3. otherwise pass it through only when it cannot be read as a BCP-47
  *      tag. Internal locale keys (`en`, `fr`, `zh-Hans`) keep the legacy
- *      `languageSlug: null` contract, while a kebab slug like `toba` still
- *      reaches admin when the manifest is unavailable — admin ignores a
- *      slug it doesn't know exactly as it ignores `null`, so nothing is
- *      lost by sending it.
+ *      `languageSlug: null` contract, while a slug that does not parse as
+ *      a tag (`toba-maskoy`, `purepecha-western-highland`) still reaches
+ *      admin when the manifest is unavailable — admin ignores a slug it
+ *      doesn't know exactly as it ignores `null`, so nothing is lost by
+ *      sending it. A tag-shaped fresh slug (`toba`, `twi`, `aja-gbe`) with
+ *      NO manifest does fall to `null`; the route classifier 404s that
+ *      case before content runs, and the manifest module serves its last
+ *      cached copy across fetch failures, so it needs a cold process AND
+ *      a failed first fetch.
  */
 async function contentIdentityForWatchLanguage(
   languageSlugOrLocale: string,
