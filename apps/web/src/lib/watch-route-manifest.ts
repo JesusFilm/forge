@@ -545,12 +545,23 @@ export async function getWatchRouteManifest(): Promise<WatchRouteManifest | null
   if (manifestCache.expiresAt > now) return manifestCache.manifest
   if (manifestCache.inFlight) return manifestCache.inFlight
 
-  manifestCache.inFlight = fetchWatchRouteManifest().then((manifest) => {
+  // Release the single-flight slot on BOTH settlement paths. `.then(ok, err)`
+  // rather than `.finally`, which would re-throw into an unhandled rejection.
+  // `fetchWatchRouteManifest` swallows its own failures today, so the reject
+  // arm is a guard rather than a live path — but a rejection that escaped it
+  // would otherwise pin this slot to a rejected promise for the life of the
+  // process, and every caller that degrades on a null manifest would degrade
+  // forever rather than for one TTL.
+  const inFlight = fetchWatchRouteManifest().then((manifest) => {
     manifestCache.manifest = manifest
     manifestCache.expiresAt = Date.now() + WATCH_ROUTE_MANIFEST_CACHE_TTL_MS
-    manifestCache.inFlight = null
     return manifest
   })
+  const release = () => {
+    if (manifestCache.inFlight === inFlight) manifestCache.inFlight = null
+  }
+  void inFlight.then(release, release)
+  manifestCache.inFlight = inFlight
 
-  return manifestCache.inFlight
+  return inFlight
 }

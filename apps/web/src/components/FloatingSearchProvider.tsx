@@ -258,9 +258,15 @@ export function FloatingSearchProvider({
   const currentLanguageCode =
     languageCodeFor({ slug: headerLanguageSlug }) ??
     languageCodeFor({ slug: currentLanguageSlug })
-  // The inventory route 404s for anything outside the public watch language
-  // set, and linking to it from the page it already renders is noise — so the
-  // control is absent rather than dead in both cases.
+  // This is a client component, so it cannot await the route manifest the way
+  // the inventory route's own admission does — the compiled corpus is the only
+  // namespace it can see. The route itself no longer 404s outside that corpus,
+  // so this veto now costs a language published since the last regeneration
+  // its in-app entry point rather than preventing a dead link. That is a
+  // degradation, which is the only shape a snapshot-only veto is allowed to
+  // take; widening it needs a server-resolved slug passed down from the page.
+  // Linking to the inventory from the page it already renders is noise, so the
+  // control is absent rather than dead in that case too.
   const headerLanguageLocaleSlug = tryAsLocaleSlug(headerLanguageSlug)
   const languageVideosHref =
     parsedPath.kind !== "language-videos" &&
