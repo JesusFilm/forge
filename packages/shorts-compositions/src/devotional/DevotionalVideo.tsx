@@ -303,6 +303,15 @@ export function spreadWords(
   })
 }
 
+/**
+ * Full-frame captions (clip-first): the column they live in and the line
+ * their top edge hangs from. Both drawn by the owner on a frame: 60 units in
+ * from either edge, top edge at 63.5% of the height (the first line's cap
+ * height lands a touch under 64% with the leading).
+ */
+const FULL_BLEED_CAPTION_INSET_UNITS = 60
+const FULL_BLEED_CAPTION_TOP = "63.5%"
+
 function VideoSubtitles({
   cues,
   px,
@@ -332,28 +341,31 @@ function VideoSubtitles({
 }) {
   const t = frame / fps
   const fade = 0.18
+  const fullBleedInset = px(FULL_BLEED_CAPTION_INSET_UNITS)
   return (
     <div
       style={{
         position: "absolute",
-        left: px(40),
+        // Full-frame: a symmetric column the owner drew on the frame; the
+        // text never crosses it.
+        left: fullBleed ? fullBleedInset : px(40),
         // Portrait: stop short of the right-hand action rail.
-        right: isLandscape ? px(40) : safeRight,
+        right: fullBleed ? fullBleedInset : isLandscape ? px(40) : safeRight,
         // Portrait: start just below the video window's bottom edge — in the
         // space that used to sit empty, not over the picture. Landscape:
         // unchanged, the band sits over the blur in the lower-middle.
         top: isLandscape
           ? "45%"
           : fullBleed
-            ? "62%"
+            ? FULL_BLEED_CAPTION_TOP
             : `calc(${VIDEO_WINDOW_BOTTOM_PCT}% + ${px(16)}px)`,
         bottom: isLandscape ? px(28) : safeBottom,
         display: "flex",
         // Landscape keeps growing UP toward the picture above it. Portrait
-        // now has real space below the video, so cues grow DOWN into it —
-        // except full-frame, where there is picture everywhere and the cues
-        // sit low and grow up, like landscape.
-        alignItems: isLandscape || fullBleed ? "flex-end" : "flex-start",
+        // has real space below the video, so cues grow DOWN into it. Full
+        // frame: the owner wanted the TOP edge of the text pinned, so every
+        // cue hangs from the same line however many lines it runs.
+        alignItems: isLandscape ? "flex-end" : "flex-start",
         justifyContent: "center",
         pointerEvents: "none",
       }}
@@ -377,7 +389,7 @@ function VideoSubtitles({
               position: "absolute",
               left: 0,
               right: 0,
-              ...(isLandscape || fullBleed ? { bottom: 0 } : { top: 0 }),
+              ...(isLandscape ? { bottom: 0 } : { top: 0 }),
               display: "flex",
               justifyContent: "center",
               opacity,
@@ -386,13 +398,13 @@ function VideoSubtitles({
             <span
               style={{
                 display: "inline-block",
-                maxWidth: fullBleed ? px(320) : px(300),
+                maxWidth: fullBleed ? "100%" : px(300),
                 textAlign: "center",
                 fontFamily: SANS,
-                fontWeight: fullBleed ? 700 : 600,
-                // Full-frame (clip-first): the film IS the hook, so its words
-                // are the opening line of the piece — a size up.
-                fontSize: fullBleed ? px(24) : px(20),
+                // Full frame: a size up (the film IS the hook), at the same
+                // weight as the cards — 700 read as heavy over the picture.
+                fontWeight: 600,
+                fontSize: fullBleed ? px(26) : px(20),
                 lineHeight: 1.3,
                 color: "#f4efe8",
                 // No pill/blur: matches the cards' plain-text treatment; the
@@ -1900,7 +1912,10 @@ function CardBody({
         : 1
     return (
       <StepperStack
-        variant="glow"
+        // The three-step (clip-first) stepper uses the owner's Figma design:
+        // a rail drawing down from the step just done onto the next one,
+        // which then lights, grows a little and comes into focus.
+        variant={card.steps ? "line" : "glow"}
         glowPos={glowPos}
         goldness={goldness}
         style={style}

@@ -929,6 +929,9 @@ export type RenderOptions = {
    * `steps`, or the fingerprint, the reuse check and the audio diverge.
    */
   structure?: DevotionalStructure
+  /** Clip-first only: seconds to drop from the END of the film card, when the
+   *  cut lands on a stray shot (a new speaker appears and is half heard). */
+  clipTrimEndSec?: number
   /** Clip-first only: how the film's captions arrive (see the card schema). */
   clipCaptionStyle?:
     | "words"
@@ -1624,6 +1627,25 @@ async function renderInStage(
       })
       if (focus.length > 0) card.clipFocus = focus
       if (options.clipCaptionStyle) card.captionStyle = options.clipCaptionStyle
+      if (
+        options.clipTrimEndSec &&
+        options.clipTrimEndSec > 0 &&
+        typeof card.durationSec === "number"
+      ) {
+        const durationSec = Math.max(
+          1,
+          card.durationSec - options.clipTrimEndSec,
+        )
+        card.durationSec = durationSec
+        // Cues that would only have started in the dropped second go with it.
+        if (Array.isArray(card.subtitles))
+          card.subtitles = (
+            card.subtitles as Array<{ startSec: number }>
+          ).filter((c) => c.startSec < durationSec)
+        log(
+          `film card trimmed by ${options.clipTrimEndSec}s to ${durationSec.toFixed(2)}s`,
+        )
+      }
     }
   }
 

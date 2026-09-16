@@ -31,7 +31,7 @@ const SANS = `'${SHORT_FONT_FAMILIES.inter}', -apple-system, system-ui, sans-ser
 const SERIF = `'${SHORT_FONT_FAMILIES.sourceSerif}', Georgia, 'Times New Roman', serif`
 
 export const StepperStack: React.FC<{
-  variant: "glow" | "rail"
+  variant: "glow" | "rail" | "line"
   /** Position of the light in row units; fractional while it travels. */
   glowPos: number
   goldness: (i: number) => number
@@ -83,6 +83,20 @@ export const StepperStack: React.FC<{
    * both live in ONE centred group, and glowing dots divide the stages.
    */
   const isLandscape = width > height
+
+  if (variant === "line" && !isLandscape) {
+    return (
+      <StepperLine
+        steps={STEPS}
+        glowPos={glowPos}
+        style={style}
+        px={px}
+        width={width}
+        height={height}
+        lightOpacity={lightOpacity}
+      />
+    )
+  }
 
   /**
    * Owner's final read on the light: keep the outer pool exactly as it was in
@@ -394,6 +408,176 @@ export const StepperStack: React.FC<{
               </span>
             )}
           </div>
+        )
+      })}
+    </>
+  )
+}
+
+/**
+ * The owner's Figma design for the three-step stepper (Daily Bible Pause,
+ * "Steps-animation"): the labels stacked with a thin rail between them.
+ *
+ * The move from one step to the next is the RAIL drawing down from the step
+ * just done to the next one; when it arrives, that label lights gold, grows a
+ * fifth and comes into focus, while the step behind it cools to white. Steps
+ * still ahead are dim and out of focus, the further ahead the softer, so the
+ * eye is told where it is without reading. Measured off the Figma frame
+ * (900 wide = 390 units): label 20 / active 24, tracking 0.13em, rail 1.7
+ * wide and 72 long, 10 between items, future step white at 30% under a 1.9
+ * blur.
+ */
+const LINE_SIZE = 20
+const LINE_ACTIVE_SCALE = 1.2
+const LINE_RAIL_LEN = 72
+const LINE_RAIL_W = 1.7
+const LINE_GAP = 10
+const LINE_AHEAD_BLUR = 1.9
+/** Share of the move spent drawing the rail; the rest lights the label. */
+const LINE_DRAW_SHARE = 0.7
+
+const clamp01 = (x: number) => Math.min(1, Math.max(0, x))
+
+const StepperLine: React.FC<{
+  steps: ReadonlyArray<string>
+  glowPos: number
+  style: ReturnType<typeof resolveDevotionalStyle>
+  px: (n: number) => number
+  width: number
+  height: number
+  lightOpacity: number
+}> = ({ steps, glowPos, style, px, width, height, lightOpacity }) => {
+  // `glowPos` runs from the step just done to the current one; at an integer
+  // it is sitting on that step. So the step being lit is the ceiling, and the
+  // progress of the move is the fraction above the previous integer.
+  const cur = Math.ceil(glowPos - 1e-6)
+  const p = cur <= 0 ? 1 : clamp01(glowPos - (cur - 1))
+  const drawn = clamp01(p / LINE_DRAW_SHARE)
+  const lit = clamp01((p - LINE_DRAW_SHARE) / (1 - LINE_DRAW_SHARE))
+
+  const size = px(LINE_SIZE)
+  const labelH = size * 1.2
+  const railLen = px(LINE_RAIL_LEN)
+  const gap = px(LINE_GAP)
+  const stackH =
+    steps.length * labelH + (steps.length - 1) * (railLen + 2 * gap)
+  const top0 = height / 2 - stackH / 2
+  const labelTop = (i: number) => top0 + i * (labelH + 2 * gap + railLen)
+  const railTop = (i: number) => labelTop(i) + labelH + gap
+  const gold = style.eyebrow
+
+  return (
+    <>
+      {/* Pool of light behind the step that has just lit (Figma's ellipse). */}
+      {lit > 0 && lightOpacity > 0 ? (
+        <div
+          style={{
+            position: "absolute",
+            left: width / 2 - px(120),
+            top: labelTop(cur) + labelH / 2 - px(43),
+            width: px(240),
+            height: px(86),
+            borderRadius: "50%",
+            background: gold,
+            opacity: 0.3 * lit * lightOpacity,
+            filter: `blur(${px(26)}px)`,
+            mixBlendMode: "screen",
+            pointerEvents: "none",
+          }}
+        />
+      ) : null}
+
+      {steps.map((label, i) => {
+        // Where this step stands in the move.
+        const isCur = i === cur
+        const isPrev = i === cur - 1
+        const ahead = i > cur
+        // Gold: the step being lit warms with `lit`; the one just done stays
+        // gold while the rail draws and cools as the next one lights.
+        const goldness = isCur ? (cur === 0 ? 1 : lit) : isPrev ? 1 - lit : 0
+        const focusBlur = isCur
+          ? LINE_AHEAD_BLUR * (1 - lit) * (cur === 0 ? 0 : 1)
+          : ahead
+            ? LINE_AHEAD_BLUR * (i - cur)
+            : 0
+        const opacity = isCur
+          ? 0.55 + 0.45 * (cur === 0 ? 1 : lit)
+          : ahead
+            ? 0.3
+            : 0.85
+        const scale = isCur
+          ? 1 + (LINE_ACTIVE_SCALE - 1) * (cur === 0 ? 1 : lit)
+          : 1
+        const glow = isCur ? (cur === 0 ? 1 : lit) : 0
+        return (
+          <React.Fragment key={label}>
+            <div
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                top: labelTop(i),
+                height: labelH,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                pointerEvents: "none",
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: SANS,
+                  fontWeight: 600,
+                  fontSize: size,
+                  letterSpacing: size * 0.13,
+                  lineHeight: 1,
+                  whiteSpace: "nowrap",
+                  color: interpolateColors(goldness, [0, 1], ["#ffffff", gold]),
+                  opacity,
+                  filter:
+                    focusBlur > 0.02 ? `blur(${px(focusBlur)}px)` : undefined,
+                  display: "inline-block",
+                  transform: `scale(${scale})`,
+                  transformOrigin: "center",
+                  // The owner's favourite detail from the earlier stepper: the
+                  // word fills with light rather than merely changing colour.
+                  textShadow: `0 0 ${px(16) * glow}px rgba(242,196,107,${0.65 * glow})`,
+                }}
+              >
+                {label}
+              </span>
+            </div>
+            {i < steps.length - 1
+              ? // The rail below this label: fully there and white once passed,
+                // drawing down in gold while it is the move in progress, absent
+                // when still ahead.
+                (() => {
+                  const passed = i < cur - 1
+                  const drawing = i === cur - 1
+                  const len = passed ? 1 : drawing ? drawn : 0
+                  if (len <= 0) return null
+                  const railGold = drawing ? 1 - lit : 0
+                  return (
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: width / 2 - px(LINE_RAIL_W) / 2,
+                        top: railTop(i),
+                        width: px(LINE_RAIL_W),
+                        height: railLen * len,
+                        borderRadius: px(LINE_RAIL_W),
+                        background: interpolateColors(
+                          railGold,
+                          [0, 1],
+                          ["rgba(255,255,255,0.5)", "rgba(242,196,107,0.95)"],
+                        ),
+                        pointerEvents: "none",
+                      }}
+                    />
+                  )
+                })()
+              : null}
+          </React.Fragment>
         )
       })}
     </>
