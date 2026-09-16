@@ -20,13 +20,19 @@ const path = require("path")
 // Both spellings exist, both typecheck, and both work today, so nothing else in
 // this repo would notice the adapter binding the pair scheduled for removal.
 //
-// Three independent layers, following mediaLibraryEntryPoint.guard.test.js: the
+// Four independent layers, following mediaLibraryEntryPoint.guard.test.js: the
 // runtime capability (does the installed module actually supply every call),
-// the version floor, and the upstream premise (is the deprecation split still
-// the shape the adapter was written against).
+// the version floor, the upstream premise (is the deprecation split still the
+// shape the adapter was written against), and the wiring (does the adapter name
+// the specifier, and neither deprecated spelling).
+//
+// The sync name is a PREFIX of the deprecated one, so a presence check on
+// `getLastNotificationResponse` passes on the async spelling too. Only the
+// absence check, and the trailing paren, separate them.
 
 const APP_ROOT = path.resolve(__dirname, "../../..")
 const SPECIFIER = "expo-notifications"
+const ADAPTER = "src/lib/lapseReminders/notificationsAdapter.ts"
 
 // 57.0.17 carries the iOS last-response fix the plan depends on for the cold
 // tap. `npx expo install` pins the SDK line; this pins the patch.
@@ -61,6 +67,17 @@ function readInstalled(relative) {
     require.resolve(`${SPECIFIER}/package.json`, { paths: [APP_ROOT] }),
   )
   return fs.readFileSync(path.join(pkg, relative), "utf8")
+}
+
+/** Strip comments so a mention inside prose cannot satisfy or trip a rule. */
+function stripComments(source) {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/.*$/gm, "$1")
+}
+
+function readAdapterSource() {
+  return stripComments(fs.readFileSync(path.join(APP_ROOT, ADAPTER), "utf8"))
 }
 
 function installedVersion() {
@@ -160,6 +177,34 @@ describe("the notifications adapter imports a module that supplies its calls", (
       expect(block).not.toBeNull()
       expect(block).not.toContain("@deprecated")
     }
+  })
+
+  it("the adapter names the specifier and binds neither deprecated spelling", () => {
+    const source = readAdapterSource()
+
+    expect(source).toMatch(new RegExp(`from\\s+"${SPECIFIER}"`))
+    // The deprecated pair is scheduled for removal. Binding it typechecks and
+    // works today, so nothing else in this repo would notice.
+    for (const call of DEPRECATED_CALLS) {
+      expect(source).not.toContain(call)
+    }
+    // The trailing paren is what separates the sync call from its own prefix.
+    expect(source).toContain("getLastNotificationResponse()")
+    expect(source).toContain("clearLastNotificationResponse()")
+  })
+
+  it("separates the sync call from its async prefix (negative control)", () => {
+    // Proves the rule above is not satisfied by any string containing the sync
+    // name — the deprecated spelling contains it too.
+    const broken = "Notifications.getLastNotificationResponseAsync()"
+
+    expect(broken).toContain("getLastNotificationResponse")
+    expect(broken).not.toContain("getLastNotificationResponse()")
+    expect(broken).toContain(DEPRECATED_CALLS[0])
+    // And a mention in prose satisfies nothing.
+    expect(stripComments(`// import * as N from "${SPECIFIER}"`)).not.toContain(
+      SPECIFIER,
+    )
   })
 
   it("reads a doc block the way the premise intends (positive control)", () => {

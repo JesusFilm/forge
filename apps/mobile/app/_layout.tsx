@@ -19,6 +19,7 @@ let ExperienceSelectionProvider: typeof import("../src/contexts/ExperienceSelect
 let WatchPreferencesProvider: typeof import("../src/contexts/WatchPreferencesProvider").WatchPreferencesProvider
 let DownloadsProvider: typeof import("../src/contexts/DownloadsProvider").DownloadsProvider
 let AuthProvider: typeof import("../src/contexts/AuthProvider").AuthProvider
+let LapseReminderProvider: typeof import("../src/contexts/LapseReminderProvider").LapseReminderProvider
 let isCachePersistenceEnabled: typeof import("../src/lib/cachePersistence").isCachePersistenceEnabled
 let restoreApolloCache: typeof import("../src/lib/cachePersistence").restoreApolloCache
 let startCachePersistence: typeof import("../src/lib/cachePersistence").startCachePersistence
@@ -79,6 +80,12 @@ try {
   DownloadsProvider =
     require("../src/contexts/DownloadsProvider").DownloadsProvider
   AuthProvider = require("../src/contexts/AuthProvider").AuthProvider
+  LapseReminderProvider =
+    require("../src/contexts/LapseReminderProvider").LapseReminderProvider
+  // KTD1: this require is what registers the foreground handler at the
+  // adapter's module scope. Named here, not left to the provider's import
+  // graph, so a throwing notifications module lands on the Startup Error panel.
+  require("../src/lib/lapseReminders/notificationsAdapter")
   const cachePersistence = require("../src/lib/cachePersistence")
   isCachePersistenceEnabled = cachePersistence.isCachePersistenceEnabled
   restoreApolloCache = cachePersistence.restoreApolloCache
@@ -349,121 +356,126 @@ export default function RootLayout() {
             <SafeAreaProvider>
               <ExperienceSelectionProvider>
                 <WatchPreferencesProvider>
-                  <AuthProvider>
-                    <DownloadsProvider>
-                      {/* R16: everything the cover hides leaves the
-                          accessibility tree while it is up, and returns on the
-                          same predicate that clears the cover. */}
-                      <SplashCoveredTree>
-                        <ExperienceShell>
-                          <StatusBar style="light" />
-                          <DatadogRouteTracker />
-                          <Stack
-                            screenOptions={{
-                              headerShown: false,
-                              contentStyle: { backgroundColor: BG_COLOR },
-                            }}
-                          >
-                            <Stack.Screen name="(tabs)" />
-                            <Stack.Screen
-                              name="video/[sectionKey]"
-                              options={{
-                                headerShown: true,
-                                headerTintColor: ACCENT,
-                                headerTitle: "",
-                                headerStyle: { backgroundColor: BG_COLOR },
-                                headerShadowVisible: false,
-                                headerTitleAlign: "center",
-                                headerLeft: () => (
-                                  <Pressable
-                                    onPress={() => router.back()}
-                                    accessibilityRole="button"
-                                    accessibilityLabel="Go back"
-                                    hitSlop={12}
-                                  >
-                                    <Ionicons
-                                      name="chevron-back"
-                                      size={28}
-                                      color={ACCENT}
-                                    />
-                                  </Pressable>
-                                ),
-                              }}
-                            />
-                            <Stack.Screen
-                              name="collection/[sectionKey]"
-                              options={{
-                                headerShown: true,
-                                headerTintColor: ACCENT,
-                                headerTitle: "",
-                                headerStyle: { backgroundColor: BG_COLOR },
-                                headerShadowVisible: false,
-                                headerTitleAlign: "center",
-                                headerLeft: () => (
-                                  <Pressable
-                                    onPress={() => router.back()}
-                                    accessibilityRole="button"
-                                    accessibilityLabel="Go back"
-                                    hitSlop={12}
-                                  >
-                                    <Ionicons
-                                      name="chevron-back"
-                                      size={28}
-                                      color={ACCENT}
-                                    />
-                                  </Pressable>
-                                ),
-                              }}
-                            />
-                            <Stack.Screen
-                              name="experience/[slug]"
-                              // Full-bleed: the screen renders its own floating back
-                              // button over the edge-to-edge hero (no native nav bar).
-                              options={{ headerShown: false }}
-                            />
-                            <Stack.Screen
-                              name="mission"
-                              // Full-bleed, same as experience/[slug]: an opaque
-                              // header would cap the screen's gradient with a
-                              // flat band. The screen renders its own floating
-                              // back button instead.
-                              options={{ headerShown: false }}
-                            />
-                            {/* Both player stacks confine the back-swipe to the
-                              left edge: iOS 26 defaults it to full-width,
-                              which claims rightward scrubs (src/lib/backSwipe). */}
-                            <Stack.Screen
-                              name="watch"
-                              options={{
+                  {/* Inside MobileDatadogProvider so its events are logged,
+                      and an ancestor of SplashHost so the native-splash hide
+                      runs first — effects run children-first (KTD6). */}
+                  <LapseReminderProvider>
+                    <AuthProvider>
+                      <DownloadsProvider>
+                        {/* R16: everything the cover hides leaves the
+                            accessibility tree while it is up, and returns on the
+                            same predicate that clears the cover. */}
+                        <SplashCoveredTree>
+                          <ExperienceShell>
+                            <StatusBar style="light" />
+                            <DatadogRouteTracker />
+                            <Stack
+                              screenOptions={{
                                 headerShown: false,
-                                gestureResponseDistance:
-                                  BACK_SWIPE_RESPONSE_DISTANCE,
+                                contentStyle: { backgroundColor: BG_COLOR },
                               }}
-                            />
-                            <Stack.Screen
-                              name="series"
-                              options={{
-                                headerShown: false,
-                                gestureResponseDistance:
-                                  BACK_SWIPE_RESPONSE_DISTANCE,
-                              }}
-                            />
-                          </Stack>
-                        </ExperienceShell>
-                        {/* KTD1: a sibling of ExperienceShell, never inside it —
-                            the shell swaps its element type once per cold launch,
-                            remounting its subtree. The player outlives the route. */}
-                        <PlaybackHost />
-                        {/* R29: a raw export outlives the sheet that started it,
-                            so its report is hosted here rather than in a route. */}
-                        <ExportReportHost />
-                      </SplashCoveredTree>
-                      {/* Last child, and a sibling for the same KTD1 reason: the
-                          cover must paint above the player and must not restart
-                          when the shell resolves its slug. */}
-                      <SplashHost />
-                    </DownloadsProvider>
-                  </AuthProvider>
+                            >
+                              <Stack.Screen name="(tabs)" />
+                              <Stack.Screen
+                                name="video/[sectionKey]"
+                                options={{
+                                  headerShown: true,
+                                  headerTintColor: ACCENT,
+                                  headerTitle: "",
+                                  headerStyle: { backgroundColor: BG_COLOR },
+                                  headerShadowVisible: false,
+                                  headerTitleAlign: "center",
+                                  headerLeft: () => (
+                                    <Pressable
+                                      onPress={() => router.back()}
+                                      accessibilityRole="button"
+                                      accessibilityLabel="Go back"
+                                      hitSlop={12}
+                                    >
+                                      <Ionicons
+                                        name="chevron-back"
+                                        size={28}
+                                        color={ACCENT}
+                                      />
+                                    </Pressable>
+                                  ),
+                                }}
+                              />
+                              <Stack.Screen
+                                name="collection/[sectionKey]"
+                                options={{
+                                  headerShown: true,
+                                  headerTintColor: ACCENT,
+                                  headerTitle: "",
+                                  headerStyle: { backgroundColor: BG_COLOR },
+                                  headerShadowVisible: false,
+                                  headerTitleAlign: "center",
+                                  headerLeft: () => (
+                                    <Pressable
+                                      onPress={() => router.back()}
+                                      accessibilityRole="button"
+                                      accessibilityLabel="Go back"
+                                      hitSlop={12}
+                                    >
+                                      <Ionicons
+                                        name="chevron-back"
+                                        size={28}
+                                        color={ACCENT}
+                                      />
+                                    </Pressable>
+                                  ),
+                                }}
+                              />
+                              <Stack.Screen
+                                name="experience/[slug]"
+                                // Full-bleed: the screen renders its own floating back
+                                // button over the edge-to-edge hero (no native nav bar).
+                                options={{ headerShown: false }}
+                              />
+                              <Stack.Screen
+                                name="mission"
+                                // Full-bleed, same as experience/[slug]: an opaque
+                                // header would cap the screen's gradient with a
+                                // flat band. The screen renders its own floating
+                                // back button instead.
+                                options={{ headerShown: false }}
+                              />
+                              {/* Both player stacks confine the back-swipe to the
+                                left edge: iOS 26 defaults it to full-width,
+                                which claims rightward scrubs (src/lib/backSwipe). */}
+                              <Stack.Screen
+                                name="watch"
+                                options={{
+                                  headerShown: false,
+                                  gestureResponseDistance:
+                                    BACK_SWIPE_RESPONSE_DISTANCE,
+                                }}
+                              />
+                              <Stack.Screen
+                                name="series"
+                                options={{
+                                  headerShown: false,
+                                  gestureResponseDistance:
+                                    BACK_SWIPE_RESPONSE_DISTANCE,
+                                }}
+                              />
+                            </Stack>
+                          </ExperienceShell>
+                          {/* KTD1: a sibling of ExperienceShell, never inside it —
+                              the shell swaps its element type once per cold launch,
+                              remounting its subtree. The player outlives the route. */}
+                          <PlaybackHost />
+                          {/* R29: a raw export outlives the sheet that started it,
+                              so its report is hosted here rather than in a route. */}
+                          <ExportReportHost />
+                        </SplashCoveredTree>
+                        {/* Last child, and a sibling for the same KTD1 reason: the
+                            cover must paint above the player and must not restart
+                            when the shell resolves its slug. */}
+                        <SplashHost />
+                      </DownloadsProvider>
+                    </AuthProvider>
+                  </LapseReminderProvider>
                 </WatchPreferencesProvider>
               </ExperienceSelectionProvider>
             </SafeAreaProvider>
