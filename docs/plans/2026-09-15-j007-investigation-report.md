@@ -6,9 +6,9 @@ Documentation-only delivery in [draft PR #2304](https://github.com/JesusFilm/for
 on `docs/rag-consumer-access-usage-plan`:
 
 - [Implementation plan](2026-09-15-001-feat-rag-consumer-access-usage-plan.md).
-- [Planning record feat-501](../roadmap/rag/feat-501-rag-consumer-access-planning.md).
-- [Access implementation feat-502](../roadmap/rag/feat-502-rag-consumer-access-lifecycle.md).
-- [Observable delivery feat-503](../roadmap/rag/feat-503-rag-consumer-usage-visibility.md).
+- [Planning record feat-511](../roadmap/rag/feat-511-rag-consumer-access-planning.md).
+- [Access implementation feat-512](../roadmap/rag/feat-512-rag-consumer-access-lifecycle.md).
+- [Observable delivery feat-513](../roadmap/rag/feat-513-rag-consumer-usage-visibility.md).
 - [Hand-maintained RAG index](../roadmap/rag/README.md).
 
 Inspected actual root AGENTS/CLAUDE, RAG and contract package guides, RAG lane
@@ -74,7 +74,7 @@ consumer ID,” “private bearer per integration/environment,” and “read-on
 reporting with coverage verification.” Request observability as a separate
 deliverable/dependency, not an implied outcome. J007's plan is
 `docs/plans/2026-09-15-001-feat-rag-consumer-access-usage-plan.md`, with roadmap
-records feat-501 (planning), feat-502 (access) and feat-503 (usage and dogfood).
+records feat-511 (planning), feat-512 (access) and feat-513 (usage and dogfood).
 
 ### Proposed log entry
 

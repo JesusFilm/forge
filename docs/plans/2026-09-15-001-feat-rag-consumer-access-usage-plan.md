@@ -15,17 +15,21 @@ per integration/environment, mapped server-side to a stable consumer ID. Do not
 require a client-ID header plus secret. This private credential is distinct from
 the public known-caller Consumer Bearer described in `CONCEPTS.md`.
 
-This PR delivers planning only ([feat-501](../roadmap/rag/feat-501-rag-consumer-access-planning.md)).
+This PR delivers planning only ([feat-511](../roadmap/rag/feat-511-rag-consumer-access-planning.md)).
 Implementation is explicitly split:
 
-1. [feat-502: access lifecycle](../roadmap/rag/feat-502-rag-consumer-access-lifecycle.md).
-2. [feat-503: usage collection, read-only reporting and RAGBot proof](../roadmap/rag/feat-503-rag-consumer-usage-visibility.md),
+1. [feat-512: access lifecycle](../roadmap/rag/feat-512-rag-consumer-access-lifecycle.md).
+2. [feat-513: usage collection and read-only reporting](../roadmap/rag/feat-513-rag-consumer-usage-visibility.md),
    dependent on access identity. Access alone cannot close the programme or permit
    shared-token cutoff; both deliverables and their release gates must pass.
+3. [feat-514](../roadmap/rag/feat-514-rag-consumer-dogfood-migration.md): actual ops HTTP dogfood and seven-day migration, after usage.
+4. [feat-515](../roadmap/rag/feat-515-rag-consumer-self-service-portal.md): internal self-service portal, after successful dogfood. Its design
+   is captured here now because Bible lookup expansion will increase demand.
 
-No portal, billing system, end-user tracking, source import, corpus change,
-production operation, or consumer generation policy is included. A portal is a
-future decision, not a V1 prerequisite.
+No product implementation, billing, external consumers, source import, corpus
+change or production operation is included in this PR. External access requires
+its own future rate-limit design. Initial heavy use is visibility and conversation
+only: no new quotas, throttling or automated enforcement.
 
 ## Current checkout findings and exact entry points
 
@@ -44,36 +48,53 @@ future decision, not a V1 prerequisite.
 - `apps/rag/docs/ops/environment-and-secrets.md`: actual package-local location
   of the operations guide referenced by the package AGENTS file. It documents
   receiver-first issuance/rotation and `SERVE_BEARER_TOKENS` compatibility.
-- `apps/mastra/src/services/jesusfilm-rag-client.ts` is Seeker's client, **not**
-  proof of the RAGBot client. No RAGBot client was found in Forge. Locate the
-  actual client in the approved RAGBot workspace before implementation; record
-  its exact path/revision then. Do not substitute Seeker, curl, or a fake client.
+- Dogfood must use the actual `forge-rag-retrieve` ops task through the RAG HTTP
+  `POST /v1/search` path. Register either Jaco's VM integration or RAGBot as the
+  consumer. The task definition is not tracked in this checkout; record its
+  approved workspace path/revision before executing feat-514. Seeker's client,
+  direct database retrieval or a substitute curl smoke is not that proof.
+- `apps/auth/src/auth/config.ts` conditionally configures Google sign-in and emits
+  `email_verified`; `apps/chat/src/auth/oauth-client.ts` validates the OIDC token
+  and carries a strictly boolean verified-email claim. Recommend Google/Gmail
+  through the existing Forge Auth OIDC integration, with a separately registered
+  portal client; do not cross-import app code. This is a design recommendation,
+  not a claim that a portal client or Google configuration is deployed. GitHub
+  login is an alternative requiring separate verified-email integration work;
+  a GitHub account in the allowlist is not proof of a verified email session.
+- `apps/rag/src/main.ts` uses `EMBED_BASE_URL` as primary when configured, with
+  OpenRouter fallback; without it, OpenRouter is primary. `FallbackEmbedder`
+  catches primary failures and enforces matching model/dimensions. This supports
+  the fallback assumption in code, but does not establish that the endpoint is
+  local, its capacity/cost, deployment configuration or actual fallback rate.
+  Later approved operations must verify these without exposing configuration
+  secrets. Existing fallback error-message logging needs leakage review before
+  usage instrumentation; do not copy arbitrary error text into telemetry.
 - `docs/solutions/architecture-patterns/db-backed-vs-env-csv-credential-storage-20260518.md`
   provides storage tradeoffs. Its example handoff channel is not an approval
   for this programme. No applicable unresolved finding exists in `todos/`.
 
 Useful search: `rg -n 'TokenRegistry|lookupScope|resolveScope|SERVE_BEARER_TOKENS|createApp' apps/rag`.
 
-## Pending Jaco decisions (release gates, not invented defaults)
+## Approved decisions and remaining implementation details
 
-| Decision                                                               | Required before                                                            |
-| ---------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Named approver and permitted delegate; ownership transfer authority    | Enabling registration approvals                                            |
-| Secure one-time credential delivery channel and recipient verification | Any credential issuance/handoff                                            |
-| Retention duration, reporting viewers, owner-metadata access           | Persisting real metadata or usage                                          |
-| Shared-token grace duration, cutoff timestamp and communications owner | Enabling migration grace or cutoff                                         |
-| Heavy-usage warning versus enforcement, thresholds and authority       | Activating warnings/limits; V1 measurement grants no enforcement authority |
-| Labelled dogfood integration owner, source scope and environment       | Real RAGBot dogfood exercise                                               |
-| Whether a self-service portal is needed later                          | Any portal follow-up scope                                                 |
+Jaco approved the repository engineer allowlist, senior-engineer PR approval,
+verified-email self-service, multiple managers per consumer, Jaco/RAGBot-only
+report access, durable privacy-minimised aggregates, one-time secrets with
+hash-only storage, immediate atomic rotation, seven-day registration grace,
+actual ops HTTP dogfood, and portal delivery after dogfood. These are settled.
 
-Ticket owner `jaco`, P1 priority, start date and duration are planning bookkeeping,
-not appointment of an approver or an agreed delivery schedule. Durations below
-are estimates. These unresolved decisions do not prevent merging the plan.
+Before implementation activation, name the senior approver accounts/team and
+required CI check, approve the exact allowlist path/schema (proposed
+`config/rag-consumer-engineers.json`), select the portal host/client registration
+and verify the recommended Google/Forge Auth claim flow. Before dogfood, record
+consumer choice, source scope, task revision and permitted environment. Before
+production cutover, separately approve the communications owner, grace start
+and exact cutoff timestamp. No missing detail blocks this documentation update.
 
 ## A. Registration, approval and credential lifecycle
 
 Provide an operator-mediated registration workflow and documented intake form
-before considering UI. Intake fields: integration label, purpose/registration
+as the dogfood precursor to the portal. Intake fields: integration label, purpose/registration
 intent, accountable owner/contact, intended environment, requested source keys,
 expected usage band and operational contact. Avoid open-ended sensitive notes.
 Normalize bounded fields and validate source keys against the registry.
@@ -90,10 +111,26 @@ Proposed metadata types (implementation names may follow package conventions):
 - `LifecycleAudit`: bounded action enum, actor reference, consumer/environment,
   timestamp and outcome; no arbitrary payloads or bearer-related identifiers.
 
-Reject self-approval unless Jaco explicitly authorizes that policy. Pending or
-rejected registration cannot issue credentials. Ownership changes require the
-approved authority, audit trail and revalidation of the operational contact;
-never silently transfer credentials with a label edit.
+The repository allowlist binds engineers' GitHub accounts to verified emails.
+Changes require a specific senior-engineer PR approver, enforced by a required
+GitHub CI check against the current PR head. Protect the approver configuration
+and workflow too; author self-approval, stale/dismissed reviews and non-approved
+reviewers must fail. CODEOWNERS alone is not evidence of enforced approval.
+Do not create this file or CI infrastructure in this documentation PR.
+
+An allowlisted engineer with a verified identity may register a consumer and
+manage its permitted scopes; no second routine registration approval is required.
+Source permissions must remain within the engineer's approved entitlement.
+Non-allowlisted, unverified or removed engineers fail closed on every management
+action, including existing sessions. Separate `ConsumerMembership` records bind
+multiple managers to one integration; consumer identity is never an engineer ID.
+Existing authorized managers may add only currently allowlisted engineers and
+remove managers. Audit actor, target member, consumer, action, outcome, time and
+allowlist revision; recheck authorization transactionally, prevent orphaning the
+last manager, and require a designated senior engineer for recovery/ownership
+transfer. Membership removal blocks management but does not erase usage history;
+review/rotate shared integration credentials if the departing manager knew them.
+Keep minimal identity references in restricted audit metadata, never usage rows.
 
 Generate cryptographically random high-entropy opaque credentials inside the
 approved issuance process, outside agent transcripts. Persist only a one-way
@@ -101,18 +138,27 @@ verifier in the restricted auth store; never raw tokens or selectors. Validate
 verifiers using an established constant-time mechanism. The bearer travels only
 in the Authorization header over TLS, never query strings or client-ID headers.
 
-One active credential per integration/environment is the normal invariant.
-Receiver-first rotation may temporarily allow a documented, bounded old/new
-pair linked to the same consumer ID. Secure handoff is one-time and recipient-
-verified through Jaco's selected channel; never print into shell output, tickets,
-PRs or chat. Failed/expired handoff revokes the unused credential and creates a
-replacement; there is no reveal-again operation. Confirm caller installation
-before revoking the old credential. Test interrupted issuance, handoff failure,
-concurrent rotations and duplicate approvals without orphaned active tokens.
+Exactly one active credential per integration/environment. An authorized
+“Generate new key” action generates a new secret, atomically replaces/revokes the
+prior verifier and reveals the new secret once in the authenticated issuance
+response. No decryptable/revealable tokens are retained in the database. The
+engineer must save it in their own password manager/secret storage. There is no
+reveal-again, old/new overlap or delayed revocation waiting for installation.
+This programme intentionally supersedes the older receiver-first overlap recipe.
+
+Lost secrets or interrupted one-time display require another authorized rotation;
+the old secret cannot be recovered. Multiple managers see status/audit only,
+never another manager's secret. Warn that rotation interrupts all callers using
+the prior key; managers coordinate installation through their own secret storage.
+Serialize rotations with credential-version checks: a stale concurrent action
+fails and refreshes rather than unknowingly replacing a just-issued key. Test
+transaction failure, lost response and concurrency. Never expose secret material
+in logs, tickets, PRs, tests, command output, chat or telemetry; use synthetic
+non-secret fixtures for tests and suppress issuance-response capture.
 
 Suspension rejects access reversibly; revocation is terminal for a credential.
 Consumer revocation rejects all its credentials across environments. Retain
-minimal lifecycle history according to policy rather than deleting the consumer
+minimal lifecycle history without adding a retention/deletion implementation now, rather than deleting the consumer
 or reusing its ID. Restoration from suspension requires approval; a revoked
 credential can never be restored by rollback or replacement.
 
@@ -146,7 +192,12 @@ objects in newly instrumented paths. Do not commit production evidence.
 
 Build a repeatable operator-only read-only report command (proposed
 `usage:report --consumer <stable-id> --environment <env> --from <UTC> --to <UTC>`)
-and a documented report schema, not a public dashboard. The command is future
+and a documented report schema, not a public dashboard. Initially only Jaco and
+RAGBot may read reports. Give RAGBot a dedicated authenticated, read-only report
+capability through a bounded endpoint/ops task with fixed aggregate fields and
+validated windows, not a general database credential or arbitrary SQL. The
+server-side report role reads aggregate views only. Other allowlisted engineers
+and consumer managers gain no report access by virtue of membership. The command is future
 work; it does not exist in this PR. Report rows contain only consumer ID, approved
 label, environment, `windowStart`, `windowEnd`, `requestCount`,
 `successfulRequestCount`, `lastActivityAt`, `generatedAt`, `completeThrough` and
@@ -173,8 +224,12 @@ Proposed mechanism: atomically maintain bounded per-minute aggregates and
 pending/completed attempt accounting in a dedicated metadata adapter. A random,
 server-created attempt ID may deduplicate completion writes internally; do not
 expose it or derive it from request content/credentials. Short-lived pending
-records contain only identity, environment and timestamps. Retention/purge must
-cover pending records, aggregates, audits and backups under the selected policy.
+records contain only identity, environment and timestamps. Durable aggregate consumer-usage metrics are kept going forward for product-growth
+insight. Raw/sensitive events are not collected; minimal pending accounting is
+operational state, not a raw event archive. Do not implement deletion/retention
+policy now. Storage growth, granularity, pending-state capacity and backup cost
+need a future operational capacity review before volume expansion; durable does
+not promise infinite unbounded storage.
 Do not sample counts. Test atomic increments and idempotent completion under
 concurrency, retry, process crash and rotation.
 
@@ -184,7 +239,7 @@ only after all participating instances have reconciled and flushed it. Preserve
 gaps durably after recovery. If a write fails, bounded retrieval may continue,
 but the report must mark the affected interval partial/unavailable; if the gap
 cannot be durably recorded, stale heartbeat/watermark must force unavailable.
-Never return a clean zero on DB failure, expired retention, delayed flush,
+Never return a clean zero on DB failure, unavailable historical coverage, delayed flush,
 missing deployment instrumentation or unknown consumer. Unknown consumer is a
 report error; zero is only an existing consumer in a fully covered retained window.
 A report exits nonzero on unavailable coverage and visibly marks partial coverage.
@@ -192,17 +247,19 @@ A report exits nonzero on unavailable coverage and visibly marks partial coverag
 ## D. Shared-token migration and rollback
 
 Inventory integrations by accountable owner without recording credential values
-or selectors. Register each through normal approval. During approved grace,
+or selectors. Register each through the allowlisted registration path. During the seven-day registration/support grace,
 legacy auth remains an explicit separate mode labelled `legacy-unattributed`;
 a shared token cannot provide honest per-integration usage. Never infer identity
 from IP, user-agent or a supplied client-ID header. Registered-credential lookup
 failure cannot fall through into legacy authorization.
 
-Before cutoff: both tickets pass, every owner confirms migration, RAGBot proof
-passes, reporting coverage is complete, and Jaco signs the exact grace/cutoff.
-Retire the shared-token compatibility configuration and verify rejection. No
-cutoff date is implied by this plan. Warnings or quotas require the separate
-heavy-usage decision; counters alone are not quotas or billing.
+After foundation and usage visibility, dogfood/support existing callers for
+seven days to register through the new path. Record a communicated start and
+cutoff timestamp in the separately approved production cutover scope. After the
+seven days, disable the shared legacy bearer path under that approval, with
+owner migration status, successful actual ops dogfood and complete reporting
+coverage as cutover checks. Escalate unmet checks to the cutover owner; this plan
+authorizes neither automatic production action nor a silent grace extension.
 
 Use additive schema rollout and normal PR-to-main deployments only. Roll back
 reporting independently while marking coverage unavailable. Auth rollback must
@@ -215,31 +272,31 @@ steps for auth DB failure, telemetry loss, failed handoff and partial cutover.
 ## E. Acceptance and release verification
 
 Implementation tests use isolated local/CI databases and synthetic fixtures.
-Real dogfood is a later approved environment operation, not performed by J007.
+Real dogfood is a later approved environment operation, not performed by J007 or J008.
 
-1. Record Jaco decisions. Locate actual RAGBot HTTP client path/revision and
+1. Apply the approved decisions. Locate the actual `forge-rag-retrieve` task path/revision and
    permitted test environment; absent client access blocks release proof.
-2. Register `RAGBot dogfood — <approved environment>` with an accountable owner
-   through ordinary intake/approval/handoff. Register a second synthetic
+2. Register Jaco’s VM integration or RAGBot with an accountable owner
+   through ordinary allowlisted registration and one-time issuance. Register a second synthetic
    integration for isolation. No privileged bypass or special auth path.
 3. Establish a retained, fully covered UTC report window and obtain a baseline
    using the report reader. Existing unused integration reports 0/0/null.
-4. Through the **actual RAGBot client and real `POST /v1/search` endpoint**, send
+4. Through the **actual `forge-rag-retrieve` ops task and real `POST /v1/search` endpoint**, send
    three known synthetic successful requests. Disable retries or record actual
    HTTP attempts. Suppress bodies/headers in all captured output. Wait for the
    watermark to cover them: report deltas must be requests +3, successes +3,
    last activity inside the stated window.
 5. Send two more: deltas become +5/+5. Send one request with the second integration:
-   its delta is +1/+1 and RAGBot stays +5/+5. Repeat the same read-only report and
+   its delta is +1/+1 and the dogfood consumer stays +5/+5. Repeat the same read-only report and
    assert stable output for the closed window, excluding generation time.
 6. Test a post-auth invalid request and retrieval failure: request count rises,
    successful count does not. Verify empty 200, disconnect and retry semantics.
-7. Revoke the RAGBot credential, then issue new requests: 401, no success increment.
+7. Revoke the dogfood credential, then issue new requests: 401, no success increment.
    Issue its approved replacement and verify identity continuity; revoke the
    consumer and verify all credentials/environments reject new requests. Check
    suspension/resumption, wrong environment, source isolation and concurrent revoke.
 8. Interrupt collector/storage and simulate missing instrumentation, delayed flush,
-   crash and expired retention. Reports visibly become partial/unavailable, never
+   crash and unavailable historical coverage. Reports visibly become partial/unavailable, never
    clean zero. Recover and demonstrate gap handling and exact concurrent counts.
 9. Verify report principal cannot write, read credentials/contacts or read corpus;
    inspect report schema/log sinks using synthetic sentinel values for leakage.
@@ -252,3 +309,21 @@ Future code verification: `pnpm --filter @forge/rag test`, `typecheck`, `lint`,
 tests/drift if contracts change. Measure added auth/telemetry latency and concurrency
 against an agreed pre-change synthetic baseline; set the acceptance budget before
 release. No live retrieval or runtime test is claimed by this documentation PR.
+
+## F. Portal design captured now (feat-515)
+
+After successful feat-514 dogfood, build an internal portal for verified,
+allowlisted engineers: register integrations, list only managed consumers,
+manage membership and approved scopes, inspect credential status, and Generate
+new key with one-time display. Enforce authorization server-side on every read
+and mutation, CSRF/session protections, no-store issuance responses and no
+analytics/session replay on secret displays. Report access remains Jaco/RAGBot
+only. Show the affected integration/environment and immediate replacement
+consequence before rotation. Never offer token retrieval or reveal-again.
+
+Before coding, refine the host/Forge Auth client design, restricted management
+API boundary, senior recovery workflow and claim/allowlist synchronization.
+Acceptance includes verified/unverified and removed-member sessions, cross-
+consumer denial, concurrent membership/rotation, one-time response loss and
+no secret leakage. Validate page-load performance for the eventual UI. No
+external registration, billing or rate-limit design is included.

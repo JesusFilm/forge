@@ -1,5 +1,5 @@
 ---
-id: "feat-501"
+id: "feat-511"
 title: "Plan formal RAG consumer access and usage visibility"
 owner: "jaco"
 priority: "P1"
@@ -7,7 +7,7 @@ status: "complete"
 start_date: "2026-09-15"
 duration: 1
 depends_on: []
-blocks: ["feat-502", "feat-503"]
+blocks: ["feat-512", "feat-513", "feat-515"]
 tags: ["rag", "planning", "auth", "observability"]
 ---
 
@@ -29,7 +29,7 @@ Forge plan and independently verifiable delivery records.
 ## What To Build
 
 Deliver documentation only: registration, lifecycle, HTTP identity, separately
-tracked observable reporting, synthetic RAGBot release proof, pending decisions,
+tracked observable reporting, synthetic ops HTTP release proof, approved decisions and remaining technical details,
 and proposed wiki note if the transactional writer is unavailable.
 
 ## Constraints
@@ -40,12 +40,16 @@ A completed planning record does not complete its implementation dependents.
 ## Verification
 
 Format changed Markdown; validate frontmatter, new IDs, reciprocal dependencies,
-relative links, lane counts and hidden-lane CI checks. Review coverage against J007.
+relative links, lane counts and hidden-lane CI checks. Review coverage against J007 and J008.
 
 ## Resolution
 
 Planning delivered in [Forge draft PR #2304](https://github.com/JesusFilm/forge/pull/2304).
 The plan and separate implementation tickets are complete as documentation;
-feat-502 and feat-503 remain not-started. The investigation report includes
+feat-512 and feat-513 remain not-started. The investigation report includes
 validation results and the authorized wiki fallback payload. No implementation
 or live release verification was performed.
+
+J008 incorporates the approved authorization, usage, credential and rollout
+choices, with portal design now and implementation after dogfood. See
+`docs/plans/2026-09-16-j008-investigation-report.md` for evidence and validation.

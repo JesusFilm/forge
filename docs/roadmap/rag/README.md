@@ -8,12 +8,12 @@ database into Admin.
 > This lane is intentionally invisible to the public roadmap viewer and the
 > generated `docs/roadmap/README.md` totals. This index is maintained by hand.
 
-## Status (September 15, 2026)
+## Status (September 16, 2026)
 
-- **Total tickets:** 30
+- **Total tickets:** 32
 - **Complete:** 20
 - **In progress:** 1
-- **Not started:** 9
+- **Not started:** 11
 - **Blocked:** 0
 
 ## Feature Index
@@ -47,9 +47,12 @@ database into Admin.
 | [feat-470](feat-470-rag-production-operations.md)                 | —                                                             | Make production acquisition and indexing self-contained            | complete    | [#2215](https://github.com/JesusFilm/forge/pull/2215)                                                        |
 | [feat-471](feat-471-rag-production-operations-rollout.md)         | —                                                             | Verify direct production maintenance and the Icelandic path        | not-started | [#2215](https://github.com/JesusFilm/forge/pull/2215)                                                        |
 | [feat-479](feat-479-rag-corpus-transaction-timeouts.md)           | —                                                             | Bound corpus transactions for production latency                   | complete    | [#2233](https://github.com/JesusFilm/forge/pull/2233)                                                        |
-| [feat-501](feat-501-rag-consumer-access-planning.md)              | —                                                             | Plan consumer access and usage visibility                          | complete    | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                        |
-| [feat-502](feat-502-rag-consumer-access-lifecycle.md)             | —                                                             | Implement consumer access lifecycle                                | not-started | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                        |
-| [feat-503](feat-503-rag-consumer-usage-visibility.md)             | —                                                             | Deliver usage reporting and dogfood proof                          | not-started | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                        |
+| [feat-511](feat-511-rag-consumer-access-planning.md)              | —                                                             | Plan consumer access and usage visibility                          | complete    | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                        |
+| [feat-512](feat-512-rag-consumer-access-lifecycle.md)             | —                                                             | Implement consumer access lifecycle                                | not-started | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                        |
+| [feat-513](feat-513-rag-consumer-usage-visibility.md)             | —                                                             | Deliver usage reporting                                            | not-started | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                        |
+
+| [feat-514](feat-514-rag-consumer-dogfood-migration.md) | — | Dogfood and seven-day migration | not-started | [#2304](https://github.com/JesusFilm/forge/pull/2304) |
+| [feat-515](feat-515-rag-consumer-self-service-portal.md) | — | Internal self-service portal | not-started | [#2304](https://github.com/JesusFilm/forge/pull/2304) |
 
 The September 8 operator decision in [feat-435](feat-435-rag-proof-soak-archive.md)
 accepts the baseline for acquisition/ingestion with the three concerns tracked
@@ -63,3 +66,7 @@ in feat-463. That investigation does not block the new-source proof.
 - Keep jfrag production and rollback values intact through the approved soak.
 - Production deploys use Forge PR-to-main autodeploy only.
 - Operator evidence must never contain secrets or corpus text.
+
+Consumer programme order: feat-511 planning/design → feat-512 access foundation
+→ feat-513 usage visibility → feat-514 dogfood/migration → feat-515 portal.
+Portal design is already captured by feat-511; implementation waits for dogfood.
