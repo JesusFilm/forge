@@ -1,7 +1,7 @@
 ---
 title: Investigate and resolve intermittent Admin Watch delays
 type: fix
-status: active
+status: completed
 date: 2026-09-16
 ---
 
@@ -62,11 +62,27 @@ CPU and independent PostgreSQL capture showed a selection lookup completing in
 The event loop paused for 139 ms; no database blocker was observed on that trace.
 
 Catalog hydration still expands 100 selected dubs into 3,660 subtitle objects
-and a 5.5 MB Prisma result. Pothos defaults to all scalar fields, including unused
+and a Prisma result with 5.5 million characters. Pothos defaults to all scalar
+fields, including unused
 subtitle fields and repeated language metadata. A local matching-cardinality
 control/treatment preserved the requested response exactly while narrow scalar
-selection reduced maximum loop delay from 174 ms to 42 ms. Neither isolated run
+selection reduced maximum loop delay from 153 ms to 31 ms. Neither isolated run
 exceeded 700 ms, so this reproduces the scheduling component, not the complete
 production failure rate. Implement Pothos select mode only for VideoSubtitle and
 Language, with explicit selections for custom fields. Verify full GraphQL output,
 all requested metadata fields, real database execution and production outcomes.
+
+## Completion evidence
+
+Both causal corrections merged in #2319/#2322 and are verified in Admin/worker
+`9533506f`. The final one-hour observation recorded 66 selection HTTP 200s without
+abort and 132 served deliveries without HTTP failure or semantic timeout fallback.
+The separate HTTP population has no recommendation 5xx. An existing React
+hydration-error class still failed the aggregate browser no-error assertion and
+is explicitly recorded in feat-517; profiler and workflow hypotheses remain
+separate follow-ups in feat-516 and feat-513.
+
+All temporary instrumentation was restored. The homepage authored block remains
+removed and the flag remains default off. Full release, regression, performance,
+revision and limitation evidence is in
+`docs/operations/watch-admin-duration-recovery-2026-09-16.md`.

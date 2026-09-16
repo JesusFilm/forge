@@ -1,7 +1,9 @@
-# Admin duration-loader recovery — 16 September 2026
+# Admin catalog scheduling recovery — 16 September 2026
 
-Status: both catalog fixes deployed; extended verification in progress. All times
-are UTC. The first release did not establish recovery.
+Status: demonstrated Admin catalog stalls corrected and release observation
+complete. All times are UTC. The first release did not establish recovery; the
+second release has the bounded outcome evidence below, including its browser
+hydration caveat.
 
 ## Cause and correction
 
@@ -153,7 +155,8 @@ The main loop's overlapping maximum pause was 139 ms. Pool acquisition reached
 and is not a pure database wait measurement.
 
 Bounded JSON instrumentation then identified recurring 100-dub hydration results
-with 3,660 subtitle rows and approximately 5.5 MB of Prisma JSON. Pothos default
+with 3,660 subtitle rows and approximately 5.5 million characters of Prisma JSON.
+Pothos default
 include mode materializes unused subtitle scalar fields and repeated language
 metadata. This is a second catalog scheduling workload, separate from duration
 overfetch and the unproven workflow-listener hypothesis. A narrow projection
@@ -198,7 +201,7 @@ An independently owned Mobile PR merged immediately afterward as
 the shared lockfile, triggering a newer automatic rollout. This task did not
 modify the Mobile UI. The earlier main CI run was canceled by that push; its PR
 checks had passed. Both Admin and worker were observed SUCCESS on `9533506f`
-at 03:27:55; SSH verified that exact SHA and both compiled projections at
+at 03:27:55; SSH verified Admin’s exact SHA and both compiled projections at
 03:29. Web's corresponding deployment was SKIPPED; it continues running
 `469edc6f996db1c6bd729b9a1b9f0e2732a0cd58`.
 
@@ -207,9 +210,12 @@ Admin deployment: `24804257-f7dc-4756-90a9-955500cd71b0`. Worker deployment:
 `d51e4d41` also reached SUCCESS before that newer rollout.
 
 A bounded 20-second capture on `d51e4d41` measured the same 100 dubs and 3,660
-subtitles at 1.10–1.11 MB of Prisma JSON, down from approximately 5.5 MB. Parsing
+subtitles at 1.10–1.11 million characters of Prisma JSON, down from approximately
+5.5 million characters. Parsing
 these results took 2.08–3.43 ms. This confirms the materialization change in the
-actual deployed workload; it does not itself prove timeout recovery.
+actual deployed workload; it does not itself prove timeout recovery. Size here
+means JavaScript string length in UTF-16 code units, correcting the earlier
+approximate MB wording; it is not a measured UTF-8 wire-byte count.
 
 The later main CI run `35050960956` failed an unrelated Web assertion in
 `WatchHomePage.test.tsx`: the resume-state write count was five instead of four.
@@ -242,12 +248,84 @@ maps and production diagnostic settings remain unchanged. Recurring versus
 cold-start profiler cost remains an uncertainty, separate from the two causally
 validated catalog fixes. Follow-up feat-516 owns that investigation.
 
-## Preserved state and remaining work
+## Extended recommendation outcome window
+
+Eleven scheduled browser batches ran from 03:29:13.105 to
+04:29:01.714 UTC, spanning approximately one hour. All ran
+against Admin/worker `9533506f` and Web `469edc6f`; repeated Railway observations
+and final runtime verification identify the actual releases, not just main HEAD.
+
+- 66 selection requests returned HTTP 200 with no browser aborts; response times
+  were 414–671 ms. The final 48 additionally validated the returned claim
+  nonce, nonempty target and canonical destination. The first 18 recorded HTTP
+  status and completion without that additional body assertion.
+- 132 delivery responses all returned `served`, six cards and six capabilities.
+  There were **zero HTTP failures** and **zero semantic timeout fallbacks** in
+  this browser delivery population, with no request or body-read failures.
+- All 66 navigation destinations matched. One React hydration error means the
+  aggregate no-JavaScript-errors browser gate **did not pass**; see its separate
+  investigation below. Do not describe this as a completely clean browser run.
+
+Datadog HTTP request metrics for 03:29–04:30, retrieved after the window, report
+these separate populations on Web `469edc6f`:
+
+| API       | HTTP 200 | HTTP 400 | HTTP 403 | HTTP 5xx |
+| --------- | -------: | -------: | -------: | -------: |
+| delivery  |      529 |        0 |      652 |        0 |
+| selection |       70 |        0 |        0 |        0 |
+| evidence  |    2,211 |       15 |      403 |        0 |
+| playback  |    3,214 |        1 |      627 |        0 |
+| profile   |      832 |        0 |    1,579 |        0 |
+
+The availability and source-free endpoints are reported separately in the raw
+metric population; the above table focuses on the five main recommendation APIs.
+The 400 examples inspected through 04:15 log `invalid_request`,
+`retryDisposition=terminal`, `timeoutStage=none`. Inspected 403 examples log
+`forbidden` or `crawler_rejected`. These are rejections, not successes or hidden
+server timeouts. No recommendation HTTP 5xx was observed in the fixed window.
+
+Datadog also counted 36,825 `forge-admin` GraphQL request hits on `9533506f`
+during this window, confirming ongoing application traffic.
+
+These metrics include ordinary and diagnostic traffic and cannot establish the
+semantic fallback rate of all HTTP 200 deliveries. Only the 132 inspected browser
+bodies support the zero-fallback result. The separate hydration revisit and the
+03:30:55–03:32:25 timing-only profiler observation are included in the broader
+traffic window; the latter falls between browser batches.
+
+The two causal local reproductions, live cardinality/string-length confirmation,
+regressions and this longer window support completing the demonstrated Admin
+scheduling recovery in feat-496. This is bounded evidence, not a guarantee that
+rare deadlines can never recur. Workflow ownership, profiler cost and the
+existing hydration-error class remain explicitly scoped follow-ups.
+
+## Browser hydration finding during observation
+
+The 04:05:13–04:06:03 batch reported one React #418 with `args[]=HTML`.
+Its six selection responses had valid acknowledgment bodies, all twelve
+recommendation deliveries served six cards, and all six navigation destinations
+matched. The aggregate browser assertion nevertheless failed because it includes
+a no-JavaScript-errors requirement. Do not omit that failure or relabel it as a
+recommendation timeout.
+
+A separate 04:07:14–04:07:40 revisit of all seven involved pages did not repeat
+the error. Datadog RUM matched it to `/watch/sermon-on-the-mount-2.html` at 04:05:52,
+issue `8513bab6-8960-11f1-a33c-da7ad0900002`. The same HTML variant appears
+before both Admin fixes, including 01:34:24 and 00:53:42 on other Watch pages.
+This establishes an existing error class, not one shared initiating cause.
+Follow-up feat-517 owns reproduction; feat-515 separately owns cold-paint
+variability.
+
+## Preserved state and remaining limits
 
 Read-only queries at 01:58:46 and 02:15:11 confirmed the published English `watch-home`
-experience had no authored `homepageRecommendations` block. The flag's default
-remains off. No Mobile/TV UI, account linking or curation was changed.
+experience had no authored `homepageRecommendations` block. Final checks at
+04:29:47–04:29:50 reconfirmed the exact Admin SHA, both compiled corrections,
+closed inspector and absent authored block. Browser availability returned
+`enabled: false`; the source-free route returned HTTP 403 `feature_disabled`,
+with private/no-store headers. The flag's default remains off. No Mobile/TV UI,
+account linking or curation was changed.
 
 feat-513 records the independently observed workflow enqueue/listener ownership
-issue. Its contribution to remaining latency has not been causally isolated.
+issue. Its contribution to the observed stalls has not been causally isolated.
 Do not claim every scheduling or Redis delay has the duration-loader cause.

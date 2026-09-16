@@ -27,8 +27,8 @@ pause. CPU samples included Prisma response parsing, object traversal and
 GraphQL serialization; those samples alone do not identify the input workload.
 
 Bounded JSON instrumentation identified recurring `findManyVideoDub` results:
-100 already-selected dubs, 100 editions, 3,660 subtitle objects and about 5.5 MB
-of Prisma JSON. The nested GraphQL selection requested only VTT, primary and two
+100 already-selected dubs, 100 editions, 3,660 subtitle objects and about 5.5 million
+characters of Prisma JSON. The nested GraphQL selection requested only VTT, primary and two
 language fields. Pothos include mode nevertheless loaded every subtitle scalar
 and every language scalar. Prisma decoded and copied the unused metadata before
 the application traversed the full result to enforce its embedding guard.
@@ -87,11 +87,13 @@ necessary, and a short healthy window cannot establish full feat-496 recovery.
 ## Production confirmation
 
 PR #2322 deployed normally. A bounded capture on Admin `d51e4d41` returned the
-same 100 dubs and 3,660 subtitles in 1.10–1.11 MB of Prisma JSON, compared with
-approximately 5.5 MB before the change. Result parsing took 2.08–3.43 ms. The
+same 100 dubs and 3,660 subtitles in 1.10–1.11 million characters of Prisma JSON, compared with
+approximately 5.5 million characters before the change. Result parsing took 2.08–3.43 ms. The
 subsequent automatic Admin/worker release `9533506f` includes both catalog fixes.
 See the operations report for the separate HTTP and semantic outcome windows;
-payload reduction alone is not a recovery claim.
+payload reduction alone is not a recovery claim. These string-size observations
+use JavaScript `String.length` (UTF-16 code units), not a measured UTF-8 network
+byte count; earlier descriptions rounded them as MB.
 
 ## Diagnostic discipline
 

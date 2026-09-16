@@ -218,4 +218,13 @@ fallback. A second catalog workload materializes unused subtitle/language
 scalars; a narrow projection reduces the independently reproduced scheduling
 cost. Read `docs/operations/watch-admin-duration-recovery-2026-09-16.md` for exact
 revisions, separate HTTP/semantic/browser populations and residual limitations.
-feat-496 remains in progress.
+PR #2322 subsequently deployed with the duration correction in Admin/worker
+`9533506f967496dea60c9a4b846bf7a70463772b`. The 03:29–04:29 browser observation
+recorded 66 selection HTTP 200s without aborts and 132 served deliveries with no
+HTTP failures or semantic timeout fallbacks. The broader fixed HTTP population
+also had no recommendation 5xx; terminal 400/403 rejections remain separate.
+One pre-existing React hydration-error class was observed and remains a follow-up,
+so the aggregate no-JavaScript-errors browser assertion did not pass. The report
+above records the causal fixes, limitations and remaining hypotheses. feat-496
+is complete for the demonstrated Admin scheduling recovery; feat-513, feat-516
+and feat-517 preserve the separate unresolved work.
