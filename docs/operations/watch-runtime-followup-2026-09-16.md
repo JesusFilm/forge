@@ -1,9 +1,16 @@
 # Watch runtime follow-up — 16 September 2026
 
-Status: Redis cleanup and selection receipt-ordering fixes verified in
-production; separate selection timeouts remain under investigation.
-All timestamps below are UTC. feat-496 remains in progress because the unmatched
-admission incidents and separate selection timeouts are not proven resolved.
+Historical checkpoint at 00:27 UTC: Redis cleanup and selection receipt-ordering
+fixes were verified in production, while separate selection timeouts remained
+under investigation. feat-496 was still in progress at that checkpoint.
+
+Latest continuation at 04:30 UTC: two additional Admin catalog fixes and a
+one-hour production observation complete the demonstrated Admin scheduling
+recovery. Read `docs/operations/watch-admin-duration-recovery-2026-09-16.md`
+for exact revisions, separate HTTP/fallback populations and the retained
+profiler, workflow and browser-hydration limitations. The historical unmatched
+Redis incidents are not retrospectively assigned to these Admin causes.
+All timestamps below are UTC.
 
 ## Confirmed Redis contention mechanism
 
