@@ -1,7 +1,7 @@
 // Plain JS (like the other config guards here): the RN tsconfig has no Node
 // types, and this guard reads app.json and installed package files off disk.
 /* eslint-disable @typescript-eslint/no-require-imports */
-/* global describe, expect, it, require */
+/* global describe, expect, it, require, Buffer */
 const fs = require("fs")
 const zlib = require("zlib")
 const path = require("path")
