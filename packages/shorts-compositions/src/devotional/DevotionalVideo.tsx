@@ -3721,7 +3721,7 @@ export function cardFadeOpacity(f: number, xfade: number): number {
  */
 const STEP_RING_TOP = 70
 const STEP_RING_RIGHT = 48
-const STEP_RING_SIZE = 30
+const STEP_RING_SIZE = 48
 
 export function stepGroups(
   cards: ReadonlyArray<{ kind: string }>,
