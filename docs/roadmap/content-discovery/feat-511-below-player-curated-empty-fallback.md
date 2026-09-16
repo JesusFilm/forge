@@ -3,7 +3,7 @@ id: "feat-511"
 title: "Fill empty below-player recommendations from approved exact-context pools"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-16"
 duration: 2
 depends_on:
@@ -55,3 +55,11 @@ Test missing seed embeddings, all-filtered candidates, exact audio mismatch,
 recent/current aliases, deleted/unplayable items, exhausted budget and sparse
 inventory. Reconcile ledger source with returned cards in real PostgreSQL and
 confirm player load and retrieval deadlines. Run affected Admin/Web checks.
+
+## Production verification — September 16
+
+Implementation, focused regressions, sequential Compound Engineering review and
+PR CI passed. The normal main deployment and exact production revision were
+verified. See [release evidence](../../operations/recommendation-quality-release-2026-09-16.md)
+for the bounded browser/database/HTTP result and remaining system-wide gates.
+The 02:14–02:24 window recovered eight empty seeded requests with 48 curated cards. Live source, duplicate/current-video and item-count invariants passed. No inventory was published or locale coverage expanded.

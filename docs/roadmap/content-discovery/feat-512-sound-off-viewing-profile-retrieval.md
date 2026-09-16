@@ -3,7 +3,7 @@ id: "feat-512"
 title: "Learn sound-off viewing preferences and retrieve suitable videos"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-16"
 duration: 5
 depends_on:
@@ -78,4 +78,16 @@ PR #2317 implements the mode signal and bounded ranking. During normal rollout,
 an additional open-tab compatibility check found strict legacy mode parsing;
 the follow-up omits optional new mode explanations for unadvertised client
 versions while preserving cards and authoritative Admin evidence. Production
-preview/profile verification and final release evidence remain in progress.
+preview/profile verification passed: qualified muted preview updates the mode
+facet, selection attribution survives, covered playback stops credit, and deleting
+the owned profile removes the facet. Native PostgreSQL tests prove changed
+eligible ranking after sufficient independent evidence. No production video has
+reached that minimum yet, so actual recommendation uplift remains unproven.
+
+Both production builds and the matched full-page baseline/current browser runs
+passed. Approximately ten-second late-paint observations also occurred in the
+pre-release build; they were not newly introduced by this feature. Feat-515 keeps
+the existing cold-paint behavior's cause/frequency and real-device impact open.
+See [release evidence](../../operations/recommendation-quality-release-2026-09-16.md)
+for all measurements, the final clean operational window and remaining broader
+quality/reliability gates.

@@ -3,7 +3,7 @@ id: "feat-514"
 title: "Accept canonical Watch content slugs in recommendation requests"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-16"
 duration: 1
 depends_on: []
@@ -39,3 +39,11 @@ Reproduce the valid catalog slug returning 400, then require a successful delive
 for repeated-hyphen and underscore slugs. Assert malformed and oversized slugs
 fail before Admin access. Run Web tests/types/lint/format and normal PR CI; revisit
 the exact production destination and verify its recommendation response and row.
+
+## Production verification — September 16
+
+Implementation, focused regressions, sequential Compound Engineering review and
+PR CI passed. The normal main deployment and exact production revision were
+verified. See [release evidence](../../operations/recommendation-quality-release-2026-09-16.md)
+for the bounded browser/database/HTTP result and remaining system-wide gates.
+The exact repeated-hyphen destination returned HTTP 200 and six visible cards at 02:32:52 UTC after Web deployed `469edc6f9`; all observed requests were 200 and there were no JavaScript errors.

@@ -86,7 +86,7 @@ the exact new metadata. Items, ordering, capabilities, request ownership and the
 Admin audit remain unchanged; the response does not relabel mode fit as topic fit.
 
 Two regressions failed before this correction (missing/unknown client version).
-The corrected route and real client collector suite pass 50 tests, including
+The corrected route and recommendation component suites pass 50 tests, including
 modern metadata and capability/card preservation. Sequential correctness,
 contract, privacy, performance and maintainability review found no remaining
 issue in this correction. The header is a presentation capability, not authority;
@@ -105,4 +105,21 @@ hyphens. Feat-514 records this pre-existing mismatch. Two regressions reproduced
 it; the fix reuses `tryAsContentSlug` and retains the 191-character bound. Invalid
 path/query shapes still fail before Admin access. Sequential correctness,
 security, API-contract and simplicity review found no additional issue in the
-one-line schema correction. Production recheck remains a release gate.
+one-line schema correction. Production recheck passed on `469edc6f9`: HTTP 200, six cards and no JavaScript errors.
+
+## Release evidence review
+
+Sequential correctness, privacy, operational reliability and measurement review
+reconciled the real browser journey with retained mode facets and primary HTTP
+logs. Synthetic profile deletion removed influence without deleting raw facts.
+The initial nine upstream 503s and higher retrieval latency remain visible in
+the report; later clean windows include the independent Admin fix and cannot
+establish causal recommendation uplift. No new candidate reached the minimum
+independent sound-off evidence, so an active collector is not reported as an
+observed ranking-quality gain.
+
+Cold page-load variance is not dismissed: matched independent builds reproduced
+the late paint on the pre-release version too. Feat-515 retains its cause and
+real-device impact; it is not mislabeled as a new recommendation regression. The broader controlled-quality and reliability
+roadmap gates remain open. This evidence review found no unreported privacy or
+contract failure; it does not promote the experiment, MMR or For you.
