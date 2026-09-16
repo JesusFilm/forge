@@ -11,16 +11,22 @@
  */
 
 import { telemetryErrorMessage } from "../downloadErrors"
+import { withTimeout } from "../withTimeout"
 import {
   LAPSE_REMINDER_COPY,
   LAPSE_REMINDER_IDENTIFIERS,
+  LAPSE_REMINDER_KINDS,
   type LapseReminderKind,
 } from "./constants"
 import { buildLapseReminderPayload, type LapseReminderPayload } from "./payload"
 import { computeLapseReminderTargets } from "./schedule"
 
-/** R5's two kinds, in the order a pass schedules them. */
-const REMINDER_KINDS: readonly LapseReminderKind[] = ["day1", "day7"]
+/**
+ * One budget for each adapter call, so a native call that never settles cannot
+ * wedge the chain that every pass runs on. No caller sets a deadline here, so
+ * this is the tap handler's cold wait: far above a bridge call, below a freeze.
+ */
+export const LAPSE_REMINDER_ADAPTER_DEADLINE_MS = 3_000
 
 /** Why a pass ran. A fixed set, because KTD9 facets on it. */
 export type LapseReminderPassReason =
@@ -118,11 +124,36 @@ export function createLapseReminderLifecycle(
     })
   }
 
-  async function dismissDelivered(reason: LapseReminderPassReason) {
+  /** Each removal step reports whether it landed, so a clear that could not
+   *  finish can hand the rest of its cleanup to the next pass. */
+  async function dismissDelivered(
+    reason: LapseReminderPassReason,
+  ): Promise<boolean> {
     try {
-      await deps.adapter.dismissDelivered()
+      await withTimeout(
+        deps.adapter.dismissDelivered(),
+        LAPSE_REMINDER_ADAPTER_DEADLINE_MS,
+      )
+      return true
     } catch (error) {
       logStepFailure(reason, "dismiss", null, error)
+      return false
+    }
+  }
+
+  async function cancelReminder(
+    reason: LapseReminderPassReason,
+    kind: LapseReminderKind,
+  ): Promise<boolean> {
+    try {
+      await withTimeout(
+        deps.adapter.cancel(LAPSE_REMINDER_IDENTIFIERS[kind]),
+        LAPSE_REMINDER_ADAPTER_DEADLINE_MS,
+      )
+      return true
+    } catch (error) {
+      logStepFailure(reason, "cancel", kind, error)
+      return false
     }
   }
 
@@ -131,16 +162,14 @@ export function createLapseReminderLifecycle(
   async function standDown(
     reason: LapseReminderPassReason,
     outcome: LapseReminderPassOutcome,
-  ) {
-    for (const kind of REMINDER_KINDS) {
-      try {
-        await deps.adapter.cancel(LAPSE_REMINDER_IDENTIFIERS[kind])
-      } catch (error) {
-        logStepFailure(reason, "cancel", kind, error)
-      }
+  ): Promise<boolean> {
+    let cleaned = true
+    for (const kind of LAPSE_REMINDER_KINDS) {
+      if (!(await cancelReminder(reason, kind))) cleaned = false
     }
-    await dismissDelivered(reason)
+    if (!(await dismissDelivered(reason))) cleaned = false
     deps.telemetry.info("lapse_reminder.pass", { pass_reason: reason, outcome })
+    return cleaned
   }
 
   /** A read that FAILED is not a denial. The two stay apart: one is the
@@ -149,83 +178,98 @@ export function createLapseReminderLifecycle(
     reason: LapseReminderPassReason,
   ): Promise<"granted" | "denied" | "unreadable"> {
     try {
-      return (await deps.adapter.getPermission()).granted ? "granted" : "denied"
+      const status = await withTimeout(
+        deps.adapter.getPermission(),
+        LAPSE_REMINDER_ADAPTER_DEADLINE_MS,
+      )
+      return status.granted ? "granted" : "denied"
     } catch (error) {
       logStepFailure(reason, "permission", null, error)
       return "unreadable"
     }
   }
 
+  /** A clear is the only pass that empties the tray, and only a sign-out makes
+   *  another clear. A cleanup that did not land latches here, so the next
+   *  ordinary pass finishes it instead of waiting for that sign-out. */
+  let clearCleanupPending = false
+
   async function runOnce(reason: LapseReminderPassReason) {
+    const clearing = reason === "record_cleared" || clearCleanupPending
+    let cleaned = true
     try {
-      await deps.hydrateRecord()
-    } catch {
-      // A failed read leaves the record absent, which reminders read as Home.
-    }
-    if (!deps.enabled) {
-      await standDown(reason, "gate_off")
-      return
-    }
-    const permission = await readPermission(reason)
-    if (permission === "denied") {
-      await standDown(reason, "not_granted")
-      return
-    }
-    if (permission === "unreadable") {
-      // Cancelling here destroys reminders that were correct, and reporting a
-      // denial bills a transient fault to the opt-in rate. A clear is the one
-      // exception: removing the previous account's video still wins.
-      if (reason === "record_cleared") {
-        await standDown(reason, "permission_unreadable")
+      try {
+        await deps.hydrateRecord()
+      } catch {
+        // A failed read leaves the record absent, which reminders read as Home.
+      }
+      if (!deps.enabled) {
+        cleaned = await standDown(reason, "gate_off")
         return
+      }
+      const permission = await readPermission(reason)
+      if (permission === "denied") {
+        cleaned = await standDown(reason, "not_granted")
+        return
+      }
+      if (permission === "unreadable") {
+        // Cancelling here destroys reminders that were correct, and reporting a
+        // denial bills a transient fault to the opt-in rate. A clear is the one
+        // exception: removing the previous account's video still wins.
+        if (clearing) {
+          cleaned = await standDown(reason, "permission_unreadable")
+          return
+        }
+        deps.telemetry.info("lapse_reminder.pass", {
+          pass_reason: reason,
+          outcome: "permission_unreadable",
+        })
+        return
+      }
+      // R18: a clear must also take the old video out of the tray, not just out
+      // of what is pending.
+      if (clearing) cleaned = await dismissDelivered(reason)
+
+      try {
+        await withTimeout(
+          deps.adapter.ensureChannel(),
+          LAPSE_REMINDER_ADAPTER_DEADLINE_MS,
+        )
+      } catch (error) {
+        logStepFailure(reason, "channel", null, error)
+      }
+
+      const record = deps.getRecord()
+      const targets = computeLapseReminderTargets(deps.now())
+      for (const kind of LAPSE_REMINDER_KINDS) {
+        try {
+          await withTimeout(
+            deps.adapter.schedule({
+              identifier: LAPSE_REMINDER_IDENTIFIERS[kind],
+              body: LAPSE_REMINDER_COPY[kind],
+              // The record names its slug `videoSlug`; the payload takes `slug`.
+              data: buildLapseReminderPayload(
+                kind,
+                record == null ? null : { slug: record.videoSlug },
+              ),
+              date: targets[kind],
+            }),
+            LAPSE_REMINDER_ADAPTER_DEADLINE_MS,
+          )
+        } catch (error) {
+          logStepFailure(reason, "schedule", kind, error)
+          // On a clear, removal outranks freshness: a reminder left pending here
+          // still carries the previous account's video (R18).
+          if (clearing && !(await cancelReminder(reason, kind))) cleaned = false
+        }
       }
       deps.telemetry.info("lapse_reminder.pass", {
         pass_reason: reason,
-        outcome: "permission_unreadable",
+        outcome: "scheduled",
       })
-      return
+    } finally {
+      clearCleanupPending = clearing && !cleaned
     }
-    // R18: a clear must also take the old video out of the tray, not just out
-    // of what is pending.
-    if (reason === "record_cleared") await dismissDelivered(reason)
-
-    try {
-      await deps.adapter.ensureChannel()
-    } catch (error) {
-      logStepFailure(reason, "channel", null, error)
-    }
-
-    const record = deps.getRecord()
-    const targets = computeLapseReminderTargets(deps.now())
-    for (const kind of REMINDER_KINDS) {
-      try {
-        await deps.adapter.schedule({
-          identifier: LAPSE_REMINDER_IDENTIFIERS[kind],
-          body: LAPSE_REMINDER_COPY[kind],
-          // The record names its slug `videoSlug`; the payload takes `slug`.
-          data: buildLapseReminderPayload(
-            kind,
-            record == null ? null : { slug: record.videoSlug },
-          ),
-          date: targets[kind],
-        })
-      } catch (error) {
-        logStepFailure(reason, "schedule", kind, error)
-        // On a clear, removal outranks freshness: a reminder left pending under
-        // this identifier still carries the previous account's video (R18).
-        if (reason === "record_cleared") {
-          try {
-            await deps.adapter.cancel(LAPSE_REMINDER_IDENTIFIERS[kind])
-          } catch (cancelError) {
-            logStepFailure(reason, "cancel", kind, cancelError)
-          }
-        }
-      }
-    }
-    deps.telemetry.info("lapse_reminder.pass", {
-      pass_reason: reason,
-      outcome: "scheduled",
-    })
   }
 
   let chain: Promise<unknown> = Promise.resolve()

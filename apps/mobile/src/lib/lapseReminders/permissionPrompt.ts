@@ -9,6 +9,7 @@
  */
 
 import { telemetryErrorMessage } from "../downloadErrors"
+import type { LapseReminderPermission } from "./constants"
 import type { LapseReminderTelemetry } from "./lifecycle"
 
 /** The value the latch stores. Only its presence is read (R9). */
@@ -36,11 +37,6 @@ export type LapseReminderPromptStep =
   | "permission_read"
   | "request"
   | "latch_write"
-
-export type LapseReminderPermission = {
-  granted: boolean
-  canAskAgain: boolean
-}
 
 /** The slice of the notifications adapter the prompt needs. The pass owns its
  *  own narrower slice, so neither one carries calls it never makes. */

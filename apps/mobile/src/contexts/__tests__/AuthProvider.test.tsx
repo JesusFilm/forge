@@ -42,7 +42,9 @@ jest.mock("../../lib/watchProgress/lifecycle", () => ({
   attachProgressLifecycle: jest.fn(() => jest.fn()),
 }))
 jest.mock("../../lib/lastWatched/store", () => {
-  const clear = jest.fn()
+  // One promise object, so identity proves the wiring hands the removal back.
+  const removal = Promise.resolve()
+  const clear = jest.fn(() => removal)
   return {
     getLastWatchedStore: () => ({ clear }),
     __clear: clear,
@@ -92,6 +94,14 @@ describe("AuthProvider → progress lifecycle wiring", () => {
     mockedAttach.mock.calls[0][0].clearLastWatched()
 
     expect(getLastWatchedStore().clear).toHaveBeenCalledTimes(1)
+  })
+
+  it("hands the clear's removal back, so the sign-out can await it", () => {
+    render()
+
+    expect(mockedAttach.mock.calls[0][0].clearLastWatched()).toBe(
+      getLastWatchedStore().clear(),
+    )
   })
 
   it("never clears the record just by mounting", () => {

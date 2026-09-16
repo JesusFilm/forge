@@ -5,6 +5,7 @@
  */
 
 import {
+  LAPSE_REMINDER_KINDS,
   LAPSE_REMINDER_PAYLOAD_VERSION,
   type LapseReminderKind,
 } from "./constants"
@@ -46,8 +47,6 @@ export type LapseReminderParseResult =
   | { ok: false; reason: LapseReminderParseReason }
 
 const WATCH_TARGET_PREFIX = "forgemobile://watch/"
-
-const KINDS: readonly LapseReminderKind[] = ["day1", "day7"]
 
 // RFC 3986's unreserved set. Everything else is either a delimiter the route
 // would read as structure or a character no slug producer emits.
@@ -132,7 +131,9 @@ export function parseLapseReminderPayload(
   if (payload.version !== LAPSE_REMINDER_PAYLOAD_VERSION) {
     return { ok: false, reason: "version_mismatch" }
   }
-  const kind = KINDS.find((candidate) => candidate === payload.kind)
+  const kind = LAPSE_REMINDER_KINDS.find(
+    (candidate) => candidate === payload.kind,
+  )
   if (kind == null) return { ok: false, reason: "unknown_kind" }
 
   const target = payload.target

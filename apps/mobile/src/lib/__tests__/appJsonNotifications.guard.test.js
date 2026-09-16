@@ -86,23 +86,27 @@ function readAppJson() {
   return JSON.parse(fs.readFileSync(path.join(APP_ROOT, "app.json"), "utf8"))
 }
 
-/** The plugin's options object, or null when the entry carries none. */
-function pluginOptions(config, name) {
-  const entries = config.expo.plugins ?? []
-  for (const entry of entries) {
-    if (!Array.isArray(entry)) continue
-    if (entry[0] !== name) continue
-    return entry[1] ?? null
-  }
-  return null
+/**
+ * Every entry for a plugin, with its index. It collects rather than stops at
+ * the first match, because @expo/config-plugins reduces the WHOLE list with no
+ * dedupe: a second entry is applied too, with its own options.
+ */
+function pluginEntries(config, name) {
+  return (config.expo.plugins ?? [])
+    .map((entry, index) => ({ entry, index }))
+    .filter(({ entry }) => (Array.isArray(entry) ? entry[0] : entry) === name)
 }
 
-/** Index of a plugin entry in either its bare-string or [name, options] form. */
-function pluginIndex(config, name) {
-  const entries = config.expo.plugins ?? []
-  return entries.findIndex((entry) =>
-    Array.isArray(entry) ? entry[0] === name : entry === name,
+/** The options of every entry, `null` where an entry carries none. */
+function pluginOptions(config, name) {
+  return pluginEntries(config, name).map(({ entry }) =>
+    Array.isArray(entry) ? (entry[1] ?? null) : null,
   )
+}
+
+/** The index of every entry, in either bare-string or [name, options] form. */
+function pluginIndexes(config, name) {
+  return pluginEntries(config, name).map(({ index }) => index)
 }
 
 /**
@@ -177,23 +181,50 @@ function readInstalled(relative) {
 }
 
 describe("the notifications plugin declares no more than local reminders need", () => {
-  it("registers the plugin with exactly the pinned options", () => {
-    const options = pluginOptions(readAppJson(), PLUGIN)
-
-    // Anti-vacuous: a renamed or de-optioned entry would make every assertion
-    // below read against null.
-    expect(options).not.toBeNull()
-    expect(options).toEqual(EXPECTED_OPTIONS)
+  it("registers the plugin once, with exactly the pinned options", () => {
+    // The COUNT is as load-bearing as the values: a second entry is applied
+    // too and can widen the build, while a first-match read keeps reporting
+    // the pinned options. A renamed entry reads as the empty list.
+    expect(pluginOptions(readAppJson(), PLUGIN)).toEqual([EXPECTED_OPTIONS])
   })
 
   it("leaves the two options that would widen the build unset", () => {
-    const options = pluginOptions(readAppJson(), PLUGIN)
+    const entries = pluginOptions(readAppJson(), PLUGIN)
 
     // `toEqual` above already forbids extra keys; this names the two that
-    // matter so the failure message points at the premise, not at a diff.
-    for (const key of FORBIDDEN_OPTION_KEYS) {
-      expect(options[key]).toBeUndefined()
+    // matter so the failure message points at the premise, not at a diff. It
+    // reads EVERY entry, because Expo applies every entry.
+    expect(entries.length).toBeGreaterThan(0)
+    for (const options of entries) {
+      for (const key of FORBIDDEN_OPTION_KEYS) {
+        expect(options?.[key]).toBeUndefined()
+      }
     }
+  })
+
+  it("catches a duplicated plugin entry (positive control)", () => {
+    // What a first-match read misses. The pinned entry still reads first while
+    // the second one adds the background mode, and the falsy option on the
+    // first one never takes it away again.
+    const duplicated = {
+      expo: {
+        plugins: [
+          [PLUGIN, EXPECTED_OPTIONS],
+          "expo-splash-screen",
+          [PLUGIN, { enableBackgroundRemoteNotifications: true }],
+        ],
+      },
+    }
+
+    expect(pluginOptions(duplicated, PLUGIN)).toHaveLength(2)
+    expect(pluginOptions(duplicated, PLUGIN)).not.toEqual([EXPECTED_OPTIONS])
+    expect(pluginIndexes(duplicated, PLUGIN)).toEqual([0, 2])
+    // The sweep above reads every entry, so the second one fails it.
+    expect(
+      pluginOptions(duplicated, PLUGIN).some(
+        (options) => options?.enableBackgroundRemoteNotifications,
+      ),
+    ).toBe(true)
   })
 
   it("ships the notification icon it names, as a silhouette on transparency", () => {
@@ -254,10 +285,10 @@ describe("the notifications plugin declares no more than local reminders need", 
     )
   })
 
-  it("requests no exact-alarm permission anywhere in the config", () => {
-    // Read the WHOLE file, not just the permission arrays: `android.permissions`,
-    // a plugin option and a manifest mod are three different places one could
-    // land, and R6 forbids it in all of them.
+  it("requests no exact-alarm permission anywhere in app.json", () => {
+    // Read the WHOLE file, not just the permission arrays: `android.permissions`
+    // and a plugin option both land here, and R6 forbids both. A config-plugin
+    // mod is JavaScript under plugins/, which this text scan does not reach.
     const source = fs.readFileSync(path.join(APP_ROOT, "app.json"), "utf8")
 
     for (const permission of EXACT_ALARM_PERMISSIONS) {
@@ -280,10 +311,12 @@ describe("the notifications plugin declares no more than local reminders need", 
     // runs mods last-registered-first, and expo-splash-screen REPLACES rather
     // than merges. Leaf modules sit ahead of it.
     const config = readAppJson()
-    const splash = pluginIndex(config, "expo-splash-screen")
+    const splash = pluginIndexes(config, "expo-splash-screen")
+    const notifications = pluginIndexes(config, PLUGIN)
 
-    expect(splash).toBeGreaterThanOrEqual(0)
-    expect(pluginIndex(config, PLUGIN)).toBeLessThan(splash)
+    expect(splash).toHaveLength(1)
+    expect(notifications).toHaveLength(1)
+    expect(notifications[0]).toBeLessThan(splash[0])
   })
 
   it("upstream premise: the iOS plugin always writes aps-environment", () => {
@@ -355,10 +388,10 @@ describe("the notifications plugin declares no more than local reminders need", 
       },
     }
 
-    expect(pluginOptions(stripped, PLUGIN)).not.toEqual(EXPECTED_OPTIONS)
-    expect(pluginOptions(stripped, PLUGIN).icon).toBeUndefined()
-    expect(pluginOptions(stripped, "expo-image")).toBeNull()
-    expect(pluginIndex(stripped, "expo-splash-screen")).toBe(-1)
+    expect(pluginOptions(stripped, PLUGIN)).not.toEqual([EXPECTED_OPTIONS])
+    expect(pluginOptions(stripped, PLUGIN)[0].icon).toBeUndefined()
+    expect(pluginOptions(stripped, "expo-image")).toEqual([null])
+    expect(pluginIndexes(stripped, "expo-splash-screen")).toEqual([])
     expect(stripped.expo.android.blockedPermissions ?? []).toHaveLength(0)
   })
 })

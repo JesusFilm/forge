@@ -11,7 +11,7 @@
 import {
   LAPSE_REMINDER_COPY,
   LAPSE_REMINDER_IDENTIFIERS,
-  type LapseReminderKind,
+  LAPSE_REMINDER_KINDS,
 } from "../constants"
 import {
   LAPSE_REMINDER_HOME_TARGET,
@@ -19,11 +19,10 @@ import {
 } from "../payload"
 import { computeLapseReminderTargets } from "../schedule"
 import {
+  LAPSE_REMINDER_ADAPTER_DEADLINE_MS,
   createLapseReminderLifecycle,
   type LapseReminderLifecycleDeps,
 } from "../lifecycle"
-
-const KINDS: readonly LapseReminderKind[] = ["day1", "day7"]
 
 /** A fixed instant inside the delivery window, so nothing snaps in these tests
  *  unless the test asks for it. 2026-09-16 10:00 local. */
@@ -39,6 +38,10 @@ type FakeAdapterOptions = {
   granted?: boolean
   /** Microtask hops each call waits, so overlapping passes really interleave. */
   latency?: () => number
+  /** A call that never resolves and never rejects, keyed by the same label the
+   *  adapter records in `calls`. Every other fault here settles, so this is the
+   *  only way to reach the wedged-chain mode. */
+  hang?: (call: string) => boolean
   failSchedule?: (identifier: string) => boolean
   failCancel?: (identifier: string) => boolean
   failDismiss?: () => boolean
@@ -56,9 +59,10 @@ function createFakeAdapter(options: FakeAdapterOptions = {}) {
   let delivered = 0
   let permissionReads = 0
 
-  async function wait() {
+  async function wait(call: string) {
     const hops = options.latency?.() ?? 0
     for (let hop = 0; hop < hops; hop += 1) await Promise.resolve()
+    if (options.hang?.(call)) await new Promise<never>(() => {})
   }
 
   return {
@@ -79,13 +83,13 @@ function createFakeAdapter(options: FakeAdapterOptions = {}) {
     },
     async ensureChannel() {
       calls.push("channel")
-      await wait()
+      await wait("channel")
       if (options.failChannel?.()) throw new Error("channel failed")
     },
     async getPermission() {
       calls.push("permission")
       permissionReads += 1
-      await wait()
+      await wait("permission")
       if (options.failPermission?.()) throw new Error("permission read failed")
       return { granted: options.granted ?? true }
     },
@@ -96,7 +100,7 @@ function createFakeAdapter(options: FakeAdapterOptions = {}) {
       date: Date
     }) {
       calls.push(`schedule:${input.identifier}`)
-      await wait()
+      await wait(`schedule:${input.identifier}`)
       if (options.failSchedule?.(input.identifier)) {
         throw new Error(options.scheduleErrorMessage ?? "schedule failed")
       }
@@ -110,13 +114,13 @@ function createFakeAdapter(options: FakeAdapterOptions = {}) {
     },
     async cancel(identifier: string) {
       calls.push(`cancel:${identifier}`)
-      await wait()
+      await wait(`cancel:${identifier}`)
       if (options.failCancel?.(identifier)) throw new Error("cancel failed")
       pending.delete(identifier)
     },
     async dismissDelivered() {
       calls.push("dismiss")
-      await wait()
+      await wait("dismiss")
       if (options.failDismiss?.()) throw new Error("dismiss failed")
       delivered = 0
     },
@@ -223,7 +227,7 @@ describe("the lapse reminder schedule pass", () => {
 
     const targets = computeLapseReminderTargets(NOW)
     expect(identifiersOf(harness.adapter)).toEqual(BOTH_IDENTIFIERS)
-    for (const kind of KINDS) {
+    for (const kind of LAPSE_REMINDER_KINDS) {
       const scheduled = harness.adapter.pending.get(
         LAPSE_REMINDER_IDENTIFIERS[kind],
       )
@@ -254,7 +258,7 @@ describe("the lapse reminder schedule pass", () => {
     expect(harness.adapter.pending.size).toBe(2)
     expect(harness.adapter.maxPending).toBe(2)
     expect(identifiersOf(harness.adapter)).toEqual(BOTH_IDENTIFIERS)
-    for (const kind of KINDS) {
+    for (const kind of LAPSE_REMINDER_KINDS) {
       expect(
         harness.adapter.pending
           .get(LAPSE_REMINDER_IDENTIFIERS[kind])
@@ -324,7 +328,7 @@ describe("the lapse reminder schedule pass", () => {
     harness.resolveHydration()
     await pass
 
-    for (const kind of KINDS) {
+    for (const kind of LAPSE_REMINDER_KINDS) {
       expect(
         harness.adapter.pending.get(LAPSE_REMINDER_IDENTIFIERS[kind])?.data
           .target,
@@ -338,7 +342,7 @@ describe("the lapse reminder schedule pass", () => {
 
     await lifecycle.runPass("mount")
 
-    for (const kind of KINDS) {
+    for (const kind of LAPSE_REMINDER_KINDS) {
       expect(
         harness.adapter.pending.get(LAPSE_REMINDER_IDENTIFIERS[kind])?.data
           .target,
@@ -359,7 +363,7 @@ describe("the lapse reminder schedule pass", () => {
 
     expect(harness.adapter.delivered).toBe(0)
     expect(harness.adapter.pending.size).toBe(2)
-    for (const kind of KINDS) {
+    for (const kind of LAPSE_REMINDER_KINDS) {
       expect(
         harness.adapter.pending.get(LAPSE_REMINDER_IDENTIFIERS[kind])?.data
           .target,
@@ -578,6 +582,87 @@ describe("the lapse reminder schedule pass", () => {
         .filter((entry) => entry.event === "lapse_reminder.step_failed")
         .map((entry) => entry.context.step),
     ).toContain("channel")
+  })
+
+  it("runs a later pass after an adapter call that never settles", async () => {
+    // Every other fault here rejects within a few microtask hops. A native call
+    // that neither resolves nor rejects wedges the one chain every pass runs
+    // on, so the feature stops for the life of the process.
+    jest.useFakeTimers()
+    try {
+      let hangs = true
+      const harness = createHarness({
+        record: "the-birth-of-jesus",
+        hang: (call) => hangs && call === "permission",
+      })
+      const lifecycle = createLapseReminderLifecycle(harness.deps)
+
+      void lifecycle.runPass("mount")
+      await settle()
+      expect(harness.adapter.pending.size).toBe(0)
+
+      hangs = false
+      void lifecycle.runPass("active")
+      jest.advanceTimersByTime(LAPSE_REMINDER_ADAPTER_DEADLINE_MS)
+      await settle()
+
+      expect(identifiersOf(harness.adapter)).toEqual(BOTH_IDENTIFIERS)
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
+  it("finishes a clear's tray dismiss on a later ordinary pass", async () => {
+    // A clear is the only pass that empties the tray, and only a fresh sign-out
+    // makes another clear. A failed dismiss must not leave the previous
+    // account's notification in the tray until then.
+    let dismissFails = true
+    const harness = createHarness({
+      record: "the-birth-of-jesus",
+      failDismiss: () => dismissFails,
+    })
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+
+    harness.adapter.deliver(1)
+    harness.setRecord(null)
+    await lifecycle.runPass("record_cleared")
+    expect(harness.adapter.delivered).toBe(1)
+
+    dismissFails = false
+    await lifecycle.runPass("active")
+
+    expect(harness.adapter.delivered).toBe(0)
+  })
+
+  it("cancels a stale reminder later when a clear's schedule AND cancel failed", async () => {
+    // Both halves of the clear's removal fail in the same pass, so a reminder
+    // naming the signed-out account's video stays pending. An ordinary pass
+    // never cancels one, so nothing else takes it away (R18).
+    let scheduleFails = false
+    let cancelFails = false
+    const harness = createHarness({
+      record: "the-birth-of-jesus",
+      failSchedule: () => scheduleFails,
+      failCancel: () => cancelFails,
+    })
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+
+    await lifecycle.runPass("mount")
+    harness.setRecord(null)
+    scheduleFails = true
+    cancelFails = true
+    await lifecycle.runPass("record_cleared")
+    for (const kind of LAPSE_REMINDER_KINDS) {
+      expect(
+        harness.adapter.pending.get(LAPSE_REMINDER_IDENTIFIERS[kind])?.data
+          .target,
+      ).toBe("forgemobile://watch/the-birth-of-jesus")
+    }
+
+    cancelFails = false
+    await lifecycle.runPass("active")
+
+    expect(harness.adapter.pending.size).toBe(0)
   })
 })
 

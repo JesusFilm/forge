@@ -4,8 +4,15 @@
  * last-watched record owns its own storage key; it is not one of these.
  */
 
+/**
+ * R5's two kinds, in the order a pass schedules them. The schedule pass and the
+ * payload parser read this one array, so a third kind can never reach one half
+ * of the contract and not the other.
+ */
+export const LAPSE_REMINDER_KINDS = ["day1", "day7"] as const
+
 /** The two reminders R5 allows. Nothing schedules a third. */
-export type LapseReminderKind = "day1" | "day7"
+export type LapseReminderKind = (typeof LAPSE_REMINDER_KINDS)[number]
 
 /**
  * KTD8's single build-time switch, on one line as a bare literal so a reader
@@ -54,6 +61,16 @@ export const LAPSE_REMINDER_CHANNEL_NAME = "Reminders"
 export const LAPSE_REMINDER_IDENTIFIERS: Record<LapseReminderKind, string> = {
   day1: "lapse-reminder-day1",
   day7: "lapse-reminder-day7",
+}
+
+/**
+ * What the pass and the prompt need of a permission status. Narrower than the
+ * module's own, which carries a platform surface neither one reads. It lives in
+ * this leaf so the pure prompt never imports the adapter to name the shape.
+ */
+export type LapseReminderPermission = {
+  granted: boolean
+  canAskAgain: boolean
 }
 
 /**

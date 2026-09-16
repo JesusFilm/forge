@@ -238,6 +238,25 @@ describe("hydrate", () => {
     expect(store.getRecord()?.videoSlug).toBe("the-birth-of-jesus")
   })
 
+  it("retries after a read seam that throws synchronously", async () => {
+    // The throw lands in the async body's synchronous prologue, before the
+    // memo it releases is assigned. The write path already survives this
+    // seam; the read path must too.
+    const { store, storage } = makeStore()
+    storage.getItem.mockImplementationOnce(() => {
+      throw new Error("no storage")
+    })
+
+    await expect(store.hydrate()).resolves.toBeUndefined()
+    expect(store.getRecord()).toBeNull()
+
+    storage.getItem.mockResolvedValueOnce(blobFor("the-birth-of-jesus"))
+    await store.hydrate()
+
+    expect(storage.getItem).toHaveBeenCalledTimes(2)
+    expect(store.getRecord()?.videoSlug).toBe("the-birth-of-jesus")
+  })
+
   it("does NOT retry after a successful read that found nothing", async () => {
     // An empty store is an answer. Retrying it would read on every pass.
     const { store, storage } = makeStore(null)
@@ -255,10 +274,10 @@ describe("clear", () => {
     store.write("the-birth-of-jesus")
     await Promise.resolve()
 
-    store.clear()
+    const removal = store.clear()
 
     expect(store.getRecord()).toBeNull()
-    await Promise.resolve()
+    await removal
     expect(storage.removeItem).toHaveBeenCalledWith(LAST_WATCHED_STORAGE_KEY)
     expect(storage.items.has(LAST_WATCHED_STORAGE_KEY)).toBe(false)
   })
@@ -303,6 +322,64 @@ describe("clear", () => {
     })
 
     expect(() => store.clear()).not.toThrow()
+    expect(store.getRecord()).toBeNull()
+  })
+
+  it("reads back as no record in the next process when the removal rejects", async () => {
+    // R11's one invariant: the signed-out account's video must not survive.
+    const { store, storage } = makeStore()
+    store.write("previous-account-video")
+    await Promise.resolve()
+    storage.removeItem.mockRejectedValue(new Error("disk full"))
+
+    await store.clear()
+
+    const restarted = createLastWatchedStore({
+      getItem: storage.getItem,
+      setItem: storage.setItem,
+      removeItem: storage.removeItem,
+      now: () => NOW,
+    })
+    await restarted.hydrate()
+
+    expect(restarted.getRecord()).toBeNull()
+  })
+
+  it("fires the removal again when a later read still finds the key", async () => {
+    // The clear's own storage work failed, so the key survived it. A later
+    // read is the only event that can notice.
+    const { store, storage } = makeStore(blobFor("previous-account-video"))
+    storage.setItem.mockRejectedValueOnce(new Error("disk full"))
+    storage.removeItem.mockRejectedValueOnce(new Error("disk full"))
+
+    await store.clear()
+    expect(storage.items.has(LAST_WATCHED_STORAGE_KEY)).toBe(true)
+
+    await store.hydrate()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(store.getRecord()).toBeNull()
+    expect(storage.items.has(LAST_WATCHED_STORAGE_KEY)).toBe(false)
+  })
+
+  it("refuses a fresh read that races an unfinished clear", async () => {
+    // The record_cleared pass hydrates first. A timed-out cold-launch read
+    // left no memo, so that pass starts a FRESH read while the clear's own
+    // storage work is still in flight.
+    const { store, storage } = makeStore(blobFor("previous-account-video"))
+    jest.useFakeTimers()
+    storage.getItem.mockReturnValueOnce(new Promise<string | null>(() => {}))
+    const coldLaunch = store.hydrate()
+    jest.advanceTimersByTime(LAST_WATCHED_HYDRATE_TIMEOUT_MS + 1)
+    await coldLaunch
+    jest.useRealTimers()
+    const pending = () => new Promise<void>(() => {})
+    storage.setItem.mockImplementation(pending)
+    storage.removeItem.mockImplementation(pending)
+
+    void store.clear()
+    await store.hydrate()
+
     expect(store.getRecord()).toBeNull()
   })
 

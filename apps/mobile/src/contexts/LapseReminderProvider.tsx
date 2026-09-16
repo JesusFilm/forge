@@ -29,9 +29,10 @@ import { useExperienceSelection } from "./ExperienceSelectionProvider"
 /**
  * Lifecycle host for the lapse reminders (KTD2): it runs the schedule pass on
  * mount, on `active`, on `background`, and on a record clear, it attaches the
- * playback subscriber that keeps the last-watched record current, it hosts the
- * once-per-install permission prompt (KTD6), and it bridges the router and the
- * experience selection into the router-free tap handler (KTD7).
+ * playback subscriber that keeps the last-watched record current while the
+ * gate is on (KTD8), it hosts the once-per-install permission prompt (KTD6),
+ * and it bridges the router and the experience selection into the router-free
+ * tap handler (KTD7).
  *
  * Every piece of state lives in a plain-module store or in the closure of one
  * attached handler. The single hook-lifetime ref holds the tap handler, and
@@ -45,11 +46,16 @@ export function LapseReminderProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const record = getLastWatchedStore()
     const playback = getPlaybackRequestStore()
-    const detachWriter = attachLastWatchedWriter({
-      subscribe: (listener) => playback.subscribe(listener),
-      getSnapshot: () => playback.getSnapshot(),
-      write: (videoSlug) => record.write(videoSlug),
-    })
+    // KTD8 reaches the COLLECTION too: a disabled feature stores no new
+    // viewing history. A record written before the flip stays on the device,
+    // because only R11's sign-out erases it.
+    const detachWriter = LAPSE_REMINDERS_ENABLED
+      ? attachLastWatchedWriter({
+          subscribe: (listener) => playback.subscribe(listener),
+          getSnapshot: () => playback.getSnapshot(),
+          write: (videoSlug) => record.write(videoSlug),
+        })
+      : () => {}
     const lifecycle = createLapseReminderLifecycle({
       adapter: lapseReminderNotifications,
       enabled: LAPSE_REMINDERS_ENABLED,

@@ -31,7 +31,7 @@ function buildDeps(initialAccountId: string | null = null) {
     resetStore: jest.fn(() => {
       calls.push("reset")
     }),
-    clearLastWatched: jest.fn(() => {
+    clearLastWatched: jest.fn(async () => {
       calls.push("clearLastWatched")
     }),
     removeStorageItem: jest.fn(async (key: string) => {
@@ -131,6 +131,59 @@ describe("attachProgressLifecycle", () => {
       "snapshot",
       "server",
       "flush",
+    ])
+  })
+
+  it("waits for the record clear to land", async () => {
+    // The record's key is the only one of the three whose removal a sign-out
+    // did not wait for, so a removal that never landed left the previous
+    // account's video on disk for the next launch to read back.
+    const { deps, calls, setAccount } = buildDeps("user-1")
+    let landClear: () => void = () => {}
+    deps.clearLastWatched = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          landClear = () => {
+            calls.push("clearLastWatched")
+            resolve()
+          }
+        }),
+    )
+    attachProgressLifecycle(deps)
+    await flushMicrotasks()
+    calls.length = 0
+
+    setAccount(null)
+    await flushMicrotasks()
+    expect(calls).toEqual(["reset"])
+
+    landClear()
+    await flushMicrotasks()
+
+    expect(calls).toEqual([
+      "reset",
+      "clearLastWatched",
+      `remove:${WATCH_PROGRESS_SNAPSHOT_STORAGE_KEY}`,
+      `remove:${WATCH_PROGRESS_QUEUE_STORAGE_KEY}`,
+    ])
+  })
+
+  it("still removes both progress keys when the record clear rejects", async () => {
+    const { deps, calls, setAccount } = buildDeps("user-1")
+    deps.clearLastWatched = jest.fn(async () => {
+      throw new Error("record store exploded")
+    })
+    attachProgressLifecycle(deps)
+    await flushMicrotasks()
+    calls.length = 0
+
+    setAccount(null)
+    await flushMicrotasks()
+
+    expect(calls).toEqual([
+      "reset",
+      `remove:${WATCH_PROGRESS_SNAPSHOT_STORAGE_KEY}`,
+      `remove:${WATCH_PROGRESS_QUEUE_STORAGE_KEY}`,
     ])
   })
 

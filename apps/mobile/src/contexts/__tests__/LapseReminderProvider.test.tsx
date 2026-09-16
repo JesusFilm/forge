@@ -13,6 +13,12 @@
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
 )
+// The gate is a build-time constant read through a live binding, so a test
+// flips it on the mocked module. `jest.isolateModules` would hand the provider
+// a second React.
+jest.mock("../../lib/lapseReminders/constants", () => ({
+  ...jest.requireActual("../../lib/lapseReminders/constants"),
+}))
 jest.mock("../../lib/lapseReminders/notificationsAdapter", () => {
   // A named parameter inside a function TYPE trips babel-plugin-jest-hoist's
   // out-of-scope check, so this factory keeps no listener registry: the test
@@ -166,6 +172,10 @@ const splashModule = (require as unknown as NodeRequireLike)(
   __resetSplash: () => void
 }
 
+const lapseConstants = jest.requireMock(
+  "../../lib/lapseReminders/constants",
+) as { LAPSE_REMINDERS_ENABLED: boolean }
+
 const adapter = lapseReminderNotifications as unknown as {
   ensureChannel: jest.Mock
   getPermission: jest.Mock
@@ -236,6 +246,9 @@ async function flush() {
 
 beforeEach(async () => {
   jest.clearAllMocks()
+  // The ON value, not the file's: flipping the real switch is an OTA-speed
+  // emergency lever, and it must not turn this suite red.
+  lapseConstants.LAPSE_REMINDERS_ENABLED = true
   appStateListeners.clear()
   splashModule.__resetSplash()
   resetDeepLinkOrigins()
@@ -662,5 +675,45 @@ describe("the reminder tap (U6)", () => {
 
     expect(notificationsModule.__unsubscribeResponses).toHaveBeenCalledTimes(1)
     expect(fakeRouter.push).not.toHaveBeenCalled()
+  })
+})
+
+describe("the build-time gate (KTD8)", () => {
+  it("records no new video while the gate is off", async () => {
+    const playback = (require as unknown as NodeRequireLike)(
+      "../../lib/miniPlayer/playbackRequest",
+    ) as {
+      __emitPlaying: (slug: string) => void
+      getPlaybackRequestStore: () => { subscribe: jest.Mock }
+    }
+    const store = recordStoreModule.getLastWatchedStore()
+    lapseConstants.LAPSE_REMINDERS_ENABLED = false
+    const renderer = await render()
+
+    await act(async () => {
+      playback.__emitPlaying("considering-christmas")
+    })
+
+    // Over the WHOLE render: the writer also reads once at attach, so a
+    // mockClear after the render would hide that first write.
+    expect(store.write).not.toHaveBeenCalled()
+    // And the mechanism, not just the outcome: no writer is attached at all.
+    expect(playback.getPlaybackRequestStore().subscribe).not.toHaveBeenCalled()
+    await act(async () => renderer.unmount())
+  })
+
+  it("still stands the pending reminders down while the gate is off", async () => {
+    lapseConstants.LAPSE_REMINDERS_ENABLED = false
+    const renderer = await render()
+
+    // KTD8's off path is load-bearing: the OS keeps the reminders scheduled
+    // before the flip, so the pass that schedules nothing still clears them.
+    expect(adapter.cancel.mock.calls.map((call) => call[0])).toEqual([
+      LAPSE_REMINDER_IDENTIFIERS.day1,
+      LAPSE_REMINDER_IDENTIFIERS.day7,
+    ])
+    expect(adapter.dismissDelivered).toHaveBeenCalled()
+    expect(adapter.schedule).not.toHaveBeenCalled()
+    await act(async () => renderer.unmount())
   })
 })

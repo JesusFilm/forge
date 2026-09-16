@@ -1,7 +1,7 @@
 import { watchSlugFromUrl } from "../../deepLinkOrigin"
 import {
+  LAPSE_REMINDER_KINDS,
   LAPSE_REMINDER_PAYLOAD_VERSION,
-  type LapseReminderKind,
 } from "../constants"
 import {
   LAPSE_REMINDER_HOME_TARGET,
@@ -11,8 +11,6 @@ import {
   buildLapseReminderPayload,
   parseLapseReminderPayload,
 } from "../payload"
-
-const KINDS: readonly LapseReminderKind[] = ["day1", "day7"]
 
 /** A payload built by hand, the way an untrusted one arrives from the OS. */
 function payload(target: string, overrides: Record<string, unknown> = {}) {
@@ -29,19 +27,22 @@ function watchUrl(slug: string): string {
 }
 
 describe("buildLapseReminderPayload", () => {
-  it.each(KINDS)("round-trips kind, target and version for %s", (kind) => {
-    const built = buildLapseReminderPayload(kind, {
-      slug: "the-birth-of-jesus",
-    })
+  it.each(LAPSE_REMINDER_KINDS)(
+    "round-trips kind, target and version for %s",
+    (kind) => {
+      const built = buildLapseReminderPayload(kind, {
+        slug: "the-birth-of-jesus",
+      })
 
-    expect(built.version).toBe(LAPSE_REMINDER_PAYLOAD_VERSION)
-    expect(built.kind).toBe(kind)
-    expect(parseLapseReminderPayload(built)).toEqual({
-      ok: true,
-      kind,
-      slug: "the-birth-of-jesus",
-    })
-  })
+      expect(built.version).toBe(LAPSE_REMINDER_PAYLOAD_VERSION)
+      expect(built.kind).toBe(kind)
+      expect(parseLapseReminderPayload(built)).toEqual({
+        ok: true,
+        kind,
+        slug: "the-birth-of-jesus",
+      })
+    },
+  )
 
   it("carries exactly the three fields KTD4 allows", () => {
     const built = buildLapseReminderPayload("day1", {

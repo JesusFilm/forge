@@ -242,9 +242,6 @@ To re-enable, all three steps, in one PR:
    installed build carries and reaches nobody; a flag-only OTA on the old
    runtime cuts from the flat field straight to Home.
 
-A cold reminder tap registers its arrival after the splash skip decision's
-budget, so the animation then plays over a reminder launch.
-
 The reverse (this change) needs the same native build for the same reason. The
 design record is `docs/plans/2026-09-09-1059-feat-mobile-animated-splash-plan.md`.
 
@@ -259,6 +256,12 @@ tree, by design. **Open decision, owner: the release caller.** The default
 posture is to wait for the build. Taking the animation off installed devices
 sooner needs a deliberate throwaway-branch OTA and an explicit call; do not
 improvise it from `main`.
+
+**With the splash ON it plays over a reminder launch, and the budget is not
+why:** `isExternalLaunch` reads a flag only `registerDeepLinkUrl` sets, and a
+reminder tap calls `registerDeepLinkSlug`. Teach that read about
+reminder-origin arrivals; a wider `SPLASH_SKIP_DECISION_BUDGET_MS` changes
+nothing (`docs/plans/2026-09-16-1101-feat-mobile-lapse-reminders-plan.md`).
 
 ## Running on a simulator (env setup)
 
@@ -639,6 +642,98 @@ need the shared predicate and `/watch/[slug]` does not. Before copying a gate
 between player surfaces, check which side of that line you are on. The general
 rule: every layer that can hide the recovery affordance must clear on every path
 that releases the gate.
+
+## Lapse reminders (local notifications)
+
+**Two LOCAL notifications — day 1 and day 7 after the last app use — that
+reopen the last video the viewer watched.** The app registers no push token and
+calls no server. `src/contexts/LapseReminderProvider.tsx` is the only host: it
+mounts inside `ExperienceSelectionProvider` in `app/_layout.tsx` and wires four
+pure modules — the schedule pass (`src/lib/lapseReminders/lifecycle.ts`), the
+once-per-install permission prompt (`permissionPrompt.ts`), the tap handler
+(`tapHandler.ts`) and the last-watched writer (`src/lib/lastWatched/`). Each
+one takes every dependency by injection, so the whole feature tests with no
+native module. That same design is why the guards below exist. The design
+record is `docs/plans/2026-09-16-1101-feat-mobile-lapse-reminders-plan.md`; it defines
+the KTD, R and AE numbers the source comments cite.
+
+- **`LAPSE_REMINDERS_ENABLED` is the whole kill switch, and OFF is not inert.**
+  It sits in `src/lib/lapseReminders/constants.ts`, on one line, as a bare
+  literal, in a file that imports nothing — so it flips by OTA alone. With it
+  off the schedule pass still runs, and it cancels both identifiers and
+  dismisses every delivered reminder. The tap handler still consumes a pending
+  tap and clears the stored response; the gate only stops the navigation. That
+  clear matters: an uncleared response replays on every later attach for the
+  life of the install. The prompt asks nothing, and it writes no asked-once
+  latch, so the first launch of a build that turns the feature on still gets
+  its one prompt. `lapseRemindersKillSwitch.guard.test.js` pins the
+  one-line shape, the zero-import leaf, and that no other module declares the
+  same name.
+- **`src/lib/lapseReminders/notificationsAdapter.ts` is the ONLY file that may
+  import `expo-notifications`.** `lapseReminderWiring.guard.test.js` walks the
+  source tree for the specifier and fails on a second importer. It also pins
+  the provider's mount point and the adapter `require` inside `app/_layout.tsx`'s
+  guarded block — that require is what registers the foreground handler at the
+  adapter's module scope, so a reminder that fires while the app is open shows
+  nothing. `notificationsEntryPoint.guard.test.js` covers the other side: it
+  resolves the installed module, checks every call the adapter makes, pins the
+  version floor, and rejects the two deprecated `*Async` spellings of the
+  last-response pair. The adapter binds the SYNCHRONOUS pair, because on a cold
+  start the OS replays the tap into the last response rather than into the
+  listener.
+- **The injected log sink must stay named `telemetry`, and every context must
+  stay an inline object literal.** `datadogReservedAttributes.guard.test.js`
+  sweeps for Datadog's reserved attribute names, and it reads only sinks
+  spelled `datadogLog`, `DdLogs` or `telemetry`. It follows an INLINE literal
+  only; a context hoisted into a variable is a documented blind spot. So a
+  rename to `log`, or a hoisted context, takes every emit site out of the sweep
+  with the whole suite still green. Datadog then drops a reserved name on
+  ingest with no error, and only the facet goes missing.
+  `lapseReminderWiring.guard.test.js` pins the literal `telemetry: datadogLog`
+  in the provider.
+- **The notification icon is a DEDICATED asset. Never point the plugin at
+  `adaptive-icon-monochrome.png`.** Android draws a notification icon from the
+  ALPHA CHANNEL alone, so both assets are a white mark on transparency and the
+  swap looks safe. The monochrome one is drawn for the 108dp adaptive canvas
+  whose middle 72dp shows, so it put the mark at 40.6% x 30.2% of the
+  status-bar slot (measured 2026-09-16). `scripts/generate-app-icon.mjs` emits
+  `assets/notification-icon.png` from the same source at its own
+  `WIDTH_NOTIFICATION`. `appJsonNotifications.guard.test.js` decodes the
+  committed PNG and measures its alpha bounding box against
+  `MIN_MARK_WIDTH_FRACTION`, with the adaptive silhouette as the positive
+  control. The same guard pins `defaultChannel` and
+  `enableBackgroundRemoteNotifications` as unset, and both exact-alarm
+  permissions as absent.
+- **The last-watched writer's private `lastWrittenSlug` latch is deliberately
+  NOT reset on a record clear (AE9).** It lives in
+  `src/lib/lastWatched/lifecycle.ts`. A sign-out clears the record but does not
+  stop playback, so a reset would re-record the video that is still playing and
+  point the reminders back at the previous account. The test named "does NOT
+  re-record the same video after a sign-out clears the record" in
+  `src/lib/lastWatched/__tests__/lifecycle.test.ts` fails on a reset.
+- **Two fixed identifiers: `lapse-reminder-day1` and `lapse-reminder-day7`.**
+  Scheduling under an identifier that is already pending REPLACES it, which is
+  how the two-at-most bound holds by construction, with no window between a
+  cancel and a schedule where nothing is pending. **That replacement is a
+  platform contract on iOS and only INFERRED on Android.** The U7 device pass
+  proves it; until that pass runs, treat the Android half as unverified. KTD2
+  carries the fallback order — schedule the new pair first, then cancel the old
+  pair by identifier.
+- **A tap reads the payload and nothing else, and the payload is untrusted.**
+  The in-memory record may not have hydrated on a cold start, so
+  `payload.ts` re-validates the version, the kind and the target,
+  caps the serialized payload at 1024 BYTES (not characters), and falls back to
+  Home for every shape it rejects. The cold tap then waits for the experience
+  selection to settle, bounded by `LAPSE_REMINDER_TAP_DEADLINE_MS`: the
+  experience shell swaps its element type when the stored slug resolves, which
+  remounts the stack under any route pushed before it.
+- **Adding the module moved the fingerprint runtime version, so a native build
+  must ship before any `eas update`.** `apps/mobile/package.json` and
+  `app.json` are both fingerprint inputs, and the plugin entry plus the new
+  asset changed them. An OTA published before that build targets a runtime no
+  installed app carries; `eas update` still exits 0 and reaches nobody. The
+  production channel is already dark for the splash change, so this feature
+  rides the same build.
 
 ## Cast SDK sheet theming
 

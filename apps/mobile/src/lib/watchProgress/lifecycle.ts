@@ -19,8 +19,9 @@ export type ProgressLifecycleDeps = {
   flushQueue: () => Promise<void>
   resetStore: () => void
   /** The last-watched record's own clear (R11). Injected, because that record
-   *  is for every user and owns storage this module must not reach into. */
-  clearLastWatched: () => void
+   *  is for every user and owns storage this module must not reach into. It
+   *  resolves when its storage work lands, like the two removals below. */
+  clearLastWatched: () => Promise<void>
   removeStorageItem: (key: string) => Promise<void>
 }
 
@@ -41,7 +42,9 @@ export function attachProgressLifecycle(deps: ProgressLifecycleDeps) {
   async function onSignedOut() {
     deps.resetStore()
     try {
-      deps.clearLastWatched()
+      // Awaited like the two keys below: a removal nobody waits for can fail
+      // unseen, and the next launch then reads the old account's video back.
+      await deps.clearLastWatched()
     } catch {
       // A failing record store must not cost the progress keys their removal.
     }

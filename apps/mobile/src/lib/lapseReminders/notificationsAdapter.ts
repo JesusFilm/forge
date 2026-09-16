@@ -13,6 +13,7 @@ import * as Notifications from "expo-notifications"
 import {
   LAPSE_REMINDER_CHANNEL_ID,
   LAPSE_REMINDER_CHANNEL_NAME,
+  type LapseReminderPermission,
 } from "./constants"
 import type { LapseReminderPayload } from "./payload"
 
@@ -27,13 +28,6 @@ Notifications.setNotificationHandler({
     shouldSetBadge: false,
   }),
 })
-
-/** What the pass and the prompt need to know. Narrower than the module's own
- *  status, which carries a platform-specific surface neither one reads. */
-export type LapseReminderPermission = {
-  granted: boolean
-  canAskAgain: boolean
-}
 
 export type LapseReminderScheduleInput = {
   identifier: string
