@@ -95,3 +95,14 @@ all admission and privacy checks remain mandatory. It adds no requests or waits.
 Curated candidates are a new source discriminator. Earlier tabs still need a
 reload to display that newly recovered inventory; those cases were previously
 empty. No existing healthy semantic/profile row depends on curated parsing.
+
+## Production destination slug finding
+
+The real selected-preview journey exposed HTTP 400 on the destination's next
+recommendation request: `origins-of-christmas--episode-1` is a valid canonical
+content slug, but the optional delivery seed-slug field rejected repeated
+hyphens. Feat-514 records this pre-existing mismatch. Two regressions reproduced
+it; the fix reuses `tryAsContentSlug` and retains the 191-character bound. Invalid
+path/query shapes still fail before Admin access. Sequential correctness,
+security, API-contract and simplicity review found no additional issue in the
+one-line schema correction. Production recheck remains a release gate.

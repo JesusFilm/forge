@@ -91,6 +91,45 @@ describe("POST /watch/api/recommendations", () => {
     })
   })
 
+  it.each(["origins-of-christmas--episode-1", "soccer_event_collection"])(
+    "accepts the canonical content slug %s",
+    async (seedMediaSlug) => {
+      const response = await POST(
+        request(
+          JSON.stringify({
+            seedMediaId: "seed-1",
+            seedMediaSlug,
+            locale: "en",
+            audioLanguageSlug: "english",
+          }),
+        ),
+      )
+      expect(response.status).toBe(200)
+      await expect(response.json()).resolves.toMatchObject({
+        delivery: { result: "served", requestId: "request-1" },
+      })
+      expect(query).toHaveBeenCalledTimes(1)
+    },
+  )
+
+  it.each(["", "a/b", "a%2fb", "a?query", "a".repeat(192)])(
+    "rejects invalid or oversized seed slug %s before Admin access",
+    async (seedMediaSlug) => {
+      const response = await POST(
+        request(
+          JSON.stringify({
+            seedMediaId: "seed-1",
+            seedMediaSlug,
+            locale: "en",
+            audioLanguageSlug: "english",
+          }),
+        ),
+      )
+      expect(response.status).toBe(400)
+      expect(query).not.toHaveBeenCalled()
+    },
+  )
+
   it.each([undefined, "older-client", "viewing-mode-v1"])(
     "preserves mode-ranked cards for client version %s",
     async (clientVersion) => {

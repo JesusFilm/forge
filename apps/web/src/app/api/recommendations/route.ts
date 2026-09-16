@@ -48,7 +48,7 @@ const DeliveryInput = z
     seedMediaSlug: z
       .string()
       .max(191)
-      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+      .refine((value) => tryAsContentSlug(value) != null)
       .optional(),
     locale: z.string().regex(/^[A-Za-z0-9-]{1,32}$/),
     audioLanguageSlug: z.string().regex(/^[a-z0-9-]{1,64}$/),
