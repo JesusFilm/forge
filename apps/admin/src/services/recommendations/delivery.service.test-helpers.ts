@@ -101,7 +101,9 @@ export const profileCandidateResult: LiveProfileCandidateResult = {
   ],
 }
 
-export function makeHarness(options: { curatedFallback?: boolean } = {}) {
+export function makeHarness(
+  options: { curatedFallback?: boolean; profileComparison?: boolean } = {},
+) {
   const requests = new Map<string, Record<string, unknown>>()
   const transactions: string[] = []
   const tx = {
@@ -179,6 +181,12 @@ export function makeHarness(options: { curatedFallback?: boolean } = {}) {
       bypassReason: "no_active_experiment",
     }),
   )
+  const assignProfileExperiment = vi.fn(
+    async (): Promise<ExperimentAssignmentResolution> => ({
+      assignment: null,
+      bypassReason: "no_active_experiment",
+    }),
+  )
   const retrieveProfile = vi.fn(
     async (): Promise<LiveProfileCandidateResult | null> => null,
   )
@@ -208,6 +216,7 @@ export function makeHarness(options: { curatedFallback?: boolean } = {}) {
     orchestrate,
     orchestrateHybrid,
     assignExperiment,
+    ...(options.profileComparison ? { assignProfileExperiment } : {}),
     retrieveProfile,
     resolveRecentContext,
     authorizeProfile,
@@ -235,6 +244,7 @@ export function makeHarness(options: { curatedFallback?: boolean } = {}) {
     orchestrate,
     orchestrateHybrid,
     assignExperiment,
+    assignProfileExperiment,
     retrieveProfile,
     resolveRecentContext,
     authorizeProfile,

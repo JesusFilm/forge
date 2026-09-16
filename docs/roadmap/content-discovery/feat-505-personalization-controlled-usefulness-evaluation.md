@@ -8,7 +8,6 @@ start_date: "2026-09-15"
 duration: 5
 depends_on:
   - "feat-369"
-  - "feat-373"
   - "feat-381"
   - "feat-384"
 blocks: []
@@ -74,3 +73,15 @@ fixed stopping rule, minimum sample, maturity/retention limits and routing gaps.
 The current direct-profile path bypasses experiment assignment; a profile-unit
 A/A, pre-assignment cohort routing, exposure reconciliation and mature controlled
 data remain prerequisites. The ticket stays in progress and no uplift is claimed.
+
+## September 16 follow-through
+
+Profile-unit A/A/A/B routing and the read-only mature extractor are implemented.
+See `docs/operations/recommendation-usefulness-evaluation-2026-09-15.md` for the
+new assignment/outcome versions, exact approval gates, zero-exposure denominator,
+24-hour follow-up after enrollment cutoff, and preview/manual deduplication.
+The existing below-player attribution contract supports this bounded study; the
+owner-excluded feat-373 is no longer a dependency. Production readiness capture
+at 2026-09-16T00:21:39.730Z found no assignments, shadow runs or decisions.
+Actual calibration, approved profile-unit A/A, external guardrails and mature
+controlled results remain pending. This ticket stays in progress.

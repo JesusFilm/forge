@@ -108,6 +108,13 @@ export type DeliveryDependencies = {
     now: Date
     deadlineAt: number
   }) => Promise<ExperimentAssignmentResolution>
+  assignProfileExperiment?: (input: {
+    sessionDigest: string
+    profileTokenDigest: string
+    eligibleForEnrollment: boolean
+    now: Date
+    deadlineAt: number
+  }) => Promise<ExperimentAssignmentResolution>
   retrieveProfile?: (input: {
     sessionDigest: string
     profileTokenDigest: string | null

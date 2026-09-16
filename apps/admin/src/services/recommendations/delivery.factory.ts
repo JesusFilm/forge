@@ -6,6 +6,7 @@ import { createRecommendationDeliveryAdmission } from "./admission"
 import { getLiveProfileCandidates } from "./candidates/profile-candidate.service"
 import { retrieveCuratedFallback } from "./curated-fallback"
 import { loadViewingModeAffinity } from "./viewing-mode.service"
+import { assignProfileUsefulnessExperiment } from "./experiment/usefulness-routing"
 import {
   RECOMMENDATION_CONTRACTS,
   RECOMMENDATION_PROFILE_SESSION_LINK_HOURS,
@@ -38,6 +39,8 @@ export function createRecommendationDeliveryDependencies(
     prisma,
     admission: createRecommendationDeliveryAdmission(),
     tokenService: token,
+    assignProfileExperiment: (input) =>
+      assignProfileUsefulnessExperiment(prisma, input),
     retrieveCuratedFallback: (input) => retrieveCuratedFallback(prisma, input),
     loadViewingModeAffinity: (input) =>
       env.RECOMMENDATION_VIEWING_MODE_ENABLED === "false"

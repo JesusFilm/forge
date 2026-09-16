@@ -46,8 +46,11 @@ preference; missing playback telemetry cannot establish that nothing was watched
 
 ## Versioned initial policy
 
-`sound-off-viewing-v1` qualifies a mode after both elapsed visible-playing time
-and unique progress reach `min(duration, 30, max(5, duration * 0.25))` seconds.
+`sound-off-viewing-v1` qualifies a mode after elapsed visible-playing time
+reaches `min(30, max(5, duration * 0.25))` seconds and unique progress reaches
+the smaller of that threshold and the full video duration. Even clips shorter
+than five seconds need at least five seconds of visible playback; a brief pass
+over a tiny autoplay clip must not become a profile preference.
 Unknown duration requires 30 seconds. Each distinct video contributes at most
 one profile vote; confidence reaches one after three qualified distinct videos.
 Muted preview and activated playback use the same threshold.

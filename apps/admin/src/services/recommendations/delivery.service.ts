@@ -66,6 +66,9 @@ import { issueRecommendationDelivery } from "./delivery-issuance"
 import { SEEDED_CURATED_FALLBACK_VERSION } from "./curated-fallback"
 import type { ViewingModeAffinity } from "./viewing-mode"
 import { lockViewingModeAuthority } from "./viewing-mode.service"
+import { lockProfileUsefulnessAssignment } from "./experiment/usefulness-routing"
+import { HYBRID_PERSONALIZED_MANIFEST_ID } from "./promotion/manifest"
+import { nominationEligibilityReasons } from "./eligibility"
 
 export type {
   RecommendationPersonalizationDelivery,
@@ -324,14 +327,85 @@ export class RecommendationDeliveryService {
         }
       }
 
-      const [experiment, profileResolution, profileTokenDigest] =
+      const [legacyExperiment, profileResolution, profileTokenDigest] =
         await Promise.all([
           experimentPromise,
           profilePromise,
           profileTokenDigestPromise,
         ])
+      const context = {
+        surface: RECOMMENDATION_CONTRACTS.surface,
+        purpose: "watch" as const,
+        locale,
+        audioLanguageSlug,
+      }
+      let experiment = legacyExperiment
+      let profileComparison = false
+      let comparisonHistory: RecommendationRecentContext | null = null
+      if (
+        profileTokenDigest &&
+        this.deps.assignProfileExperiment &&
+        input.eligibleHuman !== false &&
+        locale === "en" &&
+        audioLanguageSlug === "english"
+      ) {
+        const semanticNominations = adaptSemanticCandidates(
+          candidates,
+          context,
+        ).nominations
+        const eligible = (nomination: (typeof semanticNominations)[number]) =>
+          nomination.targetMediaId !== seedMediaId &&
+          nominationEligibilityReasons(nomination, context).length === 0
+        const eligibleForEnrollment =
+          profileResolution.profile?.projection.scope === "durable" &&
+          profileResolution.profile.projection.interestCount > 0 &&
+          semanticNominations.some(eligible) &&
+          profileResolution.profile.nominations.some(eligible)
+        try {
+          experiment = await withinDeadline(
+            () =>
+              this.deps.assignProfileExperiment!({
+                sessionDigest: input.sessionDigest,
+                profileTokenDigest,
+                eligibleForEnrollment,
+                now,
+                deadlineAt: candidateDeadlineAt,
+              }),
+            candidateDeadlineAt,
+            nowMilliseconds,
+          )
+        } catch {
+          experiment = {
+            assignment: null,
+            bypassReason: "assignment_unavailable",
+          }
+        }
+        profileComparison = experiment.assignment != null
+        if (profileComparison) {
+          // Both arms share the same history and measurement policies. Do not
+          // add sound-mode re-ranking to these exact semantic/hybrid manifests.
+          if (!this.deps.resolveRecentContext)
+            return unavailable("recent_context_unavailable")
+          comparisonHistory = await withinDeadline(
+            () =>
+              this.deps.resolveRecentContext!({
+                sessionDigest: input.sessionDigest,
+                profileTokenDigest,
+                allowDurableProfileLinks: true,
+                now,
+                deadlineAt: candidateDeadlineAt,
+              }),
+            candidateDeadlineAt,
+            nowMilliseconds,
+          )
+        }
+      }
       let viewingMode: ViewingModeAffinity | null = null
-      if (profileTokenDigest && this.deps.loadViewingModeAffinity) {
+      if (
+        profileTokenDigest &&
+        !profileComparison &&
+        this.deps.loadViewingModeAffinity
+      ) {
         try {
           const modeDeadlineAt = Math.min(
             candidateDeadlineAt,
@@ -361,12 +435,6 @@ export class RecommendationDeliveryService {
           viewingMode = null
         }
       }
-      const context = {
-        surface: RECOMMENDATION_CONTRACTS.surface,
-        purpose: "watch" as const,
-        locale,
-        audioLanguageSlug,
-      }
       const orchestrate = this.deps.orchestrate ?? runSemanticCandidatePlatform
       let platform: CandidatePlatformResult
       let selected: PreparedCandidate[]
@@ -378,7 +446,10 @@ export class RecommendationDeliveryService {
           candidates,
           context,
           limit: manifest.maxItems,
-          composition: { currentVideoId: seedMediaId },
+          composition: {
+            currentVideoId: seedMediaId,
+            recentVideos: comparisonHistory?.videos,
+          },
         })
         if (retrievalFailureReason) {
           platform = appendSourceFailureEvidence(
@@ -460,7 +531,8 @@ export class RecommendationDeliveryService {
         contractVersion: "anonymous-profile-personalization-v1",
         lane: "semantic_control",
         executionMode: "semantic_contextual",
-        effectiveManifestId: manifest.id,
+        effectiveManifestId:
+          experiment.assignment?.effectiveManifestId ?? manifest.id,
         profileState: null,
         projectionVersion: null,
         projectionGeneration: null,
@@ -483,7 +555,15 @@ export class RecommendationDeliveryService {
           reason: "profile_cold_start",
         }
       }
-      if (profileTokenDigest != null && !profileColdStart) {
+      const useProfileRanking =
+        !profileComparison ||
+        experiment.assignment?.effectiveManifestId ===
+          HYBRID_PERSONALIZED_MANIFEST_ID
+      if (
+        profileTokenDigest != null &&
+        !profileColdStart &&
+        useProfileRanking
+      ) {
         try {
           if (!profileResolution.profile) {
             throw new RecommendationInternalStateError(
@@ -506,9 +586,10 @@ export class RecommendationDeliveryService {
             candidates,
             context,
           ).nominations
-          let recentContext: RecommendationRecentContext = { videos: [] }
+          let recentContext: RecommendationRecentContext =
+            comparisonHistory ?? { videos: [] }
           let recentContextFailureReason: string | null = null
-          if (this.deps.resolveRecentContext) {
+          if (this.deps.resolveRecentContext && !comparisonHistory) {
             try {
               recentContext = await withinDeadline(
                 () =>
@@ -592,7 +673,8 @@ export class RecommendationDeliveryService {
             contractVersion: "anonymous-profile-personalization-v1",
             lane: "profile_challenger",
             executionMode: "hybrid_personalized",
-            effectiveManifestId: manifest.id,
+            effectiveManifestId:
+              experiment.assignment?.effectiveManifestId ?? manifest.id,
             profileState: profile.projection.scope ?? "session",
             projectionVersion: profile.projection.projectionVersion,
             projectionGeneration: profile.projection.generation ?? null,
@@ -762,6 +844,17 @@ export class RecommendationDeliveryService {
           this.deps.prisma,
           issuanceDeadlineAt,
           async (tx) => {
+            if (
+              profileComparison &&
+              experiment.assignment &&
+              profileTokenDigest
+            ) {
+              await lockProfileUsefulnessAssignment(tx, {
+                assignment: experiment.assignment,
+                profileTokenDigest,
+                now: this.deps.now?.() ?? new Date(),
+              })
+            }
             if (
               viewingMode &&
               profileTokenDigest &&

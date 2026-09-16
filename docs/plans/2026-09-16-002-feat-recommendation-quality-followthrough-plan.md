@@ -158,7 +158,8 @@ evidence, retaining assigned units with zero exposure and generation fences.
   bounded sound-off candidate affinity, authorized diagnostics and rollback
   switch implemented. Native publication/reset/deletion race checks and real
   media browser fixture pass. See the validation checkpoint and compound note.
-- U4/U5: historical shadow inputs and controlled-comparison runtime integration
-  remain the next implementation units. Existing partial tickets stay in progress.
+- U4/U5: bounded historical shadow inputs, gated profile-unit comparison routing
+  and read-only mature extraction are implemented. Calibration, approved A/A and
+  mature empirical results remain outstanding; their broad tickets stay in progress.
 - No follow-through PR has been merged or deployed at this checkpoint. The
   For you hold and exclusions remain intact. Recommendation uplift is unproven.

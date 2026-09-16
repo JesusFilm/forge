@@ -99,6 +99,25 @@ describe("viewing mode behavioral profile", () => {
     ).toBe(0)
   })
 
+  it.each(["sound_off", "sound_on"] as const)(
+    "does not treat a brief pass over a tiny %s clip as preference",
+    (mode) => {
+      const brief = summarizeViewingMode([fact(1, 0, 1, mode, 1)], start)
+      expect(
+        viewingModePreference([{ ...brief, mediaId: "tiny-clip" }])
+          .qualifiedVideos,
+      ).toBe(0)
+      const sustained = summarizeViewingMode(
+        Array.from({ length: 6 }, (_, index) => fact(index + 1, 0, 1, mode, 1)),
+        start,
+      )
+      expect(
+        viewingModePreference([{ ...sustained, mediaId: "tiny-clip" }])
+          .qualifiedVideos,
+      ).toBe(1)
+    },
+  )
+
   it("learns from distinct videos without multiplying repeated views", () => {
     const off = summarizeViewingMode([fact(30, 0, 30)], start)
     const on = summarizeViewingMode([fact(30, 0, 30, "sound_on")], start)

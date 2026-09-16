@@ -91,7 +91,13 @@ export function summarizeViewingMode(
   const thresholdSeconds =
     durationSeconds == null
       ? 30
-      : Math.min(durationSeconds, 30, Math.max(5, durationSeconds * 0.25))
+      : Math.min(30, Math.max(5, durationSeconds * 0.25))
+  // Even a one-second clip needs sustained visible time. Full unique progress
+  // can satisfy the progress requirement for clips shorter than five seconds.
+  const thresholdProgressSeconds = Math.min(
+    durationSeconds ?? thresholdSeconds,
+    thresholdSeconds,
+  )
   const soundOffMilliseconds = Math.floor(unionLength(wall.sound_off))
   const soundOnMilliseconds = Math.floor(unionLength(wall.sound_on))
   const soundOffProgressSeconds = unionLength(progress.sound_off)
@@ -103,10 +109,10 @@ export function summarizeViewingMode(
     soundOnProgressSeconds,
     soundOffQualified:
       soundOffMilliseconds >= thresholdSeconds * 1_000 &&
-      soundOffProgressSeconds >= thresholdSeconds,
+      soundOffProgressSeconds >= thresholdProgressSeconds,
     soundOnQualified:
       soundOnMilliseconds >= thresholdSeconds * 1_000 &&
-      soundOnProgressSeconds >= thresholdSeconds,
+      soundOnProgressSeconds >= thresholdProgressSeconds,
     previewMilliseconds: Math.floor(unionLength(preview)),
     durationSeconds,
   }

@@ -72,7 +72,9 @@ export type SemanticCandidatePlatformResult = Readonly<{
     union: typeof CANDIDATE_UNION_VERSION
     eligibility: typeof CANDIDATE_ELIGIBILITY_VERSION
     ranker: string
-    composer: typeof MINIMAL_SLATE_VERSION
+    composer:
+      | typeof MINIMAL_SLATE_VERSION
+      | typeof HYBRID_SLATE_COMPOSER_VERSION
   }>
   counts: Readonly<Record<CandidatePlatformStage, number>>
   evidence: CandidateStageEvidence[]
@@ -198,9 +200,11 @@ export function runSemanticCandidatePlatform(input: {
   )
   const platformEligibility = [...pipeline.eligibleTargetMediaIds].sort()
   const baselineEligibility = [...new Set(baselineOrder.eligibleIds)].sort()
-  const platformOrder = pipeline.composed.map(
-    (candidate) => candidate.targetMediaId,
-  )
+  // Ranker parity precedes composition: current/recent-video policy may
+  // intentionally change the row, without changing semantic ranking.
+  const platformOrder = pipeline.ordered
+    .slice(0, Math.max(0, Math.min(6, Math.trunc(input.limit))))
+    .map((candidate) => candidate.targetMediaId)
   const candidateEligibility = sameIds(baselineEligibility, platformEligibility)
     ? "passed"
     : "failed"
@@ -223,7 +227,10 @@ export function runSemanticCandidatePlatform(input: {
       ranker: modeApplied
         ? VIEWING_MODE_RANKER_VERSION
         : DETERMINISTIC_RANKER_VERSION,
-      composer: MINIMAL_SLATE_VERSION,
+      composer:
+        input.composition?.recentVideos != null
+          ? HYBRID_SLATE_COMPOSER_VERSION
+          : MINIMAL_SLATE_VERSION,
     },
     counts: Object.fromEntries(
       CANDIDATE_PLATFORM_STAGES.map((stage) => [

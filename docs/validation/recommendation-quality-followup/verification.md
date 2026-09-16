@@ -58,3 +58,27 @@ Use `RECOMMENDATION_VIEWING_MODE_ENABLED=false` for a narrow rollback through
 normal deployment configuration. It leaves player behavior, raw evidence,
 profile erasure and ordinary recommendation ranking available. Keep For you
 held off. Do not expand Recommendation Visibility or locale/source scope.
+
+## Final local review checkpoint
+
+- Recommendation suite with production PostgreSQL adapter: **617 passed**, two
+  Redis-only skips. Subsequent tiny-clip, overlap and Admin-history assertion
+  changes have focused rechecks; no assertion or timeout was weakened.
+- Full Admin: **7,253 passed**, one stale history-copy assertion failed and was
+  updated for reconstructed history; 285 opt-in skips and one existing todo.
+- Full Web: **4,397 passed**, one unchanged homepage render-count assertion
+  failed; all 70 tests in that file passed in isolation. Ten opt-in skips and one
+  existing todo. CI on the final revision remains the merge gate.
+- Admin and Web production builds passed with local/CI configuration. Web types,
+  actual migrations and workflow build registration checks passed. Frozen-lockfile
+  installation includes the other task's Expo and Redis patch changes.
+- Production baseline full Watch-page samples are in
+  `page-performance-before.json`: initial LCP 1,512ms, warm samples 556/672ms;
+  muted preview remained playing and Watch now remained available. These are
+  synthetic browser observations, not field-percentile claims.
+- `quality-readiness-results.json` is a live read-only capture at
+  2026-09-16T00:21:39.730Z. It shows a semantic control pointer, zero assignments
+  and no shadow decisions/runs. The seeded session A/A does not satisfy the new
+  profile-unit protocol. No approval or evaluation pass was fabricated.
+- `compound-review.md` records the sequential Compound Engineering review,
+  corrected findings, migration/contract checks and remaining empirical gates.
