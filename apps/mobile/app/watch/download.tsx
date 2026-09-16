@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import { useLocalSearchParams, useRouter } from "expo-router"
 
 import {
@@ -12,8 +12,12 @@ import { useDownloads } from "../../src/contexts/DownloadsProvider"
 import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider"
 import type { WatchDownload } from "../../src/lib/normalizeVideo"
 import { RAW_EXPORT_ENABLED } from "../../src/lib/rawExportConstants"
-import { sizeBytesOf } from "../../src/lib/rawExportRun"
 import { getRawExportAdapter } from "../../src/lib/rawExportRuntime"
+import { startRawExportAfterPick } from "../../src/lib/rawExportStart"
+import {
+  buildWatchRawExportRequest,
+  startWatchRawExport,
+} from "../../src/lib/watchRawExportStart"
 import { resolveActiveSubtitle } from "../../src/lib/subtitleSelection"
 
 export default function DownloadSheetRoute() {
@@ -31,7 +35,7 @@ export default function DownloadSheetRoute() {
   const { startDownload, swapDownload, getRecord } = useDownloads()
   const { wifiOnly } = useWatchPreferences()
   // Opened via "Change quality / language" on a downloaded video → swap mode.
-  // `mode=raw` is the "Save to Photos" entry, which opens straight on export.
+  // `mode=raw` is the "Save to Files" entry, which opens straight on export.
   const { swap, mode: modeParam } = useLocalSearchParams<{
     swap?: string
     mode?: string
@@ -42,6 +46,9 @@ export default function DownloadSheetRoute() {
   // refuses. Mirrors app/series/download.tsx.
   const initialMode: DownloadMode =
     RAW_EXPORT_ENABLED && modeParam === "raw" ? "raw" : "offline"
+  // The confirm button stays enabled while the folder picker is open, so this
+  // latch is the only thing that stops a second tap opening a second picker.
+  const exportInFlightRef = useRef(false)
 
   // Downloads are fetched lazily per dub — kick off the active variant's fetch
   // when the sheet opens (no-op if already loaded / in flight).
@@ -83,33 +90,32 @@ export default function DownloadSheetRoute() {
 
   /**
    * The raw branch. R33 refuses every new export, and R15 dismisses the sheet
-   * FIRST because the export outlives this route (R29) — its outcome is
-   * reported by the root-level host, not here.
+   * once a folder is chosen, because the export outlives this route (R29) — its
+   * outcome is reported by the root-level host, not here.
+   *
+   * The picker runs FIRST, while this sheet is still on screen: a run that has
+   * already dismissed it has no view controller to present from. A viewer who
+   * dismisses the picker keeps the sheet and nothing starts.
    */
-  const startRawExport = (rendition: WatchDownload) => {
-    if (!RAW_EXPORT_ENABLED || !rendition.url) return
-    const request = {
-      videoSlug: video.slug,
-      runId: `${video.slug}:${Date.now()}`,
-      title: video.title,
-      rendition: {
-        documentId: rendition.documentId,
-        qualityLabel: rendition.quality,
-        url: rendition.url,
-        sizeBytes: sizeBytesOf(rendition.size),
-      },
-      wifiOnly,
-      // R23: the subtitle raw mode hid is passed so the core can PROVE it
-      // changes neither the transferred file nor the computed size.
-      subtitleHiddenByRawMode: activeSubtitle
-        ? {
-            languageSlug: activeSubtitle.languageSlug,
-            url: activeSubtitle.vttSrc,
-          }
-        : null,
-    }
-    router.back()
-    void getRawExportAdapter().exportVideo(request)
+  const startRawExport = async (rendition: WatchDownload) => {
+    const adapter = getRawExportAdapter()
+    await startWatchRawExport(
+      exportInFlightRef,
+      buildWatchRawExportRequest({
+        videoSlug: video.slug,
+        title: video.title,
+        rendition,
+        wifiOnly,
+        subtitle: activeSubtitle,
+        startedAt: Date.now(),
+      }),
+      (request) =>
+        startRawExportAfterPick({
+          pickFolder: () => adapter.pickExportFolder(),
+          dismiss: () => router.back(),
+          start: (folder) => void adapter.exportVideo({ ...request, folder }),
+        }),
+    )
   }
 
   const onStartDownload = async (
@@ -123,7 +129,7 @@ export default function DownloadSheetRoute() {
       (sub) => sub.languageSlug === subtitleSlug,
     )
     if (mode === "raw") {
-      startRawExport(rendition)
+      await startRawExport(rendition)
       return
     }
     if (!activeVariant) return

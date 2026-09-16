@@ -22,36 +22,28 @@ export const EXPORT_STAGING_NOTES_STORAGE_KEY = "rawexport.staging.notes"
 export const EXPORT_STAGING_NOTE_VERSION = 2
 
 /**
- * Version 1 carried no `runSize`, and that field is optional, so a note the
- * previous build wrote still reconciles. Dropping it would strand its staged
- * file and report nothing to the viewer who started that export.
+ * Both earlier versions still read. Their extra fields are ignored and every
+ * note now takes the same action, so accepting them is what lets this build
+ * clean up the files the photo-library build staged.
  */
 const SUPPORTED_NOTE_VERSIONS: ReadonlySet<number> = new Set([1, 2])
 
 /**
- * Where the saved video landed. iOS with an add-only grant cannot create a
- * named album, so R17's fallback saves to the library and the confirmation
- * names the library instead.
- */
-export type ExportAlbumIntent = "album" | "library"
-
-/**
  * How one export ended. `blocked` is a pre-transfer refusal by storage or
- * policy, `refused` is a denied library permission, and `abandoned` is what a
- * killed process left for the launch sweep to report.
+ * policy, and `abandoned` is what a killed process left for the launch sweep to
+ * report.
  */
 export type ExportOutcome =
   | "saved"
   | "failed"
   | "blocked"
-  | "refused"
   | "cancelled"
   | "abandoned"
 
 /**
- * The minimal record of a staged file (KTD5). `transferFinished` is the flag
- * R28's two cases turn on: false means discard the stage, true means finish the
- * library write the killed process never ran.
+ * The minimal record of a staged file (KTD5). The launch sweep discards every
+ * note it finds: a folder grant dies with the process, so no later launch can
+ * copy the bytes the killed one staged.
  */
 export type ExportStagingNote = {
   version: number
@@ -60,8 +52,6 @@ export type ExportStagingNote = {
   /** The run that staged it — one per single export, one per series run. */
   runId: string
   stagedPath: string
-  albumIntent: ExportAlbumIntent
-  transferFinished: boolean
   /** Episodes the run covers, so a sweep-published outcome folds into it. */
   runSize?: number
 }
@@ -119,18 +109,7 @@ export type ExportRunHandle = {
   /** True while the viewer has this export paused (R24 revised). */
   isPauseRequested: () => boolean
   /** Write (or refresh) the staging note for the file being staged. */
-  stage: (args: {
-    stagedPath: string
-    albumIntent: ExportAlbumIntent
-    runSize?: number
-  }) => Promise<void>
-  /** The bytes are on disk; only the library write remains (R28). */
-  markTransferFinished: () => Promise<void>
-  /**
-   * KTD4: the app is not active, so the library write is handed to the next
-   * foreground transition or the launch sweep. The note then outlives this run.
-   */
-  deferStagingNote: () => void
+  stage: (args: { stagedPath: string; runSize?: number }) => Promise<void>
 }
 
 export type ExportRunInput = {
@@ -191,8 +170,6 @@ function isStagingNote(value: unknown): value is ExportStagingNote {
     typeof note.target === "string" &&
     typeof note.runId === "string" &&
     typeof note.stagedPath === "string" &&
-    (note.albumIntent === "album" || note.albumIntent === "library") &&
-    typeof note.transferFinished === "boolean" &&
     (note.runSize === undefined || Number.isFinite(note.runSize))
   )
 }
@@ -364,7 +341,6 @@ export function createExportSessionStore(deps?: {
       if (entries.has(target)) {
         return { started: false, reason: "alreadyExporting" }
       }
-      let keepNote = false
       entries.set(target, {
         target,
         runId,
@@ -400,27 +376,16 @@ export function createExportSessionStore(deps?: {
           isPauseRequested() {
             return live()?.paused ?? false
           },
-          async stage({ stagedPath, albumIntent, runSize }) {
+          async stage({ stagedPath, runSize }) {
             await mutateNotes((notes) => {
               notes[target] = {
                 version: EXPORT_STAGING_NOTE_VERSION,
                 target,
                 runId,
                 stagedPath,
-                albumIntent,
-                transferFinished: false,
                 runSize,
               }
             })
-          },
-          async markTransferFinished() {
-            await mutateNotes((notes) => {
-              const note = notes[target]
-              if (note) notes[target] = { ...note, transferFinished: true }
-            })
-          },
-          deferStagingNote() {
-            keepNote = true
           },
         }
 
@@ -444,7 +409,7 @@ export function createExportSessionStore(deps?: {
         try {
           // A storage fault must not turn a saved export into a rejection; the
           // launch sweep reconciles a note the clear could not remove.
-          if (!keepNote) await clearStagingNote(target).catch(() => undefined)
+          await clearStagingNote(target).catch(() => undefined)
         } finally {
           // The release and the notification are ONE synchronous step: a gap
           // across the await above publishes a cancel control that cancels

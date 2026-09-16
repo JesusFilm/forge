@@ -50,7 +50,7 @@ const BADGE: Record<
   exporting: {
     icon: "arrow-down-circle",
     color: EXPORT_BADGE_COLOR,
-    a11y: "saving to Photos",
+    a11y: "saving to Files",
   },
   // A HELD export reads exactly like a held download, by the same decision.
   // This badge is the only place one paused episode is named: the row above
@@ -58,7 +58,7 @@ const BADGE: Record<
   "exporting-paused": {
     icon: "pause-circle",
     color: BADGE_PAUSED_COLOR,
-    a11y: "saving to Photos, paused",
+    a11y: "saving to Files, paused",
   },
 }
 

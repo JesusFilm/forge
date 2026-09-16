@@ -113,8 +113,8 @@ export function downloadGlyphInfo(
         color: EXPORT_IN_PROGRESS_COLOR,
         a11yLabel:
           pct != null
-            ? `Saving to Photos, paused at ${pct}%. Tap to resume or stop`
-            : "Saving to Photos, paused. Tap to resume or stop",
+            ? `Saving to Files, paused at ${pct}%. Tap to resume or stop`
+            : "Saving to Files, paused. Tap to resume or stop",
         ringIcon: "play",
         ringProgress: clampFraction(exporting.progress),
         interactive: true,
@@ -126,8 +126,8 @@ export function downloadGlyphInfo(
       color: EXPORT_IN_PROGRESS_COLOR,
       a11yLabel:
         pct != null
-          ? `Saving to Photos, ${pct}%. Tap to pause`
-          : "Saving to Photos. Tap to pause",
+          ? `Saving to Files, ${pct}%. Tap to pause`
+          : "Saving to Files. Tap to pause",
       ringIcon: "pause",
       ringProgress: clampFraction(exporting.progress),
       interactive: true,

@@ -3,15 +3,13 @@ import { STORAGE_RESERVE_BYTES } from "../offlineConstants"
 import {
   buildExportTaskId,
   buildExportTransferSpec,
-  classifyLibraryPermission,
   createRawExportDecider,
   decideExportInterruption,
   evaluateExportStorageGate,
+  exportFolderName,
   exportTargetFromTaskId,
   isExportTaskId,
   RAW_EXPORT_MAX_RESUMES,
-  refusalFromPermission,
-  type LibraryPermissionResponse,
   type RawExportDeps,
   type RawExportRendition,
   type RawExportRequest,
@@ -31,32 +29,6 @@ const RENDITION: RawExportRendition = {
   qualityLabel: "Highest",
   url: "https://cdn.example/birth-of-jesus/highest.mp4",
   sizeBytes: 100 * MB,
-}
-
-const GRANTED_FULL: LibraryPermissionResponse = {
-  status: "granted",
-  granted: true,
-  canAskAgain: true,
-  accessPrivileges: "all",
-}
-
-const GRANTED_ADD_ONLY: LibraryPermissionResponse = {
-  status: "granted",
-  granted: true,
-  canAskAgain: true,
-  accessPrivileges: "limited",
-}
-
-const REFUSED_FIRST: LibraryPermissionResponse = {
-  status: "denied",
-  granted: false,
-  canAskAgain: true,
-}
-
-const REFUSED_PERMANENTLY: LibraryPermissionResponse = {
-  status: "denied",
-  granted: false,
-  canAskAgain: false,
 }
 
 function makeRequest(
@@ -90,8 +62,6 @@ function interrupted(
 function harness(
   options: {
     freeBytes?: number
-    permissions?: LibraryPermissionResponse[]
-    requestResponse?: LibraryPermissionResponse
     reports?: (RawExportTransferReport | Error)[]
   } = {},
 ) {
@@ -112,31 +82,16 @@ function harness(
     resume: jest.fn(),
   }
 
-  const permissions = options.permissions ?? [GRANTED_FULL]
-  let permissionIndex = 0
-  const library = {
-    getPermission: jest.fn(async () => {
-      const response =
-        permissions[Math.min(permissionIndex, permissions.length - 1)]
-      permissionIndex += 1
-      return response
-    }),
-    requestPermission: jest.fn(
-      async () => options.requestResponse ?? GRANTED_FULL,
-    ),
-  }
-
   const fs = {
     freeDiskBytes: jest.fn(async () => options.freeBytes ?? 100 * GB),
   }
   const telemetry = { info: jest.fn(), warn: jest.fn() }
-  const deps: RawExportDeps = { fs, library, transfer, telemetry }
+  const deps: RawExportDeps = { fs, transfer, telemetry }
 
   return {
     decider: createRawExportDecider(deps),
     specs,
     transfer,
-    library,
     fs,
     telemetry,
   }
@@ -164,7 +119,7 @@ describe("export task id", () => {
 })
 
 describe("export storage gate (R8)", () => {
-  it("counts one staged copy beside the library copy plus the reserve", () => {
+  it("counts one staged copy beside the folder copy plus the reserve", () => {
     const gate = evaluateExportStorageGate({
       exports: [{ sizeBytes: 100 * MB }],
       freeBytes: 10 * GB,
@@ -253,50 +208,69 @@ describe("export storage gate (R8)", () => {
   })
 })
 
-describe("library permission classification (R25, R26)", () => {
-  it("reads a full grant as granted with full access", () => {
-    expect(classifyLibraryPermission(GRANTED_FULL)).toEqual({
-      kind: "granted",
-      fullAccess: true,
-    })
+describe("export folder name", () => {
+  it("names an iOS security-scoped folder by its decoded last segment", () => {
+    expect(
+      exportFolderName(
+        "file:///private/var/mobile/Library/Mobile%20Documents/com~apple~CloudDocs/Jesus%20Film",
+      ),
+    ).toBe("Jesus Film")
   })
 
-  it("reads an add-only grant as granted without full access", () => {
-    expect(classifyLibraryPermission(GRANTED_ADD_ONLY)).toEqual({
-      kind: "granted",
-      fullAccess: false,
-    })
+  it("does not name the iOS 'On My iPhone' root by its on-disk folder", () => {
+    // Observed 2026-09-15 on the iPhone 17 Pro Max simulator: picking
+    // "On My iPhone" returns this url, and the card read "Saved to File
+    // Provider Storage." A subfolder under it keeps its own name.
+    const root =
+      "file:///private/var/mobile/Containers/Shared/AppGroup/8EE60D14-FB96-4C7F-8AB2-6A86FECB6B90/File%20Provider%20Storage/"
+    expect(exportFolderName(root)).toBeNull()
+    expect(exportFolderName(`${root}Sermons/`)).toBe("Sermons")
   })
 
-  it("distinguishes a permanent refusal from a first refusal (AE10)", () => {
-    const first = classifyLibraryPermission(REFUSED_FIRST)
-    const permanent = classifyLibraryPermission(REFUSED_PERMANENTLY)
-    expect(first).toEqual({ kind: "refused", canAskAgain: true })
-    expect(permanent).toEqual({ kind: "refused", canAskAgain: false })
-    if (first.kind !== "refused" || permanent.kind !== "refused") {
-      throw new Error("both responses must classify as a refusal")
-    }
-    expect(refusalFromPermission(first)).toEqual({
-      reason: "permission-denied",
-      canAskAgain: true,
-      offerSettings: false,
-    })
-    expect(refusalFromPermission(permanent)).toEqual({
-      reason: "permission-denied",
-      canAskAgain: false,
-      offerSettings: true,
-    })
+  it("keeps only what follows the colon in an Android SAF tree uri", () => {
+    expect(
+      exportFolderName(
+        "content://com.android.externalstorage.documents/tree/primary%3ADownload",
+      ),
+    ).toBe("Download")
   })
 
-  it("fails closed on a missing or unreadable response", () => {
-    expect(classifyLibraryPermission(null)).toEqual({
-      kind: "refused",
-      canAskAgain: true,
-    })
-    expect(classifyLibraryPermission({})).toEqual({
-      kind: "refused",
-      canAskAgain: true,
-    })
+  it("keeps the sub-path of a nested Android SAF folder after the colon", () => {
+    expect(
+      exportFolderName(
+        "content://com.android.externalstorage.documents/tree/primary%3AMovies%2FJesus%20Film",
+      ),
+    ).toBe("Movies/Jesus Film")
+  })
+
+  it("ignores trailing slashes, a query and a fragment", () => {
+    expect(exportFolderName("file:///Movies/Jesus%20Film/")).toBe("Jesus Film")
+    expect(exportFolderName("file:///Movies/Jesus%20Film///")).toBe(
+      "Jesus Film",
+    )
+    expect(
+      exportFolderName(
+        "content://com.android.externalstorage.documents/tree/primary%3ADownload?mode=rw#top",
+      ),
+    ).toBe("Download")
+  })
+
+  it("returns null when nothing readable is left", () => {
+    expect(exportFolderName("")).toBeNull()
+    expect(exportFolderName("file:///")).toBeNull()
+    expect(exportFolderName("file:///%20")).toBeNull()
+    expect(
+      exportFolderName(
+        "content://com.android.externalstorage.documents/tree/primary%3A",
+      ),
+    ).toBeNull()
+  })
+
+  it("falls back to the raw segment on a malformed percent escape", () => {
+    expect(exportFolderName("file:///Movies/Jesus%20Film%")).toBe(
+      "Jesus%20Film%",
+    )
+    expect(exportFolderName("file:///Movies/%E0%A4%A")).toBe("%E0%A4%A")
   })
 })
 
@@ -424,7 +398,7 @@ describe("transfer spec (R9, R23)", () => {
 })
 
 describe("stageExport", () => {
-  it("stages the file when storage and permission both admit it", async () => {
+  it("stages the file when the storage gate admits it", async () => {
     const h = harness()
     const result = await h.decider.stageExport(makeRequest())
     expect(result).toEqual({
@@ -454,7 +428,6 @@ describe("stageExport", () => {
       },
     })
     expect(h.transfer.run).not.toHaveBeenCalled()
-    expect(h.library.requestPermission).not.toHaveBeenCalled()
     expect(h.telemetry.warn).not.toHaveBeenCalled()
   })
 
@@ -477,66 +450,6 @@ describe("stageExport", () => {
       block: { reason: "unreadable-free" },
     })
     expect(h.transfer.run).not.toHaveBeenCalled()
-  })
-
-  it("fails, rather than refuses, when the permission read throws", async () => {
-    const h = harness()
-    h.library.getPermission.mockRejectedValueOnce(new Error("library is gone"))
-    const result = await h.decider.stageExport(makeRequest())
-    expect(result).toEqual({
-      outcome: "failed",
-      failure: { cause: "permissionError", errorMessage: "library is gone" },
-    })
-    expect(h.transfer.run).not.toHaveBeenCalled()
-  })
-
-  it("reports a refusal as refused, never as a failure (AE11)", async () => {
-    const h = harness({
-      permissions: [REFUSED_FIRST],
-      requestResponse: REFUSED_FIRST,
-    })
-    const result = await h.decider.stageExport(makeRequest())
-    expect(result).toEqual({
-      outcome: "refused",
-      refusal: {
-        reason: "permission-denied",
-        canAskAgain: true,
-        offerSettings: false,
-      },
-    })
-    expect(h.transfer.run).not.toHaveBeenCalled()
-    expect(h.telemetry.warn).not.toHaveBeenCalled()
-    expect(JSON.stringify(result)).not.toContain("failed")
-  })
-
-  it("offers settings on a permanent refusal and does not prompt again (AE10)", async () => {
-    const h = harness({ permissions: [REFUSED_PERMANENTLY] })
-    const result = await h.decider.stageExport(makeRequest())
-    expect(result).toEqual({
-      outcome: "refused",
-      refusal: {
-        reason: "permission-denied",
-        canAskAgain: false,
-        offerSettings: true,
-      },
-    })
-    expect(h.library.requestPermission).not.toHaveBeenCalled()
-    expect(h.telemetry.warn).not.toHaveBeenCalled()
-  })
-
-  it("treats a permission revoked between episodes as a refusal, not a transfer failure", async () => {
-    const h = harness({
-      permissions: [GRANTED_FULL, REFUSED_PERMANENTLY],
-      reports: [DONE],
-    })
-    const first = await h.decider.stageExport(makeRequest())
-    const second = await h.decider.stageExport(
-      makeRequest({ videoSlug: "the-second-episode" }),
-    )
-    expect(first).toMatchObject({ outcome: "staged" })
-    expect(second).toMatchObject({ outcome: "refused" })
-    expect(h.transfer.run).toHaveBeenCalledTimes(1)
-    expect(h.telemetry.warn).not.toHaveBeenCalled()
   })
 
   it("resumes the same transfer once after connectivity loss", async () => {
@@ -622,10 +535,6 @@ describe("stageExport", () => {
     const specs: RawExportTransferSpec[] = []
     const deps: RawExportDeps = {
       fs: { freeDiskBytes: async () => 100 * GB },
-      library: {
-        getPermission: async () => GRANTED_FULL,
-        requestPermission: async () => GRANTED_FULL,
-      },
       transfer: {
         run: async (spec, hooks) => {
           specs.push(spec)
@@ -652,7 +561,29 @@ describe("stageExport", () => {
     expect(admission).toMatchObject({
       kind: "admitted",
       storage: { kind: "ok", lowerBound: true },
-      fullAccess: true,
     })
+  })
+
+  it("admits straight from the storage gate with no permission step", async () => {
+    const h = harness()
+    const admission = await h.decider.admit(makeRequest())
+    // toEqual pins the whole shape, so no grant flag or refusal can return.
+    expect(admission).toEqual({
+      kind: "admitted",
+      spec: {
+        id: buildExportTaskId(SLUG),
+        url: RENDITION.url,
+        destination: STAGED_PATH,
+        allowCellular: true,
+      },
+      storage: {
+        kind: "ok",
+        requiredBytes: 200 * MB + STORAGE_RESERVE_BYTES,
+        freeBytes: 100 * GB,
+        lowerBound: false,
+      },
+    })
+    expect(h.fs.freeDiskBytes).toHaveBeenCalledTimes(1)
+    expect(h.transfer.run).not.toHaveBeenCalled()
   })
 })

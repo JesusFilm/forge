@@ -9,7 +9,6 @@ import {
   type ReactNode,
 } from "react"
 import AsyncStorage from "@react-native-async-storage/async-storage"
-import { AppState } from "react-native"
 import { documentDirectory } from "expo-file-system/legacy"
 
 import {
@@ -72,7 +71,6 @@ import {
   attachRawExportRuntime,
   getRawExportAdapter,
 } from "../lib/rawExportRuntime"
-import { RAW_EXPORT_ENABLED } from "../lib/rawExportConstants"
 import { buildExportRoot, exportStagingDir } from "../lib/transferPort"
 import { getApolloClient } from "../lib/apolloClient"
 import { datadogLog } from "../lib/datadog"
@@ -577,27 +575,17 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
             store.listStagingNotes(),
             listDirectory(exportRoot),
           ])
-          const existingStagedFiles = new Set<string>()
-          await Promise.all(
-            notes.map(async (note) => {
-              if (await fileExists(note.stagedPath)) {
-                existingStagedFiles.add(note.target)
-              }
-            }),
-          )
           if (cancelled) return
           const sweep = planExportSweep({
             notes,
             stagedEntries,
-            existingStagedFiles,
             liveTaskIds: liveTaskSlugs,
           })
-          // A launch that has never exported builds no adapter and touches no
-          // photo-library binding.
+          // A launch that has never exported builds no adapter and reaches no
+          // native binding.
           if (sweep.length === 0) return
           await applyExportSweep(sweep, {
             adapter: getRawExportAdapter(),
-            clearStagingNote: (target) => store.clearStagingNote(target),
             // Re-joined under the root rather than trusted as read, so a stray
             // entry name can never point the removal outside the export root.
             removeStagedDir: (target) =>
@@ -619,46 +607,6 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       cancelled = true
     }
   }, [isReady, removeRecord, writeRecord, lifecycle])
-
-  /**
-   * R28/KTD4: a completed transfer whose library write waited for the
-   * foreground. The launch sweep alone would leave it unsaved for the whole
-   * session, because returning from the background is not a relaunch.
-   */
-  useEffect(() => {
-    // R33: the switch refuses every new export, and the library write is the
-    // export. Without this read a disabled build still saves on the next
-    // foreground; the note then waits for the launch sweep, which discards it.
-    if (!isReady || !RAW_EXPORT_ENABLED) return
-    let running = false
-    const finishDeferred = async (): Promise<void> => {
-      if (running) return
-      running = true
-      try {
-        const store = getExportSessionStore()
-        const notes = await store.listStagingNotes()
-        const ready = notes.filter((note) => note.transferFinished)
-        if (ready.length === 0) return
-        const adapter = getRawExportAdapter()
-        for (const note of ready) {
-          // Skip a target this session is still exporting: its own run owns
-          // the note, and R27's slot is what keeps the two from colliding.
-          if (getExportSessionStore().getSnapshot().targets.has(note.target)) {
-            continue
-          }
-          await adapter.completeStagedExport(note)
-        }
-      } catch {
-        // Best-effort: the launch sweep is still the backstop.
-      } finally {
-        running = false
-      }
-    }
-    const subscription = AppState.addEventListener("change", (next) => {
-      if (next === "active") void finishDeferred()
-    })
-    return () => subscription.remove()
-  }, [isReady])
 
   // R14: drain the batch queue — start the head episode when the single slot
   // is free, drop stale heads. Single-flight; every terminal path mutates

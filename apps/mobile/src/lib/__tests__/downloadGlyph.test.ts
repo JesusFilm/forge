@@ -152,7 +152,7 @@ describe("downloadGlyphInfo", () => {
     it("puts a pause in the ring while running, and offers the tap", () => {
       const g = downloadGlyphInfo(null, null, exportEntry())
       expect(g.ringIcon).toBe("pause")
-      expect(g.a11yLabel).toBe("Saving to Photos, 42%. Tap to pause")
+      expect(g.a11yLabel).toBe("Saving to Files, 42%. Tap to pause")
       expect(g.interactive).toBe(true)
     })
 
@@ -164,7 +164,7 @@ describe("downloadGlyphInfo", () => {
       // The resume glyph is red too, matching the paused offline control.
       expect(g.color).toBe(downloadGlyphInfo("paused", 0.42).color)
       expect(g.a11yLabel).toBe(
-        "Saving to Photos, paused at 42%. Tap to resume or stop",
+        "Saving to Files, paused at 42%. Tap to resume or stop",
       )
       expect(g.interactive).toBe(true)
     })
@@ -183,14 +183,14 @@ describe("downloadGlyphInfo", () => {
     it("drops the percentage until the transfer reports one", () => {
       expect(
         downloadGlyphInfo(null, null, exportEntry({ progress: 0 })).a11yLabel,
-      ).toBe("Saving to Photos. Tap to pause")
+      ).toBe("Saving to Files. Tap to pause")
       expect(
         downloadGlyphInfo(
           null,
           null,
           exportEntry({ progress: 0, paused: true }),
         ).a11yLabel,
-      ).toBe("Saving to Photos, paused. Tap to resume or stop")
+      ).toBe("Saving to Files, paused. Tap to resume or stop")
     })
 
     it("clamps an out-of-range export progress", () => {
@@ -219,7 +219,7 @@ describe("downloadGlyphInfo", () => {
         // record's — 0.9 here would be the offline transfer's.
         expect(g.ringIcon).toBe("pause")
         expect(g.ringProgress).toBe(0.42)
-        expect(g.a11yLabel).toContain("Saving to Photos")
+        expect(g.a11yLabel).toContain("Saving to Files")
       }
     })
 

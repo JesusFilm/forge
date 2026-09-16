@@ -1,7 +1,7 @@
 /**
- * U10: the report host outlives the route that started the export (R29), and a
- * refusal the operating system will not prompt for again offers a route to the
- * system settings (R25).
+ * U10: the report host outlives the route that started the export (R29), and
+ * the confirmation names the folder the viewer picked, or Files when the uri
+ * gave no readable name.
  *
  * apps/mobile's tsconfig maps `react` to its .d.ts and jest-expo mirrors
  * tsconfig paths into jest's moduleNameMapper, so the mocks below re-point
@@ -42,7 +42,7 @@ jest.mock("expo-router", () => ({
 }))
 
 import { act } from "react"
-import { Linking, Platform, Text, View } from "react-native"
+import { Platform, Text, View } from "react-native"
 
 import {
   TAB_BAR_CLEARANCE_GAP,
@@ -55,7 +55,6 @@ import {
   publishExportReport,
   resetExportReportsForTests,
 } from "../ExportReportHost"
-import { RAW_EXPORT_ALBUM_NAME } from "../../lib/rawExportConstants"
 import {
   publishSeriesExportProgress,
   resetSeriesExportProgressForTests,
@@ -71,7 +70,6 @@ import {
   type TestInstance,
 } from "../../test-utils/rnTestRenderer"
 
-const SETTINGS_LABEL = "Open settings"
 const DISMISS_LABEL = "Dismiss export report"
 
 function StubRoute() {
@@ -122,18 +120,18 @@ function countLabelled(renderer: TestInstance, label: string): number {
   ).length
 }
 
-let openSettings: jest.SpyInstance
+/** Every control a card exposes, whatever its label. */
+function countButtons(renderer: TestInstance): number {
+  return renderer.root.findAll(
+    (node) =>
+      typeof node.type === "string" &&
+      node.props.accessibilityRole === "button",
+  ).length
+}
 
 beforeEach(() => {
   resetExportReportsForTests()
   resetSeriesExportProgressForTests()
-  openSettings = jest
-    .spyOn(Linking, "openSettings")
-    .mockImplementation(async () => undefined)
-})
-
-afterEach(() => {
-  openSettings.mockRestore()
 })
 
 describe("reporting past the originating route", () => {
@@ -149,25 +147,25 @@ describe("reporting past the originating route", () => {
       target: "birth-of-jesus",
       outcome: "saved",
       title: "Birth of Jesus",
-      albumIntent: "album",
+      folderName: "Download",
     })
 
     expect(hasText(renderer, "Birth of Jesus")).toBe(true)
-    expect(hasText(renderer, RAW_EXPORT_ALBUM_NAME)).toBe(true)
+    expect(hasText(renderer, "Saved to Download.")).toBe(true)
     await unmount(renderer)
   })
 
-  it("names the library, not an album, when the grant could not make one", async () => {
+  it("names Files, not a folder, when the picked uri has no readable name", async () => {
     const renderer = await renderHost()
     await publish({
       runId: "run-1",
       target: "birth-of-jesus",
       outcome: "saved",
-      albumIntent: "library",
+      folderName: null,
     })
 
-    expect(hasText(renderer, "photo library")).toBe(true)
-    expect(hasText(renderer, RAW_EXPORT_ALBUM_NAME)).toBe(false)
+    expect(hasText(renderer, "Saved to Files.")).toBe(true)
+    expect(hasText(renderer, "null")).toBe(false)
     await unmount(renderer)
   })
 
@@ -192,7 +190,7 @@ describe("reporting past the originating route", () => {
       target: "birth-of-jesus",
       outcome: "saved",
       title: "Birth of Jesus",
-      albumIntent: "album",
+      folderName: "Download",
     })
     await publish({
       runId: "run-2",
@@ -214,7 +212,7 @@ describe("reporting past the originating route", () => {
       target: "birth-of-jesus",
       outcome: "saved",
       title: "Birth of Jesus",
-      albumIntent: "album",
+      folderName: "Download",
     })
     await publish({
       runId: "run-2",
@@ -231,19 +229,18 @@ describe("reporting past the originating route", () => {
   })
 })
 
-describe("a refusal is not a failure", () => {
-  it("reports a refusal differently from a failure", async () => {
-    const refusal = await renderHost()
+describe("a gate denial is not a failure", () => {
+  it("reports a blocked export differently from a failure", async () => {
+    const blocked = await renderHost()
     await publish({
       runId: "run-1",
       target: "birth-of-jesus",
-      outcome: "refused",
+      outcome: "blocked",
       title: "Birth of Jesus",
-      canAskAgain: true,
     })
-    expect(hasText(refusal, "Permission is needed")).toBe(true)
-    expect(hasText(refusal, "did not save")).toBe(false)
-    await unmount(refusal)
+    expect(hasText(blocked, "did not start")).toBe(true)
+    expect(hasText(blocked, "did not save")).toBe(false)
+    await unmount(blocked)
 
     resetExportReportsForTests()
     const failure = await renderHost()
@@ -254,63 +251,24 @@ describe("a refusal is not a failure", () => {
       title: "Birth of Jesus",
     })
     expect(hasText(failure, "did not save")).toBe(true)
-    expect(hasText(failure, "Permission is needed")).toBe(false)
+    expect(hasText(failure, "did not start")).toBe(false)
     await unmount(failure)
   })
 
-  it("covers AE10: a permanent refusal offers system settings", async () => {
+  it("offers a blocked export nothing but a dismissal", async () => {
+    // The storage gate is the only gate left, and nothing in Settings clears
+    // it, so the card carries no action beyond closing itself.
     const renderer = await renderHost()
     await publish({
       runId: "run-1",
       target: "birth-of-jesus",
-      outcome: "refused",
+      outcome: "blocked",
       title: "Birth of Jesus",
-      canAskAgain: false,
     })
 
-    await press(pressableByLabel(renderer, SETTINGS_LABEL))
-    expect(openSettings).toHaveBeenCalledTimes(1)
-    await unmount(renderer)
-  })
-
-  it("covers AE10: a first refusal offers no settings action", async () => {
-    const renderer = await renderHost()
-    await publish({
-      runId: "run-1",
-      target: "birth-of-jesus",
-      outcome: "refused",
-      title: "Birth of Jesus",
-      canAskAgain: true,
-    })
-
-    expect(countLabelled(renderer, SETTINGS_LABEL)).toBe(0)
+    expect(countButtons(renderer)).toBe(1)
     expect(countLabelled(renderer, DISMISS_LABEL)).toBe(1)
     await unmount(renderer)
-  })
-
-  it("words a permanent refusal differently from a first refusal", async () => {
-    const permanent = await renderHost()
-    await publish({
-      runId: "run-1",
-      target: "birth-of-jesus",
-      outcome: "refused",
-      canAskAgain: false,
-    })
-    const permanentText = JSON.stringify(permanent.toJSON())
-    await unmount(permanent)
-
-    resetExportReportsForTests()
-    const first = await renderHost()
-    await publish({
-      runId: "run-2",
-      target: "birth-of-jesus",
-      outcome: "refused",
-      canAskAgain: true,
-    })
-    const firstText = JSON.stringify(first.toJSON())
-    await unmount(first)
-
-    expect(permanentText).not.toEqual(firstText)
   })
 
   it("does not report a cancellation as a failure", async () => {
@@ -338,7 +296,7 @@ describe("a series run reports once", () => {
         outcome: episode < 10 ? "saved" : "failed",
         title: "Washi Gospel",
         runSize: 12,
-        albumIntent: "album",
+        folderName: "Download",
       })
     }
 
@@ -357,7 +315,7 @@ describe("a series run reports once", () => {
         outcome,
         title: "Washi Gospel",
         runSize: 3,
-        albumIntent: "album",
+        folderName: "Download",
       })
     }
 
@@ -376,7 +334,7 @@ describe("a series run reports once", () => {
       outcome: "saved",
       title: "Washi Gospel",
       runSize: 5,
-      albumIntent: "album",
+      folderName: "Download",
     })
     await publish({
       runId: "series-run",
@@ -392,7 +350,7 @@ describe("a series run reports once", () => {
     await unmount(renderer)
   })
 
-  it("offers settings once for a run a permanent refusal stopped", async () => {
+  it("notes a blocked episode beside the run counts, on one card", async () => {
     const renderer = await renderHost()
     await publish({
       runId: "series-run",
@@ -400,19 +358,20 @@ describe("a series run reports once", () => {
       outcome: "saved",
       title: "Washi Gospel",
       runSize: 3,
-      albumIntent: "album",
+      folderName: "Download",
     })
     await publish({
       runId: "series-run",
       target: "episode-1",
-      outcome: "refused",
+      outcome: "blocked",
       title: "Washi Gospel",
       runSize: 3,
-      canAskAgain: false,
     })
 
-    expect(countLabelled(renderer, SETTINGS_LABEL)).toBe(1)
+    expect(countLabelled(renderer, DISMISS_LABEL)).toBe(1)
+    expect(countButtons(renderer)).toBe(1)
     expect(hasText(renderer, "Saved 1 of 3 episodes.")).toBe(true)
+    expect(hasText(renderer, "1 did not start.")).toBe(true)
     await unmount(renderer)
   })
 })
@@ -427,7 +386,7 @@ describe("the report clears itself", () => {
         target: "birth-of-jesus",
         outcome: "saved",
         title: "Birth of Jesus",
-        albumIntent: "album",
+        folderName: "Download",
       })
       expect(hasText(renderer, "Birth of Jesus")).toBe(true)
 
@@ -436,6 +395,32 @@ describe("the report clears itself", () => {
       })
 
       expect(hasText(renderer, "Birth of Jesus")).toBe(false)
+      await unmount(renderer)
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
+  it("auto-dismisses a failure too; no card waits for the viewer now", async () => {
+    // A folder grant cannot be refused for good, so the one card that used
+    // to hold open until the viewer acted went with it.
+    jest.useFakeTimers()
+    try {
+      const renderer = await renderHost()
+      await publish({
+        runId: "run-1",
+        target: "birth-of-jesus",
+        outcome: "failed",
+        title: "Birth of Jesus",
+      })
+      expect(hasText(renderer, "did not save")).toBe(true)
+
+      await act(async () => {
+        jest.advanceTimersByTime(EXPORT_REPORT_AUTO_DISMISS_MS + 100)
+      })
+
+      expect(hasText(renderer, "did not save")).toBe(false)
+      expect(countButtons(renderer)).toBe(0)
       await unmount(renderer)
     } finally {
       jest.useRealTimers()
@@ -516,29 +501,6 @@ describe("the report clears itself", () => {
     }
   })
 
-  it("keeps a permanent refusal until the viewer acts on it", async () => {
-    jest.useFakeTimers()
-    try {
-      const renderer = await renderHost()
-      await publish({
-        runId: "run-1",
-        target: "birth-of-jesus",
-        outcome: "refused",
-        title: "Birth of Jesus",
-        canAskAgain: false,
-      })
-
-      await act(async () => {
-        jest.advanceTimersByTime(EXPORT_REPORT_AUTO_DISMISS_MS * 4)
-      })
-
-      expect(countLabelled(renderer, SETTINGS_LABEL)).toBe(1)
-      await unmount(renderer)
-    } finally {
-      jest.useRealTimers()
-    }
-  })
-
   it("survives a listener-free publish", async () => {
     expect(() =>
       publishExportReport({
@@ -601,7 +563,7 @@ const SAVED = {
   target: "birth-of-jesus",
   outcome: "saved",
   title: "Birth of Jesus",
-  albumIntent: "album",
+  folderName: "Download",
 } as const
 
 describe("placement", () => {

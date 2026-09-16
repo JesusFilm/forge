@@ -249,7 +249,7 @@ export default function SeriesScreen() {
 
   // Manage control once the whole series is saved — mirrors the single-video
   // manage flow (app/watch/[slug]) as a native iOS action sheet (HIG: a menu, not
-  // an alert), offering change-quality/subtitles, save-to-Photos and remove-all.
+  // an alert), offering change-quality/subtitles, save-to-Files and remove-all.
   const handleManageDownloads = useCallback(() => {
     const savedSlugs = (series?.episodes ?? [])
       .map((episode) => episode.slug)
@@ -354,7 +354,7 @@ export default function SeriesScreen() {
     if (Platform.OS === "ios") {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          title: "Saving to Photos",
+          title: "Saving to Files",
           message: MESSAGE,
           options: ["Stop Download", "Resume", "Cancel"],
           destructiveButtonIndex: 0,
@@ -367,7 +367,7 @@ export default function SeriesScreen() {
         },
       )
     } else {
-      Alert.alert("Saving to Photos", MESSAGE, [
+      Alert.alert("Saving to Files", MESSAGE, [
         { text: "Stop Download", style: "destructive", onPress: stopAll },
         { text: "Resume", onPress: resumeAll },
         { text: "Cancel", style: "cancel" },

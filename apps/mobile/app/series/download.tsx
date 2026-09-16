@@ -32,7 +32,9 @@ import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider
 import { getExportSessionStore } from "../../src/lib/exportSession"
 import { STORAGE_RESERVE_BYTES } from "../../src/lib/offlineConstants"
 import { RAW_EXPORT_ENABLED } from "../../src/lib/rawExportConstants"
+import type { ExportFolder } from "../../src/lib/rawExport"
 import { getRawExportAdapter } from "../../src/lib/rawExportRuntime"
+import { startRawExportAfterPick } from "../../src/lib/rawExportStart"
 import {
   buildSeriesExportRun,
   runSeriesRawExport,
@@ -87,7 +89,7 @@ type SheetPhase =
 
 export default function SeriesDownloadRoute() {
   const router = useRouter()
-  // "Save to Photos" on the series manage sheet opens straight on the export.
+  // "Save to Files" on the series manage sheet opens straight on the export.
   const { mode: modeParam } = useLocalSearchParams<{ mode?: string }>()
   const { series, selectedLanguageSlug, languages } = useSeriesSession()
   const {
@@ -283,7 +285,7 @@ export default function SeriesDownloadRoute() {
   // disabled), while an export wants exactly that tier, because only it reuses
   // the files already on the device (KTD14 matches the rendition exactly).
   // Keyed on the LIVE mode -- keying on the opening mode left a viewer who
-  // switched to Save to Photos in-sheet on a quality that reuses nothing.
+  // switched to Save to Files in-sheet on a quality that reuses nothing.
   const defaultedForModeRef = useRef<DownloadMode | null>(null)
   // A pick made while the first resolution is still running arrives BEFORE the
   // saved tier is known, so the latch below has not claimed its run yet and
@@ -407,42 +409,63 @@ export default function SeriesDownloadRoute() {
    * the sheet because the run outlives this route (R29). The series run module
    * attaches here.
    */
-  const startRawSeriesExport = useCallback(() => {
+  const startRawSeriesExport = useCallback(async () => {
     if (!RAW_EXPORT_ENABLED || !resolution || !series) return
     // The offline path's own busy gate: Confirm is disabled off "ready", so
     // this is what stops a second tap starting a duplicate run before the
     // sheet finishes dismissing.
     setPhase({ kind: "enqueuing" })
     const seriesSlug = series.slug
-    // One run id for the whole series, so the host folds every episode's
-    // outcome into ONE report (R21).
-    const run = buildSeriesExportRun({
-      runId: `${seriesSlug}:${Date.now()}`,
-      seriesSlug,
-      seriesTitle: series.title ?? null,
-      wifiOnly,
-      episodes: resolution.resolved,
-    })
-    router.back()
-    void runSeriesRawExport(run, {
-      exportVideo: (input) => getRawExportAdapter().exportVideo(input),
-      // R22: either the viewer stopped this RUN, or the cancel landed on the
-      // in-flight episode through a surface that registered it there. The
-      // run-level latch is what survives the library write and the gap between
-      // two episodes; the session entry does not live that long.
-      isCancelRequested: () =>
-        isSeriesExportCancelled(run.runId) ||
-        Object.values(getExportSessionStore().getSnapshot().byTarget).some(
-          (entry) => entry.seriesSlug === seriesSlug && entry.cancelRequested,
-        ),
-      report: publishExportReport,
-      publishRunProgress: (progress) =>
-        publishSeriesExportProgress(seriesSlug, progress),
-      settle: (ms) =>
-        new Promise<void>((resolve) => {
-          setTimeout(resolve, ms)
-        }),
-    })
+    // ONE picker for the whole run, before the sheet dismisses: the run itself
+    // is headless and cannot present, and a picker per episode would interrupt
+    // the viewer once for every episode. A dismissal starts nothing and leaves
+    // the sheet on "ready" so Confirm still works.
+    // The restore runs in a `finally`: a throw out of the pick would otherwise
+    // strand the sheet on "enqueuing" with Confirm disabled and no way back.
+    let started = false
+    try {
+      const outcome = await startRawExportAfterPick({
+        pickFolder: () => getRawExportAdapter().pickExportFolder(),
+        dismiss: () => router.back(),
+        start: (folder) => startSeriesRun(folder),
+      })
+      started = outcome === "started"
+    } finally {
+      if (!started) setPhase({ kind: "ready", resolution })
+    }
+
+    function startSeriesRun(folder: ExportFolder): void {
+      if (!resolution || !series) return
+      // One run id for the whole series, so the host folds every episode's
+      // outcome into ONE report (R21).
+      const run = buildSeriesExportRun({
+        runId: `${seriesSlug}:${Date.now()}`,
+        seriesSlug,
+        seriesTitle: series.title ?? null,
+        wifiOnly,
+        folder,
+        episodes: resolution.resolved,
+      })
+      void runSeriesRawExport(run, {
+        exportVideo: (input) => getRawExportAdapter().exportVideo(input),
+        // R22: either the viewer stopped this RUN, or the cancel landed on the
+        // in-flight episode through a surface that registered it there. The
+        // run-level latch is what survives the folder copy and the gap between
+        // two episodes; the session entry does not live that long.
+        isCancelRequested: () =>
+          isSeriesExportCancelled(run.runId) ||
+          Object.values(getExportSessionStore().getSnapshot().byTarget).some(
+            (entry) => entry.seriesSlug === seriesSlug && entry.cancelRequested,
+          ),
+        report: publishExportReport,
+        publishRunProgress: (progress) =>
+          publishSeriesExportProgress(seriesSlug, progress),
+        settle: (ms) =>
+          new Promise<void>((resolve) => {
+            setTimeout(resolve, ms)
+          }),
+      })
+    }
   }, [resolution, series, wifiOnly, router])
 
   const onConfirm = useCallback(() => {
@@ -450,7 +473,7 @@ export default function SeriesDownloadRoute() {
     // R32's fourth gate: an export replaces nothing, so the warning is skipped
     // rather than reworded.
     if (rawMode) {
-      startRawSeriesExport()
+      void startRawSeriesExport()
       return
     }
     // A new quality/subtitle on an already-saved episode replaces the old copy

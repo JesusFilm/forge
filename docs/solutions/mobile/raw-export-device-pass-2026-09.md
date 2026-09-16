@@ -7,6 +7,18 @@ component: raw-file-export
 
 # Raw file export — device verification pass
 
+> **Superseded on 2026-09-15 — the destination changed, and so did the
+> oracle.** The export now copies into a folder the viewer picks, not into the
+> photo library. Rows 1, 2, 3, 4, 8, 10, 14, 15, 16 and 17 below describe a
+> build that no longer exists; rows 5, 6, 7, 9, 11, 12 and 13 still describe a
+> real step, but every observation in them must be re-taken against the new
+> build. The `PHPhotoLibrary … success: YES` log count that this pass used as
+> its oracle is gone with the library write. **The replacement oracle:** after
+> a save, list the picked folder through the same `Directory` handle the app
+> holds and assert the file is present at the byte size the sheet showed;
+> then open the Files app by hand and confirm it is there. The new pass lives
+> in `docs/solutions/mobile/raw-export-folder-destination-20260915.md`.
+
 **Status: PARTIAL — iOS simulator only. Android NOT RUN. Hardware NOT RUN.**
 Two runs: 2026-09-10 (iPhone 17 Pro Max, iOS 26.4) filled the single-video
 rows; 2026-09-14 (iPhone 17, iOS 26.5) filled the series rows 11 and 12. Each

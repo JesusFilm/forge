@@ -89,6 +89,23 @@ export function buildExportFileName(
   return `${stem === "" ? "_" : stem}${FILE_EXTENSION}`
 }
 
+/**
+ * `Jesus.mp4` at index 2 becomes `Jesus (2).mp4`; index 1 is the bare name. The
+ * stem gives up whatever the suffix needs, so a de-duplicated name still fits
+ * the same bound the staged name was built to.
+ */
+export function suffixFileName(fileName: string, index: number): string {
+  if (index <= 1) return fileName
+  const dot = fileName.lastIndexOf(".")
+  const hasExtension = dot > 0
+  const stem = hasExtension ? fileName.slice(0, dot) : fileName
+  const extension = hasExtension ? fileName.slice(dot) : ""
+  const suffix = ` (${index})`
+  const room = RAW_EXPORT_MAX_FILENAME_LENGTH - extension.length - suffix.length
+  const trimmed = room > 0 ? stem.slice(0, room) : ""
+  return `${trimmed}${suffix}${extension}`
+}
+
 /** Where one export stages its bytes. Every dynamic segment is sanitized. */
 export function buildStagedExportPath(args: {
   root: string
@@ -143,9 +160,9 @@ export function isUnderExportRoot(path: string, root: string): boolean {
 }
 
 /**
- * The engine's reported location in the root's URI form, because the library
- * write still needs the `file://` the engine stripped. Null outside the root,
- * which is neither ours to save nor ours to delete.
+ * The engine's reported location in the root's URI form, because the copy into
+ * the chosen folder still needs the `file://` the engine stripped. Null outside
+ * the root, which is neither ours to save nor ours to delete.
  */
 export function adoptStagedPath(location: string, root: string): string | null {
   if (!isUnderExportRoot(location, root)) return null
@@ -218,7 +235,7 @@ export function createTransferPort(deps: TransferPortDeps) {
         settled = true
         live.delete(spec.id)
         // Every engine-reported terminal path signals. The done path is the one
-        // exception: the adapter signals it after the staging note lands.
+        // exception: the adapter signals it after the copy lands.
         if (report.kind === "interrupted") signalBackgroundCompletion(spec.id)
         resolve(report)
       }

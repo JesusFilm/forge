@@ -47,9 +47,18 @@ const ENTRY_POINTS = [
 // offline sheet, where a fully-downloaded series shows a disabled button.
 const SERIES_MODE_SEED = ["useLocalSearchParams", 'modeParam === "raw"']
 
-const WATCH_WIRING = ["getRawExportAdapter()", "exportVideo("]
+// `startRawExportAfterPick(` is the ONE tested pick-then-dismiss-then-start
+// sequence; a route that inlines its own copy escapes that suite.
+const WATCH_WIRING = [
+  "getRawExportAdapter()",
+  "startRawExportAfterPick(",
+  "pickExportFolder()",
+  "exportVideo(",
+]
 const SERIES_WIRING = [
   "getRawExportAdapter()",
+  "startRawExportAfterPick(",
+  "pickExportFolder()",
   "buildSeriesExportRun(",
   "runSeriesRawExport(",
   // R21 folds a whole run into one report. Without the channel every episode
@@ -70,36 +79,85 @@ function missingWiring(source, required) {
   return required.filter((token) => !stripped.includes(token))
 }
 
+/** The two raw starters, so the order check cannot read the offline branch. */
+const RAW_STARTERS = [
+  { route: WATCH_ROUTE, starter: "startRawExport" },
+  { route: SERIES_ROUTE, starter: "startRawSeriesExport" },
+]
+
+/**
+ * The starter's body, brace-matched from its declaration. Indentation is not
+ * the boundary: the real starters sit inside a component and the controls do
+ * not, and a slice keyed on indent silently reads the wrong span for one.
+ */
+function rawStarterBody(source, starter) {
+  const start = source.indexOf(`const ${starter} =`)
+  if (start === -1) return ""
+  const open = source.indexOf("{", start)
+  if (open === -1) return ""
+  let depth = 0
+  for (let index = open; index < source.length; index += 1) {
+    if (source[index] === "{") depth += 1
+    if (source[index] === "}") {
+      depth -= 1
+      if (depth === 0) return source.slice(open, index + 1)
+    }
+  }
+  return source.slice(open)
+}
+
 describe("the raw-export composition root wires its native bindings", () => {
-  it("requests the ADD-ONLY photo-library scope on both permission calls", () => {
+  it("asks NO runtime permission: the folder picker is the consent", () => {
     const source = stripComments(read(RUNTIME))
 
-    // The literal `true` is the write-only flag. Both calls, or iOS terminates
-    // the app against a deliberately absent usage string.
-    expect(source).toMatch(/getPermissionsAsync\(\s*true\s*\)/)
-    expect(source).toMatch(/requestPermissionsAsync\(\s*true\s*\)/)
-    // Anti-vacuous: prove the matchers above would not pass on a bare call.
-    expect(
-      /getPermissionsAsync\(\s*true\s*\)/.test("getPermissionsAsync()"),
-    ).toBe(false)
+    // A permission call here means a destination that needs one came back.
+    // The whole point of the folder picker is that it needs none.
+    expect(source).not.toMatch(/PermissionsAsync/)
+    expect(source).not.toMatch(/expo-media-library/)
+    // Anti-vacuous: the matcher does read this file's real text.
+    expect(/PermissionsAsync/.test("requestPermissionsAsync(true)")).toBe(true)
   })
 
-  it("binds the engine, the media library and the app state", () => {
+  it("binds the engine and the folder picker", () => {
     const source = stripComments(read(RUNTIME))
 
     for (const binding of [
       "startMediaDownload",
       "stopTask",
       "notifyIosBackgroundComplete",
-      "saveToLibraryAsync",
-      "createAssetAsync",
-      "createAlbumAsync",
-      "AppState.currentState",
+      "Directory.pickDirectoryAsync(",
       "publishExportReport",
       "buildExportRoot",
     ]) {
       expect(source).toContain(binding)
     }
+  })
+
+  it("copies INTO the picked folder rather than moving the stage", () => {
+    // R38 again, at the new destination: the viewer's folder gets a duplicate,
+    // so deleting the saved file never costs them the offline copy.
+    const source = stripComments(read(RUNTIME))
+
+    expect(source).toMatch(/source\.copy\(new Directory\(folder\.uri\)\)/)
+    expect(source).not.toMatch(/source\.move\(/)
+  })
+
+  it("names the saved file by RENAMING the source, never by joining the uri", () => {
+    // Android's picker returns a SAF tree uri, and appending a name to it
+    // resolves back to the folder, so the copy would target a directory. The
+    // destination child takes the source's own name on both platforms.
+    const source = stripComments(read(RUNTIME))
+
+    expect(source).toMatch(/source\.rename\(fileName\)/)
+    expect(source).not.toMatch(/new File\(\s*new Directory\(folder\.uri\)\s*,/)
+    expect(source).not.toMatch(/new File\(\s*destination\s*,/)
+  })
+
+  it("positive control: the retired join shape would be caught", () => {
+    const broken =
+      "await new File(stagedPath).copy(new File(destination, fileName))"
+    expect(broken).toMatch(/new File\(\s*destination\s*,/)
+    expect(broken).not.toMatch(/source\.rename\(fileName\)/)
   })
 
   it("stages OUTSIDE the offline root", () => {
@@ -111,9 +169,9 @@ describe("the raw-export composition root wires its native bindings", () => {
     expect(source).not.toContain("OFFLINE_ROOT")
   })
 
-  it("hands the library a COPY, never a move", () => {
-    // R38: a library that consumes what it is given must not be able to
-    // destroy the offline copy the app still owns.
+  it("hands the stage a COPY, never a move", () => {
+    // R38: the reuse path must not be able to destroy the offline copy the app
+    // still owns.
     const source = stripComments(read(RUNTIME))
 
     expect(source).toContain("copyFile")
@@ -138,12 +196,38 @@ describe("the raw-export composition root wires its native bindings", () => {
     expect(missingWiring(read(SERIES_ROUTE), SERIES_WIRING)).toEqual([])
   })
 
+  it("routes both sheets through the ONE tested pick-then-start sequence", () => {
+    // The order itself is behaviour, and `rawExportStart.test.ts` pins it by
+    // calling the function. A route that inlines its own copy escapes that
+    // suite, so what this guard holds is that neither route does.
+    for (const { route, starter } of RAW_STARTERS) {
+      const body = rawStarterBody(stripComments(read(route)), starter)
+      expect(body).toContain("startRawExportAfterPick(")
+      // A bare `router.back()` in the raw starter is a hand-rolled dismissal
+      // that no longer runs after the pick.
+      expect(body).not.toMatch(/^\s*router\.back\(\)/m)
+    }
+  })
+
+  it("positive control: an inlined dismissal in a raw starter is caught", () => {
+    const broken = [
+      "const startRawExport = async () => {",
+      "  router.back()",
+      "  const folder = await adapter.pickExportFolder()",
+      "}",
+      "const after = 1",
+    ].join("\n")
+    const body = rawStarterBody(broken, "startRawExport")
+    expect(body).not.toContain("startRawExportAfterPick(")
+    expect(body).toMatch(/^\s*router\.back\(\)/m)
+  })
+
   it("is reachable from the app: both manage menus offer the export", () => {
     for (const { screen, route } of ENTRY_POINTS) {
       const source = stripComments(read(screen))
       expect(source).toContain(route)
-      // The label comes from the shared helper, so iOS says Photos and
-      // Android says Gallery from one place.
+      // The label comes from the shared helper, so iOS says Files and
+      // Android says Device from one place.
       expect(source).toContain("rawModeLabel(")
       // The switch gates the row itself; without it a flipped switch leaves a
       // live row that opens a sheet with no export mode.

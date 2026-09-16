@@ -87,11 +87,11 @@ export function SeriesActionRow({
   const downloadA11y = exporting
     ? pausedExport
       ? onResumeExport
-        ? "Saving to Photos, paused. Tap to resume or stop"
-        : "Saving to Photos, paused"
+        ? "Saving to Files, paused. Tap to resume or stop"
+        : "Saving to Files, paused"
       : onPauseExport
-        ? "Saving to Photos. Tap to pause"
-        : "Saving to Photos"
+        ? "Saving to Files. Tap to pause"
+        : "Saving to Files"
     : downloadState.pausedAggregate
       ? "Downloads paused. Tap for resume or cancel options"
       : downloadState.inProgress

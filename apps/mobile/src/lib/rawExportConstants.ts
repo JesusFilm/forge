@@ -1,5 +1,5 @@
 /**
- * Dependency-free constants for the raw file export (save to Photos). Every
+ * Dependency-free constants for the raw file export (save to Files). Every
  * later export module imports this leaf, so it holds no logic and no import.
  */
 
@@ -9,12 +9,6 @@
  * never strands a staged file.
  */
 export const RAW_EXPORT_ENABLED: boolean = true
-
-/**
- * Android album for saved videos. KD7 fixes the name before the first build
- * ships, because the app can neither rename nor delete an album it created.
- */
-export const RAW_EXPORT_ALBUM_NAME = "Jesus Film Watch"
 
 /**
  * KTD2's transfer-id namespace. It must stay disjoint from the offline ids,
@@ -33,6 +27,6 @@ export const RAW_EXPORT_DIR_NAME = "raw-exports"
 /**
  * Bound on the viewer-legible exported filename (R34). The name derives from an
  * untrusted video title, so it is sanitized and truncated before it reaches the
- * device library.
+ * chosen folder.
  */
 export const RAW_EXPORT_MAX_FILENAME_LENGTH = 120

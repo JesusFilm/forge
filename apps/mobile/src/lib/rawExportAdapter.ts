@@ -1,13 +1,13 @@
 /**
- * The raw export's impure edge: the staging file, the device-library write and
- * the app-state gate. Every crossing arrives injected — the transfer port, the
- * filesystem, the photo library, the app state and the report channel — so this
- * module imports no native code and jest needs no native mock.
+ * The raw export's impure edge: the staging file and the copy into the folder
+ * the viewer picked. Every crossing arrives injected — the transfer port, the
+ * filesystem, the destination and the report channel — so this module imports no
+ * native code and jest needs no native mock.
  *
  * Wiring for the app (owned by the surfaces that start an export): `port` is
  * `createTransferPort` over `downloadEngine`, `fs.copyFile` is `copyAsync` from
- * `expo-file-system/legacy`, `library` is `expo-media-library`, `getAppState`
- * reads `AppState.currentState`, and `report` is `publishExportReport`.
+ * `expo-file-system/legacy`, `destination` is `expo-file-system`'s `Directory`
+ * and `File`, and `report` is `publishExportReport`.
  */
 
 import type { ExportReportSignal } from "../components/ExportReportHost"
@@ -15,7 +15,6 @@ import { telemetryErrorMessage } from "./downloadErrors"
 import type { DownloadTelemetry } from "./downloadRequestBuilders"
 import {
   getExportSessionStore,
-  type ExportAlbumIntent,
   type ExportOutcome,
   type ExportSessionStore,
   type ExportStagingNote,
@@ -23,35 +22,50 @@ import {
 import type { OfflineDownloadRecord } from "./offlineManifest"
 import {
   createRawExportDecider,
+  exportFolderName,
   type ExportBlock,
-  type LibraryPermissionResponse,
+  type ExportFolder,
   type RawExportRendition,
   type RawExportRequest,
   type RawExportTransferHooks,
   type RawExportTransferReport,
   type RawExportTransferSpec,
 } from "./rawExport"
-import { RAW_EXPORT_ALBUM_NAME } from "./rawExportConstants"
 import {
   adoptStagedPath,
+  buildExportFileName,
   buildExportTaskId,
   buildStagedExportPath,
   exportStagingDir,
-  isUnderExportRoot,
+  suffixFileName,
 } from "./transferPort"
 
-/** The photo-library surface, narrowed to the calls an add-only grant allows. */
-export type ExportLibraryPort = {
-  getPermission: () => Promise<LibraryPermissionResponse>
-  requestPermission: () => Promise<LibraryPermissionResponse>
-  /** iOS: the only add-only-safe write. It cannot name an album (R17). */
-  saveToLibrary: (uri: string) => Promise<unknown>
-  createAsset: (uri: string) => Promise<unknown>
-  createAlbum: (
-    albumName: string,
-    asset: unknown,
-    copyAsset: boolean,
-  ) => Promise<unknown>
+/** Where a finished export lands, and how the viewer names it. */
+export type ExportDestinationPort = {
+  /**
+   * Present the platform's folder picker. Null means no folder — a dismissal or
+   * a picker that could not open, which are the same thing to the caller.
+   */
+  pickFolder: () => Promise<ExportFolder | null>
+  /**
+   * Every entry name in the folder. The free-name search reads the whole list
+   * once, because Android resolves no per-name probe against a SAF tree.
+   */
+  listNames: (folder: ExportFolder) => Promise<readonly string[]>
+  /**
+   * Copy the staged file into the folder under `fileName`. It resolves only
+   * once the bytes are there, so a resolution is what lets the stage be deleted.
+   */
+  copyInto: (args: {
+    stagedPath: string
+    folder: ExportFolder
+    fileName: string
+  }) => Promise<void>
+  /** Remove a file the folder holds under this name, if it holds one. */
+  removeIfExists: (args: {
+    folder: ExportFolder
+    fileName: string
+  }) => Promise<void>
 }
 
 export type ExportFileSystemPort = {
@@ -80,11 +94,7 @@ export type RawExportAdapterDeps = {
   exportRoot: string
   port: ExportTransferPort
   fs: ExportFileSystemPort
-  library: ExportLibraryPort
-  /** R17: only Android can create the named album under an add-only grant. */
-  platform: "ios" | "android"
-  /** KTD4: `AppState.currentState`; the library write needs "active". */
-  getAppState: () => string
+  destination: ExportDestinationPort
   /** R13: read-only. An export never creates, replaces or deletes a record. */
   findOfflineRecord: (
     videoSlug: string,
@@ -101,6 +111,8 @@ export type RawExportInput = {
   title: string | null
   rendition: RawExportRendition
   wifiOnly: boolean
+  /** The folder the viewer picked before the run started. */
+  folder: ExportFolder
   seriesSlug?: string | null
   /** Episodes this run covers, so the report folds them into one. */
   runSize?: number
@@ -111,12 +123,9 @@ export type RawExportInput = {
 export type RawExportResult =
   /** R27: the target is already exporting, so nothing started. */
   | { kind: "already-exporting" }
-  /** KTD4: staged, but the library write waits for an active app. */
-  | { kind: "deferred"; stagedPath: string }
   | {
       kind: "settled"
       outcome: ExportOutcome
-      albumIntent: ExportAlbumIntent | null
       reused: boolean
     }
 
@@ -135,6 +144,9 @@ function blockDetail(block: ExportBlock): string {
       return "This video's download address could not be used."
   }
 }
+
+/** Bound on the de-duplicating name search, so a full folder cannot spin. */
+const MAX_NAME_ATTEMPTS = 50
 
 export function createRawExportAdapter(deps: RawExportAdapterDeps) {
   const store = (): ExportSessionStore =>
@@ -155,32 +167,43 @@ export function createRawExportAdapter(deps: RawExportAdapterDeps) {
     }
   }
 
-  const albumIntentForPlatform = (): ExportAlbumIntent =>
-    deps.platform === "android" ? "album" : "library"
-
   /**
-   * R17: the asset lands in the library FIRST, so a missing album can never
-   * fail an export — it only changes what the confirmation names.
+   * A name already in use makes the copy throw, so the free name is found
+   * first. One listing answers every candidate, and a folder that already holds
+   * all of them keeps the last name so the copy reports the collision.
    */
-  const writeToLibrary = async (
-    stagedPath: string,
-    intent: ExportAlbumIntent,
-  ): Promise<{ intent: ExportAlbumIntent }> => {
-    if (intent !== "album") {
-      await deps.library.saveToLibrary(stagedPath)
-      return { intent: "library" }
+  const freeFileName = async (
+    folder: ExportFolder,
+    fileName: string,
+  ): Promise<string> => {
+    const taken = new Set(await deps.destination.listNames(folder))
+    for (let index = 1; index <= MAX_NAME_ATTEMPTS; index += 1) {
+      const candidate = suffixFileName(fileName, index)
+      if (!taken.has(candidate)) return candidate
     }
-    const asset = await deps.library.createAsset(stagedPath)
+    return suffixFileName(fileName, MAX_NAME_ATTEMPTS)
+  }
+
+  /** The copy into the viewer's folder — the step that replaces R17's write. */
+  const copyToFolder = async (
+    stagedPath: string,
+    folder: ExportFolder,
+    title: string | null,
+    fallbackName: string,
+  ): Promise<void> => {
+    const fileName = await freeFileName(
+      folder,
+      buildExportFileName(title, fallbackName),
+    )
     try {
-      await deps.library.createAlbum(RAW_EXPORT_ALBUM_NAME, asset, false)
-      return { intent: "album" }
+      await deps.destination.copyInto({ stagedPath, folder, fileName })
     } catch (error) {
-      warn("raw_export.album_unavailable", {
-        export_state: "saved",
-        export_album_intent: "library",
-        error_message: telemetryErrorMessage(error),
-      })
-      return { intent: "library" }
+      // R18 reaches the destination too: a copy that fails part way leaves a
+      // truncated file under the final name, and nothing else ever removes it.
+      await deps.destination
+        .removeIfExists({ folder, fileName })
+        .catch(() => undefined)
+      throw error
     }
   }
 
@@ -204,7 +227,6 @@ export function createRawExportAdapter(deps: RawExportAdapterDeps) {
   async function exportVideo(input: RawExportInput): Promise<RawExportResult> {
     const target = input.videoSlug
     const taskId = buildExportTaskId(target)
-    const albumIntent = albumIntentForPlatform()
     const stagingDir = exportStagingDir(deps.exportRoot, target)
     const initialPath = buildStagedExportPath({
       root: deps.exportRoot,
@@ -213,11 +235,8 @@ export function createRawExportAdapter(deps: RawExportAdapterDeps) {
       fallbackName: target,
     })
 
-    let deferred = false
     let reused = false
     let stagedPath = initialPath
-    let achievedIntent: ExportAlbumIntent | null = null
-    let canAskAgain: boolean | undefined
     let detail: string | null = null
 
     const result = await store().run(
@@ -250,10 +269,6 @@ export function createRawExportAdapter(deps: RawExportAdapterDeps) {
 
         const decider = createRawExportDecider({
           fs: { freeDiskBytes: deps.fs.freeDiskBytes },
-          library: {
-            getPermission: deps.library.getPermission,
-            requestPermission: deps.library.requestPermission,
-          },
           transfer: {
             run: async (spec, hooks) => {
               await deps.fs.ensureDirectory(stagingDir)
@@ -261,7 +276,6 @@ export function createRawExportAdapter(deps: RawExportAdapterDeps) {
               // leaves a discardable stage rather than an unattributable file.
               await handle.stage({
                 stagedPath: initialPath,
-                albumIntent,
                 runSize: input.runSize,
               })
               return deps.port.runExportTransfer(spec, hooks)
@@ -284,20 +298,15 @@ export function createRawExportAdapter(deps: RawExportAdapterDeps) {
               detail = blockDetail(admission.block)
               return "blocked"
             }
-            if (admission.kind === "refused") {
-              canAskAgain = admission.refusal.canAskAgain
-              return "refused"
-            }
             if (admission.kind === "failed") return "failed"
 
             await deps.fs.ensureDirectory(stagingDir)
             await handle.stage({
               stagedPath: initialPath,
-              albumIntent,
               runSize: input.runSize,
             })
-            // R38: the library gets a DUPLICATE, so a platform that consumes
-            // what it is handed cannot destroy the offline copy.
+            // R38: the folder gets a DUPLICATE, so a viewer who later deletes
+            // the saved file still has the offline copy.
             await deps.fs.copyFile(reusable, initialPath)
             reused = true
           } else {
@@ -305,10 +314,6 @@ export function createRawExportAdapter(deps: RawExportAdapterDeps) {
             if (staged.outcome === "blocked") {
               detail = blockDetail(staged.block)
               return "blocked"
-            }
-            if (staged.outcome === "refused") {
-              canAskAgain = staged.refusal.canAskAgain
-              return "refused"
             }
             if (staged.outcome === "cancelled") return "cancelled"
             if (staged.outcome === "failed") return "failed"
@@ -320,57 +325,44 @@ export function createRawExportAdapter(deps: RawExportAdapterDeps) {
 
           await handle.stage({
             stagedPath,
-            albumIntent,
             runSize: input.runSize,
           })
-          await handle.markTransferFinished()
-          // End of staging, not end of the export: the signal releases the
-          // shared background-session handler, which the library otherwise
-          // fires itself 30 seconds after the transfer ends.
-          deps.port.signalBackgroundCompletion(taskId)
 
           if (handle.isCancelRequested()) return "cancelled"
 
-          if (deps.getAppState() !== "active") {
-            // KTD4: a completion callback does not imply the foreground, so the
-            // note outlives this run and a later transition finishes the write.
-            handle.deferStagingNote()
-            deferred = true
-            return "abandoned"
-          }
-
-          const written = await writeToLibrary(stagedPath, albumIntent)
-          achievedIntent = written.intent
+          await copyToFolder(stagedPath, input.folder, input.title, target)
+          // AFTER the copy, not before it: the signal releases the shared
+          // background-session handler, and iOS may suspend the process once it
+          // lands. The engine still fires it 30s after IT got the handler, so
+          // this buys the copy that window, not an open-ended one.
+          deps.port.signalBackgroundCompletion(taskId)
           info("raw_export.saved", {
             export_state: "saved",
             export_target: target,
-            export_album_intent: achievedIntent,
             export_reused: reused,
           })
-          // A stop that landed while the library write was in flight would
-          // otherwise be swallowed by the "saved" outcome, and a series run
-          // reads that outcome to decide whether to start the next episode.
-          // R22 keeps this asset: it is already in the library.
+          // A stop that landed while the copy was in flight would otherwise be
+          // swallowed by the "saved" outcome, and a series run reads that
+          // outcome to decide whether to start the next episode. R22 keeps this
+          // file: it is already in the viewer's folder.
           if (handle.isCancelRequested()) return "cancelled"
           return "saved"
         } catch (error) {
           warn("raw_export.failed", {
             export_state: "failed",
             export_target: target,
-            export_failure_cause: "libraryWriteError",
+            export_failure_cause: "destinationWriteError",
             error_message: telemetryErrorMessage(error),
           })
           return "failed"
         } finally {
-          // R18: every terminal outcome leaves the export root empty. The
-          // deferred hand-off is the one exit that must keep its staged file.
-          if (!deferred) await safeRemove(stagingDir)
+          // R18: every terminal outcome leaves the export root empty.
+          await safeRemove(stagingDir)
         }
       },
     )
 
     if (!result.started) return { kind: "already-exporting" }
-    if (deferred) return { kind: "deferred", stagedPath }
 
     deps.report({
       runId: input.runId,
@@ -378,14 +370,12 @@ export function createRawExportAdapter(deps: RawExportAdapterDeps) {
       outcome: result.outcome,
       runSize: input.runSize,
       title: input.title,
-      albumIntent: achievedIntent ?? undefined,
-      canAskAgain,
+      folderName: exportFolderName(input.folder.uri),
       detail,
     })
     return {
       kind: "settled",
       outcome: result.outcome,
-      albumIntent: achievedIntent,
       reused,
     }
   }
@@ -398,59 +388,10 @@ export function createRawExportAdapter(deps: RawExportAdapterDeps) {
   const SKIPPED: ExportOutcome = "abandoned"
 
   /**
-   * R28: finish the library write a killed or backgrounded process never ran.
-   * The note is persisted JSON, so a path outside the export root is neither
-   * saved nor deleted.
+   * Every staged file a killed process left behind. The folder the viewer
+   * picked was a live grant, and it died with that process, so the bytes cannot
+   * be copied anywhere now — R28's completion path has no equivalent here.
    */
-  async function completeStagedExport(
-    note: ExportStagingNote,
-  ): Promise<ExportOutcome> {
-    const stagingDir = exportStagingDir(deps.exportRoot, note.target)
-    let intent: ExportAlbumIntent | null = null
-
-    const result = await store().run(
-      { target: note.target, runId: note.runId },
-      async (): Promise<ExportOutcome> => {
-        try {
-          const usable =
-            isUnderExportRoot(note.stagedPath, deps.exportRoot) &&
-            (await deps.fs.fileExists(note.stagedPath))
-          if (!usable) return "abandoned"
-          const written = await writeToLibrary(
-            note.stagedPath,
-            note.albumIntent,
-          )
-          intent = written.intent
-          return "saved"
-        } catch (error) {
-          warn("raw_export.failed", {
-            export_state: "failed",
-            export_target: note.target,
-            export_failure_cause: "libraryWriteError",
-            error_message: telemetryErrorMessage(error),
-          })
-          return "failed"
-        } finally {
-          await safeRemove(stagingDir)
-        }
-      },
-    )
-
-    // The live export owns the note and reports its own outcome, so a report
-    // here would be a second card for one video.
-    if (!result.started) return SKIPPED
-
-    deps.report({
-      runId: note.runId,
-      target: note.target,
-      outcome: result.outcome,
-      runSize: note.runSize,
-      albumIntent: intent ?? undefined,
-    })
-    return result.outcome
-  }
-
-  /** R18: an export interrupted during staging leaves no file behind. */
   async function discardStagedExport(
     note: ExportStagingNote,
   ): Promise<ExportOutcome> {
@@ -487,9 +428,18 @@ export function createRawExportAdapter(deps: RawExportAdapterDeps) {
     return store().requestResume(videoSlug)
   }
 
+  /**
+   * Ask the viewer where to save. The surfaces call this BEFORE they start a
+   * run, while their sheet is still on screen — a headless run cannot present a
+   * picker, and a series threads one answer through every episode.
+   */
+  function pickExportFolder(): Promise<ExportFolder | null> {
+    return deps.destination.pickFolder()
+  }
+
   return {
     exportVideo,
-    completeStagedExport,
+    pickExportFolder,
     discardStagedExport,
     cancelExport,
     pauseExport,

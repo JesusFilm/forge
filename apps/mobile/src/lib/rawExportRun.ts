@@ -6,7 +6,11 @@
  */
 
 import type { ExportReportSignal } from "../components/ExportReportHost"
-import type { ExportSizing, RawExportRendition } from "./rawExport"
+import type {
+  ExportFolder,
+  ExportSizing,
+  RawExportRendition,
+} from "./rawExport"
 import type { RawExportInput, RawExportResult } from "./rawExportAdapter"
 import type { SeriesEpisodeResolution } from "./seriesDownloadResolver"
 import type { SeriesExportRunProgress } from "./seriesExportProgress"
@@ -25,10 +29,12 @@ export type SeriesExportRun = {
   seriesSlug: string
   seriesTitle: string | null
   wifiOnly: boolean
+  /** ONE folder for the whole run: the viewer picks before the first episode. */
+  folder: ExportFolder
   episodes: readonly SeriesExportEpisode[]
   /**
-   * R8/KTD9: the run's space sizing, derived ONCE. Peak use is every library
-   * copy plus one staged file, so a reused local copy counts like a transfer.
+   * R8/KTD9: the run's space sizing, derived ONCE. Peak use is every saved copy
+   * plus one staged file, so a reused local copy counts like a transfer.
    */
   runExports: ExportSizing[]
 }
@@ -38,6 +44,7 @@ export type SeriesExportRunInput = {
   seriesSlug: string
   seriesTitle: string | null
   wifiOnly: boolean
+  folder: ExportFolder
   /** The resolved set, exactly as the sheet resolved it (R19). */
   episodes: readonly SeriesEpisodeResolution[]
 }
@@ -75,9 +82,6 @@ export type SeriesExportRunSummary = {
   total: number
   saved: number
   failed: number
-  /** KTD4: staged episodes whose library write a later foreground finishes.
-   *  They count inside `saved`, because that write still happens. */
-  deferred: number
   /** R22: the viewer stopped the run; what already saved stays saved. */
   cancelled: boolean
 }
@@ -131,6 +135,7 @@ export function buildSeriesExportRun(
     seriesSlug: input.seriesSlug,
     seriesTitle: input.seriesTitle,
     wifiOnly: input.wifiOnly,
+    folder: input.folder,
     episodes,
     runExports: episodes.map((episode) => ({
       sizeBytes: episode.rendition.sizeBytes,
@@ -149,7 +154,6 @@ export async function runSeriesRawExport(
   const total = run.episodes.length
   let saved = 0
   let failed = 0
-  let deferred = 0
   let cancelled = false
 
   const reportFor = (
@@ -189,6 +193,7 @@ export async function runSeriesRawExport(
           title: episode.title,
           rendition: episode.rendition,
           wifiOnly: run.wifiOnly,
+          folder: run.folder,
           seriesSlug: run.seriesSlug,
           runSize: total,
           // The SUFFIX, not the whole run: the adapter re-reads free space per
@@ -204,14 +209,6 @@ export async function runSeriesRawExport(
         continue
       }
 
-      if (result.kind === "deferred") {
-        // The write is handed to the next foreground, which publishes the real
-        // outcome under this same run id. A guess here would only be overwritten.
-        deferred += 1
-        saved += 1
-        publishProgress()
-        continue
-      }
       if (result.kind === "already-exporting") {
         // R27: another surface owns this episode's export, so it saves under a
         // different run. This one did not save it.
@@ -245,5 +242,5 @@ export async function runSeriesRawExport(
     deps.publishRunProgress?.(null)
   }
 
-  return { runId: run.runId, total, saved, failed, deferred, cancelled }
+  return { runId: run.runId, total, saved, failed, cancelled }
 }

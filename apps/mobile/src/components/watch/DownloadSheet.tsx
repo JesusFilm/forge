@@ -291,15 +291,16 @@ export function Dropdown({
 export type DownloadMode = "offline" | "raw"
 
 /**
- * The raw label names the PLATFORM's own photos app: Apple's is called Photos,
- * and "Gallery" is the term Android users recognise whatever the OEM ships.
+ * Both platforms open a folder picker, so both labels name the same act. The
+ * noun follows the platform: Apple's app is called Files, and Android's picker
+ * is the system file chooser whatever the OEM ships.
  *
  * A function of the OS, not a `Platform.OS` conditional read inline, because
  * jest runs this app as iOS ONLY — an inline read would leave the Android
  * wording permanently unexercised.
  */
 export function rawModeLabel(platformOS: string): string {
-  return platformOS === "ios" ? "Save to Photos" : "Save to Gallery"
+  return platformOS === "ios" ? "Save to Files" : "Save to Device"
 }
 
 /**
@@ -318,7 +319,7 @@ export const DOWNLOAD_MODE_LABELS: Record<DownloadMode, string> = {
  */
 const DOWNLOAD_MODE_HINTS: Record<DownloadMode, string> = {
   offline: "Watch it in the app without a network.",
-  raw: "Keep it in your device library, outside the app.",
+  raw: "Choose a folder to keep it in, outside the app.",
 }
 
 const DOWNLOAD_MODE_ANNOUNCEMENTS: Record<DownloadMode, string> = {
@@ -572,7 +573,7 @@ export type DownloadSheetProps = {
   /**
    * Which mode the sheet OPENS on. R2 still holds — the sheet never remembers
    * the last choice — but an entry point that exists to do one specific thing
-   * ("Save to Photos" on a downloaded video) may say so, once, on the way in.
+   * ("Save to Files" on a downloaded video) may say so, once, on the way in.
    */
   initialMode?: DownloadMode
   /**
@@ -679,7 +680,7 @@ export function DownloadSheetContent({
     if (selectedIndex >= tiered.length) setSelectedIndex(0)
   }, [tiered.length, selectedIndex])
 
-  // Open on the quality already held, so "Save to Photos" on a downloaded
+  // Open on the quality already held, so "Save to Files" on a downloaded
   // video is a reuse rather than a silent re-download. Once, when the tiers
   // land — they arrive with the lazily-fetched dub, and a later re-run would
   // fight the viewer's own pick.
