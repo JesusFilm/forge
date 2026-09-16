@@ -1,20 +1,55 @@
 /**
- * The provider's wiring, driven through the REAL lifecycle: only the native
- * adapter, the two stores and the log sink are doubled, so these tests fail
- * when the provider stops passing a dependency the pass depends on.
+ * The provider's wiring, driven through the REAL lifecycle and the REAL
+ * permission prompt: only the native adapter, the two stores, the splash
+ * session, device storage and the log sink are doubled, so these tests fail
+ * when the provider stops passing a dependency either one depends on.
  *
- * `@react-native-async-storage/async-storage` never loads here, because the
- * record store itself is doubled.
+ * The record store is doubled, so the only reader of storage here is the
+ * prompt's asked-once latch, over the vendor's own AsyncStorage mock.
  */
 
+/* eslint-disable @typescript-eslint/no-require-imports */
+
+jest.mock("@react-native-async-storage/async-storage", () =>
+  require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
+)
 jest.mock("../../lib/lapseReminders/notificationsAdapter", () => ({
   lapseReminderNotifications: {
+    ensureChannel: jest.fn(async () => {}),
     getPermission: jest.fn(async () => ({ granted: true, canAskAgain: false })),
+    requestPermission: jest.fn(async () => ({
+      granted: true,
+      canAskAgain: false,
+    })),
     schedule: jest.fn(async () => {}),
     cancel: jest.fn(async () => {}),
     dismissDelivered: jest.fn(async () => {}),
   },
 }))
+jest.mock("../../lib/splash/splashSession", () => {
+  const CLEARED = { resolved: true, visible: false, presentation: null }
+  const listeners = new Set<() => void>()
+  let snapshot: Record<string, unknown> = CLEARED
+  const session = {
+    subscribe: (listener: () => void) => {
+      listeners.add(listener)
+      return () => {
+        listeners.delete(listener)
+      }
+    },
+    getSnapshot: () => snapshot,
+  }
+  return {
+    getSplashSession: () => session,
+    __setSplash: (next: Record<string, unknown>) => {
+      snapshot = { ...CLEARED, ...next }
+      for (const listener of [...listeners]) listener()
+    },
+    __resetSplash: () => {
+      snapshot = CLEARED
+    },
+  }
+})
 jest.mock("../../lib/datadog", () => ({
   datadogLog: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }))
@@ -54,8 +89,14 @@ jest.mock("../../lib/miniPlayer/playbackRequest", () => {
 import { StrictMode, act } from "react"
 import { AppState, type AppStateStatus } from "react-native"
 
+import AsyncStorage from "@react-native-async-storage/async-storage"
+
 import { LapseReminderProvider } from "../LapseReminderProvider"
-import { LAPSE_REMINDER_IDENTIFIERS } from "../../lib/lapseReminders/constants"
+import {
+  LAPSE_REMINDER_IDENTIFIERS,
+  LAPSE_REMINDER_PERMISSION_ASKED_STORAGE_KEY,
+} from "../../lib/lapseReminders/constants"
+import { LAPSE_REMINDER_PERMISSION_ASKED_VALUE } from "../../lib/lapseReminders/permissionPrompt"
 import { lapseReminderNotifications } from "../../lib/lapseReminders/notificationsAdapter"
 import { datadogLog } from "../../lib/datadog"
 import { getLastWatchedStore } from "../../lib/lastWatched/store"
@@ -72,8 +113,17 @@ const recordStoreModule = (require as unknown as NodeRequireLike)(
   __clearListenerCount: () => number
 }
 
+const splashModule = (require as unknown as NodeRequireLike)(
+  "../../lib/splash/splashSession",
+) as {
+  __setSplash: (next: Record<string, unknown>) => void
+  __resetSplash: () => void
+}
+
 const adapter = lapseReminderNotifications as unknown as {
+  ensureChannel: jest.Mock
   getPermission: jest.Mock
+  requestPermission: jest.Mock
   schedule: jest.Mock
   cancel: jest.Mock
   dismissDelivered: jest.Mock
@@ -104,10 +154,27 @@ function scheduledIdentifiers(): string[] {
   return adapter.schedule.mock.calls.map((call) => call[0].identifier)
 }
 
-beforeEach(() => {
+/** Several act rounds: the prompt chain is longer than the mount pass. */
+async function flush() {
+  for (let round = 0; round < 4; round += 1) await act(async () => {})
+}
+
+beforeEach(async () => {
   jest.clearAllMocks()
   appStateListeners.clear()
+  splashModule.__resetSplash()
+  // The DEFAULT fixture is a later launch: the latch is already closed, so the
+  // prompt reads it and stops. The first-launch cases below clear it.
+  await AsyncStorage.clear()
+  await AsyncStorage.setItem(
+    LAPSE_REMINDER_PERMISSION_ASKED_STORAGE_KEY,
+    LAPSE_REMINDER_PERMISSION_ASKED_VALUE,
+  )
   adapter.getPermission.mockResolvedValue({ granted: true, canAskAgain: false })
+  adapter.requestPermission.mockResolvedValue({
+    granted: true,
+    canAskAgain: false,
+  })
   jest
     .spyOn(AppState, "addEventListener")
     .mockImplementation((_type, listener) => {
@@ -234,6 +301,142 @@ describe("LapseReminderProvider wiring", () => {
     await act(async () => {})
 
     expect(renderer.toJSON()).toBeNull()
+    await act(async () => renderer.unmount())
+  })
+})
+
+describe("the first-launch permission prompt (U5)", () => {
+  beforeEach(async () => {
+    await AsyncStorage.removeItem(LAPSE_REMINDER_PERMISSION_ASKED_STORAGE_KEY)
+    adapter.getPermission.mockResolvedValue({
+      granted: false,
+      canAskAgain: true,
+    })
+    // The real thing flips the status it reads, so the pass after the grant
+    // sees a granted device rather than the pre-prompt answer.
+    adapter.requestPermission.mockImplementation(async () => {
+      adapter.getPermission.mockResolvedValue({
+        granted: true,
+        canAskAgain: false,
+      })
+      return { granted: true, canAskAgain: false }
+    })
+  })
+
+  it("asks once, closes the latch, and schedules on the grant (R8, R16)", async () => {
+    const renderer = await render()
+    await flush()
+
+    expect(adapter.requestPermission).toHaveBeenCalledTimes(1)
+    expect(
+      await AsyncStorage.getItem(LAPSE_REMINDER_PERMISSION_ASKED_STORAGE_KEY),
+    ).toBe(LAPSE_REMINDER_PERMISSION_ASKED_VALUE)
+    expect(datadogLog.info).toHaveBeenCalledWith("lapse_reminder.permission", {
+      prompt_outcome: "granted",
+      prompted: true,
+    })
+    // The grant runs a pass through the REAL lifecycle, so the two reminders
+    // the mount pass could not schedule are pending after it.
+    expect(scheduledIdentifiers()).toEqual([
+      LAPSE_REMINDER_IDENTIFIERS.day1,
+      LAPSE_REMINDER_IDENTIFIERS.day7,
+    ])
+    await act(async () => renderer.unmount())
+  })
+
+  it("creates the Android channel before it asks (KTD6)", async () => {
+    const renderer = await render()
+    await flush()
+
+    expect(adapter.ensureChannel).toHaveBeenCalledTimes(1)
+    expect(adapter.ensureChannel.mock.invocationCallOrder[0]).toBeLessThan(
+      adapter.requestPermission.mock.invocationCallOrder[0],
+    )
+    await act(async () => renderer.unmount())
+  })
+
+  it("records a decline and schedules nothing (AE4)", async () => {
+    adapter.requestPermission.mockResolvedValue({
+      granted: false,
+      canAskAgain: false,
+    })
+    const renderer = await render()
+    await flush()
+
+    expect(datadogLog.info).toHaveBeenCalledWith("lapse_reminder.permission", {
+      prompt_outcome: "denied",
+      prompted: true,
+    })
+    expect(adapter.schedule).not.toHaveBeenCalled()
+    expect(
+      await AsyncStorage.getItem(LAPSE_REMINDER_PERMISSION_ASKED_STORAGE_KEY),
+    ).toBe(LAPSE_REMINDER_PERMISSION_ASKED_VALUE)
+    await act(async () => renderer.unmount())
+  })
+
+  it("asks exactly once across a StrictMode remount", async () => {
+    const renderer = await render(true)
+    await flush()
+
+    // Anti-vacuous: one stand-down per mount pass is the proof the effect
+    // cycle really ran setup → cleanup → setup. One would say nothing.
+    const standDowns = (datadogLog.info as jest.Mock).mock.calls.filter(
+      ([event, context]) =>
+        event === "lapse_reminder.pass" && context.outcome === "not_granted",
+    )
+    expect(standDowns).toHaveLength(2)
+    expect(adapter.requestPermission).toHaveBeenCalledTimes(1)
+    expect(adapter.ensureChannel).toHaveBeenCalledTimes(1)
+    await act(async () => renderer.unmount())
+  })
+
+  it("waits for the splash session to clear, then asks (KTD6)", async () => {
+    splashModule.__setSplash({ visible: true })
+    const renderer = await render()
+    await flush()
+
+    // Inert in production while the animated splash is off, so this fixture is
+    // the only place the wait is reachable. Anti-vacuous: nothing asked yet.
+    expect(adapter.requestPermission).not.toHaveBeenCalled()
+
+    await act(async () => {
+      splashModule.__setSplash({ visible: false })
+    })
+    await flush()
+
+    expect(adapter.requestPermission).toHaveBeenCalledTimes(1)
+    await act(async () => renderer.unmount())
+  })
+
+  it("asks nothing when the provider unmounts before the splash clears", async () => {
+    splashModule.__setSplash({ visible: true })
+    const renderer = await render()
+
+    await act(async () => renderer.unmount())
+    await act(async () => {
+      splashModule.__setSplash({ visible: false })
+    })
+    await flush()
+
+    expect(adapter.requestPermission).not.toHaveBeenCalled()
+  })
+})
+
+describe("the spent permission latch", () => {
+  it("asks nothing on a later launch, even while permission is denied", async () => {
+    adapter.getPermission.mockResolvedValue({
+      granted: false,
+      canAskAgain: true,
+    })
+    const renderer = await render()
+    await flush()
+
+    expect(adapter.requestPermission).not.toHaveBeenCalled()
+    expect(adapter.ensureChannel).not.toHaveBeenCalled()
+    expect(datadogLog.info).not.toHaveBeenCalledWith(
+      "lapse_reminder.permission",
+      expect.anything(),
+    )
     await act(async () => renderer.unmount())
   })
 })

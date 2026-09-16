@@ -1,19 +1,29 @@
+import AsyncStorage from "@react-native-async-storage/async-storage"
 import { useEffect } from "react"
 import { AppState } from "react-native"
 import type { ReactNode } from "react"
 
 import { datadogLog } from "../lib/datadog"
-import { LAPSE_REMINDERS_ENABLED } from "../lib/lapseReminders/constants"
+import {
+  LAPSE_REMINDERS_ENABLED,
+  LAPSE_REMINDER_PERMISSION_ASKED_STORAGE_KEY,
+} from "../lib/lapseReminders/constants"
 import { createLapseReminderLifecycle } from "../lib/lapseReminders/lifecycle"
 import { lapseReminderNotifications } from "../lib/lapseReminders/notificationsAdapter"
+import {
+  LAPSE_REMINDER_PERMISSION_ASKED_VALUE,
+  attachLapseReminderPermissionPrompt,
+} from "../lib/lapseReminders/permissionPrompt"
 import { attachLastWatchedWriter } from "../lib/lastWatched/lifecycle"
 import { getLastWatchedStore } from "../lib/lastWatched/store"
 import { getPlaybackRequestStore } from "../lib/miniPlayer/playbackRequest"
+import { getSplashSession } from "../lib/splash/splashSession"
 
 /**
  * Lifecycle host for the lapse reminders (KTD2): it runs the schedule pass on
- * mount, on `active`, on `background`, and on a record clear, and it attaches
- * the playback subscriber that keeps the last-watched record current.
+ * mount, on `active`, on `background`, and on a record clear, it attaches the
+ * playback subscriber that keeps the last-watched record current, and it hosts
+ * the once-per-install permission prompt (KTD6).
  *
  * All state lives in plain-module stores, so this component is StrictMode-
  * remount safe by construction: setup subscribes, cleanup only unsubscribes,
@@ -42,7 +52,24 @@ export function LapseReminderProvider({ children }: { children: ReactNode }) {
       telemetry: datadogLog,
     })
     const detachLifecycle = lifecycle.attach()
+    const detachPrompt = attachLapseReminderPermissionPrompt({
+      adapter: lapseReminderNotifications,
+      enabled: LAPSE_REMINDERS_ENABLED,
+      splash: getSplashSession(),
+      readAsked: () =>
+        AsyncStorage.getItem(LAPSE_REMINDER_PERMISSION_ASKED_STORAGE_KEY),
+      writeAsked: () =>
+        AsyncStorage.setItem(
+          LAPSE_REMINDER_PERMISSION_ASKED_STORAGE_KEY,
+          LAPSE_REMINDER_PERMISSION_ASKED_VALUE,
+        ),
+      // A grant arrives after the mount pass has already stood down, so the
+      // reminders it could not schedule need this second pass.
+      runPass: () => void lifecycle.runPass("mount"),
+      telemetry: datadogLog,
+    })
     return () => {
+      detachPrompt()
       detachLifecycle()
       detachWriter()
     }
