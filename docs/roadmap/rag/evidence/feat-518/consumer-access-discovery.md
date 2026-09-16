@@ -576,3 +576,18 @@ Local documentation results on 2026-09-16:
 
 No runtime, role, crypto, HTTP, page performance, live claim, production or
 cutover verification was performed or is implied by these documentation checks.
+
+## Draft delivery receipt
+
+- Discovery PR: [#2325](https://github.com/JesusFilm/forge/pull/2325), created as a draft.
+- Branch/base: `docs/rag-consumer-access-discovery` →
+  `docs/rag-consumer-access-usage-plan` at parent `e5b22f7235385ee67d0e9aeda54916b8394408e3`.
+- Investigation commit: `886743382`; subsequent documentation receipt commit
+  adds this PR link and final checks. Exactly three documentation files differ
+  from the parent: this report, feat-518 and the RAG README.
+- PR #2304 was re-read before delivery and remained an open draft at the same
+  head; it was neither modified nor merged. No deployment or production action.
+- Outcome: evidence delivered; implementation readiness remains blocked by
+  G1–G3. Request the named owner decisions, not general permission to perform
+  already-authorized documentation work. Local check results above are distinct
+  from GitHub CI, whose latest state is reported in the job's final receipt.

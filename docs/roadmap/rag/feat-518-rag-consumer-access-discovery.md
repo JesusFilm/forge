@@ -91,8 +91,8 @@ Confirm sequence: feat-511 → feat-518 → feat-512 → feat-513 → feat-514 �
 [Implementation handoff and investigation report](evidence/feat-518/consumer-access-discovery.md)
 records repository/revision evidence, read-only GitHub protection observations,
 proposed allowlist/review and identity contracts, token lifecycle, schema/role
-matrix, exact usage accounting and bounded report access. Findings are delivered
-on `docs/rag-consumer-access-discovery`, stacked on PR #2304 head
+matrix, exact usage accounting and bounded report access. Findings are delivered in
+[draft PR #2325](https://github.com/JesusFilm/forge/pull/2325) on `docs/rag-consumer-access-discovery`, stacked on PR #2304 head
 `e5b22f7235385ee67d0e9aeda54916b8394408e3`; the parent PR is unchanged.
 
 The gate remains blocked for non-dependency decisions G1–G3 in that report:
