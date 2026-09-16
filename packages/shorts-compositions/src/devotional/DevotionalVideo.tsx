@@ -1864,6 +1864,8 @@ function CardBody({
     const at = card.stepIndex ?? 0
     const leadSec = card.stepLeadSec ?? 0.9
     const MOVE_SEC = 1.1
+    const LINE_MOVE_START_SEC = 0.25
+    const LINE_MOVE_SEC = 1.9
     const t = frame / fps
 
     // THE OPENING SCREEN carries a line as well as the stack, and its
@@ -1880,11 +1882,23 @@ function CardBody({
     const lineEndsSec = headlineTimings
       ? headlineTimings[headlineTimings.length - 1].endSec + leadSec
       : null
-    const lightStart = lineEndsSec != null ? lineEndsSec + 0.15 : 0
-    const moveSpan =
-      lineEndsSec != null ? MOVE_SEC * 0.65 : Math.max(0.1, leadSec)
+    // The three-step (clip-first) column moves slowly and evenly: the rail
+    // draws for about a second, then the label lights and grows for most of
+    // another. Linear here; the stepper eases each of the two phases itself,
+    // so neither starts or stops with a jolt (owner: "everything gentle").
+    const isLine = !!card.steps
+    const lightStart = isLine
+      ? LINE_MOVE_START_SEC
+      : lineEndsSec != null
+        ? lineEndsSec + 0.15
+        : 0
+    const moveSpan = isLine
+      ? LINE_MOVE_SEC
+      : lineEndsSec != null
+        ? MOVE_SEC * 0.65
+        : Math.max(0.1, leadSec)
     const travel = interpolate(t, [lightStart, lightStart + moveSpan], [0, 1], {
-      easing: Easing.bezier(0.45, 0, 0.55, 1),
+      ...(isLine ? {} : { easing: Easing.bezier(0.45, 0, 0.55, 1) }),
       extrapolateLeft: "clamp",
       extrapolateRight: "clamp",
     })
@@ -1915,7 +1929,8 @@ function CardBody({
         // The three-step (clip-first) stepper uses the owner's Figma design:
         // a rail drawing down from the step just done onto the next one,
         // which then lights, grows a little and comes into focus.
-        variant={card.steps ? "line" : "glow"}
+        variant={isLine ? "line" : "glow"}
+        stepIndex={at}
         glowPos={glowPos}
         goldness={goldness}
         style={style}

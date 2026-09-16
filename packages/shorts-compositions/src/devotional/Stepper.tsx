@@ -51,6 +51,10 @@ export const StepperStack: React.FC<{
   /** The stage labels. Defaults to the four; the clip-first structure passes
    *  three (WATCH / REFLECT / PRAY) because the film has already played. */
   steps?: ReadonlyArray<string>
+  /** `line` variant: the step this card lights. Named explicitly so the step
+   *  before it stands as PASSED from the first frame, rather than as the
+   *  current one until the move begins and then snapping to size. */
+  stepIndex?: number
 }> = ({
   variant,
   glowPos,
@@ -62,6 +66,7 @@ export const StepperStack: React.FC<{
   lightOpacity = 1,
   headline,
   steps,
+  stepIndex,
 }) => {
   const STEPS = steps ?? DEVOTIONAL_STEPS
   // Owner: round one's type was too big and too heavy. Smaller, and 600 rather
@@ -88,6 +93,7 @@ export const StepperStack: React.FC<{
     return (
       <StepperLine
         steps={STEPS}
+        target={stepIndex ?? Math.ceil(glowPos - 1e-6)}
         glowPos={glowPos}
         style={style}
         px={px}
@@ -434,26 +440,32 @@ const LINE_RAIL_W = 1.7
 const LINE_GAP = 10
 const LINE_AHEAD_BLUR = 1.9
 /** Share of the move spent drawing the rail; the rest lights the label. */
-const LINE_DRAW_SHARE = 0.7
+const LINE_DRAW_SHARE = 0.55
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x))
+/** Ease in and out, so each phase of the move starts and stops gently. */
+const smooth = (x: number) => {
+  const c = clamp01(x)
+  return c * c * (3 - 2 * c)
+}
 
 const StepperLine: React.FC<{
   steps: ReadonlyArray<string>
+  target: number
   glowPos: number
   style: ReturnType<typeof resolveDevotionalStyle>
   px: (n: number) => number
   width: number
   height: number
   lightOpacity: number
-}> = ({ steps, glowPos, style, px, width, height, lightOpacity }) => {
-  // `glowPos` runs from the step just done to the current one; at an integer
-  // it is sitting on that step. So the step being lit is the ceiling, and the
-  // progress of the move is the fraction above the previous integer.
-  const cur = Math.ceil(glowPos - 1e-6)
+}> = ({ steps, target, glowPos, style, px, width, height, lightOpacity }) => {
+  // `glowPos` runs from the step just done to `target`. The progress of the
+  // move is how far along that unit it has come; a first step, with nothing
+  // to travel from, is simply lit.
+  const cur = target
   const p = cur <= 0 ? 1 : clamp01(glowPos - (cur - 1))
-  const drawn = clamp01(p / LINE_DRAW_SHARE)
-  const lit = clamp01((p - LINE_DRAW_SHARE) / (1 - LINE_DRAW_SHARE))
+  const drawn = smooth(p / LINE_DRAW_SHARE)
+  const lit = smooth((p - LINE_DRAW_SHARE) / (1 - LINE_DRAW_SHARE))
 
   const size = px(LINE_SIZE)
   const labelH = size * 1.2
