@@ -1600,6 +1600,22 @@ External text a triage or research pipeline reads and then reproduces — an err
 
 It is hostile input at two distinct boundaries, and neither boundary's control substitutes for the other's. At the model turn, delimiters keep it from reading as instructions. At the human-facing artifact, a sanitizer neutralizes links and markers before the text is written into a ticket a reader will click.
 
+## Lapse reminders
+
+### Lapse Reminder
+
+A local notification the mobile app schedules for itself each time it is used, so that a viewer who stops opening the app receives one reminder a day after their last use and a second one a week after it. Both reminders are measured from the most recent foreground use, snap into a 09:00–21:00 local window and are delivered at or after that target, and are replaced by the next use. After the day-7 reminder fires, nothing more is scheduled until the app is used again. No server sends it, and the copy is fixed in the app.
+
+_Avoid_: push notification (implies a server-sent message), re-engagement campaign.
+
+### Schedule Pass
+
+The one routine that keeps the Lapse Reminder invariant: it runs when the app launches, enters the foreground, goes to the background, or clears the Last-Watched Record, and it schedules the day-1 and day-7 pair under two fixed identities so a new pass replaces the old pair instead of accumulating. When the feature is disabled or notification permission is not granted, the pass cancels both identities and dismisses any reminder already delivered, which is what makes a denial, a sign-out, and the feature gate turned off the same code path.
+
+### Last-Watched Record
+
+One local, slug-keyed record of the last video whose playback started on the watch screen in the mobile app, kept for every user whether signed in or not, and updated by streaming and downloaded playback alike. It is the tap destination of a Lapse Reminder and is distinct from signed-in watch progress, which decides only where playback resumes inside the video. It survives app restarts, counts as absent after 30 days, is cleared on an explicit sign-out or account switch (which also re-derives the reminders), and is not written by the Experience section players, which carry a video id and no slug.
+
 ## Flagged ambiguities
 
 - "Contextual Watch Route" and "canonical Watch URL" are not synonyms: the contextual route preserves collection navigation, while the Standalone Watch Route owns discovery, social, and sharing identity.
