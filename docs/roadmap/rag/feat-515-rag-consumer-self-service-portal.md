@@ -29,9 +29,15 @@ internal management path; planning completion does not deliver either.
 ## What To Build
 
 Refine and implement plan section F after successful dogfood. Design is captured
-now for expected Bible lookup demand. Recommend existing Forge Auth Google OIDC;
-confirm host/client registration and verified-email claim before coding. Enforce
-repository allowlist, senior CI approval and audited multi-manager authorization.
+now for expected Bible lookup demand. The later
+[feat-518 discovery decisions](evidence/feat-518/consumer-access-discovery.md)
+supersede the original Google recommendation: use GitHub authentication with
+account ID and verified email matching the same active allowlist entry. Confirm
+per-environment host/client registration during implementation. Enforce the
+repository allowlist and audited multi-manager authorization; Jaco alone recovers.
+PR review policy belongs to feat-512: any valid non-author approval only for
+registry/schema changes, with option-B enforcement gap tracked there. Do not
+add senior-only or general portal/RAG PR approval requirements.
 Provide register, membership, scope/status and Generate new key flows with
 hash-only persistence and one-time display. Reports remain Jaco/RAGBot-only.
 

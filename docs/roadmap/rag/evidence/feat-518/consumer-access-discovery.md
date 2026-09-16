@@ -1,7 +1,7 @@
 ---
 title: "J011 RAG consumer access discovery and implementation handoff"
 date: "2026-09-17"
-status: blocked
+status: complete
 module: "apps/rag"
 tags: ["rag", "auth", "postgresql", "usage", "discovery"]
 problem_type: "implementation_readiness"
@@ -11,23 +11,29 @@ problem_type: "implementation_readiness"
 
 ## Outcome, scope and provenance
 
-The five areas below have concrete implementation proposals backed by repository
-inspection. Jaco's September 17 continuation settles the senior/recovery roster,
-GitHub portal choice and consumer-first RAGBot reporting. **feat-518 cannot close
-yet solely because the required review/check enforcement cannot be verified:**
-the visible ruleset still requires zero reviews and no status checks. G2/G3 are
-resolved design choices, with implementation registration/transport details below.
-This is a discovery result, not authorization to provision any of these controls.
+Discovery is complete. All five areas have implementation handoffs, and Jaco's
+latest decision resolves the remaining approval-policy question through **option
+B**: retain the narrow enforcement gap under feat-512. Existing native rules and
+repository CI do not establish reliable enforcement of exactly one non-author
+approval only for consumer-registry/allowlist changes. This is not a claim that
+GitHub could never support a purpose-built solution, or that enforcement is
+configured. No approval requirement or repository setting was changed.
 
-### Accepted continuation decisions (September 17)
+### Accepted continuation decisions (September 17; latest answer takes precedence)
 
-- Senior RAG approvers: Jaco Brink (`jaco-brink`), Tatai (`tataihono`), Jian Wei
-  (`jianwei1`). Jaco alone is the current recovery authority. Approval does not
-  delegate recovery to Tatai or Jian Wei.
-- Trusted mechanism: protected GitHub PR review plus repository CI required-check
-  and approval enforcement. This supersedes this report's earlier proposal to
-  choose a new trusted workflow or dedicated App; no invented check names are
-  adopted. Exact observed names and the remaining discrepancy are in section 1.
+- Review policy: any valid approval from someone other than the PR author counts;
+  no senior-only, named-account, team or CODEOWNER restriction. The additional
+  approval applies only when the PR changes the consumer-registry/allowlist area.
+  Do not require approval on other RAG or Forge PRs, or exclude the latest pusher
+  merely for pushing when that person is not the PR author.
+- The earlier Jaco/Tatai/Jian Wei reviewer roster is historical context, not an
+  enforcement allowlist. **Jaco alone remains recovery authority**; neither Tatai
+  nor Jian Wei gains recovery delegation. Portal membership remains separately
+  allowlisted; permission to approve a PR does not grant portal or report access.
+- Investigate path-specific enforcement first; if exact reliable enforcement
+  cannot be established, use option B and assign the gap to later implementation.
+  That fallback is now selected, so it is not an unresolved discovery decision.
+  Section 1 records the native options, current settings and bounded handoff.
 - Portal option A: internal GitHub authentication, matching both an allowlisted
   GitHub account and a verified email in the same registry entry; multiple
   authorized engineers may manage an integration. This supersedes the earlier
@@ -43,7 +49,7 @@ This is a discovery result, not authorization to provision any of these controls
   `e5b22f7235385ee67d0e9aeda54916b8394408e3`, observed open on 2026-09-16.
 - Discovery branch: `docs/rag-consumer-access-discovery`, stacked on that exact
   head. The parent owns the programme and original ticket; this PR owns this
-  evidence and only discovery ticket/index updates. No parent branch or PR edit.
+  evidence, discovery ticket/index updates and necessary feat-512/515 handoffs. No parent branch or PR edit.
   After the parent lands, rebase only discovery commits onto main and retarget;
   do not merge discovery into the parent as an evidence-delivery shortcut.
 - Main at inspection: `19b8f062e0b62b84e14882fc828166998265a2da`.
@@ -73,166 +79,170 @@ RAGBot dogfood must use the real `forge-rag-retrieve` HTTP path.
 
 ## 1. Engineer allowlist and protected review
 
-### Observed evidence
+### Current repository and GitHub evidence
 
-At the parent revision `config/` and `.github/CODEOWNERS` are absent. There is no
-RAG engineer registry, senior reviewer policy, or RAG access-approval check.
-`.github/workflows/ci.yml` has `format`, `hidden-roadmap-lanes` and `ci-gate`, but
-none establishes senior approval. Its events do not include review changes.
+The current parent has neither `config/` nor `.github/CODEOWNERS`. There is no
+consumer registry, review evaluator or approval workflow. Read-only API recheck
+on September 17 returned ruleset **`Main` (`12972651`)**, targeted to the default
+branch, with `deletion`, `non_fast_forward` and `pull_request` rules. The latter
+has `required_approving_review_count: 0`, `required_reviewers: []`,
+`require_code_owner_review: false`, `require_last_push_approval: false` and
+`dismiss_stale_reviews_on_push: false`. No required-status-check rule was returned.
+`required_review_thread_resolution` and squash-only are enabled; they do not
+establish the desired approval gate. `bypass_actors: null` is not evidence that
+privileged bypass is impossible. The earlier legacy protection API 404 is not
+used as proof that no other protection exists.
 
-Read-only GitHub API observations on 2026-09-16, rechecked unchanged on 2026-09-17:
+The exact existing workflow is **`forge-ci`**, `.github/workflows/ci.yml`, and its
+aggregate job is **`ci-gate`**. The job checks dependency results; it neither lists
+PR reviews nor tests changed consumer paths. Events are `pull_request` and main
+`push`, not `pull_request_review`. Its comment says main _can_ require this stable
+check; current effective settings do not show that requirement. The actual
+supporting jobs are `commit-lint`, `affected`, `format`, `patched-deps-guard`,
+`hidden-roadmap-lanes`, `dev-port-contract`, `experiment-ledger`,
+`admin-graphql-generate`, `admin-schema-drift`, `web-redis-integration`,
+`auth-postgres-integration`, `rag-postgres-integration`, `lint`, `test`,
+`expo-doctor` and `build`. None is the missing approval evaluator. Earlier
+hypothetical RAG check names remain withdrawn; no new configured name is asserted.
 
-- `GET /repos/JesusFilm/forge/branches/main/protection` returned 404. This alone
-  does not establish absence of protection or distinguish visibility limits.
-- `GET /repos/JesusFilm/forge/rulesets` returned active branch ruleset `12972651`,
-  `Main`; its condition is the default branch.
-- `GET /repos/JesusFilm/forge/rules/branches/main` and the ruleset detail returned
-  deletion/non-fast-forward protections and a pull-request rule: squash only,
-  thread resolution required, **0 required approving reviews**, no code-owner
-  requirement, no last-push approval, stale-review dismissal false. No required
-  status-check rule was returned. `require_extra_approval_for_unattributed_changes`
-  is true; that does not establish the requested named senior approver policy.
-- Ruleset detail exposed `bypass_actors: null`; do not interpret that as proof
-  that privileged bypass is impossible. A repository administrator must attest
-  effective protection and check-writer authority before activation.
+Main is now `8151e5518f019d314b995ebe71cbc1ace0e19342`; comparison found no relevant
+changes to `.github`, RAG, Auth config or Chat auth from the inspected source.
+PR #2304 is still an open draft at `e5b22f723`; discovery resumed at `4b4531b26`.
+No settings or credentials were read through production services or changed.
 
-These are GitHub configuration observations, not production service findings.
-No review/protection setting was changed. Both PRs remain open drafts at the
-original heads before this continuation; neither has comments/reviews containing
-an additional enforcement description. The inspected workflow/config files on
-current main `19b8f062e0b62b84e14882fc828166998265a2da` match the relevant source
-in this branch. No effective rule for named senior approval was found.
+### Path-specific options investigated and decision
 
-| Verified name                                                                                                               | Location / observation                                                               | What it establishes                                                                                             |
-| --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
-| `Main` (ID `12972651`)                                                                                                      | GitHub ruleset, default branch; rules `pull_request`, `deletion`, `non_fast_forward` | Protected PR/squash and history controls, but zero required approvals and no required checks in returned rules. |
-| `forge-ci`                                                                                                                  | `.github/workflows/ci.yml` workflow                                                  | Repository CI runs on pull requests; not evidence that its checks are required for merge.                       |
-| `ci-gate`                                                                                                                   | Aggregate job in `forge-ci`                                                          | Fails on failed/cancelled prerequisite jobs; does not inspect senior reviews.                                   |
-| `commit-lint`, `affected`, `format`, `patched-deps-guard`, `hidden-roadmap-lanes`, `dev-port-contract`, `experiment-ledger` | Actual checks on discovery head `7621524cc`                                          | All passed in run `35062914744`; no named-senior approval check appears.                                        |
+| Mechanism                                                         | Actual capability                                                                                                                        | Fit for this policy                                                                                                                                                                                                 |
+| ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Branch/ruleset `pull_request.required_approving_review_count = 1` | Requires reviews for PRs targeting the branch; this count has no changed-path condition.                                                 | Reject: would add approvals to unrelated Forge/RAG PRs. Leave the global count unchanged.                                                                                                                           |
+| Ruleset `pull_request.required_reviewers[]`                       | Each entry has `file_patterns`, `minimum_approvals`, and `reviewer: { id, type: "Team" }`. This is genuine native path-specific support. | Not an exact fit: only approval from the specified write-enabled team counts. An all-engineers team would still narrow “any non-author approval” and create membership administration. No team is selected.         |
+| `require_code_owner_review` plus path-only CODEOWNERS             | Matches paths and accepts approval from an assigned owner.                                                                               | Not an exact fit: a valid non-owner approval would fail. No CODEOWNERS file or broad ownership rule is added.                                                                                                       |
+| Push ruleset path restrictions                                    | Reject selected file pushes.                                                                                                             | Not an approval requirement; cannot translate into “allow with a non-author approval.”                                                                                                                              |
+| Required workflow using only `on.pull_request.paths`              | Can avoid workflow execution for irrelevant files, but a skipped required workflow can remain pending and block unrelated merges.        | Reject as a shortcut. Workflow filters alone neither implement review state nor preserve unaffected PRs.                                                                                                            |
+| New conditional review evaluator integrated with CI               | Could compute the exact path predicate and accept any valid non-author review while returning not-applicable success elsewhere.          | Possible later implementation, not a reliable existing control. Current CI lacks the evaluator, review events, trust boundary and merge protection; review-dismissal races and spoofable/stale statuses need proof. |
 
-Other `ci-gate` prerequisites are exactly `admin-graphql-generate`,
-`admin-schema-drift`, `web-redis-integration`, `auth-postgres-integration`,
-`rag-postgres-integration`, `lint`, `test`, `expo-doctor`, and `build`; these
-were skipped for this documentation-only diff. Check success does not establish
-required-check protection. The comment immediately above `ci-gate` describes
-it as the stable name that main _can_ require; it does not assert that a ruleset
-currently requires it. The existing solution
-`docs/solutions/auth/better-auth-authorization-resource-binding-upgrade.md` also
-separates job execution from external merge enforcement. No alternative RAG
-approval control was found in the scoped guidance/solutions search. The names `rag-access-policy-schema` and
-`rag-access-policy-approval` in the previous report revision were hypothetical;
-they are withdrawn, not existing or newly approved requirements.
+Native capabilities are documented in GitHub's
+[available rules](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets)
+and [rules REST schema](https://docs.github.com/en/rest/repos/rules).
+[CODEOWNERS](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners)
+requires designated owners. GitHub's
+[workflow syntax](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax)
+explains skipped required workflows and path-diff limits. Review-state events are
+separate [workflow triggers](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request_review).
+These sources establish available primitives, not configured Forge enforcement.
 
-### Proposed schema and enforcement contract
+**Select option B.** The inspected mechanisms do not reliably enforce this exact
+policy as they stand. Native path-specific review exists, but its reviewer
+restrictions differ; current CI has no trustworthy implementation of the exact
+predicate. This is a bounded finding, not a platform-wide impossibility claim.
+Jaco explicitly authorized documenting this gap for later implementation rather
+than broadening approvals. Assign it to [feat-512](../../feat-512-rag-consumer-access-lifecycle.md).
+No new blocker or owner question is needed to complete discovery. A later
+implementation may prove a suitable custom gate without changing the policy.
 
-Keep the programme's proposed `config/rag-consumer-engineers.json`. Define its
-strict schema in a future `config/rag-consumer-engineers.schema.json`:
+### Exact bounded handoff to feat-512
+
+The proposed registry area is the following **exact repo-relative paths**:
+
+- `config/rag-consumer-engineers.json` — account/email registry and recovery binding.
+- `config/rag-consumer-engineers.schema.json` — its validation schema.
+
+These files do not exist yet. Do not replace the paths with `config/**`,
+`apps/rag/**`, `.github/**` or all Forge files. Registry moves must carry an explicit
+path migration; include old and new names when detecting renames/deletions so a
+move cannot silently escape the policy. No general approval requirement for
+workflow, runbook, corpus or unrelated feature changes is authorized. Protection
+of the eventual evaluator itself is a separate trust-boundary design constraint;
+do not solve it by silently broadening this review trigger.
+
+Desired predicate: `touchesRegistryArea(PR) => exists valid APPROVED review whose
+reviewer GitHub ID != PR author GitHub ID`. No senior/team/owner membership test;
+no special latest-pusher exclusion. Use GitHub IDs, not display names. Preserve
+current-head and non-dismissed review validity; comments, pending reviews and
+self-approval do not count. One valid qualifying approval suffices for this
+additional policy; normal existing GitHub merge restrictions still apply.
+
+Future implementation acceptance, not claims of tests executed here:
+
+1. Added/modified/deleted registry/schema and renames into or out of either path
+   require one valid non-author approval. Other RAG and Forge paths add **zero**
+   approval requirements, including mixed commits with no registry change. A mixed
+   PR containing a registry change is in scope regardless of its other files.
+2. Enumerate the complete changed-file set and all review pages. API failure or
+   truncated enumeration cannot be treated as “unrelated.” Do not rely on the
+   first 300 files of an Actions path filter as the security predicate. Prefer
+   complete base/head tree comparison for overflow; fail closed if not possible.
+3. Re-evaluate relevant PR open/synchronize/base changes and review submitted,
+   edited/dismissed events. Use the current PR head and latest effective review
+   states; reject stale/dismissed approvals. A later decisive review supersedes
+   that reviewer's approval. Prove correct status invalidation when an approval
+   is dismissed after a successful check, including the merge race; a webhook
+   handler alone is not proof that a stale success cannot allow merge.
+4. Run trusted policy code, not untrusted PR-head code with privileged permissions;
+   prevent another workflow from impersonating the required result. Prove safe
+   handling of forks, same-repo workflow edits, dropped/out-of-order events and
+   pushes during evaluation. Do not claim polling or a one-time check eliminates
+   all merge-time review races. Keep this as a gap until that trust/merge binding
+   is demonstrated in an authorized disposable/test setting.
+5. If a required CI result is eventually used, it must report an explicit
+   not-applicable success for unrelated PRs rather than a permanently pending
+   path-skipped check. It may add an automated check, **not a human review wait**,
+   to those PRs. Measure the unaffected path as a fast no-op. Preserve unrelated
+   native review requirements exactly as configured; do not enable a global
+   minimum review count, global last-push approval, or broad CODEOWNERS fallback.
+6. Prove positive/negative cases with author versus non-author, non-senior and
+   non-team reviewers, stale/dismissed approvals, 300+ changed files, renames,
+   unreadable file/review pages, review-after-check and unaffected RAG/Forge PRs.
+   Record the eventual exact evaluator/check/rule name and bypass posture only
+   after implementation verification. Do not invent them in discovery.
+
+Do not treat the registry as mechanically protected before this work passes.
+feat-512 owns the enforcement gap and its validation before access activation;
+if a reliable implementation still cannot satisfy the exact predicate, retain
+option B openly and report it in that implementation's release review. Never
+weaken the reviewer predicate or broaden paths as an automatic fallback.
+
+### Registry schema and identity/recovery mapping
+
+Keep `config/rag-consumer-engineers.json` and its strict schema:
 
 ```ts
 type EngineerRegistry = {
   schemaVersion: 1
+  recoveryGithubUserIds: ["219753371"] // Jaco only; not a PR reviewer allowlist
   engineers: Array<{
     engineerId: string // immutable UUID, never an integration/usage identity
-    githubUserId: string // immutable numeric GitHub ID represented as a string
-    githubLogin: string // current display/login spelling; not the identity key
-    verifiedEmails: string[] // explicitly reviewed complete email addresses
+    githubUserId: string // immutable numeric ID represented as a string
+    githubLogin: string // current label, not the identity key
+    verifiedEmails: string[] // complete reviewed addresses, same account entry
     environments: Array<"local" | "staging" | "production">
-    allowedSourceKeys: string[] // explicit registered keys, no wildcard
+    allowedSourceKeys: string[] // explicit registered keys; no wildcard
     status: "active" | "disabled"
   }>
 }
 ```
 
-Reject unknown properties, empty/duplicate IDs, logins or normalized emails,
-malformed addresses, unknown environments/sources and wildcard/domain grants.
-Normalize email with trim + lowercase consistently at review and login; never
-collapse Gmail dots/plus aliases. Proposed validation bounds: 100 engineers, five emails per engineer, 254
-characters per email, 39 per GitHub login, and 128 per source key; source lists
-cannot exceed the registered source inventory. UUID and numeric-ID formats are
-validated separately. A GitHub account/email pairing is a senior-reviewed identity mapping;
-it is not derived from Git commit author emails, public GitHub profile emails,
-a matching name, or domain membership. Record approved public approver account
-IDs below, but do not collect private email addresses or create the runtime registry
-in this documentation PR. Actual engineer email bindings are populated through
-the protected registration process during implementation.
+Reject unknown properties, duplicate/malformed IDs or normalized emails, unknown
+source/environment values and wildcard/domain grants. Normalize email with trim
+and lowercase; do not collapse Gmail dots/plus aliases. Proposed bounds: 100
+engineers, five emails each, 254 characters/email, 39/login and 128/source key;
+source arrays cannot exceed the registered inventory. A GitHub/email pairing is
+reviewed under the non-author policy, not derived from commit/profile email or
+name/domain similarity. No actual allowlist or private email binding is created.
 
-A future protected `config/rag-consumer-approvers.json` records separate
-`approverGithubUserIds` and `recoveryGithubUserIds` fields plus schema version;
-only Jaco's ID belongs in the recovery field. The authoritative roster is the
-user's continuation, not account biographies or inferred organization roles.
-Public `GET /users/{login}` on September 17 verified these identity bindings:
+Public account IDs verified on September 17: Jaco Brink `jaco-brink` = `219753371`,
+Tatai `tataihono` = `802117`, Jian Wei `jianwei1` = `17999235`. These earlier named
+reviewers have no exclusive reviewer status under the latest policy. Jaco alone
+recovers; PR approval by anyone else does not delegate recovery, authorize portal
+membership or grant reports. The earlier proposed approver-allowlist file is
+withdrawn; keep recovery configuration in the bounded registry area.
 
-| Approved person | GitHub login | Numeric GitHub ID | Authority                    |
-| --------------- | ------------ | ----------------- | ---------------------------- |
-| Jaco Brink      | `jaco-brink` | `219753371`       | Senior approval and recovery |
-| Tatai           | `tataihono`  | `802117`          | Senior approval only         |
-| Jian Wei        | `jianwei1`   | `17999235`        | Senior approval only         |
-
-Bind privileges to these immutable IDs; login names are labels. Do not infer
-portal membership, verified email, code-review permission or recovery delegation
-from the public lookup. No engineer can appoint themselves by editing PR-head
-policy. Jaco recovery still requires a verified authorized session and bounded
-audit; it is not a direct database or production bypass.
-The canonical reviewed revision is the merged protected-main commit SHA, recorded
-in the restricted access store and audit. The management service reads the active
-registry revision on every action. A controlled publisher imports only an exact
-merged revision with passing checks, transactionally disables removed engineers,
-and invalidates their sessions. No fallback to a bundled older revision; activation
-fails if synchronization cannot be established. The publication lag is a release
-test/operational gate, not a claim of immediate effect at GitHub merge time.
-
-Use the approved protected-PR plus repository-CI mechanism, with existing
-`ci-gate` as the verified aggregate check entry point. The exact approval-check
-name/implementation and effective required-check rule are **not found**; discovery
-cannot certify that `ci-gate` enforces either today. G1 needs Jaco/repository-admin
-evidence naming the intended existing control, or an explicit correction that
-it must be implemented under feat-512. No new check name, App, workflow service,
-or repository setting is chosen or created here.
-
-The future enforcement must protect registry/schema, approver/recovery policy,
-validator source, relevant workflow definitions, CODEOWNERS and dependencies.
-Evaluate authorization from protected base/default-branch policy, never PR-head
-policy with privileged permissions. A same-name Actions result is not proof of
-trusted approval; the repository mechanism must prevent replacement/spoofing of
-its evaluator and required checks. These are acceptance requirements for the
-approved mechanism, not a request to choose a different authentication product.
-
-Required approval behavior to verify in that repository mechanism:
-
-1. Load approver policy from the protected base revision. Read all changed paths
-   and all reviews with pagination; API errors, incomplete pages or missing
-   policy fail closed. For security-policy changes require at least one named
-   senior's current approval in addition to normal CI.
-2. Fetch current PR head H. Ignore pending reviews; reduce each reviewer's
-   decisive submitted state so a later dismissal/request-changes invalidates an
-   earlier approval. A comment-only review cannot create approval. Require an
-   undismissed `APPROVED` review with `commit_id == H` from a currently approved
-   senior ID other than the PR author and latest pusher. Unresolved senior
-   change requests fail the check. Added approvers cannot approve their own
-   addition under the head policy.
-3. Re-evaluate on opened/reopened/synchronize/base edit, submitted/dismissed
-   reviews and trusted policy changes. Re-fetch H before publishing; discard
-   the result if H moved. Bind result to H, not a stale workflow event SHA.
-   Use concurrency ordering so an older approval event cannot overwrite a
-   later dismissal result. Revalidate at merge, with native stale-dismissal,
-   last-push approval, current-base and no-bypass protections as defense in depth.
-4. Do not use path-filtered skipped/neutral jobs as approval. For irrelevant
-   changes explicitly evaluate applicability. Bootstrap of the first policy
-   must be an owner-approved protected change; an absent base policy is a block,
-   never automatic success. Future stacked implementation branches are not
-   security-policy authorities until their policy reaches protected main.
-
-GitHub documents stale-review dismissal, last-push approval, administrator bypass
-and source-pinned status checks in [protected branch controls](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
-Its [reviews API](https://docs.github.com/en/rest/pulls/reviews) exposes review
-state and commit association. The algorithm above is this discovery's proposal;
-GitHub does not implement the full named-account policy merely because CI exists.
-
-Acceptance fixtures: self-approval; newly self-added senior; renamed/recreated
-login; unapproved reviewer; stale SHA; dismissal after success; later changes
-requested; more than one review page; missing API permission; edited validator;
-forged same-name check; push during evaluation; base/policy update; native merge
-attempt with no trusted successful check. None was executed in this docs job.
+The activated registry revision is an exact reviewed, merged main SHA recorded
+in restricted access metadata/audit. A controlled publisher imports it only after
+the implemented validation policy passes, disables removed engineers and revokes
+their sessions transactionally. Management reads the active revision each action;
+no fallback to an older bundled registry. Publication lag and recovery authority
+are tested separately; GitHub merge time is not an invented activation timestamp.
 
 ## 2. Portal identity and multi-engineer ownership
 
@@ -328,7 +338,7 @@ A manager may approve or issue only source/environment rights within their own
 current entitlement. Effective retrieval scope remains integration-level; any
 registry entitlement reduction must transactionally intersect affected integration
 grants with the union of active managers' entitlements (never auto-expand grants).
-Last-manager loss requires senior review of the integration's continued access;
+Last-manager loss requires Jaco to review the integration's continued access;
 manager removal does not claim to revoke a secret already copied. Coordinate
 rotation/revocation explicitly. Recovery cannot self-authorize via portal input.
 
@@ -617,22 +627,22 @@ synthetic grace/cutoff/rollback. No execution of that proof occurred here.
 
 ## Readiness gates and handoff
 
-| Gate                                                  | Current finding / remaining handoff                                                                                                                                                                                                                                                                                                                                                                                                                                 | Owner and timing                                                                                                                                     |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| G1 — roster resolved; enforcement discrepancy remains | Jaco/Tatai/Jian Wei are named seniors with verified public IDs; Jaco alone recovers. Approved mechanism is protected PR review plus repository CI. Exact observed rule is `Main`, workflow `forge-ci`, aggregate check `ci-gate`; none of the returned settings/source proves required named-senior approval or required-check enforcement. Supply the intended rule/check reference or explicitly move the missing enforcement into feat-512 implementation scope. | Jaco/repository administrator; resolve discrepancy before feat-518 closes/feat-512 begins. No settings change authorized here.                       |
-| G2 — design resolved                                  | GitHub OAuth, same-entry allowlisted account plus verified email, multiple managers. No Google fallback. Register per-environment portal apps/origins and assign provisioning owner; implement the one-hour revocable local session and issuance-time provider revalidation.                                                                                                                                                                                        | feat-515 implementation; host/registration and synthetic login proof before activation, portal delivery after dogfood.                               |
-| G3 — design resolved                                  | RAGBot consumer first; Jaco/RAGBot aggregate counts/activity only through narrow read-only tool. Document actual transport, consumer binding and provisioning owner under the proposed endpoint/capability contract. No query results or general DB capability.                                                                                                                                                                                                     | feat-513 transport/handoff and feat-514 consumer-first dogfood; concrete runtime assignments before activation, not another discovery approval gate. |
-| G4 — implementation proofs                            | Synthetic credential races, role isolation/default grants, Node completion, crash/gap tests, account/email mismatch and removal/session cases, latency budget.                                                                                                                                                                                                                                                                                                      | feat-512/513/515 as applicable; no runtime tests claimed here.                                                                                       |
-| G5 — actual dogfood                                   | Actual `forge-rag-retrieve` task path/revision, selected consumer/source scope/environment, retries and real HTTP acceptance evidence.                                                                                                                                                                                                                                                                                                                              | feat-514; tracked task definition still absent; no outside Ops workspace inspected.                                                                  |
-| G6 — production authorization                         | Communications owner, seven-day grace start/cutoff, complete dogfood/report coverage and rollback approval.                                                                                                                                                                                                                                                                                                                                                         | Separately approved production action only, never authorized by G1–G3 answers.                                                                       |
+| Gate                                | Current finding / remaining handoff                                                                                                                                                                                                                                                                           | Owner and timing                                                                                                                                     |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G1 — discovery resolved by option B | Latest policy is any valid non-author approval for the two registry/schema paths only. Native team/CODEOWNERS variants change reviewer eligibility; whole-branch count broadens scope; current CI has no exact reliable evaluator. Preserve this documented gap in feat-512 with the acceptance matrix above. | Jaco/feat-512 implementer; no remaining discovery decision, no configured-enforcement claim or settings change.                                      |
+| G2 — design resolved                | GitHub OAuth, same-entry allowlisted account plus verified email, multiple managers. No Google fallback. Register per-environment portal apps/origins and assign provisioning owner; implement the one-hour revocable local session and issuance-time provider revalidation.                                  | feat-515 implementation; host/registration and synthetic login proof before activation, portal delivery after dogfood.                               |
+| G3 — design resolved                | RAGBot consumer first; Jaco/RAGBot aggregate counts/activity only through narrow read-only tool. Document actual transport, consumer binding and provisioning owner under the proposed endpoint/capability contract. No query results or general DB capability.                                               | feat-513 transport/handoff and feat-514 consumer-first dogfood; concrete runtime assignments before activation, not another discovery approval gate. |
+| G4 — implementation proofs          | Synthetic credential races, role isolation/default grants, Node completion, crash/gap tests, account/email mismatch and removal/session cases, latency budget.                                                                                                                                                | feat-512/513/515 as applicable; no runtime tests claimed here.                                                                                       |
+| G5 — actual dogfood                 | Actual `forge-rag-retrieve` task path/revision, selected consumer/source scope/environment, retries and real HTTP acceptance evidence.                                                                                                                                                                        | feat-514; tracked task definition still absent; no outside Ops workspace inspected.                                                                  |
+| G6 — production authorization       | Communications owner, seven-day grace start/cutoff, complete dogfood/report coverage and rollback approval.                                                                                                                                                                                                   | Separately approved production action only, never authorized by G1–G3 answers.                                                                       |
 
-Existing feat-512–515 own implementation/release work; no new ticket duplicates
-those scopes. feat-518 stays **blocked only on G1 enforcement verification**.
-Do not ask again for senior identities, GitHub-versus-Google choice, recovery
-delegation or report product choice. Once the precise control is evidenced or
-its absence is explicitly accepted as feat-512 work, record that correction and
-close the discovery resolution through this separate PR. Operational runbooks,
-programme PR #2304 and shared `/v1` contracts remain untouched.
+Existing feat-512–515 own implementation/release work. feat-518 is **complete**:
+the explicitly authorized option-B disposition resolves the discovery gate while
+retaining the real enforcement gap under feat-512. No implementation ticket is
+marked complete. Jaco remains recovery authority; GitHub portal and consumer-first
+aggregate reporting choices remain settled. No new feature ID is needed because
+the existing access-lifecycle ticket already owns registry enforcement. Shared
+`/v1` contracts, operational runbooks and PR #2304 remain untouched.
 
 ## Review and durable lessons
 
@@ -680,14 +690,14 @@ cutover verification was performed or is implied by these documentation checks.
 - Branch/base: `docs/rag-consumer-access-discovery` →
   `docs/rag-consumer-access-usage-plan` at parent `e5b22f7235385ee67d0e9aeda54916b8394408e3`.
 - Investigation commit: `886743382`; subsequent documentation receipt commit
-  adds this PR link and final checks. Exactly three documentation files differ
-  from the parent: this report, feat-518 and the RAG README.
+  adds this PR link and final checks. The initial delivery changed this report,
+  feat-518 and the RAG README. The final path-policy handoff also updates feat-512
+  and feat-515 to remove superseded senior-only/Google guidance: five docs only.
 - PR #2304 was re-read before delivery and remained an open draft at the same
   head; it was neither modified nor merged. No deployment or production action.
-- Outcome: evidence delivered; implementation readiness remains blocked by
-  the G1 enforcement discrepancy after the September 17 decisions. G2/G3 and
-  the G1 roster/recovery authority are resolved; do not re-request those choices. Local check results above are distinct
-  from GitHub CI, whose latest state is reported in the job's final receipt.
+- Final outcome: discovery complete under the approved option-B fallback;
+  enforcement remains an explicit feat-512 implementation gap, not a claim of
+  current protection. Current-head CI is recorded in the final job receipt.
 
 ## September 17 continuation review and verification
 
@@ -703,7 +713,8 @@ from discovery head `7621524cc`. The parent and main evidence revisions above
 are unchanged. Public numeric account lookups and effective-rule reads succeeded;
 legacy branch-protection endpoint again returned 404. Current PR comments/reviews
 contain no additional control description. No credentials or private email API
-was accessed. Exact enforcement remains the only discovery dependency.
+was accessed. At that checkpoint, exact enforcement was the remaining discovery
+dependency; the later path-policy decision below resolves its disposition.
 
 Continuation local checks passed: changed Markdown Prettier 3.8.1,
 `git diff --check`, all 33 lane frontmatters/index rows and counts, 38 relative
@@ -714,3 +725,30 @@ The September 16 results above remain historical evidence. Full repository
 `prettier --check .` also passed on September 17 (all matched files use Prettier
 code style); the final report edit receives a targeted recheck. Revised-head
 GitHub CI is reported separately in the job's final receipt.
+
+## Path-policy continuation: final decision and verification
+
+The user superseded senior-only approval with any valid non-author approval on
+consumer-registry/allowlist changes only, and explicitly authorized option B if
+exact reliable enforcement could not be established. Investigated native minimum
+reviews, path-specific required-team reviewers, CODEOWNERS, push path rules and
+conditional CI. Selected option B for the reasons in section 1; the current
+capabilities are not misrepresented as a platform-wide limitation.
+
+Self-review removed broader reviewer, latest-pusher and unrelated-path approval
+requirements, separated Jaco recovery from review eligibility, assigned the gap
+to existing feat-512 and corrected the feat-515 handoff. The five-area discovery
+is now complete; implementation, actual dogfood and production cutoff are not.
+No settings or executable files changed. Final local checks are recorded below.
+
+Final targeted checks passed: all five changed Markdown files, whitespace, all
+33 lane frontmatters/index rows (21 complete, 1 in-progress, 11 not-started,
+0 blocked), reciprocal programme dependencies, completed-ticket Resolution/PR
+link and 44 relative links. Hidden-lane tests pass 2/2 and the checker passes.
+The existing feat-461/435 reciprocal-edge mismatch and 18 public-lane warnings
+remain unchanged. No implementation or live enforcement test is claimed.
+
+Full repository Prettier 3.8.1 also passed for this final continuation (all matched
+files use Prettier code style). The final receipt edit is checked separately.
+The worktree's hooks remain absent; checks were run explicitly without bypass.
+Current-head GitHub CI and the pushed commit are reported in the final job result.

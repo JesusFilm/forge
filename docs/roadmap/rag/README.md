@@ -11,10 +11,10 @@ database into Admin.
 ## Status (September 17, 2026)
 
 - **Total tickets:** 33
-- **Complete:** 20
+- **Complete:** 21
 - **In progress:** 1
 - **Not started:** 11
-- **Blocked:** 1
+- **Blocked:** 0
 
 ## Feature Index
 
@@ -52,7 +52,7 @@ database into Admin.
 | [feat-513](feat-513-rag-consumer-usage-visibility.md)             | —                                                             | Deliver usage reporting                                            | not-started | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                        |
 | [feat-514](feat-514-rag-consumer-dogfood-migration.md)            | —                                                             | Dogfood and seven-day migration                                    | not-started | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                        |
 | [feat-515](feat-515-rag-consumer-self-service-portal.md)          | —                                                             | Internal self-service portal                                       | not-started | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                        |
-| [feat-518](feat-518-rag-consumer-access-discovery.md)             | —                                                             | Confirm consumer access implementation readiness                   | blocked     | [#2325](https://github.com/JesusFilm/forge/pull/2325)                                                        |
+| [feat-518](feat-518-rag-consumer-access-discovery.md)             | —                                                             | Confirm consumer access implementation readiness                   | complete    | [#2325](https://github.com/JesusFilm/forge/pull/2325)                                                        |
 
 The September 8 operator decision in [feat-435](feat-435-rag-proof-soak-archive.md)
 accepts the baseline for acquisition/ingestion with the three concerns tracked
@@ -73,9 +73,9 @@ Consumer programme order: feat-511 planning/design → feat-518 discovery
 Portal design is already captured by feat-511; implementation waits for dogfood.
 
 [Discovery evidence](evidence/feat-518/consumer-access-discovery.md) is delivered
-separately from programme PR #2304. September 17 decisions name Jaco, Tatai and
-Jian Wei as senior approvers (Jaco alone recovers), select the GitHub allowlisted
-portal and consumer-first RAGBot aggregate reporting. feat-518 remains blocked
-only on verifying the approved protected-review/required-CI enforcement: observed
-`Main`/`forge-ci`/`ci-gate` do not establish it. G2/G3 registration and transport
-assignments are implementation handoffs; access implementation waits for G1.
+separately from programme PR #2304; feat-518 is complete. Latest review policy is
+any valid non-author approval for the two consumer registry/schema paths only,
+not senior-only or all RAG/Forge PRs. Option B preserves the exact enforcement
+gap under feat-512; nothing is claimed configured. GitHub allowlisted portal,
+multiple managers, Jaco-only recovery and consumer-first RAGBot aggregate reports
+remain the accepted design. Implementation tickets remain not-started.
