@@ -530,6 +530,7 @@ sequenceDiagram
   6. Warm tap while fullscreen, while the download sheet is presented, and while a picture-in-picture hold is active: record what happens.
   7. With a reminder delivered to the tray and a record present, sign out: confirm the delivered reminder leaves the tray, the pending pair now targets Home, and a tap on a later reminder opens Home.
   8. Read the entitlement value from the production archive and the permission list from the merged manifest, and record both.
+  9. Final acceptance, on both platforms, after every earlier step: with a local, uncommitted edit of the constants set the day-1 offset to 1 minute and the day-7 offset to 5 minutes, run inside the 09:00–21:00 local window so the snap does not move them, open the app, put it in the background, and do not touch it for 6 minutes. Both reminders must appear as notifications in that order, the first at or shortly after 1 minute and the second at or shortly after 5 minutes, and a tap on each must open the recorded video. Record the two delivery times, then revert the edit before any build.
 - **Execution note:** this is boundary verification; a green suite does not satisfy it. Record device, OS version, build type, and observations for every step.
 - **Test scenarios:** Test expectation: none — this unit records manual observations; the scenarios are the numbered steps above.
 - **Verification:** the record document exists with both platforms covered, every step has an observation, and any failed step is either fixed in U4 through U6 before the production build or recorded as a stop condition.
@@ -538,19 +539,20 @@ sequenceDiagram
 
 ## Verification Contract
 
-| Gate                  | Command or check                                                                                                                                                | Applies to |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| Unit tests            | `pnpm --filter @forge/mobile test`                                                                                                                              | U1-U6      |
-| Guards falsified      | the three new guards (app config, entry point, wiring) and the kill-switch guard each made to fail once by removing what they pin                               | U1, U2, U4 |
-| Types                 | `pnpm --filter @forge/mobile typecheck`                                                                                                                         | U2-U6      |
-| Lint                  | `pnpm --filter @forge/mobile lint`                                                                                                                              | U1-U6      |
-| Expo dependency check | `npx expo install --check`, then the affected-gated doctor job in CI; fix drift with `expo install --fix` in its own pull request                               | U1         |
-| Native configuration  | prebuild both platforms, read the generated `Info.plist` and merged `AndroidManifest.xml`, record the permission list                                           | U1         |
-| Reserved attributes   | the existing `datadogReservedAttributes` guard passes with the new emit sites                                                                                   | U4-U6      |
-| Existing suites       | the watch-progress, playback request, deep-link origin, and root-layout suites pass unchanged except for the added scenarios                                    | U3, U4, U6 |
-| Replacement semantics | a second pass on a device leaves two pending under the same identifiers on both platforms                                                                       | U7         |
-| Device pass           | recorded observations in `docs/solutions/mobile/lapse-reminders-device-pass-2026-09.md`, including the signed Android release build and the sign-out tray check | U7         |
-| Runtime version       | before any `update:*`, the runtime of the latest finished production build equals what `eas update` prints                                                      | rollout    |
+| Gate                  | Command or check                                                                                                                                                   | Applies to |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------- |
+| Unit tests            | `pnpm --filter @forge/mobile test`                                                                                                                                 | U1-U6      |
+| Guards falsified      | the three new guards (app config, entry point, wiring) and the kill-switch guard each made to fail once by removing what they pin                                  | U1, U2, U4 |
+| Types                 | `pnpm --filter @forge/mobile typecheck`                                                                                                                            | U2-U6      |
+| Lint                  | `pnpm --filter @forge/mobile lint`                                                                                                                                 | U1-U6      |
+| Expo dependency check | `npx expo install --check`, then the affected-gated doctor job in CI; fix drift with `expo install --fix` in its own pull request                                  | U1         |
+| Native configuration  | prebuild both platforms, read the generated `Info.plist` and merged `AndroidManifest.xml`, record the permission list                                              | U1         |
+| Reserved attributes   | the existing `datadogReservedAttributes` guard passes with the new emit sites                                                                                      | U4-U6      |
+| Existing suites       | the watch-progress, playback request, deep-link origin, and root-layout suites pass unchanged except for the added scenarios                                       | U3, U4, U6 |
+| Replacement semantics | a second pass on a device leaves two pending under the same identifiers on both platforms                                                                          | U7         |
+| Device pass           | recorded observations in `docs/solutions/mobile/lapse-reminders-device-pass-2026-09.md`, including the signed Android release build and the sign-out tray check    | U7         |
+| Timed end-to-end      | with offsets of 1 and 5 minutes, both reminders appear within 6 minutes of backgrounding the app on each platform, in order, and each tap opens the recorded video | U7         |
+| Runtime version       | before any `update:*`, the runtime of the latest finished production build equals what `eas update` prints                                                         | rollout    |
 
 ## Definition of Done
 
@@ -561,6 +563,7 @@ sequenceDiagram
 - The cold-start tap has been observed to open the recorded video on both platforms, including on a fresh offline install.
 - A sign-out with a delivered reminder in the tray has been observed to remove it and to point the next reminder at Home.
 - A signed Android release build has been observed to fire a reminder after a reboot.
+- The full two-reminder cycle has been observed end to end on both platforms with the offsets set to 1 minute and 5 minutes: both notifications appeared within 6 minutes of backgrounding the app, in order, and each tap opened the recorded video.
 - The four new guards have each been falsified once.
 - The permission prompt outcome and the reminder tap are visible in Datadog with the reminder kind as a facet, and reminder returns are separable from share-link opens by origin.
 - The production archive's entitlement value and the merged permission list are recorded.
