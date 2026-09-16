@@ -3,7 +3,7 @@ id: "feat-510"
 title: "Restore Expo compatibility checks after patch drift"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-16"
 duration: 1
 depends_on: []
@@ -48,4 +48,11 @@ isolated Doctor checks, 3,639 tests in 227 suites with the normal worker runner,
 types, lint, and disposable iOS/Android exports. Serial Jest reports late `act`
 warnings from `useAutostartPlayback`; the unchanged test reproduces those warnings
 on the earlier main checkout too. No application source was changed to conceal
-that existing teardown issue. PR CI and automatic deployment remain to verify.
+that existing teardown issue.
+
+PR #2312 passed all 98 PR checks and merged as
+`0a1c585998a6dbb4bf1399fe4c5eed25310a5512`. Main CI and CodeQL passed; Web's normal
+deployment `43a75813-bcca-4381-8454-d43099079b51` reached SUCCESS at 23:43:15 UTC on
+September 15. SSH confirmed the Redis cleanup patch in both installed exports,
+and the production playback smoke passed. See
+`docs/operations/watch-runtime-followup-2026-09-16.md` for evidence and limits.
