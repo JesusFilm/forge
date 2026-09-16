@@ -13,8 +13,8 @@ database into Admin.
 - **Total tickets:** 33
 - **Complete:** 20
 - **In progress:** 1
-- **Not started:** 12
-- **Blocked:** 0
+- **Not started:** 11
+- **Blocked:** 1
 
 ## Feature Index
 
@@ -52,7 +52,7 @@ database into Admin.
 | [feat-513](feat-513-rag-consumer-usage-visibility.md)             | —                                                             | Deliver usage reporting                                            | not-started | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                        |
 | [feat-514](feat-514-rag-consumer-dogfood-migration.md)            | —                                                             | Dogfood and seven-day migration                                    | not-started | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                        |
 | [feat-515](feat-515-rag-consumer-self-service-portal.md)          | —                                                             | Internal self-service portal                                       | not-started | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                        |
-| [feat-518](feat-518-rag-consumer-access-discovery.md)             | —                                                             | Confirm consumer access implementation readiness                   | not-started | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                        |
+| [feat-518](feat-518-rag-consumer-access-discovery.md)             | —                                                             | Confirm consumer access implementation readiness                   | blocked     | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                        |
 
 The September 8 operator decision in [feat-435](feat-435-rag-proof-soak-archive.md)
 accepts the baseline for acquisition/ingestion with the three concerns tracked
@@ -72,5 +72,7 @@ Consumer programme order: feat-511 planning/design → feat-518 discovery
 → feat-513 usage visibility → feat-514 dogfood/migration → feat-515 portal.
 Portal design is already captured by feat-511; implementation waits for dogfood.
 
-Discovery findings belong in a later, separate documentation-only PR; feat-518
-must complete before access implementation begins. This PR only schedules discovery.
+[Discovery evidence](evidence/feat-518/consumer-access-discovery.md) is delivered
+separately from programme PR #2304. feat-518 remains blocked on named senior/check
+authority, portal registration/session choices and report identity bindings;
+access implementation cannot begin until those decisions close the gate.

@@ -3,7 +3,7 @@ id: "feat-518"
 title: "Confirm RAG consumer access implementation readiness"
 owner: "jaco"
 priority: "P1"
-status: "not-started"
+status: "blocked"
 start_date: "2026-09-16"
 duration: 2
 depends_on: ["feat-511"]
@@ -85,3 +85,26 @@ reciprocal dependency and lane index/count checks, then
 `pnpm exec tsx --test scripts/check-hidden-roadmap-lanes.test.ts` and
 `pnpm exec tsx scripts/check-hidden-roadmap-lanes.ts`.
 Confirm sequence: feat-511 → feat-518 → feat-512 → feat-513 → feat-514 → feat-515.
+
+## Discovery evidence (J011)
+
+[Implementation handoff and investigation report](evidence/feat-518/consumer-access-discovery.md)
+records repository/revision evidence, read-only GitHub protection observations,
+proposed allowlist/review and identity contracts, token lifecycle, schema/role
+matrix, exact usage accounting and bounded report access. Findings are delivered
+on `docs/rag-consumer-access-discovery`, stacked on PR #2304 head
+`e5b22f7235385ee67d0e9aeda54916b8394408e3`; the parent PR is unchanged.
+
+The gate remains blocked for non-dependency decisions G1–G3 in that report:
+
+- Named senior/recovery authority and an enforceable protected check source;
+  the visible Main ruleset currently requires zero approving reviews and lists
+  no required status checks.
+- Portal host/client/management boundary and Auth-side session revocation policy.
+- Jaco/RAGBot report binding and provisioning authority.
+
+Implementation proposals are reviewable; these decisions cannot be inferred
+from repository wiring or assigned to arbitrary accounts. No code, production
+state or credential changes were made. feat-512–515 remain not-started. Complete
+this ticket only after recording the decisions and the separate discovery PR's
+resolution; do not treat a submitted evidence PR as a closed readiness gate.
