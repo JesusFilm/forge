@@ -88,9 +88,21 @@ Under matched local catalog load, small-transaction maximum latency fell from
 738 ms to 89 ms and event-loop maximum delay from 419 ms to 15 ms. The real
 PostgreSQL regression measures wire cardinality, not just mocked return values.
 See `docs/solutions/performance-issues/prisma-nested-take-duration-stalls-admin-20260916.md`.
-Release verification and sustained production observation are still required;
-this ticket remains in progress. Delivery fallbacks and selection failures must
-continue to be counted separately.
+PR #2319 deployed automatically to Admin and worker revision
+`8070374f6a6e3e892926112d5a6ca8f5f7480fa1`. Compiled code and bounded production
+duration results were verified. The 02:15–02:45 observation still contained one
+selection HTTP 503, one browser-observed HTTP 200 `delivery_timeout` fallback,
+and four browser selection aborts (two correlated with server HTTP 200). This
+ticket remains in progress; see
+`docs/operations/watch-admin-duration-recovery-2026-09-16.md`.
+
+The continuation reproduced a second catalog scheduling component: Pothos
+include mode expands 100 selected dubs into 3,660 wide subtitle objects and a
+5.5 MB Prisma result. Selecting requested subtitle/language scalars preserves
+the response and reduces local maximum loop delay from 153 ms to 31 ms. Neither
+isolated subtitle experiment exceeded 700 ms; release verification must not
+overstate that component result as complete recovery. See
+`docs/solutions/performance-issues/pothos-subtitle-scalar-projection-stalls-admin-20260916.md`.
 
 ## Entry points
 
