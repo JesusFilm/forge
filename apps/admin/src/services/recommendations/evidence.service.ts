@@ -262,6 +262,7 @@ export class RecommendationEvidenceService {
       await lockRecommendationItemEvidence(tx, item.id)
       const receipts: RecommendationEvidenceReceipt[] = []
       let reconciledSelection = false
+      let evidenceWatermark = now
       for (const event of input.events) {
         const digest = recommendationEvidenceDigest(event)
         const existing =
@@ -275,6 +276,10 @@ export class RecommendationEvidenceService {
         if (existing) {
           if (existing.payloadDigest === digest) {
             if (event.kind === "impression") {
+              // A concurrent original can commit after this replay began.
+              const attributionEligibleAt = new Date(
+                Math.max(now.getTime(), existing.receivedAt.getTime()),
+              )
               const reconciliation =
                 await tx.recommendationSelection.updateMany({
                   where: {
@@ -282,9 +287,12 @@ export class RecommendationEvidenceService {
                     itemId: item.id,
                     attributionEligibleAt: null,
                   },
-                  data: { attributionEligibleAt: now },
+                  data: { attributionEligibleAt },
                 })
               reconciledSelection ||= reconciliation.count === 1
+              if (reconciliation.count === 1) {
+                evidenceWatermark = attributionEligibleAt
+              }
             }
             await tx.recommendationEvidenceAudit.create({
               data: {
@@ -391,13 +399,13 @@ export class RecommendationEvidenceService {
         })
         receipts.push({ eventId: event.eventId, status: "accepted" })
       }
-      return { receipts, reconciledSelection }
+      return { receipts, reconciledSelection, evidenceWatermark }
     })
     if (result.reconciledSelection) {
       void this.classifyAndDispatchSelectionFeedback({
         itemId: item.id,
         sessionDigest: item.request.sessionDigest,
-        evidenceWatermark: now,
+        evidenceWatermark: result.evidenceWatermark,
       })
     }
     return result.receipts

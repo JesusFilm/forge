@@ -65,6 +65,17 @@ latency fell from 435 ms to 9.78 ms and both runs removed every expired entry.
 See `docs/solutions/performance-issues/shared-redis-cache-cleanup-blocks-admission-20260916.md`.
 Those slow-log timestamps do not match the remaining 02:55/05:51 failures;
 do not close this ticket solely on this additional fix or a short clean window.
+PR #2311 contains that patch; the unrelated Expo compatibility repair in #2312
+unblocked its automatic Web deployment. Both exports were verified in production
+revision `0a1c585998a6dbb4bf1399fe4c5eed25310a5512` at 23:43:18 UTC on September 15,
+and the production playback smoke passed. The follow-up report is
+`docs/operations/watch-runtime-followup-2026-09-16.md`; this ticket remains open.
+
+Post-deployment tracing reproduced a selection failure caused by stale receipt
+ordering: an impression can commit after selection captures `now`, and the
+selection attribution marker then predates its prerequisite impression.
+`docs/plans/2026-09-16-003-fix-selection-impression-watermark-plan.md` owns the
+scoped fix and regression; separate 700 ms application delays remain open.
 
 ## Entry points
 

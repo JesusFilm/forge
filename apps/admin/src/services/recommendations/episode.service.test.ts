@@ -455,98 +455,118 @@ describe("RecommendationEpisodeService", () => {
     expect(dispatchProfileFeedback).not.toHaveBeenCalled()
   })
 
-  it("refreshes the directly linked profile after a selection without an experiment assignment", async () => {
-    const item = {
-      id: "item-direct",
-      requestId: "request-direct",
-      targetMediaId: "target-video",
-      canonicalHref: "/watch/target.html/en.html",
-      capabilityJti: "delivery-jti-direct",
-      request: {
-        surfaceVersion: "watch-below-player-v1",
-        id: "request-direct",
-        state: "ISSUED",
-        manifestId: "semantic-transcript-pgvector-v1",
-        sessionDigest: "a".repeat(64),
-        expiresAt: new Date("2026-09-17T03:00:00.000Z"),
-        experimentAssignment: null,
-      },
-    }
-    const tx = {
-      $executeRaw: vi.fn(async () => 1),
-      $queryRaw: vi.fn(async () => [{ id: "current" }]),
-      recommendationSelection: {
-        findUnique: vi.fn(async () => null),
-        create: vi.fn(async () => ({ episode: { id: "episode-direct" } })),
-      },
-      recommendationImpression: {
-        findUnique: vi.fn(async () => ({
-          receivedAt: new Date("2026-04-20T02:58:00.000Z"),
-        })),
-      },
-      recommendationEvidenceAudit: { create: vi.fn(async () => ({})) },
-    }
-    const prisma = {
-      recommendationServedItem: { findUnique: vi.fn(async () => item) },
-      recommendationProfileSessionLink: {
-        findFirst: vi.fn(async () => ({
-          profileId: "profile-direct",
-          privacyGeneration: 7,
-          profile: { privacyGeneration: 7 },
-        })),
-      },
-      recommendationEvidenceAudit: { create: vi.fn(async () => ({})) },
-      $queryRaw: vi.fn(async () => [{ attempts: 1 }]),
-      $transaction: vi.fn(async (work: (client: typeof tx) => unknown) =>
-        work(tx),
-      ),
-    }
-    const dispatchProfileFeedback = vi.fn(async () => undefined)
-    const classifySelection = vi.fn(async () => undefined)
-    const service = new RecommendationEpisodeService({
-      prisma: prisma as never,
-      tokenService: {
-        activeKid: "active-kid",
-        verifyDeliveryCapability: vi.fn(async () => ({
-          iat: 1_776_653_000,
-          exp: 1_776_654_600,
-        })),
-        signEpisodeCapability: vi.fn(async () => "episode-token"),
-      },
-      now: () => new Date("2026-04-20T03:00:00.000Z"),
-      newId: (() => {
-        let id = 0
-        return () => `direct-id-${++id}`
-      })(),
-      newClaimNonce: () => "direct-fresh-claim-nonce",
-      dispatchProfileFeedback,
-      classifySelection,
-    })
-
-    await expect(
-      service.select({
-        caller,
-        contractVersion: "recommendation-evidence-v1",
-        capability: "delivery-token",
+  it.each([
+    {
+      impressionAt: "2026-04-20T02:58:00.000Z",
+      eligibleAt: "2026-04-20T03:00:00.000Z",
+    },
+    {
+      impressionAt: "2026-04-20T03:00:00.100Z",
+      eligibleAt: "2026-04-20T03:00:00.100Z",
+    },
+  ])(
+    "refreshes the profile using committed impression receipt $impressionAt",
+    async ({ impressionAt, eligibleAt }) => {
+      const item = {
+        id: "item-direct",
         requestId: "request-direct",
-        itemId: "item-direct",
-        sessionDigest: "a".repeat(64),
-        eventId: "selection-direct",
-        occurredAt: "2026-04-20T02:59:00.000Z",
-        claimNonce: "direct-fresh-claim-nonce",
-      }),
-    ).resolves.toMatchObject({ status: "accepted" })
+        targetMediaId: "target-video",
+        canonicalHref: "/watch/target.html/en.html",
+        capabilityJti: "delivery-jti-direct",
+        request: {
+          surfaceVersion: "watch-below-player-v1",
+          id: "request-direct",
+          state: "ISSUED",
+          manifestId: "semantic-transcript-pgvector-v1",
+          sessionDigest: "a".repeat(64),
+          expiresAt: new Date("2026-09-17T03:00:00.000Z"),
+          experimentAssignment: null,
+        },
+      }
+      const tx = {
+        $executeRaw: vi.fn(async () => 1),
+        $queryRaw: vi.fn(async () => [{ id: "current" }]),
+        recommendationSelection: {
+          findUnique: vi.fn(async () => null),
+          create: vi.fn(async () => ({ episode: { id: "episode-direct" } })),
+        },
+        recommendationImpression: {
+          findUnique: vi.fn(async () => ({
+            receivedAt: new Date(impressionAt),
+          })),
+        },
+        recommendationEvidenceAudit: { create: vi.fn(async () => ({})) },
+      }
+      const prisma = {
+        recommendationServedItem: { findUnique: vi.fn(async () => item) },
+        recommendationProfileSessionLink: {
+          findFirst: vi.fn(async () => ({
+            profileId: "profile-direct",
+            privacyGeneration: 7,
+            profile: { privacyGeneration: 7 },
+          })),
+        },
+        recommendationEvidenceAudit: { create: vi.fn(async () => ({})) },
+        $queryRaw: vi.fn(async () => [{ attempts: 1 }]),
+        $transaction: vi.fn(async (work: (client: typeof tx) => unknown) =>
+          work(tx),
+        ),
+      }
+      const dispatchProfileFeedback = vi.fn(async () => undefined)
+      const classifySelection = vi.fn(async () => undefined)
+      const service = new RecommendationEpisodeService({
+        prisma: prisma as never,
+        tokenService: {
+          activeKid: "active-kid",
+          verifyDeliveryCapability: vi.fn(async () => ({
+            iat: 1_776_653_000,
+            exp: 1_776_654_600,
+          })),
+          signEpisodeCapability: vi.fn(async () => "episode-token"),
+        },
+        now: () => new Date("2026-04-20T03:00:00.000Z"),
+        newId: (() => {
+          let id = 0
+          return () => `direct-id-${++id}`
+        })(),
+        newClaimNonce: () => "direct-fresh-claim-nonce",
+        dispatchProfileFeedback,
+        classifySelection,
+      })
 
-    await vi.waitFor(() => expect(dispatchProfileFeedback).toHaveBeenCalled())
-    expect(classifySelection).toHaveBeenCalledWith("direct-id-2")
-    expect(classifySelection).toHaveBeenCalledBefore(dispatchProfileFeedback)
-    expect(dispatchProfileFeedback).toHaveBeenCalledWith({
-      sessionDigest: "a".repeat(64),
-      profileId: "profile-direct",
-      privacyGeneration: 7,
-      evidenceWatermark: new Date("2026-04-20T03:00:00.000Z"),
-    })
-  })
+      await expect(
+        service.select({
+          caller,
+          contractVersion: "recommendation-evidence-v1",
+          capability: "delivery-token",
+          requestId: "request-direct",
+          itemId: "item-direct",
+          sessionDigest: "a".repeat(64),
+          eventId: "selection-direct",
+          occurredAt: "2026-04-20T02:59:00.000Z",
+          claimNonce: "direct-fresh-claim-nonce",
+        }),
+      ).resolves.toMatchObject({ status: "accepted" })
+
+      expect(tx.recommendationSelection.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            receivedAt: new Date("2026-04-20T03:00:00.000Z"),
+            attributionEligibleAt: new Date(eligibleAt),
+          }),
+        }),
+      )
+      await vi.waitFor(() => expect(dispatchProfileFeedback).toHaveBeenCalled())
+      expect(classifySelection).toHaveBeenCalledWith("direct-id-2")
+      expect(classifySelection).toHaveBeenCalledBefore(dispatchProfileFeedback)
+      expect(dispatchProfileFeedback).toHaveBeenCalledWith({
+        sessionDigest: "a".repeat(64),
+        profileId: "profile-direct",
+        privacyGeneration: 7,
+        evidenceWatermark: new Date(eligibleAt),
+      })
+    },
+  )
 
   it("commits a matching claim even when its replacement wake dispatch is lost", async () => {
     const now = new Date("2026-04-20T03:00:00.000Z")
@@ -711,117 +731,129 @@ describe("RecommendationEpisodeService", () => {
     expect(transaction).not.toHaveBeenCalled()
   })
 
-  it("audits exact selection replay, repairs late attribution, and quarantines conflict", async () => {
-    const selectionInput = {
-      caller,
-      contractVersion: "recommendation-evidence-v1",
-      capability: "delivery-token",
-      requestId: "request-1",
-      itemId: "item-1",
-      sessionDigest: "a".repeat(64),
-      eventId: "selection-1",
-      occurredAt: "2026-04-20T03:00:00.000Z",
-      tabDigest: "b".repeat(64),
-      claimNonce: "selection-claim-nonce-1",
-    }
-    const item = {
-      id: "item-1",
-      requestId: "request-1",
-      targetMediaId: "target-video",
-      canonicalHref: "/watch/target.html",
-      capabilityJti: "delivery-jti",
-      request: {
-        surfaceVersion: "watch-below-player-v1",
-        state: "ISSUED",
-        manifestId: "semantic-transcript-pgvector-v1",
-        sessionDigest: selectionInput.sessionDigest,
-        expiresAt: new Date("2026-09-17T03:00:00.000Z"),
-      },
-    }
-    const acceptedDigest = recommendationEvidenceDigest({
-      eventId: selectionInput.eventId,
-      kind: "selection",
-      occurredAt: selectionInput.occurredAt,
-      tabDigest: selectionInput.tabDigest,
-      claimNonceDigest: createHash("sha256")
-        .update(selectionInput.claimNonce)
-        .digest("hex"),
-    })
-    let existingDigest = acceptedDigest
-    let impression: { receivedAt: Date } | null = null
-    const tx = {
-      $executeRaw: vi.fn(async () => 1),
-      $queryRaw: vi.fn(async () => [{ attempts: 1 }]),
-      recommendationSelection: {
-        findUnique: vi.fn(async () => ({
-          id: "selection-1",
-          payloadDigest: existingDigest,
-          attributionEligibleAt: null,
-        })),
-        updateMany: vi.fn(async () => ({ count: 1 })),
-      },
-      recommendationImpression: { findUnique: vi.fn(async () => impression) },
-      recommendationEvidenceAudit: { create: vi.fn(async () => ({})) },
-    }
-    const prisma = {
-      recommendationServedItem: { findUnique: vi.fn(async () => item) },
-      recommendationProfileSessionLink: {
-        findFirst: vi.fn(async () => ({
-          profileId: "profile-1",
-          privacyGeneration: 2,
-          profile: { privacyGeneration: 2 },
-        })),
-      },
-      recommendationEvidenceAudit: { create: vi.fn(async () => ({})) },
-      $queryRaw: vi.fn(async () => [{ attempts: 1 }]),
-      $transaction: vi.fn(async (work: (client: typeof tx) => unknown) =>
-        work(tx),
-      ),
-    }
-    const service = new RecommendationEpisodeService({
-      prisma: prisma as never,
-      tokenService: {
-        activeKid: "active-kid",
-        verifyDeliveryCapability: vi.fn(async () => ({
-          iat: 1_776_654_000,
-          exp: 1_776_654_600,
-        })),
-        signEpisodeCapability: vi.fn(),
-      },
-      now: () => new Date("2026-04-20T03:00:00.000Z"),
-      dispatchProfileFeedback: vi.fn(async () => undefined),
-    })
+  it.each([
+    {
+      impressionAt: "2026-04-20T02:59:00.000Z",
+      eligibleAt: "2026-04-20T03:00:00.000Z",
+    },
+    {
+      impressionAt: "2026-04-20T03:00:00.100Z",
+      eligibleAt: "2026-04-20T03:00:00.100Z",
+    },
+  ])(
+    "repairs selection replay with impression receipt $impressionAt and quarantines conflict",
+    async ({ impressionAt, eligibleAt }) => {
+      const selectionInput = {
+        caller,
+        contractVersion: "recommendation-evidence-v1",
+        capability: "delivery-token",
+        requestId: "request-1",
+        itemId: "item-1",
+        sessionDigest: "a".repeat(64),
+        eventId: "selection-1",
+        occurredAt: "2026-04-20T03:00:00.000Z",
+        tabDigest: "b".repeat(64),
+        claimNonce: "selection-claim-nonce-1",
+      }
+      const item = {
+        id: "item-1",
+        requestId: "request-1",
+        targetMediaId: "target-video",
+        canonicalHref: "/watch/target.html",
+        capabilityJti: "delivery-jti",
+        request: {
+          surfaceVersion: "watch-below-player-v1",
+          state: "ISSUED",
+          manifestId: "semantic-transcript-pgvector-v1",
+          sessionDigest: selectionInput.sessionDigest,
+          expiresAt: new Date("2026-09-17T03:00:00.000Z"),
+        },
+      }
+      const acceptedDigest = recommendationEvidenceDigest({
+        eventId: selectionInput.eventId,
+        kind: "selection",
+        occurredAt: selectionInput.occurredAt,
+        tabDigest: selectionInput.tabDigest,
+        claimNonceDigest: createHash("sha256")
+          .update(selectionInput.claimNonce)
+          .digest("hex"),
+      })
+      let existingDigest = acceptedDigest
+      let impression: { receivedAt: Date } | null = null
+      const tx = {
+        $executeRaw: vi.fn(async () => 1),
+        $queryRaw: vi.fn(async () => [{ attempts: 1 }]),
+        recommendationSelection: {
+          findUnique: vi.fn(async () => ({
+            id: "selection-1",
+            payloadDigest: existingDigest,
+            attributionEligibleAt: null,
+          })),
+          updateMany: vi.fn(async () => ({ count: 1 })),
+        },
+        recommendationImpression: { findUnique: vi.fn(async () => impression) },
+        recommendationEvidenceAudit: { create: vi.fn(async () => ({})) },
+      }
+      const prisma = {
+        recommendationServedItem: { findUnique: vi.fn(async () => item) },
+        recommendationProfileSessionLink: {
+          findFirst: vi.fn(async () => ({
+            profileId: "profile-1",
+            privacyGeneration: 2,
+            profile: { privacyGeneration: 2 },
+          })),
+        },
+        recommendationEvidenceAudit: { create: vi.fn(async () => ({})) },
+        $queryRaw: vi.fn(async () => [{ attempts: 1 }]),
+        $transaction: vi.fn(async (work: (client: typeof tx) => unknown) =>
+          work(tx),
+        ),
+      }
+      const service = new RecommendationEpisodeService({
+        prisma: prisma as never,
+        tokenService: {
+          activeKid: "active-kid",
+          verifyDeliveryCapability: vi.fn(async () => ({
+            iat: 1_776_654_000,
+            exp: 1_776_654_600,
+          })),
+          signEpisodeCapability: vi.fn(),
+        },
+        now: () => new Date("2026-04-20T03:00:00.000Z"),
+        dispatchProfileFeedback: vi.fn(async () => undefined),
+      })
 
-    await expect(service.select(selectionInput)).resolves.toMatchObject({
-      status: "replay",
-    })
-    expect(tx.$executeRaw).toHaveBeenCalledOnce()
-    expect(tx.$executeRaw).toHaveBeenCalledBefore(
-      tx.recommendationSelection.findUnique,
-    )
-    expect(tx.recommendationEvidenceAudit.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        kind: "REPLAY",
-        reasonCode: "selection_replay",
-      }),
-    })
+      await expect(service.select(selectionInput)).resolves.toMatchObject({
+        status: "replay",
+      })
+      expect(tx.$executeRaw).toHaveBeenCalledOnce()
+      expect(tx.$executeRaw).toHaveBeenCalledBefore(
+        tx.recommendationSelection.findUnique,
+      )
+      expect(tx.recommendationEvidenceAudit.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          kind: "REPLAY",
+          reasonCode: "selection_replay",
+        }),
+      })
 
-    impression = { receivedAt: new Date("2026-04-20T02:59:00.000Z") }
-    await expect(service.select(selectionInput)).resolves.toMatchObject({
-      status: "replay",
-      claimNonce: selectionInput.claimNonce,
-    })
-    expect(tx.recommendationSelection.updateMany).toHaveBeenCalledWith({
-      where: { id: "selection-1", attributionEligibleAt: null },
-      data: { attributionEligibleAt: new Date("2026-04-20T03:00:00.000Z") },
-    })
+      impression = { receivedAt: new Date(impressionAt) }
+      await expect(service.select(selectionInput)).resolves.toMatchObject({
+        status: "replay",
+        claimNonce: selectionInput.claimNonce,
+      })
+      expect(tx.recommendationSelection.updateMany).toHaveBeenCalledWith({
+        where: { id: "selection-1", attributionEligibleAt: null },
+        data: { attributionEligibleAt: new Date(eligibleAt) },
+      })
 
-    existingDigest = "f".repeat(64)
-    await expect(service.select(selectionInput)).resolves.toMatchObject({
-      status: "conflict",
-    })
-    expect(tx.$queryRaw.mock.calls[0]).toHaveLength(8)
-  })
+      existingDigest = "f".repeat(64)
+      await expect(service.select(selectionInput)).resolves.toMatchObject({
+        status: "conflict",
+      })
+      expect(tx.$queryRaw.mock.calls[0]).toHaveLength(8)
+    },
+  )
 
   it("uses typed failures for invalid selection and handoff input", async () => {
     const service = new RecommendationEpisodeService({
