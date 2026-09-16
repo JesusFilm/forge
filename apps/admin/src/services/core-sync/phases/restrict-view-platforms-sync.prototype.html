@@ -1,0 +1,822 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PROTOTYPE — restrictViewPlatforms sync bug</title>
+    <style>
+      :root {
+        --accent: #2563eb;
+        --warn: #b91c1c;
+        --warn-bg: #fef2f2;
+        --ok-bg: #f0fdf4;
+        --ok: #15803d;
+        --bg: #fafafa;
+        --card-bg: #ffffff;
+        --border: #e2e2e2;
+        --text: #1a1a1a;
+        --muted: #6b6b6b;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 24px 16px 64px;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        line-height: 1.5;
+      }
+      .wrap {
+        max-width: 880px;
+        margin: 0 auto;
+      }
+      .banner {
+        background: #fff7ed;
+        border: 1px solid #fdba74;
+        color: #9a3412;
+        font-size: 13px;
+        font-weight: 600;
+        padding: 8px 14px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        display: inline-block;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0 0 6px;
+      }
+      .intro {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px 20px;
+        margin-bottom: 24px;
+        font-size: 14px;
+        color: #333;
+      }
+      .intro b {
+        color: var(--accent);
+      }
+      .intro code {
+        background: #f1f5f9;
+        padding: 1px 5px;
+        border-radius: 4px;
+        font-size: 12.5px;
+      }
+
+      .state-row {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+      }
+      .card {
+        flex: 1 1 260px;
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px 18px;
+      }
+      .card h2 {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        margin: 0 0 10px;
+      }
+      .field {
+        font-size: 14px;
+        margin-bottom: 8px;
+      }
+      .field .label {
+        color: var(--muted);
+        display: inline-block;
+        min-width: 108px;
+      }
+      .chip {
+        display: inline-block;
+        padding: 2px 9px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        background: #eef2ff;
+        color: var(--accent);
+        margin-right: 4px;
+      }
+      .chip.warn {
+        background: var(--warn-bg);
+        color: var(--warn);
+      }
+      .chip.empty {
+        background: #f1f5f9;
+        color: var(--muted);
+        font-weight: 500;
+      }
+
+      .diverge-banner {
+        display: none;
+        background: var(--warn-bg);
+        border: 1px solid #fca5a5;
+        color: var(--warn);
+        font-weight: 600;
+        font-size: 13px;
+        padding: 10px 14px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+      }
+      .diverge-banner.show {
+        display: block;
+      }
+      .ok-banner {
+        display: none;
+        background: var(--ok-bg);
+        border: 1px solid #86efac;
+        color: var(--ok);
+        font-weight: 600;
+        font-size: 13px;
+        padding: 10px 14px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+      }
+      .ok-banner.show {
+        display: block;
+      }
+
+      .mechanism-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 20px;
+        font-size: 13px;
+      }
+      .mechanism-row .label {
+        color: var(--muted);
+      }
+      .mech-btn {
+        border: 1px solid var(--border);
+        background: #fff;
+        padding: 6px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text);
+      }
+      .mech-btn.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+
+      .free-play {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px 18px;
+        margin-bottom: 20px;
+      }
+      .free-play h2 {
+        font-size: 13px;
+        margin: 0 0 12px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .btn-row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      button {
+        font-family: inherit;
+        cursor: pointer;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        padding: 9px 14px;
+        background: #fff;
+        font-size: 13.5px;
+        font-weight: 600;
+        color: var(--text);
+      }
+      button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+      button.danger {
+        color: var(--warn);
+      }
+      button.ghost {
+        background: transparent;
+        color: var(--muted);
+        font-weight: 500;
+      }
+      button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      button:not(:disabled):hover {
+        filter: brightness(0.96);
+      }
+
+      .tabs {
+        display: flex;
+        gap: 4px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+      }
+      .tab {
+        padding: 8px 14px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--muted);
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        background: none;
+        border-top: none;
+        border-left: none;
+        border-right: none;
+      }
+      .tab.active {
+        color: var(--accent);
+        border-bottom-color: var(--accent);
+      }
+
+      .scenario-panel {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px 18px;
+        margin-bottom: 20px;
+      }
+      .scenario-desc {
+        font-size: 13.5px;
+        color: #333;
+        margin-bottom: 14px;
+      }
+      .steps {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      .step-btn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        text-align: left;
+        width: 100%;
+      }
+      .step-num {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #eee;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+        flex-shrink: 0;
+      }
+      .step-btn.done .step-num {
+        background: var(--ok);
+        color: #fff;
+      }
+      .step-btn.current .step-num {
+        background: var(--accent);
+        color: #fff;
+      }
+      .step-btn.done {
+        color: var(--muted);
+        background: #f8f8f8;
+      }
+      .takeaway {
+        display: none;
+        background: #eef2ff;
+        border: 1px solid #c7d2fe;
+        border-radius: 10px;
+        padding: 12px 14px;
+        font-size: 13.5px;
+        color: #1e293b;
+      }
+      .takeaway.show {
+        display: block;
+      }
+      .takeaway b {
+        color: var(--accent);
+      }
+
+      .log-card {
+        background: #111318;
+        color: #d4d4d8;
+        border-radius: 12px;
+        padding: 14px 18px;
+        font-family: "SF Mono", Menlo, monospace;
+        font-size: 12.5px;
+        max-height: 260px;
+        overflow-y: auto;
+      }
+      .log-card h2 {
+        font-size: 11px;
+        color: #9ca3af;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin: 0 0 10px;
+      }
+      .log-line {
+        margin-bottom: 6px;
+      }
+      .log-line .t {
+        color: #6b7280;
+        margin-right: 8px;
+      }
+      .log-line.warn {
+        color: #fca5a5;
+      }
+      .log-empty {
+        color: #6b7280;
+        font-style: italic;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="banner">PROTOTYPE — throwaway demo, not production code</div>
+      <h1>
+        Does switching Core-sync to <code>adminVideos</code> fix the
+        restrictViewPlatforms bug?
+      </h1>
+
+      <div class="intro">
+        <b>Question this demo answers:</b> admin's Core-sync currently queries
+        Core's public <code>videos</code> GraphQL field, sending header
+        <code>x-graphql-client-name: watch</code>. Core's
+        <code>videos</code> resolver silently applies
+        <code>filter.NOT = { restrictViewPlatforms: { has: "watch" } }</code>
+        whenever that header is a valid platform name &mdash; so any video Core
+        has restricted for &quot;watch&quot; is excluded from every result set
+        admin's sync ever sees, and admin's copy can never learn about (or
+        correct itself for) that restriction. The proposed fix is switching the
+        sync to Core's <code>adminVideos</code> field (same shape, no such
+        filter, and admin's token already has the required publisher auth). This
+        model lets you drive both mechanisms by hand and watch whether admin's
+        copy ever converges with Core's, matching the real
+        <code>impulses-for-the-way-vertical</code> row found in production (Core
+        allegedly restricted, admin still shows
+        <code>restrict_view_platforms: {}</code>).
+      </div>
+
+      <div class="diverge-banner" id="divergeBanner">
+        ⚠ DIVERGED — Core says this video is restricted for &quot;watch&quot;,
+        but admin's synced copy does not.
+      </div>
+      <div class="ok-banner" id="okBanner">
+        ✓ In sync — admin's copy matches Core's current restriction state.
+      </div>
+
+      <div class="state-row">
+        <div class="card">
+          <h2>Core (JesusFilm/core)</h2>
+          <div class="field">
+            <span class="label">restrictViewPlatforms</span
+            ><span id="coreChips"></span>
+          </div>
+          <div class="field">
+            <span class="label">updatedAt (tick)</span
+            ><span id="coreUpdatedAt"></span>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Admin's synced copy</h2>
+          <div class="field">
+            <span class="label">restrictViewPlatforms</span
+            ><span id="adminChips"></span>
+          </div>
+          <div class="field">
+            <span class="label">syncedAt (tick)</span
+            ><span id="adminSyncedAt"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="mechanism-row">
+        <span class="label">core-sync query field:</span>
+        <button class="mech-btn" id="mechLegacyBtn">
+          Legacy — <code>videos</code>
+        </button>
+        <button class="mech-btn" id="mechFixedBtn">
+          Fixed — <code>adminVideos</code>
+        </button>
+      </div>
+
+      <div class="tabs" id="tabBar"></div>
+
+      <div id="freePlayPanel" class="free-play">
+        <h2>Free play</h2>
+        <div class="btn-row">
+          <button id="fpRestrict">Core: Restrict for Watch</button>
+          <button id="fpUnrestrict">Core: Unrestrict</button>
+          <button class="primary" id="fpSync">Run Sync Now</button>
+          <button class="ghost" id="fpReset">Reset</button>
+        </div>
+      </div>
+
+      <div id="scenarioPanel" class="scenario-panel" style="display: none">
+        <div class="scenario-desc" id="scenarioDesc"></div>
+        <div class="steps" id="scenarioSteps"></div>
+        <div class="takeaway" id="scenarioTakeaway"></div>
+      </div>
+
+      <div class="log-card">
+        <h2>Event log</h2>
+        <div id="log"></div>
+      </div>
+    </div>
+
+    <script>
+      // ---------------------------------------------------------------------
+      // Pure model — no DOM references. This is the part that could be lifted
+      // into apps/admin/src/services/core-sync/phases/sync-videos.ts once the
+      // question is answered: swapping the queried root field ("videos" vs
+      // "adminVideos") is the entire fix.
+      // ---------------------------------------------------------------------
+      const SyncModel = (() => {
+        const PLATFORM_WATCH = "watch"
+
+        function createInitialState() {
+          return {
+            core: { restrictViewPlatforms: [], updatedAt: 0 },
+            admin: { synced: false, restrictViewPlatforms: [], syncedAt: null },
+            mechanism: "legacy", // "legacy" | "fixed"
+            clock: 0,
+            log: [],
+          }
+        }
+
+        function pushLog(log, entry) {
+          return [...log, entry]
+        }
+
+        // Simulates Core's `videos` resolver (legacy, filtered) vs `adminVideos`
+        // resolver (fixed, unfiltered) as seen by admin's core-sync client, which
+        // always sends `x-graphql-client-name: watch`.
+        function queryCore(core, mechanism) {
+          if (mechanism === "fixed") {
+            return { ...core } // adminVideos: isPublisher-gated, no restriction filter
+          }
+          if (core.restrictViewPlatforms.includes(PLATFORM_WATCH)) {
+            return null // videos: excluded by filter.NOT { restrictViewPlatforms: { has: "watch" } }
+          }
+          return { ...core }
+        }
+
+        function fieldLabel(mechanism) {
+          return mechanism === "fixed" ? "adminVideos" : "videos"
+        }
+
+        function reducer(state, action) {
+          const now = state.clock + 1
+          switch (action.type) {
+            case "CORE_RESTRICT":
+              return {
+                ...state,
+                clock: now,
+                core: {
+                  restrictViewPlatforms: [PLATFORM_WATCH],
+                  updatedAt: now,
+                },
+                log: pushLog(state.log, {
+                  t: now,
+                  text: `Core: video.restrictViewPlatforms set to ["watch"]`,
+                }),
+              }
+            case "CORE_UNRESTRICT":
+              return {
+                ...state,
+                clock: now,
+                core: { restrictViewPlatforms: [], updatedAt: now },
+                log: pushLog(state.log, {
+                  t: now,
+                  text: `Core: video.restrictViewPlatforms cleared to []`,
+                }),
+              }
+            case "SET_MECHANISM":
+              return {
+                ...state,
+                clock: now,
+                mechanism: action.mechanism,
+                log: pushLog(state.log, {
+                  t: now,
+                  text: `Admin: core-sync switched to query "${fieldLabel(action.mechanism)}"`,
+                }),
+              }
+            case "RUN_SYNC": {
+              const result = queryCore(state.core, state.mechanism)
+              const field = fieldLabel(state.mechanism)
+              if (result === null) {
+                return {
+                  ...state,
+                  clock: now,
+                  log: pushLog(state.log, {
+                    t: now,
+                    text: `Sync ran (${field}): video excluded from Core's result set (restricted for "watch") — admin's copy left untouched`,
+                    warn: true,
+                  }),
+                }
+              }
+              return {
+                ...state,
+                clock: now,
+                admin: {
+                  synced: true,
+                  restrictViewPlatforms: result.restrictViewPlatforms,
+                  syncedAt: now,
+                },
+                log: pushLog(state.log, {
+                  t: now,
+                  text: `Sync ran (${field}): video included — admin's copy updated to restrictViewPlatforms=${JSON.stringify(result.restrictViewPlatforms)}`,
+                }),
+              }
+            }
+            case "RESET":
+              return createInitialState()
+            default:
+              return state
+          }
+        }
+
+        return { createInitialState, reducer, fieldLabel }
+      })()
+
+      // ---------------------------------------------------------------------
+      // Page shell — thin, throwaway. Calls into SyncModel; nothing flows back.
+      // ---------------------------------------------------------------------
+      let state = SyncModel.createInitialState()
+
+      const SCENARIOS = [
+        {
+          id: "happy",
+          title: "Happy path",
+          description:
+            "A video that's never restricted syncs normally, every time. Control case.",
+          steps: [
+            {
+              label: "Run Sync (establish baseline)",
+              action: { type: "RUN_SYNC" },
+            },
+            {
+              label: "Run Sync again (idempotent)",
+              action: { type: "RUN_SYNC" },
+            },
+          ],
+          takeaway:
+            "Nothing surprising — an always-unrestricted video stays in sync under either mechanism.",
+        },
+        {
+          id: "bug",
+          title: "The production bug",
+          description:
+            "Reproduces impulses-for-the-way-vertical: an already-synced, unrestricted video gets restricted in Core, but Legacy sync never picks it up.",
+          steps: [
+            {
+              label:
+                "Run Sync (baseline: admin = unrestricted, matches synced_at ≈ Aug 3)",
+              action: { type: "RUN_SYNC" },
+            },
+            {
+              label:
+                "Core: Restrict for Watch (someone restricts the video in Core)",
+              action: { type: "CORE_RESTRICT" },
+            },
+            {
+              label: "Run Sync (Legacy mechanism)",
+              action: { type: "RUN_SYNC" },
+            },
+          ],
+          takeaway:
+            "Admin's copy is <b>unchanged</b> — still unrestricted. This matches production exactly: restrict_view_platforms={} despite a live Core restriction. Run this sync a hundred more times — it never self-heals, because the restricted video is excluded from every result set admin's sync ever receives.",
+        },
+        {
+          id: "fix",
+          title: "The fix",
+          description:
+            "Continuing from the bug: switch admin's sync to query Core's adminVideos field instead.",
+          steps: [
+            {
+              label: "Run Sync (baseline, Legacy)",
+              action: { type: "RUN_SYNC" },
+            },
+            {
+              label: "Core: Restrict for Watch",
+              action: { type: "CORE_RESTRICT" },
+            },
+            {
+              label: "Run Sync (still Legacy — confirm the bug persists)",
+              action: { type: "RUN_SYNC" },
+            },
+            {
+              label: "Switch mechanism to Fixed (adminVideos)",
+              action: { type: "SET_MECHANISM", mechanism: "fixed" },
+            },
+            { label: "Run Sync (Fixed)", action: { type: "RUN_SYNC" } },
+          ],
+          takeaway:
+            "The moment the sync queries adminVideos, admin's copy correctly picks up the Core restriction. Same where-clause, same response shape — only the root field name changes.",
+        },
+        {
+          id: "cold-start",
+          title: "Restricted before it's ever synced",
+          description:
+            "The bug isn't just 'updates get missed' — a video Core marks restricted from day one never even reaches admin under Legacy.",
+          steps: [
+            {
+              label: "Core: Restrict for Watch (before any sync has ever run)",
+              action: { type: "CORE_RESTRICT" },
+            },
+            { label: "Run Sync (Legacy)", action: { type: "RUN_SYNC" } },
+            {
+              label: "Switch mechanism to Fixed (adminVideos)",
+              action: { type: "SET_MECHANISM", mechanism: "fixed" },
+            },
+            { label: "Run Sync (Fixed)", action: { type: "RUN_SYNC" } },
+          ],
+          takeaway:
+            "Under Legacy, admin never even learns this video exists as restricted — it's invisible forever, not just stale. Under Fixed, one sync picks it up correctly.",
+        },
+      ]
+
+      let activeTab = "free"
+      let scenarioStepIndex = 0
+
+      function dispatch(action) {
+        state = SyncModel.reducer(state, action)
+        render()
+      }
+
+      function chipsFor(list) {
+        if (!list || list.length === 0)
+          return `<span class="chip empty">[]</span>`
+        return list.map((p) => `<span class="chip warn">${p}</span>`).join("")
+      }
+
+      function render() {
+        document.getElementById("coreChips").innerHTML = chipsFor(
+          state.core.restrictViewPlatforms,
+        )
+        document.getElementById("coreUpdatedAt").textContent =
+          state.core.updatedAt || "—"
+
+        document.getElementById("adminChips").innerHTML = state.admin.synced
+          ? chipsFor(state.admin.restrictViewPlatforms)
+          : `<span class="chip empty">not synced yet</span>`
+        document.getElementById("adminSyncedAt").textContent =
+          state.admin.syncedAt ?? "—"
+
+        const coreRestricted =
+          state.core.restrictViewPlatforms.includes("watch")
+        const adminRestricted =
+          state.admin.synced &&
+          state.admin.restrictViewPlatforms.includes("watch")
+        const diverged =
+          state.admin.synced && coreRestricted !== adminRestricted
+        document
+          .getElementById("divergeBanner")
+          .classList.toggle("show", diverged)
+        document
+          .getElementById("okBanner")
+          .classList.toggle("show", state.admin.synced && !diverged)
+
+        document
+          .getElementById("mechLegacyBtn")
+          .classList.toggle("active", state.mechanism === "legacy")
+        document
+          .getElementById("mechFixedBtn")
+          .classList.toggle("active", state.mechanism === "fixed")
+
+        const logEl = document.getElementById("log")
+        if (state.log.length === 0) {
+          logEl.innerHTML = `<div class="log-empty">No events yet — press a button above.</div>`
+        } else {
+          logEl.innerHTML = state.log
+            .slice()
+            .reverse()
+            .map(
+              (e) =>
+                `<div class="log-line${e.warn ? " warn" : ""}"><span class="t">#${e.t}</span>${e.text}</div>`,
+            )
+            .join("")
+        }
+
+        renderTabs()
+        renderPanels()
+      }
+
+      function renderTabs() {
+        const bar = document.getElementById("tabBar")
+        const tabs = [
+          { id: "free", title: "Free Play" },
+          ...SCENARIOS.map((s) => ({ id: s.id, title: s.title })),
+        ]
+        bar.innerHTML = tabs
+          .map(
+            (t) =>
+              `<button class="tab${activeTab === t.id ? " active" : ""}" data-tab="${t.id}">${t.title}</button>`,
+          )
+          .join("")
+        bar.querySelectorAll("[data-tab]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            activeTab = btn.dataset.tab
+            if (activeTab !== "free") {
+              dispatch({ type: "RESET" })
+              scenarioStepIndex = 0
+            }
+            render()
+          })
+        })
+      }
+
+      function renderPanels() {
+        const freePanel = document.getElementById("freePlayPanel")
+        const scenarioPanel = document.getElementById("scenarioPanel")
+
+        if (activeTab === "free") {
+          freePanel.style.display = ""
+          scenarioPanel.style.display = "none"
+          return
+        }
+
+        freePanel.style.display = "none"
+        scenarioPanel.style.display = ""
+
+        const scenario = SCENARIOS.find((s) => s.id === activeTab)
+        document.getElementById("scenarioDesc").textContent =
+          scenario.description
+
+        const stepsEl = document.getElementById("scenarioSteps")
+        stepsEl.innerHTML = scenario.steps
+          .map((step, i) => {
+            const doneCls =
+              i < scenarioStepIndex
+                ? "done"
+                : i === scenarioStepIndex
+                  ? "current"
+                  : ""
+            return `<button class="step-btn ${doneCls}" data-step="${i}" ${i === scenarioStepIndex ? "" : "disabled"}>
+        <span class="step-num">${i < scenarioStepIndex ? "✓" : i + 1}</span>${step.label}
+      </button>`
+          })
+          .join("")
+
+        stepsEl.querySelectorAll("[data-step]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const i = Number(btn.dataset.step)
+            if (i !== scenarioStepIndex) return
+            dispatch(scenario.steps[i].action)
+            scenarioStepIndex += 1
+            render()
+          })
+        })
+
+        const takeawayEl = document.getElementById("scenarioTakeaway")
+        if (scenarioStepIndex >= scenario.steps.length) {
+          takeawayEl.classList.add("show")
+          takeawayEl.innerHTML = `<b>Result:</b> ${scenario.takeaway}`
+        } else {
+          takeawayEl.classList.remove("show")
+        }
+      }
+
+      document
+        .getElementById("fpRestrict")
+        .addEventListener("click", () => dispatch({ type: "CORE_RESTRICT" }))
+      document
+        .getElementById("fpUnrestrict")
+        .addEventListener("click", () => dispatch({ type: "CORE_UNRESTRICT" }))
+      document
+        .getElementById("fpSync")
+        .addEventListener("click", () => dispatch({ type: "RUN_SYNC" }))
+      document.getElementById("fpReset").addEventListener("click", () => {
+        scenarioStepIndex = 0
+        dispatch({ type: "RESET" })
+      })
+      document
+        .getElementById("mechLegacyBtn")
+        .addEventListener("click", () =>
+          dispatch({ type: "SET_MECHANISM", mechanism: "legacy" }),
+        )
+      document
+        .getElementById("mechFixedBtn")
+        .addEventListener("click", () =>
+          dispatch({ type: "SET_MECHANISM", mechanism: "fixed" }),
+        )
+
+      render()
+    </script>
+  </body>
+</html>
