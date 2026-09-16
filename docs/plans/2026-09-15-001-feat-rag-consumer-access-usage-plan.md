@@ -16,6 +16,14 @@ require a client-ID header plus secret. This private credential is distinct from
 the public known-caller Consumer Bearer described in `CONCEPTS.md`.
 
 This PR delivers planning only ([feat-511](../roadmap/rag/feat-511-rag-consumer-access-planning.md)).
+Before implementation, [feat-518: consumer access discovery](../roadmap/rag/feat-518-rag-consumer-access-discovery.md)
+confirms the remaining engineer allowlist/review rules, portal identity approach,
+token hashing/rotation design, database permissions/isolation and usage-report
+mechanism. This PR adds the discovery scope and sequencing only; discovery
+findings must be delivered in a later, separate documentation-only PR. Discovery
+must complete before feat-512 starts; usage, dogfood and portal follow in order.
+The approved decisions and acceptance criteria below remain unchanged.
+
 Implementation is explicitly split:
 
 1. [feat-512: access lifecycle](../roadmap/rag/feat-512-rag-consumer-access-lifecycle.md).

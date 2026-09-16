@@ -6,7 +6,7 @@ priority: "P1"
 status: "not-started"
 start_date: "2026-09-15"
 duration: 5
-depends_on: ["feat-511"]
+depends_on: ["feat-511", "feat-518"]
 blocks: ["feat-513"]
 tags: ["rag", "auth", "observability"]
 ---

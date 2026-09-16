@@ -7,7 +7,7 @@ status: "complete"
 start_date: "2026-09-15"
 duration: 1
 depends_on: []
-blocks: ["feat-512", "feat-513", "feat-515"]
+blocks: ["feat-512", "feat-513", "feat-515", "feat-518"]
 tags: ["rag", "planning", "auth", "observability"]
 ---
 
