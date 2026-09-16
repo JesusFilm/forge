@@ -52,3 +52,21 @@ errors, Mobile/TV changes, account linking, or curation publication.
 
 Recovery requires causal reproduction and sustained production evidence. A short
 healthy window, successful navigation, or HTTP 200 alone cannot close the ticket.
+
+## Continuation after PR #2319
+
+The 02:15–02:45 UTC window reproduced one upstream selection HTTP 503 and one
+HTTP 200 `delivery_timeout` fallback after the duration fix. A matched browser,
+CPU and independent PostgreSQL capture showed a selection lookup completing in
+2.6 ms, followed by over 250 ms of PostgreSQL `ClientRead` waiting for Admin.
+The event loop paused for 139 ms; no database blocker was observed on that trace.
+
+Catalog hydration still expands 100 selected dubs into 3,660 subtitle objects
+and a 5.5 MB Prisma result. Pothos defaults to all scalar fields, including unused
+subtitle fields and repeated language metadata. A local matching-cardinality
+control/treatment preserved the requested response exactly while narrow scalar
+selection reduced maximum loop delay from 174 ms to 42 ms. Neither isolated run
+exceeded 700 ms, so this reproduces the scheduling component, not the complete
+production failure rate. Implement Pothos select mode only for VideoSubtitle and
+Language, with explicit selections for custom fields. Verify full GraphQL output,
+all requested metadata fields, real database execution and production outcomes.

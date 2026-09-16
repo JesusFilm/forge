@@ -208,3 +208,14 @@ The authored English Homepage Recommendations Block stays removed and
 recommendation surface, account linking or curation republishing was added.
 All releases used normal PR-to-main automation; no local code was published or
 manually redeployed to production.
+
+## Continuation: Admin catalog scheduling
+
+The subsequent investigation reproduced Prisma duration overfetch and shipped
+#2319 to verified Admin/worker revision `8070374f6`. Its 30-minute observation
+still reproduced a selection HTTP 503 and an HTTP 200 `delivery_timeout`
+fallback. A second catalog workload materializes unused subtitle/language
+scalars; a narrow projection reduces the independently reproduced scheduling
+cost. Read `docs/operations/watch-admin-duration-recovery-2026-09-16.md` for exact
+revisions, separate HTTP/semantic/browser populations and residual limitations.
+feat-496 remains in progress.
