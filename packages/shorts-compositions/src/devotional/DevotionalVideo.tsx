@@ -1865,7 +1865,7 @@ function CardBody({
     const leadSec = card.stepLeadSec ?? 0.9
     const MOVE_SEC = 1.1
     const LINE_MOVE_START_SEC = 0.25
-    const LINE_MOVE_SEC = 1.9
+    const LINE_MOVE_SEC = 2.1
     const t = frame / fps
 
     // THE OPENING SCREEN carries a line as well as the stack, and its

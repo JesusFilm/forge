@@ -425,8 +425,9 @@ export const StepperStack: React.FC<{
  * "Steps-animation"): the labels stacked with a thin rail between them.
  *
  * The move from one step to the next is the RAIL drawing down from the step
- * just done to the next one; when it arrives, that label lights gold, grows a
- * fifth and comes into focus; the steps already passed stay gold. Steps
+ * just done to the next one; when it arrives, that label lights gold, swells
+ * a little and settles back, and comes into focus; steps already passed stay
+ * gold. Steps
  * still ahead are dim and out of focus, the further ahead the softer, so the
  * eye is told where it is without reading. Measured off the Figma frame
  * (900 wide = 390 units): label 20 / active 24, tracking 0.13em, rail 1.7
@@ -434,13 +435,13 @@ export const StepperStack: React.FC<{
  * blur.
  */
 const LINE_SIZE = 20
-const LINE_ACTIVE_SCALE = 1.2
+const LINE_ACTIVE_SCALE = 1.07
 const LINE_RAIL_LEN = 72
 const LINE_RAIL_W = 1.7
 const LINE_GAP = 10
 const LINE_AHEAD_BLUR = 1.9
 /** Share of the move spent drawing the rail; the rest lights the label. */
-const LINE_DRAW_SHARE = 0.55
+const LINE_DRAW_SHARE = 0.5
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x))
 /** Ease in and out, so each phase of the move starts and stops gently. */
@@ -517,8 +518,11 @@ const StepperLine: React.FC<{
           : ahead
             ? 0.3
             : 0.85
+        // A slight swell as the step lights, settling back to the size of
+        // the others: the step is shown to have been activated, no more
+        // (owner: the 1.2x hold looked rushed and left it bigger than WATCH).
         const scale = isCur
-          ? 1 + (LINE_ACTIVE_SCALE - 1) * (cur === 0 ? 1 : lit)
+          ? 1 + (LINE_ACTIVE_SCALE - 1) * Math.sin(Math.PI * lit)
           : 1
         const glow = isCur ? (cur === 0 ? 1 : lit) : 0
         return (
