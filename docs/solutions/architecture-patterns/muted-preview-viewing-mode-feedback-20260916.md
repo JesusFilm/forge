@@ -107,3 +107,18 @@ production evidence. Release validation records their measured loading cost.
 
 Related: `docs/plans/2026-09-16-002-feat-recommendation-quality-followthrough-plan.md`;
 `docs/roadmap/content-discovery/feat-512-sound-off-viewing-profile-retrieval.md`.
+
+## Open tabs and strict response enums
+
+An additive server enum can break an already-open client that strictly validates
+it. During rollout, inspect the previous client parser as well as the current
+schema. The Web BFF uses `x-forge-recommendation-client: viewing-mode-v1` to retain
+the new mode explanation only for clients that understand it; older clients get
+unchanged cards and capabilities with optional personalization metadata omitted.
+The authoritative Admin execution decision remains intact. Do not disguise mode
+fit as a legacy topic-interest mode to make parsing succeed.
+
+New curated inventory has a new required source discriminator and needs a fresh
+client. Older tabs retain their prior empty-row behavior until reload. Test both
+missing and unknown client versions, and prove that modern metadata and existing
+attribution survive the compatibility branch.

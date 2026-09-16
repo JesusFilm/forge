@@ -75,3 +75,23 @@ causal uplift cannot be inferred from passing tests or the old confounded CTR.
 - `docs/solutions/architecture-patterns/profile-comparison-followup-and-muted-outcomes-20260916.md`
 
 Review complete
+
+## Rollout compatibility follow-up
+
+A release-time contract pass found that pre-release open tabs reject the new
+`viewing_mode_personalized` enum and hide otherwise valid semantic/profile cards.
+The BFF now omits the optional personalization explanation for clients that do
+not advertise `x-forge-recommendation-client: viewing-mode-v1`. New clients retain
+the exact new metadata. Items, ordering, capabilities, request ownership and the
+Admin audit remain unchanged; the response does not relabel mode fit as topic fit.
+
+Two regressions failed before this correction (missing/unknown client version).
+The corrected route and real client collector suite pass 50 tests, including
+modern metadata and capability/card preservation. Sequential correctness,
+contract, privacy, performance and maintainability review found no remaining
+issue in this correction. The header is a presentation capability, not authority;
+all admission and privacy checks remain mandatory. It adds no requests or waits.
+
+Curated candidates are a new source discriminator. Earlier tabs still need a
+reload to display that newly recovered inventory; those cases were previously
+empty. No existing healthy semantic/profile row depends on curated parsing.

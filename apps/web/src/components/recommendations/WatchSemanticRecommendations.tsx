@@ -19,6 +19,7 @@ import {
 import type { SceneRecommendation } from "@/lib/recommendations"
 import {
   CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY,
+  RECOMMENDATION_DELIVERY_CLIENT_VERSION,
   RECOMMENDATION_EVIDENCE_CONTRACT,
   RECOMMENDATION_TAB_CORRELATION_KEY,
   SEMANTIC_RECOMMENDATION_CONTRACT,
@@ -579,7 +580,11 @@ export function WatchSemanticRecommendations({
                   method: "POST",
                   cache: "no-store",
                   credentials: "same-origin",
-                  headers: { "content-type": "application/json" },
+                  headers: {
+                    "content-type": "application/json",
+                    "x-forge-recommendation-client":
+                      RECOMMENDATION_DELIVERY_CLIENT_VERSION,
+                  },
                   body: JSON.stringify({
                     seedMediaId,
                     ...(seedMediaSlug ? { seedMediaSlug } : {}),

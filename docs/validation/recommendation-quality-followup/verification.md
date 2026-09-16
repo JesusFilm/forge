@@ -1,7 +1,7 @@
 # Recommendation follow-through validation
 
-Status: implementation and sequential Compound Engineering review complete; CI,
-release and production verification remain pending. Branch `codex/recommendation-analytics-followup`.
+Status: implementation, sequential Compound Engineering review and PR CI complete.
+PR #2317 merged; automatic deployment and production verification are in progress. Branch `codex/recommendation-analytics-followup`.
 
 ## Verified so far
 
@@ -92,3 +92,19 @@ migration and comparison routing). Existing CI still exercises the application
 suites, schema drift, migrations and its established database suites. The new
 standalone native suite files are not added to the CI database command in this
 release; do not count their skipped ordinary-unit invocations as native coverage.
+
+## Merge validation
+
+PR [#2317](https://github.com/JesusFilm/forge/pull/2317) passed all 22 applicable
+checks on `0bdd22a214c4f70c2041e4bec2eac7e4fe868610`. Admin passed 7,258 tests and
+Web passed 4,398; the earlier local full-suite failures did not recur. Builds,
+types, lint, format, schema drift, the existing PostgreSQL/Redis integration
+suites and CodeQL passed. Opt-in skipped native tests are documented separately
+above and have explicit local PostgreSQL results.
+
+The PR merged at 2026-09-16T01:27:22Z as
+`3028f3305c1b01c2e4671ec9686ee51280dd1115`. Normal Railway deployments started
+from that main revision. No worktree deployment or For you activation was used.
+
+The post-merge [main CI run](https://github.com/JesusFilm/forge/actions/runs/35044154998)
+also passed on the merged revision.
