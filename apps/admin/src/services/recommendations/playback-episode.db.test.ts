@@ -780,8 +780,9 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       }
     })
 
-    it("serializes concurrent selection and impression while preserving exact replay semantics", async () => {
+    it("accepts an impression received while selection is pending and preserves exact replay semantics", async () => {
       const raceNow = new Date()
+      const impressionNow = new Date(raceNow.getTime() + 100)
       const raceExpiresAt = new Date(raceNow.getTime() + 24 * 60 * 60 * 1_000)
       const sessionDigest = "9".repeat(64)
       const capabilityJti = "race-item-capability-jti"
@@ -847,9 +848,25 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
 
       let raceId = 0
       const dispatchProfileFeedback = vi.fn(async () => undefined)
+      let notifySelectionStarted = () => {}
+      let resumeSelection = () => {}
+      const selectionStarted = new Promise<void>((resolve) => {
+        notifySelectionStarted = resolve
+      })
+      const releaseSelection = new Promise<void>((resolve) => {
+        resumeSelection = resolve
+      })
       const episodeService = new RecommendationEpisodeService({
         prisma,
-        tokenService,
+        tokenService: {
+          ...tokenService,
+          verifyDeliveryCapability: async (...args) => {
+            const verified = await tokenCore.verifyDeliveryCapability(...args)
+            notifySelectionStarted()
+            await releaseSelection
+            return verified
+          },
+        },
         now: () => raceNow,
         newId: () => `race-generated-${++raceId}`,
         dispatchProfileFeedback,
@@ -857,7 +874,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       const evidenceService = new RecommendationEvidenceService({
         prisma,
         tokenService,
-        now: () => raceNow,
+        now: () => impressionNow,
         dispatchProfileFeedback,
       })
       const selectionInput = {
@@ -872,24 +889,28 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         tabDigest: "8".repeat(64),
         claimNonce: "race-client-handoff-nonce",
       }
+      const selecting = episodeService.select(selectionInput)
+      await selectionStarted
       const [selection, impression] = await Promise.all([
-        episodeService.select(selectionInput),
-        evidenceService.record({
-          caller,
-          contractVersion: "recommendation-evidence-v1",
-          capability,
-          requestId: "race-request",
-          itemId: "race-item",
-          sessionDigest,
-          events: [
-            {
-              eventId: "race-impression-event",
-              kind: "impression" as const,
-              occurredAt: raceNow.toISOString(),
-              payload: { visibilityPolicy: "watch-below-player-v1" },
-            },
-          ],
-        }),
+        selecting,
+        evidenceService
+          .record({
+            caller,
+            contractVersion: "recommendation-evidence-v1",
+            capability,
+            requestId: "race-request",
+            itemId: "race-item",
+            sessionDigest,
+            events: [
+              {
+                eventId: "race-impression-event",
+                kind: "impression" as const,
+                occurredAt: raceNow.toISOString(),
+                payload: { visibilityPolicy: "watch-below-player-v1" },
+              },
+            ],
+          })
+          .finally(() => resumeSelection()),
       ])
 
       expect(selection).toMatchObject({
@@ -915,7 +936,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         where: { itemId: "race-item" },
         select: { attributionEligibleAt: true },
       })
-      expect(committed?.attributionEligibleAt).toEqual(raceNow)
+      expect(committed?.attributionEligibleAt).toEqual(impressionNow)
       expect(dispatchProfileFeedback).not.toHaveBeenCalled()
       const claimInput = {
         caller,
