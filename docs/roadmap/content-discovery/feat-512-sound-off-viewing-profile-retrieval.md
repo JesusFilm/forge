@@ -71,3 +71,11 @@ facts and reset/delete races. Verify sustained viewing changes mode preference
 and eligible retrieval while brief/off-screen viewing does not. Exercise the
 actual browser journey and compare page-loading cost, plus real PostgreSQL
 profile/retrieval boundaries. Run affected app checks and Compound review.
+
+## Release progress
+
+PR #2317 implements the mode signal and bounded ranking. During normal rollout,
+an additional open-tab compatibility check found strict legacy mode parsing;
+the follow-up omits optional new mode explanations for unadvertised client
+versions while preserving cards and authoritative Admin evidence. Production
+preview/profile verification and final release evidence remain in progress.

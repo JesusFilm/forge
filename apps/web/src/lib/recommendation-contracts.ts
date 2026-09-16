@@ -1,5 +1,6 @@
 export const SEMANTIC_RECOMMENDATION_CONTRACT =
   "semantic-recommendation-v1" as const
+export const RECOMMENDATION_DELIVERY_CLIENT_VERSION = "viewing-mode-v1" as const
 export const RECOMMENDATION_EVIDENCE_CONTRACT =
   "recommendation-evidence-v1" as const
 export const RECOMMENDATION_CONTENT_ACTION_CONTRACT =
