@@ -3,6 +3,10 @@ import {
   HYBRID_DETERMINISTIC_RANKER_VERSION,
 } from "./candidate"
 import type { EligibleCandidate } from "./eligibility"
+import {
+  VIEWING_MODE_RANKER_VERSION,
+  type ViewingModeAffinity,
+} from "./viewing-mode"
 
 const RRF_K = 60
 const HYBRID_MAX_COMBINED_CONTRIBUTION = 1.05
@@ -38,11 +42,62 @@ export type ScoredCandidate = EligibleCandidate &
     normalizedSemanticScore: number
     rrfBenchmark: number
     deterministicScore: number
-    scoreExplanation: SemanticScoreExplanation | HybridScoreExplanation
+    scoreExplanation:
+      | SemanticScoreExplanation
+      | HybridScoreExplanation
+      | Readonly<{
+          version: typeof VIEWING_MODE_RANKER_VERSION
+          baseVersion: string
+          baseScore: number
+          modeContribution: number
+          viewers: number
+        }>
   }>
 
 export type OrderedCandidate = ScoredCandidate &
   Readonly<{ orderedPosition: number }>
+
+/** A bounded feature on relevant, eligible candidates, never a new source. */
+export function applyViewingModeAffinity(
+  ordered: OrderedCandidate[],
+  affinity?: ViewingModeAffinity | null,
+): OrderedCandidate[] {
+  if (
+    !affinity ||
+    !affinity.candidates.some((candidate) => candidate.affinity > 0)
+  )
+    return ordered
+  const preference =
+    Math.max(0, Math.min(1, 2 * (affinity.soundOffPreference - 0.5))) *
+    Math.max(0, Math.min(1, affinity.confidence))
+  if (preference === 0) return ordered
+  const byMedia = new Map(
+    affinity.candidates
+      .filter((value) => value.viewers >= 20)
+      .map((value) => [value.mediaId, value]),
+  )
+  return ordered
+    .map((candidate): ScoredCandidate => {
+      const performance = byMedia.get(candidate.targetMediaId)
+      const contribution =
+        preference * Math.max(0, Math.min(1, performance?.affinity ?? 0)) * 0.05
+      return {
+        ...candidate,
+        deterministicScore: roundScore(
+          (candidate.deterministicScore + contribution) / 1.05,
+        ),
+        scoreExplanation: {
+          version: VIEWING_MODE_RANKER_VERSION,
+          baseVersion: candidate.scoreExplanation.version,
+          baseScore: candidate.deterministicScore,
+          modeContribution: contribution,
+          viewers: performance?.viewers ?? 0,
+        },
+      }
+    })
+    .sort(compareDeterministicScore)
+    .map((candidate, orderedPosition) => ({ ...candidate, orderedPosition }))
+}
 
 export function scoreAndOrderCandidates(
   candidates: readonly EligibleCandidate[],

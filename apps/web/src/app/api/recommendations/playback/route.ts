@@ -48,6 +48,30 @@ const PlaybackEvent = z.discriminatedUnion("kind", [
   z
     .object({
       ...eventBase,
+      kind: z.literal("playback_viewing_mode"),
+      payload: z
+        .object({
+          version: z.literal("sound-off-viewing-v1"),
+          mode: z.enum(["sound_off", "sound_on"]),
+          preview: z.boolean(),
+          activeMilliseconds: z.number().int().min(1).max(60_000),
+          fromSeconds: positionSeconds,
+          toSeconds: positionSeconds,
+          durationSeconds: durationSeconds.nullable(),
+          playbackRate: z.number().finite().min(0.25).max(4),
+        })
+        .strict()
+        .refine(
+          (value) =>
+            value.toSeconds > value.fromSeconds &&
+            value.toSeconds - value.fromSeconds <=
+              (value.activeMilliseconds / 1_000) * value.playbackRate + 0.5,
+        ),
+    })
+    .strict(),
+  z
+    .object({
+      ...eventBase,
       kind: z.literal("playback_attempt"),
       payload: z
         .object({

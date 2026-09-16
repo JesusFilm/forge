@@ -122,6 +122,37 @@ export default async function PlaybackEpisodePage({
         title="Immutable facts"
         meta={`${detail.facts.length} APPEND-ONLY ROWS`}
       >
+        {detail.viewingMode && (
+          <div className="border-b border-[var(--color-hairline)] p-4 text-[13px] text-[var(--color-text-secondary)]">
+            {detail.viewingMode.coverage === "observed" ? (
+              <>
+                Visible playback:{" "}
+                {(detail.viewingMode.soundOffMilliseconds / 1000).toFixed(1)}s
+                sound off ·{" "}
+                {(detail.viewingMode.soundOnMilliseconds / 1000).toFixed(1)}s
+                sound on ·{" "}
+                {(detail.viewingMode.previewMilliseconds / 1000).toFixed(1)}s in
+                preview.
+                <p className="mt-1">
+                  Sound-off engagement{" "}
+                  {detail.viewingMode.soundOffQualified
+                    ? "qualified"
+                    : "has not qualified"}
+                  ; sound-on engagement{" "}
+                  {detail.viewingMode.soundOnQualified
+                    ? "qualified"
+                    : "has not qualified"}
+                  . Looped progress is counted once. Missing manual-play facts
+                  do not rule out preview viewing.
+                </p>
+              </>
+            ) : detail.viewingMode.coverage === "ineligible" ? (
+              "Viewing-mode evidence is ineligible because playback failed or the evidence is late or conflicted."
+            ) : (
+              "Viewing mode is unknown; missing telemetry does not mean the video was not watched."
+            )}
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full min-w-[980px] border-collapse text-left text-[11px]">
             <thead>

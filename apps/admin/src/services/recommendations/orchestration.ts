@@ -23,7 +23,12 @@ import {
 import {
   scoreAndOrderCandidates,
   scoreAndOrderHybridCandidates,
+  applyViewingModeAffinity,
 } from "./ranker"
+import {
+  VIEWING_MODE_RANKER_VERSION,
+  type ViewingModeAffinity,
+} from "./viewing-mode"
 import {
   composeMinimalSlate,
   composeRecommendationSlate,
@@ -66,7 +71,7 @@ export type SemanticCandidatePlatformResult = Readonly<{
     generator: typeof SEMANTIC_CANDIDATE_GENERATOR_VERSION
     union: typeof CANDIDATE_UNION_VERSION
     eligibility: typeof CANDIDATE_ELIGIBILITY_VERSION
-    ranker: typeof DETERMINISTIC_RANKER_VERSION
+    ranker: string
     composer: typeof MINIMAL_SLATE_VERSION
   }>
   counts: Readonly<Record<CandidatePlatformStage, number>>
@@ -119,14 +124,18 @@ export function runCandidatePlatform(input: {
   limit: number
   generatorVersion: string
   composition?: RecommendationSlateComposition
+  viewingMode?: ViewingModeAffinity | null
 }): CandidatePlatformResult {
   const pipeline = runCandidatePipeline({
     nominations: input.nominations,
     context: input.context,
     limit: input.limit,
     composition: input.composition,
-    rank: scoreAndOrderHybridCandidates,
-    rankerReasonCode: HYBRID_DETERMINISTIC_RANKER_VERSION,
+    rank: (candidates) =>
+      applyViewingModeAffinity(
+        scoreAndOrderHybridCandidates(candidates),
+        input.viewingMode,
+      ),
   })
   return {
     stageOrder: CANDIDATE_PLATFORM_STAGES,
@@ -135,7 +144,9 @@ export function runCandidatePlatform(input: {
       generator: input.generatorVersion,
       union: CANDIDATE_UNION_VERSION,
       eligibility: CANDIDATE_ELIGIBILITY_VERSION,
-      ranker: HYBRID_DETERMINISTIC_RANKER_VERSION,
+      ranker:
+        pipeline.ordered[0]?.scoreExplanation.version ??
+        HYBRID_DETERMINISTIC_RANKER_VERSION,
       composer: HYBRID_SLATE_COMPOSER_VERSION,
     },
     counts: Object.fromEntries(
@@ -164,6 +175,7 @@ export function runSemanticCandidatePlatform(input: {
   context: RecommendationCandidateContext
   limit: number
   composition?: RecommendationSlateComposition
+  viewingMode?: ViewingModeAffinity | null
 }): SemanticCandidatePlatformResult {
   const adapter = adaptSemanticCandidates(input.candidates, input.context)
   const pipeline = runCandidatePipeline({
@@ -172,8 +184,11 @@ export function runSemanticCandidatePlatform(input: {
     context: input.context,
     limit: input.limit,
     composition: input.composition,
-    rank: scoreAndOrderCandidates,
-    rankerReasonCode: DETERMINISTIC_RANKER_VERSION,
+    rank: (candidates) =>
+      applyViewingModeAffinity(
+        scoreAndOrderCandidates(candidates),
+        input.viewingMode,
+      ),
   })
 
   const baselineOrder = legacySemanticOrder(
@@ -189,9 +204,14 @@ export function runSemanticCandidatePlatform(input: {
   const candidateEligibility = sameIds(baselineEligibility, platformEligibility)
     ? "passed"
     : "failed"
-  const ranker = sameIds(baselineOrder.orderedIds, platformOrder)
-    ? "passed"
-    : "failed"
+  const modeApplied =
+    pipeline.ordered[0]?.scoreExplanation.version ===
+    VIEWING_MODE_RANKER_VERSION
+  const ranker = modeApplied
+    ? "not_evaluated"
+    : sameIds(baselineOrder.orderedIds, platformOrder)
+      ? "passed"
+      : "failed"
 
   return {
     stageOrder: CANDIDATE_PLATFORM_STAGES,
@@ -200,7 +220,9 @@ export function runSemanticCandidatePlatform(input: {
       generator: SEMANTIC_CANDIDATE_GENERATOR_VERSION,
       union: CANDIDATE_UNION_VERSION,
       eligibility: CANDIDATE_ELIGIBILITY_VERSION,
-      ranker: DETERMINISTIC_RANKER_VERSION,
+      ranker: modeApplied
+        ? VIEWING_MODE_RANKER_VERSION
+        : DETERMINISTIC_RANKER_VERSION,
       composer: MINIMAL_SLATE_VERSION,
     },
     counts: Object.fromEntries(
@@ -229,9 +251,6 @@ function runCandidatePipeline(input: {
   limit: number
   composition?: RecommendationSlateComposition
   rank: typeof scoreAndOrderCandidates
-  rankerReasonCode:
-    | typeof DETERMINISTIC_RANKER_VERSION
-    | typeof HYBRID_DETERMINISTIC_RANKER_VERSION
 }): CandidatePipelineResult {
   const adapterRejections = input.adapterRejections ?? []
   const union = unionAndCanonicalizeCandidates(input.nominations)
@@ -332,7 +351,7 @@ function runCandidatePipeline(input: {
       normalizedScore: candidate.normalizedSemanticScore,
       rrfScore: candidate.rrfBenchmark,
       deterministicScore: candidate.deterministicScore,
-      reasonCodes: [input.rankerReasonCode],
+      reasonCodes: [candidate.scoreExplanation.version],
       sourceEvidence: candidate.sources,
     })
     evidence.push({

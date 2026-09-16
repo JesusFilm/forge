@@ -9,7 +9,10 @@ import type {
   RecommendationShortfallReason,
 } from "./contracts"
 import { RECOMMENDATION_CONTRACTS } from "./contracts"
-import type { SemanticCandidatePoolItem } from "./candidate"
+import type {
+  CandidateNomination,
+  SemanticCandidatePoolItem,
+} from "./candidate"
 import type { LiveProfileCandidateResult } from "./candidates/profile-candidate.service"
 import type { ExperimentAssignmentResolution } from "./experiment/assignment"
 import type { RecommendationServingState } from "./manifest.service"
@@ -26,7 +29,7 @@ export type SemanticRecommendationDeliveryItem = SceneRecommendation & {
   position: number
   targetMediaId: string
   canonicalHref: string
-  candidateGenerator: "semantic" | "multi-interest-profile"
+  candidateGenerator: "semantic" | "multi-interest-profile" | "curated"
   contributors: RecommendationCandidateContributor[]
   capability: string
 }
@@ -73,6 +76,13 @@ export type DeliveryDependencies = {
     limit: number
     deadlineAt: number
   }): Promise<SemanticCandidatePoolItem[]>
+  retrieveCuratedFallback?: (input: {
+    seedMediaId: string
+    locale: string
+    audioLanguageSlug: string
+    excludedMediaIds: readonly string[]
+    deadlineAt: number
+  }) => Promise<CandidateNomination[]>
   recheckCached(
     items: SemanticCandidatePoolItem[],
     input: {
@@ -108,6 +118,12 @@ export type DeliveryDependencies = {
     deadlineAt: number
     now: Date
   }) => Promise<LiveProfileCandidateResult | null>
+  loadViewingModeAffinity?: (input: {
+    profileTokenDigest: string
+    mediaIds: readonly string[]
+    now: Date
+    deadlineAt: number
+  }) => Promise<import("./viewing-mode").ViewingModeAffinity | null>
   resolveRecentContext?: (input: {
     sessionDigest: string
     profileTokenDigest: string | null

@@ -41,3 +41,20 @@ export function watchHeroObscuredFraction({
 export function isWatchHeroObscured(input: WatchHeroCoverInput): boolean {
   return watchHeroObscuredFraction(input) >= WATCH_HERO_OBSCURED_PAUSE_THRESHOLD
 }
+
+/** Fraction of the actual hero visible after viewport clipping and body overlap. */
+export function watchHeroVisibleFraction(input: WatchHeroCoverInput): number {
+  if (
+    ![input.heroHeight, input.viewportHeight, input.bodyTopFromHeroTop].every(
+      Number.isFinite,
+    ) ||
+    input.heroHeight <= 0 ||
+    input.viewportHeight <= 0
+  )
+    return 0
+  return (
+    ((1 - watchHeroObscuredFraction(input)) *
+      Math.min(input.heroHeight, input.viewportHeight)) /
+    input.heroHeight
+  )
+}

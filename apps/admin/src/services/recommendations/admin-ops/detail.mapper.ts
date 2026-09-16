@@ -3,6 +3,7 @@ import type {
   RecommendationEpisodeDetail,
   RecommendationRequestDetailData,
 } from "./detail.types"
+import { ViewingModeDecisionSchema } from "../viewing-mode"
 
 export function mapRecommendationRequestDetail(
   data: RecommendationDetailQueryData,
@@ -282,6 +283,7 @@ export function mapRecommendationRequestDetail(
       nominations: shadowNominationsByRun.get(run.runId) ?? [],
     })),
     items: data.items.map((item) => {
+      const viewingMode = ViewingModeDecisionSchema.safeParse(item.viewingMode)
       const composed = compositionByTarget.get(item.targetMediaId)
       const orderedPosition =
         orderedPositionByTarget.get(item.targetMediaId) ?? null
@@ -292,6 +294,7 @@ export function mapRecommendationRequestDetail(
         targetMediaId: item.targetMediaId,
         canonicalHref: item.canonicalHref,
         candidateGenerator: item.candidateGenerator,
+        ...(viewingMode.success ? { viewingMode: viewingMode.data } : {}),
         provenance: compact({
           sceneIndex: item.sceneIndex ?? undefined,
           similarity: item.similarity ?? undefined,

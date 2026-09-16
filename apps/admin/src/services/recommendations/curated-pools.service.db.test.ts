@@ -8,6 +8,7 @@ import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
 import { CuratedPoolsService } from "./curated-pools.service"
+import { retrieveCuratedFallback } from "./curated-fallback"
 import { digestValue } from "./promotion/manifest"
 import { runRecommendationDeliveryTransaction } from "./delivery-runtime"
 import {
@@ -169,6 +170,36 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         similarity: null,
         startSeconds: 0,
       })
+      const seededFallback = await retrieveCuratedFallback(prisma, {
+        ...context,
+        seedMediaId: "video-1",
+        excludedMediaIds: ["video-2"],
+        deadlineAt: Date.now() + 1500,
+      })
+      expect(
+        seededFallback
+          .filter((item) => item.source.rejectionReason == null)
+          .map((item) => item.targetMediaId),
+      ).toEqual([
+        "video-3",
+        "video-4",
+        "video-5",
+        "video-6",
+        "video-7",
+        "video-8",
+      ])
+      expect(seededFallback[0]?.source.evidence).toMatchObject({
+        poolVersion: "fixture-v1",
+        similarity: null,
+      })
+      expect(
+        await retrieveCuratedFallback(prisma, {
+          ...context,
+          seedMediaId: "missing-seed",
+          excludedMediaIds: [],
+          deadlineAt: Date.now() + 1500,
+        }),
+      ).toEqual([])
       const interested = await service.getCandidates({
         ...context,
         interestVideoIds: ["video-8"],
