@@ -55,6 +55,8 @@ export const StepperStack: React.FC<{
    *  before it stands as PASSED from the first frame, rather than as the
    *  current one until the move begins and then snapping to size. */
   stepIndex?: number
+  /** `line` variant: icons over the three labels (see STEP_ICON_PATHS). */
+  stepIcons?: StepIconSet
 }> = ({
   variant,
   glowPos,
@@ -67,6 +69,7 @@ export const StepperStack: React.FC<{
   headline,
   steps,
   stepIndex,
+  stepIcons = "none",
 }) => {
   const STEPS = steps ?? DEVOTIONAL_STEPS
   // Owner: round one's type was too big and too heavy. Smaller, and 600 rather
@@ -94,6 +97,7 @@ export const StepperStack: React.FC<{
       <StepperLine
         steps={STEPS}
         target={stepIndex ?? Math.ceil(glowPos - 1e-6)}
+        iconSet={stepIcons}
         glowPos={glowPos}
         style={style}
         px={px}
@@ -443,6 +447,33 @@ const LINE_AHEAD_BLUR = 1.9
 /** Share of the move spent drawing the rail; the rest lights the label. */
 const LINE_DRAW_SHARE = 0.5
 
+/**
+ * Thin line icons over the three labels, by step index (the labels are
+ * locale-specific, the order is not). Drawn on a 24-unit grid, stroke 1.6.
+ * Set A: eye / thought / praying hands. Set B: play / bulb / candle flame.
+ */
+export type StepIconSet = "none" | "a" | "b"
+const STEP_ICON_PATHS: Record<Exclude<StepIconSet, "none">, string[]> = {
+  a: [
+    // eye
+    "M2 12 C6 5 18 5 22 12 C18 19 6 19 2 12 Z M12 12 m-3 0 a3 3 0 1 0 6 0 a3 3 0 1 0 -6 0",
+    // thought bubble
+    "M6 15 C3 15 2 12 3.5 10 C2.5 6 7 3.5 10 5.5 C12 2.5 18 3 18.5 7 C21.5 7.5 22 12 19 13 C19.5 16 15 17 13.5 15 Z M6 19.5 m-1 0 a1 1 0 1 0 2 0 a1 1 0 1 0 -2 0 M3.5 22.5 m-0.7 0 a0.7 0.7 0 1 0 1.4 0 a0.7 0.7 0 1 0 -1.4 0",
+    // praying hands
+    "M12 3 C10 6 7 9 6.5 13 C6 17 8 20 9.5 22 L12 19 M12 3 C14 6 17 9 17.5 13 C18 17 16 20 14.5 22 L12 19 M12 7 L12 19",
+  ],
+  b: [
+    // play
+    "M12 2 a10 10 0 1 0 0.01 0 Z M9.5 8 L16 12 L9.5 16 Z",
+    // bulb
+    "M12 2.5 a6.5 6.5 0 0 1 3.5 12 C14.5 15.5 14.5 17 14.5 17.5 L9.5 17.5 C9.5 17 9.5 15.5 8.5 14.5 A6.5 6.5 0 0 1 12 2.5 Z M9.5 20.5 L14.5 20.5 M10.5 23 L13.5 23",
+    // candle flame
+    "M12 2.5 C9 6.5 6.5 9 6.5 13 A5.5 5.5 0 0 0 17.5 13 C17.5 9 15 6.5 12 2.5 Z M12 9 C10.8 10.8 10 12 10 13.6 A2 2 0 0 0 14 13.6 C14 12 13.2 10.8 12 9 Z",
+  ],
+}
+const LINE_ICON_SIZE = 15
+const LINE_ICON_GAP = 6
+
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x))
 /** Ease in and out, so each phase of the move starts and stops gently. */
 const smooth = (x: number) => {
@@ -459,7 +490,21 @@ const StepperLine: React.FC<{
   width: number
   height: number
   lightOpacity: number
-}> = ({ steps, target, glowPos, style, px, width, height, lightOpacity }) => {
+  iconSet: StepIconSet
+}> = ({
+  steps,
+  target,
+  glowPos,
+  style,
+  px,
+  width,
+  height,
+  lightOpacity,
+  iconSet,
+}) => {
+  const icons =
+    iconSet !== "none" && steps.length === 3 ? STEP_ICON_PATHS[iconSet] : null
+  const iconH = icons ? px(LINE_ICON_SIZE) + px(LINE_ICON_GAP) : 0
   // `glowPos` runs from the step just done to `target`. The progress of the
   // move is how far along that unit it has come; a first step, with nothing
   // to travel from, is simply lit.
@@ -469,8 +514,8 @@ const StepperLine: React.FC<{
   const lit = smooth((p - LINE_DRAW_SHARE) / (1 - LINE_DRAW_SHARE))
 
   const size = px(LINE_SIZE)
-  const labelH = size * 1.2
-  const railLen = px(LINE_RAIL_LEN)
+  const labelH = size * 1.2 + iconH
+  const railLen = px(icons ? LINE_RAIL_LEN - 14 : LINE_RAIL_LEN)
   const gap = px(LINE_GAP)
   const stackH =
     steps.length * labelH + (steps.length - 1) * (railLen + 2 * gap)
@@ -535,11 +580,39 @@ const StepperLine: React.FC<{
                 top: labelTop(i),
                 height: labelH,
                 display: "flex",
+                flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
+                gap: icons ? px(LINE_ICON_GAP) : 0,
                 pointerEvents: "none",
+                opacity,
+                filter:
+                  focusBlur > 0.02 ? `blur(${px(focusBlur)}px)` : undefined,
               }}
             >
+              {icons ? (
+                <svg
+                  width={px(LINE_ICON_SIZE)}
+                  height={px(LINE_ICON_SIZE)}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke={interpolateColors(
+                    goldness,
+                    [0, 1],
+                    ["#ffffff", gold],
+                  )}
+                  strokeWidth={1.6}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{
+                    display: "block",
+                    transform: `scale(${scale})`,
+                    filter: `drop-shadow(0 0 ${px(6) * glow}px rgba(242,196,107,${0.6 * glow}))`,
+                  }}
+                >
+                  <path d={icons[i]} />
+                </svg>
+              ) : null}
               <span
                 style={{
                   fontFamily: SANS,
@@ -549,9 +622,6 @@ const StepperLine: React.FC<{
                   lineHeight: 1,
                   whiteSpace: "nowrap",
                   color: interpolateColors(goldness, [0, 1], ["#ffffff", gold]),
-                  opacity,
-                  filter:
-                    focusBlur > 0.02 ? `blur(${px(focusBlur)}px)` : undefined,
                   display: "inline-block",
                   transform: `scale(${scale})`,
                   transformOrigin: "center",
@@ -585,7 +655,9 @@ const StepperLine: React.FC<{
                         background: interpolateColors(
                           railGold,
                           [0, 1],
-                          ["rgba(255,255,255,0.5)", "rgba(242,196,107,0.95)"],
+                          // Half-transparent while it draws (owner), the same
+                          // weight as the white rail it becomes.
+                          ["rgba(255,255,255,0.5)", "rgba(242,196,107,0.55)"],
                         ),
                         pointerEvents: "none",
                       }}

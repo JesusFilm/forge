@@ -1808,6 +1808,7 @@ function CardBody({
   staticCover,
   wideText,
   attribution,
+  hideRing = false,
   hideCoverDate,
   hideCoverLogo,
   coverDateLabel,
@@ -1827,6 +1828,8 @@ function CardBody({
   staticCover: boolean
   wideText?: "bottom" | "right"
   attribution?: string
+  /** Closing card: leave out its own progress ring (a corner ring clocks the step). */
+  hideRing?: boolean
   hideCoverDate?: boolean
   hideCoverLogo?: boolean
   coverDateLabel?: string
@@ -1931,6 +1934,7 @@ function CardBody({
         // which then lights, grows a little and comes into focus.
         variant={isLine ? "line" : "glow"}
         stepIndex={at}
+        {...(card.stepIcons ? { stepIcons: card.stepIcons } : {})}
         glowPos={glowPos}
         goldness={goldness}
         style={style}
@@ -2836,30 +2840,33 @@ function CardBody({
       {/* Star-orbit progress ring: small, left-aligned in the text column,
           sitting ABOVE the "Ask yourself" label (same left inset as the label +
           questions). Same fill/orbit animation + timing as before — it just
-          flows inline here instead of the old bottom-corner overlay. */}
-      <div
-        style={{
-          // Owner widened the gap under the ring in 16:9 and left-aligned it
-          // with the column.
-          marginBottom: isLandscape ? px(23.8) : q(34),
-          alignSelf: isLandscape ? "flex-start" : "center",
-        }}
-      >
-        <ProgressRing
-          px={px}
-          fps={fps}
-          frame={frame}
-          startFrame={Math.round(3.5 * fps)}
-          durationInFrames={durationInFrames}
-          isLandscape={isLandscape}
-          inline
-          // Grown twice on the owner's word: 22 was almost invisible, 30
-          // still read as a footnote. At 48, centered above the question, the
-          // ring is the card's clock — the thing that says how long there is
-          // to sit with what it asks.
-          size={isLandscape ? px(30) : q(48)}
-        />
-      </div>
+          flows inline here instead of the old bottom-corner overlay. Left out
+          when the corner ring clocks the whole PRAY step instead. */}
+      {hideRing ? null : (
+        <div
+          style={{
+            // Owner widened the gap under the ring in 16:9 and left-aligned it
+            // with the column.
+            marginBottom: isLandscape ? px(23.8) : q(34),
+            alignSelf: isLandscape ? "flex-start" : "center",
+          }}
+        >
+          <ProgressRing
+            px={px}
+            fps={fps}
+            frame={frame}
+            startFrame={Math.round(3.5 * fps)}
+            durationInFrames={durationInFrames}
+            isLandscape={isLandscape}
+            inline
+            // Grown twice on the owner's word: 22 was almost invisible, 30
+            // still read as a footnote. At 48, centered above the question, the
+            // ring is the card's clock — the thing that says how long there is
+            // to sit with what it asks.
+            size={isLandscape ? px(30) : q(48)}
+          />
+        </div>
+      )}
       <Eyebrow
         px={px}
         color={style.eyebrow}
@@ -3701,6 +3708,82 @@ export function cardFadeOpacity(f: number, xfade: number): number {
   })
 }
 
+/**
+ * Corner progress ring for the clip-first structure: one ring per STEP, not
+ * per card. The film is WATCH; everything between the two stepper screens is
+ * REFLECT (reflection, takeaway, verse); everything after the second is PRAY.
+ * The dot completes its circle exactly as the step's last card ends, and the
+ * ring is absent on the stepper screens themselves, which announce the step.
+ *
+ * Placed inside the safe area of every phone the piece is posted to: 70 units
+ * from the top clears the Reels / TikTok headers, 48 from the right clears the
+ * edge without hugging it.
+ */
+const STEP_RING_TOP = 70
+const STEP_RING_RIGHT = 48
+const STEP_RING_SIZE = 30
+
+export function stepGroups(
+  cards: ReadonlyArray<{ kind: string }>,
+  frames: ReadonlyArray<{ from: number; durationInFrames: number }>,
+): Array<{ from: number; to: number }> {
+  const groups: Array<{ from: number; to: number }> = []
+  let open: { from: number; to: number } | null = null
+  cards.forEach((c, i) => {
+    const f = frames[i]
+    if (!f) return
+    if (c.kind === "step") {
+      if (open) groups.push(open)
+      open = null
+      return
+    }
+    if (!open) open = { from: f.from, to: f.from + f.durationInFrames }
+    else open.to = f.from + f.durationInFrames
+  })
+  if (open) groups.push(open)
+  return groups
+}
+
+function StepRingOverlay({
+  cards,
+  frames,
+  frame,
+  fps,
+  px,
+}: {
+  cards: ReadonlyArray<{ kind: string }>
+  frames: ReadonlyArray<{ from: number; durationInFrames: number }>
+  frame: number
+  fps: number
+  px: (n: number) => number
+}) {
+  const group = stepGroups(cards, frames).find(
+    (g) => frame >= g.from && frame < g.to,
+  )
+  if (!group) return null
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: px(STEP_RING_TOP),
+        right: px(STEP_RING_RIGHT),
+        pointerEvents: "none",
+      }}
+    >
+      <ProgressRing
+        px={px}
+        fps={fps}
+        frame={frame - group.from}
+        startFrame={0}
+        durationInFrames={group.to - group.from}
+        isLandscape={false}
+        inline
+        size={px(STEP_RING_SIZE)}
+      />
+    </div>
+  )
+}
+
 function CardFade({ xfade, children }: { xfade: number; children: ReactNode }) {
   const f = useCurrentFrame()
   return (
@@ -3952,6 +4035,7 @@ export function DevotionalVideo(props: DevotionalInputProps) {
                   staticCover={props.staticCover === true}
                   wideText={wideText}
                   attribution={props.attribution}
+                  hideRing={props.stepRing === true}
                   hideCoverDate={props.hideCoverDate === true}
                   hideCoverLogo={props.hideCoverLogo === true}
                   coverDateLabel={props.coverDateLabel}
@@ -3970,6 +4054,15 @@ export function DevotionalVideo(props: DevotionalInputProps) {
           </Sequence>
         )
       })}
+      {props.stepRing && !isLandscape ? (
+        <StepRingOverlay
+          cards={props.cards}
+          frames={frames}
+          frame={frame}
+          fps={fps}
+          px={px}
+        />
+      ) : null}
       {/* Soft instrumental bed under everything: loops to fill the runtime.
           Starts from the VERY FIRST frame (short ~0.4s ramp so it's present
           under the opening, not a slow swell) and fades down under the close. */}
@@ -4034,6 +4127,7 @@ function CardLayer({
   staticCover,
   wideText,
   attribution,
+  hideRing = false,
   hideCoverDate,
   hideCoverLogo,
   coverDateLabel,
@@ -4053,6 +4147,8 @@ function CardLayer({
   staticCover: boolean
   wideText?: "bottom" | "right"
   attribution?: string
+  /** Closing card: leave out its own progress ring (a corner ring clocks the step). */
+  hideRing?: boolean
   hideCoverDate?: boolean
   hideCoverLogo?: boolean
   coverDateLabel?: string
@@ -4081,6 +4177,7 @@ function CardLayer({
         anim={anim}
         staticCover={staticCover}
         attribution={attribution}
+        hideRing={hideRing}
         hideCoverDate={hideCoverDate}
         hideCoverLogo={hideCoverLogo}
         coverDateLabel={coverDateLabel}

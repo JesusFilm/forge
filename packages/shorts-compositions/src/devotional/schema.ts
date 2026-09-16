@@ -80,6 +80,8 @@ export const devotionalCardSchema = z.object({
    * default reveal with a gentle lift: the word lands a tenth larger along
    * with its accent flash and eases back to size as it cools.
    */
+  /** Step cards of the three-step column: line icons over the labels. */
+  stepIcons: z.enum(["none", "a", "b"]).optional(),
   captionStyle: z
     .enum([
       "words",
@@ -270,6 +272,13 @@ export const devotionalInputPropsSchema = z.object({
    *  cover-only samples and any clip that will be seam-spliced into a following
    *  shot rather than ending on black. */
   noEndFade: z.boolean().optional(),
+  /**
+   * Clip-first: a small progress ring in the top-right corner, clocking each
+   * STEP (the film; the reflection with its takeaway and verse; the question
+   * and prayer) so the dot completes one circle as the step ends. Replaces the
+   * ring the closing card carries above its question.
+   */
+  stepRing: z.boolean().optional(),
   /** Mute the video card's clip audio and let the music bed play through it
    *  (instead of ducking to silence). Used for teasers so the loud clip audio
    *  doesn't jump against the quiet music. */

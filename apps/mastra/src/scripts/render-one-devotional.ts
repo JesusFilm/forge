@@ -83,6 +83,10 @@ async function main() {
       ...(arg("blur-scale") ? { blurScale: Number(arg("blur-scale")) } : {}),
       steps: !process.argv.includes("--no-steps"),
       // A/B: `--structure=clip-first` opens on the film (see RenderOptions).
+      ...(process.argv.includes("--step-ring") ? { stepRing: true } : {}),
+      ...(arg("step-icons")
+        ? { stepIcons: arg("step-icons") as "none" | "a" | "b" }
+        : {}),
       ...(arg("clip-trim-end")
         ? { clipTrimEndSec: Number(arg("clip-trim-end")) }
         : {}),

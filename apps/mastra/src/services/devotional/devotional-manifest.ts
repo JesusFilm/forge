@@ -39,6 +39,8 @@ export type DevotionalManifest = {
   introHoldSec?: number
   /** Seconds of background skipped before the first card on it; see schema. */
   bgStartOffsetSec?: number
+  /** Clip-first: corner progress ring clocking each step (composition prop). */
+  stepRing?: boolean
   /** Held beat on the LAST card after its narration ends (s). Same reason. */
   outroHoldSec?: number
   cards: ManifestCard[]

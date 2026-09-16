@@ -932,6 +932,10 @@ export type RenderOptions = {
   /** Clip-first only: seconds to drop from the END of the film card, when the
    *  cut lands on a stray shot (a new speaker appears and is half heard). */
   clipTrimEndSec?: number
+  /** Clip-first only: corner progress ring clocking each step (see schema). */
+  stepRing?: boolean
+  /** Clip-first only: icons over the stepper labels (`a` or `b`, see schema). */
+  stepIcons?: "none" | "a" | "b"
   /** Clip-first only: how the film's captions arrive (see the card schema). */
   clipCaptionStyle?:
     | "words"
@@ -1619,6 +1623,10 @@ async function renderInStage(
   }
 
   if (options.structure === "clip-first") {
+    if (options.stepRing) manifest.stepRing = true
+    if (options.stepIcons)
+      for (const card of manifest.cards)
+        if (card.kind === "step") card.stepIcons = options.stepIcons
     for (const card of manifest.cards) {
       if (card.kind !== "video" || typeof card.videoFile !== "string") continue
       const focus = await planClipFocus({

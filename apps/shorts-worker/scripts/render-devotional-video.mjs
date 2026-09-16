@@ -522,6 +522,7 @@ async function main() {
       ...(manifest.bgDurationSec
         ? { bgDurationSec: manifest.bgDurationSec }
         : {}),
+      ...(manifest.stepRing ? { stepRing: true } : {}),
       ...(manifest.bgStartOffsetSec != null
         ? { bgStartOffsetSec: manifest.bgStartOffsetSec }
         : {}),
