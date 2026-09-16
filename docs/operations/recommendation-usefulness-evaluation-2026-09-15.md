@@ -55,39 +55,56 @@ allocation and privacy-generation fencing. Product policy requires no separate
 consent prompt: `docs/analytics-and-recommendation-policy.md` governs enablement.
 Preserve explicit disable, reset, deletion and retention behavior.
 
-## Remaining routing and evaluation seams
+## September 16 runtime and extraction
 
-1. `apps/admin/src/services/recommendations/delivery.service.ts` starts
-   `experimentPromise` with an explicit `profileTokenDigest != null` bypass.
-   Its `resolveExperiment` method remains available through the injected
-   `assignExperiment` dependency. A future routing change must resolve the
-   declared cohort before this bypass, preserve ordinary delivery outside the
-   experiment, and prevent a control assignment from re-entering direct profile
-   retrieval. Enrollment cannot depend on successful card retrieval or exposure.
-2. `experiment/assignment.ts` accepts an exact semantic A/A or hybrid experiment.
-   The hybrid path requires the current exact shadow decision and bounded
-   promotion approval. Its semantic A/A uses a session unit, so that existing
-   A/A alone does **not** reconcile this profile-unit cohort. Prepare a
-   behaviorally equivalent, profile-unit A/A route with the same cohort,
-   fallback and exposure path before A/B.
-3. Persist assignment even when no cards are returned. Propagate the selected
-   assignment through `delivery-issuance.ts`, request attribution and accepted
-   eligible impressions. Preserve sticky allocation across navigation/reloads;
-   never assign based on whether an impression eventually arrives.
-4. Enrollment end and assignment expiry currently share experiment lifecycle
-   bounds. The routing contract needs separate enrollment cutoff versus existing
-   assignment follow-up: assignments remain usable through the last unit's
-   24-hour follow-up. Do not truncate the last enrollees at enrollment end.
-5. `experiment/evaluation.ts` and `experiment/policy.ts` are A/A-oriented. They
-   count units with **any** qualified view, use Wilson intervals and an A/A
-   guardrail pass. They do not implement this count-per-unit metric or fixed
-   follow-up. The snapshot timestamp used as a watermark proves a consistent
-   read, not finalization or late-fact completeness. Do not reinterpret an
-   existing `pass` row as this protocol's `improve` result.
+The follow-through adds a separate profile comparison route. It requires the
+exact `profile-usefulness-assignment-v1` assignment policy and
+`qualified-view-any-observed-mode-v2` outcome policy. The legacy session A/A is
+ineligible. Production has no approved profile comparison at the readiness
+capture in `docs/validation/recommendation-quality-followup/`; adding this route
+does not create an experiment or approval.
 
-These are activation prerequisites. The delivered changes deliberately do not
-alter production routing, create an experiment row or implement unrelated
-pending roadmap prerequisites.
+- Enrollment requires English audio/locale, human classification, a current
+  durable projection and eligible semantic/profile nominations before assignment.
+  An existing assignment keeps its arm if the projection subsequently disappears.
+- Allocation remains profile-generation sticky, exactly 50/50, under a bounded
+  exact-manifest approval. A hybrid challenger also needs its own shadow decision.
+- Both arms share recent history, fallback and the mode collector. Mode affinity
+  ranking is disabled in both enrolled arms so it cannot contaminate the exact
+  semantic-versus-topic-profile comparison. Ordinary delivery retains it.
+- Under this version `endsAt` closes enrollment; existing assignments retain their
+  own 24-hour follow-up. Experiment expiry must exceed the cutoff by 30 hours,
+  and assignment retention extends beyond follow-up for mature extraction.
+- Enrollment and issuance fence profile generations. An assignment committed
+  before an empty response or issuance failure remains in the denominator.
+- Extraction starts from every assignment, includes zero-exposure profiles,
+  reports fenced/contaminated units, reconciles impressions against experiment
+  exposures, and uses the latest compatible active-watch outcome revision.
+  A qualified visible muted/sound-on observation also counts; an episode counts
+  once even when manual playback and both sound modes qualify.
+- Version 2 measures observable viewing, not satisfaction. Missing playback and
+  preview telemetry stays missing. It is never interpreted as dislike.
+
+Run the privileged reader with a prespecified JSON configuration containing
+`experimentId`, `configurationDigest`, `enrollmentStart`, `enrollmentEnd`,
+`plannedAssignmentsPerArm`, and `minimumUsefulDelta`:
+
+```sh
+pnpm --filter @forge/admin exec tsx scripts/extract-recommendation-usefulness.ts comparison.json > snapshot.json
+```
+
+Supply `READ_ONLY_DATABASE_URL` through the approved secret mechanism. The reader
+also enforces a repeatable-read, read-only transaction and query deadlines.
+Treat the output as restricted: it contains experiment-scoped unit digests.
+The extractor cannot certify external HTTP/latency guardrails or a completed
+profile-unit A/A, so those gates remain false and its assessment fails closed.
+Attach separately reviewed evidence before interpreting a controlled comparison;
+do not edit flags to manufacture a passing result.
+
+This work uses the existing below-player visibility/attribution contract. Broader
+Recommendation Visibility (feat-373) remains excluded and is not a dependency of
+this bounded comparison. The terminal policy decision/calibration and mature
+A/A/A/B study remain outstanding; feat-393/505 stay in progress.
 
 ## Snapshot extraction contract
 

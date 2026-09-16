@@ -371,6 +371,7 @@ export async function loadRecommendationRequestDetail(
             THEN (item.candidate_provenance ->> 'similarity')::double precision
           END
         END AS similarity,
+        item.candidate_provenance -> 'viewingMode' AS "viewingMode",
         CASE WHEN jsonb_typeof(item.presentation -> 'videoTitle') = 'string'
           THEN left(item.presentation ->> 'videoTitle', 200) END AS "videoTitle",
         CASE WHEN jsonb_typeof(item.presentation -> 'audioLanguageSlug') = 'string'

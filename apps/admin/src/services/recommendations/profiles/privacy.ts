@@ -6,6 +6,7 @@ type ProfileProjectionPrivacyClient = Pick<
   | "recommendationProfileProjectionRun"
   | "recommendationProfileProjectionPointer"
   | "recommendationProfileProjectionGeneration"
+  | "recommendationViewingModeEvidence"
 >
 
 /**
@@ -39,6 +40,9 @@ export async function eraseProfileProjectionInfluence(
   const runs = await client.recommendationProfileProjectionRun.deleteMany({
     where: scope,
   })
+  const viewingMode = await client.recommendationViewingModeEvidence.deleteMany(
+    { where: scope },
+  )
   const pointers =
     await client.recommendationProfileProjectionPointer.deleteMany({
       where: scope,
@@ -52,5 +56,6 @@ export async function eraseProfileProjectionInfluence(
     runs: runs.count,
     pointers: pointers.count,
     generations: generations.count,
+    viewingMode: viewingMode.count,
   }
 }

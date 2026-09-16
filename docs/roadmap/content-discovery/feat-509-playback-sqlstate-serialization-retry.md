@@ -3,8 +3,8 @@ id: "feat-509"
 title: "Retry raw SQL playback serialization conflicts without terminal input errors"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
-start_date: ""
+status: "in-progress"
+start_date: "2026-09-16"
 duration: 2
 depends_on: []
 blocks: []

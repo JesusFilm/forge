@@ -1,0 +1,269 @@
+{
+  "bundles": {
+    "baseline": {
+      "bytes": 210688,
+      "gzipBytes": 65544
+    },
+    "current": {
+      "bytes": 213585,
+      "gzipBytes": 66401
+    }
+  },
+  "loads": [
+    {
+      "name": "baseline",
+      "iteration": 0,
+      "dcl": 89.10000002384186,
+      "longTasks": [],
+      "resources": 3
+    },
+    {
+      "name": "baseline",
+      "iteration": 1,
+      "dcl": 28.5,
+      "longTasks": [],
+      "resources": 3
+    },
+    {
+      "name": "baseline",
+      "iteration": 2,
+      "dcl": 29.399999976158146,
+      "longTasks": [],
+      "resources": 3
+    },
+    {
+      "name": "baseline",
+      "iteration": 3,
+      "dcl": 28.799999952316284,
+      "longTasks": [],
+      "resources": 3
+    },
+    {
+      "name": "baseline",
+      "iteration": 4,
+      "dcl": 36.60000002384186,
+      "longTasks": [],
+      "resources": 3
+    },
+    {
+      "name": "current",
+      "iteration": 0,
+      "dcl": 77.20000004768372,
+      "longTasks": [52],
+      "resources": 3
+    },
+    {
+      "name": "current",
+      "iteration": 1,
+      "dcl": 32.799999952316284,
+      "longTasks": [],
+      "resources": 3
+    },
+    {
+      "name": "current",
+      "iteration": 2,
+      "dcl": 32.89999997615814,
+      "longTasks": [],
+      "resources": 3
+    },
+    {
+      "name": "current",
+      "iteration": 3,
+      "dcl": 29.099999964237213,
+      "longTasks": [],
+      "resources": 3
+    },
+    {
+      "name": "current",
+      "iteration": 4,
+      "dcl": 26.899999976158146,
+      "longTasks": [],
+      "resources": 3
+    }
+  ],
+  "checks": {
+    "mutedMilliseconds": 30668,
+    "coveredTimeExcluded": true,
+    "soundOnMilliseconds": 10217,
+    "sameClaimAcrossActivation": true,
+    "events": [
+      {
+        "kind": "playback_viewing_mode",
+        "payload": {
+          "version": "sound-off-viewing-v1",
+          "mode": "sound_off",
+          "preview": true,
+          "activeMilliseconds": 10213,
+          "fromSeconds": 0,
+          "toSeconds": 10.595359,
+          "durationSeconds": 120,
+          "playbackRate": 1
+        },
+        "occurredAt": "2026-09-16T00:07:38.994Z"
+      },
+      {
+        "kind": "playback_viewing_mode",
+        "payload": {
+          "version": "sound-off-viewing-v1",
+          "mode": "sound_off",
+          "preview": true,
+          "activeMilliseconds": 10236,
+          "fromSeconds": 10.595359,
+          "toSeconds": 21.235335,
+          "durationSeconds": 120,
+          "playbackRate": 1
+        },
+        "occurredAt": "2026-09-16T00:07:49.619Z"
+      },
+      {
+        "kind": "playback_viewing_mode",
+        "payload": {
+          "version": "sound-off-viewing-v1",
+          "mode": "sound_off",
+          "preview": true,
+          "activeMilliseconds": 10219,
+          "fromSeconds": 21.235335,
+          "toSeconds": 31.835354,
+          "durationSeconds": 120,
+          "playbackRate": 1
+        },
+        "occurredAt": "2026-09-16T00:08:00.244Z"
+      },
+      {
+        "kind": "playback_viewing_mode",
+        "payload": {
+          "version": "sound-off-viewing-v1",
+          "mode": "sound_off",
+          "preview": true,
+          "activeMilliseconds": 1196,
+          "fromSeconds": 31.835354,
+          "toSeconds": 33.078274,
+          "durationSeconds": 120,
+          "playbackRate": 1
+        },
+        "occurredAt": "2026-09-16T00:08:01.472Z"
+      },
+      {
+        "kind": "playback_viewing_mode",
+        "payload": {
+          "version": "sound-off-viewing-v1",
+          "mode": "sound_off",
+          "preview": true,
+          "activeMilliseconds": 365,
+          "fromSeconds": 38.63534,
+          "toSeconds": 39.035427,
+          "durationSeconds": 120,
+          "playbackRate": 1
+        },
+        "occurredAt": "2026-09-16T00:08:07.419Z"
+      },
+      {
+        "kind": "playback_attempt",
+        "payload": {
+          "initiation": "manual"
+        },
+        "occurredAt": "2026-09-16T00:08:07.428Z"
+      },
+      {
+        "kind": "playback_start",
+        "payload": {
+          "positionSeconds": 39.035427
+        },
+        "occurredAt": "2026-09-16T00:08:07.428Z"
+      },
+      {
+        "kind": "playback_progress",
+        "payload": {
+          "positionSeconds": 49.115342,
+          "durationSeconds": 120,
+          "progress": 0.40929451666666666,
+          "wallElapsedMilliseconds": 10082
+        },
+        "occurredAt": "2026-09-16T00:08:17.510Z"
+      },
+      {
+        "kind": "playback_viewing_mode",
+        "payload": {
+          "version": "sound-off-viewing-v1",
+          "mode": "sound_on",
+          "preview": false,
+          "activeMilliseconds": 10217,
+          "fromSeconds": 39.035427,
+          "toSeconds": 49.635323,
+          "durationSeconds": 120,
+          "playbackRate": 1
+        },
+        "occurredAt": "2026-09-16T00:08:18.041Z"
+      },
+      {
+        "kind": "playback_viewing_mode",
+        "payload": {
+          "version": "sound-off-viewing-v1",
+          "mode": "sound_on",
+          "preview": false,
+          "activeMilliseconds": 1514,
+          "fromSeconds": 49.635323,
+          "toSeconds": 51.195316,
+          "durationSeconds": 120,
+          "playbackRate": 1
+        },
+        "occurredAt": "2026-09-16T00:08:19.612Z"
+      },
+      {
+        "kind": "playback_active_visible_playing",
+        "payload": {
+          "activeMilliseconds": 12185,
+          "coverage": "complete"
+        },
+        "occurredAt": "2026-09-16T00:08:19.613Z"
+      },
+      {
+        "kind": "playback_end",
+        "payload": {
+          "reason": "route_exit",
+          "positionSeconds": 51.195316,
+          "durationSeconds": 120,
+          "progress": 0.4266276333333333,
+          "completed": false
+        },
+        "occurredAt": "2026-09-16T00:08:19.614Z"
+      },
+      {
+        "kind": "playback_observation",
+        "payload": {
+          "version": "playback-observations-v1",
+          "elapsedMilliseconds": 12186,
+          "visibility": "visible",
+          "playerState": "playing",
+          "startObserved": true,
+          "errorObserved": false,
+          "seekCount": 0,
+          "navigationCount": 0,
+          "qoeCount": 0
+        },
+        "occurredAt": "2026-09-16T00:08:19.614Z"
+      },
+      {
+        "kind": "playback_end",
+        "payload": {
+          "reason": "route_exit",
+          "positionSeconds": 51.195316,
+          "durationSeconds": 120,
+          "progress": 0.4266276333333333,
+          "completed": false
+        },
+        "occurredAt": "2026-09-16T00:08:19.614Z"
+      }
+    ]
+  },
+  "performance": {
+    "baseline": {
+      "medianDcl": 29.399999976158146,
+      "maxLongTask": 0
+    },
+    "current": {
+      "medianDcl": 32.799999952316284,
+      "maxLongTask": 52
+    }
+  }
+}

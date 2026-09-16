@@ -140,6 +140,12 @@ export function parseRecommendationEpisodeCapability(
 export type RecommendationPlaybackEvent =
   | {
       eventId: string
+      kind: "playback_viewing_mode"
+      occurredAt: string
+      payload: import("./viewing-mode-recorder").ViewingModeInterval
+    }
+  | {
+      eventId: string
       kind: "playback_attempt"
       occurredAt: string
       payload: {

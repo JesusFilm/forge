@@ -190,11 +190,24 @@ describe("WatchSemanticRecommendations", () => {
       "semantic_fallback",
       "Recommended from what you're watching now while personalization is unavailable.",
     ],
+    [
+      "curated fallback",
+      "semantic_fallback",
+      "curated_fallback",
+      "Selected videos to explore.",
+    ],
   ])(
     "uses context-only viewer copy for %s delivery",
     async (_name, lane, executionMode, copy) => {
       const contextualDelivery = {
         ...delivery,
+        items: delivery.items.map((item) => ({
+          ...item,
+          candidateGenerator:
+            executionMode === "curated_fallback"
+              ? "curated"
+              : item.candidateGenerator,
+        })),
         requestedCount: 1,
         composedCount: 1,
         shortfallReason: null,

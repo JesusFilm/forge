@@ -314,6 +314,20 @@ export function WatchPageClient({
     mediaId: string
     initiation: "manual" | "automatic"
   } | null>(null)
+  const [playerViewability, setPlayerViewability] = useState<{
+    mediaId: string
+    visible: boolean
+  } | null>(null)
+  const handlePlayerViewabilityChange = useCallback(
+    (visible: boolean) => {
+      setPlayerViewability((previous) =>
+        previous?.mediaId === video.documentId && previous.visible === visible
+          ? previous
+          : { mediaId: video.documentId, visible },
+      )
+    },
+    [video.documentId],
+  )
   const [pendingChapter, setPendingChapter] =
     useState<WatchChapterNavigationIntent | null>(null)
   const validPendingChapter =
@@ -803,6 +817,7 @@ export function WatchPageClient({
         modalCallbacks={modalCallbacks}
         onPlayerReady={handlePlayerReady}
         onPlayerActivated={handlePlayerActivated}
+        onPlayerViewabilityChange={handlePlayerViewabilityChange}
         languageSlug={currentLanguageSlug}
         locale={locale}
         hasSubtitleOptions={subtitles.length > 0}
@@ -826,6 +841,11 @@ export function WatchPageClient({
       <RecommendationPlaybackRecorder
         key={video.documentId}
         player={player}
+        viewable={
+          playerViewability?.mediaId === video.documentId
+            ? playerViewability.visible
+            : null
+        }
         initiation={
           playerActivation?.mediaId === video.documentId
             ? playerActivation.initiation

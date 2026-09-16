@@ -5,6 +5,7 @@ import {
   type PlaybackObservationProjection,
 } from "../playback-observations"
 import type { FrozenPlaybackFact } from "../outcome.service"
+import { summarizeViewingMode, type ViewingModeSummary } from "../viewing-mode"
 import {
   RECOMMENDATION_OPS_DAY_MS,
   RECOMMENDATION_TRACE_ACCESS_REASON,
@@ -80,6 +81,9 @@ export type PlaybackEvidenceOverview = Readonly<{
 }>
 
 export type PlaybackEpisodeDetail = Readonly<{
+  viewingMode?: ViewingModeSummary & {
+    coverage: "observed" | "unknown" | "ineligible"
+  }
   observations: PlaybackObservationProjection
   id: string
   requestId: string | null
@@ -377,6 +381,16 @@ export async function loadPlaybackEpisodeDetail(
       state: episode.state.toLowerCase(),
       provenance: stringRecord(episode.provenance),
       facts: facts.map(({ payload: _payload, ...fact }) => fact),
+      viewingMode: {
+        ...summarizeViewingMode(facts, episode.claimedAt ?? episode.createdAt),
+        coverage:
+          episode.conflictCount > 0 ||
+          facts.some((fact) => fact.late || fact.kind === "playback_error")
+            ? "ineligible"
+            : facts.some((fact) => fact.kind === "playback_viewing_mode")
+              ? "observed"
+              : "unknown",
+      },
       observations: projectPlaybackObservations(
         facts satisfies FrozenPlaybackFact[],
         {
