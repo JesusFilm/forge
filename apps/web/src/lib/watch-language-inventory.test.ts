@@ -19,9 +19,13 @@ vi.mock("@/lib/admin-client", () => ({
   },
 }))
 
-vi.mock("@/lib/watch-route-manifest", () => ({
-  getWatchRouteManifest: getWatchRouteManifestMock,
-}))
+vi.mock("@/lib/watch-route-manifest", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/lib/watch-route-manifest")>()
+  return { ...actual, getWatchRouteManifest: getWatchRouteManifestMock }
+})
+
+import { isPublicWatchHomeLanguageSlug } from "@/lib/locale"
 
 import {
   inventoryAgeDays,
@@ -467,5 +471,123 @@ describe("implausible future publish dates", () => {
     expect(publishedAtSortTime(bogus, now)).toBeNaN()
     expect(isNewRelease(bogus, now)).toBe(false)
     expect(inventoryAgeDays(bogus, now)).toBeNull()
+  })
+})
+
+describe("resolveWatchLanguageInventory — languages published since the last corpus build", () => {
+  // Synthetic on purpose: a real recently-published slug would rot as soon as
+  // the scheduled corpus refresh absorbed it, and these tests would then pass
+  // without ever consulting the manifest.
+  const NEWLY_PUBLISHED = "regression-probe-language"
+
+  const manifestPublishing = (...slugs: string[]) => ({
+    version: "test",
+    generatedAt: "2026-09-16T00:00:00.000Z",
+    contentSlugs: [],
+    oneSegmentSlugs: [],
+    episodePairsByParent: {},
+    audioLanguageSlugs: slugs,
+  })
+
+  beforeEach(() => {
+    queryMock.mockReset()
+    getWatchRouteManifestMock.mockReset()
+  })
+
+  it("keeps the probe slug outside the compiled corpus", () => {
+    expect(isPublicWatchHomeLanguageSlug(NEWLY_PUBLISHED)).toBe(false)
+  })
+
+  it("fetches the requested language rather than substituting the locale default", async () => {
+    // Before this guard the route could be fixed to stop 404ing and STILL
+    // serve English inventory under the new language's URL — a silent
+    // wrong-content bug worse than the 404 it replaced.
+    getWatchRouteManifestMock.mockResolvedValue(
+      manifestPublishing(NEWLY_PUBLISHED),
+    )
+    mockInventory({ languageSlug: NEWLY_PUBLISHED })
+
+    const inventory = await resolveWatchLanguageInventory("en", NEWLY_PUBLISHED)
+
+    expect(queryMock.mock.calls[0]?.[0]?.variables?.languageSlug).toBe(
+      NEWLY_PUBLISHED,
+    )
+    expect(inventory.languageSlug).toBe(NEWLY_PUBLISHED)
+  })
+
+  it("still substitutes the locale default for a slug nothing publishes", async () => {
+    getWatchRouteManifestMock.mockResolvedValue(manifestPublishing())
+    mockInventory({ languageSlug: "english" })
+
+    await resolveWatchLanguageInventory("en", "not-a-language-at-all")
+
+    expect(queryMock.mock.calls[0]?.[0]?.variables?.languageSlug).toBe(
+      "english",
+    )
+  })
+
+  it("does not serialize the inventory fetch behind the manifest for a corpus language", async () => {
+    // Laziness, per apps/web/CLAUDE.md, stated as the property that actually
+    // matters: for a language the corpus already knows, the Admin inventory
+    // query must go out WITHOUT waiting on the manifest. (The switcher also
+    // wants the manifest, but it must not gate the content fetch.) An eager
+    // `await getWatchRouteManifest()` in the slug selection would hang here.
+    let releaseManifest: () => void = () => {}
+    const manifestGate = new Promise<null>((resolve) => {
+      releaseManifest = () => resolve(null)
+    })
+    getWatchRouteManifestMock.mockReturnValue(manifestGate)
+    mockInventory({ languageSlug: "russian" })
+
+    const pending = resolveWatchLanguageInventory("en", "russian")
+    await vi.waitFor(() => expect(queryMock).toHaveBeenCalled())
+
+    expect(queryMock.mock.calls[0]?.[0]?.variables?.languageSlug).toBe(
+      "russian",
+    )
+
+    releaseManifest()
+    await pending
+  })
+
+  it("offers a manifest-published language in the switcher", async () => {
+    getWatchRouteManifestMock.mockResolvedValue(
+      manifestPublishing("english", NEWLY_PUBLISHED),
+    )
+    queryMock
+      .mockResolvedValueOnce({
+        data: {
+          watchLanguageInventory: {
+            language: { slug: "english", bcp47: "en", name: { en: "English" } },
+            counts: {
+              audioCollections: 0,
+              audioVideos: 0,
+              subtitleOnlyVideos: 0,
+              total: 0,
+            },
+            promoted: [],
+            audioCollections: [],
+            audioVideos: [],
+            subtitleOnlyVideos: [],
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          languages: [
+            {
+              slug: NEWLY_PUBLISHED,
+              bcp47: "xx",
+              name: { en: "Probe Language" },
+            },
+          ],
+        },
+      })
+
+    const inventory = await resolveWatchLanguageInventory("en", "english")
+
+    expect(inventory.switcherLanguages.map((option) => option.slug)).toContain(
+      NEWLY_PUBLISHED,
+    )
   })
 })

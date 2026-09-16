@@ -14,7 +14,10 @@ import {
   watchVideoPath,
 } from "@/lib/routes"
 import { WATCH_CACHE_TAGS } from "@/lib/watch-cache-tags"
-import { getWatchRouteManifest } from "@/lib/watch-route-manifest"
+import {
+  getWatchRouteManifest,
+  isWatchAudioLanguageSlug,
+} from "@/lib/watch-route-manifest"
 
 const WATCH_LANGUAGE_INVENTORY_LIMIT = 1_000
 const WATCH_LANGUAGE_SWITCHER_LIMIT = 5_000
@@ -371,11 +374,24 @@ function nativeLanguageNameFromJson(
   return null
 }
 
+const NO_ADDITIONAL_ADMITTED_SLUGS: ReadonlySet<string> = new Set()
+
+/**
+ * `admittedSlugs` carries the languages the live route manifest publishes.
+ * Without it this veto is the compiled corpus alone, which silently drops
+ * every language admin published since the last regeneration from the
+ * switcher — so a newly published language could not be reached from any
+ * other language's picker.
+ */
 function switcherLanguageFromRaw(
   language: WatchLanguageInventoryLanguageRaw,
+  admittedSlugs: ReadonlySet<string> = NO_ADDITIONAL_ADMITTED_SLUGS,
 ): WatchLanguageInventorySwitcherLanguage | null {
   const slug = language.slug
-  if (!slug || !isPublicWatchHomeLanguageSlug(slug)) return null
+  if (!slug) return null
+  if (!isPublicWatchHomeLanguageSlug(slug) && !admittedSlugs.has(slug)) {
+    return null
+  }
   const languageName = languageNameFromJson(language.name, slug)
   return {
     slug,
@@ -409,7 +425,7 @@ async function resolveSwitcherLanguages(
   const manifestLanguageSlugs = new Set(manifest?.audioLanguageSlugs ?? [])
   const options = languages
     .flatMap((language) => {
-      const option = switcherLanguageFromRaw(language)
+      const option = switcherLanguageFromRaw(language, manifestLanguageSlugs)
       return option ? [option] : []
     })
     .filter(
@@ -451,7 +467,13 @@ export async function resolveWatchLanguageSwitcherOptions(
     const current =
       languages
         .flatMap((language) => {
-          const option = switcherLanguageFromRaw(language)
+          // Admit the current slug explicitly: a language published since the
+          // last corpus build would otherwise fall through to `fallback` and
+          // lose its real name and native name in the picker.
+          const option = switcherLanguageFromRaw(
+            language,
+            new Set([currentSlug]),
+          )
           return option && option.slug === currentSlug ? [option] : []
         })
         .at(0) ?? fallback
@@ -532,14 +554,43 @@ function normalizeCard(
   } satisfies WatchLanguageInventoryCard
 }
 
+/**
+ * The language whose inventory to fetch for this request.
+ *
+ * Admitting on the compiled corpus alone made this substitute the locale's
+ * default language for anything published since the last regeneration — so
+ * fixing only the route guard would have served ENGLISH inventory under a
+ * newly published language's URL instead of 404ing it. Silent wrong content
+ * is worse than the 404 it replaces, so admission here must match the route's.
+ *
+ * The manifest is awaited ONLY on a corpus miss, so the common path keeps its
+ * current latency. A failed manifest fetch degrades to the locale default,
+ * exactly as before this guard existed.
+ */
+async function inventoryLanguageSlugForRequest(
+  locale: string,
+  routeLanguageSegment?: string | null,
+): Promise<string> {
+  const localeDefault =
+    publicWatchHomeLanguageSlugForLocale(locale) ?? "english"
+  if (!routeLanguageSegment) return localeDefault
+  if (isPublicWatchHomeLanguageSlug(routeLanguageSegment)) {
+    return routeLanguageSegment
+  }
+  const manifest = await getWatchRouteManifest().catch(() => null)
+  return isWatchAudioLanguageSlug(routeLanguageSegment, manifest)
+    ? routeLanguageSegment
+    : localeDefault
+}
+
 export async function resolveWatchLanguageInventory(
   locale: string,
   routeLanguageSegment?: string | null,
 ): Promise<WatchLanguageInventoryModel> {
-  const languageSlug =
-    routeLanguageSegment && isPublicWatchHomeLanguageSlug(routeLanguageSegment)
-      ? routeLanguageSegment
-      : (publicWatchHomeLanguageSlugForLocale(locale) ?? "english")
+  const languageSlug = await inventoryLanguageSlugForRequest(
+    locale,
+    routeLanguageSegment,
+  )
   const raw = await fetchWatchLanguageInventory(languageSlug)
   const resolvedLanguageSlug = raw.language?.slug ?? languageSlug
   const languageName = languageNameFromJson(
