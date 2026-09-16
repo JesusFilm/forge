@@ -1,0 +1,80 @@
+{
+  "capturedAt": "2026-09-16T02:32:52.663415+00:00",
+  "syntheticProbe": true,
+  "webRevision": "469edc6f996db1c6bd729b9a1b9f0e2732a0cd58",
+  "destination": {
+    "cardCount": 6,
+    "deliveries": [
+      {
+        "generators": ["semantic"],
+        "itemCount": 6,
+        "mode": "semantic_contextual",
+        "reason": null,
+        "result": "served"
+      }
+    ],
+    "errors": 0,
+    "path": "/watch/origins-of-christmas--episode-1.html",
+    "requests": [
+      {
+        "milliseconds": 426,
+        "path": "/watch/api/recommendations/profile",
+        "status": 200
+      },
+      {
+        "milliseconds": 630,
+        "path": "/watch/api/recommendations",
+        "status": 200
+      },
+      {
+        "milliseconds": 479,
+        "path": "/watch/api/recommendations/playback",
+        "status": 200
+      },
+      {
+        "milliseconds": 596,
+        "path": "/watch/api/recommendations/evidence",
+        "status": 200
+      },
+      {
+        "milliseconds": 600,
+        "path": "/watch/api/recommendations/evidence",
+        "status": 200
+      },
+      {
+        "milliseconds": 604,
+        "path": "/watch/api/recommendations/evidence",
+        "status": 200
+      },
+      {
+        "milliseconds": 607,
+        "path": "/watch/api/recommendations/evidence",
+        "status": 200
+      },
+      {
+        "milliseconds": 599,
+        "path": "/watch/api/recommendations/evidence",
+        "status": 200
+      },
+      {
+        "milliseconds": 614,
+        "path": "/watch/api/recommendations/evidence",
+        "status": 200
+      },
+      {
+        "milliseconds": 447,
+        "path": "/watch/api/recommendations/playback",
+        "status": 200
+      }
+    ],
+    "title": "Origins of Christmas - (Episode 1) | Jesus Film Project",
+    "unhandledRejections": 0
+  },
+  "forYou": {
+    "body": {
+      "enabled": false
+    },
+    "cacheControl": "private, no-store, max-age=0",
+    "status": 200
+  }
+}

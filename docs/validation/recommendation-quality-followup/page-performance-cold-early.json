@@ -1,0 +1,351 @@
+{
+  "capturedAt": "2026-09-16T02:24:14.127888+00:00",
+  "variant": "after-cold-diagnostic",
+  "samples": [
+    {
+      "frames": [
+        {
+          "blockingDuration": 69.8,
+          "duration": 121,
+          "scripts": [
+            {
+              "duration": 114.70000004768372,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "start": 1124.2999999523165
+            }
+          ],
+          "start": 1123.2999999523165
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 1011.6999999880792,
+          "scripts": [
+            {
+              "duration": 15.5,
+              "function": "",
+              "invoker": "IdleRequestCallback",
+              "invokerType": "user-callback",
+              "source": "/watch/_next/static/chunks/0eexbq3o5b17q.js",
+              "start": 3464.899999976158
+            },
+            {
+              "duration": 5.300000011920929,
+              "function": "",
+              "invoker": "/watch/_next/static/chunks/0cbyyzcg4-zw~.js",
+              "invokerType": "classic-script",
+              "source": "/watch/_next/static/chunks/0cbyyzcg4-zw~.js",
+              "start": 4149.299999952316
+            }
+          ],
+          "start": 3464.099999964237
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 1012.4000000357628,
+          "scripts": [],
+          "start": 8546.299999952316
+        },
+        {
+          "blockingDuration": 78.3,
+          "duration": 282.69999998807907,
+          "scripts": [
+            {
+              "duration": 55.89999997615814,
+              "function": "",
+              "invoker": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "invokerType": "classic-script",
+              "source": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "start": 946.5
+            },
+            {
+              "duration": 5.600000023841858,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "start": 1012.399999976158
+            }
+          ],
+          "start": 806.1999999880791
+        },
+        {
+          "blockingDuration": 19.3,
+          "duration": 970.0999999642372,
+          "scripts": [
+            {
+              "duration": 13.700000047683716,
+              "function": "",
+              "invoker": "CookieStore.set.then",
+              "invokerType": "resolve-promise",
+              "source": "/watch/_next/static/chunks/0eexbq3o5b17q.js",
+              "start": 1504.2999999523165
+            },
+            {
+              "duration": 64.19999998807907,
+              "function": "",
+              "invoker": "/gtag/js",
+              "invokerType": "classic-script",
+              "source": "/gtag/js",
+              "start": 1523.399999976158
+            },
+            {
+              "duration": 50.80000001192093,
+              "function": "",
+              "invoker": "TimerHandler:setTimeout",
+              "invokerType": "user-callback",
+              "source": "/gtag/js",
+              "start": 1597.399999976158
+            }
+          ],
+          "start": 1473.5
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 1012.7999999523164,
+          "scripts": [
+            {
+              "duration": 7.100000023841858,
+              "function": "",
+              "invoker": "IdleRequestCallback",
+              "invokerType": "user-callback",
+              "source": "/watch/_next/static/chunks/0eexbq3o5b17q.js",
+              "start": 2452.2999999523163
+            },
+            {
+              "duration": 5.900000035762787,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "start": 3329.099999964237
+            },
+            {
+              "duration": 8.099999964237213,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "start": 3335.199999988079
+            }
+          ],
+          "start": 2447.5
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 1014.5999999642372,
+          "scripts": [],
+          "start": 7529
+        },
+        {
+          "blockingDuration": 43.9,
+          "duration": 375.300000011921,
+          "scripts": [
+            {
+              "duration": 5.200000047683716,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "start": 9614.799999952316
+            },
+            {
+              "duration": 92.39999997615814,
+              "function": "",
+              "invoker": "/watch/_next/static/chunks/0jrax7kzi70dm.js",
+              "invokerType": "classic-script",
+              "source": "/watch/_next/static/chunks/0jrax7kzi70dm.js",
+              "start": 9669.5
+            },
+            {
+              "duration": 25.5,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "start": 9922
+            },
+            {
+              "duration": 9.800000011920927,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "start": 9954.19999998808
+            },
+            {
+              "duration": 7.100000023841858,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "start": 9968.599999964235
+            }
+          ],
+          "start": 9614.799999952316
+        }
+      ],
+      "lcp": 9992,
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 9992,
+          "size": 88480,
+          "tag": "H1",
+          "time": 9992
+        }
+      ],
+      "longTasks": 7,
+      "longestTask": 119,
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.588322
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 1109.5999999642372,
+          "load": 1593.5999999642372,
+          "ttfb": 785.5999999642372
+        }
+      ],
+      "slowResources": [
+        {
+          "bytes": 55218,
+          "duration": 936.6999999880792,
+          "host": "www.jesusfilm.org",
+          "start": 2374.099999964237,
+          "type": "fetch"
+        },
+        {
+          "bytes": 4028,
+          "duration": 922.8000000119208,
+          "host": "www.jesusfilm.org",
+          "start": 2403.699999988079,
+          "type": "fetch"
+        },
+        {
+          "bytes": 0,
+          "duration": 854.3999999761581,
+          "host": "browser-intake-datadoghq.com",
+          "start": 3479.5,
+          "type": "fetch"
+        },
+        {
+          "bytes": 0,
+          "duration": 849.3999999761581,
+          "host": "browser-intake-datadoghq.com",
+          "start": 3476.399999976158,
+          "type": "fetch"
+        },
+        {
+          "bytes": 0,
+          "duration": 847.6999999880791,
+          "host": "browser-intake-datadoghq.com",
+          "start": 2459,
+          "type": "fetch"
+        },
+        {
+          "bytes": 0,
+          "duration": 811.4000000357628,
+          "host": "browser-intake-datadoghq.com",
+          "start": 3472.7999999523163,
+          "type": "fetch"
+        },
+        {
+          "bytes": 0,
+          "duration": 695.1000000238419,
+          "host": "www.googletagmanager.com",
+          "start": 801.7999999523163,
+          "type": "link"
+        },
+        {
+          "bytes": 0,
+          "duration": 648.3999999761581,
+          "host": "inferred.litix.io",
+          "start": 9952.69999998808,
+          "type": "fetch"
+        },
+        {
+          "bytes": 441,
+          "duration": 602.5999999642372,
+          "host": "www.jesusfilm.org",
+          "start": 3337.199999988079,
+          "type": "fetch"
+        },
+        {
+          "bytes": 439,
+          "duration": 600.5,
+          "host": "www.jesusfilm.org",
+          "start": 3341.899999976158,
+          "type": "fetch"
+        },
+        {
+          "bytes": 435,
+          "duration": 598.1999999880791,
+          "host": "www.jesusfilm.org",
+          "start": 3339.5,
+          "type": "fetch"
+        },
+        {
+          "bytes": 438,
+          "duration": 596.1999999880791,
+          "host": "www.jesusfilm.org",
+          "start": 3343.099999964237,
+          "type": "fetch"
+        },
+        {
+          "bytes": 541,
+          "duration": 595.6000000238419,
+          "host": "www.jesusfilm.org",
+          "start": 815.0999999642372,
+          "type": "link"
+        },
+        {
+          "bytes": 438,
+          "duration": 595.4000000357628,
+          "host": "www.jesusfilm.org",
+          "start": 3340.599999964237,
+          "type": "fetch"
+        },
+        {
+          "bytes": 441,
+          "duration": 595.2000000476837,
+          "host": "www.jesusfilm.org",
+          "start": 3338.2999999523163,
+          "type": "fetch"
+        }
+      ],
+      "syntheticProfileCleanup": {
+        "status": 200
+      }
+    }
+  ],
+  "early": {
+    "heading": true,
+    "headingBox": {
+      "bottom": 419,
+      "height": 77.75,
+      "left": 96,
+      "right": 861.796875,
+      "top": 341.25,
+      "width": 765.796875,
+      "x": 96,
+      "y": 341.25
+    },
+    "headingStyle": {
+      "opacity": "1",
+      "visibility": "visible"
+    },
+    "lcp": null,
+    "now": 1984.399999976158,
+    "paint": [],
+    "visibility": "visible"
+  }
+}

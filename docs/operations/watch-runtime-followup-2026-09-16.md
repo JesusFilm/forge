@@ -1,9 +1,16 @@
 # Watch runtime follow-up — 16 September 2026
 
-Status: Redis cleanup and selection receipt-ordering fixes verified in
-production; separate selection timeouts remain under investigation.
-All timestamps below are UTC. feat-496 remains in progress because the unmatched
-admission incidents and separate selection timeouts are not proven resolved.
+Historical checkpoint at 00:27 UTC: Redis cleanup and selection receipt-ordering
+fixes were verified in production, while separate selection timeouts remained
+under investigation. feat-496 was still in progress at that checkpoint.
+
+Latest continuation at 04:30 UTC: two additional Admin catalog fixes and a
+one-hour production observation complete the demonstrated Admin scheduling
+recovery. Read `docs/operations/watch-admin-duration-recovery-2026-09-16.md`
+for exact revisions, separate HTTP/fallback populations and the retained
+profiler, workflow and browser-hydration limitations. The historical unmatched
+Redis incidents are not retrospectively assigned to these Admin causes.
+All timestamps below are UTC.
 
 ## Confirmed Redis contention mechanism
 
@@ -208,3 +215,23 @@ The authored English Homepage Recommendations Block stays removed and
 recommendation surface, account linking or curation republishing was added.
 All releases used normal PR-to-main automation; no local code was published or
 manually redeployed to production.
+
+## Continuation: Admin catalog scheduling
+
+The subsequent investigation reproduced Prisma duration overfetch and shipped
+#2319 to verified Admin/worker revision `8070374f6`. Its 30-minute observation
+still reproduced a selection HTTP 503 and an HTTP 200 `delivery_timeout`
+fallback. A second catalog workload materializes unused subtitle/language
+scalars; a narrow projection reduces the independently reproduced scheduling
+cost. Read `docs/operations/watch-admin-duration-recovery-2026-09-16.md` for exact
+revisions, separate HTTP/semantic/browser populations and residual limitations.
+PR #2322 subsequently deployed with the duration correction in Admin/worker
+`9533506f967496dea60c9a4b846bf7a70463772b`. The 03:29–04:29 browser observation
+recorded 66 selection HTTP 200s without aborts and 132 served deliveries with no
+HTTP failures or semantic timeout fallbacks. The broader fixed HTTP population
+also had no recommendation 5xx; terminal 400/403 rejections remain separate.
+One pre-existing React hydration-error class was observed and remains a follow-up,
+so the aggregate no-JavaScript-errors browser assertion did not pass. The report
+above records the causal fixes, limitations and remaining hypotheses. feat-496
+is complete for the demonstrated Admin scheduling recovery; feat-513, feat-516
+and feat-517 preserve the separate unresolved work.

@@ -11,20 +11,15 @@
  * break every hook.
  */
 
-// The composition root binds expo-media-library, the download engine and
-// AsyncStorage at module scope. This suite renders the series route while
-// mocking DownloadsProvider away, so nothing else keeps those out of its graph.
+// The composition root binds the expo-file-system folder picker, the download
+// engine and AsyncStorage at module scope. This suite renders the series route
+// while mocking DownloadsProvider away, so nothing else keeps those out.
+const mockPickExportFolder = jest.fn()
+const mockExportVideo = jest.fn()
 jest.mock("../../../lib/rawExportRuntime", () => ({
   getRawExportAdapter: () => ({
-    // A settled result, not a bare jest.fn(): the run reads `result.kind`, so
-    // an undefined return throws inside the confirm handler.
-    exportVideo: async () => ({
-      kind: "settled",
-      outcome: "saved",
-      albumIntent: "library",
-      reused: false,
-    }),
-    completeStagedExport: async () => "saved",
+    exportVideo: (...args: unknown[]) => mockExportVideo(...args),
+    pickExportFolder: () => mockPickExportFolder(),
     discardStagedExport: async () => "abandoned",
     cancelExport: () => false,
   }),
@@ -133,6 +128,9 @@ const rawExportConstants = jest.requireMock(
 ) as { RAW_EXPORT_ENABLED: boolean }
 
 // ── Fixtures ────────────────────────────────────────────────────────
+
+/** What the mocked folder picker hands back when the viewer picks. */
+const PICKED_FOLDER = { uri: "file:///picked/Downloads/" }
 
 const DOWNLOADS: WatchDownload[] = [
   {
@@ -387,6 +385,16 @@ beforeEach(() => {
   rawExportConstants.RAW_EXPORT_ENABLED = true
   mockSearchParams = {}
   mockBack.mockReset()
+  mockPickExportFolder.mockReset()
+  mockPickExportFolder.mockResolvedValue(PICKED_FOLDER)
+  mockExportVideo.mockReset()
+  // A settled result, not a bare jest.fn(): the run reads `result.kind`, so
+  // an undefined return throws inside the confirm handler.
+  mockExportVideo.mockResolvedValue({
+    kind: "settled",
+    outcome: "saved",
+    reused: false,
+  })
   mockGetRecord.mockReset()
   mockGetRecord.mockReturnValue(null)
   mockResolveSeries.mockReset()
@@ -408,14 +416,14 @@ afterEach(() => {
 describe("mode control copy", () => {
   it("names each mode by its destination", () => {
     expect(DOWNLOAD_MODE_LABELS.offline).toBe("Offline Watching")
-    expect(DOWNLOAD_MODE_LABELS.raw).toBe("Save to Photos")
+    expect(DOWNLOAD_MODE_LABELS.raw).toBe("Save to Files")
   })
 
-  it("names the platform's OWN photos app on each platform", () => {
+  it("names the platform's OWN file destination on each platform", () => {
     // jest runs this app as iOS only, so the Android wording is unreachable
     // through the rendered sheet. Pin the resolver directly instead.
-    expect(rawModeLabel("ios")).toBe("Save to Photos")
-    expect(rawModeLabel("android")).toBe("Save to Gallery")
+    expect(rawModeLabel("ios")).toBe("Save to Files")
+    expect(rawModeLabel("android")).toBe("Save to Device")
   })
 
   it("renders no section header above the two rows", async () => {
@@ -433,7 +441,7 @@ describe("mode control copy", () => {
       false,
     )
     expect(
-      hasText(renderer, "Keep it in your device library, outside the app."),
+      hasText(renderer, "Choose a folder to keep it in, outside the app."),
     ).toBe(false)
   })
 
@@ -441,7 +449,7 @@ describe("mode control copy", () => {
     const renderer = await renderSheet()
     const raw = radioByLabel(renderer, DOWNLOAD_MODE_LABELS.raw)
     expect(raw?.props.accessibilityHint).toBe(
-      "Keep it in your device library, outside the app.",
+      "Choose a folder to keep it in, outside the app.",
     )
   })
 })
@@ -527,7 +535,7 @@ describe("DownloadSheetContent mode control", () => {
   })
 
   it("opens straight on export when the caller asks for it", async () => {
-    // The "Save to Photos" entry on a downloaded video. R2 still holds — the
+    // The "Save to Files" entry on a downloaded video. R2 still holds — the
     // sheet remembers nothing — so the DEFAULT stays offline, asserted below.
     const renderer = await renderSheet({ initialMode: "raw" })
     expect(checkedState(radioByLabel(renderer, DOWNLOAD_MODE_LABELS.raw))).toBe(
@@ -934,8 +942,39 @@ describe("series sheet mode control", () => {
 
     await press(pressableByLabel(renderer, "Save all episodes to the device"))
     expect(Alert.alert).not.toHaveBeenCalled()
-    // R15: starting a raw export dismisses the sheet.
+    // ONE picker for the whole run, and R15: a picked folder dismisses the
+    // sheet. The run is headless, so the pick must land before the dismissal.
+    expect(mockPickExportFolder).toHaveBeenCalledTimes(1)
     expect(mockBack).toHaveBeenCalledTimes(1)
+    expect(mockPickExportFolder.mock.invocationCallOrder[0]).toBeLessThan(
+      mockBack.mock.invocationCallOrder[0],
+    )
+    // The run starts, and every episode it reaches takes the ONE picked
+    // folder — the run never asks again.
+    expect(mockExportVideo).toHaveBeenCalled()
+    for (const [input] of mockExportVideo.mock.calls) {
+      expect(input).toEqual(expect.objectContaining({ folder: PICKED_FOLDER }))
+    }
+
+    await unmount(renderer)
+  })
+
+  it("keeps the sheet open and starts nothing when the folder picker is dismissed", async () => {
+    mockPickExportFolder.mockResolvedValue(null)
+    mockGetRecord.mockImplementation((slug: string) => savedRecord(slug))
+    const renderer = await renderSeries()
+
+    await chooseMode(renderer, "raw")
+    await acceptTerms(renderer)
+    await press(pressableByLabel(renderer, "Save all episodes to the device"))
+
+    expect(mockPickExportFolder).toHaveBeenCalledTimes(1)
+    expect(mockBack).not.toHaveBeenCalled()
+    expect(mockExportVideo).not.toHaveBeenCalled()
+    // The route restores "ready", so Confirm is live for a second attempt.
+    const confirm = nodeByLabel(renderer, "Save all episodes to the device")
+    expect(confirm).not.toBeNull()
+    expect(confirm?.props.disabled).toBe(false)
 
     await unmount(renderer)
   })
@@ -965,7 +1004,7 @@ describe("series sheet mode control", () => {
 })
 
 /**
- * The "Save to Photos" row on the series manage sheet routes here with
+ * The "Save to Files" row on the series manage sheet routes here with
  * `?mode=raw`. Its only entry condition is that every episode is already
  * saved, so the opening quality decides whether the run copies the files on
  * the device or downloads the whole series again.

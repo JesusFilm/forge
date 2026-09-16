@@ -951,6 +951,94 @@ it moves the fingerprint runtime version, so an OTA update cannot deliver it.
   seconds — an absent cast glyph early in a session means "not discovered yet",
   not "unsupported".
 
+## Raw file export — save to a folder the viewer picks
+
+**The export writes into a folder the viewer chooses, never into the photo
+library.** Product leadership decided this on 2026-09-15; the photo-library
+destination that shipped in #2232 is retired and `expo-media-library` is gone
+from the app. The picker is `Directory.pickDirectoryAsync()` from
+`expo-file-system`, which the app already links, so the change added no native
+module — but removing one moves the fingerprint runtime version, so a native
+build must ship before the next `eas update`.
+
+- **The seam is `src/lib/rawExportRuntime.ts`, and only it.** Every other
+  export module is pure. The adapter's `ExportDestinationPort`
+  (`pickFolder` / `listNames` / `copyInto` / `removeIfExists`) is bound there
+  to `Directory` and `File`. `documentDirectory` still comes from `expo-file-system/legacy`: the
+  package root re-exports it through a stub that throws.
+- **Pick FIRST, then dismiss, then run.** The order lives in
+  `src/lib/rawExportStart.ts`. Both routes (`app/watch/download.tsx`,
+  `app/series/download.tsx`) hand it the pick, the dismiss and the start as
+  callbacks on ONE object literal, so neither route body carries a step order
+  of its own. A dismissed sheet has no view controller to present from, and
+  both orders compile, so `rawExportStart.test.ts` pins the order by CALLING
+  the helper. `rawExportWiring.guard.test.js` holds only that each raw starter
+  delegates to `startRawExportAfterPick(` and never dismisses by hand — a
+  position comparison there would read an object literal's declaration order,
+  which means nothing. A dismissed picker starts nothing and reports nothing;
+  the sheet stays open.
+- **A series picks ONCE.** `SeriesExportRun.folder` threads one grant into
+  every episode. Each episode still stages, copies and deletes one at a time,
+  so R8's space arithmetic did not change.
+- **The picker IS the consent.** There is no permission step, no refusal
+  outcome, and no Settings action on the report card. A folder the app cannot
+  write to fails at the copy, as `destinationWriteError`. No Info.plist key
+  and no runtime prompt: the document picker is consent-per-action, and the
+  app receives a security-scoped URL for the one folder picked, never the
+  device's files.
+- **The confirm button reads "Open", by decision (2026-09-16).** UIKit labels
+  its folder picker that way and the title is not configurable. "Save" exists
+  only in export mode, which needs a native module this app does not have;
+  that is `feat-509`. Do not try to relabel it from JS — there is no lever.
+- **A folder grant dies with the process.** `expo-file-system` opens the
+  security scope on pick and never closes it (`FilePickingUtils.swift`), and
+  ships no bookmark API, so a picked folder does not survive a relaunch.
+  Every staged note is therefore DISCARDED by the launch sweep; the deferred
+  write, the app-state gate and the foreground completion effect are all
+  gone. Android's SAF grant is persistable, but the recovery model is
+  deliberately uniform across platforms.
+- **The saved file is named by RENAMING the staged source, never by joining a
+  name onto the folder's uri.** Android's picker returns a SAF tree uri, and
+  `DocumentFile.fromTreeUri` resolves any appended segment back to the tree's
+  ROOT document — so `new File(new Directory(folder.uri), name)` is the folder
+  itself, and `copy()` throws `InvalidTypeFileException` on a directory. Expo's
+  SAF branch takes the child's name from the SOURCE file
+  (`CopyMoveStrategy.SAF.prepareAsDestination` -> `findFile(source.fileName)`),
+  so the runtime binding renames the staged file and then copies it into the
+  `Directory`. One code path serves both platforms.
+  **This is invisible to jest and to an iOS device run.** Every adapter test
+  injects a fake port, and iOS joins paths happily. Only an Android device
+  proves it. `rawExportWiring.guard.test.js` pins the rename and rejects the
+  join shape.
+- **A name collision takes a suffix, not an overwrite.** `suffixFileName` in
+  `src/lib/transferPort.ts` finds `Name (2).mp4`, bounded to
+  `RAW_EXPORT_MAX_FILENAME_LENGTH`. The free-name search reads the folder ONCE
+  through `listNames`, because Android resolves no per-name `exists` probe
+  against a SAF tree — a probe there answers for the folder, not the child.
+- **A failed copy cleans up after itself at the DESTINATION.** `File.copy` is a
+  plain non-atomic byte copy on both platforms, so an interrupted copy leaves a
+  truncated file under the final name in the viewer's own folder. `copyToFolder`
+  removes it best-effort in its catch. R18 is not satisfied by clearing the
+  staging directory alone.
+- **`signalBackgroundCompletion` fires AFTER the copy, not before it.** The
+  signal releases the shared background-session handler, and iOS may suspend the
+  process once it lands. Signalling first meant a download that finished in the
+  background could copy ~165 MB with no background window.
+- **Do not add `UIFileSharingEnabled` or `LSSupportsOpeningDocumentsInPlace`.**
+  Either key would show the staging root in the Files app mid-transfer, and
+  would offer the app's own container as a destination that dies with the
+  app. `appJsonNoPhotoLibrary.guard.test.js` pins their absence alongside the
+  absence of every photo permission.
+- **The cancel rejects, with platform-divergent codes.** iOS throws
+  `FilePickingCancelledException`, Android `PickerCancelledException`. The
+  binding catches every rejection, logs the code to `raw_export.folder_not_picked`
+  and returns null, rather than matching a code string a version bump could
+  change.
+- **Verification oracle:** after a save, list the picked folder through the
+  `Directory` handle and assert the file is present at the byte size the sheet
+  showed; then confirm in the Files app by hand. The old
+  `PHPhotoLibrary … success: YES` log count no longer exists.
+
 ## Android system navigation bar
 
 **`AppTheme` now has TWO writers**, and both go through the shared helpers in

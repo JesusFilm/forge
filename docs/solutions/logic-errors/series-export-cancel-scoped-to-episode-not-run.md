@@ -34,6 +34,15 @@ tags:
 
 # A cancel flag keyed to the episode cannot stop the run that outlives it
 
+> **Destination changed on 2026-09-15.** The export now copies into a folder
+> the viewer picks, not into the photo library. The run latch, the fix and the
+> oracle RULE below all survive unchanged. Two things do not: the oracle's
+> INSTRUMENT (the `PHPhotoLibrary` log count — count the files in the picked
+> folder instead, through the `Directory` handle the app holds), and the Known
+> Limit at the end, whose `completeStagedExport` path no longer exists. A
+> folder grant dies with the process, so every staged note is discarded on
+> relaunch and a cancelled run can no longer complete after a process death.
+
 ## Problem
 
 Pressing Stop on an in-progress series export did not stop the run. Episodes kept

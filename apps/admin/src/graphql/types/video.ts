@@ -281,6 +281,9 @@ builder.prismaObject("BibleBook", {
 
 /** @classification public-shape */
 builder.prismaObject("VideoSubtitle", {
+  // Homepage dub hydration can include thousands of subtitles. Let Pothos
+  // select the requested fields instead of copying every scalar per subtitle.
+  select: { id: true },
   fields: (t) => ({
     id: t.exposeID("id"),
     value: t.exposeString("value", { nullable: true }),

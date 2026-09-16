@@ -401,6 +401,16 @@ export function FinalSlatePanel({
                 </div>
               </div>
 
+              {item.viewingMode && (
+                <p className="mt-3 text-[11px] text-[var(--color-text-secondary)]">
+                  Sound-off preference{" "}
+                  {Math.round(item.viewingMode.soundOffPreference * 100)}% from{" "}
+                  {item.viewingMode.qualifiedVideos} distinct videos.
+                  {item.viewingMode.candidate
+                    ? ` This video's sound-off engagement qualified for ${item.viewingMode.candidate.qualifiedViewers} of ${item.viewingMode.candidate.viewers} observed viewers.`
+                    : " This video has no sound-off ranking boost."}
+                </p>
+              )}
               <div className="mt-3 flex flex-wrap gap-2">
                 {(contributors.length > 0
                   ? contributors

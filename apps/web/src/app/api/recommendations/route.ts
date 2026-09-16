@@ -15,6 +15,7 @@ import {
 } from "@/lib/recommendations"
 import {
   CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY,
+  RECOMMENDATION_DELIVERY_CLIENT_VERSION,
   SEMANTIC_RECOMMENDATION_CONTRACT,
   WATCH_RECOMMENDATION_SURFACE,
 } from "@/lib/recommendation-contracts"
@@ -47,7 +48,7 @@ const DeliveryInput = z
     seedMediaSlug: z
       .string()
       .max(191)
-      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+      .refine((value) => tryAsContentSlug(value) != null)
       .optional(),
     locale: z.string().regex(/^[A-Za-z0-9-]{1,32}$/),
     audioLanguageSlug: z.string().regex(/^[a-z0-9-]{1,64}$/),
@@ -207,6 +208,15 @@ export async function POST(request: Request) {
     )
     const delivery = {
       ...recoveredDelivery,
+      // Older open tabs strictly validate execution modes. Preserve their
+      // cards and attribution without mislabeling the new mode as topic fit.
+      personalization:
+        recoveredDelivery.personalization?.executionMode ===
+          "viewing_mode_personalized" &&
+        request.headers.get("x-forge-recommendation-client") !==
+          RECOMMENDATION_DELIVERY_CLIENT_VERSION
+          ? null
+          : recoveredDelivery.personalization,
       items: recoveredDelivery.items.map((item) => ({
         ...item,
         imageUrl: resolvePosterUrl(

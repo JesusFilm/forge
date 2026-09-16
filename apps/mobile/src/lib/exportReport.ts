@@ -3,10 +3,6 @@
  * terminal outcome and this module folds them into ONE report, so twelve
  * episodes report once (R21) and never twelve times.
  *
- * R25 lives here too. A refusal the operating system will not prompt for again
- * reads differently from a first refusal and carries a settings action, because
- * "try again" is advice the viewer cannot act on once the prompt is gone.
- *
  * Nothing here touches React. `ExportReportHost.tsx` owns the channel, the
  * component and the styles, and re-exports the signal type for its producers.
  */
@@ -17,8 +13,7 @@ import {
   TEXT_SECONDARY,
   WARNING_COLOR,
 } from "./color"
-import type { ExportAlbumIntent, ExportOutcome } from "./exportSession"
-import { RAW_EXPORT_ALBUM_NAME } from "./rawExportConstants"
+import type { ExportOutcome } from "./exportSession"
 
 /** How long a report that needs no viewer action stays on screen. */
 export const EXPORT_REPORT_AUTO_DISMISS_MS = 6000
@@ -56,9 +51,8 @@ export type ExportReportSignal = {
   runSize?: number
   /** The video's title, or the series' title for a run. */
   title?: string | null
-  albumIntent?: ExportAlbumIntent
-  /** Refusal only. `false` means the operating system will not prompt again. */
-  canAskAgain?: boolean
+  /** What the confirmation calls the folder the viewer picked. */
+  folderName?: string | null
   /** A reason the fold cannot derive, such as which gate blocked the export. */
   detail?: string | null
 }
@@ -73,19 +67,17 @@ export type ExportReportRecord = {
    * the resolved set.
    */
   outcomes: Readonly<Record<string, ExportOutcome>>
-  albumIntent: ExportAlbumIntent | null
-  permanentRefusal: boolean
+  folderName: string | null
   detail: string | null
-  /** Null holds the report until the viewer acts on it. */
-  expiresAt: number | null
+  /** When the host may drop the card. A run still going keeps its card past it. */
+  expiresAt: number
 }
 
 export type ExportReportView = {
   title: string | null
   headline: string
   detail: string | null
-  settings: boolean
-  icon: "checkmark-circle" | "alert-circle" | "close-circle" | "lock-closed"
+  icon: "checkmark-circle" | "alert-circle" | "close-circle"
   iconColor: string
 }
 
@@ -96,7 +88,6 @@ function countOutcomes(
     saved: 0,
     failed: 0,
     blocked: 0,
-    refused: 0,
     cancelled: 0,
     abandoned: 0,
   }
@@ -125,10 +116,6 @@ export function foldSignal(
   now: number,
 ): ExportReportRecord[] {
   const existing = records.find((record) => record.runId === signal.runId)
-  const permanentRefusal =
-    (existing?.permanentRefusal ?? false) ||
-    (signal.outcome === "refused" && signal.canAskAgain === false)
-
   const outcomes = { ...existing?.outcomes, [signal.target]: signal.outcome }
   const runSize = Math.max(existing?.runSize ?? 1, signal.runSize ?? 1)
 
@@ -141,15 +128,13 @@ export function foldSignal(
     title: signal.title ?? existing?.title ?? null,
     runSize,
     outcomes,
-    albumIntent: signal.albumIntent ?? existing?.albumIntent ?? null,
-    permanentRefusal,
+    folderName: signal.folderName ?? existing?.folderName ?? null,
     detail: signal.detail ?? existing?.detail ?? null,
-    expiresAt: permanentRefusal
-      ? null
-      : now +
-        (runIsOver(outcomes, runSize)
-          ? EXPORT_REPORT_AUTO_DISMISS_MS
-          : EXPORT_REPORT_RUN_STALL_MS),
+    expiresAt:
+      now +
+      (runIsOver(outcomes, runSize)
+        ? EXPORT_REPORT_AUTO_DISMISS_MS
+        : EXPORT_REPORT_RUN_STALL_MS),
   }
 
   const others = records.filter((record) => record.runId !== signal.runId)
@@ -159,7 +144,6 @@ export function foldSignal(
 // A single export reaches exactly one outcome, but a stray second signal must
 // still read sensibly, so the worst outcome wins.
 const SINGLE_PRIORITY: readonly ExportOutcome[] = [
-  "refused",
   "blocked",
   "failed",
   "abandoned",
@@ -171,12 +155,10 @@ function singleOutcome(counts: Record<ExportOutcome, number>): ExportOutcome {
   return SINGLE_PRIORITY.find((outcome) => counts[outcome] > 0) ?? "saved"
 }
 
-function savedHeadline(albumIntent: ExportAlbumIntent | null): string {
-  // R17: an add-only grant on iOS cannot make an album, so the confirmation
-  // names whatever the export actually reached.
-  return albumIntent === "album"
-    ? `Saved to the ${RAW_EXPORT_ALBUM_NAME} album.`
-    : "Saved to your photo library."
+function savedHeadline(folderName: string | null): string {
+  // The folder name is read back from the uri the picker returned, so an
+  // unreadable one names the app that owns every destination instead.
+  return folderName ? `Saved to ${folderName}.` : "Saved to Files."
 }
 
 function singleView(
@@ -184,34 +166,14 @@ function singleView(
   counts: Record<ExportOutcome, number>,
 ): ExportReportView {
   const outcome = singleOutcome(counts)
-  const settings = record.permanentRefusal
   const detail = (fallback: string | null) => record.detail ?? fallback
 
   switch (outcome) {
-    case "refused":
-      return settings
-        ? {
-            title: record.title,
-            headline: "Photo library access is off for this app.",
-            detail: "Turn on photo access in Settings, then try again.",
-            settings: true,
-            icon: "lock-closed",
-            iconColor: WARNING_COLOR,
-          }
-        : {
-            title: record.title,
-            headline: "Permission is needed to save to your photo library.",
-            detail: "Start the export again to see the prompt.",
-            settings: false,
-            icon: "lock-closed",
-            iconColor: WARNING_COLOR,
-          }
     case "blocked":
       return {
         title: record.title,
         headline: "The export did not start.",
         detail: detail(null),
-        settings: false,
         icon: "alert-circle",
         iconColor: WARNING_COLOR,
       }
@@ -220,7 +182,6 @@ function singleView(
         title: record.title,
         headline: "The video did not save.",
         detail: detail(null),
-        settings: false,
         icon: "alert-circle",
         iconColor: STATUS_FAILED_COLOR,
       }
@@ -229,7 +190,6 @@ function singleView(
         title: record.title,
         headline: "The export did not finish.",
         detail: detail("Start it again to keep a copy."),
-        settings: false,
         icon: "alert-circle",
         iconColor: STATUS_FAILED_COLOR,
       }
@@ -238,16 +198,14 @@ function singleView(
         title: record.title,
         headline: "Export cancelled.",
         detail: detail(null),
-        settings: false,
         icon: "close-circle",
         iconColor: TEXT_SECONDARY,
       }
     default:
       return {
         title: record.title,
-        headline: savedHeadline(record.albumIntent),
+        headline: savedHeadline(record.folderName),
         detail: detail(null),
-        settings: false,
         icon: "checkmark-circle",
         iconColor: STATUS_DONE_COLOR,
       }
@@ -263,13 +221,6 @@ function seriesView(
   if (counts.failed > 0) notes.push(`${counts.failed} did not save.`)
   if (counts.blocked > 0) notes.push(`${counts.blocked} did not start.`)
   if (counts.abandoned > 0) notes.push(`${counts.abandoned} did not finish.`)
-  if (counts.refused > 0) {
-    notes.push(
-      record.permanentRefusal
-        ? "Turn on photo access in Settings, then try again."
-        : "Photo library permission was refused.",
-    )
-  }
   if (record.detail) notes.push(record.detail)
 
   // The icon answers "did anything go wrong", never "has the run finished".
@@ -279,19 +230,13 @@ function seriesView(
   // a row. Every outcome that is NOT `saved` has a note above; those, and only
   // those, are what the warning colour is for.
   const clean =
-    counts.failed +
-      counts.blocked +
-      counts.refused +
-      counts.cancelled +
-      counts.abandoned ===
-    0
+    counts.failed + counts.blocked + counts.cancelled + counts.abandoned === 0
   return {
     title: record.title,
-    // R21: saved against the resolved set, always — a cancelled or refused run
-    // still tells the viewer how many episodes reached the library.
+    // R21: saved against the resolved set, always — a cancelled run still tells
+    // the viewer how many episodes reached the folder.
     headline: `Saved ${counts.saved} of ${record.runSize} episodes.`,
     detail: notes.length > 0 ? notes.join(" ") : null,
-    settings: record.permanentRefusal,
     icon: clean ? "checkmark-circle" : "alert-circle",
     iconColor: clean ? STATUS_DONE_COLOR : WARNING_COLOR,
   }

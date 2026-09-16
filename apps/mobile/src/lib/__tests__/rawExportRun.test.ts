@@ -1,5 +1,6 @@
 import type { ExportReportSignal } from "../../components/ExportReportHost"
 import type { ExportOutcome } from "../exportSession"
+import { exportFolderName, type ExportFolder } from "../rawExport"
 import type { RawExportInput, RawExportResult } from "../rawExportAdapter"
 import type { SeriesEpisodeResolution } from "../seriesDownloadResolver"
 import type { SeriesExportRunProgress } from "../seriesExportProgress"
@@ -14,6 +15,9 @@ import {
 const SERIES_SLUG = "washi-gospel"
 const SERIES_TITLE = "Washi Gospel"
 const RUN_ID = "washi-gospel:1700000000000"
+const FOLDER: ExportFolder = {
+  uri: "content://com.android.externalstorage.documents/tree/primary%3ADownload",
+}
 
 /**
  * Every gate the run reads is set on its own line, so a fixture that flips ONE
@@ -52,6 +56,7 @@ function buildRun(
     seriesSlug: SERIES_SLUG,
     seriesTitle: SERIES_TITLE,
     wifiOnly: false,
+    folder: FOLDER,
     episodes: resolved,
     ...overrides,
   })
@@ -60,7 +65,6 @@ function buildRun(
 type EpisodePlan =
   | { kind: "saved"; reused?: boolean }
   | { kind: "outcome"; outcome: ExportOutcome }
-  | { kind: "deferred" }
   | { kind: "already-exporting" }
   | { kind: "throws" }
 
@@ -73,11 +77,11 @@ type HarnessOptions = {
 /**
  * A stand-in for `rawExportAdapter`, mirroring the two orderings the run
  * depends on: the cancel flag is read AFTER the bytes stage and BEFORE the
- * library write, and every SETTLED outcome publishes exactly one report signal.
+ * folder copy, and every SETTLED outcome publishes exactly one report signal.
  */
 function harness(options: HarnessOptions = {}) {
   const inputs: RawExportInput[] = []
-  const libraryWrites: string[] = []
+  const folderCopies: string[] = []
   const signals: ExportReportSignal[] = []
   const overlapped: string[] = []
   let running: string | null = null
@@ -98,11 +102,11 @@ function harness(options: HarnessOptions = {}) {
       outcome,
       runSize: input.runSize,
       title: input.title,
+      folderName: exportFolderName(input.folder.uri),
     })
     return {
       kind: "settled",
       outcome,
-      albumIntent: outcome === "saved" ? "album" : null,
       reused,
     }
   }
@@ -128,12 +132,9 @@ function harness(options: HarnessOptions = {}) {
       }
       if (plan.kind === "already-exporting")
         return { kind: "already-exporting" }
-      if (plan.kind === "deferred") {
-        return { kind: "deferred", stagedPath: `staged/${input.videoSlug}.mp4` }
-      }
       if (cancelRequested) return settle(input, "cancelled")
       if (plan.kind === "outcome") return settle(input, plan.outcome)
-      libraryWrites.push(input.videoSlug)
+      folderCopies.push(input.videoSlug)
       return settle(input, "saved", plan.reused === true)
     } finally {
       running = null
@@ -151,7 +152,7 @@ function harness(options: HarnessOptions = {}) {
   return {
     deps,
     inputs,
-    libraryWrites,
+    folderCopies,
     signals,
     overlapped,
     runProgress,
@@ -224,8 +225,14 @@ describe("buildSeriesExportRun", () => {
     expect(run.runExports).toEqual([])
   })
 
+  it("carries the folder the viewer picked, so no episode picks its own", () => {
+    const run = buildRun(episodes(2))
+
+    expect(run.folder).toEqual(FOLDER)
+  })
+
   it("sizes the run ONCE, counting a reused episode the same as a transfer", () => {
-    // R8/KTD9: peak use is every library copy plus ONE staged file, so an
+    // R8/KTD9: peak use is every saved copy plus ONE staged file, so an
     // episode that duplicates a local copy still occupies the same bytes.
     const run = buildRun(episodes(3))
 
@@ -272,20 +279,6 @@ describe("runSeriesRawExport publishes the ring's count", () => {
       { runId: RUN_ID, saved: 0, total: 3 },
       { runId: RUN_ID, saved: 1, total: 3 },
       { runId: RUN_ID, saved: 2, total: 3 },
-      null,
-    ])
-  })
-
-  it("counts a deferred library write, which still saves", async () => {
-    const run = buildRun(episodes(2))
-    const h = harness({ plans: { "ep-0": { kind: "deferred" } } })
-
-    await runSeriesRawExport(run, h.deps)
-
-    expect(h.runProgress).toEqual([
-      { runId: RUN_ID, saved: 0, total: 2 },
-      { runId: RUN_ID, saved: 1, total: 2 },
-      { runId: RUN_ID, saved: 2, total: 2 },
       null,
     ])
   })
@@ -453,8 +446,8 @@ describe("runSeriesRawExport", () => {
 
     await runSeriesRawExport(run, h.deps)
 
-    expect(h.libraryWrites).toEqual(["ep-1", "ep-2", "ep-3", "ep-4", "ep-5"])
-    expect(h.inputs.map((input) => input.videoSlug)).toEqual(h.libraryWrites)
+    expect(h.folderCopies).toEqual(["ep-1", "ep-2", "ep-3", "ep-4", "ep-5"])
+    expect(h.inputs.map((input) => input.videoSlug)).toEqual(h.folderCopies)
     expect(h.overlapped).toEqual([])
   })
 
@@ -469,7 +462,7 @@ describe("runSeriesRawExport", () => {
     expect(run.runExports).toHaveLength(4)
 
     // Charged as a suffix. The adapter re-reads FREE SPACE per episode, and by
-    // episode 3 that space has already dropped by the two library copies
+    // episode 3 that space has already dropped by the two folder copies
     // episodes 1 and 2 wrote. Handing it the whole run again would demand room
     // for copies the device is already holding, so a run that fits at the start
     // would be refused midway through.
@@ -496,7 +489,7 @@ describe("runSeriesRawExport", () => {
     }
   })
 
-  it("stops the in-flight episode before its library write, and starts no more (AE9, R22)", async () => {
+  it("stops the in-flight episode before its folder copy, and starts no more (AE9, R22)", async () => {
     const run = buildRun(episodes(6))
     const h = harness({
       onStage: (slug, actions) => {
@@ -510,7 +503,7 @@ describe("runSeriesRawExport", () => {
       isCancelRequested: () => false,
     })
 
-    expect(h.libraryWrites).toEqual(["ep-1", "ep-2"])
+    expect(h.folderCopies).toEqual(["ep-1", "ep-2"])
     expect(h.inputs.map((input) => input.videoSlug)).toEqual([
       "ep-1",
       "ep-2",
@@ -572,7 +565,7 @@ describe("runSeriesRawExport", () => {
 
     const summary = await runSeriesRawExport(run, h.deps)
 
-    expect(h.libraryWrites).toEqual(["ep-1", "ep-3", "ep-4", "ep-5"])
+    expect(h.folderCopies).toEqual(["ep-1", "ep-3", "ep-4", "ep-5"])
     expect(summary.saved).toBe(4)
     expect(summary.failed).toBe(1)
     expect(summary.cancelled).toBe(false)
@@ -588,18 +581,18 @@ describe("runSeriesRawExport", () => {
     ])
   })
 
-  it("does not fail the rest when one episode is blocked or refused (R31)", async () => {
+  it("does not fail the rest when one episode is blocked or failed (R31)", async () => {
     const run = buildRun(episodes(4))
     const h = harness({
       plans: {
         "ep-2": { kind: "outcome", outcome: "blocked" },
-        "ep-3": { kind: "outcome", outcome: "refused" },
+        "ep-3": { kind: "outcome", outcome: "failed" },
       },
     })
 
     const summary = await runSeriesRawExport(run, h.deps)
 
-    expect(h.libraryWrites).toEqual(["ep-1", "ep-4"])
+    expect(h.folderCopies).toEqual(["ep-1", "ep-4"])
     expect(summary.saved).toBe(2)
     expect(summary.failed).toBe(2)
     expect(summary.saved + summary.failed).toBe(summary.total)
@@ -624,24 +617,9 @@ describe("runSeriesRawExport", () => {
       "rend-3",
       "rend-4",
     ])
-    expect(h.libraryWrites).toEqual(["ep-1", "ep-2", "ep-3", "ep-4"])
+    expect(h.folderCopies).toEqual(["ep-1", "ep-2", "ep-3", "ep-4"])
     expect(summary.saved).toBe(4)
     expect(summary.failed).toBe(0)
-  })
-
-  it("counts a deferred episode as saved and lets its own completion report it (KTD4, R21)", async () => {
-    const run = buildRun(episodes(3))
-    const h = harness({ plans: { "ep-2": { kind: "deferred" } } })
-
-    const summary = await runSeriesRawExport(run, h.deps)
-
-    expect(summary.deferred).toBe(1)
-    expect(summary.saved).toBe(3)
-    expect(summary.failed).toBe(0)
-    expect(summary.saved + summary.failed).toBe(summary.total)
-    // The deferred library write publishes under this same runId when it runs,
-    // so a guessed signal here would be overwritten by the truth.
-    expect(h.signals.filter((signal) => signal.target === "ep-2")).toEqual([])
   })
 
   it("counts an episode already exporting elsewhere as failed, and reports it (R27)", async () => {
@@ -671,6 +649,45 @@ describe("runSeriesRawExport", () => {
     }
   })
 
+  it("hands the SAME folder to every episode: the viewer picks once per run", async () => {
+    // The picker runs in the sheet before the run starts, and the run holds no
+    // picker at all, so a second prompt mid-run has nowhere to come from.
+    const run = buildRun(episodes(4))
+    const h = harness()
+
+    await runSeriesRawExport(run, h.deps)
+
+    expect(h.inputs).toHaveLength(4)
+    expect(h.inputs.map((input) => input.folder)).toEqual([
+      FOLDER,
+      FOLDER,
+      FOLDER,
+      FOLDER,
+    ])
+    expect(new Set(h.inputs.map((input) => input.folder.uri)).size).toBe(1)
+    expect(new Set(h.signals.map((signal) => signal.folderName))).toEqual(
+      new Set(["Download"]),
+    )
+  })
+
+  it("threads the run's OWN folder, so a different pick reaches every episode", async () => {
+    // Anti-vacuous companion: the case above also passes on a folder the run
+    // hard-codes, because the fixture default IS that folder.
+    const other: ExportFolder = { uri: "file:///private/var/mobile/Exports/" }
+    const run = buildRun(episodes(3), { folder: other })
+    const h = harness()
+
+    await runSeriesRawExport(run, h.deps)
+
+    expect(h.inputs.map((input) => input.folder)).toEqual([other, other, other])
+    expect(h.inputs.some((input) => input.folder.uri === FOLDER.uri)).toBe(
+      false,
+    )
+    expect(new Set(h.signals.map((signal) => signal.folderName))).toEqual(
+      new Set(["Exports"]),
+    )
+  })
+
   it("reports an empty resolved set without starting anything", async () => {
     const run = buildRun([])
     const h = harness()
@@ -683,7 +700,6 @@ describe("runSeriesRawExport", () => {
       total: 0,
       saved: 0,
       failed: 0,
-      deferred: 0,
       cancelled: false,
     })
   })

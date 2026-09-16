@@ -6,6 +6,16 @@ import { useTranslations } from "next-intl"
 import { setRequestLocale } from "next-intl/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+const { getWatchRouteManifestMock } = vi.hoisted(() => ({
+  getWatchRouteManifestMock: vi.fn(),
+}))
+
+vi.mock("@/lib/watch-route-manifest", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/lib/watch-route-manifest")>()
+  return { ...actual, getWatchRouteManifest: getWatchRouteManifestMock }
+})
+
 vi.mock("next/navigation", () => ({
   notFound: vi.fn(() => {
     throw new Error("NEXT_NOT_FOUND")
@@ -19,6 +29,7 @@ import LanguageVideosPage, {
   generateMetadata,
 } from "@/app/[locale]/[htmlLang]/videos/[languageSlug]/page"
 import { resolveWatchLanguageInventory } from "@/lib/watch-language-inventory"
+import { isPublicWatchHomeLanguageSlug } from "@/lib/locale"
 
 vi.mock("@/lib/watch-language-inventory", async (importOriginal) => {
   const actual =
@@ -45,6 +56,8 @@ function RussianPluralProbe() {
 
 describe("/{language}.html/videos route", () => {
   beforeEach(() => {
+    getWatchRouteManifestMock.mockReset()
+    getWatchRouteManifestMock.mockResolvedValue(null)
     resolveWatchLanguageInventoryMock.mockReset()
     resolveWatchLanguageInventoryMock.mockResolvedValue({
       languageSlug: "spanish-latin-american",
@@ -395,5 +408,135 @@ describe("/{language}.html/videos route", () => {
       "ru",
       "russian",
     )
+  })
+})
+
+describe("language admission on /{language}.html/videos", () => {
+  // A slug the live manifest publishes that the compiled corpus has never
+  // seen. Hard-coding a REAL recently-published language here would rot the
+  // moment the scheduled corpus refresh absorbs it, and the test would then
+  // pass for the wrong reason — so the probe slug is deliberately synthetic.
+  const NEWLY_PUBLISHED = "regression-probe-language"
+
+  const manifestPublishing = (slug: string) => ({
+    version: "test",
+    generatedAt: "2026-09-16T00:00:00.000Z",
+    contentSlugs: [],
+    oneSegmentSlugs: [],
+    episodePairsByParent: {},
+    audioLanguageSlugs: [slug],
+  })
+
+  beforeEach(() => {
+    getWatchRouteManifestMock.mockReset()
+    resolveWatchLanguageInventoryMock.mockReset()
+    resolveWatchLanguageInventoryMock.mockResolvedValue({
+      languageSlug: NEWLY_PUBLISHED,
+      languageName: "Probe",
+      languageNativeName: "Probe",
+      switcherLanguages: [],
+      counts: {
+        total: 0,
+        audioCollections: 0,
+        audioVideos: 0,
+        subtitleOnlyVideos: 0,
+      },
+      promoted: [],
+      audioCollections: [],
+      audioVideos: [],
+      subtitleOnlyVideos: [],
+      collectionLanguageCounts: {},
+    } as never)
+  })
+
+  it("keeps the probe slug outside the compiled corpus", () => {
+    // Anti-vacuous guard: if the corpus ever absorbed this slug, every
+    // admission assertion below would pass without consulting the manifest.
+    expect(isPublicWatchHomeLanguageSlug(NEWLY_PUBLISHED)).toBe(false)
+  })
+
+  it("renders a language the manifest publishes but the corpus has not absorbed", async () => {
+    getWatchRouteManifestMock.mockResolvedValue(
+      manifestPublishing(NEWLY_PUBLISHED),
+    )
+
+    await expect(
+      LanguageVideosPage({
+        params: Promise.resolve({
+          locale: "en",
+          htmlLang: "en",
+          languageSlug: NEWLY_PUBLISHED,
+        }),
+      }),
+    ).resolves.toBeDefined()
+  })
+
+  it("declares metadata for a language the manifest publishes", async () => {
+    getWatchRouteManifestMock.mockResolvedValue(
+      manifestPublishing(NEWLY_PUBLISHED),
+    )
+
+    const pageMetadata = await generateMetadata({
+      params: Promise.resolve({
+        locale: "en",
+        htmlLang: "en",
+        languageSlug: NEWLY_PUBLISHED,
+      }),
+    })
+
+    expect(pageMetadata.alternates?.canonical).toBe(
+      `https://www.jesusfilm.org/watch/${NEWLY_PUBLISHED}.html/videos`,
+    )
+  })
+
+  it("still fails closed for a slug neither the corpus nor the manifest knows", async () => {
+    getWatchRouteManifestMock.mockResolvedValue(
+      manifestPublishing(NEWLY_PUBLISHED),
+    )
+
+    await expect(
+      LanguageVideosPage({
+        params: Promise.resolve({
+          locale: "en",
+          htmlLang: "en",
+          languageSlug: "not-a-language-at-all",
+        }),
+      }),
+    ).rejects.toThrow("NEXT_NOT_FOUND")
+  })
+
+  it("fails closed, rather than throwing, when the manifest is unreachable", async () => {
+    // A manifest outage must degrade to the compiled corpus. Letting the
+    // rejection escape would turn every unknown-slug 404 into a 500.
+    getWatchRouteManifestMock.mockRejectedValue(new Error("manifest down"))
+
+    await expect(
+      LanguageVideosPage({
+        params: Promise.resolve({
+          locale: "en",
+          htmlLang: "en",
+          languageSlug: NEWLY_PUBLISHED,
+        }),
+      }),
+    ).rejects.toThrow("NEXT_NOT_FOUND")
+  })
+
+  it("does not await the manifest for a language the corpus already knows", async () => {
+    // apps/web/CLAUDE.md requires the manifest await stay lazy so content
+    // resolution never serializes behind the manifest request. An eager
+    // `await getWatchRouteManifest()` in the guard would trip this.
+    getWatchRouteManifestMock.mockResolvedValue(
+      manifestPublishing(NEWLY_PUBLISHED),
+    )
+
+    await LanguageVideosPage({
+      params: Promise.resolve({
+        locale: "es",
+        htmlLang: "es-419",
+        languageSlug: "spanish-latin-american",
+      }),
+    })
+
+    expect(getWatchRouteManifestMock).not.toHaveBeenCalled()
   })
 })

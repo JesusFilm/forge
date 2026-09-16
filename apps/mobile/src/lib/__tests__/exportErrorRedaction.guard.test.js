@@ -164,7 +164,8 @@ describe("export telemetry never carries a raw error message", () => {
 
   it("a raw sibling binding in the real rawExport.ts is flagged", () => {
     // Falsification, kept: the exact defect the name-scoped allowance hid —
-    // one of three real `failure` bindings turned raw. Both emit sites flag.
+    // a real `failure` binding turned raw. The permission catch that held the
+    // second emit site went with the photo library; the transfer catch remains.
     const mutated = entries.map((entry) =>
       entry.relative === "src/lib/rawExport.ts"
         ? {
@@ -179,7 +180,6 @@ describe("export telemetry never carries a raw error message", () => {
     // Anti-vacuous: the substitution must have landed on real source.
     expect(mutated).not.toEqual(entries)
     expect(findRawErrorMessages(mutated)).toEqual([
-      "src/lib/rawExport.ts: failure.errorMessage",
       "src/lib/rawExport.ts: failure.errorMessage",
     ])
   })
@@ -232,7 +232,7 @@ describe("export telemetry never carries a raw error message", () => {
           relative: "real.ts",
           content:
             `export type ExportFailure = { cause: string; errorMessage: string | null }\n` +
-            `const failure: ExportFailure = { cause: "permissionError", errorMessage: telemetryErrorMessage(error) }\n` +
+            `const failure: ExportFailure = { cause: "transferError", errorMessage: telemetryErrorMessage(error) }\n` +
             `warn("e", { error_message: failure.errorMessage })\n` +
             `const failure2: ExportFailure = { cause: report.interruption.kind, errorMessage: null }\n` +
             `warn("e", { error_message: failure2.errorMessage })`,

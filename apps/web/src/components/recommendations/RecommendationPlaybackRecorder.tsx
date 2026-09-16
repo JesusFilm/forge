@@ -18,10 +18,14 @@ import {
   withinRecommendationDeadline,
 } from "@/lib/recommendation-browser"
 import { RecommendationRuntimeError } from "@/lib/recommendation-errors"
-import { withRecommendationConsentLock } from "@/lib/recommendation-consent-bootstrap"
+import {
+  waitForRecommendationConsentBootstrap,
+  withRecommendationConsentLock,
+} from "@/lib/recommendation-consent-bootstrap"
 import { consumePlaybackDiscoveryContext } from "@/lib/playback-discovery"
 import { RECOMMENDATION_EVIDENCE_BROWSER_DEADLINE_MS } from "@/lib/recommendation-timeouts"
 import { watchPath } from "@/lib/watch-paths"
+import { createViewingModeRecorder } from "@/lib/viewing-mode-recorder"
 
 const PLAYBACK_ENDPOINT = watchPath("/api/recommendations/playback")
 const REQUEST_DEADLINE_MS = RECOMMENDATION_EVIDENCE_BROWSER_DEADLINE_MS
@@ -46,6 +50,7 @@ const MAX_FACTS_BY_KIND: Readonly<
   playback_observation: 1,
   playback_navigation: 16,
   playback_qoe: 16,
+  playback_viewing_mode: 32,
   playback_active_visible_playing: 64,
   playback_end: 1,
   playback_error: 1,
@@ -56,6 +61,7 @@ function isObservationEvent(fact: RecommendationPlaybackEvent): boolean {
     "playback_observation",
     "playback_navigation",
     "playback_qoe",
+    "playback_viewing_mode",
   ].includes(fact.kind)
 }
 
@@ -273,6 +279,12 @@ async function claimRecommendationEpisode(
 
 async function issuePlaybackContext(mediaId: string): Promise<string> {
   const discovery = consumePlaybackDiscoveryContext(mediaId)
+  // Automatic identity initialization must precede the episode so preview
+  // evidence can bind to the current profile generation. A failed bootstrap
+  // still permits anonymous playback evidence and never blocks the player.
+  await withinRecommendationDeadline(undefined, REQUEST_DEADLINE_MS, () =>
+    waitForRecommendationConsentBootstrap(),
+  ).catch(() => undefined)
   return withRecommendationConsentLock(() =>
     withinRecommendationDeadline(
       undefined,
@@ -313,14 +325,19 @@ export function RecommendationPlaybackRecorder({
   initiation,
   mediaId,
   durationSeconds,
+  viewable = null,
 }: {
   player: MuxPlayerRef | null
   initiation: "manual" | "automatic" | null
   mediaId: string
   durationSeconds?: number | null
+  viewable?: boolean | null
 }) {
   const initiationRef = useRef(initiation)
   const durationRef = useRef(durationSeconds)
+  const viewableRef = useRef(viewable)
+  const sampleViewingModeRef = useRef<() => void>(() => undefined)
+  const viewingModeObservedRef = useRef(false)
   const lifecycleGenerationRef = useRef(0)
   const observationsEnabledRef = useRef(true)
   const observationCountsRef = useRef({ navigation: 0, qoe: 0, seek: 0 })
@@ -355,8 +372,13 @@ export function RecommendationPlaybackRecorder({
   const lastPositionRef = useRef<number | null>(null)
   useEffect(() => {
     initiationRef.current = initiation
+    sampleViewingModeRef.current()
     observeInitiationRef.current()
   }, [initiation])
+  useEffect(() => {
+    viewableRef.current = viewable
+    sampleViewingModeRef.current()
+  }, [viewable])
   useEffect(() => {
     durationRef.current = durationSeconds
   }, [durationSeconds])
@@ -588,7 +610,9 @@ export function RecommendationPlaybackRecorder({
       // Optional observations cannot consume the pending slots reserved for
       // attempt/start, active-time and terminal evidence during a slow claim.
       if (
-        (next.kind === "playback_navigation" || next.kind === "playback_qoe") &&
+        (next.kind === "playback_navigation" ||
+          next.kind === "playback_qoe" ||
+          next.kind === "playback_viewing_mode") &&
         !episodeRef.current &&
         pendingRef.current.length >= 8
       ) {
@@ -701,6 +725,103 @@ export function RecommendationPlaybackRecorder({
         abandonPendingClaim()
       })
   }, [mediaId, sendOutbound])
+
+  useEffect(() => {
+    if (!player) return
+    let suspended = false
+    let seeking = false
+    let waiting = false
+    const wallClockOrigin = Date.now() - performance.now()
+    const recorder = createViewingModeRecorder({
+      now: () => performance.now(),
+      read: () => ({
+        positionSeconds: player.currentTime,
+        durationSeconds: durationRef.current ?? null,
+        playing:
+          !suspended &&
+          player.paused === false &&
+          !seeking &&
+          !waiting &&
+          player.readyState >= 3,
+        visible:
+          document.visibilityState === "visible" ? viewableRef.current : false,
+        mode:
+          player.muted === true || player.volume === 0
+            ? "sound_off"
+            : player.muted === false &&
+                Number.isFinite(player.volume) &&
+                player.volume > 0
+              ? "sound_on"
+              : null,
+        preview: initiationRef.current == null,
+        playbackRate: player.playbackRate,
+      }),
+      emit: (payload, endedAt) => {
+        viewingModeObservedRef.current = true
+        enqueue(
+          event<
+            Extract<
+              RecommendationPlaybackEvent,
+              { kind: "playback_viewing_mode" }
+            >
+          >(
+            {
+              kind: "playback_viewing_mode",
+              payload,
+            },
+            new Date(wallClockOrigin + endedAt),
+          ),
+        )
+      },
+    })
+    sampleViewingModeRef.current = recorder.sample
+    const sample = (event?: Event) => {
+      if (event?.type === "seeking") seeking = true
+      if (event?.type === "seeked") seeking = false
+      if (
+        event?.type === "waiting" ||
+        event?.type === "stalled" ||
+        event?.type === "error"
+      )
+        waiting = true
+      if (event?.type === "playing") waiting = false
+      recorder.sample()
+    }
+    const hide = () => {
+      suspended = true
+      recorder.flush()
+    }
+    const show = () => {
+      suspended = false
+      recorder.sample()
+    }
+    const events = [
+      "timeupdate",
+      "playing",
+      "pause",
+      "waiting",
+      "stalled",
+      "seeking",
+      "seeked",
+      "volumechange",
+      "ratechange",
+      "ended",
+      "error",
+    ]
+    for (const name of events) player.addEventListener(name, sample)
+    document.addEventListener("visibilitychange", sample)
+    window.addEventListener("pagehide", hide)
+    window.addEventListener("pageshow", show)
+    recorder.sample()
+    return () => {
+      recorder.flush()
+      sampleViewingModeRef.current = () => undefined
+      for (const name of events) player.removeEventListener(name, sample)
+      document.removeEventListener("visibilitychange", sample)
+      window.removeEventListener("pagehide", hide)
+      window.removeEventListener("pageshow", show)
+    }
+  }, [player, enqueue])
 
   useEffect(() => {
     if (!player) return
@@ -986,7 +1107,9 @@ export function RecommendationPlaybackRecorder({
       if (!terminalRecordedRef.current) recordAttempt()
       if (
         terminalRecordedRef.current ||
-        (!startRecordedRef.current && !attemptRecordedRef.current)
+        (!startRecordedRef.current &&
+          !attemptRecordedRef.current &&
+          !viewingModeObservedRef.current)
       ) {
         return
       }

@@ -287,6 +287,7 @@ export type RecommendationRequestDetailData = Readonly<{
       canonicalHref: string
       candidateGenerator: string
       provenance: Readonly<{ sceneIndex?: number; similarity?: number }>
+      viewingMode?: import("../viewing-mode").ViewingModeDecision
       presentation: Readonly<{
         videoTitle?: string
         audioLanguageSlug?: string
@@ -413,6 +414,7 @@ export type DetailItemRow = Readonly<{
   candidateGenerator: string
   sceneIndex: number | null
   similarity: number | null
+  viewingMode?: unknown
   videoTitle: string | null
   audioLanguageSlug: string | null
   startSeconds: number | null

@@ -1,7 +1,7 @@
 ---
 title: "Mocked-shape-vs-real-contract testing discipline — mocks prove BRANCH SHAPE; real fixtures prove PRODUCTION CONTRACT"
 date: 2026-05-06
-last_updated: 2026-09-11
+last_updated: 2026-09-16
 problem_type: best_practice
 component: testing_framework
 root_cause: inadequate_documentation
@@ -503,7 +503,7 @@ token via `partner-keys create` and have the partner rotate onto it).
 Some invariants have no behavioral test — a reset site that is
 vacuous-by-construction today, a build-shape decision like "this import stays
 lazy." The fallback is a source-text pin: read the module's own source in a
-test and assert the load-bearing token is present. Three rules, in order:
+test and assert the load-bearing token is present. Four rules, in order:
 
 1. **Prefer making the invariant unrepresentable.** A typed helper that both
    reset sites must call beats any pin, because the compiler enforces it. Reach
@@ -521,7 +521,7 @@ test and assert the load-bearing token is present. Three rules, in order:
    gives it meaning.** Rule 3 is the positive-pin case; this is its mirror for a
    forbidden-pattern guard, and both are the same error — asserting that a token
    exists _somewhere_ rather than that it is the thing the invariant is about.
-   Three splits, all observed here:
+   Four splits, all observed here:
    - **Key vs value.** "This option must never be set" names the KEY; the value
      is incidental. Extracting the value to a named constant or switching to an
      ES6 shorthand property disarms a value-matching guard, and both are
@@ -539,6 +539,18 @@ test and assert the load-bearing token is present. Three rules, in order:
      rewrote the vendor's own `@generated … sync-<hash>` marker instead of the
      app's. Target the occurrence by name and assert the other is untouched
      (session history).
+   - **Sequence vs collection.** A position encodes ORDER only while the code is
+     a sequence of statements. Hoisting those statements into an object literal,
+     an array, or a config map keeps every pinned token present and destroys the
+     meaning of their relative position. A guard comparing
+     `indexOf(tokenA) < indexOf(tokenB)` inside a function body validly pinned
+     "pick the folder before dismissing the sheet" until the two calls became
+     property VALUES of one options object; the order then lived in the helper
+     those properties are passed to, and the comparison read a literal's
+     declaration order instead. It kept passing. A cosmetic property reorder
+     would have turned it red, and a real order swap would not
+     (`rawExportWiring.guard.test.js`, PR #2313, open at time of writing,
+     2026-09-16).
 
    Direction decides what a mistake costs. A NEGATIVE invariant ("never
    present") fails OPEN — a refactor stops the match, the suite goes green, and
@@ -580,6 +592,33 @@ had just deleted, and still shipped a version that missed the last four; two
 reviewers found them by running the regex by hand. Falsifying against the form
 you just deleted proves the guard catches the defect you already fixed — not the
 defect a future refactor will write.
+
+A falsification that DID run against the real current shape still carries a date
+rather than a proof. It establishes that the guard discriminated against the
+code as it stood at that moment, and nothing more. The refactor that voids it is
+often your own, minutes later, in the same change: PR #2313's order guard was
+falsified properly — the real statement order was swapped, the test went red,
+the file was restored from a copy, the test went green — and was then disarmed
+by an extraction the same session performed a few edits later. Nothing went red,
+and no test run could have reported it; a reviewer found it. So re-falsify a
+source pin after any edit that moves the code it reads, and treat "I already
+falsified this" as true only of the shape it was falsified against. That is a
+standing obligation rather than one guard's story: every guard test in
+`apps/mobile` reads source text off disk, so any refactor that moves code moves
+what some guard reads. The earlier round of that same guard shows the cost of
+stopping one layer short: its first version keyed the function body off
+INDENTATION, the positive control caught that before it shipped, and the
+brace-matching rewrite fixed the fragility it had found while leaving this
+one standing (session history).
+
+The mirror of a position that stops meaning anything is a reader that never read
+anything. A guard that loops over a config path must first assert the path is
+populated, because an absent key yields an empty list and every loop over an
+empty list passes. The same PR shipped a permission guard reading
+`expo.android.permissions`, a key the manifest has never carried, so its
+forbidden-name loop ran zero times and could not fail. Give each reader in a
+guard file its own positive control; one control over the whole file proves only
+the reader it exercises.
 
 ## Refresh trigger
 

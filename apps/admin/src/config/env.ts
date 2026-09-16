@@ -458,6 +458,10 @@ export const env = createEnv({
     RECOMMENDATION_USER_SERVING_ENABLED: z
       .enum(["true", "false"])
       .default("true"),
+    // Narrow rollback switch for mode-profile projection and sound-off ranking.
+    RECOMMENDATION_VIEWING_MODE_ENABLED: z
+      .enum(["true", "false"])
+      .default("true"),
     // Fail-closed startup ceiling. The shared Postgres serving-control row is
     // the replica-wide runtime switch; this flag can only narrow it.
     RECOMMENDATION_SEMANTIC_SERVING_ENABLED: z
@@ -975,6 +979,9 @@ export const env = createEnv({
     RECOMMENDATION_SEMANTIC_SERVING_ENABLED: emptyToUndefined(
       process.env.RECOMMENDATION_SEMANTIC_SERVING_ENABLED,
     ),
+    RECOMMENDATION_VIEWING_MODE_ENABLED:
+      emptyToUndefined(process.env.RECOMMENDATION_VIEWING_MODE_ENABLED) ??
+      "true",
     RECOMMENDATION_CAPABILITY_KEYRING: emptyToUndefined(
       process.env.RECOMMENDATION_CAPABILITY_KEYRING,
     ),

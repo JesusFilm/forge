@@ -90,7 +90,8 @@ export function preparedCandidatesFromPlatform(
 
 export function selectedCandidateGenerator(
   sources: PreparedCandidate["sources"],
-): "semantic" | "multi-interest-profile" {
+): "semantic" | "multi-interest-profile" | "curated" {
+  if (sources.some((source) => source.generator === "curated")) return "curated"
   return sources.some((source) => source.generator === "multi-interest-profile")
     ? "multi-interest-profile"
     : "semantic"

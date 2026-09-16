@@ -3,8 +3,8 @@ id: "feat-509"
 title: "Retry raw SQL playback serialization conflicts without terminal input errors"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
-start_date: ""
+status: "complete"
+start_date: "2026-09-16"
 duration: 2
 depends_on: []
 blocks: []
@@ -82,3 +82,11 @@ Run touched Admin/Web tests, typechecks, lint and required PR checks. Deploy by
 normal PR-to-main flow, then reconcile a fixed production window's primary HTTP
 requests, retry logs and durable receipts. A short clean window does not close
 feat-464's separate two-hour integrity and monitoring gates.
+
+## Production verification — September 16
+
+Implementation, focused regressions, sequential Compound Engineering review and
+PR CI passed. The normal main deployment and exact production revision were
+verified. See [release evidence](../../operations/recommendation-quality-release-2026-09-16.md)
+for the bounded browser/database/HTTP result and remaining system-wide gates.
+The initial feature window recorded 38 retryable contention observations and no exhausted retry event; unrelated upstream timeouts remain separately reported. This closes the proven raw SQLSTATE/mapping gap, not all transport reliability work.

@@ -24,8 +24,12 @@ export function ShadowSlateEvidence({
       <p className="mt-3 text-[12px] text-[var(--color-text-muted)]">
         This row comparison needs its own terminal decision before an
         experiment. The candidate evaluation decision above does not approve
-        this composition policy. Recent history and published editorial
-        constraints were not captured for this sample.
+        this composition policy. History:{" "}
+        {displayRecommendationToken(
+          String(summary.slateHistory ?? "unavailable"),
+        )}
+        . Published editorial constraints and weight calibration remain
+        unavailable.
       </p>
       <p className="mt-2 font-mono text-[10px] text-[var(--color-text-muted)]">
         {summary.slatePolicy}

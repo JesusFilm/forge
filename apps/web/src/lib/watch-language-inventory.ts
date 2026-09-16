@@ -5,6 +5,7 @@ import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
 import adminClient from "@/lib/admin-client"
 import {
   isPublicWatchHomeLanguageSlug,
+  isPublicWatchLanguageSlugShape,
   publicWatchHomeLanguageSlugForLocale,
 } from "@/lib/locale"
 import {
@@ -14,7 +15,54 @@ import {
   watchVideoPath,
 } from "@/lib/routes"
 import { WATCH_CACHE_TAGS } from "@/lib/watch-cache-tags"
-import { getWatchRouteManifest } from "@/lib/watch-route-manifest"
+import {
+  getWatchRouteManifest,
+  isWatchAudioLanguageSlug,
+} from "@/lib/watch-route-manifest"
+
+/**
+ * Whether the language-inventory surface may serve `slug`.
+ *
+ * This is the ONE admission definition for the surface: the route guard in
+ * `[locale]/[htmlLang]/videos/[languageSlug]/page.tsx` and
+ * `resolveWatchLanguageInventory` below both call it. They used to carry
+ * separate copies of the same three steps, which is how a route guard and a
+ * resolver drift into disagreeing — and the way they disagree is the resolver
+ * answering an admitted URL with ENGLISH inventory instead of the language
+ * named in it. Silent wrong content is worse than the 404 it replaces, so
+ * there is exactly one copy.
+ *
+ * The compiled `PUBLIC_WATCH_LANGUAGE_SLUGS` corpus is a build-time snapshot,
+ * so gating on it alone hard-404s every language admin published since the
+ * last regeneration — and because that 404 comes from a compiled constant, ISR
+ * re-rendering regenerates the identical 404 until the next deploy. The proxy
+ * already rewrites those languages here via `isWatchAudioLanguageSlug`, so
+ * this surface has to admit the same namespace or the two disagree (the
+ * inventory half of Linear FGE-81).
+ *
+ * Three properties, each load-bearing:
+ *
+ * - The shape test runs FIRST and so applies to both branches. The corpus
+ *   branch already enforces it internally; the manifest branch would not, and
+ *   an admitted slug is interpolated raw into this route's canonical and Open
+ *   Graph URLs.
+ * - The manifest is awaited ONLY on a corpus miss, mirroring `classify` in the
+ *   catch-all page, so the common path never serializes content resolution
+ *   behind the manifest request.
+ * - A failed manifest fetch degrades to the corpus alone, so unknown slugs
+ *   still fail closed and a manifest outage can never widen the namespace or
+ *   throw into a route that has no error boundary for it.
+ */
+export async function isAdmittedWatchInventoryLanguageSlug(
+  slug: string,
+): Promise<boolean> {
+  if (!isPublicWatchLanguageSlugShape(slug)) return false
+  if (isPublicWatchHomeLanguageSlug(slug)) return true
+  return isWatchAudioLanguageSlug(
+    slug,
+    await getWatchRouteManifest().catch(() => null),
+  )
+}
 
 const WATCH_LANGUAGE_INVENTORY_LIMIT = 1_000
 const WATCH_LANGUAGE_SWITCHER_LIMIT = 5_000
@@ -371,11 +419,29 @@ function nativeLanguageNameFromJson(
   return null
 }
 
+/**
+ * `additionalAdmittedSlugs` widens this veto beyond the compiled corpus. The
+ * corpus alone silently drops every language admin published since the last
+ * regeneration from the switcher, so a newly published language could not be
+ * reached from any other language's picker.
+ *
+ * It is required and deliberately has no default: a default would make
+ * "corpus only" a one-word revert at either call site that still compiles,
+ * typechecks, and leaves the suite green. Callers pass either the languages
+ * the live manifest publishes or the single slug the request already renders.
+ */
 function switcherLanguageFromRaw(
   language: WatchLanguageInventoryLanguageRaw,
+  additionalAdmittedSlugs: ReadonlySet<string>,
 ): WatchLanguageInventorySwitcherLanguage | null {
   const slug = language.slug
-  if (!slug || !isPublicWatchHomeLanguageSlug(slug)) return null
+  if (!slug) return null
+  if (
+    !isPublicWatchHomeLanguageSlug(slug) &&
+    !additionalAdmittedSlugs.has(slug)
+  ) {
+    return null
+  }
   const languageName = languageNameFromJson(language.name, slug)
   return {
     slug,
@@ -402,14 +468,17 @@ function uniqueSwitcherLanguages(
 async function resolveSwitcherLanguages(
   current: WatchLanguageInventorySwitcherLanguage,
 ): Promise<WatchLanguageInventorySwitcherLanguage[]> {
+  // `.catch` is not optional here: this await is reached on the corpus-hit
+  // path too, where admission never touched the manifest. Without it a
+  // manifest outage turns a fully renderable page into a 500.
   const [languages, manifest] = await Promise.all([
     fetchWatchLanguageInventoryLanguages(),
-    getWatchRouteManifest(),
+    getWatchRouteManifest().catch(() => null),
   ])
   const manifestLanguageSlugs = new Set(manifest?.audioLanguageSlugs ?? [])
   const options = languages
     .flatMap((language) => {
-      const option = switcherLanguageFromRaw(language)
+      const option = switcherLanguageFromRaw(language, manifestLanguageSlugs)
       return option ? [option] : []
     })
     .filter(
@@ -451,7 +520,13 @@ export async function resolveWatchLanguageSwitcherOptions(
     const current =
       languages
         .flatMap((language) => {
-          const option = switcherLanguageFromRaw(language)
+          // Admit the current slug explicitly: a language published since the
+          // last corpus build would otherwise fall through to `fallback` and
+          // lose its real name and native name in the picker.
+          const option = switcherLanguageFromRaw(
+            language,
+            new Set([currentSlug]),
+          )
           return option && option.slug === currentSlug ? [option] : []
         })
         .at(0) ?? fallback
@@ -532,14 +607,41 @@ function normalizeCard(
   } satisfies WatchLanguageInventoryCard
 }
 
+/**
+ * The language whose inventory to fetch for this request.
+ *
+ * Admitting on the compiled corpus alone made this substitute the locale's
+ * default language for anything published since the last regeneration — so
+ * fixing only the route guard would have served ENGLISH inventory under a
+ * newly published language's URL instead of 404ing it.
+ *
+ * Admission is `isAdmittedWatchInventoryLanguageSlug`, the same call the route
+ * guard makes, so the two cannot disagree about which slugs are real. Both
+ * reads land in the manifest's 60s process cache, so in practice they see one
+ * snapshot; the locale-default fallback survives only for the no-segment call
+ * shape and for a slug the route guard would itself have 404'd.
+ */
+async function inventoryLanguageSlugForRequest(
+  locale: string,
+  routeLanguageSegment?: string | null,
+): Promise<string> {
+  if (
+    routeLanguageSegment &&
+    (await isAdmittedWatchInventoryLanguageSlug(routeLanguageSegment))
+  ) {
+    return routeLanguageSegment
+  }
+  return publicWatchHomeLanguageSlugForLocale(locale) ?? "english"
+}
+
 export async function resolveWatchLanguageInventory(
   locale: string,
   routeLanguageSegment?: string | null,
 ): Promise<WatchLanguageInventoryModel> {
-  const languageSlug =
-    routeLanguageSegment && isPublicWatchHomeLanguageSlug(routeLanguageSegment)
-      ? routeLanguageSegment
-      : (publicWatchHomeLanguageSlugForLocale(locale) ?? "english")
+  const languageSlug = await inventoryLanguageSlugForRequest(
+    locale,
+    routeLanguageSegment,
+  )
   const raw = await fetchWatchLanguageInventory(languageSlug)
   const resolvedLanguageSlug = raw.language?.slug ?? languageSlug
   const languageName = languageNameFromJson(

@@ -4,12 +4,12 @@ import { NextIntlClientProvider } from "next-intl"
 import { getTranslations, setRequestLocale } from "next-intl/server"
 
 import { LanguageInventoryPage } from "@/components/watch-language-inventory/LanguageInventoryPage"
-import {
-  isPublicWatchHomeLanguageSlug,
-  resolveWatchLocaleIdentity,
-} from "@/lib/locale"
+import { resolveWatchLocaleIdentity } from "@/lib/locale"
 import { WATCH_BASE_PATH, WATCH_PUBLIC_METADATA_ORIGIN } from "@/lib/routes"
-import { resolveWatchLanguageInventory } from "@/lib/watch-language-inventory"
+import {
+  isAdmittedWatchInventoryLanguageSlug,
+  resolveWatchLanguageInventory,
+} from "@/lib/watch-language-inventory"
 import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
 import {
   LANGUAGE_INVENTORY_CLIENT_MESSAGE_NAMESPACES,
@@ -40,7 +40,7 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { locale: rawLocale, languageSlug } = await params
-  if (!isPublicWatchHomeLanguageSlug(languageSlug)) notFound()
+  if (!(await isAdmittedWatchInventoryLanguageSlug(languageSlug))) notFound()
 
   const { locale } = resolveWatchLocaleIdentity(rawLocale)
   const inventory = await resolveWatchLanguageInventory(locale, languageSlug)
@@ -76,7 +76,7 @@ export async function generateMetadata({
 
 export default async function LanguageVideosPage({ params }: PageProps) {
   const { locale: rawLocale, languageSlug } = await params
-  if (!isPublicWatchHomeLanguageSlug(languageSlug)) notFound()
+  if (!(await isAdmittedWatchInventoryLanguageSlug(languageSlug))) notFound()
 
   const { locale } = resolveWatchLocaleIdentity(rawLocale)
   setRequestLocale(locale)

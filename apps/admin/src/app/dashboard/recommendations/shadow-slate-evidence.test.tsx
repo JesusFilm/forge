@@ -41,8 +41,9 @@ describe("shadow slate inspection", () => {
     expect(html).toContain(
       "candidate evaluation decision above does not approve",
     )
+    expect(html).toContain("History: Unavailable")
     expect(html).toContain(
-      "Recent history and published editorial constraints were not captured",
+      "Published editorial constraints and weight calibration remain unavailable",
     )
     expect(html).toContain("Source coverage 2/2")
     expect(html).toContain("interest coverage 2/3")

@@ -81,7 +81,6 @@ jest.mock("../../lib/exportSession", () => {
       }
     },
     listStagingNotes: jest.fn(async () => state.notes),
-    clearStagingNote: jest.fn(async () => undefined),
   }
   return {
     getExportSessionStore: () => store,
@@ -98,7 +97,6 @@ jest.mock("../../lib/exportSession", () => {
 
 jest.mock("../../lib/rawExportRuntime", () => {
   const adapter = {
-    completeStagedExport: jest.fn(async () => undefined),
     discardStagedExport: jest.fn(async () => undefined),
   }
   return {
@@ -144,7 +142,6 @@ jest.mock("../WatchPreferencesProvider", () => {
 })
 
 import { StrictMode, act } from "react"
-import { AppState, type AppStateStatus } from "react-native"
 
 import { DownloadsProvider } from "../DownloadsProvider"
 import type { ExportStagingNote } from "../../lib/exportSession"
@@ -196,7 +193,6 @@ const session = jest.requireMock("../../lib/exportSession") as {
 const runtime = jest.requireMock("../../lib/rawExportRuntime") as {
   attachRawExportRuntime: jest.Mock
   __adapter: {
-    completeStagedExport: jest.Mock
     discardStagedExport: jest.Mock
   }
 }
@@ -216,8 +212,6 @@ function note(
     version: 1,
     runId: "run-1",
     stagedPath: `${EXPORT_ROOT}/${over.target}/video.mp4`,
-    albumIntent: "album",
-    transferFinished: false,
     ...over,
   }
 }
@@ -255,12 +249,9 @@ function seedManifest(records: OfflineDownloadRecord[]) {
   }
 }
 
-let appStateHandlers: ((state: AppStateStatus) => void)[] = []
-
 beforeEach(() => {
   jest.clearAllMocks()
   storage.clear()
-  appStateHandlers = []
   session.__sessionState.activeCount = 0
   session.__sessionState.targets = new Set()
   session.__sessionState.notes = []
@@ -269,18 +260,6 @@ beforeEach(() => {
   engine.listExistingDownloadTasks.mockResolvedValue([])
   fs.fileExists.mockResolvedValue(false)
   fs.listDirectory.mockResolvedValue([])
-  jest
-    .spyOn(AppState, "addEventListener")
-    .mockImplementation((_type, handler) => {
-      appStateHandlers.push(handler as (state: AppStateStatus) => void)
-      return { remove: jest.fn() } as unknown as ReturnType<
-        typeof AppState.addEventListener
-      >
-    })
-})
-
-afterEach(() => {
-  jest.restoreAllMocks()
 })
 
 function element(strict: boolean) {
@@ -365,17 +344,14 @@ describe("engine-config fence (KTD3) under a StrictMode remount", () => {
 
 describe("launch export sweep", () => {
   it("composes the sweep from the notes, staged entries and live tasks it fetched", async () => {
-    const finished = note({ target: "finished-one", transferFinished: true })
+    const landed = note({ target: "landed-one" })
     const interrupted = note({ target: "interrupted" })
-    session.__sessionState.notes = [finished, interrupted]
+    session.__sessionState.notes = [landed, interrupted]
     fs.listDirectory.mockResolvedValue([
-      "finished-one",
+      "landed-one",
       "interrupted",
       "orphan-dir",
     ])
-    fs.fileExists.mockImplementation(
-      async (uri: string) => uri === finished.stagedPath,
-    )
     const liveTask = { id: "rawexport:interrupted" }
     engine.listExistingDownloadTasks.mockResolvedValue([liveTask])
 
@@ -387,8 +363,10 @@ describe("launch export sweep", () => {
       unknown[],
       ExportSweepEffects,
     ]
+    // Every note is a discard: the folder grant died with the process, so no
+    // launch can finish the copy. Whether the staged file landed is not read.
     expect(actions).toEqual([
-      { action: "finish", note: finished },
+      { action: "discard", note: landed, stopTaskId: null },
       {
         action: "discard",
         note: interrupted,
@@ -396,6 +374,7 @@ describe("launch export sweep", () => {
       },
       { action: "removeStagedDir", target: "orphan-dir" },
     ])
+    expect(fs.fileExists).not.toHaveBeenCalled()
     expect(effects.adapter).toBe(runtime.__adapter)
 
     // The removal re-joins the entry under the root, so a stray name cannot
@@ -414,14 +393,12 @@ describe("launch export sweep", () => {
   })
 
   it("stops before applying when the provider unmounts mid-fetch", async () => {
-    const pending = note({ target: "slow-one", transferFinished: true })
-    session.__sessionState.notes = [pending]
-    fs.listDirectory.mockResolvedValue(["slow-one"])
-    let releaseFileExists!: (exists: boolean) => void
-    fs.fileExists.mockImplementation(
+    session.__sessionState.notes = [note({ target: "slow-one" })]
+    let releaseListing!: (entries: string[]) => void
+    fs.listDirectory.mockImplementation(
       () =>
-        new Promise<boolean>((resolve) => {
-          releaseFileExists = resolve
+        new Promise<string[]>((resolve) => {
+          releaseListing = resolve
         }),
     )
 
@@ -430,7 +407,7 @@ describe("launch export sweep", () => {
 
     await unmount(renderer)
     await act(async () => {
-      releaseFileExists(true)
+      releaseListing(["slow-one"])
     })
     await flush()
 
@@ -438,10 +415,8 @@ describe("launch export sweep", () => {
   })
 
   it("reports itself cancelled to an apply already in flight", async () => {
-    const finished = note({ target: "finished-one", transferFinished: true })
-    session.__sessionState.notes = [finished]
-    fs.listDirectory.mockResolvedValue(["finished-one"])
-    fs.fileExists.mockResolvedValue(true)
+    session.__sessionState.notes = [note({ target: "landed-one" })]
+    fs.listDirectory.mockResolvedValue(["landed-one"])
 
     const renderer = await render()
     const effects = sweep.applyExportSweep.mock
@@ -453,66 +428,27 @@ describe("launch export sweep", () => {
   })
 })
 
-describe("deferred exports finish on return to the foreground (KTD4)", () => {
-  it("completes a finished note and skips one this session still owns", async () => {
-    const mine = note({ target: "still-exporting", transferFinished: true })
-    const theirs = note({ target: "killed-run", transferFinished: true })
-    const unfinished = note({ target: "half-staged" })
-    const renderer = await render()
-
-    // The launch sweep already ran against an empty list; the foreground pass
-    // reads the notes that landed since.
-    session.__sessionState.notes = [mine, theirs, unfinished]
-    session.__sessionState.targets = new Set(["still-exporting"])
-    expect(appStateHandlers.length).toBe(1)
-    await act(async () => {
-      appStateHandlers[0]("active")
-    })
-    await flush()
-
-    expect(runtime.__adapter.completeStagedExport).toHaveBeenCalledTimes(1)
-    expect(runtime.__adapter.completeStagedExport).toHaveBeenCalledWith(theirs)
-    await unmount(renderer)
-  })
-
-  it("does nothing on a background transition", async () => {
-    session.__sessionState.notes = [
-      note({ target: "killed-run", transferFinished: true }),
-    ]
-    const renderer = await render()
-    await act(async () => {
-      appStateHandlers[0]("background")
-    })
-    await flush()
-    expect(runtime.__adapter.completeStagedExport).not.toHaveBeenCalled()
-    await unmount(renderer)
-  })
-})
-
 describe("cold-start phases", () => {
   it("sweeps the export staging root without waiting for the offline reattach", async () => {
     // The two phases share only `tasks`/`liveTaskSlugs`, computed before either
-    // starts. A stalled reattach must not hold the "Saved to Photos" report and
+    // starts. A stalled reattach must not hold the unfinished-export report and
     // the staged-file cleanup for the whole session.
     const stalled = record({
       videoSlug: "stalled-download",
       pendingPath: "file:///docs/offline-downloads/stalled-download/a.pending",
     })
     seedManifest([stalled])
-    const finished = note({ target: "finished-one", transferFinished: true })
-    session.__sessionState.notes = [finished]
-    fs.listDirectory.mockResolvedValue(["finished-one"])
-    fs.fileExists.mockImplementation((uri: string) =>
-      uri === finished.stagedPath
-        ? Promise.resolve(true)
-        : new Promise<boolean>(() => {}),
-    )
+    const landed = note({ target: "landed-one" })
+    session.__sessionState.notes = [landed]
+    fs.listDirectory.mockResolvedValue(["landed-one"])
+    // Only the reattach reads file presence, so a hang here stalls it alone.
+    fs.fileExists.mockImplementation(() => new Promise<boolean>(() => {}))
 
     const renderer = await render()
 
     expect(sweep.applyExportSweep).toHaveBeenCalledTimes(1)
     expect(sweep.applyExportSweep.mock.calls[0][0]).toEqual([
-      { action: "finish", note: finished },
+      { action: "discard", note: landed, stopTaskId: null },
     ])
     await unmount(renderer)
   })

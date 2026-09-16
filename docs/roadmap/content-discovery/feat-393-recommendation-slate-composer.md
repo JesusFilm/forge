@@ -87,3 +87,12 @@ historical/ignore context is not captured by current shadow generators;
 series/speaker inputs and familiar/discovery calibration remain unavailable. These
 are shown as missing inputs, not successful checks. A terminal composition decision
 is still required before controlled exposure.
+
+## September 16 follow-through
+
+The shadow runner now reconstructs bounded same-session recent history strictly
+before the original request, with explicit missing/retention states. Comparison
+provenance and the authorized Admin view show that coverage. The candidate
+evaluation decision still cannot approve the separate composition policy.
+Published editorial adapters, series/speaker metadata, calibration and a terminal
+composition decision remain incomplete; no live MMR policy is enabled.

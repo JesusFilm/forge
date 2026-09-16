@@ -125,14 +125,12 @@ describe("ActionButtonRow download control", () => {
   describe("with a raw export in flight (AE12)", () => {
     it("names the export and offers the pause", async () => {
       const renderer = await render({ exportEntry: exportEntry() })
-      expect(downloadLabel(renderer)).toBe(
-        "Saving to Photos, 42%. Tap to pause",
-      )
+      expect(downloadLabel(renderer)).toBe("Saving to Files, 42%. Tap to pause")
     })
 
     it("routes the press to the caller so it can pause the EXPORT", async () => {
       const renderer = await render({ exportEntry: exportEntry() })
-      const nodes = labelled(renderer, "Saving to Photos, 42%. Tap to pause")
+      const nodes = labelled(renderer, "Saving to Files, 42%. Tap to pause")
       expect(nodes.length).toBeGreaterThan(0)
       expect(nodes.some((n) => n.props.disabled === true)).toBe(false)
       await pressAll(nodes)
@@ -155,7 +153,7 @@ describe("ActionButtonRow download control", () => {
         exportEntry: exportEntry({ paused: true }),
       })
       expect(downloadLabel(renderer)).toBe(
-        "Saving to Photos, paused at 42%. Tap to resume or stop",
+        "Saving to Files, paused at 42%. Tap to resume or stop",
       )
       const names = mockIcons.map((icon) => icon.name)
       expect(names).toContain("play")
@@ -169,9 +167,7 @@ describe("ActionButtonRow download control", () => {
         downloadState: "downloaded",
         exportEntry: exportEntry(),
       })
-      expect(downloadLabel(renderer)).toBe(
-        "Saving to Photos, 42%. Tap to pause",
-      )
+      expect(downloadLabel(renderer)).toBe("Saving to Files, 42%. Tap to pause")
       expect(mockIcons.map((icon) => icon.name)).not.toContain(
         "checkmark-circle-outline",
       )
@@ -184,9 +180,7 @@ describe("ActionButtonRow download control", () => {
         exportEntry: exportEntry(),
       })
       // The offline transfer is at 90%; the label must be the EXPORT's 42%.
-      expect(downloadLabel(renderer)).toBe(
-        "Saving to Photos, 42%. Tap to pause",
-      )
+      expect(downloadLabel(renderer)).toBe("Saving to Files, 42%. Tap to pause")
     })
   })
 

@@ -41,6 +41,7 @@ export function WatchSectionRenderer({
   modalCallbacks,
   onPlayerReady,
   onPlayerActivated,
+  onPlayerViewabilityChange,
   languageSlug,
   locale,
   hasSubtitleOptions = false,
@@ -61,6 +62,7 @@ export function WatchSectionRenderer({
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   onPlayerActivated?: (initiation: "manual" | "automatic") => void
+  onPlayerViewabilityChange?: (visible: boolean) => void
   languageSlug?: string
   locale?: string
   hasSubtitleOptions?: boolean
@@ -106,6 +108,7 @@ export function WatchSectionRenderer({
           modalCallbacks={modalCallbacks}
           onPlayerReady={onPlayerReady}
           onPlayerActivated={onPlayerActivated}
+          onPlayerViewabilityChange={onPlayerViewabilityChange}
           languageSlug={languageSlug}
           locale={locale}
           hasSubtitleOptions={hasSubtitleOptions}
@@ -150,6 +153,7 @@ export function WatchSectionRenderer({
                   modalCallbacks={modalCallbacks}
                   onPlayerReady={onPlayerReady}
                   onPlayerActivated={onPlayerActivated}
+                  onPlayerViewabilityChange={onPlayerViewabilityChange}
                   languageSlug={languageSlug}
                   locale={locale}
                   hasSubtitleOptions={hasSubtitleOptions}
@@ -181,6 +185,7 @@ function WatchBlockEntry({
   modalCallbacks,
   onPlayerReady,
   onPlayerActivated,
+  onPlayerViewabilityChange,
   languageSlug,
   locale,
   hasSubtitleOptions,
@@ -203,6 +208,7 @@ function WatchBlockEntry({
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   onPlayerActivated?: (initiation: "manual" | "automatic") => void
+  onPlayerViewabilityChange?: (visible: boolean) => void
   languageSlug?: string
   locale?: string
   hasSubtitleOptions: boolean
@@ -227,6 +233,7 @@ function WatchBlockEntry({
         modalCallbacks={modalCallbacks}
         onPlayerReady={onPlayerReady}
         onPlayerActivated={onPlayerActivated}
+        onPlayerViewabilityChange={onPlayerViewabilityChange}
         languageSlug={languageSlug}
         locale={locale}
         hasSubtitleOptions={hasSubtitleOptions}
@@ -260,6 +267,7 @@ function SyntheticBlock({
   modalCallbacks,
   onPlayerReady,
   onPlayerActivated,
+  onPlayerViewabilityChange,
   languageSlug,
   locale,
   hasSubtitleOptions,
@@ -281,6 +289,7 @@ function SyntheticBlock({
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   onPlayerActivated?: (initiation: "manual" | "automatic") => void
+  onPlayerViewabilityChange?: (visible: boolean) => void
   languageSlug?: string
   locale?: string
   hasSubtitleOptions: boolean
@@ -315,6 +324,7 @@ function SyntheticBlock({
           block={block}
           onPlayerReady={onPlayerReady}
           onPlayerActivated={onPlayerActivated}
+          onPlayerViewabilityChange={onPlayerViewabilityChange}
           onLanguageClick={modalCallbacks?.openLanguage}
           onShareClick={modalCallbacks?.openShare}
           languageSlug={languageSlug ?? null}

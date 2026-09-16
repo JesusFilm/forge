@@ -1,0 +1,25 @@
+{
+  "capturedAt": "2026-09-16T02:15:46.682Z",
+  "results": [
+    {
+      "name": "recommendation_workflow_error_classification",
+      "milliseconds": 435,
+      "rows": [
+        {
+          "workflow_key": "recommendation-episode-finalization",
+          "status": "running",
+          "error_class": "unclassified",
+          "runs": "1",
+          "finished_runs": "1"
+        },
+        {
+          "workflow_key": "recommendation-episode-finalization",
+          "status": "succeeded",
+          "error_class": "contention",
+          "runs": "1",
+          "finished_runs": "1"
+        }
+      ]
+    }
+  ]
+}

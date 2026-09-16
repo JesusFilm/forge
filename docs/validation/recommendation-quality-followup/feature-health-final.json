@@ -1,0 +1,434 @@
+{
+  "capturedAt": "2026-09-16T02:27:32.803Z",
+  "results": [
+    {
+      "name": "release_migrations",
+      "milliseconds": 432,
+      "rows": [
+        {
+          "migration_name": "0097_recommendation_curated_fallback_mode",
+          "finished_at": "2026-09-16T01:33:50.417Z",
+          "rolled_back_at": null
+        },
+        {
+          "migration_name": "0098_recommendation_viewing_mode",
+          "finished_at": "2026-09-16T01:33:50.465Z",
+          "rolled_back_at": null
+        }
+      ]
+    },
+    {
+      "name": "mode_evidence_health",
+      "milliseconds": 428,
+      "rows": [
+        {
+          "episodes": "92",
+          "profiles": "40",
+          "qualified_sound_off_episodes": "1",
+          "qualified_sound_on_episodes": "39",
+          "preview_episodes": "43",
+          "invalid_current_identity_rows": "0",
+          "conflict_rows": "0",
+          "mismatched_retention_rows": "0",
+          "first_observed_at": "2026-09-16T01:49:30.145Z",
+          "latest_observed_at": "2026-09-16T02:27:27.178Z"
+        }
+      ]
+    },
+    {
+      "name": "mode_independent_candidate_availability",
+      "milliseconds": 424,
+      "rows": [
+        {
+          "videos": "15",
+          "videos_reaching_raw_minimum": "0",
+          "maximum_profiles_per_video": "3"
+        }
+      ]
+    },
+    {
+      "name": "mode_facts_health_1h",
+      "milliseconds": 429,
+      "rows": [
+        {
+          "kind": "playback_viewing_mode",
+          "facts": "748",
+          "episodes": "102",
+          "late_facts": "0"
+        }
+      ]
+    },
+    {
+      "name": "execution_modes_30m",
+      "milliseconds": 430,
+      "rows": [
+        {
+          "execution_mode": "semantic_contextual",
+          "lane": "semantic_control",
+          "reason_code": "profile_cold_start",
+          "requests": "219",
+          "retrieval_mean_ms": "221.1872146118721461",
+          "retrieval_max_ms": 999
+        },
+        {
+          "execution_mode": "hybrid_personalized",
+          "lane": "profile_challenger",
+          "reason_code": null,
+          "requests": "81",
+          "retrieval_mean_ms": "322.6296296296296296",
+          "retrieval_max_ms": 1081
+        },
+        {
+          "execution_mode": "curated_fallback",
+          "lane": "semantic_fallback",
+          "reason_code": "seed_embedding_unavailable",
+          "requests": "13",
+          "retrieval_mean_ms": "359.0769230769230769",
+          "retrieval_max_ms": 585
+        },
+        {
+          "execution_mode": "semantic_contextual",
+          "lane": "semantic_control",
+          "reason_code": null,
+          "requests": "13",
+          "retrieval_mean_ms": "126.2307692307692308",
+          "retrieval_max_ms": 436
+        },
+        {
+          "execution_mode": "semantic_fallback",
+          "lane": "semantic_fallback",
+          "reason_code": "profile_retrieval_timeout",
+          "requests": "2",
+          "retrieval_mean_ms": "220.0000000000000000",
+          "retrieval_max_ms": 238
+        }
+      ]
+    },
+    {
+      "name": "curated_fallback_invariants_30m",
+      "milliseconds": 435,
+      "rows": [
+        {
+          "requests": "13",
+          "cards": "78",
+          "duplicate_slates": "0",
+          "current_video_items": "0",
+          "invalid_profile_claims": "0",
+          "item_count_mismatches": "0"
+        }
+      ]
+    },
+    {
+      "name": "approved_curated_pool_coverage",
+      "milliseconds": 428,
+      "rows": [
+        {
+          "locale": "ar",
+          "audio_language_slug": "arabic-algerian-spoken",
+          "pools": "6",
+          "catalog_entries": "188"
+        },
+        {
+          "locale": "ar",
+          "audio_language_slug": "arabic-chadian-spoken",
+          "pools": "6",
+          "catalog_entries": "128"
+        },
+        {
+          "locale": "ar",
+          "audio_language_slug": "arabic-egyptian-colloquial",
+          "pools": "6",
+          "catalog_entries": "229"
+        },
+        {
+          "locale": "ar",
+          "audio_language_slug": "arabic-gulf",
+          "pools": "6",
+          "catalog_entries": "163"
+        },
+        {
+          "locale": "ar",
+          "audio_language_slug": "arabic-iraqi-baghdadi",
+          "pools": "6",
+          "catalog_entries": "128"
+        },
+        {
+          "locale": "ar",
+          "audio_language_slug": "arabic-libyan",
+          "pools": "6",
+          "catalog_entries": "103"
+        },
+        {
+          "locale": "ar",
+          "audio_language_slug": "arabic-modern-standard",
+          "pools": "6",
+          "catalog_entries": "443"
+        },
+        {
+          "locale": "ar",
+          "audio_language_slug": "arabic-modern-standard-egyptian",
+          "pools": "6",
+          "catalog_entries": "171"
+        },
+        {
+          "locale": "ar",
+          "audio_language_slug": "arabic-modern-standard-sharif",
+          "pools": "6",
+          "catalog_entries": "103"
+        },
+        {
+          "locale": "ar",
+          "audio_language_slug": "arabic-moroccan-spoken",
+          "pools": "6",
+          "catalog_entries": "194"
+        },
+        {
+          "locale": "ar",
+          "audio_language_slug": "arabic-palestinian",
+          "pools": "6",
+          "catalog_entries": "188"
+        },
+        {
+          "locale": "ar",
+          "audio_language_slug": "arabic-saidi-spoken",
+          "pools": "6",
+          "catalog_entries": "163"
+        },
+        {
+          "locale": "ar",
+          "audio_language_slug": "arabic-sudanese-spoken",
+          "pools": "6",
+          "catalog_entries": "191"
+        },
+        {
+          "locale": "ar",
+          "audio_language_slug": "arabic-taizzi-yemeni",
+          "pools": "6",
+          "catalog_entries": "161"
+        },
+        {
+          "locale": "ar",
+          "audio_language_slug": "arabic-tunisian",
+          "pools": "6",
+          "catalog_entries": "186"
+        },
+        {
+          "locale": "ar",
+          "audio_language_slug": "mardini",
+          "pools": "6",
+          "catalog_entries": "128"
+        },
+        {
+          "locale": "bn",
+          "audio_language_slug": "bangla-2",
+          "pools": "6",
+          "catalog_entries": "330"
+        },
+        {
+          "locale": "bn",
+          "audio_language_slug": "bangla-muslim",
+          "pools": "6",
+          "catalog_entries": "242"
+        },
+        {
+          "locale": "bn",
+          "audio_language_slug": "bengali-indian",
+          "pools": "6",
+          "catalog_entries": "343"
+        },
+        {
+          "locale": "de",
+          "audio_language_slug": "german-standard",
+          "pools": "6",
+          "catalog_entries": "428"
+        },
+        {
+          "locale": "en",
+          "audio_language_slug": "english",
+          "pools": "6",
+          "catalog_entries": "544"
+        },
+        {
+          "locale": "es",
+          "audio_language_slug": "spanish-castilian",
+          "pools": "6",
+          "catalog_entries": "219"
+        },
+        {
+          "locale": "es",
+          "audio_language_slug": "spanish-latin-american",
+          "pools": "6",
+          "catalog_entries": "395"
+        },
+        {
+          "locale": "fa",
+          "audio_language_slug": "farsi-western",
+          "pools": "6",
+          "catalog_entries": "404"
+        },
+        {
+          "locale": "fil",
+          "audio_language_slug": "tagalog",
+          "pools": "6",
+          "catalog_entries": "344"
+        },
+        {
+          "locale": "fr",
+          "audio_language_slug": "french",
+          "pools": "6",
+          "catalog_entries": "471"
+        },
+        {
+          "locale": "fr",
+          "audio_language_slug": "french-african",
+          "pools": "6",
+          "catalog_entries": "84"
+        },
+        {
+          "locale": "he",
+          "audio_language_slug": "hebrew",
+          "pools": "6",
+          "catalog_entries": "249"
+        },
+        {
+          "locale": "hi",
+          "audio_language_slug": "hindi",
+          "pools": "6",
+          "catalog_entries": "410"
+        },
+        {
+          "locale": "id",
+          "audio_language_slug": "indonesian-isa",
+          "pools": "6",
+          "catalog_entries": "193"
+        },
+        {
+          "locale": "id",
+          "audio_language_slug": "indonesian-yesus",
+          "pools": "6",
+          "catalog_entries": "337"
+        },
+        {
+          "locale": "ja",
+          "audio_language_slug": "japanese",
+          "pools": "6",
+          "catalog_entries": "379"
+        },
+        {
+          "locale": "kk",
+          "audio_language_slug": "kazakh",
+          "pools": "6",
+          "catalog_entries": "237"
+        },
+        {
+          "locale": "ko",
+          "audio_language_slug": "hamgyongdo",
+          "pools": "6",
+          "catalog_entries": "106"
+        },
+        {
+          "locale": "ko",
+          "audio_language_slug": "korean",
+          "pools": "6",
+          "catalog_entries": "358"
+        },
+        {
+          "locale": "ko",
+          "audio_language_slug": "korean-north",
+          "pools": "6",
+          "catalog_entries": "218"
+        },
+        {
+          "locale": "ko",
+          "audio_language_slug": "kurmanji-standard",
+          "pools": "6",
+          "catalog_entries": "189"
+        },
+        {
+          "locale": "mn",
+          "audio_language_slug": "mongolian-halh",
+          "pools": "6",
+          "catalog_entries": "228"
+        },
+        {
+          "locale": "pt",
+          "audio_language_slug": "portuguese-brazil",
+          "pools": "6",
+          "catalog_entries": "444"
+        },
+        {
+          "locale": "pt",
+          "audio_language_slug": "portuguese-mozambique",
+          "pools": "6",
+          "catalog_entries": "40"
+        },
+        {
+          "locale": "pt",
+          "audio_language_slug": "portuguese-portugal",
+          "pools": "6",
+          "catalog_entries": "228"
+        },
+        {
+          "locale": "pt",
+          "audio_language_slug": "ribeirinho",
+          "pools": "6",
+          "catalog_entries": "103"
+        },
+        {
+          "locale": "ru",
+          "audio_language_slug": "central-asian-russian",
+          "pools": "6",
+          "catalog_entries": "219"
+        },
+        {
+          "locale": "ru",
+          "audio_language_slug": "russian",
+          "pools": "6",
+          "catalog_entries": "435"
+        },
+        {
+          "locale": "th",
+          "audio_language_slug": "thai",
+          "pools": "6",
+          "catalog_entries": "389"
+        },
+        {
+          "locale": "th",
+          "audio_language_slug": "thai-northern",
+          "pools": "6",
+          "catalog_entries": "179"
+        },
+        {
+          "locale": "th",
+          "audio_language_slug": "thai-southern",
+          "pools": "6",
+          "catalog_entries": "109"
+        },
+        {
+          "locale": "tr",
+          "audio_language_slug": "turkish",
+          "pools": "6",
+          "catalog_entries": "406"
+        },
+        {
+          "locale": "ur",
+          "audio_language_slug": "urdu",
+          "pools": "6",
+          "catalog_entries": "346"
+        },
+        {
+          "locale": "vi",
+          "audio_language_slug": "vietnamese",
+          "pools": "6",
+          "catalog_entries": "414"
+        },
+        {
+          "locale": "vi",
+          "audio_language_slug": "vietnamese-northern",
+          "pools": "6",
+          "catalog_entries": "169"
+        }
+      ]
+    }
+  ]
+}

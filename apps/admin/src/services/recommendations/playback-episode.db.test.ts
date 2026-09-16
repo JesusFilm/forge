@@ -1,8 +1,11 @@
+import { randomUUID } from "node:crypto"
 import { readdirSync, readFileSync } from "node:fs"
-import { PrismaClient } from "@prisma/client"
+import { PrismaPg } from "@prisma/adapter-pg"
+import { PrismaClient, type Prisma } from "@prisma/client"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
+import { createLoaders } from "@/graphql/loaders"
 import { RecommendationEvidenceService } from "./evidence.service"
 import { RecommendationEpisodeService } from "./episode.service"
 import { RecommendationOutcomeService } from "./outcome.service"
@@ -61,7 +64,13 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       url.searchParams.delete("options")
       url.searchParams.set("schema", schemaName)
       prisma = new PrismaClient({
-        datasources: { db: { url: url.toString() } },
+        adapter: new PrismaPg(
+          {
+            connectionString: url.toString(),
+            options: `-c search_path=${schemaName},public`,
+          },
+          { schema: schemaName },
+        ),
       })
     })
 
@@ -1321,6 +1330,123 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       expect(
         overview.observationSample.classificationCounts,
       ).not.toHaveProperty("completion")
+    })
+  },
+)
+
+// Keep the shared Admin hydration regression in CI's existing Watch database entry point.
+describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
+  "duration loader with real PostgreSQL result cardinality",
+  () => {
+    const schema = `duration_${randomUUID().replaceAll("-", "")}`
+    const sql = new Client({ connectionString: env.DATABASE_URL })
+    const queries: Prisma.QueryEvent[] = []
+    const prisma = new PrismaClient({
+      adapter: new PrismaPg(
+        {
+          connectionString: env.DATABASE_URL,
+          max: 10,
+          options: `-c search_path=${schema}`,
+        },
+        { schema },
+      ),
+      log: [{ emit: "event", level: "query" }],
+    })
+
+    beforeAll(async () => {
+      if (
+        !["localhost", "127.0.0.1", "[::1]"].includes(
+          new URL(env.DATABASE_URL).hostname,
+        )
+      ) {
+        throw new Error("This isolated fixture requires local Postgres")
+      }
+      await sql.connect()
+      await sql.query(`CREATE SCHEMA "${schema}"`)
+      await sql.query(`SET search_path TO "${schema}"`)
+      await sql.query(`
+        CREATE TABLE video (id text PRIMARY KEY, primary_language_id text, deleted_at timestamp);
+        CREATE TABLE video_dub (
+          id text PRIMARY KEY, video_id text NOT NULL, language_id text,
+          duration integer, hls text, published boolean, deleted_at timestamp
+        );
+        CREATE INDEX ON video_dub(video_id);
+        CREATE INDEX ON video_dub(video_id,duration DESC,id ASC)
+          WHERE deleted_at IS NULL AND published=true AND hls IS NOT NULL;
+        INSERT INTO video(id, primary_language_id) VALUES
+          ('primary', 'en'), ('outside-five', 'en'), ('fallback', 'missing'),
+          ('empty-hls', NULL), ('unplayable', NULL), ('empty', NULL), ('empty-primary', '');
+        INSERT INTO video VALUES ('deleted', 'en', now());
+        INSERT INTO video_dub
+          SELECT v.id || '-' || n, v.id, CASE WHEN n=2 THEN 'en' ELSE 'es' END,
+            100-n, 'stream', true, NULL
+          FROM video v CROSS JOIN generate_series(1,8) n
+          WHERE v.id IN ('primary','fallback','deleted');
+        INSERT INTO video_dub
+          SELECT 'outside-' || n, 'outside-five', CASE WHEN n=6 THEN 'en' ELSE 'es' END,
+            100-n, 'stream', true, NULL FROM generate_series(1,8) n;
+        INSERT INTO video_dub VALUES
+          ('empty-primary-long', 'empty-primary', 'es', 20, 'stream', true, NULL),
+          ('empty-primary-short', 'empty-primary', '', 10, 'stream', true, NULL),
+          ('blank', 'empty-hls', NULL, 10, '', true, NULL),
+          ('zero', 'unplayable', NULL, 0, 'stream', true, NULL),
+          ('negative', 'unplayable', NULL, -1, 'stream', true, NULL),
+          ('null-duration', 'unplayable', NULL, NULL, 'stream', true, NULL),
+          ('no-hls', 'unplayable', NULL, 100, NULL, true, NULL),
+          ('unpublished', 'unplayable', NULL, 100, 'stream', false, NULL),
+          ('withdrawn', 'unplayable', NULL, 100, 'stream', true, now());
+        INSERT INTO video(id) SELECT 'large-' || n FROM generate_series(1,216) n;
+        INSERT INTO video_dub
+          SELECT v.id || '-' || n, v.id, 'language-' || n, 1000-n, 'stream', true, NULL
+          FROM video v CROSS JOIN generate_series(1,662) n WHERE v.id LIKE 'large-%';
+        ANALYZE video; ANALYZE video_dub;
+      `)
+      prisma.$on("query", (event) => queries.push(event))
+    })
+
+    afterAll(async () => {
+      await prisma.$disconnect()
+      await sql.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`)
+      await sql.end()
+    })
+
+    it("preserves primary-within-five, fallback, visibility, null and HLS semantics", async () => {
+      const result = await createLoaders(
+        prisma,
+      ).videoPrimaryDubDurationById.loadMany([
+        "fallback",
+        "primary",
+        "outside-five",
+        "empty-hls",
+        "empty-primary",
+        "unplayable",
+        "empty",
+        "deleted",
+        "missing",
+        "primary",
+      ])
+      expect(result).toEqual([99, 98, 99, 10, 20, null, null, null, null, 98])
+    })
+
+    it("bounds database rows independently of the full dubbed catalog", async () => {
+      queries.length = 0
+      const ids = Array.from(
+        { length: 216 },
+        (_, index) => `large-${index + 1}`,
+      )
+      const result =
+        await createLoaders(prisma).videoPrimaryDubDurationById.loadMany(ids)
+      expect(result).toEqual(ids.map(() => 999))
+      // Re-execute the emitted, parameterized SELECTs to inspect wire cardinality.
+      // Mocking findMany cannot catch Prisma trimming nested take in JavaScript.
+      const reads = queries.filter((query) => /SELECT/i.test(query.query))
+      expect(reads.length).toBeGreaterThan(0)
+      let transferredRows = 0
+      for (const query of reads) {
+        transferredRows +=
+          (await sql.query(query.query, JSON.parse(query.params))).rowCount ?? 0
+      }
+      expect(transferredRows).toBeLessThanOrEqual(ids.length * 6)
     })
   },
 )

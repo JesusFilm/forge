@@ -14,6 +14,7 @@ import {
 import { composeRecommendationSlate } from "../slate"
 import { unionAndCanonicalizeCandidates } from "../union"
 import { composeShadowSlate } from "./slate-composer"
+import type { ShadowHistory } from "./history"
 
 export const SHADOW_EVALUATION_POLICY_VERSION =
   "generic-shadow-candidate-evaluation-v1" as const
@@ -69,6 +70,7 @@ export function evaluateShadowProjection(input: {
   cohortQuality: number | null
   rankingMode?: "semantic" | "hybrid"
   currentVideoId?: string | null
+  history?: ShadowHistory
 }): ShadowProjectionResult {
   const boundedNominations = input.nominations.slice(
     0,
@@ -99,7 +101,10 @@ export function evaluateShadowProjection(input: {
     ordered,
     context: input.context,
     limit: input.limit,
-    composition: { currentVideoId: input.currentVideoId },
+    composition: {
+      currentVideoId: input.currentVideoId,
+      recentVideos: input.history?.recentVideos,
+    },
   })
   const compositionLatencyMs =
     Math.round((performance.now() - compositionStartedAt) * 1_000) / 1_000
@@ -231,10 +236,12 @@ export function evaluateShadowProjection(input: {
           slateSourceCoverage: `${slateComparison.coverage.sources}/${slateComparison.coverage.availableSources}`,
           slateInterestCoverage: `${slateComparison.coverage.interests}/${slateComparison.coverage.availableInterests}`,
           slateThemeCoverage: `${slateComparison.coverage.itemsWithThemes}/${slateComparison.composed.length}`,
-          // Existing shadow generators do not capture historical context or
-          // published editorial constraints. Absence is not zero repetition.
-          slateHistory: "unavailable",
+          // Reconstructed same-session context is not a captured serving
+          // snapshot. Unsupported editorial/calibration inputs stay explicit.
+          slateHistory: input.history?.status ?? "unavailable",
+          slateRecentItems: input.history?.recentVideos.length ?? 0,
           slateEditorial: "adapter_pending",
+          slateCalibration: "not_evaluated",
         },
       }
     }),

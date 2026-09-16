@@ -40,6 +40,7 @@
         "android.permission.READ_MEDIA_AUDIO",
         "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
         "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.ACCESS_MEDIA_LOCATION"
       ]
     },
@@ -112,16 +113,6 @@
           }
         }
       ],
-      [
-        "expo-media-library",
-        {
-          "photosPermission": false,
-          "savePhotosPermission": "This lets the app save videos you export to your photo library, so you can keep them outside the app.",
-          "isAccessMediaLocationEnabled": false,
-          "granularPermissions": []
-        }
-      ],
-
       [
         "expo-splash-screen",
         {
