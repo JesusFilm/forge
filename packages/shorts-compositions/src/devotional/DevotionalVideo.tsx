@@ -3922,7 +3922,17 @@ export function DevotionalVideo(props: DevotionalInputProps) {
                   end:
                     frames[i].from +
                     frames[i].durationInFrames +
-                    (i < lastIndex ? boundaryXfade(i) : 0),
+                    (i < lastIndex ? boundaryXfade(i) : 0) -
+                    // Full-frame film (clip-first): the bed starts rising a
+                    // second BEFORE the cut, under the film's last, quiet
+                    // beat, and is at level as the stepper lands. Held to the
+                    // cut, the join measured 0.9s at -60dB: the last line ends
+                    // early and the film's own tail there is near-silent.
+                    (c.videoFill === "full" ? Math.round(1.0 * fps) : 0),
+                  fade:
+                    c.videoFill === "full"
+                      ? Math.round(1.0 * fps)
+                      : Math.round(0.4 * fps),
                 },
               ]
             : [],
@@ -4094,7 +4104,7 @@ export function DevotionalVideo(props: DevotionalInputProps) {
             const duck = videoWindows.reduce((lowest, w) => {
               const d = interpolate(
                 f,
-                [w.start - duckFade, w.start, w.end, w.end + duckFade],
+                [w.start - duckFade, w.start, w.end, w.end + w.fade],
                 [1, 0, 0, 1],
                 { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
               )
