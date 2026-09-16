@@ -1464,7 +1464,7 @@ Stopping an in-flight download's native task and neutralizing its callbacks — 
 ### Raw Export
 
 Saving a plain video file into a folder the viewer picks with the device's own file picker, where the viewer owns it like any other file, as distinct from an offline copy the app manages in its own storage and can revoke.
-_Avoid:_ Save to Files — that is the viewer-facing label for the same thing.
+_Avoid:_ Save to Files, Save to Device — the viewer-facing label differs by platform, and both name this same thing.
 
 A Raw Export creates no Download Record, so nothing derived from offline copies reflects one: a series control shows the same idle label for the whole run, and the library lists nothing new. Anything that must observe an export therefore reads the export's own state, never an offline aggregate. An exported file lives outside the app's own storage, so there is nothing to resume and nothing to reclaim.
 
