@@ -1,7 +1,7 @@
 # Watch runtime follow-up — 16 September 2026
 
-Status: Redis cleanup fix and CI repair verified in production; selection
-timeouts reproduced after deployment and still under investigation.
+Status: Redis cleanup and selection receipt-ordering fixes verified in
+production; separate selection timeouts remain under investigation.
 All timestamps below are UTC. feat-496 remains in progress because the unmatched
 admission incidents and separate selection timeouts are not proven resolved.
 
@@ -111,15 +111,55 @@ captures its receipt time, commit an impression 100 ms later, then continue.
 The original service raises the exact production error. The fix derives the
 marker from the later server receipt and carries it into profile feedback,
 including both selection and impression replay reconciliation. The 29 focused
-unit tests and eight real-Postgres cases pass; broader checks and release are
-in progress. See
+unit tests and eight real-Postgres cases pass. The full Admin suite passed 7,204
+tests, with types, lint, production build and repository formatting also passing.
+An initial heavily concurrent test run exposed three unrelated timing failures;
+their targeted rerun and the full two-worker rerun passed without changing those
+tests. Sequential Compound Engineering review found no remaining code findings.
+
+[PR #2315](https://github.com/JesusFilm/forge/pull/2315) passed all applicable PR
+checks and merged normally at 00:17:25 on September 16 as
+`b96f5f738d3357e228da1d05bb79ec9ea2d02d68`. Main's `forge-ci` run also passed. Automatic Admin
+deployment `039ade97-db71-4c2c-bbdd-b2c1c61ffd3b` reached SUCCESS at 00:24 UTC.
+SSH verified the exact deployed revision and both compiled timestamp fixes at
+00:24:29. See
 `docs/solutions/database-issues/selection-attribution-receipt-ordering-race-20260916.md`.
+
+The first post-release browser playback check at 00:25:01–00:25:48 passed 36
+seconds of playback, profile and playback HTTP 200s, six visible recommendations,
+analytics delivery, and no JavaScript errors. The recommendation response was
+HTTP 200 with `result: fallback` and `reason: delivery_timeout`; this is graceful
+degradation, not evidence that upstream deadlines are resolved. The homepage
+still had no authored row; availability returned `enabled: false` and the
+source-free endpoint returned `feature_disabled` with private/no-store headers.
+
+The initial six-click check at 00:25:02–00:26:03 navigated correctly six times,
+but recorded only four selection requests, all HTTP 200 in 438–550 ms. Its
+`allSelectionsAcknowledged` assertion therefore did not pass. Unattributed
+fallback cards intentionally navigate without a selection request; navigation
+alone must not count toward the selection-acknowledgment denominator.
+
+A fresh check with delivery outcomes recorded at 00:26:49–00:27:43 passed all six
+selection acknowledgments, HTTP 200 in 438–508 ms, with correct destinations and
+no JavaScript errors. Its 12 recommendation responses (source and destination
+pages) all returned `result: served`, six cards and no fallback reason. The
+initial timeout fallback remains in this report; this short successful repeat
+does not close the independent latency investigation.
 
 The CPU capture found workflow execution, database result processing, garbage
 collection and synchronous error/source-map formatting during the failure
 windows. Error formatting can follow a timeout, so it is not sufficient proof
 of the timeout's initiating cause. The temporary monitor was removed and the
 inspector was closed and verified unreachable after the capture.
+
+For timeout trace `3895688673582395761`, the selection transaction took 801 ms.
+The item advisory-lock query took 8 ms, while audit creation took 98 ms around a
+4 ms engine query and commit took 222 ms around a 104 ms adapter operation.
+The capture during the client's first 700 ms includes database result parsing,
+promise processing and garbage collection. These observations narrow the next
+investigation toward application processing and scheduling, but do not prove a
+specific background workload is responsible. This remains separate from the
+receipt-ordering race.
 
 ## Remaining evidence and limits
 
