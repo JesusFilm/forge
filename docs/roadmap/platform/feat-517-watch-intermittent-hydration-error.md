@@ -3,7 +3,7 @@ id: "feat-517"
 title: "Reproduce the intermittent Watch HTML hydration mismatch"
 owner: "nisal"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-16"
 duration: 1
 depends_on: []
@@ -60,3 +60,25 @@ Do not suppress hydration warnings, disable telemetry, change recommendation
 budgets or claim success from HTTP 200 alone. Keep the authored English homepage
 recommendations block removed and its feature flag default off. This is separate
 from feat-515's cold-paint investigation and the proven Admin catalog fixes.
+
+## Reproduced correction — September 18
+
+An owned production build reproduces HTML-variant #418 on fresh
+`chosen-witness.html?autoplay=1` and `sermon-on-the-mount-2.html?autoplay=1`
+arrivals, while the no-query controls pass. The cached force-static HTML has
+no autoplay query; the initial browser render previously changed the frame
+and inserted the loading overlay. The SSR/hydrateRoot regression captures that
+exact difference before the fix and passes afterward, including automatic
+playback attribution and the single unmuted play attempt.
+
+The correction supplies the cached null autoplay snapshot during hydration,
+then applies the live query through `useSyncExternalStore`. All 4,423 Web tests,
+the production build, types, lint and formatting pass. Five local production
+browser cases pass with no errors; six no-query page-load samples per build
+retain early poster paint. See
+`docs/solutions/ui-bugs/watch-autoplay-query-cached-html-hydration.md`.
+
+Production deployment and observation are pending. This is one demonstrated
+HTML mismatch cause. The original September 16 arrival query was not retained,
+and the RUM issue group includes other stack variants; neither those historical
+events nor the separate text mismatch are claimed to have one universal cause.
