@@ -62,6 +62,9 @@ patchedDependencies:
   '@fortedigital/nextjs-cache-handler@3.2.1':
     hash: 5euoeic6bifwd364tqwtkq6smm
     path: patches/@fortedigital__nextjs-cache-handler@3.2.1.patch
+  '@workflow/world-postgres@4.1.1':
+    hash: 72ovcymz7dhupz3oklzje2s2aa
+    path: patches/@workflow__world-postgres@4.1.1.patch
   react-native-tvos@0.81.5-2:
     hash: 5f47bs6t4puwot4vtwwwxsyvpy
     path: patches/react-native-tvos@0.81.5-2.patch
@@ -234,7 +237,7 @@ importers:
         version: 4.1.1(zod@4.3.6)
       '@workflow/world-postgres':
         specifier: 4.1.1
-        version: 4.1.1(@libsql/client@0.15.15)(@opentelemetry/api@1.9.0)(@prisma/client@6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3))(@types/pg@8.20.0)(knex@3.0.1(pg@8.22.0))(kysely@0.29.5)(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
+        version: 4.1.1(patch_hash=72ovcymz7dhupz3oklzje2s2aa)(@libsql/client@0.15.15)(@opentelemetry/api@1.9.0)(@prisma/client@6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3))(@types/pg@8.20.0)(knex@3.0.1(pg@8.22.0))(kysely@0.29.5)(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
       ai:
         specifier: 6.0.182
         version: 6.0.182(zod@4.3.6)
@@ -24900,7 +24903,7 @@ snapshots:
     optionalDependencies:
       '@opentelemetry/api': 1.9.0
 
-  '@workflow/world-postgres@4.1.1(@libsql/client@0.15.15)(@opentelemetry/api@1.9.0)(@prisma/client@6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3))(@types/pg@8.20.0)(knex@3.0.1(pg@8.22.0))(kysely@0.29.5)(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)':
+  '@workflow/world-postgres@4.1.1(patch_hash=72ovcymz7dhupz3oklzje2s2aa)(@libsql/client@0.15.15)(@opentelemetry/api@1.9.0)(@prisma/client@6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3))(@types/pg@8.20.0)(knex@3.0.1(pg@8.22.0))(kysely@0.29.5)(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)':
     dependencies:
       '@vercel/queue': 0.1.4
       '@workflow/errors': 4.1.1

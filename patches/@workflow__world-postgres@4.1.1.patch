@@ -1,0 +1,17 @@
+diff --git a/dist/queue.js b/dist/queue.js
+index 4594a34f425572efa6eb748fd47f5b1163d90f11..667f9fe9339f9bacb33411f902d8f70404d2109e 100644
+--- a/dist/queue.js
++++ b/dist/queue.js
+@@ -215,7 +215,11 @@ export function createQueue(config, pool) {
+                     });
+                     await workerUtils.migrate();
+                     await migratePgBossJobs(workerUtils);
+-                    await setupListeners();
++                    // Forge's Admin process only enqueues; the dedicated worker consumes.
++                    // Match the application's default-off runner policy.
++                    if (process.env.WORKFLOW_RUNNER_ENABLED === 'true') {
++                        await setupListeners();
++                    }
+                 }
+                 catch (err) {
+                     startPromise = null;

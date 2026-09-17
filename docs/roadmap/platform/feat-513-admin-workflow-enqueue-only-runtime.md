@@ -3,7 +3,7 @@ id: "feat-513"
 title: "Keep workflow listeners out of the Admin enqueue-only runtime"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-16"
 duration: 2
 depends_on: []
