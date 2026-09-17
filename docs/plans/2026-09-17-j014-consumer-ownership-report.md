@@ -168,3 +168,31 @@ at this observation; current status is returned separately in the final job resu
 No documentation delivery blocker remains. The unrelated CI failure must be
 resolved before anyone treats the programme PR as fully validated for merge;
 this job does not authorize or perform that merge.
+
+## J018 clarification receipt (September 18)
+
+Jaco confirmed the portal UX flow and credential/secret-lifecycle semantics for
+the programme. The full clarified requirements, marked as requirements versus
+implementation choices to confirm during coding, are recorded in the canonical
+plan (J018 clarifications block in section "Approved decisions and remaining
+implementation details", the confirmed-semantics sentence in section A and the
+confirmed registration flow in section F):
+[2026-09-15-001-feat-rag-consumer-access-usage-plan.md](2026-09-15-001-feat-rag-consumer-access-usage-plan.md).
+This receipt does not restate the policy text.
+
+Scope of the J018 update: the parent plan only, plus a dated pointer in this
+report and in the discovery evidence. No new ticket, dependency edge, CI claim,
+setting or infrastructure fact is introduced or verified. The RAGBot
+first-consumer dogfood, the later narrow aggregate usage reporting, the
+no-special-approver model and all prior privacy decisions remain as J014
+recorded them. Unverified deployment/infrastructure claims in the discovery
+evidence remain explicitly unverified. feat-512–515 remain not-started.
+
+Local validation on both branches: changed Markdown Prettier 3.8.1,
+`git diff --check`, RAG lane frontmatter/index/counts and reciprocal consumer
+dependencies, relative links in the changed documents, hidden-lane tests (2/2).
+The pre-existing feat-461/feat-435 reverse-edge mismatch and the pre-existing
+public-lane frontmatter warnings are unchanged and remain recorded. Parent
+commit `5f07b5139f81287afb09c8d4f658046150674e11` was pushed to
+`docs/rag-consumer-access-usage-plan` (PR #2304, still draft); the matching
+discovery commit is recorded below.

@@ -556,6 +556,24 @@ lost usage increments. The pending completion crash window must produce incomple
 coverage, not a fabricated exact count. These RAG-specific lessons are preserved
 here rather than rewriting unrelated auth systems or operational runbooks.
 
+### J018 clarification note (September 18)
+
+Jaco confirmed the portal UX flow (GitHub sign-in, consumer name, own handle
+proposed as first owner, preview before Add, one-time plaintext secret display)
+and the credential/secret-lifecycle semantics (secret used as-is over HTTPS with
+no client-ID header, server-side hash-only verifier, atomic replacement via
+Generate new key, lost keys replaced not recovered, at least one owner, CI
+limited to owner validation). The canonical requirements text, marked as
+requirements versus implementation choices to confirm during coding, is in the
+plan's J018 clarifications block and section F; this evidence file does not
+restate it. The technical proposals in sections 1–5 above — credential format,
+verifier digest, database schemas/roles, count/completion boundary — remain
+implementation choices proposed at their cited revisions, constrained by the
+confirmed requirements. No new infrastructure claim is verified by J018; the
+unverified items remain unverified. See the
+[J014 report](../../../../plans/2026-09-17-j014-consumer-ownership-report.md)
+J018 receipt for the delivery record.
+
 ## Historical J011 receipts (superseded policy; results at prior revisions only)
 
 The following dated receipts preserve earlier execution evidence, including the

@@ -86,8 +86,10 @@ Jaco's accepted J014 model (September 17) supersedes the earlier senior/specific
 approver, special non-author approval gate, global engineer/email allowlist and
 portal-managed membership proposals. Any engineer with Forge repository read/write
 access may propose/register a consumer through the normal consumer-registration
-PR process. No separate consumer approver is required. Normal repository merge
-rules still apply; this programme adds no human approval gate on RAG or Forge PRs.
+PR process. No separate consumer approver is required, and this plan does not
+claim that a special path-specific approver rule is configured anywhere. Normal
+repository merge rules still apply; this programme adds no human approval gate
+on RAG or Forge PRs.
 
 Each consumer entry contains a nonempty `owners` list of GitHub handles. Only an
 engineer in that consumer's merged list may manage/regenerate its key after
@@ -108,6 +110,56 @@ portal host/client registration and minimal GitHub identity scopes. Before dogfo
 record RAGBot's consumer ID, source scope, actual task revision and permitted
 environment. Before production cutoff, separately approve communications owner,
 grace start and cutoff timestamp. No detail blocks this documentation update.
+
+**J018 clarifications (September 18):** Jaco confirmed the portal UX flow and
+credential semantics below. The confirmed items are requirements; items marked
+"to confirm" are implementation choices to resolve during coding. The RAGBot
+first-consumer dogfood, the later narrow aggregate usage reporting and all prior
+scope and privacy decisions are preserved unchanged.
+
+### Confirmed portal UX requirements (feat-515)
+
+1. The engineer signs in to the internal portal with their GitHub identity.
+2. They enter a consumer name; their own GitHub handle is automatically
+   proposed as the first owner.
+3. A preview shows the consumer name and the owner list before Add.
+4. Add creates the backend consumer record and owner relationship.
+5. The portal then displays the newly generated random secret in plaintext
+   once so the owner can copy it into their password manager.
+
+**Implementation choices to confirm during coding:** whether the registration
+record is created immediately on Add or staged for a normal registration PR;
+consumer-name uniqueness rules; and whether the one-time secret display is
+reached directly after Add or after the registration merges.
+
+### Confirmed credential and secret-lifecycle requirements
+
+- The consumer uses the secret as-is in its HTTPS RAG requests. There is no
+  separate client-ID header required; the secret alone is the presented
+  credential.
+- The server never stores the plaintext secret. It hashes/verifies the
+  presented secret against a stored verifier and rejects invalid or revoked
+  secrets. Hashing is one-way, so the server cannot recover the secret it
+  issued; HTTPS protects the secret in transit. Both controls are stated in
+  code and runbooks.
+- A listed owner can use Generate new key: the portal issues a replacement,
+  displays the new secret once, atomically replaces the stored verifier and
+  invalidates the old key.
+- Lost keys are replaced, not recovered.
+- Never put secrets in Git, PRs, logs, tests, chat, command output or telemetry.
+  Tests use synthetic non-secret fixtures.
+- Every consumer entry has at least one owner. Owners are the GitHub handles
+  of engineers allowed to manage that consumer; adding another owner is a
+  normal registration PR merged through normal repository merge, not a
+  special senior-approver gate.
+- CI's narrow role is validating owner handles and organisation membership as
+  reliably as the current infrastructure permits, and enforcing at least one
+  owner. This plan does not claim a special path-specific approver rule is
+  configured anywhere.
+
+The credential format, verifier digest and lookup mechanism remain the
+discovery-proposed implementation choices; the requirements above constrain
+them but do not mandate any particular algorithm or transport.
 
 ## A. Registration, owner validation and credential lifecycle
 
@@ -187,14 +239,21 @@ approved issuance process, outside agent transcripts. Persist only a one-way
 verifier in the restricted auth store; never raw tokens or selectors. Validate
 verifiers using an established constant-time mechanism. The bearer travels only
 in the Authorization header over TLS, never query strings or client-ID headers.
+Confirmed semantics: the server never stores the plaintext secret and cannot
+recover the secret it issued, because the stored verifier is a one-way hash of
+the presented secret; HTTPS protects the secret in transit while the hash-only
+store protects it at rest. The consumer presents the secret as-is with no
+separate client-ID header, and invalid or revoked secrets are rejected.
 
 Exactly one active credential per integration/environment. An authorized
-“Generate new key” action generates a new secret, atomically replaces/revokes the
-prior verifier and reveals the new secret once in the authenticated issuance
-response. No decryptable/revealable tokens are retained in the database. The
-engineer must save it in their own password manager/secret storage. There is no
-reveal-again, old/new overlap or delayed revocation waiting for installation.
-This programme intentionally supersedes the older receiver-first overlap recipe.
+“Generate new key” action, available to any listed owner, generates a new
+secret, atomically replaces/revokes the prior verifier and reveals the new
+secret once in the authenticated issuance response; the old key is invalid
+immediately and the replacement is the only active secret. No
+decryptable/revealable tokens are retained in the database. The engineer must
+save it in their own password manager/secret storage. There is no reveal-again,
+old/new overlap or delayed revocation waiting for installation. This programme
+intentionally supersedes the older receiver-first overlap recipe.
 
 Lost secrets or interrupted one-time display require another authorized rotation;
 the old secret cannot be recovered. Multiple owners see status/audit only,
@@ -378,6 +437,17 @@ List only consumers owned by that authenticated engineer; authorize key status,
 audit and Generate new key server-side from the current merged `owners` list.
 Registration and owner changes direct engineers to normal repository PRs, with
 clear pending-merge state. No in-portal membership edit grants immediate rights.
+
+Confirmed registration flow (see the J018 clarifications above): GitHub
+identity sign-in; the engineer enters a consumer name; their own GitHub handle
+is automatically proposed as the first owner; a preview shows the consumer name
+and owner list before Add; Add creates the backend consumer record and owner
+relationship; the portal then displays the newly generated random secret in
+plaintext once so the owner can copy it into their password manager. The
+consumer later uses that secret as-is in its HTTPS RAG requests, with no
+separate client-ID header. Whether Add creates the record immediately or stages
+it for a normal registration PR, and where the one-time display sits relative
+to a merge, are implementation choices to confirm during coding.
 
 Enforce CSRF/session protections, no-store issuance responses and no analytics or
 session replay on secret displays. Show affected consumer/environment and warn
