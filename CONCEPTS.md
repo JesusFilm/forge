@@ -982,7 +982,7 @@ history.
 ### Recommendation Profile
 
 A pseudonymous continuity record for anonymous recommendation personalization,
-created by default when personalization is enabled. The browser holds the opaque first-party identifier while the
+created by default when personalization is enabled. The client, a browser or an installed app, holds the opaque first-party identifier while the
 recommendation system retains only its one-way identity and server-owned
 interests; disabling personalization severs relinkable continuity and begins erasure.
 

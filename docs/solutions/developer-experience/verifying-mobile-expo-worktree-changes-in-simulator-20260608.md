@@ -1,7 +1,7 @@
 ---
 title: Verifying mobile (Expo) worktree changes in the iOS simulator
 date: 2026-06-08
-last_updated: 2026-09-11
+last_updated: 2026-09-17
 category: developer-experience
 module: apps/mobile
 problem_type: developer_experience
@@ -125,6 +125,16 @@ Three further facts about the endpoint:
 - Metro inlines every `EXPO_PUBLIC_*` value at bundler startup. A shell
   `export` does nothing, and a reload picks up nothing. **Cold-restart Metro**
   after any environment change.
+
+**Write paths, added 2026-09-17 (feat-516).** The facts above cover read
+paths. A bearer-gated mutation path gets `UNAUTHENTICATED` from a local
+admin, because its keyring does not carry the production fleet key; the eight
+recommendation operations are the first such set. For those, point
+`EXPO_PUBLIC_ADMIN_GRAPHQL_URL` in `.env.development.local` at a throwaway
+logging proxy on a port other than 3003 and read its log; see
+[mobile-write-path-smoke-via-fake-admin-proxy.md](./mobile-write-path-smoke-via-fake-admin-proxy.md). Do not bind that proxy to 3003: on this machine
+the simulator resolved `localhost` to `::1`, so a proxy on `127.0.0.1:3003`
+sat idle while the real admin on `*:3003` answered (observed 2026-09-16).
 
 Caution about dead Strapi keys: the main checkout's `.env.local` still carries
 `EXPO_PUBLIC_GRAPHQL_URL_IOS` and `EXPO_PUBLIC_STRAPI_TOKEN`, because Doppler
