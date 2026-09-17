@@ -84,21 +84,12 @@ async function main() {
       steps: !process.argv.includes("--no-steps"),
       // A/B: `--structure=clip-first` opens on the film (see RenderOptions).
       ...(process.argv.includes("--step-ring") ? { stepRing: true } : {}),
-      ...(arg("step-icons")
-        ? { stepIcons: arg("step-icons") as "none" | "a" | "b" }
-        : {}),
       ...(arg("clip-trim-end")
         ? { clipTrimEndSec: Number(arg("clip-trim-end")) }
         : {}),
       ...(arg("clip-captions")
         ? {
-            clipCaptionStyle: arg("clip-captions") as
-              | "words"
-              | "words-lift"
-              | "typewriter"
-              | "typewriter-cursor"
-              | "pop"
-              | "pop-settle",
+            clipCaptionStyle: arg("clip-captions") as "words" | "words-lift",
           }
         : {}),
       ...(arg("structure") === "clip-first"

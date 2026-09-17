@@ -934,16 +934,8 @@ export type RenderOptions = {
   clipTrimEndSec?: number
   /** Clip-first only: corner progress ring clocking each step (see schema). */
   stepRing?: boolean
-  /** Clip-first only: icons over the stepper labels (`a` or `b`, see schema). */
-  stepIcons?: "none" | "a" | "b"
   /** Clip-first only: how the film's captions arrive (see the card schema). */
-  clipCaptionStyle?:
-    | "words"
-    | "words-lift"
-    | "typewriter"
-    | "typewriter-cursor"
-    | "pop"
-    | "pop-settle"
+  clipCaptionStyle?: "words" | "words-lift"
   /** Review preview: render N evenly spaced PNG stills INSTEAD of the MP4.
    *  Costs one frame of rasterization each — seconds, not minutes — which is
    *  what makes "show me screenshots before you render the whole thing" a
@@ -1624,9 +1616,6 @@ async function renderInStage(
 
   if (options.structure === "clip-first") {
     if (options.stepRing) manifest.stepRing = true
-    if (options.stepIcons)
-      for (const card of manifest.cards)
-        if (card.kind === "step") card.stepIcons = options.stepIcons
     for (const card of manifest.cards) {
       if (card.kind !== "video" || typeof card.videoFile !== "string") continue
       const focus = await planClipFocus({

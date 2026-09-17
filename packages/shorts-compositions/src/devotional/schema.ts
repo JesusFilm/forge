@@ -71,27 +71,12 @@ export const devotionalCardSchema = z.object({
    */
   videoFill: z.enum(["window", "full"]).optional(),
   /**
-   * How a full-frame video card's captions arrive. `words` (default) reveals
-   * word by word with the accent flash the reflection uses. `typewriter` types
-   * letter by letter, each letter fading in; `typewriter-cursor` adds an accent
-   * cursor after the last typed letter. `pop` lands each new word larger and
-   * in the accent until the next word arrives; `pop-settle` lands it the same
-   * way and then shrinks and cools it to match the line. `words-lift` is the
-   * default reveal with a gentle lift: the word lands a tenth larger along
-   * with its accent flash and eases back to size as it cools.
+   * How a full-frame video card's captions arrive. `words` reveals word by
+   * word with the accent flash the reflection uses; `words-lift` (the series
+   * default) is the same reveal with the spoken word landing a tenth larger
+   * and easing back to size as it cools.
    */
-  /** Step cards of the three-step column: line icons over the labels. */
-  stepIcons: z.enum(["none", "a", "b"]).optional(),
-  captionStyle: z
-    .enum([
-      "words",
-      "words-lift",
-      "typewriter",
-      "typewriter-cursor",
-      "pop",
-      "pop-settle",
-    ])
-    .optional(),
+  captionStyle: z.enum(["words", "words-lift"]).optional(),
   /**
    * Where a full-frame portrait video card crops the 16:9 clip, over time: the
    * normalized x of the source the frame is centred on, as a PATH in seconds

@@ -9,7 +9,6 @@ import {
   FOCUS_SPEED_PER_SEC,
   leadLabelKnots,
   pathAt,
-  letterTimes,
   spreadWords,
 } from "./DevotionalVideo"
 import {
@@ -181,18 +180,5 @@ describe("spreadWords", () => {
     const w = spreadWords("hi there", 5, 5.1)
     expect(w).toHaveLength(2)
     expect(w[1].startSec).toBeGreaterThanOrEqual(w[0].startSec)
-  })
-})
-
-describe("letterTimes", () => {
-  it("spreads a word's letters over the front of its window, complete before the next word", () => {
-    const times = letterTimes({ startSec: 2, endSec: 3 }, 5)
-    expect(times[0]).toBe(2)
-    expect(times[4]).toBeCloseTo(2.8, 5)
-    expect(times).toEqual([...times].sort((a, b) => a - b))
-  })
-
-  it("puts a one-letter word at its own start", () => {
-    expect(letterTimes({ startSec: 1.5, endSec: 1.7 }, 1)).toEqual([1.5])
   })
 })
