@@ -1,13 +1,40 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { print } from "graphql"
 
-const { queryMock, unstableCacheCalls } = vi.hoisted(() => ({
+const { queryMock, routeManifestMock, unstableCacheCalls } = vi.hoisted(() => ({
   queryMock: vi.fn(),
+  // Live watch-route manifest as seen by content.ts. Defaults to "not
+  // available" so every existing test runs against the compiled corpus
+  // alone; tests that exercise runtime-admitted languages install a
+  // manifest explicitly.
+  routeManifestMock: vi.fn(async (): Promise<unknown> => null),
   unstableCacheCalls: [] as {
     keyParts: unknown[]
     options: { revalidate?: unknown; tags?: unknown }
   }[],
 }))
+
+vi.mock("@/lib/watch-route-manifest", async () => {
+  const actual = await vi.importActual<
+    typeof import("@/lib/watch-route-manifest")
+  >("@/lib/watch-route-manifest")
+
+  return {
+    ...actual,
+    getWatchRouteManifest: routeManifestMock,
+  }
+})
+
+function makeRouteManifest(audioLanguageSlugs: string[]) {
+  return {
+    version: "test",
+    generatedAt: "2026-09-14T00:00:00.000Z",
+    contentSlugs: ["jesus"],
+    oneSegmentSlugs: [],
+    episodePairsByParent: {},
+    audioLanguageSlugs,
+  }
+}
 
 vi.mock("next/cache", () => ({
   unstable_cache: <T extends (...args: unknown[]) => unknown>(
@@ -1919,5 +1946,180 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
       { locale: "en", languageSlug: null, videoSlug: "jesus" },
       { id: "variant-1" },
     ])
+  })
+})
+
+// Admin selects `preferredVariant` from `languageSlug` alone; `null` makes
+// it fall back to the primary-language (English) dub, after which the page
+// redirects to `/english.html`. These pin that a real audio-language slug
+// reaches admin as `languageSlug` even when web's compiled corpus does not
+// know it yet (the 2026-09-11 incident: 11 languages admin published after
+// the last `generate:language-bcp47-map` played English) and even when the
+// slug equals its own BCP-47 tag (`luo`, `yao`, ... — the old
+// `mapped !== raw` heuristic dropped those too).
+describe("resolveWatchVideoBySlug — runtime audio-language identity", () => {
+  afterEach(() => {
+    queryMock.mockReset()
+    routeManifestMock.mockReset()
+    routeManifestMock.mockResolvedValue(null)
+    vi.resetModules()
+  })
+
+  function mockSnapshotAndDub(dubSlug: string) {
+    queryMock
+      .mockResolvedValueOnce({
+        data: {
+          videoBySlug: makeAdminVideo({
+            locales: [],
+            variants: [
+              {
+                ...(makeAdminVideo().variants as Record<string, unknown>[])[0],
+                documentId: `variant-${dubSlug}`,
+                slug: dubSlug,
+                language: {
+                  coreId: `lang-${dubSlug}`,
+                  bcp47: null,
+                  slug: dubSlug,
+                  name: dubSlug,
+                },
+              },
+            ],
+          }),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoDub: makeAdminDub({ documentId: `variant-${dubSlug}` }),
+        },
+      })
+  }
+
+  function snapshotVariables() {
+    return queryMock.mock.calls[0][0].variables as {
+      locale: string
+      languageSlug: string | null
+      videoSlug: string
+    }
+  }
+
+  it("passes a kebab slug the compiled corpus does not know through as languageSlug without needing the manifest", async () => {
+    // SYNTHETIC (2026-09-16): the page's `classify()` in
+    // app/[locale]/[htmlLang]/[...rest]/page.tsx and the proxy only admit a
+    // corpus-miss slug the manifest lists, so production never reaches this
+    // function with a null manifest AND an unadmitted slug. The case pins
+    // the shape-rule fallback (rule 3 in the helper's docstring) on its own.
+    mockSnapshotAndDub("purepecha-western-highland-test")
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+    await resolveWatchVideoBySlug("jesus", "purepecha-western-highland-test")
+
+    expect(snapshotVariables()).toEqual({
+      locale: "purepecha-western-highland-test",
+      languageSlug: "purepecha-western-highland-test",
+      videoSlug: "jesus",
+    })
+    // The manifest is consulted on a corpus miss (React `cache` is an
+    // identity here, so several resolver paths each ask once; production
+    // dedupes through the manifest module's in-flight + 60 s cache).
+    expect(routeManifestMock).toHaveBeenCalled()
+  })
+
+  it("passes a BCP-47-shaped slug through only when the live route manifest admits it", async () => {
+    routeManifestMock.mockResolvedValue(makeRouteManifest(["english", "twx"]))
+    mockSnapshotAndDub("twx")
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+    await resolveWatchVideoBySlug("jesus", "twx")
+
+    expect(snapshotVariables()).toEqual({
+      locale: "twx",
+      languageSlug: "twx",
+      videoSlug: "jesus",
+    })
+  })
+
+  it("keeps the legacy null contract for an internal locale key the manifest does not admit", async () => {
+    routeManifestMock.mockResolvedValue(makeRouteManifest(["english"]))
+    mockSnapshotAndDub("english")
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+    await resolveWatchVideoBySlug("jesus", "fr")
+
+    expect(snapshotVariables()).toEqual({
+      locale: "fr",
+      languageSlug: null,
+      videoSlug: "jesus",
+    })
+  })
+
+  it("does not consult the manifest for a slug the compiled corpus already knows", async () => {
+    mockSnapshotAndDub("russian")
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+    await resolveWatchVideoBySlug("jesus", "russian")
+
+    expect(routeManifestMock).not.toHaveBeenCalled()
+    expect(snapshotVariables().languageSlug).toBe("russian")
+  })
+
+  it("keeps a corpus slug whose BCP-47 tag equals the slug itself as languageSlug", async () => {
+    // `luo` → bcp47 `luo` in the generated map; the pre-fix heuristic
+    // (`mapped !== raw`) read that as "not a slug" and sent null.
+    mockSnapshotAndDub("luo")
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+    await resolveWatchVideoBySlug("jesus", "luo")
+
+    expect(snapshotVariables()).toEqual({
+      locale: "luo",
+      languageSlug: "luo",
+      videoSlug: "jesus",
+    })
+    expect(routeManifestMock).not.toHaveBeenCalled()
+  })
+
+  it("sends null for a segment that fails the public slug shape without consulting the manifest", async () => {
+    // Pins the shape guard as its own tier: an underscore fails
+    // `hasPublicWatchLanguageSlugShape`, so the helper must not spend a
+    // manifest round-trip on it even when the manifest would answer.
+    routeManifestMock.mockResolvedValue(
+      makeRouteManifest(["english", "foo_bar"]),
+    )
+    mockSnapshotAndDub("foo_bar")
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+    await resolveWatchVideoBySlug("jesus", "foo_bar")
+
+    expect(snapshotVariables().languageSlug).toBe(null)
+    expect(routeManifestMock).not.toHaveBeenCalled()
+  })
+
+  it("passes a non-tag kebab slug through when the manifest is available but does not admit it", async () => {
+    // Distinguishes "manifest missing" from "manifest present and rejecting":
+    // the shape rule must win on its own when `toba-test` cannot be read as
+    // a BCP-47 tag, so admin (which ignores unknown slugs) still sees it.
+    routeManifestMock.mockResolvedValue(makeRouteManifest(["english"]))
+    mockSnapshotAndDub("toba-test")
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+    await resolveWatchVideoBySlug("jesus", "toba-test")
+
+    expect(routeManifestMock).toHaveBeenCalled()
+    expect(snapshotVariables().languageSlug).toBe("toba-test")
+  })
+
+  it("survives a manifest fetch rejection by falling back to the shape rule", async () => {
+    // SYNTHETIC (2026-09-16): `classify()` in
+    // app/[locale]/[htmlLang]/[...rest]/page.tsx already awaited the manifest
+    // before content runs and 404s a slug it cannot admit, so a rejected
+    // fetch here only reaches this function when the manifest module has no
+    // cached copy to serve. Pins the `.catch(() => null)` branch on its own.
+    routeManifestMock.mockRejectedValue(new Error("manifest down"))
+    mockSnapshotAndDub("toba-test")
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+    await resolveWatchVideoBySlug("jesus", "toba-test")
+
+    expect(snapshotVariables().languageSlug).toBe("toba-test")
   })
 })
