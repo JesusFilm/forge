@@ -56,7 +56,15 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       .slice(2)}`
     let client: Client
     let databaseUrl: string
-    const expiresAt = "2026-09-17T00:00:00.000Z"
+    // The lifecycle root has to outlive the row that carries it:
+    // `recommendation_request_expiry_check` is CHECK (expires_at >
+    // created_at) and the inserts below let `created_at` default to
+    // now(), so a hardcoded instant is a time bomb that detonates the
+    // moment the wall clock passes it. Keep it relative to the run.
+    // 29 days matches the documented retention root.
+    const expiresAt = new Date(
+      Date.now() + 29 * 24 * 60 * 60 * 1000,
+    ).toISOString()
 
     async function insertRequest(id: string, expectedItemCount: number) {
       await client.query(
@@ -181,6 +189,10 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       for (const migration of migrationSql) await client.query(migration)
     })
 
+    // The `n = 20004` arm below is the deliberately-expired purge subject, so
+    // its literal stays pinned. The live arm interpolates the shared root
+    // instead: a child row's expiry may not exceed its request's, and the
+    // terminal fact at the end of this fixture binds `expiresAt` directly.
     it("bounds recovery before fact hydration at retained-ledger cardinality", async () => {
       await client.query("BEGIN")
       await client.query(`
@@ -205,7 +217,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           '2026-08-01T00:00:00.000Z',
           CASE WHEN n = 20004
             THEN '2026-08-18T00:00:00.000Z'::timestamptz
-            ELSE '2026-09-17T00:00:00.000Z'::timestamptz
+            ELSE '${expiresAt}'::timestamptz
           END
         FROM generate_series(1, 20004) n
       `)
@@ -225,7 +237,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           '2026-08-01T00:00:00.000Z',
           CASE WHEN n = 20004
             THEN '2026-08-18T00:00:00.000Z'::timestamptz
-            ELSE '2026-09-17T00:00:00.000Z'::timestamptz
+            ELSE '${expiresAt}'::timestamptz
           END
         FROM generate_series(1, 20004) n
       `)
@@ -248,7 +260,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           '2026-08-01T00:00:00.000Z',
           CASE WHEN n = 20004
             THEN '2026-08-18T00:00:00.000Z'::timestamptz
-            ELSE '2026-09-17T00:00:00.000Z'::timestamptz
+            ELSE '${expiresAt}'::timestamptz
           END
         FROM generate_series(1, 20004) n
       `)
@@ -291,7 +303,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           '2026-08-01T00:00:00.000Z',
           CASE WHEN n = 20004
             THEN '2026-08-18T00:00:00.000Z'::timestamptz
-            ELSE '2026-09-17T00:00:00.000Z'::timestamptz
+            ELSE '${expiresAt}'::timestamptz
           END
         FROM generate_series(1, 20004) n
       `)
