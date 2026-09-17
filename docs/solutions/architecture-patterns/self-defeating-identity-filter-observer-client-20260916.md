@@ -136,10 +136,19 @@ previously only transient ones were plausible.
 
 Core Sync's images phase isolated page failures by recording the error,
 advancing `offset` and continuing — whose only loop exit is a short page it would
-now never receive. Under a permanent rejection it paginated until the Node
-process died of heap exhaustion. Bounding consecutive page failures ends the
-phase with `errors > 0`, which already suppresses the soft-delete and stops the
-watermark advancing.
+now never receive. Under a permanent rejection it spins forever.
+
+The damage is not memory. The loop retains nothing per iteration, so it does not
+grow the heap; it simply never returns. The orchestrator holds a `SyncLock` for
+the whole run and refreshes it on a 60s heartbeat
+(`core-sync/orchestrator.ts`), so a phase that never returns keeps that lock
+alive indefinitely and every subsequent scheduled run exits early with
+`reason: "lock_held"`. The observable symptom is a sync job that quietly stops
+running — no crash, no alert, no restart. That is strictly worse than an OOM,
+which at least restarts the process and drops the lock.
+
+Bounding consecutive page failures ends the phase with `errors > 0`, which
+already suppresses the soft-delete and stops the watermark advancing.
 
 **When you move a read onto a gated surface, re-read every retry/continue loop
 around it and ask what it does when the failure never stops.**
@@ -179,14 +188,22 @@ chose not to send you_ has no branch to shape.
 
 ### The rules in the double are empirical, and they expire
 
-Every rule in the double came from a dated read-only probe of the live gateway,
+Most rules in the double came from a dated read-only probe of the live gateway,
 recorded in the double's own header with its date, the exact query and the exact
 response. That header is the only thing standing between a modelled rule and a
-guess. Two beliefs in particular are load-bearing and untestable in CI — that
-the credential satisfies the publisher gate, and that the publisher field
-returns what the public field hides — so they get probed, dated, and, where a
-probe is impossible, modelled as an explicit failure case with a test pinning
-the consequence.
+guess — so it must also record which rules were **not** probed, and a doc that
+says "every rule was probed" while the header says otherwise has made the
+header worthless.
+
+Two beliefs here are load-bearing and were **not** probed, because the
+publisher field needs a credential the measuring environment did not have: that
+Core Sync's credential satisfies the publisher gate at all, and that the
+publisher field returns what the public field hides. Both are inferences from
+Core's schema, not observations. An unprobed belief is not automatically
+unacceptable — but it has to be named as unprobed, modelled as an explicit
+failure case with a test pinning the consequence when it is wrong (here: the
+phase fails loudly and soft-deletes nothing), and handed to someone who _can_
+run the probe, as a named post-deploy check rather than a hope.
 
 ## Measure the widening before you merge
 
@@ -209,6 +226,36 @@ header rather than the field, because the publisher field needs a credential the
 measuring environment did not have. Say which delta you measured and which you
 did not. A measured 46 plus a named, unmeasured remainder is an honest number; a
 single number that quietly conflates them is not.
+
+## The fix is inert until a full sync runs
+
+Worth stating because it is easy to merge and assume done. Core Sync defaults to
+incremental (`incremental = options?.incremental ?? true` in
+`core-sync/orchestrator.ts`), and incremental runs pass
+`where: { updatedAt: { gte: <watermark> } }`. The watermark already advanced
+past the restricted videos — the filtered-out reads reported `errors === 0`, so
+every one of them looked like a clean run. A restricted video Core has not
+touched since is outside every incremental window, so the deploy alone changes
+nothing for it.
+
+Deploying a read-widening fix therefore has a required second step:
+
+1. Deploy.
+2. Confirm the publisher gate actually admits the sync's credential — the one
+   belief no CI test can hold. Run one full sync and check it did not fail with
+   `Not authorized to resolve Query.adminVideos`. If it did, the fix is inert in
+   the other direction and `CORE_API_TOKEN` is the first thing to check: it is
+   `.optional()` in the env schema, so an unset token is not a boot error, it is
+   a runtime rejection on the first page.
+3. Run a **full** sync (`incremental: false`), or reset the videos and
+   video-images watermarks, so the already-synced restricted videos are re-read.
+4. Verify against the known case (`2_ElCamImpulsesVert`): its Forge row should
+   carry `restrict_view_platforms` containing `watch`, and it should stop
+   resolving on the public Watch surfaces.
+
+**A fix to what a sync READS only reaches rows the sync re-reads.** Incremental
+defaults hide that completely, and they hide it in the direction of "shipped and
+green".
 
 ## Checklist
 

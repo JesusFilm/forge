@@ -329,6 +329,18 @@ export class SearchWatchabilityService {
     `)
   }
 
+  /**
+   * Resolve a target-language subtitle paired with a playable fallback Dub.
+   *
+   * This tier reaches its Dub through a LATERAL join rather than through
+   * `playableDubWhere()`, so it does not inherit that helper's nested `video`
+   * clause and has to restate the candidate's own visibility conditions:
+   * `deleted_at`, `no_index`, a published locale, and the watch restriction.
+   * The restriction line is the one with no other enforcement point on this
+   * path — without it a video Core restricts from Watch still surfaces as
+   * subtitle-watchable. See
+   * docs/solutions/best-practices/shared-predicate-partial-rollout-gap-20260810.md.
+   */
   private async targetSubtitlesForCandidates(
     candidates: readonly SearchWatchabilityCandidate[],
     languageId: string,
@@ -365,6 +377,7 @@ export class SearchWatchabilityService {
         ON video.id = candidate.video_id
        AND video.deleted_at IS NULL
        AND video.no_index = FALSE
+       AND NOT ('watch' = ANY(video.restrict_view_platforms))
        AND EXISTS (
          SELECT 1
          FROM video_locale published_locale

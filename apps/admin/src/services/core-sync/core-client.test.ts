@@ -8,7 +8,14 @@ describe("coreQuery", () => {
     vi.unstubAllGlobals()
   })
 
-  it("sends x-graphql-client-name: watch so Core can filter watch-restricted videos", async () => {
+  it("sends x-graphql-client-name: watch, which Core's downloads resolver keys off", async () => {
+    // The header's ORIGINAL stated reason — letting Core filter
+    // watch-restricted videos — was the bug in JesusFilm/forge#2324: the sync
+    // exists partly to OBSERVE those restrictions, so reading through a filter
+    // keyed on its own identity hid exactly the rows it cared about. The fix
+    // changed the root field to `adminVideos`, which applies no such filter.
+    // The header stays because Core's downloads resolver still keys off it,
+    // and that is now the only reason to keep it.
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ data: { videos: [] } }),

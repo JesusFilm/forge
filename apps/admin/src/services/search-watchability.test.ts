@@ -244,6 +244,10 @@ describe("SearchWatchabilityService", () => {
     expect(sql).toContain("video.deleted_at IS NULL")
     expect(sql).toContain("video.no_index = FALSE")
     expect(sql).toContain("published_locale.status = 'published'")
+    // This tier reaches its Dub through a LATERAL join, not through
+    // playableDubWhere(), so it inherits none of that helper's nested `video`
+    // clause. The watch restriction has no other enforcement point here.
+    expect(sql).toContain("NOT ('watch' = ANY(video.restrict_view_platforms))")
     expect(sql).toContain("ve.deleted_at IS NULL")
     expect(sql).toContain("target_language.deleted_at IS NULL")
     expect(sql).toContain("target_language.slug ~ ")

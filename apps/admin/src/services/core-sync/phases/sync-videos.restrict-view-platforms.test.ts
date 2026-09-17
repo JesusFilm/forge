@@ -12,6 +12,7 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
+  CORE_SEMANTICS_VERIFIED_AT,
   createCoreGatewayDouble,
   type CoreGatewayVideo,
 } from "../test-doubles/core-gateway"
@@ -21,6 +22,8 @@ import { syncVideoImages } from "./sync-video-images"
 
 const RESTRICTED_ID = "2_ElCamImpulsesVert"
 const VISIBLE_ID = "2_ElCamImpulses"
+// A second Watch-restricted video that admin already has a live row for.
+const LIVE_RESTRICTED_ID = "2_ElCamImpulsesVertEp2"
 
 function coreVideo(
   id: string,
@@ -41,6 +44,13 @@ function noopProgress() {
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
+})
+
+it("pins the date the double's Core rules were probed", () => {
+  // The double's rules are empirical and they expire. This assertion exists so
+  // the expiry has a grep target: re-probing Core means updating this date and
+  // the transcript in the double's header together, in one change.
+  expect(CORE_SEMANTICS_VERIFIED_AT).toBe("2026-09-16")
 })
 
 describe("core sync reads restrictions Core would hide from `watch`", () => {
@@ -141,6 +151,7 @@ describe("core sync reads restrictions Core would hide from `watch`", () => {
       videos: [
         coreVideo(VISIBLE_ID),
         coreVideo(RESTRICTED_ID, { restrictViewPlatforms: ["watch"] }),
+        coreVideo(LIVE_RESTRICTED_ID, { restrictViewPlatforms: ["watch"] }),
       ],
     })
     vi.stubGlobal("fetch", gateway.fetch)
@@ -150,6 +161,15 @@ describe("core sync reads restrictions Core would hide from `watch`", () => {
       deletedAt: new Date("2026-09-01T00:00:00.000Z"),
     })
     expect(tombstoned.deletedAt).not.toBeNull()
+    // A LIVE restricted row carries the first clause of this test's name. The
+    // tombstoned row above can only ever demonstrate the restore: it starts
+    // deleted, so "was not soft-deleted" is unobservable on it. The soft-delete
+    // pass tombstones whatever is not in `seenCoreIds`, so this row survives
+    // only because the publisher field put it there.
+    const live = store.seed({
+      coreId: LIVE_RESTRICTED_ID,
+      restrictViewPlatforms: ["watch"],
+    })
 
     const stats = await syncVideos({
       prisma: store.client as never,
@@ -157,7 +177,36 @@ describe("core sync reads restrictions Core would hide from `watch`", () => {
     })
 
     expect(store.get(RESTRICTED_ID)?.deletedAt).toBeNull()
+    expect(live.deletedAt).toBeNull()
     expect(stats.softDeleted).toBe(0)
+  })
+
+  it("does not import an unpublished video from the publisher field", async () => {
+    // The public `videos` field filtered to published videos implicitly, so
+    // the catalogue phase never had to say so. `adminVideos` does not, and the
+    // phase's `published: true` clause is now the only thing keeping Core's
+    // drafts out of Forge's catalogue. Deleting that clause leaves every other
+    // test in this file green.
+    const gateway = createCoreGatewayDouble({
+      videos: [
+        coreVideo(VISIBLE_ID),
+        coreVideo("draft-video", { published: false }),
+      ],
+    })
+    vi.stubGlobal("fetch", gateway.fetch)
+    const store = createPrismaVideoStore()
+
+    const stats = await syncVideos({
+      prisma: store.client as never,
+      progress: noopProgress(),
+    })
+
+    expect(stats.errors).toBe(0)
+    expect(store.get(VISIBLE_ID)).toBeDefined()
+    expect(store.get("draft-video")).toBeUndefined()
+    expect(gateway.requests[0]?.variables.where).toMatchObject({
+      published: true,
+    })
   })
 
   it("keeps sending x-graphql-client-name: watch while reading the publisher field", async () => {
@@ -257,6 +306,80 @@ describe("core sync reads images for restricted videos", () => {
     expect(gateway.requests[0]?.variables.where).toMatchObject({
       published: true,
     })
+  })
+
+  it("tombstones an image Core no longer returns once the walk completes", async () => {
+    // Anti-vacuous companion to the guard test below: without this, a store
+    // double whose `videoImage.updateMany` did nothing would satisfy the
+    // "survives" assertion for the wrong reason.
+    const gateway = createCoreGatewayDouble({
+      videos: [
+        coreVideo(RESTRICTED_ID, {
+          restrictViewPlatforms: ["watch"],
+          images: [{ id: "image-current" }],
+        }),
+      ],
+    })
+    vi.stubGlobal("fetch", gateway.fetch)
+    const store = createPrismaVideoStore()
+    const row = store.seed({ coreId: RESTRICTED_ID })
+    const gone = store.seedImage({
+      coreId: "image-core-dropped",
+      videoId: row.id,
+      syncedAt: new Date("2026-01-01T00:00:00.000Z"),
+    })
+
+    const stats = await syncVideoImages({
+      prisma: store.client as never,
+      progress: noopProgress(),
+    })
+
+    expect(stats.errors).toBe(0)
+    expect(stats.softDeleted).toBe(1)
+    expect(gone.deletedAt).not.toBeNull()
+    // The row this run refreshed carries a `syncedAt` at or after
+    // `phaseStartedAt`, so the staleness clause leaves it alone.
+    expect(store.images.get("image-current")?.deletedAt).toBeNull()
+  })
+
+  it("keeps images a partially failed walk never got to read", async () => {
+    // `stats.errors === 0` in the phase's soft-delete guard is the single
+    // condition standing between a mid-walk Core failure and tombstoning every
+    // image whose `syncedAt` predates this run. Page 1 succeeds (so
+    // `seenCoreIds` is non-empty and the other two guards are both satisfied)
+    // and every later page rejects, which is the only quadrant where that one
+    // condition decides the outcome.
+    const videos = [
+      coreVideo(RESTRICTED_ID, {
+        restrictViewPlatforms: ["watch"],
+        images: [{ id: "image-current" }],
+      }),
+      // Fill page 1 so the walk does not stop on a short page before reaching
+      // the failing offset.
+      ...Array.from({ length: 99 }, (_, index) => coreVideo(`filler-${index}`)),
+    ]
+    const gateway = createCoreGatewayDouble({
+      videos,
+      rejectPagesFromOffset: 100,
+    })
+    vi.stubGlobal("fetch", gateway.fetch)
+    vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const store = createPrismaVideoStore()
+    const row = store.seed({ coreId: RESTRICTED_ID })
+    const unread = store.seedImage({
+      coreId: "image-beyond-page-one",
+      videoId: row.id,
+      syncedAt: new Date("2026-01-01T00:00:00.000Z"),
+    })
+
+    const stats = await syncVideoImages({
+      prisma: store.client as never,
+      progress: noopProgress(),
+    })
+
+    expect(stats.errors).toBeGreaterThan(0)
+    expect(stats.softDeleted).toBe(0)
+    expect(unread.deletedAt).toBeNull()
   })
 
   it("gives up instead of paginating forever when Core rejects every page", async () => {

@@ -15,26 +15,43 @@ export type StoredVideo = {
   syncedAt: Date | null
 }
 
+export type StoredImage = {
+  coreId: string
+  videoId: string
+  source: "CORE" | "MANAGER"
+  deletedAt: Date | null
+  syncedAt: Date | null
+}
+
 export type PrismaVideoStore = {
   /** Pass to `syncVideos({ prisma })` / `syncVideoImages({ prisma })`. */
   client: unknown
   rows: Map<string, StoredVideo>
   get: (coreId: string) => StoredVideo | undefined
   seed: (row: Partial<StoredVideo> & { coreId: string }) => StoredVideo
-  images: Map<
-    string,
-    { coreId: string; videoId: string; deletedAt: Date | null }
-  >
+  /** Plant an image row a prior sync already wrote, for soft-delete cases. */
+  seedImage: (row: Partial<StoredImage> & { coreId: string }) => StoredImage
+  images: Map<string, StoredImage>
 }
 
 let nextId = 0
 
+function matchesStaleness(
+  row: StoredImage,
+  or: Array<{ syncedAt?: null | { lt?: Date } }>,
+): boolean {
+  return or.some((clause) => {
+    if (!("syncedAt" in clause)) return false
+    if (clause.syncedAt === null) return row.syncedAt === null
+    const lt = clause.syncedAt?.lt
+    if (lt == null) return false
+    return row.syncedAt != null && row.syncedAt.getTime() < lt.getTime()
+  })
+}
+
 export function createPrismaVideoStore(): PrismaVideoStore {
   const rows = new Map<string, StoredVideo>()
-  const images = new Map<
-    string,
-    { coreId: string; videoId: string; deletedAt: Date | null }
-  >()
+  const images = new Map<string, StoredImage>()
 
   function seed(row: Partial<StoredVideo> & { coreId: string }): StoredVideo {
     const stored: StoredVideo = {
@@ -46,6 +63,20 @@ export function createPrismaVideoStore(): PrismaVideoStore {
       syncedAt: row.syncedAt ?? null,
     }
     rows.set(stored.coreId, stored)
+    return stored
+  }
+
+  function seedImage(
+    row: Partial<StoredImage> & { coreId: string },
+  ): StoredImage {
+    const stored: StoredImage = {
+      coreId: row.coreId,
+      videoId: row.videoId ?? `video-${++nextId}`,
+      source: row.source ?? "CORE",
+      deletedAt: row.deletedAt ?? null,
+      syncedAt: row.syncedAt ?? null,
+    }
+    images.set(stored.coreId, stored)
     return stored
   }
 
@@ -110,16 +141,47 @@ export function createPrismaVideoStore(): PrismaVideoStore {
   const videoImage = {
     upsert: async (args: {
       where: { coreId: string }
-      create: { coreId: string; videoId: string }
+      create: { coreId: string; videoId: string; syncedAt?: Date }
+      update?: { syncedAt?: Date; deletedAt?: Date | null }
     }) => {
-      images.set(args.where.coreId, {
+      const existing = images.get(args.where.coreId)
+      if (existing) {
+        if (args.update && "deletedAt" in args.update) {
+          existing.deletedAt = args.update.deletedAt ?? null
+        }
+        existing.syncedAt = args.update?.syncedAt ?? existing.syncedAt
+        return { id: args.where.coreId }
+      }
+      seedImage({
         coreId: args.where.coreId,
         videoId: args.create.videoId,
-        deletedAt: null,
+        syncedAt: args.create.syncedAt ?? null,
       })
       return { id: args.where.coreId }
     },
-    updateMany: noopMany,
+    // Real enough to make the images soft-delete observable as STATE. Mirrors
+    // `video.updateMany` above, plus the `OR: [{ syncedAt: null }, { syncedAt:
+    // { lt } }]` staleness clause the images phase tombstones on — a double
+    // that returned `{ count: 0 }` here let the phase's `stats.errors === 0`
+    // guard be deleted with every test still green.
+    updateMany: async (args: {
+      where: {
+        source?: string
+        deletedAt?: null
+        OR?: Array<{ syncedAt?: null | { lt?: Date } }>
+      }
+      data: { deletedAt: Date }
+    }) => {
+      let count = 0
+      for (const row of images.values()) {
+        if (args.where.source === "CORE" && row.source !== "CORE") continue
+        if (args.where.deletedAt === null && row.deletedAt !== null) continue
+        if (args.where.OR && !matchesStaleness(row, args.where.OR)) continue
+        row.deletedAt = args.data.deletedAt
+        count++
+      }
+      return { count }
+    },
   }
 
   const tx = {
@@ -166,6 +228,7 @@ export function createPrismaVideoStore(): PrismaVideoStore {
     rows,
     images,
     seed,
+    seedImage,
     get: (coreId: string) => rows.get(coreId),
   }
 }

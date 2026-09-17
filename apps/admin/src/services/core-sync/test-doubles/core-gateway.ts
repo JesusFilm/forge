@@ -59,6 +59,10 @@
 // the phase fails loudly and soft-deletes nothing.
 // ---------------------------------------------------------------------------
 
+import type { z } from "zod"
+import type { CoreVideoSchema } from "../schemas/video"
+import type { CoreVideoImageSchema } from "../schemas/video-image"
+
 export const CORE_SEMANTICS_VERIFIED_AT = "2026-09-16"
 
 /** A video as Core holds it, before any per-caller visibility rule applies. */
@@ -116,8 +120,10 @@ export type CoreGatewayDouble = {
 
 function readRootField(query: string): RootField | "bibleBooks" {
   if (/\bbibleBooks\b/.test(query)) return "bibleBooks"
-  // `adminVideos` must be tested first: `/\bvideos\b/` does not match inside
-  // `adminVideos`, but keeping the order explicit documents the intent.
+  // Both patterns require the name to sit where a root field sits: preceded by
+  // whitespace, `{` or `(`, and followed by `(`. That prefix is what stops
+  // `videos` matching the tail of a longer field name. Testing `adminVideos`
+  // first is defensive ordering on top of that, not the load-bearing part.
   if (/(^|[\s{(])adminVideos\s*\(/.test(query)) return "adminVideos"
   if (/(^|[\s{(])videos\s*\(/.test(query)) return "videos"
   throw new Error(
@@ -146,7 +152,12 @@ function isVisible(
   return !video.restrictViewPlatforms.includes(clientName)
 }
 
-function toCoreVideoPayload(video: CoreGatewayVideo) {
+// Annotated with the schema's INPUT type so the double cannot drift from what
+// the phase actually parses: drop a required field here and this file stops
+// typechecking, rather than every test failing at runtime with a Zod issue.
+function toCoreVideoPayload(
+  video: CoreGatewayVideo,
+): z.input<typeof CoreVideoSchema> {
   return {
     id: video.id,
     slug: video.slug ?? video.id,
@@ -170,7 +181,14 @@ function toCoreVideoPayload(video: CoreGatewayVideo) {
   }
 }
 
-function toCoreImagesPayload(video: CoreGatewayVideo) {
+// `videoId` is omitted on purpose: Core's nested `Video.images` selection does
+// not carry it, and the images phase injects the parent's id before parsing.
+// Spelling that as an `Omit` keeps the double honest about which half of the
+// schema's input the gateway is actually responsible for.
+function toCoreImagesPayload(video: CoreGatewayVideo): {
+  id: string
+  images: Array<Omit<z.input<typeof CoreVideoImageSchema>, "videoId">>
+} {
   return {
     id: video.id,
     images: (video.images ?? []).map((image) => ({
@@ -196,9 +214,17 @@ export function createCoreGatewayDouble({
    * credential.
    */
   unauthorizedForPublisherField = false,
+  /**
+   * When set, any page whose `offset` is at or past this value rejects. Models
+   * Core failing PART WAY through a walk — the shape that separates "the sync
+   * saw everything and this row is genuinely gone" from "the sync could not
+   * finish and must not tombstone what it failed to read".
+   */
+  rejectPagesFromOffset,
 }: {
   videos: CoreGatewayVideo[]
   unauthorizedForPublisherField?: boolean
+  rejectPagesFromOffset?: number
 }): CoreGatewayDouble {
   const requests: CoreGatewayRequest[] = []
   const state = { videos }
@@ -232,15 +258,28 @@ export function createCoreGatewayDouble({
 
       requests.push({ rootField, clientName, variables })
 
-      if (rootField === "adminVideos" && unauthorizedForPublisherField) {
+      const requestedOffset =
+        typeof variables.offset === "number" ? variables.offset : 0
+      const rejectThisPage =
+        (rootField === "adminVideos" && unauthorizedForPublisherField) ||
+        (rejectPagesFromOffset != null &&
+          requestedOffset >= rejectPagesFromOffset)
+
+      if (rejectThisPage) {
         return {
           ok: true,
           json: async () => ({
             data: null,
             errors: [
               {
-                message: "Not authorized to resolve Query.adminVideos",
-                path: ["adminVideos"],
+                // Both shapes are non-retryable by `core-client.ts`'s code
+                // list, so the phase sees one throw per page rather than
+                // three attempts with backoff.
+                message:
+                  rootField === "adminVideos" && unauthorizedForPublisherField
+                    ? "Not authorized to resolve Query.adminVideos"
+                    : `Core failed to resolve page at offset ${requestedOffset}`,
+                path: [rootField],
                 extensions: {
                   code: "DOWNSTREAM_SERVICE_ERROR",
                   serviceName: "api-media",
@@ -251,8 +290,13 @@ export function createCoreGatewayDouble({
         }
       }
 
+      // `where.updatedAt` is deliberately NOT modelled. Incremental runs send
+      // it, and this double ignores it, so a test that passes `since` gets the
+      // full fixture back. That is fine for the cases here — all of them are
+      // full syncs — but it means this double CANNOT be used to prove anything
+      // about incremental windowing. A test that tried would pass vacuously.
       const where = (variables.where ?? {}) as { published?: boolean }
-      const offset = typeof variables.offset === "number" ? variables.offset : 0
+      const offset = requestedOffset
       const limit = typeof variables.limit === "number" ? variables.limit : 25
 
       const matching = state.videos
