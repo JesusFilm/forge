@@ -47,6 +47,10 @@ export type PlaybackSessionDescriptor = {
   videoId: string | null
   videoSlug: string
   title: string
+  /** Whether `title` came from the resolved video record rather than from a
+   *  deep-link seed. The seed is attacker-controlled, so anything that
+   *  PERSISTS or RENDERS the title outside this session must gate on it. */
+  titleFromRecord: boolean
   posterUrl: string | null
   languageSlug: string | null
   /** The route pattern this session would originate from (R19). */
@@ -274,6 +278,7 @@ function sameSession(
     a.videoId === b.videoId &&
     a.videoSlug === b.videoSlug &&
     a.title === b.title &&
+    a.titleFromRecord === b.titleFromRecord &&
     a.posterUrl === b.posterUrl &&
     a.languageSlug === b.languageSlug &&
     a.originPattern === b.originPattern

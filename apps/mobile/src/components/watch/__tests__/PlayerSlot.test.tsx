@@ -71,6 +71,7 @@ const SESSION_A = {
   videoId: "video-a",
   videoSlug: "video-a-slug",
   title: "Video A",
+  titleFromRecord: true,
   posterUrl: null,
   languageSlug: "english",
   originPattern: "watch/[slug]",

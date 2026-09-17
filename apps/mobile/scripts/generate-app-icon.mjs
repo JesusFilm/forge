@@ -83,6 +83,9 @@ const WIDTH_IOS = 0.6
 const WIDTH_ANDROID = 0.6 * (72 / 108)
 // The static splash: the symbol on transparency over splash.backgroundColor.
 const WIDTH_SPLASH = 0.55
+// A notification icon is drawn at its whole 24dp box with no adaptive safe
+// zone, so reusing WIDTH_ANDROID would render the mark at 40% of the slot.
+const WIDTH_NOTIFICATION = 0.8
 
 // With the animated splash ON the native splash carries NO symbol (KTD3): the
 // animation opens on an empty field, so the two frames match only if this one
@@ -395,6 +398,13 @@ async function main() {
   await png(
     markSvg(SIZE, WIDTH_ANDROID, "#FFFFFF"),
     path.join(ASSETS, "adaptive-icon-monochrome.png"),
+  )
+  // Notifications: Android reads the ALPHA CHANNEL only and tints the result,
+  // so this is a white silhouette too — but at its own width, because the
+  // adaptive safe zone does not apply in the status bar.
+  await png(
+    markSvg(SIZE, WIDTH_NOTIFICATION, "#FFFFFF"),
+    path.join(ASSETS, "notification-icon.png"),
   )
 
   if (animatedSplash) {

@@ -316,6 +316,7 @@ function request(
             videoId: progressIdentity.videoId ?? null,
             videoSlug: progressIdentity.videoSlug ?? "video-a-slug",
             title: "A video",
+            titleFromRecord: true,
             posterUrl: null,
             languageSlug: progressIdentity.languageSlug ?? null,
             originPattern: "watch/[slug]",
