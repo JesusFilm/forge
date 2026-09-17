@@ -20,20 +20,24 @@ internal management path; planning completion does not deliver either.
 
 1. [Plan](../../plans/2026-09-15-001-feat-rag-consumer-access-usage-plan.md).
 2. `apps/rag/src/serving/http/auth.ts` and `app.ts` — HTTP boundary.
-3. `apps/auth/src/auth/config.ts` — existing provider integration.
+3. `apps/auth/src/auth/config.ts` — reference only, not proof of deployed GitHub login.
 
 ## Grep These
 
-`forge-rag-retrieve`, `TokenRegistry`, `email_verified`, `FallbackEmbedder`.
+`forge-rag-retrieve`, `TokenRegistry`, `owners`, `FallbackEmbedder`.
 
 ## What To Build
 
-Refine and implement plan section F after successful dogfood. Design is captured
-now for expected Bible lookup demand. Recommend existing Forge Auth Google OIDC;
-confirm host/client registration and verified-email claim before coding. Enforce
-repository allowlist, senior CI approval and audited multi-manager authorization.
-Provide register, membership, scope/status and Generate new key flows with
-hash-only persistence and one-time display. Reports remain Jaco/RAGBot-only.
+Implement plan section F after successful dogfood. GitHub login identifies the
+engineer; the current merged per-consumer `owners` list authorizes management
+and key regeneration. A non-owner submits a normal PR adding their handle and
+waits for merge. Registration and owner edits use repository PRs, never immediate
+portal grants. No senior/specific approver or global engineer/email allowlist.
+
+Confirm host/client registration, stable GitHub identity binding and trusted
+merged-revision publication before coding. Provide owner-scoped status/audit and
+Generate new key with secure verifier-only persistence, one-time display and
+immediate invalidation of the previous key. Reports remain Jaco/RAGBot-only.
 
 ## Constraints
 
@@ -46,4 +50,4 @@ by the documentation PR. Read package guidance before implementation.
 
 Run the applicable plan acceptance criteria and package checks. Record synthetic
 counts, coverage, revision and outcomes only. Portal work must also verify page
-load performance, cross-consumer denial and concurrent manager/rotation behavior.
+load performance, cross-consumer denial and concurrent owner/rotation behavior. Test non-owner denial, PR-before/after-merge, removed-owner sessions, stale registry denial, last-owner protection and audit records.

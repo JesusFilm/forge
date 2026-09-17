@@ -13,7 +13,7 @@ tags: ["rag", "planning", "auth", "observability"]
 
 ## Problem
 
-The approved consumer access programme still needs concrete technical and review
+The approved consumer access programme still needs concrete technical
 arrangements before implementation. Planning completion does not establish those
 arrangements. This discovery gate precedes access, usage, dogfood and portal work.
 
@@ -21,15 +21,15 @@ arrangements. This discovery gate precedes access, usage, dogfood and portal wor
 
 1. [Programme plan](../../plans/2026-09-15-001-feat-rag-consumer-access-usage-plan.md) — approved decisions and sections A–F.
 2. `docs/roadmap/rag/CLAUDE.md` and `apps/rag/AGENTS.md` — lane and service boundaries.
-3. `.github/workflows/` — existing review checks; `config/rag-consumer-engineers.json` is a proposed path, not an existing allowlist.
-4. `apps/auth/src/auth/config.ts` and `apps/chat/src/auth/oauth-client.ts` — reference identity/verified-email flows; no cross-app imports.
+3. `.github/workflows/` — existing CI; consumer registry path/schema and owner validation are future implementation details.
+4. `apps/auth/src/auth/config.ts` and `apps/chat/src/auth/oauth-client.ts` — reference session flows, not a deployed GitHub portal; no cross-app imports.
 5. `apps/rag/src/serving/http/auth.ts`, `app.ts` and `apps/rag/scripts/serve.ts` — authentication, request counting and composition.
 6. `apps/rag/prisma/schema.prisma`, `apps/rag/src/adapters/postgres/index.ts` and `apps/rag/docs/ops/environment-and-secrets.md` — metadata/corpus isolation and existing operations.
 
 ## Grep These
 
-`TokenRegistry`, `lookupScope`, `SERVE_BEARER_TOKENS`, `email_verified`,
-`ConsumerMembership`, `usage:report`, `coverageStatus`, `completeThrough`.
+`TokenRegistry`, `lookupScope`, `SERVE_BEARER_TOKENS`, `owners`,
+`ConsumerOwner`, `usage:report`, `coverageStatus`, `completeThrough`.
 
 ## What To Build
 
@@ -37,19 +37,19 @@ Deliver findings in a later, separate documentation-only PR, with repository
 path/revision evidence, confirmed decisions, unresolved blockers and an
 implementation handoff for each of these five areas:
 
-1. Confirm the engineer allowlist path/schema and GitHub-to-verified-email mapping,
-   senior approver accounts/team, exact required review/CI checks and protection
-   of their configuration. Specify current-head enforcement and rejection of
-   self-approval, stale/dismissed reviews and unauthorized reviewers.
-2. Confirm the portal login/identity approach, host/client registration design,
-   verified-email claim validation, session removal behavior and management API
-   boundary. Evaluate the existing recommended Forge Auth Google OIDC flow
-   without treating repository wiring as deployed configuration.
+1. Record normal registration PR access for any Forge read/write engineer and
+   nonempty per-consumer GitHub `owners`. Specify narrow CI owner validation,
+   exactly what can be checked without safely available live membership access,
+   and explicit unverified results. No special reviewer or added approval gate.
+2. Confirm GitHub identity and authorization from current merged owners, trusted
+   publication/freshness, handle-to-stable-account binding, removal/session behavior
+   and management API boundary. Non-owners add their handle through normal PR
+   merge before key management. Host/client setup remains implementation work.
 3. Confirm the token hashing/verifier lookup and constant-time verification design,
    hash-only storage, one-time display and immediate atomic rotation. Specify
    concurrency/version checks, transaction failure, lost-response recovery and
    revocation behavior without generating or handling credentials.
-4. Confirm the database permissions/isolation design: approval/issuance writer,
+4. Confirm the database permissions/isolation design: registry/issuance writer,
    serving auth reader, narrow usage writer and aggregate-only report reader.
    Document the privilege matrix, metadata/corpus boundary and proposed isolated
    role tests; no corpus write or report access to verifiers/contacts is permitted.

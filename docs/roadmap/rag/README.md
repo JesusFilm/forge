@@ -8,7 +8,7 @@ database into Admin.
 > This lane is intentionally invisible to the public roadmap viewer and the
 > generated `docs/roadmap/README.md` totals. This index is maintained by hand.
 
-## Status (September 16, 2026)
+## Status (September 17, 2026)
 
 - **Total tickets:** 33
 - **Complete:** 20
@@ -74,3 +74,9 @@ Portal design is already captured by feat-511; implementation waits for dogfood.
 
 Discovery findings belong in a later, separate documentation-only PR; feat-518
 must complete before access implementation begins. This PR only schedules discovery.
+
+J014 records the accepted ownership model in the programme plan: normal
+consumer-registration PRs, merged per-consumer GitHub `owners`, narrow owner
+validation CI and GitHub portal identity. No special consumer approver or added
+human review gate. Discovery evidence stays in separate draft
+[PR #2325](https://github.com/JesusFilm/forge/pull/2325); the plan stays in #2304.

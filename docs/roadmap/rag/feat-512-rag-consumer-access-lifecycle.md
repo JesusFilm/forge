@@ -30,11 +30,18 @@ before retiring shared-token access. Planning completion is not implementation.
 
 ## What To Build
 
-Implement plan sections A, B and D: operator-mediated registration/approval,
-repository allowlist with senior PR approval enforced by required CI, verified-email authorization, multiple audited managers, stable server-side identity, private bearer
-per environment, one-time display with hash-only storage, atomic immediate replacement with no overlap, scope enforcement,
-suspension/revocation and restricted metadata privileges. Deliver the migration
-runbook but do not execute cutoff until feat-514 and separate production approval pass.
+Implement plan sections A, B and D: normal consumer-registration PRs open to
+any Forge read/write engineer, nonempty per-consumer GitHub `owners`, narrow CI
+owner/membership validation with explicit unavailable-lookup coverage, and
+GitHub-identity authorization from the current merged owners list. There is no
+special consumer approver or added human review gate. Non-owners must add their
+handle by PR and wait for normal merge; portal changes cannot bypass this.
+
+Provide stable consumer identity, private bearer per environment, one-time display
+with secure verifier-only storage, atomic immediate replacement with no overlap,
+scoped retrieval, suspension/revocation and restricted metadata privileges.
+Audit owner changes/registry application and lifecycle actions without secrets.
+Deliver the migration runbook; cutoff waits for feat-514 and separate approval.
 
 Use the plan's proposed types and counting contract. Start date/duration are
 bookkeeping estimates, not an approved release schedule.
@@ -53,3 +60,15 @@ to this deliverable. Run RAG tests, typecheck, lint, depcruise and isolated DB
 role/integration checks; contract drift checks if changed. Record actual outcomes
 without sensitive content. Complete only the implemented deliverable; shared-token
 cutoff additionally requires feat-514 and separate production cutover approval.
+
+## Owner-validation and authorization acceptance
+
+Use the plan's ownership/CI acceptance matrix: empty or malformed owners fail;
+known membership and unavailable/private-membership cases remain distinct;
+non-owner and unmerged owner-addition requests are denied; a merged addition
+allows management only after fresh trusted publication. Removal invalidates
+management for existing sessions. Prevent last-owner loss and handle reassignment.
+No review evaluator, special reviewer roster or gate on all RAG PRs is required.
+Document actual live membership verification coverage before activation; do not
+claim structural validation proves organisation membership. Exact registry path,
+publication mechanism and stable account binding remain implementation details.
