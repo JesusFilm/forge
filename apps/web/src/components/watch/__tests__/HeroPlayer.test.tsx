@@ -15,7 +15,8 @@
  */
 
 import { act, useImperativeHandle, type ComponentProps } from "react"
-import { createRoot, type Root } from "react-dom/client"
+import { createRoot, hydrateRoot, type Root } from "react-dom/client"
+import { renderToString } from "react-dom/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 type MuxVideoCapturedProps = Record<string, unknown> & {
@@ -4222,6 +4223,31 @@ describe("HeroPlayer — language switch button", () => {
 })
 
 describe("HeroPlayer — autoplay on ?autoplay=1", () => {
+  it("hydrates cached poster HTML before applying an autoplay arrival", async () => {
+    const block = makeBlock()
+    const onPlayerActivated = vi.fn()
+    act(() => root.unmount())
+    // force-static renders without query parameters; the arriving browser has them.
+    setSearchParams("")
+    container.innerHTML = renderToString(<HeroPlayer block={block} />)
+    expect(container.querySelector("h1")?.textContent).toBe("Jesus")
+    setSearchParams("autoplay=1")
+    const hydrationErrors: unknown[] = []
+    await act(async () => {
+      root = hydrateRoot(
+        container,
+        <HeroPlayer block={block} onPlayerActivated={onPlayerActivated} />,
+        { onRecoverableError: (error) => hydrationErrors.push(error) },
+      )
+    })
+    expect(hydrationErrors).toEqual([])
+    expect(muxVideoMock).toHaveBeenCalled()
+    await fireCanPlay()
+    expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
+    expect(mockPlayerRef.current?.muted).toBe(false)
+    expect(onPlayerActivated).toHaveBeenCalledWith("automatic")
+  })
+
   // The effect signals language-switch arrivals: fired by LanguagePickerModal
   // Apply, consumed here as a one-shot unmuted play attempt. Each test sets
   // the URL params before render, fires onCanPlay to satisfy videoReady,
