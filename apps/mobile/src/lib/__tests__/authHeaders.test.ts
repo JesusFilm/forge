@@ -6,8 +6,13 @@ import {
   SEARCH_OPERATION_NAME,
   authHeadersForOperation,
   buildAuthHeaders,
+  carriesFleetBearer,
   isProgressOperation,
 } from "../authHeaders"
+import {
+  RECOMMENDATION_DOCUMENTS,
+  RECOMMENDATION_OPERATION_NAMES,
+} from "../recommendations/operations"
 import {
   RECORD_WATCH_SEARCH_EVENT,
   WATCH_SEARCH,
@@ -78,6 +83,58 @@ describe("authHeadersForOperation", () => {
     expect(
       authHeadersForOperation("GetVideoBySlug", "abc123", "device-1"),
     ).toEqual({})
+  })
+})
+
+// The recommendation operations REQUIRE the bearer: admin admits a fleet caller
+// only with the bearer plus a proven viewer handle, so a missing header is an
+// UNAUTHENTICATED failure there, not a coarser rate-limit bucket.
+describe("authHeadersForOperation — recommendation operations", () => {
+  it.each([...RECOMMENDATION_OPERATION_NAMES])(
+    "attaches the bearer and x-viewer-id on %s",
+    (operationName) => {
+      expect(
+        authHeadersForOperation(operationName, "abc123", "device-1"),
+      ).toEqual({
+        Authorization: "Bearer abc123",
+        "x-viewer-id": "device-1",
+      })
+    },
+  )
+
+  it("pins the allowlist to the operation names of the documents mobile sends", () => {
+    const sentNames = Object.values(RECOMMENDATION_DOCUMENTS).map((doc) => {
+      const operation = (doc as unknown as DocumentNode).definitions.find(
+        (d): d is OperationDefinitionNode => d.kind === "OperationDefinition",
+      )
+      return operation?.name?.value
+    })
+    expect([...sentNames].sort()).toEqual(
+      [...RECOMMENDATION_OPERATION_NAMES].sort(),
+    )
+    expect(Object.keys(RECOMMENDATION_DOCUMENTS).sort()).toEqual(
+      [...RECOMMENDATION_OPERATION_NAMES].sort(),
+    )
+  })
+
+  // These need the Web backend's session digest; a fleet bearer can never
+  // satisfy them, so allowlisting one would spend the fleet key for nothing.
+  it("never carries the bearer on the web-only digest operations", () => {
+    for (const name of [
+      "SemanticRecommendationDelivery",
+      "RecommendationProfileStatus",
+      "TransitionRecommendationProfile",
+      "RecordRecommendationContentAction",
+    ]) {
+      expect(carriesFleetBearer(name)).toBe(false)
+      expect(authHeadersForOperation(name, "abc123", "device-1")).toEqual({})
+    }
+  })
+
+  it("keeps the user JWT off every recommendation operation", () => {
+    for (const name of RECOMMENDATION_OPERATION_NAMES) {
+      expect(isProgressOperation(name)).toBe(false)
+    }
   })
 })
 

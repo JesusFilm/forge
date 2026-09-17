@@ -99,6 +99,7 @@ import { useDownloads } from "../../src/contexts/DownloadsProvider"
 import { validateLocalMediaUrl } from "../../src/lib/validateLocalMediaUrl"
 import { OFFLINE_ROOT } from "../../src/lib/offlineFileSystem"
 import { buildSubtitlePath } from "../../src/lib/offlineFiles"
+import { markPlaybackDiscovery } from "../../src/lib/recommendations/playbackDiscovery"
 import {
   resolveActiveSubtitle,
   resolveSubtitleActionLabel,
@@ -538,6 +539,13 @@ export default function WatchVideoPage() {
       const arrival = consumeDeepLinkArrival(decodedSlug)
       if (arrival == null) return
       deepLinkEmittedRef.current.add(decodedSlug)
+      // Only a URL arrival is a shared link (feat-516). A lapse-reminder tap
+      // reaches this same effect, and marking it `share` would attribute every
+      // reminder return to a shared link; unmarked, it falls through to
+      // `direct`. The union has no `reminder` source, and extending it is a
+      // cross-app contract change — reminder returns stay attributable through
+      // this event's `origin` and `lapse_reminder.tap`.
+      if (arrival.origin === "url") markPlaybackDiscovery(decodedSlug, "share")
       // Built inline: the reserved-attribute sweep only reads an object
       // literal written AT the call site.
       datadogLog.info("content.deep_link_open", {
