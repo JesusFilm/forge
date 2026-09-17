@@ -73,9 +73,11 @@ Consumer programme order: feat-511 planning/design → feat-518 discovery
 Portal design is already captured by feat-511; implementation waits for dogfood.
 
 [Discovery evidence](evidence/feat-518/consumer-access-discovery.md) is delivered
-separately from programme PR #2304; feat-518 is complete. Latest review policy is
-any valid non-author approval for the two consumer registry/schema paths only,
-not senior-only or all RAG/Forge PRs. Option B preserves the exact enforcement
-gap under feat-512; nothing is claimed configured. GitHub allowlisted portal,
-multiple managers, Jaco-only recovery and consumer-first RAGBot aggregate reports
-remain the accepted design. Implementation tickets remain not-started.
+in separate draft [PR #2325](https://github.com/JesusFilm/forge/pull/2325);
+feat-518 is complete. The canonical plan in PR #2304 and the discovery now share
+J014's accepted model: normal registration PRs, nonempty per-consumer GitHub
+`owners`, GitHub login and authorization from merged ownership. CI validates
+owners/membership with explicit unverified coverage when live lookup is unsafe.
+No special consumer approver or added approval gate; the old option-B review gap
+is superseded. RAGBot registers first; Jaco/RAGBot later get aggregate-only reports.
+Implementation tickets remain not-started; dependencies are unchanged.

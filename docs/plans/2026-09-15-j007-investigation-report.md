@@ -1,5 +1,11 @@
 # J007 investigation, review and wiki handoff
 
+> Historical execution record. J014 (2026-09-17) supersedes its senior/specific
+> approver, engineer/email allowlist, Google portal and mutable-manager proposals.
+> Follow the [current programme plan](2026-09-15-001-feat-rag-consumer-access-usage-plan.md)
+> for normal PR registration, merged per-consumer `owners`, GitHub login and
+> narrow owner-validation CI. Earlier checks and operational claims remain historical.
+
 ## Delivery and repository findings
 
 Documentation-only delivery in [draft PR #2304](https://github.com/JesusFilm/forge/pull/2304)

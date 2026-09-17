@@ -20,16 +20,16 @@ internal management path; planning completion does not deliver either.
 
 1. [Plan](../../plans/2026-09-15-001-feat-rag-consumer-access-usage-plan.md).
 2. `apps/rag/src/serving/http/auth.ts` and `app.ts` — HTTP boundary.
-3. `apps/auth/src/auth/config.ts` — existing provider integration.
+3. Programme plan section A — GitHub identity and merged consumer ownership.
 
 ## Grep These
 
-`forge-rag-retrieve`, `TokenRegistry`, `email_verified`, `FallbackEmbedder`.
+`forge-rag-retrieve`, `TokenRegistry`, `owners`, `FallbackEmbedder`.
 
 ## What To Build
 
-Execute plan sections D/E after access and reporting exist. Register Jaco's VM
-integration or RAGBot and use the actual forge-rag-retrieve ops task over HTTP.
+Execute plan sections D/E after access and reporting exist. Register RAGBot first via a normal consumer PR with nonempty GitHub `owners`
+and use the actual forge-rag-retrieve ops task over HTTP.
 Record task path/revision and approved source/environment before execution.
 Prove +3 then +2 request/success counts, last activity/window, second-consumer
 isolation, revoked denial and no success increment, and honest coverage failures.
@@ -49,4 +49,4 @@ by the documentation PR. Read package guidance before implementation.
 
 Run the applicable plan acceptance criteria and package checks. Record synthetic
 counts, coverage, revision and outcomes only. Portal work must also verify page
-load performance, cross-consumer denial and concurrent manager/rotation behavior.
+load performance, cross-consumer denial and concurrent owner/rotation behavior.
