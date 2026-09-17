@@ -42,6 +42,10 @@ import {
   type SearchResult,
 } from "../../src/lib/queries"
 import { encodeWatchSeed } from "../../src/lib/watchSeed"
+import {
+  DISCOVERY_ROUTE_PARAM,
+  markPlaybackDiscovery,
+} from "../../src/lib/recommendations/playbackDiscovery"
 import { isSeriesSearchResult } from "../../src/lib/isSeriesRecord"
 import { SearchResultCard } from "../../src/components/search/SearchResultCard"
 import { useSearchPreviewCycle } from "../../src/components/search/useSearchPreviewCycle"
@@ -156,7 +160,15 @@ export default function DiscoverScreen() {
       // A series-shaped result (SERIES/COLLECTION label, or has children) opens
       // the series page; a single video opens the watch page.
       const route = isSeriesSearchResult(result) ? "series" : "watch"
-      router.push(`/${route}/${encodeURIComponent(result.slug)}?seed=${seed}`)
+      // Playback attribution reads this mark when the video opens (feat-516).
+      // A series result opens a list, so the series page carries the source
+      // in a route param and marks the episode the viewer taps.
+      if (route === "watch") markPlaybackDiscovery(result.slug, "search")
+      const discovery =
+        route === "series" ? `&${DISCOVERY_ROUTE_PARAM}=search` : ""
+      router.push(
+        `/${route}/${encodeURIComponent(result.slug)}?seed=${seed}${discovery}`,
+      )
     },
     [selectExperience, router],
   )

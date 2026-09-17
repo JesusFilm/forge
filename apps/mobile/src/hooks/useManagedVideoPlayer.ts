@@ -34,6 +34,8 @@ import {
   type VideoQoeReason,
   type VideoQoeSession,
 } from "../lib/videoQoe"
+import type { RecommendationPlaybackRecorder } from "../lib/recommendations/playbackRecorder"
+import { createPlaybackRecorderForMedia } from "../lib/recommendations/playbackRecorderClient"
 
 // Playhead watchdog (R39): poll currentTime while the player reports playing and
 // is NOT buffering; if it stays frozen this long, emit one stall. 3s (not sub-1s)
@@ -114,6 +116,12 @@ export function useManagedVideoPlayer(
      * window confirms it took the video (reported 2026-08-24).
      */
     armsPictureInPicture?: boolean
+    /**
+     * The route slug of the media, for the recommendation recorder's
+     * discovery lookup (feat-516): a search result marks its slug before it
+     * navigates, and the recorder only ever learns the Admin id otherwise.
+     */
+    mediaSlug?: string | null
   },
 ) {
   const ownsSession = options?.ownsSession === true
@@ -241,6 +249,50 @@ export function useManagedVideoPlayer(
     }
   }, [recorderKey])
 
+  // The live playhead for the recommendation recorder's facts. A released
+  // native player throws on read; the recorder then records position 0.
+  const readPlayhead = useCallback(() => {
+    try {
+      return { position: player.currentTime, duration: player.duration }
+    } catch {
+      return { position: 0, duration: 0 }
+    }
+  }, [player])
+
+  // Recommendation episode recorder (feat-516): one per media session the
+  // root host owns, keyed on the Admin video id ONLY — a dub switch keeps the
+  // episode, unlike the progress recorder, which re-keys per language. The
+  // factory answers null when the feature is off or unprovisioned.
+  const recommendationMediaId =
+    ownsSession && progressIdentity?.videoId ? progressIdentity.videoId : null
+  const mediaSlugRef = useRef(options?.mediaSlug ?? null)
+  mediaSlugRef.current = options?.mediaSlug ?? null
+  const recommendationRef = useRef<RecommendationPlaybackRecorder | null>(null)
+  useEffect(() => {
+    if (recommendationMediaId == null) return
+    const recorder = createPlaybackRecorderForMedia({
+      mediaId: recommendationMediaId,
+      discoveryKeys: [mediaSlugRef.current, recommendationMediaId],
+    })
+    recommendationRef.current = recorder
+    recorder?.start()
+    // Seed path: the Admin id arrives after playback began, and the isPlaying
+    // effect below never re-runs for a state it already committed.
+    let playing = false
+    try {
+      playing = player.playing
+    } catch {
+      // Already released: nothing is playing.
+    }
+    if (playing) recorder?.onPlayingChange(true, readPlayhead().position)
+    return () => {
+      // Teardown or re-key: an un-ended episode is a route exit.
+      recorder?.dispose()
+      if (recommendationRef.current === recorder)
+        recommendationRef.current = null
+    }
+  }, [recommendationMediaId, player, readPlayhead])
+
   /**
    * The explicit session ending (KTD13/R16/R17). Attribution no longer rides
    * React teardown: the caller names WHY the session ended, and this maps that
@@ -253,9 +305,21 @@ export function useManagedVideoPlayer(
     (reason: VideoQoeReason) => {
       const trigger = FLUSH_TRIGGER_BY_END_REASON[reason]
       if (trigger) recorderRef.current?.flush(trigger)
+      // Only the two explicit endings close the episode here. "abandoned" is
+      // also the SOURCE-SWAP path (null → first url, a dub switch), which is
+      // the same media continuing — on device it ended every episode 19 ms in.
+      // "ended" and "failed" already arrive from playToEnd and statusChange.
+      if (reason === "dismissed" || reason === "replaced") {
+        const playhead = readPlayhead()
+        recommendationRef.current?.onEnd(
+          "route_exit",
+          playhead.position,
+          playhead.duration,
+        )
+      }
       emitQoeSummary(reason)
     },
-    [emitQoeSummary],
+    [emitQoeSummary, readPlayhead],
   )
 
   // The session store is the one place that knows an ending and its reason, so
@@ -381,7 +445,11 @@ export function useManagedVideoPlayer(
       // A real pause (not initial mount) forces a progress write (KTD5).
       recorderRef.current?.flush("pause")
     }
-  }, [isPlaying])
+    recommendationRef.current?.onPlayingChange(
+      isPlaying,
+      readPlayhead().position,
+    )
+  }, [isPlaying, readPlayhead])
 
   // Background pauses; foreground resumes ONLY if playback was active when the
   // app left — never starts a video the user had paused or never played. What
@@ -401,6 +469,7 @@ export function useManagedVideoPlayer(
 
       if (nextState === "active") {
         isForegroundRef.current = true
+        recommendationRef.current?.onVisibility(true, readPlayhead().position)
         const resumeFromPip = leftUnderPipRef.current
         leftUnderPipRef.current = false
         // Closing the window and expanding it back both stop it, and only what
@@ -444,6 +513,11 @@ export function useManagedVideoPlayer(
         isForegroundRef.current = false
         leftUnderPipRef.current = pipActive
         recorderRef.current?.flush("background")
+        // Under the OS window the video stays on screen, so it stays visible.
+        recommendationRef.current?.onVisibility(
+          pipActive,
+          readPlayhead().position,
+        )
       }
       if (decision.recordWasPlaying) {
         wasPlayingRef.current = isPlayingRef.current
@@ -536,6 +610,7 @@ export function useManagedVideoPlayer(
         })
       }
       recorderRef.current?.flush("background")
+      recommendationRef.current?.onVisibility(false, readPlayhead().position)
       // Expanding the window back into the app raises the SAME stop event, and
       // its foreground transition arrives after this. A timestamp, not a timer,
       // lets that path undo the pause — it stays correct even while the JS
@@ -544,7 +619,7 @@ export function useManagedVideoPlayer(
     })
 
     return unsubscribe
-  }, [player])
+  }, [player, readPlayhead])
 
   useEffect(() => {
     return () => {
@@ -563,24 +638,41 @@ export function useManagedVideoPlayer(
     // session owns playback, the frozen local player must not mark the
     // video completed — the receiver's finished status owns that flush.
     const endSub = player.addListener("playToEnd", () => {
-      if (!castActiveRef.current) recorderRef.current?.flush("end")
+      if (castActiveRef.current) return
+      recorderRef.current?.flush("end")
+      const playhead = readPlayhead()
+      recommendationRef.current?.onEnd(
+        "ended",
+        playhead.position,
+        playhead.duration,
+      )
     })
     return () => endSub.remove()
-  }, [player])
+  }, [player, readPlayhead])
 
   useEffect(() => {
     const sub = player.addListener("statusChange", ({ status, error }) => {
       if (status === "error") {
         qoeRef.current?.onError(error?.message)
+        recommendationRef.current?.onError(readPlayhead().position)
       } else if (
         status === "loading" &&
         shouldCountRebuffer(hasStartedRef.current, isSwappingRef.current)
       ) {
         qoeRef.current?.onRebuffer()
+        recommendationRef.current?.onBuffering(
+          "waiting",
+          readPlayhead().position,
+        )
+      } else if (status === "readyToPlay") {
+        recommendationRef.current?.onBufferingEnd(
+          isPlayingRef.current,
+          readPlayhead().position,
+        )
       }
     })
     return () => sub.remove()
-  }, [player])
+  }, [player, readPlayhead])
 
   // R39 playhead watchdog: while playing and NOT buffering (a real rebuffer
   // flips status to 'loading', excluded), a frozen currentTime past the
@@ -625,6 +717,7 @@ export function useManagedVideoPlayer(
       // tick makes double-write prevention structural (KTD6).
       if (!castActiveRef.current) {
         recorderRef.current?.onTick(position, duration)
+        recommendationRef.current?.onTick(position, duration)
       }
       // The floating window reads its scrubber from the same tick (KTD2), and
       // the store drops it when no session is open. Owner-gated for the same

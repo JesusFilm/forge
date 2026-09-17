@@ -3,6 +3,7 @@ title: "Per-identity fleet rate-limit bucketing: the bucket key is availability,
 description: "Prefer a sanitized, namespaced client viewer_id over per-IP for rate-limit bucketing on untrusted direct-to-device clients (CGNAT-immune); bound abuse with a separate global per-key ceiling."
 module: "apps/admin GraphQL rate-limit plugin; apps/tv + apps/mobile search clients"
 date: 2026-07-13
+last_updated: 2026-09-17
 problem_type: architecture_pattern
 component: service_object
 severity: high
@@ -94,6 +95,14 @@ export function getViewerId(): string {
   return cachedViewerId
 }
 ```
+
+**Qualified 2026-09-17 (feat-516).** The `Math.random` fallback is acceptable
+here because the viewer id is a bucket label, not a secret. A value that must
+be unguessable takes its bytes from `expo-crypto`, which `apps/mobile` and
+`apps/tv` both ship (mobile's recommendation session-rotation token in
+`apps/mobile/src/lib/recommendations/random.ts` requires it lazily), so "no
+new dependency" records this call site's choice, not a limit of the runtime.
+Hermes still ships no `crypto.randomUUID`.
 
 The header rides ONLY on the gated search operation, alongside the bearer, and
 never on public operations (`apps/tv/src/lib/authHeaders.ts`):

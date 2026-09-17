@@ -417,6 +417,9 @@ function ActivePlaybackHost({
       {
         progress: progressIdentity,
         ownsSession: true,
+        // The recommendation recorder's discovery key (feat-516): a search
+        // result marks its slug before navigating; the id alone never matches.
+        mediaSlug: request.session?.videoSlug ?? request.progressVideoSlug,
         castActive,
         // Only this surface arms automatic entry into the operating system's
         // window, so only here may the background pause be undone when it opens.

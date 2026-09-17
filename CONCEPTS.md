@@ -946,6 +946,21 @@ the union of foreground-playing intervals, never from wall time, player
 position, progress, seeks, or background time; incomplete coverage is retained
 as an explicit qualification rather than presented as certain foreground time.
 
+### Playback Discovery
+
+The recorded account of how a viewer reached the media item a Recommendation
+Playback Episode covers, with its own bounded provenance. When the episode is
+claimed from a slate selection the server records a recommendation origin
+itself; for every other arrival the client asserts the origin (a direct open, a
+search result, a shared link, an editorial link, or a campaign link) when it
+asks for the playback context, and the server stores what the client sent.
+
+A surface marks the discovery before it navigates, and the playback that
+follows consumes the mark once; an unmarked or stale arrival counts as direct.
+Because the client asserts it, discovery is provenance about arrival and is
+kept apart from the request and served-item lineage that attribution rests on;
+downstream outcome processing still reads it beside the episode's facts.
+
 ### Recommendation Outcome Revision
 
 An immutable, recomputable classifier result over one episode's ordered fact
@@ -967,7 +982,7 @@ history.
 ### Recommendation Profile
 
 A pseudonymous continuity record for anonymous recommendation personalization,
-created by default when personalization is enabled. The browser holds the opaque first-party identifier while the
+created by default when personalization is enabled. The client, a browser or an installed app, holds the opaque first-party identifier while the
 recommendation system retains only its one-way identity and server-owned
 interests; disabling personalization severs relinkable continuity and begins erasure.
 

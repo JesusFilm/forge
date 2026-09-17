@@ -21,6 +21,7 @@ const _inlined = {
   datadogSessionSampleRate: process.env.EXPO_PUBLIC_DATADOG_SESSION_SAMPLE_RATE,
   datadogReplaySampleRate: process.env.EXPO_PUBLIC_DATADOG_REPLAY_SAMPLE_RATE,
   authBaseUrl: process.env.EXPO_PUBLIC_AUTH_BASE_URL,
+  recommendationsEnabled: process.env.EXPO_PUBLIC_RECOMMENDATIONS_ENABLED,
 }
 void _inlined
 
@@ -55,6 +56,9 @@ const createAppEnv = () =>
       // Auth service base URL — optional; unset falls back to production
       // auth so store builds need no new env var.
       EXPO_PUBLIC_AUTH_BASE_URL: z.string().url().optional(),
+      // Opt-out kill switch for the recommendations client (feat-516). Optional
+      // so default builds need no new env var; only "false" / "0" disables.
+      EXPO_PUBLIC_RECOMMENDATIONS_ENABLED: z.string().optional(),
     },
     runtimeEnvStrict: {
       EXPO_PUBLIC_ADMIN_GRAPHQL_URL: process.env.EXPO_PUBLIC_ADMIN_GRAPHQL_URL,
@@ -76,6 +80,8 @@ const createAppEnv = () =>
       EXPO_PUBLIC_DATADOG_REPLAY_SAMPLE_RATE:
         process.env.EXPO_PUBLIC_DATADOG_REPLAY_SAMPLE_RATE,
       EXPO_PUBLIC_AUTH_BASE_URL: process.env.EXPO_PUBLIC_AUTH_BASE_URL,
+      EXPO_PUBLIC_RECOMMENDATIONS_ENABLED:
+        process.env.EXPO_PUBLIC_RECOMMENDATIONS_ENABLED,
     },
     isServer: false,
     emptyStringAsUndefined: true,

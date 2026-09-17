@@ -536,6 +536,155 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
 - **RUM identity**: `setDatadogRumUser` receives the opaque auth subject id
   only — never email or display name.
 
+## Recommendations API client (feat-516)
+
+`src/lib/recommendations/` is the mobile client for Admin's source-free
+recommendations API (`docs/operations/user-recommendations.md`). It ships the
+data layer and playback attribution only; the Home shelf is `feat-517`.
+
+- **The fleet bearer rides the eight recommendation operations, and admin
+  REQUIRES it there.** `carriesFleetBearer` in `src/lib/authHeaders.ts` admits
+  `WatchSearch` plus `RECOMMENDATION_OPERATION_NAMES`
+  (`src/lib/recommendations/operationNames.ts`). On search the bearer only buys
+  a rate-limit bucket; on these operations a fleet caller is admitted only with
+  the bearer AND a proven viewer handle, so a missing header is
+  `UNAUTHENTICATED`, not a coarser bucket. `authHeaders.test.ts` pins the set
+  to the documents in `operations.ts`, and
+  `operations.contract.guard.test.js` validates every document against the
+  committed `apps/admin/schema.graphql`. Mobile never sends `sessionDigest`,
+  `consentReceiptDigest` or `profileTokenDigest`: those are the Web backend's
+  authority, and admin rejects a request that mixes them with viewer tokens.
+- **One anonymous viewer per installation, in SecureStore.**
+  `viewerIdentity.ts` holds the server-minted `viewerToken` (180-day handle)
+  and `sessionToken` in one JSON record under
+  `forge-watch.recommendation-viewer.v1`, this-device-only. `get()` bootstraps
+  lazily with one shared flight. Installations are independent; there is no
+  account linking. Sign-out does not touch it.
+- **An `UNAUTHENTICATED` answer never discards the stored viewer by itself.**
+  Admin uses one error for a dead handle AND a broken app bearer, and the
+  stored viewer is this install's whole history. A rejection marks the record
+  suspect; the next `get()` re-verifies it with `status`, and only when that
+  is rejected too AND a bootstrap under the same bearer SUCCEEDS is the
+  handle replaced. A rejected bootstrap means the bearer is the fault: the
+  viewer is kept and a 60 s cooldown applies. A FRESH handle (under 5 min)
+  enters the cooldown before any verification. `withdraw`/`delete` keep the
+  handle in its essential-only state; nothing bootstraps a replacement to undo
+  an opt-out. Every profile transition notifies `subscribe()` listeners, and
+  `useUserRecommendations` refreshes on it. A suspect handle whose `status`
+  probe fails TRANSIENTLY keeps serving and is not probed again for 60 s
+  (`VERIFY_RETRY_BACKOFF_MS`); without that, every `get()` during an Admin
+  degradation was one more `status` mutation against the shared bucket.
+- **Admin's rate limiter answers HTTP 200, and the client treats it as
+  transient.** `@envelop/rate-limiter` emits an `errors[]` entry with
+  `extensions.http.statusCode: 429` and no `code` (Yoga reads
+  `extensions.http.status`, so the HTTP status stays 200). `errors.ts` maps
+  that, and an edge HTTP 429, to `RATE_LIMITED` with the `Retry-After` window,
+  never to the definitive `GRAPHQL_ERROR`. A limited claim, including its
+  context issuance, waits the window once instead of spending an attempt; a
+  limited evidence send retries once after the window, never 100 ms later; a
+  limited facts batch pauses the drain for the window without spending a
+  delivery attempt, at most three times per episode, then drops the batch and
+  keeps the episode open; a limited bootstrap is a cooldown
+  (`bootstrap_rate_limited`), not a failed bearer.
+  The bucket is 30 mutations per minute per `x-viewer-id`, shared by every
+  recommendation mutation the launch sends.
+- **Session rotation takes its random bytes from `expo-crypto`.** Hermes
+  ships no `crypto.getRandomValues`, and Expo's runtime installs no `crypto`
+  global, so `secureRandomToken()` in `random.ts` tries the runtime's
+  WebCrypto first (jest, a browser) and then requires `expo-crypto` lazily
+  (the device). A source that throws or leaves the buffer untouched (the
+  jest mock of the native module) yields null, never a weaker token. With
+  the source present the store rotates the session after 24 h of inactivity
+  and links it with `status` first; without one it reports
+  `session_rotation_unavailable` once per launch, so "no idle installs" and
+  "no random source" differ in the dashboard. `expo-crypto` is a NATIVE
+  module (added 2026-09-17): it moves the fingerprint runtime version, so a
+  native build must ship before the next `eas update` reaches anyone. A
+  claim nonce may fall back to the runtime's plain generator: it is a
+  correlation key bound to the viewer credentials, not a secret.
+- **No bearer, no network.** With `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN` unset the
+  store answers `unprovisioned` and nothing is sent. A development bundle
+  against local admin usually fails the bootstrap with `UNAUTHENTICATED`
+  (the production fleet key is not in local admin's keyring); that is one
+  request, then the cooldown.
+- **Delivery is strict.** `delivery.ts` accepts a served slate only whole:
+  contract `user-recommendation-v1`, surface `watch-for-you-v1`, a request id,
+  exactly the requested count, positions in index order, distinct target
+  media. A served envelope that fails those checks is `invalid_delivery`; a
+  `fallback`, `empty` or `unavailable` envelope carries Admin's own reason,
+  so the log keeps a fault apart from an honest miss. `environment_disabled`
+  is `disabled`; `cooldown`, `in_flight`, `admission_unavailable`,
+  `delivery_timeout` and `service_unavailable` are retryable;
+  `coverage_unavailable` is not. `useUserRecommendations` retries once after
+  5 s, three attempts, and refreshes on locale or audio-language change. The
+  response's `expiresAt` is the authority on the item capabilities (ten
+  minutes today): past it the hook sends no evidence and returns null from
+  `select`; the UI refreshes instead.
+  `resolveRecommendationContext` maps the watch preference to
+  `{ locale: "en", audioLanguageSlug: prefs.audioLanguageSlug ?? "english" }`.
+- **Evidence and selection mirror Web's literals.** `render` carries
+  `{ surfacePolicy: "watch-for-you-v1" }`, `impression`
+  `{ visibilityPolicy: "watch-for-you-v1" }`, both under
+  `recommendation-evidence-v1`, one mutation per fact, deduplicated per
+  request, item and kind. Impression ELIGIBILITY (50% visible for one
+  continuous second) is the UI's job. `select` mints a claim nonce, stores it
+  in the module-scope pending-claim store BEFORE the mutation, and resolves
+  with the slug to open even when the send fails. Only the statuses in
+  `ACKNOWLEDGED_SELECTION_STATUSES` (`accepted`, `replay`) count as
+  acknowledged; a `conflict` or any status this client does not know is
+  reported and the recorder's claim attempt decides. `useUserRecommendations`
+  serves no items, evidence or selection while `enabled` is false, and a
+  selection stays single-flight across a profile refresh.
+- **Playback attribution runs for every playback the root host owns.**
+  `useManagedVideoPlayer` creates one `playbackRecorder.ts` per Admin video id
+  when `ownsSession` is set (the SDUI routes never get one) and keeps it across
+  a dub switch. A recorder created after playback began (the seed path: a
+  search result or a Home tile plays the seed stream before the record loads)
+  is primed with the player's live playing state, or it would never record
+  `playback_start`. The recorder claims an episode from the pending selection
+  nonce, else issues a playback context from `playbackDiscovery.ts`
+  (single-video search results mark `search`, external links mark `share`,
+  everything else is `direct`) and claims that. A series search result opens
+  a list, so the search tab carries `?from=search` (`DISCOVERY_ROUTE_PARAM`)
+  into the series route and the episode tap there marks the episode;
+  `seriesSearchDiscovery.guard.test.js` pins both halves because the series
+  screen has no render suite. Facts follow admin's strict schemas and
+  Web's caps: 16 per mutation, 8 KB per body, 128 per episode, three delivery
+  attempts, observations dropped first, and nothing sent past the episode's
+  `hardUntil`; the budget is charged only for facts that are queued. The
+  context issuance is part of the claim: it shares the claim's three
+  attempts and its one window deferral, and it takes the discovery mark once,
+  so a transient answer to `issueWatchPlaybackContext` no longer abandons the
+  episode. After `dispose()` the recorder starts no claim retry, issues no
+  context and takes neither the selection nonce nor the discovery mark (a
+  replacement recorder for the same media needs them), but a claim chain
+  already in flight (an issuance or the claim itself) still delivers the held
+  facts once, and a facts drain already in flight finishes its own retry
+  ladder. `useManagedVideoPlayer.recommendations.test.tsx`
+  pins the wiring; `playbackRecorder.test.ts` pins the decisions. Budget:
+  about one claim plus one facts mutation per 10 s while playing, under
+  admin's 30 mutations per minute per `x-viewer-id` bucket.
+- **`EXPO_PUBLIC_RECOMMENDATIONS_ENABLED` is an opt-OUT switch.** Unset keeps
+  the client on; only `false` or `0` turns it off. Expo inlines the value, so
+  a flip needs an update publish.
+- **Telemetry attributes are `rec_`-prefixed** (`recommendation.identity`,
+  `recommendation.delivery`, `recommendation.evidence`,
+  `recommendation.playback_degraded`). No token, capability, nonce, episode id
+  or request id ever reaches a log.
+- **No real Admin endpoint has been exercised.** The handoff established no
+  enabled development endpoint, and production must not receive test
+  identities. The device smoke ran against a throwaway local proxy (see the
+  `feat-516` ticket's Results); the first real-environment smoke (bootstrap,
+  `status`, one playback episode) is the first step of `feat-517`. Beware
+  port 3003 for such a proxy: a real local admin usually owns it, and the
+  simulator resolves `localhost` to it over IPv6 while a proxy on
+  `127.0.0.1:3003` sits idle.
+- **The adapter's `abandoned` session reason is NOT an episode ending.** It
+  fires on the first source arrival and on every dub switch; mapping it to a
+  route exit ended every episode 19 ms after it began on device.
+  `useManagedVideoPlayer.recommendations.test.tsx` pins that only `dismissed`
+  and `replaced` close the episode from `endSession`.
+
 ## Mini player and the root-owned playback session (feat-367)
 
 **The app owns ONE player and ONE video view, and neither belongs to a route.**
