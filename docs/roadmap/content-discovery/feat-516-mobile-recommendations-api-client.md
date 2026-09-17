@@ -3,7 +3,7 @@ id: "feat-516"
 title: "Mobile recommendations API client and playback attribution"
 owner: "urim"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-16"
 duration: 2
 depends_on:
@@ -296,3 +296,7 @@ Open items that belong to this ticket, not to `feat-517`:
 - [ ] **First real-environment smoke** (bootstrap, `status`, one accepted
       episode) is the first step of `feat-517`; until it runs, no real Admin
       endpoint has been exercised.
+
+## Completion
+
+Shipped in PR #2329. The real-environment smoke against a provisioned Admin endpoint stays with feat-517.
