@@ -144,3 +144,27 @@ edits passed a targeted recheck. Remote CI is asynchronous and is not represente
 these local results. Parent commit-lint, formatting and hidden-roadmap checks passed after push;
 broader CI was still running. Final pushed SHA,
 remote draft state and current CI observation are returned in the job result.
+
+## Remote receipt and unrelated CI failure
+
+Verified parent `2bd42b5f0df91372eaecc79b707639bfbfe3999a` and discovery
+`130450e530c8afb12ebf18587e2b001496e42a84` are pushed to their existing branches.
+Both PRs are OPEN and draft; #2325 still targets the planning branch. Its diff
+against that parent contains only the four child-specific documents above.
+J014's combined change from the old discovery head is 12 Markdown files only.
+The final receipt commit updates this report without changing policy or scope.
+
+Parent remote `format`, `commit-lint` and `hidden-roadmap-lanes` passed. The
+[admin-schema-drift job](https://github.com/JesusFilm/forge/actions/runs/35168167799/job/105034023280)
+failed in recommendation database tests: `recommendation_request_expiry_check`
+violations followed by aborted transactions (4 test files / 25 tests failed).
+This is outside the changed documentation; no admin/schema/workflow code is in
+either J014 update. No root-cause fix or runtime rerun is claimed. Product-code
+repair would exceed the explicit documentation-only brief. The broader CI run
+is therefore not green, even though the required local documentation checks and
+parent remote documentation checks passed. Discovery remote CI was queued/running
+at this observation; current status is returned separately in the final job result.
+
+No documentation delivery blocker remains. The unrelated CI failure must be
+resolved before anyone treats the programme PR as fully validated for merge;
+this job does not authorize or perform that merge.
