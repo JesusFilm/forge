@@ -46,15 +46,16 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
     let databaseUrl: string
     const expiresAt = "2026-09-17T00:00:00.000Z"
 
+    // Keep creation on the fixed fixture timeline instead of the database clock.
     async function insertRequest(id: string, expectedItemCount: number) {
       await client.query(
         `INSERT INTO "recommendation_request" (
           "id", "contract_version", "surface_version", "manifest_id",
           "strategy_version", "classifier_version", "session_digest",
-          "seed_media_id", "locale", "expected_item_count", "result", "expires_at"
+          "seed_media_id", "locale", "expected_item_count", "result", "expires_at", "created_at"
         ) VALUES ($1, 'semantic-recommendation-v1', 'watch-below-player-v1',
           'semantic-transcript-pgvector-v1', 'semantic-transcript-pgvector-v1',
-          'legacy-position-v0', $2, 'seed-video', 'en', $3, 'served', $4)`,
+          'legacy-position-v0', $2, 'seed-video', 'en', $3, 'served', $4, '2026-08-19T00:00:00.000Z')`,
         [id, "a".repeat(64), expectedItemCount, expiresAt],
       )
     }
