@@ -33,7 +33,7 @@ describe("syncVideos", () => {
       } as never)
       .mockResolvedValueOnce({
         data: {
-          videos: [
+          adminVideos: [
             {
               id: "video-core-1",
               slug: "video",
@@ -276,7 +276,7 @@ describe("syncVideos", () => {
       .mockResolvedValueOnce({ data: { bibleBooks: [] } } as never)
       .mockResolvedValueOnce({
         data: {
-          videos: [
+          adminVideos: [
             {
               id: "video-core-1",
               slug: "video",
@@ -306,7 +306,7 @@ describe("syncVideos", () => {
           ],
         },
       } as never)
-      .mockResolvedValueOnce({ data: { videos: [] } } as never)
+      .mockResolvedValueOnce({ data: { adminVideos: [] } } as never)
 
     const tx = {
       video: {

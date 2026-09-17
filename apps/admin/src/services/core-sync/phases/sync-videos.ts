@@ -30,9 +30,23 @@ const BIBLE_BOOKS_QUERY = `
   }
 `
 
+// Reads Core's PUBLISHER root field, not the public `videos` field.
+//
+// `videos` applies `filter.NOT = { restrictViewPlatforms: { has: clientName } }`
+// keyed on the caller's own `x-graphql-client-name`. Core Sync identifies as
+// `watch`, so the public field hid exactly the Watch-restricted videos this
+// sync exists to observe — Forge never learned a video was restricted and
+// jesusfilm.org/watch kept serving it (JesusFilm/forge#2324). `adminVideos`
+// takes the same `VideosFilter` input and returns the same `Video` type, but
+// is gated on the caller being a publisher instead of filtering by client
+// name, so it returns restricted videos WITH their restriction state.
+//
+// The `x-graphql-client-name: watch` header in `core-client.ts` deliberately
+// stays: Core's downloads resolver keys off it, and the publisher field
+// applies no restriction filter, so the header is inert here.
 const VIDEOS_QUERY = `
-  query Videos($offset: Int!, $limit: Int!, $where: VideosFilter) {
-    videos(
+  query AdminVideos($offset: Int!, $limit: Int!, $where: VideosFilter) {
+    adminVideos(
       offset: $offset
       limit: $limit
       where: $where
@@ -304,16 +318,18 @@ export async function syncVideos({
   const seenCoreIds = new Set<string>()
 
   while (true) {
-    const result = await coreQuery<{ videos: CoreVideo[] }>(VIDEOS_QUERY, {
+    const result = await coreQuery<{ adminVideos: CoreVideo[] }>(VIDEOS_QUERY, {
       offset,
       limit: PAGE_SIZE,
       where: {
+        // `adminVideos` applies no implicit published filter, so this clause
+        // is what keeps the catalogue phase to published videos.
         published: true,
         ...(since ? { updatedAt: { gte: since } } : {}),
       },
     })
 
-    const rawVideos = result.data?.videos ?? []
+    const rawVideos = result.data?.adminVideos ?? []
     if (offset === 0) {
       firstPageCount = rawVideos.length
     }

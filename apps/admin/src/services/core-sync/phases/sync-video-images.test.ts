@@ -17,7 +17,7 @@ describe("syncVideoImages", () => {
   it("syncs image rows from the nested Video.images field", async () => {
     mockedCoreQuery.mockResolvedValueOnce({
       data: {
-        videos: [
+        adminVideos: [
           {
             id: "video-core-1",
             images: [
@@ -109,7 +109,7 @@ describe("syncVideoImages", () => {
     // first-image-only behavior.
     mockedCoreQuery.mockResolvedValueOnce({
       data: {
-        videos: [
+        adminVideos: [
           {
             id: "video-core-1",
             images: [
@@ -174,7 +174,7 @@ describe("syncVideoImages", () => {
   })
 
   it("forwards incremental updatedAt watermarks and skips full soft-delete", async () => {
-    mockedCoreQuery.mockResolvedValueOnce({ data: { videos: [] } })
+    mockedCoreQuery.mockResolvedValueOnce({ data: { adminVideos: [] } })
     const prisma = {
       video: { findMany: vi.fn().mockResolvedValue([]) },
       videoImage: {
@@ -191,7 +191,10 @@ describe("syncVideoImages", () => {
     expect(mockedCoreQuery).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
-        where: { updatedAt: { gte: "2026-05-07T00:00:00.000Z" } },
+        where: {
+          published: true,
+          updatedAt: { gte: "2026-05-07T00:00:00.000Z" },
+        },
       }),
     )
     expect(prisma.videoImage.updateMany).not.toHaveBeenCalled()
