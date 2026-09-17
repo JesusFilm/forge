@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontWeight: "700",
     fontSize: 13,
-    lineHeight: 17,
+    lineHeight: 15,
   },
   badge: {
     position: "absolute",

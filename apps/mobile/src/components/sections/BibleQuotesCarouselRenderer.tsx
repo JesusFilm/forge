@@ -97,6 +97,8 @@ export interface BibleQuotesCarouselRendererProps {
    * one bad asset, nor joined to `bible_card_art.resolved`.
    */
   videoSlug?: string
+  /** The header's share button. The video details page turns it off. */
+  showShareButton?: boolean
 }
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -499,6 +501,7 @@ export function BibleQuotesCarouselRenderer({
   section,
   onArtworkFailed,
   videoSlug,
+  showShareButton = true,
 }: BibleQuotesCarouselRendererProps) {
   const typography = useTypography()
   const reduceMotion = useReduceMotion()
@@ -654,14 +657,16 @@ export function BibleQuotesCarouselRenderer({
             {heading}
           </Text>
         )}
-        <Pressable
-          onPress={handleShare}
-          style={[button.iconButton44, styles.localShareButton]}
-          accessibilityRole="button"
-          accessibilityLabel="Share"
-        >
-          <Ionicons name="share-outline" size={22} color={ACCENT} />
-        </Pressable>
+        {showShareButton && (
+          <Pressable
+            onPress={handleShare}
+            style={[button.iconButton44, styles.localShareButton]}
+            accessibilityRole="button"
+            accessibilityLabel="Share"
+          >
+            <Ionicons name="share-outline" size={22} color={ACCENT} />
+          </Pressable>
+        )}
       </View>
       <FlatList
         ref={flatListRef}
@@ -748,7 +753,7 @@ const styles = StyleSheet.create({
   },
   attribution: {
     ...CARD_TEXT_SHADOW,
-    fontWeight: "800",
+    fontWeight: "700",
     color: TEXT_ON_OVERLAY,
     fontFamily: "System",
     letterSpacing: 0.8,

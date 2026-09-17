@@ -13,6 +13,7 @@ import {
   hexToRgba,
 } from "../../lib/color"
 import { HORIZONTAL_PADDING } from "../../styles/shared"
+import { HOME_HEADER_ROW_HEIGHT, HOME_HEADER_ROW_TOP } from "./homeHeaderLayout"
 
 type HomeHeaderProps = {
   title: string | null
@@ -25,8 +26,9 @@ type HomeHeaderProps = {
 }
 
 /**
- * Home-tab header actions are hidden for now. The buttons below stay wired up;
- * set this to true to show them again.
+ * Home-tab header actions are hidden for now. The buttons below stay wired up.
+ * Before you set this to true, move HomeLogo: it sits where the leading button
+ * draws.
  */
 const SHOW_HOME_ACTIONS = false
 
@@ -78,7 +80,12 @@ export function HomeHeader({
   const slot = <View style={styles.slot} />
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 4 }]}>
+    <View
+      style={[
+        styles.container,
+        { paddingTop: insets.top + HOME_HEADER_ROW_TOP },
+      ]}
+    >
       <LinearGradient
         colors={[hexToRgba(BLACK, 0.5), hexToRgba(BLACK, 0)]}
         style={StyleSheet.absoluteFill}
@@ -138,8 +145,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   slot: {
-    width: 40,
-    height: 40,
+    width: HOME_HEADER_ROW_HEIGHT,
+    height: HOME_HEADER_ROW_HEIGHT,
   },
   glassButton: {
     width: 40,

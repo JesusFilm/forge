@@ -197,13 +197,13 @@ const styles = StyleSheet.create({
     fontFamily: "System",
   },
   datePrimary: {
-    fontWeight: "800",
+    fontWeight: "700",
     color: "rgba(0, 0, 0, 0.85)",
     fontFamily: "System",
     letterSpacing: -0.5,
   },
   dateSecondary: {
-    fontWeight: "800",
+    fontWeight: "700",
     color: "rgba(0, 0, 0, 0.75)",
     fontFamily: "System",
   },

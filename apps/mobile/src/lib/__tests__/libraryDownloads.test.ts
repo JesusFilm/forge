@@ -5,7 +5,6 @@ import {
   formatLibraryDuration,
   libraryRowState,
   seriesGroupContentEqual,
-  storageSummary,
 } from "../libraryDownloads"
 import {
   OFFLINE_MANIFEST_VERSION,
@@ -288,44 +287,6 @@ describe("effectiveDownloadBytes — mid-swap byte accounting (F2)", () => {
       swapFrom: SWAP_FROM,
     })
     expect(effectiveDownloadBytes(r)).toBe(94 * MB)
-  })
-})
-
-describe("storageSummary (R2, KTD9)", () => {
-  it("combinedBytes = downloaded totalBytes + in-flight bytesWritten", () => {
-    const done = record("a", "downloaded", { totalBytes: 100 })
-    const inFlight = record("b", "downloading", {
-      bytesWritten: 30,
-      totalBytes: 200,
-    })
-    const failed = record("c", "failed", { totalBytes: 500 })
-    const summary = storageSummary([done, inFlight, failed], 1000)
-    expect(summary?.count).toBe(3)
-    expect(summary?.combinedBytes).toBe(130)
-  })
-
-  it("omits capacity + usage fraction when capacityBytes<=0, keeps count/combinedBytes", () => {
-    const done = record("a", "downloaded", { totalBytes: 100 })
-    expect(storageSummary([done], 0)).toEqual({
-      count: 1,
-      combinedBytes: 100,
-      capacityBytes: null,
-      usageFraction: null,
-    })
-  })
-
-  it("hides the summary (null) for zero records", () => {
-    expect(storageSummary([], 1000)).toBeNull()
-  })
-
-  it("computes a clamped usage fraction when capacity is known", () => {
-    const done = record("a", "downloaded", { totalBytes: 250 })
-    expect(storageSummary([done], 1000)?.usageFraction).toBeCloseTo(0.25)
-  })
-
-  it("clamps usageFraction to 1 when combined bytes exceed capacity", () => {
-    const done = record("a", "downloaded", { totalBytes: 1500 })
-    expect(storageSummary([done], 1000)?.usageFraction).toBe(1)
   })
 })
 

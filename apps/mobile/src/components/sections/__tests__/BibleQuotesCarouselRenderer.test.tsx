@@ -1117,3 +1117,35 @@ describe("composeCardLabel", () => {
     expect(composeCardLabel("Genesis 1:26-27", "   ")).toBe("Genesis 1:26-27")
   })
 })
+
+describe("BibleQuotesCarouselRenderer — header share button", () => {
+  function shareButtons(renderer: TestInstance): RenderedNode[] {
+    return renderer.root.findAll(
+      (node) =>
+        node.props.accessibilityLabel === "Share" &&
+        typeof node.props.onPress === "function",
+    )
+  }
+
+  it("shows the share button by default (Experience pages)", () => {
+    expect(shareButtons(render([EXPERIENCE_QUOTE])).length).toBeGreaterThan(0)
+  })
+
+  it("hides the share button when the caller turns it off (video details)", () => {
+    let renderer!: TestInstance
+    act(() => {
+      renderer = TestRenderer.create(
+        (
+          <BibleQuotesCarouselRenderer
+            section={sectionOf([PASSAGE_QUOTE])}
+            showShareButton={false}
+          />
+        ) as React.ReactElement,
+      )
+    })
+    mounted.push(renderer)
+
+    expect(shareButtons(renderer)).toHaveLength(0)
+    expect(findText(renderer, "GENESIS 1:26-27")).toBeDefined()
+  })
+})

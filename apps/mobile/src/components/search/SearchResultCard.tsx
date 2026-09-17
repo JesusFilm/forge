@@ -195,6 +195,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     // Paired with SEARCH_CARD_TEXT_HEIGHT — raising this without raising that
     // clips the second line's descenders against the fixed block.
-    lineHeight: 20,
+    lineHeight: 18,
   },
 })

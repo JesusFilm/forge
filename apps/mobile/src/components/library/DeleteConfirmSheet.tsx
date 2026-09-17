@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
   title: {
     color: TEXT_PRIMARY,
     fontFamily: "System",
-    fontWeight: "800",
+    fontWeight: "700",
     textAlign: "center",
   },
   body: {

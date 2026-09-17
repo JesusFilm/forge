@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
   heading: {
     color: TEXT_PRIMARY,
     fontFamily: "System",
-    fontWeight: "800",
+    fontWeight: "700",
     textAlign: "center",
   },
   body: {

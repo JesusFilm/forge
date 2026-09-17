@@ -12,6 +12,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "org.jesusfilm.forgewatch",
       "infoPlist": {
+        "CFBundleDisplayName": "Jesus Film Watch",
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocalNetworkUsageDescription": "The app uses your local network to find Cast devices, so you can play videos on your TV.",
         "NSAppTransportSecurity": {
@@ -67,6 +68,7 @@
       "@kesha-antonov/react-native-background-downloader",
       "./plugins/withMmkvSecureWipeFix",
       "./plugins/withBackgroundDownloaderAppDelegate",
+      "./plugins/withAndroidAppName",
       "./plugins/withCastOptionsVolume",
       "./plugins/withCastUIStyle",
       "./plugins/withAndroidCastTheme",

@@ -22,6 +22,7 @@
  */
 
 import type { TypographyScale } from "../hooks/useTypography"
+import { LINE_HEIGHT_REDUCTION } from "./lineHeight"
 import { clamp } from "./scrubber"
 
 export const REFERENCE_MAX_LINES = 2
@@ -33,8 +34,8 @@ export const COPYRIGHT_MAX_LINES = 2
 /** Scripture reads larger than the surrounding body copy. */
 export const VERSE_FONT_SIZE_INCREASE = 4
 
-// The ratio `typography.body` itself uses (16/24). Keeping it means the extra
-// size buys taller lines too, rather than crowding them together.
+// The ratio `typography.body` uses (16/24) before its reduction. Keeping it
+// means the extra size buys taller lines too, rather than crowding them.
 const VERSE_LINE_HEIGHT_RATIO = 1.5
 
 /**
@@ -52,7 +53,8 @@ export function verseTypography(typography: TypographyScale): {
   const fontSize = typography.body.fontSize + VERSE_FONT_SIZE_INCREASE
   return {
     fontSize,
-    lineHeight: Math.round(fontSize * VERSE_LINE_HEIGHT_RATIO),
+    lineHeight:
+      Math.round(fontSize * VERSE_LINE_HEIGHT_RATIO) - LINE_HEIGHT_REDUCTION,
   }
 }
 
