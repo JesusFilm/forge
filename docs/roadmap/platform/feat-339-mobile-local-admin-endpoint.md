@@ -3,7 +3,7 @@ id: "feat-339"
 title: "Mobile local admin endpoint by default"
 owner: "urim"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-08-07"
 duration: 1
 depends_on: []
@@ -140,3 +140,7 @@ Manual, and not automatable:
 production`), never the live channel.
 - **`fetch-secrets` does not revert the endpoint.** Run it, confirm
   `.env.development.local` is untouched, cold-start Metro.
+
+## Completion
+
+Shipped in PR #1878 and verified on device.

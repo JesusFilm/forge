@@ -3,7 +3,7 @@ id: "feat-268"
 title: "Operation-attributed mobile client-timeout log + Datadog monitor"
 owner: "urim"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-21"
 duration: 1
 depends_on: []
@@ -84,3 +84,7 @@ production store builds ship (the fleet-search rollout's next step).
 - Datadog side: after a dev-client session with Wi-Fi killed mid-query,
   Logs explorer shows `graphql.client_timeout_abort` entries carrying
   `operation`; the monitor exists and its query returns the same entries.
+
+## Completion
+
+Shipped on main: `graphql.client_timeout_abort` carries `operation` from `operationNameFromInit(init)` in `apps/mobile/src/lib/apolloClient.ts`. The Datadog monitor stays operator work.
