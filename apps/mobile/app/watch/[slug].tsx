@@ -911,6 +911,7 @@ export default function WatchVideoPage() {
                   section={bibleCitationsBlock}
                   onArtworkFailed={bibleQuotes.reportArtworkFailure}
                   videoSlug={decodedSlug}
+                  showShareButton={false}
                 />
               </View>
             )}

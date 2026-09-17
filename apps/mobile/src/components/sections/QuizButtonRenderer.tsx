@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
   badgeText: {
     color: "#ffffff",
     fontSize: 11,
-    fontWeight: "800",
+    fontWeight: "700",
     fontFamily: "System",
     letterSpacing: 1,
   },

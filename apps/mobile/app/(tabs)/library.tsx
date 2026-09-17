@@ -23,10 +23,10 @@ import {
 
 import { DeleteConfirmSheet } from "../../src/components/library/DeleteConfirmSheet"
 import { DownloadRow } from "../../src/components/library/DownloadRow"
+import { DownloadsSummary } from "../../src/components/library/DownloadsSummary"
 import { LibraryEmptyState } from "../../src/components/library/LibraryEmptyState"
 import { SelectionActionBar } from "../../src/components/library/SelectionActionBar"
 import { SeriesGroupCard } from "../../src/components/library/SeriesGroupCard"
-import { StorageSummary } from "../../src/components/library/StorageSummary"
 import { Snackbar } from "../../src/components/ui/Snackbar"
 import { useDownloads } from "../../src/contexts/DownloadsProvider"
 import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider"
@@ -44,7 +44,6 @@ import {
 import {
   buildLibraryViewModel,
   formatLibraryBytes,
-  storageSummary,
 } from "../../src/lib/libraryDownloads"
 import { useNonRouteSheetSuppression } from "../../src/hooks/useNonRouteSheetSuppression"
 import {
@@ -60,7 +59,6 @@ import {
   toggleSlug,
   type LibrarySelectionState,
 } from "../../src/lib/librarySelection"
-import { totalDiskBytes } from "../../src/lib/offlineFileSystem"
 import { feedback, layout } from "../../src/styles/shared"
 
 const HINT_VISIBLE_MS = 4000
@@ -85,20 +83,6 @@ export default function LibraryScreen() {
     setLongPressHintSeen,
     isReady: prefsReady,
   } = useWatchPreferences()
-
-  const [capacityBytes, setCapacityBytes] = useState(0)
-  // Every tab mounts at cold launch, so the disk read waits for focus instead
-  // of running while another tab is on screen.
-  useEffect(() => {
-    if (!isFocused) return
-    let cancelled = false
-    void totalDiskBytes().then((bytes) => {
-      if (!cancelled) setCapacityBytes(bytes)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [isFocused])
 
   const [selectionState, setSelectionState] = useState<LibrarySelectionState>(
     INITIAL_SELECTION_STATE,
@@ -305,10 +289,6 @@ export default function LibraryScreen() {
     () => buildLibraryViewModel(offlineRecords),
     [offlineRecords],
   )
-  const summary = useMemo(
-    () => storageSummary(offlineRecords, capacityBytes),
-    [offlineRecords, capacityBytes],
-  )
   const selection = useMemo(
     () => selectionSummary(selected, offlineRecords),
     [selected, offlineRecords],
@@ -377,7 +357,7 @@ export default function LibraryScreen() {
             </>
           )}
         </View>
-        {summary && <StorageSummary summary={summary} />}
+        {hasRecords && <DownloadsSummary count={offlineRecords.length} />}
         {hintVisible && (
           <Text style={[styles.hint, typography.caption]}>
             Touch and hold a video to select

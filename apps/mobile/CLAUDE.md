@@ -326,6 +326,13 @@ let testers install it first. JS-only changes under `src/` and `app/` do not
 move the version. The same rule already applies to config plugins and native
 modules.
 
+**Change the public app name without renaming `expo.name`.** `expo.name` also
+names the `ios/forgewatch` project, and some storage keys use the same
+`forge-watch` text, so do not change them. Set
+`ios.infoPlist.CFBundleDisplayName` and `plugins/withAndroidAppName.js`
+instead. See
+`docs/solutions/best-practices/expo-app-display-name-without-renaming-expo-name.md`.
+
 **`eas.json` sets `cli.requireCommit: true`.** An OTA update reaches every
 tester in minutes with no store review, so publishing an uncommitted working
 tree would ship code that exists nowhere in git. Two things about it are not

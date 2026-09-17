@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
     color: TEXT_PRIMARY,
     fontFamily: "System",
     fontSize: 13,
-    lineHeight: 18,
+    lineHeight: 16,
   },
   signInButton: {
     minHeight: 44,
