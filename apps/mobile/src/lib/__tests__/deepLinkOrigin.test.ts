@@ -1,8 +1,10 @@
+import { buildLapseReminderPayload } from "../lapseReminders/payload"
 import { buildWatchShareUrl } from "../watchShareUrl"
 import {
-  consumeDeepLinkEntry,
+  consumeDeepLinkArrival,
   initDeepLinkOrigins,
   isExternalLaunch,
+  registerDeepLinkSlug,
   registerDeepLinkUrl,
   resetDeepLinkOrigins,
   watchSlugFromUrl,
@@ -63,51 +65,66 @@ describe("watchSlugFromUrl", () => {
 describe("arrival registry", () => {
   it("reports the recorded entry kind", () => {
     registerDeepLinkUrl("forgemobile://watch/jesus", "cold")
-    expect(consumeDeepLinkEntry("jesus")).toBe("cold")
+    expect(consumeDeepLinkArrival("jesus")).toEqual({
+      entry: "cold",
+      origin: "url",
+    })
   })
 
   // The bug the canGoBack() gate had: an in-app tap must never count.
   it("returns null for a slug that never arrived externally", () => {
-    expect(consumeDeepLinkEntry("considering-christmas")).toBeNull()
+    expect(consumeDeepLinkArrival("considering-christmas")).toBeNull()
   })
 
   it("consumes once so a later in-app revisit is not re-counted", () => {
     registerDeepLinkUrl("forgemobile://watch/jesus", "warm")
-    expect(consumeDeepLinkEntry("jesus")).toBe("warm")
-    expect(consumeDeepLinkEntry("jesus")).toBeNull()
+    expect(consumeDeepLinkArrival("jesus")).toEqual({
+      entry: "warm",
+      origin: "url",
+    })
+    expect(consumeDeepLinkArrival("jesus")).toBeNull()
   })
 
   it("ignores urls that address no watch slug", () => {
     registerDeepLinkUrl("forgemobile://library", "cold")
     registerDeepLinkUrl(null, "cold")
-    expect(consumeDeepLinkEntry("library")).toBeNull()
+    expect(consumeDeepLinkArrival("library")).toBeNull()
   })
 
   // A stranded entry (slug already the active route, so no effect re-ran) must
   // not detonate on the next in-app open of that same slug.
   it("treats an entry past the TTL as absent", () => {
     registerDeepLinkUrl("forgemobile://watch/jesus", "cold", 0)
-    expect(consumeDeepLinkEntry("jesus", 31_000)).toBeNull()
+    expect(consumeDeepLinkArrival("jesus", 31_000)).toBeNull()
   })
 
   it("still honors an entry inside the TTL", () => {
     registerDeepLinkUrl("forgemobile://watch/jesus", "cold", 0)
-    expect(consumeDeepLinkEntry("jesus", 5_000)).toBe("cold")
+    expect(consumeDeepLinkArrival("jesus", 5_000)).toEqual({
+      entry: "cold",
+      origin: "url",
+    })
   })
 
   // An expired entry must also be cleared, or it lingers for the next read.
   it("clears an expired entry on read", () => {
     registerDeepLinkUrl("forgemobile://watch/jesus", "cold", 0)
-    consumeDeepLinkEntry("jesus", 31_000)
+    consumeDeepLinkArrival("jesus", 31_000)
     registerDeepLinkUrl("forgemobile://watch/jesus", "warm", 40_000)
-    expect(consumeDeepLinkEntry("jesus", 40_001)).toBe("warm")
+    expect(consumeDeepLinkArrival("jesus", 40_001)).toEqual({
+      entry: "warm",
+      origin: "url",
+    })
   })
 
   // iOS can deliver one cold universal link through BOTH channels.
   it("never downgrades a cold arrival to warm", () => {
     registerDeepLinkUrl("forgemobile://watch/jesus", "cold")
     registerDeepLinkUrl("forgemobile://watch/jesus", "warm")
-    expect(consumeDeepLinkEntry("jesus")).toBe("cold")
+    expect(consumeDeepLinkArrival("jesus")).toEqual({
+      entry: "cold",
+      origin: "url",
+    })
   })
 })
 
@@ -120,7 +137,10 @@ describe("initDeepLinkOrigins", () => {
       addUrlListener: listener,
     })
     await whenDeepLinkOriginsReady()
-    expect(consumeDeepLinkEntry("jesus")).toBe("cold")
+    expect(consumeDeepLinkArrival("jesus")).toEqual({
+      entry: "cold",
+      origin: "url",
+    })
   })
 
   it("records a url delivered while running as a warm arrival", async () => {
@@ -134,7 +154,10 @@ describe("initDeepLinkOrigins", () => {
     })
     await whenDeepLinkOriginsReady()
     fire?.({ url: "forgemobile://watch/rivka" })
-    expect(consumeDeepLinkEntry("rivka")).toBe("warm")
+    expect(consumeDeepLinkArrival("rivka")).toEqual({
+      entry: "warm",
+      origin: "url",
+    })
   })
 
   it("opens the gate even when the initial-url read rejects", async () => {
@@ -273,17 +296,20 @@ describe("isExternalLaunch", () => {
     expect(isExternalLaunch()).toBe(true)
   })
 
-  // The read must not touch the per-slug registry: consumeDeepLinkEntry owns
+  // The read must not touch the per-slug registry: consumeDeepLinkArrival owns
   // the deep-link attribution this module exists to provide.
-  it("leaves the per-slug entry for consumeDeepLinkEntry to claim", async () => {
+  it("leaves the per-slug entry for consumeDeepLinkArrival to claim", async () => {
     initDeepLinkOrigins({
       getInitialURL: () => Promise.resolve("forgemobile://watch/jesus"),
       addUrlListener: listener,
     })
     await whenDeepLinkOriginsReady()
     isExternalLaunch()
-    expect(consumeDeepLinkEntry("jesus")).toBe("cold")
-    expect(consumeDeepLinkEntry("jesus")).toBeNull()
+    expect(consumeDeepLinkArrival("jesus")).toEqual({
+      entry: "cold",
+      origin: "url",
+    })
+    expect(consumeDeepLinkArrival("jesus")).toBeNull()
   })
 
   it("reports a non-external launch before anything registers", () => {
@@ -336,5 +362,98 @@ describe("what isExternalLaunch counts as external", () => {
         "exp+jesus-film-forge-v2://expo-development-client/?url=http%3A%2F%2F192.168.1.10%3A8081",
       ),
     ).toBe(false)
+  })
+})
+
+describe("arrival origin", () => {
+  it("records a slug-keyed arrival under the origin it is given", () => {
+    registerDeepLinkSlug("jesus", "cold", "reminder")
+
+    expect(consumeDeepLinkArrival("jesus")).toEqual({
+      entry: "cold",
+      origin: "reminder",
+    })
+  })
+
+  it("records a warm reminder arrival", () => {
+    registerDeepLinkSlug("rivka", "warm", "reminder")
+
+    expect(consumeDeepLinkArrival("rivka")).toEqual({
+      entry: "warm",
+      origin: "reminder",
+    })
+  })
+
+  it("ignores an empty slug", () => {
+    registerDeepLinkSlug("", "cold", "reminder")
+
+    expect(consumeDeepLinkArrival("")).toBeNull()
+  })
+
+  it("expires a reminder arrival on the same TTL", () => {
+    registerDeepLinkSlug("jesus", "cold", "reminder", 0)
+
+    expect(consumeDeepLinkArrival("jesus", 31_000)).toBeNull()
+  })
+
+  it("keeps a cold url arrival over a later warm reminder one", () => {
+    registerDeepLinkUrl("forgemobile://watch/jesus", "cold")
+    registerDeepLinkSlug("jesus", "warm", "reminder")
+
+    expect(consumeDeepLinkArrival("jesus")).toEqual({
+      entry: "cold",
+      origin: "url",
+    })
+  })
+
+  // A reminder tap is not a URL launch. The splash reads the launch answer to
+  // decide whether to skip its animation, long before a tap can register.
+  it("does not report a reminder arrival as an external launch", () => {
+    registerDeepLinkSlug("jesus", "cold", "reminder")
+
+    expect(isExternalLaunch()).toBe(false)
+  })
+
+  it("still reports a cold url arrival as an external launch", () => {
+    // Anti-vacuous companion: the flag is not simply dead.
+    registerDeepLinkUrl("forgemobile://watch/jesus", "cold")
+
+    expect(isExternalLaunch()).toBe(true)
+  })
+})
+
+// The one slug shape on which this module's URL parser and the reminder
+// payload parser disagree. No real JFP slug looks like it, and rejecting such a
+// slug would send a real video's reminders to Home, which is worse for the
+// viewer than a missing analytics event. The tap handler therefore registers by
+// the slug it already validated.
+describe("a slug the two parsers read differently", () => {
+  const target = buildLapseReminderPayload("day1", { slug: "foo.html" }).target
+
+  it("reads one target as two different slugs", () => {
+    expect(target).toBe("forgemobile://watch/foo.html")
+    expect(watchSlugFromUrl(target)).toBe("foo")
+  })
+
+  it("reaches the watch route when it is keyed by the validated slug", () => {
+    registerDeepLinkSlug("foo.html", "cold", "reminder")
+
+    expect(consumeDeepLinkArrival("foo.html")).toEqual({
+      entry: "cold",
+      origin: "reminder",
+    })
+  })
+
+  // Falsification, kept: the shape the tap handler must NOT use. The watch
+  // route consumes by "foo.html", so a URL-keyed arrival is never claimed and
+  // the attribution event is lost with every test on both sides still green.
+  it("is stranded when it is keyed by its url instead", () => {
+    registerDeepLinkUrl(target, "cold")
+
+    expect(consumeDeepLinkArrival("foo.html")).toBeNull()
+    expect(consumeDeepLinkArrival("foo")).toEqual({
+      entry: "cold",
+      origin: "url",
+    })
   })
 })

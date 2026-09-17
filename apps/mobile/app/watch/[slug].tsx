@@ -20,7 +20,7 @@ import { useApolloClient, useQuery } from "@apollo/client/react"
 import { GET_VIDEO_BY_SLUG } from "../../src/lib/queries"
 import { datadogLog } from "../../src/lib/datadog"
 import {
-  consumeDeepLinkEntry,
+  consumeDeepLinkArrival,
   whenDeepLinkOriginsReady,
 } from "../../src/lib/deepLinkOrigin"
 import { schedulePersist } from "../../src/lib/cachePersistence"
@@ -536,14 +536,19 @@ export default function WatchVideoPage() {
     let cancelled = false
     void whenDeepLinkOriginsReady().then(() => {
       if (cancelled || deepLinkEmittedRef.current.has(decodedSlug)) return
-      const entry = consumeDeepLinkEntry(decodedSlug)
-      if (entry == null) return
+      const arrival = consumeDeepLinkArrival(decodedSlug)
+      if (arrival == null) return
       deepLinkEmittedRef.current.add(decodedSlug)
-      // An external link is a shared link for playback attribution (feat-516).
-      markPlaybackDiscovery(decodedSlug, "share")
+      // Only a URL arrival is a shared link (feat-516); a reminder tap reaches
+      // this effect too and falls through to `direct` (the union has no
+      // `reminder` source). Reminder returns stay attributable via `origin`.
+      if (arrival.origin === "url") markPlaybackDiscovery(decodedSlug, "share")
+      // Built inline: the reserved-attribute sweep only reads an object
+      // literal written AT the call site.
       datadogLog.info("content.deep_link_open", {
         content_id: decodedSlug,
-        entry,
+        entry: arrival.entry,
+        origin: arrival.origin,
       })
     })
     return () => {
@@ -715,6 +720,9 @@ export default function WatchVideoPage() {
             videoId: video?.documentId ?? null,
             videoSlug: decodedSlug,
             title: displayTitle ?? "",
+            // The seed half of displayTitle is deep-link input, so it may
+            // paint here but must never persist into a notification body.
+            titleFromRecord: video?.title != null,
             posterUrl: displayPoster,
             languageSlug: activeVariant?.languageSlug ?? null,
             originPattern: "watch/[slug]",

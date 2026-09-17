@@ -7,9 +7,15 @@ import { withTimeout } from "./withTimeout"
  */
 export type DeepLinkEntry = "cold" | "warm"
 
-type Arrival = { entry: DeepLinkEntry; at: number }
+/** How the app was addressed. A reminder tap is an arrival the app made for
+ *  itself, so the dashboards can separate it from a share-link open. */
+export type DeepLinkOrigin = "url" | "reminder"
 
-const externalArrivals = new Map<string, Arrival>()
+export type DeepLinkArrival = { entry: DeepLinkEntry; origin: DeepLinkOrigin }
+
+type ArrivalRecord = DeepLinkArrival & { at: number }
+
+const externalArrivals = new Map<string, ArrivalRecord>()
 
 // Launch-level, and deliberately separate from the per-slug map: a caller asks
 // "did this launch start from a link?" once, and must not consume the
@@ -64,32 +70,49 @@ export function registerDeepLinkUrl(
   // Only the cold read describes the launch. A warm url arrives while the app
   // already runs, so it cannot change how the app started.
   if (entry === "cold") launchedFromExternalUrl = true
+  registerDeepLinkSlug(slug, entry, "url", now)
+}
+
+/**
+ * Records an arrival by a slug the caller has already validated. Re-deriving a
+ * reminder's slug from its url would strip a `.html` suffix as the web share
+ * shape, filing it under a slug the watch route never consumes.
+ */
+export function registerDeepLinkSlug(
+  slug: string,
+  entry: DeepLinkEntry,
+  origin: DeepLinkOrigin,
+  now: number = Date.now(),
+): void {
+  if (!slug) return
   // Never downgrade cold to warm: an iOS universal link can arrive through both
   // getInitialURL and the url event on the same cold launch.
   const existing = externalArrivals.get(slug)
   if (existing?.entry === "cold" && entry === "warm") return
-  externalArrivals.set(slug, { entry, at: now })
+  externalArrivals.set(slug, { entry, origin, at: now })
 }
 
 /**
- * Returns the arrival kind once, then forgets it, so a later in-app visit to the
- * same slug is not re-counted. Entries past the TTL are treated as absent.
+ * Returns the arrival once, then forgets it, so a later in-app visit to the
+ * same slug is not re-counted. Entries past the TTL are treated as absent. One
+ * consume for the whole record: a second reader would race this one for it.
  */
-export function consumeDeepLinkEntry(
+export function consumeDeepLinkArrival(
   slug: string | null | undefined,
   now: number = Date.now(),
-): DeepLinkEntry | null {
+): DeepLinkArrival | null {
   if (!slug) return null
   const arrival = externalArrivals.get(slug)
   if (arrival == null) return null
   externalArrivals.delete(slug)
-  return now - arrival.at > ARRIVAL_TTL_MS ? null : arrival.entry
+  if (now - arrival.at > ARRIVAL_TTL_MS) return null
+  return { entry: arrival.entry, origin: arrival.origin }
 }
 
 /**
  * Reports whether this launch started from a URL that addresses a WATCH route.
  * The read clears nothing, so repeated reads agree and the per-slug entries stay
- * for `consumeDeepLinkEntry`. Await the gate below before the first read.
+ * for `consumeDeepLinkArrival`. Await the gate below before the first read.
  *
  * A watch slug, not "any URL", and that is a decision rather than an oversight:
  * every development-client launch carries a wrapper URL, so the wider read

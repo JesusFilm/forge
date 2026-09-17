@@ -5,6 +5,7 @@ import type { ReactNode } from "react"
 
 import { getAuthSession, rumUserFromSession } from "../lib/authSession"
 import { setDatadogRumUser } from "../lib/datadog"
+import { getLastWatchedStore } from "../lib/lastWatched/store"
 import {
   clearNewAccountNotice,
   getNewAccountNotice,
@@ -52,6 +53,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       hydrateFromServer: () => sync.hydrateFromServer(),
       flushQueue: () => sync.flushQueue(),
       resetStore: resetToSignedOut,
+      // Memory stays authoritative until the process restarts, so the record
+      // is cleared through its own store, never by removing its key (R11).
+      clearLastWatched: () => getLastWatchedStore().clear(),
       removeStorageItem: (key) => AsyncStorage.removeItem(key),
     })
     void store.refresh()
