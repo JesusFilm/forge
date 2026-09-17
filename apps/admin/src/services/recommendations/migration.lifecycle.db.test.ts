@@ -58,16 +58,21 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
     let databaseUrl: string
     const expiresAt = "2026-09-17T00:00:00.000Z"
 
-    async function insertRequest(id: string, expectedItemCount: number) {
+    // Keep creation on the fixed fixture timeline instead of the database clock.
+    async function insertRequest(
+      id: string,
+      expectedItemCount: number,
+      createdAt = "2026-08-19T00:00:00.000Z",
+    ) {
       await client.query(
         `INSERT INTO "recommendation_request" (
           "id", "contract_version", "surface_version", "manifest_id",
           "strategy_version", "classifier_version", "session_digest",
-          "seed_media_id", "locale", "expected_item_count", "result", "expires_at"
+          "seed_media_id", "locale", "expected_item_count", "result", "expires_at", "created_at"
         ) VALUES ($1, 'semantic-recommendation-v1', 'watch-below-player-v1',
           'semantic-transcript-pgvector-v1', 'semantic-transcript-pgvector-v1',
-          'legacy-position-v0', $2, 'seed-video', 'en', $3, 'served', $4)`,
-        [id, "a".repeat(64), expectedItemCount, expiresAt],
+          'legacy-position-v0', $2, 'seed-video', 'en', $3, 'served', $4, $5)`,
+        [id, "a".repeat(64), expectedItemCount, expiresAt, createdAt],
       )
     }
 
@@ -96,12 +101,12 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       )
     }
 
-    async function insertLifecycleGraph(prefix: string) {
+    async function insertLifecycleGraph(prefix: string, createdAt?: string) {
       const requestId = `${prefix}-request`
       const itemId = `${prefix}-item`
       const selectionId = `${prefix}-selection`
       const episodeId = `${prefix}-episode`
-      await insertRequest(requestId, 1)
+      await insertRequest(requestId, 1, createdAt)
       await insertItem(itemId, requestId, 0)
       await client.query(
         `INSERT INTO recommendation_selection (
@@ -620,7 +625,10 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           expiresAt,
         ],
       )
-      const graph = await insertLifecycleGraph("eligibility-projection")
+      const graph = await insertLifecycleGraph(
+        "eligibility-projection",
+        "2026-08-25T00:00:00.000Z",
+      )
       await client.query(
         `UPDATE recommendation_playback_episode
          SET media_id = 'eligibility-projection-video', session_digest = $1,
@@ -650,12 +658,12 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           fact_watermark, input_digest, revision, qualified_view,
           view_quality_weight, view_quality_weight_reason,
           active_playback_milliseconds, duration_seconds, duration_cohort,
-          active_coverage, learning_eligible, generation, expires_at
+          active_coverage, learning_eligible, generation, expires_at, created_at
         ) VALUES (
           'eligibility-projection-outcome', $1, $2, $3,
           'active-watch-proxy-v1', 0, $4, 1, true, 0.8,
           'active_fraction_of_duration', 48000, 60, 'medium', 'complete',
-          false, 1, $5
+          false, 1, $5, '2026-08-25T02:00:00.000Z'
         )`,
         [
           graph.requestId,
@@ -764,12 +772,12 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
             fact_watermark, input_digest, revision, supersedes_id,
             qualified_view, view_quality_weight, view_quality_weight_reason,
             active_playback_milliseconds, duration_seconds, duration_cohort,
-            active_coverage, learning_eligible, generation, expires_at
+            active_coverage, learning_eligible, generation, expires_at, created_at
           ) VALUES ('eligibility-projection-superseding', $1, $2, $3,
             'active-watch-proxy-v1', 1, $4, 2,
             'eligibility-projection-outcome', false, 0.1,
             'active_fraction_of_duration', 6000, 60, 'medium', 'complete',
-            false, 1, $5)`,
+            false, 1, $5, '2026-08-26T12:00:00.000Z')`,
           [
             graph.requestId,
             graph.itemId,

@@ -90,6 +90,16 @@ Production acceptance is pending. Do not mark this ticket complete from local
 tests or from inspecting the patch alone. Require exact deployed Admin/worker
 revisions and observed worker ownership after the normal PR/main release.
 
+PR #2337's PostgreSQL job exposed an existing fixture clock dependency on
+September 17: fixed request/projection expiry dates had passed while creation
+and outcome timestamps still defaulted to database time. The unchanged tests
+reproduced 25 failures locally. Explicit fixture timestamps now share the
+existing August timeline, including the post-profile-creation request required
+by the eligibility test. All 65 tests in the CI PostgreSQL command pass locally;
+production migrations and integrity constraints are unchanged. Keep both ends
+of a historical fixture's time window explicit instead of extending its expiry
+whenever wall-clock time catches up.
+
 ## Remaining investigation
 
 feat-516 still requires representative first/warm profiler characterization;
