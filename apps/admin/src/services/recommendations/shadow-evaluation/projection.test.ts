@@ -58,6 +58,39 @@ function nomination(
 }
 
 describe("shadow candidate projection", () => {
+  it("defers reconstructed recent history only in the unpromoted composition comparison", () => {
+    const result = evaluateShadowProjection({
+      context,
+      liveOrder: ["video-a"],
+      nominations: [
+        nomination("video-a", 1, 0.9),
+        nomination("video-b", 2, 0.8),
+      ],
+      limit: 1,
+      projectionCapturedAt: null,
+      evaluatedAt: new Date(),
+      latencyMs: 1,
+      cohortQuality: null,
+      history: {
+        status: "request_window_reconstruction",
+        recentVideos: [
+          { targetMediaId: "video-a", reasonCodes: ["recent_playback_start"] },
+        ],
+      },
+    })
+    expect(result.liveOrder).toEqual(["video-a"])
+    expect(result.shadowOrder).toEqual(["video-a"])
+    expect(result.nominations[0]?.provenance).toMatchObject({
+      slateHistory: "request_window_reconstruction",
+      slateRecentItems: 1,
+      slateDecision: "pending",
+    })
+    expect(result.nominations[0]?.provenance.slateReasons).toContain(
+      "recent_history_deferred",
+    )
+    expect(result.nominations[1]?.provenance.slatePosition).toBe(0)
+  })
+
   it("uses the common eligibility path and proves the live order is untouched", () => {
     const liveOrder = ["video-a", "video-b", "video-c"]
     const result = evaluateShadowProjection({
@@ -166,6 +199,52 @@ describe("shadow candidate projection", () => {
       { generator: "multi-interest-profile", count: 1 },
       { generator: "semantic", count: 2 },
     ])
+  })
+
+  it("reconciles canonical duplicates against the eligible replacement and keeps composition unpromoted", () => {
+    const first = nomination("video-a", 1, 0.9)
+    const replacement = nomination("video-a-square", 2, 0.8)
+    const result = evaluateShadowProjection({
+      context,
+      liveOrder: ["video-a-square"],
+      nominations: [
+        {
+          ...first,
+          presentation: { ...first.presentation, watchPlayable: false },
+        },
+        {
+          ...replacement,
+          canonicalIdentity: {
+            ...first.canonicalIdentity,
+            videoId: replacement.targetMediaId,
+          },
+        },
+      ],
+      limit: 6,
+      projectionCapturedAt: null,
+      evaluatedAt: new Date(),
+      latencyMs: 1,
+      cohortQuality: null,
+    })
+    expect(result.shadowOrder).toEqual(["video-a-square"])
+    expect(
+      result.nominations.every(
+        (row) =>
+          row.candidateKey === "video-a-square" &&
+          row.shadowPosition === 0 &&
+          row.overlapsLive,
+      ),
+    ).toBe(true)
+    expect(result.nominations[0]?.provenance.slateReasons).toContain(
+      "canonical_duplicate",
+    )
+    expect(result.nominations[1]?.provenance).toMatchObject({
+      slateDecision: "pending",
+      slateRank: 0,
+      slatePosition: 0,
+      slateHistory: "unavailable",
+      slateEditorial: "adapter_pending",
+    })
   })
 
   it("records a conservative terminal decision with a required reevaluation condition", () => {

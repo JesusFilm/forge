@@ -1,0 +1,254 @@
+{
+  "bundles": {
+    "baseline": {
+      "bytes": 207494,
+      "gzipBytes": 64768
+    },
+    "current": {
+      "bytes": 210050,
+      "gzipBytes": 65467
+    }
+  },
+  "runs": [
+    {
+      "name": "baseline",
+      "n": 0,
+      "dcl": 67.30000001192093,
+      "load": 73.09999996423721,
+      "longTasks": [58],
+      "resourceCount": 2,
+      "initialRequests": ["claim"]
+    },
+    {
+      "name": "baseline",
+      "n": 1,
+      "dcl": 65.10000002384186,
+      "load": 65.10000002384186,
+      "longTasks": [],
+      "resourceCount": 2,
+      "initialRequests": ["claim"]
+    },
+    {
+      "name": "baseline",
+      "n": 2,
+      "dcl": 63.10000002384186,
+      "load": 66.80000001192093,
+      "longTasks": [],
+      "resourceCount": 2,
+      "initialRequests": ["claim"]
+    },
+    {
+      "name": "baseline",
+      "n": 3,
+      "dcl": 68.30000001192093,
+      "load": 68.39999997615814,
+      "longTasks": [],
+      "resourceCount": 2,
+      "initialRequests": ["claim"]
+    },
+    {
+      "name": "baseline",
+      "n": 4,
+      "dcl": 63.700000047683716,
+      "load": 63.80000001192093,
+      "longTasks": [],
+      "resourceCount": 2,
+      "initialRequests": ["claim"]
+    },
+    {
+      "name": "baseline",
+      "n": 5,
+      "dcl": 90,
+      "load": 100.10000002384186,
+      "longTasks": [65],
+      "resourceCount": 2,
+      "initialRequests": ["claim"]
+    },
+    {
+      "name": "baseline",
+      "n": 6,
+      "dcl": 253.89999997615814,
+      "load": 254,
+      "longTasks": [126],
+      "resourceCount": 2,
+      "initialRequests": ["claim"]
+    },
+    {
+      "name": "baseline",
+      "n": 7,
+      "dcl": 60.5,
+      "load": 60.60000002384186,
+      "longTasks": [],
+      "resourceCount": 2,
+      "initialRequests": ["claim"]
+    },
+    {
+      "name": "current",
+      "n": 0,
+      "dcl": 61.200000047683716,
+      "load": 64.60000002384186,
+      "longTasks": [],
+      "resourceCount": 2,
+      "initialRequests": ["claim"]
+    },
+    {
+      "name": "current",
+      "n": 1,
+      "dcl": 66,
+      "load": 66,
+      "longTasks": [],
+      "resourceCount": 2,
+      "initialRequests": ["claim"]
+    },
+    {
+      "name": "current",
+      "n": 2,
+      "dcl": 66.60000002384186,
+      "load": 70.20000004768372,
+      "longTasks": [51],
+      "resourceCount": 2,
+      "initialRequests": ["claim"]
+    },
+    {
+      "name": "current",
+      "n": 3,
+      "dcl": 58.80000001192093,
+      "load": 64.5,
+      "longTasks": [],
+      "resourceCount": 2,
+      "initialRequests": ["claim"]
+    },
+    {
+      "name": "current",
+      "n": 4,
+      "dcl": 60.09999996423721,
+      "load": 60.19999998807907,
+      "longTasks": [],
+      "resourceCount": 2,
+      "initialRequests": ["claim"]
+    },
+    {
+      "name": "current",
+      "n": 5,
+      "dcl": 62.799999952316284,
+      "load": 62.89999997615814,
+      "longTasks": [],
+      "resourceCount": 2,
+      "initialRequests": ["claim"]
+    },
+    {
+      "name": "current",
+      "n": 6,
+      "dcl": 62.19999998807907,
+      "load": 62.19999998807907,
+      "longTasks": [],
+      "resourceCount": 2,
+      "initialRequests": ["claim"]
+    },
+    {
+      "name": "current",
+      "n": 7,
+      "dcl": 68.39999997615814,
+      "load": 68.5,
+      "longTasks": [],
+      "resourceCount": 2,
+      "initialRequests": ["claim"]
+    }
+  ],
+  "checks": {
+    "prestart": [
+      {
+        "kind": "playback_attempt",
+        "payload": {
+          "initiation": "manual"
+        }
+      },
+      {
+        "kind": "playback_observation",
+        "payload": {
+          "version": "playback-observations-v1",
+          "elapsedMilliseconds": 271,
+          "visibility": "visible",
+          "playerState": "paused",
+          "startObserved": false,
+          "errorObserved": false,
+          "seekCount": 0,
+          "navigationCount": 0,
+          "qoeCount": 0
+        }
+      },
+      {
+        "kind": "playback_end",
+        "payload": {
+          "reason": "pagehide",
+          "positionSeconds": 0,
+          "durationSeconds": 120,
+          "progress": 0,
+          "completed": false
+        }
+      }
+    ],
+    "terminalsAfterRerender": 0,
+    "played": [
+      {
+        "kind": "playback_attempt",
+        "payload": {
+          "initiation": "manual"
+        }
+      },
+      {
+        "kind": "playback_qoe",
+        "payload": {
+          "action": "waiting",
+          "cause": "unknown",
+          "positionSeconds": 0
+        }
+      },
+      {
+        "kind": "playback_qoe",
+        "payload": {
+          "action": "buffering_end",
+          "cause": "unknown",
+          "positionSeconds": 0
+        }
+      },
+      {
+        "kind": "playback_start",
+        "payload": {
+          "positionSeconds": 0
+        }
+      },
+      {
+        "kind": "playback_active_visible_playing",
+        "payload": {
+          "activeMilliseconds": 520,
+          "coverage": "complete"
+        }
+      },
+      {
+        "kind": "playback_observation",
+        "payload": {
+          "version": "playback-observations-v1",
+          "elapsedMilliseconds": 573,
+          "visibility": "visible",
+          "playerState": "playing",
+          "startObserved": true,
+          "errorObserved": false,
+          "seekCount": 0,
+          "navigationCount": 0,
+          "qoeCount": 2
+        }
+      },
+      {
+        "kind": "playback_end",
+        "payload": {
+          "reason": "pagehide",
+          "positionSeconds": 0.476265,
+          "durationSeconds": 150,
+          "progress": 0.0031751,
+          "completed": false
+        }
+      }
+    ]
+  }
+}

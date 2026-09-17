@@ -1,5 +1,6 @@
 import { PageSection, StatusPill } from "@/components/admin-ui"
 import type { RecommendationRequestDetailData } from "@/services/recommendations/admin-ops"
+import { ShadowSlateEvidence } from "./shadow-slate-evidence"
 import {
   displayRecommendationToken,
   formatRecommendationDateTime,
@@ -115,6 +116,8 @@ export function RecommendationCandidateEvidence({
                   />
                 </dl>
 
+                <ShadowSlateEvidence nominations={comparison.nominations} />
+
                 <details className="mt-4">
                   <summary className="cursor-pointer text-[12px] font-medium">
                     Inspect {comparison.nominations.length} bounded nomination
@@ -155,9 +158,10 @@ export function RecommendationCandidateEvidence({
                               {nomination.sourceScore.toFixed(3)}
                               <div className="mt-1 text-[var(--color-text-muted)]">
                                 {Object.entries(nomination.provenance ?? {})
+                                  .filter(([key]) => !key.startsWith("slate"))
                                   .map(([key, value]) => `${key}=${value}`)
                                   .join(" · ") ||
-                                  `provenance keys ${nomination.provenanceKeys.join(", ") || "none"}`}
+                                  `provenance keys ${nomination.provenanceKeys.filter((key) => !key.startsWith("slate")).join(", ") || "none"}`}
                               </div>
                             </td>
                             <td className="px-3 py-3">
@@ -397,6 +401,16 @@ export function FinalSlatePanel({
                 </div>
               </div>
 
+              {item.viewingMode && (
+                <p className="mt-3 text-[11px] text-[var(--color-text-secondary)]">
+                  Sound-off preference{" "}
+                  {Math.round(item.viewingMode.soundOffPreference * 100)}% from{" "}
+                  {item.viewingMode.qualifiedVideos} distinct videos.
+                  {item.viewingMode.candidate
+                    ? ` This video's sound-off engagement qualified for ${item.viewingMode.candidate.qualifiedViewers} of ${item.viewingMode.candidate.viewers} observed viewers.`
+                    : " This video has no sound-off ranking boost."}
+                </p>
+              )}
               <div className="mt-3 flex flex-wrap gap-2">
                 {(contributors.length > 0
                   ? contributors

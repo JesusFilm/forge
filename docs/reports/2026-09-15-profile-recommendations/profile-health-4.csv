@@ -1,0 +1,2 @@
+scope,personalized_requests,profiles,used_generations,missing_projection,expired_when_used,published_after_request,zero_interest_count,retrieval_p50_ms,retrieval_p95_ms
+durable,5380,855,3103,0,0,0,0,114,271.0500000000002

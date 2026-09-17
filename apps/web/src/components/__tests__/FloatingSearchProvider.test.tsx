@@ -637,12 +637,8 @@ describe("FloatingSearchProvider — header backdrop", () => {
     expect(FLOATING_HEADER_PINNED_TOP_CLASS).toContain(
       `${compactLandscape}:top-[calc(env(safe-area-inset-top,0px)+0.5rem)]`,
     )
-    expect(WATCH_PAGE_LEFT_EDGE_CLASSES).toContain(
-      `${compactLandscape}:left-[max(1.25rem,env(safe-area-inset-left,0px))]`,
-    )
-    expect(WATCH_PAGE_RIGHT_EDGE_CLASSES).toContain(
-      `${compactLandscape}:right-[max(1.25rem,env(safe-area-inset-right,0px))]`,
-    )
+    expect(WATCH_PAGE_LEFT_EDGE_CLASSES).not.toContain(compactLandscape)
+    expect(WATCH_PAGE_RIGHT_EDGE_CLASSES).not.toContain(compactLandscape)
     expect(header?.className).toContain(FLOATING_HEADER_TOP_CLASS)
     expect(backdrop?.className).toContain(
       `${compactLandscape}:h-[calc(4.25rem+env(safe-area-inset-top,0px))]`,
@@ -1259,10 +1255,7 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
     expect(header?.className).toContain("h-[52px]")
     expect(header?.className).toContain(FLOATING_HEADER_LAYOUT_CLASS)
     expect(header?.className).toContain(
-      "grid-cols-[minmax(80px,1fr)_minmax(0,800px)_minmax(80px,1fr)]",
-    )
-    expect(header?.className).toContain(
-      "md:grid-cols-[minmax(139px,1fr)_minmax(0,800px)_minmax(139px,1fr)]",
+      "grid-cols-[minmax(max-content,1fr)_minmax(0,800px)_minmax(max-content,1fr)]",
     )
     expect(header?.className).toContain("items-center")
     expect(header?.className).toContain("gap-3")
@@ -2446,6 +2439,7 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     expect(languageButton?.className).toContain("w-11")
     expect(languageButton?.className).toContain("md:h-[52px]")
     expect(languageButton?.className).toContain("md:w-12")
+    expect(languageButton?.className).toContain("-mr-[18.25px]")
     expect(header?.className).toContain("z-50")
     expect(languageButton?.className).toContain("cursor-pointer")
     expect(languageButton?.querySelector("svg")?.className.baseVal).toContain(
@@ -2632,6 +2626,10 @@ describe("FloatingSearchProvider — language videos link", () => {
       expect(link?.querySelector("svg")?.getAttribute("class")).toContain(
         "lucide-list-video",
       )
+      const labelClassName = link?.querySelector("span")?.getAttribute("class")
+      expect(labelClassName).toContain("text-xs")
+      expect(labelClassName).toContain("sm:text-[10px]")
+      expect(labelClassName).toContain("tracking-[0.14em]")
     },
   )
 
@@ -2731,6 +2729,11 @@ describe("FloatingSearchProvider — language videos link", () => {
       "floating-header-language-button",
       "floating-header-search-close",
     ])
+    expect(
+      trailingControls?.querySelector(
+        '[data-testid="floating-header-language-button"]',
+      )?.className,
+    ).not.toContain("-mr-[18.25px]")
     expect(languageVideosLink()).toBeNull()
   })
 })

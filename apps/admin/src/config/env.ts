@@ -325,6 +325,29 @@ export const env = createEnv({
     AUTH_MANAGER_SERVICE_CLIENT_ID: z.string().min(1).optional(),
     AUTH_MANAGER_SERVICE_CLIENT_SECRET: z.string().min(1).optional(),
     AUTH_MANAGER_SERVICE_AUDIENCE: z.string().url().optional(),
+    SUBTITLE_REVIEW_ASSERTION_ENVIRONMENT: z
+      .enum(["local", "preview", "staging", "production"])
+      .optional()
+      .default("local"),
+    // Ed25519 public-key ring used only for fresh, request-bound reviewer
+    // session proofs minted by Manager's server from its HttpOnly session.
+    SUBTITLE_REVIEW_SESSION_PUBLIC_KEYS: z.string().min(1).optional(),
+    SUBTITLE_EVAL_MAX_PER_RUN_MICROS: z.string().regex(/^\d+$/).optional(),
+    SUBTITLE_EVAL_RESERVATION_PER_CELL_ATTEMPT_MICROS: z
+      .string()
+      .regex(/^\d+$/)
+      .optional(),
+    SUBTITLE_EVAL_MAX_ROLLING_24H_MICROS: z.string().regex(/^\d+$/).optional(),
+    SUBTITLE_EVAL_MAX_ACTIVE_RUNS_PER_OPERATOR: z.coerce
+      .number()
+      .int()
+      .positive()
+      .optional(),
+    SUBTITLE_EVAL_MAX_ACTIVE_RUNS_GLOBAL: z.coerce
+      .number()
+      .int()
+      .positive()
+      .optional(),
     AUTH_MANAGER_SERVICE_ENVIRONMENT: z
       .enum(["local", "preview", "staging", "production"])
       .optional(),
@@ -433,6 +456,10 @@ export const env = createEnv({
     RECOMMENDATION_REDIS_TEST: z.enum(["1"]).optional(),
     // Source-free serving is enabled by default; false remains a kill switch.
     RECOMMENDATION_USER_SERVING_ENABLED: z
+      .enum(["true", "false"])
+      .default("true"),
+    // Narrow rollback switch for mode-profile projection and sound-off ranking.
+    RECOMMENDATION_VIEWING_MODE_ENABLED: z
       .enum(["true", "false"])
       .default("true"),
     // Fail-closed startup ceiling. The shared Postgres serving-control row is
@@ -811,6 +838,27 @@ export const env = createEnv({
     AUTH_MANAGER_SERVICE_AUDIENCE: emptyToUndefined(
       process.env.AUTH_MANAGER_SERVICE_AUDIENCE,
     ),
+    SUBTITLE_REVIEW_ASSERTION_ENVIRONMENT: emptyToUndefined(
+      process.env.SUBTITLE_REVIEW_ASSERTION_ENVIRONMENT,
+    ),
+    SUBTITLE_REVIEW_SESSION_PUBLIC_KEYS: emptyToUndefined(
+      process.env.SUBTITLE_REVIEW_SESSION_PUBLIC_KEYS,
+    ),
+    SUBTITLE_EVAL_MAX_PER_RUN_MICROS: emptyToUndefined(
+      process.env.SUBTITLE_EVAL_MAX_PER_RUN_MICROS,
+    ),
+    SUBTITLE_EVAL_RESERVATION_PER_CELL_ATTEMPT_MICROS: emptyToUndefined(
+      process.env.SUBTITLE_EVAL_RESERVATION_PER_CELL_ATTEMPT_MICROS,
+    ),
+    SUBTITLE_EVAL_MAX_ROLLING_24H_MICROS: emptyToUndefined(
+      process.env.SUBTITLE_EVAL_MAX_ROLLING_24H_MICROS,
+    ),
+    SUBTITLE_EVAL_MAX_ACTIVE_RUNS_PER_OPERATOR: emptyToUndefined(
+      process.env.SUBTITLE_EVAL_MAX_ACTIVE_RUNS_PER_OPERATOR,
+    ),
+    SUBTITLE_EVAL_MAX_ACTIVE_RUNS_GLOBAL: emptyToUndefined(
+      process.env.SUBTITLE_EVAL_MAX_ACTIVE_RUNS_GLOBAL,
+    ),
     AUTH_MANAGER_SERVICE_ENVIRONMENT: emptyToUndefined(
       process.env.AUTH_MANAGER_SERVICE_ENVIRONMENT,
     ),
@@ -931,6 +979,9 @@ export const env = createEnv({
     RECOMMENDATION_SEMANTIC_SERVING_ENABLED: emptyToUndefined(
       process.env.RECOMMENDATION_SEMANTIC_SERVING_ENABLED,
     ),
+    RECOMMENDATION_VIEWING_MODE_ENABLED:
+      emptyToUndefined(process.env.RECOMMENDATION_VIEWING_MODE_ENABLED) ??
+      "true",
     RECOMMENDATION_CAPABILITY_KEYRING: emptyToUndefined(
       process.env.RECOMMENDATION_CAPABILITY_KEYRING,
     ),

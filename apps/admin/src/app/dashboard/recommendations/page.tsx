@@ -214,6 +214,40 @@ function PlaybackEvidence({
           value={formatCount(playback.counts.outcomes)}
         />
       </div>
+      <div className="border-t border-[var(--color-hairline)] px-4 py-3 text-[12px] text-[var(--color-text-secondary)]">
+        <div className="label-text">
+          Navigation and QoE · latest {playback.observationSample.size} episodes
+        </div>
+        <p className="mt-2">
+          Attempts {playback.observationSample.attempts} · starts{" "}
+          {playback.observationSample.starts} · finalized{" "}
+          {playback.observationSample.finalized}
+        </p>
+        <p className="mt-1">
+          Navigation observed {playback.observationSample.navigationObserved}/
+          {playback.observationSample.size} · QoE observed{" "}
+          {playback.observationSample.qoeObserved}/
+          {playback.observationSample.size}
+        </p>
+        <p className="mt-1">
+          Quick departures {playback.observationSample.immediateDepartures} ·
+          before-start departures{" "}
+          {playback.observationSample.beforeStartDepartures}
+        </p>
+        <p className="mt-2 text-[var(--color-text-muted)]">
+          Bounded recent sample, not a full-window rate. Preference meaning is
+          unknown; both families remain inconclusive.
+        </p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {Object.entries(playback.observationSample.classificationCounts).map(
+            ([classification, count]) => (
+              <StatusPill key={classification} tone="muted">
+                {displayRecommendationToken(classification)} · {count}
+              </StatusPill>
+            ),
+          )}
+        </div>
+      </div>
       <div className="grid gap-4 border-t border-[var(--color-hairline)] p-4 lg:grid-cols-2">
         <div>
           <div className="label-text">Discovery sources</div>

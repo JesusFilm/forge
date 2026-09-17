@@ -1,8 +1,11 @@
+import { randomUUID } from "node:crypto"
 import { readdirSync, readFileSync } from "node:fs"
-import { PrismaClient } from "@prisma/client"
+import { PrismaPg } from "@prisma/adapter-pg"
+import { PrismaClient, type Prisma } from "@prisma/client"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
+import { createLoaders } from "@/graphql/loaders"
 import { RecommendationEvidenceService } from "./evidence.service"
 import { RecommendationEpisodeService } from "./episode.service"
 import { RecommendationOutcomeService } from "./outcome.service"
@@ -61,7 +64,13 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       url.searchParams.delete("options")
       url.searchParams.set("schema", schemaName)
       prisma = new PrismaClient({
-        datasources: { db: { url: url.toString() } },
+        adapter: new PrismaPg(
+          {
+            connectionString: url.toString(),
+            options: `-c search_path=${schemaName},public`,
+          },
+          { schema: schemaName },
+        ),
       })
     })
 
@@ -773,8 +782,9 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       }
     })
 
-    it("serializes concurrent selection and impression while preserving exact replay semantics", async () => {
+    it("accepts an impression received while selection is pending and preserves exact replay semantics", async () => {
       const raceNow = new Date()
+      const impressionNow = new Date(raceNow.getTime() + 100)
       const raceExpiresAt = new Date(raceNow.getTime() + 24 * 60 * 60 * 1_000)
       const sessionDigest = "9".repeat(64)
       const capabilityJti = "race-item-capability-jti"
@@ -840,9 +850,25 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
 
       let raceId = 0
       const dispatchProfileFeedback = vi.fn(async () => undefined)
+      let notifySelectionStarted = () => {}
+      let resumeSelection = () => {}
+      const selectionStarted = new Promise<void>((resolve) => {
+        notifySelectionStarted = resolve
+      })
+      const releaseSelection = new Promise<void>((resolve) => {
+        resumeSelection = resolve
+      })
       const episodeService = new RecommendationEpisodeService({
         prisma,
-        tokenService,
+        tokenService: {
+          ...tokenService,
+          verifyDeliveryCapability: async (...args) => {
+            const verified = await tokenCore.verifyDeliveryCapability(...args)
+            notifySelectionStarted()
+            await releaseSelection
+            return verified
+          },
+        },
         now: () => raceNow,
         newId: () => `race-generated-${++raceId}`,
         dispatchProfileFeedback,
@@ -850,7 +876,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       const evidenceService = new RecommendationEvidenceService({
         prisma,
         tokenService,
-        now: () => raceNow,
+        now: () => impressionNow,
         dispatchProfileFeedback,
       })
       const selectionInput = {
@@ -865,24 +891,28 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         tabDigest: "8".repeat(64),
         claimNonce: "race-client-handoff-nonce",
       }
+      const selecting = episodeService.select(selectionInput)
+      await selectionStarted
       const [selection, impression] = await Promise.all([
-        episodeService.select(selectionInput),
-        evidenceService.record({
-          caller,
-          contractVersion: "recommendation-evidence-v1",
-          capability,
-          requestId: "race-request",
-          itemId: "race-item",
-          sessionDigest,
-          events: [
-            {
-              eventId: "race-impression-event",
-              kind: "impression" as const,
-              occurredAt: raceNow.toISOString(),
-              payload: { visibilityPolicy: "watch-below-player-v1" },
-            },
-          ],
-        }),
+        selecting,
+        evidenceService
+          .record({
+            caller,
+            contractVersion: "recommendation-evidence-v1",
+            capability,
+            requestId: "race-request",
+            itemId: "race-item",
+            sessionDigest,
+            events: [
+              {
+                eventId: "race-impression-event",
+                kind: "impression" as const,
+                occurredAt: raceNow.toISOString(),
+                payload: { visibilityPolicy: "watch-below-player-v1" },
+              },
+            ],
+          })
+          .finally(() => resumeSelection()),
       ])
 
       expect(selection).toMatchObject({
@@ -908,7 +938,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         where: { itemId: "race-item" },
         select: { attributionEligibleAt: true },
       })
-      expect(committed?.attributionEligibleAt).toEqual(raceNow)
+      expect(committed?.attributionEligibleAt).toEqual(impressionNow)
       expect(dispatchProfileFeedback).not.toHaveBeenCalled()
       const claimInput = {
         caller,
@@ -1042,6 +1072,381 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         transportReplayCount: 5,
         conflictCount: 0,
       })
+    })
+    it("ingests observation families, recomputes authorized detail, and obeys retention", async () => {
+      current = new Date()
+      const began = current
+      const keyring = parseRecommendationKeyring(
+        JSON.stringify({
+          keys: [
+            {
+              kid: "observations-test",
+              status: "active",
+              key: Buffer.alloc(32, 8).toString("base64url"),
+            },
+          ],
+        }),
+      )
+      const tokenService = {
+        activeKid: keyring.active.kid,
+        ...createRecommendationTokenService({
+          keyring,
+          readRevokedKids: async () => [],
+          now: () => current,
+        }),
+      }
+      const episodes = new RecommendationEpisodeService({
+        prisma,
+        tokenService,
+        now: () => current,
+      })
+      const context = await episodes.issueContext({
+        caller,
+        sessionDigest: "c".repeat(64),
+        mediaId: "observation-media",
+        discoverySource: "search",
+      })
+      const claim = await episodes.claim({
+        caller,
+        sessionDigest: "c".repeat(64),
+        mediaId: "observation-media",
+        claimNonce: context.claimNonce,
+      })
+      const playback = new RecommendationPlaybackService({
+        prisma,
+        tokenService,
+        now: () => current,
+      })
+      current = new Date(began.getTime() + 3000)
+      const events = [
+        {
+          eventId: "observation-attempt",
+          kind: "playback_attempt",
+          occurredAt: began.toISOString(),
+          payload: {
+            initiation: "manual",
+          },
+        },
+        {
+          eventId: "observation-buffer",
+          kind: "playback_qoe",
+          occurredAt: new Date(began.getTime() + 1000).toISOString(),
+          payload: { action: "waiting", cause: "unknown", positionSeconds: 0 },
+        },
+        {
+          eventId: "observation-summary",
+          kind: "playback_observation",
+          occurredAt: current.toISOString(),
+          payload: {
+            version: "playback-observations-v1",
+            elapsedMilliseconds: 3000,
+            visibility: "visible",
+            playerState: "buffering",
+            startObserved: false,
+            errorObserved: false,
+            seekCount: 0,
+            navigationCount: 0,
+            qoeCount: 1,
+          },
+        },
+        {
+          eventId: "observation-end",
+          kind: "playback_end",
+          occurredAt: current.toISOString(),
+          payload: {
+            reason: "pagehide",
+            positionSeconds: 0,
+            durationSeconds: 120,
+            progress: 0,
+            completed: false,
+          },
+        },
+      ]
+      const input = {
+        caller,
+        contractVersion: "recommendation-evidence-v1",
+        capability: claim.capability,
+        episodeId: claim.episodeId,
+        sessionDigest: "c".repeat(64),
+        mediaId: "observation-media",
+        events,
+      }
+      // A schema-invalid batch is rejected before any baseline fact is persisted.
+      await expect(
+        playback.record({
+          ...input,
+          events: [
+            events[0],
+            {
+              eventId: "invalid-optional",
+              kind: "playback_qoe",
+              occurredAt: current.toISOString(),
+              payload: {
+                action: "waiting",
+                cause: "dislike",
+                positionSeconds: 0,
+              },
+            },
+          ],
+        }),
+      ).rejects.toThrow()
+      expect(
+        await prisma.recommendationPlaybackFact.count({
+          where: { episodeId: claim.episodeId },
+        }),
+      ).toBe(0)
+      await playback.record(input)
+      await playback.record(input)
+      const outcomes = new RecommendationOutcomeService({
+        prisma,
+        now: () => current,
+      })
+      await outcomes.finalize({
+        episodeId: claim.episodeId,
+        generation: 1,
+        reason: "terminal-fact",
+      })
+      const detail = await loadPlaybackEpisodeDetail(prisma, {
+        episodeId: claim.episodeId,
+        actorDigest: "f".repeat(64),
+        now: current,
+      })
+      expect(detail?.facts).toHaveLength(4)
+      expect(detail?.facts.every((fact) => !("payload" in fact))).toBe(true)
+      expect(detail?.observations).toMatchObject({
+        preferenceInterpretation: "unknown",
+        rankingInfluence: false,
+        departure: { classification: "pre_start_departure", immediate: true },
+        qoe: { bufferingEpisodes: 1, openBufferingInterval: true },
+      })
+      expect(detail?.outcomes.every((outcome) => !outcome.qualifiedView)).toBe(
+        true,
+      )
+      const digest = detail?.observations.inputDigest
+      current = new Date(current.getTime() + 1000)
+      await playback.record({
+        ...input,
+        events: [
+          {
+            eventId: "observation-hidden",
+            kind: "playback_navigation",
+            occurredAt: new Date(began.getTime() + 2000).toISOString(),
+            payload: { action: "hidden", cause: "unknown", positionSeconds: 0 },
+          },
+        ],
+      })
+      const revised = await loadPlaybackEpisodeDetail(prisma, {
+        episodeId: claim.episodeId,
+        actorDigest: "f".repeat(64),
+        now: current,
+      })
+      expect(revised?.observations.inputDigest).not.toBe(digest)
+      expect(revised?.observations.departure).toMatchObject({
+        classification: "interrupted_visibility_or_lifecycle",
+        immediate: null,
+      })
+      const overview = await loadPlaybackEvidenceOverview(prisma, {
+        window: "24h",
+        now: current,
+      })
+      expect(overview.observationSample.qoeObserved).toBeGreaterThanOrEqual(1)
+      await expect(
+        loadPlaybackEpisodeDetail(prisma, {
+          episodeId: claim.episodeId,
+          actorDigest: "invalid",
+          now: current,
+        }),
+      ).resolves.toBeNull()
+      await expect(
+        loadPlaybackEpisodeDetail(prisma, {
+          episodeId: claim.episodeId,
+          actorDigest: "f".repeat(64),
+          now: new Date(began.getTime() + 30 * 86400_000),
+        }),
+      ).resolves.toBeNull()
+    })
+
+    it("samples only the 20 newest retained episodes and excludes the oldest classification", async () => {
+      // Use a separate reporting window so earlier fixtures cannot enter the sample.
+      const began = new Date(startedAt.getTime() + 2 * 86400_000)
+      const now = new Date(began.getTime() + 3600_000)
+      const expiresAt = new Date(began.getTime() + 29 * 86400_000)
+      const episodes = Array.from({ length: 21 }, (_, index) => ({
+        id: `sample-bound-${index.toString().padStart(2, "0")}`,
+        mediaId: `sample-media-${index}`,
+        sessionDigest: "d".repeat(64),
+        state: "CLAIMED" as const,
+        capabilityJti: `sample-bound-capability-${index}`,
+        claimedAt: new Date(began.getTime() + index * 1000),
+        activeUntil: new Date(began.getTime() + 4 * 3600_000),
+        hardUntil: new Date(began.getTime() + 6 * 3600_000),
+        createdAt: new Date(began.getTime() + index * 1000),
+        expiresAt,
+      }))
+      await prisma.recommendationPlaybackEpisode.createMany({ data: episodes })
+      await prisma.recommendationPlaybackFact.create({
+        data: {
+          episodeId: episodes[0].id,
+          capabilityJti: episodes[0].capabilityJti,
+          eventId: "sample-oldest-completion",
+          payloadDigest: "e".repeat(64),
+          sequence: 1,
+          kind: "playback_end",
+          payload: {
+            reason: "ended",
+            positionSeconds: 120,
+            durationSeconds: 120,
+            progress: 1,
+            completed: true,
+          },
+          occurredAt: new Date(began.getTime() + 500),
+          receivedAt: new Date(began.getTime() + 500),
+          expiresAt,
+        },
+      })
+      const oldest = await loadPlaybackEpisodeDetail(prisma, {
+        episodeId: episodes[0].id,
+        actorDigest: "f".repeat(64),
+        now,
+      })
+      expect(oldest?.observations.departure.classification).toBe("completion")
+
+      const overview = await loadPlaybackEvidenceOverview(prisma, {
+        window: "24h",
+        now,
+      })
+
+      expect(overview.counts.episodes).toBe(21)
+      expect(overview.recent.map((episode) => episode.id)).toEqual(
+        episodes
+          .slice(1)
+          .reverse()
+          .map((episode) => episode.id),
+      )
+      expect(overview.observationSample.size).toBe(20)
+      expect(overview.observationSample.classificationCounts).toEqual({
+        insufficient_evidence: 20,
+      })
+      expect(
+        overview.observationSample.classificationCounts,
+      ).not.toHaveProperty("completion")
+    })
+  },
+)
+
+// Keep the shared Admin hydration regression in CI's existing Watch database entry point.
+describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
+  "duration loader with real PostgreSQL result cardinality",
+  () => {
+    const schema = `duration_${randomUUID().replaceAll("-", "")}`
+    const sql = new Client({ connectionString: env.DATABASE_URL })
+    const queries: Prisma.QueryEvent[] = []
+    const prisma = new PrismaClient({
+      adapter: new PrismaPg(
+        {
+          connectionString: env.DATABASE_URL,
+          max: 10,
+          options: `-c search_path=${schema}`,
+        },
+        { schema },
+      ),
+      log: [{ emit: "event", level: "query" }],
+    })
+
+    beforeAll(async () => {
+      if (
+        !["localhost", "127.0.0.1", "[::1]"].includes(
+          new URL(env.DATABASE_URL).hostname,
+        )
+      ) {
+        throw new Error("This isolated fixture requires local Postgres")
+      }
+      await sql.connect()
+      await sql.query(`CREATE SCHEMA "${schema}"`)
+      await sql.query(`SET search_path TO "${schema}"`)
+      await sql.query(`
+        CREATE TABLE video (id text PRIMARY KEY, primary_language_id text, deleted_at timestamp);
+        CREATE TABLE video_dub (
+          id text PRIMARY KEY, video_id text NOT NULL, language_id text,
+          duration integer, hls text, published boolean, deleted_at timestamp
+        );
+        CREATE INDEX ON video_dub(video_id);
+        CREATE INDEX ON video_dub(video_id,duration DESC,id ASC)
+          WHERE deleted_at IS NULL AND published=true AND hls IS NOT NULL;
+        INSERT INTO video(id, primary_language_id) VALUES
+          ('primary', 'en'), ('outside-five', 'en'), ('fallback', 'missing'),
+          ('empty-hls', NULL), ('unplayable', NULL), ('empty', NULL), ('empty-primary', '');
+        INSERT INTO video VALUES ('deleted', 'en', now());
+        INSERT INTO video_dub
+          SELECT v.id || '-' || n, v.id, CASE WHEN n=2 THEN 'en' ELSE 'es' END,
+            100-n, 'stream', true, NULL
+          FROM video v CROSS JOIN generate_series(1,8) n
+          WHERE v.id IN ('primary','fallback','deleted');
+        INSERT INTO video_dub
+          SELECT 'outside-' || n, 'outside-five', CASE WHEN n=6 THEN 'en' ELSE 'es' END,
+            100-n, 'stream', true, NULL FROM generate_series(1,8) n;
+        INSERT INTO video_dub VALUES
+          ('empty-primary-long', 'empty-primary', 'es', 20, 'stream', true, NULL),
+          ('empty-primary-short', 'empty-primary', '', 10, 'stream', true, NULL),
+          ('blank', 'empty-hls', NULL, 10, '', true, NULL),
+          ('zero', 'unplayable', NULL, 0, 'stream', true, NULL),
+          ('negative', 'unplayable', NULL, -1, 'stream', true, NULL),
+          ('null-duration', 'unplayable', NULL, NULL, 'stream', true, NULL),
+          ('no-hls', 'unplayable', NULL, 100, NULL, true, NULL),
+          ('unpublished', 'unplayable', NULL, 100, 'stream', false, NULL),
+          ('withdrawn', 'unplayable', NULL, 100, 'stream', true, now());
+        INSERT INTO video(id) SELECT 'large-' || n FROM generate_series(1,216) n;
+        INSERT INTO video_dub
+          SELECT v.id || '-' || n, v.id, 'language-' || n, 1000-n, 'stream', true, NULL
+          FROM video v CROSS JOIN generate_series(1,662) n WHERE v.id LIKE 'large-%';
+        ANALYZE video; ANALYZE video_dub;
+      `)
+      prisma.$on("query", (event) => queries.push(event))
+    })
+
+    afterAll(async () => {
+      await prisma.$disconnect()
+      await sql.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`)
+      await sql.end()
+    })
+
+    it("preserves primary-within-five, fallback, visibility, null and HLS semantics", async () => {
+      const result = await createLoaders(
+        prisma,
+      ).videoPrimaryDubDurationById.loadMany([
+        "fallback",
+        "primary",
+        "outside-five",
+        "empty-hls",
+        "empty-primary",
+        "unplayable",
+        "empty",
+        "deleted",
+        "missing",
+        "primary",
+      ])
+      expect(result).toEqual([99, 98, 99, 10, 20, null, null, null, null, 98])
+    })
+
+    it("bounds database rows independently of the full dubbed catalog", async () => {
+      queries.length = 0
+      const ids = Array.from(
+        { length: 216 },
+        (_, index) => `large-${index + 1}`,
+      )
+      const result =
+        await createLoaders(prisma).videoPrimaryDubDurationById.loadMany(ids)
+      expect(result).toEqual(ids.map(() => 999))
+      // Re-execute the emitted, parameterized SELECTs to inspect wire cardinality.
+      // Mocking findMany cannot catch Prisma trimming nested take in JavaScript.
+      const reads = queries.filter((query) => /SELECT/i.test(query.query))
+      expect(reads.length).toBeGreaterThan(0)
+      let transferredRows = 0
+      for (const query of reads) {
+        transferredRows +=
+          (await sql.query(query.query, JSON.parse(query.params))).rowCount ?? 0
+      }
+      expect(transferredRows).toBeLessThanOrEqual(ids.length * 6)
     })
   },
 )

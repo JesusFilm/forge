@@ -19,6 +19,7 @@ import {
 import type { SceneRecommendation } from "@/lib/recommendations"
 import {
   CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY,
+  RECOMMENDATION_DELIVERY_CLIENT_VERSION,
   RECOMMENDATION_EVIDENCE_CONTRACT,
   RECOMMENDATION_TAB_CORRELATION_KEY,
   SEMANTIC_RECOMMENDATION_CONTRACT,
@@ -73,7 +74,7 @@ type SemanticRecommendationItem = SceneRecommendation & {
   position: number
   targetMediaId: string
   canonicalHref: string
-  candidateGenerator: "semantic" | "multi-interest-profile"
+  candidateGenerator: "semantic" | "multi-interest-profile" | "curated"
   contributors: Array<{
     generator: string
     generatorVersion: string
@@ -106,7 +107,9 @@ type SemanticEnvelope = {
     executionMode:
       | "semantic_contextual"
       | "hybrid_personalized"
+      | "viewing_mode_personalized"
       | "semantic_fallback"
+      | "curated_fallback"
       | null
     effectiveManifestId: string
     profileState: "session" | "durable" | null
@@ -185,7 +188,8 @@ function parseItem(value: unknown): SemanticRecommendationItem | null {
     !nonEmptyString(item.targetMediaId, 191) ||
     !isCanonicalWatchRecommendationHref(item.canonicalHref) ||
     (item.candidateGenerator !== "semantic" &&
-      item.candidateGenerator !== "multi-interest-profile") ||
+      item.candidateGenerator !== "multi-interest-profile" &&
+      item.candidateGenerator !== "curated") ||
     !nonEmptyString(item.capability) ||
     !nonEmptyString(item.videoSlug, 191) ||
     !nonEmptyString(item.videoTitle, 512) ||
@@ -360,7 +364,9 @@ function parsePersonalization(
     (profile.executionMode != null &&
       profile.executionMode !== "semantic_contextual" &&
       profile.executionMode !== "hybrid_personalized" &&
-      profile.executionMode !== "semantic_fallback") ||
+      profile.executionMode !== "viewing_mode_personalized" &&
+      profile.executionMode !== "semantic_fallback" &&
+      profile.executionMode !== "curated_fallback") ||
     !nonEmptyString(profile.effectiveManifestId, 191) ||
     (profile.profileState != null &&
       profile.profileState !== "session" &&
@@ -384,9 +390,11 @@ function parsePersonalization(
       (profile.lane === "semantic_control" &&
         profile.executionMode === "semantic_contextual") ||
       (profile.lane === "profile_challenger" &&
-        profile.executionMode === "hybrid_personalized") ||
+        (profile.executionMode === "hybrid_personalized" ||
+          profile.executionMode === "viewing_mode_personalized")) ||
       (profile.lane === "semantic_fallback" &&
-        profile.executionMode === "semantic_fallback")
+        (profile.executionMode === "semantic_fallback" ||
+          profile.executionMode === "curated_fallback"))
     )
   ) {
     return null
@@ -572,7 +580,11 @@ export function WatchSemanticRecommendations({
                   method: "POST",
                   cache: "no-store",
                   credentials: "same-origin",
-                  headers: { "content-type": "application/json" },
+                  headers: {
+                    "content-type": "application/json",
+                    "x-forge-recommendation-client":
+                      RECOMMENDATION_DELIVERY_CLIENT_VERSION,
+                  },
                   body: JSON.stringify({
                     seedMediaId,
                     ...(seedMediaSlug ? { seedMediaSlug } : {}),
@@ -977,6 +989,9 @@ export function WatchSemanticRecommendations({
 
 function viewerRecommendationExplanation(envelope: SemanticEnvelope) {
   const mode = envelope.personalization?.executionMode
+  if (mode === "curated_fallback") return "Selected videos to explore."
+  if (mode === "viewing_mode_personalized")
+    return "Recommended from this video and how you watch."
   if (mode === "hybrid_personalized") {
     return "Recommended from this video and interests you chose to remember."
   }

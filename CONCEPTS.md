@@ -341,6 +341,38 @@ implicitly.
 
 A diagnostic label identifying which retrieval lane recalled a canonical Watch search result before ranking and playback-member selection. One result can have several retrieval sources; the labels explain candidate recall and do not themselves determine the winning rank.
 
+## Subtitle quality evaluation
+
+### Subtitle Evaluation Corpus Version
+
+An immutable snapshot of source subtitles and human-authored reference tracks used as the shared baseline for one or more Subtitle Evaluation Runs.
+
+Approval authorizes the exact snapshot rather than a mutable collection. Rejecting a reported reference issue can restore eligibility; accepting the defect permanently disqualifies that version, so evaluation continues only through a separately approved corrected version that directly supersedes it.
+
+### Subtitle Evaluation Run
+
+A reproducible experiment binding one Subtitle Evaluation Corpus Version to exact provider, model, prompt, workflow, code, determinism, and runtime identities across a set of Subtitle Evaluation Cells.
+
+Execution state may advance, retry, or recover, but the run's request identity does not change. A run becomes historical evidence only through a Terminal Evaluation Report derived from its durable cells.
+
+### Subtitle Evaluation Cell
+
+One corpus case and exact Language within a Subtitle Evaluation Run, carrying fenced execution state and the evidence for its candidate subtitle result.
+
+A successful cell freezes a candidate subtitle track, review evidence, a cell report, machine assessment, and ordered Provider Call Evidence as one content-addressed bundle. Replaying a completed cell asserts exact equality; it cannot append or replace evidence.
+
+### Provider Call Evidence
+
+An append-only, ordered account of the external model calls observed during one execution attempt, preserving operation, model, usage, outcome, and any provider-issued identifiers that were actually available.
+
+Missing provider identifiers remain missing rather than being replaced with local lookalikes. Provider Call Evidence becomes immutable with the run's Terminal Evaluation Report and remains separate from human review evidence.
+
+### Terminal Evaluation Report
+
+The immutable, canonical summary of a terminal Subtitle Evaluation Run, derived from durable cell, artifact, assessment, failure, and Provider Call Evidence rather than supplied as caller-authored truth.
+
+Terminalization is a cutover point: included evidence is deterministically ordered, existing evidence rows are immutable, and later Provider Call Evidence inserts are rejected.
+
 ## Video source mapper
 
 ### Video Source Mapper
@@ -914,6 +946,21 @@ the union of foreground-playing intervals, never from wall time, player
 position, progress, seeks, or background time; incomplete coverage is retained
 as an explicit qualification rather than presented as certain foreground time.
 
+### Playback Discovery
+
+The recorded account of how a viewer reached the media item a Recommendation
+Playback Episode covers, with its own bounded provenance. When the episode is
+claimed from a slate selection the server records a recommendation origin
+itself; for every other arrival the client asserts the origin (a direct open, a
+search result, a shared link, an editorial link, or a campaign link) when it
+asks for the playback context, and the server stores what the client sent.
+
+A surface marks the discovery before it navigates, and the playback that
+follows consumes the mark once; an unmarked or stale arrival counts as direct.
+Because the client asserts it, discovery is provenance about arrival and is
+kept apart from the request and served-item lineage that attribution rests on;
+downstream outcome processing still reads it beside the episode's facts.
+
 ### Recommendation Outcome Revision
 
 An immutable, recomputable classifier result over one episode's ordered fact
@@ -935,7 +982,7 @@ history.
 ### Recommendation Profile
 
 A pseudonymous continuity record for anonymous recommendation personalization,
-created by default when personalization is enabled. The browser holds the opaque first-party identifier while the
+created by default when personalization is enabled. The client, a browser or an installed app, holds the opaque first-party identifier while the
 recommendation system retains only its one-way identity and server-owned
 interests; disabling personalization severs relinkable continuity and begins erasure.
 
@@ -1103,6 +1150,20 @@ An ordered, schema-validated content unit within an Experience. Blocks carry a d
 ### Media Collection Block
 
 An Experience Block that groups ordered watch content beneath independently authored category, title, supporting-title, description, call-to-action, and footer semantics; its presentation variant may change the media layout but not the authored content hierarchy.
+
+### Immersive Backdrop
+
+The blurred, dimmed, desaturated wash of a collection's own artwork that a Watch web surface paints behind a panel's content, so the panel carries the mood of what it contains without competing with the text over it.
+
+The same treatment appears on more than one Watch web surface — authored Media Collection Blocks and the collection panels of the Watch Language Inventory — and is meant to read identically on each, so an editor's preview matches what a viewer sees. It is purely decorative: it takes no interaction, is derived from still artwork rather than from playback, and conveys nothing a reader would lose if it failed to load.
+
+### Authored Destination
+
+A link target an editor types into an Experience Block, as distinct from one the application derives from a content slug.
+
+Because the block payload holding it is machine-writable as well as editor-writable, a governed Authored Destination is re-checked wherever it renders rather than trusted from its write-time check. Two shapes are admitted: a same-origin path inside the watch tree, or an absolute secure-scheme URL. Anything else drops the element carrying it, rather than substituting a default target — a silently redirected destination is worse than a missing one. Admission is decided on the destination as a browser would resolve it, not as it was typed; the two differ, and the typed form is not the one that takes effect. An admitted external destination opens in a new browsing context and is never handed to the client-side router.
+
+Governance is per-field and currently partial: it covers the category tile destination. The older call-to-action link fields predate the policy, remain unvalidated, and reach an anchor directly — treat them as ungoverned until converted, and do not read this entry as describing them.
 
 ### Dynamic Collection Feed
 
@@ -1367,7 +1428,7 @@ Closing the window ends playback, while expanding it returns the same playback t
 
 ### Splash Cover
 
-The branded layer drawn over the app's own tree on a cold start, holding a brand moment while the first screen loads underneath it rather than behind a gate in front of it.
+The branded layer drawn over the app's own tree on a cold start, holding a brand moment while the first screen loads underneath it rather than behind a gate in front of it. It is switchable: with the cover off, the platform's own launch screen carries the brand instead and hands straight over to the first screen.
 
 The tree beneath the cover is live: the first screen mounts and begins fetching while the animation plays, so the brand moment and the first network round trip overlap instead of running one after the other. The platform's own launch screen stays up until this layer has painted its first frame, so the handover between them shows neither a gap nor a flash of bare background. The cover holds for a fixed span even when content arrives sooner — the moment is deliberately consistent rather than adaptive — and then releases once the first screen reports it has something to paint, or reports a failure, since a failure is the point at which there is something for the viewer to retry. An unconditional ceiling releases it whatever the screen is doing, and the diagnostic panels release it at once, because nothing may sit over a surface a viewer needs in order to act. Only a cold process start raises it; a resume finds the session spent.
 
@@ -1412,6 +1473,25 @@ Because a revert lands the episode back in the downloaded state, a canceled or f
 ### Supersede
 
 Stopping an in-flight download's native task and neutralizing its callbacks — without touching its record — so a replacement download can safely reuse the same Video's task identity. Needed because the native downloader routes terminal events by task id to whichever task currently holds it, so an un-superseded old task's dying event could strike its replacement.
+
+## Raw export
+
+### Raw Export
+
+Saving a plain video file into a folder the viewer picks with the device's own file picker, where the viewer owns it like any other file, as distinct from an offline copy the app manages in its own storage and can revoke.
+_Avoid:_ Save to Files, Save to Device — the viewer-facing label differs by platform, and both name this same thing.
+
+A Raw Export creates no Download Record, so nothing derived from offline copies reflects one: a series control shows the same idle label for the whole run, and the library lists nothing new. Anything that must observe an export therefore reads the export's own state, never an offline aggregate. An exported file lives outside the app's own storage, so there is nothing to resume and nothing to reclaim.
+
+The viewer picks the folder ONCE, before the export starts, and the grant lasts only as long as the process that asked for it. A run interrupted by a process death is therefore discarded rather than finished: the app can neither copy the staged bytes anywhere nor open a picker to ask again.
+
+### Export Run
+
+One pass of a Raw Export across a series, carrying its own identity and covering the episodes in order, one at a time.
+
+A run outlives every episode inside it, so any state that must survive between two episodes belongs to the run rather than to the episode currently transferring — a stop is the case that matters. Stopping a run ends the whole run, and episodes already copied into the folder stay there. The run's own end releases its cancellation state, so a later run for the same series never inherits it.
+
+One Export Run covers ONE folder. The viewer answers the picker once and every episode lands beside the last.
 
 ## AI chat
 
@@ -1543,4 +1623,5 @@ It is hostile input at two distinct boundaries, and neither boundary's control s
 - "Search Passport" had named a known-caller check as though it were specific to search, and as though it gated access there. Both are wrong: the check is a general known-caller concept, and the public search surface admits anonymous callers — a key there selects Rate-Limit Identity only. Use **Known-Caller Check**, and say explicitly whether a given surface gates on it.
 - "Chapter" carries two unrelated meanings. A **Chapter** is a segment of one feature film (a catalog relationship); a **felt-need chapter** is a themed section of Showcase Mode's reel, announced by a Chapter Card. Qualify which is meant whenever both surfaces are in scope.
 - "Episode" had been used loosely for any child Video, which is what let a film's Chapters be counted and billed as episodes. An Episode is a child of a series and stands alone; a film's children are Chapters.
+- "Backdrop" names two unrelated blurred-artwork layers on different platforms: the **Immersive Backdrop** is the Watch web wash behind a collection panel, while the **Ambient Backdrop** fills the letterboxing around the mobile and TV player. Qualify which is meant.
 - "Description" is ambiguous for a Video's localized copy: a locale carries both a short authored snippet and a longer catalog description, and which one a surface shows is decided per surface, not per client. The watch-home hero and the video watch page prefer the snippet and fall back to the description; the series page body, SEO metadata, and structured data prefer the description and fall back to the snippet. So a request to change or remove "the description" may act on either field — name the surface, and check its fallback order before assuming which.

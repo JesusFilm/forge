@@ -1,0 +1,12 @@
+-- Fixed UTC request cohorts; run serially in a read-only transaction.
+WITH r AS MATERIALIZED (SELECT * FROM recommendation_request WHERE created_at>='2026-09-01T01:35:00Z' AND created_at<'2026-09-15T01:35:00Z' AND expires_at>'2026-09-15T01:54:07.127Z')
+SELECT to_char(created_at AT TIME ZONE 'UTC','YYYY-MM-DD') utc_date,count(*) requests,count(*) FILTER(WHERE result IN ('served','fallback')) with_cards,count(*) FILTER(WHERE fallback_reason='retrieval_timeout') timeouts,count(*) FILTER(WHERE result='empty') empty,count(*) FILTER(WHERE result='unavailable') unavailable,percentile_cont(0.5) within group(order by retrieval_latency_ms) FILTER(WHERE result IN ('served','fallback')) success_p50_ms,percentile_cont(0.95) within group(order by retrieval_latency_ms) FILTER(WHERE result IN ('served','fallback')) success_p95_ms FROM r GROUP BY 1 ORDER BY 1;
+SELECT result,fallback_reason,count(*) requests FROM recommendation_request WHERE created_at>='2026-09-08T01:35:00Z' AND created_at<'2026-09-15T01:35:00Z' AND expires_at>'2026-09-15T01:54:07.127Z' GROUP BY 1,2 ORDER BY requests DESC;
+SELECT p.execution_mode,p.reason_code,count(*) requests FROM recommendation_request r JOIN recommendation_personalization_decision p ON p.request_id=r.id WHERE r.created_at>='2026-09-08T01:35:00Z' AND r.created_at<'2026-09-15T01:35:00Z' AND r.expires_at>'2026-09-15T01:54:07.127Z' GROUP BY 1,2 ORDER BY requests DESC;
+SELECT locale,count(*) requests,count(*) FILTER(WHERE result IN ('served','fallback')) with_cards,count(*) FILTER(WHERE fallback_reason='retrieval_timeout') timeouts FROM recommendation_request WHERE created_at>='2026-09-08T01:35:00Z' AND created_at<'2026-09-15T01:35:00Z' AND expires_at>'2026-09-15T01:54:07.127Z' GROUP BY 1 ORDER BY requests DESC;
+SELECT state,count(*) FROM recommendation_experiment GROUP BY 1;
+SELECT count(*) assignments FROM recommendation_experiment_assignment;
+SELECT count(*) exposures FROM recommendation_experiment_exposure;
+SELECT status,started_at,completed_at,roots_deleted,oldest_expired_at_after,reason_code FROM recommendation_retention_run ORDER BY started_at DESC LIMIT 2;
+SELECT created_at,decision,sample_count,paired_count,missing_count,agreement_rate,active_qualified_rate,legacy_qualified_rate,reason_codes FROM playback_proxy_evaluation ORDER BY created_at DESC LIMIT 2;
+SELECT kind,reason_code,sum(count) events FROM recommendation_evidence_audit WHERE occurred_at>='2026-09-08T01:35:00Z' AND occurred_at<'2026-09-15T01:35:00Z' GROUP BY 1,2 ORDER BY events DESC LIMIT 15;

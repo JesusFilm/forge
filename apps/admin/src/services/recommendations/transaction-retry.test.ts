@@ -91,13 +91,60 @@ describe("recommendation serializable transaction retry", () => {
     expect(operation).toHaveBeenCalledTimes(2)
   })
 
-  it("rethrows after the third P2034 conflict", async () => {
-    const error = conflict()
-    const operation = vi.fn<() => Promise<never>>().mockRejectedValue(error)
+  it.each([
+    { code: "P2034" },
+    { code: "40001" },
+    { code: "P2010", meta: { code: "40001" } },
+    { cause: { code: "P2034" } },
+    { code: "wrapper", cause: { code: "P2010", meta: { code: "40001" } } },
+  ])("recovers the structured serialization conflict %j", async (error) => {
+    const operation = vi
+      .fn()
+      .mockRejectedValueOnce(error)
+      .mockResolvedValue("ok")
+    await expect(withRecommendationSerializableRetry(operation)).resolves.toBe(
+      "ok",
+    )
+    expect(operation).toHaveBeenCalledTimes(2)
+  })
 
+  it.each([
+    { code: "P2010", meta: { code: "42P01" } },
+    { code: "P2010", message: "40001" },
+    { code: "40001-looking" },
+    { meta: { code: "40001" } },
+  ])("does not retry an unrelated structured error %j", async (error) => {
+    const operation = vi.fn().mockRejectedValue(error)
     await expect(withRecommendationSerializableRetry(operation)).rejects.toBe(
       error,
     )
+    expect(operation).toHaveBeenCalledOnce()
+  })
+
+  it("bounds cyclic and excessively deep cause chains", async () => {
+    const cycle: { cause?: unknown } = {}
+    cycle.cause = cycle
+    let deep: unknown = conflict()
+    for (let index = 0; index < 20; index += 1) deep = { cause: deep }
+    for (const error of [cycle, deep]) {
+      const operation = vi.fn().mockRejectedValue(error)
+      await expect(withRecommendationSerializableRetry(operation)).rejects.toBe(
+        error,
+      )
+      expect(operation).toHaveBeenCalledOnce()
+    }
+  })
+
+  it("throws a typed server failure after the third conflict", async () => {
+    const error = conflict()
+    const operation = vi.fn<() => Promise<never>>().mockRejectedValue(error)
+
+    await expect(
+      withRecommendationSerializableRetry(operation),
+    ).rejects.toMatchObject({
+      name: "RecommendationInternalStateError",
+      code: "recommendation_serialization_exhausted",
+    })
     expect(operation).toHaveBeenCalledTimes(3)
   })
 })

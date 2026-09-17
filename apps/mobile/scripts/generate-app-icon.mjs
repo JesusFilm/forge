@@ -81,11 +81,19 @@ const WIDTH_IOS = 0.6
 // Android's 108dp canvas only shows its middle 72dp, so the same apparent size
 // needs a smaller number here. 0.6 * 72/108 = 0.4, well inside the 66/108 safe zone.
 const WIDTH_ANDROID = 0.6 * (72 / 108)
+// The static splash: the symbol on transparency over splash.backgroundColor.
+const WIDTH_SPLASH = 0.55
 
-// The native splash carries NO symbol (KTD3). The animated splash opens on an
-// empty field, so the two frames match only if this one is flat as well. Keep
-// it equal to `splash.backgroundColor` in app.json and to BG_COLOR in the app.
+// With the animated splash ON the native splash carries NO symbol (KTD3): the
+// animation opens on an empty field, so the two frames match only if this one
+// is flat too. Keep it equal to `splash.backgroundColor` and BG_COLOR.
 const SPLASH_GROUND = "#1c1917"
+
+// One line, bare literal, parsed by regex — see the flag file's own comment.
+const ANIMATED_SPLASH_FLAG = path.join(
+  MOBILE,
+  "src/lib/splash/animatedSplashEnabled.ts",
+)
 
 // The animated splash draws the symbol as a projector screen and crossfades it
 // from white to the brand gradient. The app has no SVG renderer, so the two
@@ -319,6 +327,28 @@ async function verifySplashGround() {
   }
 }
 
+// The native splash follows the app's kill-switch so asset and code cannot
+// disagree: a flat field while the animation is on, the symbol while it is off.
+async function readAnimatedSplashEnabled() {
+  const source = await fs.readFile(ANIMATED_SPLASH_FLAG, "utf8")
+  const matches = [
+    ...source.matchAll(
+      /^export const ANIMATED_SPLASH_ENABLED = (true|false)$/gm,
+    ),
+  ]
+  // Exactly one: a second declaration (even inside a block comment) would make
+  // this read and the app disagree about which value is live.
+  if (matches.length !== 1) {
+    console.error(
+      `\nExpected exactly one ANIMATED_SPLASH_ENABLED declaration in ` +
+        `${ANIMATED_SPLASH_FLAG}, found ${matches.length}.\n` +
+        "Keep it on one line with a bare true or false.",
+    )
+    process.exit(1)
+  }
+  return matches[0][1] === "true"
+}
+
 async function main() {
   // Re-derive the centroid on EVERY run, not just behind the flag. These two
   // constants place the symbol in every output, so a guard that only fires when
@@ -327,6 +357,7 @@ async function main() {
   await verifyCentroid({ quiet: !explicit })
   if (explicit) return
   await verifySplashGround()
+  const animatedSplash = await readAnimatedSplashEnabled()
 
   await fs.mkdir(path.join(ICON_BUNDLE, "Assets"), { recursive: true })
 
@@ -366,15 +397,23 @@ async function main() {
     path.join(ASSETS, "adaptive-icon-monochrome.png"),
   )
 
-  // The animated splash opens on an empty field, so the native splash it hands
-  // over from must be flat too — an icon here would add a beat and a colour flip.
-  await png(
-    flatSvg(SIZE, SPLASH_GROUND),
-    path.join(ASSETS, "splash-icon.png"),
-    {
-      alpha: false,
-    },
-  )
+  if (animatedSplash) {
+    // The animation opens on an empty field, so the native splash it hands over
+    // from must be flat too — a symbol here adds a beat and a colour flip.
+    console.log("\nNative splash — flat field (animated splash ON)")
+    await png(
+      flatSvg(SIZE, SPLASH_GROUND),
+      path.join(ASSETS, "splash-icon.png"),
+      {
+        alpha: false,
+      },
+    )
+  } else {
+    console.log(
+      "\nNative splash — the symbol on transparency (animated splash OFF)",
+    )
+    await png(markSvg(SIZE, WIDTH_SPLASH), path.join(ASSETS, "splash-icon.png"))
+  }
 
   await png(compositeSvg(196, WIDTH_IOS), path.join(ASSETS, "favicon.png"), {
     alpha: false,

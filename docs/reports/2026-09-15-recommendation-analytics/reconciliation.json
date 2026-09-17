@@ -1,0 +1,50 @@
+[
+  [
+    {
+      "selections_without_impression": "6",
+      "selection_before_impression": "10",
+      "qualified_with_start": "110",
+      "qualified_without_start": "0",
+      "qualified_after_impression": "110",
+      "selecting_impressed_sessions": "308",
+      "legacy_only": "41",
+      "active_only": "4",
+      "completed": "32",
+      "target_videos": "850",
+      "seed_videos": "941"
+    }
+  ],
+  [
+    {
+      "cohort": "last_24h",
+      "requests": "11140",
+      "with_cards": "9434",
+      "timeouts": "20",
+      "success_p50_ms": 134,
+      "success_p95_ms": 717
+    },
+    {
+      "cohort": "last_7d",
+      "requests": "69973",
+      "with_cards": "56349",
+      "timeouts": "2032",
+      "success_p50_ms": 140,
+      "success_p95_ms": 1117
+    },
+    {
+      "cohort": "previous_7d",
+      "requests": "56065",
+      "with_cards": "39129",
+      "timeouts": "5719",
+      "success_p50_ms": 332,
+      "success_p95_ms": 1160
+    }
+  ],
+  [
+    {
+      "action_kind": "share",
+      "actions": "162",
+      "recommendation_linked": "1"
+    }
+  ]
+]

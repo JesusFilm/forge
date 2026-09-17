@@ -164,6 +164,9 @@ function prismaHarness() {
       deleteMany: vi.fn(async () => ({ count: 1 })),
       count: vi.fn(async () => 0),
     },
+    recommendationViewingModeEvidence: {
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
     recommendationProfileProjectionRun: {
       deleteMany: vi.fn(async () => ({ count: 1 })),
       count: vi.fn(async () => 0),

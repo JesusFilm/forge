@@ -15,6 +15,21 @@ import {
 } from "./contracts"
 
 describe("recommendation contracts", () => {
+  it("identifies curated fallback separately without labeling it contextual or personalized", () => {
+    for (const lane of [
+      "semantic_control",
+      "profile_challenger",
+      "semantic_fallback",
+    ]) {
+      expect(
+        RecommendationDeliveryAdditiveMetadataSchema.safeParse({
+          contractVersion: "semantic-recommendation-v1",
+          personalization: { lane, executionMode: "curated_fallback" },
+          items: [],
+        }).success,
+      ).toBe(lane === "semantic_fallback")
+    }
+  })
   it("pins the deliberately small U1 contract versions and bounds", () => {
     expect(RECOMMENDATION_CONTRACTS).toEqual({
       delivery: "semantic-recommendation-v1",
@@ -114,6 +129,19 @@ describe("recommendation contracts", () => {
   })
 
   it.each([
+    [
+      "playback_viewing_mode",
+      {
+        version: "sound-off-viewing-v1",
+        mode: "sound_off",
+        preview: true,
+        activeMilliseconds: 10_000,
+        fromSeconds: 0,
+        toSeconds: 10,
+        durationSeconds: 120,
+        playbackRate: 1,
+      },
+    ],
     ["playback_attempt", { initiation: "manual" }],
     ["playback_start", { positionSeconds: 0 }],
     [

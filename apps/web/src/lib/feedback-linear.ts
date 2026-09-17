@@ -35,7 +35,13 @@ export const feedbackSubmissionSchema = z
   .object({
     category: z.enum(FEEDBACK_CATEGORIES),
     message: boundedString(1000).refine((value) => value.length >= 10),
-    name: boundedString(100),
+    // Optional on purpose. Requiring a name was the last thing the composer
+    // asked for, after the reporter had already written everything else, and
+    // it is the one field that buys triage nothing a reply address does not.
+    // Absent means absent — the client does not substitute a placeholder, so
+    // "chose not to say" stays distinguishable from someone literally typing
+    // "Anonymous".
+    name: boundedString(100).optional(),
     email: z.email().max(254).optional(),
     page: z
       .object({
@@ -245,7 +251,7 @@ function issueDescription(submission: FeedbackSubmission): string {
     "## Triage context",
     "",
     `- **Category:** ${escapeMarkdown(submission.category)}`,
-    `- **Reporter:** ${escapeMarkdown(submission.name)}`,
+    `- **Reporter:** ${submission.name ? escapeMarkdown(submission.name) : "Not provided"}`,
     `- **Email:** ${submission.email ? escapeMarkdown(submission.email) : "Not provided"}`,
     `- **Page:** ${escapeMarkdown(submission.page.title)}`,
     `- **URL:** ${escapeMarkdown(submission.page.url)}`,

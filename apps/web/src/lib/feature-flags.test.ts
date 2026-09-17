@@ -8,6 +8,7 @@ function setRequiredWebEnv() {
   process.env.REVALIDATION_SECRET = "test-revalidation-secret"
   process.env.NEXT_PUBLIC_CANONICAL_ORIGIN = "http://localhost:3000"
   delete process.env.LAUNCHDARKLY_SDK_KEY
+  delete process.env.FORGE_WATCH_HOMEPAGE_RECOMMENDATIONS_DEFAULT
   delete process.env.FORGE_WATCH_PLAYER_MIGRATION_DEFAULT
   delete process.env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT
   delete process.env.FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT
@@ -26,6 +27,18 @@ describe("web feature flag helpers", () => {
 
   afterEach(() => {
     process.env = { ...ORIGINAL_ENV }
+  })
+
+  it("keeps homepage recommendations off without LD and allows the explicit local preview fallback", async () => {
+    const { isWatchHomepageRecommendationsEnabled } =
+      await import("./feature-flags")
+    await expect(isWatchHomepageRecommendationsEnabled({})).resolves.toBe(false)
+
+    vi.resetModules()
+    process.env.FORGE_WATCH_HOMEPAGE_RECOMMENDATIONS_DEFAULT = "true"
+    const { isWatchHomepageRecommendationsEnabled: enabledForPreview } =
+      await import("./feature-flags")
+    await expect(enabledForPreview({})).resolves.toBe(true)
   })
 
   it("falls back to existing NEXT_PUBLIC watch defaults when LaunchDarkly is unconfigured", async () => {

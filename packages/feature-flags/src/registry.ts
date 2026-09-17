@@ -1,4 +1,10 @@
 export const featureFlags = {
+  watchHomepageRecommendations: {
+    key: "forge.watch.homepageRecommendations",
+    defaultValue: false,
+    localOverrideEnv: "FORGE_WATCH_HOMEPAGE_RECOMMENDATIONS_DEFAULT",
+    description: "Release gate for the Homepage Recommendations Block on Web.",
+  },
   watchPlayerMigration: {
     key: "forge.watch.playerMigration",
     defaultValue: false,

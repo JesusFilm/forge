@@ -22,6 +22,14 @@ import { HYBRID_CANDIDATE_GENERATOR_SET_VERSION } from "../candidate"
 
 export const RECOMMENDATION_ASSIGNMENT_POLICY_VERSION =
   "sticky-deterministic-assignment-v1" as const
+export const PROFILE_USEFULNESS_ASSIGNMENT_POLICY_VERSION =
+  "profile-usefulness-assignment-v1" as const
+export const PROFILE_USEFULNESS_OUTCOME_POLICY_VERSION =
+  "qualified-view-any-observed-mode-v2" as const
+const assignmentPolicies = new Set<string>([
+  RECOMMENDATION_ASSIGNMENT_POLICY_VERSION,
+  PROFILE_USEFULNESS_ASSIGNMENT_POLICY_VERSION,
+])
 
 export type ExperimentAssignmentContext = Readonly<{
   assignmentId: string
@@ -47,6 +55,7 @@ export type ExperimentAssignmentResolution = Readonly<{
     | "promotion_unavailable"
     | "assignment_fenced"
     | "assignment_unavailable"
+    | "cohort_ineligible"
     | null
 }>
 
@@ -62,6 +71,7 @@ export async function resolveExperimentAssignment(
     profileTokenDigest: string | null
     eligibleHuman: boolean
     now?: Date
+    profileUsefulness?: { eligibleForEnrollment: boolean }
   },
 ): Promise<ExperimentAssignmentResolution> {
   if (!input.eligibleHuman) {
@@ -69,11 +79,33 @@ export async function resolveExperimentAssignment(
   }
   const now = input.now ?? new Date()
   const [experiment, promotion] = await Promise.all([
-    findActiveExperiment(prisma, input.surfaceVersion, now),
+    findActiveExperiment(
+      prisma,
+      input.surfaceVersion,
+      now,
+      input.profileUsefulness != null,
+    ),
     findPromotionPointer(prisma).catch(() => null),
   ])
   if (!experiment) {
     return { assignment: null, bypassReason: "no_active_experiment" }
+  }
+  const usefulness =
+    experiment.assignmentPolicyVersion ===
+    PROFILE_USEFULNESS_ASSIGNMENT_POLICY_VERSION
+  if (
+    usefulness !== (input.profileUsefulness != null) ||
+    (usefulness &&
+      (input.profileTokenDigest == null ||
+        experiment.challengerProbability !== 0.5 ||
+        experiment.outcomePolicyVersion !==
+          PROFILE_USEFULNESS_OUTCOME_POLICY_VERSION ||
+        experiment.endsAt.getTime() - experiment.startsAt.getTime() >
+          14 * 86_400_000 ||
+        experiment.expiresAt.getTime() <=
+          experiment.endsAt.getTime() + 30 * 3_600_000))
+  ) {
+    return { assignment: null, bypassReason: "cohort_ineligible" }
   }
   const semanticAa = areSemanticAaManifestsEquivalent(experiment)
   const hybridExperiment = isHybridPersonalizedExperiment(experiment)
@@ -95,7 +127,8 @@ export async function resolveExperimentAssignment(
   if (
     promotion.killSwitchEnabled ||
     (promotion.stage !== "BOUNDED" && promotion.stage !== "PERMANENT") ||
-    promotion.activeManifestId !== experiment.challengerManifestId
+    promotion.activeManifestId !== experiment.challengerManifestId ||
+    (usefulness && promotion.stage !== "BOUNDED")
   ) {
     return { assignment: null, bypassReason: "promotion_not_active" }
   }
@@ -116,7 +149,7 @@ export async function resolveExperimentAssignment(
   }
 
   const profile =
-    hybridExperiment && input.profileTokenDigest
+    (hybridExperiment || usefulness) && input.profileTokenDigest
       ? await prisma.recommendationProfile.findFirst({
           where: {
             tokenDigest: input.profileTokenDigest,
@@ -126,7 +159,7 @@ export async function resolveExperimentAssignment(
           select: { id: true, privacyGeneration: true },
         })
       : null
-  if (hybridExperiment && profile == null) {
+  if ((hybridExperiment || usefulness) && profile == null) {
     return {
       assignment: null,
       bypassReason: "personalization_not_consented",
@@ -157,6 +190,8 @@ export async function resolveExperimentAssignment(
       existing.configurationDigest !== experiment.configurationDigest ||
       existing.generation !== experiment.generation ||
       existing.expiresAt <= now ||
+      (usefulness &&
+        existing.assignedAt.getTime() + 86_400_000 <= now.getTime()) ||
       (profile != null &&
         (existing.profileId !== profile.id ||
           existing.privacyGeneration !== profile.privacyGeneration))
@@ -167,6 +202,15 @@ export async function resolveExperimentAssignment(
       assignment: assignmentContext(existing, experiment),
       bypassReason: null,
     }
+  }
+
+  // Eligibility gates enrollment, never a later exclusion from the assigned
+  // denominator. An already assigned viewer retains their arm if inputs thin.
+  if (
+    input.profileUsefulness &&
+    (!input.profileUsefulness.eligibleForEnrollment || now >= experiment.endsAt)
+  ) {
+    return { assignment: null, bypassReason: "cohort_ineligible" }
   }
 
   const arm = chooseExperimentArm({
@@ -180,7 +224,7 @@ export async function resolveExperimentAssignment(
       : 1 - effectiveChallengerProbability
   const expiresAt = new Date(
     Math.min(
-      experiment.endsAt.getTime(),
+      usefulness ? experiment.expiresAt.getTime() : experiment.endsAt.getTime(),
       now.getTime() + RECOMMENDATION_RAW_RETENTION_DAYS * 86_400_000,
     ),
   )
@@ -197,6 +241,7 @@ export async function resolveExperimentAssignment(
         assignmentProbability,
         configurationDigest: experiment.configurationDigest,
         generation: experiment.generation,
+        assignedAt: now,
         expiresAt,
       },
     })
@@ -229,13 +274,21 @@ async function findActiveExperiment(
   prisma: PrismaClient,
   surfaceVersion: string,
   now: Date,
+  profileUsefulness = false,
 ) {
   return prisma.recommendationExperiment.findFirst({
     where: {
       state: RecommendationExperimentState.ACTIVE,
       surfaceVersion,
+      assignmentPolicyVersion: profileUsefulness
+        ? PROFILE_USEFULNESS_ASSIGNMENT_POLICY_VERSION
+        : RECOMMENDATION_ASSIGNMENT_POLICY_VERSION,
       startsAt: { lte: now },
-      endsAt: { gt: now },
+      // Under the profile protocol endsAt closes enrollment. Existing units
+      // keep their own complete 24-hour follow-up after the last enrollment.
+      endsAt: {
+        gt: new Date(now.getTime() - (profileUsefulness ? 86_400_000 : 0)),
+      },
       expiresAt: { gt: now },
     },
     include: { controlManifest: true, challengerManifest: true },
@@ -258,8 +311,7 @@ export function areSemanticAaManifestsEquivalent(
   const configuration = challenger.configuration
   if (!isRecord(configuration)) return false
   return (
-    experiment.assignmentPolicyVersion ===
-      RECOMMENDATION_ASSIGNMENT_POLICY_VERSION &&
+    assignmentPolicies.has(experiment.assignmentPolicyVersion) &&
     control.enabled &&
     challenger.enabled &&
     control.generator === "semantic" &&
@@ -278,8 +330,7 @@ export function isHybridPersonalizedExperiment(
 ): boolean {
   const control = experiment.controlManifest
   return (
-    experiment.assignmentPolicyVersion ===
-      RECOMMENDATION_ASSIGNMENT_POLICY_VERSION &&
+    assignmentPolicies.has(experiment.assignmentPolicyVersion) &&
     control.enabled &&
     control.generator === "semantic" &&
     control.id === RECOMMENDATION_CONTRACTS.strategy &&

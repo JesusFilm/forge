@@ -18,6 +18,7 @@ import { authHeadersForOperation, isProgressOperation } from "./authHeaders"
 // Safe as a static import: authSession's native-adjacent deps load lazily
 // inside its own getters, so this pulls no native module into jest.
 import { getAuthSession } from "./authSession"
+import { isClientAbortError } from "./clientAbortError"
 import { WATCH_SEARCH_EVENT_OPERATION_NAME } from "./queries"
 import { getViewerId } from "./viewer-id"
 import {
@@ -169,9 +170,9 @@ export function createRequestChain(): ApolloLink {
 }
 
 function createHeaderChain(): ApolloLink {
-  // Bearer + x-viewer-id ride ONLY on the Search op: admin buckets a fleet key
-  // per device (consumer:<key>:v:<viewer_id> from x-viewer-id, else per IP).
-  // On public ops the bearer would pool the whole fleet into one bucket.
+  // Bearer + x-viewer-id ride ONLY the fleet-bearer ops (search + the
+  // recommendation set, see carriesFleetBearer): admin buckets a fleet key per
+  // device (consumer:<key>:v:<viewer_id>). Elsewhere it would pool the fleet.
   const authLink = new ApolloLink((operation, forward) => {
     mergeContextHeaders(
       operation,
@@ -201,27 +202,6 @@ function createHeaderChain(): ApolloLink {
 
   // Unprovisioned builds skip the attribution link entirely (null-gate).
   return isDatadogProvisioned() ? authLink.concat(datadogLink) : authLink
-}
-
-const MAX_CAUSE_DEPTH = 3
-
-// Typed marker FIRST: RN rejects a cancelled request as a name-less
-// Error("Aborted"), so name alone missed 400 prod aborts. Never match on message
-// text — a server error could legitimately say "Aborted".
-function isClientAbortError(error: unknown, depth = 0): boolean {
-  if (typeof error !== "object" || error == null) return false
-  const candidate = error as {
-    name?: unknown
-    isClientAbort?: unknown
-    cause?: unknown
-  }
-  if (candidate.isClientAbort === true) return true
-  if (candidate.name === "AbortError") return true
-  // Apollo may wrap the abort. Depth-bounded: an unbounded walk lets a cause
-  // CYCLE throw RangeError out of reportGraphqlOperationError, which has no
-  // safeDatadogCall wrapper and would escape into the Apollo error link.
-  if (depth >= MAX_CAUSE_DEPTH || candidate.cause == null) return false
-  return isClientAbortError(candidate.cause, depth + 1)
 }
 
 /**

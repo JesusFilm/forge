@@ -1,6 +1,12 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { ACTIVE_WATCH_PROXY_VERSION } from "../contracts"
 import {
+  projectPlaybackObservations,
+  type PlaybackObservationProjection,
+} from "../playback-observations"
+import type { FrozenPlaybackFact } from "../outcome.service"
+import { summarizeViewingMode, type ViewingModeSummary } from "../viewing-mode"
+import {
   RECOMMENDATION_OPS_DAY_MS,
   RECOMMENDATION_TRACE_ACCESS_REASON,
   RECOMMENDATION_TRACE_ACCESS_RETENTION_DAYS,
@@ -61,9 +67,24 @@ export type PlaybackEvidenceOverview = Readonly<{
     createdAt: Date
   }> | null
   recent: RecentPlaybackRow[]
+  observationSample: {
+    size: number
+    attempts: number
+    starts: number
+    finalized: number
+    immediateDepartures: number
+    beforeStartDepartures: number
+    navigationObserved: number
+    qoeObserved: number
+    classificationCounts: Record<string, number>
+  }
 }>
 
 export type PlaybackEpisodeDetail = Readonly<{
+  viewingMode?: ViewingModeSummary & {
+    coverage: "observed" | "unknown" | "ineligible"
+  }
+  observations: PlaybackObservationProjection
   id: string
   requestId: string | null
   itemId: string | null
@@ -186,6 +207,38 @@ export async function loadPlaybackEvidenceOverview(
       orderBy: [{ revision: "desc" }, { createdAt: "desc" }],
     }),
   ])
+  // Match the already bounded recent episode sample; never scan raw history
+  // across the full dashboard window to compute these diagnostic projections.
+  const sampled =
+    recent.length === 0
+      ? []
+      : await prisma.recommendationPlaybackEpisode.findMany({
+          where: {
+            id: { in: recent.map((episode) => episode.id) },
+            expiresAt: { gt: now },
+          },
+          select: {
+            state: true,
+            conflictCount: true,
+            facts: {
+              where: { expiresAt: { gt: now } },
+              orderBy: { sequence: "asc" },
+              take: 128,
+            },
+          },
+          take: 20,
+        })
+  const projections = sampled.map((episode) =>
+    projectPlaybackObservations(episode.facts, {
+      conflictCount: episode.conflictCount,
+      finalized: ["FINALIZED", "TIMED_OUT"].includes(episode.state),
+    }),
+  )
+  const classificationCounts: Record<string, number> = {}
+  for (const projection of projections) {
+    const key = projection.departure.classification
+    classificationCounts[key] = (classificationCounts[key] ?? 0) + 1
+  }
   const row = rows[0]
   const sourceCounts = jsonNumberRecord(row?.sourceCounts)
   return {
@@ -207,6 +260,31 @@ export async function loadPlaybackEvidenceOverview(
         }
       : null,
     recent,
+    observationSample: {
+      size: sampled.length,
+      attempts: sampled.filter((episode) =>
+        episode.facts.some((fact) => fact.kind === "playback_attempt"),
+      ).length,
+      starts: sampled.filter((episode) =>
+        episode.facts.some((fact) => fact.kind === "playback_start"),
+      ).length,
+      finalized: projections.filter((projection) => projection.finalized)
+        .length,
+      immediateDepartures: projections.filter(
+        (projection) => projection.departure.immediate === true,
+      ).length,
+      beforeStartDepartures: projections.filter(
+        (projection) =>
+          projection.departure.classification === "pre_start_departure",
+      ).length,
+      navigationObserved: projections.filter(
+        (projection) => projection.navigation.coverage === "observed",
+      ).length,
+      qoeObserved: projections.filter(
+        (projection) => projection.qoe.coverage === "observed",
+      ).length,
+      classificationCounts,
+    },
   }
 }
 
@@ -249,9 +327,11 @@ export async function loadPlaybackEpisodeDetail(
     })
     if (!episode) return null
     const [facts, outcomes] = await Promise.all([
-      tx.$queryRaw<PlaybackEpisodeDetail["facts"]>(Prisma.sql`
+      tx.$queryRaw<
+        Array<PlaybackEpisodeDetail["facts"][number] & { payload: unknown }>
+      >(Prisma.sql`
         SELECT
-          id, sequence, event_id AS "eventId", kind,
+          id, sequence, event_id AS "eventId", kind, payload,
           payload_digest AS "payloadDigest",
           occurred_at AS "occurredAt", received_at AS "receivedAt", late,
           CASE WHEN kind = 'playback_active_visible_playing'
@@ -300,7 +380,24 @@ export async function loadPlaybackEpisodeDetail(
       ...episode,
       state: episode.state.toLowerCase(),
       provenance: stringRecord(episode.provenance),
-      facts,
+      facts: facts.map(({ payload: _payload, ...fact }) => fact),
+      viewingMode: {
+        ...summarizeViewingMode(facts, episode.claimedAt ?? episode.createdAt),
+        coverage:
+          episode.conflictCount > 0 ||
+          facts.some((fact) => fact.late || fact.kind === "playback_error")
+            ? "ineligible"
+            : facts.some((fact) => fact.kind === "playback_viewing_mode")
+              ? "observed"
+              : "unknown",
+      },
+      observations: projectPlaybackObservations(
+        facts satisfies FrozenPlaybackFact[],
+        {
+          conflictCount: episode.conflictCount,
+          finalized: ["FINALIZED", "TIMED_OUT"].includes(episode.state),
+        },
+      ),
       outcomes,
     }
   })

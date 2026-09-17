@@ -134,14 +134,15 @@ describe("seedFirstPartyApps", () => {
   it("seeds scopes and OAuth clients for every first-party app", async () => {
     const { seedFirstPartyApps } = await import("./seed-first-party-apps")
 
-    // admin 4 + manager 4 + web 4 + mastra-studio 4 + chat 2 + changelog 2 +
-    // admin-mcp 5 + mobile 2 + tv 4 = 31 environments; oauthClients adds the 4 manager
-    // session-service clients on top.
+    // shorts-mcp 4 + admin 4 + manager 4 + web 4 + mastra-studio 4 + chat 2 +
+    // changelog 2 + admin-mcp 5 + mobile 2 + tv 4 = 35 environments across 10
+    // apps; oauthClients adds the 4 manager session-service clients on top.
     await expect(seedFirstPartyApps()).resolves.toEqual({
       apps: 10,
       environments: 35,
       oauthClients: 39,
-      scopes: 28,
+      // main's 28 + the quality lab's `admin:manager-backend`.
+      scopes: 29,
       resourceRepair: {
         createdLinks: 0,
         eligibleClients: 0,
@@ -370,12 +371,15 @@ describe("seedFirstPartyApps", () => {
         where: { clientId: "jfp_manager_local_session_service" },
         create: expect.objectContaining({
           clientId: "jfp_manager_local_session_service",
-          scopes: ["admin:manager-session:validate"],
+          scopes: ["admin:manager-session:validate", "admin:manager-backend"],
           public: false,
           requirePKCE: false,
           tokenEndpointAuthMethod: "client_secret_basic",
           applicationType: "web",
-          clientCredentialsScopes: ["admin:manager-session:validate"],
+          clientCredentialsScopes: [
+            "admin:manager-session:validate",
+            "admin:manager-backend",
+          ],
           grantTypes: ["client_credentials"],
           disabled: true,
           metadata: expect.objectContaining({
@@ -392,6 +396,23 @@ describe("seedFirstPartyApps", () => {
     await seedFirstPartyApps()
     await seedFirstPartyApps()
 
+    expect(upsertOAuthResource).toHaveBeenCalledWith({
+      where: { identifier: "http://localhost:3003/api/manager/session" },
+      update: expect.objectContaining({
+        allowedScopes: [
+          "admin:manager-session:validate",
+          "admin:manager-backend",
+        ],
+        disabled: false,
+      }),
+      create: expect.objectContaining({
+        identifier: "http://localhost:3003/api/manager/session",
+        allowedScopes: [
+          "admin:manager-session:validate",
+          "admin:manager-backend",
+        ],
+      }),
+    })
     expect(upsertOAuthResource).toHaveBeenCalledWith({
       where: { identifier: "https://admin.jesusfilm.org/mcp" },
       update: expect.objectContaining({ disabled: false }),

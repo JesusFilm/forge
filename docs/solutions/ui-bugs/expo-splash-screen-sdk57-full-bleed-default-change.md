@@ -101,6 +101,17 @@ plugin entry in `apps/mobile/app.json`. Current state on `main`
 > flag "load-bearing", which stays true of the artifact and is no longer true of
 > the pixels.
 
+> **Note added 2026-09-15 — superseded; the flag is a live fix again.** The
+> animated splash is disabled behind `ANIMATED_SPLASH_ENABLED`
+> (`apps/mobile/src/lib/splash/animatedSplashEnabled.ts`), and the generator
+> emits `splash-icon.png` as the JFP symbol on transparency once more
+> (`markSvg(SIZE, WIDTH_SPLASH)`, `WIDTH_SPLASH = 0.55`, RGBA, byte-identical to
+> the pre-#2216 asset). Without `enableFullScreenImage_legacy` that symbol
+> would render as the 100pt centred logo, so the flag is load-bearing on the
+> pixels. The 2026-09-11 note above describes the flat-asset window only: from
+> the #2216 merge on 2026-09-10 to 2026-09-15. Binaries built in that window
+> still carry the flat field until they are rebuilt.
+
 The fix landed in the commit that carries the subject
 `fix(mobile): apply review findings 2 and 4 (splash parity, real-shape
 fixture)`. Its `apps/mobile/app.json` hunk:

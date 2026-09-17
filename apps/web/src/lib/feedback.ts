@@ -57,7 +57,8 @@ export type FeedbackContentContext = {
 export type FeedbackSubmission = {
   category: FeedbackCategory
   message: string
-  name: string
+  /** Optional — see the schema note in `feedback-linear.ts`. */
+  name?: string
   email?: string
   page: FeedbackPageContext
   languageIssue?: FeedbackLanguageContext

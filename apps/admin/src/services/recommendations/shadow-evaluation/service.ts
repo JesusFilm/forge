@@ -14,6 +14,7 @@ import {
   type RecommendationCandidateContext,
 } from "../candidate"
 import { HYBRID_PERSONALIZED_MANIFEST_ID } from "../promotion/manifest"
+import { reconstructShadowHistory } from "./history"
 import {
   aggregateShadowMetrics,
   decideShadowEvaluation,
@@ -510,6 +511,9 @@ export async function executeClaimedShadowRun(
           seedMediaId: true,
           locale: true,
           expectedItemCount: true,
+          sessionDigest: true,
+          createdAt: true,
+          expiresAt: true,
           items: {
             orderBy: [{ position: "asc" }, { id: "asc" }],
             take: MAX_SHADOW_ITEMS,
@@ -605,6 +609,7 @@ export async function executeClaimedShadowRun(
     0,
     (input.nowMilliseconds ?? Date.now)() - startedAt,
   )
+  const history = await reconstructShadowHistory(prisma, run.request, now)
   const projection = evaluateShadowProjection({
     context,
     liveOrder: liveItems.map((item) => item.targetMediaId),
@@ -620,6 +625,7 @@ export async function executeClaimedShadowRun(
         ? "hybrid"
         : "semantic",
     currentVideoId: run.request.seedMediaId,
+    history,
   })
 
   const published = await prisma.$transaction(async (tx) => {

@@ -1,3 +1,6 @@
+import { AccessibilityInfo } from "react-native"
+
+import { ANIMATED_SPLASH_ENABLED } from "../animatedSplashEnabled"
 import {
   createSplashSession,
   getSplashSession,
@@ -17,12 +20,16 @@ beforeEach(() => {
 
 afterEach(() => {
   jest.useRealTimers()
+  jest.restoreAllMocks()
 })
 
+// Enabled by default: every suite below proves the posture the animation has
+// when it plays. The kill-switch has its own describe.
 function makeSession(
   overrides: Partial<SplashSessionDeps> = {},
 ): SplashSession {
   return createSplashSession({
+    animatedSplashEnabled: true,
     isExternalLaunch: () => false,
     whenDeepLinkOriginsReady: () => Promise.resolve(),
     isReduceMotionEnabled: () => Promise.resolve(false),
@@ -420,6 +427,72 @@ describe("the useSyncExternalStore contract (KTD11)", () => {
   })
 })
 
+// The never-plays snapshot is byte-identical to the deep-link skip's, so shape
+// alone cannot tell the kill-switch from a skip. Two things can: the skip
+// resolves only after awaiting the gate, and it calls both launch reads.
+describe("the kill-switch", () => {
+  function killSwitchDeps() {
+    return {
+      isExternalLaunch: jest.fn(() => false),
+      whenDeepLinkOriginsReady: jest.fn(() => Promise.resolve()),
+      isReduceMotionEnabled: jest.fn(() => Promise.resolve(false)),
+    }
+  }
+
+  it("resolves to never-plays synchronously, without reading the launch", () => {
+    const deps = killSwitchDeps()
+    const session = createSplashSession({
+      animatedSplashEnabled: false,
+      ...deps,
+    })
+    session.start()
+    expect(session.getSnapshot()).toEqual({
+      resolved: true,
+      visible: false,
+      presentation: null,
+      exit: "fade",
+    })
+    expect(deps.isExternalLaunch).not.toHaveBeenCalled()
+    expect(deps.whenDeepLinkOriginsReady).not.toHaveBeenCalled()
+    expect(deps.isReduceMotionEnabled).not.toHaveBeenCalled()
+  })
+
+  // Anti-vacuous companion: the same fixture with the switch on plays.
+  it("plays with the same deps when the switch is on", async () => {
+    const deps = killSwitchDeps()
+    const session = createSplashSession({
+      animatedSplashEnabled: true,
+      ...deps,
+    })
+    session.start()
+    expect(session.getSnapshot().resolved).toBe(false)
+    await settle()
+    expect(session.getSnapshot().visible).toBe(true)
+    expect(deps.isExternalLaunch).toHaveBeenCalledTimes(1)
+    expect(deps.isReduceMotionEnabled).toHaveBeenCalledTimes(1)
+  })
+
+  it("stays never-plays whatever Home or the panels report afterwards", async () => {
+    const session = createSplashSession({
+      animatedSplashEnabled: false,
+      ...killSwitchDeps(),
+    })
+    session.start()
+    const settled = session.getSnapshot()
+    const listener = jest.fn()
+    session.subscribe(listener)
+    session.reportHomeContent()
+    session.reportHomeFailure()
+    session.retractHomeContent()
+    session.retractHomeFailure()
+    session.releaseImmediately()
+    session.start()
+    await settle(SPLASH_CEILING_MS)
+    expect(session.getSnapshot()).toBe(settled)
+    expect(listener).not.toHaveBeenCalled()
+  })
+})
+
 describe("the module singleton", () => {
   it("hands the same session to every caller", () => {
     expect(getSplashSession()).toBe(getSplashSession())
@@ -429,6 +502,19 @@ describe("the module singleton", () => {
     const first = getSplashSession()
     resetSplashSession()
     expect(getSplashSession()).not.toBe(first)
+  })
+
+  // Behavioural half of the call-site pin, written against the constant so it
+  // survives a flip. A literal that AGREES with the constant passes here; the
+  // source pin in splashKillSwitch.guard.test.js is what catches that.
+  it("threads ANIMATED_SPLASH_ENABLED into the app-wide session", () => {
+    const reduceMotion = jest
+      .spyOn(AccessibilityInfo, "isReduceMotionEnabled")
+      .mockResolvedValue(false)
+    const session = getSplashSession()
+    session.start()
+    expect(session.getSnapshot().resolved).toBe(!ANIMATED_SPLASH_ENABLED)
+    expect(reduceMotion).toHaveBeenCalledTimes(ANIMATED_SPLASH_ENABLED ? 1 : 0)
   })
 })
 

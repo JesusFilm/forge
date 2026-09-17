@@ -8,6 +8,7 @@ import {
   localeDraftRevision,
 } from "./experience.service"
 import { refreshWatchRouteManifest } from "./watch-route-manifest-refresh.service"
+import { EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS } from "@/domain/experience-editor-dub-selectors"
 
 // Override only `after` so the service's manifest-refresh scheduling is
 // observable; everything else in next/server stays real.
@@ -991,6 +992,94 @@ describe("ExperienceService", () => {
           }),
         }),
       )
+    })
+
+    it("runs block validation inside the draft transaction before writing", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+      const validateBlocks = vi
+        .fn()
+        .mockRejectedValueOnce(new Error("new Dub is unavailable"))
+
+      await expect(
+        service.updateLocale({
+          input: { id: "loc-1", title: "Rejected" },
+          user: EDITOR_ALICE,
+          validateBlocks,
+        }),
+      ).rejects.toThrow("new Dub is unavailable")
+      expect(validateBlocks).toHaveBeenCalledWith({
+        prisma: expect.objectContaining({
+          $queryRaw: prisma.$queryRaw,
+          contentRevision: prisma.contentRevision,
+        }),
+        previousBlocks: [],
+        nextBlocks: [],
+      })
+      expect(prisma.contentRevision.create).not.toHaveBeenCalled()
+      expect(prisma.contentRevision.update).not.toHaveBeenCalled()
+    })
+
+    it("always rejects a newly unavailable Dub when a caller changes blocks", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+      prisma.$queryRaw
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce([])
+      const optionalValidator = vi.fn()
+
+      await expect(
+        service.updateLocale({
+          input: {
+            id: "loc-1",
+            blocks: [
+              {
+                t: "video",
+                sectionKey: "new-video",
+                useRouteVideo: false,
+                videoId: "video-1",
+                languageId: "language-unavailable",
+              },
+            ],
+          },
+          user: EDITOR_ALICE,
+          validateBlocks: optionalValidator,
+        }),
+      ).rejects.toThrow("1 newly selected audio language is unavailable")
+
+      expect(optionalValidator).not.toHaveBeenCalled()
+      expect(prisma.contentRevision.create).not.toHaveBeenCalled()
+      expect(prisma.contentRevision.update).not.toHaveBeenCalled()
+    })
+
+    it("rejects excessive selector work before acquiring a locale lock", async () => {
+      const items = Array.from(
+        { length: EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS + 1 },
+        (_, index) => ({
+          videoId: `video-${index}`,
+          languageId: "language-en",
+        }),
+      )
+
+      await expect(
+        service.updateLocale({
+          input: {
+            id: "loc-1",
+            blocks: [
+              {
+                t: "videoCarousel",
+                sectionKey: "oversized",
+                itemsSource: "manual",
+                items,
+              },
+            ],
+          },
+          user: EDITOR_ALICE,
+        }),
+      ).rejects.toThrow(
+        `at most ${EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS} distinct video audio selections`,
+      )
+
+      expect(prisma.experienceLocale.findUniqueOrThrow).not.toHaveBeenCalled()
+      expect(prisma.$transaction).not.toHaveBeenCalled()
     })
 
     it("rejects a stale expected draft revision inside the locale lock", async () => {

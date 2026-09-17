@@ -91,6 +91,90 @@ describe("POST /watch/api/recommendations", () => {
     })
   })
 
+  it.each(["origins-of-christmas--episode-1", "soccer_event_collection"])(
+    "accepts the canonical content slug %s",
+    async (seedMediaSlug) => {
+      const response = await POST(
+        request(
+          JSON.stringify({
+            seedMediaId: "seed-1",
+            seedMediaSlug,
+            locale: "en",
+            audioLanguageSlug: "english",
+          }),
+        ),
+      )
+      expect(response.status).toBe(200)
+      await expect(response.json()).resolves.toMatchObject({
+        delivery: { result: "served", requestId: "request-1" },
+      })
+      expect(query).toHaveBeenCalledTimes(1)
+    },
+  )
+
+  it.each(["", "a/b", "a%2fb", "a?query", "a".repeat(192)])(
+    "rejects invalid or oversized seed slug %s before Admin access",
+    async (seedMediaSlug) => {
+      const response = await POST(
+        request(
+          JSON.stringify({
+            seedMediaId: "seed-1",
+            seedMediaSlug,
+            locale: "en",
+            audioLanguageSlug: "english",
+          }),
+        ),
+      )
+      expect(response.status).toBe(400)
+      expect(query).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([undefined, "older-client", "viewing-mode-v1"])(
+    "preserves mode-ranked cards for client version %s",
+    async (clientVersion) => {
+      const personalization = {
+        contractVersion: "anonymous-profile-personalization-v1",
+        lane: "profile_challenger",
+        executionMode: "viewing_mode_personalized",
+        effectiveManifestId: "semantic-transcript-pgvector-v1",
+        profileState: "durable",
+        projectionVersion: null,
+        projectionGeneration: null,
+        interestCount: 0,
+        sessionIntentPresent: false,
+        reason: "viewing_mode_preference",
+      }
+      query.mockResolvedValueOnce({
+        data: {
+          semanticRecommendationDelivery: { ...delivery, personalization },
+        },
+      })
+      const response = await POST(
+        request(
+          JSON.stringify({
+            seedMediaId: "seed-1",
+            locale: "en",
+            audioLanguageSlug: "english",
+          }),
+          clientVersion
+            ? { "x-forge-recommendation-client": clientVersion }
+            : {},
+        ),
+      )
+      expect(response.status).toBe(200)
+      const body = await response.json()
+      expect(body.delivery.personalization).toEqual(
+        clientVersion === "viewing-mode-v1" ? personalization : null,
+      )
+      expect(body.delivery.requestId).toBe(delivery.requestId)
+      expect(body.delivery.items).toEqual([
+        { ...delivery.items[0], imageUrl: muxThumbnail },
+      ])
+      expect(body.delivery.result).toBe("served")
+    },
+  )
+
   it("is dynamic and returns a private no-store delivery with a host-only session cookie", async () => {
     expect(dynamic).toBe("force-dynamic")
     expect(revalidate).toBe(0)

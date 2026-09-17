@@ -12,6 +12,12 @@ import { createServices } from "@/services"
 import { env } from "@/config/env"
 import { WatchRouteManifestStore } from "@/services/watch-route-manifest-store"
 import {
+  loadExperienceEditorVideoSummariesByIds,
+  loadExperienceEditorVideoSummaryList,
+  type ExperienceEditorAuthoredDubSelector,
+  type ExperienceEditorVideoSummary,
+} from "@/services/experience-editor-video.service"
+import {
   createVideoLibraryPagination,
   formatVideoUpdatedRelative,
   normalizeVideoThumbnailUrl,
@@ -2166,6 +2172,88 @@ export async function loadVideoRows(
     videoIds: missing,
   })
   return [...rows, ...extras]
+}
+
+function experienceEditorSummaryAsLibraryRow(
+  summary: ExperienceEditorVideoSummary,
+) {
+  const playableDubs = new Map(
+    [summary.defaultDub, ...summary.authoredDubs]
+      .filter((dub) => dub != null)
+      .map((dub) => [dub.key, dub]),
+  )
+
+  return {
+    ...summary,
+    playableDubs: Array.from(playableDubs.values()),
+  }
+}
+
+/**
+ * Dedicated bounded cold projection for the experience editor. Exact-ID calls
+ * are exclusive: they never load or prepend the default catalog page.
+ */
+export async function loadExperienceEditorVideoRows(
+  principal: Principal,
+  options: {
+    authoredSelectors?: readonly ExperienceEditorAuthoredDubSelector[]
+    category?: VideoLibraryCategory
+    exactVideoIds?: readonly string[]
+    includeVideoIds?: readonly string[]
+    preferredLocale?: string
+  } = {},
+) {
+  void principal
+  const locale =
+    compactText(options.preferredLocale) ?? (await getAdminLocale())
+  const request = {
+    locale,
+    authoredSelectors: options.authoredSelectors,
+  }
+
+  try {
+    if (options.exactVideoIds !== undefined) {
+      return (
+        await loadExperienceEditorVideoSummariesByIds(prisma, {
+          ...request,
+          videoIds: options.exactVideoIds,
+        })
+      ).map(experienceEditorSummaryAsLibraryRow)
+    }
+
+    const services = createServices(prisma)
+    const page = await services.video.list({
+      input: {
+        category: options.category,
+        collection: undefined,
+        language: undefined,
+        limit: VIDEO_LIBRARY_PAGE_SIZE,
+        offset: 0,
+        search: undefined,
+        sort: undefined,
+      },
+      query: {},
+    })
+    const rows = await loadExperienceEditorVideoSummaryList(prisma, {
+      ...request,
+      videoIds: page.map((video) => video.id),
+    })
+    const have = new Set(rows.map((row) => row.key))
+    const missing = Array.from(new Set(options.includeVideoIds ?? [])).filter(
+      (id) => id && !have.has(id),
+    )
+    if (missing.length === 0) {
+      return rows.map(experienceEditorSummaryAsLibraryRow)
+    }
+    const extras = await loadExperienceEditorVideoSummariesByIds(prisma, {
+      ...request,
+      videoIds: missing,
+    })
+    return [...rows, ...extras].map(experienceEditorSummaryAsLibraryRow)
+  } catch (error) {
+    if (isMissingTableError(error)) return []
+    throw error
+  }
 }
 
 type CollectionChildRelation = {

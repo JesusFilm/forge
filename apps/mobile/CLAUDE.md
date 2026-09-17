@@ -176,6 +176,87 @@ PNGs or `assets/AppIcon.icon/` — regenerate.** The script borrows `apps/admin`
   combinations `brandpad.io/jfp` permits. It matches the existing tvOS tile, which
   has the same issue. Pending a waiver from the brand owner.
 
+## Cold-start splash
+
+**The animated splash is OFF** (`ANIMATED_SPLASH_ENABLED = false` in
+`src/lib/splash/animatedSplashEnabled.ts`, since 2026-09-15 — the product lead
+did not approve the animation). The code stays in the tree, disabled, not
+removed: `SplashHost`, `SplashCoveredTree`, `SplashSequence`, the splash
+session, the embedded Noto Serif face, and the projector rasters. Do not delete
+any of it. The `expo-font` plugin entry and its TTF are fingerprint inputs, so
+removing them moves the runtime version. `SplashSequence` imports the two
+projector rasters statically, so deleting one fails the bundler with `Unable to
+resolve module` and nothing ships. A warm dev server is NOT the check: it can
+keep serving a cached bundle after the file is gone. Verified by hand
+2026-09-15 — `npx expo export --platform ios` exits 0 with the raster and exits
+1 without it, naming `SplashSequence.tsx`, while a live Metro served a
+byte-identical cached bundle either way.
+
+What a cold launch does with the flag off: the native splash shows
+`assets/splash-icon.png` — the JFP symbol on the `#1c1917` ground — until the
+React tree's first commit, then Home. `app/_layout.tsx` still takes the native
+hold at module scope (KTD2) and `SplashHost` still lowers it, on the same
+never-plays path a deep-link launch takes. `getSplashSession().start()` settles
+that snapshot synchronously, so nothing waits on the deep-link gate. The flag is
+a required `createSplashSession` dep. `splashSession.test.ts` pins the
+singleton's behaviour against the constant, and
+`src/lib/splash/__tests__/splashKillSwitch.guard.test.js` pins the four halves
+no behavioural suite ties together: the call site passes the constant and not a
+literal, the flag file declares it exactly once as a bare literal, the
+generator reads that file with the same pattern, and the committed PNG matches
+the flag by md5.
+
+**The native asset follows the flag, and the generator enforces it.**
+`pnpm icons:generate` reads the flag file by regex (one line, bare literal;
+the generator refuses a second declaration, even a commented one) and emits
+the symbol when off, the flat field when on. A flip without a regeneration, or
+a hand-edited PNG, fails the guard.
+
+**The symbol reaches a binary only through prebuild.** Every binary built from
+the flat asset — dev clients from 2026-09-10 to 2026-09-15 and TestFlight
+1.0.0 (7) — runs this JS as a flat field, then Home, with no logo anywhere.
+Android is the same restore as before #2216: `enableFullScreenImage_legacy` is
+iOS-only, and Android draws the symbol as the small icon in its system-splash
+slot.
+
+To see the new native splash on a local simulator:
+
+1. `npx expo prebuild --platform ios --no-install`. `expo run:ios` skips
+   prebuild when `ios/` exists, so without this step the build ships the old
+   imageset. Prebuild rewrites `ios/Podfile`; before `pod install`, re-add the
+   `post_install` hook that puts `__STDC_WANT_LIB_EXT1__=1` on the `MMKVCore`
+   and `MMKV` targets, or the build fails on `memset_s` under Xcode 26 (see
+   `docs/solutions/integration-issues/expo-dev-launcher-root-vc-blocks-fullscreen-rotate.md`).
+2. Confirm `ios/forgewatch/Images.xcassets/SplashScreenLegacy.imageset/image.png`
+   changed (it is RGBA and about 12 KB with the symbol; the flat field was
+   5,861 B).
+3. `npx expo run:ios --device <udid>`.
+
+To re-enable, all three steps, in one PR:
+
+1. Set `ANIMATED_SPLASH_ENABLED = true`.
+2. Run `pnpm icons:generate` — the native splash must be flat again, or the
+   handover shows a symbol-to-blank flip.
+3. Ship a NATIVE build before the next `eas update`. The asset moves the
+   fingerprint runtime version. A whole-branch OTA targets a runtime no
+   installed build carries and reaches nobody; a flag-only OTA on the old
+   runtime cuts from the flat field straight to Home.
+
+The reverse (this change) needs the same native build for the same reason. The
+design record is `docs/plans/2026-09-09-1059-feat-mobile-animated-splash-plan.md`.
+
+**Until that native build ships, the production channel is dark.** Every
+`update:production` from `main` targets a runtime version no installed build
+carries. `eas update` still exits 0 and reports success, so an unrelated JS
+hotfix published in this window reaches nobody and nothing says so. Installed
+testers keep the animation until they install the new build. The only OTA that
+could reach them is the flag off with the OLD flat asset, and
+`splashKillSwitch.guard.test.js` rejects that pairing by md5 on any committed
+tree, by design. **Open decision, owner: the release caller.** The default
+posture is to wait for the build. Taking the animation off installed devices
+sooner needs a deliberate throwaway-branch OTA and an explicit call; do not
+improvise it from `main`.
+
 ## Running on a simulator (env setup)
 
 **Before launching apps/mobile on a simulator, ALWAYS run
@@ -455,6 +536,155 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
 - **RUM identity**: `setDatadogRumUser` receives the opaque auth subject id
   only — never email or display name.
 
+## Recommendations API client (feat-516)
+
+`src/lib/recommendations/` is the mobile client for Admin's source-free
+recommendations API (`docs/operations/user-recommendations.md`). It ships the
+data layer and playback attribution only; the Home shelf is `feat-517`.
+
+- **The fleet bearer rides the eight recommendation operations, and admin
+  REQUIRES it there.** `carriesFleetBearer` in `src/lib/authHeaders.ts` admits
+  `WatchSearch` plus `RECOMMENDATION_OPERATION_NAMES`
+  (`src/lib/recommendations/operationNames.ts`). On search the bearer only buys
+  a rate-limit bucket; on these operations a fleet caller is admitted only with
+  the bearer AND a proven viewer handle, so a missing header is
+  `UNAUTHENTICATED`, not a coarser bucket. `authHeaders.test.ts` pins the set
+  to the documents in `operations.ts`, and
+  `operations.contract.guard.test.js` validates every document against the
+  committed `apps/admin/schema.graphql`. Mobile never sends `sessionDigest`,
+  `consentReceiptDigest` or `profileTokenDigest`: those are the Web backend's
+  authority, and admin rejects a request that mixes them with viewer tokens.
+- **One anonymous viewer per installation, in SecureStore.**
+  `viewerIdentity.ts` holds the server-minted `viewerToken` (180-day handle)
+  and `sessionToken` in one JSON record under
+  `forge-watch.recommendation-viewer.v1`, this-device-only. `get()` bootstraps
+  lazily with one shared flight. Installations are independent; there is no
+  account linking. Sign-out does not touch it.
+- **An `UNAUTHENTICATED` answer never discards the stored viewer by itself.**
+  Admin uses one error for a dead handle AND a broken app bearer, and the
+  stored viewer is this install's whole history. A rejection marks the record
+  suspect; the next `get()` re-verifies it with `status`, and only when that
+  is rejected too AND a bootstrap under the same bearer SUCCEEDS is the
+  handle replaced. A rejected bootstrap means the bearer is the fault: the
+  viewer is kept and a 60 s cooldown applies. A FRESH handle (under 5 min)
+  enters the cooldown before any verification. `withdraw`/`delete` keep the
+  handle in its essential-only state; nothing bootstraps a replacement to undo
+  an opt-out. Every profile transition notifies `subscribe()` listeners, and
+  `useUserRecommendations` refreshes on it. A suspect handle whose `status`
+  probe fails TRANSIENTLY keeps serving and is not probed again for 60 s
+  (`VERIFY_RETRY_BACKOFF_MS`); without that, every `get()` during an Admin
+  degradation was one more `status` mutation against the shared bucket.
+- **Admin's rate limiter answers HTTP 200, and the client treats it as
+  transient.** `@envelop/rate-limiter` emits an `errors[]` entry with
+  `extensions.http.statusCode: 429` and no `code` (Yoga reads
+  `extensions.http.status`, so the HTTP status stays 200). `errors.ts` maps
+  that, and an edge HTTP 429, to `RATE_LIMITED` with the `Retry-After` window,
+  never to the definitive `GRAPHQL_ERROR`. A limited claim, including its
+  context issuance, waits the window once instead of spending an attempt; a
+  limited evidence send retries once after the window, never 100 ms later; a
+  limited facts batch pauses the drain for the window without spending a
+  delivery attempt, at most three times per episode, then drops the batch and
+  keeps the episode open; a limited bootstrap is a cooldown
+  (`bootstrap_rate_limited`), not a failed bearer.
+  The bucket is 30 mutations per minute per `x-viewer-id`, shared by every
+  recommendation mutation the launch sends.
+- **Session rotation takes its random bytes from `expo-crypto`.** Hermes
+  ships no `crypto.getRandomValues`, and Expo's runtime installs no `crypto`
+  global, so `secureRandomToken()` in `random.ts` tries the runtime's
+  WebCrypto first (jest, a browser) and then requires `expo-crypto` lazily
+  (the device). A source that throws or leaves the buffer untouched (the
+  jest mock of the native module) yields null, never a weaker token. With
+  the source present the store rotates the session after 24 h of inactivity
+  and links it with `status` first; without one it reports
+  `session_rotation_unavailable` once per launch, so "no idle installs" and
+  "no random source" differ in the dashboard. `expo-crypto` is a NATIVE
+  module (added 2026-09-17): it moves the fingerprint runtime version, so a
+  native build must ship before the next `eas update` reaches anyone. A
+  claim nonce may fall back to the runtime's plain generator: it is a
+  correlation key bound to the viewer credentials, not a secret.
+- **No bearer, no network.** With `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN` unset the
+  store answers `unprovisioned` and nothing is sent. A development bundle
+  against local admin usually fails the bootstrap with `UNAUTHENTICATED`
+  (the production fleet key is not in local admin's keyring); that is one
+  request, then the cooldown.
+- **Delivery is strict.** `delivery.ts` accepts a served slate only whole:
+  contract `user-recommendation-v1`, surface `watch-for-you-v1`, a request id,
+  exactly the requested count, positions in index order, distinct target
+  media. A served envelope that fails those checks is `invalid_delivery`; a
+  `fallback`, `empty` or `unavailable` envelope carries Admin's own reason,
+  so the log keeps a fault apart from an honest miss. `environment_disabled`
+  is `disabled`; `cooldown`, `in_flight`, `admission_unavailable`,
+  `delivery_timeout` and `service_unavailable` are retryable;
+  `coverage_unavailable` is not. `useUserRecommendations` retries once after
+  5 s, three attempts, and refreshes on locale or audio-language change. The
+  response's `expiresAt` is the authority on the item capabilities (ten
+  minutes today): past it the hook sends no evidence and returns null from
+  `select`; the UI refreshes instead.
+  `resolveRecommendationContext` maps the watch preference to
+  `{ locale: "en", audioLanguageSlug: prefs.audioLanguageSlug ?? "english" }`.
+- **Evidence and selection mirror Web's literals.** `render` carries
+  `{ surfacePolicy: "watch-for-you-v1" }`, `impression`
+  `{ visibilityPolicy: "watch-for-you-v1" }`, both under
+  `recommendation-evidence-v1`, one mutation per fact, deduplicated per
+  request, item and kind. Impression ELIGIBILITY (50% visible for one
+  continuous second) is the UI's job. `select` mints a claim nonce, stores it
+  in the module-scope pending-claim store BEFORE the mutation, and resolves
+  with the slug to open even when the send fails. Only the statuses in
+  `ACKNOWLEDGED_SELECTION_STATUSES` (`accepted`, `replay`) count as
+  acknowledged; a `conflict` or any status this client does not know is
+  reported and the recorder's claim attempt decides. `useUserRecommendations`
+  serves no items, evidence or selection while `enabled` is false, and a
+  selection stays single-flight across a profile refresh.
+- **Playback attribution runs for every playback the root host owns.**
+  `useManagedVideoPlayer` creates one `playbackRecorder.ts` per Admin video id
+  when `ownsSession` is set (the SDUI routes never get one) and keeps it across
+  a dub switch. A recorder created after playback began (the seed path: a
+  search result or a Home tile plays the seed stream before the record loads)
+  is primed with the player's live playing state, or it would never record
+  `playback_start`. The recorder claims an episode from the pending selection
+  nonce, else issues a playback context from `playbackDiscovery.ts`
+  (single-video search results mark `search`, external links mark `share`,
+  everything else is `direct`) and claims that. A series search result opens
+  a list, so the search tab carries `?from=search` (`DISCOVERY_ROUTE_PARAM`)
+  into the series route and the episode tap there marks the episode;
+  `seriesSearchDiscovery.guard.test.js` pins both halves because the series
+  screen has no render suite. Facts follow admin's strict schemas and
+  Web's caps: 16 per mutation, 8 KB per body, 128 per episode, three delivery
+  attempts, observations dropped first, and nothing sent past the episode's
+  `hardUntil`; the budget is charged only for facts that are queued. The
+  context issuance is part of the claim: it shares the claim's three
+  attempts and its one window deferral, and it takes the discovery mark once,
+  so a transient answer to `issueWatchPlaybackContext` no longer abandons the
+  episode. After `dispose()` the recorder starts no claim retry, issues no
+  context and takes neither the selection nonce nor the discovery mark (a
+  replacement recorder for the same media needs them), but a claim chain
+  already in flight (an issuance or the claim itself) still delivers the held
+  facts once, and a facts drain already in flight finishes its own retry
+  ladder. `useManagedVideoPlayer.recommendations.test.tsx`
+  pins the wiring; `playbackRecorder.test.ts` pins the decisions. Budget:
+  about one claim plus one facts mutation per 10 s while playing, under
+  admin's 30 mutations per minute per `x-viewer-id` bucket.
+- **`EXPO_PUBLIC_RECOMMENDATIONS_ENABLED` is an opt-OUT switch.** Unset keeps
+  the client on; only `false` or `0` turns it off. Expo inlines the value, so
+  a flip needs an update publish.
+- **Telemetry attributes are `rec_`-prefixed** (`recommendation.identity`,
+  `recommendation.delivery`, `recommendation.evidence`,
+  `recommendation.playback_degraded`). No token, capability, nonce, episode id
+  or request id ever reaches a log.
+- **No real Admin endpoint has been exercised.** The handoff established no
+  enabled development endpoint, and production must not receive test
+  identities. The device smoke ran against a throwaway local proxy (see the
+  `feat-516` ticket's Results); the first real-environment smoke (bootstrap,
+  `status`, one playback episode) is the first step of `feat-517`. Beware
+  port 3003 for such a proxy: a real local admin usually owns it, and the
+  simulator resolves `localhost` to it over IPv6 while a proxy on
+  `127.0.0.1:3003` sits idle.
+- **The adapter's `abandoned` session reason is NOT an episode ending.** It
+  fires on the first source arrival and on every dub switch; mapping it to a
+  route exit ended every episode 19 ms after it began on device.
+  `useManagedVideoPlayer.recommendations.test.tsx` pins that only `dismissed`
+  and `replaced` close the episode from `endSession`.
+
 ## Mini player and the root-owned playback session (feat-367)
 
 **The app owns ONE player and ONE video view, and neither belongs to a route.**
@@ -721,6 +951,94 @@ it moves the fingerprint runtime version, so an OTA update cannot deliver it.
   seconds — an absent cast glyph early in a session means "not discovered yet",
   not "unsupported".
 
+## Raw file export — save to a folder the viewer picks
+
+**The export writes into a folder the viewer chooses, never into the photo
+library.** Product leadership decided this on 2026-09-15; the photo-library
+destination that shipped in #2232 is retired and `expo-media-library` is gone
+from the app. The picker is `Directory.pickDirectoryAsync()` from
+`expo-file-system`, which the app already links, so the change added no native
+module — but removing one moves the fingerprint runtime version, so a native
+build must ship before the next `eas update`.
+
+- **The seam is `src/lib/rawExportRuntime.ts`, and only it.** Every other
+  export module is pure. The adapter's `ExportDestinationPort`
+  (`pickFolder` / `listNames` / `copyInto` / `removeIfExists`) is bound there
+  to `Directory` and `File`. `documentDirectory` still comes from `expo-file-system/legacy`: the
+  package root re-exports it through a stub that throws.
+- **Pick FIRST, then dismiss, then run.** The order lives in
+  `src/lib/rawExportStart.ts`. Both routes (`app/watch/download.tsx`,
+  `app/series/download.tsx`) hand it the pick, the dismiss and the start as
+  callbacks on ONE object literal, so neither route body carries a step order
+  of its own. A dismissed sheet has no view controller to present from, and
+  both orders compile, so `rawExportStart.test.ts` pins the order by CALLING
+  the helper. `rawExportWiring.guard.test.js` holds only that each raw starter
+  delegates to `startRawExportAfterPick(` and never dismisses by hand — a
+  position comparison there would read an object literal's declaration order,
+  which means nothing. A dismissed picker starts nothing and reports nothing;
+  the sheet stays open.
+- **A series picks ONCE.** `SeriesExportRun.folder` threads one grant into
+  every episode. Each episode still stages, copies and deletes one at a time,
+  so R8's space arithmetic did not change.
+- **The picker IS the consent.** There is no permission step, no refusal
+  outcome, and no Settings action on the report card. A folder the app cannot
+  write to fails at the copy, as `destinationWriteError`. No Info.plist key
+  and no runtime prompt: the document picker is consent-per-action, and the
+  app receives a security-scoped URL for the one folder picked, never the
+  device's files.
+- **The confirm button reads "Open", by decision (2026-09-16).** UIKit labels
+  its folder picker that way and the title is not configurable. "Save" exists
+  only in export mode, which needs a native module this app does not have;
+  that is `feat-509`. Do not try to relabel it from JS — there is no lever.
+- **A folder grant dies with the process.** `expo-file-system` opens the
+  security scope on pick and never closes it (`FilePickingUtils.swift`), and
+  ships no bookmark API, so a picked folder does not survive a relaunch.
+  Every staged note is therefore DISCARDED by the launch sweep; the deferred
+  write, the app-state gate and the foreground completion effect are all
+  gone. Android's SAF grant is persistable, but the recovery model is
+  deliberately uniform across platforms.
+- **The saved file is named by RENAMING the staged source, never by joining a
+  name onto the folder's uri.** Android's picker returns a SAF tree uri, and
+  `DocumentFile.fromTreeUri` resolves any appended segment back to the tree's
+  ROOT document — so `new File(new Directory(folder.uri), name)` is the folder
+  itself, and `copy()` throws `InvalidTypeFileException` on a directory. Expo's
+  SAF branch takes the child's name from the SOURCE file
+  (`CopyMoveStrategy.SAF.prepareAsDestination` -> `findFile(source.fileName)`),
+  so the runtime binding renames the staged file and then copies it into the
+  `Directory`. One code path serves both platforms.
+  **This is invisible to jest and to an iOS device run.** Every adapter test
+  injects a fake port, and iOS joins paths happily. Only an Android device
+  proves it. `rawExportWiring.guard.test.js` pins the rename and rejects the
+  join shape.
+- **A name collision takes a suffix, not an overwrite.** `suffixFileName` in
+  `src/lib/transferPort.ts` finds `Name (2).mp4`, bounded to
+  `RAW_EXPORT_MAX_FILENAME_LENGTH`. The free-name search reads the folder ONCE
+  through `listNames`, because Android resolves no per-name `exists` probe
+  against a SAF tree — a probe there answers for the folder, not the child.
+- **A failed copy cleans up after itself at the DESTINATION.** `File.copy` is a
+  plain non-atomic byte copy on both platforms, so an interrupted copy leaves a
+  truncated file under the final name in the viewer's own folder. `copyToFolder`
+  removes it best-effort in its catch. R18 is not satisfied by clearing the
+  staging directory alone.
+- **`signalBackgroundCompletion` fires AFTER the copy, not before it.** The
+  signal releases the shared background-session handler, and iOS may suspend the
+  process once it lands. Signalling first meant a download that finished in the
+  background could copy ~165 MB with no background window.
+- **Do not add `UIFileSharingEnabled` or `LSSupportsOpeningDocumentsInPlace`.**
+  Either key would show the staging root in the Files app mid-transfer, and
+  would offer the app's own container as a destination that dies with the
+  app. `appJsonNoPhotoLibrary.guard.test.js` pins their absence alongside the
+  absence of every photo permission.
+- **The cancel rejects, with platform-divergent codes.** iOS throws
+  `FilePickingCancelledException`, Android `PickerCancelledException`. The
+  binding catches every rejection, logs the code to `raw_export.folder_not_picked`
+  and returns null, rather than matching a code string a version bump could
+  change.
+- **Verification oracle:** after a save, list the picked folder through the
+  `Directory` handle and assert the file is present at the byte size the sheet
+  showed; then confirm in the Files app by hand. The old
+  `PHPhotoLibrary … success: YES` log count no longer exists.
+
 ## Android system navigation bar
 
 **`AppTheme` now has TWO writers**, and both go through the shared helpers in
@@ -764,7 +1082,29 @@ disagree about the bar's size.
 > `docs/roadmap/platform/feat-500-mobile-native-tabs-migration.md` for the
 > device measurements and the carried-forward items. The iOS floating pill,
 > `TabBarLens.tsx` and `tabIndexForSegments` are deleted. Their rules are
-> history, not current guidance.
+> history, not current guidance — with ONE exception that is live again. The
+> group-marker rule survives as `isTabGroupRoute` in `src/lib/tabBar.ts`:
+> `app/watch/[slug].tsx` is a root-stack sibling and emits the bare segment
+> `watch`, which is also the Discover tab's name, so "am I on a tab route" must
+> key off `(tabs)` and never a tab name.
+
+- **A ROOT-mounted surface does not get the bar in its inset, and must clear it
+  from the SCREEN bottom.** A tab SCREEN's `insets.bottom` contains the bar; the
+  root `SafeAreaProvider` does not, because the bar belongs to the tab
+  controller the root sits outside of. Do NOT derive the lift from the inset:
+  the iOS 26 bar is a floating pill anchored to the bottom EDGE, so its top sits
+  a constant 83pt above the screen bottom whatever the inset is. Measured
+  2026-09-14 — iPhone 17 and 17 Pro Max (inset 34) and iPhone SE 3rd gen
+  (inset 0) all report a bar frame 83pt tall. Use
+  `TAB_BAR_SCREEN_EXTENT_IOS`, not `insets.bottom + TAB_BAR_HEIGHT_IOS`; the two
+  agree only at inset 34, which is why a 34pt device cannot catch the mistake.
+  The export toast sat 21pt inside the bar on a 0-inset device, and its first
+  fix still sat 6pt inside, until this was measured.
+
+- **`PlaybackHost`'s `TAB_BAR_CONTENT_HEIGHT` has the same unfixed shape.** It
+  is `TAB_BAR_OCCUPIED_HEIGHT` (49), reserved by the root-mounted mini player,
+  so on a 0-inset device the window reserves 49 against an 83pt bar. Not
+  investigated on device; do not copy the pattern.
 
 - **A tab screen's `insets.bottom` ALREADY contains the iOS bar.** Know this
   before you touch a scroll surface. `useTabBarClearance()` returns

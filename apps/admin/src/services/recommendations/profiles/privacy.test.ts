@@ -16,6 +16,9 @@ describe("profile projection privacy", () => {
       recommendationProfileProjectionRun: {
         deleteMany: vi.fn().mockResolvedValue({ count: 3 }),
       },
+      recommendationViewingModeEvidence: {
+        deleteMany: vi.fn().mockResolvedValue({ count: 2 }),
+      },
       recommendationProfileProjectionPointer: {
         deleteMany: vi.fn().mockResolvedValue({ count: 3 }),
       },
@@ -34,6 +37,7 @@ describe("profile projection privacy", () => {
       runs: 3,
       pointers: 3,
       generations: 5,
+      viewingMode: 2,
     })
     expect(
       client.recommendationProfileProjectionGeneration.deleteMany,
