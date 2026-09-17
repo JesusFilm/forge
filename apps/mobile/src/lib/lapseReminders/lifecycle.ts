@@ -194,6 +194,11 @@ export function createLapseReminderLifecycle(
    *  ordinary pass finishes it instead of waiting for that sign-out. */
   let clearCleanupPending = false
 
+  /** The video the last pass scheduled for, so a pass that moves to a different
+   *  video can clear the tray of reminders still naming the old one. Null until
+   *  the first pass, and process-scoped: nothing is delivered before then. */
+  let lastScheduledSlug: string | null = null
+
   async function runOnce(reason: LapseReminderPassReason) {
     const clearing = reason === "record_cleared" || clearCleanupPending
     let cleaned = true
@@ -240,6 +245,19 @@ export function createLapseReminderLifecycle(
       }
 
       const record = deps.getRecord()
+      const videoSlug = record?.videoSlug ?? null
+      // Scheduling replaces what is PENDING, never what was already DELIVERED.
+      // A reminder that fired for the previous video keeps naming it in the
+      // tray, so the viewer sees two reminders for two different videos.
+      if (clearing) {
+        lastScheduledSlug = videoSlug
+      } else if (videoSlug !== lastScheduledSlug) {
+        // Not on the first pass of the process: nothing delivered here yet, and
+        // the tray can only hold reminders for the video this pass is about to
+        // reschedule anyway.
+        if (lastScheduledSlug !== null) await dismissDelivered(reason)
+        lastScheduledSlug = videoSlug
+      }
       const targets = computeLapseReminderTargets(deps.now())
       for (const kind of LAPSE_REMINDER_KINDS) {
         try {

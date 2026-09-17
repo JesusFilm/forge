@@ -314,6 +314,48 @@ describe("the lapse reminder schedule pass", () => {
     }
   })
 
+  it("empties the tray when the pass moves to a different video", async () => {
+    // Observed on device 2026-09-17: the day-7 reminder for the PREVIOUS video
+    // had already been delivered, so the next pass could not replace it, and
+    // two reminders sat in the tray naming two different videos.
+    const harness = createHarness({ record: "noelevator" })
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+
+    await lifecycle.runPass("mount")
+    harness.adapter.deliver(1)
+    harness.setRecord("parable-of-the-pharisee-and-tax-collector")
+    await lifecycle.runPass("active")
+
+    expect(harness.adapter.delivered).toBe(0)
+    expect(identifiersOf(harness.adapter)).toEqual(BOTH_IDENTIFIERS)
+  })
+
+  it("leaves the tray alone while the video is unchanged", async () => {
+    // The dismiss is app-wide, so it must fire only when it has a reason to.
+    // A delivered reminder for the SAME video is still accurate copy.
+    const harness = createHarness({ record: "noelevator" })
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+
+    await lifecycle.runPass("mount")
+    harness.adapter.deliver(1)
+    await lifecycle.runPass("active")
+    await lifecycle.runPass("background")
+
+    expect(harness.adapter.delivered).toBe(1)
+  })
+
+  it("does not empty the tray on the first pass of the process", async () => {
+    // Nothing this process delivered can be stale, and the tray can only hold
+    // reminders for the video this pass is about to reschedule anyway.
+    const harness = createHarness({ record: "noelevator" })
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+
+    harness.adapter.deliver(1)
+    await lifecycle.runPass("mount")
+
+    expect(harness.adapter.delivered).toBe(1)
+  })
+
   it("covers AE2: a second pass replaces both and leaves two pending", async () => {
     const later = NOW + 5 * 60 * 1000
     let clock = NOW
