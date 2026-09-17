@@ -76,7 +76,7 @@ package runbooks are authoritative for operations:
 
 Operational invariants:
 
-- Production Admin must have all five `SUBTITLE_EVAL_*` admission values.
+- Production Admin must have `SUBTITLE_EVAL_MONTHLY_BUDGET_USD` set, in dollars.
   Admin derives `cells * maxAttempts * reservationPerCellAttemptMicros`; a
   browser does not declare trusted spend. Deployment values can lower
   ceilings, while the reservation is at least the source-controlled 1,600,000

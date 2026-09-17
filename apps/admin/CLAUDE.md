@@ -2922,7 +2922,7 @@ are 20 cells, at most 80 cues/64 provider calls per cell, concurrency 1-3, one
 absolute 60-600 second deadline per cell, two attempts, two active runs per
 operator, four active runs globally, 64,000,000 spend micros per run, and
 256,000,000 spend micros per rolling 24 hours. Production must
-set all five `SUBTITLE_EVAL_*` admission variables. Deployment values may lower
+set `SUBTITLE_EVAL_MONTHLY_BUDGET_USD` (dollars). Deployment values may lower
 spend/active-run ceilings but cannot raise the source ceilings; the reservation
 per cell-attempt is raised to at least 1,600,000 spend micros (64 calls at a
 source-controlled 25,000-micro reservation). Admin derives the
