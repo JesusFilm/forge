@@ -66,10 +66,11 @@ order and timing. Mocked tests prove branch shape; only the real runtime
 proves the production contract
 (`docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md`).
 
-The first attempt at a harness also hit a port trap. A real local admin dev
-server usually owns `*:3003` over IPv6, and the simulator resolves `localhost`
-to `::1`. A proxy bound to `127.0.0.1:3003` coexists with it silently, so the
-app talks to the real admin while the proxy log stays empty. Per this session's
+The first attempt at a harness also hit a port trap. On this machine a real
+local admin dev server owned `*:3003` over IPv6, and the simulator resolved
+`localhost` to `::1` (observed 2026-09-16; an environment fact, not a code
+fact). A proxy bound to `127.0.0.1:3003` coexisted with it silently, so the
+app talked to the real admin while the proxy log stayed empty. Per this session's
 conclusion, the tell was a `Web consumer authentication required` RUM error
 beside an empty proxy log (auto memory [claude]).
 
@@ -81,8 +82,8 @@ app. It does four things, and every one of them is load-bearing:
 1. It answers the operations under test locally with contract-shaped data. It
    mints the viewer and session tokens, the claim nonce and the episode id. It
    validates each facts batch against the strict schemas admin enforces
-   (`apps/admin/src/services/recommendations/contracts.ts:362-406`, including
-   the 60 000 ms active-chunk cap at line 406).
+   (`apps/admin/src/services/recommendations/contracts.ts:363-535`, including
+   the 60 000 ms active-chunk cap at line 435).
 2. It logs every request as one JSON line, including the requests it only
    forwards. A silent forward hides a misroute.
 3. It refuses every other mutation with a `BLOCKED` error. Nothing that is not
@@ -121,8 +122,9 @@ const sessionToken = mint()
 let issuedNonce = null
 let sequence = 0
 
-// Mirror of admin's strict fact schemas (contracts.ts). A key that admin
-// would reject must show up here as a problem, not as an accepted receipt.
+// The subset of admin's fact schemas (contracts.ts) that mobile emits: no
+// playback_viewing_mode, no partial-coverage missingReason. A key admin would
+// reject must show up here as a problem, not as an accepted receipt.
 const PAYLOAD_KEYS = {
   playback_attempt: ["initiation"],
   playback_start: ["positionSeconds"],
@@ -525,7 +527,10 @@ one `errors[]` entry with `extensions.http.statusCode: 429` and a
 `Retry-After` header, no `code`. The client maps that to `RATE_LIMITED` with
 the window in `retryAfterMs`
 (`rateLimitedFrom`, `apps/mobile/src/lib/recommendations/errors.ts:90-99`;
-`parseRetryAfterMs`, `:68-77`). Then reload the dev client and open one video.
+`parseRetryAfterMs`, `:68-77`). Admin's real header value is the window string
+`"1m"` (`apps/admin/src/graphql/plugins/rate-limit.ts:144`), while the proxy
+sends integer seconds; `parseRetryAfterMs` accepts both. Then reload the dev
+client and open one video.
 The log must show the limited issuance, a second issuance after the window
 under the same discovery mark, a claim that matches the second nonce, and the
 held facts delivered.
@@ -541,7 +546,8 @@ answer past the client deadline) or a one-shot `SERVICE_UNAVAILABLE`.
 
 ## Why This Matters
 
-The harness found three things that no jest suite could see.
+The harness found two defects and confirmed one fix end to end. No jest
+suite could see any of the three.
 
 **The adapter's `abandoned` reason ended every episode 19 ms after it began.**
 The QoE session ends as `abandoned` on the first source arrival (null to url)
@@ -575,8 +581,8 @@ against a mocked transport. The fault injection then proved it on Hermes: the
 first issuance was limited at 22:59:56.626, the second landed 3.02 s later
 under the same `share` discovery, the claim matched the new nonce 9 ms after
 that, and the held `playback_attempt` and `playback_start` facts followed 10 ms
-later. That one run covered the Apollo error link's mapping of a 200-with-
-errors answer, the client's `Retry-After` parsing, the Hermes timer and the
+later. That one run covered the client's error classifier
+(`toRecommendationClientError`) on a 200-with-errors answer, the client's `Retry-After` parsing, the Hermes timer and the
 header chain together.
 
 This is a worked instance of the mocked-shape-vs-real-contract discipline.
