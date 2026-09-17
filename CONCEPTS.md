@@ -1362,6 +1362,12 @@ The soft blurred wash of colour that bleeds from the video's edges into the surr
 
 It is derived from the video's still artwork rather than from the moving picture, so it is one colour field for the whole video and does not follow the footage from scene to scene. It sits behind every other layer, takes no touches, and fades in rather than appearing at once, so a slow artwork load never flashes.
 
+### Watch Seed
+
+A small bundle of display facts — a title, artwork, and enough to start playback — carried into a watch screen by the surface that opened it, so the screen paints immediately instead of waiting for its own fetch of the Video. The resolved Video always wins once it arrives; the seed only fills the gap before that.
+
+A seed is untrusted. It rides in the opening address, so anything able to hand a viewer a link can choose what it says, and a seed field is therefore safe to PAINT but not to keep. Each field is admitted on its own terms: the ones that select what plays or what loads are validated, and a field that is only shown may be admitted as-is. Any surface that persists a seed field, or shows it somewhere the viewer cannot see the surrounding context, must first establish that the value came from the resolved Video instead.
+
 ### Watch Session
 
 The user's current watch state for one Video — which Dub is active, and whether subtitles are on and which track — shared between the video-details screen and the fullscreen player so the language/subtitle pickers and live playback read and write one source of truth.
@@ -1619,7 +1625,7 @@ It is hostile input at two distinct boundaries, and neither boundary's control s
 
 ### Lapse Reminder
 
-A local notification the mobile app schedules for itself each time it is used, so that a viewer who stops opening the app receives one reminder a day after their last use and a second one a week after it. Both reminders are measured from the most recent foreground use, snap into a 09:00–21:00 local window and are delivered at or after that target, and are replaced by the next use. After the day-7 reminder fires, nothing more is scheduled until the app is used again. No server sends it, and the copy is fixed in the app.
+A local notification the mobile app schedules for itself each time it is used, so that a viewer who stops opening the app receives one reminder a day after their last use and a second one a week after it. Both reminders are measured from the most recent foreground use, snap into a 09:00–21:00 local window and are delivered at or after that target, and are replaced by the next use. After the day-7 reminder fires, nothing more is scheduled until the app is used again. No server sends it, and the copy is fixed in the app. Each reminder has two forms: one names the video it will reopen, and a plainer one does not. Which form is sent depends on whether the Last-Watched Record knows that video's title.
 
 _Avoid_: push notification (implies a server-sent message), re-engagement campaign.
 
@@ -1627,9 +1633,13 @@ _Avoid_: push notification (implies a server-sent message), re-engagement campai
 
 The one routine that keeps the Lapse Reminder invariant: it runs when the app launches, enters the foreground, goes to the background, or clears the Last-Watched Record, and it schedules the day-1 and day-7 pair under two fixed identities so a new pass replaces the old pair instead of accumulating. When the feature is disabled or notification permission is not granted, the pass cancels both identities and dismisses any reminder already delivered, which is what makes a denial, a sign-out, and the feature gate turned off the same code path.
 
+Scheduling replaces only what is still pending, so a reminder that has already been delivered is beyond its reach. A pass that moves to a different video therefore dismisses delivered reminders as well, or the viewer keeps one reminder naming the video they just watched beside another naming the one before it.
+
 ### Last-Watched Record
 
 One local, slug-keyed record of the last video whose playback started on the watch screen in the mobile app, kept for every user whether signed in or not, and updated by streaming and downloaded playback alike. It is the tap destination of a Lapse Reminder and is distinct from signed-in watch progress, which decides only where playback resumes inside the video. It survives app restarts, counts as absent after 30 days, is cleared on an explicit sign-out or account switch (which also re-derives the reminders), and is not written by the Experience section players, which carry a video id and no slug.
+
+The record also holds the video's title, because a Lapse Reminder names the video it will reopen. Only a title from the resolved Video is kept: the watch screen may paint a title from a Watch Seed, but a seed title is chosen by whoever supplied the opening link, and this record is read back onto a locked device. A record therefore starts untitled whenever playback begins before the Video resolves, which is the ordinary case for a downloaded video, and it takes one later correction when the real title arrives. After that the video is settled for as long as the app keeps running, so a sign-out cannot be undone by playback that is still going.
 
 ## Flagged ambiguities
 
