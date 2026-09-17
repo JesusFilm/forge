@@ -451,3 +451,27 @@ describe("reset (the test seam)", () => {
     expect(storage.getItem).toHaveBeenCalledTimes(2)
   })
 })
+
+describe("the title on the write path", () => {
+  it("keeps the sanitized title in memory AND in storage", async () => {
+    // The one production link in the titled chain that nothing else covers:
+    // the reminder body reads the IN-MEMORY record, so a write that persisted
+    // a title but did not hold it in memory would ship untitled reminders.
+    const { store, storage } = makeStore()
+
+    store.write("the-birth-of-jesus", "The Birth\nof Jesus")
+    await Promise.resolve()
+
+    expect(store.getRecord()?.videoTitle).toBe("The Birth of Jesus")
+    const raw = storage.items.get(LAST_WATCHED_STORAGE_KEY) as string
+    expect(JSON.parse(raw).videoTitle).toBe("The Birth of Jesus")
+  })
+
+  it("stores no title when the writer supplies none", () => {
+    const { store } = makeStore()
+
+    store.write("the-birth-of-jesus", null)
+
+    expect(store.getRecord()?.videoTitle).toBeNull()
+  })
+})

@@ -884,11 +884,34 @@ the KTD, R and AE numbers the source comments cite.
   record written before titles as having none" pins this, and it writes the
   literal `1` rather than the constant — written as the constant it would move
   with a bump and could never fail.
-- **The title is CMS-authored, so it is sanitized where the record is, not where
-  it is displayed.** `sanitizeLastWatchedTitle` strips control characters and
-  line breaks and caps at `LAST_WATCHED_MAX_TITLE_LENGTH`, on BOTH the write and
-  the read — the parser must not trust a stored value the current serializer
-  would never have written.
+- **Only a title from the RESOLVED video record may be persisted, never one
+  from a deep-link seed.** `displayTitle` in `app/watch/[slug].tsx` is
+  `video?.title ?? seed?.title`, and `decodeWatchSeed` validates the seed's
+  `imageUrl` and `playbackId` but not its `title`. A crafted
+  `forgemobile://watch/<slug>?seed={"title":"…","playbackId":"<any public mux
+id>"}` autostarts, so the writer would otherwise persist attacker text and
+  post it on a locked device under the app's own name. `PlaybackSessionDescriptor`
+  therefore carries `titleFromRecord`, and `attachLastWatchedWriter` writes a
+  title only when it is true. The field is REQUIRED, so a new session producer
+  has to state provenance. The seed may still paint on screen, where the viewer
+  has context.
+- **The writer allows exactly ONE corrective upgrade per slug.** A downloaded
+  video plays before the query supplying its title resolves, so the first write
+  is untitled; without the upgrade a slug-only latch would leave that video
+  unnamed for good. The upgrade is bounded to empty-then-titled, which is what
+  keeps AE9 intact — dropping the bound turns AE9's own test red.
+- **The title is sanitized where the record is, not where it is displayed.**
+  `sanitizeLastWatchedTitle` runs on BOTH the write and the read — the parser
+  must not trust a stored value the current serializer would never have written.
+  It strips C0/DEL/C1, the Unicode line and paragraph separators, and the bidi
+  and zero-width format characters: on a lock screen the body has no title
+  field, so a bidi override reverses the app's own sentence around the title.
+  The cap counts CODE POINTS, because a UTF-16 slice can cut a surrogate pair
+  and leave a lone surrogate that is not representable on the native bridge.
+- **Write that character class with `\x`/`\u` ESCAPES, never raw bytes.** A
+  literal NUL in the source makes git classify the whole file as binary, and
+  `git diff` then shows `Binary files ... differ` — so no PR can review the one
+  module that bounds what reaches a lock screen. This already happened once.
 - **The body renders on the lock screen.** Naming the video means the video name
   is visible without unlocking. That was an explicit product call on 2026-09-17,
   reversing R14's "neither names the video". If it is ever revisited, the lever

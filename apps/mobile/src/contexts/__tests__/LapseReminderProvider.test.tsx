@@ -101,7 +101,13 @@ jest.mock("../../lib/lastWatched/store", () => {
 })
 jest.mock("../../lib/miniPlayer/playbackRequest", () => {
   let snapshot: {
-    request: { session: { videoSlug: string; title: string | null } } | null
+    request: {
+      session: {
+        videoSlug: string
+        title: string | null
+        titleFromRecord: boolean
+      }
+    } | null
     playing: boolean
   } = { request: null, playing: false }
   const listeners = new Set<() => void>()
@@ -118,8 +124,15 @@ jest.mock("../../lib/miniPlayer/playbackRequest", () => {
     getPlaybackRequestStore: () => store,
     // The writer only acts on a notification, so a store that never emits
     // cannot tell a wired provider from `write: () => {}`.
+    // `titleFromRecord` follows the title: the writer persists a title only
+    // when it came from the resolved record, never from a deep-link seed.
     __emitPlaying: (videoSlug: string, title: string | null = null) => {
-      snapshot = { request: { session: { videoSlug, title } }, playing: true }
+      snapshot = {
+        request: {
+          session: { videoSlug, title, titleFromRecord: title != null },
+        },
+        playing: true,
+      }
       for (const listener of [...listeners]) listener()
     },
     __resetPlayback: () => {

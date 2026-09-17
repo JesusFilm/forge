@@ -16,6 +16,7 @@ const SESSION_STREAMING: PlaybackSessionDescriptor = {
   videoId: "video-a",
   videoSlug: "the-birth-of-jesus",
   title: "The Birth of Jesus",
+  titleFromRecord: true,
   posterUrl: null,
   languageSlug: "english",
   originPattern: "watch/[slug]",
@@ -238,5 +239,80 @@ describe("attachLastWatchedWriter", () => {
     })
 
     expect(write).not.toHaveBeenCalled()
+  })
+})
+
+describe("the title's provenance (a deep-link seed must not persist)", () => {
+  // The seed is deep-link input. It may paint on screen, where the viewer has
+  // context, but this record is read back into a lock-screen notification body.
+  const SESSION_SEEDED: PlaybackSessionDescriptor = {
+    ...SESSION_STREAMING,
+    title: "Your account needs verification",
+    titleFromRecord: false,
+  }
+
+  it("records no title while the title is only a deep-link seed", () => {
+    const store = makeStore()
+    const { write } = attachTo(store)
+
+    store.attachSlot(makeRequest({ session: SESSION_SEEDED }))
+    store.setPlaying(true)
+
+    expect(write).toHaveBeenCalledTimes(1)
+    expect(write).toHaveBeenCalledWith("the-birth-of-jesus", null)
+  })
+
+  it("upgrades to the real title once the record resolves", () => {
+    // The deterministic case is a downloaded video: it plays from disk before
+    // the query that supplies the title resolves, so the first write is
+    // untitled and a slug-only latch would never name that video.
+    const store = makeStore()
+    const { write } = attachTo(store)
+    const slotId = store.attachSlot(makeRequest({ session: SESSION_SEEDED }))
+    store.setPlaying(true)
+
+    store.updateSlot(slotId, makeRequest({ session: SESSION_STREAMING }))
+
+    expect(write.mock.calls).toEqual([
+      ["the-birth-of-jesus", null],
+      ["the-birth-of-jesus", "The Birth of Jesus"],
+    ])
+  })
+
+  it("upgrades at most once, so AE9 still holds after a clear", () => {
+    // AE9: a sign-out clears the record but does not stop playback. Once a
+    // titled write has landed, the same slug is locked for the module's life.
+    const store = makeStore()
+    const { write } = attachTo(store)
+    const slotId = store.attachSlot(makeRequest({ session: SESSION_STREAMING }))
+    store.setPlaying(true)
+    write.mockClear()
+
+    store.updateSlot(slotId, makeRequest({ session: SESSION_SEEDED }))
+    store.updateSlot(slotId, makeRequest({ session: SESSION_STREAMING }))
+    store.setPlaying(false)
+    store.setPlaying(true)
+
+    expect(write).not.toHaveBeenCalled()
+  })
+
+  it("treats an empty title as no title rather than as a settled one", () => {
+    // watch/[slug].tsx publishes `title: displayTitle ?? ""`, so the
+    // empty-but-present shape is the reachable one, not null.
+    const store = makeStore()
+    const { write } = attachTo(store)
+    const slotId = store.attachSlot(
+      makeRequest({
+        session: { ...SESSION_STREAMING, title: "", titleFromRecord: true },
+      }),
+    )
+    store.setPlaying(true)
+
+    store.updateSlot(slotId, makeRequest({ session: SESSION_STREAMING }))
+
+    expect(write.mock.calls).toEqual([
+      ["the-birth-of-jesus", null],
+      ["the-birth-of-jesus", "The Birth of Jesus"],
+    ])
   })
 })

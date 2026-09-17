@@ -1,5 +1,5 @@
 /**
- * The one place a reminder body is built (R14). Pure, so the titled and
+ * The one place a reminder body is built (R14a). Pure, so the titled and
  * untitled forms are both reachable from a test without a native module.
  */
 

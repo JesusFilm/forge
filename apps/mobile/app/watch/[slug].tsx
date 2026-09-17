@@ -539,12 +539,9 @@ export default function WatchVideoPage() {
       const arrival = consumeDeepLinkArrival(decodedSlug)
       if (arrival == null) return
       deepLinkEmittedRef.current.add(decodedSlug)
-      // Only a URL arrival is a shared link (feat-516). A lapse-reminder tap
-      // reaches this same effect, and marking it `share` would attribute every
-      // reminder return to a shared link; unmarked, it falls through to
-      // `direct`. The union has no `reminder` source, and extending it is a
-      // cross-app contract change — reminder returns stay attributable through
-      // this event's `origin` and `lapse_reminder.tap`.
+      // Only a URL arrival is a shared link (feat-516); a reminder tap reaches
+      // this effect too and falls through to `direct` (the union has no
+      // `reminder` source). Reminder returns stay attributable via `origin`.
       if (arrival.origin === "url") markPlaybackDiscovery(decodedSlug, "share")
       // Built inline: the reserved-attribute sweep only reads an object
       // literal written AT the call site.
@@ -723,6 +720,9 @@ export default function WatchVideoPage() {
             videoId: video?.documentId ?? null,
             videoSlug: decodedSlug,
             title: displayTitle ?? "",
+            // The seed half of displayTitle is deep-link input, so it may
+            // paint here but must never persist into a notification body.
+            titleFromRecord: video?.title != null,
             posterUrl: displayPoster,
             languageSlug: activeVariant?.languageSlug ?? null,
             originPattern: "watch/[slug]",

@@ -35,7 +35,7 @@ export const LAPSE_REMINDER_COPY: Record<LapseReminderKind, string> = {
 export const LAPSE_REMINDER_TITLE_TOKEN = "{title}"
 
 /**
- * R14's titled copy, used when the record carries a title. A record written
+ * R14a's titled copy, used when the record carries a title. A record written
  * before titles, or one whose title failed the sanitizer, takes the untitled
  * strings above instead, so neither set may be deleted.
  */
