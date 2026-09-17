@@ -719,6 +719,31 @@ the KTD, R and AE numbers the source comments cite.
   proves it; until that pass runs, treat the Android half as unverified. KTD2
   carries the fallback order — schedule the new pair first, then cancel the old
   pair by identifier.
+- **The reminder body NAMES the video, and the title travels in the record, not
+  in the payload.** `src/lib/lapseReminders/copy.ts` is the only place a body is
+  built: `LAPSE_REMINDER_COPY_TITLED` when the record carries a title,
+  `LAPSE_REMINDER_COPY` when it does not. Both sets must stay — a record written
+  before titles, or one whose title failed the sanitizer, still has to read as a
+  finished sentence. The title is baked into the body AT SCHEDULE TIME, so a
+  pending reminder keeps the title it was scheduled with. It never enters the
+  notification payload: the tap still reads the slug alone, so a CMS title can
+  never steer navigation.
+- **`LAST_WATCHED_VERSION` deliberately did NOT move when `videoTitle` was
+  added.** The field is optional on read, so every v1 record on an upgrading
+  device still parses and simply has no title. Bumping the version would void
+  those records and send the next reminder to Home. The test named "reads a
+  record written before titles as having none" pins this, and it writes the
+  literal `1` rather than the constant — written as the constant it would move
+  with a bump and could never fail.
+- **The title is CMS-authored, so it is sanitized where the record is, not where
+  it is displayed.** `sanitizeLastWatchedTitle` strips control characters and
+  line breaks and caps at `LAST_WATCHED_MAX_TITLE_LENGTH`, on BOTH the write and
+  the read — the parser must not trust a stored value the current serializer
+  would never have written.
+- **The body renders on the lock screen.** Naming the video means the video name
+  is visible without unlocking. That was an explicit product call on 2026-09-17,
+  reversing R14's "neither names the video". If it is ever revisited, the lever
+  is `lapseReminderBody`, not the call site.
 - **A tap reads the payload and nothing else, and the payload is untrusted.**
   The in-memory record may not have hydrated on a cold start, so
   `payload.ts` re-validates the version, the kind and the target,

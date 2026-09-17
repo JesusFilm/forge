@@ -31,6 +31,19 @@ export const LAPSE_REMINDER_COPY: Record<LapseReminderKind, string> = {
   day7: "Your video is still here whenever you are ready.",
 }
 
+/** The token every titled string substitutes. One spelling, one source. */
+export const LAPSE_REMINDER_TITLE_TOKEN = "{title}"
+
+/**
+ * R14's titled copy, used when the record carries a title. A record written
+ * before titles, or one whose title failed the sanitizer, takes the untitled
+ * strings above instead, so neither set may be deleted.
+ */
+export const LAPSE_REMINDER_COPY_TITLED: Record<LapseReminderKind, string> = {
+  day1: "Continue watching {title}.",
+  day7: "{title} is still here whenever you are ready.",
+}
+
 /** R6's delivery window in local time. The start hour is inclusive. */
 export const LAPSE_REMINDER_WINDOW_START_HOUR = 9
 

@@ -15,6 +15,7 @@ import { withTimeout } from "../withTimeout"
 import {
   LAST_WATCHED_STORAGE_KEY,
   parseStoredLastWatched,
+  sanitizeLastWatchedTitle,
   serializeLastWatched,
   type LastWatchedRecord,
 } from "./snapshot"
@@ -123,9 +124,10 @@ export function createLastWatchedStore(deps: LastWatchedStoreDeps) {
       return flight
     },
 
-    write(videoSlug: string): void {
+    write(videoSlug: string, videoTitle: string | null): void {
       const next: LastWatchedRecord = {
         videoSlug,
+        videoTitle: sanitizeLastWatchedTitle(videoTitle),
         recordedAt: deps.now().getTime(),
       }
       const blob = serializeLastWatched(next)

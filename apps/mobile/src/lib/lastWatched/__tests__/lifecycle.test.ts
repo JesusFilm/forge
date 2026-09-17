@@ -76,7 +76,10 @@ describe("attachLastWatchedWriter", () => {
     store.setPlaying(true)
 
     expect(write).toHaveBeenCalledTimes(1)
-    expect(write).toHaveBeenCalledWith("washi-gospel-episode-2")
+    expect(write).toHaveBeenCalledWith(
+      "washi-gospel-episode-2",
+      "Washi Gospel, Episode 2",
+    )
   })
 
   it("writes nothing while playback has not started", () => {
@@ -132,7 +135,10 @@ describe("attachLastWatchedWriter", () => {
 
     store.attachSlot(makeRequest({ session: SESSION_DOWNLOADED }))
 
-    expect(write).toHaveBeenCalledWith("washi-gospel-episode-2")
+    expect(write).toHaveBeenCalledWith(
+      "washi-gospel-episode-2",
+      "Washi Gospel, Episode 2",
+    )
   })
 
   it("writes once while the playing slug does not change", () => {
@@ -145,7 +151,10 @@ describe("attachLastWatchedWriter", () => {
     store.updateSlot(slotId, makeRequest({ fullscreen: true }))
 
     expect(write).toHaveBeenCalledTimes(1)
-    expect(write).toHaveBeenCalledWith("the-birth-of-jesus")
+    expect(write).toHaveBeenCalledWith(
+      "the-birth-of-jesus",
+      "The Birth of Jesus",
+    )
   })
 
   it("writes the new slug on an Up Next swap that keeps playing", () => {
@@ -157,8 +166,8 @@ describe("attachLastWatchedWriter", () => {
     store.updateSlot(slotId, makeRequest({ session: SESSION_DOWNLOADED }))
 
     expect(write.mock.calls).toEqual([
-      ["the-birth-of-jesus"],
-      ["washi-gospel-episode-2"],
+      ["the-birth-of-jesus", "The Birth of Jesus"],
+      ["washi-gospel-episode-2", "Washi Gospel, Episode 2"],
     ])
   })
 
@@ -184,9 +193,9 @@ describe("attachLastWatchedWriter", () => {
     store.updateSlot(slotId, makeRequest({ session: SESSION_STREAMING }))
 
     expect(write.mock.calls).toEqual([
-      ["the-birth-of-jesus"],
-      ["washi-gospel-episode-2"],
-      ["the-birth-of-jesus"],
+      ["the-birth-of-jesus", "The Birth of Jesus"],
+      ["washi-gospel-episode-2", "Washi Gospel, Episode 2"],
+      ["the-birth-of-jesus", "The Birth of Jesus"],
     ])
   })
 
@@ -197,7 +206,10 @@ describe("attachLastWatchedWriter", () => {
 
     const { write } = attachTo(store)
 
-    expect(write).toHaveBeenCalledWith("the-birth-of-jesus")
+    expect(write).toHaveBeenCalledWith(
+      "the-birth-of-jesus",
+      "The Birth of Jesus",
+    )
   })
 
   it("writes nothing once detached", () => {

@@ -53,7 +53,7 @@ export function LapseReminderProvider({ children }: { children: ReactNode }) {
       ? attachLastWatchedWriter({
           subscribe: (listener) => playback.subscribe(listener),
           getSnapshot: () => playback.getSnapshot(),
-          write: (videoSlug) => record.write(videoSlug),
+          write: (videoSlug, videoTitle) => record.write(videoSlug, videoTitle),
         })
       : () => {}
     const lifecycle = createLapseReminderLifecycle({

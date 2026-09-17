@@ -51,7 +51,11 @@ function makeStore(seed: string | null = null, now: () => Date = () => NOW) {
 }
 
 function blobFor(videoSlug: string, recordedAt = NOW.getTime()): string {
-  return serializeLastWatched({ videoSlug, recordedAt }) as string
+  return serializeLastWatched({
+    videoSlug,
+    videoTitle: null,
+    recordedAt,
+  }) as string
 }
 
 function storedSlug(storage: ReturnType<typeof makeStorage>): string | null {
@@ -75,10 +79,11 @@ describe("write", () => {
   it("sets memory and persists at once", async () => {
     const { store, storage } = makeStore()
 
-    store.write("the-birth-of-jesus")
+    store.write("the-birth-of-jesus", null)
 
     expect(store.getRecord()).toEqual({
       videoSlug: "the-birth-of-jesus",
+      videoTitle: null,
       recordedAt: NOW.getTime(),
     })
     await Promise.resolve()
@@ -88,8 +93,8 @@ describe("write", () => {
   it("replaces an earlier record", () => {
     const { store } = makeStore()
 
-    store.write("first")
-    store.write("second")
+    store.write("first", null)
+    store.write("second", null)
 
     expect(store.getRecord()?.videoSlug).toBe("second")
   })
@@ -97,7 +102,7 @@ describe("write", () => {
   it("ignores a slug the snapshot would refuse", () => {
     const { store, storage } = makeStore()
 
-    store.write("")
+    store.write("", null)
 
     expect(store.getRecord()).toBeNull()
     expect(storage.setItem).not.toHaveBeenCalled()
@@ -107,7 +112,7 @@ describe("write", () => {
     const { store, storage } = makeStore()
     storage.setItem.mockRejectedValue(new Error("disk full"))
 
-    expect(() => store.write("the-birth-of-jesus")).not.toThrow()
+    expect(() => store.write("the-birth-of-jesus", null)).not.toThrow()
 
     await Promise.resolve()
     expect(store.getRecord()?.videoSlug).toBe("the-birth-of-jesus")
@@ -119,7 +124,7 @@ describe("write", () => {
       throw new Error("no storage")
     })
 
-    expect(() => store.write("the-birth-of-jesus")).not.toThrow()
+    expect(() => store.write("the-birth-of-jesus", null)).not.toThrow()
     expect(store.getRecord()?.videoSlug).toBe("the-birth-of-jesus")
   })
 })
@@ -135,7 +140,7 @@ describe("hydrate", () => {
 
   it("survives a process restart: a fresh store reads the last write back", async () => {
     const { store, storage } = makeStore()
-    store.write("washi-gospel-1")
+    store.write("washi-gospel-1", null)
     await Promise.resolve()
 
     const restarted = createLastWatchedStore({
@@ -155,7 +160,7 @@ describe("hydrate", () => {
     storage.getItem.mockReturnValue(read.promise)
 
     const hydration = store.hydrate()
-    store.write("up-next-episode")
+    store.write("up-next-episode", null)
     read.resolve(blobFor("stale-from-storage"))
     await hydration
 
@@ -271,7 +276,7 @@ describe("hydrate", () => {
 describe("clear", () => {
   it("empties memory synchronously and removes the storage key", async () => {
     const { store, storage } = makeStore()
-    store.write("the-birth-of-jesus")
+    store.write("the-birth-of-jesus", null)
     await Promise.resolve()
 
     const removal = store.clear()
@@ -328,7 +333,7 @@ describe("clear", () => {
   it("reads back as no record in the next process when the removal rejects", async () => {
     // R11's one invariant: the signed-out account's video must not survive.
     const { store, storage } = makeStore()
-    store.write("previous-account-video")
+    store.write("previous-account-video", null)
     await Promise.resolve()
     storage.removeItem.mockRejectedValue(new Error("disk full"))
 
@@ -385,10 +390,10 @@ describe("clear", () => {
 
   it("lets a later write record again", () => {
     const { store } = makeStore()
-    store.write("first")
+    store.write("first", null)
 
     store.clear()
-    store.write("second")
+    store.write("second", null)
 
     expect(store.getRecord()?.videoSlug).toBe("second")
   })
@@ -402,7 +407,7 @@ describe("sign-out, through the real progress lifecycle (AE9)", () => {
     const { store, storage } = makeStore()
     const listener = jest.fn()
     store.subscribeToClear(listener)
-    store.write("previous-account-video")
+    store.write("previous-account-video", null)
     await Promise.resolve()
     let accountId: string | null = "user-1"
     const listeners = new Set<() => void>()

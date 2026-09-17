@@ -14,7 +14,7 @@ import type { PlaybackRequestSnapshot } from "../miniPlayer/playbackRequest"
 export type LastWatchedWriterDeps = {
   subscribe: (listener: () => void) => () => void
   getSnapshot: () => PlaybackRequestSnapshot
-  write: (videoSlug: string) => void
+  write: (videoSlug: string, videoTitle: string | null) => void
 }
 
 /**
@@ -34,7 +34,7 @@ export function attachLastWatchedWriter(deps: LastWatchedWriterDeps) {
     if (videoSlug == null || videoSlug.length === 0) return
     if (videoSlug === lastWrittenSlug) return
     lastWrittenSlug = videoSlug
-    deps.write(videoSlug)
+    deps.write(videoSlug, request?.session?.title ?? null)
   }
 
   const unsubscribe = deps.subscribe(handlePlaybackChange)

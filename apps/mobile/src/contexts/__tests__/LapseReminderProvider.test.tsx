@@ -101,7 +101,7 @@ jest.mock("../../lib/lastWatched/store", () => {
 })
 jest.mock("../../lib/miniPlayer/playbackRequest", () => {
   let snapshot: {
-    request: { session: { videoSlug: string } } | null
+    request: { session: { videoSlug: string; title: string | null } } | null
     playing: boolean
   } = { request: null, playing: false }
   const listeners = new Set<() => void>()
@@ -118,8 +118,8 @@ jest.mock("../../lib/miniPlayer/playbackRequest", () => {
     getPlaybackRequestStore: () => store,
     // The writer only acts on a notification, so a store that never emits
     // cannot tell a wired provider from `write: () => {}`.
-    __emitPlaying: (videoSlug: string) => {
-      snapshot = { request: { session: { videoSlug } }, playing: true }
+    __emitPlaying: (videoSlug: string, title: string | null = null) => {
+      snapshot = { request: { session: { videoSlug, title } }, playing: true }
       for (const listener of [...listeners]) listener()
     },
     __resetPlayback: () => {
@@ -357,23 +357,28 @@ describe("LapseReminderProvider wiring", () => {
     // provider leaves every mobile test green and the record never fills.
     const playback = (require as unknown as NodeRequireLike)(
       "../../lib/miniPlayer/playbackRequest",
-    ) as { __emitPlaying: (slug: string) => void }
+    ) as { __emitPlaying: (slug: string, title?: string | null) => void }
     const store = recordStoreModule.getLastWatchedStore()
     const renderer = await render()
     ;(store.write as jest.Mock).mockClear()
 
     await act(async () => {
-      playback.__emitPlaying("considering-christmas")
+      playback.__emitPlaying("considering-christmas", "Considering Christmas")
     })
 
-    expect(store.write).toHaveBeenCalledWith("considering-christmas")
+    // The title threads through the composition root too: the reminder body is
+    // built from it, so a provider that dropped it would read as generic copy.
+    expect(store.write).toHaveBeenCalledWith(
+      "considering-christmas",
+      "Considering Christmas",
+    )
     await act(async () => renderer.unmount())
   })
 
   it("stops writing once the provider unmounts", async () => {
     const playback = (require as unknown as NodeRequireLike)(
       "../../lib/miniPlayer/playbackRequest",
-    ) as { __emitPlaying: (slug: string) => void }
+    ) as { __emitPlaying: (slug: string, title?: string | null) => void }
     const store = recordStoreModule.getLastWatchedStore()
     const renderer = await render()
 
@@ -683,7 +688,7 @@ describe("the build-time gate (KTD8)", () => {
     const playback = (require as unknown as NodeRequireLike)(
       "../../lib/miniPlayer/playbackRequest",
     ) as {
-      __emitPlaying: (slug: string) => void
+      __emitPlaying: (slug: string, title?: string | null) => void
       getPlaybackRequestStore: () => { subscribe: jest.Mock }
     }
     const store = recordStoreModule.getLastWatchedStore()

@@ -89,7 +89,8 @@ stateDiagram-v2
 
 **Copy**
 
-- R14. Each reminder carries one fixed English string, the day-1 and day-7 strings may differ, and neither names the video. Placeholder copy until the stakeholder signs off: day 1 "Pick up where you left off." and day 7 "Your video is still here whenever you are ready."
+- R14. Each reminder carries one fixed English string, and the day-1 and day-7 strings may differ. Placeholder copy until the stakeholder signs off: day 1 "Pick up where you left off." and day 7 "Your video is still here whenever you are ready."
+- R14a. **Superseded 2026-09-17, on the product owner's instruction during the device pass.** R14 originally read "and neither names the video"; each reminder now NAMES the last-watched video when the record carries its title. Two sets of strings ship, both fixed English: the titled forms in `LAPSE_REMINDER_COPY_TITLED` and the untitled forms above, which a record written before titles still takes. The title rides in the last-watched record, is baked into the body at schedule time, and never enters the notification payload — the tap still resolves from the slug alone. Accepted consequence: the video name is readable on a locked device.
 
 **Measurement**
 

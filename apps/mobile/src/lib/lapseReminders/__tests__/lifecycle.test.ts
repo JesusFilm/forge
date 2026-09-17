@@ -12,11 +12,13 @@ import {
   LAPSE_REMINDER_COPY,
   LAPSE_REMINDER_IDENTIFIERS,
   LAPSE_REMINDER_KINDS,
+  LAPSE_REMINDER_TITLE_TOKEN,
 } from "../constants"
 import {
   LAPSE_REMINDER_HOME_TARGET,
   type LapseReminderPayload,
 } from "../payload"
+import { lapseReminderBody } from "../copy"
 import { computeLapseReminderTargets } from "../schedule"
 import {
   LAPSE_REMINDER_ADAPTER_DEADLINE_MS,
@@ -145,6 +147,7 @@ function createHarness(
   options: FakeAdapterOptions & {
     enabled?: boolean
     record?: string | null
+    recordTitle?: string | null
     /** Leave hydration pending until the test resolves it. */
     deferHydration?: boolean
     now?: () => number
@@ -166,7 +169,13 @@ function createHarness(
     adapter,
     enabled: options.enabled ?? true,
     getRecord: () =>
-      record == null ? null : { videoSlug: record, recordedAt: NOW },
+      record == null
+        ? null
+        : {
+            videoSlug: record,
+            videoTitle: options.recordTitle ?? null,
+            recordedAt: NOW,
+          },
     hydrateRecord: () => hydration,
     subscribeToRecordClear: (listener) => {
       clearListeners.add(listener)
@@ -234,6 +243,70 @@ describe("the lapse reminder schedule pass", () => {
       expect(scheduled?.date.getTime()).toBe(targets[kind].getTime())
       expect(scheduled?.body).toBe(LAPSE_REMINDER_COPY[kind])
       expect(scheduled?.data).toEqual({
+        version: 1,
+        kind,
+        target: "forgemobile://watch/the-birth-of-jesus",
+      })
+    }
+  })
+
+  it("names the video in both bodies when the record carries a title", async () => {
+    const harness = createHarness({
+      record: "the-birth-of-jesus",
+      recordTitle: "The Birth of Jesus",
+    })
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+
+    await lifecycle.runPass("mount")
+
+    for (const kind of LAPSE_REMINDER_KINDS) {
+      const scheduled = harness.adapter.pending.get(
+        LAPSE_REMINDER_IDENTIFIERS[kind],
+      )
+      expect(scheduled?.body).toBe(
+        lapseReminderBody(kind, "The Birth of Jesus"),
+      )
+      expect(scheduled?.body).toContain("The Birth of Jesus")
+    }
+  })
+
+  it("falls back to the untitled copy when the record has no title", async () => {
+    // The discriminating case: a record written by a build before titles, and
+    // the one every other test in this file runs on. Without it a body that
+    // interpolated "null" would still pass the titled assertion above.
+    const harness = createHarness({
+      record: "the-birth-of-jesus",
+      recordTitle: null,
+    })
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+
+    await lifecycle.runPass("mount")
+
+    for (const kind of LAPSE_REMINDER_KINDS) {
+      const scheduled = harness.adapter.pending.get(
+        LAPSE_REMINDER_IDENTIFIERS[kind],
+      )
+      expect(scheduled?.body).toBe(LAPSE_REMINDER_COPY[kind])
+      expect(scheduled?.body).not.toContain("null")
+      expect(scheduled?.body).not.toContain(LAPSE_REMINDER_TITLE_TOKEN)
+    }
+  })
+
+  it("keeps the title out of the payload, which stays slug-only", async () => {
+    // The title is display copy baked into the body at schedule time. The tap
+    // must keep reading the slug alone, so a title can never steer navigation.
+    const harness = createHarness({
+      record: "the-birth-of-jesus",
+      recordTitle: "The Birth of Jesus",
+    })
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+
+    await lifecycle.runPass("mount")
+
+    for (const kind of LAPSE_REMINDER_KINDS) {
+      expect(
+        harness.adapter.pending.get(LAPSE_REMINDER_IDENTIFIERS[kind])?.data,
+      ).toEqual({
         version: 1,
         kind,
         target: "forgemobile://watch/the-birth-of-jesus",

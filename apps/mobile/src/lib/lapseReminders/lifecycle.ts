@@ -13,11 +13,11 @@
 import { telemetryErrorMessage } from "../downloadErrors"
 import { withTimeout } from "../withTimeout"
 import {
-  LAPSE_REMINDER_COPY,
   LAPSE_REMINDER_IDENTIFIERS,
   LAPSE_REMINDER_KINDS,
   type LapseReminderKind,
 } from "./constants"
+import { lapseReminderBody } from "./copy"
 import { buildLapseReminderPayload, type LapseReminderPayload } from "./payload"
 import { computeLapseReminderTargets } from "./schedule"
 
@@ -75,7 +75,7 @@ export type LapseReminderLifecycleDeps = {
   adapter: LapseReminderSchedulingPort
   /** KTD8's build-time gate. Off still runs the pass; it only never schedules. */
   enabled: boolean
-  getRecord: () => { videoSlug: string } | null
+  getRecord: () => { videoSlug: string; videoTitle: string | null } | null
   /** Bounded and never rejecting. Awaited before any payload is built, or a
    *  cold launch would overwrite a real record with Home. */
   hydrateRecord: () => Promise<void>
@@ -246,7 +246,7 @@ export function createLapseReminderLifecycle(
           await withTimeout(
             deps.adapter.schedule({
               identifier: LAPSE_REMINDER_IDENTIFIERS[kind],
-              body: LAPSE_REMINDER_COPY[kind],
+              body: lapseReminderBody(kind, record?.videoTitle ?? null),
               // The record names its slug `videoSlug`; the payload takes `slug`.
               data: buildLapseReminderPayload(
                 kind,
