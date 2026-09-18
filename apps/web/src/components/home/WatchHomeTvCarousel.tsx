@@ -688,7 +688,7 @@ function WatchHomeTvOverlayContent({
         mode === "entering" ? "watch-home-tv-active-title" : undefined
       }
       titleSlot={{
-        className: cn(itemClassName, "line-clamp-3 sm:line-clamp-2"),
+        className: itemClassName,
         style: delayStyle(1),
       }}
     />
