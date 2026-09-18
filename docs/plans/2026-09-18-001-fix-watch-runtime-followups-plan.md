@@ -92,3 +92,26 @@ The authored English Homepage Recommendations Block remains removed and
 account-linking, curation republishing, increased deadlines, ambiguous mutation
 retries or reduced identity, authorization, attribution, integrity or rate-limit
 guarantees.
+
+## Execution state — September 18
+
+- U1: PR #2337 merged and exact Admin/worker revision `9cdb79b13` verified.
+  No Admin job listener; the worker processed 1,083 flow and 539 step callbacks
+  in the recorded 15-minute window. Runner isolation is complete.
+- U2: PR #2339 deployed as `c813991ad` to Admin and worker. First/later
+  ordinary production collections took 250/157 ms with profiling preserved;
+  all temporary diagnostics were restored. The profiler correction is complete.
+  Real production-build controls reproduce 742–815 ms first collections and
+  reduce them to 209–215 ms without disabling profiling or losing source maps.
+- U3: PR #2338 deployed as `cc5a50565`. The same production autoplay arrivals
+  failed before and pass after; real unmuted playback continues. The demonstrated
+  mismatch is complete, with older unretained-query/other-variant limitations.
+- U4: Current late VIDEO LCP is reproduced even with media blocked; removing
+  only the native video poster locally removes that late candidate. The old
+  late H1 / missing-paint observation is still unproven. Preserve its open state
+  rather than substituting a healthy run or the newer VIDEO explanation.
+
+feat-496 is reopened because a later selection trace actually exceeded the
+upstream deadline. The known fixes and later healthy observations remain valid;
+none proves all runtime failures absent. See the dated operations record for
+separate HTTP, semantic fallback, browser abort, JavaScript and paint evidence.

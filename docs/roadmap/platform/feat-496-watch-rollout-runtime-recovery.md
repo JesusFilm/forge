@@ -3,7 +3,7 @@ id: "feat-496"
 title: "Resolve remaining Watch admission and database transaction timeouts"
 owner: "nisal"
 priority: "P1"
-status: "complete"
+status: "in-progress"
 start_date: "2026-09-11"
 duration: 3
 depends_on: []
@@ -201,3 +201,47 @@ revision-scoped request populations and structured delivery outcomes.
 - feat-487/feat-488 own curated coverage and homepage launch configuration.
 - feat-506 tracks pre-existing diagnostic command noise from missing ps/cache
   paths; it is separate from the recommendation request timeouts.
+
+## Reopened by later evidence — September 18
+
+The earlier release window remains valid evidence for its reproduced catalog
+fixes. It is not the current overall recovery verdict. On September 17 at
+23:48:41, after worker isolation PR #2337 deployed to Admin, trace
+`e3c73fbba25d1f77b5c137ec7115347a` records Web HTTP 503 at 750 ms and an Admin
+selection mutation continuing for 1,432 ms. Its browser aborted at 801 ms.
+That batch's 12 recommendation deliveries all served six cards without semantic
+fallback. A later browser abort had server HTTP 200 and a short Admin request,
+so those two aborts must not be assigned one cause.
+
+This ticket is reopened for the remaining proven deadline failure. feat-513's
+runner isolation is independently verified; feat-516's cold-profiler correction
+and feat-517's autoplay hydration correction are deployed and independently
+verified. None establishes global
+selection recovery. Read `docs/operations/watch-followups-verification-2026-09-18.md`
+for dates, revisions, separate outcome populations and diagnostic cleanup.
+
+After profiler PR #2339 deployed as `c813991ad3645aebdb50d6b1cac92a47b5aad250`,
+trace `b0e7eb73435b3df258c9f5c2a91ab5cf` at September 18 00:27:55 still
+records selection Web HTTP 503 at 705 ms and an Admin mutation continuing for
+1,469 ms. It occurred about nine seconds after the ordinary 157 ms profile
+collection. That batch's 12 deliveries served six cards without fallback;
+five selections acknowledged successfully and one browser request aborted.
+This observation prevents an overall recovery claim and is not attributed to
+profiling or PostgreSQL locks without a causal reproduction.
+
+The 00:36:57–00:38:02 bounded observer further measured actual pg pool
+acquisitions up to 741 ms with over 100 queued waiters. Independent PostgreSQL
+sampling also observed a 444 ms advisory-lock wait while other transactions
+waited on the application. The browser batch contained three HTTP 200
+`delivery_timeout` fallbacks, two separate `in_flight` fallbacks and one
+trace-confirmed selection HTTP 503. Prisma batches many image-derivative calls
+into one SQL query, confirmed both
+locally and by production row counts; span count alone therefore does not prove
+SQL fan-out. The workload causing the remaining pool pressure is unresolved.
+Pool, lock and scheduling costs remain distinct; no new correction is claimed.
+
+Final checks on Web/Admin `c813991ad` also reproduce a `delivery_timeout` HTTP
+200 fallback and trace-confirmed selection HTTP 503 at 00:47:19 without any
+temporary production instrumentation. Trace
+`75f0d58d57ea0aa72f431b2f84e78f0c` has upstream timeout at 700 ms and an Admin
+mutation continuing for 1,710 ms. This is still unresolved.

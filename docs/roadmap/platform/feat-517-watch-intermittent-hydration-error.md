@@ -3,7 +3,7 @@ id: "feat-517"
 title: "Reproduce the intermittent Watch HTML hydration mismatch"
 owner: "nisal"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-16"
 duration: 1
 depends_on: []
@@ -26,7 +26,7 @@ the error. Datadog RUM matched the observation to `/watch/sermon-on-the-mount-2.
 predates both Admin fixes: 01:34:24 on `/watch/the-four-collection.html/luganda.html`,
 00:53:42 on a Vietnamese New Believer episode, and September 15 at 23:37:57 on
 a Spanish JESUS episode. This establishes a pre-existing error class, not an
-identical initiating cause on every page. No cause has yet been reproduced.
+identical initiating cause on every page. At the time of that observation no cause had been reproduced.
 Web ran `469edc6f996db1c6bd729b9a1b9f0e2732a0cd58`; Admin ran `9533506f`.
 
 ## Reproduction and entry points
@@ -78,7 +78,29 @@ browser cases pass with no errors; six no-query page-load samples per build
 retain early poster paint. See
 `docs/solutions/ui-bugs/watch-autoplay-query-cached-html-hydration.md`.
 
-Production deployment and observation are pending. This is one demonstrated
+The release evidence below completes this demonstrated correction. This is one demonstrated
 HTML mismatch cause. The original September 16 arrival query was not retained,
 and the RUM issue group includes other stack variants; neither those historical
 events nor the separate text mismatch are claimed to have one universal cause.
+
+## Release acceptance — September 18
+
+PR #2338 merged normally at September 17 23:51:54 UTC as
+`cc5a5056562dce3cc70dbcd8fce2713128450e97`. Railway Web deployment
+`215a8220-9a43-4be9-8148-4ea03815b9f7` completed automatically, and SSH verified
+that exact running revision.
+
+Immediately before deployment, both affected English autoplay URLs reproduced
+React HTML #418 in production while their query-free controls passed. On the
+new revision, the same five-case browser matrix (two English controls, two
+English autoplay arrivals and the Spanish episode) emitted no errors. A real
+Watch now click played unmuted, followed by an autoplay navigation to Sermon on
+the Mount that played unmuted and advanced from 1.05 to 3.56 seconds, without
+JavaScript errors. This complements the failing-then-passing HTML regression;
+it is not closure based only on a healthy HTTP response.
+
+Spaced recommendation/navigation checks continue separately in the operations
+record. Earlier selection failures remain recorded and do not make this
+hydration fix a global runtime-recovery claim. The older event's unretained query
+and other RUM stack/text variants remain limitations of attribution, not a
+claim that every React 418 event has been eliminated.

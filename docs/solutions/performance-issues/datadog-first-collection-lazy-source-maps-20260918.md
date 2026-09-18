@@ -73,3 +73,9 @@ For upgrades, rerun `apps/admin/src/observability/profiler-source-maps.test.ts`
 and the production-build first/warm collection comparison. The patch depends on
 the pinned indexed consumer's `_sections`; reassess it when either dependency
 changes. Source-map output preservation is an acceptance gate, not just speed.
+
+Production acceptance on exact Admin/worker `c813991ad` retained profiling and
+the installed patch. The ordinary first collection at process age 65.5 seconds
+took 250 ms; a later one took 157 ms. Timing observers and inspectors were fully
+restored. A selection HTTP 503 nine seconds after that later collection confirms
+why cause-specific improvements must not be promoted to a global recovery claim.

@@ -152,6 +152,24 @@ Two measurements, not one:
 Report which window each number came from. "CLS 0.000" is not a claim until it
 names the window it covers.
 
+## Distinguish initial paint from later media candidates
+
+Retain every LCP candidate's element, size and timestamp alongside first paint,
+timed screenshots, media readiness and playback time. A late `VIDEO` candidate
+does not prove a blank page or even that a video frame decoded. In the September
+18 Watch investigation, it still appeared with HLS blocked and `readyState=0`.
+Removing only the native video poster in a local control removed that late
+candidate while the external poster remained visible. This established the
+current poster-mount behavior without changing production preview policy.
+
+Keep the browser version, launch configuration, viewport, exact query string,
+visibility and both browser/server cache state with the capture. Compare actual
+Watch documents; exclude cached 404s. Separate identified headless traffic from
+field populations, and do not apply a current VIDEO explanation to a historical
+H1 observation with missing setup evidence. See feat-515 and
+`docs/validation/watch-followups-2026-09-18/paint-observations.json` for the control
+and its remaining historical limitation.
+
 ## Related
 
 - `docs/solutions/best-practices/per-message-boundary-limits-for-media-surfaces.md`
