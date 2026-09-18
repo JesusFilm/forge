@@ -294,3 +294,35 @@ operation with many individual `MuxImageDerivative.findUnique` calls. This is
 a testable query-fan-out hypothesis, not yet a proven fix. The wrappers and loop
 monitor were restored, the owned inspector closed, and a separate SSH check
 confirmed closure. No production service configuration changed.
+
+### Hypothesis qualification and final Web revision
+
+A local real-PostgreSQL check of 216 concurrent identical-shape compound-key
+`MuxImageDerivative.findUnique` calls produced one SQL query, both with the
+plain client and the application's all-model query extension. The production
+observer likewise contains derivative queries returning 124–384 rows. Thus
+many individual Prisma spans do not demonstrate equivalent SQL fan-out; a new
+batching patch is not justified by those spans. Some single-row queries also
+remain, but their contribution to the measured pool queue is not isolated.
+
+Web's automatic deployment `1c1b95a3-5118-4cbb-94c2-5824796c4e6a` completed,
+and SSH verified actual revision `c813991ad3645aebdb50d6b1cac92a47b5aad250`.
+Admin, worker and Web now all run that revision. The shared dependency change
+was released through normal automation; no manual redeploy occurred.
+
+On that final Web revision, all five hydration cases pass with no JavaScript
+errors. The 00:46:58–00:47:52 recommendation batch remains unhealthy: 12 delivery
+HTTP 200s comprise ten served responses, one `delivery_timeout` fallback and
+one `in_flight` fallback. Four selections validate acknowledgments at
+370/341/306/278 ms, one request aborts at 802 ms, and one navigation has no
+selection request. Trace `75f0d58d57ea0aa72f431b2f84e78f0c` confirms the abort
+corresponds to Web HTTP 503 at 703.67 ms and upstream timeout at 700.20 ms; the
+Admin selection mutation continues for 1,710.46 ms. No diagnostic wrappers were
+active during this batch.
+
+The separate unsampled HTTP counters for 00:23–00:46 span Web `cc5a50565` and
+`c813991ad`: selection has 13 HTTP 200s and three HTTP 503s; delivery has 190
+HTTP 200s and 103 HTTP 403 policy rejections, with no recorded delivery 5xx.
+Semantic outcomes cannot be inferred from those HTTP 200 counters. The browser
+batch above is later than that fixed counter window and is not added to it as
+though the populations were disjoint.

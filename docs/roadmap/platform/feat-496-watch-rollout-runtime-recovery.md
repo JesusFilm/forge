@@ -234,6 +234,14 @@ acquisitions up to 741 ms with over 100 queued waiters. Independent PostgreSQL
 sampling also observed a 444 ms advisory-lock wait while other transactions
 waited on the application. The browser batch contained three HTTP 200
 `delivery_timeout` fallbacks, two separate `in_flight` fallbacks and one
-trace-confirmed selection HTTP 503. Individual image-derivative lookups during
-contextual catalog loading are the next reproduction hypothesis. Pool, lock and
-scheduling costs must remain distinct; no new causal correction is claimed.
+trace-confirmed selection HTTP 503. Prisma batches many image-derivative calls
+into one SQL query, confirmed both
+locally and by production row counts; span count alone therefore does not prove
+SQL fan-out. The workload causing the remaining pool pressure is unresolved.
+Pool, lock and scheduling costs remain distinct; no new correction is claimed.
+
+Final checks on Web/Admin `c813991ad` also reproduce a `delivery_timeout` HTTP
+200 fallback and trace-confirmed selection HTTP 503 at 00:47:19 without any
+temporary production instrumentation. Trace
+`75f0d58d57ea0aa72f431b2f84e78f0c` has upstream timeout at 700 ms and an Admin
+mutation continuing for 1,710 ms. This is still unresolved.

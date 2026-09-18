@@ -117,3 +117,13 @@ Numerical evidence: `docs/validation/watch-followups-2026-09-18/paint-observatio
 The initial local 404 batch is excluded. The media-blocking/attribute-removal
 experiments were local browser diagnostics only; no application change, telemetry
 suppression, preview-delay change or production configuration edit was made.
+
+A later inspection of retained slow-heading events through September 18 00:40
+separates response delay from rendering: 14 inspected hero-heading events
+remain after the bot/headless exclusions; 13 include first-byte timing. In ten
+of those 13, time to first byte accounts for at least 70% of LCP, and nine have
+first byte above eight seconds. Thirteen of 14 have identical FCP and LCP.
+Two mobile cases instead have first byte at 2.53/5.10 seconds and FCP at
+13.82/15.14 seconds. These sampled events show multiple delay shapes; first-byte
+time includes network and server work and does not identify one server cause.
+They do not explain the historical visible-DOM/empty-paint capture.
