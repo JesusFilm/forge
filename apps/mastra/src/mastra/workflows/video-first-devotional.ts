@@ -119,7 +119,7 @@ const contentDeps: GenerateDevotionalDeps = {
 const RenderPrefsSchema = z.object({
   /** Localized edition. `en` renders from the English text as-is; `ru`
    *  translates the copy, fetches the Synodal verse, and uses the RU voice. */
-  lang: z.enum(["en", "ru"]).default("en"),
+  lang: z.enum(["en", "ru", "es"]).default("en"),
   /** Colour grade. Omit to keep the per-sequence rotation the render applies. */
   style: z.string().optional(),
   /** Text arrangement. Omit for the render's own default. */

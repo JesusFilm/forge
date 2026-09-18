@@ -23,8 +23,9 @@ async function main() {
   const style = arg("style", "splittone")
   const layout = arg("layout", "grounded")
   const aspect = arg("aspect", "portrait") as "portrait" | "wide"
-  const lang = arg("lang", "en") as "en" | "ru"
+  const lang = arg("lang", "en") as "en" | "ru" | "es"
   const voiceOverride = arg("voice") // experiment: force a specific voice id
+  const clipFirst = arg("structure") === "clip-first"
   const outDir = arg(
     "out",
     path.join(homedir(), "Desktop", "Devos", "Devotionals"),
@@ -68,6 +69,16 @@ async function main() {
       // old dissolve.
       cardXfadeSec: Number(arg("card-xfade", "0")),
       ...(arg("video-speed") ? { videoSpeed: Number(arg("video-speed")) } : {}),
+      // Clip-first opens on the owner's cover intro over a three-second lead
+      // (film heard from the first frame), with the step clock in the corner
+      // and the spoken word lifting in the captions. Opt out per piece.
+      ...(clipFirst && !process.argv.includes("--no-intro")
+        ? { intro: "cover" as const, mutedLeadSec: 3 }
+        : {}),
+      ...(clipFirst && !process.argv.includes("--no-step-ring")
+        ? { stepRing: true }
+        : {}),
+      ...(clipFirst ? { clipCaptionStyle: "words-lift" as const } : {}),
       ...(arg("muted-lead") ? { mutedLeadSec: Number(arg("muted-lead")) } : {}),
       showSettleLine: process.argv.includes("--show-settle-line"),
       textFont: arg("text-font", "serif") as "sans" | "serif",

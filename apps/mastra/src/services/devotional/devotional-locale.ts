@@ -13,8 +13,10 @@
 import type { DevotionalVoiceName } from "./elevenlabs-voiceover"
 import { ruOrdinalDay, ruSpokenReference } from "./ru-numbers"
 import { normalizeRuDashes, ruAuthorName } from "./ru-punctuation"
+import { fetchSynodalPassage } from "./synodal-bible"
+import { esSpokenReference, fetchValeraPassage } from "./valera-bible"
 
-export type DevotionalLang = "en" | "ru"
+export type DevotionalLang = "en" | "ru" | "es"
 
 export type DevotionalLabels = {
   /** Eyebrow above the reflection (first reflection card). */
@@ -100,6 +102,15 @@ export type DevotionalLocale = {
   stripDashes: boolean
   /** On-screen section labels. */
   labels: DevotionalLabels
+  /** The three-step column of the clip-first structure (WATCH / REFLECT /
+   *  PRAY), upper-cased as shown. Defaults to English. */
+  stepLabels?: readonly [string, string, string]
+  /** The real target-language Bible a localized edition quotes from (never
+   *  machine-translated). English quotes its own corpus and leaves this out. */
+  scripture?: {
+    fetch: (ref: string) => Promise<{ text: string; reference: string }>
+    translation: string
+  }
   /** Cover attribution prefix, before "· <author>" (author name stays as-is). */
   attributionPrefix: string
   /**
@@ -302,6 +313,8 @@ export const RU_LOCALE: DevotionalLocale = {
   voice: "russian",
   stripDashes: false,
   labels: { reflect: "Подумай", askYourself: "Спроси себя", pray: "Помолись" },
+  stepLabels: ["СМОТРИ", "ПОДУМАЙ", "ПОМОЛИСЬ"],
+  scripture: { fetch: fetchSynodalPassage, translation: "Синодальный перевод" },
   attributionPrefix: "По мотивам христианской классики",
   // Combining acute accent (U+0301) forces the correct stress for the voice.
   // "стоит" is phrase-scoped (stands, not "is worth"); grow this list as needed.
@@ -367,9 +380,85 @@ export const RU_LOCALE: DevotionalLocale = {
   },
 }
 
+const ES_MONTHS = [
+  "enero",
+  "febrero",
+  "marzo",
+  "abril",
+  "mayo",
+  "junio",
+  "julio",
+  "agosto",
+  "septiembre",
+  "octubre",
+  "noviembre",
+  "diciembre",
+]
+const ES_WEEKDAYS = [
+  "Domingo",
+  "Lunes",
+  "Martes",
+  "Miércoles",
+  "Jueves",
+  "Viernes",
+  "Sábado",
+]
+
+/**
+ * Spanish (Latin American): neutral vocabulary, "tú" address, no "vosotros".
+ * The film is the Latin American dub (Arclight 21028); scripture is the
+ * Reina-Valera 1909 (public domain), the text Spanish-speaking evangelicals
+ * know best. FIRST-DRAFT wording, owner is not a Spanish speaker: a native
+ * reader should look over the connectors before a Spanish cut ships widely.
+ */
+export const ES_LOCALE: DevotionalLocale = {
+  lang: "es",
+  filmLanguageId: 21028,
+  voice: "spanish",
+  stripDashes: true,
+  labels: { reflect: "Reflexiona", askYourself: "Pregúntate", pray: "Ora" },
+  stepLabels: ["VER", "REFLEXIONAR", "ORAR"],
+  scripture: { fetch: fetchValeraPassage, translation: "Reina-Valera 1909" },
+  attributionPrefix: "Adaptado de un clásico de confianza",
+  spokenDate(iso) {
+    const p = parseIso(iso)
+    if (!p) return null
+    return `${ES_WEEKDAYS[weekdayIndex(p)]}, ${p.d} de ${ES_MONTHS[p.m - 1]}`
+  },
+  coverDate(iso) {
+    const p = parseIso(iso)
+    if (!p) return null
+    return `${ES_WEEKDAYS[weekdayIndex(p)]} · ${p.d} de ${ES_MONTHS[p.m - 1]}`
+  },
+  spokenReference: esSpokenReference,
+  connectors: {
+    cover: (hook, _sequence, date, occasion, _settleOverride, omitSettle) => {
+      const occasionLine = occasion ? ` Hoy también es ${occasion}.` : ""
+      if (omitSettle) return `${hook}${occasionLine}`
+      return date
+        ? `Hoy es ${date}.${occasionLine} Hagamos una pausa y dejemos que la Escritura nos hable.\n\n${hook}`
+        : `${hook}${occasionLine} Hagamos una pausa y dejemos que la Escritura nos hable.`
+    },
+    scripture: (ref, verse) => (ref ? `${ref}. ${verse}` : verse),
+    reflectionOpen: (chunk) => chunk,
+    conclusion: (line) => line,
+    questions: (question, prayer) =>
+      [question, prayer].filter(Boolean).join("\n\n"),
+    steps: {
+      intro: () => `Hagamos una pausa y escuchemos la Escritura`,
+      read: (ref) => `Hoy leemos aquí.${ref ? ` ${ref}.` : ""}`,
+      watch: () => `Veamos.`,
+      reflect: () => `Reflexiona sobre esto.`,
+      reflectAfterClip: () => `Reflexionemos sobre esto.`,
+      pray: () => `Llevemos esto a Dios.`,
+    },
+  },
+}
+
 export const LOCALES: Record<DevotionalLang, DevotionalLocale> = {
   en: EN_LOCALE,
   ru: RU_LOCALE,
+  es: ES_LOCALE,
 }
 
 export function localeFor(lang: DevotionalLang): DevotionalLocale {

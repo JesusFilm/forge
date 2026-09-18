@@ -13,6 +13,7 @@ const OCCASION_TABLE: Record<string, Record<DevotionalLang, string>> = {
   "08-19": {
     en: "World Humanitarian Day",
     ru: "Всемирный день гуманитарной помощи",
+    es: "Día Mundial de la Asistencia Humanitaria",
   },
 }
 

@@ -82,6 +82,8 @@ export type BuildManifestInput = {
   videoCardSec?: number
   /** Localized on-screen section labels (defaults to English). */
   labels?: { reflect: string; askYourself: string; pray: string }
+  /** Localized three-step column (clip-first). Defaults to English. */
+  stepLabels?: readonly [string, string, string]
   /** Fixed-date occasion tag for the cover (e.g. "World Humanitarian Day"),
    *  from `devotional-occasions.ts`. Most days have none. */
   occasion?: string
@@ -139,7 +141,7 @@ function buildClipFirstManifest(
     askYourself: "Ask yourself",
     pray: "Pray",
   }
-  const STEPS = ["WATCH", "REFLECT", "PRAY"]
+  const STEPS = [...(input.stepLabels ?? ["WATCH", "REFLECT", "PRAY"])]
   const cards: ManifestCard[] = []
 
   const videoDurationSec = Math.min(

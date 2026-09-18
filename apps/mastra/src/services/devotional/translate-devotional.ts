@@ -43,6 +43,19 @@ export class TranslateDevotionalError extends Error {
 const LANGUAGE_NAMES: Record<DevotionalLang, string> = {
   en: "English",
   ru: "Russian",
+  es: "Spanish",
+}
+
+/** Per-language notes appended to both passes; the Russian ones are inline. */
+const LANGUAGE_NOTES: Partial<Record<DevotionalLang, string[]>> = {
+  es: [
+    `- SPANISH: neutral Latin American Spanish. Address the viewer as "tú"`,
+    `  (never "usted", never "vosotros"); avoid regionalisms and slang.`,
+    `- Capitalize pronouns and titles for God and Jesus (Él, Su, Señor, Dios).`,
+    `- Spanish opens questions and exclamations with "¿" and "¡".`,
+    `- Keep the address gender-neutral where a participle or adjective would`,
+    `  mark the viewer's gender; reformulate rather than choosing one.`,
+  ],
 }
 
 const TranslatedSchema = z
@@ -91,7 +104,10 @@ const TRANSLATED_JSON_SCHEMA = {
   },
 }
 
-export function buildTranslateSystemPrompt(languageName: string): string {
+export function buildTranslateSystemPrompt(
+  languageName: string,
+  lang: DevotionalLang = "en",
+): string {
   return [
     `You are a NATIVE ${languageName} translator for a Jesus Film daily devotional`,
     `video. Translate the given fields from English into ${languageName}.`,
@@ -151,6 +167,7 @@ export function buildTranslateSystemPrompt(languageName: string): string {
     `      already.`,
     `  The QUESTION and the PRAYER are exempt: the prayer is deliberately an`,
     `  invitation to pray ("Ask God to …") and must stay one.`,
+    ...(LANGUAGE_NOTES[lang] ?? []),
     `Return JSON only: an object with title, reflection, conclusion, question, prayer.`,
   ].join("\n")
 }
@@ -211,7 +228,7 @@ export async function translateDevotionalCopy(
   let result: z.infer<typeof TranslatedSchema>
   try {
     result = await options.llm.complete({
-      system: buildTranslateSystemPrompt(languageName),
+      system: buildTranslateSystemPrompt(languageName, options.targetLang),
       user,
       jsonSchema: TRANSLATED_JSON_SCHEMA,
       schema: TranslatedSchema,
@@ -245,7 +262,10 @@ export async function translateDevotionalCopy(
   return out
 }
 
-function buildEditSystemPrompt(languageName: string): string {
+function buildEditSystemPrompt(
+  languageName: string,
+  lang: DevotionalLang = "en",
+): string {
   return [
     `You are a NATIVE ${languageName} editor polishing a short Christian`,
     `devotional that will be READ ALOUD. Rewrite the given ${languageName} fields`,
@@ -271,6 +291,7 @@ function buildEditSystemPrompt(languageName: string): string {
     `- Natural ${languageName} punctuation; capitalize pronouns for God/Jesus`,
     `  (Он, Его, Ему). AVOID the em/en dash ("—", "–") — rephrase with commas or`,
     `  split the sentence instead.`,
+    ...(LANGUAGE_NOTES[lang] ?? []),
     `Return JSON only: title, reflection, conclusion, question, prayer.`,
   ].join("\n")
 }
@@ -303,7 +324,7 @@ export async function editLocalizedCopy(
   let result: z.infer<typeof TranslatedSchema>
   try {
     result = await options.llm.complete({
-      system: buildEditSystemPrompt(languageName),
+      system: buildEditSystemPrompt(languageName, options.targetLang),
       user,
       jsonSchema: TRANSLATED_JSON_SCHEMA,
       schema: TranslatedSchema,

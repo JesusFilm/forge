@@ -45,6 +45,9 @@ export const DEVOTIONAL_VOICES = {
   // (English uses the rotation above; a fixed English voice was a local
   // experiment only — pass an explicit voice id per render if needed.)
   russian: "JfyX9t7XtuhnbIirgQA7",
+  // "El Faraon - Full, Clear" from the voice library: Latin American, older
+  // male, deep and clear. Owner's pick from six samples (2026-09-18).
+  spanish: "8mBRP99B2Ng2QwsJMFQl",
 } as const
 
 export type DevotionalVoiceName = keyof typeof DEVOTIONAL_VOICES

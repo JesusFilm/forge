@@ -1436,6 +1436,7 @@ async function renderInStage(
     musicFile,
     headerDate,
     labels: locale.labels,
+    ...(locale.stepLabels ? { stepLabels: locale.stepLabels } : {}),
     // Suppressed for social cuts. This is the SECOND place the occasion enters
     // — the narration reads it from its own call — and silencing only the voice
     // left "WORLD HUMANITARIAN DAY" sitting on the cover.
@@ -2252,7 +2253,7 @@ export async function prepareAndRenderDevotional(
           // meaningless once `devo` is a translation — skip it for localized
           // runs rather than compare an English excerpt to Russian prose.
           checkFidelity: lang === "en",
-          lang: lang === "ru" ? "ru" : "en",
+          lang,
           passageReference: devo.passage.reference,
           log,
         })

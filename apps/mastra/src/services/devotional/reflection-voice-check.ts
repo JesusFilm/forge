@@ -434,9 +434,13 @@ export function checkReflectionVoice(
     conclusion?: string
     /** Defaults to English. A localized run MUST pass this or the check is a
      *  no-op on its own text. */
-    lang?: "en" | "ru"
+    lang?: "en" | "ru" | "es"
   } = {},
 ): VoiceFinding[] {
+  // No Spanish rule set yet: the English patterns would misfire on Spanish
+  // prose, so a Spanish run skips the command/appeal checks rather than
+  // reporting noise. The translation passes carry the voice rules instead.
+  if (opts.lang === "es") return []
   const all = sentences(text)
   const ru = opts.lang === "ru"
   const commands = ru ? checkRussianCommands : checkCommandsAndAppeals

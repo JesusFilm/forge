@@ -1,3 +1,4 @@
+import type { DevotionalLang } from "./devotional-locale"
 import { checkDevotionalCoherence } from "./devotional-coherence"
 import {
   buildCoherenceLlm,
@@ -68,7 +69,7 @@ export type ReviewDevotionalTextInput = {
   /** Which language `devotional` is in. The voice rules are per-language; a
    *  localized run that omits this gets the English patterns and so gets no
    *  check at all. */
-  lang?: "en" | "ru"
+  lang?: DevotionalLang
   log?: (msg: string) => void
 }
 

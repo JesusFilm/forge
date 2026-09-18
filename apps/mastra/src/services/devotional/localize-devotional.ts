@@ -51,7 +51,8 @@ export async function localizeDevotional(
   const translateLlm = options.translateLlm ?? llm
   const translate = deps.translate ?? translateDevotionalCopy
   const edit = deps.edit ?? editLocalizedCopy
-  const fetchScripture = deps.fetchScripture ?? fetchSynodalPassage
+  const fetchScripture =
+    deps.fetchScripture ?? locale.scripture?.fetch ?? fetchSynodalPassage
   const pickHighlights = deps.pickHighlights ?? pickReflectionHighlights
 
   // Scripture (real target-language Bible) and copy translation are independent
@@ -105,7 +106,9 @@ export async function localizeDevotional(
   const rawAuthor = d.reflection.attribution.includes("·")
     ? d.reflection.attribution.split("·").pop()!.trim()
     : d.reflection.source.split(",")[0].trim()
-  const author = locale.localizeAuthor ? locale.localizeAuthor(rawAuthor) : rawAuthor
+  const author = locale.localizeAuthor
+    ? locale.localizeAuthor(rawAuthor)
+    : rawAuthor
 
   // DROP the English `parts`. They are the two reflection halves used to place
   // the act-2 video card, and the manifest derives that position by counting
@@ -120,7 +123,10 @@ export async function localizeDevotional(
   // a localized edition means translating each half and re-deriving the
   // boundary from the translated halves, which is a change to the translation
   // schema (TranslatableCopy) rather than something to fake here.
-  const { parts: _englishParts, ...reflectionWithoutParts } = d.reflection
+  // The English chunking does not carry over: the translated reflection is
+  // re-split downstream.
+  const reflectionWithoutParts = { ...d.reflection }
+  delete reflectionWithoutParts.parts
 
   return {
     ...d,
@@ -128,7 +134,7 @@ export async function localizeDevotional(
     scripture: {
       reference: scripture.reference,
       text: scripture.text,
-      translation: "Синодальный перевод",
+      translation: locale.scripture?.translation ?? "Синодальный перевод",
       needsCanonicalSource: false,
     },
     reflection: {

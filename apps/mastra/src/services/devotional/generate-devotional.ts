@@ -134,7 +134,7 @@ export const GeneratedDevotionalSchema = z.object({
   question: z.string(),
   prayer: z.string(),
   mood: z.enum(["peace", "hope", "lament", "awe"]),
-  voice: z.enum(["male-d", "male-e", "female-c", "russian"]),
+  voice: z.enum(["male-d", "male-e", "female-c", "russian", "spanish"]),
   sequence: z.number(),
 }) satisfies z.ZodType<GeneratedDevotional>
 
