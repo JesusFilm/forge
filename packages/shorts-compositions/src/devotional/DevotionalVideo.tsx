@@ -305,6 +305,102 @@ export function spreadWords(
 }
 
 /**
+ * A wide stretch of the film shown as two panels (owner's idea, 2026-09-18):
+ * the whole 16:9 frame across the top, and under it a close crop that follows
+ * the same face path the full-frame crop uses. A 9:16 window through a wide
+ * crowd shot throws most of the picture away and lands on whoever happens to
+ * be at the chosen x; this keeps the scene readable and the subject large.
+ *
+ * Drawn OVER the card's own video, which keeps playing underneath and carries
+ * the sound, so the audio and the focus path need no special case.
+ */
+const SPLIT_ZOOM = 1.5
+
+function ClipSplitPanels({
+  src,
+  trimBefore,
+  focusX,
+  width,
+  height,
+  opacity,
+  grade,
+}: {
+  src: string
+  trimBefore: number
+  /** 0-1 across the source frame: where the close panel is centred. */
+  focusX: number
+  width: number
+  height: number
+  opacity: number
+  grade?: string
+}) {
+  // The top panel is the whole frame at its own ratio; the bottom takes what
+  // is left, so neither is letterboxed.
+  const topH = Math.round((width * 9) / 16)
+  return (
+    <AbsoluteFill style={{ opacity, background: "#0c0805" }}>
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          width,
+          height: topH,
+          overflow: "hidden",
+        }}
+      >
+        <OffthreadVideo
+          src={src}
+          muted
+          trimBefore={trimBefore}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            filter: grade || undefined,
+          }}
+        />
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          top: topH,
+          width,
+          height: height - topH,
+          overflow: "hidden",
+        }}
+      >
+        <OffthreadVideo
+          src={src}
+          muted
+          trimBefore={trimBefore}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            objectPosition: `${(focusX * 100).toFixed(2)}% 38%`,
+            transform: `scale(${SPLIT_ZOOM})`,
+            filter: grade || undefined,
+          }}
+        />
+      </div>
+      {/* A hairline where the panels meet, the same edge the bands intro uses. */}
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          top: topH,
+          width,
+          height: Math.max(1, Math.round(height / 1080)),
+          background: "rgba(0,0,0,0.85)",
+        }}
+      />
+    </AbsoluteFill>
+  )
+}
+
+/**
  * The owner's caption spec for the film (2026-09-18), in her words:
  * uppercase, centred, compact; Literata 500; content words large and the
  * small grammar words small; the phrase builds word by word and then HOLDS,
@@ -336,15 +432,49 @@ const PHRASE_FUNCTION_WORDS = new Set([
   "one",
   "can",
 ])
-const PHRASE_CONTENT_PX = 104
-const PHRASE_FUNCTION_PX = 70
-const PHRASE_MAX_WIDTH_PX = 930
+// Sizes for a 1080x1920 frame. Smaller than the first cut: at 104/70 the block
+// covered too much of the picture (owner). Only the STRONG words are set in
+// caps and a size up; everything else keeps its own case, so a phrase reads as
+// a sentence with two words struck out of it, not as a wall of capitals.
+const PHRASE_STRONG_PX = 92
+const PHRASE_CONTENT_PX = 74
+const PHRASE_FUNCTION_PX = 54
+/** Inside the side padding: 100px clear of each edge on a 1080 frame. */
+const PHRASE_MAX_WIDTH_PX = 880
 const PHRASE_CENTRE_Y_PX = 1060
 const PHRASE_FRAME_PX = { w: 1080, h: 1920 }
-const PHRASE_MAX_LINES = 4
-/** Rough per-character advance, as a share of font size, for Literata caps. */
-const PHRASE_CHAR_W = 0.62
+const PHRASE_MAX_LINES = 3
+/** Per-character advance as a share of font size: caps run wider than lowercase. */
+const PHRASE_CHAR_W_UPPER = 0.7
+const PHRASE_CHAR_W_LOWER = 0.55
 const PHRASE_SPACE_W = 0.3
+/** How long a word holds the accent before cooling to white. */
+const PHRASE_SETTLE_SEC = 0.45
+
+/**
+ * The words a phrase sets in caps: at most two, so caps stay an emphasis.
+ * The piece's theme word always counts; otherwise the longest content word
+ * carries the line (a five-letter-plus noun or verb, never a grammar word).
+ */
+export function phraseStrongWords(
+  tokens: readonly string[],
+  themeWord?: string,
+): Set<string> {
+  const key = (w: string) => w.toLowerCase().replace(/[^\p{L}\p{N}']/gu, "")
+  const theme = themeWord ? key(themeWord) : null
+  const content = tokens.filter(
+    (t) => key(t).length > 0 && !PHRASE_FUNCTION_WORDS.has(key(t)),
+  )
+  const out = new Set<string>()
+  for (const t of tokens) if (theme && key(t) === theme) out.add(key(t))
+  if (out.size === 0 && content.length > 0) {
+    const longest = [...content].sort(
+      (a, b) => key(b).length - key(a).length,
+    )[0]
+    if (key(longest).length >= 4) out.add(key(longest))
+  }
+  return out
+}
 
 const phraseWordKey = (w: string) =>
   w.toLowerCase().replace(/[^\p{L}\p{N}']/gu, "")
@@ -375,6 +505,8 @@ export function phraseLayout(
   maxWidth: number,
   maxLines = PHRASE_MAX_LINES,
 ): { scale: number; lines: { token: string; size: number }[][] } {
+  const advance = (token: string) =>
+    token === token.toUpperCase() ? PHRASE_CHAR_W_UPPER : PHRASE_CHAR_W_LOWER
   for (let step = 0; step < 12; step++) {
     const scale = Math.pow(0.94, step)
     const lines: { token: string; size: number }[][] = []
@@ -382,7 +514,7 @@ export function phraseLayout(
     let width = 0
     for (const w of words) {
       const size = w.size * scale
-      const wordW = w.token.length * size * PHRASE_CHAR_W
+      const wordW = w.token.length * size * advance(w.token)
       const spaceW = line.length ? size * PHRASE_SPACE_W : 0
       if (line.length && width + spaceW + wordW > maxWidth) {
         lines.push(line)
@@ -415,14 +547,19 @@ function PhraseCaption({
   const tokens = cue.text.split(/\s+/).filter(Boolean)
   const starts = phraseWordStarts(tokens, cue.startSec)
   const unit = (pxOf1080: number) => (pxOf1080 / PHRASE_FRAME_PX.w) * REF
-  const sized = tokens.map((token) => ({
-    token: token.toUpperCase(),
-    size: PHRASE_FUNCTION_WORDS.has(phraseWordKey(token))
-      ? unit(PHRASE_FUNCTION_PX)
-      : unit(PHRASE_CONTENT_PX),
-  }))
+  const strong = phraseStrongWords(tokens, themeWord)
+  const sized = tokens.map((token) => {
+    const k = phraseWordKey(token)
+    if (strong.has(k))
+      return { token: token.toUpperCase(), size: unit(PHRASE_STRONG_PX) }
+    return {
+      token,
+      size: PHRASE_FUNCTION_WORDS.has(k)
+        ? unit(PHRASE_FUNCTION_PX)
+        : unit(PHRASE_CONTENT_PX),
+    }
+  })
   const { lines } = phraseLayout(sized, unit(PHRASE_MAX_WIDTH_PX))
-  const theme = themeWord ? phraseWordKey(themeWord) : null
   let i = 0
   return (
     <div
@@ -456,7 +593,15 @@ function PhraseCaption({
               // Words appear one at a time and STAY: already-shown words never
               // move, so the phrase cannot reflow while it is being read.
               const shown = t >= start
-              const isTheme = theme != null && phraseWordKey(w.token) === theme
+              // Each word LANDS in the accent and cools to white behind the
+              // voice; the strong words keep the accent for the whole phrase.
+              const isStrong = strong.has(phraseWordKey(w.token))
+              const warm = isStrong
+                ? 1
+                : interpolate(t, [start, start + PHRASE_SETTLE_SEC], [1, 0], {
+                    extrapolateLeft: "clamp",
+                    extrapolateRight: "clamp",
+                  })
               return (
                 <span
                   key={`${li}-${w.token}-${start}`}
@@ -465,7 +610,11 @@ function PhraseCaption({
                     fontWeight: 500,
                     fontSize: px(w.size),
                     lineHeight: 1,
-                    color: isTheme ? "#F2C46B" : "#ffffff",
+                    color: interpolateColors(
+                      warm,
+                      [0, 1],
+                      ["#ffffff", "#F2C46B"],
+                    ),
                     opacity: shown ? 1 : 0,
                     // Tight drop shadow only: no band, no stroke (owner tried
                     // both and rejected them).
@@ -3977,9 +4126,50 @@ function Background({
     </>
   ) : null
 
+  // Two-panel stretches (clip-first, wide shots). Rendered over the card's own
+  // video, which keeps playing underneath and carries the sound.
+  const splitFade = 0.35
+  const splitRange =
+    fullBleedVideo && src && card.clipSplits
+      ? card.clipSplits.find(
+          (w) =>
+            frame / fps >= w.fromSec - splitFade &&
+            frame / fps <= w.toSec + splitFade,
+        )
+      : undefined
+  const splitPanels =
+    splitRange && src ? (
+      <ClipSplitPanels
+        src={staticFile(src)}
+        trimBefore={
+          props.continuousClip ? Math.max(0, Math.round(bgStartFrame)) : 0
+        }
+        focusX={
+          card.clipFocus && card.clipFocus.length > 0
+            ? pathAt(card.clipFocus, frame / fps)
+            : 0.5
+        }
+        width={width}
+        height={height}
+        opacity={interpolate(
+          frame / fps,
+          [
+            splitRange.fromSec - splitFade,
+            splitRange.fromSec,
+            splitRange.toSec,
+            splitRange.toSec + splitFade,
+          ],
+          [0, 1, 1, 0],
+          { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+        )}
+        {...(videoGrade ? { grade: videoGrade } : {})}
+      />
+    ) : null
+
   return (
     <AbsoluteFill style={{ backgroundColor: style.mediaBg }}>
       {src ? media : <AbsoluteFill style={{ background: style.textBg }} />}
+      {splitPanels}
       {splitToneLayers}
       {bloom}
       {blurOverlay}

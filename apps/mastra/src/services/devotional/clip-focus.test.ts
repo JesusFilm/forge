@@ -5,6 +5,7 @@ import {
   clipPictureChanges,
   dominantTrack,
   smoothShot,
+  planClipSplits,
 } from "./clip-focus"
 import type { FaceSample } from "./face-crop-anchors"
 
@@ -109,5 +110,46 @@ describe("clipPictureChanges", () => {
       1.0,
     )
     expect(out).toEqual([0.2])
+  })
+})
+
+describe("planClipSplits", () => {
+  const sample = (atSec: number, area: number) => ({
+    atSec,
+    faces: area > 0 ? [{ cx: 0.5, cy: 0.4, area }] : [],
+  })
+  // 0-6s wide (small faces), 6-10s a close-up, 10-18s wide again.
+  const samples = [
+    ...Array.from({ length: 24 }, (_, i) => sample(i * 0.25, 0.008)),
+    ...Array.from({ length: 16 }, (_, i) => sample(6 + i * 0.25, 0.09)),
+    ...Array.from({ length: 32 }, (_, i) => sample(10 + i * 0.25, 0.006)),
+  ]
+  const changes = [6, 10]
+
+  it("returns the wide stretches, cut at the film's own shot boundaries", () => {
+    const splits = planClipSplits(samples, changes, 18)
+    expect(splits).toEqual([
+      { fromSec: 0, toSec: 6 },
+      { fromSec: 10, toSec: 18 },
+    ])
+  })
+
+  it("merges neighbouring wide shots and keeps at most two stretches", () => {
+    const many = [
+      ...samples,
+      ...Array.from({ length: 20 }, (_, i) => sample(18 + i * 0.25, 0.005)),
+    ]
+    const splits = planClipSplits(many, [6, 10, 18], 23, { max: 2 })
+    expect(splits).toHaveLength(2)
+    // 10-18 and 18-23 are both wide and touch, so they read as one stretch.
+    expect(splits.map((s) => s.toSec - s.fromSec)).toEqual([6, 13])
+  })
+
+  it("drops a stretch too short to be worth the layout change", () => {
+    const brief = [
+      ...Array.from({ length: 8 }, (_, i) => sample(i * 0.25, 0.005)),
+      ...Array.from({ length: 20 }, (_, i) => sample(2 + i * 0.25, 0.09)),
+    ]
+    expect(planClipSplits(brief, [2], 7)).toEqual([])
   })
 })

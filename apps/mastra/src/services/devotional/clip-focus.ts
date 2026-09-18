@@ -236,12 +236,20 @@ export function buildClipPath(
  * Run the detector over a staged clip and return its focus path. Empty when
  * detection is unavailable, so the render is unchanged.
  */
+export type ClipFocusPlan = {
+  path: FocusPoint[]
+  /** Wide stretches to show as two panels; see `planClipSplits`. */
+  splits: Array<{ fromSec: number; toSec: number }>
+}
+
 export async function planClipFocus(opts: {
   clipFile: string
   python?: string
   scriptPath?: string
+  /** Plan the two-panel stretches as well (clip-first only). */
+  splitPanels?: boolean
   log?: (line: string) => void
-}): Promise<FocusPoint[]> {
+}): Promise<ClipFocusPlan> {
   const log = opts.log ?? (() => {})
   const python = opts.python ?? process.env.DEVO_FACE_PYTHON ?? "python3"
   const script = opts.scriptPath ?? defaultScriptPath()
@@ -252,26 +260,86 @@ export async function planClipFocus(opts: {
   )
   if (!ok) {
     log("clip crop: detector unavailable — the clip stays centre-cropped")
-    return []
+    return { path: [], splits: [] }
   }
   let parsed: { samples?: FaceSample[] }
   try {
     parsed = JSON.parse(out)
   } catch {
     log("clip crop: detector output unreadable — staying centre-cropped")
-    return []
+    return { path: [], splits: [] }
   }
   const samples = parsed.samples ?? []
-  if (samples.length === 0) return []
+  if (samples.length === 0) return { path: [], splits: [] }
   const cuts = await detectShotCuts(opts.clipFile)
   const changes = clipPictureChanges(samples, cuts)
   const path = buildClipPath(samples, changes)
   const seen = samples.filter((s) =>
     s.faces.some((f) => f.area >= MIN_AREA),
   ).length
+  const endSec =
+    samples.length > 0 ? samples[samples.length - 1].atSec + INTERVAL_SEC : 0
+  const splits = opts.splitPanels
+    ? planClipSplits(samples, changes, endSec)
+    : []
   log(
     `clip crop: ${seen}/${samples.length} samples with a face, ` +
-      `${changes.length} picture change(s), ${path.length} path point(s)`,
+      `${changes.length} picture change(s), ${path.length} path point(s)` +
+      (splits.length
+        ? `, ${splits.length} two-panel stretch(es): ` +
+          splits
+            .map((w) => `${w.fromSec.toFixed(1)}-${w.toSec.toFixed(1)}s`)
+            .join(", ")
+        : ""),
   )
-  return path
+  return { path, splits }
+}
+
+/**
+ * Where the film is a WIDE shot and the portrait crop has to throw most of the
+ * picture away. Those stretches read better as two panels: the whole frame on
+ * top, a close crop following the face underneath.
+ *
+ * Deliberately sparse: at most two stretches per clip and never shorter than
+ * `minSec`, because a panel that comes and goes every second flickers (owner).
+ * A stretch is wide when the biggest face in it stays under `maxFaceArea` of
+ * the frame, and it is cut at the film's own shot boundaries so the layout
+ * never changes mid-shot.
+ */
+export function planClipSplits(
+  samples: ReadonlyArray<FaceSample>,
+  changes: ReadonlyArray<number>,
+  endSec: number,
+  opts: { maxFaceArea?: number; minSec?: number; max?: number } = {},
+): Array<{ fromSec: number; toSec: number }> {
+  const maxFaceArea = opts.maxFaceArea ?? 0.02
+  const minSec = opts.minSec ?? 3
+  const max = opts.max ?? 2
+  const bounds = [0, ...changes.filter((c) => c > 0 && c < endSec), endSec]
+  const shots: Array<{ fromSec: number; toSec: number; biggest: number }> = []
+  for (let i = 0; i < bounds.length - 1; i++) {
+    const from = bounds[i]
+    const to = bounds[i + 1]
+    const inShot = samples.filter((x) => x.atSec >= from && x.atSec < to)
+    if (inShot.length === 0) continue
+    const biggest = Math.max(
+      0,
+      ...inShot.flatMap((x) => x.faces.map((f) => f.area)),
+    )
+    shots.push({ fromSec: from, toSec: to, biggest })
+  }
+  // Merge neighbouring wide shots so a scene cut inside a crowd sequence does
+  // not split one stretch into two short ones.
+  const wide: Array<{ fromSec: number; toSec: number }> = []
+  for (const sh of shots) {
+    if (sh.biggest > maxFaceArea) continue
+    const last = wide[wide.length - 1]
+    if (last && Math.abs(last.toSec - sh.fromSec) < 0.01) last.toSec = sh.toSec
+    else wide.push({ fromSec: sh.fromSec, toSec: sh.toSec })
+  }
+  return wide
+    .filter((w) => w.toSec - w.fromSec >= minSec)
+    .sort((a, b) => b.toSec - b.fromSec - (a.toSec - a.fromSec))
+    .slice(0, max)
+    .sort((a, b) => a.fromSec - b.fromSec)
 }

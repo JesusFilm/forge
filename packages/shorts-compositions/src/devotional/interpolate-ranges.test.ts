@@ -10,6 +10,7 @@ import {
   leadLabelKnots,
   pathAt,
   phraseLayout,
+  phraseStrongWords,
   phraseWordStarts,
   spreadWords,
 } from "./DevotionalVideo"
@@ -205,7 +206,7 @@ describe("phraseLayout", () => {
 
   it("wraps within the text width and keeps the words in order", () => {
     const words = [w("ONCE", 38), w("THERE", 38), w("WERE", 38), w("TWO", 38)]
-    const { lines } = phraseLayout(words, 60)
+    const { lines } = phraseLayout(words, 240)
     expect(lines.length).toBeGreaterThan(1)
     expect(lines.flat().map((x) => x.token)).toEqual([
       "ONCE",
@@ -217,9 +218,40 @@ describe("phraseLayout", () => {
 
   it("shrinks in 6% steps until the phrase fits the line budget", () => {
     const words = Array.from({ length: 6 }, () => w("ALPHA", 38))
-    const { scale, lines } = phraseLayout(words, 200, 2)
+    const { scale, lines } = phraseLayout(words, 300, 2)
     expect(lines.length).toBeLessThanOrEqual(2)
-    expect(scale).toBeCloseTo(0.94 ** 11, 5)
+    expect(scale).toBeCloseTo(0.94 ** 6, 5)
     expect(lines[0][0].size).toBeCloseTo(38 * scale, 5)
+  })
+})
+
+describe("phraseStrongWords", () => {
+  it("caps the piece's theme word wherever it appears", () => {
+    const strong = phraseStrongWords(
+      ["Once", "there", "were", "two", "men", "who", "went", "to", "pray."],
+      "pray",
+    )
+    expect([...strong]).toEqual(["pray"])
+  })
+
+  it("falls back to the longest content word, never a grammar word", () => {
+    const strong = phraseStrongWords([
+      "God,",
+      "have",
+      "pity",
+      "on",
+      "me,",
+      "a",
+      "sinner.",
+    ])
+    expect([...strong]).toEqual(["sinner"])
+  })
+
+  it("keeps caps to at most one word per phrase", () => {
+    const strong = phraseStrongWords(
+      ["the", "tax", "collector", "went", "home", "justified"],
+      "mercy",
+    )
+    expect(strong.size).toBeLessThanOrEqual(1)
   })
 })

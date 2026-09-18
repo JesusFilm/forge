@@ -100,6 +100,9 @@ async function main() {
         : {}),
       ...(arg("intro") ? { intro: arg("intro") as "cover" | "bands" } : {}),
       ...(arg("theme-word") ? { clipThemeWord: arg("theme-word") } : {}),
+      ...(process.argv.includes("--split-panels")
+        ? { clipSplitPanels: true }
+        : {}),
       ...(arg("clip-trim-end")
         ? { clipTrimEndSec: Number(arg("clip-trim-end")) }
         : {}),

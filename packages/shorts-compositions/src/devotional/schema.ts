@@ -80,6 +80,11 @@ export const devotionalCardSchema = z.object({
   /** `phrase` captions: the piece's theme word, held in the accent colour
    *  every time it appears. */
   themeWord: z.string().optional(),
+  /** Stretches of a full-frame film card shown as two panels: the whole 16:9
+   *  frame on top, a close crop following the face underneath. */
+  clipSplits: z
+    .array(z.object({ fromSec: z.number(), toSec: z.number() }))
+    .optional(),
   /**
    * Clip-first opening over the muted lead of the film card, so the viewer
    * knows this is a devotional and not a stray film clip. `cover`: the brand

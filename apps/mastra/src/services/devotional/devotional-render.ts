@@ -942,6 +942,8 @@ export type RenderOptions = {
   clipCaptionStyle?: "words" | "words-lift" | "phrase"
   /** `phrase` captions: the piece's theme word, held in the accent colour. */
   clipThemeWord?: string
+  /** Show the widest one or two stretches of the film as two panels. */
+  clipSplitPanels?: boolean
   /** Review preview: render N evenly spaced PNG stills INSTEAD of the MP4.
    *  Costs one frame of rasterization each — seconds, not minutes — which is
    *  what makes "show me screenshots before you render the whole thing" a
@@ -1647,9 +1649,11 @@ async function renderInStage(
       if (card.kind !== "video" || typeof card.videoFile !== "string") continue
       const focus = await planClipFocus({
         clipFile: path.join(stage, card.videoFile),
+        splitPanels: options.clipSplitPanels === true,
         log,
       })
-      if (focus.length > 0) card.clipFocus = focus
+      if (focus.path.length > 0) card.clipFocus = focus.path
+      if (focus.splits.length > 0) card.clipSplits = focus.splits
       if (options.clipCaptionStyle) card.captionStyle = options.clipCaptionStyle
       if (options.clipThemeWord) card.themeWord = options.clipThemeWord
       if (
