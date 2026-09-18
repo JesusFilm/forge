@@ -113,13 +113,44 @@ operations despite SQL batching. The scoped correction reads both exact image
 recipes in one service batch. Real PostgreSQL output equivalence and local
 performance controls are documented in
 `docs/solutions/performance-issues/prisma-batched-mux-metadata-call-overhead-20260918.md`.
-This change is under validation and is not yet release evidence. The ticket
-remains in progress pending normal deployment and separate HTTP/semantic
-acceptance. A temporary diagnostic observer caused an additional connection
+PR #2342 merged normally and deployed automatically to Admin and worker revision
+`32caef0f1cc2e9b59570bfb44fd1cd96f2df0c58`. Exact running revisions and the
+compiled batch were verified at 03:17:41 UTC on September 18. Web remains on
+`c813991ad3645aebdb50d6b1cac92a47b5aad250`; its service correctly skipped this
+Admin-only release. The ticket remains in progress during separate sustained
+HTTP/semantic acceptance. A temporary diagnostic observer caused an additional connection
 incident, was removed, and its stranded connections were discarded; that
 capture is excluded from causal evidence. See
 `docs/operations/watch-api-stalls-diagnostic-2026-09-18.md` for the incident,
 recovery and remaining uncertainty.
+
+A sampled post-release browser acknowledgment failure has a separate native
+Chrome renderer commit wait; feat-521 owns further attribution and field
+verification. It must remain visible in browser outcomes and must not be
+misclassified as an Admin HTTP 503. The underlying browser mechanism and the
+other unread-body cases are not all established by that single trace.
+
+The extended release check still confirms a selection HTTP 503 at 03:40:10 UTC
+on September 18 (`6aacb29a000000003096dac941cd5f16`). Admin selection spends
+2,341 ms in `consume_recommendation_capability_submissions` before its 81 ms
+selection transaction. Driver/pool waiting, database locking/execution and
+application scheduling still require separation for this new sample. The
+48-selection ordinary cohort has 42 validated acknowledgments, five unread HTTP
+200 bodies and this one server-correlated timeout; all 96 delivery bodies are
+served, with no observed `delivery_timeout`. Keep this ticket open and preserve
+the capability submission bound while investigating the remaining call.
+
+A second server HTTP 503 at 03:45:42
+(`6aacb3e6000000004bb08c6b3b2e20c3`) includes a 382 ms capability-budget call;
+an independent PostgreSQL sample observes `IO / WalSync` during it. This proves
+a durable-write contribution, not the cause of the entire delay. Existing Node
+metrics do not support a 2.34-second scheduling pause in the first timeout;
+checkpoint completion does not overlap either failure. A faster experimental
+language-inventory query failed to reproduce or improve selection-probe latency
+under the observed concurrency and was not shipped. Preserve these negative
+controls and separate driver acquisition from database waits before the next
+fix. Details and exact cohort denominators are in the operations report and
+`docs/validation/watch-api-batch-release-20260918/browser-outcomes.json`.
 
 - `apps/web/src/lib/recommendation-mutation-admission.ts` — identity, namespace
   and production worker dispatch.

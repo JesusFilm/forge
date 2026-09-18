@@ -98,6 +98,14 @@ exercise instrumentation but do not model production trace export transport.
 
 ## Future investigations
 
+PR #2342 deployed this batch to Admin and worker at exact revision
+`32caef0f1cc2e9b59570bfb44fd1cd96f2df0c58`; runtime inspection and a retained
+catalog trace confirm the batch executes. Subsequent production selection
+HTTP 503s at 03:40:10 and 03:45:42 UTC demonstrate that this correction does not
+resolve every deadline failure. The operations report separates those requests,
+database wait samples and a browser-native acknowledgment delay. Keep feat-496
+open and require a new causal reproduction before another application change.
+
 Measure both ORM-call volume and actual wire queries. A batching ORM can hide
 large application costs behind a small SQL count. Measure external arrival-to-
 response latency independently of an application's event-loop timer. Keep
