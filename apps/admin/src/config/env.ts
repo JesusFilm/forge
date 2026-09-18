@@ -332,21 +332,12 @@ export const env = createEnv({
     // Ed25519 public-key ring used only for fresh, request-bound reviewer
     // session proofs minted by Manager's server from its HttpOnly session.
     SUBTITLE_REVIEW_SESSION_PUBLIC_KEYS: z.string().min(1).optional(),
-    SUBTITLE_EVAL_MAX_PER_RUN_MICROS: z.string().regex(/^\d+$/).optional(),
-    SUBTITLE_EVAL_RESERVATION_PER_CELL_ATTEMPT_MICROS: z
+    // The Lab's single operator-facing spend control: a monthly budget in
+    // dollars, e.g. "250" or "250.50". Every other limit is a constant or is
+    // derived from this in subtitle-eval.service.ts.
+    SUBTITLE_EVAL_MONTHLY_BUDGET_USD: z
       .string()
-      .regex(/^\d+$/)
-      .optional(),
-    SUBTITLE_EVAL_MAX_ROLLING_24H_MICROS: z.string().regex(/^\d+$/).optional(),
-    SUBTITLE_EVAL_MAX_ACTIVE_RUNS_PER_OPERATOR: z.coerce
-      .number()
-      .int()
-      .positive()
-      .optional(),
-    SUBTITLE_EVAL_MAX_ACTIVE_RUNS_GLOBAL: z.coerce
-      .number()
-      .int()
-      .positive()
+      .regex(/^\d+(\.\d{1,6})?$/)
       .optional(),
     AUTH_MANAGER_SERVICE_ENVIRONMENT: z
       .enum(["local", "preview", "staging", "production"])
@@ -844,20 +835,8 @@ export const env = createEnv({
     SUBTITLE_REVIEW_SESSION_PUBLIC_KEYS: emptyToUndefined(
       process.env.SUBTITLE_REVIEW_SESSION_PUBLIC_KEYS,
     ),
-    SUBTITLE_EVAL_MAX_PER_RUN_MICROS: emptyToUndefined(
-      process.env.SUBTITLE_EVAL_MAX_PER_RUN_MICROS,
-    ),
-    SUBTITLE_EVAL_RESERVATION_PER_CELL_ATTEMPT_MICROS: emptyToUndefined(
-      process.env.SUBTITLE_EVAL_RESERVATION_PER_CELL_ATTEMPT_MICROS,
-    ),
-    SUBTITLE_EVAL_MAX_ROLLING_24H_MICROS: emptyToUndefined(
-      process.env.SUBTITLE_EVAL_MAX_ROLLING_24H_MICROS,
-    ),
-    SUBTITLE_EVAL_MAX_ACTIVE_RUNS_PER_OPERATOR: emptyToUndefined(
-      process.env.SUBTITLE_EVAL_MAX_ACTIVE_RUNS_PER_OPERATOR,
-    ),
-    SUBTITLE_EVAL_MAX_ACTIVE_RUNS_GLOBAL: emptyToUndefined(
-      process.env.SUBTITLE_EVAL_MAX_ACTIVE_RUNS_GLOBAL,
+    SUBTITLE_EVAL_MONTHLY_BUDGET_USD: emptyToUndefined(
+      process.env.SUBTITLE_EVAL_MONTHLY_BUDGET_USD,
     ),
     AUTH_MANAGER_SERVICE_ENVIRONMENT: emptyToUndefined(
       process.env.AUTH_MANAGER_SERVICE_ENVIRONMENT,

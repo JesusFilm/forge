@@ -423,7 +423,7 @@ The Lab is an internal three-service path. Configure it receiver-first, without
 placing any secret in git, logs, browser bundles, prompts, or documentation:
 
 1. Admin: apply the approved database migration, configure the Manager OAuth
-   service client/audience, all five `SUBTITLE_EVAL_*` admission variables, the
+   service client/audience, `SUBTITLE_EVAL_MONTHLY_BUDGET_USD` in dollars, the
    review assertion environment, and the review public-key ring.
 2. Mastra: configure `MASTRA_SERVICE_API_KEYS` and a spend-limited
    `OPENROUTER_API_PAID_KEY` (the generic `OPENROUTER_API_KEY` is fallback),

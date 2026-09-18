@@ -9,6 +9,8 @@ import {
   deriveSubtitleEvalTerminalStatus,
   FinalizeSubtitleEvalCellInput,
   resolveSubtitleEvalAdmissionPolicy,
+  subtitleEvalMonthStart,
+  subtitleEvalUsdToMicros,
   reviewerRequestBodyDigest,
   reviewerReferenceTrackLabel,
   subtitleEvalAssignmentRequestDigest,
@@ -207,37 +209,72 @@ describe("subtitle evaluation ledger policy", () => {
       resolveSubtitleEvalAdmissionPolicy({ nodeEnv: "production", env: {} }),
     ).toThrow(/configuration/i)
 
+    // A budget far above the in-code ceilings is clamped down to them. An
+    // operator cannot widen the Lab, only narrow it.
     expect(
       resolveSubtitleEvalAdmissionPolicy({
         nodeEnv: "production",
-        env: {
-          maxPerRunMicros: "999999999999",
-          maxRolling24HourMicros: "999999999999",
-          reservationPerCellAttemptMicros: "999999999999",
-          maxActiveRunsPerOperator: "99",
-          maxActiveRunsGlobal: "99",
-        },
+        env: { monthlyBudgetUsd: "1000000" },
       }),
     ).toEqual({
+      monthlyBudgetMicros: 1_000_000_000_000n,
       maxPerRunMicros: 64_000_000n,
       maxRolling24HourMicros: 256_000_000n,
-      reservationPerCellAttemptMicros: 999_999_999_999n,
-      maxActiveRunsPerOperator: 2,
-      maxActiveRunsGlobal: 4,
+      reservationPerCellAttemptMicros: 1_600_000n,
+      maxActiveRunsPerOperator: 1,
+      maxActiveRunsGlobal: 2,
     })
 
+    // A modest budget binds below those ceilings: a day may take a quarter of
+    // the month, a run a quarter of the day.
     expect(
       resolveSubtitleEvalAdmissionPolicy({
         nodeEnv: "production",
-        env: {
-          maxPerRunMicros: "1000000",
-          maxRolling24HourMicros: "10000000",
-          reservationPerCellAttemptMicros: "1",
-          maxActiveRunsPerOperator: "1",
-          maxActiveRunsGlobal: "2",
-        },
-      }).reservationPerCellAttemptMicros,
-    ).toBe(1_600_000n)
+        env: { monthlyBudgetUsd: "200" },
+      }),
+    ).toEqual({
+      monthlyBudgetMicros: 200_000_000n,
+      maxPerRunMicros: 12_500_000n,
+      maxRolling24HourMicros: 50_000_000n,
+      reservationPerCellAttemptMicros: 1_600_000n,
+      maxActiveRunsPerOperator: 1,
+      maxActiveRunsGlobal: 2,
+    })
+  })
+
+  it("parses dollars into micros without going through a float", () => {
+    // parseFloat("200.10") * 1e6 is 200100000.00000003.
+    expect(subtitleEvalUsdToMicros("200.10")).toBe(200_100_000n)
+    expect(subtitleEvalUsdToMicros("0.000001")).toBe(1n)
+    expect(subtitleEvalUsdToMicros(" 250 ")).toBe(250_000_000n)
+    for (const bad of ["", "-5", "abc", "1.2345678", "1e6", "$200", "1,000"]) {
+      expect(() => subtitleEvalUsdToMicros(bad)).toThrow(/invalid/i)
+    }
+  })
+
+  it("refuses a budget that cannot fund a single cell, by name", () => {
+    // Silently refusing every run would read as a bug rather than a budget
+    // that is too small.
+    expect(() =>
+      resolveSubtitleEvalAdmissionPolicy({
+        nodeEnv: "production",
+        env: { monthlyBudgetUsd: "1" },
+      }),
+    ).toThrow(/monthly_budget_below_single_cell/)
+  })
+
+  it("scopes the monthly window to the calendar month in UTC", () => {
+    expect(
+      subtitleEvalMonthStart(
+        new Date("2026-09-17T10:16:43.000Z"),
+      ).toISOString(),
+    ).toBe("2026-09-01T00:00:00.000Z")
+    // Local time near a month boundary must not roll the window early.
+    expect(
+      subtitleEvalMonthStart(
+        new Date("2026-10-01T00:30:00.000Z"),
+      ).toISOString(),
+    ).toBe("2026-10-01T00:00:00.000Z")
   })
 
   it("derives terminal status and canonical digest from ledger truth", () => {
@@ -758,6 +795,69 @@ describe("subtitle evaluation ledger policy", () => {
         },
       }),
     ).rejects.toMatchObject({ reason: "rolling_spend_ceiling" })
+  })
+
+  it("counts reservations against the operator's monthly budget", async () => {
+    const policy = resolveSubtitleEvalAdmissionPolicy()
+    const reservation = policy.reservationPerCellAttemptMicros * 2n
+    // Under the monthly budget but over it once this run's reservation lands.
+    // The rolling-24h aggregate is left at zero so only the monthly ceiling can
+    // reject this run -- otherwise the assertion would pass for the wrong
+    // reason.
+    const aggregate = vi
+      .fn()
+      .mockResolvedValueOnce({ _sum: { estimatedSpendMicros: 0n } })
+      .mockResolvedValueOnce({
+        _sum: {
+          estimatedSpendMicros: policy.monthlyBudgetMicros - reservation + 1n,
+        },
+      })
+    const tx = {
+      subtitleEvalRun: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        count: vi.fn().mockResolvedValue(0),
+        aggregate,
+      },
+      subtitleEvalCorpusCell: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: "cell-1",
+            caseId: "case-1",
+            targetLanguageId: "language-es",
+            targetLanguageSlug: "spanish",
+          },
+        ]),
+      },
+      subtitleEvalCorpusVersion: {
+        findUnique: vi.fn().mockResolvedValue({ status: "APPROVED" }),
+      },
+      subtitleEvalReferenceIssue: { count: vi.fn().mockResolvedValue(0) },
+    }
+    await expect(
+      withTransaction(tx).createRun({
+        user: managerBackend,
+        input: {
+          idempotencyKey: "run-request-monthly",
+          operatorId: "operator-1",
+          corpusVersionId: "corpus-1",
+          corpusCellIds: ["cell-1"],
+          requestedProvider: "openrouter",
+          requestedModel: "model-1",
+          promptPolicyId: "prompt-1",
+          workflowPolicyDigest: "e".repeat(64),
+          codeRevision: "revision-1",
+          determinism: {},
+          concurrency: 1,
+          timeoutSeconds: 60,
+          maxAttempts: 2,
+        },
+      }),
+    ).rejects.toMatchObject({ reason: "monthly_spend_ceiling" })
+
+    // The monthly window must be the calendar month, not the 24h window.
+    expect(aggregate.mock.calls[1][0].where.createdAt.gte).toEqual(
+      subtitleEvalMonthStart(),
+    )
   })
 
   it("transitions a queued run to running on the first successful cell claim", async () => {

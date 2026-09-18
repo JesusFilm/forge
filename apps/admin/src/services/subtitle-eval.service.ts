@@ -76,12 +76,47 @@ export const SUBTITLE_EVAL_SOURCE_CEILINGS = Object.freeze({
 })
 
 type SubtitleEvalAdmissionEnv = {
-  maxPerRunMicros?: string
-  maxRolling24HourMicros?: string
-  reservationPerCellAttemptMicros?: string
-  maxActiveRunsPerOperator?: string | number
-  maxActiveRunsGlobal?: string | number
+  monthlyBudgetUsd?: string
 }
+
+/**
+ * Dollars to micros, parsed from the string so no float ever touches a money
+ * value. `parseFloat("200.10") * 1e6` is 200100000.00000003.
+ */
+export function subtitleEvalUsdToMicros(value: string): bigint {
+  const match = /^(\d+)(?:\.(\d{1,6}))?$/.exec(value.trim())
+  if (!match) throw new SubtitleEvalConflictError("invalid_admission_budget")
+  const whole = BigInt(match[1])
+  const fraction = BigInt((match[2] ?? "").padEnd(6, "0"))
+  const micros = whole * 1_000_000n + fraction
+  if (micros <= 0n) {
+    throw new SubtitleEvalConflictError("invalid_admission_budget")
+  }
+  return micros
+}
+
+/**
+ * Start of the current calendar month in UTC. A calendar month rather than a
+ * rolling 30 days so the figure reconciles against a provider invoice.
+ */
+export function subtitleEvalMonthStart(now: Date = new Date()): Date {
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0),
+  )
+}
+
+/**
+ * The operator configures ONE value: the monthly budget, in dollars. Every
+ * other limit is a constant or is derived from that budget here, and each is
+ * still clamped by the absolute in-code ceilings, so a configured value can
+ * only ever make the Lab stricter.
+ *
+ * Derivation: a single day may consume at most a quarter of the month, and a
+ * single run at most a quarter of that day. Those fractions bound the blast
+ * radius of a runaway loop without needing an operator to reason about it.
+ */
+const MONTHLY_BUDGET_DAILY_DIVISOR = 4n
+const MONTHLY_BUDGET_PER_RUN_DIVISOR = 16n
 
 export function resolveSubtitleEvalAdmissionPolicy(input?: {
   nodeEnv?: string
@@ -91,71 +126,48 @@ export function resolveSubtitleEvalAdmissionPolicy(input?: {
   const configured =
     input?.env ??
     ({
-      maxPerRunMicros: env.SUBTITLE_EVAL_MAX_PER_RUN_MICROS,
-      maxRolling24HourMicros: env.SUBTITLE_EVAL_MAX_ROLLING_24H_MICROS,
-      reservationPerCellAttemptMicros:
-        env.SUBTITLE_EVAL_RESERVATION_PER_CELL_ATTEMPT_MICROS,
-      maxActiveRunsPerOperator: env.SUBTITLE_EVAL_MAX_ACTIVE_RUNS_PER_OPERATOR,
-      maxActiveRunsGlobal: env.SUBTITLE_EVAL_MAX_ACTIVE_RUNS_GLOBAL,
+      monthlyBudgetUsd: env.SUBTITLE_EVAL_MONTHLY_BUDGET_USD,
     } satisfies SubtitleEvalAdmissionEnv)
-  const missing = [
-    configured.maxPerRunMicros,
-    configured.maxRolling24HourMicros,
-    configured.reservationPerCellAttemptMicros,
-    configured.maxActiveRunsPerOperator,
-    configured.maxActiveRunsGlobal,
-  ].some((value) => value == null || value === "")
-  if (nodeEnv === "production" && missing) {
+  const raw = configured.monthlyBudgetUsd
+  if (nodeEnv === "production" && (raw == null || raw === "")) {
     throw new SubtitleEvalConflictError(
       "admission_budget_configuration_missing",
     )
   }
-  const positiveBigInt = (value: string | undefined, fallback: bigint) => {
-    const parsed = value == null ? fallback : BigInt(value)
-    if (parsed <= 0n)
-      throw new SubtitleEvalConflictError("invalid_admission_budget")
-    return parsed
+
+  // Outside production an unset budget falls back to $512/month, chosen so the
+  // derived per-run ($32) and daily ($128) limits are exactly the defaults this
+  // policy had before the five knobs collapsed into one. Production never
+  // reaches this because of the guard above.
+  const monthlyBudgetMicros =
+    raw == null || raw === "" ? 512_000_000n : subtitleEvalUsdToMicros(raw)
+
+  const perCellAttempt =
+    SUBTITLE_EVAL_SOURCE_CEILINGS.minReservationPerCellAttemptMicros
+  if (monthlyBudgetMicros < perCellAttempt) {
+    // Refusing every run with a generic error would look like a bug. Say what
+    // is actually wrong: the budget cannot fund one cell.
+    throw new SubtitleEvalConflictError("monthly_budget_below_single_cell")
   }
-  const positiveInt = (
-    value: string | number | undefined,
-    fallback: number,
-  ) => {
-    const parsed = value == null ? fallback : Number(value)
-    if (!Number.isSafeInteger(parsed) || parsed <= 0) {
-      throw new SubtitleEvalConflictError("invalid_admission_budget")
-    }
-    return parsed
-  }
+
   return {
-    maxPerRunMicros: minBigInt(
-      positiveBigInt(configured.maxPerRunMicros, 32_000_000n),
-      SUBTITLE_EVAL_SOURCE_CEILINGS.maxPerRunMicros,
-    ),
+    monthlyBudgetMicros,
     maxRolling24HourMicros: minBigInt(
-      positiveBigInt(configured.maxRolling24HourMicros, 128_000_000n),
+      monthlyBudgetMicros / MONTHLY_BUDGET_DAILY_DIVISOR,
       SUBTITLE_EVAL_SOURCE_CEILINGS.maxRolling24HourMicros,
     ),
-    reservationPerCellAttemptMicros: maxBigInt(
-      positiveBigInt(configured.reservationPerCellAttemptMicros, 1_600_000n),
-      SUBTITLE_EVAL_SOURCE_CEILINGS.minReservationPerCellAttemptMicros,
+    maxPerRunMicros: minBigInt(
+      monthlyBudgetMicros / MONTHLY_BUDGET_PER_RUN_DIVISOR,
+      SUBTITLE_EVAL_SOURCE_CEILINGS.maxPerRunMicros,
     ),
-    maxActiveRunsPerOperator: Math.min(
-      positiveInt(configured.maxActiveRunsPerOperator, 1),
-      SUBTITLE_EVAL_SOURCE_CEILINGS.maxActiveRunsPerOperator,
-    ),
-    maxActiveRunsGlobal: Math.min(
-      positiveInt(configured.maxActiveRunsGlobal, 2),
-      SUBTITLE_EVAL_SOURCE_CEILINGS.maxActiveRunsGlobal,
-    ),
+    reservationPerCellAttemptMicros: perCellAttempt,
+    maxActiveRunsPerOperator: 1,
+    maxActiveRunsGlobal: 2,
   }
 }
 
 function minBigInt(left: bigint, right: bigint) {
   return left < right ? left : right
-}
-
-function maxBigInt(left: bigint, right: bigint) {
-  return left > right ? left : right
 }
 
 export function deriveSubtitleEvalTerminalStatus(
@@ -1263,6 +1275,7 @@ export class SubtitleEvalService {
           operatorActive,
           globalActive,
           rollingSpend,
+          monthlySpend,
           cells,
           corpusVersion,
           disqualifyingReferenceIssues,
@@ -1280,6 +1293,10 @@ export class SubtitleEvalService {
             where: {
               createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1_000) },
             },
+            _sum: { estimatedSpendMicros: true },
+          }),
+          tx.subtitleEvalRun.aggregate({
+            where: { createdAt: { gte: subtitleEvalMonthStart() } },
             _sum: { estimatedSpendMicros: true },
           }),
           tx.subtitleEvalCorpusCell.findMany({
@@ -1310,6 +1327,13 @@ export class SubtitleEvalService {
         }
         if (globalActive >= admission.maxActiveRunsGlobal) {
           throw new SubtitleEvalConflictError("global_active_run_ceiling")
+        }
+        if (
+          (monthlySpend._sum.estimatedSpendMicros ?? 0n) +
+            estimatedSpendMicros >
+          admission.monthlyBudgetMicros
+        ) {
+          throw new SubtitleEvalConflictError("monthly_spend_ceiling")
         }
         if (
           (rollingSpend._sum.estimatedSpendMicros ?? 0n) +

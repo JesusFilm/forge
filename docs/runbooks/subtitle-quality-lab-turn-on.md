@@ -19,14 +19,10 @@ if (nodeEnv === "production" && missing) {
 }
 ```
 
-`apps/admin/src/services/subtitle-eval.service.ts` treats all five of
-`SUBTITLE_EVAL_MAX_PER_RUN_MICROS`,
-`SUBTITLE_EVAL_MAX_ROLLING_24H_MICROS`,
-`SUBTITLE_EVAL_RESERVATION_PER_CELL_ATTEMPT_MICROS`,
-`SUBTITLE_EVAL_MAX_ACTIVE_RUNS_PER_OPERATOR` and
-`SUBTITLE_EVAL_MAX_ACTIVE_RUNS_GLOBAL` as required in production. Configure the
-caps before the paid key exists and the window in which a bug can spend money
-without a ceiling never opens.
+`apps/admin/src/services/subtitle-eval.service.ts` requires
+`SUBTITLE_EVAL_MONTHLY_BUDGET_USD` in production. Set the budget before the
+paid key exists and the window in which a bug can spend money without a ceiling
+never opens.
 
 Manager refuses to mint a reviewer session proof when its signing key is absent:
 `configuredProof()` in `apps/manager/src/lib/subtitle-eval-session-proof.ts`
@@ -36,30 +32,44 @@ therefore fail closed rather than degrading to unauthenticated ones.
 Both guards are environment-conditional or configuration-conditional. Verify
 each by observation after setting it; do not infer either from a green deploy.
 
-## Step 1 — Admin admission and spend caps (before any provider key)
+## Step 1 — Set the monthly budget (before any provider key)
 
-Set on `@forge/admin`. All five are required together in production; a partial
-set leaves run creation failing with `admission_budget_configuration_missing`,
-which is the intended state until you finish this step.
+Set one variable on `@forge/admin`:
 
-| Variable                                            | Meaning                                   |
-| --------------------------------------------------- | ----------------------------------------- |
-| `SUBTITLE_EVAL_MAX_PER_RUN_MICROS`                  | hard ceiling for one run, in micros       |
-| `SUBTITLE_EVAL_MAX_ROLLING_24H_MICROS`              | rolling 24-hour ceiling across all runs   |
-| `SUBTITLE_EVAL_RESERVATION_PER_CELL_ATTEMPT_MICROS` | amount reserved up front per cell attempt |
-| `SUBTITLE_EVAL_MAX_ACTIVE_RUNS_PER_OPERATOR`        | concurrent runs one operator may hold     |
-| `SUBTITLE_EVAL_MAX_ACTIVE_RUNS_GLOBAL`              | concurrent runs across the whole system   |
+```
+SUBTITLE_EVAL_MONTHLY_BUDGET_USD=512
+```
 
-Units are micros — millionths of a currency unit. Confirm the intended currency
-against the reservation logic before choosing numbers; a factor-of-1e6 error
-here is the difference between a capped canary and an uncapped one.
+**Dollars, not micros.** Decimals are allowed to six places (`512`, `512.50`).
+It is parsed from the string, so no float ever touches a money value.
 
-For the first canary set the per-run and rolling caps to roughly the cost of a
-single cell attempt plus a small margin, and both active-run limits to `1`. The
-point of the canary is that a runaway loop hits a ceiling within one cell.
+This is the only spend control an operator sets. Everything else is a constant
+or is derived from it in `apps/admin/src/services/subtitle-eval.service.ts`:
 
-**Verify before continuing:** attempt to create a run while the paid key is
-still absent. Expect a typed refusal, not a provider call.
+| Limit                        | How it is set                               |
+| ---------------------------- | ------------------------------------------- |
+| Monthly ceiling              | this budget, over the calendar month in UTC |
+| Daily ceiling                | a quarter of the budget                     |
+| Per-run ceiling              | a sixteenth of the budget                   |
+| Reservation per cell attempt | constant — 64 provider calls at $0.025      |
+| Concurrent runs              | constant — 1 per operator, 2 globally       |
+
+Every derived value is additionally clamped by an absolute in-code ceiling
+($64 per run, $256 per day). **A configured budget can only make the Lab
+stricter, never looser**, so a wrong value cannot cause overspend — it can only
+cause runs to be refused.
+
+Two guards worth knowing:
+
+- Unset in production, run creation fails with
+  `admission_budget_configuration_missing`. That is the intended state until
+  this step is done.
+- A budget too small to fund a single cell fails with
+  `monthly_budget_below_single_cell`, rather than silently refusing every run
+  in a way that reads as a bug.
+
+**Verify:** with the budget set but no provider key yet, attempt a run. It
+should be refused by a typed error, and no provider call should be made.
 
 ## Step 2 — Reviewer session signing keypair
 
