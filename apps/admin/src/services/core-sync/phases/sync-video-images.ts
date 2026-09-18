@@ -1,8 +1,9 @@
 // Sync phase: video-images
 // Depends on: videos
 //
-// Data source rationale: this phase walks Core's `videos(...) { images { ... } }`
-// nested field rather than the flat `videoImages(...)` list. The flat list is
+// Data source rationale: this phase walks Core's
+// `adminVideos(...) { images { ... } }` nested field rather than the flat
+// `videoImages(...)` list. The flat list is
 // a sparse subset (~270 records catalogue-wide) — most of Core's image data
 // only surfaces via the per-Video nested field. Using the nested path
 // matches watch-modern's behavior and recovers the marketing posters /
@@ -20,9 +21,23 @@ import { CORE_SYNC_TRANSACTION_OPTIONS } from "../transaction-options"
 // `Video.images` join can fan out wider on collection-shaped videos.
 const PAGE_SIZE = 100
 
+// A page failure that is permanent rather than transient — Core rejecting the
+// publisher root field for a caller it does not consider a publisher, say —
+// would otherwise spin the pagination loop below forever: the per-page catch
+// records the error, advances `offset` and continues, and the loop's only exit
+// is a short page it will never receive. Bounding consecutive failures ends the
+// phase with `errors > 0`, which suppresses the soft-delete and stops the
+// orchestrator advancing the watermark, instead of hanging the whole sync job.
+const MAX_CONSECUTIVE_PAGE_ERRORS = 3
+
+// Reads Core's publisher root field for the same reason the catalogue phase
+// does (JesusFilm/forge#2324): the public `videos` field hides every video
+// restricted from the caller's own client name, so a Watch-restricted video
+// reached this phase with no images at all — and the full-sync soft-delete
+// then tombstoned the images it already had.
 const VIDEOS_WITH_IMAGES_QUERY = `
-  query VideosWithImages($offset: Int!, $limit: Int!, $where: VideosFilter) {
-    videos(offset: $offset, limit: $limit, where: $where) {
+  query AdminVideosWithImages($offset: Int!, $limit: Int!, $where: VideosFilter) {
+    adminVideos(offset: $offset, limit: $limit, where: $where) {
       id
       images {
         id
@@ -80,36 +95,60 @@ export async function syncVideoImages({
   // the entire catalogue. Per-page try/catch around `coreQuery` also added
   // below so a single Core hiccup advances `offset` without breaking the loop.
   const seenCoreIds = new Set<string>()
+  let consecutivePageErrors = 0
 
   while (true) {
     let rawVideos: CoreVideoWithImages[] = []
     try {
-      const result = await coreQuery<{ videos: CoreVideoWithImages[] }>(
+      const result = await coreQuery<{ adminVideos: CoreVideoWithImages[] }>(
         VIDEOS_WITH_IMAGES_QUERY,
         {
           offset,
           limit: PAGE_SIZE,
-          // Filter by parent-video updatedAt. Edge: an image touched after
-          // its parent video was last touched won't be picked up by an
-          // incremental sync until the next full sync. Acceptable trade-off
-          // for the coverage win — full sync (no `since`) refreshes
-          // everything regardless.
-          where: since ? { updatedAt: { gte: since } } : undefined,
+          where: {
+            // The public `videos` field filtered to published videos
+            // implicitly; `adminVideos` does not, so this phase has to say so.
+            // Without it the walk would start importing images for Core drafts
+            // that the catalogue phase never creates a Video row for — every
+            // one of them a wasted page, and `videoMap` misses for all of them.
+            // Matches the catalogue phase's own `published: true`.
+            published: true,
+            // Filter by parent-video updatedAt. Edge: an image touched after
+            // its parent video was last touched won't be picked up by an
+            // incremental sync until the next full sync. Acceptable trade-off
+            // for the coverage win — full sync (no `since`) refreshes
+            // everything regardless.
+            ...(since ? { updatedAt: { gte: since } } : {}),
+          },
         },
       )
-      rawVideos = result.data?.videos ?? []
+      rawVideos = result.data?.adminVideos ?? []
+      consecutivePageErrors = 0
     } catch (err) {
       // Per-page error isolation — record, log, advance offset, continue.
       // A single transient Core failure must not break pagination and
       // trigger the full-run soft-delete on an incomplete seenCoreIds set.
       stats.errors++
+      consecutivePageErrors++
       console.error(
         JSON.stringify({
           event: "core-sync.video-image.page.error",
           offset,
+          consecutivePageErrors,
           error: err instanceof Error ? err.message : String(err),
         }),
       )
+      if (consecutivePageErrors >= MAX_CONSECUTIVE_PAGE_ERRORS) {
+        console.error(
+          JSON.stringify({
+            event: "core-sync.video-image.page.error.aborted",
+            offset,
+            consecutivePageErrors,
+            reason: "consecutive_page_errors",
+          }),
+        )
+        break
+      }
       offset += PAGE_SIZE
       continue
     }

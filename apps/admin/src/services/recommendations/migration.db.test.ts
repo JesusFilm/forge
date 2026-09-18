@@ -44,7 +44,15 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       .slice(2)}`
     let client: Client
     let databaseUrl: string
-    const expiresAt = "2026-09-17T00:00:00.000Z"
+    // The lifecycle root has to outlive the row that carries it:
+    // `recommendation_request_expiry_check` is CHECK (expires_at >
+    // created_at) and the inserts below let `created_at` default to
+    // now(), so a hardcoded instant is a time bomb that detonates the
+    // moment the wall clock passes it. Keep it relative to the run.
+    // 29 days matches the documented retention root.
+    const expiresAt = new Date(
+      Date.now() + 29 * 24 * 60 * 60 * 1000,
+    ).toISOString()
 
     // Keep creation on the fixed fixture timeline instead of the database clock.
     async function insertRequest(id: string, expectedItemCount: number) {
