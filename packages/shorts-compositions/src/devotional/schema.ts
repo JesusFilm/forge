@@ -124,6 +124,8 @@ export const devotionalCardSchema = z.object({
   occasion: z.string().optional(), // cover
   verse: z.string().optional(), // scripture
   citation: z.string().optional(), // scripture
+  /** Translation tag shown after the citation ("BSB"). */
+  translation: z.string().optional(), // scripture
   paragraphs: z.array(z.string()).optional(), // reflection-full
   closing: z.string().optional(), // reflection-full emphasized line
   text: z.string().optional(), // reflection-focus / conclusion

@@ -12,7 +12,7 @@ const fakeLlm = (complete: DevotionalLlm["complete"]): DevotionalLlm => ({
 })
 
 describe("selectScriptureForPassage", () => {
-  it("uses the EXACT WEB text for the chosen verse (verified, not model-recalled)", async () => {
+  it("uses the EXACT corpus text for the chosen verse (verified, not model-recalled)", async () => {
     const complete = vi.fn().mockResolvedValue({
       reference: "Luke 8:25",
       text: "model paraphrase of the verse",
@@ -24,7 +24,7 @@ describe("selectScriptureForPassage", () => {
     })
     expect(r.reference).toBe("Luke 8:25")
     expect(r.text).toBe("He said to them, “Where is your faith?”")
-    expect(r.translation).toBe("WEB")
+    expect(r.translation).toBe("BSB")
     expect(r.needsCanonicalSource).toBe(false)
     expect(complete.mock.calls[0][0].user).toContain("Luke 8:22-25")
   })

@@ -6,16 +6,16 @@ import {
   MAX_DEVOTIONAL_TEXT_LENGTH,
   type ScriptureRef,
 } from "./types"
-import { getVerseText } from "./web-bible"
+import { DEVOTIONAL_BIBLE, getVerseText } from "./bible-text"
 
 /**
  * Video-first scripture selection: given the clip's Bible passage, pick ONE key
  * verse to anchor the devotional and quote it in a public-domain modern
- * translation (World English Bible). This inverts the old hook-first
+ * translation (the Berean Standard Bible). This inverts the old hook-first
  * `scripture-selector` (which chose scripture to fit a hook).
  *
  * `needsCanonicalSource` stays true: the quote is model-proposed until a real
- * WEB Bible-text source is wired (A5), so we never present it as verified.
+ * exact Bible-text source is wired (A5), so we never present it as verified.
  */
 
 const ScriptureResponseSchema = z
@@ -50,7 +50,7 @@ export const SYSTEM_PROMPT = [
   "You anchor a short devotional video in one Bible verse.",
   "You are given the Gospel passage the video's clip depicts.",
   "Choose ONE key verse from within that passage — the heart of the scene.",
-  "Quote it in the World English Bible (WEB, public domain, modern English).",
+  "Quote it in plain modern English; the exact wording is replaced afterwards with the verse text from the series translation, so choosing the RIGHT verse is what matters.",
   "Keep it to a single verse (or two short ones). Return JSON only.",
 ].join("\n")
 
@@ -58,7 +58,7 @@ export type SelectScriptureForPassageOptions = {
   /** Human passage reference, e.g. "Luke 8:22-25". */
   reference: string
   llm: DevotionalLlm
-  /** Exact-verse lookup (defaults to the WEB Bible). Injectable for tests. */
+  /** Exact-verse lookup (defaults to the series translation). Injectable for tests. */
   lookupVerse?: (reference: string) => string | null
 }
 
@@ -82,7 +82,7 @@ export async function selectScriptureForPassage(
       system: SYSTEM_PROMPT,
       user: [
         `Passage: ${options.reference}`,
-        "Choose the key verse from this passage and quote it (WEB).",
+        "Choose the key verse from this passage and quote it.",
       ].join("\n"),
       jsonSchema: SCRIPTURE_JSON_SCHEMA,
       schema: ScriptureResponseSchema,
@@ -101,15 +101,16 @@ export async function selectScriptureForPassage(
   }
 
   const reference = response.reference.trim()
-  // Prefer the EXACT WEB text for the chosen reference; the model only picks
-  // WHICH verse. Fall back to the model's quote (flagged) if the reference
-  // doesn't resolve (e.g. outside the ingested Gospels+Acts).
+  // Prefer the EXACT text of the series translation for the chosen reference;
+  // the model only picks WHICH verse. Fall back to the model's quote (flagged)
+  // if the reference doesn't resolve (outside the ingested Gospels+Acts, or a
+  // critical-text footnote verse).
   const lookup = options.lookupVerse ?? getVerseText
   const exact = lookup(reference)
   return {
     reference,
     text: balanceQuotes(exact ?? response.text.trim()),
-    translation: "WEB",
+    translation: exact != null ? DEVOTIONAL_BIBLE.abbreviation : null,
     needsCanonicalSource: exact == null,
   }
 }

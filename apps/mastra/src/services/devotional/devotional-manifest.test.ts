@@ -342,4 +342,41 @@ describe("buildDevotionalManifest — clip-first structure", () => {
     // No cover to carry the source credit, so the closing card does.
     expect(manifest.cards.at(-1)?.attribution).toBe(DEVO.reflection.attribution)
   })
+
+  it("carries the scripture translation tag onto the verse card", () => {
+    const segs = ["scripture", "questions"].map((id) => ({
+      id,
+      file: `${id}.mp3`,
+      durationSec: 3,
+      text: `${id} text`,
+    }))
+    const input = {
+      devotional: DEVO,
+      segments: segs as never,
+      clipFile: "clip.mp4",
+      clipDurationSec: 30,
+      headerDate: "x",
+      structure: "clip-first",
+    }
+    const tagged = buildDevotionalManifest(input as never)
+    const verse = tagged.cards.find((c) => c.kind === "scripture") as Record<
+      string,
+      unknown
+    >
+    expect(verse.translation).toBe("WEB")
+    // The model's own wording (no corpus match) carries no tag: a tag would
+    // claim a translation the text is not.
+    const unverified = buildDevotionalManifest({
+      ...input,
+      devotional: {
+        ...DEVO,
+        scripture: { ...DEVO.scripture, translation: null },
+      },
+    } as never)
+    const card = unverified.cards.find((c) => c.kind === "scripture") as Record<
+      string,
+      unknown
+    >
+    expect(card.translation).toBeUndefined()
+  })
 })

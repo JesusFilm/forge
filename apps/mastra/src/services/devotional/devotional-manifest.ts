@@ -195,6 +195,12 @@ function buildClipFirstManifest(
     kind: "scripture",
     verse: d.scripture.text,
     citation: d.scripture.reference,
+    // Shown after the citation ("LUKE 8:16 · BSB"): the viewer should know
+    // which translation they are hearing. Absent when the verse could not be
+    // verified against a corpus (the model's own wording, flagged upstream).
+    ...(d.scripture.translation
+      ? { translation: d.scripture.translation }
+      : {}),
   })
   if (scripture) cards.push(scripture)
 
@@ -318,6 +324,12 @@ export function buildDevotionalManifest(
     kind: "scripture",
     verse: d.scripture.text,
     citation: d.scripture.reference,
+    // Shown after the citation ("LUKE 8:16 · BSB"): the viewer should know
+    // which translation they are hearing. Absent when the verse could not be
+    // verified against a corpus (the model's own wording, flagged upstream).
+    ...(d.scripture.translation
+      ? { translation: d.scripture.translation }
+      : {}),
   })
   if (scripture) cards.push(scripture)
 

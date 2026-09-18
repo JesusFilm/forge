@@ -1,6 +1,19 @@
 import { describe, expect, it } from "vitest"
 
-import { lookupVerse, parseReference } from "./web-bible"
+import { mkdtempSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import path from "node:path"
+
+import {
+  BSB,
+  BibleCorpusMissingError,
+  DEVOTIONAL_BIBLE,
+  WEB,
+  getVerseText,
+  loadBible,
+  lookupVerse,
+  parseReference,
+} from "./bible-text"
 
 const verses = {
   "Luke.8.24":
@@ -50,5 +63,37 @@ describe("lookupVerse", () => {
   })
   it("returns null for an unparseable/unknown reference", () => {
     expect(lookupVerse("Genesis 1:1", verses)).toBeNull()
+  })
+})
+
+describe("loadBible / getVerseText", () => {
+  it("quotes the Berean Standard Bible by default", () => {
+    expect(DEVOTIONAL_BIBLE).toBe(BSB)
+    expect(BSB.file).toBe("bsb-bible.json")
+  })
+
+  it("reads the series translation's corpus from the corpus dir", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "bible-"))
+    writeFileSync(
+      path.join(dir, BSB.file),
+      JSON.stringify({ verses: { "Luke.8.16": "No one lights a lamp…" } }),
+    )
+    expect(getVerseText("Luke 8:16", dir)).toBe("No one lights a lamp…")
+    expect(getVerseText("Luke 8:17", dir)).toBeNull()
+  })
+
+  it("can still read the WEB corpus when asked for it explicitly", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "bible-"))
+    writeFileSync(
+      path.join(dir, WEB.file),
+      JSON.stringify({ verses: { "Luke.8.16": "No one, when he has lit…" } }),
+    )
+    expect(getVerseText("Luke 8:16", dir, WEB)).toBe("No one, when he has lit…")
+  })
+
+  it("fails loudly when the corpus is missing instead of quoting nothing", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "bible-"))
+    expect(() => loadBible(BSB, dir)).toThrow(BibleCorpusMissingError)
+    expect(() => loadBible(BSB, dir)).toThrow(/ingest-bsb-bible/)
   })
 })

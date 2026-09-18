@@ -480,6 +480,21 @@ library clip via the Admin search-eval HTTP contract (always-a-clip fallback to
 partner teaching (never republished) with reflection questions and a flexible,
 date-varied block order → run the safety gate.
 
+**Scripture is exact text from a corpus, never model-recalled.** The model only
+picks WHICH verse; `bible-text.ts` looks the reference up in
+`devo/corpus/<abbr>-bible.json` (Gospels + Acts). The series translation is the
+**Berean Standard Bible (BSB)**, public domain (CC0) since 2023, modern English,
+no credit line required; the verse card shows the tag after the citation
+("LUKE 8:16 · BSB"). Build the corpus with
+`node apps/mastra/src/scripts/ingest-bsb-bible.mjs` (the corpus dir is not in
+git); a missing corpus throws `BibleCorpusMissingError` rather than quietly
+falling back to the model's wording. The World English Bible corpus
+(`ingest-web-bible.mjs`) stays for devotionals generated before 2026-09-18 and
+as a cross-check; it read as archaic to viewers, which is why it was replaced.
+Russian devotionals keep the Synodal text (`localize-devotional.ts`). A verse
+the BSB prints only as a footnote (critical text: Matt 17:21, Mark 9:44, John
+5:4 and a few more) resolves to null and is flagged `needsCanonicalSource`.
+
 **The safety gate is load-bearing and fails closed.** An LLM judge scores
 doctrine, tone, and sensitivity, but the final verdict is computed in code: it
 blocks on a judge `block`, on any dimension below the confidence threshold

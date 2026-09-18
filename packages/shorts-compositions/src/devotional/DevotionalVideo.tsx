@@ -1988,6 +1988,14 @@ function CardBody({
         }}
       >
         {card.citation.toUpperCase()}
+        {card.translation ? (
+          // The translation, quieter than the reference: it is a footnote to
+          // the citation, not part of it.
+          <span style={{ opacity: 0.6 }}>
+            {"\u00a0\u00b7\u00a0"}
+            {card.translation.toUpperCase()}
+          </span>
+        ) : null}
       </div>
     ) : null
 
