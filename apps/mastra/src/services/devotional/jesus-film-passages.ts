@@ -152,7 +152,11 @@ export const JESUS_FILM_PASSAGES: ChapterPassage[] = [
     // went up to the temple to pray" and closes after the reversal ("he who
     // humbles himself will be exalted"), which is the whole point of the scene.
     clipStartSec: 3,
-    clipLengthSec: 52,
+    // Widened from 52s on 2026-09-18: the card's seam ceiling cut the closing
+    // line mid-sentence ("and he who humbles himself" | "will be exalted"),
+    // which is the verdict the whole parable turns on. The chapter runs 62.1s,
+    // so this leaves margin for the dissolve to play over.
+    clipLengthSec: 58,
   }, // Parable of the Pharisee and the Tax Collector. Both prayers, then the verdict (~54s). (subtitle-verified)
   {
     index: 14,

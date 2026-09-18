@@ -1065,7 +1065,13 @@ async function renderInStage(
    * So the margin now covers BOTH: the tail pad, the seam, and a little slack.
    * On-screen seconds cost `× VIDEO_SPEED` of source.
    */
-  const SEAM_SEC = options.xfadeSec ?? 1.2
+  // Footage the seam into the next card needs. With hard cuts between cards
+  // (`cardXfadeSec: 0`, the clip-first default) there is no seam to feed, so
+  // the film may run to its last frame: the Pharisee chapter's closing line
+  // ends where the copyright card begins, and reserving 1.2s of margin there
+  // cut the verdict the parable turns on ("he who humbles himself will be
+  // exalted") mid-sentence.
+  const SEAM_SEC = options.cardXfadeSec ?? options.xfadeSec ?? 1.2
   const TAIL_PAD_SEC = 1.5
   // The JESUS film is old and slow; play the video-card clip a touch faster so
   // it's less draggy. Pitch-preserved (atempo), so ~1.12× is imperceptible in
@@ -1396,7 +1402,9 @@ async function renderInStage(
       // The two bugs this balances pull in opposite directions, so say when the
       // seam won and the last line had to be given up — otherwise a future
       // "the last words are cut off" report has nothing to read.
-      if (lineEnd > 0 && wanted > seamCeilingSec) {
+      // The card's own breath tail keeps showing the film, so a shortfall
+      // smaller than that tail costs nothing audible; warn only past it.
+      if (lineEnd > 0 && wanted > seamCeilingSec + CARD_TAIL_SEC) {
         log(
           `⚠️  the scene's last line (${lineEnd.toFixed(1)}s) does not fit before ` +
             `the ${SEAM_SEC.toFixed(1)}s dissolve; widen clipLengthSec for this ` +
