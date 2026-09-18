@@ -462,8 +462,8 @@ const PHRASE_FUNCTION_WORDS = new Set([
 const PHRASE_STRONG_PX = 92
 const PHRASE_CONTENT_PX = 74
 const PHRASE_FUNCTION_PX = 54
-/** Inside the side padding: 100px clear of each edge on a 1080 frame. */
-const PHRASE_MAX_WIDTH_PX = 880
+/** Inside the side padding: 130px clear of each edge on a 1080 frame. */
+const PHRASE_MAX_WIDTH_PX = 820
 const PHRASE_CENTRE_Y_PX = 1060
 const PHRASE_FRAME_PX = { w: 1080, h: 1920 }
 const PHRASE_MAX_LINES = 3
@@ -3991,7 +3991,13 @@ function Background({
           // own duration ends about where the dialogue does (the extra margin
           // footage sits past it), so the fade is now short and linear, and
           // rides the crossfade into the next card instead of pre-empting it.
-          const fout = Math.round((slow ? 2 : 0.5) * fps)
+          // Full-frame film (clip-first): the fade used to start half a second
+          // before the cut and took the closing words down with it (owner:
+          // "the last important words are muted"). It now happens in the last
+          // quarter second, after the line has finished.
+          const fout = Math.round(
+            (slow ? 2 : fullBleedVideo ? 0.25 : 0.5) * fps,
+          )
           const rise = interpolate(f, [lead, lead + fin], [0, 1], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
