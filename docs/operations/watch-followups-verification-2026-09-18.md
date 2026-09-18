@@ -8,7 +8,7 @@ Current disposition:
 | Ticket   | Disposition                                                                                   |
 | -------- | --------------------------------------------------------------------------------------------- |
 | feat-513 | Complete: deployed runner isolation and worker execution verified.                            |
-| feat-516 | PR #2339 merged; exact production deployment/collection acceptance pending.                   |
+| feat-516 | Complete: exact Admin/worker revision and first/later profile collection verified.            |
 | feat-517 | Complete for the reproduced autoplay HTML mismatch; exact Web revision and playback verified. |
 | feat-515 | Open: current native-poster LCP characterized; historical late H1 not reconstructed.          |
 | feat-496 | Reopened by a later confirmed selection deadline failure.                                     |
@@ -216,3 +216,81 @@ first paint at 980/1,372/564/560/580/472 ms and no JavaScript errors. Their late
 VIDEO LCP candidates remain around 9.35–10.88 seconds. The separate local
 media/poster controls explain that current candidate transition; these visits
 do not reconstruct the historical late-heading case retained in feat-515.
+
+## feat-516 release acceptance and remaining selection failure
+
+PR #2339 merged at 00:13:31 as `c813991ad3645aebdb50d6b1cac92a47b5aad250`
+after 98 successful checks and one skip. Admin deployment
+`985ecb1b-981a-4515-8438-2fd5a1c4c875` and worker deployment
+`695f26a0-9264-4885-be04-5f175d973a30` completed automatically. Both actual
+running revisions and installed profiler patches were checked. The actual
+Admin process reported profiling enabled, patch applied and observer
+installation at age 15.06 seconds.
+
+At 00:25:35.844 its first ordinary collection took 92.51 ms heap + 157.12 ms
+wall = 249.63 ms; process age was 65.50 seconds. At 00:27:46.237 a later
+collection took 62.27 + 94.27 = 156.54 ms, at age 195.86 seconds. Maximum loop
+delay across the separate 70-second windows was 370.41 and 186.12 ms. These are
+production acceptance measurements, not a matched production A/B experiment;
+causal controls are the local production-build trials. Each capture restored
+its wrappers and loop monitor, closed its owned inspector and passed a separate
+closure check. No second CPU sampler or production configuration change ran.
+
+Worker isolation remained intact on `c813991ad`: no Admin job listener, one
+worker job listener and the expected stream listeners. The worker recorded
+292 flow and 175 step callbacks in the checked 00:23–00:28 window, with none on
+Admin.
+
+- 00:24:40–00:25:28: six valid selection acknowledgments at
+  739/589/353/409/285/526 ms; 12 served six-card deliveries, no semantic fallback
+  or JavaScript error. This browser batch ended before the first profile
+  collection and is not an overlap experiment.
+- 00:27:04–00:27:59: five valid acknowledgments at 646/460/730/675/501 ms and
+  one browser abort at 803 ms. Again, 12 deliveries served six cards without
+  fallback or JavaScript error. Trace `b0e7eb73435b3df258c9f5c2a91ab5cf`
+  confirms Web HTTP 503 at 704.83 ms, upstream timeout at 700.45 ms and an Admin
+  selection mutation continuing for 1,468.59 ms. The failure was approximately
+  nine seconds after collection, so that collection pause cannot explain it.
+
+The latter selection overlaps repeated loop delays of roughly 36–108 ms and
+longer client database spans. Those spans include driver/scheduling time and
+do not establish server execution, lock or pool-wait cost. feat-516 is complete
+for its reproduced cold source-map cost; feat-496 remains open for this proven
+remaining failure. HTTP 200 delivery semantics, selection HTTP status and
+browser aborts are counted independently.
+
+## Bounded pool and database observation — 00:36:57–00:38:02
+
+A 65-second in-process observer measured actual `pg` pool acquisition and query
+completion on Admin `c813991ad`, alongside independent read-only PostgreSQL
+activity samples. Local checks first verified callback results, promise
+rejections and queued connection release. No SQL parameters or result contents
+were recorded. The observer counted 12,723 queries and 11,114 acquisitions;
+maximum acquisition elapsed time was 740.55 ms and maximum client query time
+704.79 ms. Retained slow acquisitions include over 100 already-pending waiters.
+The 3,000-event bounded buffer retains only its latest slow/large results, so
+its retained maximum differs from the whole-window counters. Maximum event-loop
+delay was 272.11 ms. The actual driver modules were pg 8.22.0 and 8.20.0.
+
+The independent sampler completed 620 queries with a maximum 12 ms round trip.
+It observed five samples of an advisory-lock waiter, from 22.57 to 444.24 ms,
+while other Admin transactions were idle waiting for the client. Pool queueing,
+server lock waits and application scheduling therefore all need separate
+attribution; this is not proof that pure SQL execution caused the whole delay.
+Most Prisma driver events lacked an active Datadog trace context, so timestamp
+and backend PID correlation is not equivalent to exact request attribution.
+
+The accompanying browser batch at 00:36:54–00:37:55 returned 12 delivery HTTP
+200s: seven served, three `delivery_timeout` fallbacks and two `in_flight`
+fallbacks, each with six cards. Only two selection requests were observed: one
+valid acknowledgment at 718 ms and one abort at 802 ms. The latter trace,
+`2a6b5a3757aff156f093b05ad7950b5d`, confirms Web HTTP 503 at 730 ms and an
+Admin selection mutation lasting 887 ms. Navigation success cannot stand in
+for six acknowledgments.
+
+Delivery trace `d6aa8dd88bb77a1c25ea266d2a0d6c33` separately contains a
+1,523 ms semantic delivery operation followed by a 3,315 ms contextual catalog
+operation with many individual `MuxImageDerivative.findUnique` calls. This is
+a testable query-fan-out hypothesis, not yet a proven fix. The wrappers and loop
+monitor were restored, the owned inspector closed, and a separate SSH check
+confirmed closure. No production service configuration changed.

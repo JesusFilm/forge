@@ -214,8 +214,26 @@ fallback. A later browser abort had server HTTP 200 and a short Admin request,
 so those two aborts must not be assigned one cause.
 
 This ticket is reopened for the remaining proven deadline failure. feat-513's
-runner isolation is independently verified; feat-516 has a reproduced cold
-profiler correction under review; feat-517's autoplay hydration correction has
-merged and awaits exact Web deployment verification. None establishes global
+runner isolation is independently verified; feat-516's cold-profiler correction
+and feat-517's autoplay hydration correction are deployed and independently
+verified. None establishes global
 selection recovery. Read `docs/operations/watch-followups-verification-2026-09-18.md`
 for dates, revisions, separate outcome populations and diagnostic cleanup.
+
+After profiler PR #2339 deployed as `c813991ad3645aebdb50d6b1cac92a47b5aad250`,
+trace `b0e7eb73435b3df258c9f5c2a91ab5cf` at September 18 00:27:55 still
+records selection Web HTTP 503 at 705 ms and an Admin mutation continuing for
+1,469 ms. It occurred about nine seconds after the ordinary 157 ms profile
+collection. That batch's 12 deliveries served six cards without fallback;
+five selections acknowledged successfully and one browser request aborted.
+This observation prevents an overall recovery claim and is not attributed to
+profiling or PostgreSQL locks without a causal reproduction.
+
+The 00:36:57–00:38:02 bounded observer further measured actual pg pool
+acquisitions up to 741 ms with over 100 queued waiters. Independent PostgreSQL
+sampling also observed a 444 ms advisory-lock wait while other transactions
+waited on the application. The browser batch contained three HTTP 200
+`delivery_timeout` fallbacks, two separate `in_flight` fallbacks and one
+trace-confirmed selection HTTP 503. Individual image-derivative lookups during
+contextual catalog loading are the next reproduction hypothesis. Pool, lock and
+scheduling costs must remain distinct; no new causal correction is claimed.

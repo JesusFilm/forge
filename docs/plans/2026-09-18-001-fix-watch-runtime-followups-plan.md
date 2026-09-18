@@ -98,7 +98,9 @@ guarantees.
 - U1: PR #2337 merged and exact Admin/worker revision `9cdb79b13` verified.
   No Admin job listener; the worker processed 1,083 flow and 539 step callbacks
   in the recorded 15-minute window. Runner isolation is complete.
-- U2: PR #2339 merged as `c813991ad`; production acceptance remains pending.
+- U2: PR #2339 deployed as `c813991ad` to Admin and worker. First/later
+  ordinary production collections took 250/157 ms with profiling preserved;
+  all temporary diagnostics were restored. The profiler correction is complete.
   Real production-build controls reproduce 742–815 ms first collections and
   reduce them to 209–215 ms without disabling profiling or losing source maps.
 - U3: PR #2338 deployed as `cc5a50565`. The same production autoplay arrivals
