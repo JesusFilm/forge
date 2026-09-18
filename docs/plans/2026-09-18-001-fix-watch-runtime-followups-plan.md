@@ -1,7 +1,7 @@
 ---
 title: "fix: Verify and resolve Watch runtime follow-ups"
 type: fix
-status: active
+status: complete
 date: 2026-09-18
 ---
 
@@ -106,10 +106,13 @@ guarantees.
 - U3: PR #2338 deployed as `cc5a50565`. The same production autoplay arrivals
   failed before and pass after; real unmuted playback continues. The demonstrated
   mismatch is complete, with older unretained-query/other-variant limitations.
-- U4: Current late VIDEO LCP is reproduced even with media blocked; removing
-  only the native video poster locally removes that late candidate. The old
-  late H1 / missing-paint observation is still unproven. Preserve its open state
-  rather than substituting a healthy run or the newer VIDEO explanation.
+- U4: The original harness was recovered and the ten-second H1 / missing-paint
+  behavior reproduced. Chrome traces and alternating feature controls identify
+  browser toolbar surface synchronization; the production control confirms the
+  same shape. No application change is justified for that cause. Current VIDEO
+  poster candidates remain distinct. feat-515 is complete; feat-520 tracks the
+  separate non-headless field post-response cases. See
+  `docs/operations/watch-paint-surface-sync-2026-09-18.md`.
 
 feat-496 is reopened because a later selection trace actually exceeded the
 upstream deadline. The known fixes and later healthy observations remain valid;

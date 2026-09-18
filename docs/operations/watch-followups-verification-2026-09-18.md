@@ -10,8 +10,14 @@ Current disposition:
 | feat-513 | Complete: deployed runner isolation and worker execution verified.                            |
 | feat-516 | Complete: exact Admin/worker revision and first/later profile collection verified.            |
 | feat-517 | Complete for the reproduced autoplay HTML mismatch; exact Web revision and playback verified. |
-| feat-515 | Open: current native-poster LCP characterized; historical late H1 not reconstructed.          |
+| feat-515 | Complete: recovered harness, browser surface trace and production causal control.             |
 | feat-496 | Reopened by a later confirmed selection deadline failure.                                     |
+
+The later feat-515 investigation recovered the original harness and reproduced
+the ten-second H1 delay. Chrome toolbar surface synchronization caused the
+captured stall; the original early-stage limitations below are superseded by
+`docs/operations/watch-paint-surface-sync-2026-09-18.md`. The distinct field
+post-response cases are tracked in feat-520. No general recovery is claimed.
 
 ## Initial deployment and ownership check
 

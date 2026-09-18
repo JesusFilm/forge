@@ -167,8 +167,36 @@ visibility and both browser/server cache state with the capture. Compare actual
 Watch documents; exclude cached 404s. Separate identified headless traffic from
 field populations, and do not apply a current VIDEO explanation to a historical
 H1 observation with missing setup evidence. See feat-515 and
-`docs/validation/watch-followups-2026-09-18/paint-observations.json` for the control
-and its remaining historical limitation.
+`docs/validation/watch-followups-2026-09-18/paint-observations.json` for that
+control, and the later surface-synchronization investigation below.
+
+## Trace presentation when the DOM is ready but paint is missing
+
+Replaying the recovered feat-515 harness used agent-browser 0.37.1 with Chrome
+for Testing 153.0.8010.36 and a 1280×577 inner viewport. These conditions recovered
+the approximately ten-second H1/first-paint delay that a different Chromium
+version and viewport had missed. Fonts, layout and JavaScript timers were ready
+well before the delayed paint entry.
+
+Chrome traces separated renderer `Paint` work from first presentation. Slow
+runs showed a browser `SurfaceSynchronizationEvent` lasting 9,999 ms, followed by
+the toolbar's first visually nonempty paint and then the page's first paint.
+Alternating local controls disabling only `InitialWebUISurfaceSync` removed
+that stall. This is evidence for that browser mechanism, not permission to
+change application preview timing or discard slow field events.
+
+Record screenshot request **and completion** times. A request made at 2.3 seconds
+in a slow run completed after ten seconds; its visible pixels cannot establish
+what was displayed at the request time. Preserve browser executable/version,
+launch arguments, actual inner viewport, cache state and all LCP candidates.
+When recovering a long-running session, search its content beyond the session's
+start-date window: the original September 16 harness lived in a September 15
+session and its retained artifacts were still available.
+
+Use browser-feature overrides only as labeled diagnostic controls. Keep default
+runs, report negative controls, and retain application/field follow-ups whose
+cause has not been established. See
+`docs/operations/watch-paint-surface-sync-2026-09-18.md` for evidence and limits.
 
 ## Related
 

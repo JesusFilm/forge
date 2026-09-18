@@ -3,7 +3,7 @@ id: "feat-515"
 title: "Isolate cold Watch paint variability around deferred preview activation"
 owner: "nisal"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-16"
 duration: 2
 depends_on: []
@@ -77,7 +77,7 @@ restarted, and only the six successful Watch journeys enter the artifact.
 
 Evidence: `docs/validation/recommendation-quality-followup/page-performance-matched.json`.
 
-## Current characterization — September 18; historical case remains open
+## Earlier characterization — September 18
 
 Fresh Chromium 149.0.7827.55 runs use a fixed 1440×1000 viewport, fresh contexts,
 and timed screenshots at 0.5/2/5/11 seconds after DOM content. Production poster
@@ -106,12 +106,11 @@ Earlier broad desktop aggregates included headless automation and must not be
 presented as pure user populations. RUM grouping drops events without a target
 selector, and bot classification is imperfect.
 
-The September 16 approximately 10-second H1 / missing-paint case has **not** been
-reconstructed. Its saved visibility is explicitly visible, so a hidden-tab
-explanation is unsupported. Its browser version, launch setup and timed pixels
-were not retained; a session-history search did not recover the original
-harness. Current native-poster evidence does not retroactively explain that H1.
-This ticket remains in progress for that distinction and any justified fix.
+At this stage the September 16 approximately 10-second H1 / missing-paint case
+had not been reconstructed. Its saved visibility was explicitly visible, so a
+hidden-tab explanation was unsupported. The initial session-history search did
+not recover its harness. The later recovery below supersedes that limitation;
+the native-poster evidence alone does not explain the H1 observation.
 
 Numerical evidence: `docs/validation/watch-followups-2026-09-18/paint-observations.json`.
 The initial local 404 batch is excluded. The media-blocking/attribute-removal
@@ -127,3 +126,35 @@ Two mobile cases instead have first byte at 2.53/5.10 seconds and FCP at
 13.82/15.14 seconds. These sampled events show multiple delay shapes; first-byte
 time includes network and server work and does not identify one server cause.
 They do not explain the historical visible-DOM/empty-paint capture.
+
+## Completion — recovered harness and browser surface cause
+
+The original agent-browser 0.37.1 harness was recovered from the September 15
+session and retained artifacts. It launches Chrome for Testing 153.0.8010.36
+with a 1280×577 inner viewport. Replaying it reproduced 10,004 ms first paint /
+H1 LCP with document load complete at 479 ms. Fonts, visibility and responsive
+timers exclude the previously suspected font or application scheduling gate in
+these captured cases.
+
+Three slow Chrome traces contain a 9,999 ms browser surface synchronization wait,
+then toolbar paint and Watch presentation, despite earlier renderer paint work.
+Four clean alternating local pairs give default first paint
+316 / 10,012 / 9,984 / 10,008 ms versus 316 / 416 / 260 / 284 ms with
+`InitialWebUISurfaceSync` disabled. A confirmatory production control preserves
+the existing Translate setting: default 9,976 / 540 / 640 ms versus
+460 / 464 / 1,012 ms. All six production visits have the expected heading,
+Watch now, muted preview playback and no captured JavaScript errors on verified
+Web `c813991ad3645aebdb50d6b1cac92a47b5aad250`.
+
+This closes the original variability investigation through a reproduced browser
+mechanism and a causal control. The correction is to verification and durable
+evidence; no Watch application change is justified for this cause. Preview,
+posters, telemetry and production browser behavior remain unchanged. The old
+individual captures lack traces and cannot be retroactively inspected internally.
+
+The late VIDEO-poster candidate is a separate mechanism. Slow non-headless field
+responses remain covered by feat-496, while the two retained mobile
+post-response paint delays require the distinct field attribution in feat-520.
+Closing this ticket does not assert all user paint or recommendation outcomes
+are healthy. See `docs/operations/watch-paint-surface-sync-2026-09-18.md` and
+`docs/validation/watch-followups-2026-09-18/paint-surface-sync.json`.
