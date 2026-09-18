@@ -274,7 +274,7 @@ export const EN_LOCALE: DevotionalLocale = {
       reflect: () => `Reflect on this.`,
       // Owner's wording for the clip-first cut, where this is the first thing
       // the voice says after the film: it invites rather than instructs.
-      reflectAfterClip: () => `Let's reflect on this.`,
+      reflectAfterClip: () => `Let's reflect on what this means for us.`,
       // Owner's pick over "Here's something to sit with." — that opener said
       // nothing about prayer, while the card it introduces ends in one.
       pray: () => `Let's bring this to God.`,
@@ -380,7 +380,7 @@ export const RU_LOCALE: DevotionalLocale = {
       read: (ref) => `Вот отрывок из Писания.${ref ? ` ${ref}.` : ""}`,
       watch: () => `Давайте посмотрим.`,
       reflect: () => `Подумай над этим.`,
-      reflectAfterClip: () => `Давайте подумаем над этим.`,
+      reflectAfterClip: () => `Давайте подумаем, что это значит для нас.`,
       pray: () => `Принесём это Богу.`,
     },
   },
@@ -472,7 +472,8 @@ export const ES_LOCALE: DevotionalLocale = {
       read: (ref) => `Hoy leemos aquí.${ref ? ` ${ref}.` : ""}`,
       watch: () => `Veamos.`,
       reflect: () => `Reflexiona sobre esto.`,
-      reflectAfterClip: () => `Reflexionemos sobre esto.`,
+      reflectAfterClip: () =>
+        `Reflexionemos sobre lo que esto significa para nosotros.`,
       pray: () => `Llevemos esto a Dios.`,
     },
   },

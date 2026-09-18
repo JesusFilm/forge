@@ -398,7 +398,7 @@ describe("buildNarrationSegments — clip-first structure", () => {
     })
     for (const seg of clipFirst) {
       if (seg.id === "step-reflect") {
-        expect(seg.text).toBe("Let's reflect on this.")
+        expect(seg.text).toBe("Let's reflect on what this means for us.")
         continue
       }
       expect(seg.text).toBe(classic.get(seg.id))

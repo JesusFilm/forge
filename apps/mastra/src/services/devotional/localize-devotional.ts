@@ -1,6 +1,7 @@
 import type { DevotionalLocale } from "./devotional-locale"
 import type { GeneratedDevotional } from "./generate-devotional"
 import type { DevotionalLlm } from "./llm"
+import { authorOf } from "./reflection-attribution"
 import { pickReflectionHighlights } from "./reflection-highlighter"
 import { splitReflection } from "./reflection-split"
 import { fetchSynodalPassage } from "./synodal-bible"
@@ -103,12 +104,17 @@ export async function localizeDevotional(
 
   // Keep the author, localize the "Adapted from …" prefix AND the author name
   // itself (e.g. "Matthew Henry" → "Мэтью Генри").
-  const rawAuthor = d.reflection.attribution.includes("·")
+  // The credit reads "<prefix> · <author>, <year>". Localize the NAME only and
+  // carry the year through untouched, so a Spanish cut still shows 1858.
+  const credited = d.reflection.attribution.includes("·")
     ? d.reflection.attribution.split("·").pop()!.trim()
-    : d.reflection.source.split(",")[0].trim()
-  const author = locale.localizeAuthor
-    ? locale.localizeAuthor(rawAuthor)
-    : rawAuthor
+    : authorOf(d.reflection.source)
+  const [rawAuthor, ...yearParts] = credited.split(",")
+  const yearSuffix = yearParts.length ? `,${yearParts.join(",")}` : ""
+  const author =
+    (locale.localizeAuthor
+      ? locale.localizeAuthor(rawAuthor.trim())
+      : rawAuthor.trim()) + yearSuffix
 
   // DROP the English `parts`. They are the two reflection halves used to place
   // the act-2 video card, and the manifest derives that position by counting

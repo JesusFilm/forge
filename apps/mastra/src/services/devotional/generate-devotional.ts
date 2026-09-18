@@ -7,6 +7,7 @@ import type { DevotionalLlm } from "./llm"
 import { hookStyleForSequence, writeDevotionalCopy } from "./devotional-copy"
 import { writeDevotionalConclusion } from "./devotional-conclusion"
 import { selectScriptureForPassage } from "./passage-scripture"
+import { attributionFor } from "./reflection-attribution"
 import {
   loadReflectionCorpora,
   matchReflection,
@@ -504,7 +505,10 @@ export async function composeDevotionalContent(
   let reflectionText: string
   if (reflectionParts) {
     reflectionText = reflectionParts.join(" ")
-    attribution = `Adapted from a trusted classic · ${selection.source.split(",")[0].trim()}`
+    attribution = attributionFor(
+      selection.source,
+      "Adapted from a trusted classic",
+    )
   } else {
     const modern = await modernize({
       sourceText: focusedSource,

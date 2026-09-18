@@ -25,7 +25,9 @@ describe("modernizeReflection", () => {
     })
     expect(r.adapted).toBe("You are with me.")
     // Credit: "a trusted classic" + just the author (before the first comma).
-    expect(r.attribution).toBe("Adapted from a trusted classic · Matthew Henry")
+    expect(r.attribution).toBe(
+      "Adapted from a trusted classic · Matthew Henry, 1710",
+    )
     expect(r.focusReference).toBe("Luke 8:22-25")
 
     const arg = complete.mock.calls[0][0]

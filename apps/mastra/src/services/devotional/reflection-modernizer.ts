@@ -4,6 +4,7 @@ import { DevotionalLlmError, type DevotionalLlm } from "./llm"
 import { MAX_DEVOTIONAL_TEXT_LENGTH } from "./types"
 import { clipStoryBlock, REFLECTION_ROLE } from "./clip-story"
 import { checkReflectionVoice } from "./reflection-voice-check"
+import { attributionFor } from "./reflection-attribution"
 
 /**
  * Reflection modernizer — a dedicated, tightly-bounded agent.
@@ -705,12 +706,12 @@ export async function modernizeReflection(
 
   return {
     adapted,
-    // "a trusted classic" signals a historic, credible source even to viewers
-    // who don't recognize the author's name (owner note). Use just the AUTHOR
-    // (the part before the first comma of the citation, e.g. "Matthew Henry"
-    // from "Matthew Henry, Commentary on the Whole Bible") so it stays short.
-    // Generalizes across the commentators (Henry/Ryle) and Spurgeon.
-    attribution: `Adapted from a trusted classic · ${options.sourceName.split(",")[0].trim()}`,
+    // Author + the year the work was first published; see
+    // reflection-attribution.ts for why and where the years come from.
+    attribution: attributionFor(
+      options.sourceName,
+      "Adapted from a trusted classic",
+    ),
     focusReference: options.focusReference,
   }
 }
