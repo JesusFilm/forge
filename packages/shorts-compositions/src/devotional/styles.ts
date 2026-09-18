@@ -21,11 +21,9 @@ export const DEVOTIONAL_FILTER_IDS = [
   "splittone",
   "teal",
   "sepia",
-  // 2026-09-18 candidates to replace splittone, whose teal shadow layer read
-  // as a green cast over every clip: warmer, more contrast, less colour.
-  "filmwarm",
+  // 2026-09-18: a candidate to replace splittone, whose teal shadow layer
+  // read as a green cast over every clip.
   "cinema",
-  "monoretro",
 ] as const
 export type DevotionalFilterId = (typeof DEVOTIONAL_FILTER_IDS)[number]
 
@@ -211,29 +209,10 @@ export const DEVOTIONAL_FILTERS: Record<DevotionalFilterId, DevotionalFilter> =
       vignetteText: "inset 0 0 90px 24px rgba(0,0,0,0.55)",
       mediaBase: "saturate(0.5) contrast(1.12) brightness(1.03)",
       splitTone: true,
-      gradeVideoCard: true,
-      blobs: [BW_BLOB_A, BW_BLOB_B],
-    },
-    // Warm film stock: no split tone at all, a touch of sepia, more contrast,
-    // half the colour, and heavier dark-brown grain.
-    filmwarm: {
-      id: "filmwarm",
-      label: "Warm film",
-      textBg: "#0d0b09",
-      mediaBg: "#0d0b09",
-      body: "#eae6df",
-      heading: "#ffffff",
-      secondary: "rgba(255,255,255,0.72)",
-      eyebrow: "#e6a35c",
-      rule: "#e6a35c",
-      highlight: "#e6a35c",
-      highlightItalic: false,
-      closing: "#e6a35c",
-      grainMedia: 0.3,
-      grainText: 0.16,
-      vignetteMedia: "inset 0 0 90px 22px rgba(0,0,0,0.55)",
-      vignetteText: "inset 0 0 100px 26px rgba(0,0,0,0.6)",
-      mediaBase: "saturate(0.6) contrast(1.22) brightness(1.0) sepia(0.16)",
+      // Shadows were teal rgb(10,54,64), which read as a green cast over the
+      // whole clip (owner, 2026-09-18). Blue-grey now, and a little lighter.
+      splitToneShadow: "rgb(26,36,50)",
+      splitToneShadowOpacity: 0.5,
       gradeVideoCard: true,
       blobs: [BW_BLOB_A, BW_BLOB_B],
     },
@@ -256,34 +235,15 @@ export const DEVOTIONAL_FILTERS: Record<DevotionalFilterId, DevotionalFilter> =
       grainText: 0.14,
       vignetteMedia: "inset 0 0 90px 22px rgba(0,0,0,0.55)",
       vignetteText: "inset 0 0 100px 26px rgba(0,0,0,0.6)",
-      mediaBase: "saturate(0.55) contrast(1.3) brightness(0.98)",
+      // Softer than the first cut: less contrast and colour, and the screen
+      // layer lifts the blacks so hair and cloth keep their detail (owner:
+      // "the black is so black the hair merges into one mass").
+      mediaBase: "saturate(0.5) contrast(1.1) brightness(1.02)",
       splitTone: true,
-      splitToneShadow: "rgb(30,36,48)",
-      splitToneShadowOpacity: 0.5,
-      splitToneHighlight: "rgb(238,196,150)",
-      splitToneHighlightOpacity: 0.45,
-      gradeVideoCard: true,
-      blobs: [BW_BLOB_A, BW_BLOB_B],
-    },
-    // Muted retro: colour nearly gone, contrast up, a warm cast, coarse grain.
-    monoretro: {
-      id: "monoretro",
-      label: "Muted retro",
-      textBg: "#0c0a08",
-      mediaBg: "#0c0a08",
-      body: "#eae6df",
-      heading: "#ffffff",
-      secondary: "rgba(255,255,255,0.72)",
-      eyebrow: "#e6a35c",
-      rule: "#e6a35c",
-      highlight: "#e6a35c",
-      highlightItalic: false,
-      closing: "#e6a35c",
-      grainMedia: 0.34,
-      grainText: 0.18,
-      vignetteMedia: "inset 0 0 96px 24px rgba(0,0,0,0.6)",
-      vignetteText: "inset 0 0 100px 26px rgba(0,0,0,0.62)",
-      mediaBase: "saturate(0.32) contrast(1.32) brightness(1.02) sepia(0.22)",
+      splitToneShadow: "rgb(46,48,56)",
+      splitToneShadowOpacity: 0.55,
+      splitToneHighlight: "rgb(238,200,158)",
+      splitToneHighlightOpacity: 0.4,
       gradeVideoCard: true,
       blobs: [BW_BLOB_A, BW_BLOB_B],
     },
@@ -382,9 +342,7 @@ const NATIVE_LAYOUT: Record<DevotionalFilterId, DevotionalLayoutId> = {
   splittone: "editorial",
   teal: "editorial",
   sepia: "classic",
-  filmwarm: "grounded",
   cinema: "grounded",
-  monoretro: "grounded",
 }
 
 /**
