@@ -1,3 +1,13 @@
+import {
+  getOrCreateWatchChapterCarouselMuxBlurDataUrl,
+  getOrCreateWatchHeroPosterMuxBlurDataUrl,
+  getOrScheduleWatchChapterCarouselMuxBlurDataUrl,
+  getOrScheduleWatchChapterCarouselMuxDominantColor,
+  getOrScheduleWatchHeroPosterMuxBlurDataUrl,
+  getOrScheduleWatchHeroPosterMuxDominantColor,
+  getOrScheduleWatchMuxImageMetadata,
+} from "../mux-image-derivative.service"
+
 import { randomUUID } from "node:crypto"
 import { readdirSync, readFileSync } from "node:fs"
 import { PrismaPg } from "@prisma/adapter-pg"
@@ -1447,6 +1457,132 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           (await sql.query(query.query, JSON.parse(query.params))).rowCount ?? 0
       }
       expect(transferredRows).toBeLessThanOrEqual(ids.length * 6)
+    })
+  },
+)
+
+describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
+  "Watch catalog image metadata with the production PostgreSQL adapter",
+  () => {
+    const schema = `watch_mux_${randomUUID().replaceAll("-", "")}`
+    let db: Client
+    let prisma: PrismaClient
+    const videos = Array.from({ length: 192 }, (_, i) => ({
+      muxVideoId: `mux-${i + 1}`,
+      playbackId: `playback-${i + 1}`,
+    }))
+
+    beforeAll(async () => {
+      db = new Client({ connectionString: env.DATABASE_URL })
+      await db.connect()
+      await db.query(`CREATE SCHEMA "${schema}";
+        CREATE TABLE "${schema}".mux_image_derivative (
+          id text PRIMARY KEY, mux_video_id text NOT NULL, purpose text NOT NULL,
+          params_hash text NOT NULL, params jsonb NOT NULL DEFAULT '{}',
+          source_url text NOT NULL, lqip_url text NOT NULL,
+          blur_data_url text NOT NULL, dominant_color text,
+          generated_at timestamp NOT NULL DEFAULT now(),
+          created_at timestamp NOT NULL DEFAULT now(), updated_at timestamp NOT NULL,
+          UNIQUE(mux_video_id, purpose, params_hash)
+        )`)
+      prisma = new PrismaClient({
+        adapter: new PrismaPg(
+          { connectionString: env.DATABASE_URL, max: 10 },
+          { schema },
+        ),
+      })
+      const bytes = new TextEncoder().encode(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="2" height="2"><rect width="2" height="2" fill="#336699"/></svg>',
+      )
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(
+          async () =>
+            new Response(bytes, {
+              headers: { "content-type": "image/svg+xml" },
+            }),
+        ),
+      )
+      for (const generate of [
+        getOrCreateWatchChapterCarouselMuxBlurDataUrl,
+        getOrCreateWatchHeroPosterMuxBlurDataUrl,
+      ]) {
+        await generate({ prisma, muxVideoId: "seed", playbackId: "seed" })
+      }
+      await db.query(`INSERT INTO "${schema}".mux_image_derivative
+        SELECT 'fixture-' || n || purpose, 'mux-' || n, purpose, params_hash,
+          params, source_url, lqip_url, purpose || '-blur-' || n,
+          CASE WHEN purpose = 'watch-hero-poster' THEN '#123456' ELSE '#abcdef' END,
+          generated_at, created_at, updated_at
+        FROM "${schema}".mux_image_derivative CROSS JOIN generate_series(1,192) n
+        WHERE mux_video_id = 'seed'`)
+      // A stale recipe must not displace the current recipe for the same video.
+      await db.query(`INSERT INTO "${schema}".mux_image_derivative
+        SELECT id || '-stale', mux_video_id, purpose, 'stale', params, source_url,
+          lqip_url, 'wrong-blur', '#000000', generated_at, created_at, updated_at
+        FROM "${schema}".mux_image_derivative WHERE mux_video_id = 'mux-1'`)
+      vi.mocked(fetch).mockImplementation(async () => {
+        throw new Error("A complete cached catalog must not fetch images")
+      })
+    })
+
+    afterAll(async () => {
+      vi.unstubAllGlobals()
+      await prisma?.$disconnect()
+      if (db) {
+        await db.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`)
+        await db.end()
+      }
+    })
+
+    it("matches all four existing fields for 192 videos with one Prisma operation", async () => {
+      const expected = new Map(
+        await Promise.all(
+          videos.map(async (video) => {
+            const args = { prisma, ...video }
+            const [chapterBlur, chapterColor, heroBlur, heroColor] =
+              await Promise.all([
+                getOrScheduleWatchChapterCarouselMuxBlurDataUrl(args),
+                getOrScheduleWatchChapterCarouselMuxDominantColor(args),
+                getOrScheduleWatchHeroPosterMuxBlurDataUrl(args),
+                getOrScheduleWatchHeroPosterMuxDominantColor(args),
+              ])
+            return [
+              video.muxVideoId,
+              {
+                muxThumbnailBlurDataUrl: chapterBlur,
+                muxThumbnailDominantColor: chapterColor,
+                muxHeroPosterBlurDataUrl: heroBlur,
+                muxHeroPosterDominantColor: heroColor,
+              },
+            ] as const
+          }),
+        ),
+      )
+      const operations: string[] = []
+      const observed = prisma.$extends({
+        query: {
+          muxImageDerivative: {
+            async $allOperations({ operation, args, query }) {
+              operations.push(operation)
+              return query(args)
+            },
+          },
+        },
+      }) as unknown as PrismaClient
+      const actual = await getOrScheduleWatchMuxImageMetadata({
+        prisma: observed,
+        videos: [...videos, videos[0]!],
+      })
+      expect(actual).toEqual(expected)
+      expect(actual.size).toBe(192)
+      expect(actual.get("mux-1")).toEqual({
+        muxThumbnailBlurDataUrl: "watch-chapter-carousel-blur-1",
+        muxThumbnailDominantColor: "#abcdef",
+        muxHeroPosterBlurDataUrl: "watch-hero-poster-blur-1",
+        muxHeroPosterDominantColor: "#123456",
+      })
+      expect(operations).toEqual(["findMany"])
     })
   },
 )

@@ -107,6 +107,20 @@ overstate that component result as complete recovery. See
 
 ## Entry points
 
+The September 18 continuation reproduces another catalog scheduling cost:
+four image metadata reads per related Mux video produce hundreds of Prisma
+operations despite SQL batching. The scoped correction reads both exact image
+recipes in one service batch. Real PostgreSQL output equivalence and local
+performance controls are documented in
+`docs/solutions/performance-issues/prisma-batched-mux-metadata-call-overhead-20260918.md`.
+This change is under validation and is not yet release evidence. The ticket
+remains in progress pending normal deployment and separate HTTP/semantic
+acceptance. A temporary diagnostic observer caused an additional connection
+incident, was removed, and its stranded connections were discarded; that
+capture is excluded from causal evidence. See
+`docs/operations/watch-api-stalls-diagnostic-2026-09-18.md` for the incident,
+recovery and remaining uncertainty.
+
 - `apps/web/src/lib/recommendation-mutation-admission.ts` — identity, namespace
   and production worker dispatch.
 - `apps/web/src/lib/recommendation-redis-admission.ts` — one shared Redis core.

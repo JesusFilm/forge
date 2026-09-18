@@ -13,6 +13,7 @@ import {
   getOrCreateWatchChapterCarouselMuxBlurDataUrl,
   getOrCreateWatchHeroPosterMuxBlurDataUrl,
   getOrScheduleWatchChapterCarouselMuxBlurDataUrl,
+  getOrScheduleWatchMuxImageMetadata,
 } from "./mux-image-derivative.service"
 
 function makePrisma({
@@ -45,6 +46,96 @@ const svgDataUrl = `data:image/svg+xml;base64,${Buffer.from(svgBytes).toString("
 describe("mux-image-derivative.service", () => {
   afterEach(() => {
     vi.unstubAllGlobals()
+  })
+
+  it("reads both Watch recipes together and keeps their blur and color paired", async () => {
+    const prisma = makePrisma()
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+    const findMany = vi.fn(async () => [
+      {
+        muxVideoId: "mux-1",
+        purpose: "watch-hero-poster",
+        blurDataUrl: "hero",
+        dominantColor: "#123456",
+      },
+      {
+        muxVideoId: "mux-1",
+        purpose: "watch-chapter-carousel",
+        blurDataUrl: "chapter",
+        dominantColor: "#abcdef",
+      },
+    ])
+    prisma.muxImageDerivative.findMany = findMany as never
+    const metadata = await getOrScheduleWatchMuxImageMetadata({
+      prisma,
+      videos: [
+        { muxVideoId: "mux-1", playbackId: "playback-1" },
+        { muxVideoId: "mux-1", playbackId: "playback-1" },
+      ],
+    })
+    expect(metadata.size).toBe(1)
+    expect(metadata.get("mux-1")).toEqual({
+      muxThumbnailBlurDataUrl: "chapter",
+      muxThumbnailDominantColor: "#abcdef",
+      muxHeroPosterBlurDataUrl: "hero",
+      muxHeroPosterDominantColor: "#123456",
+    })
+    expect(findMany).toHaveBeenCalledTimes(1)
+    expect(prisma.muxImageDerivative.findUnique).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("returns partial cached metadata while generating only incomplete recipes", async () => {
+    const prisma = makePrisma()
+    prisma.muxImageDerivative.findMany = vi.fn(async () => [
+      {
+        muxVideoId: "batch-missing",
+        purpose: "watch-chapter-carousel",
+        blurDataUrl: "chapter",
+        dominantColor: null,
+      },
+    ]) as never
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        headers: new Headers({ "content-type": "image/svg+xml" }),
+        arrayBuffer: async () => svgBytes.buffer,
+      })),
+    )
+    const result = await getOrScheduleWatchMuxImageMetadata({
+      prisma,
+      videos: [{ muxVideoId: "batch-missing", playbackId: "batch-playback" }],
+    })
+    expect(result.get("batch-missing")).toEqual({
+      muxThumbnailBlurDataUrl: "chapter",
+      muxThumbnailDominantColor: null,
+      muxHeroPosterBlurDataUrl: null,
+      muxHeroPosterDominantColor: null,
+    })
+    await vi.waitFor(() =>
+      expect(prisma.muxImageDerivative.upsert).toHaveBeenCalledTimes(2),
+    )
+  })
+
+  it("does no work for an empty batch and propagates a failed metadata read", async () => {
+    const prisma = makePrisma()
+    const failure = new Error("metadata read failed")
+    prisma.muxImageDerivative.findMany = vi.fn().mockRejectedValue(failure)
+    expect(
+      await getOrScheduleWatchMuxImageMetadata({ prisma, videos: [] }),
+    ).toEqual(new Map())
+    expect(prisma.muxImageDerivative.findMany).not.toHaveBeenCalled()
+    await expect(
+      getOrScheduleWatchMuxImageMetadata({
+        prisma,
+        videos: [
+          { muxVideoId: "batch-error", playbackId: "batch-error-playback" },
+        ],
+      }),
+    ).rejects.toBe(failure)
+    expect(prisma.muxImageDerivative.findUnique).not.toHaveBeenCalled()
   })
 
   it("builds the chapter carousel full thumbnail and tiny LQIP URLs from the same crop recipe", () => {
