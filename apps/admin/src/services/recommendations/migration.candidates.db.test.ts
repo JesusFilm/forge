@@ -55,17 +55,23 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       .slice(2)}`
     let client: Client
     let databaseUrl: string
-    const expiresAt = "2026-09-17T00:00:00.000Z"
+    // Relative to now, not a fixed date. `recommendation_request_expiry_check`
+    // is CHECK (expires_at > created_at) and created_at defaults to now(), so a
+    // hardcoded timestamp silently becomes a time bomb: this suite passed until
+    // wall-clock reached the literal, then failed for every PR. Never asserted
+    // on -- it is only ever insert data.
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1_000).toISOString()
 
+    // Keep creation on the fixed fixture timeline instead of the database clock.
     async function insertRequest(id: string, expectedItemCount: number) {
       await client.query(
         `INSERT INTO "recommendation_request" (
           "id", "contract_version", "surface_version", "manifest_id",
           "strategy_version", "classifier_version", "session_digest",
-          "seed_media_id", "locale", "expected_item_count", "result", "expires_at"
+          "seed_media_id", "locale", "expected_item_count", "result", "expires_at", "created_at"
         ) VALUES ($1, 'semantic-recommendation-v1', 'watch-below-player-v1',
           'semantic-transcript-pgvector-v1', 'semantic-transcript-pgvector-v1',
-          'legacy-position-v0', $2, 'seed-video', 'en', $3, 'served', $4)`,
+          'legacy-position-v0', $2, 'seed-video', 'en', $3, 'served', $4, '2026-08-19T00:00:00.000Z')`,
         [id, "a".repeat(64), expectedItemCount, expiresAt],
       )
     }
@@ -449,13 +455,13 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
             id, contract_version, surface_version, manifest_id,
             strategy_version, classifier_version, session_digest,
             seed_media_id, locale, expected_item_count, state, result,
-            signing_kid, issued_at, expires_at
+            signing_kid, issued_at, expires_at, created_at
           ) VALUES (
             'issued-unavailable', 'semantic-recommendation-v1',
             'watch-below-player-v1', 'semantic-transcript-pgvector-v1',
             'semantic-transcript-pgvector-v1', 'legacy-position-v0', $1,
             'seed-video', 'en', 0, 'issued', 'unavailable', 'kid-1',
-            '2026-08-24T00:00:00.000Z', $2
+            '2026-08-24T00:00:00.000Z', $2, '2026-08-24T00:00:00.000Z'
           )`,
           ["a".repeat(64), expiresAt],
         ),
@@ -483,13 +489,13 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
             id, contract_version, surface_version, manifest_id,
             strategy_version, classifier_version, session_digest,
             seed_media_id, locale, expected_item_count, state, result,
-            delivery_jti, signing_kid, issued_at, expires_at
+            delivery_jti, signing_kid, issued_at, expires_at, created_at
           ) VALUES (
             $1, 'semantic-recommendation-v1', 'watch-below-player-v1',
             'semantic-transcript-pgvector-v1',
             'semantic-transcript-pgvector-v1', 'legacy-position-v0', $2,
             'seed-video', 'en', $3, 'issued', $4, $5, 'kid-1',
-            '2026-08-24T00:00:00.000Z', $6
+            '2026-08-24T00:00:00.000Z', $6, '2026-08-24T00:00:00.000Z'
           )`,
           [
             id,
@@ -558,7 +564,10 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           "expiry-item",
           "expiry-request",
           0,
-          "2026-09-18T00:00:00.000Z",
+          // Deliberately not the request root's expiry. Derived from it so it
+          // stays a guaranteed-different future instant rather than a literal
+          // that could drift into the past or coincide with the root.
+          new Date(Date.parse(expiresAt) + 1_000).toISOString(),
         ),
       ).rejects.toThrow("child expiry must match request root")
       await client.query("ROLLBACK")

@@ -51,15 +51,16 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
     let databaseUrl: string
     const expiresAt = "2026-09-17T00:00:00.000Z"
 
+    // Keep creation on the fixed fixture timeline instead of the database clock.
     async function insertRequest(id: string, expectedItemCount: number) {
       await client.query(
         `INSERT INTO "recommendation_request" (
           "id", "contract_version", "surface_version", "manifest_id",
           "strategy_version", "classifier_version", "session_digest",
-          "seed_media_id", "locale", "expected_item_count", "result", "expires_at"
+          "seed_media_id", "locale", "expected_item_count", "result", "expires_at", "created_at"
         ) VALUES ($1, 'semantic-recommendation-v1', 'watch-below-player-v1',
           'semantic-transcript-pgvector-v1', 'semantic-transcript-pgvector-v1',
-          'legacy-position-v0', $2, 'seed-video', 'en', $3, 'served', $4)`,
+          'legacy-position-v0', $2, 'seed-video', 'en', $3, 'served', $4, '2026-08-19T00:00:00.000Z')`,
         [id, "a".repeat(64), expectedItemCount, expiresAt],
       )
     }
@@ -185,7 +186,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
             generation, state, projection_version, clustering_version,
             eligibility_policy_version, outcome_classifier_version,
             input_window_start, input_window_end, input_digest,
-            contribution_count, retention_days, published_at, expires_at
+            contribution_count, retention_days, published_at, expires_at, created_at
           ) VALUES (
             'projection-detach-generation',
             'multi-interest-profile-shadow-v1', 'durable',
@@ -194,7 +195,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
             'deterministic-farthest-first-medoids-v1',
             'recommendation-integrity-v1', 'active-watch-proxy-v1',
             '2026-08-25T00:00:00.000Z', '2026-08-26T00:00:00.000Z',
-            $1, 1, 180, '2026-08-26T00:00:00.000Z', $2
+            $1, 1, 180, '2026-08-26T00:00:00.000Z', $2, '2026-08-26T00:00:00.000Z'
           )`,
           ["4".repeat(64), expiresAt],
         )
@@ -255,14 +256,14 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
             generation, state, projection_version, clustering_version,
             eligibility_policy_version, outcome_classifier_version,
             input_window_start, input_window_end, input_digest,
-            contribution_count, retention_days, published_at, expires_at
+            contribution_count, retention_days, published_at, expires_at, created_at
           ) VALUES ('projection-detach-fk-generation',
             'multi-interest-profile-shadow-v1', 'durable', 'profile-detach-fk',
             1, 1, 'published', 'multi-interest-profile-projection-v1',
             'deterministic-farthest-first-medoids-v1',
             'recommendation-integrity-v1', 'legacy-position-v0',
             '2026-08-25T00:00:00.000Z', '2026-08-26T00:00:00.000Z',
-            $1, 1, 180, '2026-08-26T00:00:00.000Z', $2)`,
+            $1, 1, 180, '2026-08-26T00:00:00.000Z', $2, '2026-08-26T00:00:00.000Z')`,
           ["1".repeat(64), expiresAt],
         )
         await client.query(

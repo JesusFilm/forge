@@ -3,7 +3,7 @@ id: "feat-513"
 title: "Keep workflow listeners out of the Admin enqueue-only runtime"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-09-16"
 duration: 2
 depends_on: []
@@ -66,3 +66,31 @@ executing; the worker consumes and completes the job. Assert retry/resume and
 deduplication behavior. Run Admin instrumentation tests, types, lint, build and
 the relevant workflow regressions. Verify both automatically deployed revisions
 and observe real queue consumption before closing this ticket.
+
+## Release and acceptance — September 18
+
+PR #2337 merged normally at September 17 23:33:55 UTC as
+`9cdb79b13e0868f549de118b45db9f685dba0529`. Railway automatically deployed Admin
+`bcc3defe-c9c5-4545-b2c0-b286b9358ad2` and worker
+`3d18e1e7-29f9-44a3-8b80-8673e5054db5`; both reported SUCCESS and SSH verified
+the exact running revision and false/true runner flags.
+
+Read-only PostgreSQL observations after deployment identify no Graphile job
+listener on Admin and one on the dedicated worker. Both retain their expected
+`workflow_event_chunk` stream listeners. The 23:43–23:58 Datadog counter window
+contains 1,083 flow and 539 step callbacks on the new worker revision, with none
+on Admin. An actual selection trace also shows Admin successfully enqueueing
+projection and episode-finalization jobs after deployment. Combined with the
+real two-process durability/retry/resume regression, this meets runner-isolation
+acceptance.
+
+The isolation correction does **not** establish general Watch timeout recovery.
+A later selection trace still exceeded the upstream deadline, while its batch's
+12 delivery responses served six cards without semantic fallback. A second
+browser abort corresponded to server HTTP 200. Keep these populations separate;
+remaining timing evidence belongs in the follow-up operations record.
+
+See `docs/solutions/runtime-errors/postgres-workflow-enqueue-starts-disabled-admin-runner.md`
+and `docs/operations/watch-followups-verification-2026-09-18.md` for the proven
+boundary, tests and limitations. No shared queues, concurrency, production data
+or diagnostic settings were changed to achieve acceptance.

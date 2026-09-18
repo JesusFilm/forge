@@ -3,7 +3,7 @@ id: "feat-496"
 title: "Resolve remaining Watch admission and database transaction timeouts"
 owner: "nisal"
 priority: "P1"
-status: "complete"
+status: "in-progress"
 start_date: "2026-09-11"
 duration: 3
 depends_on: []
@@ -107,6 +107,51 @@ overstate that component result as complete recovery. See
 
 ## Entry points
 
+The September 18 continuation reproduces another catalog scheduling cost:
+four image metadata reads per related Mux video produce hundreds of Prisma
+operations despite SQL batching. The scoped correction reads both exact image
+recipes in one service batch. Real PostgreSQL output equivalence and local
+performance controls are documented in
+`docs/solutions/performance-issues/prisma-batched-mux-metadata-call-overhead-20260918.md`.
+PR #2342 merged normally and deployed automatically to Admin and worker revision
+`32caef0f1cc2e9b59570bfb44fd1cd96f2df0c58`. Exact running revisions and the
+compiled batch were verified at 03:17:41 UTC on September 18. Web remains on
+`c813991ad3645aebdb50d6b1cac92a47b5aad250`; its service correctly skipped this
+Admin-only release. The ticket remains in progress during separate sustained
+HTTP/semantic acceptance. A temporary diagnostic observer caused an additional connection
+incident, was removed, and its stranded connections were discarded; that
+capture is excluded from causal evidence. See
+`docs/operations/watch-api-stalls-diagnostic-2026-09-18.md` for the incident,
+recovery and remaining uncertainty.
+
+A sampled post-release browser acknowledgment failure has a separate native
+Chrome renderer commit wait; feat-521 owns further attribution and field
+verification. It must remain visible in browser outcomes and must not be
+misclassified as an Admin HTTP 503. The underlying browser mechanism and the
+other unread-body cases are not all established by that single trace.
+
+The extended release check still confirms a selection HTTP 503 at 03:40:10 UTC
+on September 18 (`6aacb29a000000003096dac941cd5f16`). Admin selection spends
+2,341 ms in `consume_recommendation_capability_submissions` before its 81 ms
+selection transaction. Driver/pool waiting, database locking/execution and
+application scheduling still require separation for this new sample. The
+48-selection ordinary cohort has 42 validated acknowledgments, five unread HTTP
+200 bodies and this one server-correlated timeout; all 96 delivery bodies are
+served, with no observed `delivery_timeout`. Keep this ticket open and preserve
+the capability submission bound while investigating the remaining call.
+
+A second server HTTP 503 at 03:45:42
+(`6aacb3e6000000004bb08c6b3b2e20c3`) includes a 382 ms capability-budget call;
+an independent PostgreSQL sample observes `IO / WalSync` during it. This proves
+a durable-write contribution, not the cause of the entire delay. Existing Node
+metrics do not support a 2.34-second scheduling pause in the first timeout;
+checkpoint completion does not overlap either failure. A faster experimental
+language-inventory query failed to reproduce or improve selection-probe latency
+under the observed concurrency and was not shipped. Preserve these negative
+controls and separate driver acquisition from database waits before the next
+fix. Details and exact cohort denominators are in the operations report and
+`docs/validation/watch-api-batch-release-20260918/browser-outcomes.json`.
+
 - `apps/web/src/lib/recommendation-mutation-admission.ts` — identity, namespace
   and production worker dispatch.
 - `apps/web/src/lib/recommendation-redis-admission.ts` — one shared Redis core.
@@ -201,3 +246,55 @@ revision-scoped request populations and structured delivery outcomes.
 - feat-487/feat-488 own curated coverage and homepage launch configuration.
 - feat-506 tracks pre-existing diagnostic command noise from missing ps/cache
   paths; it is separate from the recommendation request timeouts.
+
+## Reopened by later evidence — September 18
+
+The earlier release window remains valid evidence for its reproduced catalog
+fixes. It is not the current overall recovery verdict. On September 17 at
+23:48:41, after worker isolation PR #2337 deployed to Admin, trace
+`e3c73fbba25d1f77b5c137ec7115347a` records Web HTTP 503 at 750 ms and an Admin
+selection mutation continuing for 1,432 ms. Its browser aborted at 801 ms.
+That batch's 12 recommendation deliveries all served six cards without semantic
+fallback. A later browser abort had server HTTP 200 and a short Admin request,
+so those two aborts must not be assigned one cause.
+
+This ticket is reopened for the remaining proven deadline failure. feat-513's
+runner isolation is independently verified; feat-516's cold-profiler correction
+and feat-517's autoplay hydration correction are deployed and independently
+verified. None establishes global
+selection recovery. Read `docs/operations/watch-followups-verification-2026-09-18.md`
+for dates, revisions, separate outcome populations and diagnostic cleanup.
+
+After profiler PR #2339 deployed as `c813991ad3645aebdb50d6b1cac92a47b5aad250`,
+trace `b0e7eb73435b3df258c9f5c2a91ab5cf` at September 18 00:27:55 still
+records selection Web HTTP 503 at 705 ms and an Admin mutation continuing for
+1,469 ms. It occurred about nine seconds after the ordinary 157 ms profile
+collection. That batch's 12 deliveries served six cards without fallback;
+five selections acknowledged successfully and one browser request aborted.
+This observation prevents an overall recovery claim and is not attributed to
+profiling or PostgreSQL locks without a causal reproduction.
+
+The 00:36:57–00:38:02 bounded observer further measured actual pg pool
+acquisitions up to 741 ms with over 100 queued waiters. Independent PostgreSQL
+sampling also observed a 444 ms advisory-lock wait while other transactions
+waited on the application. The browser batch contained three HTTP 200
+`delivery_timeout` fallbacks, two separate `in_flight` fallbacks and one
+trace-confirmed selection HTTP 503. Prisma batches many image-derivative calls
+into one SQL query, confirmed both
+locally and by production row counts; span count alone therefore does not prove
+SQL fan-out. The workload causing the remaining pool pressure is unresolved.
+Pool, lock and scheduling costs remain distinct; no new correction is claimed.
+
+feat-515 subsequently recovered and explained the separate ten-second headless
+paint case through Chrome toolbar surface synchronization, with a production
+browser-feature control. That investigation does not resolve these Admin
+deadlines. Additional retained APM spans at 00:50–01:20 include playback/evidence
+HTTP 503s; sampled delivery HTTP 200 spans alone cannot establish their body
+semantics. See `docs/operations/watch-paint-surface-sync-2026-09-18.md` and the
+distinct non-headless post-response paint follow-up feat-520.
+
+Final checks on Web/Admin `c813991ad` also reproduce a `delivery_timeout` HTTP
+200 fallback and trace-confirmed selection HTTP 503 at 00:47:19 without any
+temporary production instrumentation. Trace
+`75f0d58d57ea0aa72f431b2f84e78f0c` has upstream timeout at 700 ms and an Admin
+mutation continuing for 1,710 ms. This is still unresolved.

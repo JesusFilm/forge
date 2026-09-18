@@ -190,23 +190,32 @@ Core legitimately changes, review and commit a new lock and corpus identity
 first. An accepted correction creates a superseding frozen version and never
 mutates an existing object.
 
-## Step 8 — Reviewer provisioning (currently blocked)
+## Step 8 — Provision reviewers
 
-**There is no operator surface for this today.**
-`grantReviewerLanguageAccess()` and `revokeReviewerLanguageAccess()` exist in
-`apps/admin/src/services/user-access.service.ts` but have no production caller —
-only tests. The operator equivalent, `grantManagerAccess()`, is wired into
-`apps/admin/src/app/dashboard/users/actions.ts`; the reviewer functions are not
-wired to anything.
+Admin's users dashboard has a **Subtitle Lab Reviewers** section
+(`/dashboard/users`). It lists current grants, revokes one with a recorded
+reason, and grants a new one.
 
-Provisioning a reviewer therefore requires new code first: either a dashboard
-action beside the existing Manager-access control, a GraphQL mutation, or a CLI
-script comparable to `apps/admin/src/scripts/grant-manager-operator.ts`.
+A reviewer grant is language-scoped and carries its own justification, so it is
+a form rather than a role dropdown. Granting requires:
 
-Whichever surface is added must set `ManagerRole.REVIEWER` together with at
-least one active exact `Language.id` plus `Language.slug` grant, since the
-reviewer boundary admits only on that pair. Prefer an approach that makes
-revocation as easy as granting.
+| Field                                | Rule                                                                                          |
+| ------------------------------------ | --------------------------------------------------------------------------------------------- |
+| Reviewer                             | any user who is not an active Manager operator                                                |
+| Language                             | must exist, not be deleted, and have a slug                                                   |
+| Target language proficiency evidence | required, up to 2,000 characters                                                              |
+| Source language proficiency evidence | optional                                                                                      |
+| Rubric dimensions                    | at least one of meaning accuracy, naturalness, timing and readability, scripture and theology |
+| Scripture / theology specialist      | required before scripture and theology can be granted                                         |
+| Reason                               | required, up to 500 characters                                                                |
+
+Granting creates the `ManagerRole.REVIEWER` membership if the person does not
+have one. An active Manager operator cannot hold a reviewer grant, and the
+picker excludes them.
+
+The evidence and reason fields are mandatory on purpose. This surface records
+the judgement that somebody is qualified to review a language; it does not make
+that judgement.
 
 First reviewers are internal staff. External contributors stay blocked until
 the notice, retention, redaction, export, correction and erasure policy is
@@ -250,8 +259,6 @@ a service, so rollback has no publication to retract.
 
 ## Known gaps at the time of writing
 
-- **Reviewer provisioning has no operator surface** (step 8). This blocks any
-  human review test.
 - **PR environments cannot exercise this path.** `@forge/admin` and
   `@forge/mastra` have no service instance in any `forge-pr-*` environment, and
   `@forge/auth`'s PR-environment instance has no source repository attached, so

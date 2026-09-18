@@ -168,7 +168,7 @@ function formatHeroRuntime(
   }).format(minutes)
 }
 
-function subscribeViewerId(_onStoreChange: () => void): () => void {
+function subscribeClientSnapshot(_onStoreChange: () => void): () => void {
   return () => {}
 }
 
@@ -378,7 +378,13 @@ export function HeroPlayer({
   const searchParams = useSearchParams()
   const router = useRouter()
   const tParam = searchParams?.get("t")
-  const autoplayParam = searchParams?.get("autoplay")
+  // force-static caches the poster layout without query parameters. Match it
+  // during hydration, then apply the arrival's autoplay intent immediately.
+  const autoplayParam = useSyncExternalStore(
+    subscribeClientSnapshot,
+    () => searchParams?.get("autoplay") ?? null,
+    () => null,
+  )
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const playerRef = useRef<MuxPlayerRef | null>(null)
   const [player, setPlayer] = useState<MuxPlayerRef | null>(null)
@@ -1101,7 +1107,7 @@ export function HeroPlayer({
   }, [chromeRevealed, heroHeight, player, onPlayerViewabilityChange])
 
   const viewerUserId = useSyncExternalStore(
-    subscribeViewerId,
+    subscribeClientSnapshot,
     getViewerId,
     getViewerIdServerSnapshot,
   )
