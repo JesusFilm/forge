@@ -705,7 +705,14 @@ function ClipIntro({
     ...clampBoth,
     easing: ease,
   })
-  const headerDrop = px(14) * (1 - headerIn)
+  // Settles down from a little above; the length follows the name a beat
+  // later, a touch of parallax (owner).
+  const timeIn = interpolate(t, [0.18, 0.95], [0, 1], {
+    ...clampBoth,
+    easing: ease,
+  })
+  const headerDrop = -px(16) * (1 - headerIn)
+  const timeDrop = -px(12) * (1 - timeIn)
   const headerHold = L + 1.0
   const headerOutSec = variant === "cover" ? 0.6 : 1.2
   const headerOut = interpolate(
@@ -753,6 +760,8 @@ function ClipIntro({
             fontSize: px(15.6),
             color: INTRO_GOLD,
             whiteSpace: "nowrap",
+            opacity: headerIn > 0 ? timeIn / headerIn : 0,
+            transform: `translateY(${timeDrop}px)`,
           }}
         >
           {timeLabel}
@@ -767,7 +776,7 @@ function ClipIntro({
     letterSpacing: px(size * 0.14),
     color: gold ? INTRO_GOLD : "#ffffff",
     whiteSpace: "nowrap" as const,
-    textShadow: "0 2px 14px rgba(0,0,0,0.6)",
+    textShadow: "0 1px 8px rgba(0,0,0,0.45)",
   })
 
   if (variant === "cover") {
@@ -796,14 +805,16 @@ function ClipIntro({
     const scrim =
       0.42 * colIn * interpolate(t, [L - 1.0, L - 0.2], [1, 0], clampBoth)
     const watchOut = headerOut
-    const watchSwell = interpolate(t, [0.3, L + 0.4], [1, 1.09], {
+    // WATCH lights up: white to gold, a slight swell and the glow arriving
+    // together over a second and a half, the word catching light rather than
+    // switching on (owner).
+    const lit = interpolate(t, [0.5, 2.0], [0, 1], {
       ...clampBoth,
       easing: ease,
     })
-    const glow = interpolate(t, [0.4, 1.8], [0, 1], {
-      ...clampBoth,
-      easing: ease,
-    })
+    const watchSwell = 1 + 0.07 * lit
+    const glow = lit
+    const watchColor = interpolateColors(lit, [0, 1], ["#ffffff", INTRO_GOLD])
     const size = 19
     const labelH = px(size) * 1.2
     const rail = px(46.8)
@@ -826,8 +837,10 @@ function ClipIntro({
             marginTop: -px(43),
             borderRadius: "50%",
             background: INTRO_GOLD,
-            opacity: 0.3 * glow * colIn * watchOut,
-            filter: `blur(${px(26)}px)`,
+            // Softer than the stepper's pool: the first cut read as a blot of
+            // light behind the word rather than the word lit.
+            opacity: 0.16 * glow * colIn * watchOut,
+            filter: `blur(${px(30)}px)`,
             mixBlendMode: "screen",
           }}
         />
@@ -856,10 +869,13 @@ function ClipIntro({
                   style={{
                     ...label(isWatch, size),
                     display: "inline-block",
-                    transform: isWatch ? `scale(${watchSwell})` : undefined,
-                    textShadow: isWatch
-                      ? `0 0 ${px(16) * glow}px rgba(242,196,107,${0.65 * glow})`
-                      : label(false, size).textShadow,
+                    ...(isWatch
+                      ? {
+                          color: watchColor,
+                          transform: `scale(${watchSwell})`,
+                          textShadow: `0 0 ${px(14) * glow}px rgba(242,196,107,${0.4 * glow})`,
+                        }
+                      : {}),
                   }}
                 >
                   {stepLabel}
@@ -3955,7 +3971,7 @@ export function cardFadeOpacity(f: number, xfade: number): number {
  * from the top clears the Reels / TikTok headers, 48 from the right clears the
  * edge without hugging it.
  */
-const STEP_RING_TOP = 70
+const STEP_RING_TOP = 74
 const STEP_RING_RIGHT = 48
 const STEP_RING_SIZE = 48
 
