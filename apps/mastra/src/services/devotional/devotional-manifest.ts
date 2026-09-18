@@ -162,7 +162,9 @@ function buildClipFirstManifest(
     videoFill: "full",
     ...(captions.length ? { subtitles: captions } : {}),
     ...(input.mutedLeadSec ? { mutedLeadSec: input.mutedLeadSec } : {}),
-    ...(input.intro ? { intro: input.intro } : {}),
+    // The intro names the three steps in the locale's words, same as the
+    // stepper screens (a Spanish cut once opened on WATCH / REFLECT / PRAY).
+    ...(input.intro ? { intro: input.intro, steps: STEPS } : {}),
   })
 
   // WATCH is already behind us; the light travels from it onto REFLECT.
