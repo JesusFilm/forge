@@ -78,6 +78,16 @@ export const devotionalCardSchema = z.object({
    */
   captionStyle: z.enum(["words", "words-lift"]).optional(),
   /**
+   * Clip-first opening over the muted lead of the film card, so the viewer
+   * knows this is a devotional and not a stray film clip. `cover`: the brand
+   * mark, series name, rounded length and the three steps over a darkened
+   * film, WATCH already lit; the other steps and the scrim leave as the sound
+   * comes in. `bands`: the frame split into three bands, WATCH in colour with
+   * the live film, REFLECT and PRAY desaturated below; WATCH grows to fill the
+   * frame. Needs `mutedLeadSec` for its length.
+   */
+  intro: z.enum(["cover", "bands"]).optional(),
+  /**
    * Where a full-frame portrait video card crops the 16:9 clip, over time: the
    * normalized x of the source the frame is centred on, as a PATH in seconds
    * from the clip's start, interpolated linearly between points. Absent means a

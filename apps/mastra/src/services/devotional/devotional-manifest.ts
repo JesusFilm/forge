@@ -39,6 +39,8 @@ export type DevotionalManifest = {
   introHoldSec?: number
   /** Seconds of background skipped before the first card on it; see schema. */
   bgStartOffsetSec?: number
+  /** Clip-first: intro overlay over the film's muted lead (see card schema). */
+  intro?: "cover" | "bands"
   /** Clip-first: corner progress ring clocking each step (composition prop). */
   stepRing?: boolean
   /** Held beat on the LAST card after its narration ends (s). Same reason. */
@@ -87,6 +89,8 @@ export type BuildManifestInput = {
   /** Open the video card SILENT for this many seconds, with `leadLabel` on
    *  screen, before the clip's own audio eases in. */
   mutedLeadSec?: number
+  /** Clip-first: intro overlay over the film's muted lead (see card schema). */
+  intro?: "cover" | "bands"
   /** The line shown over that silent opening, e.g. "Let's watch". */
   leadLabel?: string
   /** Captions for the video card, ALREADY timed against the edited clip
@@ -148,10 +152,13 @@ function buildClipFirstManifest(
     videoFile: clip,
     durationSec: videoDurationSec,
     // Full-frame vertical crop, not the square window: the film IS the
-    // opening here, so it gets the whole frame. No muted lead — nothing was
-    // said before it, so there is no "Let's watch" to wait for.
+    // opening here, so it gets the whole frame. No spoken lead-in — nothing
+    // was said before it — but an optional silent lead carries the intro
+    // overlay that says what this is.
     videoFill: "full",
     ...(captions.length ? { subtitles: captions } : {}),
+    ...(input.mutedLeadSec ? { mutedLeadSec: input.mutedLeadSec } : {}),
+    ...(input.intro ? { intro: input.intro } : {}),
   })
 
   // WATCH is already behind us; the light travels from it onto REFLECT.

@@ -932,6 +932,8 @@ export type RenderOptions = {
   /** Clip-first only: seconds to drop from the END of the film card, when the
    *  cut lands on a stray shot (a new speaker appears and is half heard). */
   clipTrimEndSec?: number
+  /** Clip-first only: intro overlay over the film's muted lead (`--muted-lead`). */
+  intro?: "cover" | "bands"
   /** Clip-first only: corner progress ring clocking each step (see schema). */
   stepRing?: boolean
   /** Clip-first only: how the film's captions arrive (see the card schema). */
@@ -1444,6 +1446,7 @@ async function renderInStage(
           settleLine: settleLineFor(devo.sequence, options.settleLine ?? null),
         }
       : {}),
+    ...(options.intro ? { intro: options.intro } : {}),
     ...(mutedLeadForManifest > 0
       ? {
           // The silent opening stays (the clip's own sound eases in), but the

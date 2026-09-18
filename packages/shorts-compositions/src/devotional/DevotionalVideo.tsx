@@ -623,6 +623,322 @@ function WordReveal({
   )
 }
 
+/**
+ * The Daily Bible Pause mark: two leaves of an open book, as drawn in the
+ * owner's Figma (60 x 54 box, 3-unit stroke). Screen-blended like the source.
+ */
+function PauseMark({ size }: { size: number }) {
+  return (
+    <svg
+      width={size}
+      height={(size * 54.3229) / 60}
+      viewBox="0 0 60 54.3229"
+      fill="none"
+      style={{ display: "block", mixBlendMode: "screen", opacity: 0.75 }}
+    >
+      <path
+        d="M22.7353 6.69586C22.7353 5.5387 21.9013 4.54996 20.7607 4.35486L4.27543 1.535C2.82479 1.28687 1.5 2.40429 1.5 3.876V50.4456C1.5 52.0221 3.00785 53.1611 4.52433 52.7301L21.0096 48.0445C22.0308 47.7542 22.7353 46.8216 22.7353 45.76V6.69586Z"
+        stroke="#FFF6F1"
+        strokeWidth={3}
+      />
+      <path
+        d="M37.2646 6.69586C37.2646 5.5387 38.0986 4.54996 39.2392 4.35486L55.7245 1.535C57.1751 1.28687 58.4999 2.40429 58.4999 3.876V50.4456C58.4999 52.0221 56.9921 53.1611 55.4756 52.7301L38.9903 48.0445C37.9691 47.7542 37.2646 46.8216 37.2646 45.76V6.69586Z"
+        stroke="#FFF6F1"
+        strokeWidth={3}
+      />
+    </svg>
+  )
+}
+
+/**
+ * The clip-first opening, over the film's silent lead. Two designs from the
+ * owner's Figma, both there to say "this is a devotional, not a stray film
+ * clip" before the film speaks:
+ *
+ * `cover`: mark, series name and rounded length at the top, the three steps in
+ * a column over the darkened film with WATCH already lit. As the sound comes
+ * in, REFLECT, PRAY, the rails and the scrim leave; WATCH, the mark and the
+ * length stay a second longer over the speaking film, then fade.
+ *
+ * `bands`: the frame split into three bands. The top band is the live film
+ * in colour with WATCH lit; the two below are the same film, desaturated,
+ * carrying REFLECT and PRAY. The WATCH band grows down to take the frame,
+ * the others closing under it, then the mark and length fade slowly.
+ *
+ * Every time is a share of the lead so a different lead keeps the shape.
+ */
+const INTRO_GOLD = "#f2c46b"
+
+function ClipIntro({
+  variant,
+  leadSec,
+  frame,
+  fps,
+  px,
+  steps,
+  pieceSec,
+  clipSrc,
+}: {
+  variant: "cover" | "bands"
+  leadSec: number
+  frame: number
+  fps: number
+  px: (n: number) => number
+  style: DevotionalStyle
+  steps: ReadonlyArray<string>
+  pieceSec: number
+  clipSrc: string | null
+}) {
+  const t = frame / fps
+  const L = leadSec
+  const clampBoth = {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  } as const
+  const ease = Easing.bezier(0.42, 0, 0.58, 1)
+  const minutes = Math.max(1, Math.round(pieceSec / 60))
+  const timeLabel = `- ${minutes} min -`
+
+  // Header: mark, series name, length. Shared by both designs; leaves last.
+  const headerIn = interpolate(t, [0, 0.4], [0, 1], clampBoth)
+  const headerHold = variant === "cover" ? L + 1.0 : L + 1.0
+  const headerOutSec = variant === "cover" ? 0.6 : 1.2
+  const headerOut = interpolate(
+    t,
+    [headerHold, headerHold + headerOutSec],
+    [1, 0],
+    clampBoth,
+  )
+  const headerOpacity = headerIn * headerOut
+  const header =
+    headerOpacity > 0 ? (
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          top: "13.4%",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: px(5),
+          opacity: headerOpacity,
+          pointerEvents: "none",
+        }}
+      >
+        <PauseMark size={px(25)} />
+        <div
+          style={{
+            fontFamily: SANS,
+            fontWeight: 400,
+            fontSize: px(15.6),
+            letterSpacing: px(1.5),
+            color: "rgba(255,255,255,0.72)",
+            whiteSpace: "nowrap",
+          }}
+        >
+          DAILY BIBLE PAUSE
+        </div>
+        <div
+          style={{
+            marginTop: px(8),
+            fontFamily: SERIF,
+            fontWeight: 500,
+            fontSize: px(15.6),
+            color: INTRO_GOLD,
+            whiteSpace: "nowrap",
+          }}
+        >
+          {timeLabel}
+        </div>
+      </div>
+    ) : null
+
+  const label = (text: string, gold: boolean, size: number) => ({
+    fontFamily: SANS,
+    fontWeight: 600,
+    fontSize: px(size),
+    letterSpacing: px(size * 0.14),
+    color: gold ? INTRO_GOLD : "#ffffff",
+    whiteSpace: "nowrap" as const,
+    textShadow: "0 2px 14px rgba(0,0,0,0.6)",
+  })
+
+  if (variant === "cover") {
+    // The column: WATCH lit, the rest white, gold rails between (Figma).
+    const colIn = headerIn
+    // The other steps and the scrim leave as the film's sound comes in.
+    const othersOut = interpolate(t, [L - 0.6, L - 0.1], [1, 0], clampBoth)
+    const watchOut = headerOut
+    const scrim = 0.45 * colIn * othersOut
+    const size = 19
+    const labelH = px(size) * 1.2
+    const rail = px(46.8)
+    const gap = px(10.4)
+    const stackH = steps.length * labelH + (steps.length - 1) * (rail + 2 * gap)
+    const top0 = px(693) * 0.508 - stackH / 2 // 693 units = frame height
+    return (
+      <AbsoluteFill style={{ pointerEvents: "none" }}>
+        <AbsoluteFill style={{ background: `rgba(0,0,0,${scrim})` }} />
+        {header}
+        {steps.map((step, i) => {
+          const y = top0 + i * (labelH + 2 * gap + rail)
+          const isWatch = i === 0
+          const opacity = colIn * (isWatch ? watchOut : othersOut)
+          return (
+            <Fragment key={step}>
+              <div
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  right: 0,
+                  top: y,
+                  height: labelH,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity,
+                }}
+              >
+                <span style={label(step, isWatch, size)}>{step}</span>
+              </div>
+              {i < steps.length - 1 ? (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: "50%",
+                    marginLeft: -px(0.85),
+                    top: y + labelH + gap,
+                    width: px(1.7),
+                    height: rail,
+                    borderRadius: px(1.7),
+                    background: "rgba(242,196,107,0.45)",
+                    opacity: colIn * othersOut,
+                  }}
+                />
+              ) : null}
+            </Fragment>
+          )
+        })}
+      </AbsoluteFill>
+    )
+  }
+
+  // bands
+  const bandsIn = interpolate(t, [0, 0.3], [0, 1], clampBoth)
+  // The WATCH band grows to the whole frame over the middle of the lead.
+  const grow = interpolate(t, [L - 1.8, L - 0.2], [0, 1], {
+    ...clampBoth,
+    easing: ease,
+  })
+  const b1 = 49.4 + (100 - 49.4) * grow // % of height: bottom of WATCH band
+  const b2 = 69.3 + (100 - 69.3) * grow // % of height: bottom of REFLECT band
+  const lowerOpacity =
+    bandsIn * (1 - interpolate(t, [L - 1.0, L - 0.3], [0, 1], clampBoth))
+  const watchOpacity =
+    bandsIn * (1 - interpolate(t, [L - 1.2, L - 0.4], [0, 1], clampBoth))
+  const scrim = 0.22 * bandsIn * (1 - grow)
+  const band = (
+    topPct: number,
+    bottomPct: number,
+    trimSec: number,
+    position: string,
+  ) =>
+    bottomPct - topPct > 0.05 && clipSrc ? (
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          top: `${topPct}%`,
+          height: `${bottomPct - topPct}%`,
+          overflow: "hidden",
+          borderTop: `${px(0.9)}px solid #000`,
+          background: "#0c0805",
+        }}
+      >
+        <OffthreadVideo
+          src={clipSrc}
+          muted
+          trimBefore={Math.round(trimSec * fps)}
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            objectPosition: position,
+            filter: "grayscale(1) brightness(0.55) contrast(1.05)",
+          }}
+        />
+      </div>
+    ) : null
+  return (
+    <AbsoluteFill style={{ pointerEvents: "none", opacity: bandsIn }}>
+      {/* Warm scrim over the live film while the bands are up. */}
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          top: 0,
+          height: `${b1}%`,
+          background: `rgba(29,14,0,${scrim})`,
+        }}
+      />
+      {band(b1, b2, 8, "center 30%")}
+      {band(b2, 100, 18, "center bottom")}
+      {header}
+      {/* WATCH sits low in its band and rides its edge down as it grows. */}
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          top: `${b1 - 8}%`,
+          display: "flex",
+          justifyContent: "center",
+          opacity: watchOpacity,
+        }}
+      >
+        <span style={label(steps[0] ?? "WATCH", true, 24)}>
+          {steps[0] ?? "WATCH"}
+        </span>
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          top: `${(b1 + b2) / 2 - 2.6}%`,
+          display: "flex",
+          justifyContent: "center",
+          opacity: lowerOpacity,
+        }}
+      >
+        <span style={label(steps[1] ?? "REFLECT", false, 24)}>
+          {steps[1] ?? "REFLECT"}
+        </span>
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          top: `${b2 + 3}%`,
+          display: "flex",
+          justifyContent: "center",
+          opacity: lowerOpacity,
+        }}
+      >
+        <span style={label(steps[2] ?? "PRAY", false, 24)}>
+          {steps[2] ?? "PRAY"}
+        </span>
+      </div>
+    </AbsoluteFill>
+  )
+}
+
 function Grain({
   opacity,
   sizePx,
@@ -1627,6 +1943,7 @@ function CardBody({
   wideText,
   attribution,
   hideRing = false,
+  pieceSec,
   hideCoverDate,
   hideCoverLogo,
   coverDateLabel,
@@ -1648,6 +1965,8 @@ function CardBody({
   attribution?: string
   /** Closing card: leave out its own progress ring (a corner ring clocks the step). */
   hideRing?: boolean
+  /** Whole piece length in seconds (the intro shows it rounded to minutes). */
+  pieceSec?: number
   hideCoverDate?: boolean
   hideCoverLogo?: boolean
   coverDateLabel?: string
@@ -2484,6 +2803,21 @@ function CardBody({
     // easing in, the spoken "Let's watch" is also shown, then dissolves out as
     // the film takes over.
     const lead = card.mutedLeadSec ?? 0
+    if (card.intro && lead > 0) {
+      return (
+        <ClipIntro
+          variant={card.intro}
+          leadSec={lead}
+          frame={frame}
+          fps={fps}
+          px={px}
+          style={style}
+          steps={card.steps ?? ["WATCH", "REFLECT", "PRAY"]}
+          pieceSec={pieceSec ?? durationInFrames / fps}
+          clipSrc={card.videoFile ? staticFile(card.videoFile) : null}
+        />
+      )
+    }
     if (!card.leadLabel || lead <= 0) return null
     const t = frame / fps
     // Build the hold from a knot that is already past the fade-in, then put the
@@ -3871,6 +4205,7 @@ export function DevotionalVideo(props: DevotionalInputProps) {
                   wideText={wideText}
                   attribution={props.attribution}
                   hideRing={props.stepRing === true}
+                  pieceSec={durationInFrames / fps}
                   hideCoverDate={props.hideCoverDate === true}
                   hideCoverLogo={props.hideCoverLogo === true}
                   coverDateLabel={props.coverDateLabel}
@@ -3963,6 +4298,7 @@ function CardLayer({
   wideText,
   attribution,
   hideRing = false,
+  pieceSec,
   hideCoverDate,
   hideCoverLogo,
   coverDateLabel,
@@ -3984,6 +4320,8 @@ function CardLayer({
   attribution?: string
   /** Closing card: leave out its own progress ring (a corner ring clocks the step). */
   hideRing?: boolean
+  /** Whole piece length in seconds (the intro shows it rounded to minutes). */
+  pieceSec?: number
   hideCoverDate?: boolean
   hideCoverLogo?: boolean
   coverDateLabel?: string
@@ -4013,6 +4351,7 @@ function CardLayer({
         staticCover={staticCover}
         attribution={attribution}
         hideRing={hideRing}
+        {...(pieceSec != null ? { pieceSec } : {})}
         hideCoverDate={hideCoverDate}
         hideCoverLogo={hideCoverLogo}
         coverDateLabel={coverDateLabel}
