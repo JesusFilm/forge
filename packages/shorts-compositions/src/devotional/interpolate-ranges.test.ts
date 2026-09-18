@@ -216,10 +216,10 @@ describe("phraseLayout", () => {
   })
 
   it("shrinks in 6% steps until the phrase fits the line budget", () => {
-    const words = Array.from({ length: 16 }, (_, i) => w(`LONGWORD${i}`, 38))
-    const { scale, lines } = phraseLayout(words, 200, 3)
-    expect(lines.length).toBeLessThanOrEqual(4)
-    expect(scale).toBeLessThan(1)
+    const words = Array.from({ length: 6 }, () => w("ALPHA", 38))
+    const { scale, lines } = phraseLayout(words, 200, 2)
+    expect(lines.length).toBeLessThanOrEqual(2)
+    expect(scale).toBeCloseTo(0.94 ** 11, 5)
     expect(lines[0][0].size).toBeCloseTo(38 * scale, 5)
   })
 })
