@@ -1,0 +1,2650 @@
+{
+  "browser": "Google Chrome for Testing 153.0.8010.36",
+  "agentBrowser": "0.37.1",
+  "innerViewport": [1280, 577],
+  "outerViewport": [1280, 720],
+  "dpr": 1,
+  "productionRevision": "c813991ad3645aebdb50d6b1cac92a47b5aad250",
+  "notes": [
+    "Fresh browser/profile for every run; same user-agent as recovered original harness.",
+    "Local production Web build uses fixed read-only route-manifest snapshot and public catalog query proxy; no production mutations enabled. Local server cache warmed after excluded route-manifest timeout/404 batch.",
+    "Local flag comparison runs 0\u20132 overlap the end of the tracing batch; the first two pairs (0\u20133) are excluded from clean performance comparison; runs 4\u201311 are sequential without that overlap.",
+    "Local flag controls replace the default disabled-feature argument. Confirmatory static/production controls preserve Translate and add only InitialWebUISurfaceSync via a temporary browser executable wrapper.",
+    "Trace extracts retain renderer Paint separately from presented firstPaint. Raw trace hashes identify retained private local captures.",
+    "These browser runs characterize paint. They do not establish recommendation response semantics or selection acknowledgement success."
+  ],
+  "recoveredReplay": [
+    {
+      "index": 0,
+      "startedAt": "2026-09-18T01:07:29.476922+00:00",
+      "surfaceSyncDisabled": false,
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 424
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 424
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 104.60000002384186,
+          "load": 474.60000002384186,
+          "ttfb": 39.90000003576279
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 424,
+          "size": 88480,
+          "tag": "H1",
+          "time": 424
+        }
+      ],
+      "longTasks": 6,
+      "longestTask": 243,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "1. The Simple Gospel",
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.259491
+        }
+      ],
+      "watchNow": true
+    },
+    {
+      "index": 1,
+      "startedAt": "2026-09-18T01:07:44.364436+00:00",
+      "surfaceSyncDisabled": false,
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 408
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 408
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 93.0999999642372,
+          "load": 452.39999997615814,
+          "ttfb": 32.799999952316284
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 408,
+          "size": 88480,
+          "tag": "H1",
+          "time": 408
+        }
+      ],
+      "longTasks": 6,
+      "longestTask": 236,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "1. The Simple Gospel",
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.550125
+        }
+      ],
+      "watchNow": true
+    },
+    {
+      "index": 2,
+      "startedAt": "2026-09-18T01:07:59.287040+00:00",
+      "surfaceSyncDisabled": false,
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 444
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 444
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 84.80000001192093,
+          "load": 476.89999997615814,
+          "ttfb": 27.899999976158146
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 444,
+          "size": 88480,
+          "tag": "H1",
+          "time": 444
+        }
+      ],
+      "longTasks": 6,
+      "longestTask": 262,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "1. The Simple Gospel",
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.53473
+        }
+      ],
+      "watchNow": true
+    },
+    {
+      "index": 3,
+      "startedAt": "2026-09-18T01:08:14.120690+00:00",
+      "surfaceSyncDisabled": false,
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 10004
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 10004
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 478.0999999642372,
+          "load": 479.39999997615814,
+          "ttfb": 204.89999997615817
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 10004,
+          "size": 88480,
+          "tag": "H1",
+          "time": 10004
+        }
+      ],
+      "longTasks": 5,
+      "longestTask": 124,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "1. The Simple Gospel",
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.582389
+        }
+      ],
+      "watchNow": true
+    }
+  ],
+  "fontAndScreenshotControls": [
+    {
+      "index": 0,
+      "startedAt": "2026-09-18T01:09:59.303822+00:00",
+      "surfaceSyncDisabled": false,
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 1604
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 1604
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 1411.899999976158,
+          "load": 1683.199999988079,
+          "ttfb": 1364.899999976158
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 1604,
+          "size": 88480,
+          "tag": "H1",
+          "time": 1604
+        }
+      ],
+      "longTasks": 7,
+      "longestTask": 123,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "1. The Simple Gospel",
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.242296
+        }
+      ],
+      "watchNow": true,
+      "states": [
+        {
+          "reason": "init",
+          "at": 1382.699999988079,
+          "ready": "loading",
+          "visibility": "visible",
+          "focus": false,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "first-raf",
+          "at": 1502.899999976158,
+          "ready": "interactive",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loading",
+          "video": false,
+          "paint": [],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "fonts-ready",
+          "at": 1606.199999988079,
+          "ready": "interactive",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "timer-500",
+          "at": 1906.399999976158,
+          "ready": "complete",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [
+            {
+              "name": "first-paint",
+              "start": 1604
+            },
+            {
+              "name": "first-contentful-paint",
+              "start": 1604
+            }
+          ],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "timer-2000",
+          "at": 3383.399999976158,
+          "ready": "complete",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [
+            {
+              "name": "first-paint",
+              "start": 1604
+            },
+            {
+              "name": "first-contentful-paint",
+              "start": 1604
+            }
+          ],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "timer-5000",
+          "at": 6383.5,
+          "ready": "complete",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [
+            {
+              "name": "first-paint",
+              "start": 1604
+            },
+            {
+              "name": "first-contentful-paint",
+              "start": 1604
+            }
+          ],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "timer-11000",
+          "at": 12383.399999976158,
+          "ready": "complete",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": true,
+          "paint": [
+            {
+              "name": "first-paint",
+              "start": 1604
+            },
+            {
+              "name": "first-contentful-paint",
+              "start": 1604
+            }
+          ],
+          "viewport": [1280, 577]
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "startedAt": "2026-09-18T01:10:15.382999+00:00",
+      "surfaceSyncDisabled": false,
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 488
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 488
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 92.19999998807909,
+          "load": 562.1999999880791,
+          "ttfb": 26.799999952316284
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 488,
+          "size": 88480,
+          "tag": "H1",
+          "time": 488
+        }
+      ],
+      "longTasks": 6,
+      "longestTask": 301,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "1. The Simple Gospel",
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.081265
+        }
+      ],
+      "watchNow": true,
+      "beforeScreenshot": {
+        "at": 2339.7999999523163,
+        "paint": [488, 488],
+        "viewport": [1280, 577]
+      },
+      "afterScreenshot": {
+        "at": 2736.7999999523163,
+        "paint": [488, 488],
+        "viewport": [1280, 577]
+      },
+      "states": [
+        {
+          "reason": "init",
+          "at": 49.09999996423721,
+          "ready": "loading",
+          "visibility": "visible",
+          "focus": false,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "first-raf",
+          "at": 417.7999999523163,
+          "ready": "interactive",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loading",
+          "video": false,
+          "paint": [],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "fonts-ready",
+          "at": 549.5999999642372,
+          "ready": "interactive",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "timer-500",
+          "at": 563.3999999761581,
+          "ready": "complete",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "timer-2000",
+          "at": 2050.199999988079,
+          "ready": "complete",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [
+            {
+              "name": "first-paint",
+              "start": 488
+            },
+            {
+              "name": "first-contentful-paint",
+              "start": 488
+            }
+          ],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "timer-5000",
+          "at": 5050.199999988079,
+          "ready": "complete",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [
+            {
+              "name": "first-paint",
+              "start": 488
+            },
+            {
+              "name": "first-contentful-paint",
+              "start": 488
+            }
+          ],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "timer-11000",
+          "at": 11050.19999998808,
+          "ready": "complete",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": true,
+          "paint": [
+            {
+              "name": "first-paint",
+              "start": 488
+            },
+            {
+              "name": "first-contentful-paint",
+              "start": 488
+            }
+          ],
+          "viewport": [1280, 577]
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "startedAt": "2026-09-18T01:10:30.384086+00:00",
+      "surfaceSyncDisabled": false,
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 268
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 268
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 326.5,
+          "load": 348.5,
+          "ttfb": 24.100000023841854
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 268,
+          "size": 88480,
+          "tag": "H1",
+          "time": 268
+        }
+      ],
+      "longTasks": 6,
+      "longestTask": 124,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "1. The Simple Gospel",
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.5505
+        }
+      ],
+      "watchNow": true,
+      "states": [
+        {
+          "reason": "init",
+          "at": 46.39999997615814,
+          "ready": "loading",
+          "visibility": "visible",
+          "focus": false,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "first-raf",
+          "at": 104.80000001192091,
+          "ready": "loading",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loading",
+          "video": false,
+          "paint": [],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "fonts-ready",
+          "at": 337.60000002384186,
+          "ready": "interactive",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "timer-500",
+          "at": 561.3999999761581,
+          "ready": "complete",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [
+            {
+              "name": "first-paint",
+              "start": 268
+            },
+            {
+              "name": "first-contentful-paint",
+              "start": 268
+            }
+          ],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "timer-2000",
+          "at": 2047.399999976158,
+          "ready": "complete",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [
+            {
+              "name": "first-paint",
+              "start": 268
+            },
+            {
+              "name": "first-contentful-paint",
+              "start": 268
+            }
+          ],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "timer-5000",
+          "at": 5047.399999976158,
+          "ready": "complete",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [
+            {
+              "name": "first-paint",
+              "start": 268
+            },
+            {
+              "name": "first-contentful-paint",
+              "start": 268
+            }
+          ],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "timer-11000",
+          "at": 11047.399999976158,
+          "ready": "complete",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": true,
+          "paint": [
+            {
+              "name": "first-paint",
+              "start": 268
+            },
+            {
+              "name": "first-contentful-paint",
+              "start": 268
+            }
+          ],
+          "viewport": [1280, 577]
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "startedAt": "2026-09-18T01:10:45.082978+00:00",
+      "surfaceSyncDisabled": false,
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 10020
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 10020
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 112,
+          "load": 415.89999997615814,
+          "ttfb": 32.69999998807907
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 10020,
+          "size": 88480,
+          "tag": "H1",
+          "time": 10020
+        }
+      ],
+      "longTasks": 6,
+      "longestTask": 113,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "1. The Simple Gospel",
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 5.671317
+        }
+      ],
+      "watchNow": true,
+      "beforeScreenshot": {
+        "at": 2296.899999976158,
+        "paint": [],
+        "viewport": [1280, 577]
+      },
+      "afterScreenshot": {
+        "at": 10279.5,
+        "paint": [10020, 10020],
+        "viewport": [1280, 577]
+      },
+      "states": [
+        {
+          "reason": "init",
+          "at": 57.09999996423721,
+          "ready": "loading",
+          "visibility": "visible",
+          "focus": false,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "first-raf",
+          "at": 225.89999997615817,
+          "ready": "interactive",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loading",
+          "video": false,
+          "paint": [],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "fonts-ready",
+          "at": 355.80000001192093,
+          "ready": "interactive",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "timer-500",
+          "at": 613.0999999642372,
+          "ready": "complete",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "timer-2000",
+          "at": 2058,
+          "ready": "complete",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "timer-5000",
+          "at": 5058,
+          "ready": "complete",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "timer-11000",
+          "at": 11065.69999998808,
+          "ready": "complete",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": true,
+          "paint": [
+            {
+              "name": "first-paint",
+              "start": 10020
+            },
+            {
+              "name": "first-contentful-paint",
+              "start": 10020
+            }
+          ],
+          "viewport": [1280, 577]
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "startedAt": "2026-09-18T01:11:01.070702+00:00",
+      "surfaceSyncDisabled": false,
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 408
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 408
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 250.19999998807907,
+          "load": 453.5,
+          "ttfb": 143.89999997615814
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 408,
+          "size": 88480,
+          "tag": "H1",
+          "time": 408
+        }
+      ],
+      "longTasks": 6,
+      "longestTask": 111,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "1. The Simple Gospel",
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.323395
+        }
+      ],
+      "watchNow": true,
+      "states": [
+        {
+          "reason": "init",
+          "at": 188.10000002384183,
+          "ready": "loading",
+          "visibility": "visible",
+          "focus": false,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "first-raf",
+          "at": 357.5,
+          "ready": "interactive",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loading",
+          "video": false,
+          "paint": [],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "fonts-ready",
+          "at": 448,
+          "ready": "interactive",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "timer-500",
+          "at": 723.6000000238419,
+          "ready": "complete",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [
+            {
+              "name": "first-paint",
+              "start": 408
+            },
+            {
+              "name": "first-contentful-paint",
+              "start": 408
+            }
+          ],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "timer-2000",
+          "at": 2189.100000023842,
+          "ready": "complete",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [
+            {
+              "name": "first-paint",
+              "start": 408
+            },
+            {
+              "name": "first-contentful-paint",
+              "start": 408
+            }
+          ],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "timer-5000",
+          "at": 5189.100000023842,
+          "ready": "complete",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [
+            {
+              "name": "first-paint",
+              "start": 408
+            },
+            {
+              "name": "first-contentful-paint",
+              "start": 408
+            }
+          ],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "timer-11000",
+          "at": 11196.100000023842,
+          "ready": "complete",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": true,
+          "paint": [
+            {
+              "name": "first-paint",
+              "start": 408
+            },
+            {
+              "name": "first-contentful-paint",
+              "start": 408
+            }
+          ],
+          "viewport": [1280, 577]
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "startedAt": "2026-09-18T01:11:15.908375+00:00",
+      "surfaceSyncDisabled": false,
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 9996
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 9996
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 88.59999996423721,
+          "load": 382.2999999523163,
+          "ttfb": 23.5
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 9996,
+          "size": 88480,
+          "tag": "H1",
+          "time": 9996
+        }
+      ],
+      "longTasks": 6,
+      "longestTask": 117,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "1. The Simple Gospel",
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 5.719285
+        }
+      ],
+      "watchNow": true,
+      "beforeScreenshot": {
+        "at": 2312.699999988079,
+        "paint": [],
+        "viewport": [1280, 577]
+      },
+      "afterScreenshot": {
+        "at": 10261.899999976158,
+        "paint": [9996, 9996],
+        "viewport": [1280, 577]
+      },
+      "states": [
+        {
+          "reason": "init",
+          "at": 54,
+          "ready": "loading",
+          "visibility": "visible",
+          "focus": false,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "first-raf",
+          "at": 208.89999997615817,
+          "ready": "interactive",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loading",
+          "video": false,
+          "paint": [],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "fonts-ready",
+          "at": 320.89999997615814,
+          "ready": "interactive",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "timer-500",
+          "at": 584.5,
+          "ready": "complete",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "timer-2000",
+          "at": 2055.399999976158,
+          "ready": "complete",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "timer-5000",
+          "at": 5055.299999952316,
+          "ready": "complete",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": false,
+          "paint": [],
+          "viewport": [1280, 577]
+        },
+        {
+          "reason": "timer-11000",
+          "at": 11055.099999964235,
+          "ready": "complete",
+          "visibility": "visible",
+          "focus": true,
+          "fonts": "loaded",
+          "video": true,
+          "paint": [
+            {
+              "name": "first-paint",
+              "start": 9996
+            },
+            {
+              "name": "first-contentful-paint",
+              "start": 9996
+            }
+          ],
+          "viewport": [1280, 577]
+        }
+      ]
+    }
+  ],
+  "traceEvidence": [
+    {
+      "run": 0,
+      "traceSha256": "2982099185fef5cdfe976b5639926d50c129fbebeda827dc4b332400397ddedf",
+      "firstRendererPaintMs": 1864.483,
+      "events": [
+        {
+          "name": "Surface deadline passed",
+          "atMs": 9896.684,
+          "args": {
+            "FrameSinkId": "FrameSinkId(0, 1)"
+          }
+        },
+        {
+          "name": "SurfaceSynchronizationEvent",
+          "atMs": 9896.762,
+          "args": {
+            "duration_ms": 9999,
+            "surface_id": "SurfaceId(FrameSinkId(0, 1), LocalSurfaceId(1, 1, C63A...))"
+          }
+        },
+        {
+          "name": "WebContentsImpl::OnFirstVisuallyNonEmptyPaint",
+          "atMs": 9913.885,
+          "origin": "chrome://webui-toolbar.top-chrome"
+        },
+        {
+          "name": "firstContentfulPaint",
+          "atMs": 9970.508
+        },
+        {
+          "name": "firstPaint",
+          "atMs": 9970.508
+        },
+        {
+          "name": "WebContentsImpl::OnFirstVisuallyNonEmptyPaint",
+          "atMs": 9972.369,
+          "origin": "http://127.0.0.1:35020"
+        }
+      ]
+    },
+    {
+      "run": 1,
+      "traceSha256": "5a884583cf3355527dbfb674d01d0121582bf2ac551cbf1fd60b4da8f28229ac",
+      "firstRendererPaintMs": 228.301,
+      "events": [
+        {
+          "name": "WebContentsImpl::OnFirstVisuallyNonEmptyPaint",
+          "atMs": 70.764,
+          "origin": "chrome://webui-toolbar.top-chrome"
+        },
+        {
+          "name": "Surface deadline passed",
+          "atMs": 128.227,
+          "args": {
+            "FrameSinkId": "FrameSinkId(0, 1)"
+          }
+        },
+        {
+          "name": "firstContentfulPaint",
+          "atMs": 321.051
+        },
+        {
+          "name": "firstPaint",
+          "atMs": 321.051
+        },
+        {
+          "name": "WebContentsImpl::OnFirstVisuallyNonEmptyPaint",
+          "atMs": 358.307,
+          "origin": "http://127.0.0.1:35020"
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "traceSha256": "68dd09b97467a42e0f58370629d5473058710a7e3ee7194a4bba0c0f1fb98548",
+      "firstRendererPaintMs": 213.147,
+      "events": [
+        {
+          "name": "Surface deadline passed",
+          "atMs": 9921.251,
+          "args": {
+            "FrameSinkId": "FrameSinkId(0, 1)"
+          }
+        },
+        {
+          "name": "SurfaceSynchronizationEvent",
+          "atMs": 9921.3,
+          "args": {
+            "duration_ms": 9999,
+            "surface_id": "SurfaceId(FrameSinkId(0, 1), LocalSurfaceId(1, 1, F319...))"
+          }
+        },
+        {
+          "name": "WebContentsImpl::OnFirstVisuallyNonEmptyPaint",
+          "atMs": 9938.559,
+          "origin": "chrome://webui-toolbar.top-chrome"
+        },
+        {
+          "name": "firstContentfulPaint",
+          "atMs": 9992.788
+        },
+        {
+          "name": "firstPaint",
+          "atMs": 9992.788
+        },
+        {
+          "name": "WebContentsImpl::OnFirstVisuallyNonEmptyPaint",
+          "atMs": 9994.965,
+          "origin": "http://127.0.0.1:35020"
+        }
+      ]
+    },
+    {
+      "run": 3,
+      "traceSha256": "ee4f5f2acfd495c769b08b63f528298303c4f89b6445e2eb2f31c26050698a74",
+      "firstRendererPaintMs": 363.997,
+      "events": [
+        {
+          "name": "WebContentsImpl::OnFirstVisuallyNonEmptyPaint",
+          "atMs": 59.951,
+          "origin": "chrome://webui-toolbar.top-chrome"
+        },
+        {
+          "name": "Surface deadline passed",
+          "atMs": 247.985,
+          "args": {
+            "FrameSinkId": "FrameSinkId(0, 1)"
+          }
+        },
+        {
+          "name": "firstContentfulPaint",
+          "atMs": 456.879
+        },
+        {
+          "name": "firstPaint",
+          "atMs": 456.879
+        },
+        {
+          "name": "WebContentsImpl::OnFirstVisuallyNonEmptyPaint",
+          "atMs": 489.917,
+          "origin": "http://127.0.0.1:35020"
+        }
+      ]
+    },
+    {
+      "run": 4,
+      "traceSha256": "7166cb9f8df9c2ea1cfd47d4728c44bc1c5e1289a31009a1ce5fcca5886db829",
+      "firstRendererPaintMs": 246.846,
+      "events": [
+        {
+          "name": "Surface deadline passed",
+          "atMs": 9881.125,
+          "args": {
+            "FrameSinkId": "FrameSinkId(0, 1)"
+          }
+        },
+        {
+          "name": "SurfaceSynchronizationEvent",
+          "atMs": 9881.178,
+          "args": {
+            "duration_ms": 9999,
+            "surface_id": "SurfaceId(FrameSinkId(0, 1), LocalSurfaceId(1, 1, 033D...))"
+          }
+        },
+        {
+          "name": "WebContentsImpl::OnFirstVisuallyNonEmptyPaint",
+          "atMs": 9898.407,
+          "origin": "chrome://webui-toolbar.top-chrome"
+        },
+        {
+          "name": "firstContentfulPaint",
+          "atMs": 9956.652
+        },
+        {
+          "name": "firstPaint",
+          "atMs": 9956.652
+        },
+        {
+          "name": "WebContentsImpl::OnFirstVisuallyNonEmptyPaint",
+          "atMs": 9958.657,
+          "origin": "http://127.0.0.1:35020"
+        }
+      ]
+    },
+    {
+      "run": 5,
+      "traceSha256": "fc0b070693bc41abd884794c97a88ffd374fd6a4e50499286f747d33b893755b",
+      "firstRendererPaintMs": 215.996,
+      "events": [
+        {
+          "name": "Surface deadline passed",
+          "atMs": 104.392,
+          "args": {
+            "FrameSinkId": "FrameSinkId(0, 1)"
+          }
+        },
+        {
+          "name": "firstContentfulPaint",
+          "atMs": 297.579
+        },
+        {
+          "name": "firstPaint",
+          "atMs": 297.579
+        },
+        {
+          "name": "WebContentsImpl::OnFirstVisuallyNonEmptyPaint",
+          "atMs": 352.506,
+          "origin": "http://127.0.0.1:35020"
+        }
+      ]
+    }
+  ],
+  "localFeatureComparison": [
+    {
+      "index": 0,
+      "startedAt": "2026-09-18T01:15:51.484792+00:00",
+      "surfaceSyncDisabled": false,
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 9980
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 9980
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 85.90000003576279,
+          "load": 348.7000000476837,
+          "ttfb": 18.100000023841854
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 9980,
+          "size": 88480,
+          "tag": "H1",
+          "time": 9980
+        }
+      ],
+      "longTasks": 6,
+      "longestTask": 118,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "1. The Simple Gospel",
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.563658
+        }
+      ],
+      "watchNow": true
+    },
+    {
+      "index": 1,
+      "startedAt": "2026-09-18T01:16:06.335274+00:00",
+      "surfaceSyncDisabled": true,
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 404
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 404
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 100.30000001192091,
+          "load": 472.9000000357628,
+          "ttfb": 31.900000035762787
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 404,
+          "size": 88480,
+          "tag": "H1",
+          "time": 404
+        }
+      ],
+      "longTasks": 6,
+      "longestTask": 135,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "1. The Simple Gospel",
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.560657
+        }
+      ],
+      "watchNow": true
+    },
+    {
+      "index": 2,
+      "startedAt": "2026-09-18T01:16:21.243215+00:00",
+      "surfaceSyncDisabled": false,
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 9940
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 9940
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 305.60000002384186,
+          "load": 414.5,
+          "ttfb": 36.89999997615814
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 9940,
+          "size": 88480,
+          "tag": "H1",
+          "time": 9940
+        }
+      ],
+      "longTasks": 5,
+      "longestTask": 126,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "1. The Simple Gospel",
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.503655
+        }
+      ],
+      "watchNow": true
+    },
+    {
+      "index": 3,
+      "startedAt": "2026-09-18T01:16:36.179759+00:00",
+      "surfaceSyncDisabled": true,
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 452
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 452
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 301.60000002384186,
+          "load": 504.9000000357628,
+          "ttfb": 199.5
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 452,
+          "size": 88480,
+          "tag": "H1",
+          "time": 452
+        }
+      ],
+      "longTasks": 6,
+      "longestTask": 116,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "1. The Simple Gospel",
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.302952
+        }
+      ],
+      "watchNow": true
+    },
+    {
+      "index": 4,
+      "startedAt": "2026-09-18T01:16:51.033921+00:00",
+      "surfaceSyncDisabled": false,
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 316
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 316
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 98.29999995231628,
+          "load": 330.2999999523163,
+          "ttfb": 28.19999998807907
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 316,
+          "size": 88480,
+          "tag": "H1",
+          "time": 316
+        }
+      ],
+      "longTasks": 6,
+      "longestTask": 133,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "1. The Simple Gospel",
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.521494
+        }
+      ],
+      "watchNow": true
+    },
+    {
+      "index": 5,
+      "startedAt": "2026-09-18T01:17:05.812115+00:00",
+      "surfaceSyncDisabled": true,
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 316
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 316
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 95.70000004768372,
+          "load": 338.5,
+          "ttfb": 25.400000035762787
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 316,
+          "size": 88480,
+          "tag": "H1",
+          "time": 316
+        }
+      ],
+      "longTasks": 6,
+      "longestTask": 117,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "1. The Simple Gospel",
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.521329
+        }
+      ],
+      "watchNow": true
+    },
+    {
+      "index": 6,
+      "startedAt": "2026-09-18T01:17:20.494845+00:00",
+      "surfaceSyncDisabled": false,
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 10012
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 10012
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 81.39999997615814,
+          "load": 351.19999998807907,
+          "ttfb": 23.19999998807907
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 10012,
+          "size": 88480,
+          "tag": "H1",
+          "time": 10012
+        }
+      ],
+      "longTasks": 6,
+      "longestTask": 111,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "1. The Simple Gospel",
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.538134
+        }
+      ],
+      "watchNow": true
+    },
+    {
+      "index": 7,
+      "startedAt": "2026-09-18T01:17:35.305206+00:00",
+      "surfaceSyncDisabled": true,
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 416
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 416
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 107.20000004768372,
+          "load": 448.39999997615814,
+          "ttfb": 24.899999976158146
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 416,
+          "size": 88480,
+          "tag": "H1",
+          "time": 416
+        }
+      ],
+      "longTasks": 6,
+      "longestTask": 211,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "1. The Simple Gospel",
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.540745
+        }
+      ],
+      "watchNow": true
+    },
+    {
+      "index": 8,
+      "startedAt": "2026-09-18T01:17:50.080497+00:00",
+      "surfaceSyncDisabled": false,
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 9984
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 9984
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 243.5,
+          "load": 438.89999997615814,
+          "ttfb": 138
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 9984,
+          "size": 88480,
+          "tag": "H1",
+          "time": 9984
+        }
+      ],
+      "longTasks": 6,
+      "longestTask": 108,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "1. The Simple Gospel",
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.275543
+        }
+      ],
+      "watchNow": true
+    },
+    {
+      "index": 9,
+      "startedAt": "2026-09-18T01:18:04.972065+00:00",
+      "surfaceSyncDisabled": true,
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 260
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 260
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 229.79999995231628,
+          "load": 322.5,
+          "ttfb": 34.5
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 260,
+          "size": 88480,
+          "tag": "H1",
+          "time": 260
+        }
+      ],
+      "longTasks": 5,
+      "longestTask": 108,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "1. The Simple Gospel",
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.564732
+        }
+      ],
+      "watchNow": true
+    },
+    {
+      "index": 10,
+      "startedAt": "2026-09-18T01:18:19.673268+00:00",
+      "surfaceSyncDisabled": false,
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 10008
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 10008
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 76,
+          "load": 423,
+          "ttfb": 17.699999928474426
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 10008,
+          "size": 88480,
+          "tag": "H1",
+          "time": 10008
+        }
+      ],
+      "longTasks": 6,
+      "longestTask": 225,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "1. The Simple Gospel",
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.561586
+        }
+      ],
+      "watchNow": true
+    },
+    {
+      "index": 11,
+      "startedAt": "2026-09-18T01:18:34.592703+00:00",
+      "surfaceSyncDisabled": true,
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 284
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 284
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 82.89999997615814,
+          "load": 317.6999999284744,
+          "ttfb": 18.899999976158146
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 284,
+          "size": 88480,
+          "tag": "H1",
+          "time": 284
+        }
+      ],
+      "longTasks": 6,
+      "longestTask": 116,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "1. The Simple Gospel",
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.479254
+        }
+      ],
+      "watchNow": true
+    }
+  ],
+  "staticAndProductionConfirmation": [
+    {
+      "index": 0,
+      "startedAt": "2026-09-18T01:19:02.085685+00:00",
+      "surfaceSyncDisabled": false,
+      "target": "static",
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 56
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 56
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 33.200000047683716,
+          "load": 33.700000047683716,
+          "ttfb": 14.600000023841858
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 56,
+          "size": 45668,
+          "tag": "H1",
+          "time": 56
+        }
+      ],
+      "longTasks": 0,
+      "longestTask": 0,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "Paint control",
+      "media": [],
+      "watchNow": false,
+      "javascriptErrors": []
+    },
+    {
+      "index": 1,
+      "startedAt": "2026-09-18T01:19:15.139466+00:00",
+      "surfaceSyncDisabled": true,
+      "target": "static",
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 44
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 44
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 25.199999928474423,
+          "load": 25.59999990463257,
+          "ttfb": 5.099999904632568
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 44,
+          "size": 45668,
+          "tag": "H1",
+          "time": 44
+        }
+      ],
+      "longTasks": 0,
+      "longestTask": 0,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "Paint control",
+      "media": [],
+      "watchNow": false,
+      "javascriptErrors": []
+    },
+    {
+      "index": 2,
+      "startedAt": "2026-09-18T01:19:28.173873+00:00",
+      "surfaceSyncDisabled": false,
+      "target": "static",
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 52
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 52
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 27.199999928474423,
+          "load": 27.59999990463257,
+          "ttfb": 6.399999976158142
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 52,
+          "size": 45668,
+          "tag": "H1",
+          "time": 52
+        }
+      ],
+      "longTasks": 0,
+      "longestTask": 0,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "Paint control",
+      "media": [],
+      "watchNow": false,
+      "javascriptErrors": []
+    },
+    {
+      "index": 3,
+      "startedAt": "2026-09-18T01:19:41.178877+00:00",
+      "surfaceSyncDisabled": true,
+      "target": "static",
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 40
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 40
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 22.200000047683716,
+          "load": 22.5,
+          "ttfb": 4
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 40,
+          "size": 45668,
+          "tag": "H1",
+          "time": 40
+        }
+      ],
+      "longTasks": 0,
+      "longestTask": 0,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "Paint control",
+      "media": [],
+      "watchNow": false,
+      "javascriptErrors": []
+    },
+    {
+      "index": 4,
+      "startedAt": "2026-09-18T01:19:54.185287+00:00",
+      "surfaceSyncDisabled": false,
+      "target": "static",
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 52
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 52
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 29.699999928474423,
+          "load": 30.199999928474423,
+          "ttfb": 4.899999976158142
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 52,
+          "size": 45668,
+          "tag": "H1",
+          "time": 52
+        }
+      ],
+      "longTasks": 0,
+      "longestTask": 0,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "Paint control",
+      "media": [],
+      "watchNow": false,
+      "javascriptErrors": []
+    },
+    {
+      "index": 5,
+      "startedAt": "2026-09-18T01:20:07.243406+00:00",
+      "surfaceSyncDisabled": true,
+      "target": "static",
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 48
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 48
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 22.899999976158146,
+          "load": 23.399999976158146,
+          "ttfb": 4.299999952316284
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 48,
+          "size": 45668,
+          "tag": "H1",
+          "time": 48
+        }
+      ],
+      "longTasks": 0,
+      "longestTask": 0,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "Paint control",
+      "media": [],
+      "watchNow": false,
+      "javascriptErrors": []
+    },
+    {
+      "index": 6,
+      "startedAt": "2026-09-18T01:20:20.264880+00:00",
+      "surfaceSyncDisabled": false,
+      "target": "production",
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 9976
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 9976
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 2073.6999999284744,
+          "load": 2075.7999999523163,
+          "ttfb": 1487
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 9976,
+          "size": 78312,
+          "tag": "H1",
+          "time": 9976
+        }
+      ],
+      "longTasks": 6,
+      "longestTask": 123,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "1. The Simple Gospel",
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 3.009036
+        }
+      ],
+      "watchNow": true,
+      "javascriptErrors": []
+    },
+    {
+      "index": 7,
+      "startedAt": "2026-09-18T01:20:35.373251+00:00",
+      "surfaceSyncDisabled": true,
+      "target": "production",
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 460
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 460
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 436.2000000476837,
+          "load": 638.6000000238419,
+          "ttfb": 227.39999997615817
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 460,
+          "size": 88480,
+          "tag": "H1",
+          "time": 460
+        }
+      ],
+      "longTasks": 7,
+      "longestTask": 122,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "1. The Simple Gospel",
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 3.229987
+        }
+      ],
+      "watchNow": true,
+      "javascriptErrors": []
+    },
+    {
+      "index": 8,
+      "startedAt": "2026-09-18T01:20:49.114250+00:00",
+      "surfaceSyncDisabled": false,
+      "target": "production",
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 540
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 540
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 592.0999999046326,
+          "load": 719.6999999284744,
+          "ttfb": 284.2999999523163
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 540,
+          "size": 88480,
+          "tag": "H1",
+          "time": 540
+        }
+      ],
+      "longTasks": 5,
+      "longestTask": 121,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "1. The Simple Gospel",
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 3.026968
+        }
+      ],
+      "watchNow": true,
+      "javascriptErrors": []
+    },
+    {
+      "index": 9,
+      "startedAt": "2026-09-18T01:21:02.919139+00:00",
+      "surfaceSyncDisabled": true,
+      "target": "production",
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 464
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 464
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 504.10000002384186,
+          "load": 803.1999999284744,
+          "ttfb": 258.10000002384186
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 464,
+          "size": 88480,
+          "tag": "H1",
+          "time": 464
+        }
+      ],
+      "longTasks": 7,
+      "longestTask": 116,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "1. The Simple Gospel",
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 3.412461
+        }
+      ],
+      "watchNow": true,
+      "javascriptErrors": []
+    },
+    {
+      "index": 10,
+      "startedAt": "2026-09-18T01:21:16.760628+00:00",
+      "surfaceSyncDisabled": false,
+      "target": "production",
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 640
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 640
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 380,
+          "load": 679.2999999523163,
+          "ttfb": 254.89999997615817
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 640,
+          "size": 88480,
+          "tag": "H1",
+          "time": 640
+        }
+      ],
+      "longTasks": 8,
+      "longestTask": 184,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "1. The Simple Gospel",
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 3.192015
+        }
+      ],
+      "watchNow": true,
+      "javascriptErrors": []
+    },
+    {
+      "index": 11,
+      "startedAt": "2026-09-18T01:21:30.587393+00:00",
+      "surfaceSyncDisabled": true,
+      "target": "production",
+      "paint": [
+        {
+          "name": "first-paint",
+          "start": 1012
+        },
+        {
+          "name": "first-contentful-paint",
+          "start": 1012
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 1029.5,
+          "load": 1148.6999999284744,
+          "ttfb": 717.1000000238419
+        }
+      ],
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 1012,
+          "size": 88480,
+          "tag": "H1",
+          "time": 1012
+        }
+      ],
+      "longTasks": 6,
+      "longestTask": 113,
+      "viewport": {
+        "dpr": 1,
+        "height": 577,
+        "outerHeight": 720,
+        "outerWidth": 1280,
+        "width": 1280
+      },
+      "visibility": "visible",
+      "heading": "1. The Simple Gospel",
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 3.051315
+        }
+      ],
+      "watchNow": true,
+      "javascriptErrors": []
+    }
+  ]
+}

@@ -240,6 +240,14 @@ locally and by production row counts; span count alone therefore does not prove
 SQL fan-out. The workload causing the remaining pool pressure is unresolved.
 Pool, lock and scheduling costs remain distinct; no new correction is claimed.
 
+feat-515 subsequently recovered and explained the separate ten-second headless
+paint case through Chrome toolbar surface synchronization, with a production
+browser-feature control. That investigation does not resolve these Admin
+deadlines. Additional retained APM spans at 00:50–01:20 include playback/evidence
+HTTP 503s; sampled delivery HTTP 200 spans alone cannot establish their body
+semantics. See `docs/operations/watch-paint-surface-sync-2026-09-18.md` and the
+distinct non-headless post-response paint follow-up feat-520.
+
 Final checks on Web/Admin `c813991ad` also reproduce a `delivery_timeout` HTTP
 200 fallback and trace-confirmed selection HTTP 503 at 00:47:19 without any
 temporary production instrumentation. Trace
