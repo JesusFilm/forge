@@ -1148,6 +1148,12 @@ function PauseMark({ size }: { size: number }) {
  * Every time is a share of the lead so a different lead keeps the shape.
  */
 const INTRO_GOLD = "#f2c46b"
+/** How long the intro's header and WATCH stay after the film's silent lead. */
+export const INTRO_HEADER_HOLD_SEC = 1.0
+export const INTRO_HEADER_FADE_SEC = 0.6
+/** WATCH leaves before the header does (owner: take it away a little sooner). */
+const INTRO_WATCH_HOLD_SEC = 0.15
+const INTRO_WATCH_FADE_SEC = 0.5
 
 function ClipIntro({
   variant,
@@ -1193,8 +1199,8 @@ function ClipIntro({
   })
   const headerDrop = -px(16) * (1 - headerIn)
   const timeDrop = -px(12) * (1 - timeIn)
-  const headerHold = L + 1.0
-  const headerOutSec = variant === "cover" ? 0.6 : 1.2
+  const headerHold = L + INTRO_HEADER_HOLD_SEC
+  const headerOutSec = variant === "cover" ? INTRO_HEADER_FADE_SEC : 1.2
   const headerOut = interpolate(
     t,
     [headerHold, headerHold + headerOutSec],
@@ -1284,7 +1290,17 @@ function ClipIntro({
     }
     const scrim =
       0.42 * colIn * interpolate(t, [L - 1.0, L - 0.2], [1, 0], clampBoth)
-    const watchOut = headerOut
+    // WATCH goes before the header: the film is already speaking by then and
+    // the word has done its work (owner).
+    const watchOut = interpolate(
+      t,
+      [
+        L + INTRO_WATCH_HOLD_SEC,
+        L + INTRO_WATCH_HOLD_SEC + INTRO_WATCH_FADE_SEC,
+      ],
+      [1, 0],
+      clampBoth,
+    )
     // WATCH lights up: white to gold, a slight swell and the glow arriving
     // together over a second and a half, the word catching light rather than
     // switching on (owner).
@@ -4533,8 +4549,15 @@ export function stepGroups(
     // A film card with an intro overlay clocks from where the film proper
     // begins, after the intro's lead: the ring belongs to the clip, not to
     // the title over it (owner).
+    // The step clock waits for the intro to clear: while the mark and the
+    // series name are on screen the ring is a second thing to read (owner).
     const introLead =
-      c.intro && c.mutedLeadSec ? Math.round(c.mutedLeadSec * fps) : 0
+      c.intro && c.mutedLeadSec
+        ? Math.round(
+            (c.mutedLeadSec + INTRO_HEADER_HOLD_SEC + INTRO_HEADER_FADE_SEC) *
+              fps,
+          )
+        : 0
     if (!open)
       open = { from: f.from + introLead, to: f.from + f.durationInFrames }
     else open.to = f.from + f.durationInFrames
