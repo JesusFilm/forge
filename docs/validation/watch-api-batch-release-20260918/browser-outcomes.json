@@ -1,0 +1,2853 @@
+{
+  "schemaVersion": 1,
+  "applicationRevision": {
+    "admin": "32caef0f1cc2e9b59570bfb44fd1cd96f2df0c58",
+    "worker": "32caef0f1cc2e9b59570bfb44fd1cd96f2df0c58",
+    "web": "c813991ad3645aebdb50d6b1cac92a47b5aad250"
+  },
+  "ordinarySummary": {
+    "batches": 15,
+    "journeys": 48,
+    "deliveries": 96,
+    "servedSix": 96,
+    "deliveryTimeouts": 0,
+    "selectionResponses": 48,
+    "validatedAcknowledgments": 42,
+    "validResponseMsRange": [233, 675],
+    "unreadBodies": 5,
+    "abortsWithoutResponse": 1,
+    "browserObservedHttpFailures": 0,
+    "serverCorrelatedSelection503s": 1
+  },
+  "browserCommitWait": {
+    "artifactSha256": "430f4b5c320f291c8b08b7566ae7f1367d371788cfd5db0768b88bde328fad06",
+    "chromeVersion": "153.0.8010.36",
+    "agentBrowserVersion": "0.37.1",
+    "eventCount": 1106321,
+    "relativeToSelectionRequestMs": {
+      "nativeWaitStart": 7.059,
+      "nativeWaitDuration": 1001.574,
+      "networkResponseHeaders": 325.1,
+      "rendererResponseHandling": 1022.144,
+      "deadlineTimer": 1031.597,
+      "resourceFinished": 1046.101
+    },
+    "interpretation": "Native renderer commit wait delayed one sampled acknowledgment; underlying browser mechanism and field prevalence remain unproven."
+  },
+  "batches": [
+    {
+      "artifact": "browser-post-release-01.json",
+      "sha256": "14d78b94a9c8e71adb80436a30525cf481dcd4d6ce8d7eb09d23ff84cf348a60",
+      "cohort": "ordinary",
+      "startedAt": "2026-09-18T03:17:13.048323+00:00",
+      "finishedAt": "2026-09-18T03:17:56.716249+00:00",
+      "journeys": 6,
+      "deliveries": [
+        {
+          "at": "2026-09-18T03:17:16.378Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 415,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:17:19.736Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 460,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:17:22.980Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 434,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:17:26.118Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 425,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:17:30.084Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 760,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:17:33.900Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 500,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:17:37.348Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 499,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:17:40.596Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 454,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:17:44.144Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 380,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:17:47.337Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 525,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:17:50.862Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 437,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:17:54.107Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 478,
+          "result": "served",
+          "status": 200
+        }
+      ],
+      "selections": [
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:17:18.447Z",
+          "responseMs": 303,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:17:25.031Z",
+          "responseMs": 243,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:17:32.441Z",
+          "responseMs": 319,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:17:39.451Z",
+          "responseMs": 244,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:17:46.094Z",
+          "responseMs": 241,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:17:52.873Z",
+          "responseMs": 259,
+          "status": 200
+        }
+      ],
+      "selectionResourceTimings": [],
+      "javascriptErrors": 0,
+      "harnessFailure": null,
+      "traceCommandFailure": null,
+      "closeFailure": null
+    },
+    {
+      "artifact": "browser-post-release-02.json",
+      "sha256": "bc968e55d9dfb93b5b17590077fdbdb0d7c3383ea6c87554453a8bfe4934784a",
+      "cohort": "ordinary",
+      "startedAt": "2026-09-18T03:18:35.062370+00:00",
+      "finishedAt": "2026-09-18T03:19:07.546091+00:00",
+      "journeys": 3,
+      "deliveries": [
+        {
+          "at": "2026-09-18T03:18:37.934Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 600,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:18:47.762Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 843,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:18:53.530Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 603,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:18:57.528Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 640,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:19:01.240Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 537,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:19:05.047Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 556,
+          "result": "served",
+          "status": 200
+        }
+      ],
+      "selections": [
+        {
+          "at": "2026-09-18T03:18:42.825Z",
+          "bodyReadFailed": true,
+          "responseMs": 1028,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:18:55.713Z",
+          "responseMs": 592,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:19:03.436Z",
+          "responseMs": 430,
+          "status": 200
+        }
+      ],
+      "selectionResourceTimings": [],
+      "javascriptErrors": 0,
+      "harnessFailure": null,
+      "traceCommandFailure": null,
+      "closeFailure": null
+    },
+    {
+      "artifact": "browser-post-release-03.json",
+      "sha256": "fbce70d9af215fee936fc317ff4650d3cde1710a07776d65b298757c087e3625",
+      "cohort": "ordinary",
+      "startedAt": "2026-09-18T03:20:24.472194+00:00",
+      "finishedAt": "2026-09-18T03:20:50.172900+00:00",
+      "journeys": 3,
+      "deliveries": [
+        {
+          "at": "2026-09-18T03:20:27.147Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 387,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:20:30.436Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 431,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:20:33.658Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 383,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:20:38.328Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 943,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:20:43.104Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 583,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:20:47.535Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 452,
+          "result": "served",
+          "status": 200
+        }
+      ],
+      "selections": [
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:20:29.162Z",
+          "responseMs": 233,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:20:35.653Z",
+          "responseMs": 671,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:20:45.291Z",
+          "responseMs": 454,
+          "status": 200
+        }
+      ],
+      "selectionResourceTimings": [],
+      "javascriptErrors": 0,
+      "harnessFailure": null,
+      "traceCommandFailure": null,
+      "closeFailure": null
+    },
+    {
+      "artifact": "browser-post-release-04.json",
+      "sha256": "bfbfa569fbe0224a8221ee78d6e798e3f101d82b73bf8f1671b09b4deeb1346c",
+      "cohort": "ordinary",
+      "startedAt": "2026-09-18T03:21:54.473235+00:00",
+      "finishedAt": "2026-09-18T03:22:22.464901+00:00",
+      "journeys": 3,
+      "deliveries": [
+        {
+          "at": "2026-09-18T03:21:57.858Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 602,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:22:04.906Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 653,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:22:08.627Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 540,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:22:12.621Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 560,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:22:16.158Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 655,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:22:19.932Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 566,
+          "result": "served",
+          "status": 200
+        }
+      ],
+      "selections": [
+        {
+          "at": "2026-09-18T03:22:02.783Z",
+          "bodyReadFailed": true,
+          "responseMs": 1020,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:22:10.770Z",
+          "responseMs": 538,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:22:18.382Z",
+          "responseMs": 507,
+          "status": 200
+        }
+      ],
+      "selectionResourceTimings": [],
+      "javascriptErrors": 0,
+      "harnessFailure": null,
+      "traceCommandFailure": null,
+      "closeFailure": null
+    },
+    {
+      "artifact": "browser-post-release-05.json",
+      "sha256": "954e217d0c50115cd7689557ceaf4f13612ca0b98fa7c1f58f16611e03af8a3b",
+      "cohort": "ordinary",
+      "startedAt": "2026-09-18T03:23:24.473819+00:00",
+      "finishedAt": "2026-09-18T03:23:55.207038+00:00",
+      "journeys": 3,
+      "deliveries": [
+        {
+          "at": "2026-09-18T03:23:29.191Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 660,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:23:36.818Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 751,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:23:40.090Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 859,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:23:44.608Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 522,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:23:48.172Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 989,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:23:52.778Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 629,
+          "result": "served",
+          "status": 200
+        }
+      ],
+      "selections": [
+        {
+          "at": "2026-09-18T03:23:33.912Z",
+          "bodyReadFailed": true,
+          "bodyReadFailure": "AbortError",
+          "responseMs": 1024,
+          "signalAbortedMs": 1028,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:23:42.538Z",
+          "responseMs": 660,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:23:50.785Z",
+          "responseMs": 655,
+          "status": 200
+        }
+      ],
+      "selectionResourceTimings": [
+        {
+          "at": 1789701813912.5,
+          "duration": 1040.899999976158,
+          "requestStartMs": 1,
+          "responseEndMs": 1040.899999976158,
+          "responseStartMs": 582.8999999761581
+        },
+        {
+          "at": 1789701822538.2,
+          "duration": 658,
+          "requestStartMs": 1.1999999284744265,
+          "responseEndMs": 658,
+          "responseStartMs": 656.3999999761581
+        },
+        {
+          "at": 1789701830785.2002,
+          "duration": 653.8999999761581,
+          "requestStartMs": 0.8999999761581421,
+          "responseEndMs": 653.8999999761581,
+          "responseStartMs": 652.3999999761581
+        }
+      ],
+      "javascriptErrors": 0,
+      "harnessFailure": null,
+      "traceCommandFailure": null,
+      "closeFailure": null
+    },
+    {
+      "artifact": "browser-post-release-06.json",
+      "sha256": "053a593ac768b8eec6bc758713ce62250eb2d0c0c2e5bf3d4b75b58cd0d9d44e",
+      "cohort": "ordinary",
+      "startedAt": "2026-09-18T03:24:54.474501+00:00",
+      "finishedAt": "2026-09-18T03:25:26.375379+00:00",
+      "journeys": 3,
+      "deliveries": [
+        {
+          "at": "2026-09-18T03:24:58.023Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 566,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:25:02.508Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 772,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:25:06.072Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 561,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:25:09.649Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 646,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:25:14.854Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 714,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:25:24.025Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 839,
+          "result": "served",
+          "status": 200
+        }
+      ],
+      "selections": [
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:25:00.887Z",
+          "responseMs": 339,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:25:08.232Z",
+          "responseMs": 441,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:25:17.157Z",
+          "responseMs": 675,
+          "status": 200
+        }
+      ],
+      "selectionResourceTimings": [
+        {
+          "at": 1789701900887.5,
+          "duration": 337.2000000476837,
+          "requestStartMs": 3.399999976158142,
+          "responseEndMs": 337.2000000476837,
+          "responseStartMs": 335.89999997615814
+        },
+        {
+          "at": 1789701908232.7,
+          "duration": 439.2999999523163,
+          "requestStartMs": 0.8999999761581421,
+          "responseEndMs": 439.2999999523163,
+          "responseStartMs": 437.6999999284744
+        },
+        {
+          "at": 1789701917157.5,
+          "duration": 672.8999999761581,
+          "requestStartMs": 1,
+          "responseEndMs": 672.8999999761581,
+          "responseStartMs": 671.3999999761581
+        }
+      ],
+      "javascriptErrors": 0,
+      "harnessFailure": null,
+      "traceCommandFailure": null,
+      "closeFailure": null
+    },
+    {
+      "artifact": "browser-post-release-07.json",
+      "sha256": "5f6fdacad63a59dd8cc4f2c4e581c1888fa78ac8bf92549178671256e3669494",
+      "cohort": "ordinary",
+      "startedAt": "2026-09-18T03:27:57.561799+00:00",
+      "finishedAt": "2026-09-18T03:28:19.437174+00:00",
+      "journeys": 3,
+      "deliveries": [
+        {
+          "at": "2026-09-18T03:28:00.296Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 370,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:28:03.946Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 711,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:28:06.982Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 505,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:28:10.183Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 474,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:28:13.627Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 457,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:28:16.776Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 461,
+          "result": "served",
+          "status": 200
+        }
+      ],
+      "selections": [
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:28:02.255Z",
+          "responseMs": 334,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:28:09.080Z",
+          "responseMs": 257,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:28:15.673Z",
+          "responseMs": 248,
+          "status": 200
+        }
+      ],
+      "selectionResourceTimings": [
+        {
+          "at": 1789702082255.8,
+          "duration": 332.59999990463257,
+          "requestStartMs": 1.7999999523162842,
+          "responseEndMs": 332.59999990463257,
+          "responseStartMs": 330.89999997615814
+        },
+        {
+          "at": 1789702089080.1,
+          "duration": 255.10000002384183,
+          "requestStartMs": 1.1999999284744265,
+          "responseEndMs": 255.10000002384183,
+          "responseStartMs": 253.60000002384183
+        },
+        {
+          "at": 1789702095673.1,
+          "duration": 246,
+          "requestStartMs": 1.2000000476837158,
+          "responseEndMs": 246,
+          "responseStartMs": 243.29999995231628
+        }
+      ],
+      "javascriptErrors": 0,
+      "harnessFailure": null,
+      "traceCommandFailure": null,
+      "closeFailure": null
+    },
+    {
+      "artifact": "browser-post-release-08.json",
+      "sha256": "7aa978f4ab95cb845bbba24ff9dcd1cf294c4cf35f7d93792bc85070424983b8",
+      "cohort": "ordinary",
+      "startedAt": "2026-09-18T03:29:27.552476+00:00",
+      "finishedAt": "2026-09-18T03:29:53.218475+00:00",
+      "journeys": 3,
+      "deliveries": [
+        {
+          "at": "2026-09-18T03:29:31.055Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 841,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:29:35.408Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 812,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:29:38.819Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 867,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:29:43.527Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 675,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:29:47.018Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 591,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:29:50.719Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 837,
+          "result": "served",
+          "status": 200
+        }
+      ],
+      "selections": [
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:29:33.537Z",
+          "responseMs": 345,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:29:41.263Z",
+          "responseMs": 388,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:29:49.189Z",
+          "responseMs": 331,
+          "status": 200
+        }
+      ],
+      "selectionResourceTimings": [
+        {
+          "at": 1789702173537.2,
+          "duration": 343.09999990463257,
+          "requestStartMs": 1.5999999046325684,
+          "responseEndMs": 343.09999990463257,
+          "responseStartMs": 339.89999997615814
+        },
+        {
+          "at": 1789702181263.2002,
+          "duration": 386.1999999284744,
+          "requestStartMs": 1,
+          "responseEndMs": 386.1999999284744,
+          "responseStartMs": 384.59999990463257
+        },
+        {
+          "at": 1789702189189.2,
+          "duration": 328.59999990463257,
+          "requestStartMs": 1,
+          "responseEndMs": 328.59999990463257,
+          "responseStartMs": 326.5
+        }
+      ],
+      "javascriptErrors": 0,
+      "harnessFailure": null,
+      "traceCommandFailure": null,
+      "closeFailure": null
+    },
+    {
+      "artifact": "browser-post-release-09.json",
+      "sha256": "b1a57fb82bd996433d49b1a9df0d1c70db190465b8d27158b38fa4495314fb74",
+      "cohort": "ordinary",
+      "startedAt": "2026-09-18T03:30:57.552334+00:00",
+      "finishedAt": "2026-09-18T03:31:23.365201+00:00",
+      "journeys": 3,
+      "deliveries": [
+        {
+          "at": "2026-09-18T03:31:00.134Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 694,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:31:07.516Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 523,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:31:10.841Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 453,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:31:14.063Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 451,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:31:17.398Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 481,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:31:20.967Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 633,
+          "result": "served",
+          "status": 200
+        }
+      ],
+      "selections": [
+        {
+          "at": "2026-09-18T03:31:05.347Z",
+          "bodyReadFailed": true,
+          "bodyReadFailure": "AbortError",
+          "responseMs": 1024,
+          "signalAbortedMs": 1032,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:31:12.865Z",
+          "responseMs": 291,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:31:19.441Z",
+          "responseMs": 306,
+          "status": 200
+        }
+      ],
+      "selectionResourceTimings": [
+        {
+          "at": 1789702265347.1,
+          "duration": 1048.100000023842,
+          "requestStartMs": 1.2999999523162842,
+          "responseEndMs": 1048.100000023842,
+          "responseStartMs": 341.7000000476837
+        },
+        {
+          "at": 1789702272865.4,
+          "duration": 289.60000002384186,
+          "requestStartMs": 1,
+          "responseEndMs": 289.60000002384186,
+          "responseStartMs": 288
+        },
+        {
+          "at": 1789702279441.3,
+          "duration": 304.5,
+          "requestStartMs": 1,
+          "responseEndMs": 304.5,
+          "responseStartMs": 303.09999990463257
+        }
+      ],
+      "javascriptErrors": 0,
+      "harnessFailure": null,
+      "traceCommandFailure": null,
+      "closeFailure": null
+    },
+    {
+      "artifact": "browser-post-release-10.json",
+      "sha256": "499be71f6fe3a0211504c75bf12adaa58a3e6bbd422e8074efb34456630e2d47",
+      "cohort": "ordinary",
+      "startedAt": "2026-09-18T03:32:27.551705+00:00",
+      "finishedAt": "2026-09-18T03:32:56.393638+00:00",
+      "journeys": 3,
+      "deliveries": [
+        {
+          "at": "2026-09-18T03:32:30.834Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 992,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:32:39.025Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 697,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:32:42.964Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 533,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:32:46.508Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 652,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:32:49.886Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 776,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:32:54.177Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 593,
+          "result": "served",
+          "status": 200
+        }
+      ],
+      "selections": [
+        {
+          "at": "2026-09-18T03:32:35.859Z",
+          "bodyReadFailed": true,
+          "bodyReadFailure": "AbortError",
+          "responseMs": 1024,
+          "signalAbortedMs": 1028,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:32:45.153Z",
+          "responseMs": 326,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:32:52.258Z",
+          "responseMs": 515,
+          "status": 200
+        }
+      ],
+      "selectionResourceTimings": [
+        {
+          "at": 1789702355859,
+          "duration": 1038.5,
+          "requestStartMs": 1.100000023841858,
+          "responseEndMs": 1038.5,
+          "responseStartMs": 365.3000000715256
+        },
+        {
+          "at": 1789702365153.1,
+          "duration": 323.89999997615814,
+          "requestStartMs": 0.7999999523162842,
+          "responseEndMs": 323.89999997615814,
+          "responseStartMs": 322.39999997615814
+        },
+        {
+          "at": 1789702372258.7,
+          "duration": 513.1999999284744,
+          "requestStartMs": 1,
+          "responseEndMs": 513.1999999284744,
+          "responseStartMs": 511.5
+        }
+      ],
+      "javascriptErrors": 0,
+      "harnessFailure": null,
+      "traceCommandFailure": null,
+      "closeFailure": null
+    },
+    {
+      "artifact": "browser-post-release-11.json",
+      "sha256": "d5d466b9edea61655ec1d48f65ead92f9f7c11af0384fdfc5f6b50e9a1fdb1e9",
+      "cohort": "ordinary",
+      "startedAt": "2026-09-18T03:33:57.555418+00:00",
+      "finishedAt": "2026-09-18T03:34:21.992252+00:00",
+      "journeys": 3,
+      "deliveries": [
+        {
+          "at": "2026-09-18T03:34:00.888Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 592,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:34:04.532Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 647,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:34:08.161Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 572,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:34:12.026Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 541,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:34:15.586Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 569,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:34:19.677Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 588,
+          "result": "served",
+          "status": 200
+        }
+      ],
+      "selections": [
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:34:03.122Z",
+          "responseMs": 341,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:34:10.321Z",
+          "responseMs": 376,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:34:17.790Z",
+          "responseMs": 411,
+          "status": 200
+        }
+      ],
+      "selectionResourceTimings": [
+        {
+          "at": 1789702443121.9,
+          "duration": 339.5,
+          "requestStartMs": 1.5,
+          "responseEndMs": 339.5,
+          "responseStartMs": 337.90000009536743
+        },
+        {
+          "at": 1789702450321.7,
+          "duration": 373.6999999284744,
+          "requestStartMs": 1.0999999046325684,
+          "responseEndMs": 373.6999999284744,
+          "responseStartMs": 372
+        },
+        {
+          "at": 1789702457790.3,
+          "duration": 408.5,
+          "requestStartMs": 1,
+          "responseEndMs": 408.5,
+          "responseStartMs": 406.89999997615814
+        }
+      ],
+      "javascriptErrors": 0,
+      "harnessFailure": null,
+      "traceCommandFailure": null,
+      "closeFailure": null
+    },
+    {
+      "artifact": "browser-post-release-12.json",
+      "sha256": "23ac34154a1ef48f2916e398ad5accf6f35348cdea631f3f926c0269bafe8a21",
+      "cohort": "ordinary",
+      "startedAt": "2026-09-18T03:35:27.552898+00:00",
+      "finishedAt": "2026-09-18T03:35:51.750678+00:00",
+      "journeys": 3,
+      "deliveries": [
+        {
+          "at": "2026-09-18T03:35:30.782Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 574,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:35:34.542Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 626,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:35:38.127Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 694,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:35:42.026Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 576,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:35:45.518Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 626,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:35:49.355Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 746,
+          "result": "served",
+          "status": 200
+        }
+      ],
+      "selections": [
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:35:32.934Z",
+          "responseMs": 334,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:35:40.425Z",
+          "responseMs": 405,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:35:47.773Z",
+          "responseMs": 317,
+          "status": 200
+        }
+      ],
+      "selectionResourceTimings": [
+        {
+          "at": 1789702532934.6,
+          "duration": 332.3000000715256,
+          "requestStartMs": 1.600000023841858,
+          "responseEndMs": 332.3000000715256,
+          "responseStartMs": 330.7000000476837
+        },
+        {
+          "at": 1789702540425.7,
+          "duration": 403.2999999523163,
+          "requestStartMs": 1.100000023841858,
+          "responseEndMs": 403.2999999523163,
+          "responseStartMs": 401.6999999284744
+        },
+        {
+          "at": 1789702547773.1,
+          "duration": 315.39999997615814,
+          "requestStartMs": 1,
+          "responseEndMs": 315.39999997615814,
+          "responseStartMs": 313.8000000715256
+        }
+      ],
+      "javascriptErrors": 0,
+      "harnessFailure": null,
+      "traceCommandFailure": null,
+      "closeFailure": null
+    },
+    {
+      "artifact": "browser-post-release-13.json",
+      "sha256": "bc3755ed573e08495270a0a6237da3f6b8ee51c2dcb6b24494a1c95da05e728c",
+      "cohort": "ordinary",
+      "startedAt": "2026-09-18T03:36:57.554576+00:00",
+      "finishedAt": "2026-09-18T03:37:22.270305+00:00",
+      "journeys": 3,
+      "deliveries": [
+        {
+          "at": "2026-09-18T03:37:00.373Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 709,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:37:04.725Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 922,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:37:08.620Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 836,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:37:12.864Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 713,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:37:16.071Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 573,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:37:19.605Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 499,
+          "result": "served",
+          "status": 200
+        }
+      ],
+      "selections": [
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:37:02.728Z",
+          "responseMs": 395,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:37:11.051Z",
+          "responseMs": 483,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:37:18.230Z",
+          "responseMs": 471,
+          "status": 200
+        }
+      ],
+      "selectionResourceTimings": [
+        {
+          "at": 1789702622728.7,
+          "duration": 393,
+          "requestStartMs": 1.7999999523162842,
+          "responseEndMs": 393,
+          "responseStartMs": 391.2999999523163
+        },
+        {
+          "at": 1789702631051.4,
+          "duration": 481,
+          "requestStartMs": 1.100000023841858,
+          "responseEndMs": 481,
+          "responseStartMs": 479.40000009536743
+        },
+        {
+          "at": 1789702638230.4,
+          "duration": 468.7000000476837,
+          "requestStartMs": 1,
+          "responseEndMs": 468.7000000476837,
+          "responseStartMs": 467.2000000476837
+        }
+      ],
+      "javascriptErrors": 0,
+      "harnessFailure": null,
+      "traceCommandFailure": null,
+      "closeFailure": null
+    },
+    {
+      "artifact": "browser-post-release-14.json",
+      "sha256": "f7812ba1b7c38d104227131a219f6db2133b3d5bb166d1f951d1b6d6753a1c4e",
+      "cohort": "ordinary",
+      "startedAt": "2026-09-18T03:38:27.553587+00:00",
+      "finishedAt": "2026-09-18T03:38:56.907081+00:00",
+      "journeys": 3,
+      "deliveries": [
+        {
+          "at": "2026-09-18T03:38:33.332Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 922,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:38:39.784Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 843,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:38:43.313Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 529,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:38:47.154Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 643,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:38:50.615Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 550,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:38:54.458Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 627,
+          "result": "served",
+          "status": 200
+        }
+      ],
+      "selections": [
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:38:38.134Z",
+          "responseMs": 453,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:38:45.404Z",
+          "responseMs": 437,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:38:52.747Z",
+          "responseMs": 437,
+          "status": 200
+        }
+      ],
+      "selectionResourceTimings": [
+        {
+          "at": 1789702718133.7002,
+          "duration": 451.09999990463257,
+          "requestStartMs": 1.2999999523162842,
+          "responseEndMs": 451.09999990463257,
+          "responseStartMs": 449.39999997615814
+        },
+        {
+          "at": 1789702725404.5,
+          "duration": 435.2000000476837,
+          "requestStartMs": 1.100000023841858,
+          "responseEndMs": 435.2000000476837,
+          "responseStartMs": 433.5
+        },
+        {
+          "at": 1789702732747.1,
+          "duration": 434.8000000715256,
+          "requestStartMs": 1.2000000476837158,
+          "responseEndMs": 434.8000000715256,
+          "responseStartMs": 432.8000000715256
+        }
+      ],
+      "javascriptErrors": 0,
+      "harnessFailure": null,
+      "traceCommandFailure": null,
+      "closeFailure": null
+    },
+    {
+      "artifact": "browser-post-release-15.json",
+      "sha256": "6d511225085466ad2cc1836d4ce58e1b11e440d02d7456c77619654a0093d22f",
+      "cohort": "ordinary",
+      "startedAt": "2026-09-18T03:39:57.552362+00:00",
+      "finishedAt": "2026-09-18T03:40:22.519931+00:00",
+      "journeys": 3,
+      "deliveries": [
+        {
+          "at": "2026-09-18T03:40:00.837Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 637,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:40:04.666Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 794,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:40:08.091Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 548,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:40:12.966Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 625,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:40:15.923Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 951,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:40:20.062Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 501,
+          "result": "served",
+          "status": 200
+        }
+      ],
+      "selections": [
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:40:03.080Z",
+          "responseMs": 367,
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:40:10.256Z",
+          "failure": "AbortError",
+          "finishedMs": 801,
+          "signalAbortedMs": 801
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:40:18.495Z",
+          "responseMs": 433,
+          "status": 200
+        }
+      ],
+      "selectionResourceTimings": [
+        {
+          "at": 1789702803079.8,
+          "duration": 364.8000000715256,
+          "requestStartMs": 1.4000000953674316,
+          "responseEndMs": 364.8000000715256,
+          "responseStartMs": 362.90000009536743
+        },
+        {
+          "at": 1789702810256.5,
+          "duration": 805.7000000476837,
+          "requestStartMs": null,
+          "responseEndMs": 805.7000000476837,
+          "responseStartMs": null
+        },
+        {
+          "at": 1789702818495.1,
+          "duration": 431,
+          "requestStartMs": 1,
+          "responseEndMs": 431,
+          "responseStartMs": 429.2000000476837
+        }
+      ],
+      "javascriptErrors": 0,
+      "harnessFailure": null,
+      "traceCommandFailure": null,
+      "closeFailure": null
+    },
+    {
+      "artifact": "browser-traced-01.json",
+      "sha256": "eee7c1e799639aad9399ec4194ad0e98b72973d1810d3e92555961303967285e",
+      "cohort": "native-tracing",
+      "startedAt": "2026-09-18T03:26:17.154008+00:00",
+      "finishedAt": "2026-09-18T03:27:19.550250+00:00",
+      "journeys": 3,
+      "deliveries": [
+        {
+          "at": "2026-09-18T03:26:20.790Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 546,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:26:27.821Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 539,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:26:31.287Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 567,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:26:35.442Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 695,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:26:39.433Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 781,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:26:43.715Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 637,
+          "result": "served",
+          "status": 200
+        }
+      ],
+      "selections": [
+        {
+          "at": "2026-09-18T03:26:25.526Z",
+          "bodyReadFailed": true,
+          "bodyReadFailure": "AbortError",
+          "responseMs": 1022,
+          "signalAbortedMs": 1032,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:26:33.451Z",
+          "responseMs": 465,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:26:41.854Z",
+          "responseMs": 372,
+          "status": 200
+        }
+      ],
+      "selectionResourceTimings": [
+        {
+          "at": 1789701985526.1,
+          "duration": 1045.899999976158,
+          "requestStartMs": 1.5,
+          "responseEndMs": 1045.899999976158,
+          "responseStartMs": 325.10000002384186
+        },
+        {
+          "at": 1789701993451.6,
+          "duration": 462.7999999523163,
+          "requestStartMs": 1.100000023841858,
+          "responseEndMs": 462.7999999523163,
+          "responseStartMs": 460.7999999523163
+        },
+        {
+          "at": 1789702001854.4,
+          "duration": 368.8000000715256,
+          "requestStartMs": 1.5,
+          "responseEndMs": 368.8000000715256,
+          "responseStartMs": 367.10000002384186
+        }
+      ],
+      "javascriptErrors": 0,
+      "harnessFailure": null,
+      "traceCommandFailure": "{\"success\":false,\"data\":null,\"error\":\"No tracing in progress\"}\n",
+      "closeFailure": null
+    },
+    {
+      "artifact": "browser-db-waits-01.json",
+      "sha256": "c17de6c8701fd6f125f87e907f68291e022d55c6b4e8eb3dc2aeb1abe8dfbb23",
+      "cohort": "independent-database-sampling",
+      "startedAt": "2026-09-18T03:44:24.507312+00:00",
+      "finishedAt": "2026-09-18T03:46:09.971862+00:00",
+      "journeys": 12,
+      "deliveries": [
+        {
+          "at": "2026-09-18T03:44:33.757Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 500,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:44:39.307Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 625,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:44:44.747Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 976,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:44:54.789Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 529,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:44:57.996Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 525,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:45:01.362Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 517,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:45:04.920Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 493,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:45:08.052Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 499,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:45:11.521Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 677,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:45:15.249Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 459,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:45:18.340Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 437,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:45:21.736Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 488,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:45:24.892Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 489,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:45:28.473Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 611,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:45:31.847Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 487,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:45:35.362Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 650,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:45:40.098Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 723,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:45:45.167Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 689,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:45:49.558Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 634,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:45:53.022Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 466,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:45:56.492Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 466,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:46:00.095Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 494,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:46:03.940Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 686,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:46:07.297Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 574,
+          "result": "served",
+          "status": 200
+        }
+      ],
+      "selections": [
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:44:35.824Z",
+          "responseMs": 470,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:44:47.355Z",
+          "responseMs": 431,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:45:00.095Z",
+          "responseMs": 317,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:45:06.981Z",
+          "responseMs": 252,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:45:13.822Z",
+          "responseMs": 254,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:45:20.374Z",
+          "responseMs": 242,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:45:27.019Z",
+          "responseMs": 356,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:45:33.969Z",
+          "responseMs": 296,
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T03:45:42.460Z",
+          "failure": "AbortError",
+          "finishedMs": 801,
+          "signalAbortedMs": 801
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:45:51.779Z",
+          "responseMs": 254,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:45:58.569Z",
+          "responseMs": 270,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T03:46:06.214Z",
+          "responseMs": 250,
+          "status": 200
+        }
+      ],
+      "selectionResourceTimings": [
+        {
+          "at": 1789703075824.1,
+          "duration": 467.7999999523163,
+          "requestStartMs": 1.600000023841858,
+          "responseEndMs": 467.7999999523163,
+          "responseStartMs": 466.1999999284744
+        },
+        {
+          "at": 1789703087355.6,
+          "duration": 429.60000002384186,
+          "requestStartMs": 1.100000023841858,
+          "responseEndMs": 429.60000002384186,
+          "responseStartMs": 427.7999999523163
+        },
+        {
+          "at": 1789703100094.9,
+          "duration": 315.7999999523163,
+          "requestStartMs": 1.2999999523162842,
+          "responseEndMs": 315.7999999523163,
+          "responseStartMs": 314.5
+        },
+        {
+          "at": 1789703106981.5,
+          "duration": 250.39999997615817,
+          "requestStartMs": 1.2000000476837158,
+          "responseEndMs": 250.39999997615817,
+          "responseStartMs": 248.20000004768372
+        },
+        {
+          "at": 1789703113822.3,
+          "duration": 251.29999995231628,
+          "requestStartMs": 1.5,
+          "responseEndMs": 251.29999995231628,
+          "responseStartMs": 248.79999995231628
+        },
+        {
+          "at": 1789703120374.2,
+          "duration": 239.39999997615817,
+          "requestStartMs": 1.399999976158142,
+          "responseEndMs": 239.39999997615817,
+          "responseStartMs": 237.69999992847443
+        },
+        {
+          "at": 1789703127019.4,
+          "duration": 353.60000002384186,
+          "requestStartMs": 1.100000023841858,
+          "responseEndMs": 353.60000002384186,
+          "responseStartMs": 351.60000002384186
+        },
+        {
+          "at": 1789703133969.7998,
+          "duration": 293.59999990463257,
+          "requestStartMs": 1.0999999046325684,
+          "responseEndMs": 293.59999990463257,
+          "responseStartMs": 291.59999990463257
+        },
+        {
+          "at": 1789703142460.3,
+          "duration": 806.9000000953674,
+          "requestStartMs": null,
+          "responseEndMs": 806.9000000953674,
+          "responseStartMs": null
+        },
+        {
+          "at": 1789703151779.4,
+          "duration": 251.90000009536743,
+          "requestStartMs": 1,
+          "responseEndMs": 251.90000009536743,
+          "responseStartMs": 249.10000002384183
+        },
+        {
+          "at": 1789703158569.4,
+          "duration": 268.3000000715256,
+          "requestStartMs": 1.3000000715255735,
+          "responseEndMs": 268.3000000715256,
+          "responseStartMs": 266.5
+        },
+        {
+          "at": 1789703166213.8,
+          "duration": 247.60000002384183,
+          "requestStartMs": 1,
+          "responseEndMs": 247.60000002384183,
+          "responseStartMs": 246
+        }
+      ],
+      "javascriptErrors": 0,
+      "harnessFailure": null,
+      "traceCommandFailure": null,
+      "closeFailure": null
+    },
+    {
+      "artifact": "browser-db-waits-02.json",
+      "sha256": "8f1f4ea41e676f4a2c855700389898b9cc6ca1dcf602d6358ad63e8443163126",
+      "cohort": "independent-database-sampling",
+      "startedAt": "2026-09-18T04:02:14.092659+00:00",
+      "finishedAt": "2026-09-18T04:04:06.966941+00:00",
+      "journeys": 12,
+      "deliveries": [
+        {
+          "at": "2026-09-18T04:02:17.300Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 666,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:02:28.694Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 854,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:02:31.871Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 547,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:02:35.341Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 570,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:02:39.964Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 677,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:02:44.654Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 641,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:02:48.484Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 559,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:02:52.399Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 1264,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:02:57.635Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 741,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:03:04.114Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 777,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:03:07.752Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 961,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:03:16.188Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 1028,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:03:20.914Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 899,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:03:25.217Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 633,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:03:28.563Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 728,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:03:32.572Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 622,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:03:36.054Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 641,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:03:39.763Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 524,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:03:43.344Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 678,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:03:47.591Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 795,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:03:50.823Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 740,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:03:55.025Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 607,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:03:58.969Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 674,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:04:04.358Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 769,
+          "result": "served",
+          "status": 200
+        }
+      ],
+      "selections": [
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T04:02:20.253Z",
+          "responseMs": 573,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T04:02:33.995Z",
+          "responseMs": 337,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T04:02:42.234Z",
+          "responseMs": 562,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T04:02:50.643Z",
+          "responseMs": 439,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T04:02:59.973Z",
+          "responseMs": 378,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T04:03:10.330Z",
+          "responseMs": 527,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T04:03:23.404Z",
+          "responseMs": 441,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T04:03:30.891Z",
+          "responseMs": 445,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T04:03:38.297Z",
+          "responseMs": 323,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T04:03:45.619Z",
+          "responseMs": 457,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T04:03:53.198Z",
+          "responseMs": 484,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T04:04:01.381Z",
+          "responseMs": 659,
+          "status": 200
+        }
+      ],
+      "selectionResourceTimings": [
+        {
+          "at": 1789704140253.1,
+          "duration": 571.1000000238419,
+          "requestStartMs": 1.3000000715255735,
+          "responseEndMs": 571.1000000238419,
+          "responseStartMs": 569.5
+        },
+        {
+          "at": 1789704153995,
+          "duration": 335,
+          "requestStartMs": 1,
+          "responseEndMs": 335,
+          "responseStartMs": 333.39999997615814
+        },
+        {
+          "at": 1789704162233.8,
+          "duration": 560.2000000476837,
+          "requestStartMs": 1.100000023841858,
+          "responseEndMs": 560.2000000476837,
+          "responseStartMs": 557.1000000238419
+        },
+        {
+          "at": 1789704170643,
+          "duration": 436.7000000476837,
+          "requestStartMs": 0.8000000715255737,
+          "responseEndMs": 436.7000000476837,
+          "responseStartMs": 435
+        },
+        {
+          "at": 1789704179972.9,
+          "duration": 376.3000000715256,
+          "requestStartMs": 1,
+          "responseEndMs": 376.3000000715256,
+          "responseStartMs": 374.60000002384186
+        },
+        {
+          "at": 1789704190330.2,
+          "duration": 525,
+          "requestStartMs": 1.100000023841858,
+          "responseEndMs": 525,
+          "responseStartMs": 523.5
+        },
+        {
+          "at": 1789704203404.6,
+          "duration": 439.7000000476837,
+          "requestStartMs": 1,
+          "responseEndMs": 439.7000000476837,
+          "responseStartMs": 437.89999997615814
+        },
+        {
+          "at": 1789704210891,
+          "duration": 443.3000000715256,
+          "requestStartMs": 1.100000023841858,
+          "responseEndMs": 443.3000000715256,
+          "responseStartMs": 441.7000000476837
+        },
+        {
+          "at": 1789704218297.7,
+          "duration": 320.7999999523163,
+          "requestStartMs": 1,
+          "responseEndMs": 320.7999999523163,
+          "responseStartMs": 318.1999999284744
+        },
+        {
+          "at": 1789704225619.3,
+          "duration": 455.3000000715256,
+          "requestStartMs": 1.100000023841858,
+          "responseEndMs": 455.3000000715256,
+          "responseStartMs": 453.60000002384186
+        },
+        {
+          "at": 1789704233197.9,
+          "duration": 482.40000009536743,
+          "requestStartMs": 1.2000000476837158,
+          "responseEndMs": 482.40000009536743,
+          "responseStartMs": 480.90000009536743
+        },
+        {
+          "at": 1789704241381.7,
+          "duration": 657.1999999284744,
+          "requestStartMs": 1,
+          "responseEndMs": 657.1999999284744,
+          "responseStartMs": 655.5999999046326
+        }
+      ],
+      "javascriptErrors": 0,
+      "harnessFailure": null,
+      "traceCommandFailure": null,
+      "closeFailure": null
+    },
+    {
+      "artifact": "browser-db-waits-03.json",
+      "sha256": "d3cbd570a68355af21514da89ea3ad275dcd42c593f8f20fa7dc1c0aa18d49bd",
+      "cohort": "independent-database-sampling",
+      "startedAt": "2026-09-18T04:13:33.880072+00:00",
+      "finishedAt": "2026-09-18T04:15:12.233979+00:00",
+      "journeys": 12,
+      "deliveries": [
+        {
+          "at": "2026-09-18T04:13:37.449Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 444,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:13:41.130Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 536,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:13:46.101Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 678,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:13:54.498Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 1149,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:13:59.067Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 576,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:14:02.694Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 703,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:14:06.441Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 765,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:14:10.654Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 534,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:14:14.315Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 655,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:14:18.260Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 633,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:14:21.480Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 618,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:14:25.466Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 568,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:14:28.846Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 537,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:14:32.662Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 548,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:14:36.154Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 541,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:14:39.780Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 506,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:14:43.351Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 688,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:14:47.392Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 796,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:14:51.106Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 738,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:14:55.033Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 679,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:14:58.756Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 650,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:15:02.706Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 622,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:15:05.927Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 729,
+          "result": "served",
+          "status": 200
+        },
+        {
+          "at": "2026-09-18T04:15:09.767Z",
+          "count": 6,
+          "reason": null,
+          "responseMs": 652,
+          "result": "served",
+          "status": 200
+        }
+      ],
+      "selections": [
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T04:13:39.533Z",
+          "responseMs": 350,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T04:13:48.364Z",
+          "responseMs": 493,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T04:14:01.212Z",
+          "responseMs": 328,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T04:14:08.900Z",
+          "responseMs": 454,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T04:14:16.595Z",
+          "responseMs": 446,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T04:14:23.664Z",
+          "responseMs": 322,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T04:14:30.999Z",
+          "responseMs": 487,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T04:14:38.263Z",
+          "responseMs": 332,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T04:14:45.675Z",
+          "responseMs": 437,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T04:14:53.433Z",
+          "responseMs": 483,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T04:15:01.027Z",
+          "responseMs": 395,
+          "status": 200
+        },
+        {
+          "acknowledgmentValid": true,
+          "at": "2026-09-18T04:15:08.283Z",
+          "responseMs": 423,
+          "status": 200
+        }
+      ],
+      "selectionResourceTimings": [
+        {
+          "at": 1789704819532.9,
+          "duration": 348.2000000476837,
+          "requestStartMs": 1.5,
+          "responseEndMs": 348.2000000476837,
+          "responseStartMs": 346.89999997615814
+        },
+        {
+          "at": 1789704828364.5,
+          "duration": 491.7999999523163,
+          "requestStartMs": 1,
+          "responseEndMs": 491.7999999523163,
+          "responseStartMs": 489.7999999523163
+        },
+        {
+          "at": 1789704841212.7,
+          "duration": 326.5,
+          "requestStartMs": 1.2999999523162842,
+          "responseEndMs": 326.5,
+          "responseStartMs": 325
+        },
+        {
+          "at": 1789704848900.2,
+          "duration": 451.5,
+          "requestStartMs": 6.299999952316284,
+          "responseEndMs": 451.5,
+          "responseStartMs": 449.89999997615814
+        },
+        {
+          "at": 1789704856595.6,
+          "duration": 444.5,
+          "requestStartMs": 0.8999999761581421,
+          "responseEndMs": 444.5,
+          "responseStartMs": 443
+        },
+        {
+          "at": 1789704863664.6,
+          "duration": 320.5,
+          "requestStartMs": 1,
+          "responseEndMs": 320.5,
+          "responseStartMs": 319
+        },
+        {
+          "at": 1789704870999.1,
+          "duration": 484.60000002384186,
+          "requestStartMs": 1,
+          "responseEndMs": 484.60000002384186,
+          "responseStartMs": 483
+        },
+        {
+          "at": 1789704878263.2002,
+          "duration": 329.60000002384186,
+          "requestStartMs": 1,
+          "responseEndMs": 329.60000002384186,
+          "responseStartMs": 328
+        },
+        {
+          "at": 1789704885675.8,
+          "duration": 435,
+          "requestStartMs": 1,
+          "responseEndMs": 435,
+          "responseStartMs": 433.2999999523163
+        },
+        {
+          "at": 1789704893433.5,
+          "duration": 480.8000000715256,
+          "requestStartMs": 1,
+          "responseEndMs": 480.8000000715256,
+          "responseStartMs": 479.2000000476837
+        },
+        {
+          "at": 1789704901027.3,
+          "duration": 392.90000009536743,
+          "requestStartMs": 1,
+          "responseEndMs": 392.90000009536743,
+          "responseStartMs": 391.40000009536743
+        },
+        {
+          "at": 1789704908283.2,
+          "duration": 421.5,
+          "requestStartMs": 1.1999999284744265,
+          "responseEndMs": 421.5,
+          "responseStartMs": 419.89999997615814
+        }
+      ],
+      "javascriptErrors": 0,
+      "harnessFailure": null,
+      "traceCommandFailure": null,
+      "closeFailure": null
+    }
+  ],
+  "otherCohortSummaries": {
+    "native-tracing": {
+      "journeys": 3,
+      "deliveries": 6,
+      "servedSix": 6,
+      "deliveryTimeouts": 0,
+      "selections": 3,
+      "validatedAcknowledgments": 2,
+      "unreadBodies": 1,
+      "abortsWithoutResponse": 0,
+      "browserObservedHttpFailures": 0
+    },
+    "independent-database-sampling": {
+      "journeys": 36,
+      "deliveries": 72,
+      "servedSix": 72,
+      "deliveryTimeouts": 0,
+      "selections": 36,
+      "validatedAcknowledgments": 35,
+      "unreadBodies": 0,
+      "abortsWithoutResponse": 1,
+      "browserObservedHttpFailures": 0
+    }
+  },
+  "serverCorrelations": [
+    {
+      "at": "2026-09-18T03:40:10Z",
+      "traceId": "6aacb29a000000003096dac941cd5f16",
+      "cohort": "ordinary",
+      "httpStatus": 503,
+      "webMs": 702.949,
+      "adminSelectionMs": 2433.356,
+      "capabilityBudgetCallMs": 2341.062
+    },
+    {
+      "at": "2026-09-18T03:45:42Z",
+      "traceId": "6aacb3e6000000004bb08c6b3b2e20c3",
+      "cohort": "independent-database-sampling",
+      "httpStatus": 503,
+      "webMs": 714.224,
+      "adminSelectionMs": 617.648,
+      "capabilityBudgetCallMs": 382.096
+    }
+  ],
+  "limitations": [
+    "Browser HTTP counts exclude requests aborted before a response; server-correlated 503s are listed separately.",
+    "Resource timing requestStartMs/responseStartMs are null when native timing fields were unavailable.",
+    "A third database-cohort launch failed to persist its first journey because the report path repeated .tmp; it closed its browser and is excluded. The corrected launch is recorded separately.",
+    "Cohorts have different instrumentation and must not be pooled for a failure-rate estimate."
+  ]
+}
