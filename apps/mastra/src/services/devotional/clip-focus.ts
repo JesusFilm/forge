@@ -306,12 +306,25 @@ export async function planClipFocus(opts: {
  * the frame, and it is cut at the film's own shot boundaries so the layout
  * never changes mid-shot.
  */
+export type ClipSplit = {
+  fromSec: number
+  toSec: number
+  /** Where the CLOSE panel looks: the nearest face in the shot, over time. */
+  path: Array<{ atSec: number; x: number; y: number }>
+}
+
+/** Median of a list, for the split planner's grouping. */
+const med = (xs: readonly number[]): number => {
+  const a = [...xs].sort((p, q) => p - q)
+  return a[Math.floor(a.length / 2)]
+}
+
 export function planClipSplits(
   samples: ReadonlyArray<FaceSample>,
   changes: ReadonlyArray<number>,
   endSec: number,
   opts: { maxFaceArea?: number; minSec?: number; max?: number } = {},
-): Array<{ fromSec: number; toSec: number }> {
+): ClipSplit[] {
   const maxFaceArea = opts.maxFaceArea ?? 0.02
   const minSec = opts.minSec ?? 3
   const max = opts.max ?? 2
@@ -337,9 +350,50 @@ export function planClipSplits(
     if (last && Math.abs(last.toSec - sh.fromSec) < 0.01) last.toSec = sh.toSec
     else wide.push({ fromSec: sh.fromSec, toSec: sh.toSec })
   }
+  /**
+   * The close panel follows the NEAREST person, not the smoothed path the
+   * full-frame crop uses: in a crowd the smoothed path sits between people and
+   * the panel fills with whoever is standing in the middle (owner: "there's
+   * still a half-naked man in the shot"). Largest face = closest to camera.
+   */
+  const closePath = (fromSec: number, toSec: number) => {
+    const inShot = samples.filter((s) => s.atSec >= fromSec && s.atSec <= toSec)
+    if (inShot.length === 0) return []
+    // Group the detections into people, then take the one CLOSEST to camera:
+    // the biggest face, not the one the detector happens to see most often.
+    // In this crowd the most-seen face was a bystander at the frame's edge
+    // while the man the scene is about, nearer and larger, was passed over.
+    const groups: Array<{ xs: number[]; ys: number[]; areas: number[] }> = []
+    for (const s of inShot) {
+      for (const f of s.faces) {
+        if (f.area < MIN_AREA / 2) continue
+        const g = groups.find((k) => Math.abs(med(k.xs) - f.cx) < 0.06)
+        if (g) {
+          g.xs.push(f.cx)
+          g.ys.push(f.cy)
+          g.areas.push(f.area)
+        } else groups.push({ xs: [f.cx], ys: [f.cy], areas: [f.area] })
+      }
+    }
+    // ...but only among people who are really in the shot, not a face the
+    // detector flashed once.
+    const present = groups.filter((g) => g.xs.length >= inShot.length * 0.15)
+    const pool = present.length > 0 ? present : groups
+    if (pool.length === 0) return []
+    const best = pool.sort(
+      (a, b) => med(b.areas) - med(a.areas) || b.xs.length - a.xs.length,
+    )[0]
+    const x = med(best.xs)
+    const y = med(best.ys)
+    return [
+      { atSec: fromSec, x, y },
+      { atSec: toSec, x, y },
+    ]
+  }
   return wide
     .filter((w) => w.toSec - w.fromSec >= minSec)
     .sort((a, b) => b.toSec - b.fromSec - (a.toSec - a.fromSec))
     .slice(0, max)
     .sort((a, b) => a.fromSec - b.fromSec)
+    .map((w) => ({ ...w, path: closePath(w.fromSec, w.toSec) }))
 }

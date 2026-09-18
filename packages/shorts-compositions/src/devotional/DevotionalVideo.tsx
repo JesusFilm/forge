@@ -314,12 +314,14 @@ export function spreadWords(
  * Drawn OVER the card's own video, which keeps playing underneath and carries
  * the sound, so the audio and the focus path need no special case.
  */
-const SPLIT_ZOOM = 1.5
+// Tight enough that the close panel is a PERSON, not a group (owner).
+const SPLIT_ZOOM = 1.9
 
 function ClipSplitPanels({
   src,
   trimBefore,
   focusX,
+  focusY,
   width,
   height,
   opacity,
@@ -329,6 +331,8 @@ function ClipSplitPanels({
   trimBefore: number
   /** 0-1 across the source frame: where the close panel is centred. */
   focusX: number
+  /** 0-1 down the source frame; the face sits a little above centre. */
+  focusY: number
   width: number
   height: number
   opacity: number
@@ -337,6 +341,18 @@ function ClipSplitPanels({
   // The top panel is the whole frame at its own ratio; the bottom takes what
   // is left, so neither is letterboxed.
   const topH = Math.round((width * 9) / 16)
+  const bottomH = height - topH
+  // The close panel: cover the box, then zoom, and place the face where we
+  // want it (a little above the middle, so the body reads under it).
+  const coverH = Math.max(bottomH, (width * 9) / 16)
+  const imgH = coverH * SPLIT_ZOOM
+  const imgW = (imgH * 16) / 9
+  const faceAt = 0.42
+  const imgLeft = Math.min(0, Math.max(width - imgW, width / 2 - focusX * imgW))
+  const imgTop = Math.min(
+    0,
+    Math.max(bottomH - imgH, bottomH * faceAt - focusY * imgH),
+  )
   return (
     <AbsoluteFill style={{ opacity, background: "#0c0805" }}>
       <div
@@ -367,20 +383,27 @@ function ClipSplitPanels({
           left: 0,
           top: topH,
           width,
-          height: height - topH,
+          height: bottomH,
           overflow: "hidden",
         }}
       >
+        {/* Positioned by hand rather than with objectPosition: `cover` places
+            the image and a transform then scales it about the CONTAINER's
+            centre, which pushes the very face we aimed at back out of frame
+            (the close panel was filling with a bystander's torso). Sizing the
+            image and offsetting it puts the face where we say it is. */}
         <OffthreadVideo
           src={src}
           muted
           trimBefore={trimBefore}
           style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            objectPosition: `${(focusX * 100).toFixed(2)}% 38%`,
-            transform: `scale(${SPLIT_ZOOM})`,
+            position: "absolute",
+            width: imgW,
+            height: imgH,
+            left: imgLeft,
+            top: imgTop,
+            maxWidth: "none",
+            objectFit: "fill",
             filter: grade || undefined,
           }}
         />
@@ -4145,9 +4168,22 @@ function Background({
           props.continuousClip ? Math.max(0, Math.round(bgStartFrame)) : 0
         }
         focusX={
-          card.clipFocus && card.clipFocus.length > 0
-            ? pathAt(card.clipFocus, frame / fps)
-            : 0.5
+          splitRange.path && splitRange.path.length > 0
+            ? pathAt(
+                splitRange.path.map((p) => ({ atSec: p.atSec, x: p.x })),
+                frame / fps,
+              )
+            : card.clipFocus && card.clipFocus.length > 0
+              ? pathAt(card.clipFocus, frame / fps)
+              : 0.5
+        }
+        focusY={
+          splitRange.path && splitRange.path.length > 0
+            ? pathAt(
+                splitRange.path.map((p) => ({ atSec: p.atSec, x: p.y })),
+                frame / fps,
+              )
+            : 0.42
         }
         width={width}
         height={height}

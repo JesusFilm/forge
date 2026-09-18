@@ -128,10 +128,12 @@ describe("planClipSplits", () => {
 
   it("returns the wide stretches, cut at the film's own shot boundaries", () => {
     const splits = planClipSplits(samples, changes, 18)
-    expect(splits).toEqual([
-      { fromSec: 0, toSec: 6 },
-      { fromSec: 10, toSec: 18 },
+    expect(splits.map((s) => [s.fromSec, s.toSec])).toEqual([
+      [0, 6],
+      [10, 18],
     ])
+    // Each stretch carries where its close panel looks: the nearest face.
+    expect(splits[0].path[0].x).toBeCloseTo(0.5, 5)
   })
 
   it("merges neighbouring wide shots and keeps at most two stretches", () => {

@@ -83,7 +83,16 @@ export const devotionalCardSchema = z.object({
   /** Stretches of a full-frame film card shown as two panels: the whole 16:9
    *  frame on top, a close crop following the face underneath. */
   clipSplits: z
-    .array(z.object({ fromSec: z.number(), toSec: z.number() }))
+    .array(
+      z.object({
+        fromSec: z.number(),
+        toSec: z.number(),
+        /** Where the close panel looks: the nearest face, over time. */
+        path: z
+          .array(z.object({ atSec: z.number(), x: z.number(), y: z.number() }))
+          .optional(),
+      }),
+    )
     .optional(),
   /**
    * Clip-first opening over the muted lead of the film card, so the viewer
