@@ -21,6 +21,11 @@ export const DEVOTIONAL_FILTER_IDS = [
   "splittone",
   "teal",
   "sepia",
+  // 2026-09-18 candidates to replace splittone, whose teal shadow layer read
+  // as a green cast over every clip: warmer, more contrast, less colour.
+  "filmwarm",
+  "cinema",
+  "monoretro",
 ] as const
 export type DevotionalFilterId = (typeof DEVOTIONAL_FILTER_IDS)[number]
 
@@ -69,6 +74,12 @@ export type DevotionalFilter = {
   /** Apply the teal-orange split-tone blend layers (teal → shadows via screen,
    *  orange → highlights via multiply). Manufactures teal-orange on any footage. */
   splitTone?: boolean
+  /** Split-tone layer colours and strengths; defaults to the original teal
+   *  shadows / orange highlights when absent. */
+  splitToneShadow?: string
+  splitToneShadowOpacity?: number
+  splitToneHighlight?: string
+  splitToneHighlightOpacity?: number
   /** Also grade the video card's clip with `mediaBase` (+ split-tone). By default
    *  the video card stays natural color; the graded filters opt in. */
   gradeVideoCard?: boolean
@@ -203,6 +214,79 @@ export const DEVOTIONAL_FILTERS: Record<DevotionalFilterId, DevotionalFilter> =
       gradeVideoCard: true,
       blobs: [BW_BLOB_A, BW_BLOB_B],
     },
+    // Warm film stock: no split tone at all, a touch of sepia, more contrast,
+    // half the colour, and heavier dark-brown grain.
+    filmwarm: {
+      id: "filmwarm",
+      label: "Warm film",
+      textBg: "#0d0b09",
+      mediaBg: "#0d0b09",
+      body: "#eae6df",
+      heading: "#ffffff",
+      secondary: "rgba(255,255,255,0.72)",
+      eyebrow: "#e6a35c",
+      rule: "#e6a35c",
+      highlight: "#e6a35c",
+      highlightItalic: false,
+      closing: "#e6a35c",
+      grainMedia: 0.3,
+      grainText: 0.16,
+      vignetteMedia: "inset 0 0 90px 22px rgba(0,0,0,0.55)",
+      vignetteText: "inset 0 0 100px 26px rgba(0,0,0,0.6)",
+      mediaBase: "saturate(0.6) contrast(1.22) brightness(1.0) sepia(0.16)",
+      gradeVideoCard: true,
+      blobs: [BW_BLOB_A, BW_BLOB_B],
+    },
+    // Cinematic: split tone kept, but the shadows go slate blue-grey instead
+    // of teal and the highlights a soft amber; stronger contrast.
+    cinema: {
+      id: "cinema",
+      label: "Cinematic",
+      textBg: "#0b0d10",
+      mediaBg: "#0b0d10",
+      body: "#eae6df",
+      heading: "#ffffff",
+      secondary: "rgba(255,255,255,0.72)",
+      eyebrow: "#e6a35c",
+      rule: "#e6a35c",
+      highlight: "#e6a35c",
+      highlightItalic: false,
+      closing: "#e6a35c",
+      grainMedia: 0.26,
+      grainText: 0.14,
+      vignetteMedia: "inset 0 0 90px 22px rgba(0,0,0,0.55)",
+      vignetteText: "inset 0 0 100px 26px rgba(0,0,0,0.6)",
+      mediaBase: "saturate(0.55) contrast(1.3) brightness(0.98)",
+      splitTone: true,
+      splitToneShadow: "rgb(30,36,48)",
+      splitToneShadowOpacity: 0.5,
+      splitToneHighlight: "rgb(238,196,150)",
+      splitToneHighlightOpacity: 0.45,
+      gradeVideoCard: true,
+      blobs: [BW_BLOB_A, BW_BLOB_B],
+    },
+    // Muted retro: colour nearly gone, contrast up, a warm cast, coarse grain.
+    monoretro: {
+      id: "monoretro",
+      label: "Muted retro",
+      textBg: "#0c0a08",
+      mediaBg: "#0c0a08",
+      body: "#eae6df",
+      heading: "#ffffff",
+      secondary: "rgba(255,255,255,0.72)",
+      eyebrow: "#e6a35c",
+      rule: "#e6a35c",
+      highlight: "#e6a35c",
+      highlightItalic: false,
+      closing: "#e6a35c",
+      grainMedia: 0.34,
+      grainText: 0.18,
+      vignetteMedia: "inset 0 0 96px 24px rgba(0,0,0,0.6)",
+      vignetteText: "inset 0 0 100px 26px rgba(0,0,0,0.62)",
+      mediaBase: "saturate(0.32) contrast(1.32) brightness(1.02) sepia(0.22)",
+      gradeVideoCard: true,
+      blobs: [BW_BLOB_A, BW_BLOB_B],
+    },
     sepia: {
       id: "sepia",
       label: "Sepia",
@@ -298,6 +382,9 @@ const NATIVE_LAYOUT: Record<DevotionalFilterId, DevotionalLayoutId> = {
   splittone: "editorial",
   teal: "editorial",
   sepia: "classic",
+  filmwarm: "grounded",
+  cinema: "grounded",
+  monoretro: "grounded",
 }
 
 /**

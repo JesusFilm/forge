@@ -3730,17 +3730,17 @@ function Background({
     <>
       <AbsoluteFill
         style={{
-          background: "rgb(10,54,64)",
+          background: style.splitToneShadow ?? "rgb(10,54,64)",
           mixBlendMode: "screen",
-          opacity: 0.6,
+          opacity: style.splitToneShadowOpacity ?? 0.6,
           pointerEvents: "none",
         }}
       />
       <AbsoluteFill
         style={{
-          background: "rgb(240,176,116)",
+          background: style.splitToneHighlight ?? "rgb(240,176,116)",
           mixBlendMode: "multiply",
-          opacity: 0.55,
+          opacity: style.splitToneHighlightOpacity ?? 0.55,
           pointerEvents: "none",
         }}
       />

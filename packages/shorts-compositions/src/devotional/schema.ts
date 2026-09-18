@@ -381,7 +381,16 @@ export const devotionalInputPropsSchema = z.object({
   /** FILTER — color/grade/palette. Independent of `layout`.
    *  Active set: grain · tealorange · splittone. (teal/sepia kept for back-compat.) */
   style: z
-    .enum(["grain", "tealorange", "splittone", "teal", "sepia"])
+    .enum([
+      "grain",
+      "tealorange",
+      "splittone",
+      "teal",
+      "sepia",
+      "filmwarm",
+      "cinema",
+      "monoretro",
+    ])
     .default("grain"),
   /** LAYOUT — arrangement (header, cover, scripture, text anchor, panels).
    *  Independent of `style`: any layout pairs with any filter. When omitted,
