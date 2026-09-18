@@ -3,7 +3,7 @@ id: "feat-516"
 title: "Characterize Admin profiler collection latency after deployment"
 owner: "nisal"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-16"
 duration: 1
 depends_on: []
@@ -53,3 +53,19 @@ stacks, continuous-profile usefulness and normal workload behavior. Only propose
 a fix after a representative control reproduces the pause and a matched
 experiment removes it. Release any proven correction through normal PR/main,
 verify the actual deployed SHA and compare cold and warm observations.
+
+## Proven local correction — September 18
+
+An owned production build now reproduces the cold collection without a second
+CPU sampler. Two catalog controls measured 742–815 ms synchronous collection
+and 910–931 ms independent health probes. Preparing already-loaded source maps
+between event-loop turns reduces those to 209–215 ms and 270–285 ms respectively,
+while preserving mapped source locations and continuous profiling. Later
+collections, GC, async encoding and RSS are recorded separately.
+
+See `docs/solutions/performance-issues/datadog-first-collection-lazy-source-maps-20260918.md`
+and `docs/validation/watch-followups-2026-09-18/profiler-collections.json`.
+The installed-dependency regression fails on the original package and passes
+with the pinned patch, including indexed maps, yielding, lazy unused modules and
+malformed-map error behavior. Production acceptance remains pending; no claim
+is made that this explains warm-process Watch selection failures.
