@@ -56,6 +56,9 @@ overrides:
 packageExtensionsChecksum: 761effde9ea347f55480f3487fd5e5be
 
 patchedDependencies:
+  '@datadog/pprof@5.15.0':
+    hash: oiganwtelz46c7ajyd4ftkwnn4
+    path: patches/@datadog__pprof@5.15.0.patch
   '@datadog/mobile-react-native@3.5.2':
     hash: zwconjjexlpshgvnd2tqnblelu
     path: patches/@datadog__mobile-react-native@3.5.2.patch
@@ -17926,7 +17929,7 @@ snapshots:
       '@openfeature/server-sdk': 1.22.0(@openfeature/core@1.11.0)
     optional: true
 
-  '@datadog/pprof@5.15.0':
+  '@datadog/pprof@5.15.0(patch_hash=oiganwtelz46c7ajyd4ftkwnn4)':
     dependencies:
       node-gyp-build: 4.8.4
       pprof-format: 2.2.2
@@ -26679,7 +26682,7 @@ snapshots:
       '@datadog/native-iast-taint-tracking': 4.2.0
       '@datadog/native-metrics': 3.1.2
       '@datadog/openfeature-node-server': 2.0.0(@openfeature/server-sdk@1.22.0(@openfeature/core@1.11.0))
-      '@datadog/pprof': 5.15.0
+      '@datadog/pprof': 5.15.0(patch_hash=oiganwtelz46c7ajyd4ftkwnn4)
       '@datadog/wasm-js-rewriter': 5.0.1
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/api-logs': 0.219.0
