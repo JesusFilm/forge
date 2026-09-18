@@ -74,6 +74,66 @@ const WATCH_HERO_POSTER_RECIPE = {
   },
 } satisfies MuxImageRecipe
 
+type WatchMuxImageMetadata = {
+  muxThumbnailBlurDataUrl: string | null
+  muxThumbnailDominantColor: string | null
+  muxHeroPosterBlurDataUrl: string | null
+  muxHeroPosterDominantColor: string | null
+}
+
+/** Avoid per-field Prisma calls across large Watch sibling/child catalogs. */
+export async function getOrScheduleWatchMuxImageMetadata({
+  prisma,
+  videos,
+}: {
+  prisma: PrismaClient
+  videos: ReadonlyArray<{ muxVideoId: string; playbackId: string }>
+}): Promise<Map<string, WatchMuxImageMetadata>> {
+  const result = new Map<string, WatchMuxImageMetadata>()
+  if (videos.length === 0) return result
+  const byId = new Map(videos.map((video) => [video.muxVideoId, video]))
+  const recipes = [WATCH_CHAPTER_CAROUSEL_RECIPE, WATCH_HERO_POSTER_RECIPE]
+  const rows = await prisma.muxImageDerivative.findMany({
+    where: {
+      muxVideoId: { in: [...byId.keys()] },
+      OR: recipes.map((recipe) => ({
+        purpose: recipe.purpose,
+        paramsHash: muxImageDerivativeParamsHash(recipe),
+      })),
+    },
+    select: {
+      muxVideoId: true,
+      purpose: true,
+      blurDataUrl: true,
+      dominantColor: true,
+    },
+  })
+  const byRecipe = new Map(
+    rows.map((row) => [`${row.muxVideoId}:${row.purpose}`, row]),
+  )
+  for (const video of byId.values()) {
+    const chapter = byRecipe.get(
+      `${video.muxVideoId}:${WATCH_CHAPTER_CAROUSEL_MUX_IMAGE_PURPOSE}`,
+    )
+    const hero = byRecipe.get(
+      `${video.muxVideoId}:${WATCH_HERO_POSTER_MUX_IMAGE_PURPOSE}`,
+    )
+    result.set(video.muxVideoId, {
+      muxThumbnailBlurDataUrl: chapter?.blurDataUrl || null,
+      muxThumbnailDominantColor: chapter?.dominantColor || null,
+      muxHeroPosterBlurDataUrl: hero?.blurDataUrl || null,
+      muxHeroPosterDominantColor: hero?.dominantColor || null,
+    })
+    for (const recipe of recipes) {
+      const stored = byRecipe.get(`${video.muxVideoId}:${recipe.purpose}`)
+      if (!stored?.blurDataUrl || !stored.dominantColor) {
+        scheduleMuxBlurDataUrlGeneration({ prisma, ...video, recipe })
+      }
+    }
+  }
+  return result
+}
+
 const pendingBackgroundGenerations = new Map<string, Promise<void>>()
 const backgroundGenerationQueue: Array<() => void> = []
 let activeBackgroundGenerations = 0

@@ -138,6 +138,16 @@ describe("getWatchRouteSnapshotBySlug", () => {
       if (sql.includes("COUNT(DISTINCT vd.language_id)")) {
         return Promise.resolve([{ count: 0 }])
       }
+      if (sql.includes('AS "muxVideoId"')) {
+        const exact = sql.includes("exact_dub.mux_video_id")
+        return Promise.resolve([
+          {
+            videoId: "video-child",
+            muxVideoId: exact ? "mux-exact" : "mux-fallback",
+            playbackId: exact ? "playback-exact" : "playback-fallback",
+          },
+        ])
+      }
       return Promise.resolve([])
     })
     const prisma = {
@@ -157,6 +167,22 @@ describe("getWatchRouteSnapshotBySlug", () => {
       videoImage: { findMany: vi.fn().mockResolvedValue([]) },
       videoLocale: { findMany: videoLocaleFindMany },
       videoStudyQuestion: { findMany: studyQuestionFindMany },
+      muxImageDerivative: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            muxVideoId: "mux-exact",
+            purpose: "watch-chapter-carousel",
+            blurDataUrl: "chapter-zh",
+            dominantColor: "#123456",
+          },
+          {
+            muxVideoId: "mux-exact",
+            purpose: "watch-hero-poster",
+            blurDataUrl: "hero-zh",
+            dominantColor: "#abcdef",
+          },
+        ]),
+      },
       $queryRaw: queryRaw,
     }
     const service = new VideoService(prisma as never)
@@ -188,6 +214,19 @@ describe("getWatchRouteSnapshotBySlug", () => {
         title: "开始",
       }),
     ])
+    expect(result?.children[0]?.child).toMatchObject({
+      muxPlaybackId: "playback-exact",
+      muxThumbnailBlurDataUrl: "chapter-zh",
+      muxThumbnailDominantColor: "#123456",
+      muxHeroPosterBlurDataUrl: "hero-zh",
+      muxHeroPosterDominantColor: "#abcdef",
+    })
+    expect(prisma.muxImageDerivative.findMany).toHaveBeenCalledOnce()
+    expect(prisma.muxImageDerivative.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ muxVideoId: { in: ["mux-exact"] } }),
+      }),
+    )
     expect(result?.exactStudyQuestions).toEqual([
       expect.objectContaining({
         languageSlug: "chinese-simplified",
