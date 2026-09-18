@@ -76,3 +76,44 @@ The initial local harness URL mistake produced a cached 404 and was corrected;
 restarted, and only the six successful Watch journeys enter the artifact.
 
 Evidence: `docs/validation/recommendation-quality-followup/page-performance-matched.json`.
+
+## Current characterization — September 18; historical case remains open
+
+Fresh Chromium 149.0.7827.55 runs use a fixed 1440×1000 viewport, fresh contexts,
+and timed screenshots at 0.5/2/5/11 seconds after DOM content. Production poster
+LCP is 544–1,544 ms on Chosen Witness and 540–2,876 ms on The Simple Gospel across
+six runs each. Later VIDEO candidates occur around 9.5–11.9 seconds. Screenshots
+confirm visible posters, headings and Watch now before those later candidates.
+Matched local production builds also retain early poster paint; first SSR cache
+misses are slower and are not combined with warm server-cache samples.
+
+A causal control **falsifies the first-decoded-frame explanation**: blocking HLS
+media still produces a late VIDEO LCP at readyState 0/currentTime 0. In a second
+four-run control, with media blocked throughout, retaining the native video's
+poster gives 11,648/9,068 ms VIDEO LCP; removing only that attribute in the local
+browser leaves the early IMG candidates at 292/356 ms. The external Watch poster
+remains visible. Native poster mounting therefore explains the later candidate
+in these current runs; preview timing and production behavior were not changed.
+Do not change poster/media policy solely to manipulate LCP.
+
+The field window September 16 04:30–September 17 23:40 contains 197 desktop slow
+(>8s) VIDEO target events after excluding identified bots and HeadlessChrome,
+but also 16 desktop and two mobile slow heading events. Retained heading events
+mostly have similarly late FCP, so the field tail is not universally explained
+by the native poster. The exact Simple Gospel route has only two non-headless
+mobile views with 968/1,544 ms LCP; this is insufficient for device percentiles.
+Earlier broad desktop aggregates included headless automation and must not be
+presented as pure user populations. RUM grouping drops events without a target
+selector, and bot classification is imperfect.
+
+The September 16 approximately 10-second H1 / missing-paint case has **not** been
+reconstructed. Its saved visibility is explicitly visible, so a hidden-tab
+explanation is unsupported. Its browser version, launch setup and timed pixels
+were not retained; a session-history search did not recover the original
+harness. Current native-poster evidence does not retroactively explain that H1.
+This ticket remains in progress for that distinction and any justified fix.
+
+Numerical evidence: `docs/validation/watch-followups-2026-09-18/paint-observations.json`.
+The initial local 404 batch is excluded. The media-blocking/attribute-removal
+experiments were local browser diagnostics only; no application change, telemetry
+suppression, preview-delay change or production configuration edit was made.

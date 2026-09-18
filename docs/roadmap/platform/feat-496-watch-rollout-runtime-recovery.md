@@ -3,7 +3,7 @@ id: "feat-496"
 title: "Resolve remaining Watch admission and database transaction timeouts"
 owner: "nisal"
 priority: "P1"
-status: "complete"
+status: "in-progress"
 start_date: "2026-09-11"
 duration: 3
 depends_on: []
@@ -201,3 +201,21 @@ revision-scoped request populations and structured delivery outcomes.
 - feat-487/feat-488 own curated coverage and homepage launch configuration.
 - feat-506 tracks pre-existing diagnostic command noise from missing ps/cache
   paths; it is separate from the recommendation request timeouts.
+
+## Reopened by later evidence — September 18
+
+The earlier release window remains valid evidence for its reproduced catalog
+fixes. It is not the current overall recovery verdict. On September 17 at
+23:48:41, after worker isolation PR #2337 deployed to Admin, trace
+`e3c73fbba25d1f77b5c137ec7115347a` records Web HTTP 503 at 750 ms and an Admin
+selection mutation continuing for 1,432 ms. Its browser aborted at 801 ms.
+That batch's 12 recommendation deliveries all served six cards without semantic
+fallback. A later browser abort had server HTTP 200 and a short Admin request,
+so those two aborts must not be assigned one cause.
+
+This ticket is reopened for the remaining proven deadline failure. feat-513's
+runner isolation is independently verified; feat-516 has a reproduced cold
+profiler correction under review; feat-517's autoplay hydration correction has
+merged and awaits exact Web deployment verification. None establishes global
+selection recovery. Read `docs/operations/watch-followups-verification-2026-09-18.md`
+for dates, revisions, separate outcome populations and diagnostic cleanup.
