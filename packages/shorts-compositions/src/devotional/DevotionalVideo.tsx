@@ -13,6 +13,7 @@ import {
 } from "remotion"
 
 import { loadShortFonts, SHORT_FONT_FAMILIES } from "../fonts"
+import { loadLiterata, TEASER_FONT_FAMILIES } from "./teaser-fonts"
 import { StepperStack } from "./Stepper"
 import type { DevotionalCard, DevotionalInputProps } from "./schema"
 import { resolveDevotionalStyle, type DevotionalStyle } from "./styles"
@@ -304,6 +305,186 @@ export function spreadWords(
 }
 
 /**
+ * The owner's caption spec for the film (2026-09-18), in her words:
+ * uppercase, centred, compact; Literata 500; content words large and the
+ * small grammar words small; the phrase builds word by word and then HOLDS,
+ * because a line that vanishes as its last word lands cannot be read.
+ *
+ * Sizes are given for a 1080x1920 frame and converted to design units here
+ * (px(1) = 1080/390 px), so the same spec holds in any output size.
+ */
+const PHRASE_FUNCTION_WORDS = new Set([
+  "the",
+  "to",
+  "is",
+  "your",
+  "when",
+  "it",
+  "and",
+  "a",
+  "of",
+  "on",
+  "for",
+  "than",
+  "what",
+  "did",
+  "say",
+  "about",
+  "been",
+  "very",
+  "no",
+  "one",
+  "can",
+])
+const PHRASE_CONTENT_PX = 104
+const PHRASE_FUNCTION_PX = 70
+const PHRASE_MAX_WIDTH_PX = 930
+const PHRASE_CENTRE_Y_PX = 1060
+const PHRASE_FRAME_PX = { w: 1080, h: 1920 }
+const PHRASE_MAX_LINES = 4
+/** Rough per-character advance, as a share of font size, for Literata caps. */
+const PHRASE_CHAR_W = 0.62
+const PHRASE_SPACE_W = 0.3
+
+const phraseWordKey = (w: string) =>
+  w.toLowerCase().replace(/[^\p{L}\p{N}']/gu, "")
+
+/** When each word lands: fast build from the cue's start, then a long hold. */
+export function phraseWordStarts(
+  words: readonly string[],
+  startSec: number,
+): number[] {
+  const out: number[] = []
+  let t = startSec
+  for (const w of words) {
+    out.push(t)
+    const step = Math.min(0.34, Math.max(0.15, 0.12 + 0.024 * w.length))
+    t += step
+  }
+  return out
+}
+
+/**
+ * Wrap the sized words into at most `PHRASE_MAX_LINES` lines inside the
+ * spec's text width, shrinking both sizes 6% at a time until they fit.
+ * Widths are estimated from the glyph advance rather than measured: the
+ * render must not depend on a layout pass that Remotion does not give us.
+ */
+export function phraseLayout(
+  words: readonly { token: string; size: number }[],
+  maxWidth: number,
+  maxLines = PHRASE_MAX_LINES,
+): { scale: number; lines: { token: string; size: number }[][] } {
+  for (let step = 0; step < 12; step++) {
+    const scale = Math.pow(0.94, step)
+    const lines: { token: string; size: number }[][] = []
+    let line: { token: string; size: number }[] = []
+    let width = 0
+    for (const w of words) {
+      const size = w.size * scale
+      const wordW = w.token.length * size * PHRASE_CHAR_W
+      const spaceW = line.length ? size * PHRASE_SPACE_W : 0
+      if (line.length && width + spaceW + wordW > maxWidth) {
+        lines.push(line)
+        line = [{ ...w, size }]
+        width = wordW
+      } else {
+        line.push({ ...w, size })
+        width += spaceW + wordW
+      }
+    }
+    if (line.length) lines.push(line)
+    if (lines.length <= maxLines) return { scale, lines }
+  }
+  return { scale: 1, lines: [words.map((w) => ({ ...w }))] }
+}
+
+function PhraseCaption({
+  cue,
+  t,
+  px,
+  frameHeight,
+  themeWord,
+}: {
+  cue: { text: string; startSec: number; endSec: number }
+  t: number
+  px: (n: number) => number
+  frameHeight: number
+  themeWord?: string
+}) {
+  const tokens = cue.text.split(/\s+/).filter(Boolean)
+  const starts = phraseWordStarts(tokens, cue.startSec)
+  const unit = (pxOf1080: number) => (pxOf1080 / PHRASE_FRAME_PX.w) * REF
+  const sized = tokens.map((token) => ({
+    token: token.toUpperCase(),
+    size: PHRASE_FUNCTION_WORDS.has(phraseWordKey(token))
+      ? unit(PHRASE_FUNCTION_PX)
+      : unit(PHRASE_CONTENT_PX),
+  }))
+  const { lines } = phraseLayout(sized, unit(PHRASE_MAX_WIDTH_PX))
+  const theme = themeWord ? phraseWordKey(themeWord) : null
+  let i = 0
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: 0,
+        right: 0,
+        top: (PHRASE_CENTRE_Y_PX / PHRASE_FRAME_PX.h) * frameHeight,
+        transform: "translateY(-50%)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        pointerEvents: "none",
+      }}
+    >
+      {lines.map((line, li) => {
+        const largest = Math.max(...line.map((w) => w.size))
+        return (
+          <div
+            key={li}
+            style={{
+              display: "flex",
+              alignItems: "baseline",
+              justifyContent: "center",
+              gap: px(largest * PHRASE_SPACE_W),
+              height: px(largest) * 1.14,
+            }}
+          >
+            {line.map((w) => {
+              const start = starts[i++]
+              // Words appear one at a time and STAY: already-shown words never
+              // move, so the phrase cannot reflow while it is being read.
+              const shown = t >= start
+              const isTheme = theme != null && phraseWordKey(w.token) === theme
+              return (
+                <span
+                  key={`${li}-${w.token}-${start}`}
+                  style={{
+                    fontFamily: `'${TEASER_FONT_FAMILIES.literata}', Georgia, serif`,
+                    fontWeight: 500,
+                    fontSize: px(w.size),
+                    lineHeight: 1,
+                    color: isTheme ? "#F2C46B" : "#ffffff",
+                    opacity: shown ? 1 : 0,
+                    // Tight drop shadow only: no band, no stroke (owner tried
+                    // both and rejected them).
+                    textShadow: `0 ${px(unit(5))}px ${px(unit(8))}px rgba(0,0,0,0.84)`,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {w.token}
+                </span>
+              )
+            })}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/**
  * Full-frame captions (clip-first): the column they live in and the line
  * their top edge hangs from. Both drawn by the owner on a frame: 60 units in
  * from either edge, top edge at 63.5% of the height (the first line's cap
@@ -323,10 +504,16 @@ function VideoSubtitles({
   fullBleed = false,
   style,
   captionStyle = "words",
+  themeWord,
+  frameHeight,
 }: {
   cues: NonNullable<DevotionalCard["subtitles"]>
   style: DevotionalStyle
   captionStyle?: NonNullable<DevotionalCard["captionStyle"]>
+  /** `phrase` captions only: the word held in the accent every time it shows. */
+  themeWord?: string
+  /** Frame height in px, so the phrase block can sit at the spec's y. */
+  frameHeight?: number
   px: (n: number) => number
   frame: number
   fps: number
@@ -342,6 +529,33 @@ function VideoSubtitles({
   const t = frame / fps
   const fade = 0.18
   const fullBleedInset = px(FULL_BLEED_CAPTION_INSET_UNITS)
+  if (fullBleed && captionStyle === "phrase") {
+    // One phrase at a time: the spec clears a phrase completely before the
+    // next begins, so the cue whose window we are inside is the only one on
+    // screen. Its own fade in/out keeps the change from being a hard pop.
+    const cue = cues.find((c) => t >= c.startSec - fade && t <= c.endSec + fade)
+    if (!cue) return null
+    const opacity = interpolate(
+      t,
+      [cue.startSec - fade, cue.startSec, cue.endSec, cue.endSec + fade],
+      [0, 1, 1, 0],
+      { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+    )
+    return (
+      <AbsoluteFill style={{ opacity, pointerEvents: "none" }}>
+        {/* A uniform dim of the whole frame for the caption's duration
+            (owner's spec: rr=gg=bb=0.75), instead of a band behind the text. */}
+        <AbsoluteFill style={{ background: "rgba(0,0,0,0.25)" }} />
+        <PhraseCaption
+          cue={cue}
+          t={t}
+          px={px}
+          frameHeight={frameHeight ?? 0}
+          {...(themeWord ? { themeWord } : {})}
+        />
+      </AbsoluteFill>
+    )
+  }
   return (
     <div
       style={{
@@ -4145,6 +4359,7 @@ function CardFade({ xfade, children }: { xfade: number; children: ReactNode }) {
 
 export function DevotionalVideo(props: DevotionalInputProps) {
   loadShortFonts()
+  loadLiterata()
   const { durationInFrames, fps, width, height } = useVideoConfig()
   const frame = useCurrentFrame()
   const style = resolveDevotionalStyle(props.style, props.layout)
@@ -4566,6 +4781,8 @@ function CardLayer({
           safeBottom={px(130)}
           fullBleed={card.videoFill === "full" && !layerIsLandscape}
           {...(card.captionStyle ? { captionStyle: card.captionStyle } : {})}
+          {...(card.themeWord ? { themeWord: card.themeWord } : {})}
+          frameHeight={layerH}
         />
       ) : null}
       {showMuteButton ? <MuteButton px={px} style={style} /> : null}

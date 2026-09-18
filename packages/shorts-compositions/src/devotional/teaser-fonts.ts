@@ -63,3 +63,27 @@ export const loadTeaserFonts = (): Promise<void> => {
     })
   return promise
 }
+
+/**
+ * Literata alone, for the devotional's phrase captions over the film. The
+ * teaser loader also pulls six Poppins faces the devotional never paints, so
+ * this registers the one variable file (200-900 covers every weight) and gates
+ * the render on it the same way.
+ */
+let literataPromise: Promise<void> | null = null
+
+export const loadLiterata = (): Promise<void> => {
+  if (literataPromise) return literataPromise
+  const handle = delayRender("Loading Literata")
+  literataPromise = registerTtf(
+    TEASER_FONT_FAMILIES.literata,
+    LITERATA_VAR_TTF_BASE64,
+    "200 900",
+  )
+    .then(() => continueRender(handle))
+    .catch((err) => {
+      cancelRender(err)
+      throw err
+    })
+  return literataPromise
+}

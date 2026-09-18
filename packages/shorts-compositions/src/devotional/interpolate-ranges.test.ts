@@ -9,6 +9,8 @@ import {
   FOCUS_SPEED_PER_SEC,
   leadLabelKnots,
   pathAt,
+  phraseLayout,
+  phraseWordStarts,
   spreadWords,
 } from "./DevotionalVideo"
 import {
@@ -180,5 +182,44 @@ describe("spreadWords", () => {
     const w = spreadWords("hi there", 5, 5.1)
     expect(w).toHaveLength(2)
     expect(w[1].startSec).toBeGreaterThanOrEqual(w[0].startSec)
+  })
+})
+
+describe("phraseWordStarts", () => {
+  it("builds fast from the cue's start, a quarter second per word", () => {
+    const t = phraseWordStarts(["I", "tell", "you"], 10)
+    expect(t[0]).toBe(10)
+    // 0.12 + 0.024 x length, clamped to 0.15-0.34.
+    expect(t[1]).toBeCloseTo(10.15, 5)
+    expect(t[2]).toBeCloseTo(10.366, 3)
+  })
+
+  it("clamps a very long word to a third of a second", () => {
+    const t = phraseWordStarts(["extraordinarily", "long"], 0)
+    expect(t[1]).toBeCloseTo(0.34, 5)
+  })
+})
+
+describe("phraseLayout", () => {
+  const w = (token: string, size: number) => ({ token, size })
+
+  it("wraps within the text width and keeps the words in order", () => {
+    const words = [w("ONCE", 38), w("THERE", 38), w("WERE", 38), w("TWO", 38)]
+    const { lines } = phraseLayout(words, 60)
+    expect(lines.length).toBeGreaterThan(1)
+    expect(lines.flat().map((x) => x.token)).toEqual([
+      "ONCE",
+      "THERE",
+      "WERE",
+      "TWO",
+    ])
+  })
+
+  it("shrinks in 6% steps until the phrase fits the line budget", () => {
+    const words = Array.from({ length: 16 }, (_, i) => w(`LONGWORD${i}`, 38))
+    const { scale, lines } = phraseLayout(words, 200, 3)
+    expect(lines.length).toBeLessThanOrEqual(4)
+    expect(scale).toBeLessThan(1)
+    expect(lines[0][0].size).toBeCloseTo(38 * scale, 5)
   })
 })

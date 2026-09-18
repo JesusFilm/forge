@@ -939,7 +939,9 @@ export type RenderOptions = {
   /** Clip-first only: the step clock as a ring (default) or a top line. */
   stepProgress?: "ring" | "bar"
   /** Clip-first only: how the film's captions arrive (see the card schema). */
-  clipCaptionStyle?: "words" | "words-lift"
+  clipCaptionStyle?: "words" | "words-lift" | "phrase"
+  /** `phrase` captions: the piece's theme word, held in the accent colour. */
+  clipThemeWord?: string
   /** Review preview: render N evenly spaced PNG stills INSTEAD of the MP4.
    *  Costs one frame of rasterization each — seconds, not minutes — which is
    *  what makes "show me screenshots before you render the whole thing" a
@@ -1649,6 +1651,7 @@ async function renderInStage(
       })
       if (focus.length > 0) card.clipFocus = focus
       if (options.clipCaptionStyle) card.captionStyle = options.clipCaptionStyle
+      if (options.clipThemeWord) card.themeWord = options.clipThemeWord
       if (
         options.clipTrimEndSec &&
         options.clipTrimEndSec > 0 &&

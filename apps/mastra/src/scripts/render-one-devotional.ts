@@ -99,12 +99,16 @@ async function main() {
         ? { stepRing: true, stepProgress: "bar" as const }
         : {}),
       ...(arg("intro") ? { intro: arg("intro") as "cover" | "bands" } : {}),
+      ...(arg("theme-word") ? { clipThemeWord: arg("theme-word") } : {}),
       ...(arg("clip-trim-end")
         ? { clipTrimEndSec: Number(arg("clip-trim-end")) }
         : {}),
       ...(arg("clip-captions")
         ? {
-            clipCaptionStyle: arg("clip-captions") as "words" | "words-lift",
+            clipCaptionStyle: arg("clip-captions") as
+              | "words"
+              | "words-lift"
+              | "phrase",
           }
         : {}),
       ...(arg("structure") === "clip-first"

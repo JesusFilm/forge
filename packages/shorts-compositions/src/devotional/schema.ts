@@ -76,7 +76,10 @@ export const devotionalCardSchema = z.object({
    * default) is the same reveal with the spoken word landing a tenth larger
    * and easing back to size as it cools.
    */
-  captionStyle: z.enum(["words", "words-lift"]).optional(),
+  captionStyle: z.enum(["words", "words-lift", "phrase"]).optional(),
+  /** `phrase` captions: the piece's theme word, held in the accent colour
+   *  every time it appears. */
+  themeWord: z.string().optional(),
   /**
    * Clip-first opening over the muted lead of the film card, so the viewer
    * knows this is a devotional and not a stray film clip. `cover`: the brand
