@@ -14,7 +14,11 @@ import type { DevotionalVoiceName } from "./elevenlabs-voiceover"
 import { ruOrdinalDay, ruSpokenReference } from "./ru-numbers"
 import { normalizeRuDashes, ruAuthorName } from "./ru-punctuation"
 import { fetchSynodalPassage } from "./synodal-bible"
-import { esSpokenReference, fetchValeraPassage } from "./valera-bible"
+import {
+  esSpokenReference,
+  fetchValeraPassage,
+  modernizeValeraOrthography,
+} from "./valera-bible"
 
 export type DevotionalLang = "en" | "ru" | "es"
 
@@ -111,6 +115,8 @@ export type DevotionalLocale = {
     fetch: (ref: string) => Promise<{ text: string; reference: string }>
     translation: string
   }
+  /** Tidy a film subtitle cue from the dub's track before it goes on screen. */
+  normalizeCaption?: (text: string) => string
   /** Cover attribution prefix, before "· <author>" (author name stays as-is). */
   attributionPrefix: string
   /**
@@ -405,6 +411,22 @@ const ES_WEEKDAYS = [
 ]
 
 /**
+ * The Latin American dub's subtitle track (Arclight) carries typing debris:
+ * doubled spaces, the pre-1959 accent on "ó", a space before punctuation and
+ * a lowercase word after a full stop. Cosmetic only; the wording is kept.
+ */
+export function normalizeEsCaption(text: string): string {
+  return modernizeValeraOrthography(text)
+    .replace(/\s+/g, " ")
+    .replace(/\s+([,.;:!?])/g, "$1")
+    .replace(
+      /([.!?])\s+([a-záéíóúñ])/g,
+      (_m, p, ch) => `${p} ${ch.toUpperCase()}`,
+    )
+    .trim()
+}
+
+/**
  * Spanish (Latin American): neutral vocabulary, "tú" address, no "vosotros".
  * The film is the Latin American dub (Arclight 21028); scripture is the
  * Reina-Valera 1909 (public domain), the text Spanish-speaking evangelicals
@@ -431,6 +453,7 @@ export const ES_LOCALE: DevotionalLocale = {
     return `${ES_WEEKDAYS[weekdayIndex(p)]} · ${p.d} de ${ES_MONTHS[p.m - 1]}`
   },
   spokenReference: esSpokenReference,
+  normalizeCaption: normalizeEsCaption,
   connectors: {
     cover: (hook, _sequence, date, occasion, _settleOverride, omitSettle) => {
       const occasionLine = occasion ? ` Hoy también es ${occasion}.` : ""

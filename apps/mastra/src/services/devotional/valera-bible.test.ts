@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 
+import { normalizeEsCaption } from "./devotional-locale"
 import {
   esSpokenReference,
   fetchValeraPassage,
@@ -45,5 +46,19 @@ describe("esSpokenReference", () => {
   it("reads chapter and verse with a pause, ranges with 'al'", () => {
     expect(esSpokenReference("Lucas 8:16")).toBe("Lucas 8, 16")
     expect(esSpokenReference("Lucas 8:16-18")).toBe("Lucas 8, 16 al 18")
+  })
+})
+
+describe("normalizeEsCaption", () => {
+  it("tidies the dub track's typing debris without rewording", () => {
+    expect(
+      normalizeEsCaption("Así pues oigan bien. al que tiene se le dará más."),
+    ).toBe("Así pues oigan bien. Al que tiene se le dará más.")
+    expect(normalizeEsCaption("para que alumbre  a los que entran.")).toBe(
+      "para que alumbre a los que entran.",
+    )
+    expect(normalizeEsCaption("cubrirla ó ponerla debajo")).toBe(
+      "cubrirla o ponerla debajo",
+    )
   })
 })

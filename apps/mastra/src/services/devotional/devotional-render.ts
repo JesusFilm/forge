@@ -1333,6 +1333,15 @@ async function renderInStage(
           mapCuesToEditedTimeline(sourceCues, clamped, VIDEO_SPEED),
           options.captionOffsetSec ?? 0,
         )
+        // Some dubs' subtitle tracks arrive with typing debris (a locale says
+        // which): stray spaces, old orthography, a lowercase sentence start.
+        if (locale.normalizeCaption) {
+          const norm = locale.normalizeCaption
+          videoCaptions = videoCaptions.map((c) => ({
+            ...c,
+            text: norm(c.text),
+          }))
+        }
         log(
           `captions: ${videoCaptions.length} cue(s) mapped onto the edited clip ` +
             `(margin excluded — it plays silent under the dissolve)`,
