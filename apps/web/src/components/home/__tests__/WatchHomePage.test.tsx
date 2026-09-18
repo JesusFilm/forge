@@ -3390,6 +3390,7 @@ describe("WatchHomePage", () => {
     // The bespoke sizing the home hero used to carry is gone.
     expect(title.className).not.toContain("font-extrabold")
     expect(title.className).not.toContain("text-3xl")
+    expect(title.className).not.toContain("line-clamp")
     expect(action.className).not.toContain(
       "shadow-[0_14px_32px_rgba(0,0,0,0.34)]",
     )

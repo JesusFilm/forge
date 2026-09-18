@@ -4,14 +4,14 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (September 15, 2026)
+## Status (September 18, 2026)
 
-- **Total tickets:** 694
-- **Complete:** 511
-- **In progress:** 57
-- **Not started:** 49
-- **Blocked:** 77
-- **Overdue and not complete:** 133
+- **Total tickets:** 708
+- **Complete:** 526
+- **In progress:** 54
+- **Not started:** 50
+- **Blocked:** 78
+- **Overdue and not complete:** 135
 
 ## Feature Index
 
@@ -82,9 +82,6 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-391](content-discovery/feat-391-qualified-popular-trending-candidates.md)                                | Qualified popular and trending candidates                                                       | nisal      | P1       | —          | 5    | —          | blocked     |
 | [feat-392](content-discovery/feat-392-high-satisfaction-cohort-candidates.md)                                  | High-satisfaction cohort candidates                                                             | nisal      | P1       | —          | 7    | —          | blocked     |
 | [feat-449](content-discovery/feat-449-personalized-watch-row-page-orchestration.md)                            | Personalized Watch row and page orchestration                                                   | nisal      | P1       | —          | 8    | —          | blocked     |
-| [feat-509](content-discovery/feat-509-playback-sqlstate-serialization-retry.md)                                | Retry raw SQL playback serialization conflicts without terminal input errors                    | nisal      | P1       | —          | 2    | —          | not-started |
-| [feat-516](content-discovery/feat-516-mobile-recommendations-api-client.md)                                    | Mobile recommendations API client and playback attribution                                      | urim       | P1       | 2026-09-16 | 2    | 2026-09-18 | in-progress |
-| [feat-517](content-discovery/feat-517-mobile-recommended-for-you-shelf.md)                                     | Mobile Recommended for You Home shelf                                                           | urim       | P2       | 2026-09-18 | 5    | 2026-09-23 | not-started |
 | [feat-097](content-discovery/feat-097-investigate-prod-query-embedding.md)                                     | Investigate Production Query Embedding Degradation                                              | nisal      | P1       | 2026-04-15 | 2    | 2026-04-16 | complete    |
 | [feat-095](content-discovery/feat-095-experience-embedding-pipeline.md)                                        | Experience Embedding Pipeline                                                                   | nisal      | P1       | 2026-04-16 | 5    | 2026-04-20 | complete    |
 | [feat-037](content-discovery/feat-037-video-content-vectorization.md)                                          | Video Content Vectorization for Recommendations                                                 | nisal      | P1       | 2026-04-21 | 42   | 2026-06-01 | complete    |
@@ -172,6 +169,11 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-503](content-discovery/feat-503-profile-recommendation-recent-view-repetition.md)                        | Audit recent-view repetition in profile recommendations                                         | nisal      | P1       | 2026-09-15 | 3    | 2026-09-17 | complete    |
 | [feat-504](content-discovery/feat-504-immediate-exit-profile-observations.md)                                  | Preserve immediate exits as uninterpreted profile observations                                  | nisal      | P1       | 2026-09-15 | 4    | 2026-09-18 | complete    |
 | [feat-505](content-discovery/feat-505-personalization-controlled-usefulness-evaluation.md)                     | Evaluate personalization usefulness with a controlled comparison                                | nisal      | P1       | 2026-09-15 | 5    | 2026-09-19 | blocked     |
+| [feat-509](content-discovery/feat-509-playback-sqlstate-serialization-retry.md)                                | Retry raw SQL playback serialization conflicts without terminal input errors                    | nisal      | P1       | 2026-09-16 | 2    | 2026-09-17 | complete    |
+| [feat-511](content-discovery/feat-511-below-player-curated-empty-fallback.md)                                  | Fill empty below-player recommendations from approved exact-context pools                       | nisal      | P1       | 2026-09-16 | 2    | 2026-09-17 | complete    |
+| [feat-512](content-discovery/feat-512-sound-off-viewing-profile-retrieval.md)                                  | Learn sound-off viewing preferences and retrieve suitable videos                                | nisal      | P1       | 2026-09-16 | 5    | 2026-09-20 | complete    |
+| [feat-514](content-discovery/feat-514-recommendation-canonical-slug-validation.md)                             | Accept canonical Watch content slugs in recommendation requests                                 | nisal      | P1       | 2026-09-16 | 1    | 2026-09-16 | complete    |
+| [feat-516](content-discovery/feat-516-mobile-recommendations-api-client.md)                                    | Mobile recommendations API client and playback attribution                                      | urim       | P1       | 2026-09-16 | 2    | 2026-09-17 | complete    |
 | [feat-394](content-discovery/feat-394-bounded-recommendation-exploration.md)                                   | Bounded recommendation exploration                                                              | nisal      | P2       | —          | 6    | —          | blocked     |
 | [feat-395](content-discovery/feat-395-learned-multi-outcome-reranker.md)                                       | Learned multi-outcome re-ranker                                                                 | nisal      | P2       | —          | 10   | —          | blocked     |
 | [feat-396](content-discovery/feat-396-recommendation-privacy-capacity-graduation.md)                           | Recommendation privacy and capacity graduation                                                  | nisal      | P2       | —          | 5    | —          | blocked     |
@@ -196,6 +198,10 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-333](content-discovery/feat-333-stale-search-api-docs-supersession.md)                                   | Stale docs: /api/search + Query.search documented as live after #1622 removal                   | unassigned | P2       | 2026-09-01 | 1    | 2026-09-01 | not-started |
 | [feat-332](content-discovery/feat-332-consolidate-transcript-chunk-retrievers.md)                              | Consolidate the two video_transcript_chunk semantic retrievers                                  | unassigned | P2       | 2026-09-08 | 3    | 2026-09-10 | not-started |
 | [feat-497](content-discovery/feat-497-expand-production-recommendation-pool-coverage.md)                       | Expand production recommendation pools beyond the initial languages                             | nisal      | P2       | 2026-09-14 | 3    | 2026-09-16 | not-started |
+| [feat-515](content-discovery/feat-515-watch-cold-paint-preview-verification.md)                                | Isolate cold Watch paint variability around deferred preview activation                         | nisal      | P2       | 2026-09-16 | 2    | 2026-09-17 | complete    |
+| [feat-517](content-discovery/feat-517-mobile-recommended-for-you-shelf.md)                                     | Mobile Recommended for You Home shelf                                                           | urim       | P2       | 2026-09-18 | 5    | 2026-09-22 | not-started |
+| [feat-520](content-discovery/feat-520-watch-field-post-response-paint-attribution.md)                          | Attribute non-headless Watch paint delays after HTML response                                   | nisal      | P2       | 2026-09-18 | 3    | 2026-09-20 | not-started |
+| [feat-521](content-discovery/feat-521-watch-selection-browser-commit-waits.md)                                 | Attribute browser commit waits delaying Watch selection acknowledgments                         | nisal      | P2       | 2026-09-18 | 3    | 2026-09-20 | not-started |
 | [feat-063](content-discovery/feat-063-personalize-discovery-experiences.md)                                    | Personalize Discovery Experiences                                                               | tataihono  | P2       | 2026-10-01 | 45   | 2026-11-14 | blocked     |
 
 ### Media Generation
@@ -474,7 +480,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-274](platform/feat-274-admin-editor-video-picker-server-search.md)               | Admin Editor Video Picker Server Search                                            | codex      | P1       | 2026-07-20 | 1    | 2026-07-20 | complete    |
 | [feat-274](platform/feat-274-web-google-analytics-integration.md)                      | Web Google Analytics integration                                                   | unassigned | P1       | 2026-07-20 | 1    | 2026-07-20 | complete    |
 | [feat-275](platform/feat-275-watch-mobile-hero-loading-affordance.md)                  | Watch mobile hero loading affordance                                               | vlad       | P1       | 2026-07-20 | 1    | 2026-07-20 | complete    |
-| [feat-268](platform/feat-268-mobile-timeout-log-operation-attribution.md)              | Operation-attributed mobile client-timeout log + Datadog monitor                   | urim       | P1       | 2026-07-21 | 1    | 2026-07-21 | in-progress |
+| [feat-268](platform/feat-268-mobile-timeout-log-operation-attribution.md)              | Operation-attributed mobile client-timeout log + Datadog monitor                   | urim       | P1       | 2026-07-21 | 1    | 2026-07-21 | complete    |
 | [feat-275](platform/feat-275-admin-editor-video-picker-language-aware-dubs.md)         | Admin Editor Video Picker Language-Aware Dubs                                      | codex      | P1       | 2026-07-21 | 1    | 2026-07-21 | complete    |
 | [feat-277](platform/feat-277-admin-editor-collection-child-expansion.md)               | Admin Editor Collection Child Expansion                                            | codex      | P1       | 2026-07-21 | 1    | 2026-07-21 | complete    |
 | [feat-277](platform/feat-277-watch-media-collection-header-copy-order.md)              | Watch media collection authored copy order                                         | unassigned | P1       | 2026-07-21 | 1    | 2026-07-21 | complete    |
@@ -525,7 +531,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-334](platform/feat-334-web-redis-isr-cache.md)                                   | Web Redis-backed ISR cache                                                         | codex      | P1       | 2026-08-04 | 1    | 2026-08-04 | complete    |
 | [feat-335](platform/feat-335-watch-language-inventory-experience-section.md)           | Watch language inventory Experience section                                        | codex      | P1       | 2026-08-05 | 1    | 2026-08-05 | blocked     |
 | [feat-337](platform/feat-337-watch-language-inventory-direct-catalog.md)               | Focus Watch language inventory on the dubbed catalog                               | codex      | P1       | 2026-08-05 | 1    | 2026-08-05 | complete    |
-| [feat-339](platform/feat-339-mobile-local-admin-endpoint.md)                           | Mobile local admin endpoint by default                                             | urim       | P1       | 2026-08-07 | 1    | 2026-08-07 | in-progress |
+| [feat-339](platform/feat-339-mobile-local-admin-endpoint.md)                           | Mobile local admin endpoint by default                                             | urim       | P1       | 2026-08-07 | 1    | 2026-08-07 | complete    |
 | [feat-343](platform/feat-343-watch-sibling-language-availability.md)                   | Watch sibling selected-language availability                                       | codex      | P1       | 2026-08-10 | 1    | 2026-08-10 | complete    |
 | [feat-345](platform/feat-345-mastra-seo-sealed-google-credentials.md)                  | Support sealed Google credentials for Mastra SEO                                   | codex      | P1       | 2026-08-10 | 2    | 2026-08-11 | complete    |
 | [feat-347](platform/feat-347-mastra-seo-openrouter-provider.md)                        | Reuse Mastra OpenRouter access for SEO                                             | codex      | P1       | 2026-08-10 | 2    | 2026-08-11 | complete    |
@@ -534,7 +540,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-353](platform/feat-353-mastra-seo-ipv6-value-redaction.md)                       | Redact IPv6 values from the SEO persistence boundary                               | codex      | P1       | 2026-08-11 | 1    | 2026-08-11 | complete    |
 | [feat-354](platform/feat-354-mastra-devotional-migration-readiness.md)                 | Make Mastra devotional migration readiness component-scoped                        | vlad       | P1       | 2026-08-11 | 1    | 2026-08-11 | complete    |
 | [feat-355](platform/feat-355-seo-run-audit-log.md)                                     | Add bounded SEO run audit log                                                      | codex      | P1       | 2026-08-11 | 1    | 2026-08-11 | complete    |
-| [feat-349](platform/feat-349-mobile-hosted-auth-login.md)                              | Mobile login via hosted auth page                                                  | urim       | P1       | 2026-08-12 | 5    | 2026-08-16 | in-progress |
+| [feat-349](platform/feat-349-mobile-hosted-auth-login.md)                              | Mobile login via hosted auth page                                                  | urim       | P1       | 2026-08-12 | 5    | 2026-08-16 | complete    |
 | [feat-357](platform/feat-357-watch-global-language-code-indicator.md)                  | Watch global language code indicator                                               | vlad       | P1       | 2026-08-12 | 1    | 2026-08-12 | complete    |
 | [feat-367](platform/feat-367-mobile-mini-player.md)                                    | Mobile mini player and native picture-in-picture                                   | urim       | P1       | 2026-08-12 | 10   | 2026-08-21 | in-progress |
 | [feat-364](platform/feat-364-watch-language-picker-chinese-search-aliases.md)          | Watch language picker Chinese search aliases                                       | vlad       | P1       | 2026-08-17 | 1    | 2026-08-17 | complete    |
@@ -580,6 +586,11 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-501](platform/feat-501-admin-experience-editor-performance.md)                   | Admin Experience Editor Performance                                                | tataihono  | P1       | 2026-09-14 | 2    | 2026-09-15 | complete    |
 | [feat-501](platform/feat-501-watch-home-hero-half-viewport.md)                         | Keep the Watch home hero at least half-screen                                      | codex      | P1       | 2026-09-14 | 1    | 2026-09-14 | complete    |
 | [feat-501](platform/feat-501-watch-home-logo-left-edge-alignment.md)                   | Watch header visual alignment                                                      | codex      | P1       | 2026-09-14 | 1    | 2026-09-14 | complete    |
+| [feat-508](platform/feat-508-mobile-export-to-files-folder.md)                         | Mobile raw export saves to a viewer-picked folder, not Photos                      | urim       | P1       | 2026-09-15 | 2    | 2026-09-16 | in-progress |
+| [feat-510](platform/feat-510-expo-patch-ci-recovery.md)                                | Restore Expo compatibility checks after patch drift                                | nisal      | P1       | 2026-09-16 | 1    | 2026-09-16 | complete    |
+| [feat-513](platform/feat-513-admin-workflow-enqueue-only-runtime.md)                   | Keep workflow listeners out of the Admin enqueue-only runtime                      | nisal      | P1       | 2026-09-16 | 2    | 2026-09-17 | complete    |
+| [feat-519](platform/feat-519-mobile-lapse-reminders.md)                                | Mobile lapse reminders bring a lapsed viewer back to their last video              | urim       | P1       | 2026-09-16 | 3    | 2026-09-18 | in-progress |
+| [feat-522](platform/feat-522-watch-home-full-hero-title.md)                            | Show the full Watch home hero title                                                | codex      | P1       | 2026-09-17 | 1    | 2026-09-17 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                          | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                                 | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                            | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
@@ -625,7 +636,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-287](platform/feat-287-watch-media-collection-supporting-title-spacing.md)       | Watch media collection supporting title spacing                                    | unassigned | P2       | 2026-07-21 | 1    | 2026-07-21 | complete    |
 | [feat-288](platform/feat-288-watch-promotional-text-heading-alignment.md)              | Watch promotional text heading alignment                                           | unassigned | P2       | 2026-07-21 | 1    | 2026-07-21 | complete    |
 | [feat-290](platform/feat-290-watch-thumbnail-caption-typography.md)                    | Watch Thumbnail Caption Typography                                                 | codex      | P2       | 2026-07-21 | 1    | 2026-07-21 | complete    |
-| [feat-267](platform/feat-267-mobile-hero-stream-retry-cooldown.md)                     | Mobile hero stream retry cooldown (idle-Home unbounded retry loop)                 | urim       | P2       | 2026-07-22 | 2    | 2026-07-23 | in-progress |
+| [feat-267](platform/feat-267-mobile-hero-stream-retry-cooldown.md)                     | Mobile hero stream retry cooldown (idle-Home unbounded retry loop)                 | urim       | P2       | 2026-07-22 | 2    | 2026-07-23 | complete    |
 | [feat-291](platform/feat-291-watch-home-standalone-media-top-spacing.md)               | Align Watch home standalone media top spacing                                      | unassigned | P2       | 2026-07-22 | 1    | 2026-07-22 | complete    |
 | [feat-294](platform/feat-294-watch-media-collection-thumbnail-orientation.md)          | Watch Media Collection Thumbnail Orientation                                       | codex      | P2       | 2026-07-22 | 1    | 2026-07-22 | complete    |
 | [feat-297](platform/feat-297-watch-home-page-title.md)                                 | Set the Watch home page metadata copy                                              | unassigned | P2       | 2026-07-22 | 1    | 2026-07-22 | complete    |
@@ -650,7 +661,10 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-342](platform/feat-342-tv-device-grant-scaffold-teardown.md)                     | TV device-grant scaffold teardown                                                  | ekkasit    | P2       | 2026-09-15 | 2    | 2026-09-16 | not-started |
 | [feat-506](platform/feat-506-web-diagnostic-command-noise.md)                          | Make Web memory diagnostics tolerate missing container tools and cache directories | nisal      | P2       | 2026-09-15 | 1    | 2026-09-15 | not-started |
 | [feat-507](platform/feat-507-admin-cutover-private-network-errors.md)                  | Diagnose private Admin connection failures during deployment cutover               | nisal      | P2       | 2026-09-15 | 2    | 2026-09-16 | not-started |
+| [feat-516](platform/feat-516-admin-profiler-collection-latency.md)                     | Characterize Admin profiler collection latency after deployment                    | nisal      | P2       | 2026-09-16 | 1    | 2026-09-16 | complete    |
+| [feat-517](platform/feat-517-watch-intermittent-hydration-error.md)                    | Reproduce the intermittent Watch HTML hydration mismatch                           | nisal      | P2       | 2026-09-16 | 1    | 2026-09-16 | complete    |
 | [feat-068](platform/feat-068-partner-publishing-and-user-accounts.md)                  | Partner Publishing and User Accounts                                               | tataihono  | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |
+| [feat-509](platform/feat-509-mobile-export-save-sheet-native-module.md)                | Mobile raw export: iOS Save sheet via an export-mode native module                 | urim       | P2       | 2026-10-01 | 3    | 2026-10-03 | blocked     |
 | [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)                | LLM Steering System (RAG + Guardrails)                                             | tataihono  | P2       | 2026-10-15 | 78   | 2026-12-31 | blocked     |
 | [feat-064](platform/feat-064-optimize-through-data-driven-insights.md)                 | Optimize Through Data-Driven Insights                                              | tataihono  | P2       | 2026-11-15 | 46   | 2026-12-30 | blocked     |
 | [feat-067](platform/feat-067-doctrinal-validation-engine.md)                           | Doctrinal Validation Engine                                                        | vlad       | P2       | 2026-12-01 | 31   | 2026-12-31 | blocked     |
