@@ -55,7 +55,12 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       .slice(2)}`
     let client: Client
     let databaseUrl: string
-    const expiresAt = "2026-09-17T00:00:00.000Z"
+    // Relative to now, not a fixed date. `recommendation_request_expiry_check`
+    // is CHECK (expires_at > created_at) and created_at defaults to now(), so a
+    // hardcoded timestamp silently becomes a time bomb: this suite passed until
+    // wall-clock reached the literal, then failed for every PR. Never asserted
+    // on -- it is only ever insert data.
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1_000).toISOString()
 
     // Keep creation on the fixed fixture timeline instead of the database clock.
     async function insertRequest(id: string, expectedItemCount: number) {
@@ -559,7 +564,10 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           "expiry-item",
           "expiry-request",
           0,
-          "2026-09-18T00:00:00.000Z",
+          // Deliberately not the request root's expiry. Derived from it so it
+          // stays a guaranteed-different future instant rather than a literal
+          // that could drift into the past or coincide with the root.
+          new Date(Date.parse(expiresAt) + 1_000).toISOString(),
         ),
       ).rejects.toThrow("child expiry must match request root")
       await client.query("ROLLBACK")
