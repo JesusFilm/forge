@@ -84,6 +84,9 @@ async function main() {
       steps: !process.argv.includes("--no-steps"),
       // A/B: `--structure=clip-first` opens on the film (see RenderOptions).
       ...(process.argv.includes("--step-ring") ? { stepRing: true } : {}),
+      ...(process.argv.includes("--step-bar")
+        ? { stepRing: true, stepProgress: "bar" as const }
+        : {}),
       ...(arg("intro") ? { intro: arg("intro") as "cover" | "bands" } : {}),
       ...(arg("clip-trim-end")
         ? { clipTrimEndSec: Number(arg("clip-trim-end")) }

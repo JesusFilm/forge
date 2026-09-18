@@ -936,6 +936,8 @@ export type RenderOptions = {
   intro?: "cover" | "bands"
   /** Clip-first only: corner progress ring clocking each step (see schema). */
   stepRing?: boolean
+  /** Clip-first only: the step clock as a ring (default) or a top line. */
+  stepProgress?: "ring" | "bar"
   /** Clip-first only: how the film's captions arrive (see the card schema). */
   clipCaptionStyle?: "words" | "words-lift"
   /** Review preview: render N evenly spaced PNG stills INSTEAD of the MP4.
@@ -1619,6 +1621,8 @@ async function renderInStage(
 
   if (options.structure === "clip-first") {
     if (options.stepRing) manifest.stepRing = true
+    if (options.stepRing && options.stepProgress)
+      manifest.stepProgress = options.stepProgress
     for (const card of manifest.cards) {
       if (card.kind !== "video" || typeof card.videoFile !== "string") continue
       const focus = await planClipFocus({

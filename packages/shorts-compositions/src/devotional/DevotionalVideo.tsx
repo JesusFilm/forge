@@ -699,9 +699,14 @@ function ClipIntro({
   const minutes = Math.max(1, Math.round(pieceSec / 60))
   const timeLabel = `- ${minutes} min -`
 
-  // Header: mark, series name, length. Shared by both designs; leaves last.
-  const headerIn = interpolate(t, [0, 0.4], [0, 1], clampBoth)
-  const headerHold = variant === "cover" ? L + 1.0 : L + 1.0
+  // Header: mark, series name, length. Settles into place from a little
+  // above (owner) and leaves last, a second after the film has taken over.
+  const headerIn = interpolate(t, [0, 0.7], [0, 1], {
+    ...clampBoth,
+    easing: ease,
+  })
+  const headerDrop = px(14) * (1 - headerIn)
+  const headerHold = L + 1.0
   const headerOutSec = variant === "cover" ? 0.6 : 1.2
   const headerOut = interpolate(
     t,
@@ -723,6 +728,7 @@ function ClipIntro({
           alignItems: "center",
           gap: px(5),
           opacity: headerOpacity,
+          transform: `translateY(${headerDrop}px)`,
           pointerEvents: "none",
         }}
       >
@@ -754,7 +760,7 @@ function ClipIntro({
       </div>
     ) : null
 
-  const label = (text: string, gold: boolean, size: number) => ({
+  const label = (gold: boolean, size: number) => ({
     fontFamily: SANS,
     fontWeight: 600,
     fontSize: px(size),
@@ -765,12 +771,39 @@ function ClipIntro({
   })
 
   if (variant === "cover") {
-    // The column: WATCH lit, the rest white, gold rails between (Figma).
-    const colIn = headerIn
-    // The other steps and the scrim leave as the film's sound comes in.
-    const othersOut = interpolate(t, [L - 0.6, L - 0.1], [1, 0], clampBoth)
+    // The column over a darkened film: WATCH lit and slowly swelling, a pool
+    // of light behind it, the other steps faint. They then dissolve from the
+    // bottom up, one after another (PRAY, its rail, REFLECT, its rail), the
+    // scrim lifting with the last; WATCH and the header stay a second into the
+    // speaking film and fade.
+    const colIn = interpolate(t, [0.1, 0.6], [0, 1], clampBoth)
+    const dissolveStart = L - 1.7
+    const step = 0.25
+    const fadeLen = 0.55
+    const gone = (order: number) =>
+      1 -
+      interpolate(
+        t,
+        [dissolveStart + order * step, dissolveStart + order * step + fadeLen],
+        [0, 1],
+        clampBoth,
+      )
+    // Bottom up: PRAY (0), lower rail (1), REFLECT (2), upper rail (3).
+    const orderOf = (i: number, rail: boolean) => {
+      const n = steps.length
+      return rail ? (n - 1 - i) * 2 - 1 : (n - 1 - i) * 2
+    }
+    const scrim =
+      0.42 * colIn * interpolate(t, [L - 1.0, L - 0.2], [1, 0], clampBoth)
     const watchOut = headerOut
-    const scrim = 0.45 * colIn * othersOut
+    const watchSwell = interpolate(t, [0.3, L + 0.4], [1, 1.09], {
+      ...clampBoth,
+      easing: ease,
+    })
+    const glow = interpolate(t, [0.4, 1.8], [0, 1], {
+      ...clampBoth,
+      easing: ease,
+    })
     const size = 19
     const labelH = px(size) * 1.2
     const rail = px(46.8)
@@ -781,12 +814,31 @@ function ClipIntro({
       <AbsoluteFill style={{ pointerEvents: "none" }}>
         <AbsoluteFill style={{ background: `rgba(0,0,0,${scrim})` }} />
         {header}
-        {steps.map((step, i) => {
+        {/* Pool of light behind WATCH, the same light the stepper carries. */}
+        <div
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: top0 + labelH / 2,
+            width: px(240),
+            height: px(86),
+            marginLeft: -px(120),
+            marginTop: -px(43),
+            borderRadius: "50%",
+            background: INTRO_GOLD,
+            opacity: 0.3 * glow * colIn * watchOut,
+            filter: `blur(${px(26)}px)`,
+            mixBlendMode: "screen",
+          }}
+        />
+        {steps.map((stepLabel, i) => {
           const y = top0 + i * (labelH + 2 * gap + rail)
           const isWatch = i === 0
-          const opacity = colIn * (isWatch ? watchOut : othersOut)
+          const opacity = isWatch
+            ? colIn * watchOut
+            : 0.33 * colIn * gone(orderOf(i, false))
           return (
-            <Fragment key={step}>
+            <Fragment key={stepLabel}>
               <div
                 style={{
                   position: "absolute",
@@ -800,7 +852,18 @@ function ClipIntro({
                   opacity,
                 }}
               >
-                <span style={label(step, isWatch, size)}>{step}</span>
+                <span
+                  style={{
+                    ...label(isWatch, size),
+                    display: "inline-block",
+                    transform: isWatch ? `scale(${watchSwell})` : undefined,
+                    textShadow: isWatch
+                      ? `0 0 ${px(16) * glow}px rgba(242,196,107,${0.65 * glow})`
+                      : label(false, size).textShadow,
+                  }}
+                >
+                  {stepLabel}
+                </span>
               </div>
               {i < steps.length - 1 ? (
                 <div
@@ -813,7 +876,7 @@ function ClipIntro({
                     height: rail,
                     borderRadius: px(1.7),
                     background: "rgba(242,196,107,0.45)",
-                    opacity: colIn * othersOut,
+                    opacity: colIn * gone(orderOf(i, true)),
                   }}
                 />
               ) : null}
@@ -826,8 +889,13 @@ function ClipIntro({
 
   // bands
   const bandsIn = interpolate(t, [0, 0.3], [0, 1], clampBoth)
-  // The WATCH band grows to the whole frame over the middle of the lead.
+  // The WATCH band grows to the whole frame over the middle of the lead, and
+  // takes on colour as it grows (it opens desaturated like the others).
   const grow = interpolate(t, [L - 1.8, L - 0.2], [0, 1], {
+    ...clampBoth,
+    easing: ease,
+  })
+  const colour = interpolate(t, [L - 1.8, L - 0.4], [0, 1], {
     ...clampBoth,
     easing: ease,
   })
@@ -837,7 +905,11 @@ function ClipIntro({
     bandsIn * (1 - interpolate(t, [L - 1.0, L - 0.3], [0, 1], clampBoth))
   const watchOpacity =
     bandsIn * (1 - interpolate(t, [L - 1.2, L - 0.4], [0, 1], clampBoth))
-  const scrim = 0.22 * bandsIn * (1 - grow)
+  const labelSize = 22
+  // Label edge to band edge: WATCH's bottom sits this far above its band's
+  // bottom, PRAY's top this far below its band's top (owner).
+  const edgeGap = 4 // % of height
+  const labelHPct = (labelSize * 1.2 * 100) / 693
   const band = (
     topPct: number,
     bottomPct: number,
@@ -868,14 +940,19 @@ function ClipIntro({
             height: "100%",
             objectFit: "cover",
             objectPosition: position,
-            filter: "grayscale(1) brightness(0.55) contrast(1.05)",
+            // Quieter than the WATCH band: no colour, darker, softer contrast,
+            // under a warm sepia wash and film grain (owner's Figma).
+            filter: "grayscale(1) brightness(0.42) contrast(0.92)",
           }}
         />
+        <AbsoluteFill style={{ background: "rgba(74,52,28,0.38)" }} />
+        <Grain opacity={0.5} sizePx={200} />
       </div>
     ) : null
   return (
     <AbsoluteFill style={{ pointerEvents: "none", opacity: bandsIn }}>
-      {/* Warm scrim over the live film while the bands are up. */}
+      {/* The live film under WATCH opens without colour and warms up as the
+          band grows; a light scrim keeps it from outshining the labels. */}
       <div
         style={{
           position: "absolute",
@@ -883,57 +960,52 @@ function ClipIntro({
           right: 0,
           top: 0,
           height: `${b1}%`,
-          background: `rgba(29,14,0,${scrim})`,
+          background: `rgba(29,14,0,${0.22 * (1 - grow)})`,
+          backdropFilter: `grayscale(${1 - colour})`,
+          WebkitBackdropFilter: `grayscale(${1 - colour})`,
         }}
       />
       {band(b1, b2, 8, "center 30%")}
       {band(b2, 100, 18, "center bottom")}
       {header}
-      {/* WATCH sits low in its band and rides its edge down as it grows. */}
       <div
         style={{
           position: "absolute",
           left: 0,
           right: 0,
-          top: `${b1 - 8}%`,
+          top: `${b1 - edgeGap - labelHPct}%`,
           display: "flex",
           justifyContent: "center",
           opacity: watchOpacity,
         }}
       >
-        <span style={label(steps[0] ?? "WATCH", true, 24)}>
-          {steps[0] ?? "WATCH"}
-        </span>
+        <span style={label(true, labelSize)}>{steps[0] ?? "WATCH"}</span>
       </div>
       <div
         style={{
           position: "absolute",
           left: 0,
           right: 0,
-          top: `${(b1 + b2) / 2 - 2.6}%`,
+          top: `${(b1 + b2) / 2 - labelHPct / 2}%`,
           display: "flex",
           justifyContent: "center",
-          opacity: lowerOpacity,
+          opacity: 0.8 * lowerOpacity,
         }}
       >
-        <span style={label(steps[1] ?? "REFLECT", false, 24)}>
-          {steps[1] ?? "REFLECT"}
-        </span>
+        <span style={label(false, labelSize)}>{steps[1] ?? "REFLECT"}</span>
       </div>
       <div
         style={{
           position: "absolute",
           left: 0,
           right: 0,
-          top: `${b2 + 3}%`,
+          top: `${b2 + edgeGap}%`,
           display: "flex",
           justifyContent: "center",
-          opacity: lowerOpacity,
+          opacity: 0.8 * lowerOpacity,
         }}
       >
-        <span style={label(steps[2] ?? "PRAY", false, 24)}>
-          {steps[2] ?? "PRAY"}
-        </span>
+        <span style={label(false, labelSize)}>{steps[2] ?? "PRAY"}</span>
       </div>
     </AbsoluteFill>
   )
@@ -3396,7 +3468,12 @@ function Background({
           // Owner rule: open the clip SILENT while "Let's watch" is on screen,
           // then ease its sound in — so the cut into the film lands as a beat
           // rather than a jump in volume.
-          const lead = Math.round((card.mutedLeadSec ?? 0) * fps)
+          // With an intro overlay the lead is silent footage only in name:
+          // the owner wants the film heard from the first frame, the overlay
+          // sitting over a speaking film rather than a muted one.
+          const lead = card.intro
+            ? 0
+            : Math.round((card.mutedLeadSec ?? 0) * fps)
           // Full devo: near-full, quick fades (clip plays alone, music ducked).
           // Teaser (videoAudioLevel set): quiet + slow fade in/out so it eases
           // gently under the music bed.
@@ -3883,8 +3960,9 @@ const STEP_RING_RIGHT = 48
 const STEP_RING_SIZE = 48
 
 export function stepGroups(
-  cards: ReadonlyArray<{ kind: string }>,
+  cards: ReadonlyArray<{ kind: string; intro?: string; mutedLeadSec?: number }>,
   frames: ReadonlyArray<{ from: number; durationInFrames: number }>,
+  fps = 30,
 ): Array<{ from: number; to: number }> {
   const groups: Array<{ from: number; to: number }> = []
   let open: { from: number; to: number } | null = null
@@ -3896,7 +3974,13 @@ export function stepGroups(
       open = null
       return
     }
-    if (!open) open = { from: f.from, to: f.from + f.durationInFrames }
+    // A film card with an intro overlay clocks from where the film proper
+    // begins, after the intro's lead: the ring belongs to the clip, not to
+    // the title over it (owner).
+    const introLead =
+      c.intro && c.mutedLeadSec ? Math.round(c.mutedLeadSec * fps) : 0
+    if (!open)
+      open = { from: f.from + introLead, to: f.from + f.durationInFrames }
     else open.to = f.from + f.durationInFrames
   })
   if (open) groups.push(open)
@@ -3909,17 +3993,29 @@ function StepRingOverlay({
   frame,
   fps,
   px,
+  shape,
 }: {
-  cards: ReadonlyArray<{ kind: string }>
+  cards: ReadonlyArray<{ kind: string; intro?: string; mutedLeadSec?: number }>
   frames: ReadonlyArray<{ from: number; durationInFrames: number }>
   frame: number
   fps: number
   px: (n: number) => number
+  shape: "ring" | "bar"
 }) {
-  const group = stepGroups(cards, frames).find(
+  const group = stepGroups(cards, frames, fps).find(
     (g) => frame >= g.from && frame < g.to,
   )
   if (!group) return null
+  if (shape === "bar") {
+    return (
+      <StepBar
+        px={px}
+        fps={fps}
+        frame={frame - group.from}
+        durationInFrames={group.to - group.from}
+      />
+    )
+  }
   return (
     <div
       style={{
@@ -3938,6 +4034,85 @@ function StepRingOverlay({
         isLandscape={false}
         inline
         size={px(STEP_RING_SIZE)}
+      />
+    </div>
+  )
+}
+
+/**
+ * The step clock as a line: the ring's glowing point travelling left to right
+ * along a thin track across the top of the frame, a gold trail filling behind
+ * it. Inside the social safe area: 60 units in from either side (the caption
+ * column's insets) and 70 from the top, under the Reels / TikTok headers.
+ */
+const STEP_BAR_INSET = 60
+const STEP_BAR_TOP = 72
+
+function StepBar({
+  px,
+  fps,
+  frame,
+  durationInFrames,
+}: {
+  px: (n: number) => number
+  fps: number
+  frame: number
+  durationInFrames: number
+}) {
+  const p = Math.max(0, Math.min(1, frame / Math.max(1, durationInFrames)))
+  const appear = Math.max(0, Math.min(1, frame / (0.5 * fps)))
+  const pulse = 0.5 + 0.5 * Math.sin((frame / fps) * ((Math.PI * 2) / 4))
+  const dot = px(9.5)
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: px(STEP_BAR_INSET),
+        right: px(STEP_BAR_INSET),
+        top: px(STEP_BAR_TOP),
+        height: dot,
+        opacity: appear,
+        pointerEvents: "none",
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          top: "50%",
+          height: px(1.1),
+          marginTop: -px(0.55),
+          borderRadius: px(1),
+          background: "rgba(255,255,255,0.10)",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          width: `${p * 100}%`,
+          top: "50%",
+          height: px(1.1),
+          marginTop: -px(0.55),
+          borderRadius: px(1),
+          background: "#d8ad5c",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          left: `${p * 100}%`,
+          top: "50%",
+          width: dot,
+          height: dot,
+          borderRadius: "50%",
+          transform: "translate(-50%, -50%)",
+          background:
+            "radial-gradient(circle, #fff, #fbead8 30%, #f4d98f 58%, #e9c477 100%)",
+          filter: `blur(${px(0.9)}px)`,
+          boxShadow: `0 0 ${px(4) + px(3) * pulse}px ${px(1)}px rgba(232,196,119,0.55)`,
+        }}
       />
     </div>
   )
@@ -4231,6 +4406,7 @@ export function DevotionalVideo(props: DevotionalInputProps) {
           frame={frame}
           fps={fps}
           px={px}
+          shape={props.stepProgress ?? "ring"}
         />
       ) : null}
       {/* Soft instrumental bed under everything: loops to fill the runtime.

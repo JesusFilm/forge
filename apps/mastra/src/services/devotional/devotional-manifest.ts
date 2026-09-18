@@ -43,6 +43,8 @@ export type DevotionalManifest = {
   intro?: "cover" | "bands"
   /** Clip-first: corner progress ring clocking each step (composition prop). */
   stepRing?: boolean
+  /** Shape of that clock: orbit ring (default) or a line across the top. */
+  stepProgress?: "ring" | "bar"
   /** Held beat on the LAST card after its narration ends (s). Same reason. */
   outroHoldSec?: number
   cards: ManifestCard[]

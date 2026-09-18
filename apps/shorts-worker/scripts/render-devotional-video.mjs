@@ -523,6 +523,7 @@ async function main() {
         ? { bgDurationSec: manifest.bgDurationSec }
         : {}),
       ...(manifest.stepRing ? { stepRing: true } : {}),
+      ...(manifest.stepProgress ? { stepProgress: manifest.stepProgress } : {}),
       ...(manifest.bgStartOffsetSec != null
         ? { bgStartOffsetSec: manifest.bgStartOffsetSec }
         : {}),

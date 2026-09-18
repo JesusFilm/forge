@@ -276,6 +276,12 @@ export const devotionalInputPropsSchema = z.object({
    * ring the closing card carries above its question.
    */
   stepRing: z.boolean().optional(),
+  /**
+   * Shape of the step clock when `stepRing` is on: the orbit ring in the
+   * top-right corner (default), or a thin line across the top inside the
+   * social safe area, the same glowing point travelling left to right.
+   */
+  stepProgress: z.enum(["ring", "bar"]).optional(),
   /** Mute the video card's clip audio and let the music bed play through it
    *  (instead of ducking to silence). Used for teasers so the loud clip audio
    *  doesn't jump against the quiet music. */
