@@ -475,9 +475,97 @@ const PHRASE_SPACE_W = 0.3
 const PHRASE_SETTLE_SEC = 0.45
 
 /**
- * The words a phrase sets in caps: at most two, so caps stay an emphasis.
- * The piece's theme word always counts; otherwise the longest content word
- * carries the line (a five-letter-plus noun or verb, never a grammar word).
+ * Word stems that carry the weight of a devotional line: what the scene is
+ * ABOUT rather than what is merely longest. Matched as prefixes, so the
+ * inflections come free (mercy/merciful, humble/humbled/humbles).
+ *
+ * The first cut capitalised the longest content word, which is how "COLLECTOR"
+ * came to shout over a line whose point is being made right with God (owner:
+ * the emotionally or semantically stronger word should carry it). Emphasis now
+ * goes to the strong word or to nothing at all, which is what keeps capitals
+ * reading as emphasis.
+ */
+const PHRASE_STRONG_STEMS = [
+  // mercy and sin
+  "merc",
+  "pity",
+  "compassion",
+  "sin",
+  "guilt",
+  "shame",
+  "repent",
+  "forgiv",
+  "forgave",
+  "pardon",
+  "justif",
+  "righteous",
+  "grace",
+  // the posture of the heart
+  "humbl",
+  "humili",
+  "exalt",
+  "proud",
+  "pride",
+  "boast",
+  "heart",
+  "honest",
+  // God, and speaking to him
+  "god",
+  "lord",
+  "jesus",
+  "christ",
+  "father",
+  "heaven",
+  "pray",
+  "worship",
+  "temple",
+  "holy",
+  "spirit",
+  // life under God
+  "love",
+  "hope",
+  "faith",
+  "fear",
+  "trust",
+  "believ",
+  "save",
+  "salvation",
+  "lost",
+  "found",
+  "free",
+  "peace",
+  "joy",
+  "light",
+  "dark",
+  "life",
+  "live",
+  "death",
+  "die",
+  "dead",
+  "born",
+  "heal",
+  "bless",
+  "curse",
+  "weep",
+  "cry",
+  "mourn",
+  "rejoic",
+  "kingdom",
+  "truth",
+] as const
+
+const phraseStrength = (word: string): number => {
+  for (const stem of PHRASE_STRONG_STEMS) {
+    if (word === stem) return 3
+    if (word.startsWith(stem)) return 2
+  }
+  return 0
+}
+
+/**
+ * The word a phrase sets in caps: one at most, and only when the line has a
+ * word worth the emphasis. The piece's theme word always wins; otherwise the
+ * strongest word by meaning, and nothing at all when there is none.
  */
 export function phraseStrongWords(
   tokens: readonly string[],
@@ -485,17 +573,23 @@ export function phraseStrongWords(
 ): Set<string> {
   const key = (w: string) => w.toLowerCase().replace(/[^\p{L}\p{N}']/gu, "")
   const theme = themeWord ? key(themeWord) : null
-  const content = tokens.filter(
-    (t) => key(t).length > 0 && !PHRASE_FUNCTION_WORDS.has(key(t)),
-  )
   const out = new Set<string>()
   for (const t of tokens) if (theme && key(t) === theme) out.add(key(t))
-  if (out.size === 0 && content.length > 0) {
-    const longest = [...content].sort(
-      (a, b) => key(b).length - key(a).length,
-    )[0]
-    if (key(longest).length >= 4) out.add(key(longest))
+  if (out.size > 0) return out
+  let best: { word: string; score: number } | null = null
+  for (const t of tokens) {
+    const w = key(t)
+    if (w.length < 3 || PHRASE_FUNCTION_WORDS.has(w)) continue
+    const score = phraseStrength(w)
+    if (score === 0) continue
+    if (
+      !best ||
+      score > best.score ||
+      (score === best.score && w.length > best.word.length)
+    )
+      best = { word: w, score }
   }
+  if (best) out.add(best.word)
   return out
 }
 

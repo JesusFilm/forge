@@ -234,22 +234,30 @@ describe("phraseStrongWords", () => {
     expect([...strong]).toEqual(["pray"])
   })
 
-  it("falls back to the longest content word, never a grammar word", () => {
+  it("picks the word that carries the line, not the longest one", () => {
+    // "collector" is the longest word here and used to win; the line is about
+    // being made right with God.
     const strong = phraseStrongWords([
-      "God,",
-      "have",
-      "pity",
-      "on",
-      "me,",
-      "a",
-      "sinner.",
+      "I",
+      "tell",
+      "you,",
+      "the",
+      "tax",
+      "collector",
+      "went",
+      "home",
+      "justified.",
     ])
-    expect([...strong]).toEqual(["sinner"])
+    expect([...strong]).toEqual(["justified"])
+  })
+
+  it("leaves a phrase with nothing weighty in it plain", () => {
+    expect(phraseStrongWords(["I", "fast", "twice", "a", "week,"]).size).toBe(0)
   })
 
   it("keeps caps to at most one word per phrase", () => {
     const strong = phraseStrongWords(
-      ["the", "tax", "collector", "went", "home", "justified"],
+      ["God,", "have", "pity", "on", "me,", "a", "sinner."],
       "mercy",
     )
     expect(strong.size).toBeLessThanOrEqual(1)
