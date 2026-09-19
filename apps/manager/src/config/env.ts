@@ -60,9 +60,6 @@ export const env = createEnv({
       .min(1)
       .default(".tmp/mock-cms/store.json"),
 
-    // workflow (https://useworkflow.dev/) — optional for production durability
-    WORKFLOW_API_KEY: z.string().min(1).optional(),
-
     // API authentication — required for production
     MANAGER_API_KEY: z.string().min(1).optional(),
     MANAGER_BASE_URL: z.string().url().optional(),
@@ -194,7 +191,6 @@ export const env = createEnv({
       process.env.MANAGER_MOCK_SESSION_SECRET ?? MOCK_SESSION_SECRET_SENTINEL,
     MANAGER_MOCK_DATA_PATH:
       process.env.MANAGER_MOCK_DATA_PATH ?? ".tmp/mock-cms/store.json",
-    WORKFLOW_API_KEY: process.env.WORKFLOW_API_KEY,
     MANAGER_API_KEY: process.env.MANAGER_API_KEY,
     MANAGER_BASE_URL: process.env.MANAGER_BASE_URL,
     MANAGER_SESSION_SECRET: process.env.MANAGER_SESSION_SECRET,
