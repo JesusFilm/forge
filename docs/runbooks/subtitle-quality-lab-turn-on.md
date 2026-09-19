@@ -137,13 +137,15 @@ authorizing any spend.
 Process-death recovery is not self-scheduled. Without an external caller, a run
 stranded by a crash stays `RUNNING` and its reserved spend is never released.
 
-Use Railway cron, matching the existing precedent in
-`apps/admin/docs/core-sync-recurring-job.md`:
+`apps/subtitle-eval-recovery/` holds the service for this: a Dockerfile, the
+`run.sh` that makes the call, and `railway-service-settings.json` recording the
+Railway configuration. Its README has the creation steps. The service is not
+deployed yet — creating it is an owner-approved step.
 
-```bash
-curl -X POST "$MANAGER_URL/api/scheduled/subtitle-eval-recovery" \
-  -H "Authorization: Bearer $MANAGER_API_KEY"
-```
+It does more than curl, for one specific reason: **a 200 does not mean recovery
+happened.** The endpoint answers 200 with per-run outcomes, and a run it could
+not recover appears in that list rather than in the status code. `run.sh` reads
+the outcomes so a persistent failure turns the cron red.
 
 Each invocation lists runs stale by at least five minutes, reads at most four
 pages of 25, claims a 120-second run-recovery lease, refuses cells holding a

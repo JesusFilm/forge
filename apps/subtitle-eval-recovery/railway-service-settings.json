@@ -1,0 +1,7 @@
+{
+  "dockerfilePath": "apps/subtitle-eval-recovery/Dockerfile",
+  "cronSchedule": "*/5 * * * *",
+  "restartPolicyType": "NEVER",
+  "numReplicas": 1,
+  "watchPatterns": ["/apps/subtitle-eval-recovery/**"]
+}
