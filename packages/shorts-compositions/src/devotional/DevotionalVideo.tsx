@@ -782,6 +782,7 @@ function VideoSubtitles({
   themeWord,
   frameHeight,
   frameWidth,
+  bleedX = 0,
 }: {
   cues: NonNullable<DevotionalCard["subtitles"]>
   style: DevotionalStyle
@@ -792,6 +793,9 @@ function VideoSubtitles({
   frameHeight?: number
   /** Frame width in px: the 16:9 cut keeps the column to part of the width. */
   frameWidth?: number
+  /** Landscape: half the gap between the centred text column and the frame
+   *  edges, so the caption's dim can bleed back out to the full frame. */
+  bleedX?: number
   px: (n: number) => number
   frame: number
   fps: number
@@ -822,8 +826,19 @@ function VideoSubtitles({
     return (
       <AbsoluteFill style={{ opacity, pointerEvents: "none" }}>
         {/* A uniform dim of the whole frame for the caption's duration
-            (owner's spec: rr=gg=bb=0.75), instead of a band behind the text. */}
-        <AbsoluteFill style={{ background: "rgba(0,0,0,0.25)" }} />
+            (owner's spec: rr=gg=bb=0.75), instead of a band behind the text.
+            Landscape renders this inside the centred text column, so bleed it
+            back out by the column inset or the dim shows as a rectangle. */}
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: -bleedX,
+            right: -bleedX,
+            background: "rgba(0,0,0,0.25)",
+          }}
+        />
         <PhraseCaption
           cue={cue}
           t={t}
@@ -4991,6 +5006,7 @@ export function DevotionalVideo(props: DevotionalInputProps) {
                   coverTitleFirst={props.coverTitleFirst === true}
                   coverTextStatic={props.coverTextStatic === true}
                   coverSecondaryLine={props.coverSecondaryLine}
+                  bleedX={columnInset}
                   {...(props.textFont ? { textFont: props.textFont } : {})}
                 />
               </div>
@@ -5086,6 +5102,7 @@ function CardLayer({
   coverTextStatic,
   coverSecondaryLine,
   textFont,
+  bleedX,
 }: {
   card: DevotionalCard
   style: DevotionalStyle
@@ -5110,6 +5127,8 @@ function CardLayer({
   coverSecondaryLine?: string
   /** Typeface for the spoken-text cards; "serif" is the owner's trial look. */
   textFont?: "sans" | "serif"
+  /** Landscape: the inset of the centred text column this card sits in. */
+  bleedX?: number
 }) {
   const frame = useCurrentFrame()
   const { width: layerW, height: layerH } = useVideoConfig()
@@ -5157,6 +5176,7 @@ function CardLayer({
           {...(card.themeWord ? { themeWord: card.themeWord } : {})}
           frameHeight={layerH}
           frameWidth={layerW}
+          bleedX={bleedX ?? 0}
         />
       ) : null}
       {showMuteButton ? <MuteButton px={px} style={style} /> : null}
