@@ -688,19 +688,34 @@ async function classifyManifestAdmission(
     // `/slug.html/slug.html` is what the legacy site synthesized for a bare
     // `/slug`, and what canonicalize's Rule 5 mirrored until FGE-203 (W-070).
     // Nothing emits it any more, so every remaining hit is an inbound link
-    // from that era: send it to the one-segment page when the manifest admits
-    // one, instead of the terminal 404 it used to get. Asking
-    // `classifyOneSegmentAdmission` — not a looser `oneSegmentSlugs` check —
-    // is what keeps this from redirecting into another 404.
+    // from that era: send it to the one-segment page instead of the terminal
+    // 404 it used to get.
+    //
+    // Gated on `classifyOneSegmentAdmission` — the SAME answer a direct
+    // `/{slug}.html` request gets, not a looser `oneSegmentSlugs` check — so
+    // the redirect cannot point at a 404. `!== "not-found"` rather than
+    // `=== "admit"` because a known-content-language-gap slug still has a
+    // destination: `/{slug}.html` renders the unavailable-language sentinel,
+    // and sending a legacy link to a hard 404 instead would make the collapse
+    // disagree with the page it claims to model.
+    //
+    // 307, not 301: the only thing separating this shape from a GENUINE
+    // episode whose child slug equals its parent's is the manifest's episode
+    // list, and a stale snapshot (every `fetchWatchRouteManifest` failure path
+    // returns the previous one) cannot prove that list is current. A wrong
+    // permanent redirect would be retained by clients after the manifest
+    // recovers; a wrong temporary one heals on the next request.
     if (
       decision.manifestRoute.parentSlug === decision.manifestRoute.childSlug
     ) {
       const { parentSlug } = decision.manifestRoute
-      if (classifyOneSegmentAdmission(manifest, parentSlug).kind === "admit") {
+      if (
+        classifyOneSegmentAdmission(manifest, parentSlug).kind !== "not-found"
+      ) {
         return {
           kind: "redirect",
           pathname: `/${appendHtmlSuffix(parentSlug)}`,
-          status: 301,
+          status: 307,
         }
       }
       logImplicitEnglishEpisodeRejected(decision.manifestRoute, true)
@@ -759,43 +774,6 @@ async function classifyManifestAdmission(
     logImplicitEnglishEpisodeRejected(decision.manifestRoute, true)
   }
   return { kind: "not-found" }
-}
-
-/**
- * Whether an already-canonical `pathname` is a single `.html` segment — the
- * family canonicalize's Rule 5 and trailing-slash strip produce, and the only
- * one whose destination is cheap enough to settle before emitting the hop.
- */
-function isOneSegmentHtmlPath(pathname: string): boolean {
-  const segments = splitPath(pathname)
-  return segments.length === 1 && hasHtmlSuffix(segments[0])
-}
-
-/**
- * Prove — from the manifest, not from shape — that a canonical target would
- * answer 404, so a bare slug can 404 here instead of after a redirect into a
- * page that 404s anyway (FGE-203 / W-070). Returns the identity `buildNotFound`
- * should render the sentinel in, or `null` to let the redirect stand.
- *
- * Only a PROVEN not-found short-circuits. The caller withholds a null manifest
- * entirely, so a manifest outage keeps the old redirect-then-decide behavior
- * rather than hard-404ing live content.
- */
-async function proveCanonicalTargetNotFound(
-  pathname: string,
-  manifest: WatchRouteManifest,
-): Promise<Pick<
-  Extract<RewriteDecision, { kind: "rewrite" }>,
-  "locale" | "htmlLang"
-> | null> {
-  const rewrite = classifyRewrite(pathname, manifest)
-  if (rewrite.kind === "pass") return null
-  if (rewrite.kind === "not-found") {
-    return { locale: DEFAULT_LOCALE, htmlLang: DEFAULT_LOCALE }
-  }
-  const admission = await classifyManifestAdmission(rewrite, manifest)
-  if (admission.kind !== "not-found") return null
-  return { locale: rewrite.locale, htmlLang: rewrite.htmlLang }
 }
 
 async function isAdmittedInternalRewrite(
@@ -900,17 +878,14 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
 
   const canonical = canonicalizeWatchPath({ rawPathname: pathname })
   if (canonical.kind === "redirect") {
-    // W-070: a bare `/jesus` normalizes to `/jesus.html`, the page that
-    // actually serves. For that one-segment family, settle the destination
-    // against the manifest first so an unknown slug answers 404 here instead
-    // of spending a crawl hop to reach one.
-    if (isOneSegmentHtmlPath(canonical.pathname)) {
-      const manifest = await getWatchRouteManifest()
-      const notFoundIdentity = manifest
-        ? await proveCanonicalTargetNotFound(canonical.pathname, manifest)
-        : null
-      if (notFoundIdentity) return buildNotFound(request, notFoundIdentity)
-    }
+    // W-070 deliberately stops at the redirect. Answering an unknown bare slug
+    // with a 404 here instead of one hop later would need the manifest to be
+    // provably FRESH, and it is not: every failure path in
+    // `fetchWatchRouteManifest` returns the previous cached snapshot, so a
+    // non-null manifest cannot distinguish a healthy read from a warm-cache
+    // outage. Vetoing a redirect on that would 404 content published since the
+    // last good fetch — the FGE-81 shape. The hop costs one request and lets
+    // the retry land on an instance with a current snapshot.
     const url = request.nextUrl.clone()
     url.pathname = canonical.pathname
     return buildRedirect(url, canonical.status)

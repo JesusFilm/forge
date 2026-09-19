@@ -100,20 +100,20 @@ Verified:
 
 The current production server applies the following normalizations. The rewrite must apply at least the same set to avoid breaking inbound links.
 
-> **Superseded 2026-09-19 (Linear FGE-203 / W-070) for one row only.** Forge deliberately no longer mirrors the single→duplicate rewrite. `/watch/foo` now normalizes to `/watch/foo.html`, the page that serves; the legacy `/watch/foo.html/foo.html` target is a two-segment shape Forge reads as a language or an episode, so it hard-404'd every real content slug. Forge additionally 301s the legacy duplicate shape onto `/watch/{slug}.html` when the route manifest admits one, so inbound links minted by the old server still land. Every other row below still holds. See `apps/web/src/lib/url-canonicalize.ts` Rule 5.
+> **Superseded 2026-09-19 (Linear FGE-203 / W-070) for one row only.** Forge deliberately no longer mirrors the single→duplicate rewrite. `/watch/foo` now normalizes to `/watch/foo.html`, the page that serves; the legacy `/watch/foo.html/foo.html` target is a two-segment shape Forge reads as a language or an episode, so it hard-404'd every real content slug. Forge additionally 307s the legacy duplicate shape onto `/watch/{slug}.html` when the route manifest admits one, so inbound links minted by the old server still land. Every other row below still holds. See `apps/web/src/lib/url-canonicalize.ts` Rule 5.
 
-| Input                                      | Status | Output                                                              |
-| ------------------------------------------ | ------ | ------------------------------------------------------------------- |
-| `/watch/`                                  | 308    | `/watch`                                                            |
-| `/watch/jesus.html/`                       | 308    | `/watch/jesus.html`                                                 |
-| `/watch/jesus.html/english.html/`          | 308    | `/watch/jesus.html/english.html`                                    |
-| `/watch/jesus.HTML/english.html`           | 307    | `/watch/jesus.html/english.html` (lowercase `.html`)                |
-| `/watch/jesus.html/english`                | 307    | `/watch/jesus.html/english.html` (append missing `.html`)           |
-| `/watch/foo` (single-segment, no `.html`)  | 307    | `/watch/foo.html/foo.html` (duplicate-segment-and-add-`.html` rule) |
-| `/watch/foo/bar` (two-segment, no `.html`) | 307    | `/watch/foo.html/bar.html` (per-segment `.html` append)             |
-| `/watch/jesus.html/chinese-mandarin.html`  | 307    | `/watch/jesus.html/mandarin-china.html` (language-slug alias)       |
+| Input                                      | Status | Output                                                                                                                                      |
+| ------------------------------------------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/watch/`                                  | 308    | `/watch`                                                                                                                                    |
+| `/watch/jesus.html/`                       | 308    | `/watch/jesus.html`                                                                                                                         |
+| `/watch/jesus.html/english.html/`          | 308    | `/watch/jesus.html/english.html`                                                                                                            |
+| `/watch/jesus.HTML/english.html`           | 307    | `/watch/jesus.html/english.html` (lowercase `.html`)                                                                                        |
+| `/watch/jesus.html/english`                | 307    | `/watch/jesus.html/english.html` (append missing `.html`)                                                                                   |
+| `/watch/foo` (single-segment, no `.html`)  | 307    | LEGACY: `/watch/foo.html/foo.html` (duplicate-segment-and-add-`.html` rule). FORGE since 2026-09-19: `/watch/foo.html` — see the note above |
+| `/watch/foo/bar` (two-segment, no `.html`) | 307    | `/watch/foo.html/bar.html` (per-segment `.html` append)                                                                                     |
+| `/watch/jesus.html/chinese-mandarin.html`  | 307    | `/watch/jesus.html/mandarin-china.html` (language-slug alias)                                                                               |
 
-The legacy single→duplicate rewrite (`/watch/foo` → `/watch/foo.html/foo.html`) was aggressive: it applies even to non-content URLs like `/watch/sitemap.xml`, `/watch/feed`, `/watch/about`, `/watch/api/preview`. Make sure the rewrite project ships its `_next`, `api`, `assets`, and any other reserved subtrees BEFORE catching the wildcard rule, otherwise framework asset URLs will break.
+The legacy single→duplicate rewrite (`/watch/foo` → `/watch/foo.html/foo.html`) was aggressive: it applied even to non-content URLs like `/watch/sitemap.xml`, `/watch/feed`, `/watch/about`, `/watch/api/preview`. Make sure the rewrite project ships its `_next`, `api`, `assets`, and any other reserved subtrees BEFORE catching the wildcard rule, otherwise framework asset URLs will break.
 
 ### 2.1 Language-Slug Aliases (Observed)
 

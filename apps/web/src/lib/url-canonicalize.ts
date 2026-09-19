@@ -74,20 +74,22 @@ const HTML_SUFFIX_LOWER = HTML_SUFFIX // ".html"
 const HTML_SUFFIX_REGEX_GI = /\.html(?=\/|$)/gi
 
 /**
- * Apply six legacy-URL normalization rules in a single deterministic pass.
+ * Apply the legacy-URL normalization rules in a single deterministic pass.
  * Returns a `CanonicalizeResult` the proxy translates into a redirect
  * response or a passthrough.
  *
- * Rules (in order):
- * 1. Trailing-slash strip → 308 / long cache.
- * 2. Lowercase `.HTML` → `.html` → 307 / short.
- * 3. Legacy 4-segment-shape episode rewrite → 307 / short.
- * 4. Per-segment `.html` append (segment-count-aware); language videos keep
- *    `/videos` bare → 307 / short.
+ * Rules, in execution order. The numbers below are the inline `Rule N:`
+ * labels in the body — keep the two in step; they drifted apart once already.
+ *
+ * 1.   Trailing-slash strip → 308 / long cache.
+ * 1.5. Legacy `/videos` index redirect → `/languages` → 307 / short.
+ * 2.   Lowercase `.HTML` → `.html` → 307 / short.
+ * 3.   Legacy 4-segment-shape episode rewrite → 307 / short.
+ * 4.   Per-segment `.html` append (segment-count-aware); language videos keep
+ *      `/videos` bare → 307 / short.
  * 4.5. Strip `.html` from middle segment in 3-seg shape (episode-bare contract) → 307 / short.
- * 5. Legacy `/videos` index redirect → `/languages` → 307 / short.
- * 6. Single-segment-no-`.html` suffix append → 307 / short.
- * 7. Language-slug alias resolution → 307 / short.
+ * 5.   Single-segment-no-`.html` suffix append → 307 / short.
+ * 6.   Language-slug alias resolution → 307 / short.
  *
  * Termination guarantee: each rule is idempotent, applied at most once,
  * never re-enters the sequence. Therefore `canonicalize(canonicalize(x).pathname) === { kind: "canonical" }`.
