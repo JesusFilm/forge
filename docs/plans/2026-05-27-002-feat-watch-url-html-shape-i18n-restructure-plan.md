@@ -129,7 +129,8 @@ apps/web/src/proxy.ts (middleware)
    │     2. lowercase .HTML → 307
    │     3. legacy 4-segment episode → 307
    │     4. per-segment missing .html append → 307
-   │     5. single-segment → duplicate-+-.html → 307
+   │     5. single-segment → +.html → 307   (shipped as duplicate-+-.html;
+   │        narrowed to a single append 2026-09-19, Linear FGE-203 / W-070)
    │     6. language-slug alias resolution → 307
    │     7. cookie-driven language preference redirect → 307
    │

@@ -52,7 +52,7 @@ export type CanonicalizeInput = {
 
 const MAX_PATH_LEN = 2048
 
-// Literals that MUST NOT trigger Rule 5 (single-segment-duplicate).
+// Literals that MUST NOT trigger Rule 5 (single-segment `.html` append).
 // `languages` is a 1-segment index; `whats-new` is the 1-segment Watch
 // product-update page; `search` is a deprecated inbound redirect into the
 // global search modal. None should become a synthetic `.html` watch URL.
@@ -86,7 +86,7 @@ const HTML_SUFFIX_REGEX_GI = /\.html(?=\/|$)/gi
  *    `/videos` bare → 307 / short.
  * 4.5. Strip `.html` from middle segment in 3-seg shape (episode-bare contract) → 307 / short.
  * 5. Legacy `/videos` index redirect → `/languages` → 307 / short.
- * 6. Single-segment-no-`.html` duplicate expansion → 307 / short.
+ * 6. Single-segment-no-`.html` suffix append → 307 / short.
  * 7. Language-slug alias resolution → 307 / short.
  *
  * Termination guarantee: each rule is idempotent, applied at most once,
@@ -216,11 +216,18 @@ export function canonicalizeWatchPath(
     }
   }
 
-  // Rule 5: single-segment-no-.html → duplicate-with-.html.
-  // /foo → /foo.html/foo.html. Skip whitelist entries (`languages`,
-  // deprecated inbound `search`) which are legitimate 1-segment app routes.
-  // SLUG_PATTERN_SAFE rejects host-shaped segments (e.g. /evil.com) that the
-  // positive allowlist let through.
+  // Rule 5: single-segment-no-.html → same segment with .html.
+  // /foo → /foo.html. Skip whitelist entries (`languages`, deprecated inbound
+  // `search`) which are legitimate 1-segment app routes. SLUG_PATTERN_SAFE
+  // rejects host-shaped segments (e.g. /evil.com) that the positive allowlist
+  // let through.
+  //
+  // The legacy site answered a bare `/foo` with `/foo.html/foo.html` and this
+  // rule mirrored it verbatim. That target is a two-segment shape whose second
+  // segment is read as a language (or an episode), so it hard-404s on every
+  // real content slug while `/foo.html` serves — `/watch/jesus` redirected into
+  // a dead end. Append the suffix and stop there; the one-segment route IS the
+  // canonical destination. See Linear FGE-203 (W-070).
   {
     const segs = path.split("/").filter(Boolean)
     if (
@@ -229,7 +236,7 @@ export function canonicalizeWatchPath(
       !ONE_SEGMENT_EXEMPT.has(segs[0]) &&
       SAFE_SLUG_PATTERN.test(segs[0])
     ) {
-      path = `/${segs[0]}${HTML_SUFFIX_LOWER}/${segs[0]}${HTML_SUFFIX_LOWER}`
+      path = `/${segs[0]}${HTML_SUFFIX_LOWER}`
       onlyTrailingSlashChanged = false
     }
   }

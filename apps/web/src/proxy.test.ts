@@ -174,12 +174,12 @@ describe("proxy — Experience draft preview", () => {
 // ---------------------------------------------------------------------------
 
 describe("proxy — canonicalize integration (§5.4)", () => {
-  it("strips trailing slash on /watch root variant → 308", async () => {
+  it("404s an unknown bare slug instead of redirecting into one", async () => {
+    // /foo/ → Rule 1 (trailing slash) THEN Rule 5 (.html append) → /foo.html.
+    // `foo` is in no manifest list, so the destination is a proven 404 and the
+    // hop buys nothing — answer it here (FGE-203 / W-070).
     const response = await proxy(makeRequest("/foo/"))
-    // /foo/ → Rule 1 (trailing slash) THEN Rule 4 (.html append)
-    // Net redirect; one hop; 307 (not just trailing-slash) because Rule 4 fired.
-    expect(response.status).toBe(307)
-    expect(response.headers.get("location")).toContain("/foo.html/foo.html")
+    expectNotFoundRewrite(response)
   })
 
   it("strips trailing slash on .html-shape /jesus.html/ → 308 → /jesus.html", async () => {
@@ -220,10 +220,58 @@ describe("proxy — canonicalize integration (§5.4)", () => {
     )
   })
 
-  it("duplicate-expands single-segment bare slug → 307", async () => {
+  it("sends a known single-segment bare slug to /{slug}.html → 307", async () => {
+    // The page that actually serves, not the synthesized `/jesus.html/jesus.html`
+    // this used to emit — a two-segment shape that hard-404s (FGE-203 / W-070).
     const response = await proxy(makeRequest("/jesus"))
     expect(response.status).toBe(307)
-    expect(response.headers.get("location")).toContain("/jesus.html/jesus.html")
+    expect(new URL(response.headers.get("location") ?? "").pathname).toBe(
+      "/jesus.html",
+    )
+  })
+
+  it("collapses the legacy duplicate shape onto the one-segment page → 301", async () => {
+    // Nothing emits `/jesus.html/jesus.html` any more, so every remaining hit
+    // is an inbound link from the legacy site. It used to be a terminal 404.
+    const response = await proxy(makeRequest("/jesus.html/jesus.html"))
+    expect(response.status).toBe(301)
+    expect(new URL(response.headers.get("location") ?? "").pathname).toBe(
+      "/jesus.html",
+    )
+  })
+
+  it("keeps the legacy duplicate shape a 404 when no one-segment page exists", async () => {
+    // Falsifies the collapse above: the redirect is gated on the manifest
+    // admitting `/{slug}.html`, not on the two segments merely matching.
+    const response = await proxy(
+      makeRequest("/not-a-slug.html/not-a-slug.html"),
+    )
+    expectNotFoundRewrite(response)
+  })
+
+  it("collapses the legacy duplicate shape for an Experience-only slug → 301", async () => {
+    // `new-collection` is admitted as a one-segment Experience and carries no
+    // exact video languages, so it takes the other branch of the same gate.
+    const response = await proxy(
+      makeRequest("/new-collection.html/new-collection.html"),
+    )
+    expect(response.status).toBe(301)
+    expect(new URL(response.headers.get("location") ?? "").pathname).toBe(
+      "/new-collection.html",
+    )
+  })
+
+  it("still redirects a bare slug when the route manifest is unavailable", async () => {
+    // The early 404 is gated on PROOF. With no manifest there is none, so the
+    // hop stands and the destination decides — the pre-W-070 behavior.
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => null)
+
+    const response = await proxy(makeRequest("/jesus"))
+    expect(response.status).toBe(307)
+    expect(new URL(response.headers.get("location") ?? "").pathname).toBe(
+      "/jesus.html",
+    )
   })
 
   it("appends .html per-segment on two-segment bare → 307", async () => {
@@ -271,11 +319,17 @@ describe("proxy — canonicalize integration (§5.4)", () => {
   })
 
   it("reaches a terminal canonical in one hop (idempotence)", async () => {
-    // /jesus → /jesus.html/jesus.html (first hop). Re-feeding the output
-    // through proxy should NOT produce another redirect; the app boundary can
-    // reject the duplicated non-language audio slot as a terminal 404.
-    const second = await proxy(makeRequest("/jesus.html/jesus.html"))
-    expectNotFoundRewrite(second)
+    // /jesus → /jesus.html (first hop). Re-feeding the output through proxy
+    // must NOT produce another redirect — it renders.
+    const first = await proxy(makeRequest("/jesus"))
+    expect(first.status).toBe(307)
+    const second = await proxy(
+      makeRequest(new URL(first.headers.get("location") ?? "").pathname),
+    )
+    expect(second.status).not.toBe(301)
+    expect(second.status).not.toBe(307)
+    expect(second.status).not.toBe(308)
+    expect(rewritePath(second)).toBe("/en/en/jesus.html/english.html")
   })
 })
 
@@ -1183,9 +1237,11 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     expect(visible.status).toBe(308)
     expect(new URL(visible.headers.get("location") ?? "").pathname).toBe("/404")
 
+    // `/404` is not a public page: it normalizes to `/404.html`, which the
+    // manifest does not admit, so it answers as an ordinary not-found rather
+    // than exposing the sentinel route at its own URL.
     const publicRequest = await proxy(makeRequest("/404"))
-    expect(publicRequest.status).toBe(307)
-    expect(rewritePath(publicRequest)).toBeNull()
+    expectNotFoundRewrite(publicRequest)
   })
 
   it("internally rewrites legacy public episode aliases to current admin episode slugs", async () => {
