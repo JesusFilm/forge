@@ -59,11 +59,19 @@ identity is language-less. A Video whose slug is itself a public language home
 (for example `russian`) stays explicit-English because `/watch/russian.html`
 belongs to the language home.
 
-A truly bare `/watch/{slug}` without `.html` does **not** 301 to the canonical
+> **Superseded 2026-09-19 (Linear FGE-203 / W-070).** The bare-slug behaviour
+> recorded below is the pre-fix state, kept as the historical record of the bug.
+> A bare `/watch/{slug}` now 307s to `/watch/{slug}.html` — the canonical form —
+> and the legacy `{slug}.html/{slug}.html` shape 307s onto it as well. Do NOT use
+> "redirects to `{slug}.html/{slug}.html`" as a verification signal any more; the
+> current signal that a link omitted the required `.html` is a 307 to the same
+> slug with `.html` appended. See `apps/web/src/lib/url-canonicalize.ts` Rule 5.
+
+A truly bare `/watch/{slug}` without `.html` did **not** 301 to the canonical
 form. The watch route
-expands the single segment by **duplicating it** into `{slug}.html/{slug}.html`,
-which 404s because the second segment (`easter.html`) is not a language. Observed
-with `curl -L`:
+expanded the single segment by **duplicating it** into `{slug}.html/{slug}.html`,
+which 404'd because the second segment (`easter.html`) is not a language. Observed
+with `curl -L` before the fix:
 
 ```
 /watch/easter    → 404  (lands on /watch/easter.html/easter.html)
@@ -162,7 +170,9 @@ Verify any new watch link before shipping:
 ```bash
 curl -sS -o /dev/null -w "%{http_code} -> %{url_effective}\n" -L "<the href>"
 # expect: 200 -> <the same href>
-# a redirect to {slug}.html/{slug}.html means the required .html shape was omitted
+# ANY redirect means the href was not canonical. Since 2026-09-19 (FGE-203 /
+# W-070) a bare slug redirects to {slug}.html rather than the old
+# {slug}.html/{slug}.html dead end, so the tell is the hop, not its target.
 ```
 
 For routing or metadata changes, also run the repository Watch URL probe and

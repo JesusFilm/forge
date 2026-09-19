@@ -266,11 +266,11 @@ describe("Rule 4: per-segment .html append → 307", () => {
   })
 })
 
-describe("Rule 5: single-segment → duplicate-with-.html → 307", () => {
-  it("rewrites /foo → /foo.html/foo.html", () => {
+describe("Rule 5: single-segment → same-segment-with-.html → 307", () => {
+  it("rewrites /foo → /foo.html", () => {
     expect(canonical({ rawPathname: "/foo" })).toEqual({
       kind: "redirect",
-      pathname: "/foo.html/foo.html",
+      pathname: "/foo.html",
       status: 307,
       cache: "short",
     })
@@ -279,7 +279,20 @@ describe("Rule 5: single-segment → duplicate-with-.html → 307", () => {
   it("rewrites arbitrary single segments", () => {
     expect(canonical({ rawPathname: "/about" })).toEqual({
       kind: "redirect",
-      pathname: "/about.html/about.html",
+      pathname: "/about.html",
+      status: 307,
+      cache: "short",
+    })
+  })
+
+  it("never synthesizes the legacy duplicate shape (FGE-203 / W-070)", () => {
+    // Falsifies the two cases above against the specific wrong answer this
+    // rule used to give: `/jesus` → `/jesus.html/jesus.html`, a two-segment
+    // shape whose second segment is read as a language or an episode, so it
+    // hard-404s on every real content slug. `/jesus.html` serves.
+    expect(canonical({ rawPathname: "/jesus" })).toEqual({
+      kind: "redirect",
+      pathname: "/jesus.html",
       status: 307,
       cache: "short",
     })
@@ -311,7 +324,7 @@ describe("Rule 5: single-segment → duplicate-with-.html → 307", () => {
     // on the presence of a hyphen.
     expect(canonical({ rawPathname: "/whats-old" })).toEqual({
       kind: "redirect",
-      pathname: "/whats-old.html/whats-old.html",
+      pathname: "/whats-old.html",
       status: 307,
       cache: "short",
     })

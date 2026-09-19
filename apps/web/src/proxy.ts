@@ -28,6 +28,7 @@ import {
   RESERVED_PREFIXES,
   SAFE_SLUG_PATTERN,
   UNSAFE_PATH_PATTERN,
+  appendHtmlSuffix,
   hasHtmlSuffix,
   isOneSegmentCollectionSlug,
   isUnsafeRedirectPath,
@@ -584,6 +585,47 @@ function buildUnavailableLanguageNotFound(
   })
 }
 
+/**
+ * Admission for the one-segment `/{slug}.html` route. Extracted so the
+ * legacy duplicate-expansion collapse below can ask the same question the
+ * `/{slug}.html` request itself would be answered with — two copies is how a
+ * redirect starts pointing at a 404.
+ */
+function classifyOneSegmentAdmission(
+  manifest: WatchRouteManifest,
+  slug: string,
+): ManifestAdmissionDecision {
+  const defaultVideoAdmission = defaultLanguageVideoAdmission(manifest, slug)
+  const hasExactVideoLanguages = Object.hasOwn(
+    manifest.audioLanguageIndexesByContent ?? {},
+    slug,
+  )
+
+  // A slug can be published as both an Experience and a Video. Prefer the
+  // Video only when the manifest proves its exact language availability;
+  // otherwise preserve the one-segment Experience route.
+  if (hasExactVideoLanguages) {
+    if (defaultVideoAdmission) return defaultVideoAdmission
+    const defaultAudioLanguageSlug =
+      publicWatchAudioLanguageSlugForLocale(DEFAULT_LOCALE)
+    if (
+      defaultAudioLanguageSlug &&
+      proveWatchContentAudioLanguageByManifest(
+        manifest,
+        slug,
+        defaultAudioLanguageSlug,
+      ).kind === "known-missing"
+    ) {
+      return { kind: "known-content-language-gap" }
+    }
+    return { kind: "not-found" }
+  }
+  if (isWatchRouteAdmittedByManifest(manifest, { kind: "one-segment", slug })) {
+    return { kind: "admit" }
+  }
+  return defaultVideoAdmission ?? { kind: "not-found" }
+}
+
 async function classifyManifestAdmission(
   decision: Extract<RewriteDecision, { kind: "rewrite" }>,
   manifest: WatchRouteManifest | null,
@@ -628,36 +670,7 @@ async function classifyManifestAdmission(
   }
 
   if (decision.manifestRoute.kind === "one-segment") {
-    const { slug } = decision.manifestRoute
-    const defaultVideoAdmission = defaultLanguageVideoAdmission(manifest, slug)
-    const hasExactVideoLanguages = Object.hasOwn(
-      manifest.audioLanguageIndexesByContent ?? {},
-      slug,
-    )
-
-    // A slug can be published as both an Experience and a Video. Prefer the
-    // Video only when the manifest proves its exact language availability;
-    // otherwise preserve the one-segment Experience route.
-    if (hasExactVideoLanguages) {
-      if (defaultVideoAdmission) return defaultVideoAdmission
-      const defaultAudioLanguageSlug =
-        publicWatchAudioLanguageSlugForLocale(DEFAULT_LOCALE)
-      if (
-        defaultAudioLanguageSlug &&
-        proveWatchContentAudioLanguageByManifest(
-          manifest,
-          slug,
-          defaultAudioLanguageSlug,
-        ).kind === "known-missing"
-      ) {
-        return { kind: "known-content-language-gap" }
-      }
-      return { kind: "not-found" }
-    }
-    if (isWatchRouteAdmittedByManifest(manifest, decision.manifestRoute)) {
-      return { kind: "admit" }
-    }
-    return defaultVideoAdmission ?? { kind: "not-found" }
+    return classifyOneSegmentAdmission(manifest, decision.manifestRoute.slug)
   }
 
   if (
@@ -672,11 +685,39 @@ async function classifyManifestAdmission(
     ) {
       return { kind: "admit" }
     }
-    // Preserve the legacy duplicate-expansion terminal 404 (`/slug` becomes
-    // `/slug.html/slug.html`) instead of turning it into a second redirect.
+    // `/slug.html/slug.html` is what the legacy site synthesized for a bare
+    // `/slug`, and what canonicalize's Rule 5 mirrored until FGE-203 (W-070).
+    // Nothing emits it any more, so every remaining hit is an inbound link
+    // from that era: send it to the one-segment page instead of the terminal
+    // 404 it used to get.
+    //
+    // Gated on `classifyOneSegmentAdmission` — the SAME answer a direct
+    // `/{slug}.html` request gets, not a looser `oneSegmentSlugs` check — so
+    // the redirect cannot point at a 404. `!== "not-found"` rather than
+    // `=== "admit"` because a known-content-language-gap slug still has a
+    // destination: `/{slug}.html` renders the unavailable-language sentinel,
+    // and sending a legacy link to a hard 404 instead would make the collapse
+    // disagree with the page it claims to model.
+    //
+    // 307, not 301: the only thing separating this shape from a GENUINE
+    // episode whose child slug equals its parent's is the manifest's episode
+    // list, and a stale snapshot (every `fetchWatchRouteManifest` failure path
+    // returns the previous one) cannot prove that list is current. A wrong
+    // permanent redirect would be retained by clients after the manifest
+    // recovers; a wrong temporary one heals on the next request.
     if (
       decision.manifestRoute.parentSlug === decision.manifestRoute.childSlug
     ) {
+      const { parentSlug } = decision.manifestRoute
+      if (
+        classifyOneSegmentAdmission(manifest, parentSlug).kind !== "not-found"
+      ) {
+        return {
+          kind: "redirect",
+          pathname: `/${appendHtmlSuffix(parentSlug)}`,
+          status: 307,
+        }
+      }
       logImplicitEnglishEpisodeRejected(decision.manifestRoute, true)
       return { kind: "not-found" }
     }
@@ -837,6 +878,14 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
 
   const canonical = canonicalizeWatchPath({ rawPathname: pathname })
   if (canonical.kind === "redirect") {
+    // W-070 deliberately stops at the redirect. Answering an unknown bare slug
+    // with a 404 here instead of one hop later would need the manifest to be
+    // provably FRESH, and it is not: every failure path in
+    // `fetchWatchRouteManifest` returns the previous cached snapshot, so a
+    // non-null manifest cannot distinguish a healthy read from a warm-cache
+    // outage. Vetoing a redirect on that would 404 content published since the
+    // last good fetch — the FGE-81 shape. The hop costs one request and lets
+    // the retry land on an instance with a current snapshot.
     const url = request.nextUrl.clone()
     url.pathname = canonical.pathname
     return buildRedirect(url, canonical.status)
