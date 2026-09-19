@@ -653,12 +653,14 @@ function PhraseCaption({
   t,
   px,
   frameHeight,
+  frameWidth,
   themeWord,
 }: {
   cue: { text: string; startSec: number; endSec: number }
   t: number
   px: (n: number) => number
   frameHeight: number
+  frameWidth: number
   themeWord?: string
 }) {
   const tokens = cue.text.split(/\s+/).filter(Boolean)
@@ -676,7 +678,14 @@ function PhraseCaption({
         : unit(PHRASE_CONTENT_PX),
     }
   })
-  const { lines } = phraseLayout(sized, unit(PHRASE_MAX_WIDTH_PX))
+  // The column is the spec's 820px in portrait; in the 16:9 cut the frame is
+  // far wider than it is tall, so the same column in DESIGN units would run
+  // nearly edge to edge. Cap it at a little over half the width there.
+  const maxWidthUnits = Math.min(
+    unit(PHRASE_MAX_WIDTH_PX),
+    frameWidth > 0 ? (frameWidth * 0.56) / (px(1) || 1) : Infinity,
+  )
+  const { lines } = phraseLayout(sized, maxWidthUnits)
   let i = 0
   return (
     <div
@@ -772,6 +781,7 @@ function VideoSubtitles({
   captionStyle = "words",
   themeWord,
   frameHeight,
+  frameWidth,
 }: {
   cues: NonNullable<DevotionalCard["subtitles"]>
   style: DevotionalStyle
@@ -780,6 +790,8 @@ function VideoSubtitles({
   themeWord?: string
   /** Frame height in px, so the phrase block can sit at the spec's y. */
   frameHeight?: number
+  /** Frame width in px: the 16:9 cut keeps the column to part of the width. */
+  frameWidth?: number
   px: (n: number) => number
   frame: number
   fps: number
@@ -795,7 +807,7 @@ function VideoSubtitles({
   const t = frame / fps
   const fade = 0.18
   const fullBleedInset = px(FULL_BLEED_CAPTION_INSET_UNITS)
-  if (fullBleed && captionStyle === "phrase") {
+  if (captionStyle === "phrase") {
     // One phrase at a time: the spec clears a phrase completely before the
     // next begins, so the cue whose window we are inside is the only one on
     // screen. Its own fade in/out keeps the change from being a hard pop.
@@ -817,6 +829,7 @@ function VideoSubtitles({
           t={t}
           px={px}
           frameHeight={frameHeight ?? 0}
+          frameWidth={frameWidth ?? 0}
           {...(themeWord ? { themeWord } : {})}
         />
       </AbsoluteFill>
@@ -1164,6 +1177,8 @@ function ClipIntro({
   steps,
   pieceSec,
   clipSrc,
+  frameWidth,
+  frameHeight,
 }: {
   variant: "cover" | "bands"
   leadSec: number
@@ -1174,6 +1189,9 @@ function ClipIntro({
   steps: ReadonlyArray<string>
   pieceSec: number
   clipSrc: string | null
+  /** Frame size in px: the 16:9 cut is short, so the column centres on it. */
+  frameWidth: number
+  frameHeight: number
 }) {
   const t = frame / fps
   const L = leadSec
@@ -1311,12 +1329,16 @@ function ClipIntro({
     const watchSwell = 1 + 0.07 * lit
     const glow = lit
     const watchColor = interpolateColors(lit, [0, 1], ["#ffffff", INTRO_GOLD])
-    const size = 19
+    // The 16:9 cut is barely half as tall, so the column is set from the real
+    // frame: smaller type, shorter rails, centred on the frame itself (it used
+    // to be positioned from the portrait height and fell off the bottom).
+    const wide = frameWidth > frameHeight
+    const size = wide ? 15 : 19
     const labelH = px(size) * 1.2
-    const rail = px(46.8)
-    const gap = px(10.4)
+    const rail = px(wide ? 30 : 46.8)
+    const gap = px(wide ? 8 : 10.4)
     const stackH = steps.length * labelH + (steps.length - 1) * (rail + 2 * gap)
-    const top0 = px(693) * 0.508 - stackH / 2 // 693 units = frame height
+    const top0 = frameHeight * (wide ? 0.54 : 0.508) - stackH / 2
     return (
       <AbsoluteFill style={{ pointerEvents: "none" }}>
         <AbsoluteFill style={{ background: `rgba(0,0,0,${scrim})` }} />
@@ -3399,6 +3421,8 @@ function CardBody({
           steps={card.steps ?? ["WATCH", "REFLECT", "PRAY"]}
           pieceSec={pieceSec ?? durationInFrames / fps}
           clipSrc={card.videoFile ? staticFile(card.videoFile) : null}
+          frameWidth={vw}
+          frameHeight={vh}
         />
       )
     }
@@ -4979,7 +5003,7 @@ export function DevotionalVideo(props: DevotionalInputProps) {
           </Sequence>
         )
       })}
-      {props.stepRing && !isLandscape ? (
+      {props.stepRing ? (
         <StepRingOverlay
           cards={props.cards}
           frames={frames}
@@ -5132,6 +5156,7 @@ function CardLayer({
           {...(card.captionStyle ? { captionStyle: card.captionStyle } : {})}
           {...(card.themeWord ? { themeWord: card.themeWord } : {})}
           frameHeight={layerH}
+          frameWidth={layerW}
         />
       ) : null}
       {showMuteButton ? <MuteButton px={px} style={style} /> : null}
