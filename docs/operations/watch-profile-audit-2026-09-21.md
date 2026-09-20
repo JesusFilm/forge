@@ -69,6 +69,34 @@ passed 7,279 tests (293 skipped, one todo); lint and typecheck passed. The final
 lane/execution predicate passed the focused PostgreSQL and overview tests again.
 Automatic deployment verification is pending.
 
+## Terminal capability failures were labeled retryable
+
+Two retained facts traces at September 20 20:32:43 UTC correlate with
+`outcome=failed reason=unknown retryDisposition=retryable` logs:
+`982840724951413214` and `4959547683364919457`. Their GraphQL mutations instead
+return terminal `BAD_USER_INPUT` in 8.954 and 9.310 ms, respectively, after episode
+and serving-control reads. They are not slow transaction failures. This sample
+does not classify all 174 unknown events or prove why any capability was invalid.
+
+The local reproduction identifies a concrete classification gap:
+`RecommendationTokenInvalidError` already becomes `BAD_USER_INPUT` at the GraphQL
+boundary, but `RecommendationPlaybackService.record` only recognizes binding and
+input errors as terminal. Its operational event incorrectly reports an invalid
+capability as a retryable unknown failure. The correction includes that typed
+error in terminal `rejected / invalid_request` observations and rethrows the same
+exception. Token validation, Web responses, actual retries and attempt budgets
+are unchanged; no error details or token values enter logs.
+
+The regression fails before the correction and passes afterward. It verifies the
+same rejection reaches the caller, no submission-budget or fact transaction starts,
+and an unexpected infrastructure exception remains `failed / unknown / retryable`.
+The 42 focused playback/token/GraphQL tests pass. This removes a proven misleading
+signal; remaining unknown failures must still be investigated on their own merits.
+After both corrections, the full Admin suite passed 7,281 tests (293 skipped,
+one todo), lint and typecheck. The existing CI database entry point now passes
+two real PostgreSQL tests alongside four overview tests; no workflow-file or
+credential-scope change is required.
+
 ## Closure limits
 
 The fresh zero-pointer count clears the missing invariant evidence in the

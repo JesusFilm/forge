@@ -228,3 +228,11 @@ current pointers, zero ineligible. This supersedes only the missing fresh audit
 evidence above. Required installed alerts remain unmet because available Datadog
 access is read-only; transport classifications and browser lifecycle evidence
 remain separate. Keep this ticket in progress.
+
+Retained traces also prove two sampled `unknown / retryable` facts observations
+were fast terminal GraphQL `BAD_USER_INPUT` responses. A local typed-error
+regression reproduces the logger's missing `RecommendationTokenInvalidError`
+classification. The fix records those as `rejected / invalid_request / terminal`
+and rethrows the same error without changing token validation or Web responses.
+The 42 playback/token/GraphQL tests pass; production release verification is
+pending. This does not classify all 174 historical unknown failures.
