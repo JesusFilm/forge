@@ -21,7 +21,7 @@ arrangements. This discovery gate precedes access, usage, dogfood and portal wor
 
 1. [Programme plan](../../plans/2026-09-15-001-feat-rag-consumer-access-usage-plan.md) — approved decisions and sections A–F.
 2. `docs/roadmap/rag/CLAUDE.md` and `apps/rag/AGENTS.md` — lane and service boundaries.
-3. `.github/workflows/` — existing CI; consumer registry path/schema and owner validation are future implementation details.
+3. `.github/workflows/` — existing CI; portal-user allowlist path/schema and eligibility validation are future implementation details.
 4. `apps/auth/src/auth/config.ts` and `apps/chat/src/auth/oauth-client.ts` — reference session flows, not a deployed GitHub portal; no cross-app imports.
 5. `apps/rag/src/serving/http/auth.ts`, `app.ts` and `apps/rag/scripts/serve.ts` — authentication, request counting and composition.
 6. `apps/rag/prisma/schema.prisma`, `apps/rag/src/adapters/postgres/index.ts` and `apps/rag/docs/ops/environment-and-secrets.md` — metadata/corpus isolation and existing operations.
@@ -37,14 +37,16 @@ Deliver findings in a later, separate documentation-only PR, with repository
 path/revision evidence, confirmed decisions, unresolved blockers and an
 implementation handoff for each of these five areas:
 
-1. Record normal registration PR access for any Forge read/write engineer and
-   nonempty per-consumer GitHub `owners`. Specify narrow CI owner validation,
-   exactly what can be checked without safely available live membership access,
-   and explicit unverified results. No special reviewer or added approval gate.
-2. Confirm GitHub identity and authorization from current merged owners, trusted
-   publication/freshness, handle-to-stable-account binding, removal/session behavior
-   and management API boundary. Non-owners add their handle through normal PR
-   merge before key management. Host/client setup remains implementation work.
+1. Specify the repository portal-user allowlist, normal PR changes and narrow CI
+   validation of contributor/read-write eligibility as safely verifiable. Record
+   exact coverage and unverified results; no special reviewer or added gate.
+2. Confirm GitHub OAuth admission from the merged allowlist and independent
+   runtime consumer ownership. Specify direct creation with globally unique
+   lowercase/numeric/dash names, read-only initial owner, preview/submit and
+   immediate one-time secret display. Only existing owners may Add member from
+   the predetermined allowlist; members manage/regenerate, with last-owner
+   protection and audit. Record publication, stable identity and session removal
+   behavior. Inspect pinned J021 evidence and limits without live OAuth/deployment.
 3. Confirm the token hashing/verifier lookup and constant-time verification design,
    hash-only storage, one-time display and immediate atomic rotation. Specify
    concurrency/version checks, transaction failure, lost-response recovery and

@@ -75,8 +75,11 @@ Portal design is already captured by feat-511; implementation waits for dogfood.
 Discovery findings belong in a later, separate documentation-only PR; feat-518
 must complete before access implementation begins. This PR only schedules discovery.
 
-J014 records the accepted ownership model in the programme plan: normal
-consumer-registration PRs, merged per-consumer GitHub `owners`, narrow owner
-validation CI and GitHub portal identity. No special consumer approver or added
-human review gate. Discovery evidence stays in separate draft
-[PR #2325](https://github.com/JesusFilm/forge/pull/2325); the plan stays in #2304.
+J022 records portal admission through a repository portal-user allowlist changed
+by normal PRs, with safe contributor/read-write CI checks. GitHub OAuth accepts
+only merged allowlisted handles. Consumers are created directly in the portal;
+owner-only Add member selects from the allowlist and updates runtime membership.
+No consumer-registration PR or Git-backed per-consumer authorization remains.
+Discovery and J021 evidence stay in separate draft
+[PR #2325](https://github.com/JesusFilm/forge/pull/2325); the plan stays in
+[PR #2304](https://github.com/JesusFilm/forge/pull/2304).

@@ -28,26 +28,34 @@ internal management path; planning completion does not deliver either.
 
 ## What To Build
 
-Implement plan section F after successful dogfood. GitHub login identifies the
-engineer; the current merged per-consumer `owners` list authorizes management
-and key regeneration. A non-owner submits a normal PR adding their handle and
-waits for merge. Registration and owner edits use repository PRs, never immediate
-portal grants. No senior/specific approver or global engineer/email allowlist.
+Implement plan section F after successful dogfood. GitHub OAuth admits only
+signed-in handles in the current merged portal-user allowlist. Show all consumers;
+only their runtime owners may manage them. CI validates allowlist handles against
+Forge contributor/read-write access as safely verifiable, not consumer memberships.
 
-Confirm host/client registration, stable GitHub identity binding and trusted
-merged-revision publication before coding. Provide owner-scoped status/audit and
-Generate new key with secure verifier-only persistence, one-time display and
-immediate invalidation of the previous key. Reports remain Jaco/RAGBot-only.
+Create consumer directly: globally unique lowercase letters/numbers/dashes name
+(`^[a-z0-9-]+$`), own signed-in GitHub handle read-only as initial owner, preview,
+then submit. The backend creates the record/owner and random secret, displaying
+plaintext once with copy/password-manager warning. Never persist or re-reveal it.
+Generate new key atomically replaces the verifier and invalidates the old secret.
+
+Only an existing owner can Add member from the predetermined portal-user allowlist.
+Added members can manage/regenerate. Preserve at least one owner, audit, revocation
+and removal/session semantics. No consumer-registration or owner-change PRs.
+Reports remain Jaco/RAGBot-only; consumer membership grants no report access.
 
 ## Constraints
 
-No external consumers; future external access needs separate rate-limit design.
-Heavy use is visibility-and-conversation only. No credentials in logs, tests,
-command output, chat, tickets, PRs or telemetry. No production action is authorized
-by the documentation PR. Read package guidance before implementation.
+No external consumers or implicit quotas. No secrets in logs, tests, command
+output, chat, PRs or telemetry. Preserve hashing/HTTPS and no-store secret displays.
+No production action is authorized. J021 is an isolated prototype: allowlist,
+durable sessions, live OAuth app registration and Railway deployment remain unproven.
 
 ## Verification
 
-Run the applicable plan acceptance criteria and package checks. Record synthetic
-counts, coverage, revision and outcomes only. Portal work must also verify page
-load performance, cross-consumer denial and concurrent owner/rotation behavior. Test non-owner denial, PR-before/after-merge, removed-owner sessions, stale registry denial, last-owner protection and audit records.
+Run plan E and package checks plus page-load performance. Test allowlist
+before/after merge, stale publication and removed-user sessions; all-consumer
+visibility with cross-consumer mutation denial; invalid/duplicate/concurrent names;
+initial-owner tampering; preview/submit; owner-only Add member with allowlist
+selection; last-owner protection; concurrent removal/rotation and secret-response
+loss. Record synthetic outcomes only. Read package guidance before coding.
