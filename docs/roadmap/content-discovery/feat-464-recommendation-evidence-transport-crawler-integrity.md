@@ -221,3 +221,10 @@ inventory. The complete canonical current-pointer audit exceeded its five-second
 read-only guard and was rolled back, so this review supplies no fresh passing
 feat-459 audit. Keep both production gates open; do not infer them from aggregate
 personalized deliveries, a low HTTP failure rate or a partial database audit.
+
+The [later September 21 audit](../../operations/watch-profile-audit-2026-09-21.md)
+completed the full canonical predicate in one read-only snapshot: 167,029 live
+current pointers, zero ineligible. This supersedes only the missing fresh audit
+evidence above. Required installed alerts remain unmet because available Datadog
+access is read-only; transport classifications and browser lifecycle evidence
+remain separate. Keep this ticket in progress.
