@@ -82,6 +82,8 @@
     "@escape.tech/graphql-armor-max-depth": "2.4.2",
     "@escape.tech/graphql-armor-max-tokens": "2.5.1",
     "@forge/experience-schema": "workspace:*",
+    "@forge/studio-contracts": "workspace:*",
+    "@forge/studio-server": "workspace:*",
     "@forge/watch-url-policy": "workspace:*",
     "@hebcal/hdate": "0.21.1",
     "@mastra/ai-sdk": "1.4.2",
@@ -105,6 +107,7 @@
     "ai": "6.0.182",
     "dataloader": "2.2.3",
     "dd-trace": "5.109.0",
+    "expo-server-sdk": "^7.2.0",
     "graphql": "16.13.1",
     "graphql-yoga": "5.21.0",
     "ioredis": "5.10.1",
@@ -123,9 +126,7 @@
     "tailwindcss": "4.2.2",
     "tsx": "^4.21.0",
     "workflow": "^4.2.2",
-    "zod": "^4.3.6",
-    "@forge/studio-contracts": "workspace:*",
-    "@forge/studio-server": "workspace:*"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@smithy/node-http-handler": "4.4.14",
