@@ -205,3 +205,19 @@ does not fully reconcile with handler logs; durable receipt/eligibility and
 browser retry-amplification reconciliation, internal batch failure counts, installed
 monitors and zero ineligible current pointers remain unverified. Keep dependent
 feat-459/447 in progress and live profile ranking fail-closed.
+
+## Sustained production review — September 21
+
+The [fixed 64-hour 35-minute corpus review](../../operations/watch-recommendation-corpus-review-2026-09-21.md)
+records one playback HTTP 503 among 255,450 primary requests; the denominator
+includes rejected traffic and is not a human-only rate. Structured logs contain
+174 retryable Admin facts failures with `reason=unknown`, no exhausted-transaction
+entry in the returned failure grouping, and 749 completed reconciliation
+heartbeats. Stored capability timestamp rejections remain separate from the
+repaired server receipt-ordering race.
+
+Required recommendation alerts were not found in the visible title/service-tag
+inventory. The complete canonical current-pointer audit exceeded its five-second
+read-only guard and was rolled back, so this review supplies no fresh passing
+feat-459 audit. Keep both production gates open; do not infer them from aggregate
+personalized deliveries, a low HTTP failure rate or a partial database audit.
