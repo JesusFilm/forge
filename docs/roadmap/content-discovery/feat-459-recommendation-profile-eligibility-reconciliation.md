@@ -112,3 +112,19 @@ for snapshot populations, concurrency-fence outcomes and receipt verification.
 The fresh production invariant is now evidenced. Keep this ticket in progress
 because its feat-464 transport acceptance dependency remains open; this audit
 does not enable ranking or satisfy feat-447's separate browser lifecycle gate.
+
+## Fresh audit and Admin evidence correction — September 21
+
+The [complete read-only snapshot](../../operations/watch-profile-audit-2026-09-21.md)
+at September 20 21:52:32.710 UTC checked 167,029 live current pointers with the
+unchanged canonical lineage predicate and found zero ineligible pointers. Bounded
+cursor fetches completed the full population without relaxing the five-second
+statement guard. The transaction was rolled back and its connection closed.
+
+The same investigation proved the Admin clean-hybrid count used an impossible
+lane value and omitted 3,508 actual hybrid decisions in the fixed review window.
+The correction counts `execution_mode = 'hybrid_personalized'` and preserves
+privacy suppression, expiry and window bounds. A real PostgreSQL regression
+distinguishes current execution from historic challenger and viewing-mode rows.
+Deployment verification is pending; feat-464's remaining acceptance gates still
+prevent ticket closure.
