@@ -9,6 +9,9 @@ export type PushServiceErrorCode =
   | "duplicate_test_device"
   | "token_shaped_id"
   | "unknown_time_zone"
+  | "admission_denied"
+  | "ceiling_exceeded"
+  | "invalid_token_status"
 
 export class PushServiceError extends Error {
   constructor(
@@ -98,5 +101,36 @@ export class PushUnknownTimeZoneError extends PushServiceError {
   constructor(readonly timeZone: string) {
     super("unknown_time_zone", `The time zone ${timeZone} is not known`)
     this.name = "PushUnknownTimeZoneError"
+  }
+}
+
+/** KTD7 — the push write predicate refused the caller. */
+export class PushAdmissionError extends PushServiceError {
+  constructor(message = "A push write needs the consumer bearer") {
+    super("admission_denied", message)
+    this.name = "PushAdmissionError"
+  }
+}
+
+/** KTD7 — the fleet key passed its per-minute ceiling for this operation. */
+export class PushCeilingExceededError extends PushServiceError {
+  constructor(readonly operation: "register" | "open") {
+    super("ceiling_exceeded", `Too many push ${operation} requests this minute`)
+    this.name = "PushCeilingExceededError"
+  }
+}
+
+/**
+ * KTD4 — invalid is terminal. The provider reported this token dead, so the
+ * phone must stop asking. Retention deletes the row 90 days later, after
+ * which the same token registers again as a new row.
+ */
+export class PushInvalidTokenStatusError extends PushServiceError {
+  constructor() {
+    super(
+      "invalid_token_status",
+      "That push token is retired; do not register it again",
+    )
+    this.name = "PushInvalidTokenStatusError"
   }
 }

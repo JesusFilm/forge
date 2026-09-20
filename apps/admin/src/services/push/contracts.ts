@@ -177,3 +177,64 @@ export const PushTestDeviceAddInputSchema = z
 export type PushTestDeviceAddInput = z.input<
   typeof PushTestDeviceAddInputSchema
 >
+
+/**
+ * A BCP-47 tag by shape only. The phone reports whatever its own settings
+ * carry, and `language-resolution.ts` decides which Language it matches, so a
+ * tag admin has never seen must still store. 35 characters is the column.
+ */
+export const PushBcp47TagSchema = z
+  .string()
+  .trim()
+  .max(35)
+  .regex(
+    /^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$/,
+    "A phone locale is a BCP-47 language tag",
+  )
+
+/** The IANA name, checked for shape here and for existence by `zone-instant`. */
+export const PushTimeZoneSchema = z.string().trim().min(1).max(64)
+
+export const PushPlatformInputSchema = z.enum(["IOS", "ANDROID"])
+
+/** R1 and R29 — one grant covers announcements, and a revocation is reported. */
+export const PushPermissionStateSchema = z.enum(["granted", "denied"])
+
+export const PushAppBuildSchema = z.string().trim().min(1).max(64)
+
+export const PushRegistrationInputSchema = z
+  .object({
+    expoPushToken: ExpoPushTokenSchema,
+    platform: PushPlatformInputSchema,
+    appBuild: PushAppBuildSchema,
+    appLanguageSlug: PushLanguageSlugSchema,
+    phoneLocale: PushBcp47TagSchema,
+    timeZone: PushTimeZoneSchema,
+    permission: PushPermissionStateSchema,
+  })
+  .strict()
+export type PushRegistrationInput = z.infer<typeof PushRegistrationInputSchema>
+
+/** KTD14 — 32 random bytes, base64url encoded, which is always 43 characters. */
+export const PushDeliveryNonceSchema = z
+  .string()
+  .trim()
+  .regex(/^[A-Za-z0-9_-]{43}$/, "That is not a delivery nonce")
+
+export const PushOpenReportInputSchema = z
+  .object({ nonce: PushDeliveryNonceSchema })
+  .strict()
+export type PushOpenReportInput = z.infer<typeof PushOpenReportInputSchema>
+
+/**
+ * The recommendation viewer handle, when the install has one. Both halves
+ * travel together: the viewer token names the identity and the session token
+ * bounds the playback session, and `viewer-identity.service` verifies them.
+ */
+export const PushViewerHandleSchema = z
+  .object({
+    viewerToken: z.string().trim().min(1).max(64),
+    sessionToken: z.string().trim().min(1).max(64),
+  })
+  .strict()
+export type PushViewerHandle = z.infer<typeof PushViewerHandleSchema>

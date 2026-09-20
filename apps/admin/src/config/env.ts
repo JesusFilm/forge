@@ -287,6 +287,21 @@ export const fleetSearchCeilingEnforceEnvSchema = z
   .optional()
   .default("false")
 
+// KTD7 push write ceilings: one global counter per fleet key per operation.
+// Registration and open fire once per launch and once per tap, so 6000/min is
+// a catastrophic backstop, not a working limit. 0 disables that ceiling.
+const pushCeilingPerMinEnvSchema = () =>
+  z.coerce.number().int().min(0).optional().default(6000)
+export const pushRegistrationCeilingPerMinEnvSchema =
+  pushCeilingPerMinEnvSchema()
+export const pushOpenCeilingPerMinEnvSchema = pushCeilingPerMinEnvSchema()
+
+// One flag covers both push ceilings. "false" logs only; "true" refuses.
+export const pushCeilingEnforceEnvSchema = z
+  .enum(["true", "false"])
+  .optional()
+  .default("false")
+
 // Unit 1 scaffolding shipped a minimal env. Each later unit appends the
 // vars it owns here and in runtimeEnv. Never read process.env directly.
 export const env = createEnv({
@@ -516,6 +531,9 @@ export const env = createEnv({
     FLEET_SEARCH_GLOBAL_CEILING_PER_MIN:
       fleetSearchGlobalCeilingPerMinEnvSchema,
     FLEET_SEARCH_CEILING_ENFORCE: fleetSearchCeilingEnforceEnvSchema,
+    PUSH_REGISTRATION_CEILING_PER_MIN: pushRegistrationCeilingPerMinEnvSchema,
+    PUSH_OPEN_CEILING_PER_MIN: pushOpenCeilingPerMinEnvSchema,
+    PUSH_CEILING_ENFORCE: pushCeilingEnforceEnvSchema,
     // Admin-owned production search trace sampling. Future Mastra eval jobs
     // call the internal Admin sampling route with a dedicated bearer from
     // this CSV; it must stay disjoint from public search, workflow launch,
@@ -1001,6 +1019,13 @@ export const env = createEnv({
     FLEET_SEARCH_CEILING_ENFORCE: emptyToUndefined(
       process.env.FLEET_SEARCH_CEILING_ENFORCE,
     ),
+    PUSH_REGISTRATION_CEILING_PER_MIN: emptyToUndefined(
+      process.env.PUSH_REGISTRATION_CEILING_PER_MIN,
+    ),
+    PUSH_OPEN_CEILING_PER_MIN: emptyToUndefined(
+      process.env.PUSH_OPEN_CEILING_PER_MIN,
+    ),
+    PUSH_CEILING_ENFORCE: emptyToUndefined(process.env.PUSH_CEILING_ENFORCE),
     SEARCH_TRACE_SAMPLING_API_KEYS: emptyToUndefined(
       process.env.SEARCH_TRACE_SAMPLING_API_KEYS,
     ),

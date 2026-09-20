@@ -36,6 +36,20 @@ function formatterFor(timeZone: string): Intl.DateTimeFormat {
   return formatter
 }
 
+/**
+ * The zone name the runtime's own database carries, so two phones that name
+ * one zone differently land in one wave group. An alias such as
+ * `Asia/Calcutta` resolves to `Asia/Kolkata`; a fixed offset is refused,
+ * because a wave groups by zone and an offset has no local calendar.
+ */
+export function canonicalizePushTimeZone(timeZone: string): string {
+  const named = timeZone.trim()
+  if (!named || !/^[A-Za-z][A-Za-z0-9_+./-]*$/.test(named)) {
+    throw new PushUnknownTimeZoneError(timeZone)
+  }
+  return formatterFor(named).resolvedOptions().timeZone
+}
+
 type WallParts = Readonly<{
   year: number
   month: number

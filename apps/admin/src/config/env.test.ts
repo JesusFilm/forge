@@ -12,6 +12,9 @@ import {
   experienceAiMaxRepairAttemptsEnvSchema,
   fleetSearchCeilingEnforceEnvSchema,
   fleetSearchGlobalCeilingPerMinEnvSchema,
+  pushCeilingEnforceEnvSchema,
+  pushOpenCeilingPerMinEnvSchema,
+  pushRegistrationCeilingPerMinEnvSchema,
   resolveWatchSearchTranscriptPublicationEnabled,
   searchTraceRawRetentionDaysEnvSchema,
   resolveWatchSearchRuntimeEnv,
@@ -232,6 +235,56 @@ describe("env", () => {
     })
     it("rejects any other string", () => {
       expect(() => fleetSearchCeilingEnforceEnvSchema.parse("yes")).toThrow()
+    })
+  })
+
+  describe("push write ceilings", () => {
+    it.each([
+      ["registration", pushRegistrationCeilingPerMinEnvSchema],
+      ["open", pushOpenCeilingPerMinEnvSchema],
+    ])("defaults the %s ceiling to 6000 when unset", (_name, schema) => {
+      expect(schema.parse(undefined)).toBe(6000)
+    })
+
+    it.each([
+      ["registration", pushRegistrationCeilingPerMinEnvSchema],
+      ["open", pushOpenCeilingPerMinEnvSchema],
+    ])("reads 0 on the %s ceiling as the kill switch", (_name, schema) => {
+      expect(schema.parse("0")).toBe(0)
+    })
+
+    it.each([
+      ["registration", pushRegistrationCeilingPerMinEnvSchema],
+      ["open", pushOpenCeilingPerMinEnvSchema],
+    ])("rejects a negative %s ceiling", (_name, schema) => {
+      expect(() => schema.parse("-1")).toThrow()
+    })
+
+    it("holds the two ceilings apart", () => {
+      expect(pushRegistrationCeilingPerMinEnvSchema.parse("11")).toBe(11)
+      expect(pushOpenCeilingPerMinEnvSchema.parse("22")).toBe(22)
+    })
+
+    it("defaults enforcement to false (alert-first)", () => {
+      expect(pushCeilingEnforceEnvSchema.parse(undefined)).toBe("false")
+    })
+
+    it("accepts the two enforcement values and rejects anything else", () => {
+      expect(pushCeilingEnforceEnvSchema.parse("true")).toBe("true")
+      expect(pushCeilingEnforceEnvSchema.parse("false")).toBe("false")
+      expect(() => pushCeilingEnforceEnvSchema.parse("yes")).toThrow()
+    })
+
+    it("imports the env module with all three vars unset", async () => {
+      delete process.env.PUSH_REGISTRATION_CEILING_PER_MIN
+      delete process.env.PUSH_OPEN_CEILING_PER_MIN
+      delete process.env.PUSH_CEILING_ENFORCE
+      vi.resetModules()
+      try {
+        await expect(import("@/config/env")).resolves.toHaveProperty("env")
+      } finally {
+        vi.resetModules()
+      }
     })
   })
 

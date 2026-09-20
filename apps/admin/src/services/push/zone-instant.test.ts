@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest"
 
 import { PushInputError, PushUnknownTimeZoneError } from "./errors"
-import { resolvePushLocalDay, resolvePushZoneInstant } from "./zone-instant"
+import {
+  canonicalizePushTimeZone,
+  resolvePushLocalDay,
+  resolvePushZoneInstant,
+} from "./zone-instant"
 
 function instant(timeZone: string, sendDate: string, localHour: number) {
   return resolvePushZoneInstant({ timeZone, sendDate, localHour }).toISOString()
@@ -104,6 +108,53 @@ describe("push local day", () => {
 
   it("refuses a time zone the runtime does not know", () => {
     expect(() => resolvePushLocalDay("Middle/Earth", new Date())).toThrowError(
+      PushUnknownTimeZoneError,
+    )
+  })
+})
+
+describe("canonicalizing a phone's time zone", () => {
+  it("keeps a canonical name as it stands", () => {
+    expect(canonicalizePushTimeZone("Pacific/Auckland")).toBe(
+      "Pacific/Auckland",
+    )
+  })
+
+  it("resolves an alias to the name the zone database carries", () => {
+    expect(canonicalizePushTimeZone("US/Pacific")).toBe("America/Los_Angeles")
+    expect(canonicalizePushTimeZone("Etc/UTC")).toBe("UTC")
+  })
+
+  it("collapses two spellings of one zone into one wave group", () => {
+    // The preferred spelling moves between ICU releases, so this asserts the
+    // property that matters: both phones group together.
+    expect(canonicalizePushTimeZone("asia/kolkata")).toBe(
+      canonicalizePushTimeZone("Asia/Calcutta"),
+    )
+  })
+
+  it("accepts UTC", () => {
+    expect(canonicalizePushTimeZone("UTC")).toBe("UTC")
+  })
+
+  it("trims the value the phone sent", () => {
+    expect(canonicalizePushTimeZone("  Asia/Riyadh  ")).toBe("Asia/Riyadh")
+  })
+
+  it("refuses a zone the runtime does not know", () => {
+    expect(() => canonicalizePushTimeZone("Middle/Earth")).toThrowError(
+      PushUnknownTimeZoneError,
+    )
+  })
+
+  it("refuses an empty value", () => {
+    expect(() => canonicalizePushTimeZone("   ")).toThrowError(
+      PushUnknownTimeZoneError,
+    )
+  })
+
+  it("refuses a fixed offset, which no wave can group by", () => {
+    expect(() => canonicalizePushTimeZone("+05:30")).toThrowError(
       PushUnknownTimeZoneError,
     )
   })

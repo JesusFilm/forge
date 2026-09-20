@@ -8,8 +8,12 @@ import {
   PushCampaignCopySetSchema,
   PushDestinationInputSchema,
   PushScheduleInputSchema,
+  PushDeliveryNonceSchema,
+  PushOpenReportInputSchema,
+  PushRegistrationInputSchema,
   PushTestDeviceAddInputSchema,
   PushTestDeviceIdSchema,
+  PushViewerHandleSchema,
   isExpoPushTokenShape,
 } from "./contracts"
 
@@ -256,6 +260,146 @@ describe("push test device contracts", () => {
         testDeviceId: "cl9x8k2p0000qwertyuiopas",
         label: "   ",
       }).success,
+    ).toBe(false)
+  })
+})
+
+const TOKEN = "ExponentPushToken[abcdefghijklmnopqrstuv]"
+const HANDLE = "a".repeat(43)
+
+function registration(overrides: Record<string, unknown> = {}) {
+  return {
+    expoPushToken: TOKEN,
+    platform: "IOS",
+    appBuild: "1.2.3",
+    appLanguageSlug: "english",
+    phoneLocale: "fr-FR",
+    timeZone: "Pacific/Auckland",
+    permission: "granted",
+    ...overrides,
+  }
+}
+
+describe("registration input contract", () => {
+  it("accepts a whole registration and trims what it stores", () => {
+    expect(
+      PushRegistrationInputSchema.parse(
+        registration({ appBuild: "  1.2.3  ", phoneLocale: " fr-FR " }),
+      ),
+    ).toEqual({
+      expoPushToken: TOKEN,
+      platform: "IOS",
+      appBuild: "1.2.3",
+      appLanguageSlug: "english",
+      phoneLocale: "fr-FR",
+      timeZone: "Pacific/Auckland",
+      permission: "granted",
+    })
+  })
+
+  it("accepts the denied permission state", () => {
+    expect(
+      PushRegistrationInputSchema.parse(registration({ permission: "denied" }))
+        .permission,
+    ).toBe("denied")
+  })
+
+  it("refuses a malformed push token", () => {
+    expect(
+      PushRegistrationInputSchema.safeParse(
+        registration({ expoPushToken: "not-a-token" }),
+      ).success,
+    ).toBe(false)
+  })
+
+  it.each(["zh-Hant-TW", "en", "es-419", "en-US"])(
+    "accepts the BCP-47 tag %s by shape",
+    (tag) => {
+      expect(
+        PushRegistrationInputSchema.safeParse(
+          registration({ phoneLocale: tag }),
+        ).success,
+      ).toBe(true)
+    },
+  )
+
+  it.each(["", "en_US", "e", "en-", "a".repeat(40), "en US"])(
+    "refuses the locale %s",
+    (tag) => {
+      expect(
+        PushRegistrationInputSchema.safeParse(
+          registration({ phoneLocale: tag }),
+        ).success,
+      ).toBe(false)
+    },
+  )
+
+  it("refuses an unknown permission state", () => {
+    expect(
+      PushRegistrationInputSchema.safeParse(
+        registration({ permission: "maybe" }),
+      ).success,
+    ).toBe(false)
+  })
+
+  it("refuses an unknown platform", () => {
+    expect(
+      PushRegistrationInputSchema.safeParse(registration({ platform: "WEB" }))
+        .success,
+    ).toBe(false)
+  })
+
+  it("refuses a time zone longer than the column", () => {
+    expect(
+      PushRegistrationInputSchema.safeParse(
+        registration({ timeZone: "A".repeat(65) }),
+      ).success,
+    ).toBe(false)
+  })
+
+  it("refuses an unknown field", () => {
+    expect(
+      PushRegistrationInputSchema.safeParse(
+        registration({ viewerDigest: "a".repeat(64) }),
+      ).success,
+    ).toBe(false)
+  })
+})
+
+describe("delivery nonce contract", () => {
+  it("accepts 32 random bytes base64url encoded", () => {
+    const nonce = "A".repeat(43)
+    expect(PushDeliveryNonceSchema.parse(nonce)).toBe(nonce)
+  })
+
+  it.each([
+    ["a".repeat(42), "too short"],
+    ["a".repeat(44), "too long"],
+    [`${"a".repeat(42)}+`, "not base64url"],
+    [`${"a".repeat(42)}/`, "not base64url"],
+  ])("refuses %s (%s)", (value) => {
+    expect(PushDeliveryNonceSchema.safeParse(value).success).toBe(false)
+  })
+
+  it("carries the nonce and nothing else", () => {
+    const nonce = "b".repeat(43)
+    expect(PushOpenReportInputSchema.parse({ nonce })).toEqual({ nonce })
+  })
+})
+
+describe("viewer handle contract", () => {
+  it("accepts a pair of 43-character tokens", () => {
+    expect(
+      PushViewerHandleSchema.parse({
+        viewerToken: HANDLE,
+        sessionToken: HANDLE,
+      }),
+    ).toEqual({ viewerToken: HANDLE, sessionToken: HANDLE })
+  })
+
+  it("refuses a handle with only one half", () => {
+    expect(
+      PushViewerHandleSchema.safeParse({ viewerToken: HANDLE }).success,
     ).toBe(false)
   })
 })
