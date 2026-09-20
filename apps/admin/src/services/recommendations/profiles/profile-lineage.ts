@@ -120,9 +120,7 @@ export function profileLineageEligibleSql(
   return Prisma.sql`(
     COALESCE((
       SELECT
-        versioned_generation.projection_version = ${PROFILE_PROJECTION_VERSION}
-        AND versioned_generation.eligibility_policy_version = ${RECOMMENDATION_INTEGRITY_POLICY_VERSION}
-        AND versioned_generation.outcome_classifier_version = ${ACTIVE_WATCH_PROXY_VERSION}
+        ${profileGenerationVersionsEligibleSql(Prisma.sql`versioned_generation`)}
       FROM recommendation_profile_projection_generation versioned_generation
       WHERE versioned_generation.id = ${generationId}
     ), false)
@@ -139,24 +137,46 @@ export function profileLineageEligibleSql(
       SELECT 1
       FROM recommendation_profile_interest interest
       WHERE interest.generation_id = ${generationId}
-        AND (
-          (interest.kind = 'durable' AND NOT EXISTS (
-            SELECT 1
-            FROM recommendation_profile_projection_contribution supporting
-            WHERE supporting.generation_id = interest.generation_id
-              AND supporting.kind = 'qualified_outcome'
-              AND supporting.interest_ordinal = interest.interest_ordinal
-          ))
-          OR (interest.kind = 'session' AND NOT EXISTS (
-            SELECT 1
-            FROM recommendation_profile_projection_contribution supporting
-            WHERE supporting.generation_id = interest.generation_id
-              AND supporting.kind = 'session_selection'
-          ))
-        )
+        AND ${profileInterestUnsupportedSql()}
     )
     AND NOT EXISTS (
-    SELECT 1
+      ${profileInvalidContributionGenerationsSql(now)}
+      AND contribution.generation_id = ${generationId}
+    )
+  )`
+}
+
+function profileGenerationVersionsEligibleSql(
+  generation: Prisma.Sql,
+): Prisma.Sql {
+  return Prisma.sql`(
+    ${generation}.projection_version = ${PROFILE_PROJECTION_VERSION}
+    AND ${generation}.eligibility_policy_version = ${RECOMMENDATION_INTEGRITY_POLICY_VERSION}
+    AND ${generation}.outcome_classifier_version = ${ACTIVE_WATCH_PROXY_VERSION}
+  )`
+}
+
+function profileInterestUnsupportedSql(): Prisma.Sql {
+  return Prisma.sql`(
+    (interest.kind = 'durable' AND NOT EXISTS (
+      SELECT 1
+      FROM recommendation_profile_projection_contribution supporting
+      WHERE supporting.generation_id = interest.generation_id
+        AND supporting.kind = 'qualified_outcome'
+        AND supporting.interest_ordinal = interest.interest_ordinal
+    ))
+    OR (interest.kind = 'session' AND NOT EXISTS (
+      SELECT 1
+      FROM recommendation_profile_projection_contribution supporting
+      WHERE supporting.generation_id = interest.generation_id
+        AND supporting.kind = 'session_selection'
+    ))
+  )`
+}
+
+function profileInvalidContributionGenerationsSql(now: Date): Prisma.Sql {
+  return Prisma.sql`
+    SELECT contribution.generation_id
     FROM recommendation_profile_projection_contribution contribution
     LEFT JOIN recommendation_eligibility_decision decision
       ON decision.id = contribution.source_eligibility_decision_id
@@ -169,8 +189,28 @@ export function profileLineageEligibleSql(
     LEFT JOIN recommendation_served_item selected_item
       ON selected_item.request_id = selection.request_id
       AND selected_item.id = selection.item_id
-    WHERE contribution.generation_id = ${generationId}
-      AND ${profileContributionInvalidPredicateSql(now)}
+    WHERE ${profileContributionInvalidPredicateSql(now)}
+  `
+}
+
+/** Batch counterpart of the serving predicate; keep all four rules shared. */
+export function profileIneligibleGenerationIdsSql(now: Date): Prisma.Sql {
+  return Prisma.sql`
+    WITH contribution_counts AS MATERIALIZED (
+      SELECT generation_id, COUNT(*)::int AS contribution_count
+      FROM recommendation_profile_projection_contribution
+      GROUP BY generation_id
     )
-  )`
+    SELECT generation.id
+    FROM recommendation_profile_projection_generation generation
+    LEFT JOIN contribution_counts counted ON counted.generation_id = generation.id
+    WHERE NOT ${profileGenerationVersionsEligibleSql(Prisma.sql`generation`)}
+      OR COALESCE(counted.contribution_count, 0) <> generation.contribution_count
+    UNION
+    SELECT interest.generation_id
+    FROM recommendation_profile_interest interest
+    WHERE ${profileInterestUnsupportedSql()}
+    UNION
+    ${profileInvalidContributionGenerationsSql(now)}
+  `
 }
