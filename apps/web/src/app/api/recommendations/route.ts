@@ -1,3 +1,4 @@
+import { observeRecommendationDelivery } from "@/lib/recommendation-delivery-observability"
 import { isEligibleHumanRequest } from "@/lib/recommendation-human-admission"
 import { z } from "zod"
 import {
@@ -234,8 +235,20 @@ export async function POST(request: Request) {
     }
     const response = recommendationSerializedJson(serialized)
     attachRecommendationSession(response, session)
+    observeRecommendationDelivery({
+      endpoint: "seeded",
+      httpStatus: response.status,
+      delivery,
+      upstreamResult: semanticDelivery.result,
+    })
     return response
   } catch (error) {
-    return recommendationError(error)
+    const response = recommendationError(error)
+    observeRecommendationDelivery({
+      endpoint: "seeded",
+      httpStatus: response.status,
+      error,
+    })
+    return response
   }
 }

@@ -1,3 +1,4 @@
+import { observeRecommendationDelivery } from "@/lib/recommendation-delivery-observability"
 import { z } from "zod"
 import { getUserRecommendations } from "@/lib/user-recommendations"
 import { homepageRecommendationsEnabled } from "@/lib/homepage-recommendations-flag"
@@ -62,8 +63,20 @@ export async function POST(request: Request) {
       throw new RecommendationRouteError(502, "invalid_admin_response")
     const response = recommendationSerializedJson(serialized)
     attachRecommendationSession(response, session)
+    observeRecommendationDelivery({
+      endpoint: "for_you",
+      httpStatus: response.status,
+      delivery,
+      upstreamResult: delivery.result,
+    })
     return response
   } catch (error) {
-    return recommendationError(error)
+    const response = recommendationError(error)
+    observeRecommendationDelivery({
+      endpoint: "for_you",
+      httpStatus: response.status,
+      error,
+    })
+    return response
   }
 }

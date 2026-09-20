@@ -301,6 +301,15 @@ mutation continuing for 1,710 ms. This is still unresolved.
 
 ## Sustained corpus review — September 21
 
+Follow-up implementation adds a bounded Web delivery outcome event for both
+delivery handlers. It distinguishes HTTP failures from HTTP 200 timeout envelopes
+and records the final card count plus the upstream result before contextual
+recovery. [The event contract and verification procedure](../../operations/watch-delivery-outcome-observation-2026-09-21.md)
+document privacy boundaries, ingestion reconciliation and browser-receipt limits.
+Local validation: 54 focused tests; the full Web suite, lint and typecheck passed.
+Production deployment/ingestion verification is pending. This is an observability
+correction, not a selection latency fix; the ticket stays in progress.
+
 The read-only [64-hour 35-minute production review](../../operations/watch-recommendation-corpus-review-2026-09-21.md)
 keeps this ticket in progress. From September 18 04:15 through September 20 20:50
 UTC, primary Web request metrics contain 256 selection HTTP 200, 13 HTTP 400 and
