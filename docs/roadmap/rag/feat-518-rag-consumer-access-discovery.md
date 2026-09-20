@@ -3,7 +3,7 @@ id: "feat-518"
 title: "Confirm RAG consumer access implementation readiness"
 owner: "jaco"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-09-16"
 duration: 2
 depends_on: ["feat-511"]
@@ -33,9 +33,9 @@ arrangements. This discovery gate precedes access, usage, dogfood and portal wor
 
 ## What To Build
 
-Deliver findings in a later, separate documentation-only PR, with repository
-path/revision evidence, confirmed decisions, unresolved blockers and an
-implementation handoff for each of these five areas:
+The [discovery evidence](evidence/feat-518/consumer-access-discovery.md) records
+J022 alignment and J021 prototype evidence with implementation handoffs for
+these five areas:
 
 1. Specify the repository portal-user allowlist, normal PR changes and narrow CI
    validation of contributor/read-write eligibility as safely verifiable. Record
@@ -60,11 +60,9 @@ implementation handoff for each of these five areas:
    fixed report fields and window validation, exact count/completion accounting,
    durable aggregates and coverage/watermark failure handling against plan C/E.
 
-Carry the approved decisions and all existing acceptance criteria forward
-unchanged. Mark this ticket complete only when the separate discovery PR records
-these confirmations and resolves pre-implementation blockers; link that PR in a
-Resolution section and update the lane index. Do not complete it merely because
-PR #2304 adds this ticket.
+Documentation discovery is complete. The evidence separates accepted decisions,
+proposed technical mechanisms and unverified runtime/provider/deployment work.
+Implementation feat-512–515 remains not-started.
 
 ## Constraints
 
@@ -87,3 +85,13 @@ reciprocal dependency and lane index/count checks, then
 `pnpm exec tsx --test scripts/check-hidden-roadmap-lanes.test.ts` and
 `pnpm exec tsx scripts/check-hidden-roadmap-lanes.ts`.
 Confirm sequence: feat-511 → feat-518 → feat-512 → feat-513 → feat-514 → feat-515.
+
+## Resolution
+
+Delivered in separate [draft PR #2325](https://github.com/JesusFilm/forge/pull/2325),
+stacked on canonical planning draft #2304. J022 reconciles the portal-user
+allowlist, direct consumer creation and runtime owner-only member management.
+J021's pinned prototype/run, 16 files, seven tests, audit/smoke/clone/secret-scan
+results and cleanup are recorded with their evidence provenance and limitations.
+Allowlist integration, durable sessions, real OAuth app registration and Railway
+deployment remain unverified; no new workflow or product capability is claimed.

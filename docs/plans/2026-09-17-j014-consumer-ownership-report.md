@@ -111,3 +111,92 @@ verified-email and Google wording and classified remaining historical references
 
 Only documentation is changed. Runtime, crypto, database, portal login, live
 membership, retrieval and deployment tests are not claimed.
+
+## Discovery reconciliation and delivery receipt
+
+Parent update `2bd42b5f0` was pushed to the existing planning branch and PR #2304
+body now describes the accepted model. Discovery updates are prepared on
+`ops/j014-discovery` from `81009793a`, with the parent integrated locally; no
+GitHub PR was merged and no history rewrite is needed. Both PRs remain drafts.
+
+The discovery evidence keeps the J011 settings/primitive investigation and test
+receipts explicitly historical. Its active owner/identity handoff now matches
+the canonical plan; the obsolete approval evaluator, global account/email schema
+and portal membership grants are retired. Technical credential/role/counting
+findings remain proposals and observations at their cited revisions. feat-518
+remains complete as documentation, with 512–515 not-started.
+
+Child-specific files are this report, `docs/roadmap/rag/README.md`,
+`docs/roadmap/rag/feat-518-rag-consumer-access-discovery.md` and
+`docs/roadmap/rag/evidence/feat-518/consumer-access-discovery.md`. feat-512/515
+now inherit the parent handoffs without conflicting child overrides. Relative
+to the previous discovery head, the child also carries all 11 parent documents.
+No new ticket or dependency edge is introduced.
+
+Discovery scoped checks passed:
+
+- Changed Markdown Prettier 3.8.1, whitespace and conflict-marker sweep.
+- All 33 lane frontmatters/index rows; 21 complete, 1 in-progress,
+  11 not-started, 0 blocked. Consumer dependencies remain reciprocal.
+- 41 relative links in the four child-specific documents; 59 across all
+  12 documents changed from the previous discovery head.
+- Hidden-lane tests 2/2 and checker pass, with the same 18 pre-existing warnings.
+  The unrelated feat-461/435 mismatch was confirmed in the original parent.
+
+Full-repository Prettier 3.8.1 passed on the discovery branch; final receipt
+edits passed a targeted recheck. Remote CI is asynchronous and is not represented by
+these local results. Parent commit-lint, formatting and hidden-roadmap checks passed after push;
+broader CI was still running. Final pushed SHA,
+remote draft state and current CI observation are returned in the job result.
+
+## Remote receipt and unrelated CI failure
+
+Verified parent `2bd42b5f0df91372eaecc79b707639bfbfe3999a` and discovery
+`130450e530c8afb12ebf18587e2b001496e42a84` are pushed to their existing branches.
+Both PRs are OPEN and draft; #2325 still targets the planning branch. Its diff
+against that parent contains only the four child-specific documents above.
+J014's combined change from the old discovery head is 12 Markdown files only.
+The final receipt commit updates this report without changing policy or scope.
+
+Parent remote `format`, `commit-lint` and `hidden-roadmap-lanes` passed. The
+[admin-schema-drift job](https://github.com/JesusFilm/forge/actions/runs/35168167799/job/105034023280)
+failed in recommendation database tests: `recommendation_request_expiry_check`
+violations followed by aborted transactions (4 test files / 25 tests failed).
+This is outside the changed documentation; no admin/schema/workflow code is in
+either J014 update. No root-cause fix or runtime rerun is claimed. Product-code
+repair would exceed the explicit documentation-only brief. The broader CI run
+is therefore not green, even though the required local documentation checks and
+parent remote documentation checks passed. Discovery remote CI was queued/running
+at this observation; current status is returned separately in the final job result.
+
+No documentation delivery blocker remains. The unrelated CI failure must be
+resolved before anyone treats the programme PR as fully validated for merge;
+this job does not authorize or perform that merge.
+
+## J018 clarification receipt (September 18)
+
+Jaco confirmed the portal UX flow and credential/secret-lifecycle semantics for
+the programme. The full clarified requirements, marked as requirements versus
+implementation choices to confirm during coding, are recorded in the canonical
+plan (J018 clarifications block in section "Approved decisions and remaining
+implementation details", the confirmed-semantics sentence in section A and the
+confirmed registration flow in section F):
+[2026-09-15-001-feat-rag-consumer-access-usage-plan.md](2026-09-15-001-feat-rag-consumer-access-usage-plan.md).
+This receipt does not restate the policy text.
+
+Scope of the J018 update: the parent plan only, plus a dated pointer in this
+report and in the discovery evidence. No new ticket, dependency edge, CI claim,
+setting or infrastructure fact is introduced or verified. The RAGBot
+first-consumer dogfood, the later narrow aggregate usage reporting, the
+no-special-approver model and all prior privacy decisions remain as J014
+recorded them. Unverified deployment/infrastructure claims in the discovery
+evidence remain explicitly unverified. feat-512–515 remain not-started.
+
+Local validation on both branches: changed Markdown Prettier 3.8.1,
+`git diff --check`, RAG lane frontmatter/index/counts and reciprocal consumer
+dependencies, relative links in the changed documents, hidden-lane tests (2/2).
+The pre-existing feat-461/feat-435 reverse-edge mismatch and the pre-existing
+public-lane frontmatter warnings are unchanged and remain recorded. Parent
+commit `5f07b5139f81287afb09c8d4f658046150674e11` was pushed to
+`docs/rag-consumer-access-usage-plan` (PR #2304, still draft); the matching
+discovery commit is recorded below.

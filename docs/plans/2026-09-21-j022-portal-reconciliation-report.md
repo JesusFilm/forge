@@ -84,3 +84,49 @@ pointing at that installation), and `/tmp/j022-validate.cjs` for YAML/index/link
 dependency checks. No dependencies or lockfiles changed. No runtime, production,
 live eligibility, OAuth, database, cryptographic or page-performance verification
 is claimed by this documentation job.
+
+## Discovery integration and delivery
+
+Canonical update commit: `7b5110e33` on job-local `ops/j022-canonical`, destined
+for existing PR #2304 branch `docs/rag-consumer-access-usage-plan`. The child
+started at `133035706` and integrates that parent without a force push. Local
+branch integration is not a PR merge: both GitHub PRs remain open drafts.
+
+Child-specific changes retain the existing PR structure: discovery evidence,
+feat-518 completion, lane README counts, the historical J014 receipt, and this
+J022 report. Canonical plan and feat-511–515 are byte-identical to the parent.
+The evidence now includes J021's pinned prototype and explicit limitations;
+current authorization, schema and readiness sections all use runtime membership.
+Historical review-policy investigations remain clearly labelled, not requirements.
+
+Child validation: all changed Markdown, 33 lane frontmatters/index rows and
+exact totals (21 complete, 1 in-progress, 11 not-started), scoped global IDs,
+reciprocal consumer dependencies and 44 local links passed. Hidden-lane tests
+passed 2/2 and checker passed; whitespace and conflict-marker scans passed.
+The same unrelated reverse-edge mismatch and 18 public-lane warnings persist.
+The interrupted earlier full-format attempt had no completed result and is not
+counted as a pass. Final formatting and remote delivery receipts follow below.
+
+No runtime test suite was run for Forge because no product code changed. Prototype
+results are attributed to J021 and the inspected Actions run; local smoke,
+fresh-clone, Gitleaks and cleanup results come from the supplied J021 receipt.
+
+Final receipt: full-repository `prettier --check .` passed (exit 0, all matched
+files use Prettier style). The complete child job diff also passed 55 local-link
+checks across all 11 changed Markdown files. The report-only receipt receives a
+fresh targeted format/whitespace check.
+
+Pushed parent `7b5110e338c22a9a7babc4c5684c88f70f32e289` and discovery integration
+`4e7d3650a3ffac0611b3c099aefae39fd6d7c141` via fast-forward updates to their
+existing branches, then updated both PR descriptions. Read-back confirms #2304
+is OPEN/DRAFT targeting `main`, and #2325 is OPEN/DRAFT targeting
+`docs/rag-consumer-access-usage-plan`. No force push, PR merge or deployment.
+This report-only receipt follows the discovery integration commit.
+
+Remote CI at receipt: parent commit-lint and hidden-roadmap-lanes succeeded;
+parent format and child documentation checks were still in progress. Runs:
+[parent 35541570795](https://github.com/JesusFilm/forge/actions/runs/35541570795)
+and [child 35541573456](https://github.com/JesusFilm/forge/actions/runs/35541573456).
+These are observations at the named commits, not a claim of fully green CI or
+of checks on the subsequent receipt commit. Runtime/product verification remains
+outside this documentation job; the prototype limitations above remain open.
