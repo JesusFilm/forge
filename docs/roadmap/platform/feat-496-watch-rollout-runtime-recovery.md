@@ -298,3 +298,27 @@ Final checks on Web/Admin `c813991ad` also reproduce a `delivery_timeout` HTTP
 temporary production instrumentation. Trace
 `75f0d58d57ea0aa72f431b2f84e78f0c` has upstream timeout at 700 ms and an Admin
 mutation continuing for 1,710 ms. This is still unresolved.
+
+## Sustained corpus review — September 21
+
+The read-only [64-hour 35-minute production review](../../operations/watch-recommendation-corpus-review-2026-09-21.md)
+keeps this ticket in progress. From September 18 04:15 through September 20 20:50
+UTC, primary Web request metrics contain 256 selection HTTP 200, 13 HTTP 400 and
+one HTTP 503. The additional September 18 06:26 failure has a 406.9 ms
+capability-budget call (275.9 ms inner query span), but no corresponding server
+wait sample proves WAL sync, lock contention, pool starvation or application
+scheduling as the complete cause. No later selection 503 appears in that window;
+that does not establish root-cause recovery.
+
+Delivery has 28,931 HTTP 200 and one HTTP 503, reported separately from 36,572
+HTTP 403 admission responses. The number of HTTP 200 `delivery_timeout` envelopes
+is unknown: failed issuance can bypass persistence, and the reviewed telemetry
+has no complete envelope-outcome counter. Add bounded, privacy-safe outcome
+measurement before claiming zero semantic fallbacks.
+
+The persisted cohort has 28,678 deliveries, 257 selections, zero invalid receipt
+orderings and 3,508 hybrid personalized deliveries. Current Admin/worker run
+`2fe115f075064669df9ece2f84022acc73ae9351`; Web runs
+`964c1e3cde7ecd2ea1f3253817770527213ac11f`. These are reviewed identities, not a new
+runtime fix. Remaining field hydration errors are tracked separately in
+[feat-523](feat-523-watch-field-hydration-mismatch-attribution.md).
