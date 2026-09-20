@@ -52,7 +52,7 @@ database into Admin.
 | [feat-513](feat-513-rag-consumer-usage-visibility.md)             | —                                                             | Deliver usage reporting                                            | not-started | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                        |
 | [feat-514](feat-514-rag-consumer-dogfood-migration.md)            | —                                                             | Dogfood and seven-day migration                                    | not-started | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                        |
 | [feat-515](feat-515-rag-consumer-self-service-portal.md)          | —                                                             | Internal self-service portal                                       | not-started | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                        |
-| [feat-518](feat-518-rag-consumer-access-discovery.md)             | —                                                             | Confirm consumer access implementation readiness                   | complete    | [#2325](https://github.com/JesusFilm/forge/pull/2325)                                                        |
+| [feat-518](feat-518-rag-consumer-access-discovery.md)             | —                                                             | Confirm consumer access implementation readiness                   | complete    | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                        |
 
 The September 8 operator decision in [feat-435](feat-435-rag-proof-soak-archive.md)
 accepts the baseline for acquisition/ingestion with the three concerns tracked
@@ -73,11 +73,14 @@ Consumer programme order: feat-511 planning/design → feat-518 discovery
 Portal design is already captured by feat-511; implementation waits for dogfood.
 
 [Discovery evidence](evidence/feat-518/consumer-access-discovery.md) is delivered
-in separate draft [PR #2325](https://github.com/JesusFilm/forge/pull/2325);
-feat-518 is complete. The canonical plan in PR #2304 and the discovery now share
-J014's accepted model: normal registration PRs, nonempty per-consumer GitHub
-`owners`, GitHub login and authorization from merged ownership. CI validates
-owners/membership with explicit unverified coverage when live lookup is unsafe.
-No special consumer approver or added approval gate; the old option-B review gap
-is superseded. RAGBot registers first; Jaco/RAGBot later get aggregate-only reports.
-Implementation tickets remain not-started; dependencies are unchanged.
+in separate draft #2325; feat-518 is complete as documentation. Implementation
+feat-512–515 remains not-started; no deployment or runtime proof is implied.
+
+J022 records portal admission through a repository portal-user allowlist changed
+by normal PRs, with safe contributor/read-write CI checks. GitHub OAuth accepts
+only merged allowlisted handles. Consumers are created directly in the portal;
+owner-only Add member selects from the allowlist and updates runtime membership.
+No consumer-registration PR or Git-backed per-consumer authorization remains.
+Discovery and J021 evidence stay in separate draft
+[PR #2325](https://github.com/JesusFilm/forge/pull/2325); the plan stays in
+[PR #2304](https://github.com/JesusFilm/forge/pull/2304).

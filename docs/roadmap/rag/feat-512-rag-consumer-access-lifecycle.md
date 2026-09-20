@@ -30,45 +30,35 @@ before retiring shared-token access. Planning completion is not implementation.
 
 ## What To Build
 
-Implement plan sections A, B and D: normal consumer-registration PRs open to
-any Forge read/write engineer, nonempty per-consumer GitHub `owners`, narrow CI
-owner/membership validation with explicit unavailable-lookup coverage, and
-GitHub-identity authorization from the current merged owners list. There is no
-special consumer approver or added human review gate. Non-owners must add their
-handle by PR and wait for normal merge; portal changes cannot bypass this.
+Implement plan sections A, B and D: a repository portal-user allowlist changed
+through normal PRs, safe contributor/read-write CI validation with explicit
+unverified coverage, and trusted merged admission for GitHub OAuth. CI validates
+portal admission entries, never runtime consumer ownership. No special approver.
 
-Provide stable consumer identity, private bearer per environment, one-time display
-with secure verifier-only storage, atomic immediate replacement with no overlap,
-scoped retrieval, suspension/revocation and restricted metadata privileges.
-Audit owner changes/registry application and lifecycle actions without secrets.
-Deliver the migration runbook; cutoff waits for feat-514 and separate approval.
+Build authenticated direct consumer creation with globally unique `^[a-z0-9-]+$`
+name, server-derived initial owner, random secret returned once and verifier-only
+storage. Consumer memberships live in the database. Only existing owners may
+Add member from the current allowlist; added members can manage/regenerate.
+Retain at least one owner, transaction/version checks and restricted audit.
 
-Use the plan's proposed types and counting contract. Start date/duration are
-bookkeeping estimates, not an approved release schedule.
+Provide stable identity, explicit server-authorized source scope/environment,
+immediate atomic rotation, suspension/revocation and isolated metadata privileges.
+Supply the same backend to the pre-portal dogfood harness; the full UI remains
+feat-515 after dogfood. Deliver the migration runbook; cutoff waits for feat-514
+and separate production authorization.
 
 ## Constraints
 
-Apply the approved decisions and resolve named implementation details before activation. No IP, raw query,
-corpus, token value/selector or production evidence in records. Auth verifiers
-stay restricted. Serving never writes corpus. No cross-app imports, portal or
-implicit heavy-usage enforcement. Use the actual forge-rag-retrieve ops HTTP path in the dependent dogfood ticket. Normal PR-to-main only.
+No plaintext persistence/re-reveal, consumer-registration PRs, Git-backed consumer
+owner lists, cross-app imports, corpus writes or implicit usage enforcement.
+No raw query, IP, corpus, token/selector or production evidence in records.
+Resolve allowlist publication, account binding and safe CI coverage before activation.
 
 ## Verification
 
-Execute the plan's section E tests, including failure and rollback cases relevant
-to this deliverable. Run RAG tests, typecheck, lint, depcruise and isolated DB
-role/integration checks; contract drift checks if changed. Record actual outcomes
-without sensitive content. Complete only the implemented deliverable; shared-token
-cutoff additionally requires feat-514 and separate production cutover approval.
-
-## Owner-validation and authorization acceptance
-
-Use the plan's ownership/CI acceptance matrix: empty or malformed owners fail;
-known membership and unavailable/private-membership cases remain distinct;
-non-owner and unmerged owner-addition requests are denied; a merged addition
-allows management only after fresh trusted publication. Removal invalidates
-management for existing sessions. Prevent last-owner loss and handle reassignment.
-No review evaluator, special reviewer roster or gate on all RAG PRs is required.
-Document actual live membership verification coverage before activation; do not
-claim structural validation proves organisation membership. Exact registry path,
-publication mechanism and stable account binding remain implementation details.
+Execute plan E, including allowlist before/after merge, removed-user sessions,
+all-consumer visibility versus owner-only mutations, direct creation/name races,
+initial-owner tampering, allowed-member selection, last-owner concurrency,
+rotation/revocation, secret-response loss and audit leakage. Run RAG tests,
+typecheck, lint, depcruise and isolated DB role/integration checks; contract drift
+if changed. Complete only this deliverable, not future dogfood/cutoff or UI.

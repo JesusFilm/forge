@@ -20,7 +20,7 @@ internal management path; planning completion does not deliver either.
 
 1. [Plan](../../plans/2026-09-15-001-feat-rag-consumer-access-usage-plan.md).
 2. `apps/rag/src/serving/http/auth.ts` and `app.ts` — HTTP boundary.
-3. Programme plan section A — GitHub identity and merged consumer ownership.
+3. Programme plan section A — GitHub allowlist admission and runtime consumer ownership.
 
 ## Grep These
 
@@ -28,7 +28,7 @@ internal management path; planning completion does not deliver either.
 
 ## What To Build
 
-Execute plan sections D/E after access and reporting exist. Register RAGBot first via a normal consumer PR with nonempty GitHub `owners`
+Execute plan sections D/E after access and reporting exist. Register RAGBot first via the authenticated creation backend with an allowlisted initial owner
 and use the actual forge-rag-retrieve ops task over HTTP.
 Record task path/revision and approved source/environment before execution.
 Prove +3 then +2 request/success counts, last activity/window, second-consumer

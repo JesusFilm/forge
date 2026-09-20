@@ -13,65 +13,85 @@ tags: ["rag", "planning", "auth", "observability"]
 
 ## Problem
 
-Consumer ownership, GitHub identity, credentials, metadata isolation and aggregate
-usage need separate technical discovery. Documentation completion is not runtime
-implementation or proof of deployed settings.
+The approved consumer access programme still needs concrete technical
+arrangements before implementation. Planning completion does not establish those
+arrangements. This discovery gate precedes access, usage, dogfood and portal work.
 
 ## Entry Points — Read These First
 
-1. [Discovery evidence](evidence/feat-518/consumer-access-discovery.md) — current handoffs and labelled historical investigation.
-2. [Programme plan](../../plans/2026-09-15-001-feat-rag-consumer-access-usage-plan.md) — canonical J014 accepted policy.
-3. `.github/workflows/ci.yml` — existing CI; no consumer-owner validator implemented here.
-4. `apps/rag/src/serving/http/auth.ts`, `app.ts`, `scripts/serve.ts` — auth and counting boundary.
-5. `apps/rag/prisma/schema.prisma`, `scripts/provision-readonly.ts` — restricted metadata required alongside corpus-reader defaults.
-6. `apps/auth/src/auth/config.ts`, `apps/chat/src/auth/oauth-client.ts` — reference patterns only, not deployed GitHub portal proof.
+1. [Programme plan](../../plans/2026-09-15-001-feat-rag-consumer-access-usage-plan.md) — approved decisions and sections A–F.
+2. `docs/roadmap/rag/CLAUDE.md` and `apps/rag/AGENTS.md` — lane and service boundaries.
+3. `.github/workflows/` — existing CI; portal-user allowlist path/schema and eligibility validation are future implementation details.
+4. `apps/auth/src/auth/config.ts` and `apps/chat/src/auth/oauth-client.ts` — reference session flows, not a deployed GitHub portal; no cross-app imports.
+5. `apps/rag/src/serving/http/auth.ts`, `app.ts` and `apps/rag/scripts/serve.ts` — authentication, request counting and composition.
+6. `apps/rag/prisma/schema.prisma`, `apps/rag/src/adapters/postgres/index.ts` and `apps/rag/docs/ops/environment-and-secrets.md` — metadata/corpus isolation and existing operations.
 
 ## Grep These
 
-`owners`, `githubUserId`, `ConsumerOwner`, `TokenRegistry`, `usage:report`,
-`coverageStatus`, `completeThrough`.
+`TokenRegistry`, `lookupScope`, `SERVE_BEARER_TOKENS`, `owners`,
+`ConsumerOwner`, `usage:report`, `coverageStatus`, `completeThrough`.
 
 ## What To Build
 
-Discovery records the accepted model: any Forge read/write engineer may propose
-normal consumer-registration PRs; each entry has nonempty GitHub `owners`;
-GitHub authenticates while current merged ownership authorizes management.
-A non-owner adds their handle by PR and waits for normal merge. No special
-consumer approver or extra human review gate is required.
+The [discovery evidence](evidence/feat-518/consumer-access-discovery.md) records
+J022 alignment and J021 prototype evidence with implementation handoffs for
+these five areas:
 
-feat-512 owns narrow owner-validation CI, explicit limits when live organisation
-membership cannot safely be checked, stable account binding and trusted merged
-revision application/freshness. The earlier option-B approval-enforcement gap,
-global engineer/email registry and mutable portal membership are superseded.
+1. Specify the repository portal-user allowlist, normal PR changes and narrow CI
+   validation of contributor/read-write eligibility as safely verifiable. Record
+   exact coverage and unverified results; no special reviewer or added gate.
+2. Confirm GitHub OAuth admission from the merged allowlist and independent
+   runtime consumer ownership. Specify direct creation with globally unique
+   lowercase/numeric/dash names, read-only initial owner, preview/submit and
+   immediate one-time secret display. Only existing owners may Add member from
+   the predetermined allowlist; members manage/regenerate, with last-owner
+   protection and audit. Record publication, stable identity and session removal
+   behavior. Inspect pinned J021 evidence and limits without live OAuth/deployment.
+3. Confirm the token hashing/verifier lookup and constant-time verification design,
+   hash-only storage, one-time display and immediate atomic rotation. Specify
+   concurrency/version checks, transaction failure, lost-response recovery and
+   revocation behavior without generating or handling credentials.
+4. Confirm the database permissions/isolation design: registry/issuance writer,
+   serving auth reader, narrow usage writer and aggregate-only report reader.
+   Document the privilege matrix, metadata/corpus boundary and proposed isolated
+   role tests; no corpus write or report access to verifiers/contacts is permitted.
+5. Confirm the usage-report mechanism and bounded command/endpoint/ops-task
+   contract for Jaco and RAGBot only. Resolve authentication/authorization design,
+   fixed report fields and window validation, exact count/completion accounting,
+   durable aggregates and coverage/watermark failure handling against plan C/E.
 
-RAGBot registers first; later a narrow internal tool provides aggregate usage
-only to Jaco/RAGBot. Discovery preserves secure verifier-only credentials,
-one-time display, immediate atomic rotation, bounded audit, isolated metadata
-roles, exact counts and honest coverage gaps. Exact infrastructure, configuration
-and runtime tests remain implementation handoffs, not operational facts.
+Documentation discovery is complete. The evidence separates accepted decisions,
+proposed technical mechanisms and unverified runtime/provider/deployment work.
+Implementation feat-512–515 remains not-started.
 
 ## Constraints
 
-Documentation only: no product code, settings change, credentials, production/
-Railway, corpus/data, deployment or merge. No special consumer approval gate on
-any RAG PR. Seven-day migration/cutoff requires separate production approval;
-portal follows actual forge-rag-retrieve dogfood. No raw query/IP/token/corpus
-telemetry. External consumers/rate limits and retention implementation stay outside scope.
+This ticket's creation in [PR #2304](https://github.com/JesusFilm/forge/pull/2304)
+is scope and sequencing only, with no new discovery findings in that PR.
+Discovery is documentation only: no product code, credential handling,
+production/Railway access, deployment, merge or corpus/data changes. If evidence
+requires unavailable access or an unapproved decision, record the dependency
+without claiming confirmation. No implementation starts before this gate closes.
+Preserve seven-day migration, actual ops HTTP dogfood, portal-after-dogfood,
+Jaco/RAGBot-only reporting and visibility-and-conversation usage policy.
 
 ## Verification
 
-Review current requirements against the accepted model and preserve historical
-observations as dated evidence. Validate Markdown, frontmatter, relative links,
-reciprocal dependencies, lane index/counts and `git diff --check`. Run
+Review all five areas against the programme's approved decisions and acceptance
+criteria; distinguish confirmed repository evidence from proposed configuration.
+Verify that the later findings PR is documentation only and links this ticket.
+Run changed-Markdown Prettier checks, relative-link/frontmatter validation,
+reciprocal dependency and lane index/count checks, then
 `pnpm exec tsx --test scripts/check-hidden-roadmap-lanes.test.ts` and
 `pnpm exec tsx scripts/check-hidden-roadmap-lanes.ts`.
-Sequence remains feat-511 → feat-518 → feat-512 → feat-513 → feat-514 → feat-515.
+Confirm sequence: feat-511 → feat-518 → feat-512 → feat-513 → feat-514 → feat-515.
 
 ## Resolution
 
 Delivered in separate [draft PR #2325](https://github.com/JesusFilm/forge/pull/2325),
-branch `docs/rag-consumer-access-discovery`, stacked on planning PR #2304.
-J014 reconciles both drafts with the canonical accepted ownership model. The
-old review-policy gap is retired; live membership capability and technical
-implementation proofs are explicitly unverified. No new checks/settings are
-claimed active. Documentation discovery is complete; feat-512–515 remain not-started.
+stacked on canonical planning draft #2304. J022 reconciles the portal-user
+allowlist, direct consumer creation and runtime owner-only member management.
+J021's pinned prototype/run, 16 files, seven tests, audit/smoke/clone/secret-scan
+results and cleanup are recorded with their evidence provenance and limitations.
+Allowlist integration, durable sessions, real OAuth app registration and Railway
+deployment remain unverified; no new workflow or product capability is claimed.

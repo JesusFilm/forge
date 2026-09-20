@@ -13,40 +13,66 @@ problem_type: "implementation_readiness"
 
 Discovery is complete as documentation. The canonical
 [programme plan](../../../../plans/2026-09-15-001-feat-rag-consumer-access-usage-plan.md)
-now records Jaco's accepted J014 ownership model. The former special non-author
-review policy and option-B enforcement gap are **superseded**, not deferred
-implementation requirements. No consumer-specific approver or approval gate is
-required. Normal repository merge rules apply. No settings were changed.
+records J022's clarified portal-user allowlist and runtime membership model.
+J014's consumer-registration PRs and Git-backed consumer owner lists are
+superseded. J018's direct-versus-staged creation and secret-timing choices are
+resolved: direct creation and immediate one-time display after successful submit.
+No product code, repository settings or live authorization changed here.
 
-### Accepted J014 model (September 17)
+### Accepted J022 model (September 21)
 
-- Any engineer with Forge read/write access may propose/register a consumer via
-  the normal consumer-registration PR process, without a special approver.
-- Each consumer has nonempty GitHub-handle `owners`. GitHub login establishes
-  identity; the current merged list authorizes that consumer's management and
-  key regeneration. A non-owner adds their handle by PR and waits for normal
-  merge. No mutable portal membership grant or global engineer/email allowlist.
-- Consumer-specific CI validates nonempty owners and valid Forge/GitHub
-  organisation membership to the extent safely verifiable. Unavailable live
-  checks are labelled unverified with precise coverage, never replaced by a
-  special human approval or a gate on all RAG PRs.
-- Keys never enter git/PRs; generate/display once, store a secure verifier only,
-  atomically invalidate the prior key and record bounded restricted audit events.
-- Register RAGBot as an ordinary consumer first; later expose aggregate usage
-  to Jaco and RAGBot through a separate narrow read-only internal tool. No query
-  results, raw queries, IPs, tokens/verifiers or corpus telemetry.
+- Normal PRs maintain a repository portal-user allowlist. CI validates handles
+  against Forge contributor/read-write access as safely verifiable. GitHub OAuth
+  admits only signed-in handles present in the current merged allowlist.
+- Admitted users see all consumers. Create consumer takes a globally unique
+  name matching `^[a-z0-9-]+$`, shows the signed-in GitHub handle read-only as
+  initial owner, previews and submits. The backend creates the record/owner and
+  generates a random secret, displayed once with copy/password-manager warning.
+- Only an existing owner can Add member from the predetermined portal-user
+  allowlist. Added members can manage that consumer and regenerate its token.
+  Membership is runtime state, with at least one owner, audit and revocation.
+- Plaintext is never stored or re-revealed. One-way hashing and HTTPS protect
+  credentials; rotation atomically replaces the verifier and invalidates the old
+  secret. Lost responses require rotation. No secret enters git, logs or telemetry.
+- RAGBot is the first ordinary retrieval consumer; its later separate narrow
+  internal tool exposes aggregate usage only to Jaco/RAGBot, with no raw query,
+  IP, token/verifier or corpus telemetry. Full portal delivery follows dogfood.
 
-Parent draft [PR #2304](https://github.com/JesusFilm/forge/pull/2304), branch
-`docs/rag-consumer-access-usage-plan`, owns policy and planning. Discovery draft
-[PR #2325](https://github.com/JesusFilm/forge/pull/2325), branch
-`docs/rag-consumer-access-discovery`, owns this evidence and feat-518 completion.
-J014 updates both in place, bringing parent documentation into the child without
-moving discovery into the parent. After the parent lands, rebase the remaining
-discovery changes onto main and retarget the draft. The historical evidence below
-was inspected at parent `e5b22f7235385ee67d0e9aeda54916b8394408e3`; J014 started
-from discovery `81009793a3caedbd154f9a206c5ca33fd805b1b3`. Read the
-[J014 report](../../../../plans/2026-09-17-j014-consumer-ownership-report.md) for
-current validation and delivery, not the historical receipts at the end.
+Parent draft [PR #2304](https://github.com/JesusFilm/forge/pull/2304) owns the
+canonical plan. This stacked draft
+[PR #2325](https://github.com/JesusFilm/forge/pull/2325) owns discovery evidence
+and feat-518 completion. J022 integrates parent documentation without rewriting
+remote history or moving discovery into the parent. Keep both open drafts;
+neither is merged. The
+[J022 report](../../../../plans/2026-09-21-j022-portal-reconciliation-report.md)
+records this reconciliation; J011/J014/J018 receipts below are historical only.
+
+### J021 isolated prototype evidence
+
+Private repository:
+[forge-rag-github-auth-prototype](https://github.com/jaco-brink/forge-rag-github-auth-prototype).
+Pinned commit:
+[`1f3f908191cebd54b2fcff93a5b7a23b019c56ce`](https://github.com/jaco-brink/forge-rag-github-auth-prototype/commit/1f3f908191cebd54b2fcff93a5b7a23b019c56ce).
+The recursive tree has **16 tracked files**. GitHub Actions
+[run 35303532630](https://github.com/jaco-brink/forge-rag-github-auth-prototype/actions/runs/35303532630)
+passed formatting, strict TypeScript, **7 tests** and build. J022 inspected the
+pinned README, tree, strict compiler configuration, run conclusion and check log;
+CI also reports zero vulnerabilities. J021's completion evidence records
+**npm audit: 0 vulnerabilities**, **HTTP smoke passed**, **fresh clone matched**,
+**Gitleaks: 3 commits scanned, 0 secrets**, and **local prototype removed**.
+Those local checks were not repeated by J022; no local prototype was recreated.
+
+The README describes state validation (missing/mismatched/expired/replayed state),
+session-ID regeneration after callback, normalized public GitHub identity,
+provider-token disposal and sign-out. Automated tests mock the GitHub network;
+this is OAuth/session skeleton evidence, not a live provider or consumer test.
+
+Explicit limitations: **any GitHub account is accepted until allowlist
+integration**; sessions are **in-memory**; GitHub network responses are **mocked**;
+**OAuth app registration and Railway deployment remain unverified**. No RAG
+integration, persistent membership, production session store, live browser login
+or consumer secret lifecycle is proven. The prototype is a reference for future
+feat-512/515 work and does not complete those tickets or authorize deployment.
 
 ### Earlier repository inspection provenance (not reverified deployment facts)
 
@@ -75,69 +101,47 @@ limits. Portal design is now, delivery after dogfood. The seven-day registration
 and shared-token cutoff remain a later separately approved production action.
 RAGBot dogfood must use the real `forge-rag-retrieve` HTTP path.
 
-## 1. Consumer registry and narrow owner-validation CI
+## 1. Repository portal-user allowlist and narrow CI
 
-The programme plan section A is authoritative. Proposed registry entries contain
-`consumerId`, bounded label/purpose, environment/source grants and nonempty
-`owners: string[]` of GitHub handles. Exact registry path/schema is a feat-512
-implementation choice. The earlier `config/rag-consumer-engineers.json` and
-schema proposal are retired; do not create a second global engineer/email list.
-No registry file or validator is implemented by this documentation PR.
+Plan section A is authoritative. The repository stores the predetermined
+portal-user handles, maintained through normal PRs; it does not store consumers
+or their owners. Exact allowlist path/schema is a feat-512 implementation detail.
+No file, workflow or validator is implemented by this documentation PR.
 
-Normal registration/owner-change PRs use existing repository merge rules. Any
-Forge read/write engineer may propose a registration; an engineer absent from
-that consumer's merged owners has no management rights until their owner-addition
-PR merges. Reviewing/authoring a PR, organisation membership or owning another
-consumer does not grant rights. Source grants remain explicit per-consumer
-registration metadata, not a union of mutable engineer entitlements.
+CI checks the entire candidate allowlist for schema, handle syntax and
+case-insensitive duplicates. Safely authorized read-only evidence checks Forge
+contributor/read-write eligibility. Report which predicate was established:
+account existence, contribution history, organisation membership and repository
+permission are different facts. Public-membership absence does not establish
+non-membership. No special reviewer, review evaluator or extra approval gate.
 
-CI checks every consumer has at least one owner, well-formed GitHub handles and
-no case-insensitive duplicates. Validate owner changes, including last-owner
-removal, against the whole candidate registry. Consumer-specific CI has no
-review-state evaluator, senior/team/CODEOWNER roster or special approval gate.
-Existing unrelated CI and normal repository rules are unaffected.
+Record checked SHA, check coverage, result and reason. Missing permission,
+private visibility, API failure, skipped or rate-limited lookup means **unverified**,
+not a verified pass or a confirmed ineligible handle. Known ineligible entries
+fail. Before activation, feat-512 documents actual lookup coverage and fails
+closed on unresolved eligibility; do not silently provision credentials or add a
+human approval gate. J022 performs no live contributor/access lookup.
 
-### Exact verification coverage and limitations
+Publish only the trusted merged allowlist with exact SHA and freshness. Unmerged
+additions grant nothing. OAuth admission and every existing-session action check
+current admission; removal denies the next action, stale/unavailable state fails
+closed. Resolve handles to stable GitHub account IDs; rename/reassignment must
+not silently transfer rights. Deliberate binding repairs use the allowlist PR
+path. Audit allowlist publication with its PR/SHA and bounded application outcome.
 
-A future safely authorized read-only lookup can establish organisation membership.
-GitHub's [membership endpoint](https://docs.github.com/en/rest/orgs/members#check-organization-membership-for-a-user)
-documents the required context and Members-read permission for fine-grained access.
-[Public membership](https://docs.github.com/en/rest/orgs/members#check-public-organization-membership-for-a-user)
-is incomplete: a miss cannot establish non-membership. Profile resolution proves
-account existence, not organisation membership or Forge repository write access.
+Runtime `ConsumerOwner` membership is independent of allowlist CI. Only an
+existing owner can Add member, choosing from the current predetermined allowlist.
+Added members have equivalent management/regeneration rights. Enforce minimum
+one owner in backend transactions, including concurrent removals. Admission and
+membership must both hold for management; all admitted users may view the safe
+consumer directory, but not owner-restricted audit or aggregate reports.
 
-J014 performs no live membership lookup, permission provisioning or credential
-inspection. Without a safe reader, deterministic CI proves only registry shape,
-nonempty owners and valid handle syntax; account existence is an additional
-check only when safely available. Label membership **unverified**, with reason
-and checked SHA, on missing permissions, inaccessible private membership,
-rate-limit, API/network failure or skipped checks. Do not mark these verified or
-confirmed non-member. Confirmed non-members fail the membership check.
-
-feat-512 must record actual lookup capability, check coverage and treatment of
-unverified membership before activation. This is an implementation handoff, not
-another product/reviewer decision. Do not silently request elevated credentials,
-introduce an approver, or use a private-membership false negative as exclusion.
-No live member set, CI result name or enforcement configuration is asserted here.
-
-### Ownership publication and future acceptance
-
-The management store may project the merged registry with its exact SHA and
-resolved stable GitHub account IDs. It must not independently grant membership.
-Prove trustworthy merged-source ingestion and freshness on every action: unmerged
-owner additions deny; merged additions allow only after trusted application;
-removed owners lose management even with existing sessions. Unknown/stale revision
-fails closed. Handle rename/reassignment must not silently transfer ownership;
-resolve bindings deliberately through the normal PR path and restricted audit.
-
-Test at least one owner, malformed/duplicate handles, known member/non-member,
-private membership and unavailable lookup, unrelated PRs with no added review
-wait, non-owner/cross-consumer denial, PR-before/after-merge, stale publication,
-last-owner protection and concurrent owner removal/rotation. Audit registration,
-owner changes, revision application, issuance/rotation, suspension/revocation,
-recovery and denied actions: actor/target account, consumer/environment, bounded
-action/outcome, time, merged PR/SHA and internal version. No secrets, raw query,
-IP, corpus or arbitrary payload in audit; no identity/contact in usage rows.
+Acceptance: malformed/duplicate handles, known eligibility/ineligibility,
+private visibility and unavailable lookup; before/after allowlist merge;
+stale-publication denial and removed-user sessions; runtime Add member by an
+owner only, non-allowlisted target denial, cross-consumer denial, last-owner
+protection and concurrent member removal/rotation. CI never validates runtime
+consumer owner lists. Keep audit separate from usage and free of sensitive data.
 
 ### Retired approval-enforcement investigation
 
@@ -145,7 +149,7 @@ The following J011 findings explain why the earlier option-B record existed.
 They are historical snapshots, not current repository settings or a request to
 implement the old gate. J014 did not reread/change repository settings. The old
 reviewer predicate, approval matrix, global registry schema and recovery bypass
-are superseded by the programme's merged per-consumer ownership model; Git history
+are historical; the current programme uses merged portal admission and runtime ownership; Git history
 at `81009793a` preserves their full historical text.
 
 ### Historical review-settings evidence (J011; not a J014 requirement)
@@ -200,49 +204,49 @@ explains skipped required workflows and path-diff limits. Review-state events ar
 separate [workflow triggers](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request_review).
 These sources establish available primitives, not configured Forge enforcement.
 
-## 2. GitHub portal identity and merged consumer ownership
+## 2. GitHub portal admission and runtime consumer ownership
 
-### Repository evidence and proposed implementation boundary
+Existing Forge Auth/Chat identity flows are reference patterns only; no cross-app
+imports. J021 supplies the isolated OAuth/session evidence above, not live portal
+readiness. Proposed delivery is a RAG-owned GitHub OAuth flow and same-origin
+management backend separate from public retrieval `/v1`. Host/client/callback
+registration, durable sessions and publication design remain implementation work.
+No email collection or `user:email` scope is required. Keep provider codes/tokens
+out of logs, browser persistence and telemetry.
 
-The previously inspected `apps/auth/src/auth/config.ts` conditionally wired
-Google/Facebook/Apple, with no GitHub provider or RAG portal client in
-`apps/auth/src/domain/apps.ts`. Chat's state/PKCE/session patterns are references,
-not a GitHub portal or authorization proof; no cross-app imports. Its eight-hour
-identity snapshot must not become a consumer-authorization snapshot. These are
-repository observations, not claims of current deployed identity configuration.
+Validate OAuth state, redirect binding and provider response; derive stable
+GitHub ID and signed-in handle from the provider, never form input. Require the
+handle in the current merged portal-user allowlist. Use revocable server-side
+sessions, HttpOnly/Secure/host-only cookies, CSRF/origin checks, no-store issuance
+responses and no analytics/replay on secret displays. Session-duration/fresh-login
+proposals require implementation proof, not an inherited Chat identity snapshot.
 
-Accepted login is GitHub identity. Proposed implementation is a RAG-owned,
-server-side GitHub OAuth flow and same-origin management backend separate from
-public retrieval `/v1`. Host, per-environment client/callback registration, scopes,
-provisioning and publication design remain feat-515 implementation details.
-Keep provider tokens/codes out of logs, browser persistence and telemetry.
-No OAuth flow, registration or credential is exercised here.
+All admitted users see safe metadata for all consumers. Create consumer accepts
+a globally unique lowercase/numbers/dashes name (`^[a-z0-9-]+$`), displays the
+signed-in handle read-only as initial owner, and previews before Add. Server-side
+validation and a database uniqueness constraint handle duplicates/concurrency.
+Add directly creates consumer/owner/credential state transactionally; return the
+random secret once after commit with copy action/password-manager warning. No
+registration PR, staged consumer or post-merge issuance choice remains.
 
-Validate state, redirect binding and provider response using the supported flow;
-resolve the authenticated GitHub account to its stable numeric ID and handle.
-The provider proves identity; authorization comes only from that consumer's
-current merged `owners`. Do not trust a submitted handle, profile/commit email,
-organisation membership, PR review or repository access as an ownership grant.
-The former same-entry verified-email allowlist is superseded. Email collection
-or `user:email` scope is not a requirement of the accepted model.
+Source grants and environment come from explicit bounded server-side policy, not
+arbitrary submitted entitlements. Only existing target-consumer owners may Add
+member from the current allowlist; added members may manage/regenerate. Recheck
+session/admission, membership/version, target eligibility and lifecycle after
+transaction locks. Other-consumer ownership grants nothing. Last-owner deletion
+fails, even concurrently. Owner removal denies the next management action;
+allowlist removal denies portal access even when an audit-retained membership
+exists. Neither removal retracts a copied token: coordinate rotation/revocation.
 
-Use revocable server-side sessions, HttpOnly/Secure/host-only cookies, CSRF/origin
-checks, no-store responses and no analytics/replay on secret displays. A one-hour
-maximum and fresh provider validation before key issuance are proposals to prove,
-not deployed guarantees. Recheck session, current merged revision, owner binding,
-consumer/environment and lifecycle state inside the mutation transaction after
-locks. Provider logout is distinct from local-session revocation; neither a long
-session nor provider-login success bypasses fresh consumer authorization.
+If no owner is currently eligible, management fails closed while preserving the
+last owner record. Restore an existing owner's eligibility through normal
+allowlist PR before authenticated transfer; Jaco has no implicit bypass. Audit
+runtime membership changes with actor/target and version, not a fictional consumer
+PR/SHA. Audit allowlist publication separately with its actual merged PR/SHA.
 
-The pre-portal dogfood issuance surface must use this same ownership check; no
-SQL or operator bypass. Registration and owner additions/removals go through
-normal PR merge, not immediate portal edits. A `ConsumerOwner` table, if used,
-is a projection keyed by consumer and authenticated account, never an independent
-grant. Prevent last-owner removal; unavailable valid ownership suspends management
-until a normal merged repair. Jaco may coordinate recovery, but he also needs
-his handle in the merged owners list to manage a consumer; no special recovery
-identity overrides the list. Preserve usage history and coordinate rotation if
-removed owners knew the old key; removal cannot retract a copied secret.
+feat-512's pre-portal dogfood harness uses the same authenticated creation and
+management backend. It is not a SQL/operator bypass. Full portal UX remains
+feat-515 after actual RAGBot HTTP dogfood; no dependency changes are needed.
 
 ## 3. Credentials, lookup, rotation and environment binding
 
@@ -287,9 +291,9 @@ body limit and public health semantics remain unchanged.
 
 Rotation transaction (initial issue uses expected version 0):
 
-1. Authorize GitHub session/current merged owner/source grants and expected credential version;
+1. Authorize GitHub session/current allowlist admission/runtime ownership/source grants and expected credential version;
    lock consumer then environment in deterministic order. Recheck authorization
-   after locks, including current merged registry version and current consumer state.
+   after locks, including current merged allowlist revision, membership version and consumer state.
 2. Generate replacement in process memory, compute verifier, revoke old active
    row, insert replacement, increment environment credential version, append
    bounded audit and commit together. A partial unique index allows at most one
@@ -342,9 +346,9 @@ with precise new expected objects, not a blanket ignore of metadata drift.
 
 | Schema/model                                                | Keys and invariants                                                                                                                                                                                                            |
 | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `rag_access.RegistryRevision`, `EngineerIdentity`           | Current merged SHA/version and application state; stable GitHub numeric ID/handle binding; unique `(provider, githubUserId)`. No global email allowlist. Restricted identity metadata only.                                    |
-| `rag_access.Consumer`, `ConsumerEnvironment`                | Stable UUID, approved bounded label, projected merged owners, bounded purpose, state/times; environment PK `(consumerId, environment)`, approved source set, credential version; terminal consumer revoke.                     |
-| `rag_access.ConsumerOwner`, `PortalSession`                 | Projection of merged consumer/account ownership only; revocable session digest and expiry; last-owner and current-revision rules under transaction locks.                                                                      |
+| `rag_access.PortalAllowlistRevision`, `EngineerIdentity`    | Current merged portal allowlist SHA/version and application state; stable GitHub numeric ID/handle binding; unique `(provider, githubUserId)`. No global email allowlist. Restricted identity metadata only.                   |
+| `rag_access.Consumer`, `ConsumerEnvironment`                | Stable UUID, globally unique lowercase/numeric/dash name, bounded purpose, state/times; environment PK `(consumerId, environment)`, approved source set, credential version; terminal consumer revoke.                         |
+| `rag_access.ConsumerOwner`, `PortalSession`                 | Authoritative runtime consumer/account ownership; revocable session digest and expiry; last-owner, current allowlist and membership-version rules under transaction locks.                                                     |
 | `rag_access.Credential`, `LifecycleAudit`                   | Random internal row UUID, verifier/environment uniqueness, single active slot, issue/expiry/revoke/replacement/version; bounded actions/actors, append-only audit. Row ID never travels in token/report.                       |
 | `rag_access.ReportPrincipal`                                | Separate Jaco human binding and RAGBot machine capability; report-only purpose/environment/status/expiry, separate verifier namespace from retrieval keys. No owner auto-enrollment.                                           |
 | `rag_usage.ConsumerDimension`, `UsageMinute`                | Only stable consumer ID, approved label history and environment/existence times; aggregates keyed by consumer/environment/UTC minute, 64-bit requests/successes, latest admission time. No contact, credential or corpus join. |
@@ -497,8 +501,7 @@ outage returns generic service unavailable, not rows fabricated from defaults.
 
 Human reports require Jaco's authenticated GitHub binding (`githubUserId` =
 `219753371`, historically resolved by J011) and a separately authorized report
-session; a display name or consumer ownership alone is insufficient. No global
-engineer/email allowlist is required. First register **RAGBot as an ordinary retrieval
+session; a display name or consumer ownership alone is insufficient. The portal-user allowlist grants no aggregate-report privilege. First register **RAGBot as an ordinary retrieval
 consumer**, then give it a separate narrow internal read-only usage tool. This
 ordering and aggregate-only access follow the accepted consumer-first model. RAGBot gets one dedicated report-only opaque capability, separately
 hashed/domain-bound to `rag-usage-report` and the receiver environment, with
@@ -512,7 +515,7 @@ credential. This endpoint/capability is a concrete transport proposal for the
 approved narrow tool, not a new approval prerequisite. feat-513 must document
 the actual tool transport, registered RAGBot consumer ID, runtime binding and
 named provisioning/rotation owner before activation; the RAG access/usage
-implementer owns recording that handoff, with recovery coordinated by Jaco through the normal ownership PR path.
+implementer owns recording that handoff, with recovery coordinated by Jaco through authenticated runtime ownership management.
 No identity is inferred from an agent process name or a caller-supplied header.
 Provisioning remains a later authorized operation.
 
@@ -530,18 +533,18 @@ synthetic grace/cutoff/rollback. No execution of that proof occurred here.
 
 ## Readiness gates and handoff
 
-| Gate                          | Current finding / remaining handoff                                                                                                                                                                                            | Owner and timing                                                                                                     |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| G1 — accepted owner model     | Normal registration PR; nonempty per-consumer GitHub owners; no special approver. CI validates owners/membership with explicit unverified coverage when safe live lookup is unavailable. Old option-B approval gap is retired. | feat-512; exact registry, safe lookup and merged-revision publication before activation.                             |
-| G2 — accepted identity        | GitHub login; current merged owners authorize management. No global email allowlist or in-portal ownership grant.                                                                                                              | feat-512/515; stable account binding, per-environment host/client and session/freshness tests; portal after dogfood. |
-| G3 — accepted reporting       | RAGBot registers first; Jaco/RAGBot aggregate-only internal tool with separate narrow capability, no query results or DB access.                                                                                               | feat-513 tool/runtime binding and provisioning handoff; feat-514 actual consumer-first HTTP proof.                   |
-| G4 — implementation proofs    | Owner publication/removal races, one-time credential rotation, restricted roles, completion counts, crash/gap handling and latency budget.                                                                                     | feat-512/513/515; no runtime tests claimed here.                                                                     |
-| G5 — actual dogfood           | Actual forge-rag-retrieve task path/revision, RAGBot ID, source/environment and HTTP evidence. Task definition remains absent from the inspected checkout.                                                                     | feat-514, later authorized environment.                                                                              |
-| G6 — production authorization | Communications owner, seven-day grace/cutoff, complete dogfood/report coverage and rollback approval.                                                                                                                          | Separately authorized production action, never implied by these docs.                                                |
+| Gate                          | Current finding / remaining handoff                                                                                                                                               | Owner and timing                                                                                                              |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| G1 — portal admission         | Repository portal-user allowlist through normal PRs; CI validates contributor/read-write eligibility as safely verifiable with explicit unverified coverage.                      | feat-512; path/schema, safe lookup and trusted merged publication before activation.                                          |
+| G2 — runtime ownership        | GitHub OAuth admits merged allowlisted handles; all consumers visible, direct unique-name creation, one-time secret; owner-only Add member from allowlist and runtime management. | feat-512/515; stable identity, durable sessions, registration and authorization/concurrency tests; full portal after dogfood. |
+| G3 — accepted reporting       | RAGBot registers first; Jaco/RAGBot aggregate-only internal tool with separate narrow capability, no query results or DB access.                                                  | feat-513 tool/runtime binding and provisioning handoff; feat-514 actual consumer-first HTTP proof.                            |
+| G4 — implementation proofs    | Allowlist publication/runtime membership removal races, one-time credential rotation, restricted roles, completion counts, crash/gap handling and latency budget.                 | feat-512/513/515; no runtime tests claimed here.                                                                              |
+| G5 — actual dogfood           | Actual forge-rag-retrieve task path/revision, RAGBot ID, source/environment and HTTP evidence. Task definition remains absent from the inspected checkout.                        | feat-514, later authorized environment.                                                                                       |
+| G6 — production authorization | Communications owner, seven-day grace/cutoff, complete dogfood/report coverage and rollback approval.                                                                             | Separately authorized production action, never implied by these docs.                                                         |
 
 feat-518 is **complete as documentation**; feat-512–515 remain not-started. The
-J014 accepted model removes the old approval-enforcement gap rather than claiming
-it implemented. No new feature ID/dependency is needed. The plan and discovery
+J022 model supersedes per-consumer PR authorization without claiming a deployed
+allowlist, membership backend or portal. No new feature ID/dependency is needed. The plan and discovery
 now agree; shared `/v1` contracts, product code and operational runbooks remain
 unchanged. Portal, metadata schemas/roles, membership lookup, deployment and
 embedding infrastructure are not proven operational by this report.
@@ -556,23 +559,14 @@ lost usage increments. The pending completion crash window must produce incomple
 coverage, not a fabricated exact count. These RAG-specific lessons are preserved
 here rather than rewriting unrelated auth systems or operational runbooks.
 
-### J018 clarification note (September 18)
+### Superseded J018 clarification
 
-Jaco confirmed the portal UX flow (GitHub sign-in, consumer name, own handle
-proposed as first owner, preview before Add, one-time plaintext secret display)
-and the credential/secret-lifecycle semantics (secret used as-is over HTTPS with
-no client-ID header, server-side hash-only verifier, atomic replacement via
-Generate new key, lost keys replaced not recovered, at least one owner, CI
-limited to owner validation). The canonical requirements text, marked as
-requirements versus implementation choices to confirm during coding, is in the
-plan's J018 clarifications block and section F; this evidence file does not
-restate it. The technical proposals in sections 1–5 above — credential format,
-verifier digest, database schemas/roles, count/completion boundary — remain
-implementation choices proposed at their cited revisions, constrained by the
-confirmed requirements. No new infrastructure claim is verified by J018; the
-unverified items remain unverified. See the
-[J014 report](../../../../plans/2026-09-17-j014-consumer-ownership-report.md)
-J018 receipt for the delivery record.
+J018 recorded a partial UX clarification. J022 resolves direct creation, global
+name uniqueness, initial-owner immutability and immediate post-create secret
+reveal; it replaces consumer owner-validation CI with portal-user allowlist CI.
+The current requirements are sections 1–2 above and canonical plan A/F. Credential,
+database-role and usage proposals remain constrained by those requirements.
+Earlier J011/J014/J018 receipts below are dated evidence, not current policy.
 
 ## Historical J011 receipts (superseded policy; results at prior revisions only)
 

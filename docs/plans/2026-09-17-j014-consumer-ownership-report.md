@@ -7,6 +7,10 @@ tags: ["rag", "planning", "auth", "consumer-ownership"]
 problem_type: "planning_alignment"
 ---
 
+> Historical receipt: J022 supersedes earlier authorization/registration choices.
+> Follow the [canonical plan](2026-09-15-001-feat-rag-consumer-access-usage-plan.md)
+> for PR-maintained portal admission and direct creation/runtime membership.
+
 # J014 investigation and review
 
 ## Outcome and documentation boundaries

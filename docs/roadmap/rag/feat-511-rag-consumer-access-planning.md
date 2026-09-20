@@ -54,8 +54,8 @@ J008 incorporates the approved authorization, usage, credential and rollout
 choices, with portal design now and implementation after dogfood. See
 `docs/plans/2026-09-16-j008-investigation-report.md` for evidence and validation.
 
-J014 reconciles the accepted consumer ownership/CI model in this same planning
-PR and separate discovery PR #2325. See the
-[J014 report](../../plans/2026-09-17-j014-consumer-ownership-report.md).
-Normal repository PRs and merged per-consumer GitHub `owners` replace special
-approvers and global engineer/email allowlisting; implementation remains not-started.
+J022 reconciles portal admission via the PR-maintained portal-user allowlist
+with direct authenticated consumer creation and runtime owner membership.
+See the [J022 report](../../plans/2026-09-21-j022-portal-reconciliation-report.md).
+Discovery evidence and J021 limitations remain in stacked draft #2325;
+implementation feat-512–515 remains not-started.

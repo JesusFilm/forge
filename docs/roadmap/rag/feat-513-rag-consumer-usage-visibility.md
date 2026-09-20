@@ -32,7 +32,7 @@ before retiring shared-token access. Planning completion is not implementation.
 
 Implement plan sections C and E as a separate deliverable: privacy-minimised,
 unsampled usage aggregates, coverage health/watermarks, restricted read-only
-report capability restricted to Jaco and RAGBot (no general DB credential). Register RAGBot through the normal consumer PR with nonempty `owners` first; its later narrow internal reporting tool is separate from retrieval and ownership does not grant reports. Keep durable aggregates for growth insight; no raw sensitive events or retention/deletion implementation. Record future capacity review. Deliver synthetic HTTP acceptance tests; actual ops dogfood follows in feat-514. Report consumer
+report capability restricted to Jaco and RAGBot (no general DB credential). Register RAGBot through the authenticated creation backend with an allowlisted initial owner first; its later narrow internal reporting tool is separate from retrieval and ownership does not grant reports. Keep durable aggregates for growth insight; no raw sensitive events or retention/deletion implementation. Record future capacity review. Deliver synthetic HTTP acceptance tests; actual ops dogfood follows in feat-514. Report consumer
 request count, successful count, last activity and UTC window. Prove +3 then +2
 requests, second-integration isolation, denied revocation with no success
 increment, and honest partial/unavailable coverage rather than false zero.
