@@ -61,3 +61,19 @@ Compare query plans and result eligibility against a representative restored dat
 ## Branch Scope
 
 This repair is independently reviewable on current main. The earlier analysis and proposed experiment/locale tickets remain in the originating task checkout; they are context, not implementation dependencies or part of this repair PR.
+
+## September 21 production review
+
+The repaired retrieval implementation is present in deployed Admin code; the
+earlier "ready for the normal PR flow" note is historical. The sustained
+[production corpus](../../operations/watch-recommendation-corpus-review-2026-09-21.md)
+has persisted retrieval p50/p95/p99 of 96/241/335 ms, maximum 1,246 ms, but that
+population excludes requests that fail before issuance. It cannot establish a
+zero semantic timeout rate.
+
+Web PR #2352 now emits bounded final delivery-envelope outcomes, preserving
+`retrieval_timeout`, `delivery_timeout` and non-timeout coverage reasons
+separately. [Release reconciliation](../../operations/watch-ticket-execution-2026-09-21.md)
+records exact revision and event/primary-request coverage. This ticket remains
+in progress pending sustained complete-service timeout/fill evidence; the new
+observation is not a retrieval or selection runtime change.

@@ -307,8 +307,13 @@ and records the final card count plus the upstream result before contextual
 recovery. [The event contract and verification procedure](../../operations/watch-delivery-outcome-observation-2026-09-21.md)
 document privacy boundaries, ingestion reconciliation and browser-receipt limits.
 Local validation: 54 focused tests; the full Web suite, lint and typecheck passed.
-Production deployment/ingestion verification is pending. This is an observability
-correction, not a selection latency fix; the ticket stays in progress.
+PR #2352 deployed automatically to Web as
+`4e31f822781f44df06e91c8194142a6c4b51646a`, verified in the running service.
+The first identical revision/window comparison reconciled 22 indexed delivery
+events to 22 primary HTTP requests, distinguishing a coverage fallback from
+timeout fallbacks. [Extended release observations](../../operations/watch-ticket-execution-2026-09-21.md)
+record population and window limits. This is an observability correction, not a
+selection latency fix; the ticket stays in progress.
 
 The read-only [64-hour 35-minute production review](../../operations/watch-recommendation-corpus-review-2026-09-21.md)
 keeps this ticket in progress. From September 18 04:15 through September 20 20:50

@@ -3,8 +3,8 @@ id: "feat-523"
 title: "Attribute remaining Watch field text and HTML hydration mismatches"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
-start_date: ""
+status: "in-progress"
+start_date: "2026-09-21"
 duration: 3
 depends_on: []
 blocks: []
@@ -70,3 +70,18 @@ bodies separately from React errors. Compare page-loading performance under
 matched conditions. Deploy only through the normal PR-to-main automation, verify
 the exact running revision, and compare sustained distinct-view field incidence.
 A healthy short browser run or a drop in raw crawler events is not closure.
+
+## September 21 investigation
+
+Fresh retained Safari `/watch` and Mobile Safari French-route events still have
+the text variant; their stacks expose React framework frames without the
+component or server/client difference. Six fresh Chromium contexts and six
+WebKit 2311 contexts across homepage, Jesus, French prayer, Spanish sower and
+autoplay routes did not reproduce a page error. Locale/timezone and a mobile
+viewport were varied. WebKit libraries were extracted only in the owned
+worktree; no shared host dependency was installed. This is not physical Safari
+coverage or a matched reproduction of the field failure.
+
+Keep this ticket in progress. Do not broaden the completed feat-517 claim or
+patch speculative render paths. [Execution evidence and limits](../../operations/watch-ticket-execution-2026-09-21.md)
+separate field errors, browser probes, delivery envelopes and selection rejections.

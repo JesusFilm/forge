@@ -41,11 +41,24 @@ trace correlation. The console payload adds no identity fields.
 
 ## Production verification and limits
 
-Use `service:forge-web env:prod version:<exact-running-SHA>` and a fixed UTC
-window after Railway confirms the new revision. Search messages for
-`"event=recommendation.delivery"`; extract the fixed key/value fields if they
-are not already indexed attributes. Group by endpoint, status, result, reason,
-item count and upstream result. Do not group by trace IDs or mix other routes.
+Use a fixed UTC window after Railway confirms the new revision. First inspect
+one event with all attributes: this production syslog pipeline stores environment
+and release in `@ddtags`, not searchable bare `env`/`version` tags. A bare
+`env:prod` filter returned zero despite indexed events. Search
+`service:forge-web "recommendation.delivery"`, declare `@ddtags` as a varchar
+column and constrain its observed exact value in DDSQL, for example:
+
+```sql
+SELECT message, COUNT(*) AS events
+FROM logs
+WHERE "@ddtags" = 'env:prod,service:forge-web,version:4e31f822781f44df06e91c8194142a6c4b51646a'
+GROUP BY message
+```
+
+The surrounding logs tool supplies the fixed time window. Confirm metadata anew
+if the forwarding pipeline changes. Extract the fixed key/value fields if they
+are not indexed attributes. Group by endpoint, status, result, reason, item count
+and upstream result. Do not group by trace IDs or mix other routes.
 
 Reconcile event counts separately against primary Web request metrics for
 `post_/api/recommendations` and `post_/api/recommendations/for-you`, grouped by
@@ -69,7 +82,8 @@ healthy window remain insufficient to close feat-496.
 - Full Web suite: 4,438 passed, 10 skipped, one todo; lint and typecheck passed.
   The subsequent closed-vocabulary additions passed the focused tests above.
 - No browser rendering, deadlines, GraphQL contracts, admission policy, homepage
-  flag or authored content changed. Deployment observation is still pending.
+  flag or authored content changed. [Exact deployment and observation](watch-ticket-execution-2026-09-21.md)
+  confirm the Web revision and reconcile indexed events with primary requests.
 
 This change closes the code-level measurement gap. It does not identify or fix
 the remaining Admin capability-budget delay. feat-496 remains in progress.

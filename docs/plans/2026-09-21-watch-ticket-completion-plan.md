@@ -85,3 +85,23 @@ Codex tool map and compound durable findings into `docs/solutions/`. Update each
 touched ticket honestly, retaining any unproven cause, inaccessible gate or
 observation still needed. Do not mark this overall plan complete while required
 work remains.
+
+## September 21 execution checkpoint
+
+- U1 shipped in PR #2352. Exact Web revision and 84/84 event-to-primary-request
+  reconciliation are recorded in the [execution report](../operations/watch-ticket-execution-2026-09-21.md).
+- U3's hybrid-count and typed-error observation fixes shipped in PR #2353;
+  Admin/worker revisions are verified. The complete 167,029-pointer snapshot
+  audit passed. Installed alerts and the full lifecycle remain unmet.
+- Monitoring caught a separate fast playback transport 503 and one unavailable
+  reconciliation batch. The expensive discovery scan was reproduced with bounded
+  read-only controls; JIT and materialization did not establish a fix, and a
+  smaller metadata-reuse candidate was not shipped without full validation.
+- U2 remains unproven. None of these measurements establishes the cause of the
+  earlier selection deadline failure.
+- U4's Chromium/WebKit probes did not reproduce the remaining hydration variants;
+  headless selection rejections cannot validate eligible acknowledgments. Field
+  paint/commit attribution, curation expansion and full capacity gates remain.
+- Final sequential CE review and the [durable accounting lesson](../solutions/logic-errors/recommendation-outcome-accounting-boundaries-20260921.md)
+  preserve the measurement distinctions and rejected hypotheses. This plan stays
+  active; no broad ticket is closed from a short release window.

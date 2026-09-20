@@ -234,5 +234,27 @@ were fast terminal GraphQL `BAD_USER_INPUT` responses. A local typed-error
 regression reproduces the logger's missing `RecommendationTokenInvalidError`
 classification. The fix records those as `rejected / invalid_request / terminal`
 and rethrows the same error without changing token validation or Web responses.
-The 42 playback/token/GraphQL tests pass; production release verification is
-pending. This does not classify all 174 historical unknown failures.
+The 42 playback/token/GraphQL tests pass, and the complete final Admin suite
+passes 7,281 tests. PR #2353 deployed automatically to Admin and its worker as
+`6e02dd855af4053d9c9a7b032fe1ece7317cfc33`; natural accepted facts are visible on
+that exact revision. This does not classify all 174 historical unknown failures
+or establish that the specific invalid-capability branch occurred in the short
+release window. [Release evidence and outstanding gates](../../operations/watch-ticket-execution-2026-09-21.md)
+remain explicit. Continue using the existing read access; installed alerts stay
+unmet without a monitor-writing capability.
+
+The release window adds a separate transport investigation: at September 20
+22:48:27 UTC, playback trace `2812671347123689187` returns HTTP 503 in 46.6 ms
+after a 42.7 ms upstream `fetch failed`, with `timeoutStage=none`. It overlaps
+Admin deployment but does not prove the transport cause or mutation disposition.
+Keep the failure in the 1/800 primary playback denominator; investigate routing,
+connection and shutdown behavior before proposing a change. Do not substitute
+an ambiguous mutation retry. Four separately correlated transaction-busy
+attempts recovered to Web HTTP 200; a natural terminal rejection agrees with
+`BAD_USER_INPUT`. None is a selection deadline or delivery semantic timeout.
+
+The new worker also emitted an unavailable reconciliation heartbeat at 22:52:48
+UTC after substantive five-second transaction expiry, followed by a completed
+heartbeat at 22:58:17. Feat-459 now records the reproduced expensive discovery
+scan and rejected controls. This keeps the reconciliation-health gate open;
+one subsequent success does not satisfy the sustained criterion.

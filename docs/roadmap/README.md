@@ -4,14 +4,14 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (September 18, 2026)
+## Status (September 20, 2026)
 
-- **Total tickets:** 708
-- **Complete:** 526
-- **In progress:** 54
+- **Total tickets:** 710
+- **Complete:** 527
+- **In progress:** 55
 - **Not started:** 50
 - **Blocked:** 78
-- **Overdue and not complete:** 135
+- **Overdue and not complete:** 139
 
 ## Feature Index
 
@@ -591,6 +591,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-513](platform/feat-513-admin-workflow-enqueue-only-runtime.md)                   | Keep workflow listeners out of the Admin enqueue-only runtime                      | nisal      | P1       | 2026-09-16 | 2    | 2026-09-17 | complete    |
 | [feat-519](platform/feat-519-mobile-lapse-reminders.md)                                | Mobile lapse reminders bring a lapsed viewer back to their last video              | urim       | P1       | 2026-09-16 | 3    | 2026-09-18 | in-progress |
 | [feat-522](platform/feat-522-watch-home-full-hero-title.md)                            | Show the full Watch home hero title                                                | codex      | P1       | 2026-09-17 | 1    | 2026-09-17 | complete    |
+| [feat-523](platform/feat-523-watch-field-hydration-mismatch-attribution.md)            | Attribute remaining Watch field text and HTML hydration mismatches                 | nisal      | P1       | 2026-09-21 | 3    | 2026-09-23 | in-progress |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                          | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                                 | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                            | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
@@ -733,6 +734,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-444](topic-experiences/feat-444-watch-ga4-measurement.md)                             | Normalize Watch GA4 measurement                                                  | vlad       | P1       | 2026-08-28 | 5    | 2026-09-01 | in-progress |
 | [feat-445](topic-experiences/feat-445-watch-home-next-video-thumbnail-control.md)           | Watch Home Video Timeline Controls                                               | vlad       | P1       | 2026-09-04 | 1    | 2026-09-04 | complete    |
 | [feat-501](topic-experiences/feat-501-watch-category-rail-editable-copy.md)                 | Editable copy in the Watch category rail block                                   | vlad       | P1       | 2026-09-14 | 1    | 2026-09-14 | complete    |
+| [feat-522](topic-experiences/feat-522-watch-language-search-input-icons.md)                 | Keep Watch language search icons visible above the input                         | vlad       | P1       | 2026-09-17 | 1    | 2026-09-17 | complete    |
 | [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)                       | AI Topic Content Generation Service                                              | vlad       | P2       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
 | [feat-021](topic-experiences/feat-021-generation-quality-monitoring.md)                     | Generation Quality & Monitoring Dashboard                                        | ekkasit    | P2       | 2026-05-05 | 21   | 2026-05-25 | blocked     |
 | [feat-146](topic-experiences/feat-146-watch-bible-quotes-promo-cta-wrap.md)                 | Watch Bible Quotes Promo CTA Wrap                                                | urim       | P2       | 2026-06-13 | 1    | 2026-06-13 | complete    |
