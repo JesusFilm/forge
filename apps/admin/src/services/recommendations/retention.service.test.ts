@@ -20,7 +20,7 @@ function buildPrisma() {
         { id: "expired-profile-1", privacyGeneration: 3 },
       ]),
     recommendationViewer: {
-      findMany: vi.fn(async () => []),
+      findMany: vi.fn(async (): Promise<Array<{ tokenDigest: string }>> => []),
       deleteMany: vi.fn(async () => ({ count: 0 })),
     },
     recommendationRequest: {
@@ -153,6 +153,12 @@ function buildPrisma() {
       update: vi.fn(async (args) => args),
       deleteMany: vi.fn(async () => ({ count: 0 })),
     },
+    pushAttribution: { deleteMany: vi.fn(async () => ({ count: 1 })) },
+    pushOpen: { deleteMany: vi.fn(async () => ({ count: 2 })) },
+    pushRegistration: {
+      updateMany: vi.fn(async () => ({ count: 1 })),
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+    },
   }
   const prisma = {
     $queryRaw: vi.fn(
@@ -192,6 +198,50 @@ function buildPrisma() {
 }
 
 describe("recommendation retention service", () => {
+  it("unlinks push rows for an expired viewer before deleting the viewer", async () => {
+    const { prisma, transaction } = buildPrisma()
+    const digests = ["c".repeat(64), "d".repeat(64)]
+    transaction.recommendationViewer.findMany.mockResolvedValueOnce(
+      digests.map((tokenDigest) => ({ tokenDigest })),
+    )
+
+    await purgeExpiredRecommendationRequests(
+      prisma as never,
+      new Date("2026-09-17T00:00:00.000Z"),
+      2,
+    )
+
+    const scope = { where: { viewerDigest: { in: digests } } }
+    expect(transaction.pushAttribution.deleteMany).toHaveBeenCalledWith(scope)
+    expect(transaction.pushOpen.deleteMany).toHaveBeenCalledWith(scope)
+    expect(transaction.pushRegistration.updateMany).toHaveBeenCalledWith({
+      ...scope,
+      data: { viewerDigest: null },
+    })
+    // The registration keeps the phone's push address through every identity
+    // event, and the unlink lands before the viewer row is gone.
+    expect(transaction.pushRegistration.deleteMany).not.toHaveBeenCalled()
+    expect(
+      transaction.pushRegistration.updateMany.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      transaction.recommendationViewer.deleteMany.mock.invocationCallOrder[0],
+    )
+  })
+
+  it("leaves push rows alone when no viewer expired", async () => {
+    const { prisma, transaction } = buildPrisma()
+
+    await purgeExpiredRecommendationRequests(
+      prisma as never,
+      new Date("2026-09-17T00:00:00.000Z"),
+      2,
+    )
+
+    expect(transaction.pushAttribution.deleteMany).not.toHaveBeenCalled()
+    expect(transaction.pushOpen.deleteMany).not.toHaveBeenCalled()
+    expect(transaction.pushRegistration.updateMany).not.toHaveBeenCalled()
+  })
+
   it("takes one advisory-locked bounded batch and records sanitized counts", async () => {
     const { prisma, transaction } = buildPrisma()
     const now = new Date("2026-09-17T00:00:00.000Z")

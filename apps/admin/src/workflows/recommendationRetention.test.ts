@@ -20,18 +20,25 @@ const retention = vi.hoisted(() => ({
   runRecommendationRetentionJob: vi.fn(),
 }))
 
+const push = vi.hoisted(() => ({
+  runPushRetentionFromScheduler: vi.fn(),
+}))
+
 vi.mock("workflow", async (original) => {
   const actual = await original<typeof import("workflow")>()
   return { ...actual, ...workflow }
 })
 vi.mock("@/services/recommendations/retention/job", () => retention)
+vi.mock("@/services/push/retention.job", () => push)
 
 import {
+  PUSH_RETENTION_CATCH_UP_BATCH_LIMIT,
   RECOMMENDATION_RETENTION_CATCH_UP_BATCH_LIMIT,
   RECOMMENDATION_RETENTION_CATCH_UP_WINDOW_MS,
   runRecommendationRetention,
   runRecommendationRetentionScheduler,
   stepMarkRecommendationRetentionSchedulerStarted,
+  stepRunPushRetention,
   stepRunScheduledRecommendationRetention,
 } from "./recommendationRetention"
 
@@ -47,6 +54,16 @@ beforeEach(() => {
       status: "succeeded",
       runId: "retention-run-1",
       rootsDeleted: 0,
+      rowCounts: {},
+      oldestExpiredAtAfter: null,
+      overdueAfterRun: false,
+    },
+  })
+  push.runPushRetentionFromScheduler.mockResolvedValue({
+    ok: true,
+    ledgerRunId: "push-ledger-1",
+    result: {
+      status: "succeeded",
       rowCounts: {},
       oldestExpiredAtAfter: null,
       overdueAfterRun: false,
@@ -233,6 +250,111 @@ describe("recommendation retention workflow", () => {
     await expect(stepRunScheduledRecommendationRetention()).resolves.toEqual({
       batchesProcessed: 1,
       overdueAfterRun: false,
+    })
+  })
+
+  it("purges push rows in its own step after the privacy purge", async () => {
+    const next = new Date("2026-08-20T10:30:00.000Z")
+    retention.nextRecommendationRetentionRunAt.mockReturnValueOnce(next)
+    workflow.sleep.mockRejectedValueOnce(
+      new Error("stop scheduler after one cycle"),
+    )
+
+    await expect(
+      runRecommendationRetentionScheduler({ ledgerRunId: "scheduler-1" }),
+    ).rejects.toThrow("stop scheduler after one cycle")
+
+    expect(push.runPushRetentionFromScheduler).toHaveBeenCalledOnce()
+    expect(
+      push.runPushRetentionFromScheduler.mock.invocationCallOrder[0],
+    ).toBeGreaterThan(
+      retention.runRecommendationRetentionFromScheduler.mock
+        .invocationCallOrder[0],
+    )
+  })
+
+  it("keeps the daily scheduler alive when the push purge fails", async () => {
+    const next = new Date("2026-08-20T10:30:00.000Z")
+    push.runPushRetentionFromScheduler.mockResolvedValue({
+      ok: false,
+      ledgerRunId: "push-ledger-1",
+      error: "private database detail",
+    })
+    retention.nextRecommendationRetentionRunAt.mockReturnValueOnce(next)
+    workflow.sleep.mockRejectedValueOnce(
+      new Error("stop scheduler after one cycle"),
+    )
+
+    await expect(
+      runRecommendationRetentionScheduler({ ledgerRunId: "scheduler-1" }),
+    ).rejects.toThrow("stop scheduler after one cycle")
+
+    // The privacy purge ran once and is not retried by the push failure.
+    expect(
+      retention.runRecommendationRetentionFromScheduler,
+    ).toHaveBeenCalledOnce()
+    expect(
+      retention.recordRecommendationRetentionSchedulerHeartbeat,
+    ).toHaveBeenCalledWith("scheduler-1", next)
+    expect(workflow.sleep).toHaveBeenCalledWith(next)
+  })
+
+  it("leaves the push purge for the next cycle while the privacy backlog drains", async () => {
+    const continuation = new Date("2026-08-19T12:35:56.000Z")
+    retention.runRecommendationRetentionFromScheduler.mockResolvedValue({
+      ok: true,
+      ledgerRunId: "purge-ledger-1",
+      result: {
+        status: "succeeded",
+        runId: "retention-run-1",
+        rootsDeleted: 500,
+        rowCounts: { requests: 500 },
+        oldestExpiredAtAfter: new Date("2026-08-01T00:00:00.000Z"),
+        overdueAfterRun: true,
+      },
+    })
+    retention.nextRecommendationRetentionCatchUpRunAt.mockReturnValueOnce(
+      continuation,
+    )
+    workflow.sleep.mockRejectedValueOnce(new Error("stop scheduler"))
+
+    await expect(
+      runRecommendationRetentionScheduler({ ledgerRunId: "scheduler-1" }),
+    ).rejects.toThrow("stop scheduler")
+
+    expect(push.runPushRetentionFromScheduler).not.toHaveBeenCalled()
+  })
+
+  it("turns a recorded push purge failure into a bounded retryable step", async () => {
+    push.runPushRetentionFromScheduler.mockResolvedValueOnce({
+      ok: false,
+      ledgerRunId: "push-ledger-1",
+      error: "private database detail",
+    })
+
+    await expect(stepRunPushRetention()).rejects.toSatisfy(
+      (error: unknown) =>
+        RetryableError.is(error) &&
+        error.message === "Push retention purge failed",
+    )
+    expect(stepRunPushRetention.maxRetries).toBe(5)
+  })
+
+  it("drains the push backlog up to its batch cap in one step", async () => {
+    push.runPushRetentionFromScheduler.mockResolvedValue({
+      ok: true,
+      ledgerRunId: "push-ledger-1",
+      result: {
+        status: "succeeded",
+        rowCounts: { expiredDeliveries: 5000 },
+        oldestExpiredAtAfter: "2026-01-01T00:00:00.000Z",
+        overdueAfterRun: true,
+      },
+    })
+
+    await expect(stepRunPushRetention()).resolves.toEqual({
+      batchesProcessed: PUSH_RETENTION_CATCH_UP_BATCH_LIMIT,
+      overdueAfterRun: true,
     })
   })
 

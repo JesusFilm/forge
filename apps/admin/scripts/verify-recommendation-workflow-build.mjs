@@ -23,6 +23,7 @@ const requiredSteps = [
   "stepMarkRecommendationRetentionSchedulerStarted",
   "stepNextRecommendationRetentionCatchUpRun",
   "stepNextRecommendationRetentionRun",
+  "stepRunPushRetention",
   "stepRunRecommendationRetention",
   "stepRunScheduledRecommendationRetention",
 ]
@@ -44,7 +45,7 @@ function assertRegistration({ entries, kind, name, routeSource }) {
 
   if (typeof id !== "string" || !routeSource.includes(id)) {
     throw new Error(
-      `Recommendation retention ${kind} ${name} is missing from the generated manifest or executable route`,
+      `Retention ${kind} ${name} is missing from the generated manifest or executable route`,
     )
   }
 }
@@ -76,5 +77,5 @@ for (const name of requiredSteps) {
 }
 
 console.log(
-  `Verified ${requiredWorkflows.length} recommendation retention workflows and ${requiredSteps.length} steps`,
+  `Verified ${requiredWorkflows.length} retention workflows and ${requiredSteps.length} steps, including the push retention step`,
 )

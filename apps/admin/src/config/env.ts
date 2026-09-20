@@ -434,6 +434,9 @@ export const env = createEnv({
     WATCH_SEARCH_DB_TEST: z.enum(["1"]).optional(),
     // Opt-in isolated-schema migration/constraint proof for feat-368 U1.
     RECOMMENDATION_DB_TEST: z.enum(["1"]).optional(),
+    // Opt-in real-database proof for the push campaign claim indexes and the
+    // push retention purge. Test-only; production never branches on it.
+    PUSH_DB_TEST: z.enum(["1"]).optional(),
     // Required mode selector for the complete delivery database benchmark.
     // Production release proof must say production_snapshot explicitly; CI
     // fixtures cannot silently stand in for restored corpus evidence.
@@ -942,6 +945,7 @@ export const env = createEnv({
     RECOMMENDATION_DB_TEST: emptyToUndefined(
       process.env.RECOMMENDATION_DB_TEST,
     ),
+    PUSH_DB_TEST: emptyToUndefined(process.env.PUSH_DB_TEST),
     RECOMMENDATION_DELIVERY_DB_FIXTURE: emptyToUndefined(
       process.env.RECOMMENDATION_DELIVERY_DB_FIXTURE,
     ),

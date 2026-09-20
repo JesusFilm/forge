@@ -9,6 +9,7 @@ import {
   RecommendationRetentionRunStatus,
   type PrismaClient,
 } from "@prisma/client"
+import { unlinkPushViewerIdentities } from "@/services/push/identity-unlink.service"
 import { RECOMMENDATION_RETENTION_PROPAGATION_HOURS } from "./contracts"
 import { RecommendationInputError } from "./errors"
 
@@ -319,6 +320,15 @@ export async function purgeExpiredRecommendationRequests(
         orderBy: { expiresAt: "asc" },
         select: { tokenDigest: true },
       })
+      // A viewer expiry ends the push link in the same transaction. The
+      // registration keeps the phone's push address; only the digest goes.
+      const pushUnlink = await unlinkPushViewerIdentities(
+        tx,
+        expiredViewers.map((viewer) => viewer.tokenDigest),
+      )
+      rowCounts.pushRegistrationsUnlinked = pushUnlink.registrationsUnlinked
+      rowCounts.pushOpensDeleted = pushUnlink.opensDeleted
+      rowCounts.pushAttributionsDeleted = pushUnlink.attributionsDeleted
       rowCounts.expiredViewers = (
         await tx.recommendationViewer.deleteMany({
           where: {
