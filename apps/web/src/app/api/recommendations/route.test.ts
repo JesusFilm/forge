@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { adminSemanticRecommendationDeliveryOperation } from "@forge/admin-graphql/operations"
 import {
   RECOMMENDATION_MUTATION_CLIENT_LIMIT,
@@ -82,9 +82,21 @@ const contextualRecommendation = {
 const muxThumbnail =
   "https://image.mux.com/playback-1/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2"
 
+const deliveryLogs = () =>
+  vi
+    .mocked(console.info)
+    .mock.calls.map(([message]) => message)
+    .filter(
+      (message) =>
+        typeof message === "string" &&
+        message.startsWith("event=recommendation.delivery "),
+    )
+afterEach(() => vi.restoreAllMocks())
+
 describe("POST /watch/api/recommendations", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.spyOn(console, "info").mockImplementation(() => undefined)
     resetRecommendationMutationAdmissionForTests()
     query.mockResolvedValue({
       data: { semanticRecommendationDelivery: delivery },
@@ -192,6 +204,9 @@ describe("POST /watch/api/recommendations", () => {
     expect(response.status).toBe(200)
     expect(response.headers.get("cache-control")).toContain("private")
     expect(response.headers.get("cache-control")).toContain("no-store")
+    expect(deliveryLogs()).toEqual([
+      "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=1 upstreamResult=served",
+    ])
     const setCookie = response.headers.get("set-cookie") ?? ""
     expect(setCookie).toContain("forge_recommendation_session=")
     expect(setCookie).toContain("HttpOnly")
@@ -415,6 +430,9 @@ describe("POST /watch/api/recommendations", () => {
         ],
       },
     })
+    expect(deliveryLogs()).toEqual([
+      "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=delivery_timeout itemCount=1 upstreamResult=unavailable",
+    ])
     expect(query.mock.calls[1]?.[0]?.variables).toEqual({
       videoId: "seed-1",
       locale: "en",
@@ -760,9 +778,31 @@ describe("POST /watch/api/recommendations", () => {
       ),
     )
 
+    expect(deliveryLogs()).toEqual([
+      "event=recommendation.delivery endpoint=seeded httpStatus=502 result=failed reason=invalid_admin_response itemCount=0 upstreamResult=not_observed",
+    ])
     expect(response.status).toBe(502)
     await expect(response.json()).resolves.toEqual({
       error: "invalid_admin_response",
+    })
+  })
+  it("preserves a successful delivery when operational logging throws", async () => {
+    vi.mocked(console.info).mockImplementation(() => {
+      throw new Error("log unavailable")
+    })
+    const response = await POST(
+      request(
+        JSON.stringify({
+          seedMediaId: "seed-1",
+          locale: "en",
+          audioLanguageSlug: "english",
+        }),
+      ),
+    )
+    expect(response.status).toBe(200)
+    expect(response.headers.get("set-cookie")).toContain("HttpOnly")
+    await expect(response.json()).resolves.toMatchObject({
+      delivery: { result: "served", requestId: "request-1" },
     })
   })
 })
