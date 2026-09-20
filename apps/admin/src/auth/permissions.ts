@@ -77,6 +77,10 @@ export type PermissionKey =
   | "write:manager-enrichment-trigger"
   | "write:manager-jobs"
   | "write:manager-subtitle-eval"
+  // Localized push campaigns. Any signed-in admin user may write, test,
+  // schedule, and send an announcement (R28), so this sits at the viewer
+  // tier rather than behind a campaign role.
+  | "write:push-campaigns"
   // Lifecycle scopes (publish / archive ExperienceLocale, etc.)
   | "publish:experiences"
   | "archive:experiences"
@@ -161,6 +165,9 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   "write:manager-enrichment-trigger": "ADMIN",
   "write:manager-jobs": "PUBLIC",
   "write:manager-subtitle-eval": "PUBLIC",
+  // No service or anonymous caller reaches it: a campaign is always a
+  // person's decision, and the send-now confirmation is theirs to complete.
+  "write:push-campaigns": "VIEWER",
   // Lifecycle
   "publish:experiences": "EDITOR",
   "archive:experiences": "EDITOR",
