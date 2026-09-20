@@ -126,5 +126,23 @@ lane value and omitted 3,508 actual hybrid decisions in the fixed review window.
 The correction counts `execution_mode = 'hybrid_personalized'` and preserves
 privacy suppression, expiry and window bounds. A real PostgreSQL regression
 distinguishes current execution from historic challenger and viewing-mode rows.
-Deployment verification is pending; feat-464's remaining acceptance gates still
-prevent ticket closure.
+PR #2353 deployed automatically to Admin and its worker as
+`6e02dd855af4053d9c9a7b032fe1ece7317cfc33`; the post-release bounded query still
+finds the 3,508 clean hybrid decisions. [Release verification](../../operations/watch-ticket-execution-2026-09-21.md)
+does not replace the separate Admin/browser lifecycle gate. Feat-464's remaining
+acceptance gates still prevent ticket closure.
+
+Later release monitoring found an additional concrete blocker: the 22:52:48 UTC
+worker heartbeat was unavailable after reconciliation transaction expiry at
+5,182–5,371 ms (limit 5,000 ms). The next 22:58:17 heartbeat completed. The exact
+affected-pointer scan performs full-population work despite its 100-result
+limit. Bounded direct production reads took 4,187 and 4,258 ms. JIT-off and
+materialized-query controls did not reliably fix the guard; reusing joined
+generation fields saved 0.4–0.7 seconds but did not prove complete transaction
+recovery or all-lineage parity. No candidate or setting was shipped.
+
+Build a representative sparse-invalid, roughly 167,000-pointer regression and
+reduce discovery work while preserving the canonical predicate, ordering,
+concurrency fences and five-second budget. The [execution record](../../operations/watch-ticket-execution-2026-09-21.md)
+contains exact timings and limits. The earlier zero-pointer snapshot remains
+valid for its timestamp, not a claim of continuous convergence or ticket closure.

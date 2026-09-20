@@ -67,7 +67,8 @@ registered in the existing CI PostgreSQL job. Four existing overview tests pass,
 including privacy suppression and invariant reporting. The full Admin suite
 passed 7,279 tests (293 skipped, one todo); lint and typecheck passed. The final
 lane/execution predicate passed the focused PostgreSQL and overview tests again.
-Automatic deployment verification is pending.
+Automatic deployment verification is recorded in the
+[execution report](watch-ticket-execution-2026-09-21.md).
 
 ## Terminal capability failures were labeled retryable
 
@@ -108,3 +109,10 @@ installed through that connection. No new notification destination was selected.
 feat-447 still needs its complete browser lifecycle proof. The hybrid-count repair
 does not provide that proof or authorize rollout. feat-496 still needs a causal
 reproduction of the remaining selection latency and complete delivery outcomes.
+
+Admin and its worker subsequently deployed PR #2353 through normal automation,
+both running `6e02dd855af4053d9c9a7b032fe1ece7317cfc33`. The fresh bounded
+post-release query at 22:49:19.903 UTC still finds 3,508 clean hybrid decisions
+in the fixed corpus window. Natural accepted facts are visible on that revision;
+the specific invalid-capability branch need not occur in a short release check.
+See the execution report for exact deployments and monitoring limits.
