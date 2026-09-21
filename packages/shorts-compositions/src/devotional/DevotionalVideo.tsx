@@ -1194,6 +1194,7 @@ function ClipIntro({
   clipSrc,
   frameWidth,
   frameHeight,
+  bleedX = 0,
 }: {
   variant: "cover" | "bands"
   leadSec: number
@@ -1207,7 +1208,17 @@ function ClipIntro({
   /** Frame size in px: the 16:9 cut is short, so the column centres on it. */
   frameWidth: number
   frameHeight: number
+  /** Landscape: the inset of the centred text column this intro renders in,
+   *  so its scrim and bands can reach the real frame edges. */
+  bleedX?: number
 }) {
+  const bleed = {
+    position: "absolute" as const,
+    top: 0,
+    bottom: 0,
+    left: -bleedX,
+    right: -bleedX,
+  }
   const t = frame / fps
   const L = leadSec
   const clampBoth = {
@@ -1355,7 +1366,7 @@ function ClipIntro({
     const stackH = steps.length * labelH + (steps.length - 1) * (rail + 2 * gap)
     const top0 = frameHeight * (wide ? 0.54 : 0.508) - stackH / 2
     return (
-      <AbsoluteFill style={{ pointerEvents: "none" }}>
+      <div style={{ ...bleed, pointerEvents: "none" }}>
         <AbsoluteFill style={{ background: `rgba(0,0,0,${scrim})` }} />
         {header}
         {/* Pool of light behind WATCH, the same light the stepper carries. */}
@@ -1432,7 +1443,7 @@ function ClipIntro({
             </Fragment>
           )
         })}
-      </AbsoluteFill>
+      </div>
     )
   }
 
@@ -1499,7 +1510,7 @@ function ClipIntro({
       </div>
     ) : null
   return (
-    <AbsoluteFill style={{ pointerEvents: "none", opacity: bandsIn }}>
+    <div style={{ ...bleed, pointerEvents: "none", opacity: bandsIn }}>
       {/* The live film under WATCH opens without colour and warms up as the
           band grows; a light scrim keeps it from outshining the labels. */}
       <div
@@ -1556,7 +1567,7 @@ function ClipIntro({
       >
         <span style={label(false, labelSize)}>{steps[2] ?? "PRAY"}</span>
       </div>
-    </AbsoluteFill>
+    </div>
   )
 }
 
@@ -2572,6 +2583,7 @@ function CardBody({
   coverTextStatic,
   coverSecondaryLine,
   textFont,
+  bleedX,
 }: {
   card: DevotionalCard
   style: DevotionalStyle
@@ -2596,6 +2608,8 @@ function CardBody({
   coverSecondaryLine?: string
   /** Typeface for the spoken-text cards; "serif" is the owner's trial look. */
   textFont?: "sans" | "serif"
+  /** Landscape: the inset of the centred text column. */
+  bleedX?: number
 }) {
   const { width: vw, height: vh } = useVideoConfig()
   const isLandscape = vw > vh
@@ -3438,6 +3452,7 @@ function CardBody({
           clipSrc={card.videoFile ? staticFile(card.videoFile) : null}
           frameWidth={vw}
           frameHeight={vh}
+          bleedX={bleedX ?? 0}
         />
       )
     }
@@ -5150,6 +5165,7 @@ function CardLayer({
         staticCover={staticCover}
         attribution={attribution}
         hideRing={hideRing}
+        bleedX={bleedX ?? 0}
         {...(pieceSec != null ? { pieceSec } : {})}
         hideCoverDate={hideCoverDate}
         hideCoverLogo={hideCoverLogo}
