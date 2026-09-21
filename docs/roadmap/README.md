@@ -6,9 +6,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (September 21, 2026)
 
-- **Total tickets:** 710
-- **Complete:** 528
-- **In progress:** 56
+- **Total tickets:** 712
+- **Complete:** 529
+- **In progress:** 57
 - **Not started:** 48
 - **Blocked:** 78
 - **Overdue and not complete:** 140
@@ -670,6 +670,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-064](platform/feat-064-optimize-through-data-driven-insights.md)                 | Optimize Through Data-Driven Insights                                              | tataihono  | P2       | 2026-11-15 | 46   | 2026-12-30 | blocked     |
 | [feat-067](platform/feat-067-doctrinal-validation-engine.md)                           | Doctrinal Validation Engine                                                        | vlad       | P2       | 2026-12-01 | 31   | 2026-12-31 | blocked     |
 | [feat-070](platform/feat-070-public-ai-entry-point.md)                                 | Public AI Entry Point                                                              | tataihono  | P2       | 2026-12-01 | 31   | 2026-12-31 | blocked     |
+| [feat-524](platform/feat-524-watch-recommendation-tester-access.md)                    | Private Watch recommendation tester links without login UI                         | nisal      | P1       | 2026-09-21 | 1    | 2026-09-21 | complete    |
+| [feat-525](platform/feat-525-activate-watch-recommendation-testers.md)                 | Activate and verify the three-person Watch recommendation pilot                    | nisal      | P1       | 2026-09-21 | 1    | 2026-09-21 | in-progress |
 
 ### Topic Experiences
 
