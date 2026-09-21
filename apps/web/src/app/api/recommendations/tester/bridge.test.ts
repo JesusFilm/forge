@@ -68,6 +68,7 @@ describe("tester activation bridge", () => {
     const html = await response.text()
     const document = new DOMParser().parseFromString(html, "text/html")
     expect(response.headers.get("cache-control")).toContain("private, no-store")
+    expect(response.headers.get("cache-control")).toContain("no-transform")
     expect(response.headers.get("referrer-policy")).toBe("no-referrer")
     expect(response.headers.get("x-robots-tag")).toContain("noindex")
     const nonce = document.querySelector("script")?.getAttribute("nonce")

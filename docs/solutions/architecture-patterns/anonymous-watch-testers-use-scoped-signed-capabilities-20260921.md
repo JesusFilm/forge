@@ -70,6 +70,16 @@ separate code-scanning check reported that matcher after the main CI gate
 passed. Check both the CI gate and security annotations before merging;
 the successful build and test jobs alone did not establish merge readiness.
 
+Check the public edge response as well as the origin. The first production
+probe found Cloudflare's analytics beacon appended to the bridge with the
+origin's CSP nonce, despite the origin emitting only its own inline script.
+Use `Cache-Control: private, no-store, max-age=0, no-transform` on this isolated
+HTML response and verify the public response contains only the bridge script.
+Cloudflare documents that `no-transform` prevents automatic beacon injection:
+[Web Analytics setup](https://developers.cloudflare.com/web-analytics/get-started/).
+Retain the existing cache restrictions; this exception belongs only to the
+credential bridge, not normal Watch pages or their configured analytics.
+
 ## Related
 
 - [Tester operations and release verification](../../operations/watch-recommendation-tester-access.md)
