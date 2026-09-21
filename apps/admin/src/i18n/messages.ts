@@ -122,6 +122,10 @@ export const adminMessages = {
           label: "Partner API keys",
           description: "Issued partner bearer tokens and revocation status.",
         },
+        pushCampaigns: {
+          label: "Push campaigns",
+          description: "Announcements, test devices, and per-campaign reports.",
+        },
         mcp: {
           label: "MCP",
           description: "Admin MCP endpoints, OAuth scopes, and agent skills.",
@@ -941,6 +945,96 @@ export const adminMessages = {
           revokedBy: "Revoked by",
         },
       },
+      pushCampaigns: {
+        eyebrow: "System / Push Campaigns",
+        title: "Push campaigns",
+        description:
+          "Announcements that reach a viewer at a chosen hour of their own morning, in the language they watch in.",
+        newCampaign: "New campaign",
+        testDevices: "Test devices",
+        allCampaigns: "All campaigns",
+        emptyTitle: "No campaigns yet",
+        emptyDescription:
+          "Choose New campaign to start one. A campaign needs English copy, a destination, and a test send before it can go out.",
+        registrationsTitle: "Registrations per day",
+        registrationsMeta: "PUSH_REGISTRATION / LAST 14 DAYS",
+        registrationsEmpty: "No phone has registered yet.",
+        workerTitle: "Send worker",
+        workerOnline: "A worker is online, so a wave can send.",
+        workerStale:
+          "Every worker heartbeat is stale. A scheduled campaign will not send until a worker comes back.",
+        workerUnknown:
+          "No worker heartbeat is readable. Check the Workflows page before you schedule a campaign.",
+        flagOffTitle: "Push campaigns are turned off",
+        flagOffDescription:
+          "Admin refuses to test, schedule, or send while PUSH_CAMPAIGNS_ENABLED is not true. You can still write copy and save.",
+        columns: {
+          title: "Title",
+          status: "Status",
+          destination: "Destination",
+          audience: "Audience",
+          schedule: "Schedule",
+          languages: "Languages",
+          updated: "Updated",
+        },
+        editor: {
+          eyebrow: "Push campaigns / Campaign",
+          notFoundTitle: "That campaign does not exist",
+          notFoundDescription:
+            "It may have been removed. Go back to the campaign list and start a new one.",
+          tabEditor: "Editor",
+          tabReport: "Report",
+          frozenNotice:
+            "This campaign is frozen. Copy, destination, and audience are fixed once sending starts; cancel it instead of editing it.",
+          untestedNotice:
+            "Send this campaign to a test device before you schedule it or send it now.",
+        },
+        report: {
+          title: "Campaign report",
+          notStartedTitle: "This campaign has not started sending",
+          notStartedDescription:
+            "Counts appear here once the first zone dispatches. Every number is a count of registered phones.",
+          refresh: "Refresh",
+          byLanguage: "By language",
+          byCountry: "By country",
+          totals: "Totals",
+          generatedAt: "Re-aggregated at",
+          columns: {
+            key: "Key",
+            audience: "Audience",
+            accepted: "Accepted",
+            handedOff: "Handed off",
+            unknown: "Unknown",
+            pending: "Pending",
+            failed: "Failed",
+            invalid: "Invalid",
+            suppressed: "Suppressed",
+            unreachable: "Unreachable",
+            missed: "Missed",
+            opened: "Opened",
+            attributed: "Attributed phones",
+            attributedWatchStarts: "Attributed watch starts",
+          },
+        },
+        devices: {
+          eyebrow: "Push campaigns / Test devices",
+          title: "Test devices",
+          description:
+            "A test phone is any phone whose notification test ID an admin user has added here. The app shows that ID on its Profile screen.",
+          emptyTitle: "No test devices yet",
+          emptyDescription:
+            "Paste the notification test ID from the Profile screen in the app, give it a label, and add it.",
+          columns: {
+            label: "Label",
+            testDeviceId: "Notification test ID",
+            platform: "Platform",
+            state: "State",
+            added: "Added",
+          },
+          active: "Active",
+          retired: "Retired",
+        },
+      },
       settings: {
         eyebrow: "System / Settings",
         title: "Settings & API Keys",
@@ -1250,6 +1344,11 @@ export const adminMessages = {
         partnerKeys: {
           label: "Claves API de socios",
           description: "Tokens portadores emitidos y estado de revocacion.",
+        },
+        pushCampaigns: {
+          label: "Campanas push",
+          description:
+            "Anuncios, dispositivos de prueba e informes por campana.",
         },
         mcp: {
           label: "MCP",
