@@ -85,3 +85,13 @@ coverage or a matched reproduction of the field failure.
 Keep this ticket in progress. Do not broaden the completed feat-517 claim or
 patch speculative render paths. [Execution evidence and limits](../../operations/watch-ticket-execution-2026-09-21.md)
 separate field errors, browser probes, delivery envelopes and selection rejections.
+
+The later fixed September 20 22:42–September 21 00:50 UTC query still finds
+18 errors across 18 distinct ordinary-browser-named views on Web
+`4e31f822781f44df06e91c8194142a6c4b51646a`: eleven Mobile Safari, five Chrome,
+one Chrome Mobile and one Safari. Six additional Googlebot errors belong to
+only two views and remain separate. These are affected-view counts, not an
+incidence rate or proof of human traffic. Existing framework-only stacks do
+not expose the server/client text difference. No hydration correction is
+justified by the healthy browser probes; source-mapped component evidence
+remains the next requirement.

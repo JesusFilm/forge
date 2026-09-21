@@ -336,3 +336,26 @@ orderings and 3,508 hybrid personalized deliveries. Current Admin/worker run
 `964c1e3cde7ecd2ea1f3253817770527213ac11f`. These are reviewed identities, not a new
 runtime fix. Remaining field hydration errors are tracked separately in
 [feat-523](feat-523-watch-field-hydration-mismatch-attribution.md).
+
+## September 21 closeout continuation
+
+The [latest release investigation](../../operations/watch-closeout-release-2026-09-21.md)
+separates the deployed reconciliation scan correction from this ticket's remaining
+selection cause. Historical scheduler heartbeats reject reconciliation overlap
+for the sampled 03:40, 03:45 and 06:26 failures. The 06:26 trace includes several
+slow reads, a 406.9 ms capability call and application gaps; neither a single
+WAL-sync sample nor a healthy current pool establishes the complete cause.
+
+Current bounded wait sampling sees real catalog/database activity and transient
+I/O waits, without an observed blocker, while correlated browser selections
+succeed. Query age is not wait duration and this is not a pool-acquisition trace.
+No additional selection fix, increased deadline or ambiguous retry is justified.
+HTTP failures, final semantic envelopes and browser response handling remain
+separate populations. Keep this ticket in progress.
+
+Retained PostgreSQL checkpoint records provide no direct overlap for the last
+failure: the previous checkpoint ran 06:24:37.751–06:24:45.857 UTC and the next
+started 06:29:37.647, surrounding the 06:26:02.748 selection failure. Use the
+PostgreSQL timestamp inside each record; Railway sometimes assigns starting and
+completion records the same collector timestamp. This negative result does not
+exclude independent WAL, file-I/O, pool or application stalls.

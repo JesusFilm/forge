@@ -3,7 +3,7 @@ id: "feat-520"
 title: "Attribute non-headless Watch paint delays after HTML response"
 owner: "nisal"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-18"
 duration: 3
 depends_on: []
@@ -59,3 +59,37 @@ longer request deadlines, account linking, content republishing or Mobile/TV UI
 changes. Keep the authored English Homepage Recommendations Block removed and
 `forge.watch.homepageRecommendations` default off. Use isolated owned worktrees
 and normal PR/main deployment; restore temporary diagnostics.
+
+## September 21 field attribution
+
+The two original mobile cases remain distinct from identified automation. The
+September 17 01:25:58 UTC Spanish prayer visit used Chrome Mobile 152 at 360×678,
+with first byte 2,530.7 ms and H1 FCP/LCP 13,816 ms. The 08:07:04 Tswana visit
+used Chrome Mobile 150, first byte 5,098.4 ms and H1 FCP/LCP 15,140 ms. Both were
+foreground from navigation. The reduced Android device label `K` does not
+identify physical hardware or establish that either visitor was human.
+
+The Spanish view has initial long animation frames of 4,964 and 7,127 ms. The
+latter includes about 1,094 ms of React/Next startup and a 1,515 ms scheduler
+callback, but the available mapping ends at the framework scheduler. A long
+animation frame's duration is not all JavaScript execution, and these samples
+do not identify a leaf component or implicate the playback recorder.
+
+The same view's two render-blocking CSS requests complete about 4,169 ms after
+navigation and its font completes about 5,282 ms, using their client-clock
+timestamps. All three are HTTP 200; the font is reported non-blocking. Those
+downloads alone therefore do not explain FCP at 13,816 ms. Datadog collector
+timestamps differ from client timing; do not align these phases by intake time.
+
+Two owned, headed Chromium 149 controls matched route, viewport, locale and
+timezone, using native user agents and CPU rates 1×/6×. First byte/FCP were
+822/1,140 ms and 274/688 ms; the largest observed long animation frames were
+265/708 ms. CPU slowdown did not reproduce the field delay. Different response
+and cache timings prevent treating these as a performance comparison.
+
+A newer slow `/watch` sample on Web `4e31f822781f44df06e91c8194142a6c4b51646a`
+identifies an Android emulator, with foreground beginning after six seconds;
+keep it separate from the two original cases. No application fix is established.
+Continue with a source-mapped field or physical-device reproduction of the
+pre-paint work. [Release evidence](../../operations/watch-closeout-release-2026-09-21.md)
+records the diagnostic boundaries.
