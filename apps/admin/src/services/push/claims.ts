@@ -362,6 +362,45 @@ async function writeSuppressed(
 }
 
 /**
+ * R26 — the phones no transport can reach, recorded so the report can count
+ * them. The row is report-only, so it sits outside the daily-claim index and
+ * the phone's local day stays free for another campaign.
+ */
+export async function markPushUnreachable(
+  prisma: PrismaClient,
+  input: {
+    campaignId: string
+    candidates: readonly PushClaimCandidate[]
+    now?: Date
+  },
+): Promise<number> {
+  const candidates = firstPerRegistration(input.candidates)
+  if (candidates.length === 0) return 0
+  if (candidates.length > PUSH_CLAIM_MAX_CANDIDATES) {
+    throw new PushInputError(
+      `An unreachable page carries at most ${PUSH_CLAIM_MAX_CANDIDATES} phones`,
+    )
+  }
+  const now = input.now ?? new Date()
+  const rows = candidates.map((row) => ({
+    ...row,
+    id: randomUUID(),
+    nonce: nextPushDeliveryNonce(),
+  }))
+  const written = await prisma.$queryRaw<ClaimRow[]>(
+    insertStatement({
+      campaignId: input.campaignId,
+      kind: PushDeliveryKind.LIVE,
+      status: PushDeliveryStatus.UNREACHABLE,
+      now,
+      rows,
+      errors: rows.map(() => "no_transport"),
+    }),
+  )
+  return written.length
+}
+
+/**
  * Moves exactly the reserved rows named, and only while the campaign holds the
  * status the caller expects. One statement, so a replay with any cursor
  * resends only rows still reserved. A test send passes `null`, because its

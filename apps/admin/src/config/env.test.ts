@@ -12,9 +12,18 @@ import {
   experienceAiMaxRepairAttemptsEnvSchema,
   fleetSearchCeilingEnforceEnvSchema,
   fleetSearchGlobalCeilingPerMinEnvSchema,
+  pushBatchPageSizeEnvSchema,
+  pushCampaignsEnabledEnvSchema,
   pushCeilingEnforceEnvSchema,
+  pushChunkDeadlineMsEnvSchema,
+  pushFcmBlockedCountriesEnvSchema,
+  pushMessagesPerSecondEnvSchema,
   pushOpenCeilingPerMinEnvSchema,
+  pushProviderConcurrencyEnvSchema,
+  pushReceiptPageSizeEnvSchema,
   pushRegistrationCeilingPerMinEnvSchema,
+  pushStepMaxDurationMsEnvSchema,
+  resolvePushFcmBlockedCountries,
   resolveWatchSearchTranscriptPublicationEnabled,
   searchTraceRawRetentionDaysEnvSchema,
   resolveWatchSearchRuntimeEnv,
@@ -282,6 +291,82 @@ describe("env", () => {
       vi.resetModules()
       try {
         await expect(import("@/config/env")).resolves.toHaveProperty("env")
+      } finally {
+        vi.resetModules()
+      }
+    })
+  })
+
+  describe("push campaign send knobs (U4)", () => {
+    it("keeps the campaign flag off by default", () => {
+      expect(pushCampaignsEnabledEnvSchema.parse(undefined)).toBe("false")
+      expect(pushCampaignsEnabledEnvSchema.parse("true")).toBe("true")
+      expect(() => pushCampaignsEnabledEnvSchema.parse("yes")).toThrow()
+    })
+
+    it.each([
+      ["page size", pushBatchPageSizeEnvSchema, 5_000],
+      ["step budget", pushStepMaxDurationMsEnvSchema, 220_000],
+      ["chunk deadline", pushChunkDeadlineMsEnvSchema, 10_000],
+      ["provider concurrency", pushProviderConcurrencyEnvSchema, 3],
+      ["messages per second", pushMessagesPerSecondEnvSchema, 500],
+      ["receipt page size", pushReceiptPageSizeEnvSchema, 10_000],
+    ])("defaults the %s to its sizing-table value", (_name, schema, value) => {
+      expect(schema.parse(undefined)).toBe(value)
+    })
+
+    it.each([
+      ["page size", pushBatchPageSizeEnvSchema],
+      ["step budget", pushStepMaxDurationMsEnvSchema],
+      ["chunk deadline", pushChunkDeadlineMsEnvSchema],
+      ["provider concurrency", pushProviderConcurrencyEnvSchema],
+      ["messages per second", pushMessagesPerSecondEnvSchema],
+      ["receipt page size", pushReceiptPageSizeEnvSchema],
+    ])(
+      "coerces a numeric string and refuses zero on the %s",
+      (_name, schema) => {
+        expect(schema.parse("7")).toBe(7)
+        expect(() => schema.parse("0")).toThrow()
+        expect(() => schema.parse("-1")).toThrow()
+      },
+    )
+
+    it("keeps the provider concurrency under the project rate ceiling", () => {
+      expect(() => pushProviderConcurrencyEnvSchema.parse("11")).toThrow()
+    })
+
+    it("defaults the blocked-country list to China and parses a CSV", () => {
+      expect(pushFcmBlockedCountriesEnvSchema.parse(undefined)).toBe("CN")
+      expect(resolvePushFcmBlockedCountries("cn, ru ,")).toEqual(["CN", "RU"])
+      expect(resolvePushFcmBlockedCountries(undefined)).toEqual(["CN"])
+      expect(resolvePushFcmBlockedCountries("")).toEqual(["CN"])
+    })
+
+    it("reads an empty blocked-country list as no block", () => {
+      expect(resolvePushFcmBlockedCountries("none")).toEqual([])
+    })
+
+    it("imports the env module with every push send var unset", async () => {
+      for (const name of [
+        "PUSH_CAMPAIGNS_ENABLED",
+        "EXPO_ACCESS_TOKEN",
+        "PUSH_BATCH_PAGE_SIZE",
+        "PUSH_STEP_MAX_DURATION_MS",
+        "PUSH_CHUNK_DEADLINE_MS",
+        "PUSH_PROVIDER_CONCURRENCY",
+        "PUSH_MESSAGES_PER_SECOND",
+        "PUSH_RECEIPT_PAGE_SIZE",
+        "PUSH_FCM_BLOCKED_COUNTRIES",
+      ]) {
+        delete process.env[name]
+      }
+      vi.resetModules()
+      try {
+        // `skipValidation` is on in tests, so Zod defaults do not apply here.
+        // The defaults are proven on the schemas above; this proves boot.
+        const loaded = await import("@/config/env")
+        expect(loaded.env).toBeDefined()
+        expect(loaded.env.EXPO_ACCESS_TOKEN).toBeUndefined()
       } finally {
         vi.resetModules()
       }

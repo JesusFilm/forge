@@ -12,6 +12,13 @@ export type PushServiceErrorCode =
   | "admission_denied"
   | "ceiling_exceeded"
   | "invalid_token_status"
+  | "campaigns_disabled"
+  | "run_already_active"
+  | "transport_unconfigured"
+  | "provider_retryable"
+  | "provider_indeterminate"
+  | "provider_fatal"
+  | "provider_auth"
 
 export class PushServiceError extends Error {
   constructor(
@@ -132,5 +139,91 @@ export class PushInvalidTokenStatusError extends PushServiceError {
       "That push token is retired; do not register it again",
     )
     this.name = "PushInvalidTokenStatusError"
+  }
+}
+
+/** KTD12 — the campaign kill switch is off, so nothing schedules or sends. */
+export class PushCampaignsDisabledError extends PushServiceError {
+  constructor() {
+    super(
+      "campaigns_disabled",
+      "Push campaigns are turned off; set PUSH_CAMPAIGNS_ENABLED=true to send",
+    )
+    this.name = "PushCampaignsDisabledError"
+  }
+}
+
+/** KTD2 — one bounded run per campaign, so a second dispatch is refused. */
+export class PushRunAlreadyActiveError extends PushServiceError {
+  constructor(readonly workflowRunLogId: string) {
+    super(
+      "run_already_active",
+      "This campaign already has a run in flight; cancel it before you start another",
+    )
+    this.name = "PushRunAlreadyActiveError"
+  }
+}
+
+/**
+ * KTD1 — the transport refuses to construct without the project access token
+ * in production, so boot never fails but no unauthenticated send is possible.
+ */
+export class PushTransportConfigurationError extends PushServiceError {
+  constructor(message: string) {
+    super("transport_unconfigured", message)
+    this.name = "PushTransportConfigurationError"
+  }
+}
+
+/**
+ * KTD1 and KTD3 — a provider failure carrying the provider's error code and
+ * nothing else. The provider's message embeds the push token, so it never
+ * reaches this class, a delivery row, or a log line.
+ */
+export class PushProviderError extends PushServiceError {
+  constructor(
+    code: PushServiceErrorCode,
+    readonly providerCode: string,
+  ) {
+    super(code, `The push provider answered ${providerCode}`)
+    this.name = "PushProviderError"
+  }
+}
+
+/** The request never left, so the caller reverts the chunk and retries. */
+export class PushProviderRetryableError extends PushProviderError {
+  constructor(providerCode: string) {
+    super("provider_retryable", providerCode)
+    this.name = "PushProviderRetryableError"
+  }
+}
+
+/**
+ * The request may have left. The caller leaves the chunk at sending, so the
+ * receipt step resolves it as unknown: loss is accepted and duplication is not.
+ */
+export class PushProviderIndeterminateError extends PushProviderError {
+  constructor(providerCode: string) {
+    super("provider_indeterminate", providerCode)
+    this.name = "PushProviderIndeterminateError"
+  }
+}
+
+/** The chunk can never succeed as written, so every row in it fails. */
+export class PushProviderFatalError extends PushProviderError {
+  constructor(
+    providerCode: string,
+    code: PushServiceErrorCode = "provider_fatal",
+  ) {
+    super(code, providerCode)
+    this.name = "PushProviderFatalError"
+  }
+}
+
+/** Bad credentials. Fatal for the chunk, and an operator alert. */
+export class PushProviderAuthError extends PushProviderFatalError {
+  constructor(providerCode: string) {
+    super(providerCode, "provider_auth")
+    this.name = "PushProviderAuthError"
   }
 }

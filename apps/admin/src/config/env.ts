@@ -302,6 +302,53 @@ export const pushCeilingEnforceEnvSchema = z
   .optional()
   .default("false")
 
+// KTD12 — the campaign kill switch. Off by default so an unprovisioned
+// environment boots with sending impossible rather than accidentally live.
+export const pushCampaignsEnabledEnvSchema = z
+  .enum(["true", "false"])
+  .optional()
+  .default("false")
+
+// KTD15 — the send budgets. Each default is the sizing table's value, and each
+// is a positive integer so a mistyped 0 refuses instead of stalling a wave.
+const pushPositiveIntEnvSchema = (fallback: number, max?: number) => {
+  const base = z.coerce.number().int().min(1)
+  return (max === undefined ? base : base.max(max)).optional().default(fallback)
+}
+export const pushBatchPageSizeEnvSchema = pushPositiveIntEnvSchema(
+  5_000,
+  20_000,
+)
+export const pushStepMaxDurationMsEnvSchema = pushPositiveIntEnvSchema(220_000)
+export const pushChunkDeadlineMsEnvSchema = pushPositiveIntEnvSchema(10_000)
+// A concurrency above 10 would overrun the project's per-second limit even
+// with the message bucket in place, so the schema caps it.
+export const pushProviderConcurrencyEnvSchema = pushPositiveIntEnvSchema(3, 10)
+export const pushMessagesPerSecondEnvSchema = pushPositiveIntEnvSchema(500)
+export const pushReceiptPageSizeEnvSchema = pushPositiveIntEnvSchema(
+  10_000,
+  50_000,
+)
+
+// R26 — the countries Google's service does not deliver to. A CSV so an
+// operator can add one without a deploy; the literal `none` clears the list.
+export const pushFcmBlockedCountriesEnvSchema = z
+  .string()
+  .optional()
+  .default("CN")
+
+export function resolvePushFcmBlockedCountries(
+  value: string | undefined,
+): string[] {
+  const raw = value?.trim()
+  if (!raw) return ["CN"]
+  if (raw.toLowerCase() === "none") return []
+  return raw
+    .split(",")
+    .map((country) => country.trim().toUpperCase())
+    .filter((country) => country.length > 0)
+}
+
 // Unit 1 scaffolding shipped a minimal env. Each later unit appends the
 // vars it owns here and in runtimeEnv. Never read process.env directly.
 export const env = createEnv({
@@ -534,6 +581,20 @@ export const env = createEnv({
     PUSH_REGISTRATION_CEILING_PER_MIN: pushRegistrationCeilingPerMinEnvSchema,
     PUSH_OPEN_CEILING_PER_MIN: pushOpenCeilingPerMinEnvSchema,
     PUSH_CEILING_ENFORCE: pushCeilingEnforceEnvSchema,
+    // U4 campaign send. Every var is optional with its default beside it, so
+    // an environment that has not been provisioned still boots (KTD12, KTD15).
+    PUSH_CAMPAIGNS_ENABLED: pushCampaignsEnabledEnvSchema,
+    // KTD1 — the Expo project access token. Worker-only; admin web refuses to
+    // boot with it injected, and the transport refuses to construct without it
+    // in production.
+    EXPO_ACCESS_TOKEN: z.string().min(1).optional(),
+    PUSH_BATCH_PAGE_SIZE: pushBatchPageSizeEnvSchema,
+    PUSH_STEP_MAX_DURATION_MS: pushStepMaxDurationMsEnvSchema,
+    PUSH_CHUNK_DEADLINE_MS: pushChunkDeadlineMsEnvSchema,
+    PUSH_PROVIDER_CONCURRENCY: pushProviderConcurrencyEnvSchema,
+    PUSH_MESSAGES_PER_SECOND: pushMessagesPerSecondEnvSchema,
+    PUSH_RECEIPT_PAGE_SIZE: pushReceiptPageSizeEnvSchema,
+    PUSH_FCM_BLOCKED_COUNTRIES: pushFcmBlockedCountriesEnvSchema,
     // Admin-owned production search trace sampling. Future Mastra eval jobs
     // call the internal Admin sampling route with a dedicated bearer from
     // this CSV; it must stay disjoint from public search, workflow launch,
@@ -1026,6 +1087,29 @@ export const env = createEnv({
       process.env.PUSH_OPEN_CEILING_PER_MIN,
     ),
     PUSH_CEILING_ENFORCE: emptyToUndefined(process.env.PUSH_CEILING_ENFORCE),
+    PUSH_CAMPAIGNS_ENABLED: emptyToUndefined(
+      process.env.PUSH_CAMPAIGNS_ENABLED,
+    ),
+    EXPO_ACCESS_TOKEN: emptyToUndefined(process.env.EXPO_ACCESS_TOKEN),
+    PUSH_BATCH_PAGE_SIZE: emptyToUndefined(process.env.PUSH_BATCH_PAGE_SIZE),
+    PUSH_STEP_MAX_DURATION_MS: emptyToUndefined(
+      process.env.PUSH_STEP_MAX_DURATION_MS,
+    ),
+    PUSH_CHUNK_DEADLINE_MS: emptyToUndefined(
+      process.env.PUSH_CHUNK_DEADLINE_MS,
+    ),
+    PUSH_PROVIDER_CONCURRENCY: emptyToUndefined(
+      process.env.PUSH_PROVIDER_CONCURRENCY,
+    ),
+    PUSH_MESSAGES_PER_SECOND: emptyToUndefined(
+      process.env.PUSH_MESSAGES_PER_SECOND,
+    ),
+    PUSH_RECEIPT_PAGE_SIZE: emptyToUndefined(
+      process.env.PUSH_RECEIPT_PAGE_SIZE,
+    ),
+    PUSH_FCM_BLOCKED_COUNTRIES: emptyToUndefined(
+      process.env.PUSH_FCM_BLOCKED_COUNTRIES,
+    ),
     SEARCH_TRACE_SAMPLING_API_KEYS: emptyToUndefined(
       process.env.SEARCH_TRACE_SAMPLING_API_KEYS,
     ),
