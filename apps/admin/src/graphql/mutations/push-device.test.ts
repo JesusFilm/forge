@@ -15,6 +15,9 @@ vi.mock("@/services/push/registration.service", () => ({
 vi.mock("@/services/push/open-report.service", () => ({
   reportPushOpen: vi.fn(),
 }))
+vi.mock("@/services/push/attribution.service", () => ({
+  attributeEpisodeAfterPushOpen: vi.fn(),
+}))
 
 const { schema } = await import("@/graphql/schema")
 const { admitPushWrite } = await import("@/services/push/admission")
@@ -22,6 +25,8 @@ const { assertPushCeiling } = await import("@/services/push/ceiling")
 const { registerPushDevice } =
   await import("@/services/push/registration.service")
 const { reportPushOpen } = await import("@/services/push/open-report.service")
+const { attributeEpisodeAfterPushOpen } =
+  await import("@/services/push/attribution.service")
 const {
   PushAdmissionError,
   PushCeilingExceededError,
@@ -32,6 +37,7 @@ const admitMock = admitPushWrite as ReturnType<typeof vi.fn>
 const ceilingMock = assertPushCeiling as ReturnType<typeof vi.fn>
 const registerMock = registerPushDevice as ReturnType<typeof vi.fn>
 const openMock = reportPushOpen as ReturnType<typeof vi.fn>
+const attributeMock = attributeEpisodeAfterPushOpen as ReturnType<typeof vi.fn>
 
 const VIEWER_TOKEN = "v".repeat(43)
 const SESSION_TOKEN = "s".repeat(43)
@@ -96,6 +102,7 @@ beforeEach(() => {
     status: "ACTIVE",
   })
   openMock.mockResolvedValue({ outcome: "STORED" })
+  attributeMock.mockResolvedValue({ outcome: "attributed", campaignId: "c_1" })
 })
 
 describe("the push mutations on the schema", () => {
@@ -289,6 +296,40 @@ describe("reportPushOpen", () => {
       }),
     ).rejects.toMatchObject({ extensions: { code: "UNAUTHENTICATED" } })
     expect(openMock).not.toHaveBeenCalled()
+  })
+
+  it("hands the report an attribution hook that runs the reverse join", async () => {
+    const stored = {
+      id: "open_1",
+      deliveryId: "delivery_1",
+      campaignId: "campaign_1",
+      registrationId: "reg_1",
+      viewerDigest: VIEWER_DIGEST,
+      sessionDigest: SESSION_DIGEST,
+      languageSlug: "french",
+      country: "FR",
+      viewerMismatch: false,
+      receivedAt: new Date("2026-10-01T21:00:00.000Z"),
+      deliverySendingAt: new Date("2026-10-01T20:00:00.000Z"),
+    }
+    openMock.mockImplementation(
+      async (
+        _client: unknown,
+        _request: unknown,
+        options: { afterOpenStored?: (open: unknown) => Promise<void> },
+      ) => {
+        await options.afterOpenStored?.(stored)
+        return { outcome: "STORED" }
+      },
+    )
+    await invoke("reportPushOpen", {
+      nonce: NONCE,
+      viewerToken: null,
+      sessionToken: null,
+    })
+    // The bounded wrapper, never the raw join: it is what holds the budget and
+    // answers a failure instead of throwing into the receipt.
+    expect(attributeMock).toHaveBeenCalledWith(prisma, stored)
   })
 
   it("writes no token, handle, or nonce into a log line", async () => {

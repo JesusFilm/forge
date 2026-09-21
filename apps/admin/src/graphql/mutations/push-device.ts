@@ -11,6 +11,7 @@ import { GraphQLError } from "graphql"
 
 import { builder } from "@/graphql/builder"
 import { admitPushWrite } from "@/services/push/admission"
+import { attributeEpisodeAfterPushOpen } from "@/services/push/attribution.service"
 import { assertPushCeiling } from "@/services/push/ceiling"
 import { readPushEdgeCountry } from "@/services/push/country"
 import {
@@ -176,11 +177,21 @@ builder.mutationFields((t) => ({
           handle: { viewerToken, sessionToken },
         })
         await assertPushCeiling("open", admission.fleetKeyId)
-        return reportPushOpen(ctx.prisma, {
-          input: { nonce },
-          viewerDigest: admission.viewerDigest,
-          sessionDigest: admission.sessionDigest,
-        })
+        return reportPushOpen(
+          ctx.prisma,
+          {
+            input: { nonce },
+            viewerDigest: admission.viewerDigest,
+            sessionDigest: admission.sessionDigest,
+          },
+          // KTD8 — the reverse join, so a tap reported after the watch start
+          // still attributes. The hook holds its own budget and never throws.
+          {
+            afterOpenStored: async (open) => {
+              await attributeEpisodeAfterPushOpen(ctx.prisma, open)
+            },
+          },
+        )
       }),
   }),
 }))
