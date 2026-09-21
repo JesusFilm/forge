@@ -49,6 +49,8 @@ export type PendingClaimStore = ReturnType<typeof createPendingClaimStore>
 /** Holds at most one claim; a take consumes it, so it is redeemed once. */
 export function createPendingClaimStore(now: () => number = Date.now) {
   let pending: PendingRecommendationClaim | null = null
+  /** The last claim handed out, so a put-back keeps its own selection time. */
+  let lastTaken: PendingRecommendationClaim | null = null
   const fresh = (claim: PendingRecommendationClaim) =>
     now() - claim.selectedAt < PENDING_CLAIM_TTL_MS
   return {
@@ -63,17 +65,19 @@ export function createPendingClaimStore(now: () => number = Date.now) {
         return null
       }
       if (pending.mediaId !== mediaId) return null
-      const nonce = pending.claimNonce
+      lastTaken = pending
       pending = null
-      return nonce
+      return lastTaken.claimNonce
     },
     /**
      * Puts a taken nonce back after an abandoned claim. A newer selection,
-     * for any media, outranks it: the viewer has moved on.
+     * for any media, outranks it: the viewer has moved on. The remembered
+     * claim wins over the caller's, so the TTL runs from the tap and a
+     * put-back cannot extend it.
      */
     restore(claim: PendingRecommendationClaim): void {
       if (pending && fresh(pending)) return
-      pending = claim
+      pending = lastTaken?.claimNonce === claim.claimNonce ? lastTaken : claim
     },
     peek(): PendingRecommendationClaim | null {
       return pending && fresh(pending) ? pending : null

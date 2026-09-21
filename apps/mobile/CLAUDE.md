@@ -703,83 +703,88 @@ data layer and playback attribution only; the Home shelf is `feat-517`.
 Home renders a Recommended for You row at the authored position of the
 `HomepageRecommendationsBlock` in the published `watch-home` Experience. The
 design record is `docs/plans/2026-09-21-1009-feat-mobile-recommended-for-you-shelf-plan.md`;
-it defines the KTD, R and AE numbers the source comments cite.
+it defines the KD, KTD, R and AE numbers the source comments cite.
 
 - **Block presence is the only server-side gate.** The adapter reads the
-  block by its `__typename` string against the unchanged legacy fragment (the
-  fragment returns only the bare type name for it, and the shelf reads no
-  block field) and reports the count of shelves emitted before it as
+  block by its `__typename` string against the unchanged legacy fragment. That
+  fragment returns only the bare type name, and the shelf reads no block field.
+  The adapter then reports the count of shelves emitted before the block as
   `recommendationsInsertIndex`, beside `usedExperience`. `useWatchHome` holds
-  the model and the index in ONE state slot; a null index means the block is
+  the model and the index in ONE state slot. A null index means the block is
   absent OR the body fell back to the config model. `WatchHomeModel` and the
   cold-launch snapshot keep their shape.
 - **One pure gate decides whether the feed item exists.**
   `recommendationsShelfVisible` in `src/lib/watchHome/homeFeed.ts` needs the
   index, `isRecommendationClientEnabled()` and a configured fleet bearer.
   A closed gate leaves no feed item and no placeholder. Only the asynchronous
-  delivery outcomes use the deferred collapse: a terminal non-served outcome
+  delivery outcomes use the deferred collapse. A terminal non-served outcome
   keeps its placeholder until the row leaves the viewport, because collapsing
   in view is a layout jump.
 - **Home hosts the slate; the row is a thin renderer.**
   `useHomeRecommendations` owns the `useUserRecommendations` instance. The
-  row's first mount is the fetch trigger (FlashList mounts it within its draw
-  distance), a closed gate stops the slate, its expiry timer and its evidence,
-  and the last served slate stays on display across a refetch. While Home is
-  blurred (a tab switch or a root route on top) the controller HOLDS every
-  expiry-, segment-, profile- and pull-driven refresh and runs at most one
-  when focus returns. Event-driven triggers inside
-  `REFRESH_COALESCE_WINDOW_MS` (2 s) collapse into one refetch; the held
+  row's first mount is the fetch trigger, because FlashList mounts it within
+  its draw distance. A closed gate stops the slate, its expiry timer and its
+  evidence. The last served slate stays on display across a refetch. While
+  Home is blurred (a tab switch or a root route on top) the controller HOLDS
+  every expiry-, segment-, profile- and pull-driven refresh. The controller
+  runs at most one refresh when focus returns. Event-driven triggers inside
+  `REFRESH_COALESCE_WINDOW_MS` (2 s) collapse into one refetch. The held
   release and the expiry timer spend the window but are never dropped, or a
   failed refetch would strand the shelf on dead capabilities.
 - **Impression eligibility is a pure dwell tracker over four signals**
-  (`src/lib/recommendations/impressionDwell.ts`): the row at least half
-  visible in Home's list, the card at least half visible in the row's list,
-  the app in the foreground, and Home focused. One continuous second with all
-  four true records one impression per card per slate request id; any drop
-  cancels. Row visibility stands in for the card's vertical exposure, because
-  the row's own list measures only the horizontal axis; both approximations
-  under-record. Home's focus flag is the fourth signal because neither list
-  re-evaluates viewability without a scroll or layout change, so a slate that
-  lands under a watch route would otherwise read as fully visible.
+  (`src/lib/recommendations/impressionDwell.ts`). The first two are the row at
+  least half visible in Home's list, and the card at least half visible in the
+  row's list. The last two are the app in the foreground, and Home focused.
+  One continuous second with all four true records one impression per card per
+  slate request id; any drop cancels. Row visibility stands in for the card's
+  vertical exposure, because the row's own list measures only the horizontal
+  axis; both approximations under-record. Home's focus flag is the fourth
+  signal, because neither list re-evaluates viewability without a scroll or
+  layout change. A slate that lands under a watch route would otherwise read
+  as fully visible.
 - **The two lists capture their viewability wiring differently.** React
-  Native's FlatList captures both the callback and the config at construction;
+  Native's FlatList captures both the callback and the config at construction.
   FlashList 2 captures the config at construction and reads the callback prop
-  at report time. Both lists therefore share ONE config object
-  (`IMPRESSION_VIEWABILITY_CONFIG`: 50 percent, `minimumViewTime` 250, which
-  is FlashList's own default; 0 runs the check on every scroll tick) and one
-  callback created once per list that reads the current slate through refs.
-  Every list callback is wrapped by `guardViewabilityCallback`: an uncaught
-  throw in Home's own list is fatal for Home, so it logs once with a `rec_`
-  attribute and drops.
+  at report time. Both lists therefore share ONE config object and one
+  callback. `IMPRESSION_VIEWABILITY_CONFIG` is 50 percent with
+  `minimumViewTime` 250, which is FlashList's own default; 0 runs the check on
+  every scroll tick. Each list has one callback, created once, which reads the
+  current slate through refs. `guardViewabilityCallback` wraps every list
+  callback. An uncaught throw in Home's own list is fatal for Home, so the
+  guard logs once with a `rec_` attribute and drops the throw.
 - **Return-from-watch is a route-segment transition, not a focus event.**
   `isReturnToHomeFromWatch` in `src/lib/recommendations/homeReturnSignal.ts`
   is true only when the previous segments start with a root `watch` or
-  `series` segment outside `(tabs)` and the next segments start with `(tabs)`.
-  It keys on the group marker, never a tab name: the Discover tab is itself
-  named `watch`. The SDUI `video`, `collection` and `experience` routes do not
-  count. `app/__tests__/screenFreeze.guard.test.js` fails if any layout sets
-  `freezeOnBlur` or `enableFreeze`, because a frozen Home stops receiving
-  segment updates and the trigger dies silently.
+  `series` segment outside `(tabs)`. The next segments must also start with
+  `(tabs)`. The predicate keys on the group marker, never a tab name: the
+  Discover tab is itself named `watch`. The SDUI `video`, `collection` and
+  `experience` routes do not count.
+  `app/__tests__/screenFreeze.guard.test.js` fails if any file under `app/` or
+  `src/` sets `freezeOnBlur` or `enableFreeze`. A frozen Home stops receiving
+  segment updates, and the trigger dies silently.
 - **A tap selects and navigates in the same tick.** The row calls the hook's
-  `select`, ignores its promise, and calls `router.navigate` (never `push`)
-  with the item's slug and a seed built from its title and image, so a
-  double-tap opens one screen and the recorder finds the pending nonce when
-  playback starts. A displayed slate past `expiresAt` refreshes instead of
-  selecting; the video still opens. `HomeCard` takes `onPressOverride`, which
-  replaces navigation only, and `actionName` (`recommendation-card`).
+  `select`, ignores its promise, and calls `router.navigate` (never `push`).
+  The row passes the item's slug and a seed built from the item's title and
+  image. A double-tap therefore opens one screen, and the recorder finds the
+  pending nonce when playback starts. A displayed slate past `expiresAt`
+  refreshes instead of selecting; the video still opens. `HomeCard` takes
+  `onPressOverride`, which replaces navigation only, and `actionName`
+  (`recommendation-card`).
 - **The experience shell remounts the Stack once per launch** when the stored
   selection hydrates, which discards the controller. The proxy smoke on
   2026-09-21 counted one slate per cold launch; re-check on a real Admin.
 - **Smoke recipe.** Behavior runs against the fake-admin proxy in
-  `docs/solutions/developer-experience/mobile-write-path-smoke-via-fake-admin-proxy.md`,
-  extended to answer `UserRecommendations` with six real production videos,
-  the evidence and selection mutations, and to inject the block into the
-  forwarded homepage Experience. The real contract needs a provisioned local
-  Admin: the video snapshot, the seeded homepage Experience, the curated pool
-  promoted, `RECOMMENDATION_CAPABILITY_KEYRING` set (without it delivery
+  `docs/solutions/developer-experience/mobile-write-path-smoke-via-fake-admin-proxy.md`.
+  The proxy is extended to answer `UserRecommendations` with six real
+  production videos, plus the evidence and selection mutations. The proxy also
+  injects the block into the forwarded homepage Experience. The real contract
+  needs a provisioned local Admin. That Admin needs the video snapshot, the
+  seeded homepage Experience, the curated pool promoted, and
+  `RECOMMENDATION_CAPABILITY_KEYRING` set. Without the keyring, delivery
   answers `unavailable` and every evidence, selection and claim write fails
-  `capability_unavailable`), and a local-only fleet key in both
-  `FLEET_ADMIN_API_KEYS` and mobile's `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN`.
+  `capability_unavailable`. That Admin also needs a local-only fleet key in
+  both `FLEET_ADMIN_API_KEYS` and mobile's
+  `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN`.
 
 ## Mini player and the root-owned playback session (feat-367)
 

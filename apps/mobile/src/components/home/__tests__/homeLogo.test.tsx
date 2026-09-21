@@ -57,7 +57,11 @@ jest.mock("expo-linear-gradient", () => ({
 }))
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
-  useNavigation: () => ({ addListener: () => () => {} }),
+  // `isFocused` seeds Home's focus flag; these suites all run focused.
+  useNavigation: () => ({
+    addListener: () => () => {},
+    isFocused: () => true,
+  }),
   // Home's return-from-watch effect reads this (feat-517 KTD5).
   useSegments: () => ["(tabs)", "index"],
 }))

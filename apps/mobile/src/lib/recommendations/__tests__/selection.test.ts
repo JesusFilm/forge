@@ -67,6 +67,29 @@ describe("createPendingClaimStore", () => {
     expect(store.take("media-2")).toBe(newer)
   })
 
+  it("keeps the original selection time when a nonce is put back", () => {
+    let now = 1_000
+    const store = createPendingClaimStore(() => now)
+    store.set({ mediaId: "media-1", claimNonce: NONCE, selectedAt: now })
+    now += 9 * 60_000
+    expect(store.take("media-1")).toBe(NONCE)
+    // The recorder re-dates the claim it puts back; the store must not.
+    store.restore({ mediaId: "media-1", claimNonce: NONCE, selectedAt: now })
+    now += 2 * 60_000
+    expect(store.peek()).toBeNull()
+  })
+
+  it("hands the nonce out again when the put-back is inside the original window", () => {
+    let now = 1_000
+    const store = createPendingClaimStore(() => now)
+    store.set({ mediaId: "media-1", claimNonce: NONCE, selectedAt: now })
+    now += 9 * 60_000
+    expect(store.take("media-1")).toBe(NONCE)
+    store.restore({ mediaId: "media-1", claimNonce: NONCE, selectedAt: now })
+    now += 30_000
+    expect(store.take("media-1")).toBe(NONCE)
+  })
+
   it("puts a nonce back over a selection that has expired", () => {
     let now = 1_000
     const store = createPendingClaimStore(() => now)

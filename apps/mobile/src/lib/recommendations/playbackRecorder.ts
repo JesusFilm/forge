@@ -416,6 +416,8 @@ export function createRecommendationPlaybackRecorder(
   ): Promise<void> {
     const abandonDisposed = () => {
       if (fallback) {
+        // The store keeps this nonce's own selection time: the ten-minute
+        // bound runs from the tap, not from the put-back.
         deps.restorePendingNonce({
           mediaId: deps.mediaId,
           claimNonce,
@@ -442,13 +444,14 @@ export function createRecommendationPlaybackRecorder(
         await deps.invalidateIdentity()
         return abandon()
       }
-      if (disposed) return abandonDisposed()
       if (failure.definitive) {
-        // A stale or foreign selection nonce still leaves an ordinary
-        // playback to attribute; a rejected context nonce does not.
-        if (fallback) return claimViaContext(1, fallback)
-        return abandon()
+        // A definitive rejection kills the nonce, so no put-back: a stale or
+        // foreign one still leaves an ordinary playback to attribute, but a
+        // rejected context nonce does not.
+        if (fallback && !disposed) return claimViaContext(1, fallback)
+        return abandon(disposed ? "disposed" : undefined)
       }
+      if (disposed) return abandonDisposed()
       if (failure.code === "RATE_LIMITED") {
         // Not a failed attempt: wait out the limiter's window, once.
         if (claimRateLimitDeferrals >= MAX_CLAIM_RATE_LIMIT_DEFERRALS) {

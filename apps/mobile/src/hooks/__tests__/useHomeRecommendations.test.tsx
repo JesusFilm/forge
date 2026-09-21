@@ -42,6 +42,7 @@ import {
   type UseHomeRecommendationsOptions,
 } from "../useHomeRecommendations"
 import { useWatchPreferences } from "../../contexts/WatchPreferencesProvider"
+import { datadogLog } from "../../lib/datadog"
 import type { UserRecommendationsClient } from "../useUserRecommendations"
 import type {
   DeliveryResult,
@@ -56,6 +57,7 @@ import {
 } from "../../test-utils/rnTestRenderer"
 
 const mockPreferences = useWatchPreferences as unknown as jest.Mock
+const warnLog = datadogLog.warn as jest.Mock
 
 function item(index: number): UserRecommendationItem {
   return {
@@ -396,11 +398,75 @@ describe("the expiry timer", () => {
     expect(c.fetch).toHaveBeenCalledTimes(2)
   })
 
-  // R16: the expiry timer is the LAST retry a dead slate has. A sibling
-  // refetch that failed leaves `expiresAt` unchanged, so the effect schedules
-  // nothing new — dropping this one into the coalescing window would strand
-  // the shelf on expired capabilities until some other trigger happened.
-  it("still fires on expiry after a failed refetch inside the window", async () => {
+  /** Every answer is a slate that expired a second before it arrived. */
+  function expiredOnArrivalClient(): TestClient {
+    let served = 0
+    return client({
+      fetch: jest.fn(async () => {
+        served += 1
+        return {
+          kind: "served",
+          slate: slate(
+            `req-${served}`,
+            new Date(Date.now() - 1_000).toISOString(),
+          ),
+        } as DeliveryResult
+      }),
+    })
+  }
+
+  // A slate that is already dead cannot be rescued by an immediate refetch:
+  // the next one arrives expired too. The controller warns once and waits for
+  // a coalesced trigger instead of spending the viewer's evidence budget.
+  it("arms no refetch loop for a slate that arrives already expired", async () => {
+    jest.useFakeTimers()
+    const c = expiredOnArrivalClient()
+    const hook = await servedWithExpiry(c)
+    expect(c.fetch).toHaveBeenCalledTimes(1)
+
+    for (let round = 0; round < 4; round += 1) {
+      await act(async () => {
+        jest.advanceTimersByTime(EXPIRY_MS)
+      })
+      await flush()
+    }
+    expect(c.fetch).toHaveBeenCalledTimes(1)
+    expect(hook.latest().slate?.requestId).toBe("req-1")
+    expect(warnLog).toHaveBeenCalledTimes(1)
+    expect(warnLog).toHaveBeenCalledWith(
+      "recommendation.slate_expired_on_arrival",
+      { rec_surface: "home" },
+    )
+  })
+
+  // An unparsable stamp is not a dead slate, so it takes neither the timer
+  // nor the expired-on-arrival warning.
+  it("arms no timer for a malformed expiry stamp", async () => {
+    jest.useFakeTimers()
+    const c = client({
+      fetch: jest.fn(
+        async () =>
+          ({
+            kind: "served",
+            slate: slate("req-1", "not-a-date"),
+          }) as DeliveryResult,
+      ),
+    })
+    const hook = await servedWithExpiry(c)
+    expect(hook.latest().slate?.requestId).toBe("req-1")
+
+    await act(async () => {
+      jest.advanceTimersByTime(EXPIRY_MS * 4)
+    })
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(1)
+    expect(warnLog).not.toHaveBeenCalled()
+  })
+
+  // R8: a terminal non-served refetch means the held cards' capabilities are
+  // gone, so the row drops to its placeholder rather than keep evidence
+  // flowing against a slate Admin would reject.
+  it("clears the displayed slate when a refetch inside the window ends unavailable", async () => {
     jest.useFakeTimers()
     let served = 0
     const c = client({
@@ -431,13 +497,57 @@ describe("the expiry timer", () => {
     act(() => hook.latest().refresh())
     await flush()
     expect(c.fetch).toHaveBeenCalledTimes(2)
-    expect(hook.latest().slate?.requestId).toBe("req-1")
+    expect(hook.latest().slate).toBeNull()
 
+    // The cleared slate takes its `expiresAt` with it, so nothing is armed.
     await act(async () => {
-      jest.advanceTimersByTime(1_000)
+      jest.advanceTimersByTime(EXPIRY_MS * 4)
     })
     await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
+
+    // A later trigger outside the window still refetches.
+    act(() => hook.latest().refresh())
+    await flush()
     expect(c.fetch).toHaveBeenCalledTimes(3)
+  })
+
+  it("clears the displayed slate when the expiry refetch ends unavailable", async () => {
+    jest.useFakeTimers()
+    let served = 0
+    const c = client({
+      fetch: jest.fn(async () => {
+        served += 1
+        if (served >= 2) {
+          return {
+            kind: "unavailable",
+            reason: "coverage_unavailable",
+            retryable: false,
+          } as DeliveryResult
+        }
+        return {
+          kind: "served",
+          slate: slate(
+            `req-${served}`,
+            new Date(Date.now() + EXPIRY_MS).toISOString(),
+          ),
+        } as DeliveryResult
+      }),
+    })
+    const hook = await servedWithExpiry(c)
+
+    await act(async () => {
+      jest.advanceTimersByTime(EXPIRY_MS)
+    })
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
+    expect(hook.latest().slate).toBeNull()
+
+    await act(async () => {
+      jest.advanceTimersByTime(EXPIRY_MS * 4)
+    })
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
   })
 
   // R17: the viewer sits on the Discover tab long enough for the slate to
@@ -529,7 +639,10 @@ describe("the coalescing window (KTD5, KTD12)", () => {
     expect(c.fetch).toHaveBeenCalledTimes(2)
   })
 
-  it("holds the window against a profile transition too", async () => {
+  // A viewer-identity change is the one trigger the window may not drop. It
+  // clears the displayed slate first, so a dropped refetch would strand the
+  // row on its placeholder until some other signal happened to arrive.
+  it("refetches once for a profile transition inside another trigger's window", async () => {
     jest.useFakeTimers()
     let notify = () => {}
     const c = client({
@@ -546,7 +659,13 @@ describe("the coalescing window (KTD5, KTD12)", () => {
 
     act(() => notify())
     await flush()
-    expect(c.fetch).toHaveBeenCalledTimes(2)
+    expect(c.fetch).toHaveBeenCalledTimes(3)
+    expect(hook.latest().slate?.requestId).toBe("req-3")
+
+    // It spends the window, so an ordinary trigger right behind it is dropped.
+    act(() => hook.latest().refresh())
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(3)
   })
 })
 
@@ -565,6 +684,29 @@ describe("a profile transition while Home is focused", () => {
     expect(hook.latest().slate?.requestId).toBe("req-1")
 
     act(() => notify())
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
+    expect(hook.latest().slate?.requestId).toBe("req-2")
+  })
+
+  // The identity moved, so the old viewer's cards leave the screen before the
+  // refetch answers. Only then can they back no further evidence.
+  it("drops the displayed slate as soon as the profile moves", async () => {
+    let notify = () => {}
+    const c = client({
+      subscribeProfile: (listener) => {
+        notify = listener
+        return () => {}
+      },
+    })
+    const hook = renderController(OPEN, c)
+    act(() => hook.latest().reportShelfMounted())
+    await flush()
+    expect(hook.latest().slate?.requestId).toBe("req-1")
+
+    act(() => notify())
+    expect(hook.latest().slate).toBeNull()
+
     await flush()
     expect(c.fetch).toHaveBeenCalledTimes(2)
     expect(hook.latest().slate?.requestId).toBe("req-2")

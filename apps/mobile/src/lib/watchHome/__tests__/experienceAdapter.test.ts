@@ -1,7 +1,6 @@
 import {
   assembleWatchHomeModel,
   buildWatchHomeBodyFromExperience,
-  buildWatchHomeSectionsFromExperience,
   experienceItemCoreIds,
 } from "../experienceAdapter"
 import type { WatchHomeModel, WatchHomeVideoInput } from "../model"
@@ -20,6 +19,14 @@ import {
  */
 
 type Block = { __typename?: string | null } & Record<string, unknown>
+
+// Local to the tests: production reads the whole body, so the index-dropping
+// projection is not an export any caller should be able to reach for.
+function buildWatchHomeSectionsFromExperience(
+  ...args: Parameters<typeof buildWatchHomeBodyFromExperience>
+) {
+  return buildWatchHomeBodyFromExperience(...args).sections
+}
 
 function mediaCollection(overrides: Partial<Block> = {}): Block {
   return {

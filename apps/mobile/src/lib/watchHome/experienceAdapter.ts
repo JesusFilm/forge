@@ -254,13 +254,6 @@ export function buildWatchHomeBodyFromExperience(
   return { sections, recommendationsInsertIndex }
 }
 
-export function buildWatchHomeSectionsFromExperience(
-  blocks: readonly ExperienceBlock[] | null | undefined,
-  videoByCoreId: Map<string, WatchHomeVideoInput> = new Map(),
-): WatchHomeSection[] {
-  return buildWatchHomeBodyFromExperience(blocks, videoByCoreId).sections
-}
-
 /**
  * The unique, validated coreIds referenced by the Experience's MediaCollection
  * items — the input to the divergence check (`these − the hydration index`) that

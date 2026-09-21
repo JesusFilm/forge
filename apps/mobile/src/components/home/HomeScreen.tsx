@@ -22,6 +22,7 @@ import { useNavigation, useRouter, useSegments } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { useGuardedViewabilityCallback } from "../../hooks/useGuardedViewabilityCallback"
 import { useHomeRecommendations } from "../../hooks/useHomeRecommendations"
 import { useMiniPlayerHoldsVideo } from "../../hooks/useMiniPlayerHoldsVideo"
 import { useTypography } from "../../hooks/useTypography"
@@ -45,10 +46,7 @@ import {
   isReturnToHomeFromWatch,
   routeSegmentsFromKey,
 } from "../../lib/recommendations/homeReturnSignal"
-import {
-  IMPRESSION_VIEWABILITY_CONFIG,
-  guardViewabilityCallback,
-} from "../../lib/recommendations/impressionDwell"
+import { IMPRESSION_VIEWABILITY_CONFIG } from "../../lib/recommendations/impressionDwell"
 import { getSplashSession } from "../../lib/splash/splashSession"
 import {
   buildWatchHomeHeroQueue,
@@ -301,7 +299,9 @@ export function HomeScreen() {
   const [muted, setMuted] = useState(true)
   const handleMuteToggle = useCallback(() => setMuted((m) => !m), [])
 
-  const [focused, setFocused] = useState(true)
+  // Seeded from the navigator: a deep link mounts Home under another route,
+  // and a `true` seed records impressions nobody has looked at (KTD3).
+  const [focused, setFocused] = useState(() => navigation.isFocused())
   // R9: the pop that opens the window fires the focus listener below in the
   // same commit, so the hero's resume is gated on the window as well as focus.
   const windowHoldsVideo = useMiniPlayerHoldsVideo()
@@ -409,23 +409,17 @@ export function HomeScreen() {
     refreshSlate()
   }, [refetch, refreshSlate])
 
-  // FlashList captures its config when the list is built and reads the
-  // callback at report time, so this pair is created once and reaches the
-  // current controller through a ref (KTD4).
+  // The callback identity is fixed for the list's life, so the current
+  // controller is reached through this ref (KTD4).
   const reportShelfVisibleRef = useRef(recommendations.reportShelfVisible)
   reportShelfVisibleRef.current = recommendations.reportShelfVisible
-  const handleFeedViewableItemsChangedRef = useRef<
-    ((info: { viewableItems: { item: HomeFeedItem }[] }) => void) | null
-  >(null)
-  handleFeedViewableItemsChangedRef.current ??= guardViewabilityCallback<{
+  const handleFeedViewableItemsChanged = useGuardedViewabilityCallback<{
     viewableItems: { item: HomeFeedItem }[]
   }>("home_feed", ({ viewableItems }) => {
     reportShelfVisibleRef.current(
       viewableItems.some((entry) => entry.item.kind === "recommendations"),
     )
   })
-  const handleFeedViewableItemsChanged =
-    handleFeedViewableItemsChangedRef.current
 
   // ── Feed composition ───────────────────────────────────────────────────────
 

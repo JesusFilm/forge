@@ -14,16 +14,14 @@ import {
 } from "react-native"
 import { useRouter } from "expo-router"
 
+import { useGuardedViewabilityCallback } from "../../hooks/useGuardedViewabilityCallback"
 import { useTypography } from "../../hooks/useTypography"
 import {
   isSlateExpired,
   type UserRecommendationItem,
   type UserRecommendationSlate,
 } from "../../lib/recommendations/delivery"
-import {
-  IMPRESSION_VIEWABILITY_CONFIG,
-  guardViewabilityCallback,
-} from "../../lib/recommendations/impressionDwell"
+import { IMPRESSION_VIEWABILITY_CONFIG } from "../../lib/recommendations/impressionDwell"
 import type { SelectionResult } from "../../lib/recommendations/selection"
 import type { UserRecommendationsStatus } from "../../hooks/useUserRecommendations"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
@@ -172,11 +170,9 @@ export const RecommendationsShelf = memo(function RecommendationsShelf({
   onDetachedRef.current = onDetached
 
   // `null` keeps the indices the list last reported and maps them onto the
-  // current slate. Guarded, because a throw here reaches the list itself.
-  const reportCardsRef = useRef<
-    ((indices: readonly number[] | null) => void) | null
-  >(null)
-  reportCardsRef.current ??= guardViewabilityCallback<readonly number[] | null>(
+  // current slate. Guarded, because the two effects below call it outside any
+  // list, where a throw would reach Home's own commit.
+  const reportCards = useGuardedViewabilityCallback<readonly number[] | null>(
     "recommendations_row",
     (indices) => {
       if (indices != null) visibleIndicesRef.current = [...indices]
@@ -187,14 +183,8 @@ export const RecommendationsShelf = memo(function RecommendationsShelf({
       )
     },
   )
-  const reportCards = reportCardsRef.current
 
-  // React Native captures the callback and the config when it builds the list,
-  // so this pair is created once and reads the current slate through refs.
-  const handleViewableItemsChangedRef = useRef<
-    ((info: { viewableItems: { index: number | null }[] }) => void) | null
-  >(null)
-  handleViewableItemsChangedRef.current ??= guardViewabilityCallback<{
+  const handleViewableItemsChanged = useGuardedViewabilityCallback<{
     viewableItems: { index: number | null }[]
   }>("recommendations_row", ({ viewableItems }) =>
     reportCards(
@@ -203,7 +193,6 @@ export const RecommendationsShelf = memo(function RecommendationsShelf({
         .filter((index): index is number => index != null),
     ),
   )
-  const handleViewableItemsChanged = handleViewableItemsChangedRef.current
 
   useEffect(() => {
     // Setup restores what the cleanup drops: a dev StrictMode cycle runs both

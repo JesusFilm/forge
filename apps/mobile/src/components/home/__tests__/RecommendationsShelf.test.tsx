@@ -45,17 +45,21 @@ jest.mock("expo-linear-gradient", () => ({
 jest.mock("expo-router", () => {
   const router = { push: jest.fn(), navigate: jest.fn(), back: jest.fn() }
   // Home's focus flag comes from these listeners, and the integration block
-  // fires them to pin that the flag reaches the controller and the row.
+  // fires them to pin that the flag reaches the controller and the row. The
+  // flag is seeded from `isFocused`, which the deep-link case drives false.
   const listeners: Record<string, (() => void)[]> = {}
+  const focus = { atMount: true }
   const navigation = {
     addListener: (event: string, fn: () => void) => {
       listeners[event] = [...(listeners[event] ?? []), fn]
       return () => {}
     },
+    isFocused: () => focus.atMount,
   }
   return {
     useRouter: () => router,
     useNavigation: () => navigation,
+    __focus: focus,
     // Home's return-from-watch effect reads this (feat-517 KTD5). A constant
     // route keeps this suite's transitions out of the slate's refresh path.
     useSegments: () => ["(tabs)", "index"],
@@ -167,7 +171,7 @@ jest.mock("../../../lib/splash/splashSession", () => ({
   }),
 }))
 
-import { act, createElement } from "react"
+import { StrictMode, act, createElement } from "react"
 import { Dimensions } from "react-native"
 
 import { HomeScreen } from "../HomeScreen"
@@ -192,6 +196,8 @@ import type {
   UserRecommendationSlate,
 } from "../../../lib/recommendations/delivery"
 import { decodeWatchSeed } from "../../../lib/watchSeed"
+import { SECTION_HEADING_MARGIN_BOTTOM } from "../../../styles/shared"
+import type { HomeFeedItem } from "../../../lib/watchHome/homeFeed"
 import type {
   WatchHomeModel,
   WatchHomeSection,
@@ -204,11 +210,14 @@ import {
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
 
-const { __router: router, __fireNavigation: fireNavigation } = jest.requireMock(
-  "expo-router",
-) as {
+const {
+  __router: router,
+  __fireNavigation: fireNavigation,
+  __focus: navigationFocus,
+} = jest.requireMock("expo-router") as {
   __router: { push: jest.Mock; navigate: jest.Mock; back: jest.Mock }
   __fireNavigation: (event: string) => void
+  __focus: { atMount: boolean }
 }
 const mockUseWatchHome = useWatchHome as unknown as jest.Mock
 const mockController = useHomeRecommendations as unknown as jest.Mock
@@ -378,11 +387,19 @@ function expectSameIdentities(after: unknown[], before: unknown[]): void {
   after.forEach((entry, index) => expect(entry).toBe(before[index]))
 }
 
+/** When a mock was last called, on jest's own global invocation counter. */
+function lastCallOrder(mock: jest.Mock): number {
+  const { invocationCallOrder } = mock.mock
+  expect(invocationCallOrder.length).toBeGreaterThan(0)
+  return invocationCallOrder[invocationCallOrder.length - 1]!
+}
+
 afterEach(() => {
   act(() => {
     mounted.splice(0).forEach((renderer) => renderer.unmount())
   })
   flashList.props = null
+  navigationFocus.atMount = true
   jest.useRealTimers()
   jest.clearAllMocks()
 })
@@ -491,10 +508,9 @@ describe("render facts", () => {
     const { update } = renderShelf({ onRecordRender: first })
     expect(first).toHaveBeenCalledTimes(6)
 
-    // The controller re-creates `recordRender` whenever the inner hook's slate
-    // reference changes, and that happens at the start of every refetch while
-    // this row still displays the last served slate. Without the per-slate
-    // latch the same six facts would be sent again.
+    // The controller re-creates `recordRender` at the start of every refetch,
+    // while this row still displays the last served slate. Without the
+    // per-slate latch the same six facts would be sent again.
     const second = jest.fn()
     update({ status: "loading", onRecordRender: second })
     expect(second).not.toHaveBeenCalled()
@@ -529,9 +545,15 @@ describe("a non-served outcome", () => {
       status: "loading",
       slate: null,
     })
-    const expected = recommendationsShelfBodyHeight(
-      SCREEN_WIDTH,
-      computeTypographyScale(SCREEN_WIDTH).titleSmall.lineHeight,
+    const lineHeight =
+      computeTypographyScale(SCREEN_WIDTH).titleSmall.lineHeight
+    const expected = recommendationsShelfBodyHeight(SCREEN_WIDTH, lineHeight)
+    // The spacer check below reads the function against itself, so pin the
+    // value too: the heading, its margin, and the card's own 16:9 height.
+    expect(expected).toBe(
+      lineHeight +
+        SECTION_HEADING_MARGIN_BOTTOM +
+        homeCardWidth("landscape", SCREEN_WIDTH) / (16 / 9),
     )
     const spacer = renderer.root.findAll(
       (node: RenderedNode) =>
@@ -714,6 +736,33 @@ describe("the row's own viewability report", () => {
     expect(props.onDetached).toHaveBeenCalledTimes(1)
   })
 
+  it("re-reports its cards after a StrictMode remount, and records once", () => {
+    const props = baseProps()
+    let renderer!: TestInstance
+    act(() => {
+      renderer = TestRenderer.create(
+        createElement(
+          StrictMode,
+          null,
+          createElement(RecommendationsShelf, props),
+        ) as never,
+      )
+    })
+    mounted.push(renderer)
+
+    // Dev StrictMode runs setup, cleanup and setup again on this one instance.
+    const detached = props.onDetached as jest.Mock
+    const visible = props.onCardsVisible as jest.Mock
+    expect(props.onRecordRender).toHaveBeenCalledTimes(6)
+    expect(detached).toHaveBeenCalledTimes(1)
+    // The second setup must re-report after the cleanup's detach, or the
+    // tracker keeps the dropped signals and no card ever earns an impression.
+    expect(lastCallOrder(visible)).toBeGreaterThan(lastCallOrder(detached))
+
+    reportCards(innerList(renderer), [1])
+    expect(visible).toHaveBeenLastCalledWith(["item-1"])
+  })
+
   it("never lets a throw reach the list", () => {
     const onCardsVisible = jest.fn(() => {
       throw new Error("boom")
@@ -875,6 +924,38 @@ describe("rendered from Home's feed", () => {
     act(() => jest.advanceTimersByTime(1_000))
     expect(onImpression).toHaveBeenCalledTimes(1)
     expect(onImpression).toHaveBeenCalledWith("item-0")
+  })
+
+  it("records nothing when a deep link mounts Home unfocused (KTD3)", () => {
+    // A deep link opens the watch route over the tabs, so Home can mount while
+    // the navigator holds another screen. Recording there is a phantom.
+    navigationFocus.atMount = false
+    const state = controller()
+    mockController.mockReturnValue(state)
+    renderHome(1)
+
+    expect(mockController).toHaveBeenLastCalledWith(
+      expect.objectContaining({ focused: false }),
+    )
+    expect(state.recordRender).not.toHaveBeenCalled()
+
+    act(() => fireNavigation("focus"))
+    expect(state.recordRender).toHaveBeenCalledTimes(6)
+  })
+
+  it("gives the row and a section their own recycling pools", () => {
+    mockController.mockReturnValue(controller())
+    renderHome(1)
+    const getItemType = flashList.props?.getItemType as (
+      item: HomeFeedItem,
+    ) => string
+
+    // One pool per kind: the row's height has nothing in common with a
+    // section's, and FlashList would otherwise reuse one cell for both.
+    expect(getItemType({ kind: "recommendations" })).toBe("recommendations")
+    expect(getItemType({ kind: "section", section: section("a") })).toBe(
+      "section",
+    )
   })
 
   it("draws no row and opens no gate when the block is absent (R1)", () => {

@@ -5,11 +5,9 @@
 const fs = require("fs")
 const path = require("path")
 
-// Guard (feat-517 KTD5): no layout under `app/` may freeze a blurred screen.
-// Home's Recommended for You shelf refetches on a route-segment TRANSITION,
-// and a frozen Home stops re-rendering, so `useSegments` never reports the
-// return from a watch route and the slate silently stops refreshing.
-// `enableFreeze()` is global, so the second scan covers `app/` and `src/`.
+// Guard (feat-517 KTD5): no file under `app/` or `src/` may freeze a blurred
+// screen. Home's shelf refetches on a route-segment TRANSITION, so a frozen
+// Home never sees the return from a watch route and the slate stops refreshing.
 
 const FREEZE_OPTION = /\b(?:freezeOnBlur|enableFreeze)\b/
 const GLOBAL_FREEZE = /\benableFreeze\b/
@@ -32,6 +30,7 @@ function callsEnableFreeze(source) {
 
 const APP_DIR = path.join(__dirname, "..")
 const SRC_DIR = path.join(__dirname, "..", "..", "src")
+const ROOTS = [APP_DIR, SRC_DIR]
 
 function walk(dir, keep) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -46,10 +45,11 @@ const isLayout = (name) => /^_layout(\.[^.]+)?\.tsx?$/.test(name)
 const isSource = (name) => /\.tsx?$/.test(name)
 
 // `_layout.tsx`, `(tabs)/_layout.tsx`, `(tabs)/_layout.ios.tsx`,
-// `series/_layout.tsx`, `watch/_layout.tsx`. Raise this when a layout is added.
+// `series/_layout.tsx`, `watch/_layout.tsx`. The wide scan cannot prove the
+// layouts were read, so this floor does. Raise it when a layout is added.
 const KNOWN_LAYOUT_COUNT = 5
 
-describe("no layout freezes a blurred screen", () => {
+describe("no screen is frozen while it is blurred", () => {
   it.each([
     [
       "a stack screen option",
@@ -64,6 +64,10 @@ describe("no layout freezes a blurred screen", () => {
       `navigation.setOptions({ freezeOnBlur: shouldFreeze })`,
     ],
     ["a shorthand property", `<Tabs screenOptions={{ freezeOnBlur }} />`],
+    [
+      "a src/ options object",
+      `export const screenOptions = { freezeOnBlur: true }`,
+    ],
     ["the global switch", `enableFreeze(true)`],
     [
       "the global switch behind an import",
@@ -80,22 +84,32 @@ describe("no layout freezes a blurred screen", () => {
       `/**\n * enableFreeze would kill the shelf's refresh trigger.\n */`,
     ],
     ["an unrelated screen option", `<Stack screenOptions={{ animation }} />`],
+    [
+      "a src/ options object without it",
+      `export const screenOptions = { animation: "fade" }`,
+    ],
     ["an unrelated identifier", `const frozen = useFrozenRouteState()`],
   ])("does not flag %s (negative control)", (_name, source) => {
     expect(setsFreezeOption(source)).toBe(false)
   })
 
-  it("finds none in the layouts under app/", () => {
-    const layouts = walk(APP_DIR, isLayout)
-    expect(layouts.length).toBeGreaterThanOrEqual(KNOWN_LAYOUT_COUNT)
-    const offenders = layouts.filter((file) =>
+  it("finds none in app/ or src/", () => {
+    const files = ROOTS.flatMap((dir) => walk(dir, isSource))
+    expect(files.length).toBeGreaterThan(100)
+    const offenders = files.filter((file) =>
       setsFreezeOption(fs.readFileSync(file, "utf8")),
     )
     expect(offenders).toEqual([])
   })
 
+  it("walks every known layout under app/", () => {
+    expect(walk(APP_DIR, isLayout).length).toBeGreaterThanOrEqual(
+      KNOWN_LAYOUT_COUNT,
+    )
+  })
+
   it("finds no enableFreeze call in app/ or src/", () => {
-    const files = [APP_DIR, SRC_DIR].flatMap((dir) => walk(dir, isSource))
+    const files = ROOTS.flatMap((dir) => walk(dir, isSource))
     expect(files.length).toBeGreaterThan(100)
     const offenders = files.filter((file) =>
       callsEnableFreeze(fs.readFileSync(file, "utf8")),

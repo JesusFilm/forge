@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AppState } from "react-native"
 
 import { useWatchPreferences } from "../contexts/WatchPreferencesProvider"
+import { datadogLog } from "../lib/datadog"
 import { resolveRecommendationContext } from "../lib/recommendations/context"
 import type { UserRecommendationSlate } from "../lib/recommendations/delivery"
 import {
@@ -61,6 +62,15 @@ const NOOP = () => {}
  * the viewer's whole evidence budget on duplicate slates.
  */
 export const REFRESH_COALESCE_WINDOW_MS = 2_000
+
+/** R8: the inner hook reached an outcome it will not retry, so the hold ends. */
+function isTerminalNonServed(status: UserRecommendationsStatus): boolean {
+  return (
+    status === "unavailable" ||
+    status === "disabled" ||
+    status === "unprovisioned"
+  )
+}
 
 export function useHomeRecommendations(
   options: UseHomeRecommendationsOptions,
@@ -121,17 +131,26 @@ export function useHomeRecommendations(
     [runOrHold, refetchAlways],
   )
 
-  // The inner hook's own profile subscription is routed through the hold, so a
-  // transition that lands while Home is blurred waits with every other trigger.
+  // KTD6: the inner hook clears its slate at the start of every refetch, so
+  // the last served one is held here and the shelf keeps its cards.
+  const [displaySlate, setDisplaySlate] =
+    useState<UserRecommendationSlate | null>(null)
+
+  // A transition that lands while Home is blurred waits with every other
+  // trigger. It spends the window but is never dropped by it: the clear below
+  // empties the row, so a dropped refetch would leave nothing to show.
   const heldClient = useMemo<UserRecommendationsClient>(
     () => ({
       ...client,
       subscribeProfile: (listener) =>
-        client.subscribeProfile?.(() =>
-          runOrHold(() => runCoalesced(listener)),
-        ) ?? NOOP,
+        client.subscribeProfile?.(() => {
+          // The identity moved, so the old viewer's capabilities must not back
+          // another impression or selection while the refetch runs.
+          setDisplaySlate(null)
+          runOrHold(() => runAndSpendWindow(listener))
+        }) ?? NOOP,
     }),
-    [client, runOrHold, runCoalesced],
+    [client, runOrHold, runAndSpendWindow],
   )
 
   const [latched, setLatched] = useState(false)
@@ -164,19 +183,23 @@ export function useHomeRecommendations(
     heldClient,
   )
   innerRefreshRef.current = recommendations.refresh
+  const { status, recordRender, recordImpression, select } = recommendations
 
-  // KTD6: the inner hook clears its slate at the start of every refetch, so the
-  // last served one is held here and the shelf keeps its cards while it loads.
+  // R18: the hold spans `loading` only. A terminal non-served outcome drops
+  // the cards, because dead capabilities on screen keep sending evidence
+  // Admin rejects. The row then shows its placeholder instead.
   const servedSlate = recommendations.slate
-  const [displaySlate, setDisplaySlate] =
-    useState<UserRecommendationSlate | null>(null)
   useEffect(() => {
     if (!enabled) {
       setDisplaySlate(null)
       return
     }
-    if (servedSlate != null) setDisplaySlate(servedSlate)
-  }, [enabled, servedSlate])
+    if (servedSlate != null) {
+      setDisplaySlate(servedSlate)
+      return
+    }
+    if (isTerminalNonServed(status)) setDisplaySlate(null)
+  }, [enabled, servedSlate, status])
 
   // R16: past `expiresAt` the item capabilities are dead, so refresh rather
   // than let the shelf keep sending evidence Admin would reject.
@@ -185,14 +208,18 @@ export function useHomeRecommendations(
     if (!enabled || expiresAt == null) return
     const deadline = Date.parse(expiresAt)
     if (!Number.isFinite(deadline)) return
-    const timer = setTimeout(
-      refreshOnExpiry,
-      Math.max(0, deadline - Date.now()),
-    )
+    const remaining = deadline - Date.now()
+    if (remaining <= 0) {
+      // An immediate refetch cannot rescue this: the next slate arrives
+      // expired too. The coalesced triggers recover once the clock is right.
+      datadogLog.warn("recommendation.slate_expired_on_arrival", {
+        rec_surface: "home",
+      })
+      return
+    }
+    const timer = setTimeout(refreshOnExpiry, remaining)
     return () => clearTimeout(timer)
   }, [enabled, expiresAt, refreshOnExpiry])
-
-  const { status, recordRender, recordImpression, select } = recommendations
 
   // ── The impression dwell (KTD4) ───────────────────────────────────────────
 

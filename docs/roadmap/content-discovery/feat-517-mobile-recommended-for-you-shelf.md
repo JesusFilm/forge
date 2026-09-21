@@ -125,10 +125,11 @@ Experience. Every line below is from the proxy's request log.
 ### Still open
 
 - U6, the real-environment smoke against a provisioned local Admin (R19), is
-  blocked on two things: the `feat-516` double-recorder fix PR (KD3) has not
-  merged, and the local Admin on the dev machine is unprovisioned (database at
-  migration 13 of 98, PostgreSQL 17 clients while the snapshot restore needs
-  18, no `RECOMMENDATION_CAPABILITY_KEYRING`, no local fleet key).
+  blocked on the `feat-516` double-recorder fix PR (KD3), which has not merged.
+- U6 is also blocked on the local Admin, which is unprovisioned. The database
+  sits at migration 13 of 98, and the snapshot restore needs PostgreSQL 18
+  clients while the machine has 17. Neither
+  `RECOMMENDATION_CAPABILITY_KEYRING` nor a local fleet key is set.
 - U7's timing comparison (R20) needs U6's block-present configuration; the
   conventions section in `apps/mobile/CLAUDE.md` is written.
 - The native build before the next `eas update` is unchanged from `feat-516`.

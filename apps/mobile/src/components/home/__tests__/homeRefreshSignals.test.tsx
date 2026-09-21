@@ -44,7 +44,11 @@ jest.mock("expo-router", () => {
       navigate: jest.fn(),
       back: jest.fn(),
     }),
-    useNavigation: () => ({ addListener: () => () => {} }),
+    // `isFocused` seeds Home's focus flag; this suite runs focused.
+    useNavigation: () => ({
+      addListener: () => () => {},
+      isFocused: () => true,
+    }),
     useSegments: () => [...state.segments],
     __segments: state,
   }
@@ -320,7 +324,8 @@ describe("the return-from-watch trigger (AE7, KTD5)", () => {
 
   it("refreshes nothing when Home first renders under a watch route", () => {
     // A deep link opens the watch route over the tabs, so Home's first render
-    // can happen there. Its own mount fetch covers the slate.
+    // can happen there. Its own mount fetch covers the slate; the focus axis
+    // of that launch is pinned in RecommendationsShelf.test.tsx.
     segmentState.segments = ["watch", "[slug]"]
     const home = renderHome()
     expect(refresh).not.toHaveBeenCalled()

@@ -3,9 +3,17 @@ import {
   type WatchHomeVideoInput,
 } from "../model"
 import {
-  buildWatchHomeSectionsFromExperience,
+  buildWatchHomeBodyFromExperience,
   resolveWatchHomeModel,
 } from "../experienceAdapter"
+
+// Local to the tests: production reads the whole body, so the index-dropping
+// projection is not an export any caller should be able to reach for.
+function buildWatchHomeSectionsFromExperience(
+  ...args: Parameters<typeof buildWatchHomeBodyFromExperience>
+) {
+  return buildWatchHomeBodyFromExperience(...args).sections
+}
 
 const configModel = buildWatchHomeModelFromVideos({ videos: [] })
 

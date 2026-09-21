@@ -260,10 +260,9 @@ describe("a new request id", () => {
   })
 
   it("drops a timer that fires for a replaced request id", () => {
-    // SYNTHETIC substrate: `setRequestId` cancels every armed timer, so with a
-    // real `clearTimeout` this branch is unreachable. The clock below keeps a
-    // cancelled timer alive to prove the fire-time check, which is what keeps
-    // an impression off the wrong slate if a cancel is ever lost.
+    // SYNTHETIC substrate: a real `clearTimeout` leaves this branch unreachable,
+    // because `setRequestId` cancels every armed timer. The clock below keeps a
+    // cancelled timer alive, so the fire-time check is what is under test.
     const { tracker, clock, recorded } = watching(["item-0"], {
       cancels: false,
     })

@@ -1053,6 +1053,37 @@ describe("a disposed abandon puts the selection nonce back", () => {
     expect(next.deps.issueContext).not.toHaveBeenCalled()
   })
 
+  it("keeps a dead nonce from the replacement recorder when a definitive claim settles after dispose", async () => {
+    const store = selectedStore()
+    let rejectClaim: (error: unknown) => void = () => undefined
+    const h = harness({
+      ...storeDeps(store),
+      claimEpisode: jest.fn(
+        () =>
+          new Promise((_resolve, reject) => {
+            rejectClaim = reject
+          }),
+      ),
+    })
+    h.recorder.start()
+    await settle()
+    h.recorder.dispose()
+    await settle()
+    rejectClaim(new RecommendationClientError("CONFLICT"))
+    await settle()
+    expect(h.deps.restorePendingNonce).not.toHaveBeenCalled()
+    expect(store.peek()).toBeNull()
+    expect(h.deps.issueContext).not.toHaveBeenCalled()
+
+    const next = await replacementFor(store)
+    expect(next.deps.issueContext).toHaveBeenCalledTimes(1)
+    expect(next.deps.claimEpisode).not.toHaveBeenCalledWith(
+      IDENTITY,
+      NONCE,
+      "media-1",
+    )
+  })
+
   it.each(["RATE_LIMITED", "NETWORK_ERROR"] as const)(
     "completes the claim after a %s wait and leaves the store empty",
     async (code) => {
