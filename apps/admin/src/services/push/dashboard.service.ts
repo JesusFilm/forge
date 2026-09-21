@@ -5,9 +5,7 @@
  * shows what is there cannot change it by accident.
  */
 import {
-  LocaleStatus,
   Prisma,
-  VideoLabel,
   type PrismaClient,
   type PushAudienceScope,
   type PushCampaignMode,
@@ -20,6 +18,10 @@ import {
   type WorkflowWorkerStatusRow,
 } from "@/services/workflow-worker-heartbeat.service"
 
+import {
+  pushExperienceDestinationWhere,
+  pushVideoDestinationWhere,
+} from "./destinations"
 import { PUSH_ENGLISH_LANGUAGE_SLUG } from "./language-resolution"
 
 export const PUSH_CAMPAIGN_LIST_LIMIT = 100
@@ -309,7 +311,6 @@ export type PushDestinationOption = Readonly<{
 }>
 
 /** A collection is a series to a viewer, so both labels answer SERIES. */
-const SERIES_LABELS = [VideoLabel.SERIES, VideoLabel.COLLECTION]
 
 function videoTitle(
   locales: readonly { title: string | null }[],
@@ -336,8 +337,7 @@ export async function searchPushDestinations(
   if (input.kind === "EXPERIENCE") {
     const rows = await prisma.experienceLocale.findMany({
       where: {
-        status: LocaleStatus.PUBLISHED,
-        experience: { archivedAt: null },
+        ...pushExperienceDestinationWhere(),
         ...(query
           ? {
               OR: [
@@ -361,10 +361,9 @@ export async function searchPushDestinations(
 
   const rows = await prisma.video.findMany({
     where: {
-      deletedAt: null,
-      ...(input.kind === "SERIES"
-        ? { label: { in: SERIES_LABELS } }
-        : { label: { notIn: SERIES_LABELS } }),
+      // Published and not watch-restricted: a draft picked here would open the
+      // not-found screen on every phone the campaign reaches.
+      ...pushVideoDestinationWhere(input.kind),
       ...(query
         ? {
             OR: [

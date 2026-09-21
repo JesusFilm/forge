@@ -16,6 +16,7 @@ vi.mock("workflow", () => ({
   }),
   getWorkflowMetadata: () => ({ workflowRunId: "runtime-1" }),
   RetryableError: class RetryableError extends Error {},
+  FatalError: class FatalError extends Error {},
 }))
 
 const dispatchService = vi.hoisted(() => ({
@@ -63,11 +64,17 @@ vi.mock("@/db/client", () => ({ prisma: { id: "prisma" } }))
 
 const {
   PUSH_FINAL_RECONCILE_DELAY_MS,
+  PUSH_MAX_RECONCILE_STEPS,
+  PUSH_MAX_RECONCILE_STEPS_PER_GROUP,
   runPushCampaign,
   stepReconcilePushCampaignReceipts,
   stepRunPushCampaignBatch,
 } = await import("./pushCampaign")
-const { PushProviderRetryableError } = await import("@/services/push/errors")
+const {
+  PushProviderAuthError,
+  PushProviderFatalError,
+  PushProviderRetryableError,
+} = await import("@/services/push/errors")
 
 const INPUT = {
   campaignId: "campaign-1",
@@ -94,6 +101,26 @@ function batch(overrides: Record<string, unknown> = {}) {
   }
 }
 
+function receipts(overrides: Record<string, unknown> = {}) {
+  return {
+    status: "exhausted" as const,
+    counts: { handedOff: 1, failed: 0, invalid: 0, unknown: 0, pending: 0 },
+    ...overrides,
+  }
+}
+
+/** One group ready to send, then nothing. The shape most cases start from. */
+function oneGroup() {
+  dispatchService.readNextPushZoneGroup
+    .mockResolvedValueOnce({
+      kind: "group",
+      instant: "2026-10-01T00:00:00.000Z",
+      zoneCount: 1,
+    })
+    .mockResolvedValue({ kind: "none" })
+  batchService.runPushCampaignBatch.mockResolvedValue(batch())
+}
+
 beforeEach(() => {
   sleeps.length = 0
   dispatchService.startPushCampaignRun.mockClear()
@@ -101,7 +128,10 @@ beforeEach(() => {
   dispatchService.finishPushCampaignRun.mockClear()
   dispatchService.failPushCampaignRun.mockClear()
   batchService.runPushCampaignBatch.mockReset()
-  receiptService.reconcilePushCampaignReceipts.mockClear()
+  // A reset drops any queued once-value, so a deferred case cannot leak into the
+  // next test and spin its reconcile loop to the guard.
+  receiptService.reconcilePushCampaignReceipts.mockReset()
+  receiptService.reconcilePushCampaignReceipts.mockResolvedValue(receipts())
 })
 
 describe("runPushCampaign", () => {
@@ -267,7 +297,7 @@ describe("runPushCampaign", () => {
   })
 
   it("finishes the run with the accumulated counts", async () => {
-    dispatchService.readNextPushZoneGroup.mockResolvedValue({ kind: "none" })
+    oneGroup()
 
     await runPushCampaign(INPUT)
 
@@ -278,6 +308,92 @@ describe("runPushCampaign", () => {
         kind: "LIVE",
         outcome: "sent",
       }),
+    )
+  })
+
+  it("pauses a run that dispatched no group, rather than calling it sent", async () => {
+    // Send now with an audience of zero, and a wave whose every group was already
+    // retired late, both arrive here. The finish step moves only sending to sent,
+    // so "sent" would leave the campaign scheduled with a succeeded ledger.
+    dispatchService.readNextPushZoneGroup.mockResolvedValue({ kind: "none" })
+
+    const report = await runPushCampaign(INPUT)
+
+    expect(report.outcome).toBe("paused")
+    expect(report.groupsDispatched).toBe(0)
+    expect(dispatchService.finishPushCampaignRun).toHaveBeenCalledWith(
+      expect.objectContaining({ outcome: "paused" }),
+    )
+  })
+
+  it("still reports a cancel that ended the run before any group", async () => {
+    dispatchService.readNextPushZoneGroup.mockResolvedValue({
+      kind: "ended",
+      status: "CANCELLED",
+    })
+
+    const report = await runPushCampaign(INPUT)
+
+    expect(report.outcome).toBe("cancelled")
+  })
+
+  it("leaves a test send that dispatched no group reading as sent", async () => {
+    batchService.runPushCampaignBatch.mockResolvedValue(batch())
+
+    const report = await runPushCampaign({ ...INPUT, kind: "TEST" })
+
+    expect(report.groupsDispatched).toBe(0)
+    expect(report.outcome).toBe("sent")
+  })
+})
+
+describe("a deferred receipt reconcile", () => {
+  it("resumes the final reconcile until the step is exhausted", async () => {
+    dispatchService.readNextPushZoneGroup.mockResolvedValue({ kind: "none" })
+    receiptService.reconcilePushCampaignReceipts
+      .mockResolvedValueOnce(receipts({ status: "deferred" }))
+      .mockResolvedValueOnce(receipts({ status: "exhausted" }))
+
+    const report = await runPushCampaign(INPUT)
+
+    expect(receiptService.reconcilePushCampaignReceipts).toHaveBeenCalledTimes(
+      2,
+    )
+    // Every resumed step's counts land in the report, so nothing is lost.
+    expect(report.counts.handedOff).toBe(2)
+  })
+
+  it("stops the final reconcile at the guard when the step never exhausts", async () => {
+    dispatchService.readNextPushZoneGroup.mockResolvedValue({ kind: "none" })
+    receiptService.reconcilePushCampaignReceipts.mockResolvedValue(
+      receipts({ status: "deferred" }),
+    )
+
+    await runPushCampaign(INPUT)
+
+    expect(receiptService.reconcilePushCampaignReceipts).toHaveBeenCalledTimes(
+      PUSH_MAX_RECONCILE_STEPS,
+    )
+  })
+
+  it("resumes between groups too, under its own shorter guard", async () => {
+    oneGroup()
+    receiptService.reconcilePushCampaignReceipts.mockResolvedValue(
+      receipts({ status: "deferred" }),
+    )
+
+    await runPushCampaign(INPUT)
+
+    expect(receiptService.reconcilePushCampaignReceipts).toHaveBeenCalledTimes(
+      PUSH_MAX_RECONCILE_STEPS_PER_GROUP + PUSH_MAX_RECONCILE_STEPS,
+    )
+  })
+
+  it("keeps the between-groups guard shorter than the final one", () => {
+    // A wave that waited out a full final-length reconcile per group would have
+    // its remaining zones retired unsent as more than three hours late.
+    expect(PUSH_MAX_RECONCILE_STEPS_PER_GROUP).toBeLessThan(
+      PUSH_MAX_RECONCILE_STEPS,
     )
   })
 })
@@ -401,10 +517,47 @@ describe("the batch step", () => {
     ).rejects.toBeInstanceOf(RetryableError)
   })
 
-  it("lets a configuration failure through unchanged", async () => {
+  it("refuses to retry a rotated access token", async () => {
+    // A 401 answers the same way every time, so five retries would claim five
+    // more pages of phones and fail them all for a credential problem.
     batchService.runPushCampaignBatch.mockRejectedValueOnce(
-      new Error("no destination"),
+      new PushProviderAuthError("UNAUTHORIZED"),
     )
+    const { FatalError, RetryableError } = await import("workflow")
+
+    const thrown = await stepRunPushCampaignBatch({
+      campaignId: "campaign-1",
+      kind: "LIVE",
+      groupInstant: null,
+      cursor: null,
+    }).catch((error: unknown) => error)
+
+    expect(thrown).toBeInstanceOf(FatalError)
+    expect(thrown).not.toBeInstanceOf(RetryableError)
+  })
+
+  it("carries the app's own code across the boundary, never the provider's message", async () => {
+    batchService.runPushCampaignBatch.mockRejectedValueOnce(
+      new PushProviderAuthError("UNAUTHORIZED"),
+    )
+
+    const thrown = await stepRunPushCampaignBatch({
+      campaignId: "campaign-1",
+      kind: "LIVE",
+      groupInstant: null,
+      cursor: null,
+    }).catch((error: unknown) => error)
+
+    expect((thrown as Error).message).toContain("provider_auth")
+  })
+
+  it("refuses to retry any other deterministic provider failure", async () => {
+    // Synthetic at this seam: batch.ts absorbs a non-auth fatal per chunk today,
+    // so only an auth error reaches the step. The guard covers the next one.
+    batchService.runPushCampaignBatch.mockRejectedValueOnce(
+      new PushProviderFatalError("MESSAGE_TOO_BIG"),
+    )
+    const { FatalError } = await import("workflow")
 
     await expect(
       stepRunPushCampaignBatch({
@@ -413,7 +566,25 @@ describe("the batch step", () => {
         groupInstant: null,
         cursor: null,
       }),
-    ).rejects.toThrow("no destination")
+    ).rejects.toBeInstanceOf(FatalError)
+  })
+
+  it("lets a configuration failure through unchanged", async () => {
+    batchService.runPushCampaignBatch.mockRejectedValueOnce(
+      new Error("no destination"),
+    )
+    const { FatalError, RetryableError } = await import("workflow")
+
+    const thrown = await stepRunPushCampaignBatch({
+      campaignId: "campaign-1",
+      kind: "LIVE",
+      groupInstant: null,
+      cursor: null,
+    }).catch((error: unknown) => error)
+
+    expect((thrown as Error).message).toBe("no destination")
+    expect(thrown).not.toBeInstanceOf(FatalError)
+    expect(thrown).not.toBeInstanceOf(RetryableError)
   })
 
   it("bounds its own retries", () => {

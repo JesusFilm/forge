@@ -218,9 +218,11 @@ describe("classifyPushProviderError", () => {
 
   it.each([
     ["ECONNREFUSED"],
+    ["EHOSTUNREACH"],
+    ["ENETUNREACH"],
     ["ENOTFOUND"],
-    ["UND_ERR_CONNECT_TIMEOUT"],
     ["EAI_AGAIN"],
+    ["UND_ERR_CONNECT_TIMEOUT"],
   ])("treats the pre-socket code %s as retryable", (code) => {
     expect(
       classifyPushProviderError(
@@ -229,26 +231,41 @@ describe("classifyPushProviderError", () => {
     ).toBe("retryable")
   })
 
+  it.each([["ECONNRESET"], ["EPIPE"], ["UND_ERR_SOCKET"]])(
+    "treats the post-write code %s as indeterminate, so the chunk is never resent",
+    (code) => {
+      expect(
+        classifyPushProviderError(
+          Object.assign(new Error("fetch failed"), { cause: { code } }),
+        ),
+      ).toBe("indeterminate")
+    },
+  )
+
   it.each([[401], [403]])("treats status %i as an auth failure", (status) => {
     expect(
       classifyPushProviderError(providerError({ statusCode: status })),
     ).toBe("auth")
   })
 
+  // Both tables list every code in their production set, and each asserts one
+  // exact class, so a code that moves between the two sets fails here.
   it.each([
     ["UNAUTHORIZED"],
     ["INVALID_CREDENTIALS"],
-    ["PUSH_TOO_MANY_EXPERIENCE_IDS"],
-  ])("classifies the provider code %s without reading the message", (code) => {
-    const classification = classifyPushProviderError(providerError({ code }))
-
-    expect(classification === "auth" || classification === "fatal").toBe(true)
+    ["INVALID_ACCESS_TOKEN"],
+  ])("treats the provider code %s as an auth failure", (code) => {
+    expect(classifyPushProviderError(providerError({ code }))).toBe("auth")
   })
 
-  it("treats an oversized message as fatal for the chunk", () => {
-    expect(
-      classifyPushProviderError(providerError({ code: "MESSAGE_TOO_BIG" })),
-    ).toBe("fatal")
+  it.each([
+    ["PUSH_TOO_MANY_EXPERIENCE_IDS"],
+    ["MESSAGE_TOO_BIG"],
+    ["PUSH_TOO_MANY_NOTIFICATIONS"],
+    ["VALIDATION_ERROR"],
+    ["INVALID_ARGUMENT"],
+  ])("treats the provider code %s as fatal for the chunk", (code) => {
+    expect(classifyPushProviderError(providerError({ code }))).toBe("fatal")
   })
 
   it("treats an unclassifiable failure as indeterminate, never as retryable", () => {
@@ -482,6 +499,91 @@ describe("sendChunk", () => {
     )
   })
 
+  it.each([["ECONNRESET"], ["EPIPE"], ["UND_ERR_SOCKET"]])(
+    "raises an indeterminate error on %s, because the provider may already have the chunk",
+    async (code) => {
+      const client = stubClient({
+        sendPushNotificationsAsync: vi.fn(async () => {
+          throw providerError({ code })
+        }),
+      })
+      const transport = createPushTransport({ client })
+
+      await expect(transport.sendChunk([message(1)])).rejects.toBeInstanceOf(
+        PushProviderIndeterminateError,
+      )
+    },
+  )
+
+  it("raises a retryable error on ECONNREFUSED, because the request never left", async () => {
+    const client = stubClient({
+      sendPushNotificationsAsync: vi.fn(async () => {
+        throw providerError({ code: "ECONNREFUSED" })
+      }),
+    })
+    const transport = createPushTransport({ client })
+
+    await expect(transport.sendChunk([message(1)])).rejects.toBeInstanceOf(
+      PushProviderRetryableError,
+    )
+  })
+
+  it("logs the auth event once when every ticket refuses the credential", async () => {
+    const client = stubClient({
+      sendPushNotificationsAsync: vi.fn(async () => [
+        {
+          status: "error",
+          message: "ExponentPushToken[token-1] was refused",
+          details: { error: "InvalidCredentials" },
+        },
+        {
+          status: "error",
+          message: "ExponentPushToken[token-2] was refused",
+          details: { error: "InvalidCredentials" },
+        },
+      ]),
+    })
+    const transport = createPushTransport({ client })
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {})
+
+    try {
+      const outcomes = await transport.sendChunk([message(1), message(2)])
+
+      expect(outcomes).toEqual([
+        { kind: "failed", providerCode: "InvalidCredentials" },
+        { kind: "failed", providerCode: "InvalidCredentials" },
+      ])
+      expect(logged).toHaveBeenCalledTimes(1)
+      expect(logged.mock.calls[0][0]).toBe(
+        "[push] event=provider_auth_failed rows=2 provider_code=InvalidCredentials",
+      )
+    } finally {
+      logged.mockRestore()
+    }
+  })
+
+  it("leaves a dead token out of the auth event", async () => {
+    const client = stubClient({
+      sendPushNotificationsAsync: vi.fn(async () => [
+        {
+          status: "error",
+          message: "ExponentPushToken[token-1] is dead",
+          details: { error: "DeviceNotRegistered" },
+        },
+      ]),
+    })
+    const transport = createPushTransport({ client })
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {})
+
+    try {
+      await transport.sendChunk([message(1)])
+
+      expect(logged).not.toHaveBeenCalled()
+    } finally {
+      logged.mockRestore()
+    }
+  })
+
   it("never carries the provider's message into the raised error", async () => {
     const client = stubClient({
       sendPushNotificationsAsync: vi.fn(async () => {
@@ -578,6 +680,103 @@ describe("fetchReceipts", () => {
     ).toBeGreaterThan(1)
     for (const [batch] of client.getPushNotificationReceiptsAsync.mock.calls) {
       expect((batch as string[]).length).toBeLessThanOrEqual(300)
+    }
+  })
+
+  it("logs the auth event once when every receipt refuses the credential", async () => {
+    const client = stubClient({
+      getPushNotificationReceiptsAsync: vi.fn(async () => ({
+        "ticket-1": {
+          status: "error",
+          message: "ExponentPushToken[token-1] was refused",
+          details: { error: "InvalidCredentials" },
+        },
+        "ticket-2": {
+          status: "error",
+          message: "ExponentPushToken[token-2] was refused",
+          details: { error: "InvalidCredentials" },
+        },
+      })),
+    })
+    const transport = createPushTransport({ client })
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {})
+
+    try {
+      const receipts = await transport.fetchReceipts(["ticket-1", "ticket-2"])
+
+      expect(receipts.get("ticket-1")).toEqual({
+        kind: "failed",
+        providerCode: "InvalidCredentials",
+      })
+      expect(receipts.get("ticket-2")).toEqual({
+        kind: "failed",
+        providerCode: "InvalidCredentials",
+      })
+      expect(logged).toHaveBeenCalledTimes(1)
+      expect(logged.mock.calls[0][0]).toBe(
+        "[push] event=provider_auth_failed rows=2 provider_code=InvalidCredentials source=receipt",
+      )
+    } finally {
+      logged.mockRestore()
+    }
+  })
+
+  it("leaves a dead-token receipt out of the auth event", async () => {
+    const client = stubClient({
+      getPushNotificationReceiptsAsync: vi.fn(async () => ({
+        "ticket-1": {
+          status: "error",
+          message: "ExponentPushToken[token-1] is dead",
+          details: { error: "DeviceNotRegistered" },
+        },
+      })),
+    })
+    const transport = createPushTransport({ client })
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {})
+
+    try {
+      await transport.fetchReceipts(["ticket-1"])
+
+      expect(logged).not.toHaveBeenCalled()
+    } finally {
+      logged.mockRestore()
+    }
+  })
+
+  it("counts the auth rows per request, not across the whole page", async () => {
+    const client = stubClient({
+      getPushNotificationReceiptsAsync: vi.fn(async (ids: string[]) =>
+        Object.fromEntries(
+          ids.map((id) => [
+            id,
+            {
+              status: "error",
+              message: `ExponentPushToken[${id}] was refused`,
+              details: { error: "InvalidCredentials" },
+            },
+          ]),
+        ),
+      ),
+    })
+    const transport = createPushTransport({ client })
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {})
+    const ids = Array.from(
+      { length: 301 },
+      (_value, index) => `ticket-${index}`,
+    )
+
+    try {
+      await transport.fetchReceipts(ids)
+
+      // The counter has to reset per request. Held across the page, the second
+      // line would report every earlier refusal again.
+      const rows = logged.mock.calls.map((call) =>
+        Number(/rows=(\d+)/.exec(String(call[0]))?.[1]),
+      )
+      expect(rows.length).toBeGreaterThan(1)
+      expect(rows.reduce((total, value) => total + value, 0)).toBe(301)
+    } finally {
+      logged.mockRestore()
     }
   })
 

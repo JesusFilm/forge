@@ -99,6 +99,30 @@ describe("push destination contract", () => {
         .success,
     ).toBe(false)
   })
+
+  it("accepts a kebab-case catalog slug", () => {
+    expect(
+      PushDestinationInputSchema.parse({ kind: "VIDEO", slug: "washi-gospel" }),
+    ).toEqual({ kind: "VIDEO", slug: "washi-gospel" })
+  })
+
+  // The phone's parser refuses each of these, so accepting one here would send
+  // the whole audience to home instead of the destination. The paired bound is
+  // SLUG_PATTERN in apps/mobile/src/lib/push/announcementPayload.ts.
+  it.each([
+    "washi gospel",
+    "jesus/english",
+    "jesus?utm=push",
+    "jesus#chapter",
+    "jesus%2Fenglish",
+    "\u0130sa",
+    ".",
+    "..",
+  ])("rejects the slug %j", (slug) => {
+    expect(
+      PushDestinationInputSchema.safeParse({ kind: "VIDEO", slug }).success,
+    ).toBe(false)
+  })
 })
 
 describe("push audience contract", () => {

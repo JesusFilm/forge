@@ -299,7 +299,7 @@ describe("recommendation retention workflow", () => {
     expect(workflow.sleep).toHaveBeenCalledWith(next)
   })
 
-  it("leaves the push purge for the next cycle while the privacy backlog drains", async () => {
+  it("still purges push rows on every catch-up iteration", async () => {
     const continuation = new Date("2026-08-19T12:35:56.000Z")
     retention.runRecommendationRetentionFromScheduler.mockResolvedValue({
       ok: true,
@@ -313,16 +313,26 @@ describe("recommendation retention workflow", () => {
         overdueAfterRun: true,
       },
     })
-    retention.nextRecommendationRetentionCatchUpRunAt.mockReturnValueOnce(
+    retention.nextRecommendationRetentionCatchUpRunAt.mockReturnValue(
       continuation,
     )
-    workflow.sleep.mockRejectedValueOnce(new Error("stop scheduler"))
+    workflow.sleep
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error("stop scheduler"))
 
     await expect(
       runRecommendationRetentionScheduler({ ledgerRunId: "scheduler-1" }),
     ).rejects.toThrow("stop scheduler")
 
-    expect(push.runPushRetentionFromScheduler).not.toHaveBeenCalled()
+    // Two catch-up iterations, so a long privacy backlog cannot starve push.
+    expect(push.runPushRetentionFromScheduler).toHaveBeenCalledTimes(2)
+    expect(
+      push.runPushRetentionFromScheduler.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      retention.recordRecommendationRetentionSchedulerCatchUpHeartbeat.mock
+        .invocationCallOrder[0],
+    )
+    expect(retention.nextRecommendationRetentionRunAt).not.toHaveBeenCalled()
   })
 
   it("turns a recorded push purge failure into a bounded retryable step", async () => {

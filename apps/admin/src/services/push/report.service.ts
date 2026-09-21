@@ -230,8 +230,8 @@ function openQuery(campaignId: string): Prisma.Sql {
 
 function attributionQuery(campaignId: string): Prisma.Sql {
   // The join through the open is what keeps a test send out of the report: an
-  // attribution carries no kind of its own. Retention deletes an open and its
-  // attributions together, so this loses no live row.
+  // attribution carries no kind of its own. `open_id` is required and its
+  // foreign key cascades, so a deleted open leaves no row this cannot count.
   return Prisma.sql`
     SELECT
       GROUPING(a.language_slug) AS lang_total,

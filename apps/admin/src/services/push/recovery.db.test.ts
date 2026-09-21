@@ -48,6 +48,19 @@ function scopedStore(prisma: PrismaClient): PushRecoveryStore {
   }
 }
 
+/**
+ * This suite's own campaign ids out of the sweep's read. The limit is far above
+ * the sweep's own so a sibling suite's campaigns cannot push mine out of the
+ * window and turn an absence assertion green for the wrong reason.
+ */
+async function sweptIds(prisma: PrismaClient): Promise<string[]> {
+  const campaigns =
+    await createPushRecoveryStore(prisma).readActiveCampaigns(1_000)
+  return campaigns
+    .map((campaign) => campaign.id)
+    .filter((id) => id.startsWith(PREFIX))
+}
+
 describe.skipIf(env.PUSH_DB_TEST !== "1")(
   "the push recovery store against Postgres",
   () => {
@@ -220,6 +233,161 @@ describe.skipIf(env.PUSH_DB_TEST !== "1")(
           },
         }),
       ).resolves.toMatchObject({ id: `${PREFIX}delivery_next` })
+    })
+
+    /**
+     * R11's cancel is best effort: a page claimed between its own check and its
+     * runtime event stays reserved, and only the sweep can retire it. The
+     * predicate is a real partial read, so a fake cannot prove it.
+     */
+    it("reads a cancelled campaign that is still holding a reserved row", async () => {
+      await prisma.pushCampaign.update({
+        where: { id: `${PREFIX}campaign` },
+        data: { status: "CANCELLED" },
+      })
+
+      await expect(sweptIds(prisma)).resolves.toContain(`${PREFIX}campaign`)
+    })
+
+    it("reads a cancelled campaign that is holding a dispatching zone", async () => {
+      await prisma.pushDelivery.update({
+        where: { id: `${PREFIX}delivery` },
+        data: { status: "MISSED" },
+      })
+      await prisma.pushCampaignZone.update({
+        where: { id: `${PREFIX}zone` },
+        data: { status: "DISPATCHING" },
+      })
+      await prisma.pushCampaign.update({
+        where: { id: `${PREFIX}campaign` },
+        data: { status: "CANCELLED" },
+      })
+
+      await expect(sweptIds(prisma)).resolves.toContain(`${PREFIX}campaign`)
+    })
+
+    it("skips a cancelled campaign that holds nothing", async () => {
+      // The held sibling is the control: it proves the read reached this
+      // suite's rows at all, so the absence below cannot pass vacuously.
+      await prisma.pushCampaign.create({
+        data: {
+          id: `${PREFIX}campaign_held`,
+          status: "CANCELLED",
+          destinationKind: "SERIES",
+          destinationSlug: "washi-gospel",
+          audienceScope: "EVERYWHERE",
+        },
+      })
+      await prisma.pushCampaignZone.create({
+        data: {
+          id: `${PREFIX}zone_held`,
+          campaignId: `${PREFIX}campaign_held`,
+          timeZone: ZONE,
+          scheduledAt: new Date("2026-10-01T20:00:00.000Z"),
+          status: "DISPATCHING",
+        },
+      })
+      await prisma.pushDelivery.update({
+        where: { id: `${PREFIX}delivery` },
+        data: { status: "MISSED" },
+      })
+      await prisma.pushCampaignZone.update({
+        where: { id: `${PREFIX}zone` },
+        data: { status: "CANCELLED" },
+      })
+      await prisma.pushCampaign.update({
+        where: { id: `${PREFIX}campaign` },
+        data: { status: "CANCELLED" },
+      })
+
+      const ids = await sweptIds(prisma)
+      expect(ids).toContain(`${PREFIX}campaign_held`)
+      expect(ids).not.toContain(`${PREFIX}campaign`)
+    })
+
+    it("retires a cancelled campaign's held rows and leaves it cancelled", async () => {
+      await prisma.pushCampaignZone.update({
+        where: { id: `${PREFIX}zone` },
+        data: { status: "DISPATCHING" },
+      })
+      await prisma.pushCampaign.update({
+        where: { id: `${PREFIX}campaign` },
+        data: { status: "CANCELLED" },
+      })
+
+      const result = await sweepOrphanedPushCampaigns({
+        store: scopedStore(prisma),
+        readRuntimeStatus: vi.fn(async () => "terminal" as const),
+      })
+
+      expect(result.campaignsSwept).toBeGreaterThanOrEqual(1)
+      await expect(
+        prisma.pushDelivery.findUniqueOrThrow({
+          where: { id: `${PREFIX}delivery` },
+          select: { status: true },
+        }),
+      ).resolves.toEqual({ status: "MISSED" })
+      await expect(
+        prisma.pushCampaignZone.findUniqueOrThrow({
+          where: { id: `${PREFIX}zone` },
+          select: { status: true },
+        }),
+      ).resolves.toEqual({ status: "MISSED" })
+      // Paused is for a send that stopped early, so a cancel keeps its status.
+      await expect(
+        prisma.pushCampaign.findUniqueOrThrow({
+          where: { id: `${PREFIX}campaign` },
+          select: { status: true },
+        }),
+      ).resolves.toEqual({ status: "CANCELLED" })
+    })
+
+    it("calls a stale sending row indeterminate, and a fresh one not yet", async () => {
+      const now = new Date()
+      await prisma.pushDelivery.update({
+        where: { id: `${PREFIX}delivery` },
+        data: {
+          status: "SENDING",
+          sendingAt: new Date(now.getTime() - 60 * 60_000),
+        },
+      })
+      await prisma.pushDelivery.create({
+        data: {
+          id: `${PREFIX}delivery_fresh`,
+          nonce: `${PREFIX}nonce3`.padEnd(43, "z").slice(0, 43),
+          kind: "LIVE",
+          campaignId: `${PREFIX}campaign`,
+          // The live-uniqueness index allows one row per campaign and phone, so
+          // the second row for this campaign carries no registration.
+          registrationId: null,
+          localDay: new Date("2026-10-03T00:00:00.000Z"),
+          languageSlug: "english",
+          country: "NZ",
+          timeZone: ZONE,
+          status: "SENDING",
+          sendingAt: now,
+        },
+      })
+
+      const result = await sweepOrphanedPushCampaigns({
+        store: scopedStore(prisma),
+        readRuntimeStatus: vi.fn(async () => "terminal" as const),
+        now: () => now,
+      })
+
+      expect(result.deliveriesUnknown).toBe(1)
+      await expect(
+        prisma.pushDelivery.findUniqueOrThrow({
+          where: { id: `${PREFIX}delivery` },
+          select: { status: true },
+        }),
+      ).resolves.toEqual({ status: "UNKNOWN" })
+      await expect(
+        prisma.pushDelivery.findUniqueOrThrow({
+          where: { id: `${PREFIX}delivery_fresh` },
+          select: { status: true },
+        }),
+      ).resolves.toEqual({ status: "SENDING" })
     })
 
     it("never touches a campaign that already finished", async () => {

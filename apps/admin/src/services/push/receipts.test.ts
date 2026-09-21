@@ -10,6 +10,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import {
   PUSH_RECEIPT_FORCE_AGE_MS,
   PUSH_RECEIPT_MIN_AGE_MS,
+  PUSH_RECEIPT_REQUEST_SIZE,
+  createPushReceiptStore,
+  groupPushReceiptWork,
   orderPushReceiptGroups,
   reconcilePushCampaignReceipts,
   type PushReceiptStore,
@@ -22,8 +25,7 @@ const NOW = new Date("2026-10-02T12:00:00.000Z")
 
 function group(hoursAgo: number, zone: string) {
   return {
-    instant: new Date(NOW.getTime() - hoursAgo * 60 * 60 * 1_000),
-    dispatchedAt: new Date(NOW.getTime() - hoursAgo * 60 * 60 * 1_000),
+    sentAt: new Date(NOW.getTime() - hoursAgo * 60 * 60 * 1_000),
     timeZones: [zone],
   }
 }
@@ -129,6 +131,15 @@ function config(overrides: Record<string, unknown> = {}) {
   }
 }
 
+/** A page of accepted rows, each with its own ticket. */
+function acceptedRows(count: number) {
+  return Array.from({ length: count }, (_value, index) => ({
+    id: `delivery-${index}`,
+    ticketId: `ticket-${index}`,
+    registrationId: `reg-${index}`,
+  }))
+}
+
 let logs: string[]
 
 beforeEach(() => {
@@ -166,8 +177,8 @@ describe("orderPushReceiptGroups", () => {
     const ordered = orderPushReceiptGroups(
       [
         {
-          ...group(0, "recent"),
-          dispatchedAt: new Date(NOW.getTime() - 16 * 60_000),
+          sentAt: new Date(NOW.getTime() - 16 * 60_000),
+          timeZones: ["recent"],
         },
         group(20.5, "ancient"),
       ],
@@ -180,6 +191,63 @@ describe("orderPushReceiptGroups", () => {
   it("holds the two ages the plan states", () => {
     expect(PUSH_RECEIPT_MIN_AGE_MS).toBe(15 * 60_000)
     expect(PUSH_RECEIPT_FORCE_AGE_MS).toBe(20 * 60 * 60_000)
+  })
+})
+
+describe("groupPushReceiptWork", () => {
+  const instant = new Date("2026-10-02T06:00:00.000Z").getTime()
+  const later = new Date("2026-10-02T09:00:00.000Z").getTime()
+
+  it("reconciles the zones that share a planned instant together", () => {
+    const groups = groupPushReceiptWork(
+      [
+        { timeZone: "Pacific/Auckland", oldestSentAt: new Date(instant) },
+        { timeZone: "Pacific/Fiji", oldestSentAt: new Date(instant + 60_000) },
+        { timeZone: "Asia/Dubai", oldestSentAt: new Date(later) },
+      ],
+      new Map([
+        ["Pacific/Auckland", instant],
+        ["Pacific/Fiji", instant],
+        ["Asia/Dubai", later],
+      ]),
+    )
+
+    expect(groups).toEqual([
+      {
+        sentAt: new Date(instant),
+        timeZones: ["Pacific/Auckland", "Pacific/Fiji"],
+      },
+      { sentAt: new Date(later), timeZones: ["Asia/Dubai"] },
+    ])
+  })
+
+  it("takes the oldest send in the group, whichever zone holds it", () => {
+    const groups = groupPushReceiptWork(
+      [
+        { timeZone: "Pacific/Fiji", oldestSentAt: new Date(instant + 60_000) },
+        { timeZone: "Pacific/Auckland", oldestSentAt: new Date(instant) },
+      ],
+      new Map([
+        ["Pacific/Auckland", instant],
+        ["Pacific/Fiji", instant],
+      ]),
+    )
+
+    expect(groups).toHaveLength(1)
+    expect(groups[0].sentAt).toEqual(new Date(instant))
+  })
+
+  it("still groups a zone the campaign never planned", () => {
+    // A test send reaches a device in a zone with no campaign zone row, and its
+    // accepted rows must still reconcile.
+    const groups = groupPushReceiptWork(
+      [{ timeZone: "Europe/London", oldestSentAt: new Date(instant) }],
+      new Map(),
+    )
+
+    expect(groups).toEqual([
+      { sentAt: new Date(instant), timeZones: ["Europe/London"] },
+    ])
   })
 })
 
@@ -262,6 +330,29 @@ describe("reconcilePushCampaignReceipts", () => {
     expect(result.counts.unknown).toBe(1)
   })
 
+  it("reconciles a group whose wave ended before its zone was stamped", async () => {
+    // A flag flip or a cancel mid-dispatch leaves the zone missed and its
+    // accepted rows holding tickets, so the group still reaches the provider.
+    const { store, calls } = fakeStore({
+      readReconcilableGroups: vi.fn(async () => [
+        {
+          sentAt: new Date(NOW.getTime() - 30 * 60_000),
+          timeZones: ["Asia/Tokyo"],
+        },
+      ]),
+    })
+    const { transport, requested } = fakeTransport()
+
+    const result = await reconcilePushCampaignReceipts(
+      { campaignId: CAMPAIGN_ID },
+      { store, transport, config: config(), now: () => NOW },
+    )
+
+    expect(requested).toEqual([["ticket-1"]])
+    expect(calls.pages[0].timeZones).toEqual(["Asia/Tokyo"])
+    expect(result.counts.handedOff).toBe(1)
+  })
+
   it("pages a large group across several calls and ends every row", async () => {
     const pageSize = 10_000
     let page = 0
@@ -295,6 +386,79 @@ describe("reconcilePushCampaignReceipts", () => {
     expect(calls.handedOff).toHaveLength(25_000)
     expect(result.counts.handedOff).toBe(25_000)
     expect(result.status).toBe("exhausted")
+  })
+
+  it("splits one page into requests the provider will answer", async () => {
+    const { store } = fakeStore({
+      readAcceptedPage: vi.fn(async () => ({
+        rows: acceptedRows(700),
+        nextCursor: null,
+      })),
+    })
+    const requested: string[][] = []
+    const transport: PushTransport = {
+      sendChunk: vi.fn(async () => []),
+      fetchReceipts: vi.fn(async (ids) => {
+        requested.push([...ids])
+        return new Map(
+          [...ids].map((id) => [id, { kind: "handed_off" as const }]),
+        )
+      }),
+    }
+
+    const result = await reconcilePushCampaignReceipts(
+      { campaignId: CAMPAIGN_ID },
+      { store, transport, config: config(), now: () => NOW },
+    )
+
+    expect(requested.map((request) => request.length)).toEqual([
+      PUSH_RECEIPT_REQUEST_SIZE,
+      PUSH_RECEIPT_REQUEST_SIZE,
+      700 - 2 * PUSH_RECEIPT_REQUEST_SIZE,
+    ])
+    expect(result.counts.handedOff).toBe(700)
+  })
+
+  it("defers mid-page when the budget runs out, and keeps what it applied", async () => {
+    // The budget is measured per provider request: one page of 900 tickets is
+    // three requests, and the third one would run past the step's reserve.
+    let elapsedMs = 0
+    const { store, calls } = fakeStore({
+      readAcceptedPage: vi.fn(async () => ({
+        rows: acceptedRows(900),
+        nextCursor: null,
+      })),
+    })
+    const requested: number[] = []
+    const transport: PushTransport = {
+      sendChunk: vi.fn(async () => []),
+      fetchReceipts: vi.fn(async (ids) => {
+        requested.push([...ids].length)
+        elapsedMs += 30_000
+        return new Map(
+          [...ids].map((id) => [id, { kind: "handed_off" as const }]),
+        )
+      }),
+    }
+
+    const result = await reconcilePushCampaignReceipts(
+      { campaignId: CAMPAIGN_ID },
+      {
+        store,
+        transport,
+        config: config({ stepMaxDurationMs: 100_000, stepReserveMs: 40_000 }),
+        now: () => new Date(NOW.getTime() + elapsedMs),
+      },
+    )
+
+    expect(requested).toEqual([
+      PUSH_RECEIPT_REQUEST_SIZE,
+      PUSH_RECEIPT_REQUEST_SIZE,
+    ])
+    expect(result.status).toBe("deferred")
+    expect(calls.handedOff).toHaveLength(2 * PUSH_RECEIPT_REQUEST_SIZE)
+    expect(result.counts.handedOff).toBe(2 * PUSH_RECEIPT_REQUEST_SIZE)
+    expect(store.readStaleSendingPage).not.toHaveBeenCalled()
   })
 
   it("defers when the step budget reaches the reserve and returns the cursor", async () => {
@@ -412,5 +576,140 @@ describe("reconcilePushCampaignReceipts", () => {
     )
 
     expect(logs.join("\n")).not.toContain("ExponentPushToken")
+  })
+})
+
+describe("the receipt store's failure writes", () => {
+  type Statement = { sql: string; values: unknown[] }
+
+  function fakePrisma() {
+    return {
+      $executeRaw: vi.fn(async (_statement: Statement) => 0),
+      $transaction: vi.fn(async (statements: unknown[]) => statements),
+      pushDelivery: { updateMany: vi.fn(async () => ({ count: 0 })) },
+      pushRegistration: { updateMany: vi.fn(async () => ({ count: 0 })) },
+    }
+  }
+
+  it("writes a whole page of failures in one statement", async () => {
+    const prisma = fakePrisma()
+    const rows = Array.from({ length: 300 }, (_value, index) => ({
+      id: `delivery-${index}`,
+      error: "ProviderError",
+    }))
+
+    await createPushReceiptStore(prisma as never).recordFailed(
+      rows,
+      PushDeliveryStatus.FAILED,
+    )
+
+    expect(prisma.$executeRaw).toHaveBeenCalledOnce()
+    expect(prisma.$transaction).not.toHaveBeenCalled()
+    expect(prisma.pushDelivery.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("pairs each row with its own error and casts the status", async () => {
+    const prisma = fakePrisma()
+
+    await createPushReceiptStore(prisma as never).recordFailed(
+      [
+        { id: "delivery-1", error: "ProviderError" },
+        { id: "delivery-2", error: "MessageRateExceeded" },
+      ],
+      PushDeliveryStatus.FAILED,
+    )
+
+    const statement = prisma.$executeRaw.mock.calls[0][0]
+    expect(statement.sql).toContain("FROM unnest(")
+    expect(statement.sql).toContain("error = v.error")
+    expect(statement.sql).toContain('::"PushDeliveryStatus"')
+    expect(statement.values).toContain("failed")
+    expect(statement.values).toContain('{"delivery-1","delivery-2"}')
+    expect(statement.values).toContain(
+      '{"ProviderError","MessageRateExceeded"}',
+    )
+  })
+
+  it("only moves a row that is still accepted", async () => {
+    const prisma = fakePrisma()
+
+    await createPushReceiptStore(prisma as never).recordFailed(
+      [{ id: "delivery-1", error: "ProviderError" }],
+      PushDeliveryStatus.FAILED,
+    )
+
+    expect(prisma.$executeRaw.mock.calls[0][0].sql).toContain(
+      `push_delivery.status = 'accepted'::"PushDeliveryStatus"`,
+    )
+  })
+
+  it("fits a long provider code to the error column", async () => {
+    const prisma = fakePrisma()
+
+    await createPushReceiptStore(prisma as never).recordFailed(
+      [{ id: "delivery-1", error: "E".repeat(120) }],
+      PushDeliveryStatus.FAILED,
+    )
+
+    expect(prisma.$executeRaw.mock.calls[0][0].values).toContain(
+      `{"${"E".repeat(64)}"}`,
+    )
+  })
+
+  it("survives a provider code carrying a brace", async () => {
+    // The provider names the code, and a brace is structural in a Postgres
+    // array literal, so one odd code must not fail the page.
+    const prisma = fakePrisma()
+
+    await createPushReceiptStore(prisma as never).recordFailed(
+      [{ id: "delivery-1", error: "Provider{Error}" }],
+      PushDeliveryStatus.FAILED,
+    )
+
+    expect(prisma.$executeRaw.mock.calls[0][0].values).toContain(
+      '{"ProviderError"}',
+    )
+  })
+
+  it("retires a page of dead tokens and their registrations together", async () => {
+    const prisma = fakePrisma()
+    const rows = Array.from({ length: 300 }, (_value, index) => ({
+      deliveryId: `delivery-${index}`,
+      registrationId: `reg-${index}`,
+      error: "DeviceNotRegistered",
+    }))
+
+    await createPushReceiptStore(prisma as never).recordDeadTokens(rows)
+
+    expect(prisma.$transaction).toHaveBeenCalledOnce()
+    expect(prisma.$transaction.mock.calls[0][0]).toHaveLength(2)
+    expect(prisma.$executeRaw).toHaveBeenCalledOnce()
+    expect(prisma.pushRegistration.updateMany).toHaveBeenCalledOnce()
+  })
+
+  it("retires a dead token whose registration is already gone", async () => {
+    const prisma = fakePrisma()
+
+    await createPushReceiptStore(prisma as never).recordDeadTokens([
+      {
+        deliveryId: "delivery-1",
+        registrationId: null,
+        error: "DeviceNotRegistered",
+      },
+    ])
+
+    expect(prisma.$transaction.mock.calls[0][0]).toHaveLength(1)
+    expect(prisma.pushRegistration.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("writes nothing when a request answered no failures", async () => {
+    const prisma = fakePrisma()
+    const store = createPushReceiptStore(prisma as never)
+
+    await store.recordFailed([], PushDeliveryStatus.FAILED)
+    await store.recordDeadTokens([])
+
+    expect(prisma.$executeRaw).not.toHaveBeenCalled()
+    expect(prisma.$transaction).not.toHaveBeenCalled()
   })
 })

@@ -273,5 +273,43 @@ describe.skipIf(env.PUSH_DB_TEST !== "1")(
       ])
       expect(counts).toEqual({ audience: 1, unreachable: 1 })
     })
+
+    it("counts no unreachable phone in a country the campaign never named", async () => {
+      await prisma.pushRegistration.createMany({
+        data: [
+          row({
+            suffix: "1_ios_us",
+            platform: "IOS",
+            country: "US",
+            appLanguageSlug: "english",
+            phoneLanguageSlug: "english",
+          }),
+          row({
+            suffix: "2_android_cn",
+            platform: "ANDROID",
+            country: "CN",
+            appLanguageSlug: "chinese-simplified",
+            phoneLanguageSlug: "chinese-simplified",
+          }),
+        ],
+      })
+      const unitedStates: PushAudienceCampaign = {
+        audienceScope: "COUNTRIES",
+        countries: ["US"],
+        languageFilter: [],
+      }
+
+      const scoped = await countPushAudience(prisma, {
+        campaign: unitedStates,
+        timeZones: MY_ZONES,
+      })
+      const everywhere = await countPushAudience(prisma, {
+        campaign: EVERYWHERE,
+        timeZones: MY_ZONES,
+      })
+
+      expect(scoped).toEqual({ audience: 1, unreachable: 0 })
+      expect(everywhere).toEqual({ audience: 1, unreachable: 1 })
+    })
   },
 )

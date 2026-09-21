@@ -70,6 +70,19 @@ describe("push retention purge", () => {
     expect(order).toEqual([...order].sort((a, b) => a - b))
   })
 
+  it("gives the page a budget a 5000-row batch can finish inside", async () => {
+    const { prisma } = buildPrisma()
+
+    await purgeExpiredPushRows(prisma as never, NOW, 5_000)
+
+    // Literals, not the exported constants: Prisma's 5s default aborts a page
+    // this size, so a dropped or lowered option must fail here.
+    expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
+      timeout: 60_000,
+      maxWait: 10_000,
+    })
+  })
+
   it("purges rows older than 90 days and retires registrations at 180 days", async () => {
     const { prisma, transaction } = buildPrisma()
 

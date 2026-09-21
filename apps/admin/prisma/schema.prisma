@@ -5931,6 +5931,7 @@ model PushRegistration {
   attributions PushAttribution[]
 
   @@index([viewerDigest])
+  @@index([createdAt])
   @@map("push_registration")
 }
 
@@ -6041,6 +6042,7 @@ model PushDelivery {
 
   @@index([campaignId, status, id])
   @@index([createdAt, id])
+  @@index([registrationId])
   @@map("push_delivery")
 }
 
@@ -6067,16 +6069,20 @@ model PushOpen {
   @@index([viewerDigest, receivedAt])
   @@index([sessionDigest, receivedAt])
   @@index([createdAt, id])
+  @@index([campaignId])
+  @@index([registrationId])
   @@map("push_open")
 }
 
 /// One attributed watch start. `episodeId` carries no foreign key on purpose,
 /// so the recommendation purge of a playback episode leaves the report intact.
+/// The report counts the row through its open, so `openId` is required and a
+/// deleted open takes its attributions with it.
 model PushAttribution {
   id             String            @id @default(cuid())
   episodeId      String            @unique @map("episode_id") @db.VarChar(191)
-  openId         String?           @map("open_id")
-  open           PushOpen?         @relation(fields: [openId], references: [id], onDelete: SetNull)
+  openId         String            @map("open_id")
+  open           PushOpen          @relation(fields: [openId], references: [id], onDelete: Cascade)
   campaignId     String            @map("campaign_id")
   campaign       PushCampaign      @relation(fields: [campaignId], references: [id], onDelete: Restrict)
   registrationId String?           @map("registration_id")
@@ -6090,5 +6096,8 @@ model PushAttribution {
 
   @@index([campaignId])
   @@index([createdAt, id])
+  @@index([openId])
+  @@index([registrationId])
+  @@index([viewerDigest])
   @@map("push_attribution")
 }

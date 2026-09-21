@@ -4,6 +4,7 @@ import {
   PUSH_CLAIM_HOLDING_STATUSES,
   PUSH_CLAIM_MAX_CANDIDATES,
   PUSH_CLAIM_RECENT_GUARD_HOURS,
+  buildPushClaimInsertStatement,
   claimPushDeliveryPage,
   nextPushDeliveryNonce,
   type PushClaimCandidate,
@@ -148,5 +149,50 @@ describe("push claim guards", () => {
     })
 
     expect(result.claimed).toHaveLength(1)
+  })
+})
+
+describe("push claim insert statement", () => {
+  function insertRow(overrides: Partial<PushClaimCandidate> = {}) {
+    const row = candidate(overrides)
+    return { ...row, id: `delivery_${row.registrationId}`, nonce: "nonce_1" }
+  }
+
+  const base = {
+    campaignId: "campaign_1",
+    kind: "LIVE",
+    status: "SUPPRESSED",
+    now: new Date("2026-10-01T00:00:00.000Z"),
+  } as const
+
+  it("refuses an errors array that does not pair with the rows", () => {
+    // Synthetic: both callers in claims.ts build `errors` in the same loop as
+    // `rows`, so only a later caller can reach this length mismatch.
+    expect(() =>
+      buildPushClaimInsertStatement({
+        ...base,
+        rows: [insertRow(), insertRow({ registrationId: "reg_2" })],
+        errors: ["daily_claim"],
+      }),
+    ).toThrowError(PushInputError)
+  })
+
+  it("builds the statement when the errors array pairs with the rows", () => {
+    const statement = buildPushClaimInsertStatement({
+      ...base,
+      rows: [insertRow(), insertRow({ registrationId: "reg_2" })],
+      errors: ["daily_claim", "zone_guard"],
+    })
+
+    expect(statement.sql).toContain("INSERT INTO push_delivery")
+  })
+
+  it("builds the statement when the caller passes no errors at all", () => {
+    const statement = buildPushClaimInsertStatement({
+      ...base,
+      rows: [insertRow(), insertRow({ registrationId: "reg_2" })],
+    })
+
+    expect(statement.sql).toContain("INSERT INTO push_delivery")
   })
 })

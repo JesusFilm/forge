@@ -47,16 +47,18 @@ export async function runRecommendationRetentionScheduler(
       // has its own purge ledger. Keep the durable daily scheduler alive so a
       // transient outage does not permanently stop privacy retention.
     }
-    if (catchUp?.overdueAfterRun) {
-      const next = await stepNextRecommendationRetentionCatchUpRun(input)
-      await sleep(next)
-      continue
-    }
+    // Above the catch-up branch, so a long privacy backlog on the 60s cadence
+    // cannot starve the push 90-day purge.
     try {
       await stepRunPushRetention()
     } catch {
       // The push purge owns its own ledger row and advisory lock. Its failure
       // must never retry the privacy purge or stop the daily scheduler.
+    }
+    if (catchUp?.overdueAfterRun) {
+      const next = await stepNextRecommendationRetentionCatchUpRun(input)
+      await sleep(next)
+      continue
     }
     const next = await stepNextRecommendationRetentionRun(input)
     await sleep(next)

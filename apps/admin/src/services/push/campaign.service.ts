@@ -13,6 +13,7 @@ import {
   type Prisma,
   type PrismaClient,
   type PushDeliveryStatus,
+  type PushDestinationKind,
 } from "@prisma/client"
 
 import { cancelPendingPushZones } from "./claims"
@@ -22,12 +23,14 @@ import {
   PushScheduleInputSchema,
   type PushCampaignUpdateInput,
 } from "./contracts"
+import { isPushDestinationPublished } from "./destinations"
 import {
   PushFrozenError,
   PushInputError,
   PushInvalidTransitionError,
   PushNotTestedError,
 } from "./errors"
+import { markPushCampaignReservedMissed } from "./recovery"
 
 /** The editor may still change copy, destination, and audience here. */
 const EDITABLE_STATUSES = [
@@ -248,6 +251,26 @@ function refuseUntested(gate: CampaignGate | null): void {
   }
 }
 
+/**
+ * The picker only offers published destinations, but a test send can sit for
+ * days before the schedule, so the transition checks the catalog again.
+ */
+async function refuseUnpublishedDestination(
+  prisma: PrismaClient,
+  gate: CampaignGate,
+): Promise<void> {
+  if (gate.destinationKind == null || gate.destinationSlug == null) return
+  const published = await isPushDestinationPublished(prisma, {
+    kind: gate.destinationKind as PushDestinationKind,
+    slug: gate.destinationSlug,
+  })
+  if (!published) {
+    throw new PushInputError(
+      "The destination is not published. Pick a published video, series, or experience before you schedule or send.",
+    )
+  }
+}
+
 async function moveTestedToScheduled(
   prisma: PrismaClient,
   input: {
@@ -294,6 +317,7 @@ export async function schedulePushCampaign(
   })
   const gate = await readGate(prisma, input.campaignId)
   refuseUntested(gate)
+  await refuseUnpublishedDestination(prisma, gate as CampaignGate)
   await moveTestedToScheduled(prisma, {
     campaignId: input.campaignId,
     actorId: input.actorId,
@@ -317,6 +341,7 @@ export async function confirmPushSendNow(
 ): Promise<void> {
   const gate = await readGate(prisma, input.campaignId)
   refuseUntested(gate)
+  await refuseUnpublishedDestination(prisma, gate as CampaignGate)
   await moveTestedToScheduled(prisma, {
     campaignId: input.campaignId,
     actorId: input.actorId,
@@ -330,7 +355,13 @@ export async function confirmPushSendNow(
   logTransition("campaign_send_now", input, PushCampaignMode.IMMEDIATE)
 }
 
-/** R11 — cancel is allowed after sending starts; edit is not. */
+/**
+ * R11 — cancel is allowed after sending starts; edit is not.
+ *
+ * A zone already dispatching is left alone so the run still reconciles the
+ * receipts it is owed, but every row still only reserved is retired: a reserved
+ * row sits in the daily-claim index and would hold that phone's local day.
+ */
 export async function cancelPushCampaign(
   prisma: PrismaClient,
   input: { campaignId: string; actorId: string },
@@ -359,8 +390,12 @@ export async function cancelPushCampaign(
     )
   }
   const zonesCancelled = await cancelPendingPushZones(prisma, input.campaignId)
+  const rowsMissed = await markPushCampaignReservedMissed(
+    prisma,
+    input.campaignId,
+  )
   console.info(
-    `[push] event=campaign_cancelled campaign=${input.campaignId} actor=${input.actorId} zones=${zonesCancelled}`,
+    `[push] event=campaign_cancelled campaign=${input.campaignId} actor=${input.actorId} zones=${zonesCancelled} rows=${rowsMissed}`,
   )
   return { zonesCancelled }
 }

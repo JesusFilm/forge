@@ -204,6 +204,12 @@ type SendRow = Readonly<{
   phoneLocale: string
 }>
 
+type ChunkOutcome = Readonly<{
+  counts: PushBatchCounts
+  /** A re-claim moved nothing, so the campaign left the status it expected. */
+  cancelled: boolean
+}>
+
 const EMPTY_COUNTS: PushBatchCounts = {
   audience: 0,
   claimed: 0,
@@ -560,22 +566,29 @@ export async function runPushCampaignBatch(
           destinationKind: campaign.destinationKind,
           destinationSlug: campaign.destinationSlug,
           nonce: delivery.nonce,
-        }) as Record<string, string>,
+        }),
       })
       sending.push({ id: delivery.id, registrationId: delivery.registrationId })
     }
 
-    counts = await sendOneChunk({
+    const outcome = await sendOneChunk({
       counts,
       messages,
       sending,
       attemptLimit: PUSH_CHUNK_RETRY_ATTEMPTS,
       backoffMs,
       campaignId: input.campaignId,
+      expectedCampaignStatus,
       store,
       transport,
       now,
     })
+    counts = outcome.counts
+    // A cancel landed mid-chunk. The rows stay reserved, so the cancel path and
+    // the recovery sweep retire them and the zones stay open for the same sweep.
+    if (outcome.cancelled) {
+      return { status: "cancelled", nextCursor: null, counts }
+    }
   }
 
   if (deferred) {
@@ -616,6 +629,9 @@ export async function runPushCampaignBatch(
  * attempts run out the error leaves this function so the durable step retries
  * from the same cursor. An indeterminate failure leaves the rows at sending, so
  * the receipt step resolves them as unknown instead of resending them.
+ *
+ * The retry re-claims under the same campaign status the page claimed under, so
+ * a cancel between two attempts stops the chunk instead of sending it.
  */
 async function sendOneChunk(input: {
   counts: PushBatchCounts
@@ -624,10 +640,11 @@ async function sendOneChunk(input: {
   attemptLimit: number
   backoffMs: (attempt: number) => number
   campaignId: string
+  expectedCampaignStatus: PushCampaignStatus | null
   store: PushBatchStore
   transport: PushTransport
   now: () => Date
-}): Promise<PushBatchCounts> {
+}): Promise<ChunkOutcome> {
   const { store, transport, sending, messages, campaignId } = input
   const counts = input.counts
   const deliveryIds = sending.map((row) => row.id)
@@ -662,11 +679,14 @@ async function sendOneChunk(input: {
         await store.recordFailed(failed, PushDeliveryStatus.FAILED)
       }
       if (dead.length > 0) await store.recordDeadTokens(dead)
-      return add(counts, {
-        accepted: counts.accepted + accepted.length,
-        failed: counts.failed + failed.length,
-        invalid: counts.invalid + dead.length,
-      })
+      return {
+        counts: add(counts, {
+          accepted: counts.accepted + accepted.length,
+          failed: counts.failed + failed.length,
+          invalid: counts.invalid + dead.length,
+        }),
+        cancelled: false,
+      }
     } catch (error) {
       if (error instanceof PushProviderRetryableError) {
         await store.revertSendingToReserved({
@@ -687,10 +707,12 @@ async function sendOneChunk(input: {
         const moved = await store.moveReservedToSending({
           campaignId,
           deliveryIds,
-          expectedCampaignStatus: null,
+          expectedCampaignStatus: input.expectedCampaignStatus,
           now: input.now(),
         })
-        if (moved.length === 0) return counts
+        // The revert left these rows reserved, so nothing moving back means the
+        // campaign is no longer the one that claimed them.
+        if (moved.length === 0) return { counts, cancelled: true }
         continue
       }
       if (error instanceof PushProviderAuthError) {
@@ -708,15 +730,21 @@ async function sendOneChunk(input: {
           sending.map((row) => ({ id: row.id, error: error.providerCode })),
           PushDeliveryStatus.FAILED,
         )
-        return add(counts, { failed: counts.failed + sending.length })
+        return {
+          counts: add(counts, { failed: counts.failed + sending.length }),
+          cancelled: false,
+        }
       }
       // Indeterminate. The rows stay at sending on purpose.
-      return add(counts, {
-        indeterminate: counts.indeterminate + sending.length,
-      })
+      return {
+        counts: add(counts, {
+          indeterminate: counts.indeterminate + sending.length,
+        }),
+        cancelled: false,
+      }
     }
   }
-  return counts
+  return { counts, cancelled: false }
 }
 
 /** The one implementation of the port, over Prisma. */

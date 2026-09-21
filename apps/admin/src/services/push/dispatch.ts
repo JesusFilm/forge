@@ -39,6 +39,11 @@ import {
   PushNotFoundError,
   PushRunAlreadyActiveError,
 } from "./errors"
+import {
+  markPushCampaignReservedMissed,
+  markPushCampaignZonesMissed,
+  pausePushCampaignAfterRun,
+} from "./recovery"
 import { resolvePushSendConfig } from "./transport"
 import {
   isPushZoneLate,
@@ -303,7 +308,11 @@ export async function sendPushCampaignTestRun(
 
 /**
  * R11 — cancel. The campaign status is the gate the run re-reads, so the status
- * write is the cancel; the runtime event only wakes the run sooner.
+ * write is the cancel.
+ *
+ * The runtime's cancel event is only safe while no group has been dispatched,
+ * because it makes the run terminal and every later step is then refused. Once
+ * a group is out the run owes receipts, so it is left to its own gate instead.
  */
 export async function cancelPushCampaignRun(
   input: { campaignId: string; actorId: string },
@@ -311,6 +320,20 @@ export async function cancelPushCampaignRun(
 ): Promise<{ zonesCancelled: number }> {
   const prisma = client(deps)
   const result = await cancelPushCampaign(prisma, input)
+  const dispatched = await prisma.pushCampaignZone.count({
+    where: {
+      campaignId: input.campaignId,
+      status: {
+        in: [PushZoneStatus.DISPATCHING, PushZoneStatus.DISPATCHED],
+      },
+    },
+  })
+  if (dispatched > 0) {
+    console.info(
+      `[push] event=run_cancel_deferred campaign=${input.campaignId} dispatched_zones=${dispatched}`,
+    )
+    return result
+  }
   const campaign = await prisma.pushCampaign.findUnique({
     where: { id: input.campaignId },
     select: { workflowRunLogId: true },
@@ -323,13 +346,31 @@ export async function cancelPushCampaignRun(
     if (ledger?.runtimeRunId) {
       await requestPushRunCancel(ledger.runtimeRunId)
     }
+    // The cancelled run never reaches its own finish step, so the ledger row is
+    // closed here instead of staying at running for good.
+    await prisma.workflowRun
+      .updateMany({
+        where: {
+          id: campaign.workflowRunLogId,
+          status: {
+            in: [WorkflowRunStatus.QUEUED, WorkflowRunStatus.RUNNING],
+          },
+        },
+        data: {
+          status: WorkflowRunStatus.CANCELLED,
+          finishedAt: clock(deps),
+          summary: "Push campaign cancelled before any group was dispatched.",
+        },
+      })
+      .catch(() => {})
   }
   return result
 }
 
 /**
- * Best effort. The run exits through its own status gate whatever happens here,
- * so a runtime that refuses the event only delays the exit to the next wake.
+ * The event that makes the run terminal at once. Best effort: a runtime that
+ * refuses it only leaves the run to exit through its own status gate at the
+ * next wake. Never call it for a run that still owes receipts.
  */
 export async function requestPushRunCancel(
   runtimeRunId: string,
@@ -582,7 +623,12 @@ export async function finishPushCampaignRun(
     .update({
       where: { id: input.ledgerRunId },
       data: {
-        status: WorkflowRunStatus.SUCCEEDED,
+        // A cancel reads the same on the ledger whichever branch the cancel
+        // took, so the campaign page never shows one word for two paths.
+        status:
+          input.outcome === "cancelled"
+            ? WorkflowRunStatus.CANCELLED
+            : WorkflowRunStatus.SUCCEEDED,
         finishedAt: now,
         summary: `Push campaign ${input.outcome}: ${input.counts.accepted} accepted, ${input.counts.handedOff} handed off, ${input.counts.failed} failed, ${input.counts.invalid} invalid, ${input.counts.missed} missed.`,
         details: { ...input.counts, outcome: input.outcome, kind: input.kind },
@@ -603,28 +649,50 @@ async function readRunActorId(
 }
 
 /**
- * A run that could not finish.
+ * A run that could not finish. It retires the work the run was holding here and
+ * now, which is the same retirement the next worker start would have swept.
  *
- * Without this the durable run fails while the ledger row stays running and
- * the campaign stays sending until the next worker restart sweeps it.
+ * Without it the ledger row says failed while the campaign stays sending, its
+ * zones stay open, and a page of reserved rows keeps holding each phone's local
+ * day against every other campaign.
  */
 export async function failPushCampaignRun(
   input: PushRunInput & { error: PushRunFailure },
   deps?: Deps,
 ): Promise<void> {
   const prisma = client(deps)
+  const now = clock(deps)
   const reason = redactPushErrorText(
     `${input.error.name}: ${input.error.message}`,
   ).slice(0, 256)
+  // The reason lands on the campaign whatever its status is, so a failed test
+  // send on a draft campaign still tells the editor what went wrong.
   await prisma.pushCampaign
     .updateMany({
       where: { id: input.campaignId },
       data: { lastError: reason },
     })
     .catch(() => {})
+  let zonesMissed = 0
+  let rowsMissed = 0
+  try {
+    zonesMissed = await markPushCampaignZonesMissed(prisma, input.campaignId)
+    rowsMissed = await markPushCampaignReservedMissed(prisma, input.campaignId)
+    await pausePushCampaignAfterRun(prisma, {
+      campaignId: input.campaignId,
+      reason,
+      now,
+    })
+  } catch (error) {
+    // The original failure is what matters, so this one only gets a line. The
+    // recovery sweep retires whatever is left at the next worker start.
+    console.warn(
+      `[push] event=run_failed_retire_incomplete campaign=${input.campaignId} error_class=${error instanceof Error ? error.constructor.name : "UnknownError"}`,
+    )
+  }
   await markWorkflowRunFailed(input.ledgerRunId, reason, prisma).catch(() => {})
   console.error(
-    `[push] event=run_failed campaign=${input.campaignId} kind=${input.kind.toLowerCase()} error_class=${input.error.name}`,
+    `[push] event=run_failed campaign=${input.campaignId} kind=${input.kind.toLowerCase()} error_class=${input.error.name} zones=${zonesMissed} rows=${rowsMissed}`,
   )
 }
 

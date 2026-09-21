@@ -58,6 +58,70 @@ function clientReturning(rows: PushAudienceRegistration[]) {
   }
 }
 
+/**
+ * The count fixture. Each field is an independent literal, so a row fails one
+ * gate at a time and a passing count cannot come from the wrong gate.
+ */
+type CountRow = { status: string; platform: string; country: string | null }
+
+const US_IOS: CountRow = { status: "ACTIVE", platform: "IOS", country: "US" }
+const CN_ANDROID: CountRow = {
+  status: "ACTIVE",
+  platform: "ANDROID",
+  country: "CN",
+}
+const COUNT_ROWS: CountRow[] = [
+  ...Array.from({ length: 100 }, () => US_IOS),
+  ...Array.from({ length: 500 }, () => CN_ANDROID),
+]
+
+function matchesCountRow(
+  where: Record<string, unknown>,
+  row: CountRow,
+): boolean {
+  return Object.entries(where).every(([key, value]) => {
+    switch (key) {
+      case "AND":
+        return (value as Record<string, unknown>[]).every((clause) =>
+          matchesCountRow(clause, row),
+        )
+      case "status":
+        return row.status === value
+      case "platform":
+        return row.platform === value
+      case "country": {
+        const wanted = (value as { in: readonly string[] }).in
+        return row.country !== null && wanted.includes(row.country)
+      }
+      default:
+        throw new Error(`The count fixture cannot answer the key ${key}`)
+    }
+  })
+}
+
+/**
+ * Answers every count from the same rows. A pair of queued return values
+ * cannot show whether the campaign's own country filter reached the second
+ * query, which is the whole question here.
+ */
+function countingClient() {
+  return {
+    pushRegistration: {
+      findMany: vi.fn(),
+      count: vi.fn(
+        async (args: PrismaCallArgs) =>
+          COUNT_ROWS.filter((row) => matchesCountRow(args.where, row)).length,
+      ),
+    },
+  }
+}
+
+const UNITED_STATES: PushAudienceCampaign = {
+  audienceScope: "COUNTRIES",
+  countries: ["US"],
+  languageFilter: [],
+}
+
 describe("push audience paging", () => {
   it("reads active phones in id order under a page limit", async () => {
     const client = clientReturning([registration()])
@@ -303,5 +367,23 @@ describe("push audience counts", () => {
 
     expect(counts).toEqual({ audience: 7, unreachable: 0 })
     expect(client.pushRegistration.count).toHaveBeenCalledOnce()
+  })
+
+  it("leaves a blocked country the campaign never named out of both counts", async () => {
+    const counts = await countPushAudience(countingClient() as never, {
+      campaign: UNITED_STATES,
+      blockedCountries: ["CN"],
+    })
+
+    expect(counts).toEqual({ audience: 100, unreachable: 0 })
+  })
+
+  it("counts a blocked-country Android phone the campaign did name", async () => {
+    const counts = await countPushAudience(countingClient() as never, {
+      campaign: { ...UNITED_STATES, countries: ["US", "CN"] },
+      blockedCountries: ["CN"],
+    })
+
+    expect(counts).toEqual({ audience: 100, unreachable: 500 })
   })
 })

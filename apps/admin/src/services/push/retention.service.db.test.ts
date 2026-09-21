@@ -98,6 +98,9 @@ describe.skipIf(env.PUSH_DB_TEST !== "1")(
     it("deletes rows past 90 days and keeps rows inside it", async () => {
       const oldDelivery = await delivery("old", daysAgo(91))
       const youngDelivery = await delivery("young", daysAgo(89))
+      const keptDelivery = await delivery("kept", daysAgo(89))
+      // An attribution cascades with its open, so the row that must survive
+      // needs an open of its own that is still inside the window.
       await prisma.pushOpen.createMany({
         data: [
           {
@@ -107,6 +110,13 @@ describe.skipIf(env.PUSH_DB_TEST !== "1")(
             receivedAt: daysAgo(91),
             createdAt: daysAgo(91),
           },
+          {
+            id: `${PREFIX}open_young`,
+            deliveryId: keptDelivery,
+            campaignId: `${PREFIX}campaign`,
+            receivedAt: daysAgo(89),
+            createdAt: daysAgo(89),
+          },
         ],
       })
       await prisma.pushAttribution.createMany({
@@ -114,6 +124,7 @@ describe.skipIf(env.PUSH_DB_TEST !== "1")(
           {
             id: `${PREFIX}attribution_old`,
             episodeId: `${PREFIX}episode_old`,
+            openId: `${PREFIX}open_old`,
             campaignId: `${PREFIX}campaign`,
             mediaId: "video_1",
             attributedAt: daysAgo(91),
@@ -122,6 +133,7 @@ describe.skipIf(env.PUSH_DB_TEST !== "1")(
           {
             id: `${PREFIX}attribution_young`,
             episodeId: `${PREFIX}episode_young`,
+            openId: `${PREFIX}open_young`,
             campaignId: `${PREFIX}campaign`,
             mediaId: "video_1",
             attributedAt: daysAgo(89),
@@ -141,9 +153,10 @@ describe.skipIf(env.PUSH_DB_TEST !== "1")(
       expect(
         await prisma.pushDelivery.findMany({
           where: { id: { startsWith: PREFIX } },
+          orderBy: { id: "asc" },
           select: { id: true },
         }),
-      ).toEqual([{ id: youngDelivery }])
+      ).toEqual([{ id: keptDelivery }, { id: youngDelivery }])
       expect(
         await prisma.pushAttribution.findMany({
           where: { id: { startsWith: PREFIX } },

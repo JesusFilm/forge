@@ -6,7 +6,7 @@
  * against Postgres, because a fake store implements every predicate correctly
  * by construction.
  */
-import { PushDeliveryStatus } from "@prisma/client"
+import { PushCampaignStatus, PushDeliveryStatus } from "@prisma/client"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
@@ -951,6 +951,51 @@ describe("the transport's error classes", () => {
     expect(attempts).toBe(2)
     expect(result.counts.accepted).toBe(1)
     expect(calls.accepted).toEqual([{ id: "delivery-1", ticketId: "ticket-1" }])
+  })
+
+  it("stops the chunk when a cancel lands between two attempts", async () => {
+    const { store, calls } = fakeStore()
+    const firstClaim = store.moveReservedToSending
+    let claims = 0
+    store.moveReservedToSending = vi.fn(async (args) => {
+      claims += 1
+      if (claims === 1) return firstClaim(args)
+      // The cancel moved the campaign off sending, so the guarded re-claim
+      // matches no row. Recorded so the guard itself can be read back.
+      calls.moveReserved.push({
+        deliveryIds: [...args.deliveryIds],
+        expected: args.expectedCampaignStatus,
+      })
+      return []
+    })
+    let attempts = 0
+    const transport: PushTransport = {
+      sendChunk: vi.fn(async (messages: readonly PushTransportMessage[]) => {
+        attempts += 1
+        if (attempts === 1) throw new PushProviderRetryableError("http_429")
+        return messages.map((_message, index: number) => ({
+          kind: "accepted" as const,
+          ticketId: `ticket-${index + 1}`,
+        }))
+      }),
+      fetchReceipts: vi.fn(async () => new Map()),
+    }
+
+    const result = await runPushCampaignBatch(liveInput(), {
+      store,
+      transport,
+      config: config(),
+      now: () => NOW,
+      backoffMs: () => 0,
+    })
+
+    // One send, one revert, and no second send: the re-claim carried the
+    // status the page claimed under, so the cancel stopped the chunk.
+    expect(attempts).toBe(1)
+    expect(calls.revert).toHaveLength(1)
+    expect(calls.moveReserved.at(-1)?.expected).toBe(PushCampaignStatus.SENDING)
+    expect(result.status).toBe("cancelled")
+    expect(calls.accepted).toEqual([])
   })
 
   it("leaves an indeterminate chunk at sending, so the receipts call it unknown", async () => {

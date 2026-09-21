@@ -20,7 +20,7 @@ import {
   type PrismaClient,
 } from "@prisma/client"
 
-import { toPgArray } from "@/db/pgvector"
+import { assertParallelArrayLengthsMatch, toPgArray } from "@/db/pgvector"
 
 import { PushInputError } from "./errors"
 
@@ -118,7 +118,7 @@ function firstPerRegistration(
 type ClaimInsertRow = PushClaimCandidate &
   Readonly<{ id: string; nonce: string }>
 
-function insertStatement(input: {
+export function buildPushClaimInsertStatement(input: {
   campaignId: string
   kind: PushDeliveryKind
   status: PushDeliveryStatus
@@ -127,6 +127,15 @@ function insertStatement(input: {
   errors?: readonly string[]
 }): Prisma.Sql {
   const { rows, errors } = input
+  if (errors) {
+    // Postgres NULL-pads unequal-length unnest args instead of failing, which
+    // would pair one row with another row's error text.
+    assertParallelArrayLengthsMatch(
+      rows.length,
+      [{ name: "errors", length: errors.length }],
+      (message) => new PushInputError(message),
+    )
+  }
   const column = <T>(read: (row: ClaimInsertRow) => T) => rows.map(read)
   return Prisma.sql`
     INSERT INTO push_delivery (
@@ -200,7 +209,7 @@ export async function claimPushDeliveryPage(
     prepared.length === 0
       ? []
       : await prisma.$queryRaw<ClaimRow[]>(
-          insertStatement({
+          buildPushClaimInsertStatement({
             campaignId,
             kind,
             status: PushDeliveryStatus.RESERVED,
@@ -350,7 +359,7 @@ async function writeSuppressed(
   }
   if (rows.length === 0) return
   await prisma.$queryRaw(
-    insertStatement({
+    buildPushClaimInsertStatement({
       campaignId: input.campaignId,
       kind: PushDeliveryKind.LIVE,
       status: PushDeliveryStatus.SUPPRESSED,
@@ -388,7 +397,7 @@ export async function markPushUnreachable(
     nonce: nextPushDeliveryNonce(),
   }))
   const written = await prisma.$queryRaw<ClaimRow[]>(
-    insertStatement({
+    buildPushClaimInsertStatement({
       campaignId: input.campaignId,
       kind: PushDeliveryKind.LIVE,
       status: PushDeliveryStatus.UNREACHABLE,

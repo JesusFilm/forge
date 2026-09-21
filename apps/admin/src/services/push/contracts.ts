@@ -69,7 +69,21 @@ export const PushDestinationKindSchema = z.enum([
 export const PushDestinationInputSchema = z
   .object({
     kind: PushDestinationKindSchema,
-    slug: z.string().trim().min(1).max(191),
+    // apps/mobile/src/lib/push/announcementPayload.ts refuses any other slug
+    // and routes the tap to home, so admin must not accept one. The character
+    // set and the dot-segment refusal below are that parser's, kept identical.
+    slug: z
+      .string()
+      .trim()
+      .min(1)
+      .max(191)
+      .regex(
+        /^[A-Za-z0-9._~-]+$/,
+        "A destination slug carries only unreserved characters",
+      )
+      .refine((slug) => slug !== "." && slug !== "..", {
+        message: "A destination slug is not a dot segment",
+      }),
   })
   .strict()
 export type PushDestinationInput = z.infer<typeof PushDestinationInputSchema>

@@ -36,6 +36,17 @@ vi.mock("./zone-schedule", async (importOriginal) => {
 
 vi.mock("@/db/client", () => ({ prisma: { id: "shared" } }))
 
+// The cancel event is the assertion, not a side effect to tolerate: the run's
+// own gate is what ends a wave that already dispatched a group.
+const runtime = vi.hoisted(() => {
+  const world = {
+    runs: { get: vi.fn(async () => ({ specVersion: 2 })) },
+    events: { create: vi.fn(async () => ({})) },
+  }
+  return { world, getWorld: vi.fn(() => world) }
+})
+vi.mock("workflow/runtime", () => ({ getWorld: runtime.getWorld }))
+
 const {
   PUSH_CAMPAIGN_WORKFLOW_KEY,
   cancelPushCampaignRun,
@@ -61,6 +72,10 @@ type FakeState = {
   campaign: Record<string, unknown> | null
   ledger: Record<string, unknown> | null
   pendingZones: { timeZone: string; scheduledAt: Date }[]
+  /** What `pushCampaignZone.count` answers: the dispatching or dispatched set. */
+  dispatchedZones: number
+  /** What a `pushDelivery.updateMany` reports it moved. */
+  deliveriesMoved: number
 }
 
 type FakeCalls = {
@@ -72,6 +87,14 @@ type FakeCalls = {
   }[]
   zoneCreates: Record<string, unknown>[][]
   zoneUpdates: {
+    where: Record<string, unknown>
+    data: Record<string, unknown>
+  }[]
+  deliveryUpdates: {
+    where: Record<string, unknown>
+    data: Record<string, unknown>
+  }[]
+  ledgerUpdateManys: {
     where: Record<string, unknown>
     data: Record<string, unknown>
   }[]
@@ -93,6 +116,8 @@ function fakePrisma(state: Partial<FakeState> = {}) {
     },
     ledger: null,
     pendingZones: [],
+    dispatchedZones: 0,
+    deliveriesMoved: 0,
     ...state,
   }
   const calls: FakeCalls = {
@@ -101,6 +126,8 @@ function fakePrisma(state: Partial<FakeState> = {}) {
     campaignUpdates: [],
     zoneCreates: [],
     zoneUpdates: [],
+    deliveryUpdates: [],
+    ledgerUpdateManys: [],
   }
   let ledgerSeq = 0
   const prisma = {
@@ -124,6 +151,19 @@ function fakePrisma(state: Partial<FakeState> = {}) {
           return store.ledger
         },
       ),
+      updateMany: vi.fn(
+        async ({
+          where,
+          data,
+        }: {
+          where: Record<string, unknown>
+          data: Record<string, unknown>
+        }) => {
+          calls.ledgerUpdateManys.push({ where, data })
+          if (store.ledger) store.ledger = { ...store.ledger, ...data }
+          return { count: 1 }
+        },
+      ),
       findUnique: vi.fn(async () => store.ledger),
       findMany: vi.fn(async () => (store.ledger ? [store.ledger] : [])),
     },
@@ -144,6 +184,7 @@ function fakePrisma(state: Partial<FakeState> = {}) {
       ),
     },
     pushCampaignZone: {
+      count: vi.fn(async () => store.dispatchedZones),
       createMany: vi.fn(
         async ({ data }: { data: Record<string, unknown>[] }) => {
           calls.zoneCreates.push(data)
@@ -187,7 +228,18 @@ function fakePrisma(state: Partial<FakeState> = {}) {
     },
     pushDelivery: {
       findMany: vi.fn(async () => []),
-      updateMany: vi.fn(async () => ({ count: 0 })),
+      updateMany: vi.fn(
+        async ({
+          where,
+          data,
+        }: {
+          where: Record<string, unknown>
+          data: Record<string, unknown>
+        }) => {
+          calls.deliveryUpdates.push({ where, data })
+          return { count: store.deliveriesMoved }
+        },
+      ),
     },
   }
   return { prisma: prisma as never, spies: prisma, calls, store }
@@ -201,6 +253,8 @@ beforeEach(() => {
   campaignService.confirmPushSendNow.mockClear()
   campaignService.cancelPushCampaign.mockClear()
   campaignService.recordPushTestSend.mockClear()
+  runtime.world.events.create.mockClear()
+  runtime.world.runs.get.mockClear()
   vi.spyOn(console, "info").mockImplementation(() => {})
   vi.spyOn(console, "error").mockImplementation(() => {})
   vi.spyOn(console, "warn").mockImplementation(() => {})
@@ -471,6 +525,105 @@ describe("the editor's three entry points", () => {
       ),
     ).resolves.toEqual({ zonesCancelled: 2 })
     expect(campaignService.cancelPushCampaign).toHaveBeenCalledOnce()
+  })
+})
+
+/**
+ * The runtime's cancel event makes the run terminal, so every later step is
+ * refused. Which branch the cancel takes is therefore the whole correctness
+ * question: an event on a wave that already dispatched a group loses its
+ * receipts, and no event on a wave that dispatched nothing leaves the ledger
+ * running for good.
+ */
+describe("the cancel event", () => {
+  function cancelling(dispatchedZones: number) {
+    return fakePrisma({
+      campaign: {
+        id: CAMPAIGN_ID,
+        status: "SENDING",
+        workflowRunLogId: "ledger-1",
+        lastError: null,
+      },
+      ledger: { id: "ledger-1", runtimeRunId: "runtime-1", status: "RUNNING" },
+      dispatchedZones,
+    })
+  }
+
+  it("emits it and closes the ledger when no group was dispatched", async () => {
+    const { prisma, calls } = cancelling(0)
+
+    await cancelPushCampaignRun(
+      { campaignId: CAMPAIGN_ID, actorId: "actor-1" },
+      { prisma, now: () => NOW },
+    )
+
+    expect(runtime.world.events.create).toHaveBeenCalledWith("runtime-1", {
+      eventType: "run_cancelled",
+      specVersion: 2,
+    })
+    expect(calls.ledgerUpdateManys).toHaveLength(1)
+    expect(calls.ledgerUpdateManys[0].where).toEqual({
+      id: "ledger-1",
+      status: { in: ["QUEUED", "RUNNING"] },
+    })
+    expect(calls.ledgerUpdateManys[0].data).toMatchObject({
+      status: "CANCELLED",
+      finishedAt: NOW,
+    })
+  })
+
+  it("withholds it once a zone is dispatching, so the run still reconciles", async () => {
+    const { prisma, calls } = cancelling(1)
+    const logs: string[] = []
+    vi.spyOn(console, "info").mockImplementation((line: unknown) => {
+      logs.push(String(line))
+    })
+
+    await cancelPushCampaignRun(
+      { campaignId: CAMPAIGN_ID, actorId: "actor-1" },
+      { prisma, now: () => NOW },
+    )
+
+    expect(runtime.world.events.create).not.toHaveBeenCalled()
+    expect(calls.ledgerUpdateManys).toEqual([])
+    expect(
+      logs.some((line) => line.includes("event=run_cancel_deferred")),
+    ).toBe(true)
+  })
+
+  it("counts a dispatched zone as owed receipts too", async () => {
+    const { prisma, spies } = cancelling(0)
+
+    await cancelPushCampaignRun(
+      { campaignId: CAMPAIGN_ID, actorId: "actor-1" },
+      { prisma, now: () => NOW },
+    )
+
+    expect(spies.pushCampaignZone.count).toHaveBeenCalledWith({
+      where: {
+        campaignId: CAMPAIGN_ID,
+        status: { in: ["DISPATCHING", "DISPATCHED"] },
+      },
+    })
+  })
+
+  it("leaves the ledger alone when the campaign never had a run", async () => {
+    const { prisma, calls } = fakePrisma({
+      campaign: {
+        id: CAMPAIGN_ID,
+        status: "SCHEDULED",
+        workflowRunLogId: null,
+        lastError: null,
+      },
+    })
+
+    await cancelPushCampaignRun(
+      { campaignId: CAMPAIGN_ID, actorId: "actor-1" },
+      { prisma, now: () => NOW },
+    )
+
+    expect(runtime.world.events.create).not.toHaveBeenCalled()
+    expect(calls.ledgerUpdateManys).toEqual([])
   })
 })
 
@@ -807,6 +960,28 @@ describe("finishPushCampaignRun", () => {
 
     expect(calls.campaignUpdates).toEqual([])
   })
+
+  // The cancel path that withholds the runtime event ends here instead, so the
+  // ledger has to read the same as the path that emits it.
+  it("closes the ledger as cancelled when the run ends on a cancel", async () => {
+    const { prisma, calls } = fakePrisma()
+
+    await finishPushCampaignRun(
+      {
+        campaignId: CAMPAIGN_ID,
+        ledgerRunId: "ledger-1",
+        kind: "LIVE",
+        outcome: "cancelled",
+        counts,
+      },
+      { prisma, now: () => NOW },
+    )
+
+    expect(calls.ledgerUpdates[0].data).toMatchObject({
+      status: "CANCELLED",
+      finishedAt: NOW,
+    })
+  })
 })
 
 describe("failPushCampaignRun", () => {
@@ -880,6 +1055,115 @@ describe("failPushCampaignRun", () => {
     const lastError = String(calls.campaignUpdates[0].data.lastError)
     expect(lastError).not.toContain("abc123")
     expect(lastError).toContain("[redacted]")
+  })
+
+  it("retires the zones the run had not finished", async () => {
+    const { prisma, calls } = fakePrisma({
+      pendingZones: [
+        { timeZone: "Pacific/Auckland", scheduledAt: NOW },
+        { timeZone: "Asia/Dubai", scheduledAt: NOW },
+      ],
+    })
+
+    await failPushCampaignRun(
+      {
+        campaignId: CAMPAIGN_ID,
+        ledgerRunId: "ledger-1",
+        kind: "LIVE",
+        error: failure,
+      },
+      { prisma, now: () => NOW },
+    )
+
+    expect(calls.zoneUpdates).toEqual([
+      {
+        where: {
+          campaignId: CAMPAIGN_ID,
+          status: { in: ["PENDING", "DISPATCHING"] },
+        },
+        data: { status: "MISSED" },
+      },
+    ])
+  })
+
+  it("frees each phone's local day by retiring the reserved rows", async () => {
+    const { prisma, calls } = fakePrisma({ deliveriesMoved: 4 })
+
+    await failPushCampaignRun(
+      {
+        campaignId: CAMPAIGN_ID,
+        ledgerRunId: "ledger-1",
+        kind: "LIVE",
+        error: failure,
+      },
+      { prisma, now: () => NOW },
+    )
+
+    expect(calls.deliveryUpdates).toEqual([
+      {
+        where: {
+          campaignId: CAMPAIGN_ID,
+          kind: "LIVE",
+          status: "RESERVED",
+        },
+        data: { status: "MISSED" },
+      },
+    ])
+  })
+
+  it("pauses the campaign so it does not sit at sending for good", async () => {
+    const { prisma, calls } = fakePrisma()
+
+    await failPushCampaignRun(
+      {
+        campaignId: CAMPAIGN_ID,
+        ledgerRunId: "ledger-1",
+        kind: "LIVE",
+        error: failure,
+      },
+      { prisma, now: () => NOW },
+    )
+
+    const pause = calls.campaignUpdates.at(-1)
+    expect(pause?.where).toEqual({
+      id: CAMPAIGN_ID,
+      status: { in: ["SCHEDULED", "SENDING"] },
+    })
+    expect(pause?.data).toEqual({
+      status: "PAUSED",
+      lastError: "PushProviderAuthError: answered UNAUTHORIZED",
+      completedAt: NOW,
+    })
+  })
+
+  it("still marks the ledger failed when the retirement write throws", async () => {
+    const { prisma, spies, calls } = fakePrisma()
+    spies.pushCampaignZone.updateMany.mockRejectedValueOnce(
+      new Error("ExponentPushToken[secret] blew up"),
+    )
+    const logs: string[] = []
+    vi.spyOn(console, "warn").mockImplementation((line: unknown) => {
+      logs.push(String(line))
+    })
+
+    await failPushCampaignRun(
+      {
+        campaignId: CAMPAIGN_ID,
+        ledgerRunId: "ledger-1",
+        kind: "LIVE",
+        error: failure,
+      },
+      { prisma, now: () => NOW },
+    )
+
+    expect(calls.ledgerUpdates.at(-1)?.data).toMatchObject({
+      status: "FAILED",
+    })
+    const line = logs.find((entry) =>
+      entry.includes("event=run_failed_retire_incomplete"),
+    )
+    expect(line).toContain("error_class=Error")
+    expect(logs.join("\n")).not.toContain("ExponentPushToken")
   })
 })
 

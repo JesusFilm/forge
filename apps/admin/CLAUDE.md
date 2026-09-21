@@ -3098,3 +3098,12 @@ asleep on a worker without the workflow fails on wake and the recovery sweep
 pauses its campaign at the next worker start. Registrations survive a rollback;
 migration 0099 alters no existing table, so a code redeploy needs no data
 restore.
+
+A cancel is not instant once a group has gone out. The runtime cancel event
+makes the run terminal and every later step is refused, so the cancel emits it
+only while no zone is dispatching or dispatched (and closes the ledger row as
+cancelled). After a group is out, the campaign status is the cancel: the run
+wakes at its next zone instant, sends nothing, collects the receipts it owes,
+and finishes with its ledger row cancelled. Until then the campaign page shows
+that run as running. A cancel also retires every reserved row as missed, so no
+phone's local day stays held.

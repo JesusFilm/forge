@@ -9,7 +9,12 @@
  * step called from a parallel fanout, so the parallelism lives inside the
  * transport's own chunk concurrency, never here.
  */
-import { RetryableError, getWorkflowMetadata, sleep } from "workflow"
+import {
+  FatalError,
+  RetryableError,
+  getWorkflowMetadata,
+  sleep,
+} from "workflow"
 
 import type { PushBatchResult } from "@/services/push/batch"
 import type {
@@ -26,6 +31,10 @@ export const PUSH_FINAL_RECONCILE_DELAY_MS = 15 * 60_000
 export const PUSH_MAX_PAGES_PER_GROUP = 2_000
 /** A wave has about forty groups; this only stops a runaway loop. */
 export const PUSH_MAX_GROUPS_PER_RUN = 200
+/** Deferred receipt steps the last reconcile resumes, a page or more each. */
+export const PUSH_MAX_RECONCILE_STEPS = 120
+/** The same resume between groups, short so a wave never waits out its zones. */
+export const PUSH_MAX_RECONCILE_STEPS_PER_GROUP = 3
 
 export type PushCampaignRunInput = {
   campaignId: string
@@ -152,31 +161,48 @@ export async function runPushCampaign(
         }
         groupsDispatched += 1
 
-        // The receipt step runs for every group already dispatched, including on
-        // the cancel path, so the rows a cancelled wave already sent still resolve.
-        counts = withReceipts(
-          counts,
-          await stepReconcilePushCampaignReceipts({
-            campaignId: input.campaignId,
-            minAgeMs: null,
-          }),
-        )
+        // Runs for every dispatched group, including on the cancel path: a cancel
+        // withholds the runtime cancel event once a group is out, so the run lives
+        // to resolve the rows it sent. A deferred step ran out of budget; resume it.
+        for (
+          let pass = 0;
+          pass < PUSH_MAX_RECONCILE_STEPS_PER_GROUP;
+          pass += 1
+        ) {
+          const receipts: PushReceiptResult =
+            await stepReconcilePushCampaignReceipts({
+              campaignId: input.campaignId,
+              minAgeMs: null,
+            })
+          counts = withReceipts(counts, receipts)
+          if (receipts.status !== "deferred") break
+        }
 
         if (ended) {
           outcome = ended
           break
         }
       }
+
+      // A run that dispatched no group never moved the campaign to sending, and
+      // the finish step only moves sending to sent. Nothing went out, so the
+      // campaign pauses rather than reading as sent while it stays scheduled.
+      if (outcome === "sent" && groupsDispatched === 0) outcome = "paused"
     }
 
     await sleep(PUSH_FINAL_RECONCILE_DELAY_MS)
-    counts = withReceipts(
-      counts,
-      await stepReconcilePushCampaignReceipts({
-        campaignId: input.campaignId,
-        minAgeMs: 0,
-      }),
-    )
+    // This is the reconcile that has the last word: it clears the accepted rows
+    // and retires the dead tokens, so a deferred step is resumed until it is
+    // exhausted rather than leaving the rest of the campaign accepted forever.
+    for (let pass = 0; pass < PUSH_MAX_RECONCILE_STEPS; pass += 1) {
+      const receipts: PushReceiptResult =
+        await stepReconcilePushCampaignReceipts({
+          campaignId: input.campaignId,
+          minAgeMs: 0,
+        })
+      counts = withReceipts(counts, receipts)
+      if (receipts.status !== "deferred") break
+    }
 
     await stepFinishPushCampaignRun({ ...input, outcome, counts })
   } catch (error) {
@@ -220,6 +246,10 @@ export async function stepNextPushZoneGroup(
  * A retryable provider failure becomes a `RetryableError`, so the runtime calls
  * this step again from the same cursor. The reverted rows are still reserved, so
  * that replay sends them exactly once.
+ *
+ * A deterministic provider failure becomes a `FatalError`. A rotated access
+ * token answers the same way every time, so a retry would claim the next page of
+ * phones and fail them too; the run ends once instead of burning six pages.
  */
 export async function stepRunPushCampaignBatch(input: {
   campaignId: string
@@ -233,7 +263,8 @@ export async function stepRunPushCampaignBatch(input: {
     await import("@/services/push/batch")
   const { createPushTransport, resolvePushSendConfig } =
     await import("@/services/push/transport")
-  const { PushProviderRetryableError } = await import("@/services/push/errors")
+  const { PushProviderFatalError, PushProviderRetryableError } =
+    await import("@/services/push/errors")
 
   const config = resolvePushSendConfig()
   try {
@@ -247,6 +278,13 @@ export async function stepRunPushCampaignBatch(input: {
       throw new RetryableError("The push provider refused this chunk", {
         retryAfter: "1m",
       })
+    }
+    if (error instanceof PushProviderFatalError) {
+      // The code is this app's own closed label, never the provider's message,
+      // which embeds the push token.
+      throw new FatalError(
+        `The push provider refused this chunk: ${error.code}`,
+      )
     }
     throw error
   }

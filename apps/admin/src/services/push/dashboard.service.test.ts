@@ -238,6 +238,25 @@ describe("searchPushDestinations", () => {
     })
   })
 
+  it.each(["VIDEO", "SERIES"] as const)(
+    "offers only live, published, unrestricted rows for the %s kind",
+    async (kind) => {
+      const { findMany, seen } = recordingFindMany<never>([])
+      const prisma = { video: { findMany } } as unknown as PrismaClient
+
+      await searchPushDestinations(prisma, { kind, query: "jes" })
+
+      // A draft picked here would open the not-found screen on every phone, so
+      // the three visibility conditions ride beside the label and the query.
+      expect(seen[0]?.where).toMatchObject({
+        deletedAt: null,
+        locales: { some: { status: "PUBLISHED", deletedAt: null } },
+        NOT: { restrictViewPlatforms: { has: "watch" } },
+      })
+      expect(seen[0]?.where.OR).toHaveLength(2)
+    },
+  )
+
   it("excludes series and collection labels when the kind is VIDEO", async () => {
     const { findMany, seen } = recordingFindMany<never>([])
     const prisma = { video: { findMany } } as unknown as PrismaClient

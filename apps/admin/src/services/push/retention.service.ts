@@ -18,6 +18,12 @@ export const PUSH_REGISTRATION_DELETE_DAYS = 90
 export const PUSH_RETENTION_PROPAGATION_HOURS = 24
 export const PUSH_RETENTION_HEALTH_HOURS = 36
 export const PUSH_RETENTION_WORKFLOW_KEY = "push-retention"
+/**
+ * One page deletes up to `batchSize` rows from five tables and fires the
+ * referential actions on each, which Prisma's 5s default cannot hold.
+ */
+export const PUSH_RETENTION_TRANSACTION_TIMEOUT_MS = 60_000
+export const PUSH_RETENTION_TRANSACTION_MAX_WAIT_MS = 10_000
 
 // Own lock id in the retention namespace: 368_000_001 is the recommendation
 // purge, 002 its scheduler, 003 the episode recovery runner.
@@ -94,116 +100,124 @@ export async function purgeExpiredPushRows(
     select: { createdAt: true as const },
   })
 
-  return prisma.$transaction(async (tx): Promise<PushPurgeResult> => {
-    const lock = await tx.$queryRaw<Array<{ locked: boolean }>>(Prisma.sql`
+  return prisma.$transaction(
+    async (tx): Promise<PushPurgeResult> => {
+      const lock = await tx.$queryRaw<Array<{ locked: boolean }>>(Prisma.sql`
       SELECT pg_try_advisory_xact_lock(${PUSH_RETENTION_LOCK_ID}) AS locked
     `)
-    if (!lock[0]?.locked) {
-      return {
-        status: "skipped",
-        rowCounts: {},
-        oldestExpiredAtAfter: null,
-        overdueAfterRun: false,
+      if (!lock[0]?.locked) {
+        return {
+          status: "skipped",
+          rowCounts: {},
+          oldestExpiredAtAfter: null,
+          overdueAfterRun: false,
+        }
       }
-    }
 
-    // Children first. A delivery delete cascades to its open, and the open
-    // resolves nothing without it, so the delivery page runs last.
-    const attributions = await tx.pushAttribution.findMany(expiredPage())
-    const expiredAttributions =
-      attributions.length === 0
-        ? 0
-        : (
-            await tx.pushAttribution.deleteMany({
-              where: { id: { in: attributions.map(({ id }) => id) } },
-            })
-          ).count
-    const opens = await tx.pushOpen.findMany(expiredPage())
-    const expiredOpens =
-      opens.length === 0
-        ? 0
-        : (
-            await tx.pushOpen.deleteMany({
-              where: { id: { in: opens.map(({ id }) => id) } },
-            })
-          ).count
-    const deliveries = await tx.pushDelivery.findMany(expiredPage())
-    const expiredDeliveries =
-      deliveries.length === 0
-        ? 0
-        : (
-            await tx.pushDelivery.deleteMany({
-              where: { id: { in: deliveries.map(({ id }) => id) } },
-            })
-          ).count
+      // Children first. A delivery delete cascades to its open, and the open
+      // resolves nothing without it, so the delivery page runs last.
+      const attributions = await tx.pushAttribution.findMany(expiredPage())
+      const expiredAttributions =
+        attributions.length === 0
+          ? 0
+          : (
+              await tx.pushAttribution.deleteMany({
+                where: { id: { in: attributions.map(({ id }) => id) } },
+              })
+            ).count
+      const opens = await tx.pushOpen.findMany(expiredPage())
+      const expiredOpens =
+        opens.length === 0
+          ? 0
+          : (
+              await tx.pushOpen.deleteMany({
+                where: { id: { in: opens.map(({ id }) => id) } },
+              })
+            ).count
+      const deliveries = await tx.pushDelivery.findMany(expiredPage())
+      const expiredDeliveries =
+        deliveries.length === 0
+          ? 0
+          : (
+              await tx.pushDelivery.deleteMany({
+                where: { id: { in: deliveries.map(({ id }) => id) } },
+              })
+            ).count
 
-    const stale = await tx.pushRegistration.findMany({
-      where: {
-        status: PushRegistrationStatus.ACTIVE,
-        refreshedAt: { lte: refreshCutoff },
-      },
-      orderBy: [{ refreshedAt: "asc" }, { id: "asc" }],
-      take: batchSize,
-      select: { id: true },
-    })
-    const registrationsMarkedInactive =
-      stale.length === 0
-        ? 0
-        : (
-            await tx.pushRegistration.updateMany({
-              where: {
-                id: { in: stale.map(({ id }) => id) },
-                status: PushRegistrationStatus.ACTIVE,
-                refreshedAt: { lte: refreshCutoff },
-              },
-              data: {
-                status: PushRegistrationStatus.INACTIVE,
-                statusChangedAt: now,
-              },
-            })
-          ).count
-    const retired = await tx.pushRegistration.findMany({
-      where: {
-        status: { in: RETIRED_REGISTRATION_STATUSES },
-        statusChangedAt: { lte: retiredCutoff },
-      },
-      orderBy: [{ statusChangedAt: "asc" }, { id: "asc" }],
-      take: batchSize,
-      select: { id: true },
-    })
-    const retiredRegistrationsDeleted =
-      retired.length === 0
-        ? 0
-        : (
-            await tx.pushRegistration.deleteMany({
-              where: { id: { in: retired.map(({ id }) => id) } },
-            })
-          ).count
+      const stale = await tx.pushRegistration.findMany({
+        where: {
+          status: PushRegistrationStatus.ACTIVE,
+          refreshedAt: { lte: refreshCutoff },
+        },
+        orderBy: [{ refreshedAt: "asc" }, { id: "asc" }],
+        take: batchSize,
+        select: { id: true },
+      })
+      const registrationsMarkedInactive =
+        stale.length === 0
+          ? 0
+          : (
+              await tx.pushRegistration.updateMany({
+                where: {
+                  id: { in: stale.map(({ id }) => id) },
+                  status: PushRegistrationStatus.ACTIVE,
+                  refreshedAt: { lte: refreshCutoff },
+                },
+                data: {
+                  status: PushRegistrationStatus.INACTIVE,
+                  statusChangedAt: now,
+                },
+              })
+            ).count
+      const retired = await tx.pushRegistration.findMany({
+        where: {
+          status: { in: RETIRED_REGISTRATION_STATUSES },
+          statusChangedAt: { lte: retiredCutoff },
+        },
+        orderBy: [{ statusChangedAt: "asc" }, { id: "asc" }],
+        take: batchSize,
+        select: { id: true },
+      })
+      const retiredRegistrationsDeleted =
+        retired.length === 0
+          ? 0
+          : (
+              await tx.pushRegistration.deleteMany({
+                where: { id: { in: retired.map(({ id }) => id) } },
+              })
+            ).count
 
-    const [oldestAttribution, oldestOpen, oldestDelivery] = await Promise.all([
-      tx.pushAttribution.findFirst(oldestExpired()),
-      tx.pushOpen.findFirst(oldestExpired()),
-      tx.pushDelivery.findFirst(oldestExpired()),
-    ])
-    const oldestExpiredAt = earliestDate([
-      oldestAttribution?.createdAt,
-      oldestOpen?.createdAt,
-      oldestDelivery?.createdAt,
-    ])
+      const [oldestAttribution, oldestOpen, oldestDelivery] = await Promise.all(
+        [
+          tx.pushAttribution.findFirst(oldestExpired()),
+          tx.pushOpen.findFirst(oldestExpired()),
+          tx.pushDelivery.findFirst(oldestExpired()),
+        ],
+      )
+      const oldestExpiredAt = earliestDate([
+        oldestAttribution?.createdAt,
+        oldestOpen?.createdAt,
+        oldestDelivery?.createdAt,
+      ])
 
-    return {
-      status: "succeeded",
-      rowCounts: {
-        expiredAttributions,
-        expiredOpens,
-        expiredDeliveries,
-        registrationsMarkedInactive,
-        retiredRegistrationsDeleted,
-      },
-      oldestExpiredAtAfter: oldestExpiredAt?.toISOString() ?? null,
-      overdueAfterRun: oldestExpiredAt != null,
-    }
-  })
+      return {
+        status: "succeeded",
+        rowCounts: {
+          expiredAttributions,
+          expiredOpens,
+          expiredDeliveries,
+          registrationsMarkedInactive,
+          retiredRegistrationsDeleted,
+        },
+        oldestExpiredAtAfter: oldestExpiredAt?.toISOString() ?? null,
+        overdueAfterRun: oldestExpiredAt != null,
+      }
+    },
+    {
+      timeout: PUSH_RETENTION_TRANSACTION_TIMEOUT_MS,
+      maxWait: PUSH_RETENTION_TRANSACTION_MAX_WAIT_MS,
+    },
+  )
 }
 
 /**

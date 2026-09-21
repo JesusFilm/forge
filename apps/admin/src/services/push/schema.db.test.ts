@@ -55,6 +55,34 @@ function claimStatement(rows: readonly ClaimRow[]): Prisma.Sql {
   `
 }
 
+/** An attribution's open is required, and an open needs its own delivery. */
+async function openFor(prisma: PrismaClient, suffix: string): Promise<string> {
+  const deliveryId = `${PREFIX}delivery_${suffix}`
+  await prisma.$executeRaw(
+    claimStatement([
+      {
+        id: deliveryId,
+        nonce: `${PREFIX}nonce_${suffix}`,
+        kind: "live",
+        campaignId: `${PREFIX}campaign_a`,
+        registrationId: `${PREFIX}reg_1`,
+        localDay: LOCAL_DAY,
+      },
+    ]),
+  )
+  const openId = `${PREFIX}open_${suffix}`
+  await prisma.pushOpen.create({
+    data: {
+      id: openId,
+      deliveryId,
+      campaignId: `${PREFIX}campaign_a`,
+      registrationId: `${PREFIX}reg_1`,
+      receivedAt: new Date(),
+    },
+  })
+  return openId
+}
+
 describe.skipIf(env.PUSH_DB_TEST !== "1")(
   "push claim indexes against Postgres",
   () => {
@@ -308,6 +336,7 @@ describe.skipIf(env.PUSH_DB_TEST !== "1")(
         data: {
           id: `${PREFIX}attribution_1`,
           episodeId,
+          openId: await openFor(prisma, "one"),
           campaignId: `${PREFIX}campaign_a`,
           registrationId: `${PREFIX}reg_1`,
           mediaId: "video_1",
@@ -340,6 +369,7 @@ describe.skipIf(env.PUSH_DB_TEST !== "1")(
         data: {
           id: `${PREFIX}attribution_2`,
           episodeId,
+          openId: await openFor(prisma, "two"),
           campaignId: `${PREFIX}campaign_a`,
           registrationId: `${PREFIX}reg_1`,
           mediaId: "video_1",

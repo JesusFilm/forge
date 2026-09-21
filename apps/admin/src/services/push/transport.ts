@@ -51,26 +51,33 @@ const PROVIDER_RETRY_MIN_TIMEOUT_MS = 250
 /** The delivery row's error column is 64 characters; a code stays far below. */
 const PROVIDER_CODE_MAX_LENGTH = 32
 
+// Only codes that fire before the request body is written belong here. A reset
+// or a broken pipe can land after the provider read the chunk, so it stays
+// indeterminate: resending it would deliver the announcement twice.
 const PRE_SOCKET_CODES = new Set([
   "ECONNREFUSED",
-  "ECONNRESET",
   "EHOSTUNREACH",
   "ENETUNREACH",
   "ENOTFOUND",
   "EAI_AGAIN",
-  "EPIPE",
   "UND_ERR_CONNECT_TIMEOUT",
-  "UND_ERR_SOCKET",
 ])
+
+// Credential failures the provider reports per row, on a request that answered
+// 200. A ticket and a receipt share one error shape, so both paths read this set.
+const AUTH_TICKET_CODES = new Set(["InvalidCredentials", "MismatchSenderId"])
 
 const AUTH_PROVIDER_CODES = new Set([
   "UNAUTHORIZED",
   "INVALID_CREDENTIALS",
-  "PUSH_TOO_MANY_EXPERIENCE_IDS",
   "INVALID_ACCESS_TOKEN",
 ])
 
+// Deterministic request faults. The step boundary ends the run on any of these,
+// but only a credential code may fire the credential monitor, so the experience
+// id cap sits here and not in the auth set.
 const FATAL_PROVIDER_CODES = new Set([
+  "PUSH_TOO_MANY_EXPERIENCE_IDS",
   "MESSAGE_TOO_BIG",
   "PUSH_TOO_MANY_NOTIFICATIONS",
   "VALIDATION_ERROR",
@@ -93,7 +100,7 @@ export type PushTransportMessage = Readonly<{
   token: string
   title: string
   body: string
-  data: Record<string, string>
+  data: Record<string, string | number>
 }>
 
 export type PushSendOutcome =
@@ -327,6 +334,15 @@ function ticketOutcome(ticket: ExpoPushTicket): PushSendOutcome {
     : { kind: "failed", providerCode }
 }
 
+/** The code when a ticket or receipt refused our credential, not the phone. */
+function authTicketCode(
+  answer: ExpoPushTicket | ExpoPushReceipt,
+): string | undefined {
+  if (answer.status === "ok") return undefined
+  const code = answer.details?.error
+  return code !== undefined && AUTH_TICKET_CODES.has(code) ? code : undefined
+}
+
 function receiptOutcome(receipt: ExpoPushReceipt): PushReceiptOutcome {
   if (receipt.status === "ok") return { kind: "handed_off" }
   const providerCode = receipt.details?.error ?? "provider_error"
@@ -400,8 +416,22 @@ export function createPushTransport(
       if (tickets.length !== sendable.length) {
         throw new PushProviderIndeterminateError("ticket_count_mismatch")
       }
+      let authCode: string | undefined
+      let authRows = 0
       for (const [position, entry] of sendable.entries()) {
-        outcomes[entry.index] = ticketOutcome(tickets[position])
+        const ticket = tickets[position]
+        outcomes[entry.index] = ticketOutcome(ticket)
+        const code = authTicketCode(ticket)
+        if (code === undefined) continue
+        authRows += 1
+        authCode ??= code
+      }
+      // A 200 whose tickets all refuse the credential reads as a wave of plain
+      // row failures, so the auth monitor only fires if the send says so here.
+      if (authCode !== undefined) {
+        console.error(
+          `[push] event=provider_auth_failed rows=${authRows} provider_code=${authCode}`,
+        )
       }
       return outcomes as PushSendOutcome[]
     },
@@ -424,8 +454,21 @@ export function createPushTransport(
           } catch (error) {
             raiseProviderError(error)
           }
+          let authCode: string | undefined
+          let authRows = 0
           for (const [ticketId, receipt] of Object.entries(answered)) {
             receipts.set(ticketId, receiptOutcome(receipt))
+            const code = authTicketCode(receipt)
+            if (code === undefined) continue
+            authRows += 1
+            authCode ??= code
+          }
+          // A credential problem can reach us for the first time here, after the
+          // tickets were accepted, so the receipt read raises the same event.
+          if (authCode !== undefined) {
+            console.error(
+              `[push] event=provider_auth_failed rows=${authRows} provider_code=${authCode} source=receipt`,
+            )
           }
         }
       }

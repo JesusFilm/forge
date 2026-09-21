@@ -151,7 +151,7 @@ CREATE TABLE "push_open" (
 CREATE TABLE "push_attribution" (
     "id" TEXT NOT NULL,
     "episode_id" VARCHAR(191) NOT NULL,
-    "open_id" TEXT,
+    "open_id" TEXT NOT NULL,
     "campaign_id" TEXT NOT NULL,
     "registration_id" TEXT,
     "viewer_digest" CHAR(64),
@@ -167,6 +167,13 @@ CREATE TABLE "push_attribution" (
 CREATE UNIQUE INDEX "push_registration_expo_push_token_key" ON "push_registration"("expo_push_token");
 CREATE UNIQUE INDEX "push_registration_test_device_id_key" ON "push_registration"("test_device_id");
 CREATE INDEX "push_registration_viewer_digest_idx" ON "push_registration"("viewer_digest");
+-- The dashboard counts new phones per UTC day over a trailing window.
+CREATE INDEX "push_registration_created_at_idx" ON "push_registration"("created_at");
+-- The unreachable count reads active Android phones in the blocked countries.
+-- Prisma cannot declare a partial index, so this one has no schema.prisma twin.
+CREATE INDEX "push_registration_active_country_platform_idx"
+  ON "push_registration"("country", "platform")
+  WHERE "status" = 'active';
 -- The audience reads active rows by zone; the purge reads stale active rows by
 -- refresh time and retired rows by the instant their status changed.
 CREATE INDEX "push_registration_active_time_zone_id_idx"
@@ -191,6 +198,10 @@ CREATE INDEX "push_campaign_zone_campaign_id_scheduled_at_idx" ON "push_campaign
 CREATE UNIQUE INDEX "push_delivery_nonce_key" ON "push_delivery"("nonce");
 CREATE INDEX "push_delivery_campaign_id_status_id_idx" ON "push_delivery"("campaign_id", "status", "id");
 CREATE INDEX "push_delivery_created_at_id_idx" ON "push_delivery"("created_at", "id");
+-- Deleting a retired registration nulls this column on every row that holds
+-- it. The daily-claim index below leads on it but is partial, so it cannot
+-- serve that scan.
+CREATE INDEX "push_delivery_registration_id_idx" ON "push_delivery"("registration_id");
 CREATE INDEX "push_delivery_ticket_id_idx"
   ON "push_delivery"("ticket_id")
   WHERE "ticket_id" IS NOT NULL;
@@ -214,10 +225,18 @@ CREATE UNIQUE INDEX "push_open_delivery_id_key" ON "push_open"("delivery_id");
 CREATE INDEX "push_open_viewer_digest_received_at_idx" ON "push_open"("viewer_digest", "received_at");
 CREATE INDEX "push_open_session_digest_received_at_idx" ON "push_open"("session_digest", "received_at");
 CREATE INDEX "push_open_created_at_id_idx" ON "push_open"("created_at", "id");
+-- The report aggregates opens by campaign; the purge nulls registration_id.
+CREATE INDEX "push_open_campaign_id_idx" ON "push_open"("campaign_id");
+CREATE INDEX "push_open_registration_id_idx" ON "push_open"("registration_id");
 
 CREATE UNIQUE INDEX "push_attribution_episode_id_key" ON "push_attribution"("episode_id");
 CREATE INDEX "push_attribution_campaign_id_idx" ON "push_attribution"("campaign_id");
 CREATE INDEX "push_attribution_created_at_id_idx" ON "push_attribution"("created_at", "id");
+-- Deleting an open cascades through open_id; the purge nulls registration_id;
+-- the viewer identity unlink deletes by viewer_digest.
+CREATE INDEX "push_attribution_open_id_idx" ON "push_attribution"("open_id");
+CREATE INDEX "push_attribution_registration_id_idx" ON "push_attribution"("registration_id");
+CREATE INDEX "push_attribution_viewer_digest_idx" ON "push_attribution"("viewer_digest");
 
 ALTER TABLE "push_test_device" ADD CONSTRAINT "push_test_device_registration_id_fkey" FOREIGN KEY ("registration_id") REFERENCES "push_registration"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "push_campaign_copy" ADD CONSTRAINT "push_campaign_copy_campaign_id_fkey" FOREIGN KEY ("campaign_id") REFERENCES "push_campaign"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -227,7 +246,7 @@ ALTER TABLE "push_delivery" ADD CONSTRAINT "push_delivery_registration_id_fkey" 
 ALTER TABLE "push_open" ADD CONSTRAINT "push_open_delivery_id_fkey" FOREIGN KEY ("delivery_id") REFERENCES "push_delivery"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "push_open" ADD CONSTRAINT "push_open_campaign_id_fkey" FOREIGN KEY ("campaign_id") REFERENCES "push_campaign"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "push_open" ADD CONSTRAINT "push_open_registration_id_fkey" FOREIGN KEY ("registration_id") REFERENCES "push_registration"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "push_attribution" ADD CONSTRAINT "push_attribution_open_id_fkey" FOREIGN KEY ("open_id") REFERENCES "push_open"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "push_attribution" ADD CONSTRAINT "push_attribution_open_id_fkey" FOREIGN KEY ("open_id") REFERENCES "push_open"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "push_attribution" ADD CONSTRAINT "push_attribution_campaign_id_fkey" FOREIGN KEY ("campaign_id") REFERENCES "push_campaign"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "push_attribution" ADD CONSTRAINT "push_attribution_registration_id_fkey" FOREIGN KEY ("registration_id") REFERENCES "push_registration"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 

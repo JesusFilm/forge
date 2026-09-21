@@ -153,7 +153,9 @@ export async function countPushAudience(
   const matching = await prisma.pushRegistration.count({ where })
   if (blocked.length === 0) return { audience: matching, unreachable: 0 }
   const unreachable = await prisma.pushRegistration.count({
-    where: { ...where, platform: "ANDROID", country: { in: blocked } },
+    // AND, never a spread: a spread replaces the campaign's own country filter
+    // with the blocked list and counts phones the campaign never targets.
+    where: { AND: [where, { platform: "ANDROID", country: { in: blocked } }] },
   })
   return { audience: matching - unreachable, unreachable }
 }

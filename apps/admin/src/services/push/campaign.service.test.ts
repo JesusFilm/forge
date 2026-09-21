@@ -46,8 +46,14 @@ type CampaignRow = {
 
 function buildClient(
   campaign: Partial<CampaignRow> | null = { status: "TESTED" },
-  options: { moved?: number } = {},
+  options: { moved?: number; published?: boolean } = {},
 ) {
+  // The destination re-check counts catalog rows; one row means published.
+  // One spy per table, so a test can tell which catalog the check read.
+  const catalogCount = () =>
+    vi.fn(async (_args: { where: Record<string, unknown> }) =>
+      options.published === false ? 0 : 1,
+    )
   const row: CampaignRow | null =
     campaign === null
       ? null
@@ -78,7 +84,12 @@ function buildClient(
     pushCampaignZone: {
       updateMany: vi.fn(async (_args: PrismaCallArgs) => ({ count: 2 })),
     },
-    pushDelivery: { findMany: vi.fn(async (_args: PrismaCallArgs) => []) },
+    pushDelivery: {
+      findMany: vi.fn(async (_args: PrismaCallArgs) => []),
+      updateMany: vi.fn(async (_args: PrismaCallArgs) => ({ count: 3 })),
+    },
+    video: { count: catalogCount() },
+    experienceLocale: { count: catalogCount() },
     $transaction: vi.fn(async (run: (tx: unknown) => unknown) => run(client)),
   }
   return client
@@ -409,6 +420,69 @@ describe("push campaign scheduling", () => {
     ).rejects.toThrowError(PushInputError)
   })
 
+  it("refuses to schedule a campaign whose destination is no longer published", async () => {
+    const client = buildClient({ status: "TESTED" }, { published: false })
+
+    const error = await schedulePushCampaign(client as never, {
+      campaignId: CAMPAIGN,
+      actorId: ACTOR,
+      sendDate: "2026-10-05",
+      localHour: 9,
+    }).catch((caught: unknown) => caught)
+
+    expect(error).toBeInstanceOf(PushInputError)
+    expect((error as PushInputError).message).toContain("not published")
+    expect(client.pushCampaign.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("re-checks the destination against the published catalog by its slug", async () => {
+    const client = buildClient({
+      status: "TESTED",
+      destinationKind: "SERIES",
+      destinationSlug: "jesus",
+    })
+
+    await schedulePushCampaign(client as never, {
+      campaignId: CAMPAIGN,
+      actorId: ACTOR,
+      sendDate: "2026-10-05",
+      localHour: 9,
+    })
+
+    const [read] = client.video.count.mock.calls[0]
+    expect(read.where).toMatchObject({
+      slug: "jesus",
+      deletedAt: null,
+      label: { in: ["SERIES", "COLLECTION"] },
+      locales: { some: { status: "PUBLISHED", deletedAt: null } },
+      NOT: { restrictViewPlatforms: { has: "watch" } },
+    })
+    expect(client.experienceLocale.count).not.toHaveBeenCalled()
+  })
+
+  it("re-checks an experience destination against its published locale", async () => {
+    const client = buildClient({
+      status: "TESTED",
+      destinationKind: "EXPERIENCE",
+      destinationSlug: "easter",
+    })
+
+    await schedulePushCampaign(client as never, {
+      campaignId: CAMPAIGN,
+      actorId: ACTOR,
+      sendDate: "2026-10-05",
+      localHour: 9,
+    })
+
+    const [read] = client.experienceLocale.count.mock.calls[0]
+    expect(read.where).toEqual({
+      slug: "easter",
+      status: "PUBLISHED",
+      experience: { archivedAt: null },
+    })
+    expect(client.video.count).not.toHaveBeenCalled()
+  })
+
   it("logs the schedule with the actor, the campaign, and the audience", async () => {
     const client = buildClient({ status: "TESTED" })
     const log = vi.spyOn(console, "info").mockImplementation(() => {})
@@ -521,6 +595,23 @@ describe("push campaign cancel", () => {
         }),
       ).rejects.toThrowError(PushInvalidTransitionError)
       expect(client.pushCampaignZone.updateMany).not.toHaveBeenCalled()
+      expect(client.pushDelivery.updateMany).not.toHaveBeenCalled()
     },
   )
+
+  // A reserved row sits inside `push_delivery_daily_claim_key`, so a cancel
+  // that left it there would suppress every other campaign to that phone.
+  it("retires the rows a cancelled send had only reserved", async () => {
+    const client = buildClient({ status: "SENDING" })
+
+    await cancelPushCampaign(client as never, {
+      campaignId: CAMPAIGN,
+      actorId: ACTOR,
+    })
+
+    expect(client.pushDelivery.updateMany).toHaveBeenCalledWith({
+      where: { campaignId: CAMPAIGN, kind: "LIVE", status: "RESERVED" },
+      data: { status: "MISSED" },
+    })
+  })
 })
