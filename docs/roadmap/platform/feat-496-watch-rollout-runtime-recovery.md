@@ -461,3 +461,24 @@ Keep this ticket in progress until exact automatic deployment and sustained
 observations pass. The initiating shared-memory failure and separate 701 ms
 capability-budget call still require independent investigation; neither is closed
 by the logging correction.
+
+## September 22 catalog shared-memory correction
+
+PR #2369 merged the error-inspection correction as
+`9492f01e92572777def7432d65b73f9910410fc4`; automatic release verification
+remains separate from merge. The [catalog investigation](../../operations/watch-catalog-memory-recovery-2026-09-22.md)
+also reproduces the initiating SQLSTATE 53100 with concurrent reads. The Mux
+playback loader's nested `take: 5` transfers the entire eligible dubbed catalog
+and can parallel-hash the Mux table. A bounded scalar LATERAL projection uses
+existing indexes, preserves playback choices and removes that hash plan.
+Actual Prisma calls improve from 20/40 shared-memory failures to 40/40 successes
+in 32–83 ms. In the actual Next build, 30 simultaneous-workload catalog reads
+have no GraphQL errors; all 15 concurrent selections acknowledge in 239–330 ms.
+Real PostgreSQL semantics/cardinality regressions and all 7,293 Admin tests pass.
+
+Keep status in progress until the exact automatic deployments and sustained
+production evidence are recorded. The separate capability-budget delay remains
+unattributed. Another task restored the homepage pilot in PR #2370; this task
+received the user's instruction to keep it removed. The single-block rollback
+requires an authenticated publishing connection; no authored-content or flag
+change has yet been made by this task.

@@ -1586,3 +1586,176 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
     })
   },
 )
+
+// Keep the Mux loader regression in the existing Watch PostgreSQL CI entry point.
+describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
+  "Mux playback loader with the production PostgreSQL adapter",
+  () => {
+    const schema = `mux_playback_${randomUUID().replaceAll("-", "")}`
+    const sql = new Client({ connectionString: env.DATABASE_URL })
+    const queries: Prisma.QueryEvent[] = []
+    const prisma = new PrismaClient({
+      adapter: new PrismaPg(
+        {
+          connectionString: env.DATABASE_URL,
+          max: 10,
+          options: `-c search_path=${schema}`,
+        },
+        { schema },
+      ),
+      log: [{ emit: "event", level: "query" }],
+    })
+
+    beforeAll(async () => {
+      if (
+        !["localhost", "127.0.0.1", "[::1]"].includes(
+          new URL(env.DATABASE_URL).hostname,
+        )
+      ) {
+        throw new Error("This isolated fixture requires local Postgres")
+      }
+      await sql.connect()
+      await sql.query(`CREATE SCHEMA "${schema}"`)
+      await sql.query(`SET search_path TO "${schema}"`)
+      await sql.query(`
+        CREATE TABLE video (id text PRIMARY KEY, primary_language_id text, deleted_at timestamp);
+        CREATE TABLE language (id text PRIMARY KEY, slug text, deleted_at timestamp);
+        CREATE TABLE mux_video (id text PRIMARY KEY, playback_id text, deleted_at timestamp);
+        CREATE TABLE video_dub (
+          id text PRIMARY KEY, video_id text NOT NULL, language_id text,
+          mux_video_id text, duration integer, hls text, published boolean, deleted_at timestamp
+        );
+        CREATE INDEX ON video_dub(video_id);
+        CREATE INDEX ON video_dub(video_id,duration DESC,id ASC)
+          WHERE deleted_at IS NULL AND published=true AND hls IS NOT NULL;
+        INSERT INTO language VALUES ('en','english',NULL),('es','spanish',NULL),('withdrawn','withdrawn',now());
+        INSERT INTO video(id,primary_language_id) VALUES
+          ('primary','en'),('outside-five','en'),('fallback','missing'),
+          ('empty-primary',''),('null-duration',NULL),('null-language','en'),('tie',NULL),
+          ('visibility',NULL),('empty',NULL),('empty-playback',NULL),('deleted','en');
+        UPDATE video SET deleted_at=now() WHERE id='deleted';
+        INSERT INTO video_dub
+          SELECT v.id||'-'||n,v.id,CASE WHEN n=2 THEN 'en' ELSE 'es' END,
+            v.id||'-'||n,100-n,'stream',true,NULL
+          FROM video v CROSS JOIN generate_series(1,8) n
+          WHERE v.id IN ('primary','fallback','deleted');
+        INSERT INTO video_dub
+          SELECT 'outside-'||n,'outside-five',CASE WHEN n=6 THEN 'en' ELSE 'es' END,
+            'outside-'||n,100-n,'stream',true,NULL FROM generate_series(1,8) n;
+        INSERT INTO video_dub VALUES
+          ('empty-primary-long','empty-primary','es','empty-primary-long',20,'stream',true,NULL),
+          ('empty-primary-short','empty-primary','','empty-primary-short',10,'stream',true,NULL),
+          ('null-duration-first','null-duration',NULL,'null-duration-first',NULL,'stream',true,NULL),
+          ('null-duration-second','null-duration',NULL,'null-duration-second',100,'stream',true,NULL),
+          ('null-language-first','null-language',NULL,'null-language-first',100,'stream',true,NULL),
+          ('null-language-second','null-language','es','null-language-second',90,'stream',true,NULL),
+          ('tie-b','tie',NULL,'tie-b',10,'stream',true,NULL),
+          ('tie-a','tie',NULL,'tie-a',10,'stream',true,NULL),
+          ('no-hls','visibility',NULL,'no-hls',999,NULL,true,NULL),
+          ('unpublished','visibility',NULL,'unpublished',998,'stream',false,NULL),
+          ('withdrawn-dub','visibility',NULL,'withdrawn-dub',997,'stream',true,now()),
+          ('withdrawn-mux','visibility',NULL,'withdrawn-mux',996,'stream',true,NULL),
+          ('null-playback','visibility',NULL,'null-playback',995,'stream',true,NULL),
+          ('missing-mux','visibility',NULL,NULL,994,'stream',true,NULL),
+          ('blank-hls','visibility',NULL,'blank-hls',-1,'',true,NULL),
+          ('empty-playback','empty-playback',NULL,'empty-playback',0,'stream',true,NULL);
+        INSERT INTO mux_video SELECT mux_video_id,'playback-'||id,NULL FROM video_dub WHERE mux_video_id IS NOT NULL;
+        UPDATE mux_video SET deleted_at=now() WHERE id='withdrawn-mux';
+        UPDATE mux_video SET playback_id=NULL WHERE id='null-playback';
+        UPDATE mux_video SET playback_id='' WHERE id='empty-playback';
+        INSERT INTO video(id) SELECT 'large-'||n FROM generate_series(1,206) n;
+        INSERT INTO video_dub
+          SELECT v.id||'-'||n,v.id,'language-'||n,v.id||'-'||n,1000-n,'stream',true,NULL
+          FROM video v CROSS JOIN generate_series(1,662) n WHERE v.id LIKE 'large-%';
+        INSERT INTO mux_video SELECT id,'playback-'||id,NULL FROM video_dub WHERE video_id LIKE 'large-%';
+        ANALYZE video; ANALYZE video_dub; ANALYZE mux_video;
+      `)
+      prisma.$on("query", (event) => queries.push(event))
+    })
+
+    afterAll(async () => {
+      await prisma.$disconnect()
+      await sql.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`)
+      await sql.end()
+    })
+
+    it("preserves primary-within-five, ordering, nulls and visibility", async () => {
+      const ids = [
+        "primary",
+        "outside-five",
+        "fallback",
+        "empty-primary",
+        "null-duration",
+        "null-language",
+        "tie",
+        "visibility",
+        "empty",
+        "empty-playback",
+        "deleted",
+        "missing",
+        "primary",
+      ]
+      const result = await createLoaders(
+        prisma,
+      ).videoMuxPlaybackIdByIdAndLanguageSlug.loadMany(
+        ids.map((videoId) => ({ videoId, languageSlug: null })),
+      )
+      expect(result).toEqual([
+        "playback-primary-2",
+        "playback-outside-1",
+        "playback-fallback-1",
+        "playback-empty-primary-long",
+        "playback-null-duration-first",
+        "playback-null-language-first",
+        "playback-tie-a",
+        "playback-blank-hls",
+        null,
+        "",
+        null,
+        null,
+        "playback-primary-2",
+      ])
+    })
+
+    it("preserves requested language preference and fallback in the same batch", async () => {
+      const result = await createLoaders(
+        prisma,
+      ).videoMuxPlaybackIdByIdAndLanguageSlug.loadMany([
+        { videoId: "primary", languageSlug: "spanish" },
+        { videoId: "primary", languageSlug: "missing" },
+        { videoId: "outside-five", languageSlug: "english" },
+        { videoId: "missing", languageSlug: "english" },
+      ])
+      expect(result).toEqual([
+        "playback-primary-1",
+        "playback-primary-2",
+        "playback-outside-6",
+        null,
+      ])
+    })
+
+    it("bounds transferred rows independently of the number of dubs", async () => {
+      queries.length = 0
+      const ids = Array.from(
+        { length: 206 },
+        (_, index) => `large-${index + 1}`,
+      )
+      const result = await createLoaders(
+        prisma,
+      ).videoMuxPlaybackIdByIdAndLanguageSlug.loadMany(
+        ids.map((videoId) => ({ videoId, languageSlug: null })),
+      )
+      expect(result).toEqual(ids.map((id) => `playback-${id}-1`))
+      const reads = queries.filter((query) => /SELECT/i.test(query.query))
+      expect(reads.length).toBeGreaterThan(0)
+      let transferredRows = 0
+      for (const query of reads) {
+        transferredRows +=
+          (await sql.query(query.query, JSON.parse(query.params))).rowCount ?? 0
+      }
+      // Prisma's nested take used to transfer the complete dubbed catalog.
+      // Assert real wire cardinality, not the already-trimmed ORM result.
+      expect(transferredRows).toBeLessThanOrEqual(ids.length * 6)
+    })
+  },
+)

@@ -139,3 +139,23 @@ proven workload, wide subtitle/language materialization, was corrected in #2322.
 Read `docs/operations/watch-admin-duration-recovery-2026-09-16.md` for the later
 fixed observation window and its separate HTTP, semantic and browser findings.
 Do not attribute every observed delay to this one loader.
+
+## September 22: the Mux fallback has the same unbounded relation read
+
+The playback-ID fallback also used nested `take: 5`. Its join to the Mux table
+adds a second failure mode: a parallel hash can exhaust PostgreSQL shared memory
+under concurrent catalog reads before Prisma trims the results. A representative
+owned fixture with existing production indexes reproduced SQLSTATE 53100 in
+20/40 actual Prisma calls. A parameterized LATERAL projection preserved all
+206 playback choices and passed 40/40 calls in 32–83 ms. Real database tests
+must measure transferred rows, including visibility and null/ordering semantics;
+mocked relation arrays conceal both the overscan and PostgreSQL plan.
+
+See [the catalog recovery record](../../operations/watch-catalog-memory-recovery-2026-09-22.md)
+for the bounded production plans, failed row-count regression, rejected initial
+fixture, actual Next build workload and release obligations. Preserve the
+existing index set when comparing query candidates: omitting the playable
+duration index initially made the bounded join slower. Do not fix this by
+raising shared-memory limits, adding mutation retries or enlarging deadlines
+without evidence. The initiating database failure and subsequent synchronous
+error-formatting amplification require separate corrections and measurements.
