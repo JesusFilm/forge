@@ -6,7 +6,6 @@ import { useTabBarStyle } from "../../src/lib/tabBar"
 
 const ACCENT = "#CB333B"
 const MUTED = "#a8a29e"
-const BG_COLOR = "#1c1917"
 
 /**
  * Android's tab bar. iOS is shadowed by `_layout.ios.tsx` and its UIKit bar
@@ -44,11 +43,6 @@ export default function TabLayout() {
         name="watch"
         options={{
           title: "Search",
-          headerShown: true,
-          headerTitle: "Search",
-          headerStyle: { backgroundColor: BG_COLOR },
-          headerTintColor: "#f5f5f4",
-          headerShadowVisible: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="search" size={size} color={color as string} />
           ),
