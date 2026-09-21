@@ -60,7 +60,7 @@ Semantic similarity is the safe contextual base, but it cannot adapt to an anony
 - Keep raw cookie values, profile identifiers, watch histories, cohort membership, and vectors out of Admin responses and request-owned serving records.
 - Keep withdrawal, deletion, last-known-good fallback, evidence eligibility, and projection publication state independently reconcilable. Historical experiment, holdout, and exposure records remain inspectable when present but do not authorize current direct profile delivery.
 
-The ticket remains in progress because no successful post-#2137 browser journey yet proves the current direct-profile, no-assignment lifecycle through Watch selection, qualified playback, profile publication, later hybrid delivery, semantic fallback, and the matching privacy-safe Admin trace. Focused Web/Admin suites and real-Postgres fixtures prove the individual seams but manually seed or mock lifecycle boundaries, so they do not satisfy this browser gate.
+The September 21 production canaries now prove direct-profile, no-assignment delivery through real Watch selection, qualified playback, profile publication and later hybrid use of the same outcome. Separate withdrawal, reset and completed-erasure checks preserve contextual delivery and remove future influence. The ticket remains in progress for the matching permission-checked Admin trace and independent operational last-known-good fallback and stale-publication evidence; a SQL canary does not replace those gates. See the release update below.
 
 ## 2026-08-19 Phase A Closeout Evidence
 
@@ -93,3 +93,37 @@ The ticket remains in progress because no successful post-#2137 browser journey 
 - Prove direct-profile delivery, withdrawal, erasure, generation fencing, and last-known-good fallback independently; reconcile historical experiment evidence only when a request actually has it.
 - Run affected checks: `pnpm --filter @forge/admin test`, `pnpm --filter @forge/web test`, `pnpm --filter @forge/admin lint`, `pnpm --filter @forge/web lint`, and both application typechecks.
 - Run `pnpm --filter roadmap generate:readme` and `pnpm --filter roadmap lint` after updating roadmap metadata.
+
+## September 21 browser and privacy continuation
+
+The [release observation](../../operations/watch-closeout-release-2026-09-21.md)
+records exact deployed revisions and two complete production-safe canaries.
+Actual normal-speed playback produces qualified active-classifier outcomes and
+later six-card hybrid requests containing those outcomes, with no assignment.
+Withdrawal immediately removes personalization. Reset advances generation,
+completes old-root erasure and returns a clean contextual request; deletion
+completes replacement-root erasure and preserves contextual delivery. Exact
+item/selection lineage and zero remaining private references are checked through
+bounded read-only SQL. No production facts are fabricated or database rows seeded.
+
+Keep the remaining Admin/fallback/publication gates explicit. The owner's Railway
+access establishes database evidence, not permission to impersonate an Admin user.
+
+## September 21 independent local fallback and publication drill
+
+The [runtime release record](../../operations/watch-startup-readiness-2026-09-21.md)
+now includes complete-service checks with the real owned PostgreSQL/Redis
+fixture, runtime signer and production dependency factory. A forced platform
+failure returns and persists six last-known-good cards, no assignment and
+incomplete stage evidence. A separate stale publisher is fenced while preserving
+the current pointer and its single generation. Retained production rows since
+September 18 contain no matching fallback request or failed projection run to
+establish those operational events. Keep the production and matching signed-in
+Admin proof open; do not promote these local checks into production acceptance.
+
+The [later diagnostic release](../../operations/watch-transport-cause-release-2026-09-21.md)
+retains those remaining gates and credits the previously verified browser
+lifecycle, completed erasure/reset and September 9 restored-snapshot performance
+under their original scope. The new operational diagnostics do not replace the
+matching authorized Admin trace or independent production fallback/publication
+evidence, and do not widen personalization rollout.

@@ -10,7 +10,7 @@ export interface DownloadsSummaryProps {
   count: number
 }
 
-/** The downloads count under the Library title, over a 1pt separator line. */
+/** The downloads count under the Library head row, over a 1pt separator line. */
 export const DownloadsSummary = memo(function DownloadsSummary({
   count,
 }: DownloadsSummaryProps) {

@@ -1,9 +1,11 @@
-import { readFileSync } from "node:fs"
+import { readFileSync, readdirSync } from "node:fs"
 import { PrismaClient } from "@prisma/client"
+import { PrismaPg } from "@prisma/adapter-pg"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
 import { loadRecommendationRequestDetail } from "./detail.service"
+import { loadRecommendationProfileReconciliationOverview } from "./profile-reconciliation.service"
 import { RECOMMENDATION_TRACE_ACCESS_REASON } from "./shared"
 
 const RUN_REAL_DB_TEST = env.RECOMMENDATION_DB_TEST === "1"
@@ -398,6 +400,116 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           reason_code: RECOMMENDATION_TRACE_ACCESS_REASON,
         },
       ])
+    })
+  },
+)
+
+const root = new URL("../../../../prisma/migrations/", import.meta.url)
+const migrations = readdirSync(root)
+  .filter((name) => {
+    const ordinal = Number(name.slice(0, 4))
+    return (
+      (ordinal >= 52 && ordinal <= 76 && name.includes("recommendation")) ||
+      name === "0082_user_recommendation_identity" ||
+      name === "0098_recommendation_viewing_mode"
+    )
+  })
+  .sort()
+  .map((name) => readFileSync(new URL(`${name}/migration.sql`, root), "utf8"))
+
+describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
+  "Admin hybrid execution accounting against PostgreSQL",
+  () => {
+    const schemaName = `recommendation_hybrid_count_${Date.now()}_${Math.random().toString(36).slice(2)}`
+    const expiresAt = "2026-09-24T12:00:00.000Z"
+    let client: Client
+    let prisma: PrismaClient
+    beforeAll(async () => {
+      if (
+        !["localhost", "127.0.0.1", "[::1]"].includes(
+          new URL(env.DATABASE_URL).hostname,
+        )
+      ) {
+        throw new Error("This isolated fixture requires local Postgres")
+      }
+      client = new Client({ connectionString: env.DATABASE_URL })
+      await client.connect()
+      await client.query(`CREATE SCHEMA "${schemaName}"`)
+      await client.query(`SET search_path TO "${schemaName}", public`)
+      for (const migration of migrations) await client.query(migration)
+      prisma = new PrismaClient({
+        adapter: new PrismaPg(
+          {
+            connectionString: env.DATABASE_URL,
+            max: 2,
+            options: `-c search_path=${schemaName},public`,
+          },
+          { schema: schemaName },
+        ),
+      })
+    })
+    afterAll(async () => {
+      await prisma?.$disconnect()
+      if (!client) return
+      await client.query("RESET search_path")
+      await client.query(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`)
+      await client.end()
+    })
+    it("counts actual hybrid execution without relabeling legacy challenger assignments", async () => {
+      const auditAt = new Date("2026-08-28T12:00:00.000Z")
+      const start = new Date("2026-08-27T12:00:00.000Z")
+      const cases = [
+        { id: "hybrid-1" },
+        { id: "hybrid-2" },
+        { id: "hybrid-3" },
+        { id: "legacy-challenger", executionMode: null },
+        { id: "viewing-mode", executionMode: "viewing_mode_personalized" },
+        { id: "expired-hybrid", expiresAt: auditAt },
+        { id: "earlier-hybrid", createdAt: new Date(start.getTime() - 1) },
+        { id: "later-hybrid", createdAt: auditAt },
+      ]
+      for (const example of cases) {
+        const createdAt = example.createdAt ?? start
+        const expiry = example.expiresAt ?? new Date(expiresAt)
+        await client.query(
+          `INSERT INTO recommendation_request (
+            id, contract_version, surface_version, manifest_id,
+            strategy_version, classifier_version, session_digest,
+            seed_media_id, locale, expected_item_count, result,
+            created_at, expires_at
+          ) VALUES ($1, 'semantic-recommendation-v1', 'watch-below-player-v1',
+            'semantic-profile-hybrid-v1', 'semantic-profile-hybrid-v1',
+            'active-watch-proxy-v1', $2, 'seed', 'en', 0, 'empty', $3, $4)`,
+          [example.id, "a".repeat(64), createdAt, expiry],
+        )
+        await client.query(
+          `INSERT INTO recommendation_personalization_decision (
+            request_id, effective_manifest_id, lane, execution_mode,
+            projection_scope, projection_version, projection_generation_number,
+            interest_count, created_at, expires_at
+          ) VALUES ($1, 'semantic-profile-hybrid-v1', 'profile_challenger', $2,
+            'durable', 'multi-interest-profile-projection-v1', 1, 1, $3, $4)`,
+          [
+            example.id,
+            "executionMode" in example
+              ? example.executionMode
+              : "hybrid_personalized",
+            createdAt,
+            expiry,
+          ],
+        )
+      }
+
+      const overview = await loadRecommendationProfileReconciliationOverview(
+        prisma,
+        { preset: "24h", start, end: auditAt },
+        auditAt,
+      )
+      expect(overview).toMatchObject({
+        suppressed: false,
+        currentPointerInvariant: "clean",
+        counts: { cleanHybridRequests: 3 },
+      })
     })
   },
 )

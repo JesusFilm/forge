@@ -221,3 +221,133 @@ inventory. The complete canonical current-pointer audit exceeded its five-second
 read-only guard and was rolled back, so this review supplies no fresh passing
 feat-459 audit. Keep both production gates open; do not infer them from aggregate
 personalized deliveries, a low HTTP failure rate or a partial database audit.
+
+The [later September 21 audit](../../operations/watch-profile-audit-2026-09-21.md)
+completed the full canonical predicate in one read-only snapshot: 167,029 live
+current pointers, zero ineligible. This supersedes only the missing fresh audit
+evidence above. Required installed alerts remain unmet because available Datadog
+access is read-only; transport classifications and browser lifecycle evidence
+remain separate. Keep this ticket in progress.
+
+Retained traces also prove two sampled `unknown / retryable` facts observations
+were fast terminal GraphQL `BAD_USER_INPUT` responses. A local typed-error
+regression reproduces the logger's missing `RecommendationTokenInvalidError`
+classification. The fix records those as `rejected / invalid_request / terminal`
+and rethrows the same error without changing token validation or Web responses.
+The 42 playback/token/GraphQL tests pass, and the complete final Admin suite
+passes 7,281 tests. PR #2353 deployed automatically to Admin and its worker as
+`6e02dd855af4053d9c9a7b032fe1ece7317cfc33`; natural accepted facts are visible on
+that exact revision. This does not classify all 174 historical unknown failures
+or establish that the specific invalid-capability branch occurred in the short
+release window. [Release evidence and outstanding gates](../../operations/watch-ticket-execution-2026-09-21.md)
+remain explicit. Continue using the existing read access; installed alerts stay
+unmet without a monitor-writing capability.
+
+The release window adds a separate transport investigation: at September 20
+22:48:27 UTC, playback trace `2812671347123689187` returns HTTP 503 in 46.6 ms
+after a 42.7 ms upstream `fetch failed`, with `timeoutStage=none`. It overlaps
+Admin deployment but does not prove the transport cause or mutation disposition.
+Keep the failure in the 1/800 primary playback denominator; investigate routing,
+connection and shutdown behavior before proposing a change. Do not substitute
+an ambiguous mutation retry. Four separately correlated transaction-busy
+attempts recovered to Web HTTP 200; a natural terminal rejection agrees with
+`BAD_USER_INPUT`. None is a selection deadline or delivery semantic timeout.
+
+The new worker also emitted an unavailable reconciliation heartbeat at 22:52:48
+UTC after substantive five-second transaction expiry, followed by a completed
+heartbeat at 22:58:17. Feat-459 now records the reproduced expensive discovery
+scan and rejected controls. This keeps the reconciliation-health gate open;
+one subsequent success does not satisfy the sustained criterion.
+
+## Repaired worker and complete two-hour observation — September 21
+
+PR #2356 deploys the reproduced discovery-scan correction to Admin and worker
+as `de752d60980b25ee11806f2c424770fc78027188`. The fixed **00:15–02:15 UTC**
+window has **0 / 9,787 playback 5xx (0%)**, with no fault-injection exclusions;
+ordinary canaries and rejected traffic remain included. Independent Railway edge
+counts and Datadog primary metrics match. All 24 reconciliation batches and
+heartbeat steps complete; 238 classification attempts and 14 queued rebuilds
+have zero classification/dispatch failures or exhausted attempts.
+
+The final timed pointer audit finds one ineligible pointer; a later complete
+02:20:44 UTC snapshot finds zero among 167,984. A separate durable episode cohort
+audit finds zero fact/replay sequence or original-fact binding violations across
+10,600 facts and 207 replay receipts. The exact populations, nonzero snapshots
+and collector differences remain in the
+[release record](../../operations/watch-closeout-release-2026-09-21.md).
+
+Admin/Web indexed logs agree on 8,003 accepted facts batches and 23 all-replay
+batches. All 126 observed transaction-busy attempts across 109 trace-correlated
+requests reach final Web facts HTTP 200, without exhaustion. Four binding
+rejections map to terminal HTTP 409. All 1,520 recognized-crawler evidence
+actions are logged as rejected; the `human_anonymous` database label is not
+independent proof of human provenance. Terminal labels alone do not establish
+cross-request browser retry behavior.
+
+Keep this ticket in progress. The completed two-hour HTTP and worker observation
+does not install alerts or replace the permission-checked Admin reconciliation.
+The paginated inventory of 41 visible monitors contains legacy Watch RUM monitors
+but no required Forge recommendation transport/reconciliation alert coverage.
+Use the existing read access for verification; no monitoring write was attempted.
+The separately retained fast playback fetch failure and historical unknown-attempt
+classification limits also remain explicit rather than being erased by this
+healthy window.
+
+## Short crawler user-agent repair — September 21
+
+The continuation reproduced a narrower admission hole: short
+`meta-externalagent/1.1` and `Meta-ExternalFetcher/1.1` user agents reached mocked
+Admin mutations through otherwise valid evidence and selection requests. The
+existing full production Meta user agent was already rejected through the
+`crawler` substring in its documentation URL. No retained short-form success
+has been established, and no historical evidence was relabeled or deleted.
+
+The shared guard now recognizes both Meta product tokens independently of the
+optional URL. Seven regressions failed before the fix; all 67 focused tests and
+4,455 Web tests pass afterward, with lint and typecheck passing. Playback
+context, claim and facts are covered before mutation, and ordinary Facebook
+in-app browsers remain admitted. See the
+[durable learning](../../solutions/security-issues/recognize-crawler-product-tokens-without-documentation-urls.md).
+
+This repair does not satisfy the remaining installed-alert, authorized Admin
+reconciliation or browser retry-amplification gates. Keep this ticket in
+progress until those checks have their own evidence.
+
+PR #2360 merged as `475a5f2ed102909a6c1463d3f32e8ed4bcfffbf5`; Railway and an
+independent SSH read verify that exact Web deployment. Six bounded public-path
+negative probes at 04:27 UTC all return 403 `machine_evidence_rejected` for the
+two short Meta forms across evidence, selection and playback. No capabilities
+or cookies were supplied. The [release evidence](../../operations/watch-startup-readiness-2026-09-21.md)
+keeps these diagnostic rejections separate from natural HTTP and semantic
+fallback populations. Installed alerts, Admin reconciliation and browser retry
+evidence remain open.
+
+## September 21 later release observation
+
+The [runtime release record](../../operations/watch-startup-readiness-2026-09-21.md)
+retains a playback HTTP 503 at 05:07:25.928 UTC during the Admin release period.
+The upstream span reports `fetch failed` after 330 ms, with no retained Admin
+span; deployment timing alone does not prove its network/process cause. Keep it
+separate from selection deadlines and HTTP 200 delivery-timeout fallbacks. The
+05:10–05:20 UTC window has 479 playback requests and no 5xx, but is only ten
+minutes. The earlier completed two-hour corpus remains valid for its timestamp.
+Installed alerts, authorized Admin reconciliation and actual browser terminal
+retry behavior still require their own evidence. Browser inventory remains
+empty and the in-app browser is unavailable; no authorization was manufactured.
+
+A second fast playback 503 at 05:40:18 UTC takes 159 ms, during the next Admin
+handover, with an upstream fetch failure and no retained Admin span. The scoped
+diagnostic adds only an optional finite `networkErrorCode` to existing evidence
+events; it does not change HTTP responses or retries. Real local socket/refusal
+and route-boundary tests validate the diagnostic. Keep installation and sustained
+natural-error attribution separate from implementing this field. See the linked
+release record's current closure table for the exact outstanding gates.
+
+PR #2364 is now verified on Web/Admin/worker as
+`d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf`; the
+[diagnostic release evidence](../../operations/watch-transport-cause-release-2026-09-21.md)
+confirms the compiled field, unchanged homepage constraints and separate HTTP
+and semantic outcome accounting. The latest 41-monitor inventory still lacks
+the required alert coverage. No monitor write or Admin impersonation occurred;
+the installed-alert, matching authorized Admin and actual browser retry gates
+remain unmet.

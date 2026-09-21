@@ -38,7 +38,10 @@ import {
   scheduleRecommendationEpisodeFinalization,
   type RecommendationFinalizationWake,
 } from "./finalization/job"
-import type { EpisodeCapabilityBinding } from "./token.service"
+import {
+  RecommendationTokenInvalidError,
+  type EpisodeCapabilityBinding,
+} from "./token.service"
 import { projectViewingModeEvidence } from "./viewing-mode.service"
 
 const FACT_LIMITS: Readonly<
@@ -150,22 +153,23 @@ export class RecommendationPlaybackService {
       })
       return receipts
     } catch (error) {
+      const invalidRequest =
+        error instanceof RecommendationInputError ||
+        error instanceof RecommendationTokenInvalidError
       observeRecommendationEvidence({
         action: "facts",
         outcome:
-          error instanceof RecommendationBindingError ||
-          error instanceof RecommendationInputError
+          error instanceof RecommendationBindingError || invalidRequest
             ? "rejected"
             : "failed",
         reason:
           error instanceof RecommendationBindingError
             ? "invalid_binding"
-            : error instanceof RecommendationInputError
+            : invalidRequest
               ? "invalid_request"
               : "unknown",
         retryDisposition:
-          error instanceof RecommendationBindingError ||
-          error instanceof RecommendationInputError
+          error instanceof RecommendationBindingError || invalidRequest
             ? "terminal"
             : "retryable",
       })

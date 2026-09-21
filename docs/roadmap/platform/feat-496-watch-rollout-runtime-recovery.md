@@ -301,6 +301,20 @@ mutation continuing for 1,710 ms. This is still unresolved.
 
 ## Sustained corpus review — September 21
 
+Follow-up implementation adds a bounded Web delivery outcome event for both
+delivery handlers. It distinguishes HTTP failures from HTTP 200 timeout envelopes
+and records the final card count plus the upstream result before contextual
+recovery. [The event contract and verification procedure](../../operations/watch-delivery-outcome-observation-2026-09-21.md)
+document privacy boundaries, ingestion reconciliation and browser-receipt limits.
+Local validation: 54 focused tests; the full Web suite, lint and typecheck passed.
+PR #2352 deployed automatically to Web as
+`4e31f822781f44df06e91c8194142a6c4b51646a`, verified in the running service.
+The first identical revision/window comparison reconciled 22 indexed delivery
+events to 22 primary HTTP requests, distinguishing a coverage fallback from
+timeout fallbacks. [Extended release observations](../../operations/watch-ticket-execution-2026-09-21.md)
+record population and window limits. This is an observability correction, not a
+selection latency fix; the ticket stays in progress.
+
 The read-only [64-hour 35-minute production review](../../operations/watch-recommendation-corpus-review-2026-09-21.md)
 keeps this ticket in progress. From September 18 04:15 through September 20 20:50
 UTC, primary Web request metrics contain 256 selection HTTP 200, 13 HTTP 400 and
@@ -322,3 +336,90 @@ orderings and 3,508 hybrid personalized deliveries. Current Admin/worker run
 `964c1e3cde7ecd2ea1f3253817770527213ac11f`. These are reviewed identities, not a new
 runtime fix. Remaining field hydration errors are tracked separately in
 [feat-523](feat-523-watch-field-hydration-mismatch-attribution.md).
+
+## September 21 closeout continuation
+
+The [latest release investigation](../../operations/watch-closeout-release-2026-09-21.md)
+separates the deployed reconciliation scan correction from this ticket's remaining
+selection cause. Historical scheduler heartbeats reject reconciliation overlap
+for the sampled 03:40, 03:45 and 06:26 failures. The 06:26 trace includes several
+slow reads, a 406.9 ms capability call and application gaps; neither a single
+WAL-sync sample nor a healthy current pool establishes the complete cause.
+
+Current bounded wait sampling sees real catalog/database activity and transient
+I/O waits, without an observed blocker, while correlated browser selections
+succeed. Query age is not wait duration and this is not a pool-acquisition trace.
+No additional selection fix, increased deadline or ambiguous retry is justified.
+HTTP failures, final semantic envelopes and browser response handling remain
+separate populations. Keep this ticket in progress.
+
+Retained PostgreSQL checkpoint records provide no direct overlap for the last
+failure: the previous checkpoint ran 06:24:37.751–06:24:45.857 UTC and the next
+started 06:29:37.647, surrounding the 06:26:02.748 selection failure. Use the
+PostgreSQL timestamp inside each record; Railway sometimes assigns starting and
+completion records the same collector timestamp. This negative result does not
+exclude independent WAL, file-I/O, pool or application stalls.
+
+## September 21 startup reproduction and scoped correction
+
+The [startup investigation](../../operations/watch-startup-readiness-2026-09-21.md)
+records two new six-card HTTP 200 `delivery_timeout` envelopes at 03:11 UTC,
+coincident with Admin startup. There are no selection 503s in that fixed window;
+keep these populations separate. A local production-build CPU profile identifies
+Next's unawaited background route preloader competing with the first GraphQL
+requests after health already returns 200.
+
+Five matched first selections take 926–949 ms with original readiness and
+307–402 ms when readiness awaits the existing preload promise and GraphQL
+initialization. Twenty delivery probes serve six cards without fallback. The
+candidate uses a pinned Next patch; it preserves the 700 ms caller budget,
+transaction/rate-limit guarantees and normal route preloading. All 7,286 Admin
+unit tests pass. PR #2362 merged as `1cb15d6fc2b5cb0387e23b02afc24a05d4c1acaa`;
+Railway and independent SSH reads confirm that revision on Admin and its worker.
+See the release section of the linked investigation for exact deployment IDs.
+
+Keep this ticket in progress. A first editor visit still delays concurrent
+GraphQL by roughly 0.8–0.9 seconds on both controls, and the historical
+capability-budget stall is not fully attributed. Neither the startup correction
+nor a later short healthy window proves complete recovery. The
+[durable learning](../../solutions/performance-issues/next-background-preload-can-outlive-readiness.md)
+records rejected warming/disabled-preload controls and the remaining SSR work.
+
+## September 21 server module reuse continuation
+
+The same [investigation](../../operations/watch-startup-readiness-2026-09-21.md)
+now proves the remaining local first-editor interference: separate server module
+graphs construct three main and three sync Prisma clients and initialize bundled
+Mastra copies. Cache the production clients globally while keeping separate
+10/5 limits, and externalize only Mastra core/memory through Node's cache.
+Five actual editor-concurrent selections improve from 854–960 ms to 472–552 ms,
+with one main/one sync client, accepted receipts and no GraphQL errors. A new
+production module-cache regression fails before the fix; all 7,288 Admin tests
+pass afterward. The final build without counters passes 25 simultaneous-selection
+checks during cold editor visits at 509–579 ms and 20 six-card deliveries without
+fallback. Lint, typecheck, build and sequential Compound Engineering review pass.
+PR #2363 merged as `850cd7b5b582c327deac8fa50a9e5ebd85abd438` after all
+required CI checks, including 113 PostgreSQL and two Redis checks. Railway and
+independent SSH verification confirm that exact Admin revision and built
+core/memory externalization; see the linked release record for deployment IDs
+and the worker/post-deployment observation.
+
+Keep this ticket in progress. Historical capability-budget/WAL/pool latency is
+not fully attributed. A newly observed playback HTTP 503 at 05:07:25 UTC has an
+upstream `fetch failed` after 330 ms, separately from selection timeouts and
+semantic delivery fallbacks. No larger deadline or ambiguous retry is added.
+
+The next Admin handover also records a fast playback 503 at 05:40:18 UTC
+(159 ms total, 154 ms upstream fetch failure). A bounded optional network-code
+observation was subsequently deployed in PR #2364 to distinguish
+socket/refusal/DNS causes in natural failures; this is not a latency fix. The verified post-module window
+05:41–05:49 has 68 reconciled delivery envelopes, zero semantic timeouts, two
+successful selections and 224 playback requests without 5xx. Its small size does
+not establish recovery or explain the historical capability-budget wait.
+
+The [diagnostic release record](../../operations/watch-transport-cause-release-2026-09-21.md)
+verifies exact revision `d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf` on Admin,
+worker and Web, including the field in Web's compiled playback route. It retains
+separate HTTP/envelope populations and collector discrepancies. Keep the
+capability-budget and transport cause questions open; installation of a
+diagnostic is not proof that the remaining failures are fixed.

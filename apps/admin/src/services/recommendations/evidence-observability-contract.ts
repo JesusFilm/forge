@@ -43,6 +43,18 @@ export const EVIDENCE_VOCABULARY = {
   httpStatus: [
     200, 202, 400, 401, 403, 408, 409, 413, 415, 429, 500, 502, 503, 504,
   ],
+  networkErrorCode: [
+    "ECONNREFUSED",
+    "ECONNRESET",
+    "EPIPE",
+    "ENOTFOUND",
+    "EAI_AGAIN",
+    "UND_ERR_SOCKET",
+    "UND_ERR_CONNECT_TIMEOUT",
+    "UND_ERR_HEADERS_TIMEOUT",
+    "UND_ERR_BODY_TIMEOUT",
+    "unknown",
+  ],
 } as const
 type Vocabulary = typeof EVIDENCE_VOCABULARY
 export type RecommendationEvidenceObservation = {
@@ -53,6 +65,7 @@ export type RecommendationEvidenceObservation = {
   retryDisposition?: Vocabulary["retryDisposition"][number]
   crawler?: Vocabulary["crawler"][number]
   httpStatus?: Vocabulary["httpStatus"][number]
+  networkErrorCode?: Vocabulary["networkErrorCode"][number]
   retryAttempt?: number
 }
 export function normalizeEvidenceObservation(
