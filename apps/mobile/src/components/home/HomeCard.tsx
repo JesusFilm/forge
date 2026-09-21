@@ -38,7 +38,17 @@ export type HomeCardVariant = "landscape" | "portrait"
 export type HomeCardProps = {
   card: WatchHomeCard
   variant: HomeCardVariant
+  /**
+   * Replaces the NAVIGATION only (feat-517 KTD8). The press-in prefetch, the
+   * routing label and the progress bar are untouched.
+   */
+  onPressOverride?: () => void
+  /** Stable, low-cardinality RUM action name for the overriding surface. */
+  actionName?: string
 }
+
+/** The RUM action name every un-overridden Home card reports under. */
+export const HOME_CARD_ACTION_NAME = "home-card"
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
@@ -58,6 +68,17 @@ const CARD_EXTRA_WIDTH: Record<HomeCardVariant, number> = {
 const CARD_ASPECT: Record<HomeCardVariant, number> = {
   landscape: 16 / 9,
   portrait: 3 / 4,
+}
+
+/**
+ * Rendered card height for a variant. Exported so a row's placeholder reserves
+ * the height its real cards will take, from these same constants.
+ */
+export function homeCardHeight(
+  variant: HomeCardVariant,
+  screenWidth: number,
+): number {
+  return homeCardWidth(variant, screenWidth) / CARD_ASPECT[variant]
 }
 
 const GRADIENT_COLORS: [string, string] = [
@@ -84,6 +105,8 @@ export function homeCardWidth(
 export const HomeCard = memo(function HomeCard({
   card,
   variant,
+  onPressOverride,
+  actionName = HOME_CARD_ACTION_NAME,
 }: HomeCardProps) {
   const router = useRouter()
   const typography = useTypography()
@@ -116,6 +139,10 @@ export const HomeCard = memo(function HomeCard({
 
   const handlePress = () => {
     if (!card.slug) return
+    if (onPressOverride) {
+      onPressOverride()
+      return
+    }
     // Carry seed data forward so the detail screen paints instantly.
     const seed = encodeWatchSeed({
       slug: card.slug,
@@ -147,7 +174,7 @@ export const HomeCard = memo(function HomeCard({
         .join(", ")}
       // Stable, low-cardinality RUM action name (auto-tracker would leak the
       // title from accessibilityLabel) — KTD10. Spread: Pressable omits the type.
-      {...{ "dd-action-name": "home-card" }}
+      {...{ "dd-action-name": actionName }}
       accessibilityHint={
         interactive
           ? isSeries

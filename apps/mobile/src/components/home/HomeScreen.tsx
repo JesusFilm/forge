@@ -22,6 +22,7 @@ import { useNavigation, useRouter } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { useHomeRecommendations } from "../../hooks/useHomeRecommendations"
 import { useMiniPlayerHoldsVideo } from "../../hooks/useMiniPlayerHoldsVideo"
 import { useTypography } from "../../hooks/useTypography"
 import { useWatchHome } from "../../hooks/useWatchHome"
@@ -38,13 +39,20 @@ import { isSeriesLabel } from "../../lib/isSeriesRecord"
 import { nextHomeLogoHidden } from "../../lib/homeLogoVisibility"
 import { heroPlaybackPaused } from "../../lib/miniPlayer/heroYield"
 import { openExternalUrl } from "../../lib/openExternalUrl"
+import { getApiToken } from "../../lib/config"
+import { isRecommendationClientEnabled } from "../../lib/recommendations/enabled"
 import { getSplashSession } from "../../lib/splash/splashSession"
 import {
   buildWatchHomeHeroQueue,
   muxSlideDisplayCopy,
   type WatchHomeSlide,
 } from "../../lib/watchHome/carouselSequence"
-import type { WatchHomeSection } from "../../lib/watchHome/model"
+import {
+  buildHomeFeed,
+  recommendationsShelfVisible,
+  type HomeFeedItem,
+  type RecommendationsGateInput,
+} from "../../lib/watchHome/homeFeed"
 import { slideRouteArgs } from "../../lib/watchHome/slideRouteArgs"
 import { encodeWatchSeed } from "../../lib/watchSeed"
 import { feedback, layout, text } from "../../styles/shared"
@@ -59,13 +67,9 @@ import {
 import { HomeLogo } from "./HomeLogo"
 import { HomeMissionSection } from "./HomeMissionSection"
 import { HomeShelf } from "./HomeShelf"
+import { RecommendationsShelf } from "./RecommendationsShelf"
 
-// ── Types ───────────────────────────────────────────────────────────────────
-
-type HomeFeedItem =
-  | { kind: "selector" }
-  | { kind: "section"; section: WatchHomeSection }
-  | { kind: "mission" }
+// ── Constants ───────────────────────────────────────────────────────────────
 
 // Stable empty queue so the no-model render keeps one slides identity (a new
 // array identity resets the pager to slide 0 by design).
@@ -96,7 +100,14 @@ export function HomeScreen() {
   // feed padding, and scroll brackets all share it.
   const heroHeight = Math.round(screenWidth * 1.2)
 
-  const { model, loading, refreshing, error, refetch } = useWatchHome()
+  const {
+    model,
+    recommendationsInsertIndex,
+    loading,
+    refreshing,
+    error,
+    refetch,
+  } = useWatchHome()
 
   // The splash draws ABOVE this screen and needs to know whether there is
   // anything to hand over TO. Report only — nothing here waits on the splash.
@@ -350,25 +361,45 @@ export function HomeScreen() {
     [heroHeight],
   )
 
+  // ── Recommendations shelf (feat-517) ───────────────────────────────────────
+
+  // The kill switch and the bearer are fixed for the launch, so this memo only
+  // re-runs when the Experience moves or drops the block.
+  const recommendationsGate = useMemo<RecommendationsGateInput>(
+    () => ({
+      insertIndex: recommendationsInsertIndex,
+      clientEnabled: isRecommendationClientEnabled(),
+      hasBearer: Boolean(getApiToken()),
+    }),
+    [recommendationsInsertIndex],
+  )
+  const recommendations = useHomeRecommendations({
+    gateOpen: recommendationsShelfVisible(recommendationsGate),
+    focused,
+  })
+
   // ── Feed composition ───────────────────────────────────────────────────────
 
-  const feedItems = useMemo<HomeFeedItem[]>(() => {
-    if (model == null) return []
-    const items: HomeFeedItem[] = []
-    // Selector rail mirrors the pager-chrome rule: multi-slide queues only (AE2).
-    if (heroSlides.length > 1) items.push({ kind: "selector" })
-    for (const section of model.sections) {
-      items.push({ kind: "section", section })
-    }
-    items.push({ kind: "mission" })
-    return items
-  }, [model, heroSlides.length])
+  const feedItems = useMemo<HomeFeedItem[]>(
+    () =>
+      buildHomeFeed({
+        model,
+        // Selector rail mirrors the pager-chrome rule: multi-slide queues only (AE2).
+        showSelector: heroSlides.length > 1,
+        recommendations: recommendationsGate,
+      }),
+    [model, heroSlides.length, recommendationsGate],
+  )
 
   const keyExtractor = useCallback(
     (item: HomeFeedItem) =>
       item.kind === "section" ? `section-${item.section.id}` : item.kind,
     [],
   )
+
+  // Own recycling pool per kind: the shelf's height has nothing in common with
+  // a section's, and FlashList would otherwise reuse one cell for both.
+  const getItemType = useCallback((item: HomeFeedItem) => item.kind, [])
 
   const renderItem = useCallback(
     ({ item, index }: { item: HomeFeedItem; index: number }) => {
@@ -383,6 +414,18 @@ export function HomeScreen() {
           </View>
         ) : item.kind === "section" ? (
           <HomeShelf section={item.section} />
+        ) : item.kind === "recommendations" ? (
+          <RecommendationsShelf
+            status={recommendations.status}
+            slate={recommendations.slate}
+            focused={focused}
+            // U4 replaces this literal with the outer list's viewability report.
+            inView
+            onShelfMount={recommendations.reportShelfMounted}
+            onRecordRender={recommendations.recordRender}
+            onSelect={recommendations.select}
+            onRefresh={recommendations.refresh}
+          />
         ) : (
           <HomeMissionSection />
         )
@@ -404,7 +447,14 @@ export function HomeScreen() {
         </View>
       )
     },
-    [heroSlides, activeIndex, handleSelectSlide, heroVisible],
+    [
+      heroSlides,
+      activeIndex,
+      handleSelectSlide,
+      heroVisible,
+      recommendations,
+      focused,
+    ],
   )
 
   const contentContainerStyle = useMemo(
@@ -487,6 +537,7 @@ export function HomeScreen() {
         data={feedItems}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
+        getItemType={getItemType}
         extraData={activeIndex}
         onScroll={handleScroll}
         scrollEventThrottle={16}

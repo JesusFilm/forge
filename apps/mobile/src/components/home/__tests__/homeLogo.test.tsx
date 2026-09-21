@@ -3,6 +3,27 @@
  * the logo then slides off the top on its own animation.
  */
 
+// feat-517: HomeScreen now hosts the recommendations controller, which reads
+// the watch-preferences provider; that module pulls AsyncStorage in.
+jest.mock("@react-native-async-storage/async-storage", () => ({
+  __esModule: true,
+  default: {
+    getItem: jest.fn(() => Promise.resolve(null)),
+    setItem: jest.fn(() => Promise.resolve()),
+    removeItem: jest.fn(() => Promise.resolve()),
+  },
+}))
+jest.mock("../../../hooks/useHomeRecommendations", () => ({
+  useHomeRecommendations: () => ({
+    status: "idle",
+    slate: null,
+    reportShelfMounted: jest.fn(),
+    recordRender: jest.fn(),
+    recordImpression: jest.fn(),
+    select: jest.fn(async () => null),
+    refresh: jest.fn(),
+  }),
+}))
 jest.mock("@expo/vector-icons/Ionicons", () => ({
   __esModule: true,
   default: () => null,
