@@ -423,3 +423,21 @@ worker and Web, including the field in Web's compiled playback route. It retains
 separate HTTP/envelope populations and collector discrepancies. Keep the
 capability-budget and transport cause questions open; installation of a
 diagnostic is not proof that the remaining failures are fixed.
+
+## September 22 sustained production verification
+
+The [September 22 sustained production check](../../operations/watch-production-verification-2026-09-22.md)
+finds a new selection HTTP 503 at 08:37:29 UTC on September 21:
+trace `6ab0ecc9000000002cc67b5b00886e66`, Web 706.20 ms, Admin resolver
+759.40 ms, capability-budget call 701.12 ms (adapter SQL 697.29 ms). Existing
+loop/GC metrics do not explain the whole budget delay; native pool, database
+execution/lock/WAL and scheduling remain distinct.
+
+A separate 12:49–12:50 playback burst contains 63 HTTP 503s, a PostgreSQL 53100
+shared-memory error, 206 repeated catalog error logs, a measured 38.55-second
+event-loop delay, and one episode-lock exhaustion. Error-handling amplification
+is a testable hypothesis, not yet a causal reproduction. The larger corpus has
+70 selection 200s, four 400s and one 503. Both collectors observe zero semantic
+timeouts among 4,280 delivery 200s, but three primary 200s remain unmatched.
+Keep this ticket open; no larger deadline, ambiguous retry or speculative
+production setting change is justified.

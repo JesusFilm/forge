@@ -201,3 +201,14 @@ rechecks the complete canonical predicate at 06:23:30 UTC on `d0c749b9…`:
 batch completes without failures. These snapshot/batch checks preserve the
 earlier convergence evidence; feat-464 and the authorized Admin gate still
 prevent closure.
+
+## September 22 sustained production verification
+
+The [September 22 production verification](../../operations/watch-production-verification-2026-09-22.md)
+reconciles 153 completed batch and heartbeat steps, 665 classifications and 86
+queued rebuilds, with zero classification/dispatch/exhaustion failures. Completion
+gaps range from 305.697 to 411.984 seconds; do not claim exact five-minute spacing.
+At 19:58:20 UTC on September 21, the complete canonical audit finds zero
+ineligible among 171,710 current pointers. This is a fresh passing snapshot,
+not continuous zero or a replacement for authorized Admin evidence. Feat-464 and
+the matching Admin gate still prevent closure.

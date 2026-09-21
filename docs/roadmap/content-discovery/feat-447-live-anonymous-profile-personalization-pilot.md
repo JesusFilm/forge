@@ -127,3 +127,13 @@ lifecycle, completed erasure/reset and September 9 restored-snapshot performance
 under their original scope. The new operational diagnostics do not replace the
 matching authorized Admin trace or independent production fallback/publication
 evidence, and do not widen personalization rollout.
+
+## September 22 sustained production verification
+
+The [September 22 production verification](../../operations/watch-production-verification-2026-09-22.md)
+retains the completed lifecycle/erasure and restored-vector checks. Fresh
+production reads still find no matching operational last-known-good fallback
+request or failed projection run establishing stale-publisher rejection. A
+scheduler stale-run observation is not that proof. No authorized Admin browser
+session is available for the matching lifecycle trace. Keep these independent
+gates and feat-459's dependency explicit; status remains in progress.

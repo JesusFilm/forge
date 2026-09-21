@@ -1,0 +1,254 @@
+{
+  "windowUtc": {
+    "from": "2026-09-21T06:35:00Z",
+    "to": "2026-09-21T19:45:00Z"
+  },
+  "revision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+  "http": [
+    {
+      "http.status_code": "200",
+      "resource_name": "post_/api/recommendations",
+      "version": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+      "count": 4283
+    },
+    {
+      "http.status_code": "200",
+      "resource_name": "post_/api/recommendations/select",
+      "version": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+      "count": 70
+    },
+    {
+      "http.status_code": "503",
+      "resource_name": "post_/api/recommendations/profile",
+      "version": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+      "count": 12
+    },
+    {
+      "http.status_code": "405",
+      "resource_name": "get_/api/recommendations/evidence",
+      "version": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+      "count": 3
+    },
+    {
+      "http.status_code": "503",
+      "resource_name": "post_/api/recommendations/playback",
+      "version": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+      "count": 65
+    },
+    {
+      "http.status_code": "200",
+      "resource_name": "post_/api/recommendations/evidence",
+      "version": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+      "count": 15468
+    },
+    {
+      "http.status_code": "200",
+      "resource_name": "post_/api/recommendations/playback",
+      "version": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+      "count": 44395
+    },
+    {
+      "http.status_code": "503",
+      "resource_name": "post_/api/recommendations/select",
+      "version": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+      "count": 1
+    },
+    {
+      "http.status_code": "400",
+      "resource_name": "post_/api/recommendations/evidence",
+      "version": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+      "count": 279
+    },
+    {
+      "http.status_code": "200",
+      "resource_name": "post_/api/recommendations/content-actions",
+      "version": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+      "count": 22
+    },
+    {
+      "http.status_code": "400",
+      "resource_name": "post_/api/recommendations/playback",
+      "version": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+      "count": 26
+    },
+    {
+      "http.status_code": "403",
+      "resource_name": "post_/api/recommendations/evidence",
+      "version": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+      "count": 3514
+    },
+    {
+      "http.status_code": "403",
+      "resource_name": "post_/api/recommendations/playback",
+      "version": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+      "count": 5226
+    },
+    {
+      "http.status_code": "503",
+      "resource_name": "post_/api/recommendations",
+      "version": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+      "count": 2
+    },
+    {
+      "http.status_code": "403",
+      "resource_name": "post_/api/recommendations",
+      "version": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+      "count": 5059
+    },
+    {
+      "http.status_code": "503",
+      "resource_name": "post_/api/recommendations/content-actions",
+      "version": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+      "count": 2
+    },
+    {
+      "http.status_code": "200",
+      "resource_name": "get_/api/recommendations/for-you/availability",
+      "version": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+      "count": 5
+    },
+    {
+      "http.status_code": "400",
+      "resource_name": "post_/api/recommendations/select",
+      "version": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+      "count": 4
+    },
+    {
+      "http.status_code": "401",
+      "resource_name": "post_/api/recommendations/playback",
+      "version": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+      "count": 35
+    },
+    {
+      "http.status_code": "409",
+      "resource_name": "post_/api/recommendations/playback",
+      "version": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+      "count": 16
+    },
+    {
+      "http.status_code": "200",
+      "resource_name": "post_/api/recommendations/profile",
+      "version": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+      "count": 7123
+    },
+    {
+      "http.status_code": "401",
+      "resource_name": "post_/api/recommendations/evidence",
+      "version": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+      "count": 9
+    },
+    {
+      "http.status_code": "403",
+      "resource_name": "post_/api/recommendations/profile",
+      "version": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+      "count": 13592
+    }
+  ],
+  "deliveryIndexed": {
+    "byStatus": {
+      "200": 4280,
+      "403": 5057,
+      "503": 2
+    },
+    "byResult": {
+      "served": 3455,
+      "rejected": 5057,
+      "fallback": 824,
+      "failed": 2,
+      "unavailable": 1
+    },
+    "byReason": {
+      "none": 3455,
+      "invalid_fetch_metadata": 2727,
+      "invalid_origin": 2330,
+      "no_candidates": 388,
+      "seed_embedding_unavailable": 407,
+      "cooldown": 18,
+      "profile_lineage_ineligible": 6,
+      "session_hour": 5,
+      "admission_unavailable": 2,
+      "delivery_unavailable": 1
+    }
+  },
+  "deliveryRailway": {
+    "from": "2026-09-21T06:35:00Z",
+    "to": "2026-09-21T19:45:00Z",
+    "deployment": "ca4c2f1c-30d6-493e-9e87-82dbb7460991",
+    "event": "recommendation.delivery",
+    "count": 9341,
+    "exactRepeatedRows": 1,
+    "unrecognizedRows": 0,
+    "recordDigest": "d97ef7f3fa0b8384baade223edecf5fdfe76fadb8f79595f41c18552a0b311ee"
+  },
+  "deliveryUnmatchedHttp200": 3,
+  "deliveryObservedTimeoutFallbacks": 0,
+  "playback5xx": {
+    "numerator": 65,
+    "denominator": 49763,
+    "exclusions": 0,
+    "percent": 0.13061913469847075
+  },
+  "reconciliation": {
+    "at": "2026-09-21T20:06:22.478Z",
+    "rows": 153,
+    "status": {
+      "completed": 153
+    },
+    "totals": {
+      "affectedPointers": 86,
+      "classificationsAttempted": 665,
+      "classificationsFailed": 0,
+      "rebuildsQueued": 86,
+      "staleRuns": 1,
+      "staleRunsQueued": 0,
+      "attemptsExhausted": 0,
+      "dispatchFailures": 0
+    },
+    "locked": 0,
+    "completionGapSeconds": {
+      "min": 305.697,
+      "max": 411.984
+    },
+    "batchSeconds": {
+      "min": 1.469,
+      "max": 11.33
+    },
+    "first": "2026-09-21T06:37:41.445Z",
+    "last": "2026-09-21T19:41:46.162Z"
+  },
+  "integrityAudit": {
+    "at": "2026-09-21T19:58:20.055Z",
+    "currentPointers": 171710,
+    "ineligibleCurrentPointers": 0,
+    "elapsedMs": 1841.458262
+  },
+  "selectionFailure": {
+    "traceId": "6ab0ecc9000000002cc67b5b00886e66",
+    "at": "2026-09-21T08:37:29.017Z",
+    "webMs": 706.199707,
+    "adminResolverMs": 759.4021,
+    "capabilityBudgetMs": 701.118652,
+    "adapterSqlMs": 697.289551
+  },
+  "playbackBurst": {
+    "from": "2026-09-21T12:49:00Z",
+    "to": "2026-09-21T12:51:00Z",
+    "web503": 63,
+    "eventLoopMaxMs": 38553.138958,
+    "duplicateCatalogErrorLogs": 206,
+    "firstCatalogErrorAt": "2026-09-21T12:49:27.277Z",
+    "sqlState": "53100",
+    "lockExhaustion": 1,
+    "lockExhaustionAt": "2026-09-21T12:50:09Z",
+    "lockExhaustionTraceId": "3442692069130727201",
+    "causeEstablished": false
+  },
+  "remainingGates": {
+    "authorizedAdmin": "unavailable browser session",
+    "browserTerminal409": "not verified",
+    "installedAlerts": "absent in all 41 visible monitors",
+    "productionLastKnownGood": "no matching retained request",
+    "productionStalePublication": "no matching retained failed run",
+    "overallRecovery": false
+  }
+}
