@@ -67,6 +67,14 @@ export function createPendingClaimStore(now: () => number = Date.now) {
       pending = null
       return nonce
     },
+    /**
+     * Puts a taken nonce back after an abandoned claim. A newer selection,
+     * for any media, outranks it: the viewer has moved on.
+     */
+    restore(claim: PendingRecommendationClaim): void {
+      if (pending && fresh(pending)) return
+      pending = claim
+    },
     peek(): PendingRecommendationClaim | null {
       return pending && fresh(pending) ? pending : null
     },

@@ -49,6 +49,36 @@ describe("createPendingClaimStore", () => {
     expect(store.take("media-1")).toBeNull()
     expect(store.take("media-2")).toBe("m".repeat(32))
   })
+
+  it("puts a taken nonce back for its own media", () => {
+    const store = createPendingClaimStore(() => 1_000)
+    store.set({ mediaId: "media-1", claimNonce: NONCE, selectedAt: 1_000 })
+    expect(store.take("media-1")).toBe(NONCE)
+    store.restore({ mediaId: "media-1", claimNonce: NONCE, selectedAt: 1_000 })
+    expect(store.take("media-1")).toBe(NONCE)
+  })
+
+  it("leaves a newer selection in place when a nonce is put back", () => {
+    const newer = "m".repeat(32)
+    const store = createPendingClaimStore(() => 1_000)
+    store.set({ mediaId: "media-2", claimNonce: newer, selectedAt: 1_000 })
+    store.restore({ mediaId: "media-1", claimNonce: NONCE, selectedAt: 1_000 })
+    expect(store.take("media-1")).toBeNull()
+    expect(store.take("media-2")).toBe(newer)
+  })
+
+  it("puts a nonce back over a selection that has expired", () => {
+    let now = 1_000
+    const store = createPendingClaimStore(() => now)
+    store.set({
+      mediaId: "media-2",
+      claimNonce: "m".repeat(32),
+      selectedAt: now,
+    })
+    now += PENDING_CLAIM_TTL_MS
+    store.restore({ mediaId: "media-1", claimNonce: NONCE, selectedAt: now })
+    expect(store.take("media-1")).toBe(NONCE)
+  })
 })
 
 describe("buildSelectionVariables", () => {
