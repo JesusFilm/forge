@@ -51,3 +51,27 @@ or authorization. Close each only when its actual requirements pass.
 Keep the authored English homepage recommendation block absent and its flag
 default off. No Mobile/TV UI, account linking or curation changes. Compound the
 proven causes and negative controls at completion.
+
+## U4: Separate server budget work from the complete driver call
+
+The catalog and error-inspection corrections are deployed, but the independent
+701 ms capability-budget call remains unattributed. Stored transaction timestamps
+argue against assigning the whole interval to pool acquisition; later server
+samples show WAL waits, without measuring the historical commit duration.
+
+Evaluate a minimal diagnostic inside the existing single independently committed
+budget statement: materialized clock-before/function/clock-after stages return
+only server execution milliseconds alongside the existing attempt result. Compare
+that duration with monotonic client elapsed time in a bounded slow-call event.
+The remainder still includes pool acquisition, parsing/planning, commit, network
+and result scheduling; never name it WAL time. Keep all user/capability/request
+identifiers and raw exceptions out of the event. Database errors must propagate
+unchanged, and failed telemetry must not change a successful budget result.
+
+Prove that the function executes once, clock sampling brackets actual server
+work, successful/exhausted/concurrent budgets keep their durable limits, and the
+wrapper adds negligible overhead in the owned database and actual Next workload.
+Reject this diagnostic if it changes transaction boundaries, retries, deadlines,
+authorization or mutation outcomes. This is diagnosis, not a claimed latency fix.
+Release through normal PR/main automation only after sequential review and the
+required checks. No global production PostgreSQL setting change is necessary.

@@ -500,3 +500,23 @@ acquisition. A later read-only sample observes a 264.884 ms-old budget statement
 in `WalSync`; that is query age, not measured total WAL-wait duration, and does
 not establish the full incident cause. Keep this independent question open and
 do not describe the short healthy release window as complete recovery.
+
+## September 22 budget timing diagnostic
+
+The separate 701 ms capability-budget call remains unattributed. The supported
+single-statement diagnostic now brackets one function invocation with server
+clocks and compares it with the complete monotonic client call. Slow completed
+calls emit bounded, identifier-free timings. The remainder includes possible
+pool, planning, commit, transport and scheduling time; it is not labelled WAL
+duration. No function, commit boundary, deadline, retry or durability setting
+changes. See the [measurement guidance](../../solutions/best-practices/separate-budget-function-time-from-driver-latency-20260922.md).
+
+All 7,305 Admin tests and 17 real PostgreSQL tests pass, including concurrent
+budgets, independent durability and injected local server/client delay checks.
+The 2,000-call comparison preserves every charge with approximately 0.07–0.36 ms
+warm median overhead. An actual Next build accepts all 15 concurrent selections
+in 237–341 ms and all three playback mutations in 259–339 ms during 30 concurrent
+catalog requests. [Validation artifact](../../validation/watch-budget-timing-20260922/results.json)
+retains individual rounds and their limits. This is a diagnostic change, not a
+proven fix for the remaining selection delay. Exact deployment verification and
+naturally slow-call attribution remain required; keep status in progress.

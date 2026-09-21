@@ -21,6 +21,10 @@ import { RecommendationEpisodeService } from "./episode.service"
 import { RecommendationOutcomeService } from "./outcome.service"
 import { RecommendationPlaybackService } from "./playback.service"
 import {
+  consumeDeliveryCapabilitySubmissions,
+  consumeEpisodeCapabilitySubmissions,
+} from "./submission-budget"
+import {
   loadPlaybackEpisodeDetail,
   loadPlaybackEvidenceOverview,
 } from "./admin-ops/playback.service"
@@ -1756,6 +1760,242 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       // Prisma's nested take used to transfer the complete dubbed catalog.
       // Assert real wire cardinality, not the already-trimmed ORM result.
       expect(transferredRows).toBeLessThanOrEqual(ids.length * 6)
+    })
+  },
+)
+
+describe.skipIf(!RUN_REAL_DB_TEST)(
+  "submission budget timing against PostgreSQL",
+  () => {
+    const schema = `budget_timing_${Date.now()}_${randomUUID().replaceAll("-", "")}`
+    const expiresAt = new Date(Date.now() + 86_400_000)
+    let client: Client
+    let prisma: PrismaClient
+
+    beforeAll(async () => {
+      client = new Client({ connectionString: env.DATABASE_URL })
+      await client.connect()
+      await client.query(`CREATE SCHEMA "${schema}"`)
+      await client.query(`SET search_path TO "${schema}", public`)
+      for (const migration of recommendationMigrations)
+        await client.query(migration)
+      prisma = new PrismaClient({
+        adapter: new PrismaPg(
+          {
+            connectionString: env.DATABASE_URL,
+            options: `-c search_path=${schema},public`,
+            max: 2,
+          },
+          { schema },
+        ),
+      })
+    })
+
+    afterAll(async () => {
+      await prisma?.$disconnect()
+      if (!client) return
+      await client.query("RESET search_path")
+      await client.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`)
+      await client.end()
+    })
+
+    async function deliveryInput() {
+      const requestId = randomUUID()
+      const capabilityJti = randomUUID()
+      await client.query("BEGIN")
+      try {
+        await client.query(
+          `INSERT INTO recommendation_request (
+      id, contract_version, surface_version, manifest_id, strategy_version,
+      classifier_version, session_digest, locale, expected_item_count, result, expires_at, seed_media_id
+    ) VALUES ($1, 'semantic-recommendation-v1', 'watch-below-player-v1',
+      'semantic-transcript-pgvector-v1', 'semantic-transcript-pgvector-v1',
+      'legacy-position-v0', $2, 'en', 1, 'served', $3, 'budget-timing-seed')`,
+          [requestId, "a".repeat(64), expiresAt],
+        )
+        await client.query(
+          `INSERT INTO recommendation_served_item (
+      id, request_id, position, target_media_id, canonical_href,
+      candidate_generator, candidate_provenance, expires_at, capability_jti
+    ) VALUES ($1, $2, 0, 'budget-timing-video', '/watch/budget-timing-video',
+      'semantic', '{}'::jsonb, $3, $4)`,
+          [randomUUID(), requestId, expiresAt, capabilityJti],
+        )
+        await client.query("COMMIT")
+      } catch (error) {
+        await client.query("ROLLBACK")
+        throw error
+      }
+      return { requestId, capabilityJti, expiresAt, attempts: 1 }
+    }
+
+    it("executes consumption once, retains the concurrent limit, and commits before a later rollback", async () => {
+      const input = await deliveryInput()
+      const results = await Promise.allSettled([
+        consumeDeliveryCapabilitySubmissions(prisma, {
+          ...input,
+          attempts: 24,
+        }),
+        consumeDeliveryCapabilitySubmissions(prisma, {
+          ...input,
+          attempts: 24,
+        }),
+      ])
+      expect(
+        results.filter((result) => result.status === "fulfilled"),
+      ).toHaveLength(1)
+      expect(
+        results.filter((result) => result.status === "rejected"),
+      ).toHaveLength(1)
+      await consumeDeliveryCapabilitySubmissions(prisma, {
+        ...input,
+        attempts: 8,
+      })
+      await expect(
+        prisma.$transaction(async (tx) => {
+          await tx.$queryRaw`SELECT 1`
+          throw new Error("later mutation rolled back")
+        }),
+      ).rejects.toThrow("later mutation rolled back")
+      await expect(
+        consumeDeliveryCapabilitySubmissions(prisma, input),
+      ).rejects.toThrow("submission budget is exhausted")
+      expect(
+        (
+          await client.query(
+            `SELECT attempts FROM recommendation_capability_submission_budget WHERE capability_jti=$1`,
+            [input.capabilityJti],
+          )
+        ).rows,
+      ).toEqual([{ attempts: 32 }])
+      expect(
+        (
+          await client.query(
+            `SELECT count FROM recommendation_evidence_audit WHERE request_id=$1 AND reason_code='delivery_submission_budget_exceeded'`,
+            [input.requestId],
+          )
+        ).rows,
+      ).toEqual([{ count: 25 }])
+    })
+
+    it("brackets server work and distinguishes a later client delay", async () => {
+      const input = await deliveryInput()
+      const log = vi.spyOn(console, "info").mockImplementation(() => {})
+      try {
+        await client.query(
+          `CREATE FUNCTION "${schema}".budget_timing_delay() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_sleep(0.22); RETURN NEW; END $$`,
+        )
+        await client.query(
+          `CREATE TRIGGER budget_timing_delay BEFORE INSERT ON recommendation_capability_submission_budget FOR EACH ROW EXECUTE FUNCTION "${schema}".budget_timing_delay()`,
+        )
+        try {
+          await consumeDeliveryCapabilitySubmissions(prisma, input)
+        } finally {
+          await client.query(
+            `DROP TRIGGER budget_timing_delay ON recommendation_capability_submission_budget`,
+          )
+          await client.query(`DROP FUNCTION "${schema}".budget_timing_delay()`)
+        }
+        const serverLog = log.mock.calls
+          .flat()
+          .map(String)
+          .find((line) =>
+            line.startsWith("event=recommendation.submission_budget "),
+          )
+        expect(serverLog).toBeDefined()
+        expect(
+          Number(serverLog?.match(/serverElapsedMs=(\d+)/)?.[1]),
+        ).toBeGreaterThanOrEqual(200)
+        expect(
+          (
+            await client.query(
+              `SELECT attempts FROM recommendation_capability_submission_budget WHERE capability_jti=$1`,
+              [input.capabilityJti],
+            )
+          ).rows,
+        ).toEqual([{ attempts: 1 }])
+
+        log.mockClear()
+        const delayedDb = {
+          $queryRaw: vi.fn().mockImplementation(async (sql: Prisma.Sql) => {
+            const rows = await prisma.$queryRaw(sql)
+            await new Promise((resolve) => setTimeout(resolve, 250))
+            return rows
+          }),
+        }
+        await consumeDeliveryCapabilitySubmissions(delayedDb, input)
+        const clientLog = log.mock.calls
+          .flat()
+          .map(String)
+          .find((line) =>
+            line.startsWith("event=recommendation.submission_budget "),
+          )
+        expect(clientLog).toBeDefined()
+        expect(
+          Number(clientLog?.match(/outsideServerMs=(\d+)/)?.[1]),
+        ).toBeGreaterThanOrEqual(200)
+        expect(
+          (
+            await client.query(
+              `SELECT attempts FROM recommendation_capability_submission_budget WHERE capability_jti=$1`,
+              [input.capabilityJti],
+            )
+          ).rows,
+        ).toEqual([{ attempts: 2 }])
+      } finally {
+        log.mockRestore()
+      }
+    })
+
+    it("retains standalone episode consumption and the 256-attempt bound", async () => {
+      const id = randomUUID()
+      const capabilityJti = randomUUID()
+      const now = new Date()
+      await client.query(
+        `INSERT INTO recommendation_playback_episode (
+      id, media_id, session_digest, state, capability_jti, signing_kid,
+      active_until, hard_until, generation, claimed_at, expires_at
+    ) VALUES ($1, 'budget-timing-video', $2, 'claimed', $3, 'budget-timing-test',
+      $4, $5, 1, $6, $7)`,
+        [
+          id,
+          "b".repeat(64),
+          capabilityJti,
+          new Date(now.getTime() + 900_000),
+          new Date(now.getTime() + 1_800_000),
+          now,
+          expiresAt,
+        ],
+      )
+      const input = {
+        requestId: null,
+        episodeId: id,
+        capabilityJti,
+        expiresAt,
+        attempts: 128,
+      }
+      await consumeEpisodeCapabilitySubmissions(prisma, input)
+      await consumeEpisodeCapabilitySubmissions(prisma, input)
+      await expect(
+        consumeEpisodeCapabilitySubmissions(prisma, { ...input, attempts: 3 }),
+      ).rejects.toThrow("playback submission budget is exhausted")
+      expect(
+        (
+          await client.query(
+            `SELECT attempts FROM recommendation_capability_submission_budget WHERE capability_jti=$1`,
+            [capabilityJti],
+          )
+        ).rows,
+      ).toEqual([{ attempts: 256 }])
+      expect(
+        (
+          await client.query(
+            `SELECT count FROM recommendation_evidence_audit WHERE id=$1`,
+            [`episode-submission-budget:${capabilityJti}`],
+          )
+        ).rows,
+        // Standalone episodes do not invent a request-owned rejection audit.
+      ).toEqual([])
     })
   },
 )
