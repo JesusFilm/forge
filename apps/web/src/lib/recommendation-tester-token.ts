@@ -4,8 +4,8 @@ export const RECOMMENDATION_TESTER_COOKIE = "forge_recommendation_tester"
 export const RECOMMENDATION_TESTER_CONTEXT_KIND = "watch-recommendation-tester"
 export const RECOMMENDATION_TESTER_PATH = "/watch/api/recommendations/tester"
 export const RECOMMENDATION_TESTER_COOKIE_PATH = "/watch/api/recommendations"
-export const TESTER_ACTIVATION_SECONDS = 24 * 60 * 60
-export const TESTER_SESSION_SECONDS = 7 * TESTER_ACTIVATION_SECONDS
+export const TESTER_ACTIVATION_SECONDS = 30 * 24 * 60 * 60
+export const TESTER_SESSION_SECONDS = TESTER_ACTIVATION_SECONDS
 
 const SCOPE = "forge.watch.homepageRecommendations"
 const TOKEN_TYPE = "watch-recommendation-tester+jwt"
@@ -133,6 +133,7 @@ export async function exchangeRecommendationTesterLink(
   if (!activation) return null
   const now = Math.floor(Date.now() / 1000)
   const expiresAt = activation.issuedAt + TESTER_SESSION_SECONDS
+  if (expiresAt <= now) return null
   return {
     cookie: await sign(config, activation.testerId, "session", now, expiresAt),
     maxAge: expiresAt - now,
