@@ -1,7 +1,7 @@
 import { RecommendationRouteError } from "@/lib/recommendation-route-policy"
 
 const MACHINE_USER_AGENT =
-  /(?:bot|crawler|spider|headless|lighthouse|slurp|bingpreview|facebookexternalhit)/i
+  /(?:bot|crawler|spider|headless|lighthouse|slurp|bingpreview|facebookexternalhit|meta-external(?:agent|fetcher))/i
 
 // This is recognized-machine exclusion, not proof that unknown traffic is human.
 // No machine evidence mutation is supported by the public Watch boundary.
