@@ -131,6 +131,10 @@ const MAX_DOWNLOAD_BYTES = 600 * 1024 * 1024
 // (24 frames @ 30fps = 0.8s). A stale value here is exactly what caused the
 // end-of-video freeze once that tail grew from 0.4s to 0.8s.
 const CARD_TAIL_SEC = 0.8
+/** `intro: "hook"`: the longest opening question the film will wait through.
+ *  Past this the scene starts under the tail of the line rather than the whole
+ *  opening being a talking head over a muted film. */
+const HOOK_LEAD_CAP_SEC = 9
 /** Silent beat on the FIRST card before the narration starts. */
 const INTRO_HOLD_SEC = 1
 /** Held beat on the LAST card after its narration, to sit with the question. */
@@ -932,8 +936,13 @@ export type RenderOptions = {
   /** Clip-first only: seconds to drop from the END of the film card, when the
    *  cut lands on a stray shot (a new speaker appears and is half heard). */
   clipTrimEndSec?: number
-  /** Clip-first only: intro overlay over the film's muted lead (`--muted-lead`). */
-  intro?: "cover" | "bands"
+  /** Clip-first only: intro overlay over the film's muted lead (`--muted-lead`).
+   *  `hook` draws nothing and instead opens on a spoken question (`hookLine`). */
+  intro?: "cover" | "bands" | "hook"
+  /** `intro: "hook"` only: the question the voice asks over the film's first
+   *  seconds. Its recorded length sets the lead, so nothing has to be timed by
+   *  hand. Must reach every `buildNarrationSegments` call in a run. */
+  hookLine?: string
   /** Clip-first only: corner progress ring clocking each step (see schema). */
   stepRing?: boolean
   /** Clip-first only: the step clock as a ring (default) or a top line. */
@@ -1041,6 +1050,33 @@ async function renderInStage(
   ctx: RenderStageContext,
 ): Promise<string> {
   const { stage, style, layout, headerDate, locale, log } = ctx
+  // `intro: "hook"` (the YouTube opening): the recorded question sets the lead,
+  // so the pause is never timed by hand and never clips the last word. Probed
+  // HERE, before the clip window is cut, because the lead pulls that window
+  // earlier by exactly this much.
+  let hookLeadSec = 0
+  if (options.intro === "hook") {
+    const seg = audio.segments.find((s) => s.id === "hook")
+    if (!seg) {
+      log(
+        `⚠️  intro=hook but no "hook" segment was produced — the film will simply open unheard`,
+      )
+    } else {
+      const probe = path.join(stage, "hook-probe.mp3")
+      await writeFile(probe, seg.audio.bytes)
+      const spokenSec = await probeDuration(probe)
+      // A breath after the question before the scene takes over.
+      hookLeadSec = Math.min(HOOK_LEAD_CAP_SEC, spokenSec + 0.6)
+      log(
+        `hook: "${seg.text.trim()}" (${spokenSec.toFixed(1)}s) → ${hookLeadSec.toFixed(1)}s before the scene is heard`,
+      )
+      if (spokenSec + 0.6 > HOOK_LEAD_CAP_SEC) {
+        log(
+          `⚠️  the hook runs past the ${HOOK_LEAD_CAP_SEC}s cap; the film comes up while it is still speaking`,
+        )
+      }
+    }
+  }
   log(`download clip ${devo.clip.id} (lang ${locale.lang})…`)
   const full = path.join(stage, "full.mp4")
   const clip = path.join(stage, "clip.mp4")
@@ -1103,7 +1139,10 @@ async function renderInStage(
   const MAX_VIDEO_CARD_SEC = window?.maxVideoCardSec ?? 60
   // A silent lead is EXTRA time in front of the scene, so it raises the ceiling
   // rather than eating into the footage the card was allowed to show.
-  const leadSecForCap = Math.max(0, Math.min(4, options.mutedLeadSec ?? 0))
+  const leadSecForCap =
+    hookLeadSec > 0
+      ? hookLeadSec
+      : Math.max(0, Math.min(4, options.mutedLeadSec ?? 0))
   /** Same value, named for the manifest hand-off further down. */
   const mutedLeadForManifest = leadSecForCap
   const clampVideoCardSec = (sec: number) =>
@@ -1185,12 +1224,22 @@ async function renderInStage(
     // SILENT LEAD: pull the window EARLIER by the lead so the muted opening is
     // extra footage, not the first seconds of the scene playing unheard. The
     // lead is on-screen time, so it costs `lead × speed` of source.
-    const mutedLead = Math.max(0, Math.min(4, options.mutedLeadSec ?? 0))
+    const mutedLead = leadSecForCap
     const withLead =
       mutedLead > 0 && clipSegments.length > 0
         ? (() => {
             const [first, ...rest] = clipSegments
             const room = Math.min(mutedLead * VIDEO_SPEED, first.startSec)
+            // The lead is only truly silent footage while the scene has not
+            // started speaking. A hook longer than the run-up plays over the
+            // scene's own first line, which then loses its caption too.
+            if (hookLeadSec > 0 && room < mutedLead * VIDEO_SPEED) {
+              log(
+                `⚠️  only ${(room / VIDEO_SPEED).toFixed(1)}s of footage before this scene starts ` +
+                  `speaking, but the hook needs ${mutedLead.toFixed(1)}s — the question will overlap ` +
+                  `the first line (shorten the hook to about ${Math.floor((room / VIDEO_SPEED) * 2.5)} words)`,
+              )
+            }
             return [
               {
                 startSec: first.startSec - room,
@@ -1971,6 +2020,8 @@ export async function produceNarration(
     steps?: boolean
     /** Running order; must match every other call in the run. */
     structure?: DevotionalStructure
+    /** Spoken opening question (`intro: "hook"`); see RenderOptions.hookLine. */
+    hookLine?: string
   },
 ): Promise<ProducedDevotionalAudio> {
   const log = opts.log ?? (() => {})
@@ -1997,6 +2048,7 @@ export async function produceNarration(
         ...(opts.structure ? { structure: opts.structure } : {}),
         ...(opts.settleLine ? { settleLine: opts.settleLine } : {}),
         ...(opts.steps ? { steps: true } : {}),
+        ...(opts.hookLine ? { hookLine: opts.hookLine } : {}),
       })
       // Compare what the voice SAYS, not what the card shows.
       //
@@ -2058,6 +2110,7 @@ export async function produceNarration(
       suppressOccasion: opts.suppressOccasion ?? false,
       ...(opts.musicFile ? { musicFile: opts.musicFile } : {}),
       ...(opts.settleLine ? { settleLine: opts.settleLine } : {}),
+      ...(opts.hookLine ? { hookLine: opts.hookLine } : {}),
       reusable,
       // Numbers are spelled deterministically in the connectors. Stress marks:
       // ONLY the owner-curated overrides (spoken only). ElevenLabs' Russian
@@ -2111,12 +2164,14 @@ export function printDevotionalForReview(
     suppressOccasion?: boolean
     steps?: boolean
     structure?: DevotionalStructure
+    hookLine?: string
   } = {},
 ): string {
   const spoken = buildNarrationSegments(devo, locale, {
     suppressOccasion: opts.suppressOccasion ?? false,
     ...(opts.structure ? { structure: opts.structure } : {}),
     ...(opts.steps ? { steps: true } : {}),
+    ...(opts.hookLine ? { hookLine: opts.hookLine } : {}),
   })
   const rule = "─".repeat(72)
   const lines = [
@@ -2252,6 +2307,7 @@ export async function prepareAndRenderDevotional(
     suppressOccasion: input.suppressOccasion ?? false,
     ...(input.structure ? { structure: input.structure } : {}),
     ...(input.steps ? { steps: true } : {}),
+    ...(input.hookLine ? { hookLine: input.hookLine } : {}),
   }).map((s) => s.text)
   let approval = await approvalState(cacheDir, spoken)
   if (approval !== "approved" && input.approveText) {
@@ -2329,6 +2385,7 @@ export async function prepareAndRenderDevotional(
     !input.silentPreview
   const audio = await produceNarration(devo, locale, {
     cacheDir,
+    ...(input.hookLine ? { hookLine: input.hookLine } : {}),
     suppressOccasion: input.suppressOccasion ?? false,
     ...(input.musicFile ? { musicFile: input.musicFile } : {}),
     ...(input.settleLine ? { settleLine: input.settleLine } : {}),

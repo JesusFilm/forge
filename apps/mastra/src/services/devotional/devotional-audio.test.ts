@@ -384,6 +384,30 @@ describe("buildNarrationSegments — clip-first structure", () => {
     expect(ids.at(-1)).toBe("questions")
   })
 
+  it("opens on the spoken hook when one is given, and says it verbatim", () => {
+    const segs = buildNarrationSegments(DEVO, undefined, {
+      structure: "clip-first",
+      hookLine: "Have you ever wondered if God hears someone like you",
+    })
+    expect(segs[0]?.id).toBe("hook")
+    // Punctuation is added, wording is not touched: the question is written
+    // per devotional and the voice must ask exactly that.
+    expect(segs[0]?.text).toBe(
+      "Have you ever wondered if God hears someone like you.",
+    )
+    // Nothing is drawn for it, so it carries no card text.
+    expect(segs[0]?.display).toBe("")
+    // The rest of the running order is unchanged.
+    expect(segs[1]?.id).toBe("step-reflect")
+  })
+
+  it("has no hook segment when no hook line is given", () => {
+    const ids = buildNarrationSegments(DEVO, undefined, {
+      structure: "clip-first",
+    }).map((s) => s.id)
+    expect(ids).not.toContain("hook")
+  })
+
   it("keeps the spoken text of shared segments identical to the classic steps-on cut", () => {
     // So a devotional narrated in the classic structure re-renders in this
     // one with a single new line: the REFLECT lead-in.

@@ -98,7 +98,13 @@ async function main() {
       ...(process.argv.includes("--step-bar")
         ? { stepRing: true, stepProgress: "bar" as const }
         : {}),
-      ...(arg("intro") ? { intro: arg("intro") as "cover" | "bands" } : {}),
+      ...(arg("intro")
+        ? { intro: arg("intro") as "cover" | "bands" | "hook" }
+        : {}),
+      // YouTube opening (`--intro=hook --hook="..."`): the voice asks the
+      // devotional's question over the film's first seconds. Its recorded
+      // length sets the lead, so nothing here is timed by hand.
+      ...(arg("hook") ? { hookLine: arg("hook") } : {}),
       ...(arg("theme-word") ? { clipThemeWord: arg("theme-word") } : {}),
       ...(process.argv.includes("--split-panels")
         ? { clipSplitPanels: true }

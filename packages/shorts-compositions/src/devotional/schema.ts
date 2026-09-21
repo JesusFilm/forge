@@ -101,9 +101,12 @@ export const devotionalCardSchema = z.object({
    * film, WATCH already lit; the other steps and the scrim leave as the sound
    * comes in. `bands`: the frame split into three bands, WATCH in colour with
    * the live film, REFLECT and PRAY desaturated below; WATCH grows to fill the
-   * frame. Needs `mutedLeadSec` for its length.
+   * frame. `hook`: no graphics at all — the film runs under a scrim while the
+   * voice asks the devotional's question, and the scrim lifts as the film's
+   * sound comes up (the YouTube opening, where the thumbnail has already said
+   * what the series is). Needs `mutedLeadSec` for its length.
    */
-  intro: z.enum(["cover", "bands"]).optional(),
+  intro: z.enum(["cover", "bands", "hook"]).optional(),
   /**
    * Where a full-frame portrait video card crops the 16:9 clip, over time: the
    * normalized x of the source the frame is centred on, as a PATH in seconds

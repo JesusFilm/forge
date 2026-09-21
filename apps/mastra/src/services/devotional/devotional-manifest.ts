@@ -40,7 +40,7 @@ export type DevotionalManifest = {
   /** Seconds of background skipped before the first card on it; see schema. */
   bgStartOffsetSec?: number
   /** Clip-first: intro overlay over the film's muted lead (see card schema). */
-  intro?: "cover" | "bands"
+  intro?: "cover" | "bands" | "hook"
   /** Clip-first: corner progress ring clocking each step (composition prop). */
   stepRing?: boolean
   /** Shape of that clock: orbit ring (default) or a line across the top. */
@@ -94,7 +94,7 @@ export type BuildManifestInput = {
    *  screen, before the clip's own audio eases in. */
   mutedLeadSec?: number
   /** Clip-first: intro overlay over the film's muted lead (see card schema). */
-  intro?: "cover" | "bands"
+  intro?: "cover" | "bands" | "hook"
   /** The line shown over that silent opening, e.g. "Let's watch". */
   leadLabel?: string
   /** Captions for the video card, ALREADY timed against the edited clip
@@ -151,6 +151,10 @@ function buildClipFirstManifest(
   const captions = (input.videoCaptions ?? []).filter(
     (c) => c.startSec < videoDurationSec,
   )
+  // `intro: "hook"` (YouTube): the one spoken line that runs over the film's
+  // opening seconds. Every other opening is silent, so this is the only case
+  // where the clip-first film card carries narration.
+  const hookSeg = input.segments.find((s) => s.id === "hook")
   cards.push({
     kind: "video",
     videoFile: clip,
@@ -160,11 +164,17 @@ function buildClipFirstManifest(
     // was said before it — but an optional silent lead carries the intro
     // overlay that says what this is.
     videoFill: "full",
+    ...(hookSeg ? { audioFile: hookSeg.file } : {}),
     ...(captions.length ? { subtitles: captions } : {}),
     ...(input.mutedLeadSec ? { mutedLeadSec: input.mutedLeadSec } : {}),
     // The intro names the three steps in the locale's words, same as the
     // stepper screens (a Spanish cut once opened on WATCH / REFLECT / PRAY).
-    ...(input.intro ? { intro: input.intro, steps: STEPS } : {}),
+    // `hook` draws no steps at all — it is only a voice over the film.
+    ...(input.intro
+      ? input.intro === "hook"
+        ? { intro: input.intro }
+        : { intro: input.intro, steps: STEPS }
+      : {}),
   })
 
   // WATCH is already behind us; the light travels from it onto REFLECT.

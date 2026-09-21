@@ -343,6 +343,32 @@ describe("buildDevotionalManifest — clip-first structure", () => {
     expect(manifest.cards.at(-1)?.attribution).toBe(DEVO.reflection.attribution)
   })
 
+  it("gives the film card the hook's narration and no step labels", () => {
+    const segs = ["hook", "step-reflect", "reflection-1", "questions"].map(
+      (id) => ({ id, file: `${id}.mp3`, durationSec: 3, text: `${id} text` }),
+    )
+    const manifest = buildDevotionalManifest({
+      devotional: DEVO,
+      segments: segs as never,
+      clipFile: "clip.mp4",
+      clipDurationSec: 30,
+      videoCardSec: 25,
+      headerDate: "x",
+      structure: "clip-first",
+      intro: "hook",
+      mutedLeadSec: 6,
+    } as never)
+    const film = manifest.cards[0]
+    expect(film.kind).toBe("video")
+    // The spoken question rides the film card itself — the only clip-first
+    // opening that carries narration.
+    expect(film.audioFile).toBe("hook.mp3")
+    expect(film.intro).toBe("hook")
+    expect(film.mutedLeadSec).toBe(6)
+    // `hook` draws nothing, so it must not carry the stepper's labels.
+    expect(film.steps).toBeUndefined()
+  })
+
   it("carries the scripture translation tag onto the verse card", () => {
     const segs = ["scripture", "questions"].map((id) => ({
       id,

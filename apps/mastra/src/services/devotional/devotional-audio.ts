@@ -197,9 +197,20 @@ export type DevotionalStructure = "classic" | "clip-first"
 function buildClipFirstSegments(
   d: GeneratedDevotional,
   locale: DevotionalLocale,
+  hookLine?: string,
 ): NarrationSegment[] {
   const c = locale.connectors
   const segments: NarrationSegment[] = []
+  // YouTube opening (`--intro=hook`): one spoken question over the film's
+  // first seconds, before the scene is heard. Nothing is drawn for it, so it
+  // carries no display text.
+  if (hookLine && hookLine.trim()) {
+    segments.push({
+      id: "hook",
+      text: ensureTerminal(hookLine.trim()),
+      display: "",
+    })
+  }
   const chunks = splitReflection(d.reflection.text.trim())
   if (chunks.length > 0) {
     segments.push({
@@ -266,11 +277,13 @@ export function buildNarrationSegments(
      * Steps are implied by this structure, so `steps` is ignored for it.
      */
     structure?: DevotionalStructure
+    /** `clip-first` only: the spoken question that opens the YouTube cut. */
+    hookLine?: string
   } = {},
 ): NarrationSegment[] {
   const c = locale.connectors
   if (opts.structure === "clip-first") {
-    return buildClipFirstSegments(d, locale)
+    return buildClipFirstSegments(d, locale, opts.hookLine)
   }
   const withSteps = opts.steps === true
   const segments: NarrationSegment[] = []
@@ -492,6 +505,9 @@ export type ProduceDevotionalAudioDeps = {
   structure?: DevotionalStructure
   /** Replace the rotated settle line on the cover for this run. */
   settleLine?: string
+  /** `clip-first` + `intro: "hook"`: the spoken question that opens the cut.
+   *  Same rule as `structure` — it must reach EVERY call in a run. */
+  hookLine?: string
   /** Use THIS mp3 as the bed, instead of the library or the paid generator.
    *  For matching an existing video whose own track was never saved: the only
    *  copy is mixed into its audio, and the one stretch without narration is a
@@ -566,6 +582,7 @@ export async function produceDevotionalAudio(
     // that reaches them but not here produces a manifest with step cards and
     // no step audio (or the reverse), silently.
     ...(deps.steps ? { steps: true } : {}),
+    ...(deps.hookLine ? { hookLine: deps.hookLine } : {}),
   })
   const lastReflectionId = [...segs]
     .reverse()

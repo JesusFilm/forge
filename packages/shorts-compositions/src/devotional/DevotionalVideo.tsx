@@ -783,6 +783,7 @@ function VideoSubtitles({
   frameHeight,
   frameWidth,
   bleedX = 0,
+  hideBeforeSec = 0,
 }: {
   cues: NonNullable<DevotionalCard["subtitles"]>
   style: DevotionalStyle
@@ -796,6 +797,9 @@ function VideoSubtitles({
   /** Landscape: half the gap between the centred text column and the frame
    *  edges, so the caption's dim can bleed back out to the full frame. */
   bleedX?: number
+  /** `hook` intro: nothing is on screen while the opening question is spoken,
+   *  so the film's own captions start only once the scene is heard. */
+  hideBeforeSec?: number
   px: (n: number) => number
   frame: number
   fps: number
@@ -811,6 +815,13 @@ function VideoSubtitles({
   const t = frame / fps
   const fade = 0.18
   const fullBleedInset = px(FULL_BLEED_CAPTION_INSET_UNITS)
+  // A cue that would open mid-question is dropped whole rather than joined
+  // late: a phrase arriving already half spoken reads as a glitch.
+  const shown =
+    hideBeforeSec > 0
+      ? cues.filter((c) => c.startSec >= hideBeforeSec - 0.2)
+      : cues
+  cues = shown
   if (captionStyle === "phrase") {
     // One phrase at a time: the spec clears a phrase completely before the
     // next begins, so the cue whose window we are inside is the only one on
@@ -1182,6 +1193,11 @@ export const INTRO_HEADER_FADE_SEC = 0.6
 /** WATCH leaves before the header does (owner: take it away a little sooner). */
 const INTRO_WATCH_HOLD_SEC = 0.15
 const INTRO_WATCH_FADE_SEC = 0.5
+/** `hook`: how dark the film sits while the opening question is spoken. Deep
+ *  enough that the voice owns the moment, light enough that the scene reads. */
+const INTRO_HOOK_SCRIM = 0.45
+/** `hook`: how loud the film's own sound is under the spoken question. */
+const INTRO_HOOK_FILM_DUCK = 0.12
 
 function ClipIntro({
   variant,
@@ -1196,7 +1212,7 @@ function ClipIntro({
   frameHeight,
   bleedX = 0,
 }: {
-  variant: "cover" | "bands"
+  variant: "cover" | "bands" | "hook"
   leadSec: number
   frame: number
   fps: number
@@ -1308,6 +1324,21 @@ function ClipIntro({
     whiteSpace: "nowrap" as const,
     textShadow: "0 1px 8px rgba(0,0,0,0.45)",
   })
+
+  if (variant === "hook") {
+    // YouTube opening: nothing on screen. The film runs under a scrim while
+    // the voice asks the question, and the scrim lifts over the last second
+    // as the film's own sound comes up.
+    const on = interpolate(t, [0, 0.5], [0, 1], clampBoth)
+    const off = interpolate(t, [L - 1.0, L], [1, 0], clampBoth)
+    return (
+      <div style={{ ...bleed, pointerEvents: "none" }}>
+        <AbsoluteFill
+          style={{ background: `rgba(0,0,0,${INTRO_HOOK_SCRIM * on * off})` }}
+        />
+      </div>
+    )
+  }
 
   if (variant === "cover") {
     // The column over a darkened film: WATCH lit and slowly swelling, a pool
@@ -4076,7 +4107,28 @@ function Background({
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
           })
-          return clipAudioLevel * Math.sqrt(rise) * (slow ? fall * fall : fall)
+          // `hook` intro: the film keeps playing under the spoken question but
+          // well down, and comes up over the last second of the lead — the
+          // question has to be the thing being listened to.
+          const hookLead =
+            card.intro === "hook"
+              ? Math.round((card.mutedLeadSec ?? 0) * fps)
+              : 0
+          const duck =
+            hookLead > 0
+              ? interpolate(
+                  f,
+                  [hookLead - Math.round(1.0 * fps), hookLead],
+                  [INTRO_HOOK_FILM_DUCK, 1],
+                  { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+                )
+              : 1
+          return (
+            clipAudioLevel *
+            Math.sqrt(rise) *
+            (slow ? fall * fall : fall) *
+            duck
+          )
         }}
         style={
           isLandscape
@@ -4605,10 +4657,15 @@ export function stepGroups(
     // the title over it (owner).
     // The step clock waits for the intro to clear: while the mark and the
     // series name are on screen the ring is a second thing to read (owner).
+    // `hook` puts nothing on screen, so the ring only waits for the spoken
+    // question to finish; `cover`/`bands` also wait out the header.
     const introLead =
       c.intro && c.mutedLeadSec
         ? Math.round(
-            (c.mutedLeadSec + INTRO_HEADER_HOLD_SEC + INTRO_HEADER_FADE_SEC) *
+            (c.mutedLeadSec +
+              (c.intro === "hook"
+                ? 0
+                : INTRO_HEADER_HOLD_SEC + INTRO_HEADER_FADE_SEC)) *
               fps,
           )
         : 0
@@ -5193,6 +5250,7 @@ function CardLayer({
           frameHeight={layerH}
           frameWidth={layerW}
           bleedX={bleedX ?? 0}
+          hideBeforeSec={card.intro === "hook" ? (card.mutedLeadSec ?? 0) : 0}
         />
       ) : null}
       {showMuteButton ? <MuteButton px={px} style={style} /> : null}
