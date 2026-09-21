@@ -100,7 +100,7 @@ describe("tester activation and homepage availability", () => {
         })
       })
       const html = await GET().text()
-      const script = html.match(/<script[^>]*>([\s\S]*?)<\/script>/)?.[1]
+      const script = html.match(/<script[^>]*>([\s\S]*?)<\/script>/i)?.[1]
       expect(script).toBeTruthy()
       const finished = runInNewContext(script!, {
         history,
@@ -147,7 +147,7 @@ describe("tester activation and homepage availability", () => {
     )
     expect(html).toContain('location.replace("/watch")')
     expect(html).not.toMatch(
-      /<script[^>]+src=|<button|<form|<input|datadog|gtag/,
+      /<script[^>]+src=|<button|<form|<input|datadog|gtag/i,
     )
     expect(GET().headers.get("content-security-policy")).not.toBe(
       response.headers.get("content-security-policy"),

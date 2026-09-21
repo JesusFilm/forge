@@ -63,6 +63,12 @@ Test the emitted bridge script through timeout and failed-network paths. A
 mocked LD decision and a local HTTP smoke prove different boundaries from a
 live browser using production LD; record those limits separately.
 
+The release review also caught a test-harness detail: HTML tag matching must be
+case-insensitive even when extracting our own generated script for VM tests.
+CodeQL's separate code-scanning check reported that matcher after the main CI
+gate passed. Check both the CI gate and security annotations before merging;
+the successful build and test jobs alone did not establish merge readiness.
+
 ## Related
 
 - [Tester operations and release verification](../../operations/watch-recommendation-tester-access.md)

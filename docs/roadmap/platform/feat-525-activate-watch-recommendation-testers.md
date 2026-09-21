@@ -3,7 +3,7 @@ id: "feat-525"
 title: "Activate and verify the three-person Watch recommendation pilot"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-21"
 duration: 1
 depends_on:
