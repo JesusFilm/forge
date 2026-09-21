@@ -108,3 +108,15 @@ bounded read-only SQL. No production facts are fabricated or database rows seede
 
 Keep the remaining Admin/fallback/publication gates explicit. The owner's Railway
 access establishes database evidence, not permission to impersonate an Admin user.
+
+## September 21 independent local fallback and publication drill
+
+The [runtime release record](../../operations/watch-startup-readiness-2026-09-21.md)
+now includes complete-service checks with the real owned PostgreSQL/Redis
+fixture, runtime signer and production dependency factory. A forced platform
+failure returns and persists six last-known-good cards, no assignment and
+incomplete stage evidence. A separate stale publisher is fenced while preserving
+the current pointer and its single generation. Retained production rows since
+September 18 contain no matching fallback request or failed projection run to
+establish those operational events. Keep the production and matching signed-in
+Admin proof open; do not promote these local checks into production acceptance.

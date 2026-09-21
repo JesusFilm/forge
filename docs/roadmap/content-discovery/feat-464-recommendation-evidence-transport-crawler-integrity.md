@@ -321,3 +321,24 @@ or cookies were supplied. The [release evidence](../../operations/watch-startup-
 keeps these diagnostic rejections separate from natural HTTP and semantic
 fallback populations. Installed alerts, Admin reconciliation and browser retry
 evidence remain open.
+
+## September 21 later release observation
+
+The [runtime release record](../../operations/watch-startup-readiness-2026-09-21.md)
+retains a playback HTTP 503 at 05:07:25.928 UTC during the Admin release period.
+The upstream span reports `fetch failed` after 330 ms, with no retained Admin
+span; deployment timing alone does not prove its network/process cause. Keep it
+separate from selection deadlines and HTTP 200 delivery-timeout fallbacks. The
+05:10–05:20 UTC window has 479 playback requests and no 5xx, but is only ten
+minutes. The earlier completed two-hour corpus remains valid for its timestamp.
+Installed alerts, authorized Admin reconciliation and actual browser terminal
+retry behavior still require their own evidence. Browser inventory remains
+empty and the in-app browser is unavailable; no authorization was manufactured.
+
+A second fast playback 503 at 05:40:18 UTC takes 159 ms, during the next Admin
+handover, with an upstream fetch failure and no retained Admin span. The scoped
+diagnostic adds only an optional finite `networkErrorCode` to existing evidence
+events; it does not change HTTP responses or retries. Real local socket/refusal
+and route-boundary tests validate the diagnostic. Keep installation and sustained
+natural-error attribution separate from implementing this field. See the linked
+release record's current closure table for the exact outstanding gates.

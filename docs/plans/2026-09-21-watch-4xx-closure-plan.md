@@ -117,3 +117,17 @@ Retain inaccessible operational checks as explicit unmet requirements. Compound
 durable findings into the existing relevant solution documents where possible.
 Keep the authored English homepage block removed, its feature flag default off,
 and all identity, authorization, attribution, rate-limit and integrity guarantees.
+
+### Follow-on bounded transport diagnostics
+
+Two normal Admin handovers produce fast playback HTTP 503s with only
+`TypeError: fetch failed` retained, at 05:07:25 and 05:40:18 UTC. They are distinct
+from selection deadline failures. Preserve a small allowlist of Node/Undici
+network error codes from at most four `cause` objects in the existing evidence
+observation. Keep Web/Admin wire contracts identical and the new field optional.
+Never emit messages, URLs, addresses, stack traces, identifiers or arbitrary
+codes. Cycles and throwing properties must not escape observation. Keep responses,
+outcomes, retry policy and deadlines unchanged; this is diagnosis, not a fix for
+the transport failure. Test real local socket reset/refusal and bounded malformed
+errors, measure overhead, then use normal PR/main deployment and verify the field
+only from natural failures. Do not force a production failure to exercise it.

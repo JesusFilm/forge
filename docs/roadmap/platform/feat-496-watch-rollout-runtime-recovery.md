@@ -398,9 +398,21 @@ production module-cache regression fails before the fix; all 7,288 Admin tests
 pass afterward. The final build without counters passes 25 simultaneous-selection
 checks during cold editor visits at 509–579 ms and 20 six-card deliveries without
 fallback. Lint, typecheck, build and sequential Compound Engineering review pass.
-The follow-on release is pending normal PR checks and deployment.
+PR #2363 merged as `850cd7b5b582c327deac8fa50a9e5ebd85abd438` after all
+required CI checks, including 113 PostgreSQL and two Redis checks. Railway and
+independent SSH verification confirm that exact Admin revision and built
+core/memory externalization; see the linked release record for deployment IDs
+and the worker/post-deployment observation.
 
 Keep this ticket in progress. Historical capability-budget/WAL/pool latency is
 not fully attributed. A newly observed playback HTTP 503 at 05:07:25 UTC has an
 upstream `fetch failed` after 330 ms, separately from selection timeouts and
 semantic delivery fallbacks. No larger deadline or ambiguous retry is added.
+
+The next Admin handover also records a fast playback 503 at 05:40:18 UTC
+(159 ms total, 154 ms upstream fetch failure). A bounded optional network-code
+observation is being added to distinguish socket/refusal/DNS causes in natural
+failures; this is not a latency fix. The verified post-module window
+05:41–05:49 has 68 reconciled delivery envelopes, zero semantic timeouts, two
+successful selections and 224 playback requests without 5xx. Its small size does
+not establish recovery or explain the historical capability-budget wait.
