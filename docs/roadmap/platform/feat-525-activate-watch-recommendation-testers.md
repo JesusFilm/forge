@@ -60,3 +60,18 @@ availability outcomes, and browser redirect/cookie behavior in the operations
 document. Check ordinary Watch loading and confirm only the existing
 recommendation row changes for eligible testers. Keep this ticket open until
 the real three-person pilot is verified.
+
+## Progress — 2026-09-22 NZ
+
+Tester exchange and edge-isolation releases are deployed; the signing secret
+is configured and the three HTTP activations succeeded. The missing English
+homepage block was restored through the deployed Admin publishing service,
+preserving all existing content. Public GraphQL and Watch HTML contain it.
+Canonical revalidation succeeded after the configured legacy-host webhook
+returned 405; feat-531 tracks that separate configuration repair.
+
+Still required: install the Watch Production server SDK key in Web, verify
+targeted availability true and unmatched availability false, and observe real
+cards in the browser. Successful activation POSTs and a published block are
+insufficient to mark this ticket complete. See the operations document for
+revision IDs, public HTTP measurements, and verification limits.
