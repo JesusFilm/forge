@@ -89,6 +89,24 @@ the startup correction does not establish a cause or fix for every later stall.
 Review patch compatibility, install/frozen-lock behavior, failed initialization,
 real `next start` behavior and production deployment admission before release.
 
+### Follow-on server module reuse
+
+After PR #2362, isolate the remaining first-editor workload. A local CPU profile
+shows SSR initialization of Mastra packages and another Prisma engine. Loading
+`@mastra/core` through Node's cache reduces the competing GraphQL call from about
+0.8–0.9 seconds to 0.57–0.63 seconds. Core plus memory gives about 0.50–0.54
+seconds; externalizing seven Mastra packages saves little additional time and
+broadens the surface unnecessarily. Measure real selections concurrently with
+the editor, not only `__typename`.
+
+Test the documented per-process Prisma singleton contract in production.
+Currently its global cache is written only outside production, allowing separate
+Next module evaluations to allocate independent main/sync clients. Preserve
+the distinct 10/5-connection budgets, extensions and authorization. A cache
+regression must fail on repeated production module evaluation before the fix;
+confirm the complete production-build effect and inspect bounded owned-process
+initialization evidence. No production heap inspection or callback replacement.
+
 Use sequential Compound Engineering review per the repository tool map. Fetch
 new main and rerun relevant checks before every normal squash merge. Verify
 running revisions after automatic deployment, then the required sustained

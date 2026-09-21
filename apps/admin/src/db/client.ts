@@ -7,8 +7,9 @@
 //                      (max=5, connection timeout=60s via PrismaPg adapter)
 //                      so sync cannot starve read traffic.
 //
-// Both use the Next.js HMR-safe singleton pattern: dev reloads reuse the
-// existing client from `globalThis` instead of spawning new pools.
+// Next's API, RSC and SSR module caches can evaluate this file independently.
+// Reuse each client through globalThis in production as well as development
+// so those module graphs cannot multiply the configured pool budgets.
 //
 // Per Unit 2 of docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
 
@@ -117,7 +118,5 @@ export const syncPrisma =
     log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
   })
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma
-  globalForPrisma.syncPrisma = syncPrisma
-}
+globalForPrisma.prisma = prisma
+globalForPrisma.syncPrisma = syncPrisma
