@@ -127,7 +127,6 @@ import {
 } from "../../../src/lib/tabBarVisibility"
 import {
   TestRenderer,
-  hasText,
   press,
   pressableByLabel,
   unmount,
@@ -159,13 +158,15 @@ async function renderLibrary(os: "ios" | "android"): Promise<TestInstance> {
   await act(async () => {
     renderer = TestRenderer.create(<LibraryScreen />)
   })
-  expect(hasText(renderer, "Library")).toBe(true)
+  // The screen draws no title; the Select pill only exists on the
+  // ready-with-records branch, so it proves the real screen mounted.
+  expect(hasControl(renderer, "Select downloads")).toBe(true)
   return renderer
 }
 
-/** The header swaps its controls on the selection flag, so the Cancel pill
- *  existing IS selection mode. The count Text renders a children ARRAY, so
- *  `hasText` cannot see it. */
+/** The head row swaps its controls on the selection flag, so the Cancel pill
+ *  existing IS selection mode. The count Text renders a children ARRAY, so a
+ *  text match cannot see it. */
 function hasControl(renderer: TestInstance, label: string): boolean {
   return (
     renderer.root.findAll(
