@@ -258,3 +258,37 @@ UTC after substantive five-second transaction expiry, followed by a completed
 heartbeat at 22:58:17. Feat-459 now records the reproduced expensive discovery
 scan and rejected controls. This keeps the reconciliation-health gate open;
 one subsequent success does not satisfy the sustained criterion.
+
+## Repaired worker and complete two-hour observation — September 21
+
+PR #2356 deploys the reproduced discovery-scan correction to Admin and worker
+as `de752d60980b25ee11806f2c424770fc78027188`. The fixed **00:15–02:15 UTC**
+window has **0 / 9,787 playback 5xx (0%)**, with no fault-injection exclusions;
+ordinary canaries and rejected traffic remain included. Independent Railway edge
+counts and Datadog primary metrics match. All 24 reconciliation batches and
+heartbeat steps complete; 238 classification attempts and 14 queued rebuilds
+have zero classification/dispatch failures or exhausted attempts.
+
+The final timed pointer audit finds one ineligible pointer; a later complete
+02:20:44 UTC snapshot finds zero among 167,984. A separate durable episode cohort
+audit finds zero fact/replay sequence or original-fact binding violations across
+10,600 facts and 207 replay receipts. The exact populations, nonzero snapshots
+and collector differences remain in the
+[release record](../../operations/watch-closeout-release-2026-09-21.md).
+
+Admin/Web indexed logs agree on 8,003 accepted facts batches and 23 all-replay
+batches. All 126 observed transaction-busy attempts across 109 trace-correlated
+requests reach final Web facts HTTP 200, without exhaustion. Four binding
+rejections map to terminal HTTP 409. All 1,520 recognized-crawler evidence
+actions are logged as rejected; the `human_anonymous` database label is not
+independent proof of human provenance. Terminal labels alone do not establish
+cross-request browser retry behavior.
+
+Keep this ticket in progress. The completed two-hour HTTP and worker observation
+does not install alerts or replace the permission-checked Admin reconciliation.
+The paginated inventory of 41 visible monitors contains legacy Watch RUM monitors
+but no required Forge recommendation transport/reconciliation alert coverage.
+Use the existing read access for verification; no monitoring write was attempted.
+The separately retained fast playback fetch failure and historical unknown-attempt
+classification limits also remain explicit rather than being erased by this
+healthy window.

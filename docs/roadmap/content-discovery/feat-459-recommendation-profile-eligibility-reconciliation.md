@@ -164,3 +164,24 @@ The [durable explanation and rejected controls](../../solutions/performance-issu
 record the causal evidence. Keep this ticket in progress through normal release,
 exact revision verification, a fresh invariant audit, sustained healthy worker
 batches, Admin lifecycle reconciliation and the dependent feat-464 gates.
+
+## September 21 deployed reconciliation correction
+
+PR [#2356](https://github.com/JesusFilm/forge/pull/2356) deployed automatically as
+`de752d60980b25ee11806f2c424770fc78027188` to Admin and the worker. The full-scale
+original batch expires at 5,033 ms; the corrected transaction passes in 1,664 ms
+with the same eligibility, five-second budget and publication fences. Real
+PostgreSQL parity, concurrency and rollback-setting checks pass, as do 7,281
+Admin unit tests and applicable CI.
+
+The [release record](../../operations/watch-closeout-release-2026-09-21.md)
+retains an initial one-ineligible-pointer audit, subsequent convergence to zero,
+and the completed two-hour observation. All 24 batches and their heartbeat steps
+complete without substantive errors, with 238 classification attempts and 14
+queued rebuilds. The final timed audit again finds one ineligible pointer;
+the 02:20:44 UTC recheck exhausts all 167,984 pointers and finds zero. Preserve
+both nonzero snapshots rather than claiming continuous zero violations.
+Keep this ticket in progress until its
+feat-464 dependency and authorized Admin gates are satisfied. Do not assign the
+separate historical selection timeouts to this correction: their sampled times
+fall between reconciliation batches.
