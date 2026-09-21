@@ -342,3 +342,12 @@ events; it does not change HTTP responses or retries. Real local socket/refusal
 and route-boundary tests validate the diagnostic. Keep installation and sustained
 natural-error attribution separate from implementing this field. See the linked
 release record's current closure table for the exact outstanding gates.
+
+PR #2364 is now verified on Web/Admin/worker as
+`d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf`; the
+[diagnostic release evidence](../../operations/watch-transport-cause-release-2026-09-21.md)
+confirms the compiled field, unchanged homepage constraints and separate HTTP
+and semantic outcome accounting. The latest 41-monitor inventory still lacks
+the required alert coverage. No monitor write or Admin impersonation occurred;
+the installed-alert, matching authorized Admin and actual browser retry gates
+remain unmet.

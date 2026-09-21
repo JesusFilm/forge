@@ -411,8 +411,15 @@ semantic delivery fallbacks. No larger deadline or ambiguous retry is added.
 
 The next Admin handover also records a fast playback 503 at 05:40:18 UTC
 (159 ms total, 154 ms upstream fetch failure). A bounded optional network-code
-observation is being added to distinguish socket/refusal/DNS causes in natural
-failures; this is not a latency fix. The verified post-module window
+observation was subsequently deployed in PR #2364 to distinguish
+socket/refusal/DNS causes in natural failures; this is not a latency fix. The verified post-module window
 05:41–05:49 has 68 reconciled delivery envelopes, zero semantic timeouts, two
 successful selections and 224 playback requests without 5xx. Its small size does
 not establish recovery or explain the historical capability-budget wait.
+
+The [diagnostic release record](../../operations/watch-transport-cause-release-2026-09-21.md)
+verifies exact revision `d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf` on Admin,
+worker and Web, including the field in Web's compiled playback route. It retains
+separate HTTP/envelope populations and collector discrepancies. Keep the
+capability-budget and transport cause questions open; installation of a
+diagnostic is not proof that the remaining failures are fixed.

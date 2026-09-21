@@ -271,11 +271,18 @@ observation exists. The [startup release record](../../operations/watch-startup-
 retains the two failure traces, deployment timing, local proof and remaining
 closure gates. This addition resolves a diagnostic blind spot only.
 
+Verify a deployed diagnostic against the actual route's traced build files and
+the running revision, with a pre-release control when available. A source tree
+or successful health request alone does not establish which implementation is
+serving. Keep that installation evidence separate from a natural error observed
+by the collector, and from proving the cause or disposition of a failed mutation.
+
 ## Related evidence
 
 - [Delivery event contract and limits](../../operations/watch-delivery-outcome-observation-2026-09-21.md)
 - [Profile audit and Admin accounting regressions](../../operations/watch-profile-audit-2026-09-21.md)
 - [Sustained production corpus](../../operations/watch-recommendation-corpus-review-2026-09-21.md)
+- [Exact transport-diagnostic deployment and outcome reconciliation](../../operations/watch-transport-cause-release-2026-09-21.md)
 - [Denominator bias from excluded failures](excluding-failed-observations-from-eval-denominator-flatters-score.md)
 - [Web implementation PR #2352](https://github.com/JesusFilm/forge/pull/2352)
 - [Admin implementation PR #2353](https://github.com/JesusFilm/forge/pull/2353)

@@ -194,3 +194,10 @@ proven server-module/client reuse fix. At 05:40:31.898 UTC, a bounded read-only
 canonical audit finds 168,701 current pointers and zero ineligible in 1,509 ms.
 Preserve the earlier nonzero snapshots and convergence history. Feat-464 and the
 matching authorized Admin gate remain unmet, so status stays in progress.
+
+The [subsequent diagnostic release](../../operations/watch-transport-cause-release-2026-09-21.md)
+rechecks the complete canonical predicate at 06:23:30 UTC on `d0c749b9…`:
+168,834 current pointers, zero ineligible, 1,502 ms. The new worker's observed
+batch completes without failures. These snapshot/batch checks preserve the
+earlier convergence evidence; feat-464 and the authorized Admin gate still
+prevent closure.
