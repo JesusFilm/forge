@@ -35,6 +35,8 @@ Code completion must not be mistaken for a working production pilot.
 ## What To Build
 
 - Verify feat-524 was merged and deployed through PR-to-main.
+- Prevent edge script injection into the activation bridge with a scoped
+  `no-transform` response, then verify the public HTML after deployment.
 - Provision the dedicated Web signing secret through the service's normal
   secret-management process, then verify canonical origin and LD SDK environment.
 - Issue private links for the three existing opaque targets; do not place

@@ -49,6 +49,8 @@ if (token && token.length <= 1024) {
     {
       headers: {
         ...HEADERS,
+        // Keep the edge from injecting analytics into the credential bridge.
+        "cache-control": `${HEADERS["cache-control"]}, no-transform`,
         "content-type": "text/html; charset=utf-8",
         "content-security-policy": `default-src 'none'; script-src 'nonce-${nonce}'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'`,
       },

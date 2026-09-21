@@ -76,6 +76,10 @@ or analytics, and redirects to `/watch` after completion or a five-second
 timeout. Expired/invalid links also redirect without granting access. The
 normal Watch analytics flow is unchanged after redirect.
 
+The bridge's HTML response also sets `no-transform` so the public edge does
+not append an analytics script. Verify the response through the public domain:
+origin-only tests cannot prove the edge leaves the HTML unchanged.
+
 ## Verify and revoke
 
 Before publishing the homepage block, verify that a fresh browser gets
@@ -107,3 +111,17 @@ are not forcibly removed from an open page; reload to recheck visibility.
 - Web lint/typecheck passed. Browser smoke was unavailable because no browser
   was connected. Production secret setup, deployment, and live browser checks
   remain feat-525; no production rollout success is claimed here.
+
+## Production activation progress — 2026-09-21
+
+PR #2358 merged as `a569db9740caa7388be858fea9526dfd995f274d` and Railway
+deployment `29f2b090-7deb-4bdb-baa6-56799c38318b` succeeded. The dedicated
+signing secret was provisioned before this normal deployment. The first live
+probe found Cloudflare adding its beacon to the otherwise isolated bridge;
+the scoped `no-transform` fix requires another normal release and public-edge
+verification before link issuance.
+
+Web production has no `LAUNCHDARKLY_SDK_KEY`, and a public Admin GraphQL query
+confirmed the English homepage has no `HomepageRecommendationsBlock`. The LD
+flag still targets exactly the three IDs above with false fallthrough. These
+remaining activation dependencies keep feat-525 in progress.
