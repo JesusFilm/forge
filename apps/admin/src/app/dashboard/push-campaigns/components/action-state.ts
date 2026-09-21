@@ -6,6 +6,8 @@
  * the actions share have to sit beside it.
  */
 
+import type { Route } from "next"
+
 export const PUSH_CAMPAIGNS_PATH = "/dashboard/push-campaigns"
 export const PUSH_TEST_DEVICES_PATH = "/dashboard/push-campaigns/test-devices"
 
@@ -21,6 +23,8 @@ export const PUSH_ACTION_IDLE: PushActionState = { status: "idle" }
  * string against the route, and a campaign id is a cuid, so it needs no
  * escaping in either a link or a revalidation.
  */
-export function pushCampaignPath(campaignId: string): string {
-  return `${PUSH_CAMPAIGNS_PATH}/${campaignId}`
+export function pushCampaignPath(campaignId: string): Route {
+  // Typed routes: `redirect` and `Link` want a Route, and only `next build`
+  // checks it, so the one spelling is typed here rather than cast per call.
+  return `${PUSH_CAMPAIGNS_PATH}/${campaignId}` as Route
 }
