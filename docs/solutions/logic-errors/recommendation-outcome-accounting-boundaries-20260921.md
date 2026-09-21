@@ -296,8 +296,11 @@ its individual failure mechanisms alongside any aggregate acceptance threshold.
   38 seconds. Error fan-out overlaps a 38.55-second event-loop delay. A later
   isolated reproduction with the pinned Next inspector and deployed map
   structure blocks for 10.86–11.46 seconds. Logging existing stack strings keeps
-  all 206 errors in 36–39 ms. This isolates formatting cost; full-build workload
-  validation is still required before assigning the complete production pause.
+  all 206 errors in 36–39 ms. The subsequent
+  [actual-build correction](../performance-issues/next-error-inspection-amplifies-graphql-failures-20260922.md)
+  verifies interference with real concurrent mutations and preserves native
+  error details. This does not explain the initiating database allocation failure
+  or the separate capability-budget timeout.
 - Disable gauge interpolation with `.fill(null)` when inspecting individual
   runtime samples. A ramp between adjacent gauge samples is not a sequence of
   observed pauses. Preserve gaps in GC samples instead of treating them as zero.

@@ -445,3 +445,19 @@ The larger corpus has
 timeouts among 4,280 delivery 200s, but three primary 200s remain unmatched.
 Keep this ticket open; no larger deadline, ambiguous retry or speculative
 production setting change is justified.
+
+## September 22 error-amplification correction
+
+The [actual-build reproduction](../../operations/watch-error-formatting-recovery-2026-09-22.md)
+now establishes a complete error-handling interference path: the catalog failure
+fans out through Yoga and Next repeatedly inspects source maps, delaying unrelated
+real mutations. Production GraphQL logging now uses native Error inspection while
+retaining every error, masking, severity, causes and normal log forwarding.
+Twenty fixed-build selections acknowledge in 135–208 ms during 206 catalog errors,
+versus five control selections around 75.8 seconds. The separate control HTTP 408
+is retained. All 7,293 Admin tests, lint, typecheck and build pass.
+
+Keep this ticket in progress until exact automatic deployment and sustained
+observations pass. The initiating shared-memory failure and separate 701 ms
+capability-budget call still require independent investigation; neither is closed
+by the logging correction.
