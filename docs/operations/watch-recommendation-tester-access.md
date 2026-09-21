@@ -60,7 +60,8 @@ The JSON output includes `testerId` and `activationUrl`. Without `--tester-id`,
 the command generates a new ID which must also be individually targeted in LD.
 Keep output private; do not run issuance in CI, paste links into PRs, or retain
 them in logs. Deliver each link to its intended tester through an approved
-private channel. This task has not issued or sent production links.
+private channel. Links were issued privately in the owner task on 2026-09-21;
+none were emailed or sent to teammates by this task.
 
 Opening a link in the tester's normal browser sets
 `forge_recommendation_tester`: host-only, HttpOnly, SameSite=Lax, Secure in
@@ -118,10 +119,55 @@ PR #2358 merged as `a569db9740caa7388be858fea9526dfd995f274d` and Railway
 deployment `29f2b090-7deb-4bdb-baa6-56799c38318b` succeeded. The dedicated
 signing secret was provisioned before this normal deployment. The first live
 probe found Cloudflare adding its beacon to the otherwise isolated bridge;
-the scoped `no-transform` fix requires another normal release and public-edge
-verification before link issuance.
+the scoped `no-transform` fix subsequently shipped in PR #2361, merge
+`ec6bf167175cd3c4f13969edc73521459513325e`, deployment
+`461a48c0-1c71-4063-ae01-e2551b5c8753` (SUCCESS). The public activation HTML
+contained exactly one script with the matching CSP nonce and `no-transform`.
+All three HTTP activation probes returned 204 with the expected cookie; wrong
+origin and invalid credentials returned 403. This proves the HTTP exchange,
+not a browser-rendered recommendation row.
 
-Web production has no `LAUNCHDARKLY_SDK_KEY`, and a public Admin GraphQL query
-confirmed the English homepage has no `HomepageRecommendationsBlock`. The LD
-flag still targets exactly the three IDs above with false fallthrough. These
-remaining activation dependencies keep feat-525 in progress.
+The initial links did not reveal recommendations: Web production had no
+`LAUNCHDARKLY_SDK_KEY`, and the published homepage had no
+`HomepageRecommendationsBlock`. A successful cookie exchange did not complete
+the pilot. Do not issue replacement links as a substitute for fixing those
+dependencies.
+
+### English homepage restored at 21:02 UTC
+
+On 2026-09-21 at `21:02:14.503Z` (22 September in New Zealand), the existing
+Admin `ExperienceService.updateLocaleDraft` and `publishLocale` restored one
+block to locale `cmr96r2y10001p08tkp2bcrqu`. It is immediately after the category
+rail, index 2, with `sectionKey: watch-home-recommendations` and the default
+localized heading. The homepage now has 14 blocks. All 13 prior blocks and
+locale metadata were preserved exactly; schema normalization changed nothing.
+
+The operation used Nisal's existing Admin principal. No unpublished draft
+existed. Staging checked that the canonical revision was unchanged, and
+publication rechecked canonical content and the exact draft revision while
+holding the locale row lock. The prior canonical snapshot remains in historical
+revision `cmubqe2g80001q8mld7in7o5v`; applied draft
+`cmubqe2ec0000q8mle5bkhgke` is historical and no active draft remains. Route
+manifest regeneration completed. No application deployment was triggered.
+
+Admin's configured legacy-host webhook returned HTTP 405. An authenticated
+POST to the canonical `https://www.jesusfilm.org/watch/api/revalidate` returned
+200 with `revalidated: true`; follow-up feat-531 owns the persistent endpoint
+configuration repair. Public Admin GraphQL now returns exactly one
+`HomepageRecommendationsBlock` at index 2. The public Watch HTML contains that
+block and section key.
+
+Two finite HTTP samples before publication were 321/286 ms and 866,315 bytes;
+after revalidation they were 283/237 ms and 867,594 bytes, both HTTP 200 with
+Next cache HIT. The HTML increase is 1,279 bytes. These samples do not establish
+browser hydration or rendering performance. Restoring the authored component
+also restores its existing client-side availability request.
+
+**Pilot remains incomplete:** Web still has no `LAUNCHDARKLY_SDK_KEY`. LD
+production version 6 still enables only the three targets, with false
+fallthrough/off. Anonymous availability remains false. Configure the Watch
+Production **server** SDK key through the normal secret/deployment path, then
+verify all three targeted sessions return true, non-targets remain false, and
+the browser shows real recommendation cards. No browser is connected to this
+task, so no live browser visibility or hydration claim is made. Keep feat-525
+in progress until that end-to-end verification passes.
