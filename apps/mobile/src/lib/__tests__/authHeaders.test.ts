@@ -9,6 +9,7 @@ import {
   carriesFleetBearer,
   isProgressOperation,
 } from "../authHeaders"
+import { PUSH_DOCUMENTS, PUSH_OPERATION_NAMES } from "../push/operations"
 import {
   RECOMMENDATION_DOCUMENTS,
   RECOMMENDATION_OPERATION_NAMES,
@@ -133,6 +134,57 @@ describe("authHeadersForOperation — recommendation operations", () => {
 
   it("keeps the user JWT off every recommendation operation", () => {
     for (const name of RECOMMENDATION_OPERATION_NAMES) {
+      expect(isProgressOperation(name)).toBe(false)
+    }
+  })
+})
+
+// KTD7: both push write paths carry their own admission predicate in admin, and
+// both REQUIRE the consumer bearer. Without the header the registration never
+// lands, so the phone never joins a campaign audience and nothing in the app
+// says so. Pin the allowlist to the documents mobile actually sends.
+describe("authHeadersForOperation — push write operations", () => {
+  it.each([...PUSH_OPERATION_NAMES])(
+    "attaches the bearer and x-viewer-id on %s",
+    (operationName) => {
+      expect(
+        authHeadersForOperation(operationName, "abc123", "device-1"),
+      ).toEqual({
+        Authorization: "Bearer abc123",
+        "x-viewer-id": "device-1",
+      })
+    },
+  )
+
+  it("pins the allowlist to the operation names of the documents mobile sends", () => {
+    const sentNames = Object.values(PUSH_DOCUMENTS).map((doc) => {
+      const operation = (doc as unknown as DocumentNode).definitions.find(
+        (d): d is OperationDefinitionNode => d.kind === "OperationDefinition",
+      )
+      return operation?.name?.value
+    })
+    expect([...sentNames].sort()).toEqual([...PUSH_OPERATION_NAMES].sort())
+    expect(Object.keys(PUSH_DOCUMENTS).sort()).toEqual(
+      [...PUSH_OPERATION_NAMES].sort(),
+    )
+  })
+
+  it("admits the two push names and no near miss", () => {
+    expect(carriesFleetBearer("RegisterPushDevice")).toBe(true)
+    expect(carriesFleetBearer("ReportPushOpen")).toBe(true)
+    for (const name of [
+      "RegisterPushDevices",
+      "registerPushDevice",
+      "ReportPushOpens",
+      "PushCampaign",
+    ]) {
+      expect(carriesFleetBearer(name)).toBe(false)
+      expect(authHeadersForOperation(name, "abc123", "device-1")).toEqual({})
+    }
+  })
+
+  it("keeps the user JWT off both push operations", () => {
+    for (const name of PUSH_OPERATION_NAMES) {
       expect(isProgressOperation(name)).toBe(false)
     }
   })

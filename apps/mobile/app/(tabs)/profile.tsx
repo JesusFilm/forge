@@ -2,6 +2,7 @@ import { ScrollView, StyleSheet, Text, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { AccountSection } from "../../src/components/profile/AccountSection"
+import { NotificationTestIdSection } from "../../src/components/profile/NotificationTestIdSection"
 import { ProfileLinksSection } from "../../src/components/profile/ProfileLinksSection"
 import { useTypography } from "../../src/hooks/useTypography"
 import { TEXT_PRIMARY } from "../../src/lib/color"
@@ -21,6 +22,7 @@ export default function ProfileScreen() {
         scrollIndicatorInsets={{ bottom: tabBarClearance }}
       >
         <AccountSection />
+        <NotificationTestIdSection />
         <ProfileLinksSection />
       </ScrollView>
     </View>

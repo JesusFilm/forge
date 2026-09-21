@@ -9,7 +9,12 @@
  */
 
 import * as Notifications from "expo-notifications"
+import Constants from "expo-constants"
 
+import {
+  PUSH_ANNOUNCEMENTS_CHANNEL_ID,
+  PUSH_ANNOUNCEMENTS_CHANNEL_NAME,
+} from "../push/constants"
 import {
   LAPSE_REMINDER_CHANNEL_ID,
   LAPSE_REMINDER_CHANNEL_NAME,
@@ -36,7 +41,19 @@ export type LapseReminderScheduleInput = {
   date: Date
 }
 
-export type LapseReminderNotificationsAdapter = {
+/**
+ * KTD9's fourth port: everything push registration needs of the notifications
+ * module, so the whole feature still has ONE importer of it. The registration
+ * module consumes only this.
+ */
+export type PushNotificationsPort = {
+  ensureAnnouncementsChannel: () => Promise<void>
+  /** Null when the project id is missing; throws when the read itself fails. */
+  getPushToken: () => Promise<string | null>
+  subscribeToTokenRotation: (listener: (token: string) => void) => () => void
+}
+
+export type LapseReminderNotificationsAdapter = PushNotificationsPort & {
   ensureChannel: () => Promise<void>
   getPermission: () => Promise<LapseReminderPermission>
   requestPermission: () => Promise<LapseReminderPermission>
@@ -47,6 +64,31 @@ export type LapseReminderNotificationsAdapter = {
   getLastResponseData: () => unknown
   clearLastResponse: () => void
   subscribeToResponses: (listener: (data: unknown) => void) => () => void
+}
+
+/** The EAS project id the Expo token read needs (KTD9). */
+function easProjectId(): string | null {
+  const configured = Constants.expoConfig?.extra?.eas?.projectId
+  return typeof configured === "string" && configured.length > 0
+    ? configured
+    : null
+}
+
+/**
+ * One Expo token read for both callers. A rotation event carries the NATIVE
+ * token, which Expo exchanges for the Expo token this app sends to admin, so
+ * passing it saves a second native read and uses the value that just changed.
+ */
+async function readExpoPushToken(
+  devicePushToken?: Notifications.DevicePushToken,
+): Promise<string | null> {
+  const projectId = easProjectId()
+  if (projectId == null) return null
+  const token = await Notifications.getExpoPushTokenAsync({
+    projectId,
+    ...(devicePushToken == null ? {} : { devicePushToken }),
+  })
+  return token.data.length > 0 ? token.data : null
 }
 
 function toPermission(status: {
@@ -64,6 +106,42 @@ export const lapseReminderNotifications: LapseReminderNotificationsAdapter = {
       name: LAPSE_REMINDER_CHANNEL_NAME,
       importance: Notifications.AndroidImportance.DEFAULT,
     })
+  },
+
+  /** KTD9: the announcements channel, created in the same pass as the reminder
+   *  one. Android shows a remote notification with no channel in a default
+   *  bucket the viewer cannot name. */
+  async ensureAnnouncementsChannel() {
+    await Notifications.setNotificationChannelAsync(
+      PUSH_ANNOUNCEMENTS_CHANNEL_ID,
+      {
+        name: PUSH_ANNOUNCEMENTS_CHANNEL_NAME,
+        importance: Notifications.AndroidImportance.DEFAULT,
+      },
+    )
+  },
+
+  /** R1's token. It posts to Expo's own service, so the caller bounds it. */
+  async getPushToken() {
+    return readExpoPushToken()
+  },
+
+  /** R3: a rotated token is a new registration. The subscription belongs to the
+   *  provider's lifetime, never to module scope. */
+  subscribeToTokenRotation(listener) {
+    const subscription = Notifications.addPushTokenListener(
+      (devicePushToken) => {
+        void readExpoPushToken(devicePushToken)
+          .then((token) => {
+            if (token != null) listener(token)
+          })
+          .catch(() => {
+            // A failed exchange loses this rotation signal only: the next
+            // launch reads the new token on its own pass.
+          })
+      },
+    )
+    return () => subscription.remove()
   },
 
   async getPermission() {

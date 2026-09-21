@@ -37,6 +37,7 @@ const ADAPTER = path.join(
   "lapseReminders",
   "notificationsAdapter.ts",
 )
+const PUSH_HOST = path.join(MOBILE, "src", "lib", "push", "registrationHost.ts")
 const WATCH_ROUTE = path.join(MOBILE, "app", "watch", "[slug].tsx")
 const ROOTS = [path.join(MOBILE, "src"), path.join(MOBILE, "app")]
 
@@ -66,6 +67,37 @@ const PROVIDER_WIRING = [
   // By the validated slug. Dropping this loses `content.deep_link_open` for
   // every reminder return, and navigation keeps working, so nothing says so.
   "registerDeepLinkSlug(",
+  // U7. Each one is silent when it goes: the reminders keep working, every
+  // mobile suite stays green, and the phone simply never joins an audience.
+  "getPushRegistration()",
+  // The pass's own permission read, which is the only thing that starts a
+  // registration (R1, R5).
+  "onPermissionRead:",
+  // R3's three refresh triggers.
+  "subscribeToTokenRotation(",
+  "getRecommendationViewerStore().subscribe(",
+  "publishPushAppLanguageSlug(",
+  // KTD9's announcements channel, on the same upsert as the reminder one.
+  "ensureAnnouncementsChannel()",
+  // The preference the payload carries (R2). Without it the language is read
+  // from storage alone, which can lag a pick by a whole write.
+  "useWatchPreferences()",
+]
+
+/**
+ * The push host's own wiring. The kill switch and the sink name are the
+ * one-line reverts: `enabled: true` there arms push in a build that meant to
+ * ship it dark, and a renamed sink takes every push emit out of the repo-wide
+ * reserved-attribute sweep. Neither changes a single test result.
+ */
+const PUSH_HOST_WIRING = [
+  "enabled: PUSH_REGISTRATION_ENABLED",
+  "telemetry: datadogLog",
+  "store: getPushRegistrationStore()",
+  "register: registerPushDevice",
+  "lapseReminderNotifications.getPushToken()",
+  "readAppLanguageSlug: readPushAppLanguageSlug",
+  "readEnvironment: readPushDeviceEnvironment",
 ]
 
 function read(file) {
@@ -106,9 +138,11 @@ function guardedRequireBlock(content) {
 function placement(content) {
   return {
     datadogOpen: content.indexOf("<MobileDatadogProvider>"),
+    preferencesOpen: content.indexOf("<WatchPreferencesProvider>"),
     reminderOpen: content.indexOf("<LapseReminderProvider>"),
     reminderClose: content.indexOf("</LapseReminderProvider>"),
     splashHost: content.indexOf("<SplashHost"),
+    preferencesClose: content.indexOf("</WatchPreferencesProvider>"),
     datadogClose: content.indexOf("</MobileDatadogProvider>"),
   }
 }
@@ -133,6 +167,15 @@ function placementFaults(at) {
   // the splash host lowers the native hold before the first pass runs.
   if (at.splashHost < at.reminderOpen || at.splashHost > at.reminderClose) {
     faults.push("not-above-splash-host")
+  }
+  // U7: the provider reads the dub-language preference for the push payload,
+  // and `useWatchPreferences` THROWS outside its provider — so a reorder here
+  // is not a lost registration, it is a crashed app.
+  if (
+    at.reminderOpen < at.preferencesOpen ||
+    at.reminderClose > at.preferencesClose
+  ) {
+    faults.push("outside-watch-preferences")
   }
   return faults
 }
@@ -208,6 +251,17 @@ describe("the lapse reminder composition root", () => {
 
   it("wires every dependency a pass cannot run without", () => {
     expect(missingWiring(read(PROVIDER), PROVIDER_WIRING)).toEqual([])
+  })
+
+  it("wires the push host's gate, sink and ports (U7)", () => {
+    expect(missingWiring(read(PUSH_HOST), PUSH_HOST_WIRING)).toEqual([])
+  })
+
+  it("positive control: a reverted push host dependency is caught", () => {
+    for (const token of PUSH_HOST_WIRING) {
+      const gutted = stripComments(read(PUSH_HOST)).split(token).join("noop(")
+      expect(missingWiring(gutted, PUSH_HOST_WIRING)).toEqual([token])
+    }
   })
 
   it("threads the kill switch into EVERY consumer, never a literal", () => {
@@ -297,21 +351,35 @@ describe("the lapse reminder composition root", () => {
 
   it("positive control: the detector separates ancestor from sibling", () => {
     const ancestor =
-      "<MobileDatadogProvider><LapseReminderProvider><SplashHost />" +
-      "</LapseReminderProvider></MobileDatadogProvider>"
+      "<MobileDatadogProvider><WatchPreferencesProvider>" +
+      "<LapseReminderProvider><SplashHost />" +
+      "</LapseReminderProvider></WatchPreferencesProvider>" +
+      "</MobileDatadogProvider>"
     const sibling =
-      "<MobileDatadogProvider><LapseReminderProvider>" +
-      "</LapseReminderProvider><SplashHost /></MobileDatadogProvider>"
+      "<MobileDatadogProvider><WatchPreferencesProvider>" +
+      "<LapseReminderProvider></LapseReminderProvider><SplashHost />" +
+      "</WatchPreferencesProvider></MobileDatadogProvider>"
+    // U7: outside the preferences provider `useWatchPreferences` throws, so
+    // this order is a crash rather than a missing registration.
+    const outsidePreferences =
+      "<MobileDatadogProvider><LapseReminderProvider><SplashHost />" +
+      "</LapseReminderProvider><WatchPreferencesProvider>" +
+      "</WatchPreferencesProvider></MobileDatadogProvider>"
 
     expect(placementFaults(placement(ancestor))).toEqual([])
     expect(placementFaults(placement(sibling))).toEqual([
       "not-above-splash-host",
     ])
+    expect(placementFaults(placement(outsidePreferences))).toEqual([
+      "outside-watch-preferences",
+    ])
     // And a layout with no provider at all names what is absent.
     expect(placementFaults(placement("<MobileDatadogProvider>"))).toEqual([
+      "missing:preferencesOpen",
       "missing:reminderOpen",
       "missing:reminderClose",
       "missing:splashHost",
+      "missing:preferencesClose",
       "missing:datadogClose",
     ])
   })

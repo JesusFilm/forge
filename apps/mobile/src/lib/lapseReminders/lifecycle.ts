@@ -82,6 +82,12 @@ export type LapseReminderLifecycleDeps = {
   subscribeToRecordClear: (listener: () => void) => () => void
   subscribeToAppState: (listener: (state: string) => void) => () => void
   now: () => number
+  /**
+   * U7/KTD9: fired with the permission this pass just read, granted or denied.
+   * Push registration hangs off it so it never performs a second permission
+   * read. Never awaited, and a hook that throws costs the pass nothing.
+   */
+  onPermissionRead?: (permission: { granted: boolean }) => void
   /** Named `telemetry` on purpose: datadogReservedAttributes.guard only sweeps
    *  sinks spelled datadogLog, DdLogs or telemetry, so a rename makes every
    *  emit site below invisible to it. */
@@ -182,6 +188,13 @@ export function createLapseReminderLifecycle(
         deps.adapter.getPermission(),
         LAPSE_REMINDER_ADAPTER_DEADLINE_MS,
       )
+      try {
+        // A read that LANDED, so push may act on it. A failed read is not a
+        // denial and reaches nobody.
+        deps.onPermissionRead?.({ granted: status.granted })
+      } catch {
+        // The reminders are this pass's job; the hook is a passenger.
+      }
       return status.granted ? "granted" : "denied"
     } catch (error) {
       logStepFailure(reason, "permission", null, error)

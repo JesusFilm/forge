@@ -939,6 +939,64 @@ id>"}` autostarts, so the writer would otherwise persist attacker text and
   production channel is already dark for the splash change, so this feature
   rides the same build.
 
+## Push registration (localized push campaigns, U7)
+
+**`src/lib/push/` registers this phone with admin so a campaign can reach it.**
+The app models no campaign: it sends a token plus the app language, the phone
+locale, the time zone, the platform, the build and the recommendation viewer
+handle, and admin owns audience, timing and copy. The design record is
+`docs/plans/2026-09-18-1540-feat-localized-push-campaigns-plan.md`.
+
+- **One permission grant covers both features, and the reminder pass is what
+  starts a registration.** `lifecycle.ts` fires `onPermissionRead` with the
+  permission it just read, and the push controller hangs off that hook, so
+  nothing reads the permission twice and the app shows no second prompt. A
+  read that FAILED reaches nobody: a transient fault is not a denial.
+- **`PUSH_REGISTRATION_ENABLED` is the app-side kill switch, and OFF is not
+  fully inert.** It sits in `src/lib/push/constants.ts`, on one line, as a bare
+  literal, in a file that imports nothing, so it flips by OTA alone. With it off
+  no first registration and no refresh runs, and a REVOCATION is still reported
+  (R29) — a phone whose viewer turned notifications off must leave the audience
+  whatever the gate says. `pushKillSwitch.guard.test.js` pins the shape.
+- **The controller is a module singleton (`registrationHost.ts`), and that is
+  what makes "once per launch" true.** The provider's effect runs setup →
+  cleanup → setup under StrictMode, so a controller built inside it would arrive
+  with its launch latch open. Only the token-rotation subscription belongs to
+  the provider's lifetime. Beyond the latch, an unchanged payload hash skips the
+  call unless the last success is over 7 days old, a launch spends at most 3
+  attempts, and a rate limit is never retried in that launch.
+- **The app stores the test ID and never the push token.**
+  `src/lib/push/store.ts` holds the test ID, the payload hash, the last success
+  and the remembered revocation. The token is re-read from the adapter whenever
+  it is needed, which is also why a revocation report can fail on a phone whose
+  platform refuses a token read without the grant: that report is simply
+  retried on a later launch.
+- **The push port lives on the SAME notifications adapter** (token read,
+  rotation subscription, announcements channel), so that file stays the app's
+  one importer of `expo-notifications`. It imports `expo-constants` too, for the
+  EAS project id the Expo token read needs, and
+  `notificationsEntryPoint.guard.test.js` pins that import set.
+- **The provider must stay INSIDE `WatchPreferencesProvider`.** It reads the dub
+  language for the payload, and `useWatchPreferences` throws outside its
+  provider, so that ordering is a crash rather than a lost registration.
+  `lapseReminderWiring.guard.test.js` pins it. The slug is PUBLISHED to
+  `appLanguage.ts` as soon as the preferences hydrate, because the preferences
+  provider persists without awaiting and a payload read from storage alone can
+  carry the previous pick.
+- **`google-services.json` is NOT committed and Android cannot register without
+  it.** `app.json` references it, and `expo prebuild --platform android` refuses
+  while it is absent — which is the gate that makes the missing Firebase
+  download visible. A placeholder file would build and then fail FCM
+  registration silently on device. iOS is unaffected. The refusal is
+  `setGoogleServicesFile` in `@expo/config-plugins`, which throws "Cannot copy
+  google-services.json from …" when the copy fails (read from the installed
+  package on 2026-09-21; no prebuild was run).
+- **Telemetry is `push.`-prefixed through the sink named `telemetry`**
+  (`push.registration`, `push.registration_failed`, `push.revocation`). No
+  token, viewer handle or test ID ever reaches a log.
+- **The app config changed, so a native build must ship before the next
+  `eas update`.** `app.json` is a fingerprint input.
+
 ## Cast SDK sheet theming
 
 **Every cast sheet is drawn by the Cast SDK, not by us, and the only lever is

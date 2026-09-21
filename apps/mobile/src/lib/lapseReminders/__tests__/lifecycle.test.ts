@@ -135,6 +135,8 @@ type Harness = {
   adapter: FakeAdapter
   deps: LapseReminderLifecycleDeps
   logs: { event: string; context: Record<string, unknown> }[]
+  /** Every permission the pass handed to the injected hook (U7/KTD9). */
+  permissionReads: { granted: boolean }[]
   emitAppState: (state: string) => void
   emitClear: () => void
   appStateListenerCount: () => number
@@ -151,10 +153,13 @@ function createHarness(
     /** Leave hydration pending until the test resolves it. */
     deferHydration?: boolean
     now?: () => number
+    /** Makes the injected permission hook throw, like a wedged consumer. */
+    failPermissionHook?: boolean
   } = {},
 ): Harness {
   const adapter = createFakeAdapter(options)
   const logs: { event: string; context: Record<string, unknown> }[] = []
+  const permissionReads: { granted: boolean }[] = []
   const appStateListeners = new Set<(state: string) => void>()
   const clearListeners = new Set<() => void>()
   let record = options.record ?? null
@@ -186,6 +191,10 @@ function createHarness(
       return () => appStateListeners.delete(listener)
     },
     now: options.now ?? (() => NOW),
+    onPermissionRead: (permission) => {
+      permissionReads.push(permission)
+      if (options.failPermissionHook) throw new Error("consumer wedged")
+    },
     telemetry: {
       info: (event, context) => logs.push({ event, context }),
       warn: () => {},
@@ -197,6 +206,7 @@ function createHarness(
     adapter,
     deps,
     logs,
+    permissionReads,
     emitAppState: (state) => {
       for (const listener of [...appStateListeners]) listener(state)
     },
@@ -958,5 +968,93 @@ describe("the lapse reminder attach", () => {
       BOTH_IDENTIFIERS,
     )
     detach()
+  })
+})
+
+// U7/KTD9: push registration hangs off this hook, so it never performs a second
+// permission read. The pass already holds the answer, and a second read on every
+// foreground would double the native calls for nothing.
+describe("the injected permission-read hook (U7)", () => {
+  it("hands the granted permission to the hook, once per pass", async () => {
+    const harness = createHarness({ record: "the-birth-of-jesus" })
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+
+    await lifecycle.runPass("mount")
+    await settle()
+
+    expect(harness.permissionReads).toEqual([{ granted: true }])
+    expect(harness.adapter.permissionReads).toBe(1)
+  })
+
+  it("hands a denial to the hook too, which is what R29 reports on", async () => {
+    const harness = createHarness({ granted: false })
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+
+    await lifecycle.runPass("mount")
+    await settle()
+
+    expect(harness.permissionReads).toEqual([{ granted: false }])
+  })
+
+  it("fires on every pass, so a grant given in Settings is seen", async () => {
+    const harness = createHarness({ record: "the-birth-of-jesus" })
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+    const detach = lifecycle.attach()
+    await settle()
+
+    harness.emitAppState("active")
+    harness.emitAppState("background")
+    await settle()
+
+    expect(harness.permissionReads).toHaveLength(3)
+    detach()
+  })
+
+  it("stays silent when the permission read failed", async () => {
+    // A failed read is not a denial. Reporting one as a denial would take a
+    // phone out of every later audience over a transient fault.
+    const harness = createHarness({ failPermission: () => true })
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+
+    await lifecycle.runPass("mount")
+    await settle()
+
+    expect(harness.permissionReads).toEqual([])
+  })
+
+  it("schedules the reminders even when the hook throws", async () => {
+    // The reminders are the pass's job and push is a passenger. A consumer that
+    // throws synchronously must not cost a viewer their reminders.
+    const harness = createHarness({
+      record: "the-birth-of-jesus",
+      failPermissionHook: true,
+    })
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+
+    await lifecycle.runPass("mount")
+    await settle()
+
+    expect(identifiersOf(harness.adapter)).toEqual(BOTH_IDENTIFIERS)
+    expect(harness.logs).toEqual(
+      expect.arrayContaining([
+        {
+          event: "lapse_reminder.pass",
+          context: { pass_reason: "mount", outcome: "scheduled" },
+        },
+      ]),
+    )
+  })
+
+  it("runs without the hook at all, which is the reminders-only wiring", async () => {
+    const harness = createHarness({ record: "the-birth-of-jesus" })
+    const lifecycle = createLapseReminderLifecycle({
+      ...harness.deps,
+      onPermissionRead: undefined,
+    })
+
+    await lifecycle.runPass("mount")
+    await settle()
+
+    expect(identifiersOf(harness.adapter)).toEqual(BOTH_IDENTIFIERS)
   })
 })

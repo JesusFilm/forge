@@ -1,0 +1,715 @@
+/**
+ * The registration controller (R1 to R5, R29, KTD12). Pure, with every
+ * dependency injected: the token read, the language read, the identity read,
+ * the mutation, the clock and the debounce timer are all fakes here, so the
+ * whole decision surface tests with no native module and no network.
+ *
+ * The bound that matters most is R1's "once per launch". The lifecycle pass
+ * fires the permission hook on mount and on every foreground change, so the
+ * controller — not the caller — is what keeps one launch to one registration.
+ */
+
+import {
+  PUSH_REGISTRATION_DEBOUNCE_MS,
+  PUSH_REGISTRATION_MAX_ATTEMPTS,
+  PUSH_REGISTRATION_REFRESH_INTERVAL_MS,
+} from "../constants"
+import { hashPushRegistrationPayload } from "../payload"
+import type { PushRegistrationRecord } from "../store"
+import {
+  createPushRegistration,
+  type PushRegistrationDeps,
+} from "../registration"
+
+const NOW = 1_700_000_000_000
+
+const ENVIRONMENT = {
+  platform: "IOS" as const,
+  appBuild: "1.0.0+42",
+  phoneLocale: "en-US",
+  timeZone: "Pacific/Auckland",
+}
+
+const TOKEN = "ExponentPushToken[abc]"
+
+type Receipt = { testDeviceId: string; status: string }
+
+class FailureStub extends Error {
+  constructor(
+    readonly code: string,
+    readonly definitive: boolean,
+    readonly pushCode: string | null = null,
+  ) {
+    super(`push_${code.toLowerCase()}`)
+  }
+}
+
+function createHarness(
+  options: {
+    enabled?: boolean
+    stored?: Partial<PushRegistrationRecord> | null
+    token?: () => Promise<string | null>
+    appLanguageSlug?: string | null
+    identity?: { viewerToken: string; sessionToken: string } | null
+    register?: jest.Mock<Promise<Receipt>, [unknown]>
+    now?: () => number
+  } = {},
+) {
+  let record: PushRegistrationRecord | null =
+    options.stored == null
+      ? null
+      : {
+          version: 1,
+          testDeviceId: null,
+          payloadHash: null,
+          lastSuccessAt: null,
+          revocationReportedAt: null,
+          ...options.stored,
+        }
+  let appLanguageSlug: string | null = options.appLanguageSlug ?? "english"
+  let identity = options.identity ?? null
+  let token = TOKEN
+  const permissions: string[] = []
+  const events: { event: string; context: Record<string, unknown> }[] = []
+  const timers: (() => void)[] = []
+  let cancelled = 0
+
+  const register =
+    options.register ??
+    (jest.fn(async () => ({
+      testDeviceId: "abc12345",
+      status: "ACTIVE",
+    })) as unknown as jest.Mock<Promise<Receipt>, [unknown]>)
+
+  const deps: PushRegistrationDeps = {
+    enabled: options.enabled ?? true,
+    store: {
+      hydrate: async () => {
+        if (record == null) {
+          record = {
+            version: 1,
+            testDeviceId: null,
+            payloadHash: null,
+            lastSuccessAt: null,
+            revocationReportedAt: null,
+          }
+        }
+      },
+      getRecord: () => record,
+      recordSuccess: async ({ testDeviceId, payloadHash }) => {
+        record = {
+          version: 1,
+          testDeviceId,
+          payloadHash,
+          lastSuccessAt: deps.now(),
+          revocationReportedAt: null,
+        }
+      },
+      markRevocationReported: async () => {
+        record = {
+          version: 1,
+          testDeviceId: record?.testDeviceId ?? null,
+          payloadHash: record?.payloadHash ?? null,
+          lastSuccessAt: record?.lastSuccessAt ?? null,
+          revocationReportedAt: deps.now(),
+        }
+      },
+      setPermission: (next) => permissions.push(next),
+    },
+    readToken: options.token ?? (async () => token),
+    readAppLanguageSlug: async () => appLanguageSlug,
+    readIdentity: async () => identity,
+    readEnvironment: () => ENVIRONMENT,
+    register: register as unknown as PushRegistrationDeps["register"],
+    schedule: (run, ms) => {
+      expect(ms).toBe(PUSH_REGISTRATION_DEBOUNCE_MS)
+      timers.push(run)
+      const index = timers.length - 1
+      return () => {
+        cancelled += 1
+        timers[index] = () => undefined
+      }
+    },
+    now: options.now ?? (() => NOW),
+    telemetry: {
+      info: (event, context) => events.push({ event, context }),
+      warn: (event, context) => events.push({ event, context }),
+      error: (event, context) => events.push({ event, context }),
+    },
+  }
+
+  const registration = createPushRegistration(deps)
+
+  /** Fires every armed timer, then lets the async run settle. */
+  async function fire(): Promise<void> {
+    const pending = [...timers]
+    timers.length = 0
+    for (const run of pending) run()
+    for (let round = 0; round < 12; round += 1) await Promise.resolve()
+  }
+
+  return {
+    registration,
+    register,
+    events,
+    permissions,
+    get record() {
+      return record
+    },
+    get armed() {
+      return timers.length
+    },
+    get cancelled() {
+      return cancelled
+    },
+    setAppLanguageSlug: (next: string | null) => {
+      appLanguageSlug = next
+    },
+    setIdentity: (
+      next: { viewerToken: string; sessionToken: string } | null,
+    ) => {
+      identity = next
+    },
+    setToken: (next: string) => {
+      token = next
+    },
+    fire,
+    outcomes: () =>
+      events
+        .filter((entry) => entry.event === "push.registration")
+        .map((entry) => entry.context.push_outcome),
+  }
+}
+
+function payloadOf(register: jest.Mock, call = 0): Record<string, unknown> {
+  return register.mock.calls[call][0] as Record<string, unknown>
+}
+
+describe("the first registration of a launch", () => {
+  it("registers a granted phone with every field R2 names (AE1)", async () => {
+    const harness = createHarness()
+
+    harness.registration.onPermissionRead({ granted: true })
+    await harness.fire()
+
+    expect(harness.register).toHaveBeenCalledTimes(1)
+    expect(payloadOf(harness.register)).toEqual({
+      expoPushToken: TOKEN,
+      platform: "IOS",
+      appBuild: "1.0.0+42",
+      appLanguageSlug: "english",
+      phoneLocale: "en-US",
+      timeZone: "Pacific/Auckland",
+      permission: "granted",
+    })
+    expect(harness.record?.testDeviceId).toBe("abc12345")
+    expect(harness.outcomes()).toEqual(["registered"])
+    expect(harness.permissions).toEqual(["granted"])
+  })
+
+  it("registers nothing for a denied phone that never registered (AE2, R5)", async () => {
+    const harness = createHarness()
+
+    harness.registration.onPermissionRead({ granted: false })
+    await harness.fire()
+
+    expect(harness.register).not.toHaveBeenCalled()
+    expect(harness.permissions).toEqual(["denied"])
+  })
+
+  it("sends the viewer handle when the identity client has one", async () => {
+    const harness = createHarness({
+      identity: { viewerToken: "viewer-1", sessionToken: "session-1" },
+    })
+
+    harness.registration.onPermissionRead({ granted: true })
+    await harness.fire()
+
+    expect(payloadOf(harness.register)).toMatchObject({
+      viewerToken: "viewer-1",
+      sessionToken: "session-1",
+    })
+  })
+
+  it("sends no handle at all when the identity client is disabled", async () => {
+    const harness = createHarness({ identity: null })
+
+    harness.registration.onPermissionRead({ granted: true })
+    await harness.fire()
+
+    const payload = payloadOf(harness.register)
+    expect("viewerToken" in payload).toBe(false)
+    expect("sessionToken" in payload).toBe(false)
+  })
+
+  it("registers nothing when no push token can be read", async () => {
+    const harness = createHarness({ token: async () => null })
+
+    harness.registration.onPermissionRead({ granted: true })
+    await harness.fire()
+
+    expect(harness.register).not.toHaveBeenCalled()
+    expect(harness.outcomes()).toEqual(["no_token"])
+  })
+
+  it("registers nothing, and logs it, when the token read throws", async () => {
+    const harness = createHarness({
+      token: async () => {
+        throw new Error("Notification permissions have not been granted")
+      },
+    })
+
+    harness.registration.onPermissionRead({ granted: true })
+    await harness.fire()
+
+    expect(harness.register).not.toHaveBeenCalled()
+    expect(harness.outcomes()).toEqual(["no_token"])
+  })
+})
+
+describe("once per launch (R1)", () => {
+  it("calls the mutation once across ten foreground and background pairs", async () => {
+    const harness = createHarness()
+
+    for (let pair = 0; pair < 10; pair += 1) {
+      // Every pass fires the hook twice, and each pass is its own debounce
+      // window — so the debounce alone cannot explain one call.
+      harness.registration.onPermissionRead({ granted: true })
+      await harness.fire()
+      harness.registration.onPermissionRead({ granted: true })
+      await harness.fire()
+    }
+
+    expect(harness.register).toHaveBeenCalledTimes(1)
+  })
+
+  it("arms the debounce once per launch, so nineteen passes arm nothing", async () => {
+    // The mechanism, not just the count: a latch that only skipped the mutation
+    // would still arm a timer on every foreground for the life of the launch.
+    const harness = createHarness()
+
+    harness.registration.onPermissionRead({ granted: true })
+    expect(harness.armed).toBe(1)
+    await harness.fire()
+
+    for (let pass = 0; pass < 19; pass += 1) {
+      harness.registration.onPermissionRead({ granted: true })
+    }
+
+    expect(harness.armed).toBe(0)
+    await harness.fire()
+    expect(harness.register).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not re-register a launch whose registration failed for good", async () => {
+    // The falsification of the latch. The stored change key is what stops the
+    // repeat after a SUCCESS, so only a definitive failure can tell the latch
+    // apart from the payload-hash check.
+    const register = jest.fn(async () => {
+      throw new FailureStub("BAD_USER_INPUT", true)
+    }) as unknown as jest.Mock<Promise<Receipt>, [unknown]>
+    const harness = createHarness({ register })
+
+    for (let pass = 0; pass < 10; pass += 1) {
+      harness.registration.onPermissionRead({ granted: true })
+      await harness.fire()
+    }
+
+    expect(register).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("the payload change key (R3)", () => {
+  it("skips the call when nothing changed since the stored success", async () => {
+    const stored = hashPushRegistrationPayload({
+      expoPushToken: TOKEN,
+      platform: "IOS",
+      appBuild: "1.0.0+42",
+      appLanguageSlug: "english",
+      phoneLocale: "en-US",
+      timeZone: "Pacific/Auckland",
+      permission: "granted",
+    })
+    const harness = createHarness({
+      stored: {
+        testDeviceId: "abc12345",
+        payloadHash: stored,
+        lastSuccessAt: NOW - 1_000,
+      },
+    })
+
+    harness.registration.onPermissionRead({ granted: true })
+    await harness.fire()
+
+    expect(harness.register).not.toHaveBeenCalled()
+    expect(harness.outcomes()).toEqual(["unchanged"])
+  })
+
+  it("re-registers when the stored success is older than the refresh window", async () => {
+    const stored = hashPushRegistrationPayload({
+      expoPushToken: TOKEN,
+      platform: "IOS",
+      appBuild: "1.0.0+42",
+      appLanguageSlug: "english",
+      phoneLocale: "en-US",
+      timeZone: "Pacific/Auckland",
+      permission: "granted",
+    })
+    const staleAt = NOW - 31 * 24 * 60 * 60 * 1_000
+    const freshAt = NOW - 6 * 24 * 60 * 60 * 1_000
+
+    const stale = createHarness({
+      stored: { payloadHash: stored, lastSuccessAt: staleAt },
+    })
+    stale.registration.onPermissionRead({ granted: true })
+    await stale.fire()
+    expect(stale.register).toHaveBeenCalledTimes(1)
+
+    const fresh = createHarness({
+      stored: { payloadHash: stored, lastSuccessAt: freshAt },
+    })
+    fresh.registration.onPermissionRead({ granted: true })
+    await fresh.fire()
+    expect(fresh.register).not.toHaveBeenCalled()
+    // Anti-vacuous: the six-day fixture really sits inside the window and the
+    // thirty-one-day one really sits outside it, whatever the constant becomes.
+    expect(NOW - freshAt).toBeLessThan(PUSH_REGISTRATION_REFRESH_INTERVAL_MS)
+    expect(NOW - staleAt).toBeGreaterThan(PUSH_REGISTRATION_REFRESH_INTERVAL_MS)
+  })
+
+  it("refreshes with the new slug when the app language changes (AE3)", async () => {
+    const harness = createHarness()
+    harness.registration.onPermissionRead({ granted: true })
+    await harness.fire()
+
+    harness.setAppLanguageSlug("arabic")
+    harness.registration.appLanguageChanged()
+    await harness.fire()
+
+    expect(harness.register).toHaveBeenCalledTimes(2)
+    expect(payloadOf(harness.register, 1).appLanguageSlug).toBe("arabic")
+  })
+
+  it("calls the mutation once for one language pick that writes three fields", async () => {
+    // The watch preferences write the dub slug, the subtitle slug and the
+    // cached subtitle name in one handler, so the provider notifies three times.
+    const harness = createHarness()
+    harness.registration.onPermissionRead({ granted: true })
+    await harness.fire()
+
+    harness.setAppLanguageSlug("french")
+    harness.registration.appLanguageChanged()
+    harness.registration.appLanguageChanged()
+    harness.registration.appLanguageChanged()
+    await harness.fire()
+
+    expect(harness.register).toHaveBeenCalledTimes(2)
+    expect(payloadOf(harness.register, 1).appLanguageSlug).toBe("french")
+  })
+
+  it("sends nothing when a preference change leaves the app language alone", async () => {
+    const harness = createHarness()
+    harness.registration.onPermissionRead({ granted: true })
+    await harness.fire()
+
+    harness.registration.appLanguageChanged()
+    await harness.fire()
+
+    expect(harness.register).toHaveBeenCalledTimes(1)
+    expect(harness.outcomes()).toEqual(["registered", "unchanged"])
+  })
+
+  it("refreshes with the rotated token", async () => {
+    const harness = createHarness()
+    harness.registration.onPermissionRead({ granted: true })
+    await harness.fire()
+
+    harness.registration.tokenRotated("ExponentPushToken[rotated]")
+    await harness.fire()
+
+    expect(harness.register).toHaveBeenCalledTimes(2)
+    expect(payloadOf(harness.register, 1).expoPushToken).toBe(
+      "ExponentPushToken[rotated]",
+    )
+  })
+
+  it("refreshes when the viewer identity is re-issued", async () => {
+    const harness = createHarness()
+    harness.registration.onPermissionRead({ granted: true })
+    await harness.fire()
+
+    harness.setIdentity({ viewerToken: "viewer-2", sessionToken: "session-2" })
+    harness.registration.viewerIdentityChanged()
+    await harness.fire()
+
+    expect(harness.register).toHaveBeenCalledTimes(2)
+    expect(payloadOf(harness.register, 1)).toMatchObject({
+      viewerToken: "viewer-2",
+    })
+  })
+
+  it("coalesces a rotation, a language change and a re-issue into one call", async () => {
+    const harness = createHarness()
+    harness.registration.onPermissionRead({ granted: true })
+    await harness.fire()
+
+    harness.setAppLanguageSlug("korean")
+    harness.setIdentity({ viewerToken: "viewer-3", sessionToken: "session-3" })
+    harness.registration.tokenRotated("ExponentPushToken[rotated]")
+    harness.registration.appLanguageChanged()
+    harness.registration.viewerIdentityChanged()
+    await harness.fire()
+
+    expect(harness.register).toHaveBeenCalledTimes(2)
+    expect(payloadOf(harness.register, 1)).toMatchObject({
+      expoPushToken: "ExponentPushToken[rotated]",
+      appLanguageSlug: "korean",
+      viewerToken: "viewer-3",
+    })
+  })
+})
+
+describe("a failed registration (AE19, R4)", () => {
+  it("resolves without throwing and records the failure", async () => {
+    const register = jest.fn(async () => {
+      throw new FailureStub("NETWORK_ERROR", false)
+    }) as unknown as jest.Mock<Promise<Receipt>, [unknown]>
+    const harness = createHarness({ register })
+
+    harness.registration.onPermissionRead({ granted: true })
+    await expect(harness.fire()).resolves.toBeUndefined()
+
+    expect(
+      harness.events.filter(
+        (entry) => entry.event === "push.registration_failed",
+      ),
+    ).toHaveLength(1)
+    expect(harness.record?.testDeviceId ?? null).toBeNull()
+  })
+
+  it("retries a transient failure up to the attempt cap, then stops", async () => {
+    const register = jest.fn(async () => {
+      throw new FailureStub("TIMEOUT", false)
+    }) as unknown as jest.Mock<Promise<Receipt>, [unknown]>
+    const harness = createHarness({ register })
+
+    harness.registration.onPermissionRead({ granted: true })
+    for (let round = 0; round < 6; round += 1) await harness.fire()
+
+    expect(register).toHaveBeenCalledTimes(PUSH_REGISTRATION_MAX_ATTEMPTS)
+    expect(harness.armed).toBe(0)
+  })
+
+  it("does not retry a rate limit in the same launch", async () => {
+    const register = jest.fn(async () => {
+      throw new FailureStub("RATE_LIMITED", false)
+    }) as unknown as jest.Mock<Promise<Receipt>, [unknown]>
+    const harness = createHarness({ register })
+
+    harness.registration.onPermissionRead({ granted: true })
+    for (let round = 0; round < 4; round += 1) await harness.fire()
+
+    expect(register).toHaveBeenCalledTimes(1)
+    expect(harness.armed).toBe(0)
+    expect(
+      harness.events.some(
+        (entry) =>
+          entry.event === "push.registration_failed" &&
+          entry.context.push_code === "RATE_LIMITED" &&
+          entry.context.push_will_retry === false,
+      ),
+    ).toBe(true)
+  })
+
+  it("does not retry a retired token", async () => {
+    // Admin refuses a token it has retired for 90 days, so asking again in this
+    // launch can only fail the same way.
+    const register = jest.fn(async () => {
+      throw new FailureStub("BAD_USER_INPUT", true, "invalid_token_status")
+    }) as unknown as jest.Mock<Promise<Receipt>, [unknown]>
+    const harness = createHarness({ register })
+
+    harness.registration.onPermissionRead({ granted: true })
+    for (let round = 0; round < 4; round += 1) await harness.fire()
+
+    expect(register).toHaveBeenCalledTimes(1)
+    expect(
+      harness.events.some(
+        (entry) =>
+          entry.event === "push.registration_failed" &&
+          entry.context.push_server_code === "invalid_token_status",
+      ),
+    ).toBe(true)
+  })
+})
+
+describe("a revoked permission (AE20, R29)", () => {
+  const STORED = {
+    testDeviceId: "abc12345",
+    payloadHash: "0123456789abcdef",
+    lastSuccessAt: NOW - 1_000,
+  }
+
+  it("reports the revocation once for a phone that had registered", async () => {
+    const harness = createHarness({ stored: STORED })
+
+    harness.registration.onPermissionRead({ granted: false })
+    await harness.fire()
+
+    expect(harness.register).toHaveBeenCalledTimes(1)
+    expect(payloadOf(harness.register)).toMatchObject({
+      expoPushToken: TOKEN,
+      permission: "denied",
+    })
+    // The handle is deliberately absent: admin binds the row by token, and the
+    // stored digest already carries the viewer.
+    expect("viewerToken" in payloadOf(harness.register)).toBe(false)
+    expect(harness.record?.revocationReportedAt).toBe(NOW)
+  })
+
+  it("reports it once however many passes read the denial", async () => {
+    const harness = createHarness({ stored: STORED })
+
+    for (let pass = 0; pass < 10; pass += 1) {
+      harness.registration.onPermissionRead({ granted: false })
+      await harness.fire()
+    }
+
+    expect(harness.register).toHaveBeenCalledTimes(1)
+  })
+
+  it("reports nothing on the next launch (the falsification of once)", async () => {
+    // A fresh controller over the SAME stored record is what a later launch is.
+    const harness = createHarness({
+      stored: { ...STORED, revocationReportedAt: NOW - 500 },
+    })
+
+    harness.registration.onPermissionRead({ granted: false })
+    await harness.fire()
+
+    expect(harness.register).not.toHaveBeenCalled()
+  })
+
+  it("reports it while the kill switch is off (KTD12)", async () => {
+    const harness = createHarness({ enabled: false, stored: STORED })
+
+    harness.registration.onPermissionRead({ granted: false })
+    await harness.fire()
+
+    expect(harness.register).toHaveBeenCalledTimes(1)
+    expect(payloadOf(harness.register)).toMatchObject({ permission: "denied" })
+  })
+
+  it("leaves the report unmarked when it fails, so a later launch retries", async () => {
+    const register = jest.fn(async () => {
+      throw new FailureStub("NETWORK_ERROR", false)
+    }) as unknown as jest.Mock<Promise<Receipt>, [unknown]>
+    const harness = createHarness({ stored: STORED, register })
+
+    harness.registration.onPermissionRead({ granted: false })
+    await harness.fire()
+
+    expect(register).toHaveBeenCalledTimes(1)
+    expect(harness.record?.revocationReportedAt ?? null).toBeNull()
+  })
+
+  it("re-registers when a later pass in the same launch finds the grant back", async () => {
+    const harness = createHarness({ stored: STORED })
+    harness.registration.onPermissionRead({ granted: false })
+    await harness.fire()
+
+    harness.registration.onPermissionRead({ granted: true })
+    await harness.fire()
+
+    expect(harness.register).toHaveBeenCalledTimes(2)
+    expect(payloadOf(harness.register, 1)).toMatchObject({
+      permission: "granted",
+    })
+  })
+})
+
+describe("a grant is the precondition for every registration (R5)", () => {
+  it("registers nothing for a trigger that arrives before any permission read", async () => {
+    // The provider publishes the app language as soon as the preferences
+    // hydrate, which can beat the first pass. Registering then would send a
+    // `granted` payload for a phone whose permission nobody has read.
+    const harness = createHarness()
+
+    harness.registration.appLanguageChanged()
+    harness.registration.tokenRotated("ExponentPushToken[rotated]")
+    harness.registration.viewerIdentityChanged()
+    await harness.fire()
+
+    expect(harness.register).not.toHaveBeenCalled()
+  })
+
+  it("registers nothing on a change while the permission is denied", async () => {
+    const harness = createHarness({
+      stored: { testDeviceId: "abc12345", lastSuccessAt: NOW - 1_000 },
+    })
+    harness.registration.onPermissionRead({ granted: false })
+    await harness.fire()
+    harness.register.mockClear()
+
+    harness.setAppLanguageSlug("arabic")
+    harness.registration.appLanguageChanged()
+    await harness.fire()
+
+    expect(harness.register).not.toHaveBeenCalled()
+  })
+
+  it("sends no armed registration once a pass has read the denial", async () => {
+    // The viewer can revoke inside the two-second window. Both halves matter:
+    // the armed timer is cancelled, and a run already past it re-reads.
+    const harness = createHarness({
+      stored: { testDeviceId: "abc12345", lastSuccessAt: NOW - 1_000 },
+    })
+    harness.registration.onPermissionRead({ granted: true })
+    expect(harness.armed).toBe(1)
+
+    harness.registration.onPermissionRead({ granted: false })
+    await harness.fire()
+
+    expect(harness.cancelled).toBe(1)
+    // Only the revocation, never a `granted` payload after the denial.
+    expect(harness.register).toHaveBeenCalledTimes(1)
+    expect(payloadOf(harness.register)).toMatchObject({ permission: "denied" })
+  })
+
+  it("registers on a change once a pass has read the grant", async () => {
+    const harness = createHarness()
+    harness.registration.onPermissionRead({ granted: true })
+    await harness.fire()
+
+    harness.setAppLanguageSlug("arabic")
+    harness.registration.appLanguageChanged()
+    await harness.fire()
+
+    expect(harness.register).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe("the kill switch (KTD12)", () => {
+  it("performs no first registration while it is off", async () => {
+    const harness = createHarness({ enabled: false })
+
+    harness.registration.onPermissionRead({ granted: true })
+    await harness.fire()
+
+    expect(harness.register).not.toHaveBeenCalled()
+    expect(harness.outcomes()).toEqual(["gate_off"])
+    // The permission label still reaches the store, so Profile keeps working.
+    expect(harness.permissions).toEqual(["granted"])
+  })
+
+  it("performs no refresh on a rotation or a language change either", async () => {
+    const harness = createHarness({ enabled: false })
+
+    harness.registration.tokenRotated("ExponentPushToken[rotated]")
+    harness.registration.appLanguageChanged()
+    harness.registration.viewerIdentityChanged()
+    await harness.fire()
+
+    expect(harness.register).not.toHaveBeenCalled()
+  })
+})

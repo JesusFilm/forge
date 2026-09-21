@@ -45,10 +45,25 @@ const EXPECTED_OPTIONS = {
 const MIN_MARK_WIDTH_FRACTION = 0.6
 
 // Both must stay UNSET — see the premises above for what each one would turn on.
+//
+// U7 does NOT change this. Registration reads the project id from
+// `extra.eas.projectId` at runtime, and the foreground banner for an
+// announcement is a decision the handler makes, not a background mode: the app
+// still processes no notification while it is not running.
 const FORBIDDEN_OPTION_KEYS = [
   "defaultChannel",
   "enableBackgroundRemoteNotifications",
 ]
+
+// U7: Android needs the Firebase app config to register with FCM at all, and
+// the config is referenced from here. It is a Firebase-console download, so it
+// is NOT committed — a placeholder would build fine and fail registration
+// silently on device. `expo prebuild --platform android` refuses while the file
+// is absent, which is the gate that makes the missing download visible. That
+// refusal is `setGoogleServicesFile` in @expo/config-plugins, which throws
+// "Cannot copy google-services.json from …" (read from the installed package
+// on 2026-09-21; no prebuild was run here).
+const ANDROID_GOOGLE_SERVICES_FILE = "./google-services.json"
 
 // Google Play restricts these to alarm and calendar apps. R6 tolerates the
 // module's own inexact-alarm fallback instead, so neither may ever appear.
@@ -298,6 +313,19 @@ describe("the notifications plugin declares no more than local reminders need", 
         permission.replace("android.permission.", ""),
       )
     }
+  })
+
+  it("names the Android Firebase config the FCM registration needs (U7)", () => {
+    // Without this key an Android build registers no push token, and nothing in
+    // the app or the build log says why: the token read just answers nothing.
+    expect(readAppJson().expo.android?.googleServicesFile).toBe(
+      ANDROID_GOOGLE_SERVICES_FILE,
+    )
+  })
+
+  it("keeps the EAS project id the token read resolves (U7/KTD9)", () => {
+    // `getExpoPushTokenAsync` needs it, and the adapter reads it from here.
+    expect(typeof readAppJson().expo.extra?.eas?.projectId).toBe("string")
   })
 
   it("does NOT block the notification permission the module contributes", () => {

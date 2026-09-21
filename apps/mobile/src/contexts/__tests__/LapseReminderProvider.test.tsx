@@ -24,9 +24,14 @@ jest.mock("../../lib/lapseReminders/notificationsAdapter", () => {
   // out-of-scope check, so this factory keeps no listener registry: the test
   // fires the listener the provider handed to the mock.
   const unsubscribeResponses = jest.fn()
+  const unsubscribeTokenRotation = jest.fn()
   return {
     lapseReminderNotifications: {
       ensureChannel: jest.fn(async () => {}),
+      // U7's push port on the same adapter (KTD9).
+      ensureAnnouncementsChannel: jest.fn(async () => {}),
+      getPushToken: jest.fn(async () => "ExponentPushToken[abc]"),
+      subscribeToTokenRotation: jest.fn(() => unsubscribeTokenRotation),
       getPermission: jest.fn(async () => ({
         granted: true,
         canAskAgain: false,
@@ -43,6 +48,36 @@ jest.mock("../../lib/lapseReminders/notificationsAdapter", () => {
       subscribeToResponses: jest.fn(() => unsubscribeResponses),
     },
     __unsubscribeResponses: unsubscribeResponses,
+    __unsubscribeTokenRotation: unsubscribeTokenRotation,
+  }
+})
+// The push mutation: the wiring under test is adapter → controller → client, so
+// only the network call itself is doubled.
+jest.mock("../../lib/push/registrationClient", () => ({
+  registerPushDevice: jest.fn(async () => ({
+    testDeviceId: "abc12345",
+    status: "ACTIVE",
+  })),
+}))
+// The viewer identity store needs SecureStore, and minting a handle is not what
+// these cases are about.
+jest.mock("../../lib/recommendations/viewerIdentityClient", () => {
+  const listeners = new Set<() => void>()
+  const store = {
+    get: async () => ({ kind: "disabled" as const }),
+    subscribe: (listener: () => void) => {
+      listeners.add(listener)
+      return () => {
+        listeners.delete(listener)
+      }
+    },
+  }
+  return {
+    getRecommendationViewerStore: () => store,
+    __emitIdentityChange: () => {
+      for (const listener of [...listeners]) listener()
+    },
+    __identityListenerCount: () => listeners.size,
   }
 })
 // The imperative router: the provider navigates from a timer and from a native
@@ -151,6 +186,7 @@ import { router } from "expo-router"
 
 import { LapseReminderProvider } from "../LapseReminderProvider"
 import { ExperienceSelectionProvider } from "../ExperienceSelectionProvider"
+import { WatchPreferencesProvider } from "../WatchPreferencesProvider"
 import {
   consumeDeepLinkArrival,
   resetDeepLinkOrigins,
@@ -164,6 +200,16 @@ import { LAPSE_REMINDER_PERMISSION_ASKED_VALUE } from "../../lib/lapseReminders/
 import { lapseReminderNotifications } from "../../lib/lapseReminders/notificationsAdapter"
 import { datadogLog } from "../../lib/datadog"
 import { getLastWatchedStore } from "../../lib/lastWatched/store"
+import {
+  PUSH_ANNOUNCEMENTS_CHANNEL_ID,
+  PUSH_REGISTRATION_DEBOUNCE_MS,
+  PUSH_REGISTRATION_STORAGE_KEY,
+} from "../../lib/push/constants"
+import { resetPushAppLanguageForTests } from "../../lib/push/appLanguage"
+import { registerPushDevice } from "../../lib/push/registrationClient"
+import { resetPushRegistrationForTests } from "../../lib/push/registrationHost"
+import { resetPushRegistrationStoreForTests } from "../../lib/push/store"
+import { WATCH_PREFERENCES_STORAGE_KEY } from "../../lib/watchPreferences"
 import {
   TestRenderer,
   type NodeRequireLike,
@@ -191,6 +237,9 @@ const lapseConstants = jest.requireMock(
 
 const adapter = lapseReminderNotifications as unknown as {
   ensureChannel: jest.Mock
+  ensureAnnouncementsChannel: jest.Mock
+  getPushToken: jest.Mock
+  subscribeToTokenRotation: jest.Mock
   getPermission: jest.Mock
   requestPermission: jest.Mock
   schedule: jest.Mock
@@ -205,6 +254,7 @@ const notificationsModule = (require as unknown as NodeRequireLike)(
   "../../lib/lapseReminders/notificationsAdapter",
 ) as {
   __unsubscribeResponses: jest.Mock
+  __unsubscribeTokenRotation: jest.Mock
 }
 
 /** Fires a warm tap through every listener the provider has subscribed. A
@@ -228,9 +278,13 @@ const appStateListeners = new Set<(state: AppStateStatus) => void>()
 async function render(strict = false): Promise<TestInstance> {
   let renderer!: TestInstance
   await act(async () => {
+    // Inside WatchPreferencesProvider, as app/_layout.tsx mounts it: the
+    // provider reads the dub-language preference for the push payload (U7).
     const tree = (
       <ExperienceSelectionProvider>
-        <LapseReminderProvider>{null}</LapseReminderProvider>
+        <WatchPreferencesProvider>
+          <LapseReminderProvider>{null}</LapseReminderProvider>
+        </WatchPreferencesProvider>
       </ExperienceSelectionProvider>
     )
     renderer = TestRenderer.create(
@@ -259,6 +313,11 @@ async function flush() {
 
 beforeEach(async () => {
   jest.clearAllMocks()
+  // The push controller, its record store and the published app language are
+  // module singletons: they outlive one test's render.
+  resetPushRegistrationForTests()
+  resetPushRegistrationStoreForTests()
+  resetPushAppLanguageForTests()
   // The ON value, not the file's: flipping the real switch is an OTA-speed
   // emergency lever, and it must not turn this suite red.
   lapseConstants.LAPSE_REMINDERS_ENABLED = true
@@ -440,9 +499,11 @@ describe("LapseReminderProvider wiring", () => {
     await act(async () => {
       renderer = TestRenderer.create(
         <ExperienceSelectionProvider>
-          <LapseReminderProvider>
-            <>{null}</>
-          </LapseReminderProvider>
+          <WatchPreferencesProvider>
+            <LapseReminderProvider>
+              <>{null}</>
+            </LapseReminderProvider>
+          </WatchPreferencesProvider>
         </ExperienceSelectionProvider>,
       )
     })
@@ -693,6 +754,187 @@ describe("the reminder tap (U6)", () => {
 
     expect(notificationsModule.__unsubscribeResponses).toHaveBeenCalledTimes(1)
     expect(fakeRouter.push).not.toHaveBeenCalled()
+  })
+})
+
+// U7: the push wiring, driven through the REAL controller, the REAL record
+// store and the REAL app-language bridge. Only the mutation, the native adapter
+// and the viewer identity store are doubled, so these cases fail when the
+// provider stops passing something the registration cannot run without.
+describe("push registration (U7)", () => {
+  const registerMock = jest.mocked(registerPushDevice)
+
+  /** The debounce is a real timer, so the window has to be advanced. */
+  async function settlePush() {
+    await act(async () => {
+      jest.advanceTimersByTime(PUSH_REGISTRATION_DEBOUNCE_MS)
+    })
+    await flush()
+  }
+
+  beforeEach(() => {
+    jest.useFakeTimers()
+    registerMock.mockResolvedValue({
+      testDeviceId: "abc12345",
+      status: "ACTIVE",
+    })
+  })
+
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
+  it("registers the phone once, with the payload R2 names", async () => {
+    const renderer = await render()
+
+    await settlePush()
+
+    expect(registerMock).toHaveBeenCalledTimes(1)
+    expect(registerMock.mock.calls[0][0]).toMatchObject({
+      expoPushToken: "ExponentPushToken[abc]",
+      permission: "granted",
+    })
+    // Never the token: Profile shows the test ID admin answered with.
+    expect(
+      JSON.parse(
+        (await AsyncStorage.getItem(PUSH_REGISTRATION_STORAGE_KEY)) ?? "{}",
+      ).testDeviceId,
+    ).toBe("abc12345")
+    await act(async () => renderer.unmount())
+  })
+
+  it("creates the announcements channel on the same pass (KTD9)", async () => {
+    const renderer = await render()
+    await settlePush()
+
+    expect(adapter.ensureAnnouncementsChannel).toHaveBeenCalled()
+    expect(PUSH_ANNOUNCEMENTS_CHANNEL_ID).toBe("announcements")
+    await act(async () => renderer.unmount())
+  })
+
+  it("carries the viewer's dub language, read through the preferences", async () => {
+    // The whole context path: the preferences provider hydrates from storage,
+    // the provider publishes the slug, and the payload carries it.
+    await AsyncStorage.setItem(
+      WATCH_PREFERENCES_STORAGE_KEY,
+      JSON.stringify({ audioLanguageSlug: "arabic" }),
+    )
+    const renderer = await render()
+
+    await settlePush()
+
+    expect(registerMock).toHaveBeenCalledTimes(1)
+    expect(registerMock.mock.calls[0][0]).toMatchObject({
+      appLanguageSlug: "arabic",
+    })
+    await act(async () => renderer.unmount())
+  })
+
+  it("registers once across a StrictMode remount", async () => {
+    const renderer = await render(true)
+    // Anti-vacuous: two mount passes prove the effect cycle really ran
+    // setup → cleanup → setup, so one registration is a result, not an accident.
+    expect(adapter.getPermission).toHaveBeenCalledTimes(2)
+
+    await settlePush()
+
+    expect(registerMock).toHaveBeenCalledTimes(1)
+    await act(async () => renderer.unmount())
+  })
+
+  it("refreshes on a rotated token, and stops listening on unmount", async () => {
+    const renderer = await render()
+    await settlePush()
+    const rotate = adapter.subscribeToTokenRotation.mock.calls[0][0] as (
+      token: string,
+    ) => void
+
+    await act(async () => {
+      rotate("ExponentPushToken[rotated]")
+    })
+    await settlePush()
+
+    expect(registerMock).toHaveBeenCalledTimes(2)
+    expect(registerMock.mock.calls[1][0]).toMatchObject({
+      expoPushToken: "ExponentPushToken[rotated]",
+    })
+
+    await act(async () => renderer.unmount())
+    expect(
+      notificationsModule.__unsubscribeTokenRotation,
+    ).toHaveBeenCalledTimes(1)
+  })
+
+  it("refreshes when the viewer identity is re-issued, and unsubscribes", async () => {
+    const identity = (require as unknown as NodeRequireLike)(
+      "../../lib/recommendations/viewerIdentityClient",
+    ) as {
+      __emitIdentityChange: () => void
+      __identityListenerCount: () => number
+    }
+    const renderer = await render()
+    await settlePush()
+    expect(identity.__identityListenerCount()).toBe(1)
+
+    // The payload changes only because the token read now answers differently;
+    // the re-issue itself is what must reach the controller.
+    adapter.getPushToken.mockResolvedValue("ExponentPushToken[second]")
+    await act(async () => {
+      identity.__emitIdentityChange()
+    })
+    await settlePush()
+
+    expect(registerMock).toHaveBeenCalledTimes(2)
+    await act(async () => renderer.unmount())
+    expect(identity.__identityListenerCount()).toBe(0)
+  })
+
+  it("reports a revocation once and registers nothing (AE20)", async () => {
+    await AsyncStorage.setItem(
+      PUSH_REGISTRATION_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        testDeviceId: "abc12345",
+        payloadHash: "0123456789abcdef",
+        lastSuccessAt: Date.now() - 1_000,
+        revocationReportedAt: null,
+      }),
+    )
+    adapter.getPermission.mockResolvedValue({
+      granted: false,
+      canAskAgain: false,
+    })
+    const renderer = await render()
+
+    await settlePush()
+    await emitAppState("active")
+    await settlePush()
+
+    expect(registerMock).toHaveBeenCalledTimes(1)
+    expect(registerMock.mock.calls[0][0]).toMatchObject({
+      permission: "denied",
+    })
+    expect(
+      JSON.parse(
+        (await AsyncStorage.getItem(PUSH_REGISTRATION_STORAGE_KEY)) ?? "{}",
+      ).revocationReportedAt,
+    ).toBeGreaterThan(0)
+    await act(async () => renderer.unmount())
+  })
+
+  it("never shows a failure to the viewer (AE19, R4)", async () => {
+    registerMock.mockRejectedValue(new Error("network down"))
+    const renderer = await render()
+
+    await settlePush()
+
+    // The reminders still scheduled, and the tree still renders.
+    expect(scheduledIdentifiers()).toEqual([
+      LAPSE_REMINDER_IDENTIFIERS.day1,
+      LAPSE_REMINDER_IDENTIFIERS.day7,
+    ])
+    expect(renderer.toJSON()).toBeNull()
+    await act(async () => renderer.unmount())
   })
 })
 
