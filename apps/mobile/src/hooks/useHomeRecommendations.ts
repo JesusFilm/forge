@@ -59,6 +59,13 @@ export type HomeRecommendationsController = {
 
 const NOOP = () => {}
 
+/**
+ * KTD5, KTD12: event-driven triggers inside this window collapse into one
+ * refetch, so a return from a watch route plus a pull-to-refresh cannot spend
+ * the viewer's whole evidence budget on duplicate slates.
+ */
+export const REFRESH_COALESCE_WINDOW_MS = 2_000
+
 export function useHomeRecommendations(
   options: UseHomeRecommendationsOptions,
   client: UserRecommendationsClient = getUserRecommendationsClient(),
@@ -84,9 +91,38 @@ export function useHomeRecommendations(
     run()
   }, [])
 
+  // One window for every trigger, so no entry point keeps its own.
+  const lastRefetchAtRef = useRef(Number.NEGATIVE_INFINITY)
+  const runAndSpendWindow = useCallback((run: () => void) => {
+    lastRefetchAtRef.current = Date.now()
+    run()
+  }, [])
+
+  /** KTD5: a trigger that lands inside another one's window is dropped. */
+  const runCoalesced = useCallback(
+    (run: () => void) => {
+      const since = Date.now() - lastRefetchAtRef.current
+      if (since < REFRESH_COALESCE_WINDOW_MS) return
+      runAndSpendWindow(run)
+    },
+    [runAndSpendWindow],
+  )
+
+  // The held release and R16's expiry timer spend the window but are never
+  // dropped by it: each one is the only trigger its own signal will produce.
+  const refetchAlways = useCallback(
+    () => runAndSpendWindow(() => innerRefreshRef.current()),
+    [runAndSpendWindow],
+  )
+
   const refresh = useCallback(
-    () => runOrHold(() => innerRefreshRef.current()),
-    [runOrHold],
+    () => runOrHold(() => runCoalesced(() => innerRefreshRef.current())),
+    [runOrHold, runCoalesced],
+  )
+
+  const refreshOnExpiry = useCallback(
+    () => runOrHold(refetchAlways),
+    [runOrHold, refetchAlways],
   )
 
   // The inner hook's own profile subscription is routed through the hold, so a
@@ -95,9 +131,11 @@ export function useHomeRecommendations(
     () => ({
       ...client,
       subscribeProfile: (listener) =>
-        client.subscribeProfile?.(() => runOrHold(listener)) ?? NOOP,
+        client.subscribeProfile?.(() =>
+          runOrHold(() => runCoalesced(listener)),
+        ) ?? NOOP,
     }),
-    [client, runOrHold],
+    [client, runOrHold, runCoalesced],
   )
 
   const [latched, setLatched] = useState(false)
@@ -116,8 +154,8 @@ export function useHomeRecommendations(
     }
     if (!heldRef.current) return
     heldRef.current = false
-    innerRefreshRef.current()
-  }, [focused, latched])
+    refetchAlways()
+  }, [focused, latched, refetchAlways])
 
   const enabled = latched && gateOpen
   const recommendations = useUserRecommendations(
@@ -151,9 +189,12 @@ export function useHomeRecommendations(
     if (!enabled || expiresAt == null) return
     const deadline = Date.parse(expiresAt)
     if (!Number.isFinite(deadline)) return
-    const timer = setTimeout(refresh, Math.max(0, deadline - Date.now()))
+    const timer = setTimeout(
+      refreshOnExpiry,
+      Math.max(0, deadline - Date.now()),
+    )
     return () => clearTimeout(timer)
-  }, [enabled, expiresAt, refresh])
+  }, [enabled, expiresAt, refreshOnExpiry])
 
   const { status, recordRender, recordImpression, select } = recommendations
 

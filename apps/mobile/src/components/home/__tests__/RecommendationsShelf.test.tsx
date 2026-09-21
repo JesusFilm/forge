@@ -56,6 +56,9 @@ jest.mock("expo-router", () => {
   return {
     useRouter: () => router,
     useNavigation: () => navigation,
+    // Home's return-from-watch effect reads this (feat-517 KTD5). A constant
+    // route keeps this suite's transitions out of the slate's refresh path.
+    useSegments: () => ["(tabs)", "index"],
     __router: router,
     __fireNavigation: (event: string) =>
       (listeners[event] ?? []).forEach((fn) => fn()),

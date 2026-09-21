@@ -396,6 +396,180 @@ describe("the expiry timer", () => {
     await flush()
     expect(c.fetch).toHaveBeenCalledTimes(2)
   })
+
+  // R16: the expiry timer is the LAST retry a dead slate has. A sibling
+  // refetch that failed leaves `expiresAt` unchanged, so the effect schedules
+  // nothing new — dropping this one into the coalescing window would strand
+  // the shelf on expired capabilities until some other trigger happened.
+  it("still fires on expiry after a failed refetch inside the window", async () => {
+    jest.useFakeTimers()
+    let served = 0
+    const c = client({
+      fetch: jest.fn(async () => {
+        served += 1
+        if (served === 2) {
+          return {
+            kind: "unavailable",
+            reason: "coverage_unavailable",
+            retryable: false,
+          } as DeliveryResult
+        }
+        return {
+          kind: "served",
+          slate: slate(
+            `req-${served}`,
+            new Date(Date.now() + EXPIRY_MS).toISOString(),
+          ),
+        } as DeliveryResult
+      }),
+    })
+    const hook = await servedWithExpiry(c)
+    expect(c.fetch).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      jest.advanceTimersByTime(EXPIRY_MS - 1_000)
+    })
+    act(() => hook.latest().refresh())
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
+    expect(hook.latest().slate?.requestId).toBe("req-1")
+
+    await act(async () => {
+      jest.advanceTimersByTime(1_000)
+    })
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(3)
+  })
+
+  // R17: the viewer sits on the Discover tab long enough for the slate to
+  // expire. Home is mounted the whole time, so the timer fires on a blurred
+  // screen and the refetch waits for the tab switch back.
+  it("expires on another tab and refetches exactly once on return", async () => {
+    jest.useFakeTimers()
+    const c = expiringClient()
+    const hook = await servedWithExpiry(c)
+    hook.rerender({ gateOpen: true, focused: false })
+
+    await act(async () => {
+      jest.advanceTimersByTime(EXPIRY_MS * 3)
+    })
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(1)
+
+    hook.rerender(OPEN)
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
+
+    // The held refetch served a fresh slate, so its own timer is the only one
+    // left: nothing more may land until that one expires.
+    await act(async () => {
+      jest.advanceTimersByTime(EXPIRY_MS - 1)
+    })
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe("the coalescing window (KTD5, KTD12)", () => {
+  async function served(c: TestClient) {
+    const hook = renderController(OPEN, c)
+    act(() => hook.latest().reportShelfMounted())
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(1)
+    return hook
+  }
+
+  it("runs one refetch for two triggers half a second apart", async () => {
+    jest.useFakeTimers()
+    const c = client()
+    const hook = await served(c)
+
+    act(() => hook.latest().refresh())
+    await flush()
+    await act(async () => {
+      jest.advanceTimersByTime(500)
+    })
+    act(() => hook.latest().refresh())
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it("runs two refetches for two triggers three seconds apart", async () => {
+    jest.useFakeTimers()
+    const c = client()
+    const hook = await served(c)
+
+    act(() => hook.latest().refresh())
+    await flush()
+    await act(async () => {
+      jest.advanceTimersByTime(3_000)
+    })
+    act(() => hook.latest().refresh())
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(3)
+  })
+
+  it("counts the held refetch as the window's own event", async () => {
+    jest.useFakeTimers()
+    const c = client()
+    const hook = await served(c)
+
+    hook.rerender({ gateOpen: true, focused: false })
+    act(() => hook.latest().refresh())
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(1)
+
+    hook.rerender(OPEN)
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
+
+    // Home regains focus and the viewer pulls to refresh at once: the released
+    // trigger already spent the window.
+    act(() => hook.latest().refresh())
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it("holds the window against a profile transition too", async () => {
+    jest.useFakeTimers()
+    let notify = () => {}
+    const c = client({
+      subscribeProfile: (listener) => {
+        notify = listener
+        return () => {}
+      },
+    })
+    const hook = await served(c)
+
+    act(() => hook.latest().refresh())
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
+
+    act(() => notify())
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe("a profile transition while Home is focused", () => {
+  it("serves the slate the transition refetched", async () => {
+    let notify = () => {}
+    const c = client({
+      subscribeProfile: (listener) => {
+        notify = listener
+        return () => {}
+      },
+    })
+    const hook = renderController(OPEN, c)
+    act(() => hook.latest().reportShelfMounted())
+    await flush()
+    expect(hook.latest().slate?.requestId).toBe("req-1")
+
+    act(() => notify())
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
+    expect(hook.latest().slate?.requestId).toBe("req-2")
+  })
 })
 
 describe("the blurred-Home hold (KTD3)", () => {

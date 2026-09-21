@@ -18,7 +18,7 @@ import {
 } from "react-native"
 import { FlashList } from "@shopify/flash-list"
 import { LinearGradient } from "expo-linear-gradient"
-import { useNavigation, useRouter } from "expo-router"
+import { useNavigation, useRouter, useSegments } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
@@ -41,6 +41,10 @@ import { heroPlaybackPaused } from "../../lib/miniPlayer/heroYield"
 import { openExternalUrl } from "../../lib/openExternalUrl"
 import { getApiToken } from "../../lib/config"
 import { isRecommendationClientEnabled } from "../../lib/recommendations/enabled"
+import {
+  isReturnToHomeFromWatch,
+  routeSegmentsFromKey,
+} from "../../lib/recommendations/homeReturnSignal"
 import {
   IMPRESSION_VIEWABILITY_CONFIG,
   guardViewabilityCallback,
@@ -381,6 +385,29 @@ export function HomeScreen() {
     gateOpen: recommendationsShelfVisible(recommendationsGate),
     focused,
   })
+  const refreshSlate = recommendations.refresh
+
+  // KTD5: return-from-watch is a route-segment transition, not a focus event —
+  // the focus listener and the segment update are two effects of one commit
+  // with no guaranteed order. Key on the joined string; the identity churns.
+  const segmentsKey = useSegments().join("/")
+  const previousSegmentsKeyRef = useRef(segmentsKey)
+  useEffect(() => {
+    const previous = previousSegmentsKeyRef.current
+    previousSegmentsKeyRef.current = segmentsKey
+    const returned = isReturnToHomeFromWatch(
+      routeSegmentsFromKey(previous),
+      routeSegmentsFromKey(segmentsKey),
+    )
+    if (returned) refreshSlate()
+  }, [segmentsKey, refreshSlate])
+
+  // R17, R18: the slate refetches beside the body and keeps its cards while
+  // it loads. The controller holds this one when Home is blurred.
+  const handlePullToRefresh = useCallback(() => {
+    refetch()
+    refreshSlate()
+  }, [refetch, refreshSlate])
 
   // FlashList captures its config when the list is built and reads the
   // callback at report time, so this pair is created once and reaches the
@@ -570,7 +597,7 @@ export function HomeScreen() {
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={refetch}
+            onRefresh={handlePullToRefresh}
             tintColor={TEXT_SECONDARY}
             // RN 0.86: Android's SwipeRefreshLayout host paints opaque by
             // default, which hides the z-0 hero layer under the list.

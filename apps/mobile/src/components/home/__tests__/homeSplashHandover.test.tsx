@@ -51,6 +51,8 @@ jest.mock("expo-linear-gradient", () => ({
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
   useNavigation: () => ({ addListener: () => () => {} }),
+  // Home's return-from-watch effect reads this (feat-517 KTD5).
+  useSegments: () => ["(tabs)", "index"],
 }))
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
