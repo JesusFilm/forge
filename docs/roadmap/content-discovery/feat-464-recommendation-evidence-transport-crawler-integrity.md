@@ -312,3 +312,12 @@ in-app browsers remain admitted. See the
 This repair does not satisfy the remaining installed-alert, authorized Admin
 reconciliation or browser retry-amplification gates. Keep this ticket in
 progress until those checks have their own evidence.
+
+PR #2360 merged as `475a5f2ed102909a6c1463d3f32e8ed4bcfffbf5`; Railway and an
+independent SSH read verify that exact Web deployment. Six bounded public-path
+negative probes at 04:27 UTC all return 403 `machine_evidence_rejected` for the
+two short Meta forms across evidence, selection and playback. No capabilities
+or cookies were supplied. The [release evidence](../../operations/watch-startup-readiness-2026-09-21.md)
+keeps these diagnostic rejections separate from natural HTTP and semantic
+fallback populations. Installed alerts, Admin reconciliation and browser retry
+evidence remain open.

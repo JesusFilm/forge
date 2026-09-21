@@ -66,6 +66,29 @@ explicitly distinct from a latency fix.
 
 ## Closure and release
 
+### Proven startup subproblem (September 21)
+
+Two new delivery-timeout envelopes coincided with Admin startup. A local
+production-build CPU profile identifies Next 16.2.4's unawaited
+`unstable_preloadEntries()` loading dashboard entries while health already
+returns 200. Five fresh processes reproduce real selection acknowledgments at
+926–949 ms immediately after readiness, above the unchanged 700 ms caller budget.
+
+Expose the framework's existing preload promise with a pinned pnpm patch and
+await it in production Admin readiness. Also import the GraphQL handler before
+200 because Next silently skips individual failed preloads. Missing completion
+state or failed GraphQL initialization must never report healthy. Other Next
+applications keep their existing readiness behavior. Keep the 60-second Railway
+healthcheck limit and all public API deadlines unchanged.
+
+Reject schema/handler-only warming (startup loading still competes with traffic)
+and disabling preload (moves loading onto the first dashboard visit). Compare
+fresh-process selections and cold-editor concurrency against the same build with
+the original health handler. The latter already exceeds 700 ms on the baseline;
+the startup correction does not establish a cause or fix for every later stall.
+Review patch compatibility, install/frozen-lock behavior, failed initialization,
+real `next start` behavior and production deployment admission before release.
+
 Use sequential Compound Engineering review per the repository tool map. Fetch
 new main and rerun relevant checks before every normal squash merge. Verify
 running revisions after automatic deployment, then the required sustained
