@@ -88,3 +88,39 @@ describe("resolveWatchHomeModel", () => {
     expect(model.sections.length).toBeGreaterThan(0)
   })
 })
+
+/**
+ * feat-517 KD9: the authored position of the recommendations block is only
+ * meaningful while the Experience body renders. The config fallback body has no
+ * authored positions, so the same function that picks the body drops the index.
+ */
+describe("resolveWatchHomeModel — recommendations insert index (feat-517)", () => {
+  it("passes the authored index through when the Experience body wins (KTD1)", () => {
+    const { recommendationsInsertIndex } = resolveWatchHomeModel({
+      configModel,
+      experienceSections,
+      recommendationsInsertIndex: 2,
+    })
+    expect(recommendationsInsertIndex).toBe(2)
+  })
+
+  it("drops the index when the body falls back to the config model (KD9, AE12)", () => {
+    // Index 0 is the discriminating value: it is a real authored position, and
+    // a pass-through bug keeps it while `?? null` and `|| null` both hide it.
+    const { usedExperience, recommendationsInsertIndex } =
+      resolveWatchHomeModel({
+        configModel,
+        experienceSections: [],
+        recommendationsInsertIndex: 0,
+      })
+    expect(usedExperience).toBe(false)
+    expect(recommendationsInsertIndex).toBeNull()
+  })
+
+  it("reports a null index when the caller supplies none (AE10)", () => {
+    expect(
+      resolveWatchHomeModel({ configModel, experienceSections })
+        .recommendationsInsertIndex,
+    ).toBeNull()
+  })
+})

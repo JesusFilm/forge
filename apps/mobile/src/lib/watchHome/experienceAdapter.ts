@@ -1,8 +1,9 @@
 /**
  * Maps the `watch-home` Experience's flat MediaCollectionBlock items into the
  * existing WatchHomeSection[] shape (lean cards, matching web) so HomeShelf
- * renders unchanged. Non-collection blocks are skipped (the client-owned hero and
- * Web-only category rail are silent placeholders).
+ * renders unchanged. Non-collection blocks are skipped (the client-owned hero,
+ * the Web-only category rail and the recommendations shelf are silent
+ * placeholders; the last one reports its position, see KTD1).
  */
 import { muxThumbnailFromPlaybackId } from "../muxThumbnail"
 import {
@@ -34,6 +35,11 @@ type ExperienceItem = {
 }
 
 type ThumbnailOrientation = WatchHomeSection["orientation"]
+
+// KTD2: the legacy Watch Experience fragment returns only the bare __typename
+// for this block, so the type name is the whole detection and no other field of
+// the block is read. An Admin without the type sends no such block (R3, AE10).
+const RECOMMENDATIONS_BLOCK_TYPENAME = "HomepageRecommendationsBlock"
 
 // KTD10 parity: item coreIds ride as a $coreIds GraphQL variable, but validate
 // before they reach the top-up union anyway.
@@ -189,17 +195,33 @@ function blockToSection(
   }
 }
 
-export function buildWatchHomeSectionsFromExperience(
+export type WatchHomeExperienceBody = {
+  sections: WatchHomeSection[]
+  /**
+   * Where the recommendations shelf belongs in `sections` — the count of
+   * sections already emitted when the adapter met the block (KTD1). Null when
+   * the Experience publishes no such block.
+   */
+  recommendationsInsertIndex: number | null
+}
+
+/**
+ * The Experience body: the rendered shelves, plus the authored position of the
+ * recommendations block. The position travels BESIDE the sections, never as a
+ * marker section inside them, so `WatchHomeModel` does not change (KTD1).
+ */
+export function buildWatchHomeBodyFromExperience(
   blocks: readonly ExperienceBlock[] | null | undefined,
   // Hydration index from the merged bulk fetch. Defaults empty so a caller with
   // no video data (and the existing tests) renders inline-only, as before.
   videoByCoreId: Map<string, WatchHomeVideoInput> = new Map(),
-): WatchHomeSection[] {
+): WatchHomeExperienceBody {
   const sections: WatchHomeSection[] = []
   // Only shelves that survive reserve an id, so a dropped block can't push its
   // surviving twin off the authored key.
   const takenSectionIds = new Set<string>()
-  ;(blocks ?? []).forEach((block, index) => {
+  let recommendationsInsertIndex: number | null = null
+  for (const [index, block] of (blocks ?? []).entries()) {
     const typename = block.__typename
     if (typename === "MediaCollectionBlock") {
       const section = blockToSection(
@@ -212,6 +234,13 @@ export function buildWatchHomeSectionsFromExperience(
         sections.push(section)
         takenSectionIds.add(section.id)
       }
+    } else if (typename === RECOMMENDATIONS_BLOCK_TYPENAME) {
+      // An expected placeholder like the hero below: it renders no section, so
+      // its position is the number of shelves already emitted. A second block is
+      // an authoring mistake — keep the first position and render one shelf.
+      if (recommendationsInsertIndex == null) {
+        recommendationsInsertIndex = sections.length
+      }
     } else if (
       typename === "WatchHomeHeroBlock" ||
       typename === "WatchHomeCategoryRailBlock"
@@ -221,8 +250,15 @@ export function buildWatchHomeSectionsFromExperience(
     } else if (__DEV__) {
       console.warn(`[WatchHomeAdapter] skipped block type: ${typename}`)
     }
-  })
-  return sections
+  }
+  return { sections, recommendationsInsertIndex }
+}
+
+export function buildWatchHomeSectionsFromExperience(
+  blocks: readonly ExperienceBlock[] | null | undefined,
+  videoByCoreId: Map<string, WatchHomeVideoInput> = new Map(),
+): WatchHomeSection[] {
+  return buildWatchHomeBodyFromExperience(blocks, videoByCoreId).sections
 }
 
 /**
@@ -245,6 +281,16 @@ export function experienceItemCoreIds(
   return [...new Set(ids)]
 }
 
+export type WatchHomeBodyResolution = {
+  model: WatchHomeModel
+  usedExperience: boolean
+  /**
+   * The authored position of the recommendations shelf in `model.sections`, or
+   * null when the block is absent or the body fell back to the config model.
+   */
+  recommendationsInsertIndex: number | null
+}
+
 /**
  * Body `sections` come from the Experience when it yields ≥1 shelf, else the
  * config model. The hero `carousel` is always config-sourced (spread from
@@ -253,14 +299,22 @@ export function experienceItemCoreIds(
 export function resolveWatchHomeModel(args: {
   configModel: WatchHomeModel
   experienceSections: WatchHomeSection[]
-}): { model: WatchHomeModel; usedExperience: boolean } {
+  recommendationsInsertIndex?: number | null
+}): WatchHomeBodyResolution {
   if (args.experienceSections.length >= 1) {
     return {
       model: { ...args.configModel, sections: args.experienceSections },
       usedExperience: true,
+      recommendationsInsertIndex: args.recommendationsInsertIndex ?? null,
     }
   }
-  return { model: args.configModel, usedExperience: false }
+  // KD9: the config body has no authored positions, so the one function that
+  // picks the body also drops the index. No caller can pair them wrongly.
+  return {
+    model: args.configModel,
+    usedExperience: false,
+    recommendationsInsertIndex: null,
+  }
 }
 
 /**
@@ -277,7 +331,7 @@ export function assembleWatchHomeModel(args: {
   hydrationVideos: readonly WatchHomeVideoInput[]
   blocks: readonly ExperienceBlock[] | null
   languageSlug?: string
-}): { model: WatchHomeModel; usedExperience: boolean } {
+}): WatchHomeBodyResolution {
   const configModel = buildWatchHomeModelFromVideos({
     videos: args.configVideos,
     languageSlug: args.languageSlug,
@@ -286,8 +340,12 @@ export function assembleWatchHomeModel(args: {
     ...args.configVideos,
     ...args.hydrationVideos,
   ])
-  const experienceSections = args.blocks
-    ? buildWatchHomeSectionsFromExperience(args.blocks, videoByCoreId)
-    : []
-  return resolveWatchHomeModel({ configModel, experienceSections })
+  const body = args.blocks
+    ? buildWatchHomeBodyFromExperience(args.blocks, videoByCoreId)
+    : { sections: [], recommendationsInsertIndex: null }
+  return resolveWatchHomeModel({
+    configModel,
+    experienceSections: body.sections,
+    recommendationsInsertIndex: body.recommendationsInsertIndex,
+  })
 }

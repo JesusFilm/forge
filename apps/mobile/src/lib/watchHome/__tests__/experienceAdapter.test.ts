@@ -1,9 +1,14 @@
 import {
   assembleWatchHomeModel,
+  buildWatchHomeBodyFromExperience,
   buildWatchHomeSectionsFromExperience,
   experienceItemCoreIds,
 } from "../experienceAdapter"
 import type { WatchHomeModel, WatchHomeVideoInput } from "../model"
+import {
+  parseStoredHomeSnapshot,
+  serializeHomeSnapshotFromVideosJson,
+} from "../../watchHomePersistence"
 
 /**
  * The adapter maps the published homepage Experience's flat MediaCollectionBlock
@@ -589,5 +594,214 @@ describe("experienceItemCoreIds", () => {
       }),
     ])
     expect(ids).toEqual(["GOLukeCollection"])
+  })
+})
+
+/**
+ * feat-517: the Home hook needs the authored position of the recommendations
+ * block. The adapter counts the sections it has already emitted when it meets
+ * the block, and reports that count. The block renders nothing itself; the
+ * legacy fragment returns only its __typename, so no other field is read.
+ */
+const RECOMMENDATIONS_BLOCK = {
+  __typename: "HomepageRecommendationsBlock",
+} as Block
+
+describe("buildWatchHomeBodyFromExperience — recommendations insert index (feat-517)", () => {
+  it("reports a null index when the Experience has no recommendations block (AE1)", () => {
+    const body = buildWatchHomeBodyFromExperience([
+      mediaCollection({ sectionKey: "a" }),
+      mediaCollection({ sectionKey: "b" }),
+    ])
+    expect(body.sections).toHaveLength(2)
+    expect(body.recommendationsInsertIndex).toBeNull()
+  })
+
+  it("reports index 2 after two collection blocks, and 0 when the block is first", () => {
+    const afterTwo = buildWatchHomeBodyFromExperience([
+      mediaCollection({ sectionKey: "a" }),
+      mediaCollection({ sectionKey: "b" }),
+      RECOMMENDATIONS_BLOCK,
+      mediaCollection({ sectionKey: "c" }),
+    ])
+    expect(afterTwo.sections).toHaveLength(3)
+    expect(afterTwo.recommendationsInsertIndex).toBe(2)
+
+    const first = buildWatchHomeBodyFromExperience([
+      RECOMMENDATIONS_BLOCK,
+      mediaCollection({ sectionKey: "a" }),
+    ])
+    expect(first.sections).toHaveLength(1)
+    expect(first.recommendationsInsertIndex).toBe(0)
+  })
+
+  it("counts rendered sections, so an empty collection before the block does not count", () => {
+    const body = buildWatchHomeBodyFromExperience([
+      mediaCollection({ sectionKey: "a" }),
+      mediaCollection({ sectionKey: "empty", items: [] }),
+      RECOMMENDATIONS_BLOCK,
+      mediaCollection({ sectionKey: "b" }),
+    ])
+    // The empty collection drops out, so one section precedes the block.
+    expect(body.sections.map((section) => section.id)).toEqual(["a", "b"])
+    expect(body.recommendationsInsertIndex).toBe(1)
+  })
+
+  it("reports the section count when the block is published last", () => {
+    const body = buildWatchHomeBodyFromExperience([
+      mediaCollection({ sectionKey: "a" }),
+      mediaCollection({ sectionKey: "b" }),
+      RECOMMENDATIONS_BLOCK,
+    ])
+    expect(body.recommendationsInsertIndex).toBe(2)
+    expect(body.sections).toHaveLength(2)
+  })
+
+  it("keeps the FIRST authored position when the block is published twice", () => {
+    const body = buildWatchHomeBodyFromExperience([
+      mediaCollection({ sectionKey: "a" }),
+      RECOMMENDATIONS_BLOCK,
+      mediaCollection({ sectionKey: "b" }),
+      RECOMMENDATIONS_BLOCK,
+    ])
+    expect(body.recommendationsInsertIndex).toBe(1)
+  })
+
+  it("treats the recommendations block as an expected placeholder — no section, no dev warning", () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {})
+    const body = buildWatchHomeBodyFromExperience([
+      mediaCollection({ sectionKey: "before", title: "Before" }),
+      RECOMMENDATIONS_BLOCK,
+      mediaCollection({ sectionKey: "after", title: "After" }),
+    ])
+
+    expect(body.sections.map(({ id, title }) => ({ id, title }))).toEqual([
+      { id: "before", title: "Before" },
+      { id: "after", title: "After" },
+    ])
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it("leaves a block list from an Admin without the type exactly as today (AE10)", () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {})
+    const blocks = [
+      { __typename: "WatchHomeHeroBlock" } as Block,
+      mediaCollection({ sectionKey: "before", title: "Before" }),
+      { __typename: "WatchHomeCategoryRailBlock" } as Block,
+      mediaCollection({ sectionKey: "after", title: "After" }),
+    ]
+    const body = buildWatchHomeBodyFromExperience(blocks)
+
+    expect(body.sections.map(({ id, title }) => ({ id, title }))).toEqual([
+      { id: "before", title: "Before" },
+      { id: "after", title: "After" },
+    ])
+    expect(body.recommendationsInsertIndex).toBeNull()
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it("keeps the sections identical to the section-only builder", () => {
+    const blocks = [
+      mediaCollection({ sectionKey: "a" }),
+      RECOMMENDATIONS_BLOCK,
+      mediaCollection({ sectionKey: "b" }),
+    ]
+    expect(buildWatchHomeBodyFromExperience(blocks).sections).toEqual(
+      buildWatchHomeSectionsFromExperience(blocks),
+    )
+  })
+})
+
+describe("assembleWatchHomeModel — recommendations insert index (feat-517)", () => {
+  const snapshotVideo: WatchHomeVideoInput = {
+    documentId: "d-jesus",
+    coreId: "1_jf-0-0",
+    slug: "jesus",
+    label: "FEATURE_FILM",
+    images: [{ mobileCinematicHigh: "https://cdn/jesus.jpg" }],
+    locales: [{ title: "JESUS" }],
+  }
+
+  it("reports the authored index beside the model when the Experience body wins", () => {
+    const { model, usedExperience, recommendationsInsertIndex } =
+      assembleWatchHomeModel({
+        configVideos: [],
+        hydrationVideos: [],
+        blocks: [
+          mediaCollection({ sectionKey: "a" }),
+          RECOMMENDATIONS_BLOCK,
+          mediaCollection({ sectionKey: "b" }),
+        ],
+      })
+    expect(usedExperience).toBe(true)
+    expect(model.sections).toHaveLength(2)
+    expect(recommendationsInsertIndex).toBe(1)
+  })
+
+  it("reports a null index when every sibling collection is empty (AE12, KD9)", () => {
+    const { usedExperience, recommendationsInsertIndex } =
+      assembleWatchHomeModel({
+        configVideos: [],
+        hydrationVideos: [],
+        blocks: [
+          mediaCollection({ sectionKey: "empty", items: [] }),
+          RECOMMENDATIONS_BLOCK,
+        ],
+      })
+    // The body fell back to the config model, which has no authored positions.
+    expect(usedExperience).toBe(false)
+    expect(recommendationsInsertIndex).toBeNull()
+  })
+
+  it("reports a null index when the Experience is absent (AE1)", () => {
+    const { recommendationsInsertIndex } = assembleWatchHomeModel({
+      configVideos: [],
+      hydrationVideos: [],
+      blocks: null,
+    })
+    expect(recommendationsInsertIndex).toBeNull()
+  })
+
+  it("derives the same index from snapshot-restored blocks as from the network blocks (AE11)", () => {
+    const blocks = [
+      mediaCollection({ sectionKey: "a" }),
+      mediaCollection({ sectionKey: "b" }),
+      RECOMMENDATIONS_BLOCK,
+      mediaCollection({ sectionKey: "c" }),
+    ]
+    const fromNetwork = assembleWatchHomeModel({
+      configVideos: [snapshotVideo],
+      hydrationVideos: [],
+      blocks,
+    })
+
+    const blob = serializeHomeSnapshotFromVideosJson(
+      JSON.stringify([snapshotVideo]),
+      new Date(),
+      JSON.stringify(blocks),
+      "[]",
+    )
+    const snapshot = parseStoredHomeSnapshot(blob, new Date())
+    expect(snapshot).not.toBeNull()
+    const fromSnapshot = assembleWatchHomeModel({
+      configVideos: snapshot?.videos ?? [],
+      hydrationVideos: snapshot?.hydrationVideos ?? [],
+      blocks: snapshot?.blocks ?? null,
+    })
+
+    expect(fromNetwork.recommendationsInsertIndex).toBe(2)
+    expect(fromSnapshot.recommendationsInsertIndex).toBe(
+      fromNetwork.recommendationsInsertIndex,
+    )
+    expect(fromSnapshot.model.sections.map((s) => s.id)).toEqual(
+      fromNetwork.model.sections.map((s) => s.id),
+    )
+    // R9: the persisted blob carries the bare block, never slate state.
+    expect(blob).toContain("HomepageRecommendationsBlock")
+    for (const field of ["slate", "capabilit", "requestId", "nonce"]) {
+      expect(blob).not.toContain(field)
+    }
   })
 })
