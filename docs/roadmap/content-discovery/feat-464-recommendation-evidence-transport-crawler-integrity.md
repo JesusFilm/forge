@@ -351,3 +351,15 @@ and semantic outcome accounting. The latest 41-monitor inventory still lacks
 the required alert coverage. No monitor write or Admin impersonation occurred;
 the installed-alert, matching authorized Admin and actual browser retry gates
 remain unmet.
+
+## September 22 sustained production verification
+
+The [September 22 sustained verification](../../operations/watch-production-verification-2026-09-22.md)
+covers 13 hours 10 minutes on exact revision `d0c749b9…`. Playback has
+65 HTTP 503s / 49,763 calls (0.130619%, no exclusions), including a separate
+63-request burst around a catalog shared-memory error and 38.55-second loop
+delay. One episode-lock budget exhausts; it is not P2034 exhaustion. All 16
+observed binding errors map to terminal 409, and all 6,840 recognized-crawler
+observations are rejected. These server facts do not prove browser retry behavior.
+Installed alerts and matching authorized Admin evidence remain unmet. Keep this
+ticket in progress and retain the burst despite the passing aggregate rate.
