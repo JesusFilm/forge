@@ -131,3 +131,22 @@ provide sufficient transaction headroom.
    refreshed-main checks and normal PR CI. Verify automatic deployment and a
    minimum two-hour reconciliation/evidence observation while continuing the
    independent delivery, selection and browser gates.
+
+## September 21 sustained release checkpoint
+
+PR #2356 deploys the proven reconciliation correction as `de752d60980b25ee11806f2c424770fc78027188`.
+The [complete two-hour release record](../operations/watch-closeout-release-2026-09-21.md)
+reconciles all 1,536 delivery requests/outcomes, separately reports 0/65 selection
+5xx and 0/9,787 playback 5xx, and retains zero semantic timeout envelopes alongside
+ordinary coverage/rate-limit fallbacks. All 24 reconciliation batches pass; a
+post-observation canonical audit converges to zero among 167,984 current pointers.
+Earlier nonzero snapshots and collector differences remain documented.
+
+Feat-470's deployed ANN repair now closes after current PostgreSQL regression and
+complete-service production observation. Real qualified-playback, hybrid influence,
+withdrawal, reset and completed-erasure canaries strengthen feat-447. U2's selection
+cause and U4's field browser causes remain unproven; U3's installed alerts and
+permission-checked Admin gates remain unmet. Keep this overall plan active.
+Sequential CE review tightened browser acknowledgment assertions; the six corrected
+production controls pass. The existing accounting learning incorporates those
+boundaries rather than creating a duplicate solution document.

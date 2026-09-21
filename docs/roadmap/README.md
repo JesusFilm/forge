@@ -4,14 +4,14 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (September 20, 2026)
+## Status (September 21, 2026)
 
-- **Total tickets:** 710
-- **Complete:** 527
-- **In progress:** 55
-- **Not started:** 50
+- **Total tickets:** 712
+- **Complete:** 529
+- **In progress:** 57
+- **Not started:** 48
 - **Blocked:** 78
-- **Overdue and not complete:** 139
+- **Overdue and not complete:** 140
 
 ## Feature Index
 
@@ -66,7 +66,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-276](content-discovery/feat-276-admin-video-library-search-client-traces.md)                             | Admin video library search client traces                                                        | codex      | P0       | 2026-07-21 | 1    | 2026-07-21 | complete    |
 | [feat-334](content-discovery/feat-334-watch-search-typesense-parallel-backend.md)                              | Watch Search Typesense parallel backend                                                         | codex      | P0       | 2026-08-03 | 2    | 2026-08-04 | complete    |
 | [feat-338](content-discovery/feat-338-watch-search-chinese-lexical-identity.md)                                | Watch Search Chinese lexical identity                                                           | codex      | P0       | 2026-08-06 | 1    | 2026-08-06 | complete    |
-| [feat-470](content-discovery/feat-470-recommendation-delivery-and-funnel-investigation.md)                     | Investigate and repair recommendation retrieval timeouts                                        | nisal      | P0       | 2026-09-09 | 3    | 2026-09-11 | in-progress |
+| [feat-470](content-discovery/feat-470-recommendation-delivery-and-funnel-investigation.md)                     | Investigate and repair recommendation retrieval timeouts                                        | nisal      | P0       | 2026-09-09 | 3    | 2026-09-11 | complete    |
 | [feat-265](content-discovery/feat-265-hassaniyya-latin-watch-ui-localization.md)                               | Hassaniyya-Latin Watch UI localization                                                          | urim       | P1       | —          | 1    | —          | not-started |
 | [feat-371](content-discovery/feat-371-recommendation-subtitle-audio-signals.md)                                | Recommendation subtitle and audio signals                                                       | nisal      | P1       | —          | 3    | —          | not-started |
 | [feat-374](content-discovery/feat-374-recommendation-acquisition-share-attribution.md)                         | Recommendation acquisition and share attribution                                                | nisal      | P1       | —          | 4    | —          | blocked     |
@@ -200,8 +200,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-497](content-discovery/feat-497-expand-production-recommendation-pool-coverage.md)                       | Expand production recommendation pools beyond the initial languages                             | nisal      | P2       | 2026-09-14 | 3    | 2026-09-16 | not-started |
 | [feat-515](content-discovery/feat-515-watch-cold-paint-preview-verification.md)                                | Isolate cold Watch paint variability around deferred preview activation                         | nisal      | P2       | 2026-09-16 | 2    | 2026-09-17 | complete    |
 | [feat-517](content-discovery/feat-517-mobile-recommended-for-you-shelf.md)                                     | Mobile Recommended for You Home shelf                                                           | urim       | P2       | 2026-09-18 | 5    | 2026-09-22 | not-started |
-| [feat-520](content-discovery/feat-520-watch-field-post-response-paint-attribution.md)                          | Attribute non-headless Watch paint delays after HTML response                                   | nisal      | P2       | 2026-09-18 | 3    | 2026-09-20 | not-started |
-| [feat-521](content-discovery/feat-521-watch-selection-browser-commit-waits.md)                                 | Attribute browser commit waits delaying Watch selection acknowledgments                         | nisal      | P2       | 2026-09-18 | 3    | 2026-09-20 | not-started |
+| [feat-520](content-discovery/feat-520-watch-field-post-response-paint-attribution.md)                          | Attribute non-headless Watch paint delays after HTML response                                   | nisal      | P2       | 2026-09-18 | 3    | 2026-09-20 | in-progress |
+| [feat-521](content-discovery/feat-521-watch-selection-browser-commit-waits.md)                                 | Attribute browser commit waits delaying Watch selection acknowledgments                         | nisal      | P2       | 2026-09-18 | 3    | 2026-09-20 | in-progress |
 | [feat-063](content-discovery/feat-063-personalize-discovery-experiences.md)                                    | Personalize Discovery Experiences                                                               | tataihono  | P2       | 2026-10-01 | 45   | 2026-11-14 | blocked     |
 
 ### Media Generation
@@ -670,6 +670,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-064](platform/feat-064-optimize-through-data-driven-insights.md)                 | Optimize Through Data-Driven Insights                                              | tataihono  | P2       | 2026-11-15 | 46   | 2026-12-30 | blocked     |
 | [feat-067](platform/feat-067-doctrinal-validation-engine.md)                           | Doctrinal Validation Engine                                                        | vlad       | P2       | 2026-12-01 | 31   | 2026-12-31 | blocked     |
 | [feat-070](platform/feat-070-public-ai-entry-point.md)                                 | Public AI Entry Point                                                              | tataihono  | P2       | 2026-12-01 | 31   | 2026-12-31 | blocked     |
+| [feat-524](platform/feat-524-watch-recommendation-tester-access.md)                    | Private Watch recommendation tester links without login UI                         | nisal      | P1       | 2026-09-21 | 1    | 2026-09-21 | complete    |
+| [feat-525](platform/feat-525-activate-watch-recommendation-testers.md)                 | Activate and verify the three-person Watch recommendation pilot                    | nisal      | P1       | 2026-09-21 | 1    | 2026-09-21 | in-progress |
 
 ### Topic Experiences
 

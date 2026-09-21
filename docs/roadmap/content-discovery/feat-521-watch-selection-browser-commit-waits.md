@@ -3,7 +3,7 @@ id: "feat-521"
 title: "Attribute browser commit waits delaying Watch selection acknowledgments"
 owner: "nisal"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-18"
 duration: 3
 depends_on: []
@@ -78,3 +78,51 @@ Keep the authored English homepage recommendations block removed and
 `forge.watch.homepageRecommendations` default off. No Mobile/TV UI, account
 linking or curation republishing. Use an owned isolated worktree and browser;
 deploy any justified code fix only through normal PR/main automation.
+
+## September 21 native-wait investigation
+
+The recovered historical trace shows three approximately one-second waits on
+the main renderer and 182 compositor `ThrottleUndrawnFrames` decisions over the
+same three seconds. Begin-frame delivery advances approximately once per second
+despite a 16.7 ms nominal interval. Chromium 153's
+[`ShouldSendBeginFrame` implementation](https://chromium.googlesource.com/chromium/src/+/refs/tags/153.0.8010.36/components/viz/service/frame_sinks/compositor_frame_sink_support.cc)
+contains that one-second undrawn-frame throttle. This identifies the observed
+native scheduling path, not the application workload or an ordinary-user cause.
+
+The owned agent-browser 0.37.1 executable matches the historical executable's
+SHA-256. New native-UA controls alternate its default Chrome 153 launch with
+`--disable-features=Translate,InitialWebUISurfaceSync`. A final twelve-journey
+capture marks selection fetch and renderer JSON completion with User Timing,
+so waits can be assigned to the actual renderer and request interval. Eight
+headless requests receive definitive HTTP 403; four headed requests receive
+HTTP 200. All twelve renderer JSON reads complete. Headless main-thread waits
+reach 1,014 ms elsewhere in the journey, but none of the captured one-second
+waits overlaps selection. The longest overlapping native wait is below 1 ms.
+Headless viewport is 1280×577; headed launch is 1050×737, so those groups are
+not a matched headless-versus-headed performance comparison. Earlier explicit
+1280×577 headed controls checked six acknowledgment nonces and target field types;
+review found they did not compare both target values with the issued card.
+
+The corrected 01:48:12–01:49:38 UTC control uses six fresh headed Chrome 153
+journeys, a 1280×577 viewport and default features. Each production HTTP 200
+acknowledgment matches the exact nonce, canonical href and media ID in the
+renderer, completing in 450–588 ms. Two approximately 1,013 ms native waits occur
+elsewhere; none overlaps selection, whose maximum overlapping wait is 0.598 ms.
+The assertion correction is verification work, not an application fix.
+
+Eight separate headless controls supply a local 325 ms acknowledgment fixture
+and intercept all sibling evidence, playback and profile writes. All fixture
+responses match the nonce. Neither four default trials nor four trials with a
+pre-click screenshot reproduce the selection wait; the maximum overlapping wait
+is below 1 ms. These locally supplied HTTP 200s are not production API successes,
+and the screenshot is not a demonstrated correction.
+
+Some Node-side Playwright `response.json()` calls fail after navigation even
+though the page's own fetch clone has already parsed the JSON. Record that as a
+test-runner body-access failure, not a renderer timeout. JSON parse success alone
+also does not validate the acknowledgment's nonce and target binding.
+
+The feature override is not a demonstrated correction for the selection
+failure. Keep this ticket open for a matched affected request and ordinary-field
+attribution; do not change application deadlines or verification defaults.
+See the [release record](../../operations/watch-closeout-release-2026-09-21.md).

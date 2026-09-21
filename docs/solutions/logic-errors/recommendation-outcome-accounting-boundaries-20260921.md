@@ -1,6 +1,7 @@
 ---
 title: "Keep recommendation evidence aligned with the behavior it measures"
 date: "2026-09-21"
+last_updated: "2026-09-21"
 category: logic-errors
 module: "Watch recommendation operational evidence"
 problem_type: logic_error
@@ -160,7 +161,82 @@ that a log or aggregate exists.
   `EXPLAIN ANALYZE` overhead from direct execution controls, and reject JIT or
   query-shape tweaks that do not reliably clear the existing budget. The
   [execution record](../../operations/watch-ticket-execution-2026-09-21.md)
-  retains the unsuccessful controls; no scan correction is claimed here.
+  retains the unsuccessful controls; that earlier checkpoint did not establish
+  a scan correction. The subsequent proven correction is linked below.
+
+## Production closeout refinements
+
+The [September 21 release observation](../../operations/watch-closeout-release-2026-09-21.md)
+found an actual collection gap: 927 unique Railway edge requests and matching
+application outcome aggregates, but only 924 indexed Datadog events. The three
+additional Railway outcomes were served responses, not timeout fallbacks. Never
+sum grouped outcomes mentally: derive totals by status and result in a script,
+then compare both independent populations. Railway returned exact repeated rows;
+retain duplicate/conflict counts and boundary coverage when deduplicating.
+Application collectors can timestamp the same event differently, so minute-level
+misalignment is not automatically log loss. No identifier is added to the
+privacy-bounded event merely to make this audit easier.
+
+Do not designate one collector as universally complete. In the later two-hour
+window, all 1,536 delivery outcomes match exactly across Railway, Datadog and
+primary HTTP counts, but Railway has six extra initial-evidence success records
+and 135 fewer Admin accepted-facts records than Datadog. Datadog's Web/Admin
+accepted-facts totals do agree. Validate coverage independently for every stream
+and fixed window, and retain unexplained collector differences instead of
+selecting the most favorable total.
+
+For browser-to-database lineage, outcome revisions are scoped by
+`(episode_id, classifier_version)`. Ordering revisions across classifiers selected
+a legacy comparator with null active-playback fields in an early diagnostic.
+Select the intended classifier before its latest revision:
+
+```sql
+WHERE episode_id = $1
+  AND classifier_version = 'active-watch-proxy-v1'
+ORDER BY revision DESC
+LIMIT 1
+```
+
+Correlate the exact episode item and claimed, attribution-eligible selection;
+an arbitrary impression or selection with the same request ID is weaker evidence.
+Retain private correlation keys only in the canary process and pass them to
+read-only SQL as parameters. Report aggregate booleans and counts, not cookies,
+capabilities, profiles or vectors. Independently verify later hybrid influence,
+withdrawal, reset and completed erasure. A response saying erasure is pending is
+not the completed database invariant, and an authorized SQL read does not replace
+the permission-checked Admin UI gate.
+
+The subsequent sparse-invalid reconciliation fix and its real PostgreSQL
+regression are documented in
+[the batch-query learning](../performance-issues/profile-reconciliation-sparse-invalid-scan-20260921.md).
+Historical heartbeats place the sampled selection timeouts between reconciliation
+batches; do not claim that this proven worker correction resolves their separate
+unproven cause.
+
+Separate the renderer's fetch/body/validation lifecycle from the test runner's
+network-object lifetime. In new agent-browser controls, Playwright could no
+longer retrieve a response body after navigation while the page had already
+parsed its fetch clone successfully. That is not a browser acknowledgment
+timeout. Retain status, renderer timing, abort timing and exact nonce/target
+validation as independent booleans. A User Timing mark at selection start and
+body completion also identifies the relevant renderer process/thread; a maximum
+native wait from every renderer in the trace can otherwise be attributed to
+the wrong frame or interval. No capabilities or private identifiers need to be
+retained to make these distinctions.
+
+Review the assertions behind a passing canary label. The initial harness checked
+the nonce and the target fields' types, but did not compare both target values
+with the selected card. Corrected controls retain the issued card only in memory
+and explicitly compare nonce, canonical href and media ID in the renderer.
+Report those checks separately from JSON parsing or successful navigation.
+Locally intercepted acknowledgment fixtures can isolate browser scheduling,
+but their HTTP 200s never enter a production API success denominator.
+
+Likewise, a claimed recommendation selection may intentionally lack an eligible
+impression. Count missing or mismatched selection bindings separately from
+`attribution_eligible_at IS NULL`; the latter is not automatically corruption.
+Use canonical attribution and serving fences to assess whether it can influence
+a consumer, rather than promoting it because navigation or claiming succeeded.
 
 ## Related evidence
 
