@@ -120,3 +120,10 @@ the current pointer and its single generation. Retained production rows since
 September 18 contain no matching fallback request or failed projection run to
 establish those operational events. Keep the production and matching signed-in
 Admin proof open; do not promote these local checks into production acceptance.
+
+The [later diagnostic release](../../operations/watch-transport-cause-release-2026-09-21.md)
+retains those remaining gates and credits the previously verified browser
+lifecycle, completed erasure/reset and September 9 restored-snapshot performance
+under their original scope. The new operational diagnostics do not replace the
+matching authorized Admin trace or independent production fallback/publication
+evidence, and do not widen personalization rollout.
