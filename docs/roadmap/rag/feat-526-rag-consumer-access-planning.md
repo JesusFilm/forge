@@ -1,5 +1,5 @@
 ---
-id: "feat-511"
+id: "feat-526"
 title: "Plan formal RAG consumer access and usage visibility"
 owner: "jaco"
 priority: "P1"
@@ -7,7 +7,7 @@ status: "complete"
 start_date: "2026-09-15"
 duration: 1
 depends_on: []
-blocks: ["feat-512", "feat-513", "feat-515", "feat-518"]
+blocks: ["feat-527", "feat-528", "feat-530", "feat-518"]
 tags: ["rag", "planning", "auth", "observability"]
 ---
 
@@ -46,7 +46,7 @@ relative links, lane counts and hidden-lane CI checks. Review coverage against J
 
 Planning delivered in [Forge draft PR #2304](https://github.com/JesusFilm/forge/pull/2304).
 The plan and separate implementation tickets are complete as documentation;
-feat-512 and feat-513 remain not-started. The investigation report includes
+feat-527 and feat-528 remain not-started. The investigation report includes
 validation results and the authorized wiki fallback payload. No implementation
 or live release verification was performed.
 
@@ -58,4 +58,4 @@ J022 reconciles portal admission via the PR-maintained portal-user allowlist
 with direct authenticated consumer creation and runtime owner membership.
 See the [J022 report](../../plans/2026-09-21-j022-portal-reconciliation-report.md).
 Discovery evidence and J021 limitations remain in stacked draft #2325;
-implementation feat-512–515 remains not-started.
+implementation feat-527–530 remains not-started.

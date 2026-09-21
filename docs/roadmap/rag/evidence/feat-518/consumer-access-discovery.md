@@ -72,7 +72,7 @@ integration**; sessions are **in-memory**; GitHub network responses are **mocked
 **OAuth app registration and Railway deployment remain unverified**. No RAG
 integration, persistent membership, production session store, live browser login
 or consumer secret lifecycle is proven. The prototype is a reference for future
-feat-512/515 work and does not complete those tickets or authorize deployment.
+feat-527/530 work and does not complete those tickets or authorize deployment.
 
 ### Earlier repository inspection provenance (not reverified deployment facts)
 
@@ -105,7 +105,7 @@ RAGBot dogfood must use the real `forge-rag-retrieve` HTTP path.
 
 Plan section A is authoritative. The repository stores the predetermined
 portal-user handles, maintained through normal PRs; it does not store consumers
-or their owners. Exact allowlist path/schema is a feat-512 implementation detail.
+or their owners. Exact allowlist path/schema is a feat-527 implementation detail.
 No file, workflow or validator is implemented by this documentation PR.
 
 CI checks the entire candidate allowlist for schema, handle syntax and
@@ -118,7 +118,7 @@ non-membership. No special reviewer, review evaluator or extra approval gate.
 Record checked SHA, check coverage, result and reason. Missing permission,
 private visibility, API failure, skipped or rate-limited lookup means **unverified**,
 not a verified pass or a confirmed ineligible handle. Known ineligible entries
-fail. Before activation, feat-512 documents actual lookup coverage and fails
+fail. Before activation, feat-527 documents actual lookup coverage and fails
 closed on unresolved eligibility; do not silently provision credentials or add a
 human approval gate. J022 performs no live contributor/access lookup.
 
@@ -244,9 +244,9 @@ allowlist PR before authenticated transfer; Jaco has no implicit bypass. Audit
 runtime membership changes with actor/target and version, not a fictional consumer
 PR/SHA. Audit allowlist publication separately with its actual merged PR/SHA.
 
-feat-512's pre-portal dogfood harness uses the same authenticated creation and
+feat-527's pre-portal dogfood harness uses the same authenticated creation and
 management backend. It is not a SQL/operator bypass. Full portal UX remains
-feat-515 after actual RAGBot HTTP dogfood; no dependency changes are needed.
+feat-530 after actual RAGBot HTTP dogfood; no dependency changes are needed.
 
 ## 3. Credentials, lookup, rotation and environment binding
 
@@ -512,7 +512,7 @@ never a URL/SQL/header override, and obtains its capability out of band from the
 approved secret store. No credential on command line, stdout or agent transcript.
 The report server uses the aggregate-only database role; the bot receives no DB
 credential. This endpoint/capability is a concrete transport proposal for the
-approved narrow tool, not a new approval prerequisite. feat-513 must document
+approved narrow tool, not a new approval prerequisite. feat-528 must document
 the actual tool transport, registered RAGBot consumer ID, runtime binding and
 named provisioning/rotation owner before activation; the RAG access/usage
 implementer owns recording that handoff, with recovery coordinated by Jaco through authenticated runtime ownership management.
@@ -535,14 +535,14 @@ synthetic grace/cutoff/rollback. No execution of that proof occurred here.
 
 | Gate                          | Current finding / remaining handoff                                                                                                                                               | Owner and timing                                                                                                              |
 | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| G1 — portal admission         | Repository portal-user allowlist through normal PRs; CI validates contributor/read-write eligibility as safely verifiable with explicit unverified coverage.                      | feat-512; path/schema, safe lookup and trusted merged publication before activation.                                          |
-| G2 — runtime ownership        | GitHub OAuth admits merged allowlisted handles; all consumers visible, direct unique-name creation, one-time secret; owner-only Add member from allowlist and runtime management. | feat-512/515; stable identity, durable sessions, registration and authorization/concurrency tests; full portal after dogfood. |
-| G3 — accepted reporting       | RAGBot registers first; Jaco/RAGBot aggregate-only internal tool with separate narrow capability, no query results or DB access.                                                  | feat-513 tool/runtime binding and provisioning handoff; feat-514 actual consumer-first HTTP proof.                            |
-| G4 — implementation proofs    | Allowlist publication/runtime membership removal races, one-time credential rotation, restricted roles, completion counts, crash/gap handling and latency budget.                 | feat-512/513/515; no runtime tests claimed here.                                                                              |
-| G5 — actual dogfood           | Actual forge-rag-retrieve task path/revision, RAGBot ID, source/environment and HTTP evidence. Task definition remains absent from the inspected checkout.                        | feat-514, later authorized environment.                                                                                       |
+| G1 — portal admission         | Repository portal-user allowlist through normal PRs; CI validates contributor/read-write eligibility as safely verifiable with explicit unverified coverage.                      | feat-527; path/schema, safe lookup and trusted merged publication before activation.                                          |
+| G2 — runtime ownership        | GitHub OAuth admits merged allowlisted handles; all consumers visible, direct unique-name creation, one-time secret; owner-only Add member from allowlist and runtime management. | feat-527/530; stable identity, durable sessions, registration and authorization/concurrency tests; full portal after dogfood. |
+| G3 — accepted reporting       | RAGBot registers first; Jaco/RAGBot aggregate-only internal tool with separate narrow capability, no query results or DB access.                                                  | feat-528 tool/runtime binding and provisioning handoff; feat-529 actual consumer-first HTTP proof.                            |
+| G4 — implementation proofs    | Allowlist publication/runtime membership removal races, one-time credential rotation, restricted roles, completion counts, crash/gap handling and latency budget.                 | feat-527/528/530; no runtime tests claimed here.                                                                              |
+| G5 — actual dogfood           | Actual forge-rag-retrieve task path/revision, RAGBot ID, source/environment and HTTP evidence. Task definition remains absent from the inspected checkout.                        | feat-529, later authorized environment.                                                                                       |
 | G6 — production authorization | Communications owner, seven-day grace/cutoff, complete dogfood/report coverage and rollback approval.                                                                             | Separately authorized production action, never implied by these docs.                                                         |
 
-feat-518 is **complete as documentation**; feat-512–515 remain not-started. The
+feat-518 is **complete as documentation**; feat-527–530 remain not-started. The
 J022 model supersedes per-consumer PR authorization without claiming a deployed
 allowlist, membership backend or portal. No new feature ID/dependency is needed. The plan and discovery
 now agree; shared `/v1` contracts, product code and operational runbooks remain
@@ -569,6 +569,10 @@ database-role and usage proposals remain constrained by those requirements.
 Earlier J011/J014/J018 receipts below are dated evidence, not current policy.
 
 ## Historical J011 receipts (superseded policy; results at prior revisions only)
+
+> J028 reference update (2026-09-21): historical RAG IDs feat-511–515 now map
+> to feat-526–530, respectively, after collisions with tickets merged to main.
+> Historical execution claims retain their original IDs; ticket links are updated.
 
 The following dated receipts preserve earlier execution evidence, including the
 now-retired option-B policy, account/email allowlist and parent-unchanged statements.

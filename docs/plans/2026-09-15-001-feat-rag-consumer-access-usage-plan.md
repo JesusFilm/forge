@@ -15,24 +15,24 @@ per integration/environment, mapped server-side to a stable consumer ID. Do not
 require a client-ID header plus secret. This private credential is distinct from
 the public known-caller Consumer Bearer described in `CONCEPTS.md`.
 
-This PR delivers planning only ([feat-511](../roadmap/rag/feat-511-rag-consumer-access-planning.md)).
+This PR delivers planning only ([feat-526](../roadmap/rag/feat-526-rag-consumer-access-planning.md)).
 Before implementation, [feat-518: consumer access discovery](../roadmap/rag/feat-518-rag-consumer-access-discovery.md)
 records technical handoffs for the accepted portal allowlist and runtime consumer membership model, narrow
 portal-user validation CI, GitHub identity, token verification/rotation, database
 isolation and usage reports. Discovery evidence belongs in separate draft
 [PR #2325](https://github.com/JesusFilm/forge/pull/2325); this plan is the canonical
 policy record in [PR #2304](https://github.com/JesusFilm/forge/pull/2304).
-Discovery must complete before feat-512 starts; usage, dogfood and portal follow
+Discovery must complete before feat-527 starts; usage, dogfood and portal follow
 in order. J022 reconciles both drafts without moving discovery into this PR.
 
 Implementation is explicitly split:
 
-1. [feat-512: access lifecycle](../roadmap/rag/feat-512-rag-consumer-access-lifecycle.md).
-2. [feat-513: usage collection and read-only reporting](../roadmap/rag/feat-513-rag-consumer-usage-visibility.md),
+1. [feat-527: access lifecycle](../roadmap/rag/feat-527-rag-consumer-access-lifecycle.md).
+2. [feat-528: usage collection and read-only reporting](../roadmap/rag/feat-528-rag-consumer-usage-visibility.md),
    dependent on access identity. Access alone cannot close the programme or permit
    shared-token cutoff; both deliverables and their release gates must pass.
-3. [feat-514](../roadmap/rag/feat-514-rag-consumer-dogfood-migration.md): actual ops HTTP dogfood and seven-day migration, after usage.
-4. [feat-515](../roadmap/rag/feat-515-rag-consumer-self-service-portal.md): internal self-service portal, after successful dogfood. Its design
+3. [feat-529](../roadmap/rag/feat-529-rag-consumer-dogfood-migration.md): actual ops HTTP dogfood and seven-day migration, after usage.
+4. [feat-530](../roadmap/rag/feat-530-rag-consumer-self-service-portal.md): internal self-service portal, after successful dogfood. Its design
    is captured here now because Bible lookup expansion will increase demand.
 
 No product implementation, billing, external consumers, source import, corpus
@@ -59,7 +59,7 @@ only: no new quotas, throttling or automated enforcement.
   receiver-first issuance/rotation and `SERVE_BEARER_TOKENS` compatibility.
 - Dogfood must use the actual `forge-rag-retrieve` ops task through the RAG HTTP
   `POST /v1/search` path. Register RAGBot as an ordinary consumer first. The task definition is not tracked in this checkout; record its
-  approved workspace path/revision before executing feat-514. Seeker's client,
+  approved workspace path/revision before executing feat-529. Seeker's client,
   direct database retrieval or a substitute curl smoke is not that proof.
 - `apps/auth/src/auth/config.ts` and `apps/chat/src/auth/oauth-client.ts` are
   identity/session reference patterns only; no cross-app imports. GitHub OAuth
@@ -100,7 +100,7 @@ rights. No per-consumer registration or owner-change PR is involved.
 One-time display, verifier-only persistence, immediate atomic replacement,
 Jaco/RAGBot-only aggregates, seven-day grace and actual ops HTTP dogfood remain
 accepted. RAGBot is the first ordinary consumer. The full portal follows dogfood;
-feat-512 supplies the same authenticated creation/membership backend for an
+feat-527 supplies the same authenticated creation/membership backend for an
 isolated pre-portal dogfood harness, without a SQL, authorization or PR bypass.
 
 Remaining technical details: exact allowlist path/schema, trusted merged-revision
@@ -110,7 +110,7 @@ reopen the settled creation flow. Record RAGBot's ID, source scope, actual task
 revision and permitted environment before dogfood. Production communications,
 grace start and cutoff require separate authorization.
 
-### Confirmed portal UX requirements (feat-515)
+### Confirmed portal UX requirements (feat-530)
 
 1. Sign in through GitHub OAuth; reject handles absent from the merged allowlist.
 2. Show all consumers with safe metadata; management controls are owner-only.
@@ -166,7 +166,7 @@ Record exactly which contributor/access predicate was checked, candidate SHA,
 result and reason. Missing permission, private visibility, rate limits, skipped
 checks or network errors mean **unverified**, never a verified pass or confirmed
 ineligibility. Known ineligible entries fail validation. Before activation,
-feat-512 must document actual verification coverage and fail closed on unresolved
+feat-527 must document actual verification coverage and fail closed on unresolved
 eligibility; do not silently add credentials, settings or a human approval gate.
 J022 performs no live eligibility lookup and changes no CI workflow.
 
@@ -400,7 +400,7 @@ Real dogfood is a later approved environment operation, not performed by these d
     window, coverage, pass/fail, environment label and code revision in release
     evidence; no tokens, selectors, IPs, raw queries, corpus or production evidence.
 
-Admission/membership acceptance for feat-512/515: malformed/duplicate handles,
+Admission/membership acceptance for feat-527/530: malformed/duplicate handles,
 known ineligibility, private visibility and unavailable lookup have explicit CI
 outcomes. An unmerged allowlist addition denies login; trusted merged publication
 admits it; removal denies existing sessions. All admitted users see all consumers,
@@ -418,10 +418,10 @@ tests/drift if contracts change. Measure added auth/telemetry latency and concur
 against an agreed pre-change synthetic baseline; set the acceptance budget before
 release. No live retrieval or runtime test is claimed by this documentation PR.
 
-## F. Portal design captured now (feat-515)
+## F. Portal design captured now (feat-530)
 
-After successful feat-514 dogfood, deliver the confirmed UX above using the
-feat-512 authenticated backend. GitHub OAuth plus the current merged portal-user
+After successful feat-529 dogfood, deliver the confirmed UX above using the
+feat-527 authenticated backend. GitHub OAuth plus the current merged portal-user
 allowlist controls admission. Show all consumers; runtime membership controls
 management. Create directly with a globally unique `^[a-z0-9-]+$` name, read-only
 signed-in initial owner, preview and submit. Return the random secret once with

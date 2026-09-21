@@ -7,6 +7,10 @@ tags: ["rag", "planning", "auth", "consumer-ownership"]
 problem_type: "planning_alignment"
 ---
 
+> J028 reference update (2026-09-21): historical RAG IDs feat-511–515 now map
+> to feat-526–530, respectively, after collisions with tickets merged to main.
+> Historical execution claims retain their original IDs; ticket links are updated.
+
 > Historical receipt: J022 supersedes earlier authorization/registration choices.
 > Follow the [canonical plan](2026-09-15-001-feat-rag-consumer-access-usage-plan.md)
 > for PR-maintained portal admission and direct creation/runtime membership.

@@ -1,12 +1,12 @@
 ---
-id: "feat-515"
+id: "feat-530"
 title: "Deliver internal RAG consumer self-service portal"
 owner: "jaco"
 priority: "P1"
 status: "not-started"
 start_date: "2026-09-16"
 duration: 5
-depends_on: ["feat-511", "feat-514"]
+depends_on: ["feat-526", "feat-529"]
 blocks: []
 tags: ["rag", "auth", "observability"]
 ---

@@ -1,13 +1,13 @@
 ---
-id: "feat-514"
+id: "feat-529"
 title: "Dogfood RAG consumer access and seven-day migration"
 owner: "jaco"
 priority: "P1"
 status: "not-started"
 start_date: "2026-09-16"
 duration: 7
-depends_on: ["feat-513"]
-blocks: ["feat-515"]
+depends_on: ["feat-528"]
+blocks: ["feat-530"]
 tags: ["rag", "auth", "observability"]
 ---
 

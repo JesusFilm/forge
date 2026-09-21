@@ -1,13 +1,13 @@
 ---
-id: "feat-512"
+id: "feat-527"
 title: "Implement formal RAG consumer access lifecycle"
 owner: "jaco"
 priority: "P1"
 status: "not-started"
 start_date: "2026-09-15"
 duration: 5
-depends_on: ["feat-511", "feat-518"]
-blocks: ["feat-513"]
+depends_on: ["feat-526", "feat-518"]
+blocks: ["feat-528"]
 tags: ["rag", "auth", "observability"]
 ---
 
@@ -44,7 +44,7 @@ Retain at least one owner, transaction/version checks and restricted audit.
 Provide stable identity, explicit server-authorized source scope/environment,
 immediate atomic rotation, suspension/revocation and isolated metadata privileges.
 Supply the same backend to the pre-portal dogfood harness; the full UI remains
-feat-515 after dogfood. Deliver the migration runbook; cutoff waits for feat-514
+feat-530 after dogfood. Deliver the migration runbook; cutoff waits for feat-529
 and separate production authorization.
 
 ## Constraints

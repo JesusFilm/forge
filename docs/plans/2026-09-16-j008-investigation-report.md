@@ -1,3 +1,7 @@
+> J028 reference update (2026-09-21): historical RAG IDs feat-511–515 now map
+> to feat-526–530, respectively, after collisions with tickets merged to main.
+> Historical execution claims retain their original IDs; ticket links are updated.
+
 # J008 — Approved RAG consumer access decisions
 
 > Historical execution record. J014 (2026-09-17) supersedes its senior/specific

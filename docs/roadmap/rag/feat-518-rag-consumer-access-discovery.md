@@ -6,8 +6,8 @@ priority: "P1"
 status: "complete"
 start_date: "2026-09-16"
 duration: 2
-depends_on: ["feat-511"]
-blocks: ["feat-512"]
+depends_on: ["feat-526"]
+blocks: ["feat-527"]
 tags: ["rag", "planning", "auth", "observability"]
 ---
 
@@ -62,7 +62,7 @@ these five areas:
 
 Documentation discovery is complete. The evidence separates accepted decisions,
 proposed technical mechanisms and unverified runtime/provider/deployment work.
-Implementation feat-512–515 remains not-started.
+Implementation feat-527–530 remains not-started.
 
 ## Constraints
 
@@ -84,7 +84,7 @@ Run changed-Markdown Prettier checks, relative-link/frontmatter validation,
 reciprocal dependency and lane index/count checks, then
 `pnpm exec tsx --test scripts/check-hidden-roadmap-lanes.test.ts` and
 `pnpm exec tsx scripts/check-hidden-roadmap-lanes.ts`.
-Confirm sequence: feat-511 → feat-518 → feat-512 → feat-513 → feat-514 → feat-515.
+Confirm sequence: feat-526 → feat-518 → feat-527 → feat-528 → feat-529 → feat-530.
 
 ## Resolution
 

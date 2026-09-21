@@ -7,6 +7,10 @@ tags: ["rag", "planning", "auth", "portal"]
 problem_type: "planning_alignment"
 ---
 
+> J028 reference update (2026-09-21): historical RAG IDs feat-511–515 now map
+> to feat-526–530, respectively, after collisions with tickets merged to main.
+> Historical execution claims retain their original IDs; ticket links are updated.
+
 # J022 investigation and review
 
 ## Scope and outcome

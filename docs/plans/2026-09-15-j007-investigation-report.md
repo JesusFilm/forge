@@ -1,3 +1,7 @@
+> J028 reference update (2026-09-21): historical RAG IDs feat-511–515 now map
+> to feat-526–530, respectively, after collisions with tickets merged to main.
+> Historical execution claims retain their original IDs; ticket links are updated.
+
 # J007 investigation, review and wiki handoff
 
 > Historical execution record. J014 (2026-09-17) supersedes its senior/specific
@@ -12,9 +16,9 @@ Documentation-only delivery in [draft PR #2304](https://github.com/JesusFilm/for
 on `docs/rag-consumer-access-usage-plan`:
 
 - [Implementation plan](2026-09-15-001-feat-rag-consumer-access-usage-plan.md).
-- [Planning record feat-511](../roadmap/rag/feat-511-rag-consumer-access-planning.md).
-- [Access implementation feat-512](../roadmap/rag/feat-512-rag-consumer-access-lifecycle.md).
-- [Observable delivery feat-513](../roadmap/rag/feat-513-rag-consumer-usage-visibility.md).
+- [Planning record feat-511](../roadmap/rag/feat-526-rag-consumer-access-planning.md).
+- [Access implementation feat-512](../roadmap/rag/feat-527-rag-consumer-access-lifecycle.md).
+- [Observable delivery feat-513](../roadmap/rag/feat-528-rag-consumer-usage-visibility.md).
 - [Hand-maintained RAG index](../roadmap/rag/README.md).
 
 Inspected actual root AGENTS/CLAUDE, RAG and contract package guides, RAG lane
