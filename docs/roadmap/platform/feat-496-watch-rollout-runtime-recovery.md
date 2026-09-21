@@ -359,3 +359,27 @@ started 06:29:37.647, surrounding the 06:26:02.748 selection failure. Use the
 PostgreSQL timestamp inside each record; Railway sometimes assigns starting and
 completion records the same collector timestamp. This negative result does not
 exclude independent WAL, file-I/O, pool or application stalls.
+
+## September 21 startup reproduction and scoped correction
+
+The [startup investigation](../../operations/watch-startup-readiness-2026-09-21.md)
+records two new six-card HTTP 200 `delivery_timeout` envelopes at 03:11 UTC,
+coincident with Admin startup. There are no selection 503s in that fixed window;
+keep these populations separate. A local production-build CPU profile identifies
+Next's unawaited background route preloader competing with the first GraphQL
+requests after health already returns 200.
+
+Five matched first selections take 926–949 ms with original readiness and
+307–402 ms when readiness awaits the existing preload promise and GraphQL
+initialization. Twenty delivery probes serve six cards without fallback. The
+candidate uses a pinned Next patch; it preserves the 700 ms caller budget,
+transaction/rate-limit guarantees and normal route preloading. All 7,286 Admin
+unit tests pass. Production verification remains pending until the normal PR
+release deploys.
+
+Keep this ticket in progress. A first editor visit still delays concurrent
+GraphQL by roughly 0.8–0.9 seconds on both controls, and the historical
+capability-budget stall is not fully attributed. Neither the startup correction
+nor a later short healthy window proves complete recovery. The
+[durable learning](../../solutions/performance-issues/next-background-preload-can-outlive-readiness.md)
+records rejected warming/disabled-preload controls and the remaining SSR work.
