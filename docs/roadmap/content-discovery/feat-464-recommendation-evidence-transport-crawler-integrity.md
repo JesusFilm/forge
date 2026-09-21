@@ -363,3 +363,16 @@ observed binding errors map to terminal 409, and all 6,840 recognized-crawler
 observations are rejected. These server facts do not prove browser retry behavior.
 Installed alerts and matching authorized Admin evidence remain unmet. Keep this
 ticket in progress and retain the burst despite the passing aggregate rate.
+
+## September 22 reproduced burst corrections released
+
+PRs #2369 and #2371 fix the reproduced GraphQL error-inspection amplification and
+catalog shared-memory workload. Both are verified in Admin and worker at
+`ce421561ee9bcf89991dea5a060a656e45c3434b`. The
+[release verification](../../operations/watch-runtime-release-verification-2026-09-22.md)
+keeps the first 17-minute logger-only population separate: 0 playback 5xx / 1,146
+requests, one terminal binding 409, and all 125 recognized crawler submissions
+rejected. Final-revision sustained acceptance remains pending. The fresh complete
+41-monitor inventory still lacks the required recommendation alerts. Read-only
+Datadog access, authenticated Admin acceptance and actual browser retry proof
+remain distinct constraints; no gate was waived to close this ticket.

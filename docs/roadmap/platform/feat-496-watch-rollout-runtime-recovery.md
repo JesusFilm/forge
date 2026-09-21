@@ -482,3 +482,21 @@ unattributed. Another task restored the homepage pilot in PR #2370; this task
 received the user's instruction to keep it removed. The single-block rollback
 requires an authenticated publishing connection; no authored-content or flag
 change has yet been made by this task.
+
+## September 22 exact runtime release and independent wait evidence
+
+PR #2371 merged as `ce421561ee9bcf89991dea5a060a656e45c3434b`; Admin and
+worker now independently verify that exact revision and both compiled fixes.
+The [release verification](../../operations/watch-runtime-release-verification-2026-09-22.md)
+records the indexed final production query at 9.982 ms for 206 rows, the initial
+logger-only HTTP and semantic populations, and the remaining acceptance gates.
+Current production PostgreSQL has a 64,000,000-byte shared-memory mount, which
+supports the bounded local allocation reproduction; historical concurrency
+remains unknown. No memory limit, deadline or durability setting was changed.
+
+The failed selection's persisted budget transaction timestamp is near the start
+of its 697 ms SQL span, arguing against assigning the whole call to native pool
+acquisition. A later read-only sample observes a 264.884 ms-old budget statement
+in `WalSync`; that is query age, not measured total WAL-wait duration, and does
+not establish the full incident cause. Keep this independent question open and
+do not describe the short healthy release window as complete recovery.

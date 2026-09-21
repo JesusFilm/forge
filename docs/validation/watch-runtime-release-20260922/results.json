@@ -1,0 +1,2781 @@
+{
+  "scope": "Separate production release, short observation and independent budget diagnostics; not a recovery or ticket-completion claim",
+  "releases": {
+    "loggerAdmin": {
+      "at": "2026-09-21T21:21:36.800Z",
+      "revision": "9492f01e92572777def7432d65b73f9910410fc4",
+      "deployment": "e4441c32-df51-45c5-ba22-96e7c7311d1c",
+      "runner": "false",
+      "loggerChunks": ["[root-of-the-server]__09fa_xj._.js"],
+      "muxChunks": [],
+      "health": {
+        "httpStatus": 200,
+        "body": {
+          "status": "ok"
+        },
+        "ms": 40
+      }
+    },
+    "loggerWorker": {
+      "at": "2026-09-21T21:22:38.872Z",
+      "revision": "9492f01e92572777def7432d65b73f9910410fc4",
+      "deployment": "53da7cef-d5ce-43dc-864a-dfe573a90126",
+      "runner": "true",
+      "loggerChunks": ["[root-of-the-server]__09fa_xj._.js"],
+      "muxChunks": [],
+      "health": {
+        "httpStatus": 200,
+        "body": {
+          "status": "ok"
+        },
+        "ms": 30
+      }
+    },
+    "catalogAdmin": {
+      "at": "2026-09-21T21:49:20.404Z",
+      "revision": "ce421561ee9bcf89991dea5a060a656e45c3434b",
+      "deployment": "d4c99cad-c229-4934-872e-0e2094a9238a",
+      "runner": "false",
+      "loggerChunks": ["[root-of-the-server]__09fa_xj._.js"],
+      "muxChunks": ["[root-of-the-server]__09fa_xj._.js"],
+      "health": {
+        "httpStatus": 200,
+        "body": {
+          "status": "ok"
+        },
+        "ms": 29
+      }
+    },
+    "catalogWorker": {
+      "at": "2026-09-21T21:54:11.740Z",
+      "revision": "ce421561ee9bcf89991dea5a060a656e45c3434b",
+      "deployment": "23d8bfa9-d49f-4525-88dc-67c419dec76e",
+      "runner": "true",
+      "loggerChunks": ["[root-of-the-server]__09fa_xj._.js"],
+      "muxChunks": ["[root-of-the-server]__09fa_xj._.js"],
+      "health": {
+        "httpStatus": 200,
+        "body": {
+          "status": "ok"
+        },
+        "ms": 28
+      }
+    }
+  },
+  "loggerOnlyObservation": {
+    "from": "2026-09-21T21:23:00Z",
+    "to": "2026-09-21T21:40:00Z",
+    "source": "Datadog primary Web APM scalar sum, repeated after ingestion settled",
+    "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+    "http": {
+      "delivery": {
+        "200": 74,
+        "403": 105
+      },
+      "selection": {
+        "200": 1
+      },
+      "playback": {
+        "200": 1032,
+        "401": 1,
+        "403": 112,
+        "409": 1
+      },
+      "evidence": {
+        "200": 227,
+        "403": 88
+      },
+      "profile": {
+        "200": 126,
+        "403": 290
+      }
+    },
+    "railwayDelivery": {
+      "from": "2026-09-21T21:23:00Z",
+      "to": "2026-09-21T21:40:00Z",
+      "deployment": "ca4c2f1c-30d6-493e-9e87-82dbb7460991",
+      "event": "recommendation.delivery",
+      "count": 179,
+      "exactRepeatedRows": 0,
+      "unrecognizedRows": 0,
+      "outcomes": {
+        "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_origin itemCount=0 upstreamResult=not_observed": 8,
+        "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_fetch_metadata itemCount=0 upstreamResult=not_observed": 97,
+        "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=6 upstreamResult=served": 49,
+        "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=4 upstreamResult=served": 3,
+        "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=3 upstreamResult=served": 4,
+        "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=5 upstreamResult=served": 4,
+        "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=seed_embedding_unavailable itemCount=6 upstreamResult=fallback": 4,
+        "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=seed_embedding_unavailable itemCount=6 upstreamResult=empty": 1,
+        "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=2 upstreamResult=served": 3,
+        "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=no_candidates itemCount=6 upstreamResult=empty": 4,
+        "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=1 upstreamResult=served": 2
+      },
+      "windows": [
+        {
+          "from": "2026-09-21T21:23:00Z",
+          "to": "2026-09-21T21:28:00Z",
+          "returned": 58,
+          "uniqueAdded": 58
+        },
+        {
+          "from": "2026-09-21T21:28:00Z",
+          "to": "2026-09-21T21:33:00Z",
+          "returned": 54,
+          "uniqueAdded": 54
+        },
+        {
+          "from": "2026-09-21T21:33:00Z",
+          "to": "2026-09-21T21:38:00Z",
+          "returned": 46,
+          "uniqueAdded": 46
+        },
+        {
+          "from": "2026-09-21T21:38:00Z",
+          "to": "2026-09-21T21:40:00Z",
+          "returned": 21,
+          "uniqueAdded": 21
+        }
+      ],
+      "recordDigest": "6c7d2acb888e2e7ca16dc05fed3a2704338e1f9498320d41c9d467930a16da4b"
+    },
+    "railwayEvidence": {
+      "from": "2026-09-21T21:23:00Z",
+      "to": "2026-09-21T21:40:00Z",
+      "deployment": "ca4c2f1c-30d6-493e-9e87-82dbb7460991",
+      "event": "recommendation.evidence",
+      "count": 1462,
+      "exactRepeatedRows": 0,
+      "unrecognizedRows": 0,
+      "outcomes": {
+        "event=recommendation.evidence source=web action=evidence outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200": 227,
+        "event=recommendation.evidence source=web action=facts outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200": 958,
+        "event=recommendation.evidence source=web action=playback outcome=rejected reason=forbidden timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=403": 75,
+        "event=recommendation.evidence source=web action=evidence outcome=rejected reason=crawler_rejected timeoutStage=none retryDisposition=terminal crawler=recognized httpStatus=403": 88,
+        "event=recommendation.evidence source=web action=playback outcome=rejected reason=crawler_rejected timeoutStage=none retryDisposition=terminal crawler=recognized httpStatus=403": 37,
+        "event=recommendation.evidence source=web action=context outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200": 36,
+        "event=recommendation.evidence source=web action=claim outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200": 37,
+        "event=recommendation.evidence source=web action=facts outcome=rejected reason=invalid_binding timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=409": 1,
+        "event=recommendation.evidence source=web action=facts outcome=replay reason=none timeoutStage=none retryDisposition=idempotent_replay crawler=not_recognized httpStatus=200": 1,
+        "event=recommendation.evidence source=web action=select outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200": 1,
+        "event=recommendation.evidence source=web action=facts outcome=rejected reason=forbidden timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=401": 1
+      },
+      "windows": [
+        {
+          "from": "2026-09-21T21:23:00Z",
+          "to": "2026-09-21T21:28:00Z",
+          "returned": 572,
+          "uniqueAdded": 572
+        },
+        {
+          "from": "2026-09-21T21:28:00Z",
+          "to": "2026-09-21T21:33:00Z",
+          "returned": 511,
+          "uniqueAdded": 511
+        },
+        {
+          "from": "2026-09-21T21:33:00Z",
+          "to": "2026-09-21T21:38:00Z",
+          "returned": 297,
+          "uniqueAdded": 297
+        },
+        {
+          "from": "2026-09-21T21:38:00Z",
+          "to": "2026-09-21T21:40:00Z",
+          "returned": 82,
+          "uniqueAdded": 82
+        }
+      ],
+      "recordDigest": "50cf147686386dcc3680ec683ba2d7680b6a95ab5717838fd2d0548940085b26"
+    },
+    "datadogDeliveryReconciled": true,
+    "faultInjectionExclusions": 0
+  },
+  "budgetIncident": {
+    "at": "2026-09-21T21:28:27.046Z",
+    "revision": "9492f01e92572777def7432d65b73f9910410fc4",
+    "scope": "timestamps only for persisted selections in the known three-second failure interval; no identities or capabilities exported",
+    "rows": [
+      {
+        "selection_received_at": "2026-09-21T08:37:29.032Z",
+        "selection_occurred_at": "2026-09-21T08:37:27.580Z",
+        "attribution_eligible_at": "2026-09-21T08:37:29.032Z",
+        "claimed_at": "2026-09-21T08:37:30.869Z",
+        "attempts": 3,
+        "budget_created_at": "2026-09-21T08:36:14.545Z",
+        "budget_updated_at": "2026-09-21T08:37:29.041Z",
+        "impression_received_at": "2026-09-21T08:37:20.790Z"
+      }
+    ]
+  },
+  "walWaitSample": {
+    "started": "2026-09-21T21:17:00.271Z",
+    "ended": "2026-09-21T21:18:01.514Z",
+    "revision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+    "snapshots": 300,
+    "intervalMs": 200,
+    "sawBudget": 12,
+    "maxBudgetAgeMs": 264.884,
+    "maxOtherAgeMs": 1987.15,
+    "waits": {
+      "episode-budget:IO:WalInitSync": 1,
+      "delivery-budget:IO:WalSync": 1,
+      "delivery-budget:LWLock:WALWrite": 4,
+      "delivery-budget:running:none": 1,
+      "episode-budget:IO:WalSync": 3,
+      "episode-budget:LWLock:WALWrite": 2
+    },
+    "slowSamples": [
+      {
+        "sample": 35,
+        "kind": "episode-budget",
+        "waitType": "IO",
+        "wait": "WalInitSync",
+        "ageMs": 78,
+        "sameContainer": false
+      },
+      {
+        "sample": 154,
+        "kind": "episode-budget",
+        "waitType": "IO",
+        "wait": "WalSync",
+        "ageMs": 265,
+        "sameContainer": false
+      },
+      {
+        "sample": 154,
+        "kind": "episode-budget",
+        "waitType": "LWLock",
+        "wait": "WALWrite",
+        "ageMs": 101,
+        "sameContainer": false
+      }
+    ]
+  },
+  "laterWaitSample": {
+    "started": "2026-09-21T21:40:46.500Z",
+    "ended": "2026-09-21T21:42:19.798Z",
+    "revision": "9492f01e92572777def7432d65b73f9910410fc4",
+    "samples": 900,
+    "intervalMs": 100,
+    "observations": 1,
+    "distinctObservedQueries": 1,
+    "totalActivityMs": 3009.2267130000564,
+    "maxSampleMs": 9.202694999999949,
+    "waits": {
+      "episode-budget:running:none": 1
+    },
+    "records": [
+      {
+        "query": 1,
+        "started": "2026-09-21T21:42:15.028Z",
+        "observed": "2026-09-21T21:42:15.028Z",
+        "kind": "episode-budget",
+        "waitType": null,
+        "wait": null,
+        "ageMs": 0.137,
+        "blockers": 0,
+        "activeCounts": {
+          "episode-budget:running:none": 1
+        }
+      }
+    ]
+  },
+  "walCounterBaseline": {
+    "at": "2026-09-21T21:22:07.163Z",
+    "revision": "9492f01e92572777def7432d65b73f9910410fc4",
+    "settings": [
+      {
+        "name": "checkpoint_completion_target",
+        "setting": "0.9",
+        "unit": null
+      },
+      {
+        "name": "checkpoint_timeout",
+        "setting": "300",
+        "unit": "s"
+      },
+      {
+        "name": "fsync",
+        "setting": "on",
+        "unit": null
+      },
+      {
+        "name": "full_page_writes",
+        "setting": "on",
+        "unit": null
+      },
+      {
+        "name": "max_connections",
+        "setting": "500",
+        "unit": null
+      },
+      {
+        "name": "max_wal_size",
+        "setting": "1024",
+        "unit": "MB"
+      },
+      {
+        "name": "min_wal_size",
+        "setting": "80",
+        "unit": "MB"
+      },
+      {
+        "name": "shared_buffers",
+        "setting": "16384",
+        "unit": "8kB"
+      },
+      {
+        "name": "synchronous_commit",
+        "setting": "on",
+        "unit": null
+      },
+      {
+        "name": "track_io_timing",
+        "setting": "off",
+        "unit": null
+      },
+      {
+        "name": "track_wal_io_timing",
+        "setting": "off",
+        "unit": null
+      },
+      {
+        "name": "wal_buffers",
+        "setting": "512",
+        "unit": "8kB"
+      },
+      {
+        "name": "wal_compression",
+        "setting": "off",
+        "unit": null
+      },
+      {
+        "name": "wal_init_zero",
+        "setting": "on",
+        "unit": null
+      },
+      {
+        "name": "wal_recycle",
+        "setting": "on",
+        "unit": null
+      },
+      {
+        "name": "wal_sync_method",
+        "setting": "fdatasync",
+        "unit": null
+      }
+    ],
+    "wal": [
+      {
+        "stats": {
+          "wal_fpi": 38393003,
+          "wal_bytes": 267107254298,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "wal_records": 249301988,
+          "wal_buffers_full": 171970
+        }
+      }
+    ],
+    "io": [
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 245,
+          "object": "wal",
+          "reuses": null,
+          "writes": 245,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 4110417920,
+          "backend_type": "client backend",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": 0,
+          "fsyncs": 20014082,
+          "object": "wal",
+          "reuses": null,
+          "writes": 20209687,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": 0,
+          "fsync_time": 0,
+          "read_bytes": 0,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 384014540800,
+          "backend_type": "client backend",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "autovacuum launcher",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "autovacuum launcher",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 182,
+          "object": "wal",
+          "reuses": null,
+          "writes": 182,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 3053453312,
+          "backend_type": "autovacuum worker",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 63617,
+          "object": "wal",
+          "reuses": null,
+          "writes": 67843,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 21737955328,
+          "backend_type": "autovacuum worker",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 2,
+          "object": "wal",
+          "reuses": null,
+          "writes": 2,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 33554432,
+          "backend_type": "background worker",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": 0,
+          "fsyncs": 795,
+          "object": "wal",
+          "reuses": null,
+          "writes": 8076,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": 0,
+          "fsync_time": 0,
+          "read_bytes": 0,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 138256384,
+          "backend_type": "background worker",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "walsender",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": 0,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": 0,
+          "fsync_time": 0,
+          "read_bytes": 0,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "walsender",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "slotsync worker",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": 0,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": 0,
+          "fsync_time": 0,
+          "read_bytes": 0,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "slotsync worker",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "standalone backend",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": 0,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": 0,
+          "fsync_time": 0,
+          "read_bytes": 0,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "standalone backend",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 7,
+          "object": "wal",
+          "reuses": null,
+          "writes": 7,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 117440512,
+          "backend_type": "background writer",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 23996,
+          "object": "wal",
+          "reuses": null,
+          "writes": 24335,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 2369413120,
+          "backend_type": "background writer",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 0,
+          "object": "relation",
+          "reuses": null,
+          "writes": 0,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": 0,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "checkpointer",
+          "extend_bytes": null,
+          "writeback_time": 0
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 1579432,
+          "object": "relation",
+          "reuses": null,
+          "writes": 78277,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": 78277,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 641245184,
+          "backend_type": "checkpointer",
+          "extend_bytes": null,
+          "writeback_time": 0
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "checkpointer",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": 0,
+          "fsyncs": 10994,
+          "object": "wal",
+          "reuses": null,
+          "writes": 11001,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": 0,
+          "fsync_time": 0,
+          "read_bytes": 0,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 134029312,
+          "backend_type": "checkpointer",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "io worker",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": 0,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": 0,
+          "fsync_time": 0,
+          "read_bytes": 0,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "io worker",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "startup",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": 10,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": 0,
+          "fsync_time": 0,
+          "read_bytes": 81920,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "startup",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "walreceiver",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "walreceiver",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "walsummarizer",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": 0,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": 0,
+          "fsync_time": 0,
+          "read_bytes": 0,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "walsummarizer",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 15,
+          "object": "wal",
+          "reuses": null,
+          "writes": 15,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 251658240,
+          "backend_type": "walwriter",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 670300,
+          "object": "wal",
+          "reuses": null,
+          "writes": 680237,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 27617861632,
+          "backend_type": "walwriter",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      }
+    ],
+    "checkpoints": [
+      {
+        "stats": {
+          "num_done": 10862,
+          "num_timed": 10858,
+          "sync_time": 1226983,
+          "write_time": 34332727,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "slru_written": 34569,
+          "num_requested": 4,
+          "buffers_written": 78277,
+          "restartpoints_req": 0,
+          "restartpoints_done": 0,
+          "restartpoints_timed": 0
+        }
+      }
+    ],
+    "tables": [
+      {
+        "relname": "recommendation_candidate_stage_evidence",
+        "n_live_tup": "14405243",
+        "n_dead_tup": "0",
+        "n_tup_ins": "14761489",
+        "n_tup_upd": "0",
+        "n_tup_del": "0",
+        "n_tup_hot_upd": "0",
+        "last_autovacuum": "2026-09-21T21:17:08.152Z",
+        "last_autoanalyze": "2026-09-21T15:03:49.334Z"
+      },
+      {
+        "relname": "_private_jobs",
+        "n_live_tup": "5159",
+        "n_dead_tup": "1221",
+        "n_tup_ins": "2236906",
+        "n_tup_upd": "2473029",
+        "n_tup_del": "2234773",
+        "n_tup_hot_upd": "0",
+        "last_autovacuum": "2026-09-21T21:20:01.314Z",
+        "last_autoanalyze": "2026-09-21T21:22:01.378Z"
+      },
+      {
+        "relname": "workflow_events",
+        "n_live_tup": "3798173",
+        "n_dead_tup": "0",
+        "n_tup_ins": "3713858",
+        "n_tup_upd": "0",
+        "n_tup_del": "0",
+        "n_tup_hot_upd": "0",
+        "last_autovacuum": "2026-09-20T17:08:34.648Z",
+        "last_autoanalyze": "2026-09-21T07:19:13.682Z"
+      },
+      {
+        "relname": "workflow_steps",
+        "n_live_tup": "808230",
+        "n_dead_tup": "40976",
+        "n_tup_ins": "782670",
+        "n_tup_upd": "1585402",
+        "n_tup_del": "1",
+        "n_tup_hot_upd": "8387",
+        "last_autovacuum": "2026-09-21T07:58:30.113Z",
+        "last_autoanalyze": "2026-09-21T11:06:27.415Z"
+      },
+      {
+        "relname": "recommendation_capability_submission_budget",
+        "n_live_tup": "477161",
+        "n_dead_tup": "5917",
+        "n_tup_ins": "477254",
+        "n_tup_upd": "858628",
+        "n_tup_del": "93",
+        "n_tup_hot_upd": "854318",
+        "last_autovacuum": "2026-09-19T23:38:24.946Z",
+        "last_autoanalyze": "2026-09-21T14:37:38.842Z"
+      },
+      {
+        "relname": "recommendation_playback_episode",
+        "n_live_tup": "142421",
+        "n_dead_tup": "11456",
+        "n_tup_ins": "142421",
+        "n_tup_upd": "1132878",
+        "n_tup_del": "0",
+        "n_tup_hot_upd": "805865",
+        "last_autovacuum": "2026-09-21T10:59:30.051Z",
+        "last_autoanalyze": "2026-09-21T21:13:01.283Z"
+      },
+      {
+        "relname": "recommendation_profile_projection_run",
+        "n_live_tup": "17258",
+        "n_dead_tup": "613",
+        "n_tup_ins": "226424",
+        "n_tup_upd": "685408",
+        "n_tup_del": "211364",
+        "n_tup_hot_upd": "194068",
+        "last_autovacuum": "2026-09-21T20:41:59.534Z",
+        "last_autoanalyze": "2026-09-21T20:28:58.581Z"
+      },
+      {
+        "relname": "workflow_runs",
+        "n_live_tup": "364275",
+        "n_dead_tup": "46394",
+        "n_tup_ins": "363950",
+        "n_tup_upd": "726823",
+        "n_tup_del": "15",
+        "n_tup_hot_upd": "1",
+        "last_autovacuum": "2026-09-20T14:46:25.341Z",
+        "last_autoanalyze": "2026-09-21T12:01:31.998Z"
+      },
+      {
+        "relname": "recommendation_playback_fact",
+        "n_live_tup": "1030704",
+        "n_dead_tup": "311",
+        "n_tup_ins": "1030892",
+        "n_tup_upd": "0",
+        "n_tup_del": "0",
+        "n_tup_hot_upd": "0",
+        "last_autovacuum": "2026-09-21T03:01:00.848Z",
+        "last_autoanalyze": "2026-09-21T08:14:17.146Z"
+      },
+      {
+        "relname": "recommendation_served_item",
+        "n_live_tup": "761652",
+        "n_dead_tup": "544",
+        "n_tup_ins": "777792",
+        "n_tup_upd": "0",
+        "n_tup_del": "0",
+        "n_tup_hot_upd": "0",
+        "last_autovacuum": "2026-09-20T00:57:35.221Z",
+        "last_autoanalyze": "2026-09-20T23:15:46.531Z"
+      },
+      {
+        "relname": "workflow_run",
+        "n_live_tup": "137863",
+        "n_dead_tup": "10890",
+        "n_tup_ins": "137657",
+        "n_tup_upd": "594501",
+        "n_tup_del": "0",
+        "n_tup_hot_upd": "163137",
+        "last_autovacuum": "2026-09-21T12:58:34.410Z",
+        "last_autoanalyze": "2026-09-21T17:51:50.096Z"
+      },
+      {
+        "relname": "recommendation_evidence_audit",
+        "n_live_tup": "714369",
+        "n_dead_tup": "0",
+        "n_tup_ins": "716746",
+        "n_tup_upd": "0",
+        "n_tup_del": "0",
+        "n_tup_hot_upd": "0",
+        "last_autovacuum": "2026-09-21T12:52:32.686Z",
+        "last_autoanalyze": "2026-09-21T00:42:50.315Z"
+      },
+      {
+        "relname": "recommendation_profile_session_link",
+        "n_live_tup": "22469",
+        "n_dead_tup": "371",
+        "n_tup_ins": "304256",
+        "n_tup_upd": "100997",
+        "n_tup_del": "285734",
+        "n_tup_hot_upd": "2",
+        "last_autovacuum": "2026-09-21T20:05:57.676Z",
+        "last_autoanalyze": "2026-09-21T19:30:55.077Z"
+      },
+      {
+        "relname": "video_subtitle",
+        "n_live_tup": "12225",
+        "n_dead_tup": "2454",
+        "n_tup_ins": "635",
+        "n_tup_upd": "454048",
+        "n_tup_del": "0",
+        "n_tup_hot_upd": "378888",
+        "last_autovacuum": "2026-09-20T07:00:49.695Z",
+        "last_autoanalyze": "2026-09-19T07:00:26.545Z"
+      },
+      {
+        "relname": "recommendation_rendered_fact",
+        "n_live_tup": "430879",
+        "n_dead_tup": "0",
+        "n_tup_ins": "430879",
+        "n_tup_upd": "0",
+        "n_tup_del": "0",
+        "n_tup_hot_upd": "0",
+        "last_autovacuum": "2026-09-20T20:20:35.582Z",
+        "last_autoanalyze": "2026-09-20T23:02:46.046Z"
+      },
+      {
+        "relname": "recommendation_profile_projection_generation",
+        "n_live_tup": "194039",
+        "n_dead_tup": "12566",
+        "n_tup_ins": "199683",
+        "n_tup_upd": "196071",
+        "n_tup_del": "110",
+        "n_tup_hot_upd": "0",
+        "last_autovacuum": "2026-09-20T10:56:08.349Z",
+        "last_autoanalyze": "2026-09-21T00:33:51.264Z"
+      },
+      {
+        "relname": "workflow_waits",
+        "n_live_tup": "12775",
+        "n_dead_tup": "347",
+        "n_tup_ins": "126917",
+        "n_tup_upd": "125870",
+        "n_tup_del": "114235",
+        "n_tup_hot_upd": "120977",
+        "last_autovacuum": "2026-09-21T20:22:58.242Z",
+        "last_autoanalyze": "2026-09-21T20:05:57.236Z"
+      },
+      {
+        "relname": "video_dub",
+        "n_live_tup": "212193",
+        "n_dead_tup": "0",
+        "n_tup_ins": "185",
+        "n_tup_upd": "349760",
+        "n_tup_del": "0",
+        "n_tup_hot_upd": "18365",
+        "last_autovacuum": "2026-09-11T06:07:34.031Z",
+        "last_autoanalyze": "2026-09-11T06:06:45.742Z"
+      }
+    ]
+  },
+  "walCounterFollowup": {
+    "at": "2026-09-21T21:24:43.180Z",
+    "revision": "9492f01e92572777def7432d65b73f9910410fc4",
+    "settings": [
+      {
+        "name": "checkpoint_completion_target",
+        "setting": "0.9",
+        "unit": null
+      },
+      {
+        "name": "checkpoint_timeout",
+        "setting": "300",
+        "unit": "s"
+      },
+      {
+        "name": "fsync",
+        "setting": "on",
+        "unit": null
+      },
+      {
+        "name": "full_page_writes",
+        "setting": "on",
+        "unit": null
+      },
+      {
+        "name": "max_connections",
+        "setting": "500",
+        "unit": null
+      },
+      {
+        "name": "max_wal_size",
+        "setting": "1024",
+        "unit": "MB"
+      },
+      {
+        "name": "min_wal_size",
+        "setting": "80",
+        "unit": "MB"
+      },
+      {
+        "name": "shared_buffers",
+        "setting": "16384",
+        "unit": "8kB"
+      },
+      {
+        "name": "synchronous_commit",
+        "setting": "on",
+        "unit": null
+      },
+      {
+        "name": "track_io_timing",
+        "setting": "off",
+        "unit": null
+      },
+      {
+        "name": "track_wal_io_timing",
+        "setting": "off",
+        "unit": null
+      },
+      {
+        "name": "wal_buffers",
+        "setting": "512",
+        "unit": "8kB"
+      },
+      {
+        "name": "wal_compression",
+        "setting": "off",
+        "unit": null
+      },
+      {
+        "name": "wal_init_zero",
+        "setting": "on",
+        "unit": null
+      },
+      {
+        "name": "wal_recycle",
+        "setting": "on",
+        "unit": null
+      },
+      {
+        "name": "wal_sync_method",
+        "setting": "fdatasync",
+        "unit": null
+      }
+    ],
+    "wal": [
+      {
+        "stats": {
+          "wal_fpi": 38397336,
+          "wal_bytes": 267139712468,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "wal_records": 249348422,
+          "wal_buffers_full": 171970
+        }
+      }
+    ],
+    "io": [
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 245,
+          "object": "wal",
+          "reuses": null,
+          "writes": 245,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 4110417920,
+          "backend_type": "client backend",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": 0,
+          "fsyncs": 20018896,
+          "object": "wal",
+          "reuses": null,
+          "writes": 20214506,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": 0,
+          "fsync_time": 0,
+          "read_bytes": 0,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 384082706432,
+          "backend_type": "client backend",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "autovacuum launcher",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "autovacuum launcher",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 182,
+          "object": "wal",
+          "reuses": null,
+          "writes": 182,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 3053453312,
+          "backend_type": "autovacuum worker",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 63621,
+          "object": "wal",
+          "reuses": null,
+          "writes": 67847,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 21738135552,
+          "backend_type": "autovacuum worker",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 2,
+          "object": "wal",
+          "reuses": null,
+          "writes": 2,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 33554432,
+          "backend_type": "background worker",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": 0,
+          "fsyncs": 795,
+          "object": "wal",
+          "reuses": null,
+          "writes": 8076,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": 0,
+          "fsync_time": 0,
+          "read_bytes": 0,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 138256384,
+          "backend_type": "background worker",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "walsender",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": 0,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": 0,
+          "fsync_time": 0,
+          "read_bytes": 0,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "walsender",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "slotsync worker",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": 0,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": 0,
+          "fsync_time": 0,
+          "read_bytes": 0,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "slotsync worker",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "standalone backend",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": 0,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": 0,
+          "fsync_time": 0,
+          "read_bytes": 0,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "standalone backend",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 7,
+          "object": "wal",
+          "reuses": null,
+          "writes": 7,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 117440512,
+          "backend_type": "background writer",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 23999,
+          "object": "wal",
+          "reuses": null,
+          "writes": 24338,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 2369445888,
+          "backend_type": "background writer",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 0,
+          "object": "relation",
+          "reuses": null,
+          "writes": 0,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": 0,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "checkpointer",
+          "extend_bytes": null,
+          "writeback_time": 0
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 1579432,
+          "object": "relation",
+          "reuses": null,
+          "writes": 78277,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": 78277,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 641245184,
+          "backend_type": "checkpointer",
+          "extend_bytes": null,
+          "writeback_time": 0
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "checkpointer",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": 0,
+          "fsyncs": 10994,
+          "object": "wal",
+          "reuses": null,
+          "writes": 11001,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": 0,
+          "fsync_time": 0,
+          "read_bytes": 0,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 134029312,
+          "backend_type": "checkpointer",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "io worker",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": 0,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": 0,
+          "fsync_time": 0,
+          "read_bytes": 0,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "io worker",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "startup",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": 10,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": 0,
+          "fsync_time": 0,
+          "read_bytes": 81920,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "startup",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "walreceiver",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "walreceiver",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "walsummarizer",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": 0,
+          "fsyncs": 0,
+          "object": "wal",
+          "reuses": null,
+          "writes": 0,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": 0,
+          "fsync_time": 0,
+          "read_bytes": 0,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 0,
+          "backend_type": "walsummarizer",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 15,
+          "object": "wal",
+          "reuses": null,
+          "writes": 15,
+          "context": "init",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 251658240,
+          "backend_type": "walwriter",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      },
+      {
+        "stats": {
+          "hits": null,
+          "reads": null,
+          "fsyncs": 670342,
+          "object": "wal",
+          "reuses": null,
+          "writes": 680280,
+          "context": "normal",
+          "extends": null,
+          "evictions": null,
+          "read_time": null,
+          "fsync_time": 0,
+          "read_bytes": null,
+          "write_time": 0,
+          "writebacks": null,
+          "extend_time": null,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "write_bytes": 27621736448,
+          "backend_type": "walwriter",
+          "extend_bytes": null,
+          "writeback_time": null
+        }
+      }
+    ],
+    "checkpoints": [
+      {
+        "stats": {
+          "num_done": 10862,
+          "num_timed": 10858,
+          "sync_time": 1226983,
+          "write_time": 34332727,
+          "stats_reset": "2026-08-15T04:07:44.204854+00:00",
+          "slru_written": 34569,
+          "num_requested": 4,
+          "buffers_written": 78277,
+          "restartpoints_req": 0,
+          "restartpoints_done": 0,
+          "restartpoints_timed": 0
+        }
+      }
+    ],
+    "tables": [
+      {
+        "relname": "recommendation_candidate_stage_evidence",
+        "n_live_tup": "14407749",
+        "n_dead_tup": "0",
+        "n_tup_ins": "14763995",
+        "n_tup_upd": "0",
+        "n_tup_del": "0",
+        "n_tup_hot_upd": "0",
+        "last_autovacuum": "2026-09-21T21:17:08.152Z",
+        "last_autoanalyze": "2026-09-21T15:03:49.334Z"
+      },
+      {
+        "relname": "_private_jobs",
+        "n_live_tup": "5130",
+        "n_dead_tup": "351",
+        "n_tup_ins": "2237937",
+        "n_tup_upd": "2474866",
+        "n_tup_del": "2235815",
+        "n_tup_hot_upd": "0",
+        "last_autovacuum": "2026-09-21T21:23:01.535Z",
+        "last_autoanalyze": "2026-09-21T21:23:01.572Z"
+      },
+      {
+        "relname": "workflow_events",
+        "n_live_tup": "3798626",
+        "n_dead_tup": "0",
+        "n_tup_ins": "3714311",
+        "n_tup_upd": "0",
+        "n_tup_del": "0",
+        "n_tup_hot_upd": "0",
+        "last_autovacuum": "2026-09-20T17:08:34.648Z",
+        "last_autoanalyze": "2026-09-21T07:19:13.682Z"
+      },
+      {
+        "relname": "workflow_steps",
+        "n_live_tup": "808326",
+        "n_dead_tup": "41172",
+        "n_tup_ins": "782766",
+        "n_tup_upd": "1585598",
+        "n_tup_del": "1",
+        "n_tup_hot_upd": "8387",
+        "last_autovacuum": "2026-09-21T07:58:30.113Z",
+        "last_autoanalyze": "2026-09-21T11:06:27.415Z"
+      },
+      {
+        "relname": "recommendation_capability_submission_budget",
+        "n_live_tup": "477229",
+        "n_dead_tup": "5993",
+        "n_tup_ins": "477322",
+        "n_tup_upd": "858785",
+        "n_tup_del": "93",
+        "n_tup_hot_upd": "854473",
+        "last_autovacuum": "2026-09-19T23:38:24.946Z",
+        "last_autoanalyze": "2026-09-21T14:37:38.842Z"
+      },
+      {
+        "relname": "recommendation_playback_episode",
+        "n_live_tup": "142431",
+        "n_dead_tup": "11485",
+        "n_tup_ins": "142431",
+        "n_tup_upd": "1133071",
+        "n_tup_del": "0",
+        "n_tup_hot_upd": "806022",
+        "last_autovacuum": "2026-09-21T10:59:30.051Z",
+        "last_autoanalyze": "2026-09-21T21:13:01.283Z"
+      },
+      {
+        "relname": "recommendation_profile_projection_run",
+        "n_live_tup": "17280",
+        "n_dead_tup": "663",
+        "n_tup_ins": "226446",
+        "n_tup_upd": "685476",
+        "n_tup_del": "211364",
+        "n_tup_hot_upd": "194087",
+        "last_autovacuum": "2026-09-21T20:41:59.534Z",
+        "last_autoanalyze": "2026-09-21T20:28:58.581Z"
+      },
+      {
+        "relname": "workflow_runs",
+        "n_live_tup": "364321",
+        "n_dead_tup": "46485",
+        "n_tup_ins": "363996",
+        "n_tup_upd": "726914",
+        "n_tup_del": "15",
+        "n_tup_hot_upd": "1",
+        "last_autovacuum": "2026-09-20T14:46:25.341Z",
+        "last_autoanalyze": "2026-09-21T12:01:31.998Z"
+      },
+      {
+        "relname": "recommendation_playback_fact",
+        "n_live_tup": "1030905",
+        "n_dead_tup": "311",
+        "n_tup_ins": "1031093",
+        "n_tup_upd": "0",
+        "n_tup_del": "0",
+        "n_tup_hot_upd": "0",
+        "last_autovacuum": "2026-09-21T03:01:00.848Z",
+        "last_autoanalyze": "2026-09-21T08:14:17.146Z"
+      },
+      {
+        "relname": "recommendation_served_item",
+        "n_live_tup": "761731",
+        "n_dead_tup": "544",
+        "n_tup_ins": "777871",
+        "n_tup_upd": "0",
+        "n_tup_del": "0",
+        "n_tup_hot_upd": "0",
+        "last_autovacuum": "2026-09-20T00:57:35.221Z",
+        "last_autoanalyze": "2026-09-20T23:15:46.531Z"
+      },
+      {
+        "relname": "workflow_run",
+        "n_live_tup": "137887",
+        "n_dead_tup": "10962",
+        "n_tup_ins": "137681",
+        "n_tup_upd": "594597",
+        "n_tup_del": "0",
+        "n_tup_hot_upd": "163162",
+        "last_autovacuum": "2026-09-21T12:58:34.410Z",
+        "last_autoanalyze": "2026-09-21T17:51:50.096Z"
+      },
+      {
+        "relname": "recommendation_evidence_audit",
+        "n_live_tup": "714449",
+        "n_dead_tup": "0",
+        "n_tup_ins": "716826",
+        "n_tup_upd": "0",
+        "n_tup_del": "0",
+        "n_tup_hot_upd": "0",
+        "last_autovacuum": "2026-09-21T12:52:32.686Z",
+        "last_autoanalyze": "2026-09-21T00:42:50.315Z"
+      },
+      {
+        "relname": "recommendation_profile_session_link",
+        "n_live_tup": "22491",
+        "n_dead_tup": "383",
+        "n_tup_ins": "304278",
+        "n_tup_upd": "101009",
+        "n_tup_del": "285734",
+        "n_tup_hot_upd": "2",
+        "last_autovacuum": "2026-09-21T20:05:57.676Z",
+        "last_autoanalyze": "2026-09-21T19:30:55.077Z"
+      },
+      {
+        "relname": "video_subtitle",
+        "n_live_tup": "12225",
+        "n_dead_tup": "2454",
+        "n_tup_ins": "635",
+        "n_tup_upd": "454048",
+        "n_tup_del": "0",
+        "n_tup_hot_upd": "378888",
+        "last_autovacuum": "2026-09-20T07:00:49.695Z",
+        "last_autoanalyze": "2026-09-19T07:00:26.545Z"
+      },
+      {
+        "relname": "recommendation_rendered_fact",
+        "n_live_tup": "430939",
+        "n_dead_tup": "0",
+        "n_tup_ins": "430939",
+        "n_tup_upd": "0",
+        "n_tup_del": "0",
+        "n_tup_hot_upd": "0",
+        "last_autovacuum": "2026-09-20T20:20:35.582Z",
+        "last_autoanalyze": "2026-09-20T23:02:46.046Z"
+      },
+      {
+        "relname": "recommendation_profile_projection_generation",
+        "n_live_tup": "194055",
+        "n_dead_tup": "12582",
+        "n_tup_ins": "199699",
+        "n_tup_upd": "196087",
+        "n_tup_del": "110",
+        "n_tup_hot_upd": "0",
+        "last_autovacuum": "2026-09-20T10:56:08.349Z",
+        "last_autoanalyze": "2026-09-21T00:33:51.264Z"
+      },
+      {
+        "relname": "workflow_waits",
+        "n_live_tup": "12778",
+        "n_dead_tup": "358",
+        "n_tup_ins": "126929",
+        "n_tup_upd": "125881",
+        "n_tup_del": "114244",
+        "n_tup_hot_upd": "120988",
+        "last_autovacuum": "2026-09-21T20:22:58.242Z",
+        "last_autoanalyze": "2026-09-21T20:05:57.236Z"
+      },
+      {
+        "relname": "video_dub",
+        "n_live_tup": "212193",
+        "n_dead_tup": "0",
+        "n_tup_ins": "185",
+        "n_tup_upd": "349760",
+        "n_tup_del": "0",
+        "n_tup_hot_upd": "18365",
+        "last_autovacuum": "2026-09-11T06:07:34.031Z",
+        "last_autoanalyze": "2026-09-11T06:06:45.742Z"
+      }
+    ]
+  },
+  "canonicalProfileAudit": {
+    "at": "2026-09-21T21:45:11.093Z",
+    "revision": "9492f01e92572777def7432d65b73f9910410fc4",
+    "from": "2026-09-21T21:23:00Z",
+    "to": "2026-09-21T21:44:59.655Z",
+    "elapsedMs": 8223.631499000001,
+    "rows": [
+      {
+        "ineligibleGenerations": "0",
+        "affectedPointers": "0",
+        "affectedContributions": "0",
+        "rebuildCandidates": "0",
+        "rebuildBacklog": "0",
+        "replacementPublications": "2",
+        "staleClaims": "0",
+        "reclaimedRuns": "0",
+        "terminalRuns": "8",
+        "servingFences": "0",
+        "affectedRequests": "0",
+        "cleanHybridRequests": "24",
+        "reasonCounts": {}
+      }
+    ]
+  },
+  "naturalProjectionFences": {
+    "at": "2026-09-21T21:48:10.269Z",
+    "revision": "ce421561ee9bcf89991dea5a060a656e45c3434b",
+    "to": "2026-09-21T21:48:07.626Z",
+    "elapsedMs": 43.992975,
+    "rows": [
+      {
+        "failure_reason": "eligibility_input_fenced",
+        "count": "5",
+        "no_published_projection": "5",
+        "expected_pointer_recorded": "5",
+        "current_pointer_present": "5",
+        "newer_current_pointer": "1",
+        "current_pointer_lineage_eligible": "5"
+      },
+      {
+        "failure_reason": "pointer_generation_fenced",
+        "count": "11",
+        "no_published_projection": "11",
+        "expected_pointer_recorded": "9",
+        "current_pointer_present": "11",
+        "newer_current_pointer": "11",
+        "current_pointer_lineage_eligible": "11"
+      }
+    ]
+  },
+  "naturalFallbackAndTerminalInventory": {
+    "at": "2026-09-21T21:46:46.400Z",
+    "revision": "9492f01e92572777def7432d65b73f9910410fc4",
+    "terminal": [
+      {
+        "state": "fenced",
+        "failure_reason": "pointer_generation_fenced",
+        "last_transition_reason": "pointer_generation_fenced",
+        "count": "11",
+        "first_at": "2026-09-21T19:46:46.812Z",
+        "last_at": "2026-09-21T21:40:50.170Z"
+      },
+      {
+        "state": "fenced",
+        "failure_reason": "eligibility_input_fenced",
+        "last_transition_reason": "eligibility_input_fenced",
+        "count": "5",
+        "first_at": "2026-09-21T20:05:21.983Z",
+        "last_at": "2026-09-21T21:24:33.030Z"
+      }
+    ],
+    "fallback": []
+  },
+  "catalogExecutedProductionPlan": {
+    "at": "2026-09-21T21:48:56.370Z",
+    "revision": "ce421561ee9bcf89991dea5a060a656e45c3434b",
+    "scope": "bounded read-only executed final query plan, 206 ordered active catalog IDs, not the missing incident parameters",
+    "settings": [
+      {
+        "name": "dynamic_shared_memory_type",
+        "setting": "posix",
+        "unit": null
+      },
+      {
+        "name": "jit",
+        "setting": "on",
+        "unit": null
+      },
+      {
+        "name": "max_parallel_workers",
+        "setting": "8",
+        "unit": null
+      },
+      {
+        "name": "max_parallel_workers_per_gather",
+        "setting": "2",
+        "unit": null
+      },
+      {
+        "name": "shared_buffers",
+        "setting": "16384",
+        "unit": "8kB"
+      },
+      {
+        "name": "work_mem",
+        "setting": "4096",
+        "unit": "kB"
+      }
+    ],
+    "sizes": [
+      {
+        "relname": "mux_video",
+        "estimated_rows": "176297",
+        "bytes": "126820352"
+      },
+      {
+        "relname": "video",
+        "estimated_rows": "1175",
+        "bytes": "835584"
+      },
+      {
+        "relname": "video_dub",
+        "estimated_rows": "212193",
+        "bytes": "603095040"
+      },
+      {
+        "relname": "recommendation_capability_submission_budget",
+        "estimated_rows": "467407",
+        "bytes": "127131648"
+      }
+    ],
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Nested Loop",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Join Type": "Left",
+          "Startup Cost": 63.16,
+          "Total Cost": 12965.4,
+          "Plan Rows": 206,
+          "Plan Width": 72,
+          "Actual Startup Time": 0.213,
+          "Actual Total Time": 9.903,
+          "Actual Rows": 206,
+          "Actual Loops": 1,
+          "Disabled": false,
+          "Inner Unique": false,
+          "Shared Hit Blocks": 4468,
+          "Shared Read Blocks": 447,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Plans": [
+            {
+              "Node Type": "Seq Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Relation Name": "video",
+              "Alias": "v",
+              "Startup Cost": 0.52,
+              "Total Cost": 56.14,
+              "Plan Rows": 206,
+              "Plan Width": 52,
+              "Actual Startup Time": 0.017,
+              "Actual Total Time": 0.259,
+              "Actual Rows": 206,
+              "Actual Loops": 1,
+              "Disabled": false,
+              "Filter": "((deleted_at IS NULL) AND (id = ANY ('<catalog constants>'::text[])))",
+              "Rows Removed by Filter": 969,
+              "Shared Hit Blocks": 38,
+              "Shared Read Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Local Hit Blocks": 0,
+              "Local Read Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Temp Written Blocks": 0
+            },
+            {
+              "Node Type": "Limit",
+              "Parent Relationship": "Inner",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 62.64,
+              "Total Cost": 62.65,
+              "Plan Rows": 1,
+              "Plan Width": 91,
+              "Actual Startup Time": 0.047,
+              "Actual Total Time": 0.047,
+              "Actual Rows": 0.77,
+              "Actual Loops": 206,
+              "Disabled": false,
+              "Shared Hit Blocks": 4430,
+              "Shared Read Blocks": 447,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Local Hit Blocks": 0,
+              "Local Read Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Temp Written Blocks": 0,
+              "Plans": [
+                {
+                  "Node Type": "Sort",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Startup Cost": 62.64,
+                  "Total Cost": 62.66,
+                  "Plan Rows": 5,
+                  "Plan Width": 91,
+                  "Actual Startup Time": 0.046,
+                  "Actual Total Time": 0.046,
+                  "Actual Rows": 0.77,
+                  "Actual Loops": 206,
+                  "Disabled": false,
+                  "Sort Key": [
+                    "(CASE WHEN ((v.primary_language_id <> ''::text) AND (candidates.language_id = v.primary_language_id)) THEN 0 ELSE 1 END)",
+                    "candidates.duration DESC",
+                    "candidates.id"
+                  ],
+                  "Sort Method": "quicksort",
+                  "Sort Space Used": 25,
+                  "Sort Space Type": "Memory",
+                  "Shared Hit Blocks": 4430,
+                  "Shared Read Blocks": 447,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0,
+                  "Plans": [
+                    {
+                      "Node Type": "Subquery Scan",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Alias": "candidates",
+                      "Startup Cost": 0.84,
+                      "Total Cost": 62.62,
+                      "Plan Rows": 5,
+                      "Plan Width": 91,
+                      "Actual Startup Time": 0.026,
+                      "Actual Total Time": 0.045,
+                      "Actual Rows": 2.74,
+                      "Actual Loops": 206,
+                      "Disabled": false,
+                      "Shared Hit Blocks": 4424,
+                      "Shared Read Blocks": 447,
+                      "Shared Dirtied Blocks": 0,
+                      "Shared Written Blocks": 0,
+                      "Local Hit Blocks": 0,
+                      "Local Read Blocks": 0,
+                      "Local Dirtied Blocks": 0,
+                      "Local Written Blocks": 0,
+                      "Temp Read Blocks": 0,
+                      "Temp Written Blocks": 0,
+                      "Plans": [
+                        {
+                          "Node Type": "Limit",
+                          "Parent Relationship": "Subquery",
+                          "Parallel Aware": false,
+                          "Async Capable": false,
+                          "Startup Cost": 0.84,
+                          "Total Cost": 62.54,
+                          "Plan Rows": 5,
+                          "Plan Width": 113,
+                          "Actual Startup Time": 0.025,
+                          "Actual Total Time": 0.045,
+                          "Actual Rows": 2.74,
+                          "Actual Loops": 206,
+                          "Disabled": false,
+                          "Shared Hit Blocks": 4424,
+                          "Shared Read Blocks": 447,
+                          "Shared Dirtied Blocks": 0,
+                          "Shared Written Blocks": 0,
+                          "Local Hit Blocks": 0,
+                          "Local Read Blocks": 0,
+                          "Local Dirtied Blocks": 0,
+                          "Local Written Blocks": 0,
+                          "Temp Read Blocks": 0,
+                          "Temp Written Blocks": 0,
+                          "Plans": [
+                            {
+                              "Node Type": "Nested Loop",
+                              "Parent Relationship": "Outer",
+                              "Parallel Aware": false,
+                              "Async Capable": false,
+                              "Join Type": "Inner",
+                              "Startup Cost": 0.84,
+                              "Total Cost": 2728.15,
+                              "Plan Rows": 221,
+                              "Plan Width": 113,
+                              "Actual Startup Time": 0.025,
+                              "Actual Total Time": 0.044,
+                              "Actual Rows": 2.74,
+                              "Actual Loops": 206,
+                              "Disabled": false,
+                              "Inner Unique": true,
+                              "Shared Hit Blocks": 4424,
+                              "Shared Read Blocks": 447,
+                              "Shared Dirtied Blocks": 0,
+                              "Shared Written Blocks": 0,
+                              "Local Hit Blocks": 0,
+                              "Local Read Blocks": 0,
+                              "Local Dirtied Blocks": 0,
+                              "Local Written Blocks": 0,
+                              "Temp Read Blocks": 0,
+                              "Temp Written Blocks": 0,
+                              "Plans": [
+                                {
+                                  "Node Type": "Index Scan",
+                                  "Parent Relationship": "Outer",
+                                  "Parallel Aware": false,
+                                  "Async Capable": false,
+                                  "Scan Direction": "Forward",
+                                  "Index Name": "video_dub_watch_playable_duration_idx",
+                                  "Relation Name": "video_dub",
+                                  "Alias": "d",
+                                  "Startup Cost": 0.42,
+                                  "Total Cost": 907.46,
+                                  "Plan Rows": 221,
+                                  "Plan Width": 104,
+                                  "Actual Startup Time": 0.006,
+                                  "Actual Total Time": 0.02,
+                                  "Actual Rows": 9.56,
+                                  "Actual Loops": 206,
+                                  "Disabled": false,
+                                  "Index Cond": "(video_id = v.id)",
+                                  "Rows Removed by Index Recheck": 0,
+                                  "Index Searches": 206,
+                                  "Shared Hit Blocks": 2293,
+                                  "Shared Read Blocks": 318,
+                                  "Shared Dirtied Blocks": 0,
+                                  "Shared Written Blocks": 0,
+                                  "Local Hit Blocks": 0,
+                                  "Local Read Blocks": 0,
+                                  "Local Dirtied Blocks": 0,
+                                  "Local Written Blocks": 0,
+                                  "Temp Read Blocks": 0,
+                                  "Temp Written Blocks": 0
+                                },
+                                {
+                                  "Node Type": "Index Scan",
+                                  "Parent Relationship": "Inner",
+                                  "Parallel Aware": false,
+                                  "Async Capable": false,
+                                  "Scan Direction": "Forward",
+                                  "Index Name": "mux_video_pkey",
+                                  "Relation Name": "mux_video",
+                                  "Alias": "m",
+                                  "Startup Cost": 0.42,
+                                  "Total Cost": 8.24,
+                                  "Plan Rows": 1,
+                                  "Plan Width": 83,
+                                  "Actual Startup Time": 0.002,
+                                  "Actual Total Time": 0.002,
+                                  "Actual Rows": 0.29,
+                                  "Actual Loops": 1969,
+                                  "Disabled": false,
+                                  "Index Cond": "(id = d.mux_video_id)",
+                                  "Rows Removed by Index Recheck": 0,
+                                  "Filter": "((playback_id IS NOT NULL) AND (deleted_at IS NULL))",
+                                  "Rows Removed by Filter": 0,
+                                  "Index Searches": 565,
+                                  "Shared Hit Blocks": 2131,
+                                  "Shared Read Blocks": 129,
+                                  "Shared Dirtied Blocks": 0,
+                                  "Shared Written Blocks": 0,
+                                  "Local Hit Blocks": 0,
+                                  "Local Read Blocks": 0,
+                                  "Local Dirtied Blocks": 0,
+                                  "Local Written Blocks": 0,
+                                  "Temp Read Blocks": 0,
+                                  "Temp Written Blocks": 0
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "Planning": {
+          "Shared Hit Blocks": 139,
+          "Shared Read Blocks": 39,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 1.07,
+        "Triggers": [],
+        "Execution Time": 9.982
+      }
+    ]
+  },
+  "postgresHostReadOnly": {
+    "at": "2026-09-21T21:58:12.444293+00:00",
+    "postgresAndAgentSameKernelBoot": false,
+    "postgresVolumeAndSharedMemory": "Filesystem       1B-blocks        Used       Avail Mounted on\n/dev/zd10112   48891670528 30668312576 18206580736 /var/lib/postgresql/data\nshm               64000000     1761280    62238720 /dev/shm\n 230   10112 zd10112 26442475 0 1216756658 18707212 112055529 0 2641325648 46438048 0 706363688 65151112 63084 0 1263844704 5852 0 0"
+  }
+}

@@ -137,3 +137,16 @@ request or failed projection run establishing stale-publisher rejection. A
 scheduler stale-run observation is not that proof. No authorized Admin browser
 session is available for the matching lifecycle trace. Keep these independent
 gates and feat-459's dependency explicit; status remains in progress.
+
+## September 22 natural publication-fence evidence
+
+The [runtime release verification](../../operations/watch-runtime-release-verification-2026-09-22.md)
+now identifies 11 natural `pointer_generation_fenced` and five
+`eligibility_input_fenced` production runs after 19:45 UTC. All have no published
+projection and retain an eligible current pointer; every pointer-fenced run has
+a newer current generation. The typed projection-service failure and persisted
+terminal state establish stale-publication prevention independently of scheduler
+lease recovery. Credit this production gate rather than repeating the earlier
+absence claim. Matching authenticated Admin evidence and independent operational
+last-known-good fallback proof remain open; no matching fallback request was
+found since September 18. Keep the ticket in progress.

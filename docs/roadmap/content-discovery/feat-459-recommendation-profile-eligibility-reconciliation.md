@@ -212,3 +212,13 @@ At 19:58:20 UTC on September 21, the complete canonical audit finds zero
 ineligible among 171,710 current pointers. This is a fresh passing snapshot,
 not continuous zero or a replacement for authorized Admin evidence. Feat-464 and
 the matching Admin gate still prevent closure.
+
+## September 22 later canonical audit
+
+The [runtime release verification](../../operations/watch-runtime-release-verification-2026-09-22.md)
+records a fresh exact canonical aggregate query at 21:45:11 UTC with zero
+affected current pointers, invalid contributions, rebuild candidates, backlog
+or stale claims. The read-only query took 8.224 seconds; this is not the earlier
+optimized worker batch or an authenticated Admin UI check. Natural projection
+fences now provide additional publication-integrity evidence. Feat-464 and the
+matching Admin evidence still prevent closure; status stays in progress.
