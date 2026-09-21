@@ -50,7 +50,9 @@ const REQUIRED_CALLS = [
   "requestPermissionsAsync",
   "scheduleNotificationAsync",
   "cancelScheduledNotificationAsync",
-  "dismissAllNotificationsAsync",
+  // U8/KTD13: BY IDENTIFIER. The tray is shared with announcements, so the
+  // dismiss-all spelling below is banned rather than merely unused.
+  "dismissNotificationAsync",
   // Development-only read, used by U7 to prove same-identifier replacement.
   "getAllScheduledNotificationsAsync",
   "getLastNotificationResponse",
@@ -65,6 +67,15 @@ const DEPRECATED_CALLS = [
   "getLastNotificationResponseAsync",
   "clearLastNotificationResponseAsync",
 ]
+
+/**
+ * Calls the adapter must NOT bind although the module supplies them. U8/KTD13:
+ * dismiss-all empties a tray the announcements share, so an announcement the
+ * viewer has not opened yet would vanish on the next reminder pass (AE21). The
+ * lifecycle suite catches that through its fake; this catches the adapter
+ * reaching for the module's own whole-tray call.
+ */
+const FORBIDDEN_CALLS = ["dismissAllNotificationsAsync"]
 
 /**
  * Exactly the packages the adapter may import (KTD9 admits the second one: the
@@ -199,6 +210,19 @@ describe("the notifications adapter imports a module that supplies its calls", (
       expect(block).not.toBeNull()
       expect(block).not.toContain("@deprecated")
     }
+  })
+
+  it("binds the per-identifier dismiss and never the whole-tray one (AE21)", () => {
+    const source = readAdapterSource()
+    const notifications = require(SPECIFIER)
+
+    // The forbidden call really exists, so its absence is a CHOICE rather than
+    // an artefact of the module not having it.
+    for (const call of FORBIDDEN_CALLS) {
+      expect(typeof notifications[call]).toBe("function")
+      expect(source).not.toContain(call)
+    }
+    expect(source).toContain("dismissNotificationAsync(identifier)")
   })
 
   it("the adapter names the specifier and binds neither deprecated spelling", () => {

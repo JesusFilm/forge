@@ -83,4 +83,66 @@ describe("createPlaybackDiscoveryStore", () => {
     store.mark("", "search")
     expect(store.take([""])).toBe(DIRECT_DISCOVERY)
   })
+
+  it("carries per-mark provenance beside the source's own literals (KTD8)", () => {
+    // A campaign hand-off adds the delivery nonce to the acquisition source, so
+    // admin can join the playback context back to the campaign.
+    const store = createPlaybackDiscoveryStore(() => 1_000)
+
+    store.mark("jesus", "acquisition", { campaign: "nonce-abc" })
+
+    expect(store.take(["jesus"])).toEqual({
+      source: "acquisition",
+      provenance: { handoff: "campaign_link", campaign: "nonce-abc" },
+    })
+  })
+
+  it("keeps the source's own literals when a mark adds nothing", () => {
+    const store = createPlaybackDiscoveryStore(() => 1_000)
+
+    store.mark("jesus", "acquisition", {})
+
+    expect(store.take(["jesus"])).toEqual({
+      source: "acquisition",
+      provenance: { handoff: "campaign_link" },
+    })
+  })
+
+  it("admits only the key shape admin's provenance schema accepts", () => {
+    // Admin validates every key against /^[a-z][a-z0-9_]{0,31}$/ and answers
+    // BAD_USER_INPUT otherwise, which loses the whole playback context.
+    const store = createPlaybackDiscoveryStore(() => 1_000)
+
+    store.mark("jesus", "acquisition", {
+      Campaign: "rejected",
+      "9lives": "rejected",
+      "": "rejected",
+      campaign_id: "kept",
+    })
+
+    expect(store.take(["jesus"]).provenance).toEqual({
+      handoff: "campaign_link",
+      campaign_id: "kept",
+    })
+  })
+
+  it("drops a provenance value longer than admin's column", () => {
+    const store = createPlaybackDiscoveryStore(() => 1_000)
+
+    store.mark("jesus", "acquisition", { campaign: "a".repeat(192) })
+
+    expect(store.take(["jesus"]).provenance).toEqual({
+      handoff: "campaign_link",
+    })
+  })
+
+  it("never lets a mark overwrite the source's own handoff literal", () => {
+    const store = createPlaybackDiscoveryStore(() => 1_000)
+
+    store.mark("jesus", "acquisition", { handoff: "spoofed" })
+
+    expect(store.take(["jesus"]).provenance).toEqual({
+      handoff: "campaign_link",
+    })
+  })
 })

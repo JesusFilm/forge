@@ -13,41 +13,16 @@
 import { datadogLog } from "../datadog"
 import { lapseReminderNotifications } from "../lapseReminders/notificationsAdapter"
 import { withTimeout } from "../withTimeout"
-import { getRecommendationViewerStore } from "../recommendations/viewerIdentityClient"
 import { readPushAppLanguageSlug } from "./appLanguage"
 import {
-  PUSH_IDENTITY_READ_DEADLINE_MS,
   PUSH_REGISTRATION_ENABLED,
   PUSH_TOKEN_READ_DEADLINE_MS,
 } from "./constants"
 import { readPushDeviceEnvironment } from "./deviceEnvironment"
-import type { PushViewerHandle } from "./payload"
 import { createPushRegistration, type PushRegistration } from "./registration"
 import { registerPushDevice } from "./registrationClient"
 import { getPushRegistrationStore } from "./store"
-
-/**
- * The recommendation viewer handle when that client is on and has one. The
- * store answers `disabled` on its own when the client is off, and every other
- * kind means "no handle to send", which is a registration without one (R2).
- */
-async function readPushViewerHandle(): Promise<PushViewerHandle | null> {
-  try {
-    const result = await withTimeout(
-      getRecommendationViewerStore().get(),
-      PUSH_IDENTITY_READ_DEADLINE_MS,
-    )
-    if (result.kind !== "ready") return null
-    return {
-      viewerToken: result.identity.viewerToken,
-      sessionToken: result.identity.sessionToken,
-    }
-  } catch {
-    // A registration without a handle still reaches the audience; it only
-    // cannot be attributed until a later refresh carries one.
-    return null
-  }
-}
+import { readPushViewerHandle } from "./viewerHandle"
 
 let registration: PushRegistration | null = null
 

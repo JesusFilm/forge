@@ -24,6 +24,8 @@ import { attachLastWatchedWriter } from "../lib/lastWatched/lifecycle"
 import { getLastWatchedStore } from "../lib/lastWatched/store"
 import { getPlaybackRequestStore } from "../lib/miniPlayer/playbackRequest"
 import { publishPushAppLanguageSlug } from "../lib/push/appLanguage"
+import { publishPushNotice } from "../lib/push/notice"
+import { reportPushOpenInBackground } from "../lib/push/openReportHost"
 import { getPushRegistration } from "../lib/push/registrationHost"
 import { getRecommendationViewerStore } from "../lib/recommendations/viewerIdentityClient"
 import { getSplashSession } from "../lib/splash/splashSession"
@@ -50,7 +52,9 @@ import { useWatchPreferences } from "./WatchPreferencesProvider"
  * handler instead of leaving the selection effect holding a detached one.
  */
 export function LapseReminderProvider({ children }: { children: ReactNode }) {
-  const { currentSlug, isReady } = useExperienceSelection()
+  // `selectExperience` is memoized for the provider's life, so the mount effect
+  // below may capture it: an announcement naming an experience selects it.
+  const { currentSlug, isReady, selectExperience } = useExperienceSelection()
   const preferences = useWatchPreferences()
   const tapHandlerRef = useRef<LapseReminderTapHandler | null>(null)
 
@@ -124,13 +128,27 @@ export function LapseReminderProvider({ children }: { children: ReactNode }) {
       adapter: notifications,
       enabled: LAPSE_REMINDERS_ENABLED,
       navigate: (target) => {
-        if (target.screen === "home") router.replace("/(tabs)")
-        else router.push(`/watch/${encodeURIComponent(target.slug)}`)
+        if (target.screen === "home") {
+          router.replace("/(tabs)")
+        } else if (target.screen === "series") {
+          router.push(`/series/${encodeURIComponent(target.slug)}`)
+        } else if (target.screen === "experience") {
+          // By decision, an experience destination CHANGES the saved home
+          // experience. The route does that too, so this only makes it hold
+          // when the route itself cannot load (R30).
+          selectExperience(target.slug)
+          router.push(`/experience/${encodeURIComponent(target.slug)}`)
+        } else {
+          router.push(`/watch/${encodeURIComponent(target.slug)}`)
+        }
       },
       // By the VALIDATED slug: the url parser strips a `.html` suffix, so a
       // url-keyed arrival for such a slug is never claimed by the route.
-      registerArrival: (slug, entry, origin) =>
-        registerDeepLinkSlug(slug, entry, origin),
+      registerArrival: (slug, entry, origin, campaign) =>
+        registerDeepLinkSlug(slug, entry, origin, Date.now(), campaign),
+      // R23: fire-and-forget, so it can never delay the navigation below.
+      reportOpen: (nonce) => reportPushOpenInBackground(nonce),
+      showNotice: (notice) => publishPushNotice(notice),
       telemetry: datadogLog,
     })
     tapHandlerRef.current = tapHandler

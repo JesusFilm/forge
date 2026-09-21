@@ -71,6 +71,13 @@ export const PUSH_TOKEN_READ_DEADLINE_MS = 8_000
 export const PUSH_IDENTITY_READ_DEADLINE_MS = 4_000
 
 /**
+ * R23's open report. Tighter than the registration budget because the report
+ * runs on the tap-to-navigate path: it is fire-and-forget, so a slower budget
+ * would only keep a dead request alive, never delay the viewer.
+ */
+export const PUSH_OPEN_REPORT_DEADLINE_MS = 3_000
+
+/**
  * R13 needs a language slug on every registration, and admin requires a
  * non-empty one. An install that never picked a dub language sends this, the
  * same fallback `resolveRecommendationContext` uses, so the two clients agree

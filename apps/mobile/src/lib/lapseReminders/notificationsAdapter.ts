@@ -15,6 +15,7 @@ import {
   PUSH_ANNOUNCEMENTS_CHANNEL_ID,
   PUSH_ANNOUNCEMENTS_CHANNEL_NAME,
 } from "../push/constants"
+import { presentationForTrigger } from "../push/foreground"
 import {
   LAPSE_REMINDER_CHANNEL_ID,
   LAPSE_REMINDER_CHANNEL_NAME,
@@ -23,15 +24,11 @@ import {
 import type { LapseReminderPayload } from "./payload"
 
 // KTD1: module scope, reached from the root layout's guarded require block, the
-// same way the native splash hold is taken. A reminder that fires while the app
-// is open must show nothing.
+// same way the native splash hold is taken. The branch itself is pure and lives
+// in `../push/foreground`: a remote announcement shows, a reminder does not.
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: false,
-    shouldShowList: false,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
+  handleNotification: async (notification) =>
+    presentationForTrigger(notification.request.trigger),
 })
 
 export type LapseReminderScheduleInput = {
@@ -59,7 +56,7 @@ export type LapseReminderNotificationsAdapter = PushNotificationsPort & {
   requestPermission: () => Promise<LapseReminderPermission>
   schedule: (input: LapseReminderScheduleInput) => Promise<void>
   cancel: (identifier: string) => Promise<void>
-  dismissDelivered: () => Promise<void>
+  dismiss: (identifier: string) => Promise<void>
   getPendingIdentifiers: () => Promise<string[]>
   getLastResponseData: () => unknown
   clearLastResponse: () => void
@@ -170,8 +167,10 @@ export const lapseReminderNotifications: LapseReminderNotificationsAdapter = {
     await Notifications.cancelScheduledNotificationAsync(identifier)
   },
 
-  async dismissDelivered() {
-    await Notifications.dismissAllNotificationsAsync()
+  /** KTD13: by identifier, never the whole tray. An announcement the viewer
+   *  has not opened yet must survive a reminder pass (AE21). */
+  async dismiss(identifier) {
+    await Notifications.dismissNotificationAsync(identifier)
   },
 
   /** Development only: U7 reads this to prove same-identifier replacement on a

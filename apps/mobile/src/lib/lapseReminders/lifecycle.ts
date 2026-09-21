@@ -68,7 +68,9 @@ export type LapseReminderSchedulingPort = {
     date: Date
   }) => Promise<void>
   cancel: (identifier: string) => Promise<void>
-  dismissDelivered: () => Promise<void>
+  /** KTD13: by identifier. Dismiss-all would take an announcement the viewer
+   *  has not opened yet out of the shared tray (AE21). */
+  dismiss: (identifier: string) => Promise<void>
 }
 
 export type LapseReminderLifecycleDeps = {
@@ -131,20 +133,24 @@ export function createLapseReminderLifecycle(
   }
 
   /** Each removal step reports whether it landed, so a clear that could not
-   *  finish can hand the rest of its cleanup to the next pass. */
+   *  finish can hand the rest of its cleanup to the next pass. One dismiss per
+   *  reminder identifier (KTD13), so nothing else in the tray is touched. */
   async function dismissDelivered(
     reason: LapseReminderPassReason,
   ): Promise<boolean> {
-    try {
-      await withTimeout(
-        deps.adapter.dismissDelivered(),
-        LAPSE_REMINDER_ADAPTER_DEADLINE_MS,
-      )
-      return true
-    } catch (error) {
-      logStepFailure(reason, "dismiss", null, error)
-      return false
+    let cleaned = true
+    for (const kind of LAPSE_REMINDER_KINDS) {
+      try {
+        await withTimeout(
+          deps.adapter.dismiss(LAPSE_REMINDER_IDENTIFIERS[kind]),
+          LAPSE_REMINDER_ADAPTER_DEADLINE_MS,
+        )
+      } catch (error) {
+        logStepFailure(reason, "dismiss", kind, error)
+        cleaned = false
+      }
     }
+    return cleaned
   }
 
   async function cancelReminder(

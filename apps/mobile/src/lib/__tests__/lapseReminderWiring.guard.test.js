@@ -38,6 +38,7 @@ const ADAPTER = path.join(
   "notificationsAdapter.ts",
 )
 const PUSH_HOST = path.join(MOBILE, "src", "lib", "push", "registrationHost.ts")
+const FOREGROUND = path.join(MOBILE, "src", "lib", "push", "foreground.ts")
 const WATCH_ROUTE = path.join(MOBILE, "app", "watch", "[slug].tsx")
 const ROOTS = [path.join(MOBILE, "src"), path.join(MOBILE, "app")]
 
@@ -79,6 +80,15 @@ const PROVIDER_WIRING = [
   "publishPushAppLanguageSlug(",
   // KTD9's announcements channel, on the same upsert as the reminder one.
   "ensureAnnouncementsChannel()",
+  // U8. Each one is silent when it goes: an announcement tap still navigates,
+  // so no suite outside the tap handler's own would notice.
+  "reportOpen:",
+  "showNotice:",
+  // R20's other two destination routes, and the selection an experience
+  // destination changes by decision.
+  "/series/",
+  "/experience/",
+  "selectExperience(",
   // The preference the payload carries (R2). Without it the language is read
   // from storage alone, which can lag a pick by a whole write.
   "useWatchPreferences()",
@@ -239,14 +249,49 @@ describe("the lapse reminder composition root", () => {
     )
   })
 
+  it("mounts the push notice host, which nothing else would miss (R21)", () => {
+    // Without the host an unresolvable announcement still opens Home and still
+    // publishes its message — to a channel with no reader. Every suite stays
+    // green, and the viewer is left on Home with no explanation.
+    const layout = read(LAYOUT)
+
+    expect(guardedRequireBlock(layout)).toContain(
+      'require("../src/components/PushNoticeHost")',
+    )
+    const host = layout.indexOf("<PushNoticeHost />")
+    const at = placement(layout)
+    expect(host).toBeGreaterThan(-1)
+    // Beside the export report host, inside the splash-covered tree: a message
+    // drawn over the cover would be unreadable.
+    expect(host).toBeGreaterThan(layout.indexOf("<SplashCoveredTree>"))
+    expect(host).toBeLessThan(at.splashHost)
+  })
+
   it("registers the foreground handler at the adapter's module scope", () => {
     const source = stripComments(read(ADAPTER))
 
     // Inside a function the handler would register only once something called
     // it, which is after the first reminder could already have been presented.
     expect(source).toMatch(/^Notifications\.setNotificationHandler\(/m)
+    // U8: the decision itself is pure and lives beside the push contracts, so
+    // the adapter must hand it the module's own trigger and nothing else.
+    expect(source).toContain(
+      "presentationForTrigger(notification.request.trigger)",
+    )
+  })
+
+  it("keeps a local reminder silent in the foreground, in the pure module (AE15)", () => {
+    // The two suppressed literals moved out of the adapter with the branch. A
+    // reminder that shows a banner over a viewer who is already watching is the
+    // defect, and this is where it is now decided.
+    const source = stripComments(read(FOREGROUND))
+
     expect(source).toContain("shouldShowBanner: false")
     expect(source).toContain("shouldShowList: false")
+    // And exactly one branch may show: the REMOTE trigger the service delivers.
+    expect(source).toContain('=== "push"')
+    expect(source).toContain("shouldShowBanner: true")
+    expect(source.match(/shouldShowBanner: true/g)).toHaveLength(1)
   })
 
   it("wires every dependency a pass cannot run without", () => {
