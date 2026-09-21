@@ -105,3 +105,29 @@ work remains.
 - Final sequential CE review and the [durable accounting lesson](../solutions/logic-errors/recommendation-outcome-accounting-boundaries-20260921.md)
   preserve the measurement distinctions and rejected hypotheses. This plan stays
   active; no broad ticket is closed from a short release window.
+
+## Continued execution: bounded reconciliation discovery
+
+Resume on freshly fetched main `7b39077634b72866f281842cb05f2018d535429e`
+in the dedicated `codex/watch-closeout-20260921-t8p` worktree. The owner has
+already authorized implementation, normal merges, deployment verification and
+continued ticket closeout; documenting remaining work is not completion.
+
+Testable hypothesis: correlated lineage checks repeat index probes for every
+current pointer even when nearly all pointers are healthy. A set-based invalid
+generation discovery can preserve the canonical rules while removing repeated
+per-pointer work. The earlier generation-metadata reuse experiment alone did not
+provide sufficient transaction headroom.
+
+1. Build an owned PostgreSQL fixture matching the aggregate production pointer,
+   generation, interest and contribution populations. No production identifiers
+   or evidence rows are copied.
+2. Compare exact invalid-generation results with the unchanged canonical helper
+   across every invalidation class, active-run exclusion and ordering boundary.
+3. Measure complete discovery transactions at representative scale and under
+   competing reads/writes. Keep the five-second transaction budget and existing
+   advisory locks, dispatch fences and serving eligibility checks.
+4. Ship only after regression/performance validation, sequential CE review,
+   refreshed-main checks and normal PR CI. Verify automatic deployment and a
+   minimum two-hour reconciliation/evidence observation while continuing the
+   independent delivery, selection and browser gates.

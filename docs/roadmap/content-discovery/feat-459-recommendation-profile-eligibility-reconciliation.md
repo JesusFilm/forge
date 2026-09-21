@@ -146,3 +146,21 @@ reduce discovery work while preserving the canonical predicate, ordering,
 concurrency fences and five-second budget. The [execution record](../../operations/watch-ticket-execution-2026-09-21.md)
 contains exact timings and limits. The earlier zero-pointer snapshot remains
 valid for its timestamp, not a claim of continuous convergence or ticket closure.
+
+## Reconciliation transaction correction — September 21 continuation
+
+The full-scale PostgreSQL reproduction now fails on the original batch with
+`P2028` at 5,033 ms and passes with the batch lineage query at 1,664 ms. The
+correction shares canonical eligibility rules, materializes affected pointers
+before the ordered limit, and disables measured JIT compilation only inside the
+transaction. Its deadline, advisory lock, serving fences and dispatch bounds
+remain unchanged. Exact parameterized production read-only checks took
+1,397–1,520 ms; JIT was restored after each rollback. These are pre-deployment
+query diagnostics, not a deployed worker recovery claim.
+
+Seven real database tests include large-cohort discovery, concurrent reads/writes,
+lineage parity, active-run exclusions, ordering/batch limits and setting cleanup.
+The [durable explanation and rejected controls](../../solutions/performance-issues/profile-reconciliation-sparse-invalid-scan-20260921.md)
+record the causal evidence. Keep this ticket in progress through normal release,
+exact revision verification, a fresh invariant audit, sustained healthy worker
+batches, Admin lifecycle reconciliation and the dependent feat-464 gates.
