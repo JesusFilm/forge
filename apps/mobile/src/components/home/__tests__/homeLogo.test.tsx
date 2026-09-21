@@ -17,7 +17,11 @@ jest.mock("../../../hooks/useHomeRecommendations", () => ({
   useHomeRecommendations: () => ({
     status: "idle",
     slate: null,
+    shelfInView: true,
     reportShelfMounted: jest.fn(),
+    reportShelfVisible: jest.fn(),
+    reportVisibleCards: jest.fn(),
+    reportShelfDetached: jest.fn(),
     recordRender: jest.fn(),
     recordImpression: jest.fn(),
     select: jest.fn(async () => null),

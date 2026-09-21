@@ -79,28 +79,31 @@ jest.mock("@expo/vector-icons/Ionicons", () => ({
   __esModule: true,
   default: () => null,
 }))
+// Keeps the props Home hands it, so the suite can drive the outer list's own
+// viewability callback the way FlashList would.
 jest.mock("@shopify/flash-list", () => {
   const reactModule = jest.requireActual("react")
   const { View } = jest.requireActual("react-native")
+  const seen: { props: Record<string, unknown> | null } = { props: null }
   return {
-    FlashList: ({
-      data,
-      renderItem,
-    }: {
+    __flashList: seen,
+    FlashList: (props: {
       data: readonly unknown[]
       renderItem: (info: { item: unknown; index: number }) => unknown
-    }) =>
-      reactModule.createElement(
+    }) => {
+      seen.props = props as unknown as Record<string, unknown>
+      return reactModule.createElement(
         View,
         null,
-        data.map((item, index) =>
+        props.data.map((item, index) =>
           reactModule.createElement(
             reactModule.Fragment,
             { key: index },
-            renderItem({ item, index }),
+            props.renderItem({ item, index }),
           ),
         ),
-      ),
+      )
+    },
   }
 })
 jest.mock("react-native-safe-area-context", () => ({
@@ -175,6 +178,11 @@ import { homeCardWidth } from "../HomeCard"
 import { computeTypographyScale } from "../../../hooks/useTypography"
 import { useHomeRecommendations } from "../../../hooks/useHomeRecommendations"
 import { useWatchHome } from "../../../hooks/useWatchHome"
+import { datadogLog } from "../../../lib/datadog"
+import {
+  IMPRESSION_VIEWABILITY_CONFIG,
+  createImpressionDwellTracker,
+} from "../../../lib/recommendations/impressionDwell"
 import type {
   UserRecommendationItem,
   UserRecommendationSlate,
@@ -200,6 +208,10 @@ const { __router: router, __fireNavigation: fireNavigation } = jest.requireMock(
 }
 const mockUseWatchHome = useWatchHome as unknown as jest.Mock
 const mockController = useHomeRecommendations as unknown as jest.Mock
+const mockWarn = datadogLog.warn as unknown as jest.Mock
+const { __flashList: flashList } = jest.requireMock("@shopify/flash-list") as {
+  __flashList: { props: Record<string, unknown> | null }
+}
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -249,10 +261,48 @@ function baseProps(): RecommendationsShelfProps {
     focused: true,
     inView: true,
     onShelfMount: jest.fn(),
+    onCardsVisible: jest.fn(),
+    onDetached: jest.fn(),
     onRecordRender: jest.fn(),
     onSelect: jest.fn(async () => null),
     onRefresh: jest.fn(),
   }
+}
+
+// ── Viewability drivers ─────────────────────────────────────────────────────
+
+type ViewabilityInfo = { viewableItems: { index: number | null }[] }
+type ViewabilityCallback = (info: ViewabilityInfo) => void
+
+/** The row's own horizontal list — the only one that carries card indices. */
+function innerList(renderer: TestInstance): RenderedNode {
+  const [node] = renderer.root.findAll(
+    (candidate: RenderedNode) =>
+      typeof candidate.props.onViewableItemsChanged === "function" &&
+      candidate.props.horizontal === true,
+  )
+  expect(node).toBeDefined()
+  return node!
+}
+
+/** Reports these card indices the way React Native's list would. */
+function reportCards(node: RenderedNode, indices: number[]): void {
+  act(() => {
+    ;(node.props.onViewableItemsChanged as ViewabilityCallback)({
+      viewableItems: indices.map((index) => ({ index })),
+    })
+  })
+}
+
+/** Reports these feed kinds the way FlashList would, to Home's own list. */
+function reportFeed(kinds: string[]): void {
+  const report = flashList.props?.onViewableItemsChanged as
+    | ((info: { viewableItems: { item: { kind: string } }[] }) => void)
+    | undefined
+  expect(typeof report).toBe("function")
+  act(() => {
+    report!({ viewableItems: kinds.map((kind) => ({ item: { kind } })) })
+  })
 }
 
 function renderShelf(overrides: Partial<RecommendationsShelfProps> = {}) {
@@ -328,8 +378,21 @@ afterEach(() => {
   act(() => {
     mounted.splice(0).forEach((renderer) => renderer.unmount())
   })
+  flashList.props = null
+  jest.useRealTimers()
   jest.clearAllMocks()
 })
+
+/** A second served slate, with item ids of its own. */
+function nextSlate(): UserRecommendationSlate {
+  return slate({
+    requestId: "req-2",
+    items: Array.from({ length: 6 }, (_, index) => ({
+      ...item(index),
+      id: `next-${index}`,
+    })),
+  })
+}
 
 // ── The served row ──────────────────────────────────────────────────────────
 
@@ -594,6 +657,71 @@ describe("card props", () => {
   })
 })
 
+// ── Card visibility (KTD4) ──────────────────────────────────────────────────
+
+describe("the row's own viewability report", () => {
+  it("hands the visible card ids up", () => {
+    const { renderer, props } = renderShelf()
+    reportCards(innerList(renderer), [0, 2])
+    expect(props.onCardsVisible).toHaveBeenLastCalledWith(["item-0", "item-2"])
+  })
+
+  it("drops an index its slate no longer has", () => {
+    const { renderer, props } = renderShelf()
+    reportCards(innerList(renderer), [0, 9])
+    expect(props.onCardsVisible).toHaveBeenLastCalledWith(["item-0"])
+  })
+
+  it("keeps one callback and one config for the list's life (KTD4)", () => {
+    const { renderer, update } = renderShelf()
+    const before = innerList(renderer).props
+    expect(before.viewabilityConfig).toBe(IMPRESSION_VIEWABILITY_CONFIG)
+
+    // React Native captures both when the list is constructed, so a new slate
+    // must not hand the list a new pair.
+    update({ slate: nextSlate() })
+    const after = innerList(renderer).props
+    expect(after.onViewableItemsChanged).toBe(before.onViewableItemsChanged)
+    expect(after.viewabilityConfig).toBe(before.viewabilityConfig)
+  })
+
+  it("reads the new slate through the same callback", () => {
+    const { renderer, props, update } = renderShelf()
+    update({ slate: nextSlate() })
+    reportCards(innerList(renderer), [0])
+    expect(props.onCardsVisible).toHaveBeenLastCalledWith(["next-0"])
+  })
+
+  it("re-reports its visible cards when a new slate arrives", () => {
+    // Neither list recomputes viewability without a scroll or a layout change,
+    // so a slate swap under an unmoved row reports nothing on its own.
+    const { renderer, props, update } = renderShelf()
+    reportCards(innerList(renderer), [1])
+    expect(props.onCardsVisible).toHaveBeenLastCalledWith(["item-1"])
+
+    update({ slate: nextSlate() })
+    expect(props.onCardsVisible).toHaveBeenLastCalledWith(["next-1"])
+  })
+
+  it("reports a detach when it leaves the tree", () => {
+    const { renderer, props } = renderShelf()
+    expect(props.onDetached).not.toHaveBeenCalled()
+    act(() => renderer.unmount())
+    expect(props.onDetached).toHaveBeenCalledTimes(1)
+  })
+
+  it("never lets a throw reach the list", () => {
+    const onCardsVisible = jest.fn(() => {
+      throw new Error("boom")
+    })
+    const { renderer } = renderShelf({ onCardsVisible })
+    expect(() => reportCards(innerList(renderer), [0])).not.toThrow()
+    expect(mockWarn).toHaveBeenCalledWith("recommendation.viewability_failed", {
+      rec_surface: "recommendations_row",
+    })
+  })
+})
+
 // ── Through Home's own feed ─────────────────────────────────────────────────
 
 describe("rendered from Home's feed", () => {
@@ -622,7 +750,11 @@ describe("rendered from Home's feed", () => {
     return {
       status: "served",
       slate: slate(),
+      shelfInView: true,
       reportShelfMounted: jest.fn(),
+      reportShelfVisible: jest.fn(),
+      reportVisibleCards: jest.fn(),
+      reportShelfDetached: jest.fn(),
       recordRender: jest.fn(),
       recordImpression: jest.fn(),
       select: jest.fn(async () => null),
@@ -696,6 +828,50 @@ describe("rendered from Home's feed", () => {
     expect(mockController).toHaveBeenLastCalledWith(
       expect.objectContaining({ focused: true }),
     )
+  })
+
+  it("hands Home's own viewability report to the controller (KTD4)", () => {
+    const state = controller()
+    mockController.mockReturnValue(state)
+    renderHome(1)
+    expect(flashList.props?.viewabilityConfig).toBe(
+      IMPRESSION_VIEWABILITY_CONFIG,
+    )
+
+    reportFeed(["section", "recommendations"])
+    expect(state.reportShelfVisible).toHaveBeenLastCalledWith(true)
+
+    reportFeed(["section", "mission"])
+    expect(state.reportShelfVisible).toHaveBeenLastCalledWith(false)
+  })
+
+  it("records no impression until Home's list reports the row visible", () => {
+    // Both lists' callbacks, in their real nesting, against the real tracker.
+    jest.useFakeTimers()
+    const onImpression = jest.fn()
+    const tracker = createImpressionDwellTracker({ onImpression })
+    tracker.setRequestId("req-1")
+    tracker.setAppActive(true)
+    tracker.setFocused(true)
+    mockController.mockReturnValue(
+      controller({
+        reportShelfVisible: (visible: boolean) =>
+          tracker.setRowVisible(visible),
+        reportVisibleCards: (itemIds: readonly string[]) =>
+          tracker.setVisibleCards(itemIds),
+        reportShelfDetached: () => tracker.detachRow(),
+      }),
+    )
+    const renderer = renderHome(1)
+
+    reportCards(innerList(renderer), [0])
+    act(() => jest.advanceTimersByTime(5_000))
+    expect(onImpression).not.toHaveBeenCalled()
+
+    reportFeed(["recommendations"])
+    act(() => jest.advanceTimersByTime(1_000))
+    expect(onImpression).toHaveBeenCalledTimes(1)
+    expect(onImpression).toHaveBeenCalledWith("item-0")
   })
 
   it("draws no row and opens no gate when the block is absent (R1)", () => {

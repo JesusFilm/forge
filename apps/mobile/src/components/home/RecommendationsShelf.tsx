@@ -20,6 +20,10 @@ import {
   type UserRecommendationItem,
   type UserRecommendationSlate,
 } from "../../lib/recommendations/delivery"
+import {
+  IMPRESSION_VIEWABILITY_CONFIG,
+  guardViewabilityCallback,
+} from "../../lib/recommendations/impressionDwell"
 import type { SelectionResult } from "../../lib/recommendations/selection"
 import type { UserRecommendationsStatus } from "../../hooks/useUserRecommendations"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
@@ -49,9 +53,13 @@ export type RecommendationsShelfProps = {
   slate: UserRecommendationSlate | null
   /** Home's focus flag: render facts wait for focus (KTD3). */
   focused: boolean
-  /** True while the row is within the viewport; U4 drives it for real. */
+  /** True while Home's list holds the row in the viewport (R8). */
   inView: boolean
   onShelfMount: () => void
+  /** The card ids this row's own list reports at least half visible (KTD4). */
+  onCardsVisible: (itemIds: readonly string[]) => void
+  /** The row is leaving the tree, so every card signal drops (KTD4). */
+  onDetached: () => void
   onRecordRender: (itemId: string) => void
   onSelect: (itemId: string) => Promise<SelectionResult | null>
   onRefresh: () => void
@@ -131,6 +139,8 @@ export const RecommendationsShelf = memo(function RecommendationsShelf({
   focused,
   inView,
   onShelfMount,
+  onCardsVisible,
+  onDetached,
   onRecordRender,
   onSelect,
   onRefresh,
@@ -147,6 +157,60 @@ export const RecommendationsShelf = memo(function RecommendationsShelf({
   }, [onShelfMount])
 
   const items = useMemo(() => recommendationsShelfCards(slate), [slate])
+  const itemIds = useMemo(() => (items ?? []).map((entry) => entry.id), [items])
+
+  // ── Card visibility (KTD4) ────────────────────────────────────────────────
+
+  const itemIdsRef = useRef(itemIds)
+  itemIdsRef.current = itemIds
+  const visibleIndicesRef = useRef<number[]>([])
+  const onCardsVisibleRef = useRef(onCardsVisible)
+  onCardsVisibleRef.current = onCardsVisible
+  const onDetachedRef = useRef(onDetached)
+  onDetachedRef.current = onDetached
+
+  // `null` keeps the indices the list last reported and maps them onto the
+  // current slate. Guarded, because a throw here reaches the list itself.
+  const reportCards = useRef(
+    guardViewabilityCallback<readonly number[] | null>(
+      "recommendations_row",
+      (indices) => {
+        if (indices != null) visibleIndicesRef.current = [...indices]
+        onCardsVisibleRef.current(
+          visibleIndicesRef.current
+            .map((index) => itemIdsRef.current[index])
+            .filter((itemId): itemId is string => itemId != null),
+        )
+      },
+    ),
+  ).current
+
+  // React Native captures the callback and the config when it builds the list,
+  // so this pair is created once and reads the current slate through refs.
+  const handleViewableItemsChanged = useRef(
+    guardViewabilityCallback<{ viewableItems: { index: number | null }[] }>(
+      "recommendations_row",
+      ({ viewableItems }) =>
+        reportCards(
+          viewableItems
+            .map((entry) => entry.index)
+            .filter((index): index is number => index != null),
+        ),
+    ),
+  ).current
+
+  useEffect(() => {
+    // Setup restores what the cleanup drops: a dev StrictMode cycle runs both
+    // on this same instance, and the row's card signals must survive it.
+    reportCards(null)
+    return () => onDetachedRef.current()
+  }, [reportCards])
+
+  // Neither list recomputes viewability without a scroll or a layout change,
+  // so the cards of a slate that lands under an unmoved row report themselves.
+  useEffect(() => {
+    reportCards(null)
+  }, [itemIds, reportCards])
 
   // R11: one render fact per item per slate, and never while Home is blurred.
   const reportedRequestRef = useRef<string | null>(null)
@@ -235,6 +299,8 @@ export const RecommendationsShelf = memo(function RecommendationsShelf({
         snapToInterval={cardWidth + CARD_GAP}
         snapToAlignment="start"
         decelerationRate="fast"
+        onViewableItemsChanged={handleViewableItemsChanged}
+        viewabilityConfig={IMPRESSION_VIEWABILITY_CONFIG}
         accessibilityLabel={`${items.length} items in ${RECOMMENDATIONS_SHELF_TITLE}`}
       />
     </View>

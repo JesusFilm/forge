@@ -32,8 +32,9 @@ jest.mock("../../contexts/WatchPreferencesProvider", () => ({
   useWatchPreferences: jest.fn(() => ({ audioLanguageSlug: null })),
 }))
 
-import { act, createElement } from "react"
+import { StrictMode, act, createElement } from "react"
 import type React from "react"
+import { AppState } from "react-native"
 
 import {
   useHomeRecommendations,
@@ -117,32 +118,59 @@ function client(
 
 const mounted: TestInstance[] = []
 
+/**
+ * `strict` defaults to FALSE, unlike the repo's other hook harnesses: most
+ * cases here count `client.fetch` calls, and StrictMode's setup → cleanup →
+ * setup cycle doubles the effects that drive them. The remount-safety case
+ * opts in, and it is the only deterministic detector of that hazard.
+ */
 function renderController(
   initial: UseHomeRecommendationsOptions,
   useClient: UserRecommendationsClient,
+  options: { strict?: boolean } = {},
 ) {
   const seen: HomeRecommendationsController[] = []
   function Harness(props: UseHomeRecommendationsOptions) {
     seen.push(useHomeRecommendations(props, useClient))
     return null
   }
+  const wrap = (props: UseHomeRecommendationsOptions) => {
+    const element = createElement(
+      Harness,
+      props,
+    ) as unknown as React.ReactElement
+    return (
+      options.strict === true
+        ? createElement(StrictMode, null, element)
+        : element
+    ) as React.ReactElement
+  }
   let renderer!: TestInstance
   act(() => {
-    renderer = TestRenderer.create(
-      createElement(Harness, initial) as unknown as React.ReactElement,
-    )
+    renderer = TestRenderer.create(wrap(initial))
   })
   mounted.push(renderer)
   return {
     latest: () => seen[seen.length - 1]!,
     rerender: (next: UseHomeRecommendationsOptions) =>
       act(() => {
-        renderer.update(
-          createElement(Harness, next) as unknown as React.ReactElement,
-        )
+        renderer.update(wrap(next))
       }),
     unmount: () => act(() => renderer.unmount()),
   }
+}
+
+// ── The app-state seam ──────────────────────────────────────────────────────
+
+type AppStateHandler = (state: string) => void
+
+const appStateHandlers: AppStateHandler[] = []
+const appStateSpy = jest.spyOn(AppState, "addEventListener")
+
+function sendAppState(state: string): void {
+  act(() => {
+    appStateHandlers.forEach((handler) => handler(state))
+  })
 }
 
 const flush = async () => {
@@ -155,6 +183,16 @@ const OPEN: UseHomeRecommendationsOptions = { gateOpen: true, focused: true }
 
 beforeEach(() => {
   mockPreferences.mockReturnValue({ audioLanguageSlug: null })
+  appStateHandlers.length = 0
+  appStateSpy.mockImplementation(((_type: string, handler: AppStateHandler) => {
+    appStateHandlers.push(handler)
+    return {
+      remove: () => {
+        const at = appStateHandlers.indexOf(handler)
+        if (at >= 0) appStateHandlers.splice(at, 1)
+      },
+    }
+  }) as unknown as typeof AppState.addEventListener)
 })
 
 afterEach(() => {
@@ -414,5 +452,196 @@ describe("the blurred-Home hold (KTD3)", () => {
     act(() => hook.latest().refresh())
     await flush()
     expect(c.fetch).toHaveBeenCalledTimes(2)
+  })
+})
+
+// ── The impression dwell (KTD4) ─────────────────────────────────────────────
+
+describe("the impression dwell (R12, KTD4)", () => {
+  /** The item ids the client was asked to record an impression for. */
+  function impressions(c: TestClient): string[] {
+    return c.recordEvidence.mock.calls
+      .filter((call) => call[0] === "impression")
+      .map((call) => (call[2] as UserRecommendationItem).id)
+  }
+
+  type Hook = ReturnType<typeof renderController>
+
+  /** A served slate with the row and one card reported visible. */
+  async function watching(
+    c: TestClient,
+    options: UseHomeRecommendationsOptions = OPEN,
+    strict = false,
+  ): Promise<Hook> {
+    const hook = renderController(options, c, { strict })
+    act(() => hook.latest().reportShelfMounted())
+    await flush()
+    act(() => {
+      hook.latest().reportShelfVisible(true)
+      hook.latest().reportVisibleCards(["item-0"])
+    })
+    return hook
+  }
+
+  const dwell = async (ms = 1_000) => {
+    await act(async () => {
+      jest.advanceTimersByTime(ms)
+    })
+  }
+
+  it("records one impression per card once every signal holds", async () => {
+    jest.useFakeTimers()
+    const c = client()
+    const hook = await watching(c)
+    await dwell(999)
+    expect(impressions(c)).toEqual([])
+
+    await dwell(1)
+    expect(impressions(c)).toEqual(["item-0"])
+
+    act(() => hook.latest().reportVisibleCards(["item-0", "item-1"]))
+    await dwell()
+    expect(impressions(c)).toEqual(["item-0", "item-1"])
+  })
+
+  it("records nothing while Home is blurred", async () => {
+    jest.useFakeTimers()
+    const c = client()
+    const hook = await watching(c)
+    hook.rerender({ gateOpen: true, focused: false })
+    await dwell(5_000)
+    expect(impressions(c)).toEqual([])
+
+    hook.rerender(OPEN)
+    await dwell()
+    expect(impressions(c)).toEqual(["item-0"])
+  })
+
+  it("records nothing while the app is in the background", async () => {
+    jest.useFakeTimers()
+    const c = client()
+    await watching(c)
+    sendAppState("background")
+    await dwell(5_000)
+    expect(impressions(c)).toEqual([])
+
+    sendAppState("active")
+    await dwell()
+    expect(impressions(c)).toEqual(["item-0"])
+  })
+
+  it("records nothing until Home's list reports the row visible", async () => {
+    jest.useFakeTimers()
+    const c = client()
+    const hook = renderController(OPEN, c)
+    act(() => hook.latest().reportShelfMounted())
+    await flush()
+    act(() => hook.latest().reportVisibleCards(["item-0"]))
+    await dwell(5_000)
+    expect(impressions(c)).toEqual([])
+
+    act(() => hook.latest().reportShelfVisible(true))
+    await dwell()
+    expect(impressions(c)).toEqual(["item-0"])
+  })
+
+  it("records nothing once the row detaches", async () => {
+    jest.useFakeTimers()
+    const c = client()
+    const hook = await watching(c)
+    await dwell(900)
+    act(() => hook.latest().reportShelfDetached())
+    await dwell(5_000)
+    expect(impressions(c)).toEqual([])
+  })
+
+  it("records nothing after the controller unmounts", async () => {
+    jest.useFakeTimers()
+    const c = client()
+    const hook = await watching(c)
+    await dwell(900)
+    hook.unmount()
+    await dwell(5_000)
+    expect(impressions(c)).toEqual([])
+    expect(appStateHandlers).toHaveLength(0)
+  })
+
+  it("records the same card again for the next slate", async () => {
+    jest.useFakeTimers()
+    const c = client()
+    const hook = await watching(c)
+    await dwell()
+    expect(impressions(c)).toEqual(["item-0"])
+
+    act(() => hook.latest().refresh())
+    await flush()
+    await dwell()
+    expect(impressions(c)).toEqual(["item-0", "item-0"])
+  })
+
+  it("keeps its per-slate record across a re-render", async () => {
+    jest.useFakeTimers()
+    const c = client()
+    const hook = await watching(c)
+    await dwell()
+    expect(impressions(c)).toEqual(["item-0"])
+
+    // A tracker rebuilt on any render would lose what it already recorded and
+    // send a second impression for the same card the next time it scrolls in.
+    hook.rerender(OPEN)
+    act(() => {
+      hook.latest().reportVisibleCards([])
+      hook.latest().reportVisibleCards(["item-0"])
+    })
+    await dwell(5_000)
+    expect(impressions(c)).toEqual(["item-0"])
+  })
+
+  it("still records through a StrictMode mount cycle", async () => {
+    jest.useFakeTimers()
+    const c = client()
+    await watching(c, OPEN, true)
+    // One listener, not two: the cleanup removed the first subscription, and
+    // the second setup re-armed the tracker it suspended.
+    expect(appStateHandlers).toHaveLength(1)
+
+    await dwell()
+    expect(impressions(c)).toEqual(["item-0"])
+  })
+})
+
+// ── The row's own visibility (R8) ───────────────────────────────────────────
+
+describe("the row's viewport flag", () => {
+  it("starts in view, then follows Home's list", async () => {
+    const c = client()
+    const hook = renderController(OPEN, c)
+    // The row mounts before the list has ever reported. Collapsing a terminal
+    // outcome on that silence is the layout jump R8 forbids.
+    expect(hook.latest().shelfInView).toBe(true)
+
+    act(() => hook.latest().reportShelfVisible(false))
+    expect(hook.latest().shelfInView).toBe(false)
+
+    act(() => hook.latest().reportShelfVisible(true))
+    expect(hook.latest().shelfInView).toBe(true)
+  })
+
+  it("holds the same reporter identity across a refetch", async () => {
+    const c = client()
+    const hook = renderController(OPEN, c)
+    act(() => hook.latest().reportShelfMounted())
+    await flush()
+    const before = hook.latest()
+
+    act(() => before.refresh())
+    await flush()
+    const after = hook.latest()
+    expect(after.slate?.requestId).toBe("req-2")
+    // Anti-vacuous: two absent reporters would also compare equal.
+    expect(typeof after.reportShelfVisible).toBe("function")
+    expect(after.reportShelfVisible).toBe(before.reportShelfVisible)
+    expect(after.reportVisibleCards).toBe(before.reportVisibleCards)
+    expect(after.reportShelfDetached).toBe(before.reportShelfDetached)
   })
 })

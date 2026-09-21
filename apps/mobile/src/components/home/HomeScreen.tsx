@@ -41,6 +41,10 @@ import { heroPlaybackPaused } from "../../lib/miniPlayer/heroYield"
 import { openExternalUrl } from "../../lib/openExternalUrl"
 import { getApiToken } from "../../lib/config"
 import { isRecommendationClientEnabled } from "../../lib/recommendations/enabled"
+import {
+  IMPRESSION_VIEWABILITY_CONFIG,
+  guardViewabilityCallback,
+} from "../../lib/recommendations/impressionDwell"
 import { getSplashSession } from "../../lib/splash/splashSession"
 import {
   buildWatchHomeHeroQueue,
@@ -378,6 +382,22 @@ export function HomeScreen() {
     focused,
   })
 
+  // FlashList captures its config when the list is built and reads the
+  // callback at report time, so this pair is created once and reaches the
+  // current controller through a ref (KTD4).
+  const reportShelfVisibleRef = useRef(recommendations.reportShelfVisible)
+  reportShelfVisibleRef.current = recommendations.reportShelfVisible
+  const handleFeedViewableItemsChanged = useRef(
+    guardViewabilityCallback<{ viewableItems: { item: HomeFeedItem }[] }>(
+      "home_feed",
+      ({ viewableItems }) => {
+        reportShelfVisibleRef.current(
+          viewableItems.some((entry) => entry.item.kind === "recommendations"),
+        )
+      },
+    ),
+  ).current
+
   // ── Feed composition ───────────────────────────────────────────────────────
 
   const feedItems = useMemo<HomeFeedItem[]>(
@@ -419,9 +439,10 @@ export function HomeScreen() {
             status={recommendations.status}
             slate={recommendations.slate}
             focused={focused}
-            // U4 replaces this literal with the outer list's viewability report.
-            inView
+            inView={recommendations.shelfInView}
             onShelfMount={recommendations.reportShelfMounted}
+            onCardsVisible={recommendations.reportVisibleCards}
+            onDetached={recommendations.reportShelfDetached}
             onRecordRender={recommendations.recordRender}
             onSelect={recommendations.select}
             onRefresh={recommendations.refresh}
@@ -539,6 +560,8 @@ export function HomeScreen() {
         keyExtractor={keyExtractor}
         getItemType={getItemType}
         extraData={activeIndex}
+        onViewableItemsChanged={handleFeedViewableItemsChanged}
+        viewabilityConfig={IMPRESSION_VIEWABILITY_CONFIG}
         onScroll={handleScroll}
         scrollEventThrottle={16}
         contentContainerStyle={contentContainerStyle}
