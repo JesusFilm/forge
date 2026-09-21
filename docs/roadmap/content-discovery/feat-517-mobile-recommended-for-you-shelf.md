@@ -3,7 +3,7 @@ id: "feat-517"
 title: "Mobile Recommended for You Home shelf"
 owner: "urim"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-18"
 duration: 5
 depends_on:
@@ -76,3 +76,59 @@ through the legacy fragment, which drops that block silently.
   slate; selection stores the pending claim before navigation.
 - Simulator: six cards in position order; a tap opens the video and the
   playback recorder claims with the selection nonce.
+
+## Results — 2026-09-21
+
+Implementation units U1 to U5 of the plan
+(`docs/plans/2026-09-21-1009-feat-mobile-recommended-for-you-shelf-plan.md`)
+are built, tested and committed on `worktree-feat-517-mobile-recommended-shelf`.
+The full mobile jest suite (278 suites, 4,512 tests), `tsc --noEmit` and
+`eslint .` pass.
+
+### Behavior smoke against the fake-admin proxy — 2026-09-21
+
+iPhone 16 Pro simulator, a fresh install of the dev client built the same day,
+the worktree's own Metro, and the throwaway proxy from
+`docs/solutions/developer-experience/mobile-write-path-smoke-via-fake-admin-proxy.md`
+extended to serve six real production videos as a slate, answer the evidence
+and selection mutations, and inject the block into the forwarded homepage
+Experience. Every line below is from the proxy's request log.
+
+- Bootstrap: one `CreateRecommendationViewer`, then one `UserRecommendations`
+  for `en` / `english`, count 6, then six `render` facts once each, all
+  within 80 ms of the delivery.
+- Six landscape cards rendered under the app's own "Recommended for You"
+  title at the block's position (first shelf, because the proxy placed the
+  block after the client-owned hero block).
+- Impressions: exactly one per card as each pair scrolled into view (items 1
+  and 2, then 3 and 4, then 5 and 6), about 1.2 s after each settle; a swipe
+  back over recorded cards recorded nothing more; the partially visible third
+  card recorded nothing.
+- Tap: `SelectSemanticRecommendation` for the tapped item, then
+  `ClaimSemanticRecommendationEpisode` with the selection nonce
+  (`viaSelection: true`, media id matches), then `playback_attempt` and
+  `playback_start`; no `IssueWatchPlaybackContext` on that open. The watch
+  page painted the poster and the title from the seed.
+- Return from the watch route: one refetch, six `render` facts under the new
+  request id, impressions re-armed for the visible cards.
+- Tab switch (Search and back): no delivery and no evidence.
+- Pull-to-refresh: the homepage Experience request and the slate request
+  fired within 30 ms of each other; the row stayed in the feed.
+- Expiry on screen: the slate refetched at its `expiresAt` (150 s in the
+  proxy) while Home was focused.
+- Expiry while blurred: on the Search tab past `expiresAt`, no delivery and
+  no evidence for 56 s; on return to Home exactly one refetch, and none in the
+  following 12 s.
+- Double-tap on one card: one selection, one claim, one watch screen (one
+  back tap returned to Home).
+
+### Still open
+
+- U6, the real-environment smoke against a provisioned local Admin (R19), is
+  blocked on two things: the `feat-516` double-recorder fix PR (KD3) has not
+  merged, and the local Admin on the dev machine is unprovisioned (database at
+  migration 13 of 98, PostgreSQL 17 clients while the snapshot restore needs
+  18, no `RECOMMENDATION_CAPABILITY_KEYRING`, no local fleet key).
+- U7's timing comparison (R20) needs U6's block-present configuration; the
+  conventions section in `apps/mobile/CLAUDE.md` is written.
+- The native build before the next `eas update` is unchanged from `feat-516`.
