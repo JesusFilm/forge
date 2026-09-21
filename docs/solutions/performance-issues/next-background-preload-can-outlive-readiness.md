@@ -1,6 +1,7 @@
 ---
 title: Next background route loading can outlive readiness
 date: "2026-09-21"
+last_updated: "2026-09-21"
 module: Admin production startup
 problem_type: performance_issue
 component: service_object
@@ -83,3 +84,34 @@ mocked readiness promise cannot establish actual framework scheduling behavior.
 
 See the [experiment, production traces and separate closure gates](../../operations/watch-startup-readiness-2026-09-21.md)
 and [feat-496](../../roadmap/platform/feat-496-watch-rollout-runtime-recovery.md).
+
+## Follow-on: module graphs can repeat initialization after readiness
+
+Awaiting route entries does not guarantee that the first SSR graph reuses every
+module initialized by the API graph. In the same production process, an initial
+editor GET caused three main and three sync Prisma clients to be constructed
+across the separate graphs. The client module read `globalThis` in all modes but
+only wrote it in development. Cache each client in production too, retaining the
+distinct main/sync pool profiles; otherwise the documented per-process budgets
+can multiply. This is a client-allocation finding, not a measured physical
+connection count. Request handlers must not disconnect a shared process client.
+
+The first editor SSR also loaded bundled copies of large Mastra libraries.
+Admin now uses the supported `serverExternalPackages` option for `@mastra/core`
+and `@mastra/memory`, allowing Node's cache to serve both server graphs. Measure
+the whole selection, not only a trivial GraphQL query: externalizing seven
+packages improved the latter but did not reliably improve actual selection over
+the two-package setting. Keep the narrower measured configuration.
+
+Five cold-editor/selection controls took 854–960 ms. Reusing the two libraries
+and one main/one sync client reduced them to 472–552 ms, all accepted without
+GraphQL errors. The production module-cache test fails before the correction;
+real `next start` allocation and timing probes establish the framework boundary
+that module mocks alone cannot prove. Remove temporary allocation counters from
+the final build and never count allocated clients as open database connections.
+
+This follow-on resolves the local SSR interference described above. It does not
+attribute historical production capability-budget WAL/pool delays, and changing
+client reuse requires checking meaningful concurrent requests against the same
+pool limits. Revalidate this boundary when changing Next's bundler or these
+packages; keep first-API and first-editor workloads in release performance checks.

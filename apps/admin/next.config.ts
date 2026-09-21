@@ -3,6 +3,9 @@ import { withWorkflow } from "workflow/next"
 
 const nextConfig: NextConfig = {
   typedRoutes: true,
+  // Share these large server libraries through Node's module cache instead of
+  // initializing another bundled copy on the first editor SSR request.
+  serverExternalPackages: ["@mastra/core", "@mastra/memory"],
   // Railway's dedicated worker uses a smaller build container than the Admin
   // web service. Keep production builds focused on shippable source; the
   // package typecheck still uses tsconfig.json and validates the full Vitest

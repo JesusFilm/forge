@@ -374,8 +374,9 @@ Five matched first selections take 926–949 ms with original readiness and
 initialization. Twenty delivery probes serve six cards without fallback. The
 candidate uses a pinned Next patch; it preserves the 700 ms caller budget,
 transaction/rate-limit guarantees and normal route preloading. All 7,286 Admin
-unit tests pass. Production verification remains pending until the normal PR
-release deploys.
+unit tests pass. PR #2362 merged as `1cb15d6fc2b5cb0387e23b02afc24a05d4c1acaa`;
+Railway and independent SSH reads confirm that revision on Admin and its worker.
+See the release section of the linked investigation for exact deployment IDs.
 
 Keep this ticket in progress. A first editor visit still delays concurrent
 GraphQL by roughly 0.8–0.9 seconds on both controls, and the historical
@@ -383,3 +384,23 @@ capability-budget stall is not fully attributed. Neither the startup correction
 nor a later short healthy window proves complete recovery. The
 [durable learning](../../solutions/performance-issues/next-background-preload-can-outlive-readiness.md)
 records rejected warming/disabled-preload controls and the remaining SSR work.
+
+## September 21 server module reuse continuation
+
+The same [investigation](../../operations/watch-startup-readiness-2026-09-21.md)
+now proves the remaining local first-editor interference: separate server module
+graphs construct three main and three sync Prisma clients and initialize bundled
+Mastra copies. Cache the production clients globally while keeping separate
+10/5 limits, and externalize only Mastra core/memory through Node's cache.
+Five actual editor-concurrent selections improve from 854–960 ms to 472–552 ms,
+with one main/one sync client, accepted receipts and no GraphQL errors. A new
+production module-cache regression fails before the fix; all 7,288 Admin tests
+pass afterward. The final build without counters passes 25 simultaneous-selection
+checks during cold editor visits at 509–579 ms and 20 six-card deliveries without
+fallback. Lint, typecheck, build and sequential Compound Engineering review pass.
+The follow-on release is pending normal PR checks and deployment.
+
+Keep this ticket in progress. Historical capability-budget/WAL/pool latency is
+not fully attributed. A newly observed playback HTTP 503 at 05:07:25 UTC has an
+upstream `fetch failed` after 330 ms, separately from selection timeouts and
+semantic delivery fallbacks. No larger deadline or ambiguous retry is added.

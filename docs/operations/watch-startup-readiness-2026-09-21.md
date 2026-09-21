@@ -4,7 +4,7 @@
 
 The local production-build reproduction proves that Admin admits API traffic
 while Next is still preloading route entries on the same event loop. The readiness
-correction is under review. It does not establish the complete cause of the
+correction merged in PR #2362 and is running in production. It does not establish the complete cause of the
 historical selection HTTP 503s, and feat-496 remains in progress.
 
 Work began in the dedicated `codex/watch-4xx-completion-20260921-k7m` worktree
@@ -153,3 +153,100 @@ Feat-464/459/447 still require their explicit authorized Admin checks; required
 installed Datadog alerts remain absent under the owner's read-only restriction.
 The already completed lifecycle and two-hour reconciliation evidence remains
 valid. Do not close tickets by deleting or weakening these remaining gates.
+
+## Startup release verification
+
+PR [#2362](https://github.com/JesusFilm/forge/pull/2362) merged normally as
+`1cb15d6fc2b5cb0387e23b02afc24a05d4c1acaa`. Railway reports successful Admin
+`fc481eb3-574a-4bd4-bed8-0ae58f5fe453` and worker
+`6e437b98-dade-425b-ae17-fc5833a36ba7` deployments. Independent SSH reads
+confirm that exact revision on both, with the runner false on Admin and true on
+the worker. The 05:10 UTC reconciliation batch completed 48 classifications,
+queued one affected-pointer rebuild and recorded no failures or exhaustion.
+
+All final PR checks passed before merge. The first Mobile CI run had a real-timer
+PiP dismissal assertion failure (`PlaybackHost.test.tsx`, expected `exiting`,
+received `none`). The unchanged file passed all 90 tests locally and the failed
+CI job passed when rerun on the same head. No Mobile source changed; retain the
+initial failure rather than presenting the first CI run as clean.
+
+Release monitoring found one **playback HTTP 503** at **05:07:25.928 UTC**,
+trace `6ab0bb8d00000000087216077763d140`, on Web `ec6bf167…`. Its upstream
+HTTP span ends with `TypeError: fetch failed` after 330 ms; the complete Web
+request takes 335 ms. No Admin span was retained. This is an observed transport
+failure, not evidence of a 700 ms selection deadline or an HTTP 200 delivery
+fallback. Its deployment-transition timing does not establish which network or
+process event caused it. Do not retry an ambiguous mutation to conceal it.
+
+## Follow-on: duplicated server module initialization
+
+The first editor request remained a separate reproducible application workload
+after readiness was corrected. In five fresh production-build processes, warm
+GraphQL, start an unauthenticated editor GET, then send an actual selection
+50 ms later. Baseline selections take **853.80, 862.85, 959.94, 915.83 and
+893.24 ms**. The editor correctly returns the login redirect (307); no privileged
+session is manufactured.
+
+A local CPU profile identifies SSR loading of Mastra packages and Prisma engine
+initialization. A temporary allocation counter inside the owned build's client
+factory confirms **three main and three sync clients in each process** after
+startup and the first editor visit. This counts client construction, not physical
+open connections. The source reads `globalThis` but writes it only outside
+production, so separate API/RSC/SSR module evaluations cannot reuse the clients.
+
+The smallest measured correction has two parts:
+
+- Cache the main and sync Prisma clients on `globalThis` in production too,
+  preserving their separate 10/5-connection limits and embedding guard extension.
+- Externalize only `@mastra/core` and `@mastra/memory` through Next's supported
+  `serverExternalPackages` setting, so the server module graphs reuse Node's
+  package cache instead of initializing bundled copies during first editor SSR.
+
+Core alone leaves concurrent GraphQL at 565–631 ms; core plus memory gives
+503–540 ms. Externalizing seven Mastra packages gives 461–470 ms for a trivial
+query but no reliable advantage for actual selections (520–622 ms versus
+559–625 ms with only core plus memory). Avoid broadening to all seven packages.
+
+Combining the two-package setting with production client reuse creates **one
+main and one sync client** in every trial. Actual editor-concurrent selections
+are **492.97, 472.13, 529.30, 504.69 and 552.23 ms**, all accepted HTTP 200
+without GraphQL errors. Fresh first selections without an editor are
+229–251 ms. Twenty actual deliveries all serve six cards without fallback;
+first deliveries take 285–297 ms and warm ones 69–89 ms. The temporary counter
+is removed afterward and is not part of the committed change.
+
+The new module-cache regression fails against production before the fix and
+passes afterward; development remains covered. All **7,288 Admin unit tests**
+pass. Production `$disconnect()` use is confined to standalone scripts; request
+handlers do not disconnect the shared clients. No schema, authorization, API
+contract, rate limit, mutation retry or transaction semantics change.
+
+These local results prove duplicated initialization and its scheduling cost.
+They do not prove that the historical 2.34-second capability-budget call was
+caused by duplicate clients or Mastra, nor that every allocated client opened
+its maximum number of database connections. Keep the unresolved database/WAL,
+pool and production transport questions explicit in feat-496.
+
+Final build validation removes the allocation counter and reruns the real HTTP
+workloads without competing local test/build jobs:
+
+| Workload                                       |                          Calls |           Complete HTTP latency | Outcome                    |
+| ---------------------------------------------- | -----------------------------: | ------------------------------: | -------------------------- |
+| First editor plus one selection                |              5 fresh processes |                      470–527 ms | all accepted               |
+| First editor plus five simultaneous selections | 25 across five fresh processes |                      509–579 ms | all accepted               |
+| First selection after readiness                |              5 fresh processes |                      229–263 ms | all accepted               |
+| Delivery                                       | 20 across five fresh processes | first 289–338 ms; warm 69–86 ms | all six cards, no fallback |
+
+Every selection has HTTP 200 and no GraphQL errors. The full Admin lint,
+typecheck, production build and workflow-registration checks pass. Sequential
+Compound Engineering review covered correctness, pool isolation, disconnect
+ownership, contracts/security, failure-sensitive tests, production bundling and
+scope. It found no introduced code blocker; it is not an independent-agent review.
+
+At **05:17:30 UTC**, bounded read-only queries over retained records since
+September 18 found no failed projection runs and no requests with
+`last_known_good_semantic_fallback`, `candidate_platform_unavailable` or
+`semantic_parity_mismatch`. Queries took 6/23 ms. This negative result does not
+satisfy feat-447's independent stale-publication/fallback operational gate;
+retention and non-persisted fenced outcomes limit what the tables can establish.
+No production rows or control state were changed to manufacture that evidence.
