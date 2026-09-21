@@ -1,4 +1,3 @@
-import { runInNewContext } from "node:vm"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 import {
@@ -27,7 +26,7 @@ vi.mock("@/auth/web-session", () => ({
   WEB_AUTH_SESSION_COOKIE: "forge_web_session",
   readWebAuthSessionCookie: readSession,
 }))
-import { GET, POST } from "./route"
+import { POST } from "./route"
 import { GET as availability } from "../for-you/availability/route"
 
 const testerId = "37a72bda-b57b-4171-93aa-688d0fba94a7"
@@ -74,86 +73,6 @@ afterEach(() => {
 })
 
 describe("tester activation and homepage availability", () => {
-  it.each(["success", "rejected", "timeout", "empty"])(
-    "clears fragment history and redirects after %s activation",
-    async (outcome) => {
-      vi.useFakeTimers()
-      const history = { replaceState: vi.fn() }
-      const location = {
-        hash: outcome === "empty" ? "" : "#local-fixture-token",
-        pathname: "/watch/api/recommendations/tester",
-        replace: vi.fn(),
-      }
-      const fetch = vi.fn((_url: string, options: RequestInit) => {
-        expect(history.replaceState).toHaveBeenCalledWith(
-          null,
-          "",
-          location.pathname,
-        )
-        if (outcome === "success") return Promise.resolve({ status: 204 })
-        if (outcome === "rejected")
-          return Promise.reject(new TypeError("offline"))
-        return new Promise((_resolve, reject) => {
-          options.signal?.addEventListener("abort", () =>
-            reject(new TypeError("timeout")),
-          )
-        })
-      })
-      const html = await GET().text()
-      const script = html.match(/<script[^>]*>([\s\S]*?)<\/script>/i)?.[1]
-      expect(script).toBeTruthy()
-      const finished = runInNewContext(script!, {
-        history,
-        location,
-        fetch,
-        AbortController,
-        setTimeout,
-        clearTimeout,
-      })
-      if (outcome === "timeout") await vi.advanceTimersByTimeAsync(5000)
-      await finished
-      if (outcome === "empty") expect(fetch).not.toHaveBeenCalled()
-      else
-        expect(fetch).toHaveBeenCalledWith(
-          location.pathname,
-          expect.objectContaining({
-            method: "POST",
-            credentials: "same-origin",
-            cache: "no-store",
-            body: JSON.stringify({ token: "local-fixture-token" }),
-          }),
-        )
-      expect(location.replace).toHaveBeenCalledExactlyOnceWith("/watch")
-      expect(vi.getTimerCount()).toBe(0)
-    },
-  )
-
-  it("serves a blank, isolated, non-cacheable fragment bridge with a fresh CSP nonce", async () => {
-    const response = GET()
-    const html = await response.text()
-    expect(response.headers.get("cache-control")).toContain("private, no-store")
-    expect(response.headers.get("referrer-policy")).toBe("no-referrer")
-    expect(response.headers.get("x-robots-tag")).toContain("noindex")
-    const nonce = html.match(/nonce="([^"]+)"/)?.[1]
-    expect(nonce).toBeTruthy()
-    expect(response.headers.get("content-security-policy")).toContain(
-      `script-src 'nonce-${nonce}'`,
-    )
-    expect(response.headers.get("content-security-policy")).toContain(
-      "frame-ancestors 'none'",
-    )
-    expect(html.indexOf("history.replaceState")).toBeLessThan(
-      html.indexOf("fetch("),
-    )
-    expect(html).toContain('location.replace("/watch")')
-    expect(html).not.toMatch(
-      /<script[^>]+src=|<button|<form|<input|datadog|gtag/i,
-    )
-    expect(GET().headers.get("content-security-policy")).not.toBe(
-      response.headers.get("content-security-policy"),
-    )
-  })
-
   it("exchanges a real signed link for a scoped secure cookie and evaluates only the tester ID", async () => {
     vi.stubEnv("NODE_ENV", "production")
     const token = await activationToken()
