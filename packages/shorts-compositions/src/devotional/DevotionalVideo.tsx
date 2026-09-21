@@ -1200,10 +1200,11 @@ const INTRO_HOOK_SCRIM = 0.45
 const INTRO_HOOK_FILM_DUCK = 0.12
 /** `hook`: the question is set at the cover's title size — it IS the title. */
 const HOOK_TITLE_PX = 29.3
-/** `hook`: how long the question stays after the voice finishes, and its fade.
- *  The film's own captions wait for both, so the two never overlap. */
-export const HOOK_TITLE_HOLD_SEC = 0.5
-export const HOOK_TITLE_FADE_SEC = 0.6
+/** `hook`: the title starts leaving this long BEFORE the scene speaks, and
+ *  takes this long to go — so nothing of the opening is still on screen when
+ *  the film's own captions start (owner: the question runs in full first). */
+const HOOK_TITLE_OUT_BEFORE_SEC = 1.3
+const HOOK_TITLE_FADE_SEC = 0.7
 
 function ClipIntro({
   variant,
@@ -1340,16 +1341,20 @@ function ClipIntro({
     // while it is spoken, the brand sits above it, and both leave as the
     // film's sound comes up.
     const on = interpolate(t, [0, 0.5], [0, 1], clampBoth)
-    const off = interpolate(t, [L - 1.0, L], [1, 0], clampBoth)
-    // The title holds a beat past the spoken line and then clears, so the
-    // words are still readable while the scene takes the sound back.
+    const off = interpolate(t, [L - 1.1, L - 0.4], [1, 0], clampBoth)
+    // Everything leaves BEFORE the scene starts speaking: the film's run-up is
+    // stretched to cover the whole opening, so there is room for the title to
+    // go before the first line and its caption arrive.
     const titleIn = interpolate(t, [0.05, 0.6], [0, 1], {
       ...clampBoth,
       easing: ease,
     })
     const titleOut = interpolate(
       t,
-      [L + HOOK_TITLE_HOLD_SEC, L + HOOK_TITLE_HOLD_SEC + HOOK_TITLE_FADE_SEC],
+      [
+        L - HOOK_TITLE_OUT_BEFORE_SEC,
+        L - HOOK_TITLE_OUT_BEFORE_SEC + HOOK_TITLE_FADE_SEC,
+      ],
       [1, 0],
       clampBoth,
     )
@@ -4185,8 +4190,10 @@ function Background({
           // before the cut and took the closing words down with it (owner:
           // "the last important words are muted"). It now happens in the last
           // quarter second, after the line has finished.
+          // Full-frame film: 0.25s still took the tail of the closing word
+          // when the scene ends on it, which is exactly what chapter 7 does.
           const fout = Math.round(
-            (slow ? 2 : fullBleedVideo ? 0.25 : 0.5) * fps,
+            (slow ? 2 : fullBleedVideo ? 0.12 : 0.5) * fps,
           )
           const rise = interpolate(f, [lead, lead + fin], [0, 1], {
             extrapolateLeft: "clamp",
@@ -5023,7 +5030,14 @@ export function DevotionalVideo(props: DevotionalInputProps) {
           c.kind === "video"
             ? [
                 {
-                  start: frames[i].from,
+                  // `hook`: the bed plays UNDER the spoken question and ducks
+                  // only when the film's own sound arrives. Muting it from the
+                  // card's first frame left the opening on dead air — the lead
+                  // is silent footage, so there was nothing else to hear.
+                  start:
+                    c.intro === "hook"
+                      ? frames[i].from + Math.round((c.mutedLeadSec ?? 0) * fps)
+                      : frames[i].from,
                   // Keep the music muted through the trailing crossfade too —
                   // the clip's own audio plays until the video card fully
                   // dissolves into the next. Must match the ACTUAL transition
@@ -5339,7 +5353,10 @@ function CardLayer({
           frameHeight={layerH}
           frameWidth={layerW}
           bleedX={bleedX ?? 0}
-          hideBeforeSec={card.intro === "hook" ? (card.mutedLeadSec ?? 0) : 0}
+          hideBeforeSec={
+            // The scene's own dialogue starts exactly at the lead's end.
+            card.intro === "hook" ? (card.mutedLeadSec ?? 0) : 0
+          }
         />
       ) : null}
       {showMuteButton ? <MuteButton px={px} style={style} /> : null}

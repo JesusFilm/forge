@@ -135,6 +135,12 @@ const CARD_TAIL_SEC = 0.8
  *  Past this the scene starts under the tail of the line rather than the whole
  *  opening being a talking head over a muted film. */
 const HOOK_LEAD_CAP_SEC = 9
+/** `intro: "hook"`: silence after the spoken question — a breath, plus the
+ *  time the title takes to leave. The film's first line lands after it. */
+const HOOK_TAIL_SEC = 1.8
+/** `intro: "hook"`: the slowest the run-up may be stretched before the water
+ *  and the boats read as slow motion rather than a held opening. */
+const HOOK_MIN_STRETCH = 0.45
 /** Silent beat on the FIRST card before the narration starts. */
 const INTRO_HOLD_SEC = 1
 /** Held beat on the LAST card after its narration, to sit with the question. */
@@ -682,6 +688,74 @@ function trimClipSegments(
   return runFfmpeg(args)
 }
 
+/**
+ * `intro: "hook"` only: encode the clip with a SLOWED, silent opening.
+ *
+ * The scene's run-up (the seconds before anybody speaks) is usually shorter
+ * than the spoken opening — chapter 7 has 2.9s of it against a 5s question —
+ * so played at its own speed the question would still be running when the
+ * film says its first line. Stretching that run-up to the length of the
+ * opening buys the whole intro without cutting into the scene, and the lead is
+ * muted so only the question is heard.
+ */
+function trimClipVariableSpeed(
+  src: string,
+  dest: string,
+  segments: ReadonlyArray<{
+    startSec: number
+    lengthSec: number
+    /** Playback speed for THIS piece (1 = source speed). */
+    speed: number
+    /** Drop this piece's audio entirely (the hook's lead). */
+    silent?: boolean
+  }>,
+  normalize = false,
+): Promise<void> {
+  const args = ["-y"]
+  for (const seg of segments) {
+    args.push(
+      "-ss",
+      String(seg.startSec),
+      "-t",
+      String(seg.lengthSec),
+      "-i",
+      src,
+    )
+  }
+  const filters: string[] = []
+  const parts: string[] = []
+  segments.forEach((seg, i) => {
+    filters.push(`[${i}:v]setpts=PTS/${seg.speed}[v${i}]`)
+    // atempo only accepts 0.5-100, so a slower piece chains two stages. A
+    // silenced piece skips the arithmetic entirely.
+    const a = seg.silent
+      ? "volume=0"
+      : seg.speed >= 0.5
+        ? `atempo=${seg.speed}`
+        : `atempo=0.5,atempo=${seg.speed / 0.5}`
+    filters.push(`[${i}:a]${a},asetpts=N/SR/TB[a${i}]`)
+    parts.push(`[v${i}][a${i}]`)
+  })
+  filters.push(`${parts.join("")}concat=n=${segments.length}:v=1:a=1[vc][ac]`)
+  filters.push(`[vc]null[v]`)
+  filters.push(`[ac]${normalize ? "loudnorm=I=-18:TP=-2:LRA=11" : "anull"}[a]`)
+  args.push(
+    "-filter_complex",
+    filters.join(";"),
+    "-map",
+    "[v]",
+    "-map",
+    "[a]",
+    "-c:v",
+    "libx264",
+    ...INTERMEDIATE_X264,
+    "-c:a",
+    "aac",
+    dest,
+  )
+  return runFfmpeg(args)
+}
+
 function runRender(
   manifest: string,
   out: string,
@@ -943,6 +1017,10 @@ export type RenderOptions = {
    *  seconds. Its recorded length sets the lead, so nothing has to be timed by
    *  hand. Must reach every `buildNarrationSegments` call in a run. */
   hookLine?: string
+  /** `intro: "hook"` only: what is DRAWN, when the voice says more than the
+   *  screen should show (a welcome before the question). Defaults to
+   *  `hookLine`. Never reaches the narration, so it is free to change. */
+  hookTitle?: string
   /** Clip-first only: corner progress ring clocking each step (see schema). */
   stepRing?: boolean
   /** Clip-first only: the step clock as a ring (default) or a top line. */
@@ -1066,12 +1144,14 @@ async function renderInStage(
       await writeFile(probe, seg.audio.bytes)
       const spokenSec = await probeDuration(probe)
       // A breath after the question before the scene takes over.
-      hookLeadSec = Math.min(HOOK_LEAD_CAP_SEC, spokenSec + 0.6)
+      // The question, a breath, and the time the title needs to leave: the
+      // scene must not start speaking while its words are still on screen.
+      hookLeadSec = Math.min(HOOK_LEAD_CAP_SEC, spokenSec + HOOK_TAIL_SEC)
       log(
         `hook: "${(options.hookLine ?? seg.text).trim()}" (${spokenSec.toFixed(1)}s) → ` +
           `${hookLeadSec.toFixed(1)}s before the scene is heard`,
       )
-      if (spokenSec + 0.6 > HOOK_LEAD_CAP_SEC) {
+      if (spokenSec + HOOK_TAIL_SEC > HOOK_LEAD_CAP_SEC) {
         log(
           `⚠️  the hook runs past the ${HOOK_LEAD_CAP_SEC}s cap; the film comes up while it is still speaking`,
         )
@@ -1145,7 +1225,10 @@ async function renderInStage(
       ? hookLeadSec
       : Math.max(0, Math.min(4, options.mutedLeadSec ?? 0))
   /** Same value, named for the manifest hand-off further down. */
-  const mutedLeadForManifest = leadSecForCap
+  // `let`: a hook whose run-up cannot be stretched far enough settles for a
+  // shorter lead, and the manifest must carry the value the picture actually
+  // uses (the scrim, the title's exit and the captions all key off it).
+  let mutedLeadForManifest = leadSecForCap
   const clampVideoCardSec = (sec: number) =>
     Math.min(
       MAX_VIDEO_CARD_SEC + leadSecForCap,
@@ -1226,21 +1309,58 @@ async function renderInStage(
     // extra footage, not the first seconds of the scene playing unheard. The
     // lead is on-screen time, so it costs `lead × speed` of source.
     const mutedLead = leadSecForCap
+    // `hook`: the run-up becomes its OWN segment, stretched to the length of
+    // the spoken opening and silenced, so the scene's first line lands after
+    // the question instead of under it. Every other opening keeps the old
+    // behaviour: the lead is simply extra footage in front of the window.
+    let hookLead: {
+      startSec: number
+      lengthSec: number
+      speed: number
+      silent: true
+    } | null = null
+    if (hookLeadSec > 0 && clipSegments.length > 0) {
+      const runUp = clipSegments[0].startSec
+      const room = Math.min(hookLeadSec * VIDEO_SPEED, runUp)
+      const stretch = room / hookLeadSec
+      if (room < 0.4) {
+        log(
+          `⚠️  this scene starts speaking after ${runUp.toFixed(1)}s, so there is no run-up to ` +
+            `carry the question — it will play over the first line`,
+        )
+      } else if (stretch < HOOK_MIN_STRETCH) {
+        // Stretching this far would read as slow motion; take what we can.
+        hookLeadSec = room / HOOK_MIN_STRETCH
+        hookLead = {
+          startSec: runUp - room,
+          lengthSec: room,
+          speed: HOOK_MIN_STRETCH,
+          silent: true,
+        }
+        log(
+          `⚠️  only ${(room / VIDEO_SPEED).toFixed(1)}s of run-up for a ${hookLeadSec.toFixed(1)}s opening; ` +
+            `holding it at ${HOOK_MIN_STRETCH}× (${hookLeadSec.toFixed(1)}s) — shorten the hook if the ` +
+            `slow motion shows`,
+        )
+      } else {
+        hookLead = {
+          startSec: runUp - room,
+          lengthSec: room,
+          speed: stretch,
+          silent: true,
+        }
+        log(
+          `hook lead: ${(room / VIDEO_SPEED).toFixed(1)}s of run-up stretched to ` +
+            `${hookLeadSec.toFixed(1)}s (${stretch.toFixed(2)}×, silent) — the scene speaks after it`,
+        )
+      }
+    }
+    if (hookLead) mutedLeadForManifest = hookLeadSec
     const withLead =
-      mutedLead > 0 && clipSegments.length > 0
+      mutedLead > 0 && !hookLead && clipSegments.length > 0
         ? (() => {
             const [first, ...rest] = clipSegments
             const room = Math.min(mutedLead * VIDEO_SPEED, first.startSec)
-            // The lead is only truly silent footage while the scene has not
-            // started speaking. A hook longer than the run-up plays over the
-            // scene's own first line, which then loses its caption too.
-            if (hookLeadSec > 0 && room < mutedLead * VIDEO_SPEED) {
-              log(
-                `⚠️  only ${(room / VIDEO_SPEED).toFixed(1)}s of footage before this scene starts ` +
-                  `speaking, but the hook needs ${mutedLead.toFixed(1)}s — the question will overlap ` +
-                  `the first line (shorten the hook to about ${Math.floor((room / VIDEO_SPEED) * 2.5)} words)`,
-              )
-            }
             return [
               {
                 startSec: first.startSec - room,
@@ -1364,12 +1484,27 @@ async function renderInStage(
     }
 
     if (!act2Info) {
-      await trimClipSegments(full, clip, trimSegments, true, VIDEO_SPEED) // normalize + speed
+      if (hookLead) {
+        // The lead runs at its own (slower) speed, the scene at the series
+        // speed — one encode, two rates.
+        await trimClipVariableSpeed(
+          full,
+          clip,
+          [
+            hookLead,
+            ...trimSegments.map((seg) => ({ ...seg, speed: VIDEO_SPEED })),
+          ],
+          true,
+        )
+      } else {
+        await trimClipSegments(full, clip, trimSegments, true, VIDEO_SPEED) // normalize + speed
+      }
       // The card can never be longer than the footage it shows. Clamping UP to
       // MIN_VIDEO_CARD_SEC held the clip's last frame for the difference —
       // 30s of card against 26.8s of sped-up footage froze for three seconds
       // before the reflection took over.
-      const playableSec = onScreenSec / VIDEO_SPEED
+      const playableSec =
+        onScreenSec / VIDEO_SPEED + (hookLead ? hookLeadSec : 0)
       // Captions must follow the SAME edit as the picture: cut-out pauses shift
       // later lines earlier, and the speed-up compresses every timestamp. Map
       // against `trimSegments` (exactly what was encoded into clip.mp4).
@@ -1391,7 +1526,10 @@ async function renderInStage(
         // this drops the margin's cues and moves nothing else.
         videoCaptions = shiftCaptions(
           mapCuesToEditedTimeline(sourceCues, clamped, VIDEO_SPEED),
-          options.captionOffsetSec ?? 0,
+          // `hook`: the stretched lead sits in FRONT of the window, so every
+          // cue moves by its full length. Without this the first line's
+          // caption would appear while the question is still on screen.
+          (options.captionOffsetSec ?? 0) + (hookLead ? hookLeadSec : 0),
         )
         // Some dubs' subtitle tracks arrive with typing debris (a locale says
         // which): stray spaces, old orthography, a lowercase sentence start.
@@ -1420,11 +1558,20 @@ async function renderInStage(
       // the trailing MARGIN footage, which is uncut and already encoded, so
       // this cannot run past the end of clip.mp4.
       const playableWithMarginSec =
-        (onScreenSec + marginAvailable) / VIDEO_SPEED
+        (onScreenSec + marginAvailable) / VIDEO_SPEED +
+        // `hook`: the stretched lead is real encoded footage in front of the
+        // window, so the card may run that much longer. Without it the card
+        // was cut a full lead short of the scene's last line.
+        (hookLead ? hookLeadSec : 0)
       // The card must END far enough from the last frame for the dissolve to
       // have moving picture to play. Ending AT the footage's end is what froze
       // the Good Samaritan's final frame for over a second.
-      const seamCeilingSec = playableWithMarginSec - SEAM_SEC - 0.2
+      // The guard exists so a DISSOLVE has moving picture to play over. On a
+      // hard cut there is nothing to play over, so it shrinks to a frame or
+      // two — chapter 7 ends ON the parable's last words, and 0.2s of guard
+      // was enough to clip them (owner-reported).
+      const seamCeilingSec =
+        playableWithMarginSec - SEAM_SEC - (SEAM_SEC > 0 ? 0.2 : 0.05)
       const cap = clampVideoCardSec(playableSec)
       // Which lines is the card allowed to wait for?
       //
@@ -1521,7 +1668,9 @@ async function renderInStage(
         }
       : {}),
     ...(options.intro ? { intro: options.intro } : {}),
-    ...(options.hookLine ? { hookText: options.hookLine.trim() } : {}),
+    ...((options.hookTitle ?? options.hookLine)
+      ? { hookText: (options.hookTitle ?? options.hookLine ?? "").trim() }
+      : {}),
     ...(mutedLeadForManifest > 0
       ? {
           // The silent opening stays (the clip's own sound eases in), but the

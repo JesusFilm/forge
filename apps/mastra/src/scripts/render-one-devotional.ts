@@ -105,6 +105,9 @@ async function main() {
       // devotional's question over the film's first seconds. Its recorded
       // length sets the lead, so nothing here is timed by hand.
       ...(arg("hook") ? { hookLine: arg("hook") } : {}),
+      // The voice may say more than the screen shows ("Welcome to Daily Bible
+      // Pause." before the question); `--hook-title` is what is drawn.
+      ...(arg("hook-title") ? { hookTitle: arg("hook-title") } : {}),
       ...(arg("theme-word") ? { clipThemeWord: arg("theme-word") } : {}),
       ...(process.argv.includes("--split-panels")
         ? { clipSplitPanels: true }
