@@ -238,6 +238,39 @@ impression. Count missing or mismatched selection bindings separately from
 Use canonical attribution and serving fences to assess whether it can influence
 a consumer, rather than promoting it because navigation or claiming succeeded.
 
+## Preserve bounded network causes without inventing retry safety
+
+Repeated normal Admin handovers produced fast playback HTTP 503s with only
+`TypeError: fetch failed` in retained traces. The 154/330 ms upstream durations
+distinguish these from the 700 ms selection deadline, but the outer exception
+cannot distinguish a refused connection, DNS lookup failure or closed socket.
+No retained Admin span is not proof that the mutation never reached Admin.
+
+`apps/web/src/lib/recommendation-evidence-response.ts` now reads at most four
+objects along the existing error's `cause` chain and emits a finite optional
+`networkErrorCode`. The Web/Admin evidence vocabularies remain identical. Keep
+the allowlist small, return `unknown` for unrecognized errors and throwing
+properties, and never stringify the original object. Do not add addresses,
+request URLs, headers, capabilities, arbitrary codes or stack traces to this
+operational dimension. Leave normal responses and existing reason/outcome fields
+unchanged so deployed alert queries continue to work.
+
+Test both the helper and its real route call path: a native local socket closure
+produces `UND_ERR_SOCKET`, an owned closed listener produces `ECONNREFUSED`, and
+the adapter preserves the cause while the route still returns the same 503 with
+one mutation invocation. Cover cycles, excessive depth, throwing getters and
+arbitrary values; verify 2xx/4xx observations omit the field. These tests establish
+diagnostic fidelity, not a fix for production transport failures. Measure the
+observer plus formatting overhead separately from network and database latency.
+
+Use the eventual natural error code to select a discriminating handover or
+connection-lifecycle experiment. Even `UND_ERR_SOCKET` does not establish whether
+a mutation committed; do not introduce automatic mutation retries from that
+label. Likewise, do not force a production fault merely to demonstrate that an
+observation exists. The [startup release record](../../operations/watch-startup-readiness-2026-09-21.md)
+retains the two failure traces, deployment timing, local proof and remaining
+closure gates. This addition resolves a diagnostic blind spot only.
+
 ## Related evidence
 
 - [Delivery event contract and limits](../../operations/watch-delivery-outcome-observation-2026-09-21.md)

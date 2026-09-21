@@ -439,6 +439,41 @@ describe("POST /watch/api/recommendations/playback", () => {
     },
   )
 
+  it("preserves a fetch cause through the adapter while returning the same 503", async () => {
+    const log = vi.spyOn(console, "info").mockImplementation(() => {})
+    try {
+      mutate.mockRejectedValueOnce(
+        new TypeError("private upstream URL", {
+          cause: Object.assign(new Error("private address"), {
+            code: "ECONNRESET",
+          }),
+        }),
+      )
+      const response = await POST(
+        request(
+          JSON.stringify({
+            action: "facts",
+            contractVersion: "recommendation-evidence-v1",
+            capability: "episode-capability",
+            episodeId: "episode-1",
+            mediaId: "media-1",
+            events: [playbackEvent],
+          }),
+        ),
+      )
+      expect(response.status).toBe(503)
+      expect(await response.json()).toEqual({
+        error: "recommendations_unavailable",
+      })
+      expect(mutate).toHaveBeenCalledOnce()
+      expect(log).toHaveBeenCalledExactlyOnceWith(
+        "event=recommendation.evidence source=web action=facts outcome=failed reason=upstream_unavailable timeoutStage=none retryDisposition=retryable crawler=unknown httpStatus=503 networkErrorCode=ECONNRESET",
+      )
+    } finally {
+      log.mockRestore()
+    }
+  })
+
   it("does not classify arbitrary GraphQL messages as binding failures", async () => {
     mutate.mockRejectedValueOnce(
       new CombinedGraphQLErrors({

@@ -250,3 +250,145 @@ September 18 found no failed projection runs and no requests with
 satisfy feat-447's independent stale-publication/fallback operational gate;
 retention and non-persisted fenced outcomes limit what the tables can establish.
 No production rows or control state were changed to manufacture that evidence.
+
+## Module-reuse release and independent local boundary checks
+
+PR [#2363](https://github.com/JesusFilm/forge/pull/2363) merged normally at
+05:33:34 UTC as `850cd7b5b582c327deac8fa50a9e5ebd85abd438`. Fresh main
+`1cb15d6…` was already incorporated. The final CI run, `35564631997`, passes
+all required checks, including 7,288 Admin tests, 113 PostgreSQL checks, two
+Redis checks, lint/types, build, schema drift and repository guards. One earlier
+run was cancelled by the repository's concurrency rule after a delayed PR event;
+its cancellation-induced gate failure is not a code-test failure. No source
+change or check bypass occurred between runs.
+
+A separate owned-database drill uses `createRecommendationDeliveryDependencies`
+with the real Prisma client, Redis admission, runtime signer, serving authority,
+retriever and persistence. Wait for the standalone Redis client to become ready
+before invoking the service; the initial standalone attempt omitted this setup
+and correctly returned `admission_unavailable`. This is not a production failure.
+A normal control returns six served cards. Override only `orchestrate` to throw
+an owned local failure, then call the complete service with a new local session.
+The result in 60 ms has six unique last-known-good semantic cards; PostgreSQL
+records an issued FALLBACK request, six items, no experiment assignment,
+`candidate_platform_unavailable` and `evidenceComplete=false`. The effective
+manifest remains the fixture's `semantic-transcript-pgvector-v1`.
+
+Independently invoke the real profile projection service with expected pointer
+`{generationId: null, pointerGeneration: 0}` on a fresh local session. The first
+publisher succeeds. Reusing that stale expectation returns
+`profile_projection_pointer_fenced`; the current pointer stays unchanged and
+exactly one generation exists. Neither drill changes production records or
+settings. These complete-service/database checks strengthen local evidence;
+they do not replace feat-447's operational production and authorized Admin gates
+or its restored-production-snapshot performance requirement.
+
+After the readiness release, **05:10–05:20 UTC** primary HTTP metrics report
+37 seeded delivery HTTP 200s and 55 HTTP 403s. All 92 final envelopes reconcile;
+none contains a delivery/retrieval timeout. Playback records 422 HTTP 200s,
+53 HTTP 403s, two HTTP 401s and two HTTP 400s, with no 5xx. There are **zero
+selection requests** in this window. It spans Web `ec6bf167…` and `1cb15d6…`
+and is not evidence that selection has recovered. Web deployment
+`eacd4352-e2a4-4f20-bea0-9be5ac57d95c` is now successful; SSH confirms exact
+revision `1cb15d6fc2b5cb0387e23b02afc24a05d4c1acaa`.
+
+At 05:37:41 UTC the running Web `1cb15d6…` application returns HTTP 200
+`{enabled:false}` for the anonymous homepage-recommendation availability route
+through a read-only loopback request. The preceding public diagnostic GET
+returned HTTP 403, which is an HTTP rejection and not a flag evaluation result.
+A bounded production SQL read at 05:38:36 UTC finds one published English
+`watch-home` locale and zero authored `homepageRecommendations` blocks.
+`packages/feature-flags/src/registry.ts` still declares the flag default false.
+No settings, content or curation were changed by these checks.
+
+At **05:40:29 UTC**, independent SSH verification confirms Admin revision
+`850cd7b5b582c327deac8fa50a9e5ebd85abd438`, deployment
+`83224823-62b9-4a26-a991-4c9b553fa361`, runner false, and the built configuration's
+exact external-package list `[@mastra/core, @mastra/memory]`. The actual health
+route returns HTTP 200 `{status:ok}`. Production runs Node 24.21.0; the owned
+matched local experiments use Node 24.16.0. The health read is an initialization
+check, not a selection performance result.
+
+The **05:40:31.898 UTC** repeatable-read canonical audit finds **168,701 current
+pointers and zero ineligible**, in 1,509 ms. Five-second statement and 500 ms
+lock limits remain unchanged; rollback/disconnect restores the transaction-local
+JIT setting. This is a timestamped convergence snapshot, not a permission-checked
+Admin trace or continuous-zero claim.
+
+At **05:42:40 UTC**, independent SSH verification confirms worker revision
+`850cd7b5b582c327deac8fa50a9e5ebd85abd438`, deployment
+`ac3b8b79-ff08-4996-a912-46b5f2dfee47`, runner true, Node 24.20.0 and the same
+built external-package list. The **05:46:32.312 UTC** reconciliation batch
+completes 48 classifications and one affected-pointer rebuild without failures,
+exhaustion or stale dispatch. That batch belongs to the newly verified worker;
+the shared 05:41 workflow record predates this verification and is not attributed
+to the replacement process merely because it is visible in the same database.
+
+## Repeated handover failure and bounded diagnostic
+
+A second playback HTTP 503 occurs at **05:40:18.471 UTC**, trace
+`6ab0c34200000000686c2d4d2bb03d5e`, on Web `1cb15d6…`. The complete request
+takes 159 ms and its upstream `fetch failed` span takes 154 ms; no Admin span is
+retained. The new Admin logs server startup at 05:40:10.170 and Next readiness
+at 05:40:10.865; the old Admin logs `Stopping Container` at 05:40:20.063.
+These timestamps support testing a handover hypothesis but do not identify
+DNS failure, refusal, socket closure or the mutation's commit outcome. Next's
+startup log is also distinct from the application's awaited healthcheck.
+
+The fixed **05:41–05:49 UTC** population has 68 seeded-delivery requests:
+33 HTTP 200 and 35 HTTP 403, exactly matched by final envelopes. The 200s are
+27 served responses and six six-card `seed_embedding_unavailable` fallbacks;
+there are zero `delivery_timeout` or retrieval-timeout fallbacks. Selection has
+two HTTP 200s. Playback has 197 HTTP 200s and 27 HTTP 403s, with no 5xx.
+An eight-minute window and two selections cannot establish sustained recovery.
+
+The transport diagnostic preserves `networkErrorCode` on existing Web evidence
+observations for 5xx responses. It accepts only nine named Node/Undici codes plus
+`unknown`, traverses at most four cause objects, and catches malformed-property
+access. The mirrored Admin/Web contract keeps the field optional. Existing
+outcome, reason, timeout stage, HTTP response, retry policy and deadlines remain
+unchanged. No message, URL, address, stack, capability or arbitrary code is logged.
+
+Failure-sensitive unit tests distinguish the allowed code from raw/private
+properties and bound cyclic, throwing and over-depth errors. Real local native
+fetch failures prove socket closure (`UND_ERR_SOCKET`) and refusal
+(`ECONNREFUSED`) reach the observer. The playback route test exercises adapter
+propagation, the unchanged 503 body, a single mutation attempt and the exact
+finite log. This is a diagnostic correction, not a proven transport fix. Verify
+its production field only when a natural failure occurs; do not force an outage.
+
+Validation passes **4,493 Web tests** and **7,288 Admin tests**, both lint and
+typechecks, both production builds, workflow registration guards and roadmap
+lint. The initial Web run had one unchanged home-carousel render-count failure
+(expected three, received four); its complete 70-test file passed alone, and the
+full Web suite passed unchanged afterward. A final full run including the new
+route-boundary test also passes. Preserve the initial failure rather than calling
+every run green. Fresh main `fa5a836003f3294d8cccc6eac453c74e56b3ec37` is
+incorporated; its additional changes are RAG planning/roadmap documents.
+
+A quiet Node 24.16.0 microbenchmark executes the actual observer, request-header
+classification, normalization and formatting, with a length-counting log sink
+instead of I/O. Seven alternating baseline/candidate trials each make 100,000
+calls after warmup. HTTP 200 median cost is 3.628/3.591 microseconds; HTTP 503
+with a nested reset cause is 3.672/4.015 microseconds. The measured added failure
+cost is about 0.34 microseconds per call. This does not measure console transport,
+HTTP latency, database work, cold initialization or production percentiles.
+
+Sequential Compound Engineering review checks correctness, bounded work, privacy,
+wire compatibility, route propagation, malformed-error controls and deployment
+scope. It finds no introduced code blocker and does not claim independent agents.
+The durable result extends the existing
+[outcome-accounting learning](../solutions/logic-errors/recommendation-outcome-accounting-boundaries-20260921.md).
+
+## Current closure gates
+
+| Ticket   | Evidence still required                                                                                                                                                                                                                                                |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| feat-464 | Installed transport/reconciliation alerts under approved access, matching authorized Admin reconciliation, and real browser terminal-409 behavior without retry amplification. Preserve the repeated fast transport failures and their unproven causes.                |
+| feat-459 | Completion of feat-464 and the matching authorized Admin evidence; complete SQL snapshots and repaired batch performance are already recorded.                                                                                                                         |
+| feat-447 | Matching authorized Admin lifecycle trace and independent operational last-known-good/stale-publication evidence. Retain the existing September 9 restored-snapshot performance proof under its documented scope; this continuation's small fixture does not rerun it. |
+| feat-496 | Attribution and correction of any remaining capability-budget/pool/WAL or handover failure, followed by a representative sustained population of selection and delivery outcomes on verified revisions.                                                                |
+
+Keep all four tickets in progress while these requirements are unmet. Do not
+weaken them, transfer them to a new ticket merely to close the originals, or
+count healthy navigation/HTTP 200s as proof that semantic timeouts are resolved.

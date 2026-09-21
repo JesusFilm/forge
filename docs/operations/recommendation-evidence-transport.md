@@ -52,7 +52,13 @@ Use the existing authorized receipt, playback and profile audits for correctness
 
 Fields are allowlisted at runtime: action, outcome, normalized reason, timeout
 stage, retry disposition, recognized-machine disposition, HTTP status and bounded
-transaction retry attempt. Browser retry attempt is unknown unless independently
+transaction retry attempt. Web 5xx observations optionally include a finite
+`networkErrorCode` from the existing error/cause chain: Node/Undici connection,
+DNS, socket and timeout codes or `unknown`. This is diagnostic classification;
+it does not prove whether Admin committed a mutation or change retry safety.
+Messages, URLs, addresses and arbitrary error codes remain excluded. Existing
+monitor queries continue to match the unchanged outcome/reason/status fields.
+Browser retry attempt is unknown unless independently
 observed; server retry disposition is a policy classification. No raw request,
 error, user agent, capability, profile/session/episode/event identifier, history or
 vector is admitted. The underlying immutable receipt and authorized profile audit
