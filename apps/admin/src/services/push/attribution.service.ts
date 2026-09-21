@@ -17,6 +17,7 @@
 import type { PrismaClient } from "@prisma/client"
 
 import type { PushStoredOpen } from "./open-report.service"
+import { isUniqueViolation } from "@/db/prisma-errors"
 
 /** R24 — how long after an open a watch start still belongs to the campaign. */
 export const PUSH_ATTRIBUTION_WINDOW_HOURS = 24
@@ -87,14 +88,6 @@ type OpenRow = {
 const EPISODE_SELECT = { id: true, mediaId: true, createdAt: true } as const
 
 type EpisodeRow = { id: string; mediaId: string; createdAt: Date }
-
-function isUniqueViolation(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    (error as { code?: string }).code === "P2002"
-  )
-}
 
 type AttributionRow = {
   episodeId: string

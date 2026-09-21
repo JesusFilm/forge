@@ -21,6 +21,7 @@ import {
   PushNotFoundError,
   PushTokenShapedIdError,
 } from "./errors"
+import { isUniqueViolation } from "@/db/prisma-errors"
 
 export const PUSH_TEST_DEVICE_PAGE_LIMIT = 200
 
@@ -69,14 +70,6 @@ function toRow(row: TestDeviceSelection): PushTestDeviceRow {
     createdAt: row.createdAt,
     createdById: row.createdById,
   }
-}
-
-function isUniqueViolation(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    (error as { code?: string }).code === "P2002"
-  )
 }
 
 async function readRegistration(

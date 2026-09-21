@@ -85,17 +85,6 @@ export type PushRunCounts = Readonly<{
   handedOff: number
 }>
 
-export const EMPTY_PUSH_RUN_COUNTS: PushRunCounts = {
-  accepted: 0,
-  failed: 0,
-  invalid: 0,
-  suppressed: 0,
-  unreachable: 0,
-  missed: 0,
-  indeterminate: 0,
-  handedOff: 0,
-}
-
 type Deps = {
   prisma?: PrismaClient
   startRun?: typeof start
@@ -124,12 +113,6 @@ function errorText(error: unknown): string {
  * event log, so the failure step takes a plain object it can serialize.
  */
 export type PushRunFailure = Readonly<{ name: string; message: string }>
-
-export function toPushRunFailure(error: unknown): PushRunFailure {
-  return error instanceof Error
-    ? { name: error.name, message: error.message }
-    : { name: "UnknownError", message: String(error) }
-}
 
 // An upstream message can carry a push token, and `lastError` is shown to the
 // editor. The code and the class are what an operator needs; the token is not.

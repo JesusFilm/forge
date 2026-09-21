@@ -16,9 +16,9 @@ import {
   type PrismaClient,
   type PushPlatform,
 } from "@prisma/client"
-import { z } from "zod"
 
 import {
+  parsePushInput,
   PushRegistrationInputSchema,
   type PushRegistrationInput,
 } from "./contracts"
@@ -29,6 +29,7 @@ import {
   type PushLanguageRow,
 } from "./language-resolution"
 import { canonicalizePushTimeZone } from "./zone-instant"
+import { isUniqueViolation } from "@/db/prisma-errors"
 
 /** The statuses a caller can see. `INVALID` is refused, never returned. */
 export type PushRegistrationReceiptStatus = Exclude<
@@ -114,26 +115,9 @@ export function nextPushRegistrationStatus(
   return { status, changed: current !== status }
 }
 
-function asInputError(error: unknown): never {
-  if (error instanceof z.ZodError) {
-    throw new PushInputError(
-      error.issues.map((issue) => issue.message).join("; "),
-    )
-  }
-  throw error
-}
-
 /** 16 lowercase hex characters, random, and never derived from the token. */
 function mintTestDeviceId(): string {
   return randomBytes(8).toString("hex")
-}
-
-function isUniqueViolation(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    (error as { code?: string }).code === "P2002"
-  )
 }
 
 type RegistrationRow = {
@@ -246,12 +230,10 @@ export async function registerPushDevice(
   prisma: PrismaClient,
   request: PushRegistrationRequest,
 ): Promise<PushDeviceRegistrationReceipt> {
-  let input: PushRegistrationInput
-  try {
-    input = PushRegistrationInputSchema.parse(request.input)
-  } catch (error) {
-    asInputError(error)
-  }
+  const input: PushRegistrationInput = parsePushInput(
+    PushRegistrationInputSchema,
+    request.input,
+  )
 
   const timeZone = canonicalizePushTimeZone(input.timeZone)
   const country = resolvePushCountry({

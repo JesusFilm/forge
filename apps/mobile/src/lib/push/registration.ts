@@ -24,6 +24,7 @@ import {
   type PushViewerHandle,
 } from "./payload"
 import type { PushRegistrationRecord } from "./store"
+import { readPushFailure } from "./failure"
 
 /** Why a registration ran. A fixed set, because the log facets on it. */
 export type PushRegistrationTrigger =
@@ -96,22 +97,6 @@ export type PushRegistration = {
   tokenRotated: (token: string) => void
   appLanguageChanged: () => void
   viewerIdentityChanged: () => void
-}
-
-/** What the controller reads off a rejected mutation. */
-type PushFailureShape = {
-  code: string
-  definitive: boolean
-  pushCode: string | null
-}
-
-function failureOf(error: unknown): PushFailureShape {
-  const shape = error as Partial<PushFailureShape> | null
-  return {
-    code: typeof shape?.code === "string" ? shape.code : "UNKNOWN",
-    definitive: shape?.definitive === true,
-    pushCode: typeof shape?.pushCode === "string" ? shape.pushCode : null,
-  }
 }
 
 export function createPushRegistration(
@@ -240,7 +225,7 @@ export function createPushRegistration(
         push_status: receipt.status,
       })
     } catch (error) {
-      const failure = failureOf(error)
+      const failure = readPushFailure(error)
       // A rate limit clears on its own and admin's ceiling is per minute, so a
       // retry inside this launch can only spend another request.
       const retryable =
@@ -285,7 +270,7 @@ export function createPushRegistration(
       await deps.store.markRevocationReported()
       deps.telemetry.info("push.revocation", { push_outcome: "reported" })
     } catch (error) {
-      const failure = failureOf(error)
+      const failure = readPushFailure(error)
       deps.telemetry.info("push.revocation", {
         push_outcome: "failed",
         push_code: failure.code,

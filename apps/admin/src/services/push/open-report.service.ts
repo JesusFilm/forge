@@ -9,10 +9,9 @@
  * SECURITY: no log line here carries the nonce, a handle, or a digest.
  */
 import type { PrismaClient } from "@prisma/client"
-import { z } from "zod"
 
-import { PushOpenReportInputSchema } from "./contracts"
-import { PushInputError } from "./errors"
+import { parsePushInput, PushOpenReportInputSchema } from "./contracts"
+import { isUniqueViolation } from "@/db/prisma-errors"
 
 export type PushOpenOutcome = "STORED" | "DUPLICATE" | "UNKNOWN"
 
@@ -67,30 +66,12 @@ type DeliveryRow = {
   registration: { viewerDigest: string | null } | null
 }
 
-function isUniqueViolation(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    (error as { code?: string }).code === "P2002"
-  )
-}
-
 export async function reportPushOpen(
   prisma: PrismaClient,
   request: PushOpenReportRequest,
   options: { afterOpenStored?: PushOpenStoredHook } = {},
 ): Promise<PushOpenReceipt> {
-  let nonce: string
-  try {
-    nonce = PushOpenReportInputSchema.parse(request.input).nonce
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      throw new PushInputError(
-        error.issues.map((issue) => issue.message).join("; "),
-      )
-    }
-    throw error
-  }
+  const { nonce } = parsePushInput(PushOpenReportInputSchema, request.input)
 
   const delivery = (await prisma.pushDelivery.findUnique({
     where: { nonce },

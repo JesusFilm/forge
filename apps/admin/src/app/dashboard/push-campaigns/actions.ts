@@ -11,8 +11,6 @@
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 
-import { hasPermission } from "@/auth/permissions"
-import { requireSession } from "@/auth/session"
 import { prisma } from "@/db/client"
 import { countPushAudience } from "@/services/push/audience.service"
 import {
@@ -42,6 +40,7 @@ import {
   pushCampaignPath,
   type PushActionState,
 } from "./components/action-state"
+import { requirePushPrincipal } from "./access"
 
 const DESTINATION_KINDS = ["VIDEO", "SERIES", "EXPERIENCE"] as const
 type PushDestinationKindInput = (typeof DESTINATION_KINDS)[number]
@@ -59,10 +58,8 @@ function refuse(reason: string): PushActionState {
  * the key never reaches a service call.
  */
 async function requirePushActor(): Promise<string> {
-  const principal = await requireSession()
-  if (!hasPermission(principal, "write:push-campaigns") || !principal.id) {
-    redirect("/dashboard")
-  }
+  const principal = await requirePushPrincipal()
+  if (!principal.id) redirect("/dashboard")
   return principal.id
 }
 

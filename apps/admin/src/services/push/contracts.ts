@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 import { PUSH_ENGLISH_LANGUAGE_SLUG } from "./language-resolution"
+import { PushInputError } from "./errors"
 
 /** KTD5 — copy is capped per language before a campaign can be saved. */
 export const PUSH_COPY_TITLE_MAX_CHARS = 50
@@ -238,3 +239,21 @@ export const PushViewerHandleSchema = z
   })
   .strict()
 export type PushViewerHandle = z.infer<typeof PushViewerHandleSchema>
+
+/**
+ * Parses one input against its contract and turns a zod failure into the
+ * typed input error. The message carries the issue messages only, never the
+ * value that failed, so a token or a handle cannot echo back to a log.
+ */
+export function parsePushInput<T>(schema: z.ZodType<T>, value: unknown): T {
+  try {
+    return schema.parse(value)
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw new PushInputError(
+        error.issues.map((issue) => issue.message).join("; "),
+      )
+    }
+    throw error
+  }
+}

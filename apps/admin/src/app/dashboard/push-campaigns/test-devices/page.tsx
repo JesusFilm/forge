@@ -4,7 +4,6 @@
  */
 import type { Route } from "next"
 import Link from "next/link"
-import { redirect } from "next/navigation"
 
 import {
   DashboardPageHeader,
@@ -13,8 +12,6 @@ import {
   SecondaryButton,
   StatusPill,
 } from "@/components/admin-ui"
-import { hasPermission } from "@/auth/permissions"
-import { requireSession } from "@/auth/session"
 import { prisma } from "@/db/client"
 import { getAdminMessages } from "@/i18n/server"
 import { listPushTestDevices } from "@/services/push/test-devices.service"
@@ -25,12 +22,10 @@ import {
   AddTestDeviceForm,
   RemoveTestDeviceButton,
 } from "../components/test-device-manager"
+import { requirePushPrincipal } from "../access"
 
 export default async function PushTestDevicesPage() {
-  const principal = await requireSession()
-  if (!hasPermission(principal, "write:push-campaigns")) {
-    redirect("/dashboard")
-  }
+  await requirePushPrincipal()
 
   const messages = await getAdminMessages()
   const page = messages.pages.pushCampaigns

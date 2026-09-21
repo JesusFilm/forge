@@ -7,7 +7,6 @@
  */
 import type { Route } from "next"
 import Link from "next/link"
-import { redirect } from "next/navigation"
 
 import {
   DashboardPageHeader,
@@ -16,8 +15,6 @@ import {
   StatusPill,
   cx,
 } from "@/components/admin-ui"
-import { hasPermission } from "@/auth/permissions"
-import { requireSession } from "@/auth/session"
 import { prisma } from "@/db/client"
 import { getAdminMessages } from "@/i18n/server"
 import { countPushAudience } from "@/services/push/audience.service"
@@ -51,6 +48,7 @@ import {
   isPushCampaignTested,
   pushStatusView,
 } from "../components/campaign-view"
+import { requirePushPrincipal } from "../access"
 
 type PageProps = {
   params: Promise<{ id: string }>
@@ -69,10 +67,7 @@ export default async function PushCampaignPage({
   params,
   searchParams,
 }: PageProps) {
-  const principal = await requireSession()
-  if (!hasPermission(principal, "write:push-campaigns")) {
-    redirect("/dashboard")
-  }
+  await requirePushPrincipal()
 
   const { id } = await params
   const query = await searchParams

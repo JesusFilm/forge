@@ -10,23 +10,7 @@
 import { datadogLog } from "../datadog"
 import { reportPushOpen } from "./openReportClient"
 import { readPushViewerHandle } from "./viewerHandle"
-
-/**
- * The typed failure's own fields, read by SHAPE rather than through
- * `instanceof`. The class identity is one more thing that can be absent here,
- * and `instanceof undefined` throws — inside the catch of a fire-and-forget
- * call, which is an unhandled rejection in a runtime with no global handler.
- */
-function failureFields(error: unknown): {
-  code: string
-  pushCode: string | null
-} {
-  const shape = (error ?? {}) as { code?: unknown; pushCode?: unknown }
-  return {
-    code: typeof shape.code === "string" ? shape.code : "UNKNOWN",
-    pushCode: typeof shape.pushCode === "string" ? shape.pushCode : null,
-  }
-}
+import { readPushFailure } from "./failure"
 
 async function report(nonce: string): Promise<void> {
   try {
@@ -40,7 +24,7 @@ async function report(nonce: string): Promise<void> {
       has_viewer: viewer != null,
     })
   } catch (error) {
-    const failure = failureFields(error)
+    const failure = readPushFailure(error)
     // The error's own message never goes in: it can echo the nonce or the
     // handle. Only admin's codes do.
     datadogLog.info("push.open_report_failed", {

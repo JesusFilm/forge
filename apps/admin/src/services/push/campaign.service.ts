@@ -14,10 +14,10 @@ import {
   type PrismaClient,
   type PushDeliveryStatus,
 } from "@prisma/client"
-import { z } from "zod"
 
 import { cancelPendingPushZones } from "./claims"
 import {
+  parsePushInput,
   PushCampaignUpdateInputSchema,
   PushScheduleInputSchema,
   type PushCampaignUpdateInput,
@@ -60,23 +60,6 @@ type CampaignGate = {
   status: PushCampaignStatus
   destinationKind: string | null
   destinationSlug: string | null
-}
-
-function asInputError(error: unknown): never {
-  if (error instanceof z.ZodError) {
-    throw new PushInputError(
-      error.issues.map((issue) => issue.message).join("; "),
-    )
-  }
-  throw error
-}
-
-function parse<T>(schema: z.ZodType<T>, value: unknown): T {
-  try {
-    return schema.parse(value)
-  } catch (error) {
-    asInputError(error)
-  }
 }
 
 async function readGate(
@@ -133,7 +116,7 @@ export async function updatePushCampaign(
     update: PushCampaignUpdateInput
   },
 ): Promise<PushCampaignEditState> {
-  const update = parse(PushCampaignUpdateInputSchema, input.update)
+  const update = parsePushInput(PushCampaignUpdateInputSchema, input.update)
   const gate = await requireEditable(prisma, input.campaignId)
 
   const data: Prisma.PushCampaignUpdateManyMutationInput = {
@@ -305,7 +288,7 @@ export async function schedulePushCampaign(
     audienceCount?: number
   },
 ): Promise<void> {
-  const schedule = parse(PushScheduleInputSchema, {
+  const schedule = parsePushInput(PushScheduleInputSchema, {
     sendDate: input.sendDate,
     localHour: input.localHour,
   })
