@@ -41,6 +41,17 @@ verified at 21:54:11 at the same revision, runner true, with both compiled
 corrections. Both deployment records report SUCCESS. The sustained final-revision
 observation remains pending; 21:55 is a conservative boundary after both checks.
 
+The diagnostic-only [PR #2374](https://github.com/JesusFilm/forge/pull/2374)
+subsequently merged at 22:40:43 as
+`92a597ee03074bf4d79b0eb21db4499046ecd09f`, after all CI checks passed on head
+`ea13abbc4d59a7dbeaca1ba069c96bec2d5c0fb0` and freshly fetched main was verified
+as an ancestor. At 22:55:40, independent SSH reads verify that revision, the
+compiled budget timing SQL/event and both preceding fixes on Admin deployment
+`7bdb51ac-19b6-452c-ae3d-28063ca1950d` and worker
+`d1f9d17c-80bc-4fd5-a406-381e0613e544`, with their respective runner roles.
+The 21:55 onward window therefore spans the catalog release and a later
+diagnostic-only release; it must not be described as one exact Admin revision.
+
 At 21:48:56 a bounded read-only EXPLAIN ANALYZE of the final LATERAL query shape
 (using one array parameter for the selected IDs)
 returned 206 rows in **9.982 ms**, planning 1.070 ms. The plan uses the existing
@@ -85,6 +96,47 @@ the browser stopped retrying. All 125 recognized crawler submissions are rejecte
 Playback 5xx is 0/1,146, with no excluded traffic. One selection is insufficient
 evidence for intermittent-selection recovery.
 
+## Initial observation with both fixes
+
+The settled **21:55–22:50** window is 55 minutes and includes the automatic
+diagnostic rollout. Web populations remain split by revision in the artifact.
+There are five selection HTTP 200s and no selection HTTP errors; playback has
+3,075 HTTP 200s, one 401 and 325 403s, with no 5xx and no excluded traffic.
+
+Seeded delivery has 289 HTTP 200s and 324 403s; For You has seven HTTP 200s and
+one 403. Independent Railway logs reconcile all **621** delivery requests.
+Datadog initially lacks three of those events: one served-six HTTP 200 and two
+ordinary 403s. Railway supplies their semantics. No `delivery_timeout` or
+`retrieval_timeout` envelope is observed in the complete 296-success population.
+Keep the For You HTTP 200 with `result=unavailable reason=coverage_unavailable`
+separate from timeout fallbacks, and retain a five-card seed-coverage fallback.
+Five selections and a sub-hour window still cannot establish intermittent
+selection recovery.
+
+## Owned public-browser canary
+
+The empty connected-browser inventory was not the only available option. A
+task-local `agent-browser` 0.38.1 installation, the existing Chrome 153 binary
+and an owned virtual display supported a normal headed browser. No shared
+browser, user-agent override, request interception or fabricated production
+failure was used. The session and display were closed afterward.
+
+The 23:29:20–23:33:37 capture contains two six-card `served` delivery responses
+without fallback, at 523 and 716 ms end-to-end, and one selection HTTP 200 at
+623 ms followed by navigation and playback. Its selection response body was
+unavailable in the HAR, so this is not acknowledgment-body validation. There
+is one matching persisted selection with valid attribution in the read-only
+23:36:26 audit; its private request/item/event lookup values were not exported.
+There
+are 49 playback HTTP 200s (one context, two claims and 46 fact batches), with
+56 accepted fact receipts retained in response bodies; one successful playback
+body was unavailable. Twelve initial-evidence receipts are accepted. Six
+additional initial-evidence requests have no captured response during navigation;
+they remain browser cancellations/incomplete captures, not HTTP status zero
+responses and not counted as successful acknowledgments. No terminal 409
+occurred, so terminal non-retry acceptance remains open. This canary traffic is
+included in the production observation without exclusions.
+
 ## Independent budget/commit investigation
 
 The retained [08:37 selection trace](https://app.datadoghq.com/apm/trace/6ab0ecc9000000002cc67b5b00886e66)
@@ -110,6 +162,67 @@ It cannot establish that intermittent waits stopped. Container-address matching
 did not identify the application's connections, so it supplies no pool-occupancy
 claim. No diagnostic touched live application callbacks or opened an inspector.
 
+The separate **22:06:12–22:16:13** ten-minute observer on `ce421561…` sampled
+eight distinct budget statements: seven episode statements in `WalSync` and one
+running. All had zero observed blockers; the oldest sampled statement was
+56.708 ms. The 500 ms sampling interval can miss short waits. Observer query
+wall time totalled 3.970 seconds across ten minutes, maximum 67.600 ms for one
+sample. The connection closed normally. This does not explain the earlier
+701 ms incident or establish recovery.
+
+The supported diagnostic in PR #2374 brackets the existing single budget
+function invocation with server clocks and compares it with the monotonic
+complete client call. It preserves independent durable consumption, limits and
+error semantics. A slow-call remainder can include planning, pool, commit,
+transport and application scheduling; it is not a WAL-duration measurement.
+All 7,305 Admin tests, 17 real PostgreSQL tests and the actual Next workload pass.
+The [measurement guidance](../solutions/best-practices/separate-budget-function-time-from-driver-latency-20260922.md)
+and [validation rounds](../validation/watch-budget-timing-20260922/results.json)
+record its small measured overhead and explicit limits. It is not a latency fix.
+
+### Natural slow calls after diagnostic deployment
+
+The completed 22:56:01–23:06:01 read-only capture sampled ten distinct budget
+statements, with no observed row/advisory blockers. Two episode statements were
+observed in `IO/WalSync` across successive samples. Independent Railway and
+Datadog events report complete calls of **304 and 312 ms**, with function time
+rounding to **0 ms**. Their source completion timestamps are 23:02:10.866 and
+23:05:38.404; Railway ingestion timestamps are later and must not stand in for
+completion. Time correlation supports a post-function commit wait for these
+calls, not a measurement that all 304/312 ms was spent in fsync. Their traces
+were not retained. Neither call overlaps a logged checkpoint.
+
+The finer 23:12:44–23:22:44 capture completed 5,864 samples, observing 24 distinct
+budget statements and zero blockers. A **212 ms** episode call at 23:15:38
+coincides with sampled `WalSync`; a **216 ms** call at 23:18:44 coincides with
+`LWLock/WALWrite` while another backend is in `WalSync`. This lightweight lock
+wait is distinct from a row-lock blocker. At both times the actual PostgreSQL
+volume's own cgroup records roughly 200 ms of I/O pressure. The 100 ms samples
+show very little nearby write traffic (including intervals with no new writes),
+so these observations do not establish a large application write workload.
+The volume's configured bounds are 70 MB/s and 3,000 IOPS in each direction;
+their existence does not prove throttling. Device flush counters cannot be
+treated as syscall fsync counters. The volume observer completed 5,995 samples
+in ten minutes, using 1.286 seconds of sample work in total; SQL observation
+took 12.030 seconds cumulatively. Both processes ended normally.
+
+Later natural events include **1,708, 406 and 677 ms** capability calls at
+23:23:27, again with function time rounding to zero. No retained trace or
+concurrent wait/volume sample attributes those particular calls. Existing
+ten-second Admin telemetry in 23:22–23:25 has a maximum reported loop delay of
+104.954 ms and GC pause of 20.804 ms, not a matching multi-second pause; it does
+not measure the native connection-pool queue. The diagnostic's `kind=delivery`
+means render/impression/selection capability consumption, **not** the delivery
+HTTP endpoint. Independent HTTP counts in this three-minute window show no
+5xx, one selection 200 and 17 delivery 200s; all 17 delivery envelopes reconcile
+with no timeout fallback. The long budget calls must not be reported as three
+new delivery failures.
+
+The tested runtime fixes remain valid. The remaining diagnosis now has natural
+evidence for post-function WAL waits, but the exact storage cause, the longest
+calls and the historical 701 ms selection failure remain unproven. Weakening
+durability or changing timeouts would not resolve that evidence gap.
+
 Across the separate 156.017-second PostgreSQL counter interval, WAL grew by
 32,458,170 bytes and client backends recorded 4,814 normal-context fsyncs.
 `track_io_timing` and `track_wal_io_timing` are off: zero timing counters do not
@@ -132,6 +245,12 @@ At 21:45:11 the exact canonical Admin aggregate query, run read-only against
 production, reports zero affected current pointers, invalid contributions,
 rebuild candidates, backlog or stale claims. It took 8.224 seconds. This is
 database evidence, not the outstanding authenticated Admin UI acceptance.
+
+The repeated canonical audit at 23:29:43 on `92a597ee…` again reports zero
+ineligible generations, affected pointers/contributions, rebuild candidates,
+backlog or stale claims. The 21:55–23:29 window contains 13 replacement
+publications, five terminal runs and 127 clean hybrid requests. It completed
+in 6.696 seconds, after the preceding natural wait captures had ended.
 
 The fresh 19:45–21:46 terminal-run population contains **11
 `pointer_generation_fenced`** and **five `eligibility_input_fenced`** runs.
@@ -168,7 +287,10 @@ none is connected. This task has not removed the restored block and must not
 claim otherwise or manufacture an Admin identity.
 
 Newer main `f8f997fc8cb8cb49e5b16e6c460beffb1ad25468` was incorporated into
-this evidence branch. PR #2372 separately stages the private tester SDK setup
-for a normal Web release; its rollout must not be confused with these Admin
-fixes. The flag registry default remains off. No Mobile/TV, account linking or
+this evidence branch. PR #2372 separately deployed the private tester SDK setup.
+At 22:27:39 an independent runtime check verifies Web revision `f8f997fc8…`,
+deployment `84d5d314-2e76-4281-9b05-95fede1be528`, a configured SDK (boolean
+only), and HTTP 200 `enabled:false` from anonymous For You availability. Its
+rollout must not be confused with the Admin fixes. The flag registry default
+remains off. No Mobile/TV, account linking or
 curation changes were made by this task.
