@@ -75,6 +75,10 @@ export const RecommendationEvidenceKind = z.enum([
   "playback_start",
   "playback_progress",
   "playback_seek",
+  "playback_observation",
+  "playback_navigation",
+  "playback_qoe",
+  "playback_viewing_mode",
   "playback_active_visible_playing",
   "playback_end",
   "playback_error",
@@ -119,7 +123,9 @@ export type RecommendationAssignmentLane = z.infer<
 export const RecommendationExecutionModeSchema = z.enum([
   "semantic_contextual",
   "hybrid_personalized",
+  "viewing_mode_personalized",
   "semantic_fallback",
+  "curated_fallback",
 ])
 export type RecommendationExecutionMode = z.infer<
   typeof RecommendationExecutionModeSchema
@@ -227,9 +233,11 @@ export const RecommendationDeliveryAdditiveMetadataSchema = z
         (personalization.lane === "semantic_control" &&
           personalization.executionMode === "semantic_contextual") ||
         (personalization.lane === "profile_challenger" &&
-          personalization.executionMode === "hybrid_personalized") ||
+          (personalization.executionMode === "hybrid_personalized" ||
+            personalization.executionMode === "viewing_mode_personalized")) ||
         (personalization.lane === "semantic_fallback" &&
-          personalization.executionMode === "semantic_fallback")
+          (personalization.executionMode === "semantic_fallback" ||
+            personalization.executionMode === "curated_fallback"))
       )
     ) {
       context.addIssue({
@@ -356,9 +364,35 @@ export const RecommendationPlaybackEventSchema = z.discriminatedUnion("kind", [
   z
     .object({
       ...playbackEventBase,
+      kind: z.literal("playback_viewing_mode"),
+      payload: z
+        .object({
+          version: z.literal("sound-off-viewing-v1"),
+          mode: z.enum(["sound_off", "sound_on"]),
+          preview: z.boolean(),
+          activeMilliseconds: z.number().int().min(1).max(60_000),
+          fromSeconds: positionSeconds,
+          toSeconds: positionSeconds,
+          durationSeconds: durationSeconds.nullable(),
+          playbackRate: z.number().finite().min(0.25).max(4),
+        })
+        .strict()
+        .refine(
+          (value) =>
+            value.toSeconds > value.fromSeconds &&
+            value.toSeconds - value.fromSeconds <=
+              (value.activeMilliseconds / 1_000) * value.playbackRate + 0.5,
+        ),
+    })
+    .strict(),
+  z
+    .object({
+      ...playbackEventBase,
       kind: z.literal("playback_attempt"),
       payload: z
-        .object({ initiation: z.enum(["manual", "automatic"]) })
+        .object({
+          initiation: z.enum(["manual", "automatic"]),
+        })
         .strict(),
     })
     .strict(),
@@ -417,6 +451,58 @@ export const RecommendationPlaybackEventSchema = z.discriminatedUnion("kind", [
             })
           }
         }),
+    })
+    .strict(),
+  z
+    .object({
+      ...playbackEventBase,
+      kind: z.literal("playback_observation"),
+      payload: z
+        .object({
+          version: z.literal("playback-observations-v1"),
+          elapsedMilliseconds: wallElapsedMilliseconds,
+          visibility: z.enum(["visible", "hidden", "unknown"]),
+          playerState: z.enum(["playing", "paused", "buffering", "unknown"]),
+          startObserved: z.boolean(),
+          errorObserved: z.boolean(),
+          seekCount: z.number().int().min(0).max(65535),
+          navigationCount: z.number().int().min(0).max(65535),
+          qoeCount: z.number().int().min(0).max(65535),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      ...playbackEventBase,
+      kind: z.literal("playback_navigation"),
+      payload: z
+        .object({
+          action: z.enum([
+            "pause",
+            "resume",
+            "hidden",
+            "visible",
+            "bfcache_suspend",
+            "bfcache_resume",
+          ]),
+          cause: z.literal("unknown"),
+          positionSeconds,
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      ...playbackEventBase,
+      kind: z.literal("playback_qoe"),
+      payload: z
+        .object({
+          action: z.enum(["waiting", "stalled", "buffering_end"]),
+          cause: z.literal("unknown"),
+          positionSeconds,
+        })
+        .strict(),
     })
     .strict(),
   z

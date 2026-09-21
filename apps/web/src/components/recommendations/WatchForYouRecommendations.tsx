@@ -10,6 +10,7 @@ import {
 } from "react"
 import { useTranslations } from "next-intl"
 import { z } from "zod"
+import { reportDatadogRumAction } from "@/components/DatadogRum"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { formatDuration } from "@/lib/format-duration"
 import { watchPath } from "@/lib/watch-paths"
@@ -31,6 +32,17 @@ import {
 import { useEligibleRecommendationImpression } from "./useEligibleRecommendationImpression"
 
 const DELIVERY_COOLDOWN_MS = 5_000
+const DELIVERY_ATTEMPTS = 3
+// Allow 500 ms admission, 250 ms flag initialization, 1900 ms Admin transport
+// and 350 ms browser/network overhead. Each attempt gets its own budget.
+const DELIVERY_ATTEMPT_MS = 3_000
+const TRANSIENT_DELIVERY_REASONS = new Set([
+  "cooldown",
+  "in_flight",
+  "admission_unavailable",
+  "delivery_timeout",
+  "service_unavailable",
+])
 const SURFACE = "watch-for-you-v1"
 const Item = z.object({
   id: z.string(),
@@ -69,7 +81,6 @@ export function WatchForYouRecommendations({
   navigate?: (href: string) => void
 }) {
   const t = useTranslations("WatchHome")
-  const errors = useTranslations("ExperienceError")
   const root = useRef<HTMLElement>(null)
   const [near, setNear] = useState(false)
   const [revision, setRevision] = useState(0)
@@ -78,6 +89,7 @@ export function WatchForYouRecommendations({
     key: string
     delivery?: Delivery
     failed?: boolean
+    placeholderHeight?: number
     disabled?: boolean
   }>({ key })
   const current = state.key === key ? state : { key }
@@ -86,6 +98,18 @@ export function WatchForYouRecommendations({
   const alive = useRef(true)
   const navigating = useRef(false)
   const ledger = useRef(new Set<string>())
+
+  useEffect(() => {
+    if (!current.failed || !current.placeholderHeight || !root.current) return
+    // A terminal optional-row failure must not move the content currently
+    // being read. Remove its empty reservation once it leaves the viewport.
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => !entry.isIntersecting))
+        setState({ key, failed: true })
+    })
+    observer.observe(root.current)
+    return () => observer.disconnect()
+  }, [key, current.failed, current.placeholderHeight])
 
   useEffect(() => {
     alive.current = true
@@ -137,60 +161,106 @@ export function WatchForYouRecommendations({
     navigating.current = false
     ledger.current.clear()
     let retryTimer: ReturnType<typeof setTimeout> | undefined
-    const load = async (retryAdmission: boolean) => {
-      await waitForRecommendationConsentBootstrap()
+    const fail = () => {
+      const rect = root.current?.getBoundingClientRect()
+      const placeholderHeight =
+        rect && rect.bottom > 0 && rect.top < window.innerHeight
+          ? rect.height
+          : 0
+      setState({ key, failed: true, placeholderHeight })
+    }
+    const observe = (attempt: number, result: string, reason: string) => {
+      reportDatadogRumAction("recommendation_homepage_delivery", {
+        attempt,
+        result,
+        reason,
+      })
+    }
+    const retry = (attempt: number, reason: string) => {
       if (controller.signal.aborted) return
-      const value = await withRecommendationConsentLock(() =>
-        recommendationJsonWithRetry(
-          watchPath("/api/recommendations/for-you"),
-          {
-            method: "POST",
-            credentials: "same-origin",
-            cache: "no-store",
-            signal: controller.signal,
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ locale, audioLanguageSlug }),
-          },
-          2200,
-        ),
-      )
-      if (controller.signal.aborted) return
-      const parsed = Envelope.safeParse(value)
-      if (!parsed.success) {
-        setState({ key, failed: true })
-        return
-      }
-      const result = parsed.data.delivery
-      if (
-        retryAdmission &&
-        result.result === "unavailable" &&
-        (result.reason === "cooldown" || result.reason === "in_flight")
-      ) {
+      if (attempt < DELIVERY_ATTEMPTS) {
+        observe(attempt, "retrying", reason)
         retryTimer = setTimeout(() => {
-          void load(false).catch(failed)
+          void load(attempt + 1)
         }, DELIVERY_COOLDOWN_MS)
-        return
+      } else {
+        observe(attempt, "unavailable", reason)
+        fail()
       }
-      if (result.reason === "environment_disabled") {
-        setState({ key, disabled: true })
-        return
-      }
-      if (
-        result.result !== "served" ||
-        result.items.length !== 6 ||
-        !result.requestId ||
-        new Set(result.items.map((item) => item.targetMediaId)).size !== 6 ||
-        result.items.some((item, index) => item.position !== index)
-      ) {
-        setState({ key, failed: true })
-        return
-      }
-      setState({ key, delivery: result })
     }
-    const failed = () => {
-      if (!controller.signal.aborted) setState({ key, failed: true })
+    const load = async (attempt: number) => {
+      let retryable = true
+      try {
+        await waitForRecommendationConsentBootstrap()
+        if (controller.signal.aborted) return
+        const value = await withRecommendationConsentLock(() =>
+          recommendationJsonWithRetry(
+            watchPath("/api/recommendations/for-you"),
+            {
+              method: "POST",
+              credentials: "same-origin",
+              cache: "no-store",
+              signal: controller.signal,
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ locale, audioLanguageSlug }),
+            },
+            DELIVERY_ATTEMPT_MS,
+            {
+              attempts: 1,
+              onAttemptFailure: ({ reason }) => {
+                retryable = reason !== "rejected"
+              },
+            },
+          ),
+        )
+        if (controller.signal.aborted) return
+        const parsed = Envelope.safeParse(value)
+        if (!parsed.success) {
+          observe(attempt, "unavailable", "invalid_response")
+          fail()
+          return
+        }
+        const result = parsed.data.delivery
+        if (
+          result.result === "unavailable" &&
+          TRANSIENT_DELIVERY_REASONS.has(result.reason ?? "")
+        ) {
+          retry(attempt, result.reason!)
+          return
+        }
+        if (result.reason === "environment_disabled") {
+          setState({ key, disabled: true })
+          return
+        }
+        if (
+          result.result !== "served" ||
+          result.items.length !== 6 ||
+          !result.requestId ||
+          new Set(result.items.map((item) => item.targetMediaId)).size !== 6 ||
+          result.items.some((item, index) => item.position !== index)
+        ) {
+          observe(
+            attempt,
+            "unavailable",
+            result.reason === "coverage_unavailable"
+              ? "coverage_unavailable"
+              : "invalid_delivery",
+          )
+          fail()
+          return
+        }
+        observe(attempt, "served", "served")
+        setState({ key, delivery: result })
+      } catch {
+        if (controller.signal.aborted) return
+        if (retryable) retry(attempt, "transport")
+        else {
+          observe(attempt, "unavailable", "rejected")
+          fail()
+        }
+      }
     }
-    void load(true).catch(failed)
+    void load(1)
     return () => {
       controller.abort()
       clearTimeout(retryTimer)
@@ -310,14 +380,23 @@ export function WatchForYouRecommendations({
       })
   }
   if (current.disabled) return null
+  if (current.failed)
+    return current.placeholderHeight ? (
+      <div
+        ref={(node) => {
+          root.current = node
+        }}
+        aria-hidden="true"
+        data-recommendation-placeholder=""
+        style={{ height: current.placeholderHeight }}
+      />
+    ) : null
   return (
     <section
       ref={root}
       data-block-type="HomepageRecommendations"
       data-section-key={sectionKey ?? undefined}
-      data-state={
-        delivery ? "ready" : current.failed ? "unavailable" : "loading"
-      }
+      data-state={delivery ? "ready" : "loading"}
       aria-labelledby="watch-for-you-heading"
       aria-busy={!delivery && !current.failed}
       className={`${WATCH_PAGE_CONTENT_CLASSES} relative py-12 text-white`}
@@ -328,62 +407,43 @@ export function WatchForYouRecommendations({
       >
         {title?.trim() || t("forYou")}
       </h2>
-      {current.failed ? (
-        <div
-          role="status"
-          className="flex min-h-48 flex-col items-start justify-center gap-4"
-        >
-          <p className="text-white/70">{errors("pageLoadFailed")}</p>
-          <button
-            onClick={() => setRevision((value) => value + 1)}
-            className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-black focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
-          >
-            {errors("tryAgain")}
-          </button>
-        </div>
-      ) : (
-        <div className="flex gap-4 overflow-x-auto pb-3 md:grid md:grid-cols-3 xl:grid-cols-6">
-          {delivery
-            ? delivery.items.map((item) => (
-                <a
-                  key={item.id}
-                  ref={(node) => cardRef(item.id, node)}
-                  href={item.canonicalHref}
-                  onClick={(event) => select(item, event)}
-                  className="group block w-64 shrink-0 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white md:w-auto"
-                >
-                  <div className="relative aspect-video overflow-hidden rounded-lg bg-white/10">
-                    <Image
-                      src={item.imageUrl}
-                      alt=""
-                      fill
-                      sizes="(min-width:1280px) 16vw, (min-width:768px) 30vw, 256px"
-                      loading="lazy"
-                      className="object-cover transition-transform duration-200 group-hover:scale-105 motion-reduce:transition-none"
-                    />
-                    {item.durationSeconds != null && (
-                      <span className="absolute bottom-2 right-2 rounded bg-black/80 px-1.5 py-0.5 text-xs tabular-nums">
-                        {formatDuration(item.durationSeconds)}
-                      </span>
-                    )}
-                  </div>
-                  <h3 className="mt-3 line-clamp-2 min-h-12 text-base font-semibold leading-6">
-                    {item.videoTitle}
-                  </h3>
-                </a>
-              ))
-            : Array.from({ length: 6 }, (_, index) => (
-                <div
-                  key={index}
-                  aria-hidden
-                  className="w-64 shrink-0 md:w-auto"
-                >
-                  <div className="aspect-video rounded-lg bg-white/10" />
-                  <div className="mt-3 h-12 rounded bg-white/5" />
+      <div className="flex gap-4 overflow-x-auto pb-3 md:grid md:grid-cols-3 xl:grid-cols-6">
+        {delivery
+          ? delivery.items.map((item) => (
+              <a
+                key={item.id}
+                ref={(node) => cardRef(item.id, node)}
+                href={item.canonicalHref}
+                onClick={(event) => select(item, event)}
+                className="group block w-64 shrink-0 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white md:w-auto"
+              >
+                <div className="relative aspect-video overflow-hidden rounded-lg bg-white/10">
+                  <Image
+                    src={item.imageUrl}
+                    alt=""
+                    fill
+                    sizes="(min-width:1280px) 16vw, (min-width:768px) 30vw, 256px"
+                    loading="lazy"
+                    className="object-cover transition-transform duration-200 group-hover:scale-105 motion-reduce:transition-none"
+                  />
+                  {item.durationSeconds != null && (
+                    <span className="absolute bottom-2 right-2 rounded bg-black/80 px-1.5 py-0.5 text-xs tabular-nums">
+                      {formatDuration(item.durationSeconds)}
+                    </span>
+                  )}
                 </div>
-              ))}
-        </div>
-      )}
+                <h3 className="mt-3 line-clamp-2 min-h-12 text-base font-semibold leading-6">
+                  {item.videoTitle}
+                </h3>
+              </a>
+            ))
+          : Array.from({ length: 6 }, (_, index) => (
+              <div key={index} aria-hidden className="w-64 shrink-0 md:w-auto">
+                <div className="aspect-video rounded-lg bg-white/10" />
+                <div className="mt-3 h-12 rounded bg-white/5" />
+              </div>
+            ))}
+      </div>
     </section>
   )
 }

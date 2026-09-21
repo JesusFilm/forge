@@ -68,6 +68,7 @@ export type DashboardStatusTone =
 type UserProductAccessRoleValue =
   | "NO_ACCESS"
   | "OPERATOR"
+  | "REVIEWER"
   | "STUDIO_ACCESS"
   | UserRole
 
@@ -101,6 +102,7 @@ const ADMIN_ROLE_OPTIONS = [
 const MANAGER_ROLE_OPTIONS = [
   { value: "NO_ACCESS", label: "No access" },
   { value: "OPERATOR", label: "Operator" },
+  { value: "REVIEWER", label: "Reviewer" },
 ] satisfies UserProductAccessRoleOption[]
 
 const MASTRA_STUDIO_ROLE_OPTIONS = [
@@ -115,7 +117,7 @@ export type UserAccessSourceRow = {
   emailVerified: boolean
   updatedAt: Date
   managerMembership: {
-    role: "OPERATOR"
+    role: "OPERATOR" | "REVIEWER"
     revokedAt: Date | null
   } | null
   mastraStudioAccess?: {
@@ -129,7 +131,7 @@ type UserAccessBaseRow = Omit<UserAccessSourceRow, "managerMembership">
 
 type UserAccessMembershipRow = {
   userId: string
-  role: "OPERATOR"
+  role: "OPERATOR" | "REVIEWER"
   revokedAt: Date | null
 }
 
@@ -2258,6 +2260,8 @@ export function buildUserTableRow(row: UserAccessSourceRow): UserTableRow {
   }
   const hasMastraStudioAccess =
     mastraStudioAccess.selectedRole === "STUDIO_ACCESS"
+  const isManagedReviewer =
+    hasManagerAccess && row.managerMembership?.role === "REVIEWER"
 
   return {
     key: row.id,
@@ -2282,12 +2286,14 @@ export function buildUserTableRow(row: UserAccessSourceRow): UserTableRow {
       {
         key: "manager",
         label: "Manager",
-        selectedRole: hasManagerAccess ? "OPERATOR" : "NO_ACCESS",
+        selectedRole: hasManagerAccess
+          ? row.managerMembership!.role
+          : "NO_ACCESS",
         roleOptions: MANAGER_ROLE_OPTIONS,
         statusTone: hasManagerAccess ? "success" : "muted",
-        disabled: false,
+        disabled: isManagedReviewer,
         backed: true,
-        helperText: "Backed",
+        helperText: isManagedReviewer ? "Subtitle Lab" : "Backed",
       },
       {
         key: "mastra-studio",
@@ -3253,4 +3259,128 @@ function normalizeWatchSearchAnalyticsWindow(
 ): WatchSearchAnalyticsWindow {
   if (value === "7d" || value === "30d") return value
   return "24h"
+}
+
+export type ReviewerGrantRow = {
+  key: string
+  userId: string
+  userEmail: string
+  languageId: string
+  languageLabel: string
+  dimensions: string[]
+  scriptureSpecialist: boolean
+  theologySpecialist: boolean
+  grantedAt: string
+}
+
+export type ReviewerAccessOption = { id: string; label: string }
+
+export type ReviewerAccessData = {
+  grants: ReviewerGrantRow[]
+  languages: ReviewerAccessOption[]
+  eligibleUsers: ReviewerAccessOption[]
+  languagesTruncated: boolean
+}
+
+/**
+ * Picker label for a language. Deliberately simpler than
+ * `buildLanguageDiagnosticRow`'s title: this only has to identify a language in
+ * a select, and the slug is what the reviewer boundary actually matches on, so
+ * it is always shown.
+ */
+function reviewerLanguageLabel(row: {
+  name: Prisma.JsonValue
+  slug: string | null
+  bcp47: string | null
+}): string {
+  const names = jsonObjectEntries(row.name)
+  const english = names.find((entry) => entry.key === "en")?.value?.trim()
+  const fallback = names.find((entry) => entry.value.trim().length > 0)?.value
+  const display = english || fallback?.trim() || row.bcp47 || row.slug || ""
+  return row.slug && display !== row.slug ? `${display} (${row.slug})` : display
+}
+
+const REVIEWER_LANGUAGE_PICKER_LIMIT = 500
+
+export async function loadReviewerAccessData(): Promise<ReviewerAccessData> {
+  const [grantRows, languageRows, userRows] = await Promise.all([
+    withTableFallback(
+      () =>
+        prisma.managerReviewerLanguageGrant.findMany({
+          where: { revokedAt: null, managerMembership: { revokedAt: null } },
+          select: {
+            languageId: true,
+            permittedRubricDimensions: true,
+            scriptureSpecialist: true,
+            theologySpecialist: true,
+            createdAt: true,
+            managerMembership: {
+              select: { userId: true, user: { select: { email: true } } },
+            },
+            language: { select: { name: true, slug: true, bcp47: true } },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 50,
+        }),
+      [],
+    ),
+    // The service rejects a language without a usable slug, so a slugless row
+    // could only ever be a failing choice. Filter it out of the picker.
+    withTableFallback(
+      () =>
+        prisma.language.findMany({
+          where: { deletedAt: null, slug: { not: null } },
+          select: { id: true, name: true, slug: true, bcp47: true },
+          orderBy: { slug: "asc" },
+          take: REVIEWER_LANGUAGE_PICKER_LIMIT + 1,
+        }),
+      [],
+    ),
+    withTableFallback(
+      () =>
+        prisma.user.findMany({
+          select: {
+            id: true,
+            email: true,
+            managerMembership: { select: { role: true, revokedAt: true } },
+          },
+          orderBy: { email: "asc" },
+          take: 200,
+        }),
+      [],
+    ),
+  ])
+
+  const languagesTruncated =
+    languageRows.length > REVIEWER_LANGUAGE_PICKER_LIMIT
+
+  return {
+    grants: grantRows.map((row) => ({
+      key: `${row.managerMembership.userId}:${row.languageId}`,
+      userId: row.managerMembership.userId,
+      userEmail: row.managerMembership.user.email,
+      languageId: row.languageId,
+      languageLabel: reviewerLanguageLabel(row.language),
+      dimensions: row.permittedRubricDimensions,
+      scriptureSpecialist: row.scriptureSpecialist,
+      theologySpecialist: row.theologySpecialist,
+      grantedAt: formatDateTime(row.createdAt),
+    })),
+    languages: languageRows
+      .slice(0, REVIEWER_LANGUAGE_PICKER_LIMIT)
+      .map((row) => ({ id: row.id, label: reviewerLanguageLabel(row) })),
+    // An active Manager operator cannot be converted into a reviewer -- the
+    // service throws ForbiddenError -- so keep them out of the picker rather
+    // than let an operator discover it as an error page.
+    eligibleUsers: userRows
+      .filter(
+        (row) =>
+          !(
+            row.managerMembership?.role === "OPERATOR" &&
+            !row.managerMembership.revokedAt
+          ),
+      )
+      .map((row) => ({ id: row.id, label: row.email })),
+    languagesTruncated,
+  }
 }

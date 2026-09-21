@@ -50,6 +50,7 @@ export type PermissionKey =
   | "read:manager-read-models"
   | "read:manager-seo"
   | "read:manager-seo-audit-detail"
+  | "read:manager-subtitle-eval"
   | "read:manager-watch-route-alerts"
   | "read:recommendation-aggregates"
   | "read:recommendation-traces"
@@ -75,6 +76,7 @@ export type PermissionKey =
   // `/api/admin-trigger/{scene-analysis,transcript}` endpoint.
   | "write:manager-enrichment-trigger"
   | "write:manager-jobs"
+  | "write:manager-subtitle-eval"
   // Lifecycle scopes (publish / archive ExperienceLocale, etc.)
   | "publish:experiences"
   | "archive:experiences"
@@ -119,6 +121,7 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   "read:manager-read-models": "PUBLIC",
   "read:manager-seo": "PUBLIC",
   "read:manager-seo-audit-detail": "PUBLIC",
+  "read:manager-subtitle-eval": "PUBLIC",
   "read:manager-watch-route-alerts": "PUBLIC",
   // Recommendation operations are deliberately split: EDITOR may inspect
   // windowed aggregate health, while only ADMIN may inspect request roots.
@@ -157,6 +160,7 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   // that path.
   "write:manager-enrichment-trigger": "ADMIN",
   "write:manager-jobs": "PUBLIC",
+  "write:manager-subtitle-eval": "PUBLIC",
   // Lifecycle
   "publish:experiences": "EDITOR",
   "archive:experiences": "EDITOR",
@@ -293,8 +297,10 @@ const MANAGER_BACKEND_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
   "read:manager-read-models",
   "read:manager-seo",
   "read:manager-seo-audit-detail",
+  "read:manager-subtitle-eval",
   "read:manager-watch-route-alerts",
   "write:manager-jobs",
+  "write:manager-subtitle-eval",
 ])
 
 const VIDEO_MAPPER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([

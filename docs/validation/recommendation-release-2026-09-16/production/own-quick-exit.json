@@ -1,0 +1,203 @@
+{
+  "smokeStartedAt": "2026-09-15T22:15:08.430363+00:00",
+  "synthetic": true,
+  "journey": "direct video, visible play control, in-app home link",
+  "observations": [
+    {
+      "capturedAt": "2026-09-15T22:15:15.874Z",
+      "readOnly": "on",
+      "requestedEpisodeCount": 1,
+      "matchedEpisodeCount": 1,
+      "allTargetsInOwnBoundedWindow": true,
+      "projectionRuntime": "checked_out_release_code_against_production_facts",
+      "episodes": [
+        {
+          "ordinal": 1,
+          "discoveryScope": "own_browser_episode",
+          "state": "finalized",
+          "conflictCount": 0,
+          "activeCurrentProfileLinks": 1,
+          "profileLinkPrecedesEpisode": true,
+          "recentReaderScope": "active_profile_current_session",
+          "recentReaderInputAmbiguous": false,
+          "ownVideoInRecentContext": true,
+          "ownRecentReasonCodes": ["recent_playback_start"],
+          "factCounts": {
+            "playback_attempt": 1,
+            "playback_start": 1,
+            "playback_seek": 1,
+            "playback_end": 1,
+            "playback_active_visible_playing": 1,
+            "playback_observation": 1
+          },
+          "lateFactCount": 0,
+          "retainedNonlateStartCount": 1,
+          "observationVersion": "playback-observations-v1",
+          "preferenceInterpretation": "unknown",
+          "rankingInfluence": false,
+          "departure": {
+            "classification": "rapid_post_start_departure",
+            "stage": "after_start",
+            "immediate": true,
+            "windowMilliseconds": 10000,
+            "elapsedMilliseconds": 1143,
+            "activeMilliseconds": 1106,
+            "activeCoverage": "complete",
+            "timingVerified": true,
+            "cause": "unknown",
+            "trigger": "route_exit",
+            "playerState": "paused"
+          },
+          "navigation": {
+            "coverage": "observed",
+            "decision": "inconclusive",
+            "pauses": 0,
+            "resumes": 0,
+            "forwardSeeks": 1,
+            "backwardSeeks": 0,
+            "returnsToStart": 0,
+            "automaticAttempt": false,
+            "hiddenTransitions": 0,
+            "bfcacheSuspensions": 0,
+            "reasonCodes": [
+              "preference_interpretation_unknown",
+              "pause_and_navigation_cause_unknown",
+              "manual_skip_and_replay_intent_unavailable"
+            ]
+          },
+          "qoe": {
+            "coverage": "observed",
+            "decision": "inconclusive",
+            "startupMilliseconds": 0,
+            "bufferingEpisodes": 0,
+            "bufferingMilliseconds": 0,
+            "openBufferingInterval": false,
+            "errors": 0,
+            "reasonCodes": [
+              "error_recoverability_unknown",
+              "startup_timeout_unavailable",
+              "device_and_network_unavailable"
+            ]
+          },
+          "outcomes": [
+            {
+              "classifier_version": "active-watch-proxy-v1",
+              "qualified_view": false,
+              "active_coverage": "complete",
+              "active_playback_milliseconds": 1106,
+              "reasons": [
+                "below_active_playback_threshold",
+                "duration_cohort_medium",
+                "terminal_partial"
+              ]
+            },
+            {
+              "classifier_version": "legacy-position-v0",
+              "qualified_view": true,
+              "active_coverage": null,
+              "active_playback_milliseconds": null,
+              "reasons": ["maximum_position_at_least_30_seconds"]
+            }
+          ],
+          "ownCurrentProfileProjection": [
+            {
+              "scope": "durable",
+              "state": "published",
+              "projection_version": "multi-interest-profile-projection-v1",
+              "contribution_count": 1,
+              "durable_interest_count": 1,
+              "session_intent_present": false,
+              "explicit_preference_count": 0,
+              "negative_evidence_count": 0,
+              "published_at": "2026-09-15T22:14:43.396Z",
+              "own_episode_contributions": "0"
+            }
+          ],
+          "qualifiedOutcomeContributions": 0,
+          "invalidUnqualifiedContributions": 0
+        }
+      ],
+      "laterRequestEvidence": {
+        "requests_with_matching_candidate": "0",
+        "actual_start_suppression_entries": "0",
+        "refill_or_movement_entries": "0"
+      }
+    }
+  ],
+  "beforeExit": {
+    "controls": [
+      {
+        "label": "Pause",
+        "text": "Pause"
+      }
+    ],
+    "media": [
+      {
+        "duration": 199.50233,
+        "paused": false,
+        "seconds": 42.198281,
+        "tag": "VIDEO"
+      }
+    ],
+    "requests": [
+      {
+        "milliseconds": 824,
+        "path": "/watch/api/recommendations/profile",
+        "status": 200
+      },
+      {
+        "milliseconds": 216,
+        "path": "/watch/api/recommendations/playback",
+        "status": 200
+      },
+      {
+        "milliseconds": 213,
+        "path": "/watch/api/recommendations/playback",
+        "status": 200
+      }
+    ]
+  },
+  "secondsFromClickToExit": 1.33,
+  "destinationImmediatelyAfterClick": "/watch/1-the-simple-gospel.html",
+  "destinationAfterNavigation": "/watch",
+  "navigationSettledVerifiedAt": "2026-09-15T22:17:14.424475+00:00",
+  "note": "Same isolated browser revisited the previous video and resumed near42seconds. Active watch, not media position, controls profile qualification.",
+  "postNavigationRequests": [
+    {
+      "milliseconds": 824,
+      "path": "/watch/api/recommendations/profile",
+      "status": 200
+    },
+    {
+      "milliseconds": 216,
+      "path": "/watch/api/recommendations/playback",
+      "status": 200
+    },
+    {
+      "milliseconds": 213,
+      "path": "/watch/api/recommendations/playback",
+      "status": 200
+    },
+    {
+      "milliseconds": 287,
+      "path": "/watch/api/recommendations/playback",
+      "status": 200
+    },
+    {
+      "milliseconds": 605,
+      "path": "/watch/api/recommendations",
+      "status": "transport_failure"
+    },
+    {
+      "milliseconds": 216,
+      "path": "/watch/api/recommendations/playback",
+      "status": 200
+    },
+    {
+      "milliseconds": 253,
+      "path": "/watch/api/recommendations/playback",
+      "status": 200
+    }
+  ],
+  "postNavigationRequestsCapturedAt": "2026-09-15T22:17:57.143479+00:00"
+}

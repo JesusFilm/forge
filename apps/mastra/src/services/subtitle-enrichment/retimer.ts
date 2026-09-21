@@ -1,4 +1,8 @@
-import { requestOpenRouterChat, type OpenRouterUsage } from "./openrouter"
+import {
+  requestOpenRouterChat,
+  type OpenRouterProviderCall,
+  type OpenRouterUsage,
+} from "./openrouter"
 import {
   RetimingOutputJsonSchema,
   RetimingOutputSchema,
@@ -19,9 +23,15 @@ export type RetimeChunkOptions = {
   model: string
   apiKey?: string
   timeoutMs: number
+  deadlineAtMs?: number
   config?: LanguageConfig
   scriptureContext?: SubtitleScriptureContext
   fetchImpl?: typeof fetch
+  onUsage?: (usage: OpenRouterUsage) => void
+  onUsageUnavailable?: () => void
+  onProviderCall?: (
+    call: OpenRouterProviderCall & { operationAttempt: number },
+  ) => void
 }
 
 export type RetimeChunkResult = {
@@ -37,9 +47,13 @@ export async function retimeChunk({
   model,
   apiKey,
   timeoutMs,
+  deadlineAtMs,
   config,
   scriptureContext,
   fetchImpl,
+  onUsage,
+  onUsageUnavailable,
+  onProviderCall,
 }: RetimeChunkOptions): Promise<RetimeChunkResult> {
   let lastErrors: string[] = []
   let totalUsage: OpenRouterUsage = {
@@ -72,7 +86,12 @@ export async function retimeChunk({
         apiKey,
         model,
         timeoutMs,
+        deadlineAtMs,
         fetchImpl,
+        onUsage,
+        onUsageUnavailable,
+        onProviderCall: (call) =>
+          onProviderCall?.({ ...call, operationAttempt: attempt }),
         messages: [
           { role: "system", content: prompt.system },
           { role: "user", content: prompt.user },

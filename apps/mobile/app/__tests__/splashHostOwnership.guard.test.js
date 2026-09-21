@@ -137,6 +137,17 @@ describe("splash host ownership", () => {
     expect(block).toContain("preventNativeSplashAutoHide()")
   })
 
+  // With the animated splash off, the session is what SplashHost reads to know
+  // it may lower the hold. Drop this call and every suite stays green while the
+  // 10s backstop lowers a held splash on every cold launch.
+  it("starts the splash session in the same block, after taking the hold", () => {
+    const block = guardedRequireBlock(read(LAYOUT))
+    expect(block).toContain("getSplashSession?.().start()")
+    expect(block.indexOf("getSplashSession?.().start()")).toBeGreaterThan(
+      block.indexOf("preventNativeSplashAutoHide()"),
+    )
+  })
+
   it("pins what the hold and the release actually call", () => {
     // Falsification: empty either wrapper and every layout assertion above
     // still passes while the native splash auto-hides on its own.

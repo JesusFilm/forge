@@ -455,6 +455,26 @@ vi.mock("@/app/dashboard/ops-data", () => ({
     },
     selectedRequest: null,
   })),
+  loadReviewerAccessData: vi.fn(async () => ({
+    grants: [
+      {
+        key: "user2:language-es",
+        userId: "user2",
+        userEmail: "reviewer@example.com",
+        languageId: "language-es",
+        languageLabel: "Spanish (spanish-latin-america)",
+        dimensions: ["MEANING_ACCURACY"],
+        scriptureSpecialist: false,
+        theologySpecialist: false,
+        grantedAt: "10/24/2023, 14:02",
+      },
+    ],
+    languages: [
+      { id: "language-es", label: "Spanish (spanish-latin-america)" },
+    ],
+    eligibleUsers: [{ id: "user2", label: "reviewer@example.com" }],
+    languagesTruncated: false,
+  })),
   loadUsersData: vi.fn(async () => ({
     metrics: [
       { label: "Admins", value: "1", footer: "GLOBAL_OVERRIDE" },
@@ -1529,5 +1549,37 @@ describe("dashboard UI routes", () => {
     expect(html).not.toContain("Enable Manager")
     expect(html).toContain("Approve Editor")
     expect(html).toContain("Approve Admin")
+  })
+
+  it("renders the reviewer grant panel with its current grants", async () => {
+    const html = await htmlFrom(UsersPage())
+
+    expect(html).toContain("Subtitle Lab Reviewers")
+    expect(html).toContain("reviewer@example.com")
+    expect(html).toContain("Spanish (spanish-latin-america)")
+    expect(html).toContain("MEANING_ACCURACY")
+    expect(html).toContain("Grant reviewer access")
+    expect(html).toContain(
+      "Revocation reason for reviewer@example.com (Spanish (spanish-latin-america))",
+    )
+  })
+
+  // The service rejects SCRIPTURE_THEOLOGY unless a specialist flag is set, so
+  // the operator has to be able to see and set those flags on the same form.
+  it("exposes every rubric dimension and both specialist qualifications", async () => {
+    const html = await htmlFrom(UsersPage())
+
+    for (const dimension of [
+      "MEANING_ACCURACY",
+      "NATURALNESS",
+      "TIMING_READABILITY",
+      "SCRIPTURE_THEOLOGY",
+    ]) {
+      expect(html).toContain(`value="${dimension}"`)
+    }
+    expect(html).toContain('name="scriptureSpecialist"')
+    expect(html).toContain('name="theologySpecialist"')
+    expect(html).toContain('name="targetProficiencyEvidence"')
+    expect(html).toContain('name="reason"')
   })
 })

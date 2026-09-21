@@ -72,6 +72,11 @@ export const nextConfig = {
   // dominating the simulated-mobile LCP budget. compress:true wires
   // Next's built-in gzip middleware on every text/* response.
   compress: true,
+  // Next hashes every cached HTML/RSC response synchronously for its ETag.
+  // Multi-megabyte language catalogs block the shared request thread long
+  // enough to expire recommendation admission. Keep ISR/Cache-Control, but
+  // avoid repeating that full-body hash on every cache hit.
+  generateEtags: false,
   // typedRoutes moved to top-level in Next 16 (stable).
   typedRoutes: true,
   cacheHandler: fileURLToPath(new URL("./cache-handler.mjs", import.meta.url)),

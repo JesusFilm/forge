@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 import { RecommendationPlaybackService } from "./playback.service"
 import { MAX_EPISODE_FACTS } from "./contracts"
+import { RecommendationTokenInvalidError } from "./token.service"
 
 const caller = {
   id: null,
@@ -143,6 +144,48 @@ const baseInput = {
 }
 
 describe("RecommendationPlaybackService", () => {
+  it.each([
+    {
+      error: new RecommendationTokenInvalidError(),
+      observation:
+        "outcome=rejected reason=invalid_request retryDisposition=terminal",
+    },
+    {
+      error: new Error("private-infrastructure-detail"),
+      observation: "outcome=failed reason=unknown retryDisposition=retryable",
+    },
+  ])(
+    "reports capability failures consistently with their retry disposition: $observation",
+    async ({ error, observation }) => {
+      const { service, prisma, verifyEpisodeCapability } = harness()
+      verifyEpisodeCapability.mockRejectedValueOnce(error)
+      const log = vi.spyOn(console, "info").mockImplementation(() => undefined)
+      try {
+        await expect(
+          service.record({
+            ...baseInput,
+            events: [
+              {
+                eventId: "invalid-capability",
+                kind: "playback_attempt",
+                occurredAt: now.toISOString(),
+                payload: { initiation: "manual" },
+              },
+            ],
+          }),
+        ).rejects.toBe(error)
+        expect(log).toHaveBeenCalledExactlyOnceWith(
+          `event=recommendation.evidence source=admin action=facts ${observation}`,
+        )
+        expect(prisma.$queryRaw).not.toHaveBeenCalled()
+        expect(prisma.$transaction).not.toHaveBeenCalled()
+        expect(prisma.recommendationEvidenceAudit.create).not.toHaveBeenCalled()
+      } finally {
+        log.mockRestore()
+      }
+    },
+  )
+
   it("logs a safe reason when the playback session binding is invalid", async () => {
     const { service } = harness()
     const warning = vi

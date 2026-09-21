@@ -43,6 +43,68 @@ function candidate(
 }
 
 describe("semantic candidate platform", () => {
+  it("promotes relevant sound-off performers from the retrieval pool while preserving eligibility", () => {
+    const candidates = [
+      candidate({
+        videoId: "a",
+        videoTitle: "First",
+        videoCoreId: "first",
+        similarity: 0.9,
+      }),
+      candidate({
+        videoId: "b",
+        videoTitle: "Second",
+        videoCoreId: "second",
+        embeddingText: "[0,1,0]",
+        similarity: 0.895,
+      }),
+      candidate({
+        videoId: "c",
+        videoTitle: "Third",
+        videoCoreId: "third",
+        embeddingText: "[0,0,1]",
+        similarity: 0.5,
+      }),
+      candidate({ videoId: "invalid", localePublished: false }),
+    ]
+    const input = { context, candidates, limit: 1 }
+    expect(runSemanticCandidatePlatform(input).composed[0]?.targetMediaId).toBe(
+      "a",
+    )
+    const viewingMode = {
+      authority: { profileId: "mode-profile", privacyGeneration: 1 },
+      version: "viewing-mode-affinity-v1" as const,
+      soundOffPreference: 1,
+      confidence: 1,
+      qualifiedVideos: 3,
+      candidates: [
+        { mediaId: "b", viewers: 30, qualifiedViewers: 28, affinity: 0.8 },
+        { mediaId: "invalid", viewers: 30, qualifiedViewers: 30, affinity: 1 },
+      ],
+    }
+    const result = runSemanticCandidatePlatform({ ...input, viewingMode })
+    expect(result.composed[0]?.targetMediaId).toBe("b")
+    expect(
+      result.ordered.some((value) => value.targetMediaId === "invalid"),
+    ).toBe(false)
+    expect(result.versions.ranker).toBe("viewing-mode-affinity-v1")
+    expect(result.parity).toMatchObject({
+      candidateEligibility: "passed",
+      ranker: "not_evaluated",
+    })
+    expect(
+      runSemanticCandidatePlatform({
+        ...input,
+        viewingMode: { ...viewingMode, candidates: [] },
+      }).composed[0]?.targetMediaId,
+    ).toBe("a")
+    expect(
+      runSemanticCandidatePlatform({
+        ...input,
+        viewingMode: { ...viewingMode, soundOffPreference: 0.5 },
+      }).composed[0]?.targetMediaId,
+    ).toBe("a")
+  })
   it("keeps one canonical Video with both semantic and profile contributors", () => {
     const semantic = adaptSemanticCandidates([candidate()], context)
       .nominations[0]!

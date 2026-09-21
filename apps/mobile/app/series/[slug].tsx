@@ -20,6 +20,10 @@ import {
   type WatchEpisode,
 } from "../../src/lib/normalizeVideo"
 import { decodeWatchSeed, encodeWatchSeed } from "../../src/lib/watchSeed"
+import {
+  discoverySourceFromParam,
+  markPlaybackDiscovery,
+} from "../../src/lib/recommendations/playbackDiscovery"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { ACCENT, SURFACE_COLOR } from "../../src/lib/color"
 import { layout, text } from "../../src/styles/shared"
@@ -46,6 +50,15 @@ import {
 } from "../../src/lib/seriesDownloadAggregate"
 import { resolveSeriesSubtitleLabel } from "../../src/lib/subtitleSelection"
 import { useSeriesSubtitleUnion } from "../../src/hooks/useSeriesSubtitleUnion"
+import {
+  useScopedExportSession,
+  useSeriesExportProgress,
+} from "../../src/hooks/useExportSession"
+import { getExportSessionStore } from "../../src/lib/exportSession"
+import { requestSeriesExportCancel } from "../../src/lib/seriesExportProgress"
+import { presentActionMenu } from "../../src/lib/actionMenu"
+import { rawModeLabel } from "../../src/components/watch/DownloadSheet"
+import { RAW_EXPORT_ENABLED } from "../../src/lib/rawExportConstants"
 
 const EMPTY_EPISODES: WatchEpisode[] = []
 
@@ -53,11 +66,19 @@ const EMPTY_EPISODES: WatchEpisode[] = []
 // (outside the list) so fullscreen never reparents and scrolling can't obscure it.
 // A poster-only hero instead scrolls away in the grid header.
 export default function SeriesScreen() {
-  const { slug, seed: seedParam } = useLocalSearchParams<{
+  const {
+    slug,
+    seed: seedParam,
+    from: fromParam,
+  } = useLocalSearchParams<{
     slug: string
     seed?: string
+    from?: string
   }>()
   const decodedSlug = slug ? decodeURIComponent(slug) : ""
+  // How this LIST was reached (a search result carries `from=search`); the
+  // episode tap below marks the episode with it for playback attribution.
+  const discoverySource = discoverySourceFromParam(fromParam)
 
   const router = useRouter()
   const { isFullscreen, toggleFullscreen } = useFullscreenPresentation()
@@ -104,15 +125,33 @@ export default function SeriesScreen() {
     !subtitleUnionError &&
     (subtitleUnion == null || subtitleUnion.length > 0)
 
+  // Scoped to THIS series' episodes: the raw snapshot changes identity on every
+  // progress tick of every export in the app, which would re-run the aggregate
+  // and repaint the row once a second for a download the screen never shows.
+  const episodeSlugs = useMemo(
+    () => series?.episodes.map((episode) => episode.slug) ?? [],
+    [series?.episodes],
+  )
+  const exportSession = useScopedExportSession(episodeSlugs)
+  const exportRunProgress = useSeriesExportProgress(series?.slug)
   const downloadState = useMemo(
     () =>
       deriveSeriesDownloadState(
-        series?.episodes.map((episode) => episode.slug) ?? [],
+        episodeSlugs,
         downloadedSlugs,
         offlineRecords,
         pendingSwapSlugs,
+        exportSession,
+        exportRunProgress,
       ),
-    [series?.episodes, downloadedSlugs, offlineRecords, pendingSwapSlugs],
+    [
+      episodeSlugs,
+      downloadedSlugs,
+      offlineRecords,
+      pendingSwapSlugs,
+      exportSession,
+      exportRunProgress,
+    ],
   )
   const seriesFullyDownloaded = seriesAllDownloaded(downloadState)
 
@@ -137,13 +176,20 @@ export default function SeriesScreen() {
     }
   }, [downloadState.inProgress, seriesFullyDownloaded])
 
+  // Keyed on export MEMBERSHIP, never the whole snapshot. The snapshot changes
+  // identity once a second while any export runs, and this map is FlatList's
+  // `extraData` — so every visible episode row would repaint for no reason.
+  const exportingTargets = exportSession.targets
+  const pausedExportTargets = exportSession.pausedTargets
   const badgeBySlug = useMemo(
     () =>
       deriveEpisodeBadges(
         series?.episodes.map((episode) => episode.slug) ?? [],
         offlineRecords,
+        exportingTargets,
+        pausedExportTargets,
       ),
-    [series?.episodes, offlineRecords],
+    [series?.episodes, offlineRecords, exportingTargets, pausedExportTargets],
   )
 
   const { data, loading, error, refetch } = useQuery(GET_SERIES_BY_SLUG, {
@@ -205,10 +251,17 @@ export default function SeriesScreen() {
     () => router.push("/series/download"),
     [router],
   )
+  // R33's switch removes the whole export feature, so the entry point goes with
+  // it. It opens the sheet rather than exporting straight away, because the
+  // Terms gate is the consent surface and lives there.
+  const openRawExportSheet = useCallback(
+    () => router.push("/series/download?mode=raw"),
+    [router],
+  )
 
   // Manage control once the whole series is saved — mirrors the single-video
   // manage flow (app/watch/[slug]) as a native iOS action sheet (HIG: a menu, not
-  // an alert), offering change-quality/subtitles + remove-all.
+  // an alert), offering change-quality/subtitles, save-to-Files and remove-all.
   const handleManageDownloads = useCallback(() => {
     const savedSlugs = (series?.episodes ?? [])
       .map((episode) => episode.slug)
@@ -240,35 +293,31 @@ export default function SeriesScreen() {
     // The download sheet changes quality + subtitles for the current audio
     // language (audio language is set via the language pill, not here). Same-
     // language quality/subtitle re-download is a known no-op (decideEpisodeAction).
-    const CHANGE = "Change quality or subtitles"
-    const REMOVE = "Remove all downloads"
     const savedCount = downloadState.total
     const savedLabel = `${savedCount} ${
       savedCount === 1 ? "episode" : "episodes"
     } saved for offline viewing`
-    if (Platform.OS === "ios") {
-      ActionSheetIOS.showActionSheetWithOptions(
+    presentActionMenu({
+      title: seriesTitle,
+      message: savedLabel,
+      actions: [
+        { text: "Change quality or subtitles", onPress: openDownloadSheet },
+        ...(RAW_EXPORT_ENABLED
+          ? [
+              {
+                text: rawModeLabel(Platform.OS),
+                onPress: openRawExportSheet,
+              },
+            ]
+          : []),
         {
-          title: seriesTitle,
-          message: savedLabel,
-          options: [CHANGE, REMOVE, "Cancel"],
-          destructiveButtonIndex: 1,
-          cancelButtonIndex: 2,
-          // App is dark-only; keep the sheet in step rather than following the OS.
-          userInterfaceStyle: "dark",
+          text: "Remove all downloads",
+          style: "destructive" as const,
+          onPress: confirmRemoveAll,
         },
-        (index) => {
-          if (index === 0) openDownloadSheet()
-          else if (index === 1) confirmRemoveAll()
-        },
-      )
-    } else {
-      Alert.alert(seriesTitle, savedLabel, [
-        { text: CHANGE, onPress: openDownloadSheet },
-        { text: REMOVE, style: "destructive", onPress: confirmRemoveAll },
-        { text: "Cancel", style: "cancel" },
-      ])
-    }
+        { text: "Cancel", style: "cancel" as const },
+      ],
+    })
   }, [
     series?.episodes,
     series?.title,
@@ -276,6 +325,7 @@ export default function SeriesScreen() {
     getRecord,
     deleteDownload,
     openDownloadSheet,
+    openRawExportSheet,
   ])
 
   // Downloading → the ring's pause glyph pauses the active transfer (the pump
@@ -283,6 +333,59 @@ export default function SeriesScreen() {
   const handlePauseAll = useCallback(() => {
     downloadState.inFlightSlugs.forEach((slug) => void pauseDownload(slug))
   }, [downloadState.inFlightSlugs, pauseDownload])
+
+  // Running → the ring's pause glyph suspends every exporting episode. The
+  // bytes and the staged files survive (owner decision 2026-09-10; supersedes
+  // R24's cancel-only control).
+  const handlePauseExport = useCallback(() => {
+    const store = getExportSessionStore()
+    downloadState.exportingSlugs.forEach((slug) => store.requestPause(slug))
+  }, [downloadState.exportingSlugs])
+
+  // Paused → resume, or stop.
+  //
+  // The MESSAGE carries the consequence, not the button. A series exports one
+  // episode at a time, so `exportingSlugs` always holds exactly one — a count
+  // in the label would read "Stop Download" however many episodes remain,
+  // while stopping actually ends the whole run (runSeriesRawExport breaks on a
+  // cancelled episode). Verified on the simulator 2026-09-10: stopping the
+  // second episode returned the row to its offline state with three unexported.
+  // R22 keeps every episode already written to the library.
+  const handleResumeExport = useCallback(() => {
+    const store = getExportSessionStore()
+    const slugs = downloadState.exportingSlugs
+    const resumeAll = () => slugs.forEach((slug) => store.requestResume(slug))
+    const stopAll = () => {
+      // The run-level latch first: the per-episode flags below are deleted as
+      // each episode finishes, so alone they cannot stop the whole run.
+      requestSeriesExportCancel(series?.slug ?? "")
+      slugs.forEach((slug) => store.requestCancel(slug))
+    }
+    const MESSAGE =
+      "This export is paused. Stopping ends the whole series export. Episodes already saved stay in your library."
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: "Saving to Files",
+          message: MESSAGE,
+          options: ["Stop Download", "Resume", "Cancel"],
+          destructiveButtonIndex: 0,
+          cancelButtonIndex: 2,
+          userInterfaceStyle: "dark",
+        },
+        (index) => {
+          if (index === 0) stopAll()
+          else if (index === 1) resumeAll()
+        },
+      )
+    } else {
+      Alert.alert("Saving to Files", MESSAGE, [
+        { text: "Stop Download", style: "destructive", onPress: stopAll },
+        { text: "Resume", onPress: resumeAll },
+        { text: "Cancel", style: "cancel" },
+      ])
+    }
+  }, [downloadState.exportingSlugs])
 
   // Paused → the ring's play glyph opens a sheet: resume, or cancel the batch
   // (keeping existing copies). Replaces the old always-on batch bar.
@@ -337,9 +440,10 @@ export default function SeriesScreen() {
         imageUrl: episode.posterUrl,
         playbackId: null,
       })
+      if (discoverySource) markPlaybackDiscovery(episode.slug, discoverySource)
       router.push(`/watch/${encodeURIComponent(episode.slug)}?seed=${seed}`)
     },
-    [router],
+    [router, discoverySource],
   )
 
   // Cold deep link with nothing to paint yet → skeleton, not a blank spinner.
@@ -451,6 +555,8 @@ export default function SeriesScreen() {
                 <SeriesActionRow
                   onLanguage={() => router.push("/series/language")}
                   onSubtitles={() => router.push("/series/subtitle")}
+                  onPauseExport={handlePauseExport}
+                  onResumeExport={handleResumeExport}
                   // The single download control carries every state: paused →
                   // resume/cancel sheet; downloading → pause; saved → manage
                   // sheet; idle → the download picker. (No separate batch bar.)

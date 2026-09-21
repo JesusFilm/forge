@@ -295,6 +295,85 @@ describe("RecommendationDeliveryService persistence and deadlines", () => {
     expect(harness.transactions).toEqual(["issued"])
   })
 
+  it("reports a known failed issuance before slow rollback finishes", async () => {
+    vi.useFakeTimers()
+    const harness = makeHarness()
+    const failure = new Error("statement timeout")
+    harness.tx.recommendationRequest.create.mockRejectedValueOnce(failure)
+    let rollbackFinished = false
+    harness.prisma.$transaction.mockImplementationOnce(
+      async (work: (client: typeof harness.tx) => unknown) => {
+        try {
+          return await work(harness.tx)
+        } catch (error) {
+          await new Promise((resolve) => setTimeout(resolve, 2_000))
+          rollbackFinished = true
+          throw error
+        }
+      },
+    )
+    let response:
+      | Awaited<ReturnType<typeof harness.service.deliver>>
+      | undefined
+    const delivered = harness.service
+      .deliver(input("slow-rollback-seed"))
+      .then((value) => {
+        response = value
+      })
+    await vi.advanceTimersByTimeAsync(1)
+    expect(response).toMatchObject({
+      result: "unavailable",
+      reason: "persistence_unavailable",
+    })
+    expect(rollbackFinished).toBe(false)
+    expect(harness.release).toHaveBeenCalledWith("lease")
+    await vi.advanceTimersByTimeAsync(2_000)
+    await delivered
+    expect(rollbackFinished).toBe(true)
+  })
+
+  it("rejects an over-budget callback before rollback while preventing commit", async () => {
+    vi.useFakeTimers()
+    const harness = makeHarness()
+    let rollbackFinished = false
+    let committed = false
+    harness.tx.recommendationRequest.create.mockImplementationOnce(
+      () => new Promise((resolve) => setTimeout(resolve, 2_000)),
+    )
+    harness.prisma.$transaction.mockImplementationOnce(
+      async (work: (client: typeof harness.tx) => unknown) => {
+        try {
+          const result = await work(harness.tx)
+          committed = true
+          return result
+        } catch (error) {
+          await new Promise((resolve) => setTimeout(resolve, 2_000))
+          rollbackFinished = true
+          throw error
+        }
+      },
+    )
+    let response:
+      | Awaited<ReturnType<typeof harness.service.deliver>>
+      | undefined
+    const delivered = harness.service
+      .deliver(input("callback-deadline-seed"))
+      .then((value) => {
+        response = value
+      })
+    await vi.advanceTimersByTimeAsync(1_500)
+    expect(response).toMatchObject({
+      result: "unavailable",
+      reason: "delivery_timeout",
+    })
+    expect(committed).toBe(false)
+    expect(rollbackFinished).toBe(false)
+    await vi.advanceTimersByTimeAsync(3_000)
+    await delivered
+    expect(committed).toBe(false)
+    expect(rollbackFinished).toBe(true)
+  })
+
   it("rechecks a compatible pool before issuing a fresh fallback request", async () => {
     const harness = makeHarness()
     await harness.service.deliver(input("fallback-seed"))

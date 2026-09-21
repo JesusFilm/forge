@@ -306,6 +306,11 @@ export class RecommendationEpisodeService {
         where: { itemId: item.id },
         select: { receivedAt: true },
       })
+      // The impression may have committed after this request captured `now`.
+      // Attribution cannot precede either committed server receipt.
+      const attributionEligibleAt = impression
+        ? new Date(Math.max(now.getTime(), impression.receivedAt.getTime()))
+        : null
       const existing = await tx.recommendationSelection.findUnique({
         where: { itemId: item.id },
       })
@@ -318,7 +323,7 @@ export class RecommendationEpisodeService {
                     id: existing.id,
                     attributionEligibleAt: null,
                   },
-                  data: { attributionEligibleAt: now },
+                  data: { attributionEligibleAt },
                 })
               : { count: 0 }
           await tx.recommendationEvidenceAudit.create({
@@ -336,6 +341,7 @@ export class RecommendationEpisodeService {
               existing.attributionEligibleAt != null ||
               reconciliation.count === 1,
             attributionReconciled: reconciliation.count === 1,
+            evidenceWatermark: attributionEligibleAt ?? now,
           }
         }
         await recordRecommendationConflict(tx, {
@@ -351,6 +357,7 @@ export class RecommendationEpisodeService {
           selectionId: null,
           attributionEligible: false,
           attributionReconciled: false,
+          evidenceWatermark: now,
         }
       }
       await tx.recommendationSelection.create({
@@ -363,7 +370,7 @@ export class RecommendationEpisodeService {
           payloadDigest: digest,
           tabDigest: input.tabDigest ?? null,
           claimNonceDigest,
-          attributionEligibleAt: impression ? now : null,
+          attributionEligibleAt,
           handoffExpiresAt: new Date(now.getTime() + HANDOFF_LIFETIME_MS),
           occurredAt,
           receivedAt: now,
@@ -401,6 +408,7 @@ export class RecommendationEpisodeService {
         selectionId,
         attributionEligible: impression != null,
         attributionReconciled: false,
+        evidenceWatermark: attributionEligibleAt ?? now,
       }
     })
     if (result.status === "conflict") {
@@ -429,7 +437,7 @@ export class RecommendationEpisodeService {
       void this.classifyAndDispatchSelectionFeedback({
         selectionId: result.selectionId,
         sessionDigest: item.request.sessionDigest,
-        evidenceWatermark: now,
+        evidenceWatermark: result.evidenceWatermark,
       })
     }
     return {

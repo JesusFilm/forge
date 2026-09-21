@@ -1,0 +1,52 @@
+[
+  [
+    {
+      "position": 0,
+      "items": "56349",
+      "impressions": "2697",
+      "selections": "157",
+      "selected_after_impression": "153",
+      "active_qualified": "46"
+    },
+    {
+      "position": 1,
+      "items": "51640",
+      "impressions": "2495",
+      "selections": "83",
+      "selected_after_impression": "81",
+      "active_qualified": "25"
+    },
+    {
+      "position": 2,
+      "items": "46399",
+      "impressions": "2182",
+      "selections": "45",
+      "selected_after_impression": "40",
+      "active_qualified": "14"
+    },
+    {
+      "position": 3,
+      "items": "41972",
+      "impressions": "1681",
+      "selections": "39",
+      "selected_after_impression": "38",
+      "active_qualified": "11"
+    },
+    {
+      "position": 4,
+      "items": "36041",
+      "impressions": "1497",
+      "selections": "39",
+      "selected_after_impression": "38",
+      "active_qualified": "5"
+    },
+    {
+      "position": 5,
+      "items": "32239",
+      "impressions": "1389",
+      "selections": "40",
+      "selected_after_impression": "37",
+      "active_qualified": "9"
+    }
+  ]
+]

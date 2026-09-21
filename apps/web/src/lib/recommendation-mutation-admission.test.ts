@@ -158,6 +158,113 @@ describe("recommendation mutation admission", () => {
     )
   })
 
+  it("refreshes at most once when both Redis deadlines expire early", async () => {
+    const time = vi.fn().mockResolvedValue(["100", "0"])
+    const evaluate = vi.fn().mockResolvedValue(["unavailable"])
+    const admit = createRecommendationMutationAdmission({
+      production: true,
+      secret: "test-secret",
+      monotonicNow: () => 0,
+      redis: async () => ({ time, eval: evaluate }),
+    })
+    await expect(
+      admit(headers("198.51.100.8"), "profile-status"),
+    ).resolves.toEqual({
+      allowed: false,
+      reason: "admission_unavailable",
+    })
+    expect(time).toHaveBeenCalledTimes(2)
+    expect(evaluate).toHaveBeenCalledTimes(2)
+  })
+
+  it("does not refresh when the explicit no-mutation reply consumes the budget", async () => {
+    const time = vi.fn().mockResolvedValue(["100", "0"])
+    const evaluate = vi.fn().mockResolvedValue(["unavailable"])
+    const monotonicNow = vi
+      .fn()
+      .mockReturnValueOnce(0)
+      .mockReturnValueOnce(135)
+      .mockReturnValue(250)
+    const admit = createRecommendationMutationAdmission({
+      production: true,
+      secret: "test-secret",
+      monotonicNow,
+      redis: async () => ({ time, eval: evaluate }),
+    })
+    await expect(
+      admit(headers("198.51.100.8"), "profile-status"),
+    ).resolves.toEqual({
+      allowed: false,
+      reason: "admission_unavailable",
+    })
+    expect(time).toHaveBeenCalledOnce()
+    expect(evaluate).toHaveBeenCalledOnce()
+  })
+
+  it("bounds the refreshed TIME by the remainder of the original deadline", async () => {
+    vi.useFakeTimers()
+    const time = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<string[]>((resolve) => {
+            setTimeout(() => resolve(["100", "0"]), 135)
+          }),
+      )
+      .mockImplementation(() => new Promise<string[]>(() => undefined))
+    const evaluate = vi.fn(
+      () =>
+        new Promise<string[]>((resolve) => {
+          setTimeout(() => resolve(["unavailable"]), 46)
+        }),
+    )
+    const startedAt = Date.now()
+    const admit = createRecommendationMutationAdmission({
+      production: true,
+      secret: "test-secret",
+      monotonicNow: () => Date.now() - startedAt,
+      redis: async () => ({ time, eval: evaluate }),
+    })
+    const result = admit(headers("198.51.100.8"), "profile-status")
+    await vi.advanceTimersByTimeAsync(250)
+    await expect(result).resolves.toEqual({
+      allowed: false,
+      reason: "admission_unavailable",
+    })
+    expect(time).toHaveBeenCalledTimes(2)
+    expect(evaluate).toHaveBeenCalledOnce()
+    expect(console.info).toHaveBeenCalledWith(
+      expect.stringContaining("budgetMs=69"),
+    )
+  })
+
+  it.each(["rate_limited", "unexpected", "transport_error", "timeout"])(
+    "never refreshes after %s because it is not an explicit no-mutation deadline result",
+    async (outcome) => {
+      vi.useFakeTimers()
+      const time = vi.fn().mockResolvedValue(["100", "0"])
+      const evaluate = vi.fn(async () => {
+        if (outcome === "transport_error") throw new Error("disconnected")
+        if (outcome === "timeout") return new Promise<string[]>(() => undefined)
+        return [outcome]
+      })
+      const admit = createRecommendationMutationAdmission({
+        production: true,
+        secret: "test-secret",
+        redis: async () => ({ time, eval: evaluate }),
+      })
+      const result = admit(headers("198.51.100.8"), "profile-status")
+      await vi.advanceTimersByTimeAsync(251)
+      await expect(result).resolves.toEqual({
+        allowed: false,
+        reason:
+          outcome === "rate_limited" ? "rate_limited" : "admission_unavailable",
+      })
+      expect(time).toHaveBeenCalledOnce()
+      expect(evaluate).toHaveBeenCalledOnce()
+    },
+  )
+
   it("fails closed in production when Redis or HMAC configuration is unavailable", async () => {
     const noRedis = createRecommendationMutationAdmission({
       production: true,

@@ -17,6 +17,7 @@ import {
 } from "./RecommendationPlaybackRecorder.test-fixtures"
 import { RECOMMENDATION_TAB_CORRELATION_KEY } from "@/lib/recommendation-contracts"
 import { withRecommendationConsentLock } from "@/lib/recommendation-consent-bootstrap"
+import * as profileBootstrap from "@/lib/recommendation-consent-bootstrap"
 
 describe("RecommendationPlaybackRecorder claim lifecycle", () => {
   let root: Root
@@ -25,6 +26,51 @@ describe("RecommendationPlaybackRecorder claim lifecycle", () => {
   usePlaybackRecorderHarness((harness) => {
     root = harness.root
     fetchMock = harness.fetchMock
+  })
+
+  it("waits for first-visit profile initialization before creating the playback episode", async () => {
+    const ready = deferred<void>()
+    const wait = vi
+      .spyOn(profileBootstrap, "waitForRecommendationConsentBootstrap")
+      .mockReturnValue(ready.promise)
+    fetchMock
+      .mockResolvedValueOnce(
+        response({ claimNonce: "initialized-context-claim-nonce" }),
+      )
+      .mockResolvedValueOnce(
+        response({
+          episode: {
+            episodeId: "initialized-episode",
+            capability: "fixture-capability",
+            activeUntil: "2026-08-19T07:00:00.000Z",
+            hardUntil: "2026-08-19T09:00:00.000Z",
+          },
+        }),
+      )
+    try {
+      await act(async () => {
+        root.render(
+          <RecommendationPlaybackRecorder
+            player={makePlayer()}
+            initiation={null}
+            mediaId="first-video"
+          />,
+        )
+        await Promise.resolve()
+      })
+      expect(fetchMock).not.toHaveBeenCalled()
+      await act(async () => {
+        ready.resolve(undefined)
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+      expect(
+        JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)),
+      ).toMatchObject({ action: "context", mediaId: "first-video" })
+    } finally {
+      ready.resolve(undefined)
+      wait.mockRestore()
+    }
   })
 
   it("serializes source-neutral context issuance with session bootstrap", async () => {
@@ -432,7 +478,9 @@ describe("RecommendationPlaybackRecorder claim lifecycle", () => {
     expect(events).toEqual([
       expect.objectContaining({
         kind: "playback_attempt",
-        payload: { initiation: "manual" },
+        payload: {
+          initiation: "manual",
+        },
       }),
       expect.objectContaining({
         kind: "playback_start",

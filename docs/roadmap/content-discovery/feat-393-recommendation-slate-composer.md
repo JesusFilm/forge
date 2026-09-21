@@ -3,8 +3,8 @@ id: "feat-393"
 title: "Recommendation slate composer"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
-start_date: ""
+status: "in-progress"
+start_date: "2026-09-15"
 duration: 5
 depends_on:
   - "feat-382"
@@ -70,3 +70,29 @@ The ticket is not complete until this result is visible and reconcilable in the 
 - Reconcile pre/post slates and terminal decision in Admin.
 - Run affected application checks: `pnpm --filter @forge/admin test`, `pnpm --filter @forge/admin lint`, and `pnpm --filter @forge/admin typecheck`.
 - Run `pnpm --filter roadmap lint` after updating roadmap metadata.
+
+## September 15 implementation
+
+`apps/admin/src/services/recommendations/shadow-evaluation/slate-composer.ts`
+implements `source-interest-theme-mmr-shadow-v1`, bounded to 64 candidates and six
+positions. The existing shadow projection records pre/post composition, named
+scalar explanations and a separate pending composition decision. The authorized
+Admin request detail exposes this evidence. Live ordering is unchanged.
+
+See `docs/validation/feat-393-slate-shadow/verification.md` for 78 passing tests,
+real-PostgreSQL provenance constraints, screenshots and local performance evidence.
+
+This ticket remains in progress. Feat-388's published editorial adapter is absent;
+historical/ignore context is not captured by current shadow generators;
+series/speaker inputs and familiar/discovery calibration remain unavailable. These
+are shown as missing inputs, not successful checks. A terminal composition decision
+is still required before controlled exposure.
+
+## September 16 follow-through
+
+The shadow runner now reconstructs bounded same-session recent history strictly
+before the original request, with explicit missing/retention states. Comparison
+provenance and the authorized Admin view show that coverage. The candidate
+evaluation decision still cannot approve the separate composition policy.
+Published editorial adapters, series/speaker metadata, calibration and a terminal
+composition decision remain incomplete; no live MMR policy is enabled.

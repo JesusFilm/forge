@@ -122,6 +122,37 @@ export default async function PlaybackEpisodePage({
         title="Immutable facts"
         meta={`${detail.facts.length} APPEND-ONLY ROWS`}
       >
+        {detail.viewingMode && (
+          <div className="border-b border-[var(--color-hairline)] p-4 text-[13px] text-[var(--color-text-secondary)]">
+            {detail.viewingMode.coverage === "observed" ? (
+              <>
+                Visible playback:{" "}
+                {(detail.viewingMode.soundOffMilliseconds / 1000).toFixed(1)}s
+                sound off ·{" "}
+                {(detail.viewingMode.soundOnMilliseconds / 1000).toFixed(1)}s
+                sound on ·{" "}
+                {(detail.viewingMode.previewMilliseconds / 1000).toFixed(1)}s in
+                preview.
+                <p className="mt-1">
+                  Sound-off engagement{" "}
+                  {detail.viewingMode.soundOffQualified
+                    ? "qualified"
+                    : "has not qualified"}
+                  ; sound-on engagement{" "}
+                  {detail.viewingMode.soundOnQualified
+                    ? "qualified"
+                    : "has not qualified"}
+                  . Looped progress is counted once. Missing manual-play facts
+                  do not rule out preview viewing.
+                </p>
+              </>
+            ) : detail.viewingMode.coverage === "ineligible" ? (
+              "Viewing-mode evidence is ineligible because playback failed or the evidence is late or conflicted."
+            ) : (
+              "Viewing mode is unknown; missing telemetry does not mean the video was not watched."
+            )}
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full min-w-[980px] border-collapse text-left text-[11px]">
             <thead>
@@ -166,6 +197,84 @@ export default async function PlaybackEpisodePage({
             </tbody>
           </table>
         </div>
+      </PageSection>
+
+      <PageSection
+        title="Navigation and playback quality"
+        meta={detail.observations.version}
+      >
+        <p className="px-4 py-3 text-[13px] text-[var(--color-text-muted)]">
+          Preference meaning is unknown. These observations do not change taste
+          weights. A quick departure is within ten seconds of the observed
+          attempt; cleanup alone cannot establish intent.
+        </p>
+        <div className="grid gap-px bg-[var(--color-hairline)] md:grid-cols-2 lg:grid-cols-4">
+          <Value
+            label="Departure observation"
+            value={displayRecommendationToken(
+              detail.observations.departure.classification,
+            )}
+          />
+          <Value
+            label="Playback stage"
+            value={displayRecommendationToken(
+              detail.observations.departure.stage,
+            )}
+          />
+          <Value
+            label="Elapsed since attempt"
+            value={`${detail.observations.departure.elapsedMilliseconds ?? "Unknown"} ms`}
+          />
+          <Value
+            label="Active playback / coverage"
+            value={`${detail.observations.departure.activeMilliseconds} ms / ${detail.observations.departure.activeCoverage}`}
+          />
+          <Value
+            label="Navigation coverage / decision"
+            value={`${detail.observations.navigation.coverage} / ${detail.observations.navigation.decision}`}
+          />
+          <Value
+            label="Pause / resume"
+            value={`${detail.observations.navigation.pauses} / ${detail.observations.navigation.resumes}`}
+          />
+          <Value
+            label="Seek forward / backward / to start"
+            value={`${detail.observations.navigation.forwardSeeks} / ${detail.observations.navigation.backwardSeeks} / ${detail.observations.navigation.returnsToStart}`}
+          />
+          <Value
+            label="Automatic attempt"
+            value={
+              detail.observations.navigation.automaticAttempt
+                ? "Observed"
+                : "Not observed"
+            }
+          />
+          <Value
+            label="QoE coverage / decision"
+            value={`${detail.observations.qoe.coverage} / ${detail.observations.qoe.decision}`}
+          />
+          <Value
+            label="Attempt to first start"
+            value={`${detail.observations.qoe.startupMilliseconds ?? "Unknown"} ms`}
+          />
+          <Value
+            label="Closed buffering intervals"
+            value={`${detail.observations.qoe.bufferingMilliseconds} ms / ${detail.observations.qoe.bufferingEpisodes} observed episodes`}
+          />
+          <Value
+            label="Errors / open buffering interval"
+            value={`${detail.observations.qoe.errors} / ${detail.observations.qoe.openBufferingInterval ? "Yes" : "No"}`}
+          />
+        </div>
+        <p className="px-4 py-3 text-[12px] text-[var(--color-text-muted)]">
+          Pause and navigation causes, deliberate skip/replay, error
+          recoverability, startup timeout, device and network are unavailable.
+          Each family remains inconclusive.
+        </p>
+        <p className="break-all px-4 pb-3 font-mono text-[10px] text-[var(--color-text-muted)]">
+          Fact watermark {detail.observations.factWatermark} · digest{" "}
+          {detail.observations.inputDigest}
+        </p>
       </PageSection>
 
       <PageSection

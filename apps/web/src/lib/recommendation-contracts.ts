@@ -1,5 +1,6 @@
 export const SEMANTIC_RECOMMENDATION_CONTRACT =
   "semantic-recommendation-v1" as const
+export const RECOMMENDATION_DELIVERY_CLIENT_VERSION = "viewing-mode-v1" as const
 export const RECOMMENDATION_EVIDENCE_CONTRACT =
   "recommendation-evidence-v1" as const
 export const RECOMMENDATION_CONTENT_ACTION_CONTRACT =
@@ -140,9 +141,17 @@ export function parseRecommendationEpisodeCapability(
 export type RecommendationPlaybackEvent =
   | {
       eventId: string
+      kind: "playback_viewing_mode"
+      occurredAt: string
+      payload: import("./viewing-mode-recorder").ViewingModeInterval
+    }
+  | {
+      eventId: string
       kind: "playback_attempt"
       occurredAt: string
-      payload: { initiation: "manual" | "automatic" }
+      payload: {
+        initiation: "manual" | "automatic"
+      }
     }
   | {
       eventId: string
@@ -178,6 +187,48 @@ export type RecommendationPlaybackEvent =
             coverage: "partial"
             missingReason: "visibility_unavailable" | "player_state_unavailable"
           }
+    }
+  | {
+      eventId: string
+      kind: "playback_observation"
+      occurredAt: string
+      payload: {
+        version: "playback-observations-v1"
+        elapsedMilliseconds: number
+        visibility: "visible" | "hidden" | "unknown"
+        playerState: "playing" | "paused" | "buffering" | "unknown"
+        startObserved: boolean
+        errorObserved: boolean
+        seekCount: number
+        navigationCount: number
+        qoeCount: number
+      }
+    }
+  | {
+      eventId: string
+      kind: "playback_navigation"
+      occurredAt: string
+      payload: {
+        action:
+          | "pause"
+          | "resume"
+          | "hidden"
+          | "visible"
+          | "bfcache_suspend"
+          | "bfcache_resume"
+        cause: "unknown"
+        positionSeconds: number
+      }
+    }
+  | {
+      eventId: string
+      kind: "playback_qoe"
+      occurredAt: string
+      payload: {
+        action: "waiting" | "stalled" | "buffering_end"
+        cause: "unknown"
+        positionSeconds: number
+      }
     }
   | {
       eventId: string

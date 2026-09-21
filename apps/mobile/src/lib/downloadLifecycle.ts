@@ -176,7 +176,7 @@ export function createDownloadLifecycle(deps: DownloadLifecycleDeps) {
       content_id: videoSlug,
       attempt_id: attemptId,
       code: meta.raw.errorCode,
-      message: sanitizeNativeErrorMessage(meta.raw.error),
+      error_message: sanitizeNativeErrorMessage(meta.raw.error),
       kind: meta.interruption.kind,
     })
     const reachability = reachabilityFromInterruption(meta.interruption)

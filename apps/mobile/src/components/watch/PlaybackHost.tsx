@@ -43,6 +43,9 @@ import { useManagedVideoPlayer } from "../../hooks/useManagedVideoPlayer"
 import { getAuthSession } from "../../lib/authSession"
 import { BLACK } from "../../lib/color"
 import { datadogLog } from "../../lib/datadog"
+import { OFFLINE_ROOT } from "../../lib/offlineFileSystem"
+import { isOfflineContainerSwap } from "../../lib/playerSource"
+import { validateLocalMediaUrl } from "../../lib/validateLocalMediaUrl"
 import { TAB_BAR_OCCUPIED_HEIGHT } from "../../lib/tabBar"
 import {
   DEFAULT_CORNER,
@@ -383,6 +386,14 @@ function ActivePlaybackHost({
   // What the player verifiably HOLDS (applied, not merely requested): the
   // admission fallback below may only trust `player.playing` for this source.
   const appliedSourceUrlRef = useRef<string | null>(null)
+  // The one swap the arming block below classified as position-preserving,
+  // recorded as the exact URL pair so the adapter can recognise the same swap
+  // and stand its own resume down. Declared here because the adapter options
+  // close over it.
+  const positionPreservingSwapRef = useRef<{
+    from: string | null
+    to: string | null
+  } | null>(null)
   // Cast is the SLOT's, not the player's: a retained or PiP-held request from a
   // departed screen carries a session that screen's unmount already ended.
   const slotOwned = snapshot.slotId != null
@@ -406,12 +417,26 @@ function ActivePlaybackHost({
       {
         progress: progressIdentity,
         ownsSession: true,
+        // The recommendation recorder's discovery key (feat-516): a search
+        // result marks its slug before navigating; the id alone never matches.
+        mediaSlug: request.session?.videoSlug ?? request.progressVideoSlug,
         castActive,
         // Only this surface arms automatic entry into the operating system's
         // window, so only here may the background pause be undone when it opens.
         armsPictureInPicture: true,
         onSourceApplied: (url) => {
           appliedSourceUrlRef.current = url
+        },
+        // Reads the decision the arming block ALREADY made, rather than
+        // recomputing it: render runs before effects, so by the time this
+        // fires the host has advanced its own videoKey and could no longer
+        // tell. One computation, so the seek and the suppression cannot
+        // disagree about the same swap.
+        preservesPosition: (previousUrl, nextUrl) => {
+          const armed = positionPreservingSwapRef.current
+          return (
+            armed != null && armed.from === previousUrl && armed.to === nextUrl
+          )
         },
       },
     )
@@ -430,12 +455,16 @@ function ActivePlaybackHost({
     durationSeconds: number
     wasPlaying: boolean
     revertTier: QualityTier | null
+    /** Why it was armed. The consumer is identical for both; the RELEASE is
+     *  not — only a quality swap has a tier to write back. */
+    reason: "quality" | "offline"
   } | null>(null)
   // Capture BEFORE the swap applies (R8): render runs ahead of the adapter's
   // swap effect, while the player still reports the outgoing item's clock.
   const appliedConstraintRef = useRef({
     url: constrainedSourceUrl,
     tier: effectiveSettings.qualityTier,
+    videoKey,
   })
   {
     const previous = appliedConstraintRef.current
@@ -443,19 +472,13 @@ function ActivePlaybackHost({
       previous.url !== constrainedSourceUrl ||
       previous.tier !== effectiveSettings.qualityTier
     ) {
-      if (!isSameMuxAsset(previous.url, constrainedSourceUrl)) {
-        // A different asset (new video, dub change): a pending quality
-        // resume is stale and must not seek the arriving stream.
-        pendingQualityResumeRef.current = null
-      } else if (
-        previous.tier !== effectiveSettings.qualityTier &&
-        previous.url != null &&
-        constrainedSourceUrl != null &&
-        !sameQualityConstraint(previous.url, constrainedSourceUrl) &&
-        pendingQualityResumeRef.current == null
-      ) {
-        // A re-pick mid-swap keeps the first capture: nothing played in
-        // between, and the superseded swap may already report zero.
+      // Capturing reads the LIVE clock, never the progress store: that store
+      // is signed-in only and flushes every 2s, so it would resume seconds
+      // behind, or at zero for a signed-out viewer.
+      const capture = (
+        revertTier: QualityTier | null,
+        reason: "quality" | "offline",
+      ) => {
         let positionSeconds = 0
         let durationSeconds = 0
         let wasPlaying = false
@@ -470,12 +493,49 @@ function ActivePlaybackHost({
           positionSeconds,
           durationSeconds,
           wasPlaying,
-          revertTier: previous.tier,
+          revertTier,
+          reason,
         }
+      }
+      // A completed download replacing the stream (or being deleted from under
+      // it) is the SAME video in a new container, so it keeps the viewer's
+      // place. It has to be tested BEFORE the cross-asset clear below: a local
+      // file has no Mux id, so that clear would treat it as a new video.
+      const offlineSwap = isOfflineContainerSwap({
+        previousUrl: previous.url,
+        nextUrl: constrainedSourceUrl,
+        // An empty key names nothing — two sourceless slots would both carry
+        // "" and read as the same video.
+        sameVideo: videoKey !== "" && previous.videoKey === videoKey,
+        isLocal: (url) => validateLocalMediaUrl(url, OFFLINE_ROOT),
+      })
+      if (offlineSwap) {
+        // revertTier null: a tier write cannot change a file:// URL, so the
+        // quality revert leg would strand a re-armed latch with no timer.
+        capture(null, "offline")
+        positionPreservingSwapRef.current = {
+          from: previous.url,
+          to: constrainedSourceUrl,
+        }
+      } else if (!isSameMuxAsset(previous.url, constrainedSourceUrl)) {
+        // A different asset (new video, dub change): a pending quality
+        // resume is stale and must not seek the arriving stream.
+        pendingQualityResumeRef.current = null
+      } else if (
+        previous.tier !== effectiveSettings.qualityTier &&
+        previous.url != null &&
+        constrainedSourceUrl != null &&
+        !sameQualityConstraint(previous.url, constrainedSourceUrl) &&
+        pendingQualityResumeRef.current == null
+      ) {
+        // A re-pick mid-swap keeps the first capture: nothing played in
+        // between, and the superseded swap may already report zero.
+        capture(previous.tier, "quality")
       }
       appliedConstraintRef.current = {
         url: constrainedSourceUrl,
         tier: effectiveSettings.qualityTier,
+        videoKey,
       }
     }
   }
@@ -487,6 +547,15 @@ function ActivePlaybackHost({
       const pending = pendingQualityResumeRef.current
       if (pending == null) return
       pendingQualityResumeRef.current = null
+      if (pending.reason === "offline") {
+        // Its own event: reusing the quality one would mix two causes under a
+        // single name, and every existing count assertion would still pass.
+        // There is nothing to revert — no tier produced this swap.
+        datadogLog.warn("player.offline_swap_resume_released", {
+          release_reason: releaseReason,
+        })
+        return
+      }
       datadogLog.warn("player_settings.quality_swap_released", {
         release_reason: releaseReason,
         reverted_tier: pending.revertTier,

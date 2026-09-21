@@ -24,6 +24,12 @@ tags:
 
 ## Problem
 
+September 16 follow-up: [feat-509](feat-509-playback-sqlstate-serialization-retry.md)
+records a pre-existing raw-query SQLSTATE `40001` gap: it escapes the `P2034`-only
+retry classifier and can become terminal Web HTTP 400. The recommendation
+release's live verification reproduced it once and found it on older revisions;
+this ticket's broader production acceptance remains open.
+
 Latest verification: the [authorized production integrity audit](../../operations/recommendation-evidence-production-integrity-2026-09-10.md)
 now proves current-pointer convergence, stored receipt consistency and zero
 substantive failures across 23 reconciliation batches. The previous lack of
@@ -199,3 +205,90 @@ does not fully reconcile with handler logs; durable receipt/eligibility and
 browser retry-amplification reconciliation, internal batch failure counts, installed
 monitors and zero ineligible current pointers remain unverified. Keep dependent
 feat-459/447 in progress and live profile ranking fail-closed.
+
+## Sustained production review — September 21
+
+The [fixed 64-hour 35-minute corpus review](../../operations/watch-recommendation-corpus-review-2026-09-21.md)
+records one playback HTTP 503 among 255,450 primary requests; the denominator
+includes rejected traffic and is not a human-only rate. Structured logs contain
+174 retryable Admin facts failures with `reason=unknown`, no exhausted-transaction
+entry in the returned failure grouping, and 749 completed reconciliation
+heartbeats. Stored capability timestamp rejections remain separate from the
+repaired server receipt-ordering race.
+
+Required recommendation alerts were not found in the visible title/service-tag
+inventory. The complete canonical current-pointer audit exceeded its five-second
+read-only guard and was rolled back, so this review supplies no fresh passing
+feat-459 audit. Keep both production gates open; do not infer them from aggregate
+personalized deliveries, a low HTTP failure rate or a partial database audit.
+
+The [later September 21 audit](../../operations/watch-profile-audit-2026-09-21.md)
+completed the full canonical predicate in one read-only snapshot: 167,029 live
+current pointers, zero ineligible. This supersedes only the missing fresh audit
+evidence above. Required installed alerts remain unmet because available Datadog
+access is read-only; transport classifications and browser lifecycle evidence
+remain separate. Keep this ticket in progress.
+
+Retained traces also prove two sampled `unknown / retryable` facts observations
+were fast terminal GraphQL `BAD_USER_INPUT` responses. A local typed-error
+regression reproduces the logger's missing `RecommendationTokenInvalidError`
+classification. The fix records those as `rejected / invalid_request / terminal`
+and rethrows the same error without changing token validation or Web responses.
+The 42 playback/token/GraphQL tests pass, and the complete final Admin suite
+passes 7,281 tests. PR #2353 deployed automatically to Admin and its worker as
+`6e02dd855af4053d9c9a7b032fe1ece7317cfc33`; natural accepted facts are visible on
+that exact revision. This does not classify all 174 historical unknown failures
+or establish that the specific invalid-capability branch occurred in the short
+release window. [Release evidence and outstanding gates](../../operations/watch-ticket-execution-2026-09-21.md)
+remain explicit. Continue using the existing read access; installed alerts stay
+unmet without a monitor-writing capability.
+
+The release window adds a separate transport investigation: at September 20
+22:48:27 UTC, playback trace `2812671347123689187` returns HTTP 503 in 46.6 ms
+after a 42.7 ms upstream `fetch failed`, with `timeoutStage=none`. It overlaps
+Admin deployment but does not prove the transport cause or mutation disposition.
+Keep the failure in the 1/800 primary playback denominator; investigate routing,
+connection and shutdown behavior before proposing a change. Do not substitute
+an ambiguous mutation retry. Four separately correlated transaction-busy
+attempts recovered to Web HTTP 200; a natural terminal rejection agrees with
+`BAD_USER_INPUT`. None is a selection deadline or delivery semantic timeout.
+
+The new worker also emitted an unavailable reconciliation heartbeat at 22:52:48
+UTC after substantive five-second transaction expiry, followed by a completed
+heartbeat at 22:58:17. Feat-459 now records the reproduced expensive discovery
+scan and rejected controls. This keeps the reconciliation-health gate open;
+one subsequent success does not satisfy the sustained criterion.
+
+## Repaired worker and complete two-hour observation — September 21
+
+PR #2356 deploys the reproduced discovery-scan correction to Admin and worker
+as `de752d60980b25ee11806f2c424770fc78027188`. The fixed **00:15–02:15 UTC**
+window has **0 / 9,787 playback 5xx (0%)**, with no fault-injection exclusions;
+ordinary canaries and rejected traffic remain included. Independent Railway edge
+counts and Datadog primary metrics match. All 24 reconciliation batches and
+heartbeat steps complete; 238 classification attempts and 14 queued rebuilds
+have zero classification/dispatch failures or exhausted attempts.
+
+The final timed pointer audit finds one ineligible pointer; a later complete
+02:20:44 UTC snapshot finds zero among 167,984. A separate durable episode cohort
+audit finds zero fact/replay sequence or original-fact binding violations across
+10,600 facts and 207 replay receipts. The exact populations, nonzero snapshots
+and collector differences remain in the
+[release record](../../operations/watch-closeout-release-2026-09-21.md).
+
+Admin/Web indexed logs agree on 8,003 accepted facts batches and 23 all-replay
+batches. All 126 observed transaction-busy attempts across 109 trace-correlated
+requests reach final Web facts HTTP 200, without exhaustion. Four binding
+rejections map to terminal HTTP 409. All 1,520 recognized-crawler evidence
+actions are logged as rejected; the `human_anonymous` database label is not
+independent proof of human provenance. Terminal labels alone do not establish
+cross-request browser retry behavior.
+
+Keep this ticket in progress. The completed two-hour HTTP and worker observation
+does not install alerts or replace the permission-checked Admin reconciliation.
+The paginated inventory of 41 visible monitors contains legacy Watch RUM monitors
+but no required Forge recommendation transport/reconciliation alert coverage.
+Use the existing read access for verification; no monitoring write was attempted.
+The separately retained fast playback fetch failure and historical unknown-attempt
+classification limits also remain explicit rather than being erased by this
+healthy window.

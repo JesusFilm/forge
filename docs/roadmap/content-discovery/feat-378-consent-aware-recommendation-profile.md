@@ -16,6 +16,7 @@ blocks:
   - "feat-386"
   - "feat-392"
   - "feat-448"
+  - "feat-512"
 tags:
   - "admin"
   - "web"

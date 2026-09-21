@@ -133,6 +133,57 @@ describe("Manager OAuth callback route", () => {
     expect(setCookie).toContain("strapi-jwt=;")
   })
 
+  it("routes a reviewer to the separate review lane and rejects an operator return target", async () => {
+    cookieGet.mockImplementation((name: string) => {
+      const values: Record<string, string> = {
+        "manager-oauth-state": "state_123",
+        "manager-oauth-verifier": "verifier_123",
+        "manager-oauth-return-to": "/dashboard/jobs",
+      }
+      return values[name] ? { value: values[name] } : undefined
+    })
+    exchangeManagerAuthorizationCode.mockResolvedValueOnce({
+      access_token: "access",
+      id_token: "id",
+      scope: "openid manager:access",
+    })
+    verifyManagerIdToken.mockResolvedValueOnce({
+      subject: "auth_reviewer_123",
+      email: "reviewer@example.com",
+      name: "Spanish Reviewer",
+      scopes: ["openid", "manager:access"],
+    })
+    validateAdminManagerSession.mockResolvedValueOnce({
+      user: {
+        id: "admin-reviewer-123",
+        email: "reviewer@example.com",
+        name: "Spanish Reviewer",
+      },
+      managerRole: "REVIEWER",
+      reviewerLanguageGrants: [
+        {
+          id: "grant-es",
+          languageId: "language-es",
+          languageSlug: "spanish-latin-america",
+          permittedRubricDimensions: ["MEANING_ACCURACY"],
+          specialistCapabilities: { scripture: false, theology: false },
+        },
+      ],
+    })
+
+    const { GET } = await import("./route")
+    const response = await GET(
+      new Request(
+        "http://localhost:3002/api/auth/callback?code=code_123&state=state_123",
+      ),
+    )
+
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3002/subtitle-review",
+    )
+    expect(response.headers.get("set-cookie")).toContain("manager-session=")
+  })
+
   it("does not trust a cross-origin returnTo cookie", async () => {
     cookieGet.mockImplementation((name: string) => {
       const values: Record<string, string> = {

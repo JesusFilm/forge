@@ -325,6 +325,20 @@ export const env = createEnv({
     AUTH_MANAGER_SERVICE_CLIENT_ID: z.string().min(1).optional(),
     AUTH_MANAGER_SERVICE_CLIENT_SECRET: z.string().min(1).optional(),
     AUTH_MANAGER_SERVICE_AUDIENCE: z.string().url().optional(),
+    SUBTITLE_REVIEW_ASSERTION_ENVIRONMENT: z
+      .enum(["local", "preview", "staging", "production"])
+      .optional()
+      .default("local"),
+    // Ed25519 public-key ring used only for fresh, request-bound reviewer
+    // session proofs minted by Manager's server from its HttpOnly session.
+    SUBTITLE_REVIEW_SESSION_PUBLIC_KEYS: z.string().min(1).optional(),
+    // The Lab's single operator-facing spend control: a monthly budget in
+    // dollars, e.g. "250" or "250.50". Every other limit is a constant or is
+    // derived from this in subtitle-eval.service.ts.
+    SUBTITLE_EVAL_MONTHLY_BUDGET_USD: z
+      .string()
+      .regex(/^\d+(\.\d{1,6})?$/)
+      .optional(),
     AUTH_MANAGER_SERVICE_ENVIRONMENT: z
       .enum(["local", "preview", "staging", "production"])
       .optional(),
@@ -433,6 +447,10 @@ export const env = createEnv({
     RECOMMENDATION_REDIS_TEST: z.enum(["1"]).optional(),
     // Source-free serving is enabled by default; false remains a kill switch.
     RECOMMENDATION_USER_SERVING_ENABLED: z
+      .enum(["true", "false"])
+      .default("true"),
+    // Narrow rollback switch for mode-profile projection and sound-off ranking.
+    RECOMMENDATION_VIEWING_MODE_ENABLED: z
       .enum(["true", "false"])
       .default("true"),
     // Fail-closed startup ceiling. The shared Postgres serving-control row is
@@ -811,6 +829,15 @@ export const env = createEnv({
     AUTH_MANAGER_SERVICE_AUDIENCE: emptyToUndefined(
       process.env.AUTH_MANAGER_SERVICE_AUDIENCE,
     ),
+    SUBTITLE_REVIEW_ASSERTION_ENVIRONMENT: emptyToUndefined(
+      process.env.SUBTITLE_REVIEW_ASSERTION_ENVIRONMENT,
+    ),
+    SUBTITLE_REVIEW_SESSION_PUBLIC_KEYS: emptyToUndefined(
+      process.env.SUBTITLE_REVIEW_SESSION_PUBLIC_KEYS,
+    ),
+    SUBTITLE_EVAL_MONTHLY_BUDGET_USD: emptyToUndefined(
+      process.env.SUBTITLE_EVAL_MONTHLY_BUDGET_USD,
+    ),
     AUTH_MANAGER_SERVICE_ENVIRONMENT: emptyToUndefined(
       process.env.AUTH_MANAGER_SERVICE_ENVIRONMENT,
     ),
@@ -931,6 +958,9 @@ export const env = createEnv({
     RECOMMENDATION_SEMANTIC_SERVING_ENABLED: emptyToUndefined(
       process.env.RECOMMENDATION_SEMANTIC_SERVING_ENABLED,
     ),
+    RECOMMENDATION_VIEWING_MODE_ENABLED:
+      emptyToUndefined(process.env.RECOMMENDATION_VIEWING_MODE_ENABLED) ??
+      "true",
     RECOMMENDATION_CAPABILITY_KEYRING: emptyToUndefined(
       process.env.RECOMMENDATION_CAPABILITY_KEYRING,
     ),

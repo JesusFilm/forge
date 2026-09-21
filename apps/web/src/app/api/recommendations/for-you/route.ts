@@ -1,5 +1,7 @@
+import { observeRecommendationDelivery } from "@/lib/recommendation-delivery-observability"
 import { z } from "zod"
 import { getUserRecommendations } from "@/lib/user-recommendations"
+import { homepageRecommendationsEnabled } from "@/lib/homepage-recommendations-flag"
 import { WATCH_CANONICAL_ORIGIN } from "@/lib/routes"
 import {
   readStrictRecommendationJson,
@@ -36,6 +38,8 @@ export async function POST(request: Request) {
     })
     const parsed = Input.safeParse(raw)
     if (!parsed.success) throw new RecommendationRouteError(400, "invalid_body")
+    if (!(await homepageRecommendationsEnabled(request)))
+      throw new RecommendationRouteError(403, "feature_disabled")
     await assertRecommendationMutationAdmission(request.headers, "delivery")
     const session = ensureRecommendationSession(request),
       profile = readRecommendationProfileCookie(request),
@@ -59,8 +63,20 @@ export async function POST(request: Request) {
       throw new RecommendationRouteError(502, "invalid_admin_response")
     const response = recommendationSerializedJson(serialized)
     attachRecommendationSession(response, session)
+    observeRecommendationDelivery({
+      endpoint: "for_you",
+      httpStatus: response.status,
+      delivery,
+      upstreamResult: delivery.result,
+    })
     return response
   } catch (error) {
-    return recommendationError(error)
+    const response = recommendationError(error)
+    observeRecommendationDelivery({
+      endpoint: "for_you",
+      httpStatus: response.status,
+      error,
+    })
+    return response
   }
 }

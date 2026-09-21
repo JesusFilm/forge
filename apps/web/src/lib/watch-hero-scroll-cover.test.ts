@@ -4,9 +4,40 @@ import {
   isWatchHeroObscured,
   WATCH_HERO_OBSCURED_PAUSE_THRESHOLD,
   watchHeroObscuredFraction,
+  watchHeroVisibleFraction,
 } from "@/lib/watch-hero-scroll-cover"
 
 describe("watch hero scroll coverage", () => {
+  it("measures actual viewability separately from the scroll-pause threshold", () => {
+    expect(
+      watchHeroVisibleFraction({
+        heroHeight: 500,
+        viewportHeight: 800,
+        bodyTopFromHeroTop: 250,
+      }),
+    ).toBe(0.5)
+    expect(
+      watchHeroVisibleFraction({
+        heroHeight: 1200,
+        viewportHeight: 800,
+        bodyTopFromHeroTop: 400,
+      }),
+    ).toBeCloseTo(1 / 3)
+    expect(
+      watchHeroVisibleFraction({
+        heroHeight: 0,
+        viewportHeight: 800,
+        bodyTopFromHeroTop: 0,
+      }),
+    ).toBe(0)
+    expect(
+      watchHeroVisibleFraction({
+        heroHeight: NaN,
+        viewportHeight: 800,
+        bodyTopFromHeroTop: 0,
+      }),
+    ).toBe(0)
+  })
   it("reports nothing covered while the body sits at the hero's bottom", () => {
     expect(
       watchHeroObscuredFraction({

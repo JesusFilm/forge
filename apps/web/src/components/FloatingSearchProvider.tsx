@@ -258,9 +258,15 @@ export function FloatingSearchProvider({
   const currentLanguageCode =
     languageCodeFor({ slug: headerLanguageSlug }) ??
     languageCodeFor({ slug: currentLanguageSlug })
-  // The inventory route 404s for anything outside the public watch language
-  // set, and linking to it from the page it already renders is noise — so the
-  // control is absent rather than dead in both cases.
+  // This is a client component, so it cannot await the route manifest the way
+  // the inventory route's own admission does — the compiled corpus is the only
+  // namespace it can see. The route itself no longer 404s outside that corpus,
+  // so this veto now costs a language published since the last regeneration
+  // its in-app entry point rather than preventing a dead link. That is a
+  // degradation, which is the only shape a snapshot-only veto is allowed to
+  // take; widening it needs a server-resolved slug passed down from the page.
+  // Linking to the inventory from the page it already renders is noise, so the
+  // control is absent rather than dead in that case too.
   const headerLanguageLocaleSlug = tryAsLocaleSlug(headerLanguageSlug)
   const languageVideosHref =
     parsedPath.kind !== "language-videos" &&
@@ -935,7 +941,7 @@ export function FloatingSearchProvider({
                   aria-hidden
                   className="h-6 w-6 shrink-0 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]"
                 />
-                <span className="text-base sm:text-sm font-bold tracking-wider whitespace-nowrap uppercase drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]">
+                <span className="text-xs font-bold tracking-[0.14em] whitespace-nowrap uppercase drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)] sm:text-[10px]">
                   {t("library")}
                 </span>
               </Link>
@@ -956,7 +962,7 @@ export function FloatingSearchProvider({
                     : ""
                 } cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[color,transform] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none ${
                   headerLanguageCode
-                    ? "w-auto min-w-[4.25rem] gap-1.5 px-2 md:w-auto md:min-w-[4.75rem]"
+                    ? `${modalChromeHidden ? "" : "-mr-[18.25px]"} w-auto min-w-[4.25rem] gap-1.5 px-2 md:w-auto md:min-w-[4.75rem]`
                     : ""
                 }`}
               >

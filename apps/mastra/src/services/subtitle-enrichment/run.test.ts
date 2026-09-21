@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { chunkSegments } from "./chunker"
-import { deterministicRetime, validateRetimingOutput } from "./retimer"
+import {
+  deterministicRetime,
+  retimeChunk,
+  validateRetimingOutput,
+} from "./retimer"
 import { runSubtitleEnrichment } from "./run"
 import type {
   Chunk,
@@ -99,6 +103,40 @@ describe("deterministicRetime", () => {
         chunk,
       ),
     ).toContain("Segments 0 and 1 overlap: 5.2 > 5")
+  })
+
+  it("does not start a retiming retry after the shared cell deadline", async () => {
+    const now = vi
+      .spyOn(Date, "now")
+      .mockReturnValueOnce(1_000)
+      .mockReturnValue(2_001)
+    const fetchImpl = vi.fn(async () =>
+      Response.json({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                segments: [{ start: 0, end: 99, text: "Hola" }],
+              }),
+            },
+          },
+        ],
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+      }),
+    )
+    const result = await retimeChunk({
+      chunk: buildChunk(0, 10),
+      translatedText: "Hola",
+      targetLanguage: "es",
+      model: "fixture/model",
+      apiKey: "secret",
+      timeoutMs: 60_000,
+      deadlineAtMs: 2_000,
+      fetchImpl,
+    })
+    expect(result.fallbackUsed).toBe(true)
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    now.mockRestore()
   })
 })
 

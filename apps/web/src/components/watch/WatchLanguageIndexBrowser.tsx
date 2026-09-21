@@ -419,7 +419,7 @@ export function WatchLanguageIndexBrowser({
 
       <label className="relative mb-8 block w-full max-w-3xl">
         <Search
-          className="pointer-events-none absolute top-1/2 left-5 size-5 -translate-y-1/2 text-white/70"
+          className="pointer-events-none absolute top-1/2 left-5 z-10 size-5 -translate-y-1/2 text-white/70"
           aria-hidden="true"
         />
         <input
@@ -428,12 +428,12 @@ export function WatchLanguageIndexBrowser({
           onChange={(event) => setSearchValue(event.target.value)}
           placeholder={t("searchPlaceholder")}
           aria-label={t("searchLabel")}
-          className="h-14 w-full rounded-[35px] border border-white/10 bg-white/10 pr-12 pl-[3.25rem] text-base font-semibold text-white shadow-xl shadow-black/20 outline-none backdrop-blur-[10px] transition-colors placeholder:text-white/55 hover:bg-white/15 focus:border-white/35 focus:ring-2 focus:ring-white/40"
+          className="h-14 w-full appearance-none rounded-[35px] border border-white/10 bg-white/10 pr-12 pl-[3.25rem] text-base font-semibold text-white shadow-xl shadow-black/20 outline-none backdrop-blur-[10px] transition-colors placeholder:text-white/55 hover:bg-white/15 focus:border-white/35 focus:ring-2 focus:ring-white/40 [&::-webkit-search-cancel-button]:appearance-none"
         />
         {searchValue ? (
           <button
             type="button"
-            className="absolute top-1/2 right-3 flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-stone-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
+            className="absolute top-1/2 right-3 z-10 flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-stone-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
             onClick={() => setSearchValue("")}
             aria-label={t("clearSearch")}
           >

@@ -15,7 +15,10 @@ const caller = {
 
 function harness() {
   const rendered = new Map<string, { payloadDigest: string }>()
-  const impressions = new Map<string, { payloadDigest: string }>()
+  const impressions = new Map<
+    string,
+    { payloadDigest: string; receivedAt: Date }
+  >()
   const conflicts: object[] = []
   let selectionEligible = false
   const item = {
@@ -47,10 +50,16 @@ function harness() {
     },
     recommendationImpression: {
       findUnique: vi.fn(async () => impressions.get(item.id) ?? null),
-      create: vi.fn(async ({ data }: { data: { payloadDigest: string } }) => {
-        impressions.set(item.id, data)
-        return data
-      }),
+      create: vi.fn(
+        async ({
+          data,
+        }: {
+          data: { payloadDigest: string; receivedAt: Date }
+        }) => {
+          impressions.set(item.id, data)
+          return data
+        },
+      ),
     },
     recommendationSelection: {
       updateMany: vi.fn(async () => {
@@ -276,39 +285,57 @@ describe("RecommendationEvidenceService", () => {
     expect(classifySelection).toHaveBeenCalledBefore(dispatchProfileFeedback)
   })
 
-  it("repairs a pending selection when an already-committed impression is replayed", async () => {
-    const { service, item, impressions, tx, dispatchProfileFeedback } =
-      harness()
-    const replay = {
-      ...validInput,
-      events: [
-        {
-          ...validInput.events[0]!,
-          eventId: "impression-replay",
-          kind: "impression" as const,
-          payload: { visibilityPolicy: "watch-below-player-v1" },
-        },
-      ],
-    }
-    impressions.set(item.id, {
-      payloadDigest: recommendationEvidenceDigest(replay.events[0]!),
-    })
+  it.each([
+    {
+      impressionAt: "2026-04-20T02:59:00.000Z",
+      eligibleAt: "2026-04-20T03:00:00.000Z",
+    },
+    {
+      impressionAt: "2026-04-20T03:00:00.100Z",
+      eligibleAt: "2026-04-20T03:00:00.100Z",
+    },
+  ])(
+    "repairs a pending selection when impression receipt $impressionAt is replayed",
+    async ({ impressionAt, eligibleAt }) => {
+      const { service, item, impressions, tx, dispatchProfileFeedback } =
+        harness()
+      const replay = {
+        ...validInput,
+        events: [
+          {
+            ...validInput.events[0]!,
+            eventId: "impression-replay",
+            kind: "impression" as const,
+            payload: { visibilityPolicy: "watch-below-player-v1" },
+          },
+        ],
+      }
+      impressions.set(item.id, {
+        payloadDigest: recommendationEvidenceDigest(replay.events[0]!),
+        receivedAt: new Date(impressionAt),
+      })
 
-    await expect(service.record(replay)).resolves.toEqual([
-      { eventId: "impression-replay", status: "replay" },
-    ])
-    expect(tx.recommendationSelection.updateMany).toHaveBeenCalledWith({
-      where: {
-        requestId: "request-1",
-        itemId: "item-1",
-        attributionEligibleAt: null,
-      },
-      data: {
-        attributionEligibleAt: new Date("2026-04-20T03:00:00.000Z"),
-      },
-    })
-    expect(dispatchProfileFeedback).toHaveBeenCalledOnce()
-  })
+      await expect(service.record(replay)).resolves.toEqual([
+        { eventId: "impression-replay", status: "replay" },
+      ])
+      expect(tx.recommendationSelection.updateMany).toHaveBeenCalledWith({
+        where: {
+          requestId: "request-1",
+          itemId: "item-1",
+          attributionEligibleAt: null,
+        },
+        data: {
+          attributionEligibleAt: new Date(eligibleAt),
+        },
+      })
+      expect(dispatchProfileFeedback).toHaveBeenCalledOnce()
+      expect(dispatchProfileFeedback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          evidenceWatermark: new Date(eligibleAt),
+        }),
+      )
+    },
+  )
 
   it("preserves a rolled-back stored slate without granting it new exposure credit", async () => {
     const { service, item, tx } = harness()

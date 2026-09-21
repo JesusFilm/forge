@@ -764,6 +764,7 @@ export class RecommendationProfileService {
       | "recommendationProfileProjectionGeneration"
       | "recommendationProfileProjectionPointer"
       | "recommendationProfileProjectionRun"
+      | "recommendationViewingModeEvidence"
     >,
     profile: ActiveProfile,
     reason: "reset" | "withdraw" | "delete" | "expire",

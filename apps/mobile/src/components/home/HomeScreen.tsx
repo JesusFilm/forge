@@ -1,7 +1,7 @@
 /**
  * Curated Home tab (config via useWatchHome, not an Experience). Z-order:
- * heroLayer(0) → FlashList → heroInteractiveLayer(2, box-none chrome) →
- * HomeHeader(10). Chrome lives in the overlay (FlashList swallows hero taps).
+ * heroLayer(0) → FlashList → heroInteractiveLayer(2) → HomeHeader(10) →
+ * HomeLogo(11). Chrome sits in the overlay: FlashList swallows hero taps.
  */
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
@@ -35,6 +35,7 @@ import {
 } from "../../lib/color"
 import { useTabBarClearance } from "../../lib/tabBar"
 import { isSeriesLabel } from "../../lib/isSeriesRecord"
+import { nextHomeLogoHidden } from "../../lib/homeLogoVisibility"
 import { heroPlaybackPaused } from "../../lib/miniPlayer/heroYield"
 import { openExternalUrl } from "../../lib/openExternalUrl"
 import { getSplashSession } from "../../lib/splash/splashSession"
@@ -55,6 +56,7 @@ import {
   HomeHeroPager,
   type HomeHeroPagerHandle,
 } from "./HomeHeroPager"
+import { HomeLogo } from "./HomeLogo"
 import { HomeMissionSection } from "./HomeMissionSection"
 import { HomeShelf } from "./HomeShelf"
 
@@ -326,6 +328,7 @@ export function HomeScreen() {
   const [heroPaused, setHeroPaused] = useState(false)
   const [heroBlurOpacity, setHeroBlurOpacity] = useState(0)
   const [chromeOpacity, setChromeOpacity] = useState(1)
+  const [logoHidden, setLogoHidden] = useState(false)
 
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -333,6 +336,8 @@ export function HomeScreen() {
       swipeStateRef.current.scrollY = scrollY
       // Boolean state bails out of identical updates on its own.
       setHeroPaused(scrollY > heroHeight * 0.7)
+      // The scroll only triggers the logo; HomeLogo runs its own animation.
+      setLogoHidden((hidden) => nextHomeLogoHidden(hidden, scrollY))
       // Quantize the blur ramp to 1/20 steps so repeated identical values
       // bail out instead of re-rendering at 60fps.
       const blur = Math.min(1, Math.max(0, scrollY / (heroHeight * 0.5)))
@@ -476,6 +481,7 @@ export function HomeScreen() {
       )}
 
       <HomeHeader title={null} titleOpacity={0} homeVariant />
+      <HomeLogo topInset={insets.top} hidden={logoHidden} />
 
       <FlashList
         data={feedItems}

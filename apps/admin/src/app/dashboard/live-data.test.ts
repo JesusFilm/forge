@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const { prismaMock, videoListMock } = vi.hoisted(() => ({
   prismaMock: {
+    $queryRaw: vi.fn(),
     video: {
       findMany: vi.fn(),
     },
@@ -44,6 +45,7 @@ vi.mock("@/services", () => ({
 }))
 
 import {
+  loadExperienceEditorVideoRows,
   loadVideoCollectionChildren,
   loadVideoRows,
   videoIdsFromExperienceBlocks,
@@ -80,6 +82,46 @@ describe("dashboard live data", () => {
     prismaMock.videoRelation.findMany.mockResolvedValue([])
     prismaMock.videoStudyQuestion.findMany.mockResolvedValue([])
     prismaMock.bibleCitation.findMany.mockResolvedValue([])
+  })
+
+  it("uses the exclusive bounded path for exact editor ids without loading the default page", async () => {
+    prismaMock.$queryRaw.mockResolvedValueOnce([
+      {
+        videoId: "older-video",
+        coreId: "core-older",
+        slug: "older",
+        label: null,
+        videoSource: null,
+        updatedAt: now,
+        title: "Older Video",
+        description: null,
+        previewImageUrl: null,
+        playableLanguageCount: 0n,
+        defaultDubId: null,
+        chipDubIds: [],
+        authoredDubIds: [],
+        childCount: 0n,
+        collectionPreviewItems: [],
+        hasGrounding: false,
+      },
+    ])
+
+    const rows = await loadExperienceEditorVideoRows(principal, {
+      exactVideoIds: ["older-video"],
+      preferredLocale: "en",
+    })
+
+    expect(videoListMock).not.toHaveBeenCalled()
+    expect(prismaMock.video.findMany).not.toHaveBeenCalled()
+    expect(prismaMock.$queryRaw).toHaveBeenCalledOnce()
+    expect(rows).toEqual([
+      expect.objectContaining({
+        key: "older-video",
+        playableDubs: [],
+        playableLanguageCount: 0,
+        dubInventory: { status: "not-loaded" },
+      }),
+    ])
   })
 
   it("extracts video ids from nested experience blocks", () => {

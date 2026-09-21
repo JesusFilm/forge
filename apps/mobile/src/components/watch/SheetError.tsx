@@ -41,7 +41,7 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: 15,
     textAlign: "center",
-    lineHeight: 21,
+    lineHeight: 19,
   },
   retryButton: {
     paddingHorizontal: 24,

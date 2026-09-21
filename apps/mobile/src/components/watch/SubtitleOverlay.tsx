@@ -11,6 +11,7 @@ import { useEvent } from "expo"
 
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { datadogLog } from "../../lib/datadog"
+import { LINE_HEIGHT_REDUCTION } from "../../lib/lineHeight"
 import { parseVtt, type VttCue } from "../../lib/parseVtt"
 import { validateActionUrl } from "../../lib/validateUrl"
 import { validateLocalMediaUrl } from "../../lib/validateLocalMediaUrl"
@@ -247,7 +248,7 @@ export function SubtitleOverlay({
           styles.text,
           {
             fontSize,
-            lineHeight: Math.round(fontSize * 1.3),
+            lineHeight: Math.round(fontSize * 1.3) - LINE_HEIGHT_REDUCTION,
             paddingVertical: Math.round(fontSize * 0.3),
             paddingHorizontal: Math.round(fontSize * 0.65),
           },

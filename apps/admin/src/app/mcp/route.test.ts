@@ -261,6 +261,19 @@ describe("Admin MCP route", () => {
       expect(tool?.description).toContain("preserve unrelated blocks")
       expect(tool?.description).toContain("short-videos")
       expect(tool?.description).toContain("christmas")
+      expect(tool?.description).toContain("eyebrow?:string")
+      expect(tool?.description).toContain("title?:string")
+      expect(tool?.description).toContain("description?:string")
+      expect(tool?.description).toContain("ctaLabel?:string")
+      expect(tool?.description).toContain("80/160/500/80")
+      expect(tool?.description).toContain("literal locale-owned overrides")
+      expect(tool?.description).toContain(
+        "blank or whitespace-only restores that field's translated default",
+      )
+      expect(tool?.description).toContain("CTA destination is not authorable")
+      expect(tool?.description).toContain(
+        "copy fields, tiles, categoryIds compatibility mirror, and their order",
+      )
     }
   })
 

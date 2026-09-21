@@ -89,7 +89,10 @@
     },
     "patchedDependencies": {
       "react-native-tvos@0.81.5-2": "patches/react-native-tvos@0.81.5-2.patch",
-      "@datadog/mobile-react-native@3.5.2": "patches/@datadog__mobile-react-native@3.5.2.patch"
+      "@datadog/mobile-react-native@3.5.2": "patches/@datadog__mobile-react-native@3.5.2.patch",
+      "@fortedigital/nextjs-cache-handler@3.2.1": "patches/@fortedigital__nextjs-cache-handler@3.2.1.patch",
+      "@workflow/world-postgres@4.1.1": "patches/@workflow__world-postgres@4.1.1.patch",
+      "@datadog/pprof@5.15.0": "patches/@datadog__pprof@5.15.0.patch"
     }
   },
   "devDependencies": {

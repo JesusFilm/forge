@@ -1870,6 +1870,16 @@ migration for any contraction. The complete activation, health, rotation,
 purge, recovery, rollback, redaction, and isolated-preview procedure is in
 `docs/operations/semantic-recommendation-tracer.md`.
 
+Source-free `UserRecommendationDeliveryService` fills profile shortfalls from
+`CuratedPoolsService`. Its runtime metadata lookup is
+`src/services/recommendations/curated-pools.runtime.ts`: one bounded SQL snapshot
+for the active generation, exact locale/audio pools, interest membership and
+editorial ranks. Keep publication/playback/artwork/identity hydration live on
+every request; do not cache that eligibility or reintroduce serial metadata
+reads inside the 1.5-second delivery budget. The real-Postgres lifecycle test
+pins five native SQL statements for cold retrieval. See
+`docs/solutions/performance-issues/curated-fallback-serial-metadata-reads-exhaust-budget-20260915.md`.
+
 ## Scene recommendations (R5 of admin migration playbook)
 
 Admin owns public scene-similarity recommendations — given a seed video
@@ -1886,7 +1896,7 @@ shape drift.
   Constants ported from cms: `DEFAULT_LIMIT = 10`, `MAX_LIMIT = 50`,
   `OVERFETCH_FACTOR = 3`.
 - **Retriever:** `src/services/scene-recommendations-retriever.ts`
-  exports four `$queryRaw` helpers:
+  provides these retrieval helpers:
   - `resolveSlugToVideoId(slug)` — non-deleted `video.slug` → cuid.
   - `fetchInputEmbeddings(videoId, locale, sceneIndex?)` — per-chunk or
     per-video transcript input embeddings in the requested locale. The
@@ -1903,14 +1913,22 @@ shape drift.
     dub/mux so rows without a resolvable playback are filtered out
     (preserves cms's non-null `playbackId` contract; distinct from hybrid
     search which uses LEFT JOIN).
+  - `queryScenesSimilarMany(queryEmbeddings, locale, excludeIds, limit)` —
+    exact multi-seed search with materialized eligible chunks, preferred dubs
+    and parsed vectors. Keep vector parsing materialized: inlining the cast
+    repeats it for every candidate comparison. Per-seed limits precede the
+    best-per-video union; all seed chunks remain represented.
 - **Dedup:** 3-layer video dedup (coreId prefix, exact title, embedding
   cosine > 0.95) via the shared `dedupeByVideoIdentity` primitive in
   `src/services/video-dedup.ts`. Same primitive R4 hybrid-search uses.
 - **Per-scene vs per-video modes.** Per-scene (sceneIndex provided OR
   seed has one scene) runs one similarity query with
   `limit * OVERFETCH_FACTOR` overfetch. Per-video (seed has multiple
-  scenes) queries each scene, merges best-similarity-per-candidate,
-  then dedups. Ported verbatim from cms's `getRecommendations`.
+  scenes) uses `queryScenesSimilarMany` to preserve the per-scene limit and
+  best-similarity-per-candidate rule in one statement, then dedups. Verify
+  compatibility against the single-seed loop with
+  `src/services/scene-recommendations-batch.db.test.ts` and representative
+  catalog inputs when changing this query.
 - **Identity delta from cms.** `videoId` on the response is a **cuid
   `ID!`** (not cms's `Int!`). apps/web's renderer uses it only as a
   React key, so the cutover is a one-line TypeScript-type update on
@@ -2825,6 +2843,144 @@ seed:first-party-apps` (updates the `scope` table + stored client scopes),
   `plugins/jfp-admin/skills/forge-bulk-locale-factory/SKILL.md` (also the
   `resource_documentation` target). Fan-out (many topics/languages) stays in
   the client agent loop; there are no bulk server operations.
+
+## Subtitle Quality Lab ledger and access operations
+
+Admin owns the durable Subtitle Quality Lab ledger: frozen corpus identities,
+mutable leased runs/cells, immutable terminal reports and provider-call rows,
+assignments, append-only human reviews, reference issues, comparisons,
+experiment narratives, and access audit events. Manager owns the artifact
+bytes and orchestration; Mastra owns provider execution. None of the Lab
+mutations writes `VideoSubtitle`, changes a production prompt/model, publishes
+content, deploys code, or changes git state.
+
+### Reviewer provisioning and revocation
+
+Reviewer identity is an existing Auth identity represented by an Admin `User`.
+Invitation and account creation are deliberately outside this feature. The
+current provisioning boundary is the Admin-only
+`grantReviewerLanguageAccess` service in
+`src/services/user-access.service.ts`; there is no contributor self-service or
+in-product grant UI yet. An authorized administrator must record:
+
+- the exact active Admin `Language.id` (Admin resolves and records its current
+  non-empty `Language.slug`; BCP-47 is display/runtime metadata, not authority);
+- bounded target-language proficiency evidence and, when relevant,
+  source-language proficiency evidence;
+- a grant reason and the permitted rubric dimensions; a standard assignment
+  requires `MEANING_ACCURACY`, `NATURALNESS`, and `TIMING_READABILITY`;
+- `SCRIPTURE_THEOLOGY` only together with an explicit scripture or theology
+  specialist capability. Specialist assignments additionally require the
+  matching capability/dimension at assignment time.
+
+Granting the first language creates or reactivates a
+`ManagerRole.REVIEWER` membership. An active operator cannot be silently
+converted to a reviewer. Updating a grant increments its qualification
+version, and every grant/revocation writes an immutable
+`ManagerAccessAuditEvent`. Revoke one language with
+`revokeReviewerLanguageAccess`; revoke the whole membership with
+`revokeManagerAccess`. Existing assignment/review evidence remains in the
+ledger, but the next session, queue, detail, video, artifact, or submission
+request revalidates membership plus exact language grant and becomes
+inaccessible. Never delete ledger rows to simulate revocation.
+
+Manager-to-Admin service calls should use the Auth client-credentials grant
+with both `admin:manager-session:validate` and `admin:manager-backend` against
+the fixed Admin session audience. Human submissions require more than that
+service credential: Manager signs a 90-second Ed25519 session proof bound to
+the interactive actor, assignment or operation, HTTP method, canonical body
+digest, nonce, environment, and audience; Admin revalidates the live
+membership/grant/assignment and consumes the proof once. Configure the same
+`SUBTITLE_REVIEW_ASSERTION_ENVIRONMENT` in both services. Manager holds
+`SUBTITLE_REVIEW_SESSION_KEY_ID` plus the PKCS8 private key; Admin holds only a
+JSON `SUBTITLE_REVIEW_SESSION_PUBLIC_KEYS` keyring mapping the key ID to the
+SPKI public key. Rotate receiver-first: add the new Admin public key, switch
+Manager's signer, wait longer than the 120-second maximum accepted proof
+lifetime, then remove the retired public key.
+
+### Corpus certification and run admission
+
+Manager's corpus activation path accepts only the packaged manifest and lock,
+requires exact Core-to-Admin language mappings, rejects redirects or byte/hash
+drift, clips each VTT to the pinned cut, and writes content-addressed immutable
+source/reference bytes before importing the Admin version as `PROVISIONAL`.
+The committed five-case corpus remains provisional until a human curator
+confirms human authorship, exact edition/cut and synchronization, target
+language identity, reference quality, and benchmark reuse authority.
+
+Approval is a compare-and-set operation over the exact version. Certification
+schema v1 requires the stored authority, source/reference verified counts equal
+to the cell count, `humanAuthorshipConfirmed=true`,
+`languageIdentityConfirmed=true`, a curator-supplied timestamp, and optional
+bounded notes. Any open reference issue blocks effective approval. An accepted
+reference correction must create a new frozen version whose
+`supersedesVersionId` points to the affected version; it never edits a snapshot
+or prior review.
+
+Only an effectively approved corpus can admit a run. Source-controlled ceilings
+are 20 cells, at most 80 cues/64 provider calls per cell, concurrency 1-3, one
+absolute 60-600 second deadline per cell, two attempts, two active runs per
+operator, four active runs globally, 64,000,000 spend micros per run, and
+256,000,000 spend micros per rolling 24 hours. Production must
+set `SUBTITLE_EVAL_MONTHLY_BUDGET_USD` (dollars). Deployment values may lower
+spend/active-run ceilings but cannot raise the source ceilings; the reservation
+per cell-attempt is raised to at least 1,600,000 spend micros (64 calls at a
+source-controlled 25,000-micro reservation). Admin derives the
+reservation as `cells * maxAttempts * reservationPerCellAttemptMicros`; the
+browser never supplies trusted spend. Missing or non-positive production
+configuration rejects admission before paid dispatch.
+
+Every accepted run exists in Admin before Manager dispatch. Lease generation
+and token hashes fence cell completion and recovery. Terminalization derives
+`COMPLETED`, `PARTIAL`, or `FAILED` from all cells and inserts exactly one
+immutable report with corpus/runtime identities, metrics, usage, artifact
+inventory, partial failures, reproducibility limits, and the ordered
+OpenRouter call vector. A replay must match the original report identity.
+
+### Contributor data and retention gate
+
+The current schema deliberately makes human reviews, audit events, provider
+calls, reports, and corpus evidence append-only/immutable, and there is no
+Subtitle Quality Lab TTL, purge job, pseudonymization job, or reviewer-erasure
+workflow. Therefore current effective retention is indefinite for Admin rows
+and Manager content-addressed objects. Identifiable data includes the Auth/Admin
+user and membership link, proficiency evidence, grant/revocation reasons,
+assignment and submission timestamps, scores, issue/critical flags, notes, and
+corrections. Review notes must not contain contact details or unrelated personal
+information. Reviewer-written evidence is not sent to OpenRouter or API.Bible;
+provider work occurs before human review.
+
+Before production contributor onboarding, the product/privacy owner must choose
+and document retention periods for identity/qualification evidence, free-text
+review content, audit/experiment evidence, and VTT artifacts; decide whether
+reports should retain a stable pseudonym instead of a live membership link;
+define contributor notice/consent and access/export/correction/erasure handling;
+and reconcile erasure with immutable benchmark evidence. Until that policy and
+its enforcement job exist, treat the Lab as a non-production developmental
+benchmark and do not promise deletion behavior the code cannot perform.
+
+### Admin validation and release boundary
+
+From the repository root, validate the Admin-owned contract with:
+
+```bash
+pnpm --filter @forge/admin db:generate
+pnpm --filter @forge/admin schema:print
+pnpm --filter @forge/admin test
+pnpm --filter @forge/admin lint
+pnpm --filter @forge/admin typecheck
+pnpm --filter @forge/admin-graphql generate
+pnpm --filter @forge/admin-graphql test
+pnpm --filter @forge/admin-graphql lint
+pnpm --filter @forge/admin-graphql typecheck
+```
+
+Generation is local validation, not migration authority. Do not run
+`db:migrate:deploy`, apply migration `0052_subtitle_quality_lab`, deploy,
+provision production reviewers, or publish/promote anything without explicit
+owner approval. Never hand-edit `apps/admin/schema.graphql` or
+`packages/admin-graphql/src/admin-graphql-env.d.ts`; regenerate both after an
+Admin Pothos schema change.
 
 ## Common pitfalls (grows with each unit)
 

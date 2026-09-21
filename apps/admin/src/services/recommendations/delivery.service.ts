@@ -63,6 +63,12 @@ import {
   type PreparedCandidate,
 } from "./delivery-candidate-mapping"
 import { issueRecommendationDelivery } from "./delivery-issuance"
+import { SEEDED_CURATED_FALLBACK_VERSION } from "./curated-fallback"
+import type { ViewingModeAffinity } from "./viewing-mode"
+import { lockViewingModeAuthority } from "./viewing-mode.service"
+import { lockProfileUsefulnessAssignment } from "./experiment/usefulness-routing"
+import { HYBRID_PERSONALIZED_MANIFEST_ID } from "./promotion/manifest"
+import { nominationEligibilityReasons } from "./eligibility"
 
 export type {
   RecommendationPersonalizationDelivery,
@@ -321,11 +327,113 @@ export class RecommendationDeliveryService {
         }
       }
 
+      const [legacyExperiment, profileResolution, profileTokenDigest] =
+        await Promise.all([
+          experimentPromise,
+          profilePromise,
+          profileTokenDigestPromise,
+        ])
       const context = {
         surface: RECOMMENDATION_CONTRACTS.surface,
         purpose: "watch" as const,
         locale,
         audioLanguageSlug,
+      }
+      let experiment = legacyExperiment
+      let profileComparison = false
+      let comparisonHistory: RecommendationRecentContext | null = null
+      if (
+        profileTokenDigest &&
+        this.deps.assignProfileExperiment &&
+        input.eligibleHuman !== false &&
+        locale === "en" &&
+        audioLanguageSlug === "english"
+      ) {
+        const semanticNominations = adaptSemanticCandidates(
+          candidates,
+          context,
+        ).nominations
+        const eligible = (nomination: (typeof semanticNominations)[number]) =>
+          nomination.targetMediaId !== seedMediaId &&
+          nominationEligibilityReasons(nomination, context).length === 0
+        const eligibleForEnrollment =
+          profileResolution.profile?.projection.scope === "durable" &&
+          profileResolution.profile.projection.interestCount > 0 &&
+          semanticNominations.some(eligible) &&
+          profileResolution.profile.nominations.some(eligible)
+        try {
+          experiment = await withinDeadline(
+            () =>
+              this.deps.assignProfileExperiment!({
+                sessionDigest: input.sessionDigest,
+                profileTokenDigest,
+                eligibleForEnrollment,
+                now,
+                deadlineAt: candidateDeadlineAt,
+              }),
+            candidateDeadlineAt,
+            nowMilliseconds,
+          )
+        } catch {
+          experiment = {
+            assignment: null,
+            bypassReason: "assignment_unavailable",
+          }
+        }
+        profileComparison = experiment.assignment != null
+        if (profileComparison) {
+          // Both arms share the same history and measurement policies. Do not
+          // add sound-mode re-ranking to these exact semantic/hybrid manifests.
+          if (!this.deps.resolveRecentContext)
+            return unavailable("recent_context_unavailable")
+          comparisonHistory = await withinDeadline(
+            () =>
+              this.deps.resolveRecentContext!({
+                sessionDigest: input.sessionDigest,
+                profileTokenDigest,
+                allowDurableProfileLinks: true,
+                now,
+                deadlineAt: candidateDeadlineAt,
+              }),
+            candidateDeadlineAt,
+            nowMilliseconds,
+          )
+        }
+      }
+      let viewingMode: ViewingModeAffinity | null = null
+      if (
+        profileTokenDigest &&
+        !profileComparison &&
+        this.deps.loadViewingModeAffinity
+      ) {
+        try {
+          const modeDeadlineAt = Math.min(
+            candidateDeadlineAt,
+            nowMilliseconds() + 150,
+          )
+          viewingMode = await withinDeadline(
+            () =>
+              this.deps.loadViewingModeAffinity!({
+                profileTokenDigest,
+                mediaIds: mergeBoundedHybridNominations(
+                  adaptSemanticCandidates(candidates, {
+                    surface: RECOMMENDATION_CONTRACTS.surface,
+                    purpose: "watch",
+                    locale,
+                    audioLanguageSlug,
+                  }).nominations,
+                  profileResolution.profile?.nominations ?? [],
+                ).map((candidate) => candidate.targetMediaId),
+                now,
+                deadlineAt: modeDeadlineAt,
+              }),
+            modeDeadlineAt,
+            nowMilliseconds,
+          )
+        } catch {
+          // Sparse or unavailable mode evidence preserves ordinary relevance.
+          viewingMode = null
+        }
       }
       const orchestrate = this.deps.orchestrate ?? runSemanticCandidatePlatform
       let platform: CandidatePlatformResult
@@ -334,10 +442,14 @@ export class RecommendationDeliveryService {
       let candidateRunFallbackReason = reason
       try {
         platform = orchestrate({
+          viewingMode,
           candidates,
           context,
           limit: manifest.maxItems,
-          composition: { currentVideoId: seedMediaId },
+          composition: {
+            currentVideoId: seedMediaId,
+            recentVideos: comparisonHistory?.videos,
+          },
         })
         if (retrievalFailureReason) {
           platform = appendSourceFailureEvidence(
@@ -415,17 +527,12 @@ export class RecommendationDeliveryService {
         reason = "no_candidates"
         candidateRunFallbackReason = reason
       }
-      const [experiment, profileResolution, profileTokenDigest] =
-        await Promise.all([
-          experimentPromise,
-          profilePromise,
-          profileTokenDigestPromise,
-        ])
       let personalization: RecommendationPersonalizationDelivery = {
         contractVersion: "anonymous-profile-personalization-v1",
         lane: "semantic_control",
         executionMode: "semantic_contextual",
-        effectiveManifestId: manifest.id,
+        effectiveManifestId:
+          experiment.assignment?.effectiveManifestId ?? manifest.id,
         profileState: null,
         projectionVersion: null,
         projectionGeneration: null,
@@ -448,7 +555,15 @@ export class RecommendationDeliveryService {
           reason: "profile_cold_start",
         }
       }
-      if (profileTokenDigest != null && !profileColdStart) {
+      const useProfileRanking =
+        !profileComparison ||
+        experiment.assignment?.effectiveManifestId ===
+          HYBRID_PERSONALIZED_MANIFEST_ID
+      if (
+        profileTokenDigest != null &&
+        !profileColdStart &&
+        useProfileRanking
+      ) {
         try {
           if (!profileResolution.profile) {
             throw new RecommendationInternalStateError(
@@ -471,9 +586,10 @@ export class RecommendationDeliveryService {
             candidates,
             context,
           ).nominations
-          let recentContext: RecommendationRecentContext = { videos: [] }
+          let recentContext: RecommendationRecentContext =
+            comparisonHistory ?? { videos: [] }
           let recentContextFailureReason: string | null = null
-          if (this.deps.resolveRecentContext) {
+          if (this.deps.resolveRecentContext && !comparisonHistory) {
             try {
               recentContext = await withinDeadline(
                 () =>
@@ -502,6 +618,7 @@ export class RecommendationDeliveryService {
           let hybridPlatform: CandidatePlatformResult
           try {
             hybridPlatform = orchestrateHybrid({
+              viewingMode,
               nominations: mergeBoundedHybridNominations(
                 semanticNominations,
                 profile.nominations,
@@ -556,7 +673,8 @@ export class RecommendationDeliveryService {
             contractVersion: "anonymous-profile-personalization-v1",
             lane: "profile_challenger",
             executionMode: "hybrid_personalized",
-            effectiveManifestId: manifest.id,
+            effectiveManifestId:
+              experiment.assignment?.effectiveManifestId ?? manifest.id,
             profileState: profile.projection.scope ?? "session",
             projectionVersion: profile.projection.projectionVersion,
             projectionGeneration: profile.projection.generation ?? null,
@@ -593,6 +711,80 @@ export class RecommendationDeliveryService {
           }
         }
       }
+      if (
+        selected.length === 0 &&
+        this.deps.retrieveCuratedFallback &&
+        this.deps.resolveRecentContext
+      ) {
+        const emptyReason = reason ?? "no_candidates"
+        try {
+          const recent = await withinDeadline(
+            () =>
+              this.deps.resolveRecentContext!({
+                sessionDigest: input.sessionDigest,
+                profileTokenDigest,
+                allowDurableProfileLinks: profileTokenDigest != null,
+                now,
+                deadlineAt: candidateDeadlineAt,
+              }),
+            candidateDeadlineAt,
+            nowMilliseconds,
+          )
+          const nominations = await withinDeadline(
+            () =>
+              this.deps.retrieveCuratedFallback!({
+                seedMediaId,
+                locale,
+                audioLanguageSlug,
+                excludedMediaIds: recent.videos.map(
+                  (video) => video.targetMediaId,
+                ),
+                deadlineAt: candidateDeadlineAt,
+              }),
+            candidateDeadlineAt,
+            nowMilliseconds,
+          )
+          const fallbackPlatform = runCandidatePlatform({
+            nominations,
+            context,
+            limit: manifest.maxItems,
+            generatorVersion: SEEDED_CURATED_FALLBACK_VERSION,
+            composition: { currentVideoId: seedMediaId },
+          })
+          const fallback = preparedCandidatesFromPlatform(fallbackPlatform)
+          if (fallback.length > 0) {
+            platform = appendSourceFailureEvidence(
+              fallbackPlatform,
+              emptyReason,
+              "semantic",
+            )
+            selected = fallback
+            result = "fallback"
+            reason = emptyReason
+            candidateRunFallbackReason = emptyReason
+            evidenceComplete = false
+            personalization = {
+              ...personalization,
+              lane: "semantic_fallback",
+              executionMode: "curated_fallback",
+              profileState: null,
+              projectionVersion: null,
+              projectionGeneration: null,
+              interestCount: 0,
+              sessionIntentPresent: false,
+              reason: emptyReason,
+            }
+          }
+        } catch {
+          // The original empty/unavailable result survives a slow or missing
+          // approved pool. Neither retrieval nor fallback can delay Watch.
+          platform = appendSourceFailureEvidence(
+            platform,
+            "curated_fallback_unavailable",
+            "curated",
+          )
+        }
+      }
       const newId = this.deps.newId ?? randomUUID
       const requestId = newId()
       const candidateRunId = newId()
@@ -603,6 +795,19 @@ export class RecommendationDeliveryService {
       const deliveryExpiresAt = new Date(
         now.getTime() + DELIVERY_CAPABILITY_LIFETIME_SECONDS * 1_000,
       )
+      if (
+        viewingMode &&
+        platform.versions.ranker === "viewing-mode-affinity-v1" &&
+        selected.length > 0
+      ) {
+        personalization = {
+          ...personalization,
+          lane: "profile_challenger",
+          executionMode: "viewing_mode_personalized",
+          profileState: "durable",
+          reason: "viewing_mode_preference",
+        }
+      }
       const prepared = selected.map((selectedCandidate, position) => ({
         ...selectedCandidate,
         id: newId(),
@@ -639,6 +844,28 @@ export class RecommendationDeliveryService {
           this.deps.prisma,
           issuanceDeadlineAt,
           async (tx) => {
+            if (
+              profileComparison &&
+              experiment.assignment &&
+              profileTokenDigest
+            ) {
+              await lockProfileUsefulnessAssignment(tx, {
+                assignment: experiment.assignment,
+                profileTokenDigest,
+                now: this.deps.now?.() ?? new Date(),
+              })
+            }
+            if (
+              viewingMode &&
+              profileTokenDigest &&
+              platform.versions.ranker === "viewing-mode-affinity-v1"
+            ) {
+              await lockViewingModeAuthority(tx, {
+                affinity: viewingMode,
+                profileTokenDigest,
+                now: this.deps.now?.() ?? new Date(),
+              })
+            }
             await tx.recommendationRequest.create({
               data: {
                 id: requestId,
@@ -689,7 +916,10 @@ export class RecommendationDeliveryService {
                       candidateGenerator: selectedCandidateGenerator(sources),
                       candidateProvenance: {
                         sceneIndex: candidate.sceneIndex,
-                        similarity: candidate.similarity,
+                        similarity:
+                          selectedCandidateGenerator(sources) === "curated"
+                            ? null
+                            : candidate.similarity,
                         sources: sources.map((source) => ({
                           generator: source.generator,
                           generatorVersion: source.generatorVersion,
@@ -702,6 +932,23 @@ export class RecommendationDeliveryService {
                         rrfBenchmark,
                         deterministicScore,
                         deterministicRankerVersion: platform.versions.ranker,
+                        viewingMode:
+                          platform.versions.ranker ===
+                          "viewing-mode-affinity-v1"
+                            ? {
+                                version: viewingMode?.version ?? null,
+                                soundOffPreference:
+                                  viewingMode?.soundOffPreference ?? null,
+                                confidence: viewingMode?.confidence ?? null,
+                                qualifiedVideos:
+                                  viewingMode?.qualifiedVideos ?? 0,
+                                candidate:
+                                  viewingMode?.candidates.find(
+                                    (value) =>
+                                      value.mediaId === candidate.videoId,
+                                  ) ?? null,
+                              }
+                            : null,
                         eligibilityVersion: CANDIDATE_ELIGIBILITY_VERSION,
                         composerVersion: platform.versions.composer,
                       },

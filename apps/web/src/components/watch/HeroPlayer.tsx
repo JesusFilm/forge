@@ -61,7 +61,10 @@ import {
   type WatchPlayerChromeVisibilityDetail,
   type WatchPlayerPlaybackStateDetail,
 } from "@/lib/watch-player-chrome-events"
-import { isWatchHeroObscured } from "@/lib/watch-hero-scroll-cover"
+import {
+  isWatchHeroObscured,
+  watchHeroVisibleFraction,
+} from "@/lib/watch-hero-scroll-cover"
 import {
   HERO_PREVIEW_BODY_OVERLAP_EXTRA_PX,
   HERO_PREVIEW_BODY_OVERLAP_MAX_PX,
@@ -165,7 +168,7 @@ function formatHeroRuntime(
   }).format(minutes)
 }
 
-function subscribeViewerId(_onStoreChange: () => void): () => void {
+function subscribeClientSnapshot(_onStoreChange: () => void): () => void {
   return () => {}
 }
 
@@ -333,6 +336,7 @@ export function HeroPlayer({
   block,
   onPlayerReady,
   onPlayerActivated,
+  onPlayerViewabilityChange,
   onLanguageClick,
   onShareClick,
   languageSlug,
@@ -349,6 +353,7 @@ export function HeroPlayer({
   block: WatchHeroPlayerBlock
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   onPlayerActivated?: (initiation: "manual" | "automatic") => void
+  onPlayerViewabilityChange?: (visible: boolean) => void
   onLanguageClick?: () => void
   onShareClick?: () => void
   languageSlug?: string | null
@@ -373,7 +378,13 @@ export function HeroPlayer({
   const searchParams = useSearchParams()
   const router = useRouter()
   const tParam = searchParams?.get("t")
-  const autoplayParam = searchParams?.get("autoplay")
+  // force-static caches the poster layout without query parameters. Match it
+  // during hydration, then apply the arrival's autoplay intent immediately.
+  const autoplayParam = useSyncExternalStore(
+    subscribeClientSnapshot,
+    () => searchParams?.get("autoplay") ?? null,
+    () => null,
+  )
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const playerRef = useRef<MuxPlayerRef | null>(null)
   const [player, setPlayer] = useState<MuxPlayerRef | null>(null)
@@ -1008,6 +1019,7 @@ export function HeroPlayer({
     let ticking = false
     let rafHandle = 0
     let prevCovered: boolean | null = null
+    let prevViewable: boolean | null = null
     const evaluate = () => {
       ticking = false
       rafHandle = 0
@@ -1039,11 +1051,17 @@ export function HeroPlayer({
           : heroHeight - bodyOverlap - window.scrollY
       // The wrapper is pinned at the viewport top here, so the body's
       // viewport-relative top is already its distance from the hero's top.
-      const covered = isWatchHeroObscured({
+      const geometry = {
         heroHeight,
         viewportHeight,
         bodyTopFromHeroTop: bodyTopInViewport,
-      })
+      }
+      const viewable = watchHeroVisibleFraction(geometry) >= 0.5
+      if (viewable !== prevViewable) {
+        prevViewable = viewable
+        onPlayerViewabilityChange?.(viewable)
+      }
+      const covered = isWatchHeroObscured(geometry)
       if (covered === prevCovered) return
       prevCovered = covered
       if (covered) {
@@ -1084,11 +1102,12 @@ export function HeroPlayer({
       // cleanup with the previous heroHeight (and trigger a wrong
       // pause/play on the player).
       if (rafHandle !== 0) cancelAnimationFrame(rafHandle)
+      onPlayerViewabilityChange?.(false)
     }
-  }, [chromeRevealed, heroHeight, player])
+  }, [chromeRevealed, heroHeight, player, onPlayerViewabilityChange])
 
   const viewerUserId = useSyncExternalStore(
-    subscribeViewerId,
+    subscribeClientSnapshot,
     getViewerId,
     getViewerIdServerSnapshot,
   )

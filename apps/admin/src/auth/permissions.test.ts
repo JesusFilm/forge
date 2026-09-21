@@ -32,6 +32,11 @@ const MANAGER_OPERATOR_ADMIN: Principal = {
   role: "ADMIN",
   managerRole: "OPERATOR",
 }
+const MANAGER_REVIEWER_VIEWER: Principal = {
+  id: "reviewer-1",
+  role: "VIEWER",
+  managerRole: "REVIEWER",
+}
 const SYSTEM: Principal = { id: null, role: "SYSTEM" }
 
 /**
@@ -51,6 +56,7 @@ const PERMISSION_KEY_REGISTRY: Record<PermissionKey, true> = {
   "read:manager-read-models": true,
   "read:manager-seo": true,
   "read:manager-seo-audit-detail": true,
+  "read:manager-subtitle-eval": true,
   "read:manager-watch-route-alerts": true,
   "read:recommendation-aggregates": true,
   "read:recommendation-traces": true,
@@ -68,6 +74,7 @@ const PERMISSION_KEY_REGISTRY: Record<PermissionKey, true> = {
   "delete:watch-progress:own": true,
   "write:manager-enrichment-trigger": true,
   "write:manager-jobs": true,
+  "write:manager-subtitle-eval": true,
   "delete:media-assets": true,
   "publish:experiences": true,
   "archive:experiences": true,
@@ -258,6 +265,43 @@ describe("hasPermission — Manager membership gate", () => {
     expect(hasPermission(ADMIN, "access:manager")).toBe(false)
     expect(hasPermission(MANAGER_OPERATOR_ADMIN, "access:manager")).toBe(true)
   })
+
+  it("does not grant operator panel access to reviewer memberships", () => {
+    expect(hasPermission(MANAGER_REVIEWER_VIEWER, "access:manager")).toBe(false)
+  })
+
+  // REVIEWER is the one narrow principal without its own exhaustive walk.
+  // Asserting the single `access:manager` key above would still pass if a
+  // future edit routed some other permission off `managerRole` — this pins the
+  // real invariant: a REVIEWER membership grants NOTHING beyond the editorial
+  // role the principal already had.
+  it.each([
+    ["VIEWER", "VIEWER"],
+    ["EDITOR", "EDITOR"],
+    ["ADMIN", "ADMIN"],
+  ] as const)(
+    "grants a %s reviewer membership nothing beyond its editorial role",
+    (_label, role) => {
+      const withMembership: Principal = {
+        id: "reviewer-1",
+        role,
+        managerRole: "REVIEWER",
+      }
+      const withoutMembership: Principal = { id: "reviewer-1", role }
+
+      // Both sides of the comparison below come from the function under test,
+      // so a globally-false `hasPermission` would satisfy it. Anchor on a
+      // grant the reference principal must have before comparing.
+      expect(hasPermission(withoutMembership, "read:experiences")).toBe(true)
+
+      for (const key of ALL_PERMISSION_KEYS) {
+        expect(
+          hasPermission(withMembership, key),
+          `reviewer membership changed the ${role} grant for ${key}`,
+        ).toBe(hasPermission(withoutMembership, key))
+      }
+    },
+  )
 })
 
 describe("hasPermission — Manager backend bearer gate", () => {
@@ -268,6 +312,12 @@ describe("hasPermission — Manager backend bearer gate", () => {
     expect(hasPermission(MANAGER_BACKEND_PRINCIPAL, "write:manager-jobs")).toBe(
       true,
     )
+    expect(
+      hasPermission(MANAGER_BACKEND_PRINCIPAL, "read:manager-subtitle-eval"),
+    ).toBe(true)
+    expect(
+      hasPermission(MANAGER_BACKEND_PRINCIPAL, "write:manager-subtitle-eval"),
+    ).toBe(true)
     expect(hasPermission(MANAGER_BACKEND_PRINCIPAL, "access:manager")).toBe(
       false,
     )
@@ -711,8 +761,10 @@ describe("permission matrix completeness", () => {
         "read:manager-read-models",
         "read:manager-seo",
         "read:manager-seo-audit-detail",
+        "read:manager-subtitle-eval",
         "read:manager-watch-route-alerts",
         "write:manager-jobs",
+        "write:manager-subtitle-eval",
       ])
       for (const key of ALL_PERMISSION_KEYS) {
         const expected = allowedKeys.has(key)

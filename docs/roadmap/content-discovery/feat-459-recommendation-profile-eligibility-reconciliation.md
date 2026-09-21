@@ -112,3 +112,76 @@ for snapshot populations, concurrency-fence outcomes and receipt verification.
 The fresh production invariant is now evidenced. Keep this ticket in progress
 because its feat-464 transport acceptance dependency remains open; this audit
 does not enable ranking or satisfy feat-447's separate browser lifecycle gate.
+
+## Fresh audit and Admin evidence correction — September 21
+
+The [complete read-only snapshot](../../operations/watch-profile-audit-2026-09-21.md)
+at September 20 21:52:32.710 UTC checked 167,029 live current pointers with the
+unchanged canonical lineage predicate and found zero ineligible pointers. Bounded
+cursor fetches completed the full population without relaxing the five-second
+statement guard. The transaction was rolled back and its connection closed.
+
+The same investigation proved the Admin clean-hybrid count used an impossible
+lane value and omitted 3,508 actual hybrid decisions in the fixed review window.
+The correction counts `execution_mode = 'hybrid_personalized'` and preserves
+privacy suppression, expiry and window bounds. A real PostgreSQL regression
+distinguishes current execution from historic challenger and viewing-mode rows.
+PR #2353 deployed automatically to Admin and its worker as
+`6e02dd855af4053d9c9a7b032fe1ece7317cfc33`; the post-release bounded query still
+finds the 3,508 clean hybrid decisions. [Release verification](../../operations/watch-ticket-execution-2026-09-21.md)
+does not replace the separate Admin/browser lifecycle gate. Feat-464's remaining
+acceptance gates still prevent ticket closure.
+
+Later release monitoring found an additional concrete blocker: the 22:52:48 UTC
+worker heartbeat was unavailable after reconciliation transaction expiry at
+5,182–5,371 ms (limit 5,000 ms). The next 22:58:17 heartbeat completed. The exact
+affected-pointer scan performs full-population work despite its 100-result
+limit. Bounded direct production reads took 4,187 and 4,258 ms. JIT-off and
+materialized-query controls did not reliably fix the guard; reusing joined
+generation fields saved 0.4–0.7 seconds but did not prove complete transaction
+recovery or all-lineage parity. No candidate or setting was shipped.
+
+Build a representative sparse-invalid, roughly 167,000-pointer regression and
+reduce discovery work while preserving the canonical predicate, ordering,
+concurrency fences and five-second budget. The [execution record](../../operations/watch-ticket-execution-2026-09-21.md)
+contains exact timings and limits. The earlier zero-pointer snapshot remains
+valid for its timestamp, not a claim of continuous convergence or ticket closure.
+
+## Reconciliation transaction correction — September 21 continuation
+
+The full-scale PostgreSQL reproduction now fails on the original batch with
+`P2028` at 5,033 ms and passes with the batch lineage query at 1,664 ms. The
+correction shares canonical eligibility rules, materializes affected pointers
+before the ordered limit, and disables measured JIT compilation only inside the
+transaction. Its deadline, advisory lock, serving fences and dispatch bounds
+remain unchanged. Exact parameterized production read-only checks took
+1,397–1,520 ms; JIT was restored after each rollback. These are pre-deployment
+query diagnostics, not a deployed worker recovery claim.
+
+Seven real database tests include large-cohort discovery, concurrent reads/writes,
+lineage parity, active-run exclusions, ordering/batch limits and setting cleanup.
+The [durable explanation and rejected controls](../../solutions/performance-issues/profile-reconciliation-sparse-invalid-scan-20260921.md)
+record the causal evidence. Keep this ticket in progress through normal release,
+exact revision verification, a fresh invariant audit, sustained healthy worker
+batches, Admin lifecycle reconciliation and the dependent feat-464 gates.
+
+## September 21 deployed reconciliation correction
+
+PR [#2356](https://github.com/JesusFilm/forge/pull/2356) deployed automatically as
+`de752d60980b25ee11806f2c424770fc78027188` to Admin and the worker. The full-scale
+original batch expires at 5,033 ms; the corrected transaction passes in 1,664 ms
+with the same eligibility, five-second budget and publication fences. Real
+PostgreSQL parity, concurrency and rollback-setting checks pass, as do 7,281
+Admin unit tests and applicable CI.
+
+The [release record](../../operations/watch-closeout-release-2026-09-21.md)
+retains an initial one-ineligible-pointer audit, subsequent convergence to zero,
+and the completed two-hour observation. All 24 batches and their heartbeat steps
+complete without substantive errors, with 238 classification attempts and 14
+queued rebuilds. The final timed audit again finds one ineligible pointer;
+the 02:20:44 UTC recheck exhausts all 167,984 pointers and finds zero. Preserve
+both nonzero snapshots rather than claiming continuous zero violations.
+Keep this ticket in progress until its
+feat-464 dependency and authorized Admin gates are satisfied. Do not assign the
+separate historical selection timeouts to this correction: their sampled times
+fall between reconciliation batches.

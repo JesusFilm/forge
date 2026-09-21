@@ -47,6 +47,13 @@ const CARD_WIDTH_RATIO: Record<HomeCardVariant, number> = {
   portrait: 0.37,
 }
 
+// Added after the ratio, so the growth is the same on every screen. Portrait
+// cards are 15pt wider (and 20pt taller, at 3:4) so longer titles fit.
+const CARD_EXTRA_WIDTH: Record<HomeCardVariant, number> = {
+  landscape: 0,
+  portrait: 15,
+}
+
 /** width / height: landscape is 16:9, portrait is 3:4. */
 const CARD_ASPECT: Record<HomeCardVariant, number> = {
   landscape: 16 / 9,
@@ -66,7 +73,10 @@ export function homeCardWidth(
   variant: HomeCardVariant,
   screenWidth: number,
 ): number {
-  return Math.round(screenWidth * CARD_WIDTH_RATIO[variant])
+  return (
+    Math.round(screenWidth * CARD_WIDTH_RATIO[variant]) +
+    CARD_EXTRA_WIDTH[variant]
+  )
 }
 
 // ── Component ───────────────────────────────────────────────────────────────

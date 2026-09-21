@@ -1,12 +1,13 @@
 import {
+  copyAsync,
   deleteAsync,
   documentDirectory,
   downloadAsync,
   getFreeDiskStorageAsync,
   getInfoAsync,
-  getTotalDiskCapacityAsync,
   makeDirectoryAsync,
   moveAsync,
+  readDirectoryAsync,
 } from "expo-file-system/legacy"
 
 import { datadogLog } from "./datadog"
@@ -26,10 +27,15 @@ export function offlineVideoDir(videoSlug: string): string {
   return `${OFFLINE_ROOT}/${sanitizeSegment(videoSlug)}`
 }
 
+/** Ensure any directory exists. `ensureVideoDir` is the offline-root case. */
+export async function ensureDirectory(uri: string): Promise<void> {
+  await makeDirectoryAsync(uri, { intermediates: true }).catch(() => undefined)
+}
+
 /** Ensure a video's directory exists; returns the directory path. */
 export async function ensureVideoDir(videoSlug: string): Promise<string> {
   const dir = offlineVideoDir(videoSlug)
-  await makeDirectoryAsync(dir, { intermediates: true }).catch(() => undefined)
+  await ensureDirectory(dir)
   return dir
 }
 
@@ -60,18 +66,26 @@ export async function freeDiskBytes(): Promise<number> {
   }
 }
 
-/** Total internal storage capacity in bytes (0 if unavailable). */
-export async function totalDiskBytes(): Promise<number> {
-  try {
-    return await getTotalDiskCapacityAsync()
-  } catch {
-    return 0
-  }
-}
-
 /** Move a file (e.g. a verified pending download → its committed path). */
 export async function moveFile(from: string, to: string): Promise<void> {
   await moveAsync({ from, to })
+}
+
+/**
+ * Copy a file. R38 hands the device library a DUPLICATE of an offline copy —
+ * a move would destroy the copy the offline library still owns.
+ */
+export async function copyFile(from: string, to: string): Promise<void> {
+  await copyAsync({ from, to })
+}
+
+/** Entry names directly under a directory; empty when it does not exist. */
+export async function listDirectory(uri: string): Promise<string[]> {
+  try {
+    return await readDirectoryAsync(uri)
+  } catch {
+    return []
+  }
 }
 
 /**

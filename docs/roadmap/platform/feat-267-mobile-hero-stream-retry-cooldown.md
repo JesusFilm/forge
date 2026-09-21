@@ -3,7 +3,7 @@ id: "feat-267"
 title: "Mobile hero stream retry cooldown (idle-Home unbounded retry loop)"
 owner: "urim"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-22"
 duration: 2
 depends_on: []
@@ -86,3 +86,7 @@ session produced 258 RUM errors with zero user actions (Jul 15 storm).
   (Mac Wi-Fi off), watch Metro logs — request attempts must stop within one
   cooldown window instead of firing every rotation; restore network and
   confirm the hero recovers on the next attempt.
+
+## Completion
+
+Shipped on main: the cooldown gates both the hero fetch and the prefetch in `apps/mobile/src/hooks/useHeroStream.ts`, and a suppressed attempt logs `hero_stream.cooldown_skip`.

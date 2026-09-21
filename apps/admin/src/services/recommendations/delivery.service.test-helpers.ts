@@ -7,7 +7,10 @@ import {
 } from "./orchestration"
 import type { ExperimentAssignmentResolution } from "./experiment/assignment"
 import type { LiveProfileCandidateResult } from "./candidates/profile-candidate.service"
-import type { SemanticCandidatePoolItem } from "./candidate"
+import type {
+  CandidateNomination,
+  SemanticCandidatePoolItem,
+} from "./candidate"
 import type { RecommendationRecentContext } from "./recent-context.service"
 
 export const candidate: SemanticCandidatePoolItem = {
@@ -98,11 +101,13 @@ export const profileCandidateResult: LiveProfileCandidateResult = {
   ],
 }
 
-export function makeHarness() {
+export function makeHarness(
+  options: { curatedFallback?: boolean; profileComparison?: boolean } = {},
+) {
   const requests = new Map<string, Record<string, unknown>>()
   const transactions: string[] = []
   const tx = {
-    $queryRaw: vi.fn(async () => []),
+    $queryRaw: vi.fn(async (): Promise<Array<{ id: string }>> => []),
     recommendationRequest: {
       create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
         const state = String(data.state ?? "PREPARED")
@@ -176,13 +181,26 @@ export function makeHarness() {
       bypassReason: "no_active_experiment",
     }),
   )
+  const assignProfileExperiment = vi.fn(
+    async (): Promise<ExperimentAssignmentResolution> => ({
+      assignment: null,
+      bypassReason: "no_active_experiment",
+    }),
+  )
   const retrieveProfile = vi.fn(
     async (): Promise<LiveProfileCandidateResult | null> => null,
   )
   const resolveRecentContext = vi.fn(
     async (): Promise<RecommendationRecentContext> => ({ videos: [] }),
   )
+  const loadViewingModeAffinity = vi.fn(
+    async (): Promise<import("./viewing-mode").ViewingModeAffinity | null> =>
+      null,
+  )
   const authorizeProfile = vi.fn(async () => true)
+  const retrieveCuratedFallback = vi.fn(
+    async (): Promise<CandidateNomination[]> => [],
+  )
   let clock = Date.now()
   let id = 0
   const service = new RecommendationDeliveryService({
@@ -193,13 +211,16 @@ export function makeHarness() {
     },
     getServingState,
     retrieve,
+    ...(options.curatedFallback ? { retrieveCuratedFallback } : {}),
     recheckCached,
     orchestrate,
     orchestrateHybrid,
     assignExperiment,
+    ...(options.profileComparison ? { assignProfileExperiment } : {}),
     retrieveProfile,
     resolveRecentContext,
     authorizeProfile,
+    loadViewingModeAffinity,
     tokenService: {
       activeKid: "active-kid",
       signDeliveryCapability,
@@ -223,12 +244,15 @@ export function makeHarness() {
     orchestrate,
     orchestrateHybrid,
     assignExperiment,
+    assignProfileExperiment,
     retrieveProfile,
     resolveRecentContext,
     authorizeProfile,
+    loadViewingModeAffinity,
     advanceClock(milliseconds: number) {
       clock += milliseconds
     },
+    retrieveCuratedFallback,
   }
 }
 

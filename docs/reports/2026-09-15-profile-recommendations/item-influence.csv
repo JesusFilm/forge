@@ -1,0 +1,7 @@
+execution_mode,candidate_generator,cards,impressions,selections,matched_selections,starts,qualified,active_ms
+hybrid_personalized,multi-interest-profile,15465,1131,63,60,39,22,3530278
+hybrid_personalized,semantic,16501,1067,60,57,33,13,1960597
+semantic_contextual,semantic,226497,9487,266,258,135,70,10624741
+semantic_fallback,semantic,1271,62,4,4,3,1,225268
+,curated,4866,167,7,6,4,4,1066191
+,multi-interest-profile,78,29,2,1,0,0,0

@@ -83,9 +83,6 @@ jest.mock("../../../src/contexts/WatchPreferencesProvider", () => ({
     isReady: true,
   }),
 }))
-jest.mock("../../../src/lib/offlineFileSystem", () => ({
-  totalDiskBytes: () => Promise.resolve(0),
-}))
 jest.mock("../../../src/lib/datadog", () => ({
   datadogLog: { info: () => {}, warn: () => {}, error: () => {} },
 }))
@@ -99,8 +96,8 @@ jest.mock("../../../src/components/library/DownloadRow", () => ({
 jest.mock("../../../src/components/library/SeriesGroupCard", () => ({
   SeriesGroupCard: () => null,
 }))
-jest.mock("../../../src/components/library/StorageSummary", () => ({
-  StorageSummary: () => null,
+jest.mock("../../../src/components/library/DownloadsSummary", () => ({
+  DownloadsSummary: () => null,
 }))
 jest.mock("../../../src/components/library/LibraryEmptyState", () => ({
   LibraryEmptyState: () => null,

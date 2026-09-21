@@ -723,7 +723,10 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
 
   it("rewrites unsupported-language videos indexes with English chrome fallback", async () => {
     const response = await proxy(makeRequest("/aari.html/videos"))
-    expect(rewritePath(response)).toBe("/en/en/videos/aari")
+    // FGE-170/W-082: chrome is still English (`aari` has no message catalog),
+    // but the internal [htmlLang] segment now carries the content tag so the
+    // document can declare `lang="aiw"`. The PUBLIC URL is unchanged.
+    expect(rewritePath(response)).toBe("/en/aiw/videos/aari")
   })
 
   it("404s bcp47 catalog keys as one-segment public homes", async () => {
@@ -798,7 +801,94 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
 
   it("falls back chrome identity for unsupported audio-language families", async () => {
     const response = await proxy(makeRequest("/jesus.html/aari.html"))
-    expect(rewritePath(response)).toBe("/en/en/jesus.html/aari.html")
+    // FGE-170/W-082: `en` chrome, `aiw` content tag. See the videos-index
+    // case above — only the internal segment moved.
+    expect(rewritePath(response)).toBe("/en/aiw/jesus.html/aari.html")
+  })
+
+  // FGE-170/W-082 reported against a production RTL language. `aari` above is
+  // LTR, so it cannot show that the tag reaching [htmlLang] is what fixes
+  // direction; this is the production-reachable RTL companion.
+  it("carries the content tag for a catalog-less RTL audio language", async () => {
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
+      ...TEST_MANIFEST,
+      audioLanguageSlugs: [...TEST_MANIFEST.audioLanguageSlugs, "arabic-najdi"],
+      audioLanguageIndexesByContent: {
+        ...TEST_MANIFEST.audioLanguageIndexesByContent,
+        jesus: [
+          ...(TEST_MANIFEST.audioLanguageIndexesByContent?.jesus ?? []),
+          TEST_MANIFEST.audioLanguageSlugs.length,
+        ],
+      },
+    }))
+
+    const response = await proxy(makeRequest("/jesus.html/arabic-najdi.html"))
+
+    // The public URL is untouched — no redirect — so this is not a URL
+    // migration. Only the internal rewrite target moved from /en/en to /en/ars.
+    expect(response.headers.get("location")).toBeNull()
+    expect(rewritePath(response)).toBe("/en/ars/jesus.html/arabic-najdi.html")
+  })
+
+  // The internal [htmlLang] segment now admits every declarable content tag,
+  // not just the ~225 catalog keys, so a directly-typed internal URL must not
+  // become a way into the app. This 307'd into a `.html`-suffixed URL that
+  // itself 404s before the change; a clean 404 is the better outcome and is
+  // pinned here so a future guard change cannot silently open it.
+  it("404s a directly-typed internal path for a catalog-less tag", async () => {
+    const response = await proxy(makeRequest("/en/ars/videos"))
+    expect(response.headers.get("location")).toBeNull()
+    expectNotFoundRewrite(response)
+  })
+
+  // A tag-shaped string that is not a tag this app knows never becomes an
+  // htmlLang at all, so it does not even reach the internal-prefix branch —
+  // it stays on the pre-existing legacy-canonicalizer path. Pinned so that
+  // widening `isDeclarableHtmlLangTag` cannot quietly admit arbitrary
+  // segments into the internal tree.
+  it("never treats a tag-shaped non-language as an internal prefix", async () => {
+    const response = await proxy(makeRequest("/en/xyz/videos"))
+    expect(rewritePath(response)).toBeNull()
+    expect(response.status).toBe(307)
+  })
+
+  // The mirror image of FGE-170: the 404 sentinel renders chrome-language
+  // copy, so it must NOT inherit the requested content tag. Before this guard
+  // the ordinary 404 for a catalog-less audio language rewrote to
+  // `/en/aiw/404`, declaring English recovery copy as Aari.
+  it("keeps the 404 sentinel in the chrome language, not the content tag", async () => {
+    const response = await proxy(makeRequest("/unknown-video.html/aari.html"))
+    expectNotFoundRewrite(response, "/en/en/404")
+  })
+
+  // `/languages` and `/history` render only chrome from the `locale` catalog —
+  // neither page body reads `htmlLang` — so they must not declare the
+  // requested audio language. `/videos` is the discriminating sibling: it
+  // renders that language's own inventory, so it keeps the content tag. Both
+  // halves are asserted together because the same proxy branch builds all
+  // three, and a change that collapsed them would only fail one of these.
+  it("declares the chrome language on chrome-only language routes", async () => {
+    const languages = await proxy(makeRequest("/aari.html/languages"))
+    expect(rewritePath(languages)).toBe("/en/en/languages")
+
+    const history = await proxy(makeRequest("/aari.html/history"))
+    expect(rewritePath(history)).toBe("/en/en/history")
+
+    // ...while the inventory page, which does render in-language content,
+    // still carries the tag FGE-170 restored.
+    const videos = await proxy(makeRequest("/aari.html/videos"))
+    expect(rewritePath(videos)).toBe("/en/aiw/videos/aari")
+  })
+
+  // A same-language regional refinement is still honest on a chrome page:
+  // Spanish chrome really is Spanish, so `es-419` is kept rather than
+  // flattened to `es`. This is what stops the fix above from over-reaching.
+  it("keeps a same-language regional tag on chrome-only routes", async () => {
+    const response = await proxy(
+      makeRequest("/spanish-latin-american.html/languages"),
+    )
+    expect(rewritePath(response)).toBe("/es/es-419/languages")
   })
 
   it("uses the imported Russian UI catalog for Russian public audio URLs", async () => {
@@ -1654,7 +1744,9 @@ describe("two-segment language disambiguation consults the live route manifest (
     expect(response.status).toBe(200)
     expect(response.headers.get("location")).toBeNull()
     const rewrite = new URL(response.headers.get("x-middleware-rewrite") ?? "")
-    expect(rewrite.pathname).toBe("/en/en/jesus.html/german-pennsylvania.html")
+    // FGE-170/W-082: `pdc` has no message catalog, so chrome stays English
+    // while the internal [htmlLang] segment carries the content tag.
+    expect(rewrite.pathname).toBe("/en/pdc/jesus.html/german-pennsylvania.html")
     expect(rewrite.search).toBe("?t=115&autoplay=1")
   })
 })

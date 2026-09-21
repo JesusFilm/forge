@@ -300,3 +300,108 @@ export async function queryScenesSimilar(
     spiritual_context: row.spiritual_context ?? [],
   }))
 }
+
+/**
+ * The exact per-seed search in one statement. Materializing both candidate
+ * eligibility and parsed vectors is essential: otherwise long videos repeat
+ * the dub lookup or parse a vector string for every candidate comparison.
+ * The per-seed limit is applied before best-per-video union, as in the legacy
+ * loop. Hydrate metadata/vector text only after selecting those survivors.
+ */
+export async function queryScenesSimilarMany(
+  prisma: SceneRecommendationQueryClient,
+  queryEmbeddings: string[],
+  locale: string,
+  excludeIds: string[],
+  limit: number,
+): Promise<SceneRecommendationSqlRow[]> {
+  if (queryEmbeddings.length === 0) return []
+  const rows = await prisma.$queryRaw<SceneRecommendationSqlRowRaw[]>`
+    WITH preferred_dubs AS MATERIALIZED (
+      SELECT DISTINCT ON (vd.video_edition_id)
+        vd.video_edition_id, mv.playback_id
+      FROM video_dub vd
+      JOIN language lg ON lg.id = vd.language_id AND lg.bcp47 = ${locale}
+      JOIN mux_video mv ON mv.id = vd.mux_video_id AND mv.playback_id IS NOT NULL
+      WHERE vd.deleted_at IS NULL
+      ORDER BY vd.video_edition_id, vd.published DESC NULLS LAST, vd.updated_at DESC
+    ), eligible AS MATERIALIZED (
+      SELECT
+        row_number() OVER (ORDER BY vtc.id, vl.id) AS eligible_id,
+        vt.video_id                            AS video_id,
+        v.slug                                 AS video_slug,
+        vl.title                               AS video_title,
+        v.core_id                              AS video_core_id,
+        vtc.chunk_index                        AS scene_index,
+        COALESCE(
+          NULLIF(vtc.content_summary, ''),
+          NULLIF(vtc.raw_source_text, ''),
+          vtc.text
+        )                                      AS description,
+        COALESCE(vtc.start_seconds, 0)         AS start_seconds,
+        vtc.end_seconds                        AS end_seconds,
+        vtc.felt_needs                         AS themes,
+        vtc.demographics                       AS demographics,
+        vtc.spiritual_context                  AS spiritual_context,
+        dub_mux.playback_id                    AS playback_id,
+        vtc.embedding                         AS embedding
+      FROM video_transcript_chunk vtc
+      JOIN video_transcript vt ON vt.id = vtc.transcript_id
+        AND vt.language = ${locale}
+      JOIN video v ON v.id = vt.video_id
+        AND v.deleted_at IS NULL
+        AND NOT ('watch' = ANY(v.restrict_view_platforms))
+      JOIN video_locale vl
+        ON vl.video_id = v.id
+        AND vl.locale  = ${locale}
+        AND vl.status  = 'published'
+        AND vl.deleted_at IS NULL
+      JOIN preferred_dubs dub_mux ON dub_mux.video_edition_id = vt.video_edition_id
+      WHERE vtc.embedding IS NOT NULL
+        AND vtc.language = ${locale}
+        AND vt.video_id <> ALL(${excludeIds}::text[])
+        ${activeTranscriptContentEmbeddingWhere({
+          transcriptAlias: "vt",
+          chunkAlias: "vtc",
+        })}
+    ), seeds AS MATERIALIZED (
+      SELECT embedding_text::vector AS embedding, seed_index
+      FROM unnest(${queryEmbeddings}::text[]) WITH ORDINALITY
+        AS input(embedding_text, seed_index)
+    ), candidates AS (
+      SELECT best.*, seeds.seed_index
+      FROM seeds
+      CROSS JOIN LATERAL (
+        SELECT * FROM (
+          SELECT DISTINCT ON (eligible.video_id)
+            eligible.eligible_id,
+            eligible.video_id,
+            1 - (eligible.embedding <=> seeds.embedding) AS similarity
+          FROM eligible
+          ORDER BY eligible.video_id, eligible.embedding <=> seeds.embedding
+        ) nearest
+        ORDER BY similarity DESC
+        LIMIT ${limit}
+      ) best
+    ), best AS MATERIALIZED (
+      SELECT DISTINCT ON (video_id) eligible_id, similarity
+      FROM candidates
+      ORDER BY video_id, similarity DESC, seed_index
+    )
+    SELECT
+      video_id, video_slug, video_title, video_core_id, scene_index, description,
+      start_seconds, end_seconds, themes, demographics, spiritual_context,
+      playback_id, similarity, embedding::text AS embedding_text
+    FROM best JOIN eligible USING (eligible_id)
+    ORDER BY similarity DESC, video_id
+  `
+  return rows.map((row) => ({
+    ...row,
+    start_seconds: Number(row.start_seconds),
+    end_seconds: row.end_seconds == null ? null : Number(row.end_seconds),
+    similarity: Number(row.similarity),
+    themes: row.themes ?? [],
+    demographics: row.demographics ?? [],
+    spiritual_context: row.spiritual_context ?? [],
+  }))
+}

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   adminLegacyWatchExperienceFragment,
+  adminPreCopyWatchExperienceFragment,
   adminWatchExperienceFragment,
 } from "@forge/admin-graphql/fragments"
 
@@ -89,6 +90,18 @@ describe("Web Watch Experience media collection titles", () => {
       "WatchHomeCategoryRailBlock",
     )
     expect(print(adminWatchExperienceFragment)).toContain("categoryIds")
+    expect(print(adminWatchExperienceFragment)).toContain("ctaLabel")
+    const preCopyDefinition =
+      adminPreCopyWatchExperienceFragment.definitions.find(
+        (definition) =>
+          definition.kind === "FragmentDefinition" &&
+          definition.name.value === "AdminPreCopyWatchHomeCategoryRail",
+      )
+    const preCopy = print(preCopyDefinition!)
+    expect(preCopy).toContain("WatchHomeCategoryRailBlock")
+    expect(preCopy).toContain("categoryIds")
+    expect(preCopy).toContain("tiles")
+    expect(preCopy).not.toContain("ctaLabel")
     expect(print(adminWatchExperienceFragment)).toContain(
       "AdminHomepageRecommendations",
     )

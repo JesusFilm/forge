@@ -827,7 +827,7 @@ const styles = StyleSheet.create({
   wordmark: {
     color: TEXT_ON_OVERLAY,
     fontFamily: "System",
-    fontWeight: "800",
+    fontWeight: "700",
     letterSpacing: 3,
     marginBottom: 8,
   },

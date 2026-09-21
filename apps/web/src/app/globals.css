@@ -24,6 +24,8 @@
   --animate-card-enter: card-enter 300ms ease-out both;
   --animate-card-exit: card-exit 200ms ease-in forwards;
   --animate-watch-panel-swap: watch-panel-swap 360ms ease-out both;
+  --animate-feedback-launcher-in: feedback-launcher-in 760ms
+    cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 :root {
@@ -2120,8 +2122,11 @@
 .watch-home-player-enter {
   animation: watch-home-player-enter 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
+/* The duration is always supplied inline from the slide's resolved length.
+   The fallback only covers a ring rendered before that value lands; it is
+   deliberately not the old 30s preview cap, which no longer exists. */
 .watch-home-progress-ring {
-  animation: watch-home-progress-ring var(--watch-home-progress-duration, 30s)
+  animation: watch-home-progress-ring var(--watch-home-progress-duration, 10s)
     linear forwards;
 }
 
@@ -2565,6 +2570,22 @@
 
 /* Search overlay keyframes — outside @layer to prevent Tailwind v4 purging
    (keyframes referenced via inline style= are invisible to the purger) */
+/* Entrance for the floating feedback launcher. The first 40% is a hold at
+   zero opacity: the launcher arrives AFTER the page has painted, so it
+   reads as an offer rather than as part of the layout. Overshoot-free
+   easing on a control that must not look like a notification. */
+@keyframes feedback-launcher-in {
+  0%,
+  40% {
+    opacity: 0;
+    transform: translateY(0.75rem) scale(0.94);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @keyframes overlay-fade-in {
   from {
     opacity: 0;

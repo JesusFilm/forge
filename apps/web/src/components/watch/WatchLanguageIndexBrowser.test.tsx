@@ -88,6 +88,26 @@ function searchLanguages(html: HTMLElement, value: string) {
 }
 
 describe("WatchLanguageIndexBrowser", () => {
+  it("keeps the search controls above the composited input", () => {
+    const html = renderBrowser({ regions: [] })
+    const searchIcon = html.querySelector("svg.lucide-search")
+    const input = html.querySelector('input[type="search"]')
+
+    expect(searchIcon?.classList.contains("z-10")).toBe(true)
+    expect(input?.classList.contains("backdrop-blur-[10px]")).toBe(true)
+    expect(input?.classList.contains("appearance-none")).toBe(true)
+    expect(
+      input?.classList.contains(
+        "[&::-webkit-search-cancel-button]:appearance-none",
+      ),
+    ).toBe(true)
+
+    searchLanguages(html, "english")
+
+    const clearButton = html.querySelector('button[aria-label="Clear search"]')
+    expect(clearButton?.classList.contains("z-10")).toBe(true)
+  })
+
   it("uses the shared Watch content rail", () => {
     const html = renderBrowser({ regions: [] })
     const section = html

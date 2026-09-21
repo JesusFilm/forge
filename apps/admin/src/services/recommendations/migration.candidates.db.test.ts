@@ -3,6 +3,12 @@ import { readFileSync } from "node:fs"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
+import {
+  adaptSemanticCandidates,
+  type RecommendationCandidateContext,
+} from "./candidate"
+import { evaluateShadowProjection } from "./shadow-evaluation/projection"
+import { shadowSlateProvenanceSql } from "./admin-ops/shadow-slate-provenance"
 
 const RUN_REAL_DB_TEST = env.RECOMMENDATION_DB_TEST === "1"
 const migrationSql = [
@@ -49,17 +55,23 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       .slice(2)}`
     let client: Client
     let databaseUrl: string
-    const expiresAt = "2026-09-17T00:00:00.000Z"
+    // Relative to now, not a fixed date. `recommendation_request_expiry_check`
+    // is CHECK (expires_at > created_at) and created_at defaults to now(), so a
+    // hardcoded timestamp silently becomes a time bomb: this suite passed until
+    // wall-clock reached the literal, then failed for every PR. Never asserted
+    // on -- it is only ever insert data.
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1_000).toISOString()
 
+    // Keep creation on the fixed fixture timeline instead of the database clock.
     async function insertRequest(id: string, expectedItemCount: number) {
       await client.query(
         `INSERT INTO "recommendation_request" (
           "id", "contract_version", "surface_version", "manifest_id",
           "strategy_version", "classifier_version", "session_digest",
-          "seed_media_id", "locale", "expected_item_count", "result", "expires_at"
+          "seed_media_id", "locale", "expected_item_count", "result", "expires_at", "created_at"
         ) VALUES ($1, 'semantic-recommendation-v1', 'watch-below-player-v1',
           'semantic-transcript-pgvector-v1', 'semantic-transcript-pgvector-v1',
-          'legacy-position-v0', $2, 'seed-video', 'en', $3, 'served', $4)`,
+          'legacy-position-v0', $2, 'seed-video', 'en', $3, 'served', $4, '2026-08-19T00:00:00.000Z')`,
         [id, "a".repeat(64), expectedItemCount, expiresAt],
       )
     }
@@ -278,6 +290,57 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         )`,
         ["d".repeat(64), "e".repeat(64), expiresAt],
       )
+      const context: RecommendationCandidateContext = {
+        surface: "watch-below-player-v1",
+        purpose: "watch",
+        locale: "en",
+        audioLanguageSlug: "english",
+      }
+      const nominations = adaptSemanticCandidates(
+        [
+          {
+            videoId: "video-a",
+            videoSlug: "video-a",
+            videoTitle: "Video A",
+            imageUrl: "https://images.example/a.jpg",
+            sceneIndex: 0,
+            description: "",
+            startSeconds: 0,
+            endSeconds: null,
+            themes: [],
+            demographics: [],
+            spiritualContext: [],
+            playbackId: "playback-a",
+            similarity: 0.9,
+          },
+        ],
+        context,
+      ).nominations.map((nomination) => ({
+        ...nomination,
+        source: {
+          ...nomination.source,
+          evidence: {
+            interestOrdinal: 1,
+            ...Object.fromEntries(
+              Array.from({ length: 15 }, (_, index) => [
+                `evidence${index}`,
+                "界".repeat(128),
+              ]),
+            ),
+          },
+        },
+      }))
+      const projection = evaluateShadowProjection({
+        context,
+        liveOrder: ["video-a"],
+        nominations,
+        limit: 6,
+        projectionCapturedAt: null,
+        evaluatedAt: new Date("2026-08-25T00:00:00.000Z"),
+        latencyMs: 1,
+        cohortQuality: null,
+      })
+      const provenance = projection.nominations[0]!.provenance
       await client.query(
         `INSERT INTO recommendation_shadow_nomination (
           id, run_id, ordinal, candidate_key, target_media_id, generator,
@@ -286,10 +349,30 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         ) VALUES (
           'shadow-nomination-1', 'shadow-run-1', 0, 'video-a', 'video-a',
           'profile', 'profile-v1', 1, 0.9, true, 0, true,
-          '{"interestOrdinal":1}'::jsonb, $1
+          $2::jsonb, $1
         )`,
-        [expiresAt],
+        [expiresAt, JSON.stringify(provenance)],
       )
+      const stored =
+        await client.query(`SELECT pg_column_size(provenance) AS bytes, provenance
+        FROM recommendation_shadow_nomination WHERE id = 'shadow-nomination-1'`)
+      expect(stored.rows[0].bytes).toBeLessThanOrEqual(2048)
+      expect(stored.rows[0].provenance).toMatchObject({
+        slateDecision: "pending",
+        slateRank: 0,
+        slatePosition: 0,
+      })
+      const inspected =
+        await client.query(`SELECT ${shadowSlateProvenanceSql.text} AS provenance
+        FROM recommendation_shadow_nomination nomination WHERE id = 'shadow-nomination-1'`)
+      expect(inspected.rows[0].provenance).toMatchObject({
+        slateDecision: "pending",
+        slateRank: 0,
+        slatePosition: 0,
+        slateHistory: "unavailable",
+        slateEditorial: "adapter_pending",
+      })
+      expect(inspected.rows[0].provenance).not.toHaveProperty("evidence0")
       await expect(
         client.query(
           `INSERT INTO recommendation_shadow_nomination (
@@ -372,13 +455,13 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
             id, contract_version, surface_version, manifest_id,
             strategy_version, classifier_version, session_digest,
             seed_media_id, locale, expected_item_count, state, result,
-            signing_kid, issued_at, expires_at
+            signing_kid, issued_at, expires_at, created_at
           ) VALUES (
             'issued-unavailable', 'semantic-recommendation-v1',
             'watch-below-player-v1', 'semantic-transcript-pgvector-v1',
             'semantic-transcript-pgvector-v1', 'legacy-position-v0', $1,
             'seed-video', 'en', 0, 'issued', 'unavailable', 'kid-1',
-            '2026-08-24T00:00:00.000Z', $2
+            '2026-08-24T00:00:00.000Z', $2, '2026-08-24T00:00:00.000Z'
           )`,
           ["a".repeat(64), expiresAt],
         ),
@@ -406,13 +489,13 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
             id, contract_version, surface_version, manifest_id,
             strategy_version, classifier_version, session_digest,
             seed_media_id, locale, expected_item_count, state, result,
-            delivery_jti, signing_kid, issued_at, expires_at
+            delivery_jti, signing_kid, issued_at, expires_at, created_at
           ) VALUES (
             $1, 'semantic-recommendation-v1', 'watch-below-player-v1',
             'semantic-transcript-pgvector-v1',
             'semantic-transcript-pgvector-v1', 'legacy-position-v0', $2,
             'seed-video', 'en', $3, 'issued', $4, $5, 'kid-1',
-            '2026-08-24T00:00:00.000Z', $6
+            '2026-08-24T00:00:00.000Z', $6, '2026-08-24T00:00:00.000Z'
           )`,
           [
             id,
@@ -481,7 +564,10 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           "expiry-item",
           "expiry-request",
           0,
-          "2026-09-18T00:00:00.000Z",
+          // Deliberately not the request root's expiry. Derived from it so it
+          // stays a guaranteed-different future instant rather than a literal
+          // that could drift into the past or coincide with the root.
+          new Date(Date.parse(expiresAt) + 1_000).toISOString(),
         ),
       ).rejects.toThrow("child expiry must match request root")
       await client.query("ROLLBACK")

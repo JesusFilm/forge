@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
+  AccessibilityInfo,
   Modal,
   Platform,
   Pressable,
@@ -22,7 +23,8 @@ import {
 } from "../../lib/color"
 import { feedback, HORIZONTAL_PADDING } from "../../styles/shared"
 import { formatFileSize, tierDownloads } from "../../lib/downloadTiers"
-import type { WatchDownload } from "../../lib/normalizeVideo"
+import type { WatchDownload, WatchSubtitle } from "../../lib/normalizeVideo"
+import { RAW_EXPORT_ENABLED } from "../../lib/rawExportConstants"
 import { TERMS_OF_USE_PARAGRAPHS } from "../../lib/terms-of-use"
 
 function formatDuration(seconds: number | null): string {
@@ -213,9 +215,7 @@ export function Dropdown({
                     accessibilityRole="radio"
                     accessibilityState={{ selected: isSelected, disabled }}
                     accessibilityLabel={
-                      disabled && opt.note != null
-                        ? `${opt.label}, ${opt.note}`
-                        : opt.label
+                      opt.note != null ? `${opt.label}, ${opt.note}` : opt.label
                     }
                   >
                     <Text
@@ -253,6 +253,19 @@ export function Dropdown({
                               {opt.trailing}
                             </Text>
                           )}
+                          {/* A SELECTABLE row can carry a note too — a quality
+                              you don't hold offline is still choosable, it just
+                              costs a transfer. */}
+                          {opt.note != null && (
+                            <Text
+                              style={[
+                                styles.dropdownOptionNote,
+                                typography.bodySmall,
+                              ]}
+                            >
+                              {opt.note}
+                            </Text>
+                          )}
                           {isSelected && (
                             <Ionicons
                               name="checkmark"
@@ -274,31 +287,317 @@ export function Dropdown({
   )
 }
 
+/** R1: what the viewer asked the sheet to do with the video. */
+export type DownloadMode = "offline" | "raw"
+
+/**
+ * Both platforms open a folder picker, so both labels name the same act. The
+ * noun follows the platform: Apple's app is called Files, and Android's picker
+ * is the system file chooser whatever the OEM ships.
+ *
+ * A function of the OS, not a `Platform.OS` conditional read inline, because
+ * jest runs this app as iOS ONLY — an inline read would leave the Android
+ * wording permanently unexercised.
+ */
+export function rawModeLabel(platformOS: string): string {
+  return platformOS === "ios" ? "Save to Files" : "Save to Device"
+}
+
+/**
+ * The label carries the whole choice — there is no description beside it — so
+ * each one names its destination. Short enough to sit on ONE line in a
+ * half-width card; lengthening either one wraps both.
+ */
+export const DOWNLOAD_MODE_LABELS: Record<DownloadMode, string> = {
+  offline: "Offline Watching",
+  raw: rawModeLabel(Platform.OS),
+}
+
+/**
+ * Screen-reader only. The visible descriptions are gone, but a hint costs a
+ * sighted viewer nothing and still explains where the file ends up.
+ */
+const DOWNLOAD_MODE_HINTS: Record<DownloadMode, string> = {
+  offline: "Watch it in the app without a network.",
+  raw: "Choose a folder to keep it in, outside the app.",
+}
+
+const DOWNLOAD_MODE_ANNOUNCEMENTS: Record<DownloadMode, string> = {
+  offline: "Offline copy selected. The subtitle choice is available.",
+  raw: "Device file selected. The subtitle choice is hidden. A saved file carries no subtitles.",
+}
+
+/** R37, series sheet: a count at the selected quality, not one named quality. */
+export function formatSeriesReuseNote(
+  reusableCount: number,
+  totalCount: number,
+): string {
+  const head = `${reusableCount} of ${totalCount} episodes reuse an offline copy at this quality.`
+  return reusableCount >= totalCount
+    ? head
+    : `${head} The other episodes download again.`
+}
+
+/**
+ * R32: an export replaces nothing, so raw mode lifts every already-downloaded
+ * gate the offline path applies. Offline mode keeps the value it computed.
+ */
+/** Sentinel for the "bundle no subtitle" row; a slug can never collide with it. */
+export const NO_SUBTITLE_KEY = "__none__"
+
+/**
+ * The subtitle choice, shared by BOTH sheets rather than copied into each — a
+ * duplicated control is this repo's recorded way for a fix to reach only one
+ * screen. `union` is slug → display name, so a dub carrying two tracks for one
+ * language (normalizeDubMedia does not dedupe) cannot produce duplicate rows.
+ */
+export function SubtitlePicker({
+  union,
+  selectedSlug,
+  downloadedSlug,
+  open,
+  onToggle,
+  onSelect,
+}: {
+  union: Map<string, string>
+  selectedSlug: string | null
+  /** Already-saved subtitle (null = saved with none, undefined = n/a) → disabled. */
+  downloadedSlug?: string | null
+  open: boolean
+  onToggle: () => void
+  onSelect: (slug: string | null) => void
+}) {
+  const options = useMemo<DropdownOption[]>(() => {
+    // Only a saved subtitle LANGUAGE is "already downloaded" — the "No subtitles"
+    // row is never disabled (re-downloading "no subtitle" isn't a thing).
+    const disabledKey =
+      typeof downloadedSlug === "string" ? downloadedSlug : null
+    const mark = (opt: DropdownOption): DropdownOption =>
+      opt.key === disabledKey
+        ? { ...opt, disabled: true, note: "Already downloaded" }
+        : opt
+    const base: DropdownOption[] = [
+      mark({ key: NO_SUBTITLE_KEY, label: "No subtitles" }),
+    ]
+    const sorted = [...union.entries()].sort((a, b) =>
+      a[1].toLowerCase().localeCompare(b[1].toLowerCase()),
+    )
+    for (const [slug, name] of sorted)
+      base.push(mark({ key: slug, label: name }))
+    return base
+  }, [union, downloadedSlug])
+
+  return (
+    <Dropdown
+      sectionLabel="Subtitles"
+      options={options}
+      selectedKey={selectedSlug ?? NO_SUBTITLE_KEY}
+      open={open}
+      onToggle={onToggle}
+      onSelect={(key) => onSelect(key === NO_SUBTITLE_KEY ? null : key)}
+    />
+  )
+}
+
+/**
+ * slug → display name for one dub's tracks. A Map because the normalizer does
+ * not dedupe by language, and `languageName` can normalize to "" — an empty
+ * label would render a blank row.
+ */
+export function subtitleUnionOf(
+  subtitles: readonly {
+    languageSlug: string
+    languageName: string
+  }[],
+): Map<string, string> {
+  const union = new Map<string, string>()
+  for (const sub of subtitles) {
+    if (!sub.languageSlug) continue
+    union.set(sub.languageSlug, sub.languageName || sub.languageSlug)
+  }
+  return union
+}
+
+export function suspendedInRawMode<T>(
+  mode: DownloadMode,
+  value: T,
+): T | undefined {
+  return mode === "raw" ? undefined : value
+}
+
+/**
+ * R1: the two modes, on both sheets, from one implementation. R33's switch
+ * removes it entirely rather than disabling it — a disabled control describes
+ * something this build cannot do.
+ */
+export function DownloadModeControl({
+  mode,
+  onChange,
+}: {
+  mode: DownloadMode
+  onChange: (mode: DownloadMode) => void
+}) {
+  const typography = useTypography()
+  if (!RAW_EXPORT_ENABLED) return null
+
+  const select = (next: DownloadMode) => {
+    if (next === mode) return
+    onChange(next)
+    // The subtitle region leaves with the mode, so a screen reader hears why.
+    AccessibilityInfo.announceForAccessibility(
+      DOWNLOAD_MODE_ANNOUNCEMENTS[next],
+    )
+  }
+
+  return (
+    <View style={styles.modeSection}>
+      <View accessibilityRole="radiogroup" style={styles.modeGroup}>
+        {(["offline", "raw"] as const).map((option) => {
+          const checked = option === mode
+          return (
+            <Pressable
+              key={option}
+              style={({ pressed }) => [
+                styles.modeOption,
+                checked && styles.modeOptionSelected,
+                pressed && feedback.pressed,
+              ]}
+              onPress={() => select(option)}
+              accessibilityRole="radio"
+              accessibilityState={{ checked }}
+              accessibilityLabel={DOWNLOAD_MODE_LABELS[option]}
+              accessibilityHint={DOWNLOAD_MODE_HINTS[option]}
+            >
+              {/* The filled dot carries the choice too, so the selected row
+                  never rests on colour alone. */}
+              <Ionicons
+                name={checked ? "radio-button-on" : "radio-button-off"}
+                size={20}
+                color={checked ? ACCENT : TEXT_SECONDARY}
+              />
+              <View style={styles.modeTextGroup}>
+                <Text
+                  style={[
+                    styles.modeLabel,
+                    typography.body,
+                    checked && styles.modeLabelSelected,
+                  ]}
+                >
+                  {DOWNLOAD_MODE_LABELS[option]}
+                </Text>
+              </View>
+            </Pressable>
+          )
+        })}
+      </View>
+    </View>
+  )
+}
+
+/** A note the sheet states above the pickers, in raw mode only. */
+export function SheetNote({ text }: { text: string }) {
+  const typography = useTypography()
+  return <Text style={[styles.sheetNote, typography.bodySmall]}>{text}</Text>
+}
+
+/**
+ * The consent gate both sheets show in raw mode. Shared, like every other
+ * control on these two sheets: a hand-copied second version is this repo's
+ * recorded way for a fix — a wording change, a legal correction — to reach
+ * only one screen.
+ */
+export function TermsAcceptanceRow({
+  accepted,
+  onToggle,
+  onOpenTerms,
+}: {
+  accepted: boolean
+  onToggle: () => void
+  onOpenTerms: () => void
+}) {
+  const typography = useTypography()
+  return (
+    <View style={styles.touRow}>
+      <Pressable
+        onPress={onToggle}
+        hitSlop={8}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: accepted }}
+        accessibilityLabel="I agree to the Terms of Use"
+        style={({ pressed }) => pressed && feedback.pressed}
+      >
+        <View style={[styles.checkbox, accepted && styles.checkboxChecked]}>
+          {accepted && <Ionicons name="checkmark" size={16} color="#ffffff" />}
+        </View>
+      </Pressable>
+      <Text style={[styles.touText, typography.bodySmall]}>
+        I agree to the{" "}
+      </Text>
+      <Pressable
+        onPress={onOpenTerms}
+        hitSlop={4}
+        accessibilityRole="link"
+        accessibilityLabel="Read Terms of Use"
+      >
+        <Text style={[styles.touLink, typography.bodySmall]}>Terms of Use</Text>
+      </Pressable>
+    </View>
+  )
+}
+
 export type DownloadSheetProps = {
   videoTitle: string | null
   duration: number | null
   languageName: string | null
   downloads: WatchDownload[]
+  /** The dub's subtitle tracks, offered beside the quality in offline mode. */
+  subtitles: readonly WatchSubtitle[]
   /**
-   * The subtitle language that will be bundled with the download — the dub's
-   * active subtitle as chosen on the Video Details subtitle sheet, or null when
-   * none is active. Display-only; the route resolves and enqueues the track.
+   * The subtitle active on the watch screen. It SEEDS the picker, so a viewer
+   * watching with Spanish captions who just taps Download still gets them —
+   * defaulting to "No subtitles" like the series sheet would silently ship a
+   * caption-less copy.
    */
-  subtitleLanguageName: string | null
+  subtitleLanguageSlug: string | null
   /**
-   * Enqueue the chosen rendition for offline download. The active subtitle is
-   * inherited from the watch session (not picked here); the route builds the
-   * full request, dismisses the sheet, and downloads via DownloadsProvider.
+   * The completed offline copy's rendition, or null when the video has none.
+   *
+   * BOTH identifiers, because neither is reliable alone: `normalizeVideo`
+   * defaults `documentId` to "" (so an empty id would match the first row by
+   * accident), and `quality` is the raw rendition string, unique within a dub
+   * but not guaranteed present. The id wins when it is real.
    */
-  onStartDownload: (rendition: WatchDownload) => void
+  offlineCopy?: { renditionId: string; quality: string } | null
+  /** The subtitle language of a completed offline copy, for the reuse note. */
+  offlineCopySubtitleSlug?: string | null
+  /**
+   * Which mode the sheet OPENS on. R2 still holds — the sheet never remembers
+   * the last choice — but an entry point that exists to do one specific thing
+   * ("Save to Files" on a downloaded video) may say so, once, on the way in.
+   */
+  initialMode?: DownloadMode
+  /**
+   * Start the chosen rendition in the chosen mode, with the subtitle picked
+   * HERE (null = none). The route builds the full request, dismisses the sheet,
+   * and downloads via DownloadsProvider.
+   */
+  onStartDownload: (
+    rendition: WatchDownload,
+    mode: DownloadMode,
+    subtitleSlug: string | null,
+  ) => void
 }
 
 export function DownloadSheetContent({
   videoTitle,
   duration,
   languageName,
+  subtitles,
+  subtitleLanguageSlug,
   downloads,
-  subtitleLanguageName,
+  offlineCopy = null,
+  offlineCopySubtitleSlug = undefined,
+  initialMode = "offline",
   onStartDownload,
 }: DownloadSheetProps) {
   const insets = useSafeAreaInsets()
@@ -309,18 +608,68 @@ export function DownloadSheetContent({
   const [touAccepted, setTouAccepted] = useState(false)
   const [termsVisible, setTermsVisible] = useState(false)
   const [qualityOpen, setQualityOpen] = useState(false)
+  const [subtitleOpen, setSubtitleOpen] = useState(false)
+  // R2: nothing writes the choice back; a fresh sheet takes `initialMode`,
+  // which the caller sets per entry point and defaults to offline.
+  const [mode, setMode] = useState<DownloadMode>(initialMode)
+  const rawMode = mode === "raw"
+  // Owner decision 2026-09-14: only an EXPORT needs the Terms. An offline
+  // copy stays inside the app; a saved file leaves it, which is what the
+  // clause is about. The acceptance itself survives a mode switch.
+  const termsSatisfied = !rawMode || touAccepted
+
+  const subtitleUnion = useMemo(() => subtitleUnionOf(subtitles), [subtitles])
+  const [subtitleSlug, setSubtitleSlug] = useState<string | null>(null)
+  // The dub's tracks arrive lazily, so a useState initializer would seed from
+  // an empty union and stick at null. Seed when they land, and only ONCE — a
+  // re-render must never overwrite a manual pick. Only a slug the dub actually
+  // carries is selectable; anything else names a row the picker never renders.
+  const subtitleTouchedRef = useRef(false)
+  useEffect(() => {
+    if (subtitleTouchedRef.current) return
+    if (
+      subtitleLanguageSlug == null ||
+      !subtitleUnion.has(subtitleLanguageSlug)
+    )
+      return
+    subtitleTouchedRef.current = true
+    setSubtitleSlug(subtitleLanguageSlug)
+  }, [subtitleUnion, subtitleLanguageSlug])
 
   // Key by tier-array index, not documentId: ids aren't unique (normalizeVideo
   // defaults documentId to "" and doesn't dedupe), so they'd collide React keys
   // and break selection (findIndex always resolving to the first match).
+  // Which tier the offline copy is, or -1. By documentId: the record's
+  // qualityLabel is the raw rendition string, not one of the three tier names.
+  const heldIndex = useMemo(() => {
+    if (offlineCopy == null) return -1
+    const byId = offlineCopy.renditionId
+      ? tiered.findIndex(
+          (t) =>
+            t.documentId !== "" && t.documentId === offlineCopy.renditionId,
+        )
+      : -1
+    if (byId >= 0) return byId
+    return offlineCopy.quality
+      ? tiered.findIndex((t) => t.quality === offlineCopy.quality)
+      : -1
+  }, [tiered, offlineCopy])
+
   const qualityOptions = useMemo<DropdownOption[]>(
     () =>
       tiered.map((t, index) => ({
         key: String(index),
         label: t.tier,
         trailing: formatFileSize(t.size),
+        // Only in raw mode: the held copy exports instantly, every other
+        // quality has to come down the wire first. In offline mode the same
+        // row means a swap, which the sheet already frames as a swap.
+        note:
+          rawMode && heldIndex >= 0 && index !== heldIndex
+            ? "Downloads again"
+            : undefined,
       })),
-    [tiered],
+    [tiered, rawMode, heldIndex],
   )
   const selectedQualityKey = String(selectedIndex)
 
@@ -331,14 +680,39 @@ export function DownloadSheetContent({
     if (selectedIndex >= tiered.length) setSelectedIndex(0)
   }, [tiered.length, selectedIndex])
 
+  // Open on the quality already held, so "Save to Files" on a downloaded
+  // video is a reuse rather than a silent re-download. Once, when the tiers
+  // land — they arrive with the lazily-fetched dub, and a later re-run would
+  // fight the viewer's own pick.
+  // Gated on `heldIndex` — the value it seeds FROM — not on the tiers being
+  // present. The renditions come back from Apollo's cache on the first render
+  // while the offline record arrives a tick later from DownloadsProvider, so a
+  // tiers-gated one-shot burns itself before there is anything to seed with.
+  // A manual pick sets the same latch, so a late-arriving record never
+  // overrides the viewer.
+  const qualityTouchedRef = useRef(false)
+  useEffect(() => {
+    if (qualityTouchedRef.current || heldIndex < 0) return
+    qualityTouchedRef.current = true
+    setSelectedIndex(heldIndex)
+  }, [heldIndex])
+
   const handleDownload = useCallback(() => {
-    if (!touAccepted || tiered.length === 0) return
+    if (!termsSatisfied || tiered.length === 0) return
     const selected = tiered[selectedIndex]
     if (!selected) return
     // Enqueue and hand off to the background engine; the parent dismisses the
     // sheet. One copy per video is enforced by DownloadsProvider.
-    onStartDownload(selected)
-  }, [touAccepted, tiered, selectedIndex, onStartDownload])
+    onStartDownload(selected, mode, rawMode ? null : subtitleSlug)
+  }, [
+    termsSatisfied,
+    tiered,
+    selectedIndex,
+    mode,
+    rawMode,
+    subtitleSlug,
+    onStartDownload,
+  ])
 
   if (downloads.length === 0) {
     return (
@@ -399,18 +773,28 @@ export function DownloadSheetContent({
                 </Text>
               </View>
             )}
-            <View style={styles.metaPill}>
-              <MaterialCommunityIcons
-                name="closed-caption-outline"
-                size={16}
-                color={TEXT_SECONDARY}
-              />
-              <Text style={[styles.metaPillText, typography.bodySmall]}>
-                {subtitleLanguageName ?? "No subtitles"}
-              </Text>
-            </View>
+            {/* R5: an exported file cannot carry the subtitle, so raw mode
+                removes the pill instead of describing an empty promise. It
+                mirrors the PICKED subtitle, so the header and the picker below
+                can never disagree. */}
+            {!rawMode && (
+              <View style={styles.metaPill}>
+                <MaterialCommunityIcons
+                  name="closed-caption-outline"
+                  size={16}
+                  color={TEXT_SECONDARY}
+                />
+                <Text style={[styles.metaPillText, typography.bodySmall]}>
+                  {(subtitleSlug != null
+                    ? subtitleUnion.get(subtitleSlug)
+                    : null) ?? "No subtitles"}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
+
+        <DownloadModeControl mode={mode} onChange={setMode} />
 
         <Dropdown
           sectionLabel="Select a file size"
@@ -419,58 +803,55 @@ export function DownloadSheetContent({
           open={qualityOpen}
           onToggle={() => setQualityOpen((o) => !o)}
           onSelect={(key) => {
+            qualityTouchedRef.current = true
             setSelectedIndex(Number(key))
             setQualityOpen(false)
           }}
         />
 
-        <View style={styles.touRow}>
-          <Pressable
-            onPress={() => setTouAccepted((v) => !v)}
-            hitSlop={8}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: touAccepted }}
-            accessibilityLabel="I agree to the Terms of Use"
-            style={({ pressed }) => pressed && feedback.pressed}
-          >
-            <View
-              style={[styles.checkbox, touAccepted && styles.checkboxChecked]}
-            >
-              {touAccepted && (
-                <Ionicons name="checkmark" size={16} color="#ffffff" />
-              )}
-            </View>
-          </Pressable>
-          <Text style={[styles.touText, typography.bodySmall]}>
-            I agree to the{" "}
-          </Text>
-          <Pressable
-            onPress={() => setTermsVisible(true)}
-            hitSlop={4}
-            accessibilityRole="link"
-            accessibilityLabel="Read Terms of Use"
-          >
-            <Text style={[styles.touLink, typography.bodySmall]}>
-              Terms of Use
-            </Text>
-          </Pressable>
-        </View>
+        {/* R5: only an offline copy can carry a subtitle, so the picker leaves
+            with raw mode. The chosen slug SURVIVES the hide, mirroring the
+            series sheet, so switching back restores the choice. */}
+        {!rawMode && subtitleUnion.size > 0 && (
+          <SubtitlePicker
+            union={subtitleUnion}
+            selectedSlug={subtitleSlug}
+            downloadedSlug={offlineCopySubtitleSlug}
+            open={subtitleOpen}
+            onToggle={() => setSubtitleOpen((o) => !o)}
+            onSelect={(slug) => {
+              subtitleTouchedRef.current = true
+              setSubtitleSlug(slug)
+              setSubtitleOpen(false)
+            }}
+          />
+        )}
+
+        {rawMode && (
+          <TermsAcceptanceRow
+            accepted={touAccepted}
+            onToggle={() => setTouAccepted((v) => !v)}
+            onOpenTerms={() => setTermsVisible(true)}
+          />
+        )}
 
         <Pressable
           style={({ pressed }) => [
             styles.downloadButton,
-            !touAccepted && styles.downloadButtonDisabled,
-            pressed && touAccepted && feedback.pressed,
+            !termsSatisfied && styles.downloadButtonDisabled,
+            pressed && termsSatisfied && feedback.pressed,
           ]}
           onPress={handleDownload}
-          disabled={!touAccepted}
+          disabled={!termsSatisfied}
           accessibilityRole="button"
-          accessibilityLabel="Download video"
-          accessibilityState={{ disabled: !touAccepted }}
+          accessibilityLabel={
+            rawMode ? "Save video to the device" : "Download video"
+          }
+          accessibilityState={{ disabled: !termsSatisfied }}
         >
           <Ionicons name="download-outline" size={20} color="#ffffff" />
           <Text style={[styles.downloadButtonText, typography.body]}>
-            Download
+            {rawMode ? "Save to device" : "Download"}
           </Text>
         </Pressable>
       </ScrollView>
@@ -537,6 +918,50 @@ const styles = StyleSheet.create({
   },
   dropdownSection: {
     marginBottom: 24,
+  },
+  modeSection: {
+    marginBottom: 24,
+  },
+  modeGroup: {
+    // Side by side. The default `stretch` keeps both cards the height of the
+    // taller one, so the longer label wrapping does not leave a short sibling.
+    flexDirection: "row",
+    gap: 8,
+  },
+  modeOption: {
+    // Equal halves, so neither card's width depends on its label length.
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    // Tighter than the stacked layout was: the card is now half as wide and
+    // the longer label needs the room more than the padding does.
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 8,
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.08)",
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
+  },
+  modeOptionSelected: {
+    borderColor: ACCENT,
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+  },
+  modeTextGroup: {
+    flexShrink: 1,
+  },
+  modeLabel: {
+    color: TEXT_PRIMARY,
+    fontFamily: "System",
+  },
+  modeLabelSelected: {
+    fontWeight: "600",
+  },
+  sheetNote: {
+    color: TEXT_BODY,
+    fontFamily: "System",
+    marginBottom: 16,
   },
   dropdownSectionLabel: {
     color: TEXT_SECONDARY,

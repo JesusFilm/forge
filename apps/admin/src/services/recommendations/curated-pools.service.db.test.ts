@@ -1,11 +1,16 @@
 import { readFileSync } from "node:fs"
 import { randomUUID } from "node:crypto"
 import { PrismaClient } from "@prisma/client"
+import { PrismaPg } from "@prisma/adapter-pg"
+import { personalizedInput } from "./delivery.service.test-helpers"
+import { userDeliveryHarness } from "./user-delivery.service.test-helpers"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
 import { CuratedPoolsService } from "./curated-pools.service"
+import { retrieveCuratedFallback } from "./curated-fallback"
 import { digestValue } from "./promotion/manifest"
+import { runRecommendationDeliveryTransaction } from "./delivery-runtime"
 import {
   CuratedPoolCoverageError,
   CuratedPoolPromotionError,
@@ -41,6 +46,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
   () => {
     const schema = `curated_test_${randomUUID().replaceAll("-", "")}`
     let admin: Client, prisma: PrismaClient, service: CuratedPoolsService
+    const statements: string[] = []
     beforeAll(async () => {
       admin = new Client({ connectionString: env.DATABASE_URL })
       await admin.connect()
@@ -103,7 +109,12 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       const url = new URL(env.DATABASE_URL)
       url.searchParams.delete("options")
       url.searchParams.set("schema", schema)
-      prisma = new PrismaClient({ datasourceUrl: url.toString() })
+      const queryLoggingClient = new PrismaClient({
+        datasourceUrl: url.toString(),
+        log: [{ emit: "event", level: "query" }],
+      })
+      queryLoggingClient.$on("query", (event) => statements.push(event.query))
+      prisma = queryLoggingClient
       service = new CuratedPoolsService({ prisma })
     }, 30_000)
     afterAll(async () => {
@@ -137,7 +148,12 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         version: "fixture-v1",
         expectedCurrentVersion: null,
       })
+      statements.length = 0
       const first = await read()
+      // Budget guard: BEGIN, timeout, metadata snapshot, live hydration, COMMIT.
+      // Do not regress to serial pointer/generation/pool/membership reads.
+      expect(statements.length).toBeLessThanOrEqual(5)
+      expect(statements.some((query) => query.includes("video_dub"))).toBe(true)
       expect(first.items.map((item) => item.videoId)).toEqual([
         "video-1",
         "video-2",
@@ -154,6 +170,36 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         similarity: null,
         startSeconds: 0,
       })
+      const seededFallback = await retrieveCuratedFallback(prisma, {
+        ...context,
+        seedMediaId: "video-1",
+        excludedMediaIds: ["video-2"],
+        deadlineAt: Date.now() + 1500,
+      })
+      expect(
+        seededFallback
+          .filter((item) => item.source.rejectionReason == null)
+          .map((item) => item.targetMediaId),
+      ).toEqual([
+        "video-3",
+        "video-4",
+        "video-5",
+        "video-6",
+        "video-7",
+        "video-8",
+      ])
+      expect(seededFallback[0]?.source.evidence).toMatchObject({
+        poolVersion: "fixture-v1",
+        similarity: null,
+      })
+      expect(
+        await retrieveCuratedFallback(prisma, {
+          ...context,
+          seedMediaId: "missing-seed",
+          excludedMediaIds: [],
+          deadlineAt: Date.now() + 1500,
+        }),
+      ).toEqual([])
       const interested = await service.getCandidates({
         ...context,
         interestVideoIds: ["video-8"],
@@ -262,5 +308,136 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         await admin.query(restore!)
       }
     }, 30_000)
+  },
+)
+
+describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
+  "curated fallback issuance with the production Postgres adapter",
+  () => {
+    const schema = `user_delivery_${randomUUID().replaceAll("-", "")}`
+    let admin: Client
+    let prisma: PrismaClient
+    const queries: string[] = []
+    beforeAll(async () => {
+      admin = new Client({ connectionString: env.DATABASE_URL })
+      await admin.connect()
+      await admin.query(`CREATE SCHEMA "${schema}"`)
+      for (const name of [
+        "RecommendationRequestState",
+        "RecommendationDeliveryResult",
+        "RecommendationAuditKind",
+      ]) {
+        await admin.query(
+          `CREATE DOMAIN "${schema}"."${name}" AS public."${name}"`,
+        )
+      }
+      for (const table of [
+        "recommendation_request",
+        "recommendation_served_item",
+        "recommendation_evidence_audit",
+      ]) {
+        await admin.query(
+          `CREATE TABLE "${schema}"."${table}" (LIKE public."${table}" INCLUDING ALL)`,
+        )
+      }
+      for (const table of [
+        "recommendation_served_item",
+        "recommendation_evidence_audit",
+      ]) {
+        await admin.query(
+          `ALTER TABLE "${schema}"."${table}" ADD FOREIGN KEY (request_id) REFERENCES "${schema}".recommendation_request(id) ON DELETE CASCADE`,
+        )
+      }
+      const client = new PrismaClient({
+        adapter: new PrismaPg(
+          { connectionString: env.DATABASE_URL },
+          { schema },
+        ),
+        log: [{ level: "query", emit: "event" }],
+      })
+      client.$on("query", ({ query }) => queries.push(query))
+      prisma = client
+    })
+    afterAll(async () => {
+      await prisma?.$disconnect()
+      await admin?.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`)
+      await admin?.end()
+    })
+
+    it("persists six issued items and their audit atomically with one item insert", async () => {
+      queries.length = 0
+      const h = userDeliveryHarness(0, prisma)
+      const response = await h.service.deliver(personalizedInput())
+      expect(response).toMatchObject({ result: "served", curatedCount: 6 })
+      const itemInserts = queries.filter(
+        (query) =>
+          query.startsWith("INSERT INTO") &&
+          query.includes('"recommendation_served_item"'),
+      )
+      expect(itemInserts).toHaveLength(1)
+      const saved = await prisma.recommendationRequest.findUniqueOrThrow({
+        where: { id: response.requestId! },
+        include: { items: { orderBy: { position: "asc" } }, audits: true },
+      })
+      expect(saved.state).toBe("ISSUED")
+      expect(saved.items.map((item) => item.id)).toEqual(
+        response.items.map((item) => item.id),
+      )
+      expect(saved.items.map((item) => item.canonicalHref)).toEqual(
+        response.items.map((item) => item.canonicalHref),
+      )
+      expect(saved.audits).toHaveLength(1)
+      expect(saved.audits[0].kind).toBe("DELIVERY_SUCCESS")
+    })
+
+    it("rolls back the request and every item when the success audit cannot persist", async () => {
+      await admin.query(
+        `ALTER TABLE "${schema}".recommendation_evidence_audit ADD CONSTRAINT reject_new_audits CHECK (false) NOT VALID`,
+      )
+      const before = await prisma.recommendationRequest.count()
+      const itemsBefore = await prisma.recommendationServedItem.count()
+      const h = userDeliveryHarness(0, prisma)
+      const response = await h.service.deliver(personalizedInput())
+      expect(response).toMatchObject({ result: "unavailable", items: [] })
+      expect(await prisma.recommendationRequest.count()).toBe(before)
+      expect(await prisma.recommendationServedItem.count()).toBe(itemsBefore)
+      expect(h.release).toHaveBeenCalledOnce()
+    })
+
+    it("rolls back earlier writes when the callback exceeds its deadline", async () => {
+      await admin.query(
+        `CREATE TABLE "${schema}".deadline_probe (id integer PRIMARY KEY)`,
+      )
+      let operationSettled!: () => void
+      const settled = new Promise<void>((resolve) => {
+        operationSettled = resolve
+      })
+      const started = performance.now()
+      const result = await runRecommendationDeliveryTransaction(
+        prisma,
+        Date.now() + 200,
+        async (tx) => {
+          try {
+            await tx.$executeRawUnsafe(
+              `INSERT INTO "${schema}".deadline_probe (id) VALUES (1)`,
+            )
+            await tx.$queryRaw`SELECT 1 FROM pg_sleep(1)`
+            return "committed"
+          } finally {
+            operationSettled()
+          }
+        },
+        Date.now,
+      ).catch(() => "failed")
+      expect(result).toBe("failed")
+      expect(performance.now() - started).toBeLessThan(600)
+      await settled
+      // The query has settled and the transaction callback rejected. A later
+      // transaction cannot observe the earlier write, including after cleanup.
+      const rows = await admin.query(
+        `SELECT id FROM "${schema}".deadline_probe`,
+      )
+      expect(rows.rows).toEqual([])
+    })
   },
 )

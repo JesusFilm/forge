@@ -1,0 +1,7 @@
+WITH f AS MATERIALIZED (
+SELECT r.id request_id,i.id item_id,i.target_media_id,
+EXISTS(SELECT 1 FROM recommendation_profile_projection_contribution c WHERE c.generation_id=i.candidate_provenance->>'projectionId' AND c.kind='qualified_outcome' AND c.target_media_id=i.target_media_id) previously_learned,
+EXISTS(SELECT 1 FROM recommendation_profile_projection_contribution c JOIN recommendation_outcome_revision o ON o.id=c.source_outcome_id WHERE c.generation_id=i.candidate_provenance->>'projectionId' AND c.kind='qualified_outcome' AND c.target_media_id=i.target_media_id AND 'terminal_completed'=ANY(o.reasons)) previously_completed
+FROM recommendation_request r JOIN recommendation_served_item i ON i.request_id=r.id WHERE r.surface_version='watch-for-you-v1' AND r.created_at>='2026-09-08T01:45:00Z' AND r.created_at<'2026-09-15T01:45:00Z' AND i.candidate_generator='multi-interest-profile')
+SELECT count(*) profile_cards,count(distinct request_id) requests,count(*) FILTER(WHERE previously_learned) previously_learned_cards,count(*) FILTER(WHERE previously_completed) previously_completed_cards FROM f;
+SELECT count(*) duplicate_slates FROM (SELECT i.request_id FROM recommendation_request r JOIN recommendation_served_item i ON i.request_id=r.id WHERE r.surface_version='watch-for-you-v1' AND r.created_at>='2026-09-08T01:45:00Z' AND r.created_at<'2026-09-15T01:45:00Z' GROUP BY i.request_id HAVING count(*)<>count(distinct i.target_media_id)) x;

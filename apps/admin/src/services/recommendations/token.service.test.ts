@@ -173,6 +173,26 @@ describe("recommendation capability tokens", () => {
     ).rejects.toBeInstanceOf(RecommendationTokenInvalidError)
   })
 
+  it("preserves a revocation-store failure instead of labeling the token invalid", async () => {
+    const storageError = Object.assign(new Error("storage unavailable"), {
+      code: "P2010",
+      meta: { code: "40001" },
+    })
+    const readRevokedKids = vi
+      .fn<() => Promise<string[]>>()
+      .mockResolvedValueOnce([])
+      .mockRejectedValueOnce(storageError)
+    const service = createRecommendationTokenService({
+      keyring: parseRecommendationKeyring(rawKeyring()),
+      readRevokedKids,
+      now: () => now,
+    })
+    const token = await service.signDeliveryCapability(deliveryBinding)
+    await expect(
+      service.verifyDeliveryCapability(token, deliveryBinding),
+    ).rejects.toBe(storageError)
+  })
+
   it("rejects delivery capability use at expiry without clock tolerance", async () => {
     let current = now
     const service = createRecommendationTokenService({

@@ -3,7 +3,7 @@ id: "feat-470"
 title: "Investigate and repair recommendation retrieval timeouts"
 owner: "nisal"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-09"
 duration: 3
 depends_on: []
@@ -56,8 +56,50 @@ Read-only production investigation; no deployment, configuration change, index D
 
 ## Verification
 
-Compare query plans and result eligibility against a representative restored database. Run focused retriever/runtime tests and the real-DB delivery suite in its disposable fixture. A repaired implementation needs affected Admin lint/typecheck and a production-shaped latency/quality comparison, then normal PR validation. This ticket remains in progress until remediation and post-deploy evidence are complete.
+Compare query plans and result eligibility against a representative restored database. Run focused retriever/runtime tests and the real-DB delivery suite in its disposable fixture. A repaired implementation needs affected Admin lint/typecheck and a production-shaped latency/quality comparison, then normal PR validation. Closure requires remediation and post-deploy evidence.
 
 ## Branch Scope
 
 This repair is independently reviewable on current main. The earlier analysis and proposed experiment/locale tickets remain in the originating task checkout; they are context, not implementation dependencies or part of this repair PR.
+
+## September 21 production review
+
+The repaired retrieval implementation is present in deployed Admin code; the
+earlier "ready for the normal PR flow" note is historical. The sustained
+[production corpus](../../operations/watch-recommendation-corpus-review-2026-09-21.md)
+has persisted retrieval p50/p95/p99 of 96/241/335 ms, maximum 1,246 ms, but that
+population excludes requests that fail before issuance. It cannot establish a
+zero semantic timeout rate.
+
+Web PR #2352 now emits bounded final delivery-envelope outcomes, preserving
+`retrieval_timeout`, `delivery_timeout` and non-timeout coverage reasons
+separately. [Release reconciliation](../../operations/watch-ticket-execution-2026-09-21.md)
+records exact revision and event/primary-request coverage. At that earlier
+checkpoint, sustained complete-service timeout/fill evidence was still pending;
+the observation change itself was not a retrieval or selection runtime fix.
+
+## Completed — September 21
+
+PR #2214's repair (`c2af7e75c`) is present in the exact running Admin revision
+`de752d60980b25ee11806f2c424770fc78027188`. All nine current deterministic
+PostgreSQL regressions pass, including indexed contract-skew retrieval, complete
+semantic/hybrid delivery and transaction-setting cleanup. The earlier restored
+280,107-vector validation remains representative historical evidence; it was not
+repeated by the smaller current fixture.
+
+The fixed **00:15–02:15 UTC** production window has 1,536 primary seeded delivery
+requests: 1,088 HTTP 200 and 448 HTTP 403, with no HTTP 5xx. Railway edge counts,
+Railway final outcomes and Datadog final outcomes agree exactly, including all
+sixteen outcome groups. There are zero `delivery_timeout` and `retrieval_timeout`
+envelopes. Coverage, rate-limit and lineage fallbacks remain separately counted.
+
+The [complete release record](../../operations/watch-closeout-release-2026-09-21.md)
+compares persisted retrieval latency/fill by UI locale, actual item audio and seed
+concentration against the prior 64-hour corpus. The release's 1,075 persisted
+requests have retrieval maxima at most 457 ms, but persistence excludes pre-
+issuance failures; final-envelope observation supplies that separate boundary.
+Different traffic mix and synthetic canaries prevent a causal fill-rate claim.
+
+This closes the reproduced ANN retrieval defect and its deployment/observation
+gate. It does not close feat-496's unproven selection delay, feat-497's coverage
+expansion, personalization helpfulness or the separate evidence/Admin gates.

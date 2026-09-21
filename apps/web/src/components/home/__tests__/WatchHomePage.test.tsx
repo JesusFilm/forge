@@ -19,7 +19,11 @@ import {
   WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
   type WatchPlayerChromeVisibilityDetail,
 } from "@/lib/watch-player-chrome-events"
-import { WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS } from "@/components/home/useWatchHomeTvCarousel"
+import {
+  WATCH_HOME_TV_ENDED_BACKSTOP_GRACE_SECONDS,
+  WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS,
+  WATCH_HOME_TV_UNKNOWN_DURATION_SECONDS,
+} from "@/components/home/useWatchHomeTvCarousel"
 import {
   WATCH_HERO_PRIMARY_ACTION_CLASS,
   WATCH_HERO_TITLE_CLASS,
@@ -34,6 +38,10 @@ import {
   WATCH_HOME_HERO_RESERVE_BELOW_PX,
 } from "@/lib/watch-home-hero-fit"
 import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
+import {
+  WATCH_HOME_INTRO_HLS_CONFIG,
+  WATCH_HOME_INTRO_MAX_RESOLUTION,
+} from "@/components/home/WatchHomeTvCarousel"
 import { WatchHomePage } from "@/components/home/WatchHomePage"
 
 vi.mock("next/image", () => ({
@@ -64,6 +72,24 @@ vi.mock("next/image", () => ({
   ),
 }))
 
+// Records the props the carousel hands to MuxVideo while still rendering a
+// real <video>, which the rest of this suite drives with DOM media events.
+// `_hlsConfig` is an object and has to come out of the spread the way
+// `disableTracking` already does, or React would stringify it onto the
+// element as an unknown attribute.
+const { muxVideoHlsConfigs, muxVideoRenders } = vi.hoisted(() => ({
+  muxVideoHlsConfigs: [] as Array<Record<string, unknown> | undefined>,
+  // One entry per render of the carousel subtree, recording the src it
+  // mounted. Kept separate from the config recorder so a change to how
+  // `_hlsConfig` is captured cannot silently invalidate a render-count
+  // assertion that has nothing to do with it.
+  muxVideoRenders: [] as Array<string | undefined>,
+}))
+
+function lastMuxVideoHlsConfig(): Record<string, unknown> | undefined {
+  return muxVideoHlsConfigs[muxVideoHlsConfigs.length - 1]
+}
+
 vi.mock("@forge/video-player/mux-video", async () => {
   const React = await vi.importActual<typeof import("react")>("react")
   return {
@@ -71,11 +97,16 @@ vi.mock("@forge/video-player/mux-video", async () => {
       HTMLVideoElement,
       React.VideoHTMLAttributes<HTMLVideoElement> & {
         disableTracking?: boolean
+        _hlsConfig?: Record<string, unknown>
       }
     >(function MockMuxVideo(
-      { disableTracking: _disableTracking, ...props },
+      { disableTracking: _disableTracking, _hlsConfig, ...props },
       ref,
     ) {
+      muxVideoHlsConfigs.push(_hlsConfig)
+      muxVideoRenders.push(
+        typeof props.src === "string" ? props.src : undefined,
+      )
       return <video ref={ref} data-testid="watch-home-tv-video" {...props} />
     }),
   }
@@ -170,6 +201,11 @@ function makeCard(overrides: Record<string, unknown> = {}) {
     coreId: "1_jf-0-0",
     title: "Jesus",
     label: "Feature film",
+    // Deliberately eligible, despite the display label and the `1_jf-0-0`
+    // core id, so every pre-existing test here keeps exercising the render
+    // path. The intro's feature-film exclusion is covered by its own tests,
+    // which override this to `FEATURE_FILM`.
+    videoLabel: "SEGMENT",
     metaLabel: "2:03",
     href: "/jesus.html/english.html",
     imageUrl: "https://cdn.example/jesus.jpg",
@@ -262,6 +298,37 @@ function makeSequencedModel(): WatchHomeModel {
   })
 }
 
+/**
+ * A sequenced model whose slides carry an explicit duration. Multi-slide on
+ * purpose: `nextUnplayedWatchHomeTvCarouselIndex` returns the same index for a
+ * one-slide list, so a single-slide fixture could not tell "did not advance"
+ * apart from "advanced onto itself" and would pass against the old 30s cap too.
+ */
+function makeTimedSequencedModel(
+  durationSeconds: number | null,
+): WatchHomeModel {
+  return makeModel({
+    carousel: {
+      pools: [
+        {
+          id: "pool-a",
+          collectionIds: ["pool-a"],
+          videos: [
+            makeCarouselSlide({ durationSeconds }),
+            makeCarouselSlide({
+              id: "queued-2",
+              title: "Queued Two",
+              href: "/queued-two.html/english.html",
+              src: "https://stream.example/queued-two.m3u8",
+              durationSeconds,
+            }),
+          ],
+        },
+      ],
+    },
+  })
+}
+
 let container: HTMLDivElement
 let root: Root
 
@@ -270,6 +337,8 @@ beforeEach(() => {
   window.localStorage.clear()
   window.sessionStorage.clear()
   carouselApi.scrollTo.mockClear()
+  muxVideoHlsConfigs.length = 0
+  muxVideoRenders.length = 0
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -284,6 +353,843 @@ afterEach(async () => {
 })
 
 describe("WatchHomePage", () => {
+  // The bandwidth guard's two levers at the mount seam. NOTE ON WHAT THIS
+  // PROVES: jsdom does not implement HTMLMediaElement playback, so a prop
+  // assertion is a pin, not an effect proof — a broken buffer cap would
+  // satisfy it too. The discriminating probe is measured segment count and
+  // transferred bytes in a real browser (plan U6).
+  it("pins the bandwidth guard's values, not just their threading", () => {
+    // The mount-seam assertions below build their expectation from these same
+    // constants, so they prove the value REACHES the player, not that it is
+    // right. Escalating the cap to "720p" would land on the floor Mux's own
+    // level controller already enforces -- removing the guard rather than
+    // halving it -- and every other test here would stay green.
+    expect(WATCH_HOME_INTRO_MAX_RESOLUTION).toBe("480p")
+    expect(WATCH_HOME_INTRO_HLS_CONFIG).toEqual({
+      maxBufferLength: 10,
+      maxBufferSize: 5_000_000,
+      backBufferLength: 5,
+      enableWebVTT: false,
+    })
+  })
+
+  it("mounts the hero with the bounded intro HLS config", async () => {
+    await act(async () => {
+      root.render(<WatchHomePage model={makeModel()} />)
+    })
+
+    expect(lastMuxVideoHlsConfig()).toEqual(WATCH_HOME_INTRO_HLS_CONFIG)
+  })
+
+  it("caps the requested rendition on a Mux hero stream", async () => {
+    await act(async () => {
+      root.render(
+        <WatchHomePage
+          model={makeModel({
+            heroSlides: [
+              {
+                ...makeCard({ hls: "https://stream.mux.com/mux-hero.m3u8" }),
+                eyebrow: "Featured",
+              } as WatchHomeModel["heroSlides"][number],
+            ],
+          })}
+        />,
+      )
+    })
+
+    const video = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+
+    expect(video.getAttribute("src")).toBe(
+      `https://stream.mux.com/mux-hero.m3u8?max_resolution=${WATCH_HOME_INTRO_MAX_RESOLUTION}`,
+    )
+  })
+
+  // The rewrite is host-scoped, which is why every existing exact-src
+  // assertion in this file keeps passing untouched.
+  it("leaves a non-Mux hero stream byte-identical", async () => {
+    await act(async () => {
+      root.render(<WatchHomePage model={makeModel()} />)
+    })
+
+    const video = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+
+    expect(video.getAttribute("src")).toBe("https://stream.example/jesus.m3u8")
+  })
+
+  // R12's guard: re-rendering must not hand the mounted element a new `src`,
+  // which would reload HLS from zero while the advance clock keeps counting.
+  it("keeps the hero src stable across a re-render of the same slide", async () => {
+    const model = makeModel({
+      heroSlides: [
+        {
+          ...makeCard({ hls: "https://stream.mux.com/mux-hero.m3u8" }),
+          eyebrow: "Featured",
+        } as WatchHomeModel["heroSlides"][number],
+      ],
+    })
+
+    await act(async () => {
+      root.render(<WatchHomePage model={model} />)
+    })
+
+    const firstSrc = (
+      container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      ) as HTMLVideoElement
+    ).getAttribute("src")
+
+    await act(async () => {
+      root.render(<WatchHomePage model={model} />)
+    })
+
+    const video = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+
+    expect(video.getAttribute("src")).toBe(firstSrc)
+    expect(firstSrc).toContain("max_resolution=")
+  })
+
+  describe("playing a slide to its natural end", () => {
+    async function startFirstSlide(model: WatchHomeModel) {
+      vi.spyOn(Math, "random").mockReturnValue(0)
+      await act(async () => {
+        root.render(<WatchHomePage model={model} />)
+      })
+      const video = container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      ) as HTMLVideoElement
+      video.play = vi.fn(() =>
+        Promise.resolve(),
+      ) as unknown as HTMLVideoElement["play"]
+      await act(async () => {
+        video.dispatchEvent(new Event("canplay", { bubbles: true }))
+      })
+      return video
+    }
+
+    function carouselLabel() {
+      return container
+        .querySelector('[data-testid="watch-home-tv-carousel"]')
+        ?.getAttribute("aria-label")
+    }
+
+    function setMediaTime(video: HTMLVideoElement, seconds: number) {
+      Object.defineProperty(video, "currentTime", {
+        configurable: true,
+        value: seconds,
+      })
+    }
+
+    // The ticket's own regression. Fails against the 30-second cap this change
+    // removes.
+    it("keeps a slide longer than 30 seconds on screen past 30 seconds", async () => {
+      vi.useFakeTimers()
+      try {
+        const video = await startFirstSlide(makeTimedSequencedModel(123))
+        const openingTitle = carouselLabel()
+
+        // The load-bearing assertion: the slide's turn is its OWN length. Any
+        // re-introduced cap shows up here as a shorter value, whatever grace
+        // sits on top of it.
+        const ring = container.querySelector(
+          '[data-testid="watch-home-current-progress"] .watch-home-progress-ring',
+        ) as SVGCircleElement
+        expect(
+          ring.style.getPropertyValue("--watch-home-progress-duration"),
+        ).toBe("123s")
+
+        setMediaTime(video, 36)
+        await act(async () => {
+          vi.advanceTimersByTime(36_000)
+        })
+
+        expect(carouselLabel()).toBe(openingTitle)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it("advances on the media's own ended event, before the backstop", async () => {
+      vi.useFakeTimers()
+      try {
+        const video = await startFirstSlide(makeTimedSequencedModel(10))
+        const openingTitle = carouselLabel()
+
+        await act(async () => {
+          vi.advanceTimersByTime(14_000)
+        })
+        expect(carouselLabel()).toBe(openingTitle)
+
+        await act(async () => {
+          video.dispatchEvent(new Event("ended", { bubbles: true }))
+        })
+
+        expect(carouselLabel()).not.toBe(openingTitle)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    // Also the wedged-media case: jsdom's `currentTime` never moves, so this
+    // is the backstop refusing to re-arm without forward progress.
+    it("still advances on the backstop when ended never arrives", async () => {
+      vi.useFakeTimers()
+      try {
+        await startFirstSlide(makeTimedSequencedModel(10))
+        const openingTitle = carouselLabel()
+
+        await act(async () => {
+          vi.advanceTimersByTime(15_001)
+        })
+
+        expect(carouselLabel()).not.toBe(openingTitle)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    // The clock is wall time and the target is media time. A slide that is
+    // genuinely still playing must not be cut by drift; a wedged one still
+    // loses its turn, because re-arming requires the media clock to have moved.
+    it("re-arms rather than cutting a slide whose media clock is still moving", async () => {
+      vi.useFakeTimers()
+      try {
+        const video = await startFirstSlide(makeTimedSequencedModel(10))
+        const openingTitle = carouselLabel()
+
+        setMediaTime(video, 4)
+        await act(async () => {
+          vi.advanceTimersByTime(15_001)
+        })
+        expect(carouselLabel()).toBe(openingTitle)
+
+        setMediaTime(video, 10)
+        await act(async () => {
+          vi.advanceTimersByTime(15_001)
+        })
+        expect(carouselLabel()).not.toBe(openingTitle)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it("uses the bounded fallback, not 30 seconds, when no duration is known", async () => {
+      vi.useFakeTimers()
+      try {
+        await startFirstSlide(makeTimedSequencedModel(null))
+        const openingTitle = carouselLabel()
+
+        await act(async () => {
+          vi.advanceTimersByTime(30_000)
+        })
+        expect(carouselLabel()).toBe(openingTitle)
+
+        const ring = container.querySelector(
+          '[data-testid="watch-home-current-progress"] .watch-home-progress-ring',
+        ) as SVGCircleElement
+        // `${NaN}s` would be accepted as a custom-property token and silently
+        // kill the animation, so the shape itself is the assertion.
+        expect(
+          ring.style.getPropertyValue("--watch-home-progress-duration"),
+        ).toMatch(/^\d+(\.\d+)?s$/)
+
+        await act(async () => {
+          vi.advanceTimersByTime(
+            (WATCH_HOME_TV_UNKNOWN_DURATION_SECONDS +
+              WATCH_HOME_TV_ENDED_BACKSTOP_GRACE_SECONDS) *
+              1000 -
+              29_000,
+          )
+        })
+        expect(carouselLabel()).not.toBe(openingTitle)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it("re-keys the ring onto the duration the media actually reports", async () => {
+      const readRing = () =>
+        container.querySelector(
+          '[data-testid="watch-home-current-progress"] .watch-home-progress-ring',
+        ) as SVGCircleElement
+
+      vi.spyOn(Math, "random").mockReturnValue(0)
+      await act(async () => {
+        root.render(<WatchHomePage model={makeTimedSequencedModel(null)} />)
+      })
+
+      expect(
+        readRing().style.getPropertyValue("--watch-home-progress-duration"),
+      ).toBe(`${WATCH_HOME_TV_UNKNOWN_DURATION_SECONDS}s`)
+
+      const video = container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      ) as HTMLVideoElement
+      Object.defineProperty(video, "duration", {
+        configurable: true,
+        value: 480,
+      })
+      await act(async () => {
+        video.dispatchEvent(new Event("loadedmetadata", { bubbles: true }))
+      })
+
+      expect(
+        readRing().style.getPropertyValue("--watch-home-progress-duration"),
+      ).toBe("480s")
+    })
+
+    // Exactly one advance per turn, on the pair that can actually race. The
+    // ended-versus-backstop pair cannot: `selectIndex` clears the advance
+    // timeout synchronously, so nothing is left pending once `ended` commits.
+    it("does not let the portrait skip and the dead-stream ceiling both advance", async () => {
+      vi.useFakeTimers()
+      try {
+        vi.spyOn(Math, "random").mockReturnValue(0)
+        await act(async () => {
+          root.render(<WatchHomePage model={makeTimedSequencedModel(10)} />)
+        })
+
+        const openingTitle = carouselLabel()
+        const video = container.querySelector(
+          '[data-testid="watch-home-tv-video"]',
+        ) as HTMLVideoElement
+        Object.defineProperty(video, "videoWidth", {
+          configurable: true,
+          value: 360,
+        })
+        Object.defineProperty(video, "videoHeight", {
+          configurable: true,
+          value: 640,
+        })
+
+        await act(async () => {
+          video.dispatchEvent(new Event("loadedmetadata", { bubbles: true }))
+        })
+        const afterSkip = carouselLabel()
+        expect(afterSkip).not.toBe(openingTitle)
+
+        // The media-wait timer armed for the turn the skip just ended must not
+        // advance the turn that replaced it.
+        await act(async () => {
+          vi.advanceTimersByTime(WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS - 1)
+        })
+
+        expect(carouselLabel()).toBe(afterSkip)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    // `timeupdate` fires roughly four times a second and a slide can now run
+    // for minutes, so the state write is gated on the whole second the only
+    // reader (the resume link) actually uses.
+    it("writes resume state once per playback second, not once per event", async () => {
+      // The MuxVideo mock counts its own renders, which is the only render
+      // count observable from out here -- a wrapper around WatchHomePage would
+      // never re-render at all.
+      const carouselRenders = () => muxVideoRenders.length
+
+      vi.spyOn(Math, "random").mockReturnValue(0)
+      await act(async () => {
+        root.render(<WatchHomePage model={makeTimedSequencedModel(123)} />)
+      })
+
+      const video = container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      ) as HTMLVideoElement
+      Object.defineProperty(video, "duration", {
+        configurable: true,
+        value: 123,
+      })
+
+      const setTime = (seconds: number) =>
+        Object.defineProperty(video, "currentTime", {
+          configurable: true,
+          value: seconds,
+        })
+
+      setTime(12.1)
+      await act(async () => {
+        video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
+      })
+      const hrefAfterFirst = container
+        .querySelector("a[href*='autoplay=1']")
+        ?.getAttribute("href")
+      const rendersAfterFirst = carouselRenders()
+
+      setTime(12.8)
+      await act(async () => {
+        video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
+      })
+
+      expect(
+        container.querySelector("a[href*='autoplay=1']")?.getAttribute("href"),
+      ).toBe(hrefAfterFirst)
+      expect(carouselRenders()).toBe(rendersAfterFirst)
+      expect(hrefAfterFirst).toContain("t=12")
+
+      setTime(13.2)
+      await act(async () => {
+        video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
+      })
+
+      expect(
+        container.querySelector("a[href*='autoplay=1']")?.getAttribute("href"),
+      ).toContain("t=13")
+    })
+
+    it("re-arms the poster hold only once per slide, not on every canplay", async () => {
+      vi.useFakeTimers()
+      try {
+        vi.spyOn(Math, "random").mockReturnValue(0)
+        await act(async () => {
+          root.render(<WatchHomePage model={makeTimedSequencedModel(123)} />)
+        })
+        const video = container.querySelector(
+          '[data-testid="watch-home-tv-video"]',
+        ) as HTMLVideoElement
+        const play = vi.fn(() => Promise.resolve())
+        video.play = play as unknown as HTMLVideoElement["play"]
+
+        await act(async () => {
+          video.dispatchEvent(new Event("canplay", { bubbles: true }))
+        })
+        await act(async () => {
+          vi.advanceTimersByTime(1_500)
+        })
+        expect(play).toHaveBeenCalledTimes(1)
+
+        // A stall and its recovery: `canplay` fires again.
+        await act(async () => {
+          video.dispatchEvent(new Event("waiting", { bubbles: true }))
+        })
+        await act(async () => {
+          video.dispatchEvent(new Event("canplay", { bubbles: true }))
+        })
+        await act(async () => {
+          vi.advanceTimersByTime(1_500)
+        })
+
+        expect(play).toHaveBeenCalledTimes(1)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it("holds a paused slide's turn instead of spending it", async () => {
+      vi.useFakeTimers()
+      try {
+        const video = await startFirstSlide(makeTimedSequencedModel(10))
+        const openingTitle = carouselLabel()
+
+        await act(async () => {
+          vi.advanceTimersByTime(5_000)
+        })
+        await act(async () => {
+          video.dispatchEvent(new Event("pause", { bubbles: true }))
+        })
+
+        // Well past the backstop, and past the dead-stream ceiling too.
+        await act(async () => {
+          vi.advanceTimersByTime(60_000)
+        })
+        expect(carouselLabel()).toBe(openingTitle)
+
+        await act(async () => {
+          video.dispatchEvent(new Event("play", { bubbles: true }))
+        })
+        // Only the REMAINING time, not a fresh full turn: the clock kept what
+        // it had already accumulated.
+        await act(async () => {
+          vi.advanceTimersByTime(10_001)
+        })
+
+        expect(carouselLabel()).not.toBe(openingTitle)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    // Both directions. A one-sided assertion passes under the single-prop
+    // implementation this replaces, where any hold drew the stall spinner.
+    it("shows a stall indicator for buffering but not for a deliberate pause", async () => {
+      const video = await startFirstSlide(makeTimedSequencedModel(10))
+      const readRing = () =>
+        container.querySelector(
+          '[data-testid="watch-home-current-progress"] .watch-home-progress-ring',
+        ) as SVGCircleElement
+      const loaderCount = () =>
+        container.querySelectorAll(
+          '[data-testid="watch-home-progress-loading"]',
+        ).length
+
+      expect(readRing().style.animationPlayState).toBe("running")
+      expect(loaderCount()).toBe(0)
+
+      await act(async () => {
+        video.dispatchEvent(new Event("pause", { bubbles: true }))
+      })
+      expect(readRing().style.animationPlayState).toBe("paused")
+      expect(readRing().style.opacity).toBe("1")
+      expect(loaderCount()).toBe(0)
+
+      await act(async () => {
+        video.dispatchEvent(new Event("waiting", { bubbles: true }))
+      })
+      expect(readRing().style.animationPlayState).toBe("paused")
+      expect(readRing().style.opacity).toBe("0.4")
+      expect(loaderCount()).toBeGreaterThan(0)
+    })
+
+    it("does not let the dead-stream ceiling advance a hero the viewer paused", async () => {
+      vi.useFakeTimers()
+      try {
+        const video = await startFirstSlide(makeTimedSequencedModel(10))
+        const openingTitle = carouselLabel()
+
+        await act(async () => {
+          video.dispatchEvent(new Event("pause", { bubbles: true }))
+          video.dispatchEvent(new Event("waiting", { bubbles: true }))
+        })
+        await act(async () => {
+          vi.advanceTimersByTime(WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS * 3)
+        })
+
+        expect(carouselLabel()).toBe(openingTitle)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    // A refused autoplay produces no `playing`, no `pause` and no `ended`, so
+    // without this the hero would sit on a still frame for a whole film.
+    it("gives up a slide whose play() was refused", async () => {
+      vi.useFakeTimers()
+      try {
+        vi.spyOn(Math, "random").mockReturnValue(0)
+        await act(async () => {
+          root.render(<WatchHomePage model={makeTimedSequencedModel(123)} />)
+        })
+        const video = container.querySelector(
+          '[data-testid="watch-home-tv-video"]',
+        ) as HTMLVideoElement
+        video.play = vi.fn(() =>
+          Promise.reject(new DOMException("NotAllowedError")),
+        ) as unknown as HTMLVideoElement["play"]
+
+        await act(async () => {
+          video.dispatchEvent(new Event("canplay", { bubbles: true }))
+        })
+        const openingTitle = carouselLabel()
+
+        await act(async () => {
+          vi.advanceTimersByTime(1_500)
+        })
+        await act(async () => {
+          vi.advanceTimersByTime(WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS + 1)
+        })
+
+        expect(carouselLabel()).not.toBe(openingTitle)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it("clears the paused hold when the viewer picks another slide", async () => {
+      vi.useFakeTimers()
+      try {
+        const video = await startFirstSlide(makeTimedSequencedModel(10))
+
+        await act(async () => {
+          video.dispatchEvent(new Event("pause", { bubbles: true }))
+        })
+        await act(async () => {
+          container
+            .querySelector('button[aria-label="Show Queued Two"]')
+            ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+        })
+
+        const next = container.querySelector(
+          '[data-testid="watch-home-tv-video"]',
+        ) as HTMLVideoElement
+        next.play = vi.fn(() =>
+          Promise.resolve(),
+        ) as unknown as HTMLVideoElement["play"]
+        await act(async () => {
+          next.dispatchEvent(new Event("canplay", { bubbles: true }))
+        })
+
+        const secondTitle = carouselLabel()
+        await act(async () => {
+          vi.advanceTimersByTime(15_001)
+        })
+
+        expect(carouselLabel()).not.toBe(secondTitle)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    // With one playable slide, `advance` selects the same id, so
+    // `key={activeSlide.id}` cannot remount `<MuxVideo>` and no fresh
+    // `canplay` or `ended` would ever arrive again.
+    it("replays the only playable slide instead of freezing on its last frame", async () => {
+      vi.spyOn(Math, "random").mockReturnValue(0)
+      await act(async () => {
+        root.render(
+          <WatchHomePage
+            model={makeModel({
+              carousel: {
+                pools: [
+                  {
+                    id: "pool-a",
+                    collectionIds: ["pool-a"],
+                    videos: [makeCarouselSlide()],
+                  },
+                ],
+              },
+            })}
+          />,
+        )
+      })
+
+      const video = container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      ) as HTMLVideoElement
+      const play = vi.fn(() => Promise.resolve())
+      video.play = play as unknown as HTMLVideoElement["play"]
+      Object.defineProperty(video, "currentTime", {
+        configurable: true,
+        value: 10,
+        writable: true,
+      })
+
+      const readRingCircle = () =>
+        container.querySelector(
+          '[data-testid="watch-home-current-progress"] .watch-home-progress-ring',
+        ) as SVGCircleElement
+      const ringBefore = readRingCircle()
+
+      await act(async () => {
+        video.dispatchEvent(new Event("ended", { bubbles: true }))
+      })
+
+      const replayed = container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      ) as HTMLVideoElement
+
+      // Same element -- there is nothing to remount -- restarted by hand.
+      expect(replayed).toBe(video)
+      expect(video.currentTime).toBe(0)
+      expect(play).toHaveBeenCalled()
+      // The ring is keyed on the restart counter, so React must have
+      // remounted the circle. `stroke-dasharray` would NOT discriminate here:
+      // it is derived from the radius alone and is identical across every
+      // animation-key change.
+      expect(readRingCircle()).not.toBe(ringBefore)
+      // ...and not left behind a loading indicator nobody can clear.
+      expect(
+        container.querySelector('[data-testid="watch-home-progress-loading"]'),
+      ).toBeNull()
+    })
+
+    // A play() promise can reject long after its turn ended. The buffering
+    // flag is hook-wide, so an ungated rejection parks the slide that
+    // REPLACED the one that issued it.
+    it("ignores a play rejection that lands after its turn ended", async () => {
+      let rejectFirstPlay: (reason?: unknown) => void = () => undefined
+      vi.useFakeTimers()
+      try {
+        vi.spyOn(Math, "random").mockReturnValue(0)
+        await act(async () => {
+          root.render(<WatchHomePage model={makeTimedSequencedModel(10)} />)
+        })
+
+        const first = container.querySelector(
+          '[data-testid="watch-home-tv-video"]',
+        ) as HTMLVideoElement
+        first.play = vi.fn(
+          () =>
+            new Promise<void>((_resolve, reject) => {
+              rejectFirstPlay = reject
+            }),
+        ) as unknown as HTMLVideoElement["play"]
+
+        await act(async () => {
+          first.dispatchEvent(new Event("canplay", { bubbles: true }))
+        })
+        await act(async () => {
+          vi.advanceTimersByTime(1_500)
+        })
+
+        // The viewer moves on while that promise is still pending.
+        await act(async () => {
+          container
+            .querySelector('button[aria-label="Show Queued Two"]')
+            ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+        })
+        const second = container.querySelector(
+          '[data-testid="watch-home-tv-video"]',
+        ) as HTMLVideoElement
+        second.play = vi.fn(() =>
+          Promise.resolve(),
+        ) as unknown as HTMLVideoElement["play"]
+        await act(async () => {
+          second.dispatchEvent(new Event("canplay", { bubbles: true }))
+        })
+        await act(async () => {
+          vi.advanceTimersByTime(1_500)
+        })
+        const secondTitle = carouselLabel()
+        expect(
+          container.querySelector(
+            '[data-testid="watch-home-progress-loading"]',
+          ),
+        ).toBeNull()
+
+        // Now the abandoned turn's promise finally rejects.
+        await act(async () => {
+          rejectFirstPlay(new DOMException("NotAllowedError"))
+          await Promise.resolve()
+        })
+
+        // The healthy slide must not be marked as waiting on bytes...
+        expect(
+          container.querySelector(
+            '[data-testid="watch-home-progress-loading"]',
+          ),
+        ).toBeNull()
+        // ...nor retired early by the dead-stream ceiling.
+        await act(async () => {
+          vi.advanceTimersByTime(WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS + 1)
+        })
+        expect(carouselLabel()).toBe(secondTitle)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    // Browsers fire `pause` immediately before `ended` at natural end. If that
+    // pause were treated as a deliberate hold it would park BOTH the advance
+    // clock and the dead-stream ceiling, so a turn whose `ended` never arrives
+    // would freeze the hero for good.
+    it("still resolves a turn whose ended never arrives after the end-of-play pause", async () => {
+      vi.useFakeTimers()
+      try {
+        const video = await startFirstSlide(makeTimedSequencedModel(10))
+        const openingTitle = carouselLabel()
+
+        Object.defineProperty(video, "duration", {
+          configurable: true,
+          value: 10,
+        })
+        setMediaTime(video, 10)
+        await act(async () => {
+          video.dispatchEvent(new Event("pause", { bubbles: true }))
+        })
+
+        // No `ended` follows. The backstop must still finish the turn.
+        await act(async () => {
+          vi.advanceTimersByTime(15_001)
+        })
+
+        expect(carouselLabel()).not.toBe(openingTitle)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    // A replay keeps the slide id, so every other dependency of the backstop
+    // effect is unchanged. Without an explicit turn signal the effect never
+    // re-runs and the replayed turn carries no recovery timer at all.
+    it("arms a fresh backstop for the replayed turn of a single-slide queue", async () => {
+      vi.useFakeTimers()
+      try {
+        vi.spyOn(Math, "random").mockReturnValue(0)
+        await act(async () => {
+          root.render(
+            <WatchHomePage
+              model={makeModel({
+                carousel: {
+                  pools: [
+                    {
+                      id: "pool-a",
+                      collectionIds: ["pool-a"],
+                      videos: [makeCarouselSlide()],
+                    },
+                  ],
+                },
+              })}
+            />,
+          )
+        })
+
+        const video = container.querySelector(
+          '[data-testid="watch-home-tv-video"]',
+        ) as HTMLVideoElement
+        const play = vi.fn(() => Promise.resolve())
+        video.play = play as unknown as HTMLVideoElement["play"]
+        await act(async () => {
+          video.dispatchEvent(new Event("canplay", { bubbles: true }))
+        })
+        await act(async () => {
+          vi.advanceTimersByTime(1_500)
+        })
+
+        await act(async () => {
+          video.dispatchEvent(new Event("ended", { bubbles: true }))
+        })
+        expect(play).toHaveBeenCalledTimes(2)
+
+        // The replayed turn must own a backstop: if `ended` is missed the
+        // second time round, this is the only thing that can recover.
+        await act(async () => {
+          vi.advanceTimersByTime(15_001)
+        })
+
+        expect(play).toHaveBeenCalledTimes(3)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    // R7: the viewer is never trapped on a slide that now runs for minutes.
+    it("lets the viewer leave a long slide mid-playback", async () => {
+      const video = await startFirstSlide(makeTimedSequencedModel(123))
+      const openingTitle = carouselLabel()
+
+      Object.defineProperty(video, "currentTime", {
+        configurable: true,
+        value: 42.7,
+      })
+      Object.defineProperty(video, "duration", {
+        configurable: true,
+        value: 123,
+      })
+      await act(async () => {
+        video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
+      })
+
+      // The resume offset now reaches far past the retired 30-second cap.
+      expect(container.querySelector("a[href*='t=42']")?.textContent).toContain(
+        "Watch Now",
+      )
+
+      await act(async () => {
+        container
+          .querySelector('button[aria-label="Show Queued Two"]')
+          ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+      })
+
+      expect(carouselLabel()).not.toBe(openingTitle)
+    })
+  })
+
   it("server-renders one page heading outside the heading-free carousel", () => {
     const serverContainer = document.createElement("div")
     serverContainer.innerHTML = renderToStaticMarkup(
@@ -423,7 +1329,7 @@ describe("WatchHomePage", () => {
         .querySelector('[data-testid="watch-home-tv-carousel"] > div')
         ?.getAttribute("class"),
     ).toContain(
-      `md:h-[max(34svh,min(56.25vw,calc(100svh_-_${WATCH_HOME_HERO_RESERVE_BELOW_PX}px)))]`,
+      `md:h-[max(50svh,min(56.25vw,calc(100svh_-_${WATCH_HOME_HERO_RESERVE_BELOW_PX}px)))]`,
     )
     expect(
       container.querySelector('[data-testid="watch-home-tv-rail"]'),
@@ -1434,7 +2340,7 @@ describe("WatchHomePage", () => {
       })
 
       await act(async () => {
-        vi.advanceTimersByTime(9_499)
+        vi.advanceTimersByTime(14_999)
       })
 
       expect(carousel?.getAttribute("aria-label")).toBe(openingTitle)
@@ -1530,7 +2436,7 @@ describe("WatchHomePage", () => {
       })
 
       await act(async () => {
-        vi.advanceTimersByTime(9_420)
+        vi.advanceTimersByTime(9_920)
       })
 
       await act(async () => {
@@ -2111,7 +3017,7 @@ describe("WatchHomePage", () => {
       `h-[max(50dvh,calc(100svh_-_${WATCH_HOME_HERO_RESERVE_BELOW_MOBILE_PX}px))]`,
     )
     expect(heroFrame.className).toContain(
-      `md:h-[max(34svh,min(56.25vw,calc(100svh_-_${WATCH_HOME_HERO_RESERVE_BELOW_PX}px)))]`,
+      `md:h-[max(50svh,min(56.25vw,calc(100svh_-_${WATCH_HOME_HERO_RESERVE_BELOW_PX}px)))]`,
     )
     expect(heroFrame.className).not.toContain("md:h-[min(100svh,56.25vw)]")
 
@@ -2484,6 +3390,7 @@ describe("WatchHomePage", () => {
     // The bespoke sizing the home hero used to carry is gone.
     expect(title.className).not.toContain("font-extrabold")
     expect(title.className).not.toContain("text-3xl")
+    expect(title.className).not.toContain("line-clamp")
     expect(action.className).not.toContain(
       "shadow-[0_14px_32px_rgba(0,0,0,0.34)]",
     )
@@ -2684,5 +3591,109 @@ describe("WatchHomePage", () => {
     expect(
       railFrame.querySelector('[data-testid="watch-home-tv-active-title"]'),
     ).not.toBeNull()
+  })
+  describe("feature-film exclusion on the hero path", () => {
+    // `heroSlides` is built from each configured source's PARENT video, so it
+    // is the one entry point that can hand the intro a whole film. Measured
+    // against production admin on 2026-09-14, two of the four configured hero
+    // sources are feature films: `1_jf-0-0` at 7674s and `2_GOJ-0-0` at
+    // 10994s. `makeModel()` ships no carousel pools, so these render through
+    // `watchHomeHeroSlidesToTvCarouselSlides`.
+    it("mounts no media for a feature-film hero slide", async () => {
+      await act(async () => {
+        root.render(
+          <WatchHomePage
+            model={makeModel({
+              heroSlides: [
+                {
+                  ...makeCard({
+                    coreId: "1_jf-0-0",
+                    videoLabel: "FEATURE_FILM",
+                    durationSeconds: 7674,
+                  }),
+                  eyebrow: "Featured",
+                },
+              ],
+            })}
+          />,
+        )
+      })
+
+      expect(
+        container.querySelector('[data-testid="watch-home-tv-video"]'),
+      ).toBeNull()
+    })
+
+    it("keeps the eligible slide and drops only the feature film", async () => {
+      await act(async () => {
+        root.render(
+          <WatchHomePage
+            model={makeModel({
+              heroSlides: [
+                {
+                  ...makeCard({
+                    id: "film",
+                    coreId: "1_jf-0-0",
+                    videoLabel: "FEATURE_FILM",
+                    playbackId: "mux-film",
+                    hls: "https://stream.example/film.m3u8",
+                  }),
+                  eyebrow: "Featured",
+                },
+                {
+                  ...makeCard({
+                    id: "segment",
+                    coreId: "1_jf-0-1",
+                    title: "A Segment",
+                    videoLabel: "SEGMENT",
+                    playbackId: "mux-segment",
+                    hls: "https://stream.example/segment.m3u8",
+                  }),
+                  eyebrow: "Featured",
+                },
+              ],
+            })}
+          />,
+        )
+      })
+
+      const video = container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      ) as HTMLVideoElement | null
+
+      // The segment takes the first turn because the film is gone, not merely
+      // reordered behind it.
+      expect(video).not.toBeNull()
+      expect(video?.getAttribute("src")).toContain("segment.m3u8")
+      expect(
+        container.querySelector('[data-testid="watch-home-tv-active-title"]')
+          ?.textContent,
+      ).toContain("A Segment")
+    })
+
+    it("renders the page without media when every hero slide is a feature film", async () => {
+      // Not production-reachable today — two configured sources are
+      // COLLECTIONs — but the guard must degrade to a posterless page rather
+      // than throw.
+      await act(async () => {
+        root.render(
+          <WatchHomePage
+            model={makeModel({
+              heroSlides: [
+                {
+                  ...makeCard({ videoLabel: "FEATURE_FILM" }),
+                  eyebrow: "Featured",
+                },
+              ],
+            })}
+          />,
+        )
+      })
+
+      expect(
+        container.querySelector('[data-testid="watch-home-tv-video"]'),
+      ).toBeNull()
+      expect(container.textContent).toContain("Discover the full story")
+    })
   })
 })

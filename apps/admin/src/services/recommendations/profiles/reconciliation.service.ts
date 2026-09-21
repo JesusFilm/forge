@@ -7,7 +7,7 @@ import {
   RECOMMENDATION_PROFILE_RECONCILIATION_BATCH_SIZE,
   redispatchRecommendationProfileProjectionRun,
 } from "./job"
-import { profileLineageEligibleSql } from "./profile-lineage"
+import { profileIneligibleGenerationIdsSql } from "./profile-lineage"
 
 export type RecommendationProfileReconciliationResult = Readonly<{
   locked: boolean
@@ -67,6 +67,10 @@ export async function runRecommendationProfileReconciliationBatch(
     `)
     if (lock[0]?.acquired !== true) return null
 
+    // These short batches lose seconds to JIT compilation. Transaction-local
+    // scope restores the connection's setting on both commit and rollback.
+    await tx.$executeRaw(Prisma.sql`SET LOCAL jit = off`)
+
     const attemptsExhausted = await tx.$executeRaw(Prisma.sql`
       UPDATE recommendation_profile_projection_run
       SET state = 'failed',
@@ -96,6 +100,28 @@ export async function runRecommendationProfileReconciliationBatch(
     `)
 
     const affectedPointers = await tx.$queryRaw<AffectedPointer[]>(Prisma.sql`
+      WITH invalid_generations AS MATERIALIZED (
+        ${profileIneligibleGenerationIdsSql(now)}
+      ), affected_pointers AS MATERIALIZED (
+        SELECT pointer.*
+        FROM recommendation_profile_projection_pointer pointer
+        JOIN recommendation_profile_projection_generation generation
+          ON generation.id = pointer.generation_id
+        JOIN invalid_generations invalid ON invalid.id = generation.id
+        WHERE generation.state = 'published'
+          AND generation.expires_at > ${now}
+          AND NOT EXISTS (
+            SELECT 1
+            FROM recommendation_profile_projection_run active_run
+            WHERE active_run.state IN ('pending', 'claimed')
+              AND active_run.expected_generation_id = pointer.generation_id
+              AND active_run.expected_pointer_generation = pointer.pointer_generation
+          )
+      ), batch AS (
+        SELECT * FROM affected_pointers
+        ORDER BY updated_at, scope_digest
+        LIMIT ${RECOMMENDATION_PROFILE_RECONCILIATION_BATCH_SIZE}
+      )
       SELECT
         pointer.scope::text AS scope,
         pointer.profile_id AS "profileId",
@@ -104,9 +130,7 @@ export async function runRecommendationProfileReconciliationBatch(
           AS "sessionDigest",
         pointer.generation_id AS "generationId",
         pointer.pointer_generation AS "pointerGeneration"
-      FROM recommendation_profile_projection_pointer pointer
-      JOIN recommendation_profile_projection_generation generation
-        ON generation.id = pointer.generation_id
+      FROM batch pointer
       LEFT JOIN LATERAL (
         SELECT link.session_digest
         FROM recommendation_profile_session_link link
@@ -116,18 +140,7 @@ export async function runRecommendationProfileReconciliationBatch(
         ORDER BY link.linked_at DESC, link.id
         LIMIT 1
       ) active_link ON true
-      WHERE generation.state = 'published'
-        AND generation.expires_at > ${now}
-        AND NOT ${profileLineageEligibleSql(Prisma.sql`generation.id`, now)}
-        AND NOT EXISTS (
-          SELECT 1
-          FROM recommendation_profile_projection_run active_run
-          WHERE active_run.state IN ('pending', 'claimed')
-            AND active_run.expected_generation_id = pointer.generation_id
-            AND active_run.expected_pointer_generation = pointer.pointer_generation
-        )
       ORDER BY pointer.updated_at, pointer.scope_digest
-      LIMIT ${RECOMMENDATION_PROFILE_RECONCILIATION_BATCH_SIZE}
     `)
 
     const generationIds = affectedPointers.map((row) => row.generationId)

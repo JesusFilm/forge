@@ -6,6 +6,7 @@ import {
   type PrismaClient,
 } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
+import { env } from "@/config/env"
 import { prisma as defaultPrisma } from "@/db/client"
 import {
   isTerminalRecommendationFactKind,
@@ -37,7 +38,11 @@ import {
   scheduleRecommendationEpisodeFinalization,
   type RecommendationFinalizationWake,
 } from "./finalization/job"
-import type { EpisodeCapabilityBinding } from "./token.service"
+import {
+  RecommendationTokenInvalidError,
+  type EpisodeCapabilityBinding,
+} from "./token.service"
+import { projectViewingModeEvidence } from "./viewing-mode.service"
 
 const FACT_LIMITS: Readonly<
   Record<RecommendationPlaybackEvent["kind"], number>
@@ -46,6 +51,10 @@ const FACT_LIMITS: Readonly<
   playback_start: 1,
   playback_progress: 64,
   playback_seek: 32,
+  playback_observation: 1,
+  playback_navigation: 16,
+  playback_qoe: 16,
+  playback_viewing_mode: 32,
   playback_active_visible_playing: 64,
   playback_end: 1,
   playback_error: 1,
@@ -144,22 +153,23 @@ export class RecommendationPlaybackService {
       })
       return receipts
     } catch (error) {
+      const invalidRequest =
+        error instanceof RecommendationInputError ||
+        error instanceof RecommendationTokenInvalidError
       observeRecommendationEvidence({
         action: "facts",
         outcome:
-          error instanceof RecommendationBindingError ||
-          error instanceof RecommendationInputError
+          error instanceof RecommendationBindingError || invalidRequest
             ? "rejected"
             : "failed",
         reason:
           error instanceof RecommendationBindingError
             ? "invalid_binding"
-            : error instanceof RecommendationInputError
+            : invalidRequest
               ? "invalid_request"
               : "unknown",
         retryDisposition:
-          error instanceof RecommendationBindingError ||
-          error instanceof RecommendationInputError
+          error instanceof RecommendationBindingError || invalidRequest
             ? "terminal"
             : "retryable",
       })
@@ -506,6 +516,15 @@ export class RecommendationPlaybackService {
                     data: replayReceipts,
                   },
                 )
+              }
+              if (
+                env.RECOMMENDATION_VIEWING_MODE_ENABLED !== "false" &&
+                pending.some(
+                  ({ event }) => event.kind === "playback_viewing_mode",
+                ) &&
+                conflictCount === 0
+              ) {
+                await projectViewingModeEvidence(tx, locked, now)
               }
               return {
                 receipts: parsed.events.map(

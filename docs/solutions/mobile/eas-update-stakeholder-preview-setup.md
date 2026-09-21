@@ -18,7 +18,7 @@ related_issues:
   - "resolveImageUrl.ts bypassed env validation with raw process.env"
   - "fetchWithTimeout silently dropped caller AbortSignal — fixed by composing signals"
   - "Silent empty-string fallback chain for missing GraphQL URL — replaced with an explicit production-default fallback"
-last_updated: 2026-06-08
+last_updated: 2026-09-15
 ---
 
 # EAS Update for Stakeholder Previews via Expo Go
@@ -68,6 +68,20 @@ Chosen over EAS Build internal distribution (Path B) because:
 ```
 
 **Critical:** `runtimeVersion` must use `{ "policy": "sdkVersion" }` for Expo Go compatibility. A hardcoded string (e.g., `"1.0.0"`) will fail — Expo Go matches updates by SDK version.
+
+> **Superseded 2026-09-15 — the snippet above is no longer this app's config.**
+> `apps/mobile/app.json:46-48` now sets `"runtimeVersion": { "policy": "fingerprint" }`
+> (changed by #1953, 2026-08-18), and the slug is `jesus-film-forge-v2`. The
+> `sdkVersion` rule stays correct **for Expo Go**; `apps/mobile` left that flow.
+> It now needs a development build or an internal-distribution `preview` build:
+> it depends on `expo-dev-client`, on six local config plugins in
+> `apps/mobile/plugins/`, and on native modules Expo Go does not carry
+> (`react-native-google-cast`, `@kesha-antonov/react-native-background-downloader`,
+> `@datadog/mobile-react-native`). `apps/mobile/eas.json` has likewise grown a
+> `base` toolchain profile, `appVersionSource: "remote"`, `requireCommit: true`
+> and a `preview-simulator` profile, none of which appear below. See
+> `apps/mobile/CLAUDE.md` "Publishing an EAS Update" and "EAS builder toolchain
+> pins" for the current flow. The techniques in sections 2 to 6 are unaffected.
 
 **`apps/mobile/eas.json`** — Build profiles with channel mapping:
 
@@ -160,7 +174,7 @@ The admin GraphQL endpoint serves the app's reads anonymously, so there's no
 
 > **Superseded 2026-08-07 (feat-339).** All three claims below are now false for
 > `apps/mobile`: `DEFAULT_ADMIN_GRAPHQL_URL` no longer exists (it moved to
-> `PRODUCTION_ADMIN_GRAPHQL_URL` in `src/lib/adminEndpoint.ts`), a **development**
+> `PRODUCTION_ADMIN_GRAPHQL_URL` in `apps/mobile/src/lib/adminEndpoint.ts`), a **development**
 > bundle now defaults to local admin rather than production, and resolution
 > **does** split on `Platform.OS` (loopback is rewritten to `10.0.2.2` on the
 > Android emulator). Release bundles still fall back to the production default,
@@ -189,6 +203,12 @@ const signal = init?.signal
   ? AbortSignal.any([init.signal, controller.signal])
   : controller.signal
 ```
+
+> **Note added 2026-09-15 — the rule holds, the mechanism changed.**
+> `apps/mobile/src/lib/apolloClient.ts:97-101` now forwards the caller's abort
+> onto the client's own controller rather than composing the two signals:
+> `init.signal.addEventListener("abort", () => controller.abort(), { once: true })`.
+> The caller's signal is still honoured, so Prevention #3 below is unchanged.
 
 ### 6. Publishing and Sharing
 
@@ -259,17 +279,34 @@ The `groupId` changes with each update — extract it from the `eas update` comm
 
 ## When to Use `eas update` vs `eas build`
 
-| Change Type                                             | Command                                        |
-| ------------------------------------------------------- | ---------------------------------------------- |
-| JS/TS code, components, hooks                           | `eas update`                                   |
-| Static assets bundled by Metro                          | `eas update`                                   |
-| `EXPO_PUBLIC_*` env var values                          | `eas update` (values are baked into JS bundle) |
-| Native dependency added/removed                         | `eas build`                                    |
-| `app.json` native fields (plugins, permissions, splash) | `eas build`                                    |
-| Expo SDK version upgrade                                | `eas build`                                    |
-| `runtimeVersion` policy change                          | `eas build`                                    |
+| Change Type                                               | Command                                        |
+| --------------------------------------------------------- | ---------------------------------------------- |
+| JS/TS code, components, hooks                             | `eas update`                                   |
+| Static assets reached only by a JS `import`               | `eas update`                                   |
+| An asset the Expo config NAMES (splash image, icon, font) | `eas build`                                    |
+| `eas.json` or `.easignore` edits                          | `eas build`                                    |
+| `EXPO_PUBLIC_*` env var values                            | `eas update` (values are baked into JS bundle) |
+| Native dependency added/removed                           | `eas build`                                    |
+| `app.json` native fields (plugins, permissions, splash)   | `eas build`                                    |
+| Expo SDK version upgrade                                  | `eas build`                                    |
+| `runtimeVersion` policy change                            | `eas build`                                    |
 
 **Critical gotcha:** `EXPO_PUBLIC_*` variables are inlined by Metro at bundle time. Changing a value in EAS Environments dashboard alone does nothing — you must run `eas update` or `eas build` to produce a new bundle with the new value.
+
+**Fingerprint gotcha (added 2026-09-15).** `apps/mobile` is on
+`runtimeVersion.policy: "fingerprint"`, so these rows follow the fingerprint, not
+`app.json` alone. `@expo/fingerprint` hashes the CONTENTS of every file the Expo
+config names, and discards the path deliberately. In 0.20.13 — a path inside the
+installed package, not this repo — `build/sourcer/Expo.js:38-77` builds the
+external-file list with the reason `expoConfigExternalFile`, and line 195 sets
+`overrideHashKey = 'expoConfigExternalFile:contentsOnly'`. So rewriting
+`apps/mobile/assets/splash-icon.png` in place, with `app.json` untouched, still
+moves the runtime version and needs a native build. The `import`-only row stays
+correct for the opposite reason: no sourcer reads JS source or the asset tree, so
+an asset
+reached only through Metro is not a hashed input. For what an update published
+across that boundary costs — it exits 0 and reaches nobody — see
+[Kill-switch reach follows its slowest artifact channel](../architecture-patterns/kill-switch-reach-follows-its-slowest-artifact-channel.md).
 
 ## Checklist: Adding a New `EXPO_PUBLIC_*` Env Var
 
