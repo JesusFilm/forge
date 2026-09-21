@@ -292,3 +292,23 @@ Use the existing read access for verification; no monitoring write was attempted
 The separately retained fast playback fetch failure and historical unknown-attempt
 classification limits also remain explicit rather than being erased by this
 healthy window.
+
+## Short crawler user-agent repair — September 21
+
+The continuation reproduced a narrower admission hole: short
+`meta-externalagent/1.1` and `Meta-ExternalFetcher/1.1` user agents reached mocked
+Admin mutations through otherwise valid evidence and selection requests. The
+existing full production Meta user agent was already rejected through the
+`crawler` substring in its documentation URL. No retained short-form success
+has been established, and no historical evidence was relabeled or deleted.
+
+The shared guard now recognizes both Meta product tokens independently of the
+optional URL. Seven regressions failed before the fix; all 67 focused tests and
+4,455 Web tests pass afterward, with lint and typecheck passing. Playback
+context, claim and facts are covered before mutation, and ordinary Facebook
+in-app browsers remain admitted. See the
+[durable learning](../../solutions/security-issues/recognize-crawler-product-tokens-without-documentation-urls.md).
+
+This repair does not satisfy the remaining installed-alert, authorized Admin
+reconciliation or browser retry-amplification gates. Keep this ticket in
+progress until those checks have their own evidence.

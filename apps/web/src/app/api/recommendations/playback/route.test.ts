@@ -313,21 +313,27 @@ describe("POST /watch/api/recommendations/playback", () => {
     },
   )
 
-  it.each(["context", "claim", "facts"])(
-    "rejects crawler %s before any Admin mutation",
-    async (action) => {
-      const response = await POST(
-        request(JSON.stringify({ action }), {
-          "user-agent": "Mozilla/5.0 (compatible; Applebot/0.1)",
-        }),
-      )
-      expect(response.status).toBe(403)
-      expect(await response.json()).toEqual({
-        error: "machine_evidence_rejected",
-      })
-      expect(mutate).not.toHaveBeenCalled()
-    },
-  )
+  describe.each([
+    "Mozilla/5.0 (compatible; Applebot/0.1)",
+    "meta-externalagent/1.1",
+    "Meta-ExternalFetcher/1.1",
+  ])("crawler %s", (userAgent) => {
+    it.each(["context", "claim", "facts"])(
+      "rejects %s before any Admin mutation",
+      async (action) => {
+        const response = await POST(
+          request(JSON.stringify({ action }), {
+            "user-agent": userAgent,
+          }),
+        )
+        expect(response.status).toBe(403)
+        expect(await response.json()).toEqual({
+          error: "machine_evidence_rejected",
+        })
+        expect(mutate).not.toHaveBeenCalled()
+      },
+    )
+  })
 
   describe.each(["claim", "facts"] as const)("%s domain errors", (action) => {
     const errors = [
