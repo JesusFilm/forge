@@ -26,6 +26,7 @@ import {
 import { notRestrictedFromWatchWhere } from "@/services/search-watchability"
 import { sortVideoImagesByDisplayPreference } from "@/services/video-image-selection"
 import { loadVideoPrimaryDubDurations } from "@/services/video-primary-dub-duration"
+import { loadVideoMuxPlaybackFallbacks } from "@/services/video-mux-playback"
 import {
   getPreferredPlayableDubs,
   PREFERRED_PLAYABLE_DUB_BATCH_SIZE,
@@ -341,35 +342,13 @@ export function createLoaders(prisma: PrismaClient) {
           }
         }
 
-        const fallbackRows = await prisma.video.findMany({
-          where: { id: { in: videoIds }, deletedAt: null },
-          select: {
-            id: true,
-            primaryLanguageId: true,
-            dubs: {
-              where: {
-                published: true,
-                hls: { not: null },
-                deletedAt: null,
-                muxVideo: { playbackId: { not: null }, deletedAt: null },
-              },
-              orderBy: [{ duration: "desc" }, { id: "asc" }],
-              take: PRIMARY_DUB_PLAYBACK_SCAN_LIMIT,
-              select: {
-                languageId: true,
-                muxVideo: { select: { playbackId: true } },
-              },
-            },
-          },
-        })
-        const fallbackByVideoId = new Map<string, string | null>()
-        for (const row of fallbackRows) {
-          const primaryDub = row.primaryLanguageId
-            ? row.dubs.find((dub) => dub.languageId === row.primaryLanguageId)
-            : undefined
-          const dub = primaryDub ?? row.dubs[0] ?? null
-          fallbackByVideoId.set(row.id, dub?.muxVideo?.playbackId ?? null)
-        }
+        const fallbackRows = await loadVideoMuxPlaybackFallbacks(
+          prisma,
+          videoIds,
+        )
+        const fallbackByVideoId = new Map(
+          fallbackRows.map((row) => [row.id, row.playbackId]),
+        )
 
         return normalizedKeys.map(
           (key) =>
