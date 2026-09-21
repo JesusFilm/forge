@@ -1068,7 +1068,8 @@ async function renderInStage(
       // A breath after the question before the scene takes over.
       hookLeadSec = Math.min(HOOK_LEAD_CAP_SEC, spokenSec + 0.6)
       log(
-        `hook: "${seg.text.trim()}" (${spokenSec.toFixed(1)}s) → ${hookLeadSec.toFixed(1)}s before the scene is heard`,
+        `hook: "${(options.hookLine ?? seg.text).trim()}" (${spokenSec.toFixed(1)}s) → ` +
+          `${hookLeadSec.toFixed(1)}s before the scene is heard`,
       )
       if (spokenSec + 0.6 > HOOK_LEAD_CAP_SEC) {
         log(
@@ -1520,6 +1521,7 @@ async function renderInStage(
         }
       : {}),
     ...(options.intro ? { intro: options.intro } : {}),
+    ...(options.hookLine ? { hookText: options.hookLine.trim() } : {}),
     ...(mutedLeadForManifest > 0
       ? {
           // The silent opening stays (the clip's own sound eases in), but the

@@ -208,7 +208,10 @@ function buildClipFirstSegments(
     segments.push({
       id: "hook",
       text: ensureTerminal(hookLine.trim()),
-      display: "",
+      // The question is also drawn on screen as the piece's title, so it
+      // carries its own display text — every other clip-first opening is
+      // voice only.
+      display: hookLine.trim(),
     })
   }
   const chunks = splitReflection(d.reflection.text.trim())

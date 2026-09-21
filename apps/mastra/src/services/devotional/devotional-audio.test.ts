@@ -395,8 +395,11 @@ describe("buildNarrationSegments — clip-first structure", () => {
     expect(segs[0]?.text).toBe(
       "Have you ever wondered if God hears someone like you.",
     )
-    // Nothing is drawn for it, so it carries no card text.
-    expect(segs[0]?.display).toBe("")
+    // It is drawn on screen as the piece's title, verbatim and unpunctuated
+    // by us — the spoken copy is the one that gets a terminal stop.
+    expect(segs[0]?.display).toBe(
+      "Have you ever wondered if God hears someone like you",
+    )
     // The rest of the running order is unchanged.
     expect(segs[1]?.id).toBe("step-reflect")
   })

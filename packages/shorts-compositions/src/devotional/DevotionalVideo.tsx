@@ -1198,6 +1198,12 @@ const INTRO_WATCH_FADE_SEC = 0.5
 const INTRO_HOOK_SCRIM = 0.45
 /** `hook`: how loud the film's own sound is under the spoken question. */
 const INTRO_HOOK_FILM_DUCK = 0.12
+/** `hook`: the question is set at the cover's title size — it IS the title. */
+const HOOK_TITLE_PX = 29.3
+/** `hook`: how long the question stays after the voice finishes, and its fade.
+ *  The film's own captions wait for both, so the two never overlap. */
+export const HOOK_TITLE_HOLD_SEC = 0.5
+export const HOOK_TITLE_FADE_SEC = 0.6
 
 function ClipIntro({
   variant,
@@ -1211,6 +1217,7 @@ function ClipIntro({
   frameWidth,
   frameHeight,
   bleedX = 0,
+  hookText,
 }: {
   variant: "cover" | "bands" | "hook"
   leadSec: number
@@ -1227,6 +1234,9 @@ function ClipIntro({
   /** Landscape: the inset of the centred text column this intro renders in,
    *  so its scrim and bands can reach the real frame edges. */
   bleedX?: number
+  /** `hook`: the question, shown as the piece's title while it is spoken —
+   *  a feed preview plays muted, so the hook cannot live in the voice alone. */
+  hookText?: string
 }) {
   const bleed = {
     position: "absolute" as const,
@@ -1326,16 +1336,94 @@ function ClipIntro({
   })
 
   if (variant === "hook") {
-    // YouTube opening: nothing on screen. The film runs under a scrim while
-    // the voice asks the question, and the scrim lifts over the last second
-    // as the film's own sound comes up.
+    // YouTube opening: the question IS the title. The film runs under a scrim
+    // while it is spoken, the brand sits above it, and both leave as the
+    // film's sound comes up.
     const on = interpolate(t, [0, 0.5], [0, 1], clampBoth)
     const off = interpolate(t, [L - 1.0, L], [1, 0], clampBoth)
+    // The title holds a beat past the spoken line and then clears, so the
+    // words are still readable while the scene takes the sound back.
+    const titleIn = interpolate(t, [0.05, 0.6], [0, 1], {
+      ...clampBoth,
+      easing: ease,
+    })
+    const titleOut = interpolate(
+      t,
+      [L + HOOK_TITLE_HOLD_SEC, L + HOOK_TITLE_HOLD_SEC + HOOK_TITLE_FADE_SEC],
+      [1, 0],
+      clampBoth,
+    )
+    const titleOpacity = titleIn * titleOut
+    // Settles up from a little below, the cover's motion in reverse.
+    const titleRise = px(14) * (1 - titleIn)
+    const markIn = interpolate(t, [0.25, 0.9], [0, 1], {
+      ...clampBoth,
+      easing: ease,
+    })
+    const wide = frameWidth > frameHeight
     return (
       <div style={{ ...bleed, pointerEvents: "none" }}>
         <AbsoluteFill
           style={{ background: `rgba(0,0,0,${INTRO_HOOK_SCRIM * on * off})` }}
         />
+        {/* Brand above the question: the mark and the series name, the same
+            lockup the cover intro uses. */}
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top: wide ? "16%" : "24%",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: px(5),
+            opacity: markIn * titleOut,
+            pointerEvents: "none",
+          }}
+        >
+          <PauseMark size={px(25)} />
+          <div
+            style={{
+              fontFamily: SANS,
+              fontWeight: 400,
+              fontSize: px(13),
+              letterSpacing: px(1.5),
+              color: "rgba(255,255,255,0.72)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            DAILY BIBLE PAUSE
+          </div>
+        </div>
+        {hookText ? (
+          <AbsoluteFill
+            style={{
+              alignItems: "center",
+              justifyContent: "center",
+              padding: `0 ${px(34)}px`,
+            }}
+          >
+            <div
+              style={{
+                fontFamily: SERIF,
+                fontWeight: 500,
+                // The cover's title size: this line IS the devotional's title.
+                fontSize: px(HOOK_TITLE_PX),
+                lineHeight: 1.2,
+                color: "#ffffff",
+                textAlign: "center",
+                textWrap: "balance",
+                maxWidth: wide ? frameWidth * 0.62 : "100%",
+                textShadow: `0 ${px(2)}px ${px(18)}px rgba(0,0,0,0.6)`,
+                opacity: titleOpacity,
+                transform: `translateY(${titleRise}px)`,
+              }}
+            >
+              {hookText}
+            </div>
+          </AbsoluteFill>
+        ) : null}
       </div>
     )
   }
@@ -3484,6 +3572,7 @@ function CardBody({
           frameWidth={vw}
           frameHeight={vh}
           bleedX={bleedX ?? 0}
+          {...(card.hookText ? { hookText: card.hookText } : {})}
         />
       )
     }

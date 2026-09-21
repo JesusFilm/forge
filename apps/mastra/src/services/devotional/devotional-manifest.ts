@@ -41,6 +41,8 @@ export type DevotionalManifest = {
   bgStartOffsetSec?: number
   /** Clip-first: intro overlay over the film's muted lead (see card schema). */
   intro?: "cover" | "bands" | "hook"
+  /** `intro: "hook"`: the question drawn on screen as the piece's title. */
+  hookText?: string
   /** Clip-first: corner progress ring clocking each step (composition prop). */
   stepRing?: boolean
   /** Shape of that clock: orbit ring (default) or a line across the top. */
@@ -95,6 +97,8 @@ export type BuildManifestInput = {
   mutedLeadSec?: number
   /** Clip-first: intro overlay over the film's muted lead (see card schema). */
   intro?: "cover" | "bands" | "hook"
+  /** `intro: "hook"`: the question drawn on screen as the piece's title. */
+  hookText?: string
   /** The line shown over that silent opening, e.g. "Let's watch". */
   leadLabel?: string
   /** Captions for the video card, ALREADY timed against the edited clip
@@ -172,7 +176,15 @@ function buildClipFirstManifest(
     // `hook` draws no steps at all — it is only a voice over the film.
     ...(input.intro
       ? input.intro === "hook"
-        ? { intro: input.intro }
+        ? {
+            intro: input.intro,
+            // The spoken question doubles as the on-screen title. It comes
+            // from the render option, not from the produced segment: a reused
+            // cached take carries whatever display text it was made with.
+            ...((input.hookText ?? hookSeg?.text)
+              ? { hookText: input.hookText ?? hookSeg?.text }
+              : {}),
+          }
         : { intro: input.intro, steps: STEPS }
       : {}),
   })

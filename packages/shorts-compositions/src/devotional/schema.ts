@@ -107,6 +107,9 @@ export const devotionalCardSchema = z.object({
    * what the series is). Needs `mutedLeadSec` for its length.
    */
   intro: z.enum(["cover", "bands", "hook"]).optional(),
+  /** `intro: "hook"`: the question shown on screen while it is spoken. It is
+   *  the piece's title for this cut, so it is set at the cover's title size. */
+  hookText: z.string().optional(),
   /**
    * Where a full-frame portrait video card crops the 16:9 clip, over time: the
    * normalized x of the source the frame is centred on, as a PATH in seconds
