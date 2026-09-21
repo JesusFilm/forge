@@ -997,6 +997,53 @@ handle, and admin owns audience, timing and copy. The design record is
 - **The app config changed, so a native build must ship before the next
   `eas update`.** `app.json` is a fingerprint input.
 
+### Announcement taps, the foreground banner, and the open report (U8)
+
+- **The payload contract the app accepts** is
+  `{ version: 1, family: "announcement", kind: "video" | "series" | "experience", slug, nonce }`,
+  serialized at 1024 bytes or less (`src/lib/push/announcementPayload.ts`).
+  `family` is the discriminator: anything without it parses as a lapse
+  reminder, so a reminder pending from an older build still routes. A slug is
+  1 to 200 RFC 3986 unreserved characters, never `.` or `..`; the nonce is
+  base64url, carried opaque and never logged. Any other shape opens Home and
+  shows `PUSH_UNRESOLVABLE_DESTINATION_MESSAGE` (`src/lib/push/copy.ts`)
+  through `PushNoticeHost`, which the root layout mounts beside
+  `ExportReportHost` so the message has a host that belongs to no route.
+- **Routes:** video → `/watch/<slug>`, series → `/series/<slug>`, experience →
+  select that experience (this changes the saved home experience, by decision)
+  then `/experience/<slug>`. No catalog check runs before a tap: an unpublished
+  destination shows that route's own not-found screen (R30). An announcement
+  ignores `LAPSE_REMINDERS_ENABLED`, which gates only the local reminders.
+- **Foreground:** the adapter's handler delegates to the pure
+  `presentationForTrigger` in `src/lib/push/foreground.ts`. A remote trigger
+  (`type === "push"`) shows a banner and a tray entry with no sound; anything
+  else, including every local reminder, shows nothing.
+- **Reminder cleanup dismisses by identifier** (`dismissNotificationAsync` for
+  `lapse-reminder-day1` and `lapse-reminder-day7`), never the whole tray, so an
+  announcement the viewer has not opened survives a reminder pass (AE21).
+  `notificationsEntryPoint.guard.test.js` requires the identifier call and bans
+  `dismissAllNotificationsAsync`.
+- **The open report** (`src/lib/push/openReportHost.ts` →
+  `openReportClient.ts`, operation `ReportPushOpen`) starts before the
+  navigation and returns at once. A failure or a rate limit is dropped, never
+  retried: a second report of the same open would answer `DUPLICATE` anyway. A
+  tap on a destination kind this build cannot read still reports its open, so
+  admin's count stays right when it names a newer kind. The viewer handle comes
+  from one reader, `src/lib/push/viewerHandle.ts`, shared with registration.
+- **Attribution mark:** a campaign arrival on a video marks the `acquisition`
+  discovery source with provenance `{ handoff: "campaign_link", campaign: <nonce> }`
+  (`src/lib/deepLinkOrigin.ts` origin `campaign`, `playbackDiscovery.ts`), which
+  admin's `PlaybackContextIssueSchema` accepts. `discoveryFor` drops any key or
+  value outside admin's bounds, and the source's own literals always win.
+- **Telemetry:** `push.open_report { outcome, has_viewer }`,
+  `push.open_report_failed { code, push_code, deferred }`; `lapse_reminder.tap`
+  gained `family` and `destination_kind`, and its outcome set grew by `series`,
+  `experience` and `unresolvable`. All through the sink named `telemetry`.
+- **Only a real phone can prove** the foreground banner (jest cannot supply a
+  real trigger), the identifier dismiss on Android, cold and warm taps to each
+  kind with one unpublished slug each, the message clearing the tab bar on a
+  0-inset device, and one `ReportPushOpen` per tap in the fake-admin proxy log.
+
 ## Cast SDK sheet theming
 
 **Every cast sheet is drawn by the Cast SDK, not by us, and the only lever is

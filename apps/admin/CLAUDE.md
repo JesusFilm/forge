@@ -3023,3 +3023,78 @@ old processes; process environment is not an instantaneous fleet barrier. See
 operation map, rollout order and external acceptance gates. Local DB fixtures that
 exercise enabled production/publication must explicitly set both flags to `true`;
 do not change default-off production behavior to accommodate tests.
+
+## Localized push campaigns (feat-524)
+
+Admin owns announcement campaigns end to end: copy per language, audience,
+local-hour wave, sending through Expo's push service, and the report. The
+mobile app only registers a token and opens a destination. The plan is
+`docs/plans/2026-09-18-1540-feat-localized-push-campaigns-plan.md`; the ticket
+is `docs/roadmap/platform/feat-524-localized-push-campaigns.md`.
+
+### Seam
+
+- Tables: `push_registration`, `push_test_device`, `push_campaign`,
+  `push_campaign_copy`, `push_campaign_zone`, `push_delivery`, `push_open`,
+  `push_attribution` (migration `0099_push_campaigns`). The recommendation
+  tables do not change. The partial unique index `push_delivery_daily_claim_key`
+  is the "one announcement per phone per local day" rule; the claim is one
+  multi-row `INSERT ... ON CONFLICT DO NOTHING` with no conflict target.
+- Services: `src/services/push/`. Public mutations `registerPushDevice` and
+  `reportPushOpen` (`src/graphql/mutations/push-device.ts`) sit behind the push
+  admission predicate (`admission.ts`) and a per-operation ceiling
+  (`ceiling.ts`). The send path is `dispatch.ts` → workflow
+  `src/workflows/pushCampaign.ts` → `batch.ts` / `receipts.ts` → `transport.ts`.
+  Attribution runs in both directions (`attribution.service.ts`); the report is
+  `report.service.ts`. The dashboard is `src/app/dashboard/push-campaigns/`
+  behind the `write:push-campaigns` key (VIEWER tier).
+- Never log or persist a push token, a viewer digest, or the provider's message
+  string (it embeds the token). Log lines use the plain-string form
+  `[push] event=name key=value`.
+- Real-database tests gate on `PUSH_DB_TEST=1` and read `DATABASE_URL`:
+  `PUSH_DB_TEST=1 DATABASE_URL=postgresql://forge@localhost:5432/forge_admin_push_test pnpm --filter @forge/admin exec vitest run src/services/push`.
+- Load proof before a first campaign:
+  `CI=1 pnpm --filter @forge/admin exec tsx src/scripts/push-campaign-dry-run.ts --registrations=100000 --groups=40`.
+
+### Flags and env
+
+Every push var is optional and boots unset. `PUSH_CAMPAIGNS_ENABLED` (default
+off) gates schedule, send now, and the test send, and every batch step re-reads
+it. `EXPO_ACCESS_TOKEN` is a Railway variable on the worker service only, never
+in the shared Doppler config: admin web refuses to boot with it injected in
+production (`assertPushTransportRuntime`), and `railway.worker.toml` unsets it
+in the build and pre-deploy commands. Budgets: `PUSH_BATCH_PAGE_SIZE` 5000,
+`PUSH_STEP_MAX_DURATION_MS` 220000, `PUSH_CHUNK_DEADLINE_MS` 10000,
+`PUSH_PROVIDER_CONCURRENCY` 3, `PUSH_MESSAGES_PER_SECOND` 500,
+`PUSH_RECEIPT_PAGE_SIZE` 10000, `PUSH_FCM_BLOCKED_COUNTRIES` `CN`. Ceilings:
+`PUSH_REGISTRATION_CEILING_PER_MIN` and `PUSH_OPEN_CEILING_PER_MIN` (default
+6000, 0 disables) with `PUSH_CEILING_ENFORCE` (alert-first until `true`).
+
+### Deploy order
+
+1. Merge with `PUSH_CAMPAIGNS_ENABLED` unset. Both admin services run migration 0099. Confirm `prisma migrate status` is clean on both.
+2. **Restart the recommendation-retention scheduler run once.** U1 added
+   `stepRunPushRetention` inside the durable
+   `runRecommendationRetentionScheduler` loop. The run that is alive at deploy
+   time replays an event log without that step, so the SDK can fail it with
+   `corrupted-event-log`. Cancel that run in the workflows dashboard and confirm
+   `ensureRecommendationRetentionSchedulerStarted` starts a fresh one (or
+   redeploy the worker once more). The 36-hour freshness guard does not do this
+   by itself.
+3. Set the worker's queue concurrency to at least 4 and record it.
+4. Provision the Expo access token on the worker service, then one batched
+   Doppler write of the push vars with the flag on. Schedule must then be
+   refused only by the missing-test-send reason.
+5. Apply the four monitors in `infra/datadog-monitors/push/` after confirming
+   admin logs reach Datadog. The heartbeat monitor is a proxy on
+   `event=zone_missed reason=run_not_alive`.
+
+### Rollback
+
+Turn `PUSH_CAMPAIGNS_ENABLED` off first: the next batch step marks the rest of
+the current group missed and ends the run as paused. Cancel scheduled and
+sending campaigns from the dashboard, then roll the worker back. A run left
+asleep on a worker without the workflow fails on wake and the recovery sweep
+pauses its campaign at the next worker start. Registrations survive a rollback;
+migration 0099 alters no existing table, so a code redeploy needs no data
+restore.
