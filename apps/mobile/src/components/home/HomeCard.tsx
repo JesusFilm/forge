@@ -48,7 +48,7 @@ export type HomeCardProps = {
 }
 
 /** The RUM action name every un-overridden Home card reports under. */
-export const HOME_CARD_ACTION_NAME = "home-card"
+const HOME_CARD_ACTION_NAME = "home-card"
 
 // ── Constants ───────────────────────────────────────────────────────────────
 

@@ -414,16 +414,18 @@ export function HomeScreen() {
   // current controller through a ref (KTD4).
   const reportShelfVisibleRef = useRef(recommendations.reportShelfVisible)
   reportShelfVisibleRef.current = recommendations.reportShelfVisible
-  const handleFeedViewableItemsChanged = useRef(
-    guardViewabilityCallback<{ viewableItems: { item: HomeFeedItem }[] }>(
-      "home_feed",
-      ({ viewableItems }) => {
-        reportShelfVisibleRef.current(
-          viewableItems.some((entry) => entry.item.kind === "recommendations"),
-        )
-      },
-    ),
-  ).current
+  const handleFeedViewableItemsChangedRef = useRef<
+    ((info: { viewableItems: { item: HomeFeedItem }[] }) => void) | null
+  >(null)
+  handleFeedViewableItemsChangedRef.current ??= guardViewabilityCallback<{
+    viewableItems: { item: HomeFeedItem }[]
+  }>("home_feed", ({ viewableItems }) => {
+    reportShelfVisibleRef.current(
+      viewableItems.some((entry) => entry.item.kind === "recommendations"),
+    )
+  })
+  const handleFeedViewableItemsChanged =
+    handleFeedViewableItemsChangedRef.current
 
   // ── Feed composition ───────────────────────────────────────────────────────
 
@@ -472,7 +474,7 @@ export function HomeScreen() {
             onDetached={recommendations.reportShelfDetached}
             onRecordRender={recommendations.recordRender}
             onSelect={recommendations.select}
-            onRefresh={recommendations.refresh}
+            onRefresh={refreshSlate}
           />
         ) : (
           <HomeMissionSection />

@@ -173,6 +173,7 @@ import { Dimensions } from "react-native"
 import { HomeScreen } from "../HomeScreen"
 import {
   RecommendationsShelf,
+  RECOMMENDATION_CARD_ACTION_NAME,
   RECOMMENDATIONS_SHELF_TITLE,
   recommendationsShelfBodyHeight,
   type RecommendationsShelfProps,
@@ -571,7 +572,7 @@ describe("a card press", () => {
   it("carries its own RUM action name (KTD8)", () => {
     const { renderer } = renderShelf()
     expect(cardPressable(renderer, "Video 0").props["dd-action-name"]).toBe(
-      "recommendation-card",
+      RECOMMENDATION_CARD_ACTION_NAME,
     )
   })
 
@@ -759,7 +760,6 @@ describe("rendered from Home's feed", () => {
       reportVisibleCards: jest.fn(),
       reportShelfDetached: jest.fn(),
       recordRender: jest.fn(),
-      recordImpression: jest.fn(),
       select: jest.fn(async () => null),
       refresh: jest.fn(),
       ...overrides,

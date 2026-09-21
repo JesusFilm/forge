@@ -4,7 +4,7 @@
  * event is not used, because the focus listener and the segment update are two
  * effects of one navigation commit with no guaranteed order.
  */
-import { TAB_GROUP_SEGMENT } from "../tabBar"
+import { TAB_GROUP_SEGMENT, isTabGroupRoute } from "../tabBar"
 
 /**
  * The root-stack routes that open the managed player. The SDUI `video`,
@@ -22,7 +22,7 @@ export function isReturnToHomeFromWatch(
   previous: readonly string[],
   next: readonly string[],
 ): boolean {
-  if (previous.includes(TAB_GROUP_SEGMENT)) return false
+  if (isTabGroupRoute(previous)) return false
   const from = previous[0]
   if (from == null || !WATCH_ROUTE_SEGMENTS.includes(from)) return false
   // The router may omit the trailing `index` segment for the Home tab, so the

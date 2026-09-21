@@ -29,7 +29,6 @@ jest.mock("../../../hooks/useHomeRecommendations", () => ({
     reportVisibleCards: jest.fn(),
     reportShelfDetached: jest.fn(),
     recordRender: jest.fn(),
-    recordImpression: jest.fn(),
     select: jest.fn(async () => null),
     refresh: jest.fn(),
   }),

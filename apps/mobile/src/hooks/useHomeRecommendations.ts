@@ -11,10 +11,7 @@ import { AppState } from "react-native"
 
 import { useWatchPreferences } from "../contexts/WatchPreferencesProvider"
 import { resolveRecommendationContext } from "../lib/recommendations/context"
-import type {
-  UserRecommendationSlate,
-  UserRecommendationItem,
-} from "../lib/recommendations/delivery"
+import type { UserRecommendationSlate } from "../lib/recommendations/delivery"
 import {
   createImpressionDwellTracker,
   isForegroundAppState,
@@ -51,7 +48,6 @@ export type HomeRecommendationsController = {
   /** The row unmounted or was recycled: every card signal drops (KTD4). */
   reportShelfDetached: () => void
   recordRender: (itemId: string) => void
-  recordImpression: (itemId: string) => void
   select: (itemId: string) => Promise<SelectionResult | null>
   /** The single entry point for every event-driven refetch. */
   refresh: () => void
@@ -266,7 +262,6 @@ export function useHomeRecommendations(
       reportVisibleCards,
       reportShelfDetached,
       recordRender,
-      recordImpression,
       select,
       refresh,
     }),
@@ -279,11 +274,8 @@ export function useHomeRecommendations(
       reportVisibleCards,
       reportShelfDetached,
       recordRender,
-      recordImpression,
       select,
       refresh,
     ],
   )
 }
-
-export type { UserRecommendationItem }

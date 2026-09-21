@@ -27,8 +27,15 @@ import {
 import type { SelectionResult } from "../../lib/recommendations/selection"
 import type { UserRecommendationsStatus } from "../../hooks/useUserRecommendations"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
+import { USER_RECOMMENDATION_DEFAULT_COUNT } from "../../lib/recommendations/operations"
 import { encodeWatchSeed } from "../../lib/watchSeed"
-import { carousel, layout, text, CARD_GAP } from "../../styles/shared"
+import {
+  carousel,
+  layout,
+  text,
+  CARD_GAP,
+  SECTION_HEADING_MARGIN_BOTTOM,
+} from "../../styles/shared"
 import { HomeCard, homeCardHeight, homeCardWidth } from "./HomeCard"
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -36,14 +43,11 @@ import { HomeCard, homeCardHeight, homeCardWidth } from "./HomeCard"
 /** R4: the app's own string. The block's authored title is not read (KD8). */
 export const RECOMMENDATIONS_SHELF_TITLE = "Recommended for You"
 
-/** R6: a slate of any other length is a fault and renders no cards. */
-export const RECOMMENDATIONS_SHELF_ITEM_COUNT = 6
+/** R6: the count the controller requests; any other length renders no cards. */
+const RECOMMENDATIONS_SHELF_ITEM_COUNT = USER_RECOMMENDATION_DEFAULT_COUNT
 
 /** Stable, low-cardinality RUM action name for this row's cards (KTD8). */
 export const RECOMMENDATION_CARD_ACTION_NAME = "recommendation-card"
-
-/** Mirrors `text.sectionHeadingPadded`'s own `marginBottom`. */
-const HEADING_MARGIN_BOTTOM = 12
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -77,7 +81,7 @@ export function recommendationsShelfBodyHeight(
 ): number {
   return (
     headingLineHeight +
-    HEADING_MARGIN_BOTTOM +
+    SECTION_HEADING_MARGIN_BOTTOM +
     homeCardHeight("landscape", screenWidth)
   )
 }
@@ -87,7 +91,7 @@ export function recommendationsShelfBodyHeight(
  * the wrong length is re-checked here as well as in `validateServedSlate`:
  * that predicate is the only bound on what reaches this row (R6).
  */
-export function recommendationsShelfCards(
+function recommendationsShelfCards(
   slate: UserRecommendationSlate | null,
 ): UserRecommendationItem[] | null {
   if (slate == null) return null
@@ -96,7 +100,7 @@ export function recommendationsShelfCards(
 }
 
 /** R8: a terminal non-served outcome collapses once the row leaves the view. */
-export function recommendationsShelfCollapsed(
+function recommendationsShelfCollapsed(
   status: UserRecommendationsStatus,
   inView: boolean,
 ): boolean {
@@ -105,9 +109,7 @@ export function recommendationsShelfCollapsed(
 }
 
 /** The recommendation item as the Home card presentation consumes it (R10). */
-export function recommendationCardModel(
-  item: UserRecommendationItem,
-): WatchHomeCard {
+function recommendationCardModel(item: UserRecommendationItem): WatchHomeCard {
   return {
     id: item.id,
     // KTD8: the progress bar is keyed on the Admin video id.
@@ -171,33 +173,37 @@ export const RecommendationsShelf = memo(function RecommendationsShelf({
 
   // `null` keeps the indices the list last reported and maps them onto the
   // current slate. Guarded, because a throw here reaches the list itself.
-  const reportCards = useRef(
-    guardViewabilityCallback<readonly number[] | null>(
-      "recommendations_row",
-      (indices) => {
-        if (indices != null) visibleIndicesRef.current = [...indices]
-        onCardsVisibleRef.current(
-          visibleIndicesRef.current
-            .map((index) => itemIdsRef.current[index])
-            .filter((itemId): itemId is string => itemId != null),
-        )
-      },
-    ),
-  ).current
+  const reportCardsRef = useRef<
+    ((indices: readonly number[] | null) => void) | null
+  >(null)
+  reportCardsRef.current ??= guardViewabilityCallback<readonly number[] | null>(
+    "recommendations_row",
+    (indices) => {
+      if (indices != null) visibleIndicesRef.current = [...indices]
+      onCardsVisibleRef.current(
+        visibleIndicesRef.current
+          .map((index) => itemIdsRef.current[index])
+          .filter((itemId): itemId is string => itemId != null),
+      )
+    },
+  )
+  const reportCards = reportCardsRef.current
 
   // React Native captures the callback and the config when it builds the list,
   // so this pair is created once and reads the current slate through refs.
-  const handleViewableItemsChanged = useRef(
-    guardViewabilityCallback<{ viewableItems: { index: number | null }[] }>(
-      "recommendations_row",
-      ({ viewableItems }) =>
-        reportCards(
-          viewableItems
-            .map((entry) => entry.index)
-            .filter((index): index is number => index != null),
-        ),
+  const handleViewableItemsChangedRef = useRef<
+    ((info: { viewableItems: { index: number | null }[] }) => void) | null
+  >(null)
+  handleViewableItemsChangedRef.current ??= guardViewabilityCallback<{
+    viewableItems: { index: number | null }[]
+  }>("recommendations_row", ({ viewableItems }) =>
+    reportCards(
+      viewableItems
+        .map((entry) => entry.index)
+        .filter((index): index is number => index != null),
     ),
-  ).current
+  )
+  const handleViewableItemsChanged = handleViewableItemsChangedRef.current
 
   useEffect(() => {
     // Setup restores what the cleanup drops: a dev StrictMode cycle runs both
@@ -241,16 +247,19 @@ export const RecommendationsShelf = memo(function RecommendationsShelf({
     [slate, onSelect, onRefresh, router],
   )
 
-  // Card model and press handler are built once per slate, so a row re-render
-  // that changes neither leaves every card's memo intact.
+  // Card models and press closures are built once per slate and read the
+  // latest handler through a ref, so a refetch's `select` identity churn
+  // leaves every card's memo intact (R18).
+  const handleSelectRef = useRef(handleSelect)
+  handleSelectRef.current = handleSelect
   const rows = useMemo(
     () =>
       (items ?? []).map((item) => ({
         id: item.id,
         card: recommendationCardModel(item),
-        press: () => handleSelect(item),
+        press: () => handleSelectRef.current(item),
       })),
-    [items, handleSelect],
+    [items],
   )
 
   const renderItem = useCallback(

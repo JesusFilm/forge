@@ -300,11 +300,10 @@ describe("the displayed slate", () => {
     await flush()
 
     act(() => hook.latest().recordRender("item-0"))
-    act(() => hook.latest().recordImpression("item-1"))
     await act(async () => {
       await hook.latest().select("item-2")
     })
-    expect(c.recordEvidence).toHaveBeenCalledTimes(2)
+    expect(c.recordEvidence).toHaveBeenCalledTimes(1)
     expect(c.select).toHaveBeenCalledTimes(1)
     expect(c.select.mock.calls[0]![1]).toEqual(
       expect.objectContaining({ id: "item-2" }),
