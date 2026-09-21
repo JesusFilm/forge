@@ -24,7 +24,10 @@ beforeEach(() => {
   vi.useFakeTimers()
   vi.setSystemTime(now)
 })
-afterEach(() => vi.useRealTimers())
+afterEach(() => {
+  vi.restoreAllMocks()
+  vi.useRealTimers()
+})
 
 describe("recommendation tester credentials", () => {
   it("issues a fragment-only link and exchanges it for a separate cookie", async () => {
@@ -44,21 +47,71 @@ describe("recommendation tester credentials", () => {
     ).toBeNull()
   })
 
-  it("expires activation at 24 hours and bounds repeated exchanges to the original seven days", async () => {
+  it("keeps links and cookies valid for 30 days without extending the issuance deadline", async () => {
     const token = await activation()
-    vi.setSystemTime(now.getTime() + 12 * 60 * 60 * 1000)
+    const initial = await exchangeRecommendationTesterLink(token, config)
+    expect(initial?.maxAge).toBe(30 * 24 * 60 * 60)
+    vi.setSystemTime(now.getTime() + 29 * 24 * 60 * 60 * 1000)
     const session = await exchangeRecommendationTesterLink(token, config)
-    expect(session?.maxAge).toBe(TESTER_SESSION_SECONDS - 12 * 60 * 60)
-    vi.setSystemTime(now.getTime() + TESTER_ACTIVATION_SECONDS * 1000)
-    expect(await exchangeRecommendationTesterLink(token, config)).toBeNull()
+    expect(session?.maxAge).toBe(24 * 60 * 60)
+    expect(await readRecommendationTesterCookie(initial?.cookie, config)).toBe(
+      testerId,
+    )
     expect(await readRecommendationTesterCookie(session?.cookie, config)).toBe(
       testerId,
     )
-    vi.setSystemTime(now.getTime() + TESTER_SESSION_SECONDS * 1000)
+    vi.setSystemTime(now.getTime() + (30 * 24 * 60 * 60 - 1) * 1000)
+    expect(
+      (await exchangeRecommendationTesterLink(token, config))?.maxAge,
+    ).toBe(1)
+    vi.setSystemTime(now.getTime() + 30 * 24 * 60 * 60 * 1000)
+    expect(await exchangeRecommendationTesterLink(token, config)).toBeNull()
+    expect(
+      await readRecommendationTesterCookie(initial?.cookie, config),
+    ).toBeNull()
     expect(
       await readRecommendationTesterCookie(session?.cookie, config),
     ).toBeNull()
   })
+
+  it("does not issue an expired cookie if the deadline passes during verification", async () => {
+    const token = await activation()
+    const expiresAt = issuedAt + TESTER_SESSION_SECONDS
+    vi.spyOn(Date, "now")
+      .mockReturnValueOnce((expiresAt - 1) * 1000)
+      .mockReturnValueOnce(expiresAt * 1000)
+    expect(await exchangeRecommendationTesterLink(token, config)).toBeNull()
+  })
+
+  it.each([
+    { purpose: "activation", days: 1 },
+    { purpose: "session", days: 7 },
+  ])(
+    "preserves an older $days-day $purpose credential's signed expiry",
+    async ({ purpose, days }) => {
+      const token = await new SignJWT({
+        scope: "forge.watch.homepageRecommendations",
+      })
+        .setProtectedHeader({
+          alg: "HS256",
+          typ: "watch-recommendation-tester+jwt",
+        })
+        .setIssuer(config.origin)
+        .setAudience(`watch-recommendation-tester:${purpose}`)
+        .setSubject(testerId)
+        .setIssuedAt(issuedAt)
+        .setExpirationTime(issuedAt + days * 24 * 60 * 60)
+        .sign(new TextEncoder().encode(config.secret))
+      const read = () =>
+        purpose === "activation"
+          ? exchangeRecommendationTesterLink(token, config)
+          : readRecommendationTesterCookie(token, config)
+      vi.setSystemTime(now.getTime() + (days * 24 * 60 * 60 - 1) * 1000)
+      expect(await read()).not.toBeNull()
+      vi.setSystemTime(now.getTime() + days * 24 * 60 * 60 * 1000)
+      expect(await read()).toBeNull()
+    },
+  )
 
   it("rejects tampering, other deployments, rotated secrets, and unconfigured access", async () => {
     const token = await activation()

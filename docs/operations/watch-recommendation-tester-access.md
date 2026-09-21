@@ -66,10 +66,17 @@ none were emailed or sent to teammates by this task.
 Opening a link in the tester's normal browser sets
 `forge_recommendation_tester`: host-only, HttpOnly, SameSite=Lax, Secure in
 production, and scoped to `/watch/api/recommendations`. Each browser needs to
-open the link. Links can be reused during 24 hours; sessions end seven days
+open the link. Links can be reused during 30 days; sessions end 30 days
 after link issuance, including repeated activations. Anyone holding a link can
-activate that tester's rollout identity during those 24 hours. This mechanism
+activate that tester's rollout identity during those 30 days. This mechanism
 is suitable for feature previews, not authorization to private account data.
+
+This 30-day policy replaces the original 24-hour link and seven-day cookie
+limits at the owner's request. Issue replacement links after the new release:
+already-issued links and cookies retain their signed expiration. Reopening a
+new link refreshes the browser cookie only until that link's original 30-day
+deadline. Removing an LD target or turning the flag off still denies access
+on the next evaluation; no link or cookie overrides that decision.
 
 The activation credential is in a URL fragment. The standalone bridge strips
 it from history before posting to the same-origin endpoint, loads no app assets
@@ -186,6 +193,16 @@ The key was saved only as Web production's `LAUNCHDARKLY_SDK_KEY`, using stdin
 and `--skip-deploys`. Secret readback matched without printing its value; no
 other service variable changed. The signing secret remains configured, the
 serving kill switch resolves true, and the public fallback remains false.
-The environment example now documents all private-pilot prerequisites. Its
-normal PR-to-main release will activate the staged configuration. Production
-HTTP and browser verification remain pending until that deployment succeeds.
+The environment example documents all private-pilot prerequisites. PR #2372
+merged as `f8f997fc8cb8cb49e5b16e6c460beffb1ad25468`, and Railway deployment
+`84d5d314-2e76-4281-9b05-95fede1be528` reached SUCCESS at that revision.
+
+At 22:13 UTC on 2026-09-21, all three live tester activations returned 204 and
+availability true. Each delivery returned HTTP 200, `result: served`, six
+distinct cards, valid positions, required card fields, and a request ID in
+436/778/655 ms respectively. Anonymous availability remained false; a valid
+signed but untargeted tester received availability false and delivery 403
+`feature_disabled`. The public homepage contained the authored block, and the
+activation bridge retained its single nonce-authorized script and
+`no-transform`. Browser control was unavailable, so these finite HTTP probes
+do not establish visual rendering or broad runtime reliability.
