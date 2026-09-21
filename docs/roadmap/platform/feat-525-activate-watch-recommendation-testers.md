@@ -70,7 +70,12 @@ preserving all existing content. Public GraphQL and Watch HTML contain it.
 Canonical revalidation succeeded after the configured legacy-host webhook
 returned 405; feat-531 tracks that separate configuration repair.
 
-Still required: install the Watch Production server SDK key in Web, verify
+The Watch Production server SDK key is now staged in Web production with
+deploys skipped until the normal PR-to-main release. Live SDK initialization
+and all three target matches passed; untargeted/anonymous evaluations stayed
+false. The environment example documents the missing configuration dependency.
+
+Still required: verify the deployed Web runtime uses that key, confirm
 targeted availability true and unmatched availability false, and observe real
 cards in the browser. Successful activation POSTs and a published block are
 insufficient to mark this ticket complete. See the operations document for

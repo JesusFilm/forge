@@ -163,7 +163,7 @@ Next cache HIT. The HTML increase is 1,279 bytes. These samples do not establish
 browser hydration or rendering performance. Restoring the authored component
 also restores its existing client-side availability request.
 
-**Pilot remains incomplete:** Web still has no `LAUNCHDARKLY_SDK_KEY`. LD
+**State at publication:** Web still had no `LAUNCHDARKLY_SDK_KEY`. LD
 production version 6 still enables only the three targets, with false
 fallthrough/off. Anonymous availability remains false. Configure the Watch
 Production **server** SDK key through the normal secret/deployment path, then
@@ -171,3 +171,21 @@ verify all three targeted sessions return true, non-targets remain false, and
 the browser shows real recommendation cards. No browser is connected to this
 task, so no live browser visibility or hydration claim is made. Keep feat-525
 in progress until that end-to-end verification passes.
+
+### Production SDK key staged for deployment
+
+On 2026-09-21, the owner supplied the Watch Production server SDK key. A live
+Node SDK initialization succeeded, and the recommendations flag returned true
+with `TARGET_MATCH` for each of the three configured tester IDs. A fresh
+untargeted tester UUID and `watch-anonymous` both returned false with
+`FALLTHROUGH`. Existing CTA-copy and YouVersion flags remained false; absent
+download-account, beta-CTA, hide-Bible-quotes, and question-panel flags retained
+their false defaults.
+
+The key was saved only as Web production's `LAUNCHDARKLY_SDK_KEY`, using stdin
+and `--skip-deploys`. Secret readback matched without printing its value; no
+other service variable changed. The signing secret remains configured, the
+serving kill switch resolves true, and the public fallback remains false.
+The environment example now documents all private-pilot prerequisites. Its
+normal PR-to-main release will activate the staged configuration. Production
+HTTP and browser verification remain pending until that deployment succeeds.
