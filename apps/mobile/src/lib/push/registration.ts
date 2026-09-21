@@ -104,6 +104,9 @@ export function createPushRegistration(
 ): PushRegistration {
   /** R1's launch latch: the pass fires the hook on every foreground change. */
   let launchRequested = false
+  /** A pass read a denial, so the next grant is a re-grant rather than a
+   *  repeat: the revoke report already left the phone out of every audience. */
+  let permissionDenied = false
   /** R29 is once per launch attempt; only a success is remembered on disk. */
   let revocationAttempted = false
   let attempts = 0
@@ -184,7 +187,12 @@ export function createPushRegistration(
   }
 
   async function run(trigger: PushRegistrationTrigger): Promise<void> {
-    if (inFlight) return
+    if (inFlight) {
+      // Re-arm rather than drop: this trigger can carry a rotated token the
+      // request in flight never saw (R3).
+      arm(trigger)
+      return
+    }
     inFlight = true
     try {
       await deps.store.hydrate()
@@ -216,9 +224,12 @@ export function createPushRegistration(
         testDeviceId: receipt.testDeviceId,
         payloadHash: hash,
       })
-      // The rotated token is now the registered one, so a later refresh can
-      // read the adapter again.
-      rotatedToken = null
+      // The cap bounds FAILED attempts, so a launch that registered real
+      // changes can still send the next one.
+      attempts = 0
+      // Clear only the token this payload carried: a rotation that landed
+      // mid-request must survive the request it took no part in.
+      if (rotatedToken === payload.expoPushToken) rotatedToken = null
       deps.telemetry.info("push.registration", {
         push_trigger: trigger,
         push_outcome: "registered",
@@ -284,13 +295,16 @@ export function createPushRegistration(
       granted = permission.granted
       deps.store.setPermission(permission.granted ? "granted" : "denied")
       if (!permission.granted) {
+        permissionDenied = true
         // A registration armed before the viewer revoked must not land.
         cancelDebounce?.()
         cancelDebounce = null
         void reportRevocation()
         return
       }
-      if (launchRequested) return
+      const regranted = permissionDenied
+      permissionDenied = false
+      if (launchRequested && !regranted) return
       launchRequested = true
       request("permission_read")
     },

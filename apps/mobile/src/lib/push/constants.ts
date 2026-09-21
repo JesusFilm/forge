@@ -51,7 +51,10 @@ export const PUSH_REGISTRATION_DEBOUNCE_MS = 2_000
  */
 export const PUSH_REGISTRATION_REFRESH_INTERVAL_MS = 7 * 24 * 60 * 60 * 1_000
 
-/** At most this many mutation attempts in one launch, however many triggers. */
+/**
+ * At most this many FAILED attempts in one launch, however many triggers. A
+ * success resets the count: the cap is a retry guard, not a change budget.
+ */
 export const PUSH_REGISTRATION_MAX_ATTEMPTS = 3
 
 /**

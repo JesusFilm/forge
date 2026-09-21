@@ -136,6 +136,22 @@ describe("createPlaybackDiscoveryStore", () => {
     })
   })
 
+  it("stops at admin's eight-key cap and keeps the campaign keys", () => {
+    // Admin refines the provenance map to at most 8 keys and refuses the whole
+    // map over it. SYNTHETIC: the only production mark is
+    // `markPlaybackDiscovery`'s single `campaign` key, so this guards the bound.
+    const store = createPlaybackDiscoveryStore(() => 1_000)
+    const extra: Record<string, string> = { campaign: "nonce-abc" }
+    for (let index = 0; index < 12; index += 1) extra[`k${index}`] = "kept"
+
+    store.mark("jesus", "acquisition", extra)
+    const { provenance } = store.take(["jesus"])
+
+    expect(Object.keys(provenance)).toHaveLength(8)
+    expect(provenance.handoff).toBe("campaign_link")
+    expect(provenance.campaign).toBe("nonce-abc")
+  })
+
   it("never lets a mark overwrite the source's own handoff literal", () => {
     const store = createPlaybackDiscoveryStore(() => 1_000)
 

@@ -22,6 +22,7 @@ export type PushRegistrationRecord = {
   version: number
   /** R31's notification test ID. Never the push token. */
   testDeviceId: string | null
+  /** R3's change key. Cleared by a revocation report, never by a read. */
   payloadHash: string | null
   lastSuccessAt: number | null
   revocationReportedAt: number | null
@@ -177,6 +178,9 @@ export function createPushRegistrationStore(deps: PushRegistrationStoreDeps) {
     async markRevocationReported(): Promise<void> {
       await persist({
         ...(record ?? EMPTY_RECORD),
+        // Admin drops a denied row from every audience, so the change key must
+        // not make the next granted pass read as unchanged (R3).
+        payloadHash: null,
         revocationReportedAt: deps.now(),
       })
     },

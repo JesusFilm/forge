@@ -59,6 +59,8 @@ export function discoverySourceFromParam(
  */
 const PROVENANCE_KEY = /^[a-z][a-z0-9_]{0,31}$/
 const PROVENANCE_VALUE_MAX_CHARS = 191
+/** The `.refine` key cap in admin's `src/services/recommendations/contracts.ts`. */
+const PROVENANCE_MAX_KEYS = 8
 
 /** What one marking surface knows beyond the source itself, e.g. a nonce. */
 export type PlaybackDiscoveryProvenance = Record<string, string>
@@ -68,19 +70,21 @@ export function discoveryFor(
   extra: PlaybackDiscoveryProvenance = {},
 ): PlaybackDiscovery {
   if (source === "direct") return DIRECT_DISCOVERY
-  const provenance: Record<string, string> = {}
+  const literals = DISCOVERY_PROVENANCE[source]
+  // The source's own literals win: they are the contract Web shares, and a
+  // marking surface must not be able to restate what the hand-off was.
+  const provenance: Record<string, string> = { ...literals }
   for (const [key, value] of Object.entries(extra)) {
+    if (key in literals) continue
     if (!PROVENANCE_KEY.test(key)) continue
     if (value.length === 0 || value.length > PROVENANCE_VALUE_MAX_CHARS)
       continue
+    // Admin refuses the WHOLE map over its key cap, which loses the playback
+    // context, so stop admitting keys rather than send a map it rejects.
+    if (Object.keys(provenance).length >= PROVENANCE_MAX_KEYS) break
     provenance[key] = value
   }
-  // The source's own literals win: they are the contract Web shares, and a
-  // marking surface must not be able to restate what the hand-off was.
-  return {
-    source,
-    provenance: { ...provenance, ...DISCOVERY_PROVENANCE[source] },
-  }
+  return { source, provenance }
 }
 
 export type PlaybackDiscoveryStore = ReturnType<

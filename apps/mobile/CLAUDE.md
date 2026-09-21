@@ -442,6 +442,10 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
 - **Never set a react-native-screens `orientation` screen option.** `expo-screen-orientation`'s `ScreenOrientationViewController` answers UIKit from its OWN registry mask — what `lockAsync` writes — only while no screen carries an orientation. The moment one does, it defers to the react-native-screens view-controller chain instead, and a **dev client** has `expo-dev-launcher`'s `DevLauncherViewController` sitting in that chain: the resolved mask loses landscape, UIKit refuses the geometry request (`UIWindowScene.interfaceOrientationsNotSupported`, readable via `xcrun simctl spawn <udid> log stream`), fullscreen stays portrait, and leaving fullscreen strands the details page in landscape until the route pops. The option was always redundant — `src/lib/orientation.ts`'s lock already names the orientation on both platforms — so `useFullscreenPresentation` sets only the lock, and the dev client now rotates exactly like a Release build. Verified 2026-08-26 on the iPhone 17 Pro Max simulator in BOTH build types. `app/__tests__/screenOrientationOption.guard.test.js` blocks the one-line revert across every `.ts`/`.tsx` file under `app/` and `src/`, with a >100-file floor so the scan cannot silently go empty. It has TWO rules, and both are live: Rule 1 matches the key next to a quoted orientation value anywhere in the file (this catches the ternary across line breaks); Rule 2 matches a bare `orientation` KEY of any value shape — named constant, shorthand property — but only inside a brace-matched `screenOptions`/`options` object, so `src/lib/watchHome/`'s unrelated `orientation` key does not trip it. See `docs/solutions/integration-issues/expo-screen-orientation-rnscreens-deferral-blocks-fullscreen-rotate.md`.
 - **`PlayerSlot` must never depend on getting exactly one good `onLayout`.** `measureInWindow` SILENTLY drops its callback when the native node is not attached yet, and the host (`PlaybackHost`) returns null while the slot's rect is null — so one unlucky cold open leaves an opaque black box with no poster, no chrome, and no recovery except leaving the screen. Measured on the iPhone 17 Pro Max simulator over 10 cold deep-link opens: 2/10 on unmodified main, 0/10 after the bounded `requestAnimationFrame` re-measure. Three parts, and all three matter: retry until a rect lands, refuse a zero-size measure, and gate `isDrawn` on the RECT rather than on the attachment so the slot keeps its own poster while the host has nothing to draw. `src/components/watch/__tests__/PlayerSlot.test.tsx` drives a real `measureInWindow` callback and pins all three parts: a zero-size measure publishes nothing, a valid one publishes exactly the measured rect, and the pump stops asking once a rect lands. Exhaustion logs `player_slot.measure_exhausted` once, so an unmeasurable slot is visible in production instead of silent. The instrumentation that separates the cases is a `console.log` in `measureIntoStore` plus one inside the `measureInWindow` callback — `onLayout` fires in BOTH the good and the black run; only the callback differs. See `docs/solutions/integration-issues/expo-screen-orientation-rnscreens-deferral-blocks-fullscreen-rotate.md`.
 - Search requires `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN` (mobile's OWN dedicated fleet key — its own entry in admin's `FLEET_ADMIN_API_KEYS` CSV, NOT `WEB_ADMIN_API_KEYS`, and never the same value as TV's; provision in EAS Environments per profile, `.env.local` for dev). `watchSearch` is a PUBLIC resolver, so the bearer buys a per-device rate-limit bucket, not access; a missing/rotated key degrades to the shared `public:<ip>` bucket rather than an `UNAUTHENTICATED` error. The bearer rides ONLY on the `WatchSearch` operation — never attach it to public queries, or every public query also spends the fleet key's rate-limit budget. Admin buckets a fleet key per device (`consumer:<key>:v:<viewer_id>` from the `x-viewer-id` header, else `consumer:<key>:<ip>`), so the fleet doesn't collapse into one bucket. See `src/lib/authHeaders.ts`.
+  - **Superseded 2026-09-21:** the bearer also rides the eight recommendation
+    operations and the two push writes (`RegisterPushDevice`,
+    `ReportPushOpen`). `carriesFleetBearer` in `src/lib/authHeaders.ts` is the
+    allowlist, and `src/lib/__tests__/authHeaders.test.ts` pins it.
 
 ## Auth + watch progress (feat: mobile login & continue watching)
 
@@ -962,15 +966,20 @@ handle, and admin owns audience, timing and copy. The design record is
   what makes "once per launch" true.** The provider's effect runs setup →
   cleanup → setup under StrictMode, so a controller built inside it would arrive
   with its launch latch open. Only the token-rotation subscription belongs to
-  the provider's lifetime. Beyond the latch, an unchanged payload hash skips the
-  call unless the last success is over 7 days old, a launch spends at most 3
-  attempts, and a rate limit is never retried in that launch.
+  the provider's lifetime. The latch has one exception: a grant that FOLLOWS a
+  denial in the same launch registers again, because the revoke report already
+  took this phone out of every audience. Beyond the latch, an unchanged payload
+  hash skips the call unless the last success is over 7 days old, a launch
+  spends at most 3 FAILED attempts, and a rate limit is never retried in that
+  launch.
 - **The app stores the test ID and never the push token.**
   `src/lib/push/store.ts` holds the test ID, the payload hash, the last success
   and the remembered revocation. The token is re-read from the adapter whenever
   it is needed, which is also why a revocation report can fail on a phone whose
   platform refuses a token read without the grant: that report is simply
-  retried on a later launch.
+  retried on a later launch. A reported revocation also CLEARS the payload hash,
+  because admin drops a denied row from every audience and the next grant must
+  register rather than read its own payload as unchanged.
 - **The push port lives on the SAME notifications adapter** (token read,
   rotation subscription, announcements channel), so that file stays the app's
   one importer of `expo-notifications`. It imports `expo-constants` too, for the

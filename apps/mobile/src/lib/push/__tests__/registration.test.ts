@@ -109,7 +109,9 @@ function createHarness(
         record = {
           version: 1,
           testDeviceId: record?.testDeviceId ?? null,
-          payloadHash: record?.payloadHash ?? null,
+          // Mirrors the real store, which clears the change key here so the
+          // next granted pass registers instead of reading `unchanged`.
+          payloadHash: null,
           lastSuccessAt: record?.lastSuccessAt ?? null,
           revocationReportedAt: deps.now(),
         }
@@ -140,12 +142,18 @@ function createHarness(
 
   const registration = createPushRegistration(deps)
 
+  /** Drains the microtask queue and fires no timer, so a case can release an
+   *  injected read while a registration is still armed. */
+  async function settle(): Promise<void> {
+    for (let round = 0; round < 12; round += 1) await Promise.resolve()
+  }
+
   /** Fires every armed timer, then lets the async run settle. */
   async function fire(): Promise<void> {
     const pending = [...timers]
     timers.length = 0
     for (const run of pending) run()
-    for (let round = 0; round < 12; round += 1) await Promise.resolve()
+    await settle()
   }
 
   return {
@@ -174,6 +182,7 @@ function createHarness(
       token = next
     },
     fire,
+    settle,
     outcomes: () =>
       events
         .filter((entry) => entry.event === "push.registration")
@@ -469,6 +478,71 @@ describe("the payload change key (R3)", () => {
   })
 })
 
+describe("a trigger that lands while a request is in flight", () => {
+  /** A token read that blocks on the first call, so a case can hold a run open
+   *  and drive what happens around it. */
+  function blockingToken(later: string): {
+    read: () => Promise<string>
+    release: (token: string) => void
+    reads: () => number
+  } {
+    let resolveFirst: (token: string) => void = () => undefined
+    let reads = 0
+    return {
+      read: () => {
+        reads += 1
+        if (reads === 1) {
+          return new Promise<string>((resolve) => {
+            resolveFirst = resolve
+          })
+        }
+        return Promise.resolve(later)
+      },
+      release: (token) => resolveFirst(token),
+      reads: () => reads,
+    }
+  }
+
+  it("runs the trigger once the request in flight settles", async () => {
+    const reader = blockingToken("ExponentPushToken[second]")
+    const harness = createHarness({ token: reader.read })
+
+    harness.registration.onPermissionRead({ granted: true })
+    await harness.fire()
+    harness.registration.tokenRotated("ExponentPushToken[rotated]")
+    // The rotation's timer fires while the first request is still blocked,
+    // which is the moment a dropped trigger is lost for the whole launch.
+    await harness.fire()
+    expect(harness.armed).toBe(1)
+
+    reader.release(TOKEN)
+    await harness.settle()
+    await harness.fire()
+
+    expect(harness.register).toHaveBeenCalledTimes(2)
+  })
+
+  it("keeps a token that rotated mid-request, so the launch registers it", async () => {
+    const reader = blockingToken(TOKEN)
+    const harness = createHarness({ token: reader.read })
+
+    harness.registration.onPermissionRead({ granted: true })
+    await harness.fire()
+    harness.registration.tokenRotated("ExponentPushToken[rotated]")
+    reader.release(TOKEN)
+    await harness.settle()
+    await harness.fire()
+
+    expect(harness.register).toHaveBeenCalledTimes(2)
+    expect(payloadOf(harness.register, 1).expoPushToken).toBe(
+      "ExponentPushToken[rotated]",
+    )
+    // The rotation beat a fresh read, which is the only thing that can carry a
+    // token the first request never sent.
+    expect(reader.reads()).toBe(1)
+  })
+})
+
 describe("a failed registration (AE19, R4)", () => {
   it("resolves without throwing and records the failure", async () => {
     const register = jest.fn(async () => {
@@ -498,6 +572,34 @@ describe("a failed registration (AE19, R4)", () => {
 
     expect(register).toHaveBeenCalledTimes(PUSH_REGISTRATION_MAX_ATTEMPTS)
     expect(harness.armed).toBe(0)
+  })
+
+  it("spends the cap on failures alone, so a rotation after three successes lands", async () => {
+    // The cap is a retry guard. A launch that registered three real changes has
+    // spent no retry, and a rotation is a new identity rather than a repeat.
+    const harness = createHarness()
+    harness.registration.onPermissionRead({ granted: true })
+    await harness.fire()
+    for (const slug of ["arabic", "french"]) {
+      harness.setAppLanguageSlug(slug)
+      harness.registration.appLanguageChanged()
+      await harness.fire()
+    }
+    // Anti-vacuous: the launch really has spent the whole cap on successes.
+    expect(harness.register).toHaveBeenCalledTimes(
+      PUSH_REGISTRATION_MAX_ATTEMPTS,
+    )
+
+    harness.registration.tokenRotated("ExponentPushToken[rotated]")
+    await harness.fire()
+
+    expect(harness.register).toHaveBeenCalledTimes(
+      PUSH_REGISTRATION_MAX_ATTEMPTS + 1,
+    )
+    expect(
+      payloadOf(harness.register, PUSH_REGISTRATION_MAX_ATTEMPTS).expoPushToken,
+    ).toBe("ExponentPushToken[rotated]")
+    expect(harness.outcomes()).not.toContain("attempts_spent")
   })
 
   it("does not retry a rate limit in the same launch", async () => {
@@ -626,6 +728,50 @@ describe("a revoked permission (AE20, R29)", () => {
       permission: "granted",
     })
   })
+
+  it("re-registers on the next launch after a revoke and a re-grant", async () => {
+    // The revoke report takes the row out of every audience, so the stored
+    // change key must not make the next granted pass read as unchanged.
+    const first = createHarness()
+    first.registration.onPermissionRead({ granted: true })
+    await first.fire()
+    first.registration.onPermissionRead({ granted: false })
+    await first.fire()
+    expect(first.record?.revocationReportedAt).toBe(NOW)
+
+    // A fresh controller over the record the first launch left behind.
+    const second = createHarness({ stored: first.record })
+    second.registration.onPermissionRead({ granted: true })
+    await second.fire()
+
+    expect(second.register).toHaveBeenCalledTimes(1)
+    expect(payloadOf(second.register)).toMatchObject({ permission: "granted" })
+    // Anti-vacuous: the stored success really is inside the refresh window, so
+    // only the cleared change key can be what registered this phone again.
+    expect(NOW - (first.record?.lastSuccessAt ?? 0)).toBeLessThan(
+      PUSH_REGISTRATION_REFRESH_INTERVAL_MS,
+    )
+  })
+
+  it("re-registers when the viewer re-grants inside the same launch", async () => {
+    const harness = createHarness()
+    harness.registration.onPermissionRead({ granted: true })
+    await harness.fire()
+    harness.registration.onPermissionRead({ granted: false })
+    await harness.fire()
+    expect(harness.register).toHaveBeenCalledTimes(2)
+
+    harness.registration.onPermissionRead({ granted: true })
+
+    // The launch latch must not swallow a re-grant. Arming is the mechanism,
+    // the third call is the outcome.
+    expect(harness.armed).toBe(1)
+    await harness.fire()
+    expect(harness.register).toHaveBeenCalledTimes(3)
+    expect(payloadOf(harness.register, 2)).toMatchObject({
+      permission: "granted",
+    })
+  })
 })
 
 describe("a grant is the precondition for every registration (R5)", () => {
@@ -674,6 +820,40 @@ describe("a grant is the precondition for every registration (R5)", () => {
     // Only the revocation, never a `granted` payload after the denial.
     expect(harness.register).toHaveBeenCalledTimes(1)
     expect(payloadOf(harness.register)).toMatchObject({ permission: "denied" })
+  })
+
+  it("sends no granted payload when the viewer revokes mid-request", async () => {
+    // The re-read after the token read, not the cancel: the timer has already
+    // fired, so nothing else can stop this registration.
+    let releaseToken: (token: string) => void = () => undefined
+    let reads = 0
+    const harness = createHarness({
+      stored: { testDeviceId: "abc12345", lastSuccessAt: NOW - 1_000 },
+      token: () => {
+        reads += 1
+        if (reads === 1) {
+          return new Promise<string>((resolve) => {
+            releaseToken = resolve
+          })
+        }
+        return Promise.resolve(TOKEN)
+      },
+    })
+
+    harness.registration.onPermissionRead({ granted: true })
+    await harness.fire()
+    expect(harness.armed).toBe(0)
+
+    harness.registration.onPermissionRead({ granted: false })
+    releaseToken(TOKEN)
+    await harness.settle()
+
+    // Only the revocation report, and it is the re-read that stopped the other
+    // half: no timer was left to cancel.
+    expect(harness.cancelled).toBe(0)
+    expect(harness.register).toHaveBeenCalledTimes(1)
+    expect(payloadOf(harness.register)).toMatchObject({ permission: "denied" })
+    expect(harness.outcomes()).toContain("not_granted")
   })
 
   it("registers on a change once a pass has read the grant", async () => {

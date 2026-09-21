@@ -201,6 +201,28 @@ describe("the push registration store", () => {
     expect(store.getRecord()?.revocationReportedAt).toBeNull()
   })
 
+  it("clears the change key when it marks a revocation reported", async () => {
+    // Admin drops a denied row from every audience. If the key survived, the
+    // next granted pass would read its own payload as unchanged and send
+    // nothing until the weekly refresh.
+    const { store } = createStore({ now: () => 3_000 })
+    await store.hydrate()
+    await store.recordSuccess({
+      testDeviceId: "abc12345",
+      payloadHash: "0123456789abcdef",
+    })
+
+    await store.markRevocationReported()
+
+    expect(store.getRecord()).toEqual({
+      version: PUSH_REGISTRATION_RECORD_VERSION,
+      testDeviceId: "abc12345",
+      payloadHash: null,
+      lastSuccessAt: 3_000,
+      revocationReportedAt: 3_000,
+    })
+  })
+
   it("keeps serving from memory when the write fails", async () => {
     const { store } = createStore({ failWrite: true })
     await store.hydrate()

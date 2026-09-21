@@ -1,7 +1,7 @@
 /**
- * The shared admin documents for the two push write paths. Both live in
- * `@forge/admin-graphql/operations` because admin's own suites pin the same
- * documents, so the app and the server cannot drift on either operation name.
+ * One shared document per write path, with the names pinned twice: the
+ * recommendations `operations.contract.guard.test.js` validates both against
+ * admin's committed SDL, and `operationNames.ts` is the fleet-bearer allowlist.
  */
 import {
   adminRegisterPushDeviceOperation,

@@ -148,4 +148,9 @@ credentials table and the go-or-no-go checklist.
   that migration 0099 alters no existing table
 - `prisma migrate status` clean on the admin web and worker services after the
   deploy
+- A launch-path measurement for the mobile change, taken during the device pass:
+  the root layout now mounts `PushNoticeHost` and the registration controller
+  runs on every launch. Compare a release build's Datadog `js_tti` before and
+  after, or the console-patch JS-path timing on a warm deep-link open. A
+  dev-client cold launch is not a measurement (its noise floor is about 6 s).
 - The first internal campaign passes the go-or-no-go checklist in the plan.
