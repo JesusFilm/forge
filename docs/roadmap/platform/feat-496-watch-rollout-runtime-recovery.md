@@ -436,7 +436,11 @@ execution/lock/WAL and scheduling remain distinct.
 A separate 12:49–12:50 playback burst contains 63 HTTP 503s, a PostgreSQL 53100
 shared-memory error, 206 repeated catalog error logs, a measured 38.55-second
 event-loop delay, and one episode-lock exhaustion. Error-handling amplification
-is a testable hypothesis, not yet a causal reproduction. The larger corpus has
+has a subsequent isolated reproduction: pinned Yoga/Next plus the deployed
+source-map structure stalls for 10.86–11.46 seconds over 206 errors; preserving
+the logs as existing stack strings takes 36–39 ms. This establishes a local
+formatting mechanism, not full production-build attribution or a shipped fix.
+The larger corpus has
 70 selection 200s, four 400s and one 503. Both collectors observe zero semantic
 timeouts among 4,280 delivery 200s, but three primary 200s remain unmatched.
 Keep this ticket open; no larger deadline, ambiguous retry or speculative

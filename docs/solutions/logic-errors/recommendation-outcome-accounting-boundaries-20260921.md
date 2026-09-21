@@ -293,8 +293,11 @@ its individual failure mechanisms alongside any aggregate acceptance threshold.
   `recommendation_episode_lock_exhausted`; do not call it a P2034 recurrence.
 - Count repeated application logs separately from underlying SQL failures.
   One catalog shared-memory error produced 206 identical Yoga logs over roughly
-  38 seconds. Error fan-out overlaps a 38.55-second event-loop delay; a local
-  reproduction is still required to establish amplification as the cause.
+  38 seconds. Error fan-out overlaps a 38.55-second event-loop delay. A later
+  isolated reproduction with the pinned Next inspector and deployed map
+  structure blocks for 10.86–11.46 seconds. Logging existing stack strings keeps
+  all 206 errors in 36–39 ms. This isolates formatting cost; full-build workload
+  validation is still required before assigning the complete production pause.
 - Disable gauge interpolation with `.fill(null)` when inspecting individual
   runtime samples. A ramp between adjacent gauge samples is not a sequence of
   observed pauses. Preserve gaps in GC samples instead of treating them as zero.

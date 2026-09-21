@@ -154,6 +154,38 @@ This later scheduling burst does not explain the earlier 08:37 capability-budget
 failure. Runtime identity is unchanged throughout; startup/handover is not
 established as either new incident's cause.
 
+## Bounded local error-formatting diagnostic
+
+A subsequent isolated experiment establishes a local amplification mechanism,
+while leaving the full production incident attribution open. It runs the pinned
+Yoga 5.21.0 schema executor with 206 nullable fields rejecting the same Error,
+its observed stack, and Next 16.2.4's actual error inspector. Three exact deployed
+stack-frame source maps are read without changing production; `sourcesContent`
+is removed and the maps are supplied through Next's local fallback lookup.
+No production database or application callback is invoked by the experiment.
+
+Three fresh processes per mode produce:
+
+| Mode                                          | Complete GraphQL duration | One-millisecond timer fires after | Retained logs/errors |
+| --------------------------------------------- | ------------------------- | --------------------------------- | -------------------- |
+| Native console inspection                     | 47.33–52.87 ms            | 47.38–52.92 ms                    | 206 / 206            |
+| Next error inspection                         | 10,860.48–11,455.04 ms    | 10,860.78–11,455.35 ms            | 206 / 206            |
+| Next installed, format existing stack strings | 36.04–38.98 ms            | 36.08–39.03 ms                    | 206 / 206            |
+
+Every response remains HTTP 200 with 206 masked GraphQL errors and every error
+is logged. The Next mode makes 618 source-map lookups: three maps for each
+inspected error. Its implementation creates the map-consumer cache inside each
+inspection. The stack-string control removes this repeated inspection cost
+without omitting errors. It is an experiment, not a production logger change.
+
+The local Node version is 24.16.0 versus Admin's 24.21.0. The sink counts output
+bytes without stdout transport or Datadog forwarding. There is no database
+shared-memory pressure, production module graph, or concurrent selection/playback
+load. Thus the experiment reproduces severe synchronous formatting amplification,
+**not** the entire 38.55-second production pause or the earlier capability-budget
+failure. A scoped logger correction still needs production-build validation,
+metadata/privacy review and normal release verification before claiming a fix.
+
 ## Evidence integrity, reconciliation and lifecycle gates
 
 The indexed Web/Admin observations reconcile all **16 invalid-binding outcomes**
