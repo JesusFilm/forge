@@ -159,3 +159,12 @@ duration index initially made the bounded join slower. Do not fix this by
 raising shared-memory limits, adding mutation retries or enlarging deadlines
 without evidence. The initiating database failure and subsequent synchronous
 error-formatting amplification require separate corrections and measurements.
+
+The final CASE-based query and logger are verified in both production roles at
+`ce421561ee9bcf89991dea5a060a656e45c3434b`. A bounded read-only executed plan
+returns the 206 selected catalog rows in 9.982 ms using the existing indexes;
+production's current shared-memory mount is 64,000,000 bytes. The
+[release verification](../../operations/watch-runtime-release-verification-2026-09-22.md)
+retains the historical-load uncertainty and separate timeout populations.
+Compiled-symbol checks must survive minification: verify the distinctive final
+SQL and revision rather than requiring a helper's source-level function name.

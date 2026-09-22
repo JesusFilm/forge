@@ -58,6 +58,11 @@ logging failure cannot turn an accepted budget into a failed mutation; original
 database errors propagate unchanged. This event observes slow completed calls,
 not every call or every failure, and is not an HTTP denominator.
 
+`kind=delivery` identifies the capability shared by render, impression and
+selection evidence. It does not identify a recommendation-delivery request.
+Match independent endpoint outcomes before calling a slow budget event an HTTP
+failure or a semantic timeout fallback.
+
 ## Validation and next diagnosis
 
 Real PostgreSQL tests prove single consumption, concurrent exhaustion, the
@@ -78,6 +83,14 @@ measurements and independent HTTP/error evidence before selecting a fix. A large
 remainder narrows the search but does not identify its cause. Do not equate an
 agent host's device metrics with PostgreSQL storage without proving host/device
 identity. Never interpret disabled PostgreSQL I/O timing counters as zero wait.
+
+The first production use time-correlated 212–312 ms completed calls with
+function time rounding to zero, sampled `WalSync`/`WALWrite` waits and roughly
+200 ms of actual database-cgroup I/O pressure. Nearby 100 ms counters showed
+little write traffic. This narrows those calls to the post-function commit path
+without identifying storage throttling or a competing workload. Separate longer
+calls had no simultaneous wait capture; do not extend the attribution to them.
+See the [release evidence](../../operations/watch-runtime-release-verification-2026-09-22.md).
 
 Related: [recommendation outcome accounting](../logic-errors/recommendation-outcome-accounting-boundaries-20260921.md)
 and [the separate Next error-inspection fix](../performance-issues/next-error-inspection-amplifies-graphql-failures-20260922.md).

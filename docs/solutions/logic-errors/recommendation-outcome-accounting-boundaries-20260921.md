@@ -312,6 +312,26 @@ its individual failure mechanisms alongside any aggregate acceptance threshold.
   classification and dispatch counters pass. A stale-run counter alone does
   not establish that a stale publisher was rejected.
 
+## Bound audit work and align its clock with its snapshot
+
+In the [September 22 runtime release check](../../operations/watch-runtime-release-verification-2026-09-22.md),
+a read-only workflow-step query hit its five-second statement limit while a
+delivery request produced a timeout fallback. Read-only access and a timeout
+bound do not make diagnostic work free. Restrict historical step reads through
+the indexed scheduler-run identity before applying step-name/time filters.
+Record the diagnostic interval, keep overlapping failures in the production
+denominator, and distinguish possible interference from established causality.
+If the server-log API fails, retain the missing statement correlation instead
+of assigning each cancellation to an application or diagnostic backend.
+
+For a standalone canonical audit, choose the evaluation clock within the same
+read-only repeatable-read transaction as the audited data. A locally prepared
+clock reused against newer publications can make new attribution appear to
+come from the future. Retain any earlier nonzero observation and explain the
+clock limitation; a later consistent zero snapshot does not prove continuous
+eligibility or repair of the same pointer. Aggregate-only privacy requirements
+also constrain which per-pointer causal claims can be made.
+
 ## Related evidence
 
 - [Delivery event contract and limits](../../operations/watch-delivery-outcome-observation-2026-09-21.md)

@@ -483,6 +483,24 @@ received the user's instruction to keep it removed. The single-block rollback
 requires an authenticated publishing connection; no authored-content or flag
 change has yet been made by this task.
 
+## September 22 exact runtime release and independent wait evidence
+
+PR #2371 merged as `ce421561ee9bcf89991dea5a060a656e45c3434b`; Admin and
+worker now independently verify that exact revision and both compiled fixes.
+The [release verification](../../operations/watch-runtime-release-verification-2026-09-22.md)
+records the indexed final production query at 9.982 ms for 206 rows, the initial
+logger-only HTTP and semantic populations, and the remaining acceptance gates.
+Current production PostgreSQL has a 64,000,000-byte shared-memory mount, which
+supports the bounded local allocation reproduction; historical concurrency
+remains unknown. No memory limit, deadline or durability setting was changed.
+
+The failed selection's persisted budget transaction timestamp is near the start
+of its 697 ms SQL span, arguing against assigning the whole call to native pool
+acquisition. A later read-only sample observes a 264.884 ms-old budget statement
+in `WalSync`; that is query age, not measured total WAL-wait duration, and does
+not establish the full incident cause. Keep this independent question open and
+do not describe the short healthy release window as complete recovery.
+
 ## September 22 budget timing diagnostic
 
 The separate 701 ms capability-budget call remains unattributed. The supported
@@ -502,3 +520,34 @@ catalog requests. [Validation artifact](../../validation/watch-budget-timing-202
 retains individual rounds and their limits. This is a diagnostic change, not a
 proven fix for the remaining selection delay. Exact deployment verification and
 naturally slow-call attribution remain required; keep status in progress.
+
+## September 22 diagnostic release and natural WAL evidence
+
+PR #2374 is independently verified on Admin and worker at
+`92a597ee03074bf4d79b0eb21db4499046ecd09f`, including the compiled diagnostic
+and both preceding fixes. Bounded read-only captures now correlate 212–312 ms
+budget calls with near-zero measured function execution, WAL sync/write waits,
+and database-volume I/O pressure despite little nearby write traffic. A final
+254 ms call repeats that pattern. No sampled row/advisory blocker is present.
+Separate 406–1,708 ms calls lack simultaneous server-wait evidence; do not assign
+their remainder or the historical 701 ms selection failure to WAL by inference.
+The underlying storage cause and a demonstrated corrective change remain open.
+
+The normal public-browser canary supplies two six-card served envelopes, one
+selection HTTP 200 with a matching attributable database row, and accepted
+playback evidence. Missing browser responses remain explicit. No terminal 409
+was exercised. See the [release record](../../operations/watch-runtime-release-verification-2026-09-22.md)
+for observation populations, runtime revisions, temporary-observer cleanup and
+the remaining authenticated homepage rollback. Keep the ticket in progress.
+
+The completed 21:55–23:55 UTC window has 23 selection 200s, two selection
+400s and no selection 503s; playback has zero 5xx / 8,725 requests. Independent
+Railway delivery outcomes reconcile all 1,524 delivery requests and retain
+**one HTTP 200 `delivery_timeout` among 761 delivery 200s**, at 23:48:30.
+Its final persistence transaction/rollback is delayed. A bounded task-owned
+read diagnostic overlaps the incident and may have contributed; the trace
+does not resolve server execution, native pool, lock or storage attribution.
+No traffic is excluded. This is not a clean final-release recovery window.
+Admin/worker remain independently verified at `92a597ee…` at September 22
+00:10:27. The [release record](../../operations/watch-runtime-release-verification-2026-09-22.md)
+retains the exact revisions, collector gaps, transient pointer audit and cleanup.
