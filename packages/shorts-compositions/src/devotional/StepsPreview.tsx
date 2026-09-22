@@ -64,7 +64,9 @@ function BigStepWord({
           fontSize: px(126),
           lineHeight: 1,
           letterSpacing: px(7),
-          color: "#ffffff",
+          // Gold, not white (owner picked it): white read as light ON the
+          // picture, gold reads as a word surfacing FROM it.
+          color: "#f2c46b",
           opacity,
           filter: `blur(${blur.toFixed(2)}px)`,
           // Optically centred, not box-centred: a serif's em box has more
