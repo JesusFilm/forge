@@ -151,11 +151,22 @@ function createWatchHomeSitemapEntries(): WatchSitemapEntry[] {
   ]
 }
 
-function videoHref(contentSlug: string, languageSlug: string): string | null {
+/**
+ * Resolves a content slug once, then hands back a per-language URL builder. The
+ * content slug is invariant for a whole route group, and a group now spans every
+ * playable language, so validating it per URL is thousands of redundant regex
+ * tests per group.
+ */
+function videoHrefBuilder(
+  contentSlug: string,
+): (languageSlug: string) => string | null {
   const content = tryAsContentSlug(contentSlug)
-  const language = tryAsLocaleSlug(languageSlug)
-  if (!content || !language) return null
-  return absoluteWatchUrl(watchVideoPath(content, language))
+  if (!content) return () => null
+  return (languageSlug) => {
+    const language = tryAsLocaleSlug(languageSlug)
+    if (!language) return null
+    return absoluteWatchUrl(watchVideoPath(content, language))
+  }
 }
 
 function renderAlternate(alternate: WatchSitemapAlternate): string {
@@ -191,9 +202,27 @@ function groupEntries(
   group: Pick<WatchSeoManifestVideoRouteGroup, "alternates" | "languageSlugs">,
   hrefForLanguage: (languageSlug: string) => string | null,
 ): WatchSitemapEntry[] {
+  // One href resolution per language, reused for both the canonical URL and the
+  // alternate that may point at it.
+  const hrefByLanguage = new Map<string, string>()
+  const locs: string[] = []
+  const seen = new Set<string>()
+  for (const languageSlug of routeGroupLanguageSlugs(group)) {
+    const href = hrefForLanguage(languageSlug)
+    // Two slugs can only collide here through bad manifest data; skipping the
+    // repeat keeps it out of the cross-group `duplicate_loc` guard, which would
+    // otherwise 503 the whole sitemap.
+    if (!href || seen.has(href)) continue
+    seen.add(href)
+    hrefByLanguage.set(languageSlug, href)
+    locs.push(href)
+  }
+
+  // Keeps the manifest's hreflang ordering, which is what the cluster's
+  // `<xhtml:link>` block serializes.
   const resolvedAlternates = group.alternates
     .map((alternate) => {
-      const href = hrefForLanguage(alternate.languageSlug)
+      const href = hrefByLanguage.get(alternate.languageSlug)
       return href ? { ...alternate, href } : null
     })
     .filter(
@@ -203,21 +232,10 @@ function groupEntries(
     resolvedAlternates.map((alternate) => alternate.href),
   )
 
-  const entries: WatchSitemapEntry[] = []
-  const seen = new Set<string>()
-  for (const languageSlug of routeGroupLanguageSlugs(group)) {
-    const href = hrefForLanguage(languageSlug)
-    // Two slugs can only collide here through bad manifest data; skipping the
-    // repeat keeps it out of the cross-group `duplicate_loc` guard, which would
-    // otherwise 503 the whole sitemap.
-    if (!href || seen.has(href)) continue
-    seen.add(href)
-    entries.push({
-      loc: href,
-      alternates: clusterHrefs.has(href) ? resolvedAlternates : [],
-    })
-  }
-  return entries
+  return locs.map((loc) => ({
+    loc,
+    alternates: clusterHrefs.has(loc) ? resolvedAlternates : [],
+  }))
 }
 
 function groupForVideoRoute(
@@ -231,16 +249,24 @@ function groupForEntries(
   entries: WatchSitemapEntry[],
 ): ResolvedSitemapGroup | null {
   if (!entries.length) return null
-  const annotated = entries.filter((entry) => entry.alternates.length > 0)
-  const alternateLinksXml =
-    annotated[0]?.alternates.map(renderAlternate).join("") ?? ""
+  const annotatedLocs: string[] = []
+  const unannotatedLocs: string[] = []
+  let alternateLinksXml = ""
+  for (const entry of entries) {
+    if (entry.alternates.length === 0) {
+      unannotatedLocs.push(entry.loc)
+      continue
+    }
+    if (!annotatedLocs.length) {
+      alternateLinksXml = entry.alternates.map(renderAlternate).join("")
+    }
+    annotatedLocs.push(entry.loc)
+  }
   return {
     alternateLinksXml,
     alternateLinksBytes: Buffer.byteLength(alternateLinksXml, "utf8"),
-    annotatedLocs: annotated.map((entry) => entry.loc),
-    unannotatedLocs: entries
-      .filter((entry) => entry.alternates.length === 0)
-      .map((entry) => entry.loc),
+    annotatedLocs,
+    unannotatedLocs,
   }
 }
 
@@ -271,8 +297,9 @@ function createWatchSitemapGroups(
   const groups: ResolvedSitemapGroup[] = []
 
   for (const group of manifest.videoRouteGroups) {
-    const sitemapGroup = groupForVideoRoute(group, (languageSlug) =>
-      videoHref(group.contentSlug, languageSlug),
+    const sitemapGroup = groupForVideoRoute(
+      group,
+      videoHrefBuilder(group.contentSlug),
     )
     if (sitemapGroup) groups.push(sitemapGroup)
   }
@@ -289,11 +316,7 @@ export function createWatchSitemapEntries(
   const entries: WatchSitemapEntry[] = []
 
   for (const group of manifest.videoRouteGroups) {
-    entries.push(
-      ...groupEntries(group, (languageSlug) =>
-        videoHref(group.contentSlug, languageSlug),
-      ),
-    )
+    entries.push(...groupEntries(group, videoHrefBuilder(group.contentSlug)))
   }
 
   entries.push(...createWatchHomeSitemapEntries())
