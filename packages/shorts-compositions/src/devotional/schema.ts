@@ -101,7 +101,16 @@ export const devotionalCardSchema = z.object({
   highlight: z.string().optional(), // phrase within text/title to accent
   questions: z.array(z.string()).optional(), // questions card
   prayer: z.string().optional(), // questions card
-  /** cold-open card: the hook lines, shown one at a time in order. */
+  /**
+   * cold-open card: the hook lines, shown one at a time in order.
+   *
+   * The lines are spread across the frames this card is ACTUALLY allocated,
+   * which is `durationSec` plus the tail pad plus — on the first and last
+   * card — the intro and outro holds. Verified in Chromium: a cold open that
+   * is also the only card inherits the 8s outro hold and stretches a 6.5s
+   * hook to ~16s. So put the cold open FIRST and never LAST, and set
+   * `introHoldSec: 0` unless you want a beat of footage before the hook.
+   */
   coldOpenLines: z.array(coldOpenLineSchema).min(1).max(6).optional(),
   /** cold-open card: set false to keep the hook in the case it was authored in. */
   coldOpenUppercase: z.boolean().optional(),
