@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { PUBLIC_WATCH_LANGUAGE_SLUGS } from "@forge/watch-url-policy/routes"
+import { WATCH_REFERRER_POLICY } from "../watch-security-headers.mjs"
 import {
   DEFAULT_LOCALE,
   isLocale,
@@ -169,16 +170,24 @@ function redirectDeprecatedSearch(request: ProxyRequest): NextResponse {
 }
 
 /**
- * The baseline security-header set now lives in next.config.mjs `headers()`
- * (see watch-security-headers.mjs), which covers every route including the
- * basePath root this function never sees. These two headers stay here as the
- * narrower belt on the rewrite paths: the values are identical, and a
- * middleware-set header wins over the config one, so nothing is duplicated.
- * If you change either value, change it in both places or delete this.
+ * The baseline security-header set lives in next.config.mjs `headers()` (see
+ * watch-security-headers.mjs), which covers every route including the basePath
+ * root this function never sees.
+ *
+ * Only `Referrer-Policy` is re-applied here, and deliberately NOT
+ * `Content-Security-Policy`. Next evaluates config `headers()` BEFORE
+ * middleware and merges middleware's headers over them with a plain
+ * last-write-wins assignment, so anything middleware sets clobbers the config
+ * value for the same key. That is harmless for Referrer-Policy, whose value is
+ * identical here and whose middleware-wins behaviour is what lets
+ * `applyExperiencePreviewHeaders` override it with `no-referrer`. It would be
+ * actively harmful for CSP: once an operator promotes the full policy with
+ * `WATCH_CSP_ENFORCE=true`, a static `frame-ancestors 'self'` written here
+ * would silently overwrite it on every rewritten content route, and the
+ * promotion would look done while doing nothing.
  */
 function applyWatchSecurityHeaders(response: NextResponse): NextResponse {
-  response.headers.set("Content-Security-Policy", "frame-ancestors 'self'")
-  response.headers.set("Referrer-Policy", "strict-origin")
+  response.headers.set("Referrer-Policy", WATCH_REFERRER_POLICY)
   return response
 }
 

@@ -4,14 +4,18 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest"
 
+import { stubWebAuthEnv } from "../test-support"
+import {
+  WEB_AUTH_FORCE_LOGIN_COOKIE,
+  WEB_AUTH_RETURN_TO_COOKIE,
+  WEB_AUTH_SESSION_COOKIE,
+  WEB_AUTH_STATE_COOKIE,
+  WEB_AUTH_VERIFIER_COOKIE,
+} from "@/auth/web-session"
+
 async function importRoute() {
   vi.resetModules()
-  vi.stubEnv("WEB_AUTH_BASE_URL", "https://auth.example.test")
-  vi.stubEnv("WEB_BASE_URL", "http://localhost:3000")
-  vi.stubEnv(
-    "WEB_SESSION_SECRET",
-    "test-session-secret-at-least-thirty-two-chars",
-  )
+  stubWebAuthEnv()
   return import("./route")
 }
 
@@ -21,10 +25,10 @@ afterEach(() => {
 })
 
 const AUTH_COOKIES = [
-  "forge_web_session",
-  "forge_web_oauth_state",
-  "forge_web_oauth_verifier",
-  "forge_web_oauth_return_to",
+  WEB_AUTH_SESSION_COOKIE,
+  WEB_AUTH_STATE_COOKIE,
+  WEB_AUTH_VERIFIER_COOKIE,
+  WEB_AUTH_RETURN_TO_COOKIE,
 ]
 
 describe("GET /watch/api/auth/logout", () => {
@@ -60,6 +64,8 @@ describe("GET /watch/api/auth/logout", () => {
       new Request("http://localhost:3102/watch/api/auth/logout"),
     )
 
-    expect(response.cookies.get("forge_web_force_login")?.path).toBe("/watch")
+    expect(response.cookies.get(WEB_AUTH_FORCE_LOGIN_COOKIE)?.path).toBe(
+      "/watch",
+    )
   })
 })

@@ -122,12 +122,24 @@ export const nextConfig = {
           // server-only ADMIN_GRAPHQL_URL is a Railway private-network host in
           // production, and echoing it in a public header would publish an
           // internal hostname the browser can never reach anyway.
-          adminGraphqlUrl: process.env.NEXT_PUBLIC_ADMIN_GRAPHQL_URL,
+          // Mirrors the default in src/env.ts. Reading the raw env var alone
+          // would omit the admin origin in any environment that relies on that
+          // default, which once enforced blocks the two documented
+          // browser-direct callers (floating Watch search, What's New voting).
+          adminGraphqlUrl:
+            process.env.NEXT_PUBLIC_ADMIN_GRAPHQL_URL ??
+            (process.env.NODE_ENV === "production"
+              ? "https://admin.jesusfilm.org/api/graphql"
+              : "http://localhost:3003/api/graphql"),
+          datadogSite: process.env.NEXT_PUBLIC_DATADOG_SITE,
           // Report-only by default. Promoting the policy is a deliberate env
           // flip plus a redeploy, never a code change bundled with the change
           // that introduced the policy.
-          enforceContentSecurityPolicy:
-            process.env.WATCH_CSP_ENFORCE === "true",
+          // Normalized: an operator who sets `WATCH_CSP_ENFORCE=True` or `=1`
+          // in Railway should not silently stay in report-only mode.
+          enforceContentSecurityPolicy: ["true", "1", "yes"].includes(
+            (process.env.WATCH_CSP_ENFORCE ?? "").trim().toLowerCase(),
+          ),
         }),
       },
     ]
@@ -214,15 +226,21 @@ export const nextConfig = {
         hostname: "admin.jesusfilm.org",
         pathname: "/api/public/media-assets/**",
       },
-      // Cloudflare Images serves `/<account-hash>/<image-id>/<variant>`; web
-      // appends the `public` variant when admin stored the URL without one,
-      // so three segments is the real shape.
+      // SHAPE-ONLY scoping, and worth being precise about: unlike the Unsplash
+      // entries above, this does NOT close the open image proxy. Cloudflare
+      // Images always serves `/<account-hash>/<image-id>/<variant>` for EVERY
+      // customer, so any other tenant's URL still has three segments and still
+      // matches. It bounds the path shape and nothing more. Real closure means
+      // resolving the account hash against admin's own asset records, which is
+      // tracked as follow-up work, not done here.
       {
         protocol: "https",
         hostname: "imagedelivery.net",
         pathname: "/*/*/**",
       },
-      // Mux image derivatives are always `/<playbackId>/<asset>`.
+      // Same shape-only caveat: Mux image derivatives are always
+      // `/<playbackId>/<asset>` for every Mux customer, so this bounds the
+      // shape without restricting whose playback id may be proxied.
       { protocol: "https", hostname: "image.mux.com", pathname: "/*/*" },
       ...additionalImageHosts,
       ...(process.env.NEXT_PUBLIC_CMS_HOSTNAME

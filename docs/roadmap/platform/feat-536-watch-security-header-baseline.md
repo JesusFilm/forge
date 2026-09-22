@@ -3,7 +3,7 @@ id: "feat-536"
 title: "Close the Watch security-header gaps"
 owner: "vlad"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-22"
 duration: 1
 depends_on: []
@@ -65,7 +65,12 @@ Measured on production and reproduced locally against `next build` + `next start
   `base-uri` and `frame-ancestors`. Enforcement is a later env flip
   (`WATCH_CSP_ENFORCE=true`), never the same PR.
 - `poweredByHeader: false`.
-- A `pathname` scope on every remote pattern.
+- A `pathname` scope on every remote pattern. Unsplash is pinned to the two fixed
+  photos the app renders, which genuinely closes the proxy for that host.
+  `imagedelivery.net` and `image.mux.com` get SHAPE-only scoping: both CDNs are
+  multitenant and use the same path shape for every customer, so another tenant's
+  URL still matches. Closing those needs the account hash / playback id checked
+  against admin's own asset records — tracked as follow-up, not done here.
 - Auth cookies scoped to the `/watch` basePath, with every clear path also clearing the
   legacy `Path=/` cookie so sign-out still works across the rollout.
 

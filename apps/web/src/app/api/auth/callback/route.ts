@@ -7,6 +7,7 @@ import {
   WEB_AUTH_SESSION_COOKIE,
   WEB_AUTH_STATE_COOKIE,
   WEB_AUTH_VERIFIER_COOKIE,
+  clearLegacyWebAuthCookie,
   clearWebAuthCookie,
   createWebAuthSessionCookie,
   webAuthCookieOptions,
@@ -80,6 +81,10 @@ export async function GET(request: Request) {
       }),
       webAuthCookieOptions(),
     )
+    // The fresh session cookie above lives at /watch. A pre-rollout copy at
+    // Path=/ would shadow it on every read (see clearLegacyWebAuthCookie), so
+    // retire it in the same response that establishes the new identity.
+    clearLegacyWebAuthCookie(response.headers, WEB_AUTH_SESSION_COOKIE)
     clearConsumedHandshakeCookies(response)
 
     return response

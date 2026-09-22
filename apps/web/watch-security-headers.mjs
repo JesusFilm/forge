@@ -51,15 +51,40 @@ const ANALYTICS_CONNECT_HOSTS = [
   "https://*.google-analytics.com",
   "https://*.analytics.google.com",
   "https://*.googletagmanager.com",
-  "https://*.browser-intake-datadoghq.com",
-  "https://*.datadoghq.com",
 ]
 
-/** Mux delivers the hero video, its thumbnails and its playback telemetry. */
+/**
+ * Datadog RUM's intake host is NOT a subdomain of the configured site, so
+ * `https://*.datadoghq.com` does not cover it: `us3.datadoghq.com` posts to
+ * `browser-intake-us3-datadoghq.com` (the region is an infix, not a label) and
+ * `datadoghq.eu` posts to `browser-intake-datadoghq.eu` (different TLD).
+ * Derived from the configured site so the policy cannot drift from it — the
+ * site values are the `DATADOG_SITE_VALUES` union in src/env.ts.
+ */
+export function datadogIntakeHost(site) {
+  const configured = (site ?? "").trim() || "datadoghq.com"
+  const labels = configured.split(".")
+  const suffix =
+    labels.length > 2 ? `${labels[0]}-${labels.slice(1).join(".")}` : configured
+  return `browser-intake-${suffix}`
+}
+
+/**
+ * Mux delivers the hero video, its thumbnails and its playback telemetry, and
+ * `api-media-core.jesusfilm.org` serves the subtitle tracks.
+ *
+ * The Mux entry is a wildcard on purpose. Observed in a real browser run
+ * against production data: `stream.mux.com` hands playback off to regional CDN
+ * hosts (`manifest-oci-us-ashburn-1-vop1.fastly.mux.com`,
+ * `chunk-oci-...fastly.mux.com`), so a policy naming only `stream.mux.com`
+ * reports a violation for every HLS segment and would stop playback outright
+ * the day it is enforced. Same two host families the download allowlist
+ * already derived empirically — see src/lib/download-allowlist.ts.
+ */
 const MEDIA_HOSTS = [
-  "https://image.mux.com",
-  "https://stream.mux.com",
+  "https://*.mux.com",
   "https://*.litix.io",
+  "https://api-media-core.jesusfilm.org",
 ]
 
 function originOf(rawUrl) {
@@ -80,8 +105,12 @@ function originOf(rawUrl) {
  * the App Router emits inline bootstrap and flight-data scripts, and a nonce
  * would force every route dynamic, which this app's ISR caching depends on.
  */
-export function buildWatchContentSecurityPolicy({ adminGraphqlUrl } = {}) {
+export function buildWatchContentSecurityPolicy({
+  adminGraphqlUrl,
+  datadogSite,
+} = {}) {
   const adminOrigin = originOf(adminGraphqlUrl)
+  const datadogIntake = datadogIntakeHost(datadogSite)
 
   const directives = {
     "default-src": ["'self'"],
@@ -100,7 +129,7 @@ export function buildWatchContentSecurityPolicy({ adminGraphqlUrl } = {}) {
     // constrained by images.remotePatterns, which is the real allowlist.
     "img-src": ["'self'", "data:", "blob:", "https:"],
     "font-src": ["'self'", "data:"],
-    "media-src": ["'self'", "blob:", "https://stream.mux.com"],
+    "media-src": ["'self'", "blob:", ...MEDIA_HOSTS],
     "worker-src": ["'self'", "blob:"],
     // QuizButton renders an editor-authored iframe src, so this cannot be
     // enumerated to a fixed host list without breaking authored content.
@@ -109,11 +138,17 @@ export function buildWatchContentSecurityPolicy({ adminGraphqlUrl } = {}) {
       "'self'",
       ...MEDIA_HOSTS,
       ...ANALYTICS_CONNECT_HOSTS,
+      `https://${datadogIntake}`,
+      `https://*.${datadogIntake}`,
       ...(adminOrigin ? [adminOrigin] : []),
     ],
-    "upgrade-insecure-requests": [],
   }
 
+  // Deliberately absent: `upgrade-insecure-requests`. Chrome logs
+  // "directive 'upgrade-insecure-requests' is ignored when delivered in a
+  // report-only policy" (observed in a real browser run), so it buys nothing
+  // today and would silently start rewriting requests the moment the policy is
+  // promoted. HSTS and the Cloudflare edge already force HTTPS.
   return Object.entries(directives)
     .map(([name, values]) =>
       values.length > 0 ? `${name} ${values.join(" ")}` : name,
@@ -128,11 +163,18 @@ export function buildWatchContentSecurityPolicy({ adminGraphqlUrl } = {}) {
  */
 export const WATCH_ENFORCED_CSP = "frame-ancestors 'self'"
 
+/** The Referrer-Policy proxy.ts already sent on rewrite paths. */
+export const WATCH_REFERRER_POLICY = "strict-origin"
+
 export function buildWatchSecurityHeaders({
   adminGraphqlUrl,
+  datadogSite,
   enforceContentSecurityPolicy = false,
 } = {}) {
-  const policy = buildWatchContentSecurityPolicy({ adminGraphqlUrl })
+  const policy = buildWatchContentSecurityPolicy({
+    adminGraphqlUrl,
+    datadogSite,
+  })
 
   return [
     {
@@ -143,9 +185,14 @@ export function buildWatchSecurityHeaders({
       value: "max-age=63072000; includeSubDomains; preload",
     },
     { key: "X-Content-Type-Options", value: "nosniff" },
+    // `on`, not `off`: the Watch layout deliberately emits
+    // `<link rel="dns-prefetch" href="https://imagedelivery.net">` to shave the
+    // image CDN handshake off the LCP path. Sending `off` here would turn a
+    // hardening header into a page-load regression.
+    { key: "X-DNS-Prefetch-Control", value: "on" },
     // Same value proxy.ts sent on rewrite paths. This widens the coverage; it
     // does not change the policy.
-    { key: "Referrer-Policy", value: "strict-origin" },
+    { key: "Referrer-Policy", value: WATCH_REFERRER_POLICY },
     {
       key: "Permissions-Policy",
       value: DENIED_BROWSER_FEATURES.map((feature) => `${feature}=()`).join(

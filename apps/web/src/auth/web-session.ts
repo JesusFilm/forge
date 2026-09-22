@@ -85,11 +85,15 @@ export async function readWebAuthSessionCookie(
  */
 export const LEGACY_WEB_AUTH_COOKIE_PATH = "/"
 
+function isSecureCookieEnv() {
+  return process.env.NODE_ENV === "production"
+}
+
 export function webAuthCookieOptions() {
   return {
     httpOnly: true,
     sameSite: "lax" as const,
-    secure: process.env.NODE_ENV === "production",
+    secure: isSecureCookieEnv(),
     // Scoped to the Watch basePath: `/` also matched the WordPress half of
     // www.jesusfilm.org, so the encrypted session cookie and the live OAuth
     // PKCE verifier were sent to an application that has no business reading
@@ -109,13 +113,43 @@ export function webAuthCookieOptions() {
  * cookies API rewrites the header from its own parsed map.
  */
 export function clearWebAuthCookie(headers: Headers, name: string) {
-  const secure = process.env.NODE_ENV === "production" ? "; Secure" : ""
+  appendClearedCookie(headers, name, [
+    WATCH_BASE_PATH,
+    LEGACY_WEB_AUTH_COOKIE_PATH,
+  ])
+}
 
-  for (const path of [WATCH_BASE_PATH, LEGACY_WEB_AUTH_COOKIE_PATH]) {
-    headers.append(
-      "Set-Cookie",
-      `${name}=; Path=${path}; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; HttpOnly; SameSite=Lax${secure}`,
-    )
+/**
+ * Expire ONLY the legacy `/`-scoped copy, for a cookie this same response is
+ * writing fresh at `/watch`.
+ *
+ * This is not belt-and-braces, it is required. A browser holding both copies
+ * sends them longer-path-first (RFC 6265 §5.4), and Next's `RequestCookies`
+ * parses the header into a Map keyed by name, so the LAST pair wins — the
+ * stale `/` cookie shadows the fresh one. Verified against this repo's Next:
+ *   RequestCookies(headers with "forge_web_session=NEW; forge_web_session=OLD")
+ *     .get("forge_web_session") -> OLD
+ * Without this, a user signed in before the rollout who signs in again reads
+ * back their stale session for the rest of that cookie's 7-day life.
+ */
+export function clearLegacyWebAuthCookie(headers: Headers, name: string) {
+  appendClearedCookie(headers, name, [LEGACY_WEB_AUTH_COOKIE_PATH])
+}
+
+function appendClearedCookie(headers: Headers, name: string, paths: string[]) {
+  // Derived from webAuthCookieOptions() rather than retyped: a clear whose
+  // attributes drift from the write's is a cookie the browser keeps.
+  const { httpOnly, sameSite, secure } = webAuthCookieOptions()
+  const attributes = [
+    "Expires=Thu, 01 Jan 1970 00:00:00 GMT",
+    "Max-Age=0",
+    ...(httpOnly ? ["HttpOnly"] : []),
+    `SameSite=${sameSite[0].toUpperCase()}${sameSite.slice(1)}`,
+    ...(secure ? ["Secure"] : []),
+  ].join("; ")
+
+  for (const path of paths) {
+    headers.append("Set-Cookie", `${name}=; Path=${path}; ${attributes}`)
   }
 }
 
