@@ -20,9 +20,14 @@ vi.mock("@/lib/watch-progress-server", () => ({
   fetchWatchProgressForUser,
   syncWatchProgressForUser,
 }))
-vi.mock("@/lib/watch-history", () => ({ fetchWatchHistoryVideoDetails }))
+// Only the fan-out is stubbed. `errorName` stays real so the log assertion
+// below exercises the actual type-name-only invariant rather than a copy of it.
+vi.mock("@/lib/watch-history", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/watch-history")>()),
+  fetchWatchHistoryVideoDetails,
+}))
 
-const { DELETE, GET, POST } = await import("./route")
+const { DELETE, GET, POST, maxDuration } = await import("./route")
 
 const USER_ID = "user-1"
 
@@ -131,6 +136,20 @@ describe("POST /api/watch-progress", () => {
     expect(fetchWatchHistoryVideoDetails).not.toHaveBeenCalled()
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({ entries: [entry] })
+  })
+
+  it("lets the module own the fan-out budget instead of passing its own", async () => {
+    // Anti-vacuous pin for `WATCH_HISTORY_FANOUT_BUDGET_MS`: the budget is only
+    // a default, so a call site passing its own signal would silently opt out
+    // of it. This asserts production passes none.
+    await POST(request({ includeVideos: true }))
+
+    expect(fetchWatchHistoryVideoDetails).toHaveBeenCalledTimes(1)
+    expect(fetchWatchHistoryVideoDetails.mock.calls[0]).toHaveLength(1)
+  })
+
+  it("declares an outer handler ceiling", async () => {
+    expect(maxDuration).toBe(60)
   })
 
   it("rejects an unauthenticated caller before touching watch progress", async () => {

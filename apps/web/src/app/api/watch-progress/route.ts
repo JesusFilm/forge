@@ -8,12 +8,17 @@ import {
   fetchWatchProgressForUser,
   syncWatchProgressForUser,
 } from "@/lib/watch-progress-server"
-import { fetchWatchHistoryVideoDetails } from "@/lib/watch-history"
+import { errorName, fetchWatchHistoryVideoDetails } from "@/lib/watch-history"
 import type { WatchHistoryVideoDetails } from "@/lib/watch-history"
 import type { WatchProgressServerEntry } from "@/lib/watch-progress-server"
 
 export const runtime: ServerRuntime = "nodejs"
 export const dynamic = "force-dynamic"
+// Outer ceiling behind `WATCH_HISTORY_FANOUT_BUDGET_MS`, which is what
+// actually bounds the fan-out. Declared so a host that enforces it cuts the
+// handler well before the edge's ~100 s limit turns a slow response into the
+// non-OK the client reads as signed-out.
+export const maxDuration = 60
 
 const entrySchema = z.object({
   videoId: z.string().min(1),
@@ -156,9 +161,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     // Plain `event=` string, never JSON.stringify: Railway logsV2 silences
     // stringified payloads from Next.js route handlers.
     console.warn(
-      `[watch-progress] event=history_videos_unavailable reason=${
-        error instanceof Error ? error.name : typeof error
-      }`,
+      `[watch-progress] event=history_videos_unavailable reason=${errorName(error)}`,
     )
   }
   return NextResponse.json({

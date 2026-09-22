@@ -37,7 +37,9 @@ rate-limit or timeout rejection far likelier than the same work at ~8 in flight.
 There is no `route.test.ts` for `api/watch-progress`.
 
 Linear: [FGE-185](https://linear.app/jesus-film-project/issue/FGE-185) (W-043), from the
-2026-09-13 /watch listing audit.
+2026-09-13 /watch listing audit. IDs 533-536 are reserved for the sibling tickets in the same
+five-issue Watch batch and 532 is taken by an unmerged RAG ticket, so this one is 537 rather
+than one past the highest id visible on `main`.
 
 ## Entry Points — Read These First
 
@@ -66,25 +68,48 @@ Linear: [FGE-185](https://linear.app/jesus-film-project/issue/FGE-185) (W-043), 
    existing `.filter((item) => item != null)` absorbs it. One failing video costs its own
    card and nothing else.
 2. **Bounded concurrency.** A sliding-window pool capped at `WATCH_HISTORY_FANOUT_CONCURRENCY = 8`
-   in-flight requests, preserving input order. Not a chunked wave — a slow item must not stall
-   its cohort.
-3. **Route-level degrade.** `POST /api/watch-progress` wraps the `includeVideos` fan-out so a
+   in-flight requests, preserving input order. Not a chunked wave, so a slow item cannot stall its
+   cohort.
+3. **One budget for the whole fan-out.** `WATCH_HISTORY_FANOUT_BUDGET_MS = 20_000`. Capping
+   concurrency without capping the total is a regression, not a fix: at width 8 the 200-id slice is
+   25 sequential rounds, so with per-item failures no longer short-circuiting, a sick Admin would
+   hold a Node worker for ~375 s where the pre-fix `Promise.all` gave up after ~15 s, and the edge
+   cuts the response first, which is the very non-OK the client reads as signed-out. The deadline
+   both stops workers claiming new indices and is threaded into each `client.query` as
+   `context.fetchOptions.signal`, so in-flight calls are cancelled rather than left running. The
+   pool also races the deadline, so it settles on time even if a client in the chain ignores the
+   signal. Unclaimed indices stay holes and fall through the existing null filter, so partial
+   successes survive.
+4. **Route-level degrade.** `POST /api/watch-progress` wraps the `includeVideos` fan-out so a
    rejection still returns `200` with `videos: []` and `authenticated: true`, never a 500.
-4. **Operator visibility.** A bounded plain-string log per dropped item and one summary line,
-   in the repo's `event=name key=value` format — never `JSON.stringify` (Railway logsV2 drops
-   stringified payloads from Next.js route handlers).
+5. **Close the second path to the same symptom.** `fetchWatchProgressForUser`,
+   `syncWatchProgressForUser` and `deleteWatchProgressForUser` already answer an unhealthy upstream
+   with an empty result, but only for a response that arrives. Their `AbortSignal.timeout(10_000)`,
+   a connection error, and a non-JSON body all reject instead, skipping that contract and returning
+   a 500 from the same route. They now fail soft, matching the posture they already declared.
+6. **Operator visibility.** A bounded plain-string log per dropped item (capped at 5) and one
+   summary line carrying `requested`/`returned`/`failed`/`notFound`/`timedOut`, in the repo's
+   `event=name key=value` format, never `JSON.stringify` (Railway logsV2 drops stringified payloads
+   from Next.js route handlers). `notFound` and `timedOut` are what let an operator separate "Admin
+   dropped these ids" from "Admin is sick" from "this history outran the budget".
 
 ## Constraints
 
 - Do not add `errorPolicy: "all"` in this change: swallowing partial-data errors into a
   rendered card is a separate product decision.
 - Do not add a new runtime dependency to `apps/web` for the pool.
-- Never log a raw error object or a user id; `videoId` only.
+- Never log a raw error object or a user id. `videoId` is logged deliberately, because an operator
+  cannot act on a degraded fan-out without knowing which id failed, but only after
+  `sanitizeLogValue` bounds its charset and length: it arrives straight from the request body where
+  `entrySchema` bounds it only to a non-empty string, and submitted entries reach the fan-out
+  whether or not they were persisted, so logging it raw would let any signed-in caller inject
+  newlines and forge whole `event=` records. The accepted trade is that a degraded-fan-out line
+  carries one content id from a signed-in user's history; the summary counters carry none.
 - Preserve the existing analytics and recommendation behaviour — this route touches neither.
 
 ## Verification
 
-- `pnpm --filter @forge/web test -- src/lib/watch-history.test.ts src/app/api/watch-progress/route.test.ts`
+- `pnpm --filter @forge/web test -- src/lib/watch-history.test.ts src/lib/watch-progress-server.test.ts src/app/api/watch-progress/route.test.ts`
 - A discriminating test where exactly one video among healthy siblings rejects, asserting the
   siblings still return (fails on `Promise.all`, passes with the per-item catch).
 - A concurrency test asserting observed max in-flight is **exactly** 8 for a batch of 20 —
@@ -92,5 +117,14 @@ Linear: [FGE-185](https://linear.app/jesus-film-project/issue/FGE-185) (W-043), 
   names as a trap.
 - A route test where `fetchWatchHistoryVideoDetails` itself rejects, asserting `200` +
   `videos: []` + `authenticated: true`.
+- A stall test proving the pool refills a free slot without waiting for the slowest item in flight.
+  The concurrency and order tests cannot do this: a chunked-wave pool observes the same
+  `maxInFlight` and preserves order identically (measured against four pool implementations).
+- A budget test using a tiny REAL `AbortSignal.timeout`, since fake timers cannot drive it,
+  asserting a 200-item batch of never-settling calls resolves in well under a second, that cards
+  resolved before the deadline survive, and that every in-flight signal is aborted.
+- A `watch-progress-server` test rejecting the underlying `fetch` with the real `TimeoutError`
+  shape.
+- Falsify every guard once by deleting it and watching its own test go red.
 - `pnpm --filter @forge/web typecheck && pnpm --filter @forge/web lint`
 - `npx prettier --check` on every changed file.

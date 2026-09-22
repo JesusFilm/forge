@@ -11,8 +11,11 @@ vi.mock("@/env", () => ({
   },
 }))
 
-const { WATCH_HISTORY_FANOUT_CONCURRENCY, fetchWatchHistoryVideoDetails } =
-  await import("./watch-history")
+const {
+  WATCH_HISTORY_FANOUT_BUDGET_MS,
+  WATCH_HISTORY_FANOUT_CONCURRENCY,
+  fetchWatchHistoryVideoDetails,
+} = await import("./watch-history")
 
 /**
  * A minimal Admin `video` payload. Every field the mapper reads is present so
@@ -79,6 +82,11 @@ describe("fetchWatchHistoryVideoDetails", () => {
   })
 
   it("keeps going when a video rejects after a timeout-shaped abort", async () => {
+    // SYNTHETIC FIXTURE, and a deliberate near-duplicate of the test above:
+    // `fetchWatchHistoryVideoDetails` never branches on `error.name`, so this
+    // proves no branch the generic rejection does not. It is kept only to pin
+    // the real shape `AbortSignal.timeout` in `admin-client.ts` rejects with,
+    // so a future reader adding name-based handling starts from the true one.
     query.mockImplementation(({ variables }: { variables: { id: string } }) =>
       variables.id === "v0"
         ? Promise.reject(
@@ -137,10 +145,13 @@ describe("fetchWatchHistoryVideoDetails", () => {
     expect(WATCH_HISTORY_FANOUT_CONCURRENCY).toBe(8)
   })
 
-  it("preserves request order across the bounded pool", async () => {
+  it("preserves request order when later ids settle first", async () => {
+    // Narrow by design: this catches a completion-order `results.push`
+    // regression and nothing else. A chunked-wave pool, a sequential loop and
+    // the pre-fix bare `Promise.all` all preserve order too, so do NOT read a
+    // green here as evidence about the pool's shape — the stall test below is
+    // what discriminates that.
     query.mockImplementation(({ variables }: { variables: { id: string } }) => {
-      // Later ids settle first, so input order can only survive if the pool
-      // writes each result back into its own slot.
       const delay = variables.id === "v0" ? 8 : 0
       return new Promise((resolve) =>
         setTimeout(() => resolve(videoPayload(variables.id)), delay),
@@ -152,6 +163,39 @@ describe("fetchWatchHistoryVideoDetails", () => {
     expect(items.map((item) => item.videoId)).toEqual(
       requests(10).map((request) => request.videoId),
     )
+  })
+
+  it("refills a free slot without waiting for the slowest item in flight", async () => {
+    // The property the pool's doc comment claims and the only one that
+    // separates a sliding window from chunked waves: with the cap at 8 and one
+    // slow item holding slot 0, item 8 must START before item 0 settles. Under
+    // chunked waves or a sequential loop it cannot, because the round does not
+    // end until every member of it has.
+    let releaseSlowItem: (() => void) | undefined
+    let slowItemSettled = false
+    const startedBeforeSlowSettled: string[] = []
+
+    query.mockImplementation(({ variables }: { variables: { id: string } }) => {
+      if (!slowItemSettled) startedBeforeSlowSettled.push(variables.id)
+      if (variables.id !== "v0")
+        return Promise.resolve(videoPayload(variables.id))
+      return new Promise((resolve) => {
+        releaseSlowItem = () => {
+          slowItemSettled = true
+          resolve(videoPayload(variables.id))
+        }
+      })
+    })
+
+    const pending = fetchWatchHistoryVideoDetails(requests(12))
+    // Let the seven fast siblings drain and the pool refill their slots.
+    await new Promise((resolve) => setImmediate(resolve))
+    await new Promise((resolve) => setImmediate(resolve))
+
+    expect(startedBeforeSlowSettled).toContain("v8")
+
+    releaseSlowItem?.()
+    await pending
   })
 
   it("drops a video the Admin surface resolves as null without dropping siblings", async () => {
@@ -180,7 +224,7 @@ describe("fetchWatchHistoryVideoDetails", () => {
     // handlers, so these must stay plain `event=` strings.
     expect(lines).toEqual([
       "[watch-history] event=history_video_fetch_failure videoId=v1 reason=Error",
-      "[watch-history] event=history_fanout_degraded requested=2 returned=1 failed=1",
+      "[watch-history] event=history_fanout_degraded requested=2 returned=1 failed=1 notFound=0 timedOut=false",
     ])
   })
 
@@ -200,7 +244,7 @@ describe("fetchWatchHistoryVideoDetails", () => {
       ),
     ).toHaveLength(5)
     expect(lines.at(-1)).toBe(
-      "[watch-history] event=history_fanout_degraded requested=9 returned=0 failed=9",
+      "[watch-history] event=history_fanout_degraded requested=9 returned=0 failed=9 notFound=0 timedOut=false",
     )
   })
 
@@ -208,6 +252,109 @@ describe("fetchWatchHistoryVideoDetails", () => {
     await expect(fetchWatchHistoryVideoDetails([])).resolves.toEqual([])
 
     expect(query).not.toHaveBeenCalled()
+  })
+
+  it("settles within its own budget instead of running 25 rounds of 15 s", async () => {
+    // Bounding concurrency without bounding the total is the regression this
+    // pins: at width 8 the 200-id cap is 25 sequential rounds, so a hanging
+    // Admin would hold the handler for ~375 s. With a real 60 ms signal the
+    // whole batch must settle in well under a second. `AbortSignal.timeout`
+    // cannot be driven by fake timers, so this uses a tiny REAL budget.
+    query.mockImplementation(() => new Promise(() => {}))
+
+    const startedAt = Date.now()
+    const items = await fetchWatchHistoryVideoDetails(requests(200), {
+      signal: AbortSignal.timeout(60),
+    })
+    const elapsed = Date.now() - startedAt
+
+    expect(items).toEqual([])
+    expect(elapsed).toBeLessThan(2_000)
+  })
+
+  it("keeps the cards that resolved before the budget expired", async () => {
+    // Partial success is the contract: a spent budget costs the cards that
+    // did not resolve, never the ones that did.
+    query.mockImplementation(({ variables }: { variables: { id: string } }) =>
+      variables.id === "v0"
+        ? Promise.resolve(videoPayload(variables.id))
+        : new Promise(() => {}),
+    )
+
+    const items = await fetchWatchHistoryVideoDetails(requests(50), {
+      signal: AbortSignal.timeout(60),
+    })
+
+    expect(items.map((item) => item.videoId)).toEqual(["v0"])
+  })
+
+  it("cancels in-flight Admin calls when the budget expires", async () => {
+    // Stopping the pool from CLAIMING new work is not enough — the calls
+    // already in flight must be aborted too, or the handler keeps upstream
+    // work alive for a response nobody will read.
+    const seen: AbortSignal[] = []
+    query.mockImplementation(
+      ({ context }: { context: { fetchOptions: { signal: AbortSignal } } }) => {
+        seen.push(context.fetchOptions.signal)
+        return new Promise(() => {})
+      },
+    )
+
+    await fetchWatchHistoryVideoDetails(requests(20), {
+      signal: AbortSignal.timeout(60),
+    })
+
+    expect(seen).toHaveLength(WATCH_HISTORY_FANOUT_CONCURRENCY)
+    expect(seen.every((signal) => signal.aborted)).toBe(true)
+  })
+
+  it("reports a spent budget distinctly from upstream failures", async () => {
+    query.mockImplementation(() => new Promise(() => {}))
+
+    await fetchWatchHistoryVideoDetails(requests(20), {
+      signal: AbortSignal.timeout(60),
+    })
+
+    const summary = vi
+      .mocked(console.warn)
+      .mock.calls.map(([line]) => line)
+      .at(-1)
+    expect(summary).toContain("event=history_fanout_degraded")
+    expect(summary).toContain("timedOut=true")
+  })
+
+  it("defaults to the module budget when no signal is injected", async () => {
+    // Anti-vacuous companion to the injected-signal tests above: production
+    // passes no signal, so the default is the only thing bounding it.
+    expect(WATCH_HISTORY_FANOUT_BUDGET_MS).toBe(20_000)
+
+    const items = await fetchWatchHistoryVideoDetails(requests(2))
+
+    expect(items.map((item) => item.videoId)).toEqual(["v0", "v1"])
+    expect(query.mock.calls[0]?.[0].context.fetchOptions.signal).toBeInstanceOf(
+      AbortSignal,
+    )
+  })
+
+  it("isolates a video whose mapping throws, not just one whose fetch rejects", async () => {
+    // The catch wraps the whole per-item body. Every other failure fixture
+    // rejects inside `fetchHistoryVideo`; this one gets past it and throws
+    // from the mapping, which is the boundary those fixtures cannot reach.
+    query.mockImplementation(({ variables }: { variables: { id: string } }) => {
+      if (variables.id !== "v1")
+        return Promise.resolve(videoPayload(variables.id))
+      const payload = videoPayload(variables.id)
+      Object.defineProperty(payload.data.video, "locales", {
+        get() {
+          throw new Error("mapping blew up")
+        },
+      })
+      return Promise.resolve(payload)
+    })
+
+    const items = await fetchWatchHistoryVideoDetails(requests(3))
+
+    expect(items.map((item) => item.videoId)).toEqual(["v0", "v2"])
   })
 
   it("stays silent when every video resolves", async () => {
