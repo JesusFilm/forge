@@ -8,7 +8,9 @@ start_date: "2026-09-22"
 duration: 1
 depends_on:
   - "feat-229"
-blocks: []
+blocks:
+  - "feat-539"
+  - "feat-540"
 tags:
   - "platform"
   - "web"

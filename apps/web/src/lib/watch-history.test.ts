@@ -198,7 +198,12 @@ describe("fetchWatchHistoryVideoDetails", () => {
     await pending
   })
 
-  it("drops a video the Admin surface resolves as null without dropping siblings", async () => {
+  it("counts a video Admin resolves as null apart from a failure", async () => {
+    // Both a caught rejection and a legitimately missing video return null and
+    // get filtered out, so without this the two are indistinguishable and a
+    // refactor that counted a missing video as a failure would keep every
+    // other test green. The summary must say notFound=1 failed=0, and no
+    // per-item failure line may be emitted.
     query.mockImplementation(({ variables }: { variables: { id: string } }) =>
       variables.id === "v0"
         ? Promise.resolve({ data: { video: null } })
@@ -208,6 +213,46 @@ describe("fetchWatchHistoryVideoDetails", () => {
     const items = await fetchWatchHistoryVideoDetails(requests(2))
 
     expect(items.map((item) => item.videoId)).toEqual(["v1"])
+    expect(vi.mocked(console.warn).mock.calls.map(([line]) => line)).toEqual([
+      "[watch-history] event=history_fanout_degraded requested=2 returned=1 failed=0 notFound=1 timedOut=false",
+    ])
+  })
+
+  it("names a non-Error rejection by its type rather than crashing on it", async () => {
+    // `errorName`'s second branch. Every other fixture rejects with a real
+    // Error, so nothing else reaches `typeof error` — and a throw from inside
+    // the logger would take down the very batch the catch exists to protect.
+    query.mockImplementation(({ variables }: { variables: { id: string } }) =>
+      variables.id === "v0"
+        ? Promise.reject("admin said no")
+        : Promise.resolve(videoPayload(variables.id)),
+    )
+
+    const items = await fetchWatchHistoryVideoDetails(requests(2))
+
+    expect(items.map((item) => item.videoId)).toEqual(["v1"])
+    expect(vi.mocked(console.warn).mock.calls.map(([line]) => line)).toContain(
+      "[watch-history] event=history_video_fetch_failure videoId=v0 reason=string",
+    )
+  })
+
+  it("neutralizes a videoId crafted to forge a second log line", async () => {
+    // `entrySchema` bounds videoId only to a non-empty string and submitted
+    // entries reach the fan-out whether or not they persist, so the sink is
+    // where this has to be stopped.
+    const hostile =
+      "v0\n[watch-history] event=history_fanout_degraded requested=1 returned=1 failed=0"
+    query.mockRejectedValue(new Error("boom"))
+
+    await fetchWatchHistoryVideoDetails([
+      { videoId: hostile, languageSlug: "english" },
+    ])
+
+    const lines = vi.mocked(console.warn).mock.calls.map(([line]) => line)
+    expect(lines[0]).toBe(
+      "[watch-history] event=history_video_fetch_failure videoId=v0__watch-history__event_history_fanout_degraded_requested_1_ret reason=Error",
+    )
+    expect(lines[0]).not.toContain("\n")
   })
 
   it("logs one plain-string line per dropped video and a summary", async () => {
