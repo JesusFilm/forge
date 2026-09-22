@@ -75,11 +75,22 @@ let literataPromise: Promise<void> | null = null
 export const loadLiterata = (): Promise<void> => {
   if (literataPromise) return literataPromise
   const handle = delayRender("Loading Literata")
-  literataPromise = registerTtf(
-    TEASER_FONT_FAMILIES.literata,
-    LITERATA_VAR_TTF_BASE64,
-    "200 900",
-  )
+  // BOTH faces: since Literata became the devotional's serif it also carries
+  // italic text (the source credit), and without the italic file the browser
+  // slants the upright one — a fake oblique, visibly worse than the real cut.
+  literataPromise = Promise.all([
+    registerTtf(
+      TEASER_FONT_FAMILIES.literata,
+      LITERATA_VAR_TTF_BASE64,
+      "200 900",
+    ),
+    registerTtf(
+      TEASER_FONT_FAMILIES.literata,
+      LITERATA_ITALIC_VAR_TTF_BASE64,
+      "200 900",
+      "italic",
+    ),
+  ])
     .then(() => continueRender(handle))
     .catch((err) => {
       cancelRender(err)

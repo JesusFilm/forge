@@ -38,11 +38,15 @@ const TEXT_SHADOW = "0 2px 28px rgba(0,0,0,0.32)"
 const COVER_ANIM_SEC = 7
 // Owner rule: Inter, after comparing mockups against Montserrat.
 const SANS = `'${SHORT_FONT_FAMILIES.inter}', -apple-system, system-ui, sans-serif`
-// Owner rule: Source Serif 4 carries the serif text (title, scripture,
-// questions, prayer, conclusion) — it held up better than EB Garamond once
-// both were rendered and viewed on a phone. The reflection body stays on
-// SANS: it is the longest block of reading in the piece.
-const SERIF = `'${SHORT_FONT_FAMILIES.sourceSerif}', Georgia, 'Times New Roman', serif`
+// Owner rule (2026-09-22): Literata carries the serif text — title, takeaway,
+// question, prayer, the film's captions — so the series runs on two faces
+// instead of three. The reflection body stays on SANS: it is the longest block
+// of reading in the piece.
+const SERIF = `'${TEASER_FONT_FAMILIES.literata}', Georgia, 'Times New Roman', serif`
+// The ONE exception the owner kept: the Bible verse is set in italic, and
+// Source Serif 4's italic is the prettier of the two. It carries the verse and
+// the quotation mark above it; everything else on that card is SANS.
+const VERSE_SERIF = `'${SHORT_FONT_FAMILIES.sourceSerif}', Georgia, 'Times New Roman', serif`
 const BRAND_PATH =
   "M53,0H2.7A2.7,2.7,0,0,0,0,2.7V23.38A2.71,2.71,0,0,0,2,26L54.36,40.66a1,1,0,0,0,1.29-1V2.7A2.7,2.7,0,0,0,53,0Z"
 const GRAIN_URL =
@@ -732,7 +736,7 @@ function PhraseCaption({
                 <span
                   key={`${li}-${w.token}-${start}`}
                   style={{
-                    fontFamily: `'${TEASER_FONT_FAMILIES.literata}', Georgia, serif`,
+                    fontFamily: SERIF,
                     fontWeight: 500,
                     fontSize: px(w.size),
                     lineHeight: 1,
@@ -3025,8 +3029,9 @@ function CardBody({
       <div
         style={{
           // Owner: the serif carries the main text (title/scripture/question/
-          // prayer); the verse keeps its italic either way.
-          fontFamily: textFont === "serif" ? SERIF : SANS,
+          // prayer); the verse keeps its italic either way — and keeps Source
+          // Serif 4, whose italic the owner preferred to Literata's.
+          fontFamily: textFont === "serif" ? VERSE_SERIF : SANS,
           fontStyle: "italic",
           // Owner: the verse reads as a quotation, a step lighter than the
           // headings around it. A real weight — Source Serif 4 is registered as
@@ -3091,7 +3096,8 @@ function CardBody({
         >
           <div
             style={{
-              fontFamily: SERIF,
+              // Same face as the verse under it.
+              fontFamily: VERSE_SERIF,
               fontSize: px(90),
               lineHeight: 0.6,
               color: style.rule,
