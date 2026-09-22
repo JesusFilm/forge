@@ -60,12 +60,16 @@ function BigStepWord({
         style={{
           fontFamily: "'Literata', Georgia, serif",
           fontWeight: 600,
-          fontSize: px(96),
-          letterSpacing: px(6),
+          fontSize: px(126),
+          lineHeight: 1,
+          letterSpacing: px(7),
           color: "#ffffff",
           opacity,
           filter: `blur(${blur.toFixed(2)}px)`,
-          transform: `scale(${scale.toFixed(3)})`,
+          // Optically centred, not box-centred: a serif's em box has more
+          // room above the caps than below the baseline, so a box-centred word
+          // reads as sitting low (owner spotted it). Lift by 0.08em.
+          transform: `translateY(-0.08em) scale(${scale.toFixed(3)})`,
           whiteSpace: "nowrap",
         }}
       >
@@ -117,6 +121,26 @@ export const StepsPreview = () => {
         fps={fps}
         px={px}
         atFrame={reflectStart}
+      />
+      {/* A soft band of blur under the row: the labels are small and thin, and
+          a busy frame behind them costs legibility (owner). It fades out
+          downwards so there is no visible edge. */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: px(62),
+          backdropFilter: `blur(${px(5).toFixed(1)}px)`,
+          WebkitBackdropFilter: `blur(${px(5).toFixed(1)}px)`,
+          background:
+            "linear-gradient(to bottom, rgba(0,0,0,0.34), rgba(0,0,0,0))",
+          maskImage: "linear-gradient(to bottom, #000 55%, transparent 100%)",
+          WebkitMaskImage:
+            "linear-gradient(to bottom, #000 55%, transparent 100%)",
+          pointerEvents: "none",
+        }}
       />
       {/* The row sits at the top, spanning the reflection text's own column. */}
       <div style={{ position: "absolute", top: px(24), left: 0, right: 0 }}>

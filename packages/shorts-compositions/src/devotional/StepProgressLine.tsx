@@ -32,7 +32,8 @@ export type StepProgressLineProps = {
   frame: number
   fps: number
   px: (n: number) => number
-  /** Type size in design units (px() is applied). */
+  /** Type size in design units (px() is applied). Default 9 ≈ 25px in the
+   *  16:9 cut, measured off the owner's Figma frame (cap height 17.5px). */
   size?: number
   /** Hairline length in design units. Ignored when `widthPx` is set: the
    *  hairlines then stretch to fill the container. */
@@ -51,7 +52,7 @@ export function StepProgressLine({
   frame,
   fps,
   px,
-  size = 13,
+  size = 9,
   railUnits = 46,
   widthPx,
   opacity = 1,
