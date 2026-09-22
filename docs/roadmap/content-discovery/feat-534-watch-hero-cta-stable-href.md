@@ -3,7 +3,7 @@ id: "feat-534"
 title: "Watch hero CTA href stops carrying live playback time"
 owner: "vlad"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-22"
 duration: 1
 depends_on: []
