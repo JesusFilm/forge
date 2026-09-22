@@ -8,7 +8,7 @@ database into Admin.
 > This lane is intentionally invisible to the public roadmap viewer and the
 > generated `docs/roadmap/README.md` totals. This index is maintained by hand.
 
-## Status (September 17, 2026)
+## Status (September 22, 2026)
 
 - **Total tickets:** 33
 - **Complete:** 21
@@ -57,6 +57,13 @@ database into Admin.
 The September 8 operator decision in [feat-435](feat-435-rag-proof-soak-archive.md)
 accepts the baseline for acquisition/ingestion with the three concerns tracked
 in feat-463. That investigation does not block the new-source proof.
+
+The [September 22 feat-435 audit](evidence/feat-435/proof-soak-archive.md) verifies
+repository archival, the basic Forge redirect, and a refreshed dashboard showing
+51 embedded GotQuestions Icelandic documents. Import provenance and final
+soak/retirement acceptance remain unproven; feat-435 stays in progress. The
+dashboard candidate is prepared locally, with publication pending the normal
+reviewed merge and Pages flow.
 
 ## Programme invariants
 

@@ -6,7 +6,7 @@ priority: "P0"
 status: "in-progress"
 start_date: "2026-10-04"
 duration: 7
-depends_on: ["feat-434", "feat-452", "feat-460"]
+depends_on: ["feat-434", "feat-452", "feat-460", "feat-461"]
 blocks: []
 tags: ["rag", "verification", "retirement"]
 ---
@@ -18,8 +18,8 @@ Forge ownership is not proven until a new small source completes the full pipeli
 ## Entry Points — Read These First
 
 1. Forge acquisition/indexing commands delivered by `feat-431`, dashboard/eval commands delivered by `feat-432`, and `apps/rag/AGENTS.md` — end-to-end operating path and safety constraints.
-2. `docs/roadmap/rag/evidence/feat-434/seeker-cutover.md` and `docs/roadmap/rag/evidence/feat-435/consumer-inventory.md` — cutover baseline and planned public/private consumer inventory.
-3. `docs/roadmap/rag/evidence/feat-435/proof-soak-archive.md` — planned small-source deltas, soak criteria, rollback exercise, snapshot retention, archival approval, and jfrag redirect receipt.
+2. [Seeker cutover](evidence/feat-434/seeker-cutover.md) and the [consumer inventory](evidence/feat-435/proof-soak-archive.md#consumer-inventory) — recorded cutover and the limits of consumer coverage.
+3. [Proof, soak, and archive receipt](evidence/feat-435/proof-soak-archive.md) — requirement-by-requirement evidence, fresh dashboard observation, and missing retirement decisions. This consolidates the previously planned proof and inventory records.
 
 ## Grep These
 
@@ -63,3 +63,25 @@ issue #168 remain incomplete; soak and retirement have their own criteria.
 
 - End-to-end evidence covers every pipeline stage without corpus text in reports.
 - Seeker and NanoClaw pass soak; jfrag README points to `apps/rag/AGENTS.md` and the migration record.
+
+## Closure audit — September 22, 2026
+
+The repository archive and basic Forge README redirect are verified. The fresh
+production-read dashboard observes 51 embedded GotQuestions documents labelled
+`is`; it does not prove import provenance, all pipeline stages, or production
+evaluation. Jaco's recollection of the import remains explicitly attributed.
+The accepted local slice evidence is unchanged.
+
+Keep this ticket **in progress**: the retained records do not establish a full
+consumer inventory, Seeker/NanoClaw soak, rollback rehearsal and approved expiry,
+final snapshot retention ownership, or legacy service/secret retirement. The
+archived README also lacks the two direct links required above. Missing evidence
+is not evidence that an operation failed or did not occur. Owner confirmation
+or an explicit acceptance/scope decision is required; this documentation PR
+does not invent it. See the [closure matrix and decision needed](evidence/feat-435/proof-soak-archive.md).
+
+The dashboard is refreshed and prepared locally for the normal PR-to-main Pages
+flow. Publication and owner acceptance remain external. Feat-463 remains
+non-blocking; feat-471 continues to own production-maintenance proof. The
+`feat-461` dependency restores the reciprocal edge already present in that
+completed ticket.
