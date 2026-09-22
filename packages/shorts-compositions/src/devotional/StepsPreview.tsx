@@ -38,18 +38,19 @@ function BigStepWord({
 }) {
   const t = (frame - atFrame) / fps
   const ease = Easing.bezier(0.42, 0, 0.58, 1)
-  // in over 1.1s, hold 1.2s, out over 1.2s
-  const opacity = interpolate(t, [-0.2, 1.1, 2.3, 3.5], [0, 0.15, 0.15, 0], {
+  // Owner: it dissolved too fast. In over 1.2s, hold 2.2s, then a long 2.4s
+  // way out — the word should leave the way mist does, not the way a cut does.
+  const opacity = interpolate(t, [-0.2, 1.2, 3.4, 5.8], [0, 0.15, 0.15, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
     easing: ease,
   })
-  const blur = interpolate(t, [-0.2, 1.1, 2.3, 3.5], [26, 0, 0, 26], {
+  const blur = interpolate(t, [-0.2, 1.2, 3.4, 5.8], [26, 0, 0, 26], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
     easing: ease,
   })
-  const scale = interpolate(t, [-0.2, 3.5], [1.06, 1.0], {
+  const scale = interpolate(t, [-0.2, 5.8], [1.06, 1.0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   })
@@ -89,14 +90,14 @@ export const StepsPreview = () => {
   // compressed so the two hand-overs can be judged in one preview.
   const watchStart = 0
   const reflectStart = Math.round(5 * fps)
-  const prayStart = Math.round(11 * fps)
-  const endFrame = Math.round(16 * fps)
+  const prayStart = Math.round(12 * fps)
+  const endFrame = Math.round(18 * fps)
   // The picture blurs while the step changes hands and clears again as the
   // next stage settles.
   const blurAt = (at: number) =>
     interpolate(
       frame,
-      [at - 0.4 * fps, at + 0.6 * fps, at + 2.6 * fps, at + 3.6 * fps],
+      [at - 0.4 * fps, at + 0.7 * fps, at + 3.6 * fps, at + 5.6 * fps],
       [0, 1, 1, 0],
       { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
     )
@@ -151,7 +152,7 @@ export const StepsPreview = () => {
           frame={frame}
           fps={fps}
           px={px}
-          widthPx={px(390)}
+          widthPx={px(287)}
         />
       </div>
     </AbsoluteFill>
