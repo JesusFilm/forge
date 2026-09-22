@@ -9,6 +9,7 @@ import {
   syncWatchProgressForUser,
 } from "@/lib/watch-progress-server"
 import { fetchWatchHistoryVideoDetails } from "@/lib/watch-history"
+import type { WatchHistoryVideoDetails } from "@/lib/watch-history"
 import type { WatchProgressServerEntry } from "@/lib/watch-progress-server"
 
 export const runtime: ServerRuntime = "nodejs"
@@ -142,7 +143,24 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
 
   const historyEntries = mergeEntries(currentEntries, entries, submittedEntries)
-  const videos = await fetchWatchHistoryVideoDetails(historyEntries)
+  // Second, independent guard over the per-item catch in
+  // `fetchWatchHistoryVideoDetails`. The browser client reads any non-OK
+  // response here as "not signed in" and switches every `useWatchProgress`
+  // consumer to the anonymous localStorage bucket
+  // (`watch-progress-client.ts`), so losing card artwork must never cost the
+  // session. The progress itself is already synced above.
+  let videos: WatchHistoryVideoDetails[] = []
+  try {
+    videos = await fetchWatchHistoryVideoDetails(historyEntries)
+  } catch (error: unknown) {
+    // Plain `event=` string, never JSON.stringify: Railway logsV2 silences
+    // stringified payloads from Next.js route handlers.
+    console.warn(
+      `[watch-progress] event=history_videos_unavailable reason=${
+        error instanceof Error ? error.name : typeof error
+      }`,
+    )
+  }
   return NextResponse.json({
     authenticated: true,
     userId: session.userId,

@@ -141,6 +141,58 @@ function progressPercent(positionSeconds: number, durationSeconds: number) {
   return Math.round(Math.min(1, positionSeconds / durationSeconds) * 100)
 }
 
+/**
+ * Admin GraphQL requests allowed in flight while resolving watch-history
+ * cards. A history can carry the full 200-id cap; firing all of them at once
+ * makes an Admin rate-limit rejection or the 15 s client timeout in
+ * `admin-client.ts` far likelier than the same work at this width. Bounded
+ * parallelism per
+ * `docs/solutions/best-practices/bounded-parallelism-per-target-workflow-pattern-20260505.md`.
+ */
+export const WATCH_HISTORY_FANOUT_CONCURRENCY = 8
+
+/**
+ * Per-item failure lines emitted before falling back to the summary alone, so
+ * a wholly unreachable Admin cannot turn one request into 200 log lines.
+ */
+const MAX_FANOUT_FAILURE_LOGS = 5
+
+/**
+ * A sliding-window pool: each worker takes the next index as soon as it is
+ * free, so one slow video cannot stall the rest of its cohort the way a
+ * chunked wave would. Results are written back by index, preserving input
+ * order.
+ */
+async function mapWithConcurrency<TInput, TOutput>(
+  inputs: readonly TInput[],
+  concurrency: number,
+  task: (input: TInput) => Promise<TOutput>,
+): Promise<TOutput[]> {
+  const results = new Array<TOutput>(inputs.length)
+  let nextIndex = 0
+
+  async function worker(): Promise<void> {
+    while (nextIndex < inputs.length) {
+      const index = nextIndex
+      nextIndex += 1
+      results[index] = await task(inputs[index] as TInput)
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, inputs.length) }, worker),
+  )
+  return results
+}
+
+/**
+ * The error's type name only. A rejected Apollo call can carry response body
+ * fragments in its message, which must not reach the logs.
+ */
+function errorName(error: unknown): string {
+  return error instanceof Error ? error.name : typeof error
+}
+
 async function fetchHistoryVideo(videoId: string, languageSlug: string | null) {
   const result = await client.query({
     query: WATCH_HISTORY_VIDEO,
@@ -172,9 +224,27 @@ export async function fetchWatchHistoryVideoDetails(
         ]),
     ).values(),
   ).slice(0, 200)
-  const items = await Promise.all(
-    uniqueRequests.map(async ({ videoId, languageSlug }) => {
-      const video = await fetchHistoryVideo(videoId, languageSlug)
+  let failed = 0
+  const items = await mapWithConcurrency(
+    uniqueRequests,
+    WATCH_HISTORY_FANOUT_CONCURRENCY,
+    async ({ videoId, languageSlug }) => {
+      // One unwatchable, slow, or rate-limited video costs its own card and
+      // nothing else. Without this catch a single rejection failed the whole
+      // batch, which `POST /api/watch-progress` turned into a 500 and the
+      // browser client read as "not signed in" — `watch-progress-client.ts`
+      // sets `authState = "anonymous"` on any non-OK response.
+      const video = await fetchHistoryVideo(videoId, languageSlug).catch(
+        (error: unknown) => {
+          failed += 1
+          if (failed <= MAX_FANOUT_FAILURE_LOGS) {
+            console.warn(
+              `[watch-history] event=history_video_fetch_failure videoId=${videoId} reason=${errorName(error)}`,
+            )
+          }
+          return null
+        },
+      )
       if (!video) return null
 
       const title = video.locales?.[0]?.title?.trim() || video.slug || "Video"
@@ -192,10 +262,20 @@ export async function fetchWatchHistoryVideoDetails(
         imageAlt: video.locales?.[0]?.imageAlt || title,
         durationLabel,
       }
-    }),
+    },
   )
 
-  return items.filter((item): item is WatchHistoryVideoDetails => item != null)
+  const details = items.filter(
+    (item): item is WatchHistoryVideoDetails => item != null,
+  )
+  if (failed > 0) {
+    // Plain `event=` string, never JSON.stringify: Railway logsV2 silences
+    // stringified payloads from Next.js route handlers.
+    console.warn(
+      `[watch-history] event=history_fanout_degraded requested=${uniqueRequests.length} returned=${details.length} failed=${failed}`,
+    )
+  }
+  return details
 }
 
 export async function fetchWatchHistoryForUser(
