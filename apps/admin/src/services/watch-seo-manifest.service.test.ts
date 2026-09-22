@@ -33,6 +33,34 @@ describe("normalizeGoogleHreflang", () => {
   })
 })
 
+describe("summarizeWatchSeoManifest", () => {
+  it("counts canonical URLs from alternates when a stored snapshot predates languageSlugs", () => {
+    // `WatchSeoManifestStore.getLatest()` can hand back a snapshot written by
+    // the build before `languageSlugs` existed, and
+    // `watch-seo-manifest-refresh.service.ts` summarizes exactly that value.
+    // Without the fallback this reads `undefined.length`.
+    const legacySnapshot = {
+      videoRouteGroups: [
+        {
+          contentSlug: "jesus",
+          alternates: [
+            { hreflang: "en", languageSlug: "english" },
+            { hreflang: "es", languageSlug: "spanish-castilian" },
+          ],
+        },
+      ],
+      episodeRouteGroups: [],
+      skippedHreflangValues: {},
+    }
+
+    expect(summarizeWatchSeoManifest(legacySnapshot)).toMatchObject({
+      videoRouteGroups: 1,
+      alternateLinks: 2,
+      canonicalVideoUrls: 2,
+    })
+  })
+})
+
 describe("WatchSeoManifestService.generate", () => {
   it("builds deterministic sitemap route groups and de-dupes hreflang per route", async () => {
     const prisma = mockPrisma()

@@ -38,6 +38,16 @@ playable language.
 Neither has a global guard. The existing `WatchSitemapGenerationError` codes
 bound a **shard**, not the corpus.
 
+There is a third axis the heap numbers do not capture: `getWatchSitemapChunks`
+is fully synchronous with no yield point, so a cache-cold request blocks the
+Node event loop for the whole walk (measured 0.7 s at 420k URLs, 2.4 s at 2M),
+stalling every other request on that replica. Lazy per-shard materialization
+reduces retained heap but **does not** close this: finding a shard's start still
+replays the walk, and the index route needs the full chunk count. Treat
+compute-time as its own requirement, not a side effect of the memory fix —
+options are memoizing shard boundaries separately from entries, yielding between
+groups, or moving generation off the request path entirely.
+
 ## Measured scaling (2026-09-22, synthetic manifests, 35 MB / 49,999 shard limits)
 
 | shape                                       | locs      | chunks | web heap | manifest JSON | build |
@@ -124,7 +134,10 @@ a thin materializing wrapper or migrate those assertions deliberately.
    raw body fragments. Size the default from the observed `N` times ~25 B plus
    envelope, and keep the env knob `.optional()`.
 
-3. Test the abort **mechanism** (a real `ReadableStream` whose `cancel()` sets a
+3. Bound the event-loop block as its own acceptance criterion, measured at the
+   production `N`, not inferred from the heap result.
+
+4. Test the abort **mechanism** (a real `ReadableStream` whose `cancel()` sets a
    flag), not just the return value. Measure the cap against a serialized
    maximal payload rather than asserting a computation over the same constants.
 
@@ -150,5 +163,6 @@ pnpm --filter @forge/web audit:watch-sitemap -- --origin https://www.jesusfilm.o
 ```
 
 Plus a re-run of the synthetic scaling probe at the production `N`, showing
-retained heap flat in shard count rather than linear in URL count, and the
-rendered XML for a sampled shard byte-identical to the pre-change output.
+retained heap flat in shard count rather than linear in URL count, the
+longest single synchronous block measured and bounded, and the rendered XML for
+a sampled shard byte-identical to the pre-change output.

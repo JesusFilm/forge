@@ -187,6 +187,30 @@ describe("watch sitemap rendering", () => {
     ])
   })
 
+  it("drops a repeated canonical URL inside a route group instead of throwing", () => {
+    // `languageSlugs` and `alternates` both feed the URL list, so a manifest
+    // that names the same language in both must not reach the cross-group
+    // `duplicate_loc` guard -- that guard 503s the entire sitemap.
+    const chunks = getWatchSitemapChunks({
+      ...longTailManifest,
+      videoRouteGroups: [
+        {
+          contentSlug: "jesus",
+          alternates: [{ hreflang: "en", languageSlug: "english" }],
+          languageSlugs: ["english", "english", "cebuano"],
+        },
+      ],
+    })
+    const locs = chunks.flatMap((chunk) =>
+      chunk.entries.map((entry) => entry.loc),
+    )
+
+    expect(
+      locs.filter((loc) => loc.endsWith("/watch/jesus.html")),
+    ).toHaveLength(1)
+    expect(new Set(locs).size).toBe(locs.length)
+  })
+
   it("chunks long-tail entries under the same byte and URL limits", () => {
     const chunks = getWatchSitemapChunks(longTailManifest, { maxUrls: 2 })
     const locs = chunks.flatMap((chunk) =>

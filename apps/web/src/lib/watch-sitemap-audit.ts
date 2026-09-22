@@ -36,6 +36,7 @@ export type WatchSitemapAuditIssueCode =
   | "invalid_xml"
   | "missing_child"
   | "missing_self_alternate"
+  | "no_hreflang_annotations"
   | "non_reciprocal_alternate_set"
   | "unreferenced_child"
 
@@ -609,6 +610,30 @@ export class WatchSitemapAuditSession {
           ),
         )
       }
+    }
+
+    // `missing_self_alternate` now only fires on entries that annotate at all,
+    // so a bug that strips a cluster's `<xhtml:link>` block produces XML that is
+    // byte-identical to a legitimately unannotated long-tail URL. This aggregate
+    // catches the wipeout case the per-entry rule can no longer see: a Watch
+    // sitemap always carries the two home entries, whose alternates (en, en-GB,
+    // x-default) are built in code and never sourced from the manifest, so zero
+    // annotations across a non-empty sitemap means the cluster was lost.
+    const totalLocs = this.children.reduce(
+      (sum, child) => sum + child.locCount,
+      0,
+    )
+    const totalHreflang = this.children.reduce(
+      (sum, child) => sum + child.hreflangCount,
+      0,
+    )
+    if (totalLocs > 0 && totalHreflang === 0) {
+      this.issues.push(
+        documentIssue(
+          "no_hreflang_annotations",
+          `Sitemap published ${totalLocs} canonical entries with no hreflang annotations at all`,
+        ),
+      )
     }
 
     const children = [...this.children].sort(

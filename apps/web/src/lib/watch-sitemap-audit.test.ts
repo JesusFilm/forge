@@ -247,6 +247,30 @@ describe("watch sitemap deployed audit", () => {
     expect(report.totals).toMatchObject({ hreflang: 4, locs: 3 })
   })
 
+  it("fails a sitemap that publishes canonical entries with no hreflang at all", () => {
+    // The per-entry `missing_self_alternate` rule can no longer tell a
+    // legitimately unannotated long-tail URL from a cluster whose
+    // `<xhtml:link>` block a bug stripped -- the XML is identical. This
+    // aggregate is what still catches the wipeout.
+    const report = auditWatchSitemapDocuments(
+      document(INDEX_URL, indexXml([CHILD_0])),
+      [
+        document(
+          CHILD_0,
+          childXml([
+            { loc: JESUS_EN, alternates: [] },
+            { loc: JESUS_CEB, alternates: [] },
+          ]),
+        ),
+      ],
+    )
+
+    expect(report.issues.map((issue) => issue.code)).toContain(
+      "no_hreflang_annotations",
+    )
+    expect(report.ok).toBe(false)
+  })
+
   it("still fails a canonical entry that annotates without listing itself", () => {
     const report = auditWatchSitemapDocuments(
       document(INDEX_URL, indexXml([CHILD_0])),
