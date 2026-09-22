@@ -3,7 +3,7 @@ id: "feat-537"
 title: "Isolate per-video failures in the watch-history fan-out"
 owner: "vlad"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-22"
 duration: 1
 depends_on:
