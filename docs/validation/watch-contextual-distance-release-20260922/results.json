@@ -1,0 +1,1341 @@
+{
+  "scope": "Exact contextual scalar-work correction, release verification and separate unresolved budget/commit evidence. No umbrella ticket closure.",
+  "sourcePr": "https://github.com/JesusFilm/forge/pull/2377",
+  "sourceHead": "3143dae7c485e8585abee2e6a0240d4ede68f4ea",
+  "mergedRevision": "c98ec86bdd9a308f33b53d035084e8fd10e0e08d",
+  "mergedAt": "2026-09-22T01:25:33Z",
+  "productionDeploymentStatus": {
+    "id": 6581465715,
+    "state": "success",
+    "at": "2026-09-22T01:36:10Z"
+  },
+  "deployments": {
+    "admin": {
+      "at": "2026-09-22T01:34:55.334Z",
+      "revision": "c98ec86bdd9a308f33b53d035084e8fd10e0e08d",
+      "deployment": "dfbb23e1-98e5-4c80-9328-528f1192a80a",
+      "runner": "false",
+      "loggerChunks": ["[root-of-the-server]__09fa_xj._.js"],
+      "muxChunks": ["[root-of-the-server]__09fa_xj._.js"],
+      "budgetTimingChunks": [
+        "_09qlp~8._.js",
+        "apps_admin_src_0d8luib._.js",
+        "ssr/apps_admin_src_services_recommendations_0~agdg_._.js"
+      ],
+      "contextualDistanceChunks": [
+        "[root-of-the-server]__0-glwey._.js",
+        "[root-of-the-server]__0555tyg._.js",
+        "[root-of-the-server]__09xaa1f._.js",
+        "[root-of-the-server]__0cfw6ne._.js",
+        "[root-of-the-server]__0e7u5yd._.js",
+        "[root-of-the-server]__0mqkvni._.js",
+        "[root-of-the-server]__1360cwj._.js",
+        "_02-94g8._.js",
+        "_0hjxvrd._.js",
+        "_10m7v1u._.js",
+        "apps_admin_src_services_0c24xo0._.js"
+      ],
+      "oldContextualDistanceChunks": [],
+      "health": {
+        "httpStatus": 200,
+        "body": {
+          "status": "ok"
+        },
+        "ms": 34
+      }
+    },
+    "worker": {
+      "at": "2026-09-22T01:38:18.884Z",
+      "revision": "c98ec86bdd9a308f33b53d035084e8fd10e0e08d",
+      "deployment": "524e5c8a-b6e9-4b86-8158-ea0cab1bf409",
+      "runner": "true",
+      "loggerChunks": ["[root-of-the-server]__09fa_xj._.js"],
+      "muxChunks": ["[root-of-the-server]__09fa_xj._.js"],
+      "budgetTimingChunks": [
+        "_09qlp~8._.js",
+        "apps_admin_src_0d8luib._.js",
+        "ssr/apps_admin_src_services_recommendations_0~agdg_._.js"
+      ],
+      "contextualDistanceChunks": [
+        "[root-of-the-server]__0-glwey._.js",
+        "[root-of-the-server]__0555tyg._.js",
+        "[root-of-the-server]__09xaa1f._.js",
+        "[root-of-the-server]__0cfw6ne._.js",
+        "[root-of-the-server]__0e7u5yd._.js",
+        "[root-of-the-server]__0mqkvni._.js",
+        "[root-of-the-server]__1360cwj._.js",
+        "_02-94g8._.js",
+        "_0hjxvrd._.js",
+        "_10m7v1u._.js",
+        "apps_admin_src_services_0c24xo0._.js"
+      ],
+      "oldContextualDistanceChunks": [],
+      "health": {
+        "httpStatus": 200,
+        "body": {
+          "status": "ok"
+        },
+        "ms": 30
+      }
+    },
+    "web": {
+      "at": "2026-09-22T01:38:18.958Z",
+      "revision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+      "deployment": "7e475679-fd30-4973-b92c-797a183147f3",
+      "launchDarklyConfigured": true,
+      "anonymousAvailability": {
+        "status": 200,
+        "body": {
+          "enabled": false
+        }
+      }
+    }
+  },
+  "completeServiceBenchmark": {
+    "scope": "Owned synthetic pgvector fixture; actual SceneRecommendationsService, PrismaPg ten-connection pool, 176 seeds, requested six cards, actual per-seed limit eighteen. Not production percentiles or feat-447 snapshot gate.",
+    "rounds": [
+      {
+        "round": 0,
+        "name": "baseline",
+        "serviceMs": 5360.291568,
+        "statements": 3,
+        "returnedItems": 6,
+        "perSeedLimit": 18,
+        "seeds": 176,
+        "allFieldsEqual": true
+      },
+      {
+        "round": 0,
+        "name": "candidate",
+        "serviceMs": 3559.456301000001,
+        "statements": 3,
+        "returnedItems": 6,
+        "perSeedLimit": 18,
+        "seeds": 176,
+        "allFieldsEqual": true
+      },
+      {
+        "round": 1,
+        "name": "candidate",
+        "serviceMs": 3509.727288,
+        "statements": 3,
+        "returnedItems": 6,
+        "perSeedLimit": 18,
+        "seeds": 176,
+        "allFieldsEqual": true
+      },
+      {
+        "round": 1,
+        "name": "baseline",
+        "serviceMs": 5344.758948000002,
+        "statements": 3,
+        "returnedItems": 6,
+        "perSeedLimit": 18,
+        "seeds": 176,
+        "allFieldsEqual": true
+      }
+    ]
+  },
+  "productionReadOnlyProbe": {
+    "scope": "Legacy contextual GraphQL query from Web using its existing configured consumer credential; no selection, impression, or playback evidence created. Three samples do not establish a production percentile or delivery deadline success.",
+    "beforeAdminRevision": "92a597ee03074bf4d79b0eb21db4499046ecd09f",
+    "afterAdminRevision": "c98ec86bdd9a308f33b53d035084e8fd10e0e08d",
+    "before": {
+      "started": "2026-09-22T01:28:44.841Z",
+      "ended": "2026-09-22T01:28:47.350Z",
+      "callerRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+      "httpStatus": 200,
+      "ms": 2507.7565889999996,
+      "errorCount": 0,
+      "itemCount": 6,
+      "uniqueItems": 6,
+      "allPlayable": true,
+      "responseHash": "5e3138ee03de3f7f02f0cfef897bd3fa5aac93eac06c33b27f6416fa4ebe507d",
+      "scope": "Read-only legacy contextual GraphQL request through the configured Web consumer credential; no selection or playback evidence created."
+    },
+    "after": [
+      {
+        "started": "2026-09-22T01:35:42.519Z",
+        "ended": "2026-09-22T01:35:44.347Z",
+        "callerRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "httpStatus": 200,
+        "ms": 1826.6707040000001,
+        "errorCount": 0,
+        "itemCount": 6,
+        "uniqueItems": 6,
+        "allPlayable": true,
+        "responseHash": "5e3138ee03de3f7f02f0cfef897bd3fa5aac93eac06c33b27f6416fa4ebe507d",
+        "scope": "Read-only legacy contextual GraphQL request through the configured Web consumer credential; no selection or playback evidence created."
+      },
+      {
+        "started": "2026-09-22T01:37:00.969Z",
+        "ended": "2026-09-22T01:37:02.880Z",
+        "callerRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "httpStatus": 200,
+        "ms": 1910.0315839999998,
+        "errorCount": 0,
+        "itemCount": 6,
+        "uniqueItems": 6,
+        "allPlayable": true,
+        "responseHash": "5e3138ee03de3f7f02f0cfef897bd3fa5aac93eac06c33b27f6416fa4ebe507d",
+        "scope": "Read-only legacy contextual GraphQL request through the configured Web consumer credential; no selection or playback evidence created."
+      }
+    ]
+  },
+  "beforeWindow": {
+    "from": "2026-09-22T00:35:00Z",
+    "to": "2026-09-22T01:20:00Z",
+    "http": [
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/select",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 1
+      },
+      {
+        "http.status_code": "400",
+        "resource_name": "post_/api/recommendations/evidence",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 18
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/content-actions",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 1
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations/playback",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 246
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations/profile",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 468
+      },
+      {
+        "http.status_code": "400",
+        "resource_name": "post_/api/recommendations/playback",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 2
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/profile",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 514
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 216
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/evidence",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 864
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 321
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/playback",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 2693
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations/evidence",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 427
+      }
+    ],
+    "delivery": {
+      "displayedRows": 12,
+      "totalRows": 12,
+      "rows": [
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=6 upstreamResult=served",
+          "n": "179"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_fetch_metadata itemCount=0 upstreamResult=not_observed",
+          "n": "175"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_origin itemCount=0 upstreamResult=not_observed",
+          "n": "41"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=1 upstreamResult=served",
+          "n": "27"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=no_candidates itemCount=6 upstreamResult=empty",
+          "n": "22"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=2 upstreamResult=served",
+          "n": "20"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=seed_embedding_unavailable itemCount=6 upstreamResult=fallback",
+          "n": "19"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=4 upstreamResult=served",
+          "n": "17"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=5 upstreamResult=served",
+          "n": "17"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=3 upstreamResult=served",
+          "n": "15"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=cooldown itemCount=6 upstreamResult=unavailable",
+          "n": "3"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=seed_embedding_unavailable itemCount=6 upstreamResult=empty",
+          "n": "2"
+        }
+      ]
+    },
+    "primaryDeliveryByStatus": {
+      "200": 321,
+      "403": 216
+    },
+    "semanticDeliveryByStatus": {
+      "200": 321,
+      "403": 216
+    },
+    "deliveryReconciles": true,
+    "exclusions": 0
+  },
+  "before400Reasons": {
+    "displayedRows": 2,
+    "totalRows": 2,
+    "rows": [
+      {
+        "message": "event=recommendation.evidence source=web action=evidence outcome=rejected reason=invalid_request timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=400",
+        "n": "18",
+        "first_at": "2026-09-22T00:35:37.641Z",
+        "last_at": "2026-09-22T01:09:48.817Z"
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=facts outcome=rejected reason=invalid_request timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=400",
+        "n": "2",
+        "first_at": "2026-09-22T00:58:30.214Z",
+        "last_at": "2026-09-22T01:09:51.299Z"
+      }
+    ]
+  },
+  "afterWindow": {
+    "from": "2026-09-22T01:39:00Z",
+    "to": "2026-09-22T01:54:00Z",
+    "http": [
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations/playback",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 79
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/evidence",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 250
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/profile",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 134
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/select",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 1
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations/profile",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 180
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/playback",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 680
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 94
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 76
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations/evidence",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 152
+      }
+    ],
+    "delivery": {
+      "displayedRows": 12,
+      "totalRows": 12,
+      "rows": [
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_fetch_metadata itemCount=0 upstreamResult=not_observed",
+          "n": "63"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=6 upstreamResult=served",
+          "n": "52"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_origin itemCount=0 upstreamResult=not_observed",
+          "n": "13"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=4 upstreamResult=served",
+          "n": "10"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=no_candidates itemCount=6 upstreamResult=empty",
+          "n": "8"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=5 upstreamResult=served",
+          "n": "7"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=1 upstreamResult=served",
+          "n": "7"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=2 upstreamResult=served",
+          "n": "4"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=seed_embedding_unavailable itemCount=6 upstreamResult=fallback",
+          "n": "2"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=no_candidates itemCount=4 upstreamResult=empty",
+          "n": "2"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=no_candidates itemCount=5 upstreamResult=empty",
+          "n": "1"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=3 upstreamResult=served",
+          "n": "1"
+        }
+      ]
+    },
+    "primaryDeliveryByStatus": {
+      "200": 94,
+      "403": 76
+    },
+    "semanticDeliveryByStatus": {
+      "200": 94,
+      "403": 76
+    },
+    "deliveryReconciles": true,
+    "exclusions": 0
+  },
+  "extendedAfterWindow": {
+    "from": "2026-09-22T01:39:00Z",
+    "to": "2026-09-22T02:19:00Z",
+    "http": [
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/select",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 4
+      },
+      {
+        "http.status_code": "401",
+        "resource_name": "post_/api/recommendations/playback",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 1
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations/evidence",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 470
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 264
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/evidence",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 633
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 212
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/playback",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 1496
+      },
+      {
+        "http.status_code": "503",
+        "resource_name": "post_/api/recommendations",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 1
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations/playback",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 222
+      },
+      {
+        "http.status_code": "503",
+        "resource_name": "post_/api/recommendations/playback",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 19
+      },
+      {
+        "http.status_code": "503",
+        "resource_name": "post_/api/recommendations/profile",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 1
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/for-you",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 1
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/profile",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 394
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations/profile",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 447
+      }
+    ],
+    "delivery": {
+      "displayedRows": 16,
+      "totalRows": 16,
+      "rows": [
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_fetch_metadata itemCount=0 upstreamResult=not_observed",
+          "n": "174"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=6 upstreamResult=served",
+          "n": "134"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_origin itemCount=0 upstreamResult=not_observed",
+          "n": "38"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=4 upstreamResult=served",
+          "n": "24"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=no_candidates itemCount=6 upstreamResult=empty",
+          "n": "23"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=2 upstreamResult=served",
+          "n": "19"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=1 upstreamResult=served",
+          "n": "19"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=5 upstreamResult=served",
+          "n": "17"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=seed_embedding_unavailable itemCount=6 upstreamResult=fallback",
+          "n": "15"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=3 upstreamResult=served",
+          "n": "7"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=no_candidates itemCount=5 upstreamResult=empty",
+          "n": "2"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=no_candidates itemCount=4 upstreamResult=empty",
+          "n": "2"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=empty reason=no_candidates itemCount=0 upstreamResult=empty",
+          "n": "1"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=for_you httpStatus=200 result=served reason=none itemCount=6 upstreamResult=served",
+          "n": "1"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=cooldown itemCount=6 upstreamResult=unavailable",
+          "n": "1"
+        },
+        {
+          "@ddtags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=503 result=failed reason=admission_unavailable itemCount=0 upstreamResult=not_observed",
+          "n": "1"
+        }
+      ]
+    },
+    "primaryDeliveryByStatus": {
+      "200": 264,
+      "403": 212,
+      "503": 1
+    },
+    "semanticDeliveryByStatus": {
+      "200": 264,
+      "403": 212,
+      "503": 1
+    },
+    "deliveryReconciles": true,
+    "exclusions": 0
+  },
+  "extended503Reasons": {
+    "displayedRows": 20,
+    "totalRows": 20,
+    "rows": [
+      {
+        "timestamp": "2026-09-22T02:09:35.693Z",
+        "message": "event=recommendation.delivery endpoint=seeded httpStatus=503 result=failed reason=admission_unavailable itemCount=0 upstreamResult=not_observed"
+      },
+      {
+        "timestamp": "2026-09-22T02:11:13.019Z",
+        "message": "event=recommendation.evidence source=web action=facts outcome=failed reason=upstream_unavailable timeoutStage=none retryDisposition=retryable crawler=not_recognized httpStatus=503 networkErrorCode=unknown"
+      },
+      {
+        "timestamp": "2026-09-22T02:11:13.552Z",
+        "message": "event=recommendation.evidence source=web action=facts outcome=failed reason=upstream_unavailable timeoutStage=none retryDisposition=retryable crawler=not_recognized httpStatus=503 networkErrorCode=unknown"
+      },
+      {
+        "timestamp": "2026-09-22T02:11:14.134Z",
+        "message": "event=recommendation.evidence source=web action=facts outcome=failed reason=upstream_unavailable timeoutStage=none retryDisposition=retryable crawler=not_recognized httpStatus=503 networkErrorCode=unknown"
+      },
+      {
+        "timestamp": "2026-09-22T02:11:14.706Z",
+        "message": "event=recommendation.evidence source=web action=facts outcome=failed reason=upstream_unavailable timeoutStage=none retryDisposition=retryable crawler=not_recognized httpStatus=503 networkErrorCode=unknown"
+      },
+      {
+        "timestamp": "2026-09-22T02:11:15.121Z",
+        "message": "event=recommendation.evidence source=web action=facts outcome=failed reason=upstream_unavailable timeoutStage=none retryDisposition=retryable crawler=not_recognized httpStatus=503 networkErrorCode=unknown"
+      },
+      {
+        "timestamp": "2026-09-22T02:11:15.702Z",
+        "message": "event=recommendation.evidence source=web action=facts outcome=failed reason=upstream_unavailable timeoutStage=none retryDisposition=retryable crawler=not_recognized httpStatus=503 networkErrorCode=unknown"
+      },
+      {
+        "timestamp": "2026-09-22T02:11:16.407Z",
+        "message": "event=recommendation.evidence source=web action=facts outcome=failed reason=upstream_unavailable timeoutStage=none retryDisposition=retryable crawler=not_recognized httpStatus=503 networkErrorCode=unknown"
+      },
+      {
+        "timestamp": "2026-09-22T02:11:16.989Z",
+        "message": "event=recommendation.evidence source=web action=facts outcome=failed reason=upstream_unavailable timeoutStage=none retryDisposition=retryable crawler=not_recognized httpStatus=503 networkErrorCode=unknown"
+      },
+      {
+        "timestamp": "2026-09-22T02:11:17.469Z",
+        "message": "event=recommendation.evidence source=web action=facts outcome=failed reason=upstream_unavailable timeoutStage=none retryDisposition=retryable crawler=not_recognized httpStatus=503 networkErrorCode=unknown"
+      },
+      {
+        "timestamp": "2026-09-22T02:11:17.507Z",
+        "message": "event=recommendation.evidence source=web action=facts outcome=failed reason=upstream_unavailable timeoutStage=none retryDisposition=retryable crawler=not_recognized httpStatus=503 networkErrorCode=unknown"
+      },
+      {
+        "timestamp": "2026-09-22T02:11:17.878Z",
+        "message": "event=recommendation.evidence source=web action=facts outcome=failed reason=upstream_unavailable timeoutStage=none retryDisposition=retryable crawler=not_recognized httpStatus=503 networkErrorCode=unknown"
+      },
+      {
+        "timestamp": "2026-09-22T02:11:17.887Z",
+        "message": "event=recommendation.evidence source=web action=facts outcome=failed reason=upstream_unavailable timeoutStage=none retryDisposition=retryable crawler=not_recognized httpStatus=503 networkErrorCode=unknown"
+      },
+      {
+        "timestamp": "2026-09-22T02:11:18.386Z",
+        "message": "event=recommendation.evidence source=web action=facts outcome=failed reason=upstream_unavailable timeoutStage=none retryDisposition=retryable crawler=not_recognized httpStatus=503 networkErrorCode=unknown"
+      },
+      {
+        "timestamp": "2026-09-22T02:11:18.584Z",
+        "message": "event=recommendation.evidence source=web action=facts outcome=failed reason=upstream_unavailable timeoutStage=none retryDisposition=retryable crawler=not_recognized httpStatus=503 networkErrorCode=unknown"
+      },
+      {
+        "timestamp": "2026-09-22T02:11:18.966Z",
+        "message": "event=recommendation.evidence source=web action=facts outcome=failed reason=upstream_unavailable timeoutStage=none retryDisposition=retryable crawler=not_recognized httpStatus=503 networkErrorCode=unknown"
+      },
+      {
+        "timestamp": "2026-09-22T02:11:19.262Z",
+        "message": "event=recommendation.evidence source=web action=facts outcome=failed reason=upstream_unavailable timeoutStage=none retryDisposition=retryable crawler=not_recognized httpStatus=503 networkErrorCode=unknown"
+      },
+      {
+        "timestamp": "2026-09-22T02:11:19.828Z",
+        "message": "event=recommendation.evidence source=web action=facts outcome=failed reason=upstream_unavailable timeoutStage=none retryDisposition=retryable crawler=not_recognized httpStatus=503 networkErrorCode=unknown"
+      },
+      {
+        "timestamp": "2026-09-22T02:11:20.302Z",
+        "message": "event=recommendation.evidence source=web action=facts outcome=failed reason=upstream_unavailable timeoutStage=none retryDisposition=retryable crawler=not_recognized httpStatus=503 networkErrorCode=unknown"
+      },
+      {
+        "timestamp": "2026-09-22T02:11:20.885Z",
+        "message": "event=recommendation.evidence source=web action=facts outcome=failed reason=upstream_unavailable timeoutStage=none retryDisposition=retryable crawler=not_recognized httpStatus=503 networkErrorCode=unknown"
+      }
+    ]
+  },
+  "redisUpdateInterruption": {
+    "deployments": [
+      {
+        "service": "418a82b0-9cce-4a2a-a782-c6d96cdd5b5f",
+        "deployments": {
+          "deployments": {
+            "edges": [
+              {
+                "node": {
+                  "id": "880e5110-906c-4d96-8500-7ab3c22e8adf",
+                  "status": "SUCCESS",
+                  "createdAt": "2026-09-22T02:11:07.951Z",
+                  "updatedAt": "2026-09-22T02:11:16.871Z"
+                }
+              },
+              {
+                "node": {
+                  "id": "5766257b-2e71-458a-94e0-79a7b1043294",
+                  "status": "REMOVED",
+                  "createdAt": "2026-09-02T04:14:43.668Z",
+                  "updatedAt": "2026-09-22T02:11:19.301Z"
+                }
+              },
+              {
+                "node": {
+                  "id": "0692dbae-07af-4c99-9f9a-3d2e66416000",
+                  "status": "REMOVED",
+                  "createdAt": "2026-08-03T02:54:02.125Z",
+                  "updatedAt": "2026-09-02T04:14:52.007Z"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "service": "940d9914-3156-4e41-8165-af96bfe66a53",
+        "deployments": {
+          "deployments": {
+            "edges": [
+              {
+                "node": {
+                  "id": "1bbd4698-b9c5-4694-903a-b4aedc5a0c27",
+                  "status": "SUCCESS",
+                  "createdAt": "2026-09-22T02:09:21.736Z",
+                  "updatedAt": "2026-09-22T02:09:34.470Z"
+                }
+              },
+              {
+                "node": {
+                  "id": "9ec521d5-38c3-421f-b7ea-981ba881c2a1",
+                  "status": "REMOVED",
+                  "createdAt": "2026-09-03T02:04:26.867Z",
+                  "updatedAt": "2026-09-22T02:09:36.179Z"
+                }
+              },
+              {
+                "node": {
+                  "id": "cff27ca1-b907-44d9-be81-c25bbac0b8d2",
+                  "status": "REMOVED",
+                  "createdAt": "2026-08-04T03:26:13.700Z",
+                  "updatedAt": "2026-09-03T02:04:37.291Z"
+                }
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "updateReasons": [
+      {
+        "image": "redis:8.10.2",
+        "reason": "autoupdate",
+        "imageDigest": "sha256:d5ac52db24d4e70566fe9944f22cf5bdc2bc739b05c0f426335161ea6c23f3b3"
+      },
+      {
+        "image": "redis:8.10.2",
+        "reason": "autoupdate",
+        "imageDigest": "sha256:d5ac52db24d4e70566fe9944f22cf5bdc2bc739b05c0f426335161ea6c23f3b3"
+      }
+    ],
+    "readOnlyAvailabilityCheck": {
+      "at": "2026-09-22T02:25:27.882Z",
+      "adminRevision": "c98ec86bdd9a308f33b53d035084e8fd10e0e08d",
+      "server": {
+        "redis_version": "8.10.2",
+        "uptime_in_seconds": "854"
+      },
+      "stats": {
+        "total_connections_received": "3",
+        "rejected_connections": "0",
+        "latest_fork_usec": "476",
+        "total_error_replies": "0"
+      },
+      "persistence": {
+        "rdb_bgsave_in_progress": "0",
+        "rdb_last_save_time": "1790043927",
+        "aof_enabled": "0",
+        "aof_last_bgrewrite_status": "ok"
+      },
+      "memory": {
+        "used_memory": "2009688",
+        "maxmemory": "0",
+        "maxmemory_policy": "noeviction"
+      }
+    },
+    "sampledTrace": "6ab1e3c80000000043ee885b4b6c170a",
+    "sampledWebMilliseconds": 10.605957,
+    "sampledUpstreamMilliseconds": 7.05127,
+    "sampledUpstreamHttpStatus": 500,
+    "matchedAdminError": "Redis getForIdentity: stream not writable with offline queue disabled.",
+    "limits": "Automatic Redis image updates; not initiated by this task. One exact playback error correlated to Admin. All nineteen burst requests counted, not all mutation dispositions proven. Separate from historical selection budget and delivery semantic timeout causes. Rate limits remain fail-closed; no provider settings changed."
+  },
+  "slowBudgetEvents": [
+    {
+      "displayedRows": 1,
+      "totalRows": 1,
+      "rows": [
+        {
+          "timestamp": "2026-09-22T00:38:24.892Z",
+          "message": "event=recommendation.submission_budget kind=episode elapsedMs=281 serverElapsedMs=0 outsideServerMs=281"
+        }
+      ]
+    },
+    {
+      "displayedRows": 1,
+      "totalRows": 1,
+      "rows": [
+        {
+          "timestamp": "2026-09-22T01:33:02.85Z",
+          "message": "event=recommendation.submission_budget kind=episode elapsedMs=203 serverElapsedMs=0 outsideServerMs=203"
+        }
+      ]
+    },
+    {
+      "displayedRows": 1,
+      "totalRows": 1,
+      "rows": [
+        {
+          "timestamp": "2026-09-22T01:46:16.711Z",
+          "message": "event=recommendation.submission_budget kind=delivery elapsedMs=209 serverElapsedMs=0 outsideServerMs=209"
+        }
+      ]
+    }
+  ],
+  "boundedWaitSamples": {
+    "before": {
+      "started": "2026-09-22T01:19:35.271Z",
+      "ended": "2026-09-22T01:28:57.378Z",
+      "revision": "92a597ee03074bf4d79b0eb21db4499046ecd09f",
+      "samples": 2250,
+      "totalSampleMs": 5001.091676999115,
+      "maxSampleMs": 15.614998999997624,
+      "stoppedForOverhead": true,
+      "budgetObservations": 6,
+      "maxBudgetAgeMs": 111.029,
+      "slowBudgetRecords": [
+        {
+          "query": 41,
+          "started": "2026-09-22T01:26:08.574Z",
+          "observed": "2026-09-22T01:26:08.685Z",
+          "adminSource": true,
+          "kind": "episode-budget",
+          "waitType": "LWLock",
+          "wait": "WALWrite",
+          "ageMs": 111.029,
+          "blockers": 0,
+          "counts": {
+            "admin-source:active:commit:IO:WalSync": 1,
+            "other-source:active:commit:LWLock:WALWrite": 1,
+            "admin-source:idle:catalog:Client:ClientRead": 8,
+            "admin-source:active:episode-budget:LWLock:WALWrite": 1,
+            "admin-source:idle:workflow:Client:ClientRead": 3,
+            "other-source:idle:other:Client:ClientRead": 1,
+            "other-source:idle:job-queue:Client:ClientRead": 1,
+            "other-source:idle:workflow:Client:ClientRead": 4,
+            "admin-source:idle:job-queue:Client:ClientRead": 1,
+            "other-source:background:checkpointer:Timeout:CheckpointWriteDelay": 1,
+            "other-source:background:background writer:Activity:BgwriterMain": 1,
+            "other-source:background:walwriter:LWLock:WALWrite": 1
+          }
+        }
+      ]
+    },
+    "after": {
+      "lifecycle": [
+        {
+          "type": "start",
+          "started": "2026-09-22T01:36:59.908Z",
+          "revision": "c98ec86bdd9a308f33b53d035084e8fd10e0e08d"
+        },
+        {
+          "started": "2026-09-22T01:36:59.908Z",
+          "ended": "2026-09-22T01:42:09.867Z",
+          "revision": "c98ec86bdd9a308f33b53d035084e8fd10e0e08d",
+          "samples": 1241,
+          "totalSampleMs": 5002.73098699984,
+          "maxSampleMs": 13.332560000009835,
+          "stoppedForOverhead": true,
+          "type": "complete"
+        }
+      ],
+      "observations": 272,
+      "budgetObservations": 10,
+      "maxBudgetAgeMs": 101.427,
+      "walOver50ms": [
+        {
+          "type": "observation",
+          "started": "2026-09-22T01:38:33.499Z",
+          "observed": "2026-09-22T01:38:33.669Z",
+          "adminSource": true,
+          "kind": "other",
+          "waitType": "IO",
+          "wait": "WalSync",
+          "ageMs": 170.386,
+          "blockers": 0,
+          "writingRelations": "{search_trace}",
+          "counts": {
+            "other-source:idle:other:Client:ClientRead": 5,
+            "admin-source:idle:commit:Client:ClientRead": 1,
+            "admin-source:idle:workflow:Client:ClientRead": 3,
+            "other-source:idle:workflow:Client:ClientRead": 5,
+            "admin-source:active:episode-budget:LWLock:WALWrite": 1,
+            "admin-source:active:other:IO:WalSync": 1,
+            "admin-source:idle:other:Client:ClientRead": 3,
+            "admin-source:idle:catalog:Client:ClientRead": 4,
+            "other-source:idle:job-queue:Client:ClientRead": 1,
+            "admin-source:idle:job-queue:Client:ClientRead": 1,
+            "other-source:background:checkpointer:Activity:CheckpointerMain": 1,
+            "other-source:background:background writer:Activity:BgwriterMain": 1,
+            "other-source:background:walwriter:LWLock:WALWrite": 1
+          }
+        },
+        {
+          "type": "observation",
+          "started": "2026-09-22T01:41:39.525Z",
+          "observed": "2026-09-22T01:41:39.618Z",
+          "adminSource": true,
+          "kind": "commit",
+          "waitType": "LWLock",
+          "wait": "WALWrite",
+          "ageMs": 92.771,
+          "blockers": 0,
+          "writingRelations": "{recommendation_episode_capability_key,recommendation_episode_claim_nonce_key,recommendation_episode_created_idx,recommendation_episode_finalization_due_idx,recommendation_episode_finalized_idx,recommendation_episode_request_idx,recommendation_episode_request_item_id_key,recommendation_episode_selection_key,recommendation_episode_selection_lineage_key,recommendation_episode_session_created_idx,recommendation_episode_source_created_idx,recommendation_episode_state_deadline_idx,recommendation_playback_episode,recommendation_playback_episode_expires_at_idx,recommendation_playback_episode_pkey,recommendation_playback_fact}",
+          "counts": {
+            "admin-source:idle:catalog:Client:ClientRead": 8,
+            "admin-source:idle:workflow:Client:ClientRead": 3,
+            "other-source:idle:workflow:Client:ClientRead": 5,
+            "admin-source:idle:job-queue:Client:ClientRead": 1,
+            "other-source:idle:job-queue:Client:ClientRead": 1,
+            "other-source:idle:other:Client:ClientRead": 1,
+            "admin-source:active:commit:LWLock:WALWrite": 1,
+            "admin-source:active:episode-budget:IO:WalSync": 1,
+            "other-source:idle:commit:Client:ClientRead": 1,
+            "other-source:background:checkpointer:Activity:CheckpointerMain": 1,
+            "other-source:background:background writer:Activity:BgwriterMain": 1,
+            "other-source:background:walwriter:Activity:WalWriterMain": 1
+          }
+        },
+        {
+          "type": "observation",
+          "started": "2026-09-22T01:41:39.517Z",
+          "observed": "2026-09-22T01:41:39.619Z",
+          "adminSource": true,
+          "kind": "episode-budget",
+          "waitType": "IO",
+          "wait": "WalSync",
+          "ageMs": 101.427,
+          "blockers": 0,
+          "writingRelations": "{recommendation_capability_submission_budget}",
+          "counts": {
+            "admin-source:idle:catalog:Client:ClientRead": 8,
+            "admin-source:idle:workflow:Client:ClientRead": 3,
+            "other-source:idle:workflow:Client:ClientRead": 5,
+            "admin-source:idle:job-queue:Client:ClientRead": 1,
+            "other-source:idle:job-queue:Client:ClientRead": 1,
+            "other-source:idle:other:Client:ClientRead": 1,
+            "admin-source:active:commit:LWLock:WALWrite": 1,
+            "admin-source:active:episode-budget:IO:WalSync": 1,
+            "other-source:idle:commit:Client:ClientRead": 1,
+            "other-source:background:checkpointer:Activity:CheckpointerMain": 1,
+            "other-source:background:background writer:Activity:BgwriterMain": 1,
+            "other-source:background:walwriter:Activity:WalWriterMain": 1
+          }
+        }
+      ],
+      "captureLimit": "name[] arrived as PostgreSQL array text; empty string representation was truthy for the local capture filter, retaining additional active queries above 50ms. Table strings remain literal relation names; postprocessing selects actual WAL waits. No settings changed globally."
+    },
+    "interruptedCapture": "A relation capture started during automatic rollout exited without a completed artifact; no absence-of-waits claim. Observer count verified zero after rollout.",
+    "cleanup": {
+      "at": "2026-09-22T01:44:19.994Z",
+      "observers": 0
+    },
+    "limitations": "Statement age is not measured wait duration. Idle Admin backends do not measure native pool queueing. No observed 701ms budget incident in these captures."
+  },
+  "searchTraceSize": {
+    "at": "2026-09-22T01:40:05.285Z",
+    "window": ["2026-09-22T01:20:00Z", "2026-09-22T01:40:00Z"],
+    "aggregate": {
+      "rows": 8,
+      "mean_metadata_bytes": 1426,
+      "max_metadata_bytes": 1910,
+      "total_metadata_bytes": "11410",
+      "mean_stored_row_bytes": 1732,
+      "max_stored_row_bytes": 2194
+    }
+  },
+  "kernelWaitLimitation": "The PostgreSQL process wchan surface returned zero; empty kernel wait records are unavailable evidence, not proof of no wait.",
+  "completedReconciliationSteps": {
+    "at": "2026-09-22T01:46:52.245Z",
+    "revision": "c98ec86bdd9a308f33b53d035084e8fd10e0e08d",
+    "from": "2026-09-22T01:20:00Z",
+    "to": "2026-09-22T01:45:00Z",
+    "scope": "Durable completed reconciliation steps; CBOR and devalue decoded before reading aggregate counters; timestamps interpreted as UTC",
+    "rows": [
+      {
+        "kind": "batch",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-22T01:22:09.251Z",
+        "completed": "2026-09-22T01:22:12.926Z",
+        "durationMs": 3675,
+        "hasError": false,
+        "locked": false,
+        "affectedPointers": 6,
+        "classificationsAttempted": 10,
+        "classificationsFailed": 0,
+        "rebuildsQueued": 6,
+        "staleRuns": 0,
+        "staleRunsQueued": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      },
+      {
+        "kind": "heartbeat",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-22T01:22:16.588Z",
+        "completed": "2026-09-22T01:22:16.610Z",
+        "durationMs": 22,
+        "hasError": false
+      },
+      {
+        "kind": "batch",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-22T01:27:20.842Z",
+        "completed": "2026-09-22T01:27:23.204Z",
+        "durationMs": 2362,
+        "hasError": false,
+        "locked": false,
+        "affectedPointers": 1,
+        "classificationsAttempted": 4,
+        "classificationsFailed": 0,
+        "rebuildsQueued": 1,
+        "staleRuns": 0,
+        "staleRunsQueued": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      },
+      {
+        "kind": "heartbeat",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-22T01:27:26.328Z",
+        "completed": "2026-09-22T01:27:26.349Z",
+        "durationMs": 21,
+        "hasError": false
+      },
+      {
+        "kind": "batch",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-22T01:32:30.582Z",
+        "completed": "2026-09-22T01:32:32.257Z",
+        "durationMs": 1675,
+        "hasError": false,
+        "locked": false,
+        "affectedPointers": 0,
+        "classificationsAttempted": 0,
+        "classificationsFailed": 0,
+        "rebuildsQueued": 0,
+        "staleRuns": 0,
+        "staleRunsQueued": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      },
+      {
+        "kind": "heartbeat",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-22T01:32:35.383Z",
+        "completed": "2026-09-22T01:32:35.427Z",
+        "durationMs": 44,
+        "hasError": false
+      },
+      {
+        "kind": "batch",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-22T01:37:38.396Z",
+        "completed": "2026-09-22T01:37:40.085Z",
+        "durationMs": 1689,
+        "hasError": false,
+        "locked": false,
+        "affectedPointers": 0,
+        "classificationsAttempted": 0,
+        "classificationsFailed": 0,
+        "rebuildsQueued": 0,
+        "staleRuns": 0,
+        "staleRunsQueued": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      },
+      {
+        "kind": "heartbeat",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-22T01:37:41.240Z",
+        "completed": "2026-09-22T01:37:41.260Z",
+        "durationMs": 20,
+        "hasError": false
+      },
+      {
+        "kind": "batch",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-22T01:42:44.697Z",
+        "completed": "2026-09-22T01:42:50.977Z",
+        "durationMs": 6280,
+        "hasError": false,
+        "locked": false,
+        "affectedPointers": 1,
+        "classificationsAttempted": 32,
+        "classificationsFailed": 0,
+        "rebuildsQueued": 1,
+        "staleRuns": 0,
+        "staleRunsQueued": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      },
+      {
+        "kind": "heartbeat",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-22T01:42:53.973Z",
+        "completed": "2026-09-22T01:42:53.997Z",
+        "durationMs": 24,
+        "hasError": false
+      }
+    ]
+  },
+  "reconciliationLimits": "Indexed read-only scheduler-run query, 1500ms statement and 100ms lock bounds. Completed steps only; does not establish absence of unfinished/failed runs. Window spans old and new worker deployments.",
+  "validation": {
+    "adminPassed": 7305,
+    "adminSkipped": 305,
+    "adminTodo": 1,
+    "realPostgresTests": 4,
+    "focusedServiceTests": 15,
+    "checks": [
+      "Admin typecheck",
+      "Scoped ESLint",
+      "Roadmap lint and generation",
+      "Changed-file format and repository precommit format check",
+      "Full PR CI including Admin build and database checks",
+      "Sequential Compound Engineering review"
+    ],
+    "regression": "Observed red sixteen cosine calls, green eight for four eligible chunks times two seeds."
+  },
+  "authenticatedAdmin": {
+    "access": "Owner completed normal Admin sign-in; no impersonation or direct database write.",
+    "overview": {
+      "databaseProbeAt": "2026-09-22T02:06:06.941Z",
+      "scope": "Authorized rolling 24-hour Recommendations view; aggregate current-pointer audit is a point-in-time result, not continuous convergence.",
+      "currentPointerInvariant": "clean",
+      "affectedPointers": 0,
+      "ineligibleContributions": 0,
+      "rebuildBacklog": 0,
+      "replacementPublications": 187,
+      "terminalRuns": 108,
+      "profileSourceFences": 8,
+      "cleanHybridRequests": 1522,
+      "committedRejections": 299,
+      "writeFailures": 0,
+      "replay": 41,
+      "selectionWithoutImpression": 2,
+      "limits": "The degraded reconciliation label includes terminal work despite a clean current-pointer audit. Evidence rejections and HTTP failures are different populations."
+    },
+    "previousCanaryAdminTrace": {
+      "servedCards": 6,
+      "selectedItemHasImpressionAndSelection": true,
+      "finalizedAt": "2026-09-21T00:16:28.822Z",
+      "classifier": "active-watch-proxy-v1",
+      "factWatermark": 22,
+      "qualifiedView": true,
+      "displayedActiveSeconds": 75.6,
+      "eligibleScopes": ["profile", "aggregate"],
+      "retrospectiveFeedbackAncestry": "Unavailable: later hybrid decisions have no retained projection reference after the already-verified withdrawal. No private identity or request lookup values exported."
+    },
+    "freshCanary": {
+      "originalServedCards": 6,
+      "selectedItemHasImpressionAndSelection": true,
+      "finalizedAt": "2026-09-22T02:16:02.554Z",
+      "facts": 32,
+      "factWatermark": 32,
+      "activePlaybackMilliseconds": 73780,
+      "classifier": "active-watch-proxy-v1",
+      "qualifiedView": true,
+      "eligibleScopes": ["profile", "aggregate"],
+      "laterRequestAt": "2026-09-22T02:16:50.033Z",
+      "laterExecutionMode": "hybrid_personalized",
+      "laterGeneration": 3,
+      "laterInterests": 2,
+      "laterSessionIntent": true,
+      "laterServedCards": 6,
+      "laterRetrievalMilliseconds": 536,
+      "laterFallback": null,
+      "laterShortfall": null,
+      "candidateEvidence": "complete",
+      "matchingQualifiedFeedbackSourceInAdmin": true,
+      "exactOutcomeContributionVerifiedInDatabase": true,
+      "activeExperimentAssignment": false,
+      "limits": "Normal browser playback; no seeking, speed change, injected evidence or direct database mutation. Initial BFCache suspension was nonterminal; subsequent normal route exit finalized. No per-request HTTP capture claimed. This clears matching Admin lifecycle acceptance, not operational fallback or dependency gates."
+    },
+    "repairTrace": {
+      "originalGeneration": 4,
+      "originalContributionCount": 2,
+      "supersededEligibilityRevision": 1,
+      "currentEligibilityRevision": 2,
+      "replacementGeneration": 5,
+      "expectedPointerGeneration": 4,
+      "currentPointerGeneration": 5,
+      "replacementContributionCount": 2,
+      "allReplacementEligibilityReferencesCurrent": true,
+      "allReplacementOutcomesQualifiedFinalizedAndWatermarkMatched": true,
+      "originalGenerationRetained": true,
+      "laterAdminGeneration": 5,
+      "laterAdminInterests": 1,
+      "laterAdminExecutionMode": "hybrid_personalized",
+      "laterAdminServedCards": 6,
+      "laterAdminRetrievalMilliseconds": 117,
+      "laterAdminFallback": null,
+      "laterAdminShortfall": null,
+      "sources": "Two qualified standalone outcomes; no prior recommendation-request ancestry is expected.",
+      "limits": "One exact retained repair chain plus authorized current-pointer overview. Does not prove continuous zero violations or complete feat-464. Private lookup identities and source history omitted."
+    },
+    "homepageDecision": "Owner explicitly superseded removal instruction: preserve the published homepage recommendations block behind LaunchDarkly. Task-owned removal draft was discarded without publication."
+  },
+  "homepage": {
+    "at": "2026-09-22T02:06:18.116Z",
+    "canonicalStatus": "published",
+    "canonicalUpdatedAt": "2026-09-21T21:02:14.513Z",
+    "canonicalBlocks": 14,
+    "recommendationBlocks": [
+      {
+        "type": "homepageRecommendations",
+        "sectionKey": "watch-home-recommendations"
+      }
+    ],
+    "activeDrafts": 0,
+    "remainingBlocksHash": "87f0bc5651b9e9ec82f8656a9b506396e51eb647eaf2bf4d7fce0a47fad65cf7"
+  },
+  "localFixtureCleanup": {
+    "container": "codex-watch-r4m-pg",
+    "owner": "watch-budget-root-cause-20260922-r4m",
+    "state": "exited"
+  },
+  "remaining": [
+    "Historical selection budget delay and underlying WAL/storage cause remain unproven.",
+    "Sustained HTTP and complete semantic observations still required; the forty-minute window includes nineteen playback 503s during an automatic Redis update.",
+    "Authenticated overview, zero-current-pointer snapshot, matching lifecycle and repair traces now verified; feat-459 remains dependent on feat-464.",
+    "Datadog monitor/dashboard installation requires existing authorized write access; read access alone cannot install them.",
+    "Independent terminal browser and operational last-known-good fallback gates remain open; previously verified snapshot and original sixteen publication-fence proofs retain credit."
+  ]
+}

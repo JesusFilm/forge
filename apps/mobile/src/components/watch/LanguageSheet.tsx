@@ -18,9 +18,14 @@ const getSearchValues = (v: WatchVariant) => [
 ]
 const isSelectable = (v: WatchVariant) => !!v.hls
 
+export const DOWNLOADED_DUB_LABEL = "Downloaded"
+
 export type LanguageSheetProps = {
   variants: WatchVariant[]
   activeVariantSlug: string
+  /** The dub of the file on disk (null with no download), so the viewer can
+   *  see which one plays offline. Required, so a route cannot drop the mark. */
+  downloadedDubDocumentId: string | null
   onLanguageChange: (variantSlug: string) => void
   onClose: () => void
 }
@@ -28,6 +33,7 @@ export type LanguageSheetProps = {
 export function LanguageSheetContent({
   variants,
   activeVariantSlug,
+  downloadedDubDocumentId,
   onLanguageChange,
   onClose,
 }: LanguageSheetProps) {
@@ -38,6 +44,14 @@ export function LanguageSheetContent({
     },
     [onLanguageChange, onClose],
   )
+  const getStatusLabel = useCallback(
+    (v: WatchVariant) =>
+      downloadedDubDocumentId != null &&
+      v.documentId === downloadedDubDocumentId
+        ? DOWNLOADED_DUB_LABEL
+        : null,
+    [downloadedDubDocumentId],
+  )
 
   return (
     <SearchableListSheet
@@ -47,6 +61,7 @@ export function LanguageSheetContent({
       getKey={getKey}
       getPrimaryLabel={displayName}
       getSecondaryLabel={getSecondaryLabel}
+      getStatusLabel={getStatusLabel}
       getSearchValues={getSearchValues}
       isSelectable={isSelectable}
       onSelect={handleSelect}

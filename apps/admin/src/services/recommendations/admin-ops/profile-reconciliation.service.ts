@@ -185,7 +185,8 @@ export async function loadRecommendationProfileReconciliationOverview(
          AND run.expires_at > ${now}) AS "affectedRequests",
       (SELECT COUNT(*)
        FROM recommendation_personalization_decision decision
-       WHERE decision.lane = 'hybrid'
+       WHERE decision.lane = 'profile_challenger'
+         AND decision.execution_mode = 'hybrid_personalized'
          AND decision.reason_code IS NULL
          AND decision.created_at >= ${window.start}
          AND decision.created_at < ${window.end}

@@ -24,6 +24,13 @@ describe("Web evidence observer", () => {
   it("rejects user-derived dimensions at runtime", () => {
     expect(
       normalizeEvidenceObservation({
+        action: "facts",
+        outcome: "failed",
+        networkErrorCode: "private-address",
+      }),
+    ).toBeNull()
+    expect(
+      normalizeEvidenceObservation({
         action: "claim",
         outcome: "rejected",
         crawler: "Applebot",
@@ -35,6 +42,18 @@ describe("Web evidence observer", () => {
         outcome: "accepted",
       }),
     ).toBeNull()
+  })
+  it("emits the finite network code without raw error properties", () => {
+    const log = vi.fn()
+    const observe = createEvidenceObserver({ service: "web", log })
+    observe({
+      action: "facts",
+      outcome: "failed",
+      networkErrorCode: "ECONNRESET",
+    })
+    expect(log).toHaveBeenCalledExactlyOnceWith(
+      "event=recommendation.evidence source=web action=facts outcome=failed networkErrorCode=ECONNRESET",
+    )
   })
 
   it("logs through the production wrapper without collector configuration", () => {

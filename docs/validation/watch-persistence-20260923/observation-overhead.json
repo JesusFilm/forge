@@ -1,0 +1,43 @@
+{
+  "capturedAt": "2026-09-22T22:30:40.642Z",
+  "fixture": "four thousand real PostgreSQL SELECT 1 calls, ten concurrent, original adapter versus observed factory with complete request logging; JSON measured, stdout/UDP excluded",
+  "bytes": 948265,
+  "results": [
+    {
+      "variant": "baseline",
+      "calls": 1000,
+      "wallMs": 263.15226499999994,
+      "p50": 2.1109270000000606,
+      "p95": 3.4301940000000286,
+      "p99": 6.155795999999896,
+      "max": 8.529547999999977
+    },
+    {
+      "variant": "observed",
+      "calls": 1000,
+      "wallMs": 284.519183,
+      "p50": 2.223649999999907,
+      "p95": 3.204906999999821,
+      "p99": 4.437543000000005,
+      "max": 6.784711000000016
+    },
+    {
+      "variant": "observed",
+      "calls": 1000,
+      "wallMs": 245.33004299999993,
+      "p50": 1.888101000000006,
+      "p95": 2.746544999999969,
+      "p99": 3.8568769999999404,
+      "max": 5.123996000000034
+    },
+    {
+      "variant": "baseline",
+      "calls": 1000,
+      "wallMs": 197.77960800000005,
+      "p50": 1.6034009999998489,
+      "p95": 2.0894060000000536,
+      "p99": 2.5412129999999706,
+      "max": 5.020103000000063
+    }
+  ]
+}

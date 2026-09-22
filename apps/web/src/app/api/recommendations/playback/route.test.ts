@@ -313,21 +313,27 @@ describe("POST /watch/api/recommendations/playback", () => {
     },
   )
 
-  it.each(["context", "claim", "facts"])(
-    "rejects crawler %s before any Admin mutation",
-    async (action) => {
-      const response = await POST(
-        request(JSON.stringify({ action }), {
-          "user-agent": "Mozilla/5.0 (compatible; Applebot/0.1)",
-        }),
-      )
-      expect(response.status).toBe(403)
-      expect(await response.json()).toEqual({
-        error: "machine_evidence_rejected",
-      })
-      expect(mutate).not.toHaveBeenCalled()
-    },
-  )
+  describe.each([
+    "Mozilla/5.0 (compatible; Applebot/0.1)",
+    "meta-externalagent/1.1",
+    "Meta-ExternalFetcher/1.1",
+  ])("crawler %s", (userAgent) => {
+    it.each(["context", "claim", "facts"])(
+      "rejects %s before any Admin mutation",
+      async (action) => {
+        const response = await POST(
+          request(JSON.stringify({ action }), {
+            "user-agent": userAgent,
+          }),
+        )
+        expect(response.status).toBe(403)
+        expect(await response.json()).toEqual({
+          error: "machine_evidence_rejected",
+        })
+        expect(mutate).not.toHaveBeenCalled()
+      },
+    )
+  })
 
   describe.each(["claim", "facts"] as const)("%s domain errors", (action) => {
     const errors = [
@@ -432,6 +438,41 @@ describe("POST /watch/api/recommendations/playback", () => {
       expect(mutate).toHaveBeenCalledOnce()
     },
   )
+
+  it("preserves a fetch cause through the adapter while returning the same 503", async () => {
+    const log = vi.spyOn(console, "info").mockImplementation(() => {})
+    try {
+      mutate.mockRejectedValueOnce(
+        new TypeError("private upstream URL", {
+          cause: Object.assign(new Error("private address"), {
+            code: "ECONNRESET",
+          }),
+        }),
+      )
+      const response = await POST(
+        request(
+          JSON.stringify({
+            action: "facts",
+            contractVersion: "recommendation-evidence-v1",
+            capability: "episode-capability",
+            episodeId: "episode-1",
+            mediaId: "media-1",
+            events: [playbackEvent],
+          }),
+        ),
+      )
+      expect(response.status).toBe(503)
+      expect(await response.json()).toEqual({
+        error: "recommendations_unavailable",
+      })
+      expect(mutate).toHaveBeenCalledOnce()
+      expect(log).toHaveBeenCalledExactlyOnceWith(
+        "event=recommendation.evidence source=web action=facts outcome=failed reason=upstream_unavailable timeoutStage=none retryDisposition=retryable crawler=unknown httpStatus=503 networkErrorCode=ECONNRESET",
+      )
+    } finally {
+      log.mockRestore()
+    }
+  })
 
   it("does not classify arbitrary GraphQL messages as binding failures", async () => {
     mutate.mockRejectedValueOnce(

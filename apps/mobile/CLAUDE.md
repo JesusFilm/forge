@@ -807,6 +807,51 @@ view into that rect. The chrome rides in the host layer too, not in the route.
   channel), plus the pure `presentation.ts`, `suppression.ts`, `layout.ts`,
   `heroYield.ts` and `pictureInPicture.ts`. The host is a `<Stack>` SIBLING, so
   a context could not reach both halves.
+- **One identity predicate: `sameSessionContent` in `store.ts`.** A screen
+  that mounts onto the video already floating publishes its descriptor by
+  slug alone, because the group-scoped `WatchSessionProvider` holds no record
+  until its effect runs; the id follows a commit later. The store's
+  replacement, its merge, and the host's adoption all read that predicate, so
+  the remount keeps the session. The host also holds the last progress
+  identity it resolved for the same slug (`holdProgressIdentity` in
+  `PlaybackHost.tsx`), so the id-less render neither re-keys the progress
+  recorder nor disposes the recommendation recorder. Before 2026-09-22 every
+  expand ended the session as `replaced`, reloaded the video from 0:00, and
+  claimed a second recommendation episode.
+- **A dub change keeps the viewer's place (since 2026-09-22).** The host
+  classifies every source change before the swap applies: a completed
+  download (`isOfflineContainerSwap`) and a dub pick (`isDubSwap`, both in
+  `src/lib/playerSource.ts`) each capture the live clock and arm the
+  `sourceLoad` resume latch that quality swaps use, so the seek lands before
+  any play. The two differ in what they tell the adapter: a download is
+  `"same-content"` and keeps its QoE session, a dub is `"new-content"` and
+  re-keys it, because the audio asset changed. A different VIDEO takes
+  neither claim and starts from its own beginning. Before this, a dub change
+  restarted at 0:00 as a stated boundary of the offline-swap work.
+  **A download is one dub.** `resolvePlayerSource` plays the file on disk only
+  while the settled dub is the downloaded one (or unknown, or has no stream);
+  a pick of another language streams that dub, and subtitles follow the
+  source that plays (`playingOffline` in `app/watch/[slug].tsx`). A container
+  swap that also changes language is `"new-content"` to the adapter. Read the
+  file and its dub through ONE accessor, `committedCopyFor` in
+  `DownloadsProvider`: mid-swap the file on disk is the OLD copy while the
+  record already names the incoming dub, so reading `getRecord().dubDocumentId`
+  beside `committedPath` plays the old language under the new pill. A swap
+  from the download sheet sends the ACTIVE dub, so it can change language;
+  `swap` in `downloadLifecycle.ts` writes that dub on the record, and the
+  `swapFrom` snapshot keeps the old one for a revert. The language sheet
+  reads the same accessor to mark the dub on disk with a "Downloaded" line
+  (`getStatusLabel` on `SearchableListSheet`), so the mark and the audio
+  that plays offline can never name different languages. Every reader keys
+  the accessor on the RECORD's slug (`video.slug`, the download sheet's key).
+  An expand remounts the watch group with a fresh `WatchSessionProvider`, so
+  the dub the viewer picked lives only in the floating session: the provider
+  seeds its default from that session ahead of the download, the store's
+  merge keeps a known `languageSlug` across a slug-only re-start, and the
+  host holds adoption while a remount's first render names no dub, or the
+  expand would swap the stream back to the file and undo the pick. Records
+  written by a language re-download BEFORE this change still carry the old
+  dub id under the new file; no repair runs for them.
 - **`MiniPlayerWindow.tsx` is chrome, never a second video view.** It draws the
   controls, the drag, the ended/failed states and the accessibility surface over
   the frame the host animates. The drag node never takes the native driver

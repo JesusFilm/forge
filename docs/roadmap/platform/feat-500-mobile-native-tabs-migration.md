@@ -48,6 +48,8 @@ byte-identically.
    It sets `headerShown: true` at line 47, plus the header title, the colours
    and `headerShadowVisible`. NativeTabs has no header options, so the screen
    (`apps/mobile/app/(tabs)/watch.tsx`) must draw that header itself.
+   _Superseded 2026-09-21: the header is gone on both platforms; see the note
+   under section 4._
 6. `apps/mobile/src/components/library/SelectionActionBar.tsx:33-48` — borrows
    `tabBarPillShape` + `TabBarBackground`.
 7. `apps/mobile/src/hooks/useCategoryThumbnails.ts:49-73` — fires six
@@ -107,6 +109,11 @@ hidden.
 Render it in-screen rather than nesting a Stack. The header is a flat dark bar
 with a title and `headerShadowVisible: false`; reproducing it in the screen
 costs a few lines and avoids moving an 899-line file into `watch/index.tsx`.
+
+> **Superseded 2026-09-21.** The "Search" title was removed on both platforms.
+> `watch.tsx` draws no header, and the Android `Tabs.Screen` no longer sets
+> `headerShown`. The screen pads its container by `insets.top` instead, the
+> same shape `profile.tsx` and `library.tsx` use.
 
 ### 5. Retire the JS-only pieces on iOS
 

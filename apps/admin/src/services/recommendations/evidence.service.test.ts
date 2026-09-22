@@ -506,7 +506,17 @@ describe("RecommendationEvidenceService", () => {
     await expect(exhausted.service.record(validInput)).rejects.toMatchObject({
       code: "invalid_binding",
     })
-    expect(exhausted.prisma.$queryRaw.mock.calls[0]).toHaveLength(6)
+    expect(exhausted.prisma.$queryRaw).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        values: [
+          "request-1",
+          "jti-1",
+          validInput.events.length,
+          32,
+          new Date("2026-09-17T03:00:00.000Z"),
+        ],
+      }),
+    )
     expect(exhausted.prisma.$transaction).not.toHaveBeenCalled()
     // The SQL function owns one deterministic saturating rejection row; the
     // service must not append a fresh audit row after the cap is exhausted.

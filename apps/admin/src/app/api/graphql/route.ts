@@ -18,6 +18,7 @@ import { createYoga } from "graphql-yoga"
 import type { NextRequest } from "next/server"
 import { schema } from "@/graphql/schema"
 import { createContext } from "@/graphql/context"
+import { createGraphqlLogger } from "@/graphql/logger"
 import { armorPlugins } from "@/graphql/plugins/armor"
 import { introspectionPlugins } from "@/graphql/plugins/introspection"
 import { openTelemetryPlugin } from "@/graphql/plugins/opentelemetry"
@@ -51,6 +52,7 @@ const yoga = createYoga<NextAppRouteContext>({
   graphqlEndpoint: "/api/graphql",
   fetchAPI: { Response },
   context: ({ request }) => createContext({ request }),
+  logging: createGraphqlLogger(),
   plugins: [
     ...armorPlugins,
     ...introspectionPlugins,

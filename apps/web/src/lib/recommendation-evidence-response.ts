@@ -7,6 +7,29 @@ import {
 } from "./recommendation-evidence-observability"
 import { EVIDENCE_VOCABULARY } from "./recommendation-evidence-observability-contract"
 
+function networkErrorCode(
+  error: unknown,
+): NonNullable<RecommendationEvidenceObservation["networkErrorCode"]> {
+  try {
+    // Native fetch wraps Node/Undici errors in cause. Bound traversal even for
+    // malformed/cyclic errors, and never copy messages, URLs or arbitrary codes.
+    let current = error
+    for (let depth = 0; depth < 4; depth++) {
+      if (!current || typeof current !== "object") break
+      const record = current as { code?: unknown; cause?: unknown }
+      const code = record.code
+      const allowed = EVIDENCE_VOCABULARY.networkErrorCode.find(
+        (value) => value === code,
+      )
+      if (allowed) return allowed
+      current = record.cause
+    }
+  } catch {
+    // Reading a malformed diagnostic object must not change the HTTP response.
+  }
+  return "unknown"
+}
+
 export function observeEvidenceResponse(
   request: Request,
   action: RecommendationEvidenceObservation["action"],
@@ -77,6 +100,7 @@ export function observeEvidenceResponse(
             ? "idempotent_replay"
             : "none",
     crawler,
+    ...(status >= 500 ? { networkErrorCode: networkErrorCode(error) } : {}),
     ...(EVIDENCE_VOCABULARY.httpStatus.includes(
       status as RecommendationEvidenceObservation["httpStatus"] & number,
     )

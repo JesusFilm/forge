@@ -7,13 +7,16 @@
 //                      (max=5, connection timeout=60s via PrismaPg adapter)
 //                      so sync cannot starve read traffic.
 //
-// Both use the Next.js HMR-safe singleton pattern: dev reloads reuse the
-// existing client from `globalThis` instead of spawning new pools.
+// Next's API, RSC and SSR module caches can evaluate this file independently.
+// Reuse each client through globalThis in production as well as development
+// so those module graphs cannot multiply the configured pool budgets.
 //
 // Per Unit 2 of docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
 
 import { PrismaPg } from "@prisma/adapter-pg"
 import { Prisma, PrismaClient } from "@prisma/client"
+import { ObservedPool } from "@/db/observed-pool"
+import { timeRecommendationOperation } from "@/lib/recommendation-runtime-observation"
 import {
   prismaPgAdapterConfigForProfile,
   type PrismaPoolProfile,
@@ -77,7 +80,23 @@ const embeddingGuardExtension = Prisma.defineExtension((client) =>
   }),
 )
 
-function createPrismaClient(
+const runtimeObservationExtension = Prisma.defineExtension({
+  query: {
+    async $allOperations({ model, operation, args, query }) {
+      const data =
+        args && typeof args === "object" && "data" in args
+          ? args.data
+          : undefined
+      return timeRecommendationOperation(
+        `db.${model ?? "raw"}.${operation}`,
+        () => query(args),
+        Array.isArray(data) ? data.length : undefined,
+      )
+    },
+  },
+})
+
+export function createPrismaClient(
   profile: PrismaPoolProfile,
   options?: Omit<Prisma.PrismaClientOptions, "adapter" | "datasourceUrl">,
 ): PrismaClient {
@@ -85,11 +104,22 @@ function createPrismaClient(
     process.env.DATABASE_URL,
     profile,
   )
-  const adapter = new PrismaPg(adapterConfig.poolConfig, adapterConfig.options)
+  const metadata = new PrismaPg(adapterConfig.poolConfig, adapterConfig.options)
+  const adapter = {
+    adapterName: metadata.adapterName,
+    provider: "postgres" as const,
+    // A fresh owned pool on reconnect preserves $disconnect semantics without
+    // falling back to an unobserved pg.Pool inside the adapter factory.
+    connect: () =>
+      new PrismaPg(new ObservedPool(adapterConfig.poolConfig, profile), {
+        ...adapterConfig.options,
+        disposeExternalPool: true,
+      }).connect(),
+  }
 
-  return new PrismaClient({ ...options, adapter }).$extends(
-    embeddingGuardExtension,
-  ) as unknown as PrismaClient
+  return new PrismaClient({ ...options, adapter })
+    .$extends(embeddingGuardExtension)
+    .$extends(runtimeObservationExtension) as unknown as PrismaClient
 }
 
 /**
@@ -117,7 +147,5 @@ export const syncPrisma =
     log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
   })
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma
-  globalForPrisma.syncPrisma = syncPrisma
-}
+globalForPrisma.prisma = prisma
+globalForPrisma.syncPrisma = syncPrisma

@@ -295,75 +295,71 @@ export default function LibraryScreen() {
   )
 
   if (!isReady) {
-    return (
-      <View style={[layout.screenContainer, { paddingTop: insets.top }]}>
-        <Text style={[styles.title, typography.heading]}>Library</Text>
-      </View>
-    )
+    return <View style={[layout.screenContainer, { paddingTop: insets.top }]} />
   }
 
   const hasRecords = offlineRecords.length > 0
 
   return (
     <View style={[layout.screenContainer, { paddingTop: insets.top }]}>
-      <View style={styles.head}>
-        <View style={styles.headRow}>
-          {selecting ? (
-            <>
-              <Pressable
-                onPress={handleToggleSelectAll}
-                style={({ pressed }) => [
-                  styles.textPill,
-                  pressed && feedback.pressed,
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel={allSelected ? "Deselect all" : "Select all"}
-              >
-                <Text style={styles.textPillLabel}>
-                  {allSelected ? "Deselect All" : "Select All"}
-                </Text>
-              </Pressable>
-              <Text style={[styles.selectionCount, typography.body]}>
-                {selection.count} selected
-              </Text>
-              <Pressable
-                onPress={() => setSelectionState(exitSelection())}
-                style={({ pressed }) => [
-                  styles.textPill,
-                  pressed && feedback.pressed,
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel="Cancel selection"
-              >
-                <Text style={styles.textPillLabel}>Cancel</Text>
-              </Pressable>
-            </>
-          ) : (
-            <>
-              <Text style={[styles.title, typography.heading]}>Library</Text>
-              {hasRecords && (
+      {/* Selection and the hint both need records, so the whole head does. */}
+      {hasRecords && (
+        <View style={styles.head}>
+          <View style={styles.headRow}>
+            {selecting ? (
+              <>
                 <Pressable
-                  onPress={handleSelectPress}
+                  onPress={handleToggleSelectAll}
                   style={({ pressed }) => [
-                    styles.selectPill,
+                    styles.textPill,
                     pressed && feedback.pressed,
                   ]}
                   accessibilityRole="button"
-                  accessibilityLabel="Select downloads"
+                  accessibilityLabel={
+                    allSelected ? "Deselect all" : "Select all"
+                  }
                 >
-                  <Text style={styles.selectPillText}>Select</Text>
+                  <Text style={styles.textPillLabel}>
+                    {allSelected ? "Deselect All" : "Select All"}
+                  </Text>
                 </Pressable>
-              )}
-            </>
+                <Text style={[styles.selectionCount, typography.body]}>
+                  {selection.count} selected
+                </Text>
+                <Pressable
+                  onPress={() => setSelectionState(exitSelection())}
+                  style={({ pressed }) => [
+                    styles.textPill,
+                    pressed && feedback.pressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancel selection"
+                >
+                  <Text style={styles.textPillLabel}>Cancel</Text>
+                </Pressable>
+              </>
+            ) : (
+              <Pressable
+                onPress={handleSelectPress}
+                style={({ pressed }) => [
+                  styles.selectPill,
+                  pressed && feedback.pressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Select downloads"
+              >
+                <Text style={styles.selectPillText}>Select</Text>
+              </Pressable>
+            )}
+          </View>
+          <DownloadsSummary count={offlineRecords.length} />
+          {hintVisible && (
+            <Text style={[styles.hint, typography.caption]}>
+              Touch and hold a video to select
+            </Text>
           )}
         </View>
-        {hasRecords && <DownloadsSummary count={offlineRecords.length} />}
-        {hintVisible && (
-          <Text style={[styles.hint, typography.caption]}>
-            Touch and hold a video to select
-          </Text>
-        )}
-      </View>
+      )}
 
       {!hasRecords ? (
         <LibraryEmptyState />
@@ -462,11 +458,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 12,
   },
-  title: {
-    color: TEXT_PRIMARY,
-    fontFamily: "System",
-  },
   selectPill: {
+    // Alone in a space-between row, so push it to the trailing edge.
+    marginLeft: "auto",
     height: 34,
     paddingHorizontal: 16,
     borderRadius: 17,

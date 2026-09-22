@@ -112,3 +112,157 @@ for snapshot populations, concurrency-fence outcomes and receipt verification.
 The fresh production invariant is now evidenced. Keep this ticket in progress
 because its feat-464 transport acceptance dependency remains open; this audit
 does not enable ranking or satisfy feat-447's separate browser lifecycle gate.
+
+## Fresh audit and Admin evidence correction — September 21
+
+The [complete read-only snapshot](../../operations/watch-profile-audit-2026-09-21.md)
+at September 20 21:52:32.710 UTC checked 167,029 live current pointers with the
+unchanged canonical lineage predicate and found zero ineligible pointers. Bounded
+cursor fetches completed the full population without relaxing the five-second
+statement guard. The transaction was rolled back and its connection closed.
+
+The same investigation proved the Admin clean-hybrid count used an impossible
+lane value and omitted 3,508 actual hybrid decisions in the fixed review window.
+The correction counts `execution_mode = 'hybrid_personalized'` and preserves
+privacy suppression, expiry and window bounds. A real PostgreSQL regression
+distinguishes current execution from historic challenger and viewing-mode rows.
+PR #2353 deployed automatically to Admin and its worker as
+`6e02dd855af4053d9c9a7b032fe1ece7317cfc33`; the post-release bounded query still
+finds the 3,508 clean hybrid decisions. [Release verification](../../operations/watch-ticket-execution-2026-09-21.md)
+does not replace the separate Admin/browser lifecycle gate. Feat-464's remaining
+acceptance gates still prevent ticket closure.
+
+Later release monitoring found an additional concrete blocker: the 22:52:48 UTC
+worker heartbeat was unavailable after reconciliation transaction expiry at
+5,182–5,371 ms (limit 5,000 ms). The next 22:58:17 heartbeat completed. The exact
+affected-pointer scan performs full-population work despite its 100-result
+limit. Bounded direct production reads took 4,187 and 4,258 ms. JIT-off and
+materialized-query controls did not reliably fix the guard; reusing joined
+generation fields saved 0.4–0.7 seconds but did not prove complete transaction
+recovery or all-lineage parity. No candidate or setting was shipped.
+
+Build a representative sparse-invalid, roughly 167,000-pointer regression and
+reduce discovery work while preserving the canonical predicate, ordering,
+concurrency fences and five-second budget. The [execution record](../../operations/watch-ticket-execution-2026-09-21.md)
+contains exact timings and limits. The earlier zero-pointer snapshot remains
+valid for its timestamp, not a claim of continuous convergence or ticket closure.
+
+## Reconciliation transaction correction — September 21 continuation
+
+The full-scale PostgreSQL reproduction now fails on the original batch with
+`P2028` at 5,033 ms and passes with the batch lineage query at 1,664 ms. The
+correction shares canonical eligibility rules, materializes affected pointers
+before the ordered limit, and disables measured JIT compilation only inside the
+transaction. Its deadline, advisory lock, serving fences and dispatch bounds
+remain unchanged. Exact parameterized production read-only checks took
+1,397–1,520 ms; JIT was restored after each rollback. These are pre-deployment
+query diagnostics, not a deployed worker recovery claim.
+
+Seven real database tests include large-cohort discovery, concurrent reads/writes,
+lineage parity, active-run exclusions, ordering/batch limits and setting cleanup.
+The [durable explanation and rejected controls](../../solutions/performance-issues/profile-reconciliation-sparse-invalid-scan-20260921.md)
+record the causal evidence. Keep this ticket in progress through normal release,
+exact revision verification, a fresh invariant audit, sustained healthy worker
+batches, Admin lifecycle reconciliation and the dependent feat-464 gates.
+
+## September 21 deployed reconciliation correction
+
+PR [#2356](https://github.com/JesusFilm/forge/pull/2356) deployed automatically as
+`de752d60980b25ee11806f2c424770fc78027188` to Admin and the worker. The full-scale
+original batch expires at 5,033 ms; the corrected transaction passes in 1,664 ms
+with the same eligibility, five-second budget and publication fences. Real
+PostgreSQL parity, concurrency and rollback-setting checks pass, as do 7,281
+Admin unit tests and applicable CI.
+
+The [release record](../../operations/watch-closeout-release-2026-09-21.md)
+retains an initial one-ineligible-pointer audit, subsequent convergence to zero,
+and the completed two-hour observation. All 24 batches and their heartbeat steps
+complete without substantive errors, with 238 classification attempts and 14
+queued rebuilds. The final timed audit again finds one ineligible pointer;
+the 02:20:44 UTC recheck exhausts all 167,984 pointers and finds zero. Preserve
+both nonzero snapshots rather than claiming continuous zero violations.
+Keep this ticket in progress until its
+feat-464 dependency and authorized Admin gates are satisfied. Do not assign the
+separate historical selection timeouts to this correction: their sampled times
+fall between reconciliation batches.
+
+## September 21 module-reuse release audit
+
+The [later release record](../../operations/watch-startup-readiness-2026-09-21.md)
+verifies Admin `850cd7b5b582c327deac8fa50a9e5ebd85abd438` after the separately
+proven server-module/client reuse fix. At 05:40:31.898 UTC, a bounded read-only
+canonical audit finds 168,701 current pointers and zero ineligible in 1,509 ms.
+Preserve the earlier nonzero snapshots and convergence history. Feat-464 and the
+matching authorized Admin gate remain unmet, so status stays in progress.
+
+The [subsequent diagnostic release](../../operations/watch-transport-cause-release-2026-09-21.md)
+rechecks the complete canonical predicate at 06:23:30 UTC on `d0c749b9…`:
+168,834 current pointers, zero ineligible, 1,502 ms. The new worker's observed
+batch completes without failures. These snapshot/batch checks preserve the
+earlier convergence evidence; feat-464 and the authorized Admin gate still
+prevent closure.
+
+## September 22 sustained production verification
+
+The [September 22 production verification](../../operations/watch-production-verification-2026-09-22.md)
+reconciles 153 completed batch and heartbeat steps, 665 classifications and 86
+queued rebuilds, with zero classification/dispatch/exhaustion failures. Completion
+gaps range from 305.697 to 411.984 seconds; do not claim exact five-minute spacing.
+At 19:58:20 UTC on September 21, the complete canonical audit finds zero
+ineligible among 171,710 current pointers. This is a fresh passing snapshot,
+not continuous zero or a replacement for authorized Admin evidence. Feat-464 and
+the matching Admin gate still prevent closure.
+
+## September 22 later canonical audit
+
+The [runtime release verification](../../operations/watch-runtime-release-verification-2026-09-22.md)
+records a fresh exact canonical aggregate query at 21:45:11 UTC with zero
+affected current pointers, invalid contributions, rebuild candidates, backlog
+or stale claims. The read-only query took 8.224 seconds; this is not the earlier
+optimized worker batch or an authenticated Admin UI check. Natural projection
+fences now provide additional publication-integrity evidence. Feat-464 and the
+matching Admin evidence still prevent closure; status stays in progress.
+
+The 23:29:43 repeat on `92a597ee…` again reports zero ineligible generations,
+affected pointers/contributions, rebuild candidates, backlog and stale claims.
+Thirteen replacement publications completed in the 21:55–23:29 window. This
+fresh canonical query took 6.696 seconds and remains database evidence; the
+authenticated Admin acceptance and feat-464 dependency are still open.
+
+The final audit sequence subsequently records one affected pointer/contribution
+at 23:56:26, then zero in a consistent read-only repeatable-read/server-clock
+snapshot completed September 22 00:00:01. Keep both observations and the earlier
+diagnostic's stale-clock limitation; no exact pointer repair or continuous-zero
+claim is established. Twenty replacement publications and 183 clean hybrid
+requests are present since 21:55. The two-hour durable workflow audit has 24
+completed batches/heartbeats, 120 classifications and 19 queued rebuilds with
+zero recorded classification or dispatch failures; completion gaps reach
+317.706 seconds. See the [release record](../../operations/watch-runtime-release-verification-2026-09-22.md).
+Authenticated Admin acceptance and feat-464 still prevent closure.
+
+## September 22 authorized Admin and matching repair verified
+
+The owner completed normal Admin sign-in. At 02:06:06 UTC its permission-checked
+Recommendations panel reports a clean current-pointer audit, zero affected
+pointers, zero ineligible contributions and zero rebuild backlog. A bounded
+exact-row read then reconciles a retained eligibility repair: immutable
+generation 4 contains a superseded revision-1 reference; the rebuild publishes
+generation 5 with current eligible revision-2 references and advances the
+expected pointer from 4 to 5. Both qualified standalone outcomes remain
+finalized with exact fact watermarks. The original generation remains retained.
+
+The matching later authorized Admin request shows generation 5, one durable
+interest, six Spanish hybrid cards, 117 ms retrieval and no fallback/shortfall.
+Standalone outcomes correctly have no prior recommendation-request ancestry.
+The [release evidence](../../operations/watch-contextual-distance-release-2026-09-22.md)
+credits the aggregate and matching repair gates without claiming continuous zero
+violations. **Feat-464 is now the remaining dependency preventing this ticket's
+closure**; do not continue describing Admin login or matching repair as missing.
+
+## September 22 bounded workload and production follow-up
+
+The [September 22 follow-up](../../operations/watch-budget-followup-2026-09-22.md) again verifies the authorized Admin current-pointer audit: zero affected pointers, ineligible contributions and rebuild backlog. The exact repaired-generation trace remains verified under the preceding release record. These passed checks retain credit; the still-open feat-464 dependency prevents completion.
+
+## September 22 internal continuation
+
+The internal continuation again verifies zero affected pointers, ineligible contributions and rebuild backlog in authenticated Admin, after 24 successful reconciliation batches. Its own repair and current-pointer proofs retain credit. The feat-464 dependency still prevents completion. See the [internal verification](../../operations/watch-budget-followup-2026-09-22.md#internal-continuation-workload-volume-and-reconciled-outcomes).

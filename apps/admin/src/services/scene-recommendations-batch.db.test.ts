@@ -192,5 +192,28 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       })
       expect(result.map((row) => row.video_id)).toEqual(["a", "b", "c"])
     })
+
+    it("evaluates cosine distance once per eligible chunk and seed", async () => {
+      await prisma.$transaction(async (tx) => {
+        // This local fixture uses PostgreSQL's per-transaction function counts,
+        // so the assertion measures execution rather than SQL text or timings.
+        await tx.$executeRaw`SET LOCAL track_functions = 'all'`
+        const result = await queryScenesSimilarMany(
+          tx,
+          ["[0.8,0.2,0]", "[0,1,0]"],
+          "en",
+          ["seed", "parent"],
+          6,
+        )
+        const counts = await tx.$queryRaw<Array<{ calls: number }>>`
+          SELECT calls::integer AS calls
+          FROM pg_stat_xact_user_functions
+          WHERE funcid = 'cosine_distance(vector, vector)'::regprocedure
+        `
+        expect(result.map((row) => row.video_id)).toEqual(["a", "b", "c"])
+        // Four eligible chunks (two for a, one each for b/c), two seeds.
+        expect(counts).toEqual([{ calls: 8 }])
+      })
+    })
   },
 )

@@ -1,0 +1,443 @@
+{
+  "scope": "Supported timing only; does not establish or fix the production selection timeout cause. All workload mutations use task-owned local PostgreSQL and Redis.",
+  "baseRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+  "tests": {
+    "adminPassed": 7305,
+    "adminSkipped": 304,
+    "adminTodo": 1,
+    "realPostgresEntryPassed": 17,
+    "newTimingUnitPassed": 12,
+    "newTimingDatabasePassed": 3,
+    "typecheck": "passed",
+    "scopedEslint": "passed",
+    "productionBuild": "passed"
+  },
+  "functionComparison": {
+    "scope": "Owned PostgreSQL, actual Prisma adapter and budget function, warm existing budgets at attempts=2, unique third submission per input; sequential round order alternates; no production writes",
+    "poolMax": 10,
+    "successfulCalls": 2000,
+    "rounds": [
+      {
+        "round": 0,
+        "name": "original",
+        "n": 200,
+        "min": 1.3294060000000627,
+        "p50": 1.8726930000000266,
+        "p95": 5.690532999999959,
+        "max": 9.238916999999901,
+        "mean": 2.372480555000003
+      },
+      {
+        "round": 0,
+        "name": "timed",
+        "n": 200,
+        "min": 1.4270440000000235,
+        "p50": 1.7343210000003637,
+        "p95": 2.0013739999999416,
+        "max": 3.0291080000001784,
+        "mean": 1.7506767250000133
+      },
+      {
+        "round": 1,
+        "name": "timed",
+        "n": 200,
+        "min": 1.4281670000000304,
+        "p50": 1.8104730000000018,
+        "p95": 2.422885999999835,
+        "max": 6.127404000000297,
+        "mean": 1.9101399449999985
+      },
+      {
+        "round": 1,
+        "name": "original",
+        "n": 200,
+        "min": 1.1874910000001364,
+        "p50": 1.4693919999999707,
+        "p95": 1.8272859999997308,
+        "max": 2.68602299999975,
+        "mean": 1.5048593200000073
+      },
+      {
+        "round": 2,
+        "name": "original",
+        "n": 200,
+        "min": 1.2225539999999455,
+        "p50": 1.4594200000001365,
+        "p95": 1.801640000000134,
+        "max": 2.268044999999802,
+        "mean": 1.4847560449999992
+      },
+      {
+        "round": 2,
+        "name": "timed",
+        "n": 200,
+        "min": 1.3304450000000543,
+        "p50": 1.5302489999999125,
+        "p95": 1.8171330000000125,
+        "max": 4.592935000000125,
+        "mean": 1.574000840000001
+      },
+      {
+        "round": 3,
+        "name": "timed",
+        "n": 200,
+        "min": 1.4048460000003615,
+        "p50": 1.7333619999999428,
+        "p95": 2.145745000000261,
+        "max": 2.455427999999756,
+        "mean": 1.7757684050000102
+      },
+      {
+        "round": 3,
+        "name": "original",
+        "n": 200,
+        "min": 1.1617810000002464,
+        "p50": 1.3780980000001364,
+        "p95": 1.6624459999993633,
+        "max": 2.3956669999997757,
+        "mean": 1.3997139399999856
+      },
+      {
+        "round": 4,
+        "name": "original",
+        "n": 200,
+        "min": 1.083545000000413,
+        "p50": 1.3537780000006023,
+        "p95": 1.5976099999998041,
+        "max": 1.9221059999999852,
+        "mean": 1.3651320799999758
+      },
+      {
+        "round": 4,
+        "name": "timed",
+        "n": 200,
+        "min": 1.2098699999996825,
+        "p50": 1.4504750000005515,
+        "p95": 1.8645139999998719,
+        "max": 3.098669000000882,
+        "mean": 1.4936811699999861
+      }
+    ]
+  },
+  "nextBuildWorkload": {
+    "description": "Three rounds, each ten concurrent 206-video catalog requests, five real selection mutations and one real playback mutation; owned representative catalog and real PostgreSQL adapter. Unchanged 700 ms selection and 3000 ms playback bounds.",
+    "rounds": [
+      {
+        "trial": 0,
+        "catalogs": [
+          {
+            "ms": 131.96,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          },
+          {
+            "ms": 133.25,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          },
+          {
+            "ms": 162.25,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          },
+          {
+            "ms": 264.9,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          },
+          {
+            "ms": 189.04,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          },
+          {
+            "ms": 190.51,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          },
+          {
+            "ms": 200.78,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          },
+          {
+            "ms": 212.01,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          },
+          {
+            "ms": 320.91,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          },
+          {
+            "ms": 231.57,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          }
+        ],
+        "selections": [
+          {
+            "ms": 329.09,
+            "httpStatus": 200,
+            "accepted": true,
+            "errors": null
+          },
+          {
+            "ms": 316.68,
+            "httpStatus": 200,
+            "accepted": true,
+            "errors": null
+          },
+          {
+            "ms": 324.99,
+            "httpStatus": 200,
+            "accepted": true,
+            "errors": null
+          },
+          {
+            "ms": 340.6,
+            "httpStatus": 200,
+            "accepted": true,
+            "errors": null
+          },
+          {
+            "ms": 323.1,
+            "httpStatus": 200,
+            "accepted": true,
+            "errors": null
+          }
+        ],
+        "playback": {
+          "ms": 338.76,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        }
+      },
+      {
+        "trial": 1,
+        "catalogs": [
+          {
+            "ms": 105.26,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          },
+          {
+            "ms": 105.96,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          },
+          {
+            "ms": 106.71,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          },
+          {
+            "ms": 118.09,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          },
+          {
+            "ms": 119.0,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          },
+          {
+            "ms": 129.7,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          },
+          {
+            "ms": 146.9,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          },
+          {
+            "ms": 156.66,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          },
+          {
+            "ms": 174.76,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          },
+          {
+            "ms": 183.17,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          }
+        ],
+        "selections": [
+          {
+            "ms": 238.96,
+            "httpStatus": 200,
+            "accepted": true,
+            "errors": null
+          },
+          {
+            "ms": 257.18,
+            "httpStatus": 200,
+            "accepted": true,
+            "errors": null
+          },
+          {
+            "ms": 245.83,
+            "httpStatus": 200,
+            "accepted": true,
+            "errors": null
+          },
+          {
+            "ms": 266.05,
+            "httpStatus": 200,
+            "accepted": true,
+            "errors": null
+          },
+          {
+            "ms": 244.01,
+            "httpStatus": 200,
+            "accepted": true,
+            "errors": null
+          }
+        ],
+        "playback": {
+          "ms": 264.22,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        }
+      },
+      {
+        "trial": 2,
+        "catalogs": [
+          {
+            "ms": 94.43,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          },
+          {
+            "ms": 92.27,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          },
+          {
+            "ms": 106.53,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          },
+          {
+            "ms": 107.22,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          },
+          {
+            "ms": 146.06,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          },
+          {
+            "ms": 133.01,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          },
+          {
+            "ms": 158.03,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          },
+          {
+            "ms": 165.76,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          },
+          {
+            "ms": 172.82,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          },
+          {
+            "ms": 180.33,
+            "httpStatus": 200,
+            "errors": 0,
+            "videos": 206
+          }
+        ],
+        "selections": [
+          {
+            "ms": 237.13,
+            "httpStatus": 200,
+            "accepted": true,
+            "errors": null
+          },
+          {
+            "ms": 255.19,
+            "httpStatus": 200,
+            "accepted": true,
+            "errors": null
+          },
+          {
+            "ms": 243.06,
+            "httpStatus": 200,
+            "accepted": true,
+            "errors": null
+          },
+          {
+            "ms": 237.76,
+            "httpStatus": 200,
+            "accepted": true,
+            "errors": null
+          },
+          {
+            "ms": 241.26,
+            "httpStatus": 200,
+            "accepted": true,
+            "errors": null
+          }
+        ],
+        "playback": {
+          "ms": 258.96,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        }
+      }
+    ]
+  },
+  "limits": [
+    "Comparative function rounds alternate order; cold/warm and ordering effects remain visible.",
+    "Full-build measurements are independent local runs, not a controlled claim of speedup or proof of production recovery.",
+    "Server clocks exclude implicit commit; the client remainder is not specifically WAL wait.",
+    "Slow completed-call events are not all-request or HTTP denominators.",
+    "No production diagnostic setting was changed."
+  ]
+}

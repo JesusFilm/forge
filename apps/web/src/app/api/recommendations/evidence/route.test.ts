@@ -89,9 +89,13 @@ describe("POST /watch/api/recommendations/evidence", () => {
     })
   })
 
-  it("rejects crawler evidence before any Admin mutation", async () => {
+  it.each([
+    "Applebot/0.1",
+    "meta-externalagent/1.1",
+    "Meta-ExternalFetcher/1.1",
+  ])("rejects crawler %s before any Admin mutation", async (userAgent) => {
     const crawlerRequest = request(JSON.stringify(body))
-    crawlerRequest.headers.set("user-agent", "Applebot/0.1")
+    crawlerRequest.headers.set("user-agent", userAgent)
     const response = await POST(crawlerRequest)
     expect(response.status).toBe(403)
     expect(await response.json()).toEqual({

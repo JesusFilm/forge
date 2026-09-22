@@ -7,7 +7,7 @@ problem_type: architecture_pattern
 component: frontend_stimulus
 severity: medium
 applies_when:
-  - "An admin-authored Experience MediaCollectionBlock item has null titleOverride/labelOverride/imageUrl/imageOverrideUrl (under-curated) but carries a resolvable coreId"
+  - "An admin-authored Experience MediaCollectionBlock item has null titleOverride/labelOverride/imageUrl (under-curated) but carries a resolvable coreId"
   - "A client-owned carousel/hero greedily scans ALL of its input video pool for eligible slides (e.g. by label), so feeding it merged config+hydration videos would let curated hydration content leak into a surface it must never drive"
   - "A hook needs a transient-fetch failure to reuse last-known-good state instead of downgrading already-hydrated UI, resetting a stateful pager, or poisoning a persisted snapshot"
   - "A persisted cold-launch snapshot mixes two video sets with different downstream fates (config-model input vs. hydration-only) and must not let one leak into the other on rehydrate"
@@ -77,12 +77,17 @@ const title =
   item.titleOverride || item.labelOverride || hydratedTitle || slug
 ...
 const imageUrl =
-  rewriteSeedPosterUrl(item.imageOverrideUrl) ??
   item.imageUrl ??
   hydratedImage ??
   muxThumbnailFromPlaybackId(item.muxPlaybackId) ??
   null
 ```
+
+The chain has since lost its head: it opened with
+`rewriteSeedPosterUrl(item.imageOverrideUrl)` when this was written, and both
+that helper and the `imageOverrideUrl` field are gone from `apps/mobile`. The
+additive shape this doc is about is unchanged — the hydrated image still sits
+behind the authored one and ahead of the mux thumbnail.
 
 This is deliberately additive, not TV's drop-on-miss behavior: mobile's
 working shelves carry inline overrides but no entry in any local video index
@@ -407,6 +412,17 @@ paint.
   new set as a _separate_ field, never merge it into the existing array —
   a version bump makes an old snapshot fail the parse gate cleanly instead of
   silently misinterpreting a missing field as "already merged."
+  **Scope limit: that holds for a CACHE**, where a failed gate costs one
+  re-fetch. This snapshot is only the first paint and the live fetch replaces
+  it in seconds, so a version miss degrades to the pre-snapshot spinner. A
+  persisted record that POINTS AT user data the app cannot re-create takes the
+  opposite rule. `parseOfflineRecord` drops any record whose version does not
+  match (`apps/mobile/src/lib/offlineManifest.ts:146`), and that record is the
+  only structure holding a downloaded file's committed path, so a bump there
+  erases every download on every device and orphans the bytes. Widen that
+  shape with a nullable field whose null reading is the previous behaviour —
+  see
+  `docs/solutions/logic-errors/download-is-one-dub-identity-travels-with-the-file.md`.
 - Any top-up/enrichment fetch layered on top of an existing required fetch:
   give it its own timeout strictly shorter than the required fetch's
   deadline, and make it degrade (never throw) to a documented, logged

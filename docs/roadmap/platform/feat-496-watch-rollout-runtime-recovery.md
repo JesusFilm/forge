@@ -171,8 +171,9 @@ fix. Details and exact cohort denominators are in the operations report and
 - No deadline inflation, ambiguous mutation retries, weaker atomicity or new
   public API shape. Preserve profile identity, language eligibility, six-card
   profile-first fill, history, capabilities and existing rate limits.
-- The authored English Homepage Recommendations Block stays removed per owner
-  instruction. `forge.watch.homepageRecommendations` stays default off. Production
+- Preserve the authored English Homepage Recommendations Block behind the flag,
+  per the owner's September 22 instruction. This supersedes the earlier removal
+  hold. `forge.watch.homepageRecommendations` stays default off. Production
   targeting requires an LD server SDK key and authored block; do not substitute
   blanket enablement. Activation/curation ownership remains feat-487/feat-488.
 - This recovery work changes Web and shared Admin runtime only. No mobile/TV
@@ -301,6 +302,20 @@ mutation continuing for 1,710 ms. This is still unresolved.
 
 ## Sustained corpus review — September 21
 
+Follow-up implementation adds a bounded Web delivery outcome event for both
+delivery handlers. It distinguishes HTTP failures from HTTP 200 timeout envelopes
+and records the final card count plus the upstream result before contextual
+recovery. [The event contract and verification procedure](../../operations/watch-delivery-outcome-observation-2026-09-21.md)
+document privacy boundaries, ingestion reconciliation and browser-receipt limits.
+Local validation: 54 focused tests; the full Web suite, lint and typecheck passed.
+PR #2352 deployed automatically to Web as
+`4e31f822781f44df06e91c8194142a6c4b51646a`, verified in the running service.
+The first identical revision/window comparison reconciled 22 indexed delivery
+events to 22 primary HTTP requests, distinguishing a coverage fallback from
+timeout fallbacks. [Extended release observations](../../operations/watch-ticket-execution-2026-09-21.md)
+record population and window limits. This is an observability correction, not a
+selection latency fix; the ticket stays in progress.
+
 The read-only [64-hour 35-minute production review](../../operations/watch-recommendation-corpus-review-2026-09-21.md)
 keeps this ticket in progress. From September 18 04:15 through September 20 20:50
 UTC, primary Web request metrics contain 256 selection HTTP 200, 13 HTTP 400 and
@@ -322,3 +337,294 @@ orderings and 3,508 hybrid personalized deliveries. Current Admin/worker run
 `964c1e3cde7ecd2ea1f3253817770527213ac11f`. These are reviewed identities, not a new
 runtime fix. Remaining field hydration errors are tracked separately in
 [feat-523](feat-523-watch-field-hydration-mismatch-attribution.md).
+
+## September 21 closeout continuation
+
+The [latest release investigation](../../operations/watch-closeout-release-2026-09-21.md)
+separates the deployed reconciliation scan correction from this ticket's remaining
+selection cause. Historical scheduler heartbeats reject reconciliation overlap
+for the sampled 03:40, 03:45 and 06:26 failures. The 06:26 trace includes several
+slow reads, a 406.9 ms capability call and application gaps; neither a single
+WAL-sync sample nor a healthy current pool establishes the complete cause.
+
+Current bounded wait sampling sees real catalog/database activity and transient
+I/O waits, without an observed blocker, while correlated browser selections
+succeed. Query age is not wait duration and this is not a pool-acquisition trace.
+No additional selection fix, increased deadline or ambiguous retry is justified.
+HTTP failures, final semantic envelopes and browser response handling remain
+separate populations. Keep this ticket in progress.
+
+Retained PostgreSQL checkpoint records provide no direct overlap for the last
+failure: the previous checkpoint ran 06:24:37.751–06:24:45.857 UTC and the next
+started 06:29:37.647, surrounding the 06:26:02.748 selection failure. Use the
+PostgreSQL timestamp inside each record; Railway sometimes assigns starting and
+completion records the same collector timestamp. This negative result does not
+exclude independent WAL, file-I/O, pool or application stalls.
+
+## September 21 startup reproduction and scoped correction
+
+The [startup investigation](../../operations/watch-startup-readiness-2026-09-21.md)
+records two new six-card HTTP 200 `delivery_timeout` envelopes at 03:11 UTC,
+coincident with Admin startup. There are no selection 503s in that fixed window;
+keep these populations separate. A local production-build CPU profile identifies
+Next's unawaited background route preloader competing with the first GraphQL
+requests after health already returns 200.
+
+Five matched first selections take 926–949 ms with original readiness and
+307–402 ms when readiness awaits the existing preload promise and GraphQL
+initialization. Twenty delivery probes serve six cards without fallback. The
+candidate uses a pinned Next patch; it preserves the 700 ms caller budget,
+transaction/rate-limit guarantees and normal route preloading. All 7,286 Admin
+unit tests pass. PR #2362 merged as `1cb15d6fc2b5cb0387e23b02afc24a05d4c1acaa`;
+Railway and independent SSH reads confirm that revision on Admin and its worker.
+See the release section of the linked investigation for exact deployment IDs.
+
+Keep this ticket in progress. A first editor visit still delays concurrent
+GraphQL by roughly 0.8–0.9 seconds on both controls, and the historical
+capability-budget stall is not fully attributed. Neither the startup correction
+nor a later short healthy window proves complete recovery. The
+[durable learning](../../solutions/performance-issues/next-background-preload-can-outlive-readiness.md)
+records rejected warming/disabled-preload controls and the remaining SSR work.
+
+## September 21 server module reuse continuation
+
+The same [investigation](../../operations/watch-startup-readiness-2026-09-21.md)
+now proves the remaining local first-editor interference: separate server module
+graphs construct three main and three sync Prisma clients and initialize bundled
+Mastra copies. Cache the production clients globally while keeping separate
+10/5 limits, and externalize only Mastra core/memory through Node's cache.
+Five actual editor-concurrent selections improve from 854–960 ms to 472–552 ms,
+with one main/one sync client, accepted receipts and no GraphQL errors. A new
+production module-cache regression fails before the fix; all 7,288 Admin tests
+pass afterward. The final build without counters passes 25 simultaneous-selection
+checks during cold editor visits at 509–579 ms and 20 six-card deliveries without
+fallback. Lint, typecheck, build and sequential Compound Engineering review pass.
+PR #2363 merged as `850cd7b5b582c327deac8fa50a9e5ebd85abd438` after all
+required CI checks, including 113 PostgreSQL and two Redis checks. Railway and
+independent SSH verification confirm that exact Admin revision and built
+core/memory externalization; see the linked release record for deployment IDs
+and the worker/post-deployment observation.
+
+Keep this ticket in progress. Historical capability-budget/WAL/pool latency is
+not fully attributed. A newly observed playback HTTP 503 at 05:07:25 UTC has an
+upstream `fetch failed` after 330 ms, separately from selection timeouts and
+semantic delivery fallbacks. No larger deadline or ambiguous retry is added.
+
+The next Admin handover also records a fast playback 503 at 05:40:18 UTC
+(159 ms total, 154 ms upstream fetch failure). A bounded optional network-code
+observation was subsequently deployed in PR #2364 to distinguish
+socket/refusal/DNS causes in natural failures; this is not a latency fix. The verified post-module window
+05:41–05:49 has 68 reconciled delivery envelopes, zero semantic timeouts, two
+successful selections and 224 playback requests without 5xx. Its small size does
+not establish recovery or explain the historical capability-budget wait.
+
+The [diagnostic release record](../../operations/watch-transport-cause-release-2026-09-21.md)
+verifies exact revision `d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf` on Admin,
+worker and Web, including the field in Web's compiled playback route. It retains
+separate HTTP/envelope populations and collector discrepancies. Keep the
+capability-budget and transport cause questions open; installation of a
+diagnostic is not proof that the remaining failures are fixed.
+
+## September 22 sustained production verification
+
+The [September 22 sustained production check](../../operations/watch-production-verification-2026-09-22.md)
+finds a new selection HTTP 503 at 08:37:29 UTC on September 21:
+trace `6ab0ecc9000000002cc67b5b00886e66`, Web 706.20 ms, Admin resolver
+759.40 ms, capability-budget call 701.12 ms (adapter SQL 697.29 ms). Existing
+loop/GC metrics do not explain the whole budget delay; native pool, database
+execution/lock/WAL and scheduling remain distinct.
+
+A separate 12:49–12:50 playback burst contains 63 HTTP 503s, a PostgreSQL 53100
+shared-memory error, 206 repeated catalog error logs, a measured 38.55-second
+event-loop delay, and one episode-lock exhaustion. Error-handling amplification
+has a subsequent isolated reproduction: pinned Yoga/Next plus the deployed
+source-map structure stalls for 10.86–11.46 seconds over 206 errors; preserving
+the logs as existing stack strings takes 36–39 ms. This establishes a local
+formatting mechanism, not full production-build attribution or a shipped fix.
+The larger corpus has
+70 selection 200s, four 400s and one 503. Both collectors observe zero semantic
+timeouts among 4,280 delivery 200s, but three primary 200s remain unmatched.
+Keep this ticket open; no larger deadline, ambiguous retry or speculative
+production setting change is justified.
+
+## September 22 error-amplification correction
+
+The [actual-build reproduction](../../operations/watch-error-formatting-recovery-2026-09-22.md)
+now establishes a complete error-handling interference path: the catalog failure
+fans out through Yoga and Next repeatedly inspects source maps, delaying unrelated
+real mutations. Production GraphQL logging now uses native Error inspection while
+retaining every error, masking, severity, causes and normal log forwarding.
+Twenty fixed-build selections acknowledge in 135–208 ms during 206 catalog errors,
+versus five control selections around 75.8 seconds. The separate control HTTP 408
+is retained. All 7,293 Admin tests, lint, typecheck and build pass.
+
+Keep this ticket in progress until exact automatic deployment and sustained
+observations pass. The initiating shared-memory failure and separate 701 ms
+capability-budget call still require independent investigation; neither is closed
+by the logging correction.
+
+## September 22 catalog shared-memory correction
+
+PR #2369 merged the error-inspection correction as
+`9492f01e92572777def7432d65b73f9910410fc4`; automatic release verification
+remains separate from merge. The [catalog investigation](../../operations/watch-catalog-memory-recovery-2026-09-22.md)
+also reproduces the initiating SQLSTATE 53100 with concurrent reads. The Mux
+playback loader's nested `take: 5` transfers the entire eligible dubbed catalog
+and can parallel-hash the Mux table. A bounded scalar LATERAL projection uses
+existing indexes, preserves playback choices and removes that hash plan.
+Actual Prisma calls improve from 20/40 shared-memory failures to 40/40 successes
+in 32–83 ms. In the actual Next build, 30 simultaneous-workload catalog reads
+have no GraphQL errors; all 15 concurrent selections acknowledge in 239–330 ms.
+Real PostgreSQL semantics/cardinality regressions and all 7,293 Admin tests pass.
+
+Keep status in progress until the exact automatic deployments and sustained
+production evidence are recorded. The separate capability-budget delay remains
+unattributed. Another task restored the homepage pilot in PR #2370; this task
+received the user's instruction to keep it removed. The single-block rollback
+requires an authenticated publishing connection; no authored-content or flag
+change has yet been made by this task.
+
+## September 22 exact runtime release and independent wait evidence
+
+PR #2371 merged as `ce421561ee9bcf89991dea5a060a656e45c3434b`; Admin and
+worker now independently verify that exact revision and both compiled fixes.
+The [release verification](../../operations/watch-runtime-release-verification-2026-09-22.md)
+records the indexed final production query at 9.982 ms for 206 rows, the initial
+logger-only HTTP and semantic populations, and the remaining acceptance gates.
+Current production PostgreSQL has a 64,000,000-byte shared-memory mount, which
+supports the bounded local allocation reproduction; historical concurrency
+remains unknown. No memory limit, deadline or durability setting was changed.
+
+The failed selection's persisted budget transaction timestamp is near the start
+of its 697 ms SQL span, arguing against assigning the whole call to native pool
+acquisition. A later read-only sample observes a 264.884 ms-old budget statement
+in `WalSync`; that is query age, not measured total WAL-wait duration, and does
+not establish the full incident cause. Keep this independent question open and
+do not describe the short healthy release window as complete recovery.
+
+## September 22 budget timing diagnostic
+
+The separate 701 ms capability-budget call remains unattributed. The supported
+single-statement diagnostic now brackets one function invocation with server
+clocks and compares it with the complete monotonic client call. Slow completed
+calls emit bounded, identifier-free timings. The remainder includes possible
+pool, planning, commit, transport and scheduling time; it is not labelled WAL
+duration. No function, commit boundary, deadline, retry or durability setting
+changes. See the [measurement guidance](../../solutions/best-practices/separate-budget-function-time-from-driver-latency-20260922.md).
+
+All 7,305 Admin tests and 17 real PostgreSQL tests pass, including concurrent
+budgets, independent durability and injected local server/client delay checks.
+The 2,000-call comparison preserves every charge with approximately 0.07–0.36 ms
+warm median overhead. An actual Next build accepts all 15 concurrent selections
+in 237–341 ms and all three playback mutations in 259–339 ms during 30 concurrent
+catalog requests. [Validation artifact](../../validation/watch-budget-timing-20260922/results.json)
+retains individual rounds and their limits. This is a diagnostic change, not a
+proven fix for the remaining selection delay. Exact deployment verification and
+naturally slow-call attribution remain required; keep status in progress.
+
+## September 22 diagnostic release and natural WAL evidence
+
+PR #2374 is independently verified on Admin and worker at
+`92a597ee03074bf4d79b0eb21db4499046ecd09f`, including the compiled diagnostic
+and both preceding fixes. Bounded read-only captures now correlate 212–312 ms
+budget calls with near-zero measured function execution, WAL sync/write waits,
+and database-volume I/O pressure despite little nearby write traffic. A final
+254 ms call repeats that pattern. No sampled row/advisory blocker is present.
+Separate 406–1,708 ms calls lack simultaneous server-wait evidence; do not assign
+their remainder or the historical 701 ms selection failure to WAL by inference.
+The underlying storage cause and a demonstrated corrective change remain open.
+
+The normal public-browser canary supplies two six-card served envelopes, one
+selection HTTP 200 with a matching attributable database row, and accepted
+playback evidence. Missing browser responses remain explicit. No terminal 409
+was exercised. See the [release record](../../operations/watch-runtime-release-verification-2026-09-22.md)
+for observation populations, runtime revisions, temporary-observer cleanup and
+the remaining authenticated homepage rollback. Keep the ticket in progress.
+
+## September 22 exact contextual scoring continuation
+
+The resumed investigation identifies another concrete query inefficiency:
+`queryScenesSimilarMany` evaluates cosine distance twice for every eligible
+chunk/seed pair. A production contextual query took 2,262 ms while other Admin
+connections were idle. The isolated PostgreSQL regression fails with 16 distance
+calls and passes with 8 after moving similarity projection outside the inner
+`DISTINCT ON`. Exact outputs and all 176 seeds remain represented.
+
+The correction reduces three concurrent long-film queries from 5,332–5,525 ms to
+3,376–3,407 ms in the documented synthetic fixture, without changing deadlines,
+pool sizes, ranking or eligibility. Concurrent small writes stayed below 34 ms
+before and after, so it is not proof of the historical selection timeout's
+cause. The bounded production wait capture did not catch a slow budget call;
+all observers stopped and no global diagnostic settings changed.
+
+[Learning and verification](../../solutions/performance-issues/contextual-recommendations-repeat-catalog-work-20260915.md#september-22-count-distance-evaluations-not-just-statements)
+retain the rejected vector-copy experiments and workload limits. This entry
+records local validation; exact automatic deployment and production observation
+remain required. Keep this ticket and its independent acceptance gates open.
+
+The completed 21:55–23:55 UTC window has 23 selection 200s, two selection
+400s and no selection 503s; playback has zero 5xx / 8,725 requests. Independent
+Railway delivery outcomes reconcile all 1,524 delivery requests and retain
+**one HTTP 200 `delivery_timeout` among 761 delivery 200s**, at 23:48:30.
+Its final persistence transaction/rollback is delayed. A bounded task-owned
+read diagnostic overlaps the incident and may have contributed; the trace
+does not resolve server execution, native pool, lock or storage attribution.
+No traffic is excluded. This is not a clean final-release recovery window.
+Admin/worker remain independently verified at `92a597ee…` at September 22
+00:10:27. The [release record](../../operations/watch-runtime-release-verification-2026-09-22.md)
+retains the exact revisions, collector gaps, transient pointer audit and cleanup.
+
+## September 22 contextual release verified
+
+[PR #2377](https://github.com/JesusFilm/forge/pull/2377) is independently verified
+on Admin and worker at `c98ec86bdd9a308f33b53d035084e8fd10e0e08d`, including
+the corrected compiled distance projection. All 7,305 Admin tests, four real
+PostgreSQL tests and the full PR CI gate pass. The actual complete-service
+synthetic comparison preserves six identical cards and improves from
+5,345–5,360 ms to 3,510–3,559 ms. A bounded read-only production comparison
+preserves the full response while improving from 2,508 ms to 1,827–1,910 ms;
+three samples are not a production percentile or primary-delivery deadline test.
+
+The [release record](../../operations/watch-contextual-distance-release-2026-09-22.md)
+separates HTTP failures from semantic fallbacks, retains natural WAL waits and
+records zero remaining observer connections. Later captures did observe small
+budget/commit waits; they do not establish the historical 701 ms selection cause.
+Keep this ticket in progress. The query correction is shipped; the independent
+selection cause and sustained acceptance remain. The owner subsequently completed
+Admin sign-in and instructed this task to leave the published homepage block in
+place behind the default-off flag. The task's unpublished removal draft was
+discarded; the canonical 14-block homepage is unchanged. The earlier homepage
+removal requirement is superseded by that explicit instruction.
+
+The extended 01:39–02:19 population retains 19 playback 503s / 1,738 requests
+and one seeded-delivery admission 503. Railway records automatic Web and Admin
+Redis image updates at the respective failure times; a sampled playback trace
+matches a disconnected Admin Redis rate-limiter read and fast upstream 500.
+This is a separate availability failure, not evidence of the PostgreSQL budget
+cause. Selection has four 200s and no new 503; all 477 seeded-delivery outcomes
+reconcile with zero HTTP 200 timeout fallbacks. No failures are excluded.
+The authorized Admin lifecycle, exact repaired-generation trace and current
+zero-pointer snapshot now pass, narrowing the dependent tickets' remaining
+work. The [release record](../../operations/watch-contextual-distance-release-2026-09-22.md)
+retains the new burst and independent operational gates; status stays in progress.
+
+## September 22 bounded workload and production follow-up
+
+The [bounded workload follow-up](../../operations/watch-budget-followup-2026-09-22.md) rejects workflow-history indexing as a demonstrated selection fix: 3.845 million synthetic events produced slow history reads while all 2,026 real budget calls stayed below 104.1 ms, with exact persisted attempts. Production still supplies intermittent storage-pressure evidence without attribution of the historical 701 ms failure. The two-hour playback rate is 19/6,463 (0.294%), including the Redis-update burst; zero observed delivery-timeout logs have one unreconciled delivery HTTP 200. Keep this ticket in progress; neither result proves complete recovery.
+
+## September 22 internal continuation
+
+The internal continuation matches production history-read volume in an owned fixture: budget p95 rises from 3.82 to 38.05 ms and one call reaches 407 ms, with exact durable counts. It still does not reproduce the historical 700 ms timeout or prove its cause. The later two-hour window reconciles all 1,324 delivery envelopes with zero semantic timeouts and seventeen successful selections. Keep in progress; the owner has directed the storage investigation to remain internal. See the [internal verification](../../operations/watch-budget-followup-2026-09-22.md#internal-continuation-workload-volume-and-reconciled-outcomes).
+
+## September 23 persistence and diagnostic follow-up
+
+A later production HTTP 200 `delivery_timeout` contains a 611.72 ms evidence
+write in a transaction expiring at its unchanged 650 ms limit. A representative
+owned PostgreSQL workload proves a narrower persistence improvement: one bound
+JSON INSERT preserves all evidence and transactional checks while reducing
+paired 326-row persistence p99 from 474/540 ms to 241/285 ms, with all 800
+deliveries issued. Request-stage and native-pool diagnostics distinguish
+unavailable correlation from zero wait and retain failed/late operations.
+See [reproduction, review and release gates](../../operations/watch-persistence-followup-2026-09-23.md).
+Keep in progress: this does not prove the separate selection-timeout cause,
+sub-200 ms service latency or sustained production recovery.

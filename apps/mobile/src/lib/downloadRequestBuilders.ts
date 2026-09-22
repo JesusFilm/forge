@@ -137,6 +137,10 @@ export function swapRevertFields(
   return {
     state: "downloaded",
     committedPath: swap.committedPath,
+    // A snapshot from before the dub was kept leaves the record's own in place.
+    ...(swap.dubDocumentId != null
+      ? { dubDocumentId: swap.dubDocumentId }
+      : {}),
     renditionDocumentId: swap.renditionDocumentId,
     qualityLabel: swap.qualityLabel,
     subtitleLanguageSlug: swap.subtitleLanguageSlug,
@@ -150,8 +154,9 @@ export function swapRevertFields(
 
 /**
  * Snapshot of the current committed copy taken before a swap begins (U8), the
- * exact fields swapRevertFields restores. committedPath passed separately so the
- * caller's non-null guard carries into the type.
+ * fields swapRevertFields restores (the dub only when the snapshot has one).
+ * committedPath passed separately so the caller's non-null guard carries into
+ * the type.
  */
 export function buildSwapSnapshot(
   existing: OfflineDownloadRecord,
@@ -160,6 +165,7 @@ export function buildSwapSnapshot(
   return {
     committedPath,
     renditionDocumentId: existing.renditionDocumentId,
+    dubDocumentId: existing.dubDocumentId,
     qualityLabel: existing.qualityLabel,
     subtitleLanguageSlug: existing.subtitleLanguageSlug,
     totalBytes: existing.totalBytes,

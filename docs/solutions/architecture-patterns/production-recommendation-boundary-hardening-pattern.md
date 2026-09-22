@@ -1,7 +1,7 @@
 ---
 title: "Harden a production recommendation slice at every irreversible boundary"
 date: "2026-08-26"
-last_updated: "2026-09-16"
+last_updated: "2026-09-22"
 category: "architecture-patterns"
 module: "apps/admin and apps/web recommendations"
 problem_type: "architecture_pattern"
@@ -544,3 +544,29 @@ episode. A pre-existing interest from the earlier long watch is not evidence tha
 the quick exit trained the profile. Keep the departure observation's unknown
 meaning separate from qualified-view learning, and verify both through retained
 facts rather than media position or successful HTTP receipts alone.
+
+### Verify lifecycle ancestry before privacy cleanup
+
+A successful browser navigation does not prove an episode finalized: BFCache
+suspension is intentionally nonterminal. Inspect the recorded transition, then
+use a normal terminal route exit and verify the finalized outcome's fact
+watermark and qualified active time. Do not insert terminal facts to complete a
+canary. The September 22 check initially retained a paused episode, then normal
+route exit finalized all 32 facts and 73.8 seconds of qualified viewing.
+
+Inspect the matching authorized Admin trace and later projection contribution
+before withdrawal/reset/erasure verification. Privacy cleanup can deliberately
+remove later decisions' projection references while retaining sanitized request
+and outcome evidence. A null projection after cleanup cannot establish complete
+retrospective ancestry, nor does it prove an outcome was lost. Keep the original
+privacy proof and run a fresh ordinary lifecycle when the missing Admin gate
+requires retained joins. Export aggregate/version proof, not private identities.
+
+For repair checks, distinguish a superseded eligible decision from its current
+eligible replacement. The old reference is ineligible lineage even if both
+revisions say `eligible`; a deterministic rebuild must reference the current
+revision and preserve the immutable original generation. Also distinguish
+qualified **outcomes** from prior **recommendation requests**: standalone
+playback can contribute to a profile without request ancestry. An Admin trace
+with no prior request does not by itself mean no qualified feedback exists.
+See the [authenticated release continuation](../../operations/watch-contextual-distance-release-2026-09-22.md).

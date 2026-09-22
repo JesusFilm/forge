@@ -62,6 +62,10 @@ export type ProgressFeed = {
   flush: (trigger: FlushTrigger) => void
 }
 
+/** The host's answer for a swap it classified: seek first, and whether the
+ *  content (and so the QoE session) is the same. False is no claim. */
+export type SwapPositionClaim = false | "same-content" | "new-content"
+
 /**
  * The one adapter over expo-video's player lifecycle (todo 016): frozen
  * creation source, replaceAsync swap with Mux-ID compare + resume, AppState
@@ -97,10 +101,15 @@ export function useManagedVideoPlayer(
      * the stream (same video) from a dub change (different asset) — the host
      * knows, and answers here.
      *
-     * True means the host owns the resume: it seeks on `sourceLoad` and plays
-     * afterwards, so a play at promise time would start at 0:00 first.
+     * Any claim means the host owns the resume: it seeks on `sourceLoad` and
+     * plays afterwards, so a play at promise time would start at 0:00 first.
+     * "same-content" also keeps the QoE session; "new-content" (a dub change)
+     * re-keys it, because the audio asset changed.
      */
-    preservesPosition?: (previousUrl: string | null, nextUrl: string) => boolean
+    preservesPosition?: (
+      previousUrl: string | null,
+      nextUrl: string,
+    ) => SwapPositionClaim
     /** KTD4: true while a cast session drives playback. The AppState pair,
      *  the local recorder tick and the stall watchdog are suppressed; the
      *  background flush and the QoE time read stay on. */
@@ -354,11 +363,12 @@ export function useManagedVideoPlayer(
       previousUrl != null &&
       !sameQualityConstraint(previousUrl, sourceUrl)
     // The host's answer for swaps this module cannot classify from URLs alone
-    // — today, a completed download replacing the stream. Same consequence as
-    // a constraint swap: the host seeks first, so this module must not play.
-    const hostPreservesPosition =
+    // — a completed download replacing the stream, or a dub change. Same
+    // consequence as a constraint swap: the host seeks first, so no play here.
+    const hostClaim =
       preservesPositionRef.current?.(previousUrl, sourceUrl) ?? false
-    const positionPreserved = constraintSwap || hostPreservesPosition
+    const positionPreserved = constraintSwap || hostClaim !== false
+    const sameContent = constraintSwap || hostClaim === "same-content"
     loadedUrlRef.current = sourceUrl
     if (sameAsset && !constraintSwap) {
       // Same asset behind a new string: the player already holds it.
@@ -368,14 +378,10 @@ export function useManagedVideoPlayer(
     // Swap-log content id (the QoE session id below tracks it separately).
     const nextId = extractMuxPlaybackId(sourceUrl)
 
-    // A genuine cross-asset swap ends this QoE session and opens a new one so
-    // watched_ms/rebuffers/source attribute to the right asset (R36/R38). A
-    // constraint swap is the SAME asset, so its session continues (R14).
-    // A position-preserving swap is the SAME content, so its QoE session
-    // continues: ending it "abandoned" would split one watch into two and
-    // attribute the second to a fresh start. Deliberate, not a side effect of
-    // the resume fix.
-    if (!positionPreserved) {
+    // Re-key so watched_ms/rebuffers/source attribute to the right asset
+    // (R36/R38). A constraint swap, and a download replacing the stream, are
+    // the same asset or content, so the session continues (R14). A dub is not.
+    if (!sameContent) {
       endSession("abandoned")
       startQoeSession(sourceUrl)
     }

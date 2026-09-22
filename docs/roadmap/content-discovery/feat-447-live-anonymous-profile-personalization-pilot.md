@@ -60,7 +60,7 @@ Semantic similarity is the safe contextual base, but it cannot adapt to an anony
 - Keep raw cookie values, profile identifiers, watch histories, cohort membership, and vectors out of Admin responses and request-owned serving records.
 - Keep withdrawal, deletion, last-known-good fallback, evidence eligibility, and projection publication state independently reconcilable. Historical experiment, holdout, and exposure records remain inspectable when present but do not authorize current direct profile delivery.
 
-The ticket remains in progress because no successful post-#2137 browser journey yet proves the current direct-profile, no-assignment lifecycle through Watch selection, qualified playback, profile publication, later hybrid delivery, semantic fallback, and the matching privacy-safe Admin trace. Focused Web/Admin suites and real-Postgres fixtures prove the individual seams but manually seed or mock lifecycle boundaries, so they do not satisfy this browser gate.
+The production canaries prove direct-profile, no-assignment delivery through real Watch selection, qualified playback, profile publication and later hybrid use of the same outcome. Separate withdrawal, reset and completed-erasure checks preserve contextual delivery and remove future influence. September 22 verification also passes the matching permission-checked Admin trace and natural stale-publication fence checks. The ticket remains in progress for independent operational last-known-good fallback evidence and its feat-459 dependency. See the dated release updates below.
 
 ## 2026-08-19 Phase A Closeout Evidence
 
@@ -93,3 +93,101 @@ The ticket remains in progress because no successful post-#2137 browser journey 
 - Prove direct-profile delivery, withdrawal, erasure, generation fencing, and last-known-good fallback independently; reconcile historical experiment evidence only when a request actually has it.
 - Run affected checks: `pnpm --filter @forge/admin test`, `pnpm --filter @forge/web test`, `pnpm --filter @forge/admin lint`, `pnpm --filter @forge/web lint`, and both application typechecks.
 - Run `pnpm --filter roadmap generate:readme` and `pnpm --filter roadmap lint` after updating roadmap metadata.
+
+## September 21 browser and privacy continuation
+
+The [release observation](../../operations/watch-closeout-release-2026-09-21.md)
+records exact deployed revisions and two complete production-safe canaries.
+Actual normal-speed playback produces qualified active-classifier outcomes and
+later six-card hybrid requests containing those outcomes, with no assignment.
+Withdrawal immediately removes personalization. Reset advances generation,
+completes old-root erasure and returns a clean contextual request; deletion
+completes replacement-root erasure and preserves contextual delivery. Exact
+item/selection lineage and zero remaining private references are checked through
+bounded read-only SQL. No production facts are fabricated or database rows seeded.
+
+Keep the remaining Admin/fallback/publication gates explicit. The owner's Railway
+access establishes database evidence, not permission to impersonate an Admin user.
+
+## September 21 independent local fallback and publication drill
+
+The [runtime release record](../../operations/watch-startup-readiness-2026-09-21.md)
+now includes complete-service checks with the real owned PostgreSQL/Redis
+fixture, runtime signer and production dependency factory. A forced platform
+failure returns and persists six last-known-good cards, no assignment and
+incomplete stage evidence. A separate stale publisher is fenced while preserving
+the current pointer and its single generation. Retained production rows since
+September 18 contain no matching fallback request or failed projection run to
+establish those operational events. Keep the production and matching signed-in
+Admin proof open; do not promote these local checks into production acceptance.
+
+The [later diagnostic release](../../operations/watch-transport-cause-release-2026-09-21.md)
+retains those remaining gates and credits the previously verified browser
+lifecycle, completed erasure/reset and September 9 restored-snapshot performance
+under their original scope. The new operational diagnostics do not replace the
+matching authorized Admin trace or independent production fallback/publication
+evidence, and do not widen personalization rollout.
+
+## September 22 sustained production verification
+
+The [September 22 production verification](../../operations/watch-production-verification-2026-09-22.md)
+retains the completed lifecycle/erasure and restored-vector checks. Fresh
+production reads still find no matching operational last-known-good fallback
+request or failed projection run establishing stale-publisher rejection. A
+scheduler stale-run observation is not that proof. No authorized Admin browser
+session is available for the matching lifecycle trace. Keep these independent
+gates and feat-459's dependency explicit; status remains in progress.
+
+## September 22 natural publication-fence evidence
+
+The [runtime release verification](../../operations/watch-runtime-release-verification-2026-09-22.md)
+now identifies 11 natural `pointer_generation_fenced` and five
+`eligibility_input_fenced` production runs after 19:45 UTC. All have no published
+projection and retain an eligible current pointer; every pointer-fenced run has
+a newer current generation. The typed projection-service failure and persisted
+terminal state establish stale-publication prevention independently of scheduler
+lease recovery. Credit this production gate rather than repeating the earlier
+absence claim. Matching authenticated Admin evidence and independent operational
+last-known-good fallback proof remain open; no matching fallback request was
+found since September 18. Keep the ticket in progress.
+
+The later 23:29:43 canonical database audit remains clean and records 13
+replacement publications and 127 clean hybrid requests in the 21:55–23:29
+window. The owned public-browser canary also persists an attributable selection
+and accepted playback facts. Neither replaces the matching authenticated Admin
+lifecycle trace or independent operational last-known-good fallback proof.
+
+The final audit sequence retains one affected pointer at 23:56:26 and a later
+consistent read-only/server-clock snapshot with zero at September 22 00:00:01.
+The intervening diagnostic reused an older clock against newer data; aggregate
+results cannot prove which exact pointer changed or continuous eligibility.
+The final snapshot records 20 replacement publications and 183 clean hybrid
+requests since 21:55. The expanded terminal inventory has 28 publication fences,
+while the per-row proof above covers the original 16. No retained operational
+last-known-good fallback exists since September 18. All limits and the still-open
+Admin gate remain in the [release record](../../operations/watch-runtime-release-verification-2026-09-22.md).
+
+## September 22 authenticated lifecycle proof
+
+Normal Admin access is now available. A fresh real Watch journey has a selected
+card with committed impression, 32 playback facts and a finalized qualified
+`active-watch-proxy-v1` outcome with 73,780 ms active viewing. The later request
+uses durable generation 3, two interests and the exact outcome contribution.
+Its authorized Admin trace names the original request as qualified feedback,
+reports hybrid personalized execution without experiment assignment, and shows
+six playable cards, no fallback or shortfall, and complete candidate evidence.
+See the [contextual release continuation](../../operations/watch-contextual-distance-release-2026-09-22.md).
+
+Credit the matching authenticated lifecycle gate as passed. The earlier
+withdrawal/reset/erasure, restored-snapshot and original sixteen publication-fence
+proofs retain credit. Independent operational last-known-good fallback evidence
+and the feat-459 dependency still prevent closure; status stays in progress.
+No production evidence or privileged identity was inserted to obtain the result.
+
+## September 22 bounded workload and production follow-up
+
+The [September 22 follow-up](../../operations/watch-budget-followup-2026-09-22.md) preserves the passed Watch-to-qualified-feedback-to-hybrid Admin trace and current-pointer audit. It does not supply the independent operational last-known-good fallback event or close the feat-459 dependency. Keep this ticket in progress; no fallback was manufactured in production.
+
+## September 22 internal continuation
+
+The internal continuation finds no operational last-known-good fallback in the fresh request population. Its established lifecycle/Admin proofs retain credit, but the independent fallback and feat-459 dependency remain open. No production fallback was manufactured. See the [internal verification](../../operations/watch-budget-followup-2026-09-22.md#internal-continuation-workload-volume-and-reconciled-outcomes).

@@ -26,6 +26,9 @@ export type SearchableListSheetProps<T> = {
   getKey: (item: T) => string
   getPrimaryLabel: (item: T) => string
   getSecondaryLabel?: (item: T) => string | null | undefined
+  // A short state line under the labels (e.g. "Downloaded"); read out with the
+  // row's name so a screen reader learns it too.
+  getStatusLabel?: (item: T) => string | null | undefined
   getSearchValues: (item: T) => (string | null | undefined)[]
   // Availability guard (e.g. a dub without `hls`): a false row silently ignores
   // taps. Defaults to always-selectable.
@@ -38,6 +41,13 @@ export type SearchableListSheetProps<T> = {
   headerTop?: ReactNode
 }
 
+function accessibleName(
+  primary: string,
+  status: string | null | undefined,
+): string {
+  return status ? `${primary}, ${status}` : primary
+}
+
 // Generic searchable list sheet: FlashList + search + "Current" section + 500ms
 // double-tap debounce + formSheet detent-height wiring. The language/subtitle
 // sheets are thin adapters supplying row identity, labels, guard, and callback.
@@ -48,6 +58,7 @@ export function SearchableListSheet<T>({
   getKey,
   getPrimaryLabel,
   getSecondaryLabel,
+  getStatusLabel,
   getSearchValues,
   isSelectable,
   onSelect,
@@ -95,13 +106,14 @@ export function SearchableListSheet<T>({
   const renderItem = useCallback(
     ({ item }: { item: T }) => {
       const secondary = getSecondaryLabel?.(item)
+      const status = getStatusLabel?.(item)
       return (
         <Pressable
           style={({ pressed }) => [styles.listRow, pressed && feedback.pressed]}
           onPress={() => handleSelect(item)}
           accessibilityRole="radio"
           accessibilityState={{ selected: false }}
-          accessibilityLabel={getPrimaryLabel(item)}
+          accessibilityLabel={accessibleName(getPrimaryLabel(item), status)}
         >
           <View style={styles.nameColumn}>
             <Text
@@ -118,16 +130,31 @@ export function SearchableListSheet<T>({
                 {secondary}
               </Text>
             ) : null}
+            {status ? (
+              <Text
+                style={[styles.nativeText, typography.bodySmall]}
+                numberOfLines={1}
+              >
+                {status}
+              </Text>
+            ) : null}
           </View>
         </Pressable>
       )
     },
-    [getPrimaryLabel, getSecondaryLabel, handleSelect, typography],
+    [
+      getPrimaryLabel,
+      getSecondaryLabel,
+      getStatusLabel,
+      handleSelect,
+      typography,
+    ],
   )
 
   const keyExtractor = useCallback((item: T) => getKey(item), [getKey])
 
   const activeSecondary = active ? getSecondaryLabel?.(active) : null
+  const activeStatus = active ? getStatusLabel?.(active) : null
 
   // Search + current selection live in the list header so they scroll with the
   // list in one container.
@@ -164,7 +191,17 @@ export function SearchableListSheet<T>({
           <Text style={[styles.currentLabel, typography.bodySmall]}>
             Current
           </Text>
-          <View style={[styles.listRow, styles.listRowActive]}>
+          <View
+            style={[styles.listRow, styles.listRowActive]}
+            // A plain View is not an accessibility element; without this the
+            // label never reaches the native tree and VoiceOver reads the
+            // child texts one by one.
+            accessible
+            accessibilityLabel={accessibleName(
+              getPrimaryLabel(active),
+              activeStatus,
+            )}
+          >
             <Ionicons name="checkmark" size={18} color={ACCENT} />
             <View style={styles.nameColumn}>
               <Text
@@ -183,6 +220,14 @@ export function SearchableListSheet<T>({
                   numberOfLines={1}
                 >
                   {activeSecondary}
+                </Text>
+              ) : null}
+              {activeStatus ? (
+                <Text
+                  style={[styles.nativeText, typography.bodySmall]}
+                  numberOfLines={1}
+                >
+                  {activeStatus}
                 </Text>
               ) : null}
             </View>

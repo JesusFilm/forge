@@ -21,6 +21,10 @@ import { RecommendationEpisodeService } from "./episode.service"
 import { RecommendationOutcomeService } from "./outcome.service"
 import { RecommendationPlaybackService } from "./playback.service"
 import {
+  consumeDeliveryCapabilitySubmissions,
+  consumeEpisodeCapabilitySubmissions,
+} from "./submission-budget"
+import {
   loadPlaybackEpisodeDetail,
   loadPlaybackEvidenceOverview,
 } from "./admin-ops/playback.service"
@@ -1583,6 +1587,415 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         muxHeroPosterDominantColor: "#123456",
       })
       expect(operations).toEqual(["findMany"])
+    })
+  },
+)
+
+// Keep the Mux loader regression in the existing Watch PostgreSQL CI entry point.
+describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
+  "Mux playback loader with the production PostgreSQL adapter",
+  () => {
+    const schema = `mux_playback_${randomUUID().replaceAll("-", "")}`
+    const sql = new Client({ connectionString: env.DATABASE_URL })
+    const queries: Prisma.QueryEvent[] = []
+    const prisma = new PrismaClient({
+      adapter: new PrismaPg(
+        {
+          connectionString: env.DATABASE_URL,
+          max: 10,
+          options: `-c search_path=${schema}`,
+        },
+        { schema },
+      ),
+      log: [{ emit: "event", level: "query" }],
+    })
+
+    beforeAll(async () => {
+      if (
+        !["localhost", "127.0.0.1", "[::1]"].includes(
+          new URL(env.DATABASE_URL).hostname,
+        )
+      ) {
+        throw new Error("This isolated fixture requires local Postgres")
+      }
+      await sql.connect()
+      await sql.query(`CREATE SCHEMA "${schema}"`)
+      await sql.query(`SET search_path TO "${schema}"`)
+      await sql.query(`
+        CREATE TABLE video (id text PRIMARY KEY, primary_language_id text, deleted_at timestamp);
+        CREATE TABLE language (id text PRIMARY KEY, slug text, deleted_at timestamp);
+        CREATE TABLE mux_video (id text PRIMARY KEY, playback_id text, deleted_at timestamp);
+        CREATE TABLE video_dub (
+          id text PRIMARY KEY, video_id text NOT NULL, language_id text,
+          mux_video_id text, duration integer, hls text, published boolean, deleted_at timestamp
+        );
+        CREATE INDEX ON video_dub(video_id);
+        CREATE INDEX ON video_dub(video_id,duration DESC,id ASC)
+          WHERE deleted_at IS NULL AND published=true AND hls IS NOT NULL;
+        INSERT INTO language VALUES ('en','english',NULL),('es','spanish',NULL),('withdrawn','withdrawn',now());
+        INSERT INTO video(id,primary_language_id) VALUES
+          ('primary','en'),('outside-five','en'),('fallback','missing'),
+          ('empty-primary',''),('null-duration',NULL),('null-language','en'),('tie',NULL),
+          ('visibility',NULL),('empty',NULL),('empty-playback',NULL),('deleted','en');
+        UPDATE video SET deleted_at=now() WHERE id='deleted';
+        INSERT INTO video_dub
+          SELECT v.id||'-'||n,v.id,CASE WHEN n=2 THEN 'en' ELSE 'es' END,
+            v.id||'-'||n,100-n,'stream',true,NULL
+          FROM video v CROSS JOIN generate_series(1,8) n
+          WHERE v.id IN ('primary','fallback','deleted');
+        INSERT INTO video_dub
+          SELECT 'outside-'||n,'outside-five',CASE WHEN n=6 THEN 'en' ELSE 'es' END,
+            'outside-'||n,100-n,'stream',true,NULL FROM generate_series(1,8) n;
+        INSERT INTO video_dub VALUES
+          ('empty-primary-long','empty-primary','es','empty-primary-long',20,'stream',true,NULL),
+          ('empty-primary-short','empty-primary','','empty-primary-short',10,'stream',true,NULL),
+          ('null-duration-first','null-duration',NULL,'null-duration-first',NULL,'stream',true,NULL),
+          ('null-duration-second','null-duration',NULL,'null-duration-second',100,'stream',true,NULL),
+          ('null-language-first','null-language',NULL,'null-language-first',100,'stream',true,NULL),
+          ('null-language-second','null-language','es','null-language-second',90,'stream',true,NULL),
+          ('tie-b','tie',NULL,'tie-b',10,'stream',true,NULL),
+          ('tie-a','tie',NULL,'tie-a',10,'stream',true,NULL),
+          ('no-hls','visibility',NULL,'no-hls',999,NULL,true,NULL),
+          ('unpublished','visibility',NULL,'unpublished',998,'stream',false,NULL),
+          ('withdrawn-dub','visibility',NULL,'withdrawn-dub',997,'stream',true,now()),
+          ('withdrawn-mux','visibility',NULL,'withdrawn-mux',996,'stream',true,NULL),
+          ('null-playback','visibility',NULL,'null-playback',995,'stream',true,NULL),
+          ('missing-mux','visibility',NULL,NULL,994,'stream',true,NULL),
+          ('blank-hls','visibility',NULL,'blank-hls',-1,'',true,NULL),
+          ('empty-playback','empty-playback',NULL,'empty-playback',0,'stream',true,NULL);
+        INSERT INTO mux_video SELECT mux_video_id,'playback-'||id,NULL FROM video_dub WHERE mux_video_id IS NOT NULL;
+        UPDATE mux_video SET deleted_at=now() WHERE id='withdrawn-mux';
+        UPDATE mux_video SET playback_id=NULL WHERE id='null-playback';
+        UPDATE mux_video SET playback_id='' WHERE id='empty-playback';
+        INSERT INTO video(id) SELECT 'large-'||n FROM generate_series(1,206) n;
+        INSERT INTO video_dub
+          SELECT v.id||'-'||n,v.id,'language-'||n,v.id||'-'||n,1000-n,'stream',true,NULL
+          FROM video v CROSS JOIN generate_series(1,662) n WHERE v.id LIKE 'large-%';
+        INSERT INTO mux_video SELECT id,'playback-'||id,NULL FROM video_dub WHERE video_id LIKE 'large-%';
+        ANALYZE video; ANALYZE video_dub; ANALYZE mux_video;
+      `)
+      prisma.$on("query", (event) => queries.push(event))
+    })
+
+    afterAll(async () => {
+      await prisma.$disconnect()
+      await sql.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`)
+      await sql.end()
+    })
+
+    it("preserves primary-within-five, ordering, nulls and visibility", async () => {
+      const ids = [
+        "primary",
+        "outside-five",
+        "fallback",
+        "empty-primary",
+        "null-duration",
+        "null-language",
+        "tie",
+        "visibility",
+        "empty",
+        "empty-playback",
+        "deleted",
+        "missing",
+        "primary",
+      ]
+      const result = await createLoaders(
+        prisma,
+      ).videoMuxPlaybackIdByIdAndLanguageSlug.loadMany(
+        ids.map((videoId) => ({ videoId, languageSlug: null })),
+      )
+      expect(result).toEqual([
+        "playback-primary-2",
+        "playback-outside-1",
+        "playback-fallback-1",
+        "playback-empty-primary-long",
+        "playback-null-duration-first",
+        "playback-null-language-first",
+        "playback-tie-a",
+        "playback-blank-hls",
+        null,
+        "",
+        null,
+        null,
+        "playback-primary-2",
+      ])
+    })
+
+    it("preserves requested language preference and fallback in the same batch", async () => {
+      const result = await createLoaders(
+        prisma,
+      ).videoMuxPlaybackIdByIdAndLanguageSlug.loadMany([
+        { videoId: "primary", languageSlug: "spanish" },
+        { videoId: "primary", languageSlug: "missing" },
+        { videoId: "outside-five", languageSlug: "english" },
+        { videoId: "missing", languageSlug: "english" },
+      ])
+      expect(result).toEqual([
+        "playback-primary-1",
+        "playback-primary-2",
+        "playback-outside-6",
+        null,
+      ])
+    })
+
+    it("bounds transferred rows independently of the number of dubs", async () => {
+      queries.length = 0
+      const ids = Array.from(
+        { length: 206 },
+        (_, index) => `large-${index + 1}`,
+      )
+      const result = await createLoaders(
+        prisma,
+      ).videoMuxPlaybackIdByIdAndLanguageSlug.loadMany(
+        ids.map((videoId) => ({ videoId, languageSlug: null })),
+      )
+      expect(result).toEqual(ids.map((id) => `playback-${id}-1`))
+      const reads = queries.filter((query) => /SELECT/i.test(query.query))
+      expect(reads.length).toBeGreaterThan(0)
+      let transferredRows = 0
+      for (const query of reads) {
+        transferredRows +=
+          (await sql.query(query.query, JSON.parse(query.params))).rowCount ?? 0
+      }
+      // Prisma's nested take used to transfer the complete dubbed catalog.
+      // Assert real wire cardinality, not the already-trimmed ORM result.
+      expect(transferredRows).toBeLessThanOrEqual(ids.length * 6)
+    })
+  },
+)
+
+describe.skipIf(!RUN_REAL_DB_TEST)(
+  "submission budget timing against PostgreSQL",
+  () => {
+    const schema = `budget_timing_${Date.now()}_${randomUUID().replaceAll("-", "")}`
+    const expiresAt = new Date(Date.now() + 86_400_000)
+    let client: Client
+    let prisma: PrismaClient
+
+    beforeAll(async () => {
+      client = new Client({ connectionString: env.DATABASE_URL })
+      await client.connect()
+      await client.query(`CREATE SCHEMA "${schema}"`)
+      await client.query(`SET search_path TO "${schema}", public`)
+      for (const migration of recommendationMigrations)
+        await client.query(migration)
+      prisma = new PrismaClient({
+        adapter: new PrismaPg(
+          {
+            connectionString: env.DATABASE_URL,
+            options: `-c search_path=${schema},public`,
+            max: 2,
+          },
+          { schema },
+        ),
+      })
+    })
+
+    afterAll(async () => {
+      await prisma?.$disconnect()
+      if (!client) return
+      await client.query("RESET search_path")
+      await client.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`)
+      await client.end()
+    })
+
+    async function deliveryInput() {
+      const requestId = randomUUID()
+      const capabilityJti = randomUUID()
+      await client.query("BEGIN")
+      try {
+        await client.query(
+          `INSERT INTO recommendation_request (
+      id, contract_version, surface_version, manifest_id, strategy_version,
+      classifier_version, session_digest, locale, expected_item_count, result, expires_at, seed_media_id
+    ) VALUES ($1, 'semantic-recommendation-v1', 'watch-below-player-v1',
+      'semantic-transcript-pgvector-v1', 'semantic-transcript-pgvector-v1',
+      'legacy-position-v0', $2, 'en', 1, 'served', $3, 'budget-timing-seed')`,
+          [requestId, "a".repeat(64), expiresAt],
+        )
+        await client.query(
+          `INSERT INTO recommendation_served_item (
+      id, request_id, position, target_media_id, canonical_href,
+      candidate_generator, candidate_provenance, expires_at, capability_jti
+    ) VALUES ($1, $2, 0, 'budget-timing-video', '/watch/budget-timing-video',
+      'semantic', '{}'::jsonb, $3, $4)`,
+          [randomUUID(), requestId, expiresAt, capabilityJti],
+        )
+        await client.query("COMMIT")
+      } catch (error) {
+        await client.query("ROLLBACK")
+        throw error
+      }
+      return { requestId, capabilityJti, expiresAt, attempts: 1 }
+    }
+
+    it("executes consumption once, retains the concurrent limit, and commits before a later rollback", async () => {
+      const input = await deliveryInput()
+      const results = await Promise.allSettled([
+        consumeDeliveryCapabilitySubmissions(prisma, {
+          ...input,
+          attempts: 24,
+        }),
+        consumeDeliveryCapabilitySubmissions(prisma, {
+          ...input,
+          attempts: 24,
+        }),
+      ])
+      expect(
+        results.filter((result) => result.status === "fulfilled"),
+      ).toHaveLength(1)
+      expect(
+        results.filter((result) => result.status === "rejected"),
+      ).toHaveLength(1)
+      await consumeDeliveryCapabilitySubmissions(prisma, {
+        ...input,
+        attempts: 8,
+      })
+      await expect(
+        prisma.$transaction(async (tx) => {
+          await tx.$queryRaw`SELECT 1`
+          throw new Error("later mutation rolled back")
+        }),
+      ).rejects.toThrow("later mutation rolled back")
+      await expect(
+        consumeDeliveryCapabilitySubmissions(prisma, input),
+      ).rejects.toThrow("submission budget is exhausted")
+      expect(
+        (
+          await client.query(
+            `SELECT attempts FROM recommendation_capability_submission_budget WHERE capability_jti=$1`,
+            [input.capabilityJti],
+          )
+        ).rows,
+      ).toEqual([{ attempts: 32 }])
+      expect(
+        (
+          await client.query(
+            `SELECT count FROM recommendation_evidence_audit WHERE request_id=$1 AND reason_code='delivery_submission_budget_exceeded'`,
+            [input.requestId],
+          )
+        ).rows,
+      ).toEqual([{ count: 25 }])
+    })
+
+    it("brackets server work and distinguishes a later client delay", async () => {
+      const input = await deliveryInput()
+      const log = vi.spyOn(console, "info").mockImplementation(() => {})
+      try {
+        await client.query(
+          `CREATE FUNCTION "${schema}".budget_timing_delay() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_sleep(0.22); RETURN NEW; END $$`,
+        )
+        await client.query(
+          `CREATE TRIGGER budget_timing_delay BEFORE INSERT ON recommendation_capability_submission_budget FOR EACH ROW EXECUTE FUNCTION "${schema}".budget_timing_delay()`,
+        )
+        try {
+          await consumeDeliveryCapabilitySubmissions(prisma, input)
+        } finally {
+          await client.query(
+            `DROP TRIGGER budget_timing_delay ON recommendation_capability_submission_budget`,
+          )
+          await client.query(`DROP FUNCTION "${schema}".budget_timing_delay()`)
+        }
+        const serverLog = log.mock.calls
+          .flat()
+          .map(String)
+          .find((line) =>
+            line.startsWith("event=recommendation.submission_budget "),
+          )
+        expect(serverLog).toBeDefined()
+        expect(
+          Number(serverLog?.match(/serverElapsedMs=(\d+)/)?.[1]),
+        ).toBeGreaterThanOrEqual(200)
+        expect(
+          (
+            await client.query(
+              `SELECT attempts FROM recommendation_capability_submission_budget WHERE capability_jti=$1`,
+              [input.capabilityJti],
+            )
+          ).rows,
+        ).toEqual([{ attempts: 1 }])
+
+        log.mockClear()
+        const delayedDb = {
+          $queryRaw: vi.fn().mockImplementation(async (sql: Prisma.Sql) => {
+            const rows = await prisma.$queryRaw(sql)
+            await new Promise((resolve) => setTimeout(resolve, 250))
+            return rows
+          }),
+        }
+        await consumeDeliveryCapabilitySubmissions(delayedDb, input)
+        const clientLog = log.mock.calls
+          .flat()
+          .map(String)
+          .find((line) =>
+            line.startsWith("event=recommendation.submission_budget "),
+          )
+        expect(clientLog).toBeDefined()
+        expect(
+          Number(clientLog?.match(/outsideServerMs=(\d+)/)?.[1]),
+        ).toBeGreaterThanOrEqual(200)
+        expect(
+          (
+            await client.query(
+              `SELECT attempts FROM recommendation_capability_submission_budget WHERE capability_jti=$1`,
+              [input.capabilityJti],
+            )
+          ).rows,
+        ).toEqual([{ attempts: 2 }])
+      } finally {
+        log.mockRestore()
+      }
+    })
+
+    it("retains standalone episode consumption and the 256-attempt bound", async () => {
+      const id = randomUUID()
+      const capabilityJti = randomUUID()
+      const now = new Date()
+      await client.query(
+        `INSERT INTO recommendation_playback_episode (
+      id, media_id, session_digest, state, capability_jti, signing_kid,
+      active_until, hard_until, generation, claimed_at, expires_at
+    ) VALUES ($1, 'budget-timing-video', $2, 'claimed', $3, 'budget-timing-test',
+      $4, $5, 1, $6, $7)`,
+        [
+          id,
+          "b".repeat(64),
+          capabilityJti,
+          new Date(now.getTime() + 900_000),
+          new Date(now.getTime() + 1_800_000),
+          now,
+          expiresAt,
+        ],
+      )
+      const input = {
+        requestId: null,
+        episodeId: id,
+        capabilityJti,
+        expiresAt,
+        attempts: 128,
+      }
+      await consumeEpisodeCapabilitySubmissions(prisma, input)
+      await consumeEpisodeCapabilitySubmissions(prisma, input)
+      await expect(
+        consumeEpisodeCapabilitySubmissions(prisma, { ...input, attempts: 3 }),
+      ).rejects.toThrow("playback submission budget is exhausted")
+      expect(
+        (
+          await client.query(
+            `SELECT attempts FROM recommendation_capability_submission_budget WHERE capability_jti=$1`,
+            [capabilityJti],
+          )
+        ).rows,
+      ).toEqual([{ attempts: 256 }])
+      expect(
+        (
+          await client.query(
+            `SELECT count FROM recommendation_evidence_audit WHERE id=$1`,
+            [`episode-submission-budget:${capabilityJti}`],
+          )
+        ).rows,
+        // Standalone episodes do not invent a request-owned rejection audit.
+      ).toEqual([])
     })
   },
 )

@@ -1403,9 +1403,21 @@ It is not a session boundary: continue-watching progress and the playback-qualit
 
 The app's one video player and the single view that draws it, owned above the navigation rather than by any screen, so every screen that shows video borrows it instead of creating its own.
 
-Because there is only ever one, moving video between presentations is a matter of resizing and repositioning that view — never handing playback to a second player, which would restart it and blank the picture. This is what lets a video survive leaving the screen it started on, and why the Mini Player and a Picture-in-Picture Handoff are presentations of the same playback rather than copies of it. A screen that wants video reserves the space it should occupy and publishes a request; the owner draws into that space.
+Because there is only ever one, moving video between presentations is a matter of resizing and repositioning that view — never handing playback to a second player, which would restart it and blank the picture. This is what lets a video survive leaving the screen it started on, and why the Mini Player and a Picture-in-Picture Handoff are presentations of the same playback rather than copies of it. A screen that wants video reserves the space it should occupy and publishes a Playback Request; the owner draws into that space.
 
 That space is measured rather than declared, and a measurement taken before the reserving screen is really on screen returns nothing at all rather than a wrong answer. So a reservation keeps measuring until it gets an answer instead of trusting a single attempt; until it does, the owner has nowhere to draw and the viewer sees only whatever the reservation itself puts up in the meantime. A reservation that gives up has to say so, because a silent give-up leaves the viewer facing an empty rectangle with nothing to act on and nothing to explain it.
+
+### Playback Request
+
+What a screen publishes to borrow the Playback Surface: the source to play, the poster, the subtitle track, whether to autostart and where to resume, the identity to report progress against, and a description of the Playback Session the video may become. The newest admissible request owns the player. A request from a screen that can never earn a Playback Session is admissible only while no session exists, so a trailer cannot take the player from a floating video.
+
+A request is published as soon as its screen renders, which is before the screen has resolved its Video: a screen opened by slug names its video by slug alone until the record lands one commit later, and for that render its progress identity is absent unless the video is a download, which is keyed by slug. Both renders name the same video, not a new one, so the owner compares content by id when both sides carry one and by slug otherwise, and it holds the last resolved progress identity for the same slug rather than reading the weaker one. A screen that leaves keeps its request retained while its Playback Session floats, which is what lets the player outlive the route.
+
+### Playback Session
+
+The record that one video has earned the player beyond the screen it started on — the content, its Dub, the signed-in account, where the session originated, and its position — held outside the render tree so the Mini Player, the picture-in-picture hold, and background handling can read it without a render. Distinct from the Watch Session, which is a screen's language and subtitle state, and from the Playback Request, which is a screen's mechanical inputs; a video that never played has a request but no session.
+
+A session ends by dismissal, by replacement when a different video's request takes the player, when the signed-in account changes, or in place when playback finishes or fails. An in-place ending keeps the window on screen showing the thumbnail, and a replay from it starts the same session again. Re-starting the same content — expanding the window back to the full screen, or a screen remounting onto its floating video — merges into the live session and keeps its position, its known id, and its known Dub; only a different video replaces it. Keeping the Dub is what makes the session the authority on which audio the viewer chose: the remounting screen has not resolved its own Dub yet on its first render, so it reads the one the session already holds rather than falling back to a standing preference and overriding the viewer's choice. Whether a re-start is the same content is decided by one rule shared by the request store, the session store, and the player owner, so no reader can end a session that another reader adopted.
 
 ### Fullscreen
 
@@ -1419,7 +1431,7 @@ Exactly one layer may own orientation. A second writer does not merely duplicate
 
 The small floating video window that keeps a video playing after the viewer leaves the screen it was playing on, so playback survives navigation instead of ending with the route. Distinct from the operating system's picture-in-picture window, which is the platform's own window outside the app — the Mini Player is drawn by the app and lives above its navigation.
 
-It is the same live playback surface as the full-size player, resized and repositioned rather than handed to a second player, because moving playback between two surfaces restarts it. A Mini Player is earned rather than automatic: a video that never actually played does not get one, nor does a video that already ran to its end, nor one whose playback is being driven by a cast receiver. While an in-app sheet is presented over it, it is hidden rather than torn down, so the video keeps playing behind the sheet and returns when the sheet closes. The viewer can move it between screen corners and dismiss it; dismissing ends the playback session rather than merely hiding the window.
+It is the same live playback surface as the full-size player, resized and repositioned rather than handed to a second player, because moving playback between two surfaces restarts it. A Mini Player is earned rather than automatic: a video that never actually played does not get one, nor does a video that already ran to its end, nor one whose playback is being driven by a cast receiver. While an in-app sheet is presented over it, it is hidden rather than torn down, so the video keeps playing behind the sheet and returns when the sheet closes. The viewer can move it between screen corners and dismiss it; dismissing ends the Playback Session rather than merely hiding the window.
 
 Shrinking into the window and growing back out of it are one reversible motion, not two independent animations: a transition interrupted part-way turns around from where it currently is rather than restarting from either end, so the video never jumps. Because the same surface is being moved rather than replaced, the window is only ever as correct as the transition's own bookkeeping — a transition that ends without restoring the surface to its resting state leaves the window drawn but empty.
 
@@ -1463,6 +1475,8 @@ What the clearance has to contain depends on who draws the bar, and the wrong an
 
 The persisted per-Video manifest entry that owns an offline copy's lifecycle — one record per Video, moving through queued, downloading, paused, downloaded, failed, or canceled. A record stores stable identity (which Dub and rendition) rather than volatile signed URLs, so every start and restart re-resolves a fresh URL from identity; the record is the single source the library rows, series badges, and batch aggregates all derive from.
 
+One record holds one Dub, so the record's Dub is what the offline copy is taken to contain — but the record and the bytes on disk are not always the same copy. During a Swap they diverge: the record already names the incoming Dub while the file that is still playable is the outgoing one. Anything that needs to know which audio a stored file actually holds must therefore take the file and that identity from one place, together, rather than reading the record's Dub beside the file's path. Widening what a record remembers is additive for the same reason: a stored record is the only route back to the file on disk, so a reader that rejects a record it cannot parse destroys the download rather than refreshing it.
+
 ### Batch Placeholder
 
 A bare queued Download Record — no partial or committed file yet — persisted up front for every episode when a series batch begins, so waiting episodes show a badge and are covered by Cancel All before their transfer exists. Bare-queued is the batch's ownership signature: the start path adopts its own placeholder and drives it forward, where any other live record would be refused as already existing.
@@ -1474,6 +1488,8 @@ The named process that drains a series batch strictly in episode order: one nati
 ### Swap
 
 The non-destructive replacement of a downloaded copy with a different quality or language: the new copy downloads alongside the old, which stays playable until the new one commits, and canceling mid-swap reverts to the old copy rather than deleting it.
+
+A Swap can change the Dub, not only the quality, so for the whole window the Download Record names the incoming Dub while the playable copy is still the outgoing one. The outgoing copy's own identity therefore travels with the snapshot that keeps it playable, rather than being inferred from the record; and the record takes the incoming Dub at the moment the Swap starts, because a Swap that leaves the record's Dub untouched leaves it naming audio its own file does not contain.
 
 Because a revert lands the episode back in the downloaded state, a canceled or failed swap is indistinguishable at the record level from a genuine completion — anything that must know which transition occurred (a completion toast, a progress-ring reset) has to carry that signal explicitly rather than infer it from aggregate terminal state.
 
