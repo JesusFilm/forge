@@ -124,12 +124,26 @@ Experience. Every line below is from the proxy's request log.
 
 ### Still open
 
+- The `feat-516` double-recorder fix (KD3) merged on 2026-09-22 as #2376, so
+  that blocker on U6 is closed. Its learning merged as #2390.
 - U6, the real-environment smoke against a provisioned local Admin (R19), is
-  blocked on the `feat-516` double-recorder fix PR (KD3), which has not merged.
-- U6 is also blocked on the local Admin, which is unprovisioned. The database
-  sits at migration 13 of 98, and the snapshot restore needs PostgreSQL 18
-  clients while the machine has 17. Neither
-  `RECOMMENDATION_CAPABILITY_KEYRING` nor a local fleet key is set.
-- U7's timing comparison (R20) needs U6's block-present configuration; the
-  conventions section in `apps/mobile/CLAUDE.md` is written.
+  DEFERRED by decision on 2026-09-23, and PR #2367 shipped without it. The
+  gap it leaves is that no run has proved a real Admin records exactly one
+  attributed episode for a shelf tap. The proxy smoke proves what the app
+  sends, never what Admin stores.
+- U6 still needs a provisioned local Admin. Re-checked on 2026-09-23: the
+  database sits at 17 of 100 migrations, and the restore needs a PostgreSQL 18
+  client AND server while the machine runs 17, whose one cluster also holds 12
+  databases owned by other projects. Production writes its dumps with 18, and
+  `pg_restore` refuses an archive newer than itself, so 18 is a floor rather
+  than a preference. The restore also requires its target schema to be current
+  first, so those migrations are a precondition, not optional preparation.
+- Three prerequisites previously recorded as blockers are NOT blockers.
+  `RECOMMENDATION_CAPABILITY_KEYRING` and `FLEET_ADMIN_API_KEYS` are both
+  optional in the Admin env schema and generatable locally, because the same
+  local Admin signs and verifies them. The backup download credential is
+  already set, and pgvector already ships a PostgreSQL 18 build.
+- U7's timing comparison (R20) needs U6's block-present configuration and is
+  deferred with it; the conventions section in `apps/mobile/CLAUDE.md` is
+  written.
 - The native build before the next `eas update` is unchanged from `feat-516`.
