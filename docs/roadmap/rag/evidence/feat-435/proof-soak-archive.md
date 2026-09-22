@@ -1,12 +1,41 @@
 # feat-435 closure audit and dashboard receipt
 
-Inspected September 22, 2026 for Ops J030. **Status: evidence recorded;
-feat-435 remains in progress pending owner evidence/decisions.**
+Inspected September 22, 2026 for Ops J030. **Status: feat-435 complete under
+Jaco’s explicit Option A closure decision; draft PR #2379 remains unmerged.**
 
 This is the substantial investigation report required by J030 and the proof
 receipt named by [feat-435](../../feat-435-rag-proof-soak-archive.md). The consumer
 inventory is consolidated below rather than creating another evidence family.
 Scope and review plan: [J030 plan](../../../../plans/2026-09-22-j030-rag-proof-soak-plan.md).
+
+## Operator acceptance — September 22, 2026 (Option A)
+
+After reviewing the initial audit, Jaco explicitly revised feat-435's closure
+gates in the J030 continuation instruction:
+
+- **Owner attestation:** Forge RAG is already the active owner and all consumers
+  have migrated. No external traffic is in scope. This resolves migration and
+  consumer/operational closure; it does not create a measured soak interval or
+  an independently verified live consumer inventory.
+- **Not applicable:** rollback rehearsal/expiry and final snapshot retention.
+  These historical gates are superseded for feat-435, not reported as performed.
+- **Deferred:** legacy JesusFilm-RAG service and credential retirement moves to
+  [feat-532](../../feat-532-rag-legacy-service-credential-retirement.md), which is
+  not started and does not block feat-435. No production or credential action
+  is authorized in J030.
+- **Accepted limitations:** unverified GotQuestions Icelandic import provenance
+  and missing direct migration-record/`apps/rag/AGENTS.md` links in the archived
+  README. The basic Forge directory redirect is sufficient for this closure.
+- **Delivery:** update draft [PR #2379](https://github.com/JesusFilm/forge/pull/2379)
+  without merging. The verified dashboard candidate remains prepared for the
+  normal PR-to-main publication flow, not published or live-accepted by this job.
+
+This explicit scope replacement follows the owner-managed disposition pattern
+in [feat-433](../../feat-433-rag-dual-operations.md). The matrix below preserves
+historical evidence gaps while recording their current disposition. No remaining
+owner decision blocks the bounded J030 documentation/status outcome. Separate
+production-maintenance proof in feat-471 and future consumer-programme work are
+not completed or cancelled by this migration attestation.
 
 ## Authority and investigation coverage
 
@@ -17,7 +46,9 @@ Scope and review plan: [J030 plan](../../../../plans/2026-09-22-j030-rag-proof-s
 - [Historical programme #130](https://github.com/JesusFilm/jesusfilm-rag/issues/130)
   and [final step #168](https://github.com/JesusFilm/jesusfilm-rag/issues/168):
   inspected issue bodies and comments; both are still open in the archived repo.
-  Their final gates require more than repository archival.
+  Their historical final gates required more than repository archival; the
+  Option A decision above now governs Forge-local closure. These archived
+  issues were not edited or closed.
 - Inspected current Forge `main` at
   `0f7bbe19586df2456942ce929b62a8cef5792377`, RAG roadmap/evidence, relevant plans,
   the GotQuestions slice, operator guides, related solutions, and `todos/`.
@@ -35,30 +66,32 @@ Scope and review plan: [J030 plan](../../../../plans/2026-09-22-j030-rag-proof-s
 
 ## Closure matrix
 
-| Requirement                                                                                                             | Established evidence                                                                                                                                                                                                                                                                                                                             | Remaining limitation or exact closure input                                                                                                                                                                                                                                                                                                                                                                        |
-| ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Small source through acquire, stage, normalize, chunk, embed, index, retrieve, dashboard/eval exclusively through Forge | [Local slice](../../../../../apps/rag/docs/slices/gotquestions.md), [feat-466](../../feat-466-gotquestions-icelandic-slice.md), merged [PR #2202](https://github.com/JesusFilm/forge/pull/2202): 51 documents, 142 chunks/embeddings, local retrieval and 431-case evaluation. Fresh dashboard observes 51 embedded `gotquestions/is` documents. | Local proof explicitly excludes production and used an embedding credential from the legacy checkout. Jaco recalls a production import, but no repository receipt proves its time, operator, path, deltas, model/dimensions, pending rows, or before/after production eval. [Feat-471](../../feat-471-rag-production-operations-rollout.md) remains open. Retain uncertainty; do not infer provenance from counts. |
-| Stable production and Seeker/NanoClaw soak                                                                              | [Seeker cutover receipt](../feat-434/seeker-cutover.md) records a successful September 3 grounded turn on the Forge private route. [Feat-433](../../feat-433-rag-dual-operations.md) records owner-managed operations completion.                                                                                                                | Neither supplies a dated observation interval, agreed pass criteria, repeat smoke/eval outcomes, incidents/disposition, or final owner soak acceptance. Elapsed time alone is not a passing soak.                                                                                                                                                                                                                  |
-| Every public/private consumer accounted for                                                                             | Partial inventory below; external operations evidence is deliberately private under feat-433.                                                                                                                                                                                                                                                    | Owner must confirm an exhaustive inventory, each consumer's Forge/retired disposition, and relevant smoke/soak result, or supply a redacted pointer to approved private evidence. Do not recreate personal task files in Forge.                                                                                                                                                                                    |
-| Rollback exercised or safely rehearsed; expiry approved                                                                 | September 3 cutover receipt documents the rollback procedure and out-of-band values.                                                                                                                                                                                                                                                             | It explicitly disclaims a timed rehearsal and measured interval. Need rehearsal result, approved expiry, approving owner, and decision date. Repository archival is not expiry approval.                                                                                                                                                                                                                           |
-| Final jfrag snapshot with retention owner and recovery documentation                                                    | [Production-copy receipt](../feat-430/production-copy-reconciliation.json) records `railway-backup:3b65f69d-96aa-4ddc-a306-53ff9a7af982`, cutoff `2026-08-28T01:43:58.992Z`; [copy runbook](../../../../../apps/rag/docs/ops/corpus-copy.md) describes recovery.                                                                                 | This is the pre-copy snapshot, not a proven final retirement snapshot. Need final reference/cutoff, retention owner and period/location reference, and recovery responsibility, or explicit owner acceptance of the retained snapshot. No backup was taken or inspected by J030.                                                                                                                                   |
-| Legacy service/secrets retired after rollback closes                                                                    | No retirement receipt found.                                                                                                                                                                                                                                                                                                                     | Need owner disposition for deployment and legacy credentials, tied to expiry. No Railway service, credential store, or live consumer setting was modified or inventoried in this job.                                                                                                                                                                                                                              |
-| jfrag repository archived                                                                                               | GitHub API `archived: true` on September 22; `updated_at: 2026-09-16T06:40:15Z`.                                                                                                                                                                                                                                                                 | Satisfied as an observed repository state. `updated_at` is not an archive-event timestamp or proof of operational retirement.                                                                                                                                                                                                                                                                                      |
-| README points to Forge, migration record, and `apps/rag/AGENTS.md`                                                      | [Pinned README](https://github.com/JesusFilm/jesusfilm-rag/blob/2170bf9fde56088a85e2920076d981dcd623b883/README.md), merged [legacy PR #169](https://github.com/JesusFilm/jesusfilm-rag/pull/169): prominent link to `https://github.com/JesusFilm/forge/tree/main/apps/rag`.                                                                    | Basic redirect satisfied. Notice still says “will be archived soon”; it does not directly link the migration record or `apps/rag/AGENTS.md`. Accept the existing directory redirect explicitly or authorize a later archived-repo correction; J030 does not unarchive or change settings.                                                                                                                          |
-| Dashboard release evidence                                                                                              | Fresh production-read snapshot, compiled committed artifacts, and local checks below.                                                                                                                                                                                                                                                            | Prepared for PR handoff, not published or accepted. [Existing publication receipt](../feat-432/dashboard-publication.md) records reachability only and explicitly lacks full performance/owner acceptance.                                                                                                                                                                                                         |
+| Requirement                                   | Established evidence                                                                                                                                                                                                                                                                                                                          | Revised disposition and retained limitation                                                                                                                                                                                                                                                                                                                                                               |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Small-source end-to-end maintenance proof     | [Local slice](../../../../../apps/rag/docs/slices/gotquestions.md), [feat-466](../../feat-466-gotquestions-icelandic-slice.md), and [PR #2202](https://github.com/JesusFilm/forge/pull/2202): 51 documents, 142 chunks/embeddings, local retrieval and 431-case evaluation. Fresh dashboard observes 51 embedded `gotquestions/is` documents. | **Accepted limitation.** Jaco recalls the production import; its time, operator, path inventory, deltas, model/dimensions, pending rows and before/after production evaluation are unproven. Local proof used a legacy-checkout embedding credential and is not exclusive Forge production provenance. [Feat-471](../../feat-471-rag-production-operations-rollout.md) remains separate and non-blocking. |
+| Production ownership and Seeker/NanoClaw soak | [Cutover receipt](../feat-434/seeker-cutover.md) records a successful September 3 grounded turn on the Forge private route; [feat-433](../../feat-433-rag-dual-operations.md) records owner-managed operations completion.                                                                                                                    | **Accepted owner attestation:** Forge RAG is active owner and all consumers migrated. A dated soak interval, repeated smoke/eval results and independent current deployment inventory were not supplied and are not invented.                                                                                                                                                                             |
+| All consumers accounted for                   | Repository-reference inventory below plus Jaco's explicit all-consumers-migrated confirmation.                                                                                                                                                                                                                                                | **Accepted owner attestation.** External traffic is outside this closure scope; this is not a measured claim of zero external callers. Personal operations evidence remains private under feat-433.                                                                                                                                                                                                       |
+| Rollback rehearsal and approved expiry        | Historical cutover receipt contains a rollback procedure, explicitly without rehearsal/interval proof.                                                                                                                                                                                                                                        | **Not applicable** under Option A. No rehearsal or expiry action was performed or inferred from the repository archive.                                                                                                                                                                                                                                                                                   |
+| Final snapshot, retention owner and recovery  | [Production-copy receipt](../feat-430/production-copy-reconciliation.json) records pre-copy backup `railway-backup:3b65f69d-96aa-4ddc-a306-53ff9a7af982`, cutoff `2026-08-28T01:43:58.992Z`; [copy runbook](../../../../../apps/rag/docs/ops/corpus-copy.md) describes historical recovery.                                                   | **Not applicable** under Option A. The pre-copy reference is not relabelled a final retirement snapshot. J030 took or inspected no backup.                                                                                                                                                                                                                                                                |
+| Legacy service/credential retirement          | No retirement receipt found.                                                                                                                                                                                                                                                                                                                  | **Deferred to feat-532**, not a feat-435 completion prerequisite. No live service, credential store, or consumer setting was changed or inventoried.                                                                                                                                                                                                                                                      |
+| Repository archived                           | GitHub API returned `archived: true` on September 22 and `updated_at: 2026-09-16T06:40:15Z`.                                                                                                                                                                                                                                                  | **Verified repository state.** The update timestamp is not an archive-event timestamp or proof of operational retirement.                                                                                                                                                                                                                                                                                 |
+| README redirect                               | [Pinned README](https://github.com/JesusFilm/jesusfilm-rag/blob/2170bf9fde56088a85e2920076d981dcd623b883/README.md), merged [legacy PR #169](https://github.com/JesusFilm/jesusfilm-rag/pull/169), prominently links to Forge `apps/rag`.                                                                                                     | **Basic redirect verified; missing direct links accepted.** The notice still says “will be archived soon” and lacks direct migration-record/AGENTS links. J030 does not unarchive or change the repository.                                                                                                                                                                                               |
+| Dashboard refresh                             | Snapshot, compiled artifacts, local browser/load checks and allowlisted Pages assembly below.                                                                                                                                                                                                                                                 | **Prepared and verified locally.** Merge, publication and live acceptance remain separate; this PR does not claim them. The [historical publication receipt](../feat-432/dashboard-publication.md) retains its original limitations.                                                                                                                                                                      |
 
 ## Consumer inventory
 
-This is a bounded inventory of references, **not certification that all deployed
-consumers have been found**. Do not read bearer registries into evidence.
+This is a bounded inventory of repository references. Jaco’s Option A
+attestation supplies the all-consumers-migrated disposition for this closure;
+the inventory itself is **not an independent live audit**. External traffic is
+outside this scope. Do not read bearer registries into evidence.
 
-| Consumer or surface                                                           | Evidence and disposition                                                                                                                                                                                                                                                                                                                                                                        |
-| ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Seeker / Forge Mastra, Railway-private `/v1`                                  | The [cutover receipt](../feat-434/seeker-cutover.md) establishes the September 3 transition and smoke. Current soak and rollback expiry remain unproven.                                                                                                                                                                                                                                        |
-| Personal VM / NanoClaw operations                                             | [Feat-433](../../feat-433-rag-dual-operations.md) and [PR #2152](https://github.com/JesusFilm/forge/pull/2152) explicitly replace Forge-owned task variants with owner-managed external administration; details stay in the private operations system. That completion excluded live acquisition/indexing/migration/language writes and does not certify final soak or current default aliases. |
-| RAGBot / `forge-rag-retrieve`                                                 | [Consumer programme](../../../../plans/2026-09-15-001-feat-rag-consumer-access-usage-plan.md) and [feat-529](../../feat-529-rag-consumer-dogfood-migration.md) describe future real HTTP dogfood; the task definition is not tracked here. This is planning, not live consumer migration evidence.                                                                                              |
-| NextSteps, Forge content production, JesusFilm-AI, other public `/v1` callers | The pinned legacy README names these intended consumer categories, not an exhaustive deployed-client roster. Owner must distinguish active, never deployed, migrated, or retired callers and account for any unnamed private consumers.                                                                                                                                                         |
-| Public status page                                                            | Static GitHub Pages artifact, with no runtime database or Railway dependency. Publication checks do not prove retrieval consumers' soak.                                                                                                                                                                                                                                                        |
+| Consumer or surface                                                           | Evidence and disposition                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Seeker / Forge Mastra, Railway-private `/v1`                                  | The [cutover receipt](../feat-434/seeker-cutover.md) establishes the September 3 transition and smoke. Current migration is owner-attested under Option A; no measured soak is claimed and rollback expiry is not applicable.                                                                                                                                                                                                                                                   |
+| Personal VM / NanoClaw operations                                             | [Feat-433](../../feat-433-rag-dual-operations.md) and [PR #2152](https://github.com/JesusFilm/forge/pull/2152) explicitly replace Forge-owned task variants with owner-managed external administration; details stay in the private operations system. That historical completion excluded live acquisition/indexing/migration/language writes. Option A supplies current migration acceptance, without publishing personal configuration or inventing soak/alias measurements. |
+| RAGBot / `forge-rag-retrieve`                                                 | [Consumer programme](../../../../plans/2026-09-15-001-feat-rag-consumer-access-usage-plan.md) and [feat-529](../../feat-529-rag-consumer-dogfood-migration.md) describe future real HTTP dogfood; the task definition is not tracked here. This is planning, not live consumer migration evidence.                                                                                                                                                                              |
+| NextSteps, Forge content production, JesusFilm-AI, other public `/v1` callers | The pinned legacy README names these intended consumer categories, not an exhaustive deployed-client roster. Jaco confirms all consumers migrated and excludes external traffic from this closure. These historical categories are not newly verified deployed callers.                                                                                                                                                                                                         |
+| Public status page                                                            | Static GitHub Pages artifact, with no runtime database or Railway dependency. Publication checks do not prove retrieval consumers' soak.                                                                                                                                                                                                                                                                                                                                        |
 
 ## Icelandic observation and provenance boundary
 
@@ -82,7 +115,8 @@ retain measured facts and run identity, attribute operator statements, say which
 comparison was not run, and keep missing acceptance separate. This follows
 [documentation precedent guidance](../../../../solutions/conventions/documentation-precedent-is-not-policy.md).
 Do not backfill an import receipt from recollection or relabel a local result
-as production proof.
+as production proof. Jaco explicitly accepts the provenance uncertainty for
+feat-435 closure; acceptance does not establish the missing historical facts.
 
 ## Dashboard refresh
 
@@ -148,7 +182,10 @@ Transfer rose 0.218%; median DOMContentLoaded rose 1.6 ms, below the procedure's
 5% bytes and greater-of-100-ms-or-10% timing thresholds. No renderer, hydration,
 script, media, route, or runtime initialization code changed.
 
-## Review and documentation checks
+## Initial review and documentation checks
+
+The following checks describe the initial audit before Option A and the new
+follow-up ticket. Continuation verification is recorded separately below.
 
 - All 33 RAG ticket frontmatter records and index totals agree: 21 complete,
   1 in progress, 11 not started, 0 blocked. Every intra-lane dependency is
@@ -171,34 +208,59 @@ script, media, route, or runtime initialization code changed.
 Durable review rule: a current count proves presence, a source lifecycle flag
 records a review decision, a repository archive proves a repository state, and
 an operational retirement receipt proves its specifically recorded acceptance.
-None substitutes for the others. Keep private operator evidence private and
-record its redacted disposition, as feat-433 already permits.
+An explicit owner scope decision can supersede a closure requirement; it does
+not convert missing historical evidence into an observed pass. Keep private
+operator evidence private and record its redacted disposition, as feat-433
+already permits.
 
-## Decision needed before completion
+## Continuation review and verification
 
-Jaco must supply or confirm approved operational evidence for the remaining
-soak, consumer, rollback-expiry, snapshot-retention, and service/secret-retirement
-gates, and decide whether the existing basic README redirect is acceptable.
-The Icelandic import may be recorded as an accepted provenance limitation, but
-that does not silently waive these independent retirement requirements.
-If requirements are intentionally retired, record the exact scope replacement
-and owner decision using the feat-433 precedent before marking feat-435 complete.
-No new follow-up ticket is needed merely to duplicate these existing feat-435
-requirements; feat-471, feat-463, and feat-467 retain their existing scope.
+Option A resolves the initial input request. Feat-435 is complete under the
+revised gates, with a Resolution linking draft PR #2379. Feat-532 tracks deferred
+retirement with reciprocal `depends_on`/`blocks` edges. The lane index now has
+34 tickets: 22 complete, 0 in progress, 12 not started, 0 blocked. Its historical
+soak invariant is qualified by the explicit Option A exception. Feat-471,
+feat-463, feat-467, and the consumer programme retain their existing scope.
+
+The already verified September 22 dashboard artifacts are unchanged. This
+continuation makes documentation changes only and runs no production read,
+credential command, corpus operation, deployment, or repository-setting change.
+
+- `status:check` and `dashboard:verify` passed again under Node 24.21.0 and
+  pnpm 9.12.3. No new snapshot or dashboard build was needed.
+- Pages assembly into `/tmp/j030-option-a-pages-candidate` passed with the same
+  three allowlisted files and unchanged digest
+  `sha256:4533b85d9334e415bcff87ebbe732417482b7c107ea561b3ac97b7a0bbf68ad9`.
+  Prior browser/load evidence remains applicable to identical artifact bytes;
+  no browser or performance rerun is claimed for this documentation continuation.
+- All 34 RAG frontmatter records, index rows/totals, and reciprocal dependencies
+  passed validation. Feat-532 is the next global ID after 531 in both this
+  checkout and freshly fetched `origin/main`; its only dependency is feat-435.
+  The feat-435 Resolution links PR #2379 and feat-532 stays not started.
+- All 71 local Markdown links/anchors across the five continuation documents
+  resolve. Changed Markdown formatting and `git diff --check` passed.
+- Hidden-lane validation and both tests passed again, with the same existing
+  unrelated public-lane frontmatter warnings. No public roadmap registration or
+  generated root totals changed.
+- Review confirmed the continuation changes only the plan, lane index, ticket,
+  receipt, and new follow-up. It does not cancel feat-471 or claim any deferred
+  action was performed. Final-head CI results are recorded in the PR handoff.
 
 ## PR handoff
 
 - Draft [Forge PR #2379](https://github.com/JesusFilm/forge/pull/2379).
 - Branch/base: `docs/j030-rag-proof-status` → `main`, based on
   `0f7bbe19586df2456942ce929b62a8cef5792377`.
-- Implementation commit: `3c1931b09` (`docs(rag): audit retirement gates and
-refresh status dashboard`); a documentation-only follow-up records this PR
-  reference. The original `ops/j030` branch remains untouched.
-- Seven changed files: this report, `docs/roadmap/rag/README.md`,
+- Initial commits: `3c1931b09` records the audit/dashboard and `6a488bb12`
+  records the PR reference. The Option A continuation adds the accepted closure
+  and deferred retirement ticket. The original `ops/j030` branch remains untouched.
+- Eight changed files: this report, `docs/roadmap/rag/README.md`,
   `docs/roadmap/rag/feat-435-rag-proof-soak-archive.md`, the J030 plan,
+  `docs/roadmap/rag/feat-532-rag-legacy-service-credential-retirement.md`,
   `apps/rag/dashboard/compiled-data.json`, and dashboard
   `site/rag-status/{index.html,.dashboard-commit.json}`.
 - Required commit hooks ran without bypass, including staged formatting,
   repository-wide formatting, and commit-message validation. Local evidence
   above is complete; remote PR checks are reported separately from those local
-  results and do not supply missing retirement acceptance.
+  results. Completion follows the explicit owner decision above, not an
+  inference from CI success.

@@ -34,3 +34,19 @@ implementation, review, and consolidated receipt follow that loop without
 delegation. The original `ops/j030` branch is preserved: it contained two unrelated
 J007 commits. The task uses `docs/j030-rag-proof-status` from current `origin/main`
 (`0f7bbe195`) so the PR contains only J030 work.
+
+## Authorized continuation — Option A
+
+Jaco revised the closure gates on September 22: Forge RAG is already the active
+owner, all consumers have migrated, and external traffic is outside this scope.
+Rollback rehearsal/expiry and final snapshot retention are not applicable to
+feat-435 closure. Legacy service and credential retirement move to a separate
+follow-up ticket; the unverified Icelandic import provenance and missing direct
+migration/AGENTS README links are accepted limitations.
+
+Update feat-435, its consolidated receipt, and the lane index; create the next
+globally available roadmap ticket for deferred retirement with reciprocal
+dependencies. Keep the existing verified dashboard snapshot and artifacts;
+this continuation needs no production or credential operation. Recheck local
+documentation, status/dashboard verification and Pages assembly, then commit,
+push, and update draft PR #2379 without merging or deploying.
