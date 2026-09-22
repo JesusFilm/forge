@@ -1,11 +1,13 @@
 // Pure zod schema + constants for the daily-devotional video composition.
 // Self-contained and independent of the production "short" composition.
 import { z } from "zod"
+import { COLD_OPEN_ANIMS } from "./cold-open-timing"
 import { devotionalRenderConfigSchema } from "./styles"
 export {
   devotionalRenderConfigSchema,
   type DevotionalRenderConfig,
 } from "./styles"
+export { COLD_OPEN_ANIMS, type ColdOpenAnim } from "./cold-open-timing"
 
 export const DEVOTIONAL_COMPOSITION_ID = "devotional"
 /** Landscape 16:9 variant (desktop/YouTube) — same component, same props; the
@@ -21,6 +23,7 @@ export const DEVOTIONAL_HEIGHT = 1920
 export const DEVOTIONAL_FPS = 30
 
 export const DEVOTIONAL_CARD_KINDS = [
+  "cold-open", // hook that runs BEFORE the cover; see cold-open.tsx
   "cover",
   "scripture",
   "video",
@@ -30,6 +33,27 @@ export const DEVOTIONAL_CARD_KINDS = [
   "questions",
   "cta", // teaser end-card: "watch the full devotional" + handle + link
 ] as const
+
+/**
+ * One hook line of a `cold-open` card. Each line owns its entrance, so the
+ * card builds a rhythm instead of repeating one animation. Only one line is
+ * on screen at a time.
+ */
+export const coldOpenLineSchema = z.object({
+  text: z.string().trim().min(1).max(160),
+  /** Entrance for this line. See cold-open-timing.ts for the timings. */
+  anim: z.enum(COLD_OPEN_ANIMS).default("focus"),
+  /** Horizontal placement. Mixing left and centred lines gives the card shape. */
+  align: z.enum(["left", "center"]).default("center"),
+  /** Word that stays in the accent colour instead of cooling to the heading colour. */
+  accentWord: z.string().trim().min(1).max(40).optional(),
+  /** On-screen length. Omit to take an even share of what the card has left. */
+  durationSec: z.number().positive().optional(),
+  /** Type size in layout px, before `px()` scaling. Hooks run large. */
+  sizePx: z.number().positive().max(80).optional(),
+})
+
+export type ColdOpenLine = z.infer<typeof coldOpenLineSchema>
 
 export const devotionalCardSchema = z.object({
   kind: z.enum(DEVOTIONAL_CARD_KINDS),
@@ -77,6 +101,10 @@ export const devotionalCardSchema = z.object({
   highlight: z.string().optional(), // phrase within text/title to accent
   questions: z.array(z.string()).optional(), // questions card
   prayer: z.string().optional(), // questions card
+  /** cold-open card: the hook lines, shown one at a time in order. */
+  coldOpenLines: z.array(coldOpenLineSchema).min(1).max(6).optional(),
+  /** cold-open card: set false to keep the hook in the case it was authored in. */
+  coldOpenUppercase: z.boolean().optional(),
   ctaHeadline: z.string().optional(), // cta card, e.g. "Watch the full devotional"
   ctaHandle: z.string().optional(), // cta card, e.g. "@gospelmedialab"
   ctaUrl: z.string().optional(), // cta card, e.g. "jesusfilm.org/watch"

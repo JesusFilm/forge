@@ -12,6 +12,7 @@ import {
   usesPanelFrost,
 } from "./visual-primitives"
 import { CoverIntro, Eyebrow, FrostPanel, withHighlight } from "./card-chrome"
+import { ColdOpen } from "./cold-open"
 
 function CardBody({
   card,
@@ -46,6 +47,23 @@ function CardBody({
   // (px(28)) from the frame edge (was px(84) ≈ 232px, too high off the bottom).
   const padBottom = isLandscape ? px(17.35) : px(28)
   const letters = anim === "letters"
+
+  if (card.kind === "cold-open") {
+    // Hook that runs before the cover. Background paints the footage; this
+    // card is type only, so the words carry the whole frame.
+    if (!card.coldOpenLines?.length) return null
+    return (
+      <ColdOpen
+        lines={card.coldOpenLines}
+        style={style}
+        px={px}
+        frame={frame}
+        fps={fps}
+        durationInFrames={durationInFrames}
+        uppercase={card.coldOpenUppercase ?? true}
+      />
+    )
+  }
 
   if (card.kind === "cover") {
     // Unified cover for BOTH orientations, reproduced from the Claude Design
