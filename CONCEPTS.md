@@ -1416,7 +1416,7 @@ A request is published as soon as its screen renders, which is before the screen
 
 The record that one video has earned the player beyond the screen it started on — the content, its Dub, the signed-in account, where the session originated, and its position — held outside the render tree so the Mini Player, the picture-in-picture hold, and background handling can read it without a render. Distinct from the Watch Session, which is a screen's language and subtitle state, and from the Playback Request, which is a screen's mechanical inputs; a video that never played has a request but no session.
 
-A session ends by dismissal, by replacement when a different video's request takes the player, when the signed-in account changes, or in place when playback finishes or fails. An in-place ending keeps the window on screen showing the thumbnail, and a replay from it starts the same session again. Re-starting the same content — expanding the window back to the full screen, or a screen remounting onto its floating video — merges into the live session and keeps its position and its known id; only a different video replaces it. Whether a re-start is the same content is decided by one rule shared by the request store, the session store, and the player owner, so no reader can end a session that another reader adopted.
+A session ends by dismissal, by replacement when a different video's request takes the player, when the signed-in account changes, or in place when playback finishes or fails. An in-place ending keeps the window on screen showing the thumbnail, and a replay from it starts the same session again. Re-starting the same content — expanding the window back to the full screen, or a screen remounting onto its floating video — merges into the live session and keeps its position, its known id, and its known Dub; only a different video replaces it. Keeping the Dub is what makes the session the authority on which audio the viewer chose: the remounting screen has not resolved its own Dub yet on its first render, so it reads the one the session already holds rather than falling back to a standing preference and overriding the viewer's choice. Whether a re-start is the same content is decided by one rule shared by the request store, the session store, and the player owner, so no reader can end a session that another reader adopted.
 
 ### Fullscreen
 
@@ -1474,6 +1474,8 @@ What the clearance has to contain depends on who draws the bar, and the wrong an
 
 The persisted per-Video manifest entry that owns an offline copy's lifecycle — one record per Video, moving through queued, downloading, paused, downloaded, failed, or canceled. A record stores stable identity (which Dub and rendition) rather than volatile signed URLs, so every start and restart re-resolves a fresh URL from identity; the record is the single source the library rows, series badges, and batch aggregates all derive from.
 
+One record holds one Dub, so the record's Dub is what the offline copy is taken to contain — but the record and the bytes on disk are not always the same copy. During a Swap they diverge: the record already names the incoming Dub while the file that is still playable is the outgoing one. Anything that needs to know which audio a stored file actually holds must therefore take the file and that identity from one place, together, rather than reading the record's Dub beside the file's path. Widening what a record remembers is additive for the same reason: a stored record is the only route back to the file on disk, so a reader that rejects a record it cannot parse destroys the download rather than refreshing it.
+
 ### Batch Placeholder
 
 A bare queued Download Record — no partial or committed file yet — persisted up front for every episode when a series batch begins, so waiting episodes show a badge and are covered by Cancel All before their transfer exists. Bare-queued is the batch's ownership signature: the start path adopts its own placeholder and drives it forward, where any other live record would be refused as already existing.
@@ -1485,6 +1487,8 @@ The named process that drains a series batch strictly in episode order: one nati
 ### Swap
 
 The non-destructive replacement of a downloaded copy with a different quality or language: the new copy downloads alongside the old, which stays playable until the new one commits, and canceling mid-swap reverts to the old copy rather than deleting it.
+
+A Swap can change the Dub, not only the quality, so for the whole window the Download Record names the incoming Dub while the playable copy is still the outgoing one. The outgoing copy's own identity therefore travels with the snapshot that keeps it playable, rather than being inferred from the record; and the record takes the incoming Dub at the moment the Swap starts, because a Swap that leaves the record's Dub untouched leaves it naming audio its own file does not contain.
 
 Because a revert lands the episode back in the downloaded state, a canceled or failed swap is indistinguishable at the record level from a genuine completion — anything that must know which transition occurred (a completion toast, a progress-ring reset) has to carry that signal explicitly rather than infer it from aggregate terminal state.
 
