@@ -92,5 +92,16 @@ without identifying storage throttling or a competing workload. Separate longer
 calls had no simultaneous wait capture; do not extend the attribution to them.
 See the [release evidence](../../operations/watch-runtime-release-verification-2026-09-22.md).
 
+A [later bounded capture](../../operations/watch-contextual-distance-release-2026-09-22.md)
+found budget and ordinary small-write commits waiting on WAL with idle Admin
+backends. A concurrent `search_trace` relation did not identify a large writer:
+an indexed size aggregate found eight small rows in twenty minutes. Preserve
+negative workload findings rather than disabling analytics on correlation.
+Sample relation names can arrive as PostgreSQL array text; validate their decoded
+type before filtering, because `"{}"` is a nonempty string. Stream bounded
+captures across automatic deployment boundaries and distinguish interrupted
+captures from completed observations. An unavailable kernel wait surface must
+remain unknown, not be interpreted as zero waits.
+
 Related: [recommendation outcome accounting](../logic-errors/recommendation-outcome-accounting-boundaries-20260921.md)
 and [the separate Next error-inspection fix](../performance-issues/next-error-inspection-amplifies-graphql-failures-20260922.md).

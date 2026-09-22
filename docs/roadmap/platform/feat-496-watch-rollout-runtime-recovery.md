@@ -171,8 +171,9 @@ fix. Details and exact cohort denominators are in the operations report and
 - No deadline inflation, ambiguous mutation retries, weaker atomicity or new
   public API shape. Preserve profile identity, language eligibility, six-card
   profile-first fill, history, capabilities and existing rate limits.
-- The authored English Homepage Recommendations Block stays removed per owner
-  instruction. `forge.watch.homepageRecommendations` stays default off. Production
+- Preserve the authored English Homepage Recommendations Block behind the flag,
+  per the owner's September 22 instruction. This supersedes the earlier removal
+  hold. `forge.watch.homepageRecommendations` stays default off. Production
   targeting requires an LD server SDK key and authored block; do not substitute
   blanket enablement. Activation/curation ownership remains feat-487/feat-488.
 - This recovery work changes Web and shared Admin runtime only. No mobile/TV
@@ -572,3 +573,37 @@ No traffic is excluded. This is not a clean final-release recovery window.
 Admin/worker remain independently verified at `92a597ee…` at September 22
 00:10:27. The [release record](../../operations/watch-runtime-release-verification-2026-09-22.md)
 retains the exact revisions, collector gaps, transient pointer audit and cleanup.
+
+## September 22 contextual release verified
+
+[PR #2377](https://github.com/JesusFilm/forge/pull/2377) is independently verified
+on Admin and worker at `c98ec86bdd9a308f33b53d035084e8fd10e0e08d`, including
+the corrected compiled distance projection. All 7,305 Admin tests, four real
+PostgreSQL tests and the full PR CI gate pass. The actual complete-service
+synthetic comparison preserves six identical cards and improves from
+5,345–5,360 ms to 3,510–3,559 ms. A bounded read-only production comparison
+preserves the full response while improving from 2,508 ms to 1,827–1,910 ms;
+three samples are not a production percentile or primary-delivery deadline test.
+
+The [release record](../../operations/watch-contextual-distance-release-2026-09-22.md)
+separates HTTP failures from semantic fallbacks, retains natural WAL waits and
+records zero remaining observer connections. Later captures did observe small
+budget/commit waits; they do not establish the historical 701 ms selection cause.
+Keep this ticket in progress. The query correction is shipped; the independent
+selection cause and sustained acceptance remain. The owner subsequently completed
+Admin sign-in and instructed this task to leave the published homepage block in
+place behind the default-off flag. The task's unpublished removal draft was
+discarded; the canonical 14-block homepage is unchanged. The earlier homepage
+removal requirement is superseded by that explicit instruction.
+
+The extended 01:39–02:19 population retains 19 playback 503s / 1,738 requests
+and one seeded-delivery admission 503. Railway records automatic Web and Admin
+Redis image updates at the respective failure times; a sampled playback trace
+matches a disconnected Admin Redis rate-limiter read and fast upstream 500.
+This is a separate availability failure, not evidence of the PostgreSQL budget
+cause. Selection has four 200s and no new 503; all 477 seeded-delivery outcomes
+reconcile with zero HTTP 200 timeout fallbacks. No failures are excluded.
+The authorized Admin lifecycle, exact repaired-generation trace and current
+zero-pointer snapshot now pass, narrowing the dependent tickets' remaining
+work. The [release record](../../operations/watch-contextual-distance-release-2026-09-22.md)
+retains the new burst and independent operational gates; status stays in progress.

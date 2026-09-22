@@ -47,8 +47,30 @@ repeat healthy browser traffic as a substitute for resolving the remaining cause
    sequential Compound Engineering review. Incorporate newer main and pass
    applicable checks before normal PR/main merge; verify exact automatic release.
 5. Continue independent authenticated Admin, alert, terminal browser and fallback
-   gates where access allows. Keep the homepage authored block removal explicit;
-   do not manufacture a publishing identity. Preserve default-off, Mobile/TV,
+   gates where access allows. The owner's September 22 continuation now preserves
+   the authored homepage block behind the flag; the task's removal draft is
+   discarded. Do not manufacture a publishing identity. Preserve default-off, Mobile/TV,
    identity, authorization, attribution and curation constraints.
 6. Compound new causal learnings and update each ticket against its actual
    acceptance criteria. A diagnostic or documentation merge is not completion.
+
+## Completed scoped correction
+
+PR #2377 removes duplicated contextual cosine evaluation, with a red/green
+PostgreSQL function-call regression and exact-output performance proof. Normal
+main deployment is verified on Admin and worker at `c98ec86bdd9a308f33b53d035084e8fd10e0e08d`.
+The [release record](../operations/watch-contextual-distance-release-2026-09-22.md)
+retains complete-service and production comparisons, separate endpoint accounting,
+bounded-observer limitations and cleanup. The three causal questions above and
+remaining causal and operational acceptance gates keep this plan active.
+Normal Admin sign-in is now available; the authorized current-pointer panel is
+clean. Matching real Watch lifecycle and exact repaired-generation request
+traces are now also verified. Operational fallback, terminal browser retry,
+installed monitoring and sustained transport acceptance remain open.
+
+The extended fixed window catches a separate Redis availability interruption:
+Railway automatically updates Web and Admin Redis, overlapping one delivery
+admission 503 and nineteen playback 503s. A matched request fails in Admin's
+Redis GraphQL rate-limit store. Preserve fail-closed limits and investigate
+update availability separately from the historical capability-budget delay.
+No manual redeploy or provider setting change was made by this task.
