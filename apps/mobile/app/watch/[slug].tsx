@@ -122,7 +122,7 @@ export default function WatchVideoPage() {
     deleteDownload,
     pauseDownload,
     resumeDownload,
-    committedFor,
+    committedCopyFor,
     isReady: downloadsReady,
   } = useDownloads()
   const [showScrollTop, setShowScrollTop] = useState(false)
@@ -262,32 +262,49 @@ export default function WatchVideoPage() {
     if (subtitleEnabled) ensureActiveVariantMedia()
   }, [subtitleEnabled, ensureActiveVariantMedia])
 
-  // Offline: when a committed local copy exists (manifest hydrated), play it
-  // from disk ahead of the GraphQL source chain. The local URI is validated
-  // against the offline root before it reaches the player / subtitle reader.
-  const offlineRecord = downloadsReady ? getRecord(decodedSlug) : null
-  const offlineCommitted = downloadsReady ? committedFor(decodedSlug) : null
+  // The download record is keyed on the record's slug (the download sheet's
+  // key), which the pill and the language sheet also read; the route's slug
+  // only stands in until the record lands.
+  const offlineSlug = video?.slug ?? decodedSlug
+  // `committedCopyFor` pairs the file with ITS dub and subtitle: mid-swap the
+  // record already names the incoming ones while the old file still plays.
+  // The URI is validated against the offline root before the player reads it.
+  const offlineCopy = downloadsReady ? committedCopyFor(offlineSlug) : null
   const offlineSource =
-    offlineCommitted && validateLocalMediaUrl(offlineCommitted, OFFLINE_ROOT)
-      ? offlineCommitted
+    offlineCopy && validateLocalMediaUrl(offlineCopy.path, OFFLINE_ROOT)
+      ? offlineCopy.path
       : null
   const offlineSubtitle =
-    offlineSource && offlineRecord?.subtitleLanguageSlug
+    offlineSource && offlineCopy?.subtitleLanguageSlug
       ? (() => {
           const path = buildSubtitlePath(
             OFFLINE_ROOT,
-            decodedSlug,
-            offlineRecord.subtitleLanguageSlug,
+            offlineSlug,
+            offlineCopy.subtitleLanguageSlug,
           )
           return validateLocalMediaUrl(path, OFFLINE_ROOT) ? path : null
         })()
       : null
 
+  // The source precedence (and why the record fallback waits for the dub
+  // selection to settle) lives in resolvePlayerSource. A download is one dub:
+  // a pick of another language streams that dub instead of the file on disk.
+  const playerSource = resolvePlayerSource({
+    offlineSource,
+    offlineDubDocumentId: offlineCopy?.dubDocumentId ?? null,
+    activeVariantHls: activeVariant?.hls ?? null,
+    activeVariantDocumentId: activeVariant?.documentId ?? null,
+    variantSettled: activeVariant != null,
+    recordStreamingUrl: video?.streamingUrl ?? null,
+    seedStreamingUrl,
+  })
+  const playingOffline = playerSource != null && playerSource === offlineSource
+
   const subtitleVttSrc = useMemo(() => {
     // Offline playback reads the locally-saved subtitle from disk, but still
     // honors the subtitles toggle: the track is always bundled at download
     // time, yet only shown when captions are on — matching online playback.
-    if (offlineSource) return subtitleEnabled ? offlineSubtitle : null
+    if (playingOffline) return subtitleEnabled ? offlineSubtitle : null
     if (!subtitleEnabled || !activeSubtitleSlug || !activeVariantMedia)
       return null
     return (
@@ -295,7 +312,7 @@ export default function WatchVideoPage() {
         ?.vttSrc ?? null
     )
   }, [
-    offlineSource,
+    playingOffline,
     offlineSubtitle,
     subtitleEnabled,
     activeSubtitleSlug,
@@ -333,17 +350,9 @@ export default function WatchVideoPage() {
   const subtitleActive = subtitleEnabled && subtitlesAvailable
 
   // Prefer the resolved video; fall back to the seed so first paint has
-  // content. The source precedence (and why the record fallback waits for the
-  // dub selection to settle) lives in resolvePlayerSource.
+  // content.
   const displayTitle = video?.title ?? seed?.title ?? null
   const displayPoster = video?.posterUrl ?? seed?.imageUrl ?? null
-  const playerSource = resolvePlayerSource({
-    offlineSource,
-    activeVariantHls: activeVariant?.hls ?? null,
-    variantSettled: activeVariant != null,
-    recordStreamingUrl: video?.streamingUrl ?? null,
-    seedStreamingUrl,
-  })
 
   // ---- Cast session lifecycle (U4: KTD4/KTD7) ----
   // The hook owns the KTD7 end triggers (slug change + unmount) internally.

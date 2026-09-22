@@ -1,6 +1,7 @@
 ---
 title: Smoke a mobile write path on the simulator through a throwaway fake-admin proxy
 date: 2026-09-17
+last_updated: 2026-09-22
 category: developer-experience
 module: apps/mobile
 problem_type: developer_experience
@@ -19,7 +20,7 @@ symptoms:
   - "A `Web consumer authentication required` RUM error beside an EMPTY proxy log: the simulator resolves localhost to ::1 and reaches the real local admin on *:3003 while the proxy on 127.0.0.1:3003 sits idle"
   - "After a proxy restart every request logs identityOk false because the device keeps its older stored identity (expected, not a fault)"
   - "Every playback episode ended 19 ms after it began because the adapter's abandoned session reason was mapped to a route exit; no jest suite showed it"
-  - "Two IssueWatchPlaybackContext issuances 360 ms apart for one Home-tile open, the first shipping a stub episode (open in the feat-516 close-out checklist)"
+  - "Two IssueWatchPlaybackContext issuances 360 ms apart for one Home-tile open, the first shipping a stub episode (resolved 2026-09-22 by PR #2376; see the session-identity learning under logic-errors)"
 related_components:
   - apps/admin
   - apps/tv
@@ -565,13 +566,16 @@ two `IssueWatchPlaybackContext` about 360 ms apart for the same media. The
 first claim failed its nonce match and shipped a stub episode:
 `playback_attempt`, `playback_observation` and `playback_end` with
 `route_exit` at 0 s, before the real episode began. A deep-link open issued
-once. The mechanism is not established; the effect at
-`apps/mobile/src/hooks/useManagedVideoPlayer.ts:294` re-runs on
-`recommendationMediaId`, `player` or `readPlayhead`, and one of those changes
-twice. The item is open in the `feat-516` ticket's close-out checklist
-(`docs/roadmap/content-discovery/feat-516-mobile-recommendations-api-client.md:276-288`).
-The recorder's own suite cannot see it: the suite instantiates one recorder
-per test, and the defect is in how many the host creates.
+once. Resolved 2026-09-22 (PR #2376): the fresh watch screen published its
+request by slug alone before its Video record landed, the request store's
+strict identity key read that as a different video and ended the floating
+session as `replaced`, and the host disposed its recorder and created a second
+one when the id arrived one commit later. The recorder effect's dependencies
+were the carrier, not the cause. See
+[the session-identity learning](../logic-errors/session-identity-needs-one-slug-tolerant-predicate.md).
+The `feat-516` ticket's close-out checklist records the item as resolved.
+The recorder's own suite could not see it: the suite instantiates one recorder
+per test, and the defect was in how many the host creates.
 
 **The round-2 review fix was verified end to end.** Review round 2 found that
 one transient answer to the context issuance abandoned the whole episode, and
@@ -706,5 +710,6 @@ can show it.
 - [Throwaway operator harness with explicit deletion contract](../best-practices/throwaway-operator-harness-deletion-contract-20260430.md): throwaway tooling must not become load-bearing, which is why the first real-environment smoke stays with `feat-517`.
 - [Synthetic-SSE fetch-patch browser verification](../best-practices/synthetic-sse-fetch-patch-browser-verification.md): the web-side analogue, a synthetic upstream driving the client.
 - [A ref's write timing becomes a contract when a diff adds consumers](../logic-errors/pre-flight-correlation-ref-write-misattributes-telemetry-after-failure.md): a prior mobile wiring defect that only a server-side event log exposed, the same class as the two found here.
-- [feat-516 ticket](../../roadmap/content-discovery/feat-516-mobile-recommendations-api-client.md): Results carry the timing evidence, the round-2 device check and the close-out checklist that holds the double-recorder item.
-- PR #2329 (feat-516), open and unmerged as of 2026-09-17.
+- [Two predicates for one identity](../logic-errors/session-identity-needs-one-slug-tolerant-predicate.md): the root cause and fix (PR #2376) for the double-issuance anomaly this doc's log exposed, and the diagnostic step it adds to this recipe: read the log's neighbouring queries to spot a stack remount.
+- [feat-516 ticket](../../roadmap/content-discovery/feat-516-mobile-recommendations-api-client.md): Results carry the timing evidence, the round-2 device check and the close-out checklist that records the double-recorder item as resolved on 2026-09-22.
+- PR #2329 (feat-516), merged 2026-09-17.

@@ -18,7 +18,7 @@
 
 import {
   getMiniPlayerStore,
-  sessionIdentityKey,
+  sameSessionContent,
   type MiniPlayerStore,
 } from "./store"
 import { canOriginateRoutePattern } from "./presentation"
@@ -155,19 +155,6 @@ export function shouldOriginateSession(input: {
   if (!input.hasSource) return false
   if (input.session == null) return false
   return canOriginateRoutePattern(input.session.originPattern)
-}
-
-/**
- * Same video, whichever key each side happens to carry. A remounted screen can
- * name a video by slug before its record lands and by id afterwards, so an
- * id-only compare reads one video as two.
- */
-export function sameSessionContent(
-  a: Pick<PlaybackSessionDescriptor, "videoId" | "videoSlug">,
-  b: Pick<PlaybackSessionDescriptor, "videoId" | "videoSlug">,
-): boolean {
-  if (a.videoId != null && b.videoId != null) return a.videoId === b.videoId
-  return a.videoSlug === b.videoSlug
 }
 
 /**
@@ -376,10 +363,7 @@ export function createPlaybackRequestStore(deps: {
     if (reconciling) return
     const session = sessionStore.getSnapshot().session
     if (session == null || next == null) return
-    if (
-      next.session != null &&
-      sessionIdentityKey(next.session) === sessionIdentityKey(session)
-    )
+    if (next.session != null && sameSessionContent(next.session, session))
       return
     reconciling = true
     try {

@@ -90,13 +90,26 @@ export type {
   StartDownloadResult,
 } from "../lib/downloadLifecycle"
 
+/** The playable file on disk for a video, paired with what it holds. */
+export type CommittedCopy = {
+  path: string
+  /** Null when the copy predates the dub being kept on a swap snapshot. */
+  dubDocumentId: string | null
+  /** The subtitle bundled with THIS file; null for "No subtitles". */
+  subtitleLanguageSlug: string | null
+}
+
 type DownloadsContextValue = {
   /** False until the persisted manifest has been read. */
   isReady: boolean
   /** The record for a video, or null if it has no offline copy/queue entry. */
   getRecord: (videoSlug: string) => OfflineDownloadRecord | null
-  /** Committed, playable local media path for a downloaded video, else null. */
-  committedFor: (videoSlug: string) => string | null
+  /**
+   * The committed local copy and its dub as ONE value, so a reader can never
+   * pair the file on disk with the record's incoming dub mid-swap. Null for a
+   * queued, in-flight or failed record with no file.
+   */
+  committedCopyFor: (videoSlug: string) => CommittedCopy | null
   /** Slugs with a usable (downloaded) offline copy. */
   downloadedSlugs: string[]
   /** All offline records (downloaded + in-progress) for the library. */
@@ -749,14 +762,24 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     () => ({
       isReady,
       getRecord: (videoSlug) => records[videoSlug] ?? null,
-      committedFor: (videoSlug) => {
+      committedCopyFor: (videoSlug) => {
         const record = records[videoSlug]
         if (!record) return null
         if (record.state === "downloaded" && record.committedPath)
-          return record.committedPath
+          return {
+            path: record.committedPath,
+            dubDocumentId: record.dubDocumentId,
+            subtitleLanguageSlug: record.subtitleLanguageSlug,
+          }
         // During a swap the new copy isn't committed yet — keep the snapshot's
-        // old file playable until the swap verifies.
-        if (record.swapFrom?.committedPath) return record.swapFrom.committedPath
+        // old file playable until the swap verifies, under the OLD file's
+        // dub and subtitle; the record already names the incoming ones.
+        if (record.swapFrom?.committedPath)
+          return {
+            path: record.swapFrom.committedPath,
+            dubDocumentId: record.swapFrom.dubDocumentId,
+            subtitleLanguageSlug: record.swapFrom.subtitleLanguageSlug,
+          }
         return null
       },
       downloadedSlugs: Object.values(records)

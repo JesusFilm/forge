@@ -51,8 +51,10 @@ recovers it.
    slot-to-host channel: `attachSlot` / `updateSlot` / `setSlotRect` /
    `detachSlot`, plus the playback-facts source the host installs.
 6. `apps/mobile/src/lib/miniPlayer/store.ts` — the session store.
-   `sessionIdentityKey` is ONE field (`slug:` then `id:`); `markEnded`,
-   `requestDismiss`, `reportExitComplete` and `end` are the endings.
+   `sameSessionContent` is the ONE identity predicate (ids when both sides
+   carry one, else slugs — since 2026-09-22; `sessionIdentityKey` is gone);
+   `markEnded`, `requestDismiss`, `reportExitComplete` and `end` are the
+   endings.
 7. `apps/mobile/src/lib/miniPlayer/presentation.ts` — `miniPlayerPresentation`
    returns `full` / `floating` / `hidden` / `exiting` / `none`, and
    `canOriginateSession` carries R19's exclusion.
