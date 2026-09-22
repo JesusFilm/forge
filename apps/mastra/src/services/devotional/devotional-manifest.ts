@@ -189,7 +189,14 @@ function buildClipFirstManifest(
   // `intro: "hook"` (YouTube): the one spoken line that runs over the film's
   // opening seconds. Every other opening is silent, so this is the only case
   // where the clip-first film card carries narration.
-  const hookSeg = input.segments.find((s) => s.id === "hook")
+  // ONLY when this cut actually opens on the spoken hook. The segment lives in
+  // the audio cache once it has been recorded, and attaching it on sight put
+  // the YouTube welcome over the film's first line in a cut that never asked
+  // for it (owner-reported: "the voice overlaps with the video sound").
+  const hookSeg =
+    input.intro === "hook"
+      ? input.segments.find((s) => s.id === "hook")
+      : undefined
   cards.push({
     kind: "video",
     videoFile: clip,

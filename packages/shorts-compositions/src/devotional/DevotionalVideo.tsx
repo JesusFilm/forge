@@ -4371,21 +4371,21 @@ function Background({
   // A cover asked to stay sharp keeps the footage unblurred and takes only a
   // light scrim — enough for one line of white text, not enough to hide what
   // the shot is. Cover only; every other card still needs its blur to be read.
-  // The social opening is film with a line of text over it, the way the
-  // colleague's cut does it — so it keeps the picture sharp and takes only a
-  // scrim, like a sharp cover.
-  const sharpCover =
-    (Boolean(props.coverBgSharp) && card.kind === "cover") ||
-    card.kind === "quote-intro"
+  const sharpCover = Boolean(props.coverBgSharp) && card.kind === "cover"
   const BLUR = sharpCover
     ? 0
-    : (card.kind === "cover"
-        ? coverBlurPx
-        : soft
-          ? px(8)
-          : medium
-            ? px(15)
-            : heavyBlurPx) * blurScale
+    : // The social opening carries three lines of reading over a moving
+      // picture: a light blur keeps the film present without pulling the eye
+      // off the words (owner: "the video distracts me from reading").
+      card.kind === "quote-intro"
+      ? px(6.5) * blurScale
+      : (card.kind === "cover"
+          ? coverBlurPx
+          : soft
+            ? px(8)
+            : medium
+              ? px(15)
+              : heavyBlurPx) * blurScale
   const wholeScrim =
     card.kind === "quote-intro"
       ? "rgba(6,4,3,0.42)"

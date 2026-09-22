@@ -67,8 +67,10 @@ export function QuoteIntro({
   // The beats, as shares of the card: quotation, questions, the invitation.
   const qOut = durationSec - 6.6
   const listIn = durationSec - 6.2
-  const listOut = durationSec - 2.1
-  const watchIn = durationSec - 1.8
+  // The questions must be GONE before the invitation arrives: at 12.4s these
+  // two were 0.3s apart and "LET'S WATCH." landed on top of them.
+  const listOut = durationSec - 3.0
+  const watchIn = durationSec - 1.9
 
   // Owner: the halves are PUSHED in from their own side, not revealed edge to
   // edge — a wipe also cut the descenders off the first line ("g" lost its
