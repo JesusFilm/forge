@@ -70,20 +70,19 @@ export function QuoteIntro({
   const listOut = durationSec - 2.1
   const watchIn = durationSec - 1.8
 
-  // Wipe: the line is revealed edge to edge, and slides a few px with it.
-  const wipe = (from: number, dir: "left" | "right") => {
-    const p = interpolate(t, [from, from + 0.42], [0, 1], {
+  // Owner: the halves are PUSHED in from their own side, not revealed edge to
+  // edge — a wipe also cut the descenders off the first line ("g" lost its
+  // tail), which a plain slide cannot do.
+  const push = (from: number, dir: "left" | "right") => {
+    const p = interpolate(t, [from, from + 0.5], [0, 1], {
       extrapolateLeft: "clamp",
       extrapolateRight: "clamp",
       easing: ease,
     })
-    const hidden = (1 - p) * 100
+    const travel = px(54) * (1 - p)
     return {
-      clipPath:
-        dir === "left"
-          ? `inset(0 ${hidden.toFixed(1)}% 0 0)`
-          : `inset(0 0 0 ${hidden.toFixed(1)}%)`,
-      transform: `translateX(${((dir === "left" ? -1 : 1) * (1 - p) * 18).toFixed(1)}px)`,
+      opacity: p,
+      transform: `translateX(${((dir === "left" ? -1 : 1) * travel).toFixed(1)}px)`,
     }
   }
   const quoteOpacity = interpolate(t, [qOut, qOut + 0.5], [1, 0], {
@@ -100,7 +99,14 @@ export function QuoteIntro({
     [0, 1, 1, 0.6],
     { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
   )
-  const strongStyle: React.CSSProperties = { fontWeight: 700, color: GOLD }
+  // Owner: the quotation is set in the label face, and ONLY the phrase that
+  // carries the weight is the serif — so the gold words read as a quotation
+  // inside a plain sentence, not as one block of display type.
+  const strongStyle: React.CSSProperties = {
+    fontFamily: serif,
+    fontWeight: 600,
+    color: GOLD,
+  }
 
   return (
     <AbsoluteFill style={{ pointerEvents: "none" }}>
@@ -114,31 +120,31 @@ export function QuoteIntro({
       >
         <div
           style={{
-            fontFamily: serif,
+            fontFamily: sans,
             fontWeight: 400,
-            fontSize: px(31),
-            lineHeight: 1.22,
+            fontSize: px(29),
+            lineHeight: 1.34,
             color: "#fff",
             textShadow: `0 ${px(2)}px ${px(20)}px rgba(0,0,0,0.55)`,
             maxWidth: "88%",
-            ...wipe(0.25, "left"),
+            ...push(0.25, "left"),
           }}
         >
           {withStrong(quoteA, quoteAStrong, strongStyle)}
         </div>
         <div
           style={{
-            fontFamily: serif,
+            fontFamily: sans,
             fontWeight: 400,
-            fontSize: px(31),
-            lineHeight: 1.22,
+            fontSize: px(29),
+            lineHeight: 1.34,
             color: "#fff",
             textShadow: `0 ${px(2)}px ${px(20)}px rgba(0,0,0,0.55)`,
             maxWidth: "88%",
             // Set apart from the first half: further in, a little lower.
             marginLeft: px(26),
             marginTop: px(14),
-            ...wipe(1.5, "right"),
+            ...push(1.5, "right"),
           }}
         >
           {withStrong(quoteB, quoteBStrong, strongStyle)}
@@ -154,33 +160,65 @@ export function QuoteIntro({
         }}
       >
         {questions.map((q, i) => {
-          const at = listIn + i * 0.45
-          const p = interpolate(t, [at, at + 0.26], [0, 1], {
+          const at = listIn + i * 0.5
+          // A touch of overshoot on the way in (owner: a little bouncing).
+          const p = interpolate(t, [at, at + 0.4], [0, 1], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
-            easing: ease,
+            easing: Easing.bezier(0.34, 1.56, 0.64, 1),
           })
+          const fade = interpolate(t, [at, at + 0.22], [0, 1], {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          })
+          // Owner: not a stack of three identical rows — the middle one sits
+          // further in and a little higher, the last one drops lower.
+          const nudge = [
+            { x: 0, y: 0 },
+            { x: px(34), y: -px(10) },
+            { x: px(10), y: px(16) },
+          ][i] ?? { x: 0, y: 0 }
           // Each line breathes on its own clock, so the block never reads as
           // one rigid slab pasted over moving film.
-          const driftY = Math.sin((t + i * 1.7) * 0.9) * px(3.2)
-          const driftX = Math.cos((t + i * 2.3) * 0.7) * px(2.2)
+          const driftY = Math.sin((t + i * 1.7) * 0.85) * px(7)
+          const driftX = Math.cos((t + i * 2.3) * 0.65) * px(5)
           return (
             <div
               key={q}
               style={{
-                fontFamily: serif,
-                fontWeight: 500,
-                fontSize: px(28),
-                lineHeight: 1.2,
-                color: "#fff",
-                textShadow: `0 ${px(2)}px ${px(20)}px rgba(0,0,0,0.55)`,
-                maxWidth: "86%",
-                marginTop: i === 0 ? 0 : px(26),
-                opacity: p,
-                transform: `translate(${driftX.toFixed(2)}px, ${(driftY - (1 - p) * px(26)).toFixed(2)}px)`,
+                display: "flex",
+                alignItems: "stretch",
+                gap: px(14),
+                maxWidth: "88%",
+                marginTop: i === 0 ? 0 : px(38),
+                marginLeft: nudge.x,
+                opacity: fade,
+                transform: `translate(${(driftX + (1 - p) * -px(46)).toFixed(2)}px, ${(driftY + nudge.y).toFixed(2)}px)`,
               }}
             >
-              {q}
+              {/* A hairline marks each question, the way the step row's rails
+                  do — it gives the three lines a left edge to hang from. */}
+              <span
+                style={{
+                  width: px(2),
+                  borderRadius: px(2),
+                  background: GOLD,
+                  opacity: 0.75,
+                  flexShrink: 0,
+                }}
+              />
+              <div
+                style={{
+                  fontFamily: sans,
+                  fontWeight: 500,
+                  fontSize: px(26),
+                  lineHeight: 1.3,
+                  color: "#fff",
+                  textShadow: `0 ${px(2)}px ${px(20)}px rgba(0,0,0,0.55)`,
+                }}
+              >
+                {q}
+              </div>
             </div>
           )
         })}
@@ -200,7 +238,8 @@ export function QuoteIntro({
             fontWeight: 600,
             fontSize: px(19),
             letterSpacing: px(3.4),
-            color: "#fff",
+            // Gold, like the live step in the stepper (owner).
+            color: GOLD,
             textShadow: `0 0 ${px(10)}px rgba(242,196,107,0.55), 0 0 ${px(26)}px rgba(242,196,107,0.3)`,
           }}
         >

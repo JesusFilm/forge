@@ -4039,6 +4039,28 @@ function Background({
   const kbFit = interpolate(frame, [0, durationInFrames], [1.0, 1.03], {
     extrapolateRight: "clamp",
   })
+  // The social opening lands IN the scene: a fast, strong push in over the
+  // first second, easing out into the slow drift the rest of the piece uses
+  // (owner: "as if we landed there quickly"). Never close enough to crop into
+  // faces — it settles at 1.06, the same neighbourhood as everything else.
+  const kbLanding =
+    card.kind === "quote-intro"
+      ? // Starts after the opening fade from black (0.6s) — a push-in nobody
+        // can see because the frame is still black is a push-in wasted.
+        interpolate(
+          frame,
+          [Math.round(fps * 0.3), Math.round(fps * 1.5)],
+          // Owner asked for a zoom IN: we arrive at the scene, fast and hard,
+          // and settle — so the scale GROWS, and stops short of cropping into
+          // anybody's face.
+          [1.0, 1.22],
+          {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+            easing: Easing.out(Easing.cubic),
+          },
+        )
+      : null
 
   const src = isVideoCard ? card.videoFile! : (card.bgFile ?? props.bgFile)
   // Cover (both orientations): centered lockup over CLEAR footage — no blur
@@ -4130,7 +4152,13 @@ function Background({
         filter: introCover
           ? (props.mediaFilterOverride ?? style.mediaBase) || undefined
           : `${props.mediaFilterOverride ?? style.mediaBase} brightness(0.85)`.trim(),
-        transform: introCover ? "scale(1.04)" : `scale(${kb})`,
+        // The social opening arrives with a hard push in (kbLanding); the
+        // cover holds a constant slight zoom; everything else drifts.
+        transform: kbLanding
+          ? `scale(${kbLanding})`
+          : introCover
+            ? "scale(1.04)"
+            : `scale(${kb})`,
       }}
     />
   )
@@ -4451,7 +4479,7 @@ function Background({
             objectFit: isVideoCard ? "contain" : "cover",
             filter:
               `${baseGrade} blur(${px(15)}px) brightness(1.7) saturate(1.05)`.trim(),
-            transform: `scale(${isVideoCard ? kbFit : kb})`,
+            transform: `scale(${kbLanding ?? (isVideoCard ? kbFit : kb)})`,
           }}
         />
       </AbsoluteFill>
