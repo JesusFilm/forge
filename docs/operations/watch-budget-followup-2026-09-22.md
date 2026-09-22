@@ -152,6 +152,13 @@ acknowledgment bodies were captured. It does not establish timeout recovery.
 
 ## Ticket consequences
 
+The connector lists dashboard creation, but a direct attempt to validate the
+five prepared widgets is rejected by Datadog: **MCP write operations are disabled
+for the organization**. The dashboard and feat-464-tagged monitor searches
+return no matching installation. No dashboard write was attempted after that
+explicit policy rejection. This is an organization-level connector restriction,
+not a missing Railway token and not a prerequisite for database diagnosis.
+
 - **feat-496:** keep in progress. The tested competing workload does not explain
   the selection stall; storage/commit and native-pool attribution remain open,
   as does the separate delivery-persistence timeout.
@@ -170,3 +177,16 @@ All diagnostic connections close in `finally`; the cleanup probe reports zero
 remaining task observers. No temporary production settings need restoration.
 The authored English homepage block remains behind the default-off flag, per
 the owner's latest instruction. No local code was directly deployed.
+
+## Storage investigation for the Railway owner
+
+The useful next provider query is specific: correlate PostgreSQL volume flush
+completion, queueing and throttling with September 21 **23:15:38 and 23:18:44
+UTC**, when naturally slow budget calls matched WAL waits and volume I/O
+pressure. Separately inspect **23:23:27**, when 1,708/406/677 ms calls had no
+concurrent wait capture; do not label their cause as established. Request
+provider-side evidence before changing volume quotas or availability topology.
+Database reads verify `data_directory=/var/lib/postgresql/data/pgdata` and
+`wal_sync_method=fdatasync`. The current observations do not establish a wrong
+data mount, CPU quota exhaustion or a large competing writer. This prepared
+investigation has not been sent to the provider.

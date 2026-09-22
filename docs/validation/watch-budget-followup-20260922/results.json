@@ -973,5 +973,39 @@
     "navigationSucceeded": 6,
     "acknowledgmentBodiesCaptured": false,
     "limits": "Navigation only; not a claim of HTTP or semantic success."
-  }
+  },
+  "dashboardInstallation": {
+    "matchingDashboardFound": false,
+    "matchingFeat464MonitorsFound": false,
+    "widgetValidationAttempts": 5,
+    "outcome": "MCP write operations disabled for organization",
+    "dashboardWriteAttemptedAfterRejection": false,
+    "created": false
+  },
+  "databaseLayout": {
+    "at": "2026-09-22T04:21:20.504Z",
+    "rows": [
+      {
+        "name": "checkpoint_completion_target",
+        "setting": "0.9"
+      },
+      {
+        "name": "checkpoint_timeout",
+        "setting": "300"
+      },
+      {
+        "name": "data_directory",
+        "setting": "/var/lib/postgresql/data/pgdata"
+      },
+      {
+        "name": "wal_compression",
+        "setting": "off"
+      },
+      {
+        "name": "wal_sync_method",
+        "setting": "fdatasync"
+      }
+    ]
+  },
+  "localFixtureStopped": true
 }
