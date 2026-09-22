@@ -66,6 +66,17 @@ language or language-region shape, such as `en` or `pt-BR`. Unsupported script
 or numeric-region tags, missing tags, and duplicate normalized hreflang values
 are skipped and counted instead of emitted.
 
+**Superseded in part, 2026-09-22 (feat-533 / FGE-183).** That hreflang filter
+used to decide sitemap _inclusion_ too, because every `<loc>` was derived from
+the alternate list, so roughly 1,900 playable languages with no ISO-639-1 code
+had no sitemap URL at all. Video route groups now also carry `languageSlugs` —
+every playable audio-language slug — and the sitemap emits one `<loc>` per pair
+from that list while `<xhtml:link>` still comes only from `alternates`. A URL
+outside the hreflang cluster ships unannotated; it is never given the cluster's
+set, because a non-member publishing that set breaks reciprocity and makes
+Google discard the cluster. The skipped-value counts above are unchanged and
+remain the hreflang-eligibility signal, not a coverage signal.
+
 Web reads the SEO manifest through `src/lib/watch-seo-manifest.ts`, keeps a
 short process-local cache, and renders:
 
@@ -111,9 +122,9 @@ Release proof should include one rendered video URL and one episode URL:
   alternate graph.
 - Every referenced child returns a direct HTTP 200 XML response, stays within
   both shard limits, and is referenced exactly once by a contiguous index.
-- Canonical locations are unique across children, include themselves in their
-  alternate set, and publish the same reciprocal set as every alternate
-  target.
+- Canonical locations are unique across children, and every location that
+  carries `<xhtml:link>` at all includes itself in its alternate set and
+  publishes the same reciprocal set as every alternate target.
 - Unsupported and duplicate hreflang values are absent from XML and visible in
   skipped summary counts.
 

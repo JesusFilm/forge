@@ -45,6 +45,50 @@ describe("parseWatchSeoManifest", () => {
     expect(parseWatchSeoManifest(manifest)).toEqual(manifest)
   })
 
+  it("carries languageSlugs through and tolerates an older snapshot without it", () => {
+    const withLanguageSlugs = {
+      ...manifest,
+      videoRouteGroups: [
+        {
+          contentSlug: "jesus",
+          alternates: [{ hreflang: "en", languageSlug: "english" }],
+          languageSlugs: ["english", "cebuano"],
+        },
+      ],
+    }
+
+    expect(parseWatchSeoManifest(withLanguageSlugs)).toEqual(withLanguageSlugs)
+    // An admin snapshot generated before this field existed must still parse.
+    expect(parseWatchSeoManifest(manifest)).toEqual(manifest)
+  })
+
+  it("rejects a malformed languageSlugs list", () => {
+    expect(
+      parseWatchSeoManifest({
+        ...manifest,
+        videoRouteGroups: [
+          {
+            contentSlug: "jesus",
+            alternates: [],
+            languageSlugs: ["english", ""],
+          },
+        ],
+      }),
+    ).toBeNull()
+    expect(
+      parseWatchSeoManifest({
+        ...manifest,
+        videoRouteGroups: [
+          {
+            contentSlug: "jesus",
+            alternates: [],
+            languageSlugs: "english",
+          },
+        ],
+      }),
+    ).toBeNull()
+  })
+
   it("rejects malformed route groups and skipped-count maps", () => {
     expect(
       parseWatchSeoManifest({

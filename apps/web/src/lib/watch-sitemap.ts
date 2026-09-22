@@ -11,6 +11,7 @@ import { resolveWatchLocaleIdentity } from "@/lib/locale"
 import type {
   WatchSeoManifest,
   WatchSeoManifestAlternate,
+  WatchSeoManifestVideoRouteGroup,
 } from "@/lib/watch-seo-manifest"
 
 import {
@@ -95,7 +96,15 @@ export type WatchSitemapChunk = {
 type ResolvedSitemapGroup = {
   alternateLinksXml: string
   alternateLinksBytes: number
-  locs: string[]
+  /** URLs inside the group's hreflang cluster; each carries the whole cluster. */
+  annotatedLocs: string[]
+  /**
+   * Playable URLs with no Google-valid hreflang. They are emitted as bare
+   * `<loc>` entries: attaching the cluster's `<xhtml:link>` set to a URL that
+   * is not a member would break reciprocity and make Google discard the
+   * cluster's annotations entirely.
+   */
+  unannotatedLocs: string[]
 }
 
 const chunkCache = new WeakMap<WatchSeoManifest, WatchSitemapChunk[]>()
@@ -160,11 +169,29 @@ function renderEntryXml({
   return `<url><loc>${xmlEscape(loc)}</loc>${alternatesXml}</url>`
 }
 
+/**
+ * Every language the group has a playable canonical URL for. The hreflang
+ * cluster comes first so the URLs that already existed keep their order (and
+ * therefore their chunk placement), then the playable long tail. `languageSlugs`
+ * is absent on admin snapshots generated before it existed, and the union keeps
+ * a cluster member that is somehow missing from it.
+ */
+function routeGroupLanguageSlugs(
+  group: Pick<WatchSeoManifestVideoRouteGroup, "alternates" | "languageSlugs">,
+): string[] {
+  return [
+    ...new Set([
+      ...group.alternates.map((alternate) => alternate.languageSlug),
+      ...(group.languageSlugs ?? []),
+    ]),
+  ]
+}
+
 function groupEntries(
-  alternates: WatchSeoManifestAlternate[],
+  group: Pick<WatchSeoManifestVideoRouteGroup, "alternates" | "languageSlugs">,
   hrefForLanguage: (languageSlug: string) => string | null,
 ): WatchSitemapEntry[] {
-  const resolvedAlternates = alternates
+  const resolvedAlternates = group.alternates
     .map((alternate) => {
       const href = hrefForLanguage(alternate.languageSlug)
       return href ? { ...alternate, href } : null
@@ -172,31 +199,69 @@ function groupEntries(
     .filter(
       (alternate): alternate is WatchSitemapAlternate => alternate !== null,
     )
+  const clusterHrefs = new Set(
+    resolvedAlternates.map((alternate) => alternate.href),
+  )
 
-  return resolvedAlternates.map((alternate) => ({
-    loc: alternate.href,
-    alternates: resolvedAlternates,
-  }))
+  const entries: WatchSitemapEntry[] = []
+  const seen = new Set<string>()
+  for (const languageSlug of routeGroupLanguageSlugs(group)) {
+    const href = hrefForLanguage(languageSlug)
+    // Two slugs can only collide here through bad manifest data; skipping the
+    // repeat keeps it out of the cross-group `duplicate_loc` guard, which would
+    // otherwise 503 the whole sitemap.
+    if (!href || seen.has(href)) continue
+    seen.add(href)
+    entries.push({
+      loc: href,
+      alternates: clusterHrefs.has(href) ? resolvedAlternates : [],
+    })
+  }
+  return entries
 }
 
-function groupForAlternates(
-  alternates: WatchSeoManifestAlternate[],
+function groupForVideoRoute(
+  group: WatchSeoManifestVideoRouteGroup,
   hrefForLanguage: (languageSlug: string) => string | null,
 ): ResolvedSitemapGroup | null {
-  return groupForEntries(groupEntries(alternates, hrefForLanguage))
+  return groupForEntries(groupEntries(group, hrefForLanguage))
 }
 
 function groupForEntries(
   entries: WatchSitemapEntry[],
 ): ResolvedSitemapGroup | null {
   if (!entries.length) return null
-  const alternateLinksXml = entries[0]?.alternates.map(renderAlternate).join("")
-  if (!alternateLinksXml) return null
-  const locs = entries.map((entry) => entry.loc)
+  const annotated = entries.filter((entry) => entry.alternates.length > 0)
+  const alternateLinksXml =
+    annotated[0]?.alternates.map(renderAlternate).join("") ?? ""
   return {
     alternateLinksXml,
     alternateLinksBytes: Buffer.byteLength(alternateLinksXml, "utf8"),
-    locs,
+    annotatedLocs: annotated.map((entry) => entry.loc),
+    unannotatedLocs: entries
+      .filter((entry) => entry.alternates.length === 0)
+      .map((entry) => entry.loc),
+  }
+}
+
+/**
+ * Walks a group's URLs in emission order, pairing each with the alternate XML
+ * it renders. The cluster's XML string is shared by reference across every
+ * annotated URL, so a group costs one serialized alternate block, not one per
+ * URL.
+ */
+function* groupLocEntries(
+  group: ResolvedSitemapGroup,
+): Generator<{ alternatesXml: string; alternatesBytes: number; loc: string }> {
+  for (const loc of group.annotatedLocs) {
+    yield {
+      alternatesXml: group.alternateLinksXml,
+      alternatesBytes: group.alternateLinksBytes,
+      loc,
+    }
+  }
+  for (const loc of group.unannotatedLocs) {
+    yield { alternatesXml: "", alternatesBytes: 0, loc }
   }
 }
 
@@ -206,7 +271,7 @@ function createWatchSitemapGroups(
   const groups: ResolvedSitemapGroup[] = []
 
   for (const group of manifest.videoRouteGroups) {
-    const sitemapGroup = groupForAlternates(group.alternates, (languageSlug) =>
+    const sitemapGroup = groupForVideoRoute(group, (languageSlug) =>
       videoHref(group.contentSlug, languageSlug),
     )
     if (sitemapGroup) groups.push(sitemapGroup)
@@ -225,7 +290,7 @@ export function createWatchSitemapEntries(
 
   for (const group of manifest.videoRouteGroups) {
     entries.push(
-      ...groupEntries(group.alternates, (languageSlug) =>
+      ...groupEntries(group, (languageSlug) =>
         videoHref(group.contentSlug, languageSlug),
       ),
     )
@@ -274,17 +339,19 @@ export function getWatchSitemapChunks(
   const seenLocs = new Set<string>()
 
   for (const group of createWatchSitemapGroups(manifest)) {
-    for (const loc of group.locs) {
+    for (const { alternatesXml, alternatesBytes, loc } of groupLocEntries(
+      group,
+    )) {
       if (seenLocs.has(loc)) {
         throw new WatchSitemapGenerationError("duplicate_loc")
       }
       seenLocs.add(loc)
       const entry: WatchSitemapChunkEntry = {
-        alternatesXml: group.alternateLinksXml,
+        alternatesXml,
         bytes:
           Buffer.byteLength("<url><loc></loc></url>", "utf8") +
           Buffer.byteLength(xmlEscape(loc), "utf8") +
-          group.alternateLinksBytes,
+          alternatesBytes,
         loc,
       }
       if (wrapperBytes + entry.bytes > maxBytes) {

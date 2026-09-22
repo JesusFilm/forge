@@ -502,7 +502,10 @@ export class WatchSitemapAuditSession {
             ),
           )
         }
-        if (!hrefs.includes(loc)) {
+        // An entry with no alternates at all belongs to no hreflang cluster —
+        // the Watch long tail, whose languages have no Google-valid hreflang.
+        // Self-inclusion is only required once an entry annotates at all.
+        if (alternates.length > 0 && !hrefs.includes(loc)) {
           this.issues.push(
             documentIssue(
               "missing_self_alternate",
