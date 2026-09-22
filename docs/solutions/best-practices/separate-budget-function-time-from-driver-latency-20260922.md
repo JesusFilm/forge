@@ -124,3 +124,14 @@ cgroup I/O pressure and native-pool delay are different observations. A missing
 matching slow budget event prevents request attribution even when volume
 pressure is real. Retry a timed-out diagnostic only after reducing or validating
 its query scope; a read-only history scan can still interfere with production.
+
+A later relation-counter delta found 13.1 million workflow-history tuples fetched
+in thirty seconds, exceeding that first fixture's throughput. Raising the owned
+load to 12.8 million returned rows raises budget p95 from 3.82 to 38.05 ms, with a
+407 ms maximum and exact persisted attempts; the following idle phase returns to
+3.56 ms p95. Preserve both findings: slow query duration alone under-specified the
+original workload, and matching row throughput still does not reproduce provider
+storage or the historical 700 ms timeout. PostgreSQL buffer reads are not physical
+volume bytes. Measure competing-workload throughput before generalizing a negative
+reproduction, and retain the unproven causal boundary when the revised load adds
+latency without reproducing the failure.

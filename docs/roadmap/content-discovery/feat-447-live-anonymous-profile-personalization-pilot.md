@@ -187,3 +187,7 @@ No production evidence or privileged identity was inserted to obtain the result.
 ## September 22 bounded workload and production follow-up
 
 The [September 22 follow-up](../../operations/watch-budget-followup-2026-09-22.md) preserves the passed Watch-to-qualified-feedback-to-hybrid Admin trace and current-pointer audit. It does not supply the independent operational last-known-good fallback event or close the feat-459 dependency. Keep this ticket in progress; no fallback was manufactured in production.
+
+## September 22 internal continuation
+
+The internal continuation finds no operational last-known-good fallback in the fresh request population. Its established lifecycle/Admin proofs retain credit, but the independent fallback and feat-459 dependency remain open. No production fallback was manufactured. See the [internal verification](../../operations/watch-budget-followup-2026-09-22.md#internal-continuation-workload-volume-and-reconciled-outcomes).

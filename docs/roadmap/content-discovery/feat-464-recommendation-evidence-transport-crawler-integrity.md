@@ -430,3 +430,7 @@ validation because MCP writes are disabled for this organization. No matching
 dashboard or feat-464-tagged monitors were found. This replaces the earlier
 imprecise description of a read-only tool list with a verified organization
 policy blocker; Railway/database diagnosis remains available.
+
+## September 22 internal continuation
+
+The internal continuation reconciles every delivery, selection, playback and initial-evidence HTTP group in the fixed 02:34–04:34 UTC window using primary Railway logs. Playback is 0/7,185 5xx with no exclusions. Durable delivery, render/impression and selection counts reconcile; all 24 reconciliation batches complete without recorded errors, and the fresh authorized current-pointer audit is clean. Credit these production checks. No binding failure occurs in this window, so the earlier bounded browser proof is unchanged. Installed monitoring remains blocked by the Datadog organization write policy; this ticket is still in progress. See the [internal verification](../../operations/watch-budget-followup-2026-09-22.md#internal-continuation-workload-volume-and-reconciled-outcomes).

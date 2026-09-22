@@ -1007,5 +1007,1100 @@
       }
     ]
   },
-  "localFixtureStopped": true
+  "localFixtureStopped": true,
+  "internalContinuation": {
+    "scope": "Internal-only continuation after PR 2380; no provider communication, application change, production setting change or direct database mutation",
+    "baseRevision": "a57725066d41d50b554657f0f2befdffa935c7a8",
+    "window": {
+      "from": "2026-09-22T02:34:00Z",
+      "to": "2026-09-22T04:34:00Z",
+      "excludedRequests": 0
+    },
+    "http": [
+      {
+        "http.status_code": "400",
+        "resource_name": "post_/api/recommendations/playback",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 5
+      },
+      {
+        "http.status_code": "400",
+        "resource_name": "post_/api/recommendations/evidence",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 27
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/select",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 17
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations/profile",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 1352
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 813
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/playback",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 6489
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations/evidence",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 886
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/profile",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 1461
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 511
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/evidence",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 2101
+      },
+      {
+        "http.status_code": "401",
+        "resource_name": "post_/api/recommendations/playback",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 8
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations/playback",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 683
+      }
+    ],
+    "primaryRailwayLogOutcomes": {
+      "from": "2026-09-22T02:34:00+00:00",
+      "to": "2026-09-22T04:34:00+00:00",
+      "parts": [
+        {
+          "from": "2026-09-22T02:34:00+00:00",
+          "to": "2026-09-22T03:04:00+00:00",
+          "returned": 2926,
+          "withinHalfOpen": 2926
+        },
+        {
+          "from": "2026-09-22T03:04:00+00:00",
+          "to": "2026-09-22T03:34:00+00:00",
+          "returned": 2855,
+          "withinHalfOpen": 2855
+        },
+        {
+          "from": "2026-09-22T03:34:00+00:00",
+          "to": "2026-09-22T04:04:00+00:00",
+          "returned": 2769,
+          "withinHalfOpen": 2769
+        },
+        {
+          "from": "2026-09-22T04:04:00+00:00",
+          "to": "2026-09-22T04:34:00+00:00",
+          "returned": 2990,
+          "withinHalfOpen": 2990
+        }
+      ],
+      "counts": [
+        {
+          "message": "event=recommendation.evidence source=web action=facts outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+          "count": 5748
+        },
+        {
+          "message": "event=recommendation.evidence source=web action=evidence outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+          "count": 2101
+        },
+        {
+          "message": "event=recommendation.evidence source=web action=evidence outcome=rejected reason=crawler_rejected timeoutStage=none retryDisposition=terminal crawler=recognized httpStatus=403",
+          "count": 886
+        },
+        {
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=6 upstreamResult=served",
+          "count": 449
+        },
+        {
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_fetch_metadata itemCount=0 upstreamResult=not_observed",
+          "count": 403
+        },
+        {
+          "message": "event=recommendation.evidence source=web action=context outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+          "count": 372
+        },
+        {
+          "message": "event=recommendation.evidence source=web action=claim outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+          "count": 365
+        },
+        {
+          "message": "event=recommendation.evidence source=web action=playback outcome=rejected reason=forbidden timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=403",
+          "count": 361
+        },
+        {
+          "message": "event=recommendation.evidence source=web action=playback outcome=rejected reason=crawler_rejected timeoutStage=none retryDisposition=terminal crawler=recognized httpStatus=403",
+          "count": 322
+        },
+        {
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=no_candidates itemCount=6 upstreamResult=empty",
+          "count": 112
+        },
+        {
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_origin itemCount=0 upstreamResult=not_observed",
+          "count": 108
+        },
+        {
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=1 upstreamResult=served",
+          "count": 56
+        },
+        {
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=2 upstreamResult=served",
+          "count": 46
+        },
+        {
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=4 upstreamResult=served",
+          "count": 38
+        },
+        {
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=seed_embedding_unavailable itemCount=6 upstreamResult=fallback",
+          "count": 32
+        },
+        {
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=5 upstreamResult=served",
+          "count": 32
+        },
+        {
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=3 upstreamResult=served",
+          "count": 30
+        },
+        {
+          "message": "event=recommendation.evidence source=web action=evidence outcome=rejected reason=invalid_request timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=400",
+          "count": 27
+        },
+        {
+          "message": "event=recommendation.evidence source=web action=select outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+          "count": 17
+        },
+        {
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=seed_embedding_unavailable itemCount=6 upstreamResult=empty",
+          "count": 11
+        },
+        {
+          "message": "event=recommendation.evidence source=web action=facts outcome=rejected reason=forbidden timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=401",
+          "count": 8
+        },
+        {
+          "message": "event=recommendation.evidence source=web action=facts outcome=replay reason=none timeoutStage=none retryDisposition=idempotent_replay crawler=not_recognized httpStatus=200",
+          "count": 4
+        },
+        {
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=session_hour itemCount=6 upstreamResult=unavailable",
+          "count": 3
+        },
+        {
+          "message": "event=recommendation.evidence source=web action=playback outcome=rejected reason=invalid_request timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=400",
+          "count": 3
+        },
+        {
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=no_candidates itemCount=4 upstreamResult=empty",
+          "count": 2
+        },
+        {
+          "message": "event=recommendation.evidence source=web action=facts outcome=rejected reason=invalid_request timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=400",
+          "count": 2
+        },
+        {
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=no_candidates itemCount=5 upstreamResult=empty",
+          "count": 1
+        },
+        {
+          "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=cooldown itemCount=6 upstreamResult=unavailable",
+          "count": 1
+        }
+      ]
+    },
+    "logReconciliation": {
+      "allDeliverySelectionPlaybackInitialEvidenceHttpGroupsMatch": true,
+      "profileEnvelopeReconciliationClaimed": false,
+      "datadogMissing": {
+        "servedSixDelivery200": 1,
+        "acceptedFacts200": 6,
+        "context200": 1,
+        "claim200": 1,
+        "initialEvidence200": 6
+      }
+    },
+    "delivery": {
+      "http200": 813,
+      "http403": 511,
+      "http5xx": 0,
+      "served": 651,
+      "coverageAdmissionFallbacks": 162,
+      "deliveryTimeout": 0,
+      "retrievalTimeout": 0,
+      "persistedRequests": 809,
+      "preAdminAdmissionFallbacks": 4
+    },
+    "playback": {
+      "http200": 6489,
+      "http400": 5,
+      "http401": 8,
+      "http403": 683,
+      "http5xx": 0,
+      "total": 7185,
+      "recognizedCrawler403": 322
+    },
+    "selection": {
+      "http200": 17,
+      "httpErrors": 0,
+      "committedSelections": 17
+    },
+    "initialEvidence": {
+      "http200": 2101,
+      "http400": 27,
+      "http403": 886,
+      "renderAudits": 1871,
+      "impressionAudits": 230
+    },
+    "observedAdminErrorIndicators": {
+      "P2002OrP2034OrKnownExhaustionLogCount": 0,
+      "scope": "Known indexed log indicators only; not every possible failure"
+    },
+    "databaseSnapshot": {
+      "started": "2026-09-22T04:43:22.594Z",
+      "revision": "c98ec86bdd9a308f33b53d035084e8fd10e0e08d",
+      "from": "2026-09-22T02:34:00Z",
+      "to": "2026-09-22T04:34:00Z",
+      "scope": "Durable database rows; not HTTP outcomes or browser acknowledgments",
+      "queries": [
+        {
+          "name": "requests",
+          "ms": 8.219,
+          "rows": [
+            {
+              "state": "issued",
+              "result": "served",
+              "purpose": "seeded",
+              "fallback_reason": null,
+              "records": 651,
+              "p50_retrieval_ms": 107,
+              "p95_retrieval_ms": 275,
+              "max_retrieval_ms": 531,
+              "expected_six": 449,
+              "complete_bounded_population": true
+            },
+            {
+              "state": "issued",
+              "result": "empty",
+              "purpose": "seeded",
+              "fallback_reason": "no_candidates",
+              "records": 115,
+              "p50_retrieval_ms": 111,
+              "p95_retrieval_ms": 242,
+              "max_retrieval_ms": 407,
+              "expected_six": 0,
+              "complete_bounded_population": true
+            },
+            {
+              "state": "issued",
+              "result": "fallback",
+              "purpose": "seeded",
+              "fallback_reason": "seed_embedding_unavailable",
+              "records": 32,
+              "p50_retrieval_ms": 262,
+              "p95_retrieval_ms": 346,
+              "max_retrieval_ms": 390,
+              "expected_six": 32,
+              "complete_bounded_population": true
+            },
+            {
+              "state": "issued",
+              "result": "empty",
+              "purpose": "seeded",
+              "fallback_reason": "seed_embedding_unavailable",
+              "records": 11,
+              "p50_retrieval_ms": 103,
+              "p95_retrieval_ms": 402,
+              "max_retrieval_ms": 402,
+              "expected_six": 0,
+              "complete_bounded_population": true
+            }
+          ]
+        },
+        {
+          "name": "candidate_evidence",
+          "ms": 30.023,
+          "rows": [
+            {
+              "requests": 809,
+              "candidate_runs": 809,
+              "complete_candidate_evidence": 764,
+              "composed_six": 481,
+              "shortfalls": 328,
+              "complete_bounded_population": true
+            }
+          ]
+        },
+        {
+          "name": "episodes",
+          "ms": 5.094,
+          "rows": [
+            {
+              "state": "pending",
+              "episodes": 25,
+              "assigned_fact_sequences": "0",
+              "replays": "0",
+              "transport_replays": "0",
+              "conflicts": "0",
+              "finalized": 0,
+              "complete_bounded_population": true
+            },
+            {
+              "state": "claimed",
+              "episodes": 223,
+              "assigned_fact_sequences": "2591",
+              "replays": "0",
+              "transport_replays": "2",
+              "conflicts": "0",
+              "finalized": 0,
+              "complete_bounded_population": true
+            },
+            {
+              "state": "finalized",
+              "episodes": 141,
+              "assigned_fact_sequences": "5218",
+              "replays": "0",
+              "transport_replays": "122",
+              "conflicts": "0",
+              "finalized": 141,
+              "complete_bounded_population": true
+            }
+          ]
+        },
+        {
+          "name": "audits",
+          "ms": 5.921,
+          "rows": [
+            {
+              "kind": "delivery_success",
+              "reason_code": "empty",
+              "rows": 126,
+              "recorded_events": "126",
+              "complete_bounded_population": true
+            },
+            {
+              "kind": "delivery_success",
+              "reason_code": "fallback",
+              "rows": 32,
+              "recorded_events": "32",
+              "complete_bounded_population": true
+            },
+            {
+              "kind": "delivery_success",
+              "reason_code": "served",
+              "rows": 651,
+              "recorded_events": "651",
+              "complete_bounded_population": true
+            },
+            {
+              "kind": "evidence_success",
+              "reason_code": "impression",
+              "rows": 230,
+              "recorded_events": "230",
+              "complete_bounded_population": true
+            },
+            {
+              "kind": "evidence_success",
+              "reason_code": "playback_active_visible_playing",
+              "rows": 31,
+              "recorded_events": "31",
+              "complete_bounded_population": true
+            },
+            {
+              "kind": "evidence_success",
+              "reason_code": "playback_attempt",
+              "rows": 8,
+              "recorded_events": "8",
+              "complete_bounded_population": true
+            },
+            {
+              "kind": "evidence_success",
+              "reason_code": "playback_end",
+              "rows": 3,
+              "recorded_events": "3",
+              "complete_bounded_population": true
+            },
+            {
+              "kind": "evidence_success",
+              "reason_code": "playback_navigation",
+              "rows": 27,
+              "recorded_events": "27",
+              "complete_bounded_population": true
+            },
+            {
+              "kind": "evidence_success",
+              "reason_code": "playback_observation",
+              "rows": 2,
+              "recorded_events": "2",
+              "complete_bounded_population": true
+            },
+            {
+              "kind": "evidence_success",
+              "reason_code": "playback_progress",
+              "rows": 30,
+              "recorded_events": "30",
+              "complete_bounded_population": true
+            },
+            {
+              "kind": "evidence_success",
+              "reason_code": "playback_qoe",
+              "rows": 26,
+              "recorded_events": "26",
+              "complete_bounded_population": true
+            },
+            {
+              "kind": "evidence_success",
+              "reason_code": "playback_seek",
+              "rows": 19,
+              "recorded_events": "19",
+              "complete_bounded_population": true
+            },
+            {
+              "kind": "evidence_success",
+              "reason_code": "playback_start",
+              "rows": 7,
+              "recorded_events": "7",
+              "complete_bounded_population": true
+            },
+            {
+              "kind": "evidence_success",
+              "reason_code": "playback_viewing_mode",
+              "rows": 106,
+              "recorded_events": "106",
+              "complete_bounded_population": true
+            },
+            {
+              "kind": "evidence_success",
+              "reason_code": "render",
+              "rows": 1871,
+              "recorded_events": "1871",
+              "complete_bounded_population": true
+            },
+            {
+              "kind": "evidence_success",
+              "reason_code": "selection",
+              "rows": 17,
+              "recorded_events": "17",
+              "complete_bounded_population": true
+            },
+            {
+              "kind": "committed_rejection",
+              "reason_code": "delivery_timestamp_invalid",
+              "rows": 18,
+              "recorded_events": "18",
+              "complete_bounded_population": true
+            },
+            {
+              "kind": "replay",
+              "reason_code": "playback_transport_replay",
+              "rows": 2,
+              "recorded_events": "2",
+              "complete_bounded_population": true
+            }
+          ]
+        },
+        {
+          "name": "projection_queue",
+          "ms": 3.53,
+          "rows": [
+            {
+              "state": "pending",
+              "runs": 2,
+              "expired_leases": 0,
+              "max_attempts": 0,
+              "complete_bounded_population": true
+            }
+          ]
+        },
+        {
+          "name": "retention",
+          "ms": 3.314,
+          "rows": [
+            {
+              "status": "succeeded",
+              "completed_at": "2026-09-21T10:30:00.531Z",
+              "roots_deleted": 0,
+              "oldest_expired_at_after": null,
+              "reason_code": null
+            },
+            {
+              "status": "succeeded",
+              "completed_at": "2026-09-20T10:30:00.343Z",
+              "roots_deleted": 0,
+              "oldest_expired_at_after": null,
+              "reason_code": null
+            },
+            {
+              "status": "succeeded",
+              "completed_at": "2026-09-19T10:30:01.129Z",
+              "roots_deleted": 0,
+              "oldest_expired_at_after": null,
+              "reason_code": null
+            },
+            {
+              "status": "succeeded",
+              "completed_at": "2026-09-18T10:30:00.697Z",
+              "roots_deleted": 0,
+              "oldest_expired_at_after": null,
+              "reason_code": null
+            },
+            {
+              "status": "succeeded",
+              "completed_at": "2026-09-17T10:30:00.419Z",
+              "roots_deleted": 0,
+              "oldest_expired_at_after": null,
+              "reason_code": null
+            },
+            {
+              "status": "succeeded",
+              "completed_at": "2026-09-16T10:30:00.222Z",
+              "roots_deleted": 0,
+              "oldest_expired_at_after": null,
+              "reason_code": null
+            }
+          ]
+        }
+      ],
+      "ended": "2026-09-22T04:43:22.677Z"
+    },
+    "reconciliation": {
+      "at": "2026-09-22T04:43:25.359Z",
+      "completedBatches": 24,
+      "completedHeartbeats": 24,
+      "maxDurationMs": 2668,
+      "stepErrors": 0,
+      "aggregateCounters": {
+        "classificationsAttempted": 39,
+        "classificationsFailed": 0,
+        "affectedPointers": 11,
+        "rebuildsQueued": 11,
+        "staleRuns": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      }
+    },
+    "authorizedAdminAudit": {
+      "atApproximate": "2026-09-22T04:45:00Z",
+      "affectedPointers": 0,
+      "ineligibleContributions": 0,
+      "rebuildBacklog": 0,
+      "replacementPublications": 182,
+      "terminalRunsInBroaderPageWindow": 118,
+      "overallState": "degraded",
+      "currentPointerAudit": "clean"
+    },
+    "relationCounterDelta": {
+      "started": "2026-09-22T04:37:36.295Z",
+      "revision": "c98ec86bdd9a308f33b53d035084e8fd10e0e08d",
+      "firstMs": 16.097133,
+      "secondMs": 10.770251000001736,
+      "ended": "2026-09-22T04:38:06.401Z",
+      "largestThreeByBlocksRead": [
+        {
+          "schema": "workflow",
+          "table": "workflow_events",
+          "seq_scan": 0,
+          "seq_tup_read": 0,
+          "idx_scan": 2644,
+          "idx_tup_fetch": 13075075,
+          "n_tup_ins": 73,
+          "n_tup_upd": 0,
+          "n_tup_del": 0,
+          "heap_blks_read": 562886,
+          "heap_blks_hit": 7399444,
+          "idx_blks_read": 78928,
+          "idx_blks_hit": 8156,
+          "toast_blks_read": 0,
+          "toast_blks_hit": 0
+        },
+        {
+          "schema": "public",
+          "table": "mux_video",
+          "seq_scan": 0,
+          "seq_tup_read": 0,
+          "idx_scan": 264835,
+          "idx_tup_fetch": 263963,
+          "n_tup_ins": 0,
+          "n_tup_upd": 0,
+          "n_tup_del": 0,
+          "heap_blks_read": 85250,
+          "heap_blks_hit": 179390,
+          "idx_blks_read": 47524,
+          "idx_blks_hit": 746981,
+          "toast_blks_read": 0,
+          "toast_blks_hit": 0
+        },
+        {
+          "schema": "public",
+          "table": "video_dub",
+          "seq_scan": 3,
+          "seq_tup_read": 212196,
+          "idx_scan": 26872,
+          "idx_tup_fetch": 245024,
+          "n_tup_ins": 0,
+          "n_tup_upd": 0,
+          "n_tup_del": 0,
+          "heap_blks_read": 106016,
+          "heap_blks_hit": 158346,
+          "idx_blks_read": 14087,
+          "idx_blks_hit": 74713,
+          "toast_blks_read": 0,
+          "toast_blks_hit": 0
+        }
+      ]
+    },
+    "higherLoadExperiment": {
+      "fixture": "3,845,000 events, 64,000-event histories, four independent reader processes, actual Admin budget service",
+      "results": [
+        {
+          "name": "idle-before",
+          "workers": 0,
+          "readerConcurrency": 0,
+          "historyRowsFetched": 0,
+          "history": {
+            "count": 0,
+            "over700": 0
+          },
+          "budget": {
+            "count": 689,
+            "p50": 3.1624719999999797,
+            "p95": 3.8158020000009856,
+            "p99": 4.483529999999973,
+            "max": 89.10085499999991,
+            "over700": 0
+          }
+        },
+        {
+          "name": "four-processes-twelve-readers",
+          "workers": 4,
+          "readerConcurrency": 12,
+          "historyRowsFetched": 12800000,
+          "history": {
+            "count": 200,
+            "p50": 1053.5678079999998,
+            "p95": 1731.710556,
+            "p99": 1939.406244,
+            "max": 1945.902197,
+            "over700": 188
+          },
+          "budget": {
+            "count": 573,
+            "p50": 5.291949999998906,
+            "p95": 38.047186999996484,
+            "p99": 99.7395039999974,
+            "max": 407.2729130000007,
+            "over700": 0
+          }
+        },
+        {
+          "name": "idle-after",
+          "workers": 0,
+          "readerConcurrency": 0,
+          "historyRowsFetched": 0,
+          "history": {
+            "count": 0,
+            "over700": 0
+          },
+          "budget": {
+            "count": 692,
+            "p50": 3.0016709999908926,
+            "p95": 3.5590339999907883,
+            "p99": 4.227304999993066,
+            "max": 61.53860800000257,
+            "over700": 0
+          }
+        }
+      ],
+      "integrity": {
+        "beforeRows": 4000,
+        "afterRows": 4000,
+        "expectedAdditionalAttempts": 1954,
+        "mismatches": 0
+      }
+    },
+    "recentOperationalFallbackRead": {
+      "at": "2026-09-22T04:38:35.707Z",
+      "revision": "c98ec86bdd9a308f33b53d035084e8fd10e0e08d",
+      "queries": [
+        {
+          "name": "recent_operational_fallbacks",
+          "ms": 8.049147000000005,
+          "rows": [
+            {
+              "requests": 361,
+              "complete_bounded_population": true,
+              "operational_fallbacks": 0
+            }
+          ]
+        },
+        {
+          "name": "observers",
+          "ms": 4.342780000000005,
+          "rows": [
+            {
+              "remaining_task_observers": 0
+            }
+          ]
+        }
+      ]
+    },
+    "runtimeVerification": {
+      "atApproximate": "2026-09-22T04:35:00Z",
+      "adminAndWorker": "c98ec86bdd9a308f33b53d035084e8fd10e0e08d",
+      "web": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+      "homepageDefaultEnabled": false,
+      "roadmapAt": "2026-09-22T04:41:56.997Z",
+      "roadmapRevision": "a57725066d41d50b554657f0f2befdffa935c7a8",
+      "roadmapDeployment": "5ada7b8b-42b4-4bde-a537-379c8f1dd0fc"
+    },
+    "longerHigherLoadExperiment": {
+      "calls": [
+        {
+          "phase": "four-processes-twelve-readers",
+          "startedAt": 1790052216394,
+          "endedAt": 1790052216517,
+          "durationMs": 122.43879599999855,
+          "serverMs": 0.263,
+          "sampledWaits": {},
+          "largestSampledQueryAgeMs": null
+        },
+        {
+          "phase": "four-processes-twelve-readers",
+          "startedAt": 1790052218893,
+          "endedAt": 1790052219014,
+          "durationMs": 121.28977400000076,
+          "serverMs": 0.442,
+          "sampledWaits": {},
+          "largestSampledQueryAgeMs": null
+        },
+        {
+          "phase": "four-processes-twelve-readers",
+          "startedAt": 1790052225068,
+          "endedAt": 1790052225172,
+          "durationMs": 103.42822999999771,
+          "serverMs": 1.323,
+          "sampledWaits": {},
+          "largestSampledQueryAgeMs": null
+        },
+        {
+          "phase": "four-processes-twelve-readers",
+          "startedAt": 1790052232285,
+          "endedAt": 1790052232395,
+          "durationMs": 109.3051200000009,
+          "serverMs": 0.201,
+          "sampledWaits": {},
+          "largestSampledQueryAgeMs": null
+        },
+        {
+          "phase": "four-processes-twelve-readers",
+          "startedAt": 1790052235626,
+          "endedAt": 1790052235798,
+          "durationMs": 171.77481299999636,
+          "serverMs": 0.32,
+          "sampledWaits": {
+            "IO/WalWrite": 1
+          },
+          "largestSampledQueryAgeMs": 0.402
+        },
+        {
+          "phase": "four-processes-twelve-readers",
+          "startedAt": 1790052238765,
+          "endedAt": 1790052238884,
+          "durationMs": 119.38153799999418,
+          "serverMs": 0.426,
+          "sampledWaits": {
+            "IO/WalSync": 1
+          },
+          "largestSampledQueryAgeMs": 2.604
+        },
+        {
+          "phase": "four-processes-twelve-readers",
+          "startedAt": 1790052243572,
+          "endedAt": 1790052243684,
+          "durationMs": 112.20324199999595,
+          "serverMs": 1.828,
+          "sampledWaits": {
+            "IO/WalSync": 8
+          },
+          "largestSampledQueryAgeMs": 96.987
+        },
+        {
+          "phase": "four-processes-twelve-readers",
+          "startedAt": 1790052244497,
+          "endedAt": 1790052244600,
+          "durationMs": 102.85554299999785,
+          "serverMs": 7.842,
+          "sampledWaits": {},
+          "largestSampledQueryAgeMs": null
+        },
+        {
+          "phase": "four-processes-twelve-readers",
+          "startedAt": 1790052245607,
+          "endedAt": 1790052245842,
+          "durationMs": 235.05402900000627,
+          "serverMs": 7.886,
+          "sampledWaits": {},
+          "largestSampledQueryAgeMs": null
+        },
+        {
+          "phase": "four-processes-twelve-readers",
+          "startedAt": 1790052245882,
+          "endedAt": 1790052246061,
+          "durationMs": 178.54363999999623,
+          "serverMs": 0.356,
+          "sampledWaits": {
+            "IO/WalSync": 4
+          },
+          "largestSampledQueryAgeMs": 52.582
+        },
+        {
+          "phase": "four-processes-twelve-readers",
+          "startedAt": 1790052246627,
+          "endedAt": 1790052246779,
+          "durationMs": 151.79236700000183,
+          "serverMs": 0.321,
+          "sampledWaits": {},
+          "largestSampledQueryAgeMs": null
+        },
+        {
+          "phase": "four-processes-twelve-readers",
+          "startedAt": 1790052255525,
+          "endedAt": 1790052255687,
+          "durationMs": 162.73782499999652,
+          "serverMs": 130.204,
+          "sampledWaits": {},
+          "largestSampledQueryAgeMs": null
+        },
+        {
+          "phase": "four-processes-twelve-readers",
+          "startedAt": 1790052273247,
+          "endedAt": 1790052273370,
+          "durationMs": 122.99040999999852,
+          "serverMs": 0.245,
+          "sampledWaits": {},
+          "largestSampledQueryAgeMs": null
+        },
+        {
+          "phase": "four-processes-twelve-readers",
+          "startedAt": 1790052274675,
+          "endedAt": 1790052274801,
+          "durationMs": 125.10943500000576,
+          "serverMs": 0.433,
+          "sampledWaits": {},
+          "largestSampledQueryAgeMs": null
+        },
+        {
+          "phase": "four-processes-twelve-readers",
+          "startedAt": 1790052305546,
+          "endedAt": 1790052305670,
+          "durationMs": 123.69984699999623,
+          "serverMs": 2.019,
+          "sampledWaits": {
+            "IO/DataFileRead": 1
+          },
+          "largestSampledQueryAgeMs": 0.674
+        },
+        {
+          "phase": "four-processes-twelve-readers",
+          "startedAt": 1790052320083,
+          "endedAt": 1790052320245,
+          "durationMs": 161.6754079999955,
+          "serverMs": 0.298,
+          "sampledWaits": {
+            "IO/WalSync": 1
+          },
+          "largestSampledQueryAgeMs": 4.781
+        },
+        {
+          "phase": "four-processes-twelve-readers",
+          "startedAt": 1790052322143,
+          "endedAt": 1790052322286,
+          "durationMs": 143.58709600000293,
+          "serverMs": 1.594,
+          "sampledWaits": {},
+          "largestSampledQueryAgeMs": null
+        },
+        {
+          "phase": "four-processes-twelve-readers",
+          "startedAt": 1790052336081,
+          "endedAt": 1790052336268,
+          "durationMs": 187.13917599999695,
+          "serverMs": 0.372,
+          "sampledWaits": {},
+          "largestSampledQueryAgeMs": null
+        },
+        {
+          "phase": "four-processes-twelve-readers",
+          "startedAt": 1790052341013,
+          "endedAt": 1790052341122,
+          "durationMs": 108.6986179999949,
+          "serverMs": 0.419,
+          "sampledWaits": {
+            "IO/WalSync": 1
+          },
+          "largestSampledQueryAgeMs": 3.465
+        },
+        {
+          "phase": "four-processes-twelve-readers",
+          "startedAt": 1790052343527,
+          "endedAt": 1790052343683,
+          "durationMs": 156.21353300000192,
+          "serverMs": 0.315,
+          "sampledWaits": {
+            "None/None": 1
+          },
+          "largestSampledQueryAgeMs": 0.163
+        },
+        {
+          "phase": "four-processes-twelve-readers",
+          "startedAt": 1790052355182,
+          "endedAt": 1790052355413,
+          "durationMs": 231.0812310000183,
+          "serverMs": 0.419,
+          "sampledWaits": {},
+          "largestSampledQueryAgeMs": null
+        },
+        {
+          "phase": "four-processes-twelve-readers",
+          "startedAt": 1790052371534,
+          "endedAt": 1790052371651,
+          "durationMs": 116.58794399999897,
+          "serverMs": 1.042,
+          "sampledWaits": {
+            "IO/DataFileRead": 1
+          },
+          "largestSampledQueryAgeMs": 0.516
+        },
+        {
+          "phase": "four-processes-twelve-readers",
+          "startedAt": 1790052375497,
+          "endedAt": 1790052375640,
+          "durationMs": 143.43828899998334,
+          "serverMs": 1.703,
+          "sampledWaits": {},
+          "largestSampledQueryAgeMs": null
+        },
+        {
+          "phase": "four-processes-twelve-readers",
+          "startedAt": 1790052379873,
+          "endedAt": 1790052380073,
+          "durationMs": 200.36014900001464,
+          "serverMs": 89.797,
+          "sampledWaits": {
+            "IO/DataFileRead": 5
+          },
+          "largestSampledQueryAgeMs": 89.272
+        },
+        {
+          "phase": "four-processes-twelve-readers",
+          "startedAt": 1790052383368,
+          "endedAt": 1790052383489,
+          "durationMs": 121.5509810000076,
+          "serverMs": 0.327,
+          "sampledWaits": {
+            "None/None": 1
+          },
+          "largestSampledQueryAgeMs": 0.281
+        }
+      ],
+      "observer": {
+        "observationTotalMs": 49725.44994799877,
+        "observationMaxMs": 414.0928300000014,
+        "observationQueries": 14690
+      },
+      "fixture": "3,845,000 events, 64,000-event histories, four independent reader processes, actual Admin budget service",
+      "results": [
+        {
+          "name": "idle-before",
+          "workers": 0,
+          "readerConcurrency": 0,
+          "historyRowsFetched": 0,
+          "history": {
+            "count": 0,
+            "over700": 0
+          },
+          "budget": {
+            "count": 347,
+            "p50": 2.957785999999942,
+            "p95": 3.5824689999999464,
+            "p99": 4.195569000001342,
+            "max": 80.60008600000003,
+            "over700": 0
+          }
+        },
+        {
+          "name": "four-processes-twelve-readers",
+          "workers": 4,
+          "readerConcurrency": 12,
+          "historyRowsFetched": 73792000,
+          "history": {
+            "count": 1153,
+            "p50": 1094.1065000000017,
+            "p95": 1664.4764179999984,
+            "p99": 1937.4429759999985,
+            "max": 2351.167462999998,
+            "over700": 1104
+          },
+          "budget": {
+            "count": 3403,
+            "p50": 5.5532250000105705,
+            "p95": 37.71248600000399,
+            "p99": 93.34179799999765,
+            "max": 235.05402900000627,
+            "over700": 0
+          }
+        },
+        {
+          "name": "idle-after",
+          "workers": 0,
+          "readerConcurrency": 0,
+          "historyRowsFetched": 0,
+          "history": {
+            "count": 0,
+            "over700": 0
+          },
+          "budget": {
+            "count": 350,
+            "p50": 2.612481000018306,
+            "p95": 3.302462000021478,
+            "p99": 3.708173999999417,
+            "max": 64.8690029999998,
+            "over700": 0
+          }
+        }
+      ],
+      "integrity": {
+        "beforeRows": 4000,
+        "afterRows": 4000,
+        "expectedAdditionalAttempts": 4100,
+        "mismatches": 0
+      },
+      "observationRows": 1039
+    }
+  }
 }

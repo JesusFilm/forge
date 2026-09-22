@@ -262,3 +262,7 @@ closure**; do not continue describing Admin login or matching repair as missing.
 ## September 22 bounded workload and production follow-up
 
 The [September 22 follow-up](../../operations/watch-budget-followup-2026-09-22.md) again verifies the authorized Admin current-pointer audit: zero affected pointers, ineligible contributions and rebuild backlog. The exact repaired-generation trace remains verified under the preceding release record. These passed checks retain credit; the still-open feat-464 dependency prevents completion.
+
+## September 22 internal continuation
+
+The internal continuation again verifies zero affected pointers, ineligible contributions and rebuild backlog in authenticated Admin, after 24 successful reconciliation batches. Its own repair and current-pointer proofs retain credit. The feat-464 dependency still prevents completion. See the [internal verification](../../operations/watch-budget-followup-2026-09-22.md#internal-continuation-workload-volume-and-reconciled-outcomes).

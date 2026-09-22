@@ -611,3 +611,7 @@ retains the new burst and independent operational gates; status stays in progres
 ## September 22 bounded workload and production follow-up
 
 The [bounded workload follow-up](../../operations/watch-budget-followup-2026-09-22.md) rejects workflow-history indexing as a demonstrated selection fix: 3.845 million synthetic events produced slow history reads while all 2,026 real budget calls stayed below 104.1 ms, with exact persisted attempts. Production still supplies intermittent storage-pressure evidence without attribution of the historical 701 ms failure. The two-hour playback rate is 19/6,463 (0.294%), including the Redis-update burst; zero observed delivery-timeout logs have one unreconciled delivery HTTP 200. Keep this ticket in progress; neither result proves complete recovery.
+
+## September 22 internal continuation
+
+The internal continuation matches production history-read volume in an owned fixture: budget p95 rises from 3.82 to 38.05 ms and one call reaches 407 ms, with exact durable counts. It still does not reproduce the historical 700 ms timeout or prove its cause. The later two-hour window reconciles all 1,324 delivery envelopes with zero semantic timeouts and seventeen successful selections. Keep in progress; the owner has directed the storage investigation to remain internal. See the [internal verification](../../operations/watch-budget-followup-2026-09-22.md#internal-continuation-workload-volume-and-reconciled-outcomes).
