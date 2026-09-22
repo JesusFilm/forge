@@ -186,33 +186,35 @@ const GROUPING_SETS = (language: Prisma.Sql, country: Prisma.Sql): Prisma.Sql =>
  * The counted identity is one device, which is one registration. A live
  * delivery row is unique per campaign and registration, so a purged
  * registration still counts once through the row that reached the device.
+ *
+ * Within `campaign_id = $1 AND kind = 'live'`, the partial unique index
+ * `push_delivery_campaign_registration_live_key` makes one delivery row per
+ * device, and a purged row falls back to its own primary key, so the delivery
+ * and open counts need no DISTINCT. Restore it if that index ever goes.
  */
 const DEVICE = {
-  delivery: Prisma.sql`COALESCE(d.registration_id, d.id)`,
-  open: Prisma.sql`COALESCE(o.registration_id, o.delivery_id)`,
   attribution: Prisma.sql`COALESCE(a.registration_id, o.delivery_id)`,
 } as const
 
 function deliveryQuery(campaignId: string): Prisma.Sql {
-  const device = DEVICE.delivery
   return Prisma.sql`
     SELECT
       GROUPING(d.language_slug) AS lang_total,
       GROUPING(d.country) AS country_total,
       d.language_slug AS language_slug,
       d.country AS country,
-      COUNT(DISTINCT ${device}) AS audience,
-      COUNT(DISTINCT ${device}) FILTER (WHERE d.status::text = ${STATUS.accepted}) AS accepted,
-      COUNT(DISTINCT ${device}) FILTER (WHERE d.status::text = ${STATUS.handedOff}) AS handed_off,
-      COUNT(DISTINCT ${device}) FILTER (WHERE d.status::text = ${STATUS.unknown}) AS unknown_count,
-      COUNT(DISTINCT ${device}) FILTER (
+      COUNT(*) AS audience,
+      COUNT(*) FILTER (WHERE d.status::text = ${STATUS.accepted}) AS accepted,
+      COUNT(*) FILTER (WHERE d.status::text = ${STATUS.handedOff}) AS handed_off,
+      COUNT(*) FILTER (WHERE d.status::text = ${STATUS.unknown}) AS unknown_count,
+      COUNT(*) FILTER (
         WHERE d.status::text IN (${STATUS.reserved}, ${STATUS.sending})
       ) AS pending,
-      COUNT(DISTINCT ${device}) FILTER (WHERE d.status::text = ${STATUS.failed}) AS failed,
-      COUNT(DISTINCT ${device}) FILTER (WHERE d.status::text = ${STATUS.invalid}) AS invalid,
-      COUNT(DISTINCT ${device}) FILTER (WHERE d.status::text = ${STATUS.suppressed}) AS suppressed,
-      COUNT(DISTINCT ${device}) FILTER (WHERE d.status::text = ${STATUS.unreachable}) AS unreachable,
-      COUNT(DISTINCT ${device}) FILTER (WHERE d.status::text = ${STATUS.missed}) AS missed
+      COUNT(*) FILTER (WHERE d.status::text = ${STATUS.failed}) AS failed,
+      COUNT(*) FILTER (WHERE d.status::text = ${STATUS.invalid}) AS invalid,
+      COUNT(*) FILTER (WHERE d.status::text = ${STATUS.suppressed}) AS suppressed,
+      COUNT(*) FILTER (WHERE d.status::text = ${STATUS.unreachable}) AS unreachable,
+      COUNT(*) FILTER (WHERE d.status::text = ${STATUS.missed}) AS missed
     FROM push_delivery d
     WHERE d.campaign_id = ${campaignId}
       AND d.kind = 'live'
@@ -227,7 +229,7 @@ function openQuery(campaignId: string): Prisma.Sql {
       GROUPING(o.country) AS country_total,
       o.language_slug AS language_slug,
       o.country AS country,
-      COUNT(DISTINCT ${DEVICE.open}) AS opened
+      COUNT(*) AS opened
     FROM push_open o
     JOIN push_delivery d ON d.id = o.delivery_id
     WHERE o.campaign_id = ${campaignId}

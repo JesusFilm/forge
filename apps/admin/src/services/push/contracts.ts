@@ -238,9 +238,8 @@ export const PushRegistrationInputSchema = z
     phoneLocale: PushBcp47TagSchema,
     timeZone: PushTimeZoneSchema,
     permission: PushPermissionStateSchema,
-    // An app build older than the install id sends none, and a client may send
-    // the absent field as null. Both mean the same: supersede nothing.
-    installId: PushInstallIdSchema.nullish(),
+    // The mobile payload always carries it, so supersession always has a key.
+    installId: PushInstallIdSchema,
   })
   .strict()
 export type PushRegistrationInput = z.infer<typeof PushRegistrationInputSchema>

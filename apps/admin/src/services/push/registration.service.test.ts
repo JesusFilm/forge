@@ -34,6 +34,7 @@ function request(overrides: Record<string, unknown> = {}) {
       phoneLocale: "fr-FR",
       timeZone: "Pacific/Auckland",
       permission: "granted",
+      installId: INSTALL,
       ...input,
     },
     edgeCountry: "NZ",
@@ -52,6 +53,7 @@ function buildPrisma(existing: Row | null = null) {
   const created: Record<string, unknown>[] = []
   const updated: Record<string, unknown>[] = []
   const supersedes: Record<string, unknown>[] = []
+  const skipCounts: Record<string, unknown>[] = []
   const client = {
     language: {
       findMany: vi.fn(async () => LANGUAGES),
@@ -78,12 +80,16 @@ function buildPrisma(existing: Row | null = null) {
         supersedes.push(args)
         return { count: 1 }
       }),
+      count: vi.fn(async (args: Record<string, unknown>) => {
+        skipCounts.push(args)
+        return 0
+      }),
     },
     $transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) =>
       fn(client),
     ),
   }
-  return { client, created, updated, supersedes }
+  return { client, created, updated, supersedes, skipCounts }
 }
 
 type StoredRow = {
@@ -107,6 +113,35 @@ function seedRow(overrides: Partial<StoredRow> = {}): StoredRow {
     testDeviceId: "abcdef0123456789",
     ...overrides,
   }
+}
+
+type SupersedeWhere = {
+  installId?: string
+  platform?: string
+  status?: string
+  id?: { not?: string }
+  OR?: { viewerDigest: string | null }[]
+  AND?: { viewerDigest: { not: string | null } }[]
+}
+
+/** The identity term the service adds: an OR of allowed digests, or an AND of
+ * refused ones. Absent means every candidate row matches. */
+function matchesIdentity(row: StoredRow, where: SupersedeWhere): boolean {
+  if (where.OR)
+    return where.OR.some((or) => row.viewerDigest === or.viewerDigest)
+  if (where.AND)
+    return where.AND.every((and) => row.viewerDigest !== and.viewerDigest.not)
+  return true
+}
+
+function matchesCandidate(row: StoredRow, where: SupersedeWhere): boolean {
+  return (
+    (where.installId === undefined || row.installId === where.installId) &&
+    (where.platform === undefined || row.platform === where.platform) &&
+    (where.status === undefined || row.status === where.status) &&
+    row.id !== where.id?.not &&
+    matchesIdentity(row, where)
+  )
 }
 
 /**
@@ -154,27 +189,21 @@ function buildStore(rows: StoredRow[] = []) {
       ),
       updateMany: vi.fn(
         async (args: {
-          where: Record<string, unknown>
+          where: SupersedeWhere
           data: Record<string, unknown>
         }) => {
-          const where = args.where
-          const excluded = (where.id as { not?: string } | undefined)?.not
-          const matched = rows.filter(
-            (row) =>
-              (where.installId === undefined ||
-                row.installId === where.installId) &&
-              (where.viewerDigest === undefined ||
-                row.viewerDigest === where.viewerDigest) &&
-              (where.platform === undefined ||
-                row.platform === where.platform) &&
-              (where.status === undefined || row.status === where.status) &&
-              row.id !== excluded,
+          const matched = rows.filter((row) =>
+            matchesCandidate(row, args.where),
           )
           matched.forEach((row) => {
             row.status = String(args.data.status)
           })
           return { count: matched.length }
         },
+      ),
+      count: vi.fn(
+        async (args: { where: SupersedeWhere }) =>
+          rows.filter((row) => matchesCandidate(row, args.where)).length,
       ),
     },
     $transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) =>
@@ -337,6 +366,8 @@ describe("registering a phone", () => {
         platform: "IOS",
         status: "ACTIVE",
         id: { not: "reg_new" },
+        // The ownership term: a row with no identity, or this same identity.
+        OR: [{ viewerDigest: null }, { viewerDigest: DIGEST }],
       },
       data: { status: "SUPERSEDED" },
     })
@@ -372,16 +403,67 @@ describe("registering a phone", () => {
     expect(statusOf(rows, OTHER_TOKEN)).toBe("ACTIVE")
   })
 
-  it("supersedes nothing on the viewer handle alone", async () => {
-    const { client, supersedes } = buildPrisma()
-    await registerPushDevice(client as never, request({ viewerDigest: DIGEST }))
-    expect(supersedes).toHaveLength(0)
+  it("leaves another identity's row on the same install active", async () => {
+    const rows = [seedRow({ id: "reg_other", viewerDigest: OTHER_DIGEST })]
+    const { client } = buildStore(rows)
+    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {})
+    await registerPushDevice(
+      client as never,
+      request({
+        viewerDigest: DIGEST,
+        input: { expoPushToken: OTHER_TOKEN, installId: INSTALL },
+      }),
+    )
+    // A restored or copied install id must not let one identity retire another
+    // identity's row, and the skip is counted so a cloned id stays visible.
+    expect(statusOf(rows, TOKEN)).toBe("ACTIVE")
+    expect(statusOf(rows, OTHER_TOKEN)).toBe("ACTIVE")
+    const line = String(infoSpy.mock.calls[0]?.[0] ?? "")
+    expect(line).toContain("superseded=0")
+    expect(line).toContain("supersede_skipped=1")
   })
 
-  it("supersedes nothing when the app sent no install id", async () => {
-    const { client, supersedes } = buildPrisma()
-    await registerPushDevice(client as never, request())
-    expect(supersedes).toHaveLength(0)
+  it("retires an anonymous row on its install", async () => {
+    const rows = [seedRow({ id: "reg_anonymous", viewerDigest: null })]
+    const { client } = buildStore(rows)
+    await registerPushDevice(
+      client as never,
+      request({
+        viewerDigest: DIGEST,
+        input: { expoPushToken: OTHER_TOKEN, installId: INSTALL },
+      }),
+    )
+    // No stored identity is no conflict: the row is this install's own.
+    expect(statusOf(rows, TOKEN)).toBe("SUPERSEDED")
+    expect(statusOf(rows, OTHER_TOKEN)).toBe("ACTIVE")
+  })
+
+  it("lets an anonymous request retire an identified row on its install", async () => {
+    const rows = [seedRow({ id: "reg_identified", viewerDigest: OTHER_DIGEST })]
+    const { client } = buildStore(rows)
+    await registerPushDevice(
+      client as never,
+      request({
+        input: { expoPushToken: OTHER_TOKEN, installId: INSTALL },
+      }),
+    )
+    // The documented residual: a request with no handle has no evidence of a
+    // conflict, and KTD7 allows an absent handle, so it retires every candidate.
+    expect(statusOf(rows, TOKEN)).toBe("SUPERSEDED")
+    expect(statusOf(rows, OTHER_TOKEN)).toBe("ACTIVE")
+    expect(client.pushRegistration.count).not.toHaveBeenCalled()
+  })
+
+  it("refuses a registration with no install id", async () => {
+    const { client } = buildPrisma()
+    const noInstallId = request()
+    delete (noInstallId.input as Record<string, unknown>).installId
+    await expect(
+      registerPushDevice(client as never, noInstallId),
+    ).rejects.toThrowError(PushInputError)
+    expect(client.$transaction).not.toHaveBeenCalled()
+    expect(client.pushRegistration.create).not.toHaveBeenCalled()
+    expect(client.pushRegistration.update).not.toHaveBeenCalled()
   })
 
   it("supersedes nothing when the registration ends inactive", async () => {
@@ -445,14 +527,17 @@ describe("registering a phone", () => {
     expect(created[0].installId).toBe(INSTALL)
   })
 
-  it("leaves a stored install id alone when the app sends none", async () => {
+  it("writes the install id on every refresh", async () => {
     const { client, updated } = buildPrisma({
       id: "reg_1",
       status: "ACTIVE",
       testDeviceId: "abcdef0123456789",
     })
-    await registerPushDevice(client as never, request())
-    expect(updated[0]).not.toHaveProperty("installId")
+    await registerPushDevice(
+      client as never,
+      request({ input: { installId: OTHER_INSTALL } }),
+    )
+    expect(updated[0].installId).toBe(OTHER_INSTALL)
   })
 
   it("leaves a stored digest alone when the phone sends no handle", async () => {
@@ -628,6 +713,7 @@ describe("registering a phone", () => {
     expect(line).toContain("country_source=edge")
     expect(line).toContain("status=active")
     expect(line).toContain("superseded=1")
+    expect(line).toContain("supersede_skipped=0")
     expect(line).not.toContain(TOKEN)
     expect(line).not.toContain(DIGEST)
     expect(line).not.toContain(INSTALL)

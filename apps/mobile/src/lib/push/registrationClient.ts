@@ -76,17 +76,27 @@ export function toPushClientError(error: unknown): PushClientError {
   })
 }
 
-/** Admin's own input shape, so a field it drops fails here rather than at run
- *  time. The payload IS the input: every field maps across by name. */
+/** Admin's own input shape. The payload IS the input: every field maps across
+ *  by name, so the generated type is what this file sends. */
 type RegisterPushDeviceInput = AdminVariablesOf<
   typeof REGISTER_PUSH_DEVICE
 >["input"]
+
+/** Both directions, because one assignment holds only one: the return type
+ *  catches a field admin made required or retyped, and the `never` mapping
+ *  catches a payload key admin DROPPED — a variable gets no excess check. */
+function toRegisterPushDeviceInput<
+  T extends RegisterPushDeviceInput &
+    Record<Exclude<keyof T, keyof RegisterPushDeviceInput>, never>,
+>(payload: T): RegisterPushDeviceInput {
+  return payload
+}
 
 export async function registerPushDevice(
   payload: PushRegistrationPayload,
 ): Promise<PushRegistrationReceipt> {
   try {
-    const input: RegisterPushDeviceInput = payload
+    const input = toRegisterPushDeviceInput(payload)
     const data = await mutateWithDeadline(
       REGISTER_PUSH_DEVICE,
       { input },

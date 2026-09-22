@@ -48,6 +48,8 @@ const SESSION_TOKEN = "s".repeat(43)
 const NONCE = "n".repeat(43)
 const VIEWER_DIGEST = "d".repeat(64)
 const SESSION_DIGEST = "e".repeat(64)
+const INSTALL = "3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+const OTHER_INSTALL = "8c1d9b2a-0e64-4f17-8a55-6b0f3d2c1e90"
 
 type Field = {
   resolve: (root: unknown, args: never, ctx: unknown, info: unknown) => unknown
@@ -87,6 +89,7 @@ function registrationInput(overrides: Record<string, unknown> = {}) {
     phoneLocale: "fr-FR",
     timeZone: "Pacific/Auckland",
     permission: "granted",
+    installId: INSTALL,
     viewerToken: null,
     sessionToken: null,
     ...overrides,
@@ -123,14 +126,14 @@ describe("the push mutations on the schema", () => {
     expect(schema.getType("ReportPushOpenInput")).toBeDefined()
   })
 
-  it("takes an optional install id on the registration input", () => {
+  it("requires the install id on the registration input", () => {
     const input = schema.getType(
       "RegisterPushDeviceInput",
     ) as GraphQLInputObjectType
     const installId = input.getFields().installId
     expect(installId).toBeDefined()
-    // Optional, so an app build that predates the field still registers.
-    expect(String(installId.type)).toBe("String")
+    // Required: supersession has no key without it, and the app always sends it.
+    expect(String(installId.type)).toBe("String!")
   })
 
   it("never offers INVALID as a registration state", () => {
@@ -183,17 +186,16 @@ describe("registerPushDevice", () => {
       phoneLocale: "fr-FR",
       timeZone: "Pacific/Auckland",
       permission: "granted",
+      installId: INSTALL,
     })
   })
 
   it("hands the service the install id the app sent", async () => {
     await invoke(
       "registerPushDevice",
-      registrationInput({ installId: "3f2504e0-4f89-41d3-9a0c-0305e82c3301" }),
+      registrationInput({ installId: OTHER_INSTALL }),
     )
-    expect(registerMock.mock.calls[0][1].input.installId).toBe(
-      "3f2504e0-4f89-41d3-9a0c-0305e82c3301",
-    )
+    expect(registerMock.mock.calls[0][1].input.installId).toBe(OTHER_INSTALL)
   })
 
   it("passes the verified viewer digest through", async () => {
@@ -420,6 +422,7 @@ describe("the mutation rate limit covers both push fields", () => {
             phoneLocale: "fr-FR"
             timeZone: "Pacific/Auckland"
             permission: granted
+            installId: "${INSTALL}"
           }
         ) {
           testDeviceId

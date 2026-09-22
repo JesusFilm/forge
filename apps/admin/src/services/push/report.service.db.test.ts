@@ -380,6 +380,64 @@ describe.skipIf(env.PUSH_DB_TEST !== "1")(
       expect(report.byCountry.at(-1)?.counts.audience).toBe(1)
     })
 
+    it("counts a purged registration through the row that reached it", async () => {
+      const before = await readPushCampaignReport(prisma, CAMPAIGN)
+      // A purge deletes the registration, and the three foreign keys are ON
+      // DELETE SET NULL, so its delivery, open, and attributions stay behind.
+      await prisma.pushRegistration.delete({
+        where: { id: `${PREFIX}reg_accepted_phone` },
+      })
+      expect(
+        await prisma.pushDelivery.findUniqueOrThrow({
+          where: { id: `${PREFIX}delivery_accepted_phone` },
+          select: { registrationId: true },
+        }),
+      ).toEqual({ registrationId: null })
+
+      const after = await readPushCampaignReport(prisma, CAMPAIGN)
+      expect(after.totals.audience).toBe(before.totals.audience)
+      expect(after.totals.accepted).toBe(before.totals.accepted)
+      expect(after.totals.opened).toBe(before.totals.opened)
+      expect(after.totals.attributed).toBe(before.totals.attributed)
+      expect(after.totals.attributedWatchStarts).toBe(
+        before.totals.attributedWatchStarts,
+      )
+      const french = after.byLanguage.find((slice) => slice.key === "french")
+      expect(french?.counts.audience).toBe(2)
+      expect(french?.counts.accepted).toBe(2)
+      expect(french?.counts.opened).toBe(1)
+      expect(french?.counts.attributed).toBe(1)
+      expect(french?.counts.attributedWatchStarts).toBe(2)
+    })
+
+    it("counts a purged device's third watch start as the same device", async () => {
+      await prisma.pushRegistration.delete({
+        where: { id: `${PREFIX}reg_accepted_phone` },
+      })
+      // The cross-table case: with no registration id left, only the open's own
+      // delivery id names the device, so a third watch start adds no device.
+      await prisma.pushAttribution.create({
+        data: {
+          id: `${PREFIX}attribution_three`,
+          episodeId: `${PREFIX}episode_three`,
+          openId: `${PREFIX}open_live`,
+          campaignId: CAMPAIGN,
+          registrationId: null,
+          languageSlug: "french",
+          country: "FR",
+          mediaId: "the-video",
+          attributedAt: new Date(OPEN_AT.getTime() + 120_000),
+        },
+      })
+
+      const report = await readPushCampaignReport(prisma, CAMPAIGN)
+      expect(report.totals.attributed).toBe(1)
+      expect(report.totals.attributedWatchStarts).toBe(3)
+      const french = report.byLanguage.find((slice) => slice.key === "french")
+      expect(french?.counts.attributed).toBe(1)
+      expect(french?.counts.attributedWatchStarts).toBe(3)
+    })
+
     it("raises opened and attributed on a later read of a sent campaign", async () => {
       const before = await readPushCampaignReport(prisma, CAMPAIGN)
       await prisma.pushOpen.create({

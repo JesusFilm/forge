@@ -15,7 +15,9 @@ import {
   PushTestDeviceIdSchema,
   PushViewerHandleSchema,
   isExpoPushTokenShape,
+  parsePushInput,
 } from "./contracts"
+import { PushInputError } from "./errors"
 
 const ENGLISH = { languageSlug: "english", title: "Hello", body: "A body" }
 
@@ -290,6 +292,7 @@ describe("push test device contracts", () => {
 
 const TOKEN = "ExponentPushToken[abcdefghijklmnopqrstuv]"
 const HANDLE = "a".repeat(43)
+const INSTALL = "3f2504e0-4f89-41d3-9a0c-0305e82c3301"
 
 function registration(overrides: Record<string, unknown> = {}) {
   return {
@@ -300,6 +303,7 @@ function registration(overrides: Record<string, unknown> = {}) {
     phoneLocale: "fr-FR",
     timeZone: "Pacific/Auckland",
     permission: "granted",
+    installId: INSTALL,
     ...overrides,
   }
 }
@@ -318,6 +322,7 @@ describe("registration input contract", () => {
       phoneLocale: "fr-FR",
       timeZone: "Pacific/Auckland",
       permission: "granted",
+      installId: INSTALL,
     })
   })
 
@@ -392,21 +397,26 @@ describe("registration input contract", () => {
   it("accepts a UUID install id and trims it", () => {
     expect(
       PushRegistrationInputSchema.parse(
-        registration({ installId: " 3f2504e0-4f89-41d3-9a0c-0305e82c3301 " }),
+        registration({ installId: ` ${INSTALL} ` }),
       ).installId,
-    ).toBe("3f2504e0-4f89-41d3-9a0c-0305e82c3301")
+    ).toBe(INSTALL)
   })
 
-  it("accepts a registration with no install id", () => {
-    const parsed = PushRegistrationInputSchema.parse(registration())
-    expect(parsed.installId ?? null).toBeNull()
+  it("refuses a registration with no install id", () => {
+    const withoutInstallId: Record<string, unknown> = { ...registration() }
+    delete withoutInstallId.installId
+    expect(() =>
+      parsePushInput(PushRegistrationInputSchema, withoutInstallId),
+    ).toThrowError(PushInputError)
   })
 
-  it("reads a null install id as none", () => {
-    const parsed = PushRegistrationInputSchema.parse(
-      registration({ installId: null }),
-    )
-    expect(parsed.installId ?? null).toBeNull()
+  it("refuses a null install id", () => {
+    expect(() =>
+      parsePushInput(
+        PushRegistrationInputSchema,
+        registration({ installId: null }),
+      ),
+    ).toThrowError(PushInputError)
   })
 
   it("refuses an install id shorter than eight characters", () => {

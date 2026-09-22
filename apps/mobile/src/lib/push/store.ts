@@ -74,6 +74,13 @@ function storedInstallId(value: unknown): string | null {
   return id != null && PUSH_INSTALL_ID_PATTERN.test(id) ? id : null
 }
 
+/** The same bound on a FRESH id. A minter tier that answers a shape admin
+ *  refuses loses to the compat generator, whose UUID always fits, because the
+ *  stored-id check never runs on a value this launch minted. */
+function boundedInstallId(minted: string): string {
+  return PUSH_INSTALL_ID_PATTERN.test(minted) ? minted : randomUUIDCompat()
+}
+
 function nullableNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null
 }
@@ -198,7 +205,9 @@ export function createPushRegistrationStore(deps: PushRegistrationStoreDeps) {
       await hydrate()
       const stored = record?.installId ?? null
       if (stored != null) return stored
-      const installId = (mintedInstallId ??= deps.mintInstallId())
+      const installId = (mintedInstallId ??= boundedInstallId(
+        deps.mintInstallId(),
+      ))
       // A failed read leaves no record to patch. Writing one here would drop
       // the test ID and the change key this phone already has, so the next
       // call persists the same id once the read heals.
@@ -269,8 +278,12 @@ export function createPushRegistrationStore(deps: PushRegistrationStoreDeps) {
  * Hermes ships no WebCrypto, so `expo-crypto` binds the platform's generator.
  * The require runs lazily and only where the runtime has none, the ordering
  * `recommendations/random.ts` uses, so jest never loads the native module.
+ *
+ * Exported so each tier is exercised directly: the store injects its own
+ * minter, so nothing else runs this one. Its answer still passes through
+ * `boundedInstallId`, which is what holds every tier to admin's shape.
  */
-function mintInstallId(): string {
+export function mintInstallId(): string {
   const runtime = (globalThis as { crypto?: { randomUUID?: () => string } })
     .crypto
   if (typeof runtime?.randomUUID === "function") return runtime.randomUUID()

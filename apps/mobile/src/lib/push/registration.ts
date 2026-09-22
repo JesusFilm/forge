@@ -200,6 +200,8 @@ export function createPushRegistration(
       return
     }
     inFlight = true
+    /** Whether this run has already spent one of the cap's attempts. */
+    let counted = false
     try {
       await deps.store.hydrate()
       const payload = await buildPayload("granted", true)
@@ -225,6 +227,7 @@ export function createPushRegistration(
         return
       }
       attempts += 1
+      counted = true
       const receipt = await deps.register(payload)
       await deps.store.recordSuccess({
         testDeviceId: receipt.testDeviceId,
@@ -242,6 +245,10 @@ export function createPushRegistration(
         push_status: receipt.status,
       })
     } catch (error) {
+      // Count a throw from BEFORE the request too: the retry below reads a
+      // plain Error as transient, so an uncounted attempt (a rejecting
+      // install-id read) would re-arm the 2 s timer for the whole launch.
+      if (!counted) attempts += 1
       const failure = readPushFailure(error)
       // A rate limit clears on its own and admin's ceiling is per minute, so a
       // retry inside this launch can only spend another request.

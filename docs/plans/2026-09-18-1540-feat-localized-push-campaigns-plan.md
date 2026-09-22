@@ -629,6 +629,7 @@ First internal campaign, go or no-go: author copy in three languages with a seri
 
 1. Declare `registerPushDevice` and `reportPushOpen` as public mutations whose resolvers apply the push admission predicate in KTD7 and the ceiling, and never log a token, an access token, or a digest.
 2. Registration upserts by push token, returns the registration's test device id, stores the phone language slug derived through the exact-tag then language-subtag rungs of KTD5, stamps the country per KTD6 from the edge header alone, supersedes an older active row for the same viewer digest and platform in the same transaction, updates the refreshed timestamp on every call, refuses a token in invalid status, marks a revoked permission inactive, and reactivates on a later grant only from inactive.
+   - Refined 2026-09-22 (review finding #22): supersession is keyed on the app's install id and the platform, not on the viewer digest. The install id is required on the registration input, so a registration without one is refused. A grant reactivates a SUPERSEDED row as well as an INACTIVE one. The supersede pass is subject to the identity-conflict rule: it retires a candidate row whose stored digest is null or equal to the request's verified digest, and a request that carries no digest retires every candidate.
 3. Validate the time zone by constructing a date formatter for it and storing the canonical name; validate the locale tag by shape; reject with a typed non-retryable error.
 4. The open report resolves the nonce to its delivery through the nonce index, stores one open per delivery with both digests, the snapshot columns, and the receipt time, binds a handle-less open to the delivery's registration, flags a mismatch only when a present handle differs, counts an unknown nonce in a log line without storing it, and performs the reverse attribution join per KTD8.
 5. Log `[push] event=register platform= country_source=` in the plain-string format.
@@ -640,6 +641,7 @@ First internal campaign, go or no-go: author copy in three languages with a seri
 
 - Covers AE1 and AE2 at the server: a registration with the bearer and no viewer handle is stored; one with an invalid handle is rejected; one without the bearer is rejected.
 - A second registration with the same token and a new time zone updates the row and the refreshed timestamp; a second token for the same viewer digest and platform supersedes the first; a different platform does not.
+  - Refined 2026-09-22 (review finding #22): the second-token scenario keys on the install id and the platform, not on the viewer digest.
 - Covers AE20: a denied permission state marks the row inactive; a later granted state reactivates it; a token in invalid status stays invalid.
 - A country header of `XX`, `T1`, or absent falls to the locale region, then to null, and the stored source names which applied; a request carrying a client-settable country header and no edge header falls to the locale region with source locale, never edge.
 - A phone locale of `fr-FR` derives the French slug through the subtag rung; `ko-KR` derives the `ko` Language that has authored copy.
@@ -793,6 +795,7 @@ First internal campaign, go or no-go: author copy in three languages with a seri
 - A context with no viewer identity and no matching session does not attribute and does not fail; a web caller never triggers the lookup.
 - A second issuance for the same episode inserts nothing.
 - The report counts a phone once when it re-registered with a new token during the wave, because the old row was superseded.
+  - Refined 2026-09-22 (review finding #22): the counted identity is the delivery's registration. A mid-wave re-registration counts once only because the superseded row claimed no delivery row of its own. One viewer's phone and tablet are two devices and count twice.
 - Covers AE17: unreachable phones appear in the unreachable count and in no other count.
 - Purging the episode leaves the attribution count unchanged.
 

@@ -3041,12 +3041,26 @@ is `docs/roadmap/platform/feat-524-localized-push-campaigns.md`.
   is the "one announcement per device per local day" rule; the claim is one
   multi-row `INSERT ... ON CONFLICT DO NOTHING` with no conflict target.
 - One registration row is one device, which is one app install. The app mints
-  an install id once and keeps it, so supersession is keyed on that install id
-  and the platform: a token rotation on the same install retires the older row,
-  and another device of the same viewer stays active. A superseded token that
+  an install id once and keeps it, and the registration input requires it, so
+  supersession is keyed on that install id and the platform: a token rotation on
+  the same install retires the older row, and another device of the same viewer
+  stays active. A superseded token that
   registers again with permission granted becomes active. A viewer who has a phone
   and a tablet receives the announcement on both, and every count the report
   and the dashboard show is a count of devices, never of viewers.
+- The supersede pass carries an ownership term, because an install id can be
+  restored from a backup or copied between devices. A request retires another
+  row of its install only when there is no definite identity conflict: it
+  retires a candidate whose stored viewer digest is null or equal to the
+  request's verified digest, and a request that carries no digest retires every
+  candidate, because an anonymous install has no evidence of a conflict (KTD7
+  allows an absent handle). A request that carries a digest also counts the
+  candidates it skipped and logs `supersede_skipped=<n>` on the register line,
+  a count only, so a cloned install id is visible to an operator.
+  Two residuals follow. Two anonymous devices that share a restored install id
+  flip each other at each launch, and each recovers at its own next launch. An
+  anonymous caller who knows another device's install id can retire that
+  device's row until that device registers again.
 - Services: `src/services/push/`. Public mutations `registerPushDevice` and
   `reportPushOpen` (`src/graphql/mutations/push-device.ts`) sit behind the push
   admission predicate (`admission.ts`) and a per-operation ceiling

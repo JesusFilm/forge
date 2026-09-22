@@ -13,11 +13,18 @@ jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
 )
 
+// The device runtime has no WebCrypto, so the minter falls back to this module.
+// The mock stands in for the native one; each case decides what it answers.
+jest.mock("expo-crypto", () => ({ randomUUID: jest.fn() }))
+
+import * as ExpoCrypto from "expo-crypto"
+
 import {
+  PUSH_INSTALL_ID_PATTERN,
   PUSH_REGISTRATION_RECORD_VERSION,
   PUSH_REGISTRATION_STORAGE_KEY,
 } from "../constants"
-import { createPushRegistrationStore } from "../store"
+import { createPushRegistrationStore, mintInstallId } from "../store"
 
 function createStore(
   options: {
@@ -25,6 +32,8 @@ function createStore(
     failRead?: boolean
     failWrite?: boolean
     now?: () => number
+    /** Overrides what the injected minter answers, shape included. */
+    mint?: () => string
   } = {},
 ) {
   const storage = new Map<string, string>()
@@ -48,7 +57,7 @@ function createStore(
     },
     now: options.now ?? (() => 1_000),
     mintInstallId: () => {
-      const id = `install-${minted.length + 1}`
+      const id = options.mint?.() ?? `install-${minted.length + 1}`
       minted.push(id)
       return id
     },
@@ -82,6 +91,31 @@ function serialized(record: {
     revocationReportedAt: null,
     ...record,
   })
+}
+
+/** Swaps `globalThis.crypto` for the run, then puts the real one back. */
+function withRuntimeCrypto<T>(value: unknown, fn: () => T): T {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, "crypto")
+  Object.defineProperty(globalThis, "crypto", {
+    value,
+    configurable: true,
+    writable: true,
+  })
+  try {
+    return fn()
+  } finally {
+    if (descriptor) Object.defineProperty(globalThis, "crypto", descriptor)
+  }
+}
+
+/** Hermes as it ships: random bytes are reachable, `randomUUID` is not. */
+function withoutRuntimeRandomUUID<T>(fn: () => T): T {
+  return withRuntimeCrypto({ getRandomValues: () => undefined }, fn)
+}
+
+/** No WebCrypto at all, which leaves the compat generator as the last tier. */
+function withoutRuntimeCrypto<T>(fn: () => T): T {
+  return withRuntimeCrypto(undefined, fn)
 }
 
 describe("the push registration store", () => {
@@ -359,6 +393,25 @@ describe("the install id", () => {
     expect(harness.minted).toEqual([installId])
   })
 
+  it("overrules a MINTED id outside admin's bound too", async () => {
+    // The stored-id check never sees a fresh id, so a minter tier that answers
+    // an unusable shape would hand admin BAD_USER_INPUT for the install's life.
+    const harness = createStore({ mint: () => "a:b" })
+
+    const installId = await harness.store.ensureInstallId()
+
+    expect(PUSH_INSTALL_ID_PATTERN.test(installId)).toBe(true)
+    expect(installId).not.toBe("a:b")
+    // Anti-vacuous: the minter really did answer the refused shape.
+    expect(harness.minted).toEqual(["a:b"])
+    // The overruling id is the one that gets kept and persisted.
+    expect(await harness.store.ensureInstallId()).toBe(installId)
+    expect(
+      JSON.parse(harness.storage.get(PUSH_REGISTRATION_STORAGE_KEY) ?? "{}")
+        .installId,
+    ).toBe(installId)
+  })
+
   it("re-hydrates a record from the previous version as empty", async () => {
     const old = createStore({
       stored: serialized({
@@ -407,5 +460,50 @@ describe("the install id", () => {
     expect(
       JSON.parse(harness.storage.get(PUSH_REGISTRATION_STORAGE_KEY) ?? "{}"),
     ).toMatchObject({ installId, testDeviceId: "abc12345" })
+  })
+})
+
+describe("the production install-id minter", () => {
+  const expoRandomUUID = ExpoCrypto.randomUUID as jest.Mock
+
+  beforeEach(() => {
+    expoRandomUUID.mockReset()
+  })
+
+  it("answers admin's shape from the runtime's own generator", () => {
+    // Anti-vacuous: this env really does carry the first tier.
+    expect(typeof globalThis.crypto?.randomUUID).toBe("function")
+
+    const id = mintInstallId()
+
+    expect(PUSH_INSTALL_ID_PATTERN.test(id)).toBe(true)
+    expect(id).not.toBe(mintInstallId())
+    expect(expoRandomUUID).not.toHaveBeenCalled()
+  })
+
+  it("answers admin's shape from expo-crypto on a runtime with none", () => {
+    expoRandomUUID.mockReturnValue("6f1b9d64-9b25-4f0e-9b55-0f2a7c1e4d33")
+
+    withoutRuntimeRandomUUID(() => {
+      const id = mintInstallId()
+      expect(id).toBe("6f1b9d64-9b25-4f0e-9b55-0f2a7c1e4d33")
+      expect(PUSH_INSTALL_ID_PATTERN.test(id)).toBe(true)
+    })
+
+    expect(expoRandomUUID).toHaveBeenCalledTimes(1)
+  })
+
+  it("answers admin's shape from the compat generator when neither is there", () => {
+    expoRandomUUID.mockImplementation(() => {
+      throw new Error("native module missing")
+    })
+
+    withoutRuntimeCrypto(() => {
+      const id = mintInstallId()
+      expect(PUSH_INSTALL_ID_PATTERN.test(id)).toBe(true)
+      expect(id).not.toBe(mintInstallId())
+    })
+
+    expect(expoRandomUUID).toHaveBeenCalledTimes(2)
   })
 })

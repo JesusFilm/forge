@@ -7,6 +7,16 @@
  * inactive, and one install's newest token supersedes that install's older
  * ones. A viewer with a phone and a tablet keeps an active row on each.
  *
+ * The supersede pass carries an ownership term: a request retires another row
+ * of its install only when there is no definite identity conflict. It retires a
+ * candidate whose stored digest is null or equal to the request's verified
+ * digest, and a request that carries no digest retires every candidate, because
+ * an anonymous install has no evidence of a conflict (KTD7 allows an absent
+ * handle). Two residuals follow. Two anonymous devices that share a restored
+ * install id flip each other at each launch, and each recovers at its own next
+ * launch. An anonymous caller who knows another device's install id can retire
+ * that device's row until that device registers again.
+ *
  * SECURITY: no log line here carries the push token, an install id, a viewer
  * handle, or a digest. The registration log exists to prove the country source.
  */
@@ -128,6 +138,7 @@ type WriteResult = {
   row: RegistrationRow
   outcome: "created" | "refreshed" | "reactivated" | "revoked"
   superseded: number
+  supersedeSkipped: number
 }
 
 async function writeRegistration(
@@ -143,7 +154,8 @@ async function writeRegistration(
   },
 ): Promise<WriteResult> {
   const { input, now, viewerDigest } = params
-  const installId = input.installId ?? null
+  const installId = input.installId
+  const platform = input.platform as PushPlatform
   const existing = (await tx.pushRegistration.findUnique({
     where: { expoPushToken: input.expoPushToken },
     select: { id: true, status: true, testDeviceId: true },
@@ -158,7 +170,7 @@ async function writeRegistration(
     input.permission,
   )
   const common = {
-    platform: input.platform as PushPlatform,
+    platform,
     appBuild: input.appBuild,
     appLanguageSlug: input.appLanguageSlug,
     phoneLocale: input.phoneLocale,
@@ -167,12 +179,10 @@ async function writeRegistration(
     country: params.country,
     countrySource: params.countrySource,
     refreshedAt: now,
+    installId,
     // A registration with no handle leaves the stored digest alone; only a
     // viewer erasure clears it.
     ...(viewerDigest ? { viewerDigest } : {}),
-    // An app build older than the install id sends none, so the stored id
-    // stays and that install keeps its supersession key.
-    ...(installId ? { installId } : {}),
   }
 
   const row = existing
@@ -198,15 +208,25 @@ async function writeRegistration(
       })) as RegistrationRow)
 
   let superseded = 0
+  let supersedeSkipped = 0
   // Keyed on the install, never on the viewer: one person's phone and tablet
-  // are two installs and both stay active.
-  if (installId && row.status === PushRegistrationStatus.ACTIVE) {
+  // are two installs and both stay active. A restored or copied install id must
+  // not let one identity retire another's row, so a skipped row is counted.
+  if (row.status === PushRegistrationStatus.ACTIVE) {
+    const candidates = {
+      installId,
+      platform,
+      status: PushRegistrationStatus.ACTIVE,
+      id: { not: row.id },
+    }
     const result = await tx.pushRegistration.updateMany({
       where: {
-        installId,
-        platform: input.platform as PushPlatform,
-        status: PushRegistrationStatus.ACTIVE,
-        id: { not: row.id },
+        ...candidates,
+        // No definite conflict: the candidate carries no digest, or carries
+        // this one. A request with no digest has no evidence of a conflict.
+        ...(viewerDigest
+          ? { OR: [{ viewerDigest: null }, { viewerDigest }] }
+          : {}),
       },
       data: {
         status: PushRegistrationStatus.SUPERSEDED,
@@ -214,6 +234,17 @@ async function writeRegistration(
       },
     })
     superseded = result.count
+    if (viewerDigest) {
+      supersedeSkipped = await tx.pushRegistration.count({
+        where: {
+          ...candidates,
+          AND: [
+            { viewerDigest: { not: null } },
+            { viewerDigest: { not: viewerDigest } },
+          ],
+        },
+      })
+    }
   }
 
   const outcome: WriteResult["outcome"] = !existing
@@ -223,7 +254,7 @@ async function writeRegistration(
       : step.status === PushRegistrationStatus.ACTIVE
         ? "reactivated"
         : "revoked"
-  return { row, outcome, superseded }
+  return { row, outcome, superseded, supersedeSkipped }
 }
 
 /**
@@ -275,7 +306,7 @@ export async function registerPushDevice(
     throw new PushInputError("That registration did not store")
 
   console.info(
-    `[push] event=register platform=${input.platform.toLowerCase()} country_source=${country.source.toLowerCase()} status=${written.row.status.toLowerCase()} outcome=${written.outcome} superseded=${written.superseded}`,
+    `[push] event=register platform=${input.platform.toLowerCase()} country_source=${country.source.toLowerCase()} status=${written.row.status.toLowerCase()} outcome=${written.outcome} superseded=${written.superseded} supersede_skipped=${written.supersedeSkipped}`,
   )
 
   return {

@@ -270,28 +270,26 @@ describe("reading one campaign's report", () => {
     expect(queries).toHaveLength(3)
     for (const query of queries) {
       const text = sqlText(query)
-      expect(text).toContain("COUNT(DISTINCT")
       expect(text).toContain("'live'")
       expect(text).toContain("GROUPING SETS")
     }
+    // One live delivery row per device, and one open per delivery, so these two
+    // need no DISTINCT. A device can hold several attributed watch starts.
+    expect(sqlText(queries[0])).not.toContain("COUNT(DISTINCT")
+    expect(sqlText(queries[1])).not.toContain("COUNT(DISTINCT")
+    expect(sqlText(queries[2])).toContain("COUNT(DISTINCT")
   })
 
   it("counts the device, never the viewer behind it", async () => {
     const { client, queries } = buildPrisma()
     await readPushCampaignReport(client as never, CAMPAIGN)
     for (const query of queries) {
-      const text = sqlText(query)
       // A viewer digest back in the identity would merge one viewer's phone
       // and tablet into a single counted device.
-      expect(text).not.toContain("viewer_digest")
-      expect(text).toContain("registration_id")
+      expect(sqlText(query)).not.toContain("viewer_digest")
     }
-    expect(sqlText(queries[0])).toContain(
-      "COUNT(DISTINCT COALESCE(d.registration_id, d.id))",
-    )
-    expect(sqlText(queries[1])).toContain(
-      "COUNT(DISTINCT COALESCE(o.registration_id, o.delivery_id))",
-    )
+    expect(sqlText(queries[0])).toContain("COUNT(*) AS audience")
+    expect(sqlText(queries[1])).toContain("COUNT(*) AS opened")
     expect(sqlText(queries[2])).toContain(
       "COUNT(DISTINCT COALESCE(a.registration_id, o.delivery_id))",
     )

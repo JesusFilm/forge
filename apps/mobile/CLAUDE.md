@@ -972,7 +972,9 @@ design record is
   took this phone out of every audience. Beyond the latch, an unchanged payload
   hash skips the call unless the last success is over 7 days old, a launch
   spends at most 3 FAILED attempts, and a rate limit is never retried in that
-  launch.
+  launch. A throw from BEFORE the request counts toward that cap too: a
+  rejecting install-id read reads as transient, so an uncounted attempt would
+  re-arm the 2-second retry for the whole launch.
 - **The app stores the test ID and never the push token.**
   `src/lib/push/store.ts` holds the test ID, the install id, the payload hash,
   the last success and the remembered revocation. The token is re-read from the
@@ -988,11 +990,16 @@ design record is
   with the same install id and platform, so the viewer's other phones keep
   their registrations. It is not the push token and not a platform device
   identifier, and it leaves the store only inside the registration payload,
-  never a log. The payload hash covers it, so a re-install registers rather
-  than reading its own payload as unchanged. A stored id outside admin's bound
-  (8 to 64 characters of `[A-Za-z0-9._-]`) is re-minted, because admin answers
-  BAD_USER_INPUT for it and nothing else would ever replace it. The minter
-  prefers the runtime's `crypto.randomUUID`, then a lazily required
+  never a log. The payload hash covers it, so a record that survives while its
+  install id changes registers rather than reading its own payload as
+  unchanged. A re-install registers because it has no stored record at all. A
+  stored id outside admin's bound (8 to 64 characters of `[A-Za-z0-9._-]`) is
+  re-minted, because admin answers BAD_USER_INPUT for it and nothing else would
+  ever replace it — that re-mint is the one way the id changes under a live
+  record, and the hash is what makes it register. A MINTED id is held to the
+  same bound: `ensureInstallId()` re-checks it and falls back to the compat
+  generator, so a minter tier that answers an unusable shape costs nothing. The
+  minter prefers the runtime's `crypto.randomUUID`, then a lazily required
   `expo-crypto`, the ordering `src/lib/recommendations/random.ts` uses.
 - **The push port lives on the SAME notifications adapter** (token read,
   rotation subscription, announcements channel), so that file stays the app's

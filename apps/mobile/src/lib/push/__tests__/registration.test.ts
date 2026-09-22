@@ -951,4 +951,52 @@ describe("the install id", () => {
       ),
     ).toBe(true)
   })
+
+  it("spends the attempt cap on a rejecting read, then stops retrying", async () => {
+    // The throw lands before the request, so an uncounted attempt would leave
+    // the retry re-arming every two seconds for the life of the launch.
+    const harness = createHarness({
+      installId: async () => {
+        throw new Error("storage unavailable")
+      },
+    })
+
+    harness.registration.onPermissionRead({ granted: true })
+    for (let round = 0; round < 6; round += 1) await harness.fire()
+
+    const failures = harness.events.filter(
+      (entry) => entry.event === "push.registration_failed",
+    )
+    expect(failures).toHaveLength(PUSH_REGISTRATION_MAX_ATTEMPTS)
+    expect(
+      failures.filter((entry) => entry.context.push_will_retry === true),
+    ).toHaveLength(PUSH_REGISTRATION_MAX_ATTEMPTS - 1)
+    expect(failures[failures.length - 1].context.push_will_retry).toBe(false)
+    // Counted exactly once per run: a double count would spend the cap early.
+    expect(failures.map((entry) => entry.context.push_attempt)).toEqual(
+      Array.from(
+        { length: PUSH_REGISTRATION_MAX_ATTEMPTS },
+        (_unused, index) => index + 1,
+      ),
+    )
+    // Nothing is armed and nothing reached admin, so the launch is quiet.
+    expect(harness.armed).toBe(0)
+    expect(harness.register).not.toHaveBeenCalled()
+  })
+
+  it("logs a later trigger as attempts_spent once the cap is gone", async () => {
+    const harness = createHarness({
+      installId: async () => {
+        throw new Error("storage unavailable")
+      },
+    })
+
+    harness.registration.onPermissionRead({ granted: true })
+    for (let round = 0; round < 6; round += 1) await harness.fire()
+    harness.registration.tokenRotated("ExponentPushToken[rotated]")
+    await harness.fire()
+
+    expect(harness.outcomes()).toContain("attempts_spent")
+    expect(harness.register).not.toHaveBeenCalled()
+  })
 })
