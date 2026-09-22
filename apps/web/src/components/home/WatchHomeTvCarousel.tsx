@@ -3,6 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
+import { useRouter } from "next/navigation"
 import {
   memo,
   useCallback,
@@ -31,6 +32,7 @@ import type { WatchHomeHeroSlide } from "@/lib/watch-home"
 import type { WatchHomeCarouselSequenceData } from "@/lib/watch-home-carousel-sequence"
 import { isWatchHomeIntroEligibleVideoLabel } from "@/lib/watch-home-carousel-sequence"
 import { cn } from "@/lib/utils"
+import { isUnmodifiedPrimaryNavigation } from "@/lib/link-navigation"
 import {
   WATCH_HOME_TV_TIMELINE_FUTURE_COUNT,
   useWatchHomeTvCarousel,
@@ -139,19 +141,25 @@ function muxThumbnailUrl(playbackId: string | null, width = 1280) {
     : null
 }
 
+// Below a second there is nothing worth resuming, so no `t=` is written. Both
+// the URL builder and the CTA's click handler ask through here, so the two
+// cannot drift into a click that navigates for a position the URL then omits.
+function hasResumePosition(playbackTimeSeconds: number): boolean {
+  return Number.isFinite(playbackTimeSeconds) && playbackTimeSeconds >= 1
+}
+
 function appendAutoplaySignal(href: string, playbackTimeSeconds = 0): string {
   try {
     const url = new URL(href, "http://watch.local")
-    if (Number.isFinite(playbackTimeSeconds) && playbackTimeSeconds >= 1) {
+    if (hasResumePosition(playbackTimeSeconds)) {
       url.searchParams.set("t", String(Math.floor(playbackTimeSeconds)))
     }
     url.searchParams.set("autoplay", "1")
     return `${url.pathname}${url.search}${url.hash}`
   } catch {
-    const startTime =
-      Number.isFinite(playbackTimeSeconds) && playbackTimeSeconds >= 1
-        ? `t=${Math.floor(playbackTimeSeconds)}&`
-        : ""
+    const startTime = hasResumePosition(playbackTimeSeconds)
+      ? `t=${Math.floor(playbackTimeSeconds)}&`
+      : ""
     return href.includes("?")
       ? `${href}&${startTime}autoplay=1`
       : `${href}?${startTime}autoplay=1`
@@ -200,7 +208,7 @@ export function watchHomeHeroSlidesToTvCarouselSlides(
     })
 }
 
-function PrimaryAction({
+export function PrimaryAction({
   playbackTimeSeconds,
   slide,
 }: {
@@ -208,12 +216,76 @@ function PrimaryAction({
   slide: WatchHomeTvCarouselSlide
 }) {
   const t = useTranslations("WatchHome")
+  const router = useRouter()
+  // The live preview position is read at CLICK time, never rendered. `next/link`
+  // prefetches an in-viewport link every time its `href` changes, so baking the
+  // position into the rendered href cost one uncacheable RSC round-trip per
+  // second for as long as an idle tab sat on /watch (FGE-139 / W-003 measured 33
+  // fetches of one path in 35s, 26,218 B each; a production-build session on
+  // this branch measured 30 in 19s across 19 distinct hrefs).
+  //
+  // Both halves of the ticket's Fix are applied, because each one alone leaves
+  // fetches behind. The stable href — it moves only when the carousel advances —
+  // is what makes the per-second storm impossible by construction rather than
+  // one `prefetch` default away from returning. `prefetch={false}` then covers
+  // the residue the stable href cannot: `next/link` still re-prefetches an
+  // in-viewport link on its own refresh cycle, measured at 8 fetches of this one
+  // destination in 48s. Scope note: this is the hero CTA only, so it neither
+  // pre-empts FGE-215 (W-025, the same posture for category tiles) nor
+  // FGE-209 (W-024, bounding the fan-out itself).
+  //
+  // The ref carries the slide it belongs to, not just the number. One
+  // `PrimaryAction` instance survives every slide change (no `key` at the call
+  // site), and the effect that refreshes the ref runs AFTER the commit that
+  // swapped `slide` — so for one tick the ref holds the outgoing slide's
+  // position while `href` already points at the incoming slide. Comparing the
+  // ids makes that window fail safe: a mismatch drops `t=` rather than stamping
+  // slide A's timestamp onto slide B's URL.
+  //
+  // The mismatch branch is DEFENSIVE and no test reaches it. `act()` flushes
+  // passive effects before it dispatches a click, so the harness cannot hold the
+  // ref and the prop apart; and in production the hook already zeroes
+  // `playbackTimeSeconds` in the same commit that swaps the slide, which the
+  // "never carries the previous slide's position" test does pin. This guard
+  // exists for the window React's scheduling might still open between that
+  // commit and this effect — keep it even though nothing can go red without it.
+  const playbackTimeRef = useRef({
+    slideId: slide.id,
+    seconds: playbackTimeSeconds,
+  })
+  useEffect(() => {
+    playbackTimeRef.current = {
+      slideId: slide.id,
+      seconds: playbackTimeSeconds,
+    }
+  }, [slide.id, playbackTimeSeconds])
 
-  if (!slide.href) return null
+  const href = slide.href
+  const slideId = slide.id
+  const stableHref = useMemo(
+    () => (href ? (appendAutoplaySignal(href) as Route) : null),
+    [href],
+  )
+  const handleClick = useCallback(
+    (event: React.MouseEvent<HTMLAnchorElement>) => {
+      if (!href || event.defaultPrevented) return
+      if (!isUnmodifiedPrimaryNavigation(event)) return
+      const tracked = playbackTimeRef.current
+      const seconds = tracked.slideId === slideId ? tracked.seconds : 0
+      if (!hasResumePosition(seconds)) return
+      event.preventDefault()
+      router.push(appendAutoplaySignal(href, seconds) as Route)
+    },
+    [href, router, slideId],
+  )
+
+  if (!stableHref) return null
 
   return (
     <Link
-      href={appendAutoplaySignal(slide.href, playbackTimeSeconds) as Route}
+      href={stableHref}
+      prefetch={false}
+      onClick={handleClick}
       // The watch page's primary hero action, so both surfaces show the same
       // pill; `min-w-0 max-w-full` keeps a long title from stretching it.
       className={cn(WATCH_HERO_PRIMARY_ACTION_CLASS, "min-w-0 max-w-full")}
