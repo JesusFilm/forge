@@ -85,3 +85,6 @@ flow. Publication and owner acceptance remain external. Feat-463 remains
 non-blocking; feat-471 continues to own production-maintenance proof. The
 `feat-461` dependency restores the reciprocal edge already present in that
 completed ticket.
+
+Audit and prepared dashboard: [draft Forge PR #2379](https://github.com/JesusFilm/forge/pull/2379).
+This is not a completion resolution.

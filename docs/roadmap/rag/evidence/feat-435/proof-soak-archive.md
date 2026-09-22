@@ -185,3 +185,20 @@ If requirements are intentionally retired, record the exact scope replacement
 and owner decision using the feat-433 precedent before marking feat-435 complete.
 No new follow-up ticket is needed merely to duplicate these existing feat-435
 requirements; feat-471, feat-463, and feat-467 retain their existing scope.
+
+## PR handoff
+
+- Draft [Forge PR #2379](https://github.com/JesusFilm/forge/pull/2379).
+- Branch/base: `docs/j030-rag-proof-status` → `main`, based on
+  `0f7bbe19586df2456942ce929b62a8cef5792377`.
+- Implementation commit: `3c1931b09` (`docs(rag): audit retirement gates and
+refresh status dashboard`); a documentation-only follow-up records this PR
+  reference. The original `ops/j030` branch remains untouched.
+- Seven changed files: this report, `docs/roadmap/rag/README.md`,
+  `docs/roadmap/rag/feat-435-rag-proof-soak-archive.md`, the J030 plan,
+  `apps/rag/dashboard/compiled-data.json`, and dashboard
+  `site/rag-status/{index.html,.dashboard-commit.json}`.
+- Required commit hooks ran without bypass, including staged formatting,
+  repository-wide formatting, and commit-message validation. Local evidence
+  above is complete; remote PR checks are reported separately from those local
+  results and do not supply missing retirement acceptance.
