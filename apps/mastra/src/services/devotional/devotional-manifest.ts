@@ -99,6 +99,18 @@ export type BuildManifestInput = {
   intro?: "cover" | "bands" | "hook"
   /** `intro: "hook"`: the question drawn on screen as the piece's title. */
   hookText?: string
+  /** Social opening card placed before the film (`--intro=quote`). */
+  quoteIntro?: {
+    quoteA: string
+    quoteAStrong?: string
+    quoteB: string
+    quoteBStrong?: string
+    questions: string[]
+    watchLabel: string
+    durationSec?: number
+    /** Where in the background take the opening shot starts (seconds). */
+    bgStartSec?: number
+  }
   /** The line shown over that silent opening, e.g. "Let's watch". */
   leadLabel?: string
   /** Captions for the video card, ALREADY timed against the edited clip
@@ -155,6 +167,25 @@ function buildClipFirstManifest(
   const captions = (input.videoCaptions ?? []).filter(
     (c) => c.startSec < videoDurationSec,
   )
+  // Social opening (`--intro=quote`): the quotation, the three questions and
+  // "Let's watch", over the background slice, BEFORE the film starts. Unlike
+  // `hook` this is its own card: it is 13s long and carries no film sound, so
+  // it cannot ride the scene's run-up.
+  if (input.quoteIntro) {
+    const q = input.quoteIntro
+    cards.push({
+      kind: "quote-intro",
+      durationSec: q.durationSec ?? 13.5,
+      quoteA: q.quoteA,
+      ...(q.quoteAStrong ? { quoteAStrong: q.quoteAStrong } : {}),
+      quoteB: q.quoteB,
+      ...(q.quoteBStrong ? { quoteBStrong: q.quoteBStrong } : {}),
+      questionsList: q.questions,
+      watchLabel: q.watchLabel,
+      ...(q.bgStartSec != null ? { bgStartSec: q.bgStartSec } : {}),
+    })
+  }
+
   // `intro: "hook"` (YouTube): the one spoken line that runs over the film's
   // opening seconds. Every other opening is silent, so this is the only case
   // where the clip-first film card carries narration.

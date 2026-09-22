@@ -134,13 +134,16 @@ const CARD_TAIL_SEC = 0.8
 /** `intro: "hook"`: the longest opening question the film will wait through.
  *  Past this the scene starts under the tail of the line rather than the whole
  *  opening being a talking head over a muted film. */
-const HOOK_LEAD_CAP_SEC = 9
+const HOOK_LEAD_CAP_SEC = 11
 /** `intro: "hook"`: silence after the spoken question — a breath, plus the
  *  time the title takes to leave. The film's first line lands after it. */
 const HOOK_TAIL_SEC = 1.8
-/** `intro: "hook"`: the slowest the run-up may be stretched before the water
- *  and the boats read as slow motion rather than a held opening. */
-const HOOK_MIN_STRETCH = 0.45
+/** `intro: "hook"`: the slowest the run-up may be stretched before the shot
+ *  reads as slow motion rather than a held opening. A three-line opening
+ *  (welcome, question, connector) needs about a third of real speed on a scene
+ *  with only ~3s of run-up, which is still readable as a held establishing
+ *  shot; below this it is visibly slowed. */
+const HOOK_MIN_STRETCH = 0.32
 /** Silent beat on the FIRST card before the narration starts. */
 const INTRO_HOLD_SEC = 1
 /** Held beat on the LAST card after its narration, to sit with the question. */
@@ -1017,6 +1020,20 @@ export type RenderOptions = {
    *  seconds. Its recorded length sets the lead, so nothing has to be timed by
    *  hand. Must reach every `buildNarrationSegments` call in a run. */
   hookLine?: string
+  /** Social opening (`--intro=quote`): the reflection line that opens the cut,
+   *  written over the film before the scene starts. Two halves so each arrives
+   *  from its own side; `*Strong` is the phrase set in gold. */
+  quoteIntro?: {
+    quoteA: string
+    quoteAStrong?: string
+    quoteB: string
+    quoteBStrong?: string
+    questions?: string[]
+    watchLabel?: string
+    durationSec?: number
+    /** Where in the background take the opening shot starts (seconds). */
+    bgStartSec?: number
+  }
   /** `intro: "hook"` only: what is DRAWN, when the voice says more than the
    *  screen should show (a welcome before the question). Defaults to
    *  `hookLine`. Never reaches the narration, so it is free to change. */
@@ -1668,6 +1685,20 @@ async function renderInStage(
         }
       : {}),
     ...(options.intro ? { intro: options.intro } : {}),
+    // Social opening card, ahead of the film (see BuildManifestInput).
+    ...(options.quoteIntro
+      ? {
+          quoteIntro: {
+            ...options.quoteIntro,
+            questions: options.quoteIntro.questions ?? [
+              "Does Jesus really say this?",
+              "What does this mean?",
+              "How does it affect my life?",
+            ],
+            watchLabel: options.quoteIntro.watchLabel ?? "Let's watch.",
+          },
+        }
+      : {}),
     ...((options.hookTitle ?? options.hookLine)
       ? { hookText: (options.hookTitle ?? options.hookLine ?? "").trim() }
       : {}),

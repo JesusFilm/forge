@@ -27,6 +27,9 @@ export const DEVOTIONAL_CARD_KINDS = [
   // The stepper screen that names each stage before it starts. Appears up to
   // four times, once per stage, each time with the light landing on its step.
   "step",
+  // Social opening: a line of the reflection written over the film, then the
+  // three questions the series asks of every passage, then "Let's watch".
+  "quote-intro",
 ] as const
 
 /** The stepper's stages, in order. `stepIndex` on a `step` card points here. */
@@ -107,6 +110,18 @@ export const devotionalCardSchema = z.object({
    * what the series is). Needs `mutedLeadSec` for its length.
    */
   intro: z.enum(["cover", "bands", "hook"]).optional(),
+  /** `quote-intro` card: the opening quotation, in two halves so each can
+   *  arrive from its own side, with the phrase to carry the weight in each. */
+  quoteA: z.string().optional(),
+  quoteAStrong: z.string().optional(),
+  quoteB: z.string().optional(),
+  quoteBStrong: z.string().optional(),
+  /** `quote-intro` card: the questions that follow the quotation. */
+  questionsList: z.array(z.string()).optional(),
+  /** `quote-intro` card: the closing line before the film ("Let's watch."). */
+  watchLabel: z.string().optional(),
+  /** `quote-intro` card: where in the background take its shot starts (s). */
+  bgStartSec: z.number().nonnegative().optional(),
   /** `intro: "hook"`: the question shown on screen while it is spoken. It is
    *  the piece's title for this cut, so it is set at the cover's title size. */
   hookText: z.string().optional(),

@@ -108,6 +108,27 @@ async function main() {
       // The voice may say more than the screen shows ("Welcome to Daily Bible
       // Pause." before the question); `--hook-title` is what is drawn.
       ...(arg("hook-title") ? { hookTitle: arg("hook-title") } : {}),
+      // Social opening: `--quote-a/--quote-b` (+ `--quote-a-strong`, etc.).
+      ...(arg("quote-a") && arg("quote-b")
+        ? {
+            quoteIntro: {
+              quoteA: arg("quote-a")!,
+              quoteB: arg("quote-b")!,
+              ...(arg("quote-a-strong")
+                ? { quoteAStrong: arg("quote-a-strong") }
+                : {}),
+              ...(arg("quote-b-strong")
+                ? { quoteBStrong: arg("quote-b-strong") }
+                : {}),
+              ...(arg("quote-sec")
+                ? { durationSec: Number(arg("quote-sec")) }
+                : {}),
+              ...(arg("quote-bg")
+                ? { bgStartSec: Number(arg("quote-bg")) }
+                : {}),
+            },
+          }
+        : {}),
       ...(arg("theme-word") ? { clipThemeWord: arg("theme-word") } : {}),
       ...(process.argv.includes("--split-panels")
         ? { clipSplitPanels: true }

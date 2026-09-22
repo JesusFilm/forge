@@ -14,6 +14,7 @@ import {
 
 import { loadShortFonts, SHORT_FONT_FAMILIES } from "../fonts"
 import { loadLiterata, TEASER_FONT_FAMILIES } from "./teaser-fonts"
+import { QuoteIntro } from "./QuoteIntro"
 import { StepperStack } from "./Stepper"
 import type { DevotionalCard, DevotionalInputProps } from "./schema"
 import { resolveDevotionalStyle, type DevotionalStyle } from "./styles"
@@ -3562,6 +3563,24 @@ function CardBody({
     )
   }
 
+  if (card.kind === "quote-intro") {
+    return (
+      <QuoteIntro
+        quoteA={card.quoteA ?? ""}
+        {...(card.quoteAStrong ? { quoteAStrong: card.quoteAStrong } : {})}
+        quoteB={card.quoteB ?? ""}
+        {...(card.quoteBStrong ? { quoteBStrong: card.quoteBStrong } : {})}
+        questions={card.questionsList ?? []}
+        watchLabel={card.watchLabel ?? "Let's watch."}
+        px={px}
+        fps={fps}
+        durationSec={durationInFrames / fps}
+        serif={SERIF}
+        sans={SANS}
+      />
+    )
+  }
+
   if (card.kind === "video") {
     // The film plays clear (rendered by Background) with no text overlay — the
     // one exception is the silent opening: while the clip's own sound is still
@@ -4324,7 +4343,12 @@ function Background({
   // A cover asked to stay sharp keeps the footage unblurred and takes only a
   // light scrim — enough for one line of white text, not enough to hide what
   // the shot is. Cover only; every other card still needs its blur to be read.
-  const sharpCover = Boolean(props.coverBgSharp) && card.kind === "cover"
+  // The social opening is film with a line of text over it, the way the
+  // colleague's cut does it — so it keeps the picture sharp and takes only a
+  // scrim, like a sharp cover.
+  const sharpCover =
+    (Boolean(props.coverBgSharp) && card.kind === "cover") ||
+    card.kind === "quote-intro"
   const BLUR = sharpCover
     ? 0
     : (card.kind === "cover"
@@ -4334,13 +4358,16 @@ function Background({
           : medium
             ? px(15)
             : heavyBlurPx) * blurScale
-  const wholeScrim = sharpCover
-    ? "rgba(6,4,3,0.22)"
-    : soft
-      ? "rgba(6,4,3,0.3)"
-      : medium
-        ? "rgba(6,4,3,0.36)"
-        : "rgba(6,4,3,0.46)"
+  const wholeScrim =
+    card.kind === "quote-intro"
+      ? "rgba(6,4,3,0.42)"
+      : sharpCover
+        ? "rgba(6,4,3,0.22)"
+        : soft
+          ? "rgba(6,4,3,0.3)"
+          : medium
+            ? "rgba(6,4,3,0.36)"
+            : "rgba(6,4,3,0.46)"
   let blurOverlay: ReactNode = null
   if (region === "whole") {
     blurOverlay = (
@@ -4754,6 +4781,12 @@ export function stepGroups(
       open = null
       return
     }
+    // The social opening runs before the piece has started — no clock on it.
+    if (c.kind === "quote-intro") {
+      if (open) groups.push(open)
+      open = null
+      return
+    }
     // A film card with an intro overlay clocks from where the film proper
     // begins, after the intro's lead: the ring belongs to the clip, not to
     // the title over it (owner).
@@ -5091,6 +5124,14 @@ export function DevotionalVideo(props: DevotionalInputProps) {
     // of the same take instead — it starts where the backdrop left off and
     // advances the accumulator like any other card, so nothing is replayed.
     if (c.kind === "video" && !props.continuousClip) return 0
+    // The social opening picks its OWN shot out of the take (owner chose the
+    // wide of Jesus with his back to the crowd) and does not consume the
+    // take's timeline: the cards after it start where they always did.
+    if (c.kind === "quote-intro" && c.bgStartSec != null)
+      // `bgStartSec` is a time in the TAKE itself, so it converts with the
+      // take's own frame rate — the playback-rate scaling applies to how fast
+      // cards walk the take, not to a fixed point inside it.
+      return Math.round(c.bgStartSec * fps)
     const start = bgAcc
     // Advance by the card's frames scaled by the playback rate — the clip
     // advances `bgRate` film-frames per composition frame, so the window
