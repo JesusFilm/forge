@@ -32,6 +32,9 @@ const ENVIRONMENT = {
 
 const TOKEN = "ExponentPushToken[abc]"
 
+/** A UUID, the shape the real store mints once per install. */
+const INSTALL_ID = "3f2a9c10-5b6d-4e71-8a02-9c3d4e5f6071"
+
 type Receipt = { testDeviceId: string; status: string }
 
 class FailureStub extends Error {
@@ -49,6 +52,7 @@ function createHarness(
     enabled?: boolean
     stored?: Partial<PushRegistrationRecord> | null
     token?: () => Promise<string | null>
+    installId?: () => Promise<string>
     appLanguageSlug?: string | null
     identity?: { viewerToken: string; sessionToken: string } | null
     register?: jest.Mock<Promise<Receipt>, [unknown]>
@@ -61,6 +65,7 @@ function createHarness(
       : {
           version: 1,
           testDeviceId: null,
+          installId: INSTALL_ID,
           payloadHash: null,
           lastSuccessAt: null,
           revocationReportedAt: null,
@@ -69,6 +74,8 @@ function createHarness(
   let appLanguageSlug: string | null = options.appLanguageSlug ?? "english"
   let identity = options.identity ?? null
   let token = TOKEN
+  const installId = INSTALL_ID
+  let installIdReads = 0
   const permissions: string[] = []
   const events: { event: string; context: Record<string, unknown> }[] = []
   const timers: (() => void)[] = []
@@ -89,6 +96,7 @@ function createHarness(
           record = {
             version: 1,
             testDeviceId: null,
+            installId,
             payloadHash: null,
             lastSuccessAt: null,
             revocationReportedAt: null,
@@ -100,6 +108,7 @@ function createHarness(
         record = {
           version: 1,
           testDeviceId,
+          installId: record?.installId ?? installId,
           payloadHash,
           lastSuccessAt: deps.now(),
           revocationReportedAt: null,
@@ -109,6 +118,7 @@ function createHarness(
         record = {
           version: 1,
           testDeviceId: record?.testDeviceId ?? null,
+          installId: record?.installId ?? installId,
           // Mirrors the real store, which clears the change key here so the
           // next granted pass registers instead of reading `unchanged`.
           payloadHash: null,
@@ -119,6 +129,14 @@ function createHarness(
       setPermission: (next) => permissions.push(next),
     },
     readToken: options.token ?? (async () => token),
+    // The real store mints once and then serves the stored id, so this never
+    // answers a second value on its own.
+    readInstallId:
+      options.installId ??
+      (async () => {
+        installIdReads += 1
+        return installId
+      }),
     readAppLanguageSlug: async () => appLanguageSlug,
     readIdentity: async () => identity,
     readEnvironment: () => ENVIRONMENT,
@@ -181,6 +199,9 @@ function createHarness(
     setToken: (next: string) => {
       token = next
     },
+    get installIdReads() {
+      return installIdReads
+    },
     fire,
     settle,
     outcomes: () =>
@@ -204,6 +225,7 @@ describe("the first registration of a launch", () => {
     expect(harness.register).toHaveBeenCalledTimes(1)
     expect(payloadOf(harness.register)).toEqual({
       expoPushToken: TOKEN,
+      installId: INSTALL_ID,
       platform: "IOS",
       appBuild: "1.0.0+42",
       appLanguageSlug: "english",
@@ -332,6 +354,7 @@ describe("the payload change key (R3)", () => {
   it("skips the call when nothing changed since the stored success", async () => {
     const stored = hashPushRegistrationPayload({
       expoPushToken: TOKEN,
+      installId: INSTALL_ID,
       platform: "IOS",
       appBuild: "1.0.0+42",
       appLanguageSlug: "english",
@@ -357,6 +380,7 @@ describe("the payload change key (R3)", () => {
   it("re-registers when the stored success is older than the refresh window", async () => {
     const stored = hashPushRegistrationPayload({
       expoPushToken: TOKEN,
+      installId: INSTALL_ID,
       platform: "IOS",
       appBuild: "1.0.0+42",
       appLanguageSlug: "english",
@@ -661,6 +685,7 @@ describe("a revoked permission (AE20, R29)", () => {
     expect(harness.register).toHaveBeenCalledTimes(1)
     expect(payloadOf(harness.register)).toMatchObject({
       expoPushToken: TOKEN,
+      installId: INSTALL_ID,
       permission: "denied",
     })
     // The handle is deliberately absent: admin binds the row by token, and the
@@ -891,5 +916,39 @@ describe("the kill switch (KTD12)", () => {
     await harness.fire()
 
     expect(harness.register).not.toHaveBeenCalled()
+  })
+})
+
+describe("the install id", () => {
+  it("rides every registration, from the store and nowhere else", async () => {
+    // Without it admin retires the viewer's OTHER phones when this one
+    // registers, which is the whole reason the field exists.
+    const harness = createHarness()
+
+    harness.registration.onPermissionRead({ granted: true })
+    await harness.fire()
+
+    expect(payloadOf(harness.register).installId).toBe(INSTALL_ID)
+    expect(harness.installIdReads).toBe(1)
+  })
+
+  it("fails the pass rather than register without one", async () => {
+    // A payload with no install id would make admin supersede by viewer
+    // again, so a read that rejects must lose the registration instead.
+    const harness = createHarness({
+      installId: async () => {
+        throw new Error("storage unavailable")
+      },
+    })
+
+    harness.registration.onPermissionRead({ granted: true })
+    await harness.fire()
+
+    expect(harness.register).not.toHaveBeenCalled()
+    expect(
+      harness.events.some(
+        (entry) => entry.event === "push.registration_failed",
+      ),
+    ).toBe(true)
   })
 })

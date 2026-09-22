@@ -4,10 +4,11 @@
  *
  * The push token is the identity of the row, so every call is an upsert on it.
  * KTD4 owns the status rules: invalid is terminal, a revoked grant is
- * inactive, and a viewer's newer token supersedes their older one.
+ * inactive, and one install's newest token supersedes that install's older
+ * ones. A viewer with a phone and a tablet keeps an active row on each.
  *
- * SECURITY: no log line here carries the push token, a viewer handle, or a
- * digest. The registration log exists to prove the country source.
+ * SECURITY: no log line here carries the push token, an install id, a viewer
+ * handle, or a digest. The registration log exists to prove the country source.
  */
 import { randomBytes } from "node:crypto"
 import {
@@ -97,17 +98,14 @@ export type PushRegistrationStatusStep = Readonly<{
 }>
 
 /**
- * KTD4's status rules as one pure step. A grant reactivates only from
- * inactive: a superseded row lost its place to the viewer's newer token, and
- * that newer token is the one the audience reads.
+ * KTD4's status rules as one pure step. A superseded row is one install's
+ * retired token, so a grant reactivates it: the install's newest granted token
+ * is the row the audience reads. An invalid token never reaches here.
  */
 export function nextPushRegistrationStatus(
   current: PushRegistrationStatus | null,
   permission: PushPermissionState,
 ): PushRegistrationStatusStep {
-  if (current === PushRegistrationStatus.SUPERSEDED) {
-    return { status: PushRegistrationStatus.SUPERSEDED, changed: false }
-  }
   const status =
     permission === "granted"
       ? PushRegistrationStatus.ACTIVE
@@ -145,6 +143,7 @@ async function writeRegistration(
   },
 ): Promise<WriteResult> {
   const { input, now, viewerDigest } = params
+  const installId = input.installId ?? null
   const existing = (await tx.pushRegistration.findUnique({
     where: { expoPushToken: input.expoPushToken },
     select: { id: true, status: true, testDeviceId: true },
@@ -171,6 +170,9 @@ async function writeRegistration(
     // A registration with no handle leaves the stored digest alone; only a
     // viewer erasure clears it.
     ...(viewerDigest ? { viewerDigest } : {}),
+    // An app build older than the install id sends none, so the stored id
+    // stays and that install keeps its supersession key.
+    ...(installId ? { installId } : {}),
   }
 
   const row = existing
@@ -196,10 +198,12 @@ async function writeRegistration(
       })) as RegistrationRow)
 
   let superseded = 0
-  if (viewerDigest && row.status === PushRegistrationStatus.ACTIVE) {
+  // Keyed on the install, never on the viewer: one person's phone and tablet
+  // are two installs and both stay active.
+  if (installId && row.status === PushRegistrationStatus.ACTIVE) {
     const result = await tx.pushRegistration.updateMany({
       where: {
-        viewerDigest,
+        installId,
         platform: input.platform as PushPlatform,
         status: PushRegistrationStatus.ACTIVE,
         id: { not: row.id },

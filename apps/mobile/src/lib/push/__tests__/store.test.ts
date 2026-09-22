@@ -33,6 +33,7 @@ function createStore(
   }
   const reads: string[] = []
   const writes: string[] = []
+  const minted: string[] = []
   let failRead = options.failRead ?? false
   const store = createPushRegistrationStore({
     getItem: async (key) => {
@@ -46,11 +47,17 @@ function createStore(
       storage.set(key, value)
     },
     now: options.now ?? (() => 1_000),
+    mintInstallId: () => {
+      const id = `install-${minted.length + 1}`
+      minted.push(id)
+      return id
+    },
   })
   return {
     store,
     reads,
     writes,
+    minted,
     storage,
     healRead: () => {
       failRead = false
@@ -60,6 +67,7 @@ function createStore(
 
 function serialized(record: {
   testDeviceId?: string | null
+  installId?: unknown
   payloadHash?: string | null
   lastSuccessAt?: number | null
   revocationReportedAt?: number | null
@@ -68,6 +76,7 @@ function serialized(record: {
   return JSON.stringify({
     version: PUSH_REGISTRATION_RECORD_VERSION,
     testDeviceId: null,
+    installId: null,
     payloadHash: null,
     lastSuccessAt: null,
     revocationReportedAt: null,
@@ -85,6 +94,7 @@ describe("the push registration store", () => {
     expect(store.getRecord()).toEqual({
       version: PUSH_REGISTRATION_RECORD_VERSION,
       testDeviceId: null,
+      installId: null,
       payloadHash: null,
       lastSuccessAt: null,
       revocationReportedAt: null,
@@ -152,6 +162,7 @@ describe("the push registration store", () => {
     expect(store.getRecord()).toEqual({
       version: PUSH_REGISTRATION_RECORD_VERSION,
       testDeviceId: "abc12345",
+      installId: null,
       payloadHash: "0123456789abcdef",
       lastSuccessAt: 2_000,
       revocationReportedAt: null,
@@ -175,6 +186,7 @@ describe("the push registration store", () => {
     for (const blob of writes) {
       expect(blob).not.toContain("ExponentPushToken")
       expect(Object.keys(JSON.parse(blob)).sort()).toEqual([
+        "installId",
         "lastSuccessAt",
         "payloadHash",
         "revocationReportedAt",
@@ -217,6 +229,7 @@ describe("the push registration store", () => {
     expect(store.getRecord()).toEqual({
       version: PUSH_REGISTRATION_RECORD_VERSION,
       testDeviceId: "abc12345",
+      installId: null,
       payloadHash: null,
       lastSuccessAt: 3_000,
       revocationReportedAt: 3_000,
@@ -277,5 +290,122 @@ describe("the push registration store", () => {
       testDeviceId: null,
       permission: "unknown",
     })
+  })
+})
+
+describe("the install id", () => {
+  it("mints one id per install and persists it", async () => {
+    const harness = createStore()
+
+    const first = await harness.store.ensureInstallId()
+    const second = await harness.store.ensureInstallId()
+
+    expect(second).toBe(first)
+    expect(harness.minted).toEqual([first])
+    expect(
+      JSON.parse(harness.storage.get(PUSH_REGISTRATION_STORAGE_KEY) ?? "{}")
+        .installId,
+    ).toBe(first)
+  })
+
+  it("mints one id for two callers that arrive together", async () => {
+    // The registration pass and a revocation report can both read it inside
+    // one launch, and a second id would take the first row out of nothing.
+    const harness = createStore()
+
+    const [first, second] = await Promise.all([
+      harness.store.ensureInstallId(),
+      harness.store.ensureInstallId(),
+    ])
+
+    expect(second).toBe(first)
+    expect(harness.minted).toHaveLength(1)
+  })
+
+  it("returns the stored id and mints nothing", async () => {
+    const harness = createStore({
+      stored: serialized({ installId: "install-stored" }),
+    })
+
+    expect(await harness.store.ensureInstallId()).toBe("install-stored")
+    expect(harness.minted).toEqual([])
+  })
+
+  it("keeps the id across a revocation report and a later success", async () => {
+    const harness = createStore()
+    const installId = await harness.store.ensureInstallId()
+
+    await harness.store.markRevocationReported()
+    expect(harness.store.getRecord()?.installId).toBe(installId)
+
+    await harness.store.recordSuccess({
+      testDeviceId: "abc12345",
+      payloadHash: "0123456789abcdef",
+    })
+
+    expect(harness.store.getRecord()?.installId).toBe(installId)
+    expect(await harness.store.ensureInstallId()).toBe(installId)
+    expect(harness.minted).toEqual([installId])
+  })
+
+  it("re-mints an id admin would refuse, which nothing else would replace", async () => {
+    // A stored id outside admin's 8-to-64 bound loses every registration this
+    // install ever makes, and the id is never regenerated on its own.
+    const harness = createStore({ stored: serialized({ installId: "short" }) })
+
+    const installId = await harness.store.ensureInstallId()
+
+    expect(installId).not.toBe("short")
+    expect(harness.minted).toEqual([installId])
+  })
+
+  it("re-hydrates a record from the previous version as empty", async () => {
+    const old = createStore({
+      stored: serialized({
+        version: PUSH_REGISTRATION_RECORD_VERSION - 1,
+        testDeviceId: "abc12345",
+        installId: "install-stored",
+      }),
+    })
+    await old.store.hydrate()
+
+    expect(old.store.getRecord()?.installId).toBeNull()
+    expect(old.store.getRecord()?.testDeviceId).toBeNull()
+
+    // Anti-vacuous: the same blob at the current version does hydrate, so the
+    // version is what refused it and not the shape.
+    const current = createStore({
+      stored: serialized({
+        testDeviceId: "abc12345",
+        installId: "install-stored",
+      }),
+    })
+    await current.store.hydrate()
+
+    expect(current.store.getRecord()?.installId).toBe("install-stored")
+  })
+
+  it("serves an id after a failed read without clobbering the record", async () => {
+    // Persisting here would write over a test ID and a change key the store
+    // could not read. The next launch reads them and keeps this id.
+    const harness = createStore({
+      stored: serialized({ testDeviceId: "abc12345" }),
+      failRead: true,
+    })
+
+    const installId = await harness.store.ensureInstallId()
+
+    expect(installId).toBe("install-1")
+    expect(harness.writes).toEqual([])
+
+    harness.healRead()
+    await harness.store.hydrate()
+
+    expect(harness.store.getRecord()?.testDeviceId).toBe("abc12345")
+    expect(await harness.store.ensureInstallId()).toBe(installId)
+    expect(harness.minted).toEqual([installId])
+    expect(
+      JSON.parse(harness.storage.get(PUSH_REGISTRATION_STORAGE_KEY) ?? "{}"),
+    ).toMatchObject({ installId, testDeviceId: "abc12345" })
   })
 })

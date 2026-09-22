@@ -184,7 +184,7 @@ describe("CampaignActions test-send outcome", () => {
     ).toBeNull()
   })
 
-  it("shows an accepted outcome for the same phone", () => {
+  it("shows an accepted outcome for the same device", () => {
     render(props({ testOutcome: [outcome()] }))
     expect(
       container
@@ -213,10 +213,10 @@ describe("CampaignActions send-now confirmation", () => {
     const modal = container.querySelector(
       '[data-testid="push-send-now-confirm"]',
     )
-    expect(modal?.textContent).toContain("1234 phone(s)")
+    expect(modal?.textContent).toContain("1234 device(s)")
     expect(modal?.textContent).toContain("SA, FR")
     expect(modal?.textContent).toContain("middle of their night")
-    expect(modal?.textContent).toContain("7 phone(s)")
+    expect(modal?.textContent).toContain("7 device(s)")
     expect(
       container.querySelector<HTMLButtonElement>(
         '[data-testid="push-confirm-submit"]',

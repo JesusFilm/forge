@@ -136,8 +136,9 @@ export function CampaignActions({
         <section className="grid gap-2">
           <h3 className="text-[13px] font-semibold">Test send</h3>
           <p className="text-[12px] leading-5 text-[var(--color-text-muted)]">
-            A test send reaches every phone on the test-device list and never
-            claims that phone&apos;s day, so the live campaign still reaches it.
+            A test send reaches every device on the test-device list and never
+            claims that device&apos;s day, so the live campaign still reaches
+            it.
           </p>
           <form action={testFormAction}>
             <input type="hidden" name="campaignId" value={campaignId} />
@@ -170,7 +171,7 @@ export function CampaignActions({
                   className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-[var(--color-hairline)] px-3 py-2"
                 >
                   <span className="text-[12px]">
-                    {row.label ?? row.testDeviceId ?? "Unnamed phone"}
+                    {row.label ?? row.testDeviceId ?? "Unnamed device"}
                   </span>
                   <span className="flex items-center gap-2">
                     {row.error ? (
@@ -238,7 +239,7 @@ export function CampaignActions({
             </PrimaryButton>
           </form>
           <p className="text-[12px] leading-5 text-[var(--color-text-muted)]">
-            Each phone receives it at that hour in its own time zone, as a wave
+            Each device receives it at that hour in its own time zone, as a wave
             across the zones.
           </p>
           <ActionFeedback state={scheduleState} />
@@ -249,9 +250,10 @@ export function CampaignActions({
         <section className="grid gap-2">
           <h3 className="text-[13px] font-semibold">Send now everywhere</h3>
           <p className="text-[12px] leading-5 text-[var(--color-text-muted)]">
-            This ignores the local hour and reaches {audience} phone(s) at once.
+            This ignores the local hour and reaches {audience} device(s) at
+            once.
             {unreachable > 0
-              ? ` ${unreachable} more phone(s) are on the list that no transport can reach.`
+              ? ` ${unreachable} more device(s) are on the list that no transport can reach.`
               : null}
           </p>
           <SecondaryButton
@@ -285,10 +287,10 @@ export function CampaignActions({
         open={sendOpen}
         testId="push-send-now-confirm"
         title="Send this announcement now?"
-        consequence={`This reaches ${audience} phone(s) in ${where} at once. It ignores the local hour, so some viewers receive it in the middle of their night.`}
+        consequence={`This reaches ${audience} device(s) in ${where} at once. It ignores the local hour, so some viewers receive it in the middle of their night.`}
         detail={
           unreachable > 0
-            ? `${unreachable} phone(s) in the audience cannot be reached by any transport and count as unreachable.`
+            ? `${unreachable} device(s) in the audience cannot be reached by any transport and count as unreachable.`
             : undefined
         }
         requiredValue={String(audience)}
@@ -303,7 +305,7 @@ export function CampaignActions({
         open={cancelOpen}
         testId="push-cancel-confirm"
         title="Cancel this campaign?"
-        consequence="Every zone that has not started is not sent. Phones already reached keep the notification, and cancelling cannot be undone."
+        consequence="Every zone that has not started is not sent. Devices already reached keep the notification, and cancelling cannot be undone."
         confirmLabel="Cancel the campaign"
         pending={cancelPending}
         onCancel={() => setCancelOpen(false)}

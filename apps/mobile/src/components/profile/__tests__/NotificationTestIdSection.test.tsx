@@ -40,6 +40,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 
 import { NotificationTestIdSection } from "../NotificationTestIdSection"
 import {
+  PUSH_REGISTRATION_RECORD_VERSION,
   PUSH_REGISTRATION_STORAGE_KEY,
   PUSH_TEST_ID_COPY_LABEL,
   PUSH_TEST_ID_NOTIFICATIONS_OFF,
@@ -91,7 +92,7 @@ describe("the notification test ID row", () => {
     await AsyncStorage.setItem(
       PUSH_REGISTRATION_STORAGE_KEY,
       JSON.stringify({
-        version: 1,
+        version: PUSH_REGISTRATION_RECORD_VERSION,
         testDeviceId: TEST_ID,
         payloadHash: "0123456789abcdef",
         lastSuccessAt: 1_000,
@@ -113,7 +114,7 @@ describe("the notification test ID row", () => {
     await AsyncStorage.setItem(
       PUSH_REGISTRATION_STORAGE_KEY,
       JSON.stringify({
-        version: 1,
+        version: PUSH_REGISTRATION_RECORD_VERSION,
         testDeviceId: TEST_ID,
         expoPushToken: "ExponentPushToken[abc]",
         payloadHash: "hash",
@@ -153,7 +154,7 @@ describe("the notification test ID row", () => {
     await AsyncStorage.setItem(
       PUSH_REGISTRATION_STORAGE_KEY,
       JSON.stringify({
-        version: 1,
+        version: PUSH_REGISTRATION_RECORD_VERSION,
         testDeviceId: TEST_ID,
         payloadHash: "hash",
         lastSuccessAt: 1_000,
@@ -175,7 +176,7 @@ describe("the notification test ID row", () => {
     await AsyncStorage.setItem(
       PUSH_REGISTRATION_STORAGE_KEY,
       JSON.stringify({
-        version: 1,
+        version: PUSH_REGISTRATION_RECORD_VERSION,
         testDeviceId: TEST_ID,
         payloadHash: "hash",
         lastSuccessAt: 1_000,

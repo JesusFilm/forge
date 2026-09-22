@@ -11,6 +11,7 @@
  */
 
 import { CombinedGraphQLErrors } from "@apollo/client/errors"
+import { type AdminVariablesOf } from "@forge/admin-graphql"
 
 import {
   toRecommendationClientError,
@@ -75,13 +76,20 @@ export function toPushClientError(error: unknown): PushClientError {
   })
 }
 
+/** Admin's own input shape, so a field it drops fails here rather than at run
+ *  time. The payload IS the input: every field maps across by name. */
+type RegisterPushDeviceInput = AdminVariablesOf<
+  typeof REGISTER_PUSH_DEVICE
+>["input"]
+
 export async function registerPushDevice(
   payload: PushRegistrationPayload,
 ): Promise<PushRegistrationReceipt> {
   try {
+    const input: RegisterPushDeviceInput = payload
     const data = await mutateWithDeadline(
       REGISTER_PUSH_DEVICE,
-      { input: payload },
+      { input },
       PUSH_REGISTRATION_DEADLINE_MS,
     )
     const receipt = data.registerPushDevice

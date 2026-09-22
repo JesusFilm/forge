@@ -4,15 +4,17 @@
  * both read it with no React dependency and no native module.
  *
  * It holds the change key (R3), the last success (R3's weekly refresh), the
- * remembered revocation (R29) and the test ID Profile shows (R31). It holds
- * NEITHER the push token nor a viewer handle: nothing that identifies the phone
- * to a third party is persisted, and the token is re-read from the adapter
- * whenever it is needed.
+ * remembered revocation (R29), the test ID Profile shows (R31) and the install
+ * id admin supersedes registrations by. It holds NEITHER the push token nor a
+ * viewer handle: nothing that identifies the phone to a third party is
+ * persisted, and the token is re-read from the adapter whenever it is needed.
  */
 
 import AsyncStorage from "@react-native-async-storage/async-storage"
 
+import { randomUUIDCompat } from "../viewer-id"
 import {
+  PUSH_INSTALL_ID_PATTERN,
   PUSH_REGISTRATION_RECORD_VERSION,
   PUSH_REGISTRATION_STORAGE_KEY,
   type PushPermissionState,
@@ -22,6 +24,12 @@ export type PushRegistrationRecord = {
   version: number
   /** R31's notification test ID. Never the push token. */
   testDeviceId: string | null
+  /**
+   * This install's own id, minted once and kept for the life of the install.
+   * Admin retires the previous token of the same install and platform, so the
+   * viewer's other phones keep their registrations.
+   */
+  installId: string | null
   /** R3's change key. Cleared by a revocation report, never by a read. */
   payloadHash: string | null
   lastSuccessAt: number | null
@@ -38,6 +46,8 @@ export type PushRegistrationStoreDeps = {
   getItem: (key: string) => Promise<string | null>
   setItem: (key: string, value: string) => Promise<void>
   now: () => number
+  /** Called at most once per install, and never for an id already stored. */
+  mintInstallId: () => string
 }
 
 export type PushRegistrationStore = ReturnType<
@@ -47,6 +57,7 @@ export type PushRegistrationStore = ReturnType<
 const EMPTY_RECORD: PushRegistrationRecord = {
   version: PUSH_REGISTRATION_RECORD_VERSION,
   testDeviceId: null,
+  installId: null,
   payloadHash: null,
   lastSuccessAt: null,
   revocationReportedAt: null,
@@ -54,6 +65,13 @@ const EMPTY_RECORD: PushRegistrationRecord = {
 
 function nullableString(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null
+}
+
+/** Admin's own bound, re-checked here: an id it would refuse is worse than no
+ *  id, because nothing ever replaces it. */
+function storedInstallId(value: unknown): string | null {
+  const id = nullableString(value)
+  return id != null && PUSH_INSTALL_ID_PATTERN.test(id) ? id : null
 }
 
 function nullableNumber(value: unknown): number | null {
@@ -83,6 +101,7 @@ export function parsePushRegistrationRecord(
   return {
     version: PUSH_REGISTRATION_RECORD_VERSION,
     testDeviceId: nullableString(record.testDeviceId),
+    installId: storedInstallId(record.installId),
     payloadHash: nullableString(record.payloadHash),
     lastSuccessAt: nullableNumber(record.lastSuccessAt),
     revocationReportedAt: nullableNumber(record.revocationReportedAt),
@@ -92,6 +111,9 @@ export function parsePushRegistrationRecord(
 export function createPushRegistrationStore(deps: PushRegistrationStoreDeps) {
   let record: PushRegistrationRecord | null = null
   let hydration: Promise<void> | null = null
+  /** Held here when the read failed and there was no record to patch, so a
+   *  storage fault costs one delayed write and never a second id. */
+  let mintedInstallId: string | null = null
   let permission: PushRegistrationSnapshot["permission"] = "unknown"
   let snapshot: PushRegistrationSnapshot = {
     testDeviceId: null,
@@ -127,37 +149,61 @@ export function createPushRegistrationStore(deps: PushRegistrationStoreDeps) {
     }
   }
 
+  /** Memoized and never rejecting. A FAILED read releases the memo, so a
+   *  later trigger retries instead of re-registering every launch. */
+  function hydrate(): Promise<void> {
+    if (hydration != null) return hydration
+    let failed = false
+    const flight = (async () => {
+      let raw: string | null = null
+      try {
+        raw = await deps.getItem(PUSH_REGISTRATION_STORAGE_KEY)
+      } catch {
+        failed = true
+        return
+      }
+      if (record != null) return
+      record = parsePushRegistrationRecord(raw) ?? { ...EMPTY_RECORD }
+      publish()
+    })()
+    hydration = flight
+    // Registered on the FLIGHT, not inside the body: inside, a synchronous
+    // throw runs the release before the assignment above and the clobbered
+    // memo then holds the store at absent for good.
+    const release = () => {
+      if (failed && hydration === flight) hydration = null
+    }
+    void flight.then(release, release)
+    return flight
+  }
+
+  /** The stored id, or the one this launch minted when no record was read. */
+  function currentInstallId(): string | null {
+    return record?.installId ?? mintedInstallId
+  }
+
   return {
     getRecord(): PushRegistrationRecord | null {
       return record
     },
 
-    /** Memoized and never rejecting. A FAILED read releases the memo, so a
-     *  later trigger retries instead of re-registering every launch. */
-    hydrate(): Promise<void> {
-      if (hydration != null) return hydration
-      let failed = false
-      const flight = (async () => {
-        let raw: string | null = null
-        try {
-          raw = await deps.getItem(PUSH_REGISTRATION_STORAGE_KEY)
-        } catch {
-          failed = true
-          return
-        }
-        if (record != null) return
-        record = parsePushRegistrationRecord(raw) ?? { ...EMPTY_RECORD }
-        publish()
-      })()
-      hydration = flight
-      // Registered on the FLIGHT, not inside the body: inside, a synchronous
-      // throw runs the release before the assignment above and the clobbered
-      // memo then holds the store at absent for good.
-      const release = () => {
-        if (failed && hydration === flight) hydration = null
-      }
-      void flight.then(release, release)
-      return flight
+    hydrate,
+
+    /**
+     * This install's id, minted on the first call and never again. A second
+     * caller sees the minted id because `persist` assigns the record before it
+     * awaits the write.
+     */
+    async ensureInstallId(): Promise<string> {
+      await hydrate()
+      const stored = record?.installId ?? null
+      if (stored != null) return stored
+      const installId = (mintedInstallId ??= deps.mintInstallId())
+      // A failed read leaves no record to patch. Writing one here would drop
+      // the test ID and the change key this phone already has, so the next
+      // call persists the same id once the read heals.
+      if (record != null) await persist({ ...record, installId })
+      return installId
     },
 
     async recordSuccess(input: {
@@ -167,6 +213,7 @@ export function createPushRegistrationStore(deps: PushRegistrationStoreDeps) {
       await persist({
         version: PUSH_REGISTRATION_RECORD_VERSION,
         testDeviceId: input.testDeviceId,
+        installId: currentInstallId(),
         payloadHash: input.payloadHash,
         lastSuccessAt: deps.now(),
         // R29 is once per revocation, not once per install: a phone that
@@ -178,6 +225,7 @@ export function createPushRegistrationStore(deps: PushRegistrationStoreDeps) {
     async markRevocationReported(): Promise<void> {
       await persist({
         ...(record ?? EMPTY_RECORD),
+        installId: currentInstallId(),
         // Admin drops a denied row from every audience, so the change key must
         // not make the next granted pass read as unchanged (R3).
         payloadHash: null,
@@ -208,12 +256,34 @@ export function createPushRegistrationStore(deps: PushRegistrationStoreDeps) {
     reset(): void {
       record = null
       hydration = null
+      mintedInstallId = null
       permission = "unknown"
       snapshot = { testDeviceId: null, permission: "unknown" }
       listeners.clear()
     },
   }
 }
+
+/* eslint-disable @typescript-eslint/no-require-imports */
+/**
+ * Hermes ships no WebCrypto, so `expo-crypto` binds the platform's generator.
+ * The require runs lazily and only where the runtime has none, the ordering
+ * `recommendations/random.ts` uses, so jest never loads the native module.
+ */
+function mintInstallId(): string {
+  const runtime = (globalThis as { crypto?: { randomUUID?: () => string } })
+    .crypto
+  if (typeof runtime?.randomUUID === "function") return runtime.randomUUID()
+  try {
+    const expo = require("expo-crypto") as { randomUUID?: () => string }
+    if (typeof expo.randomUUID === "function") return expo.randomUUID()
+  } catch {
+    // No native module here either. The compat generator is still unique
+    // enough to key one install.
+  }
+  return randomUUIDCompat()
+}
+/* eslint-enable @typescript-eslint/no-require-imports */
 
 let store: PushRegistrationStore | null = null
 
@@ -224,6 +294,7 @@ export function getPushRegistrationStore(): PushRegistrationStore {
       getItem: (key) => AsyncStorage.getItem(key),
       setItem: (key, value) => AsyncStorage.setItem(key, value),
       now: () => Date.now(),
+      mintInstallId,
     })
   }
   return store

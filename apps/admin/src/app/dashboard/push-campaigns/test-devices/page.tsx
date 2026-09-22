@@ -1,5 +1,5 @@
 /**
- * R31 — the test-device list. A test phone is any phone whose notification
+ * R31 — the test-device list. A test device is any device whose notification
  * test ID an admin user has added here, so this page is what R10 depends on.
  */
 import type { Route } from "next"

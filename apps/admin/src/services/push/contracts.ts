@@ -217,6 +217,18 @@ export const PushPermissionStateSchema = z.enum(["granted", "denied"])
 
 export const PushAppBuildSchema = z.string().trim().min(1).max(64)
 
+/**
+ * The identifier the app mints once per install and keeps in its own store. A
+ * token rotation on the same install carries the same id, so supersession
+ * retires that install's older token and leaves the viewer's other devices be.
+ */
+export const PushInstallIdSchema = z
+  .string()
+  .trim()
+  .min(8)
+  .max(64)
+  .regex(/^[A-Za-z0-9._-]+$/, "That is not an install id")
+
 export const PushRegistrationInputSchema = z
   .object({
     expoPushToken: ExpoPushTokenSchema,
@@ -226,6 +238,9 @@ export const PushRegistrationInputSchema = z
     phoneLocale: PushBcp47TagSchema,
     timeZone: PushTimeZoneSchema,
     permission: PushPermissionStateSchema,
+    // An app build older than the install id sends none, and a client may send
+    // the absent field as null. Both mean the same: supersede nothing.
+    installId: PushInstallIdSchema.nullish(),
   })
   .strict()
 export type PushRegistrationInput = z.infer<typeof PushRegistrationInputSchema>

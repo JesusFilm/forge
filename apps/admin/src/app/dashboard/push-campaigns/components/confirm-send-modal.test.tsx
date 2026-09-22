@@ -80,8 +80,8 @@ describe("ConfirmSendModal with a required value", () => {
         <ConfirmSendModal
           open
           title="Send this announcement now?"
-          consequence="This reaches 1234 phone(s) in SA, FR at once. It ignores the local hour, so some viewers receive it in the middle of their night."
-          detail="7 phone(s) cannot be reached."
+          consequence="This reaches 1234 device(s) in SA, FR at once. It ignores the local hour, so some viewers receive it in the middle of their night."
+          detail="7 device(s) cannot be reached."
           requiredValue="1234"
           confirmLabel="Send now"
           onCancel={() => {}}
@@ -91,7 +91,7 @@ describe("ConfirmSendModal with a required value", () => {
     })
     expect(container.textContent).toContain("middle of their night")
     expect(container.textContent).toContain("SA, FR")
-    expect(container.textContent).toContain("7 phone(s) cannot be reached.")
+    expect(container.textContent).toContain("7 device(s) cannot be reached.")
   })
 
   it("clears the typed value when it closes, so a reopen starts blocked", () => {

@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { useRateLimiter } from "@envelop/rate-limiter"
-import { parse, type GraphQLEnumType } from "graphql"
+import {
+  parse,
+  type GraphQLEnumType,
+  type GraphQLInputObjectType,
+} from "graphql"
 
 vi.mock("@/services/push/admission", () => ({
   admitPushWrite: vi.fn(),
@@ -119,6 +123,16 @@ describe("the push mutations on the schema", () => {
     expect(schema.getType("ReportPushOpenInput")).toBeDefined()
   })
 
+  it("takes an optional install id on the registration input", () => {
+    const input = schema.getType(
+      "RegisterPushDeviceInput",
+    ) as GraphQLInputObjectType
+    const installId = input.getFields().installId
+    expect(installId).toBeDefined()
+    // Optional, so an app build that predates the field still registers.
+    expect(String(installId.type)).toBe("String")
+  })
+
   it("never offers INVALID as a registration state", () => {
     const state = schema.getType("PushRegistrationState") as GraphQLEnumType
     expect(state.getValues().map((value) => value.name)).toEqual([
@@ -170,6 +184,16 @@ describe("registerPushDevice", () => {
       timeZone: "Pacific/Auckland",
       permission: "granted",
     })
+  })
+
+  it("hands the service the install id the app sent", async () => {
+    await invoke(
+      "registerPushDevice",
+      registrationInput({ installId: "3f2504e0-4f89-41d3-9a0c-0305e82c3301" }),
+    )
+    expect(registerMock.mock.calls[0][1].input.installId).toBe(
+      "3f2504e0-4f89-41d3-9a0c-0305e82c3301",
+    )
   })
 
   it("passes the verified viewer digest through", async () => {

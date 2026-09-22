@@ -130,14 +130,14 @@ describe("push campaigns list page", () => {
     expect(markup).toContain("Untitled campaign")
   })
 
-  it("shows registrations per day once a phone has registered", async () => {
+  it("shows registrations per day once a device has registered", async () => {
     state.registrations = [
       { day: "2026-09-19", count: 0 },
       { day: "2026-09-20", count: 4 },
     ]
     const markup = await html(PushCampaignsPage())
     expect(markup).toContain('data-testid="push-registrations"')
-    expect(markup).toContain("4 phone(s) registered")
+    expect(markup).toContain("4 device(s) registered")
   })
 
   it("shows the measured-zero registration state when nothing has registered", async () => {

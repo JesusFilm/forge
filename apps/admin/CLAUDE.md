@@ -3038,8 +3038,15 @@ is `docs/roadmap/platform/feat-524-localized-push-campaigns.md`.
   `push_campaign_copy`, `push_campaign_zone`, `push_delivery`, `push_open`,
   `push_attribution` (migration `0099_push_campaigns`). The recommendation
   tables do not change. The partial unique index `push_delivery_daily_claim_key`
-  is the "one announcement per phone per local day" rule; the claim is one
+  is the "one announcement per device per local day" rule; the claim is one
   multi-row `INSERT ... ON CONFLICT DO NOTHING` with no conflict target.
+- One registration row is one device, which is one app install. The app mints
+  an install id once and keeps it, so supersession is keyed on that install id
+  and the platform: a token rotation on the same install retires the older row,
+  and another device of the same viewer stays active. A superseded token that
+  registers again with permission granted becomes active. A viewer who has a phone
+  and a tablet receives the announcement on both, and every count the report
+  and the dashboard show is a count of devices, never of viewers.
 - Services: `src/services/push/`. Public mutations `registerPushDevice` and
   `reportPushOpen` (`src/graphql/mutations/push-device.ts`) sit behind the push
   admission predicate (`admission.ts`) and a per-operation ceiling
@@ -3106,4 +3113,4 @@ cancelled). After a group is out, the campaign status is the cancel: the run
 wakes at its next zone instant, sends nothing, collects the receipts it owes,
 and finishes with its ledger row cancelled. Until then the campaign page shows
 that run as running. A cancel also retires every reserved row as missed, so no
-phone's local day stays held.
+device's local day stays held.

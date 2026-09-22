@@ -212,7 +212,7 @@ export function fillPushRegistrationDays(
   return filled
 }
 
-/** R27 — one count of registered phones per UTC day, oldest day first. */
+/** R27 — one count of registered devices per UTC day, oldest day first. */
 export async function readPushRegistrationsPerDay(
   prisma: PrismaClient,
   options: { days?: number; now?: Date } = {},

@@ -1,7 +1,7 @@
 /**
  * Real-Postgres proof of KTD4's registration rules: the token is the identity
- * of the row, a viewer's newer token supersedes the older one on the same
- * platform, and an invalid token is terminal.
+ * of the row, one install's newer token supersedes that install's older one on
+ * the same platform, and an invalid token is terminal.
  *
  * The PrismaClient is built in `beforeAll`, never in the describe body:
  * `describe.skipIf` still runs the body to collect the tests, and a client
@@ -27,6 +27,8 @@ const PREFIX = "push_reg_db_"
 // A private-use tag no other suite writes, so the derivation is this file's.
 const TAG = "qab"
 const SLUG = `${PREFIX}language`
+const INSTALL = `${PREFIX}install-one`
+const OTHER_INSTALL = `${PREFIX}install-two`
 
 function request(overrides: Record<string, unknown> = {}) {
   const { input, ...rest } = overrides as { input?: Record<string, unknown> }
@@ -117,14 +119,20 @@ describe.skipIf(env.PUSH_DB_TEST !== "1")(
       ).toBe(1)
     })
 
-    it("supersedes the viewer's older token on the same platform", async () => {
+    it("supersedes the install's older token on the same platform", async () => {
       const digest = "1".repeat(64)
-      await registerPushDevice(prisma, request({ viewerDigest: digest }))
+      await registerPushDevice(
+        prisma,
+        request({ viewerDigest: digest, input: { installId: INSTALL } }),
+      )
       await registerPushDevice(
         prisma,
         request({
           viewerDigest: digest,
-          input: { expoPushToken: `ExponentPushToken[${PREFIX}two]` },
+          input: {
+            expoPushToken: `ExponentPushToken[${PREFIX}two]`,
+            installId: INSTALL,
+          },
         }),
       )
 
@@ -142,15 +150,63 @@ describe.skipIf(env.PUSH_DB_TEST !== "1")(
       ])
     })
 
-    it("leaves the other platform's row active", async () => {
-      const digest = "2".repeat(64)
-      await registerPushDevice(prisma, request({ viewerDigest: digest }))
+    it("keeps both of one viewer's installs active", async () => {
+      const digest = "3".repeat(64)
+      await registerPushDevice(
+        prisma,
+        request({ viewerDigest: digest, input: { installId: INSTALL } }),
+      )
       await registerPushDevice(
         prisma,
         request({
           viewerDigest: digest,
           input: {
             expoPushToken: `ExponentPushToken[${PREFIX}two]`,
+            installId: OTHER_INSTALL,
+          },
+        }),
+      )
+
+      const statuses = await prisma.pushRegistration.findMany({
+        where: { viewerDigest: digest },
+        orderBy: { expoPushToken: "asc" },
+        select: { status: true },
+      })
+      expect(statuses).toEqual([{ status: "ACTIVE" }, { status: "ACTIVE" }])
+    })
+
+    it("supersedes nothing when the app sent no install id", async () => {
+      const digest = "4".repeat(64)
+      await registerPushDevice(prisma, request({ viewerDigest: digest }))
+      await registerPushDevice(
+        prisma,
+        request({
+          viewerDigest: digest,
+          input: { expoPushToken: `ExponentPushToken[${PREFIX}two]` },
+        }),
+      )
+
+      const statuses = await prisma.pushRegistration.findMany({
+        where: { viewerDigest: digest },
+        orderBy: { expoPushToken: "asc" },
+        select: { status: true },
+      })
+      expect(statuses).toEqual([{ status: "ACTIVE" }, { status: "ACTIVE" }])
+    })
+
+    it("leaves the other platform's row active", async () => {
+      const digest = "2".repeat(64)
+      await registerPushDevice(
+        prisma,
+        request({ viewerDigest: digest, input: { installId: INSTALL } }),
+      )
+      await registerPushDevice(
+        prisma,
+        request({
+          viewerDigest: digest,
+          input: {
+            expoPushToken: `ExponentPushToken[${PREFIX}two]`,
+            installId: INSTALL,
             platform: "ANDROID",
           },
         }),
@@ -162,6 +218,56 @@ describe.skipIf(env.PUSH_DB_TEST !== "1")(
         select: { status: true },
       })
       expect(statuses).toEqual([{ status: "ACTIVE" }, { status: "ACTIVE" }])
+    })
+
+    it("brings a superseded token back when its install grants again", async () => {
+      const digest = "5".repeat(64)
+      await registerPushDevice(
+        prisma,
+        request({ viewerDigest: digest, input: { installId: INSTALL } }),
+      )
+      await registerPushDevice(
+        prisma,
+        request({
+          viewerDigest: digest,
+          input: {
+            expoPushToken: `ExponentPushToken[${PREFIX}two]`,
+            installId: INSTALL,
+          },
+        }),
+      )
+
+      const receipt = await registerPushDevice(
+        prisma,
+        request({ viewerDigest: digest, input: { installId: INSTALL } }),
+      )
+      expect(receipt.status).toBe("ACTIVE")
+
+      const rows = await prisma.pushRegistration.findMany({
+        where: { viewerDigest: digest },
+        orderBy: { expoPushToken: "asc" },
+        select: { expoPushToken: true, status: true },
+      })
+      expect(rows).toEqual([
+        { expoPushToken: `ExponentPushToken[${PREFIX}one]`, status: "ACTIVE" },
+        {
+          expoPushToken: `ExponentPushToken[${PREFIX}two]`,
+          status: "SUPERSEDED",
+        },
+      ])
+    })
+
+    it("stores the install id and keeps it when a later call omits it", async () => {
+      await registerPushDevice(
+        prisma,
+        request({ input: { installId: INSTALL } }),
+      )
+      await registerPushDevice(prisma, request())
+
+      const row = await prisma.pushRegistration.findUniqueOrThrow({
+        where: { expoPushToken: `ExponentPushToken[${PREFIX}one]` },
+      })
+      expect(row.installId).toBe(INSTALL)
     })
 
     it("refuses a token the provider retired", async () => {

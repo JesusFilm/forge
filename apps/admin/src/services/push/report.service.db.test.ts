@@ -1,8 +1,9 @@
 /**
  * Real-Postgres proof of R25, R26, and R27: every delivery status literal the
- * report reads is the one migration 0099 wrote, a phone that re-registered
- * mid-wave counts once, a test send contributes nothing, and an unreachable
- * phone lands in the audience and in no other count.
+ * report reads is the one migration 0099 wrote, each device of one viewer
+ * counts on its own, a superseded registration adds nothing, a test send
+ * contributes nothing, and an unreachable device lands in the audience and in
+ * no other count.
  *
  * The mocked suite proves the merge; only this one proves the SQL.
  *
@@ -29,10 +30,15 @@ const CAMPAIGN = `${PREFIX}campaign`
 const LOCAL_DAY = new Date("2026-10-01T00:00:00.000Z")
 const SENDING_AT = new Date("2026-10-01T20:00:00.000Z")
 const OPEN_AT = new Date("2026-10-01T21:00:00.000Z")
-/** The two rows of one phone that re-registered during the wave. */
+/** One viewer, who reads on a phone and on a tablet. */
 const SHARED_DIGEST = "d1".repeat(32)
-/** The test phone, which is in no live row of this campaign. */
+/** The test device, which is in no live row of this campaign. */
 const TEST_DEVICE_REGISTRATION = `${PREFIX}reg_test_device`
+/**
+ * The phone's older token. A rotation on the same install supersedes this row,
+ * so no audience page reads it and no live delivery claims a day for it.
+ */
+const SUPERSEDED_REGISTRATION = `${PREFIX}reg_accepted_phone_old_token`
 
 type Fixture = {
   key: string
@@ -44,22 +50,22 @@ type Fixture = {
 }
 
 const FIXTURES: readonly Fixture[] = [
-  // One phone, two registrations: the old row was superseded mid-wave.
+  // One viewer, two devices: the campaign reaches the phone and the tablet.
   {
-    key: "accepted_old",
+    key: "accepted_phone",
     status: "ACCEPTED",
     language: "french",
     country: "FR",
     viewerDigest: SHARED_DIGEST,
   },
   {
-    key: "accepted_new",
+    key: "accepted_tablet",
     status: "ACCEPTED",
     language: "french",
     country: "FR",
     viewerDigest: SHARED_DIGEST,
   },
-  // A phone with no viewer identity still counts, through its own id.
+  // A device with no viewer identity still counts, through its own row.
   {
     key: "handed_off",
     status: "HANDED_OFF",
@@ -79,7 +85,7 @@ const FIXTURES: readonly Fixture[] = [
     country: "NZ",
   },
   { key: "missed", status: "MISSED", language: "english", country: "NZ" },
-  // R26: Google's service does not deliver to an Android phone here.
+  // R26: Google's service does not deliver to an Android device here.
   {
     key: "unreachable",
     status: "UNREACHABLE",
@@ -87,7 +93,7 @@ const FIXTURES: readonly Fixture[] = [
     country: "CN",
     platform: "ANDROID",
   },
-  // A phone whose country never resolved reads under the unknown key.
+  // A device whose country never resolved reads under the unknown key.
   {
     key: "no_country",
     status: "ACCEPTED",
@@ -150,13 +156,31 @@ describe.skipIf(env.PUSH_DB_TEST !== "1")(
           },
         })
       }
+      // The same install rotated its token, so its older row is superseded. It
+      // is in no audience page, so it never claimed a day and has no live row.
+      await prisma.pushRegistration.create({
+        data: {
+          id: SUPERSEDED_REGISTRATION,
+          expoPushToken: `ExponentPushToken[${PREFIX}accepted_phone_old]`,
+          testDeviceId: `${PREFIX}device_accepted_phone_old`,
+          viewerDigest: SHARED_DIGEST,
+          platform: "IOS",
+          appBuild: "1.0.0",
+          appLanguageSlug: "french",
+          phoneLocale: "fr-FR",
+          timeZone: "Europe/Paris",
+          country: "FR",
+          countrySource: "EDGE",
+          status: "SUPERSEDED",
+        },
+      })
       // The accepted phone tapped, and watched twice.
       await prisma.pushOpen.create({
         data: {
           id: `${PREFIX}open_live`,
-          deliveryId: `${PREFIX}delivery_accepted_old`,
+          deliveryId: `${PREFIX}delivery_accepted_phone`,
           campaignId: CAMPAIGN,
-          registrationId: `${PREFIX}reg_accepted_old`,
+          registrationId: `${PREFIX}reg_accepted_phone`,
           viewerDigest: SHARED_DIGEST,
           sessionDigest: "e1".repeat(32),
           languageSlug: "french",
@@ -171,7 +195,7 @@ describe.skipIf(env.PUSH_DB_TEST !== "1")(
             episodeId: `${PREFIX}episode_${suffix}`,
             openId: `${PREFIX}open_live`,
             campaignId: CAMPAIGN,
-            registrationId: `${PREFIX}reg_accepted_old`,
+            registrationId: `${PREFIX}reg_accepted_phone`,
             viewerDigest: SHARED_DIGEST,
             languageSlug: "french",
             country: "FR",
@@ -180,8 +204,8 @@ describe.skipIf(env.PUSH_DB_TEST !== "1")(
           },
         })
       }
-      // An admin's test phone received the test send, tapped it, and watched.
-      // It is deliberately a DIFFERENT phone from every live row, and its
+      // An admin's test device received the test send, tapped it, and watched.
+      // It is deliberately a DIFFERENT device from every live row, and its
       // language and country are the live ones: a kind filter that went missing
       // would raise the audience, opened, and attributed counts below.
       await prisma.pushRegistration.create({
@@ -247,16 +271,16 @@ describe.skipIf(env.PUSH_DB_TEST !== "1")(
       await prisma.$disconnect()
     })
 
-    it("counts every status the send path writes, phones not rows", async () => {
+    it("counts every status the send path writes, devices not rows", async () => {
       const report = await readPushCampaignReport(prisma, CAMPAIGN)
       expect(report.status).toBe("SENT")
       expect(report.sendingStartedAt?.toISOString()).toBe(
         SENDING_AT.toISOString(),
       )
       expect(report.totals).toEqual({
-        // 12 live rows, and the two accepted rows are one phone.
-        audience: 11,
-        accepted: 2,
+        // 12 live rows, one per device the campaign reached.
+        audience: 12,
+        accepted: 3,
         handedOff: 1,
         unknown: 1,
         pending: 2,
@@ -271,20 +295,41 @@ describe.skipIf(env.PUSH_DB_TEST !== "1")(
       })
     })
 
-    it("counts a phone once when it re-registered during the wave", async () => {
+    it("counts each device of one viewer, not the viewer", async () => {
       const report = await readPushCampaignReport(prisma, CAMPAIGN)
       const french = report.byLanguage.find((slice) => slice.key === "french")
-      expect(french?.counts.audience).toBe(1)
-      expect(french?.counts.accepted).toBe(1)
-      // Two live rows exist for that one phone.
+      // The phone and the tablet share one viewer digest and count twice.
+      expect(french?.counts.audience).toBe(2)
+      expect(french?.counts.accepted).toBe(2)
       expect(
-        await prisma.pushDelivery.count({
-          where: { campaignId: CAMPAIGN, kind: "LIVE", languageSlug: "french" },
+        await prisma.pushRegistration.count({
+          where: { viewerDigest: SHARED_DIGEST, status: "ACTIVE" },
         }),
       ).toBe(2)
     })
 
-    it("keeps the China Android phone in the audience and nowhere else (AE17)", async () => {
+    it("counts a superseded re-registration once", async () => {
+      const report = await readPushCampaignReport(prisma, CAMPAIGN)
+      const french = report.byLanguage.find((slice) => slice.key === "french")
+      // Three registrations carry the digest; the superseded one never claimed
+      // a day, so the phone behind it counts once, through its live row.
+      expect(
+        await prisma.pushRegistration.count({
+          where: { viewerDigest: SHARED_DIGEST },
+        }),
+      ).toBe(3)
+      expect(
+        await prisma.pushDelivery.count({
+          where: {
+            campaignId: CAMPAIGN,
+            registrationId: SUPERSEDED_REGISTRATION,
+          },
+        }),
+      ).toBe(0)
+      expect(french?.counts.audience).toBe(2)
+    })
+
+    it("keeps the China Android device in the audience and nowhere else (AE17)", async () => {
       const report = await readPushCampaignReport(prisma, CAMPAIGN)
       const china = report.byCountry.find((slice) => slice.key === "CN")
       expect(china?.counts).toEqual({
@@ -313,18 +358,18 @@ describe.skipIf(env.PUSH_DB_TEST !== "1")(
       expect(
         await prisma.pushAttribution.count({ where: { campaignId: CAMPAIGN } }),
       ).toBe(3)
-      expect(report.totals.audience).toBe(11)
+      expect(report.totals.audience).toBe(12)
       expect(report.totals.opened).toBe(1)
       expect(report.totals.attributed).toBe(1)
       expect(report.totals.attributedWatchStarts).toBe(2)
       const french = report.byLanguage.find((slice) => slice.key === "french")
-      expect(french?.counts.audience).toBe(1)
+      expect(french?.counts.audience).toBe(2)
       expect(french?.counts.opened).toBe(1)
       expect(french?.counts.attributed).toBe(1)
       expect(french?.counts.attributedWatchStarts).toBe(2)
     })
 
-    it("names the phones with no country under one key, last", async () => {
+    it("names the devices with no country under one key, last", async () => {
       const report = await readPushCampaignReport(prisma, CAMPAIGN)
       expect(report.byCountry.map((slice) => slice.key)).toEqual([
         "CN",
@@ -370,8 +415,8 @@ describe.skipIf(env.PUSH_DB_TEST !== "1")(
   },
 )
 
-/** One distinct phone per fixture: a hash, never a derivation of the key's
- * letters, which collided and merged two phones into one. */
+/** One distinct viewer per fixture: a hash, never a derivation of the key's
+ * letters, which collided and merged two viewers into one. */
 function digestFor(key: string): string {
   return createHash("sha256").update(`${PREFIX}${key}`).digest("hex")
 }

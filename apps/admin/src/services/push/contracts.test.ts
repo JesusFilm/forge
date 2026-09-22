@@ -388,6 +388,50 @@ describe("registration input contract", () => {
       ).success,
     ).toBe(false)
   })
+
+  it("accepts a UUID install id and trims it", () => {
+    expect(
+      PushRegistrationInputSchema.parse(
+        registration({ installId: " 3f2504e0-4f89-41d3-9a0c-0305e82c3301 " }),
+      ).installId,
+    ).toBe("3f2504e0-4f89-41d3-9a0c-0305e82c3301")
+  })
+
+  it("accepts a registration with no install id", () => {
+    const parsed = PushRegistrationInputSchema.parse(registration())
+    expect(parsed.installId ?? null).toBeNull()
+  })
+
+  it("reads a null install id as none", () => {
+    const parsed = PushRegistrationInputSchema.parse(
+      registration({ installId: null }),
+    )
+    expect(parsed.installId ?? null).toBeNull()
+  })
+
+  it("refuses an install id shorter than eight characters", () => {
+    expect(
+      PushRegistrationInputSchema.safeParse(
+        registration({ installId: "abc123" }),
+      ).success,
+    ).toBe(false)
+  })
+
+  it("refuses an install id longer than the column", () => {
+    expect(
+      PushRegistrationInputSchema.safeParse(
+        registration({ installId: "a".repeat(65) }),
+      ).success,
+    ).toBe(false)
+  })
+
+  it("refuses an install id carrying a space", () => {
+    expect(
+      PushRegistrationInputSchema.safeParse(
+        registration({ installId: "install id 0001" }),
+      ).success,
+    ).toBe(false)
+  })
 })
 
 describe("delivery nonce contract", () => {

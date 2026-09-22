@@ -66,6 +66,9 @@ const RegisterPushDeviceInput = builder.inputType("RegisterPushDeviceInput", {
     phoneLocale: t.string({ required: true }),
     timeZone: t.string({ required: true }),
     permission: t.field({ type: PushPermissionStateEnum, required: true }),
+    // One app install, so a token rotation retires that device's old row and
+    // leaves the same viewer's other devices active.
+    installId: t.string({ required: false }),
     viewerToken: t.string({ required: false }),
     sessionToken: t.string({ required: false }),
   }),

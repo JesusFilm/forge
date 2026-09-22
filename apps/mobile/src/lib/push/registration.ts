@@ -78,6 +78,8 @@ export type PushRegistrationDeps = {
   store: PushRegistrationStorePort
   /** Null when the phone has no token to give, and never throwing outward. */
   readToken: () => Promise<string | null>
+  /** This install's id, minted on the first read and kept by the store. */
+  readInstallId: () => Promise<string>
   readAppLanguageSlug: () => Promise<string | null>
   /** Null when the recommendation client is off or has no handle yet. */
   readIdentity: () => Promise<PushViewerHandle | null>
@@ -171,7 +173,10 @@ export function createPushRegistration(
       }
     }
     if (token == null || token.length === 0) return null
-    const [appLanguageSlug, identity] = await Promise.all([
+    // No fallback: the install id is what admin supersedes by, so a read that
+    // rejects fails the whole pass rather than sending a payload without it.
+    const [installId, appLanguageSlug, identity] = await Promise.all([
+      deps.readInstallId(),
       deps.readAppLanguageSlug().catch(() => null),
       withIdentity
         ? deps.readIdentity().catch(() => null)
@@ -179,6 +184,7 @@ export function createPushRegistration(
     ])
     return buildPushRegistrationPayload({
       expoPushToken: token,
+      installId,
       permission,
       appLanguageSlug,
       identity,

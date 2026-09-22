@@ -20,6 +20,7 @@ const mutate = jest.mocked(mutateWithDeadline)
 
 const PAYLOAD = {
   expoPushToken: "ExponentPushToken[abc]",
+  installId: "3f2a9c10-5b6d-4e71-8a02-9c3d4e5f6071",
   platform: "IOS" as const,
   appBuild: "1.0.0+42",
   appLanguageSlug: "english",
@@ -74,6 +75,21 @@ describe("registerPushDevice", () => {
       { input: PAYLOAD },
       PUSH_REGISTRATION_DEADLINE_MS,
     )
+  })
+
+  it("sends the install id, which admin supersedes this phone's token by", async () => {
+    // The whole payload maps across by name, and this field is the one a
+    // mapping written field by field would be free to drop.
+    mutate.mockResolvedValue({
+      registerPushDevice: { testDeviceId: "abc12345", status: "ACTIVE" },
+    } as never)
+
+    await registerPushDevice(PAYLOAD)
+
+    const variables = mutate.mock.calls[0][1] as {
+      input: Record<string, unknown>
+    }
+    expect(variables.input.installId).toBe(PAYLOAD.installId)
   })
 
   it("rejects with a typed failure when the receipt has no test ID", async () => {

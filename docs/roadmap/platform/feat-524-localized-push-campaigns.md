@@ -59,7 +59,7 @@ the server can send to it.
 
 ## Grep These
 
-- `push_delivery_daily_claim_key` — one announcement per phone per local day
+- `push_delivery_daily_claim_key` — one announcement per device per local day
 - `PushDeliveryStatus` — claim statuses against report-only outcomes
 - `unlinkPushViewerIdentities` — every caller that ends a viewer's push link
 - `PUSH_RETENTION_WORKFLOW_KEY` — the push purge's own ledger key
@@ -119,6 +119,10 @@ credentials table and the go-or-no-go checklist.
 
 - Admin owns the campaign end to end. No vendor console, and no second
   notification SDK in the app.
+- One registration row is one device, which is one app install. Supersession is
+  keyed on the app's install id and the platform, so a viewer who has a phone
+  and a tablet receives the announcement on both. Every count the report and the
+  dashboard show is a count of devices, never of viewers.
 - A test send precedes every real send. A campaign freezes when sending starts;
   cancel is allowed and edit is not.
 - Nothing sends while the push flag is off, and every batch step re-reads it.

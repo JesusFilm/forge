@@ -22,6 +22,9 @@ import {
 /** Admin's own regex for a phone locale, copied so a drift shows up here. */
 const ADMIN_BCP47 = /^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$/
 
+/** A UUID, the shape the store mints. Inside admin's 8-to-64 bound. */
+const INSTALL_ID = "3f2a9c10-5b6d-4e71-8a02-9c3d4e5f6071"
+
 const ENVIRONMENT = {
   platform: "IOS" as const,
   appBuild: "1.0.0+42",
@@ -119,6 +122,7 @@ describe("buildPushRegistrationPayload", () => {
   it("carries every field R2 names, with no viewer handle by default", () => {
     const payload = buildPushRegistrationPayload({
       expoPushToken: "ExponentPushToken[abc]",
+      installId: INSTALL_ID,
       permission: "granted",
       appLanguageSlug: "arabic",
       identity: null,
@@ -127,6 +131,7 @@ describe("buildPushRegistrationPayload", () => {
 
     expect(payload).toEqual({
       expoPushToken: "ExponentPushToken[abc]",
+      installId: INSTALL_ID,
       platform: "IOS",
       appBuild: "1.0.0+42",
       appLanguageSlug: "arabic",
@@ -141,6 +146,7 @@ describe("buildPushRegistrationPayload", () => {
   it("sends both halves of the viewer handle, never one (admin refuses one)", () => {
     const payload = buildPushRegistrationPayload({
       expoPushToken: "ExponentPushToken[abc]",
+      installId: INSTALL_ID,
       permission: "granted",
       appLanguageSlug: "english",
       identity: { viewerToken: "viewer-1", sessionToken: "session-1" },
@@ -154,6 +160,7 @@ describe("buildPushRegistrationPayload", () => {
   it("falls back to the default language slug when the viewer picked none", () => {
     const payload = buildPushRegistrationPayload({
       expoPushToken: "ExponentPushToken[abc]",
+      installId: INSTALL_ID,
       permission: "granted",
       appLanguageSlug: null,
       identity: null,
@@ -167,6 +174,7 @@ describe("buildPushRegistrationPayload", () => {
     // Admin allows no spaces in a slug and caps it at 191 characters.
     const payload = buildPushRegistrationPayload({
       expoPushToken: "ExponentPushToken[abc]",
+      installId: INSTALL_ID,
       permission: "granted",
       appLanguageSlug: "  korean  ",
       identity: null,
@@ -177,6 +185,7 @@ describe("buildPushRegistrationPayload", () => {
     expect(
       buildPushRegistrationPayload({
         expoPushToken: "ExponentPushToken[abc]",
+        installId: INSTALL_ID,
         permission: "granted",
         appLanguageSlug: "two words",
         identity: null,
@@ -189,6 +198,7 @@ describe("buildPushRegistrationPayload", () => {
 describe("hashPushRegistrationPayload", () => {
   const base = buildPushRegistrationPayload({
     expoPushToken: "ExponentPushToken[abc]",
+    installId: INSTALL_ID,
     permission: "granted",
     appLanguageSlug: "english",
     identity: null,
@@ -204,6 +214,9 @@ describe("hashPushRegistrationPayload", () => {
   it("changes when any field R3 watches changes", () => {
     const variants = [
       { ...base, expoPushToken: "ExponentPushToken[xyz]" },
+      // A re-installed app mints a new id, and admin must read that as a new
+      // registration rather than let the stored key skip the call.
+      { ...base, installId: "8c1d0e2f-3a4b-4c5d-9e6f-70a1b2c3d4e5" },
       { ...base, platform: "ANDROID" as const },
       { ...base, appBuild: "1.0.1+43" },
       { ...base, appLanguageSlug: "arabic" },

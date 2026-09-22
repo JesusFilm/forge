@@ -86,7 +86,7 @@ function RegistrationTrend({
         ))}
       </div>
       <p className="text-[12px] text-[var(--color-text-muted)]">
-        {total} phone(s) registered across these {days.length} days.
+        {total} device(s) registered across these {days.length} days.
       </p>
     </div>
   )

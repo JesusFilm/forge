@@ -2456,6 +2456,7 @@ input RegisterPushDeviceInput {
   appBuild: String!
   appLanguageSlug: String!
   expoPushToken: String!
+  installId: String
   permission: PushPermissionState!
   phoneLocale: String!
   platform: PushDevicePlatform!

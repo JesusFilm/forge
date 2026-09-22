@@ -958,7 +958,7 @@ export const adminMessages = {
           "Choose New campaign to start one. A campaign needs English copy, a destination, and a test send before it can go out.",
         registrationsTitle: "Registrations per day",
         registrationsMeta: "PUSH_REGISTRATION / LAST 14 DAYS",
-        registrationsEmpty: "No phone has registered yet.",
+        registrationsEmpty: "No device has registered yet.",
         workerTitle: "Send worker",
         workerOnline: "A worker is online, so a wave can send.",
         workerStale:
@@ -993,7 +993,7 @@ export const adminMessages = {
           title: "Campaign report",
           notStartedTitle: "This campaign has not started sending",
           notStartedDescription:
-            "Counts appear here once the first zone dispatches. Every number is a count of registered phones.",
+            "Counts appear here once the first zone dispatches. Every number is a count of registered devices.",
           refresh: "Refresh",
           byLanguage: "By language",
           byCountry: "By country",
@@ -1012,7 +1012,7 @@ export const adminMessages = {
             unreachable: "Unreachable",
             missed: "Missed",
             opened: "Opened",
-            attributed: "Attributed phones",
+            attributed: "Attributed devices",
             attributedWatchStarts: "Attributed watch starts",
           },
         },
@@ -1020,7 +1020,7 @@ export const adminMessages = {
           eyebrow: "Push campaigns / Test devices",
           title: "Test devices",
           description:
-            "A test phone is any phone whose notification test ID an admin user has added here. The app shows that ID on its Profile screen.",
+            "A test device is any device whose notification test ID an admin user has added here. The app shows that ID on its Profile screen.",
           emptyTitle: "No test devices yet",
           emptyDescription:
             "Paste the notification test ID from the Profile screen in the app, give it a label, and add it.",

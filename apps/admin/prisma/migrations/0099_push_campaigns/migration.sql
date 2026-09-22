@@ -21,6 +21,7 @@ CREATE TABLE "push_registration" (
     "expo_push_token" VARCHAR(191) NOT NULL,
     "test_device_id" VARCHAR(64) NOT NULL,
     "viewer_digest" CHAR(64),
+    "install_id" VARCHAR(64),
     "platform" "PushPlatform" NOT NULL,
     "app_build" VARCHAR(64) NOT NULL,
     "app_language_slug" VARCHAR(191) NOT NULL,
@@ -185,6 +186,11 @@ CREATE INDEX "push_registration_active_refreshed_at_idx"
 CREATE INDEX "push_registration_retired_status_changed_at_idx"
   ON "push_registration"("status_changed_at")
   WHERE "status" <> 'active';
+-- A new registration retires its own install's older active rows. Prisma cannot
+-- declare a partial index, so this one has no schema.prisma twin.
+CREATE INDEX "push_registration_active_install_id_idx"
+  ON "push_registration"("install_id", "platform")
+  WHERE "status" = 'active' AND "install_id" IS NOT NULL;
 
 CREATE UNIQUE INDEX "push_test_device_registration_id_key" ON "push_test_device"("registration_id");
 
@@ -254,7 +260,7 @@ COMMENT ON INDEX "push_delivery_daily_claim_key" IS
   'One announcement per phone per local day. Partial unique on (registration_id, local_day) for live rows whose status is one the phone may have been reached under. The claim insert is one multi-row INSERT ... ON CONFLICT DO NOTHING; a row absent afterwards lost the day and is recorded as suppressed.';
 
 COMMENT ON TABLE "push_registration" IS
-  'One phone push address. viewer_digest is the recommendation viewer token digest and is nulled on a viewer erasure or expiry; the registration itself survives every identity event.';
+  'One phone push address. viewer_digest is the recommendation viewer token digest and is nulled on a viewer erasure or expiry; the registration itself survives every identity event. install_id names one app install, so one viewer keeps an active row per device and only that install''s older token is superseded.';
 
 COMMENT ON TABLE "push_attribution" IS
   'One attributed watch start. episode_id carries no foreign key on purpose, so the recommendation retention purge of a playback episode leaves the campaign report unchanged.';

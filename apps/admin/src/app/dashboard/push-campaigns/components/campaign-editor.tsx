@@ -151,7 +151,7 @@ export function CampaignEditor({
           Copy, one row per language
         </legend>
         <p className="text-[12px] leading-5 text-[var(--color-text-muted)]">
-          English is required. A phone receives the first of these it has: the
+          English is required. A device receives the first of these it has: the
           app language, the phone language, English. Titles cap at{" "}
           {PUSH_COPY_TITLE_MAX_CHARS} characters and bodies at{" "}
           {PUSH_COPY_BODY_MAX_CHARS}.
@@ -361,8 +361,8 @@ export function CampaignEditor({
             Language filter ({languageFilter.length} chosen) — optional
           </summary>
           <p className="mt-2 text-[12px] leading-5 text-[var(--color-text-muted)]">
-            A filter narrows the audience to phones whose app language or phone
-            language is on this list. It does not decide which copy a phone
+            A filter narrows the audience to devices whose app language or phone
+            language is on this list. It does not decide which copy a device
             receives.
           </p>
           <div className="mt-2 grid max-h-48 gap-1 overflow-y-auto">

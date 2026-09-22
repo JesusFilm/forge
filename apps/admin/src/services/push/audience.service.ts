@@ -2,8 +2,8 @@
  * R12 and R26 — who a campaign reaches, one bounded page at a time.
  *
  * Countries choose who; the declared-language filter narrows that set by the
- * phone's own two language slugs, never by the copy the phone would receive.
- * A phone no transport can reach is returned beside the audience, not inside
+ * device's own two language slugs, never by the copy the device would receive.
+ * A device no transport can reach is returned beside the audience, not inside
  * it, so the report can count it as unreachable.
  */
 import {
@@ -16,10 +16,10 @@ import {
 
 import { PushInputError } from "./errors"
 
-/** KTD15 — pages are 5000 phones. */
+/** KTD15 — pages are 5000 devices. */
 export const PUSH_AUDIENCE_PAGE_LIMIT = 5_000
 export const PUSH_AUDIENCE_MAX_PAGE_LIMIT = 20_000
-/** Google's service does not deliver to Android phones here (R26). */
+/** Google's service does not deliver to Android devices here (R26). */
 export const PUSH_DEFAULT_BLOCKED_COUNTRIES: readonly string[] = ["CN"]
 
 export type PushAudienceCampaign = Readonly<{
@@ -114,7 +114,7 @@ function isUnreachable(
   return country != null && blocked.has(country)
 }
 
-/** One page of the audience, ordered by id so the cursor cannot skip a phone. */
+/** One page of the audience, ordered by id so the cursor cannot skip a device. */
 export async function readPushAudiencePage(
   prisma: PrismaClient,
   query: PushAudienceQuery,
@@ -135,7 +135,7 @@ export async function readPushAudiencePage(
     else audience.push(row)
   }
   // The cursor follows the last row read, reachable or not, or a blocked
-  // phone would be read again on every later page.
+  // device would be read again on every later page.
   return {
     audience,
     unreachable,
@@ -154,7 +154,7 @@ export async function countPushAudience(
   if (blocked.length === 0) return { audience: matching, unreachable: 0 }
   const unreachable = await prisma.pushRegistration.count({
     // AND, never a spread: a spread replaces the campaign's own country filter
-    // with the blocked list and counts phones the campaign never targets.
+    // with the blocked list and counts devices the campaign never targets.
     where: { AND: [where, { platform: "ANDROID", country: { in: blocked } }] },
   })
   return { audience: matching - unreachable, unreachable }

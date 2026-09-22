@@ -274,7 +274,7 @@ export async function sendNowAction(
   }
 
   revalidateCampaign(campaignId)
-  return ok(`Sending to ${audience} phones now.`)
+  return ok(`Sending to ${audience} devices now.`)
 }
 
 /** R11 — cancel is allowed after sending starts; edit is not. */

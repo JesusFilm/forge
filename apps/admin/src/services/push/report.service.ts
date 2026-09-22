@@ -1,10 +1,10 @@
 /**
  * R25, R26, and R27 — one campaign's outcome, split by language and country.
  *
- * Every number is a count of registered phones, taken from push-owned rows
- * alone: live delivery rows, the opens they earned, and the watch starts those
- * opens attributed. A phone is its viewer digest when it has one, so a phone
- * that re-registered mid-wave and superseded its old row counts once.
+ * Every number is a count of devices, taken from push-owned rows alone: live
+ * delivery rows, the opens they earned, and the watch starts those opens
+ * attributed. A device is its registration, so one viewer who has a phone and
+ * a tablet counts twice, once for each device the campaign reached.
  *
  * The report re-aggregates on every read, in every status, and holds no cache:
  * opens and attributed watch starts keep arriving for about a day after the
@@ -45,7 +45,7 @@ const STATUS = {
 } as const
 
 export type PushReportCounts = Readonly<{
-  /** Every phone the campaign reserved a row for, reachable or not (R26). */
+  /** Every device the campaign reserved a row for, reachable or not (R26). */
   audience: number
   accepted: number
   handedOff: number
@@ -60,9 +60,9 @@ export type PushReportCounts = Readonly<{
   unreachable: number
   missed: number
   opened: number
-  /** Phones with at least one attributed watch start (R27). */
+  /** Devices with at least one attributed watch start (R27). */
   attributed: number
-  /** The watch starts themselves, which one phone can have several of. */
+  /** The watch starts themselves, which one device can have several of. */
   attributedWatchStarts: number
 }>
 
@@ -182,30 +182,38 @@ class ReportAccumulator {
 const GROUPING_SETS = (language: Prisma.Sql, country: Prisma.Sql): Prisma.Sql =>
   Prisma.sql`GROUP BY GROUPING SETS ((), (${language}), (${country}))`
 
+/**
+ * The counted identity is one device, which is one registration. A live
+ * delivery row is unique per campaign and registration, so a purged
+ * registration still counts once through the row that reached the device.
+ */
+const DEVICE = {
+  delivery: Prisma.sql`COALESCE(d.registration_id, d.id)`,
+  open: Prisma.sql`COALESCE(o.registration_id, o.delivery_id)`,
+  attribution: Prisma.sql`COALESCE(a.registration_id, o.delivery_id)`,
+} as const
+
 function deliveryQuery(campaignId: string): Prisma.Sql {
-  // One phone is one viewer digest; a registration with no digest, or a row
-  // whose registration is gone, still counts once through its own id.
-  const phone = Prisma.sql`COALESCE(r.viewer_digest, d.registration_id, d.id)`
+  const device = DEVICE.delivery
   return Prisma.sql`
     SELECT
       GROUPING(d.language_slug) AS lang_total,
       GROUPING(d.country) AS country_total,
       d.language_slug AS language_slug,
       d.country AS country,
-      COUNT(DISTINCT ${phone}) AS audience,
-      COUNT(DISTINCT ${phone}) FILTER (WHERE d.status::text = ${STATUS.accepted}) AS accepted,
-      COUNT(DISTINCT ${phone}) FILTER (WHERE d.status::text = ${STATUS.handedOff}) AS handed_off,
-      COUNT(DISTINCT ${phone}) FILTER (WHERE d.status::text = ${STATUS.unknown}) AS unknown_count,
-      COUNT(DISTINCT ${phone}) FILTER (
+      COUNT(DISTINCT ${device}) AS audience,
+      COUNT(DISTINCT ${device}) FILTER (WHERE d.status::text = ${STATUS.accepted}) AS accepted,
+      COUNT(DISTINCT ${device}) FILTER (WHERE d.status::text = ${STATUS.handedOff}) AS handed_off,
+      COUNT(DISTINCT ${device}) FILTER (WHERE d.status::text = ${STATUS.unknown}) AS unknown_count,
+      COUNT(DISTINCT ${device}) FILTER (
         WHERE d.status::text IN (${STATUS.reserved}, ${STATUS.sending})
       ) AS pending,
-      COUNT(DISTINCT ${phone}) FILTER (WHERE d.status::text = ${STATUS.failed}) AS failed,
-      COUNT(DISTINCT ${phone}) FILTER (WHERE d.status::text = ${STATUS.invalid}) AS invalid,
-      COUNT(DISTINCT ${phone}) FILTER (WHERE d.status::text = ${STATUS.suppressed}) AS suppressed,
-      COUNT(DISTINCT ${phone}) FILTER (WHERE d.status::text = ${STATUS.unreachable}) AS unreachable,
-      COUNT(DISTINCT ${phone}) FILTER (WHERE d.status::text = ${STATUS.missed}) AS missed
+      COUNT(DISTINCT ${device}) FILTER (WHERE d.status::text = ${STATUS.failed}) AS failed,
+      COUNT(DISTINCT ${device}) FILTER (WHERE d.status::text = ${STATUS.invalid}) AS invalid,
+      COUNT(DISTINCT ${device}) FILTER (WHERE d.status::text = ${STATUS.suppressed}) AS suppressed,
+      COUNT(DISTINCT ${device}) FILTER (WHERE d.status::text = ${STATUS.unreachable}) AS unreachable,
+      COUNT(DISTINCT ${device}) FILTER (WHERE d.status::text = ${STATUS.missed}) AS missed
     FROM push_delivery d
-    LEFT JOIN push_registration r ON r.id = d.registration_id
     WHERE d.campaign_id = ${campaignId}
       AND d.kind = 'live'
     ${GROUPING_SETS(Prisma.sql`d.language_slug`, Prisma.sql`d.country`)}
@@ -219,7 +227,7 @@ function openQuery(campaignId: string): Prisma.Sql {
       GROUPING(o.country) AS country_total,
       o.language_slug AS language_slug,
       o.country AS country,
-      COUNT(DISTINCT COALESCE(o.viewer_digest, o.registration_id, o.id)) AS opened
+      COUNT(DISTINCT ${DEVICE.open}) AS opened
     FROM push_open o
     JOIN push_delivery d ON d.id = o.delivery_id
     WHERE o.campaign_id = ${campaignId}
@@ -229,16 +237,16 @@ function openQuery(campaignId: string): Prisma.Sql {
 }
 
 function attributionQuery(campaignId: string): Prisma.Sql {
-  // The join through the open is what keeps a test send out of the report: an
-  // attribution carries no kind of its own. `open_id` is required and its
-  // foreign key cascades, so a deleted open leaves no row this cannot count.
+  // The join through the open keeps a test send out: an attribution carries no
+  // kind of its own. `open_id` is required and cascades, so no row is lost,
+  // and the open carries the delivery that identifies the device.
   return Prisma.sql`
     SELECT
       GROUPING(a.language_slug) AS lang_total,
       GROUPING(a.country) AS country_total,
       a.language_slug AS language_slug,
       a.country AS country,
-      COUNT(DISTINCT COALESCE(a.viewer_digest, a.registration_id, a.id)) AS attributed,
+      COUNT(DISTINCT ${DEVICE.attribution}) AS attributed,
       COUNT(*) AS watch_starts
     FROM push_attribution a
     JOIN push_open o ON o.id = a.open_id

@@ -36,6 +36,7 @@ export function getPushRegistration(): PushRegistration {
           lapseReminderNotifications.getPushToken(),
           PUSH_TOKEN_READ_DEADLINE_MS,
         ),
+      readInstallId: () => getPushRegistrationStore().ensureInstallId(),
       readAppLanguageSlug: readPushAppLanguageSlug,
       readIdentity: readPushViewerHandle,
       readEnvironment: readPushDeviceEnvironment,

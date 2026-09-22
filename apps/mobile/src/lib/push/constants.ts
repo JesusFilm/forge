@@ -31,9 +31,17 @@ export const PUSH_REGISTRATION_STORAGE_KEY = "push-registration"
 
 /**
  * The record version. A bump voids every stored record, which costs one extra
- * registration per install and loses the remembered revocation report.
+ * registration per install and loses the remembered revocation report. Version
+ * 2 added the install id.
  */
-export const PUSH_REGISTRATION_RECORD_VERSION = 1
+export const PUSH_REGISTRATION_RECORD_VERSION = 2
+
+/**
+ * Admin's install-id shape: 8 to 64 characters of `[A-Za-z0-9._-]`. A stored
+ * id outside it is treated as absent and minted again, because admin answers
+ * BAD_USER_INPUT for the shape and the id is never regenerated otherwise.
+ */
+export const PUSH_INSTALL_ID_PATTERN = /^[A-Za-z0-9._-]{8,64}$/
 
 /**
  * R3's coalescing window. A language pick writes three preference fields, a

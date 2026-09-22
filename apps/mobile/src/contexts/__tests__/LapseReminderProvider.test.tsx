@@ -209,6 +209,7 @@ import { getLastWatchedStore } from "../../lib/lastWatched/store"
 import {
   PUSH_ANNOUNCEMENTS_CHANNEL_ID,
   PUSH_REGISTRATION_DEBOUNCE_MS,
+  PUSH_REGISTRATION_RECORD_VERSION,
   PUSH_REGISTRATION_STORAGE_KEY,
 } from "../../lib/push/constants"
 import {
@@ -925,7 +926,7 @@ describe("push registration (U7)", () => {
     await AsyncStorage.setItem(
       PUSH_REGISTRATION_STORAGE_KEY,
       JSON.stringify({
-        version: 1,
+        version: PUSH_REGISTRATION_RECORD_VERSION,
         testDeviceId: "abc12345",
         payloadHash: "0123456789abcdef",
         lastSuccessAt: Date.now() - 1_000,

@@ -946,9 +946,10 @@ id>"}` autostarts, so the writer would otherwise persist attacker text and
 ## Push registration (localized push campaigns, U7)
 
 **`src/lib/push/` registers this phone with admin so a campaign can reach it.**
-The app models no campaign: it sends a token plus the app language, the phone
-locale, the time zone, the platform, the build and the recommendation viewer
-handle, and admin owns audience, timing and copy. The design record is
+The app models no campaign: it sends a token plus the install id, the app
+language, the phone locale, the time zone, the platform, the build and the
+recommendation viewer handle, and admin owns audience, timing and copy. The
+design record is
 `docs/plans/2026-09-18-1540-feat-localized-push-campaigns-plan.md`.
 
 - **One permission grant covers both features, and the reminder pass is what
@@ -973,13 +974,26 @@ handle, and admin owns audience, timing and copy. The design record is
   spends at most 3 FAILED attempts, and a rate limit is never retried in that
   launch.
 - **The app stores the test ID and never the push token.**
-  `src/lib/push/store.ts` holds the test ID, the payload hash, the last success
-  and the remembered revocation. The token is re-read from the adapter whenever
-  it is needed, which is also why a revocation report can fail on a phone whose
-  platform refuses a token read without the grant: that report is simply
-  retried on a later launch. A reported revocation also CLEARS the payload hash,
-  because admin drops a denied row from every audience and the next grant must
-  register rather than read its own payload as unchanged.
+  `src/lib/push/store.ts` holds the test ID, the install id, the payload hash,
+  the last success and the remembered revocation. The token is re-read from the
+  adapter whenever it is needed, which is also why a revocation report can fail
+  on a phone whose platform refuses a token read without the grant: that report
+  is simply retried on a later launch. A reported revocation also CLEARS the
+  payload hash, because admin drops a denied row from every audience and the
+  next grant must register rather than read its own payload as unchanged.
+- **The install id is minted once and kept for the life of the install.**
+  `ensureInstallId()` mints a UUID on the first read and persists it, and
+  nothing regenerates it: a revocation report and a later success both carry it
+  through. Admin retires this install's PREVIOUS token when a new one arrives
+  with the same install id and platform, so the viewer's other phones keep
+  their registrations. It is not the push token and not a platform device
+  identifier, and it leaves the store only inside the registration payload,
+  never a log. The payload hash covers it, so a re-install registers rather
+  than reading its own payload as unchanged. A stored id outside admin's bound
+  (8 to 64 characters of `[A-Za-z0-9._-]`) is re-minted, because admin answers
+  BAD_USER_INPUT for it and nothing else would ever replace it. The minter
+  prefers the runtime's `crypto.randomUUID`, then a lazily required
+  `expo-crypto`, the ordering `src/lib/recommendations/random.ts` uses.
 - **The push port lives on the SAME notifications adapter** (token read,
   rotation subscription, announcements channel), so that file stays the app's
   one importer of `expo-notifications`. It imports `expo-constants` too, for the

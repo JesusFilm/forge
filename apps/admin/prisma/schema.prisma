@@ -5911,6 +5911,10 @@ model PushRegistration {
   /// It is a separate identifier and never the push token.
   testDeviceId      String                 @unique @map("test_device_id") @db.VarChar(64)
   viewerDigest      String?                @map("viewer_digest") @db.Char(64)
+  /// An identifier the app mints once per install and keeps in its own store.
+  /// A token rotation on the same install carries the same id; a reinstall
+  /// does not. Migration 0099 adds the partial index the supersede pass reads.
+  installId         String?                @map("install_id") @db.VarChar(64)
   platform          PushPlatform
   appBuild          String                 @map("app_build") @db.VarChar(64)
   appLanguageSlug   String                 @map("app_language_slug") @db.VarChar(191)

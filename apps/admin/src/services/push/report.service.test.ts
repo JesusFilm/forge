@@ -227,7 +227,7 @@ describe("reading one campaign's report", () => {
     })
   })
 
-  it("puts the phones with no country last, under one named key", async () => {
+  it("puts the devices with no country last, under one named key", async () => {
     const { client } = buildPrisma({
       deliveries: [
         deliveryRow({ audience: 2n }),
@@ -242,7 +242,7 @@ describe("reading one campaign's report", () => {
     ])
   })
 
-  it("keeps an unreachable phone out of every other count (AE17)", async () => {
+  it("keeps an unreachable device out of every other count (AE17)", async () => {
     const { client } = buildPrisma({
       deliveries: [
         deliveryRow({ audience: 1n, unreachable: 1n }),
@@ -255,7 +255,7 @@ describe("reading one campaign's report", () => {
       ],
     })
     const report = await readPushCampaignReport(client as never, CAMPAIGN)
-    // R26 makes an unreachable phone part of the audience, and of nothing else.
+    // R26 makes an unreachable device part of the audience, and of nothing else.
     expect(report.totals).toEqual({ ...ZERO, audience: 1, unreachable: 1 })
     expect(report.byCountry[0].counts).toEqual({
       ...ZERO,
@@ -264,7 +264,7 @@ describe("reading one campaign's report", () => {
     })
   })
 
-  it("counts phones, not rows, and reads live deliveries only", async () => {
+  it("counts devices, not rows, and reads live deliveries only", async () => {
     const { client, queries } = buildPrisma()
     await readPushCampaignReport(client as never, CAMPAIGN)
     expect(queries).toHaveLength(3)
@@ -274,6 +274,27 @@ describe("reading one campaign's report", () => {
       expect(text).toContain("'live'")
       expect(text).toContain("GROUPING SETS")
     }
+  })
+
+  it("counts the device, never the viewer behind it", async () => {
+    const { client, queries } = buildPrisma()
+    await readPushCampaignReport(client as never, CAMPAIGN)
+    for (const query of queries) {
+      const text = sqlText(query)
+      // A viewer digest back in the identity would merge one viewer's phone
+      // and tablet into a single counted device.
+      expect(text).not.toContain("viewer_digest")
+      expect(text).toContain("registration_id")
+    }
+    expect(sqlText(queries[0])).toContain(
+      "COUNT(DISTINCT COALESCE(d.registration_id, d.id))",
+    )
+    expect(sqlText(queries[1])).toContain(
+      "COUNT(DISTINCT COALESCE(o.registration_id, o.delivery_id))",
+    )
+    expect(sqlText(queries[2])).toContain(
+      "COUNT(DISTINCT COALESCE(a.registration_id, o.delivery_id))",
+    )
   })
 
   it("re-aggregates on every read, in every status", async () => {
