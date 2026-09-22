@@ -78,3 +78,26 @@ describe("GET /watch/api/auth/login", () => {
     )
   })
 })
+
+describe("GET /watch/api/auth/login cookie scope", () => {
+  it("writes the OAuth handshake cookies inside the Watch scope", async () => {
+    // Call-site pin: webAuthCookieOptions() is the seam, but a one-line
+    // `path: "/"` override at this call site would restore the leak with the
+    // module-level test still green.
+    const { GET } = await importRoute()
+
+    const response = await GET(
+      new Request(
+        "http://localhost:3102/watch/api/auth/login?returnTo=%2Fwatch",
+      ),
+    )
+
+    for (const name of [
+      "forge_web_oauth_state",
+      "forge_web_oauth_verifier",
+      "forge_web_oauth_return_to",
+    ]) {
+      expect(response.cookies.get(name)?.path, name).toBe("/watch")
+    }
+  })
+})

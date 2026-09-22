@@ -58,3 +58,42 @@ describe("Web auth session cookies", () => {
     await expect(readWebAuthSessionCookie(expired)).resolves.toBeNull()
   })
 })
+
+describe("Web auth cookie scope", () => {
+  it("scopes auth cookies to the Watch basePath, not the whole origin", async () => {
+    // FGE-235: `path: "/"` sent the encrypted session cookie and the live
+    // OAuth state / PKCE verifier to the WordPress half of
+    // www.jesusfilm.org, which is a different application on the same origin.
+    const { webAuthCookieOptions } = await importSession()
+    expect(webAuthCookieOptions().path).toBe("/watch")
+  })
+
+  it("keeps the rest of the cookie hardening intact", async () => {
+    const { webAuthCookieOptions } = await importSession()
+    expect(webAuthCookieOptions()).toMatchObject({
+      httpOnly: true,
+      sameSite: "lax",
+    })
+  })
+
+  it("clears both the scoped cookie and the legacy origin-wide one", async () => {
+    // A cookie previously written at Path=/ is invisible to a delete scoped
+    // to /watch, so a signed-in user would stay signed in after sign-out for
+    // the whole life of that cookie. Both Set-Cookie lines must go out.
+    const { clearWebAuthCookie, WEB_AUTH_SESSION_COOKIE } =
+      await importSession()
+    const headers = new Headers()
+
+    clearWebAuthCookie(headers, WEB_AUTH_SESSION_COOKIE)
+
+    const setCookies = headers.getSetCookie()
+    expect(setCookies).toHaveLength(2)
+    expect(setCookies.some((line) => line.includes("Path=/watch"))).toBe(true)
+    expect(setCookies.some((line) => /Path=\/(?:;|$)/.test(line))).toBe(true)
+    for (const line of setCookies) {
+      expect(line).toContain(`${WEB_AUTH_SESSION_COOKIE}=`)
+      expect(line).toContain("Max-Age=0")
+      expect(line).toContain("HttpOnly")
+    }
+  })
+})

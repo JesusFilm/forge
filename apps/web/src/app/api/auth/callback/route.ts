@@ -7,6 +7,7 @@ import {
   WEB_AUTH_SESSION_COOKIE,
   WEB_AUTH_STATE_COOKIE,
   WEB_AUTH_VERIFIER_COOKIE,
+  clearWebAuthCookie,
   createWebAuthSessionCookie,
   webAuthCookieOptions,
 } from "@/auth/web-session"
@@ -79,9 +80,7 @@ export async function GET(request: Request) {
       }),
       webAuthCookieOptions(),
     )
-    response.cookies.delete(WEB_AUTH_STATE_COOKIE)
-    response.cookies.delete(WEB_AUTH_VERIFIER_COOKIE)
-    response.cookies.delete(WEB_AUTH_RETURN_TO_COOKIE)
+    clearConsumedHandshakeCookies(response)
 
     return response
   } catch (error) {
@@ -99,8 +98,21 @@ function redirectToAuthError(returnTo: string, reason: string) {
   url.searchParams.set("auth", "failed")
   url.searchParams.set("reason", reason)
   const response = NextResponse.redirect(url)
-  response.cookies.delete(WEB_AUTH_STATE_COOKIE)
-  response.cookies.delete(WEB_AUTH_VERIFIER_COOKIE)
-  response.cookies.delete(WEB_AUTH_RETURN_TO_COOKIE)
+  clearConsumedHandshakeCookies(response)
   return response
+}
+
+/**
+ * The verifier is the live PKCE secret. Clearing it only at the new `/watch`
+ * scope would leave the pre-rollout `Path=/` copy readable by every other
+ * application on the origin.
+ */
+function clearConsumedHandshakeCookies(response: NextResponse) {
+  for (const name of [
+    WEB_AUTH_STATE_COOKIE,
+    WEB_AUTH_VERIFIER_COOKIE,
+    WEB_AUTH_RETURN_TO_COOKIE,
+  ]) {
+    clearWebAuthCookie(response.headers, name)
+  }
 }

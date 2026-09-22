@@ -7,6 +7,7 @@ import {
   WEB_AUTH_RETURN_TO_COOKIE,
   WEB_AUTH_STATE_COOKIE,
   WEB_AUTH_VERIFIER_COOKIE,
+  clearWebAuthCookie,
   requireWebSessionSecret,
   webAuthCookieOptions,
 } from "@/auth/web-session"
@@ -62,7 +63,7 @@ export async function GET(request: Request) {
     ...cookieOptions,
     maxAge: 60 * 10,
   })
-  response.cookies.delete(WEB_AUTH_FORCE_LOGIN_COOKIE)
+  clearWebAuthCookie(response.headers, WEB_AUTH_FORCE_LOGIN_COOKIE)
 
   return response
 }

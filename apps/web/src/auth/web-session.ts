@@ -3,6 +3,7 @@ import { createHash } from "node:crypto"
 import { EncryptJWT, jwtDecrypt } from "jose"
 
 import { env } from "@/env"
+import { WATCH_BASE_PATH } from "../../watch-base-path.mjs"
 
 const webAuthCookiePrefix = "forge_web"
 const maxAgeSeconds = 60 * 60 * 24 * 7
@@ -77,13 +78,44 @@ export async function readWebAuthSessionCookie(
   }
 }
 
+/**
+ * Cookies written before FGE-235 were scoped to `/`, which sent them to every
+ * other application on the origin. They are still in browsers until they
+ * expire, so every clear path has to target this path as well as the new one.
+ */
+export const LEGACY_WEB_AUTH_COOKIE_PATH = "/"
+
 export function webAuthCookieOptions() {
   return {
     httpOnly: true,
     sameSite: "lax" as const,
     secure: process.env.NODE_ENV === "production",
-    path: "/",
+    // Scoped to the Watch basePath: `/` also matched the WordPress half of
+    // www.jesusfilm.org, so the encrypted session cookie and the live OAuth
+    // PKCE verifier were sent to an application that has no business reading
+    // them.
+    path: WATCH_BASE_PATH,
     maxAge: maxAgeSeconds,
+  }
+}
+
+/**
+ * Expire an auth cookie at BOTH the current `/watch` scope and the legacy `/`
+ * scope.
+ *
+ * `NextResponse.cookies` is keyed by cookie NAME, so it cannot express two
+ * cookies that differ only by path; the raw `Set-Cookie` lines can. Call this
+ * after every `response.cookies.*` mutation on the same response, because the
+ * cookies API rewrites the header from its own parsed map.
+ */
+export function clearWebAuthCookie(headers: Headers, name: string) {
+  const secure = process.env.NODE_ENV === "production" ? "; Secure" : ""
+
+  for (const path of [WATCH_BASE_PATH, LEGACY_WEB_AUTH_COOKIE_PATH]) {
+    headers.append(
+      "Set-Cookie",
+      `${name}=; Path=${path}; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; HttpOnly; SameSite=Lax${secure}`,
+    )
   }
 }
 

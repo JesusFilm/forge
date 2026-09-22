@@ -168,6 +168,14 @@ function redirectDeprecatedSearch(request: ProxyRequest): NextResponse {
   return buildRedirect(url, 307)
 }
 
+/**
+ * The baseline security-header set now lives in next.config.mjs `headers()`
+ * (see watch-security-headers.mjs), which covers every route including the
+ * basePath root this function never sees. These two headers stay here as the
+ * narrower belt on the rewrite paths: the values are identical, and a
+ * middleware-set header wins over the config one, so nothing is duplicated.
+ * If you change either value, change it in both places or delete this.
+ */
 function applyWatchSecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set("Content-Security-Policy", "frame-ancestors 'self'")
   response.headers.set("Referrer-Policy", "strict-origin")
