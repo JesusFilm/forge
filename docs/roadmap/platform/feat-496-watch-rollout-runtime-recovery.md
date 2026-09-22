@@ -540,6 +540,27 @@ was exercised. See the [release record](../../operations/watch-runtime-release-v
 for observation populations, runtime revisions, temporary-observer cleanup and
 the remaining authenticated homepage rollback. Keep the ticket in progress.
 
+## September 22 exact contextual scoring continuation
+
+The resumed investigation identifies another concrete query inefficiency:
+`queryScenesSimilarMany` evaluates cosine distance twice for every eligible
+chunk/seed pair. A production contextual query took 2,262 ms while other Admin
+connections were idle. The isolated PostgreSQL regression fails with 16 distance
+calls and passes with 8 after moving similarity projection outside the inner
+`DISTINCT ON`. Exact outputs and all 176 seeds remain represented.
+
+The correction reduces three concurrent long-film queries from 5,332–5,525 ms to
+3,376–3,407 ms in the documented synthetic fixture, without changing deadlines,
+pool sizes, ranking or eligibility. Concurrent small writes stayed below 34 ms
+before and after, so it is not proof of the historical selection timeout's
+cause. The bounded production wait capture did not catch a slow budget call;
+all observers stopped and no global diagnostic settings changed.
+
+[Learning and verification](../../solutions/performance-issues/contextual-recommendations-repeat-catalog-work-20260915.md#september-22-count-distance-evaluations-not-just-statements)
+retain the rejected vector-copy experiments and workload limits. This entry
+records local validation; exact automatic deployment and production observation
+remain required. Keep this ticket and its independent acceptance gates open.
+
 The completed 21:55–23:55 UTC window has 23 selection 200s, two selection
 400s and no selection 503s; playback has zero 5xx / 8,725 requests. Independent
 Railway delivery outcomes reconcile all 1,524 delivery requests and retain
