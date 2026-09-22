@@ -692,6 +692,102 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
     }
   })
 
+  it("cancels unused preapprovals when revoking an existing Contributor and requires a fresh approval", async () => {
+    const recipient = await preapprovedRecipient("gmail.com")
+    try {
+      const submitScope = await prisma.scope.findUniqueOrThrow({
+        where: { key: "changelog:submit" },
+      })
+      await prisma.appGrant.create({
+        data: {
+          appId: (
+            await prisma.appEnvironment.findUniqueOrThrow({
+              where: { id: recipient.environmentId },
+            })
+          ).appId,
+          environmentId: recipient.environmentId,
+          subjectType: "USER",
+          userId: recipient.id,
+          status: "APPROVED",
+          scopes: { create: { scopeId: submitScope.id } },
+        },
+      })
+      // Password authorization cannot redeem the outstanding Google approval.
+      expect(
+        (
+          await authorize({ sessionCookie: recipient.passwordCookie })
+        ).response.headers.get("location"),
+      ).toContain("/oauth/consent")
+      const approval = await prisma.changelogPreapproval.findUniqueOrThrow({
+        where: { id: recipient.approvalId },
+      })
+      expect(approval.state).toBe("pending")
+      const headers = await adminHeaders()
+      const contributors =
+        await import("@/app/api/changelog/contributors/route")
+      const revoked = await contributors.POST(
+        new Request("http://localhost:3004/api/changelog/contributors", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            clientId: "jfp_changelog_local",
+            recipientId: recipient.id,
+          }),
+        }),
+      )
+      expect(revoked.status).toBe(200)
+      expect(await revoked.json()).toMatchObject({ changed: true })
+      expect(
+        await prisma.changelogPreapproval.findUniqueOrThrow({
+          where: { id: recipient.approvalId },
+        }),
+      ).toMatchObject({
+        state: "canceled",
+        version: approval.version + 1,
+        redeemedAt: null,
+        redeemedById: null,
+      })
+      const googleSession = await googleCookie(recipient.id, recipient.email)
+      for (const sessionCookie of [googleSession, recipient.passwordCookie])
+        expect(
+          (await authorize({ sessionCookie })).response.headers.get("location"),
+        ).toContain("access_denied")
+
+      const approvals = await import("@/app/api/changelog/preapprovals/route")
+      const freshId = randomUUID()
+      const created = await approvals.POST(
+        new Request("http://localhost:3004/api/changelog/preapprovals", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            clientId: "jfp_changelog_local",
+            action: "create",
+            id: freshId,
+            email: recipient.email,
+          }),
+        }),
+      )
+      expect(created.status).toBe(200)
+      expect(
+        (
+          await authorize({ sessionCookie: googleSession })
+        ).response.headers.get("location"),
+      ).toContain("/oauth/consent")
+      expect(
+        await prisma.changelogPreapproval.findUniqueOrThrow({
+          where: { id: freshId },
+        }),
+      ).toMatchObject({ state: "redeemed", redeemedById: recipient.id })
+      expect(
+        await prisma.changelogPreapproval.findUniqueOrThrow({
+          where: { id: recipient.approvalId },
+        }),
+      ).toMatchObject({ state: "canceled" })
+    } finally {
+      await recipient.cleanup()
+    }
+  })
+
   it("serializes simultaneous redemptions and consumes duplicate approvals without duplicate grants", async () => {
     const recipient = await preapprovedRecipient("gmail.com")
     try {

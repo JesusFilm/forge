@@ -101,3 +101,18 @@ this ticket and native persistence regressions.
 - Deliberate PostgreSQL failures prove transaction rollback, serialization
   conflicts, concurrent suspension/cancellation and duplicate-approval safety.
 - No deployment, merge, production data mutation or membership activation.
+
+## PR review fix: pending approvals after revocation
+
+Contributor management and the production operator revoke path now cancel the
+recipient's pending exact-address approvals in the revoked environment within
+the same transaction as grant removal. Cancellation increments the approval
+version and leaves redemption history unchanged. A fresh explicit approval can
+still restore access. Blocking redundant invites alone would not cover an
+approval issued before a separate grant or existing pending records.
+
+Native PostgreSQL 18 verification reproduced the old pending state before the
+fix. All 49 tests in the Changelog OAuth and production operator integration
+suites pass after the fix, including fresh-approval reinstatement and isolation
+of other recipients and environments. Auth typecheck and lint pass. These tests
+use the existing signed Google-token fixture, not a live Google account.
