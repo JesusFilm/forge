@@ -1,3 +1,8 @@
+import { persistCandidateStageEvidence } from "./candidate-evidence-persistence"
+import {
+  observeRecommendationRuntime,
+  timeRecommendationOperation,
+} from "@/lib/recommendation-runtime-observation"
 import { randomUUID } from "node:crypto"
 import {
   RecommendationAuditKind,
@@ -5,7 +10,6 @@ import {
   RecommendationRequestState,
 } from "@prisma/client"
 import { buildCanonicalWatchVideoPath } from "@forge/watch-url-policy/routes"
-import type { Principal } from "@/auth/principal"
 import {
   VideoNotFoundError,
   type SceneRecommendation,
@@ -36,6 +40,7 @@ import type { RecommendationRecentContext } from "./recent-context.service"
 
 import type {
   DeliveryDependencies,
+  DeliveryInput,
   RecommendationPersonalizationDelivery,
   SemanticRecommendationDelivery,
 } from "./delivery.types"
@@ -82,16 +87,15 @@ export {
 export class RecommendationDeliveryService {
   constructor(private readonly deps: DeliveryDependencies) {}
 
-  async deliver(input: {
-    caller: Principal | null
-    seedMediaId: string
-    locale: string
-    audioLanguageSlug: string
-    sessionDigest: string
-    consentReceiptDigest?: string | null
-    profileTokenDigest?: string | null
-    eligibleHuman?: boolean
-  }): Promise<SemanticRecommendationDelivery> {
+  deliver(input: DeliveryInput): Promise<SemanticRecommendationDelivery> {
+    return observeRecommendationRuntime("seeded", () =>
+      this.deliverObserved(input),
+    )
+  }
+
+  private async deliverObserved(
+    input: DeliveryInput,
+  ): Promise<SemanticRecommendationDelivery> {
     const nowMilliseconds = this.deps.nowMilliseconds ?? Date.now
     const deliveryStartedAt = nowMilliseconds()
     const serviceDeadlineAt = deliveryStartedAt + DELIVERY_RETRIEVAL_BUDGET_MS
@@ -1023,8 +1027,9 @@ export class RecommendationDeliveryService {
               },
             })
             if (platform.evidence.length > 0) {
-              await tx.recommendationCandidateStageEvidence.createMany({
-                data: platform.evidence.map((entry) => ({
+              await persistCandidateStageEvidence(
+                tx,
+                platform.evidence.map((entry) => ({
                   id: newId(),
                   runId: candidateRunId,
                   stage: entry.stage,
@@ -1051,7 +1056,7 @@ export class RecommendationDeliveryService {
                     })),
                   expiresAt,
                 })),
-              })
+              )
             }
             if (requestState === RecommendationRequestState.ISSUED) {
               await tx.recommendationEvidenceAudit.create({
@@ -1065,6 +1070,14 @@ export class RecommendationDeliveryService {
             }
           },
           nowMilliseconds,
+        )
+
+      const persistObservedRequest = (
+        state: Parameters<typeof persistRequest>[0],
+        bytes: number | null,
+      ) =>
+        timeRecommendationOperation("persistence", () =>
+          persistRequest(state, bytes),
         )
 
       let response: SemanticRecommendationDelivery
@@ -1091,7 +1104,7 @@ export class RecommendationDeliveryService {
         responseBytes = issued.responseBytes
       } catch (error) {
         if (!(error instanceof RecommendationRetrievalTimeoutError)) {
-          await persistRequest(
+          await persistObservedRequest(
             RecommendationRequestState.ISSUANCE_FAILED,
             null,
           ).catch(() => undefined)
@@ -1103,7 +1116,10 @@ export class RecommendationDeliveryService {
         )
       }
       try {
-        await persistRequest(RecommendationRequestState.ISSUED, responseBytes)
+        await persistObservedRequest(
+          RecommendationRequestState.ISSUED,
+          responseBytes,
+        )
         return response
       } catch (error) {
         return unavailable(

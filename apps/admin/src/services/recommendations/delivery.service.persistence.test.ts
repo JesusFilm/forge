@@ -67,7 +67,7 @@ describe("RecommendationDeliveryService persistence and deadlines", () => {
   })
 
   it("persists one bounded complete candidate-stage trace with provenance and independent parity", async () => {
-    const { service, tx, requests } = makeHarness()
+    const { service, tx, requests, evidenceWrites } = makeHarness()
 
     const delivery = await service.deliver(input("stage-trace-seed"))
 
@@ -85,8 +85,7 @@ describe("RecommendationDeliveryService persistence and deadlines", () => {
         shortfallReason: "insufficient_candidates",
       }),
     })
-    const stageRows = tx.recommendationCandidateStageEvidence.createMany.mock
-      .calls[0]?.[0].data as Array<{ stage: string }>
+    const stageRows = evidenceWrites[0] as Array<{ stage: string }>
     expect(new Set(stageRows.map((row) => row.stage))).toEqual(
       new Set([
         "nominated",
