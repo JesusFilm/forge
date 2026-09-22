@@ -396,3 +396,27 @@ No request is excluded. Twenty-four durable completed reconciliation batches
 and heartbeats have no recorded classification/dispatch failures. These advance
 production evidence without satisfying alerts, authenticated Admin, real browser
 terminal non-retry or complete final-release acceptance; status stays in progress.
+
+## September 22 authenticated acceptance and Redis update burst
+
+Normal authenticated Admin now verifies the fresh zero-current-pointer snapshot,
+one exact repaired-generation chain, and a complete fresh Watch qualified-outcome
+journey through later hybrid use. Credit these Admin checks; access is no longer
+the blocker. The [contextual release continuation](../../operations/watch-contextual-distance-release-2026-09-22.md)
+records the evidence and its snapshot limits.
+
+The longer 01:39–02:19 UTC release observation catches **19 playback HTTP 503s /
+1,738 requests (1.093%)**, with no exclusions. They occur during an automatic
+Admin Redis image update. A matching trace receives Admin HTTP 500 in 7.1 ms;
+the exact Admin error is the disconnected Redis GraphQL rate-limit store.
+These are fast upstream failures, not the historical selection deadline. A
+separate Web Redis automatic update overlaps one delivery admission 503. All
+477 seeded-delivery outcomes reconcile, with zero observed HTTP 200 timeout
+fallbacks and four successful selections. Retain the burst despite the earlier
+healthy fifteen minutes; neither population is the required sustained closure
+proof. No rate-limit guarantee or infrastructure setting was changed.
+
+Installed Datadog alerts/dashboard, real terminal-browser non-retry evidence and
+complete sustained transport acceptance remain open. Read-only access cannot
+install monitors. Redis update availability requires separate investigation;
+do not mask its failures with an in-memory limiter or ambiguous mutation retry.
