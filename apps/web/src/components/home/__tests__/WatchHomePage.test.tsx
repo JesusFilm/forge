@@ -6,7 +6,15 @@ import { act, StrictMode, useEffect, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { renderToStaticMarkup } from "react-dom/server"
 import { setRequestLocale } from "next-intl/server"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest"
 import type { WatchHomeModel } from "@/lib/watch-home"
 import {
   addWatchHomeTvPlayedId,
@@ -110,6 +118,22 @@ vi.mock("@forge/video-player/mux-video", async () => {
       return <video ref={ref} data-testid="watch-home-tv-video" {...props} />
     }),
   }
+})
+
+// The carousel loads the video engine through
+// `next/dynamic(() => import("@forge/video-player/mux-video"), { ssr: false })`
+// so hls.js and mux-embed stay out of the Watch routes' first-load chunk graph
+// (feat-535 / FGE-138). Resolve it synchronously here so the whole suite below
+// keeps driving a real <video>. See the mock module for what that erases and
+// what the real evidence for the deferral is.
+vi.mock("next/dynamic", async () => import("@/__mocks__/next-dynamic-sync"))
+
+// The stub keeps `React.lazy`'s shape, whose payload settles across microtask
+// turns; the mocked module's own factory is async too, so the first render can
+// suspend before `act` gives up. Warming the registry makes the first commit
+// deterministic instead of load-dependent.
+beforeAll(async () => {
+  await import("@forge/video-player/mux-video")
 })
 
 const carouselApi = vi.hoisted(() => ({
@@ -1750,6 +1774,11 @@ describe("WatchHomePage", () => {
     ).toContain("Watch Now")
   })
 
+  // jsdom reports a complete document, so the gate is already open on the
+  // first render here and the media element attaches in that same commit.
+  // That makes this case blind to the deferred-attach re-arm; the guard for
+  // that is "re-attaches muted subtitles when the deferred media element
+  // arrives" in the deferral block below.
   it("shows available subtitles while the hero preview is muted", async () => {
     await act(async () => {
       root.render(
@@ -3694,6 +3723,199 @@ describe("WatchHomePage", () => {
         container.querySelector('[data-testid="watch-home-tv-video"]'),
       ).toBeNull()
       expect(container.textContent).toContain("Discover the full story")
+    })
+  })
+
+  describe("initial-page-load deferral of the video engine", () => {
+    // The sequencing block above has its own `carouselLabel`, scoped to that
+    // describe; this is the same read, local to these cases.
+    function heroLabel() {
+      return container
+        .querySelector('[data-testid="watch-home-tv-carousel"]')
+        ?.getAttribute("aria-label")
+    }
+
+    // `hls.js` + `mux-embed` ride along with `@mux/mux-video-react`. The frame
+    // renders poster-only until the document has finished loading, so that
+    // chunk is neither in the initial script set nor fetched while the page is
+    // still loading.
+    it("renders no hero video while the document is still loading", async () => {
+      vi.spyOn(document, "readyState", "get").mockReturnValue("loading")
+
+      await act(async () => {
+        root.render(<WatchHomePage model={makeModel()} />)
+      })
+
+      expect(
+        container.querySelector('[data-testid="watch-home-tv-video"]'),
+      ).toBeNull()
+      // The poster layer the viewer actually sees is unaffected by the gate.
+      expect(
+        container.querySelector('[data-testid="watch-home-tv-media-frame"]'),
+      ).not.toBeNull()
+    })
+
+    it("mounts the hero video once the document load event fires", async () => {
+      let readyState: DocumentReadyState = "loading"
+      vi.spyOn(document, "readyState", "get").mockImplementation(
+        () => readyState,
+      )
+
+      await act(async () => {
+        root.render(<WatchHomePage model={makeModel()} />)
+      })
+
+      await act(async () => {
+        // The browser sets `readyState` to "complete" BEFORE firing `load`, so
+        // a handler that reads it there always sees the loaded state. The
+        // fixture reproduces that ordering rather than the event alone.
+        readyState = "complete"
+        window.dispatchEvent(new Event("load"))
+      })
+
+      const video = container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      )
+
+      expect(video).not.toBeNull()
+      // Behaviour past the gate is unchanged: same src, same bounded config.
+      expect(video?.getAttribute("src")).toBe(
+        "https://stream.example/jesus.m3u8",
+      )
+      expect(lastMuxVideoHlsConfig()).toEqual(WATCH_HOME_INTRO_HLS_CONFIG)
+    })
+
+    // The re-arm guard for the deferred media element. Effects that read
+    // `videoRef.current` do not re-run just because a ref was populated, and
+    // the gated `<MuxVideo>` attaches in a LATER commit than the first render
+    // -- later still in production, where the chunk has to resolve too. This
+    // is the only case here that enters that two-commit path, so dropping
+    // `mediaElement` from the subtitle effect's dependency list turns exactly
+    // this red while every other subtitle test stays green.
+    it("re-attaches muted subtitles when the deferred media element arrives", async () => {
+      let readyState: DocumentReadyState = "loading"
+      vi.spyOn(document, "readyState", "get").mockImplementation(
+        () => readyState,
+      )
+
+      await act(async () => {
+        root.render(
+          <WatchHomePage
+            model={makeModel({
+              heroSlides: [
+                {
+                  ...makeCard({
+                    subtitleVttSrc: "https://cdn.example/jesus.vtt",
+                    subtitleLanguageBcp47: "en",
+                  }),
+                  eyebrow: "Featured",
+                } as WatchHomeModel["heroSlides"][number],
+              ],
+            })}
+          />,
+        )
+      })
+
+      expect(
+        container.querySelector('[data-testid="watch-home-tv-video"]'),
+      ).toBeNull()
+
+      await act(async () => {
+        readyState = "complete"
+        window.dispatchEvent(new Event("load"))
+      })
+
+      const video = container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      ) as HTMLVideoElement
+      const track = video.querySelector("track[data-subtitle-track]")
+
+      expect(track?.getAttribute("src")).toBe("https://cdn.example/jesus.vtt")
+      expect(track?.getAttribute("srclang")).toBe("en")
+    })
+
+    // The regression four reviewers found in the first cut of this change.
+    // The gate stops the player mounting, but the hook's dead-stream ceiling
+    // was still armed from mount — and only `canplay` from a mounted element
+    // clears `isBufferingMedia`. So a document whose `load` was held open by
+    // one stalled subresource burned a slide every 12 s, wrote each one into
+    // the played set, and never showed a frame.
+    it("does not let the dead-stream ceiling burn slides while the gate is closed", async () => {
+      vi.spyOn(document, "readyState", "get").mockReturnValue("loading")
+      vi.useFakeTimers()
+      try {
+        vi.spyOn(Math, "random").mockReturnValue(0)
+        await act(async () => {
+          root.render(<WatchHomePage model={makeTimedSequencedModel(10)} />)
+        })
+
+        const openingTitle = heroLabel()
+        // The opening slide is recorded on selection, before and after this
+        // change alike; what must not happen is the set GROWING on a timer.
+        const playedAtOpen = readWatchHomeTvPlayedIds()
+        expect(
+          container.querySelector('[data-testid="watch-home-tv-video"]'),
+        ).toBeNull()
+
+        await act(async () => {
+          vi.advanceTimersByTime(WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS * 3 + 1)
+        })
+
+        // Three ceiling windows later: same slide, and no extra id burned.
+        expect(heroLabel()).toBe(openingTitle)
+        expect(readWatchHomeTvPlayedIds()).toEqual(playedAtOpen)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    // The other half of the same gate: once it opens, the ceiling has to be
+    // armed again, or a genuinely dead stream would strand the hero forever.
+    it("re-arms the dead-stream ceiling once the gate opens", async () => {
+      let readyState: DocumentReadyState = "loading"
+      vi.spyOn(document, "readyState", "get").mockImplementation(
+        () => readyState,
+      )
+      vi.useFakeTimers()
+      try {
+        vi.spyOn(Math, "random").mockReturnValue(0)
+        await act(async () => {
+          root.render(<WatchHomePage model={makeTimedSequencedModel(10)} />)
+        })
+        const openingTitle = heroLabel()
+
+        await act(async () => {
+          readyState = "complete"
+          window.dispatchEvent(new Event("load"))
+        })
+        // The element mounts but never reports `canplay` — a dead stream.
+        expect(
+          container.querySelector('[data-testid="watch-home-tv-video"]'),
+        ).not.toBeNull()
+
+        await act(async () => {
+          vi.advanceTimersByTime(WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS + 1)
+        })
+
+        expect(heroLabel()).not.toBe(openingTitle)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it("mounts the hero video immediately when the document already loaded", async () => {
+      // jsdom reports "complete", which is also the repeat-visit / bfcache
+      // shape in production: the gate must not wait for a `load` event that
+      // will never fire.
+      expect(document.readyState).toBe("complete")
+
+      await act(async () => {
+        root.render(<WatchHomePage model={makeModel()} />)
+      })
+
+      expect(
+        container.querySelector('[data-testid="watch-home-tv-video"]'),
+      ).not.toBeNull()
     })
   })
 })

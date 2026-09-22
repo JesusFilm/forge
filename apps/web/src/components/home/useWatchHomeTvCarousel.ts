@@ -231,6 +231,17 @@ export function useWatchHomeTvCarousel(
   sequence: WatchHomeCarouselSequenceData | null = null,
   options: {
     autoAdvancePausedForSlideId?: string | null
+    /**
+     * Whether the media element is allowed to mount yet.
+     *
+     * The player is deferred behind a document-load gate (feat-535), so between
+     * mount and that gate opening there is no element that could ever clear
+     * `isBufferingMedia`. The dead-stream ceiling below must not run in that
+     * window or it advances the hero every 12 s for a stream nobody asked for.
+     * Defaults to `true` so a caller that mounts its player synchronously keeps
+     * the original behaviour.
+     */
+    mediaGateOpen?: boolean
     randomSource?: () => number
     suppressLeavingSlide?: boolean
   } = {},
@@ -860,6 +871,12 @@ export function useWatchHomeTvCarousel(
   // turn, so one dead video cannot strand the hero.
   useEffect(() => {
     clearMediaWaitTimeout()
+    // Nothing can clear `isBufferingMedia` before the player is allowed to
+    // mount -- only `handleCanPlay` does, and that needs an element. Arming the
+    // ceiling in that window would burn a slide every 12 s, mark each one
+    // played in localStorage, and never show a frame of video. Unbounded while
+    // a stalled subresource holds the document's `load` event open.
+    if (options.mediaGateOpen === false) return undefined
     // Buffering and paused are not exclusive: a viewer who scrolls away
     // mid-stall leaves both true, and a ceiling that ignored the pause would
     // force-advance the hero every 12 seconds behind the page -- exactly the
@@ -884,6 +901,7 @@ export function useWatchHomeTvCarousel(
     clearMediaWaitTimeout,
     isBuffering,
     isMediaHeld,
+    options.mediaGateOpen,
   ])
 
   useEffect(() => {

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import Image from "next/image"
-import MuxVideo from "@forge/video-player/mux-video"
+import MuxVideo from "@/components/video/deferred-mux-video"
 import { useWatchModalMediaRef } from "@/components/watch/WatchModalActivityProvider"
 import { useTranslations } from "next-intl"
 import type {
