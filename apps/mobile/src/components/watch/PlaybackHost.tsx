@@ -39,12 +39,15 @@ import { useRouter, useSegments } from "expo-router"
 import { VideoView, type VideoPlayerStatus } from "expo-video"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
-import { useManagedVideoPlayer } from "../../hooks/useManagedVideoPlayer"
+import {
+  useManagedVideoPlayer,
+  type SwapPositionClaim,
+} from "../../hooks/useManagedVideoPlayer"
 import { getAuthSession } from "../../lib/authSession"
 import { BLACK } from "../../lib/color"
 import { datadogLog } from "../../lib/datadog"
 import { OFFLINE_ROOT } from "../../lib/offlineFileSystem"
-import { isOfflineContainerSwap } from "../../lib/playerSource"
+import { isDubSwap, isOfflineContainerSwap } from "../../lib/playerSource"
 import { validateLocalMediaUrl } from "../../lib/validateLocalMediaUrl"
 import { TAB_BAR_OCCUPIED_HEIGHT } from "../../lib/tabBar"
 import {
@@ -132,6 +135,19 @@ const CHROME_RELEASE_SLACK_MS = 250
 /** The exit's unconditional release — a dismissed window must clear its session
  *  even when the animation never reports back. */
 const EXIT_RELEASE_SLACK_MS = 250
+
+/** Why the resume latch was armed. Only a quality swap has a tier to revert. */
+type ResumeReason = "quality" | "offline" | "dub"
+
+/** Each cause keeps its own release event: a shared name would mix two
+ *  causes while every existing count assertion still passed. */
+const NON_QUALITY_RELEASE_EVENT: Record<
+  Exclude<ResumeReason, "quality">,
+  string
+> = {
+  offline: "player.offline_swap_resume_released",
+  dub: "player.dub_swap_resume_released",
+}
 
 /** A tier-change swap that neither loads nor errors within this budget
  *  releases its pending resume and reverts the tier (R8's failure path). */
@@ -357,12 +373,12 @@ function ActivePlaybackHost({
   // A download that completes (or is deleted) under an adopted session is the
   // same video in a new container. The pin exists for a remount's OTHER url of
   // one stream, so a local/remote flip must reach the player through it.
+  const isLocal = (url: string) => validateLocalMediaUrl(url, OFFLINE_ROOT)
   const loadedUrl = loadedSourceRef.current?.url ?? null
   const containerChanged =
     loadedUrl != null &&
     request.streamingUrl != null &&
-    validateLocalMediaUrl(loadedUrl, OFFLINE_ROOT) !==
-      validateLocalMediaUrl(request.streamingUrl, OFFLINE_ROOT)
+    isLocal(loadedUrl) !== isLocal(request.streamingUrl)
   const sourceUrl = sourceForRequest({
     requested: request.streamingUrl,
     loaded: loadedSourceRef.current,
@@ -442,6 +458,7 @@ function ActivePlaybackHost({
   const positionPreservingSwapRef = useRef<{
     from: string | null
     to: string | null
+    claim: Exclude<SwapPositionClaim, false>
   } | null>(null)
   // Cast is the SLOT's, not the player's: a retained or PiP-held request from a
   // departed screen carries a session that screen's unmount already ended.
@@ -483,9 +500,9 @@ function ActivePlaybackHost({
         // disagree about the same swap.
         preservesPosition: (previousUrl, nextUrl) => {
           const armed = positionPreservingSwapRef.current
-          return (
-            armed != null && armed.from === previousUrl && armed.to === nextUrl
-          )
+          if (armed == null) return false
+          if (armed.from !== previousUrl || armed.to !== nextUrl) return false
+          return armed.claim
         },
       },
     )
@@ -504,9 +521,9 @@ function ActivePlaybackHost({
     durationSeconds: number
     wasPlaying: boolean
     revertTier: QualityTier | null
-    /** Why it was armed. The consumer is identical for both; the RELEASE is
+    /** Why it was armed. The consumer is identical for all; the RELEASE is
      *  not — only a quality swap has a tier to write back. */
-    reason: "quality" | "offline"
+    reason: ResumeReason
   } | null>(null)
   // Capture BEFORE the swap applies (R8): render runs ahead of the adapter's
   // swap effect, while the player still reports the outgoing item's clock.
@@ -526,7 +543,7 @@ function ActivePlaybackHost({
       // behind, or at zero for a signed-out viewer.
       const capture = (
         revertTier: QualityTier | null,
-        reason: "quality" | "offline",
+        reason: ResumeReason,
       ) => {
         let positionSeconds = 0
         let durationSeconds = 0
@@ -546,6 +563,21 @@ function ActivePlaybackHost({
           reason,
         }
       }
+      // One write for both axes: the release reads `reason`, the adapter reads
+      // `claim`, and a branch that set one without the other would split them.
+      const armPreservingSwap = (reason: Exclude<ResumeReason, "quality">) => {
+        // A tier pick still in flight keeps its revert leg through this capture.
+        capture(pendingQualityResumeRef.current?.revertTier ?? null, reason)
+        positionPreservingSwapRef.current = {
+          from: previous.url,
+          to: constrainedSourceUrl,
+          claim: reason === "offline" ? "same-content" : "new-content",
+        }
+      }
+      // An empty key names nothing — two sourceless slots would both carry
+      // "" and read as the same video.
+      const sameVideo = videoKey !== "" && previous.videoKey === videoKey
+      const sameAsset = isSameMuxAsset(previous.url, constrainedSourceUrl)
       // A completed download replacing the stream (or being deleted from under
       // it) is the SAME video in a new container, so it keeps the viewer's
       // place. It has to be tested BEFORE the cross-asset clear below: a local
@@ -553,32 +585,39 @@ function ActivePlaybackHost({
       const offlineSwap = isOfflineContainerSwap({
         previousUrl: previous.url,
         nextUrl: constrainedSourceUrl,
-        // An empty key names nothing — two sourceless slots would both carry
-        // "" and read as the same video.
-        sameVideo: videoKey !== "" && previous.videoKey === videoKey,
-        isLocal: (url) => validateLocalMediaUrl(url, OFFLINE_ROOT),
+        sameVideo,
+        isLocal,
       })
       if (offlineSwap) {
-        // revertTier null: a tier write cannot change a file:// URL, so the
+        // No tier to revert: a tier write cannot change a file:// URL, so the
         // quality revert leg would strand a re-armed latch with no timer.
-        capture(null, "offline")
-        positionPreservingSwapRef.current = {
-          from: previous.url,
-          to: constrainedSourceUrl,
-        }
-      } else if (!isSameMuxAsset(previous.url, constrainedSourceUrl)) {
-        // A different asset (new video, dub change): a pending quality
-        // resume is stale and must not seek the arriving stream.
+        armPreservingSwap("offline")
+      } else if (
+        isDubSwap({
+          previousUrl: previous.url,
+          nextUrl: constrainedSourceUrl,
+          sameVideo,
+          sameAsset,
+          isLocal,
+        })
+      ) {
+        // Another audio track of the same video keeps the viewer's place. The
+        // capture reads the live clock, so it supersedes a pending tier one.
+        armPreservingSwap("dub")
+      } else if (!sameAsset) {
+        // A different video: a pending quality resume is stale and must not
+        // seek the arriving stream.
         pendingQualityResumeRef.current = null
       } else if (
         previous.tier !== effectiveSettings.qualityTier &&
         previous.url != null &&
         constrainedSourceUrl != null &&
         !sameQualityConstraint(previous.url, constrainedSourceUrl) &&
-        pendingQualityResumeRef.current == null
+        pendingQualityResumeRef.current?.reason !== "quality"
       ) {
         // A re-pick mid-swap keeps the first capture: nothing played in
-        // between, and the superseded swap may already report zero.
+        // between, and the superseded swap may already report zero. A dub
+        // latch does not count: the tier pick needs its own revert leg.
         capture(previous.tier, "quality")
       }
       appliedConstraintRef.current = {
@@ -596,19 +635,18 @@ function ActivePlaybackHost({
       const pending = pendingQualityResumeRef.current
       if (pending == null) return
       pendingQualityResumeRef.current = null
-      if (pending.reason === "offline") {
-        // Its own event: reusing the quality one would mix two causes under a
-        // single name, and every existing count assertion would still pass.
-        // There is nothing to revert — no tier produced this swap.
-        datadogLog.warn("player.offline_swap_resume_released", {
+      // The event follows the cause; the revert leg follows `revertTier`, so a
+      // tier pick that overlapped a dub change still writes its tier back.
+      if (pending.reason === "quality") {
+        datadogLog.warn("player_settings.quality_swap_released", {
+          release_reason: releaseReason,
+          reverted_tier: pending.revertTier,
+        })
+      } else {
+        datadogLog.warn(NON_QUALITY_RELEASE_EVENT[pending.reason], {
           release_reason: releaseReason,
         })
-        return
       }
-      datadogLog.warn("player_settings.quality_swap_released", {
-        release_reason: releaseReason,
-        reverted_tier: pending.revertTier,
-      })
       if (pending.revertTier == null) return
       // A viewer already re-picked the revert tier: the write would no-op, no
       // swap re-keys the timer, and a re-armed latch would go stale. Stay clear.

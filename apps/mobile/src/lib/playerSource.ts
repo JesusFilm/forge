@@ -38,8 +38,8 @@ export function resolvePlayerSource(input: {
  * swap — which is why one used to restart at 0:00.
  *
  * Two halves, and both are load-bearing. `sameVideo` alone would also match a
- * DUB change (same slug, new language), which must keep restarting. The
- * local-ness half is what separates them, and it is validated against the
+ * DUB change (same slug, new language), which is `isDubSwap`'s claim below.
+ * The local-ness half is what separates them, and it is validated against the
  * offline root rather than sniffed, so a `file:` URI from anywhere else is not
  * treated as this app's download.
  */
@@ -58,4 +58,33 @@ export function isOfflineContainerSwap(input: {
   // Either direction: a download completing (remote -> local) and a download
   // being deleted mid-play (local -> remote) both keep the viewer's place.
   return isLocal(previousUrl) !== isLocal(nextUrl)
+}
+
+/**
+ * Is this source change the SAME video on another audio track — a dub pick
+ * mid-play? It keeps the viewer's place like an offline swap, but the asset
+ * is new, so quality attribution treats it as new content.
+ *
+ * Distinct from `releaseTriggersSwap` in `playbackTarget.ts`, which asks only
+ * whether two URLs name different assets: this one also requires one video
+ * and two remote sides, so a download completing is never read as a dub.
+ */
+export function isDubSwap(input: {
+  previousUrl: string | null
+  nextUrl: string | null
+  /** The two sources belong to one video — the host's slug-stable videoKey. */
+  sameVideo: boolean
+  /** `isSameMuxAsset(previousUrl, nextUrl)`: one asset behind two strings. */
+  sameAsset: boolean
+  /** `validateLocalMediaUrl(url, OFFLINE_ROOT)`, injected to keep this pure. */
+  isLocal: (url: string) => boolean
+}): boolean {
+  const { previousUrl, nextUrl, sameVideo, sameAsset, isLocal } = input
+  if (!sameVideo || sameAsset) return false
+  if (previousUrl == null || nextUrl == null) return false
+  // A non-Mux remote URL carries no asset id, so an unchanged URL would read
+  // as a different asset here and arm a latch from a source to itself.
+  if (previousUrl === nextUrl) return false
+  // A local side is the offline swap's claim, never a dub change.
+  return !isLocal(previousUrl) && !isLocal(nextUrl)
 }

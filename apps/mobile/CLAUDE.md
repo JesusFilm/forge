@@ -730,6 +730,16 @@ view into that rect. The chrome rides in the host layer too, not in the route.
   recorder nor disposes the recommendation recorder. Before 2026-09-22 every
   expand ended the session as `replaced`, reloaded the video from 0:00, and
   claimed a second recommendation episode.
+- **A dub change keeps the viewer's place (since 2026-09-22).** The host
+  classifies every source change before the swap applies: a completed
+  download (`isOfflineContainerSwap`) and a dub pick (`isDubSwap`, both in
+  `src/lib/playerSource.ts`) each capture the live clock and arm the
+  `sourceLoad` resume latch that quality swaps use, so the seek lands before
+  any play. The two differ in what they tell the adapter: a download is
+  `"same-content"` and keeps its QoE session, a dub is `"new-content"` and
+  re-keys it, because the audio asset changed. A different VIDEO takes
+  neither claim and starts from its own beginning. Before this, a dub change
+  restarted at 0:00 as a stated boundary of the offline-swap work.
 - **`MiniPlayerWindow.tsx` is chrome, never a second video view.** It draws the
   controls, the drag, the ended/failed states and the accessibility surface over
   the frame the host animates. The drag node never takes the native driver

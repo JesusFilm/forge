@@ -250,6 +250,17 @@ function makeRequest(
   }
 }
 
+/** The same video on another audio track: same slug, a named different
+ *  language, a different Mux asset. */
+function frenchDubRequest(): PlaybackRequest {
+  return makeRequest({
+    autostart: false,
+    streamingUrl: URL_B,
+    progressLanguageSlug: "french",
+    session: { ...SESSION_A, languageSlug: "french" },
+  })
+}
+
 let mounted: TestInstance | null = null
 
 function attachSlot(
@@ -2681,15 +2692,7 @@ describe("quality tier swaps (U2)", () => {
     expect(video.useVideoPlayer.mock.calls[0][0]).toBe(CAPPED_HIGH_A)
 
     await act(async () => {
-      requestStore.updateSlot(
-        id,
-        makeRequest({
-          autostart: false,
-          streamingUrl: URL_B,
-          progressLanguageSlug: "french",
-          session: { ...SESSION_A, languageSlug: "french" },
-        }),
-      )
+      requestStore.updateSlot(id, frenchDubRequest())
     })
 
     expect(video.__player.replaceAsync).toHaveBeenCalledTimes(1)
@@ -2812,6 +2815,91 @@ describe("quality tier swaps (U2)", () => {
     expect(video.__player.play).not.toHaveBeenCalled()
   })
 
+  it("a dub change resumes where the previous dub was, and keeps playing", async () => {
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 305
+    video.__player.duration = 1800
+    video.__player.play.mockClear()
+
+    // Same slug, a named different language, a different Mux asset: the
+    // viewer picked another audio track, not another video.
+    await act(async () => {
+      requestStore.updateSlot(id, frenchDubRequest())
+    })
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(URL_B)
+
+    // Settle WITHOUT the load, so the promise-time window is observable on
+    // its own: the host owns the resume, and a play here would land at 0:00.
+    await act(async () => {
+      video.__settleReplace(undefined, { withholdLoad: true })
+    })
+    expect(video.__player.play).not.toHaveBeenCalled()
+    // SYNTHETIC: the fresh item's zeroed clock, stood up by hand because the
+    // withheld load skips the mock's own reset.
+    video.__player.currentTime = 0
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+    expect(video.__player.currentTime).toBe(305)
+    expect(video.__player.play).toHaveBeenCalledTimes(1)
+  })
+
+  it("a paused viewer's dub change resumes paused, at the same place (the host latch alone; the route's autostart may still play)", async () => {
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 77
+    video.__player.duration = 1800
+    video.__player.playing = false
+    video.__player.play.mockClear()
+
+    await act(async () => {
+      requestStore.updateSlot(id, frenchDubRequest())
+    })
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+    expect(video.__player.currentTime).toBe(77)
+    expect(video.__player.play).not.toHaveBeenCalled()
+  })
+
+  it("a different video is not a dub change: it starts from its own beginning", async () => {
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 305
+    video.__player.duration = 1800
+    video.__player.play.mockClear()
+
+    await act(async () => {
+      requestStore.updateSlot(
+        id,
+        makeRequest({
+          autostart: false,
+          streamingUrl: URL_B,
+          progressVideoId: "video-b",
+          session: {
+            ...SESSION_A,
+            videoId: "video-b",
+            videoSlug: "video-b-slug",
+          },
+        }),
+      )
+    })
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+    expect(video.__player.currentTime).toBe(0)
+  })
+
   it("a cross-asset swap mid-pick invalidates the latch: no seek to the stale capture", async () => {
     const id = attachSlot({ autostart: false })
     await renderHost()
@@ -2826,18 +2914,11 @@ describe("quality tier swaps (U2)", () => {
     })
     expect(video.__player.replaceAsync).toHaveBeenCalledWith(CAPPED_HIGH_A)
 
-    // A dub change lands mid-swap: a DIFFERENT asset, same slug. The capture
-    // belongs to the old stream and must not seek the arriving one.
+    // A dub change lands mid-swap: a DIFFERENT asset, same slug. The quality
+    // capture belongs to the old stream; the dub change takes its own capture
+    // from the live clock, so the arriving dub still resumes in place.
     await act(async () => {
-      requestStore.updateSlot(
-        id,
-        makeRequest({
-          autostart: false,
-          streamingUrl: URL_B,
-          progressLanguageSlug: "french",
-          session: { ...SESSION_A, languageSlug: "french" },
-        }),
-      )
+      requestStore.updateSlot(id, frenchDubRequest())
     })
     expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(CAPPED_HIGH_B)
 
@@ -2853,9 +2934,69 @@ describe("quality tier swaps (U2)", () => {
       video.__player.__emit("sourceLoad")
     })
 
-    // No seek to 500 — the new dub starts at zero. The rate still rides.
-    expect(video.__player.currentTime).toBe(0)
+    // The new dub resumes at the viewer's place. The rate still rides.
+    expect(video.__player.currentTime).toBe(500)
     expect(video.__player.playbackRate).toBe(1.5)
+  })
+
+  it("tier then dub: the dub load's error still writes the tier back", async () => {
+    datadog.datadogLog.warn.mockClear()
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 400
+    video.__player.duration = 900
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    expect(video.__player.replaceAsync).toHaveBeenCalledWith(CAPPED_HIGH_A)
+
+    // The dub change takes over the one latch; the tier's revert leg rides it.
+    await act(async () => {
+      requestStore.updateSlot(id, frenchDubRequest())
+    })
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(CAPPED_HIGH_B)
+
+    await act(async () => {
+      video.__player.__emit("statusChange", { status: "error" })
+    })
+    expect(settings().getSnapshot().qualityTier).toBe("auto")
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(URL_B)
+    const dubReleases = datadog.datadogLog.warn.mock.calls.filter(
+      ([name]) => name === "player.dub_swap_resume_released",
+    )
+    expect(dubReleases).toHaveLength(1)
+    expect(releaseLogs()).toHaveLength(0)
+  })
+
+  it("dub then tier: the capped dub's error writes the tier back", async () => {
+    datadog.datadogLog.warn.mockClear()
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 400
+    video.__player.duration = 900
+    await act(async () => {
+      requestStore.updateSlot(id, frenchDubRequest())
+    })
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(URL_B)
+
+    // A tier pick while the dub latch is armed takes its own capture.
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(CAPPED_HIGH_B)
+
+    await act(async () => {
+      video.__player.__emit("statusChange", { status: "error" })
+    })
+    expect(settings().getSnapshot().qualityTier).toBe("auto")
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(URL_B)
+    expect(releaseLogs()).toHaveLength(1)
+    expect(releaseLogs()[0][1]).toMatchObject({
+      release_reason: "load_error",
+      reverted_tier: "auto",
+    })
   })
 
   it("the latch defers to a cast session that starts mid-swap: seek and rate land, play does not", async () => {
@@ -3188,15 +3329,7 @@ describe("playback speed (U3)", () => {
     })
 
     await act(async () => {
-      requestStore.updateSlot(
-        id,
-        makeRequest({
-          autostart: false,
-          streamingUrl: URL_B,
-          progressLanguageSlug: "french",
-          session: { ...SESSION_A, languageSlug: "french" },
-        }),
-      )
+      requestStore.updateSlot(id, frenchDubRequest())
     })
 
     expect(settings().getSnapshot()).toMatchObject({

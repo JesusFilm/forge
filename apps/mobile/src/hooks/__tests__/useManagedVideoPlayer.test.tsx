@@ -985,12 +985,25 @@ describe("useManagedVideoPlayer — quality-constraint swap admission (U2)", () 
       video.__settleReplace()
     })
 
-    // Cross-asset keeps today's behavior exactly: promise-time resume, the
-    // old QoE session finalized as abandoned, a new one opened.
-    expect(video.__player.play).toHaveBeenCalledTimes(2)
+    // A different asset under the SAME identity is a dub change: the host
+    // seeks first, so the promise-time play stays suppressed, but the audio
+    // asset changed, so the old QoE session still closes and a new one opens.
+    expect(video.__player.play).toHaveBeenCalledTimes(1)
     expect(qoeMock.createVideoQoeSession).toHaveBeenCalledTimes(2)
     expect(qoeMock.__sessions[0].finalize).toHaveBeenCalledWith("abandoned")
     expect(qoeMock.__sessions[1].contentId).toBe("assetBBB222")
+
+    await rerender(renderer, URL_A, IDENTITY_B)
+    await act(async () => {
+      video.__settleReplace()
+    })
+
+    // A different VIDEO keeps today's behavior exactly: promise-time resume,
+    // the old QoE session finalized as abandoned, a new one opened.
+    expect(video.__player.play).toHaveBeenCalledTimes(2)
+    expect(qoeMock.createVideoQoeSession).toHaveBeenCalledTimes(3)
+    expect(qoeMock.__sessions[1].finalize).toHaveBeenCalledWith("abandoned")
+    expect(qoeMock.__sessions[2].contentId).toBe("assetAAA111")
   })
 })
 
