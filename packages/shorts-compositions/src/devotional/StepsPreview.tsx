@@ -1,50 +1,135 @@
-import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion"
+import {
+  AbsoluteFill,
+  Easing,
+  Img,
+  interpolate,
+  staticFile,
+  useCurrentFrame,
+  useVideoConfig,
+} from "remotion"
 
 import { loadShortFonts } from "../fonts"
+import { loadLiterata } from "./teaser-fonts"
 import { StepProgressLine } from "./StepProgressLine"
 
 /**
- * A review-only composition: the step row alone, on the devotional's dark
- * ground, so the owner can judge the MOTION without a 10-minute film render.
- * Never shipped in a devotional; it exists so an animation can be approved in
- * a minute instead of after an encode (see the preview-before-render rule).
+ * A review-only composition: the step row and the hand-over between two steps,
+ * over a still of the film, so the owner can judge the MOTION (and the blur
+ * behind it) without a ten-minute film render. Never shipped in a devotional.
  */
 export const STEPS_PREVIEW_ID = "devotional-steps-preview"
 
+/** The step being entered, written across the frame at a whisper: it arrives
+ *  out of the blur, comes into focus with the picture, and goes back into the
+ *  blur as the reflection starts (owner). */
+function BigStepWord({
+  label,
+  frame,
+  fps,
+  px,
+  atFrame,
+}: {
+  label: string
+  frame: number
+  fps: number
+  px: (n: number) => number
+  /** Frame the hand-over happens on. */
+  atFrame: number
+}) {
+  const t = (frame - atFrame) / fps
+  const ease = Easing.bezier(0.42, 0, 0.58, 1)
+  // in over 1.1s, hold 1.2s, out over 1.2s
+  const opacity = interpolate(t, [-0.2, 1.1, 2.3, 3.5], [0, 0.15, 0.15, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+    easing: ease,
+  })
+  const blur = interpolate(t, [-0.2, 1.1, 2.3, 3.5], [26, 0, 0, 26], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+    easing: ease,
+  })
+  const scale = interpolate(t, [-0.2, 3.5], [1.06, 1.0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  })
+  if (opacity <= 0.002) return null
+  return (
+    <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
+      <div
+        style={{
+          fontFamily: "'Literata', Georgia, serif",
+          fontWeight: 600,
+          fontSize: px(96),
+          letterSpacing: px(6),
+          color: "#ffffff",
+          opacity,
+          filter: `blur(${blur.toFixed(2)}px)`,
+          transform: `scale(${scale.toFixed(3)})`,
+          whiteSpace: "nowrap",
+        }}
+      >
+        {label}
+      </div>
+    </AbsoluteFill>
+  )
+}
+
 export const StepsPreview = () => {
   loadShortFonts()
+  loadLiterata()
   const frame = useCurrentFrame()
   const { fps, width, height } = useVideoConfig()
   const px = (n: number) => (n * Math.min(width, height)) / 390
-  // Three stages of four seconds each, as they would run in a devotional.
-  const stage = Math.round(4 * fps)
-  const starts = [0, stage, stage * 2]
+  // WATCH runs 5s, REFLECT 6s, PRAY to the end — the shape of a real piece,
+  // compressed so the two hand-overs can be judged in one preview.
+  const watchStart = 0
+  const reflectStart = Math.round(5 * fps)
+  const prayStart = Math.round(11 * fps)
+  const endFrame = Math.round(16 * fps)
+  // The picture blurs while the step changes hands and clears again as the
+  // next stage settles.
+  const blurAt = (at: number) =>
+    interpolate(
+      frame,
+      [at - 0.4 * fps, at + 0.6 * fps, at + 2.6 * fps, at + 3.6 * fps],
+      [0, 1, 1, 0],
+      { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+    )
+  const blurAmount = Math.max(blurAt(reflectStart), blurAt(prayStart))
   return (
     <AbsoluteFill style={{ background: "#0c0805" }}>
-      {/* Where it sits in the real piece: just under the top edge. */}
-      <div style={{ position: "absolute", top: px(26), left: 0, right: 0 }}>
-        <StepProgressLine
-          steps={["WATCH", "REFLECT", "PRAY"]}
-          starts={starts}
-          endFrame={stage * 3}
-          frame={frame}
-          fps={fps}
-          px={px}
-        />
-      </div>
-      {/* The same row at the size the step-connector cards use, centred. */}
-      <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
-        <StepProgressLine
-          steps={["WATCH", "REFLECT", "PRAY"]}
-          starts={starts}
-          endFrame={stage * 3}
-          frame={frame}
-          fps={fps}
-          px={px}
-          size={19}
-          railUnits={64}
+      <AbsoluteFill>
+        <Img
+          src={staticFile("steps-preview-bg.jpg")}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            filter: `blur(${(blurAmount * 18).toFixed(2)}px) brightness(${(1 - 0.25 * blurAmount).toFixed(3)})`,
+            transform: "scale(1.06)",
+          }}
         />
       </AbsoluteFill>
+      <BigStepWord
+        label="REFLECT"
+        frame={frame}
+        fps={fps}
+        px={px}
+        atFrame={reflectStart}
+      />
+      {/* The row sits at the top, spanning the reflection text's own column. */}
+      <div style={{ position: "absolute", top: px(24), left: 0, right: 0 }}>
+        <StepProgressLine
+          steps={["WATCH", "REFLECT", "PRAY"]}
+          starts={[watchStart, reflectStart, prayStart]}
+          endFrame={endFrame}
+          frame={frame}
+          fps={fps}
+          px={px}
+          widthPx={px(390)}
+        />
+      </div>
     </AbsoluteFill>
   )
 }

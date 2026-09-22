@@ -63,7 +63,7 @@ export const DevotionalRoot = () => (
       width={DEVOTIONAL_WIDE_WIDTH}
       height={DEVOTIONAL_WIDE_HEIGHT}
       fps={DEVOTIONAL_FPS}
-      durationInFrames={13 * DEVOTIONAL_FPS}
+      durationInFrames={16 * DEVOTIONAL_FPS}
     />
     <Composition
       id={DEVOTIONAL_COMPOSITION_ID}

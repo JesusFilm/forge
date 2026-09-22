@@ -14,7 +14,11 @@ const ENTRY = path.join(
 const out = process.argv[2]
 
 await ensureBrowser()
-const serveUrl = await bundle({ entryPoint: ENTRY, webpackOverride: (c) => c })
+const serveUrl = await bundle({
+  entryPoint: ENTRY,
+  publicDir: path.join(ROOT, "packages/shorts-compositions/public"),
+  webpackOverride: (c) => c,
+})
 const composition = await selectComposition({
   serveUrl,
   id: "devotional-steps-preview",

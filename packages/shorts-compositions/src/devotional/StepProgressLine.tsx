@@ -34,8 +34,12 @@ export type StepProgressLineProps = {
   px: (n: number) => number
   /** Type size in design units (px() is applied). */
   size?: number
-  /** Length of the hairline between two labels, in design units. */
+  /** Hairline length in design units. Ignored when `widthPx` is set: the
+   *  hairlines then stretch to fill the container. */
   railUnits?: number
+  /** Container width in px. The row spans it exactly — owner's rule is that
+   *  the steps line up with the reflection text's column. */
+  widthPx?: number
   /** Overall opacity, for fading the whole row in and out. */
   opacity?: number
 }
@@ -49,6 +53,7 @@ export function StepProgressLine({
   px,
   size = 13,
   railUnits = 46,
+  widthPx,
   opacity = 1,
 }: StepProgressLineProps) {
   const fade = Math.max(1, Math.round(FADE_SEC * fps))
@@ -65,6 +70,7 @@ export function StepProgressLine({
   const pulse =
     0.72 + 0.28 * Math.sin((2 * Math.PI * (frame / fps)) / PULSE_SEC)
   const gap = px(railUnits * 0.3)
+  const stretch = widthPx != null
 
   return (
     <div
@@ -75,80 +81,101 @@ export function StepProgressLine({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        gap,
         opacity,
         pointerEvents: "none",
       }}
     >
-      {steps.map((label, i) => {
-        const on = arrived(i)
-        const off = arrived(i + 1)
-        // dim → gold as it arrives, gold → white as the next one takes over.
-        const color = interpolateColors(
-          off,
-          [0, 1],
-          [interpolateColors(on, [0, 1], [AHEAD, GOLD]), DONE],
-        )
-        const glow = on * (1 - off) * pulse
-        // The hairline after this label carries the step's own progress: it
-        // fills while the step is being served and stays lit behind you.
-        const to = i + 1 < starts.length ? starts[i + 1] : endFrame
-        const fill = interpolate(frame, [starts[i], to], [0, 1], {
-          extrapolateLeft: "clamp",
-          extrapolateRight: "clamp",
-        })
-        return (
-          <div
-            key={label}
-            style={{ display: "flex", alignItems: "center", gap }}
-          >
-            <span
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap,
+          ...(stretch ? { width: widthPx } : {}),
+        }}
+      >
+        {steps.map((label, i) => {
+          const on = arrived(i)
+          const off = arrived(i + 1)
+          // dim → gold as it arrives, gold → white as the next one takes over.
+          const color = interpolateColors(
+            off,
+            [0, 1],
+            [interpolateColors(on, [0, 1], [AHEAD, GOLD]), DONE],
+          )
+          const live = on * (1 - off)
+          const glow = live * pulse
+          // Grows a touch while it is the live step, from its own centre, so
+          // the row's spacing never shifts.
+          const grow = 1 + 0.08 * live
+          // The hairline after this label carries the step's own progress: it
+          // fills while the step is being served and stays lit behind you.
+          const to = i + 1 < starts.length ? starts[i + 1] : endFrame
+          const fill = interpolate(frame, [starts[i], to], [0, 1], {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          })
+          return (
+            <div
+              key={label}
               style={{
-                fontFamily: "'Inter', -apple-system, system-ui, sans-serif",
-                fontWeight: 600,
-                fontSize: px(size),
-                letterSpacing: px(size * 0.22),
-                color,
-                // Two tight halos rather than one wide one: a single large
-                // blur spreads behind the whole word and reads as a lit box,
-                // not as letters catching light.
-                textShadow:
-                  glow > 0.01
-                    ? `0 0 ${px(4) * glow}px rgba(242,196,107,${0.5 * glow}), ` +
-                      `0 0 ${px(10) * glow}px rgba(242,196,107,${0.22 * glow})`
-                    : "none",
-                whiteSpace: "nowrap",
+                display: "flex",
+                alignItems: "center",
+                gap,
+                ...(stretch && i < steps.length - 1 ? { flex: 1 } : {}),
               }}
             >
-              {label}
-            </span>
-            {i < steps.length - 1 ? (
               <span
                 style={{
-                  position: "relative",
+                  fontFamily: "'Inter', -apple-system, system-ui, sans-serif",
+                  fontWeight: 600,
+                  fontSize: px(size),
+                  letterSpacing: px(size * 0.22),
+                  color,
+                  // Two tight halos rather than one wide one: a single large
+                  // blur spreads behind the whole word and reads as a lit box,
+                  // not as letters catching light.
+                  textShadow:
+                    glow > 0.01
+                      ? `0 0 ${px(4) * glow}px rgba(242,196,107,${0.55 * glow}), ` +
+                        `0 0 ${px(11) * glow}px rgba(242,196,107,${0.3 * glow})`
+                      : "none",
+                  whiteSpace: "nowrap",
                   display: "inline-block",
-                  width: px(railUnits),
-                  height: px(1),
-                  background: "rgba(255,255,255,0.2)",
-                  borderRadius: px(1),
+                  transform: `scale(${grow.toFixed(3)})`,
+                  transformOrigin: "center",
                 }}
               >
+                {label}
+              </span>
+              {i < steps.length - 1 ? (
                 <span
                   style={{
-                    position: "absolute",
-                    top: 0,
-                    bottom: 0,
-                    left: 0,
-                    width: `${(fill * 100).toFixed(2)}%`,
-                    background: fill >= 1 ? DONE : GOLD,
+                    position: "relative",
+                    display: "inline-block",
+                    ...(stretch ? { flex: 1 } : { width: px(railUnits) }),
+                    height: px(1),
+                    background: "rgba(255,255,255,0.2)",
                     borderRadius: px(1),
                   }}
-                />
-              </span>
-            ) : null}
-          </div>
-        )
-      })}
+                >
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      bottom: 0,
+                      left: 0,
+                      width: `${(fill * 100).toFixed(2)}%`,
+                      background: fill >= 1 ? DONE : GOLD,
+                      borderRadius: px(1),
+                    }}
+                  />
+                </span>
+              ) : null}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
