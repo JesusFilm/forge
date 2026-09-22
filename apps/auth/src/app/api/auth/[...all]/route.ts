@@ -773,6 +773,8 @@ async function applyChangelogAuthorizePolicy(
       : [])
   const decision = await createChangelogOAuthGrantDecision({
     lifecycle: "authorization",
+    sessionId: session.session.id,
+    redirectUri: authorizeUrl.searchParams.get("redirect_uri") ?? undefined,
     userId: session.user.id,
     membershipStatus: (session.user as { membershipStatus?: unknown })
       .membershipStatus,

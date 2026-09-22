@@ -68,7 +68,17 @@ export async function manageChangelogContributors(
             },
           },
         })
-        if (changed.count)
+        if (changed.count && recipient) {
+          // Cancel unused authority atomically so an old approval cannot
+          // silently restore access after this revocation.
+          await tx.changelogPreapproval.updateMany({
+            where: {
+              environmentId: environment.id,
+              email: recipient.email.trim().toLowerCase(),
+              state: "pending",
+            },
+            data: { state: "canceled", version: { increment: 1 } },
+          })
           await tx.authAuditEvent.create({
             data: buildAuditEvent({
               eventType: "changelog_contributor_revoked",
@@ -81,6 +91,7 @@ export async function manageChangelogContributors(
               },
             }),
           })
+        }
         return { changed: changed.count > 0 }
       }
       return {

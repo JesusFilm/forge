@@ -1,3 +1,7 @@
+import {
+  redeemChangelogPreapprovals,
+  type PreapprovalRedemptionInput,
+} from "./changelog-preapproval-redemption.service"
 import { isChangelogProductionEnabled } from "@/config/env"
 import { prisma } from "@/db/client"
 import { CHANGELOG_APP_KEY } from "@/domain/apps"
@@ -33,11 +37,14 @@ export type ChangelogOAuthGrantDependencies = {
     environmentId: string
     userId: string
   }): Promise<ChangelogGrant[]>
+  redeemPreapprovals(input: PreapprovalRedemptionInput): Promise<void>
   productionEnabled(): boolean
 }
 
 export type ChangelogOAuthGrantInput = {
   lifecycle: ChangelogOAuthLifecycle
+  sessionId?: string
+  redirectUri?: string
   userId?: string | null
   membershipStatus?: unknown
   clientId?: string | null
@@ -103,6 +110,7 @@ const defaultDependencies: ChangelogOAuthGrantDependencies = {
         scopes: { select: { scope: { select: { key: true } } } },
       },
     }),
+  redeemPreapprovals: redeemChangelogPreapprovals,
   productionEnabled: isChangelogProductionEnabled,
 }
 
@@ -151,6 +159,23 @@ export async function createChangelogOAuthGrantDecision(
       toChangelogEnvironmentKind(environment.kind) !== target.environmentKind
     ) {
       return deny()
+    }
+
+    if (
+      input.lifecycle === "authorization" &&
+      input.sessionId &&
+      input.clientId &&
+      input.redirectUri &&
+      (target.environmentKind !== "production" ||
+        dependencies.productionEnabled())
+    ) {
+      await dependencies.redeemPreapprovals({
+        userId: input.userId,
+        sessionId: input.sessionId,
+        environmentId: environment.id,
+        clientId: input.clientId,
+        redirectUri: input.redirectUri,
+      })
     }
 
     const grants = await dependencies.findApprovedUserGrants({
