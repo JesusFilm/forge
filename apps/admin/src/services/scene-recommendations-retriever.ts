@@ -307,6 +307,8 @@ export async function queryScenesSimilar(
  * the dub lookup or parse a vector string for every candidate comparison.
  * The per-seed limit is applied before best-per-video union, as in the legacy
  * loop. Hydrate metadata/vector text only after selecting those survivors.
+ * Project similarity after DISTINCT ON so sorting and scoring share one
+ * distance evaluation (and one fetch of a potentially toasted vector).
  */
 export async function queryScenesSimilarMany(
   prisma: SceneRecommendationQueryClient,
@@ -372,11 +374,11 @@ export async function queryScenesSimilarMany(
       SELECT best.*, seeds.seed_index
       FROM seeds
       CROSS JOIN LATERAL (
-        SELECT * FROM (
+        SELECT eligible_id, video_id, 1 - distance AS similarity FROM (
           SELECT DISTINCT ON (eligible.video_id)
             eligible.eligible_id,
             eligible.video_id,
-            1 - (eligible.embedding <=> seeds.embedding) AS similarity
+            eligible.embedding <=> seeds.embedding AS distance
           FROM eligible
           ORDER BY eligible.video_id, eligible.embedding <=> seeds.embedding
         ) nearest

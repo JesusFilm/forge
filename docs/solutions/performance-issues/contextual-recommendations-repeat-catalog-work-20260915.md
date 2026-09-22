@@ -119,3 +119,61 @@ separate bounded ANN retriever and immutable deadline intact.
 
 Related: [bounded semantic retrieval](semantic-recommendation-retrieval-bounded-pgvector-fanout.md),
 [Web ETag starvation](watch-etag-hashing-starves-recommendation-admission-20260915.md).
+
+## September 22: count distance evaluations, not just statements
+
+The combined statement still evaluated each seed/candidate cosine distance
+twice. Its inner `DISTINCT ON` selected `1 - (embedding <=> seed)` while sorting
+by `embedding <=> seed`. PostgreSQL did not reuse the nested expression. With
+externally stored vectors, both evaluations also fetched the TOAST value.
+
+A new bounded production capture identified a 2,262 ms instance of this query
+in `ContextualSceneRecommendations`, trace
+`6ab1d0ee00000000579e185f90765b3f`. Other Admin connections remained idle during
+slow catalog statements; that observation does not establish pool saturation.
+
+The correction returns `distance` from the inner `DISTINCT ON` and computes
+`1 - distance AS similarity` in its outer projection. The same distance still
+orders chunks within each video, the same similarity orders the per-seed limit,
+and the final union and hydration are unchanged. Materialized seeds and all
+eligibility, provenance, playback and exclusion predicates remain intact.
+
+The real PostgreSQL regression measures `pg_stat_xact_user_functions` with
+`SET LOCAL track_functions = 'all'`: four eligible chunks and two seeds cause
+**16 calls before and 8 after**. This test needs a local role permitted to set
+`track_functions` (the owned fixture uses its PostgreSQL owner). The setting is
+transaction-local and never applied to production. Full-row parity against the
+single-seed service loop and final-seed coverage also pass.
+
+The isolated 1,536-dimensional synthetic fixture contains 2,668 chunks, matching
+the current English chunk population, and covers 3, 37 and 176 seeds. The latter
+is the current maximum across all editions of one English video, even though
+the longest individual transcript declares only 37 chunks. Do not substitute
+the per-transcript count for the actual service workload.
+
+| Seeds | Baseline analyzed SQL | One distance evaluation | Shared buffer hits before / after |
+| ----- | --------------------- | ----------------------- | --------------------------------- |
+| 3     | 107 ms                | 77 ms                   | 48,512 / 24,500                   |
+| 37    | 1,055 ms              | 706 ms                  | 593,378 / 297,230                 |
+| 176   | 4,993 ms              | 3,315 ms                | 2,820,344 / 1,411,640             |
+
+All returned fields matched for all three populations. With three simultaneous
+176-seed queries, alternating baseline/candidate rounds took 5,332–5,525 ms
+before and 3,376–3,407 ms after. The ten-connection pool was unchanged. Concurrent
+small committed updates remained below 34 ms in both versions: **this experiment
+does not reproduce or explain the historical 701 ms selection budget delay**.
+It proves reduced exact-query work, not complete Watch runtime recovery. The
+fixture simplifies global catalog distribution and is not a production latency
+percentile or feat-447's restored-snapshot performance gate.
+
+Explicitly expanding vectors was rejected for this change. A text/vector round
+trip took 917 ms for three seeds versus 107 ms baseline; a binary array/vector
+round trip also slowed that case and introduced substantial temporary-file
+traffic. The chosen projection correction reduces evaluations without adding
+those copies, changing database settings, or increasing deadlines.
+
+[Validation evidence](../../validation/watch-contextual-distance-20260922/results.json)
+records the fixture limits, alternating rounds, output equality and bounded
+production observer cleanup. When optimizing expensive scalar expressions,
+measure their actual call count and buffer work: one SQL statement can still
+duplicate the dominant work.
