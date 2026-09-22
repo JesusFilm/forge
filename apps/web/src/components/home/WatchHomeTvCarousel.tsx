@@ -221,11 +221,18 @@ export function PrimaryAction({
   // prefetches an in-viewport link every time its `href` changes, so baking the
   // position into the rendered href cost one uncacheable RSC round-trip per
   // second for as long as an idle tab sat on /watch (FGE-139 / W-003 measured 33
-  // fetches of one path in 35s, 26,218 B each). Holding it in a ref makes the
-  // rendered href stable by construction — it moves only when the carousel
-  // advances — rather than leaving the fix one `prefetch` default away from
-  // regressing. Deliberately no `prefetch={false}` here: that posture decision
-  // belongs to FGE-215 (W-025).
+  // fetches of one path in 35s, 26,218 B each; a production-build session on
+  // this branch measured 30 in 19s across 19 distinct hrefs).
+  //
+  // Both halves of the ticket's Fix are applied, because each one alone leaves
+  // fetches behind. The stable href — it moves only when the carousel advances —
+  // is what makes the per-second storm impossible by construction rather than
+  // one `prefetch` default away from returning. `prefetch={false}` then covers
+  // the residue the stable href cannot: `next/link` still re-prefetches an
+  // in-viewport link on its own refresh cycle, measured at 8 fetches of this one
+  // destination in 48s. Scope note: this is the hero CTA only, so it neither
+  // pre-empts FGE-215 (W-025, the same posture for category tiles) nor
+  // FGE-209 (W-024, bounding the fan-out itself).
   const playbackTimeRef = useRef(playbackTimeSeconds)
   useEffect(() => {
     playbackTimeRef.current = playbackTimeSeconds
@@ -253,6 +260,7 @@ export function PrimaryAction({
   return (
     <Link
       href={stableHref}
+      prefetch={false}
       onClick={handleClick}
       // The watch page's primary hero action, so both surfaces show the same
       // pill; `min-w-0 max-w-full` keeps a long title from stretching it.

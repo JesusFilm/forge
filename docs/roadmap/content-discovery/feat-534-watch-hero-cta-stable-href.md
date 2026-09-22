@@ -64,10 +64,14 @@ default away from returning:
   browser untouched: those never reach the client router, so rewriting the
   destination there would be silently ignored.
 
-Deliberately NOT done here: `prefetch={false}` on this link. That posture
-decision belongs to FGE-215 (W-025); this fix is shaped so it neither blocks nor
-presumes it, and likewise leaves FGE-209 (W-024, `staleTimes`) and FGE-146
-(W-008, hero CTA retargeting) free.
+- `prefetch={false}` on that same link. Measurement showed the stable href alone
+  is not enough: `next/link` still re-prefetches an in-viewport link on its own
+  refresh cycle, 8 fetches of the one hero destination in 48 s. Both halves of
+  the ticket's Fix paragraph are therefore applied — the stable href makes the
+  per-second storm impossible by construction, and the opt-out clears the
+  residue. Scope is this one link, so FGE-215 (W-025, the same posture for
+  category tiles), FGE-209 (W-024, bounding the fan-out) and FGE-146 (W-008,
+  hero CTA retargeting) are all left free.
 
 ## Constraints
 

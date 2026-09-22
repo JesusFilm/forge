@@ -11,8 +11,13 @@
  * playback position does. The click assertions exist so that stability cannot
  * be bought by dropping resume behaviour.
  *
- * `prefetch` posture is deliberately NOT asserted — this fix makes the href
- * stable rather than unprefetched, leaving FGE-215 (W-025) free to decide it.
+ * `prefetch={false}` is the second half. A stable href stops the per-second
+ * storm but not `next/link`'s own viewport refresh cycle, which a production
+ * build measured re-fetching this one destination 8 times in 48s. `prefetch`
+ * never reaches the DOM through a real `next/link` (it is destructured out
+ * before the spread), so it is observable only through the mock's
+ * `data-prefetch` below — see
+ * `docs/solutions/best-practices/next-link-props-unobservable-three-vacuous-test-traps.md`.
  */
 import { act } from "react"
 import { createRoot } from "react-dom/client"
@@ -110,6 +115,15 @@ describe("Watch home hero CTA href", () => {
 
     expect(first).toBe(second)
     expect(second).toBe(third)
+  })
+
+  it("opts the hero CTA out of route prefetching", () => {
+    renderAt(21)
+
+    // Three-valued on purpose: "false" is the explicit opt-out, "undefined"
+    // would be the default strategy with the prop dropped, and a null anchor
+    // would mean this is no longer a Link at all.
+    expect(anchor().getAttribute("data-prefetch")).toBe("false")
   })
 
   it("renders the autoplay signal without a playback position", () => {
