@@ -258,3 +258,7 @@ The [release evidence](../../operations/watch-contextual-distance-release-2026-0
 credits the aggregate and matching repair gates without claiming continuous zero
 violations. **Feat-464 is now the remaining dependency preventing this ticket's
 closure**; do not continue describing Admin login or matching repair as missing.
+
+## September 22 bounded workload and production follow-up
+
+The [September 22 follow-up](../../operations/watch-budget-followup-2026-09-22.md) again verifies the authorized Admin current-pointer audit: zero affected pointers, ineligible contributions and rebuild backlog. The exact repaired-generation trace remains verified under the preceding release record. These passed checks retain credit; the still-open feat-464 dependency prevents completion.
