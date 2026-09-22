@@ -41,6 +41,9 @@ Code completion must not be mistaken for a working production pilot.
   secret-management process, then verify canonical origin and LD SDK environment.
 - Issue private links for the three existing opaque targets; do not place
   links, JWTs, or secrets in repository evidence.
+- Extend activation and cookie validity to 30 days from link issuance, as
+  requested on 2026-09-22. Repeat activation must not move that deadline;
+  existing signed expirations and per-request LD revocation remain effective.
 - Verify false availability in a fresh browser, true after targeted activation,
   and false again after removing a disposable verification target.
 - Verify the homepage block publication state and complete publication through
@@ -70,13 +73,16 @@ preserving all existing content. Public GraphQL and Watch HTML contain it.
 Canonical revalidation succeeded after the configured legacy-host webhook
 returned 405; feat-531 tracks that separate configuration repair.
 
-The Watch Production server SDK key is now staged in Web production with
-deploys skipped until the normal PR-to-main release. Live SDK initialization
-and all three target matches passed; untargeted/anonymous evaluations stayed
-false. The environment example documents the missing configuration dependency.
+The Watch Production SDK key deployed through PR #2372. Live HTTP verification
+at 22:13 UTC on 2026-09-21 returned availability true and six served cards for
+all three testers, with false availability and denied delivery for an
+untargeted signed identity. Anonymous availability remained false.
 
-Still required: verify the deployed Web runtime uses that key, confirm
-targeted availability true and unmatched availability false, and observe real
-cards in the browser. Successful activation POSTs and a published block are
-insufficient to mark this ticket complete. See the operations document for
-revision IDs, public HTTP measurements, and verification limits.
+The owner subsequently requested longer-lived links. Activation and cookie
+validity are being extended to 30 days from issuance, preserving manual LD
+revocation and existing signed expiry dates. Replacement links must follow
+the normal deployment and live verification.
+
+Still required: observe real cards in the browser. Successful HTTP delivery
+does not establish browser rendering. See the operations document for release
+IDs, public HTTP measurements, and verification limits.

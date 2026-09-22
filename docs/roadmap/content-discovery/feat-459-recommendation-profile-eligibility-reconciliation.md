@@ -212,3 +212,30 @@ At 19:58:20 UTC on September 21, the complete canonical audit finds zero
 ineligible among 171,710 current pointers. This is a fresh passing snapshot,
 not continuous zero or a replacement for authorized Admin evidence. Feat-464 and
 the matching Admin gate still prevent closure.
+
+## September 22 later canonical audit
+
+The [runtime release verification](../../operations/watch-runtime-release-verification-2026-09-22.md)
+records a fresh exact canonical aggregate query at 21:45:11 UTC with zero
+affected current pointers, invalid contributions, rebuild candidates, backlog
+or stale claims. The read-only query took 8.224 seconds; this is not the earlier
+optimized worker batch or an authenticated Admin UI check. Natural projection
+fences now provide additional publication-integrity evidence. Feat-464 and the
+matching Admin evidence still prevent closure; status stays in progress.
+
+The 23:29:43 repeat on `92a597ee…` again reports zero ineligible generations,
+affected pointers/contributions, rebuild candidates, backlog and stale claims.
+Thirteen replacement publications completed in the 21:55–23:29 window. This
+fresh canonical query took 6.696 seconds and remains database evidence; the
+authenticated Admin acceptance and feat-464 dependency are still open.
+
+The final audit sequence subsequently records one affected pointer/contribution
+at 23:56:26, then zero in a consistent read-only repeatable-read/server-clock
+snapshot completed September 22 00:00:01. Keep both observations and the earlier
+diagnostic's stale-clock limitation; no exact pointer repair or continuous-zero
+claim is established. Twenty replacement publications and 183 clean hybrid
+requests are present since 21:55. The two-hour durable workflow audit has 24
+completed batches/heartbeats, 120 classifications and 19 queued rebuilds with
+zero recorded classification or dispatch failures; completion gaps reach
+317.706 seconds. See the [release record](../../operations/watch-runtime-release-verification-2026-09-22.md).
+Authenticated Admin acceptance and feat-464 still prevent closure.

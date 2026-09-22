@@ -73,9 +73,13 @@ afterEach(() => {
 })
 
 describe("tester activation and homepage availability", () => {
-  it("exchanges a real signed link for a scoped secure cookie and evaluates only the tester ID", async () => {
+  it("exchanges a 29-day-old link and keeps the scoped cookie subject to LD revocation", async () => {
+    vi.useFakeTimers()
+    const issuedAt = new Date("2026-09-21T12:00:00Z")
+    vi.setSystemTime(issuedAt)
     vi.stubEnv("NODE_ENV", "production")
     const token = await activationToken()
+    vi.setSystemTime(issuedAt.getTime() + 29 * 24 * 60 * 60 * 1000)
     const response = await POST(request(token))
     expect(response.status).toBe(204)
     expect(await response.text()).toBe("")
@@ -84,6 +88,7 @@ describe("tester activation and homepage availability", () => {
     expect(setCookie).toMatch(/Secure/i)
     expect(setCookie).toMatch(/SameSite=lax/i)
     expect(setCookie).toContain("Path=/watch/api/recommendations")
+    expect(setCookie).toContain("Max-Age=86400")
     expect(setCookie).not.toMatch(/Domain=|forge_web_session/i)
     expect(setCookie).not.toContain(token)
     expect(

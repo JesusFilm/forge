@@ -482,3 +482,93 @@ unattributed. Another task restored the homepage pilot in PR #2370; this task
 received the user's instruction to keep it removed. The single-block rollback
 requires an authenticated publishing connection; no authored-content or flag
 change has yet been made by this task.
+
+## September 22 exact runtime release and independent wait evidence
+
+PR #2371 merged as `ce421561ee9bcf89991dea5a060a656e45c3434b`; Admin and
+worker now independently verify that exact revision and both compiled fixes.
+The [release verification](../../operations/watch-runtime-release-verification-2026-09-22.md)
+records the indexed final production query at 9.982 ms for 206 rows, the initial
+logger-only HTTP and semantic populations, and the remaining acceptance gates.
+Current production PostgreSQL has a 64,000,000-byte shared-memory mount, which
+supports the bounded local allocation reproduction; historical concurrency
+remains unknown. No memory limit, deadline or durability setting was changed.
+
+The failed selection's persisted budget transaction timestamp is near the start
+of its 697 ms SQL span, arguing against assigning the whole call to native pool
+acquisition. A later read-only sample observes a 264.884 ms-old budget statement
+in `WalSync`; that is query age, not measured total WAL-wait duration, and does
+not establish the full incident cause. Keep this independent question open and
+do not describe the short healthy release window as complete recovery.
+
+## September 22 budget timing diagnostic
+
+The separate 701 ms capability-budget call remains unattributed. The supported
+single-statement diagnostic now brackets one function invocation with server
+clocks and compares it with the complete monotonic client call. Slow completed
+calls emit bounded, identifier-free timings. The remainder includes possible
+pool, planning, commit, transport and scheduling time; it is not labelled WAL
+duration. No function, commit boundary, deadline, retry or durability setting
+changes. See the [measurement guidance](../../solutions/best-practices/separate-budget-function-time-from-driver-latency-20260922.md).
+
+All 7,305 Admin tests and 17 real PostgreSQL tests pass, including concurrent
+budgets, independent durability and injected local server/client delay checks.
+The 2,000-call comparison preserves every charge with approximately 0.07–0.36 ms
+warm median overhead. An actual Next build accepts all 15 concurrent selections
+in 237–341 ms and all three playback mutations in 259–339 ms during 30 concurrent
+catalog requests. [Validation artifact](../../validation/watch-budget-timing-20260922/results.json)
+retains individual rounds and their limits. This is a diagnostic change, not a
+proven fix for the remaining selection delay. Exact deployment verification and
+naturally slow-call attribution remain required; keep status in progress.
+
+## September 22 diagnostic release and natural WAL evidence
+
+PR #2374 is independently verified on Admin and worker at
+`92a597ee03074bf4d79b0eb21db4499046ecd09f`, including the compiled diagnostic
+and both preceding fixes. Bounded read-only captures now correlate 212–312 ms
+budget calls with near-zero measured function execution, WAL sync/write waits,
+and database-volume I/O pressure despite little nearby write traffic. A final
+254 ms call repeats that pattern. No sampled row/advisory blocker is present.
+Separate 406–1,708 ms calls lack simultaneous server-wait evidence; do not assign
+their remainder or the historical 701 ms selection failure to WAL by inference.
+The underlying storage cause and a demonstrated corrective change remain open.
+
+The normal public-browser canary supplies two six-card served envelopes, one
+selection HTTP 200 with a matching attributable database row, and accepted
+playback evidence. Missing browser responses remain explicit. No terminal 409
+was exercised. See the [release record](../../operations/watch-runtime-release-verification-2026-09-22.md)
+for observation populations, runtime revisions, temporary-observer cleanup and
+the remaining authenticated homepage rollback. Keep the ticket in progress.
+
+## September 22 exact contextual scoring continuation
+
+The resumed investigation identifies another concrete query inefficiency:
+`queryScenesSimilarMany` evaluates cosine distance twice for every eligible
+chunk/seed pair. A production contextual query took 2,262 ms while other Admin
+connections were idle. The isolated PostgreSQL regression fails with 16 distance
+calls and passes with 8 after moving similarity projection outside the inner
+`DISTINCT ON`. Exact outputs and all 176 seeds remain represented.
+
+The correction reduces three concurrent long-film queries from 5,332–5,525 ms to
+3,376–3,407 ms in the documented synthetic fixture, without changing deadlines,
+pool sizes, ranking or eligibility. Concurrent small writes stayed below 34 ms
+before and after, so it is not proof of the historical selection timeout's
+cause. The bounded production wait capture did not catch a slow budget call;
+all observers stopped and no global diagnostic settings changed.
+
+[Learning and verification](../../solutions/performance-issues/contextual-recommendations-repeat-catalog-work-20260915.md#september-22-count-distance-evaluations-not-just-statements)
+retain the rejected vector-copy experiments and workload limits. This entry
+records local validation; exact automatic deployment and production observation
+remain required. Keep this ticket and its independent acceptance gates open.
+
+The completed 21:55–23:55 UTC window has 23 selection 200s, two selection
+400s and no selection 503s; playback has zero 5xx / 8,725 requests. Independent
+Railway delivery outcomes reconcile all 1,524 delivery requests and retain
+**one HTTP 200 `delivery_timeout` among 761 delivery 200s**, at 23:48:30.
+Its final persistence transaction/rollback is delayed. A bounded task-owned
+read diagnostic overlaps the incident and may have contributed; the trace
+does not resolve server execution, native pool, lock or storage attribution.
+No traffic is excluded. This is not a clean final-release recovery window.
+Admin/worker remain independently verified at `92a597ee…` at September 22
+00:10:27. The [release record](../../operations/watch-runtime-release-verification-2026-09-22.md)
+retains the exact revisions, collector gaps, transient pointer audit and cleanup.

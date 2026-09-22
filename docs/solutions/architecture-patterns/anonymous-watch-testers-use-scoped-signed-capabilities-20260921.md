@@ -28,7 +28,7 @@ without introducing visible authentication UI.
 ## Guidance
 
 Keep tester eligibility separate from account identity. An operator issues a
-short-lived, origin-bound signed link with an opaque UUID and feature scope.
+time-limited, origin-bound signed link with an opaque UUID and feature scope.
 Exchange it for a distinct-purpose signed HttpOnly cookie. Send only the
 verified UUID in a dedicated LD context kind; never treat an email/query/local
 storage value as authenticated identity or create an account session for it.
@@ -36,8 +36,16 @@ storage value as authenticated identity or create an account session for it.
 `apps/web/src/lib/recommendation-tester-token.ts` pins algorithm, issuer,
 audience, scope, and maximum lifetimes using `jose`. Activation and session
 audiences differ so a copied link token cannot be used directly as a cookie.
-Repeat activation cannot extend the original seven-day bound. No issuance
+Repeat activation cannot extend the original 30-day bound. No issuance
 endpoint exists; the operator CLI reads a separate server secret.
+
+The owner extended both lifetimes to 30 days after the initial 24-hour link
+and seven-day session policy proved too short for the pilot. Changing maximum
+lifetimes does not rewrite existing signed expirations: issue new links and
+activate them to replace browser cookies. When both purposes share an expiry,
+reject an exchange if that deadline passes during verification rather than
+issuing an already-expired cookie. Test day 29, the final second, exact expiry,
+old credentials, and LD revocation independently of lifetime constants.
 
 Keep bearer tokens out of HTTP URLs: a standalone HTML route reads a fragment,
 clears it from history, posts it under the existing bounded same-origin JSON

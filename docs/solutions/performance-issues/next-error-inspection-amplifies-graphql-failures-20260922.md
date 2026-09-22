@@ -58,3 +58,14 @@ every historical capability-budget delay. The
 affects a different consumer and does not address per-error Next inspection.
 Preserve separate production HTTP, semantic fallback and browser populations when
 verifying release recovery.
+
+## Release and observation boundary
+
+The logger correction and subsequent bounded Mux read are both verified in
+production Admin and worker at `ce421561ee9bcf89991dea5a060a656e45c3434b`.
+The [release verification](../../operations/watch-runtime-release-verification-2026-09-22.md)
+separates each rollout, final-envelope observations and the independent budget
+delay. Re-query a fixed recent telemetry window after ingestion settles before
+calling a metric/log difference permanent: the first release sample initially
+undercounted both sources, then reconciled completely. Retain unresolved older
+differences rather than using the newer agreement to erase them.
