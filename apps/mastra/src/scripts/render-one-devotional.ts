@@ -126,6 +126,9 @@ async function main() {
               ...(arg("quote-bg")
                 ? { bgStartSec: Number(arg("quote-bg")) }
                 : {}),
+              ...(arg("quote-rate")
+                ? { bgRate: Number(arg("quote-rate")) }
+                : {}),
             },
           }
         : {}),

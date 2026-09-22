@@ -1,5 +1,7 @@
 import { AbsoluteFill, Easing, interpolate, useCurrentFrame } from "remotion"
 
+import { BLOCK_FADE_SEC, quoteIntroTimeline } from "./quote-timing"
+
 /**
  * The social opening the owner's colleague cut by hand, rebuilt in the series'
  * own type: one line of the reflection written across the film, then the three
@@ -64,13 +66,13 @@ export function QuoteIntro({
 }: QuoteIntroProps) {
   const frame = useCurrentFrame()
   const t = frame / fps
-  // The beats, as shares of the card: quotation, questions, the invitation.
-  const qOut = durationSec - 6.6
-  const listIn = durationSec - 6.2
-  // The questions must be GONE before the invitation arrives: at 12.4s these
-  // two were 0.3s apart and "LET'S WATCH." landed on top of them.
-  const listOut = durationSec - 3.0
-  const watchIn = durationSec - 1.9
+  // Every beat is derived from how long the words take to READ (quote-timing),
+  // so a longer line buys itself more time instead of being clipped. The card's
+  // own length comes from the same model, so these land inside it.
+  const plan = quoteIntroTimeline({ quoteA, quoteB, questions })
+  const qOut = plan.quoteOutAt
+  const listOut = plan.questionsOutAt
+  const watchIn = plan.watchAt
 
   // Owner: the halves are PUSHED in from their own side, not revealed edge to
   // edge — a wipe also cut the descenders off the first line ("g" lost its
@@ -87,14 +89,19 @@ export function QuoteIntro({
       transform: `translateX(${((dir === "left" ? -1 : 1) * travel).toFixed(1)}px)`,
     }
   }
-  const quoteOpacity = interpolate(t, [qOut, qOut + 0.5], [1, 0], {
+  const quoteOpacity = interpolate(t, [qOut, qOut + BLOCK_FADE_SEC], [1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   })
-  const listOpacity = interpolate(t, [listOut, listOut + 0.45], [1, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  })
+  const listOpacity = interpolate(
+    t,
+    [listOut, listOut + BLOCK_FADE_SEC],
+    [1, 0],
+    {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    },
+  )
   const watchOpacity = interpolate(
     t,
     [watchIn, watchIn + 0.35, durationSec - 0.35, durationSec],
@@ -129,7 +136,7 @@ export function QuoteIntro({
             color: "#fff",
             textShadow: `0 ${px(2)}px ${px(20)}px rgba(0,0,0,0.55)`,
             maxWidth: "88%",
-            ...push(0.25, "left"),
+            ...push(plan.quoteAt[0], "left"),
           }}
         >
           {withStrong(quoteA, quoteAStrong, strongStyle)}
@@ -146,7 +153,7 @@ export function QuoteIntro({
             // Set apart from the first half: further in, a little lower.
             marginLeft: px(26),
             marginTop: px(14),
-            ...push(1.5, "right"),
+            ...push(plan.quoteAt[1], "right"),
           }}
         >
           {withStrong(quoteB, quoteBStrong, strongStyle)}
@@ -162,7 +169,7 @@ export function QuoteIntro({
         }}
       >
         {questions.map((q, i) => {
-          const at = listIn + i * 0.5
+          const at = plan.questionsAt[i] ?? 0
           // A touch of overshoot on the way in (owner: a little bouncing).
           const p = interpolate(t, [at, at + 0.4], [0, 1], {
             extrapolateLeft: "clamp",

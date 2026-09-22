@@ -9,7 +9,8 @@
     "./captions": "./src/captions.ts",
     "./registry": "./src/templates/registry.ts",
     "./entry": "./src/entry.ts",
-    "./version": "./src/version.ts"
+    "./version": "./src/version.ts",
+    "./devotional-timing": "./src/devotional/quote-timing.ts"
   },
   "scripts": {
     "lint": "eslint .",

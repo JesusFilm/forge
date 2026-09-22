@@ -4107,7 +4107,9 @@ function Background({
     <OffthreadVideo
       src={staticFile(src ?? "")}
       trimBefore={Math.max(0, Math.round(bgStartFrame))}
-      playbackRate={bgRate}
+      // The social opening may slow its shot a touch so one unbroken take
+      // covers the whole read (see `bgRate` in the card schema).
+      playbackRate={card.bgRate ?? bgRate}
       // Text-card backgrounds are MUTED (music only) unless bgAudio is on
       // (teasers). Decoupled from videoAudioLevel so a full devo can set the
       // video-card level for balance without un-muting the reflection.

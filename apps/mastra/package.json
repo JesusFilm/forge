@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.0.0",
+    "@forge/shorts-compositions": "workspace:*",
     "@mastra/core": "1.36.0",
     "@mastra/duckdb": "1.4.0",
     "@mastra/editor": "0.8.1",

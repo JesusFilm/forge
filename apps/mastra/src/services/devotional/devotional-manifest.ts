@@ -1,3 +1,5 @@
+import { quoteIntroTimeline } from "@forge/shorts-compositions/devotional-timing"
+
 import type { GeneratedDevotional } from "./generate-devotional"
 import { splitReflection } from "./reflection-split"
 
@@ -110,6 +112,8 @@ export type BuildManifestInput = {
     durationSec?: number
     /** Where in the background take the opening shot starts (seconds). */
     bgStartSec?: number
+    /** Play that shot at this rate, so one take can cover the whole read. */
+    bgRate?: number
   }
   /** The line shown over that silent opening, e.g. "Let's watch". */
   leadLabel?: string
@@ -173,9 +177,16 @@ function buildClipFirstManifest(
   // it cannot ride the scene's run-up.
   if (input.quoteIntro) {
     const q = input.quoteIntro
+    // The card is exactly as long as its words take to READ — same model the
+    // composition lays its beats out with, so the two can never drift.
+    const plan = quoteIntroTimeline({
+      quoteA: q.quoteA,
+      quoteB: q.quoteB,
+      questions: q.questions,
+    })
     cards.push({
       kind: "quote-intro",
-      durationSec: q.durationSec ?? 13.5,
+      durationSec: q.durationSec ?? plan.totalSec,
       quoteA: q.quoteA,
       ...(q.quoteAStrong ? { quoteAStrong: q.quoteAStrong } : {}),
       quoteB: q.quoteB,
@@ -183,6 +194,7 @@ function buildClipFirstManifest(
       questionsList: q.questions,
       watchLabel: q.watchLabel,
       ...(q.bgStartSec != null ? { bgStartSec: q.bgStartSec } : {}),
+      ...(q.bgRate != null ? { bgRate: q.bgRate } : {}),
     })
   }
 

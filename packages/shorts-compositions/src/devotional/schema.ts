@@ -122,6 +122,9 @@ export const devotionalCardSchema = z.object({
   watchLabel: z.string().optional(),
   /** `quote-intro` card: where in the background take its shot starts (s). */
   bgStartSec: z.number().nonnegative().optional(),
+  /** `quote-intro` card: play its shot at this rate. Slightly under 1 lets a
+   *  single unbroken take cover an opening that is longer than the take. */
+  bgRate: z.number().positive().optional(),
   /** `intro: "hook"`: the question shown on screen while it is spoken. It is
    *  the piece's title for this cut, so it is set at the cover's title size. */
   hookText: z.string().optional(),

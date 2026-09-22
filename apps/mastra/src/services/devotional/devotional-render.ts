@@ -1033,6 +1033,8 @@ export type RenderOptions = {
     durationSec?: number
     /** Where in the background take the opening shot starts (seconds). */
     bgStartSec?: number
+    /** Play that shot at this rate, so one take can cover the whole read. */
+    bgRate?: number
   }
   /** `intro: "hook"` only: what is DRAWN, when the voice says more than the
    *  screen should show (a welcome before the question). Defaults to
