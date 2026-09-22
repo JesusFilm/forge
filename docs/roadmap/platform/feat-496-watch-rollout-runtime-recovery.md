@@ -615,3 +615,16 @@ The [bounded workload follow-up](../../operations/watch-budget-followup-2026-09-
 ## September 22 internal continuation
 
 The internal continuation matches production history-read volume in an owned fixture: budget p95 rises from 3.82 to 38.05 ms and one call reaches 407 ms, with exact durable counts. It still does not reproduce the historical 700 ms timeout or prove its cause. The later two-hour window reconciles all 1,324 delivery envelopes with zero semantic timeouts and seventeen successful selections. Keep in progress; the owner has directed the storage investigation to remain internal. See the [internal verification](../../operations/watch-budget-followup-2026-09-22.md#internal-continuation-workload-volume-and-reconciled-outcomes).
+
+## September 23 persistence and diagnostic follow-up
+
+A later production HTTP 200 `delivery_timeout` contains a 611.72 ms evidence
+write in a transaction expiring at its unchanged 650 ms limit. A representative
+owned PostgreSQL workload proves a narrower persistence improvement: one bound
+JSON INSERT preserves all evidence and transactional checks while reducing
+paired 326-row persistence p99 from 474/540 ms to 241/285 ms, with all 800
+deliveries issued. Request-stage and native-pool diagnostics distinguish
+unavailable correlation from zero wait and retain failed/late operations.
+See [reproduction, review and release gates](../../operations/watch-persistence-followup-2026-09-23.md).
+Keep in progress: this does not prove the separate selection-timeout cause,
+sub-200 ms service latency or sustained production recovery.

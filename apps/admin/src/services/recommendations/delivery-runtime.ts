@@ -1,4 +1,8 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
+import {
+  startRecommendationTiming,
+  timeRecommendationOperation,
+} from "@/lib/recommendation-runtime-observation"
 import type { SemanticCandidatePoolItem } from "./candidate"
 import {
   CANDIDATE_POOL_TTL_SECONDS,
@@ -102,13 +106,14 @@ export async function runRecommendationRetrievalQuery<T>(
 ): Promise<T> {
   const remaining = Math.floor(deadlineAt - nowMilliseconds())
   if (remaining <= 0) throw new RecommendationRetrievalTimeoutError()
-  return prisma.$transaction(
-    async (tx) => {
-      const queryRemaining = Math.floor(deadlineAt - nowMilliseconds())
-      if (queryRemaining <= 0) {
-        throw new RecommendationRetrievalTimeoutError()
-      }
-      await tx.$queryRaw`
+  return timeRecommendationOperation("retrieval", () =>
+    prisma.$transaction(
+      async (tx) => {
+        const queryRemaining = Math.floor(deadlineAt - nowMilliseconds())
+        if (queryRemaining <= 0) {
+          throw new RecommendationRetrievalTimeoutError()
+        }
+        await tx.$queryRaw`
         SELECT
           set_config('statement_timeout', ${String(queryRemaining)}, true),
           -- Locale-specific vector indexes require parameter-aware planning,
@@ -124,9 +129,10 @@ export async function runRecommendationRetrievalQuery<T>(
             true
           )
       `
-      return operation(tx)
-    },
-    { maxWait: remaining, timeout: remaining },
+        return operation(tx)
+      },
+      { maxWait: remaining, timeout: remaining },
+    ),
   )
 }
 
@@ -138,40 +144,63 @@ export async function runRecommendationDeliveryTransaction<T>(
 ): Promise<T> {
   const remaining = Math.floor(deadlineAt - nowMilliseconds())
   if (remaining <= 0) throw new RecommendationRetrievalTimeoutError()
+  const finishBegin = startRecommendationTiming("transaction.begin")
+  let finishSettlement: ReturnType<typeof startRecommendationTiming>
   let reportCallbackFailure!: (error: unknown) => void
   const callbackFailure = new Promise<never>((_, reject) => {
     reportCallbackFailure = reject
   })
-  const transaction = prisma.$transaction(
-    async (tx) => {
-      try {
-        return await withinDeadline(
-          async () => {
-            const queryRemaining = Math.floor(deadlineAt - nowMilliseconds())
-            if (queryRemaining <= 0) {
-              throw new RecommendationRetrievalTimeoutError()
-            }
-            await tx.$queryRaw`
+  const transaction = prisma
+    .$transaction(
+      async (tx) => {
+        finishBegin?.()
+        const finishCallback = startRecommendationTiming("transaction.callback")
+        try {
+          const result = await withinDeadline(
+            async () => {
+              const queryRemaining = Math.floor(deadlineAt - nowMilliseconds())
+              if (queryRemaining <= 0) {
+                throw new RecommendationRetrievalTimeoutError()
+              }
+              await tx.$queryRaw`
               SELECT set_config(
                 'statement_timeout',
                 ${String(queryRemaining)},
                 true
               )
             `
-            return operation(tx)
-          },
-          deadlineAt,
-          nowMilliseconds,
-        )
-      } catch (error) {
-        // A rejected callback cannot commit. Let the caller recover while
-        // Prisma finishes rollback; the race still observes its final rejection.
-        reportCallbackFailure(error)
+              return operation(tx)
+            },
+            deadlineAt,
+            nowMilliseconds,
+          )
+          finishCallback?.()
+          finishSettlement = startRecommendationTiming("transaction.commit_ack")
+          return result
+        } catch (error) {
+          finishCallback?.(error)
+          finishSettlement = startRecommendationTiming(
+            "transaction.rollback_settle",
+          )
+          // A rejected callback cannot commit. Let the caller recover while
+          // Prisma finishes rollback; the race still observes its final rejection.
+          reportCallbackFailure(error)
+          throw error
+        }
+      },
+      { maxWait: remaining, timeout: remaining },
+    )
+    .then(
+      (result) => {
+        finishSettlement?.()
+        return result
+      },
+      (error: unknown) => {
+        finishBegin?.(error)
+        finishSettlement?.(error)
         throw error
-      }
-    },
-    { maxWait: remaining, timeout: remaining },
-  )
+      },
+    )
   // Do not time out a successful callback's commit acknowledgment: an ISSUED
   // transaction that committed must still return its issued response.
   return Promise.race([transaction, callbackFailure])

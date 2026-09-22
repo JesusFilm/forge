@@ -1,3 +1,4 @@
+import { timeRecommendationOperation } from "@/lib/recommendation-runtime-observation"
 import type { PrismaClient } from "@prisma/client"
 import { env } from "@/config/env"
 import { prisma as defaultPrisma } from "@/db/client"
@@ -31,6 +32,14 @@ export function createRecommendationDeliveryService(
   )
 }
 
+function timed<Args extends unknown[], Result>(
+  label: string,
+  operation: (...args: Args) => Promise<Result>,
+): (...args: Args) => Promise<Result> {
+  return (...args) =>
+    timeRecommendationOperation(label, () => operation(...args))
+}
+
 export function createRecommendationDeliveryDependencies(
   prisma: PrismaClient,
 ): DeliveryDependencies {
@@ -39,10 +48,13 @@ export function createRecommendationDeliveryDependencies(
     prisma,
     admission: createRecommendationDeliveryAdmission(),
     tokenService: token,
-    assignProfileExperiment: (input) =>
+    assignProfileExperiment: timed("assignProfileExperiment", (input) =>
       assignProfileUsefulnessExperiment(prisma, input),
-    retrieveCuratedFallback: (input) => retrieveCuratedFallback(prisma, input),
-    loadViewingModeAffinity: (input) =>
+    ),
+    retrieveCuratedFallback: timed("retrieveCuratedFallback", (input) =>
+      retrieveCuratedFallback(prisma, input),
+    ),
+    loadViewingModeAffinity: timed("loadViewingModeAffinity", (input) =>
       env.RECOMMENDATION_VIEWING_MODE_ENABLED === "false"
         ? Promise.resolve(null)
         : runRecommendationDeliveryTransaction(
@@ -51,7 +63,8 @@ export function createRecommendationDeliveryDependencies(
             (tx) => loadViewingModeAffinity(tx, input),
             Date.now,
           ),
-    getServingState: ({ deadlineAt }) =>
+    ),
+    getServingState: timed("getServingState", ({ deadlineAt }) =>
       runRecommendationDeliveryTransaction(
         prisma,
         deadlineAt,
@@ -69,16 +82,20 @@ export function createRecommendationDeliveryDependencies(
         },
         Date.now,
       ),
-    retrieve: ({ seedMediaId, locale, audioLanguageSlug, limit, deadlineAt }) =>
-      runRecommendationRetrievalQuery(prisma, deadlineAt, (scopedPrisma) =>
-        getSemanticDeliveryCandidatePool(scopedPrisma, {
-          seedMediaId,
-          locale,
-          audioLanguageSlug,
-          limit,
-        }),
-      ),
-    recheckCached: (items, input) =>
+    ),
+    retrieve: timed(
+      "retrieve",
+      ({ seedMediaId, locale, audioLanguageSlug, limit, deadlineAt }) =>
+        runRecommendationRetrievalQuery(prisma, deadlineAt, (scopedPrisma) =>
+          getSemanticDeliveryCandidatePool(scopedPrisma, {
+            seedMediaId,
+            locale,
+            audioLanguageSlug,
+            limit,
+          }),
+        ),
+    ),
+    recheckCached: timed("recheckCached", (items, input) =>
       runRecommendationRetrievalQuery(
         prisma,
         input.deadlineAt,
@@ -87,7 +104,8 @@ export function createRecommendationDeliveryDependencies(
             prisma: scopedPrisma,
           }).recheckEligibility(items, input.locale, input.audioLanguageSlug),
       ),
-    authorizeProfile: (input) =>
+    ),
+    authorizeProfile: timed("authorizeProfile", (input) =>
       runRecommendationDeliveryTransaction(
         prisma,
         input.deadlineAt,
@@ -138,7 +156,8 @@ export function createRecommendationDeliveryDependencies(
         },
         Date.now,
       ),
-    retrieveProfile: (input) =>
+    ),
+    retrieveProfile: timed("retrieveProfile", (input) =>
       runRecommendationRetrievalQuery(
         prisma,
         input.deadlineAt,
@@ -157,7 +176,8 @@ export function createRecommendationDeliveryDependencies(
             },
           }),
       ),
-    resolveRecentContext: (input) =>
+    ),
+    resolveRecentContext: timed("resolveRecentContext", (input) =>
       runRecommendationRetrievalQuery(
         prisma,
         input.deadlineAt,
@@ -169,5 +189,6 @@ export function createRecommendationDeliveryDependencies(
             now: input.now,
           }),
       ),
+    ),
   }
 }
