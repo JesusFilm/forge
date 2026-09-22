@@ -3,6 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
+import { useRouter } from "next/navigation"
 import {
   memo,
   useCallback,
@@ -200,7 +201,7 @@ export function watchHomeHeroSlidesToTvCarouselSlides(
     })
 }
 
-function PrimaryAction({
+export function PrimaryAction({
   playbackTimeSeconds,
   slide,
 }: {
@@ -208,12 +209,51 @@ function PrimaryAction({
   slide: WatchHomeTvCarouselSlide
 }) {
   const t = useTranslations("WatchHome")
+  const router = useRouter()
+  // The live preview position is read at CLICK time, never rendered. `next/link`
+  // prefetches an in-viewport link every time its `href` changes, so baking the
+  // position into the rendered href cost one uncacheable RSC round-trip per
+  // second for as long as an idle tab sat on /watch (FGE-139 / W-003 measured 33
+  // fetches of one path in 35s, 26,218 B each). Holding it in a ref makes the
+  // rendered href stable by construction — it moves only when the carousel
+  // advances — rather than leaving the fix one `prefetch` default away from
+  // regressing. Deliberately no `prefetch={false}` here: that posture decision
+  // belongs to FGE-215 (W-025).
+  const playbackTimeRef = useRef(playbackTimeSeconds)
+  useEffect(() => {
+    playbackTimeRef.current = playbackTimeSeconds
+  }, [playbackTimeSeconds])
 
-  if (!slide.href) return null
+  const href = slide.href
+  const handleClick = useCallback(
+    (event: React.MouseEvent<HTMLAnchorElement>) => {
+      if (!href || event.defaultPrevented) return
+      // Modified and non-primary clicks (new tab, new window, download) never
+      // reach the client router, so rewriting the destination here would be
+      // silently ignored — let the browser have the stable href instead.
+      if (
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey ||
+        event.button !== 0
+      ) {
+        return
+      }
+      const seconds = playbackTimeRef.current
+      if (!Number.isFinite(seconds) || seconds < 1) return
+      event.preventDefault()
+      router.push(appendAutoplaySignal(href, seconds) as Route)
+    },
+    [href, router],
+  )
+
+  if (!href) return null
 
   return (
     <Link
-      href={appendAutoplaySignal(slide.href, playbackTimeSeconds) as Route}
+      href={appendAutoplaySignal(href) as Route}
+      onClick={handleClick}
       // The watch page's primary hero action, so both surfaces show the same
       // pill; `min-w-0 max-w-full` keeps a long title from stretching it.
       className={cn(WATCH_HERO_PRIMARY_ACTION_CLASS, "min-w-0 max-w-full")}
