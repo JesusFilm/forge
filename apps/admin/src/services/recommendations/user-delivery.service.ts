@@ -1,3 +1,4 @@
+import { observeRecommendationRuntime } from "@/lib/recommendation-runtime-observation"
 import { randomUUID } from "node:crypto"
 import type { PrismaClient } from "@prisma/client"
 import { buildCanonicalWatchVideoPath } from "@forge/watch-url-policy/routes"
@@ -177,7 +178,15 @@ type UserDependencies = DeliveryDependencies & {
 
 export class UserRecommendationDeliveryService {
   constructor(private readonly deps: UserDependencies) {}
-  async deliver(
+  deliver(
+    input: Omit<DeliveryInput, "seedMediaId"> & { count?: number },
+  ): Promise<UserRecommendationDelivery> {
+    return observeRecommendationRuntime("for_you", () =>
+      this.deliverObserved(input),
+    )
+  }
+
+  private async deliverObserved(
     input: Omit<DeliveryInput, "seedMediaId"> & { count?: number },
   ): Promise<UserRecommendationDelivery> {
     assertWebRecommendationCaller(input.caller)

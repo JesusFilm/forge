@@ -220,8 +220,10 @@ describe("RecommendationDeliveryService", () => {
       expect(count).toBeLessThanOrEqual(64)
     }
     expect(run.composedCount).toBe(6)
-    const evidence = harness.tx.recommendationCandidateStageEvidence.createMany
-      .mock.calls[0]?.[0].data as Array<{ stage: string; ordinal: number }>
+    const evidence = harness.evidenceWrites[0] as Array<{
+      stage: string
+      ordinal: number
+    }>
     expect(evidence.every((entry) => entry.ordinal <= 63)).toBe(true)
     expect(
       Object.values(
@@ -295,8 +297,7 @@ describe("RecommendationDeliveryService", () => {
         profileTokenDigest: "d".repeat(64),
       }),
     )
-    const evidenceRows = harness.tx.recommendationCandidateStageEvidence
-      .createMany.mock.calls[0]?.[0].data as Array<{
+    const evidenceRows = harness.evidenceWrites[0] as Array<{
       targetMediaId: string | null
       reasonCodes: string[]
     }>
@@ -367,10 +368,7 @@ describe("RecommendationDeliveryService", () => {
       evidenceComplete: false,
       fallbackReason: "recent_context_unavailable",
     })
-    expect(
-      harness.tx.recommendationCandidateStageEvidence.createMany.mock
-        .calls[0]?.[0].data,
-    ).toEqual(
+    expect(harness.evidenceWrites[0]).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           sourceGenerator: "recent-context",
