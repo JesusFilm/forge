@@ -7,8 +7,11 @@ Two reproduced runtime defects are fixed through normal PR/main deployment:
 Next error-inspection amplification, and
 [PR #2371](https://github.com/JesusFilm/forge/pull/2371) bounds Mux fallback
 reads inside PostgreSQL. Neither establishes the cause of the separate
-September 21 08:37 selection timeout. No ticket is closed by a short healthy
-window. All times below are UTC. The [aggregate artifact](../validation/watch-runtime-release-20260922/results.json)
+September 21 08:37 selection timeout. The completed two-hour observation contains
+no selection 503s but one HTTP 200 `delivery_timeout` fallback, overlapping a
+bounded diagnostic read. No further ticket is closed. All times below are UTC;
+unqualified times refer to September 21.
+The [aggregate artifact](../validation/watch-runtime-release-20260922/results.json)
 retains release identities, fixed-window populations, executed plan and read-only
 database observations separately.
 
@@ -38,8 +41,9 @@ which minification removes; the corrected check uses the distinctive final CASE,
 LATERAL and ordering SQL. This was a diagnostic false negative, not missing code.
 Worker deployment `23d8bfa9-d49f-4525-88dc-67c419dec76e` was independently
 verified at 21:54:11 at the same revision, runner true, with both compiled
-corrections. Both deployment records report SUCCESS. The sustained final-revision
-observation remains pending; 21:55 is a conservative boundary after both checks.
+corrections. Both deployment records report SUCCESS. The two-hour observation
+starts at 21:55, a conservative boundary after both checks, and spans the later
+diagnostic release described below.
 
 The diagnostic-only [PR #2374](https://github.com/JesusFilm/forge/pull/2374)
 subsequently merged at 22:40:43 as
@@ -112,6 +116,74 @@ Keep the For You HTTP 200 with `result=unavailable reason=coverage_unavailable`
 separate from timeout fallbacks, and retain a five-card seed-coverage fallback.
 Five selections and a sub-hour window still cannot establish intermittent
 selection recovery.
+
+## Completed two-hour observation
+
+The fixed **September 21 21:55–23:55** window contains both fixes throughout,
+the later Admin diagnostic rollout, and three Web revisions. It is not two hours
+on one exact final revision. Primary HTTP counts use
+`sum:trace.web.request.hits{service:forge-web,env:prod,resource_name:post_/api/recommendations*}`
+grouped by resource, status and version, with `.as_count()` and scalar **sum**.
+The artifact retains every group, rather than using retained spans as a denominator.
+
+| POST endpoint    |   200 | 204 | 400 | 401 |   403 | 409 | 5xx | Total |
+| ---------------- | ----: | --: | --: | --: | ----: | --: | --: | ----: |
+| Seeded delivery  |   746 |   0 |   0 |   0 |   761 |   0 |   0 | 1,507 |
+| For You delivery |    15 |   0 |   0 |   0 |     2 |   0 |   0 |    17 |
+| Selection        |    23 |   0 |   2 |   0 |     0 |   0 |   0 |    25 |
+| Playback         | 7,918 |   0 |   0 |   4 |   800 |   3 |   0 | 8,725 |
+| Evidence         | 2,930 |   0 |   6 |   2 |   700 |   0 |   0 | 3,638 |
+| Profile          | 1,101 |   0 |   0 |   0 | 1,724 |   0 |   0 | 2,825 |
+| Tester           |     0 |  13 |   0 |   0 |     0 |   0 |   0 |    13 |
+
+Independent Railway delivery logs reconcile all **1,524** primary delivery
+requests by endpoint, status and Web revision. The complete population contains
+**one `delivery_timeout` and zero `retrieval_timeout` fallbacks among 761 HTTP
+200s**. Datadog lacks three events on Web `f8f997fc…`: one served-six 200, one
+invalid-fetch-metadata 403 and one invalid-origin 403. Railway supplies those
+three semantics; none is excluded. The owned public-browser canary and the
+diagnostic-overlap incident below remain in the population. Zero selection 503s
+in 25 attempts does not prove that the historical intermittent timeout is fixed.
+
+The complete grouped Datadog evidence response has 79 rows. It reconciles all
+25 selections, but has six fewer successful playback observations, three fewer
+playback 403s and four fewer initial-evidence 403s than primary HTTP counts.
+The independent Railway evidence reads failed with `Problem processing request`
+for all three deployments, so those **13 missing semantic observations remain
+unknown**. Do not transfer delivery-stream completeness to evidence. All 984
+recognized crawler events present in Datadog are terminal 403s; no recognized
+crawler acceptance is observed in that collector. Its three playback binding
+409s have terminal disposition, without proving browser non-retry. No
+`transaction_exhausted` outcome appears. Indexed Admin logs contain zero matching
+`P2002`, `recommendation_serialization_exhausted`,
+`recommendation_episode_lock_exhausted` or shared-memory-resize errors; this
+indexed-log result is not a guarantee of complete collection.
+
+### Retained delivery fallback and diagnostic overlap
+
+At **23:48:30**, Web `1cccac03…` emits HTTP 200, `result=fallback`,
+`reason=delivery_timeout`, `itemCount=6`, `upstreamResult=unavailable`.
+The [retained trace](https://app.datadoghq.com/apm/trace/6ab1c24c000000007e3122648329460b)
+has an Admin request lasting 1,481 ms. Two concurrent retrieval SQL spans last
+327 and 331 ms. A final request-persistence transaction lasts 2,746 ms, with
+an 888 ms served-item insertion and a subsequent 1,845 ms rollback; Prisma
+reports expiration of its existing transaction budget. The full-trace tool
+response is truncated, so the separate complete 23-row search for spans above
+100 ms supplies these selected durations. They identify the delayed path,
+not native pool, server execution, lock or storage attribution.
+
+A task-owned read-only workflow-step diagnostic started around **23:48:24**
+and hit its existing five-second statement limit. PostgreSQL records two
+statement cancellations at 23:48:31.745 and 23:48:32.035. Attempts to retrieve
+their corresponding full statements failed at the Railway log API, so the
+backend-to-request mapping remains unverified. The diagnostic overlaps the
+fallback and **may have contributed**; it is not legitimate to label the
+incident fully natural, claim causality, or remove it from the denominator.
+The query was subsequently constrained by the indexed scheduler run identity
+and succeeded under the same limit. No further broad read or deliberate failure
+was run. All wait/volume samplers had already ended at 23:40, leaving no
+simultaneous wait sample for this incident. Read-only and bounded diagnostics
+can still consume production resources.
 
 ## Owned public-browser canary
 
@@ -218,6 +290,16 @@ HTTP endpoint. Independent HTTP counts in this three-minute window show no
 with no timeout fallback. The long budget calls must not be reported as three
 new delivery failures.
 
+A final bounded repeat at 23:30:32–23:40:33, including ordinary traffic from the
+owned browser canary, again correlates a **254 ms** episode call with rounded
+zero function time, `WalSync` samples and about 250 ms of database-cgroup I/O
+pressure. Two consecutive 100 ms intervals contain no new volume writes while
+pressure continues. Neither the 212/216 ms calls nor this repeat overlaps a
+checkpoint. The SQL observer completed 5,885 samples (51 distinct budget
+statements, zero observed blockers); the volume observer completed 5,995. Both
+ended normally. This repetition strengthens the commit/I/O diagnosis for these
+calls while leaving the underlying storage cause and longer calls unresolved.
+
 The tested runtime fixes remain valid. The remaining diagnosis now has natural
 evidence for post-function WAL waits, but the exact storage cause, the longest
 calls and the historical 701 ms selection failure remain unproven. Weakening
@@ -252,6 +334,37 @@ backlog or stale claims. The 21:55–23:29 window contains 13 replacement
 publications, five terminal runs and 127 clean hybrid requests. It completed
 in 6.696 seconds, after the preceding natural wait captures had ended.
 
+The **23:56:26** audit subsequently reports **one affected pointer, one invalid
+contribution and one rebuild candidate**, with `source_lineage_invalid`, zero
+backlog and 18 replacement publications. It used a locally prepared 23:56:15
+clock against a later database snapshot. A follow-up using that same old clock
+finds two invalid contribution groups, including one expired contribution;
+the other group is not fully explained. Reusing an earlier clock against newer
+data can classify a new attribution as future, so neither group can be safely
+identified as the original pointer without retained identity correlation.
+
+A consistent repeat uses a read-only repeatable-read transaction and a fresh
+server clock at **23:59:54.579** for the canonical predicates. Completed at
+**September 22 00:00:01**, it reports zero ineligible generations, affected
+pointers/contributions, rebuild candidates, backlog or stale claims; 20
+replacement publications and 183 clean hybrid requests are present since
+21:55. It takes 6.531 seconds. Keep the earlier nonzero audit and the stale-clock
+limitation: this is a later zero snapshot, not proof of continuous eligibility
+or of which exact pointer was repaired. No source/profile identities were
+retained. Zero recorded serving fences does not show whether a transiently
+invalid profile was requested.
+
+The indexed durable workflow audit decodes **24 completed reconciliation batches
+and 24 completed heartbeat steps** in 21:55–23:55. They contain 120 attempted
+classifications, zero classification failures, 19 affected pointers and 19 queued
+rebuilds, with no recorded locks, stale-run requeues, exhausted attempts,
+dispatch failures or stored step errors. Batch durations are 1,544–7,241 ms;
+completion gaps are 307.847–317.706 seconds. Datadog independently has 24
+completed heartbeats (11 catalog revision, 13 diagnostic revision). The query
+selects completed steps only; it does not prove the absence of every pending or
+failed workflow step. Stored timestamps are interpreted as UTC and CBOR/devalue
+is decoded before reading numerical counters.
+
 The fresh 19:45–21:46 terminal-run population contains **11
 `pointer_generation_fenced`** and **five `eligibility_input_fenced`** runs.
 The follow-up at 21:48:10 verifies that all 16 have no published projection,
@@ -263,18 +376,24 @@ corresponding typed fence. This is natural production evidence of stale
 publication prevention, distinct from scheduler lease recovery. It advances
 feat-447's independent publication gate; the matching Admin trace remains open.
 
+At 23:55:49, the expanded 19:45 onward inventory contains 20
+`pointer_generation_fenced` and eight `eligibility_input_fenced` runs. The
+earlier per-row projection/current-pointer proof covers the original 16, not
+all 28. No `last_known_good_semantic_fallback` is present in the retained
+September 18 onward request population.
+
 Retained requests since September 18 still contain no
 `last_known_good_semantic_fallback` result. The independently passing local
 fallback drill remains local evidence. The full 41-monitor Datadog inventory
 still lacks the required recommendation transport/reconciliation monitors.
 Read-only access was preserved; no monitor or dashboard was installed.
 
-| Ticket   | Remaining requirement                                                                                                                                  |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| feat-447 | Matching authenticated Admin lifecycle/trace and independent operational last-known-good fallback proof.                                               |
-| feat-459 | Matching authenticated Admin evidence and completion of feat-464.                                                                                      |
-| feat-464 | Installed/verified alerts, matching authenticated Admin evidence, actual browser terminal-409 non-retry proof, and sustained final-release acceptance. |
-| feat-496 | Complete attribution and demonstrated correction of the independent budget timeout, plus sustained separate HTTP/envelope observation.                 |
+| Ticket   | Remaining requirement                                                                                                                                                      |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| feat-447 | Matching authenticated Admin lifecycle/trace and independent operational last-known-good fallback proof.                                                                   |
+| feat-459 | Matching authenticated Admin evidence and completion of feat-464.                                                                                                          |
+| feat-464 | Installed/verified alerts, matching authenticated Admin evidence, actual browser terminal-409 non-retry proof, and final-release acceptance with collection gaps retained. |
+| feat-496 | Complete attribution and demonstrated correction of the independent budget timeout and remaining delivery fallback; the two-hour observation does not establish recovery.  |
 
 ## Homepage and concurrent work
 
@@ -294,3 +413,28 @@ only), and HTTP 200 `enabled:false` from anonymous For You availability. Its
 rollout must not be confused with the Admin fixes. The flag registry default
 remains off. No Mobile/TV, account linking or
 curation changes were made by this task.
+
+The evidence branch also incorporates freshly fetched main
+`1cccac03cec7ad4427d0c6f80443dd4d71b942e0` (the separate tester-access expiry
+change). Independent SSH verification at 23:38:00 finds that exact Web revision
+on deployment `7e475679-fd30-4973-b92c-797a183147f3`; anonymous availability
+still returns `enabled:false`. The final observation must retain this third Web
+revision separately.
+
+## Final verification and cleanup
+
+Independent runtime reads at **September 22 00:10:27** still find Admin and
+worker at `92a597ee03074bf4d79b0eb21db4499046ecd09f`, on the diagnostic
+deployments above, with both corrections and the timing SQL present in compiled
+chunks, opposite runner roles and healthy local endpoints. Web remains at
+`1cccac03cec7ad4427d0c6f80443dd4d71b942e0`, with anonymous availability
+`enabled:false`. These installation checks do not supersede the failure population.
+
+Every task-owned bounded observer finished and closed normally. No global
+database or service diagnostic setting changed. The task-owned browser and
+virtual display were closed, raw browser evidence and private lineage lookup
+material removed, and both labelled task-owned PostgreSQL/Redis containers are
+stopped. The task-owned temporary Railway token copy was removed. No shared
+container, database, branch or worktree was reset. The
+remaining blockers are recorded against the existing tickets, not waived or
+represented as background monitoring after this task ends.

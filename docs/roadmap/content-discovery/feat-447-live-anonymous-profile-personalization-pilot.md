@@ -150,3 +150,19 @@ lease recovery. Credit this production gate rather than repeating the earlier
 absence claim. Matching authenticated Admin evidence and independent operational
 last-known-good fallback proof remain open; no matching fallback request was
 found since September 18. Keep the ticket in progress.
+
+The later 23:29:43 canonical database audit remains clean and records 13
+replacement publications and 127 clean hybrid requests in the 21:55–23:29
+window. The owned public-browser canary also persists an attributable selection
+and accepted playback facts. Neither replaces the matching authenticated Admin
+lifecycle trace or independent operational last-known-good fallback proof.
+
+The final audit sequence retains one affected pointer at 23:56:26 and a later
+consistent read-only/server-clock snapshot with zero at September 22 00:00:01.
+The intervening diagnostic reused an older clock against newer data; aggregate
+results cannot prove which exact pointer changed or continuous eligibility.
+The final snapshot records 20 replacement publications and 183 clean hybrid
+requests since 21:55. The expanded terminal inventory has 28 publication fences,
+while the per-row proof above covers the original 16. No retained operational
+last-known-good fallback exists since September 18. All limits and the still-open
+Admin gate remain in the [release record](../../operations/watch-runtime-release-verification-2026-09-22.md).

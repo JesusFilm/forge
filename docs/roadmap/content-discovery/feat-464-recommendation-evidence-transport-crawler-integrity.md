@@ -376,3 +376,23 @@ rejected. Final-revision sustained acceptance remains pending. The fresh complet
 41-monitor inventory still lacks the required recommendation alerts. Read-only
 Datadog access, authenticated Admin acceptance and actual browser retry proof
 remain distinct constraints; no gate was waived to close this ticket.
+
+The 23:29–23:33 owned headed-browser canary now verifies normal Watch
+navigation, two served six-card envelopes, a selection HTTP 200 with a matching
+attributable database row, and 56 accepted playback fact receipts. Its incomplete
+response captures remain explicit. No real terminal 409 occurred, so the browser
+retry gate is still unmet; do not carry forward the obsolete claim that no
+browser can be run. Installed alerts and matching authenticated Admin acceptance
+also remain open. The [release record](../../operations/watch-runtime-release-verification-2026-09-22.md)
+retains these limits and the separate sustained observation.
+
+The complete 21:55–23:55 UTC primary population now has zero playback 5xx /
+8,725 requests and three binding 409s. Datadog observes 984 recognized crawler
+events, all terminal 403s, but lacks 13 playback/evidence outcome observations
+relative to primary HTTP counts. Independent Railway evidence reads fail, so
+their semantics remain unknown. Delivery is independently reconciled and has
+one HTTP 200 `delivery_timeout`, including its diagnostic-overlap uncertainty.
+No request is excluded. Twenty-four durable completed reconciliation batches
+and heartbeats have no recorded classification/dispatch failures. These advance
+production evidence without satisfying alerts, authenticated Admin, real browser
+terminal non-retry or complete final-release acceptance; status stays in progress.

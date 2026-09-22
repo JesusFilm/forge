@@ -520,3 +520,34 @@ catalog requests. [Validation artifact](../../validation/watch-budget-timing-202
 retains individual rounds and their limits. This is a diagnostic change, not a
 proven fix for the remaining selection delay. Exact deployment verification and
 naturally slow-call attribution remain required; keep status in progress.
+
+## September 22 diagnostic release and natural WAL evidence
+
+PR #2374 is independently verified on Admin and worker at
+`92a597ee03074bf4d79b0eb21db4499046ecd09f`, including the compiled diagnostic
+and both preceding fixes. Bounded read-only captures now correlate 212–312 ms
+budget calls with near-zero measured function execution, WAL sync/write waits,
+and database-volume I/O pressure despite little nearby write traffic. A final
+254 ms call repeats that pattern. No sampled row/advisory blocker is present.
+Separate 406–1,708 ms calls lack simultaneous server-wait evidence; do not assign
+their remainder or the historical 701 ms selection failure to WAL by inference.
+The underlying storage cause and a demonstrated corrective change remain open.
+
+The normal public-browser canary supplies two six-card served envelopes, one
+selection HTTP 200 with a matching attributable database row, and accepted
+playback evidence. Missing browser responses remain explicit. No terminal 409
+was exercised. See the [release record](../../operations/watch-runtime-release-verification-2026-09-22.md)
+for observation populations, runtime revisions, temporary-observer cleanup and
+the remaining authenticated homepage rollback. Keep the ticket in progress.
+
+The completed 21:55–23:55 UTC window has 23 selection 200s, two selection
+400s and no selection 503s; playback has zero 5xx / 8,725 requests. Independent
+Railway delivery outcomes reconcile all 1,524 delivery requests and retain
+**one HTTP 200 `delivery_timeout` among 761 delivery 200s**, at 23:48:30.
+Its final persistence transaction/rollback is delayed. A bounded task-owned
+read diagnostic overlaps the incident and may have contributed; the trace
+does not resolve server execution, native pool, lock or storage attribution.
+No traffic is excluded. This is not a clean final-release recovery window.
+Admin/worker remain independently verified at `92a597ee…` at September 22
+00:10:27. The [release record](../../operations/watch-runtime-release-verification-2026-09-22.md)
+retains the exact revisions, collector gaps, transient pointer audit and cleanup.

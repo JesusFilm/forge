@@ -1,5 +1,5 @@
 {
-  "scope": "Separate production release, short observation and independent budget diagnostics; not a recovery or ticket-completion claim",
+  "scope": "Separate release identities, fixed short and two-hour observations, canonical snapshots and bounded diagnostics; one semantic timeout remains. No recovery or ticket-completion claim.",
   "releases": {
     "loggerAdmin": {
       "at": "2026-09-21T21:21:36.800Z",
@@ -105,6 +105,70 @@
       "at": "2026-09-21T22:27:39.774Z",
       "revision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
       "deployment": "84d5d314-2e76-4281-9b05-95fede1be528",
+      "launchDarklyConfigured": true,
+      "anonymousAvailability": {
+        "status": 200,
+        "body": {
+          "enabled": false
+        }
+      }
+    },
+    "webTesterExtension": {
+      "at": "2026-09-21T23:38:00.772Z",
+      "revision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+      "deployment": "7e475679-fd30-4973-b92c-797a183147f3",
+      "launchDarklyConfigured": true,
+      "anonymousAvailability": {
+        "status": 200,
+        "body": {
+          "enabled": false
+        }
+      }
+    },
+    "finalAdmin": {
+      "at": "2026-09-22T00:10:27.219Z",
+      "revision": "92a597ee03074bf4d79b0eb21db4499046ecd09f",
+      "deployment": "7bdb51ac-19b6-452c-ae3d-28063ca1950d",
+      "runner": "false",
+      "loggerChunks": ["[root-of-the-server]__09fa_xj._.js"],
+      "muxChunks": ["[root-of-the-server]__09fa_xj._.js"],
+      "budgetTimingChunks": [
+        "_09qlp~8._.js",
+        "apps_admin_src_0d8luib._.js",
+        "ssr/apps_admin_src_services_recommendations_0~agdg_._.js"
+      ],
+      "health": {
+        "httpStatus": 200,
+        "body": {
+          "status": "ok"
+        },
+        "ms": 33
+      }
+    },
+    "finalWorker": {
+      "at": "2026-09-22T00:10:27.143Z",
+      "revision": "92a597ee03074bf4d79b0eb21db4499046ecd09f",
+      "deployment": "d1f9d17c-80bc-4fd5-a406-381e0613e544",
+      "runner": "true",
+      "loggerChunks": ["[root-of-the-server]__09fa_xj._.js"],
+      "muxChunks": ["[root-of-the-server]__09fa_xj._.js"],
+      "budgetTimingChunks": [
+        "_09qlp~8._.js",
+        "apps_admin_src_0d8luib._.js",
+        "ssr/apps_admin_src_services_recommendations_0~agdg_._.js"
+      ],
+      "health": {
+        "httpStatus": 200,
+        "body": {
+          "status": "ok"
+        },
+        "ms": 34
+      }
+    },
+    "finalWeb": {
+      "at": "2026-09-22T00:10:27.300Z",
+      "revision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+      "deployment": "7e475679-fd30-4973-b92c-797a183147f3",
       "launchDarklyConfigured": true,
       "anonymousAvailability": {
         "status": 200,
@@ -3503,6 +3567,18 @@
             "message": "event=recommendation.submission_budget kind=delivery elapsedMs=677 serverElapsedMs=0 outsideServerMs=677"
           }
         ]
+      },
+      {
+        "from": "2026-09-21T23:24:00Z",
+        "to": "2026-09-21T23:41:00Z",
+        "deployment": "7bdb51ac-19b6-452c-ae3d-28063ca1950d",
+        "unrecognized": 0,
+        "events": [
+          {
+            "timestamp": "2026-09-21T23:31:09.789264650Z",
+            "message": "event=recommendation.submission_budget kind=episode elapsedMs=254 serverElapsedMs=0 outsideServerMs=254"
+          }
+        ]
       }
     ]
   },
@@ -4620,5 +4696,3003 @@
         }
       ]
     }
+  },
+  "finalWaitSample": {
+    "started": "2026-09-21T23:30:32.793Z",
+    "ended": "2026-09-21T23:40:32.801Z",
+    "revision": "92a597ee03074bf4d79b0eb21db4499046ecd09f",
+    "maximumSamples": 6000,
+    "intervalMs": 100,
+    "completedSamples": 5885,
+    "observations": 58,
+    "distinctObservedQueries": 51,
+    "totalActivityMs": 10150.510198000942,
+    "maxSampleMs": 50.94003100000555,
+    "waits": {
+      "episode-budget:IO:WalSync": 23,
+      "episode-budget:running:none": 7,
+      "delivery-budget:IO:WalSync": 10,
+      "episode-budget:LWLock:WALWrite": 4,
+      "delivery-budget:LWLock:WALWrite": 14
+    },
+    "slowRecords": [
+      {
+        "query": 2,
+        "started": "2026-09-21T23:31:09.533Z",
+        "observed": "2026-09-21T23:31:09.714Z",
+        "kind": "episode-budget",
+        "waitType": "IO",
+        "wait": "WalSync",
+        "ageMs": 180.974,
+        "blockers": 0,
+        "activeCounts": {
+          "episode-budget:IO:WalSync": 1,
+          "checkpointer:Activity:CheckpointerMain": 1,
+          "background writer:Activity:BgwriterMain": 1,
+          "walwriter:LWLock:WALWrite": 1
+        },
+        "precedingActivity": [
+          {
+            "at": "2026-09-21T23:31:08.794Z",
+            "activeCounts": {
+              "catalog-statement:running:none": 1,
+              "checkpointer:Activity:CheckpointerMain": 1,
+              "background writer:Activity:BgwriterMain": 1,
+              "walwriter:Activity:WalWriterMain": 1
+            }
+          },
+          {
+            "at": "2026-09-21T23:31:08.899Z",
+            "activeCounts": {
+              "catalog-statement:IO:BuffileRead": 1,
+              "checkpointer:Activity:CheckpointerMain": 1,
+              "background writer:Activity:BgwriterMain": 1,
+              "walwriter:Activity:WalWriterMain": 1
+            }
+          },
+          {
+            "at": "2026-09-21T23:31:09.001Z",
+            "activeCounts": {
+              "catalog-statement:running:none": 1,
+              "checkpointer:Activity:CheckpointerMain": 1,
+              "background writer:Activity:BgwriterMain": 1,
+              "walwriter:Activity:WalWriterMain": 1
+            }
+          },
+          {
+            "at": "2026-09-21T23:31:09.102Z",
+            "activeCounts": {
+              "checkpointer:Activity:CheckpointerMain": 1,
+              "background writer:Activity:BgwriterMain": 1,
+              "walwriter:Activity:WalWriterMain": 1
+            }
+          },
+          {
+            "at": "2026-09-21T23:31:09.205Z",
+            "activeCounts": {
+              "checkpointer:Activity:CheckpointerMain": 1,
+              "background writer:Activity:BgwriterMain": 1,
+              "walwriter:Activity:WalWriterMain": 1
+            }
+          },
+          {
+            "at": "2026-09-21T23:31:09.306Z",
+            "activeCounts": {
+              "checkpointer:Activity:CheckpointerMain": 1,
+              "background writer:Activity:BgwriterMain": 1,
+              "walwriter:Activity:WalWriterMain": 1
+            }
+          },
+          {
+            "at": "2026-09-21T23:31:09.408Z",
+            "activeCounts": {
+              "checkpointer:Activity:CheckpointerMain": 1,
+              "background writer:Activity:BgwriterMain": 1,
+              "walwriter:Activity:WalWriterMain": 1
+            }
+          },
+          {
+            "at": "2026-09-21T23:31:09.510Z",
+            "activeCounts": {
+              "checkpointer:Activity:CheckpointerMain": 1,
+              "background writer:Activity:BgwriterMain": 1,
+              "walwriter:Activity:WalWriterMain": 1
+            }
+          },
+          {
+            "at": "2026-09-21T23:31:09.612Z",
+            "activeCounts": {
+              "episode-budget:IO:WalSync": 1,
+              "checkpointer:Activity:CheckpointerMain": 1,
+              "background writer:Activity:BgwriterMain": 1,
+              "walwriter:Activity:WalWriterMain": 1
+            }
+          },
+          {
+            "at": "2026-09-21T23:31:09.715Z",
+            "activeCounts": {
+              "episode-budget:IO:WalSync": 1,
+              "checkpointer:Activity:CheckpointerMain": 1,
+              "background writer:Activity:BgwriterMain": 1,
+              "walwriter:LWLock:WALWrite": 1
+            }
+          }
+        ]
+      }
+    ],
+    "scope": "Normal production traffic including the owned public browser canary; sampled records retained only when query age is at least 150ms."
+  },
+  "finalVolumeSample": {
+    "from": "2026-09-21T23:30:33.912860+00:00",
+    "to": "2026-09-21T23:40:33.893200+00:00",
+    "completedSamples": 5995,
+    "totalSampleCostMs": 1286.7488395422697,
+    "maxSampleCostMs": 5.05165383219719,
+    "samples": [
+      {
+        "from": "2026-09-21T23:31:09.148430+00:00",
+        "to": "2026-09-21T23:31:09.248520+00:00",
+        "delta": {
+          "rbytes": 0,
+          "wbytes": 0,
+          "rios": 0,
+          "wios": 0,
+          "dbytes": 0,
+          "dios": 0
+        },
+        "somePressureUs": 0,
+        "fullPressureUs": 0
+      },
+      {
+        "from": "2026-09-21T23:31:09.248520+00:00",
+        "to": "2026-09-21T23:31:09.348610+00:00",
+        "delta": {
+          "rbytes": 0,
+          "wbytes": 0,
+          "rios": 0,
+          "wios": 0,
+          "dbytes": 0,
+          "dios": 0
+        },
+        "somePressureUs": 0,
+        "fullPressureUs": 0
+      },
+      {
+        "from": "2026-09-21T23:31:09.348610+00:00",
+        "to": "2026-09-21T23:31:09.448710+00:00",
+        "delta": {
+          "rbytes": 0,
+          "wbytes": 8192,
+          "rios": 0,
+          "wios": 2,
+          "dbytes": 0,
+          "dios": 0
+        },
+        "somePressureUs": 0,
+        "fullPressureUs": 0
+      },
+      {
+        "from": "2026-09-21T23:31:09.448710+00:00",
+        "to": "2026-09-21T23:31:09.548800+00:00",
+        "delta": {
+          "rbytes": 0,
+          "wbytes": 114688,
+          "rios": 0,
+          "wios": 12,
+          "dbytes": 0,
+          "dios": 0
+        },
+        "somePressureUs": 14259,
+        "fullPressureUs": 14128
+      },
+      {
+        "from": "2026-09-21T23:31:09.548800+00:00",
+        "to": "2026-09-21T23:31:09.648890+00:00",
+        "delta": {
+          "rbytes": 0,
+          "wbytes": 0,
+          "rios": 0,
+          "wios": 0,
+          "dbytes": 0,
+          "dios": 0
+        },
+        "somePressureUs": 100116,
+        "fullPressureUs": 98432
+      },
+      {
+        "from": "2026-09-21T23:31:09.648890+00:00",
+        "to": "2026-09-21T23:31:09.748970+00:00",
+        "delta": {
+          "rbytes": 0,
+          "wbytes": 0,
+          "rios": 0,
+          "wios": 0,
+          "dbytes": 0,
+          "dios": 0
+        },
+        "somePressureUs": 100035,
+        "fullPressureUs": 100035
+      },
+      {
+        "from": "2026-09-21T23:31:09.748970+00:00",
+        "to": "2026-09-21T23:31:09.849060+00:00",
+        "delta": {
+          "rbytes": 0,
+          "wbytes": 237568,
+          "rios": 0,
+          "wios": 10,
+          "dbytes": 0,
+          "dios": 0
+        },
+        "somePressureUs": 38069,
+        "fullPressureUs": 36667
+      },
+      {
+        "from": "2026-09-21T23:31:09.849060+00:00",
+        "to": "2026-09-21T23:31:09.949150+00:00",
+        "delta": {
+          "rbytes": 0,
+          "wbytes": 0,
+          "rios": 0,
+          "wios": 0,
+          "dbytes": 0,
+          "dios": 0
+        },
+        "somePressureUs": 0,
+        "fullPressureUs": 0
+      },
+      {
+        "from": "2026-09-21T23:31:09.949150+00:00",
+        "to": "2026-09-21T23:31:10.049260+00:00",
+        "delta": {
+          "rbytes": 0,
+          "wbytes": 0,
+          "rios": 0,
+          "wios": 0,
+          "dbytes": 0,
+          "dios": 0
+        },
+        "somePressureUs": 0,
+        "fullPressureUs": 0
+      }
+    ]
+  },
+  "checkpointCorrelations": [
+    {
+      "from": "2026-09-21T22:55:00Z",
+      "to": "2026-09-21T23:08:00Z",
+      "rows": [
+        {
+          "timestamp": "2026-09-21T22:56:13.501639304Z",
+          "message": "2026-09-21 22:56:03.435 UTC [58] LOG:  checkpoint starting: time"
+        },
+        {
+          "timestamp": "2026-09-21T22:56:13.501647840Z",
+          "message": "2026-09-21 22:56:03.699 UTC [58] LOG:  checkpoint complete: wrote 0 buffers (0.0%), wrote 8 SLRU buffers; 0 WAL file(s) added, 0 removed, 4 recycled; write=0.010 s, sync=0.224 s, total=0.264 s; sync files=267, longest=0.005 s, average=0.001 s; distance=65267 kB, estimate=81035 kB; lsn=4B/4D026E8, redo lsn=4B/4D02690"
+        },
+        {
+          "timestamp": "2026-09-21T23:01:03.437933980Z",
+          "message": "2026-09-21 23:01:03.256 UTC [58] LOG:  checkpoint starting: time"
+        },
+        {
+          "timestamp": "2026-09-21T23:01:23.237133909Z",
+          "message": "2026-09-21 23:01:14.836 UTC [58] LOG:  checkpoint complete: wrote 23 buffers (0.1%), wrote 5 SLRU buffers; 0 WAL file(s) added, 0 removed, 4 recycled; write=11.325 s, sync=0.223 s, total=11.581 s; sync files=297, longest=0.070 s, average=0.001 s; distance=65326 kB, estimate=79464 kB; lsn=4B/8E974B8, redo lsn=4B/8CCE110"
+        },
+        {
+          "timestamp": "2026-09-21T23:06:04.237950780Z",
+          "message": "2026-09-21 23:06:03.363 UTC [58] LOG:  checkpoint starting: time"
+        },
+        {
+          "timestamp": "2026-09-21T23:06:24.340163740Z",
+          "message": "2026-09-21 23:06:19.901 UTC [58] LOG:  checkpoint complete: wrote 31 buffers (0.2%), wrote 4 SLRU buffers; 0 WAL file(s) added, 0 removed, 3 recycled; write=16.333 s, sync=0.178 s, total=16.538 s; sync files=240, longest=0.007 s, average=0.001 s; distance=43156 kB, estimate=75833 kB; lsn=4B/B979740, redo lsn=4B/B6F3190"
+        }
+      ]
+    },
+    {
+      "from": "2026-09-21T23:12:00Z",
+      "to": "2026-09-21T23:29:00Z",
+      "logs": [
+        {
+          "timestamp": "2026-09-21T23:16:10.211693150Z",
+          "message": "2026-09-21 23:16:03.964 UTC [58] LOG:  checkpoint starting: time"
+        },
+        {
+          "timestamp": "2026-09-21T23:16:30.267983438Z",
+          "message": "2026-09-21 23:16:20.753 UTC [58] LOG:  checkpoint complete: wrote 16 buffers (0.1%), wrote 6 SLRU buffers; 0 WAL file(s) added, 1 removed, 3 recycled; write=16.531 s, sync=0.219 s, total=16.790 s; sync files=285, longest=0.020 s, average=0.001 s; distance=57647 kB, estimate=73241 kB; lsn=4B/13758F98, redo lsn=4B/130E9410"
+        },
+        {
+          "timestamp": "2026-09-21T23:21:10.920878088Z",
+          "message": "2026-09-21 23:21:03.169 UTC [58] LOG:  checkpoint starting: time"
+        },
+        {
+          "timestamp": "2026-09-21T23:21:10.920894659Z",
+          "message": "2026-09-21 23:21:07.486 UTC [58] LOG:  checkpoint complete: wrote 17 buffers (0.1%), wrote 6 SLRU buffers; 0 WAL file(s) added, 0 removed, 4 recycled; write=4.215 s, sync=0.074 s, total=4.317 s; sync files=311, longest=0.007 s, average=0.001 s; distance=72857 kB, estimate=73203 kB; lsn=4B/17871AB8, redo lsn=4B/1780F988"
+        },
+        {
+          "timestamp": "2026-09-21T23:26:11.336462854Z",
+          "message": "2026-09-21 23:26:03.867 UTC [58] LOG:  checkpoint starting: time"
+        },
+        {
+          "timestamp": "2026-09-21T23:26:11.336468261Z",
+          "message": "2026-09-21 23:26:06.276 UTC [58] LOG:  checkpoint complete: wrote 9 buffers (0.1%), wrote 5 SLRU buffers; 0 WAL file(s) added, 0 removed, 3 recycled; write=2.112 s, sync=0.270 s, total=2.409 s; sync files=293, longest=0.005 s, average=0.001 s; distance=57263 kB, estimate=71609 kB; lsn=4B/1B02A360, redo lsn=4B/1AFFB950"
+        }
+      ]
+    }
+  ],
+  "durableReconciliationTwoHours": {
+    "at": "2026-09-21T23:55:46.570Z",
+    "revision": "92a597ee03074bf4d79b0eb21db4499046ecd09f",
+    "from": "2026-09-21T21:55:00Z",
+    "to": "2026-09-21T23:55:00Z",
+    "scope": "Durable completed reconciliation steps; CBOR and devalue decoded before reading aggregate counters; timestamps interpreted as UTC",
+    "rows": [
+      {
+        "kind": "batch",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T21:55:40.600Z",
+        "completed": "2026-09-21T21:55:42.299Z",
+        "durationMs": 1699,
+        "hasError": false,
+        "locked": false,
+        "affectedPointers": 0,
+        "classificationsAttempted": 0,
+        "classificationsFailed": 0,
+        "rebuildsQueued": 0,
+        "staleRuns": 0,
+        "staleRunsQueued": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      },
+      {
+        "kind": "heartbeat",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T21:55:43.523Z",
+        "completed": "2026-09-21T21:55:43.546Z",
+        "durationMs": 23,
+        "hasError": false
+      },
+      {
+        "kind": "batch",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T22:00:47.223Z",
+        "completed": "2026-09-21T22:00:50.146Z",
+        "durationMs": 2923,
+        "hasError": false,
+        "locked": false,
+        "affectedPointers": 1,
+        "classificationsAttempted": 7,
+        "classificationsFailed": 0,
+        "rebuildsQueued": 1,
+        "staleRuns": 0,
+        "staleRunsQueued": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      },
+      {
+        "kind": "heartbeat",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T22:00:54.280Z",
+        "completed": "2026-09-21T22:00:54.303Z",
+        "durationMs": 23,
+        "hasError": false
+      },
+      {
+        "kind": "batch",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T22:05:57.282Z",
+        "completed": "2026-09-21T22:05:59.213Z",
+        "durationMs": 1931,
+        "hasError": false,
+        "locked": false,
+        "affectedPointers": 1,
+        "classificationsAttempted": 1,
+        "classificationsFailed": 0,
+        "rebuildsQueued": 1,
+        "staleRuns": 0,
+        "staleRunsQueued": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      },
+      {
+        "kind": "heartbeat",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T22:06:01.962Z",
+        "completed": "2026-09-21T22:06:01.984Z",
+        "durationMs": 22,
+        "hasError": false
+      },
+      {
+        "kind": "batch",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T22:11:07.169Z",
+        "completed": "2026-09-21T22:11:09.225Z",
+        "durationMs": 2056,
+        "hasError": false,
+        "locked": false,
+        "affectedPointers": 1,
+        "classificationsAttempted": 3,
+        "classificationsFailed": 0,
+        "rebuildsQueued": 1,
+        "staleRuns": 0,
+        "staleRunsQueued": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      },
+      {
+        "kind": "heartbeat",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T22:11:12.804Z",
+        "completed": "2026-09-21T22:11:12.824Z",
+        "durationMs": 20,
+        "hasError": false
+      },
+      {
+        "kind": "batch",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T22:16:16.138Z",
+        "completed": "2026-09-21T22:16:17.682Z",
+        "durationMs": 1544,
+        "hasError": false,
+        "locked": false,
+        "affectedPointers": 0,
+        "classificationsAttempted": 0,
+        "classificationsFailed": 0,
+        "rebuildsQueued": 0,
+        "staleRuns": 0,
+        "staleRunsQueued": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      },
+      {
+        "kind": "heartbeat",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T22:16:20.382Z",
+        "completed": "2026-09-21T22:16:20.403Z",
+        "durationMs": 21,
+        "hasError": false
+      },
+      {
+        "kind": "batch",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T22:21:24.592Z",
+        "completed": "2026-09-21T22:21:27.648Z",
+        "durationMs": 3056,
+        "hasError": false,
+        "locked": false,
+        "affectedPointers": 1,
+        "classificationsAttempted": 10,
+        "classificationsFailed": 0,
+        "rebuildsQueued": 1,
+        "staleRuns": 0,
+        "staleRunsQueued": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      },
+      {
+        "kind": "heartbeat",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T22:21:31.014Z",
+        "completed": "2026-09-21T22:21:31.042Z",
+        "durationMs": 28,
+        "hasError": false
+      },
+      {
+        "kind": "batch",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T22:26:34.058Z",
+        "completed": "2026-09-21T22:26:35.656Z",
+        "durationMs": 1598,
+        "hasError": false,
+        "locked": false,
+        "affectedPointers": 0,
+        "classificationsAttempted": 0,
+        "classificationsFailed": 0,
+        "rebuildsQueued": 0,
+        "staleRuns": 0,
+        "staleRunsQueued": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      },
+      {
+        "kind": "heartbeat",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T22:26:38.383Z",
+        "completed": "2026-09-21T22:26:38.403Z",
+        "durationMs": 20,
+        "hasError": false
+      },
+      {
+        "kind": "batch",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T22:31:44.258Z",
+        "completed": "2026-09-21T22:31:45.896Z",
+        "durationMs": 1638,
+        "hasError": false,
+        "locked": false,
+        "affectedPointers": 0,
+        "classificationsAttempted": 0,
+        "classificationsFailed": 0,
+        "rebuildsQueued": 0,
+        "staleRuns": 0,
+        "staleRunsQueued": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      },
+      {
+        "kind": "heartbeat",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T22:31:49.274Z",
+        "completed": "2026-09-21T22:31:49.298Z",
+        "durationMs": 24,
+        "hasError": false
+      },
+      {
+        "kind": "batch",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T22:36:53.063Z",
+        "completed": "2026-09-21T22:36:55.444Z",
+        "durationMs": 2381,
+        "hasError": false,
+        "locked": false,
+        "affectedPointers": 2,
+        "classificationsAttempted": 6,
+        "classificationsFailed": 0,
+        "rebuildsQueued": 2,
+        "staleRuns": 0,
+        "staleRunsQueued": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      },
+      {
+        "kind": "heartbeat",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T22:36:58.359Z",
+        "completed": "2026-09-21T22:36:58.400Z",
+        "durationMs": 41,
+        "hasError": false
+      },
+      {
+        "kind": "batch",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T22:42:02.346Z",
+        "completed": "2026-09-21T22:42:03.913Z",
+        "durationMs": 1567,
+        "hasError": false,
+        "locked": false,
+        "affectedPointers": 0,
+        "classificationsAttempted": 0,
+        "classificationsFailed": 0,
+        "rebuildsQueued": 0,
+        "staleRuns": 0,
+        "staleRunsQueued": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      },
+      {
+        "kind": "heartbeat",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T22:42:06.503Z",
+        "completed": "2026-09-21T22:42:06.522Z",
+        "durationMs": 19,
+        "hasError": false
+      },
+      {
+        "kind": "batch",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T22:47:10.204Z",
+        "completed": "2026-09-21T22:47:12.156Z",
+        "durationMs": 1952,
+        "hasError": false,
+        "locked": false,
+        "affectedPointers": 1,
+        "classificationsAttempted": 2,
+        "classificationsFailed": 0,
+        "rebuildsQueued": 1,
+        "staleRuns": 0,
+        "staleRunsQueued": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      },
+      {
+        "kind": "heartbeat",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T22:47:15.189Z",
+        "completed": "2026-09-21T22:47:15.210Z",
+        "durationMs": 21,
+        "hasError": false
+      },
+      {
+        "kind": "batch",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T22:52:25.697Z",
+        "completed": "2026-09-21T22:52:29.862Z",
+        "durationMs": 4165,
+        "hasError": false,
+        "locked": false,
+        "affectedPointers": 1,
+        "classificationsAttempted": 13,
+        "classificationsFailed": 0,
+        "rebuildsQueued": 1,
+        "staleRuns": 0,
+        "staleRunsQueued": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      },
+      {
+        "kind": "heartbeat",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T22:52:35.462Z",
+        "completed": "2026-09-21T22:52:35.485Z",
+        "durationMs": 23,
+        "hasError": false
+      },
+      {
+        "kind": "batch",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T22:57:39.175Z",
+        "completed": "2026-09-21T22:57:42.199Z",
+        "durationMs": 3024,
+        "hasError": false,
+        "locked": false,
+        "affectedPointers": 1,
+        "classificationsAttempted": 12,
+        "classificationsFailed": 0,
+        "rebuildsQueued": 1,
+        "staleRuns": 0,
+        "staleRunsQueued": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      },
+      {
+        "kind": "heartbeat",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T22:57:45.224Z",
+        "completed": "2026-09-21T22:57:45.266Z",
+        "durationMs": 42,
+        "hasError": false
+      },
+      {
+        "kind": "batch",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T23:02:48.812Z",
+        "completed": "2026-09-21T23:02:50.409Z",
+        "durationMs": 1597,
+        "hasError": false,
+        "locked": false,
+        "affectedPointers": 0,
+        "classificationsAttempted": 0,
+        "classificationsFailed": 0,
+        "rebuildsQueued": 0,
+        "staleRuns": 0,
+        "staleRunsQueued": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      },
+      {
+        "kind": "heartbeat",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T23:02:53.520Z",
+        "completed": "2026-09-21T23:02:53.541Z",
+        "durationMs": 21,
+        "hasError": false
+      },
+      {
+        "kind": "batch",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T23:07:57.462Z",
+        "completed": "2026-09-21T23:08:00.331Z",
+        "durationMs": 2869,
+        "hasError": false,
+        "locked": false,
+        "affectedPointers": 1,
+        "classificationsAttempted": 10,
+        "classificationsFailed": 0,
+        "rebuildsQueued": 1,
+        "staleRuns": 0,
+        "staleRunsQueued": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      },
+      {
+        "kind": "heartbeat",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T23:08:03.369Z",
+        "completed": "2026-09-21T23:08:03.392Z",
+        "durationMs": 23,
+        "hasError": false
+      },
+      {
+        "kind": "batch",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T23:13:07.040Z",
+        "completed": "2026-09-21T23:13:09.377Z",
+        "durationMs": 2337,
+        "hasError": false,
+        "locked": false,
+        "affectedPointers": 1,
+        "classificationsAttempted": 4,
+        "classificationsFailed": 0,
+        "rebuildsQueued": 1,
+        "staleRuns": 0,
+        "staleRunsQueued": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      },
+      {
+        "kind": "heartbeat",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T23:13:12.599Z",
+        "completed": "2026-09-21T23:13:12.620Z",
+        "durationMs": 21,
+        "hasError": false
+      },
+      {
+        "kind": "batch",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T23:18:16.412Z",
+        "completed": "2026-09-21T23:18:18.455Z",
+        "durationMs": 2043,
+        "hasError": false,
+        "locked": false,
+        "affectedPointers": 0,
+        "classificationsAttempted": 0,
+        "classificationsFailed": 0,
+        "rebuildsQueued": 0,
+        "staleRuns": 0,
+        "staleRunsQueued": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      },
+      {
+        "kind": "heartbeat",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T23:18:21.489Z",
+        "completed": "2026-09-21T23:18:21.512Z",
+        "durationMs": 23,
+        "hasError": false
+      },
+      {
+        "kind": "batch",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T23:23:25.369Z",
+        "completed": "2026-09-21T23:23:32.610Z",
+        "durationMs": 7241,
+        "hasError": false,
+        "locked": false,
+        "affectedPointers": 2,
+        "classificationsAttempted": 21,
+        "classificationsFailed": 0,
+        "rebuildsQueued": 2,
+        "staleRuns": 0,
+        "staleRunsQueued": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      },
+      {
+        "kind": "heartbeat",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T23:23:36.165Z",
+        "completed": "2026-09-21T23:23:36.184Z",
+        "durationMs": 19,
+        "hasError": false
+      },
+      {
+        "kind": "batch",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T23:28:40.182Z",
+        "completed": "2026-09-21T23:28:44.622Z",
+        "durationMs": 4440,
+        "hasError": false,
+        "locked": false,
+        "affectedPointers": 1,
+        "classificationsAttempted": 20,
+        "classificationsFailed": 0,
+        "rebuildsQueued": 1,
+        "staleRuns": 0,
+        "staleRunsQueued": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      },
+      {
+        "kind": "heartbeat",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T23:28:47.614Z",
+        "completed": "2026-09-21T23:28:47.635Z",
+        "durationMs": 21,
+        "hasError": false
+      },
+      {
+        "kind": "batch",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T23:33:51.582Z",
+        "completed": "2026-09-21T23:33:53.240Z",
+        "durationMs": 1658,
+        "hasError": false,
+        "locked": false,
+        "affectedPointers": 0,
+        "classificationsAttempted": 0,
+        "classificationsFailed": 0,
+        "rebuildsQueued": 0,
+        "staleRuns": 0,
+        "staleRunsQueued": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      },
+      {
+        "kind": "heartbeat",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T23:33:56.163Z",
+        "completed": "2026-09-21T23:33:56.188Z",
+        "durationMs": 25,
+        "hasError": false
+      },
+      {
+        "kind": "batch",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T23:38:59.687Z",
+        "completed": "2026-09-21T23:39:02.213Z",
+        "durationMs": 2526,
+        "hasError": false,
+        "locked": false,
+        "affectedPointers": 2,
+        "classificationsAttempted": 5,
+        "classificationsFailed": 0,
+        "rebuildsQueued": 2,
+        "staleRuns": 0,
+        "staleRunsQueued": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      },
+      {
+        "kind": "heartbeat",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T23:39:05.341Z",
+        "completed": "2026-09-21T23:39:05.361Z",
+        "durationMs": 20,
+        "hasError": false
+      },
+      {
+        "kind": "batch",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T23:44:09.427Z",
+        "completed": "2026-09-21T23:44:11.156Z",
+        "durationMs": 1729,
+        "hasError": false,
+        "locked": false,
+        "affectedPointers": 0,
+        "classificationsAttempted": 0,
+        "classificationsFailed": 0,
+        "rebuildsQueued": 0,
+        "staleRuns": 0,
+        "staleRunsQueued": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      },
+      {
+        "kind": "heartbeat",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T23:44:14.281Z",
+        "completed": "2026-09-21T23:44:14.301Z",
+        "durationMs": 20,
+        "hasError": false
+      },
+      {
+        "kind": "batch",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T23:49:17.827Z",
+        "completed": "2026-09-21T23:49:20.345Z",
+        "durationMs": 2518,
+        "hasError": false,
+        "locked": false,
+        "affectedPointers": 1,
+        "classificationsAttempted": 4,
+        "classificationsFailed": 0,
+        "rebuildsQueued": 1,
+        "staleRuns": 0,
+        "staleRunsQueued": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      },
+      {
+        "kind": "heartbeat",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T23:49:23.596Z",
+        "completed": "2026-09-21T23:49:23.617Z",
+        "durationMs": 21,
+        "hasError": false
+      },
+      {
+        "kind": "batch",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T23:54:27.546Z",
+        "completed": "2026-09-21T23:54:29.569Z",
+        "durationMs": 2023,
+        "hasError": false,
+        "locked": false,
+        "affectedPointers": 2,
+        "classificationsAttempted": 2,
+        "classificationsFailed": 0,
+        "rebuildsQueued": 2,
+        "staleRuns": 0,
+        "staleRunsQueued": 0,
+        "attemptsExhausted": 0,
+        "dispatchFailures": 0
+      },
+      {
+        "kind": "heartbeat",
+        "status": "completed",
+        "attempt": 1,
+        "started": "2026-09-21T23:54:33.503Z",
+        "completed": "2026-09-21T23:54:33.524Z",
+        "durationMs": 21,
+        "hasError": false
+      }
+    ],
+    "summary": {
+      "affectedPointers": 19,
+      "classificationsAttempted": 120,
+      "classificationsFailed": 0,
+      "rebuildsQueued": 19,
+      "staleRuns": 0,
+      "staleRunsQueued": 0,
+      "attemptsExhausted": 0,
+      "dispatchFailures": 0,
+      "completedBatches": 24,
+      "completedHeartbeats": 24,
+      "storedStepErrors": 0,
+      "lockedBatches": 0,
+      "batchDurationMs": {
+        "min": 1544,
+        "max": 7241
+      },
+      "completionGapSeconds": {
+        "min": 307.847,
+        "max": 317.706
+      },
+      "limits": "Completed-step query only; does not establish absence of every pending or failed step. Restricted to indexed scheduler run identity, 500-row limit not reached."
+    }
+  },
+  "finalTerminalAndFallbackInventory": {
+    "at": "2026-09-21T23:55:49.215Z",
+    "revision": "92a597ee03074bf4d79b0eb21db4499046ecd09f",
+    "terminal": [
+      {
+        "state": "fenced",
+        "failure_reason": "pointer_generation_fenced",
+        "last_transition_reason": "pointer_generation_fenced",
+        "count": "20",
+        "first_at": "2026-09-21T19:46:46.812Z",
+        "last_at": "2026-09-21T23:54:32.821Z"
+      },
+      {
+        "state": "fenced",
+        "failure_reason": "eligibility_input_fenced",
+        "last_transition_reason": "eligibility_input_fenced",
+        "count": "8",
+        "first_at": "2026-09-21T20:05:21.983Z",
+        "last_at": "2026-09-21T23:30:09.225Z"
+      }
+    ],
+    "fallback": []
+  },
+  "sustainedBothFixesObservation": {
+    "from": "2026-09-21T21:55:00Z",
+    "to": "2026-09-21T23:55:00Z",
+    "durationMinutes": 120,
+    "scope": "Both fixes deployed throughout; spans the diagnostic-only Admin rollout and three Web revisions. Not two hours on one exact final revision or complete recovery proof.",
+    "http": [
+      {
+        "endpoint": "post_/api/recommendations",
+        "status": 200,
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "count": 87
+      },
+      {
+        "endpoint": "post_/api/recommendations/profile",
+        "status": 200,
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "count": 722
+      },
+      {
+        "endpoint": "post_/api/recommendations/select",
+        "status": 200,
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "count": 13
+      },
+      {
+        "endpoint": "post_/api/recommendations/select",
+        "status": 400,
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 1
+      },
+      {
+        "endpoint": "post_/api/recommendations/evidence",
+        "status": 401,
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "count": 2
+      },
+      {
+        "endpoint": "post_/api/recommendations/playback",
+        "status": 401,
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "count": 1
+      },
+      {
+        "endpoint": "post_/api/recommendations/evidence",
+        "status": 403,
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 146
+      },
+      {
+        "endpoint": "post_/api/recommendations/evidence",
+        "status": 403,
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "count": 467
+      },
+      {
+        "endpoint": "post_/api/recommendations/playback",
+        "status": 401,
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 3
+      },
+      {
+        "endpoint": "post_/api/recommendations/evidence",
+        "status": 403,
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "count": 87
+      },
+      {
+        "endpoint": "post_/api/recommendations/for-you",
+        "status": 403,
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 1
+      },
+      {
+        "endpoint": "post_/api/recommendations/playback",
+        "status": 403,
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 149
+      },
+      {
+        "endpoint": "post_/api/recommendations/playback",
+        "status": 403,
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "count": 100
+      },
+      {
+        "endpoint": "post_/api/recommendations/playback",
+        "status": 403,
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "count": 551
+      },
+      {
+        "endpoint": "post_/api/recommendations/profile",
+        "status": 403,
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "count": 208
+      },
+      {
+        "endpoint": "post_/api/recommendations",
+        "status": 200,
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "count": 474
+      },
+      {
+        "endpoint": "post_/api/recommendations/profile",
+        "status": 200,
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "count": 120
+      },
+      {
+        "endpoint": "post_/api/recommendations/tester",
+        "status": 204,
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 6
+      },
+      {
+        "endpoint": "post_/api/recommendations/evidence",
+        "status": 200,
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "count": 323
+      },
+      {
+        "endpoint": "post_/api/recommendations/for-you",
+        "status": 200,
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "count": 9
+      },
+      {
+        "endpoint": "post_/api/recommendations/playback",
+        "status": 200,
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 2315
+      },
+      {
+        "endpoint": "post_/api/recommendations/playback",
+        "status": 200,
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "count": 4427
+      },
+      {
+        "endpoint": "post_/api/recommendations/tester",
+        "status": 204,
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "count": 7
+      },
+      {
+        "endpoint": "post_/api/recommendations/evidence",
+        "status": 400,
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 5
+      },
+      {
+        "endpoint": "post_/api/recommendations/evidence",
+        "status": 400,
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "count": 1
+      },
+      {
+        "endpoint": "post_/api/recommendations/profile",
+        "status": 200,
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 259
+      },
+      {
+        "endpoint": "post_/api/recommendations/select",
+        "status": 200,
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "count": 1
+      },
+      {
+        "endpoint": "post_/api/recommendations",
+        "status": 403,
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "count": 529
+      },
+      {
+        "endpoint": "post_/api/recommendations/for-you",
+        "status": 403,
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "count": 1
+      },
+      {
+        "endpoint": "post_/api/recommendations/profile",
+        "status": 403,
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 297
+      },
+      {
+        "endpoint": "post_/api/recommendations/select",
+        "status": 200,
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 9
+      },
+      {
+        "endpoint": "post_/api/recommendations/select",
+        "status": 400,
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "count": 1
+      },
+      {
+        "endpoint": "post_/api/recommendations",
+        "status": 403,
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 133
+      },
+      {
+        "endpoint": "post_/api/recommendations/playback",
+        "status": 409,
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 1
+      },
+      {
+        "endpoint": "post_/api/recommendations/playback",
+        "status": 409,
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "count": 2
+      },
+      {
+        "endpoint": "post_/api/recommendations/evidence",
+        "status": 200,
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 823
+      },
+      {
+        "endpoint": "post_/api/recommendations/evidence",
+        "status": 200,
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "count": 1784
+      },
+      {
+        "endpoint": "post_/api/recommendations/playback",
+        "status": 200,
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "count": 1176
+      },
+      {
+        "endpoint": "post_/api/recommendations",
+        "status": 403,
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "count": 99
+      },
+      {
+        "endpoint": "post_/api/recommendations",
+        "status": 200,
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 185
+      },
+      {
+        "endpoint": "post_/api/recommendations/for-you",
+        "status": 200,
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 6
+      },
+      {
+        "endpoint": "post_/api/recommendations/profile",
+        "status": 403,
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "count": 1219
+      }
+    ],
+    "datadogDelivery": [
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_fetch_metadata itemCount=0 upstreamResult=not_observed",
+        "count": 464
+      },
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=6 upstreamResult=served",
+        "count": 310
+      },
+      {
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=6 upstreamResult=served",
+        "count": 128
+      },
+      {
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_fetch_metadata itemCount=0 upstreamResult=not_observed",
+        "count": 111
+      },
+      {
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_fetch_metadata itemCount=0 upstreamResult=not_observed",
+        "count": 86
+      },
+      {
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=6 upstreamResult=served",
+        "count": 65
+      },
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_origin itemCount=0 upstreamResult=not_observed",
+        "count": 63
+      },
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=no_candidates itemCount=6 upstreamResult=empty",
+        "count": 41
+      },
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=seed_embedding_unavailable itemCount=6 upstreamResult=fallback",
+        "count": 35
+      },
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=4 upstreamResult=served",
+        "count": 22
+      },
+      {
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_origin itemCount=0 upstreamResult=not_observed",
+        "count": 22
+      },
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=1 upstreamResult=served",
+        "count": 19
+      },
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=3 upstreamResult=served",
+        "count": 17
+      },
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=2 upstreamResult=served",
+        "count": 15
+      },
+      {
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_origin itemCount=0 upstreamResult=not_observed",
+        "count": 13
+      },
+      {
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=seed_embedding_unavailable itemCount=6 upstreamResult=fallback",
+        "count": 13
+      },
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=5 upstreamResult=served",
+        "count": 11
+      },
+      {
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=4 upstreamResult=served",
+        "count": 10
+      },
+      {
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=1 upstreamResult=served",
+        "count": 8
+      },
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.delivery endpoint=for_you httpStatus=200 result=served reason=none itemCount=6 upstreamResult=served",
+        "count": 8
+      },
+      {
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "event": "event=recommendation.delivery endpoint=for_you httpStatus=200 result=served reason=none itemCount=6 upstreamResult=served",
+        "count": 6
+      },
+      {
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=2 upstreamResult=served",
+        "count": 5
+      },
+      {
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=3 upstreamResult=served",
+        "count": 5
+      },
+      {
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=1 upstreamResult=served",
+        "count": 5
+      },
+      {
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=5 upstreamResult=served",
+        "count": 5
+      },
+      {
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=no_candidates itemCount=6 upstreamResult=empty",
+        "count": 5
+      },
+      {
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=seed_embedding_unavailable itemCount=6 upstreamResult=fallback",
+        "count": 4
+      },
+      {
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=3 upstreamResult=served",
+        "count": 4
+      },
+      {
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=4 upstreamResult=served",
+        "count": 3
+      },
+      {
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=seed_embedding_unavailable itemCount=6 upstreamResult=empty",
+        "count": 3
+      },
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=seed_embedding_unavailable itemCount=6 upstreamResult=empty",
+        "count": 2
+      },
+      {
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=2 upstreamResult=served",
+        "count": 2
+      },
+      {
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=no_candidates itemCount=6 upstreamResult=empty",
+        "count": 2
+      },
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.delivery endpoint=for_you httpStatus=200 result=unavailable reason=coverage_unavailable itemCount=0 upstreamResult=unavailable",
+        "count": 1
+      },
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=seed_embedding_unavailable itemCount=5 upstreamResult=empty",
+        "count": 1
+      },
+      {
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=cooldown itemCount=6 upstreamResult=unavailable",
+        "count": 1
+      },
+      {
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=no_candidates itemCount=6 upstreamResult=fallback",
+        "count": 1
+      },
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.delivery endpoint=for_you httpStatus=403 result=rejected reason=feature_disabled itemCount=0 upstreamResult=not_observed",
+        "count": 1
+      },
+      {
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=5 upstreamResult=served",
+        "count": 1
+      },
+      {
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=seed_embedding_unavailable itemCount=6 upstreamResult=empty",
+        "count": 1
+      },
+      {
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "event": "event=recommendation.delivery endpoint=for_you httpStatus=403 result=rejected reason=feature_disabled itemCount=0 upstreamResult=not_observed",
+        "count": 1
+      },
+      {
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=delivery_timeout itemCount=6 upstreamResult=unavailable",
+        "count": 1
+      }
+    ],
+    "railwayDelivery": [
+      {
+        "from": "2026-09-21T21:55:00Z",
+        "to": "2026-09-21T23:35:00Z",
+        "deployment": "ca4c2f1c-30d6-493e-9e87-82dbb7460991",
+        "event": "recommendation.delivery",
+        "count": 186,
+        "exactRepeatedRows": 0,
+        "unrecognizedRows": 0,
+        "outcomes": {
+          "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_fetch_metadata itemCount=0 upstreamResult=not_observed": 86,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=6 upstreamResult=served": 65,
+          "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_origin itemCount=0 upstreamResult=not_observed": 13,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=3 upstreamResult=served": 4,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=1 upstreamResult=served": 5,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=seed_embedding_unavailable itemCount=6 upstreamResult=empty": 1,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=2 upstreamResult=served": 2,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=4 upstreamResult=served": 3,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=no_candidates itemCount=6 upstreamResult=empty": 2,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=seed_embedding_unavailable itemCount=6 upstreamResult=fallback": 4,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=5 upstreamResult=served": 1
+        },
+        "windows": [
+          {
+            "from": "2026-09-21T21:55:00Z",
+            "to": "2026-09-21T22:00:00Z",
+            "returned": 48,
+            "uniqueAdded": 48
+          },
+          {
+            "from": "2026-09-21T22:00:00Z",
+            "to": "2026-09-21T22:05:00Z",
+            "returned": 46,
+            "uniqueAdded": 46
+          },
+          {
+            "from": "2026-09-21T22:05:00Z",
+            "to": "2026-09-21T22:10:00Z",
+            "returned": 60,
+            "uniqueAdded": 60
+          },
+          {
+            "from": "2026-09-21T22:10:00Z",
+            "to": "2026-09-21T22:15:00Z",
+            "returned": 32,
+            "uniqueAdded": 32
+          },
+          {
+            "from": "2026-09-21T22:15:00Z",
+            "to": "2026-09-21T22:20:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T22:20:00Z",
+            "to": "2026-09-21T22:25:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T22:25:00Z",
+            "to": "2026-09-21T22:30:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T22:30:00Z",
+            "to": "2026-09-21T22:35:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T22:35:00Z",
+            "to": "2026-09-21T22:40:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T22:40:00Z",
+            "to": "2026-09-21T22:45:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T22:45:00Z",
+            "to": "2026-09-21T22:50:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T22:50:00Z",
+            "to": "2026-09-21T22:55:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T22:55:00Z",
+            "to": "2026-09-21T23:00:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T23:00:00Z",
+            "to": "2026-09-21T23:05:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T23:05:00Z",
+            "to": "2026-09-21T23:10:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T23:10:00Z",
+            "to": "2026-09-21T23:15:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T23:15:00Z",
+            "to": "2026-09-21T23:20:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T23:20:00Z",
+            "to": "2026-09-21T23:25:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T23:25:00Z",
+            "to": "2026-09-21T23:30:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T23:30:00Z",
+            "to": "2026-09-21T23:35:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          }
+        ],
+        "recordDigest": "91bb393309d669c7cfae0318e0a0fdb7d65bb60128bf461de710219b6f337264",
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf"
+      },
+      {
+        "from": "2026-09-21T23:35:00Z",
+        "to": "2026-09-21T23:55:00Z",
+        "deployment": "ca4c2f1c-30d6-493e-9e87-82dbb7460991",
+        "event": "recommendation.delivery",
+        "count": 0,
+        "exactRepeatedRows": 0,
+        "unrecognizedRows": 0,
+        "outcomes": {},
+        "windows": [
+          {
+            "from": "2026-09-21T23:35:00Z",
+            "to": "2026-09-21T23:40:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T23:40:00Z",
+            "to": "2026-09-21T23:45:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T23:45:00Z",
+            "to": "2026-09-21T23:50:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T23:50:00Z",
+            "to": "2026-09-21T23:55:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          }
+        ],
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf"
+      },
+      {
+        "from": "2026-09-21T21:55:00Z",
+        "to": "2026-09-21T23:35:00Z",
+        "deployment": "84d5d314-2e76-4281-9b05-95fede1be528",
+        "event": "recommendation.delivery",
+        "count": 1013,
+        "exactRepeatedRows": 0,
+        "unrecognizedRows": 0,
+        "outcomes": {
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=6 upstreamResult=served": 311,
+          "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_fetch_metadata itemCount=0 upstreamResult=not_observed": 465,
+          "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_origin itemCount=0 upstreamResult=not_observed": 64,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=seed_embedding_unavailable itemCount=6 upstreamResult=fallback": 35,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=1 upstreamResult=served": 19,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=4 upstreamResult=served": 22,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=3 upstreamResult=served": 17,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=5 upstreamResult=served": 11,
+          "event=recommendation.delivery endpoint=for_you httpStatus=200 result=served reason=none itemCount=6 upstreamResult=served": 8,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=no_candidates itemCount=6 upstreamResult=empty": 41,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=2 upstreamResult=served": 15,
+          "event=recommendation.delivery endpoint=for_you httpStatus=200 result=unavailable reason=coverage_unavailable itemCount=0 upstreamResult=unavailable": 1,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=seed_embedding_unavailable itemCount=6 upstreamResult=empty": 2,
+          "event=recommendation.delivery endpoint=for_you httpStatus=403 result=rejected reason=feature_disabled itemCount=0 upstreamResult=not_observed": 1,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=seed_embedding_unavailable itemCount=5 upstreamResult=empty": 1
+        },
+        "windows": [
+          {
+            "from": "2026-09-21T21:55:00Z",
+            "to": "2026-09-21T22:00:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T22:00:00Z",
+            "to": "2026-09-21T22:05:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T22:05:00Z",
+            "to": "2026-09-21T22:10:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T22:10:00Z",
+            "to": "2026-09-21T22:15:00Z",
+            "returned": 24,
+            "uniqueAdded": 24
+          },
+          {
+            "from": "2026-09-21T22:15:00Z",
+            "to": "2026-09-21T22:20:00Z",
+            "returned": 61,
+            "uniqueAdded": 61
+          },
+          {
+            "from": "2026-09-21T22:20:00Z",
+            "to": "2026-09-21T22:25:00Z",
+            "returned": 59,
+            "uniqueAdded": 59
+          },
+          {
+            "from": "2026-09-21T22:25:00Z",
+            "to": "2026-09-21T22:30:00Z",
+            "returned": 57,
+            "uniqueAdded": 57
+          },
+          {
+            "from": "2026-09-21T22:30:00Z",
+            "to": "2026-09-21T22:35:00Z",
+            "returned": 61,
+            "uniqueAdded": 61
+          },
+          {
+            "from": "2026-09-21T22:35:00Z",
+            "to": "2026-09-21T22:40:00Z",
+            "returned": 55,
+            "uniqueAdded": 55
+          },
+          {
+            "from": "2026-09-21T22:40:00Z",
+            "to": "2026-09-21T22:45:00Z",
+            "returned": 58,
+            "uniqueAdded": 58
+          },
+          {
+            "from": "2026-09-21T22:45:00Z",
+            "to": "2026-09-21T22:50:00Z",
+            "returned": 60,
+            "uniqueAdded": 60
+          },
+          {
+            "from": "2026-09-21T22:50:00Z",
+            "to": "2026-09-21T22:55:00Z",
+            "returned": 64,
+            "uniqueAdded": 64
+          },
+          {
+            "from": "2026-09-21T22:55:00Z",
+            "to": "2026-09-21T23:00:00Z",
+            "returned": 65,
+            "uniqueAdded": 65
+          },
+          {
+            "from": "2026-09-21T23:00:00Z",
+            "to": "2026-09-21T23:05:00Z",
+            "returned": 54,
+            "uniqueAdded": 54
+          },
+          {
+            "from": "2026-09-21T23:05:00Z",
+            "to": "2026-09-21T23:10:00Z",
+            "returned": 66,
+            "uniqueAdded": 66
+          },
+          {
+            "from": "2026-09-21T23:10:00Z",
+            "to": "2026-09-21T23:15:00Z",
+            "returned": 63,
+            "uniqueAdded": 63
+          },
+          {
+            "from": "2026-09-21T23:15:00Z",
+            "to": "2026-09-21T23:20:00Z",
+            "returned": 62,
+            "uniqueAdded": 62
+          },
+          {
+            "from": "2026-09-21T23:20:00Z",
+            "to": "2026-09-21T23:25:00Z",
+            "returned": 105,
+            "uniqueAdded": 105
+          },
+          {
+            "from": "2026-09-21T23:25:00Z",
+            "to": "2026-09-21T23:30:00Z",
+            "returned": 80,
+            "uniqueAdded": 80
+          },
+          {
+            "from": "2026-09-21T23:30:00Z",
+            "to": "2026-09-21T23:35:00Z",
+            "returned": 19,
+            "uniqueAdded": 19
+          }
+        ],
+        "recordDigest": "3b96992e152ad1bcff434f9011bd4aec8872217c2fc54147215d0553a1c98cbe",
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468"
+      },
+      {
+        "from": "2026-09-21T23:35:00Z",
+        "to": "2026-09-21T23:55:00Z",
+        "deployment": "84d5d314-2e76-4281-9b05-95fede1be528",
+        "event": "recommendation.delivery",
+        "count": 0,
+        "exactRepeatedRows": 0,
+        "unrecognizedRows": 0,
+        "outcomes": {},
+        "windows": [
+          {
+            "from": "2026-09-21T23:35:00Z",
+            "to": "2026-09-21T23:40:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T23:40:00Z",
+            "to": "2026-09-21T23:45:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T23:45:00Z",
+            "to": "2026-09-21T23:50:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T23:50:00Z",
+            "to": "2026-09-21T23:55:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          }
+        ],
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468"
+      },
+      {
+        "from": "2026-09-21T21:55:00Z",
+        "to": "2026-09-21T23:35:00Z",
+        "deployment": "7e475679-fd30-4973-b92c-797a183147f3",
+        "event": "recommendation.delivery",
+        "count": 58,
+        "exactRepeatedRows": 0,
+        "unrecognizedRows": 0,
+        "outcomes": {
+          "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_fetch_metadata itemCount=0 upstreamResult=not_observed": 23,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=6 upstreamResult=served": 22,
+          "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_origin itemCount=0 upstreamResult=not_observed": 4,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=seed_embedding_unavailable itemCount=6 upstreamResult=fallback": 3,
+          "event=recommendation.delivery endpoint=for_you httpStatus=200 result=served reason=none itemCount=6 upstreamResult=served": 4,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=no_candidates itemCount=6 upstreamResult=empty": 1,
+          "event=recommendation.delivery endpoint=for_you httpStatus=403 result=rejected reason=feature_disabled itemCount=0 upstreamResult=not_observed": 1
+        },
+        "windows": [
+          {
+            "from": "2026-09-21T21:55:00Z",
+            "to": "2026-09-21T22:00:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T22:00:00Z",
+            "to": "2026-09-21T22:05:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T22:05:00Z",
+            "to": "2026-09-21T22:10:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T22:10:00Z",
+            "to": "2026-09-21T22:15:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T22:15:00Z",
+            "to": "2026-09-21T22:20:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T22:20:00Z",
+            "to": "2026-09-21T22:25:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T22:25:00Z",
+            "to": "2026-09-21T22:30:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T22:30:00Z",
+            "to": "2026-09-21T22:35:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T22:35:00Z",
+            "to": "2026-09-21T22:40:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T22:40:00Z",
+            "to": "2026-09-21T22:45:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T22:45:00Z",
+            "to": "2026-09-21T22:50:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T22:50:00Z",
+            "to": "2026-09-21T22:55:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T22:55:00Z",
+            "to": "2026-09-21T23:00:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T23:00:00Z",
+            "to": "2026-09-21T23:05:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T23:05:00Z",
+            "to": "2026-09-21T23:10:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T23:10:00Z",
+            "to": "2026-09-21T23:15:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T23:15:00Z",
+            "to": "2026-09-21T23:20:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T23:20:00Z",
+            "to": "2026-09-21T23:25:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T23:25:00Z",
+            "to": "2026-09-21T23:30:00Z",
+            "returned": 0,
+            "uniqueAdded": 0
+          },
+          {
+            "from": "2026-09-21T23:30:00Z",
+            "to": "2026-09-21T23:35:00Z",
+            "returned": 58,
+            "uniqueAdded": 58
+          }
+        ],
+        "recordDigest": "bb6c6867f0d99aa38c540cfc9e3bf0eabe4cea32448a0f473fb69303c0cccc6b",
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0"
+      },
+      {
+        "from": "2026-09-21T23:35:00Z",
+        "to": "2026-09-21T23:55:00Z",
+        "deployment": "7e475679-fd30-4973-b92c-797a183147f3",
+        "event": "recommendation.delivery",
+        "count": 267,
+        "exactRepeatedRows": 0,
+        "unrecognizedRows": 0,
+        "outcomes": {
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=6 upstreamResult=served": 106,
+          "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_fetch_metadata itemCount=0 upstreamResult=not_observed": 88,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=2 upstreamResult=served": 5,
+          "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_origin itemCount=0 upstreamResult=not_observed": 18,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=5 upstreamResult=served": 5,
+          "event=recommendation.delivery endpoint=for_you httpStatus=200 result=served reason=none itemCount=6 upstreamResult=served": 2,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=seed_embedding_unavailable itemCount=6 upstreamResult=empty": 3,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=4 upstreamResult=served": 10,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=1 upstreamResult=served": 8,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=3 upstreamResult=served": 5,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=no_candidates itemCount=6 upstreamResult=fallback": 1,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=seed_embedding_unavailable itemCount=6 upstreamResult=fallback": 10,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=no_candidates itemCount=6 upstreamResult=empty": 4,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=delivery_timeout itemCount=6 upstreamResult=unavailable": 1,
+          "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=cooldown itemCount=6 upstreamResult=unavailable": 1
+        },
+        "windows": [
+          {
+            "from": "2026-09-21T23:35:00Z",
+            "to": "2026-09-21T23:40:00Z",
+            "returned": 77,
+            "uniqueAdded": 77
+          },
+          {
+            "from": "2026-09-21T23:40:00Z",
+            "to": "2026-09-21T23:45:00Z",
+            "returned": 53,
+            "uniqueAdded": 53
+          },
+          {
+            "from": "2026-09-21T23:45:00Z",
+            "to": "2026-09-21T23:50:00Z",
+            "returned": 64,
+            "uniqueAdded": 64
+          },
+          {
+            "from": "2026-09-21T23:50:00Z",
+            "to": "2026-09-21T23:55:00Z",
+            "returned": 73,
+            "uniqueAdded": 73
+          }
+        ],
+        "recordDigest": "85a3b49ab0aab8f5da7602426685003c2ae434fbbfb0fe8988d1dd2c86e26cce",
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0"
+      }
+    ],
+    "deliveryHttpReconciliation": [
+      {
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "endpoint": "post_/api/recommendations",
+        "status": 200,
+        "primary": 185,
+        "railway": 185
+      },
+      {
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "endpoint": "post_/api/recommendations",
+        "status": 403,
+        "primary": 133,
+        "railway": 133
+      },
+      {
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "endpoint": "post_/api/recommendations/for-you",
+        "status": 200,
+        "primary": 6,
+        "railway": 6
+      },
+      {
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "endpoint": "post_/api/recommendations/for-you",
+        "status": 403,
+        "primary": 1,
+        "railway": 1
+      },
+      {
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "endpoint": "post_/api/recommendations",
+        "status": 200,
+        "primary": 87,
+        "railway": 87
+      },
+      {
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "endpoint": "post_/api/recommendations",
+        "status": 403,
+        "primary": 99,
+        "railway": 99
+      },
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "endpoint": "post_/api/recommendations",
+        "status": 200,
+        "primary": 474,
+        "railway": 474
+      },
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "endpoint": "post_/api/recommendations",
+        "status": 403,
+        "primary": 529,
+        "railway": 529
+      },
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "endpoint": "post_/api/recommendations/for-you",
+        "status": 200,
+        "primary": 9,
+        "railway": 9
+      },
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "endpoint": "post_/api/recommendations/for-you",
+        "status": 403,
+        "primary": 1,
+        "railway": 1
+      }
+    ],
+    "collectorDifferences": [
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=6 upstreamResult=served",
+        "railway": 311,
+        "datadog": 310
+      },
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_fetch_metadata itemCount=0 upstreamResult=not_observed",
+        "railway": 465,
+        "datadog": 464
+      },
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_origin itemCount=0 upstreamResult=not_observed",
+        "railway": 64,
+        "datadog": 63
+      }
+    ],
+    "faultInjectionExclusions": 0,
+    "ownedPublicBrowserCanaryIncluded": true,
+    "semanticTimeouts": {
+      "delivery_timeout": 1,
+      "retrieval_timeout": 0
+    },
+    "httpSource": {
+      "query": "sum:trace.web.request.hits{service:forge-web,env:prod,resource_name:post_/api/recommendations*} by {resource_name,http.status_code,version}.as_count()",
+      "aggregator": "sum",
+      "retainedSpansUsedAsDenominator": false
+    },
+    "datadogEvidence": [
+      {
+        "tags": "env:prod,service:forge-admin,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=facts outcome=accepted reason=none retryDisposition=none",
+        "count": 4315
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.evidence source=web action=facts outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+        "count": 3849
+      },
+      {
+        "tags": "env:prod,service:forge-admin,version:ce421561ee9bcf89991dea5a060a656e45c3434b",
+        "event": "event=recommendation.evidence source=admin action=facts outcome=accepted reason=none retryDisposition=none",
+        "count": 2664
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "event": "event=recommendation.evidence source=web action=facts outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+        "count": 2062
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.evidence source=web action=evidence outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+        "count": 1784
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "event": "event=recommendation.evidence source=web action=facts outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+        "count": 1068
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "event": "event=recommendation.evidence source=web action=evidence outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+        "count": 823
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.evidence source=web action=evidence outcome=rejected reason=crawler_rejected timeoutStage=none retryDisposition=terminal crawler=recognized httpStatus=403",
+        "count": 463
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.evidence source=web action=playback outcome=rejected reason=forbidden timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=403",
+        "count": 353
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "event": "event=recommendation.evidence source=web action=evidence outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+        "count": 323
+      },
+      {
+        "tags": "env:prod,service:forge-admin,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=claim outcome=accepted",
+        "count": 273
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.evidence source=web action=claim outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+        "count": 265
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.evidence source=web action=context outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+        "count": 262
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.evidence source=web action=playback outcome=rejected reason=crawler_rejected timeoutStage=none retryDisposition=terminal crawler=recognized httpStatus=403",
+        "count": 195
+      },
+      {
+        "tags": "env:prod,service:forge-admin,version:ce421561ee9bcf89991dea5a060a656e45c3434b",
+        "event": "event=recommendation.evidence source=admin action=claim outcome=accepted",
+        "count": 165
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "event": "event=recommendation.evidence source=web action=evidence outcome=rejected reason=crawler_rejected timeoutStage=none retryDisposition=terminal crawler=recognized httpStatus=403",
+        "count": 146
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "event": "event=recommendation.evidence source=web action=claim outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+        "count": 120
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "event": "event=recommendation.evidence source=web action=context outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+        "count": 114
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "event": "event=recommendation.evidence source=web action=playback outcome=rejected reason=forbidden timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=403",
+        "count": 91
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "event": "event=recommendation.evidence source=web action=evidence outcome=rejected reason=crawler_rejected timeoutStage=none retryDisposition=terminal crawler=recognized httpStatus=403",
+        "count": 87
+      },
+      {
+        "tags": "env:prod,service:forge-admin,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1",
+        "count": 77
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "event": "event=recommendation.evidence source=web action=playback outcome=rejected reason=forbidden timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=403",
+        "count": 65
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "event": "event=recommendation.evidence source=web action=playback outcome=rejected reason=crawler_rejected timeoutStage=none retryDisposition=terminal crawler=recognized httpStatus=403",
+        "count": 58
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "event": "event=recommendation.evidence source=web action=context outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+        "count": 54
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "event": "event=recommendation.evidence source=web action=claim outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+        "count": 54
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.evidence source=web action=facts outcome=replay reason=none timeoutStage=none retryDisposition=idempotent_replay crawler=not_recognized httpStatus=200",
+        "count": 45
+      },
+      {
+        "tags": "env:prod,service:forge-admin,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=facts outcome=replay reason=none retryDisposition=idempotent_replay",
+        "count": 45
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "event": "event=recommendation.evidence source=web action=playback outcome=rejected reason=crawler_rejected timeoutStage=none retryDisposition=terminal crawler=recognized httpStatus=403",
+        "count": 35
+      },
+      {
+        "tags": "env:prod,service:forge-admin,version:ce421561ee9bcf89991dea5a060a656e45c3434b",
+        "event": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1",
+        "count": 33
+      },
+      {
+        "tags": "env:prod,service:forge-admin,version:ce421561ee9bcf89991dea5a060a656e45c3434b",
+        "event": "event=recommendation.evidence source=admin action=facts outcome=replay reason=none retryDisposition=idempotent_replay",
+        "count": 19
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "event": "event=recommendation.evidence source=web action=facts outcome=replay reason=none timeoutStage=none retryDisposition=idempotent_replay crawler=not_recognized httpStatus=200",
+        "count": 19
+      },
+      {
+        "tags": "env:prod,service:forge-admin-worker,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1",
+        "count": 15
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.evidence source=web action=select outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+        "count": 13
+      },
+      {
+        "tags": "env:prod,service:forge-admin,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=2",
+        "count": 13
+      },
+      {
+        "tags": "env:prod,service:forge-admin-worker,version:ce421561ee9bcf89991dea5a060a656e45c3434b",
+        "event": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1",
+        "count": 10
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "event": "event=recommendation.evidence source=web action=select outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+        "count": 9
+      },
+      {
+        "tags": "env:prod,service:forge-admin,version:ce421561ee9bcf89991dea5a060a656e45c3434b",
+        "event": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=2",
+        "count": 5
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "event": "event=recommendation.evidence source=web action=evidence outcome=rejected reason=invalid_request timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=400",
+        "count": 5
+      },
+      {
+        "tags": "env:prod,service:forge-admin,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=3",
+        "count": 4
+      },
+      {
+        "tags": "env:prod,service:forge-admin-worker,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=2",
+        "count": 3
+      },
+      {
+        "tags": "env:prod,service:forge-admin,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=4",
+        "count": 3
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "event": "event=recommendation.evidence source=web action=facts outcome=rejected reason=forbidden timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=401",
+        "count": 3
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.evidence source=web action=evidence outcome=rejected reason=forbidden timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=401",
+        "count": 2
+      },
+      {
+        "tags": "env:prod,service:forge-admin,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=claim outcome=rejected reason=invalid_binding retryDisposition=terminal",
+        "count": 2
+      },
+      {
+        "tags": "env:prod,service:forge-admin,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=7",
+        "count": 2
+      },
+      {
+        "tags": "env:prod,service:forge-admin,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=5",
+        "count": 2
+      },
+      {
+        "tags": "env:prod,service:forge-admin,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=6",
+        "count": 2
+      },
+      {
+        "tags": "env:prod,service:forge-admin-worker,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=11",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-admin-worker,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=10",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-admin-worker,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=23",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-admin-worker,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=7",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-admin-worker,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=13",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-admin-worker,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=22",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.evidence source=web action=select outcome=rejected reason=invalid_request timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=400",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.evidence source=web action=claim outcome=rejected reason=invalid_binding timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=409",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-admin-worker,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=12",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "event": "event=recommendation.evidence source=web action=facts outcome=rejected reason=forbidden timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=401",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-admin-worker,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=14",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "event": "event=recommendation.evidence source=web action=select outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-admin-worker,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=20",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-admin-worker,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=16",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.evidence source=web action=facts outcome=rejected reason=invalid_binding timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=409",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-admin-worker,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=15",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "event": "event=recommendation.evidence source=web action=evidence outcome=rejected reason=invalid_request timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=400",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "event": "event=recommendation.evidence source=web action=select outcome=rejected reason=invalid_request timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=400",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-admin-worker,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=18",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-admin-worker,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=4",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-admin-worker,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=3",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-admin-worker,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=8",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-admin,version:ce421561ee9bcf89991dea5a060a656e45c3434b",
+        "event": "event=recommendation.evidence source=admin action=claim outcome=replay retryDisposition=idempotent_replay",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-admin-worker,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=9",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-web,version:1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "event": "event=recommendation.evidence source=web action=claim outcome=rejected reason=invalid_binding timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=409",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-admin,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=facts outcome=rejected reason=invalid_binding retryDisposition=terminal",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-admin-worker,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=5",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-admin-worker,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=21",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-admin-worker,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=19",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-admin-worker,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=17",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-admin,version:ce421561ee9bcf89991dea5a060a656e45c3434b",
+        "event": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=3",
+        "count": 1
+      },
+      {
+        "tags": "env:prod,service:forge-admin-worker,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=6",
+        "count": 1
+      }
+    ],
+    "datadogHeartbeats": [
+      {
+        "tags": "env:prod,service:forge-admin-worker,version:92a597ee03074bf4d79b0eb21db4499046ecd09f",
+        "event": "event=recommendation.reconciliation.heartbeat outcome=completed",
+        "count": 13
+      },
+      {
+        "tags": "env:prod,service:forge-admin-worker,version:ce421561ee9bcf89991dea5a060a656e45c3434b",
+        "event": "event=recommendation.reconciliation.heartbeat outcome=completed",
+        "count": 11
+      }
+    ],
+    "evidenceHttpReconciliation": [
+      {
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "endpoint": "post_/api/recommendations/evidence",
+        "status": 200,
+        "primary": 823,
+        "datadog": 823,
+        "missingSemantics": 0
+      },
+      {
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "endpoint": "post_/api/recommendations/evidence",
+        "status": 400,
+        "primary": 5,
+        "datadog": 5,
+        "missingSemantics": 0
+      },
+      {
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "endpoint": "post_/api/recommendations/evidence",
+        "status": 403,
+        "primary": 146,
+        "datadog": 146,
+        "missingSemantics": 0
+      },
+      {
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "endpoint": "post_/api/recommendations/playback",
+        "status": 200,
+        "primary": 2315,
+        "datadog": 2315,
+        "missingSemantics": 0
+      },
+      {
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "endpoint": "post_/api/recommendations/playback",
+        "status": 401,
+        "primary": 3,
+        "datadog": 3,
+        "missingSemantics": 0
+      },
+      {
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "endpoint": "post_/api/recommendations/playback",
+        "status": 403,
+        "primary": 149,
+        "datadog": 149,
+        "missingSemantics": 0
+      },
+      {
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "endpoint": "post_/api/recommendations/playback",
+        "status": 409,
+        "primary": 1,
+        "datadog": 1,
+        "missingSemantics": 0
+      },
+      {
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "endpoint": "post_/api/recommendations/select",
+        "status": 200,
+        "primary": 9,
+        "datadog": 9,
+        "missingSemantics": 0
+      },
+      {
+        "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "endpoint": "post_/api/recommendations/select",
+        "status": 400,
+        "primary": 1,
+        "datadog": 1,
+        "missingSemantics": 0
+      },
+      {
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "endpoint": "post_/api/recommendations/evidence",
+        "status": 200,
+        "primary": 323,
+        "datadog": 323,
+        "missingSemantics": 0
+      },
+      {
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "endpoint": "post_/api/recommendations/evidence",
+        "status": 403,
+        "primary": 87,
+        "datadog": 87,
+        "missingSemantics": 0
+      },
+      {
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "endpoint": "post_/api/recommendations/playback",
+        "status": 200,
+        "primary": 1176,
+        "datadog": 1176,
+        "missingSemantics": 0
+      },
+      {
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "endpoint": "post_/api/recommendations/playback",
+        "status": 401,
+        "primary": 1,
+        "datadog": 1,
+        "missingSemantics": 0
+      },
+      {
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "endpoint": "post_/api/recommendations/playback",
+        "status": 403,
+        "primary": 100,
+        "datadog": 100,
+        "missingSemantics": 0
+      },
+      {
+        "webRevision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+        "endpoint": "post_/api/recommendations/select",
+        "status": 200,
+        "primary": 1,
+        "datadog": 1,
+        "missingSemantics": 0
+      },
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "endpoint": "post_/api/recommendations/evidence",
+        "status": 200,
+        "primary": 1784,
+        "datadog": 1784,
+        "missingSemantics": 0
+      },
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "endpoint": "post_/api/recommendations/evidence",
+        "status": 400,
+        "primary": 1,
+        "datadog": 1,
+        "missingSemantics": 0
+      },
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "endpoint": "post_/api/recommendations/evidence",
+        "status": 401,
+        "primary": 2,
+        "datadog": 2,
+        "missingSemantics": 0
+      },
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "endpoint": "post_/api/recommendations/evidence",
+        "status": 403,
+        "primary": 467,
+        "datadog": 463,
+        "missingSemantics": 4
+      },
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "endpoint": "post_/api/recommendations/playback",
+        "status": 200,
+        "primary": 4427,
+        "datadog": 4421,
+        "missingSemantics": 6
+      },
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "endpoint": "post_/api/recommendations/playback",
+        "status": 403,
+        "primary": 551,
+        "datadog": 548,
+        "missingSemantics": 3
+      },
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "endpoint": "post_/api/recommendations/playback",
+        "status": 409,
+        "primary": 2,
+        "datadog": 2,
+        "missingSemantics": 0
+      },
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "endpoint": "post_/api/recommendations/select",
+        "status": 200,
+        "primary": 13,
+        "datadog": 13,
+        "missingSemantics": 0
+      },
+      {
+        "webRevision": "f8f997fc8cb8cb49e5b16e6c460beffb1ad25468",
+        "endpoint": "post_/api/recommendations/select",
+        "status": 400,
+        "primary": 1,
+        "datadog": 1,
+        "missingSemantics": 0
+      }
+    ],
+    "recognizedCrawlerObservations": [
+      {
+        "httpStatus": 403,
+        "outcome": "rejected",
+        "retryDisposition": "terminal",
+        "count": 984
+      }
+    ],
+    "independentEvidenceCollector": {
+      "source": "Railway",
+      "status": "failed",
+      "deploymentsAttempted": 3,
+      "error": "Problem processing request",
+      "missingSemanticsResolved": false
+    },
+    "indexedAdminErrors": {
+      "source": "Datadog indexed logs; collection may be incomplete",
+      "patterns": [
+        "P2002",
+        "recommendation_serialization_exhausted",
+        "recommendation_episode_lock_exhausted",
+        "could not resize shared memory"
+      ],
+      "count": 0
+    }
+  },
+  "remainingDeliveryTimeout": {
+    "at": "2026-09-21T23:48:30Z",
+    "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+    "httpStatus": 200,
+    "result": "fallback",
+    "reason": "delivery_timeout",
+    "itemCount": 6,
+    "upstreamResult": "unavailable",
+    "trace": "https://app.datadoghq.com/apm/trace/6ab1c24c000000007e3122648329460b",
+    "traceCoverage": {
+      "fullTraceResponseTruncated": true,
+      "slowSpanSearchThresholdMs": 100,
+      "slowSpanSearchRows": 23,
+      "hasMore": false
+    },
+    "selectedSpans": [
+      {
+        "operation": "final persistence transaction",
+        "service": "forge-admin-prisma",
+        "start": "2026-09-21T23:48:29.007000+00:00",
+        "end": "2026-09-21T23:48:31.753000+00:00",
+        "elapsedMs": 2746.358
+      },
+      {
+        "operation": "request persistence client call",
+        "service": "forge-admin-prisma",
+        "start": "2026-09-21T23:48:29.011000+00:00",
+        "end": "2026-09-21T23:48:31.752000+00:00",
+        "elapsedMs": 2741.499
+      },
+      {
+        "operation": "rollback SQL",
+        "service": "forge-admin-prisma",
+        "start": "2026-09-21T23:48:29.904000+00:00",
+        "end": "2026-09-21T23:48:31.749000+00:00",
+        "elapsedMs": 1845.416
+      },
+      {
+        "operation": "served-item insertion SQL",
+        "service": "forge-admin-prisma",
+        "start": "2026-09-21T23:48:29.016000+00:00",
+        "end": "2026-09-21T23:48:29.903000+00:00",
+        "elapsedMs": 887.948
+      },
+      {
+        "operation": "graphql.query.SemanticRecommendationDelivery",
+        "service": "forge-admin",
+        "start": "2026-09-21T23:48:28.427000+00:00",
+        "end": "2026-09-21T23:48:29.903000+00:00",
+        "elapsedMs": 1476.621
+      },
+      {
+        "operation": "web.request",
+        "service": "forge-admin",
+        "start": "2026-09-21T23:48:28.422000+00:00",
+        "end": "2026-09-21T23:48:29.903000+00:00",
+        "elapsedMs": 1481.212
+      },
+      {
+        "operation": "profile retrieval SQL",
+        "service": "forge-admin-prisma",
+        "start": "2026-09-21T23:48:28.551000+00:00",
+        "end": "2026-09-21T23:48:28.881000+00:00",
+        "elapsedMs": 330.821
+      },
+      {
+        "operation": "seed retrieval SQL",
+        "service": "forge-admin-prisma",
+        "start": "2026-09-21T23:48:28.449000+00:00",
+        "end": "2026-09-21T23:48:28.776000+00:00",
+        "elapsedMs": 327.473
+      }
+    ],
+    "diagnosticOverlap": {
+      "readOnly": true,
+      "statementTimeoutMs": 5000,
+      "diagnosticOutputFileCreatedAt": "2026-09-21T23:48:24.361805826Z",
+      "postgresStatementCancellationTimes": [
+        "2026-09-21T23:48:31.745Z",
+        "2026-09-21T23:48:32.035Z"
+      ],
+      "fullStatementCorrelation": "unavailable: Railway log API failed",
+      "possibleContribution": true,
+      "causalityEstablished": false,
+      "countedInFailurePopulation": true,
+      "correction": "Constrain workflow-step read through indexed scheduler run identity; same timeout retained."
+    },
+    "limits": "No concurrent wait/volume sampler after 23:40; spans do not isolate database execution, native pool, lock or storage cause. No deadline or retry change."
+  },
+  "canonicalFinalAuditSequence": {
+    "earlierNonzero": {
+      "at": "2026-09-21T23:56:26.750Z",
+      "revision": "92a597ee03074bf4d79b0eb21db4499046ecd09f",
+      "from": "2026-09-21T21:55:00Z",
+      "to": "2026-09-21T23:56:15.619Z",
+      "elapsedMs": 8488.103986,
+      "rows": [
+        {
+          "ineligibleGenerations": "1",
+          "affectedPointers": "1",
+          "affectedContributions": "1",
+          "rebuildCandidates": "1",
+          "rebuildBacklog": "0",
+          "replacementPublications": "18",
+          "staleClaims": "0",
+          "reclaimedRuns": "0",
+          "terminalRuns": "10",
+          "servingFences": "0",
+          "affectedRequests": "0",
+          "cleanHybridRequests": "175",
+          "reasonCounts": {
+            "source_lineage_invalid": 1
+          }
+        }
+      ]
+    },
+    "followupWithEarlierClock": {
+      "at": "2026-09-21T23:58:13.342Z",
+      "scope": "Aggregate invalid-lineage predicates, no source or profile identifiers",
+      "rows": [
+        {
+          "kind": "session_selection",
+          "affected": 1,
+          "decision_state": "eligible",
+          "decision_current": true,
+          "policy_matches": true,
+          "decision_revision_matches": true,
+          "decision_unexpired": true,
+          "contribution_unexpired": false,
+          "qualified_view": null,
+          "outcome_unexpired": null,
+          "watermark_matches": null,
+          "episode_state": null,
+          "conflict_count": null,
+          "replay_count": null,
+          "has_late_fact": false,
+          "outcome_superseded": false,
+          "selection_attributed": true,
+          "selection_unexpired": true,
+          "has_eligible_impression": true
+        },
+        {
+          "kind": "session_selection",
+          "affected": 1,
+          "decision_state": "eligible",
+          "decision_current": true,
+          "policy_matches": true,
+          "decision_revision_matches": true,
+          "decision_unexpired": true,
+          "contribution_unexpired": true,
+          "qualified_view": null,
+          "outcome_unexpired": null,
+          "watermark_matches": null,
+          "episode_state": null,
+          "conflict_count": null,
+          "replay_count": null,
+          "has_late_fact": false,
+          "outcome_superseded": false,
+          "selection_attributed": true,
+          "selection_unexpired": true,
+          "has_eligible_impression": true
+        }
+      ]
+    },
+    "consistentSnapshot": {
+      "at": "2026-09-22T00:00:01.111Z",
+      "revision": "92a597ee03074bf4d79b0eb21db4499046ecd09f",
+      "from": "2026-09-21T21:55:00Z",
+      "to": "2026-09-21T23:59:54.579Z",
+      "elapsedMs": 6531.466294000001,
+      "rows": [
+        {
+          "ineligibleGenerations": "0",
+          "affectedPointers": "0",
+          "affectedContributions": "0",
+          "rebuildCandidates": "0",
+          "rebuildBacklog": "0",
+          "replacementPublications": "20",
+          "staleClaims": "0",
+          "reclaimedRuns": "0",
+          "terminalRuns": "10",
+          "servingFences": "0",
+          "affectedRequests": "0",
+          "cleanHybridRequests": "183",
+          "reasonCounts": {}
+        }
+      ]
+    },
+    "method": "Final snapshot: BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY, choose server clock in transaction, replace canonical now parameters with that clock.",
+    "limits": "Earlier locally prepared now and reused old-clock follow-up can disagree with newly published data. Preserve nonzero results; no identities retained to prove exact repair or continuous eligibility."
+  },
+  "cleanup": {
+    "boundedRemoteObservers": "finished normally; connections closed",
+    "globalDatabaseOrServiceSettingsChanged": false,
+    "ownedBrowserAndVirtualDisplay": "closed",
+    "rawBrowserCaptureAndPrivateLineageLookup": "removed",
+    "ownedPostgresAndRedisContainers": "stopped",
+    "sharedServicesModified": false,
+    "taskOwnedRailwayTokenCopy": "removed"
   }
 }
