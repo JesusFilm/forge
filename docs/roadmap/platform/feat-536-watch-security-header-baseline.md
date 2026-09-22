@@ -7,7 +7,9 @@ status: "complete"
 start_date: "2026-09-22"
 duration: 1
 depends_on: []
-blocks: []
+blocks:
+  - "feat-541"
+  - "feat-542"
 tags:
   - "web"
   - "infrastructure"
@@ -84,6 +86,13 @@ Measured on production and reproduced locally against `next build` + `next start
   (`docs/analytics-and-recommendation-policy.md`); GA and Datadog RUM hosts stay
   reachable under the report-only policy.
 - Do NOT change the `/preview/experience` `Referrer-Policy: no-referrer` override.
+
+## Follow-up work split out of this ticket
+
+- `feat-541` — the `imagedelivery.net` / `image.mux.com` patterns are shape-only
+  and do not close the open image proxy for those multitenant CDNs.
+- `feat-542` — the post-sign-out force-login marker is still burned at the login
+  redirect rather than on callback success.
 
 ## Verification
 
