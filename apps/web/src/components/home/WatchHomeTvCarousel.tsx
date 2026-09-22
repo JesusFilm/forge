@@ -32,6 +32,7 @@ import type { WatchHomeHeroSlide } from "@/lib/watch-home"
 import type { WatchHomeCarouselSequenceData } from "@/lib/watch-home-carousel-sequence"
 import { isWatchHomeIntroEligibleVideoLabel } from "@/lib/watch-home-carousel-sequence"
 import { cn } from "@/lib/utils"
+import { isUnmodifiedPrimaryNavigation } from "@/lib/link-navigation"
 import {
   WATCH_HOME_TV_TIMELINE_FUTURE_COUNT,
   useWatchHomeTvCarousel,
@@ -140,19 +141,25 @@ function muxThumbnailUrl(playbackId: string | null, width = 1280) {
     : null
 }
 
+// Below a second there is nothing worth resuming, so no `t=` is written. Both
+// the URL builder and the CTA's click handler ask through here, so the two
+// cannot drift into a click that navigates for a position the URL then omits.
+function hasResumePosition(playbackTimeSeconds: number): boolean {
+  return Number.isFinite(playbackTimeSeconds) && playbackTimeSeconds >= 1
+}
+
 function appendAutoplaySignal(href: string, playbackTimeSeconds = 0): string {
   try {
     const url = new URL(href, "http://watch.local")
-    if (Number.isFinite(playbackTimeSeconds) && playbackTimeSeconds >= 1) {
+    if (hasResumePosition(playbackTimeSeconds)) {
       url.searchParams.set("t", String(Math.floor(playbackTimeSeconds)))
     }
     url.searchParams.set("autoplay", "1")
     return `${url.pathname}${url.search}${url.hash}`
   } catch {
-    const startTime =
-      Number.isFinite(playbackTimeSeconds) && playbackTimeSeconds >= 1
-        ? `t=${Math.floor(playbackTimeSeconds)}&`
-        : ""
+    const startTime = hasResumePosition(playbackTimeSeconds)
+      ? `t=${Math.floor(playbackTimeSeconds)}&`
+      : ""
     return href.includes("?")
       ? `${href}&${startTime}autoplay=1`
       : `${href}?${startTime}autoplay=1`
@@ -225,34 +232,27 @@ export function PrimaryAction({
   }, [playbackTimeSeconds])
 
   const href = slide.href
+  const stableHref = useMemo(
+    () => (href ? (appendAutoplaySignal(href) as Route) : null),
+    [href],
+  )
   const handleClick = useCallback(
     (event: React.MouseEvent<HTMLAnchorElement>) => {
       if (!href || event.defaultPrevented) return
-      // Modified and non-primary clicks (new tab, new window, download) never
-      // reach the client router, so rewriting the destination here would be
-      // silently ignored — let the browser have the stable href instead.
-      if (
-        event.metaKey ||
-        event.ctrlKey ||
-        event.shiftKey ||
-        event.altKey ||
-        event.button !== 0
-      ) {
-        return
-      }
+      if (!isUnmodifiedPrimaryNavigation(event)) return
       const seconds = playbackTimeRef.current
-      if (!Number.isFinite(seconds) || seconds < 1) return
+      if (!hasResumePosition(seconds)) return
       event.preventDefault()
       router.push(appendAutoplaySignal(href, seconds) as Route)
     },
     [href, router],
   )
 
-  if (!href) return null
+  if (!stableHref) return null
 
   return (
     <Link
-      href={appendAutoplaySignal(href) as Route}
+      href={stableHref}
       onClick={handleClick}
       // The watch page's primary hero action, so both surfaces show the same
       // pill; `min-w-0 max-w-full` keeps a long title from stretching it.
