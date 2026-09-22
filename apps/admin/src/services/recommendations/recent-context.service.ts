@@ -1,4 +1,6 @@
 import type { PrismaClient } from "@prisma/client"
+import { recentPlaybackCtes } from "./recent-playback.sql"
+export { MAX_RECENT_CONTEXT_EPISODES_PER_SESSION } from "./recent-playback.sql"
 import type {
   RecommendationRecentSuppressionReason,
   RecommendationSlateComposition,
@@ -10,15 +12,15 @@ const MAX_RECENT_CONTEXT_SESSIONS = 8
 // may accumulate arbitrarily many issued roots inside the seven-day window;
 // only the newest roots per authorized session can influence this request.
 export const MAX_RECENT_CONTEXT_REQUESTS_PER_SESSION = 32
-export const MAX_RECENT_CONTEXT_EPISODES_PER_SESSION = 32
 const MAX_RECENT_CONTEXT_VIDEOS = 24
 const REPEATEDLY_SERVED_THRESHOLD = 2
 
 type RecentContextRow = Readonly<{
   targetMediaId: string
+  videoCoreId?: string | null
   servedCount: number | bigint
   selected: boolean
-  playbackStarted: boolean
+  recentlyTried: boolean
 }>
 
 export type RecommendationRecentContext = Readonly<{
@@ -53,7 +55,7 @@ export async function getRecommendationRecentContext(
   )
   const rows = await prisma.$queryRaw<RecentContextRow[]>`
     WITH active_profile AS MATERIALIZED (
-      SELECT profile.id, profile.privacy_generation
+      SELECT profile.id, profile.privacy_generation, profile.created_at
       FROM recommendation_profile profile
       WHERE ${input.profileTokenDigest}::text IS NOT NULL
         AND profile.token_digest = ${input.profileTokenDigest}
@@ -62,7 +64,7 @@ export async function getRecommendationRecentContext(
       LIMIT 1
     ),
     durable_sessions AS MATERIALIZED (
-      SELECT link.session_digest, link.linked_at AS authorization_start
+      SELECT link.session_digest, GREATEST(link.linked_at, profile.created_at) AS authorization_start
       FROM active_profile profile
       JOIN recommendation_profile_session_link link
         ON link.profile_id = profile.id
@@ -115,43 +117,13 @@ export async function getRecommendationRecentContext(
         AND selection.occurred_at >= ${windowStart}
         AND selection.occurred_at <= ${input.now}
     ),
-    recent_episodes AS MATERIALIZED (
-      SELECT episode.id, episode.media_id, episode.created_at
-      FROM scoped_sessions session
-      CROSS JOIN LATERAL (
-        SELECT root.id, root.media_id, root.created_at
-        FROM recommendation_playback_episode root
-        WHERE root.session_digest = session.session_digest
-          AND root.created_at >= session.authorization_start
-          AND root.created_at <= ${input.now}
-          AND root.expires_at > ${input.now}
-          AND root.state IN ('claimed', 'finalized', 'timed_out')
-          AND root.conflict_count = 0
-        ORDER BY root.created_at DESC, root.id DESC
-        LIMIT ${MAX_RECENT_CONTEXT_EPISODES_PER_SESSION}
-      ) episode
-    ),
-    started_videos AS MATERIALIZED (
-      SELECT episode.media_id, max(fact.received_at) AS latest_at
-      FROM recent_episodes episode
-      JOIN recommendation_playback_fact fact
-        ON fact.episode_id = episode.id
-        AND fact.kind = 'playback_start'
-        AND NOT fact.late
-        -- Ingestion already validates the capability's client-clock allowance.
-        -- Starts may be buffered before context issuance; use server receipt
-        -- time for recency while the episode root fences authorization.
-        AND fact.received_at >= ${windowStart}
-        AND fact.received_at <= ${input.now}
-        AND fact.expires_at > ${input.now}
-      GROUP BY episode.media_id
-    ),
+    ${recentPlaybackCtes(input.now)},
     served_videos AS MATERIALIZED (
       SELECT
         item.target_media_id AS "targetMediaId",
         count(DISTINCT request.id)::int AS "servedCount",
         bool_or(selected.item_id IS NOT NULL) AS selected,
-        false AS "playbackStarted",
+        false AS "recentlyTried",
         max(request.created_at) AS latest_at
       FROM recent_requests request
       JOIN recommendation_served_item item ON item.request_id = request.id
@@ -165,26 +137,28 @@ export async function getRecommendationRecentContext(
         "targetMediaId",
         sum("servedCount")::int AS "servedCount",
         bool_or(selected) AS selected,
-        bool_or("playbackStarted") AS "playbackStarted",
+        bool_or("recentlyTried") AS "recentlyTried",
         max(latest_at) AS latest_at
       FROM (
         SELECT * FROM served_videos
         UNION ALL
-        SELECT media_id, 0, false, true, latest_at FROM started_videos
+        SELECT media_id, 0, false, true, latest_at FROM recent_playback
       ) evidence
       GROUP BY "targetMediaId"
     )
     SELECT
       "targetMediaId",
+      video.core_id AS "videoCoreId",
       "servedCount",
       selected,
-      "playbackStarted"
+      "recentlyTried"
     FROM recent_items
-    WHERE "playbackStarted"
+    LEFT JOIN video ON video.id = "targetMediaId"
+    WHERE "recentlyTried"
       OR selected
       OR "servedCount" >= ${REPEATEDLY_SERVED_THRESHOLD}
     ORDER BY
-      "playbackStarted" DESC,
+      "recentlyTried" DESC,
       selected DESC,
       "servedCount" DESC,
       latest_at DESC,
@@ -198,14 +172,18 @@ export async function getRecommendationRecentContext(
     const targetMediaId = row.targetMediaId.trim().slice(0, 191)
     if (!targetMediaId || seen.has(targetMediaId)) continue
     const reasonCodes: RecommendationRecentSuppressionReason[] = []
-    if (row.playbackStarted) reasonCodes.push("recent_playback_start")
+    if (row.recentlyTried) reasonCodes.push("recently_tried")
     if (row.selected) reasonCodes.push("recent_selection")
     if (Number(row.servedCount) >= REPEATEDLY_SERVED_THRESHOLD) {
       reasonCodes.push("repeatedly_served")
     }
     if (reasonCodes.length === 0) continue
     seen.add(targetMediaId)
-    videos.push({ targetMediaId, reasonCodes })
+    videos.push({
+      targetMediaId,
+      reasonCodes,
+      ...(row.videoCoreId ? { videoCoreId: row.videoCoreId } : {}),
+    })
   }
   return { videos }
 }

@@ -11,19 +11,19 @@ describe("recommendation recent context", () => {
         targetMediaId: "watched-video",
         servedCount: 1,
         selected: false,
-        playbackStarted: true,
+        recentlyTried: true,
       },
       {
         targetMediaId: "selected-video",
         servedCount: 2,
         selected: true,
-        playbackStarted: false,
+        recentlyTried: false,
       },
       {
         targetMediaId: "served-once",
         servedCount: 1,
         selected: false,
-        playbackStarted: false,
+        recentlyTried: false,
       },
     ])
 
@@ -38,7 +38,7 @@ describe("recommendation recent context", () => {
       videos: [
         {
           targetMediaId: "watched-video",
-          reasonCodes: ["recent_playback_start"],
+          reasonCodes: ["recently_tried"],
         },
         {
           targetMediaId: "selected-video",
@@ -52,7 +52,9 @@ describe("recommendation recent context", () => {
     expect(queryRaw.mock.calls[0]).toContain(false)
     const queryShape = String(queryRaw.mock.calls[0]?.[0])
     expect(queryShape).toMatch(/CROSS JOIN LATERAL/)
-    expect(queryShape).toMatch(/link\.linked_at AS authorization_start/)
+    expect(queryShape).toMatch(
+      /GREATEST\(link\.linked_at, profile\.created_at\) AS authorization_start/,
+    )
     expect(queryShape).toMatch(
       /root\.created_at >= session\.authorization_start/,
     )

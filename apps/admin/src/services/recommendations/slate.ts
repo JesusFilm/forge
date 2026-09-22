@@ -1,10 +1,12 @@
 import type { RecommendationCandidateContext } from "./candidate"
 import type { OrderedCandidate } from "./ranker"
+import { videoIdentityDuplicateReason } from "@/services/video-dedup"
 
 export type ComposedCandidate = OrderedCandidate &
   Readonly<{ composedPosition: number }>
 
 export const RECOMMENDATION_RECENT_SUPPRESSION_REASON_CODES = [
+  "recently_tried",
   "recent_playback_start",
   "recent_selection",
   "repeatedly_served",
@@ -17,6 +19,7 @@ export type RecommendationSlateComposition = Readonly<{
   recentVideos?: ReadonlyArray<
     Readonly<{
       targetMediaId: string
+      videoCoreId?: string | null
       reasonCodes: readonly RecommendationRecentSuppressionReason[]
     }>
   >
@@ -75,7 +78,16 @@ export function composeRecommendationSlate(
       ...(candidate.targetMediaId === composition.currentVideoId
         ? (["current_video"] as const)
         : []),
-      ...(recentReasons.get(candidate.targetMediaId) ?? []),
+      ...new Set([
+        ...(recentReasons.get(candidate.targetMediaId) ?? []),
+        ...(composition.recentVideos ?? [])
+          .filter(
+            (entry) =>
+              entry.targetMediaId !== candidate.targetMediaId &&
+              videoIdentityDuplicateReason(candidate.canonicalIdentity, entry),
+          )
+          .flatMap((entry) => entry.reasonCodes),
+      ]),
     ]
     if (reasonCodes.length > 0) {
       suppressions.push({ candidate, reasonCodes })

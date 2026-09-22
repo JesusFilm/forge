@@ -68,9 +68,16 @@ export type UserRecommendationDelivery = {
   items: UserRecommendationItem[]
 }
 
-/** Keeps the primary slate intact. Fallback is strictly an append operation;
- * it cannot displace eligible profile candidates, even with a better score.
- */
+function wasRecentlyTried(candidate: UserCandidate, history: UserWatchHistory) {
+  return history.some(
+    (item) =>
+      item.recentlyTried &&
+      (item.mediaId === candidate.videoId ||
+        videoIdentityDuplicateReason(candidate, item)),
+  )
+}
+
+/** Profile-first within each freshness tier; recently tried items are reserves. */
 export function composeUserRecommendations(
   primary: readonly UserCandidate[],
   fallback: readonly UserCandidate[],
@@ -85,8 +92,13 @@ export function composeUserRecommendations(
           videoIdentityDuplicateReason(candidate, item)),
     )
   const selected: UserCandidate[] = []
-  for (const pool of [primary, fallback]) {
-    // Stable ranking penalty within a source. Curated never jumps ahead of profile.
+  for (const pool of [
+    primary.filter((candidate) => !wasRecentlyTried(candidate, history)),
+    fallback.filter((candidate) => !wasRecentlyTried(candidate, history)),
+    primary.filter((candidate) => wasRecentlyTried(candidate, history)),
+    fallback.filter((candidate) => wasRecentlyTried(candidate, history)),
+  ]) {
+    // Preserve the existing seven-day partial-watch preference within a tier.
     const ranked = [...pool].sort(
       (a, b) =>
         Number(matchesHistory(a, false)) - Number(matchesHistory(b, false)),
@@ -342,7 +354,10 @@ export class UserRecommendationDeliveryService {
       )
       let selected = composeUserRecommendations(primary, [], history, count)
       let poolVersion: string | null = null
-      if (selected.length < count) {
+      if (
+        selected.length < count ||
+        selected.some((candidate) => wasRecentlyTried(candidate, history))
+      ) {
         stage = "curated_candidates"
         const fallback = await withinDeadline(
           () =>
@@ -351,7 +366,9 @@ export class UserRecommendationDeliveryService {
               audioLanguageSlug: input.audioLanguageSlug,
               interestVideoIds: [
                 ...new Set([
-                  ...history.map((item) => item.mediaId),
+                  ...history
+                    .filter((item) => item.qualified !== false)
+                    .map((item) => item.mediaId),
                   ...primary.map((item) => item.videoId),
                 ]),
               ].slice(0, 40),
@@ -360,7 +377,12 @@ export class UserRecommendationDeliveryService {
             }),
           candidateDeadline,
           Date.now,
-        )
+        ).catch((error: unknown) => {
+          // Freshness is a preference, not a reason to discard an otherwise
+          // complete profile slate when the optional reserve is unavailable.
+          if (selected.length < count) throw error
+          return { version: null, items: [] }
+        })
         poolVersion = fallback.version
         selected = composeUserRecommendations(
           primary,
