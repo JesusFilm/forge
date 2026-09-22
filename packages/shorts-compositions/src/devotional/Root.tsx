@@ -2,6 +2,7 @@ import { Composition } from "remotion"
 
 import { calculateDevotionalMetadata } from "./calculate-metadata"
 import { DevotionalVideo } from "./DevotionalVideo"
+import { STEPS_PREVIEW_ID, StepsPreview } from "./StepsPreview"
 import {
   Teaser,
   TEASER_COMPOSITION_ID,
@@ -55,6 +56,15 @@ const defaultProps: DevotionalInputProps = {
 
 export const DevotionalRoot = () => (
   <>
+    {/* Review-only: the step row's motion on the dark ground, no film. */}
+    <Composition
+      id={STEPS_PREVIEW_ID}
+      component={StepsPreview}
+      width={DEVOTIONAL_WIDE_WIDTH}
+      height={DEVOTIONAL_WIDE_HEIGHT}
+      fps={DEVOTIONAL_FPS}
+      durationInFrames={13 * DEVOTIONAL_FPS}
+    />
     <Composition
       id={DEVOTIONAL_COMPOSITION_ID}
       component={DevotionalVideo}
