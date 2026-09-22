@@ -53,6 +53,7 @@ describe("parseOfflineRecord", () => {
       swapFrom: {
         committedPath: "file:///docs/downloads/x/old.mp4",
         renditionDocumentId: "rend-low-1",
+        dubDocumentId: "dub-old",
         qualityLabel: "Low",
         subtitleLanguageSlug: null,
         totalBytes: 100,
@@ -62,6 +63,27 @@ describe("parseOfflineRecord", () => {
     expect(parseOfflineRecord(serializeOfflineRecord(swapping))).toEqual(
       swapping,
     )
+  })
+
+  it("reads a swapFrom written before the dub was kept as an unknown dub", () => {
+    const out = parseOfflineRecord(
+      JSON.stringify({
+        ...RECORD,
+        swapFrom: {
+          committedPath: "file:///docs/downloads/x/old.mp4",
+          renditionDocumentId: "rend-low-1",
+        },
+      }),
+    )
+    expect(out?.swapFrom).toEqual({
+      committedPath: "file:///docs/downloads/x/old.mp4",
+      renditionDocumentId: "rend-low-1",
+      dubDocumentId: null,
+      qualityLabel: "",
+      subtitleLanguageSlug: null,
+      totalBytes: 0,
+      posterPath: null,
+    })
   })
 
   it("drops a malformed swapFrom (no identity) to null", () => {

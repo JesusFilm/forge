@@ -740,6 +740,30 @@ view into that rect. The chrome rides in the host layer too, not in the route.
   re-keys it, because the audio asset changed. A different VIDEO takes
   neither claim and starts from its own beginning. Before this, a dub change
   restarted at 0:00 as a stated boundary of the offline-swap work.
+  **A download is one dub.** `resolvePlayerSource` plays the file on disk only
+  while the settled dub is the downloaded one (or unknown, or has no stream);
+  a pick of another language streams that dub, and subtitles follow the
+  source that plays (`playingOffline` in `app/watch/[slug].tsx`). A container
+  swap that also changes language is `"new-content"` to the adapter. Read the
+  file and its dub through ONE accessor, `committedCopyFor` in
+  `DownloadsProvider`: mid-swap the file on disk is the OLD copy while the
+  record already names the incoming dub, so reading `getRecord().dubDocumentId`
+  beside `committedPath` plays the old language under the new pill. A swap
+  from the download sheet sends the ACTIVE dub, so it can change language;
+  `swap` in `downloadLifecycle.ts` writes that dub on the record, and the
+  `swapFrom` snapshot keeps the old one for a revert. The language sheet
+  reads the same accessor to mark the dub on disk with a "Downloaded" line
+  (`getStatusLabel` on `SearchableListSheet`), so the mark and the audio
+  that plays offline can never name different languages. Every reader keys
+  the accessor on the RECORD's slug (`video.slug`, the download sheet's key).
+  An expand remounts the watch group with a fresh `WatchSessionProvider`, so
+  the dub the viewer picked lives only in the floating session: the provider
+  seeds its default from that session ahead of the download, the store's
+  merge keeps a known `languageSlug` across a slug-only re-start, and the
+  host holds adoption while a remount's first render names no dub, or the
+  expand would swap the stream back to the file and undo the pick. Records
+  written by a language re-download BEFORE this change still carry the old
+  dub id under the new file; no repair runs for them.
 - **`MiniPlayerWindow.tsx` is chrome, never a second video view.** It draws the
   controls, the drag, the ended/failed states and the accessibility surface over
   the frame the host animates. The drag node never takes the native driver

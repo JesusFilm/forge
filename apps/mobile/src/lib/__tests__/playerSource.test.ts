@@ -1,6 +1,7 @@
 import {
   isDubSwap,
   isOfflineContainerSwap,
+  offlineSwapClaim,
   resolvePlayerSource,
 } from "../playerSource"
 
@@ -24,6 +25,8 @@ describe("resolvePlayerSource (the watch screen's source precedence)", () => {
     expect(
       resolvePlayerSource({
         offlineSource: null,
+        offlineDubDocumentId: null,
+        activeVariantDocumentId: null,
         activeVariantHls: null,
         variantSettled: false,
         recordStreamingUrl: RECORD,
@@ -36,6 +39,8 @@ describe("resolvePlayerSource (the watch screen's source precedence)", () => {
     expect(
       resolvePlayerSource({
         offlineSource: null,
+        offlineDubDocumentId: null,
+        activeVariantDocumentId: null,
         activeVariantHls: null,
         variantSettled: false,
         recordStreamingUrl: RECORD,
@@ -48,6 +53,8 @@ describe("resolvePlayerSource (the watch screen's source precedence)", () => {
     expect(
       resolvePlayerSource({
         offlineSource: null,
+        offlineDubDocumentId: null,
+        activeVariantDocumentId: null,
         activeVariantHls: VARIANT,
         variantSettled: true,
         recordStreamingUrl: RECORD,
@@ -60,6 +67,8 @@ describe("resolvePlayerSource (the watch screen's source precedence)", () => {
     expect(
       resolvePlayerSource({
         offlineSource: null,
+        offlineDubDocumentId: null,
+        activeVariantDocumentId: null,
         activeVariantHls: null,
         variantSettled: true,
         recordStreamingUrl: RECORD,
@@ -72,6 +81,8 @@ describe("resolvePlayerSource (the watch screen's source precedence)", () => {
     expect(
       resolvePlayerSource({
         offlineSource: null,
+        offlineDubDocumentId: null,
+        activeVariantDocumentId: null,
         activeVariantHls: null,
         variantSettled: true,
         recordStreamingUrl: null,
@@ -80,16 +91,141 @@ describe("resolvePlayerSource (the watch screen's source precedence)", () => {
     ).toBe(SEED)
   })
 
-  it("plays the completed download above everything", () => {
+  it("plays the completed download when the dub on disk is unknown", () => {
     expect(
       resolvePlayerSource({
         offlineSource: OFFLINE,
+        offlineDubDocumentId: null,
+        activeVariantDocumentId: null,
         activeVariantHls: VARIANT,
         variantSettled: true,
         recordStreamingUrl: RECORD,
         seedStreamingUrl: SEED,
       }),
     ).toBe(OFFLINE)
+  })
+
+  // The download is ONE dub. A viewer who picks another language on a
+  // downloaded video must hear that language, so the pick streams unless it
+  // is the dub on disk.
+  it("streams the settled dub when it is not the downloaded dub", () => {
+    expect(
+      resolvePlayerSource({
+        offlineSource: OFFLINE,
+        offlineDubDocumentId: "dub-english",
+        activeVariantHls: VARIANT,
+        activeVariantDocumentId: "dub-french",
+        variantSettled: true,
+        recordStreamingUrl: RECORD,
+        seedStreamingUrl: SEED,
+      }),
+    ).toBe(VARIANT)
+  })
+
+  it("keeps the download when the settled dub is the downloaded one", () => {
+    expect(
+      resolvePlayerSource({
+        offlineSource: OFFLINE,
+        offlineDubDocumentId: "dub-english",
+        activeVariantHls: VARIANT,
+        activeVariantDocumentId: "dub-english",
+        variantSettled: true,
+        recordStreamingUrl: RECORD,
+        seedStreamingUrl: SEED,
+      }),
+    ).toBe(OFFLINE)
+  })
+
+  it("keeps the download when the picked dub has no stream to play", () => {
+    expect(
+      resolvePlayerSource({
+        offlineSource: OFFLINE,
+        offlineDubDocumentId: "dub-english",
+        activeVariantHls: null,
+        activeVariantDocumentId: "dub-french",
+        variantSettled: true,
+        recordStreamingUrl: RECORD,
+        seedStreamingUrl: SEED,
+      }),
+    ).toBe(OFFLINE)
+  })
+
+  it("keeps the download before the dub selection settles", () => {
+    expect(
+      resolvePlayerSource({
+        offlineSource: OFFLINE,
+        offlineDubDocumentId: "dub-english",
+        activeVariantHls: null,
+        activeVariantDocumentId: null,
+        variantSettled: false,
+        recordStreamingUrl: RECORD,
+        seedStreamingUrl: SEED,
+      }),
+    ).toBe(OFFLINE)
+  })
+
+  // One fixture per guard of `offlinePlays`, each holding every OTHER axis at
+  // the value that would STREAM, so only the guard under test can keep the
+  // file. Deleting that guard turns exactly its case red.
+  describe("each guard that keeps the download has its own fixture", () => {
+    const streaming = {
+      offlineSource: OFFLINE,
+      offlineDubDocumentId: "dub-english",
+      activeVariantHls: VARIANT,
+      activeVariantDocumentId: "dub-french",
+      variantSettled: true,
+      recordStreamingUrl: RECORD,
+      seedStreamingUrl: SEED,
+    }
+
+    it("control: every axis permissive streams the picked dub", () => {
+      expect(resolvePlayerSource(streaming)).toBe(VARIANT)
+    })
+
+    it("guard 1: an unsettled dub keeps the file even when the ids differ", () => {
+      expect(resolvePlayerSource({ ...streaming, variantSettled: false })).toBe(
+        OFFLINE,
+      )
+    })
+
+    it("guard 2: an unknown dub on disk keeps the file against a settled pick", () => {
+      expect(
+        resolvePlayerSource({ ...streaming, offlineDubDocumentId: null }),
+      ).toBe(OFFLINE)
+    })
+
+    // SYNTHETIC: the one call site derives `activeVariantDocumentId:
+    // activeVariant?.documentId ?? null` beside `variantSettled: activeVariant
+    // != null` (app/watch/[slug].tsx), so a settled dub with no id is not
+    // producible today. The fixture pins the guard, not a reachable state.
+    it("guard 3: a settled dub with no identity keeps the file", () => {
+      expect(
+        resolvePlayerSource({ ...streaming, activeVariantDocumentId: null }),
+      ).toBe(OFFLINE)
+    })
+  })
+})
+
+/**
+ * What an offline container swap tells the adapter: the QoE session re-keys
+ * only when both sides name a language and they differ. Its host caller is
+ * pinned through useManagedVideoPlayer.test.tsx; the table here owns the null
+ * guards, which no host case reaches.
+ */
+describe("offlineSwapClaim", () => {
+  it.each([
+    [null, null, "same-content"],
+    [null, "english", "same-content"],
+    ["english", null, "same-content"],
+    ["english", "english", "same-content"],
+    ["english", "french", "new-content"],
+  ])("previous %p, next %p -> %p", (previous, next, claim) => {
+    expect(
+      offlineSwapClaim({
+        previousLanguageSlug: previous,
+        nextLanguageSlug: next,
+      }),
+    ).toBe(claim)
   })
 })
 

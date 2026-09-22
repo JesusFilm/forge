@@ -190,10 +190,12 @@ export function createMiniPlayerStore() {
       const previous = snapshot.session
       const merging = previous != null && sameSessionContent(previous, input)
       const session: MiniPlayerSession = {
-        // A slug-only re-start must not drop the id the window already knows.
+        // A slug-only re-start must not drop the id, or the dub, the window
+        // already knows: a remounted screen re-reads the dub from here.
         videoId: input.videoId ?? (merging ? previous.videoId : null),
         videoSlug: input.videoSlug,
-        languageSlug: input.languageSlug ?? null,
+        languageSlug:
+          input.languageSlug ?? (merging ? previous.languageSlug : null),
         title: input.title,
         posterUrl: input.posterUrl ?? null,
         accountId: merging ? previous.accountId : currentAccountId(),

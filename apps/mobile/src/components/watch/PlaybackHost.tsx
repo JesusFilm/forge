@@ -47,7 +47,11 @@ import { getAuthSession } from "../../lib/authSession"
 import { BLACK } from "../../lib/color"
 import { datadogLog } from "../../lib/datadog"
 import { OFFLINE_ROOT } from "../../lib/offlineFileSystem"
-import { isDubSwap, isOfflineContainerSwap } from "../../lib/playerSource"
+import {
+  isDubSwap,
+  isOfflineContainerSwap,
+  offlineSwapClaim,
+} from "../../lib/playerSource"
 import { validateLocalMediaUrl } from "../../lib/validateLocalMediaUrl"
 import { TAB_BAR_OCCUPIED_HEIGHT } from "../../lib/tabBar"
 import {
@@ -379,11 +383,15 @@ function ActivePlaybackHost({
     loadedUrl != null &&
     request.streamingUrl != null &&
     isLocal(loadedUrl) !== isLocal(request.streamingUrl)
+  // A remount's first render publishes a download before its dub settles, so
+  // a container flip with no language is not a swap yet: adoption holds until
+  // the request names a dub, which a real completion or deletion always does.
+  const settledContainerChange = containerChanged && requestLanguage != null
   const sourceUrl = sourceForRequest({
     requested: request.streamingUrl,
     loaded: loadedSourceRef.current,
     language: requestLanguage,
-    adoptable: adoptable && !containerChanged,
+    adoptable: adoptable && !settledContainerChange,
   })
   if (sourceUrl != null && sourceUrl === request.streamingUrl) {
     // Handed to the player, so it becomes what the player holds. A known dub is
@@ -527,11 +535,13 @@ function ActivePlaybackHost({
   } | null>(null)
   // Capture BEFORE the swap applies (R8): render runs ahead of the adapter's
   // swap effect, while the player still reports the outgoing item's clock.
-  const appliedConstraintRef = useRef({
+  const snapshotApplied = () => ({
     url: constrainedSourceUrl,
     tier: effectiveSettings.qualityTier,
     videoKey,
+    languageSlug: loadedSourceRef.current?.languageSlug ?? null,
   })
+  const appliedConstraintRef = useRef(snapshotApplied())
   {
     const previous = appliedConstraintRef.current
     if (
@@ -563,6 +573,13 @@ function ActivePlaybackHost({
           reason,
         }
       }
+      // A download holds one dub: a container swap that also names another
+      // language is new audio (place kept, QoE re-keyed). The outgoing language
+      // is the applied snapshot's; `loadedSourceRef` already names the NEW one.
+      const containerClaim = offlineSwapClaim({
+        previousLanguageSlug: previous.languageSlug,
+        nextLanguageSlug: requestLanguage,
+      })
       // One write for both axes: the release reads `reason`, the adapter reads
       // `claim`, and a branch that set one without the other would split them.
       const armPreservingSwap = (reason: Exclude<ResumeReason, "quality">) => {
@@ -571,7 +588,7 @@ function ActivePlaybackHost({
         positionPreservingSwapRef.current = {
           from: previous.url,
           to: constrainedSourceUrl,
-          claim: reason === "offline" ? "same-content" : "new-content",
+          claim: reason === "offline" ? containerClaim : "new-content",
         }
       }
       // An empty key names nothing — two sourceless slots would both carry
@@ -620,10 +637,14 @@ function ActivePlaybackHost({
         // latch does not count: the tier pick needs its own revert leg.
         capture(previous.tier, "quality")
       }
-      appliedConstraintRef.current = {
-        url: constrainedSourceUrl,
-        tier: effectiveSettings.qualityTier,
-        videoKey,
+      appliedConstraintRef.current = snapshotApplied()
+    } else {
+      // A download's dub settles a commit AFTER its file starts, under the
+      // same url: keep the snapshot's language current so the next swap
+      // compares against it. A known language is never downgraded to null.
+      const held = loadedSourceRef.current?.languageSlug ?? null
+      if (held != null && held !== previous.languageSlug) {
+        appliedConstraintRef.current = { ...previous, languageSlug: held }
       }
     }
   }

@@ -653,6 +653,9 @@ export function createDownloadLifecycle(deps: DownloadLifecycleDeps) {
     const swapFrom = buildSwapSnapshot(existing, existing.committedPath)
     await deps.writeRecord({
       ...existing,
+      // The sheet sends the ACTIVE dub, so a swap can change language. Offline
+      // playback keys on the record's dub, so it must name the file it fetches.
+      dubDocumentId: request.dubDocumentId,
       renditionDocumentId: rendition.documentId,
       qualityLabel: rendition.quality,
       title: request.title || existing.title,

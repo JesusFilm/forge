@@ -194,6 +194,7 @@ describe("buildLibraryViewModel — section emptiness", () => {
 const SWAP_FROM = {
   committedPath: "/old/committed.mp4",
   renditionDocumentId: "old-rend",
+  dubDocumentId: "old-dub",
   qualityLabel: "Low",
   subtitleLanguageSlug: null,
   totalBytes: 74 * MB,

@@ -138,6 +138,29 @@ describe("start", () => {
     })
   })
 
+  // A remounted screen publishes no dub until its provider settles one, and
+  // that provider reads the dub back from HERE: dropping it undoes a pick.
+  it("keeps the dub the window knows across a re-start that names none", () => {
+    const { store, ends } = startedStore()
+    store.start({
+      videoId: "video-1",
+      videoSlug: "birth-of-jesus",
+      title: "Birth of Jesus",
+      languageSlug: "spanish",
+    })
+    store.start({
+      videoId: null,
+      videoSlug: "birth-of-jesus",
+      title: "Birth of Jesus",
+    })
+
+    expect(ends).toHaveLength(0)
+    expect(store.getSnapshot().session).toMatchObject({
+      videoId: "video-1",
+      languageSlug: "spanish",
+    })
+  })
+
   // A screen that detaches before its record lands names the video by slug
   // alone; the session it re-starts already carries the id, and keeps it.
   it("merges a re-start of the same content that has not resolved the id yet", () => {

@@ -84,6 +84,13 @@ jest.mock("expo", () => {
   }
 })
 
+// jest-expo leaves `documentDirectory` null, so every file:// path would fail
+// the offline-root validation the host runs on a download path.
+jest.mock("expo-file-system/legacy", () => ({
+  ...jest.requireActual("expo-file-system/legacy"),
+  documentDirectory: "file:///docs/",
+}))
+
 // Visual leaves — none participate in either behaviour under test.
 // The transport reads connectivity to tell a paused video from a broken one.
 jest.mock("expo-network", () => ({
@@ -262,6 +269,8 @@ const qoeMock = jest.requireMock("../../lib/videoQoe") as QoeMock
 // swap between these is a genuine cross-asset swap.
 const URL_A = "https://stream.mux.com/assetAAA111.m3u8"
 const URL_B = "https://stream.mux.com/assetBBB222.m3u8"
+// A completed download of the SAME video as URL_A, under the offline root.
+const OFFLINE_A = "file:///docs/offline-downloads/video-a-slug/a.mp4"
 
 const IDENTITY_A: ProgressIdentity = {
   videoId: "video-a",
@@ -1004,6 +1013,108 @@ describe("useManagedVideoPlayer — quality-constraint swap admission (U2)", () 
     expect(qoeMock.createVideoQoeSession).toHaveBeenCalledTimes(3)
     expect(qoeMock.__sessions[1].finalize).toHaveBeenCalledWith("abandoned")
     expect(qoeMock.__sessions[2].contentId).toBe("assetAAA111")
+  })
+
+  it("a language pick out of a download keeps the place but re-keys the QoE session", async () => {
+    // SYNTHETIC: a download's first render never carries a language — the
+    // watch screen publishes `activeVariant?.languageSlug ?? null` before the
+    // dub settles (app/watch/[slug].tsx). The production ordering is the
+    // cold-open case below; this one pins the swap with the language known.
+    const renderer = await renderPlayer(OFFLINE_A, IDENTITY_A)
+    await act(async () => {
+      video.__player.play()
+    })
+    expect(video.__player.play).toHaveBeenCalledTimes(1)
+    expect(qoeMock.createVideoQoeSession).toHaveBeenCalledTimes(1)
+
+    // The same video, a different language, streamed: the host seeks first,
+    // so the promise-time play stays suppressed, but the audio changed.
+    await rerender(renderer, URL_B, { ...IDENTITY_A, languageSlug: "french" })
+    await act(async () => {
+      video.__settleReplace()
+    })
+    expect(video.__player.play).toHaveBeenCalledTimes(1)
+    expect(qoeMock.createVideoQoeSession).toHaveBeenCalledTimes(2)
+    expect(qoeMock.__sessions[0].finalize).toHaveBeenCalledWith("abandoned")
+
+    // Back to the downloaded dub: the same rule in reverse.
+    await rerender(renderer, OFFLINE_A, IDENTITY_A)
+    await act(async () => {
+      video.__settleReplace()
+    })
+    expect(video.__player.play).toHaveBeenCalledTimes(1)
+    expect(qoeMock.createVideoQoeSession).toHaveBeenCalledTimes(3)
+  })
+
+  it("a download replacing the same language's stream keeps its QoE session", async () => {
+    const renderer = await renderPlayer(URL_A, IDENTITY_A)
+    await act(async () => {
+      video.__player.play()
+    })
+
+    await rerender(renderer, OFFLINE_A, IDENTITY_A)
+    await act(async () => {
+      video.__settleReplace()
+    })
+    expect(video.__player.play).toHaveBeenCalledTimes(1)
+    expect(qoeMock.createVideoQoeSession).toHaveBeenCalledTimes(1)
+    expect(qoeMock.__sessions[0].finalize).not.toHaveBeenCalled()
+  })
+
+  it("a cold-opened download learns its dub a commit later, and the first pick still re-keys", async () => {
+    // Production ordering: the file publishes with no language, the dub
+    // settles under the SAME url, then the viewer picks another language.
+    const renderer = await renderPlayer(OFFLINE_A, {
+      ...IDENTITY_A,
+      languageSlug: null,
+    })
+    await act(async () => {
+      video.__player.play()
+    })
+    await rerender(renderer, OFFLINE_A, IDENTITY_A)
+    expect(video.__player.replaceAsync).not.toHaveBeenCalled()
+
+    await rerender(renderer, URL_B, { ...IDENTITY_A, languageSlug: "french" })
+    await act(async () => {
+      video.__settleReplace()
+    })
+    expect(video.__player.play).toHaveBeenCalledTimes(1)
+    expect(qoeMock.createVideoQoeSession).toHaveBeenCalledTimes(2)
+    expect(qoeMock.__sessions[0].finalize).toHaveBeenCalledWith("abandoned")
+  })
+
+  it("an expand's first render, naming no dub, holds the streamed pick over the file", async () => {
+    // The floating session streams a picked French dub of a downloaded
+    // video. The remounted screen publishes the file by slug alone before its
+    // provider settles: adoption must hold, or the expand swaps mid-sentence.
+    getMiniPlayerStore().start({
+      videoId: "video-a",
+      videoSlug: "video-a-slug",
+      title: "A video",
+      languageSlug: "french",
+    })
+    const renderer = await renderPlayer(URL_B, {
+      ...IDENTITY_A,
+      languageSlug: "french",
+    })
+    await act(async () => {
+      video.__player.play()
+    })
+
+    await rerender(renderer, OFFLINE_A, {
+      videoSlug: "video-a-slug",
+      languageSlug: null,
+    })
+    expect(video.__player.replaceAsync).not.toHaveBeenCalled()
+    expect(qoeMock.createVideoQoeSession).toHaveBeenCalledTimes(1)
+
+    // Once the request names the downloaded dub, the container swap is real.
+    await rerender(renderer, OFFLINE_A, IDENTITY_A)
+    await act(async () => {
+      video.__settleReplace()
+    })
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(1)
+    expect(qoeMock.createVideoQoeSession).toHaveBeenCalledTimes(2)
   })
 })
 
