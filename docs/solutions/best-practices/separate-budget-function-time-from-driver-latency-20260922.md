@@ -1,6 +1,7 @@
 ---
 title: "Separate PostgreSQL budget function time from complete driver latency"
 date: "2026-09-22"
+last_updated: "2026-09-22"
 category: best-practices
 module: "Recommendation submission budgets"
 problem_type: best_practice
@@ -92,5 +93,45 @@ without identifying storage throttling or a competing workload. Separate longer
 calls had no simultaneous wait capture; do not extend the attribution to them.
 See the [release evidence](../../operations/watch-runtime-release-verification-2026-09-22.md).
 
+A [later bounded capture](../../operations/watch-contextual-distance-release-2026-09-22.md)
+found budget and ordinary small-write commits waiting on WAL with idle Admin
+backends. A concurrent `search_trace` relation did not identify a large writer:
+an indexed size aggregate found eight small rows in twenty minutes. Preserve
+negative workload findings rather than disabling analytics on correlation.
+Sample relation names can arrive as PostgreSQL array text; validate their decoded
+type before filtering, because `"{}"` is a nonempty string. Stream bounded
+captures across automatic deployment boundaries and distinguish interrupted
+captures from completed observations. An unavailable kernel wait surface must
+remain unknown, not be interpreted as zero waits.
+
 Related: [recommendation outcome accounting](../logic-errors/recommendation-outcome-accounting-boundaries-20260921.md)
 and [the separate Next error-inspection fix](../performance-issues/next-error-inspection-amplifies-graphql-failures-20260922.md).
+
+## Keep rejected competing-workload hypotheses
+
+Long-lived workflow history is a plausible competing reader, not an established
+selection cause. The [September 22 follow-up](../../operations/watch-budget-followup-2026-09-22.md)
+reproduced 1.3–1.4 second history reads against 3.845 million synthetic events in
+a separate worker process. The actual independently committed Admin budget calls
+remained below 104.1 ms, with zero failures and exact persisted attempt counts.
+A `(run_id, id)` index did not materially improve the full-history reads. Do not
+ship that index as a selection fix or discard the negative result next time.
+
+Keep workload size, process boundaries, pool limits and database storage limits
+with the measurement. An owned local database cannot reproduce provider storage
+merely by copying row counts. Slow-query duration, query age in `WalSync`, full
+cgroup I/O pressure and native-pool delay are different observations. A missing
+matching slow budget event prevents request attribution even when volume
+pressure is real. Retry a timed-out diagnostic only after reducing or validating
+its query scope; a read-only history scan can still interfere with production.
+
+A later relation-counter delta found 13.1 million workflow-history tuples fetched
+in thirty seconds, exceeding that first fixture's throughput. Raising the owned
+load to 12.8 million returned rows raises budget p95 from 3.82 to 38.05 ms, with a
+407 ms maximum and exact persisted attempts; the following idle phase returns to
+3.56 ms p95. Preserve both findings: slow query duration alone under-specified the
+original workload, and matching row throughput still does not reproduce provider
+storage or the historical 700 ms timeout. PostgreSQL buffer reads are not physical
+volume bytes. Measure competing-workload throughput before generalizing a negative
+reproduction, and retain the unproven causal boundary when the revised load adds
+latency without reproducing the failure.

@@ -396,3 +396,41 @@ No request is excluded. Twenty-four durable completed reconciliation batches
 and heartbeats have no recorded classification/dispatch failures. These advance
 production evidence without satisfying alerts, authenticated Admin, real browser
 terminal non-retry or complete final-release acceptance; status stays in progress.
+
+## September 22 authenticated acceptance and Redis update burst
+
+Normal authenticated Admin now verifies the fresh zero-current-pointer snapshot,
+one exact repaired-generation chain, and a complete fresh Watch qualified-outcome
+journey through later hybrid use. Credit these Admin checks; access is no longer
+the blocker. The [contextual release continuation](../../operations/watch-contextual-distance-release-2026-09-22.md)
+records the evidence and its snapshot limits.
+
+The longer 01:39–02:19 UTC release observation catches **19 playback HTTP 503s /
+1,738 requests (1.093%)**, with no exclusions. They occur during an automatic
+Admin Redis image update. A matching trace receives Admin HTTP 500 in 7.1 ms;
+the exact Admin error is the disconnected Redis GraphQL rate-limit store.
+These are fast upstream failures, not the historical selection deadline. A
+separate Web Redis automatic update overlaps one delivery admission 503. All
+477 seeded-delivery outcomes reconcile, with zero observed HTTP 200 timeout
+fallbacks and four successful selections. Retain the burst despite the earlier
+healthy fifteen minutes; neither population is the required sustained closure
+proof. No rate-limit guarantee or infrastructure setting was changed.
+
+Installed Datadog alerts/dashboard, real terminal-browser non-retry evidence and
+complete sustained transport acceptance remain open. Read-only access cannot
+install monitors. Redis update availability requires separate investigation;
+do not mask its failures with an in-memory limiter or ambiguous mutation retry.
+
+## September 22 bounded workload and production follow-up
+
+The [September 22 follow-up](../../operations/watch-budget-followup-2026-09-22.md) verifies the fixed 01:39–03:39 UTC playback threshold at 19/6,463 (0.294%), with no exclusions, and a fresh authenticated zero-current-pointer audit. The running scheduler has 23 completed batches and heartbeats with no classification failures or exhausted attempts. A complete retained real browser view supplies a 409 non-retry example with further network activity 10.55 seconds later; its response body/action and matching server trace are unavailable, so do not claim those details. Installed alerts/dashboard, complete outcome reconciliation and remaining transport proof keep this ticket in progress. The artifact explicitly retains the unmatched successful HTTP counts.
+
+The dashboard tool is discoverable, but Datadog explicitly rejects even widget
+validation because MCP writes are disabled for this organization. No matching
+dashboard or feat-464-tagged monitors were found. This replaces the earlier
+imprecise description of a read-only tool list with a verified organization
+policy blocker; Railway/database diagnosis remains available.
+
+## September 22 internal continuation
+
+The internal continuation reconciles every delivery, selection, playback and initial-evidence HTTP group in the fixed 02:34–04:34 UTC window using primary Railway logs. Playback is 0/7,185 5xx with no exclusions. Durable delivery, render/impression and selection counts reconcile; all 24 reconciliation batches complete without recorded errors, and the fresh authorized current-pointer audit is clean. Credit these production checks. No binding failure occurs in this window, so the earlier bounded browser proof is unchanged. Installed monitoring remains blocked by the Datadog organization write policy; this ticket is still in progress. See the [internal verification](../../operations/watch-budget-followup-2026-09-22.md#internal-continuation-workload-volume-and-reconciled-outcomes).

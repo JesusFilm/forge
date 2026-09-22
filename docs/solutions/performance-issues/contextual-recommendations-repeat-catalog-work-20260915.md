@@ -177,3 +177,12 @@ records the fixture limits, alternating rounds, output equality and bounded
 production observer cleanup. When optimizing expensive scalar expressions,
 measure their actual call count and buffer work: one SQL statement can still
 duplicate the dominant work.
+
+The [automatic release verification](../../operations/watch-contextual-distance-release-2026-09-22.md)
+confirms PR #2377 on both Admin and worker. A complete-service comparison is also
+necessary: a six-card service request overfetches 18 results per seed, so a
+six-per-seed SQL benchmark is not the complete application workload. With the
+actual service and Prisma adapter, alternating-order rounds preserve all six
+cards and improve 5,345–5,360 ms to 3,510–3,559 ms. The bounded production
+read-only responses are identical before and after, but three requests do not
+establish a percentile or resolve the separate selection timeout.

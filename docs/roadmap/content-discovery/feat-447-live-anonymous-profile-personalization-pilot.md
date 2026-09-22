@@ -60,7 +60,7 @@ Semantic similarity is the safe contextual base, but it cannot adapt to an anony
 - Keep raw cookie values, profile identifiers, watch histories, cohort membership, and vectors out of Admin responses and request-owned serving records.
 - Keep withdrawal, deletion, last-known-good fallback, evidence eligibility, and projection publication state independently reconcilable. Historical experiment, holdout, and exposure records remain inspectable when present but do not authorize current direct profile delivery.
 
-The September 21 production canaries now prove direct-profile, no-assignment delivery through real Watch selection, qualified playback, profile publication and later hybrid use of the same outcome. Separate withdrawal, reset and completed-erasure checks preserve contextual delivery and remove future influence. The ticket remains in progress for the matching permission-checked Admin trace and independent operational last-known-good fallback and stale-publication evidence; a SQL canary does not replace those gates. See the release update below.
+The production canaries prove direct-profile, no-assignment delivery through real Watch selection, qualified playback, profile publication and later hybrid use of the same outcome. Separate withdrawal, reset and completed-erasure checks preserve contextual delivery and remove future influence. September 22 verification also passes the matching permission-checked Admin trace and natural stale-publication fence checks. The ticket remains in progress for independent operational last-known-good fallback evidence and its feat-459 dependency. See the dated release updates below.
 
 ## 2026-08-19 Phase A Closeout Evidence
 
@@ -166,3 +166,28 @@ requests since 21:55. The expanded terminal inventory has 28 publication fences,
 while the per-row proof above covers the original 16. No retained operational
 last-known-good fallback exists since September 18. All limits and the still-open
 Admin gate remain in the [release record](../../operations/watch-runtime-release-verification-2026-09-22.md).
+
+## September 22 authenticated lifecycle proof
+
+Normal Admin access is now available. A fresh real Watch journey has a selected
+card with committed impression, 32 playback facts and a finalized qualified
+`active-watch-proxy-v1` outcome with 73,780 ms active viewing. The later request
+uses durable generation 3, two interests and the exact outcome contribution.
+Its authorized Admin trace names the original request as qualified feedback,
+reports hybrid personalized execution without experiment assignment, and shows
+six playable cards, no fallback or shortfall, and complete candidate evidence.
+See the [contextual release continuation](../../operations/watch-contextual-distance-release-2026-09-22.md).
+
+Credit the matching authenticated lifecycle gate as passed. The earlier
+withdrawal/reset/erasure, restored-snapshot and original sixteen publication-fence
+proofs retain credit. Independent operational last-known-good fallback evidence
+and the feat-459 dependency still prevent closure; status stays in progress.
+No production evidence or privileged identity was inserted to obtain the result.
+
+## September 22 bounded workload and production follow-up
+
+The [September 22 follow-up](../../operations/watch-budget-followup-2026-09-22.md) preserves the passed Watch-to-qualified-feedback-to-hybrid Admin trace and current-pointer audit. It does not supply the independent operational last-known-good fallback event or close the feat-459 dependency. Keep this ticket in progress; no fallback was manufactured in production.
+
+## September 22 internal continuation
+
+The internal continuation finds no operational last-known-good fallback in the fresh request population. Its established lifecycle/Admin proofs retain credit, but the independent fallback and feat-459 dependency remain open. No production fallback was manufactured. See the [internal verification](../../operations/watch-budget-followup-2026-09-22.md#internal-continuation-workload-volume-and-reconciled-outcomes).

@@ -239,3 +239,30 @@ completed batches/heartbeats, 120 classifications and 19 queued rebuilds with
 zero recorded classification or dispatch failures; completion gaps reach
 317.706 seconds. See the [release record](../../operations/watch-runtime-release-verification-2026-09-22.md).
 Authenticated Admin acceptance and feat-464 still prevent closure.
+
+## September 22 authorized Admin and matching repair verified
+
+The owner completed normal Admin sign-in. At 02:06:06 UTC its permission-checked
+Recommendations panel reports a clean current-pointer audit, zero affected
+pointers, zero ineligible contributions and zero rebuild backlog. A bounded
+exact-row read then reconciles a retained eligibility repair: immutable
+generation 4 contains a superseded revision-1 reference; the rebuild publishes
+generation 5 with current eligible revision-2 references and advances the
+expected pointer from 4 to 5. Both qualified standalone outcomes remain
+finalized with exact fact watermarks. The original generation remains retained.
+
+The matching later authorized Admin request shows generation 5, one durable
+interest, six Spanish hybrid cards, 117 ms retrieval and no fallback/shortfall.
+Standalone outcomes correctly have no prior recommendation-request ancestry.
+The [release evidence](../../operations/watch-contextual-distance-release-2026-09-22.md)
+credits the aggregate and matching repair gates without claiming continuous zero
+violations. **Feat-464 is now the remaining dependency preventing this ticket's
+closure**; do not continue describing Admin login or matching repair as missing.
+
+## September 22 bounded workload and production follow-up
+
+The [September 22 follow-up](../../operations/watch-budget-followup-2026-09-22.md) again verifies the authorized Admin current-pointer audit: zero affected pointers, ineligible contributions and rebuild backlog. The exact repaired-generation trace remains verified under the preceding release record. These passed checks retain credit; the still-open feat-464 dependency prevents completion.
+
+## September 22 internal continuation
+
+The internal continuation again verifies zero affected pointers, ineligible contributions and rebuild backlog in authenticated Admin, after 24 successful reconciliation batches. Its own repair and current-pointer proofs retain credit. The feat-464 dependency still prevents completion. See the [internal verification](../../operations/watch-budget-followup-2026-09-22.md#internal-continuation-workload-volume-and-reconciled-outcomes).
