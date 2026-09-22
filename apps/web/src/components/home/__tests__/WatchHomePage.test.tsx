@@ -764,10 +764,11 @@ describe("WatchHomePage", () => {
         video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
       })
 
-      // Same whole second: no re-render, and the resume value is unchanged.
-      // The rendered href is no longer the observable here — it is stable by
-      // construction now (FGE-139 / W-003), so the render count and the
-      // click-time value carry the throttle contract.
+      // Same whole second: no re-render. The render count is what actually
+      // proves the throttle — the click-time value cannot, since 12.1 and 12.8
+      // both floor to 12 and would read t=12 either way. The rendered href is
+      // no longer an observable at all here; it is stable by construction now
+      // (FGE-139 / W-003). The click below is a value check, not throttle proof.
       expect(carouselRenders()).toBe(rendersAfterFirst)
       clickWatchNow()
       expect(routerPushMock).toHaveBeenLastCalledWith(
@@ -1219,9 +1220,11 @@ describe("WatchHomePage", () => {
       })
 
       // The resume offset now reaches far past the retired 30-second cap. It
-      // rides the click rather than the rendered href (FGE-139 / W-003).
+      // rides the click rather than the rendered href (FGE-139 / W-003), so the
+      // labelled affordance is checked here instead of through an href match.
+      expect(watchNowLink()?.textContent).toContain("Watch Now")
       clickWatchNow()
-      expect(routerPushMock).toHaveBeenCalledWith(
+      expect(routerPushMock).toHaveBeenLastCalledWith(
         expect.stringContaining("t=42"),
       )
 
@@ -1798,7 +1801,13 @@ describe("WatchHomePage", () => {
 
     clickWatchNow()
 
-    expect(routerPushMock).toHaveBeenCalledWith(
+    // This suite renders the REAL `next/link`, which calls the consumer's
+    // onClick and then runs its own navigation unless the event was already
+    // defaultPrevented. Exactly one push is therefore the proof that the
+    // handler's preventDefault suppresses Link's own navigation rather than
+    // racing it into a double navigation.
+    expect(routerPushMock).toHaveBeenCalledTimes(1)
+    expect(routerPushMock).toHaveBeenLastCalledWith(
       "/jesus.html/english.html?t=12&autoplay=1",
     )
   })

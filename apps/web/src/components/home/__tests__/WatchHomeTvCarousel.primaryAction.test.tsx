@@ -19,7 +19,7 @@
  * `data-prefetch` below — see
  * `docs/solutions/best-practices/next-link-props-unobservable-three-vacuous-test-traps.md`.
  */
-import { act } from "react"
+import { StrictMode, act } from "react"
 import { createRoot } from "react-dom/client"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -65,7 +65,10 @@ const slide: WatchHomeTvCarouselSlide = {
   id: "core-1",
   title: "Miraculous catch of fish",
   label: "Short film",
-  href: "/watch/miraculous-catch-of-fish.html",
+  // basePath-relative, exactly as `watchVideoPath` emits it — `/watch` is added
+  // once by `next/link` and by `router.push`, never by the producer. Baking it in
+  // here would pin a shape production never hands this component.
+  href: "/miraculous-catch-of-fish.html",
   posterUrl: null,
   thumbnailUrl: null,
   imageAlt: null,
@@ -76,17 +79,43 @@ const slide: WatchHomeTvCarouselSlide = {
   durationSeconds: null,
 } as unknown as WatchHomeTvCarouselSlide
 
+// A second slide, so the click handler's slide-identity check has something to
+// disagree with. Only `id` and `href` matter to `PrimaryAction`.
+const otherSlide = {
+  ...slide,
+  id: "core-2",
+  href: "/parable-of-the-sower.html",
+} as unknown as WatchHomeTvCarouselSlide
+
 let container: HTMLDivElement
 let root: ReturnType<typeof createRoot>
 
-function renderAt(seconds: number) {
+function renderAt(
+  seconds: number,
+  which: WatchHomeTvCarouselSlide = slide,
+  strict = false,
+) {
+  const tree = (
+    <NextIntlClientProvider locale="en" messages={enMessages}>
+      <PrimaryAction playbackTimeSeconds={seconds} slide={which} />
+    </NextIntlClientProvider>
+  )
   act(() => {
-    root.render(
-      <NextIntlClientProvider locale="en" messages={enMessages}>
-        <PrimaryAction playbackTimeSeconds={seconds} slide={slide} />
-      </NextIntlClientProvider>,
-    )
+    root.render(strict ? <StrictMode>{tree}</StrictMode> : tree)
   })
+}
+
+function clickAnchor(init: MouseEventInit = {}) {
+  const event = new MouseEvent("click", {
+    bubbles: true,
+    cancelable: true,
+    button: 0,
+    ...init,
+  })
+  act(() => {
+    anchor().dispatchEvent(event)
+  })
+  return event
 }
 
 function anchor() {
@@ -130,7 +159,7 @@ describe("Watch home hero CTA href", () => {
     renderAt(21)
     const href = anchor().getAttribute("href") ?? ""
 
-    expect(href).toContain("/watch/miraculous-catch-of-fish.html")
+    expect(href).toContain("/miraculous-catch-of-fish.html")
     expect(href).toContain("autoplay=1")
     expect(href).not.toContain("t=")
   })
@@ -138,11 +167,7 @@ describe("Watch home hero CTA href", () => {
   it("navigates to the resume position on a plain click", () => {
     renderAt(21)
 
-    act(() => {
-      anchor().dispatchEvent(
-        new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }),
-      )
-    })
+    clickAnchor()
 
     expect(pushMock).toHaveBeenCalledTimes(1)
     const pushed = String(pushMock.mock.calls[0]?.[0] ?? "")
@@ -153,16 +178,19 @@ describe("Watch home hero CTA href", () => {
   it("leaves a modified click to the browser so the new tab still opens", () => {
     renderAt(21)
 
-    const event = new MouseEvent("click", {
-      bubbles: true,
-      cancelable: true,
-      button: 0,
-    })
-    Object.defineProperty(event, "metaKey", { value: true })
+    // Accepted tradeoff, not an oversight: the new tab opens at the stable href,
+    // so it loses the resume position the old live href used to carry. That is
+    // the direct cost of a href React can keep still.
+    const event = clickAnchor({ metaKey: true })
 
-    act(() => {
-      anchor().dispatchEvent(event)
-    })
+    expect(pushMock).not.toHaveBeenCalled()
+    expect(event.defaultPrevented).toBe(false)
+  })
+
+  it("leaves a middle click to the browser", () => {
+    renderAt(21)
+
+    const event = clickAnchor({ button: 1 })
 
     expect(pushMock).not.toHaveBeenCalled()
     expect(event.defaultPrevented).toBe(false)
@@ -171,17 +199,60 @@ describe("Watch home hero CTA href", () => {
   it("leaves the click alone when there is no resume position yet", () => {
     renderAt(0)
 
+    const event = clickAnchor()
+
+    expect(pushMock).not.toHaveBeenCalled()
+    expect(event.defaultPrevented).toBe(false)
+  })
+
+  it("stands down when something upstream already handled the click", () => {
+    renderAt(21)
+
+    // A listener ahead of this one in bubble order (analytics, RUM) can call
+    // preventDefault first. Pushing anyway would navigate out from under it.
     const event = new MouseEvent("click", {
       bubbles: true,
       cancelable: true,
       button: 0,
     })
-
+    event.preventDefault()
     act(() => {
       anchor().dispatchEvent(event)
     })
 
     expect(pushMock).not.toHaveBeenCalled()
+  })
+
+  it("never carries the previous slide's position onto the next slide", () => {
+    renderAt(45)
+
+    // The production shape of a carousel advance: `useWatchHomeTvCarousel`
+    // derives `playbackTimeSeconds` as 0 whenever `playbackTime.slideId` is not
+    // the active slide, so the new slide arrives at 0 in the same commit that
+    // swaps the href. `PrimaryAction` is not re-keyed, so this is the SAME hook
+    // instance carrying a ref that was holding 45 a moment ago.
+    renderAt(0, otherSlide)
+
+    expect(anchor().getAttribute("href")).toBe(
+      "/parable-of-the-sower.html?autoplay=1",
+    )
+
+    const event = clickAnchor()
+
+    expect(pushMock).not.toHaveBeenCalled()
     expect(event.defaultPrevented).toBe(false)
+  })
+
+  it("survives a StrictMode remount with its click behaviour intact", () => {
+    // The repo's standing law: a hook-lifetime ref is only proven safe under
+    // StrictMode's setup -> cleanup -> setup cycle, which reuses the same hook
+    // instance. See
+    // docs/solutions/logic-errors/react-strictmode-remount-safety-hook-lifetime-refs.md
+    renderAt(21, slide, true)
+
+    clickAnchor()
+
+    expect(pushMock).toHaveBeenCalledTimes(1)
+    expect(String(pushMock.mock.calls[0]?.[0] ?? "")).toContain("t=21")
   })
 })

@@ -73,6 +73,19 @@ default away from returning:
   category tiles), FGE-209 (W-024, bounding the fan-out) and FGE-146 (W-008,
   hero CTA retargeting) are all left free.
 
+## Accepted tradeoffs
+
+- **Modified clicks lose the resume deep link.** Before this change the rendered
+  href carried `t=`, so cmd/ctrl/middle-clicking "Watch Now" opened a new tab at
+  the viewer's exact preview position. It now opens at `t=0` with autoplay. This
+  is the direct, unavoidable cost of a href React can keep still, and it is the
+  behaviour the "leaves a modified click to the browser" test pins. Accepted
+  deliberately; recorded here so it is not later mistaken for a regression.
+- **The hero CTA now fetches its RSC payload at click time.** `prefetch={false}`
+  trades a warm click for the idle-tab cost. Measured at 609 ms click-to-commit
+  on a local production build. FGE-215 (W-025) already wants this posture for
+  touch; FGE-209 (W-024) is the ticket that could restore a bounded warm path.
+
 ## Constraints
 
 - Do not touch the `MuxVideo` import or mount — FGE-138 owns that region of the

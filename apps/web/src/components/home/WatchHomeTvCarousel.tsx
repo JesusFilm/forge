@@ -233,12 +233,35 @@ export function PrimaryAction({
   // destination in 48s. Scope note: this is the hero CTA only, so it neither
   // pre-empts FGE-215 (W-025, the same posture for category tiles) nor
   // FGE-209 (W-024, bounding the fan-out itself).
-  const playbackTimeRef = useRef(playbackTimeSeconds)
+  //
+  // The ref carries the slide it belongs to, not just the number. One
+  // `PrimaryAction` instance survives every slide change (no `key` at the call
+  // site), and the effect that refreshes the ref runs AFTER the commit that
+  // swapped `slide` — so for one tick the ref holds the outgoing slide's
+  // position while `href` already points at the incoming slide. Comparing the
+  // ids makes that window fail safe: a mismatch drops `t=` rather than stamping
+  // slide A's timestamp onto slide B's URL.
+  //
+  // The mismatch branch is DEFENSIVE and no test reaches it. `act()` flushes
+  // passive effects before it dispatches a click, so the harness cannot hold the
+  // ref and the prop apart; and in production the hook already zeroes
+  // `playbackTimeSeconds` in the same commit that swaps the slide, which the
+  // "never carries the previous slide's position" test does pin. This guard
+  // exists for the window React's scheduling might still open between that
+  // commit and this effect — keep it even though nothing can go red without it.
+  const playbackTimeRef = useRef({
+    slideId: slide.id,
+    seconds: playbackTimeSeconds,
+  })
   useEffect(() => {
-    playbackTimeRef.current = playbackTimeSeconds
-  }, [playbackTimeSeconds])
+    playbackTimeRef.current = {
+      slideId: slide.id,
+      seconds: playbackTimeSeconds,
+    }
+  }, [slide.id, playbackTimeSeconds])
 
   const href = slide.href
+  const slideId = slide.id
   const stableHref = useMemo(
     () => (href ? (appendAutoplaySignal(href) as Route) : null),
     [href],
@@ -247,12 +270,13 @@ export function PrimaryAction({
     (event: React.MouseEvent<HTMLAnchorElement>) => {
       if (!href || event.defaultPrevented) return
       if (!isUnmodifiedPrimaryNavigation(event)) return
-      const seconds = playbackTimeRef.current
+      const tracked = playbackTimeRef.current
+      const seconds = tracked.slideId === slideId ? tracked.seconds : 0
       if (!hasResumePosition(seconds)) return
       event.preventDefault()
       router.push(appendAutoplaySignal(href, seconds) as Route)
     },
-    [href, router],
+    [href, router, slideId],
   )
 
   if (!stableHref) return null
