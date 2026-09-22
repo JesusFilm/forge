@@ -265,6 +265,7 @@ describe("auth provider configuration", () => {
       clientId: "google-client-id",
       clientSecret: "google-client-secret",
       prompt: "select_account",
+      getUserInfo: expect.any(Function),
     })
   })
 

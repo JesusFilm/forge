@@ -1,3 +1,4 @@
+import { googlePreapprovalSignIn } from "@/auth/google-preapproval-evidence"
 import { refuseUnverifiedConsumerLink } from "@/auth/account-linking-guard"
 import { mobileAwareExpoPlugin } from "@/auth/mobile-expo-plugin"
 import { selfRpStateCookiePlugin } from "@/auth/self-rp-state-cookie-plugin"
@@ -126,6 +127,8 @@ async function appleProfileToUser(profile: { sub?: string; email?: string }) {
   return { email: account.user.email }
 }
 
+const googleSignIn = googlePreapprovalSignIn(env.GOOGLE_CLIENT_ID ?? "")
+
 const socialProviders = {
   ...(env.FACEBOOK_CLIENT_ID && env.FACEBOOK_CLIENT_SECRET
     ? {
@@ -143,6 +146,7 @@ const socialProviders = {
           clientId: env.GOOGLE_CLIENT_ID,
           clientSecret: env.GOOGLE_CLIENT_SECRET,
           prompt: "select_account" as const,
+          getUserInfo: googleSignIn.getUserInfo,
         },
       }
     : {}),
@@ -248,8 +252,15 @@ const databaseHooks: NonNullable<BetterAuthOptions["databaseHooks"]> = {
         const clientKind = resolveSessionClientKind(
           (ctx ?? undefined) as { path?: string; body?: unknown } | undefined,
         )
-        if (!clientKind) return
-        return { data: { ...session, clientKind } }
+        const evidence = ctx ? googleSignIn.evidence(ctx.context) : undefined
+        if (!clientKind && !evidence) return
+        return {
+          data: {
+            ...session,
+            ...(clientKind ? { clientKind } : {}),
+            ...evidence,
+          },
+        }
       },
     },
   },
@@ -285,6 +296,9 @@ export const auth = betterAuth({
     },
   },
   user: {
+    validateUserInfo: ({ source }, ctx) => {
+      googleSignIn.capture(source, ctx.context)
+    },
     additionalFields: {
       actorType: {
         type: "string",
@@ -464,8 +478,20 @@ export const auth = betterAuth({
       maxAge: 60,
     },
     additionalFields: {
-      // Stamped at creation for mobile entry points; surfaces as the JWT's
-      // client claim so admin can bind acceptance to mobile sessions.
+      // Server-only evidence from this session's verified Google sign-in.
+      googleEmail: {
+        type: "string",
+        required: false,
+        input: false,
+        returned: false,
+      },
+      googleSubject: {
+        type: "string",
+        required: false,
+        input: false,
+        returned: false,
+      },
+      // Stamped for mobile entry points and surfaced as the JWT client claim.
       clientKind: {
         type: "string",
         required: false,

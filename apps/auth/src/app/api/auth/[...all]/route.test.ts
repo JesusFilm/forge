@@ -397,6 +397,7 @@ describe("Auth route wrapper", () => {
 
   it("downscopes an authenticated Changelog authorize request before the provider sees it", async () => {
     getSession.mockResolvedValueOnce({
+      session: { id: "session_123" },
       user: { id: "user_123", membershipStatus: "ACTIVE" },
     })
     decideChangelogGrant.mockResolvedValueOnce({
@@ -428,6 +429,7 @@ describe("Auth route wrapper", () => {
 
   it("routes an explicit Admin resource before inspecting Changelog scopes", async () => {
     getSession.mockResolvedValueOnce({
+      session: { id: "session_123" },
       user: { id: "user_123", membershipStatus: "ACTIVE" },
     })
     authGet.mockResolvedValueOnce(Response.json({ ok: true }))
@@ -475,6 +477,7 @@ describe("Auth route wrapper", () => {
     "rejects $name without an authorization continuation",
     async (testCase) => {
       getSession.mockResolvedValueOnce({
+        session: { id: "session_123" },
         user: { id: "user_123", membershipStatus: "ACTIVE" },
       })
       if (testCase.dynamic) {
@@ -502,6 +505,7 @@ describe("Auth route wrapper", () => {
 
   it("adds the canonical native resource for a seeded Changelog client", async () => {
     getSession.mockResolvedValueOnce({
+      session: { id: "session_123" },
       user: { id: "user_123", membershipStatus: "ACTIVE" },
     })
     decideChangelogGrant.mockResolvedValueOnce({
@@ -530,6 +534,7 @@ describe("Auth route wrapper", () => {
 
   it("uses seeded defaults when a Changelog client omits scope", async () => {
     getSession.mockResolvedValueOnce({
+      session: { id: "session_123" },
       user: { id: "user_123", membershipStatus: "ACTIVE" },
     })
     decideChangelogGrant.mockResolvedValueOnce({
@@ -571,6 +576,7 @@ describe("Auth route wrapper", () => {
 
   it("returns a no-store OAuth denial without invoking the provider", async () => {
     getSession.mockResolvedValueOnce({
+      session: { id: "session_123" },
       user: { id: "user_123", membershipStatus: "ACTIVE" },
     })
     decideChangelogGrant.mockResolvedValueOnce({
@@ -596,6 +602,7 @@ describe("Auth route wrapper", () => {
 
   it("returns invalid_target for an invalid Changelog resource", async () => {
     getSession.mockResolvedValueOnce({
+      session: { id: "session_123" },
       user: { id: "user_123", membershipStatus: "ACTIVE" },
     })
     decideChangelogGrant.mockResolvedValueOnce({
@@ -621,6 +628,7 @@ describe("Auth route wrapper", () => {
 
   it("redirects a trusted client denial with OAuth state", async () => {
     getSession.mockResolvedValueOnce({
+      session: { id: "session_123" },
       user: { id: "user_123", membershipStatus: "ACTIVE" },
     })
     decideChangelogGrant.mockResolvedValueOnce({
@@ -654,6 +662,7 @@ describe("Auth route wrapper", () => {
 
   it("redirects invalid_target to a trusted client with OAuth state", async () => {
     getSession.mockResolvedValueOnce({
+      session: { id: "session_123" },
       user: { id: "user_123", membershipStatus: "ACTIVE" },
     })
     decideChangelogGrant.mockResolvedValueOnce({
@@ -684,6 +693,7 @@ describe("Auth route wrapper", () => {
 
   it("revalidates the signed consent continuation before native code creation", async () => {
     getSession.mockResolvedValueOnce({
+      session: { id: "session_123" },
       user: { id: "user_123", membershipStatus: "ACTIVE" },
     })
     decideChangelogGrant.mockResolvedValueOnce({
@@ -725,6 +735,7 @@ describe("Auth route wrapper", () => {
     },
   ])("rejects signed consent when $name", async (testCase) => {
     getSession.mockResolvedValueOnce({
+      session: { id: "session_123" },
       user: { id: "user_123", membershipStatus: "ACTIVE" },
     })
     decideChangelogGrant.mockResolvedValueOnce({
@@ -763,6 +774,7 @@ describe("Auth route wrapper", () => {
 
   it("forwards an unchanged signed consent after successful revalidation", async () => {
     getSession.mockResolvedValueOnce({
+      session: { id: "session_123" },
       user: { id: "user_123", membershipStatus: "ACTIVE" },
     })
     decideChangelogGrant.mockResolvedValueOnce({

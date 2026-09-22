@@ -50,6 +50,7 @@ function dependencies({
     findClientEnvironment: vi.fn(async () => clientEnvironment),
     findTargetEnvironment: vi.fn(async () => targetEnvironment),
     findApprovedUserGrants: vi.fn(async () => grants),
+    redeemPreapprovals: vi.fn(async () => {}),
     productionEnabled: vi.fn(() => productionEnabled),
   }
 }
