@@ -141,9 +141,13 @@ jest.mock("../WatchPreferencesProvider", () => {
   }
 })
 
-import { StrictMode, act } from "react"
+import { StrictMode, act, type ReactNode } from "react"
 
-import { DownloadsProvider } from "../DownloadsProvider"
+import {
+  DownloadsProvider,
+  useDownloads,
+  type CommittedCopy,
+} from "../DownloadsProvider"
 import type { ExportStagingNote } from "../../lib/exportSession"
 import type { ExportSweepEffects } from "../../lib/exportSweep"
 import {
@@ -262,8 +266,8 @@ beforeEach(() => {
   fs.listDirectory.mockResolvedValue([])
 })
 
-function element(strict: boolean) {
-  const tree = <DownloadsProvider>{null}</DownloadsProvider>
+function element(strict: boolean, children: ReactNode = null) {
+  const tree = <DownloadsProvider>{children}</DownloadsProvider>
   return strict ? <StrictMode>{tree}</StrictMode> : tree
 }
 
@@ -276,10 +280,13 @@ async function flush() {
   })
 }
 
-async function render(strict = false): Promise<TestInstance> {
+async function render(
+  strict = false,
+  children: ReactNode = null,
+): Promise<TestInstance> {
   let renderer!: TestInstance
   await act(async () => {
-    renderer = TestRenderer.create(element(strict))
+    renderer = TestRenderer.create(element(strict, children))
   })
   await flush()
   return renderer
@@ -290,6 +297,73 @@ async function unmount(renderer: TestInstance) {
     renderer.unmount()
   })
 }
+
+describe("committedCopyFor", () => {
+  type Out = { copy?: CommittedCopy | null }
+  // The first READY render is the hydrated manifest as written; the launch
+  // reattach that follows may rewrite an in-flight record, so read once.
+  function Probe({ slug, out }: { slug: string; out: Out }) {
+    const { committedCopyFor, isReady } = useDownloads()
+    if (isReady && !("copy" in out)) out.copy = committedCopyFor(slug)
+    return null
+  }
+  async function probe(slug: string): Promise<CommittedCopy | null> {
+    const out: Out = {}
+    const renderer = await render(false, <Probe slug={slug} out={out} />)
+    await unmount(renderer)
+    return out.copy ?? null
+  }
+  const OLD_FILE = "file:///docs/offline-downloads/a/old.mp4"
+
+  it("pairs a downloaded file with the dub its record names", async () => {
+    seedManifest([
+      record({
+        videoSlug: "a",
+        state: "downloaded",
+        committedPath: OLD_FILE,
+        dubDocumentId: "dub-en",
+      }),
+    ])
+    expect(await probe("a")).toEqual({
+      path: OLD_FILE,
+      dubDocumentId: "dub-en",
+      subtitleLanguageSlug: null,
+    })
+  })
+
+  it("answers null for a record that has no file on disk", async () => {
+    seedManifest([
+      record({ videoSlug: "a", state: "downloading", dubDocumentId: "dub-fr" }),
+    ])
+    expect(await probe("a")).toBeNull()
+  })
+
+  it("mid-swap pairs the OLD file with its OWN dub and subtitle, never the incoming ones", async () => {
+    seedManifest([
+      record({
+        videoSlug: "a",
+        state: "downloading",
+        dubDocumentId: "dub-fr",
+        renditionDocumentId: "rend-fr",
+        subtitleLanguageSlug: "french",
+        swapFrom: {
+          committedPath: OLD_FILE,
+          renditionDocumentId: "rend-en",
+          dubDocumentId: "dub-en",
+          qualityLabel: "High",
+          subtitleLanguageSlug: "english",
+          totalBytes: 100,
+          posterPath: null,
+        },
+      }),
+    ])
+    expect(await probe("a")).toEqual({
+      path: OLD_FILE,
+      dubDocumentId: "dub-en",
+      subtitleLanguageSlug: "english",
+    })
+  })
+})
 
 describe("raw-export runtime attachment (R13)", () => {
   it("supplies a record reader that reflects the hydrated manifest", async () => {

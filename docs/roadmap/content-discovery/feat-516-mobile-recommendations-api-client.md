@@ -273,19 +273,36 @@ dispose during that wait loses it (inert until `feat-517` wires `select()`);
 
 Open items that belong to this ticket, not to `feat-517`:
 
-- [ ] **Double recorder on a Home-tile open.** Observed 2026-09-17 in the
+- [x] **Double recorder on a Home-tile open.** Observed 2026-09-17 in the
       smoke proxy log (`/tmp/feat-516-perf.jsonl`, 22:54, 22:57 and 22:58 UTC):
       each open from a Home tile issued two `IssueWatchPlaybackContext` about
       360 ms apart for the same media; the first claim failed its nonce match
       and shipped a stub episode (`playback_attempt`, `playback_observation`,
       `playback_end` `route_exit` at 0 s) before the real episode began. A
-      deep-link open (`forgemobile://watch/<slug>`) issued once. The mechanism
-      is not established. Reproduce: play a video, return to Home, tap a tile
-      while the floating player is up, then read the log with
-      `proxy-window.py`. Trace which dependency of the recorder effect in
-      `src/hooks/useManagedVideoPlayer.ts` (`recommendationMediaId`, `player`,
-      `readPlayhead`) re-runs, and pin the fix in
-      `useManagedVideoPlayer.recommendations.test.tsx`.
+      deep-link open (`forgemobile://watch/<slug>`) issued once.
+      **Resolved 2026-09-22.** The trigger is a watch screen that mounts onto
+      the video already floating: an expand, a tap on its own Home tile, or a
+      stack remount. Its first render publishes a session descriptor by slug
+      alone, because the group-scoped `WatchSessionProvider` holds no record
+      until its effect runs, and `sessionIdentityKey` read `slug:` against
+      the live session's `id:` as a different video. The request store then
+      ended the session as `replaced`, the host dropped its progress identity
+      to null and disposed the recorder, the player reloaded from 0:00, and
+      the record's arrival one commit later created a second recorder. The
+      log showed this twice per incident because the experience shell
+      remounted the stack twice around it. Fix: one slug-tolerant
+      `sameSessionContent` (now in `src/lib/miniPlayer/store.ts`) for the
+      store's replacement, its merge, and the host's adoption, and a host-side
+      hold of the last progress identity resolved for the same slug
+      (`holdProgressIdentity` in `PlaybackHost.tsx`). Pinned in
+      `useManagedVideoPlayer.recommendations.test.tsx`,
+      `PlaybackHost.test.tsx`, `playbackRequest.test.ts` and `store.test.ts`.
+- [ ] **Warm remount of the experience shell.** Around each incident above the
+      proxy log shows `GetWatchSetting` and then `GetExperienceBySlug` on a
+      warm app, which is the shell resolving its slug from nothing. That
+      remounts every route. The cause is not established; a Fast Refresh
+      during development is one candidate. Verify on a release-mode build
+      before treating it as a bug.
 - [ ] **Native build before the next `eas update`.** `expo-crypto` moved the
       fingerprint runtime version; an update published before a native build
       reaches no installed build. Push a TestFlight build after merge.

@@ -17,6 +17,7 @@ import {
 } from "../lib/normalizeVideo"
 import { datadogLog } from "../lib/datadog"
 import { ensureDubMedia } from "../lib/dubMediaFetch"
+import { getMiniPlayerStore } from "../lib/miniPlayer/store"
 import { GET_VIDEO_DUB } from "../lib/queries"
 import {
   INITIAL_RECONCILER_STATE,
@@ -25,6 +26,7 @@ import {
   resetReconciler,
 } from "../lib/preferenceReconciler"
 import { subtitleNameToCache } from "../lib/subtitleSelection"
+import { useDownloads } from "./DownloadsProvider"
 import { useWatchPreferences } from "./WatchPreferencesProvider"
 
 /**
@@ -91,6 +93,7 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     setPreferredSubtitleName,
     setSubtitlesEnabled,
   } = useWatchPreferences()
+  const { isReady: downloadsReady, committedCopyFor } = useDownloads()
 
   const [video, setVideo] = useState<WatchVideoRecord | null>(null)
   // Null = unresolved, matching SeriesSessionProvider's null-before-resolution.
@@ -255,9 +258,29 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     requestedRef.current.clear()
   }, [video?.documentId])
 
+  // A download is one dub: it outranks the preference so the pill names the
+  // audio on disk, which is why the default below waits for the downloads store.
+  const downloadedDubId =
+    downloadsReady && video
+      ? (committedCopyFor(video.slug)?.dubDocumentId ?? null)
+      : null
+  const downloadedAudioSlug =
+    downloadedDubId == null
+      ? null
+      : (video?.variants.find((v) => v.documentId === downloadedDubId)
+          ?.languageSlug ?? null)
+  // A screen that remounts onto this video's floating session (an expand)
+  // starts a fresh provider: the dub the viewer picked lives only in that
+  // session now, and it outranks the download, or the expand undoes the pick.
+  const floatingSession = getMiniPlayerStore().getSnapshot().session
+  const floatingAudioSlug =
+    video && floatingSession?.videoSlug === video.slug
+      ? floatingSession.languageSlug
+      : null
+
   // Default the dubbing language once per video as variants arrive (may land
   // after documentId via partial data), unless the user chose. The reconciler
-  // gates on preferencesReady so the persisted choice applies first (no snap).
+  // gates on both stores so the download or persisted choice applies first.
   useEffect(() => {
     const options =
       video?.variants.map((v) => ({
@@ -266,11 +289,12 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
         languageSlug: v.languageSlug,
       })) ?? []
     const { nextState, apply } = reconcileDefault(audioReconcilerRef.current, {
-      ready: preferencesReady,
+      ready: preferencesReady && downloadsReady,
       identity: video?.documentId ?? null,
       options,
       primaryBcp47: video?.primaryLanguageBcp47 ?? null,
-      preferredSlug: preferredAudioSlug,
+      preferredSlug:
+        floatingAudioSlug ?? downloadedAudioSlug ?? preferredAudioSlug,
     })
     audioReconcilerRef.current = nextState
     if (apply && video) {
@@ -284,6 +308,8 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     video?.variants.length,
     video?.primaryLanguageBcp47,
     preferencesReady,
+    downloadsReady,
+    downloadedAudioSlug,
     preferredAudioSlug,
   ])
 

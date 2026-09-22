@@ -40,6 +40,8 @@ const VALID_STATES: ReadonlySet<string> = new Set<OfflineDownloadState>([
 export type SwapFrom = {
   committedPath: string
   renditionDocumentId: string
+  /** The dub the old file holds; null on a snapshot written before it was kept. */
+  dubDocumentId: string | null
   qualityLabel: string
   subtitleLanguageSlug: string | null
   totalBytes: number
@@ -115,6 +117,7 @@ function parseSwapFrom(value: unknown): SwapFrom | null {
   return {
     committedPath,
     renditionDocumentId,
+    dubDocumentId: asString(o.dubDocumentId),
     qualityLabel: asString(o.qualityLabel) ?? "",
     subtitleLanguageSlug: asString(o.subtitleLanguageSlug),
     totalBytes: asFiniteNumber(o.totalBytes),
