@@ -3,8 +3,9 @@ id: "feat-533"
 title: "Watch sitemap covers every playable language, not just ISO-639-1 ones"
 owner: "vlad"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-22"
+completed_date: "2026-09-22"
 duration: 1
 depends_on:
   - "feat-184"
