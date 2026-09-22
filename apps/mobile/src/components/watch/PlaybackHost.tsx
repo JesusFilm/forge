@@ -65,7 +65,6 @@ import {
 } from "../../lib/miniPlayer/playerSettings"
 import {
   getPlaybackRequestStore,
-  sameSessionContent,
   sameStreamSource,
   sourceForRequest,
   type LoadedSource,
@@ -77,6 +76,7 @@ import { pictureInPictureViewProps } from "../../lib/miniPlayer/pictureInPicture
 import { miniPlayerPresentation } from "../../lib/miniPlayer/presentation"
 import {
   getMiniPlayerStore,
+  sameSessionContent,
   type MiniPlayerEndedCause,
   type MiniPlayerSession,
 } from "../../lib/miniPlayer/store"
@@ -171,6 +171,24 @@ export function shouldDrawSurface(input: {
   if (input.pipHeld) return true
   if (!input.hasSurfaceVideo) return false
   return input.hasRect || input.endedCause == null || !input.surfaceReleased
+}
+
+/** The identity the host trusts: the published one, unless it names this same
+ *  video by a weaker key (none, or a slug over a known id) or drops a known dub. */
+export function holdProgressIdentity(
+  published: ProgressIdentity | null,
+  known: ProgressIdentity | null,
+): ProgressIdentity | null {
+  if (known == null) return published
+  if (published == null) return known
+  if (published.videoId == null && known.videoId != null) return known
+  if (
+    published.videoId === known.videoId &&
+    published.languageSlug == null &&
+    known.languageSlug != null
+  )
+    return known
+  return published
 }
 
 /** One box, so one motion's path is exactly the reverse of the other's. */
@@ -296,7 +314,7 @@ function ActivePlaybackHost({
   const store = getPlaybackRequestStore()
   const sessionStore = getMiniPlayerStore()
   const sheetCounter = getNonRouteSheetCounter()
-  const progressIdentity = useMemo<ProgressIdentity | null>(() => {
+  const publishedIdentity = useMemo<ProgressIdentity | null>(() => {
     if (request.progressVideoId != null)
       return {
         videoId: request.progressVideoId,
@@ -336,11 +354,20 @@ function ActivePlaybackHost({
     sessionSnapshot.session != null &&
     request.session != null &&
     sameSessionContent(request.session, sessionSnapshot.session)
+  // A download that completes (or is deleted) under an adopted session is the
+  // same video in a new container. The pin exists for a remount's OTHER url of
+  // one stream, so a local/remote flip must reach the player through it.
+  const loadedUrl = loadedSourceRef.current?.url ?? null
+  const containerChanged =
+    loadedUrl != null &&
+    request.streamingUrl != null &&
+    validateLocalMediaUrl(loadedUrl, OFFLINE_ROOT) !==
+      validateLocalMediaUrl(request.streamingUrl, OFFLINE_ROOT)
   const sourceUrl = sourceForRequest({
     requested: request.streamingUrl,
     loaded: loadedSourceRef.current,
     language: requestLanguage,
-    adoptable,
+    adoptable: adoptable && !containerChanged,
   })
   if (sourceUrl != null && sourceUrl === request.streamingUrl) {
     // Handed to the player, so it becomes what the player holds. A known dub is
@@ -358,6 +385,28 @@ function ActivePlaybackHost({
   const videoKey = request.session
     ? request.session.videoSlug
     : (request.streamingUrl ?? "")
+
+  // A remounting screen resolves its record a commit after it publishes, so a
+  // known identity (and its dub) is never downgraded to null by a remount that
+  // has not resolved one yet — loadedSourceRef's rule, on the same slug key.
+  const knownIdentityRef = useRef<{
+    videoKey: string
+    identity: ProgressIdentity
+  } | null>(null)
+  const knownIdentity =
+    knownIdentityRef.current?.videoKey === videoKey
+      ? knownIdentityRef.current.identity
+      : null
+  const progressIdentity = holdProgressIdentity(
+    publishedIdentity,
+    knownIdentity,
+  )
+  if (
+    progressIdentity != null &&
+    progressIdentity !== knownIdentity &&
+    videoKey !== ""
+  )
+    knownIdentityRef.current = { videoKey, identity: progressIdentity }
 
   const settingsStore = getPlayerSettingsStore()
   const settingsSnapshot = useSyncExternalStore(

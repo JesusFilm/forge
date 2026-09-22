@@ -98,15 +98,15 @@ const EMPTY_SNAPSHOT: MiniPlayerStoreSnapshot = {
   pipHold: false,
 }
 
-/**
- * Identity of the content a session carries. A dub or subtitle change is the
- * same content, so it must not read as a replacement (R12 is about a different
- * video taking the window over).
- */
-export function sessionIdentityKey(
-  session: Pick<MiniPlayerSession, "videoId" | "videoSlug">,
-): string {
-  return session.videoId ? `id:${session.videoId}` : `slug:${session.videoSlug}`
+/** Same content by whichever key each side carries: a remounted screen names
+ *  a video by slug before its record lands and by id after, so an id-only
+ *  compare reads one video as two and ends its session on every expand. */
+export function sameSessionContent(
+  a: Pick<MiniPlayerSession, "videoId" | "videoSlug">,
+  b: Pick<MiniPlayerSession, "videoId" | "videoSlug">,
+): boolean {
+  if (a.videoId != null && b.videoId != null) return a.videoId === b.videoId
+  return a.videoSlug === b.videoSlug
 }
 
 export function createMiniPlayerStore() {
@@ -188,11 +188,10 @@ export function createMiniPlayerStore() {
      */
     start(input: MiniPlayerSessionInput): void {
       const previous = snapshot.session
-      const merging =
-        previous != null &&
-        sessionIdentityKey(previous) === sessionIdentityKey(input)
+      const merging = previous != null && sameSessionContent(previous, input)
       const session: MiniPlayerSession = {
-        videoId: input.videoId,
+        // A slug-only re-start must not drop the id the window already knows.
+        videoId: input.videoId ?? (merging ? previous.videoId : null),
         videoSlug: input.videoSlug,
         languageSlug: input.languageSlug ?? null,
         title: input.title,

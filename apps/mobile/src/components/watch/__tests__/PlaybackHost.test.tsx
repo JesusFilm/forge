@@ -170,6 +170,7 @@ import {
   REPOSITION_DURATION_MS,
   SHRINK_DURATION_MS,
   TAB_BAR_CONTENT_HEIGHT,
+  holdProgressIdentity,
   shouldDrawSurface,
 } from "../PlaybackHost"
 import { getPlayerSettingsStore } from "../../../lib/miniPlayer/playerSettings"
@@ -989,6 +990,81 @@ describe("expanding back onto the floating video (R4)", () => {
       expect.anything(),
     )
     // And the session it expanded onto is still the one playing.
+    expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+  })
+
+  // What the fresh screen ACTUALLY publishes first: its group-scoped session
+  // provider holds no record yet, so the descriptor carries the slug alone and
+  // the progress identity is null; the record follows a commit later.
+  it("keeps the session and the player when the expanded screen has not resolved its record yet", async () => {
+    await floatOneVideo()
+    const replacesBefore = video.__player.replaceAsync.mock.calls.length
+    datadog.datadogLog.info.mockClear()
+
+    const id = await attachSlotInAct(
+      watchRequest({
+        streamingUrl: null,
+        progressVideoId: null,
+        progressLanguageSlug: null,
+        session: {
+          ...(watchRequest().session as PlaybackSessionDescriptor),
+          videoId: null,
+          languageSlug: null,
+        },
+      }),
+    )
+    expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+    expect(video.__player.currentTime).toBe(30)
+    expect(video.__player.playing).toBe(true)
+
+    // The record lands: same video, the URL the player already holds.
+    await act(async () => {
+      requestStore.updateSlot(id, makeRequest(watchRequest()))
+    })
+
+    expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(replacesBefore)
+    expect(video.__player.currentTime).toBe(30)
+    expect(video.__player.playing).toBe(true)
+    expect(datadog.datadogLog.info).not.toHaveBeenCalledWith(
+      "video.qoe",
+      expect.anything(),
+    )
+  })
+
+  // A download that completes while the expanded screen adopts the floating
+  // video is the same video in a new container. The pin that keeps a remount's
+  // other URL out of the player must let a local/remote flip through.
+  it("lets a completed download through the adoption pin", async () => {
+    await floatOneVideo()
+    const id = await attachSlotInAct(
+      watchRequest({
+        streamingUrl: null,
+        progressVideoId: null,
+        progressLanguageSlug: null,
+        session: {
+          ...(watchRequest().session as PlaybackSessionDescriptor),
+          videoId: null,
+          languageSlug: null,
+        },
+      }),
+    )
+    await act(async () => {
+      requestStore.updateSlot(id, makeRequest(watchRequest()))
+    })
+    const replacesBefore = video.__player.replaceAsync.mock.calls.length
+
+    await act(async () => {
+      requestStore.updateSlot(
+        id,
+        makeRequest(watchRequest({ streamingUrl: OFFLINE_A })),
+      )
+    })
+
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(
+      replacesBefore + 1,
+    )
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(OFFLINE_A)
     expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
   })
 
@@ -1849,6 +1925,38 @@ describe("the frame transition (KTD17: shrink and its reverse)", () => {
       toValue: 1,
       duration: SHRINK_DURATION_MS,
     })
+  })
+})
+
+describe("holdProgressIdentity (the remount's id-less render)", () => {
+  const known = { videoId: "video-a", languageSlug: "english" }
+
+  it("trusts the published identity when nothing is known", () => {
+    expect(holdProgressIdentity(null, null)).toBeNull()
+    expect(holdProgressIdentity(known, null)).toBe(known)
+  })
+
+  it("holds the known identity over a null or slug-only publish", () => {
+    expect(holdProgressIdentity(null, known)).toBe(known)
+    expect(
+      holdProgressIdentity(
+        { videoSlug: "video-a-slug", languageSlug: null },
+        known,
+      ),
+    ).toBe(known)
+  })
+
+  it("fills a null dub from the known one for the same video", () => {
+    expect(
+      holdProgressIdentity({ videoId: "video-a", languageSlug: null }, known),
+    ).toEqual({ videoId: "video-a", languageSlug: "english" })
+  })
+
+  it("lets a resolved identity and a different video through unchanged", () => {
+    const french = { videoId: "video-a", languageSlug: "french" }
+    expect(holdProgressIdentity(french, known)).toBe(french)
+    const other = { videoId: "video-b", languageSlug: null }
+    expect(holdProgressIdentity(other, known)).toBe(other)
   })
 })
 

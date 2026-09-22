@@ -6,7 +6,6 @@
 import {
   createPlaybackRequestStore,
   samePlaybackRequest,
-  sameSessionContent,
   sameStreamSource,
   shouldOriginateSession,
   sourceForRequest,
@@ -303,22 +302,6 @@ describe("the source an incoming request should play (R4)", () => {
           adoptable,
         }),
       ).toBeNull()
-  })
-
-  it("matches one video across the keys a remount happens to carry", () => {
-    const byId = { videoId: "video-a", videoSlug: "life-of-jesus" }
-    expect(sameSessionContent(byId, { ...byId })).toBe(true)
-    // Before its record lands a screen has only the slug; after, only the id
-    // compare would call this a different video and replace the session.
-    expect(
-      sameSessionContent({ videoId: null, videoSlug: "life-of-jesus" }, byId),
-    ).toBe(true)
-    expect(
-      sameSessionContent({ videoId: "video-b", videoSlug: "other" }, byId),
-    ).toBe(false)
-    expect(
-      sameSessionContent({ videoId: null, videoSlug: "other" }, byId),
-    ).toBe(false)
   })
 })
 
@@ -649,6 +632,66 @@ describe("replacement (R12)", () => {
 
     expect(endings).toEqual([])
     expect(sessionStore.getSnapshot().session?.positionSeconds).toBe(42)
+  })
+
+  // A fresh watch screen publishes before its record lands, so its descriptor
+  // names the video by slug alone while the session carries the id.
+  it("leaves a session alone when the same video takes the slot back before its record lands", () => {
+    const { store, sessionStore } = makeStores({
+      started: true,
+      position: 42,
+      duration: 600,
+    })
+    const first = store.attachSlot(makeRequest())
+    store.detachSlot(first)
+    const endings: MiniPlayerEndEvent[] = []
+    sessionStore.onEnd((event) => endings.push(event))
+
+    store.attachSlot(
+      makeRequest({
+        streamingUrl: null,
+        progressVideoId: null,
+        progressLanguageSlug: null,
+        session: { ...SESSION_A, videoId: null, languageSlug: null },
+      }),
+    )
+
+    expect(endings).toEqual([])
+    expect(sessionStore.getSnapshot().session).toMatchObject({
+      videoId: "video-a",
+      positionSeconds: 42,
+    })
+    expect(store.getSnapshot().request?.progressVideoId).toBeNull()
+  })
+
+  // Two downloads, neither with an Admin id: the slug is the only key on both
+  // sides, and a different slug is still a different video.
+  it("replaces the session between two videos that both lack an id", () => {
+    const { store, sessionStore } = makeStores({
+      started: true,
+      position: 42,
+      duration: 600,
+    })
+    const first = store.attachSlot(
+      makeRequest({
+        progressVideoId: null,
+        session: { ...SESSION_A, videoId: null },
+      }),
+    )
+    store.detachSlot(first)
+    expect(sessionStore.getSnapshot().session?.videoSlug).toBe("video-a-slug")
+    const endings: MiniPlayerEndEvent[] = []
+    sessionStore.onEnd((event) => endings.push(event))
+
+    store.attachSlot(
+      makeRequest({
+        progressVideoId: null,
+        session: { ...SESSION_B, videoId: null },
+      }),
+    )
+
+    expect(endings.map((e) => e.reason)).toEqual(["replaced"])
+    expect(sessionStore.getSnapshot().session).toBeNull()
   })
 })
 

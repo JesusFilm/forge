@@ -2,7 +2,7 @@ import type { AuthSessionSnapshot } from "../../authSession"
 import {
   createMiniPlayerStore,
   getMiniPlayerStore,
-  sessionIdentityKey,
+  sameSessionContent,
   type MiniPlayerEndEvent,
   type MiniPlayerAuthSource,
 } from "../store"
@@ -48,6 +48,41 @@ function startedStore() {
   })
   return { store, ends }
 }
+
+describe("sameSessionContent (one identity for the store and the host)", () => {
+  it("matches one video across the keys a remount happens to carry", () => {
+    const byId = { videoId: "video-a", videoSlug: "life-of-jesus" }
+    expect(sameSessionContent(byId, { ...byId })).toBe(true)
+    // Before its record lands a screen has only the slug; after, only the id
+    // compare would call this a different video and replace the session.
+    expect(
+      sameSessionContent({ videoId: null, videoSlug: "life-of-jesus" }, byId),
+    ).toBe(true)
+    expect(
+      sameSessionContent({ videoId: "video-b", videoSlug: "other" }, byId),
+    ).toBe(false)
+    expect(
+      sameSessionContent({ videoId: null, videoSlug: "other" }, byId),
+    ).toBe(false)
+  })
+
+  // The id branch on its own: with an id on both sides the slug is not read,
+  // so an alias slug still names one video and a shared slug cannot join two.
+  it("decides on the ids alone when both sides carry one", () => {
+    expect(
+      sameSessionContent(
+        { videoId: "video-a", videoSlug: "life-of-jesus" },
+        { videoId: "video-a", videoSlug: "life-of-jesus-alias" },
+      ),
+    ).toBe(true)
+    expect(
+      sameSessionContent(
+        { videoId: "video-a", videoSlug: "life-of-jesus" },
+        { videoId: "video-b", videoSlug: "life-of-jesus" },
+      ),
+    ).toBe(false)
+  })
+})
 
 describe("start", () => {
   it("publishes a playing session with the identity the window needs", () => {
@@ -103,6 +138,44 @@ describe("start", () => {
     })
   })
 
+  // A screen that detaches before its record lands names the video by slug
+  // alone; the session it re-starts already carries the id, and keeps it.
+  it("merges a re-start of the same content that has not resolved the id yet", () => {
+    const { store, ends } = startedStore()
+    store.publishPosition({ positionSeconds: 90, durationSeconds: 600 })
+    store.start({
+      videoId: null,
+      videoSlug: "birth-of-jesus",
+      title: "Birth of Jesus",
+    })
+
+    expect(ends).toHaveLength(0)
+    expect(store.getSnapshot().session).toMatchObject({
+      videoId: "video-1",
+      positionSeconds: 90,
+      durationSeconds: 600,
+    })
+  })
+
+  // The other arm of the same line: a different id-less video (a download)
+  // replaces the session and must not inherit the departed video's id.
+  it("gives a different id-less video no id of its own", () => {
+    const { store, ends } = startedStore()
+    store.publishPosition({ positionSeconds: 90, durationSeconds: 600 })
+    store.start({
+      videoId: null,
+      videoSlug: "downloaded-slug",
+      title: "A download",
+    })
+
+    expect(ends.map((e) => e.reason)).toEqual(["replaced"])
+    expect(store.getSnapshot().session).toMatchObject({
+      videoId: null,
+      videoSlug: "downloaded-slug",
+      positionSeconds: 0,
+    })
+  })
+
   it("resets a merged 'ended' phase when the caller verified live playback", () => {
     const { store } = startedStore()
     store.publishPosition({ positionSeconds: 590, durationSeconds: 600 })
@@ -141,13 +214,6 @@ describe("start", () => {
       phase: "ended",
       endedCause: "failure",
     })
-  })
-
-  it("keys identity on the video id, and on the slug for a local file", () => {
-    expect(sessionIdentityKey({ videoId: "video-1", videoSlug: "a" })).toBe(
-      "id:video-1",
-    )
-    expect(sessionIdentityKey({ videoId: null, videoSlug: "a" })).toBe("slug:a")
   })
 
   it("notifies subscribers with a fresh snapshot identity", () => {

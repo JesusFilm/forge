@@ -719,6 +719,17 @@ view into that rect. The chrome rides in the host layer too, not in the route.
   channel), plus the pure `presentation.ts`, `suppression.ts`, `layout.ts`,
   `heroYield.ts` and `pictureInPicture.ts`. The host is a `<Stack>` SIBLING, so
   a context could not reach both halves.
+- **One identity predicate: `sameSessionContent` in `store.ts`.** A screen
+  that mounts onto the video already floating publishes its descriptor by
+  slug alone, because the group-scoped `WatchSessionProvider` holds no record
+  until its effect runs; the id follows a commit later. The store's
+  replacement, its merge, and the host's adoption all read that predicate, so
+  the remount keeps the session. The host also holds the last progress
+  identity it resolved for the same slug (`holdProgressIdentity` in
+  `PlaybackHost.tsx`), so the id-less render neither re-keys the progress
+  recorder nor disposes the recommendation recorder. Before 2026-09-22 every
+  expand ended the session as `replaced`, reloaded the video from 0:00, and
+  claimed a second recommendation episode.
 - **`MiniPlayerWindow.tsx` is chrome, never a second video view.** It draws the
   controls, the drag, the ended/failed states and the accessibility surface over
   the frame the host animates. The drag node never takes the native driver
