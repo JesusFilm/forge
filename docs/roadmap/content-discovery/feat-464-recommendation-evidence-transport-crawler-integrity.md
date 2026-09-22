@@ -420,3 +420,13 @@ Installed Datadog alerts/dashboard, real terminal-browser non-retry evidence and
 complete sustained transport acceptance remain open. Read-only access cannot
 install monitors. Redis update availability requires separate investigation;
 do not mask its failures with an in-memory limiter or ambiguous mutation retry.
+
+## September 22 bounded workload and production follow-up
+
+The [September 22 follow-up](../../operations/watch-budget-followup-2026-09-22.md) verifies the fixed 01:39–03:39 UTC playback threshold at 19/6,463 (0.294%), with no exclusions, and a fresh authenticated zero-current-pointer audit. The running scheduler has 23 completed batches and heartbeats with no classification failures or exhausted attempts. A complete retained real browser view supplies a 409 non-retry example with further network activity 10.55 seconds later; its response body/action and matching server trace are unavailable, so do not claim those details. Installed alerts/dashboard, complete outcome reconciliation and remaining transport proof keep this ticket in progress. The artifact explicitly retains the unmatched successful HTTP counts.
+
+The dashboard tool is discoverable, but Datadog explicitly rejects even widget
+validation because MCP writes are disabled for this organization. No matching
+dashboard or feat-464-tagged monitors were found. This replaces the earlier
+imprecise description of a read-only tool list with a verified organization
+policy blocker; Railway/database diagnosis remains available.

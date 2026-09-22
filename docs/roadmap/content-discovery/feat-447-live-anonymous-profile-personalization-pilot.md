@@ -183,3 +183,7 @@ withdrawal/reset/erasure, restored-snapshot and original sixteen publication-fen
 proofs retain credit. Independent operational last-known-good fallback evidence
 and the feat-459 dependency still prevent closure; status stays in progress.
 No production evidence or privileged identity was inserted to obtain the result.
+
+## September 22 bounded workload and production follow-up
+
+The [September 22 follow-up](../../operations/watch-budget-followup-2026-09-22.md) preserves the passed Watch-to-qualified-feedback-to-hybrid Admin trace and current-pointer audit. It does not supply the independent operational last-known-good fallback event or close the feat-459 dependency. Keep this ticket in progress; no fallback was manufactured in production.

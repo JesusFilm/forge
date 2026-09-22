@@ -1,6 +1,7 @@
 ---
 title: "Separate PostgreSQL budget function time from complete driver latency"
 date: "2026-09-22"
+last_updated: "2026-09-22"
 category: best-practices
 module: "Recommendation submission budgets"
 problem_type: best_practice
@@ -105,3 +106,21 @@ remain unknown, not be interpreted as zero waits.
 
 Related: [recommendation outcome accounting](../logic-errors/recommendation-outcome-accounting-boundaries-20260921.md)
 and [the separate Next error-inspection fix](../performance-issues/next-error-inspection-amplifies-graphql-failures-20260922.md).
+
+## Keep rejected competing-workload hypotheses
+
+Long-lived workflow history is a plausible competing reader, not an established
+selection cause. The [September 22 follow-up](../../operations/watch-budget-followup-2026-09-22.md)
+reproduced 1.3–1.4 second history reads against 3.845 million synthetic events in
+a separate worker process. The actual independently committed Admin budget calls
+remained below 104.1 ms, with zero failures and exact persisted attempt counts.
+A `(run_id, id)` index did not materially improve the full-history reads. Do not
+ship that index as a selection fix or discard the negative result next time.
+
+Keep workload size, process boundaries, pool limits and database storage limits
+with the measurement. An owned local database cannot reproduce provider storage
+merely by copying row counts. Slow-query duration, query age in `WalSync`, full
+cgroup I/O pressure and native-pool delay are different observations. A missing
+matching slow budget event prevents request attribution even when volume
+pressure is real. Retry a timed-out diagnostic only after reducing or validating
+its query scope; a read-only history scan can still interfere with production.

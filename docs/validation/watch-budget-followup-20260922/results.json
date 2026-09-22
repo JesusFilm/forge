@@ -1,0 +1,1011 @@
+{
+  "http": [
+    {
+      "http.status_code": "400",
+      "resource_name": "post_/api/recommendations/playback",
+      "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+      "count": 4
+    },
+    {
+      "http.status_code": "503",
+      "resource_name": "post_/api/recommendations/playback",
+      "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+      "count": 19
+    },
+    {
+      "http.status_code": "200",
+      "resource_name": "post_/api/recommendations/evidence",
+      "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+      "count": 2163
+    },
+    {
+      "http.status_code": "200",
+      "resource_name": "post_/api/recommendations/select",
+      "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+      "count": 11
+    },
+    {
+      "http.status_code": "401",
+      "resource_name": "post_/api/recommendations/playback",
+      "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+      "count": 5
+    },
+    {
+      "http.status_code": "403",
+      "resource_name": "post_/api/recommendations/evidence",
+      "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+      "count": 1280
+    },
+    {
+      "http.status_code": "200",
+      "resource_name": "post_/api/recommendations/for-you",
+      "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+      "count": 1
+    },
+    {
+      "http.status_code": "200",
+      "resource_name": "post_/api/recommendations/playback",
+      "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+      "count": 5746
+    },
+    {
+      "http.status_code": "403",
+      "resource_name": "post_/api/recommendations",
+      "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+      "count": 562
+    },
+    {
+      "http.status_code": "503",
+      "resource_name": "post_/api/recommendations",
+      "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+      "count": 1
+    },
+    {
+      "http.status_code": "200",
+      "resource_name": "post_/api/recommendations",
+      "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+      "count": 868
+    },
+    {
+      "http.status_code": "403",
+      "resource_name": "post_/api/recommendations/playback",
+      "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+      "count": 689
+    },
+    {
+      "http.status_code": "503",
+      "resource_name": "post_/api/recommendations/profile",
+      "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+      "count": 1
+    },
+    {
+      "http.status_code": "403",
+      "resource_name": "post_/api/recommendations/profile",
+      "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+      "count": 1390
+    },
+    {
+      "http.status_code": "200",
+      "resource_name": "post_/api/recommendations/profile",
+      "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+      "count": 1503
+    },
+    {
+      "http.status_code": "400",
+      "resource_name": "post_/api/recommendations/evidence",
+      "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+      "count": 12
+    }
+  ],
+  "logs": [
+    {
+      "message": "event=recommendation.evidence source=web action=facts outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+      "records": 4967
+    },
+    {
+      "message": "event=recommendation.evidence source=web action=evidence outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+      "records": 2157
+    },
+    {
+      "message": "event=recommendation.evidence source=web action=evidence outcome=rejected reason=crawler_rejected timeoutStage=none retryDisposition=terminal crawler=recognized httpStatus=403",
+      "records": 1280
+    },
+    {
+      "message": "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_fetch_metadata itemCount=0 upstreamResult=not_observed",
+      "records": 456
+    },
+    {
+      "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=6 upstreamResult=served",
+      "records": 453
+    },
+    {
+      "message": "event=recommendation.evidence source=web action=context outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+      "records": 387
+    },
+    {
+      "message": "event=recommendation.evidence source=web action=claim outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+      "records": 381
+    },
+    {
+      "message": "event=recommendation.evidence source=web action=playback outcome=rejected reason=forbidden timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=403",
+      "records": 379
+    },
+    {
+      "message": "event=recommendation.evidence source=web action=playback outcome=rejected reason=crawler_rejected timeoutStage=none retryDisposition=terminal crawler=recognized httpStatus=403",
+      "records": 310
+    },
+    {
+      "message": "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_origin itemCount=0 upstreamResult=not_observed",
+      "records": 106
+    },
+    {
+      "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=no_candidates itemCount=6 upstreamResult=empty",
+      "records": 97
+    },
+    {
+      "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=1 upstreamResult=served",
+      "records": 71
+    },
+    {
+      "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=4 upstreamResult=served",
+      "records": 56
+    },
+    {
+      "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=2 upstreamResult=served",
+      "records": 53
+    },
+    {
+      "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=seed_embedding_unavailable itemCount=6 upstreamResult=fallback",
+      "records": 48
+    },
+    {
+      "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=5 upstreamResult=served",
+      "records": 40
+    },
+    {
+      "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=3 upstreamResult=served",
+      "records": 34
+    },
+    {
+      "message": "event=recommendation.evidence source=web action=facts outcome=failed reason=upstream_unavailable timeoutStage=none retryDisposition=retryable crawler=not_recognized httpStatus=503 networkErrorCode=unknown",
+      "records": 19
+    },
+    {
+      "message": "event=recommendation.evidence source=web action=evidence outcome=rejected reason=invalid_request timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=400",
+      "records": 12
+    },
+    {
+      "message": "event=recommendation.evidence source=web action=select outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+      "records": 11
+    },
+    {
+      "message": "event=recommendation.evidence source=web action=facts outcome=rejected reason=forbidden timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=401",
+      "records": 5
+    },
+    {
+      "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=seed_embedding_unavailable itemCount=6 upstreamResult=empty",
+      "records": 4
+    },
+    {
+      "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=no_candidates itemCount=4 upstreamResult=empty",
+      "records": 4
+    },
+    {
+      "message": "event=recommendation.evidence source=web action=playback outcome=rejected reason=invalid_request timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=400",
+      "records": 3
+    },
+    {
+      "message": "event=recommendation.evidence source=web action=facts outcome=replay reason=none timeoutStage=none retryDisposition=idempotent_replay crawler=not_recognized httpStatus=200",
+      "records": 3
+    },
+    {
+      "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=session_hour itemCount=6 upstreamResult=unavailable",
+      "records": 3
+    },
+    {
+      "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=no_candidates itemCount=5 upstreamResult=empty",
+      "records": 2
+    },
+    {
+      "message": "event=recommendation.delivery endpoint=seeded httpStatus=503 result=failed reason=admission_unavailable itemCount=0 upstreamResult=not_observed",
+      "records": 1
+    },
+    {
+      "message": "event=recommendation.evidence source=web action=facts outcome=rejected reason=invalid_request timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=400",
+      "records": 1
+    },
+    {
+      "message": "event=recommendation.delivery endpoint=for_you httpStatus=200 result=served reason=none itemCount=6 upstreamResult=served",
+      "records": 1
+    },
+    {
+      "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=cooldown itemCount=6 upstreamResult=unavailable",
+      "records": 1
+    },
+    {
+      "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=empty reason=no_candidates itemCount=0 upstreamResult=empty",
+      "records": 1
+    }
+  ],
+  "rum": [
+    {
+      "at": "2026-09-20T05:48:08.817Z",
+      "type": "resource",
+      "resourceType": "fetch",
+      "httpStatus": 200,
+      "durationMs": 219.8,
+      "kind": "mux_telemetry",
+      "version": "964c1e3cde7ecd2ea1f3253817770527213ac11f"
+    },
+    {
+      "at": "2026-09-20T05:47:57.987Z",
+      "type": "resource",
+      "resourceType": "fetch",
+      "httpStatus": 200,
+      "durationMs": 131.6,
+      "kind": "mux_telemetry",
+      "version": "964c1e3cde7ecd2ea1f3253817770527213ac11f"
+    },
+    {
+      "at": "2026-09-20T05:47:57.983Z",
+      "type": "resource",
+      "resourceType": "fetch",
+      "httpStatus": 409,
+      "durationMs": 283.3,
+      "kind": "playback",
+      "version": "964c1e3cde7ecd2ea1f3253817770527213ac11f"
+    },
+    {
+      "at": "2026-09-20T05:47:57.473Z",
+      "type": "resource",
+      "resourceType": "xhr",
+      "httpStatus": 200,
+      "durationMs": 890,
+      "kind": "video_chunk",
+      "version": "964c1e3cde7ecd2ea1f3253817770527213ac11f"
+    },
+    {
+      "at": "2026-09-20T05:47:53.605Z",
+      "type": "long_task",
+      "version": "964c1e3cde7ecd2ea1f3253817770527213ac11f"
+    },
+    {
+      "at": "2026-09-20T05:47:52.538Z",
+      "type": "resource",
+      "resourceType": "xhr",
+      "httpStatus": 200,
+      "durationMs": 1066.2,
+      "kind": "video_chunk",
+      "version": "964c1e3cde7ecd2ea1f3253817770527213ac11f"
+    },
+    {
+      "at": "2026-09-20T05:47:52.507Z",
+      "type": "resource",
+      "resourceType": "fetch",
+      "httpStatus": 200,
+      "durationMs": 127.6,
+      "kind": "mux_telemetry",
+      "version": "964c1e3cde7ecd2ea1f3253817770527213ac11f"
+    },
+    {
+      "at": "2026-09-20T05:47:52.377Z",
+      "type": "resource",
+      "resourceType": "fetch",
+      "httpStatus": 200,
+      "durationMs": 128.3,
+      "kind": "mux_telemetry",
+      "version": "964c1e3cde7ecd2ea1f3253817770527213ac11f"
+    },
+    {
+      "at": "2026-09-20T05:47:52.372Z",
+      "type": "long_task",
+      "version": "964c1e3cde7ecd2ea1f3253817770527213ac11f"
+    },
+    {
+      "at": "2026-09-20T05:47:47.776Z",
+      "type": "view",
+      "durationMs": 22761,
+      "reportedResourceCount": 7,
+      "active": false,
+      "version": "964c1e3cde7ecd2ea1f3253817770527213ac11f"
+    }
+  ],
+  "window": {
+    "from": "2026-09-22T01:39:00Z",
+    "to": "2026-09-22T03:39:00Z",
+    "exclusions": 0,
+    "playback5xx": 19,
+    "playbackTotal": 6463,
+    "playback5xxPercent": 0.2939811233173449,
+    "deliveryLogCount": 1430,
+    "deliveryMetricCount": 1431,
+    "unreconciledDelivery200": 1,
+    "unreconciledPlayback200": 8,
+    "unreconciledEvidence200": 6,
+    "observedDeliveryTimeoutLogs": 0,
+    "observedRetrievalTimeoutLogs": 0,
+    "metricMethod": "scalar sum; repeated with explicit ten-second rollup"
+  },
+  "rumLimits": "One complete retained view resource population; no response body or claim/facts action; no matching server trace/log; not continuous foreground or general recovery evidence. Recorder and definitive-response mapper unchanged through deployed Web revision.",
+  "workflowHistoryTest": {
+    "events": 3845000,
+    "finalizationEvents": 64000,
+    "reconciliationEvents": 32000,
+    "historyReaders": 3,
+    "separateReaderProcess": true,
+    "phaseDurationSeconds": 30,
+    "adminPoolLimit": 10,
+    "budgetIntervalMilliseconds": 40,
+    "rounds": [
+      {
+        "name": "idle-1790048810342",
+        "load": false,
+        "iterations": 656,
+        "history": {
+          "count": 0,
+          "over700": 0
+        },
+        "budget": {
+          "count": 656,
+          "p50": 4.937713999999687,
+          "p95": 6.580171999998129,
+          "p99": 38.79540799999995,
+          "max": 104.06685599999764,
+          "over700": 0
+        }
+      },
+      {
+        "name": "baseline-1790048840378",
+        "load": true,
+        "iterations": 687,
+        "history": {
+          "count": 60,
+          "p50": 722.1606630000024,
+          "p95": 1325.1178360000001,
+          "p99": 1375.591626,
+          "max": 1375.591626,
+          "over700": 33
+        },
+        "budget": {
+          "count": 687,
+          "p50": 2.940952000004472,
+          "p95": 5.810013999995135,
+          "p99": 10.209469000001263,
+          "max": 95.80051500000263,
+          "over700": 0
+        }
+      },
+      {
+        "name": "indexed-1790048885261",
+        "load": true,
+        "iterations": 683,
+        "history": {
+          "count": 60,
+          "p50": 818.4532789999994,
+          "p95": 1286.6387599999998,
+          "p99": 1418.469139,
+          "max": 1418.469139,
+          "over700": 47
+        },
+        "budget": {
+          "count": 683,
+          "p50": 2.9783820000011474,
+          "p95": 5.993959999992512,
+          "p99": 22.688469999993686,
+          "max": 67.7881919999927,
+          "over700": 0
+        }
+      }
+    ],
+    "integrity": {
+      "rows": 4000,
+      "attemptSum": 10026,
+      "perRowExpectedCountMismatches": 0
+    },
+    "conclusion": "History latency reproduced; budget delay not reproduced. Composite index rejected as a demonstrated selection fix. Local storage does not reproduce Railway storage."
+  },
+  "database": {
+    "started": "2026-09-22T04:08:15.829Z",
+    "revision": "c98ec86bdd9a308f33b53d035084e8fd10e0e08d",
+    "from": "2026-09-22T01:39:00Z",
+    "to": "2026-09-22T03:39:00Z",
+    "scope": "Durable database rows; not HTTP outcomes or browser acknowledgments",
+    "queries": [
+      {
+        "name": "requests",
+        "ms": 7.492,
+        "rows": [
+          {
+            "state": "issued",
+            "result": "served",
+            "purpose": "seeded",
+            "fallback_reason": null,
+            "records": 708,
+            "p50_retrieval_ms": 104,
+            "p95_retrieval_ms": 249,
+            "max_retrieval_ms": 814,
+            "expected_six": 454,
+            "complete_bounded_population": true
+          },
+          {
+            "state": "issued",
+            "result": "empty",
+            "purpose": "seeded",
+            "fallback_reason": "no_candidates",
+            "records": 104,
+            "p50_retrieval_ms": 114,
+            "p95_retrieval_ms": 293,
+            "max_retrieval_ms": 572,
+            "expected_six": 0,
+            "complete_bounded_population": true
+          },
+          {
+            "state": "issued",
+            "result": "fallback",
+            "purpose": "seeded",
+            "fallback_reason": "seed_embedding_unavailable",
+            "records": 48,
+            "p50_retrieval_ms": 262,
+            "p95_retrieval_ms": 346,
+            "max_retrieval_ms": 390,
+            "expected_six": 48,
+            "complete_bounded_population": true
+          },
+          {
+            "state": "issued",
+            "result": "empty",
+            "purpose": "seeded",
+            "fallback_reason": "seed_embedding_unavailable",
+            "records": 4,
+            "p50_retrieval_ms": 107,
+            "p95_retrieval_ms": 402,
+            "max_retrieval_ms": 402,
+            "expected_six": 0,
+            "complete_bounded_population": true
+          },
+          {
+            "state": "issued",
+            "result": "served",
+            "purpose": "user",
+            "fallback_reason": null,
+            "records": 1,
+            "p50_retrieval_ms": 365,
+            "p95_retrieval_ms": 365,
+            "max_retrieval_ms": 365,
+            "expected_six": 1,
+            "complete_bounded_population": true
+          }
+        ]
+      },
+      {
+        "name": "candidate_evidence",
+        "ms": 85.709,
+        "rows": [
+          {
+            "requests": 865,
+            "candidate_runs": 864,
+            "complete_candidate_evidence": 810,
+            "composed_six": 502,
+            "shortfalls": 362,
+            "complete_bounded_population": true
+          }
+        ]
+      },
+      {
+        "name": "episodes",
+        "ms": 4.673,
+        "rows": [
+          {
+            "state": "pending",
+            "episodes": 17,
+            "assigned_fact_sequences": "0",
+            "replays": "0",
+            "transport_replays": "0",
+            "conflicts": "0",
+            "finalized": 0,
+            "complete_bounded_population": true
+          },
+          {
+            "state": "claimed",
+            "episodes": 249,
+            "assigned_fact_sequences": "2506",
+            "replays": "0",
+            "transport_replays": "5",
+            "conflicts": "0",
+            "finalized": 0,
+            "complete_bounded_population": true
+          },
+          {
+            "state": "finalized",
+            "episodes": 137,
+            "assigned_fact_sequences": "4015",
+            "replays": "0",
+            "transport_replays": "102",
+            "conflicts": "0",
+            "finalized": 137,
+            "complete_bounded_population": true
+          }
+        ]
+      },
+      {
+        "name": "audits",
+        "ms": 9.364,
+        "rows": [
+          {
+            "kind": "delivery_success",
+            "reason_code": "empty",
+            "rows": 108,
+            "recorded_events": "108",
+            "complete_bounded_population": true
+          },
+          {
+            "kind": "delivery_success",
+            "reason_code": "fallback",
+            "rows": 48,
+            "recorded_events": "48",
+            "complete_bounded_population": true
+          },
+          {
+            "kind": "delivery_success",
+            "reason_code": "served",
+            "rows": 709,
+            "recorded_events": "709",
+            "complete_bounded_population": true
+          },
+          {
+            "kind": "evidence_success",
+            "reason_code": "impression",
+            "rows": 235,
+            "recorded_events": "235",
+            "complete_bounded_population": true
+          },
+          {
+            "kind": "evidence_success",
+            "reason_code": "playback_active_visible_playing",
+            "rows": 34,
+            "recorded_events": "34",
+            "complete_bounded_population": true
+          },
+          {
+            "kind": "evidence_success",
+            "reason_code": "playback_attempt",
+            "rows": 9,
+            "recorded_events": "9",
+            "complete_bounded_population": true
+          },
+          {
+            "kind": "evidence_success",
+            "reason_code": "playback_end",
+            "rows": 5,
+            "recorded_events": "5",
+            "complete_bounded_population": true
+          },
+          {
+            "kind": "evidence_success",
+            "reason_code": "playback_navigation",
+            "rows": 28,
+            "recorded_events": "28",
+            "complete_bounded_population": true
+          },
+          {
+            "kind": "evidence_success",
+            "reason_code": "playback_observation",
+            "rows": 4,
+            "recorded_events": "4",
+            "complete_bounded_population": true
+          },
+          {
+            "kind": "evidence_success",
+            "reason_code": "playback_progress",
+            "rows": 33,
+            "recorded_events": "33",
+            "complete_bounded_population": true
+          },
+          {
+            "kind": "evidence_success",
+            "reason_code": "playback_qoe",
+            "rows": 24,
+            "recorded_events": "24",
+            "complete_bounded_population": true
+          },
+          {
+            "kind": "evidence_success",
+            "reason_code": "playback_seek",
+            "rows": 18,
+            "recorded_events": "18",
+            "complete_bounded_population": true
+          },
+          {
+            "kind": "evidence_success",
+            "reason_code": "playback_start",
+            "rows": 8,
+            "recorded_events": "8",
+            "complete_bounded_population": true
+          },
+          {
+            "kind": "evidence_success",
+            "reason_code": "playback_viewing_mode",
+            "rows": 45,
+            "recorded_events": "45",
+            "complete_bounded_population": true
+          },
+          {
+            "kind": "evidence_success",
+            "reason_code": "render",
+            "rows": 1928,
+            "recorded_events": "1928",
+            "complete_bounded_population": true
+          },
+          {
+            "kind": "evidence_success",
+            "reason_code": "selection",
+            "rows": 11,
+            "recorded_events": "11",
+            "complete_bounded_population": true
+          },
+          {
+            "kind": "replay",
+            "reason_code": "playback_transport_replay",
+            "rows": 5,
+            "recorded_events": "5",
+            "complete_bounded_population": true
+          }
+        ]
+      },
+      {
+        "name": "projection_queue",
+        "ms": 3.519,
+        "rows": []
+      },
+      {
+        "name": "retention",
+        "ms": 4.152,
+        "rows": [
+          {
+            "status": "succeeded",
+            "completed_at": "2026-09-21T10:30:00.531Z",
+            "roots_deleted": 0,
+            "oldest_expired_at_after": null,
+            "reason_code": null
+          },
+          {
+            "status": "succeeded",
+            "completed_at": "2026-09-20T10:30:00.343Z",
+            "roots_deleted": 0,
+            "oldest_expired_at_after": null,
+            "reason_code": null
+          },
+          {
+            "status": "succeeded",
+            "completed_at": "2026-09-19T10:30:01.129Z",
+            "roots_deleted": 0,
+            "oldest_expired_at_after": null,
+            "reason_code": null
+          },
+          {
+            "status": "succeeded",
+            "completed_at": "2026-09-18T10:30:00.697Z",
+            "roots_deleted": 0,
+            "oldest_expired_at_after": null,
+            "reason_code": null
+          },
+          {
+            "status": "succeeded",
+            "completed_at": "2026-09-17T10:30:00.419Z",
+            "roots_deleted": 0,
+            "oldest_expired_at_after": null,
+            "reason_code": null
+          },
+          {
+            "status": "succeeded",
+            "completed_at": "2026-09-16T10:30:00.222Z",
+            "roots_deleted": 0,
+            "oldest_expired_at_after": null,
+            "reason_code": null
+          }
+        ]
+      }
+    ],
+    "ended": "2026-09-22T04:08:16.000Z"
+  },
+  "reconciliation": {
+    "from": "2026-09-22T01:39:00Z",
+    "to": "2026-09-22T03:39:00Z",
+    "capturedAt": "2026-09-22T04:10:07.242Z",
+    "scope": "Completed steps from currently running reconciliation scheduler; not all historical or unfinished runs",
+    "batches": 23,
+    "heartbeats": 23,
+    "firstStarted": "2026-09-22T01:42:44.697Z",
+    "lastCompleted": "2026-09-22T03:36:18.189Z",
+    "maximumStartGapSeconds": 312.908,
+    "maximumBatchDurationMs": 6280,
+    "counters": {
+      "affectedPointers": 15,
+      "classificationsAttempted": 79,
+      "classificationsFailed": 0,
+      "rebuildsQueued": 15,
+      "staleRuns": 0,
+      "staleRunsQueued": 0,
+      "attemptsExhausted": 0,
+      "dispatchFailures": 0
+    },
+    "stepErrors": 0,
+    "initialBroaderQuery": "Cancelled at 1500ms statement timeout; reduced query explained before execution"
+  },
+  "volume": {
+    "start": "2026-09-22T03:50:31.159530+00:00",
+    "end": "2026-09-22T03:52:31.077300+00:00",
+    "samples": 1199,
+    "durationSeconds": 119.91777014732361,
+    "observerMaxMs": 0.53020752966404,
+    "observerTotalMs": 269.0577954053879,
+    "volumeDeltas": {
+      "rbytes": 54140928,
+      "wbytes": 253886464,
+      "rios": 3827,
+      "wios": 12604,
+      "dbytes": 0,
+      "dios": 0
+    },
+    "memoryPressureDeltaMs": 0.0,
+    "topPressureIntervals": [
+      {
+        "at": "2026-09-22T03:52:12.757600+00:00",
+        "elapsedMs": 100.08,
+        "fullMs": 100.03,
+        "rbytes": 0,
+        "wbytes": 0,
+        "rios": 0,
+        "wios": 0,
+        "dbytes": 0,
+        "dios": 0
+      },
+      {
+        "at": "2026-09-22T03:52:12.657520+00:00",
+        "elapsedMs": 100.09,
+        "fullMs": 78.18,
+        "rbytes": 0,
+        "wbytes": 0,
+        "rios": 0,
+        "wios": 0,
+        "dbytes": 0,
+        "dios": 0
+      },
+      {
+        "at": "2026-09-22T03:51:34.018210+00:00",
+        "elapsedMs": 100.09,
+        "fullMs": 67.89,
+        "rbytes": 0,
+        "wbytes": 0,
+        "rios": 0,
+        "wios": 0,
+        "dbytes": 0,
+        "dios": 0
+      },
+      {
+        "at": "2026-09-22T03:51:33.918120+00:00",
+        "elapsedMs": 100.09,
+        "fullMs": 57.07,
+        "rbytes": 0,
+        "wbytes": 8192,
+        "rios": 0,
+        "wios": 2,
+        "dbytes": 0,
+        "dios": 0
+      },
+      {
+        "at": "2026-09-22T03:52:12.857690+00:00",
+        "elapsedMs": 100.09,
+        "fullMs": 53.36,
+        "rbytes": 0,
+        "wbytes": 8192,
+        "rios": 0,
+        "wios": 2,
+        "dbytes": 0,
+        "dios": 0
+      },
+      {
+        "at": "2026-09-22T03:50:37.064840+00:00",
+        "elapsedMs": 100.06,
+        "fullMs": 47.06,
+        "rbytes": 0,
+        "wbytes": 16384,
+        "rios": 0,
+        "wios": 2,
+        "dbytes": 0,
+        "dios": 0
+      },
+      {
+        "at": "2026-09-22T03:51:18.303670+00:00",
+        "elapsedMs": 100.08,
+        "fullMs": 45.37,
+        "rbytes": 0,
+        "wbytes": 950272,
+        "rios": 0,
+        "wios": 223,
+        "dbytes": 0,
+        "dios": 0
+      },
+      {
+        "at": "2026-09-22T03:50:40.568070+00:00",
+        "elapsedMs": 100.09,
+        "fullMs": 42.52,
+        "rbytes": 0,
+        "wbytes": 73728,
+        "rios": 0,
+        "wios": 16,
+        "dbytes": 0,
+        "dios": 0
+      }
+    ]
+  },
+  "resourceBounds": {
+    "cpuQuota": 24,
+    "memoryLimitBytes": 24000000000,
+    "memoryCurrentBytes": 9485012992,
+    "cpuThrottledPeriods": 0,
+    "memoryHighEvents": 0,
+    "memoryMaxEvents": 0,
+    "memoryOomEvents": 0,
+    "readBytesPerSecond": 70000000,
+    "writeBytesPerSecond": 70000000,
+    "readIops": 3000,
+    "writeIops": 3000,
+    "limits": "Point-in-time counters; configured I/O limits do not prove throttling."
+  },
+  "captures": [
+    {
+      "started": "2026-09-22T03:32:40.506Z",
+      "ended": "2026-09-22T03:34:40.494Z",
+      "samples": 480,
+      "totalSampleMs": 1857.2371549997479,
+      "maxSampleMs": 7.190893999999389,
+      "stoppedForOverhead": false,
+      "recordCount": 64,
+      "sampledBlockers": 0,
+      "budgetObservations": []
+    },
+    {
+      "started": "2026-09-22T03:35:48.203Z",
+      "ended": "2026-09-22T03:37:18.189Z",
+      "samples": 360,
+      "totalSampleMs": 2063.814710000066,
+      "maxSampleMs": 14.362840000001597,
+      "stoppedForOverhead": false,
+      "recordCount": 53,
+      "sampledBlockers": 0,
+      "budgetObservations": []
+    },
+    {
+      "started": "2026-09-22T03:50:32.325Z",
+      "ended": "2026-09-22T03:52:02.251Z",
+      "samples": 360,
+      "totalSampleMs": 1944.321002000002,
+      "maxSampleMs": 12.497478999997838,
+      "stoppedForOverhead": false,
+      "recordCount": 76,
+      "sampledBlockers": 0,
+      "budgetObservations": [
+        {
+          "kind": "episode-budget",
+          "started": "2026-09-22T03:50:51.823Z",
+          "observed": "2026-09-22T03:50:51.823Z",
+          "ageMs": 0.422,
+          "wait": null,
+          "blockers": 0
+        }
+      ]
+    },
+    {
+      "started": "2026-09-22T04:03:26.192Z",
+      "ended": "2026-09-22T04:05:26.125Z",
+      "samples": 480,
+      "totalSampleMs": 2718.155289,
+      "maxSampleMs": 49.80960200000118,
+      "stoppedForOverhead": false,
+      "recordCount": 107,
+      "sampledBlockers": 0,
+      "budgetObservations": [
+        {
+          "kind": "delivery-budget",
+          "started": "2026-09-22T04:04:49.154Z",
+          "observed": "2026-09-22T04:04:49.154Z",
+          "ageMs": 0.209,
+          "wait": null,
+          "blockers": 0
+        }
+      ]
+    }
+  ],
+  "adminAudit": {
+    "verifiedAtApproximate": "2026-09-22T04:09:00Z",
+    "method": "Authenticated normal Admin Recommendations page",
+    "affectedPointers": 0,
+    "ineligibleContributions": 0,
+    "rebuildBacklog": 0,
+    "terminalRunsInBroaderPageWindow": 117,
+    "replacementPublications": 181,
+    "sourceFences": 7,
+    "affectedRequests": 7,
+    "cleanHybridRequests": 1518,
+    "limits": "Current-pointer audit clean; broader terminal-run counter keeps overall status degraded."
+  },
+  "cleanup": {
+    "at": "2026-09-22T04:13:47.485Z",
+    "observers": 0
+  },
+  "deployments": {
+    "admin": {
+      "at": "2026-09-22T04:15:49.744Z",
+      "revision": "c98ec86bdd9a308f33b53d035084e8fd10e0e08d",
+      "deployment": "dfbb23e1-98e5-4c80-9328-528f1192a80a",
+      "runner": "false",
+      "health": 200
+    },
+    "worker": {
+      "at": "2026-09-22T04:15:49.706Z",
+      "revision": "c98ec86bdd9a308f33b53d035084e8fd10e0e08d",
+      "deployment": "524e5c8a-b6e9-4b86-8158-ea0cab1bf409",
+      "runner": "true",
+      "health": 200
+    },
+    "web": {
+      "at": "2026-09-22T04:15:49.830Z",
+      "revision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+      "deployment": "7e475679-fd30-4973-b92c-797a183147f3",
+      "launchDarklyConfigured": true,
+      "anonymousAvailability": {
+        "status": 200,
+        "body": {
+          "enabled": false
+        }
+      }
+    }
+  },
+  "ticketCompletion": {
+    "feat-496": false,
+    "feat-464": false,
+    "feat-459": false,
+    "feat-447": false
+  },
+  "localCanary": {
+    "ordinaryClicks": 6,
+    "navigationSucceeded": 6,
+    "acknowledgmentBodiesCaptured": false,
+    "limits": "Navigation only; not a claim of HTTP or semantic success."
+  },
+  "dashboardInstallation": {
+    "matchingDashboardFound": false,
+    "matchingFeat464MonitorsFound": false,
+    "widgetValidationAttempts": 5,
+    "outcome": "MCP write operations disabled for organization",
+    "dashboardWriteAttemptedAfterRejection": false,
+    "created": false
+  },
+  "databaseLayout": {
+    "at": "2026-09-22T04:21:20.504Z",
+    "rows": [
+      {
+        "name": "checkpoint_completion_target",
+        "setting": "0.9"
+      },
+      {
+        "name": "checkpoint_timeout",
+        "setting": "300"
+      },
+      {
+        "name": "data_directory",
+        "setting": "/var/lib/postgresql/data/pgdata"
+      },
+      {
+        "name": "wal_compression",
+        "setting": "off"
+      },
+      {
+        "name": "wal_sync_method",
+        "setting": "fdatasync"
+      }
+    ]
+  },
+  "localFixtureStopped": true
+}
