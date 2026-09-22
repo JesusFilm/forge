@@ -103,7 +103,9 @@ A fourth strict compare stays strict on purpose. `sameSession` (`apps/mobile/src
 
 3. **The host's adoption check** uses the same predicate (`apps/mobile/src/components/watch/PlaybackHost.tsx:353`). Before the fix, the host was the only reader of the tolerant predicate.
 
-The host also holds the last resolved progress identity for one slug. `holdProgressIdentity` (`apps/mobile/src/components/watch/PlaybackHost.tsx:178`) returns the known identity when the published one is null, when the published one is slug-only over a known id, or when the published one carries the same id with a null dub over a known dub. Otherwise it returns the published one. The host keys the ref on the slug-stable `videoKey` (`:385`) and writes it only when the identity changes (`:404` to `:409`), which mirrors the existing `loadedSourceRef` rule for the source.
+The host also holds the last resolved progress identity for one slug. `holdProgressIdentity` (`apps/mobile/src/components/watch/PlaybackHost.tsx:198`) returns the known identity when the published one is null, when the published one is slug-only over a known id, or when the published one carries the same id with a null dub over a known dub. Otherwise it returns the published one. The host keys the ref on the slug-stable `videoKey` (`:409`) and writes it only when the identity changes (`:428` to `:433`), which mirrors the existing `loadedSourceRef` rule for the source.
+
+That last clause, the same id with a null dub, is the progress-identity leg of a shape that turned out to have four legs. A screen remounting onto its floating video publishes no dub until its own provider settles one, and [A download is one dub](download-is-one-dub-identity-travels-with-the-file.md) records the other three: host adoption, the session store's merge, and the provider's default all have to survive that same null.
 
 The adversarial review then added one more guard. `validateLocalMediaUrl` returns a boolean: true only for a `file:` URI inside the offline download root. The host asks that question of the loaded URL and of the requested URL, so `containerChanged` is true only when one is a local download and the other is not, never on an ordinary URL change. The host passes `adoptable && !containerChanged` into the source picker (`apps/mobile/src/components/watch/PlaybackHost.tsx:361` to `:370`):
 
@@ -144,7 +146,7 @@ Per this session's conclusion, the warm remount's own trigger is not established
 
 ## Related Issues
 
-- PR #2376 opened this fix on 2026-09-22 and is unmerged as of this writing. It sits on top of PR #2329 (feat-516, the recommendations API client, merged 2026-09-17) and unblocks the draft PR #2367 (feat-517, the recommended shelf). `apps/tv` has no `miniPlayer` directory, so there is no sibling copy to port.
+- PR #2376 opened this fix on 2026-09-22 and merged the same day, as merge commit `badb8cc2c`. It sits on top of PR #2329 (feat-516, the recommendations API client, merged 2026-09-17) and unblocks the draft PR #2367 (feat-517, the recommended shelf). `apps/tv` has no `miniPlayer` directory, so there is no sibling copy to port.
 - `docs/solutions/developer-experience/mobile-write-path-smoke-via-fake-admin-proxy.md` recorded this defect as an open item with the mechanism unknown, and is the diagnostic instrument the fix was found with. This doc resolves that open item.
 - `docs/solutions/logic-errors/layout-effect-commit-lag-mini-player-shrink-flash.md` is the same law in the same component. A value that lands in the next commit leaves an intermediate render that needs its own answer. There the lagging value was the layout effect's own state. Here it is the route's Video record, and `holdProgressIdentity` is the intermediate render's answer.
 - `docs/solutions/runtime-errors/mini-player-playbackrequest-identity-compare-render-loop.md` is the previous identity defect in the same slot-to-host channel: a field compared by reference, not two predicates that disagree.

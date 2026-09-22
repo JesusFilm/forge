@@ -259,3 +259,15 @@ while a new call site carries the old bug.
 - **Meta-pattern this is an instance of:** see CLAUDE.md's
   "Mocked-vs-real testing discipline (META)" entry and
   `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md`.
+- **Client-side instance (2026-09-22, PR #2376):**
+  `docs/solutions/logic-errors/download-is-one-dub-identity-travels-with-the-file.md`
+  introduced one accessor for "which downloaded file is playable, and what does it
+  hold", and moved the three watch-screen readers onto it. It did not move
+  `findReusableCopy` in `apps/mobile/src/lib/rawExportAdapter.ts`, which still
+  answers the first half itself from the record's own committed path and so skips
+  the mid-swap fallback the accessor applies. That read is byte-identical at the
+  PR's base, so the gap predates the rollout rather than being introduced by it —
+  which is this doc's point exactly: a new shared predicate does not retire the
+  hand-rolled answers, and the sweep is a separate step from the introduction.
+  Whether raw export should offer the outgoing copy mid-swap is a product call,
+  not a drift fix.
