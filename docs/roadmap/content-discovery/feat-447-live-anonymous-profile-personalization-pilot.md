@@ -11,6 +11,7 @@ depends_on:
   - "feat-385"
   - "feat-386"
   - "feat-459"
+  - "feat-545"
 blocks:
   - "feat-396"
 tags:
@@ -191,3 +192,10 @@ The [September 22 follow-up](../../operations/watch-budget-followup-2026-09-22.m
 ## September 22 internal continuation
 
 The internal continuation finds no operational last-known-good fallback in the fresh request population. Its established lifecycle/Admin proofs retain credit, but the independent fallback and feat-459 dependency remain open. No production fallback was manufactured. See the [internal verification](../../operations/watch-budget-followup-2026-09-22.md#internal-continuation-workload-volume-and-reconciled-outcomes).
+
+## September 24 operational gate transfer
+
+Feat-464 and feat-459 now close the verified recovery/integrity scope. Their
+remaining monitoring and telemetry acceptance requirements are preserved in
+[feat-545](feat-545-recommendation-monitoring-and-telemetry-closeout.md), now an
+explicit dependency. This metadata change does not activate runtime features.

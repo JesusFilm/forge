@@ -3,7 +3,7 @@ id: "feat-459"
 title: "Recommendation profile eligibility reconciliation"
 owner: "nisal"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: ""
 duration: 6
 depends_on:
@@ -22,6 +22,18 @@ tags:
   - "integrity"
   - "reliability"
 ---
+
+## September 24 owner-approved closeout
+
+The owner accepted this ticket's completed implementation, authenticated Admin
+matching repair, final canonical audit and durable reconciliation on September 24.
+Feat-464's recovery scope is also closed. Remaining monitoring and telemetry/browser
+coverage are explicitly tracked in [feat-545](feat-545-recommendation-monitoring-and-telemetry-closeout.md),
+which now gates downstream rollout/readiness. Earlier in-progress and dependency
+notes below describe their historical verification dates, not the current status.
+
+See the [acceptance record](../../operations/recommendation-evidence-acceptance-2026-09-23.md)
+for evidence and preserved limitations. No runtime flag or production setting changes.
 
 ## Problem
 

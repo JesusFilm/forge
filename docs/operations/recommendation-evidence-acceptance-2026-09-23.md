@@ -1,11 +1,17 @@
 # Recommendation evidence acceptance — September 23, 2026
 
-Feat-464 remains **in progress**. Required Datadog monitors and the dashboard
-cannot be installed through the available organization policy. The two-hour
-primary playback threshold, local recovery controls and final integrity audit
-passed. Production browser disposition for two terminal responses and complete
-request-level reconciliation still lack coverage. No gate is waived; profile
-ranking, experiments and promotion remain gated.
+On **September 24**, the owner approved closing feat-464 and feat-459 for their
+verified recovery and integrity scope. Remaining monitoring installation and
+production telemetry/browser coverage are explicitly transferred to
+[feat-545](../roadmap/content-discovery/feat-545-recommendation-monitoring-and-telemetry-closeout.md).
+This is a recorded scope decision, not a claim that those requirements passed.
+Downstream operational activation dependencies now point to the follow-up; no
+feature flag or production configuration changes.
+
+The observations and gate table below describe the September 23 acceptance run.
+The two-hour primary playback threshold, local recovery controls and final
+integrity audit passed. Required Datadog installation was blocked; the source and
+natural terminal-browser coverage gaps remain as observed.
 
 ## Scope and release
 
@@ -280,7 +286,8 @@ The six definitions under `infra/datadog-monitors/recommendation-evidence/`
 remain unverified as installed and lack a configured notification destination.
 Completion requires the organization's permitted write access, the intended
 destination, installation, and read-back verification. Both feat-464 and feat-459
-must remain in progress while this mandatory gate is unmet.
+remained in progress at the September 23 audit. The September 24 owner decision
+transfers this unmet gate to feat-545; it does not claim installation.
 
 ## Causes and limits
 
@@ -315,4 +322,6 @@ production Web/Admin fixture builds, formatting, roadmap lint/generation, and
 sequential correctness/testing/standards/privacy review. Roadmap generation's
 unrelated catalog churn was discarded. The review found no additional demonstrated
 application defect to fix. The durable learning records fixture and evidence
-boundaries. Both feat-464 and dependent feat-459 remain **in progress**.
+boundaries. Both tickets remained **in progress** when these observations were recorded.
+The September 24 owner-approved scope transfer above now closes them and preserves
+the remaining work in feat-545.

@@ -3,7 +3,7 @@ id: "feat-464"
 title: "Recommendation evidence transport and crawler integrity"
 owner: "nisal"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: ""
 duration: 3
 depends_on:
@@ -21,6 +21,19 @@ tags:
   - "reliability"
   - "observability"
 ---
+
+## September 24 owner-approved closeout
+
+The owner accepted the deployed recovery implementation and production integrity
+proof on September 24. The completed scope includes the two-hour primary window,
+real-dependency/browser controls, exact durable replay and final canonical audit.
+Remaining installed monitoring and production telemetry/browser coverage moved to
+[feat-545](feat-545-recommendation-monitoring-and-telemetry-closeout.md). The original
+acceptance language below is retained as history; transferred requirements are not
+represented as passed. Downstream activation gates now explicitly depend on feat-545.
+
+See the [acceptance record](../../operations/recommendation-evidence-acceptance-2026-09-23.md)
+for evidence and preserved limitations. No runtime flag or production setting changes.
 
 ## Problem
 

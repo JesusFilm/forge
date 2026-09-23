@@ -104,3 +104,15 @@ sanitized report are recorded in the [acceptance record](../operations/recommend
 The plan's execution status does not close feat-464: installed monitoring remains
 blocked, and natural terminal-browser/request-level reconciliation gaps remain
 explicit. No application runtime or production configuration was changed.
+
+## September 24 closeout decision
+
+The owner accepted closure of feat-464/459's verified recovery/integrity scope.
+Create feat-545 for outstanding monitoring and source/browser coverage, preserve
+its downstream activation dependencies, update the acceptance record without
+rewriting historical results, and merge the existing reviewed PR after validation.
+The owner then selected temporary, dedicated service-account REST credentials
+instead of an organization MCP setting change. Document that method and the
+log-monitor unscoped-key requirement, enforce narrow role authority, and revoke
+credentials after later provisioning/read-back. Never request pasted secrets or
+silently broaden permissions.

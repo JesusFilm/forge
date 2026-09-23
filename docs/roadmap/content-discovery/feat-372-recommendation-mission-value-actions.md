@@ -10,6 +10,7 @@ depends_on:
   - "feat-368"
   - "feat-369"
   - "feat-464"
+  - "feat-545"
 blocks:
   - "feat-374"
   - "feat-375"
@@ -75,3 +76,10 @@ The ticket is not complete until this result is visible and reconcilable in the 
 - Run focused Web/Admin tests, lint, and type checks.
 - Run affected application checks: `pnpm --filter @forge/web test`, `pnpm --filter @forge/web lint`, and `pnpm --filter @forge/web typecheck`; `pnpm --filter @forge/admin test`, `pnpm --filter @forge/admin lint`, and `pnpm --filter @forge/admin typecheck`.
 - Run `pnpm --filter roadmap lint` after updating roadmap metadata.
+
+## September 24 operational gate transfer
+
+Feat-464 and feat-459 now close the verified recovery/integrity scope. Their
+remaining monitoring and telemetry acceptance requirements are preserved in
+[feat-545](feat-545-recommendation-monitoring-and-telemetry-closeout.md), now an
+explicit dependency. This metadata change does not activate runtime features.
