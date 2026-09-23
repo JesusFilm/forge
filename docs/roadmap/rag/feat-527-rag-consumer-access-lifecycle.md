@@ -3,7 +3,7 @@ id: "feat-527"
 title: "Implement formal RAG consumer access lifecycle"
 owner: "jaco"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-15"
 duration: 5
 depends_on: ["feat-526", "feat-518"]
