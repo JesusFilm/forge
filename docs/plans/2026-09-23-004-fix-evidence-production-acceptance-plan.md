@@ -1,7 +1,7 @@
 ---
 title: "Verify recommendation evidence recovery and production acceptance"
 type: fix
-status: active
+status: complete
 date: 2026-09-23
 origin: docs/roadmap/content-discovery/feat-464-recommendation-evidence-transport-crawler-integrity.md
 ---
@@ -95,3 +95,12 @@ distinction between shipped fixes, local fault controls and natural production
 coverage. The monitoring policy and absence of naturally observed failures may
 prevent complete acceptance despite successful unblocked work. No relaxed gate,
 production write, shared-service mutation or new privileged credential is allowed.
+
+## Execution result
+
+U1–U4's unblocked work is complete. The two-hour window, final canonical audit,
+real-dependency/browser controls, durable reconciliation, sequential review and
+sanitized report are recorded in the [acceptance record](../operations/recommendation-evidence-acceptance-2026-09-23.md).
+The plan's execution status does not close feat-464: installed monitoring remains
+blocked, and natural terminal-browser/request-level reconciliation gaps remain
+explicit. No application runtime or production configuration was changed.

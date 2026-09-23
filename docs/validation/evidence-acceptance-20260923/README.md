@@ -33,8 +33,8 @@ were removed after capture. No production fault or database mutation was used.
 
 ## Production collection
 
-The fixed interval is September 23, 04:30 inclusive–06:30 exclusive UTC. Final
-collection is pending; no partial interval is represented as two hours.
+The completed fixed interval is September 23, 04:30 inclusive–06:30 exclusive UTC.
+Final snapshots were taken after its end.
 
 Primary HTTP collection pins the Railway deployment, explicitly enumerates exact
 recommendation paths, recursively splits capped anchor slices, clips the interval,
@@ -52,3 +52,22 @@ Only aggregate outcomes, public deployment identifiers and local synthetic
 scenario labels are published. Credentials, cookies, capabilities, event/episode/
 profile/session identifiers, viewer histories, IP addresses and raw logs are
 excluded.
+
+- `collection-method.json`: source/query hashes, populations and bounded read guards.
+- `deployments-midpoint.json`, `running-processes-midpoint.json`,
+  `deployments-final.json`, `health-final.json`: exact running release and readiness.
+- `old-deployment-overlap.json`: prior Web deployment has no retained interval traffic.
+- `http-final.json`: explicit route/method/status groups and complete slice coverage.
+- `logs-web-final.json`, `logs-admin-final.json`, `logs-worker-final.json`:
+  source-specific application aggregates, runtime timings and heartbeat observations.
+- `datadog-final.json`, `rum-final.json`, `rum-interim-discrepancy.json`:
+  indexed/source gaps and browser observations, including unresolved discrepancies.
+- `delivery-durable-final.json`: issued delivery results and committed evidence audits.
+- `durable-final.json`: episode cohort, event-time populations, final outcomes and
+  decoded committed workflow batch/heartbeat counters.
+- `audit-final.json`, `admin-ui-final.json`: complete canonical final predicate and
+  separately scoped authenticated UI aggregates.
+
+Scratch collector hashes identify these captures; the harness is not shipped as
+an operational tool. Read-only access and canonical source/query identities make
+the audit scope reviewable without publishing production identities or raw logs.

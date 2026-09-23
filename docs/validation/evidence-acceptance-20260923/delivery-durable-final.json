@@ -1,0 +1,144 @@
+{
+  "snapshot": "2026-09-23T06:40:18.228Z",
+  "revision": "37e10b622bd66e55647cf561c3896b2d4fbb4dce",
+  "deployment": "05d2971e-d42a-4f32-b91a-3c552cb44353",
+  "window": {
+    "begin": "2026-09-23T04:30:00.000Z",
+    "end": "2026-09-23T06:30:00.000Z"
+  },
+  "deliveries": [
+    {
+      "purpose": "seeded",
+      "state": "issued",
+      "result": "served",
+      "fallback_reason": null,
+      "requests": 403
+    },
+    {
+      "purpose": "seeded",
+      "state": "issued",
+      "result": "fallback",
+      "fallback_reason": "seed_embedding_unavailable",
+      "requests": 20
+    },
+    {
+      "purpose": "seeded",
+      "state": "issued",
+      "result": "empty",
+      "fallback_reason": "no_candidates",
+      "requests": 55
+    },
+    {
+      "purpose": "seeded",
+      "state": "issued",
+      "result": "empty",
+      "fallback_reason": "seed_embedding_unavailable",
+      "requests": 12
+    }
+  ],
+  "audits": [
+    {
+      "kind": "delivery_success",
+      "reason_code": "empty",
+      "rows": 67,
+      "events": 67
+    },
+    {
+      "kind": "delivery_success",
+      "reason_code": "fallback",
+      "rows": 20,
+      "events": 20
+    },
+    {
+      "kind": "delivery_success",
+      "reason_code": "served",
+      "rows": 403,
+      "events": 403
+    },
+    {
+      "kind": "evidence_success",
+      "reason_code": "impression",
+      "rows": 218,
+      "events": 218
+    },
+    {
+      "kind": "evidence_success",
+      "reason_code": "playback_active_visible_playing",
+      "rows": 17,
+      "events": 17
+    },
+    {
+      "kind": "evidence_success",
+      "reason_code": "playback_attempt",
+      "rows": 3,
+      "events": 3
+    },
+    {
+      "kind": "evidence_success",
+      "reason_code": "playback_end",
+      "rows": 3,
+      "events": 3
+    },
+    {
+      "kind": "evidence_success",
+      "reason_code": "playback_navigation",
+      "rows": 19,
+      "events": 19
+    },
+    {
+      "kind": "evidence_success",
+      "reason_code": "playback_observation",
+      "rows": 3,
+      "events": 3
+    },
+    {
+      "kind": "evidence_success",
+      "reason_code": "playback_progress",
+      "rows": 10,
+      "events": 10
+    },
+    {
+      "kind": "evidence_success",
+      "reason_code": "playback_qoe",
+      "rows": 20,
+      "events": 20
+    },
+    {
+      "kind": "evidence_success",
+      "reason_code": "playback_seek",
+      "rows": 15,
+      "events": 15
+    },
+    {
+      "kind": "evidence_success",
+      "reason_code": "playback_start",
+      "rows": 3,
+      "events": 3
+    },
+    {
+      "kind": "evidence_success",
+      "reason_code": "playback_viewing_mode",
+      "rows": 32,
+      "events": 32
+    },
+    {
+      "kind": "evidence_success",
+      "reason_code": "render",
+      "rows": 1254,
+      "events": 1254
+    },
+    {
+      "kind": "evidence_success",
+      "reason_code": "selection",
+      "rows": 13,
+      "events": 13
+    },
+    {
+      "kind": "replay",
+      "reason_code": "playback_transport_replay",
+      "rows": 2,
+      "events": 2
+    }
+  ],
+  "complete": true
+}

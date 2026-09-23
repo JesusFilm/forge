@@ -266,3 +266,15 @@ The [September 22 follow-up](../../operations/watch-budget-followup-2026-09-22.m
 ## September 22 internal continuation
 
 The internal continuation again verifies zero affected pointers, ineligible contributions and rebuild backlog in authenticated Admin, after 24 successful reconciliation batches. Its own repair and current-pointer proofs retain credit. The feat-464 dependency still prevents completion. See the [internal verification](../../operations/watch-budget-followup-2026-09-22.md#internal-continuation-workload-volume-and-reconciled-outcomes).
+
+## September 23 acceptance continuation
+
+The [feat-464 continuation](../../operations/recommendation-evidence-acceptance-2026-09-23.md)
+credits the existing authorized matching repair, then verifies a fresh complete
+canonical audit of **179,054 pointers with zero ineligible** and a matching clean
+authenticated Admin aggregate. Twenty-three committed reconciliation batches and
+heartbeats complete without recorded failures; 81 finalized cohort outcomes match
+their fact watermarks and generations. Fourteen affected-pointer occurrences and
+queued rebuilds during the window preserve the convergence/continuous-zero
+distinction. The remaining feat-464 monitoring and production coverage gates
+still prevent closure; **status remains in progress**.

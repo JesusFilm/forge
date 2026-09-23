@@ -1,0 +1,606 @@
+{
+  "runtime": [],
+  "runtimeMissingElapsed": 0,
+  "service": "web",
+  "deployment": "9448a080-628d-4964-ae79-81c1f920739e",
+  "begin": "2026-09-23T04:30:00Z",
+  "end": "2026-09-23T06:30:00Z",
+  "messages": 122058,
+  "evidence": [
+    {
+      "source": "web",
+      "action": "claim",
+      "outcome": "accepted",
+      "reason": "none",
+      "timeoutStage": "none",
+      "retryDisposition": "none",
+      "crawler": "not_recognized",
+      "httpStatus": "200",
+      "count": 256
+    },
+    {
+      "source": "web",
+      "action": "claim",
+      "outcome": "rejected",
+      "reason": "forbidden",
+      "timeoutStage": "none",
+      "retryDisposition": "terminal",
+      "crawler": "not_recognized",
+      "httpStatus": "401",
+      "count": 1
+    },
+    {
+      "source": "web",
+      "action": "claim",
+      "outcome": "rejected",
+      "reason": "invalid_binding",
+      "timeoutStage": "none",
+      "retryDisposition": "terminal",
+      "crawler": "not_recognized",
+      "httpStatus": "409",
+      "count": 1
+    },
+    {
+      "source": "web",
+      "action": "context",
+      "outcome": "accepted",
+      "reason": "none",
+      "timeoutStage": "none",
+      "retryDisposition": "none",
+      "crawler": "not_recognized",
+      "httpStatus": "200",
+      "count": 279
+    },
+    {
+      "source": "web",
+      "action": "evidence",
+      "outcome": "accepted",
+      "reason": "none",
+      "timeoutStage": "none",
+      "retryDisposition": "none",
+      "crawler": "not_recognized",
+      "httpStatus": "200",
+      "count": 1472
+    },
+    {
+      "source": "web",
+      "action": "evidence",
+      "outcome": "rejected",
+      "reason": "crawler_rejected",
+      "timeoutStage": "none",
+      "retryDisposition": "terminal",
+      "crawler": "recognized",
+      "httpStatus": "403",
+      "count": 681
+    },
+    {
+      "source": "web",
+      "action": "evidence",
+      "outcome": "rejected",
+      "reason": "forbidden",
+      "timeoutStage": "none",
+      "retryDisposition": "terminal",
+      "crawler": "not_recognized",
+      "httpStatus": "401",
+      "count": 6
+    },
+    {
+      "source": "web",
+      "action": "evidence",
+      "outcome": "rejected",
+      "reason": "invalid_request",
+      "timeoutStage": "none",
+      "retryDisposition": "terminal",
+      "crawler": "not_recognized",
+      "httpStatus": "400",
+      "count": 6
+    },
+    {
+      "source": "web",
+      "action": "facts",
+      "outcome": "accepted",
+      "reason": "none",
+      "timeoutStage": "none",
+      "retryDisposition": "none",
+      "crawler": "not_recognized",
+      "httpStatus": "200",
+      "count": 3521
+    },
+    {
+      "source": "web",
+      "action": "facts",
+      "outcome": "rejected",
+      "reason": "forbidden",
+      "timeoutStage": "none",
+      "retryDisposition": "terminal",
+      "crawler": "not_recognized",
+      "httpStatus": "401",
+      "count": 2
+    },
+    {
+      "source": "web",
+      "action": "facts",
+      "outcome": "rejected",
+      "reason": "invalid_binding",
+      "timeoutStage": "none",
+      "retryDisposition": "terminal",
+      "crawler": "not_recognized",
+      "httpStatus": "409",
+      "count": 1
+    },
+    {
+      "source": "web",
+      "action": "facts",
+      "outcome": "replay",
+      "reason": "none",
+      "timeoutStage": "none",
+      "retryDisposition": "idempotent_replay",
+      "crawler": "not_recognized",
+      "httpStatus": "200",
+      "count": 8
+    },
+    {
+      "source": "web",
+      "action": "playback",
+      "outcome": "rejected",
+      "reason": "crawler_rejected",
+      "timeoutStage": "none",
+      "retryDisposition": "terminal",
+      "crawler": "recognized",
+      "httpStatus": "403",
+      "count": 351
+    },
+    {
+      "source": "web",
+      "action": "playback",
+      "outcome": "rejected",
+      "reason": "forbidden",
+      "timeoutStage": "none",
+      "retryDisposition": "terminal",
+      "crawler": "not_recognized",
+      "httpStatus": "403",
+      "count": 295
+    },
+    {
+      "source": "web",
+      "action": "playback",
+      "outcome": "rejected",
+      "reason": "invalid_request",
+      "timeoutStage": "none",
+      "retryDisposition": "terminal",
+      "crawler": "not_recognized",
+      "httpStatus": "400",
+      "count": 1
+    },
+    {
+      "source": "web",
+      "action": "select",
+      "outcome": "accepted",
+      "reason": "none",
+      "timeoutStage": "none",
+      "retryDisposition": "none",
+      "crawler": "not_recognized",
+      "httpStatus": "200",
+      "count": 13
+    },
+    {
+      "source": "web",
+      "action": "select",
+      "outcome": "rejected",
+      "reason": "invalid_request",
+      "timeoutStage": "none",
+      "retryDisposition": "terminal",
+      "crawler": "not_recognized",
+      "httpStatus": "400",
+      "count": 1
+    }
+  ],
+  "delivery": [
+    {
+      "event": "recommendation.delivery",
+      "endpoint": "seeded",
+      "httpStatus": "200",
+      "result": "fallback",
+      "reason": "cooldown",
+      "itemCount": "6",
+      "upstreamResult": "unavailable",
+      "count": 4
+    },
+    {
+      "event": "recommendation.delivery",
+      "endpoint": "seeded",
+      "httpStatus": "200",
+      "result": "fallback",
+      "reason": "in_flight",
+      "itemCount": "6",
+      "upstreamResult": "unavailable",
+      "count": 1
+    },
+    {
+      "event": "recommendation.delivery",
+      "endpoint": "seeded",
+      "httpStatus": "200",
+      "result": "fallback",
+      "reason": "no_candidates",
+      "itemCount": "5",
+      "upstreamResult": "empty",
+      "count": 1
+    },
+    {
+      "event": "recommendation.delivery",
+      "endpoint": "seeded",
+      "httpStatus": "200",
+      "result": "fallback",
+      "reason": "no_candidates",
+      "itemCount": "6",
+      "upstreamResult": "empty",
+      "count": 54
+    },
+    {
+      "event": "recommendation.delivery",
+      "endpoint": "seeded",
+      "httpStatus": "200",
+      "result": "fallback",
+      "reason": "seed_embedding_unavailable",
+      "itemCount": "5",
+      "upstreamResult": "empty",
+      "count": 1
+    },
+    {
+      "event": "recommendation.delivery",
+      "endpoint": "seeded",
+      "httpStatus": "200",
+      "result": "fallback",
+      "reason": "seed_embedding_unavailable",
+      "itemCount": "6",
+      "upstreamResult": "empty",
+      "count": 11
+    },
+    {
+      "event": "recommendation.delivery",
+      "endpoint": "seeded",
+      "httpStatus": "200",
+      "result": "fallback",
+      "reason": "seed_embedding_unavailable",
+      "itemCount": "6",
+      "upstreamResult": "fallback",
+      "count": 20
+    },
+    {
+      "event": "recommendation.delivery",
+      "endpoint": "seeded",
+      "httpStatus": "200",
+      "result": "fallback",
+      "reason": "session_hour",
+      "itemCount": "6",
+      "upstreamResult": "unavailable",
+      "count": 15
+    },
+    {
+      "event": "recommendation.delivery",
+      "endpoint": "seeded",
+      "httpStatus": "200",
+      "result": "served",
+      "reason": "none",
+      "itemCount": "1",
+      "upstreamResult": "served",
+      "count": 25
+    },
+    {
+      "event": "recommendation.delivery",
+      "endpoint": "seeded",
+      "httpStatus": "200",
+      "result": "served",
+      "reason": "none",
+      "itemCount": "2",
+      "upstreamResult": "served",
+      "count": 25
+    },
+    {
+      "event": "recommendation.delivery",
+      "endpoint": "seeded",
+      "httpStatus": "200",
+      "result": "served",
+      "reason": "none",
+      "itemCount": "3",
+      "upstreamResult": "served",
+      "count": 11
+    },
+    {
+      "event": "recommendation.delivery",
+      "endpoint": "seeded",
+      "httpStatus": "200",
+      "result": "served",
+      "reason": "none",
+      "itemCount": "4",
+      "upstreamResult": "served",
+      "count": 31
+    },
+    {
+      "event": "recommendation.delivery",
+      "endpoint": "seeded",
+      "httpStatus": "200",
+      "result": "served",
+      "reason": "none",
+      "itemCount": "5",
+      "upstreamResult": "served",
+      "count": 12
+    },
+    {
+      "event": "recommendation.delivery",
+      "endpoint": "seeded",
+      "httpStatus": "200",
+      "result": "served",
+      "reason": "none",
+      "itemCount": "6",
+      "upstreamResult": "served",
+      "count": 299
+    },
+    {
+      "event": "recommendation.delivery",
+      "endpoint": "seeded",
+      "httpStatus": "403",
+      "result": "rejected",
+      "reason": "invalid_fetch_metadata",
+      "itemCount": "0",
+      "upstreamResult": "not_observed",
+      "count": 391
+    },
+    {
+      "event": "recommendation.delivery",
+      "endpoint": "seeded",
+      "httpStatus": "403",
+      "result": "rejected",
+      "reason": "invalid_origin",
+      "itemCount": "0",
+      "upstreamResult": "not_observed",
+      "count": 212
+    }
+  ],
+  "heartbeats": [],
+  "failurePatterns": {
+    "invalid_binding": 2
+  },
+  "slices": [
+    {
+      "start": "2026-09-23T04:30:00Z",
+      "end": "2026-09-23T04:32:30Z",
+      "returned": 2575,
+      "included": 2575,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T04:32:30Z",
+      "end": "2026-09-23T04:35:00Z",
+      "returned": 2558,
+      "included": 2558,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T04:35:00Z",
+      "end": "2026-09-23T04:40:00Z",
+      "returned": 4390,
+      "included": 4390,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T04:40:00Z",
+      "end": "2026-09-23T04:45:00Z",
+      "returned": 3958,
+      "included": 3958,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T04:45:00Z",
+      "end": "2026-09-23T04:50:00Z",
+      "returned": 3346,
+      "included": 3346,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T04:50:00Z",
+      "end": "2026-09-23T04:55:00Z",
+      "returned": 3762,
+      "included": 3762,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T04:55:00Z",
+      "end": "2026-09-23T05:00:00Z",
+      "returned": 4105,
+      "included": 4105,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T05:00:00Z",
+      "end": "2026-09-23T05:02:30Z",
+      "returned": 4852,
+      "included": 4852,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T05:02:30Z",
+      "end": "2026-09-23T05:03:45Z",
+      "returned": 2739,
+      "included": 2739,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T05:03:45Z",
+      "end": "2026-09-23T05:05:00Z",
+      "returned": 2649,
+      "included": 2649,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T05:05:00Z",
+      "end": "2026-09-23T05:07:30Z",
+      "returned": 4114,
+      "included": 4114,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T05:07:30Z",
+      "end": "2026-09-23T05:10:00Z",
+      "returned": 2332,
+      "included": 2332,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T05:10:00Z",
+      "end": "2026-09-23T05:15:00Z",
+      "returned": 4425,
+      "included": 4425,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T05:15:00Z",
+      "end": "2026-09-23T05:20:00Z",
+      "returned": 4697,
+      "included": 4697,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T05:20:00Z",
+      "end": "2026-09-23T05:25:00Z",
+      "returned": 4480,
+      "included": 4480,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T05:25:00Z",
+      "end": "2026-09-23T05:27:30Z",
+      "returned": 3751,
+      "included": 3751,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T05:27:30Z",
+      "end": "2026-09-23T05:30:00Z",
+      "returned": 3352,
+      "included": 3352,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T05:30:00Z",
+      "end": "2026-09-23T05:35:00Z",
+      "returned": 4939,
+      "included": 4939,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T05:35:00Z",
+      "end": "2026-09-23T05:40:00Z",
+      "returned": 3927,
+      "included": 3927,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T05:40:00Z",
+      "end": "2026-09-23T05:42:30Z",
+      "returned": 2190,
+      "included": 2190,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T05:42:30Z",
+      "end": "2026-09-23T05:45:00Z",
+      "returned": 3474,
+      "included": 3474,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T05:45:00Z",
+      "end": "2026-09-23T05:50:00Z",
+      "returned": 3122,
+      "included": 3122,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T05:50:00Z",
+      "end": "2026-09-23T05:55:00Z",
+      "returned": 4028,
+      "included": 4028,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T05:55:00Z",
+      "end": "2026-09-23T06:00:00Z",
+      "returned": 3713,
+      "included": 3713,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T06:00:00Z",
+      "end": "2026-09-23T06:05:00Z",
+      "returned": 4727,
+      "included": 4727,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T06:05:00Z",
+      "end": "2026-09-23T06:07:30Z",
+      "returned": 2574,
+      "included": 2574,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T06:07:30Z",
+      "end": "2026-09-23T06:10:00Z",
+      "returned": 4138,
+      "included": 4138,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T06:10:00Z",
+      "end": "2026-09-23T06:11:15Z",
+      "returned": 2762,
+      "included": 2762,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T06:11:15Z",
+      "end": "2026-09-23T06:12:30Z",
+      "returned": 2518,
+      "included": 2518,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T06:12:30Z",
+      "end": "2026-09-23T06:15:00Z",
+      "returned": 3486,
+      "included": 3486,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T06:15:00Z",
+      "end": "2026-09-23T06:17:30Z",
+      "returned": 2221,
+      "included": 2221,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T06:17:30Z",
+      "end": "2026-09-23T06:20:00Z",
+      "returned": 2931,
+      "included": 2931,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T06:20:00Z",
+      "end": "2026-09-23T06:25:00Z",
+      "returned": 4288,
+      "included": 4288,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T06:25:00Z",
+      "end": "2026-09-23T06:30:00Z",
+      "returned": 4935,
+      "included": 4935,
+      "belowLimit": true
+    }
+  ],
+  "collectionComplete": true,
+  "filter": "all deployment logs; only approved aggregates exported"
+}

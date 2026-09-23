@@ -1,8 +1,11 @@
 # Recommendation evidence acceptance — September 23, 2026
 
 Feat-464 remains **in progress**. Required Datadog monitors and the dashboard
-cannot be installed through the available organization policy. This continuation
-does not waive that gate or enable profile ranking, experiments, or promotion.
+cannot be installed through the available organization policy. The two-hour
+primary playback threshold, local recovery controls and final integrity audit
+passed. Production browser disposition for two terminal responses and complete
+request-level reconciliation still lack coverage. No gate is waived; profile
+ranking, experiments and promotion remain gated.
 
 ## Scope and release
 
@@ -30,40 +33,115 @@ Railway reported exactly one active successful deployment per service at
 
 The primary environment is `5f41e037-90e4-4674-a3ea-66bbd05fb3b4` in project
 `98952497-a4d9-4714-8fe8-0cdbff3147c9`. Service identities were resolved afresh.
-Admin's actual running process also reported that revision. No manual deployment,
-production mutation, production fault injection, or support contact was used.
+All three actual running processes reported that revision at 05:30:31 UTC.
+Deployment snapshots at 05:30:31 and 06:30:57 still show one active successful
+deployment and one running instance per service. The prior Web deployment's
+last retained recommendation request was 04:27:30.079 UTC; a bounded anchor read
+covering the lower boundary found **zero overlapping requests** in our window.
+At 06:39:32/36, direct read-only Admin/worker `/api/health` probes returned
+HTTP 200, `status=ok`, in 37.0/48.5 ms, including the bounded Redis PING.
+The [release record](watch-intermittent-evidence-investigation-2026-09-23.md#production-rollout)
+retains the earlier promotion/health evidence. No manual deployment, production
+mutation, production fault injection, or support contact was used.
 
 ## Fixed production window
 
-The coordinated acceptance window is **04:30:00 inclusive–06:30:00 exclusive
-UTC on September 23**. Collection is pending completion of that interval.
+The completed interval is **04:30:00 inclusive–06:30:00 exclusive UTC on
+September 23**. The [sanitized collection](../validation/evidence-acceptance-20260923/README.md)
+retains slice coverage, exact deployments, guards and source-specific counts.
 
 Primary Railway HTTP edge records supply request denominators. Exact paths are
-queried explicitly: `@path:/watch/api/recommendations` does **not** include its
-child routes. Collection uses five-minute anchor intervals, subdividing if the
-oldest returned row does not cover the lower boundary. Rows are clipped to the
-half-open interval and checked for deployment, path, method, and duplicate request
-IDs. Only aggregate counts and a request-ID set digest are published.
+queried explicitly: `@path:/watch/api/recommendations` does **not** include child
+routes. Five-minute anchor intervals subdivide when retained rows do not cover
+the lower boundary. Rows are clipped to the half-open interval and checked for
+deployment, path, method and duplicate IDs. Only counts and an ID-set digest are
+published. All source slices cover the interval without unresolved result caps.
 
-Datadog's `trace.web.request.hits` does not provide a Railway environment
-dimension in this access path. It is a corroborating source, not an independently
-scoped primary-environment denominator. Structured Web outcomes, Admin outcomes,
-durable facts, and replay receipts use different units and are reported separately.
-HTTP 200 does not by itself prove durable acceptance or browser acknowledgement.
+| Primary route / method |   200 | 400 | 401 |   403 | 409 | 499 | Total |
+| ---------------------- | ----: | --: | --: | ----: | --: | --: | ----: |
+| Delivery POST          |   490 |   0 |   0 |   603 |   0 |  20 | 1,113 |
+| Playback POST          | 4,054 |   1 |   3 |   646 |   2 |  10 | 4,716 |
+| Selection POST         |    13 |   1 |   0 |     0 |   0 |   0 |    14 |
+| Initial evidence POST  | 1,436 |   6 |   6 |   681 |   0 |  37 | 2,166 |
+| Profile POST           |   878 |   0 |   0 | 1,426 |   0 |  22 | 2,326 |
+| Availability GET       |   153 |   0 |   0 |     0 |   0 |   0 |   153 |
+| Content actions POST   |     1 |   0 |   0 |     0 |   0 |   0 |     1 |
 
-The interim 04:30–05:00 primary HTTP collection contains **0 / 1,795 playback
-5xx**, with 1,621 HTTP 200, one HTTP 401, 171 HTTP 403 and two HTTP 499. Web and
-Admin logs each contain 1,439 accepted fact batches, four replay batches and 90
-accepted claims; Web also records 90 accepted contexts. These are interim counts,
-not the completed two-hour gate.
+Eight additional playback **GETs returned 405**, bringing all explicit
+recommendation-path requests to **10,497**. No route above has a 5xx. The playback
+POST gate is **0 / 4,716 = 0%**, below 1%. Deliberate production fault injection
+and corresponding exclusions are both **zero**. Crawlers remain in the denominator;
+this is not a human-only rate. The eight GETs are outside the POST denominator.
+HTTP 499 means the origin recorded a client-closed request; it does not prove that
+Admin aborted or that no write committed.
 
-Separately, [sampled browser telemetry](../validation/evidence-acceptance-20260923/rum-interim-discrepancy.json)
-reports one playback HTTP 503 on `www.jesusfilm.org` at **04:54:50.312 UTC**, with
-3,160.7 ms duration and browser release `37e10b622`. There is no trusted request
-join to the zero Railway 5xx population. Its inspected view has no additional
-retained playback resource in 04:53–05:00, which is insufficient to establish
-durable disposition or subsequent recovery. Do not discard this observation,
-infer a Redis/edge cause, or reclassify it as recognized crawler traffic.
+### HTTP, application outcomes and durable units
+
+Web and Admin Railway outcomes agree on **3,521 accepted fact batches, eight
+all-replay batches and 256 accepted claims**. Web also records 279 contexts. Their
+**4,064** successful playback envelopes equal 4,054 edge HTTP 200 plus ten HTTP
+499 in aggregate. This is numerical reconciliation, not a trusted per-request
+join or proof that those ten clients received acknowledgements. All other playback
+statuses match the normalized outcome counts: one invalid request, three forbidden,
+646 admission rejections and two terminal binding failures.
+
+Of the 646 playback 403s, **351** are recognized-crawler rejections and **295**
+are other forbidden admission. Initial evidence adds **681** recognized-crawler
+403s. There are **1,032 recognized-crawler rejections and zero logged recognized-
+crawler successes** across these actions; arbitrary undetected automation is not
+covered. The two Admin `invalid_binding` outcomes (one claim, one fact batch)
+match two Web terminal HTTP 409 envelopes and two primary HTTP 409s.
+
+Initial evidence has **1,472** Web successes, exactly matching **1,254 render +
+218 impression** committed audits. Primary HTTP has 1,436 successes and 37 client
+closures: successes plus closures exceed logged successes by **one**. The cause
+and disposition of that one-request gap are unproven. All 693 initial-evidence
+400/401/403 responses reconcile by reason. Selection has 13 successes, 13 resolved
+Admin operations and 13 committed selection audits, plus one terminal invalid
+request. There are **zero observed selection HTTP 5xx/timeouts** in this window.
+Profile counts are retained without claiming profile-envelope reconciliation.
+
+Delivery has **510** Web HTTP-200 semantic envelopes: **403 served**, **55
+no-candidates fallbacks**, **32 seed-embedding-unavailable fallbacks**, and **20
+admission fallbacks** (15 session-hour, four cooldown, one in-flight). These equal
+490 edge HTTP 200 plus 20 HTTP 499 in aggregate. PostgreSQL retains **490 issued
+requests**: 403 served, 55 empty/no-candidates, 20 fallback/seed-unavailable and 12
+empty/seed-unavailable. The remaining 20 envelopes are admission fallbacks without issued durable
+requests. There are **zero `delivery_timeout` and zero `retrieval_timeout` semantic
+fallbacks**; HTTP 200 alone is not the criterion. The 603 delivery 403s split into
+391 invalid-fetch-metadata and 212 invalid-origin rejections.
+
+Admin's served runtime cohort has 403 completions, p50 **244.693 ms**, p95
+**455.381 ms**, maximum **1,402.637 ms**. All 510 seeded operations have measured
+elapsed time and `timeoutFallback=false`. The earlier baseline's p95 was
+383.810 ms for 143 completions; unequal workloads do not prove either regression
+or unchanged performance. No frontend runtime code changes in this continuation.
+
+### Telemetry gaps and browser disposition
+
+The exact primary hosts' indexed Datadog logs contain **3,513 Web / 3,516 Admin**
+accepted fact batches, respectively eight/five fewer than Railway's 3,521. Indexed
+Web crawler playback rejections are 350, one fewer than Railway. Claims, replays
+and both binding failures match. These are retained index/source gaps, not proof
+of dropped durable facts; no transport mechanism is attributed without evidence.
+Datadog's trace metric lacks an independent Railway environment dimension in this
+access path and is not used as the primary denominator.
+
+The primary-host [retained browser sample](../validation/evidence-acceptance-20260923/rum-final.json)
+contains **1,933 resources**: 1,871 HTTP 200, 30 HTTP 403, 28 status-zero transport
+observations, two HTTP 204, one HTTP 400 and one HTTP 503. Grouped counts equal the
+ungrouped total, with no missing status field. Neither production HTTP 409 appears
+in retained RUM, so this interval **cannot verify those two browsers stopped
+retrying**. The earlier September 22 bounded production non-retry observation
+retains credit; the new local terminal control below adds independent proof.
+
+The [HTTP 503 observation](../validation/evidence-acceptance-20260923/rum-interim-discrepancy.json)
+is on `www.jesusfilm.org` at **04:54:50.312 UTC**, duration **3,160.7 ms**, browser
+release `37e10b622`. It has no trusted join to the zero Railway 5xx population.
+Its inspected view has no additional retained playback resource in 04:53–05:00;
+that does not establish durable disposition or subsequent recovery. The two RUM
+204s also have no matching primary POST status group. Keep these discrepancies;
+do not infer a Redis/edge cause or classify the browser as a recognized crawler.
 
 ## Additional local proof
 
@@ -141,22 +219,51 @@ snapshot on the deployed Admin revision. It used 91 cursor fetches, completed in
 7.93 seconds, and had a maximum fetch time of 518 ms. The full predicate from
 `profile-lineage.ts` was unchanged. Each statement was limited to five seconds,
 lock waits to 500 ms, and the overall audit to 120 seconds; the transaction was
-rolled back explicitly. A final post-window audit remains pending.
+rolled back explicitly. The final **06:30:25.234 UTC** canonical snapshot scanned
+**179,054 pointers with zero ineligible**, again in 91 complete cursor fetches.
+It took 5.975 seconds, with a maximum fetch of 379.715 ms. Neither audit substitutes
+a simplified eligibility predicate or a sampled population.
 
-The authenticated production Recommendations page was observed at its
-**04:31:17.329 UTC database probe**. It reported a clean current-pointer audit:
-zero affected pointers, ineligible contributions, rebuild backlog, and stale
-runs, with 204 replacement publications in its rolling window. It also reported
-100 terminal runs and a broader **degraded** reconciliation state. The selected
-24-hour evidence view showed **loss suspected**, 144 committed rejections, zero
-write failures, and zero conflicts. These rolling-window labels are preserved;
-they are not the fixed two-hour acceptance population.
+The authenticated production Recommendations page's fresh **06:31:39.762 UTC
+database probe** reports a **clean** current-pointer audit: zero affected pointers,
+ineligible contributions, rebuild backlog and stale/reclaimed runs. Its rolling
+window has 207 replacement publications, 97 terminal runs and a broader
+**degraded** reconciliation status. The selected 24-hour evidence view remains
+**loss suspected**, with 144 committed rejections, zero write failures/conflicts,
+48 replays and four selections without impressions. Preserve these labels; they
+are not the fixed two-hour acceptance population.
 
-The current scheduler's committed batch and heartbeat outputs can be decoded
-from PostgreSQL's workflow ledger. Its latest inspected batch at 04:27:24 had
-zero classification failures, dispatch failures, stale runs, or exhausted
-attempts. An older queued ledger from September 7 remains distinct from the
-active scheduler. Final interval accounting remains pending.
+At the **06:31:18.513 UTC** read-only snapshot, the window's **292 newly created
+episodes** comprise 175 claimed, 81 finalized and 36 pending. They have **4,422
+facts at the snapshot**, of which **4,372 arrived in the fixed window**; 50 arrived
+after its end. Their 93 replay receipts have contiguous ordinals and match original
+fact capability/digest bindings. All fact counters/sequences are contiguous and
+there are zero recorded conflicts, finalization failures or finalization jobs more
+than ten minutes overdue. All **81 finalized latest active-watch-proxy-v1 outcomes**
+match the fact watermark and episode generation, with no missing or pending update.
+There are 218 retained outcome revisions across the cohort.
+
+The separate receipt-time population has **4,703 facts**, including **331 from
+older episodes**, and **101 replay receipts**, including **eight from older
+episodes**. It has zero late facts and zero receipt binding/digest mismatches.
+These are event/receipt counts, not HTTP requests or accepted batches. No raw
+viewer/event/episode IDs, capabilities or playback histories are exported.
+
+The workflow ledger has **23 completed batches and 23 committed heartbeats**,
+matching 23 completed worker log heartbeats. Durable heartbeat intervals range
+**308.167–313.777 seconds**. Batches attempted 50 classifications and found 14
+affected-pointer occurrences, queuing 14 rebuilds; classifications, dispatches,
+stale/exhausted attempts, unavailable heartbeats and unexpected step statuses all
+have zero failures. Thus the final clean audit is convergence evidence, **not a
+continuous-zero claim**. The older September 7 queued ledger is reported separately
+from the active scheduler, whose latest window batch completed at 06:26.
+
+Admin logs record transient fact transaction retries at attempt one (46) and two
+(six); worker finalization retries occur at attempts one (13), two (one), and three
+(one). No exhausted transaction, replay-receipt collision or Redis admission/
+offline-queue failure signature is observed in the bounded primary logs. This
+supports the observed healthy period and does not constitute a production outage
+recovery experiment.
 
 ## Monitoring gate
 
@@ -187,3 +294,25 @@ Playback transport failures, selection HTTP failures, HTTP 200 semantic
 separate populations. Historical crawler contamination cannot be relabeled
 without retained trusted linkage. Local fault controls do not manufacture natural
 production outage or terminal-rejection coverage.
+
+## Acceptance disposition and validation
+
+| Gate                                                                            | Disposition                                                                                                |
+| ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Exact deployed revision and bounded Redis readiness                             | Passed for Web/Admin/worker release; point checks and natural traffic retained                             |
+| Minimum two hours, primary playback 5xx below 1%                                | Passed: 0/4,716 POSTs, zero fault exclusions                                                               |
+| Local disconnect/stall, exhaustion, early cancellation and lost acknowledgement | Passed with real dependencies; browser shell/player limits stated                                          |
+| Durable receipt/sequence/outcome consistency and final canonical audit          | Passed for explicit populations; 179,054 pointers clean                                                    |
+| Scheduler cadence and no observed collision/exhaustion/crawler success          | Passed within bounded retained evidence; no continuous-zero or unknown-bot claim                           |
+| Every natural terminal response stops browser retry amplification               | Coverage gap: both new 409s lack retained browser resources                                                |
+| Complete operational/client/durable reconciliation                              | Partial: aggregate joins above; one initial-evidence gap, RUM/origin discrepancies and indexed gaps remain |
+| Actionable installed monitors and dashboard                                     | Blocked by organization MCP-write policy and missing destination/verified installation                     |
+
+Validation passed: eight real Redis/PostgreSQL/Yoga cases, a failing negative
+control without the caller-abort fence followed by a restored passing run, eight
+joined browser cases with SQL checks, full Admin typecheck, focused ESLint,
+production Web/Admin fixture builds, formatting, roadmap lint/generation, and
+sequential correctness/testing/standards/privacy review. Roadmap generation's
+unrelated catalog churn was discarded. The review found no additional demonstrated
+application defect to fix. The durable learning records fixture and evidence
+boundaries. Both feat-464 and dependent feat-459 remain **in progress**.

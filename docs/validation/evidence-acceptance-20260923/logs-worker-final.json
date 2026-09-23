@@ -1,0 +1,222 @@
+{
+  "runtime": [],
+  "runtimeMissingElapsed": 0,
+  "service": "worker",
+  "deployment": "264a75df-cc73-47a9-aee1-7c336e8f986b",
+  "begin": "2026-09-23T04:30:00Z",
+  "end": "2026-09-23T06:30:00Z",
+  "messages": 123,
+  "evidence": [
+    {
+      "source": "admin",
+      "action": "finalize",
+      "outcome": "failed",
+      "reason": "transaction_busy",
+      "retryDisposition": "retryable",
+      "retryAttempt": "1",
+      "count": 13
+    },
+    {
+      "source": "admin",
+      "action": "finalize",
+      "outcome": "failed",
+      "reason": "transaction_busy",
+      "retryDisposition": "retryable",
+      "retryAttempt": "2",
+      "count": 1
+    },
+    {
+      "source": "admin",
+      "action": "finalize",
+      "outcome": "failed",
+      "reason": "transaction_busy",
+      "retryDisposition": "retryable",
+      "retryAttempt": "3",
+      "count": 1
+    }
+  ],
+  "delivery": [],
+  "heartbeats": [
+    {
+      "timestamp": "2026-09-23T04:32:43.808996888Z",
+      "outcome": "completed"
+    },
+    {
+      "timestamp": "2026-09-23T04:37:54.513729983Z",
+      "outcome": "completed"
+    },
+    {
+      "timestamp": "2026-09-23T04:43:05.612473345Z",
+      "outcome": "completed"
+    },
+    {
+      "timestamp": "2026-09-23T04:48:04.537495776Z",
+      "outcome": "completed"
+    },
+    {
+      "timestamp": "2026-09-23T04:53:15.231146262Z",
+      "outcome": "completed"
+    },
+    {
+      "timestamp": "2026-09-23T04:58:25.743305479Z",
+      "outcome": "completed"
+    },
+    {
+      "timestamp": "2026-09-23T05:03:36.545885397Z",
+      "outcome": "completed"
+    },
+    {
+      "timestamp": "2026-09-23T05:08:47.405808090Z",
+      "outcome": "completed"
+    },
+    {
+      "timestamp": "2026-09-23T05:13:58.666441693Z",
+      "outcome": "completed"
+    },
+    {
+      "timestamp": "2026-09-23T05:19:09.777911836Z",
+      "outcome": "completed"
+    },
+    {
+      "timestamp": "2026-09-23T05:24:20.571060467Z",
+      "outcome": "completed"
+    },
+    {
+      "timestamp": "2026-09-23T05:29:31.723350459Z",
+      "outcome": "completed"
+    },
+    {
+      "timestamp": "2026-09-23T05:34:42.730339294Z",
+      "outcome": "completed"
+    },
+    {
+      "timestamp": "2026-09-23T05:39:53.611739743Z",
+      "outcome": "completed"
+    },
+    {
+      "timestamp": "2026-09-23T05:44:57.860280727Z",
+      "outcome": "completed"
+    },
+    {
+      "timestamp": "2026-09-23T05:50:08.735990439Z",
+      "outcome": "completed"
+    },
+    {
+      "timestamp": "2026-09-23T05:55:19.738198411Z",
+      "outcome": "completed"
+    },
+    {
+      "timestamp": "2026-09-23T06:00:30.307015086Z",
+      "outcome": "completed"
+    },
+    {
+      "timestamp": "2026-09-23T06:05:40.868046617Z",
+      "outcome": "completed"
+    },
+    {
+      "timestamp": "2026-09-23T06:10:52.348189400Z",
+      "outcome": "completed"
+    },
+    {
+      "timestamp": "2026-09-23T06:16:03.396972154Z",
+      "outcome": "completed"
+    },
+    {
+      "timestamp": "2026-09-23T06:21:04.278948461Z",
+      "outcome": "completed"
+    },
+    {
+      "timestamp": "2026-09-23T06:26:25.024129478Z",
+      "outcome": "completed"
+    }
+  ],
+  "failurePatterns": {},
+  "slices": [
+    {
+      "start": "2026-09-23T04:30:00Z",
+      "end": "2026-09-23T04:40:00Z",
+      "returned": 25,
+      "included": 25,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T04:40:00Z",
+      "end": "2026-09-23T04:50:00Z",
+      "returned": 12,
+      "included": 12,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T04:50:00Z",
+      "end": "2026-09-23T05:00:00Z",
+      "returned": 14,
+      "included": 14,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T05:00:00Z",
+      "end": "2026-09-23T05:10:00Z",
+      "returned": 3,
+      "included": 3,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T05:10:00Z",
+      "end": "2026-09-23T05:20:00Z",
+      "returned": 8,
+      "included": 8,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T05:20:00Z",
+      "end": "2026-09-23T05:30:00Z",
+      "returned": 2,
+      "included": 2,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T05:30:00Z",
+      "end": "2026-09-23T05:40:00Z",
+      "returned": 12,
+      "included": 12,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T05:40:00Z",
+      "end": "2026-09-23T05:50:00Z",
+      "returned": 7,
+      "included": 7,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T05:50:00Z",
+      "end": "2026-09-23T06:00:00Z",
+      "returned": 14,
+      "included": 14,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T06:00:00Z",
+      "end": "2026-09-23T06:10:00Z",
+      "returned": 8,
+      "included": 8,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T06:10:00Z",
+      "end": "2026-09-23T06:20:00Z",
+      "returned": 11,
+      "included": 11,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T06:20:00Z",
+      "end": "2026-09-23T06:30:00Z",
+      "returned": 7,
+      "included": 7,
+      "belowLimit": true
+    }
+  ],
+  "collectionComplete": true,
+  "filter": "all deployment logs; only approved aggregates exported"
+}
