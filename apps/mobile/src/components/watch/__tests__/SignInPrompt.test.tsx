@@ -47,6 +47,12 @@ jest.mock("../../../lib/authSession", () => {
     }),
   }
 })
+// jest-expo sets __DEV__, so the real sign-in gate is always open here. This
+// holder is the only way to render the closed gate (feat-543).
+const mockGate = { open: true }
+jest.mock("../../../lib/signInGate", () => ({
+  isSignInAvailable: () => mockGate.open,
+}))
 
 import { act } from "react"
 import AsyncStorage from "@react-native-async-storage/async-storage"
@@ -90,9 +96,49 @@ async function renderArmedBanner(): Promise<TestInstance> {
 
 beforeEach(async () => {
   __resetSignInPromptSession()
+  mockGate.open = true
   mockedSignIn.mockReset()
   await AsyncStorage.clear()
+  jest.mocked(AsyncStorage.getItem).mockClear()
   jest.mocked(AsyncStorage.setItem).mockClear()
+})
+
+describe("SignInPrompt sign-in gate (feat-543)", () => {
+  // Every other condition holds at the value that shows the banner: signed
+  // out, armed past the threshold, and no dismissal in storage.
+  async function renderAfterStopAt(seconds: number): Promise<TestInstance> {
+    noteSignedOutPlaybackStop(seconds)
+    let renderer!: TestInstance
+    await act(async () => {
+      renderer = TestRenderer.create(<SignInPrompt />)
+    })
+    await act(async () => {})
+    return renderer
+  }
+
+  it("renders nothing and keeps the session's one prompt while the gate is closed (AE3)", async () => {
+    mockGate.open = false
+    const renderer = await renderAfterStopAt(45)
+
+    expect(renderer.toJSON()).toBeNull()
+    expect(AsyncStorage.getItem).not.toHaveBeenCalled()
+    expect(AsyncStorage.setItem).not.toHaveBeenCalled()
+    expect(isSignInPromptArmed()).toBe(true)
+    await unmount(renderer)
+  })
+
+  // The anti-vacuous companion: the same stop shows the banner through an
+  // open gate, so the case above cannot pass because nothing armed.
+  it("renders the banner for the same stop while the gate is open", async () => {
+    const renderer = await renderAfterStopAt(45)
+
+    expect(hasText(renderer, "Sign in")).toBe(true)
+    expect(AsyncStorage.getItem).toHaveBeenCalledWith(
+      SIGN_IN_PROMPT_DISMISSED_AT_STORAGE_KEY,
+    )
+    expect(isSignInPromptArmed()).toBe(false)
+    await unmount(renderer)
+  })
 })
 
 describe("SignInPrompt hosted-auth wiring (U3)", () => {
