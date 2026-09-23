@@ -1,4 +1,4 @@
-import { createSchema, createYoga } from "graphql-yoga"
+import { createSchema, createYoga, type Plugin } from "graphql-yoga"
 import { afterEach, beforeEach, expect, it, vi } from "vitest"
 
 const { redis } = vi.hoisted(() => ({ redis: { get: vi.fn(), set: vi.fn() } }))
@@ -20,21 +20,19 @@ afterEach(() => vi.useRealTimers())
 async function fixture(requestSignal?: AbortSignal) {
   const mutate = vi.fn(() => true)
   const { rateLimitPlugin } = await import("./rate-limit")
+  const cancellation: Plugin<{ request: Request }> = {
+    onContextBuilding({ extendContext }) {
+      if (requestSignal)
+        extendContext({
+          request: new Request("http://localhost/graphql", {
+            signal: requestSignal,
+          }),
+        })
+    },
+  }
   const yoga = createYoga({
     logging: false,
-    plugins: [
-      {
-        onContextBuilding({ extendContext }) {
-          if (requestSignal)
-            extendContext({
-              request: new Request("http://localhost/graphql", {
-                signal: requestSignal,
-              }),
-            })
-        },
-      },
-      rateLimitPlugin,
-    ],
+    plugins: [cancellation, rateLimitPlugin],
     context: ({ request }) => ({
       request,
       user: { role: "CONSUMER_BEARER", rateLimitBucketKey: "fixture" },

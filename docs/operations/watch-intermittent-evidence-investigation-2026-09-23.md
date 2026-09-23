@@ -473,3 +473,22 @@ No blocking implementation findings remain. Browser/release results will be reco
 after running them. Full deployed Watch/Mux/auth fault injection, context issuance
 idempotency, timestamp attribution and installed-monitoring gates remain outside
 this bounded fix; feat-464 stays in progress.
+
+### Final local verification
+
+The complete pre-sync suites pass: Admin 7,355 tests (337 skipped, one todo), Web
+4,513 tests (10 skipped, one todo). Current main merged without conflicts; the
+38 focused admission/readiness regressions pass again after sync. CI verifies the
+combined tree. Skipped dependency suites are not credited as passes; the seven-case
+owned Redis/Postgres fixture was run explicitly and passed separately.
+
+The [release browser artifact](../validation/watch-intermittent-evidence-20260923/browser-release.json)
+records 14 real Chrome/HTTP cases. Baseline retires facts at 308ms and claims at
+507ms during an eight-second outage; candidate accepts identical facts at 10,206ms
+and the identical claim at 9,733ms, then sends its two pending facts once. Five
+paired healthy controls preserve one claim and one fact request. Gzip grows 200
+bytes. Idle-run median mount/DCL is 27.8/28.1ms baseline versus 29.5/29.8ms candidate.
+An earlier run overlapped full unit suites and had 111.1/132.4ms mount medians; it
+is retained locally as a contention control, not used to claim improved loading.
+These small component measurements show no material added startup work, not a full
+Watch loading benchmark. No production fault injection was performed.
