@@ -69,6 +69,21 @@ playback. A spoofable rate-limit label is never profile authority. Compose viewe
 creation/profile transitions atomically and retain generation/erasure controls.
 This gives native clients cookie-free access without linking people across devices.
 
+**That binding EXPIRES, and this paragraph read as though it does not**
+(corrected 2026-09-23). The profile-to-session link lives 24 hours
+(`RECOMMENDATION_PROFILE_SESSION_LINK_HOURS` at
+`apps/admin/src/services/recommendations/contracts.ts:22`) while the profile
+lives 180 days (`RECOMMENDATION_PROFILE_DAYS` at
+`apps/admin/src/services/recommendations/profile.service.ts:25`). So a profile
+can be long-lived while every link to its behavior has lapsed, and behavior
+recorded with no live link is written, retained, and unreachable — the durable
+projection query requires a live link and bounds episodes by
+`GREATEST(profile.created_at, link.linked_at)`. Read the resolution chain above
+as an identity design, never as a guarantee that recorded playback stays
+reachable. Which calls refresh that link, and why the answer is not the obvious
+one, is
+[A gate bounds only the refreshers it sits on](a-gate-bounds-only-the-refreshers-it-sits-on.md).
+
 **Prove reserve capacity from eligible inventory.** Several theme pools can be
 views of the same starter union. They do not multiply available stories. Six
 cards with at most 24 completed-view exclusions need a thirty-video eligible
@@ -153,7 +168,10 @@ including seeded delivery, retention, profile concurrency and the new pool tests
 ## Production activation lessons
 
 **Keep readiness boundaries separate.** Deployed schema, effective runtime flags,
-an active curated pointer and published homepage content are separate checks.
+an active curated pointer, published homepage content and — added 2026-09-23 —
+a live profile-to-session link are separate checks. That fifth one is the check
+that decides whether recorded behavior reaches a projection at all, and the
+other four can all pass while it fails silently.
 Admin's CI mode skips Zod defaults: a schema-only default change left source-free
 serving off. Normalize the default before validation and test the actual skipped
 environment module, preserving explicit `false`. Verify live delivery after that
