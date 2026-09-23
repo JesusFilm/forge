@@ -2548,8 +2548,10 @@ export function selectPlayableVariant(
 ): WatchVariant | null {
   if (!playableVariants.length) return null
   const localeMatch =
-    playableVariants.find((variant) => variant.language?.slug === locale) ??
-    playableVariants.find((variant) => variant.language?.bcp47 === locale)
+    playableVariants.find((variant) =>
+      variantLanguageSlugIs(variant, locale),
+    ) ??
+    playableVariants.find((variant) => variantLanguageBcp47Is(variant, locale))
   const primaryMatch = primaryLanguageId
     ? playableVariants.find(
         (variant) => variant.language?.coreId === primaryLanguageId,
@@ -2562,6 +2564,98 @@ function playableVariantsForRecord(record: WatchVideoRecord): WatchVariant[] {
   return record.variants.filter(
     (variant) => variant.published === true && Boolean(variant.hls),
   )
+}
+
+// How many episodes a series container probes for a playable dub before it
+// gives up and renders the static poster hero. A container owns no dubs of its
+// own (see mergeWatchVideoShellWithCopy — `variants` comes from the singular
+// `preferredVariant`, which admin resolves against the container's OWN dub
+// rows), so the only place its playability can come from is a descendant.
+//
+// Bounded because each probe is one extra admin round-trip on the cache-miss
+// path, and they run in sequence, so the cost lands on TTFB. Three rather than
+// one because a series' language coverage is per-episode: the first episode
+// can be unpublished or not yet dubbed while later ones are. Three is a
+// budget, not a guarantee — a series whose only Mandarin dub starts at episode
+// four keeps the static hero. That is a known limit of this fix, pinned by
+// `probes at most SERIES_DESCENDANT_VARIANT_PROBE_LIMIT episodes` in
+// series-descendant-variant.test.ts; lifting it needs a container-level
+// language projection from admin, not a bigger number here.
+const SERIES_DESCENDANT_VARIANT_PROBE_LIMIT = 3
+
+// The two locale comparisons `selectPlayableVariant` ranks, named once so the
+// descendant veto below cannot drift from what the selector calls a match.
+function variantLanguageSlugIs(variant: WatchVariant, locale: string): boolean {
+  return variant.language?.slug === locale
+}
+
+function variantLanguageBcp47Is(
+  variant: WatchVariant,
+  locale: string,
+): boolean {
+  return variant.language?.bcp47 === locale
+}
+
+/**
+ * True when `variant` is actually dubbed in `locale` — the union of
+ * `selectPlayableVariant`'s locale tiers, without its primary-language and
+ * first-variant fallbacks, which are exactly what we must not accept here.
+ *
+ * Note: on the series route the bcp47 arm is currently unreachable. The page's
+ * `seriesLanguage` guard `notFound()`s unless the requested locale IS a
+ * language slug, so a bcp47-only request never gets this far. It stays because
+ * this predicate defines "matches the requested language" for the selector too.
+ */
+function variantMatchesRequestedLanguage(
+  variant: WatchVariant,
+  locale: string,
+): boolean {
+  return (
+    variantLanguageSlugIs(variant, locale) ||
+    variantLanguageBcp47Is(variant, locale)
+  )
+}
+
+/**
+ * Derive a series container's playable variant from a playable descendant.
+ *
+ * A container record has zero playable variants of its own in EVERY language,
+ * so `playableVariantsForRecord(container)` is always empty and the series
+ * branch would otherwise always hand the page `selectedVariant: null` — a
+ * poster-only hero with nothing to play, for every series shaped this way and
+ * in every language.
+ *
+ * The match is deliberately strict: admin's `preferredPlayableDub` falls back
+ * to the child's primary dub when the requested language has none, so an
+ * unchecked descendant variant would silently hand a Mandarin URL an English
+ * stream. When no descendant is dubbed in the requested language we return
+ * null and the caller keeps the static hero, which is the honest state.
+ */
+async function selectDescendantPlayableVariant(
+  record: WatchVideoRecord,
+  languageSlug: string,
+): Promise<WatchVariant | null> {
+  const episodeSlugs = record.children.flatMap((child) =>
+    child.slug && !isSeriesRecord(child) ? [child.slug] : [],
+  )
+
+  for (const childSlug of episodeSlugs.slice(
+    0,
+    SERIES_DESCENDANT_VARIANT_PROBE_LIMIT,
+  )) {
+    const childRecord = await fetchWatchVideoBySlug(childSlug, languageSlug)
+    if (!childRecord) continue
+    const candidate = selectPlayableVariant(
+      playableVariantsForRecord(childRecord),
+      languageSlug,
+      childRecord.primaryLanguage?.coreId ?? null,
+    )
+    if (candidate && variantMatchesRequestedLanguage(candidate, languageSlug)) {
+      return candidate
+    }
+  }
+
+  return null
 }
 
 async function hydrateAndNarrowSelectedVariant(
@@ -2616,8 +2710,14 @@ async function tryResolveWatchRouteBySlug(
   )
 
   if (isSeriesRecord(record)) {
-    const resolved = selectedVariant
-      ? await hydrateAndNarrowSelectedVariant(record, selectedVariant)
+    // A container owns no dubs, so `selectedVariant` is null for every series
+    // in every language. Fall through to a playable descendant episode in the
+    // REQUESTED language before giving up on the hero.
+    const seriesVariant =
+      selectedVariant ??
+      (await selectDescendantPlayableVariant(record, languageSlug))
+    const resolved = seriesVariant
+      ? await hydrateAndNarrowSelectedVariant(record, seriesVariant)
       : { record, selectedVariant: null }
 
     return JSON.parse(
