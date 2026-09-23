@@ -122,6 +122,51 @@ Experience. Every line below is from the proxy's request log.
 - Double-tap on one card: one selection, one claim, one watch screen (one
   back tap returned to Home).
 
+### Production already carries the block (2026-09-23)
+
+- The plan and PR #2367 both assumed the shelf would ship dark, because
+  production's `watch-home` Experience carried no `HomepageRecommendationsBlock`.
+  **That is no longer true.** Verified 2026-09-23 by querying production through
+  the smoke proxy with injection OFF: the Experience returns 14 blocks and
+  `HomepageRecommendationsBlock` sits at index 2. It arrived with the web
+  recommendation pilot activation that merged to `main` while this sat in draft.
+- Block presence is this shelf's ONLY gate (KD1), so the row goes live for every
+  installation as soon as the code reaches phones. There is no editor-gated
+  window in front of the release.
+- NOT established: whether Admin serves a slate to a mobile installation or
+  refuses it as outside the web pilot. Answering it means requesting a real slate
+  from production as a fresh anonymous viewer, which creates production
+  identities, and KD4 forbids that. Left open rather than probed.
+- The open decision is whether block presence alone remains the right gate.
+  `EXPO_PUBLIC_RECOMMENDATIONS_ENABLED=false` is the client lever and was
+  measured working on device the same day (zero slate requests with the block
+  present). Unpublishing the block is NOT a mobile mitigation, because the web
+  surface is using it.
+
+### R20 load timing — MEASURED (2026-09-23)
+
+Measured inside the app from `HomeScreen` mount to first content render, so
+app-startup spread sits outside the window. iPhone 17 Pro, merged head, six
+samples per arm.
+
+| Arm                                           |   n | median | min | max |
+| --------------------------------------------- | --: | -----: | --: | --: |
+| Shelf active, slate deliberately held 2000 ms |   6 |  96 ms |  88 | 142 |
+| Recommendations disabled, zero slate requests |   6 |  96 ms |  88 | 170 |
+
+Identical medians while the slate is two seconds late in one arm and never
+requested in the other: the first paint does not wait on the slate. The proxy
+gained a slate-only delay knob for this, because an instant slate makes R20
+unfalsifiable — and a provisioned local Admin answering over loopback would have
+had the same blind spot, so U6 would NOT have produced better evidence here.
+
+A genuine block-absent arm is unobtainable now that production carries the block;
+the proxy can only add one. The disabled arm is the control instead. A first pass
+was discarded after another agent drove the same simulator: half the launches
+never reached the test proxy and the shelf-absent arm measured the wrong
+configuration. The re-run used a dedicated simulator and validated every arm
+against the proxy's own record.
+
 ### Still open
 
 - The `feat-516` double-recorder fix (KD3) merged on 2026-09-22 as #2376, so
