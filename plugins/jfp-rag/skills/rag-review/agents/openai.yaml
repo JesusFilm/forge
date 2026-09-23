@@ -1,0 +1,4 @@
+interface:
+  display_name: "RAG Adversarial Review"
+  short_description: "Review Forge RAG code, content, and documentation"
+  default_prompt: "Use $rag-review to review this Forge RAG change with evidence-backed findings and test gaps."

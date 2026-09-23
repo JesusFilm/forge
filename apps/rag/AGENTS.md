@@ -10,3 +10,7 @@ Scope: `apps/rag` only. This is the canonical, provider-agnostic package guide; 
 - Never log or commit secrets, bearer values, corpus text, or production migration evidence containing either.
 - Follow `docs/ops/environment-and-secrets.md` for environment validation, receiver-first provisioning, rotation, and revocation.
 - Production changes use the normal PR-to-main Railway autodeploy path. Never deploy local worktree code directly.
+
+For RAG-specific technical changes and RAG content/documentation additions, use
+[`rag-review`](../../plugins/jfp-rag/skills/rag-review/SKILL.md) as the recommended
+read-only review skill. Keep the existing validation and boundary requirements.

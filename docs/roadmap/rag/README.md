@@ -8,10 +8,10 @@ database into Admin.
 > This lane is intentionally invisible to the public roadmap viewer and the
 > generated `docs/roadmap/README.md` totals. This index is maintained by hand.
 
-## Status (September 22, 2026)
+## Status (September 23, 2026)
 
-- **Total tickets:** 34
-- **Complete:** 22
+- **Total tickets:** 35
+- **Complete:** 23
 - **In progress:** 0
 - **Not started:** 12
 - **Blocked:** 0
@@ -54,6 +54,7 @@ database into Admin.
 | [feat-530](feat-530-rag-consumer-self-service-portal.md)          | —                                                             | Internal self-service portal                                       | not-started | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                        |
 | [feat-532](feat-532-rag-legacy-service-credential-retirement.md)  | —                                                             | Retire legacy JesusFilm-RAG service and credentials                | not-started | [#2379](https://github.com/JesusFilm/forge/pull/2379)                                                        |
 | [feat-518](feat-518-rag-consumer-access-discovery.md)             | —                                                             | Confirm consumer access implementation readiness                   | complete    | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                        |
+| [feat-541](feat-541-rag-adversarial-review-skill.md)              | —                                                             | Add lightweight RAG adversarial review skill                       | complete    | —                                                                                                            |
 
 The September 8 operator decision in [feat-435](feat-435-rag-proof-soak-archive.md)
 accepts the baseline for acquisition/ingestion with the three concerns tracked

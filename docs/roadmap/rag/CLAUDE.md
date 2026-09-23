@@ -12,3 +12,7 @@ future RAG work is created here rather than as new standalone-repository issues.
 
 Status reflects what will land with the current Forge PR. A completed ticket
 must gain a `## Resolution` section with the Forge PR link before merge.
+
+For RAG plans, roadmap entries, and content/documentation additions, use
+[`rag-review`](../../../plugins/jfp-rag/skills/rag-review/SKILL.md) for the read-only
+review phase, including consistency with implementation and evidence.

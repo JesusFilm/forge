@@ -20,6 +20,7 @@ Use this file as the quick execution map. `CLAUDE.md` holds the detailed repo co
 - Read the package-local guide for the area you are changing before editing.
 - For frontend changes, verify the change did not degrade page-loading performance; visual smoke alone is not enough when rendering, hydration, media, routing, or client-side initialization changed.
 - Before pushing or opening/updating a PR, run PR-focused validation for the touched scope, including format and CI-sensitive checks.
+- For RAG-specific technical changes and RAG content/documentation additions, use [`rag-review`](plugins/jfp-rag/skills/rag-review/SKILL.md) as the recommended read-only review skill. It complements required validation and broader reviews.
 - When the work is done, update the roadmap ticket to `status: "complete"`. Create a follow-up `feat-NNN` ticket if additional work is discovered.
 
 ## Compound Engineering

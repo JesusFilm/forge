@@ -214,6 +214,11 @@ tags:                         # Searchable: cms, manager, web, mobile, tv, graph
 
 ## Compound Engineering
 
+For RAG-specific technical changes and RAG content/documentation additions, use
+[`rag-review`](plugins/jfp-rag/skills/rag-review/SKILL.md) for the read-only review
+phase. It complements required validation and broader reviews; its single-reviewer
+default does not require an external plugin or additional models.
+
 This repo uses the compound engineering workflow. After completing work:
 
 1. Run `ce:compound` to capture what you learned.

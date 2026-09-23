@@ -6,14 +6,15 @@ import { describe, expect, it } from "vitest"
 
 const REPO = path.resolve(import.meta.dirname, "../../..")
 const PLUGIN = path.join(REPO, "plugins/jfp-rag")
-const SKILLS = ["golden", "slice", "status-dashboard"] as const
+const OPERATOR_SKILLS = ["golden", "slice", "status-dashboard"] as const
+const SKILLS = [...OPERATOR_SKILLS, "rag-review"].sort()
 
 function read(relative: string): string {
   return readFileSync(path.join(REPO, relative), "utf8")
 }
 
 describe("jfp-rag plugin packaging", () => {
-  it("has matching valid provider manifests and exactly three skills", () => {
+  it("has matching valid provider manifests and the expected skills", () => {
     const codex = JSON.parse(read("plugins/jfp-rag/.codex-plugin/plugin.json"))
     const claude = JSON.parse(
       read("plugins/jfp-rag/.claude-plugin/plugin.json"),
@@ -26,6 +27,23 @@ describe("jfp-rag plugin packaging", () => {
   })
 
   for (const skill of SKILLS) {
+    it(`${skill} has discoverable metadata and a matching invocation`, () => {
+      const body = read(`plugins/jfp-rag/skills/${skill}/SKILL.md`)
+      const frontmatter = body.match(/^---\n([\s\S]*?)\n---/)?.[1]
+      const metadata = YAML.parse(frontmatter ?? "")
+      const openai = YAML.parse(
+        read(`plugins/jfp-rag/skills/${skill}/agents/openai.yaml`),
+      )
+      expect(metadata.name).toBe(skill)
+      expect(metadata.description.trim().length).toBeGreaterThan(0)
+      expect(openai.interface.default_prompt).toContain(`$${skill}`)
+      expect(openai.policy?.allow_implicit_invocation ?? true).toBe(
+        skill === "rag-review",
+      )
+    })
+  }
+
+  for (const skill of OPERATOR_SKILLS) {
     it(`${skill} is explicit, provider-neutral, and Forge-local`, () => {
       const body = read(`plugins/jfp-rag/skills/${skill}/SKILL.md`)
       const frontmatter = body.match(/^---\n([\s\S]*?)\n---/)?.[1]
