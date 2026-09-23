@@ -223,6 +223,30 @@ describe("phraseLayout", () => {
     expect(scale).toBeCloseTo(0.94 ** 6, 5)
     expect(lines[0][0].size).toBeCloseTo(38 * scale, 5)
   })
+  it("wraps rather than overflowing when nothing fits in the line budget", () => {
+    // The owner's report: "I tell you, the tax collector, not the Pharisee…"
+    // came out as ONE line running off both edges of a portrait frame.
+    const words =
+      "I tell you the tax collector not the Pharisee was in the right with God when he went home"
+        .split(" ")
+        .map((token) => ({ token, size: 26 }))
+    const { lines } = phraseLayout(words, 200, 3)
+    // It may need a fourth line at the smallest size — that is fine. What is
+    // never fine is a single line, which cannot fit and gets clipped.
+    expect(lines.length).toBeGreaterThan(1)
+    const advance = (token: string) =>
+      token === token.toUpperCase() ? 0.7 : 0.55
+    for (const line of lines) {
+      const w = line.reduce(
+        (sum, word, i) =>
+          sum +
+          (i > 0 ? word.size * 0.34 : 0) +
+          word.token.length * word.size * advance(word.token),
+        0,
+      )
+      expect(w).toBeLessThanOrEqual(200 * 1.02)
+    }
+  })
 })
 
 describe("phraseStrongWords", () => {

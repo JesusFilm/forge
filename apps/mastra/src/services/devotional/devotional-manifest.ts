@@ -42,7 +42,7 @@ export type DevotionalManifest = {
   /** Seconds of background skipped before the first card on it; see schema. */
   bgStartOffsetSec?: number
   /** Clip-first: intro overlay over the film's muted lead (see card schema). */
-  intro?: "cover" | "bands" | "hook"
+  intro?: "cover" | "bands" | "hook" | "watch"
   /** `intro: "hook"`: the question drawn on screen as the piece's title. */
   hookText?: string
   /** Clip-first: corner progress ring clocking each step (composition prop). */
@@ -98,7 +98,7 @@ export type BuildManifestInput = {
    *  screen, before the clip's own audio eases in. */
   mutedLeadSec?: number
   /** Clip-first: intro overlay over the film's muted lead (see card schema). */
-  intro?: "cover" | "bands" | "hook"
+  intro?: "cover" | "bands" | "hook" | "watch"
   /** `intro: "hook"`: the question drawn on screen as the piece's title. */
   hookText?: string
   /** Social opening card placed before the film (`--intro=quote`). */
@@ -217,7 +217,7 @@ function buildClipFirstManifest(
   // the YouTube welcome over the film's first line in a cut that never asked
   // for it (owner-reported: "the voice overlaps with the video sound").
   const hookSeg =
-    input.intro === "hook"
+    input.intro === "hook" || input.intro === "watch"
       ? input.segments.find((s) => s.id === "hook")
       : undefined
   cards.push({
@@ -236,9 +236,10 @@ function buildClipFirstManifest(
     // stepper screens (a Spanish cut once opened on WATCH / REFLECT / PRAY).
     // `hook` draws no steps at all — it is only a voice over the film.
     ...(input.intro
-      ? input.intro === "hook"
+      ? input.intro === "hook" || input.intro === "watch"
         ? {
             intro: input.intro,
+            ...(input.intro === "watch" ? { steps: STEPS } : {}),
             // The spoken question doubles as the on-screen title. It comes
             // from the render option, not from the produced segment: a reused
             // cached take carries whatever display text it was made with.

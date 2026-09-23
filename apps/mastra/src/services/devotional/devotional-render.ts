@@ -1019,7 +1019,7 @@ export type RenderOptions = {
   clipTrimEndSec?: number
   /** Clip-first only: intro overlay over the film's muted lead (`--muted-lead`).
    *  `hook` draws nothing and instead opens on a spoken question (`hookLine`). */
-  intro?: "cover" | "bands" | "hook"
+  intro?: "cover" | "bands" | "hook" | "watch"
   /** `intro: "hook"` only: the question the voice asks over the film's first
    *  seconds. Its recorded length sets the lead, so nothing has to be timed by
    *  hand. Must reach every `buildNarrationSegments` call in a run. */
@@ -1165,7 +1165,9 @@ async function renderInStage(
   // HERE, before the clip window is cut, because the lead pulls that window
   // earlier by exactly this much.
   let hookLeadSec = 0
-  if (options.intro === "hook") {
+  // `watch` is the same machinery as `hook` — a spoken opening in front of the
+  // scene — drawn as the step's own screen instead of a title.
+  if (options.intro === "hook" || options.intro === "watch") {
     const seg = audio.segments.find((s) => s.id === "hook")
     if (!seg) {
       log(
@@ -2008,7 +2010,11 @@ async function renderInStage(
     }
   }
 
-  if (options.faceCrop) {
+  // PORTRAIT ONLY. A 16:9 source in a 16:9 frame has nothing to crop: the only
+  // overflow is the slow Ken-Burns zoom, so every anchor move became a small
+  // camera jerk with no reason behind it (owner-reported on the wide cut). The
+  // crop exists to keep FACES in a 9:16 frame; in the wide cut it has no job.
+  if (options.faceCrop && (options.aspect ?? "portrait") !== "wide") {
     const focus = await planFaceCropAnchors({
       bgFile: path.join(stage, "bg.mp4"),
       cards: manifest.cards,

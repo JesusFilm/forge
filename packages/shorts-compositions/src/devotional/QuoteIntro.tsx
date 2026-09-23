@@ -370,6 +370,9 @@ export function QuoteIntro({
         ) : (
           <div
             style={{
+              display: "flex",
+              alignItems: "center",
+              gap: px(10),
               fontFamily: sans,
               fontWeight: 600,
               fontSize: px(19),
@@ -379,7 +382,10 @@ export function QuoteIntro({
               textShadow: `0 0 ${px(10)}px rgba(242,196,107,0.55), 0 0 ${px(26)}px rgba(242,196,107,0.3)`,
             }}
           >
-            {watchLabel.toUpperCase()}
+            {watchLabel.toUpperCase().replace(/\.$/, "")}
+            {/* The arrow the owner drew: it points into the film that follows,
+                so it sits on the baseline and carries no letter-spacing. */}
+            <span style={{ letterSpacing: 0, fontSize: px(21) }}>→</span>
           </div>
         )}
       </AbsoluteFill>

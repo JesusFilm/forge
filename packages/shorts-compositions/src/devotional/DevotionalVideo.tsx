@@ -15,6 +15,7 @@ import {
 import { loadShortFonts, SHORT_FONT_FAMILIES } from "../fonts"
 import { loadLiterata, TEASER_FONT_FAMILIES } from "./teaser-fonts"
 import { BigStepWord } from "./BigStepWord"
+import { quoteIntroTimeline } from "./quote-timing"
 import { QuoteIntro } from "./QuoteIntro"
 import { StepProgressLine } from "./StepProgressLine"
 import { StepperStack } from "./Stepper"
@@ -652,7 +653,30 @@ export function phraseLayout(
     if (line.length) lines.push(line)
     if (lines.length <= maxLines) return { scale, lines }
   }
-  return { scale: 1, lines: [words.map((w) => ({ ...w }))] }
+  // Nothing fit in `maxLines` even at the smallest size. Wrapping at that size
+  // and letting the block run an extra line is the lesser evil: the previous
+  // fallback returned ONE line at FULL size, which ran off both edges of the
+  // frame (owner-reported). A caption that is a line taller is still readable;
+  // a caption with its ends cut off is not.
+  const scale = Math.pow(0.94, 11)
+  const lines: { token: string; size: number }[][] = []
+  let line: { token: string; size: number }[] = []
+  let width = 0
+  for (const w of words) {
+    const size = w.size * scale
+    const wordW = w.token.length * size * advance(w.token)
+    const spaceW = line.length ? size * PHRASE_SPACE_W : 0
+    if (line.length && width + spaceW + wordW > maxWidth) {
+      lines.push(line)
+      line = [{ ...w, size }]
+      width = wordW
+    } else {
+      line.push({ ...w, size })
+      width += spaceW + wordW
+    }
+  }
+  if (line.length) lines.push(line)
+  return { scale, lines }
 }
 
 function PhraseCaption({
@@ -687,10 +711,14 @@ function PhraseCaption({
   })
   // The column is the spec's 820px in portrait; in the 16:9 cut the frame is
   // far wider than it is tall, so the same column in DESIGN units would run
-  // nearly edge to edge. Cap it at a little over half the width there.
+  // nearly edge to edge. Cap it at a little over half the width THERE ONLY —
+  // applied in portrait too, it cut the column to 605px and pushed long cues
+  // into the layout's fallback, which set them as one line off both edges
+  // (owner-reported on "I tell you, the tax collector…").
+  const wideFrame = frameWidth > frameHeight
   const maxWidthUnits = Math.min(
     unit(PHRASE_MAX_WIDTH_PX),
-    frameWidth > 0 ? (frameWidth * 0.56) / (px(1) || 1) : Infinity,
+    wideFrame && frameWidth > 0 ? (frameWidth * 0.56) / (px(1) || 1) : Infinity,
   )
   const { lines } = phraseLayout(sized, maxWidthUnits)
   let i = 0
@@ -1227,7 +1255,7 @@ function ClipIntro({
   bleedX = 0,
   hookText,
 }: {
-  variant: "cover" | "bands" | "hook"
+  variant: "cover" | "bands" | "hook" | "watch"
   leadSec: number
   frame: number
   fps: number
@@ -1342,6 +1370,55 @@ function ClipIntro({
     whiteSpace: "nowrap" as const,
     textShadow: "0 1px 8px rgba(0,0,0,0.45)",
   })
+
+  if (variant === "watch") {
+    // The opening beat, drawn exactly like the hand-over screens later on: the
+    // picture blurs, the step's name comes out of that blur at a whisper and
+    // goes back into it, and the row at the top carries WATCH lit (owner:
+    // "same as with REFLECT"). The voice says the opening line over it.
+    const on = interpolate(t, [0, 0.5], [0, 1], clampBoth)
+    const off = interpolate(t, [L - 1.2, L - 0.3], [1, 0], clampBoth)
+    const hold = on * off
+    const wordIn = interpolate(t, [0.3, 1.5], [0, 1], {
+      ...clampBoth,
+      easing: ease,
+    })
+    const wordOut = interpolate(t, [L - 1.6, L - 0.4], [1, 0], clampBoth)
+    const wordOpacity = 0.15 * wordIn * wordOut
+    const wordBlur = interpolate(
+      t,
+      [0.3, 1.5, L - 1.6, L - 0.4],
+      [26, 0, 0, 26],
+      clampBoth,
+    )
+    return (
+      <div style={{ ...bleed, pointerEvents: "none" }}>
+        {/* The picture itself is blurred by the card behind this; here the
+            scrim carries the depth so the word reads at 15 percent. */}
+        <AbsoluteFill style={{ background: `rgba(0,0,0,${0.42 * hold})` }} />
+        <AbsoluteFill
+          style={{ alignItems: "center", justifyContent: "center" }}
+        >
+          <div
+            style={{
+              fontFamily: SERIF,
+              fontWeight: 600,
+              fontSize: px(126),
+              lineHeight: 1,
+              letterSpacing: px(7),
+              color: INTRO_GOLD,
+              opacity: wordOpacity,
+              filter: `blur(${wordBlur.toFixed(2)}px)`,
+              transform: "translateY(-0.08em)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {steps[0] ?? "WATCH"}
+          </div>
+        </AbsoluteFill>
+      </div>
+    )
+  }
 
   if (variant === "hook") {
     // YouTube opening: the question IS the title. The film runs under a scrim
@@ -4066,6 +4143,24 @@ function Background({
   // first second, easing out into the slow drift the rest of the piece uses
   // (owner: "as if we landed there quickly"). Never close enough to crop into
   // faces — it settles at 1.06, the same neighbourhood as everything else.
+  // `watch` opening: the film is blurred behind the step's name, and the blur
+  // lifts as the opening line finishes — the same move the hand-over screens
+  // make, so the piece opens and hands over in one visual language.
+  const watchIntroBlurPx =
+    card.intro === "watch" && card.mutedLeadSec
+      ? interpolate(
+          frame,
+          [
+            0,
+            Math.round(fps * 0.4),
+            Math.round((card.mutedLeadSec - 1.1) * fps),
+            Math.round(card.mutedLeadSec * fps),
+          ],
+          [px(3), px(6), px(6), 0],
+          { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+        )
+      : 0
+
   const kbLanding =
     card.kind === "quote-intro"
       ? // Starts after the opening fade from black (0.6s) — a push-in nobody
@@ -4285,7 +4380,7 @@ function Background({
           // well down, and comes up over the last second of the lead — the
           // question has to be the thing being listened to.
           const hookLead =
-            card.intro === "hook"
+            card.intro === "hook" || card.intro === "watch"
               ? Math.round((card.mutedLeadSec ?? 0) * fps)
               : 0
           const duck =
@@ -4313,7 +4408,9 @@ function Background({
                 width: "100%",
                 height: "100%",
                 objectFit: "contain",
-                filter: videoGrade || undefined,
+                filter:
+                  `${videoGrade ?? ""} ${watchIntroBlurPx > 0.05 ? `blur(${watchIntroBlurPx.toFixed(2)}px)` : ""}`.trim() ||
+                  undefined,
                 transform: `scale(${kbFit})`,
               }
             : fullBleedVideo
@@ -4858,7 +4955,7 @@ export function stepGroups(
       c.intro && c.mutedLeadSec
         ? Math.round(
             (c.mutedLeadSec +
-              (c.intro === "hook"
+              (c.intro === "hook" || c.intro === "watch"
                 ? 0
                 : INTRO_HEADER_HOLD_SEC + INTRO_HEADER_FADE_SEC)) *
               fps,
@@ -4911,7 +5008,8 @@ function StepRowOverlay({
     filmIndex >= 0 && cards[filmIndex].intro && cards[filmIndex].mutedLeadSec
       ? Math.round(
           ((cards[filmIndex].mutedLeadSec ?? 0) +
-            (cards[filmIndex].intro === "hook"
+            (cards[filmIndex].intro === "hook" ||
+            cards[filmIndex].intro === "watch"
               ? 0
               : INTRO_HEADER_HOLD_SEC + INTRO_HEADER_FADE_SEC)) *
             fps,
@@ -4920,8 +5018,9 @@ function StepRowOverlay({
   const stageStarts = cards
     .map((c, i) => (c.kind === "step" ? frames[i]?.from : undefined))
     .filter((f): f is number => f != null)
+  const watchIntro = filmIndex >= 0 && cards[filmIndex].intro === "watch"
   const starts = [
-    (film?.from ?? 0) + introLead,
+    (film?.from ?? 0) + (watchIntro ? 0 : introLead),
     ...stageStarts.slice(0, labels.length - 1),
   ]
   if (starts.length < labels.length) return null
@@ -5257,6 +5356,20 @@ export function DevotionalVideo(props: DevotionalInputProps) {
   // take is the stepper, right after a hard cut from the film, and a black
   // frame there is a flash rather than an opening.
   let bgAcc = Math.round((props.bgStartOffsetSec ?? 0) * fps)
+  // Where the bed is allowed in when the piece opens on a quote card.
+  const quoteIntroIndex = props.cards.findIndex((c) => c.kind === "quote-intro")
+  const quoteIntroMusicAt =
+    quoteIntroIndex >= 0 && frames[quoteIntroIndex]
+      ? frames[quoteIntroIndex].from +
+        Math.round(
+          quoteIntroTimeline({
+            quoteA: props.cards[quoteIntroIndex].quoteA ?? "",
+            quoteB: props.cards[quoteIntroIndex].quoteB ?? "",
+            questions: props.cards[quoteIntroIndex].questionsList ?? [],
+          }).watchAt * fps,
+        )
+      : null
+
   const bgStartFrames = props.cards.map((c, i) => {
     // A video card normally shows its OWN window, so it starts at frame 0 and
     // does not consume any of the shared take. `continuousClip` makes it part
@@ -5412,6 +5525,10 @@ export function DevotionalVideo(props: DevotionalInputProps) {
           src={staticFile(props.musicFile)}
           loop
           volume={(f) => {
+            // A quote opening runs on its own sounds — typing and transitions.
+            // The bed waits for "LET'S WATCH", where the piece proper begins
+            // (owner: start the music after the questions).
+            if (quoteIntroMusicAt != null && f < quoteIntroMusicAt) return 0
             const base = interpolate(
               f,
               [
@@ -5555,7 +5672,9 @@ function CardLayer({
           bleedX={bleedX ?? 0}
           hideBeforeSec={
             // The scene's own dialogue starts exactly at the lead's end.
-            card.intro === "hook" ? (card.mutedLeadSec ?? 0) : 0
+            card.intro === "hook" || card.intro === "watch"
+              ? (card.mutedLeadSec ?? 0)
+              : 0
           }
         />
       ) : null}

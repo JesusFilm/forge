@@ -109,7 +109,7 @@ export const devotionalCardSchema = z.object({
    * sound comes up (the YouTube opening, where the thumbnail has already said
    * what the series is). Needs `mutedLeadSec` for its length.
    */
-  intro: z.enum(["cover", "bands", "hook"]).optional(),
+  intro: z.enum(["cover", "bands", "hook", "watch"]).optional(),
   /** `quote-intro` card: the opening quotation, in two halves so each can
    *  arrive from its own side, with the phrase to carry the weight in each. */
   quoteA: z.string().optional(),
