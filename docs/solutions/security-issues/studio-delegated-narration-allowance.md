@@ -55,3 +55,24 @@ Validation uses real loopback Postgres authoring persistence and deterministic
 provider output. Manager runner tests exercise its actual paid-provider seam with
 a fake provider and lost-response replay. These are not real Claude/Codex client
 qualification or authorized paid-provider smoke evidence.
+
+## Runner observations cannot terminate another execution
+
+A lost `finish` response can follow a committed successful paid call, and a
+lost context response can happen in a duplicate runner while another owns the
+live claim. Neither exception proves failure ownership. The delegated runner
+uses `reconciliation-note` for these exceptions; only a
+`StudioNarrationDispatchFailure` after owned, recorded dispatch failure may
+request terminal failure. The separate command also prevents an old Admin
+replica from interpreting a new observer as its former mutating preflight path.
+
+Admin records at most eight deduplicated observer notes in the existing execution
+ledger, under the run lock, with `diagnosticOnly: true` and no provider dispatch.
+They appear in `shorts.narrationStatus` with same-key resume guidance. Notes never
+change a run, attempt, or existing paid claim. The legacy delegated
+`preflight-error` path now records the same observation instead of terminalizing.
+A run stays READY so retained COMPLETED speech calls can be reattached without
+another paid generation; RUNNING/AMBIGUOUS calls remain consumed and require
+inspection. Already attached runs stay COMPLETED after a lost attachment response.
+If Admin cannot be reached to retain the note, Manager logs an unconfirmed-note
+message; the accepted run remains recoverable by its original request key.
