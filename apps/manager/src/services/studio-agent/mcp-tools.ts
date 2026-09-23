@@ -1,3 +1,4 @@
+import { studioInspectionRequestSchema } from "@forge/studio-contracts/inspection"
 import {
   studioDraftRenderRequestSchema,
   studioDraftRenderIdentitySchema,
@@ -18,6 +19,14 @@ import {
 } from "@forge/studio-contracts"
 import { studioChatSchema } from "@forge/studio-contracts/agent"
 export const STUDIO_MCP_TOOLS = [
+  {
+    name: "shorts.inspect",
+    description:
+      "Inspect bounded sampled images and measured audio statistics from the exact rendered output. Reuses immutable evidence, never rerenders or approves. Report actual supported modalities, unknowns and sampled coverage; at most one automatic repair per handoff. Human approval remains separate.",
+    scope: "shorts:read",
+    action: "inspect",
+    schema: studioInspectionRequestSchema,
+  },
   {
     name: "shorts.narrationQuote",
     description:

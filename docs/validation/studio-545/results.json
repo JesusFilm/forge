@@ -1,0 +1,104 @@
+[
+  {
+    "fixture": "clean",
+    "durationMs": 4000,
+    "cutCount": 1,
+    "renderMs": 9162,
+    "preparationMs": 582,
+    "samples": 6,
+    "outputDigest": "d9d12b451e576607bf7a18643997750cb1f1ee4e2154dda2601dc59730b9a343",
+    "evidenceBytes": 11642,
+    "findings": [],
+    "toolchain": {
+      "ffmpeg": "ffmpeg version n9.0.1-27-g9b0578816c-20260907 Copyright (c) 2000-2026 the FFmpeg developers",
+      "ffprobe": "ffprobe version n9.0.1-27-g9b0578816c-20260907 Copyright (c) 2007-2026 the FFmpeg developers"
+    },
+    "clientReasoningMs": null,
+    "repairRenderMs": null
+  },
+  {
+    "fixture": "authored-gap",
+    "durationMs": 4000,
+    "cutCount": 2,
+    "renderMs": 8320,
+    "preparationMs": 560,
+    "samples": 8,
+    "outputDigest": "1a8663bb072cf70b6909c8db6b92566c82376cdcc7fce91040df2202e252b3ef",
+    "evidenceBytes": 15177,
+    "findings": ["authored-gap"],
+    "toolchain": {
+      "ffmpeg": "ffmpeg version n9.0.1-27-g9b0578816c-20260907 Copyright (c) 2000-2026 the FFmpeg developers",
+      "ffprobe": "ffprobe version n9.0.1-27-g9b0578816c-20260907 Copyright (c) 2007-2026 the FFmpeg developers"
+    },
+    "clientReasoningMs": null,
+    "repairRenderMs": null
+  },
+  {
+    "fixture": "overflow-text",
+    "durationMs": 4000,
+    "cutCount": 1,
+    "renderMs": 8493,
+    "preparationMs": 515,
+    "samples": 6,
+    "outputDigest": "91e95cd0aa1dec7e79bcc635a87900ece2c86776039ccb886cf81bc3e9501c18",
+    "evidenceBytes": 75988,
+    "findings": ["potential-text-overflow"],
+    "toolchain": {
+      "ffmpeg": "ffmpeg version n9.0.1-27-g9b0578816c-20260907 Copyright (c) 2000-2026 the FFmpeg developers",
+      "ffprobe": "ffprobe version n9.0.1-27-g9b0578816c-20260907 Copyright (c) 2007-2026 the FFmpeg developers"
+    },
+    "clientReasoningMs": null,
+    "repairRenderMs": null
+  },
+  {
+    "fixture": "black-cut",
+    "durationMs": 4000,
+    "cutCount": 1,
+    "renderMs": 8369,
+    "preparationMs": 430,
+    "samples": 6,
+    "outputDigest": "632a19b2e786a9df60336f76a022dea4cc87cdc24cc7355cecdd699697757ec6",
+    "evidenceBytes": 12417,
+    "findings": ["sampled-black", "sampled-black", "sampled-black"],
+    "toolchain": {
+      "ffmpeg": "ffmpeg version n9.0.1-27-g9b0578816c-20260907 Copyright (c) 2000-2026 the FFmpeg developers",
+      "ffprobe": "ffprobe version n9.0.1-27-g9b0578816c-20260907 Copyright (c) 2007-2026 the FFmpeg developers"
+    },
+    "clientReasoningMs": null,
+    "repairRenderMs": null
+  },
+  {
+    "fixture": "silent-audio",
+    "durationMs": 4000,
+    "cutCount": 1,
+    "renderMs": 8187,
+    "preparationMs": 514,
+    "samples": 6,
+    "outputDigest": "ddf7979a9f715bf939e5131f44a17ca2f4abc2adff189ac0424eb70a34e709b0",
+    "evidenceBytes": 11880,
+    "findings": ["audio-silence"],
+    "toolchain": {
+      "ffmpeg": "ffmpeg version n9.0.1-27-g9b0578816c-20260907 Copyright (c) 2000-2026 the FFmpeg developers",
+      "ffprobe": "ffprobe version n9.0.1-27-g9b0578816c-20260907 Copyright (c) 2007-2026 the FFmpeg developers"
+    },
+    "clientReasoningMs": null,
+    "repairRenderMs": null
+  },
+  {
+    "fixture": "representative-30s",
+    "durationMs": 30000,
+    "cutCount": 1,
+    "renderMs": 48637,
+    "preparationMs": 459,
+    "samples": 6,
+    "outputDigest": "6620f3ad3f68041e714cc0d8cf9ea1d0137dace0640cdcc458cb4d1ed66661cd",
+    "evidenceBytes": 11665,
+    "findings": [],
+    "toolchain": {
+      "ffmpeg": "ffmpeg version n9.0.1-27-g9b0578816c-20260907 Copyright (c) 2000-2026 the FFmpeg developers",
+      "ffprobe": "ffprobe version n9.0.1-27-g9b0578816c-20260907 Copyright (c) 2007-2026 the FFmpeg developers"
+    },
+    "clientReasoningMs": null,
+    "repairRenderMs": null
+  }
+]

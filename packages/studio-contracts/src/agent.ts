@@ -144,6 +144,7 @@ export const studioDelegatedActions = [
   "render-request",
   "render-status",
   "render-read",
+  "inspection-context",
 ] as const
 export const studioDelegatedRpcSchema = z
   .object({ action: z.enum(studioDelegatedActions), input: z.unknown() })

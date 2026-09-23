@@ -1,3 +1,4 @@
+import { inspectStudioRender } from "@/services/studio-inspection"
 import { after } from "next/server"
 import { beforeEach, expect, it, vi } from "vitest"
 import { StudioBoundaryError } from "@forge/studio-server"
@@ -5,6 +6,13 @@ import { POST } from "./route"
 import { authenticateStudioMcp } from "@/services/studio-agent/oauth"
 import { studioServiceCall } from "@/services/studio-agent/transport"
 vi.mock("next/server", () => ({ after: vi.fn() }))
+vi.mock("@/services/studio-inspection", () => ({
+  inspectStudioRender: vi.fn(),
+  studioInspectionMcpResult: () => ({
+    content: [{ type: "image", mimeType: "image/jpeg", data: "/9j/2Q==" }],
+    structuredContent: { result: { advisoryOnly: true } },
+  }),
+}))
 vi.mock("@/config/env", () => ({
   env: {
     MANAGER_BASE_URL: "https://studio.example.test",
@@ -261,4 +269,27 @@ it("requires separate render consent and returns exact identity links and refres
       })
     ).status,
   ).toBe(400)
+})
+
+it("offers read-scoped output inspection and returns actual MCP image blocks", async () => {
+  vi.mocked(inspectStudioRender).mockResolvedValue(
+    {} as Awaited<ReturnType<typeof inspectStudioRender>>,
+  )
+  const response = await rpc("tools/call", {
+    name: "shorts.inspect",
+    arguments: { projectId: "project", attemptId: "render" },
+  })
+  expect(authenticateStudioMcp).toHaveBeenCalledWith(
+    expect.any(Request),
+    "shorts:read",
+  )
+  expect(inspectStudioRender).toHaveBeenCalledWith(
+    expect.any(Function),
+    { projectId: "project", attemptId: "render" },
+    expect.any(AbortSignal),
+  )
+  expect((await response.json()).result.content[0]).toMatchObject({
+    type: "image",
+    mimeType: "image/jpeg",
+  })
 })

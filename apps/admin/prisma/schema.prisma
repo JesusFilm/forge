@@ -5328,6 +5328,7 @@ model ShortCommand {
 }
 
 model ShortAttempt {
+  inspections            ShortRenderInspection[]
   muxJob                 ShortMuxJob?
   renderJob              ShortRenderJob?
   productionRun          ShortProductionRun?
@@ -5374,6 +5375,7 @@ model ShortApproval {
 
 /// Shorts families group versions; each version pins a separate registry blob.
 model ShortAssetVersion {
+  inspections      ShortRenderInspection[]
   renderRetentions ShortRenderRetainedAsset[]
   usages           ShortAssetUsage[]
   id               String                     @id @default(cuid())
@@ -5859,4 +5861,17 @@ model ShortNarrationAdmission {
 
   @@index([projectId], map: "short_narration_admission_project")
   @@map("short_narration_admission")
+}
+
+model ShortRenderInspection {
+  attemptId       String            @map("attempt_id") @db.VarChar(128)
+  version         String            @db.VarChar(128)
+  outputVersionId String            @map("output_version_id")
+  evidence        Json
+  createdAt       DateTime          @default(now()) @map("created_at")
+  attempt         ShortAttempt      @relation(fields: [attemptId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  output          ShortAssetVersion @relation(fields: [outputVersionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@id([attemptId, version])
+  @@map("short_render_inspection")
 }
