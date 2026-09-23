@@ -6,6 +6,7 @@ export const studioRpcSchema = z
   .object({
     action: z.enum([
       "render-state",
+      "inspection-context",
       "publication-candidate",
       "render-cancel",
       "publish",
@@ -18,6 +19,8 @@ export const studioRpcSchema = z
       "calendar-authorize",
       "calendar-cancel",
       "narration-plan",
+      "narration-status",
+      "narration-authorize",
       "request",
       "attempts",
       "production-admit",

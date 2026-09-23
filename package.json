@@ -93,7 +93,8 @@
       "@fortedigital/nextjs-cache-handler@3.2.1": "patches/@fortedigital__nextjs-cache-handler@3.2.1.patch",
       "@workflow/world-postgres@4.1.1": "patches/@workflow__world-postgres@4.1.1.patch",
       "@datadog/pprof@5.15.0": "patches/@datadog__pprof@5.15.0.patch",
-      "next@16.2.4": "patches/next@16.2.4.patch"
+      "next@16.2.4": "patches/next@16.2.4.patch",
+      "@remotion/renderer@4.0.475": "patches/@remotion__renderer@4.0.475.patch"
     }
   },
   "devDependencies": {

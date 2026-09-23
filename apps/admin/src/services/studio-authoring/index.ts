@@ -157,7 +157,11 @@ export class StudioAuthoringService {
       return result
     })
   }
-  async request(user: Principal | null, raw: unknown) {
+  async request(
+    user: Principal | null,
+    raw: unknown,
+    options?: { deferSourceMaterialization: true },
+  ) {
     const actor = studioActor(user)
     const input = studioRequestSchema.parse(raw)
     return this.db.$transaction(async (tx) => {
@@ -176,10 +180,11 @@ export class StudioAuthoringService {
         },
       })
       if (input.kind === "RENDER")
-        await assertStudioRenderSources(
-          tx,
-          studioDocumentSchema.parse(revision.document),
-        )
+        await (
+          options?.deferSourceMaterialization
+            ? resolveStudioDocumentSources
+            : assertStudioRenderSources
+        )(tx, studioDocumentSchema.parse(revision.document))
       if (input.kind === "NARRATION") {
         const dependencyHash = scriptHash(
           studioDocumentSchema.parse(revision.document),

@@ -10,7 +10,9 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "skill:package": "python3 scripts/package-shorts-skill.py",
+    "skill:check": "python3 scripts/package-shorts-skill.py --check"
   },
   "dependencies": {
     "@apollo/client": "^4.1.4",

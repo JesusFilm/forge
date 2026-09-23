@@ -65,6 +65,9 @@ patchedDependencies:
   '@fortedigital/nextjs-cache-handler@3.2.1':
     hash: 5euoeic6bifwd364tqwtkq6smm
     path: patches/@fortedigital__nextjs-cache-handler@3.2.1.patch
+  '@remotion/renderer@4.0.475':
+    hash: 7ac5bgesywcfp26cy6ltpq3vgy
+    path: patches/@remotion__renderer@4.0.475.patch
   '@workflow/world-postgres@4.1.1':
     hash: 72ovcymz7dhupz3oklzje2s2aa
     path: patches/@workflow__world-postgres@4.1.1.patch
@@ -1115,7 +1118,7 @@ importers:
         version: 4.0.475
       '@remotion/renderer':
         specifier: 4.0.475
-        version: 4.0.475(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 4.0.475(patch_hash=7ac5bgesywcfp26cy6ltpq3vgy)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       react:
         specifier: 19.2.4
         version: 19.2.4
@@ -1204,7 +1207,7 @@ importers:
         version: link:../../packages/studio-contracts
       '@remotion/renderer':
         specifier: 4.0.475
-        version: 4.0.475(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 4.0.475(patch_hash=7ac5bgesywcfp26cy6ltpq3vgy)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       react:
         specifier: 19.2.4
         version: 19.2.4
@@ -22591,7 +22594,7 @@ snapshots:
       react-dom: 19.2.4(react@19.2.4)
       remotion: 4.0.475(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
 
-  '@remotion/renderer@4.0.475(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+  '@remotion/renderer@4.0.475(patch_hash=7ac5bgesywcfp26cy6ltpq3vgy)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
       '@remotion/licensing': 4.0.475
       '@remotion/streaming': 4.0.475
@@ -22628,7 +22631,7 @@ snapshots:
       '@remotion/canvas-capture': 4.0.475(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@remotion/media-utils': 4.0.475(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@remotion/player': 4.0.475(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@remotion/renderer': 4.0.475(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@remotion/renderer': 4.0.475(patch_hash=7ac5bgesywcfp26cy6ltpq3vgy)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@remotion/studio-shared': 4.0.475(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@remotion/timeline-utils': 4.0.475
       '@remotion/web-renderer': 4.0.475(react-dom@19.2.4(react@19.2.4))(react@19.2.4)

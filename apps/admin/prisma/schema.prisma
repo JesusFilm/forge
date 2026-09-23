@@ -5275,19 +5275,21 @@ model RecommendationCuratedPointer {
 
 // Shorts authoring is independent of Manager render jobs and catalog lifecycle.
 model Short {
-  sourceVideoDubId      String?           @map("source_video_dub_id")
-  sourceVideoDub        VideoDub?         @relation(fields: [sourceVideoDubId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  narrationAllowance    ShortNarrationAllowance?
+  narrationAdmissions   ShortNarrationAdmission[]
+  sourceVideoDubId      String?                   @map("source_video_dub_id")
+  sourceVideoDub        VideoDub?                 @relation(fields: [sourceVideoDubId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   publication           ShortPublication?
   calendarSlots         ShortPlanSlot[]
-  id                    String            @id @db.VarChar(128)
-  currentRevision       Int               @map("current_revision")
-  ownerId               String            @map("owner_id") @db.VarChar(128)
-  lifecycle             String            @default("DRAFT") @db.VarChar(16)
-  firstPublishedAt      DateTime?         @map("first_published_at")
-  unpublishedAt         DateTime?         @map("unpublished_at")
-  createdAt             DateTime          @default(now()) @map("created_at")
-  currentRevisionRecord ShortRevision     @relation("CurrentShortRevision", fields: [id, currentRevision], references: [projectId, number], onDelete: NoAction, onUpdate: NoAction, map: "short_current_revision_fk")
-  revisions             ShortRevision[]   @relation("ShortHistory")
+  id                    String                    @id @db.VarChar(128)
+  currentRevision       Int                       @map("current_revision")
+  ownerId               String                    @map("owner_id") @db.VarChar(128)
+  lifecycle             String                    @default("DRAFT") @db.VarChar(16)
+  firstPublishedAt      DateTime?                 @map("first_published_at")
+  unpublishedAt         DateTime?                 @map("unpublished_at")
+  createdAt             DateTime                  @default(now()) @map("created_at")
+  currentRevisionRecord ShortRevision             @relation("CurrentShortRevision", fields: [id, currentRevision], references: [projectId, number], onDelete: NoAction, onUpdate: NoAction, map: "short_current_revision_fk")
+  revisions             ShortRevision[]           @relation("ShortHistory")
   commands              ShortCommand[]
 
   @@index([sourceVideoDubId])
@@ -5326,6 +5328,7 @@ model ShortCommand {
 }
 
 model ShortAttempt {
+  inspections            ShortRenderInspection[]
   muxJob                 ShortMuxJob?
   renderJob              ShortRenderJob?
   productionRun          ShortProductionRun?
@@ -5372,6 +5375,7 @@ model ShortApproval {
 
 /// Shorts families group versions; each version pins a separate registry blob.
 model ShortAssetVersion {
+  inspections      ShortRenderInspection[]
   renderRetentions ShortRenderRetainedAsset[]
   usages           ShortAssetUsage[]
   id               String                     @id @default(cuid())
@@ -5551,16 +5555,17 @@ model ShortPack {
 }
 
 model ShortProductionRun {
-  id            String                @id @default(cuid())
-  attemptId     String?               @unique @map("attempt_id") @db.VarChar(128)
-  attempt       ShortAttempt?         @relation(fields: [attemptId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  experimentId  String?               @unique @map("experiment_id")
-  experiment    ShortExperiment?      @relation(fields: [experimentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  actor         Json
-  maxCostMicros BigInt                @map("max_cost_micros")
-  state         String                @default("READY")
-  createdAt     DateTime              @default(now()) @map("created_at")
-  calls         ShortProductionCall[]
+  narrationAdmission ShortNarrationAdmission?
+  id                 String                   @id @default(cuid())
+  attemptId          String?                  @unique @map("attempt_id") @db.VarChar(128)
+  attempt            ShortAttempt?            @relation(fields: [attemptId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  experimentId       String?                  @unique @map("experiment_id")
+  experiment         ShortExperiment?         @relation(fields: [experimentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  actor              Json
+  maxCostMicros      BigInt                   @map("max_cost_micros")
+  state              String                   @default("READY")
+  createdAt          DateTime                 @default(now()) @map("created_at")
+  calls              ShortProductionCall[]
 
   @@map("short_production_run")
 }
@@ -5626,7 +5631,20 @@ model ShortRenderExecution {
   @@map("short_render_execution")
 }
 
+model ShortRenderPreparation {
+  attemptId String           @map("attempt_id") @db.VarChar(128)
+  leaseId   String           @map("lease_id")
+  inputHash String           @map("input_hash") @db.VarChar(64)
+  document  Json
+  createdAt DateTime         @default(now()) @map("created_at")
+  lease     ShortRenderLease @relation(fields: [attemptId, leaseId], references: [attemptId, leaseId], onDelete: Restrict, onUpdate: NoAction)
+
+  @@id([attemptId, leaseId])
+  @@map("short_render_preparation")
+}
+
 model ShortRenderLease {
+  preparation    ShortRenderPreparation?
   retainedAssets ShortRenderRetainedAsset[]
   attemptId      String                     @map("attempt_id") @db.VarChar(128)
   leaseId        String                     @map("lease_id")
@@ -5820,4 +5838,40 @@ model ShortScheduleDispatch {
   lastError       String?                    @map("last_error") @db.VarChar(80)
 
   @@map("short_schedule_dispatch")
+}
+
+/// Durable authoring-cycle allowance. Only interactive commands may add passes.
+model ShortNarrationAllowance {
+  projectId   String @id @map("project_id") @db.VarChar(128)
+  project     Short  @relation(fields: [projectId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  extraPasses Int    @default(0) @map("extra_passes")
+
+  @@map("short_narration_allowance")
+}
+
+/// Immutable accepted plan and charged-pass evidence, including reuse-only runs.
+model ShortNarrationAdmission {
+  runId        String             @id @map("run_id")
+  run          ShortProductionRun @relation(fields: [runId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  projectId    String             @map("project_id") @db.VarChar(128)
+  project      Short              @relation(fields: [projectId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  consumesPass Boolean            @map("consumes_pass")
+  plan         Json
+  createdAt    DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([projectId], map: "short_narration_admission_project")
+  @@map("short_narration_admission")
+}
+
+model ShortRenderInspection {
+  attemptId       String            @map("attempt_id") @db.VarChar(128)
+  version         String            @db.VarChar(128)
+  outputVersionId String            @map("output_version_id")
+  evidence        Json
+  createdAt       DateTime          @default(now()) @map("created_at")
+  attempt         ShortAttempt      @relation(fields: [attemptId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  output          ShortAssetVersion @relation(fields: [outputVersionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@id([attemptId, version])
+  @@map("short_render_inspection")
 }

@@ -1,0 +1,158 @@
+{
+  "fixtureOnly": true,
+  "client": {
+    "name": "Codex CLI",
+    "version": "0.150.0-alpha.12.2",
+    "model": "gpt-5.6-sol",
+    "sandbox": "read-only",
+    "authentication": "existing ChatGPT subscription; synthetic loopback MCP bearer, not OAuth qualification"
+  },
+  "portableZipSha256": "28a21653e52ef8b45de2ba09c5c1c64672aba20b1bab55fd17f184ac183bfe43",
+  "finalReviewedZipSha256": "0bae679d86fd197aef6416c28533d6ff5ad6bab93abac73d05458aab9e471cbe",
+  "finalReviewedZipFullClientRun": true,
+  "finalReviewedZipEvidence": "final-skill-replay.md",
+  "timingDefault": "250ms local trace observer; render excluded; local fixture timings, not production SLO",
+  "handoffs": [
+    {
+      "label": "codex-resume-renewed",
+      "completed": true,
+      "projectId": "kindness-today-10s-6433dc84",
+      "revision": 8,
+      "attemptId": "cmudzyor9007g2c94w91wajsl",
+      "output": {
+        "assetId": "7e963098-36d7-4e8b-9409-9a20be968833",
+        "versionId": "cmue00z5g007k2c940e2c8bpb",
+        "digest": "1c9157776bf4fd61e94dff0388c2a22257317e854be8eeb4ea866bf502d55a14"
+      },
+      "outputReadyAt": "2026-09-23T11:07:32.369Z",
+      "evidenceReadyAt": "2026-09-23T11:07:57.150Z",
+      "preparationMs": 7848,
+      "handoffAt": "2026-09-23T11:08:24.629268+00:00",
+      "addedSeconds": 52.260268,
+      "frames": [0, 89, 90, 100, 149, 150, 199, 299],
+      "blocks": {
+        "text": 9,
+        "image": 8
+      }
+    },
+    {
+      "label": "codex-correction",
+      "completed": true,
+      "projectId": "kindness-today-10s-6433dc84",
+      "revision": 11,
+      "attemptId": "cmue050zp008a2c946s64ozc2",
+      "output": {
+        "assetId": "d6f2d277-4e04-4bd5-b716-222f6bdf2be5",
+        "versionId": "cmue07i02008e2c94mlk96854",
+        "digest": "78c519ed38638d6d342047092f0b48365ca74a2ca336072937da3f952d8d503a"
+      },
+      "outputReadyAt": "2026-09-23T11:12:36.690Z",
+      "evidenceReadyAt": "2026-09-23T11:12:51.249Z",
+      "preparationMs": 7151,
+      "handoffAt": "2026-09-23T11:13:10.715721+00:00",
+      "addedSeconds": 34.025721,
+      "frames": [0, 89, 90, 100, 149, 150, 199, 299],
+      "blocks": {
+        "text": 9,
+        "image": 8
+      }
+    },
+    {
+      "label": "codex-reuse",
+      "completed": true,
+      "projectId": "kindness-today-10s-6433dc84",
+      "revision": 12,
+      "attemptId": "cmue0aonr008o2c9402cwnnem",
+      "output": {
+        "assetId": "ad06afa2-4672-411a-980d-b0704cbd64a8",
+        "versionId": "cmue0cxpb008s2c94ck1bedgq",
+        "digest": "1854dee97e455c8e686bc18eeb4d44150ee8c0b3cd94e343644ba116b307c752"
+      },
+      "outputReadyAt": "2026-09-23T11:16:50.356Z",
+      "evidenceReadyAt": "2026-09-23T11:17:05.252Z",
+      "preparationMs": 7681,
+      "handoffAt": "2026-09-23T11:17:27.471683+00:00",
+      "addedSeconds": 37.115683,
+      "frames": [0, 89, 90, 100, 149, 150, 199, 299],
+      "blocks": {
+        "text": 9,
+        "image": 8
+      }
+    },
+    {
+      "label": "codex-reuse-verification",
+      "completed": true,
+      "projectId": "kindness-today-10s-6433dc84",
+      "revision": 13,
+      "attemptId": "cmue0js0e009e2c94ljcu9mjt",
+      "output": {
+        "assetId": "70af8f92-f61f-44d8-bd41-4ff9b6da242d",
+        "versionId": "cmue0mbtw009i2c94205r2wl5",
+        "digest": "8a96f5384d87c896556d132fb79cfae320d1a585a7b70af694569a6a2c2b971b"
+      },
+      "outputReadyAt": "2026-09-23T11:24:08.539Z",
+      "evidenceReadyAt": "2026-09-23T11:24:47.790Z",
+      "preparationMs": 8350,
+      "handoffAt": "2026-09-23T11:25:09.531Z",
+      "addedSeconds": 60.992,
+      "frames": [0, 89, 90, 100, 149, 150, 199, 299],
+      "blocks": {
+        "text": 9,
+        "image": 8
+      },
+      "timingSource": "Codex rollout final_answer timestamp; independent observer terminated before handoff"
+    }
+  ],
+  "narration": {
+    "allowed": 2,
+    "used": 2,
+    "remaining": 0,
+    "admissions": [
+      {
+        "runId": "cmudo89vl004g2c94hqdtzv0m",
+        "consumesPass": true
+      },
+      {
+        "runId": "cmue04ovc007w2c940qt5huho",
+        "consumesPass": true
+      },
+      {
+        "runId": "cmue0j92300942c943frr5cix",
+        "consumesPass": false
+      }
+    ],
+    "clientCycleFakeProviderCalls": 2,
+    "separateInfrastructureSmokeFakeProviderCalls": 1,
+    "spokenAudioQualityQualified": false
+  },
+  "finalReviewUrl": "http://127.0.0.1:55483/dashboard/shorts/kindness-today-10s-6433dc84?revision=13&renderAttemptId=cmue0js0e009e2c94ljcu9mjt",
+  "mediaExpiryTransportProbe": {
+    "fixtureOnly": true,
+    "projectId": "kindness-today-10s-6433dc84",
+    "attemptId": "cmudzyor9007g2c94w91wajsl",
+    "revision": 8,
+    "expiredStatus": 403,
+    "refreshedStatus": 200,
+    "output": {
+      "assetId": "7e963098-36d7-4e8b-9409-9a20be968833",
+      "versionId": "cmue00z5g007k2c940e2c8bpb",
+      "digest": "1c9157776bf4fd61e94dff0388c2a22257317e854be8eeb4ea866bf502d55a14"
+    },
+    "bytes": 11494825,
+    "checkedAt": "2026-09-23T11:11:38.652Z"
+  },
+  "clientMediaAccess": {
+    "mcpRefresh": true,
+    "mcpSampleImages": true,
+    "directHttpDownloaded": false,
+    "directHttpExitCode": 7,
+    "emptyStreamDigestNotAccepted": true
+  },
+  "externalGates": [
+    "Actual Claude client",
+    "Reachable test OAuth consent/refresh",
+    "Authenticated operator UI review/correction/exact-render approval",
+    "Hosted renderer release qualification and normal release gates",
+    "Visual assessment of final archive replay JPEGs; client reported receipt only"
+  ]
+}

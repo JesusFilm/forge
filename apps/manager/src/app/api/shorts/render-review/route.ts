@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { studioIdSchema } from "@forge/studio-contracts"
-import { studioRenderStateSchema } from "@forge/studio-contracts/publication-state"
+import { studioInspectionContextSchema } from "@forge/studio-contracts/inspection"
 import {
   authenticateStudioRequest,
   readStudioBody,
@@ -29,15 +29,14 @@ export async function POST(request: Request) {
         ),
       )
     const call = createStudioInteractiveClient(actor, signal)
-    const state = studioRenderStateSchema.parse(
-      await call("render-state", input.projectId),
+    const context = studioInspectionContextSchema.parse(
+      await call("inspection-context", {
+        projectId: input.projectId,
+        attemptId: input.renderAttemptId,
+      }),
     )
-    const release = state.attempts.find(
-      (attempt) => attempt.id === input.renderAttemptId,
-    )?.catalogRelease
-    if (!release) return new Response(null, { status: 404 })
     const bytes = await createStudioAssetBroker(call, signal).read(
-      release.output,
+      context.output,
       128 * 1024 * 1024,
     )
     signal.throwIfAborted()

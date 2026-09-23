@@ -42,7 +42,11 @@ type GatewayPort = {
   ): Promise<unknown>
   allowNewClaims?(): boolean
   call(command: string, input: unknown, signal: AbortSignal): Promise<unknown>
-  prepare(snapshot: StudioRenderSnapshot, signal: AbortSignal): Promise<unknown>
+  prepare(
+    snapshot: StudioRenderSnapshot,
+    signal: AbortSignal,
+    assignment: Assignment,
+  ): Promise<unknown>
   retain(
     snapshot: StudioRenderSnapshot,
     assignment: Assignment,
@@ -89,7 +93,11 @@ export class StudioRenderPoolGateway {
       throw new StudioRenderPoolBindingError(
         "Render lease is no longer current",
       )
-    const prepared = await this.port.prepare(snapshot, signal)
+    const prepared = await this.port.prepare(
+      snapshot,
+      signal,
+      capability.assignment,
+    )
     // Source materialization can wait on remote storage. Never deliver bytes
     // after cancellation/reassignment committed during those waits.
     if (!(await this.current(capability.assignment, signal)))

@@ -44,7 +44,13 @@ const Preview = dynamic(() => import("./preview"), {
   ssr: false,
   loading: () => <div className="nle-preview-message">Loading preview…</div>,
 })
-export function StudioEditor({ projectId }: { projectId: string }) {
+export function StudioEditor({
+  projectId,
+  handoff,
+}: {
+  projectId: string
+  handoff?: import("./render-review-state").RenderHandoff
+}) {
   const [session, setSession] = useState<EditorSession | null>(null),
     [error, setError] = useState("")
   useEffect(() => {
@@ -89,7 +95,7 @@ export function StudioEditor({ projectId }: { projectId: string }) {
       </section>
     )
   return session ? (
-    <Editor projectId={projectId} session={session} />
+    <Editor projectId={projectId} session={session} handoff={handoff} />
   ) : (
     <p className="nle-empty">Opening project…</p>
   )
@@ -97,9 +103,11 @@ export function StudioEditor({ projectId }: { projectId: string }) {
 function Editor({
   session,
   projectId,
+  handoff,
 }: {
   session: EditorSession
   projectId: string
+  handoff?: import("./render-review-state").RenderHandoff
 }) {
   const state = useSyncExternalStore(
       session.subscribe,
@@ -112,7 +120,7 @@ function Editor({
     [history, setHistory] = useState<StudioRevision[] | null>(null),
     [selectCanvas, setSelectCanvas] = useState(true),
     [agentOpen, setAgentOpen] = useState(false),
-    [renderOpen, setRenderOpen] = useState(false),
+    [renderOpen, setRenderOpen] = useState(Boolean(handoff)),
     [productionOpen, setProductionOpen] = useState(false),
     [generationOpen, setGenerationOpen] = useState(false)
   const canvas = useRef<HTMLDivElement>(null),
@@ -394,6 +402,7 @@ function Editor({
       )}
       {renderOpen && (
         <RenderPanel
+          handoff={handoff}
           session={session}
           projectId={projectId}
           onClose={() => setRenderOpen(false)}

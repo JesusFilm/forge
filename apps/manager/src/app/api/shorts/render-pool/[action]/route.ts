@@ -3,7 +3,7 @@ import { StudioRenderPoolAuth } from "@/services/studio-render-pool-auth"
 import { StudioRenderPoolGateway } from "@/services/studio-render-pool-gateway"
 import { createStudioPoolHandler } from "@/services/studio-render-pool-http"
 import { studioRenderClient } from "@/services/studio-render-transport"
-import { prepareStudioRenderInput } from "@/services/studio-render-input"
+import { prepareStudioDraftRenderInput } from "@/services/studio-render-input"
 import { retainStudioRenderOutput } from "@/services/studio-render-retention"
 import { prepareStudioMuxUpload } from "@/services/studio-mux-upload"
 export const runtime = "nodejs"
@@ -31,13 +31,26 @@ export async function POST(
           allowNewClaims: () => env.STUDIO_RENDER_POOL_ENABLED === "true",
           call: (command, input, signal) =>
             studioRenderClient(signal).call(command, input),
-          prepare: (snapshot, signal) =>
-            prepareStudioRenderInput(
+          prepare: (snapshot, signal, assignment) =>
+            prepareStudioDraftRenderInput(
               studioRenderClient(signal).assets,
               snapshot.projectId,
               snapshot.document,
               env.STUDIO_PREVIEW_API_KEY ?? "",
               signal,
+              {
+                read: () =>
+                  studioRenderClient(signal).call("preparation", {
+                    attemptId: assignment.attemptId,
+                    leaseId: assignment.leaseId,
+                  }),
+                save: (document) =>
+                  studioRenderClient(signal).call("prepare", {
+                    attemptId: assignment.attemptId,
+                    leaseId: assignment.leaseId,
+                    document,
+                  }),
+              },
             ),
           retain: (snapshot, assignment, output, proof, signal) =>
             retainStudioRenderOutput(

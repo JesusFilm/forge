@@ -60,15 +60,17 @@ export async function executeNarration(
   const context = z
     .object({
       run: z.object({ state: z.string() }),
+      narrationPlan: studioNarrationPlanSchema.nullable().optional(),
       attempt: z.object({ projectId: z.string(), baseRevision: z.number() }),
     })
     .parse(await production.call("context", {}))
   if (context.run.state !== "READY") return context.run
   const plan = studioNarrationPlanSchema.parse(
-    await call("narration-plan", {
-      projectId: context.attempt.projectId,
-      expectedRevision: context.attempt.baseRevision,
-    }),
+    context.narrationPlan ??
+      (await call("narration-plan", {
+        projectId: context.attempt.projectId,
+        expectedRevision: context.attempt.baseRevision,
+      })),
   )
   const card = readStudioRates(env.STUDIO_PRODUCTION_RATE_CARD),
     provider = new ElevenStudioProvider({ key: env.ELEVENLABS_API_KEY ?? "" })
@@ -92,7 +94,8 @@ export async function executeNarration(
   }
   return runStudioNarration({
     segments: plan.segments,
-    reserveMicros: (identity) => narrationReserve(card, identity),
+    reserveMicros: (identity) =>
+      context.narrationPlan ? 0 : narrationReserve(card, identity),
     port: {
       cached,
       claim: async (key, inputDigest, reserveMicros) => {
