@@ -111,9 +111,95 @@ run(
       await expect(
         executeStudioDelegated(db, caller, { action: "approve", input: {} }),
       ).rejects.toThrow()
+      // A human wins the next revision; the agent must reread and preserve it.
+      await executeStudioInteractive(db, human, {
+        action: "apply",
+        input: {
+          projectId,
+          expectedRevision: 2,
+          idempotencyKey: randomUUID(),
+          operations: [{ kind: "set-metadata", title: "Human correction" }],
+        },
+      })
+      await expect(
+        executeStudioDelegated(db, caller, {
+          action: "apply",
+          input: {
+            projectId,
+            expectedRevision: 2,
+            idempotencyKey: randomUUID(),
+            operations: [{ kind: "set-metadata", language: "fr" }],
+          },
+        }),
+      ).rejects.toThrow("CONFLICT")
+      const history = await executeStudioDelegated(db, caller, {
+        action: "history",
+        input: { projectId },
+      })
+      expect(history).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            revision: 3,
+            actor: expect.objectContaining({ authority: "interactive", id }),
+          }),
+        ]),
+      )
+      const rebased = {
+        projectId,
+        expectedRevision: 3,
+        idempotencyKey: randomUUID(),
+        operations: [{ kind: "set-metadata", language: "fr" }],
+      }
+      const receipt = await executeStudioDelegated(db, caller, {
+        action: "apply",
+        input: rebased,
+      })
+      expect(
+        await executeStudioDelegated(db, caller, {
+          action: "apply",
+          input: rebased,
+        }),
+      ).toEqual(receipt)
+      await expect(
+        executeStudioDelegated(
+          db,
+          { ...caller, clientId: "codex" },
+          { action: "apply", input: rebased },
+        ),
+      ).rejects.toThrow("CONFLICT")
+      const preserved = studioProjectSchema.parse(
+        await executeStudioDelegated(db, caller, {
+          action: "read",
+          input: projectId,
+        }),
+      )
+      expect(preserved.document).toMatchObject({
+        title: "Human correction",
+        language: "fr",
+      })
+      expect(
+        await executeStudioDelegated(db, caller, {
+          action: "list",
+          input: { limit: 1 },
+        }),
+      ).toHaveLength(1)
+      await db.managerMembership.update({
+        where: { userId: id },
+        data: { revokedAt: new Date() },
+      })
+      await expect(
+        executeStudioDelegated(db, caller, { action: "list", input: {} }),
+      ).rejects.toThrow("membership")
+      await expect(
+        executeStudioDelegated(db, caller, { action: "apply", input: rebased }),
+      ).rejects.toThrow("membership")
+      await db.managerMembership.update({
+        where: { userId: id },
+        data: { revokedAt: null },
+      })
       const admission = {
         projectId,
-        expectedRevision: 2,
+        expectedRevision: 4,
         idempotencyKey: randomUUID(),
         kind: "GENERATION",
         instructions: [],

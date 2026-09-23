@@ -3,7 +3,7 @@ id: "feat-542"
 title: "Connect an external agent and edit the correct project"
 owner: "tataihono"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 readiness: "ready-for-agent"
 start_date: "2026-09-23"
 duration: 3
@@ -53,3 +53,29 @@ See `docs/plans/2026-09-23-studio-external-agent/spec.md` and `code-map.md` for 
 
 - `authenticateStudioMcp|studioServiceCall|expectedRevision`
 - `narrationReserve|render-review|idempotencyKey`
+
+## Implementation and validation — 2026-09-23
+
+- Extracted the compatible MCP registry to
+  `apps/manager/src/services/studio-agent/mcp-tools.ts`; later execution tools
+  extend this registry and explicit route dispatch.
+- Added bounded `shorts.projects`, same-environment `shorts.resolveProject`,
+  history pagination, project/revision evidence links and recoverable MCP conflict
+  results. Project links open live editor state; exact-render review is feat-546.
+- Tightened OAuth admission to require current Operator membership (the shared
+  session validator also serves Reviewers, which must not enter Studio MCP).
+- Connection and reconciliation guide:
+  `docs/validation/studio-external-agent/connection.md`.
+- Passed eight Manager tests across MCP route, real signed-JWT OAuth validation,
+  and delegated transport. Passed the real Postgres delegated authoring test with
+  human-edit/rebase preservation, immutable attributed history, actor-bound retry,
+  revoked membership and bounded discovery. Database was the task-owned guarded
+  loopback `forge_studio_460_fresh` on port 55460; no paid providers were called.
+- Manager typecheck and targeted Manager/Admin ESLint passed. No Pothos or
+  frontend initialization/rendering changes; schema generation and page-load
+  measurement are not applicable to this slice.
+- **Acceptance remains in progress:** real Claude/Codex connection and UI history
+  observation require authenticated clients plus reachable configured test
+  services. Unit/DB evidence does not substitute for this qualification. The
+  implementation can be integrated to unblock dependent slices while this gate
+  remains visibly open.
