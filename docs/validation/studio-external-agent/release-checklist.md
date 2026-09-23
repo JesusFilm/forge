@@ -51,6 +51,11 @@ has not been certified here.
   exported-service launcher proves render behavior but does not replace the
   image's startup or hosted acceptance checks. This feature does not authorize
   a renderer deployment or a direct Railway release.
+  A [local rebuilt-image probe](rebuilt-renderer-image.md) executed both named
+  targets against the original composition with unchanged resource bounds and
+  independent decoding. Its rootless `runc` environment is distinct from
+  Docker-default seccomp and a hosted dedicated VM; carry the image digests into
+  normal release validation rather than treating the local probe as a deploy.
 - Rebuild and independently qualify the renderer image containing the pinned
   `@remotion/renderer` patch and child startup opt-in. Intermediate audio codecs
   now use one decoder, encoder and filter thread within the existing process

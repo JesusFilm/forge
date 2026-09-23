@@ -85,4 +85,4 @@ See `docs/plans/2026-09-23-studio-external-agent/spec.md` and `code-map.md` for 
 
 ## Final integration assessment — 2026-09-23
 
-Real Codex now creates retained exact renders and refreshes MCP output access. Backend expiry and exact-byte probes pass. Authenticated operator playback/approval observation and rebuilt-image release qualification remain open; see the client workflow and release checklist.
+Real Codex now creates retained exact renders and refreshes MCP output access. Backend expiry and exact-byte probes pass. Both rebuilt image targets executed the original composition locally; hosted dedicated-VM release checks and authenticated operator playback/approval remain open. See the client workflow and release checklist.
