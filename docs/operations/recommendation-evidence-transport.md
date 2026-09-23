@@ -35,9 +35,10 @@ and original signing key. Immutable receipts and payload conflicts remain author
 ## Operational observations and durable evidence
 
 Web, Admin and the Admin worker emit transport observations to the existing
-Railway/Datadog log pipeline. Datadog supplies the operational dashboard and
-monitors. PostgreSQL remains the authority for claims, facts, receipts, outcomes
-and profile decisions, viewed through the authorized Admin Recommendations area.
+Railway/Datadog log pipeline. Prepared Datadog definitions can supply an
+operational dashboard and monitors if the owner later chooses to install them.
+PostgreSQL remains the authority for claims, facts, receipts, outcomes and
+profile decisions, viewed through the authorized Admin Recommendations area.
 
 The optional Redis evidence collector and its extra Admin panel have been removed.
 They duplicated these operational logs and did not contribute to recommendation
@@ -215,13 +216,16 @@ HTTP 400 `evidence_request_invalid`. Its existing JSON retry helper drops 400
 without retry. Timestamp validation remains strict; do not repair a viewer's
 invalid timestamp by accepting it as human-eligible evidence.
 
-## Temporary Datadog API access for the operational follow-up
+## Deferred Datadog API access procedure
 
-On September 24 the owner selected a dedicated, revocable credential for a one-off
-REST API provisioning script. Keep the organization's MCP write policy unchanged;
-do not broaden other users' access or create a persistent service. The previous
-MCP rejection is not a statement that the separately authorized REST API cannot
-manage monitors or dashboards.
+On September 24 the owner considered a dedicated, revocable credential for a
+one-off REST API provisioning script, then deferred monitor/dashboard setup.
+No key or alert destination is requested for the current
+[feat-545 closeout](../roadmap/content-discovery/feat-545-recommendation-monitoring-and-telemetry-closeout.md).
+The steps below apply only if the owner later explicitly resumes installation.
+Keep the organization's MCP write policy unchanged; do not broaden other users'
+access or create a persistent service. The previous MCP rejection does not prove
+that a separately authorized REST API cannot manage monitors or dashboards.
 
 1. An administrator creates a custom role assigned only to a new service account,
    for example `forge-monitoring-closeout`. Grant `monitors_read`, `monitors_write`,
