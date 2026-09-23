@@ -141,8 +141,8 @@ describe("seedFirstPartyApps", () => {
       apps: 10,
       environments: 35,
       oauthClients: 39,
-      // main's 28 + the quality lab's `admin:manager-backend`.
-      scopes: 29,
+      // Includes separate Shorts render and narration consent scopes.
+      scopes: 31,
       resourceRepair: {
         createdLinks: 0,
         eligibleClients: 0,
@@ -152,6 +152,12 @@ describe("seedFirstPartyApps", () => {
     })
 
     expect(finalizeBetterAuth17Schema).toHaveBeenCalledOnce()
+
+    for (const key of ["shorts:render", "shorts:narration"]) {
+      expect(upsertScope).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { key } }),
+      )
+    }
 
     expect(upsertScope).toHaveBeenCalledWith(
       expect.objectContaining({
