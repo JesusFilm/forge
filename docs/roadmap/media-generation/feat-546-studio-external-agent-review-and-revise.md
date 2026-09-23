@@ -1,0 +1,55 @@
+---
+id: "feat-546"
+title: "Review an exact draft and revise from conversation feedback"
+owner: "tataihono"
+priority: "P1"
+status: "not-started"
+readiness: "ready-for-agent"
+start_date: "2026-09-23"
+duration: 3
+depends_on: ["feat-543", "feat-545"]
+blocks: ["feat-547"]
+tags: ["manager", "ai-pipeline"]
+---
+
+## Problem
+
+The human follows the agent handoff to review an exact render, gives feedback in their existing conversation, optionally makes direct edits, and receives a reconciled revision with accessible prior evidence.
+
+## What To Build
+
+Approved acceptance criteria:
+
+- [ ] Handoff includes the exact revision/render, concise change summary, inspection coverage/findings, and a functioning Studio review link.
+- [ ] Human can watch the intended render and see whether the current project has advanced; stale output cannot be approved as the new revision.
+- [ ] Feedback remains in the external conversation, including optional timestamps. No editor comments database, polling daemon, or automatic client wakeup is introduced.
+- [ ] On revision the agent rereads canonical state/history; nonconflicting feedback preserves human edits and creative conflicts are surfaced rather than overwritten.
+- [ ] Previous revision/render evidence remains accessible and existing restore mechanisms are usable. A side-by-side comparison editor is not required.
+- [ ] Final approval remains an interactive human action for exact bytes and effective script/voice. Agents cannot invoke approval, publication, or destructive commands.
+- [ ] Test human edits made before and during agent revision, changed content after inspection, and attempted approval of outdated evidence.
+- [ ] If review UI changes, verify browser behavior and page-loading performance using matched fixtures; avoid eagerly loading full evidence packages.
+
+## Verification
+
+Test boundary:
+
+MCP plus human review UI over real revisions/render records; concurrent edits and approval-staleness integration.
+
+Read actual package scripts before running targeted Vitest/DB tests, typechecks, lint and formatting. Use only guarded loopback databases and fake paid providers. Regenerate Admin SDL and admin-graphql together if Pothos changes. Record real-client evidence separately from transport probes.
+
+## Constraints
+
+Preserve expected-revision and idempotency semantics, human edits, scoped OAuth authority, and exact-render human approval. No paid provider calls, deployment, agent publication, automatic wakeups, or editor comments.
+
+## Entry Points — Read These First
+
+1. `apps/manager/src/features/video-studio/render-panel.tsx`
+2. `apps/manager/src/app/api/shorts/render-review/route.ts`
+3. `apps/admin/src/services/studio-authoring/publication-readiness-resolver.ts`
+
+See `docs/plans/2026-09-23-studio-external-agent/spec.md` and `code-map.md` for the complete approved scope.
+
+## Grep These
+
+- `authenticateStudioMcp|studioServiceCall|expectedRevision`
+- `narrationReserve|render-review|idempotencyKey`
