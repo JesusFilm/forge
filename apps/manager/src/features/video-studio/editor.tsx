@@ -16,7 +16,6 @@ import {
   Undo2,
   Redo2,
   History,
-  SkipBack,
   Maximize2,
 } from "lucide-react"
 import {
@@ -370,32 +369,22 @@ function Editor({
             </div>
           </div>
           <div className="nle-transport">
-            <button title="Go to start" onClick={() => session.seek(0)}>
-              <SkipBack size={16} />
-            </button>
             <button
               aria-label={playing ? "Pause" : "Play"}
               onClick={() => setPlaying((v) => !v)}
             >
               {playing ? <Pause size={20} /> : <Play size={20} />}
             </button>
-            <output>
-              {(state.playhead / doc.fps).toFixed(2)} /{" "}
-              {(doc.durationInFrames / doc.fps).toFixed(2)}s
-            </output>
-            <input
-              type="range"
-              aria-label="Playhead"
-              min={0}
-              max={doc.durationInFrames - 1}
-              value={state.playhead}
-              onChange={(e) => session.seek(+e.target.value)}
-            />
           </div>
         </section>
         <Inspector session={session} state={state} onError={report} />
       </div>
-      <Timeline session={session} state={state} onError={report} />
+      <Timeline
+        session={session}
+        state={state}
+        onError={report}
+        onScrub={() => setPlaying(false)}
+      />
       {generationOpen && (
         <GenerationPanel
           session={session}

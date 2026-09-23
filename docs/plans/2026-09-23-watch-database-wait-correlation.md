@@ -52,3 +52,14 @@ exact automatic deployed revision; run an independent bounded production
 observer and reconcile natural slow writes with traces. Record what is proved
 and what remains unobserved. Compound the correlation and measurement lessons;
 keep feat-496 open until its actual recovery gates pass.
+
+## Execution record
+
+U1–U3 are shipped in PR #2393, revision
+`4583c4ece1f1bba93660bd52d4f80cc618414fc8`, independently verified on Admin
+and worker. The review and release portions of U4 pass. Natural captures show
+one successful write with a measurable gap outside PostgreSQL execution, but
+do not reproduce or attribute the historical timeout. The causal investigation
+and feat-496 remain active. See
+`docs/operations/watch-database-wait-correlation-2026-09-23.md` for release
+population, observer limits, cleanup and the next evidence required.

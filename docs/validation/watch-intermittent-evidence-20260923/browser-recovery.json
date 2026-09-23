@@ -1,0 +1,270 @@
+{
+  "baselineRef": "77eb63fbb325f6279955f34cffd1f8994f9281dd",
+  "scope": "Real Chrome/HTTP/React/recorder; synthetic API and player, not full Watch/Admin integration or production",
+  "bundles": {
+    "baseline": {
+      "bytes": 212880,
+      "gzipBytes": 66287
+    },
+    "candidate": {
+      "bytes": 213339,
+      "gzipBytes": 66442
+    }
+  },
+  "results": [
+    {
+      "variant": "baseline",
+      "outage": false,
+      "iteration": 0,
+      "claims": 1,
+      "attempts": [
+        {
+          "atMs": 0,
+          "status": 200
+        }
+      ],
+      "uniqueFacts": 2,
+      "acceptedFacts": 2,
+      "mountedAtMs": 116.40000000596046,
+      "domContentLoadedMs": 116.90000000596046,
+      "longTasks": [56],
+      "degradations": []
+    },
+    {
+      "variant": "candidate",
+      "outage": false,
+      "iteration": 0,
+      "claims": 1,
+      "attempts": [
+        {
+          "atMs": 0,
+          "status": 200
+        }
+      ],
+      "uniqueFacts": 2,
+      "acceptedFacts": 2,
+      "mountedAtMs": 99.5,
+      "domContentLoadedMs": 100,
+      "longTasks": [57],
+      "degradations": []
+    },
+    {
+      "variant": "baseline",
+      "outage": false,
+      "iteration": 1,
+      "claims": 1,
+      "attempts": [
+        {
+          "atMs": 0,
+          "status": 200
+        }
+      ],
+      "uniqueFacts": 2,
+      "acceptedFacts": 2,
+      "mountedAtMs": 35.400000005960464,
+      "domContentLoadedMs": 35.5,
+      "longTasks": [],
+      "degradations": []
+    },
+    {
+      "variant": "candidate",
+      "outage": false,
+      "iteration": 1,
+      "claims": 1,
+      "attempts": [
+        {
+          "atMs": 0,
+          "status": 200
+        }
+      ],
+      "uniqueFacts": 2,
+      "acceptedFacts": 2,
+      "mountedAtMs": 29.5,
+      "domContentLoadedMs": 29.700000002980232,
+      "longTasks": [],
+      "degradations": []
+    },
+    {
+      "variant": "baseline",
+      "outage": false,
+      "iteration": 2,
+      "claims": 1,
+      "attempts": [
+        {
+          "atMs": 0,
+          "status": 200
+        }
+      ],
+      "uniqueFacts": 2,
+      "acceptedFacts": 2,
+      "mountedAtMs": 56.900000005960464,
+      "domContentLoadedMs": 57.29999999701977,
+      "longTasks": [],
+      "degradations": []
+    },
+    {
+      "variant": "candidate",
+      "outage": false,
+      "iteration": 2,
+      "claims": 1,
+      "attempts": [
+        {
+          "atMs": 0,
+          "status": 200
+        }
+      ],
+      "uniqueFacts": 2,
+      "acceptedFacts": 2,
+      "mountedAtMs": 27.399999991059303,
+      "domContentLoadedMs": 27.599999994039536,
+      "longTasks": [],
+      "degradations": []
+    },
+    {
+      "variant": "baseline",
+      "outage": false,
+      "iteration": 3,
+      "claims": 1,
+      "attempts": [
+        {
+          "atMs": 0,
+          "status": 200
+        }
+      ],
+      "uniqueFacts": 2,
+      "acceptedFacts": 2,
+      "mountedAtMs": 29.099999994039536,
+      "domContentLoadedMs": 29.19999998807907,
+      "longTasks": [],
+      "degradations": []
+    },
+    {
+      "variant": "candidate",
+      "outage": false,
+      "iteration": 3,
+      "claims": 1,
+      "attempts": [
+        {
+          "atMs": 0,
+          "status": 200
+        }
+      ],
+      "uniqueFacts": 2,
+      "acceptedFacts": 2,
+      "mountedAtMs": 37.099999994039536,
+      "domContentLoadedMs": 37.5,
+      "longTasks": [],
+      "degradations": []
+    },
+    {
+      "variant": "baseline",
+      "outage": false,
+      "iteration": 4,
+      "claims": 1,
+      "attempts": [
+        {
+          "atMs": 0,
+          "status": 200
+        }
+      ],
+      "uniqueFacts": 2,
+      "acceptedFacts": 2,
+      "mountedAtMs": 30.80000001192093,
+      "domContentLoadedMs": 31,
+      "longTasks": [],
+      "degradations": []
+    },
+    {
+      "variant": "candidate",
+      "outage": false,
+      "iteration": 4,
+      "claims": 1,
+      "attempts": [
+        {
+          "atMs": 0,
+          "status": 200
+        }
+      ],
+      "uniqueFacts": 2,
+      "acceptedFacts": 2,
+      "mountedAtMs": 24.799999997019768,
+      "domContentLoadedMs": 24.899999991059303,
+      "longTasks": [],
+      "degradations": []
+    },
+    {
+      "variant": "baseline",
+      "outage": true,
+      "iteration": 0,
+      "claims": 1,
+      "attempts": [
+        {
+          "atMs": 0,
+          "status": 503
+        },
+        {
+          "atMs": 105,
+          "status": 503
+        },
+        {
+          "atMs": 309,
+          "status": 503
+        }
+      ],
+      "uniqueFacts": 2,
+      "acceptedFacts": 0,
+      "mountedAtMs": 27.900000005960464,
+      "domContentLoadedMs": 28.100000008940697,
+      "longTasks": [],
+      "degradations": [
+        {
+          "reason": "transport_retry",
+          "disposition": "retrying"
+        },
+        {
+          "reason": "transport_retry",
+          "disposition": "retrying"
+        },
+        {
+          "reason": "transport_exhausted",
+          "disposition": "dropped"
+        }
+      ]
+    },
+    {
+      "variant": "candidate",
+      "outage": true,
+      "iteration": 0,
+      "claims": 1,
+      "attempts": [
+        {
+          "atMs": 0,
+          "status": 503
+        },
+        {
+          "atMs": 1069,
+          "status": 503
+        },
+        {
+          "atMs": 9709,
+          "status": 200
+        }
+      ],
+      "uniqueFacts": 2,
+      "acceptedFacts": 2,
+      "mountedAtMs": 29.69999998807907,
+      "domContentLoadedMs": 29.899999991059303,
+      "longTasks": [],
+      "degradations": [
+        {
+          "reason": "transport_retry",
+          "disposition": "retrying"
+        },
+        {
+          "reason": "transport_retry",
+          "disposition": "retrying"
+        }
+      ]
+    }
+  ]
+}

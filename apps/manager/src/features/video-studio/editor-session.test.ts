@@ -1,5 +1,5 @@
 import { expect, it } from "vitest"
-import type { Short } from "@forge/studio-contracts"
+import type { Short, StudioApply } from "@forge/studio-contracts"
 import { EditorSession } from "./editor-session"
 
 class StudioEditorFixtureError extends Error {}
@@ -206,4 +206,94 @@ it("keeps one save in flight while undo and redo change the working document", a
     status: "unsaved",
     document: { title: "Untitled" },
   })
+})
+
+it("ignores repeated playback positions without notifying subscribers recursively", () => {
+  const session = new EditorSession(project, {
+    read: async () => project,
+    apply: async () => {
+      throw new StudioEditorFixtureError("unused")
+    },
+  })
+  let notifications = 0
+  session.subscribe(() => {
+    notifications++
+    if (notifications > 5)
+      throw new StudioEditorFixtureError("Playback feedback loop")
+    session.seek(session.getSnapshot().playhead)
+  })
+  session.seek(12)
+  expect(notifications).toBe(1)
+  expect(session.getSnapshot().status).toBe("saved")
+})
+
+it("distinguishes playback observations from operator seeks, including seeking back to zero", () => {
+  const session = new EditorSession(project, {
+    read: async () => project,
+    apply: async () => {
+      throw new StudioEditorFixtureError("unused")
+    },
+  })
+  const initialRequest = session.getSnapshot().seekRequest
+  session.reportPlaybackFrame(15)
+  session.reportPlaybackFrame(30)
+  expect(session.getSnapshot().seekRequest).toBe(initialRequest)
+  session.seek(0)
+  expect(session.getSnapshot().seekRequest).not.toBe(initialRequest)
+  expect(session.getSnapshot().seekRequest.frame).toBe(0)
+  session.reportPlaybackFrame(0)
+  expect(session.getSnapshot()).toMatchObject({
+    playhead: 0,
+    status: "saved",
+    canUndo: false,
+  })
+})
+
+it("saves and reopens text styling and animation with undo/redo intact", async () => {
+  let stored = structuredClone(project)
+  const transport = {
+    read: async () => structuredClone(stored),
+    apply: async (input: StudioApply) => {
+      expect(input.expectedRevision).toBe(stored.revision)
+      const operation = input.operations[0]
+      if (operation.kind !== "restore-document")
+        throw new StudioEditorFixtureError("Restore expected")
+      stored = {
+        ...stored,
+        revision: stored.revision + 1,
+        document: structuredClone(operation.document),
+      }
+      return {
+        projectId: stored.projectId,
+        revision: stored.revision,
+        outcome: "ACCEPTED" as const,
+      }
+    },
+  }
+  const session = new EditorSession(stored, transport)
+  const properties = {
+    fontFamily: "Apercu",
+    fontWeight: 700,
+    shadow: true,
+    strokeWidth: 2,
+    scrimOpacity: 0.6,
+    entrance: "slide" as const,
+    exit: "fade" as const,
+  }
+  session.edit((document) => ({
+    ...document,
+    items: document.items.map((item) =>
+      item.kind === "text" ? { ...item, properties } : item,
+    ),
+  }))
+  session.undo()
+  expect(session.getSnapshot().document.items[0]).toMatchObject({
+    properties: {},
+  })
+  session.redo()
+  await session.save()
+  expect(session.getSnapshot().status).toBe("saved")
+  const reopened = new EditorSession(await transport.read(), transport)
+  expect(reopened.getSnapshot().document.items[0]).toMatchObject({ properties })
+  expect(reopened.getSnapshot().revision).toBe(2)
 })

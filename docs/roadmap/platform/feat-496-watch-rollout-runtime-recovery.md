@@ -3,7 +3,7 @@ id: "feat-496"
 title: "Resolve remaining Watch admission and database transaction timeouts"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-11"
 duration: 3
 depends_on: []
@@ -13,6 +13,51 @@ tags:
   - "recommendations"
   - "infrastructure"
 ---
+
+## Closed investigation — September 23; residual timeout cause unresolved
+
+The owner requested one final bounded reproduction/fix pass and then closure
+if the historical fault remained unproven. The roadmap status records that
+investigation closure. It does **not** assert that every intermittent timeout
+is fixed, that selection reliability is established, or that recommendations
+consistently finish below 200 ms.
+
+PR #2401 corrects a proven source of competing database work: authored settings
+blocks issued 62 scalar dub lookups in one natural request. The controlled
+PostgreSQL workload queued 301 calls behind ten leases; request-local exact-pair
+batching reduced that to zero and unrelated-read p95 from 200–311 ms to 7–9 ms.
+All 7,348 Admin tests and two real PostgreSQL parity tests passed. The newer
+Mobile main revision was incorporated, focused regressions reran, and PR/main
+CI passed before the normal automatic release.
+
+Admin and worker both run `911ad005874f2ee84e8d265f79b4d07d40863ce6` with health
+HTTP 200 and the expected disabled/enabled workflow-runner roles. Production
+English and Spanish settings preserve their complete parsed payloads. A
+natural settings trace confirms one winner-selection method call plus one
+hydration, with no scalar dub lookup spans. See
+`docs/operations/watch-block-dub-fanout-2026-09-23.md` and its release artifact
+for the exact deployments, query/response proof and separately counted HTTP
+and semantic outcomes.
+
+PR #2399's source-time instrumentation is also verified: a natural 180-row
+write joins its observation, transaction ordinal and backend PID to an
+independent PostgreSQL state sample. Actual observer coverage and early stop
+reasons are recorded; all temporary observers are disconnected and the owned
+local database is stopped. See `docs/operations/watch-source-timing-2026-09-23.md`.
+
+The September 22 220-row evidence write taking 1.19 seconds and the earlier
+selection capability-budget timeouts remain causally unassigned. The settings
+workload is a demonstrated contention source, not proof that it caused those
+incidents. A WAL-sync sample proves a storage-wait contribution to one call,
+not the complete failure mechanism. No timeout was silently reclassified as
+success, and no deadline, retry, authorization, attribution, privacy-generation,
+rate-limit or integrity guarantee was relaxed.
+
+If a new incident warrants reopening, retain its HTTP outcome separately from
+semantic fallback, source operation interval, observation/transaction/PID,
+database state and contemporaneous workload. This pass does not start another
+indefinite instrumentation cycle. Separate evidence transport work remains
+under feat-464; closing this investigation does not close that ticket.
 
 ## Problem and scope
 
@@ -664,3 +709,30 @@ See the [capture runbook, controlled evidence and overhead limits](../../operati
 These tests establish the instrument's discrimination, not the natural failure's
 cause. Keep in progress until deployed natural-failure capture and the existing
 recovery gates are satisfied.
+
+PR #2393 is merged and independently verified on Admin and worker at
+`4583c4ece1f1bba93660bd52d4f80cc618414fc8`; CI passes 7,338 Admin tests and
+the nine local real-PostgreSQL checks pass. A natural successful 122-row INSERT
+reaches PostgreSQL's idle state in about 6 ms while Admin measures 83 ms around
+the write. This demonstrates time outside database execution for that request,
+not the cause of the historical 1.19-second failure. The independent observer
+also samples brief I/O waits; CPU profiling does not identify a responsible
+workload. Standalone selection remains outside this delivery correlation.
+
+The [release record](../../operations/watch-database-wait-correlation-2026-09-23.md)
+retains exact capture coverage, cleanup, HTTP/semantic outcome reconciliation,
+pool contention and rejected causal inferences. The incident remains unresolved;
+neither a successful diagnostic release nor a short window without timeouts
+satisfies this ticket's closure gates.
+
+### Source timing without retained APM spans
+
+The [source timing continuation](../../operations/watch-source-timing-2026-09-23.md)
+records three later 798–1,054 ms successful deliveries with short evidence
+writes and a main-pool backlog reaching 304 calls. These pool events are not
+request-correlated. Bounded source timestamps and longest-call start offsets
+repair the inability to align primary runtime logs when an APM span cannot be
+retrieved. Two regressions fail before the change; 7,339 Admin tests pass after
+it, with bounded serialization overhead. This is instrumentation validation,
+not a demonstrated fix for the natural timeout. Keep in progress through the
+automatic release, causal capture and existing recovery gates.

@@ -43,6 +43,7 @@ import {
   type PlaybackQoeAction,
 } from "./playbackFacts"
 import { randomEventId } from "./random"
+import type { PendingRecommendationClaim } from "./selection"
 import { reportRecommendationPlaybackDegraded } from "./telemetry"
 import type {
   RecommendationIdentity,
@@ -60,6 +61,7 @@ export type PlaybackRecorderDeps = {
   /** Keys a surface may have marked the discovery under (slug, media id). */
   discoveryKeys: ReadonlyArray<string | null | undefined>
   takePendingNonce: (mediaId: string) => string | null
+  restorePendingNonce: (claim: PendingRecommendationClaim) => void
   takeDiscovery: (
     keys: ReadonlyArray<string | null | undefined>,
   ) => PlaybackDiscovery
@@ -402,11 +404,28 @@ export function createRecommendationPlaybackRecorder(
     release()
   }
 
+  /**
+   * `fallback` is the discovery mark held for a context fallback. It is set
+   * on the selection-nonce path only, which is also the only path whose
+   * nonce came from the pending store and can be put back.
+   */
   async function attemptClaim(
     claimNonce: string,
     attempt: number,
-    allowContextFallback: boolean,
+    fallback: PlaybackDiscovery | null,
   ): Promise<void> {
+    const abandonDisposed = () => {
+      if (fallback) {
+        // The store keeps this nonce's own selection time: the ten-minute
+        // bound runs from the tap, not from the put-back.
+        deps.restorePendingNonce({
+          mediaId: deps.mediaId,
+          claimNonce,
+          selectedAt: now(),
+        })
+      }
+      return abandon("disposed")
+    }
     if (!identity || closed) return abandon()
     try {
       const claimed = parsePlaybackEpisode(
@@ -425,13 +444,14 @@ export function createRecommendationPlaybackRecorder(
         await deps.invalidateIdentity()
         return abandon()
       }
-      if (disposed) return abandon("disposed")
       if (failure.definitive) {
-        // A stale or foreign selection nonce still leaves an ordinary
-        // playback to attribute; a rejected context nonce does not.
-        if (allowContextFallback) return claimViaContext()
-        return abandon()
+        // A definitive rejection kills the nonce, so no put-back: a stale or
+        // foreign one still leaves an ordinary playback to attribute, but a
+        // rejected context nonce does not.
+        if (fallback && !disposed) return claimViaContext(1, fallback)
+        return abandon(disposed ? "disposed" : undefined)
       }
+      if (disposed) return abandonDisposed()
       if (failure.code === "RATE_LIMITED") {
         // Not a failed attempt: wait out the limiter's window, once.
         if (claimRateLimitDeferrals >= MAX_CLAIM_RATE_LIMIT_DEFERRALS) {
@@ -440,30 +460,25 @@ export function createRecommendationPlaybackRecorder(
         claimRateLimitDeferrals += 1
         report("rate_limited", "retrying", pending.length)
         await wait(rateLimitDelayMs(failure))
-        if (disposed) return abandon("disposed")
-        return attemptClaim(claimNonce, attempt, allowContextFallback)
+        if (disposed) return abandonDisposed()
+        return attemptClaim(claimNonce, attempt, fallback)
       }
       if (attempt < MAX_CLAIM_ATTEMPTS) {
         await wait(CLAIM_RETRY_BACKOFF_MS)
-        if (disposed) return abandon("disposed")
-        return attemptClaim(claimNonce, attempt + 1, allowContextFallback)
+        if (disposed) return abandonDisposed()
+        return attemptClaim(claimNonce, attempt + 1, fallback)
       }
       abandon()
     }
   }
 
   async function claimViaContext(
-    attempt = 1,
-    discovery?: PlaybackDiscovery,
+    attempt: number,
+    discovery: PlaybackDiscovery,
   ): Promise<void> {
     if (!identity || closed) return abandon()
-    // A disposed recorder must not take the discovery mark a replacement
-    // recorder for the same media will need.
-    if (disposed) return abandon("disposed")
-    // Taken once: a retry issues again under the same discovery.
-    const marked = discovery ?? deps.takeDiscovery(deps.discoveryKeys)
     try {
-      const issued = await deps.issueContext(identity, deps.mediaId, marked)
+      const issued = await deps.issueContext(identity, deps.mediaId, discovery)
       const claimNonce =
         issued && typeof issued === "object"
           ? (issued as { claimNonce?: unknown }).claimNonce
@@ -478,7 +493,7 @@ export function createRecommendationPlaybackRecorder(
       // Issuance is part of the claim (plan KD7): one attempt budget and one
       // window deferral cover both steps, and a context that settles after
       // dispose() still claims once, like a nonce claim in flight.
-      return attemptClaim(claimNonce, attempt, false)
+      return attemptClaim(claimNonce, attempt, null)
     } catch (error) {
       const failure = toRecommendationClientError(error)
       if (failure.code === "UNAUTHENTICATED") {
@@ -495,12 +510,12 @@ export function createRecommendationPlaybackRecorder(
         report("rate_limited", "retrying", pending.length)
         await wait(rateLimitDelayMs(failure))
         if (disposed) return abandon("disposed")
-        return claimViaContext(attempt, marked)
+        return claimViaContext(attempt, discovery)
       }
       if (attempt < MAX_CLAIM_ATTEMPTS) {
         await wait(CLAIM_RETRY_BACKOFF_MS)
         if (disposed) return abandon("disposed")
-        return claimViaContext(attempt + 1, marked)
+        return claimViaContext(attempt + 1, discovery)
       }
       abandon()
     }
@@ -514,8 +529,11 @@ export function createRecommendationPlaybackRecorder(
     if (disposed) return abandon("disposed")
     identity = result.identity
     const nonce = deps.takePendingNonce(deps.mediaId)
-    if (nonce) return attemptClaim(nonce, 1, true)
-    return claimViaContext()
+    // Taken once, on both paths: a mark left behind would label the next
+    // open of this media, which the viewer reached some other way.
+    const discovery = deps.takeDiscovery(deps.discoveryKeys)
+    if (nonce) return attemptClaim(nonce, 1, discovery)
+    return claimViaContext(1, discovery)
   }
 
   // ---- playback state -------------------------------------------------------

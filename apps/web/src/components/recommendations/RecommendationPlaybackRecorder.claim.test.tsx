@@ -28,6 +28,74 @@ describe("RecommendationPlaybackRecorder claim lifecycle", () => {
     fetchMock = harness.fetchMock
   })
 
+  it("paces identical claim retries across an eight-second interruption", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0)
+    sessionStorage.setItem(
+      RECOMMENDATION_TAB_CORRELATION_KEY,
+      "recovery-claim-nonce",
+    )
+    fetchMock.mockResolvedValue(response({}, false, 503))
+    await act(async () => {
+      root.render(
+        <RecommendationPlaybackRecorder
+          player={makePlayer()}
+          initiation={null}
+          mediaId="media-1"
+        />,
+      )
+    })
+    await act(async () => vi.advanceTimersByTimeAsync(999))
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    await act(async () => vi.advanceTimersByTimeAsync(1))
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    await act(async () => vi.advanceTimersByTimeAsync(7_999))
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    fetchMock.mockResolvedValueOnce(
+      response({
+        episode: {
+          episodeId: "recovered",
+          capability: "fixture-capability",
+          activeUntil: "2026-08-19T07:00:00.000Z",
+          hardUntil: "2026-08-19T09:00:00.000Z",
+        },
+      }),
+    )
+    await act(async () => vi.advanceTimersByTimeAsync(1))
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(
+      new Set(fetchMock.mock.calls.map(([, init]) => init.body)).size,
+    ).toBe(1)
+    expect(
+      sessionStorage.getItem(RECOMMENDATION_TAB_CORRELATION_KEY),
+    ).toBeNull()
+  })
+
+  it.each([false, true])(
+    "does not retry after unmount, including a late failure: %s",
+    async (late) => {
+      sessionStorage.setItem(
+        RECOMMENDATION_TAB_CORRELATION_KEY,
+        "unmounted-claim-nonce",
+      )
+      const claim = deferred<Response>()
+      fetchMock.mockReturnValueOnce(claim.promise)
+      await act(async () => {
+        root.render(
+          <RecommendationPlaybackRecorder
+            player={makePlayer()}
+            initiation={null}
+            mediaId="media-1"
+          />,
+        )
+      })
+      if (!late) await act(async () => claim.reject(new TypeError("offline")))
+      await act(async () => root.render(null))
+      if (late) await act(async () => claim.reject(new TypeError("offline")))
+      await act(async () => vi.advanceTimersByTimeAsync(30_000))
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    },
+  )
+
   it("waits for first-visit profile initialization before creating the playback episode", async () => {
     const ready = deferred<void>()
     const wait = vi
@@ -444,7 +512,7 @@ describe("RecommendationPlaybackRecorder claim lifecycle", () => {
     )
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(250)
+      await vi.advanceTimersByTimeAsync(1_250)
       await Promise.resolve()
       await Promise.resolve()
     })
@@ -511,7 +579,7 @@ describe("RecommendationPlaybackRecorder claim lifecycle", () => {
     player.paused = false
     await act(async () => {
       player.dispatch("playing")
-      await vi.advanceTimersByTimeAsync(1_000)
+      await vi.advanceTimersByTimeAsync(30_000)
     })
 
     expect(fetchMock).toHaveBeenCalledTimes(3)

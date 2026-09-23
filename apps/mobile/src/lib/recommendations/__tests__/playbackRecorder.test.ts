@@ -1,5 +1,9 @@
 import { RATE_LIMIT_WINDOW_MS, RecommendationClientError } from "../errors"
 import {
+  DIRECT_DISCOVERY,
+  createPlaybackDiscoveryStore,
+} from "../playbackDiscovery"
+import {
   CLAIM_RETRY_BACKOFF_MS,
   MAX_ACTIVE_CHUNK_MS,
   MAX_CLAIM_ATTEMPTS,
@@ -12,7 +16,13 @@ import {
 import {
   createRecommendationPlaybackRecorder,
   type PlaybackRecorderDeps,
+  type RecommendationPlaybackRecorder,
 } from "../playbackRecorder"
+import {
+  createPendingClaimStore,
+  type PendingClaimStore,
+  type PendingRecommendationClaim,
+} from "../selection"
 
 const T0 = Date.parse("2026-09-16T00:00:00.000Z")
 const IDENTITY = { viewerToken: "v".repeat(43), sessionToken: "s".repeat(43) }
@@ -39,6 +49,7 @@ function harness(overrides: Partial<PlaybackRecorderDeps> = {}) {
     mediaId: "media-1",
     discoveryKeys: ["jesus", "media-1"],
     takePendingNonce: jest.fn(() => null),
+    restorePendingNonce: jest.fn(),
     takeDiscovery: jest.fn(() => ({
       source: "direct" as const,
       provenance: {},
@@ -860,7 +871,9 @@ describe("dispose while the claim is in flight", () => {
       expect(claim).toHaveBeenCalledTimes(1)
       expect(h.deps.wait).not.toHaveBeenCalled()
       expect(h.deps.issueContext).not.toHaveBeenCalled()
-      expect(h.deps.takeDiscovery).not.toHaveBeenCalled()
+      // The mark is taken up front now, so only issueContext proves that no
+      // context fallback ran.
+      expect(h.deps.takeDiscovery).toHaveBeenCalledTimes(1)
       expect(h.recorder.getState().closed).toBe(true)
       expect(h.deps.report).toHaveBeenCalledWith(
         "disposed",
@@ -951,5 +964,210 @@ describe("dispose while the claim is in flight", () => {
     expect(h.deps.takeDiscovery).not.toHaveBeenCalled()
     expect(h.deps.claimEpisode).not.toHaveBeenCalled()
     expect(h.recorder.getState().closed).toBe(true)
+  })
+})
+
+describe("a disposed abandon puts the selection nonce back", () => {
+  const SELECTED = { mediaId: "media-1", claimNonce: NONCE, selectedAt: T0 }
+
+  function selectedStore(): PendingClaimStore {
+    const store = createPendingClaimStore(() => T0)
+    store.set(SELECTED)
+    return store
+  }
+
+  /** The real store behind the recorder, so a replacement can redeem it. */
+  function storeDeps(store: PendingClaimStore): Partial<PlaybackRecorderDeps> {
+    return {
+      takePendingNonce: jest.fn((mediaId: string) => store.take(mediaId)),
+      restorePendingNonce: jest.fn((claim: PendingRecommendationClaim) =>
+        store.restore(claim),
+      ),
+    }
+  }
+
+  async function replacementFor(store: PendingClaimStore) {
+    const next = harness(storeDeps(store))
+    next.recorder.start()
+    await settle()
+    return next
+  }
+
+  it.each(["RATE_LIMITED", "NETWORK_ERROR"] as const)(
+    "hands a %s claim's nonce to the replacement recorder after a dispose in the wait",
+    async (code) => {
+      const store = selectedStore()
+      let first: RecommendationPlaybackRecorder | null = null
+      const h = harness({
+        ...storeDeps(store),
+        claimEpisode: jest.fn(async () => {
+          throw new RecommendationClientError(code)
+        }),
+        wait: jest.fn(async () => {
+          first?.dispose()
+        }),
+      })
+      first = h.recorder
+      h.recorder.start()
+      await settle()
+      expect(h.deps.claimEpisode).toHaveBeenCalledTimes(1)
+      expect(h.recorder.getState().closed).toBe(true)
+
+      const next = await replacementFor(store)
+      expect(next.deps.claimEpisode).toHaveBeenCalledWith(
+        IDENTITY,
+        NONCE,
+        "media-1",
+      )
+      expect(next.deps.issueContext).not.toHaveBeenCalled()
+    },
+  )
+
+  it("hands the nonce over when a failed claim mutation settles after dispose", async () => {
+    const store = selectedStore()
+    let rejectClaim: (error: unknown) => void = () => undefined
+    const h = harness({
+      ...storeDeps(store),
+      claimEpisode: jest.fn(
+        () =>
+          new Promise((_resolve, reject) => {
+            rejectClaim = reject
+          }),
+      ),
+    })
+    h.recorder.start()
+    await settle()
+    h.recorder.dispose()
+    await settle()
+    rejectClaim(new RecommendationClientError("NETWORK_ERROR"))
+    await settle()
+    expect(h.deps.wait).not.toHaveBeenCalled()
+    expect(h.recorder.getState().closed).toBe(true)
+
+    const next = await replacementFor(store)
+    expect(next.deps.claimEpisode).toHaveBeenCalledWith(
+      IDENTITY,
+      NONCE,
+      "media-1",
+    )
+    expect(next.deps.issueContext).not.toHaveBeenCalled()
+  })
+
+  it("keeps a dead nonce from the replacement recorder when a definitive claim settles after dispose", async () => {
+    const store = selectedStore()
+    let rejectClaim: (error: unknown) => void = () => undefined
+    const h = harness({
+      ...storeDeps(store),
+      claimEpisode: jest.fn(
+        () =>
+          new Promise((_resolve, reject) => {
+            rejectClaim = reject
+          }),
+      ),
+    })
+    h.recorder.start()
+    await settle()
+    h.recorder.dispose()
+    await settle()
+    rejectClaim(new RecommendationClientError("CONFLICT"))
+    await settle()
+    expect(h.deps.restorePendingNonce).not.toHaveBeenCalled()
+    expect(store.peek()).toBeNull()
+    expect(h.deps.issueContext).not.toHaveBeenCalled()
+
+    const next = await replacementFor(store)
+    expect(next.deps.issueContext).toHaveBeenCalledTimes(1)
+    expect(next.deps.claimEpisode).not.toHaveBeenCalledWith(
+      IDENTITY,
+      NONCE,
+      "media-1",
+    )
+  })
+
+  it.each(["RATE_LIMITED", "NETWORK_ERROR"] as const)(
+    "completes the claim after a %s wait and leaves the store empty",
+    async (code) => {
+      const store = selectedStore()
+      const h = harness({
+        ...storeDeps(store),
+        claimEpisode: jest
+          .fn()
+          .mockRejectedValueOnce(new RecommendationClientError(code))
+          .mockResolvedValueOnce(EPISODE),
+      })
+      h.recorder.start()
+      await settle()
+      expect(h.recorder.getState().claimed).toBe(true)
+      expect(h.deps.restorePendingNonce).not.toHaveBeenCalled()
+      expect(store.peek()).toBeNull()
+    },
+  )
+
+  it("does not put the nonce back when the claim fails definitively", async () => {
+    const store = selectedStore()
+    const h = harness({
+      ...storeDeps(store),
+      claimEpisode: jest
+        .fn()
+        .mockRejectedValueOnce(new RecommendationClientError("CONFLICT"))
+        .mockResolvedValueOnce(EPISODE),
+    })
+    h.recorder.start()
+    await settle()
+    expect(h.deps.issueContext).toHaveBeenCalledTimes(1)
+    expect(h.deps.restorePendingNonce).not.toHaveBeenCalled()
+    expect(store.peek()).toBeNull()
+  })
+})
+
+describe("the discovery mark is taken once, whatever the claim path", () => {
+  function markedStore() {
+    const marks = createPlaybackDiscoveryStore(() => T0)
+    marks.mark("media-1", "search")
+    return marks
+  }
+
+  it("consumes the mark on a nonce claim, so the next open is direct", async () => {
+    const marks = markedStore()
+    const take = (keys: ReadonlyArray<string | null | undefined>) =>
+      marks.take(keys)
+    const h = harness({
+      takePendingNonce: jest.fn(() => NONCE),
+      takeDiscovery: jest.fn(take),
+    })
+    h.recorder.start()
+    await settle()
+    expect(h.deps.takeDiscovery).toHaveBeenCalledTimes(1)
+    expect(h.deps.claimEpisode).toHaveBeenCalledWith(IDENTITY, NONCE, "media-1")
+
+    const later = harness({ takeDiscovery: jest.fn(take) })
+    later.recorder.start()
+    await settle()
+    expect(later.deps.issueContext).toHaveBeenCalledWith(
+      IDENTITY,
+      "media-1",
+      DIRECT_DISCOVERY,
+    )
+  })
+
+  it("hands the mark to the context fallback when the nonce is rejected", async () => {
+    const marks = markedStore()
+    const h = harness({
+      takePendingNonce: jest.fn(() => NONCE),
+      takeDiscovery: jest.fn((keys: ReadonlyArray<string | null | undefined>) =>
+        marks.take(keys),
+      ),
+      claimEpisode: jest
+        .fn()
+        .mockRejectedValueOnce(new RecommendationClientError("CONFLICT"))
+        .mockResolvedValueOnce(EPISODE),
+    })
+    h.recorder.start()
+    await settle()
+    expect(h.deps.takeDiscovery).toHaveBeenCalledTimes(1)
+    expect(h.deps.issueContext).toHaveBeenCalledWith(IDENTITY, "media-1", {
+      source: "search",
+      provenance: { handoff: "search_result" },
+    })
   })
 })
