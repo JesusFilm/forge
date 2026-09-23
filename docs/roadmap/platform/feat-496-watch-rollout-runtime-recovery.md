@@ -628,3 +628,25 @@ unavailable correlation from zero wait and retain failed/late operations.
 See [reproduction, review and release gates](../../operations/watch-persistence-followup-2026-09-23.md).
 Keep in progress: this does not prove the separate selection-timeout cause,
 sub-200 ms service latency or sustained production recovery.
+
+### Deployed result and fresh recurrence
+
+PR #2388 is deployed as `4ec1f98207d42a31187f51410fad3cfad7257746` on Admin
+and worker, verified through independent process reads after automatic release.
+CI passed 7,313 Admin tests. In the fixed September 22 22:57–23:57 UTC window,
+all 337 seeded HTTP 200 envelopes reconcile: 293 served, 43 non-timeout
+fallbacks and **one new `delivery_timeout`**. Selection has ten HTTP 200s,
+two terminal invalid-request HTTP 400s and zero HTTP 503s; no endpoint has 5xx
+in this one-hour window. No for-you delivery occurred.
+
+The new correlated runtime log and trace isolate a 220-row evidence INSERT:
+1,186 ms driver wall time after 6 ms transaction acquisition, followed by
+rollback/P2028. The incident had 1,225 ms remaining in the existing deadline;
+do not reuse the earlier incident's 650 ms value. Historical server execution
+and wait timing remain unavailable. A bounded live activity sample observed
+one brief data-read wait but did not capture the slow recurrence. This narrows
+the investigation without proving storage, locks or application scheduling as
+the cause. Admin delivery service p99 is still 854 ms in this window.
+
+Keep in progress. See the [release evidence, aggregate artifact and next causal
+experiment](../../operations/watch-persistence-followup-2026-09-23.md#automatic-release-and-first-hour-production-verification).
