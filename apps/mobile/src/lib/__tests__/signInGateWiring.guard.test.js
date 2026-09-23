@@ -30,6 +30,7 @@ const HOSTED_SIGN_IN_CALL = /\bsignInWithHostedPage\s*\(/
 const GATE_CALL = /\bisSignInAvailable\s*\(/
 // No leading dot, so a destructured `signIn.social(` counts too.
 const CLIENT_SIGN_IN_CALL = /\b(signIn|signUp)\s*\.\s*\w+\s*\(/
+const RUN_HOSTED_SIGN_IN = /\brunHostedSignIn\b/
 
 /** Comments do not run. The `[^:]` keeps a URL such as `https://` intact. */
 function stripComments(source) {
@@ -169,12 +170,26 @@ describe("the sign-in gate wiring (feat-543)", () => {
     expect(direct).toEqual([AUTH_ACTIONS])
   })
 
-  // A second sign-in call inside the auth actions would be a new entry point
-  // that Rule 1 cannot see, so it must come with its own gate decision.
+  // This test counts only direct signIn./signUp. calls. It does not catch a
+  // new export that wraps runHostedSignIn instead of calling the client
+  // directly — Rule 6 below pins that case.
   it("keeps exactly one auth-client sign-in call in the auth actions", () => {
     const calls = read(AUTH_ACTIONS).match(
       new RegExp(CLIENT_SIGN_IN_CALL.source, "g"),
     )
     expect(calls).toHaveLength(1)
+  })
+
+  // Rule 6: a new export that calls runHostedSignIn adds a sign-in entry
+  // point with no signInWithHostedPage call and no gate read, so Rule 1
+  // cannot see it. Pin both name counts to catch that new export.
+  it("names signInWithHostedPage once and runHostedSignIn twice in the auth actions", () => {
+    const source = read(AUTH_ACTIONS)
+    const hostedSignIn = source.match(new RegExp(HOSTED_SIGN_IN.source, "g"))
+    const runHostedSignIn = source.match(
+      new RegExp(RUN_HOSTED_SIGN_IN.source, "g"),
+    )
+    expect(hostedSignIn).toHaveLength(1)
+    expect(runHostedSignIn).toHaveLength(2)
   })
 })

@@ -32,7 +32,7 @@ tags:
 
 ## Context
 
-The feat-543 branch (`feat/mobile-sign-in-gate`) adds a mobile sign-in gate. The same branch adds the removal ticket, `docs/roadmap/platform/feat-544-mobile-remove-sign-in-gate.md`. No pull request is open for the branch yet, so the merge is pending. The ticket follows the removal-recipe learning: greps find the removal sites, and an empty grep is the proof of removal.
+The feat-543 branch (`feat/mobile-sign-in-gate`) adds a mobile sign-in gate. The same branch adds the removal ticket, `docs/roadmap/platform/feat-544-mobile-remove-sign-in-gate.md`. The ticket follows the removal-recipe learning: greps find the removal sites, and an empty grep is the proof of removal.
 
 The first draft of one ticket grep was:
 
@@ -61,7 +61,7 @@ The shell `grep` on the same machine accepts `\b` (the last table row). That is 
 
 The session fixed the ticket. `docs/roadmap/platform/feat-544-mobile-remove-sign-in-gate.md:39` now reads `git grep -nE 'isSignInAvailable|resolveSignInAvailable|signInGate' -- apps/mobile`. The `signInGate` literal also matches `signInGateState`, so the ticket needs no boundary. Line 44 of the ticket adds the warning: "Do not add `\b` to a pattern: `git grep -E` on macOS does not support it, and the pattern then matches nothing."
 
-### A second instance, still live
+### A second instance, now fixed
 
 `docs/solutions/workflow-issues/mechanism-retirement-docs-prose-sweep.md:91-92` gives this prose sweep:
 
@@ -83,7 +83,7 @@ The `\bLD\b` branch is dead on this machine. These counts come from the current 
 | The same alternation without the `LD` branch, with `-niE`                 | 3292  |
 | The same alternation with `-niP`                                          | 3515  |
 
-The full sweep prints 3,292 lines, so nothing looks wrong. But the `LD` branch adds zero lines, and `-P` shows 223 more lines. The sweep doc names "LD" as its example of an abbreviation that repo prose uses (lines 73 and 81). So the branch that the doc marks as a recall risk is the branch that fails. At the time of writing, lines 91-92 still carry the `-E` form.
+The full sweep prints 3,292 lines, so nothing looks wrong. But the `LD` branch adds zero lines, and `-P` shows 223 more lines. The sweep doc names "LD" as its example of an abbreviation that repo prose uses (lines 73 and 81). So the branch that the doc marks as a recall risk is the branch that fails. On 2026-09-23, the same branch moved these commands to the `-P` form and added a note that points to this learning.
 
 ### A third instance
 
@@ -186,7 +186,7 @@ For either option, run each branch alone once and confirm a count above 0.
 ## Related
 
 - `docs/solutions/workflow-issues/removal-recipe-ticket-for-phase-scoped-scaffolding-20260708.md`: part 4 makes "grep returns empty + typecheck green" the proof of removal, and its rename covenant covers a pattern that goes stale after a rename. This learning adds a second cause of the same empty result: the regex engine.
-- `docs/solutions/workflow-issues/mechanism-retirement-docs-prose-sweep.md`: lines 91-92 still carry the `-E` form of the `\bLD\b` sweep. That doc needs a refresh (see the second instance above).
+- `docs/solutions/workflow-issues/mechanism-retirement-docs-prose-sweep.md`: the sweep now uses the `-P` form, and a note there points to this learning (see the second instance above).
 - `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md`: the repo's anti-vacuous discipline for tests. This learning applies the same positive-control rule to shell greps.
 - `docs/solutions/best-practices/graphql-callsite-inventory-dual-pattern-sweep-20260507.md`: a sibling sweep failure, where one pattern misses a second syntax family.
 - `docs/roadmap/platform/feat-544-mobile-remove-sign-in-gate.md`: the corrected removal ticket.
