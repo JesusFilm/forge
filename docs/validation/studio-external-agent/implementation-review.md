@@ -79,7 +79,27 @@ single failure. Updating the count and asserting both new scope records produced
 587 passing tests; 99 environment-gated integration tests remained skipped.
 Admin SDL and gql.tada regeneration produced no tracked drift.
 
+## Human review and revision
+
+Independent review found zero standards violations and one specification P2:
+a definitive revision conflict needed an explicit way to discard a rejected
+additional-narration authorization and obtain renewed consent against the current
+revision. The fix preserves the original receipt after uncertain transport
+failure, and permits discard only after a definitive rejection. The reviewer
+independently ran four regression tests and cleared both axes. Metadata, playback,
+and inspection requests also forward lifetime cancellation.
+
+The coordinator separately exercised actual panel components with synthetic
+canonical state and a contained-render MP4. Historical output remained identified
+as revision 1 after canonical revision 2, with stale approval disabled. With a
+fully loaded video, unsaved edits disabled both confirmation and approval. Clean
+unchanged output enabled confirmation, while approval remained disabled until
+explicit confirmation. No approval or publication was submitted. Three matched
+warm load runs and the production dependency comparison are recorded in
+`docs/validation/studio-546/README.md`; these do not establish authenticated
+production UI qualification.
+
 ## Remaining review gates
 
-Human review, portable skill, final integration, and real-client qualification
+Portable skill, final integration, and real-client qualification
 require their own evidence before this record can establish completion.

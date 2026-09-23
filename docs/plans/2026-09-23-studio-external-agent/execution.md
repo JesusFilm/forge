@@ -11,15 +11,24 @@ The original planning worktree and unrelated main-checkout files remain untouche
 Integration starts at current `origin/main`, `fdd34d12c`, on
 `codex/shorts-agent-workflow`.
 
-| Slice                     | Roadmap  | Dependencies       | Branch                               |
-| ------------------------- | -------- | ------------------ | ------------------------------------ |
-| Connection/editing        | feat-542 | none               | codex/shorts-agent-542-connect       |
-| Exact draft render        | feat-543 | feat-542           | codex/shorts-agent-543-render        |
-| Bounded narration         | feat-544 | feat-542           | codex/shorts-agent-544-narration     |
-| Sampled inspection        | feat-545 | feat-543           | codex/shorts-agent-545-inspection    |
-| Human review/revision     | feat-546 | feat-543, feat-545 | codex/shorts-agent-546-review        |
-| Portable skill            | feat-547 | feat-544, feat-546 | codex/shorts-agent-547-skill         |
-| Real-client qualification | feat-548 | feat-547           | codex/shorts-agent-548-qualification |
+After a separate user-owned Next.js upgrade introduced unrelated changes into
+existing worktrees, coordination moved to
+`/home/tataihono/Developer/forge-shorts-agent-coordination` on
+`codex/shorts-agent-workflow-integration`. Its commits advance the same remote PR
+branch, `codex/shorts-agent-workflow`. The earlier worktrees and their unrelated
+changes remain preserved. The portable-skill and client-qualification worktrees
+were recreated cleanly as `forge-shorts-agent-547-portable` and
+`forge-shorts-agent-548-clients`; the branch names below reflect those replacements.
+
+| Slice                     | Roadmap  | Dependencies       | Branch                                |
+| ------------------------- | -------- | ------------------ | ------------------------------------- |
+| Connection/editing        | feat-542 | none               | codex/shorts-agent-542-connect        |
+| Exact draft render        | feat-543 | feat-542           | codex/shorts-agent-543-render         |
+| Bounded narration         | feat-544 | feat-542           | codex/shorts-agent-544-narration      |
+| Sampled inspection        | feat-545 | feat-543           | codex/shorts-agent-545-inspection     |
+| Human review/revision     | feat-546 | feat-543, feat-545 | codex/shorts-agent-546-review         |
+| Portable skill            | feat-547 | feat-544, feat-546 | codex/shorts-agent-547-portable-skill |
+| Real-client qualification | feat-548 | feat-547           | codex/shorts-agent-548-clients        |
 
 Each implementation slice uses its own worktree. The coordinator integrates
 commits and resolves shared contracts. Render and narration work run in parallel
