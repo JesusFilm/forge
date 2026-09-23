@@ -1,0 +1,47 @@
+%%{init: {"flowchart": {"wrappingWidth": 380, "nodeSpacing": 30, "rankSpacing": 50}, "themeVariables": {"fontSize": "16px"}}}%%
+%% Pinned sources and regeneration command: README.md
+flowchart TB
+  title["FORGE RAG DATABASE · corpus + R1 consumer registry<br/>Blue: existing public tables · Amber: NEW in draft PR #2397<br/>PK primary key · UQ unique · FK foreign key · ? nullable<br/>Solid arrows: parent → child FK (1 → 0..many unless labeled)<br/>Dotted arrows: logical references only; not enforced"]
+  subgraph corpus["EXISTING · public · indexed corpus"]
+    direction TB
+    sources["sources<br/>PK id : uuid<br/>UQ key : text<br/>name : text · languages/default_tags : jsonb<br/>domain?, trust?, ingestion_mode?, rights? : text"]
+    documents["documents<br/>PK id : uuid · FK source_id : uuid<br/>canonical_url, content_hash : text<br/>title?, language?, category? : text<br/>chunk_count : int = 0<br/>UQ (source_id, canonical_url)"]
+    chunks["chunks<br/>PK id : uuid<br/>FK document_id, source_id : uuid<br/>ord, char_start, char_end, token_count : int<br/>text : text · tags : jsonb<br/>search_tsv : generated tsvector<br/>GIN (tags), GIN (search_tsv)"]
+    embeddings["chunk_embeddings<br/>PK / FK chunk_id : uuid<br/>embedding : halfvec(1536)<br/>embedding_model : text<br/>HNSW cosine index on embedding"]
+    sources -->|"CASCADE delete"| documents
+    sources -->|"CASCADE delete"| chunks
+    documents -->|"CASCADE delete"| chunks
+    chunks -->|"1 → 0..1 · CASCADE delete"| embeddings
+  end
+  subgraph acquisition["EXISTING · public · acquisition and maintenance (no FKs)"]
+    direction TB
+    raw["raw_documents<br/>PK id : uuid<br/>source_key, url, canonical_url, raw_content : text<br/>fetched_at : timestamptz · ingested_at? : timestamptz<br/>index_attempted_at? · index_attempted_model?<br/>Latest index: source_key, canonical_url,<br/>fetched_at DESC, id DESC"]
+    audits["language_change_audits<br/>PK id : uuid<br/>run_id, source_key : text · document_id : uuid<br/>old_language?, new_language?, detector_model? : text<br/>UQ (run_id, document_id) · no document FK"]
+    http["http_cache<br/>PK url : text<br/>etag?, last_modified?, body_hash? : text<br/>status_code? : int<br/>fetched_at, updated_at : timestamptz"]
+    robots["robots_cache<br/>PK robots_url : text<br/>body? : text · status_code? : int<br/>fetched_at, updated_at : timestamptz"]
+  end
+  subgraph registry["NEW · consumer_private · draft R1 / PR #2397 · no corpus FKs"]
+    direction TB
+    consumers["consumers<br/>PK id : uuid · UQ name : text<br/>name: lowercase a-z / 0-9 / hyphen, 1–80 chars<br/>state: pending | active | suspended | revoked<br/>created_at, updated_at : timestamptz<br/>Trigger: ID/name immutable; deletion rejected"]
+    members["members · owners and members share one table<br/>PK (consumer_id, github_user_id)<br/>FK consumer_id : uuid<br/>github_user_id : bigint, greater than 0<br/>role: owner | member<br/>Deferred trigger: at least one owner per consumer<br/>Membership cannot move between consumers"]
+    envs["environments<br/>PK (consumer_id, environment) · FK consumer_id<br/>environment : text, a-z / 0-9 / hyphen, 1–40 chars<br/>state: pending | active | suspended | revoked<br/>allowed_source_keys : text[] = empty array<br/>Array elements cannot be NULL; no source FK"]
+    usage["usage_daily · RESERVED, not collected by R1<br/>PK (consumer_id, environment, day, outcome)<br/>FK (consumer_id, environment)<br/>day : date<br/>outcome: success | client_error | server_error<br/>request_count : bigint = 0, at least 0"]
+    lifecycle["lifecycle_audit<br/>PK id : uuid · FK consumer_id : uuid<br/>actor_github_user_id : bigint, greater than 0<br/>action: created | member_added | member_removed<br/>occurred_at : timestamptz<br/>Actor ID has no membership FK"]
+    consumers -->|"1 → 1..many at commit · RESTRICT delete"| members
+    consumers -->|"RESTRICT delete"| envs
+    consumers -->|"RESTRICT delete"| lifecycle
+    envs -->|"composite FK · RESTRICT delete"| usage
+    privacy["R1 boundary: PUBLIC privileges revoked<br/>No serving / corpus-reader / report grants added<br/>No credentials table, HTTP wiring, or usage writer"]
+  end
+  sources -.->|"key matches source_key"| raw
+  documents -.->|"id matches document_id"| audits
+  sources -.->|"key values; logical allowlist"| envs
+  classDef existing fill:#eaf3ff,stroke:#245b91,color:#12283e,stroke-width:1.5px;
+  classDef added fill:#fff3d6,stroke:#996600,color:#352600,stroke-width:1.5px;
+  classDef note fill:#f5f6f8,stroke:#667085,color:#17212f;
+  class sources,documents,chunks,embeddings,raw,audits,http,robots existing;
+  class consumers,members,envs,usage,lifecycle added;
+  class title,privacy note;
+  style corpus fill:#f7fbff,stroke:#245b91
+  style acquisition fill:#f7fbff,stroke:#245b91
+  style registry fill:#fffaf0,stroke:#996600
