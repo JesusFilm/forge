@@ -62,3 +62,11 @@ initial-owner tampering, allowed-member selection, last-owner concurrency,
 rotation/revocation, secret-response loss and audit leakage. Run RAG tests,
 typecheck, lint, depcruise and isolated DB role/integration checks; contract drift
 if changed. Complete only this deliverable, not future dogfood/cutoff or UI.
+
+## R1 progress
+
+Draft [#2397](https://github.com/JesusFilm/forge/pull/2397) implements the
+isolated consumer registry schema and repository foundation. The remaining
+access lifecycle scope above is still pending. The
+[J040 report](evidence/feat-527/j040-r1-consumer-registry.md) records the
+schema/API decisions and disposable database verification.

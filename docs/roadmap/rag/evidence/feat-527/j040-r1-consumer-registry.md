@@ -9,6 +9,9 @@ problem_type: implementation
 
 # R1 consumer registry foundation
 
+Draft PR: [#2397](https://github.com/JesusFilm/forge/pull/2397).
+Implementation commit: `051bd3eca`.
+
 This PR implements the first isolated slice of feat-527 against current Forge
 `main`. The merged consumer-access plan and J022 discovery decisions govern the
 shape: direct consumer creation, a globally unique lowercase name, a
