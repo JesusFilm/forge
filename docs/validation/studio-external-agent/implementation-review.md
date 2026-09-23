@@ -101,5 +101,51 @@ production UI qualification.
 
 ## Remaining review gates
 
-Portable skill, final integration, and real-client qualification
-require their own evidence before this record can establish completion.
+Final integration, rebuilt-image validation and real-client qualification require
+their own evidence before this record can establish completion. The later review
+entries below supplement the earlier slice record; they do not close unavailable
+Claude or authenticated human-browser acceptance.
+
+## Portable skill and qualification infrastructure
+
+Independent standards/specification review of the portable package found zero
+actionable findings. The reviewer checked examples against actual operations,
+relative archive references, narration limits, human-edit preservation and modality
+claims. Two Manager package/schema tests, one Admin operation-engine test, both
+typechecks, scoped lint and the Manager production build passed. The final ZIP
+matched the actual-client qualification snapshot after normal commit hooks.
+
+Independent harness safety review found and cleared one P2: an output directory
+symlink could resolve exactly to the checkout root. Fresh private directory
+creation and canonical equality/descendant checks now reject it. The reviewer
+also checked isolated database admission, outbound network denial, exact fake
+provider interception, renderer containment and secret handling. Two guard
+regressions passed again after integration.
+
+## Render failures discovered by real-client qualification
+
+The actual Codex composition exposed intermediate audio commands that bypassed
+the final encoder's thread settings. A contained replay reproduced FFmpeg
+`pthread_create` failure. An opt-in patch to the pinned renderer now bounds every
+input decoder, encoder and filter pool. Both module formats load, and actual
+subprocess argument tests cover enabled, ordinary and probe behavior.
+
+Further replay showed rendering and stdout streaming finished but a replacement
+browser remained alive after crash recovery. The installed SDK's lifecycle test
+fails before the patch (closing the original browser twice) and passes afterward
+(closing the replacement), while preserving caller-owned browser behavior.
+The trusted child also enables the SDK's existing non-surface capture mode within
+its supported dimensions to avoid observed Chromium surface-copy failures.
+
+Independent review cleared all three fixes without weakening containment. The
+original 1080×1920, 300-frame composition then rendered in 98.670 seconds, passed
+independent full codec decoding and matched the prior completed-but-unretained
+MP4 byte-for-byte. Four focused regressions and a frozen offline install passed
+again after integration. Rebuilt-image qualification remains a separate gate.
+
+An independent transport fix removes global fetch's shorter implicit header
+timeout from private executor requests. Native HTTP retains the caller's overall
+abort deadline, fixed-origin validation, redirect denial and bounded output.
+Eight real HTTP/signed-transport tests passed, as did types, build and independent
+review. A delayed-header differential reproduced the old timeout and succeeded
+with the new transport; it does not substitute for a full-duration render test.
