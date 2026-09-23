@@ -199,3 +199,48 @@ Feat-464 and feat-459 now close the verified recovery/integrity scope. Their
 remaining monitoring and telemetry acceptance requirements are preserved in
 [feat-545](feat-545-recommendation-monitoring-and-telemetry-closeout.md), now an
 explicit dependency. This metadata change does not activate runtime features.
+
+## September 24 last-known-good fallback audit
+
+A bounded production **read-only** transaction at 2026-09-23 23:25:58 UTC
+inspected 57,972 retained `recommendation_request` rows created since September
+18 (latest row 23:25:57 UTC). It found **zero** requests with
+`last_known_good_semantic_fallback`, `candidate_platform_unavailable`,
+`semantic_parity_mismatch`, or `hybrid_candidate_platform_unavailable` as the
+request fallback reason. Joining request-owned `recommendation_candidate_run`
+and `recommendation_personalization_decision` records found **zero** matching
+platform-failure reasons there as well. The transaction used `BEGIN READ ONLY`
+and a 10-second statement timeout; it read aggregate counts and timestamps, not
+viewer/session identities or vectors. Recent `seed_embedding_unavailable`,
+`no_candidates`, and `profile_lineage_ineligible` outcomes are different
+failure modes and do not establish the operational last-known-good gate.
+
+The [September 21 real-dependency drill](../../operations/watch-startup-readiness-2026-09-21.md#module-reuse-release-and-independent-local-boundary-checks)
+remains the strongest isolated control: a normal six-card service request
+passed; a locally forced candidate-platform exception then returned six unique
+last-known-good semantic cards and persisted an issued fallback request with no
+assignment, `candidate_platform_unavailable`, and incomplete stage evidence.
+The service's [fallback path](../../../apps/admin/src/services/recommendations/delivery.service.ts)
+and its [persistence regression](../../../apps/admin/src/services/recommendations/delivery.service.persistence.test.ts)
+still distinguish this from ordinary semantic contextual delivery and from
+optional-profile degradation. The local control proves the service recovers and
+records the failure when that stage fails. It does **not** prove a natural
+production failure or its matching authorized Admin trace. The service and
+candidate mapping changed in September 23 PRs #2388 and #2392 after that drill;
+the original drill therefore is not an exact-current-revision integration run.
+
+Keep `status: "in-progress"` and the feat-545 dependency. For closure under the
+current verification requirement, wait for a genuine retained operational
+fallback, then reconcile its request, candidate-run evidence, item count,
+effective manifest and authorized Admin trace without creating a fault in
+production. A bounded alternative for owner review is to replace the
+natural-event requirement with an **exact-release-revision** rerun of the
+complete service against isolated real PostgreSQL and Redis: serve a normal
+control, force only the candidate-platform stage to fail, and verify six unique
+playable semantic cards plus the persisted issued fallback, effective semantic
+manifest, no assignment, `candidate_platform_unavailable` and incomplete stage
+evidence. Retain this negative production inventory alongside the result and
+state explicitly that no production failure was observed. This would change
+the acceptance criterion, so it requires the owner's explicit decision before
+closing; the feat-545 dependency must still be resolved separately. Do not
+treat an ordinary semantic or optional-profile fallback as that event.
