@@ -1,6 +1,6 @@
 ---
 title: "Test and reduce authored block dub lookup fanout"
-status: active
+status: completed
 type: fix
 ---
 
@@ -8,7 +8,8 @@ type: fix
 
 Continue in-progress feat-496 from fresh main `5a30f5ddc` in the task-owned
 worktree on `codex/watch-block-dub-batch-20260923-q7n`. PR #2399's timing
-instrumentation is merged and its automatic deployment is pending.
+instrumentation provides the baseline; its automatic release and bounded
+source-time correlation are verified in the accompanying operations note.
 
 ## Evidence and hypothesis
 
@@ -52,3 +53,18 @@ deadline failure a reproduction of the historical incident.
    finish PR #2399 source-timing capture and temporary-observer cleanup. Report
    HTTP and semantic failures separately, compound the evidence and preserve
    feat-496's unresolved causal/recovery gates.
+
+## Execution result
+
+All five scoped gates completed: the controlled queue regression and scalar
+parity are proven; PR #2401 passed local/full CI checks after incorporating
+fresh main; Admin and worker automatically deployed exact revision
+`911ad005874f2ee84e8d265f79b4d07d40863ce6`. Complete English/Spanish payloads
+match and a natural settings trace shows the batched query shape. The fixed
+03:29–03:39 release window and actual source-observer cleanup are recorded in
+`docs/operations/watch-block-dub-fanout-2026-09-23.md` and
+`docs/operations/watch-source-timing-2026-09-23.md`.
+
+The owner-directed bounded investigation is closed with the historical timeout
+cause explicitly unresolved. This completes the batching plan; it does not
+claim selection recovery from an empty selection sample or sub-200 ms latency.
