@@ -6,12 +6,12 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (September 23, 2026)
 
-- **Total tickets:** 727
-- **Complete:** 543
+- **Total tickets:** 728
+- **Complete:** 545
 - **In progress:** 57
-- **Not started:** 48
+- **Not started:** 47
 - **Blocked:** 79
-- **Overdue and not complete:** 143
+- **Overdue and not complete:** 142
 
 ## Feature Index
 
@@ -355,6 +355,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-501](platform/feat-501-experience-editor-bounded-video-data.md)                  | Bound experience editor video data and load languages on demand                    | vlad       | P0       | 2026-09-14 | 3    | 2026-09-16 | complete    |
 | [feat-502](platform/feat-502-homepage-publication-scoped-revalidation.md)              | Validate experience publication before promotion and scoped invalidation           | vlad       | P0       | 2026-09-17 | 6    | 2026-09-22 | not-started |
 | [feat-524](platform/feat-524-mobile-expo-sdk57-0-24-alignment.md)                      | Align Mobile Expo SDK 57.0.24 patches                                              | jaco       | P0       | 2026-09-21 | 1    | 2026-09-21 | complete    |
+| [feat-550](platform/feat-550-nextjs-security-update.md)                                | Apply Next.js September security update                                            | tataihono  | P0       | 2026-09-23 | 1    | 2026-09-23 | complete    |
 | [feat-278](platform/feat-278-watch-russian-authored-content-localization.md)           | Watch Russian authored content localization                                        | unassigned | P1       | —          | 2    | —          | not-started |
 | [feat-456](platform/feat-456-watch-page-not-found-telemetry.md)                        | Emit Watch page-not-found telemetry                                                | codex      | P1       | —          | 2    | —          | blocked     |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md)       | CMS local PostgreSQL I/O concurrency compatibility                                 | tataihono  | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |
@@ -603,8 +604,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-522](platform/feat-522-watch-home-full-hero-title.md)                            | Show the full Watch home hero title                                                | codex      | P1       | 2026-09-17 | 1    | 2026-09-17 | complete    |
 | [feat-523](platform/feat-523-watch-field-hydration-mismatch-attribution.md)            | Attribute remaining Watch field text and HTML hydration mismatches                 | nisal      | P1       | 2026-09-21 | 3    | 2026-09-23 | in-progress |
 | [feat-524](platform/feat-524-watch-recommendation-tester-access.md)                    | Private Watch recommendation tester links without login UI                         | nisal      | P1       | 2026-09-21 | 1    | 2026-09-21 | complete    |
-| [feat-525](platform/feat-525-activate-watch-recommendation-testers.md)                 | Activate and verify the three-person Watch recommendation pilot                    | nisal      | P1       | 2026-09-21 | 1    | 2026-09-21 | in-progress |
-| [feat-531](platform/feat-531-repair-production-watch-revalidation-endpoint.md)         | Repair Admin production Watch revalidation endpoint                                | nisal      | P1       | 2026-09-22 | 1    | 2026-09-22 | not-started |
+| [feat-525](platform/feat-525-activate-watch-recommendation-testers.md)                 | Activate and verify the three-person Watch recommendation pilot                    | nisal      | P1       | 2026-09-21 | 1    | 2026-09-21 | complete    |
+| [feat-531](platform/feat-531-repair-production-watch-revalidation-endpoint.md)         | Repair Admin production Watch revalidation endpoint                                | nisal      | P1       | 2026-09-22 | 1    | 2026-09-22 | in-progress |
 | [feat-532](platform/feat-532-changelog-preapproval-redemption.md)                      | Redeem Changelog Contributor preapprovals for active accounts                      | edmondshen | P1       | 2026-09-23 | 1    | 2026-09-23 | complete    |
 | [feat-534](platform/feat-534-changelog-membership-activation.md)                       | Activate preapproved Changelog memberships                                         | edmondshen | P1       | 2026-09-23 | 1    | 2026-09-23 | complete    |
 | [feat-543](platform/feat-543-mobile-sign-in-gate.md)                                   | Mobile sign-in gate hides sign-in until an environment turns it on                 | urim       | P1       | 2026-09-23 | 2    | 2026-09-24 | in-progress |
