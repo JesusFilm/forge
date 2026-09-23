@@ -3,7 +3,7 @@ id: "feat-531"
 title: "Repair Admin production Watch revalidation endpoint"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-22"
 duration: 1
 depends_on: []
@@ -46,3 +46,33 @@ Preserve authentication, event contracts, and unrelated configuration. Do not
 redeploy local worktree code or manually trigger Railway redeploys. Record the
 deployed revision, redacted response statuses, and a bounded affected-page
 check. Never record tokens, database URLs, or unpublished content.
+
+## Production Repair Plan (2026-09-24)
+
+Read-only Railway configuration inspection confirmed the Admin production
+`WEB_REVALIDATE_URL` still uses `https://watch.jesusfilm.org/watch/api/revalidate`.
+Admin's `WEB_REVALIDATE_TOKEN` and Web's `REVALIDATION_SECRET` are both present
+and match; neither value was printed. An invalid-token POST to the legacy host
+returned 301 to `https://www.jesusfilm.org/watch/api/revalidate`; following the
+redirect converted POST to GET and returned 405. The same invalid-token POST
+directly to the canonical host returned 401, confirming the receiver handles
+POST and enforces authentication.
+
+1. Set **only** Admin production `WEB_REVALIDATE_URL` to
+   `https://www.jesusfilm.org/watch/api/revalidate` in Railway with deploys
+   skipped. Leave both existing secrets and all other variables unchanged.
+2. Merge this scoped repair through the usual PR-to-main path. Its
+   `apps/admin/.env.example` change enters the Admin service watch pattern, so
+   Railway's normal Git deployment activates the staged variable. Do not run a
+   manual redeploy or upload local code.
+3. Confirm Admin's deployed Git revision and that the effective URL is canonical.
+   Stage an identical-content draft of the published English homepage locale
+   `cmr96r2y10001p08tkp2bcrqu` only after checking there is no active draft
+   or concurrent edit; publish it through Admin's normal service path. This
+   preserves visible content while generating Admin `experience` and
+   `watch-setting` events.
+4. Confirm `web_revalidate.sent` with HTTP 200 for the Admin-originated events,
+   then fetch the affected public homepage and check its cache refresh and
+   expected authored block. Record only bounded statuses, revision, and public
+   content evidence here. If the hook fails, restore the previous URL with
+   deploys skipped and use the normal PR-to-main deployment path for rollback.
