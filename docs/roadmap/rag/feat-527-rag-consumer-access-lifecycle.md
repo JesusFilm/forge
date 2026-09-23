@@ -3,7 +3,7 @@ id: "feat-527"
 title: "Implement formal RAG consumer access lifecycle"
 owner: "jaco"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-15"
 duration: 5
 depends_on: ["feat-526", "feat-518"]
@@ -41,7 +41,7 @@ storage. Consumer memberships live in the database. Only existing owners may
 Add member from the current allowlist; added members can manage/regenerate.
 Retain at least one owner, transaction/version checks and restricted audit.
 
-Provide stable identity, explicit server-authorized source scope/environment,
+Provide stable identity, explicit server-authorized source scope,
 immediate atomic rotation, suspension/revocation and isolated metadata privileges.
 Supply the same backend to the pre-portal dogfood harness; the full UI remains
 feat-530 after dogfood. Deliver the migration runbook; cutoff waits for feat-529
@@ -62,3 +62,22 @@ initial-owner tampering, allowed-member selection, last-owner concurrency,
 rotation/revocation, secret-response loss and audit leakage. Run RAG tests,
 typecheck, lint, depcruise and isolated DB role/integration checks; contract drift
 if changed. Complete only this deliverable, not future dogfood/cutoff or UI.
+
+## Registry foundation progress
+
+Draft [#2397](https://github.com/JesusFilm/forge/pull/2397) implements the
+isolated consumer registry schema and repository foundation. The remaining
+access lifecycle scope above is still pending. The
+[Foundation report](evidence/feat-527/consumer-registry-foundation.md) records the
+schema/API decisions and disposable database verification.
+
+## V1 simplification resolution
+
+The registry in [#2397](https://github.com/JesusFilm/forge/pull/2397) now models
+exactly one runtime environment per consumer; there is no staging environment.
+Source grants and lifecycle state belong to the consumer, and daily usage keys
+reference it directly. Credentials, auth context, portal routes and reports must
+use consumer identity without an environment selector. GitHub admission,
+ownership and secret generation/hash/atomic rotation requirements are unchanged.
+See the [implementation and verification report](../../plans/2026-09-23-consumer-single-environment.md).
+This simplification is complete; the broader lifecycle ticket remains in progress.

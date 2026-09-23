@@ -44,6 +44,10 @@ Added members can manage/regenerate. Preserve at least one owner, audit, revocat
 and removal/session semantics. No consumer-registration or owner-change PRs.
 Reports remain Jaco/RAGBot-only; consumer membership grants no report access.
 
+V1 has one runtime environment per consumer and no staging environment. The
+portal has no environment picker, environment creation or environment-scoped
+routes. Generate new key replaces the consumer's single active credential.
+
 ## Constraints
 
 No external consumers or implicit quotas. No secrets in logs, tests, command
