@@ -86,3 +86,56 @@ in primary logs. Then run a bounded independent database capture with workload
 context, retain actual coverage and stop reasons, and verify cleanup. Report
 HTTP failures separately from delivery HTTP 200 timeout fallbacks. Do not close
 feat-496 on this instrumentation release or on a short quiet window.
+
+## Verified automatic release and bounded capture
+
+PR #2399 merged normally to `5a30f5ddceeb4dc29d7ceb87718600a30af91401`.
+Admin deployment `5dafa696-0b3c-4e87-a319-ef8bfa204330` was verified at
+02:52:33 UTC with health HTTP 200 and the workflow runner disabled. Worker
+`ddc50a6d-2cc0-4f1a-93fc-f838df6f731f` was verified at 03:01:29 with the
+same SHA, health HTTP 200 and runner enabled. Web remained at
+`1cccac03cec7ad4427d0c6f80443dd4d71b942e0`.
+
+The first observer attempt ended with the old worker rollout after about
+22 seconds and has no final summary. Its intended five minutes must not be
+reported as captured. On the new worker, the tagged wait observer covered
+03:01:57.581–03:03:49.521 UTC: 441 polls, four samples, 1,528 ms cumulative
+query time and 8.29 ms maximum query time. The separate 1 Hz workload observer
+made 112 polls, with 408 ms cumulative query time and 8.34 ms maximum. Both
+were explicitly stopped during a user task pause; both summaries say
+`aborted`, not duration-complete. The following 03:03:52 preflight found no
+remaining observer connections. No persistent database setting or profiler
+was enabled.
+
+All 18 completed Admin observations in the uncapped 03:01–03:04 window have
+source start times and required operation offsets. A natural 180-row evidence
+write demonstrates the intended join:
+
+- Observation `b86e44aa-37c2-44e8-a574-ed2f075ff120`, transaction 4, PID
+  1462541; served request, 189.87 ms total.
+- Admin source start 03:02:07.115 UTC; INSERT starts 144.055 ms later and
+  completes in 23.879 ms. Raw driver duration is 22.891 ms.
+- The independent PostgreSQL sample at 03:02:07.275 observes that same
+  transaction's INSERT active, started at .270, query age 4.466 ms, no wait
+  and no blockers.
+- Point-in-time calibration around 03:02 bounds PostgreSQL minus either
+  application host to −2…+2 ms including timestamp rounding. This is not
+  continuous synchronization. One active sample does not give the entire
+  SQL execution duration.
+
+This establishes source-time correlation without relying on a retained APM
+trace. The other three samples are idle-in-transaction/ClientRead, with no
+blockers. None is a reproduction of the historical timeout.
+
+For the same fixed window, HTTP metrics report one selection HTTP 200, 17
+seeded delivery HTTP 200s and 12 delivery HTTP 403s; no recommendation-route
+HTTP 5xx is present. Primary Web logs account for all 17 accepted delivery
+responses: 16 served, one ordinary `no_candidates` fallback, zero
+`delivery_timeout` fallbacks. The 12 delivery 403s are origin/fetch-metadata
+rejections. Evidence/playback 400/403 terminal rejections are separately
+retained in the artifact and are not classified as delivery timeouts. There
+is no for-you sample. This small window validates instrumentation and
+classifications, not API recovery or consistent sub-200 ms latency.
+
+Sanitized release evidence:
+`docs/validation/watch-source-timing-20260923/release.json`.

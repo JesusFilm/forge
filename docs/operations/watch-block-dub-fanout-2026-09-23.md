@@ -78,9 +78,9 @@ two real PostgreSQL checks.
 All 7,348 Admin tests pass in the separate rerun, and typechecking, lint,
 production build, schema generation and consumer introspection generation pass.
 The generated schema and consumer contract are unchanged. An initial local full-suite run had one UI timeout while an
-incorrectly invoked typecheck exhausted Node's default heap; rerun with the
-repository's configured typecheck script and separate test execution. Do not
-increase a test or API deadline to hide that result.
+incorrectly invoked typecheck exhausted Node's default heap. The repository's
+configured typecheck script and separate full-suite rerun both passed; no test
+or API deadline was increased.
 
 Sequential Compound Engineering review covers correctness, testing,
 maintainability, project standards, agent access, past learnings, security,
@@ -89,7 +89,11 @@ The review added coverage for missing block identity. No blocking finding
 remains. The two-query selection/hydration path adds a round trip for a lone
 lookup; the proven improvement applies to sibling fanout. No database mutation,
 schema, UI, flag, deadline, retry or pool-size change is included. Fresh-main
-incorporation and normal PR CI remain release requirements.
+incorporation and normal PR CI passed: Mobile PR #2367 was incorporated at
+`3494f42ee4e678451a6dd60768a1295b751497c5`, all 24 focused regressions passed
+again, and all applicable CI gates passed on the combined branch. PR #2401
+merged normally at 03:19:54 UTC to
+`911ad005874f2ee84e8d265f79b4d07d40863ce6`.
 
 Verify the exact automatic Admin/worker revision and production settings query
 shape after release. Report selection HTTP failures separately from delivery
@@ -97,3 +101,70 @@ HTTP 200 timeout fallbacks. A short quiet window remains insufficient for a
 recovery claim. The user requested one final bounded pass; if the historical
 fault remains unresolved, close the investigation with that limitation explicit
 and move on, rather than continuing indefinite observation.
+
+## Production query and response verification
+
+Admin deployment `9d6a59e3-4815-4245-9850-5b0ee4ab1843` runs
+`911ad005874f2ee84e8d265f79b4d07d40863ce6`; the 03:28:05 UTC runtime check
+returned health HTTP 200 with the workflow runner disabled. Worker deployment
+`e3e66a80-e6c5-4c0f-82cd-5cb9562ed6d9` was independently verified at
+03:32:55 UTC on the same revision, health HTTP 200, runner enabled. The
+post-merge main CI run also passed.
+
+The same two public read-only settings queries used before deployment return
+HTTP 200 without GraphQL errors. English preserves all 43 populated dub fields;
+Spanish preserves all 21. Complete parsed payloads match, including nulls,
+nested fields and ordered arrays. Raw hashes differ only because JSON object
+keys occur in a different order; canonical-key hashes match and byte lengths
+are unchanged. The two post-release reads took 81.4 and 42.2 ms, compared with
+128.8 and 66.5 ms before. These are smoke samples, not latency percentiles or
+an API recovery claim.
+
+A separate natural `GetWatchSettings` trace at 03:28:54.218 UTC confirms the
+changed execution shape on this exact revision: trace
+`6ab34776000000001d597cf87d43da8d`, settings span
+`6237385266821987906`, duration 51.443848 ms. The expanded settings subtree
+has one raw winner-selection call and one `VideoDub.findMany` hydration,
+with no scalar `VideoDub.findFirst` method spans. These are method-span
+counts; nested driver/SQL spans are collapsed, so this is not a claim of two
+total SQL statements. Different natural requests are not a controlled latency
+comparison. Full before/after query cardinality is measured by the local ABBA
+experiment above.
+
+## Fixed-window outcomes and closure
+
+The complete 03:29–03:39 UTC window contains 433 uncapped Admin log rows and
+751 uncapped structured Web delivery/evidence rows. Datadog HTTP counts match
+the primary delivery/evidence classifications:
+
+| Surface         | HTTP result                                 | Semantic result / limitation                                                                                      |
+| --------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Seeded delivery | 53 HTTP 200; 57 HTTP 403; zero observed 5xx | 45 served; 3 `no_candidates`, 3 `seed_embedding_unavailable`, 2 `cooldown` fallbacks; **zero `delivery_timeout`** |
+| Selection       | No requests observed                        | No selection acknowledgment or reliability conclusion                                                             |
+| Evidence        | 115 HTTP 200; 77 HTTP 403                   | 403 records are crawler rejections                                                                                |
+| Playback        | 382 HTTP 200; 66 HTTP 403; 1 HTTP 409       | 36 crawler and 30 forbidden rejections; 409 is terminal `invalid_binding`, separate from latency recovery         |
+| Profile         | 61 HTTP 200; 209 HTTP 403                   | HTTP population only; this capture does not classify profile rejection reasons                                    |
+
+Delivery's 57 HTTP 403s comprise 33 invalid-fetch-metadata and 24 invalid-origin
+rejections. The completed Admin records account for all 53 delivery HTTP 200s;
+none marks a timeout fallback. Admin service elapsed time has p50 252.18 ms,
+p95 464.53 ms and maximum 572.90 ms. The 48 evidence INSERT observations have
+p95 166.08 ms and maximum 179.30 ms. There are no slow pool-acquisition or late
+operation events in this slice. This does not imply all acquisitions are zero,
+and these Admin timings are not browser acknowledgment latency. No for-you
+traffic was observed.
+
+Both running revisions and health were rechecked at 03:39:24–25 UTC. No
+production settings were changed, and the source-timing observer cleanup
+remains recorded separately. Sanitized release evidence is in
+`docs/validation/watch-block-dub-batch-20260923/release.json`.
+
+Per the owner's one-final-pass instruction, close feat-496's investigation
+with its residual cause unresolved. The authored-block contention bug is
+proven, fixed and verified in production. The historical 1.19-second evidence
+write and selection capability-budget timeouts are **not** causally assigned
+to that workload, and this window does not establish full recovery or
+consistent sub-200 ms service. Separate evidence-transport work under feat-464
+is not closed by this result. Reopen latency investigation only when new
+matched evidence or a new scope decision warrants it; do not turn this
+bounded closure into an indefinite observation loop.
