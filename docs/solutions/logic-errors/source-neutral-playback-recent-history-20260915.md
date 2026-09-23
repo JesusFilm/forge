@@ -85,9 +85,18 @@ completion and partial-watch rules remain separate.
 `RecommendationDeliveryService` loads recent context once and applies it in
 semantic, cold-profile, hybrid and fallback execution. Curated fallback excludes
 the current video at retrieval, then uses the same fresh-first/reserve composition
-as other lanes. Both composers match canonical Core identities. A history failure
-is explicit, not silently treated as an empty history; request deadlines remain
-unchanged.
+as other lanes, including last-known-good recovery after retrieval exceptions or
+parity failures. Both composers match canonical Core identities and exact titles
+in the requested locale. Apply freshness to the full recovery pool before taking
+the requested count, so a recent top-ranked item cannot hide a fresh reserve.
+Reserve time for history by bounding optional profile authorization to the existing
+homepage 450 ms policy on both surfaces. An authorization timeout permits only
+current-session context; a late success cannot change authority mid-request.
+Start required history immediately after authorization, concurrently with optional
+profile work. Settle its rejection immediately and reuse the result across lanes;
+optional work must not consume its entire deadline before it even starts. A
+history failure is explicit, not silently treated as empty history; request
+deadlines remain unchanged.
 
 In `profiles/profile-projection.service.ts`, qualified watch contributions no
 longer require a recommendation selection or attributed impression. Episode
@@ -96,7 +105,12 @@ supersession and rollback fences remain. Click-only session intent still require
 selection/impression attribution. Qualified-view thresholds are unchanged.
 
 The existing `(session_digest, created_at DESC, id DESC)` index supports bounded
-episode lookup without scanning unrelated viewers. Its original migration uses ordinary
+episode lookup without scanning unrelated viewers. Materialize start/late-evidence
+validation after bounding roots and before joining active facts. Otherwise PostgreSQL
+can repeat those integrity probes for every active interval: the near-bound fixture
+produced 32,512 probes instead of 256 and about 3.48 seconds of execution. The
+materialization preserves the same evidence policy and bounds each probe to the
+authorized episode count. Its original migration uses ordinary
 transaction-compatible DDL with a two-second lock timeout and a fifteen-second
 statement timeout. It briefly blocks writes while building; a timeout fails the
 deployment and requires inspection and Prisma failure resolution before retry.
@@ -120,10 +134,15 @@ interest publication. This does not make an already-rendered row update in place
 - Test 2,999 versus 3,000 ms, overlapping and contiguous intervals, the exact
   24-hour boundary, start-only and preview-only episodes, and pending finalization.
 - Include pre-link, expired, reset, foreign-session, conflicting and late evidence.
+- Test the replay quarantine boundary, a pending history timeout, slow optional
+  profile work, and both exception and parity recovery with a fresh seventh item.
+- Preserve request-locale title equivalence as well as Core identity when moving
+  hard retrieval exclusions into soft recent reserves.
 - Test buffered starts and client clocks ahead of or behind the server; do not
   repeat token timestamp validation with stricter downstream assumptions.
 - Bound roots before joining facts, and inspect the actual query plan with many
-  unrelated episodes. An output `LIMIT` alone does not bound the expensive join.
+  unrelated episodes and near-bound authorized history. An output `LIMIT` alone
+  does not bound the expensive join.
 - Distinguish a recently-tried preference, qualified viewing, completion and an
   explicit reaction. An immediate exit has unknown preference meaning.
 - Inspect actual rejected-stage reason codes; a composed position movement alone

@@ -170,6 +170,10 @@ export class RecommendationDeliveryService {
           return null
         }
         try {
+          const authorizationDeadlineAt = Math.min(
+            candidateDeadlineAt,
+            deliveryStartedAt + 450,
+          )
           return (await withinDeadline(
             () =>
               this.deps.authorizeProfile!({
@@ -177,9 +181,9 @@ export class RecommendationDeliveryService {
                 consentReceiptDigest: input.consentReceiptDigest!,
                 profileTokenDigest: input.profileTokenDigest!,
                 now,
-                deadlineAt: candidateDeadlineAt,
+                deadlineAt: authorizationDeadlineAt,
               }),
-            candidateDeadlineAt,
+            authorizationDeadlineAt,
             nowMilliseconds,
           ))
             ? input.profileTokenDigest
@@ -188,6 +192,39 @@ export class RecommendationDeliveryService {
           return null
         }
       })()
+      // Required history runs alongside optional personalization. Settle failures
+      // immediately so delayed profile work cannot create unhandled rejections.
+      const recentContextPromise = profileTokenDigestPromise.then(
+        async (profileTokenDigest) => {
+          try {
+            const context: RecommendationRecentContext = this.deps
+              .resolveRecentContext
+              ? await withinDeadline(
+                  () =>
+                    this.deps.resolveRecentContext!({
+                      sessionDigest: input.sessionDigest,
+                      profileTokenDigest,
+                      allowDurableProfileLinks: profileTokenDigest != null,
+                      locale,
+                      now,
+                      deadlineAt: candidateDeadlineAt,
+                    }),
+                  candidateDeadlineAt,
+                  nowMilliseconds,
+                )
+              : { videos: [] }
+            return { context, failureReason: null }
+          } catch (error) {
+            return {
+              context: { videos: [] },
+              failureReason:
+                error instanceof RecommendationRetrievalTimeoutError
+                  ? "recent_context_timeout"
+                  : "recent_context_unavailable",
+            }
+          }
+        },
+      )
       const experimentPromise = profileTokenDigestPromise.then(
         (profileTokenDigest) => {
           if (profileTokenDigest != null) {
@@ -345,7 +382,6 @@ export class RecommendationDeliveryService {
       }
       let experiment = legacyExperiment
       let profileComparison = false
-      let recentContext: RecommendationRecentContext = { videos: [] }
       if (
         profileTokenDigest &&
         this.deps.assignProfileExperiment &&
@@ -392,30 +428,10 @@ export class RecommendationDeliveryService {
             return unavailable("recent_context_unavailable")
         }
       }
-      // Resolve once for every delivery lane, even before a durable interest
-      // exists. Semantic fallback must not undo the same viewer's feedback.
-      if (this.deps.resolveRecentContext) {
-        try {
-          recentContext = await withinDeadline(
-            () =>
-              this.deps.resolveRecentContext!({
-                sessionDigest: input.sessionDigest,
-                profileTokenDigest,
-                allowDurableProfileLinks: profileTokenDigest != null,
-                now,
-                deadlineAt: candidateDeadlineAt,
-              }),
-            candidateDeadlineAt,
-            nowMilliseconds,
-          )
-        } catch (error) {
-          return unavailable(
-            error instanceof RecommendationRetrievalTimeoutError
-              ? "recent_context_timeout"
-              : "recent_context_unavailable",
-          )
-        }
-      }
+      const recentResolution = await recentContextPromise
+      if (recentResolution.failureReason)
+        return unavailable(recentResolution.failureReason)
+      const recentContext = recentResolution.context
       let viewingMode: ViewingModeAffinity | null = null
       if (
         profileTokenDigest &&
@@ -517,6 +533,7 @@ export class RecommendationDeliveryService {
             context,
             manifest.maxItems,
             seedMediaId,
+            recentContext.videos,
           )
           result = selected.length > 0 ? "fallback" : "empty"
           reason = "semantic_parity_mismatch"
@@ -528,6 +545,7 @@ export class RecommendationDeliveryService {
           context,
           manifest.maxItems,
           seedMediaId,
+          recentContext.videos,
         )
         platform = failedCandidatePlatform("candidate_platform_unavailable")
         result = selected.length > 0 ? "fallback" : "unavailable"

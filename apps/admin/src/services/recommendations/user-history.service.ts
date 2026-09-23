@@ -6,6 +6,7 @@ import { recentPlaybackCtes } from "./recent-playback.sql"
 export type UserWatchHistory = {
   mediaId: string
   videoCoreId?: string | null
+  videoTitle?: string | null
   completed: boolean
   recentlyTried?: boolean
   qualified?: boolean
@@ -19,6 +20,7 @@ export async function getUserWatchHistory(
   input: {
     sessionDigest: string
     profileTokenDigest: string | null
+    locale: string
     now: Date
   },
 ): Promise<UserWatchHistory> {
@@ -64,11 +66,12 @@ export async function getUserWatchHistory(
       SELECT * FROM recent_playback ORDER BY latest_at DESC, media_id LIMIT 24
     )
     SELECT COALESCE(qualified.media_id, tried.media_id) AS "mediaId",
-      video.core_id AS "videoCoreId", COALESCE(qualified.completed, false) AS completed,
+      video.core_id AS "videoCoreId", localized.title AS "videoTitle", COALESCE(qualified.completed, false) AS completed,
       tried.media_id IS NOT NULL AS "recentlyTried", qualified.media_id IS NOT NULL AS qualified
     FROM qualified_history qualified
     FULL JOIN tried_history tried ON tried.media_id = qualified.media_id
     LEFT JOIN video ON video.id = COALESCE(qualified.media_id, tried.media_id)
+    LEFT JOIN video_locale localized ON localized.video_id = video.id AND localized.locale = ${input.locale}
     ORDER BY GREATEST(qualified.latest_at, tried.latest_at) DESC, "mediaId"
   `
 }

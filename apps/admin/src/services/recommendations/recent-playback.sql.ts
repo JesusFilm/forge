@@ -29,19 +29,11 @@ export function recentPlaybackCtes(now: Date): Prisma.Sql {
         LIMIT ${MAX_RECENT_CONTEXT_EPISODES_PER_SESSION}
       ) episode
     ),
-    active_intervals AS MATERIALIZED (
-      SELECT episode.id, episode.media_id, fact.received_at,
-        fact.occurred_at AS interval_end,
-        fact.occurred_at - (fact.payload->>'activeMilliseconds')::double precision
-          * interval '1 millisecond' AS interval_start
+    -- Evaluate episode-wide integrity once per bounded root, before the fact
+    -- fanout can cause PostgreSQL to repeat these probes for every interval.
+    validated_recent_episodes AS MATERIALIZED (
+      SELECT episode.id, episode.media_id
       FROM recent_episodes episode
-      JOIN recommendation_playback_fact fact ON fact.episode_id = episode.id
-        AND fact.kind = 'playback_active_visible_playing'
-        AND NOT fact.late
-        -- Client-clock skew is checked at ingestion. Recency uses server time.
-        AND fact.received_at > ${since} AND fact.received_at <= ${now}
-        AND fact.expires_at > ${now}
-        AND (fact.payload->>'activeMilliseconds')::double precision BETWEEN 1 AND 60000
       WHERE EXISTS (
         SELECT 1 FROM recommendation_playback_fact started
         WHERE started.episode_id = episode.id AND started.kind = 'playback_start'
@@ -52,6 +44,20 @@ export function recentPlaybackCtes(now: Date): Prisma.Sql {
         SELECT 1 FROM recommendation_playback_fact late
         WHERE late.episode_id = episode.id AND late.late
       )
+    ),
+    active_intervals AS MATERIALIZED (
+      SELECT episode.id, episode.media_id, fact.received_at,
+        fact.occurred_at AS interval_end,
+        fact.occurred_at - (fact.payload->>'activeMilliseconds')::double precision
+          * interval '1 millisecond' AS interval_start
+      FROM validated_recent_episodes episode
+      JOIN recommendation_playback_fact fact ON fact.episode_id = episode.id
+        AND fact.kind = 'playback_active_visible_playing'
+        AND NOT fact.late
+        -- Client-clock skew is checked at ingestion. Recency uses server time.
+        AND fact.received_at > ${since} AND fact.received_at <= ${now}
+        AND fact.expires_at > ${now}
+        AND (fact.payload->>'activeMilliseconds')::double precision BETWEEN 1 AND 60000
     ),
     covered_intervals AS (
       SELECT *, max(interval_end) OVER (

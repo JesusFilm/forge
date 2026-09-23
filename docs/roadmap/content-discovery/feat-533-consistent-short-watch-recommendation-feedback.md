@@ -24,9 +24,10 @@ The user explicitly scoped consistent short-watch behavior across both APIs.
 They also require viewing from any product entry point to affect recommendations
 and user profiles, without requiring a recommendation-card click.
 
-Implementation and automated verification are complete. This extends the
-delivered homepage work in feat-488 and below-player recent-context work in
-feat-503. It has not been deployed.
+Implementation, repeated review and local release validation are complete.
+Production verification follows the normal reviewed PR-to-main deployment.
+This extends the delivered homepage work in feat-488 and below-player
+recent-context work in feat-503. It has not been deployed.
 
 ## Entry Points
 
@@ -91,9 +92,12 @@ entry points and the normal PR-to-main release process.
 - Shared 3-second / 24-hour SQL evidence policy feeds both API surfaces.
 - All six playback origins affect recent context and qualified profile learning,
   including recommendation playback without attributed impressions.
-- 552 Admin unit tests, 46 real-PostgreSQL tests and 119 Web tests passed.
-- Admin typecheck and changed-file lint passed. Both bounded history readers
-  retained indexed access in a 10,000-unrelated-episode fixture.
+- 7,324 Admin unit tests, 61 real-PostgreSQL tests and 119 Web tests passed.
+- Admin typecheck, changed-file lint, production build and schema drift checks
+  passed. Both readers retained indexed access with 10,000 unrelated episodes
+  and bounded integrity work with eight sessions, 32 roots and 128 facts each.
+- Two full Compound Engineering review rounds plus a focused final re-review
+  left no unresolved findings; fallback, identity and deadline fixes are covered.
 - Compound learning and related pattern/operations guidance refreshed in place.
 - [Verification and release smoke checklist](../../validation/feat-533-short-watch-feedback.md).
   Browser reproduction and production end-to-end latency remain release checks;

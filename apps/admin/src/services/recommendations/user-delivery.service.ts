@@ -176,6 +176,7 @@ type UserDependencies = DeliveryDependencies & {
   history(input: {
     sessionDigest: string
     profileTokenDigest: string | null
+    locale: string
     now: Date
     deadlineAt: number
   }): Promise<UserWatchHistory>
@@ -312,6 +313,7 @@ export class UserRecommendationDeliveryService {
               this.deps.history({
                 sessionDigest: input.sessionDigest,
                 profileTokenDigest,
+                locale: input.locale,
                 now,
                 deadlineAt: candidateDeadline,
               }),

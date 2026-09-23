@@ -135,6 +135,7 @@ export type DeliveryDependencies = {
     sessionDigest: string
     profileTokenDigest: string | null
     allowDurableProfileLinks: boolean
+    locale: string
     now: Date
     deadlineAt: number
   }) => Promise<RecommendationRecentContext>

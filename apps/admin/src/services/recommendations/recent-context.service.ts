@@ -18,6 +18,7 @@ const REPEATEDLY_SERVED_THRESHOLD = 2
 type RecentContextRow = Readonly<{
   targetMediaId: string
   videoCoreId?: string | null
+  videoTitle?: string | null
   servedCount: number | bigint
   selected: boolean
   recentlyTried: boolean
@@ -40,6 +41,7 @@ export async function getRecommendationRecentContext(
     sessionDigest: string
     profileTokenDigest: string | null
     allowDurableProfileLinks: boolean
+    locale: string
     now: Date
   },
 ): Promise<RecommendationRecentContext> {
@@ -149,11 +151,13 @@ export async function getRecommendationRecentContext(
     SELECT
       "targetMediaId",
       video.core_id AS "videoCoreId",
+      localized.title AS "videoTitle",
       "servedCount",
       selected,
       "recentlyTried"
     FROM recent_items
     LEFT JOIN video ON video.id = "targetMediaId"
+    LEFT JOIN video_locale localized ON localized.video_id = video.id AND localized.locale = ${input.locale}
     WHERE "recentlyTried"
       OR selected
       OR "servedCount" >= ${REPEATEDLY_SERVED_THRESHOLD}
@@ -183,6 +187,7 @@ export async function getRecommendationRecentContext(
       targetMediaId,
       reasonCodes,
       ...(row.videoCoreId ? { videoCoreId: row.videoCoreId } : {}),
+      ...(row.videoTitle ? { videoTitle: row.videoTitle } : {}),
     })
   }
   return { videos }

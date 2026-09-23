@@ -20,32 +20,46 @@ Branch: `codex/feat-533-short-watch-feedback`.
 
 ## Automated Verification
 
-| Check                                                                 | Result                 |
-| --------------------------------------------------------------------- | ---------------------- |
-| Admin recommendation unit tests                                       | 552 passed in 66 files |
-| Real PostgreSQL episode, profile, projection and recent-context tests | 46 passed in 4 files   |
-| Web recommendation/player tests                                       | 119 passed in 9 files  |
-| Admin typecheck                                                       | Passed                 |
-| ESLint for changed Admin TypeScript                                   | Passed                 |
+| Check                                                   | Result                                       |
+| ------------------------------------------------------- | -------------------------------------------- |
+| Full Admin non-database tests                           | 7,324 passed in 451 files; 2 skipped, 1 todo |
+| Real PostgreSQL recommendation integration tests        | 61 passed in 7 files                         |
+| Web recommendation/player tests                         | 119 passed in 9 files                        |
+| Admin typecheck                                         | Passed                                       |
+| ESLint for changed Admin TypeScript                     | Passed                                       |
+| Admin production build and workflow registration checks | Passed                                       |
+| Admin GraphQL schema drift                              | No drift                                     |
 
 Commands run from the worktree root:
 
 ```bash
-pnpm --filter @forge/admin test -- src/services/recommendations --exclude '**/*.db.test.ts' --silent
+pnpm --filter @forge/admin test -- --exclude '**/*.db.test.ts' --silent
 pnpm --filter @forge/admin typecheck
 pnpm --filter @forge/web test -- src/components/recommendations --silent
+pnpm --filter @forge/admin schema:print
 ```
+
+The production build used the disposable local database and non-production auth
+configuration. Existing Edge Runtime/workspace-root tracing warnings were emitted;
+compilation, TypeScript, static generation and workflow verifiers succeeded. An
+earlier concurrent test/build run hit unrelated test timeouts; two standalone full
+Admin reruns passed without changing those tests.
 
 Database verification used a disposable local PostgreSQL 18 container with
 pgvector, not a production database:
 
 ```bash
-RECOMMENDATION_DB_TEST=1 DATABASE_URL="$LOCAL_TEST_DATABASE_URL" \
+RECOMMENDATION_DB_TEST=1 RECOMMENDATION_PROFILE_DB_FIXTURE=deterministic \
+RECOMMENDATION_DELIVERY_DB_FIXTURE=deterministic DATABASE_URL="$LOCAL_TEST_DATABASE_URL" \
   pnpm --filter @forge/admin test -- \
   src/services/recommendations/playback-episode.db.test.ts \
   src/services/recommendations/profile.service.db.test.ts \
   src/services/recommendations/profiles/profile-projection.service.db.test.ts \
-  src/services/recommendations/recent-context.db.test.ts --silent
+  src/services/recommendations/recent-context.db.test.ts \
+  src/services/recommendations/delivery-persistence.db.test.ts \
+  src/services/recommendations/candidates/profile-candidate.db.test.ts \
+  src/services/recommendations/delivery-retriever.db.test.ts \
+  --no-file-parallelism --silent
 ```
 
 The database suites verify all six origins (direct, search, share, acquisition,
@@ -79,13 +93,40 @@ Root work remains bounded to eight authorized sessions and 32 episodes per
 session before joining facts. Existing delivery deadline tests remain green.
 No new browser initialization, hydration, rendering or media code was introduced.
 
+The release review added a near-bound fixture: eight authorized sessions, 32
+selected roots per session and 128 facts per episode, plus an excluded oldest
+root. It exposed repeated start/late-evidence probes after fact fanout. Moving
+unchanged integrity predicates into `validated_recent_episodes AS MATERIALIZED`
+reduced their loops from 32,512 to at most 256. Measured EXPLAIN execution fell
+from 3,480.794 ms to approximately 196 ms without changing evidence semantics.
+
+| Near-bound history query | Median     | p95        | EXPLAIN execution |
+| ------------------------ | ---------- | ---------- | ----------------- |
+| Below-player             | 198.747 ms | 219.643 ms | 196.103 ms        |
+| Homepage                 | 190.540 ms | 216.373 ms | 197.514 ms        |
+
+These 25-sample measurements use the real retrieval transaction, including its
+existing `force_custom_plan` policy. Direct prepared-query calls switched to
+slower generic plans after five calls and were not representative of production.
+The regression asserts root limits, indexed access and integrity-probe loop
+bounds, not machine-dependent latency. Measurements remain local, not production
+load guarantees.
+
 ## Review
 
-Sequential review covered correctness, API compatibility, authorization/reset
-boundaries, query bounds, fallback reliability and test coverage. Optional
-curated retrieval now preserves a complete eligible profile reserve on failure.
-History-read failure remains explicit rather than silently discarding feedback.
-No unresolved findings remain in the implementation scope.
+The release review uses the full Compound Engineering reviewer set and independent
+validation of actionable findings. The first round found optional-work deadline
+starvation, last-known-good recovery bypassing freshness, lost localized-title
+identity in curated reserves, and a missing pending-history timeout regression.
+Each received a targeted fix/test. The next round identified the authorization
+variant of deadline starvation; seeded authorization now uses the homepage's
+existing 450 ms budget, retaining same-session context after authority timeout
+without accepting a late authority result. The near-bound database test also
+prompted the query-plan fix above. Both full rounds used 12 applicable reviewers;
+an independent validator confirmed each actionable review finding. A third,
+focused correctness/adversarial pass rechecked the last fixes with no findings.
+No implementation findings remain unresolved. GitHub CI and post-deploy checks
+remain release gates; review does not provide a numerical correctness guarantee.
 
 ## Compound And Refresh
 

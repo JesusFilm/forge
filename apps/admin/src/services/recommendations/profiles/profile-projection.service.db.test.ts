@@ -476,6 +476,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       ).toBe(true)
       expect(
         await getUserWatchHistory(prisma, {
+          locale: "en",
           sessionDigest,
           profileTokenDigest,
           now: projectAt,
@@ -484,6 +485,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         {
           mediaId: "profile-learning-source",
           videoCoreId: "profile-learning-core-0",
+          videoTitle: "Profile learning video 0",
           completed: false,
           qualified: true,
           recentlyTried: false,
@@ -791,6 +793,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           ],
         })
         const history = await getUserWatchHistory(prisma, {
+          locale: "en",
           sessionDigest,
           profileTokenDigest,
           now: current,
@@ -805,6 +808,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         expect(
           (
             await getRecommendationRecentContext(prisma, {
+              locale: "en",
               sessionDigest,
               profileTokenDigest,
               allowDurableProfileLinks: true,

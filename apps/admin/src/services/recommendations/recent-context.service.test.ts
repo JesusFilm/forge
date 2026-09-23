@@ -9,6 +9,8 @@ describe("recommendation recent context", () => {
     const queryRaw = vi.fn(async (..._args: unknown[]) => [
       {
         targetMediaId: "watched-video",
+        videoCoreId: "film-a",
+        videoTitle: "Titre localise",
         servedCount: 1,
         selected: false,
         recentlyTried: true,
@@ -32,12 +34,15 @@ describe("recommendation recent context", () => {
         sessionDigest: "a".repeat(64),
         profileTokenDigest: null,
         allowDurableProfileLinks: false,
+        locale: "fr",
         now: new Date("2026-08-26T12:00:00.000Z"),
       }),
     ).resolves.toEqual({
       videos: [
         {
           targetMediaId: "watched-video",
+          videoCoreId: "film-a",
+          videoTitle: "Titre localise",
           reasonCodes: ["recently_tried"],
         },
         {
@@ -50,6 +55,7 @@ describe("recommendation recent context", () => {
     expect(queryRaw.mock.calls[0]).toContain("a".repeat(64))
     expect(queryRaw.mock.calls[0]).toContain(null)
     expect(queryRaw.mock.calls[0]).toContain(false)
+    expect(queryRaw.mock.calls[0]).toContain("fr")
     const queryShape = String(queryRaw.mock.calls[0]?.[0])
     expect(queryShape).toMatch(/CROSS JOIN LATERAL/)
     expect(queryShape).toMatch(

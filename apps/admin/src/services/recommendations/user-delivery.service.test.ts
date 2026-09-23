@@ -114,6 +114,32 @@ describe("source-free recommendations", () => {
     )
   })
 
+  it("applies localized same-title history to a different Core edition", async () => {
+    const h = harness(6)
+    h.history.mockResolvedValue([
+      {
+        mediaId: "watched-edition",
+        videoCoreId: "another-film",
+        videoTitle: video(0).videoTitle,
+        completed: false,
+        recentlyTried: true,
+        qualified: false,
+      },
+    ])
+    const response = await h.service.deliver(personalizedInput())
+    expect(h.history).toHaveBeenCalledWith(
+      expect.objectContaining({ locale: "en" }),
+    )
+    expect(response.items.map((item) => item.videoId)).toEqual([
+      "video-1",
+      "video-2",
+      "video-3",
+      "video-4",
+      "video-5",
+      "video-10",
+    ])
+  })
+
   it("keeps recent profile reserves when optional fresh curated retrieval fails", async () => {
     const h = harness(6)
     h.history.mockResolvedValue([
