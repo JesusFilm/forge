@@ -23,6 +23,7 @@ type ConsumerRow = {
   id: string
   name: string
   state: ConsumerRecord["state"]
+  allowed_source_keys: string[]
   created_at: Date
 }
 
@@ -49,10 +50,11 @@ const record = (row: ConsumerRow): ConsumerRecord => ({
   consumerId: row.id,
   name: row.name,
   state: row.state,
+  allowedSourceKeys: row.allowed_source_keys,
   createdAt: row.created_at,
 })
 
-/** Store operations are intentionally disconnected from HTTP and issuance in R1. */
+/** Store operations remain disconnected from HTTP and issuance in this foundation. */
 export class PostgresConsumerRegistry implements ConsumerRegistry {
   constructor(private readonly db: PrismaClient) {}
 
@@ -64,7 +66,7 @@ export class PostgresConsumerRegistry implements ConsumerRegistry {
       const [row] = await tx.$queryRaw<ConsumerRow[]>(Prisma.sql`
         INSERT INTO consumer_private.consumers (name)
         VALUES (${input.name})
-        RETURNING id, name, state, created_at
+        RETURNING id, name, state, allowed_source_keys, created_at
       `)
       await tx.$executeRaw(Prisma.sql`
         INSERT INTO consumer_private.members (consumer_id, github_user_id, role)
@@ -80,7 +82,7 @@ export class PostgresConsumerRegistry implements ConsumerRegistry {
 
   async findById(id: string): Promise<ConsumerRecord | null> {
     const rows = await this.db.$queryRaw<ConsumerRow[]>(Prisma.sql`
-      SELECT id, name, state, created_at FROM consumer_private.consumers
+      SELECT id, name, state, allowed_source_keys, created_at FROM consumer_private.consumers
       WHERE id = ${consumerId(id)}::uuid
     `)
     return rows[0] ? record(rows[0]) : null

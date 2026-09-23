@@ -1,5 +1,5 @@
 ---
-title: "J040 R1 consumer registry foundation"
+title: "Consumer registry foundation"
 date: "2026-09-23"
 status: in-progress
 module: "apps/rag"
@@ -7,13 +7,13 @@ tags: ["rag", "postgresql", "consumer-access"]
 problem_type: implementation
 ---
 
-# R1 consumer registry foundation
+# Consumer registry foundation
 
 Draft PR: [#2397](https://github.com/JesusFilm/forge/pull/2397).
 Implementation commit: `051bd3eca`.
 
 This PR implements the first isolated slice of feat-527 against current Forge
-`main`. The merged consumer-access plan and J022 discovery decisions govern the
+`main`. The merged consumer-access plan and accepted discovery decisions govern the
 shape: direct consumer creation, a globally unique lowercase name, a
 server-derived initial GitHub owner, and runtime membership in PostgreSQL.
 This slice does not expose creation or membership over HTTP.
@@ -35,12 +35,15 @@ This slice does not expose creation or membership over HTTP.
   membership changes. The repository only permits an existing owner to add or
   remove a `member`; it cannot remove or replace an owner. Future ownership
   transfer needs an explicit authority and audit design.
-- `environments` reserves per-consumer environment and allowed source keys.
-  R1 makes no approval or scope mutation API, and no credential table or
-  verifier exists yet. `usage_daily` reserves aggregate counts by stable ID,
-  environment, UTC day, and bounded outcome. R1 does not write or report usage.
-  `lifecycle_audit` accepts only bounded action names and numeric actor ID; no
-  free text, bearer, selector, query, IP, or corpus fields exist.
+- V1 has one runtime environment per consumer and no staging environment.
+  `consumers.allowed_source_keys` defaults to an empty list; `consumers.state`
+  is its only lifecycle state. No environment table or discriminator exists.
+  There is no approval/scope mutation API, credential table or verifier yet.
+  `usage_daily` reserves aggregate counts by stable consumer ID, UTC day and
+  bounded outcome, with a direct foreign key to `consumers`. The foundation
+  does not write or report usage. `lifecycle_audit` accepts only bounded action
+  names and numeric actor ID; no free text, bearer, selector, query, IP or corpus
+  fields exist.
 - The `ConsumerRegistry` port and PostgreSQL adapter are narrow. Their GitHub
   IDs must come from a later trusted admission layer. The adapter is not wired
   into serving or instantiated by the runtime. PostgreSQL uniqueness and
@@ -64,22 +67,26 @@ repository is disconnected from serving, and the existing serving principal
 cannot use `consumer_private`. Role grants for future writers/readers need a
 separate review before wiring either path.
 
-## Verification
+## Original foundation verification
+
+These results describe the original foundation commit above. The single-runtime
+revision and its exact validation are recorded in the
+[V1 simplification report](../../../../plans/2026-09-23-consumer-single-environment.md).
 
 Ran against a disposable `pgvector/pgvector:pg18-trixie` container on a
 loopback-only port, with no production database access:
 
-| Check                                            | Result                                                                           |
-| ------------------------------------------------ | -------------------------------------------------------------------------------- |
-| Four Prisma migrations, including R1             | Passed on fresh database                                                         |
-| `pnpm --filter @forge/rag db:verify`             | 30 tests passed across five suites                                               |
-| `pnpm --filter @forge/rag test`                  | 867 tests passed; two optional integration suites skipped without a database URL |
-| `pnpm --filter @forge/rag typecheck`             | Passed                                                                           |
-| `pnpm --filter @forge/rag lint`                  | Passed                                                                           |
-| `pnpm --filter @forge/rag depcruise`             | Passed, no dependency violations                                                 |
-| `pnpm --filter @forge/rag db:schema:check`       | Prisma validation and nine schema tests passed                                   |
-| `pnpm --filter @forge/rag db:drift:check`        | Passed; corpus datamodel matches migrations plus documented raw SQL              |
-| Prettier on touched files and `git diff --check` | Passed                                                                           |
+| Check                                                     | Result                                                                           |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Four Prisma migrations, including the registry foundation | Passed on fresh database                                                         |
+| `pnpm --filter @forge/rag db:verify`                      | 30 tests passed across five suites                                               |
+| `pnpm --filter @forge/rag test`                           | 867 tests passed; two optional integration suites skipped without a database URL |
+| `pnpm --filter @forge/rag typecheck`                      | Passed                                                                           |
+| `pnpm --filter @forge/rag lint`                           | Passed                                                                           |
+| `pnpm --filter @forge/rag depcruise`                      | Passed, no dependency violations                                                 |
+| `pnpm --filter @forge/rag db:schema:check`                | Prisma validation and nine schema tests passed                                   |
+| `pnpm --filter @forge/rag db:drift:check`                 | Passed; corpus datamodel matches migrations plus documented raw SQL              |
+| Prettier on touched files and `git diff --check`          | Passed                                                                           |
 
 The integration suite covers atomic owner creation, duplicate-name rejection,
 identity immutability, owner-only member changes, last-owner enforcement under
@@ -99,5 +106,5 @@ of restricted-schema reads to the existing read-only principal.
 - `docs/roadmap/rag/README.md`
 - This report.
 
-The broader feat-527 ticket remains `in-progress` because R1 does not finish
+The broader feat-527 ticket remains `in-progress` because the registry foundation does not finish
 the access lifecycle.

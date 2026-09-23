@@ -22,19 +22,20 @@ afterAll(() => db.$disconnect())
 describe("restricted consumer registry", () => {
   it("creates stable identity and an owner atomically", async () => {
     const consumer = await registry.create({
-      name: `r1-${suffix}`,
+      name: `registry-${suffix}`,
       ownerGithubUserId: "101",
     })
     expect(consumer.state).toBe("pending")
+    expect(consumer.allowedSourceKeys).toEqual([])
     expect(await registry.findById(consumer.consumerId)).toEqual(consumer)
     expect(await registry.listMembers(consumer.consumerId)).toEqual([
       { githubUserId: "101", role: "owner" },
     ])
     await expect(
-      registry.create({ name: `r1-${suffix}`, ownerGithubUserId: "102" }),
+      registry.create({ name: `registry-${suffix}`, ownerGithubUserId: "102" }),
     ).rejects.toThrow()
     const [count] = await db.$queryRaw<Array<{ count: bigint }>>`
-      SELECT count(*) AS count FROM consumer_private.consumers WHERE name = ${`r1-${suffix}`}
+      SELECT count(*) AS count FROM consumer_private.consumers WHERE name = ${`registry-${suffix}`}
     `
     expect(count.count).toBe(1n)
     await expect(db.$executeRaw`
@@ -106,8 +107,13 @@ describe("restricted consumer registry", () => {
       WHERE table_schema = 'public' AND table_name IN ('sources', 'documents', 'chunks', 'chunk_embeddings')
     `
     expect(tables.count).toBe(4n)
+    const unused = await registry.create({
+      name: `unused-${suffix}`,
+      ownerGithubUserId: "601",
+    })
     const [usage] = await db.$queryRaw<Array<{ count: bigint }>>`
       SELECT count(*) AS count FROM consumer_private.usage_daily
+      WHERE consumer_id = ${unused.consumerId}::uuid
     `
     expect(usage.count).toBe(0n)
   })
@@ -136,5 +142,139 @@ describe("restricted consumer registry", () => {
       "rejected",
     ])
     expect(await registry.listMembers(consumer.consumerId)).toHaveLength(1)
+  })
+
+  it("has no environment table or environment discriminator in consumer metadata", async () => {
+    const tables = await db.$queryRaw<Array<{ table_name: string }>>`
+      SELECT table_name FROM information_schema.tables
+      WHERE table_schema = 'consumer_private' ORDER BY table_name
+    `
+    expect(tables.map((table) => table.table_name)).toEqual([
+      "consumers",
+      "lifecycle_audit",
+      "members",
+      "usage_daily",
+    ])
+    const columns = await db.$queryRaw<Array<{ column_name: string }>>`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_schema = 'consumer_private' AND column_name LIKE '%environment%'
+    `
+    expect(columns).toEqual([])
+  })
+
+  it("reads source grants and lifecycle directly from each consumer", async () => {
+    const consumer = await registry.create({
+      name: `scope-${suffix}`,
+      ownerGithubUserId: "401",
+    })
+    const other = await registry.create({
+      name: `other-scope-${suffix}`,
+      ownerGithubUserId: "402",
+    })
+    await db.$executeRaw`
+      UPDATE consumer_private.consumers
+      SET allowed_source_keys = ARRAY['synthetic-source'], state = 'active'
+      WHERE id = ${consumer.consumerId}::uuid
+    `
+    expect(await registry.findById(consumer.consumerId)).toEqual({
+      ...consumer,
+      state: "active",
+      allowedSourceKeys: ["synthetic-source"],
+    })
+    expect(await registry.findById(other.consumerId)).toEqual(other)
+    await expect(db.$executeRaw`
+      UPDATE consumer_private.consumers SET allowed_source_keys = ARRAY[NULL]::text[]
+      WHERE id = ${consumer.consumerId}::uuid
+    `).rejects.toThrow()
+    await expect(db.$executeRaw`
+      UPDATE consumer_private.consumers SET allowed_source_keys = NULL
+      WHERE id = ${consumer.consumerId}::uuid
+    `).rejects.toThrow()
+    await db.$executeRaw`
+      UPDATE consumer_private.consumers SET state = 'suspended'
+      WHERE id = ${consumer.consumerId}::uuid
+    `
+    expect(await registry.findById(consumer.consumerId)).toMatchObject({
+      state: "suspended",
+      allowedSourceKeys: ["synthetic-source"],
+    })
+  })
+
+  it("accounts usage by consumer, day and outcome without environment provisioning", async () => {
+    const consumer = await registry.create({
+      name: `usage-${suffix}`,
+      ownerGithubUserId: "501",
+    })
+    const other = await registry.create({
+      name: `other-usage-${suffix}`,
+      ownerGithubUserId: "502",
+    })
+    await db.$executeRaw`
+      INSERT INTO consumer_private.usage_daily (consumer_id, day, outcome, request_count)
+      VALUES (${consumer.consumerId}::uuid, '2026-09-23', 'success', 3),
+             (${consumer.consumerId}::uuid, '2026-09-23', 'client_error', 1),
+             (${consumer.consumerId}::uuid, '2026-09-24', 'success', 2),
+             (${other.consumerId}::uuid, '2026-09-23', 'success', 1)
+    `
+    await db.$executeRaw`
+      INSERT INTO consumer_private.usage_daily (consumer_id, day, outcome, request_count)
+      VALUES (${consumer.consumerId}::uuid, '2026-09-23', 'success', 2)
+      ON CONFLICT (consumer_id, day, outcome) DO UPDATE
+      SET request_count = consumer_private.usage_daily.request_count + EXCLUDED.request_count
+    `
+    const rows = await db.$queryRaw<
+      Array<{
+        consumer_id: string
+        day: string
+        outcome: string
+        request_count: bigint
+      }>
+    >`
+      SELECT consumer_id, day::text, outcome, request_count FROM consumer_private.usage_daily
+      WHERE consumer_id IN (${consumer.consumerId}::uuid, ${other.consumerId}::uuid)
+      ORDER BY day, outcome, request_count DESC
+    `
+    expect(rows).toEqual([
+      {
+        consumer_id: consumer.consumerId,
+        day: "2026-09-23",
+        outcome: "client_error",
+        request_count: 1n,
+      },
+      {
+        consumer_id: consumer.consumerId,
+        day: "2026-09-23",
+        outcome: "success",
+        request_count: 5n,
+      },
+      {
+        consumer_id: other.consumerId,
+        day: "2026-09-23",
+        outcome: "success",
+        request_count: 1n,
+      },
+      {
+        consumer_id: consumer.consumerId,
+        day: "2026-09-24",
+        outcome: "success",
+        request_count: 2n,
+      },
+    ])
+    await expect(db.$executeRaw`
+      INSERT INTO consumer_private.usage_daily (consumer_id, day, outcome)
+      VALUES (${consumer.consumerId}::uuid, '2026-09-23', 'success')
+    `).rejects.toThrow()
+    await expect(db.$executeRaw`
+      INSERT INTO consumer_private.usage_daily (consumer_id, day, outcome)
+      VALUES (${crypto.randomUUID()}::uuid, '2026-09-23', 'success')
+    `).rejects.toThrow()
+    await expect(db.$executeRaw`
+      INSERT INTO consumer_private.usage_daily (consumer_id, day, outcome, request_count)
+      VALUES (${consumer.consumerId}::uuid, '2026-09-23', 'server_error', -1)
+    `).rejects.toThrow()
+    await expect(db.$executeRaw`
+      INSERT INTO consumer_private.usage_daily (consumer_id, day, outcome)
+      VALUES (${consumer.consumerId}::uuid, '2026-09-23', 'unknown')
+    `).rejects.toThrow()
   })
 })

@@ -1,5 +1,5 @@
 -- Consumer metadata is deliberately outside the public corpus schema. No
--- serving, corpus-reader, or report role receives privileges in R1.
+-- serving, corpus-reader, or report role receives privileges in this foundation.
 CREATE SCHEMA consumer_private;
 REVOKE ALL ON SCHEMA consumer_private FROM PUBLIC;
 
@@ -7,6 +7,7 @@ CREATE TABLE consumer_private.consumers (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL UNIQUE CHECK (name ~ '^[a-z0-9-]+$' AND length(name) BETWEEN 1 AND 80),
   state text NOT NULL DEFAULT 'pending' CHECK (state IN ('pending', 'active', 'suspended', 'revoked')),
+  allowed_source_keys text[] NOT NULL DEFAULT '{}' CHECK (array_position(allowed_source_keys, NULL) IS NULL),
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -19,27 +20,14 @@ CREATE TABLE consumer_private.members (
   PRIMARY KEY (consumer_id, github_user_id)
 );
 
-CREATE TABLE consumer_private.environments (
-  consumer_id uuid NOT NULL REFERENCES consumer_private.consumers(id) ON DELETE RESTRICT,
-  environment text NOT NULL CHECK (environment ~ '^[a-z0-9-]+$' AND length(environment) BETWEEN 1 AND 40),
-  state text NOT NULL DEFAULT 'pending' CHECK (state IN ('pending', 'active', 'suspended', 'revoked')),
-  allowed_source_keys text[] NOT NULL DEFAULT '{}',
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (consumer_id, environment),
-  CHECK (array_position(allowed_source_keys, NULL) IS NULL)
-);
-
--- Aggregate-only storage reserved for feat-528. R1 does not collect usage.
+-- V1 has one runtime environment per consumer; source grants and lifecycle
+-- state belong to consumers. Aggregate-only storage is reserved for feat-528.
 CREATE TABLE consumer_private.usage_daily (
-  consumer_id uuid NOT NULL,
-  environment text NOT NULL,
+  consumer_id uuid NOT NULL REFERENCES consumer_private.consumers(id) ON DELETE RESTRICT,
   day date NOT NULL,
   outcome text NOT NULL CHECK (outcome IN ('success', 'client_error', 'server_error')),
   request_count bigint NOT NULL DEFAULT 0 CHECK (request_count >= 0),
-  PRIMARY KEY (consumer_id, environment, day, outcome),
-  FOREIGN KEY (consumer_id, environment)
-    REFERENCES consumer_private.environments(consumer_id, environment) ON DELETE RESTRICT
+  PRIMARY KEY (consumer_id, day, outcome)
 );
 
 CREATE TABLE consumer_private.lifecycle_audit (

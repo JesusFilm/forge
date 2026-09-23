@@ -40,6 +40,10 @@ increment, and honest partial/unavailable coverage rather than false zero.
 Use the plan's proposed types and counting contract. Start date/duration are
 bookkeeping estimates, not an approved release schedule.
 
+V1 has one runtime environment per consumer and no staging environment. Key
+usage and reporting by stable consumer ID; no environment column, filter or
+report argument. Credential rotation preserves usage identity.
+
 ## Constraints
 
 Apply the approved decisions and resolve named implementation details before activation. No IP, raw query,
