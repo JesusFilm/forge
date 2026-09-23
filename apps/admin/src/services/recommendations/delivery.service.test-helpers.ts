@@ -108,6 +108,7 @@ export function makeHarness(
     curatedFallback?: boolean
     profileComparison?: boolean
     database?: PrismaClient
+    nowMilliseconds?: () => number
   } = {},
 ) {
   const requests = new Map<string, Record<string, unknown>>()
@@ -237,7 +238,8 @@ export function makeHarness(
     now: options.database
       ? () => new Date()
       : () => new Date("2026-08-19T03:00:00.000Z"),
-    nowMilliseconds: options.database ? Date.now : () => clock,
+    nowMilliseconds:
+      options.nowMilliseconds ?? (options.database ? Date.now : () => clock),
     newId: options.database ? randomUUID : () => `fresh-${++id}`,
   })
   return {

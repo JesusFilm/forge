@@ -17,6 +17,7 @@ vi.mock("../recent-context.service", () => ({
 const db = {} as PrismaClient
 const request = {
   sessionDigest: "a".repeat(64),
+  locale: "fr",
   createdAt: new Date("2026-09-15T12:00:00Z"),
   expiresAt: new Date("2026-10-14T12:00:00Z"),
 }
@@ -44,6 +45,7 @@ describe("shadow historical context", () => {
       sessionDigest: request.sessionDigest,
       profileTokenDigest: null,
       allowDurableProfileLinks: false,
+      locale: "fr",
       now: new Date("2026-09-15T11:59:59.999Z"),
     })
   })

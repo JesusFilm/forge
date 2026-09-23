@@ -1,7 +1,7 @@
 ---
 title: "Harden a production recommendation slice at every irreversible boundary"
 date: "2026-08-26"
-last_updated: "2026-09-22"
+last_updated: "2026-09-23"
 category: "architecture-patterns"
 module: "apps/admin and apps/web recommendations"
 problem_type: "architecture_pattern"
@@ -489,7 +489,11 @@ Independent reader and composer tests cannot prove their handoff. The direct and
 search PostgreSQL cases in `recent-context.db.test.ts` pass stored authorized
 history into `runCandidatePlatform`: the watched candidate wins without history,
 six fresh candidates win with history, and five fresh candidates permit refill.
-Assert the actual `recent_playback_start` rejection and current-video exclusion.
+Assert the actual `recently_tried` suppression and current-video exclusion;
+the fixture must include at least three seconds of active playback, not a bare
+start. The same stored facts also feed homepage composition. Historical
+`recent_playback_start` reason codes remain readable but are no longer emitted
+by the live recent-context reader.
 See the [focused recency account](../logic-errors/source-neutral-playback-recent-history-20260915.md).
 
 A sample-size assertion with fewer than twenty episodes cannot distinguish a

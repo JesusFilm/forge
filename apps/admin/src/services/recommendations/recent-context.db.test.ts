@@ -1,4 +1,5 @@
 import { readdirSync, readFileSync } from "node:fs"
+import { createHash } from "node:crypto"
 import { PrismaClient } from "@prisma/client"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
@@ -6,6 +7,11 @@ import { env } from "@/config/env"
 import { adaptSemanticCandidates } from "./candidate"
 import { runCandidatePlatform } from "./orchestration"
 import { getRecommendationRecentContext } from "./recent-context.service"
+import { getUserWatchHistory } from "./user-history.service"
+import { composeUserRecommendations } from "./user-delivery.service"
+import { video } from "./user-delivery.service.test-helpers"
+import { RECOMMENDATION_REPLAY_QUARANTINE_THRESHOLD } from "./integrity-policy"
+import { runRecommendationRetrievalQuery } from "./delivery-runtime"
 
 const RUN_REAL_DB_TEST = env.RECOMMENDATION_DB_TEST === "1"
 const migrationRoot = new URL("../../../prisma/migrations/", import.meta.url)
@@ -44,6 +50,8 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       await admin.query(`SET search_path TO "${schema}", public`)
       for (const migration of migrations) await admin.query(migration)
       await admin.query(`
+        CREATE TABLE video (id text PRIMARY KEY, core_id text);
+        CREATE TABLE video_locale (video_id text, locale text, title text, PRIMARY KEY (video_id, locale));
         INSERT INTO recommendation_strategy_manifest (
           id, strategy_version, contract_version, surface_version, generator,
           max_items
@@ -53,10 +61,10 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         );
         INSERT INTO recommendation_profile (
           id, token_digest, privacy_generation, choice, state, expires_at,
-          updated_at
+          updated_at, created_at
         ) VALUES (
           'recent-context-profile', '${tokenDigest}', 2, 'durable_allowed',
-          'active', '2027-02-01T00:00:00.000Z', '${now.toISOString()}'
+          'active', '2027-02-01T00:00:00.000Z', '${now.toISOString()}', '2026-08-25T00:00:00.000Z'
         );
         INSERT INTO recommendation_profile_session_link (
           id, profile_id, privacy_generation, session_digest, linked_at,
@@ -133,6 +141,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       targetMediaId: string
       createdAt: string
       selected: boolean
+      attributionEligible?: boolean
     }): Promise<void> {
       const expiry = "2026-09-24T12:00:00.000Z"
       await admin.query("BEGIN")
@@ -202,7 +211,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
               payload_digest, claim_nonce_digest, handoff_expires_at,
               attribution_eligible_at, occurred_at, expires_at
             ) VALUES (
-              $1, $2, $3, $4, $5, $6, $7, $8, $9, $9, $10
+              $1, $2, $3, $4, $5, $6, $7, $8, $11, $9, $10
             )`,
             [
               `${input.requestId}-selection`,
@@ -218,6 +227,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
               "2026-08-26T12:05:00.000Z",
               input.createdAt,
               expiry,
+              input.attributionEligible === false ? null : input.createdAt,
             ],
           )
         }
@@ -239,8 +249,11 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       kind?: string
       late?: boolean
       conflictCount?: number
+      replayCount?: number
       occurredAt?: string
       receivedAt?: string
+      activeMilliseconds?: number | null
+      factExpiresAt?: string
     }) {
       const createdAt = input.createdAt ?? "2026-08-26T11:00:00.000Z"
       const expiresAt = input.expiresAt ?? "2026-09-24T12:00:00.000Z"
@@ -248,8 +261,8 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         `INSERT INTO recommendation_playback_episode (
           id, media_id, session_digest, state, discovery_source,
           created_at, claimed_at, active_until, hard_until, expires_at, conflict_count,
-          request_id, item_id, selection_id
-        ) VALUES ($1, $6, $2, 'claimed', $7, $3::timestamptz, $3::timestamptz, LEAST($3::timestamptz + interval '5 minutes', $4::timestamptz - interval '1 second'), LEAST($3::timestamptz + interval '6 hours', $4::timestamptz), $4::timestamptz, $5, $8, $9, $10)`,
+          request_id, item_id, selection_id, replay_count
+        ) VALUES ($1, $6, $2, 'claimed', $7, $3::timestamptz, $3::timestamptz, LEAST($3::timestamptz + interval '5 minutes', $4::timestamptz - interval '1 second'), LEAST($3::timestamptz + interval '6 hours', $4::timestamptz), $4::timestamptz, $5, $8, $9, $10, $11)`,
         [
           input.id,
           input.sessionDigest,
@@ -261,6 +274,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           input.requestId ?? null,
           input.requestId ? `${input.requestId}-item` : null,
           input.requestId ? `${input.requestId}-selection` : null,
+          input.replayCount ?? 0,
         ],
       )
       await admin.query(
@@ -280,11 +294,39 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           input.receivedAt ?? createdAt,
         ],
       )
+      if (input.activeMilliseconds !== null) {
+        const milliseconds = input.activeMilliseconds ?? 20_000
+        await admin.query(
+          `INSERT INTO recommendation_playback_fact (
+            id, episode_id, event_id, capability_jti, payload_digest, sequence, kind,
+            payload, occurred_at, received_at, expires_at, late, request_id, item_id
+          ) VALUES ($1 || '-active', $1, $1 || '-active', $1, $2, 2,
+            'playback_active_visible_playing', $3::jsonb, $4, $5, $6, $7, $8, $9)`,
+          [
+            input.id,
+            "e".repeat(64),
+            JSON.stringify({
+              activeMilliseconds: milliseconds,
+              coverage: "complete",
+            }),
+            new Date(
+              new Date(input.occurredAt ?? createdAt).getTime() + milliseconds,
+            ),
+            input.receivedAt ??
+              new Date(new Date(createdAt).getTime() + milliseconds),
+            input.factExpiresAt ?? expiresAt,
+            input.late ?? false,
+            input.requestId ?? null,
+            input.requestId ? `${input.requestId}-item` : null,
+          ],
+        )
+      }
     }
 
     it("uses only post-authorization current-session facts and explicitly authorized linked sessions", async () => {
       await expect(
         getRecommendationRecentContext(prisma, {
+          locale: "en",
           sessionDigest: currentSession,
           profileTokenDigest: tokenDigest,
           allowDurableProfileLinks: false,
@@ -301,6 +343,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
 
       await expect(
         getRecommendationRecentContext(prisma, {
+          locale: "en",
           sessionDigest: currentSession,
           profileTokenDigest: tokenDigest,
           allowDurableProfileLinks: true,
@@ -333,6 +376,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       }
 
       const result = await getRecommendationRecentContext(prisma, {
+        locale: "en",
         sessionDigest: currentSession,
         profileTokenDigest: null,
         allowDurableProfileLinks: false,
@@ -403,6 +447,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         profileTokenDigest: string | null = tokenDigest,
       ) =>
         getRecommendationRecentContext(prisma, {
+          locale: "en",
           sessionDigest: currentSession,
           profileTokenDigest,
           allowDurableProfileLinks,
@@ -410,9 +455,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         })
       const started = (result: Awaited<ReturnType<typeof read>>) =>
         result.videos
-          .filter((video) =>
-            video.reasonCodes.includes("recent_playback_start"),
-          )
+          .filter((video) => video.reasonCodes.includes("recently_tried"))
           .map((video) => video.targetMediaId)
           .sort()
 
@@ -459,6 +502,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       }
       expect(
         await getRecommendationRecentContext(prisma, {
+          locale: "en",
           sessionDigest,
           profileTokenDigest: null,
           allowDurableProfileLinks: false,
@@ -479,8 +523,10 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         sessionDigest,
         createdAt: "2026-08-26T12:00:00.000Z",
         occurredAt: "2026-08-26T12:00:05.000Z",
+        receivedAt: "2026-08-26T12:00:00.000Z",
       })
       const result = await getRecommendationRecentContext(prisma, {
+        locale: "en",
         sessionDigest,
         profileTokenDigest: null,
         allowDurableProfileLinks: false,
@@ -489,29 +535,34 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       expect(result.videos).toEqual([
         {
           targetMediaId: "clock-ahead",
-          reasonCodes: ["recent_playback_start"],
+          reasonCodes: ["recently_tried"],
         },
         {
           targetMediaId: "buffered-before-issuance",
-          reasonCodes: ["recent_playback_start"],
+          reasonCodes: ["recently_tried"],
         },
       ])
     })
 
-    it.each(["direct", "search"])(
+    it.each([
+      "direct",
+      "search",
+      "share",
+      "acquisition",
+      "editorial",
+      "recommendation",
+    ])(
       "prefers fresh profile candidates after stored %s playback and keeps sparse refill",
       async (discoverySource) => {
         const prefix = `slate-regression-${discoverySource}`
-        const sessionDigest = (discoverySource === "direct" ? "4" : "5").repeat(
-          64,
-        )
-        const profileTokenDigest = (
-          discoverySource === "direct" ? "6" : "7"
-        ).repeat(64)
+        const sessionDigest = createHash("sha256").update(prefix).digest("hex")
+        const profileTokenDigest = createHash("sha256")
+          .update(`${prefix}-profile`)
+          .digest("hex")
         await admin.query(
           `INSERT INTO recommendation_profile (
-            id, token_digest, privacy_generation, choice, state, expires_at, updated_at
-          ) VALUES ($1, $2, 1, 'durable_allowed', 'active', '2027-02-01', $3);
+            id, token_digest, privacy_generation, choice, state, expires_at, updated_at, created_at
+          ) VALUES ($1, $2, 1, 'durable_allowed', 'active', '2027-02-01', $3, '2026-08-26T09:00:00Z');
           `,
           [prefix, profileTokenDigest, now],
         )
@@ -527,11 +578,24 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           { length: 6 },
           (_, index) => `${prefix}-fresh-${index}`,
         )
+        const requestId =
+          discoverySource === "recommendation" ? `${prefix}-request` : undefined
+        if (requestId) {
+          await insertIssuedItem({
+            requestId,
+            sessionDigest,
+            targetMediaId: watched,
+            createdAt: "2026-08-26T11:00:00Z",
+            selected: true,
+            attributionEligible: false,
+          })
+        }
         await insertStandalonePlayback({
           id: `${prefix}-episode`,
           mediaId: watched,
           sessionDigest,
           discoverySource,
+          requestId,
         })
         const context = {
           surface: "watch-below-player-v1" as const,
@@ -577,11 +641,41 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           },
         ])
         const recent = await getRecommendationRecentContext(prisma, {
+          locale: "en",
           sessionDigest,
           profileTokenDigest,
           allowDurableProfileLinks: true,
           now,
         })
+        const history = await getUserWatchHistory(prisma, {
+          locale: "en",
+          sessionDigest,
+          profileTokenDigest,
+          now,
+        })
+        expect(history).toEqual([
+          {
+            mediaId: watched,
+            videoCoreId: null,
+            videoTitle: null,
+            completed: false,
+            qualified: false,
+            recentlyTried: true,
+          },
+        ])
+        const homepage = composeUserRecommendations(
+          [
+            { ...video(0), videoId: watched },
+            ...fresh.map((videoId, index) => ({
+              ...video(index + 1),
+              videoId,
+            })),
+          ],
+          [],
+          history,
+          6,
+        )
+        expect(homepage.map((item) => item.videoId)).toEqual(fresh)
         const withoutHistory = runCandidatePlatform({
           context,
           generatorVersion: "semantic-profile-hybrid-generators-v1",
@@ -606,7 +700,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
             expect.objectContaining({
               stage: "rejected",
               targetMediaId: watched,
-              reasonCodes: ["recent_playback_start"],
+              reasonCodes: ["recently_tried"],
             }),
           ]),
         )
@@ -627,6 +721,224 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       },
     )
 
+    it("shares threshold, interval union, expiry, canonical identity and reset rules across surfaces", async () => {
+      const sessionDigest = createHash("sha256")
+        .update("boundaries")
+        .digest("hex")
+      const profileTokenDigest = createHash("sha256")
+        .update("boundary-profile")
+        .digest("hex")
+      await admin.query(
+        `INSERT INTO recommendation_profile (id, token_digest, privacy_generation, choice, state, expires_at, updated_at, created_at)
+        VALUES ('boundary-profile', $1, 1, 'durable_allowed', 'active', '2027-02-01', $2, '2026-08-25T00:00:00Z')`,
+        [profileTokenDigest, now],
+      )
+      await admin.query(
+        `INSERT INTO recommendation_profile_session_link (id, profile_id, privacy_generation, session_digest, linked_at, expires_at)
+        VALUES ('boundary-link', 'boundary-profile', 1, $1, '2026-08-25T00:00:00Z', '2026-08-28T00:00:00Z')`,
+        [sessionDigest],
+      )
+      for (const input of [
+        { id: "boundary-under", activeMilliseconds: 2999 },
+        { id: "boundary-exact", activeMilliseconds: 3000 },
+        { id: "boundary-zero", activeMilliseconds: 0 },
+        { id: "boundary-start-only", activeMilliseconds: null },
+        { id: "boundary-preview", kind: "playback_attempt" },
+        { id: "boundary-overlap", activeMilliseconds: 2000 },
+        { id: "boundary-contiguous", activeMilliseconds: 1500 },
+        { id: "boundary-expired-fact", factExpiresAt: now.toISOString() },
+        {
+          id: "boundary-replay-under",
+          replayCount: RECOMMENDATION_REPLAY_QUARANTINE_THRESHOLD - 1,
+        },
+        {
+          id: "boundary-replay-quarantined",
+          replayCount: RECOMMENDATION_REPLAY_QUARANTINE_THRESHOLD,
+        },
+        {
+          id: "boundary-expired",
+          createdAt: "2026-08-25T11:59:00Z",
+          receivedAt: "2026-08-25T12:00:00Z",
+        },
+        {
+          id: "boundary-retained",
+          createdAt: "2026-08-25T11:59:00Z",
+          receivedAt: "2026-08-25T12:00:00.001Z",
+        },
+      ])
+        await insertStandalonePlayback({ ...input, sessionDigest })
+      for (const [id, shift] of [
+        ["boundary-overlap", 0],
+        ["boundary-contiguous", 1500],
+      ] as const) {
+        await admin.query(
+          `INSERT INTO recommendation_playback_fact (id, episode_id, event_id, capability_jti, payload_digest, sequence, kind, payload, occurred_at, received_at, expires_at)
+          SELECT id || '-extra', episode_id, event_id || '-extra', capability_jti, payload_digest, 3, kind, payload,
+            occurred_at + $2::int * interval '1 millisecond', received_at, expires_at
+          FROM recommendation_playback_fact WHERE id = $1 || '-active'`,
+          [id, shift],
+        )
+      }
+      await admin.query(
+        `INSERT INTO video (id, core_id) VALUES ('boundary-exact', $1)`,
+        [video(1).videoCoreId + "AD"],
+      )
+      const read = async () => {
+        const [history, recent] = await Promise.all([
+          getUserWatchHistory(prisma, {
+            locale: "en",
+            sessionDigest,
+            profileTokenDigest,
+            now,
+          }),
+          getRecommendationRecentContext(prisma, {
+            locale: "en",
+            sessionDigest,
+            profileTokenDigest,
+            now,
+            allowDurableProfileLinks: true,
+          }),
+        ])
+        expect(
+          history
+            .filter((item) => item.recentlyTried)
+            .map((item) => item.mediaId)
+            .sort(),
+        ).toEqual(
+          recent.videos
+            .filter((item) => item.reasonCodes.includes("recently_tried"))
+            .map((item) => item.targetMediaId)
+            .sort(),
+        )
+        return { history, recent }
+      }
+      const { history, recent } = await read()
+      expect(history.map((item) => item.mediaId).sort()).toEqual([
+        "boundary-contiguous",
+        "boundary-exact",
+        "boundary-replay-under",
+        "boundary-retained",
+      ])
+      expect(
+        composeUserRecommendations([video(1), video(2)], [], history, 1),
+      ).toEqual([video(2)])
+      const context = {
+        surface: "watch-below-player-v1" as const,
+        purpose: "watch" as const,
+        locale: "en",
+        audioLanguageSlug: "english",
+      }
+      const nominations = adaptSemanticCandidates(
+        [video(1), video(2)].map((item, index) => ({
+          ...item,
+          sceneIndex: 0,
+          startSeconds: 0,
+          endSeconds: 120,
+          similarity: 1 - index / 10,
+          themes: [],
+          demographics: [],
+          spiritualContext: [],
+          source: "transcript" as const,
+        })),
+        context,
+      ).nominations
+      expect(
+        runCandidatePlatform({
+          nominations,
+          context,
+          limit: 1,
+          generatorVersion: "test-v1",
+          composition: { recentVideos: recent.videos },
+        }).composed.map((item) => item.targetMediaId),
+      ).toEqual([video(2).videoId])
+      expect(await read()).toEqual({ history, recent })
+      await admin.query(
+        `UPDATE recommendation_profile SET privacy_generation = 2 WHERE id = 'boundary-profile'`,
+      )
+      expect(await read()).toEqual({ history: [], recent: { videos: [] } })
+    })
+
+    it("loads only the request-locale title for canonical edition matching on both surfaces", async () => {
+      const sessionDigest = createHash("sha256")
+        .update("localized-history")
+        .digest("hex")
+      const profileTokenDigest = createHash("sha256")
+        .update("localized-profile")
+        .digest("hex")
+      await admin.query(
+        `INSERT INTO recommendation_profile (id, token_digest, privacy_generation, choice, state, expires_at, updated_at, created_at)
+        VALUES ('localized-profile', $1, 1, 'durable_allowed', 'active', '2027-02-01', $2, '2026-08-25')`,
+        [profileTokenDigest, now],
+      )
+      await admin.query(
+        `INSERT INTO recommendation_profile_session_link (id, profile_id, privacy_generation, session_digest, linked_at, expires_at)
+        VALUES ('localized-link', 'localized-profile', 1, $1, '2026-08-25', '2026-08-28')`,
+        [sessionDigest],
+      )
+      await insertStandalonePlayback({ id: "localized-watch", sessionDigest })
+      await admin.query(`INSERT INTO video (id, core_id) VALUES ('localized-watch', 'unrelated-core');
+        INSERT INTO video_locale (video_id, locale, title) VALUES
+          ('localized-watch', 'en', 'English title'), ('localized-watch', 'fr', 'Titre partage')`)
+      const alternate = { ...video(1), videoTitle: "Titre partage" }
+      const fresh = video(2)
+      for (const locale of ["fr", "en", "de"]) {
+        const context = {
+          surface: "watch-below-player-v1" as const,
+          purpose: "watch" as const,
+          locale,
+          audioLanguageSlug: "english",
+        }
+        const recent = await getRecommendationRecentContext(prisma, {
+          sessionDigest,
+          profileTokenDigest,
+          locale,
+          now,
+          allowDurableProfileLinks: true,
+        })
+        const history = await getUserWatchHistory(prisma, {
+          sessionDigest,
+          profileTokenDigest,
+          locale,
+          now,
+        })
+        const expectedTitle =
+          locale === "fr"
+            ? "Titre partage"
+            : locale === "en"
+              ? "English title"
+              : null
+        expect(recent.videos[0]?.videoTitle ?? null).toBe(expectedTitle)
+        expect(history[0]?.videoTitle).toBe(expectedTitle)
+        const expected =
+          locale === "fr" ? [fresh, alternate] : [alternate, fresh]
+        expect(
+          composeUserRecommendations([alternate], [fresh], history, 2),
+        ).toEqual(expected)
+        const nominations = adaptSemanticCandidates(
+          [alternate, fresh].map((item, index) => ({
+            ...item,
+            sceneIndex: 0,
+            startSeconds: 0,
+            endSeconds: 120,
+            similarity: 1 - index / 10,
+            themes: [],
+            demographics: [],
+            spiritualContext: [],
+          })),
+          context,
+        ).nominations
+        expect(
+          runCandidatePlatform({
+            nominations,
+            context,
+            limit: 2,
+            generatorVersion: "test-v1",
+            composition: { recentVideos: recent.videos },
+          }).composed.map((item) => item.targetMediaId),
+        ).toEqual(expected.map((item) => item.videoId))
+      }
+    })
+
     it("uses the session index for bounded lookup amid unrelated episode history", async () => {
       await admin.query(`INSERT INTO recommendation_playback_episode (
         id, media_id, session_digest, state, discovery_source,
@@ -640,6 +952,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       for (let i = 0; i < 25; i += 1) {
         const start = performance.now()
         await getRecommendationRecentContext(prisma, {
+          locale: "en",
           sessionDigest: currentSession,
           profileTokenDigest: null,
           allowDurableProfileLinks: false,
@@ -665,6 +978,205 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           executionMs: explained.rows[0]["QUERY PLAN"][0]["Execution Time"],
         },
       )
+      const sessionDigest = createHash("sha256")
+        .update("home-benchmark")
+        .digest("hex")
+      const profileTokenDigest = createHash("sha256")
+        .update("home-benchmark-profile")
+        .digest("hex")
+      await admin.query(
+        `INSERT INTO recommendation_profile (id, token_digest, privacy_generation, choice, state, expires_at, updated_at, created_at)
+        VALUES ('home-benchmark-profile', $1, 1, 'durable_allowed', 'active', '2027-02-01', $2, '2026-08-25T00:00:00Z')`,
+        [profileTokenDigest, now],
+      )
+      await admin.query(
+        `INSERT INTO recommendation_profile_session_link (id, profile_id, privacy_generation, session_digest, linked_at, expires_at)
+        VALUES ('home-benchmark-link', 'home-benchmark-profile', 1, $1, '2026-08-25T00:00:00Z', '2026-08-28T00:00:00Z')`,
+        [sessionDigest],
+      )
+      await insertStandalonePlayback({
+        id: "home-benchmark-episode",
+        sessionDigest,
+      })
+      const homepageTimings: number[] = []
+      for (let i = 0; i < 25; i += 1) {
+        const start = performance.now()
+        expect(
+          await getUserWatchHistory(prisma, {
+            locale: "en",
+            sessionDigest,
+            profileTokenDigest,
+            now,
+          }),
+        ).toHaveLength(1)
+        homepageTimings.push(performance.now() - start)
+      }
+      const homeQuery = observedQueries.at(-1)!
+      const homePlan = await admin.query(
+        `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${homeQuery.query}`,
+        JSON.parse(homeQuery.params),
+      )
+      expect(JSON.stringify(homePlan.rows)).toContain(
+        "recommendation_episode_session_created_idx",
+      )
+      homepageTimings.sort((a, b) => a - b)
+      console.info(
+        "Homepage history local benchmark (10000 unrelated episodes)",
+        {
+          samples: homepageTimings.length,
+          medianMs: homepageTimings[12],
+          p95Ms: homepageTimings[23],
+          executionMs: homePlan.rows[0]["QUERY PLAN"][0]["Execution Time"],
+        },
+      )
     })
+
+    it("bounds authorized history at eight sessions and 32 episodes with 128 facts each", async () => {
+      const profileTokenDigest = createHash("sha256")
+        .update("near-bound-profile")
+        .digest("hex")
+      const sessions = Array.from({ length: 8 }, (_, index) =>
+        createHash("sha256").update(`near-bound-${index}`).digest("hex"),
+      )
+      await admin.query(
+        `INSERT INTO recommendation_profile (id, token_digest, privacy_generation, choice, state, expires_at, updated_at, created_at)
+        VALUES ('near-bound-profile', $1, 1, 'durable_allowed', 'active', '2027-02-01', $2, '2026-08-25')`,
+        [profileTokenDigest, now],
+      )
+      await admin.query(
+        `INSERT INTO recommendation_profile_session_link (id, profile_id, privacy_generation, session_digest, linked_at, expires_at)
+        SELECT 'near-bound-link-' || ordinal, 'near-bound-profile', 1, session, '2026-08-25', '2026-08-28'
+        FROM unnest($1::text[]) WITH ORDINALITY AS sessions(session, ordinal)`,
+        [sessions],
+      )
+      // The oldest root per session is deliberately outside the read bound.
+      await admin.query(
+        `INSERT INTO recommendation_playback_episode (
+        id, media_id, session_digest, state, discovery_source, created_at, claimed_at, active_until, hard_until, expires_at, next_fact_sequence
+      ) SELECT 'near-bound-' || ordinal || '-' || episode,
+        CASE WHEN episode = 1 THEN 'excluded-old-root-' || ordinal ELSE 'near-bound-media-' || (episode % 24) END,
+        session, 'claimed', 'direct',
+        '2026-08-26T10:00:00Z'::timestamptz + episode * interval '1 minute',
+        '2026-08-26T10:00:00Z'::timestamptz + episode * interval '1 minute',
+        '2026-08-26T11:00:00Z', '2026-08-26T16:00:00Z', '2026-09-24', 129
+      FROM unnest($1::text[]) WITH ORDINALITY AS sessions(session, ordinal)
+      CROSS JOIN generate_series(1, 33) episode`,
+        [sessions],
+      )
+      await admin.query(
+        `INSERT INTO recommendation_playback_fact (
+        id, episode_id, event_id, capability_jti, payload_digest, sequence, kind, payload, occurred_at, received_at, expires_at
+      ) SELECT episode.id || '-fact-' || fact, episode.id, episode.id || '-fact-' || fact, episode.id, repeat('e', 64), fact,
+        CASE WHEN fact = 1 THEN 'playback_start' ELSE 'playback_active_visible_playing' END,
+        CASE WHEN fact = 1 THEN '{}'::jsonb ELSE '{"activeMilliseconds":1000,"coverage":"complete"}'::jsonb END,
+        episode.created_at + (fact - 1) * interval '1 second', episode.created_at + (fact - 1) * interval '1 second', episode.expires_at
+      FROM recommendation_playback_episode episode CROSS JOIN generate_series(1, 128) fact
+      WHERE episode.session_digest = ANY($1::text[])`,
+        [sessions],
+      )
+      await admin.query("ANALYZE recommendation_playback_episode")
+      await admin.query("ANALYZE recommendation_playback_fact")
+      for (const surface of ["seeded", "homepage"]) {
+        const timings: number[] = []
+        for (let sample = 0; sample < 25; sample += 1) {
+          const start = performance.now()
+          const input = {
+            sessionDigest: sessions[0]!,
+            profileTokenDigest,
+            locale: "en",
+            now,
+          }
+          // Use the production transaction's custom-plan policy. This benchmark
+          // reports timings; its generous deadline is not a machine-speed gate.
+          const ids = await runRecommendationRetrievalQuery(
+            prisma,
+            Date.now() + 60_000,
+            async (tx) =>
+              surface === "seeded"
+                ? (
+                    await getRecommendationRecentContext(tx, {
+                      ...input,
+                      allowDurableProfileLinks: true,
+                    })
+                  ).videos.map((item) => item.targetMediaId)
+                : (await getUserWatchHistory(tx, input)).map(
+                    (item) => item.mediaId,
+                  ),
+          )
+          timings.push(performance.now() - start)
+          expect(ids).toHaveLength(24)
+          expect(ids.every((id) => id.startsWith("near-bound-media-"))).toBe(
+            true,
+          )
+        }
+        const query = observedQueries
+          .filter((entry) =>
+            entry.query.includes("recent_episodes AS MATERIALIZED"),
+          )
+          .at(-1)!
+        const explained = await admin.query(
+          `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${query.query}`,
+          JSON.parse(query.params),
+        )
+        type PlanNode = {
+          "Subplan Name"?: string
+          "Node Type"?: string
+          Alias?: string
+          "Actual Rows": number
+          "Actual Loops": number
+          Plans?: PlanNode[]
+        }
+        const flatten = (plan: PlanNode): PlanNode[] => [
+          plan,
+          ...(plan.Plans ?? []).flatMap(flatten),
+        ]
+        const plan = explained.rows[0]["QUERY PLAN"][0]
+        const nodes = flatten(plan.Plan)
+        expect(
+          nodes.find(
+            (node) => node["Subplan Name"] === "CTE recent_episodes",
+          )?.["Actual Rows"],
+        ).toBe(256)
+        expect(
+          nodes.find(
+            (node) => node["Subplan Name"] === "CTE validated_recent_episodes",
+          )?.["Actual Rows"],
+        ).toBe(256)
+        const integrityProbes = nodes.filter(
+          (node) => node.Alias === "started" || node.Alias === "late",
+        )
+        expect(integrityProbes).toHaveLength(2)
+        for (const probe of integrityProbes) {
+          expect(probe["Actual Loops"]).toBeLessThanOrEqual(256)
+        }
+        expect(nodes).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              "Node Type": "Limit",
+              "Actual Rows": 32,
+              "Actual Loops": 8,
+            }),
+          ]),
+        )
+        expect(JSON.stringify(plan)).toContain(
+          "recommendation_episode_session_created_idx",
+        )
+        timings.sort((a, b) => a - b)
+        console.info("Authorized-history local benchmark", {
+          surface,
+          sessions: 8,
+          episodesPerSession: 32,
+          factsPerEpisode: 128,
+          samples: timings.length,
+          medianMs: timings[12],
+          p95Ms: timings[23],
+          maxMs: timings[24],
+          executionMs: plan["Execution Time"],
+          planningMs: plan["Planning Time"],
+          sharedHitBlocks: plan.Plan["Shared Hit Blocks"],
+          sharedReadBlocks: plan.Plan["Shared Read Blocks"],
+        })
+      }
+    }, 60_000)
   },
 )

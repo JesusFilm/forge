@@ -369,12 +369,6 @@ export async function loadDatabaseProfileProjectionEvidence(
           ON episode.id = outcome.episode_id
           AND episode.request_id IS NOT DISTINCT FROM outcome.request_id
           AND episode.item_id IS NOT DISTINCT FROM outcome.item_id
-        LEFT JOIN recommendation_selection selection
-          ON selection.request_id = episode.request_id
-          AND selection.item_id = episode.item_id
-          AND selection.id = episode.selection_id
-        LEFT JOIN recommendation_request request
-          ON request.id = episode.request_id
         JOIN recommendation_eligibility_decision decision
           ON decision.outcome_id = outcome.id
           AND decision.id = contribution.source_eligibility_decision_id
@@ -396,18 +390,8 @@ export async function loadDatabaseProfileProjectionEvidence(
           AND episode.state = 'finalized'
           AND episode.finalized_at IS NOT NULL
           AND contribution.target_media_id = episode.media_id
-          AND (
-            episode.request_id IS NULL
-            OR request.created_at >= profile.created_at
-          )
-          AND (
-            episode.selection_id IS NULL
-            OR (
-              selection.attribution_eligible_at IS NOT NULL
-              AND selection.attribution_eligible_at <= ${input.now}
-              AND selection.occurred_at >= profile.created_at
-            )
-          )
+          -- Qualified playback is independent of click attribution. The episode
+          -- itself must begin after profile authorization, regardless of source.
           AND COALESCE(episode.claimed_at, episode.created_at) >= profile.created_at
           AND outcome.expires_at > ${input.now}
           AND decision.expires_at > ${input.now}
@@ -465,12 +449,6 @@ export async function loadDatabaseProfileProjectionEvidence(
           ON outcome.episode_id = episode.id
           AND outcome.request_id IS NOT DISTINCT FROM episode.request_id
           AND outcome.item_id IS NOT DISTINCT FROM episode.item_id
-        LEFT JOIN recommendation_request request
-          ON request.id = episode.request_id
-        LEFT JOIN recommendation_selection selection
-          ON selection.request_id = episode.request_id
-          AND selection.item_id = episode.item_id
-          AND selection.id = episode.selection_id
         JOIN recommendation_eligibility_decision decision
           ON decision.outcome_id = outcome.id
           AND decision.is_current = true
@@ -486,27 +464,6 @@ export async function loadDatabaseProfileProjectionEvidence(
           AND outcome.qualified_view = true
           AND episode.state = 'finalized'
           AND episode.finalized_at IS NOT NULL
-          AND (
-            episode.request_id IS NULL
-            OR (
-              request.expires_at > ${input.now}
-              AND request.created_at >= GREATEST(
-                profile.created_at,
-                link.linked_at
-              )
-            )
-          )
-          AND (
-            episode.selection_id IS NULL
-            OR (
-              selection.attribution_eligible_at IS NOT NULL
-              AND selection.attribution_eligible_at <= ${input.now}
-              AND selection.occurred_at >= GREATEST(
-                profile.created_at,
-                link.linked_at
-              )
-            )
-          )
           AND COALESCE(episode.claimed_at, episode.created_at) >= GREATEST(profile.created_at, link.linked_at)
           AND outcome.expires_at > ${input.now}
           AND decision.expires_at > ${input.now}
