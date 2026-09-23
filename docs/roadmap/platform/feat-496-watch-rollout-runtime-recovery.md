@@ -3,7 +3,7 @@ id: "feat-496"
 title: "Resolve remaining Watch admission and database transaction timeouts"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-11"
 duration: 3
 depends_on: []
@@ -14,25 +14,50 @@ tags:
   - "infrastructure"
 ---
 
-## Final bounded pass — September 23
+## Closed investigation — September 23; residual timeout cause unresolved
 
-The user requested one final reproduction/fix pass and then closure of this
-investigation if the historical fault remains unproven. Closure must record
-that outcome explicitly; an ended investigation is not verified recovery.
+The owner requested one final bounded reproduction/fix pass and then closure
+if the historical fault remained unproven. The roadmap status records that
+investigation closure. It does **not** assert that every intermittent timeout
+is fixed, that selection reliability is established, or that recommendations
+consistently finish below 200 ms.
 
-PR #2399 adds source timestamps and operation offsets, automatically deployed
-to Admin at `5a30f5ddceeb4dc29d7ceb87718600a30af91401`; natural primary logs
-confirm the fields. Worker deployment and bounded capture verification remain
-part of this pass.
+PR #2401 corrects a proven source of competing database work: authored settings
+blocks issued 62 scalar dub lookups in one natural request. The controlled
+PostgreSQL workload queued 301 calls behind ten leases; request-local exact-pair
+batching reduced that to zero and unrelated-read p95 from 200–311 ms to 7–9 ms.
+All 7,348 Admin tests and two real PostgreSQL parity tests passed. The newer
+Mobile main revision was incorporated, focused regressions reran, and PR/main
+CI passed before the normal automatic release.
 
-A separate retained settings trace reveals 62 authored-block dub lookups.
-The controlled PostgreSQL reproduction queues 301 calls behind ten leases;
-request-local exact-pair batching reduces that to zero and reduces unrelated
-read p95 from 200–311 ms to 7–9 ms. This proves avoidable contention in that
-workload, not the historical selection 503 or 1.19-second evidence-write cause.
-See `docs/plans/2026-09-23-watch-block-dub-pool-fanout.md` and
-`docs/operations/watch-block-dub-fanout-2026-09-23.md` for validation and release
-gates. The batching change still requires normal PR deployment and verification.
+Admin and worker both run `911ad005874f2ee84e8d265f79b4d07d40863ce6` with health
+HTTP 200 and the expected disabled/enabled workflow-runner roles. Production
+English and Spanish settings preserve their complete parsed payloads. A
+natural settings trace confirms one winner-selection method call plus one
+hydration, with no scalar dub lookup spans. See
+`docs/operations/watch-block-dub-fanout-2026-09-23.md` and its release artifact
+for the exact deployments, query/response proof and separately counted HTTP
+and semantic outcomes.
+
+PR #2399's source-time instrumentation is also verified: a natural 180-row
+write joins its observation, transaction ordinal and backend PID to an
+independent PostgreSQL state sample. Actual observer coverage and early stop
+reasons are recorded; all temporary observers are disconnected and the owned
+local database is stopped. See `docs/operations/watch-source-timing-2026-09-23.md`.
+
+The September 22 220-row evidence write taking 1.19 seconds and the earlier
+selection capability-budget timeouts remain causally unassigned. The settings
+workload is a demonstrated contention source, not proof that it caused those
+incidents. A WAL-sync sample proves a storage-wait contribution to one call,
+not the complete failure mechanism. No timeout was silently reclassified as
+success, and no deadline, retry, authorization, attribution, privacy-generation,
+rate-limit or integrity guarantee was relaxed.
+
+If a new incident warrants reopening, retain its HTTP outcome separately from
+semantic fallback, source operation interval, observation/transaction/PID,
+database state and contemporaneous workload. This pass does not start another
+indefinite instrumentation cycle. Separate evidence transport work remains
+under feat-464; closing this investigation does not close that ticket.
 
 ## Problem and scope
 

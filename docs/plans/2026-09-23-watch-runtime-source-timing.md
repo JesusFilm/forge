@@ -1,6 +1,6 @@
 ---
 title: "Preserve source timing for slow Watch operations without retained traces"
-status: active
+status: completed
 type: fix
 ---
 
@@ -47,3 +47,13 @@ treat raw cross-host timestamp subtraction as exact execution time.
    timeouts separately. Keep feat-496 open without proven causal recovery.
 5. Compound the source-time/ingestion-time and missing-trace lesson into the
    existing runtime observation learning.
+
+## Execution result
+
+PR #2399 passed CI, merged normally and automatically deployed to Admin and
+worker at `5a30f5ddceeb4dc29d7ceb87718600a30af91401`. Natural source fields
+and an observation/transaction/PID join to PostgreSQL are verified. The bounded
+observers were stopped early during a user task pause; actual coverage, clock
+bounds and confirmed cleanup are recorded in
+`docs/operations/watch-source-timing-2026-09-23.md` and its release artifact.
+This completes the instrumentation plan, not the historical timeout diagnosis.

@@ -4,6 +4,14 @@ date: "2026-06-24"
 last_updated: "2026-09-23"
 module: "apps/admin Watch GraphQL"
 problem_type: "performance_issue"
+component: "service_object"
+severity: "medium"
+symptoms:
+  - "Cold Watch reads project many dubs to select one playable language"
+  - "Authored settings blocks issue one scalar dub lookup per sibling"
+  - "Concurrent scalar lookups queue unrelated reads behind a shared pool"
+root_cause: "logic_error"
+resolution_type: "code_fix"
 tags:
   - "watch"
   - "dataloader"
@@ -118,3 +126,11 @@ timeout. An ABBA comparison reduced 621 commands per round to 16, peak queued
 calls from 301 to zero, and unrelated-read p95 from 200–311 ms to 7–9 ms.
 Keep that causal result separate from production recovery. See
 `docs/operations/watch-block-dub-fanout-2026-09-23.md` for scope and release gates.
+
+Production verification must compare the full response as well as the query
+shape. The September 23 release preserved English and Spanish settings data
+including all nulls and array order. JSON object-key order changed, so use a
+canonical-key digest for data equivalence and retain the raw digest difference
+honestly. A natural settings trace on revision `911ad0058` shows one raw
+winner-selection call and one hydration method span in place of scalar dub
+calls. Method spans with collapsed children do not establish total SQL count.
