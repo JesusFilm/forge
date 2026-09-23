@@ -1,6 +1,7 @@
 ---
 title: "Playback retries can exhaust before a brief dependency outage recovers"
 date: "2026-09-23"
+last_updated: "2026-09-23"
 category: "logic-errors"
 module: "Watch playback fact delivery"
 problem_type: "logic_error"
@@ -40,7 +41,9 @@ would change enforcement, not repair bounded browser recovery.
 - Looking only at health 200 misses unavailable mandatory dependencies: importing
   the GraphQL module does not exercise its Redis-backed limiter.
 - Treating caller timeout as proof of no write fails during a silent TCP stall.
-  The real fixture commits after caller abort; exact replay returns one stored fact.
+  The pre-fix fixture commits after caller abort. Bounded admission now prevents
+  that late resolver start; a separate post-commit lost-ack control still requires
+  exact replay to return one stored fact.
 - A React-only test proves retry scheduling, not Redis recovery. Conversely, a
   Redis restart test does not prove the browser still retains facts when it recovers.
 
@@ -90,10 +93,12 @@ delivery after navigation, page termination, long outages or rejected capabiliti
 - Measure healthy startup/request count and bundle size; do not add a network or
   dependency-readiness wait to player startup to repair telemetry.
 
-The release continuation also bounds shared Redis admission before resolver
-execution and adds Redis-aware readiness. These do not cancel already-running
-transactions or promise infrastructure availability. Initial context issuance
-recovery and broader production acceptance remain separate gates. See the
+The merged release also bounds shared Redis admission before resolver execution
+and adds Redis-aware readiness. The [Admin admission learning](../runtime-errors/redis-admission-timeouts-must-bound-late-work-20260923.md)
+owns the distinction between observer timeout, unresolved wire work and resolver
+execution. These guards do not cancel already-running transactions or promise
+infrastructure availability. Initial context issuance recovery and broader
+production acceptance remain separate gates. See the
 [investigation and verification report](../../operations/watch-intermittent-evidence-investigation-2026-09-23.md#release-continuation)
 for the current release outcome.
 
@@ -101,5 +106,5 @@ for the current release outcome.
 
 - [Accepted source-neutral short-watch feedback](source-neutral-playback-recent-history-20260915.md) describes how accepted facts affect recommendations; it cannot recover facts never delivered.
 - [Recommendation boundary pattern](../architecture-patterns/production-recommendation-boundary-hardening-pattern.md) covers immutable replay, privacy and lifecycle constraints.
-- [Next startup readiness](../performance-issues/next-background-preload-can-outlive-readiness.md) covers module initialization, not runtime dependency availability.
+- [Next startup readiness](../performance-issues/next-background-preload-can-outlive-readiness.md) explains the original module-initialization fix and its separate Redis-aware follow-on.
 - [feat-464](../../roadmap/content-discovery/feat-464-recommendation-evidence-transport-crawler-integrity.md) retains the broader production acceptance gates.

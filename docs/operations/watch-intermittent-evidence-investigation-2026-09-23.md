@@ -469,8 +469,8 @@ one fact. A separate post-commit socket-loss replay still retains exactly one fa
 Review uses sequential main-thread Compound Engineering lenses per AGENTS.md, not
 independent agents. Shared timeout behavior, bounded outstanding work, unchanged
 keys/identities, replay semantics, terminal behavior, and timer cleanup were checked.
-No blocking implementation findings remain. Browser/release results will be recorded
-after running them. Full deployed Watch/Mux/auth fault injection, context issuance
+No blocking implementation findings remain. Browser/release results are recorded
+below. Full deployed Watch/Mux/auth fault injection, context issuance
 idempotency, timestamp attribution and installed-monitoring gates remain outside
 this bounded fix; feat-464 stays in progress.
 
@@ -492,3 +492,111 @@ An earlier run overlapped full unit suites and had 111.1/132.4ms mount medians; 
 is retained locally as a contention control, not used to claim improved loading.
 These small component measurements show no material added startup work, not a full
 Watch loading benchmark. No production fault injection was performed.
+
+### Production rollout
+
+[PR #2404](https://github.com/JesusFilm/forge/pull/2404) merged through the normal
+main-branch flow at `2026-09-23T04:02:07Z`, commit
+`37e10b622bd66e55647cf561c3896b2d4fbb4dce`. All required PR checks passed, including
+Admin/Web builds, tests, lint, database/schema checks, Redis integration, formatting
+and CodeQL. A subsequent docs merge cancelled the redundant main forge-ci run;
+the implementation PR checks remained green. Main CodeQL completed successfully
+and Web's normal CI wait cleared without an override or configuration change.
+
+Railway status at `2026-09-23T04:29:35Z` showed exactly one active successful
+deployment for each service, all on the exact merge commit:
+
+| Service | Deployment                             | Revision    | Status  |
+| ------- | -------------------------------------- | ----------- | ------- |
+| Admin   | `05d2971e-d42a-4f32-b91a-3c552cb44353` | `37e10b622` | SUCCESS |
+| Worker  | `264a75df-cc73-47a9-aee1-7c336e8f986b` | `37e10b622` | SUCCESS |
+| Web     | `9448a080-628d-4964-ae79-81c1f920739e` | `37e10b622` | SUCCESS |
+
+Admin `/api/health` returned 200 with `status=ok`. One external probe took 5.585s,
+but the corresponding Railway health row at 04:29:35.614Z records 12ms total and
+upstream time. The next external probe took 0.568s. Preserve the external outlier;
+it does not establish a five-second Admin or Redis stall. Worker startup logged
+`query_embedding_prewarm_failure failed=6 total=6` at 04:13:27; the identical warning
+exists on its previous `911ad0058` deployment at 03:31:15. It is not new evidence
+of a recovery-fix regression, nor proof that prewarming is healthy.
+
+The separate mixed-version Admin-only window 04:10-04:17 UTC has 4,271 primary
+POST responses, all 200, and zero indexed Redis availability/deadline errors. Web
+was still on the old revision then, so this is not the all-services release sample.
+All production checks are read-only; no redeploy, flag, database or configuration
+mutation was used to obtain these results.
+
+### Settled ten-minute observation
+
+The fixed 04:30-04:40 UTC window was queried at approximately 04:43, after all three
+services were verified. The [baseline](../validation/watch-intermittent-evidence-20260923/release-baseline.json)
+is 03:10-03:40 UTC; the [release observation](../validation/watch-intermittent-evidence-20260923/release-observation.json)
+retains route/status populations, semantic outcomes, counts and limitations.
+
+| Measurement                               | Thirty-minute baseline | Ten-minute release sample |
+| ----------------------------------------- | ---------------------: | ------------------------: |
+| Web recommendation HTTP requests / 5xx    |              3,658 / 2 |                 1,404 / 0 |
+| Playback HTTP requests / 5xx              |              1,656 / 1 |                   817 / 0 |
+| Admin POST requests / 5xx                 |             17,855 / 0 |                 5,641 / 0 |
+| Seeded successful HTTP / indexed outcomes |              172 / 172 |                   55 / 55 |
+| Seeded served outcomes                    |                    143 |                        40 |
+| No-candidate fallback                     |                     18 |                         5 |
+| Seed-embedding-unavailable fallback       |                      9 |                        10 |
+| Cooldown fallback                         |                      2 |                         0 |
+| Served runtime p95                        |               383.81ms |                  497.78ms |
+
+No indexed Redis operation/admission timeout, capacity error, offline-queue error,
+delivery timeout or recent-context timeout/unavailable appears in the release
+window. All 55 seeded runtime completions have `timeoutFallback=false`; 40 are
+served, 11 empty and four fallback. The one selection completion is 76.87ms.
+HTTP 200 does not establish semantic success: 15 of those 55 deliveries are
+fallbacks, and the table preserves them explicitly.
+
+The higher p95 and seed-embedding fallback share are observations for the longer
+acceptance pass, not dismissed as noise or attributed to this fix without evidence.
+The current delivery service maps `VideoNotFoundError` to
+`seed_embedding_unavailable`, separately from retrieval timeouts. This code mapping
+does not establish why the request population changed. Sample sizes, content mix,
+different durations and the baseline's overlapping `911ad0058` Admin deployment
+prevent a controlled before/after latency or quality claim.
+
+Evidence logs contain 678 Admin accepted fact batches versus 675 Web, with three
+replays on both sides, 37 claims on both sides and 37 Web contexts. Eleven first
+transaction-busy retries appear; no exhausted transaction or ambiguous upstream
+503 is indexed. Successful Web playback outcomes total 752 against 759 primary
+HTTP 200s, leaving seven unmatched. Keep this gap and the three-batch Admin/Web
+difference visible; neither alone establishes durable loss or successful delivery.
+All 54 seeded 403s have matching indexed rejections. Recognized-crawler playback
+and evidence rejections remain present (28 and 37 respectively).
+
+The bounded observation found no HTTP 5xx or known timeout regression in its
+sample. It does not prove continuous health, outage recovery, complete telemetry
+reconciliation or profile integrity. Recovery causality comes from the local fault
+controls; longer production accounting and a fresh integrity audit remain with the
+separate acceptance continuation. Those distinctions prevent an early green sample
+from silently closing the ticket's broader gates.
+
+### Final compound and remaining ownership
+
+The final full `ce-compound` pass uses this task and repository learnings only,
+without session-history search. The primary new learning is
+[bounded Admin admission and late wire work](../solutions/runtime-errors/redis-admission-timeouts-must-bound-late-work-20260923.md).
+It keeps the server guard separate from the browser retry-horizon learning:
+their problem area and prevention concerns overlap, but their causal mechanisms,
+implementation files and guarantees differ. Consolidating them would obscure the
+distinction between pre-execution rejection and ambiguous post-commit replay.
+
+Targeted refresh reviews seven existing learnings. Three updates qualify the
+retry-horizon account, startup-readiness guidance and recommendation boundary
+pattern. Four remain valid without edits: source-neutral accepted evidence,
+Web Redis-clock refresh, Web admission-worker isolation and bounded cache cleanup.
+No replacement, deletion, consolidation or stale marking is needed. Root agent
+instructions already expose the knowledge store and its search fields.
+
+The separate acceptance continuation owns the 04:30-06:30 UTC two-hour accounting,
+fresh canonical integrity audit and remaining local full-stack proof. This bounded
+release does not close feat-464, claim installed monitors, solve initial context
+issuance idempotency, weaken timestamp validation or attribute every historical
+intermittent failure. A material regression should use a reviewed revert PR through
+main, preserving idempotency and fail-closed admission, not a direct Railway deploy
+or an in-memory production bypass.
