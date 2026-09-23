@@ -53,8 +53,28 @@ const TOPUP_FETCH_DEADLINE_MS = 3000
 
 type ExperienceBlockList = readonly { readonly __typename?: string | null }[]
 
+/**
+ * The painted body, held in ONE state slot so a render can never pair a new
+ * model with the previous model's authored position (KTD1).
+ */
+type WatchHomeBody = {
+  model: WatchHomeModel | null
+  recommendationsInsertIndex: number | null
+}
+
+const EMPTY_BODY: WatchHomeBody = {
+  model: null,
+  recommendationsInsertIndex: null,
+}
+
 export type WatchHomeState = {
   model: WatchHomeModel | null
+  /**
+   * Where the recommendations shelf belongs in `model.sections`, as the
+   * published Experience authored it. Null when the block is absent or the body
+   * fell back to the config model.
+   */
+  recommendationsInsertIndex: number | null
   /** No model painted yet (neither network nor snapshot) — the spinner gate. */
   loading: boolean
   refreshing: boolean
@@ -88,7 +108,7 @@ function persistHomeSnapshot(
  * revalidate in background. Unchanged response keeps the model (pager intact).
  */
 export function useWatchHome(): WatchHomeState {
-  const [model, setModel] = useState<WatchHomeModel | null>(null)
+  const [body, setBody] = useState<WatchHomeBody>(EMPTY_BODY)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -255,7 +275,11 @@ export function useWatchHome(): WatchHomeState {
           lastGoodHydrationVideosRef.current = resolved.nextLastGood
         }
       }
-      const { model: nextModel, usedExperience } = assembleWatchHomeModel({
+      const {
+        model: nextModel,
+        usedExperience,
+        recommendationsInsertIndex,
+      } = assembleWatchHomeModel({
         configVideos: videos,
         hydrationVideos,
         blocks: experienceBlocks,
@@ -290,7 +314,9 @@ export function useWatchHome(): WatchHomeState {
         videosJson === snapshotVideosJsonRef.current &&
         blocksJson === snapshotBlocksJsonRef.current &&
         hydrationVideosJson === snapshotHydrationJsonRef.current
-      if (!snapshotStillCurrent) setModel(nextModel)
+      if (!snapshotStillCurrent) {
+        setBody({ model: nextModel, recommendationsInsertIndex })
+      }
       if (!homeReadyNetworkEmittedRef.current) {
         // R21: the network paint carries the real admin TTFB. `outcome` is
         // explicit so failed/(failed+success) can be computed — an absent
@@ -343,14 +369,16 @@ export function useWatchHome(): WatchHomeState {
         if (snapshot == null) return
         // Rebuild the exact painted source: config body/hero from the config
         // videos (no hero leak), Experience shelves hydrated off the merged index.
-        const { model: snapshotModel, usedExperience } = assembleWatchHomeModel(
-          {
-            configVideos: snapshot.videos,
-            hydrationVideos: snapshot.hydrationVideos,
-            blocks: snapshot.blocks,
-            languageSlug: ENGLISH_LANGUAGE_SLUG,
-          },
-        )
+        const {
+          model: snapshotModel,
+          usedExperience,
+          recommendationsInsertIndex,
+        } = assembleWatchHomeModel({
+          configVideos: snapshot.videos,
+          hydrationVideos: snapshot.hydrationVideos,
+          blocks: snapshot.blocks,
+          languageSlug: ENGLISH_LANGUAGE_SLUG,
+        })
         if (cancelled || networkLandedRef.current) return
         snapshotVideosJsonRef.current = JSON.stringify(snapshot.videos)
         snapshotBlocksJsonRef.current = snapshot.blocks
@@ -368,7 +396,7 @@ export function useWatchHome(): WatchHomeState {
         if (snapshot.hydrationVideos.length > 0) {
           lastGoodHydrationVideosRef.current = snapshot.hydrationVideos
         }
-        setModel(snapshotModel)
+        setBody({ model: snapshotModel, recommendationsInsertIndex })
         if (!homeReadySnapshotEmittedRef.current) {
           homeReadySnapshotEmittedRef.current = true
           datadogLog.info("home_feed_ready", { feed_source: "snapshot" })
@@ -392,5 +420,12 @@ export function useWatchHome(): WatchHomeState {
     void fetchHome("refresh")
   }, [fetchHome])
 
-  return { model, loading, refreshing, error, refetch }
+  return {
+    model: body.model,
+    recommendationsInsertIndex: body.recommendationsInsertIndex,
+    loading,
+    refreshing,
+    error,
+    refetch,
+  }
 }
