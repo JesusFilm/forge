@@ -146,3 +146,20 @@ moving the observer fixed anything. Reconcile all primary delivery outcomes
 with HTTP metrics, retain ordinary fallback reasons, and report selection HTTP
 503 separately from HTTP 200 delivery timeouts. Close diagnostic connections
 and verify cleanup independently before ending the investigation window.
+
+## Keep source timing when a trace cannot be retrieved
+
+Three subsequent 798–1,054 ms deliveries have short 8–27 ms evidence writes,
+but no matching indexed APM spans. Aggregate stage durations and ingestion
+timestamps cannot reconstruct their operation intervals. Preserve one UTC
+observation start plus monotonic offsets in the bounded runtime event. Pair
+the longest completed call's offset with its maximum duration, and retain the
+specific start offset on a late-operation record after the response closes.
+Test wall-clock corrections, repeated calls and unfinished/late operations.
+
+The first call for a label is not necessarily its longest or a pending call.
+An aggregate is not a complete timeline. Source timestamps remove ingestion
+lag from alignment; they do not remove cross-host clock skew. Measure clock
+offsets before attributing a timestamp gap to transport or scheduling, and use
+same-clock durations wherever possible. See the
+[source timing contract and validation](../../operations/watch-source-timing-2026-09-23.md).

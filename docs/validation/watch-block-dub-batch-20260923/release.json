@@ -1,0 +1,374 @@
+{
+  "fixPr": "https://github.com/JesusFilm/forge/pull/2401",
+  "revision": "911ad005874f2ee84e8d265f79b4d07d40863ce6",
+  "admin": {
+    "at": "2026-09-23T03:28:05.392Z",
+    "revision": "911ad005874f2ee84e8d265f79b4d07d40863ce6",
+    "deployment": "9d6a59e3-4815-4245-9850-5b0ee4ab1843",
+    "runner": "false",
+    "health": 200
+  },
+  "settingsComparison": {
+    "beforeAt": "2026-09-23T02:59:09.656Z",
+    "afterAt": "2026-09-23T03:28:08.057Z",
+    "beforeRevision": "5a30f5ddceeb4dc29d7ceb87718600a30af91401",
+    "afterRevision": "911ad005874f2ee84e8d265f79b4d07d40863ce6",
+    "afterDeployment": "9d6a59e3-4815-4245-9850-5b0ee4ab1843",
+    "rows": [
+      {
+        "locale": "en",
+        "beforeStatus": 200,
+        "afterStatus": 200,
+        "samePayload": true,
+        "beforeRawHash": "51a5677946389e0f44ebe749f9a8044e01ce96cf02950dd3aea095e999aa647b",
+        "afterRawHash": "93cf0004bb0b22c38e934343dd2c3b871a50f62b7a8d966259d321ac0e58cb2f",
+        "beforeCanonicalHash": "a27649740bac682ed5805912a55a97eb02c0b714db420aba4b731961ffe08cc1",
+        "afterCanonicalHash": "a27649740bac682ed5805912a55a97eb02c0b714db420aba4b731961ffe08cc1",
+        "beforeMs": 128.762746,
+        "afterMs": 81.425928,
+        "beforeBytes": 109456,
+        "afterBytes": 109456,
+        "beforePopulatedDubs": 43,
+        "afterPopulatedDubs": 43,
+        "errorCodes": []
+      },
+      {
+        "locale": "es",
+        "beforeStatus": 200,
+        "afterStatus": 200,
+        "samePayload": true,
+        "beforeRawHash": "bd223ac5fcd840b90e547d3b0e075edb9b3dc7fff36cc05bc4bc1071b1541844",
+        "afterRawHash": "e57372bc2d24b7955ca5782a8106bbd52dca55134f2f663d7be9397d6cd003cd",
+        "beforeCanonicalHash": "dea858da95b337ed76d0420ca4bb29349c2de2f2a8f174127487115eb582dc03",
+        "afterCanonicalHash": "dea858da95b337ed76d0420ca4bb29349c2de2f2a8f174127487115eb582dc03",
+        "beforeMs": 66.526546,
+        "afterMs": 42.179231,
+        "beforeBytes": 68374,
+        "afterBytes": 68374,
+        "beforePopulatedDubs": 21,
+        "afterPopulatedDubs": 21,
+        "errorCodes": []
+      }
+    ],
+    "limitations": "Two sequential public read-only settings probes; payload parity with arrays ordered and object keys canonicalized; raw object-key order differs, not latency percentiles or recommendation recovery."
+  },
+  "naturalTrace": {
+    "traceId": "6ab34776000000001d597cf87d43da8d",
+    "settingsSpanId": "6237385266821987906",
+    "source": "Natural GetWatchSettings operation retained by Datadog diversity sampling, not the manual WatchBlockDubVerification probe",
+    "revision": "911ad005874f2ee84e8d265f79b4d07d40863ce6",
+    "at": "2026-09-23T03:28:54.218Z",
+    "durationMs": 51.443848,
+    "resourceCounts": {
+      "graphql.query.GetWatchSettings": 1,
+      "Video.findMany": 2,
+      "VideoRelation.findMany": 1,
+      "Language.findMany": 1,
+      "VideoImage.findMany": 1,
+      "Experience.findFirst": 1,
+      "ExperienceLocale.findMany": 1,
+      "MediaAsset.findUnique": 4,
+      "VideoLocale.findMany": 1,
+      "queryRaw": 1,
+      "VideoDub.findMany": 1
+    },
+    "collapsedChildren": [
+      {
+        "resource": "Video.findMany",
+        "count": 9
+      },
+      {
+        "resource": "VideoRelation.findMany",
+        "count": 9
+      },
+      {
+        "resource": "Language.findMany",
+        "count": 9
+      },
+      {
+        "resource": "VideoImage.findMany",
+        "count": 9
+      },
+      {
+        "resource": "Experience.findFirst",
+        "count": 9
+      },
+      {
+        "resource": "ExperienceLocale.findMany",
+        "count": 9
+      },
+      {
+        "resource": "MediaAsset.findUnique",
+        "count": 1
+      },
+      {
+        "resource": "MediaAsset.findUnique",
+        "count": 1
+      },
+      {
+        "resource": "Video.findMany",
+        "count": 9
+      },
+      {
+        "resource": "MediaAsset.findUnique",
+        "count": 1
+      },
+      {
+        "resource": "VideoLocale.findMany",
+        "count": 9
+      },
+      {
+        "resource": "queryRaw",
+        "count": 9
+      },
+      {
+        "resource": "MediaAsset.findUnique",
+        "count": 9
+      },
+      {
+        "resource": "VideoDub.findMany",
+        "count": 17
+      }
+    ],
+    "interpretation": "Settings subtree contains zero scalar VideoDub.findFirst calls and one raw winner selection plus one VideoDub.findMany hydration. These are method-span counts, not a total SQL statement count; one request is not a production latency percentile."
+  },
+  "worker": {
+    "at": "2026-09-23T03:32:55.336Z",
+    "revision": "911ad005874f2ee84e8d265f79b4d07d40863ce6",
+    "deployment": "e3e66a80-e6c5-4c0f-82cd-5cb9562ed6d9",
+    "runner": "true",
+    "health": 200
+  },
+  "mainCI": {
+    "run": 35813894514,
+    "conclusion": "success"
+  },
+  "review": {
+    "workflow": "Compound Engineering sequential review",
+    "blockingFindings": 0,
+    "source": "block-dub-review.json; production conclusions separately checked against retained artifacts"
+  },
+  "adminFinal": {
+    "at": "2026-09-23T03:39:25.482Z",
+    "revision": "911ad005874f2ee84e8d265f79b4d07d40863ce6",
+    "deployment": "9d6a59e3-4815-4245-9850-5b0ee4ab1843",
+    "runner": "false",
+    "health": 200
+  },
+  "workerFinal": {
+    "at": "2026-09-23T03:39:24.970Z",
+    "revision": "911ad005874f2ee84e8d265f79b4d07d40863ce6",
+    "deployment": "e3e66a80-e6c5-4c0f-82cd-5cb9562ed6d9",
+    "runner": "true",
+    "health": 200
+  },
+  "httpMetrics": {
+    "from": "2026-09-23T03:29:00Z",
+    "to": "2026-09-23T03:39:00Z",
+    "query": "sum:trace.web.request.hits{service:forge-web,env:prod,resource_name:post_/api/recommendations*} by {resource_name,http.status_code,version}.as_count()",
+    "rows": [
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "requests": 57
+      },
+      {
+        "http.status_code": "409",
+        "resource_name": "post_/api/recommendations/playback",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "requests": 1
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "requests": 53
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/profile",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "requests": 61
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations/evidence",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "requests": 77
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations/playback",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "requests": 66
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations/profile",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "requests": 209
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/evidence",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "requests": 115
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/playback",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "requests": 382
+      }
+    ]
+  },
+  "webPrimaryWindow": {
+    "deployment": "7e475679-fd30-4973-b92c-797a183147f3",
+    "from": "2026-09-23T03:29:00Z",
+    "to": "2026-09-23T03:39:00Z",
+    "returned": 751,
+    "unparsed": 0,
+    "counts": [
+      {
+        "message": "event=recommendation.evidence source=web action=facts outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+        "count": 346
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=evidence outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+        "count": 115
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=evidence outcome=rejected reason=crawler_rejected timeoutStage=none retryDisposition=terminal crawler=recognized httpStatus=403",
+        "count": 77
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=playback outcome=rejected reason=crawler_rejected timeoutStage=none retryDisposition=terminal crawler=recognized httpStatus=403",
+        "count": 36
+      },
+      {
+        "message": "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_fetch_metadata itemCount=0 upstreamResult=not_observed",
+        "count": 33
+      },
+      {
+        "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=6 upstreamResult=served",
+        "count": 31
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=playback outcome=rejected reason=forbidden timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=403",
+        "count": 30
+      },
+      {
+        "message": "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_origin itemCount=0 upstreamResult=not_observed",
+        "count": 24
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=context outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+        "count": 18
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=claim outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+        "count": 18
+      },
+      {
+        "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=4 upstreamResult=served",
+        "count": 4
+      },
+      {
+        "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=1 upstreamResult=served",
+        "count": 4
+      },
+      {
+        "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=no_candidates itemCount=6 upstreamResult=empty",
+        "count": 3
+      },
+      {
+        "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=seed_embedding_unavailable itemCount=6 upstreamResult=fallback",
+        "count": 3
+      },
+      {
+        "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=3 upstreamResult=served",
+        "count": 2
+      },
+      {
+        "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=5 upstreamResult=served",
+        "count": 2
+      },
+      {
+        "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=cooldown itemCount=6 upstreamResult=unavailable",
+        "count": 2
+      },
+      {
+        "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=2 upstreamResult=served",
+        "count": 2
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=facts outcome=rejected reason=invalid_binding timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=409",
+        "count": 1
+      }
+    ],
+    "records": []
+  },
+  "adminPrimaryWindow": {
+    "deployment": "9d6a59e3-4815-4245-9850-5b0ee4ab1843",
+    "from": "2026-09-23T03:29:00Z",
+    "to": "2026-09-23T03:39:00Z",
+    "returned": 433,
+    "unparsed": 0,
+    "counts": [],
+    "statistics": {
+      "operations": {
+        "seeded served timeout=False": 45,
+        "seeded empty timeout=False": 3,
+        "seeded fallback timeout=False": 3,
+        "seeded unavailable timeout=False": 2
+      },
+      "elapsed": {
+        "seeded": {
+          "n": 53,
+          "p50": 252.18353999999817,
+          "p95": 464.5299019999802,
+          "p99": 572.8955999999889,
+          "max": 572.8955999999889
+        },
+        "for_you": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "max": null
+        },
+        "selection": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "max": null
+        }
+      },
+      "persistence": {
+        "n": 51,
+        "p50": 126.43696099999943,
+        "p95": 227.57433999993373,
+        "p99": 272.7434850000427,
+        "max": 272.7434850000427
+      },
+      "insert": {
+        "n": 48,
+        "p50": 85.22656199999619,
+        "p95": 166.08443500002613,
+        "p99": 179.30045900004916,
+        "max": 179.30045900004916
+      },
+      "poolEvents": 0,
+      "lateEvents": 0
+    }
+  },
+  "limitations": [
+    "The window is bounded release evidence, not sustained recovery.",
+    "No selection or for-you traffic was observed; no selection reliability claim is supported.",
+    "Admin delivery p50 252 ms and p95 465 ms do not establish consistent sub-200 ms response times.",
+    "The historical 220-row write and selection capability-budget timeout causes remain unassigned.",
+    "Playback invalid_binding 409 and evidence/crawler/origin rejections are separate from delivery timeouts."
+  ]
+}

@@ -1,0 +1,563 @@
+{
+  "revision": "4583c4ece1f1bba93660bd52d4f80cc618414fc8",
+  "source": "Railway structured primary runtime logs",
+  "filter": "complete, elapsedMs > 600",
+  "from": "2026-09-23T01:48:00Z",
+  "to": "2026-09-23T02:03:00Z",
+  "limit": "at is ingestion time; original observation and operation start times were not recorded; indexed APM span lookup returned no matches",
+  "records": [
+    {
+      "at": "2026-09-23T01:53:18.300335105Z",
+      "operation": "seeded",
+      "observationId": "fcf623dc-64ac-4aa3-ba77-8c4a73014dff",
+      "outcome": "served",
+      "timeoutFallback": false,
+      "elapsedMs": 873.5294089997187,
+      "databaseTransactions": [
+        {
+          "ordinal": 1,
+          "backendPid": 1460976
+        },
+        {
+          "ordinal": 2,
+          "backendPid": 1460985
+        },
+        {
+          "ordinal": 3,
+          "backendPid": 1460985
+        },
+        {
+          "ordinal": 4,
+          "backendPid": 1460975
+        }
+      ],
+      "timings": {
+        "getServingState": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 175.5410680002533,
+          "maxMs": 175.5410680002533,
+          "errors": 0
+        },
+        "transaction.begin": {
+          "calls": 4,
+          "inFlight": 0,
+          "elapsedMs": 298.1764499992132,
+          "maxMs": 97.12429700000212,
+          "errors": 0
+        },
+        "transaction.callback": {
+          "calls": 4,
+          "inFlight": 0,
+          "elapsedMs": 259.34699700027704,
+          "maxMs": 97.1676050000824,
+          "errors": 0
+        },
+        "db.raw.$queryRaw": {
+          "calls": 12,
+          "inFlight": 0,
+          "elapsedMs": 236.7864589993842,
+          "maxMs": 33.91673399973661,
+          "errors": 0
+        },
+        "db.RecommendationServingControl.findUnique": {
+          "calls": 2,
+          "inFlight": 0,
+          "elapsedMs": 95.35509299999103,
+          "maxMs": 60.452987999655306,
+          "errors": 0
+        },
+        "transaction.commit_ack": {
+          "calls": 4,
+          "inFlight": 0,
+          "elapsedMs": 109.28900599991903,
+          "maxMs": 69.37577500008047,
+          "errors": 0
+        },
+        "authorizeProfile": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 203.9527239999734,
+          "maxMs": 203.9527239999734,
+          "errors": 0
+        },
+        "retrieve": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 139.02284700004384,
+          "maxMs": 139.02284700004384,
+          "errors": 0
+        },
+        "retrieval": {
+          "calls": 3,
+          "inFlight": 0,
+          "elapsedMs": 387.12761000031605,
+          "maxMs": 139.01384700043127,
+          "errors": 0
+        },
+        "db.RecommendationConsentReceipt.findUnique": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 16.2623380003497,
+          "maxMs": 16.2623380003497,
+          "errors": 0
+        },
+        "db.RecommendationProfileSessionLink.upsert": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 6.543559000361711,
+          "maxMs": 6.543559000361711,
+          "errors": 0
+        },
+        "resolveRecentContext": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 124.70357100013644,
+          "maxMs": 124.70357100013644,
+          "errors": 0
+        },
+        "retrieveProfile": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 123.42262199986726,
+          "maxMs": 123.42262199986726,
+          "errors": 0
+        },
+        "loadViewingModeAffinity": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 117.28255999973044,
+          "maxMs": 117.28255999973044,
+          "errors": 0
+        },
+        "db.RecommendationProfile.findUnique": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 16.165909999981523,
+          "maxMs": 16.165909999981523,
+          "errors": 0
+        },
+        "persistence": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 170.14996899990365,
+          "maxMs": 170.14996899990365,
+          "errors": 0
+        },
+        "db.RecommendationRequest.create": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 24.349382999818772,
+          "maxMs": 24.349382999818772,
+          "errors": 0
+        },
+        "db.RecommendationCandidateRun.create": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 13.929409999866039,
+          "maxMs": 13.929409999866039,
+          "errors": 0
+        },
+        "db.RecommendationPersonalizationDecision.create": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 34.44515899987891,
+          "maxMs": 34.44515899987891,
+          "errors": 0
+        },
+        "candidate_evidence.insert": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 7.665078999940306,
+          "maxMs": 7.665078999940306,
+          "errors": 0,
+          "inputRows": 12
+        },
+        "db.raw.$executeRaw": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 7.48879999993369,
+          "maxMs": 7.48879999993369,
+          "errors": 0
+        },
+        "db.RecommendationEvidenceAudit.create": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 8.164123999886215,
+          "maxMs": 8.164123999886215,
+          "errors": 0
+        }
+      }
+    },
+    {
+      "at": "2026-09-23T01:54:29.141704424Z",
+      "operation": "seeded",
+      "observationId": "cce346cc-d935-4595-9744-865b381aa067",
+      "outcome": "served",
+      "timeoutFallback": false,
+      "elapsedMs": 1054.0106420000084,
+      "databaseTransactions": [
+        {
+          "ordinal": 1,
+          "backendPid": 1460982
+        },
+        {
+          "ordinal": 2,
+          "backendPid": 1460978
+        },
+        {
+          "ordinal": 3,
+          "backendPid": 1460974
+        },
+        {
+          "ordinal": 4,
+          "backendPid": 1460982
+        }
+      ],
+      "timings": {
+        "getServingState": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 181.4176139999181,
+          "maxMs": 181.4176139999181,
+          "errors": 0
+        },
+        "transaction.begin": {
+          "calls": 4,
+          "inFlight": 0,
+          "elapsedMs": 267.40670499997213,
+          "maxMs": 150.9778660000302,
+          "errors": 0
+        },
+        "transaction.callback": {
+          "calls": 4,
+          "inFlight": 0,
+          "elapsedMs": 323.9276100001298,
+          "maxMs": 116.21982999984175,
+          "errors": 0
+        },
+        "db.raw.$queryRaw": {
+          "calls": 12,
+          "inFlight": 0,
+          "elapsedMs": 284.1796280005947,
+          "maxMs": 42.70570300007239,
+          "errors": 0
+        },
+        "db.RecommendationServingControl.findUnique": {
+          "calls": 2,
+          "inFlight": 0,
+          "elapsedMs": 232.98490600008518,
+          "maxMs": 200.69910500012338,
+          "errors": 0
+        },
+        "transaction.commit_ack": {
+          "calls": 4,
+          "inFlight": 0,
+          "elapsedMs": 96.5636129998602,
+          "maxMs": 39.15422599995509,
+          "errors": 0
+        },
+        "authorizeProfile": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 84.92248999979347,
+          "maxMs": 84.92248999979347,
+          "errors": 0
+        },
+        "retrieve": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 74.66889500012621,
+          "maxMs": 74.66889500012621,
+          "errors": 0
+        },
+        "retrieval": {
+          "calls": 3,
+          "inFlight": 0,
+          "elapsedMs": 343.08403000002727,
+          "maxMs": 134.2130630002357,
+          "errors": 0
+        },
+        "db.RecommendationConsentReceipt.findUnique": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 21.9745859997347,
+          "maxMs": 21.9745859997347,
+          "errors": 0
+        },
+        "db.RecommendationProfileSessionLink.upsert": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 25.864910000003874,
+          "maxMs": 25.864910000003874,
+          "errors": 0
+        },
+        "resolveRecentContext": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 134.22125199995935,
+          "maxMs": 134.22125199995935,
+          "errors": 0
+        },
+        "retrieveProfile": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 134.20947200013325,
+          "maxMs": 134.20947200013325,
+          "errors": 0
+        },
+        "loadViewingModeAffinity": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 115.301517999731,
+          "maxMs": 115.301517999731,
+          "errors": 0
+        },
+        "db.RecommendationProfile.findUnique": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 8.07179500022903,
+          "maxMs": 8.07179500022903,
+          "errors": 0
+        },
+        "persistence": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 306.3757020002231,
+          "maxMs": 306.3757020002231,
+          "errors": 0
+        },
+        "db.RecommendationRequest.create": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 43.13213900011033,
+          "maxMs": 43.13213900011033,
+          "errors": 0
+        },
+        "db.RecommendationCandidateRun.create": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 11.350405000150204,
+          "maxMs": 11.350405000150204,
+          "errors": 0
+        },
+        "db.RecommendationPersonalizationDecision.create": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 4.7809359999373555,
+          "maxMs": 4.7809359999373555,
+          "errors": 0
+        },
+        "candidate_evidence.insert": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 27.18344800034538,
+          "maxMs": 27.18344800034538,
+          "errors": 0,
+          "inputRows": 30
+        },
+        "db.raw.$executeRaw": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 26.902699999976903,
+          "maxMs": 26.902699999976903,
+          "errors": 0
+        },
+        "db.RecommendationEvidenceAudit.create": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 8.283883000258356,
+          "maxMs": 8.283883000258356,
+          "errors": 0
+        }
+      }
+    },
+    {
+      "at": "2026-09-23T01:57:09.124007538Z",
+      "operation": "seeded",
+      "observationId": "ae6c8b18-c9c7-497c-8f79-15ed04ed3965",
+      "outcome": "served",
+      "timeoutFallback": false,
+      "elapsedMs": 797.7137179998681,
+      "databaseTransactions": [
+        {
+          "ordinal": 1,
+          "backendPid": 1460983
+        },
+        {
+          "ordinal": 2,
+          "backendPid": 1460976
+        }
+      ],
+      "timings": {
+        "getServingState": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 378.3512539998628,
+          "maxMs": 378.3512539998628,
+          "errors": 0
+        },
+        "transaction.begin": {
+          "calls": 2,
+          "inFlight": 0,
+          "elapsedMs": 160.99036399973556,
+          "maxMs": 127.4078359999694,
+          "errors": 0
+        },
+        "transaction.callback": {
+          "calls": 2,
+          "inFlight": 0,
+          "elapsedMs": 273.4459590003826,
+          "maxMs": 149.80686800042167,
+          "errors": 0
+        },
+        "db.raw.$queryRaw": {
+          "calls": 7,
+          "inFlight": 0,
+          "elapsedMs": 235.1763850003481,
+          "maxMs": 63.26557300006971,
+          "errors": 0
+        },
+        "db.RecommendationServingControl.findUnique": {
+          "calls": 2,
+          "inFlight": 0,
+          "elapsedMs": 137.10461599985138,
+          "maxMs": 88.7881149998866,
+          "errors": 0
+        },
+        "transaction.commit_ack": {
+          "calls": 2,
+          "inFlight": 0,
+          "elapsedMs": 124.79210999980569,
+          "maxMs": 101.09987099980935,
+          "errors": 0
+        },
+        "retrieve": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 179.81812800001353,
+          "maxMs": 179.81812800001353,
+          "errors": 0
+        },
+        "retrieval": {
+          "calls": 2,
+          "inFlight": 0,
+          "elapsedMs": 357.43282700004056,
+          "maxMs": 179.80901800002903,
+          "errors": 0
+        },
+        "resolveRecentContext": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 177.62916899984702,
+          "maxMs": 177.62916899984702,
+          "errors": 0
+        },
+        "persistence": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 180.94212800031528,
+          "maxMs": 180.94212800031528,
+          "errors": 0
+        },
+        "db.RecommendationRequest.create": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 29.98998099984601,
+          "maxMs": 29.98998099984601,
+          "errors": 0
+        },
+        "db.RecommendationCandidateRun.create": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 19.65630799997598,
+          "maxMs": 19.65630799997598,
+          "errors": 0
+        },
+        "db.RecommendationPersonalizationDecision.create": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 30.268269000109285,
+          "maxMs": 30.268269000109285,
+          "errors": 0
+        },
+        "candidate_evidence.insert": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 18.688387000001967,
+          "maxMs": 18.688387000001967,
+          "errors": 0,
+          "inputRows": 12
+        },
+        "db.raw.$executeRaw": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 18.470308999996632,
+          "maxMs": 18.470308999996632,
+          "errors": 0
+        },
+        "db.RecommendationEvidenceAudit.create": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 14.413406000006944,
+          "maxMs": 14.413406000006944,
+          "errors": 0
+        }
+      }
+    }
+  ],
+  "collectionWindows": [
+    {
+      "from": "2026-09-23T01:58:00Z",
+      "to": "2026-09-23T01:59:00Z",
+      "returned": 2728
+    },
+    {
+      "from": "2026-09-23T01:59:00Z",
+      "to": "2026-09-23T02:00:00Z",
+      "returned": 1339
+    },
+    {
+      "from": "2026-09-23T02:00:00Z",
+      "to": "2026-09-23T02:01:00Z",
+      "returned": 3005
+    },
+    {
+      "from": "2026-09-23T02:01:00Z",
+      "to": "2026-09-23T02:02:00Z",
+      "returned": 300
+    },
+    {
+      "from": "2026-09-23T02:02:00Z",
+      "to": "2026-09-23T02:03:00Z",
+      "returned": 1220
+    },
+    {
+      "from": "2026-09-23T01:48:00Z",
+      "to": "2026-09-23T01:53:00Z",
+      "returned": 1418
+    },
+    {
+      "from": "2026-09-23T01:53:00Z",
+      "to": "2026-09-23T01:58:00Z",
+      "returned": 3546
+    }
+  ],
+  "poolDiagnostics": {
+    "count": 13359,
+    "maximumAcquisitionMs": 375.2229340001941,
+    "maximumPendingAtStart": 304,
+    "requestCorrelated": 0,
+    "busiestIngestionSeconds": {
+      "2026-09-23T01:58:44": 780,
+      "2026-09-23T01:57:08": 644,
+      "2026-09-23T02:00:03": 628,
+      "2026-09-23T01:54:29": 558,
+      "2026-09-23T02:00:24": 541,
+      "2026-09-23T01:53:17": 530,
+      "2026-09-23T02:00:30": 431,
+      "2026-09-23T01:51:37": 402
+    },
+    "limit": "These are acquisition events, not API requests; includes connection establishment and no request attribution."
+  }
+}

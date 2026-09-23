@@ -6,6 +6,8 @@ type Operation = "seeded" | "for_you" | "selection"
 type Timing = {
   calls: number
   inFlight: number
+  firstStartedOffsetMs: number
+  maxStartedOffsetMs?: number
   elapsedMs: number
   maxMs: number
   errors: number
@@ -16,6 +18,7 @@ type Timing = {
 type Observation = {
   observationId: string
   operation: Operation
+  startedAt: string
   started: number
   timings: Record<string, Timing>
   pendingMax: number
@@ -82,6 +85,8 @@ function emit(observation: Observation, fields: Record<string, unknown>) {
         schemaVersion: 1,
         operation: observation.operation,
         observationId: observation.observationId,
+        // The transport's timestamp can be ingestion time, including log lag.
+        startedAt: observation.startedAt,
         ...fields,
       }),
     )
@@ -108,6 +113,9 @@ export function startRecommendationTiming(label: string, inputRows?: number) {
   const observation = context.getStore()
   if (!observation || observation.closed) return undefined
   if (!/^[a-zA-Z_.$]{1,100}$/.test(label)) return undefined
+  const started = performance.now()
+  const startedOffsetMs =
+    Math.round((started - observation.started) * 1_000) / 1_000
   let timing = observation.timings[label]
   if (!timing) {
     // Leave room for JSON escaping and trace metadata in the 16 KiB syslog
@@ -119,6 +127,7 @@ export function startRecommendationTiming(label: string, inputRows?: number) {
     timing = observation.timings[label] = {
       calls: 0,
       inFlight: 0,
+      firstStartedOffsetMs: startedOffsetMs,
       elapsedMs: 0,
       maxMs: 0,
       errors: 0,
@@ -129,7 +138,6 @@ export function startRecommendationTiming(label: string, inputRows?: number) {
   if (inputRows != null && Number.isSafeInteger(inputRows) && inputRows >= 0) {
     timing.inputRows = Math.max(timing.inputRows ?? 0, inputRows)
   }
-  const started = performance.now()
   let finished = false
   return (error?: unknown, rejected = error !== undefined) => {
     if (finished) return
@@ -137,7 +145,10 @@ export function startRecommendationTiming(label: string, inputRows?: number) {
     const elapsedMs = performance.now() - started
     timing.inFlight--
     timing.elapsedMs += elapsedMs
-    timing.maxMs = Math.max(timing.maxMs, elapsedMs)
+    if (timing.maxStartedOffsetMs == null || elapsedMs > timing.maxMs) {
+      timing.maxMs = elapsedMs
+      timing.maxStartedOffsetMs = startedOffsetMs
+    }
     if (rejected) {
       timing.errors++
       timing.errorCode = errorCode(error)
@@ -147,6 +158,7 @@ export function startRecommendationTiming(label: string, inputRows?: number) {
       emit(observation, {
         phase: "late_operation",
         label,
+        startedOffsetMs,
         elapsedMs,
         outcome: rejected ? "rejected" : "resolved",
         ...(rejected
@@ -216,6 +228,7 @@ export async function observeRecommendationRuntime<T>(
   const observation: Observation = {
     observationId: randomUUID(),
     operation,
+    startedAt: new Date().toISOString(),
     started: performance.now(),
     timings: Object.create(null),
     pendingMax: 0,
