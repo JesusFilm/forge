@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks"
+import { randomUUID } from "node:crypto"
 import { monitorEventLoopDelay, performance } from "node:perf_hooks"
 
 type Operation = "seeded" | "for_you" | "selection"
@@ -13,12 +14,15 @@ type Timing = {
   inputRows?: number
 }
 type Observation = {
+  observationId: string
   operation: Operation
   started: number
   timings: Record<string, Timing>
   pendingMax: number
   omittedTimings: number
   closed: boolean
+  databaseTransactions: Array<{ ordinal: number; backendPid: number | null }>
+  omittedTransactions: number
   log: (line: string) => void
 }
 
@@ -77,6 +81,7 @@ function emit(observation: Observation, fields: Record<string, unknown>) {
         event: "recommendation.runtime",
         schemaVersion: 1,
         operation: observation.operation,
+        observationId: observation.observationId,
         ...fields,
       }),
     )
@@ -175,6 +180,33 @@ export function observeRecommendationPoolQueue(pending: number): void {
   }
 }
 
+/** Transaction-local correlation only; never a viewer or durable ledger ID. */
+export function startRecommendationDatabaseTransaction() {
+  const observation = context.getStore()
+  if (!observation || observation.closed) return undefined
+  if (observation.databaseTransactions.length >= 8) {
+    observation.omittedTransactions++
+    return undefined
+  }
+  const transaction = {
+    ordinal: observation.databaseTransactions.length + 1,
+    backendPid: null as number | null,
+  }
+  observation.databaseTransactions.push(transaction)
+  return {
+    applicationName: `watch:${observation.observationId}:${transaction.ordinal}`,
+    recordBackend(backendPid: unknown) {
+      if (
+        typeof backendPid === "number" &&
+        Number.isSafeInteger(backendPid) &&
+        backendPid > 0
+      ) {
+        transaction.backendPid = backendPid
+      }
+    },
+  }
+}
+
 export async function observeRecommendationRuntime<T>(
   operation: Operation,
   work: () => Promise<T>,
@@ -182,12 +214,15 @@ export async function observeRecommendationRuntime<T>(
 ): Promise<T> {
   const loop = (runtime.recommendationLoopWindow ??= createLoopWindow())
   const observation: Observation = {
+    observationId: randomUUID(),
     operation,
     started: performance.now(),
     timings: Object.create(null),
     pendingMax: 0,
     omittedTimings: 0,
     closed: false,
+    databaseTransactions: [],
+    omittedTransactions: 0,
     log,
   }
   const loopStart = performance.eventLoopUtilization()
@@ -235,6 +270,8 @@ export async function observeRecommendationRuntime<T>(
         recentLoopMaxMs: Math.max(loop.previousMaxMs, loop.histogram.max / 1e6),
         loopWindowMs: performance.now() - loop.previousStarted,
         omittedTimings: observation.omittedTimings,
+        databaseTransactions: observation.databaseTransactions,
+        omittedTransactions: observation.omittedTransactions,
         timings: observation.timings,
       })
     }

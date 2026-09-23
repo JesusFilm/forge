@@ -650,3 +650,17 @@ the cause. Admin delivery service p99 is still 854 ms in this window.
 
 Keep in progress. See the [release evidence, aggregate artifact and next causal
 experiment](../../operations/watch-persistence-followup-2026-09-23.md#automatic-release-and-first-hour-production-verification).
+
+### Independent database-wait attribution
+
+The next diagnostic change correlates delivery runtime observations with the
+actual PostgreSQL backend without an extra setup round trip. A bounded
+read-only observer runs independently of Admin's event loop. Real PostgreSQL
+tests distinguish table locks, server-side delay and application stalls during
+actual evidence issuance, and preserve rollback/name restoration. The separate
+selection capability-budget statement is not covered by the delivery tag.
+
+See the [capture runbook, controlled evidence and overhead limits](../../operations/watch-database-wait-correlation-2026-09-23.md).
+These tests establish the instrument's discrimination, not the natural failure's
+cause. Keep in progress until deployed natural-failure capture and the existing
+recovery gates are satisfied.
