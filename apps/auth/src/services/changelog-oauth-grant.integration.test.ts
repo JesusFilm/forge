@@ -217,6 +217,186 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
     await prisma.$disconnect()
   })
 
+  it.each([
+    ["new", "website"],
+    ["new", "MCP"],
+    ["INVITED", "website"],
+    ["INVITED", "MCP"],
+    ["ACTIVE", "website"],
+    ["ACTIVE", "MCP"],
+  ])(
+    "authorizes a preapproved %s Google recipient on first %s connection",
+    async (initialState, entryPoint) => {
+      const adminScope = await prisma.scope.findUniqueOrThrow({
+        where: { key: "changelog:admin" },
+      })
+      await prisma.appGrantScope.create({
+        data: { grantId, scopeId: adminScope.id },
+      })
+      const email = `new-recipient-${randomUUID()}@gmail.com`
+      const approvalId = randomUUID()
+      try {
+        let existingId: string | undefined
+        if (initialState !== "new") {
+          const signup = await auth.api.signUpEmail({
+            asResponse: true,
+            body: {
+              name: "Existing recipient",
+              email,
+              password: `Test-${randomUUID()}!`,
+            },
+          })
+          existingId = (await signup.json()).user.id
+          await prisma.user.update({
+            where: { id: existingId },
+            data: {
+              emailVerified: true,
+              membershipStatus:
+                initialState === "ACTIVE" ? "ACTIVE" : "INVITED",
+            },
+          })
+        }
+        const headers = await adminHeaders()
+        const approvals = await import("@/app/api/changelog/preapprovals/route")
+        const created = await approvals.POST(
+          new Request("http://localhost:3004/api/changelog/preapprovals", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              clientId: "jfp_changelog_local",
+              action: "create",
+              id: approvalId,
+              email,
+            }),
+          }),
+        )
+        expect(created.status).toBe(200)
+        expect(await prisma.user.count({ where: { email } })).toBe(
+          initialState === "new" ? 0 : 1,
+        )
+        const recipientCookie = await googleCookie(
+          randomUUID(),
+          email,
+          {},
+          true,
+        )
+        const recipient = await prisma.user.findUniqueOrThrow({
+          where: { email },
+        })
+        if (existingId) expect(recipient.id).toBe(existingId)
+        expect(recipient.membershipStatus).toBe(
+          initialState === "ACTIVE" ? "ACTIVE" : "INVITED",
+        )
+        const requestedClientId =
+          entryPoint === "website" ? "jfp_changelog_local" : clientId
+        const redirectUri =
+          entryPoint === "website" ? SEEDED_REDIRECT_URI : REDIRECT_URI
+        const flow = await authorize({
+          scope: "openid changelog:read changelog:submit changelog:admin",
+          sessionCookie: recipientCookie,
+          requestedClientId,
+          redirectUri,
+          resource: entryPoint === "website" ? null : LOCAL_RESOURCE,
+        })
+        const code = await authorizationCode(flow.response, recipientCookie)
+        const exchanged = await postToken(
+          new URLSearchParams({
+            grant_type: "authorization_code",
+            client_id: requestedClientId,
+            redirect_uri: redirectUri,
+            code,
+            code_verifier: flow.verifier,
+          }),
+        )
+        expect(exchanged.response.status).toBe(200)
+        expect(String(exchanged.body.scope).split(" ").sort()).toEqual([
+          "changelog:read",
+          "changelog:submit",
+          "openid",
+        ])
+        expect(
+          await prisma.user.findUnique({ where: { id: recipient.id } }),
+        ).toMatchObject({ membershipStatus: "ACTIVE" })
+        expect(await prisma.user.count({ where: { email } })).toBe(1)
+        expect(
+          await prisma.appGrant.findMany({
+            where: { userId: recipient.id },
+            include: {
+              environment: true,
+              scopes: { include: { scope: true } },
+            },
+          }),
+        ).toMatchObject([
+          {
+            environment: { clientId: "jfp_changelog_local" },
+            scopes: [{ scope: { key: "changelog:submit" } }],
+          },
+        ])
+        const contributors =
+          await import("@/app/api/changelog/contributors/route")
+        expect(
+          await (
+            await contributors.GET(
+              new Request(
+                "http://localhost:3004/api/changelog/contributors?clientId=jfp_changelog_local",
+                { headers },
+              ),
+            )
+          ).json(),
+        ).toMatchObject({
+          contributors: expect.arrayContaining([
+            expect.objectContaining({ id: recipient.id, canRevoke: true }),
+          ]),
+        })
+        expect(
+          await (
+            await approvals.GET(
+              new Request(
+                "http://localhost:3004/api/changelog/preapprovals?clientId=jfp_changelog_local",
+                { headers },
+              ),
+            )
+          ).json(),
+        ).toMatchObject({
+          preapprovals: expect.arrayContaining([
+            expect.objectContaining({
+              id: approvalId,
+              state: "redeemed",
+              redeemedById: recipient.id,
+            }),
+          ]),
+        })
+        // Reuse the original cookie (including its cached user). Current
+        // membership must win over both pre-activation and ACTIVE snapshots.
+        for (const membershipStatus of ["SUSPENDED", "DISABLED"] as const) {
+          await prisma.user.update({
+            where: { id: recipient.id },
+            data: { membershipStatus },
+          })
+          const denied = await authorize({
+            sessionCookie: recipientCookie,
+            requestedClientId,
+            redirectUri,
+            resource: entryPoint === "website" ? null : LOCAL_RESOURCE,
+            scope: "openid changelog:read changelog:submit",
+          })
+          expect(denied.response.headers.get("location")).toContain(
+            "access_denied",
+          )
+          expect(
+            await prisma.user.findUnique({ where: { id: recipient.id } }),
+          ).toMatchObject({ membershipStatus })
+        }
+      } finally {
+        await prisma.changelogPreapproval.deleteMany({ where: { email } })
+        await prisma.user.deleteMany({ where: { email } })
+        await prisma.appGrantScope.deleteMany({
+          where: { grantId, scopeId: adminScope.id },
+        })
+      }
+    },
+  )
+
   it("redeems an active Google recipient before website access and retains Contributor through password sign-in", async () => {
     const environment = await prisma.appEnvironment.findUniqueOrThrow({
       where: { clientId: "jfp_changelog_local" },
@@ -250,37 +430,7 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
       },
     })
     try {
-      const token = await new SignJWT({
-        email,
-        email_verified: true,
-        name: "Recipient",
-      })
-        .setProtectedHeader({ alg: "RS256", kid: "preapproval-key" })
-        .setSubject(recipientId)
-        .setIssuer("https://accounts.google.com")
-        .setAudience("preapproval-google-client")
-        .setIssuedAt()
-        .setExpirationTime("1h")
-        .sign(googlePrivateKey)
-      googleCallbackToken = token
-      const start = await auth.api.signInSocial({
-        asResponse: true,
-        body: { provider: "google", callbackURL: "http://localhost:3004" },
-      })
-      const providerUrl = new URL((await start.json()).url)
-      const stateCookie = start.headers.get("set-cookie")!.split(";")[0]
-      const callback = await routeGet(
-        new Request(
-          `http://localhost:3004/api/auth/callback/google?code=test-google-code&state=${providerUrl.searchParams.get("state")}`,
-          { headers: { cookie: stateCookie } },
-        ),
-        { params: Promise.resolve({ all: ["callback", "google"] }) },
-      )
-      const recipientCookie = callback.headers
-        .getSetCookie()
-        .find((value) => value.startsWith("better-auth.session_token="))
-        ?.split(";")[0]
-      expect(recipientCookie).toBeTruthy()
+      const recipientCookie = await googleCookie(recipientId, email, {}, true)
       const flow = await authorize({
         requestedClientId: "jfp_changelog_local",
         redirectUri: SEEDED_REDIRECT_URI,
@@ -370,36 +520,43 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
     }
   })
 
-  it.each([
-    "external-email",
-    "unverified-workspace",
-    "password",
-    "missing",
-    "mismatch",
-    "canceled",
-    "expired",
-    "redeemed",
-    "INVITED",
-    "SUSPENDED",
-    "DISABLED",
-    "expired-identity",
-    "AGENT",
-    "unlinked",
-    "expired-session",
-    "changed-google-email",
-    "environment-disabled",
-    "application-disabled",
-    "approver-loss",
-    "wrong-environment",
-    "production-disabled",
-    "unrelated-application",
-  ])(
-    "leaves access and unused approvals unchanged for %s",
-    async (scenario) => {
+  it.each(
+    [
+      "external-email",
+      "unverified-workspace",
+      "password",
+      "missing",
+      "mismatch",
+      "canceled",
+      "expired",
+      "redeemed",
+      "SUSPENDED",
+      "DISABLED",
+      "expired-identity",
+      "AGENT",
+      "unlinked",
+      "expired-session",
+      "changed-google-email",
+      "environment-disabled",
+      "application-disabled",
+      "approver-loss",
+      "wrong-environment",
+      "production-disabled",
+      "unrelated-application",
+    ].flatMap((scenario) =>
+      (["ACTIVE", "INVITED"] as const).map((membershipStatus) => ({
+        scenario,
+        membershipStatus,
+      })),
+    ),
+  )(
+    "leaves $membershipStatus membership, access and unused approvals unchanged for $scenario",
+    async ({ scenario, membershipStatus }) => {
       const recipient = await preapprovedRecipient(
         scenario === "external-email" || scenario === "unverified-workspace"
           ? "external.test"
           : "gmail.com",
+        membershipStatus,
       )
       try {
         if (scenario === "unverified-workspace")
@@ -413,14 +570,11 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
               ? { email_verified: false, hd: "external.test" }
               : {},
           )
-        if (["INVITED", "SUSPENDED", "DISABLED"].includes(scenario))
+        if (["SUSPENDED", "DISABLED"].includes(scenario))
           await prisma.user.update({
             where: { id: recipient.id },
             data: {
-              membershipStatus: scenario as
-                | "INVITED"
-                | "SUSPENDED"
-                | "DISABLED",
+              membershipStatus: scenario as "SUSPENDED" | "DISABLED",
             },
           })
         if (scenario === "expired-identity")
@@ -505,6 +659,9 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
             data: { environmentId: production.id },
           })
         }
+        const beforeMembership = await prisma.user.findUniqueOrThrow({
+          where: { id: recipient.id },
+        })
         const result = await authorize({
           sessionCookie: recipientCookie,
           ...(scenario === "wrong-environment" ||
@@ -527,6 +684,9 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
         expect(
           await prisma.appGrant.count({ where: { userId: recipient.id } }),
         ).toBe(0)
+        expect(
+          await prisma.user.findUnique({ where: { id: recipient.id } }),
+        ).toMatchObject({ membershipStatus: beforeMembership.membershipStatus })
         const approval = await prisma.changelogPreapproval.findUnique({
           where: { id: recipient.approvalId },
         })
@@ -561,136 +721,144 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
     },
   )
 
-  it("redeems Workspace MCP access, exposes history, and requires fresh approval after Contributor revocation", async () => {
-    const recipient = await preapprovedRecipient("workspace.test")
-    try {
-      const recipientCookie = await googleCookie(
-        recipient.id,
-        recipient.email,
-        { hd: "workspace.test" },
+  it.each(["ACTIVE", "INVITED"] as const)(
+    "redeems %s Workspace MCP access, exposes history, and requires fresh approval after Contributor revocation",
+    async (membershipStatus) => {
+      const recipient = await preapprovedRecipient(
+        "workspace.test",
+        membershipStatus,
       )
-      const flow = await authorize({ sessionCookie: recipientCookie })
-      const code = await authorizationCode(flow.response, recipientCookie)
-      const exchanged = await postToken(
-        new URLSearchParams({
-          grant_type: "authorization_code",
-          client_id: clientId,
-          redirect_uri: REDIRECT_URI,
-          resource: LOCAL_RESOURCE,
-          code,
-          code_verifier: flow.verifier,
-        }),
-      )
-      expect(exchanged.response.status).toBe(200)
-      expect(String(exchanged.body.scope).split(" ").sort()).toEqual([
-        "changelog:read",
-        "changelog:submit",
-        "openid",
-      ])
-      const headers = await adminHeaders()
-      const approvals = await import("@/app/api/changelog/preapprovals/route")
-      const contributors =
-        await import("@/app/api/changelog/contributors/route")
-      const list = () =>
-        approvals.GET(
+      try {
+        const recipientCookie = await googleCookie(
+          recipient.id,
+          recipient.email,
+          { hd: "workspace.test" },
+        )
+        const flow = await authorize({ sessionCookie: recipientCookie })
+        const code = await authorizationCode(flow.response, recipientCookie)
+        const exchanged = await postToken(
+          new URLSearchParams({
+            grant_type: "authorization_code",
+            client_id: clientId,
+            redirect_uri: REDIRECT_URI,
+            resource: LOCAL_RESOURCE,
+            code,
+            code_verifier: flow.verifier,
+          }),
+        )
+        expect(exchanged.response.status).toBe(200)
+        expect(String(exchanged.body.scope).split(" ").sort()).toEqual([
+          "changelog:read",
+          "changelog:submit",
+          "openid",
+        ])
+        const headers = await adminHeaders()
+        const approvals = await import("@/app/api/changelog/preapprovals/route")
+        const contributors =
+          await import("@/app/api/changelog/contributors/route")
+        const list = () =>
+          approvals.GET(
+            new Request(
+              "http://localhost:3004/api/changelog/preapprovals?clientId=jfp_changelog_local",
+              { headers },
+            ),
+          )
+        expect(await (await list()).json()).toMatchObject({
+          preapprovals: expect.arrayContaining([
+            expect.objectContaining({
+              id: recipient.approvalId,
+              state: "redeemed",
+              redeemedById: recipient.id,
+              redeemedAt: expect.any(String),
+            }),
+          ]),
+        })
+        const current = await contributors.GET(
           new Request(
-            "http://localhost:3004/api/changelog/preapprovals?clientId=jfp_changelog_local",
+            "http://localhost:3004/api/changelog/contributors?clientId=jfp_changelog_local",
             { headers },
           ),
         )
-      expect(await (await list()).json()).toMatchObject({
-        preapprovals: expect.arrayContaining([
-          expect.objectContaining({
-            id: recipient.approvalId,
-            state: "redeemed",
-            redeemedById: recipient.id,
-            redeemedAt: expect.any(String),
-          }),
-        ]),
-      })
-      const current = await contributors.GET(
-        new Request(
-          "http://localhost:3004/api/changelog/contributors?clientId=jfp_changelog_local",
-          { headers },
-        ),
-      )
-      expect(await current.json()).toMatchObject({
-        contributors: expect.arrayContaining([
-          expect.objectContaining({ id: recipient.id, canRevoke: true }),
-        ]),
-      })
-      // Approver authority loss cannot revoke an already redeemed grant.
-      await prisma.appGrantScope.deleteMany({
-        where: { grantId, scopeId: recipient.adminScopeId },
-      })
-      expect(
-        (
-          await authorize({ sessionCookie: recipient.passwordCookie })
-        ).response.headers.get("location"),
-      ).toContain("/oauth/consent")
-      await prisma.appGrantScope.create({
-        data: { grantId, scopeId: recipient.adminScopeId },
-      })
-      const revoked = await contributors.POST(
-        new Request("http://localhost:3004/api/changelog/contributors", {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            clientId: "jfp_changelog_local",
-            recipientId: recipient.id,
-          }),
-        }),
-      )
-      expect(revoked.status).toBe(200)
-      for (const sessionCookie of [recipientCookie, recipient.passwordCookie])
+        expect(await current.json()).toMatchObject({
+          contributors: expect.arrayContaining([
+            expect.objectContaining({ id: recipient.id, canRevoke: true }),
+          ]),
+        })
+        // Approver authority loss cannot revoke an already redeemed grant.
+        await prisma.appGrantScope.deleteMany({
+          where: { grantId, scopeId: recipient.adminScopeId },
+        })
         expect(
-          (await authorize({ sessionCookie })).response.headers.get("location"),
+          (
+            await authorize({ sessionCookie: recipient.passwordCookie })
+          ).response.headers.get("location"),
+        ).toContain("/oauth/consent")
+        await prisma.appGrantScope.create({
+          data: { grantId, scopeId: recipient.adminScopeId },
+        })
+        const revoked = await contributors.POST(
+          new Request("http://localhost:3004/api/changelog/contributors", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              clientId: "jfp_changelog_local",
+              recipientId: recipient.id,
+            }),
+          }),
+        )
+        expect(revoked.status).toBe(200)
+        for (const sessionCookie of [recipientCookie, recipient.passwordCookie])
+          expect(
+            (await authorize({ sessionCookie })).response.headers.get(
+              "location",
+            ),
+          ).toContain("access_denied")
+        expect(await (await list()).json()).toMatchObject({
+          preapprovals: expect.arrayContaining([
+            expect.objectContaining({
+              id: recipient.approvalId,
+              state: "redeemed",
+            }),
+          ]),
+        })
+        const freshId = randomUUID()
+        const created = await approvals.POST(
+          new Request("http://localhost:3004/api/changelog/preapprovals", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              clientId: "jfp_changelog_local",
+              action: "create",
+              id: freshId,
+              email: recipient.email,
+            }),
+          }),
+        )
+        expect(created.status).toBe(200)
+        expect(
+          (
+            await authorize({ sessionCookie: recipient.passwordCookie })
+          ).response.headers.get("location"),
         ).toContain("access_denied")
-      expect(await (await list()).json()).toMatchObject({
-        preapprovals: expect.arrayContaining([
-          expect.objectContaining({
-            id: recipient.approvalId,
-            state: "redeemed",
-          }),
-        ]),
-      })
-      const freshId = randomUUID()
-      const created = await approvals.POST(
-        new Request("http://localhost:3004/api/changelog/preapprovals", {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            clientId: "jfp_changelog_local",
-            action: "create",
-            id: freshId,
-            email: recipient.email,
-          }),
-        }),
-      )
-      expect(created.status).toBe(200)
-      expect(
-        (
-          await authorize({ sessionCookie: recipient.passwordCookie })
-        ).response.headers.get("location"),
-      ).toContain("access_denied")
-      expect(
-        (
-          await authorize({ sessionCookie: recipientCookie })
-        ).response.headers.get("location"),
-      ).toContain("/oauth/consent")
-      expect(await (await list()).json()).toMatchObject({
-        preapprovals: expect.arrayContaining([
-          expect.objectContaining({
-            id: freshId,
-            state: "redeemed",
-            redeemedById: recipient.id,
-          }),
-        ]),
-      })
-    } finally {
-      await recipient.cleanup()
-    }
-  })
+        expect(
+          (
+            await authorize({ sessionCookie: recipientCookie })
+          ).response.headers.get("location"),
+        ).toContain("/oauth/consent")
+        expect(await (await list()).json()).toMatchObject({
+          preapprovals: expect.arrayContaining([
+            expect.objectContaining({
+              id: freshId,
+              state: "redeemed",
+              redeemedById: recipient.id,
+            }),
+          ]),
+        })
+      } finally {
+        await recipient.cleanup()
+      }
+    },
+  )
 
   it("cancels unused preapprovals when revoking an existing Contributor and requires a fresh approval", async () => {
     const recipient = await preapprovedRecipient("gmail.com")
@@ -788,106 +956,140 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
     }
   })
 
-  it("serializes simultaneous redemptions and consumes duplicate approvals without duplicate grants", async () => {
-    const recipient = await preapprovedRecipient("gmail.com")
-    try {
-      const recipientCookie = await googleCookie(recipient.id, recipient.email)
-      await prisma.changelogPreapproval.create({
-        data: {
-          id: randomUUID(),
-          email: recipient.email,
-          environmentId: recipient.environmentId,
-          approverId: userId,
-          expiresAt: new Date(Date.now() + 86400000),
-        },
-      })
-      const attempts = await Promise.all([
-        authorize({ sessionCookie: recipientCookie }),
-        authorize({ sessionCookie: recipientCookie }),
-      ])
-      expect(
-        attempts.some(({ response }) =>
-          response.headers.get("location")?.includes("/oauth/consent"),
-        ),
-      ).toBe(true)
-      expect(
-        (
-          await authorize({ sessionCookie: recipientCookie })
-        ).response.headers.get("location"),
-      ).toContain("/oauth/consent")
-      expect(
-        await prisma.appGrant.count({ where: { userId: recipient.id } }),
-      ).toBe(1)
-      expect(
-        await prisma.changelogPreapproval.count({
-          where: { email: recipient.email, state: "redeemed" },
-        }),
-      ).toBe(2)
-      const headers = await adminHeaders()
-      const { POST } = await import("@/app/api/changelog/contributors/route")
-      expect(
-        (
-          await POST(
-            new Request("http://localhost:3004/api/changelog/contributors", {
-              method: "POST",
-              headers,
-              body: JSON.stringify({
-                clientId: "jfp_changelog_local",
-                recipientId: recipient.id,
+  it.each(["ACTIVE", "INVITED"] as const)(
+    "serializes simultaneous %s redemptions and consumes duplicate approvals without duplicate grants",
+    async (membershipStatus) => {
+      const recipient = await preapprovedRecipient(
+        "gmail.com",
+        membershipStatus,
+      )
+      try {
+        const recipientCookie = await googleCookie(
+          recipient.id,
+          recipient.email,
+        )
+        await prisma.changelogPreapproval.create({
+          data: {
+            id: randomUUID(),
+            email: recipient.email,
+            environmentId: recipient.environmentId,
+            approverId: userId,
+            expiresAt: new Date(Date.now() + 86400000),
+          },
+        })
+        const attempts = await Promise.all([
+          authorize({ sessionCookie: recipientCookie }),
+          authorize({ sessionCookie: recipientCookie }),
+        ])
+        expect(
+          attempts.some(({ response }) =>
+            response.headers.get("location")?.includes("/oauth/consent"),
+          ),
+        ).toBe(true)
+        expect(
+          (
+            await authorize({ sessionCookie: recipientCookie })
+          ).response.headers.get("location"),
+        ).toContain("/oauth/consent")
+        expect(
+          await prisma.appGrant.count({ where: { userId: recipient.id } }),
+        ).toBe(1)
+        expect(
+          await prisma.user.findUnique({ where: { id: recipient.id } }),
+        ).toMatchObject({ membershipStatus: "ACTIVE" })
+        expect(
+          await prisma.changelogPreapproval.count({
+            where: { email: recipient.email, state: "redeemed" },
+          }),
+        ).toBe(2)
+        const headers = await adminHeaders()
+        const { POST } = await import("@/app/api/changelog/contributors/route")
+        expect(
+          (
+            await POST(
+              new Request("http://localhost:3004/api/changelog/contributors", {
+                method: "POST",
+                headers,
+                body: JSON.stringify({
+                  clientId: "jfp_changelog_local",
+                  recipientId: recipient.id,
+                }),
               }),
-            }),
-          )
-        ).status,
-      ).toBe(200)
-      expect(
-        (
-          await authorize({ sessionCookie: recipientCookie })
-        ).response.headers.get("location"),
-      ).toContain("access_denied")
-    } finally {
-      await recipient.cleanup()
-    }
-  })
+            )
+          ).status,
+        ).toBe(200)
+        expect(
+          (
+            await authorize({ sessionCookie: recipientCookie })
+          ).response.headers.get("location"),
+        ).toContain("access_denied")
+      } finally {
+        await recipient.cleanup()
+      }
+    },
+  )
 
-  it("rolls back the grant if redemption persistence fails", async () => {
-    const recipient = await preapprovedRecipient("gmail.com")
-    try {
-      const recipientCookie = await googleCookie(recipient.id, recipient.email)
-      // A real persistence failure AFTER grant insertion, without mocking Auth.
-      await prisma.$executeRawUnsafe(
-        `CREATE FUNCTION fail_test_redemption() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.id = '${recipient.approvalId}' AND NEW.state = 'redeemed' THEN RAISE EXCEPTION 'test redemption failure'; END IF; RETURN NEW; END $$`,
+  it.each(["ACTIVE", "INVITED"] as const)(
+    "rolls back %s membership and grant if redemption persistence fails",
+    async (membershipStatus) => {
+      const recipient = await preapprovedRecipient(
+        "gmail.com",
+        membershipStatus,
       )
-      await prisma.$executeRawUnsafe(
-        "CREATE TRIGGER fail_test_redemption BEFORE UPDATE ON changelog_preapproval FOR EACH ROW EXECUTE FUNCTION fail_test_redemption()",
-      )
-      expect(
-        (
-          await authorize({ sessionCookie: recipientCookie })
-        ).response.headers.get("location"),
-      ).toContain("access_denied")
-      expect(
-        await prisma.appGrant.count({ where: { userId: recipient.id } }),
-      ).toBe(0)
-      expect(
-        await prisma.changelogPreapproval.findUnique({
-          where: { id: recipient.approvalId },
-        }),
-      ).toMatchObject({ state: "pending", redeemedAt: null })
-    } finally {
-      await prisma.$executeRawUnsafe(
-        "DROP TRIGGER IF EXISTS fail_test_redemption ON changelog_preapproval",
-      )
-      await prisma.$executeRawUnsafe(
-        "DROP FUNCTION IF EXISTS fail_test_redemption()",
-      )
-      await recipient.cleanup()
-    }
-  })
+      try {
+        const recipientCookie = await googleCookie(
+          recipient.id,
+          recipient.email,
+        )
+        // A real persistence failure AFTER grant insertion, without mocking Auth.
+        await prisma.$executeRawUnsafe(
+          `CREATE FUNCTION fail_test_redemption() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.id = '${recipient.approvalId}' AND NEW.state = 'redeemed' THEN RAISE EXCEPTION 'test redemption failure'; END IF; RETURN NEW; END $$`,
+        )
+        await prisma.$executeRawUnsafe(
+          "CREATE TRIGGER fail_test_redemption BEFORE UPDATE ON changelog_preapproval FOR EACH ROW EXECUTE FUNCTION fail_test_redemption()",
+        )
+        expect(
+          (
+            await authorize({ sessionCookie: recipientCookie })
+          ).response.headers.get("location"),
+        ).toContain("access_denied")
+        expect(
+          await prisma.appGrant.count({ where: { userId: recipient.id } }),
+        ).toBe(0)
+        expect(
+          await prisma.changelogPreapproval.findUnique({
+            where: { id: recipient.approvalId },
+          }),
+        ).toMatchObject({ state: "pending", redeemedAt: null })
+        expect(
+          await prisma.user.findUnique({ where: { id: recipient.id } }),
+        ).toMatchObject({ membershipStatus })
+      } finally {
+        await prisma.$executeRawUnsafe(
+          "DROP TRIGGER IF EXISTS fail_test_redemption ON changelog_preapproval",
+        )
+        await prisma.$executeRawUnsafe(
+          "DROP FUNCTION IF EXISTS fail_test_redemption()",
+        )
+        await recipient.cleanup()
+      }
+    },
+  )
 
-  it.each(["recipient", "approver", "cancellation"])(
-    "cannot redeem across concurrent %s lifecycle change",
-    async (subject) => {
-      const recipient = await preapprovedRecipient("gmail.com")
+  it.each(
+    ["recipient", "approver", "cancellation"].flatMap((subject) =>
+      (["ACTIVE", "INVITED"] as const).map((membershipStatus) => ({
+        subject,
+        membershipStatus,
+      })),
+    ),
+  )(
+    "cannot redeem $membershipStatus across concurrent $subject lifecycle change",
+    async ({ subject, membershipStatus }) => {
+      const recipient = await preapprovedRecipient(
+        "gmail.com",
+        membershipStatus,
+      )
       let release!: () => void
       let ready!: () => void
       const held = new Promise<void>((resolve) => {
@@ -954,6 +1156,12 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
             where: { id: recipient.approvalId },
           }),
         ).not.toMatchObject({ state: "redeemed" })
+        expect(
+          await prisma.user.findUnique({ where: { id: recipient.id } }),
+        ).toMatchObject({
+          membershipStatus:
+            subject === "recipient" ? "SUSPENDED" : membershipStatus,
+        })
       } finally {
         release()
         await writer
@@ -966,64 +1174,76 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
     },
   )
 
-  it("redeems only the production approval when production issuance is enabled", async () => {
-    const recipient = await preapprovedRecipient("gmail.com")
-    const production = await prisma.appEnvironment.findUniqueOrThrow({
-      where: { clientId: "jfp_changelog_production" },
-    })
-    const admin = await prisma.appGrant.create({
-      data: {
-        appId: production.appId,
-        environmentId: production.id,
-        subjectType: "USER",
-        userId,
-        status: "APPROVED",
-        scopes: { create: { scopeId: recipient.adminScopeId } },
-      },
-    })
-    try {
-      await prisma.changelogPreapproval.update({
-        where: { id: recipient.approvalId },
-        data: { environmentId: production.id },
-      })
-      const recipientCookie = await googleCookie(recipient.id, recipient.email)
-      process.env.AUTH_CHANGELOG_PRODUCTION_ENABLED = "true"
-      const flow = await authorize({
-        sessionCookie: recipientCookie,
-        resource: PRODUCTION_RESOURCE,
-      })
-      const code = await authorizationCode(flow.response, recipientCookie)
-      const result = await postToken(
-        new URLSearchParams({
-          grant_type: "authorization_code",
-          client_id: clientId,
-          redirect_uri: REDIRECT_URI,
-          resource: PRODUCTION_RESOURCE,
-          code,
-          code_verifier: flow.verifier,
-        }),
+  it.each(["ACTIVE", "INVITED"] as const)(
+    "redeems only the production approval for %s when production issuance is enabled",
+    async (membershipStatus) => {
+      const recipient = await preapprovedRecipient(
+        "gmail.com",
+        membershipStatus,
       )
-      expect(result.response.status).toBe(200)
-      expect(String(result.body.scope)).toContain("changelog:submit")
-      expect(decodeJwtPayload(String(result.body.access_token))).toMatchObject({
-        "https://jesusfilm.org/claims/environment": "production",
+      const production = await prisma.appEnvironment.findUniqueOrThrow({
+        where: { clientId: "jfp_changelog_production" },
       })
-      expect(
-        (
-          await authorize({ sessionCookie: recipientCookie })
-        ).response.headers.get("location"),
-      ).toContain("access_denied")
-    } finally {
-      process.env.AUTH_CHANGELOG_PRODUCTION_ENABLED = "false"
-      await prisma.appGrant.delete({ where: { id: admin.id } })
-      await recipient.cleanup()
-    }
-  })
+      const admin = await prisma.appGrant.create({
+        data: {
+          appId: production.appId,
+          environmentId: production.id,
+          subjectType: "USER",
+          userId,
+          status: "APPROVED",
+          scopes: { create: { scopeId: recipient.adminScopeId } },
+        },
+      })
+      try {
+        await prisma.changelogPreapproval.update({
+          where: { id: recipient.approvalId },
+          data: { environmentId: production.id },
+        })
+        const recipientCookie = await googleCookie(
+          recipient.id,
+          recipient.email,
+        )
+        process.env.AUTH_CHANGELOG_PRODUCTION_ENABLED = "true"
+        const flow = await authorize({
+          sessionCookie: recipientCookie,
+          resource: PRODUCTION_RESOURCE,
+        })
+        const code = await authorizationCode(flow.response, recipientCookie)
+        const result = await postToken(
+          new URLSearchParams({
+            grant_type: "authorization_code",
+            client_id: clientId,
+            redirect_uri: REDIRECT_URI,
+            resource: PRODUCTION_RESOURCE,
+            code,
+            code_verifier: flow.verifier,
+          }),
+        )
+        expect(result.response.status).toBe(200)
+        expect(String(result.body.scope)).toContain("changelog:submit")
+        expect(
+          decodeJwtPayload(String(result.body.access_token)),
+        ).toMatchObject({
+          "https://jesusfilm.org/claims/environment": "production",
+        })
+        expect(
+          (
+            await authorize({ sessionCookie: recipientCookie })
+          ).response.headers.get("location"),
+        ).toContain("access_denied")
+      } finally {
+        process.env.AUTH_CHANGELOG_PRODUCTION_ENABLED = "false"
+        await prisma.appGrant.delete({ where: { id: admin.id } })
+        await recipient.cleanup()
+      }
+    },
+  )
 
   async function googleCookie(
     id: string,
     email: string,
     claims: Record<string, unknown> = {},
+    browser = false,
   ) {
     const token = await new SignJWT({
       email,
@@ -1038,6 +1258,29 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
       .setIssuedAt()
       .setExpirationTime("1h")
       .sign(googlePrivateKey)
+    if (browser) {
+      googleCallbackToken = token
+      const start = await auth.api.signInSocial({
+        asResponse: true,
+        body: { provider: "google", callbackURL: "http://localhost:3004" },
+      })
+      const providerUrl = new URL((await start.json()).url)
+      const stateCookie = start.headers.get("set-cookie")!.split(";")[0]
+      const callback = await routeGet(
+        new Request(
+          `http://localhost:3004/api/auth/callback/google?code=test-google-code&state=${providerUrl.searchParams.get("state")}`,
+          { headers: { cookie: stateCookie } },
+        ),
+        { params: Promise.resolve({ all: ["callback", "google"] }) },
+      )
+      const sessionCookies = callback.headers
+        .getSetCookie()
+        .filter((value) => value.startsWith("better-auth.session_"))
+        .map((value) => value.split(";")[0])
+        .join("; ")
+      expect(sessionCookies).toContain("better-auth.session_token=")
+      return sessionCookies
+    }
     const signin = await auth.api.signInSocial({
       asResponse: true,
       body: { provider: "google", idToken: { token } },
@@ -1070,7 +1313,10 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
     }
   }
 
-  async function preapprovedRecipient(domain: string) {
+  async function preapprovedRecipient(
+    domain: string,
+    membershipStatus: "ACTIVE" | "INVITED" = "ACTIVE",
+  ) {
     const environment = await prisma.appEnvironment.findUniqueOrThrow({
       where: { clientId: "jfp_changelog_local" },
     })
@@ -1090,7 +1336,7 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
     const id = recipient.user.id
     await prisma.user.update({
       where: { id },
-      data: { membershipStatus: "ACTIVE", emailVerified: true },
+      data: { membershipStatus, emailVerified: true },
     })
     const signin = await auth.api.signInEmail({
       asResponse: true,
