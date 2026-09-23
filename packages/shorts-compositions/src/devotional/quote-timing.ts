@@ -27,6 +27,9 @@ export const BLOCK_TAIL_SEC = 0.4
 export const BLOCK_FADE_SEC = 0.45
 /** The invitation is three words and needs no reading time to speak of. */
 export const WATCH_SEC = 1.3
+/** A teaser ends on a call to action instead, which IS read — and then held a
+ *  beat longer, because it is the last thing on screen before the loop. */
+export const CTA_TAIL_SEC = 0.9
 
 /** Seconds a viewer needs to read `text` once it has arrived. */
 export function readSec(text: string): number {
@@ -54,6 +57,9 @@ export function quoteIntroTimeline(input: {
   quoteA: string
   quoteB: string
   questions: ReadonlyArray<string>
+  /** Teaser: the line that sends the viewer to the full devotional. It is read,
+   *  so it buys its own time instead of the invitation's flat 1.3s. */
+  cta?: string
 }): QuoteIntroTimeline {
   const startAt = 0.25
   const aRead = readSec(input.quoteA)
@@ -72,12 +78,13 @@ export function quoteIntroTimeline(input: {
   })
   const questionsOutAt = at + BLOCK_TAIL_SEC
   const watchAt = questionsOutAt + BLOCK_FADE_SEC + 0.15
+  const closeSec = input.cta ? readSec(input.cta) + CTA_TAIL_SEC : WATCH_SEC
   return {
     quoteAt: [startAt, bAt],
     quoteOutAt,
     questionsAt,
     questionsOutAt,
     watchAt,
-    totalSec: watchAt + WATCH_SEC,
+    totalSec: watchAt + closeSec,
   }
 }

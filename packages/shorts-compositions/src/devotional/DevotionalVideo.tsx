@@ -15,6 +15,7 @@ import {
 import { loadShortFonts, SHORT_FONT_FAMILIES } from "../fonts"
 import { loadLiterata, TEASER_FONT_FAMILIES } from "./teaser-fonts"
 import { QuoteIntro } from "./QuoteIntro"
+import { StepProgressLine } from "./StepProgressLine"
 import { StepperStack } from "./Stepper"
 import type { DevotionalCard, DevotionalInputProps } from "./schema"
 import { resolveDevotionalStyle, type DevotionalStyle } from "./styles"
@@ -3572,6 +3573,8 @@ function CardBody({
         {...(card.quoteBStrong ? { quoteBStrong: card.quoteBStrong } : {})}
         questions={card.questionsList ?? []}
         watchLabel={card.watchLabel ?? "Let's watch."}
+        {...(card.ctaLine ? { cta: card.ctaLine } : {})}
+        {...(card.ctaLabel ? { ctaLabel: card.ctaLabel } : {})}
         px={px}
         fps={fps}
         durationSec={durationInFrames / fps}
@@ -4842,6 +4845,85 @@ export function stepGroups(
   return groups
 }
 
+/**
+ * The stage clock as a row across the top: WATCH - REFLECT - PRAY, the live one
+ * gold, the ones behind it white, the ones ahead held at a third opacity, and
+ * the hairline between two names filling across the stage it belongs to.
+ *
+ * The stage boundaries come from the STEP cards themselves: a step card is the
+ * screen that hands one stage to the next, so its first frame is exactly when
+ * the new stage begins. The opening (a quote card, or a film card's intro lead)
+ * is not part of any stage, so the row waits for it.
+ */
+function StepRowOverlay({
+  cards,
+  frames,
+  frame,
+  fps,
+  px,
+  stepLabels,
+}: {
+  cards: ReadonlyArray<{
+    kind: string
+    intro?: string
+    mutedLeadSec?: number
+    steps?: ReadonlyArray<string>
+  }>
+  frames: ReadonlyArray<{ from: number; durationInFrames: number }>
+  frame: number
+  fps: number
+  px: (n: number) => number
+  stepLabels?: ReadonlyArray<string>
+}) {
+  const labels = stepLabels ?? ["WATCH", "REFLECT", "PRAY"]
+  // The first stage starts where the film does — after a quote opening, and
+  // after an intro lead on the film card itself.
+  const filmIndex = cards.findIndex((c) => c.kind === "video")
+  const film = filmIndex >= 0 ? frames[filmIndex] : undefined
+  const introLead =
+    filmIndex >= 0 && cards[filmIndex].intro && cards[filmIndex].mutedLeadSec
+      ? Math.round(
+          ((cards[filmIndex].mutedLeadSec ?? 0) +
+            (cards[filmIndex].intro === "hook"
+              ? 0
+              : INTRO_HEADER_HOLD_SEC + INTRO_HEADER_FADE_SEC)) *
+            fps,
+        )
+      : 0
+  const stageStarts = cards
+    .map((c, i) => (c.kind === "step" ? frames[i]?.from : undefined))
+    .filter((f): f is number => f != null)
+  const starts = [
+    (film?.from ?? 0) + introLead,
+    ...stageStarts.slice(0, labels.length - 1),
+  ]
+  if (starts.length < labels.length) return null
+  const last = frames[frames.length - 1]
+  const endFrame = last ? last.from + last.durationInFrames : starts[0]
+  // Nothing before the first stage: the opening is its own thing.
+  const on = interpolate(
+    frame,
+    [starts[0] - 0.3 * fps, starts[0] + 0.5 * fps],
+    [0, 1],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+  )
+  if (on <= 0.01) return null
+  return (
+    <div style={{ position: "absolute", top: px(24), left: 0, right: 0 }}>
+      <StepProgressLine
+        steps={labels}
+        starts={starts}
+        endFrame={endFrame}
+        frame={frame}
+        fps={fps}
+        px={px}
+        widthPx={px(287)}
+        opacity={on}
+      />
+    </div>
+  )
+}
+
 function StepRingOverlay({
   cards,
   frames,
@@ -5272,14 +5354,28 @@ export function DevotionalVideo(props: DevotionalInputProps) {
         )
       })}
       {props.stepRing ? (
-        <StepRingOverlay
-          cards={props.cards}
-          frames={frames}
-          frame={frame}
-          fps={fps}
-          px={px}
-          shape={props.stepProgress ?? "ring"}
-        />
+        props.stepProgress === "ring" || props.stepProgress === "bar" ? (
+          <StepRingOverlay
+            cards={props.cards}
+            frames={frames}
+            frame={frame}
+            fps={fps}
+            px={px}
+            shape={props.stepProgress}
+          />
+        ) : (
+          // Default since 2026-09-22 (owner): the named row across the top,
+          // each hairline filling as its own stage runs. The corner ring is
+          // still reachable with `--step-ring`/`--step-bar`.
+          <StepRowOverlay
+            cards={props.cards}
+            frames={frames}
+            frame={frame}
+            fps={fps}
+            px={px}
+            stepLabels={props.cards.find((c) => c.steps)?.steps}
+          />
+        )
       ) : null}
       {/* Soft instrumental bed under everything: loops to fill the runtime.
           Starts from the VERY FIRST frame (short ~0.4s ramp so it's present

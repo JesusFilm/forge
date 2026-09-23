@@ -25,6 +25,10 @@ export type QuoteIntroProps = {
   quoteBStrong?: string
   questions: ReadonlyArray<string>
   watchLabel: string
+  /** Teaser only: replaces the invitation with a line pointing at the full
+   *  devotional, under a small gold label. */
+  cta?: string
+  ctaLabel?: string
   px: (n: number) => number
   fps: number
   /** Card length in seconds — the beats are laid out against it. */
@@ -58,6 +62,8 @@ export function QuoteIntro({
   quoteBStrong,
   questions,
   watchLabel,
+  cta,
+  ctaLabel,
   px,
   fps,
   durationSec,
@@ -69,7 +75,12 @@ export function QuoteIntro({
   // Every beat is derived from how long the words take to READ (quote-timing),
   // so a longer line buys itself more time instead of being clipped. The card's
   // own length comes from the same model, so these land inside it.
-  const plan = quoteIntroTimeline({ quoteA, quoteB, questions })
+  const plan = quoteIntroTimeline({
+    quoteA,
+    quoteB,
+    questions,
+    ...(cta ? { cta } : {}),
+  })
   const qOut = plan.quoteOutAt
   const listOut = plan.questionsOutAt
   const watchIn = plan.watchAt
@@ -241,19 +252,60 @@ export function QuoteIntro({
           opacity: watchOpacity,
         }}
       >
-        <div
-          style={{
-            fontFamily: sans,
-            fontWeight: 600,
-            fontSize: px(19),
-            letterSpacing: px(3.4),
-            // Gold, like the live step in the stepper (owner).
-            color: GOLD,
-            textShadow: `0 0 ${px(10)}px rgba(242,196,107,0.55), 0 0 ${px(26)}px rgba(242,196,107,0.3)`,
-          }}
-        >
-          {watchLabel.toUpperCase()}
-        </div>
+        {cta ? (
+          // Teaser close: the line that sends the viewer to the full piece,
+          // with the destination named underneath in the label face.
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: px(16),
+              padding: `0 ${px(34)}px`,
+              textAlign: "center",
+            }}
+          >
+            <div
+              style={{
+                fontFamily: sans,
+                fontWeight: 500,
+                fontSize: px(27),
+                lineHeight: 1.3,
+                color: "#fff",
+                textShadow: `0 ${px(2)}px ${px(20)}px rgba(0,0,0,0.55)`,
+                maxWidth: px(300),
+              }}
+            >
+              {cta}
+            </div>
+            <div
+              style={{
+                fontFamily: sans,
+                fontWeight: 600,
+                fontSize: px(15),
+                letterSpacing: px(3),
+                color: GOLD,
+                textShadow: `0 0 ${px(10)}px rgba(242,196,107,0.5)`,
+              }}
+            >
+              {(ctaLabel ?? "Watch on YouTube").toUpperCase()}
+            </div>
+          </div>
+        ) : (
+          <div
+            style={{
+              fontFamily: sans,
+              fontWeight: 600,
+              fontSize: px(19),
+              letterSpacing: px(3.4),
+              // Gold, like the live step in the stepper (owner).
+              color: GOLD,
+              textShadow: `0 0 ${px(10)}px rgba(242,196,107,0.55), 0 0 ${px(26)}px rgba(242,196,107,0.3)`,
+            }}
+          >
+            {watchLabel.toUpperCase()}
+          </div>
+        )}
       </AbsoluteFill>
     </AbsoluteFill>
   )

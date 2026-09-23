@@ -108,6 +108,8 @@ async function main() {
       // The voice may say more than the screen shows ("Welcome to Daily Bible
       // Pause." before the question); `--hook-title` is what is drawn.
       ...(arg("hook-title") ? { hookTitle: arg("hook-title") } : {}),
+      // `--teaser-intro`: render ONLY the opening, ending on `--cta`.
+      introTeaser: process.argv.includes("--teaser-intro"),
       // Social opening: `--quote-a/--quote-b` (+ `--quote-a-strong`, etc.).
       ...(arg("quote-a") && arg("quote-b")
         ? {
@@ -129,6 +131,8 @@ async function main() {
               ...(arg("quote-rate")
                 ? { bgRate: Number(arg("quote-rate")) }
                 : {}),
+              ...(arg("cta") ? { ctaLine: arg("cta") } : {}),
+              ...(arg("cta-label") ? { ctaLabel: arg("cta-label") } : {}),
             },
           }
         : {}),

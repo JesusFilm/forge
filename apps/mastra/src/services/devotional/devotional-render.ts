@@ -112,7 +112,11 @@ const WEEKDAYS = [
 // (repo rule: outbound timeout strictly under the caller's budget).
 const METADATA_TIMEOUT_MS = 15_000
 const DOWNLOAD_TIMEOUT_MS = 120_000
-const FFMPEG_TIMEOUT_MS = 180_000
+// 3 minutes was enough on an idle machine and nothing else: a 60s 1080p trim
+// took ~40s. It then failed three runs in a row while Spotlight was indexing
+// the render folder, because these calls are disk-bound, not CPU-bound. The
+// watchdog exists to catch a WEDGED encode, and 10 minutes still does that.
+const FFMPEG_TIMEOUT_MS = Number(process.env.DEVO_FFMPEG_TIMEOUT_MS ?? 600_000)
 const FFPROBE_TIMEOUT_MS = 30_000
 const RENDER_TIMEOUT_MS = 20 * 60_000
 // Hard cap on a downloaded film. JESUS-film chapters are ~100MB; this rejects a
@@ -1035,7 +1039,13 @@ export type RenderOptions = {
     bgStartSec?: number
     /** Play that shot at this rate, so one take can cover the whole read. */
     bgRate?: number
+    /** Teaser: close on this line instead of "Let's watch." */
+    ctaLine?: string
+    ctaLabel?: string
   }
+  /** Render ONLY the social opening, closing on its call to action: the teaser
+   *  that points at the full devotional. */
+  introTeaser?: boolean
   /** `intro: "hook"` only: what is DRAWN, when the voice says more than the
    *  screen should show (a welcome before the question). Defaults to
    *  `hookLine`. Never reaches the narration, so it is free to change. */
@@ -1721,6 +1731,17 @@ async function renderInStage(
   // belongs to is already finished and liked. Rendering the whole thing again
   // would re-synthesise every line and hand back a video that differs from the
   // one being kept.
+  // TEASER: the opening card alone, closing on its call to action — a short
+  // social cut whose whole job is to send the viewer to the full devotional.
+  if (options.introTeaser) {
+    manifest.cards = manifest.cards.filter((c) => c.kind === "quote-intro")
+    if (manifest.cards.length === 0) {
+      throw new Error(
+        "intro teaser: no quote-intro card — pass --quote-a/--quote-b",
+      )
+    }
+  }
+
   if (options.coverOnly) {
     manifest.cards = manifest.cards.filter((c) => c.kind === "cover")
     if (manifest.cards.length === 0) {
@@ -1781,7 +1802,10 @@ async function renderInStage(
   // the gap there measured 2.8s of near-silence.
   manifest.introHoldSec =
     options.structure === "clip-first" ? 0 : INTRO_HOLD_SEC
-  manifest.outroHoldSec = OUTRO_HOLD_SEC
+  // The 8s outro hold exists so a devotional's last card can breathe under the
+  // music. A teaser ends ON its call to action and loops — holding it eight
+  // seconds turns a 16s cut into a 26s one.
+  manifest.outroHoldSec = options.introTeaser ? 0.7 : OUTRO_HOLD_SEC
   // If the usable film is SHORTER than the background timeline, slow the ONE
   // continuous clip so it stretches across every card instead of running out
   // (a freeze). Never faster than 1×.

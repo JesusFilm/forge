@@ -114,6 +114,9 @@ export type BuildManifestInput = {
     bgStartSec?: number
     /** Play that shot at this rate, so one take can cover the whole read. */
     bgRate?: number
+    /** Teaser: close on this line instead of "Let's watch." */
+    ctaLine?: string
+    ctaLabel?: string
   }
   /** The line shown over that silent opening, e.g. "Let's watch". */
   leadLabel?: string
@@ -183,6 +186,7 @@ function buildClipFirstManifest(
       quoteA: q.quoteA,
       quoteB: q.quoteB,
       questions: q.questions,
+      ...(q.ctaLine ? { cta: q.ctaLine } : {}),
     })
     cards.push({
       kind: "quote-intro",
@@ -195,6 +199,8 @@ function buildClipFirstManifest(
       watchLabel: q.watchLabel,
       ...(q.bgStartSec != null ? { bgStartSec: q.bgStartSec } : {}),
       ...(q.bgRate != null ? { bgRate: q.bgRate } : {}),
+      ...(q.ctaLine ? { ctaLine: q.ctaLine } : {}),
+      ...(q.ctaLabel ? { ctaLabel: q.ctaLabel } : {}),
     })
   }
 

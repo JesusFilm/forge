@@ -120,6 +120,10 @@ export const devotionalCardSchema = z.object({
   questionsList: z.array(z.string()).optional(),
   /** `quote-intro` card: the closing line before the film ("Let's watch."). */
   watchLabel: z.string().optional(),
+  /** Teaser: closes on this line instead, pointing at the full devotional. */
+  ctaLine: z.string().optional(),
+  /** Teaser: the small label under it (default "Watch on YouTube"). */
+  ctaLabel: z.string().optional(),
   /** `quote-intro` card: where in the background take its shot starts (s). */
   bgStartSec: z.number().nonnegative().optional(),
   /** `quote-intro` card: play its shot at this rate. Slightly under 1 lets a
