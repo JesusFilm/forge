@@ -1,6 +1,6 @@
 # Recommendation evidence transport operations
 
-Scope: feat-464. This release repairs evidence transport and recognized-machine
+Scope: completed feat-464 recovery and open feat-545 operational closeout. This release repairs evidence transport and recognized-machine
 admission. It does not authorize profile ranking, experiments, learning, or proxy
 promotion. Keep `active-watch-proxy-v1` fail-closed.
 
@@ -214,3 +214,54 @@ Render/impression evidence uses the same structured input-error mapping, with
 HTTP 400 `evidence_request_invalid`. Its existing JSON retry helper drops 400
 without retry. Timestamp validation remains strict; do not repair a viewer's
 invalid timestamp by accepting it as human-eligible evidence.
+
+## Temporary Datadog API access for the operational follow-up
+
+On September 24 the owner selected a dedicated, revocable credential for a one-off
+REST API provisioning script. Keep the organization's MCP write policy unchanged;
+do not broaden other users' access or create a persistent service. The previous
+MCP rejection is not a statement that the separately authorized REST API cannot
+manage monitors or dashboards.
+
+1. An administrator creates a custom role assigned only to a new service account,
+   for example `forge-monitoring-closeout`. Grant `monitors_read`, `monitors_write`,
+   `dashboards_read`, `dashboards_write` and `logs_read_data`. No user/role/key
+   administration or MCP permissions are needed for the provisioning identity.
+2. Create the service account in
+   [Organization Settings > Service Accounts](https://app.datadoghq.com/organization-settings/service-accounts)
+   and assign only that narrow role. Create a dedicated API key in
+   [Organization Settings > API Keys](https://app.datadoghq.com/organization-settings/api-keys)
+   and an application key from the service account's details panel. Give both
+   unmistakable temporary closeout names; do not reuse production ingestion keys.
+3. Datadog's log-monitor create/validate endpoints explicitly require an **unscoped
+   application key**, with `logs_read_data` required for validation. For these six
+   log monitors, leave application-key scopes unset and enforce least privilege
+   through the service account's role. Unscoped does not give that identity extra
+   permissions beyond its role. Do not use an unscoped administrator-owned key.
+4. Supply the pair through a private local secret file or secret-manager injection,
+   outside the repository and task text. The REST headers are `DD-API-KEY` and
+   `DD-APPLICATION-KEY`; only the local script reads the values. Never log headers,
+   pass secrets as shell command-line arguments, or publish credentials.
+5. Supply the intended alert destination. The one-off script must validate the six
+   definitions, inventory for duplicates, apply only this task's named resources,
+   then read back active monitors, thresholds, destinations and dashboard queries.
+   Record resource IDs/URLs and errors without secrets. Do not infer installation
+   from a successful create response alone.
+6. After read-back and a handoff of resource URLs, the owner revokes the service
+   account application key and the dedicated API key and removes the temporary
+   local secret. Revocation is separate from deleting installed resources. Do not
+   disable the service-account owner as a substitute for revoking just the keys.
+
+These five permissions limit actions by resource type; they do not intrinsically
+restrict access to resources with a particular name or tag. The script must touch
+only the reviewed Forge definitions. Existing resource restriction policies still
+apply. Stop on any policy denial; do not broaden permissions silently.
+
+The [service account documentation](https://docs.datadoghq.com/account_management/org_settings/service_accounts/)
+explains account roles and application-key creation/revocation.
+[Application key scopes](https://docs.datadoghq.com/account_management/api-app-keys/#scopes)
+explain inherited permissions. The [monitor validator](https://docs.datadoghq.com/api/latest/monitors/validate-a-monitor/)
+requires an unscoped key and log-read permission; the
+[dashboard create endpoint](https://docs.datadoghq.com/api/latest/dashboards/create-a-new-dashboard/)
+requires dashboard write permission. API/application keys have no built-in expiry,
+so explicitly revoke them when the one-off work is verified.

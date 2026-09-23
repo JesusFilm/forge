@@ -1,0 +1,53 @@
+{
+  "observedAt": "2026-09-23T06:30:57.443829+00:00",
+  "services": [
+    {
+      "service": "admin",
+      "latestDeployment": {
+        "id": "05d2971e-d42a-4f32-b91a-3c552cb44353",
+        "status": "SUCCESS",
+        "revision": "37e10b622bd66e55647cf561c3896b2d4fbb4dce"
+      },
+      "activeDeployments": [
+        {
+          "id": "05d2971e-d42a-4f32-b91a-3c552cb44353",
+          "status": "SUCCESS",
+          "revision": "37e10b622bd66e55647cf561c3896b2d4fbb4dce",
+          "runningInstances": 1
+        }
+      ]
+    },
+    {
+      "service": "worker",
+      "latestDeployment": {
+        "id": "264a75df-cc73-47a9-aee1-7c336e8f986b",
+        "status": "SUCCESS",
+        "revision": "37e10b622bd66e55647cf561c3896b2d4fbb4dce"
+      },
+      "activeDeployments": [
+        {
+          "id": "264a75df-cc73-47a9-aee1-7c336e8f986b",
+          "status": "SUCCESS",
+          "revision": "37e10b622bd66e55647cf561c3896b2d4fbb4dce",
+          "runningInstances": 1
+        }
+      ]
+    },
+    {
+      "service": "web",
+      "latestDeployment": {
+        "id": "9448a080-628d-4964-ae79-81c1f920739e",
+        "status": "SUCCESS",
+        "revision": "37e10b622bd66e55647cf561c3896b2d4fbb4dce"
+      },
+      "activeDeployments": [
+        {
+          "id": "9448a080-628d-4964-ae79-81c1f920739e",
+          "status": "SUCCESS",
+          "revision": "37e10b622bd66e55647cf561c3896b2d4fbb4dce",
+          "runningInstances": 1
+        }
+      ]
+    }
+  ]
+}

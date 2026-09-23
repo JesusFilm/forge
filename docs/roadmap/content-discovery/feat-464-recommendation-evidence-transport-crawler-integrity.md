@@ -3,7 +3,7 @@ id: "feat-464"
 title: "Recommendation evidence transport and crawler integrity"
 owner: "nisal"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: ""
 duration: 3
 depends_on:
@@ -21,6 +21,19 @@ tags:
   - "reliability"
   - "observability"
 ---
+
+## September 24 owner-approved closeout
+
+The owner accepted the deployed recovery implementation and production integrity
+proof on September 24. The completed scope includes the two-hour primary window,
+real-dependency/browser controls, exact durable replay and final canonical audit.
+Remaining installed monitoring and production telemetry/browser coverage moved to
+[feat-545](feat-545-recommendation-monitoring-and-telemetry-closeout.md). The original
+acceptance language below is retained as history; transferred requirements are not
+represented as passed. Downstream activation gates now explicitly depend on feat-545.
+
+See the [acceptance record](../../operations/recommendation-evidence-acceptance-2026-09-23.md)
+for evidence and preserved limitations. No runtime flag or production setting changes.
 
 ## Problem
 
@@ -509,3 +522,27 @@ Initial context issuance is not blindly retried because its binding creation is
 not idempotent. This remains in progress pending the broader production acceptance,
 timestamp attribution, complete outcome reconciliation and installed-monitoring
 gates; the narrow release does not close the whole ticket.
+
+## September 23 completed acceptance observation
+
+The [acceptance continuation](../../operations/recommendation-evidence-acceptance-2026-09-23.md)
+verifies Web/Admin/worker actually running PR #2404 at `37e10b622`, with healthy
+bounded Redis readiness. The complete 04:30–06:30 UTC primary window has **zero
+playback 5xx / 4,716 POSTs**, zero fault exclusions, no observed receipt collision,
+exhausted playback retries or recognized-crawler success. Selection HTTP failures
+and delivery semantic fallbacks remain separate; neither timeout class occurs.
+
+Eight real-dependency cases and eight joined Chrome/Web/Admin/PostgreSQL controls
+cover recovery, silent stalls, exhaustion, early cancellation and post-commit lost
+acknowledgement. Exact replay has one write per event; a local terminal response
+has no retry amplification. Both natural production binding failures become 409,
+but neither has retained RUM coverage, so their browser disposition remains open.
+
+The final canonical snapshot scans **179,054 current pointers, zero ineligible**;
+authenticated Admin agrees. All 81 finalized cohort outcomes match watermarks and
+generations. Twenty-three committed reconciliation batches/heartbeats have no
+recorded failures; 14 affected-pointer occurrences queue 14 rebuilds, so this is
+convergence, not continuous zero. Web/Admin accepted batch counts agree; the report
+retains indexed gaps, one initial-evidence envelope gap and the unmatched browser 503. Installed monitors/dashboard remain blocked by the verified Datadog MCP-write
+policy and lack a configured destination. **Keep this ticket in progress**; do not
+waive monitoring, natural-browser coverage or complete operational reconciliation.
