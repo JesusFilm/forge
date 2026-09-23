@@ -60,8 +60,10 @@ require a fresh authorized connection; never substitute an actor in tool input.
 
 ## Qualification status
 
-Not yet qualified in real Claude or Codex clients. Transport tests and real
-Postgres authoring tests are separate evidence and do not satisfy this acceptance.
+Real Codex editing/reconnection completed against the local authenticated
+actual-handler harness; see [recorded evidence](local-harness.md). Claude,
+production OAuth consent, full workflow and UI observation remain unqualified.
+Transport tests and real Postgres tests alone do not satisfy those gates.
 A deployed or reachable configured test Manager/Auth/Admin environment, an active
 Operator account, and authenticated clients supporting remote OAuth MCP are
 required for the real editing proof. Record client versions, environment, consent,

@@ -79,3 +79,13 @@ See `docs/plans/2026-09-23-studio-external-agent/spec.md` and `code-map.md` for 
   services. Unit/DB evidence does not substitute for this qualification. The
   implementation can be integrated to unblock dependent slices while this gate
   remains visibly open.
+
+## Additional real-client evidence
+
+Codex CLI `0.150.0-alpha.12.2` completed actual MCP create/read/edit/retry/history
+and project-link resolution with authenticated local handlers and real Postgres,
+including resuming the same conversation. See
+`docs/validation/studio-external-agent/local-harness.md` and its selected actual
+tool transcript. Real production Auth consent, Claude and editor UI observation
+remain open; status remains in progress. The first client-generated JSON Patch
+was correctly rejected, then the domain-specific operation succeeded on resume.
