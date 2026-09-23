@@ -1,7 +1,7 @@
 ---
 title: "Ship bounded playback recovery and Redis admission readiness"
 type: fix
-status: active
+status: completed
 date: 2026-09-23
 origin: docs/roadmap/content-discovery/feat-464-recommendation-evidence-transport-crawler-integrity.md
 ---
@@ -112,3 +112,18 @@ Redis wire work, so capacity tracks actual settlement; context creation is not
 idempotent, so its ambiguous response must not be blindly retried. No unresolved
 blocking plan findings remain. The main uncertainty is production latency under
 the new admission budget, addressed by healthy controls and release observation.
+
+## Completion
+
+U1-U3 shipped through [PR #2404](https://github.com/JesusFilm/forge/pull/2404),
+merged September 23 at 04:02 UTC. Admin, worker and Web were verified successful
+on the exact merge revision at 04:29 UTC. The fixed ten-minute release observation
+has no HTTP 5xx or indexed admission timeout; higher served p95, seed-embedding
+fallback share and unmatched playback outcomes remain explicit limitations, not
+a claim of complete acceptance. The [release report](../operations/watch-intermittent-evidence-investigation-2026-09-23.md#production-rollout)
+records the checks and longer-window handoff.
+
+U4 produces the [final Admin admission learning](../solutions/runtime-errors/redis-admission-timeouts-must-bound-late-work-20260923.md)
+and targeted refresh of three related learnings, with four reviewed without edits.
+This documentation-only follow-up uses the normal PR flow. It completes this
+bounded release plan; feat-464 remains in progress under its acceptance continuation.
