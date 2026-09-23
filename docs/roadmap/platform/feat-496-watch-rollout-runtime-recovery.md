@@ -679,3 +679,15 @@ retains exact capture coverage, cleanup, HTTP/semantic outcome reconciliation,
 pool contention and rejected causal inferences. The incident remains unresolved;
 neither a successful diagnostic release nor a short window without timeouts
 satisfies this ticket's closure gates.
+
+### Source timing without retained APM spans
+
+The [source timing continuation](../../operations/watch-source-timing-2026-09-23.md)
+records three later 798–1,054 ms successful deliveries with short evidence
+writes and a main-pool backlog reaching 304 calls. These pool events are not
+request-correlated. Bounded source timestamps and longest-call start offsets
+repair the inability to align primary runtime logs when an APM span cannot be
+retrieved. Two regressions fail before the change; 7,339 Admin tests pass after
+it, with bounded serialization overhead. This is instrumentation validation,
+not a demonstrated fix for the natural timeout. Keep in progress through the
+automatic release, causal capture and existing recovery gates.

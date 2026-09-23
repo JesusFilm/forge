@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from "vitest"
+import { performance } from "node:perf_hooks"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   observeRecommendationRuntime,
   startRecommendationDatabaseTransaction,
@@ -7,6 +8,93 @@ import {
 } from "./recommendation-runtime-observation"
 
 describe("recommendation runtime observation", () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.useRealTimers()
+  })
+
+  it("retains source start time and the longest repeated call's monotonic offset", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date("2026-09-23T02:00:00.000Z"))
+    let now = 1_000
+    vi.spyOn(performance, "now").mockImplementation(() => now)
+    const log = vi.fn()
+    await observeRecommendationRuntime(
+      "seeded",
+      async () => {
+        now = 1_010
+        const first = startRecommendationTiming("db.raw.$queryRaw")!
+        now = 1_030
+        first()
+        now = 1_040
+        const longest = startRecommendationTiming("db.raw.$queryRaw")!
+        // A corrected wall clock must not distort the operation duration/offset.
+        vi.setSystemTime(new Date("2026-09-22T02:00:00.000Z"))
+        now = 1_120
+        longest()
+        now = 1_125
+        const last = startRecommendationTiming("db.raw.$queryRaw")!
+        now = 1_130
+        last()
+        return { result: "served" }
+      },
+      log,
+    )
+    expect(JSON.parse(log.mock.calls[0][0])).toMatchObject({
+      startedAt: "2026-09-23T02:00:00.000Z",
+      elapsedMs: 130,
+      timings: {
+        "db.raw.$queryRaw": {
+          calls: 3,
+          inFlight: 0,
+          firstStartedOffsetMs: 10,
+          maxStartedOffsetMs: 40,
+          maxMs: 80,
+          elapsedMs: 105,
+        },
+      },
+    })
+  })
+
+  it("aligns an unfinished operation's late rejection with its original source start", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date("2026-09-23T02:00:00.000Z"))
+    let now = 1_000
+    vi.spyOn(performance, "now").mockImplementation(() => now)
+    const log = vi.fn()
+    let finish: ReturnType<typeof startRecommendationTiming>
+    await observeRecommendationRuntime(
+      "seeded",
+      async () => {
+        now = 1_050
+        finish = startRecommendationTiming("candidate_evidence.insert", 220)
+        now = 1_080
+        return { result: "unavailable", reason: "delivery_timeout" }
+      },
+      log,
+    )
+    const complete = JSON.parse(log.mock.calls[0][0])
+    expect(complete.timings["candidate_evidence.insert"]).toMatchObject({
+      firstStartedOffsetMs: 50,
+      inFlight: 1,
+      elapsedMs: 0,
+    })
+    expect(
+      complete.timings["candidate_evidence.insert"].maxStartedOffsetMs,
+    ).toBeUndefined()
+    now = 1_250
+    finish?.({ code: "P2028" }, true)
+    expect(JSON.parse(log.mock.calls[1][0])).toMatchObject({
+      observationId: complete.observationId,
+      startedAt: "2026-09-23T02:00:00.000Z",
+      phase: "late_operation",
+      startedOffsetMs: 50,
+      elapsedMs: 200,
+      outcome: "rejected",
+      errorCode: "P2028",
+    })
+  })
+
   it("correlates concurrent transactions without reusing identities or exceeding bounds", async () => {
     const logs: string[] = []
     expect(startRecommendationDatabaseTransaction()).toBeUndefined()
