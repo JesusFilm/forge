@@ -1,17 +1,11 @@
 import { env } from "@/config/env"
-import { studioAssetReferenceSchema } from "@forge/studio-contracts"
-import { studioAssetUploadSchema } from "@forge/studio-contracts/assets"
-import {
-  studioCaptureSourceSchema,
-  studioSourcePreviewSchema,
-} from "@forge/studio-contracts/sources"
 import { z } from "zod"
+import { STUDIO_MCP_TOOLS as tools } from "@/services/studio-agent/mcp-tools"
 import {
-  studioApplySchema,
-  studioCreateSchema,
-  studioIdSchema,
-} from "@forge/studio-contracts"
-import { studioChatSchema } from "@forge/studio-contracts/agent"
+  projectReviewLink,
+  resolveProjectLink,
+  withProjectLink,
+} from "@/services/studio-agent/project-links"
 import { readStudioBytes, StudioBoundaryError } from "@forge/studio-server"
 import {
   authenticateStudioMcp,
@@ -19,137 +13,9 @@ import {
 } from "@/services/studio-agent/oauth"
 import { studioServiceCall } from "@/services/studio-agent/transport"
 import { studioChat } from "@/services/studio-agent/chat"
-const tools = [
-  {
-    name: "shorts.sourcePreview",
-    description:
-      "Read a bounded page of exact-language retained canonical subtitle cues. Follow nextOffset until null for complete range coverage.",
-    scope: "shorts:read",
-    action: "source-preview",
-    schema: studioSourcePreviewSchema,
-  },
-  {
-    name: "shorts.assets",
-    description: "Discover shared assets and immutable versions.",
-    scope: "shorts:read",
-    action: "assets",
-    schema: z
-      .object({
-        search: z.string().max(200).optional(),
-        limit: z.number().int().min(1).max(100).optional(),
-      })
-      .strict(),
-  },
-  {
-    name: "shorts.asset",
-    description: "Read asset metadata by exact immutable reference.",
-    scope: "shorts:read",
-    action: "asset",
-    schema: studioAssetReferenceSchema,
-  },
-  {
-    name: "shorts.packs",
-    description: "Discover reusable Content Packs.",
-    scope: "shorts:read",
-    action: "packs",
-    schema: z.object({ search: z.string().max(200).optional() }).strict(),
-  },
-  {
-    name: "shorts.pack",
-    description:
-      "Read immutable Content Pack evidence and separate editorial guidance.",
-    scope: "shorts:read",
-    action: "pack",
-    schema: z.object({ id: studioIdSchema }).strict(),
-  },
-  {
-    name: "shorts.search",
-    description:
-      "Find exact-language video/dub/edition, subtitle and download identities for source capture.",
-    scope: "shorts:read",
-    action: "search",
-    schema: z
-      .object({ search: z.string().max(200), language: studioIdSchema })
-      .strict(),
-  },
-  {
-    name: "shorts.capture",
-    description:
-      "Capture canonical source and subtitle identity, never a caller URL or replacement transcription. Media materialization remains a trusted broker step.",
-    scope: "shorts:edit",
-    action: "capture",
-    schema: studioCaptureSourceSchema,
-  },
-  {
-    name: "shorts.source",
-    description: "Read canonical source snapshot.",
-    scope: "shorts:read",
-    action: "source",
-    schema: z.object({ id: studioIdSchema }).strict(),
-  },
-  {
-    name: "shorts.assetRead",
-    description:
-      "Issue a five-minute scoped byte-read capability. Do not log or persist its URL.",
-    scope: "shorts:read",
-    action: "asset-read",
-    schema: studioAssetReferenceSchema,
-  },
-  {
-    name: "shorts.assetUpload",
-    description:
-      "Issue a five-minute digest/size-bound PUT capability for a component or other asset. Upload bytes to receive the durable reference; add declarations/items with shorts.apply. Never trust generated code as codec proof.",
-    scope: "shorts:edit",
-    action: "asset-upload",
-    schema: studioAssetUploadSchema,
-  },
-  {
-    name: "shorts.read",
-    description: "Read a Shorts project revision and attributed state.",
-    scope: "shorts:read",
-    action: "read",
-    schema: z.object({ projectId: studioIdSchema }).strict(),
-  },
-  {
-    name: "shorts.history",
-    description: "Read attributed revision history for undo/reconciliation.",
-    scope: "shorts:read",
-    action: "history",
-    schema: z.object({ projectId: studioIdSchema }).strict(),
-  },
-  {
-    name: "shorts.apply",
-    description:
-      "Apply revision-checked draft operations. Never reviews, publishes or activates instructions.",
-    scope: "shorts:edit",
-    action: "apply",
-    schema: studioApplySchema,
-  },
-  {
-    name: "shorts.create",
-    description: "Create a standalone draft project.",
-    scope: "shorts:edit",
-    action: "create",
-    schema: studioCreateSchema,
-  },
-  {
-    name: "shorts.instructions",
-    description:
-      "Inspect native Shorts guidance and version identities without activation authority.",
-    scope: "shorts:instructions:read",
-    action: "instructions",
-    schema: z.object({}).strict(),
-  },
-  {
-    name: "shorts.chat",
-    description:
-      "Run the hosted Shorts agent and return its streamed diagnostics and proposed changes. Apply proposals separately; narration and publication are unavailable.",
-    scope: "shorts:chat",
-    action: "chat",
-    schema: studioChatSchema,
-  },
-] as const
+
 export async function POST(request: Request) {
+  let rpcId: string | number | null = null
   try {
     const rpc = z
       .object({
@@ -160,6 +26,7 @@ export async function POST(request: Request) {
       })
       .strict()
       .parse(JSON.parse(await readStudioBytes(request)))
+    rpcId = rpc.id ?? null
     const call =
       rpc.method === "tools/call"
         ? z
@@ -201,7 +68,13 @@ export async function POST(request: Request) {
           action: "instructions",
           command: { action: "inspect" },
         })
-      else if (tool.action === "chat") {
+      else if (tool.action === "resolve-project") {
+        const { url } = z.object({ url: z.string() }).parse(input)
+        value = await studioServiceCall("admin", caller, {
+          action: "read",
+          input: resolveProjectLink(url),
+        })
+      } else if (tool.action === "chat") {
         const response = await studioChat(caller, input, request.signal)
         value = {
           events: (await readStudioBytes(response, 262144))
@@ -232,6 +105,39 @@ export async function POST(request: Request) {
           url: new URL(transfer.path, env.ADMIN_GRAPHQL_URL!).toString(),
         }
       }
+      if (tool.action === "list") {
+        const projects = z
+          .array(
+            z
+              .object({ projectId: z.string(), revision: z.number() })
+              .passthrough(),
+          )
+          .parse(value)
+        const limit = z.object({ limit: z.number() }).parse(input).limit
+        value = {
+          projects: projects.map(withProjectLink),
+          nextCursor:
+            projects.length === limit ? projects.at(-1)!.projectId : null,
+        }
+      } else if (
+        ["create", "read", "apply", "resolve-project"].includes(tool.action)
+      ) {
+        value = withProjectLink(
+          z
+            .object({ projectId: z.string(), revision: z.number() })
+            .passthrough()
+            .parse(value),
+        )
+      } else if (tool.action === "history") {
+        const { projectId } = z.object({ projectId: z.string() }).parse(input)
+        value = z
+          .array(z.object({ revision: z.number() }).passthrough())
+          .parse(value)
+          .map((revision) => ({
+            ...revision,
+            reviewUrl: projectReviewLink(projectId, revision.revision),
+          }))
+      }
       result = {
         content: [{ type: "text", text: JSON.stringify(value) }],
         structuredContent: { result: value },
@@ -247,6 +153,26 @@ export async function POST(request: Request) {
       { headers: { "cache-control": "no-store" } },
     )
   } catch (e) {
+    if (e instanceof StudioBoundaryError && e.status === 409) {
+      const conflict = {
+        code: "CONFLICT",
+        retryable: true,
+        recovery:
+          "Read the project and history, preserve human changes, and reapply against the new expectedRevision with a new idempotencyKey.",
+      }
+      return Response.json(
+        {
+          jsonrpc: "2.0",
+          id: rpcId,
+          result: {
+            isError: true,
+            content: [{ type: "text", text: JSON.stringify(conflict) }],
+            structuredContent: { result: conflict },
+          },
+        },
+        { headers: { "cache-control": "no-store" } },
+      )
+    }
     const status = e instanceof StudioBoundaryError ? e.status : 400
     return Response.json(
       {
