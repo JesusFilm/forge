@@ -3,7 +3,7 @@ id: "feat-548"
 title: "Qualify Claude and Codex through the full review loop"
 owner: "tataihono"
 priority: "P1"
-status: "in-progress"
+status: "blocked"
 readiness: "ready-for-agent"
 start_date: "2026-09-23"
 duration: 3
@@ -22,13 +22,13 @@ Approved acceptance criteria:
 
 - [ ] For both Claude and Codex, record exact client/version, connection/auth steps, environment, and grants; demonstrate discovery/create/edit/render/inspection/handoff/revision.
 - [ ] Each client resumes after a disconnect, handles an expired media capability, and reconciles an intervening human edit without duplicate effects.
-- [ ] Demonstrate approved-existing-voice narration and correction/reuse behavior with disclosed fake versus real provider evidence; obtain explicit authorization before any paid qualification.
-- [ ] Record output-ready, evidence-ready, inspection-complete, and repair timings separately with short duration, cut count, network/worker conditions, and warm/cold state.
+- [x] Demonstrate approved-existing-voice narration and correction/reuse behavior with disclosed fake versus real provider evidence; obtain explicit authorization before any paid qualification.
+- [x] Record output-ready, evidence-ready, inspection-complete, and repair timings separately with short duration, cut count, network/worker conditions, and warm/cold state.
 - [ ] Prove humans can review and approve the intended exact result while agents remain unable to approve or publish. Publishing a real public video is not required for qualification.
 - [ ] Document supported inspection modalities for each client; do not replace real-client proof with a generic JSON-RPC probe.
-- [ ] Run scope-appropriate formatting, tests, type/build/schema drift checks, code review, and changed-UI load verification. Capture durable implementation learnings.
-- [ ] Prepare normal PR-to-main deployment, required OAuth/configuration/migration steps, renderer release requirements if changed, rollback and smoke checks. No local-code production shortcut.
-- [ ] Keep acceptance incomplete if a required client is unavailable; record the exact remaining step without claiming both clients work.
+- [x] Run scope-appropriate formatting, tests, type/build/schema drift checks, code review, and changed-UI load verification. Capture durable implementation learnings.
+- [x] Prepare normal PR-to-main deployment, required OAuth/configuration/migration steps, renderer release requirements if changed, rollback and smoke checks. No local-code production shortcut.
+- [x] Keep acceptance incomplete if a required client is unavailable; record the exact remaining step without claiming both clients work.
 
 ## Verification
 
@@ -53,3 +53,7 @@ See `docs/plans/2026-09-23-studio-external-agent/spec.md` and `code-map.md` for 
 
 - `authenticateStudioMcp|studioServiceCall|expectedRevision`
 - `narrationReserve|render-review|idempotencyKey`
+
+## Final integration assessment — 2026-09-23
+
+Actual Codex completed creation/render/inspection/revision, preserved an attributed synthetic human edit, resumed after local credential expiry, corrected narration once and reused unchanged audio without consuming a pass. Required actual Claude and authenticated operator review/approval plus reachable-test OAuth qualification remain unavailable. Direct HTTP media download failed in this read-only client configuration; MCP refresh/images and a separate backend expiry probe are evidenced distinctly. Rebuilt renderer image qualification is tracked in the release evidence. No paid call, production deployment or merge occurred.

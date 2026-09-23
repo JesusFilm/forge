@@ -106,6 +106,35 @@ they are synthetic source imagery, not evidence of production footage quality.
 
 ## Expiry and reuse verification
 
+### Render-attempt timing and conditions
+
+Durable admission-to-terminal intervals include queueing, preparation, rendering,
+verification and retention. They are not pure encoding durations; no durable
+contained-render start timestamp exists. The separate original-input diagnostic
+measured 98.670 seconds for its render child.
+
+| Attempt                                   | Revision | Outcome  | Admission → terminal |
+| ----------------------------------------- | -------- | -------- | -------------------- |
+| Initial `cmudo8qan`                       | 7        | Failed   | 86.598s              |
+| Unchanged retry `cmudoaxbr`               | 7        | Failed   | 308.551s             |
+| One automatic creative repair `cmudoidn9` | 8        | Failed   | 81.140s              |
+| Successful retry `cmudzyor9`              | 8        | Retained | 106.940s             |
+| Spoken correction `cmue050zp`             | 11       | Retained | 115.469s             |
+| Visual-only revision `cmue0aonr`          | 12       | Retained | 105.181s             |
+| Explicit reuse verification `cmue0js0e`   | 13       | Retained | 119.117s             |
+
+Next development routes had been exercised before admission. Manager and renderer
+restarted before the successful revision 8 run and were reused thereafter. Runtime,
+browser, codec and local source/HLS/tone fixtures were already cached; these runs
+include no real provider or external media-network latency. Every render starts a
+fresh contained Node/Chromium process. OS caches were neither flushed nor
+controlled, so this is not a controlled cold/warm renderer comparison. Outputs
+are ten seconds with two detected cuts and eight inspection samples. Each new
+attempt's first inspection was uncached; immediate repeats used immutable cached
+evidence. Only the fourth successful run overlapped the bounded image build.
+
+### Capability and narration reuse
+
 A guarded transport probe expired one fixture media capability, observed HTTP403,
 refreshed access through actual MCP, downloaded HTTP200 bytes and verified the
 same immutable output digest. It saved no live capability URL. The first actual

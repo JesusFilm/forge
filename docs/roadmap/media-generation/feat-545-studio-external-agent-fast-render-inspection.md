@@ -3,7 +3,7 @@ id: "feat-545"
 title: "Inspect a rendered draft quickly with attributable evidence"
 owner: "tataihono"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 readiness: "ready-for-agent"
 start_date: "2026-09-23"
 duration: 3
@@ -25,7 +25,7 @@ Approved acceptance criteria:
 - [x] Evidence comes from the same output the human reviews; render success or composition metadata alone is not claimed as visual/audio inspection.
 - [x] Bound the number/size of samples and processing time. Repeated inspection of the same artifact reuses evidence instead of rerendering.
 - [x] The agent reports supported modalities, sampled coverage, findings, and unknowns; a client without audio/video inspection capability does not claim it listened/watched.
-- [ ] Measure additional time from output readiness to completed inspection, separating server preparation and client reasoning. Target under 60 seconds on a documented representative short; report misses honestly.
+- [x] Measure additional time from output readiness to completed inspection, separating server preparation and client reasoning. Target under 60 seconds on a documented representative short; report misses honestly.
 - [x] Publish fixture results for clean output, deliberate gaps, unreadable/overflowing text, cut defects, and audio defects. Report detector limitations and false positives rather than claiming universal detection.
 - [x] At most one automatic repair pass is prescribed per review handoff. Any repair render is separately timed; remaining defects/timeouts return an incomplete inspection summary.
 - [x] Inspection results are advisory and never human approval. Heavy evidence work does not execute during editor page initialization.
@@ -63,7 +63,10 @@ context seam, bounded decoding, and separately labeled composition heuristics.
 See [validation evidence](../../validation/studio-545/README.md).
 
 Server preparation passed actual contained-render fixtures, including a 30-second
-short. End-to-end client reasoning/inspection time remains unqualified until
-feat-548 runs the real client workflow. Keep this ticket in progress until that
-acceptance is recorded; repository/fixture success does not prove either client's
-visual/audio modalities.
+short. Actual Codex reasoning/inspection timing is now recorded in the final assessment
+below. Repository/fixture success alone does not prove either client's modalities;
+Claude remains unqualified under feat-548.
+
+## Final integration assessment — 2026-09-23
+
+Actual Codex received eight images per exact output, interpreted sampled pixels and disclosed no listening/full-watch capability. Added handoff times were 52.260, 34.026 and 37.116 seconds; an explicit fourth reuse probe took 60.992 seconds, a disclosed target miss under concurrent build load without a causal claim. Bounded evidence, cache and timeout tests pass. See the exact timing provenance in the client workflow; no production latency guarantee is claimed.

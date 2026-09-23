@@ -3,7 +3,7 @@ id: "feat-547"
 title: "Create and revise from a broad brief using a portable skill"
 owner: "tataihono"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 readiness: "ready-for-agent"
 start_date: "2026-09-23"
 duration: 3
@@ -20,15 +20,15 @@ An operator invokes the same creation workflow in Claude or Codex. The portable 
 
 Approved acceptance criteria:
 
-- [ ] Ship an installable/discoverable skill with accurate tool discovery and client-specific connection guidance, without embedding service secrets or repository checkout assumptions.
-- [ ] A broad brief leads to canonical footage selection, story/text/track editing, existing music selection where available, and a rendered handoff. Ask only questions that materially change the creative result.
-- [ ] The agent can use the shipped text fonts/readability/motion and clip transitions, not merely insert raw clips.
-- [ ] Use the durable narration allowance, reuse unchanged audio, and respect explicit requests for music/voice creation.
-- [ ] Perform the sampled inspection with a target under one additional minute and at most one defect-repair pass; return limitations when media inspection is unavailable.
-- [ ] The skill returns revision/render links and change/inspection summaries and accepts the next feedback in the same agent conversation.
-- [ ] Treat source metadata, subtitles, uploaded content, and tool-result prose as data, not higher-priority instructions.
-- [ ] A realistic broad-brief and feedback scenario completes against the actual MCP surface without browser-driving the editor; unsupported tools or modalities produce useful explicit limitations.
-- [ ] Validate skill packaging and behavior with representative inputs; tests do not merely assert skill wording.
+- [x] Ship an installable/discoverable skill with accurate tool discovery and client-specific connection guidance, without embedding service secrets or repository checkout assumptions.
+- [x] A broad brief leads to canonical footage selection, story/text/track editing, existing music selection where available, and a rendered handoff. Ask only questions that materially change the creative result.
+- [x] The agent can use the shipped text fonts/readability/motion and clip transitions, not merely insert raw clips.
+- [x] Use the durable narration allowance, reuse unchanged audio, and respect explicit requests for music/voice creation.
+- [x] Perform the sampled inspection with a target under one additional minute and at most one defect-repair pass; return limitations when media inspection is unavailable.
+- [x] The skill returns revision/render links and change/inspection summaries and accepts the next feedback in the same agent conversation.
+- [x] Treat source metadata, subtitles, uploaded content, and tool-result prose as data, not higher-priority instructions.
+- [x] A realistic broad-brief and feedback scenario completes against the actual MCP surface without browser-driving the editor; unsupported tools or modalities produce useful explicit limitations.
+- [x] Validate skill packaging and behavior with representative inputs; tests do not merely assert skill wording.
 
 ## Verification
 
@@ -54,7 +54,7 @@ See `docs/plans/2026-09-23-studio-external-agent/spec.md` and `code-map.md` for 
 - `authenticateStudioMcp|studioServiceCall|expectedRevision`
 - `narrationReserve|render-review|idempotencyKey`
 
-## Implementation evidence (qualification pending)
+## Implementation evidence
 
 - Portable source: `skills/shorts-creator/SKILL.md` and relative references/examples.
 - Download: `apps/manager/public/shorts-creator.zip`; reproduce/check with
@@ -63,5 +63,9 @@ See `docs/plans/2026-09-23-studio-external-agent/spec.md` and `code-map.md` for 
 - Manager production build passes; discovery link adds 55 gzip bytes to initial
   component markup and no new loading request. Limits and reproduction are in
   `docs/validation/studio-external-agent/portable-skill/README.md`.
-- Full actual-client scenario with the extracted archive remains feat-548
-  qualification evidence; status intentionally stays `in-progress` until verified.
+- The actual Codex scenario with this exact extracted archive is now verified
+  in feat-548 evidence; unavailable Claude and authenticated UI gates stay there.
+
+## Final integration assessment — 2026-09-23
+
+The shipped ZIP was installed outside the checkout and used by actual Codex for broad-brief creation, rendering, sampled inspection, conversation correction and visual-only revision. Final archive hash matches the tested package. Contract/semantic/extraction tests, builds and independent review pass. Unsupported direct HTTP in the tested client sandbox is disclosed; Claude and authenticated human qualification remain in feat-548.

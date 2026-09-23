@@ -3,7 +3,7 @@ id: "feat-542"
 title: "Connect an external agent and edit the correct project"
 owner: "tataihono"
 priority: "P1"
-status: "in-progress"
+status: "blocked"
 readiness: "ready-for-agent"
 start_date: "2026-09-23"
 duration: 3
@@ -20,13 +20,13 @@ An operator connects an existing external client, discovers or opens the intende
 
 Approved acceptance criteria:
 
-- [ ] Authenticated MCP initialization and tool discovery work with scoped OAuth; current membership, application environment, consent, and client identity are enforced.
-- [ ] Bounded project discovery supports selecting the right project without exposing inaccessible projects; project links can be mapped to exact identities.
-- [ ] Create/read/apply/history preserve existing idempotency and expected-revision behavior, and return usable human review links.
+- [x] Authenticated MCP initialization and tool discovery work with scoped OAuth; current membership, application environment, consent, and client identity are enforced.
+- [x] Bounded project discovery supports selecting the right project without exposing inaccessible projects; project links can be mapped to exact identities.
+- [x] Create/read/apply/history preserve existing idempotency and expected-revision behavior, and return usable human review links.
 - [ ] An external-client edit appears in the editor and history with the authenticated operator and client attribution; another client cannot supply a replacement actor.
-- [ ] A human edit racing an agent write returns a recoverable stale-revision result. Reading history and reapplying against the new baseline preserves that human edit.
+- [x] A human edit racing an agent write returns a recoverable stale-revision result. Reading history and reapplying against the new baseline preserves that human edit.
 - [ ] Document and execute connection steps for Claude and Codex, distinguishing client/environment restrictions from server failures. At least one real client completes the editing proof in this slice; the final qualification requires both complete workflows.
-- [ ] Read-only tokens, revoked membership, wrong environment, and expired credentials cannot edit. Existing hosted-agent and interactive paths still work.
+- [x] Read-only tokens, revoked membership, wrong environment, and expired credentials cannot edit. Existing hosted-agent and interactive paths still work.
 
 ## Verification
 
@@ -89,3 +89,7 @@ including resuming the same conversation. See
 tool transcript. Real production Auth consent, Claude and editor UI observation
 remain open; status remains in progress. The first client-generated JSON Patch
 was correctly rejected, then the domain-specific operation succeeded on resume.
+
+## Final integration assessment — 2026-09-23
+
+Implementation and real Codex editing/reconnection are verified. Acceptance remains blocked on reachable-test OAuth consent/renewal, actual Claude access, and authenticated editor/history observation. See `docs/validation/studio-external-agent/client-workflow.md` and `acceptance-matrix.md`.

@@ -3,7 +3,7 @@ id: "feat-546"
 title: "Review an exact draft and revise from conversation feedback"
 owner: "tataihono"
 priority: "P1"
-status: "in-progress"
+status: "blocked"
 readiness: "ready-for-agent"
 start_date: "2026-09-23"
 duration: 3
@@ -22,12 +22,12 @@ Approved acceptance criteria:
 
 - [ ] Handoff includes the exact revision/render, concise change summary, inspection coverage/findings, and a functioning Studio review link.
 - [ ] Human can watch the intended render and see whether the current project has advanced; stale output cannot be approved as the new revision.
-- [ ] Feedback remains in the external conversation, including optional timestamps. No editor comments database, polling daemon, or automatic client wakeup is introduced.
-- [ ] On revision the agent rereads canonical state/history; nonconflicting feedback preserves human edits and creative conflicts are surfaced rather than overwritten.
+- [x] Feedback remains in the external conversation, including optional timestamps. No editor comments database, polling daemon, or automatic client wakeup is introduced.
+- [x] On revision the agent rereads canonical state/history; nonconflicting feedback preserves human edits and creative conflicts are surfaced rather than overwritten.
 - [ ] Previous revision/render evidence remains accessible and existing restore mechanisms are usable. A side-by-side comparison editor is not required.
 - [ ] Final approval remains an interactive human action for exact bytes and effective script/voice. Agents cannot invoke approval, publication, or destructive commands.
-- [ ] Test human edits made before and during agent revision, changed content after inspection, and attempted approval of outdated evidence.
-- [ ] If review UI changes, verify browser behavior and page-loading performance using matched fixtures; avoid eagerly loading full evidence packages.
+- [x] Test human edits made before and during agent revision, changed content after inspection, and attempted approval of outdated evidence.
+- [x] If review UI changes, verify browser behavior and page-loading performance using matched fixtures; avoid eagerly loading full evidence packages.
 
 ## Verification
 
@@ -77,3 +77,7 @@ See `docs/plans/2026-09-23-studio-external-agent/spec.md` and `code-map.md` for 
   Synthetic fixtures do not satisfy that boundary; automatic approval review
   rejected session creation pending explicit operator permission. Full workflow
   qualification remains feat-548.
+
+## Final integration assessment — 2026-09-23
+
+Implementation, real canonical authority tests, independent review and synthetic browser/load checks pass. Authenticated human review, direct correction and exact-render approval remain unverified because automatic approval review rejected temporary synthetic browser-session creation pending explicit operator permission. This gate is not replaced by fixture UI or backend commands.
