@@ -8,6 +8,8 @@
     "authentication": "existing ChatGPT subscription; synthetic loopback MCP bearer, not OAuth qualification"
   },
   "portableZipSha256": "28a21653e52ef8b45de2ba09c5c1c64672aba20b1bab55fd17f184ac183bfe43",
+  "finalReviewedZipSha256": "0bae679d86fd197aef6416c28533d6ff5ad6bab93abac73d05458aab9e471cbe",
+  "finalReviewedZipFullClientRun": false,
   "timingDefault": "250ms local trace observer; render excluded; local fixture timings, not production SLO",
   "handoffs": [
     {
@@ -149,6 +151,7 @@
     "Actual Claude client",
     "Reachable test OAuth consent/refresh",
     "Authenticated operator UI review/correction/exact-render approval",
-    "Rebuilt renderer image qualification and normal release gates"
+    "Hosted renderer release qualification and normal release gates",
+    "Complete client run with final reviewed portable ZIP"
   ]
 }

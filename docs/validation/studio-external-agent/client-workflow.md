@@ -6,9 +6,16 @@ the client ran from that isolated directory and connected to actual Next MCP.
 The client received a broad creative brief, the shipped skill and fixture
 limitations, rather than a sequence of operation instructions.
 
-The final portable ZIP is 28,510 bytes, SHA256
+The portable ZIP used in this observed client run was 28,510 bytes, SHA256
 `28a21653e52ef8b45de2ba09c5c1c64672aba20b1bab55fd17f184ac183bfe43`.
-Its qualification snapshot matches the integrated feat-547 package byte-for-byte.
+Final independent review found that the skill's summary ordered narration quote
+before saving the draft, even though its authoring reference and this client run
+saved the effective speech first. The distributed skill now explicitly orders
+apply/read before quote/admission. Its rebuilt ZIP is 28,788 bytes, SHA256
+`0bae679d86fd197aef6416c28533d6ff5ad6bab93abac73d05458aab9e471cbe`.
+The original observed run proves behavior of the prior archive; package and
+operation-engine tests verify the corrected final archive. A new complete client
+run with the changed bytes is not claimed.
 
 ## Boundaries
 

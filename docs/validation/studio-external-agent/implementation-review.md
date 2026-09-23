@@ -112,8 +112,15 @@ Independent standards/specification review of the portable package found zero
 actionable findings. The reviewer checked examples against actual operations,
 relative archive references, narration limits, human-edit preservation and modality
 claims. Two Manager package/schema tests, one Admin operation-engine test, both
-typechecks, scoped lint and the Manager production build passed. The final ZIP
-matched the actual-client qualification snapshot after normal commit hooks.
+typechecks, scoped lint and the Manager production build passed. The client
+qualification snapshot matched the archive at that review point. A later final
+specification review found one P2 in the first-draft skill summary: it listed
+`narrationQuote` before persisting speech, even though the authoring reference
+and actual Codex run applied the composition first. The shipped summary now
+requires apply/read, then quote/status, then narration attachment and exact
+revision rendering. Deterministic packaging and both operation/schema tests
+passed for the rebuilt 28,788-byte archive. The prior full client run used the
+28,510-byte version; a full rerun with the corrected bytes remains separate.
 
 Independent harness safety review found and cleared one P2: an output directory
 symlink could resolve exactly to the checkout root. Fresh private directory

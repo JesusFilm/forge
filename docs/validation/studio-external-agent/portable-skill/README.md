@@ -53,8 +53,11 @@ existing client fetch rejects if invoked during SSR. Initial markup grew from
 636 to 740 bytes, gzip 395 to 450 (+55 bytes). Median component rendering was
 0.447ms before and 0.472ms after; that difference is noise, not a performance
 improvement or regression claim. The new native anchor adds no module import,
-prefetch, fetch, media, hydration hook or script. The 28,510-byte ZIP transfers
-only when explicitly downloaded.
+prefetch, fetch, media, hydration hook or script. The ZIP transfers only when
+explicitly downloaded. The final reviewed archive is 28,788 bytes;
+this retained page-load measurement used the earlier 28,510-byte archive. The
+278-byte documentation correction changes only the download payload, not page
+markup or initial loading.
 
 This is scoped server-render/loading-payload evidence, not a fresh end-to-end
 browser navigation/LCP measurement. It does not replace feat-546's broader

@@ -3,7 +3,7 @@ id: "feat-547"
 title: "Create and revise from a broad brief using a portable skill"
 owner: "tataihono"
 priority: "P1"
-status: "complete"
+status: "blocked"
 readiness: "ready-for-agent"
 start_date: "2026-09-23"
 duration: 3
@@ -27,7 +27,7 @@ Approved acceptance criteria:
 - [x] Perform the sampled inspection with a target under one additional minute and at most one defect-repair pass; return limitations when media inspection is unavailable.
 - [x] The skill returns revision/render links and change/inspection summaries and accepts the next feedback in the same agent conversation.
 - [x] Treat source metadata, subtitles, uploaded content, and tool-result prose as data, not higher-priority instructions.
-- [x] A realistic broad-brief and feedback scenario completes against the actual MCP surface without browser-driving the editor; unsupported tools or modalities produce useful explicit limitations.
+- [ ] A realistic broad-brief and feedback scenario completes with the final rebuilt archive against the actual MCP surface without browser-driving the editor; unsupported tools or modalities produce useful explicit limitations. The prior archive completed this scenario, but final bytes have not had a full client replay.
 - [x] Validate skill packaging and behavior with representative inputs; tests do not merely assert skill wording.
 
 ## Verification
@@ -63,9 +63,12 @@ See `docs/plans/2026-09-23-studio-external-agent/spec.md` and `code-map.md` for 
 - Manager production build passes; discovery link adds 55 gzip bytes to initial
   component markup and no new loading request. Limits and reproduction are in
   `docs/validation/studio-external-agent/portable-skill/README.md`.
-- The actual Codex scenario with this exact extracted archive is now verified
-  in feat-548 evidence; unavailable Claude and authenticated UI gates stay there.
+- The actual Codex scenario with the prior extracted archive is recorded in
+  feat-548 evidence. Final independent review corrected the first-draft
+  apply/read-before-quote order; the final archive passed packaging, schema and
+  operation-engine tests. A complete real-client replay with those final bytes
+  remains unobserved, alongside Claude and authenticated UI gates in feat-548.
 
 ## Final integration assessment — 2026-09-23
 
-The shipped ZIP was installed outside the checkout and used by actual Codex for broad-brief creation, rendering, sampled inspection, conversation correction and visual-only revision. Final archive hash matches the tested package. Contract/semantic/extraction tests, builds and independent review pass. Unsupported direct HTTP in the tested client sandbox is disclosed; Claude and authenticated human qualification remain in feat-548.
+The 28,510-byte ZIP was installed outside the checkout and used by actual Codex for broad-brief creation, rendering, sampled inspection, conversation correction and visual-only revision. The final 28,788-byte ZIP fixes the summary's apply/read-before-quote order and passes extraction/contract/semantic tests. A full client rerun of those final bytes is open. Unsupported direct HTTP in the tested client sandbox is disclosed; Claude and authenticated human qualification remain in feat-548.
