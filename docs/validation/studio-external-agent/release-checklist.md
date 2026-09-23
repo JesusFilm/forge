@@ -51,6 +51,14 @@ has not been certified here.
   exported-service launcher proves render behavior but does not replace the
   image's startup or hosted acceptance checks. This feature does not authorize
   a renderer deployment or a direct Railway release.
+- Rebuild and independently qualify the renderer image containing the pinned
+  `@remotion/renderer` patch and child startup opt-in. Intermediate audio codecs
+  now use one decoder, encoder and filter thread within the existing process
+  limits. The Dockerfile copies patches before its frozen install and deploys
+  those dependencies, but local native success is not proof of the rebuilt
+  sealed image. Record the new image and runtime artifact digests, and rerun
+  containment, recovered-browser cleanup and exact codec verification in that
+  image. Include simultaneous narration and music in image smoke tests.
 - Configure production narration only after explicit operator authorization.
   `STUDIO_PRODUCTION_ENABLED` controls admission; a real ElevenLabs key is a
   spending capability. One initial and one correction pass apply per project
