@@ -94,3 +94,31 @@ retaining the failed request and late settlement separately. The 1,186 ms
 driver span narrows the failure but does not identify PostgreSQL execution,
 storage wait or application result handling. A good local paired benchmark
 and successful production deployment are not evidence of complete recovery.
+
+## Correlate PostgreSQL independently of the application loop
+
+When one driver span remains ambiguous, add a generated diagnostic UUID and
+transaction ordinal to the existing transaction setup SQL using
+`set_config('application_name', tag, true)`, returning `pg_backend_pid()` in
+the same statement. The tag must contain no viewer, token or ledger identity.
+Bound the metadata, and test exact original-name restoration after commit and
+rollback on the same pooled backend. The transaction-local setting avoids a
+tag leaking to another request. See PostgreSQL's
+[configuration functions](https://www.postgresql.org/docs/18/functions-admin.html#FUNCTIONS-ADMIN-SET).
+
+Run `src/scripts/sample-recommendation-db-waits.ts` in a separate process. An
+in-process timer would be blind during the scheduling pause being investigated.
+Read-only `pg_stat_activity` sampling can distinguish a blocked INSERT from
+PostgreSQL already idle in transaction waiting for the client. Classify SQL
+server-side and export only bounded metadata, with explicit overhead/output
+stop reasons and connection cleanup. Never label `queryAgeMs` as wait duration;
+when idle, PostgreSQL's query start refers to the **last** statement. See
+[activity state semantics](https://www.postgresql.org/docs/18/monitoring-stats.html#MONITORING-PG-STAT-ACTIVITY-VIEW).
+
+Real PostgreSQL tests should inject at least a database lock, a server delay
+and an application-loop stall, then show the independent collector distinguishes
+them. Those are instrument calibration, not proof of a historical incident.
+The [bounded capture runbook and evidence](../../operations/watch-database-wait-correlation-2026-09-23.md)
+record the real 220-row writes, rollback guarantees, setup overhead and remaining
+natural-capture gate. Selection's standalone budget call is outside this
+delivery transaction tag; do not generalize its evidence to selection.

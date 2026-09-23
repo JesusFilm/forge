@@ -1,16 +1,54 @@
 import { describe, expect, it, vi } from "vitest"
 import {
   observeRecommendationRuntime,
+  startRecommendationDatabaseTransaction,
   startRecommendationTiming,
   timeRecommendationOperation,
 } from "./recommendation-runtime-observation"
 
 describe("recommendation runtime observation", () => {
+  it("correlates concurrent transactions without reusing identities or exceeding bounds", async () => {
+    const logs: string[] = []
+    expect(startRecommendationDatabaseTransaction()).toBeUndefined()
+    const tags = await Promise.all(
+      ["seeded", "for_you"].map((operation) =>
+        observeRecommendationRuntime(
+          operation as "seeded" | "for_you",
+          async () => {
+            const first = startRecommendationDatabaseTransaction()!
+            first.recordBackend(1234)
+            // Invalid backend metadata never changes the outcome or enters logs.
+            first.recordBackend("private")
+            for (let i = 1; i < 12; i++)
+              startRecommendationDatabaseTransaction()?.recordBackend(2000 + i)
+            return first.applicationName
+          },
+          (line) => logs.push(line),
+        ),
+      ),
+    )
+    expect(tags[0]).not.toBe(tags[1])
+    for (const line of logs) {
+      const event = JSON.parse(line)
+      expect(event.databaseTransactions).toHaveLength(8)
+      expect(event.omittedTransactions).toBe(4)
+      expect(event.databaseTransactions[0]).toEqual({
+        ordinal: 1,
+        backendPid: 1234,
+      })
+      expect(tags).toContain(`watch:${event.observationId}:1`)
+      expect(line).not.toContain("private")
+    }
+  })
   it("bounds timing labels below the forwarding envelope and counts omissions", async () => {
     const log = vi.fn()
     await observeRecommendationRuntime(
       "seeded",
       async () => {
+        for (let i = 0; i < 8; i++)
+          startRecommendationDatabaseTransaction()?.recordBackend(
+            Number.MAX_SAFE_INTEGER,
+          )
         for (let index = 0; index < 64; index++) {
           const label =
             "a".repeat(98) +
