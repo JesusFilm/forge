@@ -14,6 +14,7 @@ import {
   PUSH_REGISTRATION_DEBOUNCE_MS,
   PUSH_REGISTRATION_MAX_ATTEMPTS,
   PUSH_REGISTRATION_REFRESH_INTERVAL_MS,
+  PUSH_VIEWER_HANDLE_REJECTED_CODE,
   type PushPermissionState,
 } from "./constants"
 import {
@@ -83,6 +84,8 @@ export type PushRegistrationDeps = {
   readAppLanguageSlug: () => Promise<string | null>
   /** Null when the recommendation client is off or has no handle yet. */
   readIdentity: () => Promise<PushViewerHandle | null>
+  /** Admin refused this token: its next read re-checks it. Never throws. */
+  recheckIdentity: (refusedViewerToken: string) => Promise<void>
   readEnvironment: () => PushDeviceEnvironment
   register: (
     payload: PushRegistrationPayload,
@@ -121,6 +124,9 @@ export function createPushRegistration(
    *  arrive first, and would otherwise send a `granted` payload for a
    *  permission nobody has read. */
   let granted = false
+  /** The viewer token Admin refused this launch. It is never sent again, so a
+   *  handle the re-check keeps cannot lock the phone out of every audience. */
+  let rejectedViewerToken: string | null = null
 
   function log(
     outcome: PushRegistrationOutcome,
@@ -182,12 +188,14 @@ export function createPushRegistration(
         ? deps.readIdentity().catch(() => null)
         : Promise.resolve(null),
     ])
+    const refused =
+      identity != null && identity.viewerToken === rejectedViewerToken
     return buildPushRegistrationPayload({
       expoPushToken: token,
       installId,
       permission,
       appLanguageSlug,
-      identity,
+      identity: refused ? null : identity,
       environment: deps.readEnvironment(),
     })
   }
@@ -202,6 +210,8 @@ export function createPushRegistration(
     inFlight = true
     /** Whether this run has already spent one of the cap's attempts. */
     let counted = false
+    /** The viewer token this run sent, if Admin refuses it. */
+    let sentViewerToken: string | null = null
     try {
       await deps.store.hydrate()
       const payload = await buildPayload("granted", true)
@@ -209,6 +219,7 @@ export function createPushRegistration(
         log("no_token", trigger)
         return
       }
+      sentViewerToken = payload.viewerToken ?? null
       const hash = hashPushRegistrationPayload(payload)
       const record = deps.store.getRecord()
       const lastSuccessAt = record?.lastSuccessAt ?? null
@@ -250,10 +261,20 @@ export function createPushRegistration(
       // install-id read) would re-arm the 2 s timer for the whole launch.
       if (!counted) attempts += 1
       const failure = readPushFailure(error)
+      // Admin refused the handle, not the bearer: re-check the handle, and let
+      // the retry go without the refused token so this launch still registers.
+      const refusedToken =
+        failure.pushCode === PUSH_VIEWER_HANDLE_REJECTED_CODE
+          ? sentViewerToken
+          : null
+      if (refusedToken != null) {
+        rejectedViewerToken = refusedToken
+        await deps.recheckIdentity(refusedToken).catch(() => undefined)
+      }
       // A rate limit clears on its own and admin's ceiling is per minute, so a
       // retry inside this launch can only spend another request.
       const retryable =
-        !failure.definitive &&
+        (refusedToken != null || !failure.definitive) &&
         failure.code !== "RATE_LIMITED" &&
         attempts < PUSH_REGISTRATION_MAX_ATTEMPTS
       deps.telemetry.info("push.registration_failed", {

@@ -10,6 +10,7 @@ export type PushServiceErrorCode =
   | "token_shaped_id"
   | "unknown_time_zone"
   | "admission_denied"
+  | "viewer_handle_rejected"
   | "ceiling_exceeded"
   | "invalid_token_status"
   | "campaigns_disabled"
@@ -116,6 +117,17 @@ export class PushAdmissionError extends PushServiceError {
   constructor(message = "A push write needs the consumer bearer") {
     super("admission_denied", message)
     this.name = "PushAdmissionError"
+  }
+}
+
+/**
+ * KTD7 — a well-formed viewer handle that Admin no longer accepts. It has its
+ * own code so the app re-checks the handle instead of sending it again.
+ */
+export class PushViewerHandleRejectedError extends PushServiceError {
+  constructor() {
+    super("viewer_handle_rejected", "That viewer handle did not verify")
+    this.name = "PushViewerHandleRejectedError"
   }
 }
 

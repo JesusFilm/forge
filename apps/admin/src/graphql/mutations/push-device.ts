@@ -18,6 +18,7 @@ import {
   PushAdmissionError,
   PushCeilingExceededError,
   PushServiceError,
+  PushViewerHandleRejectedError,
 } from "@/services/push/errors"
 import {
   reportPushOpen,
@@ -117,7 +118,10 @@ PushOpenReceiptRef.implement({
  * else stays an internal error, which Yoga masks.
  */
 function toPushGraphQLError(error: unknown): GraphQLError {
-  if (error instanceof PushAdmissionError) {
+  if (
+    error instanceof PushAdmissionError ||
+    error instanceof PushViewerHandleRejectedError
+  ) {
     return new GraphQLError(error.message, {
       extensions: { code: "UNAUTHENTICATED", pushCode: error.code },
     })

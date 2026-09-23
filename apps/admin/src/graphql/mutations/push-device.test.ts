@@ -35,6 +35,7 @@ const {
   PushAdmissionError,
   PushCeilingExceededError,
   PushInvalidTokenStatusError,
+  PushViewerHandleRejectedError,
 } = await import("@/services/push/errors")
 
 const admitMock = admitPushWrite as ReturnType<typeof vi.fn>
@@ -240,6 +241,20 @@ describe("registerPushDevice", () => {
     expect(registerMock).not.toHaveBeenCalled()
   })
 
+  it("names a refused viewer handle apart from a missing bearer", async () => {
+    // The app re-checks its handle only on this push code.
+    admitMock.mockRejectedValue(new PushViewerHandleRejectedError())
+    await expect(
+      invoke("registerPushDevice", registrationInput()),
+    ).rejects.toMatchObject({
+      extensions: {
+        code: "UNAUTHENTICATED",
+        pushCode: "viewer_handle_rejected",
+      },
+    })
+    expect(registerMock).not.toHaveBeenCalled()
+  })
+
   it("maps a ceiling refusal to a rate-limit code, and never registers", async () => {
     ceilingMock.mockRejectedValue(new PushCeilingExceededError("register"))
     await expect(
@@ -313,6 +328,24 @@ describe("reportPushOpen", () => {
   })
 
   it("refuses an unverified handle instead of reporting anonymously", async () => {
+    // The app re-reports the open without the handle only on this push code.
+    admitMock.mockRejectedValue(new PushViewerHandleRejectedError())
+    await expect(
+      invoke("reportPushOpen", {
+        nonce: NONCE,
+        viewerToken: VIEWER_TOKEN,
+        sessionToken: SESSION_TOKEN,
+      }),
+    ).rejects.toMatchObject({
+      extensions: {
+        code: "UNAUTHENTICATED",
+        pushCode: "viewer_handle_rejected",
+      },
+    })
+    expect(openMock).not.toHaveBeenCalled()
+  })
+
+  it("refuses an open report from a caller admission turned away", async () => {
     admitMock.mockRejectedValue(new PushAdmissionError())
     await expect(
       invoke("reportPushOpen", {
@@ -320,7 +353,9 @@ describe("reportPushOpen", () => {
         viewerToken: VIEWER_TOKEN,
         sessionToken: SESSION_TOKEN,
       }),
-    ).rejects.toMatchObject({ extensions: { code: "UNAUTHENTICATED" } })
+    ).rejects.toMatchObject({
+      extensions: { code: "UNAUTHENTICATED", pushCode: "admission_denied" },
+    })
     expect(openMock).not.toHaveBeenCalled()
   })
 
@@ -376,6 +411,12 @@ describe("reportPushOpen", () => {
         sessionToken: SESSION_TOKEN,
       })
       admitMock.mockRejectedValue(new PushAdmissionError())
+      await invoke("reportPushOpen", {
+        nonce: NONCE,
+        viewerToken: VIEWER_TOKEN,
+        sessionToken: SESSION_TOKEN,
+      }).catch(() => undefined)
+      admitMock.mockRejectedValue(new PushViewerHandleRejectedError())
       await invoke("reportPushOpen", {
         nonce: NONCE,
         viewerToken: VIEWER_TOKEN,

@@ -56,6 +56,7 @@ function createHarness(
     appLanguageSlug?: string | null
     identity?: { viewerToken: string; sessionToken: string } | null
     register?: jest.Mock<Promise<Receipt>, [unknown]>
+    recheckIdentity?: (refusedViewerToken: string) => Promise<void>
     now?: () => number
   } = {},
 ) {
@@ -139,6 +140,7 @@ function createHarness(
       }),
     readAppLanguageSlug: async () => appLanguageSlug,
     readIdentity: async () => identity,
+    recheckIdentity: options.recheckIdentity ?? (async () => undefined),
     readEnvironment: () => ENVIRONMENT,
     register: register as unknown as PushRegistrationDeps["register"],
     schedule: (run, ms) => {
@@ -666,6 +668,127 @@ describe("a failed registration (AE19, R4)", () => {
           entry.context.push_server_code === "invalid_token_status",
       ),
     ).toBe(true)
+  })
+})
+
+describe("a viewer handle Admin refuses", () => {
+  const REFUSED = { viewerToken: "o".repeat(43), sessionToken: "p".repeat(43) }
+  const REPLACED = { viewerToken: "n".repeat(43), sessionToken: "q".repeat(43) }
+
+  function refuseFirst(): jest.Mock<Promise<Receipt>, [unknown]> {
+    let calls = 0
+    return jest.fn(async () => {
+      calls += 1
+      if (calls === 1) {
+        throw new FailureStub("UNAUTHENTICATED", true, "viewer_handle_rejected")
+      }
+      return { testDeviceId: "abc12345", status: "ACTIVE" }
+    }) as unknown as jest.Mock<Promise<Receipt>, [unknown]>
+  }
+
+  it("re-checks the handle and registers with the one that replaces it", async () => {
+    const register = refuseFirst()
+    let harness: ReturnType<typeof createHarness> | null = null
+    const recheck = jest.fn(async () => harness?.setIdentity(REPLACED))
+    harness = createHarness({
+      register,
+      identity: REFUSED,
+      recheckIdentity: recheck,
+    })
+
+    harness.registration.onPermissionRead({ granted: true })
+    await harness.fire()
+    // Scoped to the refused token, so a handle replaced meanwhile stays trusted.
+    expect(recheck).toHaveBeenCalledWith(REFUSED.viewerToken)
+    await harness.fire()
+
+    expect(register).toHaveBeenCalledTimes(2)
+    expect(payloadOf(register, 0).viewerToken).toBe(REFUSED.viewerToken)
+    expect(payloadOf(register, 1).viewerToken).toBe(REPLACED.viewerToken)
+    expect(harness.record?.testDeviceId).toBe("abc12345")
+  })
+
+  it("registers without the handle when the re-check keeps the refused one", async () => {
+    const register = refuseFirst()
+    const harness = createHarness({ register, identity: REFUSED })
+
+    harness.registration.onPermissionRead({ granted: true })
+    await harness.fire()
+    await harness.fire()
+
+    expect(register).toHaveBeenCalledTimes(2)
+    expect(payloadOf(register, 1)).not.toHaveProperty("viewerToken")
+    expect(payloadOf(register, 1)).not.toHaveProperty("sessionToken")
+    expect(harness.record?.testDeviceId).toBe("abc12345")
+
+    // A later trigger in the same launch must not send the refused token back.
+    harness.registration.viewerIdentityChanged()
+    await harness.fire()
+    expect(register).toHaveBeenCalledTimes(2)
+    expect(harness.outcomes()).toContain("unchanged")
+  })
+
+  it("still retries without the handle when the re-check throws", async () => {
+    const register = refuseFirst()
+    const harness = createHarness({
+      register,
+      identity: REFUSED,
+      recheckIdentity: async () => {
+        throw new Error("store unavailable")
+      },
+    })
+
+    harness.registration.onPermissionRead({ granted: true })
+    await harness.fire()
+    await harness.fire()
+
+    expect(register).toHaveBeenCalledTimes(2)
+    expect(payloadOf(register, 1)).not.toHaveProperty("viewerToken")
+  })
+
+  it("stops at the attempt cap when every new handle is refused too", async () => {
+    const register = jest.fn(async () => {
+      throw new FailureStub("UNAUTHENTICATED", true, "viewer_handle_rejected")
+    }) as unknown as jest.Mock<Promise<Receipt>, [unknown]>
+    let minted = 0
+    let harness: ReturnType<typeof createHarness> | null = null
+    harness = createHarness({
+      register,
+      identity: REFUSED,
+      recheckIdentity: async () => {
+        minted += 1
+        harness?.setIdentity({
+          viewerToken: String(minted).padEnd(43, "x"),
+          sessionToken: "s".repeat(43),
+        })
+      },
+    })
+
+    harness.registration.onPermissionRead({ granted: true })
+    for (let round = 0; round < 6; round += 1) await harness.fire()
+
+    expect(register).toHaveBeenCalledTimes(PUSH_REGISTRATION_MAX_ATTEMPTS)
+    expect(harness.armed).toBe(0)
+  })
+
+  it("does not re-check the handle when Admin refuses the bearer", async () => {
+    // A missing or unknown bearer is not the handle's fault, and a new handle
+    // cannot repair it.
+    const register = jest.fn(async () => {
+      throw new FailureStub("UNAUTHENTICATED", true, "admission_denied")
+    }) as unknown as jest.Mock<Promise<Receipt>, [unknown]>
+    const recheck = jest.fn(async () => undefined)
+    const harness = createHarness({
+      register,
+      identity: REFUSED,
+      recheckIdentity: recheck,
+    })
+
+    harness.registration.onPermissionRead({ granted: true })
+    for (let round = 0; round < 4; round += 1) await harness.fire()
+
+    expect(recheck).not.toHaveBeenCalled()
+    expect(register).toHaveBeenCalledTimes(1)
   })
 })
 

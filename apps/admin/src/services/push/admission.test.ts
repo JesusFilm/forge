@@ -5,7 +5,7 @@ import { CONSUMER_BEARER_PRINCIPAL, type Principal } from "@/auth/principal"
 import { fleetKeyIdFromRawKey } from "@/auth/fleet-key-id"
 
 import { admitPushWrite } from "./admission"
-import { PushAdmissionError } from "./errors"
+import { PushAdmissionError, PushViewerHandleRejectedError } from "./errors"
 
 const VIEWER_TOKEN = "v".repeat(43)
 const SESSION_TOKEN = "s".repeat(43)
@@ -100,12 +100,17 @@ describe("push write admission", () => {
   })
 
   it("refuses an unknown viewer handle instead of degrading to anonymous", async () => {
-    await expect(
-      admitPushWrite(buildPrisma(null) as never, {
-        caller: fleetCaller(),
-        handle: { viewerToken: VIEWER_TOKEN, sessionToken: SESSION_TOKEN },
-      }),
-    ).rejects.toThrowError(PushAdmissionError)
+    const refusal = admitPushWrite(buildPrisma(null) as never, {
+      caller: fleetCaller(),
+      handle: { viewerToken: VIEWER_TOKEN, sessionToken: SESSION_TOKEN },
+    })
+    await expect(refusal).rejects.toThrowError(PushViewerHandleRejectedError)
+    // The app re-checks its handle only on this code, so it must not share the
+    // missing-bearer code.
+    await expect(refusal).rejects.toMatchObject({
+      code: "viewer_handle_rejected",
+    })
+    await expect(refusal).rejects.not.toBeInstanceOf(PushAdmissionError)
   })
 
   it("refuses an expired viewer handle", async () => {
@@ -118,23 +123,51 @@ describe("push write admission", () => {
         caller: fleetCaller(),
         handle: { viewerToken: VIEWER_TOKEN, sessionToken: SESSION_TOKEN },
       }),
-    ).rejects.toThrowError(PushAdmissionError)
+    ).rejects.toMatchObject({ code: "viewer_handle_rejected" })
+  })
+
+  it("rethrows a database fault instead of calling the handle rejected", async () => {
+    // A fault is not the handle's fault: calling it rejected would make the
+    // app re-check a sound handle on every outage.
+    const fault = new Error("connection terminated")
+    const prisma = {
+      recommendationViewer: {
+        findUnique: vi.fn(async () => {
+          throw fault
+        }),
+      },
+    }
+    await expect(
+      admitPushWrite(prisma as never, {
+        caller: fleetCaller(),
+        handle: { viewerToken: VIEWER_TOKEN, sessionToken: SESSION_TOKEN },
+      }),
+    ).rejects.toBe(fault)
+  })
+
+  it("refuses a malformed viewer token as a rejected handle", async () => {
+    // The app's re-check replaces a token Admin cannot parse, so it takes the
+    // code that starts the re-check.
+    await expect(
+      admitPushWrite(buildPrisma() as never, {
+        caller: fleetCaller(),
+        handle: { viewerToken: "short", sessionToken: SESSION_TOKEN },
+      }),
+    ).rejects.toMatchObject({ code: "viewer_handle_rejected" })
   })
 
   it.each([
     ["only the viewer half", { viewerToken: VIEWER_TOKEN }],
     ["only the session half", { sessionToken: SESSION_TOKEN }],
-    [
-      "a malformed viewer token",
-      { viewerToken: "short", sessionToken: SESSION_TOKEN },
-    ],
   ])("refuses %s", async (_name, handle) => {
+    // A handle with a missing half is an app fault that a re-check cannot
+    // repair, so it keeps the general code.
     await expect(
       admitPushWrite(buildPrisma() as never, {
         caller: fleetCaller(),
         handle,
       }),
-    ).rejects.toThrowError(PushAdmissionError)
+    ).rejects.toMatchObject({ code: "admission_denied" })
   })
 
   it("admits a fleet bearer that carries no viewer handle at all", async () => {

@@ -11,7 +11,10 @@ jest.mock("../../recommendations/transport", () => ({
 
 import { CombinedGraphQLErrors, ServerError } from "@apollo/client/errors"
 
-import { PUSH_REGISTRATION_DEADLINE_MS } from "../constants"
+import {
+  PUSH_REGISTRATION_DEADLINE_MS,
+  PUSH_VIEWER_HANDLE_REJECTED_CODE,
+} from "../constants"
 import { REGISTER_PUSH_DEVICE } from "../operations"
 import { PushClientError, registerPushDevice } from "../registrationClient"
 import { mutateWithDeadline } from "../../recommendations/transport"
@@ -152,7 +155,7 @@ describe("registerPushDevice", () => {
     expect(failure.code).toBe("RATE_LIMITED")
   })
 
-  it("maps a missing bearer or a refused handle to UNAUTHENTICATED", async () => {
+  it("maps a missing bearer to UNAUTHENTICATED", async () => {
     mutate.mockRejectedValue(
       graphqlError("UNAUTHENTICATED", { pushCode: "admission_denied" }),
     )
@@ -162,6 +165,19 @@ describe("registerPushDevice", () => {
     expect(failure.code).toBe("UNAUTHENTICATED")
     expect(failure.definitive).toBe(true)
     expect(failure.pushCode).toBe("admission_denied")
+  })
+
+  it("lifts admin's refused-handle code off the wire", async () => {
+    // The controller retries without the handle only on this exact pushCode,
+    // so the real GraphQL shape must carry it through.
+    mutate.mockRejectedValue(
+      graphqlError("UNAUTHENTICATED", { pushCode: "viewer_handle_rejected" }),
+    )
+
+    const failure = await failureFrom(registerPushDevice(PAYLOAD))
+
+    expect(failure.code).toBe("UNAUTHENTICATED")
+    expect(failure.pushCode).toBe(PUSH_VIEWER_HANDLE_REJECTED_CODE)
   })
 
   it("maps a transport fault to a retryable failure", async () => {

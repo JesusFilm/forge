@@ -66,6 +66,12 @@ export const PUSH_REGISTRATION_REFRESH_INTERVAL_MS = 7 * 24 * 60 * 60 * 1_000
 export const PUSH_REGISTRATION_MAX_ATTEMPTS = 3
 
 /**
+ * Admin's `pushCode` for a viewer handle it no longer accepts. The only push
+ * refusal the app answers by re-checking its handle and retrying without it.
+ */
+export const PUSH_VIEWER_HANDLE_REJECTED_CODE = "viewer_handle_rejected"
+
+/**
  * The mutation budget. Below apolloClient's 15 s fetch ceiling, so this layer
  * settles first and the caller sees a typed TIMEOUT rather than a generic
  * abort — the same rule the recommendation deadlines follow.

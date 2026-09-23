@@ -4,18 +4,41 @@
  *
  * KTD7: a rate limit is DEFERRED, never retried. So is every other failure —
  * nothing is remembered, because a second report of the same open would answer
- * DUPLICATE anyway and the campaign's open count is already one.
+ * DUPLICATE anyway and the campaign's open count is already one. The one
+ * exception is a viewer handle Admin refuses: that refusal records no open, so
+ * the handle is re-checked and the open is reported once more without it.
  */
 
 import { datadogLog } from "../datadog"
+import { PUSH_VIEWER_HANDLE_REJECTED_CODE } from "./constants"
 import { reportPushOpen } from "./openReportClient"
-import { readPushViewerHandle } from "./viewerHandle"
+import { readPushViewerHandle, recheckPushViewerHandle } from "./viewerHandle"
 import { readPushFailure } from "./failure"
+
+/** Reports the open, and once more without the handle if Admin refuses it.
+ *  The open still binds to its delivery's registration without one (KTD14). */
+async function reportWithHandle(nonce: string) {
+  const viewer = await readPushViewerHandle()
+  try {
+    return { outcome: await reportPushOpen({ nonce, viewer }), viewer }
+  } catch (error) {
+    if (
+      viewer == null ||
+      readPushFailure(error).pushCode !== PUSH_VIEWER_HANDLE_REJECTED_CODE
+    ) {
+      throw error
+    }
+    await recheckPushViewerHandle(viewer.viewerToken)
+    return {
+      outcome: await reportPushOpen({ nonce, viewer: null }),
+      viewer: null,
+    }
+  }
+}
 
 async function report(nonce: string): Promise<void> {
   try {
-    const viewer = await readPushViewerHandle()
-    const outcome = await reportPushOpen({ nonce, viewer })
+    const { outcome, viewer } = await reportWithHandle(nonce)
     // The nonce never reaches a log: it identifies one delivery to one phone.
     // Named `telemetry`-family sink with an inline literal, so the repo-wide
     // reserved-attribute sweep can see it.

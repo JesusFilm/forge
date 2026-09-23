@@ -3060,7 +3060,8 @@ is `docs/roadmap/platform/feat-524-localized-push-campaigns.md`.
   Two residuals follow. Two anonymous devices that share a restored install id
   flip each other at each launch, and each recovers at its own next launch. An
   anonymous caller who knows another device's install id can retire that
-  device's row until that device registers again.
+  device's row until that device registers again. A phone whose viewer handle
+  admin refuses retries without one, so it also takes this anonymous path.
 - Services: `src/services/push/`. Public mutations `registerPushDevice` and
   `reportPushOpen` (`src/graphql/mutations/push-device.ts`) sit behind the push
   admission predicate (`admission.ts`) and a per-operation ceiling
@@ -3069,6 +3070,12 @@ is `docs/roadmap/platform/feat-524-localized-push-campaigns.md`.
   Attribution runs in both directions (`attribution.service.ts`); the report is
   `report.service.ts`. The dashboard is `src/app/dashboard/push-campaigns/`
   behind the `write:push-campaigns` key (VIEWER tier).
+- Admission refuses a viewer handle that does not verify with its own push
+  code, `viewer_handle_rejected`, under GraphQL `UNAUTHENTICATED`. A missing or
+  unknown bearer and a handle with a missing half keep `admission_denied`. The
+  app answers only `viewer_handle_rejected` by re-checking its handle and
+  retrying without it, so keep the two codes apart. A database fault during
+  the handle check is rethrown as an internal error, not as a refused handle.
 - Never log or persist a push token, a viewer digest, or the provider's message
   string (it embeds the token). Log lines use the plain-string form
   `[push] event=name key=value`.

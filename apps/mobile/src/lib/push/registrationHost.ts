@@ -22,7 +22,7 @@ import { readPushDeviceEnvironment } from "./deviceEnvironment"
 import { createPushRegistration, type PushRegistration } from "./registration"
 import { registerPushDevice } from "./registrationClient"
 import { getPushRegistrationStore } from "./store"
-import { readPushViewerHandle } from "./viewerHandle"
+import { readPushViewerHandle, recheckPushViewerHandle } from "./viewerHandle"
 
 let registration: PushRegistration | null = null
 
@@ -39,6 +39,7 @@ export function getPushRegistration(): PushRegistration {
       readInstallId: () => getPushRegistrationStore().ensureInstallId(),
       readAppLanguageSlug: readPushAppLanguageSlug,
       readIdentity: readPushViewerHandle,
+      recheckIdentity: recheckPushViewerHandle,
       readEnvironment: readPushDeviceEnvironment,
       register: registerPushDevice,
       schedule: (run, ms) => {

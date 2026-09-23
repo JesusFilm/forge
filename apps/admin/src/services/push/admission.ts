@@ -5,7 +5,8 @@
  * fleet bearer that carries no viewer handle, and a phone must be able to
  * register before it has any viewer identity. The handle stays optional here,
  * but a handle that is present and does not verify is a refusal, never a
- * silent fall back to anonymous.
+ * silent fall back to anonymous. That refusal carries its own code
+ * (`viewer_handle_rejected`), so the app can re-check its handle and retry.
  *
  * SECURITY: this module never logs the bearer, the handle, or a digest.
  */
@@ -13,10 +14,11 @@ import type { PrismaClient } from "@prisma/client"
 
 import { fleetKeyIdFromRawKey } from "@/auth/fleet-key-id"
 import type { Principal } from "@/auth/principal"
+import { RecommendationAuthenticationError } from "@/services/recommendations/errors"
 import { RecommendationViewerService } from "@/services/recommendations/viewer-identity.service"
 
 import { PushViewerHandleSchema } from "./contracts"
-import { PushAdmissionError } from "./errors"
+import { PushAdmissionError, PushViewerHandleRejectedError } from "./errors"
 
 export type PushViewerHandleArgs = Readonly<{
   viewerToken?: string | null
@@ -77,7 +79,12 @@ export async function admitPushWrite(
       viewerDigest: identity.viewer.tokenDigest,
       sessionDigest: identity.sessionDigest,
     }
-  } catch {
-    throw new PushAdmissionError("That viewer handle did not verify")
+  } catch (error) {
+    // Only a handle Admin refuses is the app's to repair. A database fault
+    // stays an internal error, so the app does not re-check a sound handle.
+    if (error instanceof RecommendationAuthenticationError) {
+      throw new PushViewerHandleRejectedError()
+    }
+    throw error
   }
 }

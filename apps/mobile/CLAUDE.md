@@ -975,6 +975,16 @@ design record is
   launch. A throw from BEFORE the request counts toward that cap too: a
   rejecting install-id read reads as transient, so an uncounted attempt would
   re-arm the 2-second retry for the whole launch.
+- **A viewer handle that admin refuses does not lock the phone out.** Admin
+  answers `viewer_handle_rejected` for a handle it no longer accepts, for
+  example one from another admin database. On that code only, the controller
+  asks the viewer store to re-check the handle (`recheckPushViewerHandle` in
+  `viewerHandle.ts`) and retries inside the same attempt cap. The retry never
+  sends the refused token again in that launch, so the phone registers with a
+  replacement handle or with none. When the store replaces the handle later,
+  the `viewer_identity` trigger registers again. The tap report re-checks and
+  reports once more without the handle, because a refused handle records no
+  open.
 - **The app stores the test ID and never the push token.**
   `src/lib/push/store.ts` holds the test ID, the install id, the payload hash,
   the last success and the remembered revocation. The token is re-read from the
@@ -1056,7 +1066,9 @@ design record is
 - **The open report** (`src/lib/push/openReportHost.ts` →
   `openReportClient.ts`, operation `ReportPushOpen`) starts before the
   navigation and returns at once. A failure or a rate limit is dropped, never
-  retried: a second report of the same open would answer `DUPLICATE` anyway. A
+  retried: a second report of the same open would answer `DUPLICATE` anyway.
+  The one exception is `viewer_handle_rejected`: that refusal records no open,
+  so the host re-checks the handle and reports once more without it. A
   tap on a destination kind this build cannot read still reports its open, so
   admin's count stays right when it names a newer kind. The viewer handle comes
   from one reader, `src/lib/push/viewerHandle.ts`, shared with registration.
@@ -1072,7 +1084,8 @@ design record is
 - **Only a real phone can prove** the foreground banner (jest cannot supply a
   real trigger), the identifier dismiss on Android, cold and warm taps to each
   kind with one unpublished slug each, the message clearing the tab bar on a
-  0-inset device, and one `ReportPushOpen` per tap in the fake-admin proxy log.
+  0-inset device, and one `ReportPushOpen` per tap in the fake-admin proxy log
+  (two when admin refuses the viewer handle).
 
 ## Cast SDK sheet theming
 
