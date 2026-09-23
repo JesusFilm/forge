@@ -14,14 +14,15 @@ export function installLoopbackFetchGuard() {
   }
 }
 
-export function serve(port, handlers, auditFile) {
+export function serve(port, handlers, auditFile, resolveHandler = () => null) {
   return createServer(async (req, res) => {
     try {
       const chunks = []
       for await (const chunk of req) chunks.push(chunk)
       const body = Buffer.concat(chunks)
       const path = new URL(req.url, `http://127.0.0.1:${port}`).pathname
-      const handler = handlers[`${req.method} ${path}`]
+      const handler =
+        handlers[`${req.method} ${path}`] ?? resolveHandler(req.method, path)
       const request = new Request(`http://127.0.0.1:${port}${req.url}`, {
         method: req.method,
         headers: req.headers,
@@ -30,7 +31,7 @@ export function serve(port, handlers, auditFile) {
       const response = handler
         ? await handler(request)
         : new Response("Not found", { status: 404 })
-      const output = await response.text()
+      const output = Buffer.from(await response.arrayBuffer())
       if (auditFile && path === "/mcp")
         await appendFile(
           auditFile,
@@ -39,7 +40,7 @@ export function serve(port, handlers, auditFile) {
             method: req.method,
             request: body.length ? JSON.parse(body.toString()) : null,
             status: response.status,
-            response: output ? JSON.parse(output) : null,
+            response: output.length ? JSON.parse(output.toString()) : null,
           }) + "\n",
           { mode: 0o600 },
         )

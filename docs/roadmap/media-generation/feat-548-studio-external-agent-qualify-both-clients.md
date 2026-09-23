@@ -3,7 +3,7 @@ id: "feat-548"
 title: "Qualify Claude and Codex through the full review loop"
 owner: "tataihono"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 readiness: "ready-for-agent"
 start_date: "2026-09-23"
 duration: 3

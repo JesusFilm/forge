@@ -12,6 +12,15 @@ if (
     "Usage: run-codex.mjs <private-output-directory> <prompt-file> <run-label> [session-id]",
   )
 const token = (await readFile(resolve(output, "token"), "utf8")).trim()
+const config = JSON.parse(
+  await readFile(resolve(output, "environment.json"), "utf8"),
+)
+const full =
+  config.DATABASE_URL ===
+    "postgresql://tataihono@127.0.0.1:55460/forge_studio_548_qualification" &&
+  config.STUDIO_MCP_AUDIENCE === "http://127.0.0.1:55483/mcp"
+if (!full && config.STUDIO_MCP_AUDIENCE !== "http://127.0.0.1:55471/mcp")
+  throw new Error("Unknown local qualification endpoint")
 const prompt = await readFile(promptFile, "utf8")
 const workspace = resolve(output, "client-workspace")
 await mkdir(workspace, { recursive: true })
@@ -26,13 +35,17 @@ const args = [
   "-C",
   workspace,
   "-c",
-  'mcp_servers.shorts.url="http://127.0.0.1:55471/mcp"',
+  `mcp_servers.shorts.url=${JSON.stringify(config.STUDIO_MCP_AUDIENCE)}`,
   "-c",
   'mcp_servers.shorts.bearer_token_env_var="SHORTS_QUALIFICATION_TOKEN"',
   "-c",
   "mcp_servers.shorts.required=true",
-  "-c",
-  'mcp_servers.shorts.enabled_tools=["shorts.projects","shorts.resolveProject","shorts.read","shorts.create","shorts.apply","shorts.history"]',
+  ...(full
+    ? []
+    : [
+        "-c",
+        'mcp_servers.shorts.enabled_tools=["shorts.projects","shorts.resolveProject","shorts.read","shorts.create","shorts.apply","shorts.history"]',
+      ]),
   // The operator explicitly authorized these local-only editing proof operations.
   "-c",
   'mcp_servers.shorts.default_tools_approval_mode="approve"',
