@@ -66,6 +66,7 @@ describe.skipIf(
   let server: Server
   let url: string
   let resolverCalls = 0
+  let admissionCompletions = 0
   let dropAcknowledgement = false
   let episodeId: string
   let capability: string
@@ -244,7 +245,18 @@ describe.skipIf(
       },
       maskedErrors: { isDev: false },
       context: ({ request, res }) => ({ request, res, user: caller }),
-      plugins: [rateLimitPlugin],
+      plugins: [
+        {
+          ...rateLimitPlugin,
+          async onExecute(payload) {
+            try {
+              return await rateLimitPlugin.onExecute?.(payload)
+            } finally {
+              admissionCompletions++
+            }
+          },
+        } satisfies typeof rateLimitPlugin,
+      ],
       schema: createSchema({
         typeDefs: `type Query { fixture: Boolean! }
             type Receipt { eventId: String!, status: String!, sequence: Int! }
@@ -477,4 +489,39 @@ describe.skipIf(
     expect(await factCount("lost-ack")).toBe(1)
     observations.push({ scenario: "lost-ack", facts: 1, receipt: "replay" })
   })
+
+  it("does not execute after a caller disconnects before admission recovers within its deadline", async () => {
+    await docker("pause", redisName)
+    const get = vi.spyOn(redis, "get")
+    const controller = new AbortController()
+    const initialCalls = resolverCalls
+    const initialCompletions = admissionCompletions
+    const began = performance.now()
+    try {
+      const rejected = expect(
+        request("early-disconnect", controller.signal),
+      ).rejects.toThrow()
+      await until(() => get.mock.calls.length > 0)
+      controller.abort()
+      await rejected
+      expect(resolverCalls).toBe(initialCalls)
+      await sleep(50)
+    } finally {
+      controller.abort()
+      get.mockRestore()
+      await docker("unpause", redisName)
+    }
+    await redis.ping()
+    await until(() => admissionCompletions > initialCompletions)
+    const recoveryElapsedMs = Math.round(performance.now() - began)
+    // Otherwise the store's 500 ms timeout could mask a missing abort fence.
+    expect(recoveryElapsedMs).toBeLessThan(500)
+    expect(resolverCalls).toBe(initialCalls)
+    expect(await factCount("early-disconnect")).toBe(0)
+    observations.push({
+      scenario: "early-disconnect",
+      recoveryElapsedMs,
+      facts: 0,
+    })
+  }, 15_000)
 })
