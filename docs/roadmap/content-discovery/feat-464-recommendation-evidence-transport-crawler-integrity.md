@@ -434,3 +434,78 @@ policy blocker; Railway/database diagnosis remains available.
 ## September 22 internal continuation
 
 The internal continuation reconciles every delivery, selection, playback and initial-evidence HTTP group in the fixed 02:34–04:34 UTC window using primary Railway logs. Playback is 0/7,185 5xx with no exclusions. Durable delivery, render/impression and selection counts reconcile; all 24 reconciliation batches complete without recorded errors, and the fresh authorized current-pointer audit is clean. Credit these production checks. No binding failure occurs in this window, so the earlier bounded browser proof is unchanged. Installed monitoring remains blocked by the Datadog organization write policy; this ticket is still in progress. See the [internal verification](../../operations/watch-budget-followup-2026-09-22.md#internal-continuation-workload-volume-and-reconciled-outcomes).
+
+## September 23 isolated diagnosis
+
+The [intermittent-evidence investigation](../../operations/watch-intermittent-evidence-investigation-2026-09-23.md)
+reconciles the 00:00-02:00 UTC primary window at zero playback 5xx / 6,981
+requests, with no exclusions. Railway fills fifteen missing indexed Web outcomes.
+A read-only aggregate confirms eighteen delivery timestamp rejections; local
+signed-token tests reproduce device-clock sensitivity but do not attribute those
+production events to clock skew. A separate local characterization shows startup
+health can return 200 while the production Redis rate-limit store rejects reads
+and writes. This is a readiness blind spot, not proof of a new production outage
+or a fix for the older Redis-update burst. No application behavior or production
+configuration changed. Keep this ticket in progress; proposed implementation,
+browser proof, fresh canonical integrity acceptance, and installed alerts remain
+separate decisions and gates.
+
+## September 23 controlled recovery experiment
+
+The owner-authorized [local experiment](../../operations/watch-intermittent-evidence-investigation-2026-09-23.md#controlled-recovery-experiment)
+reproduces the retained Redis failure through real Yoga HTTP, the production
+limiter/ioredis client, signed episode capabilities and real playback storage.
+Three restart rounds in each of two successful runs fail before resolver writes
+and recover on the existing client without restarting Admin. Exact replay and
+post-commit socket-loss replay preserve one fact. A silent Redis stall can instead
+outlast a caller timeout and commit later; do not equate timeout with non-commit.
+
+The real browser recorder's jsdom test identifies the recovery gap: fast 503s
+exhaust the three attempts at 0/100/300 ms and drop the facts permanently, even
+when the dependency recovers at one second. This is a confirmed local causal
+chain consistent with the historical Redis interruption, not evidence that every
+historical failed request lost facts. Minimal GraphQL/auth fixtures and independent
+browser tests are not a full live-browser production reproduction.
+
+This stage passes 169 focused cases including seven disposable-service cases;
+no application behavior, production setting, deployment or ticket acceptance gate
+changed. The next supported scope is bounded transient-outage resilience and
+pre-mutation admission cancellation, with readiness corrected separately. Keep
+the ticket in progress and the remaining production/monitoring gates intact.
+
+## September 23 bounded fact-recovery implementation
+
+The owner subsequently authorized investigation plus implementation/testing of
+the supported fix. `RecommendationPlaybackRecorder.tsx` retains three serialized
+attempts but spaces retries by 1-1.25 seconds and 8-10 seconds, expires attempted
+facts after 30 monotonic seconds, and prevents new player events from bypassing
+backoff. Immutable replay, count/body limits, terminal rejection and best-effort
+page-exit keepalive remain. Capabilities stay in memory; no admission, privacy,
+profile qualification, initial context/claim or production settings change.
+
+The [verification report](../../operations/watch-intermittent-evidence-investigation-2026-09-23.md#bounded-fix-and-verification)
+records 179 Web, 59 Admin and seven real-dependency passing cases. A local Chrome
+comparison uses real HTTP and recorder code with a synthetic API/player: the old
+recorder drops initial facts at 309 ms, while the new one accepts identical facts
+at 9,709 ms after an eight-second outage. Five paired healthy runs retain one
+claim/one fact request and show no measured startup regression. This is not full
+Watch/Admin or production verification. Both app typechecks pass.
+
+The local implementation is complete, not shipped. Shared admission cancellation,
+dependency-aware readiness, issuance recovery, production proof and installed
+monitoring are still open; do not mark this broad ticket complete. The
+[durable learning](../../solutions/logic-errors/playback-retries-exhaust-before-dependency-recovery-20260923.md)
+separates the verified recovery fix from those remaining gates.
+
+## September 23 release continuation
+
+The owner authorized completing bounded recovery and normal PR-to-main merge.
+The [release plan](../../plans/2026-09-23-003-fix-playback-recovery-release-plan.md)
+extends recovery to exact-nonce claims, bounds mandatory Redis admission before
+resolver execution, and makes health check Redis with bounded outstanding work.
+The [verification report](../../operations/watch-intermittent-evidence-investigation-2026-09-23.md#release-continuation)
+records 182 Web tests, 95 Admin tests and seven real Redis/Postgres HTTP controls.
+Initial context issuance is not blindly retried because its binding creation is
+not idempotent. This remains in progress pending the broader production acceptance,
+timestamp attribution, complete outcome reconciliation and installed-monitoring
+gates; the narrow release does not close the whole ticket.

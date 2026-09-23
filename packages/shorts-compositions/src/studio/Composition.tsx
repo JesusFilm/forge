@@ -1,9 +1,14 @@
-import React, { useEffect, useMemo, useRef } from "react"
+import React, { useEffect, useLayoutEffect, useMemo, useRef } from "react"
 import * as Remotion from "remotion"
 import Hls from "hls.js"
 import { transform } from "sucrase"
 import type { StudioPreview } from "@forge/studio-contracts/preview"
 import type { StudioTimelineItem } from "@forge/studio-contracts"
+import {
+  studioCuts,
+  transitionPresentation,
+} from "@forge/studio-contracts/transitions"
+import { StudioText } from "./Text"
 class StudioRuntimeError extends Error {}
 
 const send = (data: unknown) => window.parent.postMessage(data, "*")
@@ -40,15 +45,17 @@ function HlsVideo({
   url,
   start,
   volume,
+  holdIfUnready,
   onError,
 }: {
   url: string
   start: number
   volume: number
+  holdIfUnready: boolean
   onError?: (message: string) => void
 }) {
   const ref = useRef<HTMLVideoElement>(null)
-  useEffect(() => {
+  useLayoutEffect(() => {
     const video = ref.current
     if (!video) return
     const reportError = () => {
@@ -74,12 +81,36 @@ function HlsVideo({
       video.removeEventListener("error", reportError)
     }
   }, [url, onError])
+  const buffer = Remotion.useBufferState()
+  useEffect(() => {
+    const video = ref.current
+    if (!video || !holdIfUnready) return
+    let pending: ReturnType<typeof buffer.delayPlayback> | undefined
+    const release = () => {
+      pending?.unblock()
+      pending = undefined
+    }
+    const check = () => {
+      if (video.error || (!video.seeking && video.readyState >= 3)) release()
+      else pending ??= buffer.delayPlayback()
+    }
+    // HLS owns the MediaSource. Html5Video's built-in buffering calls load(),
+    // which detaches that source; gate playback without resetting the element.
+    const events = ["waiting", "seeking", "seeked", "canplay", "error"]
+    events.forEach((event) => video.addEventListener(event, check))
+    check()
+    return () => {
+      events.forEach((event) => video.removeEventListener(event, check))
+      release()
+    }
+  }, [buffer, holdIfUnready, url])
   return (
     <Remotion.Html5Video
       ref={ref}
       src={url}
       trimBefore={start}
       volume={volume}
+      pauseWhenBuffering={false}
       style={{ width: "100%", height: "100%", objectFit: "cover" }}
     />
   )
@@ -92,7 +123,13 @@ function Layer({
   mediaBaseUrl,
   mediaUrls,
   onError,
+  holdIfUnready,
+  presentation,
+  globalFrame,
 }: {
+  presentation: ReturnType<typeof transitionPresentation>
+  globalFrame: number
+  holdIfUnready: boolean
   item: StudioTimelineItem
   input: StudioPreview
   mode: "preview" | "render"
@@ -120,7 +157,11 @@ function Layer({
     crop = t.crop
   const style: React.CSSProperties = {
     transform: `translate(${t.x}px,${t.y}px) rotate(${t.rotation}deg) scale(${t.scaleX},${t.scaleY})`,
-    opacity: t.opacity,
+    opacity: t.opacity * presentation.opacity,
+    filter:
+      presentation.brightness < 1
+        ? `brightness(${presentation.brightness})`
+        : undefined,
     clipPath: crop
       ? `inset(${crop.top * 100}% ${crop.right * 100}% ${crop.bottom * 100}% ${crop.left * 100}%)`
       : undefined,
@@ -130,28 +171,10 @@ function Layer({
   return (
     <Remotion.AbsoluteFill style={style}>
       {item.kind === "text" ? (
-        <div
-          style={{
-            width: "100%",
-            height: "100%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent:
-              item.properties.align === "left"
-                ? "flex-start"
-                : item.properties.align === "right"
-                  ? "flex-end"
-                  : "center",
-            whiteSpace: "pre-wrap",
-            color: item.properties.color ?? "white",
-            fontSize: item.properties.fontSize ?? 72,
-            fontFamily: item.properties.fontFamily ?? "sans-serif",
-            fontWeight: item.properties.fontWeight ?? 500,
-            textAlign: item.properties.align ?? "center",
-          }}
-        >
-          {item.text}
-        </div>
+        <StudioText
+          key={item.properties.fontFamily ?? "sans-serif"}
+          item={item}
+        />
       ) : item.kind === "component" && Component ? (
         <Component {...item.properties} />
       ) : item.kind === "video" && media ? (
@@ -159,16 +182,21 @@ function Layer({
           <Remotion.OffthreadVideo
             src={url}
             trimBefore={
-              ((item.source.startMs - media.sourceStartMs) * fps) / 1000
+              ((item.source.startMs - media.sourceStartMs) * fps) / 1000 -
+              presentation.preRoll
             }
-            volume={item.volume}
+            volume={globalFrame < item.startFrame ? 0 : item.volume}
             style={{ width: "100%", height: "100%", objectFit: "cover" }}
           />
         ) : (
           <HlsVideo
             url={url}
-            start={((item.source.startMs - media.sourceStartMs) * fps) / 1000}
-            volume={item.volume}
+            holdIfUnready={holdIfUnready}
+            start={
+              ((item.source.startMs - media.sourceStartMs) * fps) / 1000 -
+              presentation.preRoll
+            }
+            volume={globalFrame < item.startFrame ? 0 : item.volume}
             onError={onError}
           />
         )
@@ -176,7 +204,7 @@ function Layer({
         <Remotion.Html5Audio
           src={url}
           trimBefore={(item.sourceStartMs * fps) / 1000}
-          volume={item.volume}
+          volume={globalFrame < item.startFrame ? 0 : item.volume}
         />
       ) : item.kind === "image" && media ? (
         <Remotion.Img
@@ -200,6 +228,8 @@ export function StudioComposition({
   onError?: (message: string) => void
   mediaUrls?: Record<string, string>
 }) {
+  const frame = Remotion.useCurrentFrame()
+  const cuts = useMemo(() => studioCuts(input.document), [input.document])
   const activeVersions = JSON.stringify(
     [
       ...new Set(
@@ -225,23 +255,36 @@ export function StudioComposition({
       {input.document.tracks.map((t) =>
         input.document.items
           .filter((i) => i.trackId === t.id)
-          .map((i) => (
-            <Remotion.Sequence
-              key={i.id}
-              from={i.startFrame}
-              durationInFrames={i.durationInFrames}
-            >
-              <Layer
-                item={i}
-                input={input}
-                compiled={compiled}
-                mode={mode}
-                mediaBaseUrl={mediaBaseUrl}
-                mediaUrls={mediaUrls}
-                onError={onError}
-              />
-            </Remotion.Sequence>
-          )),
+          .map((i) => {
+            const presentation = transitionPresentation(cuts, i.id, frame)
+            return (
+              <Remotion.Sequence
+                key={i.id}
+                from={i.startFrame - presentation.preRoll}
+                durationInFrames={i.durationInFrames + presentation.preRoll}
+                premountFor={
+                  mode === "preview" && i.kind === "video"
+                    ? input.document.fps
+                    : 0
+                }
+              >
+                <Layer
+                  item={i}
+                  holdIfUnready={
+                    frame >= i.startFrame - presentation.preRoll - 1
+                  }
+                  presentation={presentation}
+                  globalFrame={frame}
+                  input={input}
+                  compiled={compiled}
+                  mode={mode}
+                  mediaBaseUrl={mediaBaseUrl}
+                  mediaUrls={mediaUrls}
+                  onError={onError}
+                />
+              </Remotion.Sequence>
+            )
+          }),
       )}
     </Remotion.AbsoluteFill>
   )

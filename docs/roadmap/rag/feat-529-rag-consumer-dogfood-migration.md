@@ -30,7 +30,7 @@ internal management path; planning completion does not deliver either.
 
 Execute plan sections D/E after access and reporting exist. Register RAGBot first via the authenticated creation backend with an allowlisted initial owner
 and use the actual forge-rag-retrieve ops task over HTTP.
-Record task path/revision and approved source/environment before execution.
+Record task path/revision and approved source scope and receiver before execution.
 Prove +3 then +2 request/success counts, last activity/window, second-consumer
 isolation, revoked denial and no success increment, and honest coverage failures.
 Support existing callers for seven days through registration. Disable legacy

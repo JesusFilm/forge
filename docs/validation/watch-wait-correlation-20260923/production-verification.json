@@ -1,0 +1,1476 @@
+{
+  "schemaVersion": 1,
+  "scope": "PR #2393 diagnostic release verification; not an incident fix or recovery claim",
+  "revision": "4583c4ece1f1bba93660bd52d4f80cc618414fc8",
+  "deployments": {
+    "admin": "0310fb49-69fd-4512-a097-b320283b7880",
+    "worker": "28732351-f6ce-4b7d-827b-1542fbf1157d",
+    "web": "7e475679-fd30-4973-b92c-797a183147f3"
+  },
+  "webVerification": {
+    "configuredHealthProbe": {
+      "at": "2026-09-23T01:41:33.567Z",
+      "revision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+      "deployment": "7e475679-fd30-4973-b92c-797a183147f3",
+      "healthPath": "/watch",
+      "health": 200
+    },
+    "earlierWrongPathProbe": {
+      "at": "2026-09-23T01:40:22.753Z",
+      "revision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+      "deployment": "7e475679-fd30-4973-b92c-797a183147f3",
+      "health": 404,
+      "path": "/api/health",
+      "interpretation": "Admin probe path does not exist on Web; HTTP 404 is outside the recommendation POST population."
+    }
+  },
+  "httpMetrics": {
+    "from": "2026-09-23T01:08:00Z",
+    "to": "2026-09-23T01:43:00Z",
+    "source": "Datadog trace.web.request.hits scalar sum",
+    "rows": [
+      {
+        "http.status_code": "401",
+        "resource_name": "post_/api/recommendations/playback",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 1
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 155
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations/evidence",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 147
+      },
+      {
+        "http.status_code": "409",
+        "resource_name": "post_/api/recommendations/playback",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 2
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/content-actions",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 1
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/playback",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 1858
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/select",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 4
+      },
+      {
+        "http.status_code": "400",
+        "resource_name": "post_/api/recommendations/evidence",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 6
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations/playback",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 170
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations/profile",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 416
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 224
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/evidence",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 793
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/profile",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "count": 364
+      }
+    ]
+  },
+  "primaryLogWindows": [
+    {
+      "service": "admin",
+      "from": "2026-09-23T01:08:00Z",
+      "to": "2026-09-23T01:13:00Z",
+      "returned": 243,
+      "unparsed": 0
+    },
+    {
+      "service": "admin",
+      "from": "2026-09-23T01:13:00Z",
+      "to": "2026-09-23T01:18:00Z",
+      "returned": 360,
+      "unparsed": 0
+    },
+    {
+      "service": "admin",
+      "from": "2026-09-23T01:18:00Z",
+      "to": "2026-09-23T01:23:00Z",
+      "returned": 557,
+      "unparsed": 0
+    },
+    {
+      "service": "admin",
+      "from": "2026-09-23T01:23:00Z",
+      "to": "2026-09-23T01:28:00Z",
+      "returned": 405,
+      "unparsed": 0
+    },
+    {
+      "service": "admin",
+      "from": "2026-09-23T01:28:00Z",
+      "to": "2026-09-23T01:33:00Z",
+      "returned": 190,
+      "unparsed": 0
+    },
+    {
+      "service": "admin",
+      "from": "2026-09-23T01:33:00Z",
+      "to": "2026-09-23T01:38:00Z",
+      "returned": 190,
+      "unparsed": 0
+    },
+    {
+      "service": "admin",
+      "from": "2026-09-23T01:38:00Z",
+      "to": "2026-09-23T01:43:00Z",
+      "returned": 163,
+      "unparsed": 0
+    },
+    {
+      "service": "web",
+      "from": "2026-09-23T01:08:00Z",
+      "to": "2026-09-23T01:13:00Z",
+      "returned": 513,
+      "unparsed": 0
+    },
+    {
+      "service": "web",
+      "from": "2026-09-23T01:13:00Z",
+      "to": "2026-09-23T01:18:00Z",
+      "returned": 554,
+      "unparsed": 0
+    },
+    {
+      "service": "web",
+      "from": "2026-09-23T01:18:00Z",
+      "to": "2026-09-23T01:23:00Z",
+      "returned": 860,
+      "unparsed": 0
+    },
+    {
+      "service": "web",
+      "from": "2026-09-23T01:23:00Z",
+      "to": "2026-09-23T01:28:00Z",
+      "returned": 553,
+      "unparsed": 0
+    },
+    {
+      "service": "web",
+      "from": "2026-09-23T01:28:00Z",
+      "to": "2026-09-23T01:33:00Z",
+      "returned": 300,
+      "unparsed": 0
+    },
+    {
+      "service": "web",
+      "from": "2026-09-23T01:33:00Z",
+      "to": "2026-09-23T01:38:00Z",
+      "returned": 294,
+      "unparsed": 0
+    },
+    {
+      "service": "web",
+      "from": "2026-09-23T01:38:00Z",
+      "to": "2026-09-23T01:43:00Z",
+      "returned": 287,
+      "unparsed": 0
+    }
+  ],
+  "deliveryOutcomes": [
+    {
+      "event": "recommendation.delivery",
+      "endpoint": "seeded",
+      "httpStatus": "200",
+      "result": "served",
+      "reason": "none",
+      "itemCount": "6",
+      "upstreamResult": "served",
+      "count": 139
+    },
+    {
+      "event": "recommendation.delivery",
+      "endpoint": "seeded",
+      "httpStatus": "403",
+      "result": "rejected",
+      "reason": "invalid_fetch_metadata",
+      "itemCount": "0",
+      "upstreamResult": "not_observed",
+      "count": 100
+    },
+    {
+      "event": "recommendation.delivery",
+      "endpoint": "seeded",
+      "httpStatus": "403",
+      "result": "rejected",
+      "reason": "invalid_origin",
+      "itemCount": "0",
+      "upstreamResult": "not_observed",
+      "count": 55
+    },
+    {
+      "event": "recommendation.delivery",
+      "endpoint": "seeded",
+      "httpStatus": "200",
+      "result": "served",
+      "reason": "none",
+      "itemCount": "4",
+      "upstreamResult": "served",
+      "count": 17
+    },
+    {
+      "event": "recommendation.delivery",
+      "endpoint": "seeded",
+      "httpStatus": "200",
+      "result": "fallback",
+      "reason": "no_candidates",
+      "itemCount": "6",
+      "upstreamResult": "empty",
+      "count": 26
+    },
+    {
+      "event": "recommendation.delivery",
+      "endpoint": "seeded",
+      "httpStatus": "200",
+      "result": "fallback",
+      "reason": "seed_embedding_unavailable",
+      "itemCount": "6",
+      "upstreamResult": "fallback",
+      "count": 13
+    },
+    {
+      "event": "recommendation.delivery",
+      "endpoint": "seeded",
+      "httpStatus": "200",
+      "result": "served",
+      "reason": "none",
+      "itemCount": "5",
+      "upstreamResult": "served",
+      "count": 6
+    },
+    {
+      "event": "recommendation.delivery",
+      "endpoint": "seeded",
+      "httpStatus": "200",
+      "result": "served",
+      "reason": "none",
+      "itemCount": "3",
+      "upstreamResult": "served",
+      "count": 4
+    },
+    {
+      "event": "recommendation.delivery",
+      "endpoint": "seeded",
+      "httpStatus": "200",
+      "result": "served",
+      "reason": "none",
+      "itemCount": "2",
+      "upstreamResult": "served",
+      "count": 12
+    },
+    {
+      "event": "recommendation.delivery",
+      "endpoint": "seeded",
+      "httpStatus": "200",
+      "result": "served",
+      "reason": "none",
+      "itemCount": "1",
+      "upstreamResult": "served",
+      "count": 4
+    },
+    {
+      "event": "recommendation.delivery",
+      "endpoint": "seeded",
+      "httpStatus": "200",
+      "result": "fallback",
+      "reason": "cooldown",
+      "itemCount": "6",
+      "upstreamResult": "unavailable",
+      "count": 3
+    }
+  ],
+  "reconciliation": {
+    "seededHTTPStatusCountsMatch": true,
+    "allSeeded200HaveAdminCompletion": true
+  },
+  "admin": {
+    "outcomes": {
+      "seeded served timeout=False": 182,
+      "seeded fallback timeout=False": 13,
+      "seeded empty timeout=False": 26,
+      "selection resolved timeout=False": 4,
+      "seeded unavailable timeout=False": 3
+    },
+    "serviceMs": {
+      "seeded": {
+        "n": 224,
+        "p50": 197.719,
+        "p95": 398.418,
+        "p99": 454.348,
+        "max": 514.245
+      },
+      "for_you": {
+        "n": 0,
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "max": null
+      },
+      "selection": {
+        "n": 4,
+        "p50": 52.875,
+        "p95": 70.671,
+        "p99": 70.671,
+        "max": 70.671
+      }
+    },
+    "completedEvidenceInsertMs": {
+      "n": 195,
+      "p50": 24.058,
+      "p95": 43.63,
+      "p99": 82.647,
+      "max": 96.723
+    },
+    "slowPoolAcquisitionEvents": 105,
+    "slowPoolAcquisitionMs": {
+      "n": 105,
+      "p50": 57.886,
+      "p95": 110.966,
+      "p99": 112.808,
+      "max": 112.923
+    },
+    "slowPoolMaximumPendingAtStart": 60,
+    "slowPoolRequestCorrelatedEvents": 0,
+    "lateOperationEvents": 0
+  },
+  "captures": [
+    {
+      "host": "admin",
+      "summary": {
+        "event": "recommendation.database_wait_summary",
+        "startedAt": "2026-09-23T01:07:49.363Z",
+        "endedAt": "2026-09-23T01:13:25.234Z",
+        "polls": 1322,
+        "samples": 18,
+        "queryWallMs": 4957.308101000003,
+        "maxQueryWallMs": 288.8743039999972,
+        "durationMs": 900000,
+        "intervalMs": 250,
+        "stopped": "overhead"
+      },
+      "observations": 17,
+      "matchedCompletedRuntimeObservations": 17,
+      "matchedTimeoutObservations": [],
+      "stateWaitCounts": {
+        "idle in transaction / Client / ClientRead": 13,
+        "active / Client / ClientRead": 1,
+        "active / IO / DataFileRead": 2,
+        "active / IO / WalSync": 1,
+        "active / None / None": 1
+      },
+      "samples": [
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:07:55.013Z",
+          "backendPid": 1460984,
+          "observationId": "94f57a57-0d6b-45f1-991f-a3f5940a1102",
+          "transactionOrdinal": 5,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:07:55.012Z",
+          "stateChangedAt": "2026-09-23T01:07:55.012Z",
+          "queryAgeMs": 0.529,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:08:28.397Z",
+          "backendPid": 1460978,
+          "observationId": "0fa59394-15b6-47c1-87f5-7ab8344783a0",
+          "transactionOrdinal": 3,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:08:28.396Z",
+          "stateChangedAt": "2026-09-23T01:08:28.396Z",
+          "queryAgeMs": 1.122,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:08:33.492Z",
+          "backendPid": 1460976,
+          "observationId": "6823d53d-ed8e-4679-ab81-c50d4c190ae4",
+          "transactionOrdinal": 4,
+          "state": "active",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:08:33.489Z",
+          "stateChangedAt": "2026-09-23T01:08:33.489Z",
+          "queryAgeMs": 3.067,
+          "blockerCount": 0,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:09:03.465Z",
+          "backendPid": 1460978,
+          "observationId": "4920595f-83ca-49a1-b983-c4f72f961358",
+          "transactionOrdinal": 4,
+          "state": "active",
+          "waitType": "IO",
+          "waitEvent": "DataFileRead",
+          "queryStartedAt": "2026-09-23T01:09:03.456Z",
+          "stateChangedAt": "2026-09-23T01:09:03.456Z",
+          "queryAgeMs": 9.781,
+          "blockerCount": 0,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:09:26.313Z",
+          "backendPid": 1460976,
+          "observationId": "93af2c0b-6978-4876-b8f8-9990a58bb516",
+          "transactionOrdinal": 1,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:09:26.312Z",
+          "stateChangedAt": "2026-09-23T01:09:26.312Z",
+          "queryAgeMs": 1.575,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:09:35.210Z",
+          "backendPid": 1460984,
+          "observationId": "bff34e61-159e-403b-9afa-55537f65fb21",
+          "transactionOrdinal": 4,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:09:35.203Z",
+          "stateChangedAt": "2026-09-23T01:09:35.204Z",
+          "queryAgeMs": 7.105,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:10:16.326Z",
+          "backendPid": 1460974,
+          "observationId": "44f2e5cc-5aec-4c7c-a15a-cf310b9aea72",
+          "transactionOrdinal": 5,
+          "state": "active",
+          "waitType": "IO",
+          "waitEvent": "WalSync",
+          "queryStartedAt": "2026-09-23T01:10:16.324Z",
+          "stateChangedAt": "2026-09-23T01:10:16.324Z",
+          "queryAgeMs": 2.265,
+          "blockerCount": 0,
+          "statementCategory": "commit"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:10:21.145Z",
+          "backendPid": 1460983,
+          "observationId": "ba9de920-f025-4571-8caf-6c020c75db23",
+          "transactionOrdinal": 1,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:10:21.132Z",
+          "stateChangedAt": "2026-09-23T01:10:21.132Z",
+          "queryAgeMs": 13.039,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:10:35.371Z",
+          "backendPid": 1460983,
+          "observationId": "0497c8f9-5c34-4cb3-bb28-8a59003b0a97",
+          "transactionOrdinal": 1,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:10:35.369Z",
+          "stateChangedAt": "2026-09-23T01:10:35.369Z",
+          "queryAgeMs": 1.614,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:10:47.572Z",
+          "backendPid": 1460982,
+          "observationId": "3a9a2859-59db-4125-b1a8-e7a18172a87b",
+          "transactionOrdinal": 4,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:10:47.567Z",
+          "stateChangedAt": "2026-09-23T01:10:47.568Z",
+          "queryAgeMs": 5.081,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:11:11.939Z",
+          "backendPid": 1460974,
+          "observationId": "1d5603bd-5afc-4437-80df-290a02b51d45",
+          "transactionOrdinal": 4,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:11:11.936Z",
+          "stateChangedAt": "2026-09-23T01:11:11.936Z",
+          "queryAgeMs": 3.185,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:11:41.376Z",
+          "backendPid": 1460983,
+          "observationId": "7b8f1600-15ba-4119-8b38-12eb95a9c8be",
+          "transactionOrdinal": 4,
+          "state": "active",
+          "waitType": "IO",
+          "waitEvent": "DataFileRead",
+          "queryStartedAt": "2026-09-23T01:11:41.375Z",
+          "stateChangedAt": "2026-09-23T01:11:41.375Z",
+          "queryAgeMs": 0.805,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:11:57.866Z",
+          "backendPid": 1460984,
+          "observationId": "5cc26bb0-ea33-406a-8416-a82ff6e9a9c4",
+          "transactionOrdinal": 2,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:11:57.863Z",
+          "stateChangedAt": "2026-09-23T01:11:57.863Z",
+          "queryAgeMs": 3.728,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:12:19.693Z",
+          "backendPid": 1460974,
+          "observationId": "f83d7470-563c-4d76-85fd-57df7bb0a416",
+          "transactionOrdinal": 4,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:12:19.691Z",
+          "stateChangedAt": "2026-09-23T01:12:19.691Z",
+          "queryAgeMs": 1.529,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:12:22.745Z",
+          "backendPid": 1460979,
+          "observationId": "26b092a5-0552-45df-9584-65e2a347c611",
+          "transactionOrdinal": 4,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:12:22.666Z",
+          "stateChangedAt": "2026-09-23T01:12:22.666Z",
+          "queryAgeMs": 79.617,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:12:23.768Z",
+          "backendPid": 1460985,
+          "observationId": "3a3043e7-b0db-43c5-8aaa-e82cbcc648ff",
+          "transactionOrdinal": 5,
+          "state": "active",
+          "waitType": null,
+          "waitEvent": null,
+          "queryStartedAt": "2026-09-23T01:12:23.764Z",
+          "stateChangedAt": "2026-09-23T01:12:23.764Z",
+          "queryAgeMs": 3.587,
+          "blockerCount": 0,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:12:46.105Z",
+          "backendPid": 1460976,
+          "observationId": "b00a72fc-eb91-4b1b-a06e-4de19630f820",
+          "transactionOrdinal": 3,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:12:46.090Z",
+          "stateChangedAt": "2026-09-23T01:12:46.090Z",
+          "queryAgeMs": 14.4,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:12:46.358Z",
+          "backendPid": 1460983,
+          "observationId": "b00a72fc-eb91-4b1b-a06e-4de19630f820",
+          "transactionOrdinal": 4,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:12:46.248Z",
+          "stateChangedAt": "2026-09-23T01:12:46.254Z",
+          "queryAgeMs": 110.196,
+          "blockerCount": 0,
+          "statementCategory": "candidate_evidence.insert"
+        }
+      ]
+    },
+    {
+      "host": "worker",
+      "summary": {
+        "event": "recommendation.database_wait_summary",
+        "startedAt": "2026-09-23T01:21:57.676Z",
+        "endedAt": "2026-09-23T01:23:57.681Z",
+        "polls": 473,
+        "samples": 8,
+        "queryWallMs": 1645.5159620001618,
+        "maxQueryWallMs": 7.631774999999834,
+        "durationMs": 120000,
+        "intervalMs": 250,
+        "stopped": "duration"
+      },
+      "observations": 8,
+      "matchedCompletedRuntimeObservations": 8,
+      "matchedTimeoutObservations": [],
+      "stateWaitCounts": {
+        "active / IO / WalSync": 1,
+        "idle in transaction / Client / ClientRead": 6,
+        "active / IO / DataFileRead": 1
+      },
+      "samples": [
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:22:02.304Z",
+          "backendPid": 1460979,
+          "observationId": "c8f5686a-a56a-4893-837f-d51baedce986",
+          "transactionOrdinal": 4,
+          "state": "active",
+          "waitType": "IO",
+          "waitEvent": "WalSync",
+          "queryStartedAt": "2026-09-23T01:22:02.302Z",
+          "stateChangedAt": "2026-09-23T01:22:02.302Z",
+          "queryAgeMs": 1.724,
+          "blockerCount": 0,
+          "statementCategory": "commit"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:22:22.869Z",
+          "backendPid": 1460984,
+          "observationId": "53d3a709-3379-4014-9a22-1d93dc29b8eb",
+          "transactionOrdinal": 2,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:22:22.867Z",
+          "stateChangedAt": "2026-09-23T01:22:22.867Z",
+          "queryAgeMs": 2.722,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:22:29.725Z",
+          "backendPid": 1460985,
+          "observationId": "30beb189-9975-47f3-9a43-23f8e1d05434",
+          "transactionOrdinal": 4,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:22:29.704Z",
+          "stateChangedAt": "2026-09-23T01:22:29.705Z",
+          "queryAgeMs": 21.65,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:22:45.227Z",
+          "backendPid": 1460984,
+          "observationId": "1b574ef5-2488-40e6-ac10-9a54172e2241",
+          "transactionOrdinal": 5,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:22:45.223Z",
+          "stateChangedAt": "2026-09-23T01:22:45.223Z",
+          "queryAgeMs": 3.566,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:22:47.005Z",
+          "backendPid": 1460978,
+          "observationId": "45adb23e-254f-4c7a-aed2-ced28b188e58",
+          "transactionOrdinal": 5,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:22:46.994Z",
+          "stateChangedAt": "2026-09-23T01:22:47.003Z",
+          "queryAgeMs": 11.275,
+          "blockerCount": 0,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:22:49.796Z",
+          "backendPid": 1460977,
+          "observationId": "c1a94a6e-6d04-4c95-8861-e3f2f0d91773",
+          "transactionOrdinal": 2,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:22:49.780Z",
+          "stateChangedAt": "2026-09-23T01:22:49.787Z",
+          "queryAgeMs": 15.659,
+          "blockerCount": 0,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:23:41.839Z",
+          "backendPid": 1460978,
+          "observationId": "6ae0ef49-bc49-4e24-b319-d679ef31f9b2",
+          "transactionOrdinal": 4,
+          "state": "active",
+          "waitType": "IO",
+          "waitEvent": "DataFileRead",
+          "queryStartedAt": "2026-09-23T01:23:41.835Z",
+          "stateChangedAt": "2026-09-23T01:23:41.835Z",
+          "queryAgeMs": 3.708,
+          "blockerCount": 0,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:23:50.223Z",
+          "backendPid": 1460976,
+          "observationId": "ab89f7a2-6371-4f5e-a43a-1aef4a8ea117",
+          "transactionOrdinal": 1,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:23:50.218Z",
+          "stateChangedAt": "2026-09-23T01:23:50.218Z",
+          "queryAgeMs": 5.425,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        }
+      ]
+    },
+    {
+      "host": "worker",
+      "summary": {
+        "event": "recommendation.database_wait_summary",
+        "startedAt": "2026-09-23T01:27:00.210Z",
+        "endedAt": "2026-09-23T01:42:00.219Z",
+        "polls": 3548,
+        "samples": 26,
+        "queryWallMs": 11954.608312001645,
+        "maxQueryWallMs": 18.320853000041097,
+        "durationMs": 900000,
+        "intervalMs": 250,
+        "stopped": "duration"
+      },
+      "observations": 24,
+      "matchedCompletedRuntimeObservations": 24,
+      "matchedTimeoutObservations": [],
+      "stateWaitCounts": {
+        "idle in transaction / Client / ClientRead": 14,
+        "active / IO / WalWrite": 1,
+        "active / IO / DataFileRead": 3,
+        "active / Client / ClientRead": 2,
+        "active / IO / WalSync": 3,
+        "active / None / None": 3
+      },
+      "samples": [
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:27:49.256Z",
+          "backendPid": 1460977,
+          "observationId": "af52e1a5-8411-4b06-b29d-d30b0bc7dafd",
+          "transactionOrdinal": 4,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:27:49.256Z",
+          "stateChangedAt": "2026-09-23T01:27:49.256Z",
+          "queryAgeMs": 0.308,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:27:49.511Z",
+          "backendPid": 1460977,
+          "observationId": "af52e1a5-8411-4b06-b29d-d30b0bc7dafd",
+          "transactionOrdinal": 5,
+          "state": "active",
+          "waitType": "IO",
+          "waitEvent": "WalWrite",
+          "queryStartedAt": "2026-09-23T01:27:49.510Z",
+          "stateChangedAt": "2026-09-23T01:27:49.510Z",
+          "queryAgeMs": 0.374,
+          "blockerCount": 0,
+          "statementCategory": "commit"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:27:50.019Z",
+          "backendPid": 1460982,
+          "observationId": "b92c6836-94d0-42c5-bba3-85e0f5a7bf71",
+          "transactionOrdinal": 4,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:27:50.016Z",
+          "stateChangedAt": "2026-09-23T01:27:50.016Z",
+          "queryAgeMs": 3.047,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:27:53.064Z",
+          "backendPid": 1460977,
+          "observationId": "07aff6c6-5c20-4b85-8f4e-090e671cc431",
+          "transactionOrdinal": 5,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:27:53.059Z",
+          "stateChangedAt": "2026-09-23T01:27:53.059Z",
+          "queryAgeMs": 5.194,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:28:19.238Z",
+          "backendPid": 1460982,
+          "observationId": "cfdfc931-b8d7-4124-b335-cb0460f2b375",
+          "transactionOrdinal": 2,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:28:19.234Z",
+          "stateChangedAt": "2026-09-23T01:28:19.234Z",
+          "queryAgeMs": 3.935,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:28:54.296Z",
+          "backendPid": 1460985,
+          "observationId": "e8bd9d2b-5169-4db5-a478-877620defb65",
+          "transactionOrdinal": 5,
+          "state": "active",
+          "waitType": "IO",
+          "waitEvent": "DataFileRead",
+          "queryStartedAt": "2026-09-23T01:28:54.292Z",
+          "stateChangedAt": "2026-09-23T01:28:54.292Z",
+          "queryAgeMs": 3.986,
+          "blockerCount": 0,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:30:16.806Z",
+          "backendPid": 1460985,
+          "observationId": "5a6348e0-ae04-468e-b2fb-4666ba385c51",
+          "transactionOrdinal": 2,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:30:16.805Z",
+          "stateChangedAt": "2026-09-23T01:30:16.805Z",
+          "queryAgeMs": 1.479,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:31:01.500Z",
+          "backendPid": 1460976,
+          "observationId": "71f8c040-cd08-45ef-b363-8c4986706e1b",
+          "transactionOrdinal": 4,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:31:01.490Z",
+          "stateChangedAt": "2026-09-23T01:31:01.497Z",
+          "queryAgeMs": 9.812,
+          "blockerCount": 0,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:31:08.601Z",
+          "backendPid": 1460984,
+          "observationId": "899b835a-7d15-45cb-a303-c236ff2cd1f8",
+          "transactionOrdinal": 2,
+          "state": "active",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:31:08.599Z",
+          "stateChangedAt": "2026-09-23T01:31:08.599Z",
+          "queryAgeMs": 1.382,
+          "blockerCount": 0,
+          "statementCategory": "commit"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:31:23.589Z",
+          "backendPid": 1460985,
+          "observationId": "5e680f83-a11f-4eb1-8a84-bc69a25d84fc",
+          "transactionOrdinal": 4,
+          "state": "active",
+          "waitType": "IO",
+          "waitEvent": "DataFileRead",
+          "queryStartedAt": "2026-09-23T01:31:23.589Z",
+          "stateChangedAt": "2026-09-23T01:31:23.589Z",
+          "queryAgeMs": 0.627,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:31:36.542Z",
+          "backendPid": 1460982,
+          "observationId": "2c1c2387-3b80-4784-b0cc-7dc15af51ac7",
+          "transactionOrdinal": 2,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:31:36.541Z",
+          "stateChangedAt": "2026-09-23T01:31:36.541Z",
+          "queryAgeMs": 0.446,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:32:49.627Z",
+          "backendPid": 1460975,
+          "observationId": "e103dd3c-9089-45b1-9f3f-aca55a99b942",
+          "transactionOrdinal": 4,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:32:49.618Z",
+          "stateChangedAt": "2026-09-23T01:32:49.627Z",
+          "queryAgeMs": 8.958,
+          "blockerCount": 0,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:32:54.701Z",
+          "backendPid": 1460983,
+          "observationId": "f85c3070-6d9b-48e7-8354-6dbed0521364",
+          "transactionOrdinal": 2,
+          "state": "active",
+          "waitType": "IO",
+          "waitEvent": "WalSync",
+          "queryStartedAt": "2026-09-23T01:32:54.699Z",
+          "stateChangedAt": "2026-09-23T01:32:54.699Z",
+          "queryAgeMs": 2.514,
+          "blockerCount": 0,
+          "statementCategory": "commit"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:33:00.792Z",
+          "backendPid": 1460983,
+          "observationId": "68e3c790-4a21-4eca-b5bd-f8d4da0c4af4",
+          "transactionOrdinal": 4,
+          "state": "active",
+          "waitType": "IO",
+          "waitEvent": "DataFileRead",
+          "queryStartedAt": "2026-09-23T01:33:00.792Z",
+          "stateChangedAt": "2026-09-23T01:33:00.792Z",
+          "queryAgeMs": 0.779,
+          "blockerCount": 0,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:34:51.150Z",
+          "backendPid": 1460975,
+          "observationId": "0cdb5797-ead6-4d76-bcbd-7fb39e0481e2",
+          "transactionOrdinal": 2,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:34:51.147Z",
+          "stateChangedAt": "2026-09-23T01:34:51.148Z",
+          "queryAgeMs": 2.255,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:35:39.604Z",
+          "backendPid": 1460985,
+          "observationId": "eb30d4ff-197e-415e-9c36-33ae1d52903b",
+          "transactionOrdinal": 3,
+          "state": "active",
+          "waitType": null,
+          "waitEvent": null,
+          "queryStartedAt": "2026-09-23T01:35:39.600Z",
+          "stateChangedAt": "2026-09-23T01:35:39.600Z",
+          "queryAgeMs": 4.441,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:36:05.228Z",
+          "backendPid": 1460982,
+          "observationId": "b15d7183-9ed5-44a1-b72d-ed94ad9026c3",
+          "transactionOrdinal": 3,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:36:05.225Z",
+          "stateChangedAt": "2026-09-23T01:36:05.225Z",
+          "queryAgeMs": 2.437,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:37:28.209Z",
+          "backendPid": 1460983,
+          "observationId": "0dda11b0-24e2-4503-ba56-5b5f12e4ea4d",
+          "transactionOrdinal": 1,
+          "state": "active",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:37:28.208Z",
+          "stateChangedAt": "2026-09-23T01:37:28.208Z",
+          "queryAgeMs": 0.331,
+          "blockerCount": 0,
+          "statementCategory": "commit"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:37:31.254Z",
+          "backendPid": 1460985,
+          "observationId": "92688d2d-e378-4b04-8389-c6fc5d57ee76",
+          "transactionOrdinal": 1,
+          "state": "active",
+          "waitType": null,
+          "waitEvent": null,
+          "queryStartedAt": "2026-09-23T01:37:31.254Z",
+          "stateChangedAt": "2026-09-23T01:37:31.254Z",
+          "queryAgeMs": 0.458,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:37:31.508Z",
+          "backendPid": 1460974,
+          "observationId": "92688d2d-e378-4b04-8389-c6fc5d57ee76",
+          "transactionOrdinal": 4,
+          "state": "active",
+          "waitType": null,
+          "waitEvent": null,
+          "queryStartedAt": "2026-09-23T01:37:31.496Z",
+          "stateChangedAt": "2026-09-23T01:37:31.496Z",
+          "queryAgeMs": 11.706,
+          "blockerCount": 0,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:37:59.147Z",
+          "backendPid": 1460978,
+          "observationId": "0afc5b16-2475-4a3f-8b13-77c590f5ff9e",
+          "transactionOrdinal": 2,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:37:59.143Z",
+          "stateChangedAt": "2026-09-23T01:37:59.143Z",
+          "queryAgeMs": 3.795,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:39:36.081Z",
+          "backendPid": 1460984,
+          "observationId": "cdf98b4e-5477-4931-8777-dcba6755df5e",
+          "transactionOrdinal": 1,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:39:36.077Z",
+          "stateChangedAt": "2026-09-23T01:39:36.077Z",
+          "queryAgeMs": 3.921,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:39:39.629Z",
+          "backendPid": 1460976,
+          "observationId": "3e56baaf-50d4-463a-8094-699bd988bd39",
+          "transactionOrdinal": 4,
+          "state": "active",
+          "waitType": "IO",
+          "waitEvent": "WalSync",
+          "queryStartedAt": "2026-09-23T01:39:39.628Z",
+          "stateChangedAt": "2026-09-23T01:39:39.628Z",
+          "queryAgeMs": 1.64,
+          "blockerCount": 0,
+          "statementCategory": "commit"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:40:10.322Z",
+          "backendPid": 1460978,
+          "observationId": "0e7d097c-c730-4803-8757-16edc48491b9",
+          "transactionOrdinal": 3,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:40:10.322Z",
+          "stateChangedAt": "2026-09-23T01:40:10.322Z",
+          "queryAgeMs": 0.753,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:40:42.042Z",
+          "backendPid": 1460978,
+          "observationId": "5bd2b52e-b8fc-41fb-a495-fe66e22f7a7c",
+          "transactionOrdinal": 2,
+          "state": "active",
+          "waitType": "IO",
+          "waitEvent": "WalSync",
+          "queryStartedAt": "2026-09-23T01:40:42.026Z",
+          "stateChangedAt": "2026-09-23T01:40:42.026Z",
+          "queryAgeMs": 15.695,
+          "blockerCount": 0,
+          "statementCategory": "commit"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T01:40:59.804Z",
+          "backendPid": 1460977,
+          "observationId": "b7e9077a-92e2-420b-9119-9d7eb551201d",
+          "transactionOrdinal": 4,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T01:40:59.801Z",
+          "stateChangedAt": "2026-09-23T01:40:59.801Z",
+          "queryAgeMs": 2.643,
+          "blockerCount": 0,
+          "statementCategory": "other"
+        }
+      ]
+    }
+  ],
+  "naturalCompletedInsert": {
+    "at": "2026-09-23T01:12:46.403000733Z",
+    "observationId": "b00a72fc-eb91-4b1b-a06e-4de19630f820",
+    "operation": "seeded",
+    "phase": "complete",
+    "outcome": "served",
+    "timeoutFallback": false,
+    "elapsedMs": 414.52728800004115,
+    "databaseTransactions": [
+      {
+        "ordinal": 1,
+        "backendPid": 1460985
+      },
+      {
+        "ordinal": 2,
+        "backendPid": 1460977
+      },
+      {
+        "ordinal": 3,
+        "backendPid": 1460976
+      },
+      {
+        "ordinal": 4,
+        "backendPid": 1460983
+      }
+    ],
+    "timings": {
+      "getServingState": {
+        "calls": 1,
+        "inFlight": 0,
+        "elapsedMs": 19.696421000000555,
+        "maxMs": 19.696421000000555,
+        "errors": 0
+      },
+      "transaction.begin": {
+        "calls": 4,
+        "inFlight": 0,
+        "elapsedMs": 43.03826599998865,
+        "maxMs": 21.797019999998156,
+        "errors": 0
+      },
+      "transaction.callback": {
+        "calls": 4,
+        "inFlight": 0,
+        "elapsedMs": 268.3368419999606,
+        "maxMs": 209.38276599999517,
+        "errors": 0
+      },
+      "db.raw.$queryRaw": {
+        "calls": 12,
+        "inFlight": 0,
+        "elapsedMs": 120.73456499993335,
+        "maxMs": 33.30779900000198,
+        "errors": 0
+      },
+      "db.RecommendationServingControl.findUnique": {
+        "calls": 2,
+        "inFlight": 0,
+        "elapsedMs": 26.773546000011265,
+        "maxMs": 20.55175300000701,
+        "errors": 0
+      },
+      "transaction.commit_ack": {
+        "calls": 4,
+        "inFlight": 0,
+        "elapsedMs": 28.130812000017613,
+        "maxMs": 11.294280000030994,
+        "errors": 0
+      },
+      "authorizeProfile": {
+        "calls": 1,
+        "inFlight": 0,
+        "elapsedMs": 19.696002000011504,
+        "maxMs": 19.696002000011504,
+        "errors": 0
+      },
+      "retrieve": {
+        "calls": 1,
+        "inFlight": 0,
+        "elapsedMs": 41.86000799998874,
+        "maxMs": 41.86000799998874,
+        "errors": 0
+      },
+      "retrieval": {
+        "calls": 3,
+        "inFlight": 0,
+        "elapsedMs": 112.46495999995386,
+        "maxMs": 41.8534379999619,
+        "errors": 0
+      },
+      "db.RecommendationConsentReceipt.findUnique": {
+        "calls": 1,
+        "inFlight": 0,
+        "elapsedMs": 6.580291000020225,
+        "maxMs": 6.580291000020225,
+        "errors": 0
+      },
+      "db.RecommendationProfileSessionLink.upsert": {
+        "calls": 1,
+        "inFlight": 0,
+        "elapsedMs": 3.2603060000110418,
+        "maxMs": 3.2603060000110418,
+        "errors": 0
+      },
+      "resolveRecentContext": {
+        "calls": 1,
+        "inFlight": 0,
+        "elapsedMs": 32.154730000009295,
+        "maxMs": 32.154730000009295,
+        "errors": 0
+      },
+      "retrieveProfile": {
+        "calls": 1,
+        "inFlight": 0,
+        "elapsedMs": 38.47103200003039,
+        "maxMs": 38.47103200003039,
+        "errors": 0
+      },
+      "loadViewingModeAffinity": {
+        "calls": 1,
+        "inFlight": 0,
+        "elapsedMs": 64.90203400002792,
+        "maxMs": 64.90203400002792,
+        "errors": 0
+      },
+      "db.RecommendationProfile.findUnique": {
+        "calls": 1,
+        "inFlight": 0,
+        "elapsedMs": 17.744253000011668,
+        "maxMs": 17.744253000011668,
+        "errors": 0
+      },
+      "persistence": {
+        "calls": 1,
+        "inFlight": 0,
+        "elapsedMs": 235.30880299996352,
+        "maxMs": 235.30880299996352,
+        "errors": 0
+      },
+      "db.RecommendationRequest.create": {
+        "calls": 1,
+        "inFlight": 0,
+        "elapsedMs": 17.838881000003312,
+        "maxMs": 17.838881000003312,
+        "errors": 0
+      },
+      "db.RecommendationCandidateRun.create": {
+        "calls": 1,
+        "inFlight": 0,
+        "elapsedMs": 11.350641000026371,
+        "maxMs": 11.350641000026371,
+        "errors": 0
+      },
+      "db.RecommendationPersonalizationDecision.create": {
+        "calls": 1,
+        "inFlight": 0,
+        "elapsedMs": 17.76982099999441,
+        "maxMs": 17.76982099999441,
+        "errors": 0
+      },
+      "candidate_evidence.insert": {
+        "calls": 1,
+        "inFlight": 0,
+        "elapsedMs": 82.64675600000191,
+        "maxMs": 82.64675600000191,
+        "errors": 0,
+        "inputRows": 122
+      },
+      "db.raw.$executeRaw": {
+        "calls": 1,
+        "inFlight": 0,
+        "elapsedMs": 81.94707399996696,
+        "maxMs": 81.94707399996696,
+        "errors": 0
+      },
+      "db.RecommendationEvidenceAudit.create": {
+        "calls": 1,
+        "inFlight": 0,
+        "elapsedMs": 60.89412700000685,
+        "maxMs": 60.89412700000685,
+        "errors": 0
+      }
+    }
+  },
+  "cpuProfile": {
+    "from": "2026-09-23T01:22:07.282Z",
+    "to": "2026-09-23T01:22:37.382Z",
+    "samples": 27092,
+    "sampledMs": 30677.112,
+    "inspectorClosed": true,
+    "graphqlSerializationInclusiveMs": 226.832,
+    "graphqlSerializationLongestSampleBurstMs": 8.556,
+    "sourceMap": {
+      "generatedLine": 22,
+      "generatedColumn": 156527,
+      "originalSource": "../../../../../node_modules/.pnpm/graphql-yoga%405.21.0_graphql%4016.13.1/node_modules/graphql-yoga/esm/plugins/result-processor/stringify.js",
+      "originalLine": 3,
+      "originalColumn": 16
+    }
+  },
+  "cleanup": {
+    "observer": {
+      "at": "2026-09-23T01:42:32.488Z",
+      "revision": "4583c4ece1f1bba93660bd52d4f80cc618414fc8",
+      "deployment": "28732351-f6ce-4b7d-827b-1542fbf1157d",
+      "sourcePresent": true,
+      "tsxPresent": true,
+      "watchConnections": [
+        {
+          "application_name": "watch-m4q-preflight",
+          "connections": 1
+        }
+      ]
+    },
+    "inspector": {
+      "at": "2026-09-23T01:42:35.108Z",
+      "revision": "4583c4ece1f1bba93660bd52d4f80cc618414fc8",
+      "serverPids": [28],
+      "inspectorOpen": false,
+      "inspectorConfigured": false,
+      "cgroup": {
+        "cpu.max": "2400000 100000\n",
+        "cpu.stat": "usage_usec 815067301\nuser_usec 737401671\nsystem_usec 77665629\nnice_usec 0\nnr_periods 21107\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0\n",
+        "memory.max": "24000000000\n",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n"
+      }
+    }
+  },
+  "limits": [
+    "No natural delivery timeout captured; no causal attribution for historical 1186 ms driver span.",
+    "Standalone selection budget and retrieval do not use the tagged transaction helper.",
+    "First collector stopped early on overhead; gaps and profiler interval remain part of reported traffic.",
+    "Query age is not wait duration; one idle sample is not a measured scheduling pause.",
+    "Profile aggregates do not establish an individual blocking pause or offending workload.",
+    "HTTP 200s include ordinary fallbacks; short-window zeros are not recovery evidence."
+  ]
+}

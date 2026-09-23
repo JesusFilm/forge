@@ -97,7 +97,7 @@ export async function redeemChangelogPreapprovals(
         session.expiresAt <= now ||
         !session.googleEmail ||
         !session.googleSubject ||
-        session.user.membershipStatus !== "ACTIVE" ||
+        !["ACTIVE", "INVITED"].includes(session.user.membershipStatus) ||
         session.user.actorType !== "HUMAN" ||
         !session.user.emailVerified ||
         (session.user.expiresAt && session.user.expiresAt <= now) ||
@@ -160,6 +160,14 @@ export async function redeemChangelogPreapprovals(
           admins.some((admin) => admin.userId === approval.approverId),
       )
       if (!eligible.length) return
+      // Activation belongs to redemption: any later persistence failure rolls
+      // back membership, the Contributor grant and the consumed approvals.
+      if (session.user.membershipStatus === "INVITED") {
+        await tx.user.update({
+          where: { id: input.userId },
+          data: { membershipStatus: "ACTIVE" },
+        })
+      }
       const existing = await tx.appGrant.findFirst({
         where: {
           appId: environment.appId,

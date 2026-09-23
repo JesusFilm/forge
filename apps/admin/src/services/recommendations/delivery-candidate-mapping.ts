@@ -13,6 +13,10 @@ import {
   type SemanticCandidatePoolItem,
 } from "./candidate"
 import type { RecommendationShortfallReason } from "./contracts"
+import {
+  recentVideoReasonCodes,
+  type RecommendationSlateComposition,
+} from "./slate"
 import type {
   CandidatePlatformResult,
   CandidateStageEvidence,
@@ -120,6 +124,7 @@ export function lastKnownGoodSemanticCandidates(
   context: { locale: string; audioLanguageSlug: string },
   limit: number,
   currentVideoId?: string,
+  recentVideos: RecommendationSlateComposition["recentVideos"] = [],
 ): PreparedCandidate[] {
   const eligible = candidates
     .filter(
@@ -140,7 +145,17 @@ export function lastKnownGoodSemanticCandidates(
         left.videoId.localeCompare(right.videoId) ||
         left.sceneIndex - right.sceneIndex,
     )
-  return dedupeByVideoIdentity(eligible, limit).map((candidate, index) => {
+  const fresh: SemanticCandidatePoolItem[] = []
+  const recent: SemanticCandidatePoolItem[] = []
+  for (const candidate of dedupeByVideoIdentity(eligible, eligible.length)) {
+    const pool =
+      recentVideoReasonCodes(candidate.videoId, candidate, recentVideos)
+        .length > 0
+        ? recent
+        : fresh
+    pool.push(candidate)
+  }
+  return [...fresh, ...recent].slice(0, limit).map((candidate, index) => {
     const presentation = toBoundedCandidatePresentation(candidate, context)
     return {
       candidate: {

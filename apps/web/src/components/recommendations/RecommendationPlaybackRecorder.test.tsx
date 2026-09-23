@@ -4,7 +4,7 @@
 
 import { act } from "react"
 import type { Root } from "react-dom/client"
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { RecommendationPlaybackRecorder } from "./RecommendationPlaybackRecorder"
 import {
@@ -28,6 +28,9 @@ describe("RecommendationPlaybackRecorder", () => {
     root = harness.root
     fetchMock = harness.fetchMock
   })
+
+  beforeEach(() => vi.spyOn(Math, "random").mockReturnValue(0))
+  afterEach(() => vi.restoreAllMocks())
 
   it("records a media error after an attempt even before playback starts", async () => {
     fetchMock.mockImplementation((_url, init) => {
@@ -920,7 +923,7 @@ describe("RecommendationPlaybackRecorder", () => {
 
     await act(async () => {
       firstFacts.reject(new Error("network failed"))
-      await vi.advanceTimersByTimeAsync(100)
+      await vi.advanceTimersByTimeAsync(1_000)
       await Promise.resolve()
       await Promise.resolve()
     })
@@ -982,7 +985,7 @@ describe("RecommendationPlaybackRecorder", () => {
       expect(fetchMock).toHaveBeenCalledTimes(2)
 
       await act(async () => {
-        await vi.advanceTimersByTimeAsync(100)
+        await vi.advanceTimersByTimeAsync(1_000)
       })
       expect(fetchMock).toHaveBeenCalledTimes(3)
       expect(fetchMock.mock.calls[2]?.[1]?.body).toBe(
@@ -990,6 +993,88 @@ describe("RecommendationPlaybackRecorder", () => {
       )
     },
   )
+
+  it("retains identical facts across an eight-second outage and accepts recovery", async () => {
+    let available = false
+    const attempts: Array<{ at: number; body: string }> = []
+    const degradations: unknown[] = []
+    const onDegraded = (event: Event) =>
+      degradations.push((event as CustomEvent).detail)
+    window.addEventListener(
+      "forge:recommendation-playback-degraded",
+      onDegraded,
+    )
+    fetchMock.mockImplementation((_url, init) => {
+      const body = JSON.parse(String(init?.body ?? "{}"))
+      if (body.action === "claim") {
+        return Promise.resolve(
+          response({
+            episode: {
+              episodeId: "episode-1",
+              capability: "episode-capability-secret",
+              activeUntil: "2026-08-19T07:00:00.000Z",
+              hardUntil: "2026-08-19T09:00:00.000Z",
+            },
+          }),
+        )
+      }
+      attempts.push({ at: Date.now(), body: String(init?.body) })
+      return Promise.resolve(
+        available
+          ? acceptedFactsResponse(init)
+          : response({ error: "upstream_unavailable" }, false, 503),
+      )
+    })
+    sessionStorage.setItem(
+      RECOMMENDATION_TAB_CORRELATION_KEY,
+      "claim-nonce-1234567890",
+    )
+    const player = makePlayer()
+    try {
+      await act(async () => {
+        root.render(
+          <RecommendationPlaybackRecorder
+            player={player}
+            initiation="manual"
+            mediaId="media-1"
+            durationSeconds={120}
+          />,
+        )
+        await Promise.resolve()
+      })
+      player.paused = false
+      await act(async () => {
+        player.dispatch("playing")
+        await Promise.resolve()
+      })
+      expect(attempts).toHaveLength(1)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(8_000)
+      })
+      expect(attempts.map(({ at }) => at - attempts[0]!.at)).toEqual([0, 1_000])
+      available = true
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_000)
+      })
+      expect(attempts).toHaveLength(3)
+      expect(attempts.map(({ at }) => at - attempts[0]!.at)).toEqual([
+        0, 1_000, 9_000,
+      ])
+      expect(new Set(attempts.map(({ body }) => body)).size).toBe(1)
+      expect(degradations).not.toContainEqual(
+        expect.objectContaining({ disposition: "dropped" }),
+      )
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30_000)
+      })
+      expect(attempts).toHaveLength(3)
+    } finally {
+      window.removeEventListener(
+        "forge:recommendation-playback-degraded",
+        onDegraded,
+      )
+    }
+  })
 
   it("bounds a stalled acknowledgement body and replays identical facts after the ambiguous timeout", async () => {
     let factSignal: AbortSignal | undefined
@@ -1039,7 +1124,7 @@ describe("RecommendationPlaybackRecorder", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(5_100)
+      await vi.advanceTimersByTimeAsync(6_000)
     })
     expect(factSignal?.aborted).toBe(true)
     expect(fetchMock).toHaveBeenCalledTimes(3)
@@ -1188,7 +1273,7 @@ describe("RecommendationPlaybackRecorder", () => {
       await Promise.resolve()
       await Promise.resolve()
     })
-    await act(async () => vi.advanceTimersByTimeAsync(100))
+    await act(async () => vi.advanceTimersByTimeAsync(1_000))
 
     const firstEvents = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string)
       .events as RecommendationPlaybackEvent[]

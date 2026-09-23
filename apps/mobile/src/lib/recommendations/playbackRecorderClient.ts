@@ -46,6 +46,7 @@ export function createPlaybackRecorderForMedia(
     mediaId: input.mediaId,
     discoveryKeys: input.discoveryKeys,
     takePendingNonce: (mediaId) => getPendingClaimStore().take(mediaId),
+    restorePendingNonce: (claim) => getPendingClaimStore().restore(claim),
     takeDiscovery: (keys) => getPlaybackDiscoveryStore().take(keys),
     claimEpisode: async (identity, claimNonce, mediaId) => {
       const data = await mutateWithDeadline(

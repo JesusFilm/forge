@@ -1,4 +1,5 @@
 "use client"
+import { groupTrackKind, itemGroup } from "./timeline-layout"
 import { useEffect, useState } from "react"
 import {
   Plus,
@@ -98,7 +99,7 @@ export function Library({
             ...d.tracks,
             {
               id: item.trackId,
-              kind: item.kind === "audio" ? "audio" : "visual",
+              kind: groupTrackKind[itemGroup(item)],
             },
           ],
       durationInFrames: Math.max(
@@ -109,7 +110,7 @@ export function Library({
     }))
     session.select(item.id)
   }
-  const base = (kind: "visual" | "audio" = "visual") => ({
+  const base = (kind: "visual" | "audio" | "caption" = "visual") => ({
     id: crypto.randomUUID(),
     trackId: doc.tracks.find((t) => t.kind === kind)?.id ?? crypto.randomUUID(),
     startFrame: state.playhead,
@@ -276,7 +277,7 @@ export function Library({
           disabled={!state.editable}
           onClick={() =>
             insert({
-              ...base(),
+              ...base("caption"),
               kind: "text",
               text: "Your text",
               properties: { fontSize: 72, color: "#ffffff", align: "center" },

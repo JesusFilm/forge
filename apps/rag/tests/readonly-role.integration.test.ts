@@ -28,6 +28,12 @@ describe.skipIf(!adminUrl)("read-only PostgreSQL role", () => {
     const reader = new PrismaClient({ datasourceUrl: readerUrl })
 
     try {
+      await expect(
+        reader.$queryRaw`SELECT count(*) FROM consumer_private.consumers`,
+      ).rejects.toThrow()
+      await expect(
+        reader.$queryRaw`SELECT count(*) FROM consumer_private.usage_daily`,
+      ).rejects.toThrow()
       await admin.$transaction(async (tx) => {
         await tx.$executeRawUnsafe("SET TRANSACTION READ WRITE")
         await tx.$executeRawUnsafe(`
