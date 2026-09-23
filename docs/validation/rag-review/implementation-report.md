@@ -77,8 +77,10 @@ alleged in the unchanged source.
   and adversarial lenses covered the skill, guides, packaging, and tracking.
   No runtime architecture/import changes exist; model judgment and native host
   discovery remain the limitations described below.
-- Repository-wide formatting and commit-hook results will be recorded with the
-  PR receipt. No full application test suite or production check is claimed.
+- Repository-wide `pnpm exec prettier --check .`: passed. The implementation
+  commit also passed the normal Husky hooks: staged lint/format, full repository
+  `pnpm run format:check`, and commit-message validation. No hooks were bypassed.
+- No full application test suite or production check is claimed.
 
 Dependencies were installed with scripts disabled for this documentation/tooling
 scope; Husky was then initialized so commit hooks run normally. Runtime behavior,
@@ -95,3 +97,11 @@ production services, corpus state, deployments, and frontend loading are unchang
 - Runtime RAG tests, live corpus evaluation, and production checks are outside
   this skill/documentation change. Required CI and the focused local checks are
   reported separately rather than represented as runtime release proof.
+
+## PR receipt
+
+Draft PR: [#2400](https://github.com/JesusFilm/forge/pull/2400), targeting `main`
+from `feat/rag-adversarial-review`. Implementation commit: `8c85026bb`.
+The follow-up documentation commit records this link and completes the feature
+resolution. The draft remains unmerged; GitHub CI results are available on the PR
+and are not implied by local validation.
