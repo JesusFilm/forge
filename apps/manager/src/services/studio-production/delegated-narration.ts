@@ -29,13 +29,22 @@ export async function executeDelegatedNarration(
       error instanceof Error
         ? error.message.slice(0, 2000)
         : "Narration interrupted; inspect retained calls before retry"
+    // Unknown transport failures do not establish ownership: finish/attach
+    // may already have committed, or a different runner may own a live claim.
+    // Preserve the accepted run for same-key resume and canonical inspection.
+    if (!(error instanceof StudioNarrationDispatchFailure)) {
+      await studioProductionClient(caller.sub, runId)
+        .call("reconciliation-note", { diagnostic })
+        .catch(() => {
+          console.error(
+            "Draft narration reconciliation note unconfirmed; resume original request",
+            runId,
+          )
+        })
+      return { runId, outcome: "RECONCILIATION_REQUIRED", diagnostic }
+    }
     await studioProductionClient(caller.sub, runId)
-      .call(
-        error instanceof StudioNarrationDispatchFailure
-          ? "fail"
-          : "preflight-error",
-        { diagnostic },
-      )
+      .call("fail", { diagnostic })
       .catch(() => {
         console.error("Draft narration settlement unconfirmed", runId)
       })

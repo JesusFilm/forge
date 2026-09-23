@@ -151,6 +151,10 @@ const acceptedSchema = z.object({
       async function finish(
         runId: string,
         beforeAttach?: () => Promise<unknown>,
+        faults?: {
+          afterClaim?: () => Promise<unknown>
+          afterFinish?: () => Promise<unknown>
+        },
       ) {
         const plan = (await readDelegatedNarrationPlan(db, runId))!
         const entries = []
@@ -172,6 +176,7 @@ const acceptedSchema = z.object({
                 }),
               )
             if (claim.execute) {
+              await faults?.afterClaim?.()
               paid++
               const asset = await assets.register(
                 worker,
@@ -201,6 +206,7 @@ const acceptedSchema = z.object({
                   elapsedMs: 1,
                 },
               })
+              await faults?.afterFinish?.()
             } else
               ref = z
                 .object({ assets: z.array(studioAssetReferenceSchema) })
@@ -430,6 +436,132 @@ const acceptedSchema = z.object({
           ),
         ),
       ).rejects.toThrow("APPROVAL_REQUIRED")
+    })
+    it("retains deduplicated retry guidance before any dispatch without consuming or terminalizing paid work", async () => {
+      const f = await fixture(),
+        admitted = await f.admit(1)
+      const diagnostic =
+        "Context unavailable before dispatch; resume original request"
+      await f.production(admitted.runId, "reconciliation-note", { diagnostic })
+      await f.production(admitted.runId, "reconciliation-note", { diagnostic })
+      const status = await new StudioDelegatedNarrationService(db).status(
+        f.human,
+        { projectId: f.projectId },
+      )
+      expect(status).toMatchObject({
+        used: 1,
+        remaining: 1,
+        runs: [
+          expect.objectContaining({
+            state: "READY",
+            calls: [
+              expect.objectContaining({
+                state: "COMPLETED",
+                result: expect.objectContaining({
+                  diagnostic,
+                  actualCostMicros: 0,
+                  providerMetadata: expect.objectContaining({
+                    diagnosticOnly: true,
+                    providerDispatched: false,
+                    recovery: expect.stringContaining(
+                      "original narration idempotency key",
+                    ),
+                  }),
+                }),
+              }),
+            ],
+          }),
+        ],
+      })
+      await f.finish(admitted.runId)
+      expect(f.paid()).toBe(2)
+      expect(
+        (
+          await db.shortAttempt.findUniqueOrThrow({
+            where: { id: admitted.attemptId },
+          })
+        ).status,
+      ).toBe("SUCCEEDED")
+    })
+    it("keeps retained successful calls resumable after a lost finish response", async () => {
+      const f = await fixture(),
+        key = randomUUID(),
+        admitted = await f.admit(1, key)
+      await expect(
+        f.finish(admitted.runId, undefined, {
+          afterFinish: async () => {
+            throw new FixtureError("Lost finish response")
+          },
+        }),
+      ).rejects.toThrow("Lost finish response")
+      expect(f.paid()).toBe(1)
+      expect(
+        await f.production(admitted.runId, "preflight-error", {
+          diagnostic: "Lost finish response",
+        }),
+      ).toMatchObject({
+        recorded: true,
+        outcome: "RECONCILIATION_REQUIRED",
+        run: { state: "READY" },
+      })
+      expect(
+        (
+          await db.shortAttempt.findUniqueOrThrow({
+            where: { id: admitted.attemptId },
+          })
+        ).status,
+      ).toBe("QUEUED")
+      expect((await f.admit(1, key)).runId).toBe(admitted.runId)
+      await f.finish(admitted.runId)
+      expect(f.paid()).toBe(2) // two distinct segments, no repeated paid call
+      expect(
+        (await f.commands.read(f.human, f.projectId)).document.items.filter(
+          (i) => i.kind === "audio",
+        ),
+      ).toHaveLength(2)
+      expect(
+        (
+          await db.shortAttempt.findUniqueOrThrow({
+            where: { id: admitted.attemptId },
+          })
+        ).status,
+      ).toBe("SUCCEEDED")
+    })
+    it("does not let a duplicate runner's context failure terminate an owned live claim", async () => {
+      const f = await fixture(),
+        admitted = await f.admit(1)
+      await f.finish(admitted.runId, undefined, {
+        afterClaim: async () => {
+          expect(
+            await f.production(admitted.runId, "preflight-error", {
+              diagnostic: "Duplicate runner lost context response",
+            }),
+          ).toMatchObject({
+            recorded: true,
+            run: {
+              state: "READY",
+              calls: expect.arrayContaining([
+                expect.objectContaining({ state: "RUNNING" }),
+              ]),
+            },
+          })
+          expect(
+            (
+              await db.shortAttempt.findUniqueOrThrow({
+                where: { id: admitted.attemptId },
+              })
+            ).status,
+          ).toBe("QUEUED")
+        },
+      })
+      expect(f.paid()).toBe(2)
+      expect(
+        (
+          await db.shortAttempt.findUniqueOrThrow({
+            where: { id: admitted.attemptId },
+          })
+        ).status,
+      ).toBe("SUCCEEDED")
     })
     it("consumes ambiguous claims and blocks alternate keys/clients from blindly retrying paid work", async () => {
       const f = await fixture(),
