@@ -330,10 +330,12 @@ network, timeout) and is called via `void` so admin's publish UX never
 blocks on web. Wired into `ExperienceService.publishLocale`,
 `updateLocale` (only when `status === "PUBLISHED"`), and `archive`.
 
-Env vars on the `forge-admin` Doppler project (both `.optional()` so
+Env vars on the production Admin Railway service (both `.optional()` so
 admin still boots in environments without web wired up):
 
-- `WEB_REVALIDATE_URL` — e.g. `https://web.jesusfilm.org/api/revalidate`
+- `WEB_REVALIDATE_URL` — `https://www.jesusfilm.org/watch/api/revalidate`
+  in production. The legacy `watch.jesusfilm.org` host redirects POST with 301;
+  the redirected request becomes GET and the receiver returns 405.
 - `WEB_REVALIDATE_TOKEN` — must hold the SAME value web sets in
   `REVALIDATION_SECRET`
 
