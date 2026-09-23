@@ -142,6 +142,20 @@ export const studioTextPropertiesSchema = z
     fontFamily: studioIdSchema.optional(),
     fontWeight: z.number().int().min(100).max(900).optional(),
     align: z.enum(["left", "center", "right"]).optional(),
+    shadow: z.boolean().optional(),
+    shadowBlur: z.number().min(0).max(100).optional(),
+    shadowOffset: z.number().min(0).max(100).optional(),
+    strokeWidth: z.number().min(0).max(20).optional(),
+    strokeColor: z
+      .string()
+      .regex(/^#[a-fA-F0-9]{6}$/)
+      .optional(),
+    scrimOpacity: z.number().min(0).max(1).optional(),
+    scrimPadding: z.number().min(0).max(200).optional(),
+    entrance: z.enum(["none", "fade", "slide"]).optional(),
+    exit: z.enum(["none", "fade", "slide"]).optional(),
+    entranceFrames: z.number().int().min(1).max(300).optional(),
+    exitFrames: z.number().int().min(1).max(300).optional(),
   })
   .strict()
 const itemBase = {
@@ -176,6 +190,13 @@ export const studioTimelineItemSchema = z.discriminatedUnion("kind", [
       ...itemBase,
       kind: z.literal("video"),
       source: studioSourceSchema,
+      transition: z
+        .object({
+          type: z.enum(["crossfade", "fade-black"]),
+          durationInFrames: z.number().int().min(1).max(300),
+        })
+        .strict()
+        .optional(),
       volume: z.number().min(0).max(2),
     })
     .strict(),

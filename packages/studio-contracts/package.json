@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./transitions": "./src/transitions.ts",
     "./assets": "./src/assets.ts",
     "./content-packs": "./src/content-packs.ts",
     "./sources": "./src/sources.ts",

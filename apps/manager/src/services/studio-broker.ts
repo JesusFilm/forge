@@ -1,3 +1,4 @@
+import { studioMediaStartTimes } from "@forge/studio-contracts/transitions"
 import { adminGraphql } from "@forge/admin-graphql"
 import { print } from "@apollo/client/utilities"
 import { createHash, createHmac, timingSafeEqual } from "node:crypto"
@@ -387,7 +388,12 @@ export async function prepareStudioRenderSources(
       transferred += bytes.length
       return bytes
     }
-    for (const entry of resolved) {
+    const mediaStarts = studioMediaStartTimes(document)
+    for (const resolvedEntry of resolved) {
+      const entry = {
+        ...resolvedEntry,
+        startMs: mediaStarts.get(resolvedEntry.itemId) ?? resolvedEntry.startMs,
+      }
       if (!env.STUDIO_PREVIEW_API_KEY)
         throw new StudioBrokerError(
           "Render source verification key is not configured",

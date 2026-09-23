@@ -1,3 +1,4 @@
+import { studioMediaStartTimes } from "@forge/studio-contracts/transitions"
 import { randomUUID } from "node:crypto"
 import type { Prisma, PrismaClient } from "@prisma/client"
 import type { StudioDocument } from "@forge/studio-contracts"
@@ -514,11 +515,14 @@ export async function assertStudioRenderSources(
   document: StudioDocument,
 ) {
   const sources = await resolveStudioDocumentSources(tx, document)
+  const mediaStarts = studioMediaStartTimes(document)
   for (const source of sources) {
     if (
       source.snapshot.materialization === "descriptor" ||
       !source.snapshot.coveredRanges.some(
-        (r) => r.startMs <= source.startMs && r.endMs >= source.endMs,
+        (r) =>
+          r.startMs <= (mediaStarts.get(source.itemId) ?? source.startMs) &&
+          r.endMs >= source.endMs,
       )
     )
       throw new StudioCommandError("INVALID")
