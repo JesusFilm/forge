@@ -14,6 +14,7 @@ import {
 
 import { loadShortFonts, SHORT_FONT_FAMILIES } from "../fonts"
 import { loadLiterata, TEASER_FONT_FAMILIES } from "./teaser-fonts"
+import { BigStepWord } from "./BigStepWord"
 import { QuoteIntro } from "./QuoteIntro"
 import { StepProgressLine } from "./StepProgressLine"
 import { StepperStack } from "./Stepper"
@@ -2829,6 +2830,23 @@ function CardBody({
             extrapolateRight: "clamp",
           })
         : 1
+    // Clip-first hand-over screen: the top row already says where the viewer
+    // is, so the middle carries only the step's NAME, at a whisper, arriving
+    // out of the blur (owner, 2026-09-23).
+    if (isLine) {
+      const labels = card.steps ?? ["WATCH", "REFLECT", "PRAY"]
+      return (
+        <BigStepWord
+          label={labels[at] ?? labels[labels.length - 1]}
+          frame={frame}
+          fps={fps}
+          px={px}
+          durationInFrames={durationInFrames}
+          serif={SERIF}
+        />
+      )
+    }
+
     return (
       <StepperStack
         // The three-step (clip-first) stepper uses the owner's Figma design:
