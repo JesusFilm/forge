@@ -321,6 +321,27 @@ const url = env.STUDIO_TEST_DATABASE_URL
         stale: true,
         currentRevision: 2,
       })
+      // Human approval of exact old bytes must not approve a newer document,
+      // even when inspection and playback of the old result remain available.
+      await expect(
+        commands.approve(human, {
+          projectId,
+          expectedRevision: 2,
+          idempotencyKey: randomUUID(),
+          kind: "PUBLICATION",
+          renderAttemptId: attemptId,
+        }),
+      ).rejects.toThrow("APPROVAL_REQUIRED")
+      await expect(
+        commands.approve(human, {
+          projectId,
+          expectedRevision: 1,
+          idempotencyKey: randomUUID(),
+          kind: "PUBLICATION",
+          renderAttemptId: attemptId,
+        }),
+      ).rejects.toThrow("CONFLICT")
+      expect(await db.shortApproval.count({ where: { projectId } })).toBe(0)
       expect(await request()).toEqual(accepted)
       await expect(
         executeStudioDelegated(db, caller, {
