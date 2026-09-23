@@ -31,12 +31,10 @@ const GATE_CALL = /\bisSignInAvailable\s*\(/
 const CLIENT_SIGN_IN_CALL = /\.signIn\s*\.\s*\w+\s*\(/
 
 /** Comments do not run. The `[^:]` keeps a URL such as `https://` intact. */
-function stripped(source) {
+function stripComments(source) {
   return source
     .replace(/\/\*[\s\S]*?\*\//g, "")
-    .split("\n")
-    .map((line) => line.replace(/(^|[^:])\/\/.*$/, "$1"))
-    .join("\n")
+    .replace(/(^|[^:])\/\/.*$/gm, "$1")
 }
 
 function sourceFiles(dir) {
@@ -54,16 +52,20 @@ function relative(full) {
   return path.relative(MOBILE, full).split(path.sep).join("/")
 }
 
-function read(relativePath) {
-  const full = path.join(MOBILE, relativePath)
-  expect(fs.existsSync(full)).toBe(true)
-  return stripped(fs.readFileSync(full, "utf8"))
-}
-
 const SOURCES = ROOTS.flatMap(sourceFiles).map((full) => ({
   file: relative(full),
-  source: stripped(fs.readFileSync(full, "utf8")),
+  source: stripComments(fs.readFileSync(full, "utf8")),
 }))
+
+const SOURCE_BY_FILE = new Map(
+  SOURCES.map(({ file, source }) => [file, source]),
+)
+
+function read(relativePath) {
+  const source = SOURCE_BY_FILE.get(relativePath)
+  expect(source).toBeDefined()
+  return source
+}
 
 /** Every file that names the hosted sign-in, other than its own module. */
 function hostedSignInCallers() {

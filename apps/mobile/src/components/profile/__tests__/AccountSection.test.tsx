@@ -119,20 +119,17 @@ const GATED_LABEL = "Sign in, coming soon, Accounts are not available yet"
 const LIVE_TITLE = "Sign in"
 const LIVE_SUBTITLE = "Keep your place across devices"
 
-async function renderSignedOut(): Promise<TestInstance> {
-  let renderer!: TestInstance
-  await act(async () => {
-    renderer = TestRenderer.create(<AccountSection />)
-  })
-  expect(hasText(renderer, "Sign in")).toBe(true)
-  return renderer
-}
-
 async function renderSection(): Promise<TestInstance> {
   let renderer!: TestInstance
   await act(async () => {
     renderer = TestRenderer.create(<AccountSection />)
   })
+  return renderer
+}
+
+async function renderSignedOut(): Promise<TestInstance> {
+  const renderer = await renderSection()
+  expect(hasText(renderer, "Sign in")).toBe(true)
   return renderer
 }
 

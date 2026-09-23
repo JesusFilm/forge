@@ -82,14 +82,19 @@ import {
 
 const mockedSignIn = jest.mocked(signInWithHostedPage)
 
-async function renderArmedBanner(): Promise<TestInstance> {
-  noteSignedOutPlaybackStop(PROMPT_MIN_WATCHED_SECONDS + 1)
+async function renderAfterStopAt(seconds: number): Promise<TestInstance> {
+  noteSignedOutPlaybackStop(seconds)
   let renderer!: TestInstance
   await act(async () => {
     renderer = TestRenderer.create(<SignInPrompt />)
   })
   // The show effect resolves the cooldown read async; flush it.
   await act(async () => {})
+  return renderer
+}
+
+async function renderArmedBanner(): Promise<TestInstance> {
+  const renderer = await renderAfterStopAt(PROMPT_MIN_WATCHED_SECONDS + 1)
   expect(hasText(renderer, "Sign in")).toBe(true)
   return renderer
 }
@@ -103,19 +108,9 @@ beforeEach(async () => {
   jest.mocked(AsyncStorage.setItem).mockClear()
 })
 
+// Every other condition holds at the value that shows the banner: signed out,
+// armed past the threshold, and no dismissal in storage.
 describe("SignInPrompt sign-in gate (feat-543)", () => {
-  // Every other condition holds at the value that shows the banner: signed
-  // out, armed past the threshold, and no dismissal in storage.
-  async function renderAfterStopAt(seconds: number): Promise<TestInstance> {
-    noteSignedOutPlaybackStop(seconds)
-    let renderer!: TestInstance
-    await act(async () => {
-      renderer = TestRenderer.create(<SignInPrompt />)
-    })
-    await act(async () => {})
-    return renderer
-  }
-
   it("renders nothing and keeps the session's one prompt while the gate is closed (AE3)", async () => {
     mockGate.open = false
     const renderer = await renderAfterStopAt(45)
