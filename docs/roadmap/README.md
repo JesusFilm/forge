@@ -8,9 +8,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 - **Total tickets:** 727
 - **Complete:** 543
-- **In progress:** 56
+- **In progress:** 57
 - **Not started:** 48
-- **Blocked:** 80
+- **Blocked:** 79
 - **Overdue and not complete:** 143
 
 ## Feature Index
@@ -33,7 +33,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-447](content-discovery/feat-447-live-anonymous-profile-personalization-pilot.md)                         | Live anonymous-profile hybrid personalization rollout                                           | nisal      | P0       | —          | 8    | —          | blocked     |
 | [feat-459](content-discovery/feat-459-recommendation-profile-eligibility-reconciliation.md)                    | Recommendation profile eligibility reconciliation                                               | nisal      | P0       | —          | 6    | —          | complete    |
 | [feat-464](content-discovery/feat-464-recommendation-evidence-transport-crawler-integrity.md)                  | Recommendation evidence transport and crawler integrity                                         | nisal      | P0       | —          | 3    | —          | complete    |
-| [feat-545](content-discovery/feat-545-recommendation-monitoring-and-telemetry-closeout.md)                     | Recommendation monitoring and telemetry closeout                                                | nisal      | P0       | —          | 2    | —          | blocked     |
+| [feat-545](content-discovery/feat-545-recommendation-monitoring-and-telemetry-closeout.md)                     | Recommendation telemetry and browser evidence closeout                                          | nisal      | P0       | —          | 2    | —          | in-progress |
 | [feat-009](content-discovery/feat-009-pgvector-embedding-indexing.md)                                          | pgvector Setup and Embedding Indexing                                                           | nisal      | P0       | 2026-04-07 | 14   | 2026-04-20 | complete    |
 | [feat-010](content-discovery/feat-010-semantic-search-api.md)                                                  | Semantic Search API                                                                             | nisal      | P0       | 2026-04-14 | 21   | 2026-05-04 | complete    |
 | [feat-011](content-discovery/feat-011-search-ui-web.md)                                                        | Search UI — Web                                                                                 | urim       | P0       | 2026-04-14 | 21   | 2026-05-04 | complete    |
