@@ -1,7 +1,7 @@
 %%{init: {"flowchart": {"wrappingWidth": 380, "nodeSpacing": 30, "rankSpacing": 50}, "themeVariables": {"fontSize": "16px"}}}%%
 %% Pinned sources and regeneration command: README.md
 flowchart TB
-  title["FORGE RAG DATABASE · corpus + R1 consumer registry<br/>Blue: existing public tables · Amber: NEW in draft PR #2397<br/>PK primary key · UQ unique · FK foreign key · ? nullable<br/>Solid arrows: parent → child FK (1 → 0..many unless labeled)<br/>Dotted arrows: logical references only; not enforced"]
+  title["FORGE RAG DATABASE · corpus + R1 consumer registry<br/>Blue: existing public tables · Amber: NEW in draft PR #2397<br/>PK primary key · UQ unique · FK foreign key · ? nullable<br/>Solid arrows: parent → child FK (1 → 0..many unless labeled)<br/>Logical references listed separately; not enforced"]
   subgraph corpus["EXISTING · public · indexed corpus"]
     direction TB
     sources["sources<br/>PK id : uuid<br/>UQ key : text<br/>name : text · languages/default_tags : jsonb<br/>domain?, trust?, ingestion_mode?, rights? : text"]
@@ -33,15 +33,17 @@ flowchart TB
     envs -->|"composite FK · RESTRICT delete"| usage
     privacy["R1 boundary: PUBLIC privileges revoked<br/>No serving / corpus-reader / report grants added<br/>No credentials table, HTTP wiring, or usage writer"]
   end
-  sources -.->|"key matches source_key"| raw
-  documents -.->|"id matches document_id"| audits
-  sources -.->|"key values; logical allowlist"| envs
+  logical["LOGICAL REFERENCES · NO FOREIGN KEYS<br/>raw_documents.source_key → sources.key<br/>language_change_audits.document_id → documents.id<br/>language_change_audits.source_key → sources.key<br/>environments.allowed_source_keys → sources.key values"]
   classDef existing fill:#eaf3ff,stroke:#245b91,color:#12283e,stroke-width:1.5px;
   classDef added fill:#fff3d6,stroke:#996600,color:#352600,stroke-width:1.5px;
   classDef note fill:#f5f6f8,stroke:#667085,color:#17212f;
   class sources,documents,chunks,embeddings,raw,audits,http,robots existing;
   class consumers,members,envs,usage,lifecycle added;
-  class title,privacy note;
+  class title,privacy,logical note;
   style corpus fill:#f7fbff,stroke:#245b91
   style acquisition fill:#f7fbff,stroke:#245b91
   style registry fill:#fffaf0,stroke:#996600
+  title ~~~ corpus
+  corpus ~~~ registry
+  registry ~~~ acquisition
+  acquisition ~~~ logical

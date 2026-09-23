@@ -7,7 +7,7 @@
 Blue groups contain the eight existing `public` tables. Amber contains the five
 new `consumer_private` tables proposed in R1, in the **same RAG database**.
 Solid arrows point from parent to child and represent actual foreign keys;
-dotted arrows are logical references, not database constraints. Every child FK
+a separate note lists logical references, not database constraints. Every child FK
 is non-null. Parent-to-child cardinality is 1 to zero-or-many except embeddings
 (zero-or-one) and memberships (one-or-many at transaction commit, with at least
 one owner). Owners are rows in `members`, not a separate identity table.
@@ -40,8 +40,7 @@ Inspected on 2026-09-23, without connecting to any database:
   does not enforce that the chunk's source equals its document's source.
   There is no unique `(document_id, ord)` constraint.
 - `raw_documents.source_key`, `language_change_audits.document_id` and
-  `language_change_audits.source_key` are not FKs. Dotted lines show useful joins;
-  the audit-to-source logical link is omitted to reduce crossing lines.
+  `language_change_audits.source_key` are not FKs. The logical-reference note shows useful joins without implying constraints.
   Acquisition caches are independent, keyed by URL, with no database relation
   to raw documents. Raw history is not unique by canonical URL.
 - `chunks.search_tsv` is stored and generated using
@@ -110,3 +109,5 @@ full column inventory. Logical joins are annotations, not new schema proposals.
 The durable lesson is to inspect SQL alongside Prisma: raw-schema registry tables,
 trigger-based owner requirements and vector/search indexes are not fully described
 by Prisma alone.
+
+Shareable documentation draft: [PR #2398](https://github.com/JesusFilm/forge/pull/2398).

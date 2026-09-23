@@ -38,4 +38,4 @@ Render Mermaid, inspect the image, compare all table and FK names to pinned migr
 
 ## Resolution
 
-Created `docs/diagrams/rag-database/schema.mmd`, `schema.svg` and the accompanying README investigation notes. All 13 tables and eight FKs reviewed; Mermaid rendering, visual inspection and documentation formatting checked. Draft PR link recorded below before delivery.
+Created `docs/diagrams/rag-database/schema.mmd`, `schema.svg` and the accompanying README investigation notes. All 13 tables and eight FKs reviewed; Mermaid rendering, visual inspection and documentation formatting checked. Draft documentation PR: [#2398](https://github.com/JesusFilm/forge/pull/2398).
