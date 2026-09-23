@@ -14,6 +14,26 @@ tags:
   - "infrastructure"
 ---
 
+## Final bounded pass — September 23
+
+The user requested one final reproduction/fix pass and then closure of this
+investigation if the historical fault remains unproven. Closure must record
+that outcome explicitly; an ended investigation is not verified recovery.
+
+PR #2399 adds source timestamps and operation offsets, automatically deployed
+to Admin at `5a30f5ddceeb4dc29d7ceb87718600a30af91401`; natural primary logs
+confirm the fields. Worker deployment and bounded capture verification remain
+part of this pass.
+
+A separate retained settings trace reveals 62 authored-block dub lookups.
+The controlled PostgreSQL reproduction queues 301 calls behind ten leases;
+request-local exact-pair batching reduces that to zero and reduces unrelated
+read p95 from 200–311 ms to 7–9 ms. This proves avoidable contention in that
+workload, not the historical selection 503 or 1.19-second evidence-write cause.
+See `docs/plans/2026-09-23-watch-block-dub-pool-fanout.md` and
+`docs/operations/watch-block-dub-fanout-2026-09-23.md` for validation and release
+gates. The batching change still requires normal PR deployment and verification.
+
 ## Problem and scope
 
 Resolve production recommendation admission and database deadline failures using

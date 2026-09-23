@@ -1,0 +1,148 @@
+{
+  "fixture": "Owned synthetic PostgreSQL 18; ten connections; three-millisecond server-response proxy delay; five simultaneous requests each with 62 exact video/language lookups; twenty rounds per phase",
+  "interpretation": "Controlled queue-contention reproduction, not a reproduction of the historical timeout or a production SLO measurement",
+  "phases": [
+    {
+      "mode": "scalar",
+      "responseDelayMs": 3,
+      "poolLimit": 10,
+      "requestsPerRound": 5,
+      "lookupsPerRequest": 62,
+      "rounds": 20,
+      "probe": {
+        "min": 130.90066099999967,
+        "p50": 163.2961149999992,
+        "p95": 200.40846299999976,
+        "max": 211.37994400000025
+      },
+      "workload": {
+        "min": 359.10270500000024,
+        "p50": 376.2223979999999,
+        "p95": 405.58574999999996,
+        "max": 444.60833100000013
+      },
+      "pending": {
+        "min": 301,
+        "p50": 301,
+        "p95": 301,
+        "max": 301
+      },
+      "queries": {
+        "min": 621,
+        "p50": 621,
+        "p95": 621,
+        "max": 621
+      }
+    },
+    {
+      "mode": "batch",
+      "responseDelayMs": 3,
+      "poolLimit": 10,
+      "requestsPerRound": 5,
+      "lookupsPerRequest": 62,
+      "rounds": 20,
+      "probe": {
+        "min": 3.2105680000004213,
+        "p50": 5.371439000000464,
+        "p95": 6.844411999998556,
+        "max": 6.916897000000972
+      },
+      "workload": {
+        "min": 26.088982999999644,
+        "p50": 28.113122999999177,
+        "p95": 29.618617000000086,
+        "max": 33.61370899999929
+      },
+      "pending": {
+        "min": 0,
+        "p50": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "queries": {
+        "min": 16,
+        "p50": 16,
+        "p95": 16,
+        "max": 16
+      }
+    },
+    {
+      "mode": "batch",
+      "responseDelayMs": 3,
+      "poolLimit": 10,
+      "requestsPerRound": 5,
+      "lookupsPerRequest": 62,
+      "rounds": 20,
+      "probe": {
+        "min": 3.3113850000008824,
+        "p50": 5.772946000000957,
+        "p95": 8.80948399999943,
+        "max": 14.817482000000382
+      },
+      "workload": {
+        "min": 25.480274999999892,
+        "p50": 28.176840000000084,
+        "p95": 30.596917999999278,
+        "max": 42.84704199999942
+      },
+      "pending": {
+        "min": 0,
+        "p50": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "queries": {
+        "min": 16,
+        "p50": 16,
+        "p95": 16,
+        "max": 16
+      }
+    },
+    {
+      "mode": "scalar",
+      "responseDelayMs": 3,
+      "poolLimit": 10,
+      "requestsPerRound": 5,
+      "lookupsPerRequest": 62,
+      "rounds": 20,
+      "probe": {
+        "min": 135.7510089999996,
+        "p50": 164.38695099999677,
+        "p95": 311.1624499999998,
+        "max": 316.4515530000008
+      },
+      "workload": {
+        "min": 364.0085259999996,
+        "p50": 410.9807639999999,
+        "p95": 546.9970389999999,
+        "max": 603.1699640000006
+      },
+      "pending": {
+        "min": 301,
+        "p50": 301,
+        "p95": 301,
+        "max": 301
+      },
+      "queries": {
+        "min": 621,
+        "p50": 621,
+        "p95": 621,
+        "max": 621
+      }
+    }
+  ],
+  "productionLead": {
+    "traceId": "6ab3333c000000006c62ce4aacd4fd55",
+    "spanId": "7604331360358271055",
+    "operation": "GetWatchSettings",
+    "at": "2026-09-23T02:02:38Z",
+    "scalarDubCalls": 62,
+    "durationMs": 183.430176,
+    "sameIngestionSecond": {
+      "slowAcquisitionEvents": 60,
+      "maxPending": 102,
+      "maxAcquisitionMs": 102.22754999995232
+    },
+    "caveat": "Slow pool events lack request correlation; shared second is not a causal join to this request."
+  }
+}
