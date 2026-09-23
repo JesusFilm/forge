@@ -131,6 +131,17 @@ Experience. Every line below is from the proxy's request log.
   gap it leaves is that no run has proved a real Admin records exactly one
   attributed episode for a shelf tap. The proxy smoke proves what the app
   sends, never what Admin stores.
+- A POST-MERGE attribution smoke did run on 2026-09-23 against the fake-admin
+  proxy, on the merged head, and covers the app's half of that gap. Cold launch
+  served one slate (`deliveries=1`, `served=6`), six `render` facts once each,
+  `impression` only for the two on-screen cards. One tap gave ONE
+  `SelectSemanticRecommendation` and ONE `ClaimSemanticRecommendationEpisode`
+  (`viaSelection=true`, `selectedMediaMatches=true`, `nonceMatches=true`).
+  Minimise to the floating player then expand — the remount that used to start
+  a second recorder — added no recorder: playback continued on the same media
+  with no restart, and the return to Home refetched once (`deliveries=2`).
+  Totals for the run: 1 selection, 1 claim, 1 `playback_attempt`, 1
+  `playback_start`.
 - U6 still needs a provisioned local Admin. Re-checked on 2026-09-23: the
   database sits at 17 of 100 migrations, and the restore needs a PostgreSQL 18
   client AND server while the machine runs 17, whose one cluster also holds 12
