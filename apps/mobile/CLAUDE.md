@@ -548,6 +548,50 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
   `accessibilityLabel` via `progressAccessibilityText`.
 - **RUM identity**: `setDatadogRumUser` receives the opaque auth subject id
   only — never email or display name.
+- **The sign-in gate (feat-543) hides sign-in from a signed-out viewer until
+  an operator opens it.** It covers two entry points: the Profile card and the
+  watch-page nudge. `isSignInAvailable()` in `src/lib/signInGate.ts` is the one
+  predicate. Its rule, in `src/lib/signInGateState.ts`, is a SYNC copy of TV's
+  feat-322 rule. A development bundle (`__DEV__`) always shows sign-in. A
+  release bundle shows it only when `EXPO_PUBLIC_SIGN_IN_ENABLED` is exactly
+  `1` or `true`; every other value hides it, including `TRUE` and an unset
+  value. While the gate is closed, the Profile card is disabled and reads
+  "Sign in (Coming soon)", and the nudge never mounts. A signed-in tester sees
+  no change, and the "Sign in again" step in account deletion is never gated.
+  `src/lib/__tests__/signInGateWiring.guard.test.js` fails when a caller of
+  `signInWithHostedPage` does not read the gate. The removal is `feat-544`.
+  - **Defaults.** Leave the value unset in production. Set preview on
+    purpose: unset hides sign-in from preview testers, and `1` keeps it. Set
+    the value only in the EAS dashboard or with `eas env`, with plain-text
+    visibility: a "secret" value may not reach `eas update`, and the bundle
+    makes the value public anyway. Never put it in an `eas.json` `env` block,
+    because an `eas.json` edit moves the runtime version.
+  - **A change needs a new bundle.** Expo inlines the value at bundle time.
+    Publish only with `update:preview` or `update:production`. The app applies
+    a downloaded update on the next launch, so check the Profile tab after a
+    second launch.
+  - **Reach.** The production OTA channel is dark (see "Cold-start splash"),
+    so the gate reaches installed builds only with the next native build.
+    Every build installed today carries a runtime version that `main` no
+    longer produces, so no update from `main` reaches it. Such a build keeps a
+    working sign-in until the tester installs a new native build. An update
+    brings the gate only to a pre-gate build that has the same runtime
+    version as the update.
+  - **Only a non-development build shows the gated state.** Use a
+    `preview-simulator` EAS build on iOS or an internal preview build on
+    Android with the value unset, and check the first launch after install,
+    before a downloaded update replaces the build's JavaScript. A dev client
+    that loads a release-mode bundle from
+    `EXPO_NO_DOTENV=1 npx expo start --no-dev --minify` shows it too. Play no
+    video on a build that carries the fleet search bearer: the recommendation
+    recorder writes that playback into production.
+  - **Accepted consequences.** The session snapshot starts signed out, so
+    after a cold launch a signed-in tester sees the disabled card until the
+    session read succeeds. After more than 7 days idle, the session expires:
+    the tester cannot sign in again or delete the account in the app, and the
+    support email is the deletion route. An auth deploy that ends every
+    session (a rotated signing secret, a lockstep Better Auth upgrade) signs
+    out every tester at once, so coordinate it with opening the gate.
 
 ## Recommendations API client (feat-516)
 

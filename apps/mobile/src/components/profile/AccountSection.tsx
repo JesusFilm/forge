@@ -8,6 +8,7 @@ import { DeleteAccountFlow } from "./DeleteAccountFlow"
 import { signInWithHostedPage, signOut } from "../../lib/authActions"
 import { SIGN_IN_ERROR_MESSAGE } from "../../lib/authCopy"
 import { getAuthSession } from "../../lib/authSession"
+import { isSignInAvailable } from "../../lib/signInGate"
 import {
   clearNewAccountNotice,
   getNewAccountNotice,
@@ -56,6 +57,43 @@ export function AccountSection() {
   const signInFlight = useRef(false)
 
   if (snapshot.status !== "signedIn") {
+    if (!isSignInAvailable()) {
+      // feat-543: while the gate is closed, the card is disabled and has no
+      // handler. The label carries the subtitle: a label hides child text
+      // from a screen reader, and a user can switch hints off.
+      return (
+        <View style={styles.container}>
+          <Pressable
+            disabled
+            style={styles.signInCta}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: true }}
+            accessibilityLabel="Sign in, coming soon, Accounts are not available yet"
+          >
+            <Ionicons
+              name="person-circle-outline"
+              size={28}
+              color={ACCENT}
+              style={styles.signInDimmed}
+            />
+            <View style={styles.signInTextBlock}>
+              <Text
+                style={[
+                  styles.signInTitle,
+                  typography.titleSmall,
+                  styles.signInDimmed,
+                ]}
+              >
+                Sign in (Coming soon)
+              </Text>
+              <Text style={styles.signInSubtitle}>
+                Accounts are not available yet
+              </Text>
+            </View>
+          </Pressable>
+        </View>
+      )
+    }
     const signingIn = signInPhase === "busy"
     return (
       <View style={styles.container}>
@@ -249,6 +287,11 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: 13,
     marginTop: 2,
+  },
+  // Icon and title only. The same dim on the subtitle gives about 2.6:1 on
+  // SURFACE_COLOR, below the 4.5:1 floor; the title keeps about 4.6:1.
+  signInDimmed: {
+    opacity: 0.5,
   },
   accountCard: {
     backgroundColor: SURFACE_COLOR,

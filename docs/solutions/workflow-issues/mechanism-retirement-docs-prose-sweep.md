@@ -1,6 +1,7 @@
 ---
 title: "Retiring a mechanism: sweep docs prose for its names, not just code symbols"
 date: "2026-07-08"
+last_updated: "2026-09-23"
 category: "workflow-issues"
 module: "roadmap + docs-solutions"
 problem_type: "workflow_issue"
@@ -88,9 +89,15 @@ prose that names the mechanism only by role words is invisible to any grep,
 and that is this method's recall boundary.
 
 ```bash
-git grep -niE 'strapi|launchdarkly|\bLD\b|SEARCH_API_KEYS' -- '*.md'
-git grep -niE 'strapi|launchdarkly|\bLD\b|SEARCH_API_KEYS' -- '*.ts' '*.tsx'
+git grep -niP 'strapi|launchdarkly|\bLD\b|SEARCH_API_KEYS' -- '*.md'
+git grep -niP 'strapi|launchdarkly|\bLD\b|SEARCH_API_KEYS' -- '*.ts' '*.tsx'
 ```
+
+Use `-P` here, not `-E`. On Apple Git 2.50.1, `git grep -E` reads `\b` as
+the letter `b`, so the `\bLD\b` branch matches nothing while the other
+branches still print hits (2026-09-23: 3,292 lines with `-E`, 3,515 with
+`-P`). Before you trust a sweep, run each branch alone and see hits. See
+`docs/solutions/workflow-issues/git-grep-e-backslash-escapes-make-removal-greps-vacuous.md`.
 
 The second command is not optional — code COMMENTS are prose with the same
 blind spot. But **widening the glob is not the whole fix, and on its own it
