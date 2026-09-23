@@ -1,3 +1,4 @@
+import { readDelegatedNarrationPlan } from "./delegated-narration"
 import { assertStudioProductionEnabled } from "./release-controls"
 import { studioProductionListSchema } from "@forge/studio-contracts/production"
 import { z } from "zod"
@@ -171,6 +172,18 @@ export class StudioExecutionService {
         }
       }
       assertStudioProductionEnabled()
+      const delegatedPlan = await readDelegatedNarrationPlan(tx, run.id)
+      if (
+        delegatedPlan &&
+        (input.reserveMicros !== 0 ||
+          !delegatedPlan.segments.some(
+            (s) =>
+              s.matches.length === 0 &&
+              studioHash(s.identity) === input.inputDigest &&
+              input.key === `speech-${input.inputDigest}`,
+          ))
+      )
+        throw new StudioCommandError("INVALID")
       if (attempt && project) {
         assertEditable(project, attempt.baseRevision)
         const currentAttempt = await tx.shortAttempt.findUniqueOrThrow({

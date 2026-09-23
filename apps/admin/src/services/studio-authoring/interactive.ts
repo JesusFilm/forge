@@ -1,3 +1,4 @@
+import { StudioDelegatedNarrationService } from "./delegated-narration"
 import { StudioPublicationReadinessResolver } from "./publication-readiness-resolver"
 import { readStudioRenderState } from "./render-state"
 import { StudioRenderJobs } from "./render-jobs"
@@ -86,6 +87,10 @@ export async function executeStudioRpc(
       return new StudioGenerationService(db).read(user, input)
     case "validate-proposal":
       return new StudioGenerationService(db).validate(user, input)
+    case "narration-authorize":
+      return new StudioDelegatedNarrationService(db).authorize(user, input)
+    case "narration-status":
+      return new StudioDelegatedNarrationService(db).status(user, input)
     case "narration-plan":
       return new StudioNarrationService(db).plan(user, input)
     case "request":

@@ -18,6 +18,8 @@ export const studioRpcSchema = z
       "calendar-authorize",
       "calendar-cancel",
       "narration-plan",
+      "narration-status",
+      "narration-authorize",
       "request",
       "attempts",
       "production-admit",

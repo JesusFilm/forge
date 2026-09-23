@@ -3,7 +3,7 @@ id: "feat-544"
 title: "Generate draft narration within a durable allowance"
 owner: "tataihono"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 readiness: "ready-for-agent"
 start_date: "2026-09-23"
 duration: 3
@@ -56,3 +56,12 @@ See `docs/plans/2026-09-23-studio-external-agent/spec.md` and `code-map.md` for 
 
 - `authenticateStudioMcp|studioServiceCall|expectedRevision`
 - `narrationReserve|render-review|idempotencyKey`
+
+## Implementation evidence — 2026-09-23
+
+- Added migration `0100_studio_delegated_narration`, Prisma models and project-locked admission/allowance service. Project identity is the durable cycle; only interactive, idempotent authorization extends the two-pass allowance.
+- Added independently consented `shorts:narration`, `shorts.narrationQuote`, `shorts.narrate` and `shorts.narrationStatus`. The Manager adapter uses the existing production runner and immutable admitted plan.
+- Real database tests cover concurrent clients, multi-item initial generation, complete-identity reuse after visual edits, one correction, exhaustion, explicit grants, stale completion, retained attribution, ambiguous claims and human final script/voice approval.
+- Existing narration/timing/execution regressions remain green. Fake-provider runner and MCP tests verify accepted-snapshot execution, replay without duplicate calls, and scoped dispatch. No paid calls made.
+- Reviewer allowance/authorization UI is integrated by dependent feat-546; real Claude/Codex qualification is tracked by feat-548. This ticket stays in progress until integration evidence is complete.
+- Durable learnings: `docs/solutions/security-issues/studio-delegated-narration-allowance.md`.

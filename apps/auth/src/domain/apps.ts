@@ -649,6 +649,7 @@ export const STUDIO_MCP_APP_SEED: RegisteredAppSeed = {
       "shorts:read",
       "shorts:edit",
       "shorts:chat",
+      "shorts:narration",
       "shorts:instructions:read",
     ],
     autoApprove: false,

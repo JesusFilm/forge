@@ -1,3 +1,4 @@
+import { StudioDelegatedNarrationService } from "./delegated-narration"
 import { studioGenerationOutputSchema } from "@forge/studio-contracts/generation"
 import type { PrismaClient } from "@prisma/client"
 import { z } from "zod"
@@ -20,13 +21,21 @@ export async function executeStudioDelegated(
     studioClientId: caller.clientId,
   }
   const { action, input } = studioDelegatedRpcSchema.parse(raw)
-  const scope = ["apply", "create", "capture", "asset-upload"].includes(action)
-    ? "shorts:edit"
-    : action === "request"
-      ? "shorts:chat"
-      : "shorts:read"
-  if (!caller.scopes.includes(scope))
+  const scope =
+    action === "narration-admit"
+      ? "shorts:narration"
+      : ["apply", "create", "capture", "asset-upload"].includes(action)
+        ? "shorts:edit"
+        : action === "request"
+          ? "shorts:chat"
+          : "shorts:read"
+  if (
+    !caller.scopes.includes(scope) ||
+    (action === "narration-admit" && !caller.scopes.includes("shorts:read"))
+  )
     throw new StudioBoundaryError("Insufficient Studio scope")
+  if (action === "narration-admit")
+    return new StudioDelegatedNarrationService(db).admit(principal, input)
   const commands = new StudioAuthoringService(db)
   if (action === "request") return commands.request(principal, input)
   if (action === "attempts")
