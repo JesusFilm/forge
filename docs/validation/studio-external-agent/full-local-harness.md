@@ -73,3 +73,13 @@ Record real-client/version/modality evidence separately from this smoke. Timing
 must separate render completion, inspection preparation, client interpretation,
 handoff, and any single repair. Claude and authenticated human approval remain
 unqualified until their respective access is available.
+
+## Recorded client qualification
+
+See [client-workflow.md](client-workflow.md) for the actual Codex conversation,
+latency and modality evidence, and [acceptance-matrix.md](acceptance-matrix.md) for
+proven gates versus outstanding access. `media-check.mjs` is a separate guarded
+backend expiry probe; it retains only an already-rejected expired fixture URL for
+a client recovery scenario. `apps/admin/scripts/studio-agent-qualification-check.ts`
+labels its direct canonical human-edit fixture explicitly and never creates a
+browser session. Run that script from Admin with its package tsconfig.
