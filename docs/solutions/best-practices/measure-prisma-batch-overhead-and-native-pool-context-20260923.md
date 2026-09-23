@@ -122,3 +122,27 @@ The [bounded capture runbook and evidence](../../operations/watch-database-wait-
 record the real 220-row writes, rollback guarantees, setup overhead and remaining
 natural-capture gate. Selection's standalone budget call is outside this
 delivery transaction tag; do not generalize its evidence to selection.
+
+## Distinguish a measured gap from the incident's cause
+
+The deployed observer captured a natural INSERT that reached PostgreSQL's idle
+state about 6 ms after query start while Admin's write wrapper measured 83 ms.
+The same last statement was still idle 104 ms after finishing. This establishes
+time outside PostgreSQL execution, but the idle interval can include later
+application work or delay before dispatching the next statement. Without a
+retained operation timeline, do not put that entire idle interval inside the
+driver call or claim it reproduces a different historical timeout.
+
+Keep CPU profiles bounded and restore temporary inspectors. Map compiled frames
+through the deployed source map before naming a workload. Aggregate sample time
+is not a contiguous pause: the captured GraphQL serialization frame accumulated
+227 ms over 30 seconds, with a longest sampled burst of 8.6 ms. A profile of
+successful traffic cannot establish the cause of an unobserved failure.
+
+Record collector stop reasons and host placement. The first production
+observer stopped at its 100 ms single-poll safety cap; later worker-hosted
+collection had lower overhead. That is a measurement condition, not proof that
+moving the observer fixed anything. Reconcile all primary delivery outcomes
+with HTTP metrics, retain ordinary fallback reasons, and report selection HTTP
+503 separately from HTTP 200 delivery timeouts. Close diagnostic connections
+and verify cleanup independently before ending the investigation window.
