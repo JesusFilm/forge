@@ -18,6 +18,8 @@ export type EditorSnapshot = {
   revision: number
   selection: string | null
   playhead: number
+  /** Operator intent, distinct from positions reported by the playing video. */
+  seekRequest: { frame: number }
   status: "saved" | "unsaved" | "saving" | "failed" | "conflict"
   error: string | null
   remote: Short | null
@@ -46,6 +48,7 @@ export class EditorSession {
       revision: project.revision,
       selection: null,
       playhead: 0,
+      seekRequest: { frame: 0 },
       status: "saved",
       error: null,
       remote: null,
@@ -74,12 +77,20 @@ export class EditorSession {
     this.set({ selection: id })
   }
   seek(frame: number) {
-    this.set({
-      playhead: Math.max(
-        0,
-        Math.min(Math.round(frame), this.state.document.durationInFrames - 1),
-      ),
-    })
+    const playhead = this.clampFrame(frame)
+    if (playhead === this.state.playhead) return
+    this.set({ playhead, seekRequest: { frame: playhead } })
+  }
+  reportPlaybackFrame(frame: number) {
+    const playhead = this.clampFrame(frame)
+    if (playhead !== this.state.playhead) this.set({ playhead })
+  }
+  private clampFrame(frame: number) {
+    if (!Number.isFinite(frame)) return this.state.playhead
+    return Math.max(
+      0,
+      Math.min(Math.round(frame), this.state.document.durationInFrames - 1),
+    )
   }
   edit(change: (doc: StudioDocument) => StudioDocument) {
     if (!this.state.editable) return
