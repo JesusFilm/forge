@@ -75,3 +75,22 @@ The [budget timing learning](separate-budget-function-time-from-driver-latency-2
 explains which parts of standalone commit and driver latency remain outside
 server-function timing. Selection failures and delivery persistence failures
 need separate causal evidence.
+
+## Verify collection and retain failed operations
+
+PR #2388's production check verified that JSON runtime events reach Railway
+and Datadog as structured attributes with an empty message. Search Datadog with
+`service:forge-admin @event:recommendation.runtime`; message-only filtering
+can produce a false absence. Railway attribute values need JSON decoding too.
+Match the span ID and the canonical retained trace ID when the log contains
+only a decimal low-64-bit trace ID. Split primary-log windows before their
+response cap, enforce half-open boundaries and reconcile with HTTP metrics.
+
+A first-hour timeout persisted after the bulk-write optimization. Its 220-row
+insert remained pending at response time and rejected later with P2028.
+`inFlight: 1, elapsedMs: 0` is an unfinished operation, not a zero-millisecond
+success. Exclude pending operations from completed-operation percentiles while
+retaining the failed request and late settlement separately. The 1,186 ms
+driver span narrows the failure but does not identify PostgreSQL execution,
+storage wait or application result handling. A good local paired benchmark
+and successful production deployment are not evidence of complete recovery.

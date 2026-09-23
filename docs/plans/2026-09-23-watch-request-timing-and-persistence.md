@@ -79,3 +79,18 @@ is a proposed objective, not an established full-delivery capability. Include
 failures and fallbacks in acceptance, not only fast successes. Existing ticket
 acceptance gates remain binding; a diagnostic release does not close a latency
 ticket or satisfy missing installed-alert requirements.
+
+## Execution outcome
+
+U1 and the proven optimization in U2 shipped through PR #2388. U3 verified
+automatic Admin/worker deployment of `4ec1f98207d42a31187f51410fad3cfad7257746`,
+collector receipt, trace linkage and a reconciled first-hour production window.
+Sequential review and durable learnings are recorded in the
+[operations report](../operations/watch-persistence-followup-2026-09-23.md).
+
+The plan remains active for the unresolved causal experiment: a fresh 220-row
+evidence write timed out in production after deployment. Local paired tests
+proved reduced overhead but did not reproduce that natural failure. Match
+database waits with driver timing under production-sized evidence/index load
+before proposing the next fix. Do not close feat-496 or dependent gates from
+ten successful selections, one hour without HTTP 5xx, or HTTP 200 totals.
