@@ -29,6 +29,10 @@ import { randomUUID } from "node:crypto"
 import { env } from "@/config/env"
 import type { ContextShape } from "@/graphql/builder"
 import { getRedisClient, hasRedisConfig } from "@/infra/redis"
+import {
+  createRedisOperationGuard,
+  RedisAvailabilityError,
+} from "@/infra/redis-availability"
 
 const isNextBuild = process.env.NEXT_PHASE === "phase-production-build"
 const internalWebRequestIdentities = new WeakMap<Request, string>()
@@ -152,7 +156,22 @@ export const rateLimitPluginOptions = {
   enableBatchRequestCache: true,
 }
 
-export const rateLimitPlugin = useRateLimiter(rateLimitPluginOptions)
+const limiter = useRateLimiter(rateLimitPluginOptions)
+
+export const rateLimitPlugin: typeof limiter = {
+  ...limiter,
+  async onExecute(payload) {
+    const request = (payload.args.contextValue as { request?: Request }).request
+    request?.signal.throwIfAborted()
+    const deadline = performance.now() + 1_000
+    const result = await limiter.onExecute?.(payload)
+    request?.signal.throwIfAborted()
+    if (performance.now() >= deadline) {
+      throw new RedisAvailabilityError("Redis admission timed out")
+    }
+    return result
+  },
+}
 
 function createRateLimitStore() {
   if (!hasRedisConfig()) {
@@ -176,15 +195,19 @@ function createRateLimitStore() {
 
   const redisStore = new RedisStore(redis)
   const fallbackStore = new InMemoryStore()
+  const run = createRedisOperationGuard(500, 1_024)
 
   return {
     async getForIdentity(
       identity: Parameters<typeof redisStore.getForIdentity>[0],
     ) {
       try {
-        return await redisStore.getForIdentity(identity)
+        return await run(() => redisStore.getForIdentity(identity))
       } catch (error) {
-        if (env.NODE_ENV === "production" && !isNextBuild) {
+        if (
+          error instanceof RedisAvailabilityError ||
+          (env.NODE_ENV === "production" && !isNextBuild)
+        ) {
           throw error
         }
         return fallbackStore.getForIdentity(identity)
@@ -196,9 +219,14 @@ function createRateLimitStore() {
       windowMs?: Parameters<typeof redisStore.setForIdentity>[2],
     ) {
       try {
-        await redisStore.setForIdentity(identity, timestamps, windowMs)
+        await run(() =>
+          redisStore.setForIdentity(identity, timestamps, windowMs),
+        )
       } catch (error) {
-        if (env.NODE_ENV === "production" && !isNextBuild) {
+        if (
+          error instanceof RedisAvailabilityError ||
+          (env.NODE_ENV === "production" && !isNextBuild)
+        ) {
           throw error
         }
         fallbackStore.setForIdentity(identity, timestamps)

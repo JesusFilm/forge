@@ -30,12 +30,13 @@ import { createViewingModeRecorder } from "@/lib/viewing-mode-recorder"
 const PLAYBACK_ENDPOINT = watchPath("/api/recommendations/playback")
 const REQUEST_DEADLINE_MS = RECOMMENDATION_EVIDENCE_BROWSER_DEADLINE_MS
 const MAX_CLAIM_ATTEMPTS = 3
-const CLAIM_RETRY_BACKOFF_MS = 250
 const MAX_EPISODE_FACTS = 128
 const MAX_PENDING_CLAIM_FACTS = 16
 const MAX_PENDING_REGULAR_FACTS = MAX_PENDING_CLAIM_FACTS - 1
 const MAX_FACT_DELIVERY_ATTEMPTS = 3
-const FACT_RETRY_BACKOFF_MS = 100
+// Span a brief dependency restart without increasing the per-fact attempt budget.
+const RECOVERY_BACKOFF_MS = [1_000, 8_000] as const
+const FACT_RECOVERY_WINDOW_MS = 30_000
 const PROGRESS_INTERVAL_MS = 10_000
 const MAX_ACTIVE_CHUNK_MS = 60_000
 const UTF8_ENCODER = new TextEncoder()
@@ -354,7 +355,10 @@ export function RecommendationPlaybackRecorder({
   const drainingRef = useRef(false)
   const drainRequestedRef = useRef(false)
   const retryTimerRef = useRef<number | null>(null)
+  const claimRetryTimerRef = useRef<number | null>(null)
+  const mountedRef = useRef(false)
   const deliveryAttemptsRef = useRef(new Map<string, number>())
+  const deliveryStartedAtRef = useRef(new Map<string, number>())
   const sendOutboundRef = useRef<() => void>(() => undefined)
   const factCountRef = useRef(0)
   const factKindCountsRef = useRef<
@@ -384,16 +388,51 @@ export function RecommendationPlaybackRecorder({
   }, [durationSeconds])
 
   const sendOutbound = useCallback(() => {
-    if (flushScheduledRef.current || !episodeRef.current) return
+    if (
+      flushScheduledRef.current ||
+      retryTimerRef.current != null ||
+      !episodeRef.current
+    )
+      return
     flushScheduledRef.current = true
     queueMicrotask(() => {
       flushScheduledRef.current = false
       const episode = episodeRef.current
-      if (!episode || drainingRef.current) return
+      if (!episode || drainingRef.current || retryTimerRef.current != null)
+        return
       drainingRef.current = true
+      const retireDelivery = (eventId: string) => {
+        deliveryAttemptsRef.current.delete(eventId)
+        deliveryStartedAtRef.current.delete(eventId)
+      }
+      const scheduleRetry = (attempt: number) => {
+        if (!mountedRef.current) return
+        const delay = RECOVERY_BACKOFF_MS[Math.min(attempt - 1, 1)]!
+        retryTimerRef.current = window.setTimeout(
+          () => {
+            retryTimerRef.current = null
+            sendOutboundRef.current()
+          },
+          delay * (1 + Math.random() * 0.25),
+        )
+      }
 
       void (async () => {
         while (outboundRef.current.length > 0) {
+          const expired: string[] = []
+          outboundRef.current = outboundRef.current.filter((fact) => {
+            const startedAt = deliveryStartedAtRef.current.get(fact.eventId)
+            if (
+              startedAt == null ||
+              performance.now() - startedAt < FACT_RECOVERY_WINDOW_MS
+            )
+              return true
+            expired.push(fact.eventId)
+            retireDelivery(fact.eventId)
+            return false
+          })
+          if (expired.length > 0)
+            reportDegradation("transport_exhausted", expired)
           const events: RecommendationPlaybackEvent[] = []
           while (
             events.length < outboundRef.current.length &&
@@ -411,7 +450,7 @@ export function RecommendationPlaybackRecorder({
               if (events.length === 0) {
                 const dropped = outboundRef.current.shift()
                 if (dropped) {
-                  deliveryAttemptsRef.current.delete(dropped.eventId)
+                  retireDelivery(dropped.eventId)
                   reportDegradation("body_limit", [dropped.eventId])
                 }
               }
@@ -421,6 +460,9 @@ export function RecommendationPlaybackRecorder({
           }
           if (events.length === 0) continue
           for (const fact of events) {
+            if (!deliveryStartedAtRef.current.has(fact.eventId)) {
+              deliveryStartedAtRef.current.set(fact.eventId, performance.now())
+            }
             deliveryAttemptsRef.current.set(
               fact.eventId,
               (deliveryAttemptsRef.current.get(fact.eventId) ?? 0) + 1,
@@ -442,7 +484,7 @@ export function RecommendationPlaybackRecorder({
             const retired = new Set<string>()
             for (const receipt of receipts) {
               retired.add(receipt.eventId)
-              deliveryAttemptsRef.current.delete(receipt.eventId)
+              retireDelivery(receipt.eventId)
               if (receipt.status === "conflict") {
                 reportDegradation("integrity_conflict", [receipt.eventId])
               }
@@ -465,7 +507,7 @@ export function RecommendationPlaybackRecorder({
                   (fact) => !exhaustedIds.has(fact.eventId),
                 )
                 for (const eventId of exhaustedIds) {
-                  deliveryAttemptsRef.current.delete(eventId)
+                  retireDelivery(eventId)
                 }
                 reportDegradation("receipt_missing", [...exhaustedIds])
               }
@@ -487,10 +529,7 @@ export function RecommendationPlaybackRecorder({
                       deliveryAttemptsRef.current.get(fact.eventId) ?? 1,
                   ),
                 )
-                retryTimerRef.current = window.setTimeout(
-                  () => sendOutboundRef.current(),
-                  FACT_RETRY_BACKOFF_MS * 2 ** (attempt - 1),
-                )
+                scheduleRetry(attempt)
                 break
               }
             }
@@ -508,8 +547,7 @@ export function RecommendationPlaybackRecorder({
               outboundRef.current = outboundRef.current.filter(
                 (fact) => !isObservationEvent(fact),
               )
-              for (const fact of dropped)
-                deliveryAttemptsRef.current.delete(fact.eventId)
+              for (const fact of dropped) retireDelivery(fact.eventId)
               reportDegradation(
                 "request_invalid",
                 dropped.map((fact) => fact.eventId),
@@ -522,7 +560,7 @@ export function RecommendationPlaybackRecorder({
               claimSettledRef.current = true
               drainRequestedRef.current = false
               for (const fact of dropped) {
-                deliveryAttemptsRef.current.delete(fact.eventId)
+                retireDelivery(fact.eventId)
               }
               reportDegradation(
                 error.reason,
@@ -543,7 +581,7 @@ export function RecommendationPlaybackRecorder({
                 (fact) => !exhaustedIds.has(fact.eventId),
               )
               for (const eventId of exhaustedIds) {
-                deliveryAttemptsRef.current.delete(eventId)
+                retireDelivery(eventId)
               }
               reportDegradation(
                 receiptInvalid ? "receipt_invalid" : "transport_exhausted",
@@ -562,17 +600,18 @@ export function RecommendationPlaybackRecorder({
                   (fact) => deliveryAttemptsRef.current.get(fact.eventId) ?? 1,
                 ),
               )
-              retryTimerRef.current = window.setTimeout(
-                () => sendOutboundRef.current(),
-                FACT_RETRY_BACKOFF_MS * 2 ** (attempt - 1),
-              )
+              scheduleRetry(attempt)
             }
             break
           }
         }
       })().finally(() => {
         drainingRef.current = false
-        if (drainRequestedRef.current && outboundRef.current.length > 0) {
+        if (
+          mountedRef.current &&
+          drainRequestedRef.current &&
+          outboundRef.current.length > 0
+        ) {
           drainRequestedRef.current = false
           queueMicrotask(() => sendOutboundRef.current())
         }
@@ -580,9 +619,16 @@ export function RecommendationPlaybackRecorder({
     })
   }, [mediaId])
   useEffect(() => {
+    mountedRef.current = true
     sendOutboundRef.current = sendOutbound
     return () => {
+      mountedRef.current = false
+      if (claimRetryTimerRef.current != null) {
+        window.clearTimeout(claimRetryTimerRef.current)
+        claimRetryTimerRef.current = null
+      }
       if (retryTimerRef.current != null) {
+        // Keep the backoff guard closed during the final departure microtask.
         window.clearTimeout(retryTimerRef.current)
       }
     }
@@ -645,7 +691,7 @@ export function RecommendationPlaybackRecorder({
         registerFact()
         return
       }
-      if (terminal && drainingRef.current) {
+      if (terminal && (drainingRef.current || retryTimerRef.current != null)) {
         registerFact()
         // Keep terminal truth in the ordered queue until the serialized drain
         // commits it. The direct keepalive is only a best-effort page-exit
@@ -678,9 +724,11 @@ export function RecommendationPlaybackRecorder({
       attempt: number,
       allowStandaloneFallback: boolean,
     ) => {
+      if (!mountedRef.current) return
       const body = JSON.stringify({ action: "claim", claimNonce, mediaId })
       void claimRecommendationEpisode(body)
         .then((value) => {
+          if (!mountedRef.current) return
           const episode = parseRecommendationEpisodeCapability(value.episode)
           if (!episode) throw new RecommendationRuntimeError("claim_invalid")
           if (recommendationClaimNonce) {
@@ -692,6 +740,7 @@ export function RecommendationPlaybackRecorder({
           sendOutbound()
         })
         .catch((error) => {
+          if (!mountedRef.current) return
           if (error instanceof DefinitiveClaimError) {
             clearRecommendationClaimNonce(claimNonce)
             if (allowStandaloneFallback && error.allowStandaloneFallback) {
@@ -704,9 +753,14 @@ export function RecommendationPlaybackRecorder({
             return
           }
           if (attempt < MAX_CLAIM_ATTEMPTS) {
-            window.setTimeout(() => {
-              attemptClaim(claimNonce, attempt + 1, allowStandaloneFallback)
-            }, CLAIM_RETRY_BACKOFF_MS)
+            const delay = RECOVERY_BACKOFF_MS[Math.min(attempt - 1, 1)]!
+            claimRetryTimerRef.current = window.setTimeout(
+              () => {
+                claimRetryTimerRef.current = null
+                attemptClaim(claimNonce, attempt + 1, allowStandaloneFallback)
+              },
+              delay * (1 + Math.random() * 0.25),
+            )
           }
           // Ambiguous failures retain both the nonce and the exact pending
           // fact identities. A same-binding retry can recover a claim that
