@@ -1,7 +1,7 @@
 ---
 title: Next background route loading can outlive readiness
 date: "2026-09-21"
-last_updated: "2026-09-21"
+last_updated: "2026-09-23"
 module: Admin production startup
 problem_type: performance_issue
 component: service_object
@@ -55,6 +55,15 @@ hook. Health invokes no GraphQL operation or mutation. The approach assumes the
 normal single production Next server per process used by Railway `next start`.
 Keep the framework patch and health check together during upgrades; run the
 existing patched-dependency guard and a real production-build startup probe.
+
+The original fix provides module-initialization readiness, not Redis availability.
+The September 23 owned-service experiment found health could still return 200
+while the mandatory GraphQL Redis limiter rejected requests before resolver writes.
+The recovery continuation adds a bounded, shared Redis PING after these startup
+gates; health now returns 503 for a failed or stalled mandatory dependency. Even
+this corrected dependency probe cannot prevent a later Redis restart.
+Keep startup loading, dependency availability and caller recovery as separate
+checks; see the [playback recovery diagnosis](../logic-errors/playback-retries-exhaust-before-dependency-recovery-20260923.md).
 
 The five matched selections improve to 307–402 ms. Readiness takes about
 0.6–0.9 seconds longer, inside the existing 60-second deployment health limit.

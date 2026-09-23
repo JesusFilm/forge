@@ -310,7 +310,7 @@ describe("playback observations", () => {
         await Promise.resolve()
       })
       await act(async () => {
-        await vi.advanceTimersByTimeAsync(150)
+        await vi.advanceTimersByTimeAsync(1_250)
       })
       const baseline = batches[0]!.filter(
         (fact) =>
