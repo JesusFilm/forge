@@ -628,3 +628,66 @@ unavailable correlation from zero wait and retain failed/late operations.
 See [reproduction, review and release gates](../../operations/watch-persistence-followup-2026-09-23.md).
 Keep in progress: this does not prove the separate selection-timeout cause,
 sub-200 ms service latency or sustained production recovery.
+
+### Deployed result and fresh recurrence
+
+PR #2388 is deployed as `4ec1f98207d42a31187f51410fad3cfad7257746` on Admin
+and worker, verified through independent process reads after automatic release.
+CI passed 7,313 Admin tests. In the fixed September 22 22:57–23:57 UTC window,
+all 337 seeded HTTP 200 envelopes reconcile: 293 served, 43 non-timeout
+fallbacks and **one new `delivery_timeout`**. Selection has ten HTTP 200s,
+two terminal invalid-request HTTP 400s and zero HTTP 503s; no endpoint has 5xx
+in this one-hour window. No for-you delivery occurred.
+
+The new correlated runtime log and trace isolate a 220-row evidence INSERT:
+1,186 ms driver wall time after 6 ms transaction acquisition, followed by
+rollback/P2028. The incident had 1,225 ms remaining in the existing deadline;
+do not reuse the earlier incident's 650 ms value. Historical server execution
+and wait timing remain unavailable. A bounded live activity sample observed
+one brief data-read wait but did not capture the slow recurrence. This narrows
+the investigation without proving storage, locks or application scheduling as
+the cause. Admin delivery service p99 is still 854 ms in this window.
+
+Keep in progress. See the [release evidence, aggregate artifact and next causal
+experiment](../../operations/watch-persistence-followup-2026-09-23.md#automatic-release-and-first-hour-production-verification).
+
+### Independent database-wait attribution
+
+The next diagnostic change correlates delivery runtime observations with the
+actual PostgreSQL backend without an extra setup round trip. A bounded
+read-only observer runs independently of Admin's event loop. Real PostgreSQL
+tests distinguish table locks, server-side delay and application stalls during
+actual evidence issuance, and preserve rollback/name restoration. The separate
+selection capability-budget statement is not covered by the delivery tag.
+
+See the [capture runbook, controlled evidence and overhead limits](../../operations/watch-database-wait-correlation-2026-09-23.md).
+These tests establish the instrument's discrimination, not the natural failure's
+cause. Keep in progress until deployed natural-failure capture and the existing
+recovery gates are satisfied.
+
+PR #2393 is merged and independently verified on Admin and worker at
+`4583c4ece1f1bba93660bd52d4f80cc618414fc8`; CI passes 7,338 Admin tests and
+the nine local real-PostgreSQL checks pass. A natural successful 122-row INSERT
+reaches PostgreSQL's idle state in about 6 ms while Admin measures 83 ms around
+the write. This demonstrates time outside database execution for that request,
+not the cause of the historical 1.19-second failure. The independent observer
+also samples brief I/O waits; CPU profiling does not identify a responsible
+workload. Standalone selection remains outside this delivery correlation.
+
+The [release record](../../operations/watch-database-wait-correlation-2026-09-23.md)
+retains exact capture coverage, cleanup, HTTP/semantic outcome reconciliation,
+pool contention and rejected causal inferences. The incident remains unresolved;
+neither a successful diagnostic release nor a short window without timeouts
+satisfies this ticket's closure gates.
+
+### Source timing without retained APM spans
+
+The [source timing continuation](../../operations/watch-source-timing-2026-09-23.md)
+records three later 798–1,054 ms successful deliveries with short evidence
+writes and a main-pool backlog reaching 304 calls. These pool events are not
+request-correlated. Bounded source timestamps and longest-call start offsets
+repair the inability to align primary runtime logs when an APM span cannot be
+retrieved. Two regressions fail before the change; 7,339 Admin tests pass after
+it, with bounded serialization overhead. This is instrumentation validation,
+not a demonstrated fix for the natural timeout. Keep in progress through the
+automatic release, causal capture and existing recovery gates.

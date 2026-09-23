@@ -186,6 +186,7 @@ export function createRecommendationDeliveryDependencies(
             sessionDigest: input.sessionDigest,
             profileTokenDigest: input.profileTokenDigest,
             allowDurableProfileLinks: input.allowDurableProfileLinks,
+            locale: input.locale,
             now: input.now,
           }),
       ),

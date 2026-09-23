@@ -801,3 +801,62 @@
   width: 100%;
   margin: 10px 0;
 }
+
+/* The designer's media groups retain separate lanes for overlapping items. */
+.nle-timeline {
+  height: 300px;
+}
+.nle-track-labels .nle-group-label {
+  align-items: flex-start;
+  padding-top: 15px;
+  border-top: 2px solid var(--ds-line-strong);
+}
+.nle-group-label button {
+  padding: 0;
+  min-height: 18px;
+  margin-left: auto;
+}
+.nle-group-start {
+  border-top: 2px solid var(--ds-line-strong);
+}
+.nle-clip-audio {
+  background: color-mix(in srgb, var(--ds-success) 20%, var(--ds-panel));
+}
+.nle-clip-text {
+  background: color-mix(in srgb, var(--warn) 20%, var(--ds-panel));
+}
+.nle-ruler {
+  touch-action: none;
+}
+.nle-playhead {
+  width: 16px;
+  margin-left: -8px;
+  background: transparent;
+  pointer-events: auto;
+  cursor: ew-resize;
+  touch-action: none;
+}
+.nle-playhead::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 7px;
+  width: 2px;
+  background: var(--ds-ink);
+  pointer-events: none;
+}
+.nle-playhead span {
+  left: 3px;
+}
+.nle-playhead:focus-visible {
+  outline: none;
+}
+.nle-playhead:focus-visible span {
+  outline: 2px solid var(--ds-ink);
+  outline-offset: 2px;
+}
+.nle-timeline-toolbar output {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}

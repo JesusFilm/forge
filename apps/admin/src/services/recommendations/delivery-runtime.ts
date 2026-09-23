@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
 import {
   startRecommendationTiming,
+  startRecommendationDatabaseTransaction,
   timeRecommendationOperation,
 } from "@/lib/recommendation-runtime-observation"
 import type { SemanticCandidatePoolItem } from "./candidate"
@@ -145,6 +146,7 @@ export async function runRecommendationDeliveryTransaction<T>(
   const remaining = Math.floor(deadlineAt - nowMilliseconds())
   if (remaining <= 0) throw new RecommendationRetrievalTimeoutError()
   const finishBegin = startRecommendationTiming("transaction.begin")
+  const databaseObservation = startRecommendationDatabaseTransaction()
   let finishSettlement: ReturnType<typeof startRecommendationTiming>
   let reportCallbackFailure!: (error: unknown) => void
   const callbackFailure = new Promise<never>((_, reject) => {
@@ -162,13 +164,18 @@ export async function runRecommendationDeliveryTransaction<T>(
               if (queryRemaining <= 0) {
                 throw new RecommendationRetrievalTimeoutError()
               }
-              await tx.$queryRaw`
+              const setup = await tx.$queryRaw<Array<{ backendPid: number }>>`
               SELECT set_config(
                 'statement_timeout',
                 ${String(queryRemaining)},
                 true
-              )
+              ), pg_backend_pid() AS "backendPid",
+              CASE WHEN ${databaseObservation?.applicationName ?? null}::text IS NOT NULL
+                THEN set_config('application_name', ${databaseObservation?.applicationName ?? null}::text, true)
+                ELSE current_setting('application_name')
+              END
             `
+              databaseObservation?.recordBackend(setup?.[0]?.backendPid)
               return operation(tx)
             },
             deadlineAt,

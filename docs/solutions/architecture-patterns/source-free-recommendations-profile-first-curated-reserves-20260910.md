@@ -1,7 +1,7 @@
 ---
 title: "Extend recommendations without a seed while preserving profile and coverage boundaries"
 date: "2026-09-10"
-last_updated: "2026-09-14"
+last_updated: "2026-09-23"
 category: "architecture-patterns"
 module: "Admin and Web user recommendations"
 problem_type: "architecture_pattern"
@@ -9,7 +9,7 @@ component: "service_object"
 severity: "high"
 applies_when:
   - "Adding a source-free surface to a video-seeded recommendation system"
-  - "Using curated pools only to fill missing personalized results"
+  - "Using curated reserves while preserving personalized relevance and freshness"
   - "Exposing anonymous profiles to cookie-free clients"
 tags: [recommendations, profiles, curated-pools, pgvector, native-api, coverage]
 ---
@@ -27,8 +27,11 @@ fallback coverage cross several independent boundaries.
 
 **Count profile results after filtering.** Apply exact language eligibility,
 canonical deduplication and recent completion rules before testing whether the
-profile supplies six cards. Retrieve curated candidates only for a shortfall;
-append them without replacing sufficient profile candidates. Preserve optional
+profile supplies six fresh cards. Profile-first applies within a freshness tier:
+fresh curated candidates can replace recently tried profile candidates for 24
+hours after at least three seconds of accepted actual playback. Recently tried
+items remain a deterministic reserve when fresh supply is insufficient. Six
+fresh profile candidates still avoid a curated query. Preserve optional
 embedding identity internally for deduplication, and construct the public DTO
 explicitly so vectors and fabricated semantic metadata cannot escape through
 object spreads. `user-delivery.service.test.ts` proves six-plus-zero,
@@ -46,6 +49,10 @@ retriever can return session interests before a qualified watch. Expose the
 durable qualified-interest count internally and gate this surface on it, while
 preserving the existing seeded surface's behavior. Test both a click-only profile
 and retrieval following the first qualified outcome.
+Short-only history changes recent context, not thematic curated-interest seeds.
+Qualified viewing from every discovery source can build the profile; impression
+attribution is required for click-only intent, not for actual qualified playback.
+See the [shared short-watch policy](../logic-errors/source-neutral-playback-recent-history-20260915.md).
 
 **Carry the surface through the complete evidence chain.** Accepting a new
 capability surface in delivery alone is insufficient. Evidence verification,
@@ -64,8 +71,9 @@ This gives native clients cookie-free access without linking people across devic
 
 **Prove reserve capacity from eligible inventory.** Several theme pools can be
 views of the same starter union. They do not multiply available stories. Six
-cards with at most 24 recent exclusions needs a thirty-video eligible reserve;
-a maximum count of twenty needs forty-four. Audit exact UI/audio contexts and
+cards with at most 24 completed-view exclusions need a thirty-video eligible
+reserve; a maximum count of twenty needs forty-four. Recently tried candidates
+are soft reserves, not additional hard exclusions. Audit exact UI/audio contexts and
 canonical identity, not language labels or raw catalog counts. A local audit
 found 35 languages below six across the catalog under the current recommendation
 filters. That is an eligibility count, not proof that dubs are missing. A later
@@ -124,6 +132,7 @@ eligibility. Additional coverage and runtime reliability are separate follow-ups
 - [Exhaustive local coverage evidence](../../recommendations/curation/2026-09-10/all-context-coverage-report.md)
 - [Recommendation boundary hardening](production-recommendation-boundary-hardening-pattern.md)
 - [Recover transient admission on profile refresh](../ui-bugs/watch-recommendation-consent-refresh-in-flight-admission-race.md)
+- [Short-watch policy verification](../../validation/feat-533-short-watch-feedback.md)
 
 ## Release integration checks
 
