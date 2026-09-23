@@ -13,6 +13,8 @@ node docs/validation/studio-feedback/prepare-media.mjs
 node docs/validation/studio-feedback/serve.mjs
 ```
 
+Restart this server after git operations or edits before collecting final evidence; do not rely on HMR to invalidate cached source after files are replaced.
+
 Open <http://127.0.0.1:4179>. The server delays each media request by 180 ms.
 Click **Run cut playback**. Passing requires visiting all three cuts, reaching the
 end, no unhandled errors, and a decoded visible video at every sampled frame in

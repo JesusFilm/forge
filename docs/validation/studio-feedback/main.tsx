@@ -105,6 +105,7 @@ const createSession = () =>
   new EditorSession(structuredClone(stored), transport)
 
 let blankFrames: number[] = []
+let unreadySamples: unknown[] = []
 let maxFrame = 0
 const visitedCuts = new Set<number>()
 let playEvents: string[] = []
@@ -171,8 +172,19 @@ function App() {
           }
           return true
         })
-        if (!visible.some((v) => v.readyState >= 2 && v.videoWidth > 0))
+        if (!visible.some((v) => v.readyState >= 2 && v.videoWidth > 0)) {
           blankFrames.push(frame)
+          unreadySamples.push({
+            frame,
+            videos: visible.map((video) => ({
+              readyState: video.readyState,
+              seeking: video.seeking,
+              paused: video.paused,
+              currentTime: video.currentTime,
+              width: video.videoWidth,
+            })),
+          })
+        }
       }
       previous = frame
       window.document.getElementById("samples")!.textContent = JSON.stringify({
@@ -185,6 +197,7 @@ function App() {
         maxFrame,
         visitedCuts: [...visitedCuts],
         blankFrames,
+        unreadySamples,
         playEvents,
       })
       id = requestAnimationFrame(tick)
@@ -205,6 +218,7 @@ function App() {
       <button
         onClick={() => {
           blankFrames = []
+          unreadySamples = []
           maxFrame = 0
           visitedCuts.clear()
           playEvents = []

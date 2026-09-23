@@ -48,7 +48,9 @@ function LivePlayer({
   const player = useRef<PlayerRef>(null)
   const lastSeekRequest = useRef<EditorSnapshot["seekRequest"] | null>(null)
   const latestPlayhead = useRef(state.playhead)
-  latestPlayhead.current = state.playhead
+  useEffect(() => {
+    latestPlayhead.current = state.playhead
+  }, [state.playhead])
   const input = useMemo(
     () => ({ ...prepared.input, document: state.document }),
     [prepared.input, state.document],

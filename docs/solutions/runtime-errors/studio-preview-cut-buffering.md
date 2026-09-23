@@ -24,7 +24,7 @@ Adjacent video sequences mounted only at their cut. The player advanced while th
 
 Do not combine this HLS attachment with Html5Video's built-in `pauseWhenBuffering`: its `.load()` recovery resets the attached MediaSource, causing native Code 4 unsupported-m3u8 errors in Chromium. The custom readiness gate avoids that recovery path.
 
-`editor-session.ts` separates `reportPlaybackFrame` observations from `seekRequest` commands. `preview.tsx` reacts only to new seek requests, and resumes the current displayed frame when media is replaced. Idempotent observation updates prevent unnecessary external-store notifications.
+`editor-session.ts` separates `reportPlaybackFrame` observations from `seekRequest` commands. `preview.tsx` reacts only to new seek requests, and resumes the current displayed frame when media is replaced. Idempotent observation updates prevent unnecessary external-store notifications. Update latest-value refs in an effect before the seek effect, never during render. Run lint from the Manager package: its nested React rules differ from root lint-staged checks.
 
 ## Related boundaries
 
