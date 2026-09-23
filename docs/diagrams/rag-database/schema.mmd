@@ -1,49 +1,196 @@
-%%{init: {"flowchart": {"wrappingWidth": 380, "nodeSpacing": 30, "rankSpacing": 50}, "themeVariables": {"fontSize": "16px"}}}%%
-%% Pinned sources and regeneration command: README.md
-flowchart TB
-  title["FORGE RAG DATABASE · corpus + R1 consumer registry<br/>Blue: existing public tables · Amber: NEW in draft PR #2397<br/>PK primary key · UQ unique · FK foreign key · ? nullable<br/>Solid arrows: parent → child FK (1 → 0..many unless labeled)<br/>Logical references listed separately; not enforced"]
-  subgraph corpus["EXISTING · public · indexed corpus"]
-    direction TB
-    sources["sources<br/>PK id : uuid<br/>UQ key : text<br/>name : text · languages/default_tags : jsonb<br/>domain?, trust?, ingestion_mode?, rights? : text"]
-    documents["documents<br/>PK id : uuid · FK source_id : uuid<br/>canonical_url, content_hash : text<br/>title?, language?, category? : text<br/>chunk_count : int = 0<br/>UQ (source_id, canonical_url)"]
-    chunks["chunks<br/>PK id : uuid<br/>FK document_id, source_id : uuid<br/>ord, char_start, char_end, token_count : int<br/>text : text · tags : jsonb<br/>search_tsv : generated tsvector<br/>GIN (tags), GIN (search_tsv)"]
-    embeddings["chunk_embeddings<br/>PK / FK chunk_id : uuid<br/>embedding : halfvec(1536)<br/>embedding_model : text<br/>HNSW cosine index on embedding"]
-    sources -->|"CASCADE delete"| documents
-    sources -->|"CASCADE delete"| chunks
-    documents -->|"CASCADE delete"| chunks
-    chunks -->|"1 → 0..1 · CASCADE delete"| embeddings
-  end
-  subgraph acquisition["EXISTING · public · acquisition and maintenance (no FKs)"]
-    direction TB
-    raw["raw_documents<br/>PK id : uuid<br/>source_key, url, canonical_url, raw_content : text<br/>fetched_at : timestamptz · ingested_at? : timestamptz<br/>index_attempted_at? · index_attempted_model?<br/>Latest index: source_key, canonical_url,<br/>fetched_at DESC, id DESC"]
-    audits["language_change_audits<br/>PK id : uuid<br/>run_id, source_key : text · document_id : uuid<br/>old_language?, new_language?, detector_model? : text<br/>UQ (run_id, document_id) · no document FK"]
-    http["http_cache<br/>PK url : text<br/>etag?, last_modified?, body_hash? : text<br/>status_code? : int<br/>fetched_at, updated_at : timestamptz"]
-    robots["robots_cache<br/>PK robots_url : text<br/>body? : text · status_code? : int<br/>fetched_at, updated_at : timestamptz"]
-  end
-  subgraph registry["NEW · consumer_private · draft R1 / PR #2397 · no corpus FKs"]
-    direction TB
-    consumers["consumers<br/>PK id : uuid · UQ name : text<br/>name: lowercase a-z / 0-9 / hyphen, 1–80 chars<br/>state: pending | active | suspended | revoked<br/>created_at, updated_at : timestamptz<br/>Trigger: ID/name immutable; deletion rejected"]
-    members["members · owners and members share one table<br/>PK (consumer_id, github_user_id)<br/>FK consumer_id : uuid<br/>github_user_id : bigint, greater than 0<br/>role: owner | member<br/>Deferred trigger: at least one owner per consumer<br/>Membership cannot move between consumers"]
-    envs["environments<br/>PK (consumer_id, environment) · FK consumer_id<br/>environment : text, a-z / 0-9 / hyphen, 1–40 chars<br/>state: pending | active | suspended | revoked<br/>allowed_source_keys : text[] = empty array<br/>Array elements cannot be NULL; no source FK"]
-    usage["usage_daily · RESERVED, not collected by R1<br/>PK (consumer_id, environment, day, outcome)<br/>FK (consumer_id, environment)<br/>day : date<br/>outcome: success | client_error | server_error<br/>request_count : bigint = 0, at least 0"]
-    lifecycle["lifecycle_audit<br/>PK id : uuid · FK consumer_id : uuid<br/>actor_github_user_id : bigint, greater than 0<br/>action: created | member_added | member_removed<br/>occurred_at : timestamptz<br/>Actor ID has no membership FK"]
-    consumers -->|"1 → 1..many at commit · RESTRICT delete"| members
-    consumers -->|"RESTRICT delete"| envs
-    consumers -->|"RESTRICT delete"| lifecycle
-    envs -->|"composite FK · RESTRICT delete"| usage
-    privacy["R1 boundary: PUBLIC privileges revoked<br/>No serving / corpus-reader / report grants added<br/>No credentials table, HTTP wiring, or usage writer"]
-  end
-  logical["LOGICAL REFERENCES · NO FOREIGN KEYS<br/>raw_documents.source_key → sources.key<br/>language_change_audits.document_id → documents.id<br/>language_change_audits.source_key → sources.key<br/>environments.allowed_source_keys → sources.key values"]
-  classDef existing fill:#eaf3ff,stroke:#245b91,color:#12283e,stroke-width:1.5px;
-  classDef added fill:#fff3d6,stroke:#996600,color:#352600,stroke-width:1.5px;
-  classDef note fill:#f5f6f8,stroke:#667085,color:#17212f;
-  class sources,documents,chunks,embeddings,raw,audits,http,robots existing;
-  class consumers,members,envs,usage,lifecycle added;
-  class title,privacy,logical note;
-  style corpus fill:#f7fbff,stroke:#245b91
-  style acquisition fill:#f7fbff,stroke:#245b91
-  style registry fill:#fffaf0,stroke:#996600
-  title ~~~ corpus
-  corpus ~~~ registry
-  registry ~~~ acquisition
-  acquisition ~~~ logical
+---
+title: "Forge RAG database · full ERD · existing public corpus + draft consumer_private registry (PR #2397)"
+---
+erDiagram
+%% Full entity-relationship diagram of the Forge RAG PostgreSQL database.
+%% Legend, per-table source citations, revision pins, index/trigger inventories and
+%% limitations live in README.md next to this file. Keep the two in sync.
+%% .
+%% Attribute row = "type name KEY comment". Comment notation:
+%%   NN = NOT NULL · NULL = nullable · = x default · UQ/IX/GIN/HNSW = index name
+%%   CK = check constraint · → parent.col = FK target · GEN = generated column
+%% Blue entities (existing) are defined by apps/rag/prisma/migrations/* on main.
+%% Amber entities (draft) are defined only by draft PR #2397's migration
+%% 20260923000000_consumer_registry_foundation at commit a562de94ab9d0522dc2002d3d265535839797753.
+%% Solid lines = real FOREIGN KEY constraints. Dashed lines = logical references
+%% inferred from application code; the database does not enforce them.
+  direction TB
+
+  %% ───────────────────────── EXISTING · schema public ─────────────────────────
+  %% source: migrations/20260827000000_init_rag_schema/migration.sql (CREATE TABLE "sources")
+  sources["public.sources · existing"] {
+    uuid id PK "NN · = gen_random_uuid() · sources_pkey"
+    text key UK "NN · UQ sources_key_uq"
+    text name "NN"
+    text domain "NULL"
+    text trust "NULL"
+    text ingestion_mode "NULL"
+    jsonb languages "NN · = '[]'"
+    jsonb default_tags "NN · = '[]'"
+    text default_category "NULL"
+    text rights "NULL"
+    text content_hash "NULL"
+    timestamptz indexed_at "NULL"
+    timestamptz created_at "NN · = CURRENT_TIMESTAMP"
+    timestamptz updated_at "NN · = CURRENT_TIMESTAMP · no auto-update trigger"
+  }
+
+  %% source: 20260827 init (CREATE TABLE "documents"); updated_at added by 20260831000000_harden_corpus_maintenance
+  documents["public.documents · existing"] {
+    uuid id PK "NN · = gen_random_uuid() · documents_pkey"
+    uuid source_id FK "NN · → sources.id · ON DELETE CASCADE · IX documents_source_idx · UQ (source_id, canonical_url)"
+    text canonical_url "NN · UQ documents_source_canonical_url_uq (source_id, canonical_url)"
+    text url "NULL"
+    text title "NULL"
+    text language "NULL"
+    text category "NULL"
+    text content_hash "NN"
+    integer chunk_count "NN · = 0"
+    timestamptz first_seen "NN · = CURRENT_TIMESTAMP"
+    timestamptz last_seen "NN · = CURRENT_TIMESTAMP"
+    timestamptz indexed_at "NULL"
+    timestamptz updated_at "NN · = CURRENT_TIMESTAMP · added 2026-08-31 · no auto-update trigger"
+  }
+
+  %% source: 20260827 init (CREATE TABLE "chunks" + GIN indexes)
+  chunks["public.chunks · existing"] {
+    uuid id PK "NN · = gen_random_uuid() · chunks_pkey"
+    uuid document_id FK "NN · → documents.id · ON DELETE CASCADE · IX chunks_document_idx"
+    uuid source_id FK "NN · → sources.id · ON DELETE CASCADE · IX chunks_source_idx · not checked against document.source_id"
+    integer ord "NN · no UQ (document_id, ord)"
+    text text "NN"
+    integer char_start "NN"
+    integer char_end "NN"
+    integer token_count "NN"
+    jsonb tags "NN · = '[]' · GIN chunks_tags_gin"
+    timestamptz created_at "NN · = CURRENT_TIMESTAMP"
+    tsvector search_tsv "GEN ALWAYS AS to_tsvector('english', text) STORED · no NOT NULL declared · GIN chunks_search_tsv_gin"
+  }
+
+  %% source: 20260827 init (CREATE TABLE "chunk_embeddings" + HNSW index); requires CREATE EXTENSION vector
+  chunk_embeddings["public.chunk_embeddings · existing"] {
+    uuid chunk_id PK, FK "NN · → chunks.id · ON DELETE CASCADE · chunk_embeddings_pkey"
+    halfvec(1536) embedding "NN · pgvector · HNSW chunk_embeddings_hnsw (halfvec_cosine_ops)"
+    text embedding_model "NN · IX chunk_embeddings_model_idx"
+    timestamptz embedded_at "NN · = CURRENT_TIMESTAMP"
+  }
+
+  %% source: 20260827 init (CREATE TABLE "http_cache")
+  http_cache["public.http_cache · existing"] {
+    text url PK "NN · http_cache_pkey"
+    text etag "NULL"
+    text last_modified "NULL"
+    text body_hash "NULL"
+    integer status_code "NULL"
+    timestamptz fetched_at "NN · = CURRENT_TIMESTAMP"
+    timestamptz updated_at "NN · = CURRENT_TIMESTAMP"
+  }
+
+  %% source: 20260827 init (CREATE TABLE "robots_cache")
+  robots_cache["public.robots_cache · existing"] {
+    text robots_url PK "NN · robots_cache_pkey"
+    text body "NULL"
+    integer status_code "NULL"
+    timestamptz fetched_at "NN · = CURRENT_TIMESTAMP"
+    timestamptz updated_at "NN · = CURRENT_TIMESTAMP"
+  }
+
+  %% source: 20260827 init (CREATE TABLE "raw_documents"); index_attempted_* added by 20260831;
+  %% raw_documents_promotion_latest_idx added by 20260904000000_add_raw_document_promotion_index
+  raw_documents["public.raw_documents · existing"] {
+    uuid id PK "NN · = gen_random_uuid() · raw_documents_pkey"
+    text source_key "NN · IX raw_documents_source_key_idx · logical → sources.key, no FK"
+    text url "NN"
+    text canonical_url "NN · no UQ (source_key, canonical_url)"
+    text title "NULL"
+    text raw_content "NN"
+    integer status "NULL"
+    text body_hash "NULL"
+    text etag "NULL"
+    text last_modified "NULL"
+    timestamptz fetched_at "NN · = CURRENT_TIMESTAMP"
+    boolean not_modified "NN · = false"
+    timestamptz ingested_at "NULL · IX raw_documents_ingested_at_idx"
+    timestamptz index_attempted_at "NULL · added 2026-08-31"
+    text index_attempted_model "NULL · added 2026-08-31"
+  }
+
+  %% source: 20260831000000_harden_corpus_maintenance/migration.sql (CREATE TABLE "language_change_audits")
+  language_change_audits["public.language_change_audits · existing"] {
+    uuid id PK "NN · = gen_random_uuid() · language_change_audits_pkey"
+    text run_id "NN · IX language_change_audits_run_idx · UQ (run_id, document_id)"
+    uuid document_id "NN · UQ language_change_audits_run_document_uq · logical → documents.id, no FK"
+    text source_key "NN · logical → sources.key, no FK"
+    text old_language "NULL"
+    text new_language "NULL"
+    text detector_model "NULL"
+    timestamptz created_at "NN · = CURRENT_TIMESTAMP"
+  }
+
+  %% ────────────── DRAFT · schema consumer_private · PR #2397 @ a562de94 ──────────────
+  %% source: 20260923000000_consumer_registry_foundation/migration.sql (CREATE TABLE consumer_private.consumers)
+  consumers["consumer_private.consumers · DRAFT PR #2397"] {
+    uuid id PK "NN · = gen_random_uuid() · trigger: immutable, row undeletable"
+    text name UK "NN · UNIQUE · CK ~ '^[a-z0-9-]+$' and length 1..80 · trigger: immutable"
+    text state "NN · = 'pending' · CK in (pending, active, suspended, revoked)"
+    timestamptz created_at "NN · = now()"
+    timestamptz updated_at "NN · = now() · no auto-update trigger"
+  }
+
+  %% source: same migration (CREATE TABLE consumer_private.members)
+  members["consumer_private.members · DRAFT PR #2397"] {
+    uuid consumer_id PK, FK "NN · → consumers.id · ON DELETE RESTRICT · trigger: cannot move between consumers"
+    bigint github_user_id PK "NN · CK > 0 · GitHub account ID, not a local user FK"
+    text role "NN · CK in (owner, member) · deferred trigger: at least 1 owner per consumer"
+    timestamptz created_at "NN · = now()"
+  }
+
+  %% source: same migration (CREATE TABLE consumer_private.environments)
+  environments["consumer_private.environments · DRAFT PR #2397"] {
+    uuid consumer_id PK, FK "NN · → consumers.id · ON DELETE RESTRICT"
+    text environment PK "NN · CK ~ '^[a-z0-9-]+$' and length 1..40"
+    text state "NN · = 'pending' · CK in (pending, active, suspended, revoked)"
+    text[] allowed_source_keys "NN · = '{}' · CK no NULL elements · logical → sources.key values, no FK"
+    timestamptz created_at "NN · = now()"
+    timestamptz updated_at "NN · = now() · no auto-update trigger"
+  }
+
+  %% source: same migration (CREATE TABLE consumer_private.usage_daily) · reserved, not written in the draft
+  usage_daily["consumer_private.usage_daily · DRAFT PR #2397 · reserved"] {
+    uuid consumer_id PK, FK "NN · composite FK → environments (consumer_id, environment) · ON DELETE RESTRICT"
+    text environment PK, FK "NN · composite FK → environments (consumer_id, environment)"
+    date day PK "NN · UTC day by convention only, not enforced"
+    text outcome PK "NN · CK in (success, client_error, server_error)"
+    bigint request_count "NN · = 0 · CK >= 0"
+  }
+
+  %% source: same migration (CREATE TABLE consumer_private.lifecycle_audit)
+  lifecycle_audit["consumer_private.lifecycle_audit · DRAFT PR #2397"] {
+    uuid id PK "NN · = gen_random_uuid()"
+    uuid consumer_id FK "NN · → consumers.id · ON DELETE RESTRICT · no index beyond PK"
+    bigint actor_github_user_id "NN · CK > 0 · logical → members.github_user_id, no FK"
+    text action "NN · CK in (created, member_added, member_removed)"
+    timestamptz occurred_at "NN · = now()"
+  }
+
+  %% ───────────── FOREIGN KEYS (solid) · parent ||  child · read left to right ─────────────
+  sources ||--o{ documents : "documents.source_id → sources.id · documents_source_id_fkey · ON DELETE CASCADE, ON UPDATE NO ACTION"
+  documents ||--o{ chunks : "chunks.document_id → documents.id · chunks_document_id_fkey · ON DELETE CASCADE, ON UPDATE NO ACTION"
+  sources ||--o{ chunks : "chunks.source_id → sources.id · chunks_source_id_fkey · ON DELETE CASCADE, ON UPDATE NO ACTION"
+  chunks ||--o| chunk_embeddings : "chunk_embeddings.chunk_id → chunks.id · chunk_embeddings_chunk_id_fkey · ON DELETE CASCADE · PK = FK, so 0..1 per chunk"
+  consumers ||--|{ members : "members.consumer_id → consumers.id · ON DELETE RESTRICT · 1..many at commit (deferred trigger requires an owner)"
+  consumers ||--o{ environments : "environments.consumer_id → consumers.id · ON DELETE RESTRICT"
+  environments ||--o{ usage_daily : "usage_daily (consumer_id, environment) → environments (consumer_id, environment) · ON DELETE RESTRICT"
+  consumers ||--o{ lifecycle_audit : "lifecycle_audit.consumer_id → consumers.id · ON DELETE RESTRICT"
+
+  %% ───────────── LOGICAL REFERENCES (dashed) · inferred from code · NOT enforced ─────────────
+  sources |o..o{ raw_documents : "raw_documents.source_key = sources.key · no FK · inferred from promotion scripts"
+  documents |o..o{ language_change_audits : "language_change_audits.document_id = documents.id · no FK · inferred from language sweep adapter"
+  sources |o..o{ language_change_audits : "language_change_audits.source_key = sources.key · no FK · inferred from language sweep adapter"
+  sources }o..o{ environments : "environments.allowed_source_keys elements = sources.key · no FK · inferred from PR #2397 design note"
+  members |o..o{ lifecycle_audit : "lifecycle_audit.actor_github_user_id = members.github_user_id · no FK · inferred from registry adapter"
+
+  classDef existing fill:#eaf3ff,stroke:#245b91,color:#12283e
+  classDef draft fill:#fff3d6,stroke:#996600,color:#352600
+  class sources,documents,chunks,chunk_embeddings,http_cache,robots_cache,raw_documents,language_change_audits existing
+  class consumers,members,environments,usage_daily,lifecycle_audit draft
