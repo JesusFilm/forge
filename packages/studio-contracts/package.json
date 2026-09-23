@@ -19,7 +19,8 @@
     "./publication": "./src/publication.ts",
     "./render": "./src/render.ts",
     "./publication-state": "./src/publication-state.ts",
-    "./calendar": "./src/calendar.ts"
+    "./calendar": "./src/calendar.ts",
+    "./inspection": "./src/inspection.ts"
   },
   "scripts": {
     "test": "vitest run",

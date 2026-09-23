@@ -1,3 +1,7 @@
+import {
+  inspectStudioRender,
+  studioInspectionMcpResult,
+} from "@/services/studio-inspection"
 import { after } from "next/server"
 import {
   delegatedNarrationQuote,
@@ -68,6 +72,22 @@ export async function POST(request: Request) {
     else if (call && tool) {
       const input = tool.schema.parse(call.arguments ?? {})
       let value: unknown
+      if (tool.action === "inspect") {
+        const inspected = await inspectStudioRender(
+          (action, input, signal) =>
+            studioServiceCall("admin", caller, { action, input }, signal),
+          input,
+          request.signal,
+        )
+        return Response.json(
+          {
+            jsonrpc: "2.0",
+            id: rpc.id ?? null,
+            result: studioInspectionMcpResult(inspected),
+          },
+          { headers: { "cache-control": "no-store" } },
+        )
+      }
       if (tool.action === "narration-quote")
         value = await delegatedNarrationQuote(
           caller,

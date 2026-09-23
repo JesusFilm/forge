@@ -1,5 +1,7 @@
+import { StudioInspectionService } from "./inspection"
+import { STUDIO_INSPECTION_VERSION } from "@forge/studio-contracts/inspection"
 import { StudioRenderPreparation } from "./render-preparation"
-import { randomUUID } from "node:crypto"
+import { randomUUID, createHash } from "node:crypto"
 import { PrismaClient } from "@prisma/client"
 import { expect, test } from "vitest"
 import { z } from "zod"
@@ -193,6 +195,90 @@ const url = env.STUDIO_TEST_DATABASE_URL
         stale: false,
         output: output.reference,
       })
+      // Database/authority proof only: the bytes above are a transport fixture.
+      // Real rendered pixel/audio extraction is tested by the Manager and contained suites.
+      const inspections = new StudioInspectionService(db)
+      const inspectionContext = await inspections.context(human, identity)
+      expect(inspectionContext.evidence).toBeNull()
+      const evidence = {
+        version: STUDIO_INSPECTION_VERSION,
+        ...identity,
+        revision: 1,
+        inputHash: attempt.inputHash,
+        output: output.reference,
+        durationMs: 1000,
+        outputReadyAt: inspectionContext.outputReadyAt,
+        preparationStartedAt: new Date().toISOString(),
+        evidenceReadyAt: new Date().toISOString(),
+        preparationMs: 1,
+        status: "sampled",
+        advisoryOnly: true,
+        samples: [
+          {
+            frame: 0,
+            timestampMs: 0,
+            reasons: ["representative"],
+            blackPercent: null,
+            image: {
+              mimeType: "image/jpeg",
+              data: Buffer.from([255, 216, 255, 217]).toString("base64"),
+              digest: createHash("sha256")
+                .update(Buffer.from([255, 216, 255, 217]))
+                .digest("hex"),
+            },
+          },
+        ],
+        coverage: {
+          totalFrames: 30,
+          requestedFrames: [0],
+          cutCount: 0,
+          sampledCutCount: 0,
+          authoredGaps: [],
+          gapIntent: "not-recorded; confirm intentional gaps with the author",
+          audio: {
+            status: "unavailable",
+            startMs: 0,
+            endMs: 0,
+            monoSampleRate: 8000,
+            rms: null,
+            peak: null,
+            nearFullscaleFraction: null,
+            silence: [],
+          },
+        },
+        findings: [],
+        limitations: ["Authority/persistence transport fixture only"],
+        toolchain: { ffmpeg: "fixture", ffprobe: "fixture" },
+      }
+      await expect(inspections.save(human, evidence)).rejects.toThrow(
+        "Trusted inspection producer",
+      )
+      await expect(
+        executeStudioDelegated(db, caller, {
+          action: "inspection-save",
+          input: evidence,
+        }),
+      ).rejects.toThrow()
+      await expect(
+        inspections.save(worker, {
+          ...evidence,
+          output: { ...output.reference, digest: "0".repeat(64) },
+        }),
+      ).rejects.toThrow("INVALID")
+      await expect(
+        inspections.save(worker, { ...evidence, status: "unsupported" }),
+      ).rejects.toThrow("INVALID")
+      const saved = await inspections.save(worker, evidence)
+      expect(await inspections.save(worker, evidence)).toEqual(saved)
+      expect(
+        await executeStudioDelegated(db, caller, {
+          action: "inspection-context",
+          input: identity,
+        }),
+      ).toMatchObject({ evidence: saved, stale: false })
+      await expect(
+        db.$executeRaw`UPDATE short_render_inspection SET evidence='{}'::jsonb WHERE attempt_id=${attemptId}`,
+      ).rejects.toThrow("immutable")
       const accessSchema = z.object({ access: z.object({ path: z.string() }) })
       const read = () =>
         executeStudioDelegated(db, caller, {
@@ -229,6 +315,11 @@ const url = env.STUDIO_TEST_DATABASE_URL
         revision: 1,
         currentRevision: 2,
         output: output.reference,
+      })
+      expect(await inspections.context(human, identity)).toMatchObject({
+        evidence: saved,
+        stale: true,
+        currentRevision: 2,
       })
       expect(await request()).toEqual(accepted)
       await expect(

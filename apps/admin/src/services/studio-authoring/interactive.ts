@@ -1,3 +1,4 @@
+import { StudioInspectionService } from "./inspection"
 import { StudioDelegatedNarrationService } from "./delegated-narration"
 import { StudioPublicationReadinessResolver } from "./publication-readiness-resolver"
 import { readStudioRenderState } from "./render-state"
@@ -66,6 +67,8 @@ export async function executeStudioRpc(
     packs = new ContentPackService(db),
     transfers = new StudioTransferService(db)
   switch (action) {
+    case "inspection-context":
+      return new StudioInspectionService(db).context(user, input)
     case "publication-candidate":
       return new StudioPublicationReadinessResolver(db).candidate(user, input)
     case "render-state":
