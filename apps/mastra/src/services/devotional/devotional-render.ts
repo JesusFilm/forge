@@ -1685,7 +1685,9 @@ async function renderInStage(
         return undefined
       }
     }
-    keySfxFile = await stageSfx("word-tick.wav", "sfx-key.wav")
+    // A mechanical key, not the soft tick the captions use: the opening is a
+    // typewriter and has to sound like one (owner).
+    keySfxFile = await stageSfx("key-typewriter.wav", "sfx-key.wav")
     transitionSfxFile = await stageSfx(
       "inshot-transition-03.wav",
       "sfx-transition.wav",
@@ -1693,7 +1695,10 @@ async function renderInStage(
   }
 
   let musicFile: string | undefined
-  if (audio.music) {
+  // A teaser runs on its own sounds — the typing and the transitions. The bed
+  // underneath them made three seconds of quiet text feel like a trailer
+  // (owner: "take the music off the teaser").
+  if (audio.music && !options.introTeaser) {
     musicFile = "music.mp3"
     await writeFile(path.join(stage, musicFile), audio.music.audio.bytes)
   }
