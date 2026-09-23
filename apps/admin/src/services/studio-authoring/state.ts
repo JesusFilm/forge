@@ -102,6 +102,21 @@ export async function publicationDependencyHash(
   document: StudioDocument,
   renderAttemptId: string,
 ) {
+  // Delegated draft generation never supplies human script/voice review.
+  if (
+    orderedStudioSpeech(document).some(
+      (item) =>
+        item.speech && !item.speech.suppressed && item.speech.text.length > 0,
+    ) &&
+    !(await tx.shortApproval.findFirst({
+      where: {
+        projectId: project.id,
+        kind: "SCRIPT",
+        dependencyHash: scriptHash(document),
+      },
+    }))
+  )
+    throw new StudioCommandError("APPROVAL_REQUIRED")
   const attempt = await tx.shortAttempt.findUnique({
     where: { id: renderAttemptId },
   })

@@ -120,6 +120,7 @@ describe("OAuth resource catalogue", () => {
           "shorts:read",
           "shorts:edit",
           "shorts:chat",
+          "shorts:narration",
           "shorts:instructions:read",
         ]),
       ),

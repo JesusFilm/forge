@@ -1,3 +1,8 @@
+import { after } from "next/server"
+import {
+  delegatedNarrationQuote,
+  executeDelegatedNarration,
+} from "@/services/studio-production/delegated-narration"
 import { env } from "@/config/env"
 import { z } from "zod"
 import { STUDIO_MCP_TOOLS as tools } from "@/services/studio-agent/mcp-tools"
@@ -47,7 +52,7 @@ export async function POST(request: Request) {
         capabilities: { tools: {} },
         serverInfo: { name: "Forge Shorts", version: "1.0.0" },
         instructions:
-          "Edits use expectedRevision. Tools never grant interactive human review, experimentation, narration or publication authority.",
+          "Edits use expectedRevision. Tools never grant interactive human review, experimentation or publication authority.",
       }
     else if (rpc.method === "ping") result = {}
     else if (rpc.method === "tools/list")
@@ -63,7 +68,21 @@ export async function POST(request: Request) {
     else if (call && tool) {
       const input = tool.schema.parse(call.arguments ?? {})
       let value: unknown
-      if (tool.action === "instructions")
+      if (tool.action === "narration-quote")
+        value = await delegatedNarrationQuote(
+          caller,
+          z
+            .object({ projectId: z.string(), expectedRevision: z.number() })
+            .parse(input),
+        )
+      else if (tool.action === "narration-admit") {
+        value = await studioServiceCall("admin", caller, {
+          action: "narration-admit",
+          input,
+        })
+        const { runId } = z.object({ runId: z.string() }).parse(value)
+        after(() => executeDelegatedNarration(caller, runId))
+      } else if (tool.action === "instructions")
         value = await studioServiceCall("mastra", caller, {
           action: "instructions",
           command: { action: "inspect" },

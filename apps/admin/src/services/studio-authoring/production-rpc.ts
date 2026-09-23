@@ -1,3 +1,4 @@
+import { readDelegatedNarrationPlan } from "./delegated-narration"
 import { z } from "zod"
 import type { PrismaClient } from "@prisma/client"
 import { StudioBoundaryError, type StudioCaller } from "@forge/studio-server"
@@ -44,10 +45,12 @@ export async function executeStudioProduction(
     where: { id: request.runId },
   })
   const actor = studioActorSchema.parse(run.actor)
+  const delegatedPlan = await readDelegatedNarrationPlan(db, run.id)
   if (
     actor.kind !== "human" ||
     actor.id !== caller.sub ||
-    actor.authority !== "interactive"
+    (actor.authority !== "interactive" &&
+      !(actor.authority === "delegated" && delegatedPlan))
   )
     throw new StudioBoundaryError("Production admission owner mismatch")
   const worker = { id: null, role: "MANAGER_BACKEND" as const },
@@ -56,6 +59,20 @@ export async function executeStudioProduction(
   switch (request.command) {
     case "preflight-error": {
       const diagnostic = z.string().min(1).max(2000).parse(input.diagnostic)
+      if (delegatedPlan && run.attemptId) {
+        const attempt = await db.shortAttempt.findUniqueOrThrow({
+          where: { id: run.attemptId },
+        })
+        return new StudioAuthoringService(db).complete(worker, {
+          projectId: attempt.projectId,
+          expectedRevision: attempt.baseRevision,
+          attemptId: attempt.id,
+          idempotencyKey: `${run.id}:preflight-failure`,
+          status: "FAILED",
+          operations: [],
+          result: { assets: [], costMicros: null, diagnostic },
+        })
+      }
       const inputDigest = studioHash({ phase: "preflight", diagnostic }),
         key = `preflight-${inputDigest}`
       const claim = await execution.claim(worker, {
@@ -108,6 +125,7 @@ export async function executeStudioProduction(
         : null
       return {
         run: await execution.read(worker, run.id),
+        narrationPlan: delegatedPlan,
         attempt,
         project: attempt
           ? await new StudioAuthoringService(db).readRevision(

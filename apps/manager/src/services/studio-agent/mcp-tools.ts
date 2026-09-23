@@ -6,6 +6,7 @@ import {
 } from "@forge/studio-contracts/sources"
 import { z } from "zod"
 import {
+  studioCommandBaseSchema,
   studioApplySchema,
   studioCreateSchema,
   studioIdSchema,
@@ -13,6 +14,35 @@ import {
 } from "@forge/studio-contracts"
 import { studioChatSchema } from "@forge/studio-contracts/agent"
 export const STUDIO_MCP_TOOLS = [
+  {
+    name: "shorts.narrationQuote",
+    description:
+      "Inspect effective narration, reusable recordings, verified price or pricing-unavailable state. This is not human script approval.",
+    scope: "shorts:read",
+    action: "narration-quote",
+    schema: z
+      .object({
+        projectId: studioIdSchema,
+        expectedRevision: z.number().int().positive(),
+      })
+      .strict(),
+  },
+  {
+    name: "shorts.narrate",
+    description:
+      "Requires shorts:read and shorts:narration. Generate and attach draft narration with approved existing voices. One initial multi-item pass and one correction per project; unchanged audio is reused. Retry the same key to resume; ambiguous calls require reconciliation. Provider charges apply. Never approves script or publication.",
+    scope: "shorts:narration",
+    action: "narration-admit",
+    schema: studioCommandBaseSchema.strict(),
+  },
+  {
+    name: "shorts.narrationStatus",
+    description:
+      "Read durable project narration allowance, accepted runs, retained output and reconciliation state.",
+    scope: "shorts:read",
+    action: "narration-status",
+    schema: z.object({ projectId: studioIdSchema }).strict(),
+  },
   {
     name: "shorts.projects",
     description:

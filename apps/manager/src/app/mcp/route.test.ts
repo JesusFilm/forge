@@ -1,8 +1,10 @@
+import { after } from "next/server"
 import { beforeEach, expect, it, vi } from "vitest"
 import { StudioBoundaryError } from "@forge/studio-server"
 import { POST } from "./route"
 import { authenticateStudioMcp } from "@/services/studio-agent/oauth"
 import { studioServiceCall } from "@/services/studio-agent/transport"
+vi.mock("next/server", () => ({ after: vi.fn() }))
 vi.mock("@/config/env", () => ({
   env: {
     MANAGER_BASE_URL: "https://studio.example.test",
@@ -48,6 +50,9 @@ it("initializes and discovers only consented capabilities", async () => {
   )
   expect(result.tools.map((t: { name: string }) => t.name)).not.toContain(
     "shorts.apply",
+  )
+  expect(result.tools.map((t: { name: string }) => t.name)).not.toContain(
+    "shorts.narrate",
   )
 })
 it("pages project discovery without fetching unbounded state", async () => {
@@ -151,4 +156,35 @@ it("paginates history and makes stale edits recoverable without replacing identi
     code: "CONFLICT",
     retryable: true,
   })
+})
+
+it("admits narration with its separate consent before scheduling the trusted runner", async () => {
+  const scoped = { ...caller, scopes: ["shorts:read", "shorts:narration"] }
+  vi.mocked(authenticateStudioMcp).mockResolvedValue(scoped)
+  vi.mocked(studioServiceCall).mockResolvedValue({
+    runId: "narration-run",
+    allowance: { used: 1, remaining: 1 },
+  })
+  const response = await rpc("tools/call", {
+    name: "shorts.narrate",
+    arguments: {
+      projectId: "draft",
+      expectedRevision: 1,
+      idempotencyKey: "initial",
+    },
+  })
+  expect(response.status).toBe(200)
+  expect(authenticateStudioMcp).toHaveBeenCalledWith(
+    expect.any(Request),
+    "shorts:narration",
+  )
+  expect(studioServiceCall).toHaveBeenCalledWith("admin", scoped, {
+    action: "narration-admit",
+    input: {
+      projectId: "draft",
+      expectedRevision: 1,
+      idempotencyKey: "initial",
+    },
+  })
+  expect(after).toHaveBeenCalledTimes(1)
 })

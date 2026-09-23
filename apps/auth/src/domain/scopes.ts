@@ -1,5 +1,11 @@
 export const AUTH_SCOPES = [
   {
+    key: "shorts:narration",
+    label: "Generate draft Shorts narration",
+    description:
+      "Use an approved existing voice for one initial pass and one correction per project. Provider charges apply. Never approves final script or publication.",
+  },
+  {
     key: "shorts:read",
     label: "Read Shorts projects",
     description: "Read Shorts projects, history and shared assets.",
