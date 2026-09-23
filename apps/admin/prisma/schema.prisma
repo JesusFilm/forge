@@ -5629,7 +5629,20 @@ model ShortRenderExecution {
   @@map("short_render_execution")
 }
 
+model ShortRenderPreparation {
+  attemptId String           @map("attempt_id") @db.VarChar(128)
+  leaseId   String           @map("lease_id")
+  inputHash String           @map("input_hash") @db.VarChar(64)
+  document  Json
+  createdAt DateTime         @default(now()) @map("created_at")
+  lease     ShortRenderLease @relation(fields: [attemptId, leaseId], references: [attemptId, leaseId], onDelete: Restrict, onUpdate: NoAction)
+
+  @@id([attemptId, leaseId])
+  @@map("short_render_preparation")
+}
+
 model ShortRenderLease {
+  preparation    ShortRenderPreparation?
   retainedAssets ShortRenderRetainedAsset[]
   attemptId      String                     @map("attempt_id") @db.VarChar(128)
   leaseId        String                     @map("lease_id")

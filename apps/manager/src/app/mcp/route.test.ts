@@ -188,3 +188,77 @@ it("admits narration with its separate consent before scheduling the trusted run
   })
   expect(after).toHaveBeenCalledTimes(1)
 })
+
+it("requires separate render consent and returns exact identity links and refreshed byte access", async () => {
+  vi.mocked(authenticateStudioMcp).mockResolvedValue({
+    ...caller,
+    scopes: ["shorts:read", "shorts:render"],
+  })
+  vi.mocked(studioServiceCall).mockResolvedValue({
+    projectId: "draft",
+    revision: 3,
+    attemptId: "render-3",
+  })
+  const requested = await (
+    await rpc("tools/call", {
+      name: "shorts.renderRequest",
+      arguments: {
+        projectId: "draft",
+        expectedRevision: 3,
+        idempotencyKey: "stable-key",
+      },
+    })
+  ).json()
+  expect(authenticateStudioMcp).toHaveBeenLastCalledWith(
+    expect.any(Request),
+    "shorts:render",
+  )
+  expect(studioServiceCall).toHaveBeenLastCalledWith(
+    "admin",
+    expect.objectContaining({ authority: "delegated" }),
+    {
+      action: "render-request",
+      input: {
+        projectId: "draft",
+        expectedRevision: 3,
+        idempotencyKey: "stable-key",
+      },
+    },
+  )
+  expect(requested.result.structuredContent.result.reviewUrl).toBe(
+    "https://studio.example.test/dashboard/shorts/draft?revision=3&renderAttemptId=render-3",
+  )
+  const path = `/api/shorts/assets/transfer/${"a".repeat(64)}`
+  vi.mocked(studioServiceCall).mockResolvedValue({
+    projectId: "draft",
+    revision: 3,
+    attemptId: "render-3",
+    access: { path, expiresAt: "2026-09-23T00:05:00Z", method: "GET" },
+  })
+  const read = await (
+    await rpc("tools/call", {
+      name: "shorts.renderRead",
+      arguments: { projectId: "draft", attemptId: "render-3" },
+    })
+  ).json()
+  expect(authenticateStudioMcp).toHaveBeenLastCalledWith(
+    expect.any(Request),
+    "shorts:read",
+  )
+  expect(read.result.structuredContent.result.access.url).toBe(
+    `https://admin.example.test${path}`,
+  )
+  expect(
+    (
+      await rpc("tools/call", {
+        name: "shorts.renderRequest",
+        arguments: {
+          projectId: "draft",
+          expectedRevision: 3,
+          idempotencyKey: "key",
+          authority: "interactive",
+        },
+      })
+    ).status,
+  ).toBe(400)
+})

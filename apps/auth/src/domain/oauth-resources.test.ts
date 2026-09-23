@@ -119,6 +119,7 @@ describe("OAuth resource catalogue", () => {
           ...CHANGELOG_DEFAULT_SCOPES,
           "shorts:read",
           "shorts:edit",
+          "shorts:render",
           "shorts:chat",
           "shorts:narration",
           "shorts:instructions:read",

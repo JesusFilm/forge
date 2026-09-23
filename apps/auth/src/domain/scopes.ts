@@ -6,6 +6,12 @@ export const AUTH_SCOPES = [
       "Use an approved existing voice for one initial pass and one correction per project. Provider charges apply. Never approves final script or publication.",
   },
   {
+    key: "shorts:render",
+    label: "Render Shorts drafts",
+    description:
+      "Request private draft renders using infrastructure; never approve or publish.",
+  },
+  {
     key: "shorts:read",
     label: "Read Shorts projects",
     description: "Read Shorts projects, history and shared assets.",

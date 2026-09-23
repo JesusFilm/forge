@@ -14,6 +14,7 @@ import {
 import { STUDIO_RENDER_INPUT_BYTES } from "@forge/studio-contracts/render"
 import {
   createStudioAssetBroker,
+  prepareStudioRenderSources,
   readRetainedStudioSource,
   StudioBrokerError,
   type StudioBrokerClient,
@@ -167,4 +168,31 @@ export async function prepareStudioRenderInput(
     }).decode(await read(component.code, 32768))
   signal.throwIfAborted()
   return { input: studioPreviewSchema.parse({ document, media, code }), files }
+}
+
+/** Durable render leases own preparation too: canonical descriptors are resolved
+ * through the trusted broker, never client URLs or a human-edit impersonation.
+ * Materialization adds retained byte identities without editing the admitted revision. */
+export async function prepareStudioDraftRenderInput(
+  call: StudioBrokerClient,
+  projectId: string,
+  rawDocument: unknown,
+  proofKey: string,
+  signal: AbortSignal,
+  preparation: {
+    read(): Promise<unknown>
+    save(document: unknown): Promise<unknown>
+  },
+) {
+  const existing = await preparation.read()
+  const pinned =
+    existing ??
+    (await preparation.save(
+      (await prepareStudioRenderSources(call, projectId, rawDocument, signal))
+        .document,
+    ))
+  const { document } = z
+    .object({ document: studioDocumentSchema })
+    .parse(pinned)
+  return prepareStudioRenderInput(call, projectId, document, proofKey, signal)
 }

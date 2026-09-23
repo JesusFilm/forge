@@ -124,6 +124,41 @@ export async function POST(request: Request) {
           url: new URL(transfer.path, env.ADMIN_GRAPHQL_URL!).toString(),
         }
       }
+      if (
+        ["render-request", "render-status", "render-read"].includes(tool.action)
+      ) {
+        const render = z
+          .object({
+            projectId: z.string(),
+            revision: z.number(),
+            attemptId: z.string(),
+          })
+          .passthrough()
+          .parse(value)
+        const review = new URL(
+          projectReviewLink(render.projectId, render.revision),
+        )
+        review.searchParams.set("renderAttemptId", render.attemptId)
+        value = { ...render, reviewUrl: review.toString() }
+        if (tool.action === "render-read") {
+          const access = z
+            .object({
+              path: z
+                .string()
+                .regex(/^\/api\/shorts\/assets\/transfer\/[a-f0-9]{64}$/),
+            })
+            .passthrough()
+            .parse(render.access)
+          value = {
+            ...render,
+            reviewUrl: review.toString(),
+            access: {
+              ...access,
+              url: new URL(access.path, env.ADMIN_GRAPHQL_URL!).toString(),
+            },
+          }
+        }
+      }
       if (tool.action === "list") {
         const projects = z
           .array(
