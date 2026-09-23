@@ -1115,7 +1115,7 @@ Armed at sign-out; consumed only by a completed sign-in — an abandoned or fail
 
 A per-environment switch that decides whether a native app offers sign-in to a person who is not signed in. While the gate is closed, the app hides or disables every place where a signed-out person could start sign-in, and tells them that accounts are coming. The gate controls only how sign-in starts: it never ends an App-Local Session, and it never hides a re-authentication step that only a signed-in person can reach, such as the step before account deletion.
 
-The gate is closed by default and fails closed: only an explicit opt-in value opens it, and development builds always open it. Each build carries its value, so a change reaches a device only with a new build or update, and it never reaches a build installed before the gate existed. The gate acts on the client only; the auth provider still accepts a sign-in that arrives by another route.
+The gate is closed by default and fails closed: only an explicit opt-in value opens it, and development builds always open it. Each build carries its value, so a change reaches a device only with a new build or update. A build installed before the gate existed gets the gate only from an update that reaches that build. The gate acts on the client only; the auth provider still accepts a sign-in that arrives by another route.
 
 ## Admin schema operations
 

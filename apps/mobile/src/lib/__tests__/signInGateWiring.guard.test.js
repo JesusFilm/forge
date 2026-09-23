@@ -28,7 +28,8 @@ const GATED_SURFACES = [
 const HOSTED_SIGN_IN = /\bsignInWithHostedPage\b/
 const HOSTED_SIGN_IN_CALL = /\bsignInWithHostedPage\s*\(/
 const GATE_CALL = /\bisSignInAvailable\s*\(/
-const CLIENT_SIGN_IN_CALL = /\.signIn\s*\.\s*\w+\s*\(/
+// No leading dot, so a destructured `signIn.social(` counts too.
+const CLIENT_SIGN_IN_CALL = /\b(signIn|signUp)\s*\.\s*\w+\s*\(/
 
 /** Comments do not run. The `[^:]` keeps a URL such as `https://` intact. */
 function stripComments(source) {
@@ -166,5 +167,14 @@ describe("the sign-in gate wiring (feat-543)", () => {
       CLIENT_SIGN_IN_CALL.test(source),
     ).map(({ file }) => file)
     expect(direct).toEqual([AUTH_ACTIONS])
+  })
+
+  // A second sign-in call inside the auth actions would be a new entry point
+  // that Rule 1 cannot see, so it must come with its own gate decision.
+  it("keeps exactly one auth-client sign-in call in the auth actions", () => {
+    const calls = read(AUTH_ACTIONS).match(
+      new RegExp(CLIENT_SIGN_IN_CALL.source, "g"),
+    )
+    expect(calls).toHaveLength(1)
   })
 })

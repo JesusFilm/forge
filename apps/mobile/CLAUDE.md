@@ -571,8 +571,10 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
     a downloaded update on the next launch, so check the Profile tab after a
     second launch.
   - **Reach.** The production OTA channel is dark (see "Cold-start splash"),
-    so the gate reaches installed builds only with the next native build. A
-    build installed before the gate keeps a working sign-in.
+    so the gate reaches installed builds only with the next native build.
+    While the channel is dark, a build installed before the gate keeps a
+    working sign-in. An update reaches every installed build with the same
+    runtime version, so after the channel opens, an update brings the gate.
   - **Only a non-development build shows the gated state.** Use a
     `preview-simulator` EAS build on iOS or an internal preview build on
     Android with the value unset, and check the first launch after install,
