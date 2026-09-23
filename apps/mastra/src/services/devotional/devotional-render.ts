@@ -1685,9 +1685,11 @@ async function renderInStage(
         return undefined
       }
     }
-    // A mechanical key, not the soft tick the captions use: the opening is a
-    // typewriter and has to sound like one (owner).
-    keySfxFile = await stageSfx("key-typewriter.wav", "sfx-key.wav")
+    // A REAL phone key, cut from the reference the owner sent. The synthesised
+    // click before it was a noise transient and read as static ("like someone
+    // being electrocuted"): a key's sound is mostly its body resonance, which
+    // a noise burst does not have.
+    keySfxFile = await stageSfx("key-phone-real.wav", "sfx-key.wav")
     transitionSfxFile = await stageSfx(
       "inshot-transition-03.wav",
       "sfx-transition.wav",
