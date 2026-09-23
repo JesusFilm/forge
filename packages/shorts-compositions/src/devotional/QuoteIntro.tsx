@@ -1,6 +1,14 @@
-import { AbsoluteFill, Easing, interpolate, useCurrentFrame } from "remotion"
+import {
+  AbsoluteFill,
+  Audio,
+  Easing,
+  interpolate,
+  Sequence,
+  staticFile,
+  useCurrentFrame,
+} from "remotion"
 
-import { BLOCK_FADE_SEC, quoteIntroTimeline } from "./quote-timing"
+import { BLOCK_FADE_SEC, quoteIntroTimeline, TYPE_CPS } from "./quote-timing"
 
 /**
  * The social opening the owner's colleague cut by hand, rebuilt in the series'
@@ -16,7 +24,6 @@ import { BLOCK_FADE_SEC, quoteIntroTimeline } from "./quote-timing"
  */
 
 const GOLD = "#f2c46b"
-const ease = Easing.bezier(0.22, 1, 0.36, 1)
 
 export type QuoteIntroProps = {
   quoteA: string
@@ -29,6 +36,10 @@ export type QuoteIntroProps = {
    *  devotional, under a small gold label. */
   cta?: string
   ctaLabel?: string
+  /** Staged sound files: one key click per typed character, and the whoosh
+   *  that rides each block's arrival (owner's InShot transition). */
+  keySfx?: string
+  transitionSfx?: string
   px: (n: number) => number
   fps: number
   /** Card length in seconds — the beats are laid out against it. */
@@ -37,20 +48,24 @@ export type QuoteIntroProps = {
   sans: string
 }
 
-/** Splits a line so the phrase carrying the weight can be set apart. */
+/** Splits a line so the phrase carrying the weight can be set apart. `visible`
+ *  lets a half-typed line keep its gold: the index is taken from the whole
+ *  line, so the accent arrives with the characters rather than after them. */
 function withStrong(
   line: string,
   strong: string | undefined,
   strongStyle: React.CSSProperties,
+  visible = line.length,
 ) {
-  if (!strong) return line
+  const shown = line.slice(0, visible)
+  if (!strong) return shown
   const at = line.toLowerCase().indexOf(strong.toLowerCase())
-  if (at < 0) return line
+  if (at < 0 || at >= shown.length) return shown
   return (
     <>
-      {line.slice(0, at)}
-      <span style={strongStyle}>{line.slice(at, at + strong.length)}</span>
-      {line.slice(at + strong.length)}
+      {shown.slice(0, at)}
+      <span style={strongStyle}>{shown.slice(at, at + strong.length)}</span>
+      {shown.slice(at + strong.length)}
     </>
   )
 }
@@ -64,6 +79,8 @@ export function QuoteIntro({
   watchLabel,
   cta,
   ctaLabel,
+  keySfx,
+  transitionSfx,
   px,
   fps,
   durationSec,
@@ -88,18 +105,22 @@ export function QuoteIntro({
   // Owner: the halves are PUSHED in from their own side, not revealed edge to
   // edge — a wipe also cut the descenders off the first line ("g" lost its
   // tail), which a plain slide cannot do.
-  const push = (from: number, dir: "left" | "right") => {
-    const p = interpolate(t, [from, from + 0.5], [0, 1], {
+  const push = (from: number, dir: "left" | "right", travelUnits = 54) => {
+    // Owner: the second half is sharper than the first and travels further.
+    const p = interpolate(t, [from, from + 0.34], [0, 1], {
       extrapolateLeft: "clamp",
       extrapolateRight: "clamp",
-      easing: ease,
+      easing: Easing.out(Easing.cubic),
     })
-    const travel = px(54) * (1 - p)
+    const travel = px(travelUnits) * (1 - p)
     return {
       opacity: p,
       transform: `translateX(${((dir === "left" ? -1 : 1) * travel).toFixed(1)}px)`,
     }
   }
+  /** Characters of `text` visible at time t, typed at TYPE_CPS. */
+  const typed = (text: string, from: number) =>
+    Math.max(0, Math.min(text.length, Math.floor((t - from) * TYPE_CPS)))
   const quoteOpacity = interpolate(t, [qOut, qOut + BLOCK_FADE_SEC], [1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
@@ -125,11 +146,41 @@ export function QuoteIntro({
   const strongStyle: React.CSSProperties = {
     fontFamily: serif,
     fontWeight: 600,
+    fontStyle: "italic",
     color: GOLD,
   }
 
+  // One click per typed character, and a whoosh under each arrival. Both are
+  // staged next to the clip, so they are absent in a preview that has no sfx.
+  const keyClicks = keySfx
+    ? Array.from({ length: quoteA.trim().length }, (_, i) =>
+        Math.round((plan.quoteAt[0] + i / TYPE_CPS) * fps),
+      )
+    : []
+  const whooshes = transitionSfx
+    ? [plan.quoteAt[1], ...plan.questionsAt].map((at) => Math.round(at * fps))
+    : []
+
   return (
     <AbsoluteFill style={{ pointerEvents: "none" }}>
+      {keyClicks.map((from, i) => (
+        <Sequence
+          key={`k${i}`}
+          from={from}
+          durationInFrames={Math.round(0.2 * fps)}
+        >
+          <Audio src={staticFile(keySfx!)} volume={0.32} />
+        </Sequence>
+      ))}
+      {whooshes.map((from, i) => (
+        <Sequence
+          key={`w${i}`}
+          from={from}
+          durationInFrames={Math.round(0.8 * fps)}
+        >
+          <Audio src={staticFile(transitionSfx!)} volume={0.38} />
+        </Sequence>
+      ))}
       {/* The quotation: two halves, each arriving from its own side. */}
       <AbsoluteFill
         style={{
@@ -147,10 +198,31 @@ export function QuoteIntro({
             color: "#fff",
             textShadow: `0 ${px(2)}px ${px(20)}px rgba(0,0,0,0.55)`,
             maxWidth: "88%",
-            ...push(plan.quoteAt[0], "left"),
+            // Typed, not pushed — it appears character by character.
+            opacity: t >= plan.quoteAt[0] ? 1 : 0,
           }}
         >
-          {withStrong(quoteA, quoteAStrong, strongStyle)}
+          {withStrong(
+            quoteA,
+            quoteAStrong,
+            strongStyle,
+            typed(quoteA, plan.quoteAt[0]),
+          )}
+          {typed(quoteA, plan.quoteAt[0]) < quoteA.length &&
+          t > plan.quoteAt[0] ? (
+            // The carriage: a block caret that sits at the end of what has
+            // been typed and leaves with the last character.
+            <span
+              style={{
+                display: "inline-block",
+                width: px(14),
+                height: px(24),
+                marginLeft: px(3),
+                transform: `translateY(${px(3)}px)`,
+                background: "rgba(255,255,255,0.8)",
+              }}
+            />
+          ) : null}
         </div>
         <div
           style={{
@@ -164,7 +236,8 @@ export function QuoteIntro({
             // Set apart from the first half: further in, a little lower.
             marginLeft: px(26),
             marginTop: px(14),
-            ...push(plan.quoteAt[1], "right"),
+            // Owner: sharper than the first half, and a longer way in.
+            ...push(plan.quoteAt[1], "right", 120),
           }}
         >
           {withStrong(quoteB, quoteBStrong, strongStyle)}

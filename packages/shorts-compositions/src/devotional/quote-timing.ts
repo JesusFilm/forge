@@ -15,6 +15,9 @@
 
 /** Characters a viewer reads per second. */
 export const READ_CPS = 15
+/** Characters the opening line TYPES per second (owner: a typewriter). Fast
+ *  enough to stay ahead of reading, slow enough to be the effect. */
+export const TYPE_CPS = 24
 /** Time before reading starts on a newly arrived line. */
 export const ACQUIRE_SEC = 0.32
 /** No line is shown for less than this, however short. */
@@ -62,8 +65,10 @@ export function quoteIntroTimeline(input: {
   cta?: string
 }): QuoteIntroTimeline {
   const startAt = 0.25
-  const aRead = readSec(input.quoteA)
-  const bAt = startAt + aRead * OVERLAP
+  // The first half is TYPED, so the viewer reads it as it appears: the second
+  // half follows the moment typing finishes, plus a beat.
+  const aTyped = input.quoteA.trim().length / TYPE_CPS
+  const bAt = startAt + aTyped + 0.3
   const bRead = readSec(input.quoteB)
   // Both halves stay up together until the second one has been read: the first
   // is still part of the sentence, so it cannot leave early.

@@ -455,6 +455,9 @@ async function main() {
       await stage(c.audioFile)
       await stage(c.videoFile)
       await stage(c.bgFile)
+      // The social opening's sounds (key clicks, transition whoosh).
+      await stage(c.keySfx)
+      await stage(c.transitionSfx)
     }
 
     const audioDurationSec = manifest.cards.reduce(

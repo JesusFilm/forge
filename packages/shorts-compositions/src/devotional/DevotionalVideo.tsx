@@ -3575,6 +3575,8 @@ function CardBody({
         watchLabel={card.watchLabel ?? "Let's watch."}
         {...(card.ctaLine ? { cta: card.ctaLine } : {})}
         {...(card.ctaLabel ? { ctaLabel: card.ctaLabel } : {})}
+        {...(card.keySfx ? { keySfx: card.keySfx } : {})}
+        {...(card.transitionSfx ? { transitionSfx: card.transitionSfx } : {})}
         px={px}
         fps={fps}
         durationSec={durationInFrames / fps}
@@ -4379,11 +4381,18 @@ function Background({
   const sharpCover = Boolean(props.coverBgSharp) && card.kind === "cover"
   const BLUR = sharpCover
     ? 0
-    : // The social opening carries three lines of reading over a moving
-      // picture: a light blur keeps the film present without pulling the eye
-      // off the words (owner: "the video distracts me from reading").
+    : // The social opening carries its reading over a moving picture: a light
+      // blur keeps the film present without pulling the eye off the words
+      // (owner: "the video distracts me from reading"). It LIFTS across the
+      // card — by the time the last line is read the picture is sharp again,
+      // so the opening hands over to a clear scene rather than cutting to one.
       card.kind === "quote-intro"
-      ? px(6.5) * blurScale
+      ? interpolate(
+          frame,
+          [0, Math.round(durationInFrames * 0.82)],
+          [px(6.5) * blurScale, 0],
+          { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+        )
       : (card.kind === "cover"
           ? coverBlurPx
           : soft

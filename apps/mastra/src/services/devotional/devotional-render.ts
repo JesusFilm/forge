@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process"
 import { once } from "node:events"
 import { createWriteStream } from "node:fs"
-import { mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises"
+import { copyFile, mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { Readable } from "node:stream"
@@ -1667,6 +1667,31 @@ async function renderInStage(
     })
     n++
   }
+  // The opening's sounds: a key click per typed character and the transition
+  // whoosh under each arrival. Staged next to the clip so the composition can
+  // reach them with staticFile; missing files simply mean a silent opening.
+  let keySfxFile: string | undefined
+  let transitionSfxFile: string | undefined
+  if (options.quoteIntro) {
+    const sfxDir = path.join(REPO_ROOT, "devo", "assets", "sfx")
+    const stageSfx = async (from: string, as: string) => {
+      try {
+        await copyFile(path.join(sfxDir, from), path.join(stage, as))
+        return as
+      } catch {
+        log(
+          `⚠️  opening sfx ${from} not found in devo/assets/sfx — skipping it`,
+        )
+        return undefined
+      }
+    }
+    keySfxFile = await stageSfx("word-tick.wav", "sfx-key.wav")
+    transitionSfxFile = await stageSfx(
+      "inshot-transition-03.wav",
+      "sfx-transition.wav",
+    )
+  }
+
   let musicFile: string | undefined
   if (audio.music) {
     musicFile = "music.mp3"
@@ -1702,12 +1727,16 @@ async function renderInStage(
       ? {
           quoteIntro: {
             ...options.quoteIntro,
+            // The series' own two questions (owner's Figma, 2026-09-23). It
+            // was three; the third made the block too tall for a phone and
+            // pushed the read past the shot.
             questions: options.quoteIntro.questions ?? [
-              "Does Jesus really say this?",
-              "What does this mean?",
-              "How does it affect my life?",
+              "Is that really what Jesus taught?",
+              "What does it mean for me?",
             ],
             watchLabel: options.quoteIntro.watchLabel ?? "Let's watch.",
+            ...(keySfxFile ? { keySfx: keySfxFile } : {}),
+            ...(transitionSfxFile ? { transitionSfx: transitionSfxFile } : {}),
           },
         }
       : {}),

@@ -131,6 +131,9 @@ async function main() {
               ...(arg("quote-rate")
                 ? { bgRate: Number(arg("quote-rate")) }
                 : {}),
+              ...(arg("questions")
+                ? { questions: arg("questions")!.split("|") }
+                : {}),
               ...(arg("cta") ? { ctaLine: arg("cta") } : {}),
               ...(arg("cta-label") ? { ctaLabel: arg("cta-label") } : {}),
             },

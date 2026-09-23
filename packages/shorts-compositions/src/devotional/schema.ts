@@ -124,6 +124,10 @@ export const devotionalCardSchema = z.object({
   ctaLine: z.string().optional(),
   /** Teaser: the small label under it (default "Watch on YouTube"). */
   ctaLabel: z.string().optional(),
+  /** Staged sound files for the opening: a key click per typed character and
+   *  the transition whoosh under each block's arrival. */
+  keySfx: z.string().optional(),
+  transitionSfx: z.string().optional(),
   /** `quote-intro` card: where in the background take its shot starts (s). */
   bgStartSec: z.number().nonnegative().optional(),
   /** `quote-intro` card: play its shot at this rate. Slightly under 1 lets a

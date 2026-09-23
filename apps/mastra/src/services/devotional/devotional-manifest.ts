@@ -117,6 +117,9 @@ export type BuildManifestInput = {
     /** Teaser: close on this line instead of "Let's watch." */
     ctaLine?: string
     ctaLabel?: string
+    /** File names (staged next to the clip) for the opening's sounds. */
+    keySfx?: string
+    transitionSfx?: string
   }
   /** The line shown over that silent opening, e.g. "Let's watch". */
   leadLabel?: string
@@ -201,6 +204,8 @@ function buildClipFirstManifest(
       ...(q.bgRate != null ? { bgRate: q.bgRate } : {}),
       ...(q.ctaLine ? { ctaLine: q.ctaLine } : {}),
       ...(q.ctaLabel ? { ctaLabel: q.ctaLabel } : {}),
+      ...(q.keySfx ? { keySfx: q.keySfx } : {}),
+      ...(q.transitionSfx ? { transitionSfx: q.transitionSfx } : {}),
     })
   }
 
