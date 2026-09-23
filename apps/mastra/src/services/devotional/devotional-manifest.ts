@@ -45,6 +45,8 @@ export type DevotionalManifest = {
   intro?: "cover" | "bands" | "hook" | "watch"
   /** `intro: "hook"`: the question drawn on screen as the piece's title. */
   hookText?: string
+  /** `intro: "watch"`: the spoken opening split into its sentences. */
+  hookParts?: string[]
   /** Clip-first: corner progress ring clocking each step (composition prop). */
   stepRing?: boolean
   /** Shape of that clock: orbit ring (default) or a line across the top. */
@@ -101,6 +103,8 @@ export type BuildManifestInput = {
   intro?: "cover" | "bands" | "hook" | "watch"
   /** `intro: "hook"`: the question drawn on screen as the piece's title. */
   hookText?: string
+  /** `intro: "watch"`: the spoken opening split into its sentences. */
+  hookParts?: string[]
   /** Social opening card placed before the film (`--intro=quote`). */
   quoteIntro?: {
     quoteA: string
@@ -240,6 +244,14 @@ function buildClipFirstManifest(
         ? {
             intro: input.intro,
             ...(input.intro === "watch" ? { steps: STEPS } : {}),
+            // The opening's beats follow the voice, so the card carries both
+            // the sentences and the narration's word times.
+            ...(input.intro === "watch" && input.hookParts?.length
+              ? { introParts: input.hookParts }
+              : {}),
+            ...(input.intro === "watch" && hookSeg?.words?.length
+              ? { words: hookSeg.words }
+              : {}),
             // The spoken question doubles as the on-screen title. It comes
             // from the render option, not from the produced segment: a reused
             // cached take carries whatever display text it was made with.

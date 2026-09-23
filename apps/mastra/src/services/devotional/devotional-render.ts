@@ -138,7 +138,7 @@ const CARD_TAIL_SEC = 0.8
 /** `intro: "hook"`: the longest opening question the film will wait through.
  *  Past this the scene starts under the tail of the line rather than the whole
  *  opening being a talking head over a muted film. */
-const HOOK_LEAD_CAP_SEC = 11
+const HOOK_LEAD_CAP_SEC = 14
 /** `intro: "hook"`: silence after the spoken question — a breath, plus the
  *  time the title takes to leave. The film's first line lands after it. */
 const HOOK_TAIL_SEC = 1.8
@@ -1392,7 +1392,13 @@ async function renderInStage(
           `⚠️  this scene starts speaking after ${runUp.toFixed(1)}s, so there is no run-up to ` +
             `carry the question — it will play over the first line`,
         )
-      } else if (stretch < HOOK_MIN_STRETCH) {
+      } else if (
+        stretch <
+        // `watch` blurs the picture for the whole opening, and slow motion
+        // under a blur is invisible — so it may stretch further than a sharp
+        // opening ever should.
+        (options.intro === "watch" ? 0.2 : HOOK_MIN_STRETCH)
+      ) {
         // Stretching this far would read as slow motion; take what we can.
         hookLeadSec = room / HOOK_MIN_STRETCH
         hookLead = [
@@ -1768,6 +1774,14 @@ async function renderInStage(
         }
       : {}),
     ...(options.intro ? { intro: options.intro } : {}),
+    ...(options.hookLine
+      ? {
+          hookParts: options.hookLine
+            .split(/\n\s*\n/)
+            .map((part) => part.trim())
+            .filter(Boolean),
+        }
+      : {}),
     // Social opening card, ahead of the film (see BuildManifestInput).
     ...(options.quoteIntro
       ? {

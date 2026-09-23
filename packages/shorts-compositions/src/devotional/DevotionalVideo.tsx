@@ -1241,6 +1241,31 @@ const HOOK_TITLE_PX = 29.3
 const HOOK_TITLE_OUT_BEFORE_SEC = 1.3
 const HOOK_TITLE_FADE_SEC = 0.7
 
+/**
+ * When each sentence of the spoken opening starts and ends, taken from the
+ * narration's own word times rather than guessed: the logo, the title and the
+ * invitation are three beats of one recording, so they have to move with it.
+ */
+export function introPartTimes(
+  parts: ReadonlyArray<string>,
+  words: ReadonlyArray<{ word: string; startSec: number; endSec: number }>,
+): Array<{ from: number; to: number }> {
+  if (parts.length === 0 || words.length === 0) return []
+  const out: Array<{ from: number; to: number }> = []
+  let i = 0
+  for (const part of parts) {
+    const count = part.split(/\s+/).filter(Boolean).length
+    const slice = words.slice(i, i + count)
+    if (slice.length === 0) break
+    out.push({
+      from: slice[0].startSec,
+      to: slice[slice.length - 1].endSec,
+    })
+    i += count
+  }
+  return out
+}
+
 function ClipIntro({
   variant,
   leadSec,
@@ -1254,6 +1279,8 @@ function ClipIntro({
   frameHeight,
   bleedX = 0,
   hookText,
+  parts = [],
+  introWords = [],
 }: {
   variant: "cover" | "bands" | "hook" | "watch"
   leadSec: number
@@ -1273,6 +1300,13 @@ function ClipIntro({
   /** `hook`: the question, shown as the piece's title while it is spoken —
    *  a feed preview plays muted, so the hook cannot live in the voice alone. */
   hookText?: string
+  /** `watch`: the opening's sentences, and the narration's word times. */
+  parts?: ReadonlyArray<string>
+  introWords?: ReadonlyArray<{
+    word: string
+    startSec: number
+    endSec: number
+  }>
 }) {
   const bleed = {
     position: "absolute" as const,
@@ -1372,30 +1406,150 @@ function ClipIntro({
   })
 
   if (variant === "watch") {
-    // The opening beat, drawn exactly like the hand-over screens later on: the
-    // picture blurs, the step's name comes out of that blur at a whisper and
-    // goes back into it, and the row at the top carries WATCH lit (owner:
-    // "same as with REFLECT"). The voice says the opening line over it.
-    const on = interpolate(t, [0, 0.5], [0, 1], clampBoth)
-    const off = interpolate(t, [L - 1.2, L - 0.3], [1, 0], clampBoth)
-    const hold = on * off
-    const wordIn = interpolate(t, [0.3, 1.5], [0, 1], {
+    // THREE BEATS, each moving with the voice that carries it (owner):
+    //   1. the film plays, lightly blurred, and the brand settles in from
+    //      above while the voice says the welcome;
+    //   2. the second sentence is written across the frame word by word, in
+    //      step with the narration, and clears when the sentence ends;
+    //   3. the step row lights at the top and WATCH is written across the
+    //      frame at a whisper while the voice says "Let's watch".
+    const beats = introPartTimes(parts, introWords)
+    const welcome = beats[0] ?? { from: 0, to: Math.min(1.6, L * 0.25) }
+    const title = beats[1] ?? { from: welcome.to + 0.2, to: L - 2.2 }
+    const invite = beats[2] ?? { from: Math.max(title.to + 0.3, L - 2), to: L }
+    const titleText = parts[1] ?? ""
+    const titleWords = titleText.split(/\s+/).filter(Boolean)
+    // Word-by-word, gently: each word fades and lifts into place at the moment
+    // the voice reaches it.
+    const titleWordStart = (i: number) => {
+      const w = introWords.slice(
+        parts[0]?.split(/\s+/).filter(Boolean).length ?? 0,
+      )
+      return w[i]?.startSec ?? title.from + i * 0.22
+    }
+    const titleOut = interpolate(
+      t,
+      [title.to + 0.35, title.to + 0.95],
+      [1, 0],
+      clampBoth,
+    )
+    const markIn = interpolate(t, [0.15, 1.0], [0, 1], {
       ...clampBoth,
       easing: ease,
     })
-    const wordOut = interpolate(t, [L - 1.6, L - 0.4], [1, 0], clampBoth)
-    const wordOpacity = 0.15 * wordIn * wordOut
-    const wordBlur = interpolate(
+    const markOut = interpolate(
       t,
-      [0.3, 1.5, L - 1.6, L - 0.4],
+      [title.from - 0.2, title.from + 0.4],
+      [1, 0],
+      clampBoth,
+    )
+    const markOpacity = markIn * markOut
+    // These four knots must stay in order however the sentences fall: on a long
+    // opening the third beat starts after `L - 1.4`, and Remotion throws on a
+    // non-monotonic range rather than clamping it.
+    const bigIn0 = invite.from - 0.3
+    const bigIn1 = Math.min(invite.from + 1.1, L - 0.75)
+    const bigOut0 = Math.max(bigIn1 + 0.1, L - 1.4)
+    const bigOut1 = Math.max(bigOut0 + 0.2, L - 0.3)
+    const wordIn = interpolate(t, [bigIn0, bigIn1], [0, 1], {
+      ...clampBoth,
+      easing: ease,
+    })
+    const wordOut = interpolate(t, [bigOut0, bigOut1], [1, 0], clampBoth)
+    const bigOpacity = 0.15 * wordIn * wordOut
+    const bigBlur = interpolate(
+      t,
+      [bigIn0, bigIn1, bigOut0, bigOut1],
       [26, 0, 0, 26],
+      clampBoth,
+    )
+    const scrim = interpolate(
+      t,
+      [0, 0.6, L - 1.0, L - 0.2],
+      [0.18, 0.38, 0.38, 0],
       clampBoth,
     )
     return (
       <div style={{ ...bleed, pointerEvents: "none" }}>
-        {/* The picture itself is blurred by the card behind this; here the
-            scrim carries the depth so the word reads at 15 percent. */}
-        <AbsoluteFill style={{ background: `rgba(0,0,0,${0.42 * hold})` }} />
+        <AbsoluteFill style={{ background: `rgba(0,0,0,${scrim})` }} />
+        {/* 1. the brand settles in from above */}
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top: "13.4%",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: px(5),
+            opacity: markOpacity,
+            transform: `translateY(${(-px(18) * (1 - markIn)).toFixed(1)}px)`,
+          }}
+        >
+          <PauseMark size={px(25)} />
+          <div
+            style={{
+              fontFamily: SANS,
+              fontWeight: 400,
+              fontSize: px(13),
+              letterSpacing: px(1.5),
+              color: "rgba(255,255,255,0.75)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            DAILY BIBLE PAUSE
+          </div>
+        </div>
+
+        {/* 2. the line, written word by word with the voice */}
+        {titleText && t >= title.from - 0.4 ? (
+          <AbsoluteFill
+            style={{
+              alignItems: "center",
+              justifyContent: "center",
+              padding: `0 ${px(34)}px`,
+              opacity: titleOut,
+            }}
+          >
+            <div
+              style={{
+                fontFamily: SERIF,
+                fontWeight: 500,
+                fontSize: px(26),
+                lineHeight: 1.3,
+                color: "#ffffff",
+                textAlign: "center",
+                textWrap: "balance",
+                maxWidth: frameWidth > frameHeight ? frameWidth * 0.56 : "86%",
+                textShadow: `0 ${px(2)}px ${px(18)}px rgba(0,0,0,0.6)`,
+              }}
+            >
+              {titleWords.map((word, i) => {
+                const at = titleWordStart(i)
+                const p = interpolate(t, [at - 0.12, at + 0.3], [0, 1], {
+                  ...clampBoth,
+                  easing: ease,
+                })
+                return (
+                  <span
+                    key={`${word}-${i}`}
+                    style={{
+                      display: "inline-block",
+                      opacity: p,
+                      transform: `translateY(${((1 - p) * px(7)).toFixed(1)}px)`,
+                      marginRight: px(6),
+                    }}
+                  >
+                    {word}
+                  </span>
+                )
+              })}
+            </div>
+          </AbsoluteFill>
+        ) : null}
+
+        {/* 3. the step's own name, at a whisper */}
         <AbsoluteFill
           style={{ alignItems: "center", justifyContent: "center" }}
         >
@@ -1407,8 +1561,8 @@ function ClipIntro({
               lineHeight: 1,
               letterSpacing: px(7),
               color: INTRO_GOLD,
-              opacity: wordOpacity,
-              filter: `blur(${wordBlur.toFixed(2)}px)`,
+              opacity: bigOpacity,
+              filter: `blur(${bigBlur.toFixed(2)}px)`,
               transform: "translateY(-0.08em)",
               whiteSpace: "nowrap",
             }}
@@ -3703,6 +3857,8 @@ function CardBody({
           frameHeight={vh}
           bleedX={bleedX ?? 0}
           {...(card.hookText ? { hookText: card.hookText } : {})}
+          {...(card.introParts ? { parts: card.introParts } : {})}
+          {...(card.words ? { introWords: card.words } : {})}
         />
       )
     }
@@ -4992,6 +5148,8 @@ function StepRowOverlay({
     intro?: string
     mutedLeadSec?: number
     steps?: ReadonlyArray<string>
+    introParts?: ReadonlyArray<string>
+    words?: ReadonlyArray<{ word: string; startSec: number; endSec: number }>
   }>
   frames: ReadonlyArray<{ from: number; durationInFrames: number }>
   frame: number
@@ -5019,8 +5177,18 @@ function StepRowOverlay({
     .map((c, i) => (c.kind === "step" ? frames[i]?.from : undefined))
     .filter((f): f is number => f != null)
   const watchIntro = filmIndex >= 0 && cards[filmIndex].intro === "watch"
+  // `watch`: the row appears with the THIRD beat of the opening, when the
+  // voice says "Let's watch" — not before (owner).
+  const watchRowAt = watchIntro
+    ? Math.round(
+        (introPartTimes(
+          cards[filmIndex].introParts ?? [],
+          cards[filmIndex].words ?? [],
+        )[2]?.from ?? 0) * fps,
+      )
+    : 0
   const starts = [
-    (film?.from ?? 0) + (watchIntro ? 0 : introLead),
+    (film?.from ?? 0) + (watchIntro ? watchRowAt : introLead),
     ...stageStarts.slice(0, labels.length - 1),
   ]
   if (starts.length < labels.length) return null
