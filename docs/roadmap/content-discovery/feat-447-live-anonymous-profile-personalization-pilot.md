@@ -229,18 +229,38 @@ production failure or its matching authorized Admin trace. The service and
 candidate mapping changed in September 23 PRs #2388 and #2392 after that drill;
 the original drill therefore is not an exact-current-revision integration run.
 
+At 2026-09-23 23:38:49 UTC, an [opt-in current-source database
+test](../../../apps/admin/src/services/recommendations/delivery-retriever.db.test.ts)
+passed against isolated pgvector PostgreSQL and Redis using the production
+dependency factory. The tested fallback runtime came from `d01ca28a`; the
+delivery service, dependency factory and candidate mapping are unchanged through
+the then-current `fc400e560` main revision. A normal control served six cards
+in 134 ms and persisted passed candidate-eligibility and ranker parity with complete
+evidence. Overriding only the local candidate-platform orchestrator to throw
+returned six unique playable semantic cards in 70 ms. PostgreSQL recorded an
+`ISSUED`/`FALLBACK` request, six items,
+`last_known_good_semantic_fallback`, the semantic candidate-platform manifest,
+no experiment assignment, and a candidate run with
+`candidate_platform_unavailable` and `evidenceComplete=false`. The focused test
+passed (one run, nine unrelated cases skipped). The local services were removed
+afterward. This proves the current-source recovery and durable evidence under a
+controlled failure; it is still not a natural production fallback or an
+authorized Admin trace of such an event. The deterministic fixture does not
+replace the separately credited restored-vector performance proof.
+
 Keep `status: "in-progress"` and the feat-545 dependency. For closure under the
 current verification requirement, wait for a genuine retained operational
 fallback, then reconcile its request, candidate-run evidence, item count,
 effective manifest and authorized Admin trace without creating a fault in
 production. A bounded alternative for owner review is to replace the
-natural-event requirement with an **exact-release-revision** rerun of the
-complete service against isolated real PostgreSQL and Redis: serve a normal
-control, force only the candidate-platform stage to fail, and verify six unique
-playable semantic cards plus the persisted issued fallback, effective semantic
-manifest, no assignment, `candidate_platform_unavailable` and incomplete stage
-evidence. Retain this negative production inventory alongside the result and
-state explicitly that no production failure was observed. This would change
-the acceptance criterion, so it requires the owner's explicit decision before
-closing; the feat-545 dependency must still be resolved separately. Do not
-treat an ordinary semantic or optional-profile fallback as that event.
+natural-event requirement with the current-source real-dependency control just
+recorded, after confirming that the release still uses that same fallback
+runtime. The exact assertions are a normal six-card control followed by six
+unique playable semantic fallback cards, a persisted issued fallback, effective
+semantic manifest, no assignment, `candidate_platform_unavailable` and
+incomplete stage evidence. Retain the negative production inventory alongside
+the result and state explicitly that no production failure was observed. This
+would change the acceptance criterion, so it requires the owner's explicit
+decision before closing; the feat-545 dependency must still be resolved
+separately. Do not treat an ordinary semantic or optional-profile fallback as
+that event.
