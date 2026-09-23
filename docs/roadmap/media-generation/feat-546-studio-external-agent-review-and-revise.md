@@ -3,7 +3,7 @@ id: "feat-546"
 title: "Review an exact draft and revise from conversation feedback"
 owner: "tataihono"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 readiness: "ready-for-agent"
 start_date: "2026-09-23"
 duration: 3
@@ -53,3 +53,27 @@ See `docs/plans/2026-09-23-studio-external-agent/spec.md` and `code-map.md` for 
 
 - `authenticateStudioMcp|studioServiceCall|expectedRevision`
 - `narrationReserve|render-review|idempotencyKey`
+
+## Implementation and validation — 2026-09-23
+
+- Exact revision/render handoffs open the lazy human review panel, including
+  attempts outside the recent 20-render window. Private completed MP4 review no
+  longer depends on Mux or catalog staging. Prior evidence stays read-only when
+  canonical or local state advances.
+- Review displays effective speech, voice version, provider/model, settings and
+  pronunciation for the selected immutable document. Human script/render approval
+  uses separate canonical commands; stale and dirty state is denied, with Admin
+  revision/attempt checks as final authority. Existing history/restore remains usable.
+- Inspection is explicitly loaded; metadata responses omit sample images.
+  Narration allowance shows project-cycle accounting, honest unknown pricing,
+  explicit additional-pass authorization and exact-command recovery after a lost
+  response. Definitive rejected grants require explicit discard and renewed consent.
+- Manager 17 focused tests, typecheck and scoped lint passed. Real loopback Admin
+  delegated/render regression scenarios passed, including human-edit preservation
+  and outdated exact-render approval refusal. Production build and synthetic
+  browser/performance evidence are detailed in `docs/validation/studio-546/README.md`.
+- No paid provider calls, migrations, Pothos changes or production deployments.
+- Status remains in progress pending authenticated human UI/client qualification.
+  Synthetic fixtures do not satisfy that boundary; automatic approval review
+  rejected session creation pending explicit operator permission. Full workflow
+  qualification remains feat-548.

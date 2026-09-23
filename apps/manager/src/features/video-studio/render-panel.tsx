@@ -15,15 +15,19 @@ import type { EditorSession } from "./editor-session"
 import { studioCall, StudioClientError } from "./client"
 import { prepareRender } from "./prepare-render"
 import { PublicationSubmission } from "./publication-submission"
+import ExactRenderReview from "./exact-render-review"
+import type { RenderHandoff } from "./render-review-state"
 
 export default function RenderPanel({
   session,
   projectId,
   onClose,
+  handoff,
 }: {
   session: EditorSession
   projectId: string
   onClose: () => void
+  handoff?: RenderHandoff
 }) {
   const editor = useSyncExternalStore(
     session.subscribe,
@@ -33,9 +37,9 @@ export default function RenderPanel({
   const [state, setState] = useState<StudioRenderState | null>(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
-    [reviewed, setReviewed] = useState<string | null>(null),
-    [reviewUrl, setReviewUrl] = useState<string | null>(null),
-    [reviewAttemptId, setReviewAttemptId] = useState<string | null>(null)
+    [selected, setSelected] = useState<string | null>(
+      handoff?.attemptId ?? null,
+    )
   const submission = useRef(new PublicationSubmission()).current
   const latestState = useRef(state)
   latestState.current = state
@@ -67,12 +71,6 @@ export default function RenderPanel({
       clearTimeout(timer)
     }
   }, [projectId])
-  useEffect(
-    () => () => {
-      if (reviewUrl) URL.revokeObjectURL(reviewUrl)
-    },
-    [reviewUrl],
-  )
   const run = async (work: () => Promise<void>) => {
     setBusy(true)
     setError("")
@@ -95,29 +93,16 @@ export default function RenderPanel({
     idempotencyKey: crypto.randomUUID(),
   })
   const locked = Boolean(state?.project.firstPublishedAt),
-    current = state?.attempts.find(
-      (attempt) => attempt.baseRevision === editor.revision,
+    current = state?.attempts.find((attempt) =>
+      selected
+        ? attempt.id === selected
+        : attempt.baseRevision === editor.revision,
     ),
     release = current?.catalogRelease
   const approval = state?.approvals.find(
     (approval) => approval.renderAttemptId === current?.id,
   )
   const editable = !locked && editor.status === "saved" && !busy
-  const review = async () => {
-    if (!current) return
-    const response = await fetch("/api/shorts/render-review", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ projectId, renderAttemptId: current.id }),
-      signal: AbortSignal.timeout(45000),
-    })
-    if (!response.ok)
-      throw new StudioClientError(response.status, "Render review unavailable")
-    const blob = await response.blob()
-    setReviewUrl(URL.createObjectURL(blob))
-    setReviewAttemptId(current.id)
-    setReviewed(null)
-  }
   const publish = async () => {
     if (!submission.command) {
       if (!release || !current || !approval)
@@ -214,7 +199,9 @@ export default function RenderPanel({
               ? "Unpublished permanently"
               : current
                 ? `Render: ${current.status}. Video processing: ${current.muxJob?.state ?? "Not started"}.`
-                : "No render yet"}
+                : selected
+                  ? "Linked render selected; see exact evidence below"
+                  : "No render yet"}
         </p>
         {editor.status !== "saved" && (
           <p>Save your changes before rendering.</p>
@@ -252,56 +239,61 @@ export default function RenderPanel({
             Cancel render
           </button>
         )}
-        {release && (
-          <button disabled={busy} onClick={() => void run(review)}>
-            Review rendered video
-          </button>
-        )}
-        {reviewUrl && (
-          <video
-            controls
-            src={reviewUrl}
-            style={{ width: "100%", maxHeight: 360 }}
-          />
-        )}
-        {reviewUrl && current && reviewAttemptId === current.id && !locked && (
-          <label>
-            <input
-              type="checkbox"
-              checked={reviewed === current.id}
-              onChange={(event) =>
-                setReviewed(event.target.checked ? current.id : null)
-              }
-            />
-            I reviewed this rendered revision.
-          </label>
-        )}
-        {release && !locked && (
-          <button
-            disabled={
-              !editable ||
-              reviewed !== current?.id ||
-              reviewAttemptId !== current?.id ||
-              Boolean(approval)
-            }
-            onClick={() =>
-              void run(async () => {
-                await studioCall("approve", {
-                  ...base(),
-                  kind: "PUBLICATION",
-                  renderAttemptId: current!.id,
-                })
-              })
-            }
+        <label>
+          Render evidence
+          <select
+            value={selected ?? current?.id ?? ""}
+            onChange={(event) => setSelected(event.target.value)}
           >
-            {approval ? "Approved" : "Approve this render"}
-          </button>
-        )}
+            <option value="" disabled>
+              Select a render
+            </option>
+            {handoff &&
+              !state?.attempts.some(
+                (attempt) => attempt.id === handoff.attemptId,
+              ) && (
+                <option value={handoff.attemptId}>
+                  Linked revision {handoff.revision} · {handoff.attemptId}
+                </option>
+              )}
+            {state?.attempts.map((attempt) => (
+              <option key={attempt.id} value={attempt.id}>
+                Revision {attempt.baseRevision} · {attempt.status} ·{" "}
+                {attempt.id}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p>
+          Recent renders are listed here. Older exact render links remain
+          usable. Close this panel and use History to inspect attributed changes
+          or restore an earlier document as a new revision.
+        </p>
+        {(selected || current?.id) &&
+          (!current || ["SUCCEEDED", "STALE"].includes(current.status)) && (
+            <ExactRenderReview
+              key={selected ?? current!.id}
+              session={session}
+              projectId={projectId}
+              attemptId={selected ?? current!.id}
+              expectedRevision={
+                selected === handoff?.attemptId ? handoff?.revision : undefined
+              }
+              currentRevision={state?.project.revision ?? editor.revision}
+              locked={locked}
+              onApproved={refresh}
+            />
+          )}
         {(!locked || submission.command) && (
           <button
             disabled={
               busy ||
-              (!submission.command && (!editable || !release || !approval))
+              (!submission.command &&
+                (!editable ||
+                  !release ||
+                  !approval ||
+                  current?.baseRevision !== editor.revision ||
+                  state?.project.revision !== editor.revision))
             }
             onClick={() => void run(publish)}
           >
