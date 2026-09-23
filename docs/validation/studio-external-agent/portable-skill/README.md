@@ -65,9 +65,10 @@ review-interface performance evidence.
 
 ## Qualification boundary
 
-Static contract validation and operation tests are not a real-agent workflow.
-Feat-547 remains in progress until the actual MCP broad-brief → render → inspect
-→ feedback scenario in feat-548 records behavior against the extracted shipped
-skill. Record the archive SHA256 with that run and compare it after final commit
-hooks. Unsupported Claude installation/access or media modalities must stay
-explicit; documentation-backed setup instructions are not client qualification.
+Static contract validation and operation tests are separate from a real-agent
+workflow. The final archive's actual Codex broad-brief → render → inspect →
+feedback run, including one bounded repair, is recorded in
+`../final-skill-replay.md`. Its client received the sample images but explicitly
+declined visual assessment; Claude installation/access remains unobserved.
+Recheck the archive SHA256 after the final commit hooks. Documentation-backed
+setup instructions alone are not client qualification.

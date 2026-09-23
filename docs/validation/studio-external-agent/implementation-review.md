@@ -120,7 +120,9 @@ and actual Codex run applied the composition first. The shipped summary now
 requires apply/read, then quote/status, then narration attachment and exact
 revision rendering. Deterministic packaging and both operation/schema tests
 passed for the rebuilt 28,788-byte archive. The prior full client run used the
-28,510-byte version; a full rerun with the corrected bytes remains separate.
+28,510-byte version. The separate actual Codex rerun with the corrected bytes is
+recorded in `final-skill-replay.md`; it confirms the repaired instruction order,
+three exact renders and feedback with no second narration dispatch.
 
 Independent harness safety review found and cleared one P2: an output directory
 symlink could resolve exactly to the checkout root. Fresh private directory

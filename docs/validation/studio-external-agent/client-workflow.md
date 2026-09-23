@@ -13,9 +13,12 @@ before saving the draft, even though its authoring reference and this client run
 saved the effective speech first. The distributed skill now explicitly orders
 apply/read before quote/admission. Its rebuilt ZIP is 28,788 bytes, SHA256
 `0bae679d86fd197aef6416c28533d6ff5ad6bab93abac73d05458aab9e471cbe`.
-The original observed run proves behavior of the prior archive; package and
-operation-engine tests verify the corrected final archive. A new complete client
-run with the changed bytes is not claimed.
+The original observed run proves behavior of the prior archive. Package and
+operation-engine tests verify the corrected final archive, and a fresh complete
+Codex run with those exact bytes is documented in
+[final-skill-replay.md](final-skill-replay.md). That run confirmed apply before
+quote, one bounded repair, render and same-conversation feedback; its client
+reported image blocks without claiming visual assessment.
 
 ## Boundaries
 
