@@ -108,6 +108,9 @@ async function main() {
       // The voice may say more than the screen shows ("Welcome to Daily Bible
       // Pause." before the question); `--hook-title` is what is drawn.
       ...(arg("hook-title") ? { hookTitle: arg("hook-title") } : {}),
+      // Borrow the opening's extra footage from this point in the film rather
+      // than slowing the scene's own run-up.
+      ...(arg("hook-bg") ? { hookBgStartSec: Number(arg("hook-bg")) } : {}),
       // `--teaser-intro`: render ONLY the opening, ending on `--cta`.
       introTeaser: process.argv.includes("--teaser-intro"),
       // Social opening: `--quote-a/--quote-b` (+ `--quote-a-strong`, etc.).

@@ -1043,6 +1043,9 @@ export type RenderOptions = {
     ctaLine?: string
     ctaLabel?: string
   }
+  /** `intro: "hook"`: take the opening's extra footage from THIS point in the
+   *  film instead of stretching the scene's own run-up. */
+  hookBgStartSec?: number
   /** Render ONLY the social opening, closing on its call to action: the teaser
    *  that points at the full devotional. */
   introTeaser?: boolean
@@ -1342,17 +1345,47 @@ async function renderInStage(
     // the spoken opening and silenced, so the scene's first line lands after
     // the question instead of under it. Every other opening keeps the old
     // behaviour: the lead is simply extra footage in front of the window.
-    let hookLead: {
+    type LeadSeg = {
       startSec: number
       lengthSec: number
       speed: number
       silent: true
-    } | null = null
+    }
+    let hookLead: LeadSeg[] | null = null
     if (hookLeadSec > 0 && clipSegments.length > 0) {
       const runUp = clipSegments[0].startSec
       const room = Math.min(hookLeadSec * VIDEO_SPEED, runUp)
       const stretch = room / hookLeadSec
-      if (room < 0.4) {
+      // BORROWED FOOTAGE (owner's preference over slow motion): another take
+      // from the same film plays first, then the scene's own run-up, both at
+      // normal speed. Two shots and a cut is ordinary film language; a ten
+      // second shot at a third speed is not.
+      if (options.hookBgStartSec != null) {
+        const runUpOnScreen = room / VIDEO_SPEED
+        const borrowedSec = Math.max(0, hookLeadSec - runUpOnScreen)
+        hookLead = [
+          ...(borrowedSec > 0.2
+            ? [
+                {
+                  startSec: options.hookBgStartSec,
+                  lengthSec: borrowedSec * VIDEO_SPEED,
+                  speed: VIDEO_SPEED,
+                  silent: true as const,
+                },
+              ]
+            : []),
+          {
+            startSec: runUp - room,
+            lengthSec: room,
+            speed: VIDEO_SPEED,
+            silent: true as const,
+          },
+        ]
+        log(
+          `hook lead: ${borrowedSec.toFixed(1)}s borrowed from ${options.hookBgStartSec}s + ` +
+            `${runUpOnScreen.toFixed(1)}s of the scene's own run-up, both silent and at normal speed`,
+        )
+      } else if (room < 0.4) {
         log(
           `⚠️  this scene starts speaking after ${runUp.toFixed(1)}s, so there is no run-up to ` +
             `carry the question — it will play over the first line`,
@@ -1360,24 +1393,28 @@ async function renderInStage(
       } else if (stretch < HOOK_MIN_STRETCH) {
         // Stretching this far would read as slow motion; take what we can.
         hookLeadSec = room / HOOK_MIN_STRETCH
-        hookLead = {
-          startSec: runUp - room,
-          lengthSec: room,
-          speed: HOOK_MIN_STRETCH,
-          silent: true,
-        }
+        hookLead = [
+          {
+            startSec: runUp - room,
+            lengthSec: room,
+            speed: HOOK_MIN_STRETCH,
+            silent: true,
+          },
+        ]
         log(
           `⚠️  only ${(room / VIDEO_SPEED).toFixed(1)}s of run-up for a ${hookLeadSec.toFixed(1)}s opening; ` +
             `holding it at ${HOOK_MIN_STRETCH}× (${hookLeadSec.toFixed(1)}s) — shorten the hook if the ` +
             `slow motion shows`,
         )
       } else {
-        hookLead = {
-          startSec: runUp - room,
-          lengthSec: room,
-          speed: stretch,
-          silent: true,
-        }
+        hookLead = [
+          {
+            startSec: runUp - room,
+            lengthSec: room,
+            speed: stretch,
+            silent: true,
+          },
+        ]
         log(
           `hook lead: ${(room / VIDEO_SPEED).toFixed(1)}s of run-up stretched to ` +
             `${hookLeadSec.toFixed(1)}s (${stretch.toFixed(2)}×, silent) — the scene speaks after it`,
@@ -1520,7 +1557,7 @@ async function renderInStage(
           full,
           clip,
           [
-            hookLead,
+            ...hookLead,
             ...trimSegments.map((seg) => ({ ...seg, speed: VIDEO_SPEED })),
           ],
           true,

@@ -24,6 +24,9 @@ import { BLOCK_FADE_SEC, quoteIntroTimeline, TYPE_CPS } from "./quote-timing"
  */
 
 const GOLD = "#f2c46b"
+/** The typing sits UNDER the reading, not on top of it: at 0.32 the clicks
+ *  were the loudest thing in a teaser that has no music (owner). */
+const KEY_VOLUME = 0.15
 
 export type QuoteIntroProps = {
   quoteA: string
@@ -169,7 +172,7 @@ export function QuoteIntro({
           from={from}
           durationInFrames={Math.round(0.2 * fps)}
         >
-          <Audio src={staticFile(keySfx!)} volume={0.32} />
+          <Audio src={staticFile(keySfx!)} volume={KEY_VOLUME} />
         </Sequence>
       ))}
       {whooshes.map((from, i) => (
