@@ -1,3 +1,7 @@
+import {
+  studioDraftRenderRequestSchema,
+  studioDraftRenderIdentitySchema,
+} from "@forge/studio-contracts/render"
 import { studioAssetReferenceSchema } from "@forge/studio-contracts"
 import { studioAssetUploadSchema } from "@forge/studio-contracts/assets"
 import {
@@ -13,6 +17,30 @@ import {
 } from "@forge/studio-contracts"
 import { studioChatSchema } from "@forge/studio-contracts/agent"
 export const STUDIO_MCP_TOOLS = [
+  {
+    name: "shorts.renderRequest",
+    description:
+      "Admit a durable private render of the exact current revision. Reuse the same idempotency key after a lost response. Does not approve or publish; rendering uses infrastructure with unknown cost.",
+    scope: "shorts:render",
+    action: "render-request",
+    schema: studioDraftRenderRequestSchema,
+  },
+  {
+    name: "shorts.renderStatus",
+    description:
+      "Read an exact render attempt across reconnects. Stale output remains evidence but cannot approve a newer revision. Poll no faster than pollAfterMs.",
+    scope: "shorts:read",
+    action: "render-status",
+    schema: studioDraftRenderIdentitySchema,
+  },
+  {
+    name: "shorts.renderRead",
+    description:
+      "Refresh five-minute access to the exact rendered output. Never log or persist bearer URLs. No approval or publication authority.",
+    scope: "shorts:read",
+    action: "render-read",
+    schema: studioDraftRenderIdentitySchema,
+  },
   {
     name: "shorts.projects",
     description:

@@ -648,6 +648,7 @@ export const STUDIO_MCP_APP_SEED: RegisteredAppSeed = {
       "email:read",
       "shorts:read",
       "shorts:edit",
+      "shorts:render",
       "shorts:chat",
       "shorts:instructions:read",
     ],

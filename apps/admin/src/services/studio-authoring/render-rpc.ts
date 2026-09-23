@@ -1,3 +1,4 @@
+import { StudioRenderPreparation } from "./render-preparation"
 import { StudioPublicationReadinessResolver } from "./publication-readiness-resolver"
 import type { PrismaClient } from "@prisma/client"
 import { z } from "zod"
@@ -20,6 +21,8 @@ export const studioRenderRpcSchema = z
   .object({
     action: z.literal("render-worker"),
     command: z.enum([
+      "preparation",
+      "prepare",
       "publication-candidate",
       "mux-pending",
       "mux-enqueue",
@@ -70,6 +73,10 @@ export async function executeStudioRender(
     jobs = new StudioRenderJobs(db)
   const muxJobs = new StudioMuxJobs(db)
   switch (request.command) {
+    case "preparation":
+      return new StudioRenderPreparation(db).read(worker, request.input)
+    case "prepare":
+      return new StudioRenderPreparation(db).save(worker, request.input)
     case "publication-candidate":
       return new StudioPublicationReadinessResolver(db).candidate(
         worker,

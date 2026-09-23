@@ -3,12 +3,12 @@ id: "feat-543"
 title: "Request and retrieve an exact draft render"
 owner: "tataihono"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 readiness: "ready-for-agent"
 start_date: "2026-09-23"
 duration: 3
 depends_on: ["feat-542"]
-blocks: ["feat-545", "feat-546"]
+blocks: ["feat-545", "feat-546", "feat-549"]
 tags: ["manager", "ai-pipeline"]
 ---
 
@@ -53,3 +53,32 @@ See `docs/plans/2026-09-23-studio-external-agent/spec.md` and `code-map.md` for 
 
 - `authenticateStudioMcp|studioServiceCall|expectedRevision`
 - `narrationReserve|render-review|idempotencyKey`
+
+## Implementation and local evidence
+
+- `shorts.renderRequest` (`shorts:render`) admits an exact revision with the real
+  delegated actor and durable receipt. `shorts.renderStatus` / `shorts.renderRead`
+  use `shorts:read`; the latter refreshes five-minute exact-output byte access.
+- Generic `shorts:chat` admission accepts `GENERATION` only. It cannot bypass the
+  separately consented render scope or admit narration.
+- The existing durable worker scan recovers the admission/enqueue window. Worker
+  preparation materializes canonical sources through the trusted broker before
+  contained execution; no revision edit or interactive actor is fabricated.
+- Migration `0099_studio_render_retention_profile` corrects the retained-render
+  trigger's profile identity, restoring trusted-producer and issued-lease checks.
+  Historical repair is tracked separately by feat-549.
+- Migration `0101_studio_render_preparation` pins immutable materialized documents
+  to issued leases and retains referenced assets. Publication/staging select only
+  the admitted successful lease; original authored revisions remain unchanged.
+- Guarded PostgreSQL 18: `draft-render.db.test.ts`, `render-jobs.db.test.ts`,
+  `delegated.db.test.ts`, and `catalog.db.test.ts` pass (12 tests), covering stable retry, scope denial,
+  attributed admission, retained bytes, expiry/refresh, stale human correction,
+  membership revocation, lease fencing, immutable completion, and descriptor-source
+  rendering through exact human approval and catalog staging. Losing/expired
+  preparation leases and silent content substitution are rejected.
+- Manager MCP/input/worker suites pass (26 tests). The byte fixture used in the
+  database test is explicitly transport evidence, not a codec qualification.
+- No Pothos schema or frontend initialization changed. The exact review URL carries
+  `revision` and `renderAttemptId`; human review selection is implemented in
+  feat-546. Real Claude/Codex qualification remains tracked by feat-548, so this
+  ticket remains in progress until integration and qualification are assessed.

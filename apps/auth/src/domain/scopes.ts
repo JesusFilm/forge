@@ -1,5 +1,11 @@
 export const AUTH_SCOPES = [
   {
+    key: "shorts:render",
+    label: "Render Shorts drafts",
+    description:
+      "Request private draft renders using infrastructure; never approve or publish.",
+  },
+  {
     key: "shorts:read",
     label: "Read Shorts projects",
     description: "Read Shorts projects, history and shared assets.",

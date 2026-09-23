@@ -1,5 +1,9 @@
 import { z } from "zod"
-import { studioDigestSchema, studioIdSchema } from "./index"
+import {
+  studioDigestSchema,
+  studioIdSchema,
+  studioCommandBaseSchema,
+} from "./index"
 import { studioPreviewSchema } from "./preview"
 
 /** Worker/pool identity is supplied by the authenticated broker configuration;
@@ -105,3 +109,12 @@ export const studioCodecProofSchema = z
   })
   .strict()
 export type StudioCodecProof = z.infer<typeof studioCodecProofSchema>
+
+/** Delegated callers select a revision, never execution code, URLs or worker authority. */
+export const studioDraftRenderRequestSchema = studioCommandBaseSchema.strict()
+export const studioDraftRenderIdentitySchema = z
+  .object({
+    projectId: studioIdSchema,
+    attemptId: studioIdSchema,
+  })
+  .strict()
