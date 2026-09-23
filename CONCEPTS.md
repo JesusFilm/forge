@@ -987,12 +987,34 @@ created by default when personalization is enabled. The client, a browser or an 
 recommendation system retains only its one-way identity and server-owned
 interests; disabling personalization severs relinkable continuity and begins erasure.
 
+### Recommendation Profile Session Link
+
+The time-limited join that lets a Recommendation Profile reach the behavior
+recorded against a viewer's session. Without a live one the profile and that
+behavior cannot be connected at all.
+
+A link is minted when personalization is granted, and is refreshed by two
+different kinds of call: a served recommendation request, and a viewer status
+check that carries no serving precondition. Its lifetime is far shorter than the
+Recommendation Profile it connects, so a profile can be long-lived while every
+link to its behavior has lapsed. Behavior recorded with no live link reaches
+nothing: it is written, it is retained, and it is unreachable. Because a client
+typically sends the status check on an inactivity timer, how much behavior a
+viewer accumulates can depend on how irregularly they use the app rather than
+how much they watch.
+
 ### Recommendation Profile Projection
 
 An immutable, bounded interpretation of eligible recommendation behavior into
 multiple durable interests and current-session intent. Readers use only a
 fully published generation, so an incomplete rebuild cannot become serving
 truth and a privacy-generation change fences stale work.
+
+A generation admits only behavior recorded from the current Recommendation
+Profile Session Link's start, so a newly minted link does not reach behavior
+recorded before it even while those records are still retained. Contributions an
+earlier generation already published survive independently of the current link,
+bounded only by retention.
 
 ### Recommendation Personalization Decision
 
