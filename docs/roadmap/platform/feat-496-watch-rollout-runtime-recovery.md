@@ -664,3 +664,18 @@ See the [capture runbook, controlled evidence and overhead limits](../../operati
 These tests establish the instrument's discrimination, not the natural failure's
 cause. Keep in progress until deployed natural-failure capture and the existing
 recovery gates are satisfied.
+
+PR #2393 is merged and independently verified on Admin and worker at
+`4583c4ece1f1bba93660bd52d4f80cc618414fc8`; CI passes 7,338 Admin tests and
+the nine local real-PostgreSQL checks pass. A natural successful 122-row INSERT
+reaches PostgreSQL's idle state in about 6 ms while Admin measures 83 ms around
+the write. This demonstrates time outside database execution for that request,
+not the cause of the historical 1.19-second failure. The independent observer
+also samples brief I/O waits; CPU profiling does not identify a responsible
+workload. Standalone selection remains outside this delivery correlation.
+
+The [release record](../../operations/watch-database-wait-correlation-2026-09-23.md)
+retains exact capture coverage, cleanup, HTTP/semantic outcome reconciliation,
+pool contention and rejected causal inferences. The incident remains unresolved;
+neither a successful diagnostic release nor a short window without timeouts
+satisfies this ticket's closure gates.
