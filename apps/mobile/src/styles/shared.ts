@@ -18,6 +18,8 @@ import {
 
 export const HORIZONTAL_PADDING = 16
 export const CARD_GAP = 12
+/** `sectionHeadingPadded`'s bottom margin, for rows that reserve a heading. */
+export const SECTION_HEADING_MARGIN_BOTTOM = 12
 export const CARD_BORDER_RADIUS = 12
 
 // Viewport-fraction detents for the language/subtitle formSheets. The unbounded
@@ -62,7 +64,7 @@ export const text = StyleSheet.create({
     color: TEXT_PRIMARY,
     fontFamily: "System",
     paddingHorizontal: HORIZONTAL_PADDING,
-    marginBottom: 12,
+    marginBottom: SECTION_HEADING_MARGIN_BOTTOM,
   },
   sectionSubtitle: {
     fontWeight: "400",

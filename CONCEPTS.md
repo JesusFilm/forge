@@ -921,8 +921,9 @@ claim a different episode.
 
 A recommendation exposure that satisfied the versioned surface visibility
 policy, not merely an item that was served or rendered. For
-`watch-below-player-v1`, at least half of the card must remain intersecting for
-one continuous second while the document is visible.
+`watch-below-player-v1` and `watch-for-you-v1`, at least half of the card must
+remain intersecting for one continuous second while the document is visible; a
+native app applies the same rule while it is in the foreground.
 
 ### Recommendation Evidence
 
