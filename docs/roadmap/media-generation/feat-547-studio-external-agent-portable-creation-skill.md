@@ -3,7 +3,7 @@ id: "feat-547"
 title: "Create and revise from a broad brief using a portable skill"
 owner: "tataihono"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 readiness: "ready-for-agent"
 start_date: "2026-09-23"
 duration: 3
@@ -53,3 +53,15 @@ See `docs/plans/2026-09-23-studio-external-agent/spec.md` and `code-map.md` for 
 
 - `authenticateStudioMcp|studioServiceCall|expectedRevision`
 - `narrationReserve|render-review|idempotencyKey`
+
+## Implementation evidence (qualification pending)
+
+- Portable source: `skills/shorts-creator/SKILL.md` and relative references/examples.
+- Download: `apps/manager/public/shorts-creator.zip`; reproduce/check with
+  `pnpm --filter @forge/manager skill:package` / `skill:check`.
+- Actual MCP-schema/extraction tests and real operation-engine feedback tests pass.
+- Manager production build passes; discovery link adds 55 gzip bytes to initial
+  component markup and no new loading request. Limits and reproduction are in
+  `docs/validation/studio-external-agent/portable-skill/README.md`.
+- Full actual-client scenario with the extracted archive remains feat-548
+  qualification evidence; status intentionally stays `in-progress` until verified.

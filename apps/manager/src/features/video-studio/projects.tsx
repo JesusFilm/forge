@@ -62,8 +62,11 @@ export function StudioProjects() {
   }, [])
   return (
     <section className="nle-projects">
-      <nav>
+      <nav className="flex flex-wrap gap-4">
         <Link href="/dashboard/shorts/calendar">Planning calendar</Link>
+        <a href="/shorts-creator.zip" download>
+          Download Claude / Codex skill
+        </a>
       </nav>
       <header>
         <div>
