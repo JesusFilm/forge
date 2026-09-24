@@ -462,7 +462,6 @@ export function HomeScreen() {
             status={recommendations.status}
             slate={recommendations.slate}
             focused={focused}
-            inView={recommendations.shelfInView}
             onShelfMount={recommendations.reportShelfMounted}
             onCardsVisible={recommendations.reportVisibleCards}
             onDetached={recommendations.reportShelfDetached}
