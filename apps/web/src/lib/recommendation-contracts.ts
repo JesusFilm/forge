@@ -193,7 +193,7 @@ export type RecommendationPlaybackEvent =
       kind: "playback_observation"
       occurredAt: string
       payload: {
-        version: "playback-observations-v1"
+        version: "playback-observations-v1" | "playback-observations-v2"
         elapsedMilliseconds: number
         visibility: "visible" | "hidden" | "unknown"
         playerState: "playing" | "paused" | "buffering" | "unknown"
@@ -202,6 +202,8 @@ export type RecommendationPlaybackEvent =
         seekCount: number
         navigationCount: number
         qoeCount: number
+        deviceClass?: "mobile" | "desktop" | "unknown"
+        networkClass?: "slow-2g" | "2g" | "3g" | "4g" | "unknown"
       }
     }
   | {
@@ -216,7 +218,9 @@ export type RecommendationPlaybackEvent =
           | "visible"
           | "bfcache_suspend"
           | "bfcache_resume"
-        cause: "unknown"
+          | "manual_skip"
+          | "autoplay_transition"
+        cause: "unknown" | "user" | "scroll" | "system"
         positionSeconds: number
       }
     }
@@ -225,9 +229,15 @@ export type RecommendationPlaybackEvent =
       kind: "playback_qoe"
       occurredAt: string
       payload: {
-        action: "waiting" | "stalled" | "buffering_end"
+        action:
+          | "waiting"
+          | "stalled"
+          | "buffering_end"
+          | "startup_timeout"
+          | "media_error"
         cause: "unknown"
         positionSeconds: number
+        severity?: "recoverable" | "fatal" | "unknown"
       }
     }
   | {

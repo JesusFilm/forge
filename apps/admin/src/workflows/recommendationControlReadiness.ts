@@ -18,6 +18,12 @@ export async function runRecommendationControlReadinessScheduler(
       // Proxy readiness is offline evidence only. Keep the shared daily
       // scheduler alive after its independently logged evaluation fails.
     }
+    try {
+      await stepRunPlaybackSignalReadiness()
+    } catch {
+      // Navigation and QoE are diagnostic families. Keep the daily scheduler
+      // alive if their independent evidence evaluation fails.
+    }
     const next = await stepNextRecommendationControlReadinessRun(input)
     await sleep(next)
   }
@@ -62,6 +68,20 @@ async function stepRunPlaybackProxyReadiness(): Promise<void> {
 }
 
 stepRunPlaybackProxyReadiness.maxRetries = 5
+
+async function stepRunPlaybackSignalReadiness(): Promise<void> {
+  "use step"
+  const { runPlaybackSignalReadinessFromScheduler } =
+    await import("@/services/recommendations/playback-signal-readiness.job")
+  const result = await runPlaybackSignalReadinessFromScheduler()
+  if (!result.ok) {
+    throw new RetryableError("Playback signal readiness failed", {
+      retryAfter: "5m",
+    })
+  }
+}
+
+stepRunPlaybackSignalReadiness.maxRetries = 5
 
 async function stepNextRecommendationControlReadinessRun(input: {
   ledgerRunId?: string

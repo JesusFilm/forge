@@ -79,7 +79,21 @@ See `docs/validation/feat-504-playback-observations/README.md` for protocol,
 mixed-version fallback, retention/access ownership, tests and browser/load proof.
 Immediate departures remain unknown preference observations under feat-504.
 
-This ticket remains in progress. Manual-skip/replay intent, user/system pause
-causes, recoverability/fatal severity, startup timeout, device/network breakdowns,
-independent persisted readiness decisions and whole-window funnels are not yet
-implemented. Raw navigation and QoE do not influence live ranking.
+At that point, manual-skip/replay intent, user/system pause causes,
+recoverability/fatal severity, startup timeout, device/network breakdowns,
+independent persisted readiness decisions and whole-window funnels were not
+implemented. Raw navigation and QoE did not influence live ranking.
+
+## September 24 reader-first rollout candidate
+
+The v2 Admin and Web BFF contracts accept optional navigation and QoE facts
+while the browser collector continues to emit v1. Admin projects the families
+independently, reconciles a full-window aggregate against attempts, starts,
+finalized episodes and outcomes, and persists separate daily readiness
+decisions. The expanded readers must deploy and be verified in production
+before the v2 browser emitter is merged. See
+`docs/validation/feat-370-playback-signals/reader-rollout.md` for the reader
+contract, scale check, failure behavior and rollout order.
+
+The v2 emitter, authorized Admin evidence gate and normal production
+verification remain pending. The ticket remains in progress.

@@ -3,7 +3,8 @@ import { unionActivePlaybackIntervals } from "./contracts"
 import type { FrozenPlaybackFact } from "./outcome.service"
 
 /** Diagnostic policy only. Neither family is a taste or ranking classifier. */
-export const PLAYBACK_OBSERVATION_VERSION = "playback-observations-v1" as const
+export const PLAYBACK_OBSERVATION_VERSION = "playback-observations-v2" as const
+const LEGACY_PLAYBACK_OBSERVATION_VERSION = "playback-observations-v1"
 export const IMMEDIATE_DEPARTURE_WINDOW_MS = 10_000
 
 type Payload = Record<string, unknown>
@@ -38,7 +39,9 @@ export function projectPlaybackObservations(
   const end = facts.find((fact) => fact.kind === "playback_end")
   const errors = facts.filter((fact) => fact.kind === "playback_error")
   const observation = payload(first("playback_observation")?.payload)
-  const supported = observation.version === PLAYBACK_OBSERVATION_VERSION
+  const supported =
+    observation.version === PLAYBACK_OBSERVATION_VERSION ||
+    observation.version === LEGACY_PLAYBACK_OBSERVATION_VERSION
   const navigation = facts.filter((fact) => fact.kind === "playback_navigation")
   const qoe = facts.filter((fact) => fact.kind === "playback_qoe")
   const actionCount = (action: string) =>
@@ -156,8 +159,51 @@ export function projectPlaybackObservations(
   }
   const familyCoverage = (complete: boolean) =>
     !supported ? "missing" : conflicted || !complete ? "partial" : "observed"
+  const familyDigest = (family: "navigation" | "qoe") =>
+    createHash("sha256")
+      .update(
+        JSON.stringify({
+          family,
+          version: observation.version ?? null,
+          conflictCount: options.conflictCount ?? 0,
+          summary:
+            family === "navigation"
+              ? [observation.navigationCount, observation.seekCount]
+              : [
+                  observation.qoeCount,
+                  observation.startObserved,
+                  observation.errorObserved,
+                  observation.deviceClass,
+                  observation.networkClass,
+                ],
+          facts: facts
+            .filter((fact) =>
+              family === "navigation"
+                ? [
+                    "playback_attempt",
+                    "playback_navigation",
+                    "playback_seek",
+                  ].includes(fact.kind)
+                : [
+                    "playback_attempt",
+                    "playback_start",
+                    "playback_qoe",
+                    "playback_error",
+                  ].includes(fact.kind),
+            )
+            .map(({ sequence, eventId, payloadDigest }) => ({
+              sequence,
+              eventId,
+              payloadDigest,
+            })),
+        }),
+      )
+      .digest("hex")
   return {
-    version: PLAYBACK_OBSERVATION_VERSION,
+    version:
+      observation.version === LEGACY_PLAYBACK_OBSERVATION_VERSION
+        ? LEGACY_PLAYBACK_OBSERVATION_VERSION
+        : PLAYBACK_OBSERVATION_VERSION,
     factWatermark: facts.at(-1)?.sequence ?? 0,
     inputDigest: createHash("sha256")
       .update(
@@ -192,10 +238,35 @@ export function projectPlaybackObservations(
           : "unknown",
     },
     navigation: {
+      inputDigest: familyDigest("navigation"),
       coverage: familyCoverage(navigationComplete),
       decision: "inconclusive" as const,
       pauses: actionCount("pause"),
       resumes: actionCount("resume"),
+      manualSkips: actionCount("manual_skip"),
+      autoplayTransitions: actionCount("autoplay_transition"),
+      userPauses: navigation.filter(
+        (fact) =>
+          payload(fact.payload).action === "pause" &&
+          payload(fact.payload).cause === "user",
+      ).length,
+      scrollPauses: navigation.filter(
+        (fact) =>
+          payload(fact.payload).action === "pause" &&
+          payload(fact.payload).cause === "scroll",
+      ).length,
+      systemPauses: navigation.filter(
+        (fact) =>
+          payload(fact.payload).action === "pause" &&
+          payload(fact.payload).cause === "system",
+      ).length,
+      unknownPauses: navigation.filter(
+        (fact) =>
+          payload(fact.payload).action === "pause" &&
+          !["user", "scroll", "system"].includes(
+            String(payload(fact.payload).cause),
+          ),
+      ).length,
       forwardSeeks: seeks.filter(
         (seek) =>
           (finite(seek.toSeconds) ?? 0) > (finite(seek.fromSeconds) ?? 0),
@@ -214,22 +285,50 @@ export function projectPlaybackObservations(
       bfcacheSuspensions: actionCount("bfcache_suspend"),
       reasonCodes: [
         "preference_interpretation_unknown",
-        "pause_and_navigation_cause_unknown",
-        "manual_skip_and_replay_intent_unavailable",
+        "unattributed_pause_cause_unknown",
+        "replay_intent_unavailable",
       ],
     },
     qoe: {
+      inputDigest: familyDigest("qoe"),
       coverage: familyCoverage(qoeComplete),
       decision: "inconclusive" as const,
       startupMilliseconds: elapsed(attempt?.occurredAt, start?.occurredAt),
+      startupTimeouts: qoe.filter(
+        (fact) => payload(fact.payload).action === "startup_timeout",
+      ).length,
       bufferingEpisodes,
       bufferingMilliseconds,
       openBufferingInterval: bufferingAt != null,
       errors: errors.length,
+      fatalErrors: qoe.filter(
+        (fact) =>
+          payload(fact.payload).action === "media_error" &&
+          payload(fact.payload).severity === "fatal",
+      ).length,
+      unknownSeverityErrors: qoe.filter(
+        (fact) =>
+          payload(fact.payload).action === "media_error" &&
+          payload(fact.payload).severity !== "fatal",
+      ).length,
+      closedBufferIntervals: qoe.filter(
+        (fact) => payload(fact.payload).action === "buffering_end",
+      ).length,
+      deviceClass:
+        observation.deviceClass === "mobile" ||
+        observation.deviceClass === "desktop"
+          ? observation.deviceClass
+          : "unknown",
+      networkClass: ["slow-2g", "2g", "3g", "4g"].includes(
+        String(observation.networkClass),
+      )
+        ? String(observation.networkClass)
+        : "unknown",
       reasonCodes: [
-        "error_recoverability_unknown",
-        "startup_timeout_unavailable",
-        "device_and_network_unavailable",
+        "nonfatal_error_recoverability_unknown",
+        ...(observation.version === LEGACY_PLAYBACK_OBSERVATION_VERSION
+          ? ["startup_timeout_unavailable", "device_and_network_unavailable"]
+          : []),
       ],
     },
   }

@@ -1,10 +1,18 @@
-import { Prisma, type PrismaClient } from "@prisma/client"
+import {
+  Prisma,
+  type PrismaClient,
+  type RecommendationPlaybackSignalReadiness,
+} from "@prisma/client"
 import { ACTIVE_WATCH_PROXY_VERSION } from "../contracts"
 import {
   projectPlaybackObservations,
   type PlaybackObservationProjection,
 } from "../playback-observations"
 import type { FrozenPlaybackFact } from "../outcome.service"
+import {
+  loadPlaybackObservationWindow,
+  type PlaybackObservationWindow,
+} from "./playback-observation-window"
 import { summarizeViewingMode, type ViewingModeSummary } from "../viewing-mode"
 import {
   RECOMMENDATION_OPS_DAY_MS,
@@ -67,6 +75,11 @@ export type PlaybackEvidenceOverview = Readonly<{
     createdAt: Date
   }> | null
   recent: RecentPlaybackRow[]
+  observationWindow: PlaybackObservationWindow | null
+  signalReadiness: Readonly<{
+    navigation: RecommendationPlaybackSignalReadiness | null
+    qoe: RecommendationPlaybackSignalReadiness | null
+  }>
   observationSample: {
     size: number
     attempts: number
@@ -151,6 +164,24 @@ export async function loadPlaybackEvidenceOverview(
 ): Promise<PlaybackEvidenceOverview> {
   const now = input.now ?? new Date()
   const window = resolveRecommendationOpsWindow(input.window, now)
+  const observationWindowPromise = prisma
+    .$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SET LOCAL statement_timeout = '2500ms'`
+        await tx.$executeRaw`SET LOCAL jit = off`
+        return loadPlaybackObservationWindow(tx, window, now)
+      },
+      { maxWait: 1000, timeout: 3500 },
+    )
+    .catch((error: unknown) => {
+      console.warn(
+        "[recommendations] playback full-window aggregate unavailable",
+        {
+          error: error instanceof Error ? error.name : "unknown",
+        },
+      )
+      return null
+    })
   const [rows, recent, evaluation] = await Promise.all([
     prisma.$queryRaw<PlaybackOverviewRow[]>(Prisma.sql`
       WITH episodes AS (
@@ -240,6 +271,17 @@ export async function loadPlaybackEvidenceOverview(
     classificationCounts[key] = (classificationCounts[key] ?? 0) + 1
   }
   const row = rows[0]
+  const observationWindow = await observationWindowPromise
+  const [navigationReadiness, qoeReadiness] = await Promise.all([
+    prisma.recommendationPlaybackSignalReadiness.findFirst({
+      where: { family: "navigation" },
+      orderBy: { revision: "desc" },
+    }),
+    prisma.recommendationPlaybackSignalReadiness.findFirst({
+      where: { family: "qoe" },
+      orderBy: { revision: "desc" },
+    }),
+  ])
   const sourceCounts = jsonNumberRecord(row?.sourceCounts)
   return {
     window,
@@ -260,6 +302,11 @@ export async function loadPlaybackEvidenceOverview(
         }
       : null,
     recent,
+    observationWindow,
+    signalReadiness: {
+      navigation: navigationReadiness,
+      qoe: qoeReadiness,
+    },
     observationSample: {
       size: sampled.length,
       attempts: sampled.filter((episode) =>

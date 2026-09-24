@@ -216,6 +216,78 @@ function PlaybackEvidence({
       </div>
       <div className="border-t border-[var(--color-hairline)] px-4 py-3 text-[12px] text-[var(--color-text-secondary)]">
         <div className="label-text">
+          Navigation and QoE · full {playback.window.preset} window
+        </div>
+        {playback.observationWindow ? (
+          <>
+            <p className="mt-2">
+              Episodes {playback.observationWindow.episodes} · attempts{" "}
+              {playback.observationWindow.attempts} · starts{" "}
+              {playback.observationWindow.starts} · finalized{" "}
+              {playback.observationWindow.finalized} · outcomes{" "}
+              {playback.observationWindow.outcomes} · v2 summaries{" "}
+              {playback.observationWindow.v2Summaries}
+            </p>
+            <p className="mt-1">
+              Navigation observed / partial / missing{" "}
+              {playback.observationWindow.navigation.observed} /{" "}
+              {playback.observationWindow.navigation.partial} /{" "}
+              {playback.observationWindow.navigation.missing} · v2{" "}
+              {playback.observationWindow.navigation.v2Observed} · manual skips{" "}
+              {playback.observationWindow.navigation.manualSkips} · user pauses{" "}
+              {playback.observationWindow.navigation.userPauses}
+            </p>
+            <p className="mt-1">
+              QoE observed / partial / missing{" "}
+              {playback.observationWindow.qoe.observed} /{" "}
+              {playback.observationWindow.qoe.partial} /{" "}
+              {playback.observationWindow.qoe.missing} · v2{" "}
+              {playback.observationWindow.qoe.v2Observed} · startup timeouts{" "}
+              {playback.observationWindow.qoe.startupTimeouts} · fatal errors{" "}
+              {playback.observationWindow.qoe.fatalErrors}
+            </p>
+            <div className="mt-2 text-[var(--color-text-muted)]">
+              {playback.observationWindow.breakdowns.map((breakdown) => (
+                <p key={`${breakdown.deviceClass}:${breakdown.networkClass}`}>
+                  {breakdown.deviceClass} / {breakdown.networkClass}:{" "}
+                  {breakdown.episodes < 5
+                    ? "small cohort suppressed"
+                    : `${breakdown.episodes} episodes · navigation ${breakdown.navigationObserved} observed · QoE ${breakdown.qoeObserved} observed`}
+                </p>
+              ))}
+            </div>
+          </>
+        ) : (
+          <p className="mt-2 text-[var(--color-text-muted)]">
+            Full-window observations are temporarily unavailable. Episode detail
+            and persisted readiness remain available.
+          </p>
+        )}
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {(["navigation", "qoe"] as const).map((family) => {
+            const evaluation = playback.signalReadiness[family]
+            return (
+              <div
+                key={family}
+                className="border border-[var(--color-hairline)] p-3"
+              >
+                <div className="label-text">{family} readiness</div>
+                <p className="mt-1">
+                  {evaluation?.decision ?? "inconclusive"} · health{" "}
+                  {evaluation?.ingestionHealth ?? "unknown"}
+                </p>
+                <p className="mt-1 text-[var(--color-text-muted)]">
+                  {evaluation
+                    ? `${evaluation.observedCount}/${evaluation.episodeCount} observed · ${evaluation.v2SummaryCount} v2 summaries · ${evaluation.reasonCodes.join(", ")} · window ${evaluation.windowStart.toISOString().slice(0, 10)} to ${evaluation.windowEnd.toISOString().slice(0, 10)} · ${evaluation.reevaluationCondition}`
+                    : "No persisted evaluation yet; next daily mature-window run will assess this family."}
+                </p>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+      <div className="border-t border-[var(--color-hairline)] px-4 py-3 text-[12px] text-[var(--color-text-secondary)]">
+        <div className="label-text">
           Navigation and QoE · latest {playback.observationSample.size} episodes
         </div>
         <p className="mt-2">
