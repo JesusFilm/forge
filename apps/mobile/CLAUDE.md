@@ -760,10 +760,33 @@ it defines the KD, KTD, R and AE numbers the source comments cite.
 - **One pure gate decides whether the feed item exists.**
   `recommendationsShelfVisible` in `src/lib/watchHome/homeFeed.ts` needs the
   index, `isRecommendationClientEnabled()` and a configured fleet bearer.
-  A closed gate leaves no feed item and no placeholder. Only the asynchronous
-  delivery outcomes use the deferred collapse. A terminal non-served outcome
-  keeps its placeholder until the row leaves the viewport, because collapsing
-  in view is a layout jump.
+  A closed gate leaves no feed item and no placeholder.
+- **A failed load hides the whole row at once, even on screen** (product
+  decision, 2026-09-24). `unavailable`, `disabled` and `unprovisioned` render
+  nothing, so Home keeps no empty gap. This replaced plan R8's rule, which
+  held the placeholder until the row left the viewport. The accepted cost is
+  a layout jump when the row hides in view. Web still holds the gap, so the
+  two surfaces differ on purpose. `served` is NOT a hide status: the
+  controller returns it one commit before its display slate syncs, and hiding
+  then would flash every good load. `RecommendationsShelf.test.tsx` pins both.
+- **The placeholder is the row's own heading over skeleton cards.** The
+  skeleton uses the served row's layout and the landscape card size, so the
+  swap to real cards moves nothing. The cards pulse through
+  `useShimmerOpacity` only while the slate is `idle` or `loading` AND Home is
+  focused. A deep link mounts Home unfocused, and its status can stay `idle`
+  for the whole watch session, so the loop must not run there. A still
+  skeleton, such as on a blurred Home, carries no "Loading recommendations"
+  progressbar, because a pulse means "still loading".
+- **`useShimmerOpacity(false)` resets inside `stopAnimation`'s callback, not
+  at once.** A native-driven loop reports its stop-time position back to JS
+  after the stop call, and that report overwrote an immediate `setValue(0)`.
+  The still skeleton then kept the stop-time brightness: (39,35,34) and
+  (39,36,34), about 85% opacity, against the (33,29,28) rest, 3 of 3 trials on
+  the iPhone 17 Pro simulator, 2026-09-24. A flag drops the late reset when the
+  pulse restarts first, or the reset would stop the new loop. Jest has no
+  native driver, so `useShimmerOpacity.test.tsx` holds the report back by hand.
+  See
+  `docs/solutions/ui-bugs/native-animated-stop-report-overwrites-immediate-setvalue.md`.
 - **Home hosts the slate; the row is a thin renderer.**
   `useHomeRecommendations` owns the `useUserRecommendations` instance. The
   row's first mount is the fetch trigger, because FlashList mounts it within

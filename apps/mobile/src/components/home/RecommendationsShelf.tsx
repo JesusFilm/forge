@@ -1,11 +1,13 @@
 /**
  * The Recommended for You row (feat-517). A thin renderer: Home's controller
- * owns the slate, and this row reports its first mount, draws the served items
- * as landscape cards, records one render fact per item, and opens a tapped
- * video in the same tick as the selection call (KTD3, KTD6).
+ * owns the slate, and this row reports its first mount, shows its title over a
+ * pulsing skeleton until the slate lands, draws the served items as landscape
+ * cards, records one render fact per item, and opens a tapped video in the same
+ * tick as the selection call (KTD3, KTD6).
  */
 import { memo, useCallback, useEffect, useMemo, useRef } from "react"
 import {
+  Animated,
   FlatList,
   StyleSheet,
   Text,
@@ -15,6 +17,7 @@ import {
 import { useRouter } from "expo-router"
 
 import { useGuardedViewabilityCallback } from "../../hooks/useGuardedViewabilityCallback"
+import { useShimmerOpacity } from "../../hooks/useShimmerOpacity"
 import { useTypography } from "../../hooks/useTypography"
 import {
   isSlateExpired,
@@ -28,11 +31,11 @@ import type { WatchHomeCard } from "../../lib/watchHome/model"
 import { USER_RECOMMENDATION_DEFAULT_COUNT } from "../../lib/recommendations/operations"
 import { encodeWatchSeed } from "../../lib/watchSeed"
 import {
+  card as cardStyle,
   carousel,
   layout,
   text,
   CARD_GAP,
-  SECTION_HEADING_MARGIN_BOTTOM,
 } from "../../styles/shared"
 import { HomeCard, homeCardHeight, homeCardWidth } from "./HomeCard"
 
@@ -40,6 +43,15 @@ import { HomeCard, homeCardHeight, homeCardWidth } from "./HomeCard"
 
 /** R4: the app's own string. The block's authored title is not read (KD8). */
 export const RECOMMENDATIONS_SHELF_TITLE = "Recommended for You"
+
+/** What a screen reader hears while the skeleton pulses. */
+export const RECOMMENDATIONS_SHELF_LOADING_LABEL = "Loading recommendations"
+
+export const RECOMMENDATIONS_SKELETON_CARD_TEST_ID =
+  "recommendations-skeleton-card"
+
+/** One full card and the next one's peek, as the served carousel opens. */
+const SKELETON_CARD_COUNT = 2
 
 /** R6: the count the controller requests; any other length renders no cards. */
 const RECOMMENDATIONS_SHELF_ITEM_COUNT = USER_RECOMMENDATION_DEFAULT_COUNT
@@ -55,8 +67,6 @@ export type RecommendationsShelfProps = {
   slate: UserRecommendationSlate | null
   /** Home's focus flag: render facts wait for focus (KTD3). */
   focused: boolean
-  /** True while Home's list holds the row in the viewport (R8). */
-  inView: boolean
   onShelfMount: () => void
   /** The card ids this row's own list reports at least half visible (KTD4). */
   onCardsVisible: (itemIds: readonly string[]) => void
@@ -68,21 +78,6 @@ export type RecommendationsShelfProps = {
 }
 
 // ── Pure seams ──────────────────────────────────────────────────────────────
-
-/**
- * The height the row reserves while it has no cards, from the same constants
- * its real cards render with, so a served slate lands without a layout jump.
- */
-export function recommendationsShelfBodyHeight(
-  screenWidth: number,
-  headingLineHeight: number,
-): number {
-  return (
-    headingLineHeight +
-    SECTION_HEADING_MARGIN_BOTTOM +
-    homeCardHeight("landscape", screenWidth)
-  )
-}
 
 /**
  * The served items to draw, or null when there is nothing to draw. A slate of
@@ -97,13 +92,22 @@ function recommendationsShelfCards(
   return [...slate.items].sort((left, right) => left.position - right.position)
 }
 
-/** R8: a terminal non-served outcome collapses once the row leaves the view. */
-function recommendationsShelfCollapsed(
+function awaitingSlate(status: UserRecommendationsStatus): boolean {
+  return status === "idle" || status === "loading"
+}
+
+/**
+ * A failed load hides the whole row at once, even on screen (decided
+ * 2026-09-24). Not `served`: that lands one commit before its slate does.
+ */
+function recommendationsShelfHidden(
   status: UserRecommendationsStatus,
-  inView: boolean,
 ): boolean {
-  const awaitingSlate = status === "idle" || status === "loading"
-  return !awaitingSlate && !inView
+  return (
+    status === "unavailable" ||
+    status === "disabled" ||
+    status === "unprovisioned"
+  )
 }
 
 /** The recommendation item as the Home card presentation consumes it (R10). */
@@ -131,13 +135,52 @@ function recommendationCardModel(item: UserRecommendationItem): WatchHomeCard {
   }
 }
 
+// ── Skeleton ────────────────────────────────────────────────────────────────
+
+/**
+ * Card-sized stand-ins in the served row's own layout, so the swap to real
+ * cards moves nothing (R8). Only a pulsing skeleton reports a load.
+ */
+function RecommendationsShelfSkeleton({
+  pulsing,
+  screenWidth,
+}: {
+  pulsing: boolean
+  screenWidth: number
+}) {
+  const opacity = useShimmerOpacity(pulsing)
+  const size = {
+    width: homeCardWidth("landscape", screenWidth),
+    height: homeCardHeight("landscape", screenWidth),
+  }
+  return (
+    <View
+      style={[carousel.listContent, styles.skeletonRow]}
+      accessible={pulsing}
+      accessibilityRole={pulsing ? "progressbar" : undefined}
+      accessibilityLabel={
+        pulsing ? RECOMMENDATIONS_SHELF_LOADING_LABEL : undefined
+      }
+      accessibilityElementsHidden={!pulsing}
+      importantForAccessibility={pulsing ? "yes" : "no-hide-descendants"}
+    >
+      {Array.from({ length: SKELETON_CARD_COUNT }, (_, index) => (
+        <Animated.View
+          key={index}
+          testID={RECOMMENDATIONS_SKELETON_CARD_TEST_ID}
+          style={[cardStyle.surface, size, { opacity }]}
+        />
+      ))}
+    </View>
+  )
+}
+
 // ── Component ───────────────────────────────────────────────────────────────
 
 export const RecommendationsShelf = memo(function RecommendationsShelf({
   status,
   slate,
   focused,
-  inView,
   onShelfMount,
   onCardsVisible,
   onDetached,
@@ -263,17 +306,26 @@ export const RecommendationsShelf = memo(function RecommendationsShelf({
     [],
   )
 
+  // One heading for both branches, so the placeholder cannot drift from it.
+  const heading = (
+    <Text
+      style={[text.sectionHeadingPadded, typography.titleSmall]}
+      accessibilityRole="header"
+    >
+      {RECOMMENDATIONS_SHELF_TITLE}
+    </Text>
+  )
+
   if (items == null) {
-    if (recommendationsShelfCollapsed(status, inView)) return null
+    if (recommendationsShelfHidden(status)) return null
     return (
       <View style={[layout.sectionOuter, styles.localContainer]}>
-        <View
-          style={{
-            height: recommendationsShelfBodyHeight(
-              screenWidth,
-              typography.titleSmall.lineHeight,
-            ),
-          }}
+        {heading}
+        <RecommendationsShelfSkeleton
+          // A deep link mounts Home unfocused and idle for the whole watch
+          // session; the loop must not run behind the player all that time.
+          pulsing={awaitingSlate(status) && focused}
+          screenWidth={screenWidth}
         />
       </View>
     )
@@ -281,12 +333,7 @@ export const RecommendationsShelf = memo(function RecommendationsShelf({
 
   return (
     <View style={[layout.sectionOuter, styles.localContainer]}>
-      <Text
-        style={[text.sectionHeadingPadded, typography.titleSmall]}
-        accessibilityRole="header"
-      >
-        {RECOMMENDATIONS_SHELF_TITLE}
-      </Text>
+      {heading}
       <FlatList
         data={rows}
         renderItem={renderItem}
@@ -310,5 +357,9 @@ export const RecommendationsShelf = memo(function RecommendationsShelf({
 const styles = StyleSheet.create({
   localContainer: {
     paddingVertical: 8,
+  },
+  skeletonRow: {
+    flexDirection: "row",
+    overflow: "hidden",
   },
 })

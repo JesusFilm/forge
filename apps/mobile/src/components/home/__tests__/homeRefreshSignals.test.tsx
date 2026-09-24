@@ -209,7 +209,6 @@ function controller() {
   return {
     status: "served",
     slate: null,
-    shelfInView: true,
     reportShelfMounted: jest.fn(),
     reportShelfVisible: jest.fn(),
     reportVisibleCards: jest.fn(),

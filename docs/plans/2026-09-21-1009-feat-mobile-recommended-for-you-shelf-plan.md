@@ -88,6 +88,7 @@ This plan covers the Home shelf only. The breakdown below is the current underst
 - R6. The shelf never renders a shorter slate or a slate for a different audio language than the one requested; any served outcome other than a complete six-item slate renders no cards.
 - R7. The slate fetch starts when the shelf nears the viewport, not on Home load.
 - R8. While the slate loads, the shelf holds a placeholder of the shelf's height at its position; a non-served outcome collapses the placeholder once the shelf is out of view.
+  - **Superseded 2026-09-24 (product decision):** a failed load (`unavailable`, `disabled`, `unprovisioned`) now hides the whole row at once, even in view, so Home keeps no empty gap. The placeholder is the heading over pulsing skeleton cards. See `apps/mobile/CLAUDE.md`, "Recommended for You shelf".
 - R9. The Home cold-launch snapshot and the frozen fallback body never contain slate items, capabilities, request ids, or nonces.
 - R10. Cards use the existing Home card presentation with the served item's title and image.
 
@@ -147,6 +148,7 @@ This plan covers the Home shelf only. The breakdown below is the current underst
 - AE2. **Covers R1, R5, R6, R11.** Given the block is published and Admin serves six items, when the shelf nears the viewport, then six cards render in served `position` order and six `render` facts are recorded.
 - AE3. **Covers R6.** Given Admin serves five items, when the shelf reads the delivery, then no cards render and the delivery is reported as invalid.
 - AE4. **Covers R6, R8.** Given Admin answers `unavailable` or `environment_disabled`, when the shelf is in view, then the placeholder stays until the shelf leaves the viewport and no cards ever render.
+  - **Superseded 2026-09-24:** the row now disappears at once, in view or not, and no cards ever render. See the R8 note.
 - AE5. **Covers R12.** Given a card is 60% visible for 0.6 s and then scrolled away, when the dwell is checked, then no impression is recorded; given the same card is 60% visible for 1.2 s, then exactly one impression is recorded.
 - AE6. **Covers R13, R16.** Given the slate passed `expiresAt` while Home stayed on screen, when A1 taps a card, then the video opens, no selection is sent, and the shelf refetches.
 - AE7. **Covers R17.** Given A1 watched a recommended video and pops back to Home, when Home is on screen again, then the slate refetches; given A1 only switched to the Discover tab and back, then the cards are unchanged.

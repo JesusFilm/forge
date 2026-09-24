@@ -925,23 +925,9 @@ describe("the impression dwell (R12, KTD4)", () => {
   })
 })
 
-// ── The row's own visibility (R8) ───────────────────────────────────────────
+// ── The row's visibility reporters ───────────────────────────────────────────
 
-describe("the row's viewport flag", () => {
-  it("starts in view, then follows Home's list", async () => {
-    const c = client()
-    const hook = renderController(OPEN, c)
-    // The row mounts before the list has ever reported. Collapsing a terminal
-    // outcome on that silence is the layout jump R8 forbids.
-    expect(hook.latest().shelfInView).toBe(true)
-
-    act(() => hook.latest().reportShelfVisible(false))
-    expect(hook.latest().shelfInView).toBe(false)
-
-    act(() => hook.latest().reportShelfVisible(true))
-    expect(hook.latest().shelfInView).toBe(true)
-  })
-
+describe("the row's visibility reporters", () => {
   it("holds the same reporter identity across a refetch", async () => {
     const c = client()
     const hook = renderController(OPEN, c)
