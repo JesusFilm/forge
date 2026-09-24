@@ -1001,6 +1001,7 @@ export function RecommendationPlaybackRecorder({
     }
     const armStartupTimeout = () => {
       if (
+        initiationRef.current == null ||
         startupTimerRef.current != null ||
         startupTimedOutRef.current ||
         startRecordedRef.current ||
