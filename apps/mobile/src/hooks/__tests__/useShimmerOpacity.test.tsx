@@ -3,7 +3,8 @@
  * stopped loop reports its stop-time position back to JS AFTER the call that
  * stopped it, so a reset issued at once is overwritten and the still skeleton
  * keeps that brightness (measured 2026-09-24 on the iPhone 17 Pro simulator:
- * (39,36,35) against the (33,29,28) rest). Jest has no native driver, so these
+ * (39,35,34) and (39,36,34) against the (33,29,28) rest). Jest has no native
+ * driver, so these
  * tests hold `stopAnimation`'s report back to stand in for the native reply.
  *
  * apps/mobile's tsconfig maps `react` to its .d.ts and jest-expo mirrors

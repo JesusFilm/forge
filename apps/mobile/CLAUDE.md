@@ -780,11 +780,13 @@ it defines the KD, KTD, R and AE numbers the source comments cite.
 - **`useShimmerOpacity(false)` resets inside `stopAnimation`'s callback, not
   at once.** A native-driven loop reports its stop-time position back to JS
   after the stop call, and that report overwrote an immediate `setValue(0)`.
-  The still skeleton then kept the stop-time brightness: (39,36,35) against
-  the (33,29,28) rest, 3 of 3 trials on the iPhone 17 Pro simulator,
-  2026-09-24. A flag drops the late reset when the pulse restarts first, or
-  the reset would stop the new loop. Jest has no native driver, so
-  `useShimmerOpacity.test.tsx` holds the report back by hand.
+  The still skeleton then kept the stop-time brightness: (39,35,34) and
+  (39,36,34), about 85% opacity, against the (33,29,28) rest, 3 of 3 trials on
+  the iPhone 17 Pro simulator, 2026-09-24. A flag drops the late reset when the
+  pulse restarts first, or the reset would stop the new loop. Jest has no
+  native driver, so `useShimmerOpacity.test.tsx` holds the report back by hand.
+  See
+  `docs/solutions/ui-bugs/native-animated-stop-report-overwrites-immediate-setvalue.md`.
 - **Home hosts the slate; the row is a thin renderer.**
   `useHomeRecommendations` owns the `useUserRecommendations` instance. The
   row's first mount is the fetch trigger, because FlashList mounts it within
