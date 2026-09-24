@@ -4668,6 +4668,22 @@ model RecommendationPlaybackSignalReadiness {
   @@map("recommendation_playback_signal_readiness")
 }
 
+/// At most one identity-free Admin funnel snapshot per preset. Each successful
+/// daily refresh atomically replaces its predecessor; failed refreshes retain
+/// the last successful snapshot, whose exact window and age remain visible.
+model RecommendationPlaybackObservationSnapshot {
+  preset          String    @id @db.VarChar(3)
+  schemaVersion   String    @map("schema_version") @db.VarChar(64)
+  windowStart     DateTime? @map("window_start")
+  windowEnd       DateTime? @map("window_end")
+  computedAt      DateTime? @map("computed_at")
+  payload         Json?
+  lastAttemptedAt DateTime  @map("last_attempted_at")
+  lastErrorCode   String?   @map("last_error_code") @db.VarChar(32)
+
+  @@map("recommendation_playback_observation_snapshot")
+}
+
 /// Append-only integrity verdict. Raw facts without a current decision are
 /// explicitly pre-policy/pending and never become eligible through a read.
 /// `isCurrent` is protected by a migration-owned partial unique index; the

@@ -12,6 +12,9 @@ const proxyJob = vi.hoisted(() => ({
 const signalJob = vi.hoisted(() => ({
   runPlaybackSignalReadinessFromScheduler: vi.fn(),
 }))
+const snapshotJob = vi.hoisted(() => ({
+  runPlaybackObservationSnapshotFromScheduler: vi.fn(),
+}))
 const sleep = vi.hoisted(() => vi.fn())
 const getWorkflowMetadata = vi.hoisted(() =>
   vi.fn(() => ({ workflowRunId: "runtime-scheduler-1" })),
@@ -23,6 +26,10 @@ vi.mock("@/services/recommendations/proxy-readiness.job", () => proxyJob)
 vi.mock(
   "@/services/recommendations/playback-signal-readiness.job",
   () => signalJob,
+)
+vi.mock(
+  "@/services/recommendations/playback-observation-snapshot.job",
+  () => snapshotJob,
 )
 vi.mock("workflow", () => ({ getWorkflowMetadata, RetryableError, sleep }))
 
@@ -42,6 +49,10 @@ describe("recommendation control readiness workflow", () => {
     signalJob.runPlaybackSignalReadinessFromScheduler.mockResolvedValue({
       ok: true,
       ledgerRunId: "signal-evaluation-ledger-1",
+    })
+    snapshotJob.runPlaybackObservationSnapshotFromScheduler.mockResolvedValue({
+      ok: true,
+      ledgerRunId: "snapshot-ledger-1",
     })
     job.nextRecommendationControlReadinessRunAt.mockReturnValue(next)
     job.recordRecommendationControlReadinessSchedulerHeartbeat.mockResolvedValue(
@@ -74,6 +85,9 @@ describe("recommendation control readiness workflow", () => {
     ).toHaveBeenCalledOnce()
     expect(
       signalJob.runPlaybackSignalReadinessFromScheduler,
+    ).toHaveBeenCalledOnce()
+    expect(
+      snapshotJob.runPlaybackObservationSnapshotFromScheduler,
     ).toHaveBeenCalledOnce()
     expect(
       job.recordRecommendationControlReadinessSchedulerHeartbeat,

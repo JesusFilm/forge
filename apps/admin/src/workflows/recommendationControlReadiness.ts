@@ -24,6 +24,11 @@ export async function runRecommendationControlReadinessScheduler(
       // Navigation and QoE are diagnostic families. Keep the daily scheduler
       // alive if their independent evidence evaluation fails.
     }
+    try {
+      await stepRunPlaybackObservationSnapshots()
+    } catch {
+      // Snapshot refresh has its own ledger. Preserve the shared scheduler.
+    }
     const next = await stepNextRecommendationControlReadinessRun(input)
     await sleep(next)
   }
@@ -82,6 +87,20 @@ async function stepRunPlaybackSignalReadiness(): Promise<void> {
 }
 
 stepRunPlaybackSignalReadiness.maxRetries = 5
+
+async function stepRunPlaybackObservationSnapshots(): Promise<void> {
+  "use step"
+  const { runPlaybackObservationSnapshotFromScheduler } =
+    await import("@/services/recommendations/playback-observation-snapshot.job")
+  const result = await runPlaybackObservationSnapshotFromScheduler()
+  if (!result.ok) {
+    throw new RetryableError("Playback observation snapshot refresh failed", {
+      retryAfter: "5m",
+    })
+  }
+}
+
+stepRunPlaybackObservationSnapshots.maxRetries = 5
 
 async function stepNextRecommendationControlReadinessRun(input: {
   ledgerRunId?: string

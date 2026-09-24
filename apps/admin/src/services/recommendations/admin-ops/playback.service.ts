@@ -9,10 +9,11 @@ import {
   type PlaybackObservationProjection,
 } from "../playback-observations"
 import type { FrozenPlaybackFact } from "../outcome.service"
+import type { PlaybackObservationWindow } from "./playback-observation-window"
 import {
-  loadPlaybackObservationWindow,
-  type PlaybackObservationWindow,
-} from "./playback-observation-window"
+  loadPlaybackObservationSnapshot,
+  type PlaybackObservationSnapshot,
+} from "./playback-observation-snapshot"
 import { summarizeViewingMode, type ViewingModeSummary } from "../viewing-mode"
 import {
   RECOMMENDATION_OPS_DAY_MS,
@@ -76,6 +77,7 @@ export type PlaybackEvidenceOverview = Readonly<{
   }> | null
   recent: RecentPlaybackRow[]
   observationWindow: PlaybackObservationWindow | null
+  observationSnapshot: PlaybackObservationSnapshot
   signalReadiness: Readonly<{
     navigation: RecommendationPlaybackSignalReadiness | null
     qoe: RecommendationPlaybackSignalReadiness | null
@@ -164,24 +166,27 @@ export async function loadPlaybackEvidenceOverview(
 ): Promise<PlaybackEvidenceOverview> {
   const now = input.now ?? new Date()
   const window = resolveRecommendationOpsWindow(input.window, now)
-  const observationWindowPromise = prisma
-    .$transaction(
-      async (tx) => {
-        await tx.$executeRaw`SET LOCAL statement_timeout = '2500ms'`
-        await tx.$executeRaw`SET LOCAL jit = off`
-        return loadPlaybackObservationWindow(tx, window, now)
+  const observationSnapshotPromise = loadPlaybackObservationSnapshot(
+    prisma,
+    window.preset,
+    now,
+  ).catch((error: unknown) => {
+    console.warn(
+      "[recommendations] playback observation snapshot unavailable",
+      {
+        error: error instanceof Error ? error.name : "unknown",
       },
-      { maxWait: 1000, timeout: 3500 },
     )
-    .catch((error: unknown) => {
-      console.warn(
-        "[recommendations] playback full-window aggregate unavailable",
-        {
-          error: error instanceof Error ? error.name : "unknown",
-        },
-      )
-      return null
-    })
+    return {
+      window: null,
+      windowStart: null,
+      windowEnd: null,
+      computedAt: null,
+      lastAttemptedAt: null,
+      refreshFailed: true,
+      stale: true,
+    } satisfies PlaybackObservationSnapshot
+  })
   const [rows, recent, evaluation] = await Promise.all([
     prisma.$queryRaw<PlaybackOverviewRow[]>(Prisma.sql`
       WITH episodes AS (
@@ -271,7 +276,7 @@ export async function loadPlaybackEvidenceOverview(
     classificationCounts[key] = (classificationCounts[key] ?? 0) + 1
   }
   const row = rows[0]
-  const observationWindow = await observationWindowPromise
+  const observationSnapshot = await observationSnapshotPromise
   const [navigationReadiness, qoeReadiness] = await Promise.all([
     prisma.recommendationPlaybackSignalReadiness.findFirst({
       where: { family: "navigation" },
@@ -302,7 +307,8 @@ export async function loadPlaybackEvidenceOverview(
         }
       : null,
     recent,
-    observationWindow,
+    observationWindow: observationSnapshot.window,
+    observationSnapshot,
     signalReadiness: {
       navigation: navigationReadiness,
       qoe: qoeReadiness,

@@ -85,21 +85,28 @@ export class PlaybackSignalReadinessService {
     )
       throw new RecommendationInputError("Playback signal window is invalid")
 
+    // Both families evaluate the same immutable window. Read it once, then
+    // persist each decision in its own transaction so one write can fail alone.
+    const window = await this.deps.prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SET LOCAL statement_timeout = '4000ms'`
+        await tx.$executeRaw`SET LOCAL jit = off`
+        return loadPlaybackObservationWindow(
+          tx,
+          { preset: "7d", start: input.windowStart, end: input.windowEnd },
+          now,
+        )
+      },
+      { maxWait: 1000, timeout: 5000 },
+    )
     const results: RecommendationPlaybackSignalReadiness[] = []
     const failures: Error[] = []
     for (const family of ["navigation", "qoe"] as const) {
       try {
         const result = await this.deps.prisma.$transaction(
           async (tx) => {
-            await tx.$executeRaw`SET LOCAL statement_timeout = '4000ms'`
-            await tx.$executeRaw`SET LOCAL jit = off`
             const lockId = LOCK_ID + (family === "qoe" ? 1 : 0)
             await tx.$executeRaw`SELECT pg_advisory_xact_lock(${lockId})`
-            const window = await loadPlaybackObservationWindow(
-              tx,
-              { preset: "7d", start: input.windowStart, end: input.windowEnd },
-              now,
-            )
             const counts = window[family]
             const readiness = decidePlaybackSignalReadiness({
               episodes: window.episodes,

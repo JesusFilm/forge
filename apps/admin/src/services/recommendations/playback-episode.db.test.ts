@@ -28,6 +28,7 @@ import {
   loadPlaybackEpisodeDetail,
   loadPlaybackEvidenceOverview,
 } from "./admin-ops/playback.service"
+import { refreshPlaybackObservationSnapshots } from "./admin-ops/playback-observation-snapshot"
 import { PlaybackProxyReadinessService } from "./proxy-readiness.service"
 import { PlaybackSignalReadinessService } from "./playback-signal-readiness.service"
 import {
@@ -1261,6 +1262,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         classification: "interrupted_visibility_or_lifecycle",
         immediate: null,
       })
+      await refreshPlaybackObservationSnapshots(prisma, current)
       const overview = await loadPlaybackEvidenceOverview(prisma, {
         window: "24h",
         now: current,
@@ -1509,6 +1511,10 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           expiresAt,
         })),
       })
+      expect(await refreshPlaybackObservationSnapshots(prisma, now)).toEqual({
+        refreshed: ["24h", "7d", "29d"],
+        failed: [],
+      })
       const overview = await loadPlaybackEvidenceOverview(prisma, { now })
       expect(overview.observationSample.size).toBe(20)
       expect(overview.observationSample.navigationObserved).toBe(1)
@@ -1529,11 +1535,15 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       })
       const timedOutAggregate = {
         $queryRaw: prisma.$queryRaw.bind(prisma),
-        $transaction: vi.fn().mockRejectedValue(new Error("aggregate timeout")),
         playbackProxyEvaluation: prisma.playbackProxyEvaluation,
         recommendationPlaybackEpisode: prisma.recommendationPlaybackEpisode,
         recommendationPlaybackSignalReadiness:
           prisma.recommendationPlaybackSignalReadiness,
+        recommendationPlaybackObservationSnapshot: {
+          findUnique: vi
+            .fn()
+            .mockRejectedValue(new Error("snapshot read timeout")),
+        },
       } as unknown as PrismaClient
       const degraded = await loadPlaybackEvidenceOverview(timedOutAggregate, {
         now,
@@ -1541,6 +1551,25 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       expect(degraded.counts.episodes).toBe(21)
       expect(degraded.observationWindow).toBeNull()
       expect(degraded.observationSample.size).toBe(20)
+      const olderFailedRefresh = {
+        $transaction: vi.fn().mockRejectedValue(new Error("late failure")),
+        recommendationPlaybackObservationSnapshot:
+          prisma.recommendationPlaybackObservationSnapshot,
+      } as unknown as PrismaClient
+      expect(
+        await refreshPlaybackObservationSnapshots(
+          olderFailedRefresh,
+          new Date(now.getTime() - 1_000),
+        ),
+      ).toEqual({ refreshed: [], failed: ["24h", "7d", "29d"] })
+      const lastSuccess =
+        await prisma.recommendationPlaybackObservationSnapshot.findUniqueOrThrow(
+          {
+            where: { preset: "24h" },
+          },
+        )
+      expect(lastSuccess.computedAt).toEqual(now)
+      expect(lastSuccess.lastErrorCode).toBeNull()
     })
   },
 )

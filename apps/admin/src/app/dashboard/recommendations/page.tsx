@@ -216,8 +216,28 @@ function PlaybackEvidence({
       </div>
       <div className="border-t border-[var(--color-hairline)] px-4 py-3 text-[12px] text-[var(--color-text-secondary)]">
         <div className="label-text">
-          Navigation and QoE · full {playback.window.preset} window
+          Navigation and QoE · full {playback.window.preset} snapshot
         </div>
+        {playback.observationSnapshot.windowStart &&
+          playback.observationSnapshot.windowEnd &&
+          playback.observationSnapshot.computedAt && (
+            <p className="mt-1 text-[var(--color-text-muted)]">
+              Exact window{" "}
+              {playback.observationSnapshot.windowStart.toISOString()} to{" "}
+              {playback.observationSnapshot.windowEnd.toISOString()} · computed{" "}
+              {playback.observationSnapshot.computedAt.toISOString()}
+              {playback.observationSnapshot.stale
+                ? " · stale"
+                : " · current daily snapshot"}
+              . Headline counts above use the live selected window.
+            </p>
+          )}
+        {playback.observationSnapshot.refreshFailed && (
+          <p className="mt-1 text-[var(--color-text-muted)]">
+            The latest snapshot refresh failed. The last successful snapshot is
+            retained when available.
+          </p>
+        )}
         {playback.observationWindow ? (
           <>
             <p className="mt-2">
@@ -259,8 +279,9 @@ function PlaybackEvidence({
           </>
         ) : (
           <p className="mt-2 text-[var(--color-text-muted)]">
-            Full-window observations are temporarily unavailable. Episode detail
-            and persisted readiness remain available.
+            No full-window observation snapshot is available yet. The durable
+            refresh runs after deployment and daily; episode detail and
+            persisted readiness remain available.
           </p>
         )}
         <div className="mt-3 grid gap-2 sm:grid-cols-2">

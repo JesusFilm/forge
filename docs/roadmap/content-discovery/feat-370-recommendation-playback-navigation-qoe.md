@@ -88,9 +88,9 @@ implemented. Raw navigation and QoE did not influence live ranking.
 
 The v2 Admin and Web BFF contracts accept optional navigation and QoE facts
 while the browser collector continues to emit v1. Admin projects the families
-independently, reconciles a full-window aggregate against attempts, starts,
-finalized episodes and outcomes, and persists separate daily readiness
-decisions. The expanded readers must deploy and be verified in production
+independently, reconciles dated full-window snapshots against attempts,
+starts, finalized episodes and outcomes, and persists separate daily readiness
+decisions. The expanded readers and Admin worker/bootstrap must deploy and be verified in production
 before the v2 browser emitter is merged. See
 `docs/validation/feat-370-playback-signals/reader-rollout.md` for the reader
 contract, scale check, failure behavior and rollout order.

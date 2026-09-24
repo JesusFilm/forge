@@ -33,4 +33,20 @@ CREATE UNIQUE INDEX recommendation_playback_signal_readiness_input_key
   ON recommendation_playback_signal_readiness(family, window_start, window_end, input_digest);
 CREATE INDEX recommendation_playback_signal_readiness_created_idx
   ON recommendation_playback_signal_readiness(family, created_at);
+CREATE TABLE recommendation_playback_observation_snapshot (
+  preset VARCHAR(3) PRIMARY KEY CHECK (preset IN ('24h', '7d', '29d')),
+  schema_version VARCHAR(64) NOT NULL,
+  window_start TIMESTAMPTZ,
+  window_end TIMESTAMPTZ,
+  computed_at TIMESTAMPTZ,
+  payload JSONB,
+  last_attempted_at TIMESTAMPTZ NOT NULL,
+  last_error_code VARCHAR(32),
+  CONSTRAINT recommendation_playback_observation_snapshot_window_check
+    CHECK (
+      (window_start IS NULL AND window_end IS NULL AND computed_at IS NULL AND payload IS NULL)
+      OR (window_start IS NOT NULL AND window_end IS NOT NULL AND computed_at IS NOT NULL
+        AND payload IS NOT NULL AND window_start < window_end AND window_end <= computed_at)
+    )
+);
 COMMIT;

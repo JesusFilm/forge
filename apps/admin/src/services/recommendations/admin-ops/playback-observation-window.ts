@@ -84,7 +84,13 @@ export async function loadPlaybackObservationWindow(
         episode.generation
       FROM recommendation_playback_episode episode
       LEFT JOIN recommendation_playback_fact fact
-        ON fact.episode_id = episode.id AND fact.expires_at > ${now}
+        ON fact.episode_id = episode.id
+        AND fact.expires_at > ${now}
+        AND fact.kind IN (
+          'playback_attempt', 'playback_start', 'playback_error',
+          'playback_seek', 'playback_navigation', 'playback_qoe',
+          'playback_observation'
+        )
       WHERE episode.created_at >= ${window.start}
         AND episode.created_at < ${window.end}
         AND episode.expires_at > ${now}

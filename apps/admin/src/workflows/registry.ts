@@ -4,6 +4,7 @@ import {
 } from "@/workflows/videoDbBackup"
 import { runRecommendationEpisodeFinalization } from "@/workflows/recommendationEpisodeFinalization"
 import { runRecommendationControlReadinessScheduler } from "@/workflows/recommendationControlReadiness"
+import { runPlaybackObservationSnapshotBootstrap } from "@/workflows/playbackObservationSnapshotBootstrap"
 import { runRecommendationShadowEvaluation } from "@/workflows/recommendationShadowEvaluation"
 import { runRecommendationExperimentEvaluation } from "@/workflows/recommendationExperimentEvaluation"
 import { runRecommendationPromotion } from "@/workflows/recommendationPromotion"
@@ -30,6 +31,7 @@ export function getKnownRecommendationWorkflowIds(): string[] {
   return [
     runRecommendationEpisodeFinalization,
     runRecommendationControlReadinessScheduler,
+    runPlaybackObservationSnapshotBootstrap,
     runRecommendationShadowEvaluation,
     runRecommendationExperimentEvaluation,
     runRecommendationPromotion,
