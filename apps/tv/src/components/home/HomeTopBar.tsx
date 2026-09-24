@@ -140,7 +140,7 @@ export const HomeTopBar = memo(function HomeTopBar({
         {onProfilePress != null ? (
           <TopBarTab
             testID="home-topbar-profile-tab"
-            iconName="person-outline"
+            label="Profile"
             accessibilityLabel="Profile"
             accessibilityHint="Opens your profile"
             onPress={onProfilePress}
@@ -151,7 +151,7 @@ export const HomeTopBar = memo(function HomeTopBar({
         ) : null}
         <TopBarTab
           testID="home-topbar-settings-tab"
-          iconName="settings-outline"
+          label="Settings"
           accessibilityLabel="Settings"
           accessibilityHint="Opens the settings screen"
           onPress={onSettingsPress}
