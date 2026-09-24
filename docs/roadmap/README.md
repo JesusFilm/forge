@@ -7,11 +7,11 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 ## Status (September 24, 2026)
 
 - **Total tickets:** 728
-- **Complete:** 546
-- **In progress:** 56
+- **Complete:** 547
+- **In progress:** 55
 - **Not started:** 47
 - **Blocked:** 79
-- **Overdue and not complete:** 142
+- **Overdue and not complete:** 141
 
 ## Feature Index
 
@@ -165,7 +165,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-465](content-discovery/feat-465-watch-search-transcript-publication-convergence.md)                      | Watch search transcript publication convergence                                                 | codex      | P1       | 2026-09-08 | 1    | 2026-09-08 | complete    |
 | [feat-487](content-discovery/feat-487-one-time-recommendation-fallback-curation.md)                            | Curate one-time recommendation fallback pools                                                   | nisal      | P1       | 2026-09-10 | 1    | 2026-09-10 | complete    |
 | [feat-488](content-discovery/feat-488-source-free-user-recommendations.md)                                     | Source-free user recommendations and Web For you row                                            | nisal      | P1       | 2026-09-10 | 10   | 2026-09-19 | complete    |
-| [feat-370](content-discovery/feat-370-recommendation-playback-navigation-qoe.md)                               | Recommendation playback navigation and QoE signals                                              | nisal      | P1       | 2026-09-15 | 4    | 2026-09-18 | in-progress |
+| [feat-370](content-discovery/feat-370-recommendation-playback-navigation-qoe.md)                               | Recommendation playback navigation and QoE signals                                              | nisal      | P1       | 2026-09-15 | 4    | 2026-09-18 | complete    |
 | [feat-393](content-discovery/feat-393-recommendation-slate-composer.md)                                        | Recommendation slate composer                                                                   | nisal      | P1       | 2026-09-15 | 5    | 2026-09-19 | blocked     |
 | [feat-503](content-discovery/feat-503-profile-recommendation-recent-view-repetition.md)                        | Audit recent-view repetition in profile recommendations                                         | nisal      | P1       | 2026-09-15 | 3    | 2026-09-17 | complete    |
 | [feat-504](content-discovery/feat-504-immediate-exit-profile-observations.md)                                  | Preserve immediate exits as uninterpreted profile observations                                  | nisal      | P1       | 2026-09-15 | 4    | 2026-09-18 | complete    |
