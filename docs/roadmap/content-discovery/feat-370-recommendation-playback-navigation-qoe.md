@@ -3,7 +3,7 @@ id: "feat-370"
 title: "Recommendation playback navigation and QoE signals"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-15"
 duration: 4
 depends_on:
@@ -113,3 +113,16 @@ The emitter must wait for production verification of both v2 readers and the
 Admin worker/bootstrap from the reader-first PR. After normal PR-to-main
 deployment, verify the authorized Admin overview and episode evidence before
 marking this ticket complete.
+
+## September 24 production closeout
+
+The reader and emitter reached production through the normal PR-to-main
+rollout, and the authorized Admin Recommendations overview reconciled
+navigation and QoE independently. A real v2 episode joined to a normal
+Watch journey retained an explicit user pause, chapter manual skip, and
+separate observed navigation and QoE projections. The startup-timing guard
+also reached active production `SUCCESS` on its exact merge commit. See
+`docs/validation/feat-370-playback-signals/production-verification.md` for
+the exact deployment, episode, dated snapshot and performance evidence,
+including the pre-emitter snapshot and inconclusive mature-window limits.
+No signal was enabled for live ranking.
