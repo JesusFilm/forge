@@ -41,6 +41,7 @@ const variant = (languageSlug: string, documentId: string): WatchVariant => ({
   languageSlug,
   languageName: languageSlug,
   languageNameNative: null,
+  languageIso3: null,
   muxPlaybackId: null,
 })
 

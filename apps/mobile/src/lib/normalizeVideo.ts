@@ -3,6 +3,7 @@ import { isEpisodicSeriesLabel } from "./isSeriesRecord"
 import { pickCardImage } from "./cardImage"
 import { pickLocalizedName } from "./pickLocalizedName"
 import { cleanStreamUrl } from "./validateUrl"
+import { normalizeLanguageIso3 } from "./watchPreferences"
 
 // ── Consumer types ─────────────────────────────────────────────────
 
@@ -34,6 +35,8 @@ export type WatchVariant = {
   languageSlug: string | null
   languageName: string | null
   languageNameNative: string | null
+  /** ISO 639-3 code as admin sends it; null when absent or blank. */
+  languageIso3: string | null
   muxPlaybackId: string | null
 }
 
@@ -167,12 +170,21 @@ function pickFirstLocale(
 }
 
 type RawVariant = NonNullable<RawVideo["variants"]>[number]
+type RawVariantLanguage = NonNullable<RawVariant["language"]>
 
 // Permissive aliases let the shared builder accept BOTH the full watch fragment
-// and the lean series shape (no `parents` chain; dubs omit `duration`/`muxVideo`)
-// without loosening either operation's own generated type.
-type NormalizableVariant = Omit<RawVariant, "duration" | "muxVideo"> &
-  Partial<Pick<RawVariant, "duration" | "muxVideo">>
+// and the lean series shape (no `parents` chain; dubs omit `duration`/`muxVideo`
+// and the language's `iso3`) without loosening either operation's own type.
+type NormalizableVariant = Omit<
+  RawVariant,
+  "duration" | "muxVideo" | "language"
+> &
+  Partial<Pick<RawVariant, "duration" | "muxVideo">> & {
+    language:
+      | (Omit<RawVariantLanguage, "iso3"> &
+          Partial<Pick<RawVariantLanguage, "iso3">>)
+      | null
+  }
 
 type NormalizableVideo = Omit<RawVideo, "parents" | "variants"> & {
   parents?: RawVideo["parents"]
@@ -295,6 +307,7 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
         const english = pickLocalizedName(v.language.name, "en")
         return native && native !== english ? native : null
       })(),
+      languageIso3: normalizeLanguageIso3(v.language?.iso3),
       muxPlaybackId: v.muxVideo?.playbackId ?? null,
     }))
 

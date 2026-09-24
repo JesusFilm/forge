@@ -244,6 +244,7 @@ export const watchVideoFragment = adminGraphql(`
         bcp47
         slug
         name
+        iso3
       }
       muxVideo {
         playbackId

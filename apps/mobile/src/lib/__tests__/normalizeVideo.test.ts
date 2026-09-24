@@ -169,6 +169,7 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
           bcp47: "en",
           slug: "english",
           name: { en: "English" },
+          iso3: "eng",
         },
         muxVideo: { playbackId: "abc123" },
       },
@@ -183,6 +184,7 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
           bcp47: "es",
           slug: "spanish",
           name: { en: "Spanish", es: "Español" },
+          iso3: "spa",
         },
         muxVideo: { playbackId: "def456" },
       },
@@ -444,6 +446,27 @@ describe("normalizeVideo", () => {
     const result = normalizeVideo(makeRawVideo())!
     expect(result.variants).toHaveLength(2)
     expect(result.variants.every((v) => v.published)).toBe(true)
+  })
+
+  it("projects each dub language's ISO 639-3 code as admin sends it (U6)", () => {
+    const result = normalizeVideo(makeRawVideo())!
+    expect(result.variants.map((v) => v.languageIso3)).toEqual(["eng", "spa"])
+  })
+
+  it("reads a blank or absent dub language code as null", () => {
+    const raw = makeRawVideo()
+    const variants = (
+      raw as unknown as {
+        variants: { language: Record<string, unknown> | null }[]
+      }
+    ).variants.map((v, index) =>
+      index === 0
+        ? { ...v, language: { ...v.language, iso3: "  " } }
+        : { ...v, language: { ...v.language, iso3: null } },
+    )
+    const result = normalizeVideo({ ...raw, variants } as typeof raw)!
+    expect(result.variants).toHaveLength(2)
+    expect(result.variants.map((v) => v.languageIso3)).toEqual([null, null])
   })
 
   it("does not project per-dub downloads/subtitles onto bulk variants", () => {
@@ -966,6 +989,8 @@ describe("normalizeSeries", () => {
     expect(result.muxPlaybackId).toBeNull()
     expect(result.variants[0].duration).toBeNull()
     expect(result.variants[0].muxPlaybackId).toBeNull()
+    // The lean series fragment selects no `iso3` on the dub language.
+    expect(result.variants[0].languageIso3).toBeNull()
   })
 
   it("has no trailer streamingUrl when no dub is playable", () => {

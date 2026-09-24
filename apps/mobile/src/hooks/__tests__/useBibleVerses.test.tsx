@@ -641,6 +641,7 @@ function variant(overrides: Partial<WatchVariant> = {}): WatchVariant {
     languageSlug: null,
     languageName: null,
     languageNameNative: null,
+    languageIso3: null,
     muxPlaybackId: "playbackA",
     ...overrides,
   }
