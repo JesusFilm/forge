@@ -4,11 +4,11 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (September 23, 2026)
+## Status (September 24, 2026)
 
 - **Total tickets:** 728
-- **Complete:** 545
-- **In progress:** 57
+- **Complete:** 546
+- **In progress:** 56
 - **Not started:** 47
 - **Blocked:** 79
 - **Overdue and not complete:** 142
@@ -605,7 +605,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-523](platform/feat-523-watch-field-hydration-mismatch-attribution.md)            | Attribute remaining Watch field text and HTML hydration mismatches                 | nisal      | P1       | 2026-09-21 | 3    | 2026-09-23 | in-progress |
 | [feat-524](platform/feat-524-watch-recommendation-tester-access.md)                    | Private Watch recommendation tester links without login UI                         | nisal      | P1       | 2026-09-21 | 1    | 2026-09-21 | complete    |
 | [feat-525](platform/feat-525-activate-watch-recommendation-testers.md)                 | Activate and verify the three-person Watch recommendation pilot                    | nisal      | P1       | 2026-09-21 | 1    | 2026-09-21 | complete    |
-| [feat-531](platform/feat-531-repair-production-watch-revalidation-endpoint.md)         | Repair Admin production Watch revalidation endpoint                                | nisal      | P1       | 2026-09-22 | 1    | 2026-09-22 | in-progress |
+| [feat-531](platform/feat-531-repair-production-watch-revalidation-endpoint.md)         | Repair Admin production Watch revalidation endpoint                                | nisal      | P1       | 2026-09-22 | 1    | 2026-09-22 | complete    |
 | [feat-532](platform/feat-532-changelog-preapproval-redemption.md)                      | Redeem Changelog Contributor preapprovals for active accounts                      | edmondshen | P1       | 2026-09-23 | 1    | 2026-09-23 | complete    |
 | [feat-534](platform/feat-534-changelog-membership-activation.md)                       | Activate preapproved Changelog memberships                                         | edmondshen | P1       | 2026-09-23 | 1    | 2026-09-23 | complete    |
 | [feat-543](platform/feat-543-mobile-sign-in-gate.md)                                   | Mobile sign-in gate hides sign-in until an environment turns it on                 | urim       | P1       | 2026-09-23 | 2    | 2026-09-24 | in-progress |
