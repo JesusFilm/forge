@@ -162,6 +162,8 @@ export function ReelPlayer({
   // Created ONCE each with a null source: a changing useVideoPlayer source recreates
   // the native player, which is the KTD-2 leak. Two fixed instances, views bound
   // permanently to their own player — roles (live/standby) alternate per hop instead.
+  // The hook releases both native objects on unmount; a later pause cleanup would call
+  // into already-released SharedObjects and make Expo log a native lifecycle error.
   const playerA = useVideoPlayer(null, configurePlayer)
   const playerB = useVideoPlayer(null, configurePlayer)
 
@@ -630,21 +632,6 @@ export function ReelPlayer({
       // Native player already released; benign.
     }
   }, [live, shouldPlay, excerptToken, pauseRetiredCover])
-
-  useEffect(() => {
-    return () => {
-      try {
-        playerA.pause()
-      } catch {
-        // Native player already released; benign.
-      }
-      try {
-        playerB.pause()
-      } catch {
-        // Native player already released; benign.
-      }
-    }
-  }, [playerA, playerB])
 
   // Every excerpt but the last finalizes on its swap; this catches that last one plus
   // every exit, nav-away and background teardown. Without it the reel's abandonment
