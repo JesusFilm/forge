@@ -238,6 +238,14 @@ export default async function PlaybackEpisodePage({
             value={`${detail.observations.navigation.pauses} / ${detail.observations.navigation.resumes}`}
           />
           <Value
+            label="Pause causes · user / scroll / system / unknown"
+            value={`${detail.observations.navigation.userPauses} / ${detail.observations.navigation.scrollPauses} / ${detail.observations.navigation.systemPauses} / ${detail.observations.navigation.unknownPauses}`}
+          />
+          <Value
+            label="Manual skip / autoplay transition"
+            value={`${detail.observations.navigation.manualSkips} / ${detail.observations.navigation.autoplayTransitions}`}
+          />
+          <Value
             label="Seek forward / backward / to start"
             value={`${detail.observations.navigation.forwardSeeks} / ${detail.observations.navigation.backwardSeeks} / ${detail.observations.navigation.returnsToStart}`}
           />
@@ -258,6 +266,10 @@ export default async function PlaybackEpisodePage({
             value={`${detail.observations.qoe.startupMilliseconds ?? "Unknown"} ms`}
           />
           <Value
+            label="Startup timeout / closed buffer interval"
+            value={`${detail.observations.qoe.startupTimeouts} / ${detail.observations.qoe.closedBufferIntervals}`}
+          />
+          <Value
             label="Closed buffering intervals"
             value={`${detail.observations.qoe.bufferingMilliseconds} ms / ${detail.observations.qoe.bufferingEpisodes} observed episodes`}
           />
@@ -265,11 +277,19 @@ export default async function PlaybackEpisodePage({
             label="Errors / open buffering interval"
             value={`${detail.observations.qoe.errors} / ${detail.observations.qoe.openBufferingInterval ? "Yes" : "No"}`}
           />
+          <Value
+            label="Fatal / unknown severity errors"
+            value={`${detail.observations.qoe.fatalErrors} / ${detail.observations.qoe.unknownSeverityErrors}`}
+          />
+          <Value
+            label="Device / network class"
+            value={`${detail.observations.qoe.deviceClass} / ${detail.observations.qoe.networkClass}`}
+          />
         </div>
         <p className="px-4 py-3 text-[12px] text-[var(--color-text-muted)]">
-          Pause and navigation causes, deliberate skip/replay, error
-          recoverability, startup timeout, device and network are unavailable.
-          Each family remains inconclusive.
+          Only explicit controls prove a user action. Replay intent and
+          unsupported device/network signals remain unknown. These facts do not
+          authorize ranking influence.
         </p>
         <p className="break-all px-4 pb-3 font-mono text-[10px] text-[var(--color-text-muted)]">
           Fact watermark {detail.observations.factWatermark} · digest{" "}

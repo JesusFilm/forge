@@ -28,7 +28,9 @@ import {
   loadPlaybackEpisodeDetail,
   loadPlaybackEvidenceOverview,
 } from "./admin-ops/playback.service"
+import { refreshPlaybackObservationSnapshots } from "./admin-ops/playback-observation-snapshot"
 import { PlaybackProxyReadinessService } from "./proxy-readiness.service"
+import { PlaybackSignalReadinessService } from "./playback-signal-readiness.service"
 import {
   createRecommendationTokenService,
   parseRecommendationKeyring,
@@ -41,7 +43,8 @@ const recommendationMigrations = readdirSync(migrationRoot)
     const ordinal = Number(name.slice(0, 4))
     return (
       (ordinal >= 52 && ordinal <= 82 && name.includes("recommendation")) ||
-      name === "0082_user_recommendation_identity"
+      name === "0082_user_recommendation_identity" ||
+      name === "0099_recommendation_playback_signal_readiness"
     )
   })
   .sort()
@@ -1259,11 +1262,34 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         classification: "interrupted_visibility_or_lifecycle",
         immediate: null,
       })
+      await refreshPlaybackObservationSnapshots(prisma, current)
       const overview = await loadPlaybackEvidenceOverview(prisma, {
         window: "24h",
         now: current,
       })
       expect(overview.observationSample.qoeObserved).toBeGreaterThanOrEqual(1)
+      expect(overview.observationWindow?.qoe.observed).toBeGreaterThanOrEqual(1)
+      expect(overview.observationWindow?.attempts).toBeGreaterThanOrEqual(1)
+      const readinessService = new PlaybackSignalReadinessService({
+        prisma,
+        now: () => current,
+      })
+      const readinessWindow = {
+        windowStart: new Date(began.getTime() - 1000),
+        windowEnd: current,
+      }
+      const evaluations = await readinessService.evaluate(readinessWindow)
+      expect(evaluations).toMatchObject([
+        {
+          family: "navigation",
+          decision: "inconclusive",
+          rankingInfluence: false,
+        },
+        { family: "qoe", decision: "inconclusive", rankingInfluence: false },
+      ])
+      expect(await readinessService.evaluate(readinessWindow)).toEqual(
+        evaluations,
+      )
       await expect(
         loadPlaybackEpisodeDetail(prisma, {
           episodeId: claim.episodeId,
@@ -1344,6 +1370,206 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       expect(
         overview.observationSample.classificationCounts,
       ).not.toHaveProperty("completion")
+    })
+
+    it("reconciles a full window beyond the latest-20 sample and excludes stale outcomes", async () => {
+      const began = new Date(startedAt.getTime() + 4 * 86_400_000)
+      const now = new Date(began.getTime() + 3_600_000)
+      const expiresAt = new Date(began.getTime() + 29 * 86_400_000)
+      const episodes = Array.from({ length: 21 }, (_, index) => ({
+        id: `full-window-${index.toString().padStart(2, "0")}`,
+        mediaId: `full-window-media-${index}`,
+        sessionDigest: "d".repeat(64),
+        state: index < 3 ? ("FINALIZED" as const) : ("CLAIMED" as const),
+        capabilityJti: `full-window-capability-${index}`,
+        claimedAt: new Date(began.getTime() + index * 1000),
+        finalizedAt: index < 3 ? new Date(began.getTime() + 60_000) : null,
+        nextFactSequence: index === 1 ? 6 : index < 3 ? 4 : 1,
+        activeUntil: new Date(began.getTime() + 4 * 3_600_000),
+        hardUntil: new Date(began.getTime() + 6 * 3_600_000),
+        createdAt: new Date(began.getTime() + index * 1000),
+        expiresAt,
+      }))
+      await prisma.recommendationPlaybackEpisode.createMany({ data: episodes })
+      const payloads = [
+        [
+          { kind: "playback_attempt", payload: { initiation: "manual" } },
+          {
+            kind: "playback_observation",
+            payload: {
+              version: "playback-observations-v1",
+              elapsedMilliseconds: 3000,
+              visibility: "visible",
+              playerState: "paused",
+              startObserved: false,
+              errorObserved: false,
+              seekCount: 0,
+              navigationCount: 0,
+              qoeCount: 0,
+            },
+          },
+          {
+            kind: "playback_end",
+            payload: { reason: "route_exit", completed: false },
+          },
+        ],
+        [
+          { kind: "playback_attempt", payload: { initiation: "manual" } },
+          {
+            kind: "playback_navigation",
+            payload: {
+              action: "manual_skip",
+              cause: "user",
+              positionSeconds: 0,
+            },
+          },
+          {
+            kind: "playback_qoe",
+            payload: {
+              action: "startup_timeout",
+              cause: "unknown",
+              positionSeconds: 0,
+            },
+          },
+          {
+            kind: "playback_observation",
+            payload: {
+              version: "playback-observations-v2",
+              elapsedMilliseconds: 3000,
+              visibility: "visible",
+              playerState: "paused",
+              startObserved: false,
+              errorObserved: false,
+              seekCount: 0,
+              navigationCount: 1,
+              qoeCount: 1,
+              deviceClass: "mobile",
+              networkClass: "3g",
+            },
+          },
+          {
+            kind: "playback_end",
+            payload: { reason: "route_exit", completed: false },
+          },
+        ],
+        [
+          { kind: "playback_attempt", payload: { initiation: "manual" } },
+          {
+            kind: "playback_observation",
+            payload: {
+              version: "playback-observations-v2",
+              elapsedMilliseconds: 3000,
+              visibility: "visible",
+              playerState: "paused",
+              startObserved: false,
+              errorObserved: false,
+              seekCount: 0,
+              navigationCount: 1,
+              qoeCount: 0,
+              deviceClass: "unknown",
+              networkClass: "unknown",
+            },
+          },
+          {
+            kind: "playback_end",
+            payload: { reason: "route_exit", completed: false },
+          },
+        ],
+      ] as const
+      await prisma.recommendationPlaybackFact.createMany({
+        data: payloads.flatMap((items, index) =>
+          items.map((item, offset) => ({
+            episodeId: episodes[index]!.id,
+            capabilityJti: episodes[index]!.capabilityJti,
+            eventId: `full-window-${index}-${offset}`,
+            payloadDigest: `${index + 1}${offset + 1}`.padStart(64, "0"),
+            sequence: offset + 1,
+            kind: item.kind,
+            payload: item.payload,
+            occurredAt: new Date(began.getTime() + 1000 * (offset + 1)),
+            receivedAt: new Date(began.getTime() + 1000 * (offset + 1)),
+            expiresAt,
+          })),
+        ),
+      })
+      await prisma.recommendationOutcomeRevision.createMany({
+        data: [0, 1, 2].map((index) => ({
+          id: `full-window-outcome-${index}`,
+          episodeId: episodes[index]!.id,
+          classifierVersion: "active-watch-proxy-v1",
+          factWatermark: index === 1 ? 5 : index === 2 ? 2 : 3,
+          inputDigest: `${index + 1}`.repeat(64),
+          revision: 1,
+          qualifiedView: false,
+          viewQualityWeight: 0,
+          viewQualityWeightReason:
+            "active_time_against_30_seconds_without_duration",
+          activePlaybackMilliseconds: 0,
+          durationCohort: "unknown",
+          activeCoverage: "missing",
+          generation: 1,
+          expiresAt,
+        })),
+      })
+      expect(await refreshPlaybackObservationSnapshots(prisma, now)).toEqual({
+        refreshed: ["24h", "7d", "29d"],
+        failed: [],
+      })
+      const overview = await loadPlaybackEvidenceOverview(prisma, { now })
+      expect(overview.observationSample.size).toBe(20)
+      expect(overview.observationSample.navigationObserved).toBe(1)
+      expect(overview.observationWindow).toMatchObject({
+        episodes: 21,
+        attempts: 3,
+        finalized: 3,
+        outcomes: 2,
+        navigation: {
+          observed: 2,
+          v2Observed: 1,
+          legacyObserved: 1,
+          partial: 1,
+          missing: 18,
+          manualSkips: 1,
+        },
+        qoe: { observed: 3, v2Observed: 2, legacyObserved: 1 },
+      })
+      const timedOutAggregate = {
+        $queryRaw: prisma.$queryRaw.bind(prisma),
+        playbackProxyEvaluation: prisma.playbackProxyEvaluation,
+        recommendationPlaybackEpisode: prisma.recommendationPlaybackEpisode,
+        recommendationPlaybackSignalReadiness:
+          prisma.recommendationPlaybackSignalReadiness,
+        recommendationPlaybackObservationSnapshot: {
+          findUnique: vi
+            .fn()
+            .mockRejectedValue(new Error("snapshot read timeout")),
+        },
+      } as unknown as PrismaClient
+      const degraded = await loadPlaybackEvidenceOverview(timedOutAggregate, {
+        now,
+      })
+      expect(degraded.counts.episodes).toBe(21)
+      expect(degraded.observationWindow).toBeNull()
+      expect(degraded.observationSample.size).toBe(20)
+      const olderFailedRefresh = {
+        $transaction: vi.fn().mockRejectedValue(new Error("late failure")),
+        recommendationPlaybackObservationSnapshot:
+          prisma.recommendationPlaybackObservationSnapshot,
+      } as unknown as PrismaClient
+      expect(
+        await refreshPlaybackObservationSnapshots(
+          olderFailedRefresh,
+          new Date(now.getTime() - 1_000),
+        ),
+      ).toEqual({ refreshed: [], failed: ["24h", "7d", "29d"] })
+      const lastSuccess =
+        await prisma.recommendationPlaybackObservationSnapshot.findUniqueOrThrow(
+          {
+            where: { preset: "24h" },
+          },
+        )
+      expect(lastSuccess.computedAt).toEqual(now)
+      expect(lastSuccess.lastErrorCode).toBeNull()
     })
   },
 )
