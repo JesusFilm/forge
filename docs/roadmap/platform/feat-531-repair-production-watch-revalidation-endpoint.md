@@ -3,7 +3,7 @@ id: "feat-531"
 title: "Repair Admin production Watch revalidation endpoint"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-22"
 duration: 1
 depends_on: []
@@ -47,32 +47,45 @@ redeploy local worktree code or manually trigger Railway redeploys. Record the
 deployed revision, redacted response statuses, and a bounded affected-page
 check. Never record tokens, database URLs, or unpublished content.
 
-## Production Repair Plan (2026-09-24)
+## Production Repair and Verification (2026-09-24 NZ)
 
-Read-only Railway configuration inspection confirmed the Admin production
-`WEB_REVALIDATE_URL` still uses `https://watch.jesusfilm.org/watch/api/revalidate`.
-Admin's `WEB_REVALIDATE_TOKEN` and Web's `REVALIDATION_SECRET` are both present
-and match; neither value was printed. An invalid-token POST to the legacy host
-returned 301 to `https://www.jesusfilm.org/watch/api/revalidate`; following the
-redirect converted POST to GET and returned 405. The same invalid-token POST
-directly to the canonical host returned 401, confirming the receiver handles
-POST and enforces authentication.
+Read-only preflight confirmed the Admin production URL still used
+`https://watch.jesusfilm.org/watch/api/revalidate`. An invalid-token POST to
+that host returned 301; following the redirect converted it to GET and returned 405. The same invalid-token POST directly to the canonical host returned 401,
+confirming the receiver accepts POST and enforces authentication. Admin's
+`WEB_REVALIDATE_TOKEN` and Web's `REVALIDATION_SECRET` were present and matched
+in memory; neither value was printed.
 
-1. Set **only** Admin production `WEB_REVALIDATE_URL` to
-   `https://www.jesusfilm.org/watch/api/revalidate` in Railway with deploys
-   skipped. Leave both existing secrets and all other variables unchanged.
-2. Merge this scoped repair through the usual PR-to-main path. Its
-   `apps/admin/.env.example` change enters the Admin service watch pattern, so
-   Railway's normal Git deployment activates the staged variable. Do not run a
-   manual redeploy or upload local code.
-3. Confirm Admin's deployed Git revision and that the effective URL is canonical.
-   Stage an identical-content draft of the published English homepage locale
-   `cmr96r2y10001p08tkp2bcrqu` only after checking there is no active draft
-   or concurrent edit; publish it through Admin's normal service path. This
-   preserves visible content while generating Admin `experience` and
-   `watch-setting` events.
-4. Confirm `web_revalidate.sent` with HTTP 200 for the Admin-originated events,
-   then fetch the affected public homepage and check its cache refresh and
-   expected authored block. Record only bounded statuses, revision, and public
-   content evidence here. If the hook fails, restore the previous URL with
-   deploys skipped and use the normal PR-to-main deployment path for rollback.
+Only Admin production `WEB_REVALIDATE_URL` was staged as
+`https://www.jesusfilm.org/watch/api/revalidate` with Railway deploys skipped.
+PR [#2411](https://github.com/JesusFilm/forge/pull/2411) then merged through
+the normal PR-to-main path. Railway Admin deployment
+`9d7a5246-fd6e-4ef8-a902-797cd9d818ba` succeeded at Git revision
+`d2620ad26886904b36bc1ea51c3457ee6642fbb5`; the running Admin container
+reported that exact revision and canonical URL. No manual redeploy was run.
+
+From the deployed Admin container, a controlled invocation of its existing
+`emitRevalidateWebhook` helper replayed the current published homepage's
+`experience` (`watch-home`, `en`) and `watch-setting` (`en`) event shapes, plus
+the existing `watch-route-manifest` event shape. All three returned `sent` with
+HTTP 200. Web's production HTTP logs independently recorded three POST 200
+responses for `/watch/api/revalidate` at 2026-09-23 23:52:10 UTC. This was a
+replay of publication invalidation, **not a new content publication**; no draft
+or published content was changed.
+
+The public `/watch` homepage remained HTTP 200 with its authored
+`watch-home-recommendations` section. Because it receives concurrent traffic,
+our post-replay response was already a cache HIT and unchanged content could not
+provide a byte-diff proof. A bounded direct cache check used the existing
+published, low-traffic `/watch/hope-collection.html` route: two baseline GETs
+were HTTP 200/HIT. One further Admin `watch-route-manifest` helper replay
+returned `sent`/200; an immediate GET of that same URL returned HTTP 200/MISS,
+and the next returned HTTP 200/HIT. No cache-busting query or content mutation
+was used. This directly verifies that the repaired Admin-to-Web path invalidated
+an affected public cache entry and that Web rebuilt it. Web HTTP logs recorded
+the final POST 200 at 2026-09-23 23:57:11 UTC and the two route GET 200s at
+23:57:12 UTC (348 ms, then 12 ms), independently matching the bounded probe.
+
+For a future live publication, check Admin's normal webhook outcome and the
+affected page as part of routine release verification. This repair does not
+change feat-502's separate invalidation-scope work.
