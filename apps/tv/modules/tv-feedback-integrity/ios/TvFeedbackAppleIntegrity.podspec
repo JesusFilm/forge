@@ -6,7 +6,7 @@ Pod::Spec.new do |s|
   s.license = { :type => 'MIT' }
   s.author = 'Jesus Film Project'
   s.homepage = 'https://www.jesusfilm.org/'
-  s.platforms = { :tvos => '16.0' }
+  s.platforms = { :tvos => '15.1' }
   s.swift_version = '5.9'
   s.source = { :path => '.' }
   s.static_framework = true

@@ -34,7 +34,7 @@ public final class TvFeedbackAppleIntegrityModule: Module {
         }
         DCDevice.current.generateToken { token, error in
           guard let token, error == nil else {
-            promise.reject("DEVICECHECK_TOKEN_FAILED", "Apple verification is unavailable", error)
+            promise.reject("DEVICECHECK_TOKEN_FAILED", "Apple verification is unavailable")
             return
           }
           promise.resolve([
@@ -49,7 +49,7 @@ public final class TvFeedbackAppleIntegrityModule: Module {
           ])
         }
       } catch {
-        promise.reject("DEVICECHECK_REQUEST_FAILED", "Apple verification is unavailable", error)
+        promise.reject("DEVICECHECK_REQUEST_FAILED", "Apple verification is unavailable")
       }
     }
   }
@@ -64,7 +64,9 @@ public final class TvFeedbackAppleIntegrityModule: Module {
     ]
     var item: CFTypeRef?
     if SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
-       let key = item as? SecKey { return key }
+       let item, CFGetTypeID(item) == SecKeyGetTypeID() {
+      return item as! SecKey
+    }
     let attributes: [String: Any] = [
       kSecAttrKeyType as String: kSecAttrKeyTypeECSECPrimeRandom,
       kSecAttrKeySizeInBits as String: 256,
