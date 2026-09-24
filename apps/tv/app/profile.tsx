@@ -318,6 +318,15 @@ export default function ProfileRoute() {
       phase={toAuthPhase(grantState.phase, session, identity)}
       onRequestNewCode={start}
       onSignOut={handleSignOut}
+      onFeedback={
+        process.env.EXPO_PUBLIC_TV_FEEDBACK_URL
+          ? () =>
+              router.push({
+                pathname: "/feedback",
+                params: { screen: "profile" },
+              })
+          : undefined
+      }
     />
   )
 }

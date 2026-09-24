@@ -36,6 +36,7 @@ type HomeTopBarProps = {
   /** Renders the Profile tab when provided — the flag decision (feat-322,
    *  isProfileSurfaceEnabled) stays with the caller, keeping this bar pure. */
   onProfilePress?: () => void
+  onFeedbackPress?: () => void
   /** Any tab gaining focus pins the screen to its "top" state. */
   onChromeFocus: () => void
   /**
@@ -54,6 +55,7 @@ export const HomeTopBar = memo(function HomeTopBar({
   onSearchPress,
   onSettingsPress,
   onProfilePress,
+  onFeedbackPress,
   onChromeFocus,
   onSearchTabNode,
   onFocusNode,
@@ -157,6 +159,18 @@ export const HomeTopBar = memo(function HomeTopBar({
           focusable={!hidden}
           onFocusNode={onFocusNode}
         />
+        {onFeedbackPress != null ? (
+          <TopBarTab
+            testID="home-topbar-feedback-tab"
+            label="Feedback"
+            accessibilityLabel="Feedback"
+            accessibilityHint="Opens beta testing feedback"
+            onPress={onFeedbackPress}
+            onChromeFocus={onChromeFocus}
+            focusable={!hidden}
+            onFocusNode={onFocusNode}
+          />
+        ) : null}
       </View>
 
       <View style={styles.sideRight} pointerEvents="none">

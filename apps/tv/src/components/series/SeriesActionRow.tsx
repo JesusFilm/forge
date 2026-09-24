@@ -29,6 +29,7 @@ type SeriesActionRowProps = {
   languageName: string
   /** Opens the language selection panel. Optional until U4 wires the panel. */
   onLanguagePress?: () => void
+  onFeedbackPress?: () => void
   /**
    * Re-arm hook for U4: incrementing re-arms the first pill's one-shot
    * preferred focus (panel-close focus restore).
@@ -41,6 +42,7 @@ export function SeriesActionRow({
   title,
   languageName,
   onLanguagePress,
+  onFeedbackPress,
   refocusKey = 0,
 }: SeriesActionRowProps) {
   const { playVideo, state } = useVideoPlayerContext()
@@ -96,6 +98,13 @@ export function SeriesActionRow({
         onPress={() => onLanguagePress?.()}
         hasTVPreferredFocus={!hasTrailer && firstPillPreferredFocus}
       />
+      {onFeedbackPress != null ? (
+        <SecondaryPill
+          icon="chatbox-ellipses-outline"
+          label="Send feedback"
+          onPress={onFeedbackPress}
+        />
+      ) : null}
     </TVFocusGuideView>
   )
 }

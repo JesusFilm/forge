@@ -20,6 +20,25 @@ describe("untrusted TV context", () => {
       screen: "home",
     })
   })
+
+  it("retains bounded film context from a player QR", () => {
+    const input = new URLSearchParams({
+      platform: "apple-tv",
+      player: "native-a",
+      screen: "player",
+      filmTitle: "JESUS",
+      timestamp: "1:02:03",
+    })
+    expect(readQrContext(input)).toMatchObject({
+      platform: "apple-tv",
+      player: "native-a",
+      screen: "player",
+      filmTitle: "JESUS",
+      timestamp: "1:02:03",
+    })
+    input.set("timestamp", "1:02:03<script>")
+    expect(readQrContext(input).timestamp).toBeUndefined()
+  })
 })
 
 describe("report contracts", () => {

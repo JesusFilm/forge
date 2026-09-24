@@ -94,9 +94,15 @@ export function readQrContext(input: URLSearchParams): TvContext {
   const player = playerSchema.safeParse(input.get("player"))
   const clean = (key: string, max: number) => {
     const value = input.get(key)
-    return value && value.length <= max && /^[a-zA-Z0-9 ._/-]+$/.test(value)
-      ? value
-      : undefined
+    const safe =
+      key === "filmTitle"
+        ? value &&
+          !/[<>]/.test(value) &&
+          !value.split("").some((char) => char.charCodeAt(0) < 32)
+        : key === "timestamp"
+          ? value && /^[0-9:.-]+$/.test(value)
+          : value && /^[a-zA-Z0-9 ._/-]+$/.test(value)
+    return value && value.length <= max && safe ? value : undefined
   }
   return {
     platform: platform.success ? platform.data : "not-sure",
@@ -104,5 +110,7 @@ export function readQrContext(input: URLSearchParams): TvContext {
     ...(clean("appVersion", 32) ? { appVersion: clean("appVersion", 32) } : {}),
     ...(clean("build", 32) ? { build: clean("build", 32) } : {}),
     ...(clean("screen", 64) ? { screen: clean("screen", 64) } : {}),
+    ...(clean("filmTitle", 160) ? { filmTitle: clean("filmTitle", 160) } : {}),
+    ...(clean("timestamp", 16) ? { timestamp: clean("timestamp", 16) } : {}),
   }
 }

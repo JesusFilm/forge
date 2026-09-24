@@ -471,6 +471,10 @@ export default function HomeScreen() {
     router.push("/settings")
   }, [router])
 
+  const handleFeedbackPress = useCallback(() => {
+    router.push({ pathname: "/feedback", params: { screen: "home" } })
+  }, [router])
+
   const handleProfilePress = useCallback(() => {
     router.push("/profile")
   }, [router])
@@ -532,6 +536,11 @@ export default function HomeScreen() {
       hidden={isTopBarHidden(browseState)}
       onSearchPress={handleSearchPress}
       onSettingsPress={handleSettingsPress}
+      onFeedbackPress={
+        process.env.EXPO_PUBLIC_TV_FEEDBACK_URL
+          ? handleFeedbackPress
+          : undefined
+      }
       onProfilePress={
         isProfileSurfaceEnabled() ? handleProfilePress : undefined
       }

@@ -189,6 +189,7 @@ internal enum class NativeMenuIcon {
   EXPLORE,
   LANGUAGE,
   SUBTITLES,
+  FEEDBACK,
   START_OVER
 }
 
@@ -207,6 +208,7 @@ internal class NativeMenuButton(
     NativeMenuIcon.EXPLORE -> R.drawable.native_player_book
     NativeMenuIcon.LANGUAGE -> R.drawable.native_player_globe
     NativeMenuIcon.SUBTITLES -> R.drawable.native_player_text
+    NativeMenuIcon.FEEDBACK -> R.drawable.native_player_feedback
     NativeMenuIcon.START_OVER -> R.drawable.native_player_start_over
   })
   private val labelPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {

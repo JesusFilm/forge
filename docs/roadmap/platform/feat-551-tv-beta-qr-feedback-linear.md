@@ -24,9 +24,14 @@ to Linear, but its DOM element picker and phone-browser diagnostics do not
 describe a problem on another device.
 
 Planning is updated in
-`docs/plans/2026-09-24-tv-feedback-railway-redis-linear.md`. Implementation is in progress. The Railway HTTPS URL and Linear TV team/project/label are selected. Redis replacement, a dedicated Linear key, Apple TV issuer verification, and physical-device acceptance remain open.
+`docs/plans/2026-09-24-tv-feedback-railway-redis-linear.md`. Implementation is in progress. Redis is provisioned in Railway staging. The dedicated TV-scoped Linear key and DeviceCheck-only Apple key are configured there. On 2026-09-25, the server Linear client created TV-1 and uploaded/attached a synthetic PNG and MP4; reference reconciliation found the same issue. Turnstile, remaining enforcement configuration, deployment of the replacement service, Apple TV issuer verification, and phone/physical-device acceptance remain open.
 
 ## Entry Points — Read These First
+
+Selected TV entry design: `docs/plans/2026-09-25-tv-feedback-navigation-and-contextual-actions.md`.
+Keep the Home Feedback navigation tab and add contextual actions on details,
+players and secondary pages. Shared destination title: `The beta testing`.
+The UI extension is implemented locally and awaits physical-device acceptance.
 
 Android Open Testing anti-spam plan: `docs/plans/2026-09-23-android-tv-single-use-feedback-grants.md`.
 Requires attested app-origin QR issuance, daily single-use grants, and authorization

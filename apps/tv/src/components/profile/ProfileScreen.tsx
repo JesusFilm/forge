@@ -38,12 +38,14 @@ export type ProfileScreenProps = {
   /** R6: an expired or stale code is replaced in place. */
   onRequestNewCode?: () => void
   onSignOut?: () => void
+  onFeedback?: () => void
 }
 
 export function ProfileScreen({
   phase = { kind: "signedOut" },
   onRequestNewCode,
   onSignOut,
+  onFeedback,
 }: ProfileScreenProps = {}) {
   // tvos#852: a stack pop drops focus to the top-left default. Remember the
   // focused row and re-focus it on re-entry (mirrors SettingsScreen's wiring).
@@ -109,6 +111,15 @@ export function ProfileScreen({
             onPress={onSignOut}
             onFocusNode={captureFocusedNode}
           />
+          {onFeedback ? (
+            <ProfileRow
+              testID="profile-feedback-row"
+              icon="chatbox-ellipses-outline"
+              label="Send feedback"
+              onPress={onFeedback}
+              onFocusNode={captureFocusedNode}
+            />
+          ) : null}
         </View>
       </View>
     )
@@ -152,6 +163,15 @@ export function ProfileScreen({
               onFocusNode={captureFocusedNode}
               hasTVPreferredFocus
             />
+            {onFeedback ? (
+              <ProfileRow
+                testID="profile-feedback-row"
+                icon="chatbox-ellipses-outline"
+                label="Send feedback"
+                onPress={onFeedback}
+                onFocusNode={captureFocusedNode}
+              />
+            ) : null}
           </View>
         </View>
 

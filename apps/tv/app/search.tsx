@@ -22,6 +22,7 @@ import { resolveSearchMeta } from "../src/components/search/searchDisplay"
 import { SearchKeyboard } from "../src/components/search/SearchKeyboard"
 import { SearchKeyboardLinear } from "../src/components/search/SearchKeyboardLinear"
 import { SearchResultsGrid } from "../src/components/search/SearchResultsGrid"
+import { FeedbackUtilityHeader } from "../src/components/feedback/FeedbackUtilityHeader"
 import {
   SEARCH_PAGE_GUTTER,
   SEARCH_THEME,
@@ -188,33 +189,20 @@ export default function SearchScreen() {
   // keyboard if the native module is unavailable.
   if (Platform.OS === "ios" && isNativeSearchAvailable()) {
     return (
-      <SearchBodyNativeTvos
-        state={state}
-        results={results}
-        onChangeQuery={setSanitizedQuery}
-      />
-    )
-  }
-
-  // Apple TV: native SwiftUI .searchable surface (expo-tvos-search) — the ONLY
-  // path that receives Siri Remote system dictation ("Hold 🎤 to dictate").
-  // tvOS gives third-party apps no mic access; dictation writes exclusively
-  // into Apple's own text primitive, so the input+results presentation is
-  // native while ALL data plumbing (sanitizer → debounce → watchSearch →
-  // telemetry → recents) stays this screen's. Falls back to the custom
-  // keyboard if the native module is unavailable.
-  if (Platform.OS === "ios" && isNativeSearchAvailable()) {
-    return (
-      <SearchBodyNativeTvos
-        state={state}
-        results={results}
-        onChangeQuery={setSanitizedQuery}
-      />
+      <View style={styles.nativeScreen}>
+        <FeedbackUtilityHeader screen="search" />
+        <SearchBodyNativeTvos
+          state={state}
+          results={results}
+          onChangeQuery={setSanitizedQuery}
+        />
+      </View>
     )
   }
 
   return (
     <View style={styles.screen}>
+      <FeedbackUtilityHeader screen="search" />
       <View style={styles.queryLine}>
         {voice.available ? (
           <VoiceSearchButton
