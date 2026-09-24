@@ -318,7 +318,11 @@ export function PhotoFeedbackFlow({
       return
     }
     if (note.trim().length < 10) {
-      setError(t.invalid)
+      setError(
+        language === "th"
+          ? "กรุณาอธิบายปัญหาอย่างน้อย 10 ตัวอักษร"
+          : "Please describe the issue in at least 10 characters.",
+      )
       return
     }
     setError("")
