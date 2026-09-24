@@ -81,3 +81,12 @@ use consumer identity without an environment selector. GitHub admission,
 ownership and secret generation/hash/atomic rotation requirements are unchanged.
 See the [implementation and verification report](../../plans/2026-09-23-consumer-single-environment.md).
 This simplification is complete; the broader lifecycle ticket remains in progress.
+
+## Portal admission slice
+
+`apps/rag/portal/README.md` documents the repository allowlist, path-specific
+eligibility CI, merged-revision OAuth admission and protected identity proof.
+The broader consumer lifecycle remains in progress: creation, membership,
+credentials and reports are outside this slice. Nonproduction OAuth client,
+permission-bearing GitHub token, isolated session role, Railway target and
+browser checks remain operator tasks before activation.

@@ -4,12 +4,14 @@ import { bodyLimit } from "hono/body-limit"
 
 import type { Retriever } from "../../contracts/index.js"
 import { lookupScope, resolveScope, type TokenRegistry } from "./auth.js"
+import { createPortal, type PortalDeps } from "./portal.js"
 
 const MAX_SEARCH_BODY_BYTES = 16 * 1024
 
 export type AppDeps = {
   retriever: Retriever
   tokens: TokenRegistry
+  portal?: PortalDeps
 }
 
 export function createApp(deps: AppDeps): Hono {
@@ -24,6 +26,7 @@ export function createApp(deps: AppDeps): Hono {
   })
 
   app.get("/v1/health", (context) => context.json({ status: "ok" }))
+  if (deps.portal) app.route("/portal", createPortal(deps.portal))
 
   app.post(
     "/v1/search",
