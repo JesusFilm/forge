@@ -18,6 +18,10 @@ import { act, useImperativeHandle, type ComponentProps } from "react"
 import { createRoot, hydrateRoot, type Root } from "react-dom/client"
 import { renderToString } from "react-dom/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import {
+  PLAYBACK_NAVIGATION_INTENT_EVENT,
+  type PlaybackNavigationIntent,
+} from "@/lib/playback-navigation-intent"
 
 type MuxVideoCapturedProps = Record<string, unknown> & {
   ref?: React.Ref<unknown>
@@ -4569,6 +4573,17 @@ describe("HeroPlayer — MuxVideo backend events", () => {
 })
 
 describe("HeroPlayer — Watch Next countdown", () => {
+  function captureNavigationIntents() {
+    const intents: PlaybackNavigationIntent[] = []
+    const capture = (event: Event) =>
+      intents.push((event as CustomEvent<PlaybackNavigationIntent>).detail)
+    window.addEventListener(PLAYBACK_NAVIGATION_INTENT_EVENT, capture)
+    return {
+      intents,
+      stop: () =>
+        window.removeEventListener(PLAYBACK_NAVIGATION_INTENT_EVENT, capture),
+    }
+  }
   const nextWatchItem = {
     parentSlug: "jesus",
     slug: "chapter-two",
@@ -4669,6 +4684,7 @@ describe("HeroPlayer — Watch Next countdown", () => {
   })
 
   it("auto-advances at the end after natural playback crosses the countdown threshold", async () => {
+    const captured = captureNavigationIntents()
     setSearchParams("autoplay=1")
     mockPlayerRef.current = makeTestPlayer({
       currentTime: 54,
@@ -4710,9 +4726,15 @@ describe("HeroPlayer — Watch Next countdown", () => {
     expect(mockRouterPush).toHaveBeenCalledWith(
       "/jesus.html/chapter-two.html?autoplay=1",
     )
+    captured.stop()
+    expect(captured.intents).not.toContainEqual({
+      mediaId: "video-1",
+      action: "manual_skip",
+    })
   })
 
   it("navigates when the armed Watch Next button is clicked", async () => {
+    const captured = captureNavigationIntents()
     setSearchParams("autoplay=1")
     mockPlayerRef.current = makeTestPlayer({
       currentTime: 54,
@@ -4749,6 +4771,11 @@ describe("HeroPlayer — Watch Next countdown", () => {
     expect(mockRouterPush).toHaveBeenCalledWith(
       "/jesus.html/chapter-two.html?autoplay=1",
     )
+    captured.stop()
+    expect(captured.intents).toContainEqual({
+      mediaId: "video-1",
+      action: "manual_skip",
+    })
   })
 
   it("cancels auto-advance when portaled chrome is used in the countdown window", async () => {

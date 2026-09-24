@@ -84,6 +84,7 @@ describe("RecommendationPlaybackRecorder", () => {
     )
     expect(events.map((event) => event.kind)).toEqual([
       "playback_attempt",
+      "playback_qoe",
       "playback_observation",
       "playback_error",
     ])
