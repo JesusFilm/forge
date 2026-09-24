@@ -93,14 +93,14 @@
       "@fortedigital/nextjs-cache-handler@3.2.1": "patches/@fortedigital__nextjs-cache-handler@3.2.1.patch",
       "@workflow/world-postgres@4.1.1": "patches/@workflow__world-postgres@4.1.1.patch",
       "@datadog/pprof@5.15.0": "patches/@datadog__pprof@5.15.0.patch",
-      "next@16.2.4": "patches/next@16.2.4.patch"
+      "next@16.3.6": "patches/next@16.3.6.patch"
     }
   },
   "devDependencies": {
     "@commitlint/cli": "^20.4.1",
     "@commitlint/config-conventional": "^20.4.1",
     "@eslint/js": "^9.0.0",
-    "@next/eslint-plugin-next": "16.2.2",
+    "@next/eslint-plugin-next": "16.3.6",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",

@@ -4,14 +4,14 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (September 23, 2026)
+## Status (September 24, 2026)
 
-- **Total tickets:** 727
-- **Complete:** 543
-- **In progress:** 56
-- **Not started:** 48
-- **Blocked:** 80
-- **Overdue and not complete:** 143
+- **Total tickets:** 728
+- **Complete:** 547
+- **In progress:** 55
+- **Not started:** 47
+- **Blocked:** 79
+- **Overdue and not complete:** 141
 
 ## Feature Index
 
@@ -33,7 +33,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-447](content-discovery/feat-447-live-anonymous-profile-personalization-pilot.md)                         | Live anonymous-profile hybrid personalization rollout                                           | nisal      | P0       | —          | 8    | —          | blocked     |
 | [feat-459](content-discovery/feat-459-recommendation-profile-eligibility-reconciliation.md)                    | Recommendation profile eligibility reconciliation                                               | nisal      | P0       | —          | 6    | —          | complete    |
 | [feat-464](content-discovery/feat-464-recommendation-evidence-transport-crawler-integrity.md)                  | Recommendation evidence transport and crawler integrity                                         | nisal      | P0       | —          | 3    | —          | complete    |
-| [feat-545](content-discovery/feat-545-recommendation-monitoring-and-telemetry-closeout.md)                     | Recommendation monitoring and telemetry closeout                                                | nisal      | P0       | —          | 2    | —          | blocked     |
+| [feat-545](content-discovery/feat-545-recommendation-monitoring-and-telemetry-closeout.md)                     | Recommendation telemetry and browser evidence closeout                                          | nisal      | P0       | —          | 2    | —          | in-progress |
 | [feat-009](content-discovery/feat-009-pgvector-embedding-indexing.md)                                          | pgvector Setup and Embedding Indexing                                                           | nisal      | P0       | 2026-04-07 | 14   | 2026-04-20 | complete    |
 | [feat-010](content-discovery/feat-010-semantic-search-api.md)                                                  | Semantic Search API                                                                             | nisal      | P0       | 2026-04-14 | 21   | 2026-05-04 | complete    |
 | [feat-011](content-discovery/feat-011-search-ui-web.md)                                                        | Search UI — Web                                                                                 | urim       | P0       | 2026-04-14 | 21   | 2026-05-04 | complete    |
@@ -165,7 +165,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-465](content-discovery/feat-465-watch-search-transcript-publication-convergence.md)                      | Watch search transcript publication convergence                                                 | codex      | P1       | 2026-09-08 | 1    | 2026-09-08 | complete    |
 | [feat-487](content-discovery/feat-487-one-time-recommendation-fallback-curation.md)                            | Curate one-time recommendation fallback pools                                                   | nisal      | P1       | 2026-09-10 | 1    | 2026-09-10 | complete    |
 | [feat-488](content-discovery/feat-488-source-free-user-recommendations.md)                                     | Source-free user recommendations and Web For you row                                            | nisal      | P1       | 2026-09-10 | 10   | 2026-09-19 | complete    |
-| [feat-370](content-discovery/feat-370-recommendation-playback-navigation-qoe.md)                               | Recommendation playback navigation and QoE signals                                              | nisal      | P1       | 2026-09-15 | 4    | 2026-09-18 | in-progress |
+| [feat-370](content-discovery/feat-370-recommendation-playback-navigation-qoe.md)                               | Recommendation playback navigation and QoE signals                                              | nisal      | P1       | 2026-09-15 | 4    | 2026-09-18 | complete    |
 | [feat-393](content-discovery/feat-393-recommendation-slate-composer.md)                                        | Recommendation slate composer                                                                   | nisal      | P1       | 2026-09-15 | 5    | 2026-09-19 | blocked     |
 | [feat-503](content-discovery/feat-503-profile-recommendation-recent-view-repetition.md)                        | Audit recent-view repetition in profile recommendations                                         | nisal      | P1       | 2026-09-15 | 3    | 2026-09-17 | complete    |
 | [feat-504](content-discovery/feat-504-immediate-exit-profile-observations.md)                                  | Preserve immediate exits as uninterpreted profile observations                                  | nisal      | P1       | 2026-09-15 | 4    | 2026-09-18 | complete    |
@@ -355,6 +355,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-501](platform/feat-501-experience-editor-bounded-video-data.md)                  | Bound experience editor video data and load languages on demand                    | vlad       | P0       | 2026-09-14 | 3    | 2026-09-16 | complete    |
 | [feat-502](platform/feat-502-homepage-publication-scoped-revalidation.md)              | Validate experience publication before promotion and scoped invalidation           | vlad       | P0       | 2026-09-17 | 6    | 2026-09-22 | not-started |
 | [feat-524](platform/feat-524-mobile-expo-sdk57-0-24-alignment.md)                      | Align Mobile Expo SDK 57.0.24 patches                                              | jaco       | P0       | 2026-09-21 | 1    | 2026-09-21 | complete    |
+| [feat-550](platform/feat-550-nextjs-security-update.md)                                | Apply Next.js September security update                                            | tataihono  | P0       | 2026-09-23 | 1    | 2026-09-23 | complete    |
 | [feat-278](platform/feat-278-watch-russian-authored-content-localization.md)           | Watch Russian authored content localization                                        | unassigned | P1       | —          | 2    | —          | not-started |
 | [feat-456](platform/feat-456-watch-page-not-found-telemetry.md)                        | Emit Watch page-not-found telemetry                                                | codex      | P1       | —          | 2    | —          | blocked     |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md)       | CMS local PostgreSQL I/O concurrency compatibility                                 | tataihono  | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |
@@ -603,8 +604,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-522](platform/feat-522-watch-home-full-hero-title.md)                            | Show the full Watch home hero title                                                | codex      | P1       | 2026-09-17 | 1    | 2026-09-17 | complete    |
 | [feat-523](platform/feat-523-watch-field-hydration-mismatch-attribution.md)            | Attribute remaining Watch field text and HTML hydration mismatches                 | nisal      | P1       | 2026-09-21 | 3    | 2026-09-23 | in-progress |
 | [feat-524](platform/feat-524-watch-recommendation-tester-access.md)                    | Private Watch recommendation tester links without login UI                         | nisal      | P1       | 2026-09-21 | 1    | 2026-09-21 | complete    |
-| [feat-525](platform/feat-525-activate-watch-recommendation-testers.md)                 | Activate and verify the three-person Watch recommendation pilot                    | nisal      | P1       | 2026-09-21 | 1    | 2026-09-21 | in-progress |
-| [feat-531](platform/feat-531-repair-production-watch-revalidation-endpoint.md)         | Repair Admin production Watch revalidation endpoint                                | nisal      | P1       | 2026-09-22 | 1    | 2026-09-22 | not-started |
+| [feat-525](platform/feat-525-activate-watch-recommendation-testers.md)                 | Activate and verify the three-person Watch recommendation pilot                    | nisal      | P1       | 2026-09-21 | 1    | 2026-09-21 | complete    |
+| [feat-531](platform/feat-531-repair-production-watch-revalidation-endpoint.md)         | Repair Admin production Watch revalidation endpoint                                | nisal      | P1       | 2026-09-22 | 1    | 2026-09-22 | complete    |
 | [feat-532](platform/feat-532-changelog-preapproval-redemption.md)                      | Redeem Changelog Contributor preapprovals for active accounts                      | edmondshen | P1       | 2026-09-23 | 1    | 2026-09-23 | complete    |
 | [feat-534](platform/feat-534-changelog-membership-activation.md)                       | Activate preapproved Changelog memberships                                         | edmondshen | P1       | 2026-09-23 | 1    | 2026-09-23 | complete    |
 | [feat-543](platform/feat-543-mobile-sign-in-gate.md)                                   | Mobile sign-in gate hides sign-in until an environment turns it on                 | urim       | P1       | 2026-09-23 | 2    | 2026-09-24 | in-progress |

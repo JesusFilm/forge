@@ -1,8 +1,7 @@
 diff --git a/dist/esm/server/next-server.js b/dist/esm/server/next-server.js
-index 24f4f4ce0e1d6779a0cb91f22adf3d49bd6092ff..06755cc1734423c54e26539767480e6f32dcae0b 100644
 --- a/dist/esm/server/next-server.js
 +++ b/dist/esm/server/next-server.js
-@@ -391,7 +391,7 @@ export default class NextNodeServer extends BaseServer {
+@@ -396,7 +396,7 @@
              this.imageResponseCache = new ResponseCache(this.minimalMode);
          }
          if (!options.dev && !this.minimalMode && this.nextConfig.experimental.preloadEntriesOnStart) {
@@ -12,10 +11,9 @@ index 24f4f4ce0e1d6779a0cb91f22adf3d49bd6092ff..06755cc1734423c54e26539767480e6f
          if (!options.dev) {
              const { dynamicRoutes = [] } = this.getRoutesManifest() ?? {};
 diff --git a/dist/server/next-server.js b/dist/server/next-server.js
-index dc85a99969a1de863e2e1a140924cf96cddf7b61..2d20307ec8b53ab41b83ece72fe2168b9e77b709 100644
 --- a/dist/server/next-server.js
 +++ b/dist/server/next-server.js
-@@ -460,7 +460,7 @@ class NextNodeServer extends _baseserver.default {
+@@ -465,7 +465,7 @@
              this.imageResponseCache = new _responsecache.default(this.minimalMode);
          }
          if (!options.dev && !this.minimalMode && this.nextConfig.experimental.preloadEntriesOnStart) {

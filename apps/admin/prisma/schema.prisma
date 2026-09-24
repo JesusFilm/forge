@@ -4640,6 +4640,50 @@ model PlaybackProxyEvaluation {
   @@map("playback_proxy_evaluation")
 }
 
+/// Aggregate, identity-free readiness ledger for the two diagnostic playback
+/// families. A decision can authorize shadow study only, never live ranking.
+model RecommendationPlaybackSignalReadiness {
+  id                    String   @id @default(cuid())
+  family                String   @db.VarChar(16)
+  policyVersion         String   @map("policy_version") @db.VarChar(64)
+  revision              Int
+  windowStart           DateTime @map("window_start")
+  windowEnd             DateTime @map("window_end")
+  episodeCount          Int      @map("episode_count")
+  v2SummaryCount        Int      @map("v2_summary_count")
+  observedCount         Int      @map("observed_count")
+  partialCount          Int      @map("partial_count")
+  missingCount          Int      @map("missing_count")
+  ingestionHealth       String   @map("ingestion_health") @db.VarChar(16)
+  decision              String   @db.VarChar(48)
+  reasonCodes           String[] @default([]) @map("reason_codes")
+  reevaluationCondition String   @map("reevaluation_condition") @db.VarChar(191)
+  rankingInfluence      Boolean  @default(false) @map("ranking_influence")
+  inputDigest           String   @map("input_digest") @db.Char(64)
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  @@unique([family, revision], map: "recommendation_playback_signal_readiness_revision_key")
+  @@unique([family, windowStart, windowEnd, inputDigest], map: "recommendation_playback_signal_readiness_input_key")
+  @@index([family, createdAt], map: "recommendation_playback_signal_readiness_created_idx")
+  @@map("recommendation_playback_signal_readiness")
+}
+
+/// At most one identity-free Admin funnel snapshot per preset. Each successful
+/// daily refresh atomically replaces its predecessor; failed refreshes retain
+/// the last successful snapshot, whose exact window and age remain visible.
+model RecommendationPlaybackObservationSnapshot {
+  preset          String    @id @db.VarChar(3)
+  schemaVersion   String    @map("schema_version") @db.VarChar(64)
+  windowStart     DateTime? @map("window_start")
+  windowEnd       DateTime? @map("window_end")
+  computedAt      DateTime? @map("computed_at")
+  payload         Json?
+  lastAttemptedAt DateTime  @map("last_attempted_at")
+  lastErrorCode   String?   @map("last_error_code") @db.VarChar(32)
+
+  @@map("recommendation_playback_observation_snapshot")
+}
+
 /// Append-only integrity verdict. Raw facts without a current decision are
 /// explicitly pre-policy/pending and never become eligible through a read.
 /// `isCurrent` is protected by a migration-owned partial unique index; the

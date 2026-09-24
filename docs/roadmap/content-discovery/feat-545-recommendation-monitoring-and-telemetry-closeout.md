@@ -1,9 +1,9 @@
 ---
 id: "feat-545"
-title: "Recommendation monitoring and telemetry closeout"
+title: "Recommendation telemetry and browser evidence closeout"
 owner: "nisal"
 priority: "P0"
-status: "blocked"
+status: "in-progress"
 start_date: ""
 duration: 2
 depends_on: []
@@ -30,21 +30,22 @@ retains the two-hour denominator, complete canonical audit, durable reconciliati
 and every unresolved observation.
 
 The last verified Datadog policy rejected MCP writes for organization 678835
-(Jesus Film Project). Six required monitors and the dashboard were absent from
-the visible inventory, and notification destinations were not configured. The
-owner chose a separate, temporary service-account REST API credential on September
-24, keeping MCP policy and other users unchanged. That credential and the intended
-alert destination are not yet supplied.
-This explicit non-dependency blocker is why status is blocked.
+(Jesus Film Project). Six prepared monitors and a dashboard were absent from
+the visible inventory. After considering temporary REST API credentials and a
+Slack alert destination, the owner deferred this optional installation on
+September 24. No Datadog key or alert destination is needed for this ticket.
+The retained source discrepancies and browser-response evidence remain open,
+so this ticket is in progress. Deferring monitors does not accept those gaps or
+remove its downstream readiness dependencies.
 
 ## Entry Points — Read These First
 
 1. `docs/operations/recommendation-evidence-acceptance-2026-09-23.md` and
    `docs/validation/evidence-acceptance-20260923/`: acceptance populations and gaps.
-2. `infra/datadog-monitors/recommendation-evidence/`: six monitor definitions and
-   `dashboard.json`; these are definitions, not proof of installation.
-3. `docs/operations/recommendation-evidence-transport.md`: installation/read-back
-   procedure, source boundaries and Datadog access instructions.
+2. `docs/operations/recommendation-evidence-transport.md`: source boundaries
+   and the optional installation/read-back procedure.
+3. `infra/datadog-monitors/recommendation-evidence/`: prepared monitor and
+   dashboard definitions; these are not proof of installation.
 4. `apps/web/src/components/recommendations/RecommendationPlaybackRecorder.tsx`
    and `apps/web/src/lib/recommendation-evidence-response.ts`: browser retry
    ownership versus server disposition logs.
@@ -59,17 +60,6 @@ This explicit non-dependency blocker is why status is blocked.
 
 ## What To Build
 
-- Use the owner's temporary REST API approach documented in the transport runbook:
-  a dedicated service account with only monitor/dashboard read/write and log-read
-  permissions, a dedicated API key, and its application key. Log monitor APIs
-  require an unscoped application key; bound authority through the narrow account
-  role. Keep MCP policy and other users unchanged. Set status in-progress once
-  credentials and the intended alert destination are available.
-- Resolve current primary service/environment identity, inventory existing resources
-  to avoid duplicates, validate the six definitions and dashboard, configure the
-  owner's alert destination, install/publish them and read back their IDs, enabled
-  status, queries, thresholds and destinations. A draft monitor is not actionable
-  installed monitoring. Retain the resulting URLs in an operations record.
 - Close or explicitly disposition the retained source gaps: eight/five fewer indexed
   Web/Admin fact-batch successes than Railway; one missing indexed crawler rejection;
   one initial-evidence envelope gap; browser HTTP 503 and two HTTP 204 observations
@@ -82,15 +72,17 @@ This explicit non-dependency blocker is why status is blocked.
 - Use bounded, targeted follow-up reads; do not restart a broad two-hour audit merely
   because this ticket remains open. Add runtime instrumentation or repairs only for
   a demonstrated consequential defect with an appropriate regression.
+- Preserve the prepared Datadog definitions and runbook for a later explicit
+  monitoring decision. Do not request credentials or install resources as part of
+  this closeout.
 
 ## Constraints
 
 - Do not weaken auth, distributed admission, immutable replay, payload validation,
   privacy-generation fences, retention, erasure or analytics availability.
-- No secrets in chat, git, command history or captured output. Use private local
-  secret configuration or secret-manager injection for the dedicated credentials;
-  revoke both keys after installation/read-back. Do not create a persistent service
-  or broaden access to other users. Stop on policy denial rather than bypassing it.
+- No secrets in chat, git, command history or captured output. Do not create a
+  persistent service or broaden access to other users. Stop on policy denial
+  rather than bypassing it.
 - No production fault injection, manufactured evidence, direct repair or manual
   deployment. Follow normal PR-to-main deployment and preserve feature flags.
 - Closing feat-464/459 does not activate mission collection, profile rollout,
@@ -100,8 +92,6 @@ This explicit non-dependency blocker is why status is blocked.
 
 ## Verification
 
-- Six active monitors and the dashboard are read back from the intended organization
-  with correct definitions, queries, notification destination and usable URLs.
 - Query results show real source coverage; missing data is never presented as zero.
 - Terminal-response/browser proof and each source discrepancy have an evidence-backed
   resolution or an explicit owner-accepted bounded limitation recorded separately.

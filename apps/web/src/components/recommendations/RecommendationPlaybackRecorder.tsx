@@ -26,6 +26,10 @@ import { consumePlaybackDiscoveryContext } from "@/lib/playback-discovery"
 import { RECOMMENDATION_EVIDENCE_BROWSER_DEADLINE_MS } from "@/lib/recommendation-timeouts"
 import { watchPath } from "@/lib/watch-paths"
 import { createViewingModeRecorder } from "@/lib/viewing-mode-recorder"
+import {
+  PLAYBACK_NAVIGATION_INTENT_EVENT,
+  type PlaybackNavigationIntent,
+} from "@/lib/playback-navigation-intent"
 
 const PLAYBACK_ENDPOINT = watchPath("/api/recommendations/playback")
 const REQUEST_DEADLINE_MS = RECOMMENDATION_EVIDENCE_BROWSER_DEADLINE_MS
@@ -38,6 +42,7 @@ const MAX_FACT_DELIVERY_ATTEMPTS = 3
 const RECOVERY_BACKOFF_MS = [1_000, 8_000] as const
 const FACT_RECOVERY_WINDOW_MS = 30_000
 const PROGRESS_INTERVAL_MS = 10_000
+const STARTUP_TIMEOUT_MS = 15_000
 const MAX_ACTIVE_CHUNK_MS = 60_000
 const UTF8_ENCODER = new TextEncoder()
 
@@ -120,6 +125,29 @@ function playbackPosition(
         ? null
         : Math.min(1, Math.max(0, positionSeconds / durationSeconds)),
   }
+}
+
+function deviceClass(): "mobile" | "desktop" | "unknown" {
+  const mobile = (
+    navigator as Navigator & { userAgentData?: { mobile?: unknown } }
+  ).userAgentData?.mobile
+  return typeof mobile === "boolean"
+    ? mobile
+      ? "mobile"
+      : "desktop"
+    : "unknown"
+}
+
+function networkClass(): "slow-2g" | "2g" | "3g" | "4g" | "unknown" {
+  const effectiveType = (
+    navigator as Navigator & { connection?: { effectiveType?: unknown } }
+  ).connection?.effectiveType
+  return effectiveType === "slow-2g" ||
+    effectiveType === "2g" ||
+    effectiveType === "3g" ||
+    effectiveType === "4g"
+    ? effectiveType
+    : "unknown"
 }
 
 class DefinitivePlaybackError extends Error {
@@ -374,7 +402,19 @@ export function RecommendationPlaybackRecorder({
   const lastProgressAtRef = useRef<number | null>(null)
   const seekFromRef = useRef<number | null>(null)
   const lastPositionRef = useRef<number | null>(null)
+  const startupTimerRef = useRef<number | null>(null)
+  const startupTimerStartedAtRef = useRef<number | null>(null)
+  const startupRemainingMsRef = useRef(STARTUP_TIMEOUT_MS)
+  const startupTimedOutRef = useRef(false)
+  const startupPausedRef = useRef(false)
+  const pauseIntentRef = useRef<{
+    cause: "user" | "scroll" | "system"
+    at: number
+  } | null>(null)
+  const manualSkipRecordedRef = useRef(false)
   useEffect(() => {
+    if (initiationRef.current == null && initiation != null)
+      startupPausedRef.current = false
     initiationRef.current = initiation
     sampleViewingModeRef.current()
     observeInitiationRef.current()
@@ -944,6 +984,44 @@ export function RecommendationPlaybackRecorder({
       }
     }
 
+    const clearStartupTimeout = () => {
+      if (startupTimerRef.current != null)
+        window.clearTimeout(startupTimerRef.current)
+      startupTimerRef.current = null
+      startupTimerStartedAtRef.current = null
+    }
+    const suspendStartupTimeout = () => {
+      if (startupTimerStartedAtRef.current != null)
+        startupRemainingMsRef.current = Math.max(
+          0,
+          startupRemainingMsRef.current -
+            (Date.now() - startupTimerStartedAtRef.current),
+        )
+      clearStartupTimeout()
+    }
+    const armStartupTimeout = () => {
+      if (
+        initiationRef.current == null ||
+        startupTimerRef.current != null ||
+        startupTimedOutRef.current ||
+        startRecordedRef.current ||
+        startupPausedRef.current ||
+        terminalRecordedRef.current ||
+        bfcacheSuspendedRef.current ||
+        document.visibilityState === "hidden"
+      )
+        return
+      startupTimerStartedAtRef.current = Date.now()
+      startupTimerRef.current = window.setTimeout(() => {
+        startupTimerRef.current = null
+        startupTimerStartedAtRef.current = null
+        startupTimedOutRef.current = true
+        if (!startRecordedRef.current && !terminalRecordedRef.current) {
+          recordAttempt()
+          qoe("startup_timeout")
+        }
+      }, startupRemainingMsRef.current)
+    }
     const recordAttempt = () => {
       if (attemptRecordedRef.current || initiationRef.current == null) {
         return
@@ -963,6 +1041,7 @@ export function RecommendationPlaybackRecorder({
           new Date(attemptedAtRef.current),
         ),
       )
+      armStartupTimeout()
     }
 
     const navigation = (
@@ -970,6 +1049,7 @@ export function RecommendationPlaybackRecorder({
         RecommendationPlaybackEvent,
         { kind: "playback_navigation" }
       >["payload"]["action"],
+      cause: "unknown" | "user" | "scroll" | "system" = "unknown",
     ) => {
       if (!terminalRecordedRef.current) recordAttempt()
       if (!attemptRecordedRef.current || terminalRecordedRef.current) return
@@ -980,7 +1060,7 @@ export function RecommendationPlaybackRecorder({
           kind: "playback_navigation",
           payload: {
             action,
-            cause: "unknown",
+            cause,
             positionSeconds: boundedPosition(player),
           },
         }),
@@ -991,6 +1071,7 @@ export function RecommendationPlaybackRecorder({
         RecommendationPlaybackEvent,
         { kind: "playback_qoe" }
       >["payload"]["action"],
+      severity?: "recoverable" | "fatal" | "unknown",
     ) => {
       if (!attemptRecordedRef.current || terminalRecordedRef.current) return
       enqueue(
@@ -1000,14 +1081,20 @@ export function RecommendationPlaybackRecorder({
             action,
             cause: "unknown",
             positionSeconds: boundedPosition(player),
+            ...(severity ? { severity } : {}),
           },
         }),
       )
     }
-    const onPlay = () => recordAttempt()
+    const onPlay = () => {
+      startupPausedRef.current = false
+      recordAttempt()
+      armStartupTimeout()
+    }
     const onPlaying = () => {
       if (initiationRef.current == null) return
       recordAttempt()
+      clearStartupTimeout()
       if (bufferingRef.current) {
         qoe("buffering_end")
         bufferingRef.current = false
@@ -1016,6 +1103,8 @@ export function RecommendationPlaybackRecorder({
       playingRef.current = true
       lastPositionRef.current = boundedPosition(player)
       if (!startRecordedRef.current) {
+        if (initiationRef.current === "automatic")
+          navigation("autoplay_transition", "system")
         startRecordedRef.current = true
         const now = Date.now()
         playbackStartedAtRef.current = now
@@ -1032,7 +1121,17 @@ export function RecommendationPlaybackRecorder({
       startActive()
     }
     const onPause = () => {
-      if (playingRef.current || bufferingRef.current) navigation("pause")
+      if (!startRecordedRef.current) {
+        startupPausedRef.current = true
+        suspendStartupTimeout()
+      }
+      const pauseIntent = pauseIntentRef.current
+      pauseIntentRef.current = null
+      const cause =
+        pauseIntent && Date.now() - pauseIntent.at <= 1000
+          ? pauseIntent.cause
+          : "unknown"
+      if (playingRef.current || bufferingRef.current) navigation("pause", cause)
       if (bufferingRef.current) qoe("buffering_end")
       bufferingRef.current = false
       playingRef.current = false
@@ -1111,7 +1210,7 @@ export function RecommendationPlaybackRecorder({
         >({
           kind: "playback_observation",
           payload: {
-            version: "playback-observations-v1",
+            version: "playback-observations-v2",
             elapsedMilliseconds: Math.min(
               6 * 60 * 60 * 1000,
               Math.max(0, Date.now() - (attemptedAtRef.current ?? Date.now())),
@@ -1127,6 +1226,8 @@ export function RecommendationPlaybackRecorder({
             seekCount: observationCountsRef.current.seek,
             navigationCount: observationCountsRef.current.navigation,
             qoeCount: observationCountsRef.current.qoe,
+            deviceClass: deviceClass(),
+            networkClass: networkClass(),
           },
         }),
       )
@@ -1140,6 +1241,7 @@ export function RecommendationPlaybackRecorder({
         bfcacheSuspendedRef.current
       )
         return
+      clearStartupTimeout()
       playingRef.current = false
       flushActive()
       recordObservation(false)
@@ -1167,6 +1269,14 @@ export function RecommendationPlaybackRecorder({
       ) {
         return
       }
+      clearStartupTimeout()
+      const mediaError = (
+        player as MuxPlayerRef & { error?: { code?: number } }
+      ).error
+      qoe(
+        "media_error",
+        mediaError?.code === 3 || mediaError?.code === 4 ? "fatal" : "unknown",
+      )
       playingRef.current = false
       flushActive()
       recordObservation(true)
@@ -1186,8 +1296,9 @@ export function RecommendationPlaybackRecorder({
     }
     const onPageHide = (event: PageTransitionEvent) => {
       if (event.persisted) {
-        navigation("bfcache_suspend")
+        suspendStartupTimeout()
         bfcacheSuspendedRef.current = true
+        navigation("bfcache_suspend")
         bfcacheWasPlayingRef.current = playingRef.current
         playingRef.current = false
         flushActive()
@@ -1196,6 +1307,7 @@ export function RecommendationPlaybackRecorder({
     const onPageShow = (event: PageTransitionEvent) => {
       if (!event.persisted) return
       bfcacheSuspendedRef.current = false
+      armStartupTimeout()
       navigation("bfcache_resume")
       playingRef.current =
         bfcacheWasPlayingRef.current &&
@@ -1205,11 +1317,25 @@ export function RecommendationPlaybackRecorder({
     }
     const onVisibilityChange = () => {
       if (document.visibilityState === "hidden") {
+        suspendStartupTimeout()
         navigation("hidden")
         flushActive()
       } else {
         navigation("visible")
+        armStartupTimeout()
         startActive()
+      }
+    }
+
+    const onNavigationIntent = (event: Event) => {
+      const intent = (event as CustomEvent<PlaybackNavigationIntent>).detail
+      if (!intent || intent.mediaId !== mediaId) return
+      if (intent.action === "manual_skip") {
+        if (manualSkipRecordedRef.current) return
+        manualSkipRecordedRef.current = true
+        navigation("manual_skip", "user")
+      } else if (intent.action === "pause_intent") {
+        pauseIntentRef.current = { cause: intent.cause, at: Date.now() }
       }
     }
 
@@ -1226,11 +1352,16 @@ export function RecommendationPlaybackRecorder({
     window.addEventListener("pagehide", onPageHide)
     window.addEventListener("pageshow", onPageShow)
     document.addEventListener("visibilitychange", onVisibilityChange)
+    window.addEventListener(
+      PLAYBACK_NAVIGATION_INTENT_EVENT,
+      onNavigationIntent,
+    )
     // Intent may arrive after preview playback. Updating intent or duration
     // must not tear down this lifecycle and manufacture a route departure.
     observeInitiationRef.current = () => {
       if (initiationRef.current == null) return
       attemptedAtRef.current ??= Date.now()
+      armStartupTimeout()
       if (!player.paused) onPlaying()
     }
     observeInitiationRef.current()
@@ -1240,6 +1371,7 @@ export function RecommendationPlaybackRecorder({
         recordEnd("route_exit")
     }
     return () => {
+      clearStartupTimeout()
       observeInitiationRef.current = () => undefined
       playingRef.current = false
       flushActive()
@@ -1259,6 +1391,10 @@ export function RecommendationPlaybackRecorder({
       window.removeEventListener("pagehide", onPageHide)
       window.removeEventListener("pageshow", onPageShow)
       document.removeEventListener("visibilitychange", onVisibilityChange)
+      window.removeEventListener(
+        PLAYBACK_NAVIGATION_INTENT_EVENT,
+        onNavigationIntent,
+      )
     }
   }, [enqueue, mediaId, player])
 

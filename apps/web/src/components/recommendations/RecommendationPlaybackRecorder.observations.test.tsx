@@ -3,6 +3,7 @@ import { act, StrictMode } from "react"
 import type { Root } from "react-dom/client"
 import { describe, expect, it, vi } from "vitest"
 import { RecommendationPlaybackRecorder } from "./RecommendationPlaybackRecorder"
+import { dispatchPlaybackNavigationIntent } from "@/lib/playback-navigation-intent"
 import {
   RECOMMENDATION_TAB_CORRELATION_KEY,
   type RecommendationPlaybackEvent,
@@ -22,7 +23,7 @@ describe("playback observations", () => {
     root = harness.root
     fetchMock = harness.fetchMock
   })
-  async function mount() {
+  async function mount(initiation: "manual" | "automatic" | null = "manual") {
     sessionStorage.setItem(
       RECOMMENDATION_TAB_CORRELATION_KEY,
       "claim-nonce-1234567890",
@@ -46,13 +47,25 @@ describe("playback observations", () => {
       root.render(
         <RecommendationPlaybackRecorder
           player={player}
-          initiation="manual"
+          initiation={initiation}
           mediaId="media-1"
           durationSeconds={120}
         />,
       )
     })
     return player
+  }
+  async function startManualIntent(player: ReturnType<typeof makePlayer>) {
+    await act(async () => {
+      root.render(
+        <RecommendationPlaybackRecorder
+          player={player}
+          initiation="manual"
+          mediaId="media-1"
+          durationSeconds={120}
+        />,
+      )
+    })
   }
   function events() {
     const sent = fetchMock.mock.calls.flatMap(
@@ -82,6 +95,13 @@ describe("playback observations", () => {
     expect(events().at(-1)?.payload).toMatchObject({
       reason: "pagehide",
       completed: false,
+    })
+    expect(
+      events().find((fact) => fact.kind === "playback_observation")?.payload,
+    ).toMatchObject({
+      version: "playback-observations-v2",
+      deviceClass: "unknown",
+      networkClass: "unknown",
     })
   })
 
@@ -211,8 +231,326 @@ describe("playback observations", () => {
     await pagehide()
     expect(events().map((fact) => fact.kind)).toEqual([
       "playback_attempt",
+      "playback_qoe",
       "playback_observation",
       "playback_error",
+    ])
+    expect(
+      events().find((fact) => fact.kind === "playback_qoe")?.payload,
+    ).toMatchObject({ action: "media_error", severity: "unknown" })
+  })
+
+  it("marks exposed decode errors fatal while preserving other error severity as unknown", async () => {
+    const player = await mount()
+    Object.assign(player, { error: { code: 3 } })
+    await act(async () => {
+      player.dispatch("error")
+    })
+    expect(
+      events().find((fact) => fact.kind === "playback_qoe")?.payload,
+    ).toMatchObject({ action: "media_error", severity: "fatal" })
+  })
+
+  it("marks a delayed start as QoE timeout without ending playback", async () => {
+    const player = await mount()
+    await act(async () => {
+      player.dispatch("play")
+    })
+    await vi.advanceTimersByTimeAsync(15_000)
+    expect(events().filter((fact) => fact.kind === "playback_qoe")).toEqual([
+      expect.objectContaining({
+        payload: expect.objectContaining({ action: "startup_timeout" }),
+      }),
+    ])
+    player.paused = false
+    await act(async () => {
+      player.dispatch("playing")
+    })
+    expect(
+      events().filter((fact) => fact.kind === "playback_start"),
+    ).toHaveLength(1)
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(
+      events().filter(
+        (fact) =>
+          fact.kind === "playback_qoe" &&
+          fact.payload.action === "startup_timeout",
+      ),
+    ).toHaveLength(1)
+  })
+
+  it("records startup timeout when the browser never emits play", async () => {
+    await mount()
+    await vi.advanceTimersByTimeAsync(15_000)
+    expect(events().map((fact) => fact.kind)).toEqual([
+      "playback_attempt",
+      "playback_qoe",
+    ])
+    await pagehide()
+    expect(
+      events().find((fact) => fact.kind === "playback_observation")?.payload,
+    ).toMatchObject({ qoeCount: 1, startObserved: false })
+  })
+
+  it("starts a fresh timeout after a long preview with no playback intent", async () => {
+    const player = await mount(null)
+    player.paused = false
+    await act(async () => player.dispatch("play"))
+    await vi.advanceTimersByTimeAsync(15_000)
+    expect(events()).toEqual([])
+
+    player.paused = true
+    await act(async () => player.dispatch("pause"))
+    await startManualIntent(player)
+    await vi.advanceTimersByTimeAsync(14_999)
+    expect(events().filter((fact) => fact.kind === "playback_qoe")).toEqual([])
+    await vi.advanceTimersByTimeAsync(1)
+    expect(
+      events().filter((fact) => fact.kind === "playback_qoe")?.[0]?.payload,
+    ).toMatchObject({ action: "startup_timeout" })
+  })
+
+  it("does not charge a short preview to the later playback intent", async () => {
+    const player = await mount(null)
+    player.paused = false
+    await act(async () => player.dispatch("play"))
+    await vi.advanceTimersByTimeAsync(5_000)
+    player.paused = true
+    await act(async () => player.dispatch("pause"))
+
+    await startManualIntent(player)
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(events().filter((fact) => fact.kind === "playback_qoe")).toEqual([])
+    await vi.advanceTimersByTimeAsync(5_000)
+    expect(
+      events().filter((fact) => fact.kind === "playback_qoe")?.[0]?.payload,
+    ).toMatchObject({ action: "startup_timeout" })
+  })
+
+  it("does not arm startup timing on a pre-intent visibility return", async () => {
+    const player = await mount(null)
+    const visibility = vi.spyOn(document, "visibilityState", "get")
+    try {
+      visibility.mockReturnValue("hidden")
+      await act(async () =>
+        document.dispatchEvent(new Event("visibilitychange")),
+      )
+      visibility.mockReturnValue("visible")
+      await act(async () =>
+        document.dispatchEvent(new Event("visibilitychange")),
+      )
+      await vi.advanceTimersByTimeAsync(15_000)
+      expect(events()).toEqual([])
+
+      await startManualIntent(player)
+      await vi.advanceTimersByTimeAsync(14_999)
+      expect(events().filter((fact) => fact.kind === "playback_qoe")).toEqual(
+        [],
+      )
+      await vi.advanceTimersByTimeAsync(1)
+      expect(
+        events().filter((fact) => fact.kind === "playback_qoe")?.[0]?.payload,
+      ).toMatchObject({ action: "startup_timeout" })
+    } finally {
+      visibility.mockRestore()
+    }
+  })
+
+  it("does not charge bfcache suspension to the startup timeout", async () => {
+    await mount()
+    await vi.advanceTimersByTimeAsync(5_000)
+    await pagehide(true)
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(
+      events().filter(
+        (fact) =>
+          fact.kind === "playback_qoe" &&
+          fact.payload.action === "startup_timeout",
+      ),
+    ).toHaveLength(0)
+    await act(async () => {
+      window.dispatchEvent(
+        new PageTransitionEvent("pageshow", { persisted: true }),
+      )
+    })
+    await vi.advanceTimersByTimeAsync(9_999)
+    expect(
+      events().filter(
+        (fact) =>
+          fact.kind === "playback_qoe" &&
+          fact.payload.action === "startup_timeout",
+      ),
+    ).toHaveLength(0)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(
+      events().filter(
+        (fact) =>
+          fact.kind === "playback_qoe" &&
+          fact.payload.action === "startup_timeout",
+      ),
+    ).toHaveLength(1)
+  })
+
+  it("does not charge a voluntary pre-start pause to startup timeout", async () => {
+    const player = await mount()
+    await act(async () => player.dispatch("play"))
+    await vi.advanceTimersByTimeAsync(5_000)
+    player.paused = true
+    await act(async () => player.dispatch("pause"))
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(
+      events().filter(
+        (fact) =>
+          fact.kind === "playback_qoe" &&
+          fact.payload.action === "startup_timeout",
+      ),
+    ).toHaveLength(0)
+    player.paused = false
+    await act(async () => player.dispatch("play"))
+    await vi.advanceTimersByTimeAsync(9_999)
+    expect(
+      events().filter(
+        (fact) =>
+          fact.kind === "playback_qoe" &&
+          fact.payload.action === "startup_timeout",
+      ),
+    ).toHaveLength(0)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(
+      events().filter(
+        (fact) =>
+          fact.kind === "playback_qoe" &&
+          fact.payload.action === "startup_timeout",
+      ),
+    ).toHaveLength(1)
+  })
+
+  it("keeps a voluntary pre-start pause suspended across visibility and bfcache", async () => {
+    const player = await mount()
+    await act(async () => player.dispatch("play"))
+    await vi.advanceTimersByTimeAsync(5_000)
+    player.paused = true
+    await act(async () => player.dispatch("pause"))
+    const visibility = vi.spyOn(document, "visibilityState", "get")
+    try {
+      visibility.mockReturnValue("hidden")
+      await act(async () =>
+        document.dispatchEvent(new Event("visibilitychange")),
+      )
+      visibility.mockReturnValue("visible")
+      await act(async () =>
+        document.dispatchEvent(new Event("visibilitychange")),
+      )
+      await pagehide(true)
+      await act(async () =>
+        window.dispatchEvent(
+          new PageTransitionEvent("pageshow", { persisted: true }),
+        ),
+      )
+      await vi.advanceTimersByTimeAsync(30_000)
+      expect(
+        events().filter(
+          (fact) =>
+            fact.kind === "playback_qoe" &&
+            fact.payload.action === "startup_timeout",
+        ),
+      ).toHaveLength(0)
+      player.paused = false
+      await act(async () => player.dispatch("play"))
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(
+        events().filter(
+          (fact) =>
+            fact.kind === "playback_qoe" &&
+            fact.payload.action === "startup_timeout",
+        ),
+      ).toHaveLength(1)
+    } finally {
+      visibility.mockRestore()
+    }
+  })
+
+  it("records only explicit skip and pause causes as user intent", async () => {
+    const player = await mount()
+    player.paused = false
+    await act(async () => {
+      player.dispatch("playing")
+      dispatchPlaybackNavigationIntent({
+        mediaId: "other",
+        action: "manual_skip",
+      })
+      dispatchPlaybackNavigationIntent({
+        mediaId: "media-1",
+        action: "pause_intent",
+        cause: "user",
+      })
+      player.paused = true
+      player.dispatch("pause")
+      dispatchPlaybackNavigationIntent({
+        mediaId: "media-1",
+        action: "manual_skip",
+      })
+    })
+    await pagehide()
+    expect(
+      events()
+        .filter((fact) => fact.kind === "playback_navigation")
+        .map((fact) => fact.payload),
+    ).toEqual([
+      expect.objectContaining({ action: "pause", cause: "user" }),
+      expect.objectContaining({ action: "manual_skip", cause: "user" }),
+    ])
+  })
+
+  it("keeps a pause during hidden visibility unknown without explicit system provenance", async () => {
+    const player = await mount()
+    player.paused = false
+    await act(async () => {
+      player.dispatch("playing")
+    })
+    const visibility = vi
+      .spyOn(document, "visibilityState", "get")
+      .mockReturnValue("hidden")
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"))
+      player.paused = true
+      player.dispatch("pause")
+    })
+    expect(
+      events().filter(
+        (fact) =>
+          fact.kind === "playback_navigation" &&
+          fact.payload.action === "pause",
+      )[0]?.payload,
+    ).toMatchObject({ cause: "unknown" })
+    visibility.mockRestore()
+  })
+
+  it("records the automatic first start as an autoplay transition", async () => {
+    const player = await mount()
+    await act(async () => {
+      root.render(
+        <RecommendationPlaybackRecorder
+          player={player}
+          initiation="automatic"
+          mediaId="media-1"
+          durationSeconds={120}
+        />,
+      )
+    })
+    player.paused = false
+    await act(async () => {
+      player.dispatch("playing")
+    })
+    expect(
+      events()
+        .filter((fact) => fact.kind === "playback_navigation")
+        .map((fact) => fact.payload),
+    ).toEqual([
+      expect.objectContaining({
+        action: "autoplay_transition",
+        cause: "system",
+      }),
     ])
   })
   it("does not finalize a paused manual attempt during StrictMode setup replay", async () => {

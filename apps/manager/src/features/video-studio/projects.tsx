@@ -132,6 +132,8 @@ export function StudioCreate() {
         idempotencyKey: crypto.randomUUID(),
         document: newDocument(title.trim(), language, width, height),
       })
+      // Load the newly created project from its server route.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.assign(`/dashboard/shorts/${projectId}`)
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not create project")
