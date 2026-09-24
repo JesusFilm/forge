@@ -97,3 +97,14 @@ Run affected Web/Admin tests, lint, type checks and roadmap lint before PR.
 Production validation requires the normal PR-to-main deployment and an
 authorized Admin overview/episode inspection; this document makes no
 production observation claim.
+
+## Local browser load check
+
+Six paired Chrome runs used the existing playback-recovery browser fixture
+with a synthetic player/API and real React recorder, comparing reader commit
+`f587a7c84` with this emitter. The fixture bundle grew from 66,487 to 67,025
+gzip bytes; median recorder mount was 28.0 versus 28.95 ms, median DOM content
+loaded 28.25 versus 29.15 ms, and median load event 28.35 versus 29.35 ms.
+Both variants loaded four initial resources. The raw runs are in
+`recorder-load-results.json`. This bounded check found no material recorder
+mount regression; it does not measure a full Watch page or production LCP.

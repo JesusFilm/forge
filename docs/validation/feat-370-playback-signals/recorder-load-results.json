@@ -1,0 +1,164 @@
+{
+  "baselineRef": "f587a7c84",
+  "scope": "Local Chrome/HTTP/React/recorder with synthetic player/API; not full Watch page or production",
+  "summary": {
+    "baseline": {
+      "bundleBytes": 213561,
+      "gzipBytes": 66487,
+      "medianMountMs": 28,
+      "medianDomContentLoadedMs": 28.25000001490116,
+      "medianLoadMs": 28.350000008940697,
+      "initialResources": [
+        4,
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "longTasks": [
+        56
+      ]
+    },
+    "candidate": {
+      "bundleBytes": 215181,
+      "gzipBytes": 67025,
+      "medianMountMs": 28.950000002980232,
+      "medianDomContentLoadedMs": 29.149999991059303,
+      "medianLoadMs": 29.350000008940697,
+      "initialResources": [
+        4,
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "longTasks": []
+    }
+  },
+  "results": [
+    {
+      "variant": "baseline",
+      "iteration": 0,
+      "acceptedFacts": 2,
+      "mountedAtMs": 122.59999999403954,
+      "domContentLoadedMs": 123.09999999403954,
+      "loadEventMs": 123.2999999821186,
+      "resources": 4,
+      "longTasks": [
+        56
+      ]
+    },
+    {
+      "variant": "candidate",
+      "iteration": 0,
+      "acceptedFacts": 2,
+      "mountedAtMs": 87.5,
+      "domContentLoadedMs": 87.90000000596046,
+      "loadEventMs": 88,
+      "resources": 4,
+      "longTasks": []
+    },
+    {
+      "variant": "baseline",
+      "iteration": 1,
+      "acceptedFacts": 2,
+      "mountedAtMs": 29.900000005960464,
+      "domContentLoadedMs": 30.200000017881393,
+      "loadEventMs": 30.30000001192093,
+      "resources": 4,
+      "longTasks": []
+    },
+    {
+      "variant": "candidate",
+      "iteration": 1,
+      "acceptedFacts": 2,
+      "mountedAtMs": 28.099999994039536,
+      "domContentLoadedMs": 28.400000005960464,
+      "loadEventMs": 28.5,
+      "resources": 4,
+      "longTasks": []
+    },
+    {
+      "variant": "baseline",
+      "iteration": 2,
+      "acceptedFacts": 2,
+      "mountedAtMs": 26.899999976158142,
+      "domContentLoadedMs": 27.19999998807907,
+      "loadEventMs": 27.299999982118607,
+      "resources": 4,
+      "longTasks": []
+    },
+    {
+      "variant": "candidate",
+      "iteration": 2,
+      "acceptedFacts": 2,
+      "mountedAtMs": 32.400000005960464,
+      "domContentLoadedMs": 32.70000001788139,
+      "loadEventMs": 32.80000001192093,
+      "resources": 4,
+      "longTasks": []
+    },
+    {
+      "variant": "baseline",
+      "iteration": 3,
+      "acceptedFacts": 2,
+      "mountedAtMs": 27.5,
+      "domContentLoadedMs": 27.700000017881393,
+      "loadEventMs": 27.80000001192093,
+      "resources": 4,
+      "longTasks": []
+    },
+    {
+      "variant": "candidate",
+      "iteration": 3,
+      "acceptedFacts": 2,
+      "mountedAtMs": 28.5,
+      "domContentLoadedMs": 28.69999998807907,
+      "loadEventMs": 28.900000005960464,
+      "resources": 4,
+      "longTasks": []
+    },
+    {
+      "variant": "baseline",
+      "iteration": 4,
+      "acceptedFacts": 2,
+      "mountedAtMs": 28.5,
+      "domContentLoadedMs": 28.80000001192093,
+      "loadEventMs": 28.900000005960464,
+      "resources": 4,
+      "longTasks": []
+    },
+    {
+      "variant": "candidate",
+      "iteration": 4,
+      "acceptedFacts": 2,
+      "mountedAtMs": 26,
+      "domContentLoadedMs": 26.30000001192093,
+      "loadEventMs": 26.400000005960464,
+      "resources": 4,
+      "longTasks": []
+    },
+    {
+      "variant": "baseline",
+      "iteration": 5,
+      "acceptedFacts": 2,
+      "mountedAtMs": 26.400000005960464,
+      "domContentLoadedMs": 26.80000001192093,
+      "loadEventMs": 26.900000005960464,
+      "resources": 4,
+      "longTasks": []
+    },
+    {
+      "variant": "candidate",
+      "iteration": 5,
+      "acceptedFacts": 2,
+      "mountedAtMs": 29.400000005960464,
+      "domContentLoadedMs": 29.599999994039536,
+      "loadEventMs": 29.80000001192093,
+      "resources": 4,
+      "longTasks": []
+    }
+  ]
+}
