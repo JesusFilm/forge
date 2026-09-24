@@ -1,0 +1,23 @@
+{
+  "window": {
+    "from": "2026-09-23T04:30:00Z",
+    "to": "2026-09-23T05:00:00Z"
+  },
+  "source": "Datadog RUM resource events, sampled and client-reported",
+  "host": "www.jesusfilm.org",
+  "path": "/watch/api/recommendations/playback",
+  "observed503": [
+    {
+      "timestamp": "2026-09-23T04:54:50.312Z",
+      "status": 503,
+      "durationMs": 3160.699997,
+      "version": "37e10b622bd66e55647cf561c3896b2d4fbb4dce"
+    }
+  ],
+  "railwayPlayback5xx": 0,
+  "limitations": [
+    "This browser 503 has no trusted request join to Railway origin records.",
+    "Do not reclassify the browser or infer a Redis or edge cause from this observation.",
+    "This is an interim observation; final fixed-window accounting is separate."
+  ]
+}

@@ -48,6 +48,9 @@ const ensureRecommendationRetentionSchedulerStarted = vi.hoisted(() => vi.fn())
 const ensureRecommendationControlReadinessSchedulerStarted = vi.hoisted(() =>
   vi.fn(),
 )
+const ensurePlaybackObservationSnapshotBootstrapStarted = vi.hoisted(() =>
+  vi.fn(),
+)
 const ensureRecommendationProfileReconciliationSchedulerStarted = vi.hoisted(
   () => vi.fn(),
 )
@@ -119,6 +122,9 @@ vi.mock("@/services/recommendations/retention/job", () => ({
 vi.mock("@/services/recommendations/control-readiness/job", () => ({
   ensureRecommendationControlReadinessSchedulerStarted,
 }))
+vi.mock("@/services/recommendations/playback-observation-snapshot.job", () => ({
+  ensurePlaybackObservationSnapshotBootstrapStarted,
+}))
 vi.mock("@/services/recommendations/profiles/reconciliation.job", () => ({
   ensureRecommendationProfileReconciliationSchedulerStarted,
 }))
@@ -150,6 +156,7 @@ describe("workflow instrumentation", () => {
     ensureSearchTraceRetentionSchedulerStarted.mockReset()
     ensureRecommendationRetentionSchedulerStarted.mockReset()
     ensureRecommendationControlReadinessSchedulerStarted.mockReset()
+    ensurePlaybackObservationSnapshotBootstrapStarted.mockReset()
     ensureRecommendationProfileReconciliationSchedulerStarted.mockReset()
     ensureRecommendationEpisodeFinalizationRecovery.mockReset()
     ensureWatchSearchTranscriptPublicationWorkerStarted.mockReset()
@@ -411,6 +418,9 @@ describe("workflow instrumentation", () => {
       ensureRecommendationControlReadinessSchedulerStarted,
     ).toHaveBeenCalledTimes(1)
     expect(
+      ensurePlaybackObservationSnapshotBootstrapStarted,
+    ).toHaveBeenCalledTimes(1)
+    expect(
       ensureWatchSearchTranscriptPublicationWorkerStarted,
     ).toHaveBeenCalledTimes(1)
     expect(
@@ -423,6 +433,31 @@ describe("workflow instrumentation", () => {
       ensureRecommendationEpisodeFinalizationRecovery,
     ).toHaveBeenCalledTimes(1)
     expect(ensurePushCampaignRecovery).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps other startup work running when playback snapshot bootstrap cannot queue", async () => {
+    mockEnv.env.WORKFLOW_RUNNER_ENABLED = "true"
+    mockEnv.env.WORKFLOW_TARGET_WORLD = "@workflow/world-postgres"
+    ensurePlaybackObservationSnapshotBootstrapStarted.mockRejectedValueOnce(
+      new Error("snapshot store unavailable"),
+    )
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    try {
+      const { register } = await import("./instrumentation")
+      await register()
+      expect(
+        ensureRecommendationProfileReconciliationSchedulerStarted,
+      ).toHaveBeenCalledOnce()
+      expect(
+        ensureRecommendationEpisodeFinalizationRecovery,
+      ).toHaveBeenCalledOnce()
+      expect(warn).toHaveBeenCalledWith(
+        "Playback observation bootstrap could not be queued",
+        { error: "Error" },
+      )
+    } finally {
+      warn.mockRestore()
+    }
   })
 
   it("rechecks the profile reconciliation scheduler after a terminal runtime failure", async () => {

@@ -1,3 +1,4 @@
+import { studioMediaStartTimes } from "@forge/studio-contracts/transitions"
 import { createHash } from "node:crypto"
 import { z } from "zod"
 import {
@@ -70,7 +71,12 @@ export async function prepareStudioRenderInput(
       base64: bytes.toString("base64"),
     })
   }
-  for (const entry of sources) {
+  const mediaStarts = studioMediaStartTimes(document)
+  for (const resolvedEntry of sources) {
+    const entry = {
+      ...resolvedEntry,
+      startMs: mediaStarts.get(resolvedEntry.itemId) ?? resolvedEntry.startMs,
+    }
     const { snapshot } = entry
     if (
       !proofKey ||

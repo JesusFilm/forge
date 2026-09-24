@@ -13,6 +13,7 @@ import {
 
 const ENDPOINT = "EXPO_PUBLIC_ADMIN_GRAPHQL_URL"
 const OVERRIDE = "EXPO_PUBLIC_ALLOW_PRODUCTION_ADMIN"
+const SIGN_IN = "EXPO_PUBLIC_SIGN_IN_ENABLED"
 
 function set(name: string, value: string | undefined): void {
   if (value === undefined) delete process.env[name]
@@ -23,6 +24,9 @@ describe("env.ts module evaluation", () => {
   const original = {
     [ENDPOINT]: process.env[ENDPOINT],
     [OVERRIDE]: process.env[OVERRIDE],
+    [SIGN_IN]: process.env[SIGN_IN],
+    CI: process.env.CI,
+    EAS_BUILD: process.env.EAS_BUILD,
   }
   let info: jest.SpyInstance
 
@@ -33,8 +37,7 @@ describe("env.ts module evaluation", () => {
 
   afterEach(() => {
     info.mockRestore()
-    set(ENDPOINT, original[ENDPOINT])
-    set(OVERRIDE, original[OVERRIDE])
+    for (const [name, value] of Object.entries(original)) set(name, value)
   })
 
   function reports(): string[] {
@@ -81,6 +84,38 @@ describe("env.ts module evaluation", () => {
     expect(reports()[0]).toContain("192.168.1.20")
   })
 
+  // env.ts skips validation when CI is set, and CI always sets it. Clear both
+  // flags, or the `True` case passes in CI without validating anything.
+  describe(`${SIGN_IN} (feat-543)`, () => {
+    beforeEach(() => {
+      set("CI", undefined)
+      set("EAS_BUILD", undefined)
+      set(ENDPOINT, undefined)
+      set(OVERRIDE, undefined)
+    })
+
+    it("exposes the value from process.env", () => {
+      set(SIGN_IN, "1")
+
+      expect(require("../env").env[SIGN_IN]).toBe("1")
+    })
+
+    it("turns an empty value into undefined", () => {
+      set(SIGN_IN, "")
+
+      expect(require("../env").env[SIGN_IN]).toBeUndefined()
+    })
+
+    // The on-value rule lives in signInGateState. A strict schema here would
+    // stop startup for every tester on a typo such as `True`.
+    it("loads a value that is not an on-value without an error", () => {
+      set(SIGN_IN, "True")
+
+      expect(() => require("../env")).not.toThrow()
+      expect(require("../env").env[SIGN_IN]).toBe("True")
+    })
+  })
+
   // Every other case runs under jest's ambient __DEV__ === true, so none can see
   // a call site that hardcoded the flag. These read the REAL global at the REAL
   // call sites — what stands between a one-line revert and a localhost release.
@@ -117,6 +152,21 @@ describe("env.ts module evaluation", () => {
         PRODUCTION_ADMIN_GRAPHQL_URL,
       )
       expect(reports()).toHaveLength(0)
+    })
+
+    // The one sign-in case with no mock: process.env, the real env.ts, and the
+    // real binder (feat-543).
+    it("hides sign-in until the value is 1", () => {
+      set(ENDPOINT, undefined)
+      set(OVERRIDE, undefined)
+      set(SIGN_IN, undefined)
+
+      expect(require("../lib/signInGate").isSignInAvailable()).toBe(false)
+
+      jest.resetModules()
+      set(SIGN_IN, "1")
+
+      expect(require("../lib/signInGate").isSignInAvailable()).toBe(true)
     })
   })
 })

@@ -1,3 +1,8 @@
+import { persistCandidateStageEvidence } from "./candidate-evidence-persistence"
+import {
+  observeRecommendationRuntime,
+  timeRecommendationOperation,
+} from "@/lib/recommendation-runtime-observation"
 import { randomUUID } from "node:crypto"
 import {
   RecommendationAuditKind,
@@ -5,7 +10,6 @@ import {
   RecommendationRequestState,
 } from "@prisma/client"
 import { buildCanonicalWatchVideoPath } from "@forge/watch-url-policy/routes"
-import type { Principal } from "@/auth/principal"
 import {
   VideoNotFoundError,
   type SceneRecommendation,
@@ -36,6 +40,7 @@ import type { RecommendationRecentContext } from "./recent-context.service"
 
 import type {
   DeliveryDependencies,
+  DeliveryInput,
   RecommendationPersonalizationDelivery,
   SemanticRecommendationDelivery,
 } from "./delivery.types"
@@ -82,16 +87,15 @@ export {
 export class RecommendationDeliveryService {
   constructor(private readonly deps: DeliveryDependencies) {}
 
-  async deliver(input: {
-    caller: Principal | null
-    seedMediaId: string
-    locale: string
-    audioLanguageSlug: string
-    sessionDigest: string
-    consentReceiptDigest?: string | null
-    profileTokenDigest?: string | null
-    eligibleHuman?: boolean
-  }): Promise<SemanticRecommendationDelivery> {
+  deliver(input: DeliveryInput): Promise<SemanticRecommendationDelivery> {
+    return observeRecommendationRuntime("seeded", () =>
+      this.deliverObserved(input),
+    )
+  }
+
+  private async deliverObserved(
+    input: DeliveryInput,
+  ): Promise<SemanticRecommendationDelivery> {
     const nowMilliseconds = this.deps.nowMilliseconds ?? Date.now
     const deliveryStartedAt = nowMilliseconds()
     const serviceDeadlineAt = deliveryStartedAt + DELIVERY_RETRIEVAL_BUDGET_MS
@@ -166,6 +170,10 @@ export class RecommendationDeliveryService {
           return null
         }
         try {
+          const authorizationDeadlineAt = Math.min(
+            candidateDeadlineAt,
+            deliveryStartedAt + 450,
+          )
           return (await withinDeadline(
             () =>
               this.deps.authorizeProfile!({
@@ -173,9 +181,9 @@ export class RecommendationDeliveryService {
                 consentReceiptDigest: input.consentReceiptDigest!,
                 profileTokenDigest: input.profileTokenDigest!,
                 now,
-                deadlineAt: candidateDeadlineAt,
+                deadlineAt: authorizationDeadlineAt,
               }),
-            candidateDeadlineAt,
+            authorizationDeadlineAt,
             nowMilliseconds,
           ))
             ? input.profileTokenDigest
@@ -184,6 +192,39 @@ export class RecommendationDeliveryService {
           return null
         }
       })()
+      // Required history runs alongside optional personalization. Settle failures
+      // immediately so delayed profile work cannot create unhandled rejections.
+      const recentContextPromise = profileTokenDigestPromise.then(
+        async (profileTokenDigest) => {
+          try {
+            const context: RecommendationRecentContext = this.deps
+              .resolveRecentContext
+              ? await withinDeadline(
+                  () =>
+                    this.deps.resolveRecentContext!({
+                      sessionDigest: input.sessionDigest,
+                      profileTokenDigest,
+                      allowDurableProfileLinks: profileTokenDigest != null,
+                      locale,
+                      now,
+                      deadlineAt: candidateDeadlineAt,
+                    }),
+                  candidateDeadlineAt,
+                  nowMilliseconds,
+                )
+              : { videos: [] }
+            return { context, failureReason: null }
+          } catch (error) {
+            return {
+              context: { videos: [] },
+              failureReason:
+                error instanceof RecommendationRetrievalTimeoutError
+                  ? "recent_context_timeout"
+                  : "recent_context_unavailable",
+            }
+          }
+        },
+      )
       const experimentPromise = profileTokenDigestPromise.then(
         (profileTokenDigest) => {
           if (profileTokenDigest != null) {
@@ -341,7 +382,6 @@ export class RecommendationDeliveryService {
       }
       let experiment = legacyExperiment
       let profileComparison = false
-      let comparisonHistory: RecommendationRecentContext | null = null
       if (
         profileTokenDigest &&
         this.deps.assignProfileExperiment &&
@@ -386,20 +426,12 @@ export class RecommendationDeliveryService {
           // add sound-mode re-ranking to these exact semantic/hybrid manifests.
           if (!this.deps.resolveRecentContext)
             return unavailable("recent_context_unavailable")
-          comparisonHistory = await withinDeadline(
-            () =>
-              this.deps.resolveRecentContext!({
-                sessionDigest: input.sessionDigest,
-                profileTokenDigest,
-                allowDurableProfileLinks: true,
-                now,
-                deadlineAt: candidateDeadlineAt,
-              }),
-            candidateDeadlineAt,
-            nowMilliseconds,
-          )
         }
       }
+      const recentResolution = await recentContextPromise
+      if (recentResolution.failureReason)
+        return unavailable(recentResolution.failureReason)
+      const recentContext = recentResolution.context
       let viewingMode: ViewingModeAffinity | null = null
       if (
         profileTokenDigest &&
@@ -448,7 +480,7 @@ export class RecommendationDeliveryService {
           limit: manifest.maxItems,
           composition: {
             currentVideoId: seedMediaId,
-            recentVideos: comparisonHistory?.videos,
+            recentVideos: recentContext.videos,
           },
         })
         if (retrievalFailureReason) {
@@ -501,6 +533,7 @@ export class RecommendationDeliveryService {
             context,
             manifest.maxItems,
             seedMediaId,
+            recentContext.videos,
           )
           result = selected.length > 0 ? "fallback" : "empty"
           reason = "semantic_parity_mismatch"
@@ -512,6 +545,7 @@ export class RecommendationDeliveryService {
           context,
           manifest.maxItems,
           seedMediaId,
+          recentContext.videos,
         )
         platform = failedCandidatePlatform("candidate_platform_unavailable")
         result = selected.length > 0 ? "fallback" : "unavailable"
@@ -586,33 +620,6 @@ export class RecommendationDeliveryService {
             candidates,
             context,
           ).nominations
-          let recentContext: RecommendationRecentContext =
-            comparisonHistory ?? { videos: [] }
-          let recentContextFailureReason: string | null = null
-          if (this.deps.resolveRecentContext && !comparisonHistory) {
-            try {
-              recentContext = await withinDeadline(
-                () =>
-                  this.deps.resolveRecentContext!({
-                    sessionDigest: input.sessionDigest,
-                    profileTokenDigest,
-                    allowDurableProfileLinks:
-                      profile.projection.scope === "durable",
-                    now,
-                    deadlineAt: candidateDeadlineAt,
-                  }),
-                candidateDeadlineAt,
-                nowMilliseconds,
-              )
-            } catch (error) {
-              recentContextFailureReason =
-                error instanceof RecommendationRetrievalTimeoutError
-                  ? "recent_context_timeout"
-                  : "recent_context_unavailable"
-              evidenceComplete = false
-              candidateRunFallbackReason ??= recentContextFailureReason
-            }
-          }
           const orchestrateHybrid =
             this.deps.orchestrateHybrid ?? runCandidatePlatform
           let hybridPlatform: CandidatePlatformResult
@@ -655,13 +662,6 @@ export class RecommendationDeliveryService {
               "bounded_reserve_refill",
             )
           }
-          if (recentContextFailureReason) {
-            hybridPlatform = appendSourceFailureEvidence(
-              hybridPlatform,
-              recentContextFailureReason,
-              "recent-context",
-            )
-          }
           platform = hybridPlatform
           const hybridSelected = preparedCandidatesFromPlatform(hybridPlatform)
           if (hybridSelected.length === 0) {
@@ -685,9 +685,7 @@ export class RecommendationDeliveryService {
           }
           if (result === "served") {
             reason = null
-            if (!recentContextFailureReason) {
-              candidateRunFallbackReason = null
-            }
+            candidateRunFallbackReason = null
           }
         } catch (error) {
           const fallbackReason = hybridFallbackReason(error)
@@ -718,27 +716,13 @@ export class RecommendationDeliveryService {
       ) {
         const emptyReason = reason ?? "no_candidates"
         try {
-          const recent = await withinDeadline(
-            () =>
-              this.deps.resolveRecentContext!({
-                sessionDigest: input.sessionDigest,
-                profileTokenDigest,
-                allowDurableProfileLinks: profileTokenDigest != null,
-                now,
-                deadlineAt: candidateDeadlineAt,
-              }),
-            candidateDeadlineAt,
-            nowMilliseconds,
-          )
           const nominations = await withinDeadline(
             () =>
               this.deps.retrieveCuratedFallback!({
                 seedMediaId,
                 locale,
                 audioLanguageSlug,
-                excludedMediaIds: recent.videos.map(
-                  (video) => video.targetMediaId,
-                ),
+                excludedMediaIds: [],
                 deadlineAt: candidateDeadlineAt,
               }),
             candidateDeadlineAt,
@@ -749,7 +733,10 @@ export class RecommendationDeliveryService {
             context,
             limit: manifest.maxItems,
             generatorVersion: SEEDED_CURATED_FALLBACK_VERSION,
-            composition: { currentVideoId: seedMediaId },
+            composition: {
+              currentVideoId: seedMediaId,
+              recentVideos: recentContext.videos,
+            },
           })
           const fallback = preparedCandidatesFromPlatform(fallbackPlatform)
           if (fallback.length > 0) {
@@ -1023,8 +1010,9 @@ export class RecommendationDeliveryService {
               },
             })
             if (platform.evidence.length > 0) {
-              await tx.recommendationCandidateStageEvidence.createMany({
-                data: platform.evidence.map((entry) => ({
+              await persistCandidateStageEvidence(
+                tx,
+                platform.evidence.map((entry) => ({
                   id: newId(),
                   runId: candidateRunId,
                   stage: entry.stage,
@@ -1051,7 +1039,7 @@ export class RecommendationDeliveryService {
                     })),
                   expiresAt,
                 })),
-              })
+              )
             }
             if (requestState === RecommendationRequestState.ISSUED) {
               await tx.recommendationEvidenceAudit.create({
@@ -1065,6 +1053,14 @@ export class RecommendationDeliveryService {
             }
           },
           nowMilliseconds,
+        )
+
+      const persistObservedRequest = (
+        state: Parameters<typeof persistRequest>[0],
+        bytes: number | null,
+      ) =>
+        timeRecommendationOperation("persistence", () =>
+          persistRequest(state, bytes),
         )
 
       let response: SemanticRecommendationDelivery
@@ -1091,7 +1087,7 @@ export class RecommendationDeliveryService {
         responseBytes = issued.responseBytes
       } catch (error) {
         if (!(error instanceof RecommendationRetrievalTimeoutError)) {
-          await persistRequest(
+          await persistObservedRequest(
             RecommendationRequestState.ISSUANCE_FAILED,
             null,
           ).catch(() => undefined)
@@ -1103,7 +1099,10 @@ export class RecommendationDeliveryService {
         )
       }
       try {
-        await persistRequest(RecommendationRequestState.ISSUED, responseBytes)
+        await persistObservedRequest(
+          RecommendationRequestState.ISSUED,
+          responseBytes,
+        )
         return response
       } catch (error) {
         return unavailable(

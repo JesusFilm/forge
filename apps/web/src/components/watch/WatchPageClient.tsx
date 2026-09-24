@@ -41,6 +41,7 @@ const ShareModal = dynamic(
 )
 import { SubtitleTranscript } from "@/components/watch/SubtitleTranscript"
 import { RecommendationPlaybackRecorder } from "@/components/recommendations/RecommendationPlaybackRecorder"
+import { dispatchPlaybackNavigationIntent } from "@/lib/playback-navigation-intent"
 import { WatchEventRecorder } from "@/components/watch/WatchEventRecorder"
 import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
 import { WatchSectionRenderer } from "@/components/watch/WatchSectionRenderer"
@@ -361,6 +362,10 @@ export function WatchPageClient({
 
   const handleChapterNavigateIntent = useCallback(
     (intent: WatchChapterNavigationIntent) => {
+      dispatchPlaybackNavigationIntent({
+        mediaId: video.documentId,
+        action: "manual_skip",
+      })
       pendingChapterHrefRef.current = intent.href
       setPendingChapter(intent)
       const routeWarmPromise = warmChapterRoute(intent.href)
@@ -391,7 +396,7 @@ export function WatchPageClient({
         })
       })
     },
-    [chapterAutoplayEnabled, router, warmChapterRoute],
+    [chapterAutoplayEnabled, router, video.documentId, warmChapterRoute],
   )
 
   const coverBlackoutKey = null

@@ -1,4 +1,6 @@
 import { vi } from "vitest"
+import { randomUUID } from "node:crypto"
+import type { PrismaClient } from "@prisma/client"
 import { RecommendationDeliveryService } from "./delivery.service"
 import type { RecommendationAdmissionResult } from "./admission"
 import {
@@ -102,11 +104,26 @@ export const profileCandidateResult: LiveProfileCandidateResult = {
 }
 
 export function makeHarness(
-  options: { curatedFallback?: boolean; profileComparison?: boolean } = {},
+  options: {
+    curatedFallback?: boolean
+    profileComparison?: boolean
+    database?: PrismaClient
+    nowMilliseconds?: () => number
+  } = {},
 ) {
   const requests = new Map<string, Record<string, unknown>>()
   const transactions: string[] = []
+  const evidenceWrites: Array<Array<Record<string, unknown>>> = []
   const tx = {
+    $executeRaw: vi.fn(
+      async (_query: TemplateStringsArray, ...values: unknown[]) => {
+        const rows = JSON.parse(values[0] as string) as Array<
+          Record<string, unknown>
+        >
+        evidenceWrites.push(rows)
+        return rows.length
+      },
+    ),
     $queryRaw: vi.fn(async (): Promise<Array<{ id: string }>> => []),
     recommendationRequest: {
       create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
@@ -125,13 +142,6 @@ export function makeHarness(
     },
     recommendationCandidateRun: {
       create: vi.fn(async (_input: { data: Record<string, unknown> }) => ({})),
-    },
-    recommendationCandidateStageEvidence: {
-      createMany: vi.fn(
-        async (_input: { data: Array<Record<string, unknown>> }) => ({
-          count: 0,
-        }),
-      ),
     },
     recommendationPersonalizationDecision: {
       create: vi.fn(
@@ -204,7 +214,7 @@ export function makeHarness(
   let clock = Date.now()
   let id = 0
   const service = new RecommendationDeliveryService({
-    prisma: prisma as never,
+    prisma: options.database ?? (prisma as never),
     admission: {
       acquire,
       release,
@@ -225,14 +235,18 @@ export function makeHarness(
       activeKid: "active-kid",
       signDeliveryCapability,
     },
-    now: () => new Date("2026-08-19T03:00:00.000Z"),
-    nowMilliseconds: () => clock,
-    newId: () => `fresh-${++id}`,
+    now: options.database
+      ? () => new Date()
+      : () => new Date("2026-08-19T03:00:00.000Z"),
+    nowMilliseconds:
+      options.nowMilliseconds ?? (options.database ? Date.now : () => clock),
+    newId: options.database ? randomUUID : () => `fresh-${++id}`,
   })
   return {
     service,
     requests,
     transactions,
+    evidenceWrites,
     tx,
     prisma,
     acquire,

@@ -341,11 +341,24 @@ describe("swap", () => {
     expect(midSwap.swapFrom).toEqual({
       committedPath: existing.committedPath,
       renditionDocumentId: "rend-1",
+      dubDocumentId: "dub-1",
       qualityLabel: "High",
       subtitleLanguageSlug: null,
       totalBytes: 1000,
       posterPath: null,
     })
+  })
+
+  // The sheet sends the ACTIVE dub, so a swap can change language. Before this
+  // the record kept the old dub while fetching the new dub's file.
+  it("a language swap names the request's dub on the record and keeps the old one for a revert", async () => {
+    const h = makeHarness({ records: [makeRecord()] })
+    const request = makeRequest({ dubDocumentId: "dub-2" })
+    request.rendition = { ...request.rendition, documentId: "rend-2" }
+    expect(await h.lifecycle.swap(request)).toEqual({ ok: true })
+    const midSwap = h.writes[0]
+    expect(midSwap.dubDocumentId).toBe("dub-2")
+    expect(midSwap.swapFrom?.dubDocumentId).toBe("dub-1")
   })
 
   // U1 regression: swap() spreads `...existing`, so it must preserve the five
@@ -789,6 +802,7 @@ describe("native handlers", () => {
     const existing = makeRecord({ renditionDocumentId: "rend-old" })
     const h = makeHarness({ records: [existing] })
     const request = makeRequest({
+      dubDocumentId: "dub-2",
       subtitleLanguageSlug: "korean",
       subtitleUrl: null,
     })
@@ -801,6 +815,8 @@ describe("native handlers", () => {
     const record = h.records.get("washi-gospel-1")
     expect(record?.state).toBe("downloaded")
     expect(record?.renditionDocumentId).toBe("rend-old")
+    // The old file is the old dub's audio, so the revert names it again.
+    expect(record?.dubDocumentId).toBe("dub-1")
     expect(record?.swapFrom).toBeNull()
   })
 

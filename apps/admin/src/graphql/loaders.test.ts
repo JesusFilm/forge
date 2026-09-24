@@ -44,6 +44,7 @@ describe("createLoaders", () => {
       "experienceLocaleById",
       "languageById",
       "preferredPlayableDub",
+      "selectedBlockVideoDub",
       "videoBibleCitationsByVideoId",
       "videoById",
       "videoByIdWithQuery",
@@ -382,25 +383,21 @@ describe("videoMuxPlaybackIdByIdAndLanguageSlug", () => {
     language: { slug: string | null } | null
     muxVideo: { playbackId: string | null } | null
   }
-  type VideoStub = {
+  type FallbackStub = {
     id: string
-    primaryLanguageId: string | null
-    dubs: Array<{
-      languageId: string | null
-      muxVideo: { playbackId: string | null } | null
-    }>
+    playbackId: string | null
   }
 
   function makePlaybackPrisma({
     exactDubs,
-    fallbackVideos,
+    fallbackRows,
     onExactFindMany,
-    onVideoFindMany,
+    onFallbackQuery,
   }: {
     exactDubs?: ExactDubStub[]
-    fallbackVideos?: VideoStub[]
+    fallbackRows?: FallbackStub[]
     onExactFindMany?: (args: unknown) => void
-    onVideoFindMany?: (args: unknown) => void
+    onFallbackQuery?: (args: unknown) => void
   }) {
     return {
       experience: { findMany: async () => [] },
@@ -412,12 +409,10 @@ describe("videoMuxPlaybackIdByIdAndLanguageSlug", () => {
           return exactDubs ?? []
         },
       },
-      video: {
-        findMany: async (args: { where: { id: { in: string[] } } }) => {
-          onVideoFindMany?.(args)
-          const wanted = new Set(args.where.id.in)
-          return (fallbackVideos ?? []).filter((row) => wanted.has(row.id))
-        },
+      $queryRaw: async (query: { values: unknown[] }) => {
+        onFallbackQuery?.(query)
+        const wanted = new Set(query.values)
+        return (fallbackRows ?? []).filter((row) => wanted.has(row.id))
       },
     } as unknown as Parameters<typeof createLoaders>[0]
   }
@@ -432,16 +427,10 @@ describe("videoMuxPlaybackIdByIdAndLanguageSlug", () => {
             muxVideo: { playbackId: "mux-english" },
           },
         ],
-        fallbackVideos: [
+        fallbackRows: [
           {
             id: "v1",
-            primaryLanguageId: "lang-primary",
-            dubs: [
-              {
-                languageId: "lang-primary",
-                muxVideo: { playbackId: "mux-primary" },
-              },
-            ],
+            playbackId: "mux-primary",
           },
         ],
       }),
@@ -455,18 +444,14 @@ describe("videoMuxPlaybackIdByIdAndLanguageSlug", () => {
     ).resolves.toBe("mux-english")
   })
 
-  it("falls back to the primary playable Mux dub when requested language has no match", async () => {
+  it("uses the projected fallback when requested language has no match", async () => {
     const loaders = createLoaders(
       makePlaybackPrisma({
         exactDubs: [],
-        fallbackVideos: [
+        fallbackRows: [
           {
             id: "v1",
-            primaryLanguageId: "lang-en",
-            dubs: [
-              { languageId: "lang-es", muxVideo: { playbackId: "mux-es" } },
-              { languageId: "lang-en", muxVideo: { playbackId: "mux-en" } },
-            ],
+            playbackId: "mux-en",
           },
         ],
       }),
@@ -492,17 +477,16 @@ describe("videoMuxPlaybackIdByIdAndLanguageSlug", () => {
             muxVideo: { playbackId: "mux-v2-en" },
           },
         ],
-        fallbackVideos: [
+        fallbackRows: [
           {
             id: "v1",
-            primaryLanguageId: null,
-            dubs: [{ languageId: null, muxVideo: { playbackId: "mux-v1" } }],
+            playbackId: "mux-v1",
           },
         ],
         onExactFindMany: () => {
           exactCalls++
         },
-        onVideoFindMany: () => {
+        onFallbackQuery: () => {
           fallbackCalls++
         },
       }),
@@ -523,16 +507,12 @@ describe("videoMuxPlaybackIdByIdAndLanguageSlug", () => {
 
   it("queries only playable dubs that have Mux playback ids", async () => {
     let exactArgs: unknown
-    let fallbackArgs: unknown
     const loaders = createLoaders(
       makePlaybackPrisma({
         exactDubs: [],
-        fallbackVideos: [],
+        fallbackRows: [],
         onExactFindMany: (args) => {
           exactArgs = args
-        },
-        onVideoFindMany: (args) => {
-          fallbackArgs = args
         },
       }),
     )
@@ -555,26 +535,6 @@ describe("videoMuxPlaybackIdByIdAndLanguageSlug", () => {
         videoId: true,
         language: { select: { slug: true } },
         muxVideo: { select: { playbackId: true } },
-      },
-    })
-    expect(fallbackArgs).toMatchObject({
-      where: { id: { in: ["v1"] }, deletedAt: null },
-      select: {
-        id: true,
-        primaryLanguageId: true,
-        dubs: {
-          where: {
-            published: true,
-            hls: { not: null },
-            deletedAt: null,
-            muxVideo: { playbackId: { not: null }, deletedAt: null },
-          },
-          take: 5,
-          select: {
-            languageId: true,
-            muxVideo: { select: { playbackId: true } },
-          },
-        },
       },
     })
   })

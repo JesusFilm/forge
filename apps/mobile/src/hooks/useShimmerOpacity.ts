@@ -10,7 +10,10 @@ const BRIGHT = 1
  * Fabric gotchas: loop a single 0→1 timing + interpolate (a looped
  * Animated.sequence freezes after one pulse); useNativeDriver (JS driver won't update).
  */
-export function useShimmerOpacity(): Animated.AnimatedInterpolation<number> {
+export function useShimmerOpacity(
+  // False holds the skeleton still at its dim rest: nothing is loading now.
+  active = true,
+): Animated.AnimatedInterpolation<number> {
   const progress = useRef(new Animated.Value(0)).current
   // Create the interpolation once so the value attached to the view is stable.
   const opacity = useRef(
@@ -23,6 +26,17 @@ export function useShimmerOpacity(): Animated.AnimatedInterpolation<number> {
   ).current
 
   useEffect(() => {
+    if (!active) {
+      // The native stop reports its position back late and would overwrite an
+      // immediate reset, so reset in that report; skip it if the pulse restarted.
+      let restarted = false
+      progress.stopAnimation(() => {
+        if (!restarted) progress.setValue(0)
+      })
+      return () => {
+        restarted = true
+      }
+    }
     const loop = Animated.loop(
       Animated.timing(progress, {
         toValue: 1,
@@ -33,7 +47,7 @@ export function useShimmerOpacity(): Animated.AnimatedInterpolation<number> {
     )
     loop.start()
     return () => loop.stop()
-  }, [progress])
+  }, [progress, active])
 
   return opacity
 }

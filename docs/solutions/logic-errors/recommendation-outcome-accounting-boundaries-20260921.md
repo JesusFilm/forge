@@ -1,7 +1,7 @@
 ---
 title: "Keep recommendation evidence aligned with the behavior it measures"
 date: "2026-09-21"
-last_updated: "2026-09-21"
+last_updated: "2026-09-22"
 category: logic-errors
 module: "Watch recommendation operational evidence"
 problem_type: logic_error
@@ -277,12 +277,68 @@ or successful health request alone does not establish which implementation is
 serving. Keep that installation evidence separate from a natural error observed
 by the collector, and from proving the cause or disposition of a failed mutation.
 
+## Sustained verification refinements — September 22
+
+The [13-hour production verification](../../operations/watch-production-verification-2026-09-22.md)
+finds new failures on the previously verified release. Seventy selection 200s
+do not erase a 706 ms selection 503, and a playback 5xx rate below 1% does not
+erase a concentrated 63-request failure burst. Keep the fixed population and
+its individual failure mechanisms alongside any aggregate acceptance threshold.
+
+- An allowlisted network code of `unknown` also accompanies ordinary
+  `TimeoutError` deadline expiry. Inspect the existing correlated trace before
+  calling it a socket, DNS or connection-refusal failure.
+- `transaction_exhausted` can mean either Serializable recovery or the separate
+  episode-lock budget. The observed fourth-attempt error is explicitly
+  `recommendation_episode_lock_exhausted`; do not call it a P2034 recurrence.
+- Count repeated application logs separately from underlying SQL failures.
+  One catalog shared-memory error produced 206 identical Yoga logs over roughly
+  38 seconds. Error fan-out overlaps a 38.55-second event-loop delay. A later
+  isolated reproduction with the pinned Next inspector and deployed map
+  structure blocks for 10.86–11.46 seconds. Logging existing stack strings keeps
+  all 206 errors in 36–39 ms. The subsequent
+  [actual-build correction](../performance-issues/next-error-inspection-amplifies-graphql-failures-20260922.md)
+  verifies interference with real concurrent mutations and preserves native
+  error details. This does not explain the initiating database allocation failure
+  or the separate capability-budget timeout.
+- Disable gauge interpolation with `.fill(null)` when inspecting individual
+  runtime samples. A ramp between adjacent gauge samples is not a sequence of
+  observed pauses. Preserve gaps in GC samples instead of treating them as zero.
+- Workflow step completion does not establish zero internal failures. Decode
+  the stored CBOR envelope and nested `devl` reference table, validate the result
+  shape, then sum the actual batch counters. Numeric references are not counts.
+- A fresh zero-pointer audit is a point-in-time invariant. Keep a scheduler's
+  longest completion interval and any stale-run observation even when all
+  classification and dispatch counters pass. A stale-run counter alone does
+  not establish that a stale publisher was rejected.
+
+## Bound audit work and align its clock with its snapshot
+
+In the [September 22 runtime release check](../../operations/watch-runtime-release-verification-2026-09-22.md),
+a read-only workflow-step query hit its five-second statement limit while a
+delivery request produced a timeout fallback. Read-only access and a timeout
+bound do not make diagnostic work free. Restrict historical step reads through
+the indexed scheduler-run identity before applying step-name/time filters.
+Record the diagnostic interval, keep overlapping failures in the production
+denominator, and distinguish possible interference from established causality.
+If the server-log API fails, retain the missing statement correlation instead
+of assigning each cancellation to an application or diagnostic backend.
+
+For a standalone canonical audit, choose the evaluation clock within the same
+read-only repeatable-read transaction as the audited data. A locally prepared
+clock reused against newer publications can make new attribution appear to
+come from the future. Retain any earlier nonzero observation and explain the
+clock limitation; a later consistent zero snapshot does not prove continuous
+eligibility or repair of the same pointer. Aggregate-only privacy requirements
+also constrain which per-pointer causal claims can be made.
+
 ## Related evidence
 
 - [Delivery event contract and limits](../../operations/watch-delivery-outcome-observation-2026-09-21.md)
 - [Profile audit and Admin accounting regressions](../../operations/watch-profile-audit-2026-09-21.md)
 - [Sustained production corpus](../../operations/watch-recommendation-corpus-review-2026-09-21.md)
 - [Exact transport-diagnostic deployment and outcome reconciliation](../../operations/watch-transport-cause-release-2026-09-21.md)
+- [September 22 sustained production verification](../../operations/watch-production-verification-2026-09-22.md)
 - [Denominator bias from excluded failures](excluding-failed-observations-from-eval-denominator-flatters-score.md)
 - [Web implementation PR #2352](https://github.com/JesusFilm/forge/pull/2352)
 - [Admin implementation PR #2353](https://github.com/JesusFilm/forge/pull/2353)

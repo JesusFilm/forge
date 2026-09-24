@@ -552,6 +552,50 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
   `accessibilityLabel` via `progressAccessibilityText`.
 - **RUM identity**: `setDatadogRumUser` receives the opaque auth subject id
   only — never email or display name.
+- **The sign-in gate (feat-543) hides sign-in from a signed-out viewer until
+  an operator opens it.** It covers two entry points: the Profile card and the
+  watch-page nudge. `isSignInAvailable()` in `src/lib/signInGate.ts` is the one
+  predicate. Its rule, in `src/lib/signInGateState.ts`, is a SYNC copy of TV's
+  feat-322 rule. A development bundle (`__DEV__`) always shows sign-in. A
+  release bundle shows it only when `EXPO_PUBLIC_SIGN_IN_ENABLED` is exactly
+  `1` or `true`; every other value hides it, including `TRUE` and an unset
+  value. While the gate is closed, the Profile card is disabled and reads
+  "Sign in (Coming soon)", and the nudge never mounts. A signed-in tester sees
+  no change, and the "Sign in again" step in account deletion is never gated.
+  `src/lib/__tests__/signInGateWiring.guard.test.js` fails when a caller of
+  `signInWithHostedPage` does not read the gate. The removal is `feat-544`.
+  - **Defaults.** Leave the value unset in production. Set preview on
+    purpose: unset hides sign-in from preview testers, and `1` keeps it. Set
+    the value only in the EAS dashboard or with `eas env`, with plain-text
+    visibility: a "secret" value may not reach `eas update`, and the bundle
+    makes the value public anyway. Never put it in an `eas.json` `env` block,
+    because an `eas.json` edit moves the runtime version.
+  - **A change needs a new bundle.** Expo inlines the value at bundle time.
+    Publish only with `update:preview` or `update:production`. The app applies
+    a downloaded update on the next launch, so check the Profile tab after a
+    second launch.
+  - **Reach.** The production OTA channel is dark (see "Cold-start splash"),
+    so the gate reaches installed builds only with the next native build.
+    Every build installed today carries a runtime version that `main` no
+    longer produces, so no update from `main` reaches it. Such a build keeps a
+    working sign-in until the tester installs a new native build. An update
+    brings the gate only to a pre-gate build that has the same runtime
+    version as the update.
+  - **Only a non-development build shows the gated state.** Use a
+    `preview-simulator` EAS build on iOS or an internal preview build on
+    Android with the value unset, and check the first launch after install,
+    before a downloaded update replaces the build's JavaScript. A dev client
+    that loads a release-mode bundle from
+    `EXPO_NO_DOTENV=1 npx expo start --no-dev --minify` shows it too. Play no
+    video on a build that carries the fleet search bearer: the recommendation
+    recorder writes that playback into production.
+  - **Accepted consequences.** The session snapshot starts signed out, so
+    after a cold launch a signed-in tester sees the disabled card until the
+    session read succeeds. After more than 7 days idle, the session expires:
+    the tester cannot sign in again or delete the account in the app, and the
+    support email is the deletion route. An auth deploy that ends every
+    session (a rotated signing secret, a lockstep Better Auth upgrade) signs
+    out every tester at once, so coordinate it with opening the gate.
 
 ## Recommendations API client (feat-516)
 
@@ -702,6 +746,117 @@ data layer and playback attribution only; the Home shelf is `feat-517`.
   `useManagedVideoPlayer.recommendations.test.tsx` pins that only `dismissed`
   and `replaced` close the episode from `endSession`.
 
+## Recommended for You shelf (feat-517)
+
+Home renders a Recommended for You row at the authored position of the
+`HomepageRecommendationsBlock` in the published `watch-home` Experience. The
+design record is `docs/plans/2026-09-21-1009-feat-mobile-recommended-for-you-shelf-plan.md`;
+it defines the KD, KTD, R and AE numbers the source comments cite.
+
+- **Block presence is the only server-side gate.** The adapter reads the
+  block by its `__typename` string against the unchanged legacy fragment. That
+  fragment returns only the bare type name, and the shelf reads no block field.
+  The adapter then reports the count of shelves emitted before the block as
+  `recommendationsInsertIndex`, beside `usedExperience`. `useWatchHome` holds
+  the model and the index in ONE state slot. A null index means the block is
+  absent OR the body fell back to the config model. `WatchHomeModel` and the
+  cold-launch snapshot keep their shape.
+- **One pure gate decides whether the feed item exists.**
+  `recommendationsShelfVisible` in `src/lib/watchHome/homeFeed.ts` needs the
+  index, `isRecommendationClientEnabled()` and a configured fleet bearer.
+  A closed gate leaves no feed item and no placeholder.
+- **A failed load hides the whole row at once, even on screen** (product
+  decision, 2026-09-24). `unavailable`, `disabled` and `unprovisioned` render
+  nothing, so Home keeps no empty gap. This replaced plan R8's rule, which
+  held the placeholder until the row left the viewport. The accepted cost is
+  a layout jump when the row hides in view. Web still holds the gap, so the
+  two surfaces differ on purpose. `served` is NOT a hide status: the
+  controller returns it one commit before its display slate syncs, and hiding
+  then would flash every good load. `RecommendationsShelf.test.tsx` pins both.
+- **The placeholder is the row's own heading over skeleton cards.** The
+  skeleton uses the served row's layout and the landscape card size, so the
+  swap to real cards moves nothing. The cards pulse through
+  `useShimmerOpacity` only while the slate is `idle` or `loading` AND Home is
+  focused. A deep link mounts Home unfocused, and its status can stay `idle`
+  for the whole watch session, so the loop must not run there. A still
+  skeleton, such as on a blurred Home, carries no "Loading recommendations"
+  progressbar, because a pulse means "still loading".
+- **`useShimmerOpacity(false)` resets inside `stopAnimation`'s callback, not
+  at once.** A native-driven loop reports its stop-time position back to JS
+  after the stop call, and that report overwrote an immediate `setValue(0)`.
+  The still skeleton then kept the stop-time brightness: (39,35,34) and
+  (39,36,34), about 85% opacity, against the (33,29,28) rest, 3 of 3 trials on
+  the iPhone 17 Pro simulator, 2026-09-24. A flag drops the late reset when the
+  pulse restarts first, or the reset would stop the new loop. Jest has no
+  native driver, so `useShimmerOpacity.test.tsx` holds the report back by hand.
+  See
+  `docs/solutions/ui-bugs/native-animated-stop-report-overwrites-immediate-setvalue.md`.
+- **Home hosts the slate; the row is a thin renderer.**
+  `useHomeRecommendations` owns the `useUserRecommendations` instance. The
+  row's first mount is the fetch trigger, because FlashList mounts it within
+  its draw distance. A closed gate stops the slate, its expiry timer and its
+  evidence. The last served slate stays on display across a refetch. While
+  Home is blurred (a tab switch or a root route on top) the controller HOLDS
+  every expiry-, segment-, profile- and pull-driven refresh. The controller
+  runs at most one refresh when focus returns. Event-driven triggers inside
+  `REFRESH_COALESCE_WINDOW_MS` (2 s) collapse into one refetch. The held
+  release and the expiry timer spend the window but are never dropped, or a
+  failed refetch would strand the shelf on dead capabilities.
+- **Impression eligibility is a pure dwell tracker over four signals**
+  (`src/lib/recommendations/impressionDwell.ts`). The first two are the row at
+  least half visible in Home's list, and the card at least half visible in the
+  row's list. The last two are the app in the foreground, and Home focused.
+  One continuous second with all four true records one impression per card per
+  slate request id; any drop cancels. Row visibility stands in for the card's
+  vertical exposure, because the row's own list measures only the horizontal
+  axis; both approximations under-record. Home's focus flag is the fourth
+  signal, because neither list re-evaluates viewability without a scroll or
+  layout change. A slate that lands under a watch route would otherwise read
+  as fully visible.
+- **The two lists capture their viewability wiring differently.** React
+  Native's FlatList captures both the callback and the config at construction.
+  FlashList 2 captures the config at construction and reads the callback prop
+  at report time. Both lists therefore share ONE config object and one
+  callback. `IMPRESSION_VIEWABILITY_CONFIG` is 50 percent with
+  `minimumViewTime` 250, which is FlashList's own default; 0 runs the check on
+  every scroll tick. Each list has one callback, created once, which reads the
+  current slate through refs. `guardViewabilityCallback` wraps every list
+  callback. An uncaught throw in Home's own list is fatal for Home, so the
+  guard logs once with a `rec_` attribute and drops the throw.
+- **Return-from-watch is a route-segment transition, not a focus event.**
+  `isReturnToHomeFromWatch` in `src/lib/recommendations/homeReturnSignal.ts`
+  is true only when the previous segments start with a root `watch` or
+  `series` segment outside `(tabs)`. The next segments must also start with
+  `(tabs)`. The predicate keys on the group marker, never a tab name: the
+  Discover tab is itself named `watch`. The SDUI `video`, `collection` and
+  `experience` routes do not count.
+  `app/__tests__/screenFreeze.guard.test.js` fails if any file under `app/` or
+  `src/` sets `freezeOnBlur` or `enableFreeze`. A frozen Home stops receiving
+  segment updates, and the trigger dies silently.
+- **A tap selects and navigates in the same tick.** The row calls the hook's
+  `select`, ignores its promise, and calls `router.navigate` (never `push`).
+  The row passes the item's slug and a seed built from the item's title and
+  image. A double-tap therefore opens one screen, and the recorder finds the
+  pending nonce when playback starts. A displayed slate past `expiresAt`
+  refreshes instead of selecting; the video still opens. `HomeCard` takes
+  `onPressOverride`, which replaces navigation only, and `actionName`
+  (`recommendation-card`).
+- **The experience shell remounts the Stack once per launch** when the stored
+  selection hydrates, which discards the controller. The proxy smoke on
+  2026-09-21 counted one slate per cold launch; re-check on a real Admin.
+- **Smoke recipe.** Behavior runs against the fake-admin proxy in
+  `docs/solutions/developer-experience/mobile-write-path-smoke-via-fake-admin-proxy.md`.
+  The proxy is extended to answer `UserRecommendations` with six real
+  production videos, plus the evidence and selection mutations. The proxy also
+  injects the block into the forwarded homepage Experience. The real contract
+  needs a provisioned local Admin. That Admin needs the video snapshot, the
+  seeded homepage Experience, the curated pool promoted, and
+  `RECOMMENDATION_CAPABILITY_KEYRING` set. Without the keyring, delivery
+  answers `unavailable` and every evidence, selection and claim write fails
+  `capability_unavailable`. That Admin also needs a local-only fleet key in
+  both `FLEET_ADMIN_API_KEYS` and mobile's
+  `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN`.
+
 ## Mini player and the root-owned playback session (feat-367)
 
 **The app owns ONE player and ONE video view, and neither belongs to a route.**
@@ -723,6 +878,51 @@ view into that rect. The chrome rides in the host layer too, not in the route.
   channel), plus the pure `presentation.ts`, `suppression.ts`, `layout.ts`,
   `heroYield.ts` and `pictureInPicture.ts`. The host is a `<Stack>` SIBLING, so
   a context could not reach both halves.
+- **One identity predicate: `sameSessionContent` in `store.ts`.** A screen
+  that mounts onto the video already floating publishes its descriptor by
+  slug alone, because the group-scoped `WatchSessionProvider` holds no record
+  until its effect runs; the id follows a commit later. The store's
+  replacement, its merge, and the host's adoption all read that predicate, so
+  the remount keeps the session. The host also holds the last progress
+  identity it resolved for the same slug (`holdProgressIdentity` in
+  `PlaybackHost.tsx`), so the id-less render neither re-keys the progress
+  recorder nor disposes the recommendation recorder. Before 2026-09-22 every
+  expand ended the session as `replaced`, reloaded the video from 0:00, and
+  claimed a second recommendation episode.
+- **A dub change keeps the viewer's place (since 2026-09-22).** The host
+  classifies every source change before the swap applies: a completed
+  download (`isOfflineContainerSwap`) and a dub pick (`isDubSwap`, both in
+  `src/lib/playerSource.ts`) each capture the live clock and arm the
+  `sourceLoad` resume latch that quality swaps use, so the seek lands before
+  any play. The two differ in what they tell the adapter: a download is
+  `"same-content"` and keeps its QoE session, a dub is `"new-content"` and
+  re-keys it, because the audio asset changed. A different VIDEO takes
+  neither claim and starts from its own beginning. Before this, a dub change
+  restarted at 0:00 as a stated boundary of the offline-swap work.
+  **A download is one dub.** `resolvePlayerSource` plays the file on disk only
+  while the settled dub is the downloaded one (or unknown, or has no stream);
+  a pick of another language streams that dub, and subtitles follow the
+  source that plays (`playingOffline` in `app/watch/[slug].tsx`). A container
+  swap that also changes language is `"new-content"` to the adapter. Read the
+  file and its dub through ONE accessor, `committedCopyFor` in
+  `DownloadsProvider`: mid-swap the file on disk is the OLD copy while the
+  record already names the incoming dub, so reading `getRecord().dubDocumentId`
+  beside `committedPath` plays the old language under the new pill. A swap
+  from the download sheet sends the ACTIVE dub, so it can change language;
+  `swap` in `downloadLifecycle.ts` writes that dub on the record, and the
+  `swapFrom` snapshot keeps the old one for a revert. The language sheet
+  reads the same accessor to mark the dub on disk with a "Downloaded" line
+  (`getStatusLabel` on `SearchableListSheet`), so the mark and the audio
+  that plays offline can never name different languages. Every reader keys
+  the accessor on the RECORD's slug (`video.slug`, the download sheet's key).
+  An expand remounts the watch group with a fresh `WatchSessionProvider`, so
+  the dub the viewer picked lives only in the floating session: the provider
+  seeds its default from that session ahead of the download, the store's
+  merge keeps a known `languageSlug` across a slug-only re-start, and the
+  host holds adoption while a remount's first render names no dub, or the
+  expand would swap the stream back to the file and undo the pick. Records
+  written by a language re-download BEFORE this change still carry the old
+  dub id under the new file; no repair runs for them.
 - **`MiniPlayerWindow.tsx` is chrome, never a second video view.** It draws the
   controls, the drag, the ended/failed states and the accessibility surface over
   the frame the host animates. The drag node never takes the native driver

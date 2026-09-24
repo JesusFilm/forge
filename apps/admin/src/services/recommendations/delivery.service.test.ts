@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { HYBRID_PERSONALIZED_MANIFEST_ID } from "./promotion/manifest"
 import { VideoNotFoundError } from "@/services/scene-recommendations.service"
 import { RecommendationInternalStateError } from "./errors"
+import { runSemanticCandidatePlatform } from "./orchestration"
+import { adaptSemanticCandidates } from "./candidate"
 
 import {
   candidate,
@@ -17,6 +19,254 @@ afterEach(() => {
 })
 
 describe("RecommendationDeliveryService", () => {
+  it.each(["exception", "eligibility-parity", "ranker-parity"])(
+    "retains fresh-first ordering and recent reserves during %s recovery",
+    async (failure) => {
+      for (const count of [7, 6]) {
+        const h = makeHarness()
+        h.retrieve.mockResolvedValue(semanticCandidates(count))
+        h.resolveRecentContext.mockResolvedValue({
+          videos: [
+            {
+              targetMediaId: "watched-alternate",
+              videoCoreId: "different-core",
+              videoTitle: "Semantic video 1",
+              reasonCodes: ["recently_tried"],
+            },
+          ],
+        })
+        h.orchestrate.mockImplementation((args) => {
+          if (failure === "exception") throw new Error("platform unavailable")
+          const result = runSemanticCandidatePlatform(args)
+          return {
+            ...result,
+            parity: {
+              ...result.parity,
+              ...(failure === "eligibility-parity"
+                ? { candidateEligibility: "failed" as const }
+                : { ranker: "failed" as const }),
+            },
+          }
+        })
+        const response = await h.service.deliver(
+          input(`recovery-${failure}-${count}`),
+        )
+        expect(response.result).toBe("fallback")
+        expect(response.items.map((item) => item.targetMediaId)).toEqual([
+          ...semanticCandidates(count)
+            .slice(1)
+            .map((item) => item.videoId),
+          ...(count === 6 ? ["semantic-video-1"] : []),
+        ])
+      }
+    },
+  )
+
+  it("keeps localized same-title editions as curated reserves", async () => {
+    const h = makeHarness({ curatedFallback: true })
+    h.retrieve.mockResolvedValue([])
+    h.resolveRecentContext.mockResolvedValue({
+      videos: [
+        {
+          targetMediaId: "watched-edition",
+          videoCoreId: "unrelated-core",
+          videoTitle: "Titre partage",
+          reasonCodes: ["recently_tried"],
+        },
+      ],
+    })
+    const candidates = semanticCandidates(7)
+    candidates[0] = { ...candidates[0]!, videoTitle: "Titre partage" }
+    const nominations = adaptSemanticCandidates(candidates, {
+      surface: "watch-below-player-v1",
+      purpose: "watch",
+      locale: "fr",
+      audioLanguageSlug: "french",
+    }).nominations.map((nomination) => ({
+      ...nomination,
+      source: { ...nomination.source, generator: "curated" },
+    }))
+    h.retrieveCuratedFallback.mockResolvedValue(nominations)
+    const request = {
+      ...input("localized-curated"),
+      locale: "fr",
+      audioLanguageSlug: "french",
+    }
+    const fresh = await h.service.deliver(request)
+    expect(fresh.items.map((item) => item.targetMediaId)).toEqual(
+      candidates.slice(1).map((item) => item.videoId),
+    )
+    expect(h.resolveRecentContext).toHaveBeenCalledWith(
+      expect.objectContaining({ locale: "fr" }),
+    )
+    h.retrieveCuratedFallback.mockResolvedValue(nominations.slice(0, 6))
+    const sparse = await h.service.deliver(request)
+    expect(sparse.items.map((item) => item.targetMediaId)).toEqual([
+      ...candidates.slice(1, 6).map((item) => item.videoId),
+      candidates[0]!.videoId,
+    ])
+  })
+
+  it("bounds a pending history read without issuing recommendations", async () => {
+    vi.useFakeTimers()
+    const h = makeHarness({ nowMilliseconds: Date.now })
+    h.resolveRecentContext.mockImplementation(() => new Promise(() => {}))
+    const delivery = h.service.deliver(input("history-timeout"))
+    await vi.advanceTimersByTimeAsync(1250)
+    await expect(delivery).resolves.toMatchObject({
+      result: "unavailable",
+      reason: "recent_context_timeout",
+      items: [],
+    })
+    expect(h.tx.recommendationRequest.create).not.toHaveBeenCalled()
+    expect(h.tx.recommendationCandidateRun.create).not.toHaveBeenCalled()
+    expect(h.signDeliveryCapability).not.toHaveBeenCalled()
+    expect(h.release).toHaveBeenCalledOnce()
+  })
+
+  it("reserves same-session history time when authorization stalls and ignores a late authorization result", async () => {
+    vi.useFakeTimers()
+    const startedAt = Date.now()
+    const h = makeHarness({ nowMilliseconds: Date.now })
+    h.retrieve.mockResolvedValue(semanticCandidates(7))
+    h.authorizeProfile.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          setTimeout(() => resolve(true), 500)
+        }),
+    )
+    h.resolveRecentContext.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          setTimeout(
+            () =>
+              resolve({
+                videos: [
+                  {
+                    targetMediaId: "semantic-video-1",
+                    reasonCodes: ["recently_tried"],
+                  },
+                ],
+              }),
+            100,
+          )
+        }),
+    )
+    const delivery = h.service.deliver(personalizedInput("slow-authorization"))
+    await vi.advanceTimersByTimeAsync(449)
+    expect(h.resolveRecentContext).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(1)
+    expect(h.authorizeProfile).toHaveBeenCalledWith(
+      expect.objectContaining({ deadlineAt: startedAt + 450 }),
+    )
+    expect(h.resolveRecentContext).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionDigest: "a".repeat(64),
+        profileTokenDigest: null,
+        allowDurableProfileLinks: false,
+      }),
+    )
+    await vi.advanceTimersByTimeAsync(50)
+    expect(h.retrieveProfile).not.toHaveBeenCalled()
+    expect(h.signDeliveryCapability).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(50)
+    const response = await delivery
+    expect(response.result).toBe("served")
+    expect(response.items.map((item) => item.targetMediaId)).toEqual(
+      semanticCandidates(7)
+        .slice(1)
+        .map((item) => item.videoId),
+    )
+    expect(h.resolveRecentContext).toHaveBeenCalledOnce()
+    expect(h.retrieveProfile).not.toHaveBeenCalled()
+    expect(h.loadViewingModeAffinity).not.toHaveBeenCalled()
+  })
+
+  it.each(["resolved", "rejected"])(
+    "retains %s history while optional profile retrieval consumes its deadline",
+    async (historyState) => {
+      vi.useFakeTimers()
+      const h = makeHarness({ nowMilliseconds: Date.now })
+      h.retrieve.mockResolvedValue(semanticCandidates(7))
+      h.retrieveProfile.mockImplementation(() => new Promise(() => {}))
+      if (historyState === "rejected") {
+        h.resolveRecentContext.mockRejectedValue(
+          new Error("history unavailable"),
+        )
+      } else {
+        h.resolveRecentContext.mockResolvedValue({
+          videos: [
+            {
+              targetMediaId: "semantic-video-1",
+              reasonCodes: ["recently_tried"],
+            },
+          ],
+        })
+      }
+      const delivery = h.service.deliver(
+        personalizedInput(`slow-profile-${historyState}`),
+      )
+      await vi.advanceTimersByTimeAsync(0)
+      expect(h.resolveRecentContext).toHaveBeenCalledOnce()
+      expect(h.retrieveProfile).toHaveBeenCalledOnce()
+      await vi.advanceTimersByTimeAsync(1250)
+      const response = await delivery
+      if (historyState === "rejected") {
+        expect(response).toMatchObject({
+          result: "unavailable",
+          reason: "recent_context_unavailable",
+          items: [],
+        })
+        expect(h.signDeliveryCapability).not.toHaveBeenCalled()
+      } else {
+        expect(response).toMatchObject({
+          result: "fallback",
+          personalization: { reason: "profile_retrieval_timeout" },
+        })
+        expect(response.items.map((item) => item.targetMediaId)).toEqual(
+          semanticCandidates(7)
+            .slice(1)
+            .map((item) => item.videoId),
+        )
+        expect(h.tx.recommendationCandidateRun.create).toHaveBeenCalledOnce()
+      }
+    },
+  )
+
+  it.each(["semantic", "cold-profile", "failed-profile", "failed-hybrid"])(
+    "keeps short-watch feedback when serving the %s lane",
+    async (lane) => {
+      const h = makeHarness()
+      h.retrieve.mockResolvedValue(semanticCandidates(7))
+      h.resolveRecentContext.mockResolvedValue({
+        videos: [
+          {
+            targetMediaId: "semantic-video-1",
+            reasonCodes: ["recently_tried"],
+          },
+        ],
+      })
+      if (lane === "cold-profile") h.retrieveProfile.mockResolvedValue(null)
+      if (lane === "failed-profile")
+        h.retrieveProfile.mockRejectedValue(new Error("profile unavailable"))
+      if (lane === "failed-hybrid") {
+        h.retrieveProfile.mockResolvedValue(profileCandidateResult)
+        h.orchestrateHybrid.mockImplementation(() => {
+          throw new Error("hybrid unavailable")
+        })
+      }
+      const response = await h.service.deliver(
+        lane === "semantic" ? input() : personalizedInput(),
+      )
+      expect(response.items.map((item) => item.targetMediaId)).toEqual(
+        semanticCandidates(7)
+          .slice(1)
+          .map((item) => item.videoId),
+      )
+      expect(h.resolveRecentContext).toHaveBeenCalledOnce()
+    },
+  )
+
   it("uses an authorized profile directly without shadow or promotion assignment", async () => {
     const harness = makeHarness()
     harness.assignExperiment.mockResolvedValue({
@@ -220,8 +470,10 @@ describe("RecommendationDeliveryService", () => {
       expect(count).toBeLessThanOrEqual(64)
     }
     expect(run.composedCount).toBe(6)
-    const evidence = harness.tx.recommendationCandidateStageEvidence.createMany
-      .mock.calls[0]?.[0].data as Array<{ stage: string; ordinal: number }>
+    const evidence = harness.evidenceWrites[0] as Array<{
+      stage: string
+      ordinal: number
+    }>
     expect(evidence.every((entry) => entry.ordinal <= 63)).toBe(true)
     expect(
       Object.values(
@@ -286,7 +538,7 @@ describe("RecommendationDeliveryService", () => {
       expect.objectContaining({
         sessionDigest: "a".repeat(64),
         profileTokenDigest: "d".repeat(64),
-        allowDurableProfileLinks: false,
+        allowDurableProfileLinks: true,
       }),
     )
     expect(harness.authorizeProfile).toHaveBeenCalledWith(
@@ -295,8 +547,7 @@ describe("RecommendationDeliveryService", () => {
         profileTokenDigest: "d".repeat(64),
       }),
     )
-    const evidenceRows = harness.tx.recommendationCandidateStageEvidence
-      .createMany.mock.calls[0]?.[0].data as Array<{
+    const evidenceRows = harness.evidenceWrites[0] as Array<{
       targetMediaId: string | null
       reasonCodes: string[]
     }>
@@ -324,7 +575,7 @@ describe("RecommendationDeliveryService", () => {
     ).toHaveLength(6)
   })
 
-  it("keeps hybrid delivery available when bounded recent context fails", async () => {
+  it("does not silently ignore playback history when bounded recent context fails", async () => {
     const harness = makeHarness()
     harness.assignExperiment.mockResolvedValue({
       assignment: {
@@ -353,31 +604,14 @@ describe("RecommendationDeliveryService", () => {
     )
 
     expect(delivery).toMatchObject({
-      result: "served",
-      composedCount: 6,
-      shortfallReason: null,
-      personalization: { executionMode: "hybrid_personalized" },
+      result: "unavailable",
+      reason: "recent_context_unavailable",
+      items: [],
     })
     expect(harness.resolveRecentContext).toHaveBeenCalledWith(
       expect.objectContaining({ allowDurableProfileLinks: true }),
     )
-    expect(
-      harness.tx.recommendationCandidateRun.create.mock.calls[0]?.[0].data,
-    ).toMatchObject({
-      evidenceComplete: false,
-      fallbackReason: "recent_context_unavailable",
-    })
-    expect(
-      harness.tx.recommendationCandidateStageEvidence.createMany.mock
-        .calls[0]?.[0].data,
-    ).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          sourceGenerator: "recent-context",
-          reasonCodes: ["recent_context_unavailable"],
-        }),
-      ]),
-    )
+    expect(harness.tx.recommendationCandidateRun.create).not.toHaveBeenCalled()
   })
 
   it("returns four available unique videos with an insufficient-catalogue reason", async () => {

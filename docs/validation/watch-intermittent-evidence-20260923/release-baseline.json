@@ -1,0 +1,139 @@
+{
+  "window": {
+    "from": "2026-09-23T03:10:00Z",
+    "to": "2026-09-23T03:40:00Z"
+  },
+  "source": "Datadog primary trace.web.request.hits and indexed semantic/runtime logs",
+  "http": {
+    "web": [
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/profile",
+        "count": 238
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "get_/api/recommendations/for-you/availability",
+        "count": 38
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/content-actions",
+        "count": 1
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations/profile",
+        "count": 672
+      },
+      {
+        "http.status_code": "409",
+        "resource_name": "post_/api/recommendations/playback",
+        "count": 1
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations",
+        "count": 172
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/select",
+        "count": 2
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations/evidence",
+        "count": 171
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations/playback",
+        "count": 231
+      },
+      {
+        "http.status_code": "503",
+        "resource_name": "post_/api/recommendations/playback",
+        "count": 1
+      },
+      {
+        "http.status_code": "503",
+        "resource_name": "post_/api/recommendations/profile",
+        "count": 1
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/evidence",
+        "count": 494
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/playback",
+        "count": 1423
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations",
+        "count": 213
+      }
+    ],
+    "total": 3658,
+    "webFiveXX": 2,
+    "playbackTotal": 1656,
+    "playbackFiveXX": 1,
+    "admin": {
+      "resource": "post",
+      "total": 17855,
+      "fiveXX": 0,
+      "note": "Admin resource_name is post, not the route-shaped Web resource; all POSTs, not isolated GraphQL operations."
+    }
+  },
+  "delivery": {
+    "http200": 172,
+    "indexed200": 172,
+    "http403": 213,
+    "indexed403": 212,
+    "served": 143,
+    "fallbacks": {
+      "no_candidates": 18,
+      "seed_embedding_unavailable": 9,
+      "cooldown": 2
+    },
+    "timeoutFallbacks": 0,
+    "unmatchedIndexed403": 1
+  },
+  "runtime": {
+    "seeded": {
+      "served": 143,
+      "p95ServedMs": 383.8102703031697,
+      "empty": 19,
+      "fallback": 8,
+      "unavailable": 2,
+      "timeoutFallback": 0
+    },
+    "selection": {
+      "resolved": 2,
+      "p95Ms": 66.5173
+    }
+  },
+  "evidence": {
+    "adminAcceptedFactBatches": 1227,
+    "webAcceptedFactBatches": 1226,
+    "adminReplayFactBatches": 3,
+    "webReplayFactBatches": 3,
+    "claims": 93,
+    "contexts": 97,
+    "invalidBindings": 1,
+    "upstreamAmbiguous503": 1,
+    "transactionBusyAttempts": {
+      "first": 19,
+      "second": 1
+    }
+  },
+  "limitations": [
+    "Window overlaps unrelated Admin deployment 911ad0058.",
+    "One delivery 403 is missing from indexed outcomes.",
+    "Admin/Web fact counts differ; no durable-loss attribution follows.",
+    "No fresh profile integrity audit or production fault injection."
+  ]
+}

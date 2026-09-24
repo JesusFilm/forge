@@ -1,0 +1,169 @@
+{
+  "revision": "37e10b622bd66e55647cf561c3896b2d4fbb4dce",
+  "pullRequest": "https://github.com/JesusFilm/forge/pull/2404",
+  "mergedAt": "2026-09-23T04:02:07Z",
+  "deploymentsObservedAt": "2026-09-23T04:29:35Z",
+  "deployments": [
+    {
+      "service": "Admin",
+      "id": "05d2971e-d42a-4f32-b91a-3c552cb44353",
+      "status": "SUCCESS"
+    },
+    {
+      "service": "worker",
+      "id": "264a75df-cc73-47a9-aee1-7c336e8f986b",
+      "status": "SUCCESS"
+    },
+    {
+      "service": "Web",
+      "id": "9448a080-628d-4964-ae79-81c1f920739e",
+      "status": "SUCCESS"
+    }
+  ],
+  "window": {
+    "from": "2026-09-23T04:30:00Z",
+    "to": "2026-09-23T04:40:00Z",
+    "queriedAt": "2026-09-23T04:43:00Z"
+  },
+  "source": "Datadog primary trace.web.request.hits and indexed semantic/runtime logs; Railway deployment status and HTTP health log",
+  "http": {
+    "web": [
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/select",
+        "count": 1
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations",
+        "count": 54
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations/profile",
+        "count": 146
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations",
+        "count": 55
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations/evidence",
+        "count": 37
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "get_/api/recommendations/for-you/availability",
+        "count": 17
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/profile",
+        "count": 92
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations/playback",
+        "count": 58
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/evidence",
+        "count": 185
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/playback",
+        "count": 759
+      }
+    ],
+    "total": 1404,
+    "webFiveXX": 0,
+    "playbackTotal": 817,
+    "playbackFiveXX": 0,
+    "admin": {
+      "resource": "post",
+      "total": 5641,
+      "fiveXX": 0
+    }
+  },
+  "delivery": {
+    "http200": 55,
+    "indexed200": 55,
+    "http403": 54,
+    "indexed403": 54,
+    "served": 40,
+    "fallbacks": {
+      "no_candidates": 5,
+      "seed_embedding_unavailable": 10
+    },
+    "timeoutFallbacks": 0,
+    "unmatchedIndexed200": 0
+  },
+  "runtime": {
+    "seeded": {
+      "served": 40,
+      "p95ServedMs": 497.7794014558156,
+      "empty": 11,
+      "p95EmptyMs": 376.2100669308296,
+      "fallback": 4,
+      "p95FallbackMs": 550.1331519902212,
+      "timeoutFallback": 0
+    },
+    "selection": {
+      "resolved": 1,
+      "p95Ms": 76.8652160000056
+    }
+  },
+  "evidence": {
+    "adminAcceptedFactBatches": 678,
+    "webAcceptedFactBatches": 675,
+    "adminReplayFactBatches": 3,
+    "webReplayFactBatches": 3,
+    "adminClaims": 37,
+    "webClaims": 37,
+    "webContexts": 37,
+    "indexedSuccessfulPlaybackOutcomes": 752,
+    "primarySuccessfulPlaybackHttp": 759,
+    "unmatchedSuccessfulPlaybackHttp": 7,
+    "transactionBusyAttempts": {
+      "first": 11
+    },
+    "indexedExhaustedTransactions": 0,
+    "indexedUpstreamAmbiguous503": 0,
+    "recognizedCrawlerPlaybackRejections": 28,
+    "recognizedCrawlerEvidenceRejections": 37
+  },
+  "indexedFailureSignatures": {
+    "redisOperationTimeout": 0,
+    "redisOperationCapacity": 0,
+    "redisAdmissionTimeout": 0,
+    "redisOfflineQueue": 0,
+    "deliveryTimeout": 0,
+    "recentContextTimeout": 0,
+    "recentContextUnavailable": 0
+  },
+  "health": {
+    "status": 200,
+    "bodyStatus": "ok",
+    "externalProbeSeconds": [0.611404, 5.585065, 0.567931, 0.625124],
+    "outlierRailwayHttp": {
+      "timestamp": "2026-09-23T04:29:35.614572223Z",
+      "status": 200,
+      "totalMs": 12,
+      "upstreamMs": 12
+    }
+  },
+  "limitations": [
+    "Ten-minute natural-traffic observation, not a production outage/recovery test or complete acceptance.",
+    "Served runtime p95 rose from 383.81ms for 143 baseline completions to 497.78ms for 40 release completions; unequal small cohorts do not establish cause or absence of regression.",
+    "Seed-embedding fallback was 10/55 versus 9/172 baseline; preserve the difference for longer acceptance.",
+    "Seven successful playback HTTP responses lack matching indexed successful outcomes; Admin/Web accepted fact counts differ by three. Neither gap proves durable loss or health.",
+    "Admin HTTP metric covers all POSTs rather than isolated GraphQL operations; HTTP 200 alone is not semantic success.",
+    "Baseline overlaps the unrelated 911ad Admin deployment; no fresh integrity audit or full-stack production fault injection was performed in this release check.",
+    "Worker query_embedding_prewarm_failure failed=6 total=6 is present before and after this release.",
+    "Separate acceptance task owns the 04:30-06:30 UTC window, fresh canonical audit and remaining local full-stack proof."
+  ]
+}

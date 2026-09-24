@@ -3,7 +3,7 @@ id: "feat-464"
 title: "Recommendation evidence transport and crawler integrity"
 owner: "nisal"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: ""
 duration: 3
 depends_on:
@@ -21,6 +21,19 @@ tags:
   - "reliability"
   - "observability"
 ---
+
+## September 24 owner-approved closeout
+
+The owner accepted the deployed recovery implementation and production integrity
+proof on September 24. The completed scope includes the two-hour primary window,
+real-dependency/browser controls, exact durable replay and final canonical audit.
+Remaining installed monitoring and production telemetry/browser coverage moved to
+[feat-545](feat-545-recommendation-monitoring-and-telemetry-closeout.md). The original
+acceptance language below is retained as history; transferred requirements are not
+represented as passed. Downstream activation gates now explicitly depend on feat-545.
+
+See the [acceptance record](../../operations/recommendation-evidence-acceptance-2026-09-23.md)
+for evidence and preserved limitations. No runtime flag or production setting changes.
 
 ## Problem
 
@@ -351,3 +364,185 @@ and semantic outcome accounting. The latest 41-monitor inventory still lacks
 the required alert coverage. No monitor write or Admin impersonation occurred;
 the installed-alert, matching authorized Admin and actual browser retry gates
 remain unmet.
+
+## September 22 sustained production verification
+
+The [September 22 sustained verification](../../operations/watch-production-verification-2026-09-22.md)
+covers 13 hours 10 minutes on exact revision `d0c749b9…`. Playback has
+65 HTTP 503s / 49,763 calls (0.130619%, no exclusions), including a separate
+63-request burst around a catalog shared-memory error and 38.55-second loop
+delay. One episode-lock budget exhausts; it is not P2034 exhaustion. All 16
+observed binding errors map to terminal 409, and all 6,840 recognized-crawler
+observations are rejected. These server facts do not prove browser retry behavior.
+Installed alerts and matching authorized Admin evidence remain unmet. Keep this
+ticket in progress and retain the burst despite the passing aggregate rate.
+
+## September 22 reproduced burst corrections released
+
+PRs #2369 and #2371 fix the reproduced GraphQL error-inspection amplification and
+catalog shared-memory workload. Both are verified in Admin and worker at
+`ce421561ee9bcf89991dea5a060a656e45c3434b`. The
+[release verification](../../operations/watch-runtime-release-verification-2026-09-22.md)
+keeps the first 17-minute logger-only population separate: 0 playback 5xx / 1,146
+requests, one terminal binding 409, and all 125 recognized crawler submissions
+rejected. Final-revision sustained acceptance remains pending. The fresh complete
+41-monitor inventory still lacks the required recommendation alerts. Read-only
+Datadog access, authenticated Admin acceptance and actual browser retry proof
+remain distinct constraints; no gate was waived to close this ticket.
+
+The 23:29–23:33 owned headed-browser canary now verifies normal Watch
+navigation, two served six-card envelopes, a selection HTTP 200 with a matching
+attributable database row, and 56 accepted playback fact receipts. Its incomplete
+response captures remain explicit. No real terminal 409 occurred, so the browser
+retry gate is still unmet; do not carry forward the obsolete claim that no
+browser can be run. Installed alerts and matching authenticated Admin acceptance
+also remain open. The [release record](../../operations/watch-runtime-release-verification-2026-09-22.md)
+retains these limits and the separate sustained observation.
+
+The complete 21:55–23:55 UTC primary population now has zero playback 5xx /
+8,725 requests and three binding 409s. Datadog observes 984 recognized crawler
+events, all terminal 403s, but lacks 13 playback/evidence outcome observations
+relative to primary HTTP counts. Independent Railway evidence reads fail, so
+their semantics remain unknown. Delivery is independently reconciled and has
+one HTTP 200 `delivery_timeout`, including its diagnostic-overlap uncertainty.
+No request is excluded. Twenty-four durable completed reconciliation batches
+and heartbeats have no recorded classification/dispatch failures. These advance
+production evidence without satisfying alerts, authenticated Admin, real browser
+terminal non-retry or complete final-release acceptance; status stays in progress.
+
+## September 22 authenticated acceptance and Redis update burst
+
+Normal authenticated Admin now verifies the fresh zero-current-pointer snapshot,
+one exact repaired-generation chain, and a complete fresh Watch qualified-outcome
+journey through later hybrid use. Credit these Admin checks; access is no longer
+the blocker. The [contextual release continuation](../../operations/watch-contextual-distance-release-2026-09-22.md)
+records the evidence and its snapshot limits.
+
+The longer 01:39–02:19 UTC release observation catches **19 playback HTTP 503s /
+1,738 requests (1.093%)**, with no exclusions. They occur during an automatic
+Admin Redis image update. A matching trace receives Admin HTTP 500 in 7.1 ms;
+the exact Admin error is the disconnected Redis GraphQL rate-limit store.
+These are fast upstream failures, not the historical selection deadline. A
+separate Web Redis automatic update overlaps one delivery admission 503. All
+477 seeded-delivery outcomes reconcile, with zero observed HTTP 200 timeout
+fallbacks and four successful selections. Retain the burst despite the earlier
+healthy fifteen minutes; neither population is the required sustained closure
+proof. No rate-limit guarantee or infrastructure setting was changed.
+
+Installed Datadog alerts/dashboard, real terminal-browser non-retry evidence and
+complete sustained transport acceptance remain open. Read-only access cannot
+install monitors. Redis update availability requires separate investigation;
+do not mask its failures with an in-memory limiter or ambiguous mutation retry.
+
+## September 22 bounded workload and production follow-up
+
+The [September 22 follow-up](../../operations/watch-budget-followup-2026-09-22.md) verifies the fixed 01:39–03:39 UTC playback threshold at 19/6,463 (0.294%), with no exclusions, and a fresh authenticated zero-current-pointer audit. The running scheduler has 23 completed batches and heartbeats with no classification failures or exhausted attempts. A complete retained real browser view supplies a 409 non-retry example with further network activity 10.55 seconds later; its response body/action and matching server trace are unavailable, so do not claim those details. Installed alerts/dashboard, complete outcome reconciliation and remaining transport proof keep this ticket in progress. The artifact explicitly retains the unmatched successful HTTP counts.
+
+The dashboard tool is discoverable, but Datadog explicitly rejects even widget
+validation because MCP writes are disabled for this organization. No matching
+dashboard or feat-464-tagged monitors were found. This replaces the earlier
+imprecise description of a read-only tool list with a verified organization
+policy blocker; Railway/database diagnosis remains available.
+
+## September 22 internal continuation
+
+The internal continuation reconciles every delivery, selection, playback and initial-evidence HTTP group in the fixed 02:34–04:34 UTC window using primary Railway logs. Playback is 0/7,185 5xx with no exclusions. Durable delivery, render/impression and selection counts reconcile; all 24 reconciliation batches complete without recorded errors, and the fresh authorized current-pointer audit is clean. Credit these production checks. No binding failure occurs in this window, so the earlier bounded browser proof is unchanged. Installed monitoring remains blocked by the Datadog organization write policy; this ticket is still in progress. See the [internal verification](../../operations/watch-budget-followup-2026-09-22.md#internal-continuation-workload-volume-and-reconciled-outcomes).
+
+## September 23 isolated diagnosis
+
+The [intermittent-evidence investigation](../../operations/watch-intermittent-evidence-investigation-2026-09-23.md)
+reconciles the 00:00-02:00 UTC primary window at zero playback 5xx / 6,981
+requests, with no exclusions. Railway fills fifteen missing indexed Web outcomes.
+A read-only aggregate confirms eighteen delivery timestamp rejections; local
+signed-token tests reproduce device-clock sensitivity but do not attribute those
+production events to clock skew. A separate local characterization shows startup
+health can return 200 while the production Redis rate-limit store rejects reads
+and writes. This is a readiness blind spot, not proof of a new production outage
+or a fix for the older Redis-update burst. No application behavior or production
+configuration changed. Keep this ticket in progress; proposed implementation,
+browser proof, fresh canonical integrity acceptance, and installed alerts remain
+separate decisions and gates.
+
+## September 23 controlled recovery experiment
+
+The owner-authorized [local experiment](../../operations/watch-intermittent-evidence-investigation-2026-09-23.md#controlled-recovery-experiment)
+reproduces the retained Redis failure through real Yoga HTTP, the production
+limiter/ioredis client, signed episode capabilities and real playback storage.
+Three restart rounds in each of two successful runs fail before resolver writes
+and recover on the existing client without restarting Admin. Exact replay and
+post-commit socket-loss replay preserve one fact. A silent Redis stall can instead
+outlast a caller timeout and commit later; do not equate timeout with non-commit.
+
+The real browser recorder's jsdom test identifies the recovery gap: fast 503s
+exhaust the three attempts at 0/100/300 ms and drop the facts permanently, even
+when the dependency recovers at one second. This is a confirmed local causal
+chain consistent with the historical Redis interruption, not evidence that every
+historical failed request lost facts. Minimal GraphQL/auth fixtures and independent
+browser tests are not a full live-browser production reproduction.
+
+This stage passes 169 focused cases including seven disposable-service cases;
+no application behavior, production setting, deployment or ticket acceptance gate
+changed. The next supported scope is bounded transient-outage resilience and
+pre-mutation admission cancellation, with readiness corrected separately. Keep
+the ticket in progress and the remaining production/monitoring gates intact.
+
+## September 23 bounded fact-recovery implementation
+
+The owner subsequently authorized investigation plus implementation/testing of
+the supported fix. `RecommendationPlaybackRecorder.tsx` retains three serialized
+attempts but spaces retries by 1-1.25 seconds and 8-10 seconds, expires attempted
+facts after 30 monotonic seconds, and prevents new player events from bypassing
+backoff. Immutable replay, count/body limits, terminal rejection and best-effort
+page-exit keepalive remain. Capabilities stay in memory; no admission, privacy,
+profile qualification, initial context/claim or production settings change.
+
+The [verification report](../../operations/watch-intermittent-evidence-investigation-2026-09-23.md#bounded-fix-and-verification)
+records 179 Web, 59 Admin and seven real-dependency passing cases. A local Chrome
+comparison uses real HTTP and recorder code with a synthetic API/player: the old
+recorder drops initial facts at 309 ms, while the new one accepts identical facts
+at 9,709 ms after an eight-second outage. Five paired healthy runs retain one
+claim/one fact request and show no measured startup regression. This is not full
+Watch/Admin or production verification. Both app typechecks pass.
+
+The local implementation is complete, not shipped. Shared admission cancellation,
+dependency-aware readiness, issuance recovery, production proof and installed
+monitoring are still open; do not mark this broad ticket complete. The
+[durable learning](../../solutions/logic-errors/playback-retries-exhaust-before-dependency-recovery-20260923.md)
+separates the verified recovery fix from those remaining gates.
+
+## September 23 release continuation
+
+The owner authorized completing bounded recovery and normal PR-to-main merge.
+The [release plan](../../plans/2026-09-23-003-fix-playback-recovery-release-plan.md)
+extends recovery to exact-nonce claims, bounds mandatory Redis admission before
+resolver execution, and makes health check Redis with bounded outstanding work.
+The [verification report](../../operations/watch-intermittent-evidence-investigation-2026-09-23.md#release-continuation)
+records 182 Web tests, 95 Admin tests and seven real Redis/Postgres HTTP controls.
+Initial context issuance is not blindly retried because its binding creation is
+not idempotent. This remains in progress pending the broader production acceptance,
+timestamp attribution, complete outcome reconciliation and installed-monitoring
+gates; the narrow release does not close the whole ticket.
+
+## September 23 completed acceptance observation
+
+The [acceptance continuation](../../operations/recommendation-evidence-acceptance-2026-09-23.md)
+verifies Web/Admin/worker actually running PR #2404 at `37e10b622`, with healthy
+bounded Redis readiness. The complete 04:30–06:30 UTC primary window has **zero
+playback 5xx / 4,716 POSTs**, zero fault exclusions, no observed receipt collision,
+exhausted playback retries or recognized-crawler success. Selection HTTP failures
+and delivery semantic fallbacks remain separate; neither timeout class occurs.
+
+Eight real-dependency cases and eight joined Chrome/Web/Admin/PostgreSQL controls
+cover recovery, silent stalls, exhaustion, early cancellation and post-commit lost
+acknowledgement. Exact replay has one write per event; a local terminal response
+has no retry amplification. Both natural production binding failures become 409,
+but neither has retained RUM coverage, so their browser disposition remains open.
+
+The final canonical snapshot scans **179,054 current pointers, zero ineligible**;
+authenticated Admin agrees. All 81 finalized cohort outcomes match watermarks and
+generations. Twenty-three committed reconciliation batches/heartbeats have no
+recorded failures; 14 affected-pointer occurrences queue 14 rebuilds, so this is
+convergence, not continuous zero. Web/Admin accepted batch counts agree; the report
+retains indexed gaps, one initial-evidence envelope gap and the unmatched browser 503. Installed monitors/dashboard remain blocked by the verified Datadog MCP-write
+policy and lack a configured destination. **Keep this ticket in progress**; do not
+waive monitoring, natural-browser coverage or complete operational reconciliation.

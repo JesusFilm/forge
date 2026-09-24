@@ -13,6 +13,7 @@ import { createPortal } from "react-dom"
 import type { MuxPlayerRef } from "@forge/video-player"
 
 import { WATCH_PAGE_RAIL_PADDING_CLASSES } from "@/lib/content-width"
+import { dispatchPlaybackNavigationIntent } from "@/lib/playback-navigation-intent"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import {
   readWatchVolumePreference,
@@ -79,6 +80,7 @@ function getWebKitFullscreenVideo(
 }
 
 export function HeroPlayerControls({
+  mediaId,
   player,
   playerRef,
   wrapperRef,
@@ -94,6 +96,7 @@ export function HeroPlayerControls({
   onVisibilityChange,
   onWatchNextInteraction,
 }: {
+  mediaId?: string
   player: MuxPlayerRef | null
   playerRef: React.RefObject<MuxPlayerRef | null>
   wrapperRef: React.RefObject<HTMLDivElement | null>
@@ -622,9 +625,15 @@ export function HeroPlayerControls({
         console.warn("[HeroPlayer] play() rejected", err)
       })
     } else {
+      if (mediaId)
+        dispatchPlaybackNavigationIntent({
+          mediaId,
+          action: "pause_intent",
+          cause: "user",
+        })
       p.pause()
     }
-  }, [playerRef])
+  }, [mediaId, playerRef])
 
   const toggleMute = useCallback(() => {
     const p = playerRef.current

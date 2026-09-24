@@ -145,9 +145,7 @@ describe("recommendation profile projection service", () => {
     expect(sessionSql).toContain("impression.expires_at >")
     expect(sessionSql).toContain("profile.created_at, link.linked_at")
     expect(durableSql).toContain("outcome.qualified_view = true")
-    expect(durableSql).toContain(
-      "selection.attribution_eligible_at IS NOT NULL",
-    )
+    expect(durableSql).not.toContain("selection.attribution_eligible_at")
     expect(durableSql).not.toContain("outcome.learning_eligible = true")
     expect(durableSql).not.toContain("outcome.created_at >= profile.created_at")
     expect(priorDurableSql).toContain(
@@ -163,20 +161,20 @@ describe("recommendation profile projection service", () => {
       "JOIN recommendation_playback_episode episode ON episode.session_digest = link.session_digest",
     )
     expect(currentDurableSql).toContain('episode.media_id AS "targetMediaId"')
-    expect(currentDurableSql).toContain(
+    expect(currentDurableSql).not.toContain(
       "LEFT JOIN recommendation_request request",
     )
-    expect(currentDurableSql).toContain(
+    expect(currentDurableSql).not.toContain(
       "LEFT JOIN recommendation_selection selection",
     )
     expect(currentDurableSql).not.toContain(
       "JOIN recommendation_served_item item",
     )
     expect(currentDurableSql).toContain("profile.token_digest IS NOT NULL")
-    expect(currentDurableSql).toContain(
+    expect(currentDurableSql).not.toContain(
       "episode.request_id IS NULL OR ( request.expires_at >",
     )
-    expect(currentDurableSql).toContain(
+    expect(currentDurableSql).not.toContain(
       "episode.selection_id IS NULL OR ( selection.attribution_eligible_at IS NOT NULL",
     )
     expect(currentDurableSql).toContain(

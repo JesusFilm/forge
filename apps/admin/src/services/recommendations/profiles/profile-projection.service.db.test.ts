@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from "node:fs"
-import { randomUUID } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 import { Prisma, PrismaClient } from "@prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { Client } from "pg"
@@ -16,6 +16,15 @@ import {
   CONTENT_EMBEDDING_CONTRACT_POINTER_ID,
 } from "@/services/content-embedding-contract"
 import { getUserWatchHistory } from "../user-history.service"
+import { getRecommendationRecentContext } from "../recent-context.service"
+import { RecommendationEpisodeService } from "../episode.service"
+import { RecommendationPlaybackService } from "../playback.service"
+import { RecommendationOutcomeService } from "../outcome.service"
+import { RecommendationIntegrityService } from "../integrity.service"
+import {
+  createRecommendationTokenService,
+  parseRecommendationKeyring,
+} from "../token.service"
 import { getLiveProfileCandidates } from "../candidates/profile-candidate.service"
 import { RecommendationProfileService } from "../profile.service"
 import { createDatabaseRecommendationProfileProjectionService } from "./profile-projection.service"
@@ -467,6 +476,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       ).toBe(true)
       expect(
         await getUserWatchHistory(prisma, {
+          locale: "en",
           sessionDigest,
           profileTokenDigest,
           now: projectAt,
@@ -475,7 +485,10 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         {
           mediaId: "profile-learning-source",
           videoCoreId: "profile-learning-core-0",
+          videoTitle: "Profile learning video 0",
           completed: false,
+          qualified: true,
+          recentlyTried: false,
         },
       ])
 
@@ -621,6 +634,305 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         replay: true,
       })
     })
+
+    it.each([
+      "direct",
+      "search",
+      "share",
+      "acquisition",
+      "editorial",
+      "recommendation",
+    ] as const)(
+      "learns from %s playback without requiring a recommendation impression",
+      async (source) => {
+        const digest = (label: string) =>
+          createHash("sha256").update(`${source}-${label}`).digest("hex")
+        const sessionDigest = digest("session")
+        const profileTokenDigest = digest("profile")
+        let current = new Date()
+        const grant = await new RecommendationProfileService({
+          prisma,
+          now: () => current,
+          newId: randomUUID,
+          newAuditId: randomUUID,
+        }).transition({
+          caller: webCaller,
+          contractVersion: "recommendation-profile-v1",
+          consentContractVersion: "recommendation-consent-v1",
+          action: "grant",
+          consentChoice: "personalization",
+          sessionDigest,
+          existingConsentReceiptDigest: null,
+          proposedConsentReceiptDigest: digest("consent"),
+          existingProfileDigest: null,
+          proposedProfileDigest: profileTokenDigest,
+        })
+        current = new Date(Date.now() + 1_000)
+        const startedAt = current
+        const keyring = parseRecommendationKeyring(
+          JSON.stringify({
+            keys: [
+              {
+                kid: "source-parity",
+                status: "active",
+                key: Buffer.alloc(32, 7).toString("base64url"),
+              },
+            ],
+          }),
+        )
+        const tokenService = {
+          activeKid: keyring.active.kid,
+          ...createRecommendationTokenService({
+            keyring,
+            readRevokedKids: async () => [],
+            now: () => current,
+          }),
+        }
+        const episodes = new RecommendationEpisodeService({
+          prisma,
+          tokenService,
+          now: () => current,
+        })
+        let claimNonce: string
+        if (source === "recommendation") {
+          const id = randomUUID()
+          const expiry = new Date(current.getTime() + 7 * 86_400_000)
+          await admin.query(
+            `INSERT INTO recommendation_strategy_manifest (id, strategy_version, contract_version, surface_version, generator, max_items)
+            VALUES ($1::text, $1::text, 'semantic-recommendation-v1', 'watch-below-player-v1', 'semantic', 6)`,
+            [id],
+          )
+          await admin.query("BEGIN")
+          try {
+            await admin.query(
+              `INSERT INTO recommendation_request (id, contract_version, surface_version, manifest_id, strategy_version, classifier_version,
+            session_digest, seed_media_id, locale, expected_item_count, state, result, delivery_jti, signing_kid, created_at, issued_at, expires_at)
+            VALUES ($1::text, 'semantic-recommendation-v1', 'watch-below-player-v1', $1::text, $1::text, 'legacy-position-v0', $2, 'seed', 'en', 1, 'issued', 'served', $1::text, 'source-parity', $3, $3, $4)`,
+              [id, sessionDigest, current, expiry],
+            )
+            await admin.query(
+              `INSERT INTO recommendation_served_item (id, request_id, position, target_media_id, canonical_href, candidate_generator, candidate_provenance,
+            capability_jti, signing_kid, created_at, expires_at) VALUES ($1::text, $1::text, 0, 'profile-learning-source', '/watch/source.html', 'semantic', '{}', $1::text, 'source-parity', $2, $3)`,
+              [id, current, expiry],
+            )
+            await admin.query("COMMIT")
+          } catch (error) {
+            await admin.query("ROLLBACK")
+            throw error
+          }
+          const capability = await tokenService.signDeliveryCapability({
+            jti: id,
+            requestId: id,
+            itemId: id,
+            sessionDigest,
+            surface: "watch-below-player-v1",
+            manifestId: id,
+          })
+          claimNonce = randomUUID()
+          await episodes.select({
+            caller: webCaller,
+            contractVersion: "recommendation-evidence-v1",
+            capability,
+            requestId: id,
+            itemId: id,
+            sessionDigest,
+            eventId: randomUUID(),
+            occurredAt: current.toISOString(),
+            claimNonce,
+          })
+          expect(
+            await prisma.recommendationSelection.findFirst({
+              where: { requestId: id },
+            }),
+          ).toMatchObject({ attributionEligibleAt: null })
+        } else {
+          claimNonce = (
+            await episodes.issueContext({
+              caller: webCaller,
+              sessionDigest,
+              mediaId: "profile-learning-source",
+              discoverySource: source,
+            })
+          ).claimNonce
+        }
+        const claim = await episodes.claim({
+          caller: webCaller,
+          sessionDigest,
+          mediaId: "profile-learning-source",
+          claimNonce,
+        })
+        const playback = new RecommendationPlaybackService({
+          prisma,
+          tokenService,
+          now: () => current,
+        })
+        const record = {
+          caller: webCaller,
+          contractVersion: "recommendation-evidence-v1",
+          capability: claim.capability,
+          episodeId: claim.episodeId,
+          sessionDigest,
+          mediaId: "profile-learning-source",
+        }
+        current = new Date(startedAt.getTime() + 20_000)
+        await playback.record({
+          ...record,
+          events: [
+            {
+              eventId: "start",
+              kind: "playback_start",
+              occurredAt: startedAt.toISOString(),
+              payload: { positionSeconds: 0 },
+            },
+            {
+              eventId: "short",
+              kind: "playback_active_visible_playing",
+              occurredAt: current.toISOString(),
+              payload: { activeMilliseconds: 20_000, coverage: "complete" },
+            },
+          ],
+        })
+        const history = await getUserWatchHistory(prisma, {
+          locale: "en",
+          sessionDigest,
+          profileTokenDigest,
+          now: current,
+        })
+        expect(history).toEqual([
+          expect.objectContaining({
+            mediaId: "profile-learning-source",
+            recentlyTried: true,
+            qualified: false,
+          }),
+        ])
+        expect(
+          (
+            await getRecommendationRecentContext(prisma, {
+              locale: "en",
+              sessionDigest,
+              profileTokenDigest,
+              allowDurableProfileLinks: true,
+              now: current,
+            })
+          ).videos,
+        ).toContainEqual(
+          expect.objectContaining({
+            targetMediaId: "profile-learning-source",
+            reasonCodes: ["recently_tried"],
+          }),
+        )
+        expect(
+          await prisma.recommendationOutcomeRevision.count({
+            where: { episodeId: claim.episodeId },
+          }),
+        ).toBe(0)
+
+        current = new Date(startedAt.getTime() + 60_000)
+        await playback.record({
+          ...record,
+          events: [
+            {
+              eventId: "long",
+              kind: "playback_active_visible_playing",
+              occurredAt: current.toISOString(),
+              payload: { activeMilliseconds: 40_000, coverage: "complete" },
+            },
+            {
+              eventId: "end",
+              kind: "playback_end",
+              occurredAt: current.toISOString(),
+              payload: {
+                reason: "route_exit",
+                positionSeconds: 60,
+                durationSeconds: 600,
+                progress: 0.1,
+                completed: false,
+              },
+            },
+          ],
+        })
+        await new RecommendationOutcomeService({
+          prisma,
+          now: () => current,
+        }).finalize({
+          episodeId: claim.episodeId,
+          generation: 1,
+          reason: "terminal-fact",
+        })
+        const outcome =
+          await prisma.recommendationOutcomeRevision.findFirstOrThrow({
+            where: {
+              episodeId: claim.episodeId,
+              classifierVersion: "active-watch-proxy-v1",
+            },
+          })
+        expect(outcome).toMatchObject({
+          qualifiedView: true,
+          activePlaybackMilliseconds: 60_000,
+        })
+        expect(
+          await new RecommendationIntegrityService({
+            prisma,
+            now: () => current,
+          }).classifyPlaybackOutcome(outcome.id),
+        ).toMatchObject({
+          state: "eligible",
+          eligibleScopes: expect.arrayContaining(["profile"]),
+        })
+        const projection =
+          await createDatabaseRecommendationProfileProjectionService(
+            prisma,
+          ).project({
+            sessionDigest,
+            profileId: grant.profileId,
+            privacyGeneration: grant.privacyGeneration,
+            now: current,
+          })
+        expect(
+          await prisma.recommendationProfileProjectionGeneration.findUniqueOrThrow(
+            { where: { id: projection.generationId } },
+          ),
+        ).toMatchObject({
+          state: "PUBLISHED",
+          durableInterestCount: 1,
+          contributionCount: 1,
+          sessionIntentPresent: false,
+        })
+        expect(
+          await prisma.recommendationProfileProjectionContribution.findMany({
+            where: { generationId: projection.generationId },
+          }),
+        ).toEqual([
+          expect.objectContaining({
+            sourceOutcomeId: outcome.id,
+            targetMediaId: "profile-learning-source",
+            kind: "QUALIFIED_OUTCOME",
+          }),
+        ])
+        expect(
+          await getLiveProfileCandidates(prisma, {
+            sessionDigest,
+            profileTokenDigest,
+            context: {
+              surface: "watch-below-player-v1",
+              purpose: "watch",
+              locale: "en",
+              audioLanguageSlug: "english",
+              seedMediaId: null,
+              manifestId: "semantic-profile-hybrid-v1",
+            },
+            now: current,
+          }),
+        ).toMatchObject({
+          projection: { qualifiedInterestCount: 1 },
+          nominations: expect.arrayContaining([
+            expect.objectContaining({
+              targetMediaId: "profile-learning-similar",
+            }),
+          ]),
+        })
+      },
+    )
 
     it("fences a stale first publisher after another run creates the pointer", async () => {
       const projectionService =

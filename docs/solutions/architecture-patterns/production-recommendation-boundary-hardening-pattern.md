@@ -1,7 +1,7 @@
 ---
 title: "Harden a production recommendation slice at every irreversible boundary"
 date: "2026-08-26"
-last_updated: "2026-09-16"
+last_updated: "2026-09-23"
 category: "architecture-patterns"
 module: "apps/admin and apps/web recommendations"
 problem_type: "architecture_pattern"
@@ -483,13 +483,33 @@ failures keep their ordinary handling. Missing optional summaries mean missing
 coverage. StrictMode setup replay and ordinary duration updates must not
 manufacture departures.
 
+An attempt count is not a recovery horizon. Playback facts now keep the existing
+three serialized attempts but wait 1-1.25 seconds and 8-10 seconds between them,
+with a 30-second monotonic retry-age bound. Every drain entry respects backoff;
+new player events cannot accelerate it. Cancel retries on unmount while preserving
+the separate terminal keepalive. Do not extend this policy to non-idempotent
+context issuance or persist capabilities in browser storage. See the
+[measured retry-horizon fix](../logic-errors/playback-retries-exhaust-before-dependency-recovery-20260923.md).
+
+Bound shared admission before business execution as well as caller waiting.
+Admin's RedisStore guard keeps unresolved wire operations counted after a timeout,
+and the GraphQL hook checks abort/deadline before allowing a resolver to begin.
+This is not cancellation of an already-started transaction, nor a guarantee that
+a late limiter SET cannot update its bucket. Redis-aware readiness likewise shares
+and bounds outstanding PING work. Keep these guarantees separate from Web's
+Redis-clock Lua admission; see the [Admin late-work learning](../runtime-errors/redis-admission-timeouts-must-bound-late-work-20260923.md).
+
 ### Prove the handoff and the bound with discriminating fixtures
 
 Independent reader and composer tests cannot prove their handoff. The direct and
 search PostgreSQL cases in `recent-context.db.test.ts` pass stored authorized
 history into `runCandidatePlatform`: the watched candidate wins without history,
 six fresh candidates win with history, and five fresh candidates permit refill.
-Assert the actual `recent_playback_start` rejection and current-video exclusion.
+Assert the actual `recently_tried` suppression and current-video exclusion;
+the fixture must include at least three seconds of active playback, not a bare
+start. The same stored facts also feed homepage composition. Historical
+`recent_playback_start` reason codes remain readable but are no longer emitted
+by the live recent-context reader.
 See the [focused recency account](../logic-errors/source-neutral-playback-recent-history-20260915.md).
 
 A sample-size assertion with fewer than twenty episodes cannot distinguish a
@@ -544,3 +564,29 @@ episode. A pre-existing interest from the earlier long watch is not evidence tha
 the quick exit trained the profile. Keep the departure observation's unknown
 meaning separate from qualified-view learning, and verify both through retained
 facts rather than media position or successful HTTP receipts alone.
+
+### Verify lifecycle ancestry before privacy cleanup
+
+A successful browser navigation does not prove an episode finalized: BFCache
+suspension is intentionally nonterminal. Inspect the recorded transition, then
+use a normal terminal route exit and verify the finalized outcome's fact
+watermark and qualified active time. Do not insert terminal facts to complete a
+canary. The September 22 check initially retained a paused episode, then normal
+route exit finalized all 32 facts and 73.8 seconds of qualified viewing.
+
+Inspect the matching authorized Admin trace and later projection contribution
+before withdrawal/reset/erasure verification. Privacy cleanup can deliberately
+remove later decisions' projection references while retaining sanitized request
+and outcome evidence. A null projection after cleanup cannot establish complete
+retrospective ancestry, nor does it prove an outcome was lost. Keep the original
+privacy proof and run a fresh ordinary lifecycle when the missing Admin gate
+requires retained joins. Export aggregate/version proof, not private identities.
+
+For repair checks, distinguish a superseded eligible decision from its current
+eligible replacement. The old reference is ineligible lineage even if both
+revisions say `eligible`; a deterministic rebuild must reference the current
+revision and preserve the immutable original generation. Also distinguish
+qualified **outcomes** from prior **recommendation requests**: standalone
+playback can contribute to a profile without request ancestry. An Admin trace
+with no prior request does not by itself mean no qualified feedback exists.
+See the [authenticated release continuation](../../operations/watch-contextual-distance-release-2026-09-22.md).

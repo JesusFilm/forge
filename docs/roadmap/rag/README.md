@@ -8,12 +8,12 @@ database into Admin.
 > This lane is intentionally invisible to the public roadmap viewer and the
 > generated `docs/roadmap/README.md` totals. This index is maintained by hand.
 
-## Status (September 17, 2026)
+## Status (September 22, 2026)
 
-- **Total tickets:** 33
-- **Complete:** 21
-- **In progress:** 1
-- **Not started:** 11
+- **Total tickets:** 34
+- **Complete:** 22
+- **In progress:** 0
+- **Not started:** 12
 - **Blocked:** 0
 
 ## Feature Index
@@ -32,7 +32,7 @@ database into Admin.
 | [feat-432](feat-432-rag-ops-eval-dashboard.md)                    | [#165](https://github.com/JesusFilm/jesusfilm-rag/issues/165) | Port sources, skills, dashboard, and eval                          | complete    | [#2117](https://github.com/JesusFilm/forge/pull/2117)                                                        |
 | [feat-433](feat-433-rag-dual-operations.md)                       | [#166](https://github.com/JesusFilm/jesusfilm-rag/issues/166) | Complete owner-managed dual RAG operations                         | complete    | [#2152](https://github.com/JesusFilm/forge/pull/2152)                                                        |
 | [feat-434](feat-434-rag-seeker-cutover.md)                        | [#167](https://github.com/JesusFilm/jesusfilm-rag/issues/167) | Cut Seeker over with rollback                                      | complete    | [#2153](https://github.com/JesusFilm/forge/pull/2153), [#2158](https://github.com/JesusFilm/forge/pull/2158) |
-| [feat-435](feat-435-rag-proof-soak-archive.md)                    | [#168](https://github.com/JesusFilm/jesusfilm-rag/issues/168) | Prove maintenance, soak, and archive jfrag                         | in-progress | [#2189](https://github.com/JesusFilm/forge/pull/2189)                                                        |
+| [feat-435](feat-435-rag-proof-soak-archive.md)                    | [#168](https://github.com/JesusFilm/jesusfilm-rag/issues/168) | Prove maintenance, soak, and archive jfrag                         | complete    | [#2189](https://github.com/JesusFilm/forge/pull/2189), [#2379](https://github.com/JesusFilm/forge/pull/2379) |
 | [feat-439](feat-439-rag-railway-infrastructure-as-code.md)        | —                                                             | Migrate RAG Railway configuration to Infrastructure as Code        | not-started | —                                                                                                            |
 | [feat-445](feat-445-rag-registry-policy-test-consolidation.md)    | —                                                             | Make registry policy tests execute production filtering            | not-started | —                                                                                                            |
 | [feat-446](feat-446-rag-typed-operational-errors.md)              | —                                                             | Complete typed operational errors across RAG                       | not-started | —                                                                                                            |
@@ -48,22 +48,36 @@ database into Admin.
 | [feat-471](feat-471-rag-production-operations-rollout.md)         | —                                                             | Verify direct production maintenance and the Icelandic path        | not-started | [#2215](https://github.com/JesusFilm/forge/pull/2215)                                                        |
 | [feat-479](feat-479-rag-corpus-transaction-timeouts.md)           | —                                                             | Bound corpus transactions for production latency                   | complete    | [#2233](https://github.com/JesusFilm/forge/pull/2233)                                                        |
 | [feat-526](feat-526-rag-consumer-access-planning.md)              | —                                                             | Plan consumer access and usage visibility                          | complete    | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                        |
-| [feat-527](feat-527-rag-consumer-access-lifecycle.md)             | —                                                             | Implement consumer access lifecycle                                | not-started | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                        |
+| [feat-527](feat-527-rag-consumer-access-lifecycle.md)             | —                                                             | Implement consumer access lifecycle (single runtime per consumer)  | in-progress | [#2397](https://github.com/JesusFilm/forge/pull/2397)                                                        |
 | [feat-528](feat-528-rag-consumer-usage-visibility.md)             | —                                                             | Deliver usage reporting                                            | not-started | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                        |
 | [feat-529](feat-529-rag-consumer-dogfood-migration.md)            | —                                                             | Dogfood and seven-day migration                                    | not-started | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                        |
 | [feat-530](feat-530-rag-consumer-self-service-portal.md)          | —                                                             | Internal self-service portal                                       | not-started | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                        |
+| [feat-532](feat-532-rag-legacy-service-credential-retirement.md)  | —                                                             | Retire legacy JesusFilm-RAG service and credentials                | not-started | [#2379](https://github.com/JesusFilm/forge/pull/2379)                                                        |
 | [feat-518](feat-518-rag-consumer-access-discovery.md)             | —                                                             | Confirm consumer access implementation readiness                   | complete    | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                        |
 
 The September 8 operator decision in [feat-435](feat-435-rag-proof-soak-archive.md)
 accepts the baseline for acquisition/ingestion with the three concerns tracked
 in feat-463. That investigation does not block the new-source proof.
 
+The [September 22 feat-435 receipt](evidence/feat-435/proof-soak-archive.md)
+records completion under Jaco's **Option A** decision: Forge RAG is the active
+owner, all consumers have migrated, and external traffic is outside scope.
+Rollback rehearsal/expiry and final snapshot retention are not applicable.
+Unverified Icelandic import provenance and missing direct migration/AGENTS
+README links are accepted limitations. Legacy service and credential retirement
+is deferred to [feat-532](feat-532-rag-legacy-service-credential-retirement.md).
+The verified dashboard candidate includes 51 embedded Icelandic documents;
+publication remains pending the normal reviewed merge and Pages flow.
+
 ## Programme invariants
 
 - Relocate; do not absorb. RAG keeps a distinct Railway service and database.
 - Preserve the external read-only `/v1` surface and bearer-scope semantics.
 - Copy the corpus and existing vectors; do not rebuild or re-embed them.
-- Keep jfrag production and rollback values intact through the approved soak.
+- Historical migration policy retained jfrag and rollback values through soak.
+  Feat-435’s September 22 Option A decision supersedes rollback/snapshot closure
+  gates; legacy service/credential changes remain deferred to feat-532 and are
+  not authorized by the documentation closure.
 - Production deploys use Forge PR-to-main autodeploy only.
 - Operator evidence must never contain secrets or corpus text.
 

@@ -11,7 +11,7 @@ date: 2026-09-15
 
 Forge owns this programme. A **consumer** is an integration/application with a
 nonempty `owners` list of engineers’ GitHub handles, never an individual end user. Use one private bearer token
-per integration/environment, mapped server-side to a stable consumer ID. Do not
+per consumer, mapped server-side to its stable consumer ID. Do not
 require a client-ID header plus secret. This private credential is distinct from
 the public known-caller Consumer Bearer described in `CONCEPTS.md`.
 
@@ -39,6 +39,21 @@ No product implementation, billing, external consumers, source import, corpus
 change or production operation is included in this PR. External access requires
 its own future rate-limit design. Initial heavy use is visibility and conversation
 only: no new quotas, throttling or automated enforcement.
+
+## V1 environment decision
+
+Each consumer has exactly one runtime environment. There is no staging
+environment and no separate environment table, foreign key, status, credential
+slot, portal picker or usage dimension. Source grants and lifecycle state belong
+to the consumer; credentials and usage reference its stable ID directly. This
+applies to the implementation in [PR #2397](https://github.com/JesusFilm/forge/pull/2397)
+and supersedes earlier multi-environment proposals (YAGNI).
+
+Local/CI validation uses isolated databases and synthetic fixtures, not additional
+runtime environments on a consumer. Multiple environments would require a later
+deliberate redesign of identity, credentials, migration and accounting; V1 adds
+no placeholder discriminator for it. GitHub admission, ownership, one-time secret
+display, verifier-only storage and atomic rotation are unchanged.
 
 ## Current checkout findings and exact entry points
 
@@ -107,7 +122,7 @@ Remaining technical details: exact allowlist path/schema, trusted merged-revisio
 publication/freshness, stable GitHub identity binding across renames, safely
 available CI lookup coverage, and portal host/client registration. These do not
 reopen the settled creation flow. Record RAGBot's ID, source scope, actual task
-revision and permitted environment before dogfood. Production communications,
+revision and approved receiver before dogfood. Production communications,
 grace start and cutoff require separate authorization.
 
 ### Confirmed portal UX requirements (feat-530)
@@ -183,21 +198,20 @@ the allowlist PR path. The allowlist never stores consumer owner lists or secret
 Authenticated users can list all consumers' safe names/status and create directly
 through the backend. Validate the globally unique lowercase/numeric/dash name,
 previewed values and authenticated initial owner; never accept a client-supplied
-owner identity. Source grants and environment are explicit bounded server-side
-policy, not arbitrary grants supplied by the creator; rotation cannot widen them.
+owner identity. Source grants are explicit bounded server-side policy on the
+consumer, not arbitrary grants supplied by the creator; rotation cannot widen them.
 Keep sensitive free text and private contacts out of the directory and git.
 
 Proposed metadata types (names may follow package conventions):
 
 - `Consumer`: immutable opaque `consumerId`, globally unique name, bounded purpose,
-  lifecycle state and creation/update times.
-- `ConsumerEnvironment`: consumer ID + trusted environment, explicit allowed
-  source keys and status (`active | suspended | revoked`).
+  lifecycle state, explicit allowed source keys, credential version and
+  creation/update times. There is no separate environment record or state.
 - `ConsumerOwner`: authoritative runtime relationship between consumer and stable
   GitHub account ID/handle, with membership version; at least one per consumer.
-- `Credential`: internal random record ID, consumer/environment link, one-way
+- `Credential`: internal random record ID, consumer link, one-way
   verifier, issued/expiry/revocation times and replacement relation.
-- `LifecycleAudit`: bounded action/outcome, actor/target account, consumer/environment,
+- `LifecycleAudit`: bounded action/outcome, actor/target account, consumer ID,
   timestamp, membership/credential version and applied allowlist SHA where relevant.
 
 Only an existing owner of the target consumer may Add member from the current
@@ -231,7 +245,7 @@ the presented secret; HTTPS protects the secret in transit while the hash-only
 store protects it at rest. The consumer presents the secret as-is with no
 separate client-ID header, and invalid or revoked secrets are rejected.
 
-Exactly one active credential per integration/environment. An authorized
+Exactly one active credential per consumer. An authorized
 “Generate new key” action, available to any listed owner, generates a new
 secret, atomically replaces/revokes the prior verifier and reveals the new
 secret once in the authenticated issuance response; the old key is invalid
@@ -252,7 +266,7 @@ in logs, tickets, PRs, tests, command output, chat or telemetry; use synthetic
 non-secret fixtures for tests and suppress issuance-response capture.
 
 Suspension rejects access reversibly; revocation is terminal for a credential.
-Consumer revocation rejects all its credentials across environments. Retain
+Consumer revocation rejects its current credential and prevents further issuance. Retain
 minimal lifecycle history without adding a retention/deletion implementation now, rather than deleting the consumer
 or reusing its ID. Restoration from suspension requires current owner authorization; a revoked
 credential can never be restored by rollback or replacement.
@@ -267,9 +281,9 @@ verifiers, contacts, corpus, lifecycle free text or mutate anything. Serving
 continues to read corpus only; its new write capability is limited to usage
 metadata, with an explicit boundary adapter/port and dependency-law tests.
 
-Authenticate server-side to `AuthenticatedConsumer { consumerId, environment,
-allowedSourceKeys }`. Environment derives from trusted receiver configuration,
-not caller input. Validate current consumer, environment and credential state on
+Authenticate server-side to `AuthenticatedConsumer { consumerId, allowedSourceKeys }`.
+There is no environment selector, header or environment-specific authorization
+state. Validate current consumer and credential state on
 every request; avoid positive caching in V1 so revocation after commit applies
 to the next authentication. Auth-store failures fail closed with a generic
 service-unavailable response, never legacy fallback. Requests already admitted
@@ -286,7 +300,7 @@ objects in newly instrumented paths. Do not commit production evidence.
 ## C. Separate observable deliverable
 
 Build a repeatable operator-only read-only report command (proposed
-`usage:report --consumer <stable-id> --environment <env> --from <UTC> --to <UTC>`)
+`usage:report --consumer <stable-id> --from <UTC> --to <UTC>`)
 and a documented report schema, not a public dashboard. Initially only Jaco and
 RAGBot may read reports. Give RAGBot a dedicated authenticated, read-only report
 capability through a bounded endpoint/ops task with fixed aggregate fields and
@@ -294,7 +308,7 @@ validated windows, not a general database credential or arbitrary SQL. The
 server-side report role reads aggregate views only. Other engineers
 and consumer owners gain no report access by virtue of ownership. The command is future
 work; it does not exist in this PR. Report rows contain only consumer ID, approved
-label, environment, `windowStart`, `windowEnd`, `requestCount`,
+label, `windowStart`, `windowEnd`, `requestCount`,
 `successfulRequestCount`, `lastActivityAt`, `generatedAt`, `completeThrough` and
 `coverageStatus` (`complete | partial | unavailable`). No owner contact in rows.
 
@@ -307,7 +321,7 @@ Counting contract:
   it does not claim the caller received or used it. Disconnects before response
   completion, failures and denied auth never count as successful.
 - Last activity is latest authenticated admission in the window, null for none.
-  Totals are grouped by stable consumer ID and environment, unaffected by rotation.
+  Totals are grouped by stable consumer ID, unaffected by rotation.
 - Unknown/invalid/revoked auth and pre-auth body-limit rejection remain bounded
   aggregate service denial counters, not guessed integration identity. After
   revocation neither successful count nor authenticated request count increases.
@@ -319,7 +333,7 @@ Proposed mechanism: atomically maintain bounded per-minute aggregates and
 pending/completed attempt accounting in a dedicated metadata adapter. A random,
 server-created attempt ID may deduplicate completion writes internally; do not
 expose it or derive it from request content/credentials. Short-lived pending
-records contain only identity, environment and timestamps. Durable aggregate consumer-usage metrics are kept going forward for product-growth
+records contain only consumer identity and timestamps. Durable aggregate consumer-usage metrics are kept going forward for product-growth
 insight. Raw/sensitive events are not collected; minimal pending accounting is
 operational state, not a raw event archive. Do not implement deletion/retention
 policy now. Storage growth, granularity, pending-state capacity and backup cost
@@ -370,7 +384,7 @@ Implementation tests use isolated local/CI databases and synthetic fixtures.
 Real dogfood is a later approved environment operation, not performed by these documentation jobs, including J014.
 
 1. Apply the approved decisions. Locate the actual `forge-rag-retrieve` task path/revision and
-   permitted test environment; absent client access blocks release proof.
+   approved receiver; absent client access blocks release proof.
 2. Register RAGBot first through the authenticated creation backend with an
    allowlisted initial owner and one-time issuance. Before full portal delivery,
    use an isolated harness exercising the same authorization. Register a second synthetic
@@ -389,15 +403,15 @@ Real dogfood is a later approved environment operation, not performed by these d
    successful count does not. Verify empty 200, disconnect and retry semantics.
 7. Revoke the dogfood credential, then issue new requests: 401, no success increment.
    Issue its approved replacement and verify identity continuity; revoke the
-   consumer and verify all credentials/environments reject new requests. Check
-   suspension/resumption, wrong environment, source isolation and concurrent revoke.
+   consumer and verify new requests reject its credential. Check
+   suspension/resumption, source isolation and concurrent revoke.
 8. Interrupt collector/storage and simulate missing instrumentation, delayed flush,
    crash and unavailable historical coverage. Reports visibly become partial/unavailable, never
    clean zero. Recover and demonstrate gap handling and exact concurrent counts.
 9. Verify report principal cannot write, read credentials/contacts or read corpus;
    inspect report schema/log sinks using synthetic sentinel values for leakage.
 10. Rehearse shared-token grace/cutoff and rollback. Record only synthetic counts,
-    window, coverage, pass/fail, environment label and code revision in release
+    window, coverage, pass/fail, receiver label and code revision in release
     evidence; no tokens, selectors, IPs, raw queries, corpus or production evidence.
 
 Admission/membership acceptance for feat-527/530: malformed/duplicate handles,
@@ -423,7 +437,7 @@ release. No live retrieval or runtime test is claimed by this documentation PR.
 After successful feat-529 dogfood, deliver the confirmed UX above using the
 feat-527 authenticated backend. GitHub OAuth plus the current merged portal-user
 allowlist controls admission. Show all consumers; runtime membership controls
-management. Create directly with a globally unique `^[a-z0-9-]+$` name, read-only
+management. No environment picker or environment-scoped route is needed. Create directly with a globally unique `^[a-z0-9-]+$` name, read-only
 signed-in initial owner, preview and submit. Return the random secret once with
 copy/password-manager warning. Only existing owners can Add member from the
 predetermined allowlist; members can manage and regenerate. No consumer PR or

@@ -15,6 +15,8 @@
 
 import { PrismaPg } from "@prisma/adapter-pg"
 import { Prisma, PrismaClient } from "@prisma/client"
+import { ObservedPool } from "@/db/observed-pool"
+import { timeRecommendationOperation } from "@/lib/recommendation-runtime-observation"
 import {
   prismaPgAdapterConfigForProfile,
   type PrismaPoolProfile,
@@ -82,7 +84,23 @@ const embeddingGuardExtension = Prisma.defineExtension((client) =>
   }),
 )
 
-function createPrismaClient(
+const runtimeObservationExtension = Prisma.defineExtension({
+  query: {
+    async $allOperations({ model, operation, args, query }) {
+      const data =
+        args && typeof args === "object" && "data" in args
+          ? args.data
+          : undefined
+      return timeRecommendationOperation(
+        `db.${model ?? "raw"}.${operation}`,
+        () => query(args),
+        Array.isArray(data) ? data.length : undefined,
+      )
+    },
+  },
+})
+
+export function createPrismaClient(
   profile: PrismaPoolProfile,
   options?: Omit<Prisma.PrismaClientOptions, "adapter" | "datasourceUrl">,
 ): PrismaClient {
@@ -90,11 +108,22 @@ function createPrismaClient(
     process.env.DATABASE_URL,
     profile,
   )
-  const adapter = new PrismaPg(adapterConfig.poolConfig, adapterConfig.options)
+  const metadata = new PrismaPg(adapterConfig.poolConfig, adapterConfig.options)
+  const adapter = {
+    adapterName: metadata.adapterName,
+    provider: "postgres" as const,
+    // A fresh owned pool on reconnect preserves $disconnect semantics without
+    // falling back to an unobserved pg.Pool inside the adapter factory.
+    connect: () =>
+      new PrismaPg(new ObservedPool(adapterConfig.poolConfig, profile), {
+        ...adapterConfig.options,
+        disposeExternalPool: true,
+      }).connect(),
+  }
 
-  return new PrismaClient({ ...options, adapter }).$extends(
-    embeddingGuardExtension,
-  ) as unknown as PrismaClient
+  return new PrismaClient({ ...options, adapter })
+    .$extends(embeddingGuardExtension)
+    .$extends(runtimeObservationExtension) as unknown as PrismaClient
 }
 
 /**

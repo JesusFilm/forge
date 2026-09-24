@@ -1,0 +1,25 @@
+{
+  "method": "Read-only local HTTP readiness checks in the actual deployed Admin and worker processes. Endpoint includes bounded Redis PING.",
+  "observations": [
+    {
+      "service": "admin",
+      "timestamp": "2026-09-23T06:39:32.098Z",
+      "revision": "37e10b622bd66e55647cf561c3896b2d4fbb4dce",
+      "deployment": "05d2971e-d42a-4f32-b91a-3c552cb44353",
+      "hostname": "6cc3a8a7c30c",
+      "httpStatus": 200,
+      "bodyStatus": "ok",
+      "elapsedMs": 37.008117
+    },
+    {
+      "service": "worker",
+      "timestamp": "2026-09-23T06:39:36.987Z",
+      "revision": "37e10b622bd66e55647cf561c3896b2d4fbb4dce",
+      "deployment": "264a75df-cc73-47a9-aee1-7c336e8f986b",
+      "hostname": "108a1b0ef940",
+      "httpStatus": 200,
+      "bodyStatus": "ok",
+      "elapsedMs": 48.452218
+    }
+  ]
+}

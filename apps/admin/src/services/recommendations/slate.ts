@@ -1,10 +1,15 @@
 import type { RecommendationCandidateContext } from "./candidate"
 import type { OrderedCandidate } from "./ranker"
+import {
+  videoIdentityDuplicateReason,
+  type VideoDedupKeys,
+} from "@/services/video-dedup"
 
 export type ComposedCandidate = OrderedCandidate &
   Readonly<{ composedPosition: number }>
 
 export const RECOMMENDATION_RECENT_SUPPRESSION_REASON_CODES = [
+  "recently_tried",
   "recent_playback_start",
   "recent_selection",
   "repeatedly_served",
@@ -17,10 +22,30 @@ export type RecommendationSlateComposition = Readonly<{
   recentVideos?: ReadonlyArray<
     Readonly<{
       targetMediaId: string
+      videoCoreId?: string | null
+      videoTitle?: string | null
       reasonCodes: readonly RecommendationRecentSuppressionReason[]
     }>
   >
 }>
+
+export function recentVideoReasonCodes(
+  targetMediaId: string,
+  identity: VideoDedupKeys,
+  recentVideos: RecommendationSlateComposition["recentVideos"] = [],
+): RecommendationRecentSuppressionReason[] {
+  return [
+    ...new Set(
+      recentVideos
+        .filter(
+          (entry) =>
+            entry.targetMediaId === targetMediaId ||
+            videoIdentityDuplicateReason(identity, entry),
+        )
+        .flatMap((entry) => entry.reasonCodes),
+    ),
+  ]
+}
 
 export type RecommendationSlateSuppression = Readonly<{
   candidate: OrderedCandidate
@@ -50,12 +75,6 @@ export function composeRecommendationSlate(
 ): RecommendationSlateCompositionResult {
   const boundedLimit = Math.max(0, Math.min(6, Math.trunc(limit)))
   const seen = new Set<string>()
-  const recentReasons = new Map(
-    (composition.recentVideos ?? []).map((entry) => [
-      entry.targetMediaId,
-      [...new Set(entry.reasonCodes)],
-    ]),
-  )
   const composed: ComposedCandidate[] = []
   const suppressions: RecommendationSlateSuppression[] = []
   const recentRefill: OrderedCandidate[] = []
@@ -75,7 +94,11 @@ export function composeRecommendationSlate(
       ...(candidate.targetMediaId === composition.currentVideoId
         ? (["current_video"] as const)
         : []),
-      ...(recentReasons.get(candidate.targetMediaId) ?? []),
+      ...recentVideoReasonCodes(
+        candidate.targetMediaId,
+        candidate.canonicalIdentity,
+        composition.recentVideos,
+      ),
     ]
     if (reasonCodes.length > 0) {
       suppressions.push({ candidate, reasonCodes })

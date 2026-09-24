@@ -3,7 +3,7 @@ id: "feat-459"
 title: "Recommendation profile eligibility reconciliation"
 owner: "nisal"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: ""
 duration: 6
 depends_on:
@@ -22,6 +22,18 @@ tags:
   - "integrity"
   - "reliability"
 ---
+
+## September 24 owner-approved closeout
+
+The owner accepted this ticket's completed implementation, authenticated Admin
+matching repair, final canonical audit and durable reconciliation on September 24.
+Feat-464's recovery scope is also closed. Remaining monitoring and telemetry/browser
+coverage are explicitly tracked in [feat-545](feat-545-recommendation-monitoring-and-telemetry-closeout.md),
+which now gates downstream rollout/readiness. Earlier in-progress and dependency
+notes below describe their historical verification dates, not the current status.
+
+See the [acceptance record](../../operations/recommendation-evidence-acceptance-2026-09-23.md)
+for evidence and preserved limitations. No runtime flag or production setting changes.
 
 ## Problem
 
@@ -201,3 +213,80 @@ rechecks the complete canonical predicate at 06:23:30 UTC on `d0c749b9…`:
 batch completes without failures. These snapshot/batch checks preserve the
 earlier convergence evidence; feat-464 and the authorized Admin gate still
 prevent closure.
+
+## September 22 sustained production verification
+
+The [September 22 production verification](../../operations/watch-production-verification-2026-09-22.md)
+reconciles 153 completed batch and heartbeat steps, 665 classifications and 86
+queued rebuilds, with zero classification/dispatch/exhaustion failures. Completion
+gaps range from 305.697 to 411.984 seconds; do not claim exact five-minute spacing.
+At 19:58:20 UTC on September 21, the complete canonical audit finds zero
+ineligible among 171,710 current pointers. This is a fresh passing snapshot,
+not continuous zero or a replacement for authorized Admin evidence. Feat-464 and
+the matching Admin gate still prevent closure.
+
+## September 22 later canonical audit
+
+The [runtime release verification](../../operations/watch-runtime-release-verification-2026-09-22.md)
+records a fresh exact canonical aggregate query at 21:45:11 UTC with zero
+affected current pointers, invalid contributions, rebuild candidates, backlog
+or stale claims. The read-only query took 8.224 seconds; this is not the earlier
+optimized worker batch or an authenticated Admin UI check. Natural projection
+fences now provide additional publication-integrity evidence. Feat-464 and the
+matching Admin evidence still prevent closure; status stays in progress.
+
+The 23:29:43 repeat on `92a597ee…` again reports zero ineligible generations,
+affected pointers/contributions, rebuild candidates, backlog and stale claims.
+Thirteen replacement publications completed in the 21:55–23:29 window. This
+fresh canonical query took 6.696 seconds and remains database evidence; the
+authenticated Admin acceptance and feat-464 dependency are still open.
+
+The final audit sequence subsequently records one affected pointer/contribution
+at 23:56:26, then zero in a consistent read-only repeatable-read/server-clock
+snapshot completed September 22 00:00:01. Keep both observations and the earlier
+diagnostic's stale-clock limitation; no exact pointer repair or continuous-zero
+claim is established. Twenty replacement publications and 183 clean hybrid
+requests are present since 21:55. The two-hour durable workflow audit has 24
+completed batches/heartbeats, 120 classifications and 19 queued rebuilds with
+zero recorded classification or dispatch failures; completion gaps reach
+317.706 seconds. See the [release record](../../operations/watch-runtime-release-verification-2026-09-22.md).
+Authenticated Admin acceptance and feat-464 still prevent closure.
+
+## September 22 authorized Admin and matching repair verified
+
+The owner completed normal Admin sign-in. At 02:06:06 UTC its permission-checked
+Recommendations panel reports a clean current-pointer audit, zero affected
+pointers, zero ineligible contributions and zero rebuild backlog. A bounded
+exact-row read then reconciles a retained eligibility repair: immutable
+generation 4 contains a superseded revision-1 reference; the rebuild publishes
+generation 5 with current eligible revision-2 references and advances the
+expected pointer from 4 to 5. Both qualified standalone outcomes remain
+finalized with exact fact watermarks. The original generation remains retained.
+
+The matching later authorized Admin request shows generation 5, one durable
+interest, six Spanish hybrid cards, 117 ms retrieval and no fallback/shortfall.
+Standalone outcomes correctly have no prior recommendation-request ancestry.
+The [release evidence](../../operations/watch-contextual-distance-release-2026-09-22.md)
+credits the aggregate and matching repair gates without claiming continuous zero
+violations. **Feat-464 is now the remaining dependency preventing this ticket's
+closure**; do not continue describing Admin login or matching repair as missing.
+
+## September 22 bounded workload and production follow-up
+
+The [September 22 follow-up](../../operations/watch-budget-followup-2026-09-22.md) again verifies the authorized Admin current-pointer audit: zero affected pointers, ineligible contributions and rebuild backlog. The exact repaired-generation trace remains verified under the preceding release record. These passed checks retain credit; the still-open feat-464 dependency prevents completion.
+
+## September 22 internal continuation
+
+The internal continuation again verifies zero affected pointers, ineligible contributions and rebuild backlog in authenticated Admin, after 24 successful reconciliation batches. Its own repair and current-pointer proofs retain credit. The feat-464 dependency still prevents completion. See the [internal verification](../../operations/watch-budget-followup-2026-09-22.md#internal-continuation-workload-volume-and-reconciled-outcomes).
+
+## September 23 acceptance continuation
+
+The [feat-464 continuation](../../operations/recommendation-evidence-acceptance-2026-09-23.md)
+credits the existing authorized matching repair, then verifies a fresh complete
+canonical audit of **179,054 pointers with zero ineligible** and a matching clean
+authenticated Admin aggregate. Twenty-three committed reconciliation batches and
+heartbeats complete without recorded failures; 81 finalized cohort outcomes match
+their fact watermarks and generations. Fourteen affected-pointer occurrences and
+queued rebuilds during the window preserve the convergence/continuous-zero
+distinction. The remaining feat-464 monitoring and production coverage gates
+still prevent closure; **status remains in progress**.

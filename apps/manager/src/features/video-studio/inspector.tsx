@@ -6,6 +6,10 @@ import type {
 import { Trash2, Copy } from "lucide-react"
 import type { EditorSession, EditorSnapshot } from "./editor-session"
 import { itemLabel } from "./timeline"
+import { itemGroup, groupTrackKind } from "./timeline-layout"
+import { NumberField } from "./number-field"
+import { TransitionControls } from "./transition-controls"
+import { TextControls } from "./text-controls"
 export const defaultTransform: NonNullable<StudioTimelineItem["transform"]> = {
   x: 0,
   y: 0,
@@ -13,42 +17,6 @@ export const defaultTransform: NonNullable<StudioTimelineItem["transform"]> = {
   scaleY: 1,
   rotation: 0,
   opacity: 1,
-}
-function NumberField({
-  label,
-  value,
-  onChange,
-  min,
-  max,
-  step = 1,
-}: {
-  label: string
-  value: number
-  onChange: (n: number) => void
-  min?: number
-  max?: number
-  step?: number
-}) {
-  return (
-    <label>
-      {label}
-      <input
-        key={value}
-        type="number"
-        defaultValue={value}
-        min={min}
-        max={max}
-        step={step}
-        onBlur={(e) => {
-          const n = Number(e.target.value)
-          if (Number.isFinite(n) && n !== value) onChange(n)
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") e.currentTarget.blur()
-        }}
-      />
-    </label>
-  )
 }
 export function Inspector({
   session,
@@ -221,6 +189,16 @@ export function Inspector({
                 }
               />
             </label>
+            <TextControls
+              item={item}
+              onChange={(properties) =>
+                patch((i) =>
+                  i.kind === "text"
+                    ? { ...i, properties: { ...i.properties, ...properties } }
+                    : i,
+                )
+              }
+            />
             <label>
               Alignment
               <select
@@ -248,6 +226,21 @@ export function Inspector({
               </select>
             </label>
           </>
+        )}
+        {item.kind === "video" && (
+          <TransitionControls
+            item={item}
+            document={doc}
+            onChange={(transition) =>
+              patch((i) => {
+                if (i.kind !== "video") return i
+                const next = { ...i }
+                if (transition) next.transition = transition
+                else delete next.transition
+                return next
+              })
+            }
+          />
         )}
         {component &&
           item.kind === "component" &&
@@ -333,11 +326,22 @@ export function Inspector({
             value={item.trackId}
             onChange={(e) => patch((i) => ({ ...i, trackId: e.target.value }))}
           >
-            {doc.tracks.map((t, i) => (
-              <option key={t.id} value={t.id}>
-                {t.kind} {i + 1}
-              </option>
-            ))}
+            {doc.tracks
+              .filter(
+                (t) =>
+                  t.id === item.trackId ||
+                  t.kind === groupTrackKind[itemGroup(item)] ||
+                  doc.items.some(
+                    (other) =>
+                      other.trackId === t.id &&
+                      itemGroup(other) === itemGroup(item),
+                  ),
+              )
+              .map((t, i) => (
+                <option key={t.id} value={t.id}>
+                  {itemGroup(item)} {i + 1}
+                </option>
+              ))}
           </select>
         </label>
         <NumberField

@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest"
-import { RecommendationTokenInvalidError } from "./token.service"
+import { randomBytes } from "node:crypto"
+import {
+  RecommendationTokenInvalidError,
+  createRecommendationTokenService,
+  parseRecommendationKeyring,
+} from "./token.service"
 import {
   RecommendationEvidenceService,
   recommendationEvidenceDigest,
@@ -13,7 +18,15 @@ const caller = {
   rateLimitBucketKey: "test-web-consumer-key",
 }
 
-function harness() {
+function harness(
+  options: {
+    now?: () => Date
+    tokenService?: Pick<
+      ReturnType<typeof createRecommendationTokenService>,
+      "verifyDeliveryCapability"
+    >
+  } = {},
+) {
   const rendered = new Map<string, { payloadDigest: string }>()
   const impressions = new Map<
     string,
@@ -115,8 +128,8 @@ function harness() {
   const classifySelection = vi.fn(async () => undefined)
   const service = new RecommendationEvidenceService({
     prisma: prisma as never,
-    tokenService: { verifyDeliveryCapability },
-    now: () => new Date("2026-04-20T03:00:00.000Z"),
+    tokenService: options.tokenService ?? { verifyDeliveryCapability },
+    now: options.now ?? (() => new Date("2026-04-20T03:00:00.000Z")),
     dispatchProfileFeedback,
     classifySelection,
   })
@@ -151,6 +164,114 @@ const validInput = {
 }
 
 describe("RecommendationEvidenceService", () => {
+  it.each([
+    { clientOffsetSeconds: -301, rejected: true },
+    { clientOffsetSeconds: -300, rejected: false },
+    { clientOffsetSeconds: 0, rejected: false },
+    { clientOffsetSeconds: 600, rejected: false },
+    { clientOffsetSeconds: 601, rejected: true },
+  ])(
+    "characterizes client clock offset $clientOffsetSeconds with a genuinely valid capability",
+    async ({ clientOffsetSeconds, rejected }) => {
+      const serverNow = new Date("2026-04-20T03:00:00.000Z")
+      const tokenService = createRecommendationTokenService({
+        keyring: parseRecommendationKeyring(
+          JSON.stringify({
+            keys: [
+              {
+                kid: "clock-test",
+                status: "active",
+                key: randomBytes(32).toString("base64url"),
+              },
+            ],
+          }),
+        ),
+        readRevokedKids: async () => [],
+        now: () => serverNow,
+      })
+      const h = harness({ tokenService, now: () => serverNow })
+      const capability = await tokenService.signDeliveryCapability({
+        jti: h.item.capabilityJti,
+        requestId: h.item.requestId,
+        itemId: h.item.id,
+        sessionDigest: h.item.request.sessionDigest,
+        surface: "watch-below-player-v1",
+        manifestId: h.item.request.manifestId,
+      })
+      const result = h.service.record({
+        ...validInput,
+        capability,
+        events: [
+          {
+            ...validInput.events[0]!,
+            occurredAt: new Date(
+              serverNow.getTime() + clientOffsetSeconds * 1_000,
+            ).toISOString(),
+          },
+        ],
+      })
+
+      if (rejected) {
+        await expect(result).rejects.toMatchObject({ code: "invalid_input" })
+        expect(h.prisma.$transaction).not.toHaveBeenCalled()
+        expect(
+          h.prisma.recommendationEvidenceAudit.create,
+        ).toHaveBeenCalledWith({
+          data: expect.objectContaining({
+            reasonCode: "delivery_timestamp_invalid",
+          }),
+        })
+      } else {
+        await expect(result).resolves.toEqual([
+          { eventId: "render-1", status: "accepted" },
+        ])
+        expect(h.prisma.$transaction).toHaveBeenCalledOnce()
+      }
+    },
+  )
+
+  it("rejects a genuinely expired capability before the timestamp audit or submission budget", async () => {
+    let serverNow = new Date("2026-04-20T03:00:00.000Z")
+    const tokenService = createRecommendationTokenService({
+      keyring: parseRecommendationKeyring(
+        JSON.stringify({
+          keys: [
+            {
+              kid: "expiry-test",
+              status: "active",
+              key: randomBytes(32).toString("base64url"),
+            },
+          ],
+        }),
+      ),
+      readRevokedKids: async () => [],
+      now: () => serverNow,
+    })
+    const h = harness({ tokenService, now: () => serverNow })
+    const capability = await tokenService.signDeliveryCapability({
+      jti: h.item.capabilityJti,
+      requestId: h.item.requestId,
+      itemId: h.item.id,
+      sessionDigest: h.item.request.sessionDigest,
+      surface: "watch-below-player-v1",
+      manifestId: h.item.request.manifestId,
+    })
+    serverNow = new Date("2026-04-20T03:10:01.000Z")
+
+    await expect(
+      h.service.record({
+        ...validInput,
+        capability,
+        events: [
+          { ...validInput.events[0]!, occurredAt: serverNow.toISOString() },
+        ],
+      }),
+    ).rejects.toBeInstanceOf(RecommendationTokenInvalidError)
+    expect(h.prisma.$transaction).not.toHaveBeenCalled()
+    expect(h.prisma.$queryRaw).not.toHaveBeenCalled()
+    expect(h.prisma.recommendationEvidenceAudit.create).not.toHaveBeenCalled()
+  })
+
   it("rejects a profile-linked delivery capability after its privacy generation is fenced", async () => {
     const { service, item, verifyDeliveryCapability } = harness()
     Object.assign(item.request, {
@@ -506,7 +627,17 @@ describe("RecommendationEvidenceService", () => {
     await expect(exhausted.service.record(validInput)).rejects.toMatchObject({
       code: "invalid_binding",
     })
-    expect(exhausted.prisma.$queryRaw.mock.calls[0]).toHaveLength(6)
+    expect(exhausted.prisma.$queryRaw).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        values: [
+          "request-1",
+          "jti-1",
+          validInput.events.length,
+          32,
+          new Date("2026-09-17T03:00:00.000Z"),
+        ],
+      }),
+    )
     expect(exhausted.prisma.$transaction).not.toHaveBeenCalled()
     // The SQL function owns one deterministic saturating rejection row; the
     // service must not append a fresh audit row after the cap is exhausted.

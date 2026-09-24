@@ -6,6 +6,7 @@ const prismaMocks = vi.hoisted(() => ({
   findClientEnvironment: vi.fn(),
   findTargetEnvironment: vi.fn(),
   findApprovedUserGrants: vi.fn(),
+  findUser: vi.fn(async () => ({ membershipStatus: "ACTIVE" })),
 }))
 
 vi.mock("@/db/client", () => ({
@@ -15,6 +16,7 @@ vi.mock("@/db/client", () => ({
       findFirst: prismaMocks.findTargetEnvironment,
     },
     appGrant: { findMany: prismaMocks.findApprovedUserGrants },
+    user: { findUnique: prismaMocks.findUser },
   },
 }))
 
@@ -45,11 +47,14 @@ function dependencies({
   targetEnvironment = localEnvironment as TestEnvironment | null,
   grants = [] as { scopes: { scope: { key: string } }[] }[],
   productionEnabled = false,
+  membershipStatus = "ACTIVE" as string | null,
 } = {}) {
   return {
     findClientEnvironment: vi.fn(async () => clientEnvironment),
     findTargetEnvironment: vi.fn(async () => targetEnvironment),
     findApprovedUserGrants: vi.fn(async () => grants),
+    redeemPreapprovals: vi.fn(async () => {}),
+    findMembershipStatus: vi.fn(async () => membershipStatus),
     productionEnabled: vi.fn(() => productionEnabled),
   }
 }
@@ -218,12 +223,12 @@ describe("Changelog OAuth grant decision", () => {
     {
       name: "missing membership",
       input: { ...authorizationInput, membershipStatus: null },
-      deps: dependencies(),
+      deps: dependencies({ membershipStatus: null }),
     },
     {
       name: "inactive membership",
       input: { ...authorizationInput, membershipStatus: "SUSPENDED" as const },
-      deps: dependencies(),
+      deps: dependencies({ membershipStatus: "SUSPENDED" }),
     },
     {
       name: "malformed provider resources",

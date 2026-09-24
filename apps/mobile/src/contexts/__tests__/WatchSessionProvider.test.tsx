@@ -52,6 +52,36 @@ jest.mock("../WatchPreferencesProvider", () => {
   }
 })
 
+// Driveable downloads store: a download is one dub, and the provider defaults
+// to it over the preference, so the pill names the audio on disk.
+jest.mock("../DownloadsProvider", () => {
+  const state = {
+    ready: true,
+    copy: null as { path: string; dubDocumentId: string | null } | null,
+  }
+  return {
+    useDownloads: () => ({
+      isReady: state.ready,
+      committedCopyFor: () => state.copy,
+    }),
+    __downloadsState: state,
+  }
+})
+
+// Driveable mini-player session: a screen that remounts onto its floating
+// video reads the dub the viewer picked back from here, ahead of a download.
+jest.mock("../../lib/miniPlayer/store", () => {
+  const state = {
+    session: null as { videoSlug: string; languageSlug: string | null } | null,
+  }
+  return {
+    getMiniPlayerStore: () => ({
+      getSnapshot: () => ({ session: state.session }),
+    }),
+    __sessionState: state,
+  }
+})
+
 import { act } from "react"
 
 import { WatchSessionProvider, useWatchSession } from "../WatchSessionProvider"
@@ -65,6 +95,17 @@ import {
 
 const prefs = jest.requireMock("../WatchPreferencesProvider") as {
   __prefState: { ready: boolean; audio: string | null }
+}
+const downloads = jest.requireMock("../DownloadsProvider") as {
+  __downloadsState: {
+    ready: boolean
+    copy: { path: string; dubDocumentId: string | null } | null
+  }
+}
+const miniPlayer = jest.requireMock("../../lib/miniPlayer/store") as {
+  __sessionState: {
+    session: { videoSlug: string; languageSlug: string | null } | null
+  }
 }
 
 function variant(languageSlug: string, id: string): WatchVariant {
@@ -113,6 +154,8 @@ function record(
 
 // Thai FIRST — the shape that made `dubs[0]` the wrong language.
 const MULTI_DUB = [variant("thai", "dubThai"), variant("english", "dubEnglish")]
+const OFFLINE_FILE =
+  "file:///docs/offline-downloads/considering-christmas/a.mp4"
 
 type Session = ReturnType<typeof useWatchSession>
 
@@ -148,6 +191,127 @@ afterEach(async () => {
   variantHistory = []
   prefs.__prefState.ready = true
   prefs.__prefState.audio = "english"
+  downloads.__downloadsState.ready = true
+  downloads.__downloadsState.copy = null
+  miniPlayer.__sessionState.session = null
+})
+
+describe("a download's dub outranks the preference", () => {
+  it("defaults to the downloaded dub, so the pill names the audio on disk", async () => {
+    downloads.__downloadsState.copy = {
+      path: OFFLINE_FILE,
+      dubDocumentId: "dubThai",
+    }
+    await renderProvider()
+
+    await act(async () => {
+      session.setVideo(record("video-cc", MULTI_DUB))
+    })
+
+    expect(session.activeVariant?.languageSlug).toBe("thai")
+    expect(variantHistory).not.toContain("english")
+  })
+
+  it("still surfaces an explicit pick of another dub", async () => {
+    downloads.__downloadsState.copy = {
+      path: OFFLINE_FILE,
+      dubDocumentId: "dubThai",
+    }
+    await renderProvider()
+    await act(async () => {
+      session.setVideo(record("video-cc", MULTI_DUB))
+    })
+
+    await act(async () => {
+      session.setActiveVariantIndex(1)
+    })
+
+    expect(session.activeVariant?.languageSlug).toBe("english")
+  })
+
+  it("waits for the downloads store before resolving, then takes the download", async () => {
+    downloads.__downloadsState.ready = false
+    downloads.__downloadsState.copy = {
+      path: OFFLINE_FILE,
+      dubDocumentId: "dubThai",
+    }
+    await renderProvider()
+
+    await act(async () => {
+      session.setVideo(record("video-cc", MULTI_DUB))
+    })
+    expect(session.activeVariant).toBeNull()
+
+    downloads.__downloadsState.ready = true
+    await act(async () => {
+      session.setVideo(record("video-cc", MULTI_DUB))
+    })
+
+    expect(session.activeVariant?.languageSlug).toBe("thai")
+    expect(variantHistory).not.toContain("english")
+  })
+})
+
+describe("a remount onto the floating session keeps the viewer's pick", () => {
+  it("seeds the default from the floating session's dub, ahead of the download", async () => {
+    // The viewer picked English on a Thai download, minimized, and expanded:
+    // the fresh provider must not hand the pill back to the download.
+    downloads.__downloadsState.copy = {
+      path: OFFLINE_FILE,
+      dubDocumentId: "dubThai",
+    }
+    miniPlayer.__sessionState.session = {
+      videoSlug: "considering-christmas",
+      languageSlug: "english",
+    }
+    await renderProvider()
+
+    await act(async () => {
+      session.setVideo(record("video-cc", MULTI_DUB))
+    })
+
+    expect(session.activeVariant?.languageSlug).toBe("english")
+    expect(variantHistory).not.toContain("thai")
+  })
+
+  it("ignores a floating session of another video", async () => {
+    downloads.__downloadsState.copy = {
+      path: OFFLINE_FILE,
+      dubDocumentId: "dubThai",
+    }
+    miniPlayer.__sessionState.session = {
+      videoSlug: "another-video",
+      languageSlug: "english",
+    }
+    await renderProvider()
+
+    await act(async () => {
+      session.setVideo(record("video-cc", MULTI_DUB))
+    })
+
+    expect(session.activeVariant?.languageSlug).toBe("thai")
+  })
+
+  it("keeps the resolved dub when a download lands after the default", async () => {
+    // The reconciler applies once per video: a copy that arrives later must
+    // not snap a viewer already watching English onto the downloaded Thai.
+    await renderProvider()
+    await act(async () => {
+      session.setVideo(record("video-cc", MULTI_DUB))
+    })
+    expect(session.activeVariant?.languageSlug).toBe("english")
+
+    downloads.__downloadsState.copy = {
+      path: OFFLINE_FILE,
+      dubDocumentId: "dubThai",
+    }
+    await act(async () => {
+      session.setVideo(record("video-cc", MULTI_DUB))
+    })
+
+    expect(session.activeVariant?.languageSlug).toBe("english")
+    expect(variantHistory).not.toContain("thai")
+  })
 })
 
 describe("the variant gate (no dub before resolution)", () => {

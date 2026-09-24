@@ -1,3 +1,4 @@
+import { observeRecommendationRuntime } from "@/lib/recommendation-runtime-observation"
 import { RecommendationSurfaceSchema } from "./token.service"
 import { createHash, randomBytes, randomUUID } from "node:crypto"
 import {
@@ -145,7 +146,13 @@ export class RecommendationEpisodeService {
     return { episodeId, claimNonce, contextVersion: PLAYBACK_CONTEXT_VERSION }
   }
 
-  async select(input: {
+  select(input: Parameters<RecommendationEpisodeService["selectObserved"]>[0]) {
+    return observeRecommendationRuntime("selection", () =>
+      this.selectObserved(input),
+    )
+  }
+
+  private async selectObserved(input: {
     caller: Principal | null
     contractVersion: string
     capability: string

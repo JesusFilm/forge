@@ -263,3 +263,32 @@ it("fails a changed retained byte digest before dispatch", async () => {
     corrupt = false
   }
 })
+
+it("requires retained crossfade handles as well as the authored source trim", async () => {
+  const f = fixture()
+  const incoming = f.document.items[0]!
+  const document = {
+    ...f.document,
+    durationInFrames: 60,
+    items: [
+      { ...incoming, id: "outgoing", startFrame: 0 },
+      {
+        ...incoming,
+        startFrame: 30,
+        transition: { type: "crossfade", durationInFrames: 9 },
+      },
+    ],
+  }
+  // The authored in/out fits this range; the 300 ms dissolve handle does not.
+  f.snapshot.coveredRanges = [{ startMs: 500, endMs: 1500 }]
+  await expect(
+    prepareStudioRenderInput(
+      f.call,
+      "project",
+      document,
+      proofKey,
+      new AbortController().signal,
+    ),
+  ).rejects.toThrow("retained export bytes")
+  expect(f.actions).toEqual(["preview-sources"])
+})

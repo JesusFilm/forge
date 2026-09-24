@@ -235,6 +235,8 @@ async function startWorkflowWorld(): Promise<void> {
     await import("@/services/recommendations/retention/job")
   const { ensureRecommendationControlReadinessSchedulerStarted } =
     await import("@/services/recommendations/control-readiness/job")
+  const { ensurePlaybackObservationSnapshotBootstrapStarted } =
+    await import("@/services/recommendations/playback-observation-snapshot.job")
   const { ensureRecommendationProfileReconciliationSchedulerStarted } =
     await import("@/services/recommendations/profiles/reconciliation.job")
   const { ensureRecommendationEpisodeFinalizationRecovery } =
@@ -257,6 +259,13 @@ async function startWorkflowWorld(): Promise<void> {
   await ensureSearchTraceRetentionSchedulerStarted()
   await ensureRecommendationRetentionSchedulerStarted()
   await ensureRecommendationControlReadinessSchedulerStarted()
+  try {
+    await ensurePlaybackObservationSnapshotBootstrapStarted()
+  } catch (error) {
+    console.warn("Playback observation bootstrap could not be queued", {
+      error: error instanceof Error ? error.name : "unknown",
+    })
+  }
   await ensureRecommendationProfileReconciliationSchedulerStarted()
   scheduleProfileReconciliationRecovery(
     ensureRecommendationProfileReconciliationSchedulerStarted,
