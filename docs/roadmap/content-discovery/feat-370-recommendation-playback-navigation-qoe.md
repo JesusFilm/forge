@@ -97,3 +97,19 @@ contract, scale check, failure behavior and rollout order.
 
 The v2 emitter, authorized Admin evidence gate and normal production
 verification remain pending. The ticket remains in progress.
+
+## September 24 emitter candidate
+
+The browser collector emits v2 summaries with coarse device/network context,
+explicit Watch-next/chapter manual skip, user/scroll/modal pause causes only
+where observed, automatic-start transition, startup timeout, and fatal
+media-error codes. Ambiguous native causes and recoverability stay unknown.
+Replay intent remains unsupported because this player exposes no replay
+control; a seek to zero is not sufficient evidence. All optional facts remain
+bounded and excluded from live ranking. See
+`docs/validation/feat-370-playback-signals/README.md` for the exact behavior.
+
+The emitter must wait for production verification of both v2 readers and the
+Admin worker/bootstrap from the reader-first PR. After normal PR-to-main
+deployment, verify the authorized Admin overview and episode evidence before
+marking this ticket complete.

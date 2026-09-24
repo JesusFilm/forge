@@ -68,11 +68,13 @@ function ModalOwner({
 function MediaOwner({
   media,
   playbackIdentity = media,
+  onSystemPause,
 }: {
   media: WatchPausableMedia | null
   playbackIdentity?: unknown
+  onSystemPause?: () => void
 }) {
-  usePauseForWatchModal(media, playbackIdentity)
+  usePauseForWatchModal(media, playbackIdentity, onSystemPause)
   return null
 }
 
@@ -85,6 +87,26 @@ function render(children: ReactNode) {
 }
 
 describe("WatchModalActivityProvider", () => {
+  it("reports only an actual modal-owned pause as system provenance", () => {
+    const media = makeMedia()
+    const onSystemPause = vi.fn()
+    render(
+      <>
+        <ModalOwner active={false} source="search" releaseDelayMs={0} />
+        <MediaOwner media={media} onSystemPause={onSystemPause} />
+      </>,
+    )
+    expect(onSystemPause).not.toHaveBeenCalled()
+    render(
+      <>
+        <ModalOwner active source="search" releaseDelayMs={0} />
+        <MediaOwner media={media} onSystemPause={onSystemPause} />
+      </>,
+    )
+    expect(onSystemPause).toHaveBeenCalledOnce()
+    expect(media.pause).toHaveBeenCalledOnce()
+  })
+
   it("pauses playing media and resumes only after the final owner releases", async () => {
     const media = makeMedia()
     render(
