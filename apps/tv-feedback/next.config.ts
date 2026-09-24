@@ -1,6 +1,7 @@
 import type { NextConfig } from "next"
 
 const config: NextConfig = {
+  agentRules: false,
   output: "standalone",
   allowedDevOrigins:
     process.env.NODE_ENV === "development" && process.env.FEEDBACK_BASE_URL
