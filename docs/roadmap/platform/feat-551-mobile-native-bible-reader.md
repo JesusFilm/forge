@@ -3,7 +3,7 @@ id: "feat-551"
 title: "Mobile native Bible reader, one verse at a time"
 owner: "urim"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-24"
 duration: 14
 depends_on: []
