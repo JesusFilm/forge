@@ -47,6 +47,14 @@ type Evidence = {
   status: "local" | "uploading" | "validating" | "ready" | "error"
 }
 
+function trustedVideoUrl(value: string): string | undefined {
+  return /^blob:https?:\/\/[a-z0-9.-]+(?::\d{1,5})?\/[0-9a-f-]{36}$/i.test(
+    value,
+  )
+    ? value
+    : undefined
+}
+
 async function api<T>(url: string, options: RequestInit): Promise<T> {
   const response = await fetch(url, { ...options, cache: "no-store" })
   const payload: unknown = await response.json().catch(() => null)
@@ -379,7 +387,14 @@ export function FeedbackWizard({
           {t.brand}
         </div>
         <Link
-          href={`/tv?platform=${tv.platform}${tv.appVersion ? `&appVersion=${encodeURIComponent(tv.appVersion)}` : ""}${tv.build ? `&build=${encodeURIComponent(tv.build)}` : ""}`}
+          href={{
+            pathname: "/tv",
+            query: {
+              platform: tv.platform,
+              ...(tv.appVersion ? { appVersion: tv.appVersion } : {}),
+              ...(tv.build ? { build: tv.build } : {}),
+            },
+          }}
           className="photo-advanced"
           onClick={() => {
             const photo = media.find((item) => item.kind === "image")
@@ -568,7 +583,7 @@ export function FeedbackWizard({
                       />
                     ) : (
                       <video
-                        src={item.url}
+                        src={trustedVideoUrl(item.url)}
                         controls
                         preload="metadata"
                         aria-label={item.file.name}
@@ -782,7 +797,7 @@ export function FeedbackWizard({
                 .map((item) => (
                   <video
                     key={item.key}
-                    src={item.url}
+                    src={trustedVideoUrl(item.url)}
                     controls
                     preload="metadata"
                     aria-label={item.file.name}
