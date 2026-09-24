@@ -9,9 +9,15 @@
  * hosts Ryle's Matthew volume in this form; Mark/Luke/John are covered by
  * Matthew Henry (see ingest-matthew-henry-gospels.mjs).
  *
- * Output: devo/corpus/ryle-matthew.json — one entry per passage section
- * (e.g. "Matthew 8:23-27"), each: { id, book, chapter, reference, osisRef,
- * text, source }. Committed so it ships wherever the app runs.
+ * Output: apps/mastra/devotional-workspace/inputs/reflections/ryle-matthew.json
+ * — one entry per passage section (e.g. "Matthew 8:23-27"). The document shape
+ * is exactly ReflectionEntriesSchema (`reflection-corpus.ts`): a top-level
+ * `{ entries }` and per-entry keys drawn only from { source, reference,
+ * osisRef, text, verse, book, chapter }. Both are `.strict()`, and the
+ * Workspace validates every reflections file on reconcile
+ * (`workspace/schemas.ts`), so any extra key here makes the corpus ineligible.
+ * Provenance therefore goes to stdout, and licence/source URL are recorded in
+ * that folder's README — the one filename reconcile skips.
  *
  *   node apps/mastra/src/scripts/ingest-ryle-matthew.mjs [--file=/tmp/ryle-matthew.xml]
  */
@@ -22,7 +28,11 @@ import { fileURLToPath } from "node:url"
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = path.resolve(HERE, "../../../..")
 const SOURCE_URL = "https://ccel.org/ccel/ryle/matthew.xml"
-const OUT = path.join(REPO_ROOT, "devo/corpus/ryle-matthew.json")
+const OUT = path.join(
+  REPO_ROOT,
+  "apps/mastra/devotional-workspace/inputs/reflections/ryle-matthew.json",
+)
+const SOURCE_LABEL = "J.C. Ryle, Expository Thoughts on the Gospels: Matthew"
 
 const NAMED_ENTITIES = {
   amp: "&",
@@ -70,26 +80,17 @@ async function main() {
       .join("\n\n")
     if (!text) continue
     entries.push({
-      id: osisRef ?? reference.replace(/\s+/g, "_"),
       book: "Matthew",
       chapter: Number(chap),
       reference,
       osisRef,
       text,
-      source: "J.C. Ryle, Expository Thoughts on the Gospels: Matthew",
+      source: SOURCE_LABEL,
     })
   }
 
-  const corpus = {
-    source: "J.C. Ryle, Expository Thoughts on the Gospels: Matthew",
-    sourceUrl: SOURCE_URL,
-    license: "public-domain",
-    ingestedFrom: "CCEL ThML",
-    count: entries.length,
-    entries,
-  }
   await mkdir(path.dirname(OUT), { recursive: true })
-  await writeFile(OUT, JSON.stringify(corpus, null, 2) + "\n", "utf8")
+  await writeFile(OUT, JSON.stringify({ entries }, null, 2) + "\n", "utf8")
 
   const chapters = new Set(entries.map((e) => e.chapter))
   const avg = Math.round(
@@ -100,6 +101,9 @@ async function main() {
   )
   console.log(
     `   chapters ${Math.min(...chapters)}–${Math.max(...chapters)} (${chapters.size}) · avg ${avg} chars`,
+  )
+  console.log(
+    `   provenance: ${SOURCE_LABEL} · public domain · CCEL ThML · ${SOURCE_URL}`,
   )
 }
 

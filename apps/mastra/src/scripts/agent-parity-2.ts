@@ -87,10 +87,7 @@ async function main() {
   if (!chapter) throw new Error("chapter 19 passage mapping is unavailable")
 
   // ── MODERNIZER (Henry on Luke 8 → ~170-word insight-only reflection) ──
-  const source = matchReflection(chapter.osisRef, {
-    ryleMatthew: [],
-    matthewHenry: commentary,
-  })
+  const source = matchReflection(chapter.osisRef, { commentary })
   if (!source) throw new Error("commentary corpus does not cover chapter 19")
   const modInput = {
     sourceText: source.text,

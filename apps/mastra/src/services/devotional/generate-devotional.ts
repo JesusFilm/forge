@@ -211,6 +211,41 @@ export type ComposeContentInput = {
   approxWords?: number
 }
 
+/**
+ * The catalogued chapters whose reflection this module can actually resolve.
+ *
+ * `composeDevotionalContent` THROWS when `selectReflection` returns null, and a
+ * failed run never records its clip, so an unservable chapter is not a one-off
+ * failure: it stays never-used and `chooseChapter` keeps returning the lowest
+ * never-used index, wedging every automatic run on the same chapter. Callers
+ * that reserve a clip must therefore narrow the pool with this predicate first.
+ *
+ * The predicate is the CORPUS, never a chapter number, so a reflection source
+ * added to the Workspace later re-admits its chapters with no code change.
+ * Today the excluded chapter is 1, the Genesis prologue that the Gospel corpora
+ * cannot serve — `jesus-film-passages.test.ts` already exempts it from the
+ * reflection-routing invariant. A thematic (non-passage-keyed) source admits it
+ * again, because `selectReflection` falls back to theme matching.
+ */
+export function chaptersWithReflectionSource(
+  chapters: readonly ChapterWithPassage[],
+  corpora: ReflectionCorpora,
+  sequence: number,
+): ChapterWithPassage[] {
+  return chapters.filter(
+    (chapter) =>
+      selectReflection(
+        {
+          passageOsis: chapter.osisRef,
+          reference: chapter.reference,
+          themes: chapter.themes,
+          sequence,
+        },
+        corpora,
+      ) !== null,
+  )
+}
+
 export async function composeDevotionalContent(
   input: ComposeContentInput,
   deps: GenerateDevotionalDeps,
