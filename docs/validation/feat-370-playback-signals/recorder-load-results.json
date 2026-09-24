@@ -8,17 +8,8 @@
       "medianMountMs": 28,
       "medianDomContentLoadedMs": 28.25000001490116,
       "medianLoadMs": 28.350000008940697,
-      "initialResources": [
-        4,
-        4,
-        4,
-        4,
-        4,
-        4
-      ],
-      "longTasks": [
-        56
-      ]
+      "initialResources": [4, 4, 4, 4, 4, 4],
+      "longTasks": [56]
     },
     "candidate": {
       "bundleBytes": 215181,
@@ -26,14 +17,7 @@
       "medianMountMs": 28.950000002980232,
       "medianDomContentLoadedMs": 29.149999991059303,
       "medianLoadMs": 29.350000008940697,
-      "initialResources": [
-        4,
-        4,
-        4,
-        4,
-        4,
-        4
-      ],
+      "initialResources": [4, 4, 4, 4, 4, 4],
       "longTasks": []
     }
   },
@@ -46,9 +30,7 @@
       "domContentLoadedMs": 123.09999999403954,
       "loadEventMs": 123.2999999821186,
       "resources": 4,
-      "longTasks": [
-        56
-      ]
+      "longTasks": [56]
     },
     {
       "variant": "candidate",
