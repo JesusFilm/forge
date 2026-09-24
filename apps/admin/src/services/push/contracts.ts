@@ -6,7 +6,7 @@ import { PushInputError } from "./errors"
 /** KTD5 — copy is capped per language before a campaign can be saved. */
 export const PUSH_COPY_TITLE_MAX_CHARS = 50
 export const PUSH_COPY_BODY_MAX_CHARS = 120
-/** Migration 0099 bounds both campaign arrays at 300 entries. */
+/** Migration 0100 bounds both campaign arrays at 300 entries. */
 export const PUSH_MAX_AUDIENCE_COUNTRIES = 300
 export const PUSH_MAX_LANGUAGE_FILTER = 300
 export const PUSH_MAX_COPY_ROWS = 300

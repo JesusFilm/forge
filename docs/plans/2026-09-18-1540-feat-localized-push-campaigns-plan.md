@@ -512,12 +512,13 @@ Delivery row statuses split into claims, which may have reached the phone (reser
 - **A worker outage over 3 hours dropping the rest of a wave silently.** Mitigation: a heartbeat-stale alert gated on a live campaign, and the stale-worker state on the campaign page (Operational Notes).
 - **The first real campaign as the first load test.** Mitigation: the synthetic 100,000-phone dry run against a stub transport before U9.
 - **The per-launch mutation bucket exhausted by app switching or language browsing.** Mitigation: once-per-launch registration with a 2-second debounce, a payload hash, and no retry on a rate limit (U7).
-- **Migration scope.** Migration 0099 creates push tables only and alters no existing table, so rollback is a code redeploy with no data restore; the migration safety test checks concurrent-index use only, so the scope invariant is asserted by review.
+- **Migration scope.** Migration 0100 creates push tables only and alters no existing table, so rollback is a code redeploy with no data restore; the migration safety test checks concurrent-index use only, so the scope invariant is asserted by review.
+  - Refined 2026-09-25 (merge with `main`): `main` took the number 0099 first (#2417, `0099_recommendation_playback_signal_readiness`), so the push migration is `0100_push_campaigns`. Its SQL did not change.
 - **Rollback with registrations live.** Turn the flag off, cancel scheduled and sending campaigns, then roll back the worker; a run left asleep on a worker without the workflow fails on wake. Rolling admin back below U2 while the app build is live produces one failed registration per launch, which is bounded noise.
 
 ### Sequencing and Rollout
 
-1. Merge the admin units with the push flag unset; both admin services redeploy and both run the migration. Proofs: both deploy records show a non-null config file, the first pre-deploy log applies migration 0099, `prisma migrate status` is clean, both health checks answer, the campaigns page renders for a viewer-tier session, and schedule is refused with the flag reason. Stop if the worker's record shows no config file.
+1. Merge the admin units with the push flag unset; both admin services redeploy and both run the migration. Proofs: both deploy records show a non-null config file, the first pre-deploy log applies migration 0100, `prisma migrate status` is clean, both health checks answer, the campaigns page renders for a viewer-tier session, and schedule is refused with the flag reason. Stop if the worker's record shows no config file.
 2. Operator credentials per the table in Operational Notes, each with its proof recorded, including the Expo access-token requirement and the worker concurrency setting.
 3. One batched Doppler write of the push env vars with the flag on, excluding the Expo access token, which is set as a Railway variable on the worker service alone; both services redeploy once; admin web still boots because the token never reaches it; schedule is now refused only by the missing-test-send reason.
 4. Mobile: install from the lockfile at the root, confirm the fingerprint, build iOS and Android from the merged tree, read the entitlement from the iOS archive and set the plugin's production mode only if it reads development, submit iOS through the verified recipe, and write the Play internal-testing steps into U9 because none exist. Do not start the build until admin answers both mutations under the fleet bearer.
@@ -570,7 +571,7 @@ First internal campaign, go or no-go: author copy in three languages with a seri
 **Files:**
 
 - `apps/admin/prisma/schema.prisma` (new models; statuses as text with check lists or enums with every value listed now)
-- `apps/admin/prisma/migrations/0099_push_campaigns/migration.sql`
+- `apps/admin/prisma/migrations/0100_push_campaigns/migration.sql`
 - `apps/admin/src/services/push/retention.service.ts` and `retention.service.test.ts`
 - `apps/admin/src/services/push/identity-unlink.service.ts` and its test
 - `apps/admin/src/services/recommendations/viewer-identity.service.ts` (call the unlink on the delete transition only; withdraw leaves push rows untouched)

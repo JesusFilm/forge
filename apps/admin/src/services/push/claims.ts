@@ -3,7 +3,7 @@
  * set is status-driven.
  *
  * The daily claim is a multi-row `INSERT ... ON CONFLICT DO NOTHING` with no
- * conflict target, so both partial unique indexes migration 0099 declares act
+ * conflict target, so both partial unique indexes migration 0100 declares act
  * as arbiters. `RETURNING` names the rows that won; the phones absent from it
  * lost the day and get a suppressed row. Every status move is an update whose
  * `WHERE` carries the status it expects, and the affected count is the race

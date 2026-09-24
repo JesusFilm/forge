@@ -1,6 +1,6 @@
 /**
  * Real-Postgres proof of R25, R26, and R27: every delivery status literal the
- * report reads is the one migration 0099 wrote, each device of one viewer
+ * report reads is the one migration 0100 wrote, each device of one viewer
  * counts on its own, a superseded registration adds nothing, a test send
  * contributes nothing, and an unreachable device lands in the audience and in
  * no other count.

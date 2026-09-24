@@ -35,7 +35,7 @@ the server can send to it.
    decision below.
 2. `apps/admin/prisma/schema.prisma`, the push models at the end of the file —
    registration, test device, campaign, copy, zone, delivery, open, attribution.
-3. `apps/admin/prisma/migrations/0099_push_campaigns/migration.sql` — the
+3. `apps/admin/prisma/migrations/0100_push_campaigns/migration.sql` — the
    partial unique indexes and CHECK constraints that Prisma cannot model. The
    daily-claim index carries its own SQL comment.
 4. `apps/admin/src/services/push/` — retention, the identity unlink, the typed
@@ -79,7 +79,7 @@ the server can send to it.
 ## What To Build
 
 Units U1 to U8 are built on this branch, one commit each: the data model and
-migration 0099, the retention step and identity unlink, the campaign, audience,
+migration 0100, the retention step and identity unlink, the campaign, audience,
 language, claim, and test-device services, the two public mutations, the send
 workflow with transport, receipts, and recovery, attribution in both
 directions with the report, the dashboard, and the app's registration, tap
@@ -93,7 +93,7 @@ credentials table and the go-or-no-go checklist.
 ## Operator steps before the first campaign
 
 1. Deploy admin with `PUSH_CAMPAIGNS_ENABLED` unset. Confirm both admin services
-   ran migration 0099 and `prisma migrate status` is clean.
+   ran migration 0100 and `prisma migrate status` is clean.
 2. Restart the recommendation-retention scheduler run once. The push retention
    step was added inside that durable loop, so the run alive at deploy time
    replays an event log without it. Cancel it in the workflows dashboard and
@@ -149,7 +149,7 @@ credentials table and the go-or-no-go checklist.
 - The push database suites:
   `PUSH_DB_TEST=1 DATABASE_URL=<admin test database> pnpm --filter @forge/admin exec vitest run src/services/push`
 - `apps/admin/src/scripts/prisma-migration-deploy-safety.test.ts`, plus a review
-  that migration 0099 alters no existing table
+  that migration 0100 alters no existing table
 - `prisma migrate status` clean on the admin web and worker services after the
   deploy
 - A launch-path measurement for the mobile change, taken during the device pass:

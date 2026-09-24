@@ -1,5 +1,5 @@
 /**
- * Real-Postgres proof of the push claim contracts that migration 0099 owns.
+ * Real-Postgres proof of the push claim contracts that migration 0100 owns.
  *
  * Nothing here calls a service. The claim service lands in U3; these tests
  * prove the indexes it will lean on, using the same statement shape it must

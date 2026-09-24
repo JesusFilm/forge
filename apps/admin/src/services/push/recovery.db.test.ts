@@ -101,7 +101,7 @@ describe.skipIf(env.PUSH_DB_TEST !== "1")(
         data: {
           id: `${PREFIX}campaign`,
           status: "SENDING",
-          // Migration 0099 checks that anything past draft names a
+          // Migration 0100 checks that anything past draft names a
           // destination, so the fixture has to carry one.
           destinationKind: "SERIES",
           destinationSlug: "washi-gospel",

@@ -5868,7 +5868,7 @@ model ShortScheduleDispatch {
 
 // Localized push campaigns (feat-524). Push owns its own tables; the
 // recommendation tables are untouched. Partial unique indexes and CHECK
-// constraints live in migration 0099 because Prisma cannot model them.
+// constraints live in migration 0100 because Prisma cannot model them.
 
 enum PushPlatform {
   IOS     @map("ios")
@@ -5946,7 +5946,7 @@ enum PushDeliveryStatus {
 
 /// One phone's push address. `viewerDigest` is the recommendation viewer token
 /// digest; an identity erasure or expiry nulls it and the registration stays.
-/// Migration 0099 adds the active and retired partial indexes the audience and
+/// Migration 0100 adds the active and retired partial indexes the audience and
 /// the purge read.
 model PushRegistration {
   id                String                 @id @default(cuid())
@@ -5957,7 +5957,7 @@ model PushRegistration {
   viewerDigest      String?                @map("viewer_digest") @db.Char(64)
   /// An identifier the app mints once per install and keeps in its own store.
   /// A token rotation on the same install carries the same id; a reinstall
-  /// does not. Migration 0099 adds the partial index the supersede pass reads.
+  /// does not. Migration 0100 adds the partial index the supersede pass reads.
   installId         String?                @map("install_id") @db.VarChar(64)
   platform          PushPlatform
   appBuild          String                 @map("app_build") @db.VarChar(64)
@@ -6065,7 +6065,7 @@ model PushCampaignZone {
 
 /// One campaign's row for one phone. `error` holds the provider's error code
 /// and an admin classification only, because the provider's message embeds the
-/// push token. Migration 0099 adds the daily-claim and live-uniqueness partial
+/// push token. Migration 0100 adds the daily-claim and live-uniqueness partial
 /// indexes.
 model PushDelivery {
   id             String             @id @default(cuid())
