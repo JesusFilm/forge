@@ -196,6 +196,35 @@ describe("selectCatalog", () => {
   })
 })
 
+describe("omitted books", () => {
+  const [rus] = RECORDS.filter((entry) => entry.id === "rus_syn")
+  if (!rus) throw new Error("fixture lacks rus_syn")
+
+  it("keeps a translation that lost a book, as a partial Bible", () => {
+    const record = {
+      ...rus,
+      text: {
+        ...TEXT,
+        books: "GEN-HOS AMO-REV",
+        omitted: { JOL: "no-verses 3" },
+      },
+    }
+    const [kept] = selectCatalog([record]).kept
+    expect(kept?.complete).toBe(false)
+    expect(catalogEntries(kept ? [kept] : [])[0]?.books).toBe("GEN-HOS AMO-REV")
+  })
+
+  it("refuses a lock that lists an omitted book in the book set", () => {
+    const record = {
+      ...rus,
+      text: { ...TEXT, omitted: { JOL: "no-verses 3" } },
+    }
+    expect(() => selectCatalog([record])).toThrow(
+      "rus_syn lists JOL as omitted and as present",
+    )
+  })
+})
+
 describe("catalogEntries", () => {
   it("uses the id as the short name when the catalog has none (nld_)", () => {
     const [rus] = selectCatalog(RECORDS).kept.filter(

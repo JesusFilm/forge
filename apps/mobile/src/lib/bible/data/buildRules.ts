@@ -39,6 +39,8 @@ export type TextFacts = {
   verses: number
   /** Per book: `encodeChapterFacts` of the discriminating chapters. */
   chapters: Readonly<Partial<Record<string, string>>>
+  /** Books that normalizeTranslation omitted: `"<reason> <chapter>"` by id. */
+  omitted?: Readonly<Partial<Record<string, string>>>
 }
 
 export type TextFailure = { rejected: string } | { missing: number }
@@ -241,6 +243,13 @@ export function selectCatalog(records: readonly SourceRecord[]): {
       throw new BibleDataRuleError(
         `${record.id} has a bad book set "${text.books}"`,
       )
+    }
+    for (const bookId of Object.keys(text.omitted ?? {})) {
+      if (isUsfmBookId(bookId) && books.has(bookId)) {
+        throw new BibleDataRuleError(
+          `${record.id} lists ${bookId} as omitted and as present`,
+        )
+      }
     }
     kept.push({
       ...record,

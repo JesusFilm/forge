@@ -1,0 +1,468 @@
+{
+  "translation": {
+    "id": "por_tft",
+    "name": "A Bíblia Sagrada, Tradução para Tradutores",
+    "website": "https://ebible.org/Scriptures/details.php?id=portft",
+    "licenseUrl": "https://ebible.org/Scriptures/details.php?id=portft",
+    "shortName": "TFT",
+    "englishName": "Portuguese Translation for Translators",
+    "language": "por",
+    "textDirection": "ltr",
+    "sha256": "76b6f98b90a56bd61b13677faa6aed14c1120bfe1cffbba3b420136975377891",
+    "availableFormats": ["json"],
+    "listOfBooksApiLink": "/api/por_tft/books.json",
+    "completeTranslationApiLink": "/api/por_tft/complete.json",
+    "simpleCompleteTranslationApiLink": "/api/por_tft/complete.simple.json",
+    "numberOfBooks": 27,
+    "totalNumberOfChapters": 260,
+    "totalNumberOfVerses": 7899,
+    "languageName": "português",
+    "languageEnglishName": "Portuguese"
+  },
+  "books": [
+    {
+      "id": "MAT",
+      "name": "Mateus",
+      "commonName": "Mateus",
+      "title": "O Evangelho que foi escrito por Mateus",
+      "order": 40,
+      "numberOfChapters": 28,
+      "totalNumberOfVerses": 1061,
+      "chapters": [
+        {
+          "numberOfVerses": 36,
+          "thisChapterAudioLinks": {},
+          "thisChapterAudioTimings": {},
+          "chapter": {
+            "number": 14,
+            "content": [
+              { "type": "heading", "content": ["Mateus 14.1–13"] },
+              {
+                "type": "heading",
+                "content": [
+                  "TEMA: Herodes manda colocar João, o Batizador, na prisão e depois o mata, porque João o critica por se casar com a mulher do seu irmão."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 1,
+                "content": [
+                  "Por aquele tempo Herodes Antipas, o chefe, ouviu relatos de como Jesus fazia milagres."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 2,
+                "content": [
+                  "Por esta razão ele disse aos seus servos: “É João, o Batizador. Ele pode fazer milagres porque ressuscitou dos mortos”."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 3,
+                "content": [
+                  "A razão por que Herodes pensou assim foi esta: Herodes casou-se com Herodias, a esposa de Filipe, o irmão dele, enquanto Filipe ainda estava vivo. Então João lhe disse: “A lei de Deus não permite que você se case com a mulher do seu irmão enquanto este ainda está vivo!” Por isso dizer isso, Herodes mandou que seus soldados colocassem João na cadeia. Eles o amarraram e o colocaram na prisão."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 5,
+                "content": [
+                  "Mesmo que Herodes quisesse matar João, tinha medo que as pessoas que João tinha ensinado se rebelassem contra ele se ele fizesse isso. Pois todos pensavam que João era um profeta."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 6,
+                "content": [
+                  "Mas quando Herodes deu uma festa para celebrar o seu aniversário, a filha de Herodias dançou no meio dos convidados dele. Isso agradou Herodes."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 7,
+                "content": [
+                  "Então ele prometeu dar a ela o que ela quisesse e pediu que Deus o castigasse se não cumprisse a promessa."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 8,
+                "content": [
+                  "A filha de Herodias perguntou à mãe dela o que devia pedir de Herodes. Foi dito a ela pela sua mãe {Sua mãe disse a ela} para pedir a cabeça de João, o Batizador. Como resultado, a filha dela disse a Herodes: “Corte a cabeça de João, o Batizador, e traga para cá em um prato para que minha mãe saiba que ele está morto!”"
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 9,
+                "content": [
+                  "O rei ficou perturbado, porque sabia que cometeria um grande crime. Mas porque jurou diante dos seus convidados quando fez essa promessa e não queria que os convidados pensassem que ele não cumpriria sua promessa, ele mandou que dessem a ela {que os soldados dessem a ela} o que ela queria."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 10,
+                "content": [
+                  "Ele enviou um soldado à prisão para que cortasse a cabeça de João."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 11,
+                "content": [
+                  "O soldado fez isso e a cabeça de João foi levada em um prato e dada {levou a cabeça de João em um prato e deu} à moça. Então ela a levou e mostrou à mãe dela."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 12,
+                "content": [
+                  "Os discípulos de João foram à prisão, pegaram o corpo dele e o enterraram. Depois eles relataram a Jesus o que tinha acontecido."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 13,
+                "content": [
+                  "Depois que Jesus soube que Herodes matou João, ele viajou só conosco de barco pelo lago da Galileia a um lugar remoto."
+                ]
+              },
+              { "type": "heading", "content": ["Mateus 14.13–21"] },
+              {
+                "type": "heading",
+                "content": [
+                  "TEMA: Jesus alimenta milagrosamente mais de 5.000 pessoas. Depois que as multidões ouviram que Jesus e nós, discípulos, viajamos para um lugar remoto, saíram de suas cidades e o seguiram andando."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 14,
+                "content": [
+                  "Quando chegou à praia Ele viu uma grande multidão de pessoas que se reuniu ali, à espera de/esperando Jesus. Ele teve pena das pessoas e curou os doentes entre elas."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 15,
+                "content": [
+                  "Quando a noite já se aproximava, nós, discípulos, chegamos a Ele e dissemos: Este é um lugar onde não mora ninguém e está muito tarde. Mande as pessoas embora para que possam ir às cidades perto daqui, para poderem comprar comida para si mesmas."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 16,
+                "content": [
+                  "Mas Jesus nos disse: “Não precisam sair para acharem comida. Em vez disso, vocês mesmos deem algo para comer a elas aqui!”"
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 17,
+                "content": [
+                  "Dissemos a Ele: “Temos somente cinco pães e dois peixes cozidos aqui!”"
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 18,
+                "content": ["Ele nos disse: “Tragam para mim!”"]
+              },
+              {
+                "type": "verse",
+                "number": 19,
+                "content": [
+                  "Disse às pessoas reunidas ali para se sentarem no gramado. Aí Ele pegou os cinco pães e os dois peixes. Enquanto olhava para o céu Ele agradeceu a Deus pelos pães e peixes e os separou em pedaços. Então Ele deu os pedaços para nós, discípulos, e nós distribuímos à multidão."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 20,
+                "content": [
+                  "Todos na multidão comeram até sentirem que tinham comido o suficiente. Então nós, discípulos, recolhemos os pedaços que sobraram e enchemos doze cestos."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 21,
+                "content": ["Os que comeram eram mais ou menos 5."]
+              },
+              {
+                "type": "verse",
+                "number": 0,
+                "content": ["homens. Nem contamos as mulheres e as crianças."]
+              },
+              { "type": "heading", "content": ["Mateus 14.22–33"] },
+              {
+                "type": "heading",
+                "content": [
+                  "TEMA: Jesus anda no Lago da Galileia e depois Pedro tenta fazer o mesmo."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 22,
+                "content": [
+                  "Logo depois disso acontecer, Jesus mandou que nós, discípulos, entrássemos no barco e fossemos diante dele a outro lugar, enquanto Ele mandava embora as multidões."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 23,
+                "content": [
+                  "Depois dele despedir-se das multidões, subiu nos montes só para orar. Quando já era noite, Ele ainda estava lá sozinho."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 24,
+                "content": [
+                  "Nessa hora o barco já estava há centenas de metros da praia. Ele era jogado muito pelas ondas {As ondas estavam jogando-o muito} porque o vento soprava contra ele."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 25,
+                "content": [
+                  "Então Jesus desceu do monte para o lago. Em algum momento entre três e seis da manhã, Ele andou em cima da água em direção ao nosso barco."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 26,
+                "content": [
+                  "Quando nós, discípulos, o vimos andando em cima da água, pensamos que fosse um fantasma. Ficamos apavorados e gritamos porque estávamos com medo."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 27,
+                "content": [
+                  "Logo Jesus nos disse: “Animem-se! Sou eu. Não tenham medo!”"
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 28,
+                "content": [
+                  "Pedro disse-lhe: “Senhor, se for o senhor, diga-me para andar na água até o senhor!”"
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 29,
+                "content": [
+                  "Jesus disse: “Venha!” Então Pedro saiu do barco. Ele andou na água em direção a Jesus."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 30,
+                "content": [
+                  "Mas quando Pedro viu as ondas fortes causadas pelo vento, ficou com medo. Ele começou a afundar e gritou, “Senhor, salve-me!”"
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 31,
+                "content": [
+                  "Imediatamente Jesus estendeu a mão e o pegou. Ele disse a Pedro: “Você confia só um pouco no meu poder! Você não devia ter duvidado/Por que você duvidou [RHQ] que eu pudesse protegê-lo de afundar./?”"
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 32,
+                "content": [
+                  "Então Jesus e Pedro entraram no barco. O vento deixou de soprar."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 33,
+                "content": [
+                  "Nós, discípulos, que estávamos no barco com Ele O louvamos e dissemos: “Verdadeiramente o senhor é o Filho de Deus!”"
+                ]
+              },
+              { "type": "heading", "content": ["Mateus 14.34–36"] },
+              {
+                "type": "heading",
+                "content": [
+                  "TEMA: Jesus cura muitos doentes na região de Genesaré."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 34,
+                "content": [
+                  "Quando tínhamos atravessado ainda mais do lago em um barco, chegamos à cidade de Genesaré."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 35,
+                "content": [
+                  "Os homens daquela área reconheceram Jesus. Como resultado, mandaram algumas pessoas para informar o povo que vivia por toda aquela região [MTY] de que Jesus estava na área deles. Então o povo que vivia naquela região trouxe a Jesus todas as pessoas doentes que moravam ali."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 36,
+                "content": [
+                  "Os doentes pediam que Ele os deixasse tocar nele ou tocar só na barra da roupa dele para que Jesus pudesse curá-los. E todos os que tocaram nele ou na roupa dele foram curados {Ele curou todos aqueles que tocaram nele ou na roupa dele}."
+                ]
+              }
+            ],
+            "footnotes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "2JN",
+      "name": "2 João",
+      "commonName": "2 João",
+      "title": "O apóstolo João escreveu cartas aos cristãos. Chamamos esta carta de 2 João",
+      "order": 63,
+      "numberOfChapters": 1,
+      "totalNumberOfVerses": 13,
+      "chapters": [
+        {
+          "numberOfVerses": 13,
+          "thisChapterAudioLinks": {},
+          "thisChapterAudioTimings": {},
+          "chapter": {
+            "number": 1,
+            "content": [
+              { "type": "heading", "content": ["2 João 1-3"] },
+              {
+                "type": "heading",
+                "content": [
+                  "TEMA: Eu, o ancião/mais velho, escrevo à congregação e a todos os membros em particular. Amo vocês e sei que Deus Pai e seu Filho nos abençoarão."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 1,
+                "content": [
+                  "Vocês todos me conhecem como o ancião principal. Estou escrevendo esta carta a todos vocês [MET] que se congregam porque Deus os escolheu. Amo vocês profundamente! E não somente eu mesmo amo vocês, como também os amam todos os que conhecem e aceitam a verdadeira mensagem que Jesus ensinava!"
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 2,
+                "content": [
+                  "Todos nós cremos na mensagem verdadeira; ela está em nosso ser interior, e vamos continuar acreditando nela para sempre!"
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 3,
+                "content": [
+                  "Deus Pai e Jesus Cristo, que é—o Filho dele/o homem que é também Deus— continuarão agindo de uma maneira bondosa e misericordiosa para conosco porque nos amam. Eles vão capacitar-nos a ter a paz interior, por causa de crermos na mensagem verdadeira."
+                ]
+              },
+              { "type": "heading", "content": ["2 João 4"] },
+              {
+                "type": "heading",
+                "content": [
+                  "TEMA: Estou contente que alguns de seus membros estejam vivendo da maneira como Deus nos mandou viver."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 4,
+                "content": [
+                  "Estou muito contente, pois descobri que alguns de vocês [SYN] estão se comportando de uma forma consistente com a verdadeira mensagem de Deus. Vocês estão se comportando justamente como nosso Pai Deus mandou que nos comportássemos."
+                ]
+              },
+              { "type": "heading", "content": ["2 João 5-6"] },
+              {
+                "type": "heading",
+                "content": [
+                  "TEMA: Continuem vivendo de uma forma amorosa uns com os outros, justamente como Deus nos mandou viver quando inicialmente cremos na verdadeira mensagem dele."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 5,
+                "content": [
+                  "E agora, querida congregação [MET], peço que vocês façam algo. Estou pedindo isto, não para mandar que façam algo novo, senão que continuem fazendo aquilo que Deus nos mandou fazer quando cremos inicialmente [MET] na verdadeira mensagem dele. Aquilo que ele mandou é que nos amássemos mutuamente."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 6,
+                "content": [
+                  "Realmente estamos amando a Deus quando nos comportamos de acordo com aquilo que Deus nos manda fazer. O que Ele nos manda fazer é continuarmos vivendo de acordo com aquilo que Deus nos manda fazer. Isso é justamente o que vocês ouviram quando começaram [MTY] a crer na verdadeira mensagem de Deus."
+                ]
+              },
+              { "type": "heading", "content": ["2 João 7-11"] },
+              {
+                "type": "heading",
+                "content": [
+                  "TEMA: Já que muitos falsos mestres estão andando por aí, enganando as pessoas e se opondo a Cristo, fiquem atentos para poderem receber seu galardão integral, a bênção de estarem para sempre com Deus. Não acolham nem animem de nenhuma forma esses falsos mestres."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 7,
+                "content": [
+                  "Muitas pessoas que enganam seus semelhantes abandonaram sua congregação e já saíram entre outras pessoas da sua região [MTY]. São esses indivíduos que não confessam que Jesus Cristo se tornou ser humano. São aqueles que enganam as pessoas e se opõem àquilo que ensinamos sobre Cristo."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 8,
+                "content": [
+                  "Tenham cuidado, portanto, para que nenhum desses mestres os engane! Se eles os enganarem, vocês perderão o galardão para o qual nós e vocês estamos trabalhando, e vocês não receberão o galardão integral de estarem unidos eternamente com Deus!"
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 9,
+                "content": [
+                  "Se alguém modificar aquilo que Cristo ensinava, deixando de acreditar no que ele ensinava, tal pessoa não tem um relacionamento com Deus. Mas se alguém continuar acreditando naquilo que Cristo ensinava, tal pessoa tem um íntimo relacionamento com Deus Pai e com—seu Filho/aquele que é também Deus."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 10,
+                "content": [
+                  "Quando você encontrarem alguém que não ensine aquilo que Cristo ensinava, não o acolham em casa! Não o animem, desejando-lhe bênçãos de nenhuma forma!"
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 11,
+                "content": [
+                  "Lembrem-se que, se associarem a ele, Deus irá castigá-los junto com ele pelo mal que ele tiver feito."
+                ]
+              },
+              { "type": "heading", "content": ["2 João 12-13"] },
+              {
+                "type": "heading",
+                "content": [
+                  "TEMA: Em vez de escrever muito mais a vocês, espero ir falar-lhes diretamente. Os membros da sua congregação-irmã lhe mandam saudações."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 12,
+                "content": [
+                  "Mesmo que eu tenha muito mais que gostaria de lhes dizer, resolvi não dizê-lo por meio de uma carta [MTY]. Em vez disso, espero poder estar em breve com vocês e falar-lhes diretamente. Então estaremos muito contentes na companhia uns dos outros."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 13,
+                "content": [
+                  "Seus irmãos crentes daqui [MET], aqueles que Deus também chamou, —mandam dizer que estão pensando em vocês/que lhes mandam saudações."
+                ]
+              }
+            ],
+            "footnotes": []
+          }
+        }
+      ]
+    }
+  ]
+}

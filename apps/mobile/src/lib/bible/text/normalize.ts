@@ -12,6 +12,7 @@ import {
   type TextHeader,
   type TextRejectReason,
   type TextRejection,
+  type OmittedBook,
   type TextResult,
   type TranslationText,
   type Verse,
@@ -149,8 +150,8 @@ function verseLines(content: readonly unknown[]): VerseLine[] {
 
 /**
  * Normalizes one chapter object (`{ number, content, footnotes }`). It drops
- * headings, Psalm subtitles, footnotes, and unknown item types. A verse with a
- * bad number or no content rejects the chapter.
+ * headings, Psalm subtitles, a title numbered 0, footnotes, and unknown items.
+ * Any other bad verse number, or a verse with no content, rejects the chapter.
  */
 export function normalizeChapter(
   bookId: UsfmBookId,
@@ -170,6 +171,9 @@ export function normalizeChapter(
   for (const item of content) {
     if (!isRecord(item) || item.type !== "verse") continue
     const verseNumber = item.number
+    // Before verse 1, a verse 0 is a title. After a verse, it is a piece that
+    // the source split off that verse (por_tft MAT 14:21), so it fails.
+    if (verseNumber === 0 && markers.size === 0) continue
     if (!isPositiveInteger(verseNumber) || !Array.isArray(item.content)) {
       return reject("invalid-verse", bookId, chapterNumber)
     }
@@ -296,9 +300,9 @@ export function normalizeBook(
 }
 
 /**
- * Normalizes a whole `complete.json` into one file per book. It skips and
- * reports a book outside the 66. Any other failure rejects the translation,
- * so a download is never partly readable.
+ * Normalizes a whole `complete.json` into one file per book. A defect costs
+ * the book, not the translation: it omits and reports that book (KD4, R25).
+ * It rejects a source whose shape is broken, or one where no book survives.
  */
 export function normalizeTranslation(
   raw: unknown,
@@ -312,6 +316,7 @@ export function normalizeTranslation(
 
   const books: BookText[] = []
   const skippedBookIds: string[] = []
+  const omittedBooks: OmittedBook[] = []
   const seen = new Set<string>()
   for (const entry of entries) {
     if (isRecord(entry) && typeof entry.id === "string") {
@@ -319,18 +324,27 @@ export function normalizeTranslation(
         skippedBookIds.push(entry.id)
         continue
       }
+      if (seen.has(entry.id)) return reject("duplicate-book", entry.id)
+      seen.add(entry.id)
     }
     const book = buildBook(info.value, entry)
-    if (book.status === "rejected") return book
-    if (seen.has(book.value.bookId)) {
-      return reject("duplicate-book", book.value.bookId)
+    if (book.status === "ok") {
+      books.push(book.value)
+      continue
     }
-    seen.add(book.value.bookId)
-    books.push(book.value)
+    // An entry with no book id cannot be named, so the source is broken.
+    const { bookId, reason, chapterNumber } = book
+    if (bookId === undefined || !isUsfmBookId(bookId)) return book
+    omittedBooks.push(
+      chapterNumber === undefined
+        ? { bookId, reason }
+        : { bookId, reason, chapterNumber },
+    )
   }
   if (books.length === 0) return reject("no-books")
   books.sort((a, b) => bookOrder(a.bookId) - bookOrder(b.bookId))
-  return ok({ ...info.value, books, skippedBookIds })
+  omittedBooks.sort((a, b) => bookOrder(a.bookId) - bookOrder(b.bookId))
+  return ok({ ...info.value, books, skippedBookIds, omittedBooks })
 }
 
 function parseHeader(raw: unknown): TextResult<TextHeader> {

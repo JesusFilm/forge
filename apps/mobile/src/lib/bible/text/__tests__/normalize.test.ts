@@ -16,6 +16,13 @@ import webJohn3 from "./fixtures/engwebp-jhn-3.json"
 import webPsalm119 from "./fixtures/engwebp-psa-119.json"
 import webRomans16 from "./fixtures/engwebp-rom-16.json"
 import synodalPsalm50 from "./fixtures/rus_syn-psa-50.json"
+// *-trimmed.json: real complete.json items (2026-09-25), cut down to a short
+// book that is fine and the one defective book, which keeps its defective
+// chapter and at most one good chapter beside it.
+import acuDefectiveExodus from "./fixtures/acu_tbl-complete-exo-2jn-trimmed.json"
+import hauDefectiveDaniel from "./fixtures/hau_bib-complete-dan-2jn-trimmed.json"
+import myaDefectiveHabakkuk from "./fixtures/mya_ojv-complete-2jn-hab-trimmed.json"
+import porDefectiveMatthew from "./fixtures/por_tft-complete-mat-2jn-trimmed.json"
 import {
   BIBLE_BOOKS,
   bookByOsis,
@@ -369,7 +376,7 @@ describe("normalizeChapterFile: fail-closed", () => {
     })
   })
 
-  it.each([0, -1, 1.5, "1", null])(
+  it.each([-1, 1.5, "1", null])(
     "rejects a verse whose number is %p (Synthetic: BSB Psalm 23)",
     (badNumber) => {
       const raw = clone(bsbPsalm23)
@@ -429,6 +436,43 @@ describe("normalizeChapterFile: fail-closed", () => {
     expect(chapterPositions(chapter)[1]).toEqual({ kind: "gap", number: 2 })
   })
 
+  it("drops a title numbered 0 before verse 1 (Synthetic: BSB Psalm 23)", () => {
+    // Synthetic: no catalog source had a leading verse 0 on 2026-09-25.
+    const raw = clone(bsbPsalm23)
+    const items = contentItems(raw)
+    const index = items.findIndex((item) => item.number === 1)
+    items.splice(index, 0, {
+      type: "verse",
+      number: 0,
+      content: ["A Psalm of David."],
+    })
+
+    expect(chapterOf(raw)).toEqual(chapterOf(bsbPsalm23))
+  })
+
+  it("rejects a verse 0 after verse 1, a piece split off a verse (por_tft Matthew 14)", () => {
+    // The source reads "5.000 homens" as "5." then verse "000": "homens. ...".
+    // Dropping it would show that about 5 people ate, so the chapter fails.
+    const [matthew] = porDefectiveMatthew.books
+    const wrapper = matthew?.chapters[0]
+    if (matthew === undefined || wrapper === undefined) {
+      throw new TypeError("the fixture has no Matthew 14")
+    }
+
+    expect(
+      normalizeChapterFile({
+        translation: porDefectiveMatthew.translation,
+        book: matthew,
+        chapter: wrapper.chapter,
+      }),
+    ).toEqual({
+      status: "rejected",
+      reason: "invalid-verse",
+      bookId: "MAT",
+      chapterNumber: 14,
+    })
+  })
+
   it("joins a verse that the source splits into two items (Synthetic: BSB Psalm 23)", () => {
     const raw = clone(bsbPsalm23)
     const items = contentItems(raw)
@@ -452,6 +496,7 @@ describe("normalizeBook and normalizeTranslation", () => {
     expect(translation.translationId).toBe("BSB")
     expect(translation.textDirection).toBe("ltr")
     expect(translation.skippedBookIds).toEqual([])
+    expect(translation.omittedBooks).toEqual([])
     expect(translation.books.map((book) => book.bookId)).toEqual(["2JN", "3JN"])
 
     const [secondJohn, thirdJohn] = translation.books
@@ -501,17 +546,29 @@ describe("normalizeBook and normalizeTranslation", () => {
     expect(translation.books.map((book) => book.bookId)).toEqual(["2JN", "3JN"])
   })
 
-  it("rejects the whole translation when one chapter is malformed (Synthetic)", () => {
+  it("omits a book with a malformed chapter and keeps the rest (Synthetic)", () => {
     const raw = clone(bsbComplete2John3John) as unknown as {
       books: { chapters: { chapter: Record<string, unknown> }[] }[]
     }
     const chapter = raw.books[1]?.chapters[0]?.chapter
     if (chapter !== undefined) delete chapter.content
 
+    const translation = expectOk(normalizeTranslation(raw))
+    expect(translation.books.map((book) => book.bookId)).toEqual(["2JN"])
+    expect(translation.omittedBooks).toEqual([
+      { bookId: "3JN", reason: "malformed-chapter" },
+    ])
+  })
+
+  it("rejects the translation when a book entry has no id (Synthetic)", () => {
+    const raw = clone(bsbComplete2John3John) as unknown as {
+      books: Record<string, unknown>[]
+    }
+    delete raw.books[1]?.id
+
     expect(normalizeTranslation(raw)).toEqual({
       status: "rejected",
-      reason: "malformed-chapter",
-      bookId: "3JN",
+      reason: "malformed-book",
     })
   })
 
@@ -536,6 +593,87 @@ describe("normalizeBook and normalizeTranslation", () => {
     const book = expectOk(normalizeBook(bsbComplete2John3John.translation, raw))
     expect(book.bookName).toBe("3 John")
   })
+})
+
+describe("normalizeTranslation: a defect costs the book, not the translation", () => {
+  type TrimmedSource = {
+    translation: unknown
+    books: { id: string; chapters: { chapter: unknown }[] }[]
+  }
+
+  const CASES: {
+    name: string
+    source: TrimmedSource
+    omitted: { bookId: string; reason: string; chapterNumber: number }
+  }[] = [
+    {
+      name: "mya_ojv Habakkuk 3: every verse marker is empty",
+      source: myaDefectiveHabakkuk,
+      omitted: { bookId: "HAB", reason: "no-verses", chapterNumber: 3 },
+    },
+    {
+      name: "acu_tbl Exodus 1: headings only",
+      source: acuDefectiveExodus,
+      omitted: { bookId: "EXO", reason: "no-verses", chapterNumber: 1 },
+    },
+    {
+      name: "hau_bib Daniel 14: no content, after a good chapter 12",
+      source: hauDefectiveDaniel,
+      omitted: { bookId: "DAN", reason: "no-verses", chapterNumber: 14 },
+    },
+    {
+      name: "por_tft Matthew 14: a verse 0 after verse 21",
+      source: porDefectiveMatthew,
+      omitted: { bookId: "MAT", reason: "invalid-verse", chapterNumber: 14 },
+    },
+  ]
+
+  it.each(CASES)("omits the book and keeps the rest: $name", (testCase) => {
+    const translation = expectOk(normalizeTranslation(testCase.source))
+
+    expect(translation.omittedBooks).toEqual([testCase.omitted])
+    expect(translation.books.map((book) => book.bookId)).toEqual(["2JN"])
+    expect(translation.books[0]?.chapters[0]?.verses.length).toBeGreaterThan(0)
+  })
+
+  it.each(CASES)(
+    "still rejects the chapter as a chapter file: $name",
+    (testCase) => {
+      const book = testCase.source.books.find(
+        (candidate) => candidate.id === testCase.omitted.bookId,
+      )
+      const wrapper = book?.chapters.find(
+        (candidate) =>
+          (candidate.chapter as { number?: unknown }).number ===
+          testCase.omitted.chapterNumber,
+      )
+
+      expect(
+        normalizeChapterFile({
+          translation: testCase.source.translation,
+          book,
+          chapter: wrapper?.chapter,
+        }),
+      ).toEqual({ status: "rejected", ...testCase.omitted })
+    },
+  )
+
+  it.each(CASES)(
+    "rejects the translation when no book survives: $name",
+    (testCase) => {
+      const source = {
+        ...testCase.source,
+        books: testCase.source.books.filter(
+          (book) => book.id === testCase.omitted.bookId,
+        ),
+      }
+
+      expect(normalizeTranslation(source)).toEqual({
+        status: "rejected",
+        reason: "no-books",
+      })
+    },
+  )
 })
 
 describe("parseBookText and parseChapterText", () => {

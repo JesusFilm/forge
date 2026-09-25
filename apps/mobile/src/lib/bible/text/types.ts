@@ -57,6 +57,15 @@ export type TranslationText = {
   books: BookText[]
   /** Source book ids outside the 66 (TOB, SIR, ESG), which the reader omits. */
   skippedBookIds: string[]
+  /** Books of the 66 whose text failed; the reader falls back for them (R25). */
+  omittedBooks: OmittedBook[]
+}
+
+/** One book that normalizeTranslation left out, with the first failure. */
+export type OmittedBook = {
+  bookId: UsfmBookId
+  reason: TextRejectReason
+  chapterNumber?: number
 }
 
 /** One reader stop in a chapter: a verse, or a gap that shows a note (R21). */

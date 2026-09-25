@@ -354,9 +354,22 @@ function summarize(result, bsb) {
   const overCap = result.kept.filter(
     (entry) => entry.text.bytes > DOWNLOAD_CAP_BYTES,
   )
+  const omittedReasons = {}
+  let omittedTranslations = 0
+  for (const entry of result.kept) {
+    const omitted = Object.values(entry.text.omitted ?? {})
+    if (omitted.length > 0) omittedTranslations += 1
+    for (const text of omitted) {
+      const reason = text.split(" ")[0]
+      omittedReasons[reason] = (omittedReasons[reason] ?? 0) + 1
+    }
+  }
+  const omittedTotal = Object.values(omittedReasons).reduce((a, b) => a + b, 0)
   const lines = [
     `Catalog: ${result.kept.length} kept (${complete} complete), ` +
       `${result.dropped.length} dropped ${JSON.stringify(reasons)}.`,
+    `Omitted books: ${omittedTotal} in ${omittedTranslations} translations ` +
+      `${JSON.stringify(omittedReasons)}.`,
     `Languages: ${Object.keys(result.languages).length} in the default table.`,
     `Versification: ${Object.keys(result.systems.table).length} translations listed; ` +
       `books per system ${JSON.stringify(result.systems.bookCounts)}; ` +
@@ -549,7 +562,7 @@ async function textFacts(record, stats) {
     )
     return { facts: { rejected: [result.reason, ...where].join(" ") } }
   }
-  const { books } = result.value
+  const { books, omittedBooks } = result.value
   const chapters = {}
   for (const book of books) {
     const keep = DISCRIMINATING[book.bookId] ?? []
@@ -559,6 +572,12 @@ async function textFacts(record, stats) {
       )
     }
   }
+  const omitted = Object.fromEntries(
+    omittedBooks.map(({ bookId, reason, chapterNumber }) => [
+      bookId,
+      chapterNumber === undefined ? reason : `${reason} ${chapterNumber}`,
+    ]),
+  )
   return {
     facts: {
       sha256: file.sha256,
@@ -566,6 +585,7 @@ async function textFacts(record, stats) {
       books: encodeBookSet(books.map((book) => book.bookId)),
       verses: verseCount(books),
       chapters,
+      ...(omittedBooks.length > 0 ? { omitted } : {}),
     },
     books: record.id === "BSB" ? books : null,
   }
@@ -700,6 +720,8 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error instanceof BibleDataError ? error.message : error)
+  const known =
+    error instanceof BibleDataError || error?.name === "BibleDataRuleError"
+  console.error(known ? error.message : error)
   process.exit(1)
 })
