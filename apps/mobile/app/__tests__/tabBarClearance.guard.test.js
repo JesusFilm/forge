@@ -5,8 +5,8 @@ const fs = require("fs")
 const path = require("path")
 
 // On iOS the bar floats, so the screen container runs full height and nothing
-// compensates. This is an ENUMERATION, not a sweep: a seventh scroll surface
-// escapes it silently. Add a row whenever you add one.
+// compensates. This is an ENUMERATION, not a sweep: a new surface that must
+// clear the bar escapes it silently. Add a row whenever you add one.
 const ROOT = path.resolve(__dirname, "../..")
 const CLEARANCE = /useTabBarClearance/
 // Presence of the identifier is not application: three of these surfaces use
@@ -38,6 +38,7 @@ const SURFACES = [
   "app/(tabs)/profile.tsx",
   "src/components/ui/Snackbar.tsx",
   "src/components/ExportReportHost.tsx",
+  "src/components/explore/ClipOverlay.tsx",
 ]
 
 describe("every scroll surface clears the floating tab bar", () => {
@@ -67,6 +68,6 @@ describe("every scroll surface clears the floating tab bar", () => {
 
   it("names every surface the enumeration is meant to cover", () => {
     // A shrinking list is the failure mode this guard cannot otherwise see.
-    expect(SURFACES).toHaveLength(7)
+    expect(SURFACES).toHaveLength(8)
   })
 })
