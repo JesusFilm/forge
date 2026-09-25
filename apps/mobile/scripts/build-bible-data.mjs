@@ -24,6 +24,8 @@ const LICENSES_URL = "https://ebible.org/Scriptures/translations.csv"
 const USER_AGENT =
   "forge-mobile-bible-data (+https://github.com/JesusFilm/forge)"
 const LOCK_FORMAT_VERSION = 1
+const SAFE_ID = /^[A-Za-z0-9_-]+$/
+const SHA256_HEX = /^[0-9a-f]{64}$/
 
 const LOCK = "src/lib/bible/data/sources.lock.json"
 const BSB_DIR = "assets/bible/bsb"
@@ -614,6 +616,13 @@ async function eachLimited(items, limit, work) {
 }
 
 function sourceRecord(entry, licenses) {
+  // The id and hash name cache files, so only the characters storage.ts
+  // allows at run time pass here.
+  if (!SAFE_ID.test(entry.id) || !SHA256_HEX.test(entry.sha256)) {
+    throw new BibleDataError(
+      `Catalog entry ${JSON.stringify(entry.id)} has an unsafe id or sha256`,
+    )
+  }
   if (entry.completeTranslationApiLink !== `/api/${entry.id}/complete.json`) {
     // The app derives the download URL from the id (U4), so pin that here.
     throw new BibleDataError(`${entry.id} has an unexpected complete.json link`)
