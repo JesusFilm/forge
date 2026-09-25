@@ -1,6 +1,7 @@
 import createNextIntlPlugin from "next-intl/plugin"
 import { fileURLToPath } from "node:url"
 import { WATCH_BASE_PATH } from "./watch-base-path.mjs"
+import { buildWatchSecurityHeaders } from "./watch-security-headers.mjs"
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts")
 
@@ -22,7 +23,10 @@ const additionalImageHosts = (
   .split(",")
   .map((h) => h.trim())
   .filter(Boolean)
-  .map((hostname) => ({ protocol: "https", hostname }))
+  // Operator-configured hosts. `/**` is the widest scope we can give an
+  // arbitrary allowlist entry, but it still keeps every pattern explicitly
+  // path-scoped so a future entry cannot silently omit one.
+  .map((hostname) => ({ protocol: "https", hostname, pathname: "/**" }))
 
 const adminMediaImageHost = (() => {
   try {
@@ -67,6 +71,9 @@ const allowedDevOrigins = getAllowedDevOrigins(
 export const nextConfig = {
   basePath: WATCH_BASE_PATH,
   allowedDevOrigins,
+  // `X-Powered-By: Next.js` told every scanner which framework and therefore
+  // which CVE set to try, for no benefit.
+  poweredByHeader: false,
   // Self-hosted prod (Railway) doesn't always sit behind a compressing
   // proxy. Without this the JS chunks ship at their raw ~1.8 MB size,
   // dominating the simulated-mobile LCP budget. compress:true wires
@@ -101,6 +108,41 @@ export const nextConfig = {
     }
 
     return config
+  },
+  async headers() {
+    return [
+      {
+        // `/:path*` also matches the basePath root, which `proxy()` never
+        // sees. That root is precisely where the old proxy-only header set
+        // was missing (FGE-235).
+        source: "/:path*",
+        headers: buildWatchSecurityHeaders({
+          // Only the NEXT_PUBLIC_ URL: that is the origin the browser
+          // actually connects to (src/lib/watch-search-client.ts). The
+          // server-only ADMIN_GRAPHQL_URL is a Railway private-network host in
+          // production, and echoing it in a public header would publish an
+          // internal hostname the browser can never reach anyway.
+          // Mirrors the default in src/env.ts. Reading the raw env var alone
+          // would omit the admin origin in any environment that relies on that
+          // default, which once enforced blocks the two documented
+          // browser-direct callers (floating Watch search, What's New voting).
+          adminGraphqlUrl:
+            process.env.NEXT_PUBLIC_ADMIN_GRAPHQL_URL ??
+            (process.env.NODE_ENV === "production"
+              ? "https://admin.jesusfilm.org/api/graphql"
+              : "http://localhost:3003/api/graphql"),
+          datadogSite: process.env.NEXT_PUBLIC_DATADOG_SITE,
+          // Report-only by default. Promoting the policy is a deliberate env
+          // flip plus a redeploy, never a code change bundled with the change
+          // that introduced the policy.
+          // Normalized: an operator who sets `WATCH_CSP_ENFORCE=True` or `=1`
+          // in Railway should not silently stay in report-only mode.
+          enforceContentSecurityPolicy: ["true", "1", "yes"].includes(
+            (process.env.WATCH_CSP_ENFORCE ?? "").trim().toLowerCase(),
+          ),
+        }),
+      },
+    ]
   },
   async rewrites() {
     return {
@@ -155,7 +197,21 @@ export const nextConfig = {
         pathname: "/api/public/media-assets/**",
       },
       ...adminMediaImageHost,
-      { protocol: "https", hostname: "images.unsplash.com" },
+      // Pinned to the two fixed placeholder photos the app renders
+      // (DEFAULT_BLOCK_IMAGE_URL in components/sections/block-types.ts and
+      // PROMO_IMAGE_URL in components/watch/BibleQuotesSection.tsx). A bare
+      // hostname entry made /watch/_next/image a working open proxy for every
+      // photo on the Unsplash CDN.
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+        pathname: "/photo-1488521787991-ed7bbaae773c",
+      },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+        pathname: "/photo-1650658720644-e1588bd66de3",
+      },
       // Editorial photography hot-linked from the main jesusfilm.org
       // WordPress library (same org, deliberately not vendored into this
       // repo). Scoped to the uploads path so the allowlist cannot widen to
@@ -170,8 +226,22 @@ export const nextConfig = {
         hostname: "admin.jesusfilm.org",
         pathname: "/api/public/media-assets/**",
       },
-      { protocol: "https", hostname: "imagedelivery.net" },
-      { protocol: "https", hostname: "image.mux.com" },
+      // SHAPE-ONLY scoping, and worth being precise about: unlike the Unsplash
+      // entries above, this does NOT close the open image proxy. Cloudflare
+      // Images always serves `/<account-hash>/<image-id>/<variant>` for EVERY
+      // customer, so any other tenant's URL still has three segments and still
+      // matches. It bounds the path shape and nothing more. Real closure means
+      // resolving the account hash against admin's own asset records, which is
+      // tracked as follow-up work, not done here.
+      {
+        protocol: "https",
+        hostname: "imagedelivery.net",
+        pathname: "/*/*/**",
+      },
+      // Same shape-only caveat: Mux image derivatives are always
+      // `/<playbackId>/<asset>` for every Mux customer, so this bounds the
+      // shape without restricting whose playback id may be proxied.
+      { protocol: "https", hostname: "image.mux.com", pathname: "/*/*" },
       ...additionalImageHosts,
       ...(process.env.NEXT_PUBLIC_CMS_HOSTNAME
         ? [
