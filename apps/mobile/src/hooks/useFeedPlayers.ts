@@ -22,6 +22,7 @@ import {
 import { readOr, safely } from "../lib/explore/playerRead"
 import type { ExploreClipFailure } from "../lib/explore/telemetry"
 import type { ClipWindow, FeedClip } from "../lib/explore/types"
+import { clamp } from "../lib/scrubber"
 import { applyQualityConstraint, type QualityTier } from "../lib/streamQuality"
 import { cleanStreamUrl, validateStreamingUrl } from "../lib/validateUrl"
 
@@ -616,7 +617,7 @@ function createFeedPlayerEngine() {
     if (!track.ready || track.window == null) return
     const { startSeconds, endSeconds } = track.window
     track.startCheck = "done"
-    seek(id, Math.min(Math.max(seconds, startSeconds), endSeconds))
+    seek(id, clamp(seconds, startSeconds, endSeconds))
   }
 
   /** The unmount half: no sound and no motion from a player nobody shows. */

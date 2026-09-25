@@ -26,6 +26,8 @@ type ClipProgressBarProps = {
   /** The active feed player. */
   player: VideoPlayer
   clipWindow: ClipWindow
+  /** Seeks the active clip. The bar never writes the player's time itself. */
+  onSeek: (seconds: number) => void
 }
 
 /**
@@ -67,7 +69,11 @@ function readTime(player: VideoPlayer): number {
  * video. A leaf that reads the player's time itself, so a time update renders
  * only this bar and never the overlay or the feed (KTD22).
  */
-export function ClipProgressBar({ player, clipWindow }: ClipProgressBarProps) {
+export function ClipProgressBar({
+  player,
+  clipWindow,
+  onSeek,
+}: ClipProgressBarProps) {
   const { startSeconds, endSeconds } = clipWindow
   const length = lengthOf(clipWindow)
 
@@ -84,6 +90,8 @@ export function ClipProgressBar({ player, clipWindow }: ClipProgressBarProps) {
   playerRef.current = player
   const windowRef = useRef(clipWindow)
   windowRef.current = clipWindow
+  const onSeekRef = useRef(onSeek)
+  onSeekRef.current = onSeek
   const widthRef = useRef(0)
   const grantXRef = useRef(0)
   const fractionRef = useRef(0)
@@ -104,7 +112,7 @@ export function ClipProgressBar({ player, clipWindow }: ClipProgressBarProps) {
 
   const seekTo = useCallback(
     (time: number) => {
-      playerRef.current.currentTime = time
+      onSeekRef.current(time)
       show(time)
     },
     [show],

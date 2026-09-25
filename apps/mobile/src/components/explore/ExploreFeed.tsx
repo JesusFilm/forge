@@ -238,7 +238,7 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
     [telemetry],
   )
 
-  const { players, activePlayer } = useFeedPlayers({
+  const { players, activePlayer, seekActive } = useFeedPlayers({
     state,
     dispatch,
     muted: exploreMuted,
@@ -523,6 +523,7 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
           muted={exploreMuted}
           paused={state.phase === "paused" && state.overlay == null}
           onToggleMute={handleToggleMute}
+          onSeek={seekActive}
           onKeepWatching={handleKeepWatching}
           onOverlayOpen={handleOverlayOpen}
           onOverlayClose={handleOverlayClose}

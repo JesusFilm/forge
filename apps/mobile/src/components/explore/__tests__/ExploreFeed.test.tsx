@@ -1630,9 +1630,18 @@ describe("telemetry (U13, KTD17, R34)", () => {
     ])
   })
 
-  it("reports a rebuffer and a pool fallback", async () => {
+  it("reports a rebuffer (not a scrub's load) and a pool fallback", async () => {
     await startFirstClip()
     await advance(SEEK_LOADING_GRACE_MS)
+    await act(async () => {
+      A.__emit("statusChange", { status: "loading" })
+    })
+    expect(logged("explore.rebuffer")).toHaveLength(1)
+
+    // A scrub seeks through the feed players, so its own load is no rebuffer.
+    await advance(SEEK_LOADING_GRACE_MS)
+    await callOverlay("onSeek", END + 30)
+    expect(A.currentTime).toBe(END)
     await act(async () => {
       A.__emit("statusChange", { status: "loading" })
     })

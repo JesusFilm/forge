@@ -112,6 +112,7 @@ function props(overrides: Partial<ClipOverlayProps> = {}): ClipOverlayProps {
     muted: false,
     paused: false,
     onToggleMute: jest.fn(),
+    onSeek: jest.fn(),
     onKeepWatching: jest.fn(),
     onOverlayOpen: jest.fn(),
     onOverlayClose: jest.fn(),
@@ -400,9 +401,10 @@ describe("ClipOverlay — progress bar (R12, R35, KTD22)", () => {
     expect(barValue(renderer)).toMatchObject({ min: 0, max: 27, now: 6 })
   })
 
-  it("seeks to 12:17.5 on a drag to 50%", () => {
+  it("seeks to 12:17.5 on a drag to 50%, through onSeek", () => {
     player.currentTime = 730
-    const renderer = render()
+    const onSeek = jest.fn()
+    const renderer = render(props({ onSeek }))
     const handlers = progressBar(renderer).props as unknown as Handlers
     act(() => {
       handlers.onLayout({
@@ -414,11 +416,16 @@ describe("ClipOverlay — progress bar (R12, R35, KTD22)", () => {
       handlers.onResponderMove(touchAt(150))
       handlers.onResponderRelease(touchAt(150))
     })
-    expect(player.currentTime).toBeCloseTo(737.5, 5)
+    expect(onSeek).toHaveBeenCalledTimes(1)
+    expect(onSeek.mock.calls[0][0]).toBeCloseTo(737.5, 5)
+    // The feed players own the seek, so the bar never writes the player.
+    expect(player.currentTime).toBe(730)
+    expect(barValue(renderer).now).toBe(13)
   })
 
   it("keeps the step actions inside the window", () => {
-    const renderer = render()
+    const onSeek = jest.fn()
+    const renderer = render(props({ onSeek }))
     const step = (at: number, actionName: "increment" | "decrement") => {
       player.currentTime = at
       act(() => {
@@ -426,7 +433,8 @@ describe("ClipOverlay — progress bar (R12, R35, KTD22)", () => {
           progressBar(renderer).props as unknown as Handlers
         ).onAccessibilityAction({ nativeEvent: { actionName } })
       })
-      return player.currentTime
+      expect(player.currentTime).toBe(at)
+      return onSeek.mock.calls.at(-1)?.[0] as number
     }
     expect(progressBar(renderer).props.accessibilityActions).toEqual([
       { name: "increment" },

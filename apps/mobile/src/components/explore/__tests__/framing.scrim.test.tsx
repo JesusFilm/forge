@@ -106,6 +106,7 @@ function render(
         muted={false}
         paused={false}
         onToggleMute={() => {}}
+        onSeek={() => {}}
         onKeepWatching={() => {}}
         onOverlayOpen={() => {}}
         onOverlayClose={() => {}}

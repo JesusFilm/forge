@@ -39,6 +39,8 @@ export type ClipOverlayProps = {
   /** Shows the play glyph (R10). The tap target itself is the feed's. */
   paused: boolean
   onToggleMute: () => void
+  /** A scrub to an asset time. The feed players seek, so the load is no rebuffer. */
+  onSeek: (seconds: number) => void
   /** The asset time the viewer reached, inside the clip window (R16). */
   onKeepWatching: (positionSeconds: number) => void
   /** Share or "more" opened. The feed pauses the clip (R44). */
@@ -77,6 +79,7 @@ export function ClipOverlay({
   muted,
   paused,
   onToggleMute,
+  onSeek,
   onKeepWatching,
   onOverlayOpen,
   onOverlayClose,
@@ -208,7 +211,11 @@ export function ClipOverlay({
           </View>
         </View>
 
-        <ClipProgressBar player={player} clipWindow={clip.window} />
+        <ClipProgressBar
+          player={player}
+          clipWindow={clip.window}
+          onSeek={onSeek}
+        />
       </View>
     </View>
   )
